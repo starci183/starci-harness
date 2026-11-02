@@ -14,7 +14,9 @@ import { emitContractsAsync } from '../emit/contracts.mjs';
 import { summarize } from '../runtime/scripts/hfs/check-results.mjs';
 import { managedFindings } from '../sync/managed.mjs';
 import type { Presets } from '../sync/index.mjs';
+import { withRuleMemo } from '../runtime/scripts/hfs/rule-memo.mjs';
 import { RecordSet, scopedStep } from './records.mjs';
+import { FILE_RULES_STEP, RULE_STEP_PREFIX, UNIT_STEP_PREFIX, createStructureMemo } from './structure-memo.mjs';
 import { makeReport } from './report.mjs';
 import { sideKey } from './side-key.mjs';
 import type { CacheRecord, CheckSession, FamilyReport, Finding, JsonValue } from './types.mjs';
@@ -71,10 +73,12 @@ const beDeclaration = (repoRoot: string): unknown => {
 export async function runStructurePass(session: CheckSession, input: PassInput): Promise<PassResult> {
   const { repoRoot, harness, presets } = input;
   const tracked = [...(input.tracked ?? trackedFiles(repoRoot))];
-  const decision = session.decide('hfs');
+  const decision = session.decide(input.hfs ? 'hfs' : 'secrets');
   const records = new RecordSet(session.records(HFS_FOLDER));
   const previous = records.toArray();
   const reuse = decision.mode === 'diff';
+  // The per-file and cross-file content rules are shared by both families: a record is read only when every selected family runs diff.
+  const structure = createStructureMemo({ session, records, reuse: reuse && (!input.hfs || !input.secrets || session.decide('secrets').mode === 'diff'), root: repoRoot, tracked });
   const sideOf = (side: string) => sideKey(repoRoot, session.index, side);
   const keys = new Map(['be', 'fe'].map((side) => [side, sideOf(side)] as const));
   const extra: CheckFinding[] = [...await managedFindings({ repoRoot, tracked, presets })] as CheckFinding[];
@@ -86,7 +90,7 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
     const bePrefix = 'be/';
     const key = keys.get('be');
     const emit = await scopedStep(session, records, {
-      path: 'be', step: 'contract-emit', key: key?.key ?? 'none', reuse, inputs: key?.inputs ?? [],
+      path: 'be', step: 'contract-emit', key: key?.key ?? 'none', reuse, inputs: key?.inputs ?? [], captured: key?.hashes ?? {},
       compute: async () => {
         const files = tracked.filter((file) => file.startsWith(bePrefix)).map((file) => file.slice(bePrefix.length));
         const emitted = await contractEmitFindingsAsync({ repoRoot: path.join(repoRoot, 'be'), files, repo: be as never, emit: (request: Parameters<typeof emitContractsAsync>[0]) => emitContractsAsync({ ...request, execute: input.execute }) });
@@ -109,7 +113,7 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
     if (held?.data !== undefined) { reasons[side] = true; reused += 1; return held.data as unknown as MachineReport; }
     const report = baseMachine(call);
     checked += 1;
-    if (session.unchanged(key.inputs)) {
+    if (session.unchanged(key.inputs, key.hashes)) {
       records.put({ path: side, step: 'machine', hash: key.key, findings: [...report.violations, ...report.errors].map((item) => ({ path: item.path ?? side, line: item.line ?? 0, column: item.column ?? 0, rule: item.ruleId, message: item.message })), data: JSON.parse(JSON.stringify(report)) as JsonValue });
     }
     return report;
@@ -124,7 +128,7 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
       if (held?.data !== undefined) { reused += 1; return held.data as unknown as ReturnType<typeof compute>; }
       const found = compute();
       checked += 1;
-      if (session.unchanged(key.inputs)) {
+      if (session.unchanged(key.inputs, key.hashes)) {
         const list = found as unknown as CheckFinding[];
         records.put({ path: side, step: 'unused-symbol', hash: key.key, findings: list.map(compact), data: JSON.parse(JSON.stringify(found)) as JsonValue });
       }
@@ -132,13 +136,15 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
     },
   };
   const step = session.progress.step('hfs', 'structure', tracked.length);
-  const result = input.hfs
+  const result = withRuleMemo(structure.memo, () => (input.hfs
     ? withUnusedSymbolMemo(unusedMemo, () => withoutBootProof(() => checkRepository({ repoRoot, harness, extraFindings: extra, machine: cachedMachine })))
     : (() => {
       const slot = withUnusedSymbolMemo(unusedMemo, () => withoutBootProof(() => checkRepo({ repoRoot, harness, extraFindings: [], surface: 'check' })));
       return { ...slot, machine: { status: 'skipped', reason: '--secrets alone runs the rules, not the machine' } } as RepositoryResult;
-    })();
-  step.tick(tracked.length, reused, checked);
+    })()));
+  const filesChecked = structure.counts.filesChecked, filesReused = structure.counts.filesReused;
+  const keyedChecked = structure.counts.keyedChecked + structure.counts.unitsChecked, keyedReused = structure.counts.keyedReused + structure.counts.unitsReused;
+  step.tick(tracked.length, reused + filesReused + keyedReused, checked + filesChecked + keyedChecked);
   step.end();
   if (contracts) result.contracts = contracts;
   if (!input.hfs) {
@@ -146,6 +152,11 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
     result.counts = summarize(result.findings);
     result.ok = result.counts.error === 0;
   }
+  records.retain(FILE_RULES_STEP, structure.files);
+  records.retainPrefix(RULE_STEP_PREFIX, new Set(['.', 'be', 'fe']));
+  for (const [step, paths] of structure.units) records.retain(step, paths);
+  records.dropPrefixExcept(UNIT_STEP_PREFIX, new Set(structure.units.keys()));
+  if (!input.hfs) session.replace(HFS_FOLDER, records.toArray());
   if (input.hfs) {
     const live = new Set(['be', 'fe']);
     records.retain('machine', live);
@@ -159,7 +170,7 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
   }
   const hfsFindings = result.findings.filter((finding) => !SECRET_CODES.has(finding.code));
   const report = input.hfs
-    ? makeReport({ family: 'hfs', mode: decision.mode, reason: decision.reason, checked, reused, previous: previous.flatMap((record) => record.step === 'hfs' ? record.findings : []), current: hfsFindings.map(compact) })
+    ? makeReport({ family: 'hfs', mode: decision.mode, reason: decision.reason, checked: checked + filesChecked + keyedChecked, reused: reused + filesReused + keyedReused, previous: previous.flatMap((record) => record.step === 'hfs' ? record.findings : []), current: hfsFindings.map(compact) })
     : null;
   if (report) session.report(report);
   let secretsReport: FamilyReport | null = null;
@@ -168,7 +179,7 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
     const prior = session.records(SECRETS_FOLDER);
     const secretFindings = result.findings.filter((finding) => SECRET_CODES.has(finding.code));
     session.replace(SECRETS_FOLDER, findingRecords(secretFindings, session.index.hashOf.bind(session.index), 'secrets'));
-    secretsReport = makeReport({ family: 'secrets', mode: secretDecision.mode, reason: secretDecision.reason, checked: tracked.length, reused: 0, previous: prior.flatMap((record) => record.findings), current: secretFindings.map(compact) });
+    secretsReport = makeReport({ family: 'secrets', mode: secretDecision.mode, reason: secretDecision.reason, checked: filesChecked, reused: filesReused, previous: prior.flatMap((record) => record.findings), current: secretFindings.map(compact) });
     session.report(secretsReport);
   }
   return { result, contracts, machineReused: reasons, report, secretsReport };

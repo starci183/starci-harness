@@ -6,8 +6,20 @@ import type { Finding, Parsed } from './rule-types.mjs';
 /** Files above this size are not read by a tree check (a tracked binary or a generated dump is no source of these laws). */
 const MAX_READ_BYTES = 1024 * 1024;
 
+/** Who is told which file a rule reads: the result cache records the read set of a cross-file rule through it. */
+type ReadSink = (repoRoot: string, rel: string) => void;
+let sink: ReadSink | null = null;
+
+/** Runs `run` with every `readText` / `readJson` it makes reported to `onRead` (before the read), and returns its value. */
+export function recordReads<T>(onRead: ReadSink, run: () => T): T {
+  const before = sink;
+  sink = onRead;
+  try { return run(); } finally { sink = before; }
+}
+
 /** The text of `rel` under `repoRoot`, or null when it is absent, unreadable, over MAX_READ_BYTES or binary. */
 export function readText(repoRoot: string, rel: string): string | null {
+  sink?.(repoRoot, rel);
   try {
     const target = path.join(repoRoot, rel);
     if (fs.statSync(target).size > MAX_READ_BYTES) return null;

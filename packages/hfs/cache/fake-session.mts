@@ -71,7 +71,7 @@ export function createFakeSession(options: FakeSessionOptions = {}): FakeSession
     decide: () => decision,
     records: (folder) => replaced.get(folder) ?? stored.get(folder) ?? [],
     replace: (folder, records) => void replaced.set(folder, records),
-    unchanged: (paths) => paths.every((file) => index.hashOf(file) === initial.get(file)),
+    unchanged: (paths, captured) => paths.every((file) => (captured?.[file] === undefined ? index.hashOf(file) === initial.get(file) : (index.hashOf(file) ?? 'absent') === captured[file])),
     report: (report) => void reports.push(report),
     progress,
     setFile: (path, text) => index.set(path, text),

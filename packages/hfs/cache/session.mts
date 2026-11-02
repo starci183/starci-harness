@@ -134,7 +134,11 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
     replace(folder, records, replaceOptions): void {
       replaced.set(folder, { records, depth: replaceOptions?.depth ?? 2 });
     },
-    unchanged: (paths) => paths.every((file) => hashFile(path.join(root, file)) === index.hashOf(file)),
+    unchanged: (paths, captured) => paths.every((file) => {
+      const now = hashFile(path.join(root, file));
+      const taken = captured?.[file];
+      return taken === undefined ? now === index.hashOf(file) : (now ?? 'absent') === taken;
+    }),
     report: (report) => void reports.push(report),
     verdicts: () => verdictList,
     flush(): FlushResult {

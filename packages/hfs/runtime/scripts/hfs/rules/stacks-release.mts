@@ -6,6 +6,7 @@ import { loadTypescript } from '../../lib/package-at.mjs';
 import { walkSqlAst, sqlParser, sqlCallArgument } from '../../lib/sql-ast.mjs';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { found, readText } from './read.mjs';
+import { memoUnit } from '../rule-memo.mjs';
 import { stacksDeploymentContexts } from './stacks-runtime.mjs';
 import type { Parsed } from './rule-types.mjs';
 
@@ -40,17 +41,19 @@ function safeRelative(relative: string) {
   return relative.split('/').every((part: Parsed) => part && part !== '.' && part !== '..');
 }
 
-function publicReference(repoRoot: string, files: string[], relative: string) {
+/** `links` remembers which directories are symbolic links for the duration of one scan, so a directory shared by many files is asked once. */
+function publicReference(repoRoot: string, files: ReadonlySet<string> | readonly string[], relative: string, links: Map<string, boolean> = new Map()) {
   if (!repoRoot || !safeRelative(relative)) return false;
-  if (!files.includes(relative)) return false;
+  if (!(files instanceof Set ? files.has(relative) : (files as readonly string[]).includes(relative))) return false;
   const root = path.resolve(repoRoot), target = path.resolve(root, relative);
   try {
-    let cursor = target;
-    while (cursor !== root) {
-      if (fs.lstatSync(cursor).isSymbolicLink()) return false;
-      cursor = path.dirname(cursor);
-    }
     const stat = fs.lstatSync(target);
+    if (stat.isSymbolicLink()) return false;
+    for (let cursor = path.dirname(target); cursor !== root; cursor = path.dirname(cursor)) {
+      let link = links.get(cursor);
+      if (link === undefined) { link = fs.lstatSync(cursor).isSymbolicLink(); links.set(cursor, link); }
+      if (link) return false;
+    }
     return stat.isFile() && stat.size > 0 && stat.size <= MAX_BYTES;
   } catch { return false; }
 }
@@ -339,28 +342,38 @@ function templateObservations(node: Parsed, file: string) {
   return sqlObservations(named, file);
 }
 
-function recurringObservations({ doc, repoRoot, files, file, issues }: { doc: Parsed; repoRoot: string; files: string[]; file: string; issues: Parsed }) {
+/** What one file says about recurring work: its pg_cron observations and the issues of its source. A function of the file's bytes, the manifest and the tools that parse it. */
+interface FileObservations { observations: Parsed[]; issues: Parsed[] }
+
+function observationsOf({ doc, repoRoot, file, sql }: { doc: Parsed; repoRoot: string; file: string; sql: boolean }): FileObservations {
+  const text = readText(repoRoot, file);
+  if (text === null) return { observations: [], issues: [] };
+  if (sql) return { observations: sqlObservations(text, file), issues: [] };
+  ts ??= loadTypescript(repoRoot, HERE);
+  if (!ts) return { observations: [], issues: [scheduleIssue(file, 'TypeScript is required to inspect recurring application work')] };
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const issues = sourceObservationIssues(doc, file, source, sourceBindings(source));
+  return { observations: sourceSqlObservations(source, file), issues };
+}
+
+function recurringObservations({ doc, repoRoot, files, file, issues, links, tools }: { doc: Parsed; repoRoot: string; files: ReadonlySet<string>; file: string; issues: Parsed; links: Map<string, boolean>; tools: string }) {
   const sql = file.startsWith('db/migrations/') && file.endsWith('.sql') && !file.startsWith('db/migrations/archive/');
   const sourceFile = SOURCE.test(file) && !TEST.test(file);
-  if ((!sql && !sourceFile) || !publicReference(repoRoot, files, file)) return [];
-  const text = readText(repoRoot, file);
-  if (text === null) return [];
-  if (sql) return sqlObservations(text, file);
-  ts ??= loadTypescript(repoRoot, HERE);
-  if (!ts) {
-    issues.push(scheduleIssue(file, 'TypeScript is required to inspect recurring application work'));
-    return [];
-  }
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
-  issues.push(...sourceObservationIssues(doc, file, source, sourceBindings(source)));
-  return sourceSqlObservations(source, file);
+  if ((!sql && !sourceFile) || !publicReference(repoRoot, files, file, links)) return [];
+  // The result cache keeps this per file: the bytes of the file, the manifest and the parsers decide it (contexts/project/check-cache.md).
+  const one = memoUnit<FileObservations>(repoRoot, 'recurring-observations', file, `${tools}
+${JSON.stringify(doc)}`, { observations: [], issues: [] }, () => observationsOf({ doc, repoRoot, file, sql }));
+  issues.push(...one.issues);
+  return one.observations;
 }
 
 function recurringSourceIssues({ doc, repoRoot, files }: { doc: Parsed; repoRoot: string; files: string[] }) {
   const issues: Parsed[] = [], cron = new Map();
   const paths = [...new Set(files)].sort((left, right) => left.localeCompare(right));
+  const tracked = new Set(paths), links = new Map<string, boolean>();
+  const tools = `typescript=${loadTypescript(repoRoot, HERE) !== null} sql=${pg !== null}`;
   for (const file of paths) {
-    const observations = recurringObservations({ doc, repoRoot, files, file, issues });
+    const observations = recurringObservations({ doc, repoRoot, files: tracked, file, issues, links, tools });
     for (const observation of observations) {
       if ('remove' in observation) {
         if (observation.remove) cron.delete(observation.remove);
