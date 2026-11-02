@@ -267,6 +267,8 @@ function signatureParameterStatus(ts: TypeScriptApi, checker: TypeChecker, signa
   const actual = parameterSymbol ? checker.getTypeOfSymbolAtLocation(parameterSymbol, location) : null;
   if (actual && parameter.questionToken && !ts.isUnionTypeNode(parameter.type as TypeNode) && hasAnyFlag(actual.flags, ts.TypeFlags.Union)) {
     const selected = (actual as UnionType).types.filter((type) => !hasAnyFlag(type.flags, ts.TypeFlags.Undefined));
+    // An optional boolean is represented as true | false | undefined, not one Boolean member.
+    if (selected.length > 0 && selected.every((type) => hasAnyFlag(type.flags, ts.TypeFlags.BooleanLike))) return 'scalar';
     return selected.length === 1 ? contractTypeStatusFromType(ts, checker, selected[0]) : 'inline';
   }
   return actual ? contractTypeStatusFromType(ts, checker, actual) : contractTypeStatus(ts, checker, parameter.type);

@@ -144,4 +144,50 @@ for (const edition of ['lite', 'full'] as const) {
       invalid: [{ filename: fixture.at(contractBad), code: files[contractBad], errors: [{ messageId: 'finding' }, { messageId: 'finding' }] }],
     });
   });
+
+  test(`R89 ${edition} accepts optional primitive booleans under strict null checks and rejects anonymous contracts`, (t) => {
+    const good = 'src/modules/domain/orders/request-allowed.service.ts';
+    const bad = 'src/modules/domain/orders/anonymous-input.service.ts';
+    const strictFiles = {
+      'tsconfig.json': JSON.stringify({
+        compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', strict: true, noEmit: true },
+        include: ['src/**/*', 'apps/**/*'],
+      }),
+      'src/modules/domain/orders/order.contracts.ts': [
+        'export type RequestAllowed = boolean;',
+        'export type BinaryFlag = true | false;',
+        'export interface Request { readonly allowed: boolean }',
+      ].join('\n'),
+      'src/modules/domain/orders/index.ts': [
+        'export { RequestAllowedService, requestAllowed } from "./request-allowed.service";',
+        'export { AnonymousInputService } from "./anonymous-input.service";',
+      ].join('\n'),
+      [good]: [
+        'import type { RequestAllowed, BinaryFlag, Request } from "./order.contracts";',
+        'export class RequestAllowedService {',
+        '  required(value: boolean): boolean { return value; }',
+        '  optional(value?: boolean): boolean { return value ?? false; }',
+        '  named(value: RequestAllowed): boolean { return value; }',
+        '  optionalNamed(value?: RequestAllowed): boolean { return value ?? false; }',
+        '  optionalBinary(value?: BinaryFlag): boolean { return value ?? false; }',
+        '  optionalRequest(value?: Request): boolean { return value?.allowed ?? false; }',
+        '  count(value?: number): number { return value ?? 0; }',
+        '}',
+        'export function requestAllowed(value?: boolean): boolean { return value ?? false; }',
+      ].join('\n'),
+      [bad]: [
+        'export class AnonymousInputService {',
+        '  union(value?: string | number): number { return value === undefined ? 0 : 1; }',
+        '  mixed(value?: boolean | string): boolean { return value === true; }',
+        '  object(value?: { readonly allowed: boolean }): boolean { return value?.allowed ?? false; }',
+        '}',
+      ].join('\n'),
+    };
+    const fixture = projectFixture({ edition, files: strictFiles });
+    t.after(fixture.cleanup);
+    fixture.tester.run('public-contract-form', ruleNamed(graphRules, 'public-contract-form'), {
+      valid: [{ filename: fixture.at(good), code: strictFiles[good] }],
+      invalid: [{ filename: fixture.at(bad), code: strictFiles[bad], errors: [{ messageId: 'finding' }, { messageId: 'finding' }, { messageId: 'finding' }] }],
+    });
+  });
 }
