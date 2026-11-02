@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.11.16
+
+- Changed: Refresh the generated canon pins for the governed app-check release.
+
 ## 3.11.15
 
 - Changed: Refresh the declared shared JSX-clone runtime, semantic Grammar catalog and exact canon pins from their HFS owner. The BE rule source is unchanged.

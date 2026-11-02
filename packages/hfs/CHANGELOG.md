@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.0.5
+
+- Changed: Govern each app-check linter, compiler, test discovery and coverage, contract emitter and boot child through the CLI execution port with actual worker limits and complete output capture. Preserve cache identities, closure, flush behavior and coverage thresholds.
+
 ## 5.0.4
 
 - Changed: Record the existing shared Page semantic role in the selected canonical Grammar component contract, so universal composition proof does not infer concrete API names or accept an app-controlled switch.

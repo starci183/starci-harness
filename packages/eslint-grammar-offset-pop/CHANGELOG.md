@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.9
+
+- Changed: Require core 0.21.9 and refresh the generated canon pins with the shared Grammar family release.
+
 ## 0.21.8
 
 - Changed: Inherit core 0.21.8 mounted Page owner proofs and refresh the exact core peer and canon pins.

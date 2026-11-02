@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.9.9
+
+- Changed: Refresh the generated canon pins for the governed app-check release.
+
 ## 9.9.8
 
 - Changed: Enforce the documented one-level connected RootPage children composition with mounted selected-export and actual sibling-Base proof shared with R325. Keep ordinary block/atom restrictions and inspect shape records for rendered trees.

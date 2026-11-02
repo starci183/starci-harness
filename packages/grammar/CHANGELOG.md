@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.9
+
+- Changed: Keep the Grammar and both lint families at the same full version. Component source, styles and public rendering API are unchanged; the build stamp carries the release version.
+
 ## 0.21.8
 
 - Changed: Keep the component package and both lint families at the identical release version. Component source, styles and public API are unchanged; the build stamp carries this release version.

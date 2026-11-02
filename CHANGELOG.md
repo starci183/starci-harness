@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.46
+
+- Changed: Admit each actual app-check child through the host governor, apply test worker limits and refuse incomplete tool capture. Keep the served HFS requirement until CI follows package publication.
+
 ## 1.1.0-alpha.45
 
 - Changed: Bundle the reviewed route Page/children context and search-eval repair with coherent package pins. The CLI keeps its served HFS requirement until CI follows package publication.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.9
+
+- Changed: Require FE canon 9.9.9 and refresh the generated canon pins with the shared Grammar family release.
+
 ## 0.21.8
 
 - Changed: Use the shared FE owner-source and connected Page drawing proofs for mounted route frames, require FE 9.9.8, and refresh the declared runtime catalog and pins.
