@@ -87,7 +87,7 @@ for (const edition of ['lite', 'full']) {
   test(`${edition} valid lint config and scripts keep every finding visible`, (t) => {
     const context = repository(t, edition, {
       'eslint.config.mjs': "export default [{ linterOptions: { reportUnusedDisableDirectives: 'error' } }];\n",
-      'package.json': JSON.stringify({ scripts: { lint: 'eslint --max-warnings=0 .', 'lint:fix': 'starci app lint --fix' } }),
+      'package.json': JSON.stringify({ scripts: { lint: 'eslint --max-warnings=0 .', 'lint:fix': 'starci app check --gate lint --fix' } }),
       'node_modules/eslint.suppressions.json': '{}\n',
     });
     assert.deepEqual(lintSuppressionFindings(context).filter((finding) => finding.code === 'HFS_LINT_SUPPRESSION_FILE'), []);

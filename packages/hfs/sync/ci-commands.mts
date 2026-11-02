@@ -186,7 +186,7 @@ function ciJobSettings(declaration: Declaration, source: CiSource | undefined): 
 }
 
 /** An omitted quality declaration preserves hosted Sonar, required OIDC Codecov, and the high production dependency audit. */
-export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'be/coverage/lcov.info', quality: Declaration = undefined, { nodeMajor = '22', app }: { nodeMajor?: string; app?: { sides: { fe: { apps: readonly { name: string }[] } } } } = {}): Record<string, string> {
+export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'be/coverage/lcov.info', quality: Declaration = undefined, { nodeMajor = '22', app, packages = false }: { nodeMajor?: string; packages?: boolean; app?: { sides: { fe: { apps: readonly { name: string }[] } } } } = {}): Record<string, string> {
   const configuredSonar = quality === undefined ? { token: 'SONAR_TOKEN', hostVar: 'SONAR_HOST_URL' } : quality.sonar;
   const sonar = configuredSonar?.wiring === 'not-used' || configuredSonar?.mode === 'disabled' ? null : configuredSonar;
   const codecov = quality?.codecov ?? { enabled: true, auth: 'oidc' };
@@ -202,8 +202,6 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     shardCoverageReport: lcovReport.split('/').slice(0, -1).concat('coverage-final.json').join('/'),
     ciBuildEnv: build.env,
     ciBuildSteps: build.steps,
-    ciLint: exampleCommand(source, 'npm run lint'),
-    ciLintSonar: exampleCommand(source, 'npm run lint -- --out reports/lint.sonar.json'),
     // The coverage judgement alone over the merged report: the fast and lint jobs already ran every other rule of the app check.
     ciCoverageProof: exampleCommand(source, 'npx starci app coverage verify ' + lcovReport),
     // An app with an entity list also checks its entities against the schema its migrations build, in the build job (a runner with Docker).
@@ -212,9 +210,10 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     sonarTokenSecret: sonar?.token ?? 'SONAR_TOKEN',
     sonarHostVar: sonar?.hostVar ?? 'SONAR_HOST_URL',
     // One lint job per side (the lint matrix): with Sonar each side writes its own report, uploaded as sonar-lint-<side> and merged by the sonar job.
-    ciLintSteps: (sonar ? [
+    // The typed lint reads the generated code and the types the fe packages declare (their dist), so both are built first, the way the root lint script does.
+    ciLintSteps: ['      - name: build the lint inputs', `        run: ${exampleCommand(source, packages ? 'npm run codegen --silent && npx --no-install turbo run build --filter=./fe/packages/*' : 'npm run codegen --silent')}`, ...(sonar ? [
       '      - name: lint with Sonar import',
-      `        run: ${exampleCommand(source, 'npm run lint -- --side ' + side + ' --out reports/lint.' + side + '.sonar.json')}`,
+      `        run: ${exampleCommand(source, 'npx --no-install starci app check --gate lint --side ' + side + ' --out reports/lint.' + side + '.sonar.json')}`,
       '        env:',
       `          NODE_OPTIONS: ${settings.nodeOptions}`,
       `      - uses: ${UPLOAD_ARTIFACT}`,
@@ -225,10 +224,10 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
       `          path: reports/lint.${side}.sonar.json`,
     ] : [
       '      - name: lint',
-      `        run: ${exampleCommand(source, 'npm run lint -- --side ' + side)}`,
+      `        run: ${exampleCommand(source, 'npx --no-install starci app check --gate lint --side ' + side)}`,
       '        env:',
       `          NODE_OPTIONS: ${settings.nodeOptions}`,
-    ]).join('\n'),
+    ])].join('\n'),
     codecovSteps: codecovSteps(lcovReport, codecov),
     verdictSonarNeed: sonar ? ', sonar' : '',
     verdictSonarCheck: sonar ? `\n          if [[ "$FULL" == true && "$CHECKS" == true ]]; then expect sonar success; else expect sonar idle; fi` : '',

@@ -36,11 +36,11 @@ function fixture(t: TestContext, edition: string, mutate?: (files: Documents) =>
     'turbo.json': taskGraphTemplate,
     [APP_MANIFEST]: {
       name: '@demo/web', private: true, dependencies: { '@demo/ui': '*' },
-      scripts: { build: 'next build', dev: 'next dev', lint: 'starci app lint --workspace .', start: 'next start', typecheck: 'tsc --noEmit' },
+      scripts: { build: 'next build', dev: 'next dev', start: 'next start', typecheck: 'tsc --noEmit' },
     },
     [PACKAGE_MANIFEST]: {
       name: '@demo/ui', private: true,
-      scripts: { build: 'tsc -p tsconfig.build.json', typecheck: 'tsc --noEmit', lint: 'starci app lint --workspace .' },
+      scripts: { build: 'tsc -p tsconfig.build.json', typecheck: 'tsc --noEmit' },
     },
     'be/nest-cli.json': {
       monorepo: true, root: 'apps/core', sourceRoot: 'apps/core/src',
@@ -89,10 +89,12 @@ for (const edition of ['lite', 'full']) {
       (files: Documents) => { files[APP_MANIFEST].name = 'web'; },
       (files: Documents) => { files[APP_MANIFEST].private = false; },
       (files: Documents) => { files[APP_MANIFEST].scripts.lint = 'eslint .'; },
+      (files: Documents) => { files[APP_MANIFEST].scripts.lint = 'starci app check --gate lint'; },
       (files: Documents) => { files[APP_MANIFEST].scripts.test = 'jest'; },
       (files: Documents) => { files[PACKAGE_MANIFEST].private = false; },
       (files: Documents) => { delete files[PACKAGE_MANIFEST].scripts.build; },
       (files: Documents) => { files[PACKAGE_MANIFEST].scripts.lint = 'eslint src'; },
+      (files: Documents) => { files[PACKAGE_MANIFEST].scripts.lint = 'starci app check --gate lint'; },
     ];
     for (const mutate of mutations) {
       const findings = monorepoFindings(fixture(t, edition, mutate));

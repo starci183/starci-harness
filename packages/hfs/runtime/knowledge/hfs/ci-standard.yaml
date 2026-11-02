@@ -37,7 +37,7 @@ defaults:
 # The steps that need a raised Node heap on the GitHub runner, matched on their `run` text, and the least heap they must declare in NODE_OPTIONS.
 heap:
   minMiB: 6144
-  steps: ['npm run typecheck', 'npm run lint', 'app lint', 'app coverage verify', 'npm run db:lint']
+  steps: ['npm run typecheck', 'npm run lint', 'app check --gate lint', 'app coverage verify', 'npm run db:lint']
 
 items:
   - id: candidate-trigger
@@ -77,7 +77,7 @@ items:
     check: ci-standard
   - id: sonar-lint-per-side
     title: the Sonar lint runs per side
-    requires: "a lint with a Sonar import (--out) names its side (--side be|fe); the reports are merged into reports/lint.sonar.json afterwards; no combined lint with Sonar"
+    requires: "a lint with a Sonar import (`starci app check --gate lint --out`) names its side (--side be|fe); the reports are merged into reports/lint.sonar.json afterwards; no combined lint with Sonar"
     covers: [app-ci, runtime]
     check: ci-standard
   - id: test-sharding

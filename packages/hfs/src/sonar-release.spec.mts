@@ -113,7 +113,7 @@ test('native release sends selected Sonar credentials only to its scanner and ke
   assert.equal(merged.issues.length, 2);
   const order = calls.filter(call => call.command === 'npx').map(call => call.args.includes('starci') ? `lint-${call.args[call.args.indexOf('--side') + 1]}` : 'scan');
   assert.deepEqual(order, ['lint-be', 'lint-fe', 'scan']);
-  assert.match(fs.readFileSync(record.gates.find((row: GateRow) => row.name === 'sonar').log, 'utf8'), /\$ npx starci app lint --side be --out reports\/lint\.be\.sonar\.json[\s\S]*wrote reports\/lint\.sonar\.json/u);
+  assert.match(fs.readFileSync(record.gates.find((row: GateRow) => row.name === 'sonar').log, 'utf8'), /\$ npx starci app check --gate lint --side be --out reports\/lint\.be\.sonar\.json[\s\S]*wrote reports\/lint\.sonar\.json/u);
 });
 
 test('a failing lint fails the sonar row and the scanner never runs', async t => {

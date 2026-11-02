@@ -450,7 +450,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     buildFe: 'npm run codegen --silent && turbo run build --filter=./fe/apps/*',
     // The be side with its tsc; every fe workspace with its own typecheck script through turbo (the packages are built first: ^build).
     typecheck: 'npm run codegen --silent && tsc -p be/tsconfig.json && turbo run typecheck',
-    // The typed lint reads the types the fe packages declare (their dist, turbo.json: lint dependsOn ^build), so the packages are built first.
+    // The typed lint reads the types the fe packages declare (their dist), so the packages are built first.
     lintPrefix: packages ? 'npm run codegen --silent && turbo run build --filter=./fe/packages/* && ' : 'npm run codegen --silent && ',
     nodeMajor: String(NODE_MAJOR),
     // The deploy server's age identity the restore workflow writes (stack/server-key.mjs owns the path).
@@ -464,7 +464,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     sonarSources: ['be/apps', 'be/src', 'fe/apps', ...(packages ? ['fe/packages'] : [])].join(','),
     lcovReport: LCOV_REPORT,
     cpdExclusions: SONAR_CPD_EXCLUSIONS.join(','),
-    ...ciWorkflowCommands(source, LCOV_REPORT, source.qualityDeclared === false ? undefined : source.quality, { app }),
+    ...ciWorkflowCommands(source, LCOV_REPORT, source.qualityDeclared === false ? undefined : source.quality, { app, packages }),
     // The coverage scope is the same in both editions: lite measures exactly what full measures (ruling:R212/case-1, amended by ruling:R212/case-4).
     jestCoverage: scope === 'be' ? jestCoverageSource(jestCoverage(manifest, providers)) : '',
     coverageExclusions: scope === APP_SCOPE ? sonarCoverageExclusions(manifest, providers).join(',') : '',

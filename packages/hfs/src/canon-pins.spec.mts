@@ -68,7 +68,7 @@ test('HFS_CI_MISSING_CANON: a CI step naming a starci-harness version names the 
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   fs.mkdirSync(path.join(repoRoot, '.github', 'workflows'), { recursive: true });
   const findings = (version: string) => {
-    fs.writeFileSync(path.join(repoRoot, '.github/workflows/ci.yml'), `steps:\n  - run: npx starci-harness@${version} app lint\n`);
+    fs.writeFileSync(path.join(repoRoot, '.github/workflows/ci.yml'), `steps:\n  - run: npx starci-harness@${version} app check --gate lint\n`);
     return pipelineFindings({ repoRoot, files: ['.github/workflows/ci.yml'], pins: canonPins({ harness: HARNESS }) }).map((finding) => finding.code);
   };
   assert.deepEqual(findings(HARNESS.version), []);

@@ -1,4 +1,4 @@
-// gate-threshold.mjs - the verdict of `starci app check` and `starci app lint` (owner ruling gate-threshold-20, 2026-10-30): green
+// gate-threshold.mjs - the verdict of `starci app check` (owner ruling gate-threshold-20, 2026-10-30): green
 // while fewer than GATE_ERROR_LIMIT error findings remain and none of them is a hard blocker, so a release is not held back finding
 // by finding (5, 4, 3, ...) by the last few structural nits. A plaintext secret, a failed boot proof, a forged check cache record and a broken migration block at
 // any count. Every finding is still printed; only the exit code changes. Typecheck, build and the tests are not judged here.

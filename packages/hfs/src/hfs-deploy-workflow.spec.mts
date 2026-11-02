@@ -110,7 +110,7 @@ for (const edition of ['lite', 'full']) {
     doc.jobs.deploy.environment = { name: 'production', url: 'https://demo.example' };
     doc.jobs.deploy.steps[1]!.env.VPS_SSH_KEY = reference('VPS_SSH_KEY');
     doc.jobs.deploy.steps[1]!.env.SSH_KNOWN_HOSTS = reference('SSH_KNOWN_HOSTS');
-    doc.jobs.prepare = { 'runs-on': 'ubuntu-latest', steps: [{ run: 'starci app lint' }] };
+    doc.jobs.prepare = { 'runs-on': 'ubuntu-latest', steps: [{ run: 'starci app check --gate lint' }] };
     assert.deepEqual(run(t, edition, doc), []);
     const ageOnly = workflow();
     ageOnly.jobs.deploy.steps[1]!.run = 'docker stack deploy -c stack.yaml demo';
@@ -122,7 +122,7 @@ for (const edition of ['lite', 'full']) {
     delete materializeOnly.permissions;
     delete materializeOnly.concurrency;
     assert.deepEqual(run(t, edition, materializeOnly), []);
-    assert.deepEqual(run(t, edition, { on: ciOn, jobs: { lint: { 'runs-on': 'ubuntu-latest', steps: [{ run: '# deploy is prose\nstarci app lint' }] } } }, '.github/workflows/ci.yml'), []);
+    assert.deepEqual(run(t, edition, { on: ciOn, jobs: { lint: { 'runs-on': 'ubuntu-latest', steps: [{ run: '# deploy is prose\nstarci app check --gate lint' }] } } }, '.github/workflows/ci.yml'), []);
     assert.deepEqual(run(t, edition, { on: ciOn, jobs: { lint: { steps: [{ run: 'cat deploy/README.md\nprintf "deploy documentation"' }] } } }, '.github/workflows/ci.yml'), []);
     assert.deepEqual(run(t, edition, { on, jobs: { 'authorize-deploy-key': { steps: [{ uses: `vendor/ssh-agent@${SHA}` }] } } }, '.github/workflows/authorize-deploy-key.yml'), []);
   });
@@ -136,8 +136,8 @@ for (const edition of ['lite', 'full']) {
     assert.match(unbound[0].message, /job image reads secrets\.SOPS_AGE_KEY without an environment/u);
     for (const [name, doc] of [
       ['bracket reference', build({ steps: [{ run: 'echo "${{ secrets[\'SOPS_AGE_KEY\'] }}" | starci app secret verify --env production' }] })],
-      ['job env', build({ env: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') }, steps: [{ run: 'starci app lint' }] })],
-      ['workflow env', build({ steps: [{ run: 'starci app lint' }] }, { env: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') } })],
+      ['job env', build({ env: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') }, steps: [{ run: 'starci app check --gate lint' }] })],
+      ['workflow env', build({ steps: [{ run: 'starci app check --gate lint' }] }, { env: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') } })],
       ['reusable workflow secret', { on, jobs: { call: { uses: './.github/workflows/build.yml', secrets: { SOPS_AGE_KEY: reference('SOPS_AGE_KEY') } } } }],
     ]) assert.equal(hasCode(run(t, edition, doc, file), 'HFS_DEPLOY_WORKFLOW'), true, name);
     assert.deepEqual(run(t, edition, build({ environment: 'production', steps: [step] }), file), []);
@@ -222,7 +222,7 @@ for (const edition of ['lite', 'full']) {
       { push: {} }, { push: { tags: ['*'] } }, { push: { tags: ['v*', 'preview-*'] } }, { push: { tags: ['v*'], paths: ['be/**'] } },
       { pull_request: {} }, { schedule: [{ cron: '0 0 * * *' }] }, { workflow_call: {} }, { repository_dispatch: {} }, { push: { 'tags-ignore': ['v*'] } },
     ]) {
-      const doc = { on: trigger, jobs: { lint: { steps: [{ run: 'starci app lint' }] } } };
+      const doc = { on: trigger, jobs: { lint: { steps: [{ run: 'starci app check --gate lint' }] } } };
       assert.equal(hasCode(run(t, edition, doc, '.github/workflows/ci.yml'), 'HFS_APP_WORKFLOW_TRIGGER'), true, JSON.stringify(trigger));
     }
     const doc = workflow();
@@ -233,9 +233,9 @@ for (const edition of ['lite', 'full']) {
 
   test(`HFS_APP_WORKFLOW_TRIGGER ${edition}: release tags and/or manual dispatch pass`, (t) => {
     for (const trigger of [on, { push: { tags: ['v*'] } }, { workflow_dispatch: { inputs: { ref: { required: true } } } }, 'workflow_dispatch', ['workflow_dispatch']]) {
-      assert.deepEqual(run(t, edition, { on: trigger, jobs: { lint: { steps: [{ run: 'starci app lint' }] } } }, '.github/workflows/lint.yml'), []);
+      assert.deepEqual(run(t, edition, { on: trigger, jobs: { lint: { steps: [{ run: 'starci app check --gate lint' }] } } }, '.github/workflows/lint.yml'), []);
     }
-    const ci = (trigger: Doc) => run(t, edition, { on: trigger, jobs: { lint: { steps: [{ run: 'starci app lint' }] } } }, '.github/workflows/ci.yml');
+    const ci = (trigger: Doc) => run(t, edition, { on: trigger, jobs: { lint: { steps: [{ run: 'starci app check --gate lint' }] } } }, '.github/workflows/ci.yml');
     assert.deepEqual(ci(ciOn), []);
     assert.equal(hasCode(ci(on), 'HFS_APP_WORKFLOW_TRIGGER'), true, 'the release CI must also run on the release candidate branches');
     const yaml = `name: Release\non:\n  push:\n    tags: ['v*']\n  workflow_dispatch:\npermissions: {}\nconcurrency: production\njobs:\n  deploy:\n    environment: production\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@${SHA}\n      - run: starci app secret materialize --env production\n`;

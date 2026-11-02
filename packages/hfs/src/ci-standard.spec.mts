@@ -36,7 +36,7 @@ const compliant = (edition: string): Workflow => ({
   jobs: {
     plan: job([checkout, { run: 'echo plan' }]),
     fast: job([checkout, { run: 'echo fast' }]),
-    lint: job([checkout, baseRef, { run: 'starci app lint --side ${{ matrix.side }}', env: HEAP }], { strategy: { matrix: { side: ['be', 'fe'] } } }),
+    lint: job([checkout, baseRef, { run: 'starci app check --gate lint --side ${{ matrix.side }}', env: HEAP }], { strategy: { matrix: { side: ['be', 'fe'] } } }),
     test: job([checkout, { name: 'unit', run: 'npx jest --shard=${{ matrix.shard }}/2', env: { STARCI_COVERAGE_SHARD: '1' } }], { strategy: { matrix: { shard: [1, 2] } } }),
     coverage: job([
       checkout,
@@ -105,7 +105,7 @@ for (const edition of ['lite', 'full']) {
     const doc = compliant(edition);
     delete doc.jobs.test.strategy;
     doc.jobs.lint.strategy!.matrix.side = ['be'];
-    doc.jobs.lint.steps.push({ run: 'starci app lint --out reports/lint.sonar.json', env: HEAP });
+    doc.jobs.lint.steps.push({ run: 'starci app check --gate lint --out reports/lint.sonar.json', env: HEAP });
     doc.jobs.fast!.steps.push({ uses: `actions/cache@${SHA}`, with: { key: 'k-${{ github.sha }}' } });
     doc.jobs.coverage.steps[3]!['continue-on-error'] = true;
     const found = items(judge(doc, edition));

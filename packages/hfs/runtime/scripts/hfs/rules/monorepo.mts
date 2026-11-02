@@ -25,12 +25,10 @@ const MONO_WORKSPACE_DEP = 'HFS_MONO_WORKSPACE_DEP';
 
 /** The npm workspaces of every app, in this order. */
 export const WORKSPACES = Object.freeze(['fe/apps/*', 'fe/packages/*']);
-/** The lint script of every fe workspace: the one lint of the app, scoped to the workspace. */
-export const WORKSPACE_LINT = 'starci app lint --workspace .';
-/** The scripts of every fe app workspace, exactly: turbo runs build, dev, lint and typecheck; start serves a build. */
-export const FE_APP_SCRIPTS: Readonly<Record<string, string>> = Object.freeze({ build: 'next build', dev: 'next dev', lint: WORKSPACE_LINT, start: 'next start', typecheck: 'tsc --noEmit' });
-/** The scripts every fe package workspace has (its build and typecheck commands are its own; its lint is the workspace lint). */
-const FE_PACKAGE_SCRIPTS = Object.freeze(['build', 'typecheck', 'lint']);
+/** The scripts of every fe app workspace, exactly: turbo runs build, dev and typecheck; start serves a build. The lint is the root's (`starci app check --gate lint`), never a workspace script. */
+export const FE_APP_SCRIPTS: Readonly<Record<string, string>> = Object.freeze({ build: 'next build', dev: 'next dev', start: 'next start', typecheck: 'tsc --noEmit' });
+/** The scripts every fe package workspace has (its build and typecheck commands are its own); it has no lint script. */
+const FE_PACKAGE_SCRIPTS = Object.freeze(['build', 'typecheck']);
 /** The package manager every app root declares (turbo reads it to parse the lockfile); the starci app scaffold writes it. */
 export const PACKAGE_MANAGER = 'npm@11.6.2';
 /** The npm name of an fe app workspace. */
@@ -63,7 +61,7 @@ function rootFindings(repoRoot: string) {
   const findings = [];
   if (!sameList(pkg.workspaces, WORKSPACES)) findings.push(found(MONO_WORKSPACES, MANIFEST, `${MANIFEST} declares workspaces ${JSON.stringify(pkg.workspaces ?? null)}; every app is a monorepo whose npm workspaces are exactly ${JSON.stringify(WORKSPACES)} (each fe app and package has its own package.json; be has none).`, { workspaces: pkg.workspaces ?? null }));
   if (!PACKAGE_MANAGER_FORM.test(String(pkg.packageManager ?? ''))) findings.push(found(MONO_WORKSPACES, MANIFEST, `${MANIFEST} declares packageManager ${JSON.stringify(pkg.packageManager ?? null)}; turbo needs \`npm@<exact version>\` there.`, { packageManager: pkg.packageManager ?? null }));
-  if (typeof pkg.devDependencies?.turbo !== 'string') findings.push(found(MONO_WORKSPACES, MANIFEST, `${MANIFEST} does not declare turbo in its devDependencies; the turbo task graph (turbo.json) runs build, dev, lint and typecheck over the fe workspaces.`, { missing: 'turbo' }));
+  if (typeof pkg.devDependencies?.turbo !== 'string') findings.push(found(MONO_WORKSPACES, MANIFEST, `${MANIFEST} does not declare turbo in its devDependencies; the turbo task graph (turbo.json) runs build, dev and typecheck over the fe workspaces.`, { missing: 'turbo' }));
   return findings;
 }
 
@@ -74,15 +72,15 @@ function appWorkspaceScriptFindings(file: string, project: Parsed, name: string,
   if (pkg.name !== expected) findings.push(found(MONO_FE_WORKSPACE, file, `${file} is named ${JSON.stringify(pkg.name ?? null)}; the fe app ${name} is the workspace ${expected}.`, { expected }));
   const want = Object.keys(FE_APP_SCRIPTS).sort(byCodeUnit);
   const off = [...new Set([...want, ...Object.keys(scripts)])].sort(byCodeUnit).filter((key) => scripts[key] !== FE_APP_SCRIPTS[key]);
-  if (off.length) findings.push(found(MONO_FE_WORKSPACE, file, `${file} has scripts ${JSON.stringify(scripts)}; an fe app workspace has exactly ${JSON.stringify(FE_APP_SCRIPTS)} (turbo runs build, dev, lint and typecheck; differs at ${off.join(', ')}).`, { scripts: off }));
+  if (off.length) findings.push(found(MONO_FE_WORKSPACE, file, `${file} has scripts ${JSON.stringify(scripts)}; an fe app workspace has exactly ${JSON.stringify(FE_APP_SCRIPTS)} (turbo runs build, dev and typecheck; the lint is the root's, \`starci app check --gate lint\`; differs at ${off.join(', ')}).`, { scripts: off }));
   return findings;
 }
 
 function packageWorkspaceScriptFindings(file: string, scripts: Parsed) {
   const findings = [];
   const missing = FE_PACKAGE_SCRIPTS.filter((key) => typeof scripts[key] !== 'string' || !scripts[key]);
-  if (missing.length) findings.push(found(MONO_FE_WORKSPACE, file, `${file} has no ${missing.join(', ')} script; an fe package workspace builds, type-checks and lints (turbo builds it before the apps that import it).`, { scripts: missing }));
-  else if (scripts.lint !== WORKSPACE_LINT) findings.push(found(MONO_FE_WORKSPACE, file, `${file} lints with ${JSON.stringify(scripts.lint)}; a workspace lints with ${JSON.stringify(WORKSPACE_LINT)}, the one lint of the app scoped to it.`, { scripts: ['lint'] }));
+  if (missing.length) findings.push(found(MONO_FE_WORKSPACE, file, `${file} has no ${missing.join(', ')} script; an fe package workspace builds and type-checks (turbo builds it before the apps that import it).`, { scripts: missing }));
+  if (scripts.lint !== undefined) findings.push(found(MONO_FE_WORKSPACE, file, `${file} has a lint script; a workspace has none, the app is linted once from the root with \`starci app check --gate lint\`.`, { scripts: ['lint'] }));
   return findings;
 }
 

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { monorepoFindings, FE_APP_SCRIPTS, WORKSPACE_LINT } from '../runtime/scripts/hfs/rules/monorepo.mjs';
+import { monorepoFindings, FE_APP_SCRIPTS } from '../runtime/scripts/hfs/rules/monorepo.mjs';
 
 function workspaceFindings(edition: string, section: string, version: string | null) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-r146-'));
@@ -14,7 +14,7 @@ function workspaceFindings(edition: string, section: string, version: string | n
   const files = {
     'package.json': { workspaces: ['fe/apps/*', 'fe/packages/*'], packageManager: 'npm@11.6.2', devDependencies: { turbo: '2.8.20' } },
     'fe/apps/web/package.json': { name: '@demo/web', private: true, scripts: FE_APP_SCRIPTS, [section]: dependencies },
-    'fe/packages/ui/package.json': { name: '@demo/ui', private: true, scripts: { build: 'tsc', typecheck: 'tsc --noEmit', lint: WORKSPACE_LINT } },
+    'fe/packages/ui/package.json': { name: '@demo/ui', private: true, scripts: { build: 'tsc', typecheck: 'tsc --noEmit' } },
     'fe/apps/web/src/index.ts': "export { Card } from '@demo/ui/card';\n",
   };
   try {
