@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { normalizedSymbol } from './ast-walks.mjs';
 export const keyOf = (ts, property) => (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)) && (ts.isIdentifier(property.name) || ts.isStringLiteralLike(property.name)) ? property.name.text : null;
 const exported = (ts, statement) => statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword) ?? false;
 /** The directly defined functions among the declarations of an exported variable statement; other values are not callable. */
@@ -19,17 +20,30 @@ function callableExports(ts, statement) {
         return statement.name && statement.body ? [statement.name.text] : [];
     return ts.isVariableStatement(statement) ? callableVariables(ts, statement) : [];
 }
+/** Named value re-exports count only when the checker resolves an actual function implementation. */
+function callableReexports(ts, checker, statement) {
+    if (!ts.isExportDeclaration(statement) || statement.isTypeOnly || !statement.exportClause || !ts.isNamedExports(statement.exportClause))
+        return [];
+    return statement.exportClause.elements.filter(element => !element.isTypeOnly && (normalizedSymbol(ts, checker, element.name)?.declarations ?? []).some(declaration => {
+        if (declaration.getSourceFile().isDeclarationFile)
+            return false;
+        if (ts.isFunctionDeclaration(declaration))
+            return Boolean(declaration.body);
+        return ts.isVariableDeclaration(declaration) && Boolean(declaration.initializer
+            && (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer)));
+    })).map(element => element.name.text);
+}
 /**
- * The callable subset of a function subject's exports. Constants, enums, objects, types, `export ... from` re-exports and overload
- * signatures do not change which functions the spec must provide; a class or a default-export assignment keeps the class-provider
- * check (null), as does a module with no callable export.
+ * The callable subset of a function subject's exports, including named re-exports resolved to real implementations. Constants,
+ * enums, objects, type-only exports and bodyless declarations do not count; a class or a default-export assignment keeps the
+ * class-provider check (null), as does a module with no callable export.
  */
-export function functionSubjectExports(ts, sourceFile) {
+export function functionSubjectExports(ts, sourceFile, checker) {
     const names = [];
     for (const statement of sourceFile.statements) {
         if (ts.isClassDeclaration(statement) || ts.isExportAssignment(statement))
             return null;
-        for (const name of callableExports(ts, statement))
+        for (const name of [...callableExports(ts, statement), ...callableReexports(ts, checker, statement)])
             if (!names.includes(name))
                 names.push(name);
     }

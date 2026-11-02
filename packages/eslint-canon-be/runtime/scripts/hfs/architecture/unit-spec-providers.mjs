@@ -18,7 +18,7 @@ import { checkFunctionSubject, functionSubjectExports, keyOf as literalKey, valu
  * constructor-deps.mjs). Providers are matched by the exported name of the imported binding (`import { CACHE as C }` is
  * CACHE), never by text. A provider is a class, or `{ provide: TOKEN, useValue: double }` and nothing else. A sibling
  * containing only exported functions instead provides its complete real function object and exercises it through module.get;
- * the constants, enums, re-exports and overload signatures beside those functions do not count. A value-object subject (an
+ * callable named re-exports count, while constants, enums, type-only exports and overload signatures do not. A value-object subject (an
  * undecorated class whose constructor parameters carry no injection token) is built with `new`, Nest never constructs it.
  *
  * Findings: an extra provider, a missing provider, a service that is not the first provider, a dependency whose token cannot
@@ -111,7 +111,7 @@ function checkTestingModule({ ts, kit, rel, serviceRel, serviceFile, imports, ca
     const list = providerList(ts, call, rel, report);
     if (!list)
         return;
-    const names = functionSubjectExports(ts, serviceFile.sourceFile);
+    const names = functionSubjectExports(ts, serviceFile.sourceFile, kit.checkerOf(serviceFile.sourceFile));
     if (names) {
         checkFunctionSubject({ ts, rel, serviceRel, imports, call, list, names, report });
         return;
