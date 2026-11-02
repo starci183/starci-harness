@@ -231,9 +231,24 @@ test('BE_APP_BOOT_PROOF_MISSING lite: an async registration cannot replace the a
 test('BE_APP_BOOT_PROOF_MISSING lite: CLI reports app-relative paths and returns the finding status', t => {
   const context = fixture(t, { [`be/${APP_MODULE}`]: missingModule }, 'lite', true);
   const output: string[] = [];
-  assert.equal(appWiringMain(['--wiring', '--json'], { cwd: context.repoRoot, stdout: text => output.push(text) }), 1);
+  assert.equal(appWiringMain(['--gate', 'wiring', '--json'], { cwd: context.repoRoot, stdout: text => output.push(text) }), 1);
   assert.equal(JSON.parse(output.join('')).findings[0]!.path, `be/${APP_MODULE}`);
   assert.equal(appWiringMain(['--unknown'], { cwd: context.repoRoot, stderr: () => {} }), 2);
+});
+
+test('the standalone wiring selector accepts the canonical inline spelling and refuses retired or other gates before reading an app', t => {
+  const context = fixture(t, {}, 'lite', true);
+  fs.writeFileSync(path.join(context.repoRoot, 'hfs.json'), JSON.stringify({ kind: 'app', edition: 'lite', sides: { be: { apps: [] } } }));
+  let out = '', err = '';
+  assert.equal(appWiringMain(['--gate=wiring', '--gate', 'wiring', '--json'], { cwd: context.repoRoot, stdout: text => { out += text; } }), 0);
+  assert.equal(JSON.parse(out).ok, true);
+  for (const argv of [['--wiring'], ['--gate'], ['--gate='], ['--gate', 'test'], ['--gate', '--json'], ['--cwd']]) {
+    out = ''; err = '';
+    assert.equal(appWiringMain(argv, { cwd: path.join(context.repoRoot, 'missing-app'), stdout: text => { out += text; }, stderr: text => { err += text; } }), 2);
+    assert.equal(out, '');
+    assert.match(err, /usage: starci app check --gate wiring/);
+    assert.doesNotMatch(err, /readable hfs.json/);
+  }
 });
 
 test('BE_APP_BOOT_PROOF_MISSING lite: the append-only a15 registry invokes this finder', t => {

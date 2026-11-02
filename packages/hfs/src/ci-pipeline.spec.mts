@@ -97,6 +97,7 @@ for (const edition of ['lite', 'full']) {
     assert.equal(ci.jobs.sonar.if, "${{ needs.plan.outputs.full == 'true' }}");
     const upload = ci.jobs.coverage.steps.find((step: Doc) => step.name === 'coverage upload');
     assert.equal(upload.if, "${{ !cancelled() && needs.plan.outputs.full == 'true' }}");
+    assert.equal(ci.jobs.fast.steps.find((step: Doc) => step.name === 'format').run, 'npx --no-install starci app check --gate format');
   });
 
   test(`${edition}: the plan job decides full, defer and reuse from the event, the ref and the green candidate run`, () => {

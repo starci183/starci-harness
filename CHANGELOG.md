@@ -6,7 +6,15 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.41] - 2026-11-02
+
+- Bundled app-check knowledge uses repeatable `--gate` selectors and `--no-cache` for the existing refresh mode. Check engines, cache trust, quality predictions and server-owned CI verdicts retain their existing behavior.
+
 ## [1.1.0-alpha.40] - 2026-11-02
+
+### Changed
+
+- The CLI requires @starci/hfs@4.17.3, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
 
 - Bundled knowledge documents the consolidated Grammar preservation roles, headless figure ownership and native pending/message/date semantics.
 - Explicit worktree collection quarantines proven project remnants without Git metadata, retaining every regular file and unlinking dependency links while protecting live workers and changed custody.

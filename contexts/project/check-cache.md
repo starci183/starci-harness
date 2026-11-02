@@ -11,36 +11,46 @@ runs in full.
 
 ## The command surface
 
-`starci app check` with no selector runs every family diff-only against the committed cache and writes what it judged
-back into it. `--full` runs the families it selects in full and rewrites their records. A selector runs one family, and
-selectors combine:
+`starci app check` with no selector runs every existing family against the committed cache and writes what it judged
+back into it. `--gate <name>` selects a gate and may be repeated; `--no-cache` runs selected work fresh and writes
+the refreshed records through the same cache writer. The default and a selected gate reuse valid cache records.
+
+```text
+starci app check
+starci app check --gate hfs
+starci app check --gate sonar --gate codecov
+starci app check --gate hfs --no-cache
+```
 
 | selector | family (the measured steps) | records |
 |---|---|---|
-| `--hfs` | the structure: slots, tree, pins, managed files against their templates, the content rules of the app pass, the architecture machine's check surface, the contract emit | `check/hfs/` |
-| `--format` | Prettier over every tracked file (`HFS_FORMAT`) | `check/format/` |
-| `--db` | the database rules of `db/` (the `db:lint` script runs `app check --db`) | `check/db/` |
-| `--secrets` | plaintext secrets, sealed custody, untracked secret files | `check/secrets/` |
-| `--wiring` | the boot proof of every app (a lite back end's composition with doubles) | `check/wiring/` |
-| `--types` | each workspace's `tsc --noEmit` through the app's TypeScript | `check/types/` |
-| `--lint` | ESLint per side and stylelint | `lint/` |
-| `--test` | the unit specs, their coverage merged into one report and its per-file threshold | `test-coverage/` |
-| `--sonar` | the Sonar and Codecov predictions from the merged coverage, the lint findings and the clones | `sonar-baseline/`, `codecov-baseline/` |
+| `--gate hfs` | the structure: slots, tree, pins, managed files against their templates, the content rules of the app pass, the architecture machine's check surface, the contract emit | `check/hfs/` |
+| `--gate format` | Prettier over every tracked file (`HFS_FORMAT`) | `check/format/` |
+| `--gate db` | the database rules of `db/` (the `db:lint` script runs `app check --gate db`) | `check/db/` |
+| `--gate secrets` | plaintext secrets, sealed custody, untracked secret files | `check/secrets/` |
+| `--gate wiring` | the boot proof of every app (a lite back end's composition with doubles) | `check/wiring/` |
+| `--gate types` | each workspace's `tsc --noEmit` through the app's TypeScript | `check/types/` |
+| `--gate lint` | ESLint per side and stylelint | `lint/` |
+| `--gate test` | the unit specs, their coverage merged into one report and its per-file threshold | `test-coverage/` |
+| `--gate sonar`, `--gate codecov` | the existing combined Sonar and Codecov predictions from the merged coverage, the lint findings and the clones; either selector invokes this family, both together invoke it once | `sonar-baseline/`, `codecov-baseline/` |
+
+The ten public gate names dispatch to the same nine core families. Selecting `codecov` exposes the combined
+prediction family through the CLI; it adds no server adapter, new pass condition or separate cache algorithm.
 
 Every family reports its diagnosis on its own line, `<family>: <full|diff> (<reason>), checked <n>, reused <n>;
 findings <new> new, <known> known, <fixed> fixed`, where known findings are those its records already held, so a run
-always says what is wrong and whether it is new. A family that always runs (`--secrets`, the cheap structure rules)
+always says what is wrong and whether it is new. A family that always runs (`secrets`, the cheap structure rules)
 still records its findings for that comparison; it never skips work on them. `--json` carries the same per family.
 
 The flags of today reconcile as follows. `--fast` and its `--base` are removed: the default run is diff-only and, unlike `--fast`, its result equals a full run's (clones and dead
-exports included), and CI derives its trusted base itself. `--wiring` becomes the family above. `--coverage-from
+exports included), and CI derives its trusted base itself. `wiring` is the family above. `--coverage-from
 <lcov>` stays: it judges a report produced elsewhere (the merge of a sharded full run in CI) and records nothing.
 `--staged` stays the pre-commit guard alone, outside the cache. `--json` stays.
 
 `starci app lint` stays its own verb, since it is the `lint` script of the app and of every fe workspace and the one
-writer of the Sonar import file (`--out`), with `--fix`: it runs the `--lint` family and the app findings exactly as
-`app check --lint --hfs` does, on the same records under the same fingerprint, so the two never disagree. Folding it into
-`app check --lint` instead (and moving every script, hook and workflow that calls it in the same change, CONTRIB-15) is
+writer of the Sonar import file (`--out`), with `--fix`: it runs the `lint` family and the app findings exactly as
+`app check --gate lint --gate hfs` does, on the same records under the same fingerprint, so the two never disagree. Folding it into
+`app check --gate lint` instead (and moving every script, hook and workflow that calls it in the same change, CONTRIB-15) is
 the alternative for the owner. `lint --side be|fe` reads and writes that side's records (the CI lint matrix runs one side
 per job); `lint --workspace` reads records and writes none, since it judges part of a side; `lint --changed` and
 `lint --fix` neither read nor write.
@@ -66,7 +76,7 @@ state and stay out of git; `.starcistacks/cache/` holds results only.
 | situation | run |
 |---|---|
 | no cache in the tree (a new app, first adoption) | full, and it writes the cache |
-| `--full` | full for the selected families, ignoring their records; it rewrites them |
+| `--no-cache` | full for the selected families, ignoring their records; it writes the refreshed records |
 | the fingerprint differs from the cache's | full, and it rewrites the cache |
 | `starci app release gate` (every gate row, the urgent back-fill included) and the CI run a release waits for | full, never reading the cache |
 | anything else, on a host or in CI | diff-only against the trusted cache (below) |
@@ -164,7 +174,7 @@ addition, and deleted paths drop every record they own.
 | stylelint | per file | the path's hash is unchanged and no stylesheet was added or removed | changed stylesheets; every one when the stylesheet set changed |
 | unit specs and coverage | per spec, closure-scoped | the spec's closure key is unchanged | specs whose closure holds a changed file (coverage below) |
 | integration, e2e and contract specs | always | never | every run that runs them: they reach services, data and time a key cannot hold |
-| `tsc` per workspace program (`--types`) | scoped | the program's key is unchanged | any change the program reads: that program |
+| `tsc` per workspace program (`--gate types`) | scoped | the program's key is unchanged | any change the program reads: that program |
 | proofs, the gate verdict, the Sonar and Codecov predictions | always | never | every run |
 
 A side key is the sha256 of everything the side's whole-program steps read: the hash of each tracked path of the side
@@ -172,7 +182,7 @@ A side key is the sha256 of everything the side's whole-program steps read: the 
 its TypeScript program reads (what its tsconfig includes or an import resolves to that git does not track, generated
 code included). The machine and the type-aware rules read the whole program, so a scoped step re-runs the whole side:
 the machine on changed owners alone (`--fast`) skips duplicate code and dead exports and is not the full result.
-The `--types` family keys each workspace's program like a side: an unchanged key reuses its recorded diagnostics, a
+The `types` family keys each workspace's program like a side: an unchanged key reuses its recorded diagnostics, a
 changed one runs that program's `tsc` in full. TypeScript's `.tsbuildinfo` speeds that run but is host state, not a
 result (it holds versions and signatures, not findings), so it stays in the untracked tool cache of slot
 `app.tool-cache` and is never committed.
@@ -209,7 +219,7 @@ cached app pass on the same records, so the two verbs never hold two answers for
 
 ## Unit coverage
 
-`app check --test` runs the unit specs through the app's own Jest and writes the merged report the managed CI uploads. A spec's closure key is the sha256 of the spec, every module Jest resolves from it transitively (its resolver
+`app check --gate test` runs the unit specs through the app's own Jest and writes the merged report the managed CI uploads. A spec's closure key is the sha256 of the spec, every module Jest resolves from it transitively (its resolver
 with the project's `moduleNameMapper`, `jest.mock` targets and setup files), its snapshot file and its project's
 configuration. A warm run runs the specs whose key changed, the way `jest --findRelatedTests` selects them but over the
 whole closure, and keeps the records of the rest. Jest reports each spec file's own coverage map; the run records, per
@@ -235,8 +245,8 @@ The servers stay the judges; a prediction never passes or fails a run.
   `.starcistacks/application-stacks.yaml` refuses as an environment.
 - **Templates.** The managed `.gitignore` block re-includes `!.starcistacks/cache/**` after its `.starcistacks/**` deny;
   `.gitattributes` gains the line above; `.prettierignore` skips the folder. The managed CI workflow fetches the trusted
-  base, runs `app check` and `app lint` diff-only against it, uploads the merged lcov, and passes `--full` on the run a
-  release waits for (a full unit run there is sharded: `--test --full --shard <i>/<n>` per job records nothing, and the
+  base, runs `app check` and `app lint` diff-only against it, uploads the merged lcov, and passes `--no-cache` on the run a
+  release waits for (a full unit run there is sharded: `--gate test --shard <i>/<n>` per job records nothing, and the
   merge job judges the merged report with `--coverage-from`). The release gate sets `STARCI_APP_CHECK_CACHE=full` on every gate row.
 - **Scaffold.** `app scaffold` writes the templates above and no cache; the app's first check builds it in full.
 - **Adoption.** `app sync --execute` and `app upgrade` bring an existing app the same templates and never create,
@@ -269,7 +279,7 @@ adoption and a forgotten refresh never block a change.
   `--fix` bypass the cache, `--workspace` reads it and writes none.
 - `--quiet` mutes progress and keeps the diagnosis on stdout for `check` and `lint`; other verbs still mute stdout.
 - The managed CI keeps its triggers (push to main, release candidates, tags); a push to main is trusted against its first parent, a candidate or tag
-  run sets `STARCI_APP_CHECK_CACHE=full` and never reads the cache. The `format` step runs `app check --format`.
+  run sets `STARCI_APP_CHECK_CACHE=full` and never reads the cache. The `format` step runs `app check --gate format`.
 - Side keys take the untracked program inputs from the side's tsconfig `include` (generated code), not from import resolution of files outside it.
 
 ## Read with

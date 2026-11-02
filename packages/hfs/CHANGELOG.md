@@ -4,9 +4,9 @@
 
 ## 5.0.0 - 2026-11-02
 
-- Added: per-project Sonar and Codecov gates selected alongside HFS with repeatable `app check --gate` selectors.
-- Changed: `app check` reuses valid cached gate results by default; `--no-cache` recomputes the selected gates and writes their refreshed cache entries.
-- Breaking: removed public `app check --full`. Select gates explicitly, for example `--gate hfs --gate sonar --gate codecov`.
+- Changed: repeatable `app check --gate` selectors dispatch to the existing check families. Sonar and Codecov selectors reuse the combined quality-baseline engine and retain its prediction labels.
+- Changed: `--no-cache` invokes the existing recompute-and-refresh mode; ordinary `app check` retains content-keyed cache reuse.
+- Breaking: replaced individual family flags and `app check --full` with `--gate <name>` and `--no-cache`.
 
 ## 4.17.3 - 2026-11-02
 

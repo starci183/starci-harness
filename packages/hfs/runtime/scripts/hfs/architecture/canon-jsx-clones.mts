@@ -1,6 +1,6 @@
 /** Imported JSX components receive repeated data contracts; executable prop values remain compared. */
 import type {
-  BindingName, Expression, Identifier, ImportDeclaration, JsxTagNameExpression, Node, ObjectLiteralElementLike, SourceFile,
+  BindingName, Expression, Identifier, ImportDeclaration, JsxOpeningElement, JsxSelfClosingElement, JsxTagNameExpression, Node, ObjectLiteralElementLike, SourceFile,
   SyntaxKind as Kind, VariableDeclaration,
 } from 'typescript';
 import type { TypeScriptApi } from './config.mjs';
@@ -8,7 +8,8 @@ import { unwrapExpression as unwrap } from '../../lib/ts-analysis.mjs';
 
 /** What a name is bound to in a lexical scope. `namespace` carries the module it imports, `constant` its declaration. */
 type Binding =
-  | { kind: 'component' | 'translation-factory'; declaration?: VariableDeclaration }
+  | { kind: 'component'; module: string; name: string }
+  | { kind: 'translation-factory'; declaration?: VariableDeclaration }
   | { kind: 'local'; declaration?: VariableDeclaration }
   | { kind: 'namespace'; module: string }
   | { kind: 'constant'; declaration: VariableDeclaration };
@@ -41,15 +42,16 @@ function importBindings(ts: TypeScriptApi, scope: Scope, statement: ImportDeclar
   const clause = statement.importClause;
   if (!clause || clause.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier)) return;
   const module = statement.moduleSpecifier.text;
-  if (clause.name) scope.bindings.set(clause.name.text, { kind: 'component' });
+  if (clause.name) scope.bindings.set(clause.name.text, { kind: 'component', module, name: 'default' });
   const named = clause.namedBindings;
   if (!named) return;
   if (ts.isNamespaceImport(named)) scope.bindings.set(named.name.text, { kind: 'namespace', module });
   else for (const element of named.elements) {
     if (element.isTypeOnly) continue;
     const imported = element.propertyName?.text ?? element.name.text;
-    const kind = TRANSLATION_MODULES.has(module) && TRANSLATION_FACTORIES.has(imported) ? 'translation-factory' : 'component';
-    scope.bindings.set(element.name.text, { kind });
+    const binding: Binding = TRANSLATION_MODULES.has(module) && TRANSLATION_FACTORIES.has(imported)
+      ? { kind: 'translation-factory' } : { kind: 'component', module, name: imported };
+    scope.bindings.set(element.name.text, binding);
   }
 }
 
@@ -147,12 +149,50 @@ function nestedDataObjects(ts: TypeScriptApi, expression: Node | undefined, bind
   }
 }
 
+/** Resolve the canonical status owner through its import binding, including aliases and namespaces. */
+function statusOwner(ts: TypeScriptApi, tag: JsxTagNameExpression, bindingOf: BindingOf): boolean {
+  const binding = ts.isIdentifier(tag) ? bindingOf(tag) : ts.isPropertyAccessExpression(tag) && ts.isIdentifier(tag.expression) ? bindingOf(tag.expression) : null;
+  const module = binding?.kind === 'component' || binding?.kind === 'namespace' ? binding.module : null;
+  const name = binding?.kind === 'component' ? binding.name : ts.isPropertyAccessExpression(tag) ? tag.name.text : null;
+  return name === 'SlotView' && module !== null && /(?:^|\/)components\/composites\/SlotView(?:\/index)?(?:\.[cm]?tsx?)?$/.test(module);
+}
+
+/** The mandated status wiring breaks clone windows; its render body remains ordinary compared code. */
+function statusRecipe(ts: TypeScriptApi, opening: JsxOpeningElement | JsxSelfClosingElement, bindingOf: BindingOf, excluded: Set<Node>): void {
+  if (!statusOwner(ts, opening.tagName, bindingOf)) return;
+  const attributes = opening.attributes.properties;
+  const render = attributes.find(attribute => ts.isJsxAttribute(attribute) && ts.isIdentifier(attribute.name) && attribute.name.text === 'render');
+  const value = render && ts.isJsxAttribute(render) && render.initializer && ts.isJsxExpression(render.initializer) ? unwrap(ts, render.initializer.expression) : undefined;
+  if (!value || !ts.isArrowFunction(value) || value.parameters.length !== 2 || ts.isBlock(value.body)) return;
+  const waiting = value.parameters[1];
+  if (!waiting || !ts.isIdentifier(waiting.name) || waiting.initializer || waiting.dotDotDotToken) return;
+  const waitingBinding = bindingOf(waiting.name);
+  let forwardsLoading = false;
+  const visit = (node: Node): void => {
+    if (ts.isJsxAttribute(node) && ts.isIdentifier(node.name) && node.name.text === 'isLoading'
+      && node.initializer && ts.isJsxExpression(node.initializer)) {
+      const flag = unwrap(ts, node.initializer.expression);
+      if (flag && ts.isIdentifier(flag) && waitingBinding && bindingOf(flag) === waitingBinding) forwardsLoading = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(value.body);
+  if (!forwardsLoading) return;
+  const wiring = attributes.filter(attribute => ts.isJsxSpreadAttribute(attribute) ? dataMapping(ts, attribute.expression, bindingOf)
+    : ts.isIdentifier(attribute.name) && ['slot', 'placeholder', 'labels', 'onRetry'].includes(attribute.name.text)
+      && !!attribute.initializer && ts.isJsxExpression(attribute.initializer) && dataMapping(ts, attribute.initializer.expression, bindingOf));
+  const hasSlot = wiring.some(attribute => ts.isJsxSpreadAttribute(attribute) || ts.isJsxAttribute(attribute) && ts.isIdentifier(attribute.name) && attribute.name.text === 'slot');
+  if (!hasSlot) return;
+  for (const attribute of wiring) excluded.add(attribute);
+}
+
 /** Canon data prop objects qualify through an imported component binding, never its chosen name or file path. */
 export function canonJsxCloneNodes(ts: TypeScriptApi, sourceFile: SourceFile): Set<Node> {
   const bindingOf = lexicalBindings(ts, sourceFile);
   const excluded = new Set<Node>();
   const visit = (node: Node): void => {
     if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && importedComponent(ts, node.tagName, bindingOf)) {
+      statusRecipe(ts, node, bindingOf, excluded);
       for (const attribute of node.attributes.properties) {
         if (!ts.isJsxAttribute(attribute) || !attribute.initializer || !ts.isJsxExpression(attribute.initializer)) continue;
         const value = unwrap(ts, attribute.initializer.expression);

@@ -127,17 +127,26 @@ const delegatesImportedBar = (context: ReaderContext, expression: Node | null): 
   return imported && !controls && !unknown
 }
 
-/** Every visible control in a navbar band uses the shared control size. */
+/** Buttons publish the shared 40px height as `md` (their default), while other bar controls publish `control`. */
+const hasBarControlHeight = (context: ReaderContext, control: TSESTree.JSXOpeningElement, name: string | null): boolean => {
+  const size = propOf(context, control, "size")
+  if (!size.known) return false
+  if ((name === "Button" || name === "IconButton") && (size.value === null
+    || everyValue(context, size.value, (value) => value.type === "Literal" && value.value === "md"))) return true
+  return textProp(context, control, "size") === "control"
+}
+
+/** Every visible control in a navbar band uses the shared control height through its published size API. */
 export const navbarControlSize: Rule.RuleModule = defineRule({
-  meta: meta("FE_NAVBAR_CONTROL_SIZE", "FE-APP-SHELL-2 requires size=control on bar controls.", {
-    control: "FE_NAVBAR_CONTROL_SIZE: {{name}} in the navbar band needs size=\"control\" so every bar control shares Grammar's control height.",
+  meta: meta("FE_NAVBAR_CONTROL_SIZE", "FE-APP-SHELL-2 requires the shared control height on bar controls.", {
+    control: "FE_NAVBAR_CONTROL_SIZE: {{name}} in the navbar band needs Grammar's shared control height: omit size or use md for Button/IconButton, and use control for the other bar controls.",
   }),
   create(context) {
     if (!isProductSource(context)) return {}
     const reported = new Set<TSESTree.JSXOpeningElement>()
     return { JSXOpeningElement(node) {
       visitBar(context, node, (control, name) => {
-        if (!isBarControl(context, control, name) || textProp(context, control, "size") === "control" || reported.has(control)) return
+        if (!isBarControl(context, control, name) || hasBarControlHeight(context, control, name) || reported.has(control)) return
         reported.add(control)
         context.report({ node: control, messageId: "control", data: { name } })
       })

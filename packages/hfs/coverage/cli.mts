@@ -70,9 +70,9 @@ function recordFilesUnder(dir: string): string[] {
  */
 function mergeRecords(cwd: string, dir: string, out: string, merge: MergeSpecRecords): { specs: number } {
   const absolute = path.resolve(cwd, dir);
-  if (!fs.existsSync(absolute) || !fs.statSync(absolute).isDirectory()) throw new Error(`no ${dir} folder: the check cache holds no unit coverage yet (run starci app check --test)`);
+  if (!fs.existsSync(absolute) || !fs.statSync(absolute).isDirectory()) throw new Error(`no ${dir} folder: the check cache holds no unit coverage yet (run starci app check --gate test)`);
   const records = recordFilesUnder(absolute).flatMap((file) => parseRecords(fs.readFileSync(file, 'utf8')).records).filter((record) => record.step === SPEC_STEP);
-  if (records.length === 0) throw new Error(`no unit-spec record under ${dir}: the check cache holds no unit coverage yet (run starci app check --test)`);
+  if (records.length === 0) throw new Error(`no unit-spec record under ${dir}: the check cache holds no unit coverage yet (run starci app check --gate test)`);
   const outDir = path.dirname(path.resolve(cwd, out));
   merge(records.map(sourcesOf), { outDir, reportRoot: path.dirname(outDir), recordRoot: cwd });
   return { specs: records.length };

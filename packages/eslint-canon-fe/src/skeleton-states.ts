@@ -11,6 +11,8 @@
  */
 import type { TSESTree } from "@typescript-eslint/utils"
 import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
+import { importOf } from "./lib/bindings.ts"
+import { projectedReads, slotProtectsFold } from "./lib/slot-read-origin.ts"
 
 const pathOf = (context: AnyContext): string => context.filename.replaceAll("\\", "/")
 
@@ -61,7 +63,9 @@ const isHookResult = (context: AnyContext, node: Node, identifier: TSESTree.Iden
       if (declarator.type !== "VariableDeclarator" || !declarator.init) return false
       const init = unwrap(declarator.init)
       const callee = init?.type === "CallExpression" ? unwrap(init.callee) : null
-      const name = callee?.type === "Identifier" ? callee.name : callee?.type === "MemberExpression" && callee.property.type === "Identifier" ? callee.property.name : null
+      const imported = callee?.type === "Identifier" ? importOf(context, callee) : callee?.type === "MemberExpression" && callee.object.type === "Identifier" ? importOf(context, callee.object) : null
+      if (imported?.source === "react" && imported.imported !== "useMemo") return false
+      const name = imported?.source === "react" ? imported.imported : callee?.type === "Identifier" ? callee.name : callee?.type === "MemberExpression" && callee.property.type === "Identifier" ? callee.property.name : null
       return name !== null && /^use[A-Z]/.test(name)
     })
   }
@@ -88,12 +92,16 @@ const noSwrDefaultArray = defineRule({
         const fn = enclosingFunction(node)
         if (!fn) return
         const text = source.getText(fn)
-        const escaped = root.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        const projections = projectedReads(context, root)
+        if (projections?.length === 0) return
         // The read's own status is read in the same hook: `read.isLoading`, or destructured next to `data`.
-        const readsStatus = new RegExp(`\\b${escaped}\\??\\.(?:isLoading|error|isError)\\b`).test(text)
-          || new RegExp(`\\{[^}]*\\b(?:isLoading|error)\\b[^}]*\\}\\s*=\\s*${escaped}\\b`).test(text)
-          || (root.name === "data" && /\bisLoading\b/.test(text))
-        if (readsStatus) return
+        const readsStatus = (projections ?? [root]).every(read => {
+          const escaped = read.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          return new RegExp(`\\b${escaped}\\??\\.(?:isLoading|error|isError)\\b`).test(text)
+            || new RegExp(`\\{[^}]*\\b(?:isLoading|error)\\b[^}]*\\}\\s*=\\s*${escaped}\\b`).test(text)
+            || (read.name === "data" && /\bisLoading\b/.test(text))
+        })
+        if (readsStatus || slotProtectsFold(context, node, fn)) return
         context.report({ node, messageId: "fold", data: { read: source.getText(node.left).slice(0, 40) } })
       },
     }
