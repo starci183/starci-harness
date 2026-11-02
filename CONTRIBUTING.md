@@ -172,6 +172,7 @@ analysis notes under `docs/knowledge-analysis/` may quote them.
 | a workflow or task pin (`agent`, `model`, `effort`), a routing bias (`only`, `avoid`, `prefer`), `ROUTE_BIAS_EMPTY` | the router alone picks, from a task's label, `difficulty` and `risk` |
 | one Supervisor per host, a `[Supervisor]` title with no project | one `[Supervisor] <project>` per project (`project_supervisors`); a version-2 host store's `supervisors` table is read only to adopt its workflows |
 | `STARCI.md`, a design document of decisions, plans and phases | each fact in its owner ("One owner per fact"); decisions in contexts/harness/decisions.md |
+| `starci app lint` (`--changed`, `--workspace`, `--sonar`), the `lint` script of an fe workspace (`starci app lint --workspace .`) | `starci app check --gate lint` with `--side` (be or fe), `--fix` and `--out <file>`: the root `lint` script, the CI lint step and the release gate's Sonar row call it; a workspace has no lint script, and the cache makes the whole-app check of an unchanged tree take seconds |
 
 ## Commit and push
 

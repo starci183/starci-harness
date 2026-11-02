@@ -1,5 +1,5 @@
 // sonar-way.mjs - the Sonar way TypeScript profile (the default quality profile sonar.starci.org and SonarCloud apply) as ESLint rules:
-// the one mapping both lint canons (@starci/eslint-canon-be and -fe) publish, so `starci app lint` in the op loop refuses what the scan would
+// the one mapping both lint canons (@starci/eslint-canon-be and -fe) publish, so `starci app check --gate lint` in the op loop refuses what the scan would
 // raise while the code is written. The base is eslint-plugin-sonarjs's recommended config, SonarSource's own port of Sonar way (each rule's
 // docs url names its S-id); its rules the canons already publish in another form stay with that owner (SONAR_WAY_OWNED), and the Sonar way
 // rules SonarSource builds on other ESLint rules are SONAR_WAY_EXTRA. Every rule is `error`; no rule is left to the server because its port

@@ -98,7 +98,7 @@ for (const edition of ['lite', 'full']) {
   test(`HFS_DOC_COMMAND_UNKNOWN@${edition}: nearest scripts, cd, npm prefix and catalog app verbs pass`, (t) => {
     const context = fixture(t, edition, { ...manifests,
       'README.md': 'Run `npm run build`, `npm --prefix be run contract:emit`, `npx starci app check`.\n```sh\ncd be\nnpm run contract:emit\n```\nRun `starci app secret verify --env production`.\nThe command starci app retired is removed.',
-      'be/docs/setup.md': 'Run `npm run contract:emit` or starci app lint.',
+      'be/docs/setup.md': 'Run `npm run contract:emit` or starci app check --gate lint.',
     });
     assert.deepEqual(docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_COMMAND_UNKNOWN'), []);
   });

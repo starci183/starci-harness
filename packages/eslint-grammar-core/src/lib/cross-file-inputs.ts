@@ -1,7 +1,7 @@
 /**
  * The files a rule of this canon reads that ESLint's own import graph does not carry.
  *
- * The result cache of `starci app lint` (contexts/project/check-cache.md, ESLint) re-lints a file when it or a file it reaches through imports
+ * The result cache of `starci app check --gate lint` (contexts/project/check-cache.md, ESLint) re-lints a file when it or a file it reaches through imports
  * changed. A rule that reads another file by path, with `fs` (a sibling, a directory listing, a manifest, a module file it follows by hand),
  * has an input the import graph cannot see, so the rule declares it here and the cache dirties the files that depend on it:
  *

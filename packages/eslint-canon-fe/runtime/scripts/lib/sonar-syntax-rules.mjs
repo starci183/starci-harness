@@ -1,6 +1,6 @@
 // sonar-syntax-rules.mjs - the ESLint rules that keep a TypeScript app clear of the smells SonarCloud flagged in the example apps, judged on
 // the syntax tree alone (no type information, no dependency). Both lint canons (@starci/eslint-canon-be and -fe) publish them from their
-// bundled runtime copy under the names below, so a product inherits them and `starci app lint` refuses the finding before the scan sees it.
+// bundled runtime copy under the names below, so a product inherits them and `starci app check --gate lint` refuses the finding before the scan sees it.
 // Each message names the Sonar rule it stands for, and a rule judges the files the example scans judge: a unit or end-to-end spec is outside the
 // scan (`sonar.exclusions`), so it is outside these rules. The rules that need the type checker (S1874, S6551, S7503) are borrowed from
 // typescript-eslint by the canon factories; the one that needs a regex ambiguity analysis (S8786) runs in the runtime's own `sonar-rules` check.

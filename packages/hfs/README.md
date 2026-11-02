@@ -16,9 +16,8 @@ starci app add overlay <name> --kind modal|drawer [--form] [--app <fe app>] [--c
 starci app add service <dir> <name> [--inject <binding>...] [--cwd <dir>]
 starci app add spec <file>.service.ts [--cwd <dir>]
 starci app add image [--cwd <dir>]
-starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--fix] [--json] [--out <sonar file>]
 starci app sync [--execute] [--cwd <dir>]
-starci app check [--cwd <dir>] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov> ...] [--no-cache] [--json] [--coverage-from <lcov>] [--quiet]
+starci app check [--cwd <dir>] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov> ...] [--side be|fe] [--fix] [--out <sonar file>] [--no-cache] [--json] [--coverage-from <lcov>] [--quiet]
 starci app check --staged [--cwd <dir>]
 starci app upgrade [--execute]
 starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--cwd <dir>]
@@ -166,7 +165,7 @@ Its own checks (`scripts/hfs/check.mjs`, `scripts/hfs/rules/`; the rendered-file
 | `HFS_UNTRACKED_ROOT_ENTRY` | error | an entry git neither tracks nor ignores (`git ls-files -o --exclude-standard`), outside an `ignored` slot |
 | `HFS_PLAINTEXT_SECRET` | error | a tracked plaintext secret: an env, key or credentials file, a value the push scan refuses (never printed), or an `.enc` that is no sops envelope (R06) |
 | `HFS_STACKS_SHAPE` | error | a `.starcistacks` path outside the standard shape (a sealed file outside `<env>/secrets/`, `runtime/files/`, root `DESIGN.md` or `k8s/`), a local Sonar not owned by the host, a service still rooted at `.stacks` (R10) |
-| `HFS_CI_MISSING_CANON` | error | `ci.yml` without a `run:` step of `starci app lint` (`npm run lint`, or `npx --no-install starci app lint`, the app's pinned copy) (R13) |
+| `HFS_CI_MISSING_CANON` | error | `ci.yml` without a `run:` step of `starci app check --gate lint` (`npm run lint`, or `npx --no-install starci app check --gate lint`, the app's pinned copy) (R13) |
 | `HFS_DEP_VERSION_SKEW` | error | a dependency at two specs across the root and workspace `package.json` files, a dependency declared at another version than the root `overrides` pin, or a nested copy of a declared dependency in `package-lock.json` (R14) |
 | `HFS_CONTRACT_SNAPSHOT_DRIFT` | error | a back-end api app serving GraphQL without `be/contracts/<app>/schema.graphql` (R23); the front end reads that snapshot in place, so there is no copy to drift |
 | `BE_TEST_TOPOLOGY` | error | a `*.test.*` file, a `testing/` folder, a second jest configuration or a `jest` key in `package.json` (R47; `int-spec`, `harness-spec`, the retired test folders and a per-lane test config are the machine's, under the same code) |
@@ -182,7 +181,7 @@ Its own checks (`scripts/hfs/check.mjs`, `scripts/hfs/rules/`; the rendered-file
 | `BE_ASYNC_SPEC_MISSING` | error | a consumed event no e2e spec through `useTestWorld` names, or a saga step whose spec does not also name the compensated event (R167) |
 | `BE_INTEGRATION_SPEC_MISSING` | error | an integration (`src/modules/integrations/<provider>/` with `<provider>.config.ts`) without a `src/tests/integration/<provider>/*.integration-spec.ts` that registers its module through `useTestWorld({ modules })`, references its ErrorCode enum and drives an outage through the world (R112) |
 | `HFS_MONO_WORKSPACES` | error | the app root `package.json` without `workspaces` exactly `["fe/apps/*", "fe/packages/*"]`, `packageManager` `npm@<version>` or a `turbo` devDependency (R143) |
-| `HFS_MONO_FE_WORKSPACE` | error | an fe app `package.json` not named `@<project>/<app>`, not private, or without exactly the workspace scripts; an fe package without `build`, `typecheck` and the workspace `lint` (R144) |
+| `HFS_MONO_FE_WORKSPACE` | error | an fe app `package.json` not named `@<project>/<app>`, not private, or without exactly the workspace scripts; an fe package without `build` and `typecheck`; a workspace with a `lint` script (R144) |
 | `HFS_MONO_NEST_PROJECTS` | error | `be/nest-cli.json` not `monorepo: true`, its default project not an api app, or its `projects` not exactly the declared be apps (R145) |
 | `HFS_MONO_WORKSPACE_DEP` | error | an fe workspace imports a package its own `package.json` does not declare, or the root `package.json` declares a workspace package (R146) |
 | `BE_CLI_REQUIRED` | error | a back end with a connection or a command under `src/features/cli/` and no cli app `be/apps/cli`, a cli app of another name, or no `be/apps/cli/Dockerfile` (R147) |
@@ -200,7 +199,7 @@ Its own checks (`scripts/hfs/check.mjs`, `scripts/hfs/rules/`; the rendered-file
 The managed files are judged by `sync/managed.mjs` and `sync/ts-strict.mjs` (the package renders the templates; the runtime copy does not). The list of managed
 files is the `managedBy` slots of `slots.yaml`; `starci app sync --execute` renders them and `starci app check` compares them, so a hand edit and a forgotten `sync` are the same finding.
 Each finding is reported once: the managed ESLint and stylelint factory configs under R17, `tsconfig.json` under R22 when it names a flag, a workflow or hook that lost a canon step under R13 (or R19 for the format step), everything else under R05.
-The root and both sides are rendered by the one mechanism. The root: the `scripts` block of `app.package-manifest` (`dev:be`, `dev:fe`, `build:be`, `build:fe`, `start:<app>`, `lint`, `lint:fix`, `test`, `test:integration`, `test:e2e`, `test:contract`, `test:world`, `codegen`, `contract:emit`, `migrate`, `typecheck`, ...; a be script runs from `be/`, where its tsconfig and jest configuration are), `app.format-config`, `app.hooks`, the CI slots (`app.ci`, `app.ci-e2e`, `app.ci-images`), `app.quality-config` and the managed block of `app.git-meta`. A side: its `be.tool-config` or `fe.tool-config` slot — the side's tsconfig (resolving `@starci/tsconfig` from the root `node_modules`) and its managed ESLint factory config, the back end's build tsconfig, tests tsconfig and jest configuration, the front end's stylelint configuration. `lint` is the one lint gate, `starci app lint`: ESLint over each side with its canon, the app check and stylelint over fe; `lint:fix` is the same with `--fix`. The front end has no test script, no test configuration and no e2e or coverage file: it has no tests, and `FE_NO_TESTS` (R97) refuses any spec, e2e file, test tool or test script under `fe/`. `turbo.json` stays the app's own
+The root and both sides are rendered by the one mechanism. The root: the `scripts` block of `app.package-manifest` (`dev:be`, `dev:fe`, `build:be`, `build:fe`, `start:<app>`, `lint`, `lint:fix`, `test`, `test:integration`, `test:e2e`, `test:contract`, `test:world`, `codegen`, `contract:emit`, `migrate`, `typecheck`, ...; a be script runs from `be/`, where its tsconfig and jest configuration are), `app.format-config`, `app.hooks`, the CI slots (`app.ci`, `app.ci-e2e`, `app.ci-images`), `app.quality-config` and the managed block of `app.git-meta`. A side: its `be.tool-config` or `fe.tool-config` slot — the side's tsconfig (resolving `@starci/tsconfig` from the root `node_modules`) and its managed ESLint factory config, the back end's build tsconfig, tests tsconfig and jest configuration, the front end's stylelint configuration. `lint` is `starci app check --gate lint`: ESLint over each side with its canon and stylelint over fe; `lint:fix` is the same with `--fix`. The front end has no test script, no test configuration and no e2e or coverage file: it has no tests, and `FE_NO_TESTS` (R97) refuses any spec, e2e file, test tool or test script under `fe/`. `turbo.json` stays the app's own
 (slot `app.task-graph`): it carries the task graph, which no preset can render.
 
 The architecture machine (`scripts/hfs/architecture.mjs` of the runtime, the same code bundled here): tiers and import
@@ -218,7 +217,7 @@ Predictions remain diagnostics; actual Sonar CI/release checks and Codecov CI up
 findings n new, n known, n fixed`. Progress goes to stderr (`--quiet` silences it). `STARCI_APP_CHECK_CACHE=verify` runs diff then full and exits 2 on any difference;
 `STARCI_APP_CHECK_CACHE=full` never reads the cache (the release gate).
 
-Exit codes: 0 clean, 1 an error finding, 2 a tool could not run or a refusal (not a Git work tree, bad flag). `starci app check` and `starci app lint` write only `.starcistacks/cache/` (and `starci app lint --fix` lets ESLint and stylelint fix in place).
+Exit codes: 0 clean, 1 an error finding, 2 a tool could not run or a refusal (not a Git work tree, bad flag). `starci app check` writes only `.starcistacks/cache/` (and `--out`'s file; `--fix` lets ESLint and stylelint fix in place).
 
 ## Secrets
 
@@ -267,7 +266,7 @@ Analysis never creates a project, replaces its history or rotates a token. OIDC 
 One mechanism for both sides: every finding of the canon is imported into Sonar, and the quality gate
 fails while any is open. Nothing is configured per app; the pieces are managed files (`starci app sync`) and this package.
 
-One entry, one report, one file: `npm run lint` is `starci app lint`; `npm run lint -- --out reports/lint.sonar.json` writes the ONE Sonar file, read through `sonar.externalIssuesReportPaths`. It carries three engines: `starci-hfs` (the repository findings, rule id = the finding code), `eslint` (the BE canon, universal FE canon and selected Grammar-family plugin, rule id = the ESLint rule) and `stylelint` over fe (rule id = the stylelint rule). App lint shares app check's ESLint runner and calls its HFS checks in process, so each side's ESLint config runs once. `starci app lint --format json` prints the same findings as the one report `starci/lint@1` (`{ schema, ok, changed, counts.error, engines, errors[], findings[{ engine, rule, code, severity, path, line, column, message }] }`); `--changed <files...>` restricts ESLint and stylelint to those files and keeps of the repository findings the ones on a listed file or on no file. The exit code is 0 clean, 1 findings, 2 a tool could not run (a missing ESLint install is never a pass).
+One entry, one report, one file: `npm run lint` is `starci app check --gate lint`; `starci app check --gate lint --out reports/lint.sonar.json` writes the ONE Sonar file, read through `sonar.externalIssuesReportPaths`. It carries three engines: `starci-hfs` (the repository findings, rule id = the finding code), `eslint` (the BE canon, universal FE canon and selected Grammar-family plugin, rule id = the ESLint rule) and `stylelint` over fe (rule id = the stylelint rule). The lint gate runs each side's ESLint config once, through the cache; `--side be|fe` limits it to one side, `--fix` runs ESLint and stylelint with `--fix` first (refused without `--gate lint`), and the findings the other gates selected join the same document. The exit code is 0 clean, 1 findings, 2 a tool could not run (a missing ESLint install is never a pass).
 
 `--out` writes the findings as a Generic Issue Import document (SonarQube 10.3+ format: `{ rules, issues }`) before the verdict, so a
 failing lint still leaves its report. A rule's name and description are the catalog's English title and Vietnamese title, meaning and next step;
@@ -278,7 +277,7 @@ Sonar's own ESLint import (`sonar.eslint.reportPaths`) is not used: it drops tho
 
 The managed `sonar-project.properties` carries `sonar.externalIssuesReportPaths` (`reports/lint.sonar.json` only) and no `sonar.host.url` (the host is
 `SONAR_HOST_URL`); the managed CI workflow produces the report and runs the scan and the gate action with `!cancelled()`, so a failed lint step still
-reaches Sonar while the job stays failed. There is no `continue-on-error`. CI runs `npm run lint -- --out reports/lint.sonar.json` once at the app root, before the scan. The duplicate-block threshold (`ruleParams.<side>.duplicateBlock`) has no Sonar property for TypeScript (SonarJS detects
+reaches Sonar while the job stays failed. There is no `continue-on-error`. CI runs `starci app check --gate lint --side <side> --out reports/lint.<side>.sonar.json` per side and merges the reports into `reports/lint.sonar.json`, before the scan. The duplicate-block threshold (`ruleParams.<side>.duplicateBlock`) has no Sonar property for TypeScript (SonarJS detects
 clones with its own token rule), so the machine enforces it (R21) and its findings are imported like every other.
 
 The gate is `knowledge/sonar-gate.yaml`, the one declaration: the new-code conditions (coverage 100, duplication, issues of every severity, hotspots) and an `overall` part (coverage 100, 0 open issues on the whole code,

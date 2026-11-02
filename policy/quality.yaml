@@ -34,7 +34,7 @@ verify:
 # A deploy that passes --ci-run <run> (the CI deploy job, contexts/project/cicd.md) is judged by the CLI on that run instead of this list: every job the
 # CI standard requires (@starci/hfs knowledge/hfs/ci-standard.yaml, not the workflow file) must have concluded success for the exact --sha, for any environment.
 requireCi: [release.cut, deploy.prod]
-# `starci app check` and `starci app lint` are green while fewer than errorLimit error findings remain and none is a hard blocker
+# `starci app check` is green while fewer than errorLimit error findings remain and none is a hard blocker
 # (a plaintext secret, the boot proof, a migration finding), so a release is not held back finding by finding by the last
 # structural nits; every finding is still printed (owner ruling gate-threshold-20, contexts/harness/decisions.md). The CLI hands
 # it to @starci/hfs as STARCI_GATE_ERROR_LIMIT; without it hfs uses 20.

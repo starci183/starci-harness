@@ -111,6 +111,24 @@ test('12. size control is deleted; on Switch and Avatar it becomes lg', () => {
   assert.match(result.text, /<Button>a<\/Button><IconButton label="l" \/><Input \/><SearchField \/><Switch size="lg" \/><Avatar size="lg" \/><AvatarButton size="lg" \/><Switch size="lg" \/><Avatar size="lg" \/>/);
 });
 
+test('12. size control stays on a bar control: the navbar rules refuse lg there (starci-grammar/navbar-control-size, starci-fe/control-height)', () => {
+  const names = 'Switch, Avatar, AvatarButton, TopBar, WorkspaceShell, Drawer, IconButton, Button';
+  const cluster = '<><Switch size="control" /><AvatarButton size="control" /><Avatar size="control" /></>';
+  const inTopBar = run(names, `const A = () => <TopBar brand={<Avatar size="control" />} actions={${cluster}} />;`);
+  assert.match(inTopBar.text, /<TopBar brand=\{<Avatar size="control" \/>\} actions=\{<><Switch size="control" \/><AvatarButton size="control" \/><Avatar size="control" \/><\/>\} \/>/);
+  assert.deepEqual(inTopBar.changes, []);
+  const inShell = run(names, `const A = () => <WorkspaceShell viewport="fixed" header={<TopBar actions={${cluster}} />} compactHeader={<Drawer placement="left" trigger={<Switch size="control" />} />} />;`);
+  assert.equal(inShell.text.match(/size="control"/g)?.length, 4);
+  assert.equal(inShell.text.includes('size="lg"'), false);
+  const header = run(names, `const A = () => <WorkspaceShell header={${cluster}} />;`);
+  assert.equal(header.text.includes('size="lg"'), false);
+  const children = run(names, 'const A = () => <TopBar><IconButton size="control" label="l" /><Switch size="control" /></TopBar>;');
+  assert.match(children.text, /<TopBar><IconButton label="l" \/><Switch size="control" \/><\/TopBar>/);
+  const outside = run(names, `const A = () => <><TopBar />{${cluster}}</>;`);
+  assert.equal(outside.text.match(/size="lg"/g)?.length, 3, 'a control beside a bar, not in it, is rewritten as before');
+  assert.deepEqual(outside.changes.map(change => change.code), ['SIZE_CONTROL_LG', 'SIZE_CONTROL_LG', 'SIZE_CONTROL_LG']);
+});
+
 test('13. FlowGraph orbit becomes BubbleMap and its nodes are reported; exports are renamed', () => {
   const result = run('FlowGraph, flowGraphDiameter, orbitLayout', 'const A = () => <FlowGraph layout="orbit" label="l" nodes={n} edges={e} />; const d = flowGraphDiameter(1); const l = orbitLayout(n);');
   assert.equal(result.text, `import { bubbleDiameter, bubbleMapLayout, BubbleMap } from '${GRAMMAR}';\nconst A = () => <BubbleMap label="l" nodes={n} edges={e} />; const d = bubbleDiameter(1); const l = bubbleMapLayout(n);`);

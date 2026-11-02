@@ -113,6 +113,6 @@ export const coreGrammarConfig: (input: {
   }]
 }
 
-// The result cache of `starci app lint` (contexts/project/check-cache.md) reads the disk inputs the family rules declare.
+// The result cache of `starci app check --gate lint` (contexts/project/check-cache.md) reads the disk inputs the family rules declare.
 export { crossFileInputs } from "./lib/cross-file-inputs.ts"
 export type { CrossFileInput } from "./lib/cross-file-inputs.ts"

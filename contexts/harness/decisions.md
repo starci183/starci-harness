@@ -117,12 +117,12 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   every call site moves in the same change. Owner, 2026-10-30: "Duyệt cả 6" (the six decisions of the audit), then
   "Làm theo lane"; the sixth decision (a refused minor for each old spelling) overruled the same day: "đọc contributing là
   cấm tuyệt đối legacy r mờ".
-- **App check and lint pass under 20 findings (`gate-threshold-20`).** `starci app check` and `starci app lint` exit green while
+- **App check passes under 20 findings (`gate-threshold-20`).** `starci app check` exits green while
   fewer than 20 error findings remain and none is a hard blocker: a plaintext secret, a failed boot proof or a migration finding
   blocks at any count (`packages/hfs/runtime/scripts/hfs/gate-threshold.mjs`). Every finding is still printed and kept in the
   report; only the verdict changes, so a release is not held back finding by finding (5, 4, 3, ...) by the last structural
   nits, and they are fixed later. Typecheck, build and the tests are not judged by it. Owner, 2026-10-30: "xanh khi lỗi <20",
-  "tránh kiểu check vô hạn", "dưới <20 còn tí sạn thôi"; scope (app check and lint only) and the hard blockers (plaintext
+  "tránh kiểu check vô hạn", "dưới <20 còn tí sạn thôi"; scope (app check only) and the hard blockers (plaintext
   secret, boot wiring, migration) chosen by the owner directly.
 - **One authority for both runners (`authority-both-modes`).** The tiers and the role table of
   [contexts/authority/](../authority/README.md) hold identically under `inline` and `orca`, for Debug's lanes, the

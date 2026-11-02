@@ -22,7 +22,7 @@ import { TEMPLATES_DIR, appSource, imageFiles, render, renderTargets, writeTarge
 import type { SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
 import { ScaffoldError } from './service.mjs';
 import { testWorldFiles } from './test-world.mjs';
-import { FE_APP_SCRIPTS, PACKAGE_MANAGER, WORKSPACES, WORKSPACE_LINT, feAppPackageName } from '../runtime/scripts/hfs/rules/monorepo.mjs';
+import { FE_APP_SCRIPTS, PACKAGE_MANAGER, WORKSPACES, feAppPackageName } from '../runtime/scripts/hfs/rules/monorepo.mjs';
 import { isLinkLike } from '../runtime/scripts/api/fs/is-link-like.mjs';
 import { unlinkOnly } from '../runtime/scripts/api/fs/lib.mjs';
 import { initializeAppIdentity } from '../runtime/scripts/hfs/secret-init.mjs';
@@ -285,8 +285,8 @@ const FE_PACKAGES: Readonly<Record<string, { readonly exports: readonly string[]
   i18n: { exports: ['.', './proxy', './routing'], dependencies: { next: null, 'next-intl': null, 'server-only': null } },
 });
 
-/** The scripts of every fe package workspace: tsc builds it to dist and type-checks it; it lints with the workspace lint. */
-const PACKAGE_WORKSPACE_SCRIPTS = Object.freeze({ build: 'tsc -p tsconfig.build.json', lint: WORKSPACE_LINT, typecheck: 'tsc --noEmit -p tsconfig.json' });
+/** The scripts of every fe package workspace: tsc builds it to dist and type-checks it. */
+const PACKAGE_WORKSPACE_SCRIPTS = Object.freeze({ build: 'tsc -p tsconfig.build.json', typecheck: 'tsc --noEmit -p tsconfig.json' });
 
 /** The app hfs.json of a new app called `name`; full remains the byte-for-byte default declaration. */
 export const starterDeclaration = (name: string, manifest = loadSlotManifest(), edition = 'full') => ({

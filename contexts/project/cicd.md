@@ -71,12 +71,12 @@ plan ──► fast ─┐
 ```
 
 **Checks.** The jobs stay the CI standard's shape (`fast`, `lint`, `test`, `coverage`, `build`, `sonar`; ci-standard.yaml
-`jobs`). Under `diff` they run `app check` and `app lint` against the trusted base cache and the test shards run only
+`jobs`). Under `diff` they run `app check` (the `lint` job: `--gate lint` per side) against the trusted base cache and the test shards run only
 the specs whose closure changed; under `full` (every tag run, every candidate run) they pass `--no-cache`, shard the units
 (`--gate test --shard <i>/<n>`) and the coverage job judges the merged report with `--coverage-from`. Sonar and the
 Codecov upload run on every `full` run, so a release is analysed before it ships rather than only on tags after the fact,
 and the quality gate's verdict, never the scanner's exit, is the job's result (PROJECT-STACKS-8). The verdicts follow
-`gate-threshold-20`: `app check` and `app lint` are green under 20 error findings with no hard blocker; typecheck, build,
+`gate-threshold-20`: `app check` is green under 20 error findings with no hard blocker; typecheck, build,
 tests, coverage and the Sonar gate are binary.
 
 **Images.** One job per declared image (`deploy.images` of every environment, merged by app), in parallel with the

@@ -173,9 +173,7 @@ test('upgrade is dry by default and --execute applies', async (t) => {
   assert.equal(fs.existsSync(path.join(root, 'be/src/tests/world/test-world.config.ts')), true);
 });
 
-test('lint takes --json and --out, codemod --execute, --out and --json', async (t) => {
-  const { parseLintArgs } = await import('../lint/run.mjs');
-  assert.deepEqual({ ...parseLintArgs(['--json', '--out', 'r.json']) }, { changed: null, fix: false, format: 'json', out: 'r.json', workspace: undefined });
+test('codemod takes --execute, --out and --json', async (t) => {
   const root = temp(t, 'hfs-canonical-codemod-');
   fs.mkdirSync(path.join(root, 'fe'));
   const executed = await run(['codemod', 'button-intent', '--execute', '--json', '--out', 'migration.json'], { cwd: root });

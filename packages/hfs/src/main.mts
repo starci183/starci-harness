@@ -1,6 +1,6 @@
 // The @starci/hfs implementation behind `starci app`: one repository, `<app>/`, with one package.json, lockfile and node_modules
 // at its root and two sides, be/ and fe/, declared by the one hfs.json of kind app. Every verb runs at the app root.
-//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov>]... [--no-cache] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged
+//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov>]... [--side be|fe] [--fix] [--out <sonar file>] [--no-cache] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged
 //                                            every tracked path has a slot; required files exist; nothing forbidden or
 //                                            tracked-that-must-be-ignored; pins match; every managed file equals its render
 //                                            (sync/managed.mjs, the .gitignore block and sonar-project.properties included); no empty or ghost
@@ -21,17 +21,14 @@
 //                                            progress goes to stderr (--quiet silences it). STARCI_APP_CHECK_CACHE=verify runs diff then full and fails (exit 2)
 //                                            on any difference; =full never reads the cache (the release gate).
 //                                            --coverage-from <lcov> judges a coverage report produced elsewhere (the merge of a sharded unit run) and records nothing.
+//                                            --side be|fe limits the lint gate to one side (a CI matrix runs one per side). --out <file> writes every finding of the run as ONE
+//                                            Sonar Generic Issue Import document (engine ids starci-hfs, eslint, stylelint). --fix runs ESLint and stylelint with --fix before the
+//                                            check and is refused unless --gate lint is selected.
 //                                            --staged: the pre-commit guard alone (sync/hygiene.mjs: staged .starciwork and .starcistacks paths, the secrets
 //                                            guard and the bypass guard over every staged file read from the index, a new back-end logic file staged
 //                                            without its unit spec); it takes no other flag.
 //                                            Exit 1 at 20 error findings or a hard blocker (gate-threshold.mjs). The root checks run once and
 //                                            the side checks and the machine once per side, the side folder as their root; every path is app-relative.
-//   starci app lint [--cwd <dir>] [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--full] [--json] [--out <file>]
-//                                            the ONE lint entry (npm run lint): ESLint per side with that side's canon config (per-file rules and
-//                                            the project-graph rules), this check's findings, and stylelint over the fe side, as one starci/lint@1
-//                                            report; --out writes the one Sonar import file. Exit 0 under 20 error findings and no hard blocker, 1 otherwise, 2 a tool could not run (lint/run.mjs).
-//                                            --workspace <dir> (from the current directory) scopes the same lint to one fe workspace: the
-//                                            `lint` script of fe/apps/<app> and fe/packages/<pkg>, run by the turbo lint task.
 //   starci app scaffold <name> [--cwd <dir>]  a new app <dir>/<name>/ (<dir> is the global --cwd): the root (hfs.json, package.json, managed files, .starciwork) and the
 //                                            be/ and fe/ skeletons (scaffold/app.mjs). Accepts an empty unborn main Git root.
 //   starci app slot <path> [--cwd <dir>] [--json]   which slot owns the path, its tier, allowed imports, required tests.
@@ -72,7 +69,7 @@
 //                                            one front-end unit in the shape-slot pattern from templates/fe/units (scaffold/add-fe-unit.mjs); the
 //                                            first block writes the app's one copy of the status owners. Never overwrites a unit.
 // The flags of every verb are those of USAGE below, generated from the parser tables that refuse every other flag.
-// Every finding names a why code and carries its Vietnamese text. check, lint and slot read the app, never write to it. Exit codes:
+// Every finding names a why code and carries its Vietnamese text. check and slot read the app, never write to it. Exit codes:
 // 0 clean, 1 error findings, 2 a refusal or bad usage.
 import fs from 'node:fs';
 import { isHostHeld, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
@@ -88,17 +85,17 @@ import { dbBaselineMain } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { dbRestampMain } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
 import { formatCoverageReport } from '../runtime/scripts/hfs/coverage-from.mjs';
 import { gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
-import { HFS_DECLARATION_FILE, HfsSlotsError, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
+import { HFS_DECLARATION_FILE, HfsSlotsError, SIDES, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { main as syncMain } from '../sync/cli.mjs';
 import { runWorkHygiene } from '../sync/hygiene.mjs';
-import { SyncError, bundledPresets } from '../sync/index.mjs';
+import { STYLE_GLOB, SyncError, bundledPresets } from '../sync/index.mjs';
 import { emitContractsAsync } from '../emit/contracts.mjs';
 import { ScaffoldError, newService, newSpec } from '../scaffold/service.mjs';
 import { EditionRefusal } from '../scaffold/edition-gate.mjs';
 import { addKind } from '../scaffold/add.mjs';
 import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { newImages } from '../scaffold/image.mjs';
-import { cachedLinters, eslintRepository, lintRepository, parseLintArgs, printLintText, runLinter as nativeLinter } from '../lint/run.mjs';
+import { cachedLinters, eslintRepository, runLinter as nativeLinter } from '../lint/run.mjs';
 import { runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
 import { CACHE_ENV, createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { DEFAULT_FAMILIES, runAppFamilies } from '../cache/run.mjs';
@@ -107,7 +104,8 @@ import { familyLine } from '../cache/report.mjs';
 import { writeRunLog } from '../cache/run-log.mjs';
 import { FAMILIES, type FamilyId, type FamilyReport } from '../cache/types.mjs';
 import { SECRET_CODES as SECRET_CODE_LIST } from '../cache/hfs-family.mjs';
-import { writeReport } from '../report/sonar.mjs';
+import { linterReport, mergeReports, sonarReport, sourceRootsOf, writeReport } from '../report/sonar.mjs';
+import { stylelintFindings } from '../report/stylelint-findings.mjs';
 import { checkEdition } from '../upgrade/check.mjs';
 import { UpgradeError, upgradeMain } from '../upgrade/index.mjs';
 import { ACTIONS as STACK_ACTIONS, FLAGS as STACK_FLAGS, OPERANDS as STACK_OPERANDS, READ_ONLY as STACK_READ_ONLY, REPEAT as STACK_REPEAT, VALUE as STACK_VALUE, stackMain as deployStackMain } from '../stack/cli.mjs';
@@ -167,7 +165,10 @@ interface ParsedVerb extends FlagTable {
 }
 type UsageForm = ParsedVerb['forms'][number];
 
-export const VERBS = Object.freeze(['scaffold', 'add', 'lint', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'coverage', 'codemod']);
+/** An argument the parser refuses (an unknown flag, a missing value, a form a verb does not take): the one error `main` follows with the usage. */
+export class UsageError extends Error {}
+
+export const VERBS = Object.freeze(['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'coverage', 'codemod']);
 const DATABASE_VERBS = new Map<string | undefined, (argv: string[], io: VerbIo) => Promise<number> | number>([['baseline', dbBaselineMain], ['restamp', dbRestampMain],['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['new', dbNewMain], ['drift', dbDriftMain]]);
 
 /**
@@ -192,7 +193,7 @@ const PARSED: Record<string, ParsedVerb> = {
       { operands: 'image', flags: [] },
     ],
   },
-  check: { run: checkMain, value: ['--coverage-from', '--shard'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--no-cache'], edition: true, forms: [{ only: { boolean: ['--json', '--no-cache'], list: GATE_FLAGS, value: ['--coverage-from', '--shard'] } }, { only: { boolean: ['--staged'] }, edition: false }] },
+  check: { run: checkMain, value: ['--coverage-from', '--shard', '--side', '--out'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--no-cache', '--fix'], edition: true, forms: [{ only: { boolean: ['--json', '--no-cache', '--fix'], list: GATE_FLAGS, value: ['--coverage-from', '--shard', '--side', '--out'] } }, { only: { boolean: ['--staged'] }, edition: false }] },
   slot: { run: slotMain, boolean: ['--json'], forms: [{ operands: '<path>' }] },
   emit: { run: emitMain, forms: [{}] },
 };
@@ -204,7 +205,7 @@ const PARSED_FLAGS = new Set([...Object.values(PARSED).flatMap(flagsOf), '--edit
 /** The placeholder of a value flag in the usage; any other prints as <name>. */
 const PLACEHOLDERS: Record<string, string> = {
   '--gate': `<${CHECK_GATES.join('|')}>`,
-  '--registry-visibility': 'public|private', '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
+  '--registry-visibility': 'public|private', '--side': 'be|fe', '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
   '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
   '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--image': '<service>=<ref>', '--sha': '<sha>',
   '--previous': '<release>', '--release': '<release>', '--out': '<path>', '--since': '<ISO>', '--timeout': '<seconds>', '--retry': '<seconds>',
@@ -225,11 +226,10 @@ const specUsage = ({ boolean = [], value = [], list = [] }: FlagTable, placehold
 const dbSpec = (names: readonly string[]): FlagTable => ({ boolean: names.filter((name) => DB_BOOLEAN_OPTIONS.includes(name)).map((name) => `--${name}`), value: names.filter((name) => name !== 'cwd' && !DB_BOOLEAN_OPTIONS.includes(name)).map((name) => `--${name}`) });
 const DATABASE_USAGE: [string, string, FlagTable][] = [['new', '<kebab-name>', DB_NEW_FLAGS], ['baseline', '', dbSpec(BASELINE_OPTIONS)], ['restamp', '', dbSpec(RESTAMP_OPTIONS)],['migrate', '', DB_MIGRATE_FLAGS], ['post-cutover', '', DB_POST_CUTOVER_FLAGS], ['dump', '', DB_DUMP_FLAGS], ['drift', '', DB_DRIFT_FLAGS]];
 
-/** The usage of each verb, from the tables its parser refuses every other flag with (lint, codemod and upgrade keep hand-parsed arguments, held by main.spec.mjs). */
+/** The usage of each verb, from the tables its parser refuses every other flag with (codemod and upgrade keep hand-parsed arguments, held by main.spec.mjs). */
 const VERB_USAGE: Record<string, string[]> = {
   ...Object.fromEntries(Object.entries(PARSED).map(([verb, spec]) => [verb, spec.forms.map((form: UsageForm) => line(`starci app ${verb}`, form.operands,
     specUsage(form.only ?? (form.flags === undefined ? spec : { value: form.flags })), spec.edition && form.edition !== false ? flagUsage('--edition', { value: true }) : ''))])),
-  lint: ['starci app lint [--changed <file>...] [--workspace <dir>] [--side be|fe] [--fix] [--full] [--full] [--json] [--out <file>]'],
   codemod: CODEMODS.map((name: string) => `starci app codemod ${name} [--execute] [--json] [--format json|markdown] [--out <file.json|file.md>]`),
   upgrade: ['starci app upgrade [--execute]'],
   sync: [SYNC_USAGE.sync],
@@ -268,12 +268,12 @@ function parse(verb: string, argv: readonly string[]): Opts {
     if (boolean.includes(flag) && inline === undefined) opts[key] = true;
     else if (value.includes(flag) || list.includes(flag)) {
       const given: string | undefined = inline ?? args.next().value;
-      if (!given || given.startsWith('--')) throw new Error(`${flag} needs a value`);
+      if (!given || given.startsWith('--')) throw new UsageError(`${flag} needs a value`);
       if (list.includes(flag)) opts[key] = [...((opts[key] as string[] | undefined) ?? []), given];
-      else if (opts[key] !== undefined) throw new Error(`${flag} may be given only once`);
+      else if (opts[key] !== undefined) throw new UsageError(`${flag} may be given only once`);
       else opts[key] = given;
-    } else if (boolean.includes(flag)) throw new Error(`${flag} takes no value`);
-    else throw new Error(PARSED_FLAGS.has(flag) ? `starci app ${verb} takes no ${flag}` : `unknown flag ${flag}`);
+    } else if (boolean.includes(flag)) throw new UsageError(`${flag} takes no value`);
+    else throw new UsageError(PARSED_FLAGS.has(flag) ? `starci app ${verb} takes no ${flag}` : `unknown flag ${flag}`);
   }
   return opts;
 }
@@ -305,7 +305,7 @@ function printCheckOverview(result: Dynamic, out: (text: string) => unknown): vo
     const sides = (Object.entries(result.eslint.sides) as [string, Dynamic][]).map(([side, run]) => `${side}: ${run.files} files${run.skipped ? ` (${run.skipped})` : ''}`).join(', ');
     out(`  ESLint: ${sides}
 `);
-    for (const error of result.eslint.errors) out(`  ESLint tool error: ${error}
+    for (const error of result.eslint.errors) out(`  ${error.startsWith('stylelint ') ? 'stylelint' : 'ESLint'} tool error: ${error}
 `);
   }
 }
@@ -325,6 +325,8 @@ function printCheck(result: Dynamic, out: (text: string) => unknown): void {
   for (const f of result.findings) byCode.set(f.code, [...(byCode.get(f.code) ?? []), f]);
   for (const [code, list] of byCode) printFindingGroup(code, list, out);
   out(`\n${counts.error} error finding${counts.error === 1 ? '' : 's'}, ${counts.warning} warning${counts.warning === 1 ? '' : 's'}, ${counts.info} report-only\n`);
+  const counting = Object.entries((result.counting ?? {}) as Record<string, number>).sort(([a], [b]) => a.localeCompare(b));
+  if (counting.length) out(`counting (warn, not in the verdict): ${counting.map(([rule, count]) => `${rule} ${count}`).join(', ')}\n`);
 }
 
 function printNoSlot(e: Dynamic, out: (text: string) => unknown): void {
@@ -355,7 +357,7 @@ function selectedFamilies(opts: Opts, fallback: readonly FamilyId[]): Set<Family
   const given = (listFlag(opts, 'gate') ?? []).map((value) => {
     if (value === 'codecov') return 'sonar';
     const family = FAMILIES.find((candidate) => candidate === value);
-    if (family === undefined) throw new Error(`--gate accepts ${CHECK_GATES.join('|')}; got ${JSON.stringify(value)}`);
+    if (family === undefined) throw new UsageError(`--gate accepts ${CHECK_GATES.join('|')}; got ${JSON.stringify(value)}`);
     return family;
   });
   return new Set(given.length > 0 ? given : fallback);
@@ -371,17 +373,14 @@ function openSession({ repoRoot, tracked, io, full, use, planned }: { repoRoot: 
   return createDiskSession({ root: repoRoot, tracked, env, progress, cliVersion: io.harness?.version, full });
 }
 
-/**
- * The app pass of `starci app check` and `starci app lint`: the families the verb selects, against one cache session, merged into one result.
- * `only` limits the formatter to those (app-relative) files and bypasses the cache (`app lint --changed`).
- */
-async function appPass({ repoRoot, harness, only, presets, prettier, io, selected, full, use = 'normal', session: given }: {
-  repoRoot: string; harness?: AppIo['harness']; only?: string[] | undefined; presets?: Presets | undefined; prettier?: Prettier | undefined; io: AppIo;
+/** The app pass of `starci app check`: the families the verb selects, against one cache session, merged into one result. */
+async function appPass({ repoRoot, harness, presets, prettier, io, selected, full, use = 'normal', session: given }: {
+  repoRoot: string; harness?: AppIo['harness']; presets?: Presets | undefined; prettier?: Prettier | undefined; io: AppIo;
   selected: Set<FamilyId>; full?: Set<FamilyId> | undefined; use?: CacheUse; session?: DiskSession | undefined;
 }): Promise<Dynamic> {
   const tracked = trackedFiles(repoRoot);
-  const session = given ?? openSession({ repoRoot, tracked, io, full, use: only === undefined ? use : 'bypass', planned: tracked.length * Math.max(1, selected.size) });
-  const result = await runAppFamilies({ repoRoot, tracked, session, selected, harness, presets, prettier, only, edition: undefined, execute: io.runHeavyNode });
+  const session = given ?? openSession({ repoRoot, tracked, io, full, use, planned: tracked.length * Math.max(1, selected.size) });
+  const result = await runAppFamilies({ repoRoot, tracked, session, selected, harness, presets, prettier, edition: undefined, execute: io.runHeavyNode });
   if (given !== undefined) return result;
   const flushed = session.flush();
   return { ...result, findings: [...result.findings, ...verdictFindings(session)], cacheWarnings: flushed.warnings };
@@ -395,42 +394,6 @@ function verdictFindings(session: DiskSession): Dynamic[] {
   return withWhy(verdicts.map((verdict) => ({ code: verdict.code, level: verdict.level, path: verdict.path, message: verdict.message })), why);
 }
 
-/** The nearest folder at or above `dir` that holds hfs.json (the app root of a workspace), or `dir` itself when none does (the lint then refuses it). */
-export function appRootAbove(dir: string): string {
-  for (let at = dir; ; at = path.dirname(at)) {
-    if (fs.existsSync(path.join(at, HFS_DECLARATION_FILE))) return at;
-    if (path.dirname(at) === at) return dir;
-  }
-}
-
-/** `starci app lint`: ESLint per side, the app checks and stylelint over the fe side as one report; see lint/run.mjs. */
-async function lintMain(argv: string[], io: AppIo): Promise<number> {
-  const { cwd, harness, stdout, presets, prettier, runLinter, checkApp = appPass } = io;
-  const opts = parseLintArgs(argv);
-  // --workspace names a folder from the working directory (`starci app lint --workspace .` is an fe workspace script); the app
-  // root is then the nearest folder above it that holds hfs.json, and the workspace is passed on app-relative.
-  const workspaceDir = opts.workspace === undefined ? null : path.resolve(cwd, opts.workspace);
-  const repoRoot = path.resolve(workspaceDir ? appRootAbove(workspaceDir) : cwd);
-  if (workspaceDir) opts.workspace = path.relative(repoRoot, workspaceDir).split(path.sep).join('/');
-  // The lint shares the cache of `app check`: --workspace reads it and writes none, --changed and --fix neither read nor write, --full judges again.
-  const use: CacheUse = opts.changed !== null || opts.fix ? 'bypass' : opts.workspace !== undefined ? 'read' : 'normal';
-  const selected = new Set<FamilyId>(['hfs', 'secrets', 'db', 'format']);
-  // One session for the app findings and the linters, so the two never hold two answers; checkApp is a spec seam that brings its own.
-  const session = io.checkApp === undefined ? openSession({ repoRoot, tracked: trackedFiles(repoRoot), io, full: opts.full === true ? new Set<FamilyId>([...selected, 'lint']) : undefined, use, planned: 1 }) : undefined;
-  const { report, sonar, exit } = await lintRepository({
-    repoRoot, opts, trackedFiles, runLinter, ...(session === undefined ? {} : { cache: { session } }),
-    hfsCheck: (root: string) => checkApp({ repoRoot: root, harness, only: opts.changed ?? undefined, presets, prettier, io, selected, use, session }),
-  });
-  const flushed = session?.flush();
-  const verdicts = session === undefined ? [] : verdictFindings(session);
-  if (opts.out !== undefined) writeReport(path.resolve(cwd, opts.out), sonar);
-  if (opts.format === 'json') stdout(`${JSON.stringify(report, null, 2)}
-`); else printLintText(report, stdout);
-  for (const verdict of verdicts) stdout(`${verdict.level.toUpperCase()} ${verdict.code}: ${verdict.message}\n`);
-  for (const warning of flushed?.warnings ?? []) stdout(`cache: ${warning}\n`);
-  return Math.max(exit, verdicts.some((verdict) => verdict.level === 'error') ? 1 : 0);
-}
-
 /**
  * The jest preset a new app renders its Sonar exclusions from: the copy this @starci/hfs ships (bundledPresets), the same version the
  * scaffold pins, so `npx starci-harness app scaffold` works before any dependency of the app is installed.
@@ -440,7 +403,7 @@ const scaffoldPresets = () => bundledPresets();
 /** The value of `--flag <value>` or `--flag=<value>`; a missing value, or one that is a flag, is refused. */
 function flagValue(flag: string, arg: string, args: IterableIterator<string>): string {
   const value = arg.startsWith(`${flag}=`) ? arg.slice(flag.length + 1) : args.next().value;
-  if (!value || value.startsWith('--')) throw new Error(`${flag} needs a value`);
+  if (!value || value.startsWith('--')) throw new UsageError(`${flag} needs a value`);
   return value;
 }
 
@@ -473,7 +436,7 @@ function editionOption(verb: string, argv: string[]): { edition: string | undefi
       continue;
     }
     edition = flagValue('--edition', arg, args);
-    if (!['full', 'lite'].includes(edition)) throw new Error('--edition accepts full or lite');
+    if (!['full', 'lite'].includes(edition)) throw new UsageError('--edition accepts full or lite');
   }
   return { edition, argv: rest };
 }
@@ -493,7 +456,7 @@ async function installedStackMain(cwd: string): Promise<(argv: string[], io: { c
 function databaseMain(argv: string[], io: VerbIo): Promise<number> | number {
   const [verb, ...rest] = argv;
   const dispatch = DATABASE_VERBS.get(verb);
-  if (!dispatch) throw new Error('starci app db takes new, baseline, restamp, migrate, post-cutover, dump or drift');
+  if (!dispatch) throw new UsageError('starci app db takes new, baseline, restamp, migrate, post-cutover, dump or drift');
   return dispatch(rest, io);
 }
 
@@ -503,7 +466,7 @@ function printCheckProofs(result: Dynamic, out: (text: string) => unknown): void
 }
 
 /** The flags `check --staged` refuses: it is the pre-commit guard alone, so none of the whole-app pass's options means anything with it. */
-const STAGED_REFUSES = ['--json', '--no-cache', '--coverage-from', '--shard', ...GATE_FLAGS] as const;
+const STAGED_REFUSES = ['--json', '--no-cache', '--fix', '--coverage-from', '--shard', '--side', '--out', ...GATE_FLAGS] as const;
 
 /** The family a finding belongs to, for naming it when a verified run disagrees with the cache. */
 function familyOf(finding: { code?: string | null; engine?: string }): FamilyId {
@@ -515,22 +478,39 @@ function familyOf(finding: { code?: string | null; engine?: string }): FamilyId 
   return SECRET_CODE_LIST.has(code) ? 'secrets' : 'hfs';
 }
 
-/** One run of the selected families against the cache, then the coverage proof on top; returns the result and what it took. */
-async function checkRun({ io, selected, full, use, coverageFrom }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined }): Promise<{ result: Dynamic; seconds: number }> {
+/** What a lint-gate run keeps besides its findings: the raw linter results, which the Sonar document of `--out` is built from. */
+interface LinterRaw { eslint: Dynamic[]; stylelint: Dynamic[] }
+
+/** The linters with --fix before the check judges the tree: ESLint through the shared execution, stylelint over the fe stylesheets. What they still find is the check's to report. */
+async function fixLint({ repoRoot, side, run }: { repoRoot: string; side: string | undefined; run: LinterRunner | undefined }): Promise<void> {
+  const app = readRepoDeclaration(loadSlotManifest(), repoRoot);
+  await eslintRepository({ repoRoot, app, opts: { ...(side === undefined ? {} : { side }), fix: true }, run });
+  if (side !== 'be') await (run ?? nativeLinter)({ cwd: path.join(repoRoot, 'fe'), pkg: 'stylelint', bin: 'stylelint', args: [STYLE_GLOB, '--formatter', 'json', '--fix'] });
+}
+
+/** One run of the selected families against the cache, then the coverage proof on top; returns the result, what it took and the raw linter results. */
+async function checkRun({ io, selected, full, use, coverageFrom, side, fix = false }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined; side?: string | undefined; fix?: boolean }): Promise<{ result: Dynamic; seconds: number; raw: LinterRaw }> {
   const { cwd: repoRoot, harness, edition, presets, prettier, checkApp = appPass, runLinter } = io;
   const started = Date.now();
+  if (fix) await fixLint({ repoRoot, side, run: runLinter });
   const tracked = io.checkApp === undefined ? trackedFiles(repoRoot) : [];
   const session = io.checkApp === undefined ? openSession({ repoRoot, tracked, io, full, use, planned: tracked.length * Math.max(1, selected.size) }) : undefined;
   const checked = await checkEdition({ repoRoot, edition, normal: () => checkApp({ repoRoot, harness, presets, prettier, io, selected, full, use, session }), presets, prettier });
   const proof = withCheckProofs(checked, { repoRoot, edition, wiring: false, coverageFrom });
   const extra: Dynamic[] = [];
   const lines: string[] = [];
+  const raw: LinterRaw = { eslint: [], stylelint: [] };
   let eslint: Awaited<ReturnType<typeof eslintRepository>> | null = null;
+  let style: { results: Dynamic[]; errors: string[] } = { results: [], errors: [] };
   if (selected.has('lint')) {
     if (session !== undefined) {
       const app = readRepoDeclaration(loadSlotManifest(), repoRoot);
-      eslint = (await cachedLinters({ repoRoot, app, opts: { changed: null, fix: false, format: 'text', out: undefined, workspace: undefined }, workspace: null, onFe: null, run: runLinter, cache: { session } })).eslint;
-    } else eslint = await eslintRepository({ repoRoot, changed: null, existing: [], run: runLinter });
+      const linted = await cachedLinters({ repoRoot, app, opts: { changed: null, fix: false, format: 'text', out: undefined, workspace: undefined, ...(side === undefined ? {} : { side }) }, workspace: null, onFe: null, run: runLinter, cache: { session } });
+      eslint = linted.eslint;
+      style = linted.stylelint;
+    } else eslint = await eslintRepository({ repoRoot, opts: side === undefined ? {} : { side }, changed: null, existing: [], run: runLinter });
+    raw.eslint = eslint.raw;
+    raw.stylelint = style.results;
   }
   if (session !== undefined && selected.has('types')) extra.push(...(await runTypesForApp(session, { repoRoot, tracked, env: io.env, execute: io.runHeavyNode })).findings);
   if (session !== undefined && selected.has('test')) {
@@ -541,19 +521,42 @@ async function checkRun({ io, selected, full, use, coverageFrom }: { io: AppIo; 
   const flushed = session?.flush();
   const verdicts = session === undefined ? [] : verdictFindings(session);
   const reports: FamilyReport[] = session === undefined ? [...(checked.families ?? [])] : [...session.reports];
-  const findings = [...proof.findings, ...extra, ...verdicts, ...(eslint?.findings ?? []).map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: 'error' }))];
+  // A rule of the canon's counting cohort is a warning: listed and counted, never part of the verdict.
+  const linterFindings = [...(eslint?.findings ?? []).map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: finding.severity === 'warning' ? 'warning' : 'error' })), ...stylelintFindings(style.results, repoRoot)];
+  const findings = [...proof.findings, ...extra, ...verdicts, ...linterFindings];
   // Green under the threshold (gate-threshold.mjs): every finding is still listed, only the verdict changes.
   const verdict = gateVerdict(findings.filter(finding => finding.level === 'error'));
-  const toolErrors = eslint?.errors ?? [];
+  const toolErrors = [...(eslint?.errors ?? []), ...style.errors];
   const counts = { ...proof.counts, error: findings.filter(finding => finding.level === 'error').length, warning: findings.filter(finding => finding.level === 'warning').length };
-  const result = { ...proof, findings, families: reports, predictions: lines, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(eslint ? { eslint: { ...eslint.engine, errors: eslint.errors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
-  return { result, seconds: (Date.now() - started) / 1000 };
+  const counting: Record<string, number> = {};
+  for (const finding of linterFindings) if (finding.level === 'warning') counting[finding.rule] = (counting[finding.rule] ?? 0) + 1;
+  const result = { ...proof, findings, families: reports, predictions: lines, counting, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(eslint ? { eslint: { ...eslint.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
+  return { result, seconds: (Date.now() - started) / 1000, raw };
+}
+
+/** `--out`: every finding the run produced as ONE Sonar Generic Issue Import document (the check findings under starci-hfs, then eslint and stylelint), placed on the `sonar.sources` roots of the side. */
+function writeSonarImport({ repoRoot, file, findings, raw, side }: { repoRoot: string; file: string; findings: readonly Dynamic[]; raw: LinterRaw; side: string | undefined }): void {
+  let properties = '';
+  try { properties = fs.readFileSync(path.join(repoRoot, 'sonar-project.properties'), 'utf8'); } catch { /* no properties: every finding keeps its own path */ }
+  const onSide = (candidate: string): boolean => {
+    if (side === undefined) return true;
+    const owner = SIDES.find((each: string) => candidate === each || candidate.startsWith(`${each}/`));
+    return (owner ?? 'be') === side;
+  };
+  const sourceRoots = sourceRootsOf(properties).filter(onSide);
+  const tracked = sourceRoots.length ? trackedFiles(repoRoot) : [];
+  const own = findings.filter(finding => finding.engine === undefined && finding.level === 'error' && onSide(String(finding.path ?? '').replace(/\\/g, '/')));
+  writeReport(file, mergeReports([
+    sonarReport(own, { sourceRoots, tracked }),
+    linterReport('eslint', raw.eslint, { root: repoRoot, sourceRoots, tracked }),
+    linterReport('stylelint', raw.stylelint, { root: repoRoot, sourceRoots, tracked }),
+  ]));
 }
 
 /** STARCI_APP_CHECK_CACHE=verify: the diff-only run, then the full run, compared finding by finding; any difference names family and file (exit 2). */
-async function verifyCache(io: AppIo, selected: Set<FamilyId>, coverageFrom: string | undefined): Promise<number> {
-  const diff = await checkRun({ io, selected, full: undefined, use: 'read', coverageFrom });
-  const full = await checkRun({ io, selected, full: new Set(selected), use: 'bypass', coverageFrom });
+async function verifyCache(io: AppIo, selected: Set<FamilyId>, coverageFrom: string | undefined, side: string | undefined): Promise<number> {
+  const diff = await checkRun({ io, selected, full: undefined, use: 'read', coverageFrom, side });
+  const full = await checkRun({ io, selected, full: new Set(selected), use: 'bypass', coverageFrom, side });
   const keyed = (result: Dynamic): Map<string, string> => new Map((result.findings as Dynamic[]).map((finding) => [`${finding.code}|${finding.path ?? ''}|${finding.message}`, `${familyOf(finding)}: ${finding.path ?? finding.code}`]));
   const left = keyed(diff.result);
   const right = keyed(full.result);
@@ -568,38 +571,45 @@ async function verifyCache(io: AppIo, selected: Set<FamilyId>, coverageFrom: str
 
 async function checkMain(opts: Opts, io: AppIo): Promise<number> {
   const { cwd: repoRoot, edition, stdout: out } = io;
-  if (opts.positional.length) throw new Error('starci app check takes no path');
+  if (opts.positional.length) throw new UsageError('starci app check takes no path');
   if (opts.staged === true) {
     const given = [...STAGED_REFUSES.filter((flag) => opts[flag.slice(2)] !== undefined), ...(edition === undefined ? [] : ['--edition'])];
-    if (given.length) throw new Error(`starci app check --staged is the pre-commit guard alone and takes no ${given.join(', ')}`);
+    if (given.length) throw new UsageError(`starci app check --staged is the pre-commit guard alone and takes no ${given.join(', ')}`);
     return runWorkHygiene({ cwd: repoRoot, out: (text) => out(`${text}\n`) });
   }
   const coverageFrom = valueFlag(opts, 'coverage-from');
   const shard = valueFlag(opts, 'shard');
+  const side = valueFlag(opts, 'side');
+  const sonarOut = valueFlag(opts, 'out');
+  const fix = booleanFlag(opts, 'fix') === true;
   const explicit = selectedFamilies(opts, []);
+  if (side !== undefined && !['be', 'fe'].includes(side)) throw new UsageError('LINT_SIDE_INVALID: --side is be or fe');
+  if (fix && !explicit.has('lint')) throw new UsageError('--fix runs the linters and needs --gate lint');
   if (shard !== undefined) {
+    if (side !== undefined || sonarOut !== undefined) throw new UsageError('--shard <i>/<n> takes no --side or --out');
     // A selected test shard is always a whole-unit shard, in the shape the coverage merge reads; nothing is recorded.
     const match = /^(\d+)\/(\d+)$/.exec(shard);
-    if (explicit.size !== 1 || !explicit.has('test') || coverageFrom !== undefined) throw new Error('--shard <i>/<n> requires --gate test alone and takes no --coverage-from');
+    if (explicit.size !== 1 || !explicit.has('test') || coverageFrom !== undefined) throw new UsageError('--shard <i>/<n> requires --gate test alone and takes no --coverage-from');
     const index = Number(match?.[1]);
     const total = Number(match?.[2]);
-    if (match === null || !Number.isSafeInteger(index) || !Number.isSafeInteger(total) || index < 1 || total < index) throw new Error('--shard needs <i>/<n> with 1 <= i <= n');
+    if (match === null || !Number.isSafeInteger(index) || !Number.isSafeInteger(total) || index < 1 || total < index) throw new UsageError('--shard needs <i>/<n> with 1 <= i <= n');
     return runTestShard(repoRoot, index, total, io.runHeavyNode);
   }
   // A coverage report judged on its own (the merge job of a sharded run) runs no family; with selectors it comes on top of them.
   const selected = explicit.size > 0 ? explicit : coverageFrom === undefined ? new Set<FamilyId>(DEFAULT_FAMILIES) : new Set<FamilyId>();
   const full = opts['no-cache'] === true ? new Set(selected) : undefined;
-  if (io.env[CACHE_ENV] === 'verify') return verifyCache(io, selected, coverageFrom);
-  const { result, seconds } = await checkRun({ io, selected, full, use: coverageFrom !== undefined && explicit.size === 0 ? 'bypass' : 'normal', coverageFrom });
+  if (io.env[CACHE_ENV] === 'verify') return verifyCache(io, selected, coverageFrom, side);
+  const { result, seconds, raw } = await checkRun({ io, selected, full, use: coverageFrom !== undefined && explicit.size === 0 ? 'bypass' : 'normal', coverageFrom, side, fix });
+  if (sonarOut !== undefined) writeSonarImport({ repoRoot, file: path.resolve(repoRoot, sonarOut), findings: result.findings, raw, side });
   if (opts.json) out(`${JSON.stringify(result, null, 2)}\n`);
   else { printCheck(result, out); printCheckProofs(result, out); if (result.gate.line) out(`${result.gate.line}\n`); }
   const exit = result.eslint?.errors.length ? 2 : result.ok ? 0 : 1;
-  writeRunLog(repoRoot, { command: `check${[...new Set(listFlag(opts, 'gate') ?? [])].map((gate) => ` --gate ${gate}`).join('')}${opts['no-cache'] === true ? ' --no-cache' : ''}${coverageFrom === undefined ? '' : ` --coverage-from ${JSON.stringify(coverageFrom)}`}`, seconds, exit, families: (result.families as FamilyReport[]).map((report) => ({ ...report, seconds: 0 })) }, io.env);
+  writeRunLog(repoRoot, { command: `check${[...new Set(listFlag(opts, 'gate') ?? [])].map((gate) => ` --gate ${gate}`).join('')}${side === undefined ? '' : ` --side ${side}`}${fix ? ' --fix' : ''}${opts['no-cache'] === true ? ' --no-cache' : ''}${coverageFrom === undefined ? '' : ` --coverage-from ${JSON.stringify(coverageFrom)}`}`, seconds, exit, families: (result.families as FamilyReport[]).map((report) => ({ ...report, seconds: 0 })) }, io.env);
   return exit;
 }
 
 async function emitMain(opts: Opts, { cwd: repoRoot, stdout: out, runHeavyNode }: AppIo): Promise<number> {
-  if (opts.positional.length) throw new Error('starci app emit takes no path');
+  if (opts.positional.length) throw new UsageError('starci app emit takes no path');
   const be = readRepoDeclaration(loadSlotManifest(), repoRoot).sides?.be;
   if (!be) throw new Error('starci app emit runs at the app root (the folder of hfs.json)');
   const { written, skipped, standIns } = await emitContractsAsync({ repoRoot: path.join(repoRoot, 'be'), declaration: be, execute: runHeavyNode });
@@ -621,13 +631,13 @@ function addFileNoun(noun: string, opts: Opts, repoRoot: string, out: (text: str
   const [, ...args] = opts.positional;
   const [first = '', second = ''] = args;
   const foreign = ADD_FLAGS_ALL.filter((flag) => opts[flag.slice(2)] !== undefined);
-  if (foreign.length) throw new Error(`starci app add ${noun} takes no ${foreign.join(', ')}`);
-  if (noun !== 'service' && opts.inject !== undefined) throw new Error(`starci app add ${noun} takes no --inject; only add service does`);
+  if (foreign.length) throw new UsageError(`starci app add ${noun} takes no ${foreign.join(', ')}`);
+  if (noun !== 'service' && opts.inject !== undefined) throw new UsageError(`starci app add ${noun} takes no --inject; only add service does`);
   let written: string[];
   if (noun === 'service' && args.length === 2) written = newService({ repoRoot, dir: first, name: second, inject: listFlag(opts, 'inject') ?? [] });
   else if (noun === 'spec' && args.length === 1) written = newSpec({ repoRoot, file: first });
   else if (noun === 'image' && args.length === 0) written = newImages({ repoRoot });
-  else throw new Error('starci app add takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts` or `image`');
+  else throw new UsageError('starci app add takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts` or `image`');
   for (const file of written) out(`created ${file}\n`);
   return 0;
 }
@@ -635,8 +645,8 @@ function addFileNoun(noun: string, opts: Opts, repoRoot: string, out: (text: str
 function addMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
   const [noun, name, ...extra] = opts.positional;
   if (noun !== undefined && ADD_FILE_NOUNS.includes(noun)) return addFileNoun(noun, opts, repoRoot, out);
-  if (opts.inject !== undefined) throw new Error(`starci app add ${noun ?? '<noun>'} takes no --inject; only add service does`);
-  if (!noun || !name || extra.length) throw new Error('starci app add takes `<noun> <name>` and the options of the noun');
+  if (opts.inject !== undefined) throw new UsageError(`starci app add ${noun ?? '<noun>'} takes no --inject; only add service does`);
+  if (!noun || !name || extra.length) throw new UsageError('starci app add takes `<noun> <name>` and the options of the noun');
   const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: booleanFlag(opts, 'fe'), shapes: valueFlag(opts, 'shapes'), read: valueFlag(opts, 'read'), app: valueFlag(opts, 'app'), kind: valueFlag(opts, 'kind'), form: booleanFlag(opts, 'form'), blocks: valueFlag(opts, 'blocks'), tabs: valueFlag(opts, 'tabs') } });
   for (const file of created) out(`created ${file}\n`);
   const kinds = registered.kinds.length ? `; kinds ${registered.kinds.join(', ')}` : '';
@@ -648,14 +658,14 @@ function addMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
 async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', presets, lock, stdout: out }: AppIo): Promise<number> {
   const [name, ...extra] = opts.positional;
   const registryVisibility = valueFlag(opts, 'registry-visibility');
-  if (!name || extra.length) throw new Error(`starci app scaffold takes \`${((VERB_USAGE.scaffold as string[])[0] as string).slice('starci app scaffold '.length)}\``);
+  if (!name || extra.length) throw new UsageError(`starci app scaffold takes \`${((VERB_USAGE.scaffold as string[])[0] as string).slice('starci app scaffold '.length)}\``);
   const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd), harness, edition, presets: presets ?? scaffoldPresets(), ...(registryVisibility === undefined ? {} : { registryVisibility }), ...(lock ? { lock } : {}) });
-  out(`starci app scaffold: created ${created} (${files.length} files); next: npm ci (the lockfile, then the git hooks through npm run prepare; after npm ci --ignore-scripts run npm run prepare), then starci app lint\n`);
+  out(`starci app scaffold: created ${created} (${files.length} files); next: npm ci (the lockfile, then the git hooks through npm run prepare; after npm ci --ignore-scripts run npm run prepare), then npm run lint, which is starci app check --gate lint\n`);
   return 0;
 }
 
 function slotMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
-  if (opts.positional.length !== 1) throw new Error('starci app slot takes exactly one path');
+  if (opts.positional.length !== 1) throw new UsageError('starci app slot takes exactly one path');
   const [input = ''] = opts.positional;
   const explained = explainPath({ repoRoot, input });
   if (opts.json) out(`${JSON.stringify(explained, null, 2)}\n`); else printExplain(explained, out);
@@ -681,13 +691,13 @@ const WORLD_ACTIONS = ['up', 'down', 'status'];
 
 /** `starci app world <up|down|status>`: the local test world. */
 async function worldAppMain(argv: string[], { cwd, edition, stackMain, stdout: out, stderr: err }: AppIo): Promise<number> {
-  if (!WORLD_ACTIONS.includes(argv[0] as string)) throw new Error(`starci app world takes ${WORLD_ACTIONS.join(', ')}`);
+  if (!WORLD_ACTIONS.includes(argv[0] as string)) throw new UsageError(`starci app world takes ${WORLD_ACTIONS.join(', ')}`);
   if ((edition ?? declaredEdition(cwd)) === 'lite') throw new Error('starci app world up|down|status manage the local test world of the full edition; a lite app starts its local database with npm run db:start');
   const run = stackMain ?? await installedStackMain(cwd);
   return run(argv, { cwd, out, err }) as Promise<number>;
 }
 
-const DIRECT_VERBS = new Map<string, (argv: string[], io: AppIo) => Promise<number> | number>([['ci', async (argv: string[], io: AppIo) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['lint', lintMain], ['secret', secretMain], ['db', databaseMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['world', worldAppMain], ['release', releaseMain], ['coverage', async (argv: string[], io: AppIo) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['codemod', codemodMain]]);
+const DIRECT_VERBS = new Map<string, (argv: string[], io: AppIo) => Promise<number> | number>([['ci', async (argv: string[], io: AppIo) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['secret', secretMain], ['db', databaseMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['world', worldAppMain], ['release', releaseMain], ['coverage', async (argv: string[], io: AppIo) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['codemod', codemodMain]]);
 
 function dispatchMain(verb: string, argv: string[], io: AppIo): Promise<number> | number {
   if (verb === 'sync') return syncMain([verb, ...argv], io);
@@ -696,10 +706,12 @@ function dispatchMain(verb: string, argv: string[], io: AppIo): Promise<number> 
   return (PARSED[verb] as ParsedVerb).run(parse(verb, argv), io);
 }
 
+/** What `main` prints for a thrown error: the usage only after a usage error; a refusal or a tool failure prints its code and message alone. */
 function errorMessage(error: unknown): string {
   if (error instanceof EditionRefusal || error instanceof UpgradeError || error instanceof HfsSlotsError || error instanceof SyncError) return `${(error as Error).message}\n`;
   if (error instanceof ScaffoldError) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
-  return `starci app: ${(error as Error).message}\n${USAGE}`;
+  if (error instanceof UsageError) return `starci app: ${error.message}\n${USAGE}`;
+  return `starci app: ${(error as Error).message}\n`;
 }
 
 /**
@@ -715,8 +727,8 @@ export async function main(argv: string[], {
   try {
     const global = globalOptions(argv, path.resolve(baseCwd));
     const [verb, ...given] = global.argv;
-    // --quiet silences stdout for every verb but check and lint, whose diagnosis it keeps (their progress on stderr is what it mutes).
-    const out = global.quiet && !['check', 'lint'].includes(verb as string) ? () => {} : stdout;
+    // --quiet silences stdout for every verb but check, whose diagnosis it keeps (its progress on stderr is what it mutes).
+    const out = global.quiet && verb !== 'check' ? () => {} : stdout;
     if (global.help) { out(USAGE); return 0; }
     if (!VERBS.includes(verb as string)) { stderr(USAGE); return 2; }
     const { edition, argv: rest } = editionOption(verb as string, given);

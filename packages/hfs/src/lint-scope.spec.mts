@@ -1,4 +1,4 @@
-// lint-scope.spec.mjs - the lint scope `starci app lint` reads from the installed canon's flat config (canonScope): global ignores prune
+// lint-scope.spec.mjs - the lint scope `starci app check --gate lint` reads from the installed canon's flat config (canonScope): global ignores prune
 // the walk, and a block's own `ignores` narrow only that block (the canons' Sonar-way block), as flat config defines them.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

@@ -3305,11 +3305,11 @@ HFS_CANON_PIN_DRIFT:
   kind: check-finding
 
 HFS_CI_MISSING_CANON:
-  title: "CI runs the pinned `starci app lint`; pre-push runs typecheck and lint"
+  title: "CI runs the pinned `starci app check --gate lint`; pre-push runs typecheck and lint"
   title_vi: "CI thiếu bước canon"
   meaning_vi: "Workflow/husky thiếu bước `<step>`. Cấu trúc chỉ được kiểm khi agent chạy — CI phải tự kiểm."
   causes_vi:
-    - "Vi phạm luật R13: CI phải chạy `starci app lint`; pre-push phải có `typecheck` + `lint`."
+    - "Vi phạm luật R13: CI phải chạy `starci app check --gate lint`; pre-push phải có `typecheck` + `lint`."
   nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra (nợ hàng loạt có codemod của HFS); không cần ai can thiệp thêm."
   owner: op-retry
   kind: check-finding
@@ -3698,7 +3698,7 @@ HFS_CHECK_CACHE_MISSING:
 HFS_FORMAT:
   title: "Prettier is the only formatter"
   title_vi: "Chưa format bằng Prettier"
-  meaning_vi: "`<file>` chưa được format. Chạy `starci app lint --fix`."
+  meaning_vi: "`<file>` chưa được format. Chạy `npm run format`."
   causes_vi:
     - "Vi phạm luật R19: Prettier (config `@starci/prettier-config`) là formatter duy nhất; ESLint không còn luật định dạng."
   nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra (nợ hàng loạt có codemod của HFS); không cần ai can thiệp thêm."
@@ -3899,7 +3899,7 @@ HFS_MODULE_TIER_INVALID:
 HFS_MONO_FE_WORKSPACE:
   title: "An fe workspace manifest breaks the workspace shape"
   title_vi: "Manifest của một workspace fe sai hình dạng"
-  meaning_vi: "Mỗi app fe `fe/apps/<app>` là workspace `@<project>/<app>`, private, có đúng các script build, dev, lint (`starci app lint --workspace .`), start và typecheck; mỗi gói `fe/packages/<pkg>` là private và có build, typecheck cùng script lint của workspace."
+  meaning_vi: "Mỗi app fe `fe/apps/<app>` là workspace `@<project>/<app>`, private, có đúng các script build, dev, start và typecheck; mỗi gói `fe/packages/<pkg>` là private và có build, typecheck; workspace không có script lint, lint chạy một lần từ gốc bằng `starci app check --gate lint`."
   causes_vi:
     - "Vi phạm luật R144: turbo chạy các task theo script của từng workspace; tên, script hoặc cờ private sai khiến build, lint hoặc typecheck của app bị bỏ qua hoặc chạy khác chuẩn."
   nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: đặt tên `@<project>/<app>`, `\"private\": true` và đúng bộ script trong `package.json` của workspace đó."

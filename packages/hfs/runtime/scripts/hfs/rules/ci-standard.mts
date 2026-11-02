@@ -141,7 +141,7 @@ function fullHistory(doc: Parsed, say: Parsed) {
   for (const [id, job] of jobsOf(doc)) {
     const steps = stepsOf(job);
     const base = steps.findIndex((step: Parsed) => /STARCI_BASE_REF=.*>>\s*"?\$GITHUB_ENV"?/.test(runOf(step)));
-    const lint = steps.findIndex((step: Parsed) => /\bnpm run lint\b|\bstarci app lint\b/.test(runOf(step)));
+    const lint = steps.findIndex((step: Parsed) => /\bnpm run lint\b|\bapp check\b[^\n]*--gate[ =]lint\b/.test(runOf(step)));
     if (lint >= 0 && (base < 0 || base > lint)) out.push(say('full-history-base-ref', `job ${id} must write STARCI_BASE_REF to GITHUB_ENV before its first lint step`));
   }
   return out;
@@ -165,7 +165,7 @@ function sonarLintPerSide(doc: Parsed, say: Parsed) {
   for (const [id, job] of jobsOf(doc)) {
     for (const step of stepsOf(job)) {
       const run = runOf(step);
-      if (/\b(?:npm run lint|starci(?:\.mjs)?["']?\s+app lint|app lint)\b/.test(run) && /\s--out\b/.test(run) && !/\s--side\s+(?:be\b|fe\b|\$\{\{\s*matrix\.side\s*\}\})/.test(run)) {
+      if (/\b(?:npm run lint|app check)\b/.test(run) && /\s--out\b/.test(run) && !/\s--side\s+(?:be\b|fe\b|\$\{\{\s*matrix\.side\s*\}\})/.test(run)) {
         out.push(say('sonar-lint-per-side', `job ${id}, step ${step.name ?? 'lint'}: a lint with a Sonar import must name its side (--side be|fe) and the reports are merged afterwards; a combined lint with Sonar breaks the standard`));
       }
     }

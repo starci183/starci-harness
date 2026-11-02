@@ -1037,7 +1037,7 @@ slots:
     rules: [HFS_MANAGED_FILE_DRIFT]
   - id: app.starcistacks.cache
     profiles: [app]
-    # The committed result cache of `starci app check` and `starci app lint` (ruling app-check-cache, contexts/project/check-cache.md): JSON Lines records keyed by
+    # The committed result cache of `starci app check` (ruling app-check-cache, contexts/project/check-cache.md): JSON Lines records keyed by
     # content, one folder per family. App-owned and written only by the CLI; sync never renders, overwrites or judges it. Both editions.
     path: ".starcistacks/cache/"
     presence: optional

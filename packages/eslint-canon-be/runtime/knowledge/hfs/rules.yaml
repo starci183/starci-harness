@@ -21,9 +21,9 @@ version: 3.1.0
 gates:
   pre-commit: the managed L0 hook runs app check --staged, managed-file drift, ESLint per side and stylelint on staged source, and prettier on staged files; typecheck and targeted specs belong to the op gate under R225
   pre-push: the managed app hook invokes the bundled push policy under R225; it starts no source check, build or test
-  settle: the op gate `starci gate run` over the op's changed files (merge guard, starci app lint --changed, codegen, tsc, the slice's specs; only findings new against the workflow's previous checkpoint block), re-read at starci kernel settle, which refuses a red done; a green settle commits the op's checkpoint on wf-<workflowId>
+  settle: the op gate `starci gate run` over the op's changed files (merge guard, starci app check, codegen, tsc, the slice's specs; only findings new against the workflow's previous checkpoint block), re-read at starci kernel settle, which refuses a red done; a green settle commits the op's checkpoint on wf-<workflowId>
   land: the workflow's finish, the only time main is touched - gate.mjs over the whole workflow branch against its merge-base with main, the merge guard, review.verify of the exact head that lands, the branch rebased onto main, then main fast-forwarded and pushed
-  ci: GitHub Actions runs the same pinned starci app lint, format:check, typecheck, unit with the per-file coverage threshold, build:be and build:fe, then the Sonar scan and gate
+  ci: GitHub Actions runs the same pinned starci app check --gate lint, format:check, typecheck, unit with the per-file coverage threshold, build:be and build:fe, then the Sonar scan and gate
   sonar: Sonar quality gate (knowledge/sonar-gate.yaml) - the imported lint findings, duplication, cognitive complexity and the coverage of the logic of be/src/modules at 100
   runtime: "`starci runtime check` (npm run check) of the StarCi runtime repository itself: scripts/checks/check-runtime.mjs runs node --check, scripts/hfs/runtime-check.mjs with knowledge/hfs/runtime-slots.yaml, and the retained self-checks"
 enforcerKinds:
@@ -229,7 +229,7 @@ rules:
     editions: [lite, full]
     docs: [docs/hfs-legacy-tooling.md#ci-and-hooks]
     code: "HFS_CI_MISSING_CANON"
-    law: "CI runs the pinned `starci app lint` (`npm run lint`), a clone never redirects `core.hooksPath` away from husky, and the folder a set `core.hooksPath` names holds the installed hooks in every checkout (husky's dispatcher in `.husky/_`), so no commit lands without the pre-commit gate."
+    law: "CI runs the pinned `starci app check --gate lint` (`npm run lint`), a clone never redirects `core.hooksPath` away from husky, and the folder a set `core.hooksPath` names holds the installed hooks in every checkout (husky's dispatcher in `.husky/_`), so no commit lands without the pre-commit gate."
     kinds: [check, codemod]
     gates: [land, ci]
     failureCodes: ["HFS_CI_MISSING_CANON", "HFS_HOOKS_PATH_REDIRECTED", "HFS_HOOKS_NOT_INSTALLED"]
@@ -2503,7 +2503,7 @@ rules:
       - {path: packages/hfs/src/legacy-monorepo-coverage.spec.mjs, edition: full, codes: [HFS_MONO_WORKSPACES]}
   - id: R144
     code: "HFS_MONO_FE_WORKSPACE"
-    law: "Every fe app `fe/apps/<app>` is an npm workspace: its `package.json` is named `@<project>/<app>`, is private, declares its own runtime dependencies and has exactly the scripts `build: next build`, `dev: next dev`, `lint: starci app lint --workspace .`, `start: next start` and `typecheck: tsc --noEmit`; every fe package `fe/packages/<pkg>` is private with `build`, `typecheck` and the same workspace `lint` script."
+    law: "Every fe app `fe/apps/<app>` is an npm workspace: its `package.json` is named `@<project>/<app>`, is private, declares its own runtime dependencies and has exactly the scripts `build: next build`, `dev: next dev`, `start: next start` and `typecheck: tsc --noEmit`; every fe package `fe/packages/<pkg>` is private with `build` and `typecheck`; no workspace has a `lint` script, the app is linted once from the root with `starci app check --gate lint`."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["HFS_MONO_FE_WORKSPACE"]

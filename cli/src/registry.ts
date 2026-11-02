@@ -22,7 +22,6 @@ import { appCodemodVerb } from "./core/app/codemod.js"
 import { appCoverageVerb } from "./core/app/coverage.js"
 import { appDbVerb } from "./core/app/db.js"
 import { appEmitVerb } from "./core/app/emit.js"
-import { appLintVerb } from "./core/app/lint.js"
 import { appReleaseVerb } from "./core/app/release.js"
 import { appScaffoldVerb } from "./core/app/scaffold.js"
 import { appSecretVerb } from "./core/app/secret.js"
@@ -144,7 +143,6 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     appCoverageVerb,
     appDbVerb,
     appEmitVerb,
-    appLintVerb,
     appReleaseVerb,
     appScaffoldVerb,
     appSecretVerb,

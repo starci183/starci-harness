@@ -1,7 +1,8 @@
-// pipeline.mjs - HFS_CI_MISSING_CANON (R13): CI runs the pinned `starci app lint`.
-//   .github/workflows/ci.yml   a `run:` step that runs the one lint entry: `starci app lint`,
-//                              `npx starci-harness[@<version>] app lint`, or `npm run <script>` whose command runs `starci app lint`
-//                              (`npm run lint`, arguments after `--` allowed); a version named in the step is the starci-harness pin,
+// pipeline.mjs - HFS_CI_MISSING_CANON (R13): CI runs the pinned lint gate of `starci app check`.
+//   .github/workflows/ci.yml   a `run:` step that runs the lint gate: `starci app check --gate lint`,
+//                              `npx starci-harness[@<version>] app check --gate lint`, or `npm run <script>` whose command runs it
+//                              (`npm run lint`, arguments after `--` allowed);
+//                              a version named in the step is the starci-harness pin,
 //                              the version of the CLI that runs the check (canon-pins.mjs; an installed one is pinned by the pin check, R15)
 //   (the push hook is no lint or typecheck step: it checks the release gate, scripts/hfs/runtime-rules/hook-shape.mjs keeps its shape)
 // A missing file is the slot manifest's finding (HFS_SLOT_REQUIRED_MISSING); a file that is present and lacks the step is this rule's.
@@ -15,7 +16,8 @@ const CI_FILE = '.github/workflows/ci.yml';
 const hfsPackage = 'starci-harness';
 const RUN_PREFIX = /^\s*(?:-\s+)?run:/;
 const NPX_PREFIX = /^npx\s+(?:(?:--no-install|-y)\s+)?/;
-const LINT_COMMAND = /^(?:starci-harness(?:@(\S+))?|starci)\s+app\s+lint/;
+const LINT_COMMAND = /^(?:starci-harness(?:@(\S+))?|starci)\s+app\s+check/;
+const GATE_ARGUMENT = /(?:^|\s)--gate(?:=|\s+)(\S+)/g;
 const NPM_RUN_PREFIX = 'npm run ';
 const EXAMPLE_RUN_PREFIX = 'node node_modules/@starci/hfs/runtime/scripts/hfs/example-secrets.mjs --run . -- ';
 const SCRIPT_NAME = /^[\w:.-]+/;
@@ -58,14 +60,17 @@ function parseNpmRun(command: string) {
   return args !== null && !LINE_TERMINATOR.test(args) ? { script, args } : null;
 }
 
-/** { version } of a `starci app lint` command (`version` undefined when no starci-harness version is named), else null. */
+/** Whether the arguments of an `app check` select the lint gate: `--gate lint` (or `--gate=lint`) among them. */
+const runsLintGate = (tail: string) => [...tail.matchAll(GATE_ARGUMENT)].some((gate) => gate[1] === 'lint');
+
+/** { version } of a `starci app check` command that runs the lint gate (`version` undefined when no starci-harness version is named), else null. */
 function lintCommandOf(command: string) {
   const rest = command.replace(NPX_PREFIX, '');
   const match = LINT_COMMAND.exec(rest);
   if (!match) return null;
   const tail = rest.slice(match[0].length);
   if (tail && !(WHITESPACE.test(tail[0]!) && !LINE_TERMINATOR.test(tail.slice(1)))) return null;
-  return { version: match[1] };
+  return runsLintGate(tail) ? { version: match[1] } : null;
 }
 
 /** `npm run <script> -- <args>` spelled out as the root package.json script it runs; any other command is itself. */
@@ -88,9 +93,9 @@ export function pipelineFindings({ repoRoot, files, pins }: { repoRoot: string; 
     const commands = commandsOf(ci);
     const selected = isRuntimeExampleApp(repoRoot) ? commands.map(exampleCommandOf) : commands;
     const lints = selected.flatMap((command: string) => chainedCommands(expanded(command, scripts))).map(lintCommandOf).filter(Boolean);
-    if (!lints.length) findings.push(found(CI_MISSING_CANON, CI_FILE, `${CI_FILE} has no step that runs \`starci app lint\` (directly or through \`npm run lint\`); CI runs the one lint entry, which includes the repository check`, { step: 'starci app lint' }));
+    if (!lints.length) findings.push(found(CI_MISSING_CANON, CI_FILE, `${CI_FILE} has no step that runs \`starci app check --gate lint\` (directly or through \`npm run lint\`); CI runs the lint gate of the one app check`, { step: 'starci app check --gate lint' }));
     else if (pinned && !lints.some((match: Parsed) => match.version === undefined || match.version === pinned)) {
-      findings.push(found(CI_MISSING_CANON, CI_FILE, `${CI_FILE} runs starci app lint at ${lints[0]!.version}, but ${hfsPackage} is pinned at ${pinned}; run the pinned version`, { step: 'starci app lint', pinned }));
+      findings.push(found(CI_MISSING_CANON, CI_FILE, `${CI_FILE} runs starci app check at ${lints[0]!.version}, but ${hfsPackage} is pinned at ${pinned}; run the pinned version`, { step: 'starci app check --gate lint', pinned }));
     }
   }
   return findings;

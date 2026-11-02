@@ -254,7 +254,7 @@ for (const entry of [
     Object.assign(recommended, entry.recommended)
 }
 
-// The result cache of `starci app lint` (contexts/project/check-cache.md) reads these two declarations of the installed canon.
+// The result cache of `starci app check --gate lint` (contexts/project/check-cache.md) reads these two declarations of the installed canon.
 export { crossFileInputs } from "./lib/cross-file-inputs.ts"
 export type { CrossFileInput } from "./lib/cross-file-inputs.ts"
 export { projectGraph } from "./project-graph.ts"
