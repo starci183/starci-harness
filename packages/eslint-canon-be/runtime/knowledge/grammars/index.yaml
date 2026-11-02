@@ -68,6 +68,8 @@ families:
       package: '@starci/grammar'
       entry: '@starci/grammar/common'
       styleEntry: '@starci/grammar/common.css'
+      semanticRoles:
+        page: { export: Page, entries: ['@starci/grammar/common', '@starci/grammar/<family>'], segment: { attribute: header, member: tabs }, bodyContainers: [PaneGrid, Pane] }
       peers: [react, '@heroui/react', '@xyflow/react', react-aria-components]
     packageSnapshot: common/DNA.yaml
     scope: |

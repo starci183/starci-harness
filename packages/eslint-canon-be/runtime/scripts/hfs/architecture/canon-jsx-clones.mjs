@@ -152,12 +152,16 @@ function nestedDataObjects(ts, expression, bindingOf, excluded) {
                 nestedDataObjects(ts, element, bindingOf, excluded);
     }
 }
+/** The one app status-owner binding of FE-ERROR-1, shared by clone and body-flow proofs. */
+export function canonicalStatusOwnerBinding(module, name) {
+    return name === 'SlotView' && module !== null && /(?:^|\/)components\/composites\/SlotView(?:\/index)?(?:\.[cm]?tsx?)?$/.test(module);
+}
 /** Resolve the canonical status owner through its import binding, including aliases and namespaces. */
 function statusOwner(ts, tag, bindingOf) {
     const binding = ts.isIdentifier(tag) ? bindingOf(tag) : ts.isPropertyAccessExpression(tag) && ts.isIdentifier(tag.expression) ? bindingOf(tag.expression) : null;
     const module = binding?.kind === 'component' || binding?.kind === 'namespace' ? binding.module : null;
     const name = binding?.kind === 'component' ? binding.name : ts.isPropertyAccessExpression(tag) ? tag.name.text : null;
-    return name === 'SlotView' && module !== null && /(?:^|\/)components\/composites\/SlotView(?:\/index)?(?:\.[cm]?tsx?)?$/.test(module);
+    return canonicalStatusOwnerBinding(module, name);
 }
 /** The mandated status wiring breaks clone windows; its render body remains ordinary compared code. */
 function statusRecipe(ts, opening, bindingOf, excluded) {

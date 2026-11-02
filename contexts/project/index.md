@@ -93,7 +93,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [code/fe/README.md](../code/fe/README.md) · 8 KB — How the code of a Next.js front end is written: where a unit lives, what its files are called, how a component function is shaped, where data, text and colour come from, how a ...
   - sections: FE-RULE-OWNERSHIP The placement test puts each requirement and its check with one owner · Data status of a region · Topics · Reading order
   - ids: Front-end
-- [code/fe/architecture.md](../code/fe/architecture.md) · 4 KB — The responsibility graph of a Next.js app: who adapts the framework, who owns a scenario, who owns a world, and which way imports point.
+- [code/fe/architecture.md](../code/fe/architecture.md) · 5 KB — The responsibility graph of a Next.js app: who adapts the framework, who owns a scenario, who owns a world, and which way imports point.
   - sections: FE-ARCHITECTURE-1 A route adapts the framework to one feature owner · FE-ARCHITECTURE-2 Imports point down the tiers, through owner entries, without cycles · FE-ARCHITECTURE-3 A world is owned by a connected block, never by a page or a lower tier · FE-ARCHITECTURE-4 Apps never import each other; shared code is a built package · FE-ROUTE The front end serves no API
   - ids: Front-end
 - [code/fe/boundaries.md](../code/fe/boundaries.md) · 4 KB — Which boundary handles a render failure or a wait, where the client boundary sits, where the client providers live, and who writes a cookie.
@@ -109,7 +109,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: fe.source-root-pinned, source-layout
 - [code/fe/form.md](../code/fe/form.md) · 2 KB — How a form is validated and submitted, and how the outcome of a write reaches the user.
   - sections: FE-FORM One form hook per form, with translated messages and contract bounds · FE-TOAST Every user-started write reports through `modules/toast`
-- [code/fe/function.md](../code/fe/function.md) · 11 KB — What a component, route or page owner takes and returns.
+- [code/fe/function.md](../code/fe/function.md) · 12 KB — What a component, route or page owner takes and returns.
   - sections: FE-FUNCTION-1 A component takes one `props` parameter of a named type · FE-FUNCTION-2 A split unit is `X` over `XBase({ shape?, props, on? })`, drawn on three axes · FE-FUNCTION-3 The connected half resolves everything and renders its twin · FE-FUNCTION-4 A lower tier takes narrow resolved fields · FE-FUNCTION-5 The route file adapts; the page owner holds the metadata · FE-FUNCTION-6 A function stays within its budget and free of measured smells · FE-FUNCTION-7 Every shape member is enumerated, drawn and storied · The pattern at work: a handoff block
 - [code/fe/i18n.md](../code/fe/i18n.md) · 5 KB — Where readable text lives, how the locale is chosen and how a value is formatted.
   - sections: FE-I18N-1 next-intl is written once: routing, request config, navigation · FE-I18N-2 No display text in source · FE-I18N-3 Every locale has the same keys, and every key is read · FE-I18N-4 Navigation is locale-aware and every path comes from `modules/routes` · FE-I18N-5 Each kind of value has one formatting owner
@@ -151,7 +151,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [decisions/open-grammar.md](../decisions/open-grammar.md) · 15 KB — Decisions taken while writing grammars and vendor, each with the alternative and the reason, so the owner can overturn one in one place.
   - sections: Decisions · offset-pop, designed on the contract · Code follow-ups named by the grammar files · Gaps: choices an app can make two ways · What the contract cannot express yet
 - [decisions/open-ui.md](../decisions/open-ui.md) · 9 KB — Choices made while writing `contexts/ui`, each awaiting the owner's feedback.
-- [decisions/rulings.yaml](../decisions/rulings.yaml) · 99 KB — The one log of owner rulings that knowledge, the grammar package, the canon lint and the policy exceptions carry.
+- [decisions/rulings.yaml](../decisions/rulings.yaml) · 100 KB — The one log of owner rulings that knowledge, the grammar package, the canon lint and the policy exceptions carry.
   - ids: COLLECTION-1/case-8, CTA-1/case-5, CTA-1/case-6, CTA-1/case-7, CTA-4/case-5, FOCUS-1/case-6, LAYOUT-1/case-8, LAYOUT-1/case-9, R212, R212/case-10, R212/case-4, R212/case-7, R212/case-9, R318/case-1, RESPONSIVE-1/case-6, STATE-6/case-5, STATE-6/case-6, STATE-8/loading-keeps-anatomy, accent-corner, agent-avatar-initials-bot-badge, agent-keyed-schedules, alert-white-surface, app-check-cache, app-check-cli-selectors and 135 more
 - [grammars/README.md](../grammars/README.md) · 14 KB — A grammar is the visual language an app's UI is drawn in.
   - sections: Three layers · The model: one contract, composed implementations · Files · Who owns what · Theming · Reading order for an author · Where feedback lands · Grammar lint
