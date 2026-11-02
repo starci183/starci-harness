@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 5.0.1 - 2026-11-02
+
+- Fixed: function-subject provenance follows callable re-exports to the canonical declaration, so unit provider checks recognize the real subject through barrel exports while retaining invocation and dependency checks.
+
 ## 5.0.0 - 2026-11-02
 
 - Changed: repeatable `app check --gate` selectors dispatch to the existing check families. Sonar and Codecov selectors reuse the combined quality-baseline engine and retain its prediction labels.

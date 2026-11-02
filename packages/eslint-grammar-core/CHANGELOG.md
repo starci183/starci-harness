@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.21.5 - 2026-11-02
+
+- Changed: requires canon FE 9.9.5 and follows the HFS 5.0.1 canon-pin cohort; the Grammar component runtime stays at 0.21.3.
+
 ## 0.21.4 - 2026-11-02
 
 - Changed: requires canon FE 9.9.4 and refreshes bundled pins for HFS 5.0.0; the Grammar component runtime stays at 0.21.3.

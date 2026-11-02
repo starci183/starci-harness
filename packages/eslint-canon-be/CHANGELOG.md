@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 3.11.12 - 2026-11-02
+
+- Fixed: unit-spec subject discovery resolves callable re-exports through the canonical HFS provenance owner, including namespace and renamed exports, without relaxing real subject invocation requirements.
+- Changed: bundled pins follow HFS 5.0.1 and the coherent canon cohort.
+
 ## 3.11.11 - 2026-11-02
 
 - Changed: refreshed bundled canonical pins for the HFS 5.0.0 CLI selector cohort; the Grammar component runtime stays at 0.21.3.

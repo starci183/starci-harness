@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 9.9.5 - 2026-11-02
+
+- Changed: synchronized the canonical function-provenance runtime and HFS 5.0.1 cohort pins; the Grammar component runtime stays at 0.21.3.
+
 ## 9.9.4 - 2026-11-02
 
 - Changed: refreshed bundled canonical pins for the HFS 5.0.0 project quality-gate cohort; the Grammar component runtime stays at 0.21.3.
