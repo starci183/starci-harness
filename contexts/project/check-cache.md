@@ -39,8 +39,8 @@ prediction family through the CLI; it adds no server adapter, new pass condition
 
 Every family reports its diagnosis on its own line, `<family>: <full|diff> (<reason>), checked <n>, reused <n>;
 findings <new> new, <known> known, <fixed> fixed`, where known findings are those its records already held, so a run
-always says what is wrong and whether it is new. A family that always runs (`secrets`, the cheap structure rules)
-still records its findings for that comparison; it never skips work on them. `--json` carries the same per family.
+always says what is wrong and whether it is new. A rule that always runs (the managed files, the tree and
+untracked entries, the rules that stat or walk the work tree) still records its findings for that comparison; it never skips work on them. `--json` carries the same per family.
 
 The flags of today reconcile as follows. `--fast` and its `--base` are removed: the default run is diff-only and, unlike `--fast`, its result equals a full run's (clones and dead
 exports included), and CI derives its trusted base itself. `wiring` is the family above. `--coverage-from
@@ -164,7 +164,10 @@ addition, and deleted paths drop every record they own.
 |---|---|---|---|
 | tracked files, content index, fingerprint, trust | always | never | every run; they decide the rest |
 | managed files against their render | always | never | every run: cheap, and its inputs are the templates and the managed files |
-| slot, tree, pin, secret and content rules of the app pass, root and sides | always | never | every run: they read untracked entries and git state the index does not hold; the boot proof, the costly part, is lifted out as its own scoped step below, and any rule measured above a few seconds follows it |
+| plaintext secrets (R06 and the lite custody L17: `--gate secrets` and `--gate hfs`), bypass markers (R303), soft file size | per file | the path's hash is unchanged, and the hash of the one other file the rule reads (a README's `.starcistacks/application-stacks.yaml`) | changed and added paths |
+| documentation freshness, script hygiene, database configuration, front-end build args | read set | every file the rule read through `readText` / `readJson` is unchanged (each recorded with the hash it had) and the tracked path list and the TypeScript version are the same | any change to a file it read; a tracked path added or removed |
+| recurring-work scan of the Swarm release rules (the `pg_cron` and application SQL it parses) | per file | the path's hash, the stacks manifest and the parsers are unchanged | changed and added paths |
+| slot, tree, pin and the remaining content rules of the app pass, root and sides | always | never | every run: they read untracked entries and git state the index does not hold, or stat and list the work tree, which no key holds; the boot proof, the costly part, is lifted out as its own scoped step below |
 | Prettier (`HFS_FORMAT`) | per file | the path's hash is unchanged | changed and added paths |
 | database rules (`DB_*`) | scoped | every `db/` hash and the merge-base the baseline rules compare with are unchanged | any `db/` change or a new merge-base |
 | contract emit | scoped | the be side key is unchanged | any be change |
@@ -180,12 +183,30 @@ addition, and deleted paths drop every record they own.
 A side key is the sha256 of everything the side's whole-program steps read: the hash of each tracked path of the side
 (`absent` for one deleted in the work tree), its staged entries (the machine reads the index), and the untracked files
 its TypeScript program reads (what its tsconfig includes or an import resolves to that git does not track, generated
-code included). The machine and the type-aware rules read the whole program, so a scoped step re-runs the whole side:
+code included). The key hands back the hash it took of each input (`SideKey.hashes`), and the record is stored only if every
+input still has that hash when the step ends: an untracked input has no hash in the content index, so it is compared with
+the one the key took, and a stable generated file no longer discards the record (the front end of an app with generated GraphQL
+code never reused its machine before). The machine and the type-aware rules read the whole program, so a scoped step re-runs the whole side:
 the machine on changed owners alone (`--fast`) skips duplicate code and dead exports and is not the full result.
 The `types` family keys each workspace's program like a side: an unchanged key reuses its recorded diagnostics, a
 changed one runs that program's `tsc` in full. TypeScript's `.tsbuildinfo` speeds that run but is host state, not a
 result (it holds versions and signatures, not findings), so it stays in the untracked tool cache of slot
 `app.tool-cache` and is never committed.
+
+### The structure pass's content rules
+
+The content rules of the pass used to run over every tracked file on every run. Two declarations, both in the rule runner and proved by `check-cache-structure-rules.spec.mts`
+under a file-system recorder, let the cache keep them (`check/hfs/`, records `file-rules`, `rule:<finder>` and `unit:<id>`):
+
+- a **per-file rule** (`perFileRules` of `check.mts`) judges a file from its bytes and the files its `deps` names, and every finding carries that file's path; the record
+  of a file holds each such rule's findings for it. `check/secrets/` keeps the findings of the secrets codes for the new / known / fixed comparison, and `--gate secrets` reuses the same
+  per-file records, so a warm run judges nothing and a run after an edit judges that file;
+- a **cross-file finder** (`KEYED_FINDERS` of `a15-findings.mts`) reaches the app only through `readText` / `readJson`. The first run records the read set, each file with its hash;
+  the record is reused while every file of the set, the tracked path list (the finders derive their file sets from it) and the TypeScript version are the same. A finder that stats,
+  lists or walks the work tree is never a member, and the spec fails on a member that does.
+
+The files of the cache folder itself (tracked or not) are judged live and never keyed: every run rewrites them. The cache never changes a verdict: a finding that does not name the file a per-file rule judges makes the whole batch run uncached, and the plain `checkRepo` of every other caller runs the rules
+as before. An edit during the run drops the record of the file it touched at the flush, as for every other step.
 
 ## ESLint
 
@@ -265,7 +286,7 @@ adoption and a forgotten refresh never block a change.
 ## Edge cases
 
 - **An edit during the run.** The content index is hashed again before writing; a file whose hash changed while the run
-  read it gets no record, and a scoped step or side whose inputs include it is not stored.
+  read it gets no record, and a scoped step or side whose inputs include it is not stored. An untracked input (generated code) is held to the hash the side key took of it.
 - **A step that throws or a linter that cannot complete** stores nothing of that step.
 - **Branch switches and merges** are content changes like any edit; a union-merged folder is normalised by the next
   write.
