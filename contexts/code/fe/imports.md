@@ -20,7 +20,7 @@ Enforced by: R93 (`grammar-entry`; machine `grammar`), R321 (`no-grammar-shim`).
 
 ## FE-IMPORTS-2 Data enters through hooks
 
-Only the `hooks/swr` wrappers import `modules/api` operations and `swr`; domain hooks compose those wrappers; blocks
+Only the `hooks/swr` wrappers import `modules/api` operations and `swr`; hooks import generated contract bounds through the API owner entry; domain hooks compose those wrappers; blocks
 and features import hooks through the hooks entries; presentation never imports transport, at runtime or as a wire
 type.
 

@@ -366,7 +366,7 @@ function runHfsMachine(config: ArchitectureConfig, context: TypeContext, paths: 
   if (!hfsContext.program) return hfsChecks;
   const graph = buildHfsGraph(config, hfsContext);
   const input: CheckInput & { base: string | undefined } = { config, context: hfsContext, graph, base };
-  const runs: Record<string, () => MachineResult> = { tiers: () => checkTiers(graph), reachability: () => checkReachability(input), deadExports: () => checkDeadExports(input),
+  const runs: Record<string, () => MachineResult> = { tiers: () => checkTiers(graph, hfsContext.ts), reachability: () => checkReachability(input), deadExports: () => checkDeadExports(input),
     requiredFiles: () => checkRequiredFiles(input), clones: () => checkClones(input), symbols: () => checkSymbols(input), docLanguage: () => checkDocLanguage(input) };
   if (graph.profile === 'be') for (const [name, [check]] of Object.entries(BACKEND_MACHINE)) runs[name] = () => check(input);
   if (graph.profile === 'fe') for (const [name, [check]] of Object.entries(FRONTEND_MACHINE)) runs[name] = () => check(input);

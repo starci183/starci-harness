@@ -1,5 +1,6 @@
 import { byCodeUnit } from '../../lib/list.mjs';
-import type { ArchitectureConfig } from './config.mjs';
+import type { ArchitectureConfig, TypeScriptApi } from './config.mjs';
+import { isBoundsExport } from './contract-bounds.mjs';
 import type { ImportVerdict } from '../slots.mjs';
 import type { ArchitectureViolation, GraphEdge, HfsGraph } from './hfs-graph.mjs';
 import { registryListImport, registrySlot } from './entity-registry.mjs';
@@ -178,14 +179,37 @@ function reportReasonedTierViolation(graph: HfsGraph, edge: GraphEdge, answer: I
   });
 }
 
-function inspectTierEdge(graph: HfsGraph, edge: GraphEdge, tierRule: string, counts: TierCounts, violations: ArchitectureViolation[], coverage: { edgesChecked: number; unclassifiedEdges: number }) {
+/** A public API entry may expose generated contract data without exposing operations to a hook. */
+function contractMetadataEdge(graph: HfsGraph, ts: TypeScriptApi, edge: GraphEdge, verdict: ImportVerdict): boolean {
+  if (graph.profile !== 'fe' || verdict.reason !== 'tierDirection') return false;
+  const from = graph.files.get(edge.from);
+  const to = graph.files.get(edge.to);
+  if (from?.tier !== 'hooks' || to?.tier !== 'transport' || to.slot !== 'fe.modules.api' || !to.owner || to.owner.slot !== 'fe.modules' || to.owner.bindings.capability !== 'api') return false;
+  // The tier verdict precedes private-entry checks, so prove both app isolation and the owner entry here.
+  const fromApp = graph.resolver.classifyPath(edge.from).bindings?.app;
+  const toApp = graph.resolver.classifyPath(edge.to).bindings?.app;
+  if (!fromApp || fromApp !== toApp || edge.to !== `${to.owner.root}/index.ts`) return false;
+  const declaration = edge.edge.declaration;
+  let names: string[];
+  if (ts.isImportDeclaration(declaration)) {
+    const clause = declaration.importClause;
+    if (!clause || clause.name || !clause.namedBindings || !ts.isNamedImports(clause.namedBindings)) return false;
+    names = clause.namedBindings.elements.map(item => (item.propertyName ?? item.name).text);
+  } else if (ts.isExportDeclaration(declaration)) {
+    if (!declaration.exportClause || !ts.isNamedExports(declaration.exportClause)) return false;
+    names = declaration.exportClause.elements.map(item => (item.propertyName ?? item.name).text);
+  } else return false;
+  return names.length > 0 && names.every(name => isBoundsExport(to.abs, name));
+}
+
+function inspectTierEdge(graph: HfsGraph, ts: TypeScriptApi, edge: GraphEdge, tierRule: string, counts: TierCounts, violations: ArchitectureViolation[], coverage: { edgesChecked: number; unclassifiedEdges: number }) {
   const verdict = graph.resolver.importAllowed(edge.from, edge.to);
   if (verdict.reason === 'unowned' || verdict.reason?.startsWith('slot')) {
     coverage.unclassifiedEdges += 1;
     return;
   }
   coverage.edgesChecked += 1;
-  if (verdict.reason === 'tierDirection' && registryListImport(graph.resolver, edge)) return;
+  if (verdict.reason === 'tierDirection' && (registryListImport(graph.resolver, edge) || contractMetadataEdge(graph, ts, edge, verdict))) return;
   reportReasonedTierViolation(graph, edge, verdict, tierRule, counts, violations);
 }
 
@@ -234,13 +258,13 @@ function addOwnerCycleViolations(adjacency: Adjacency, witness: Map<string, Grap
   return components.length;
 }
 
-export function checkTiers(graph: HfsGraph) {
+export function checkTiers(graph: HfsGraph, ts: TypeScriptApi) {
   const { resolver, profile } = graph;
   const violations: ArchitectureViolation[] = [];
   const tierRule = profile === 'be' ? 'BE_TIER_DIRECTION' : 'FE_TIER_DIRECTION';
   const coverage = { edgesChecked: 0, unclassifiedEdges: 0 };
   const counts: TierCounts = { tierDirection: 0, layerOrder: 0, crossApp: 0 };
-  for (const edge of graph.edges) inspectTierEdge(graph, edge, tierRule, counts, violations, coverage);
+  for (const edge of graph.edges) inspectTierEdge(graph, ts, edge, tierRule, counts, violations, coverage);
 
   // Owner cycles: nodes are owner units, edges the imports between two distinct units.
   const { adjacency, witness } = ownerAdjacency(graph, resolver);

@@ -1,7 +1,8 @@
 /** R285: API operations are wrapped by the SWR family before product code calls them. */
 import { hfsOf } from "./lib/hfs.ts"
 import { readFileSync, readdirSync, type Dirent } from "node:fs"
-import { dirname, join, resolve } from "node:path"
+import { join } from "node:path"
+import { isBoundsExport } from "#runtime/scripts/hfs/architecture/contract-bounds.mjs"
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import { stringOf, walk } from "./lib/ast.ts"
 import { functionOf, type FunctionNode, type Variable } from "./lib/bindings.ts"
@@ -135,29 +136,6 @@ const isOperationSource = (context: AnyContext, value: unknown, only?: string): 
   if (found.some((entry) => OUTCOME_SLOTS.includes(entry.slot))) return false
   if (only !== undefined) return found.some((entry) => entry.slot === only)
   return found.some((entry) => OPERATION_SLOTS.includes(entry.slot))
-}
-
-/** The generated input-bounds module holds constants and a pure reader derived from the contract, never an operation. */
-const BOUNDS_MODULE = /(?:^|\/)__generated__\/input-bounds\.ts$/
-const RE_EXPORT = /export\s*\{([^}]*)\}\s*from\s*["']([^"']+)["']/g
-const ENTRY = /^\s*(type\s+)?([\w$]+)(?:\s+as\s+([\w$]+))?\s*$/
-
-/** True when the named export of `target` is, through a chain of relative named re-exports, defined by a generated input-bounds module. */
-const isBoundsExport = (target: string, name: string, depth = 0): boolean => {
-  if (depth > 4) return false
-  for (const file of [`${target}.ts`, `${target}/index.ts`, target]) {
-    if (BOUNDS_MODULE.test(file.replaceAll("\\", "/"))) return true
-    let text: string
-    try { text = readFileSync(file, "utf8") } catch { continue }
-    for (const [, list, source] of text.matchAll(RE_EXPORT)) {
-      if (list === undefined || source === undefined || !source.startsWith(".")) continue
-      for (const entry of list.split(",")) {
-        const [, kind, origin, exported] = ENTRY.exec(entry) ?? []
-        if (origin !== undefined && kind === undefined && (exported ?? origin) === name && isBoundsExport(resolve(dirname(file), source), origin, depth + 1)) return true
-      }
-    }
-  }
-  return false
 }
 
 /** A node that can bring a module in: an import, a re-export, a dynamic import or a `require` call. */
