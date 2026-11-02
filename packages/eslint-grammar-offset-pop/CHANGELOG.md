@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.8
+
+- Changed: Inherit core 0.21.8 mounted Page owner proofs and refresh the exact core peer and canon pins.
+
 ## 0.21.7
 
 - Changed: Bundled canon pins name the builder-provenance BE canon release and its coherent dependency cohort. This package changes no runtime behavior or rule severity.

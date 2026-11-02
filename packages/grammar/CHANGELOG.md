@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.8
+
+- Changed: Keep the component package and both lint families at the identical release version. Component source, styles and public API are unchanged; the build stamp carries this release version.
+
 ## 0.21.7
 
 - Changed: Keep the component package and both lint families at the identical release version as bundled canon pins change. Component source, styles and API are unchanged; the build stamp carries this version.

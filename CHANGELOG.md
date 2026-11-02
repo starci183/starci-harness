@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.45
+
+- Changed: Bundle the reviewed route Page/children context and search-eval repair with coherent package pins. The CLI keeps its served HFS requirement until CI follows package publication.
+
 ## 1.1.0-alpha.44
 
 - Changed: Bundled contexts name the builder-provenance canon cohort. Installed CLI dependencies stay on served npm pins until CI follows package publication.

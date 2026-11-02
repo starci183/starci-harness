@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.11.15
+
+- Changed: Refresh the declared shared JSX-clone runtime, semantic Grammar catalog and exact canon pins from their HFS owner. The BE rule source is unchanged.
+
 ## 3.11.14 - 2026-11-02
 
 - Fixed: canonical test builders accept repeated override literals by proving the actual kit factory through imports and immutable value aliases. Repeated raw entity rows, arbitrary partial-row callbacks and callable type annotations remain checked.

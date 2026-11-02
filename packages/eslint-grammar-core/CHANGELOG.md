@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.8
+
+- Changed: Use the shared FE owner-source and connected Page drawing proofs for mounted route frames, require FE 9.9.8, and refresh the declared runtime catalog and pins.
+
 ## 0.21.7
 
 - Changed: Bundled canon pins name the builder-provenance BE canon release and its coherent dependency cohort. This package changes no runtime behavior or rule severity.
