@@ -3,6 +3,7 @@
 ## 5.0.4
 
 - Changed: Record the existing shared Page semantic role in the selected canonical Grammar component contract, so universal composition proof does not infer concrete API names or accept an app-controlled switch.
+- Fixed: Run the package export proof's normal pack lifecycle in a private source copy, so prepack never rewrites emit modules that concurrent worker proofs import.
 
 ## 5.0.3
 

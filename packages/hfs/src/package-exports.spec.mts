@@ -5,9 +5,12 @@
 // cli/src, the sibling packages and the shipped scripts use; a new public specifier is added here when it is
 // made public.
 import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -35,20 +38,37 @@ test('every public specifier resolves through the exports map', () => {
   }
 });
 
-// `npm pack` walks the package folder; hfs-boot-proof.spec.mjs creates and removes its fixtures in .tmp-docs/ while the specs run
-// side by side, so a walk can meet a folder that is gone a moment later (ENOENT). That race, and only it, is tried again.
-function packDryRun(attempts = 3): string {
-  try {
-    return execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
-  } catch (error) {
-    const failure = error as { stderr?: unknown; message?: unknown };
-    if (attempts > 1 && /ENOENT[\s\S]*\.tmp-docs/u.test(String(failure.stderr ?? failure.message))) return packDryRun(attempts - 1);
-    throw error;
+// Normal pack lifecycles rebuild HFS's collocated .mjs files. Build a private copy so workers in other spec processes never
+// import a file while prepack is rewriting it, and the pack walk never meets another spec's temporary fixture directory.
+function packDryRun(t: TestContext): string {
+  const parent = fs.realpathSync(os.tmpdir());
+  const scratch = fs.mkdtempSync(path.join(parent, 'starci-hfs-pack-'));
+  const install = path.join(scratch, 'node_modules');
+  t.after(() => {
+    assert.equal(path.dirname(scratch), parent);
+    assert.ok(path.basename(scratch).startsWith('starci-hfs-pack-'));
+    const dependencyLink = fs.lstatSync(install, { throwIfNoEntry: false });
+    if (dependencyLink) {
+      assert.ok(dependencyLink.isSymbolicLink());
+      fs.unlinkSync(install);
+    }
+    fs.rmSync(scratch, { recursive: true, force: true });
+  });
+  const sources = execFileSync('git', ['ls-files', '-z', '--', '.'], { cwd: ROOT, encoding: 'utf8' }).split('\0').filter(Boolean);
+  for (const source of sources) {
+    const target = path.join(scratch, source);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(ROOT, source), target);
   }
+  fs.symlinkSync(fs.realpathSync(path.join(ROOT, 'node_modules')), install, 'junction');
+  return execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: scratch, encoding: 'utf8', shell: process.platform === 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
 }
 
-test('the packed tarball ships every specifier\'s file and no .mts source', () => {
-  const packed = JSON.parse(packDryRun());
+test('the packed tarball ships every specifier\'s file and no .mts source without rebuilding live workers', t => {
+  const compiler = path.join(ROOT, 'emit/compiler.mjs');
+  const before = fs.statSync(compiler, { bigint: true }).mtimeNs;
+  const packed = JSON.parse(packDryRun(t));
+  assert.equal(fs.statSync(compiler, { bigint: true }).mtimeNs, before, 'prepack must not rewrite the compiler imported by live workers');
   const files = new Set<string>(packed.flatMap((entry: { files: { path: string }[] }) => entry.files.map((file) => file.path)));
   for (const [specifier, target] of SPECIFIERS) {
     assert.ok(files.has(target), `${specifier} -> ${target} missing from the tarball`);
