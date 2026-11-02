@@ -5,10 +5,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { revParseQuery } from '../api/git/rev-parse-query.mjs';
 import { remote as gitRemote } from '../api/git/remote.mjs';
-import { gitOutputOf } from '../lib/git.mjs';
+import { gitOutputOf, withoutGitLocalEnv } from '../lib/git.mjs';
 import { trimTrailingSlashes } from './trailing-slashes.mjs';
 /** One git call (a scripts/api/git call file) in `root`: its trimmed stdout; throws unless git exits 0. */
-const git = (call, root, args) => gitOutputOf(call(args, { cwd: root })).trim(); // gitOutputOf threw unless git exited 0, whose stdout is text
+const git = (call, root, args, env) => gitOutputOf(call(args, { cwd: root, env: identityQueryEnvironment(env) })).trim(); // gitOutputOf threw unless git exited 0, whose stdout is text
+/** Identity queries need repository configuration, never age identities or selected service connection credentials. */
+export function identityQueryEnvironment(parent, privateNames = []) {
+    const selected = new Set(privateNames.map((name) => name.toUpperCase()));
+    return Object.fromEntries(Object.entries(withoutGitLocalEnv(parent)).filter(([name]) => !selected.has(name.toUpperCase()) && !/^(?:SOPS_AGE_KEY(?:_FILE)?|SONAR_.*)$/iu.test(name)));
+}
 const real = (p) => { try {
     return fs.realpathSync(p);
 }
@@ -26,20 +31,20 @@ catch {
     return null;
 } };
 /** { repositoryRoot, inWorkTree, home } for `root`: home is the main checkout folder when root is a repository top level. */
-function identityOf(root) {
+function identityOf(root, env = process.env) {
     const state = stateOf(root);
     if (state === null)
-        return askGit(root);
+        return askGit(root, env);
     if (!known.has(state))
-        known.set(state, askGit(root));
+        known.set(state, askGit(root, env));
     return known.get(state);
 }
-function askGit(root) {
+function askGit(root, env) {
     let inWorkTree = false, repositoryRoot = false, home = null;
     try {
         // Identity comes from Git only when root IS a repository (or worktree) top level, never a folder inside one.
         // One git call answers both questions: the top level on the first line, the common git dir on the second.
-        const [top, commonDir] = git(revParseQuery, root, ['--show-toplevel', '--git-common-dir']).split(String.fromCodePoint(10)).map((line) => line.trim());
+        const [top, commonDir] = git(revParseQuery, root, ['--show-toplevel', '--git-common-dir'], env).split(String.fromCodePoint(10)).map((line) => line.trim());
         repositoryRoot = real(top) === real(root);
         inWorkTree = true;
         const common = path.resolve(root, commonDir);
@@ -55,11 +60,11 @@ function askGit(root) {
  * name outside Git, else the folder name. A folder inside a larger repository (a nested product, an example) is named by
  * its own folder.
  */
-export function repositoryName(root) {
-    const { inWorkTree, repositoryRoot, home } = identityOf(root);
+export function repositoryName(root, { env = process.env } = {}) {
+    const { inWorkTree, repositoryRoot, home } = identityOf(root, env);
     if (repositoryRoot) {
         try {
-            const remote = trimTrailingSlashes(git(gitRemote, root, ['get-url', 'origin'])).replace(GIT_SUFFIX, '');
+            const remote = trimTrailingSlashes(git(gitRemote, root, ['get-url', 'origin'], env)).replace(GIT_SUFFIX, '');
             const name = remote.split(/[/:]/u).pop();
             if (name)
                 return name;
