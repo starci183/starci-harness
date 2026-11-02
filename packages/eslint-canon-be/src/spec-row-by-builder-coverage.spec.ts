@@ -42,10 +42,15 @@ for (const edition of ["lite", "full"]) {
                 { filename: INTEGRATION, code: `${ENTITY}declare const orderRow: () => Order\nconst first: Order = { ...orderRow(), status: "new" }\nconst second: Order = { ...orderRow(), status: "paid" }\nexport { first, second }` },
                 { filename: UNIT, code: `${ENTITY}const first: Order = { id: 1, status: "new" }\nexport { first }` },
                 { filename: UNIT, code: `${ENTITY}const first: Plain = { id: 1 }\nconst second: Plain = { id: 2 }\nexport { first, second }` },
+                // Query contracts mention an entity but describe selectors, not arranged rows.
+                { filename: INTEGRATION, code: `${ENTITY}${DB_IMPORT}declare const db: EntityManager\nasync function read() { await db.count(Order, { where: { id: 1 } }); await db.count(Order, { where: { id: 2 } }); await db.findOne(Order, { where: { id: 1 } }); await db.find(Order, { where: [{ id: 1 }, { id: 2 }], order: { id: "ASC" } }); await db.findBy(Order, { id: 2 }) }` },
+                { filename: UNIT, code: `${ENTITY}import type { FindOptionsWhere as Where, FindManyOptions } from "typeorm"\ntype Selector<T> = Where<T>\nconst a: Selector<Order> = { id: 1 }\nconst b: Selector<Order> = { id: 2 }\nconst c: FindManyOptions<Order> = { where: { id: 3 } }\nexport { a, b, c }` },
             ],
             invalid: [
                 { filename: INTEGRATION, code: `${ENTITY}const first: Order = { id: 1, status: "new" }\nconst second: Order = { id: 2, status: "paid" }\nexport { first, second }`, errors: [{ messageId: "repeated" }] },
                 { filename: UNIT, code: `${ENTITY}declare const arrange: (row: Partial<Order>) => void\narrange({ id: 1 })\narrange({ id: 2 })`, errors: [{ messageId: "repeated" }] },
+                // A local row alias with the same spelling as an ORM selector gains no exemption.
+                { filename: UNIT, code: `${ENTITY}type FindOptionsWhere<T> = Partial<T>\ndeclare const arrange: (row: FindOptionsWhere<Order>) => void\narrange({ id: 1 })\narrange({ id: 2 })`, errors: [{ messageId: "repeated" }] },
             ],
         })
     })

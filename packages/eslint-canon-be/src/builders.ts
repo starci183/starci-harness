@@ -79,11 +79,32 @@ const isEntityClass = (checker: ts.TypeChecker, declaration: ts.Node): declarati
     })
 }
 
-/** The entity class declarations a type stands for: itself, a union member, or the argument of a `Partial<Entity>` style alias. */
+/** A TypeORM FindOptions contract selects rows; its entity argument does not turn the selector into a row. */
+const isFindOptionsDeclaration = (checker: ts.TypeChecker, declaration: ts.Declaration, seen: Set<ts.Declaration>): boolean => {
+    if (seen.has(declaration)) return false
+    seen.add(declaration)
+    const file = String(declaration.getSourceFile().fileName).replace(/\\/g, "/")
+    if ((ts.isTypeAliasDeclaration(declaration) || ts.isInterfaceDeclaration(declaration)) && declaration.name.text.startsWith("FindOptions") && moduleOf(declaration, file) === "typeorm") return true
+    if (!ts.isTypeAliasDeclaration(declaration)) return false
+    const selectorReference = (node: ts.TypeNode): boolean => {
+        if (ts.isParenthesizedTypeNode(node)) return selectorReference(node.type)
+        if (ts.isUnionTypeNode(node) || ts.isIntersectionTypeNode(node)) return node.types.some(selectorReference)
+        if (!ts.isTypeReferenceNode(node)) return false
+        const symbol = checker.getSymbolAtLocation(node.typeName)
+        if (!symbol) return false
+        return (resolvedSymbol(checker, symbol)?.getDeclarations() ?? []).some(found => isFindOptionsDeclaration(checker, found, seen))
+    }
+    return selectorReference(declaration.type)
+}
+
+const isFindOptionsType = (checker: ts.TypeChecker, type: ts.Type): boolean => [type.aliasSymbol, type.getSymbol()].some(symbol =>
+    (symbol?.getDeclarations() ?? []).some(declaration => isFindOptionsDeclaration(checker, declaration, new Set())))
+
+/** Entity rows, including partial row aliases; read selectors retain their distinct TypeORM contract through local aliases. */
 const entityClassesOf = (checker: ts.TypeChecker, type: ts.Type | undefined): ts.ClassDeclaration[] => {
     if (!type) return []
     const parts = type.isUnion?.() ? type.types : [type]
-    const candidates = parts.flatMap((part) => [part, ...(part.aliasTypeArguments ?? [])])
+    const candidates = parts.filter(part => !isFindOptionsType(checker, part)).flatMap((part) => [part, ...(part.aliasTypeArguments ?? [])])
     return candidates.flatMap((candidate) => (candidate.getSymbol?.()?.getDeclarations?.() ?? []).filter((declaration) => isEntityClass(checker, declaration)))
 }
 
