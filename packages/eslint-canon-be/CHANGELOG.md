@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.11.17
+
+- Changed: Refresh shared repository identity and quality-service rule data.
+
 ## 3.11.16
 
 - Changed: Refresh the generated canon pins for the governed app-check release.

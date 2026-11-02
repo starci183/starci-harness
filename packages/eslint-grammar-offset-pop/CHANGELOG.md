@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.10
+
+- Changed: Align the Grammar family release and its exact core dependency.
+
 ## 0.21.9
 
 - Changed: Require core 0.21.9 and refresh the generated canon pins with the shared Grammar family release.

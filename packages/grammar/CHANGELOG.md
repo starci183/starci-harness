@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.10
+
+- Changed: Align the Grammar family release with the shared lint and canon updates.
+
 ## 0.21.9
 
 - Changed: Keep the Grammar and both lint families at the same full version. Component source, styles and public rendering API are unchanged; the build stamp carries the release version.

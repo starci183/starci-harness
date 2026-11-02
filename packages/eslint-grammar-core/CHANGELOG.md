@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.10
+
+- Changed: Refresh quality-service rule data and require the aligned FE canon release.
+
 ## 0.21.9
 
 - Changed: Use the shared source proof for native Page body layouts, require FE canon 9.9.9 and refresh the generated canon pins with the shared Grammar family release.

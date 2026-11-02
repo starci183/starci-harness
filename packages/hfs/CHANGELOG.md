@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.0.6
+
+- Changed: Support sealed per-project quality-service credentials and preserve valid composite cache entries and reused spec records.
+
 ## 5.0.5
 
 - Changed: Govern each app-check linter, compiler, test discovery and coverage, contract emitter and boot child through the CLI execution port with actual worker limits and complete output capture. Preserve cache identities, closure, flush behavior and coverage thresholds. Record source-proven native Page body layouts with their contextual constraints.
