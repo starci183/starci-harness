@@ -950,7 +950,10 @@ export const mailSend = async (binary: OrcaBinary, input: MailSend, cwd: string)
     await callOrca(binary, "send", flags, z.unknown(), cwd)
 }
 
-const failureOf = (error: unknown): Refusal => (error instanceof Refusal ? error : new Refusal("ORCA_FAILED", error instanceof Error ? error.message : String(error)))
+const failureOf = (error: unknown): Refusal => {
+    if (error instanceof Refusal) return error
+    return new Refusal("ORCA_FAILED", error instanceof Error ? error.message : String(error))
+}
 
 /**
  * Wakes a coordinator: the mail first; when Orca refuses it, the wake prompt is typed into the target's own terminal instead

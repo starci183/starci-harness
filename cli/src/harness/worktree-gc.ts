@@ -73,7 +73,10 @@ const judge = (root: string, entry: Listed, stateWorktrees: string): Omit<GcEntr
             // An ended attempt whose Kernel has not decided keeps its worktree: nothing is removed before its settle (harness/prior.ts).
             const pending = ended && db !== undefined && settlePending(db, task)
             const settled = ended && !pending
-            const reason = settled ? `task ${task.id} is ${task.status}` : pending ? `task ${task.id} is ${task.status}; its Kernel has not settled it (merge, discard or repair)` : `task ${task.id} is ${task.status}${task.intent === null ? "" : " (" + task.intent + ")"}`
+            let reason: string
+            if (settled) reason = `task ${task.id} is ${task.status}`
+            else if (pending) reason = `task ${task.id} is ${task.status}; its Kernel has not settled it (merge, discard or repair)`
+            else reason = `task ${task.id} is ${task.status}${task.intent === null ? "" : " (" + task.intent + ")"}`
             return { path: entry.path, kind: "op", owner: task.id, due: settled, reason }
         }
         if (db?.prepare("SELECT 1 FROM workflows WHERE id = ?").get(first) !== undefined) {

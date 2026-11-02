@@ -53,7 +53,8 @@ const recordNeeds = async (db: DatabaseSync, root: string, taskId: string, needs
         const repo = await mainCheckout(root)
         const attached = reportNeeds(needs, { project: project.key, repo, workflow: task.workflowId, task: taskId, taskKey: typeof taskKey === "string" ? taskKey : null })
         const attachedText = attached.map((one) => {
-            const openedText = one.opened ? "opened" : `${one.need.state}, ${one.attached ? "joined" : "already waiting"}`
+            const attachedWord = one.attached ? "joined" : "already waiting"
+            const openedText = one.opened ? "opened" : `${one.need.state}, ${attachedWord}`
             return `${one.need.key} (${openedText})`
         }).join(", ")
         return `; waits on ${attachedText}`
@@ -197,7 +198,8 @@ export const taskResultVerb = defineVerb({
             const dir = preserved?.dir ?? null
             const kept = dir === null || repair !== null ? "" : `; dirty work preserved in ${dir} and reset`
             const broken = repair === null ? "" : `; its work is saved in ${repair} but not every path was put back: starci task verify ${data.task} --recover finishes the reset`
-            const removed = worktree === null ? "" : `; worktree ${worktree.path} ${worktree.removed ? "removed" : "left"}`
+            let removed = ""
+    if (worktree !== null) removed = `; worktree ${worktree.path} ${worktree.removed ? "removed" : "left"}`
             const keys = data.recheck === null ? "" : [...data.recheck.codes, ...data.recheck.keys].join(", ")
             const recheck = data.recheck === null ? "" : `; its run was stopped by custody (${keys || "TEST_WORLD_NOT_DECLARED"}), so the harness judges it by its own run with the keys custody holds (starci task verify ${data.task}); no try is spent on the worker's run`
             const walk = data.unserved === null ? "" : `; its walk into ${data.unserved.folder} met no app (every page it opened answered 5xx, ${UAT_APP_UNSERVED}): an environment failure, not the task's verdict, so it ends as the harness's own and its workflow dispatches it again at the same try`

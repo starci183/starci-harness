@@ -522,7 +522,8 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
         // --worktree names), and lands back on it; a task outside a workflow runs where --worktree says, else in this repository.
         const recorded = task.workflowId === null ? undefined : workflowWorktreeOf(db, task.workflowId)
         const target = given.worktree === undefined ? (recorded ?? root) : worktreeFolder(given.worktree, cwd, root)
-        const opPath = task.workflowId === null || given.coordinator !== undefined ? undefined : given.dryRun === true ? opWorktreePlace(root, task.workflowId, task.id).path : (await ensureOpWorktree(root, task.id, target)).path
+        let opPath: string | undefined
+        if (task.workflowId !== null && given.coordinator === undefined) opPath = given.dryRun === true ? opWorktreePlace(root, task.workflowId, task.id).path : (await ensureOpWorktree(root, task.id, target)).path
         const options: SeatStartOptions = { ...given, worktree: opPath === undefined ? given.worktree : `path:${opPath.replaceAll("\\", "/")}` }
         const binary = await locateOrca(cwd)
         const kernel = options.coordinator ?? nestingOf(await kernelOf(db, task, binary, options), options)

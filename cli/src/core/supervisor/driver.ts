@@ -881,7 +881,10 @@ const gcLines = async (root: string): Promise<string[]> => {
     try {
         return (await worktreeGc(root, false)).filter((entry) => entry.due).map((entry) => {
             const preservedSuffix = entry.preserved === null ? "" : `; its work preserved in ${entry.preserved}`
-            return `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : entry.busy === true ? "left busy" : "left"} (${entry.reason})${preservedSuffix}`
+            let state = "left"
+            if (entry.removed) state = "removed"
+            else if (entry.busy === true) state = "left busy"
+            return `worktree ${entry.kind} ${entry.path} ${state} (${entry.reason})${preservedSuffix}`
         })
     } catch (error: unknown) {
         return [`worktree gc of ${root} not run (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`]

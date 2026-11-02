@@ -269,7 +269,9 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
     const tasks = await waveTasks(db, checkout, ids)
     const parents = [...new Set(tasks.flatMap((each) => (each.parent === null ? [] : [each.parent])))]
     const head = await resolveSha(checkout, "HEAD")
-    const base = parents.length === 0 ? head : parents.length === 1 ? (parents[0] ?? head) : (await git(checkout, ["merge-base", "--octopus", ...parents])).trim()
+    let base = head
+    if (parents.length === 1) base = parents[0] ?? head
+    else if (parents.length > 1) base = (await git(checkout, ["merge-base", "--octopus", ...parents])).trim()
     const allowPaths = [...new Set(tasks.flatMap((each) => each.task.contract.context.allowPaths))]
     const union: Contract = { ...tasks[0]?.task.contract ?? getTask(db, first).contract }
     // A scoped check judges exactly what the tasks landed (`check run --within`): the union of their own diffs, never another

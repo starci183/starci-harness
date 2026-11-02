@@ -343,7 +343,9 @@ const settleWork = async (root: string, db: DatabaseSync, task: TaskRow, due: Se
     const keeps = due.decision === "keep" || due.decision === "repair"
     const kept = keeps ? await keepPatch(root, db, task) : undefined
     const rows = keyRows(root, db, priorKey(db, task))
-    const stale = kept === undefined ? (keeps ? [] : rows) : rows.filter((row) => row.sha256 !== kept.sha256 || row.taskId !== kept.taskId)
+    let stale = rows
+    if (kept !== undefined) stale = rows.filter((row) => row.sha256 !== kept.sha256 || row.taskId !== kept.taskId)
+    else if (keeps) stale = []
     inTransaction(db, () => {
         const dropped = dropRows(db, stale, `task ${task.id} settled ${due.decision}`)
         recordEvent(db, OP_SETTLED, task.id, { ...due, status: task.status, kept: kept?.sha256 ?? null, dropped })

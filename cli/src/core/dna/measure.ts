@@ -649,7 +649,8 @@ export const installProbe = (judgePart: Judge): void => {
                 }
                 return finish(index, collector)
             }
-            const scopes = variant.scope === null ? (variant.kind === "count" && variant.select.startsWith(DOCUMENT) ? [doc.documentElement] : [root]) : queryAll(variant.scope, root)
+            const wholeScope = variant.kind === "count" && variant.select.startsWith(DOCUMENT) ? doc.documentElement : root
+        const scopes = variant.scope === null ? [wholeScope] : queryAll(variant.scope, root)
             collector.matched = scopes.length
             for (const scopeElement of scopes) {
                 const within = scopeElement === doc.documentElement ? null : scopeElement
@@ -701,7 +702,12 @@ export const installProbe = (judgePart: Judge): void => {
                     const ref = variant.ref
                     if (ref === null) continue
                     const ancestor = original.closest(ref.within)
-                    const target = ancestor === null ? null : ref.select === "self" ? ancestor : ref.select === "previous" ? original.previousElementSibling : ancestor.querySelector(ref.select)
+                    let target: Element | null = null
+                    if (ancestor !== null) {
+                        if (ref.select === "self") target = ancestor
+                        else if (ref.select === "previous") target = original.previousElementSibling
+                        else target = ancestor.querySelector(ref.select)
+                    }
                     if (target === null) {
                         skip("the reference element of the relation is not rendered")
                         continue

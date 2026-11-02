@@ -532,6 +532,12 @@ interface AwaitingTask {
     readonly module: string | null
 }
 
+/** The ticket kind of a task awaiting the owner: the owner's business question, a harness defect of a module, or a verify gap. */
+const awaitingKind = (task: AwaitingTask): "question:business" | "harness-defect" | "verify" => {
+    if (task.owner) return "question:business"
+    return task.module !== null ? "harness-defect" : "verify"
+}
+
 /**
  * Files a task left awaiting the owner as its ticket, once, the task waiting on it: a blocking `verify` defect for Debug's queue
  * (its verify gave up on a persistent cause it names, which the owner is told on Telegram as every blocking defect is), titled
@@ -544,7 +550,7 @@ const ticketAwaitingTask = (repo: string, project: Project, task: AwaitingTask):
     const workflowSuffix = task.workflow === null ? "" : `, workflow ${task.workflow}`
     const flat = `task ${task.id} (${task.label}${workflowSuffix}) is awaiting the owner: ${task.reason}`.replaceAll(/\s+/g, " ").trim()
     return openTicket({
-        kind: task.owner ? "question:business" : task.module !== null ? "harness-defect" : "verify",
+        kind: awaitingKind(task),
         severity: "blocking",
         title: flat.length <= 200 ? flat : `${flat.slice(0, 199)}…`,
         evidence: { task: task.id, ...(task.workflow === null ? {} : { workflow: task.workflow }), question: task.reason, ...(task.owner ? { topic: "credentials" } : {}) },

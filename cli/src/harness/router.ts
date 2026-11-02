@@ -533,7 +533,8 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
     const ordered = input.coordinator === undefined ? scoreStep(stage, input, facts, funded, demoted) : funded
     const balanced = probe === undefined && input.coordinator === undefined ? balanceStep(stage, facts, ordered, demoted) : undefined
     const chosen = probe ?? balanced ?? ordered[0]
-    let by = input.coordinator !== undefined ? "order" : record.explore?.exploring === true ? "explore" : "score"
+    let by = record.explore?.exploring === true ? "explore" : "score"
+    if (input.coordinator !== undefined) by = "order"
     if (balanced !== undefined) by = "balance"
     if (probe !== undefined) by = "probe"
     if (chosen === undefined) return new RouteRefusal("ROUTE_NO_MEMBER", `no member of tier ${record.tier} is left`, record)

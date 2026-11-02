@@ -142,8 +142,12 @@ export const holdOf = (db: DatabaseSync, taskId: string): string | null => {
 }
 
 /** How a hold's condition reads in one line. */
-export const holdLine = (until: Hold): string =>
-    until.ticket !== undefined ? `ticket ${until.ticket}` : until.commit !== undefined ? `commit ${until.commit} on harness main` : until.need !== undefined ? `need ${until.need}` : `time ${until.time ?? "-"}`
+export const holdLine = (until: Hold): string => {
+    if (until.ticket !== undefined) return `ticket ${until.ticket}`
+    if (until.commit !== undefined) return `commit ${until.commit} on harness main`
+    if (until.need !== undefined) return `need ${until.need}`
+    return `time ${until.time ?? "-"}`
+}
 
 /** Why a hold's condition is met, or null while it is not: the ticket ended, harness main holds the commit, the need ended, or the time passed. */
 const metBy = async (root: string, until: Hold): Promise<string | null> => {

@@ -123,16 +123,14 @@ export const resolveScope = async (cwd: string, baseFlag: string | undefined, al
     const diff = (await changedFiles(root, base)).filter((file) => !within || underPaths(file, paths))
     const own = judging.task === undefined ? undefined : await ownChanges(root, judging.task)
     const changed = own === undefined ? diff : diff.filter((file) => own.has(file))
-    const composition =
-        judging.workflow !== undefined
-            ? workflowComposition(root, judging.workflow)
-            : judging.task !== undefined
-              ? taskComposition(root, judging.task)
-              : judging.wave !== undefined && judging.wave.length > 0
-                ? waveComposition(root, judging.wave)
-                : NO_COMPOSITION
+    let composition = NO_COMPOSITION
+    if (judging.workflow !== undefined) composition = workflowComposition(root, judging.workflow)
+    else if (judging.task !== undefined) composition = taskComposition(root, judging.task)
+    else if (judging.wave !== undefined && judging.wave.length > 0) composition = waveComposition(root, judging.wave)
     const obligated = await trackedUnder(root, composition.obligations.flatMap((each) => each.paths))
-    const judged = judging.workflow !== undefined ? [] : changed.length === 0 ? await trackedUnder(root, paths) : changed
+    let judged = changed
+    if (judging.workflow !== undefined) judged = []
+    else if (changed.length === 0) judged = await trackedUnder(root, paths)
     const files = [...new Set([...judged, ...obligated])]
     const appWide = appWideFiles()
     const widen = all || files.some((file) => appWide.test(file))
@@ -230,7 +228,8 @@ export const resolveEslintConfig = (root: string, dir: string): { readonly dir: 
  */
 const lintableFiles = async (scope: Scope, target: ScopeTarget): Promise<string[]> => {
     const { pkg } = target
-    const tracked = !scope.all ? [] : pkg.relativeDir === "." ? nulPaths(await git(scope.root, ["ls-files", "-z"])) : await trackedUnder(scope.root, [pkg.relativeDir])
+    let tracked: string[] = []
+    if (scope.all) tracked = pkg.relativeDir === "." ? nulPaths(await git(scope.root, ["ls-files", "-z"])) : await trackedUnder(scope.root, [pkg.relativeDir])
     const owners = scope.targets.map((each) => each.pkg)
     const owned = (file: string): boolean => !scope.all || ownerOf(owners, file) === pkg
     return [...new Set([...target.files, ...tracked])].filter((file) => LINTABLE.test(file) && !ESLINT_DEFAULT_IGNORED.test(file) && owned(file) && existsSync(join(scope.root, file))).sort((left, right) => left.localeCompare(right))

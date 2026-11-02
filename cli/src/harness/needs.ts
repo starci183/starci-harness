@@ -413,7 +413,10 @@ export const recordNeedEvent = (db: DatabaseSync, what: string, project: string,
 export const patchNeed = (db: DatabaseSync, project: string, key: string, patch: NeedPatch, what: string, data: Readonly<Record<string, unknown>> = {}): NeedRow => {
     const entries = Object.entries(patch) as [keyof NeedPatch, unknown][]
     const sets = entries.map(([field]) => `${COLUMNS[field]} = ?`)
-    const values = entries.map(([field, value]) => (JSON_FIELDS.has(field) ? (value === null ? null : JSON.stringify(value)) : (value as string | number | null)))
+    const values = entries.map(([field, value]) => {
+        if (!JSON_FIELDS.has(field)) return value as string | number | null
+        return value === null ? null : JSON.stringify(value)
+    })
     db.prepare(`UPDATE shared_needs SET ${[...sets, "updated_at = ?"].join(", ")} WHERE project = ? AND key = ?`).run(...values, now(), project, key)
     const need = needOf(db, project, key)
     if (need === undefined) throw new Refusal("NEED_UNKNOWN", `no need ${key} in project ${project}`)

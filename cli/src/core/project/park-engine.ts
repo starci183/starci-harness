@@ -247,7 +247,8 @@ export const parkProject = async (context: VerbContext, project: Project, dryRun
         return { ...entry, kernel }
     })
     const supervisor = supervisorRecord(project.key)
-    const stopped = supervisor === null ? "none" : dryRun ? `would stop ${supervisor.id}` : await stopSupervisor(binary, context.cwd, project, true, "parked").then((done) => `stopped ${done.stopped ?? "-"}, tab ${done.tab}`, (error: unknown) => `error: ${firstLine(error)}`)
+    let stopped = "none"
+    if (supervisor !== null) stopped = dryRun ? `would stop ${supervisor.id}` : await stopSupervisor(binary, context.cwd, project, true, "parked").then((done) => `stopped ${done.stopped ?? "-"}, tab ${done.tab}`, (error: unknown) => `error: ${firstLine(error)}`)
     const swept = await closeProjectTerminals(binary, context.cwd, project, projectMarks(project, repos, workers), dryRun).catch((error: unknown) => {
         problems.push(`terminals not swept (${firstLine(error)})`)
         return { terminals: [], workspaces: [], left: [] }

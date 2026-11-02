@@ -54,7 +54,8 @@ const where = (ticket: Ticket): string => {
 export const ticketCaption = (ticket: Ticket, stage: CardStage, chars: number): string => {
     const field = Math.min(chars, 260)
     const topicSuffix = ticket.evidence.topic === undefined ? "" : ` (${escapeHtml(ticket.evidence.topic)})`
-    const severitySuffix = isQuestion(ticket.kind) ? "" : `, ${ticket.severity === "blocking" ? "chặn" : "thường"}`
+    const severityWord = ticket.severity === "blocking" ? "chặn" : "thường"
+    const severitySuffix = isQuestion(ticket.kind) ? "" : `, ${severityWord}`
     const head = `${toneOf(ticket, stage)} <b>${isQuestion(ticket.kind) ? "Câu hỏi" : "Ticket"} ${ticket.id}</b> · ${KIND_LABEL[ticket.kind]}${topicSuffix}${severitySuffix}`
     const tried = ticket.tried === null ? [] : [`Đã thử: ${html(ticket.tried, field)}`]
     if (stage === "remind") return [`⏰ <b>Nhắc: câu hỏi ${ticket.id}</b> vẫn chờ câu trả lời.`, `<b>${html(ticket.title, field)}</b>`, where(ticket), `Trả lời: chọn nút, trả lời tin này, hoặc /answer ${ticket.id} &lt;câu trả lời&gt;.`].join("\n").slice(0, 1024)
@@ -182,8 +183,9 @@ export const ticketDetails = (ticket: Ticket): string => {
     const waiters = waitersOf(ticket.id)
     const tail = evidence.tail === undefined ? "" : redactSecrets(evidence.tail).split("\n").slice(-25).join("\n").slice(-1500)
     const takenBySuffix = ticket.takenBy === null ? "" : ` · nhận bởi: ${escapeHtml(ticket.takenBy)}`
+    const liveStage = isQuestion(ticket.kind) ? "ask" : "open"
     return [
-        `${toneOf(ticket, isLive(ticket.state) ? (isQuestion(ticket.kind) ? "ask" : "open") : "closed")} <b>${ticket.id}</b> · ${KIND_LABEL[ticket.kind]} · ${escapeHtml(isLive(ticket.state) ? ticket.state : closeLine(ticket))}`,
+        `${toneOf(ticket, isLive(ticket.state) ? liveStage : "closed")} <b>${ticket.id}</b> · ${KIND_LABEL[ticket.kind]} · ${escapeHtml(isLive(ticket.state) ? ticket.state : closeLine(ticket))}`,
         `<b>${html(ticket.title, 400)}</b>`,
         where(ticket),
         `Mức: ${ticket.severity === "blocking" ? "chặn" : "thường"} · đã gặp ${String(ticket.occurrences)} lần · vòng ${String(ticket.round)}`,

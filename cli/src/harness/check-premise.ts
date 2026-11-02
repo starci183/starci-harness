@@ -42,7 +42,7 @@ export const premiseChecks = (db: DatabaseSync, taskId: string): readonly Premis
     }
     return red.map((row) => {
         const check = checks.find((candidate) => candidate.name === row.name)?.check
-        const run = check?.kind === "command" ? (Array.isArray(check.run) ? check.run.join(" ") : check.run) : row.name
+        const run = check?.kind === "command" ? [check.run].flat().join(" ") : row.name
         return { name: row.name, run, output: row.detail.length <= OUTPUT_TAIL ? row.detail : `…${row.detail.slice(-OUTPUT_TAIL)}` }
     })
 }

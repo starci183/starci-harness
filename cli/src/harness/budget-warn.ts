@@ -61,7 +61,9 @@ const outlookOf = (budget: WorkflowBudget, tasks: { readonly done: number; reado
         tasks.remaining === 0
             ? []
             : [...(["minutes", "tries"] as const).filter((key) => budget.used[key] >= budget.ceiling[key] * fraction), ...(budget.ceiling.tries - budget.used.tries < tasks.remaining ? (["tasks"] as const) : [])]
-    const state = budget.exhausted.length > 0 ? "exhausted" : near.length > 0 ? "near" : "ok"
+    let state: "ok" | "near" | "exhausted" = "ok"
+    if (budget.exhausted.length > 0) state = "exhausted"
+    else if (near.length > 0) state = "near"
     return { ...budget, state, tasks, near, proposed: near.length === 0 ? null : proposedRaise(budget, tasks, fraction) }
 }
 

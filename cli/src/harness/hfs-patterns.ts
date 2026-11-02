@@ -95,7 +95,8 @@ export const patternsOfPaths = async (checkout: string, paths: readonly string[]
         const byId = new Map(manifest.slots.map((slot) => [slot.id, slot]))
         const prefix = relative(checkout, app.root).replaceAll("\\", "/")
         const hits = paths.flatMap((path) => {
-            const inApp = prefix === "" ? path : path.startsWith(`${prefix}/`) ? path.slice(prefix.length + 1) : undefined
+            const underPrefix = path.startsWith(`${prefix}/`) ? path.slice(prefix.length + 1) : undefined
+    const inApp = prefix === "" ? path : underPrefix
             if (inApp === undefined) return []
             const slot = byId.get(explainPath({ repoRoot: app.root, input: inApp, manifest }).slot ?? "")
             return slot === undefined ? [] : [{ slot, path: inApp }]

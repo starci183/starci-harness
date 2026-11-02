@@ -289,6 +289,12 @@ const projectNamed = async (name: string): Promise<{ readonly project: Project |
 
 const HELP = "Reply to a StarCi question to answer it, or send /answer <ticket id> <answer>, /ask <project> <request>, /status for the workflows, /tickets for the open tickets."
 
+/** The marker a workflow's status line opens with. */
+const statusIcon = (status: string): string => {
+    if (status === "blocked") return "🔴"
+    return status === "paused" ? "⏸" : "🟢"
+}
+
 const STATUS_ORDER = ["blocked", "running", "paused", "stopping", "defined", "done", "stopped"] as const
 
 /**
@@ -321,7 +327,7 @@ const statusMessage = async (chars: number): Promise<string> => {
             `<b>${escapeHtml(name)}</b>: ${counts.join(", ")}`,
             ...live.map((workflow) => {
                 const statusSuffix = workflow.status === "blocked" && workflow.reason !== null ? `: ${escapeHtml(clip(workflow.reason, chars))}` : ""
-                return `${workflow.status === "blocked" ? "🔴" : workflow.status === "paused" ? "⏸" : "🟢"} ${escapeHtml(workflow.id)} ${workflow.status}${statusSuffix}`
+                return `${statusIcon(workflow.status)} ${escapeHtml(workflow.id)} ${workflow.status}${statusSuffix}`
             }),
         ]
     })

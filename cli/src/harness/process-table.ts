@@ -121,7 +121,8 @@ const listPosix = async (withCwd: boolean): Promise<HostProcess[] | string> => {
         if (match === null) return []
         const pid = Number(match[1])
         const elapsed = psTimeMs(match[4] ?? "")
-        const cwd = withCwd ? (proc ? procCwd(pid) : (cwds.get(pid) ?? null)) : null
+        let cwd: string | null = null
+    if (withCwd) cwd = proc ? procCwd(pid) : (cwds.get(pid) ?? null)
         return [{ pid, ppid: Number(match[2]), name: match[5] ?? "", workingSetMb: Math.round(Number(match[3]) / 1024), commandLine: match[6] ?? "", cpuMs: null, startedMs: elapsed === null ? null : at - elapsed, cwd }]
     })
 }

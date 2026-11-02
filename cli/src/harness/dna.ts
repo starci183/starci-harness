@@ -246,7 +246,8 @@ export const thresholdValue = (thresholds: unknown, key: string, op: DnaOp): num
     if (typeof found === "object" && found !== null) {
         const record = found as Record<string, unknown>
         const wantsFloor = op === ">=" || op === ">"
-        const picked = wantsFloor ? record.min : op === "<=" || op === "<" ? record.max : (record.max ?? record.min)
+        const ceiling = op === "<=" || op === "<" ? record.max : (record.max ?? record.min)
+    const picked = wantsFloor ? record.min : ceiling
         if (typeof picked === "number") return picked
     }
     throw new Refusal("DNA_CONTRACT_INVALID", `{ threshold: ${key} } reads no number in thresholds.yaml for the operator ${op}`)

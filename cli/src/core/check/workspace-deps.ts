@@ -199,7 +199,8 @@ export const buildWorkspaceDependencies = async (root: string, given: readonly W
         const still = missingEntries(pkg)
         if (run.exitCode !== 0 || still.length > 0) {
             failed.add(pkg)
-            const why = run.exitCode !== 0 ? `exited ${String(run.exitCode)}${run.timedOut ? " at the deadline" : ""}` : `exited 0 but left ${still.join(", ")} missing`
+            const deadlineSuffix = run.timedOut ? " at the deadline" : ""
+    const why = run.exitCode !== 0 ? `exited ${String(run.exitCode)}${deadlineSuffix}` : `exited 0 but left ${still.join(", ")} missing`
             steps.push(step(pkg, "red", `${DEP_BUILD_FAILED}: npm run build of ${pkg.name} in ${pkg.relativeDir} ${why}`, evidenceTail(run.stdout, run.stderr)))
             continue
         }

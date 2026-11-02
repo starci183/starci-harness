@@ -207,7 +207,10 @@ export const preserveCheckout = async (root: string, path: string): Promise<Pres
     const copied: { path: string; stored: string; size: number }[] = []
     for (const file of before.files) {
         // Git filters and assume-unchanged flags can omit working bytes from a patch; opaque tracked copies keep those too.
-        const stored = `${tracked.has(file.path) ? "tracked" : untracked.has(file.path) ? "untracked" : "ignored"}/${file.path}`
+        let custody = "ignored"
+        if (tracked.has(file.path)) custody = "tracked"
+        else if (untracked.has(file.path)) custody = "untracked"
+        const stored = `${custody}/${file.path}`
         const target = join(directory, stored)
         mkdirSync(dirname(target), { recursive: true, mode: 0o700 })
         copyFileSync(join(path, file.path), target, constants.COPYFILE_EXCL)

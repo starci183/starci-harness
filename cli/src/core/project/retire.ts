@@ -99,7 +99,8 @@ export const projectRetireVerb = defineVerb({
         })
         const present = existsSync(repo)
         const worktrees = binary !== undefined && present ? await retireWorktrees(repo) : []
-        const orca = binary === undefined ? "Orca untouched" : present ? await detachFromOrca(binary, repo, context.cwd).catch((error: unknown) => `Orca not reached: ${asRefusal(error).message.split("\n")[0] ?? ""}`) : `${repo} is gone; Orca untouched`
+        let orca = "Orca untouched"
+        if (binary !== undefined) orca = present ? await detachFromOrca(binary, repo, context.cwd).catch((error: unknown) => `Orca not reached: ${asRefusal(error).message.split("\n")[0] ?? ""}`) : `${repo} is gone; Orca untouched`
         if (binary !== undefined) withMachine((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, ?, ?, ?)").run(now(), "ledger-retired-cleanup", ledger, JSON.stringify({ worktrees, orca })))
         const data: ProjectRetireData = { ledger, name, state, openSeats: open.map((seat) => seat.id), worktrees, orca }
         const left = open.length === 0 ? "" : `; its open seats (${data.openSeats.join(", ")}) no longer count`

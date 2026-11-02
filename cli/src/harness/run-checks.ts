@@ -243,7 +243,8 @@ const runJsonCheck = (check: ResolvedCheck & { readonly check: { readonly kind: 
     const wrong = expected.filter(([key, value]) => record[key] !== value).map(([key, value]) => `${key} is ${JSON.stringify(record[key])}, expected ${JSON.stringify(value)}`)
     const problems = [...(missing.length === 0 ? [] : [`${document.from} lacks keys: ${missing.join(", ")}`]), ...[...mistyped, ...wrong].map((line) => `${document.from}: ${line}`)]
     const andExpected = expected.length === 0 ? "" : " and " + String(expected.length) + " expected value(s)"
-    const setAside = aside.size === 0 ? "" : `; ${[...aside].join(", ")} set aside: the worker's run lacked the custody keys, the harness's own run judges ${aside.size === 1 ? "it" : "them"}`
+    const pronoun = aside.size === 1 ? "it" : "them"
+    const setAside = aside.size === 0 ? "" : `; ${[...aside].join(", ")} set aside: the worker's run lacked the custody keys, the harness's own run judges ${pronoun}`
     return outcome(check, problems, `${document.from} carries ${String(check.check.requiredKeys.length - check.check.requiredKeys.filter((key) => aside.has(key)).length)} required key(s)${andExpected}${setAside}`)
 }
 
@@ -458,6 +459,20 @@ const stepsOf =(data: Record<string, unknown>): ScopeStep[] =>
         return { package: textOf(step.package), step: textOf(step.step), status: textOf(step.status), reason: textOf(step.reason), output: textOf(step.output) }
     })
 
+/** `args` with `extra` placed before its `--` separator (the allowed paths), or at its end when it has none. */
+const insertBeforeRest = (args: readonly string[], extra: readonly string[]): string[] => {
+    const rest = args.indexOf("--")
+    return rest < 0 ? [...args, ...extra] : [...args.slice(0, rest), ...extra, ...args.slice(rest)]
+}
+
+/** The flags that make `check run` judge as the task or the wave this check belongs to; none when it is not a `check run` or already names one. */
+const judgingFlags = (args: readonly string[], withBase: readonly string[], place: CheckPlace): string[] => {
+    if (args[1] !== "run" || withBase.includes("--task") || withBase.includes("--wave")) return []
+    if (place.taskId !== undefined) return ["--task", place.taskId]
+    if (place.wave !== undefined && place.wave.length > 0) return ["--wave", place.wave.join(",")]
+    return []
+}
+
 /**
  * A scoped `starci check` verb, run with --json so its steps can be read. It judges what the task changed, or, for a task that
  * changes nothing (a verify-only task whose audit found the code already right), the tracked files under its allowPaths as
@@ -468,10 +483,9 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
     const withBase = place.diffBase === undefined || args.includes("--base") ? args : [...args, "--base", place.diffBase]
     // check run judges as the task: its own changes since its work began, its deferral and its obligations (core/check/scope.ts).
     // A wave's run judges as its tasks together: their deferrals and the modules their composers answer for.
-    const judging = args[1] !== "run" || withBase.includes("--task") || withBase.includes("--wave") ? [] : place.taskId !== undefined ? ["--task", place.taskId] : place.wave !== undefined && place.wave.length > 0 ? ["--wave", place.wave.join(",")] : []
-    const asTask = judging.length === 0 ? withBase : withBase.includes("--") ? [...withBase.slice(0, withBase.indexOf("--")), ...judging, ...withBase.slice(withBase.indexOf("--"))] : [...withBase, ...judging]
-    const rest = asTask.indexOf("--")
-    const within = place.within !== true || asTask.includes("--within") ? asTask : rest < 0 ? [...asTask, "--within"] : [...asTask.slice(0, rest), "--within", ...asTask.slice(rest)]
+    const judging = judgingFlags(args, withBase, place)
+    const asTask = insertBeforeRest(withBase, judging)
+    const within = place.within !== true || asTask.includes("--within") ? asTask : insertBeforeRest(asTask, ["--within"])
     const withPaths = within.includes("--") ? within : [...within, "--", ...allowPaths]
     // No timeout on the verb itself: it waits in the heavy queue for each step, and every step it runs carries its own budget
     // from admission (harness/heavy.ts); a deadline here would count queue time. The verify's lock deadline bounds the whole.

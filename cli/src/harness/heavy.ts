@@ -149,7 +149,9 @@ export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number,
     const full = running.length >= cap
     const fits = running.length === 0 ? freeMb >= own : room >= own
     const admits = !cpuHolds && !full && fits
-    const fitting = Math.max(0, Math.min(cap - running.length, running.length === 0 && room < own ? (freeMb >= own ? 1 : 0) : Math.floor(room / own)))
+    const startsOne = freeMb >= own ? 1 : 0
+    const byRoom = running.length === 0 && room < own ? startsOne : Math.floor(room / own)
+    const fitting = Math.max(0, Math.min(cap - running.length, byRoom))
     const admitted = running.length + Math.min(cpu.slots, fitting)
     const maxSlotsSuffix = rules.maxSlots === undefined ? "" : `, maxSlots ${String(rules.maxSlots)}`
     const reasons = [

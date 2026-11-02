@@ -200,10 +200,16 @@ export const dnaCheckVerb = defineVerb({
                     }
                 }
             }
+            const lawStatus = (ran: boolean, row: { readonly broken: number; readonly evaluated: number; readonly followUp: string | null }): LawRow["status"] => {
+                if (!ran) return "not-run"
+                if (row.broken > 0) return row.followUp === null ? "red" : "known"
+                if (row.evaluated === 0) return row.followUp === null ? "not-exercised" : "known"
+                return "green"
+            }
             const laws: LawRow[] = [...rows.values()]
                 .map(({ examplesMutable, pageSet, ...row }): LawRow => {
                     const ran = !row.notes.some((note) => note.startsWith("not run here"))
-                    const status: LawRow["status"] = !ran ? "not-run" : row.broken > 0 ? (row.followUp === null ? "red" : "known") : row.evaluated === 0 ? (row.followUp === null ? "not-exercised" : "known") : "green"
+                    const status = lawStatus(ran, row)
                     return { ...row, status, pages: pageSet.size, examples: examplesMutable }
                 })
                 .sort((a, b) => a.family.localeCompare(b.family) || a.id.localeCompare(b.id))

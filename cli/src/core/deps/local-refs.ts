@@ -73,11 +73,9 @@ const resolvedCandidates = (text: string): { readonly url: string | undefined; r
 /** The lines of one committed file that name a loopback registry: a lockfile's `resolved` URL, or a `registry` setting of an `.npmrc`. */
 export const localReferences = (file: string, text: string): LocalReference[] => {
     const base = posix.basename(file)
-    const candidates = LOCKFILE.test(base)
-        ? resolvedCandidates(text)
-        : base === ".npmrc"
-            ? text.split("\n").map((raw, index) => ({ url: npmrcRegistry(raw), line: index + 1 }))
-            : []
+    let candidates: { readonly url: string | undefined; readonly line: number }[] = []
+    if (LOCKFILE.test(base)) candidates = resolvedCandidates(text)
+    else if (base === ".npmrc") candidates = text.split("\n").map((raw, index) => ({ url: npmrcRegistry(raw), line: index + 1 }))
     return candidates.flatMap(({ url, line }): LocalReference[] => {
         const host = url === undefined ? undefined : hostOf(url.replace(/^\/\//, "http://"))
         return url !== undefined && host !== undefined && isLoopbackHost(host) ? [{ file, line, url }] : []

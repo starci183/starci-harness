@@ -170,6 +170,13 @@ export const closeDecision = (ref: NeedDecisionRef | null, why: string): void =>
     }
 }
 
+/** What a router is told to do with a need: the Kernel rules its own, a package edit goes to Debug's worker, the rest is the Supervisor's. */
+const needGuidance = (need: NeedRow, level: NeedLevel, scope: NeedScope): string => {
+    if (level === "kernel") return KERNEL_NEED_GUIDANCE
+    if (scope === "package") return `a package edit, never the owner's: starci supervisor dispatch --need ${need.key} --brief <the fix> (--input package=${need.key.slice("package:".length)} is filled), whose worker runs pkg branch, fixes it and pkg handoff; the waiters are released once Debug merged the handoff`
+    return SUPERVISOR_NEED_GUIDANCE
+}
+
 /** The evidence a need's decision carries: the need, its waiters with what each reported, why it is routed here, and how to answer. */
 export const evidenceOf = (need: NeedRow, waiters: readonly WaiterRow[], level: NeedLevel, scope: NeedScope, extra: Readonly<Record<string, unknown>> = {}): unknown => ({
     project: need.project,
@@ -182,12 +189,7 @@ export const evidenceOf = (need: NeedRow, waiters: readonly WaiterRow[], level: 
     waiters: waiters.map((waiter) => ({ repo: waiter.repo, workflow: waiter.workflow, task: waiter.task, key: waiter.taskKey, given: waiter.given, rules: waiter.rules, paths: waiter.paths, note: waiter.note })),
     rules: [...new Set(waiters.flatMap((waiter) => waiter.rules))],
     paths: [...new Set(waiters.flatMap((waiter) => waiter.paths))],
-    answer:
-        level === "kernel"
-            ? KERNEL_NEED_GUIDANCE
-            : scope === "package"
-              ? `a package edit, never the owner's: starci supervisor dispatch --need ${need.key} --brief <the fix> (--input package=${need.key.slice("package:".length)} is filled), whose worker runs pkg branch, fixes it and pkg handoff; the waiters are released once Debug merged the handoff`
-              : SUPERVISOR_NEED_GUIDANCE,
+    answer: needGuidance(need, level, scope),
     ...extra,
 })
 
@@ -197,6 +199,12 @@ const carrierOf = (place: Place, waiters: readonly WaiterRow[]): { readonly repo
     if (here !== undefined) return { repo: place.repo, workflow: place.workflow }
     const first = waiters.find((waiter) => waiter.workflow !== null)
     return first?.workflow == null ? { repo: place.repo, workflow: place.workflow } : { repo: first.repo, workflow: first.workflow }
+}
+
+/** The level a need is routed at: the owner when it asked for it, else the Supervisor when asked for or floored there, else the Kernel. */
+const routedLevel = (level: NeedLevel, floor: NeedLevel): NeedLevel => {
+    if (level === "owner") return "owner"
+    return level === "supervisor" || floor === "supervisor" ? "supervisor" : "kernel"
 }
 
 /** The router a need is routed to, as the step action names it. */
@@ -215,7 +223,7 @@ const route = (place: Place, need: NeedRow, level: NeedLevel): StepAction[] => {
     if (waiters.length === 0) return []
     const scope = scopeOf(need.key, waiters)
     const floor: NeedLevel = scope === "workflow" ? "kernel" : "supervisor"
-    const at: NeedLevel = level === "owner" ? "owner" : level === "supervisor" || floor === "supervisor" ? "supervisor" : "kernel"
+    const at = routedLevel(level, floor)
     const home = at === "kernel" ? { repo: waiters[0]?.repo ?? place.repo, workflow: waiters[0]?.workflow ?? place.workflow } : carrierOf(place, waiters)
     if (home === null) return []
     const subject = at === "owner" ? `need-deadline:${need.key}#${String(need.round)}` : `need:${need.key}#${String(need.round)}@${at}`

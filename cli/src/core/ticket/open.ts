@@ -130,14 +130,11 @@ export const ticketOpenVerb = defineVerb({
             ...(flags.module === undefined ? {} : { module: flags.module }),
             waiters,
         })
-        const said =
-            outcome === "opened"
-                ? "opened"
-                : outcome === "reopened"
-                  ? `reopened (round ${String(ticket.round)}; ${ticket.fixedBy ?? "its fix"} did not hold)`
-                  : ticket.state === "answered"
-                    ? `answered already, ${ticket.answer ?? "-"} (by ${ticket.closedBy ?? "-"}); what waits on it is released`
-                    : `repeat of ${ticket.state} ticket, occurrence ${String(ticket.occurrences)}`
+        let said: string
+        if (outcome === "opened") said = "opened"
+        else if (outcome === "reopened") said = `reopened (round ${String(ticket.round)}; ${ticket.fixedBy ?? "its fix"} did not hold)`
+        else if (ticket.state === "answered") said = `answered already, ${ticket.answer ?? "-"} (by ${ticket.closedBy ?? "-"}); what waits on it is released`
+        else said = `repeat of ${ticket.state} ticket, occurrence ${String(ticket.occurrences)}`
         return { data: { ticket, outcome }, message: `ticket ${ticket.id} ${said}: ${ticket.severity} ${ticket.kind}: ${ticket.title}` }
     },
 })

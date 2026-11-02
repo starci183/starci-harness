@@ -394,7 +394,8 @@ export const settle = async (target: LandTarget, built: CleanVerify, task?: Task
             work = skippedWrite(binding, "passed", undefined, asRefusal(error).message)
         }
     }
-    const stale = target.own || db === undefined ? null : await clearStale(root, db, task?.id ?? `land:${branch}`, candidate, task === undefined ? [] : taskPaths(task))
+    let stale: Awaited<ReturnType<typeof clearStale>> | null = null
+    if (!target.own && db !== undefined) stale = await clearStale(root, db, task?.id ?? `land:${branch}`, candidate, task === undefined ? [] : taskPaths(task))
     if (changed.length === 0) return { branch, commit: head, committed: false, warnings: [], work, stale }
     const update = target.own
         ? await captureGit(["update-ref", "-m", "starci settle", `refs/heads/${branch}`, candidate, built.parent], root)

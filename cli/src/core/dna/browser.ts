@@ -233,7 +233,8 @@ export class HeadlessPage {
     public async key(key: string, modifiers = 0): Promise<void> {
         const known = KEYS[key]
         const description = known ?? { code: key.length === 1 ? `Key${key.toUpperCase()}` : key, keyCode: key.length === 1 ? key.toUpperCase().codePointAt(0) : 0 }
-        const text = key === "Enter" ? String.fromCodePoint(13) : key.length === 1 ? key : undefined
+        const printable = key.length === 1 ? key : undefined
+        const text = key === "Enter" ? String.fromCodePoint(13) : printable
         const base = { key, code: description.code, windowsVirtualKeyCode: description.keyCode, nativeVirtualKeyCode: description.keyCode, modifiers }
         await this.call("Input.dispatchKeyEvent", { type: text === undefined ? "rawKeyDown" : "keyDown", ...base, ...(text === undefined ? {} : { text }) })
         await this.call("Input.dispatchKeyEvent", { type: "keyUp", ...base })

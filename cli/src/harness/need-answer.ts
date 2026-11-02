@@ -16,7 +16,10 @@ interface NeedAnswerCommand {
 }
 
 /** The resolver keys of an answer, a single key or a list, in order. */
-export const resolverKeys = (resolver: string | readonly string[] | undefined): readonly string[] => (resolver === undefined ? [] : typeof resolver === "string" ? [resolver] : resolver)
+export const resolverKeys = (resolver: string | readonly string[] | undefined): readonly string[] => {
+    if (resolver === undefined) return []
+    return typeof resolver === "string" ? [resolver] : resolver
+}
 
 /** How a Kernel answers a shared-need decision, said in every refusal so a wrong answer bounces back with the right one. */
 export const KERNEL_NEED_GUIDANCE =
