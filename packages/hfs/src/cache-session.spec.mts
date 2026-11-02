@@ -70,6 +70,24 @@ test('--full, a release env and a differing fingerprint each force a full run wi
   assert.equal(local.writes, false);
 });
 
+test('the full set used by --no-cache writes refreshed records through the existing normal session', (t) => {
+  const root = repo({ 'a.ts': 'x\n' });
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const seed = createDiskSession(options(root, ['a.ts']));
+  seed.replace('check/format', [rec('a.ts', 'x\n')]);
+  seed.flush();
+  const refresh = createDiskSession(options(root, ['a.ts'], { full: new Set(['format']) }));
+  assert.equal(refresh.decide('format').mode, 'full');
+  assert.equal(refresh.decide('lint').mode, 'diff');
+  assert.equal(refresh.writes, true);
+  const fresh = rec('a.ts', 'x\n', [{ path: 'a.ts', line: 1, column: 1, rule: 'fresh-result', message: 'newly judged result' }]);
+  refresh.replace('check/format', [fresh]);
+  assert.ok(refresh.flush().written.includes('.starcistacks/cache/check/format/root.jsonl'));
+  const next = createDiskSession(options(root, ['a.ts']));
+  assert.equal(next.decide('format').mode, 'diff');
+  assert.deepEqual(next.records('check/format'), [fresh]);
+});
+
 test('a new fingerprint drops the folders the run did not rewrite', (t) => {
   const root = repo({ 'a.ts': 'x\n' });
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

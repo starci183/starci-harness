@@ -46,10 +46,10 @@ export interface WiringResult { ok: boolean; status: string; findings: WiringFin
 export type WiringFinding = { code: string; level: 'error' | 'warning'; path: string; message: string; reason: string };
 
 const refusal = (file: string, reason: string): WiringFinding => ({ code: BOOT_PROOF_CODE, level: 'error', path: file,
-  message: `${file}: lite boot proof failed (${reason}); compile the real AppModule with explicit fixture options and infrastructure doubles using starci app check --wiring`, reason });
+  message: `${file}: lite boot proof failed (${reason}); compile the real AppModule with explicit fixture options and infrastructure doubles using starci app check --gate wiring`, reason });
 
 const timedOut = (file: string, budget: number): WiringFinding => ({ code: BOOT_PROOF_TIMEOUT, level: 'warning', path: file, reason: 'proof worker timed out',
-  message: `${file}: the lite boot proof reached no verdict: its worker ran out of its ${Math.round(budget / 1000)} s budget twice (the host is loaded); this is no failure of the proof, rerun starci app check --wiring when the host is quieter` });
+  message: `${file}: the lite boot proof reached no verdict: its worker ran out of its ${Math.round(budget / 1000)} s budget twice (the host is loaded); this is no failure of the proof, rerun starci app check --gate wiring when the host is quieter` });
 
 /** The worker's budget in ms, from its spawn: the CLI's STARCI_BOOT_PROOF_TIMEOUT_MS, else four compile deadlines (at least a minute). */
 export function workerBudget(timeout: number, env: NodeJS.ProcessEnv = process.env): number {
@@ -234,15 +234,19 @@ export function appWiring({ repoRoot, repo = readJson(repoRoot, 'hfs.json'), fil
   return { ok: findings.length === 0, status: 'checked', apps, findings };
 }
 
-/** Optional standalone entry; coordinator connects the same seam to app check --wiring. */
+/** Optional standalone entry; coordinator connects the same seam to app check --gate wiring. */
 export interface AppWiringMainIo { cwd?: string; stdout?: (text: string) => unknown; stderr?: (text: string) => unknown }
 
 export function appWiringMain(argv: string[], { cwd = invocationDir(), stdout = (text: string) => process.stdout.write(text), stderr = (text: string) => process.stderr.write(text) }: AppWiringMainIo = {}): number {
   let directory = cwd, json = false;
   for (let at = 0; at < argv.length; at += 1) {
-    if (argv[at] === '--cwd' && argv[at + 1]) directory = path.resolve(cwd, argv[++at] as string);
-    else if (argv[at] === '--json') json = true;
-    else if (argv[at] !== '--wiring') { stderr('usage: starci app check --wiring [--cwd <dir>] [--json]\n'); return 2; }
+    const argument = argv[at];
+    const next = argv[at + 1];
+    if (argument === '--cwd' && next && !next.startsWith('--')) { directory = path.resolve(cwd, next); at += 1; }
+    else if (argument?.startsWith('--cwd=') && argument.length > '--cwd='.length) directory = path.resolve(cwd, argument.slice('--cwd='.length));
+    else if (argument === '--json') json = true;
+    else if (argument === '--gate' && next === 'wiring') at += 1;
+    else if (argument !== '--gate=wiring') { stderr('usage: starci app check --gate wiring [--cwd <dir>] [--json]\n'); return 2; }
   }
   const repo = readJson(directory, 'hfs.json');
   if (!repo) { stderr('wiring needs a readable hfs.json\n'); return 2; }

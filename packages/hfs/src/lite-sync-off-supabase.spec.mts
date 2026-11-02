@@ -47,7 +47,7 @@ test('the managed .starcistacks/images/db/Dockerfile builds the digest-pinned of
 
 test('the managed db scripts, codegen and CI drive the self-hosted database', () => {
   const scripts = String(targetAt('package.json').content);
-  for (const script of ['db:push: starci app db migrate --db-url-env DATABASE_URL --execute', 'db:new: starci app db new', 'db:plan: starci app db migrate --db-url-env DATABASE_URL', 'db:dump: starci app db dump --db-url-env DATABASE_URL', 'db:start: docker start demo-dev-db']) {
+  for (const script of ['db:push: starci app db migrate --db-url-env DATABASE_URL --execute', 'db:new: starci app db new', 'db:plan: starci app db migrate --db-url-env DATABASE_URL', 'db:dump: starci app db dump --db-url-env DATABASE_URL', 'db:lint: starci app check --gate db', 'db:start: docker start demo-dev-db']) {
     assert.ok(scripts.includes(script), script);
   }
   assert.equal(scripts.includes('db:types'), false);

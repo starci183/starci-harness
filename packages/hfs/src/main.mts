@@ -1,6 +1,6 @@
 // The @starci/hfs implementation behind `starci app`: one repository, `<app>/`, with one package.json, lockfile and node_modules
 // at its root and two sides, be/ and fe/, declared by the one hfs.json of kind app. Every verb runs at the app root.
-//   starci app check [--cwd <dir>] [--json] [--full] [--hfs] [--format] [--db] [--secrets] [--wiring] [--types] [--lint] [--test] [--sonar] [--coverage-from <lcov>] | check --staged
+//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov>]... [--no-cache] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged
 //                                            every tracked path has a slot; required files exist; nothing forbidden or
 //                                            tracked-that-must-be-ignored; pins match; every managed file equals its render
 //                                            (sync/managed.mjs, the .gitignore block and sonar-project.properties included); no empty or ghost
@@ -13,10 +13,12 @@
 //                                            ESLint executes once per side through the installed managed config; the FE config composes
 //                                            the universal canon and the explicitly selected Grammar-family canon.
 //                                            The results are committed in .starcistacks/cache/ (cache/, contexts/project/check-cache.md): with no selector every
-//                                            family runs diff-only against it and writes what it judged back; --full runs the selected families in full; a
-//                                            selector (--hfs, --format, --db, --secrets, --wiring, --types, --lint, --test, --sonar) runs only that family, and
-//                                            selectors combine. Each family prints one diagnosis line (full or diff and why, checked, reused, findings new, known,
-//                                            fixed); progress goes to stderr (--quiet silences it). STARCI_APP_CHECK_CACHE=verify runs diff then full and fails (exit 2)
+//                                            local family reuses valid cache records and writes what it judged back; a missing cache, fingerprint change or
+//                                            release selects full automatically. Repeat --gate to select gates; no selector runs every existing family.
+//                                            sonar and codecov select the same combined baseline predictions, not server verdicts. --no-cache recomputes the
+//                                            selected families and writes the refreshed cache; it does not bypass writes.
+//                                            Each family prints one diagnosis line (full or diff and why, checked, reused, findings new, known, fixed);
+//                                            progress goes to stderr (--quiet silences it). STARCI_APP_CHECK_CACHE=verify runs diff then full and fails (exit 2)
 //                                            on any difference; =full never reads the cache (the release gate).
 //                                            --coverage-from <lcov> judges a coverage report produced elsewhere (the merge of a sharded unit run) and records nothing.
 //                                            --staged: the pre-commit guard alone (sync/hygiene.mjs: staged .starciwork and .starcistacks paths, the secrets
@@ -173,8 +175,10 @@ const DATABASE_VERBS = new Map<string | undefined, (argv: string[], io: VerbIo) 
  */
 /** The flags of the add nouns that generate a file tree from a pattern (service, spec and image take none of them, and --inject is only theirs). */
 const ADD_FLAGS: FlagTable = { value: ['--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--shapes', '--read', '--app', '--kind', '--blocks', '--tabs'], boolean: ['--fe', '--form'] };
-/** The family selectors of `app check`, one flag per family of the cache (contexts/project/check-cache.md). */
-const FAMILY_FLAGS = FAMILIES.map((family) => `--${family}`);
+/** The repeatable selector of `app check`; its values are the canonical family vocabulary. */
+const GATE_FLAGS = ['--gate'] as const;
+/** Both quality selectors dispatch to the existing combined Sonar/Codecov baseline family. */
+const CHECK_GATES = [...FAMILIES, 'codecov'] as const;
 const PARSED: Record<string, ParsedVerb> = {
   scaffold: { run: scaffoldMain, value: ['--registry-visibility'], edition: true, forms: [{ operands: '<name>' }] },
   add: {
@@ -186,7 +190,7 @@ const PARSED: Record<string, ParsedVerb> = {
       { operands: 'image', flags: [] },
     ],
   },
-  check: { run: checkMain, value: ['--coverage-from', '--shard'], boolean: ['--json', '--staged', '--full', ...FAMILY_FLAGS], edition: true, forms: [{ only: { boolean: ['--json', '--full', ...FAMILY_FLAGS], value: ['--coverage-from', '--shard'] } }, { only: { boolean: ['--staged'] }, edition: false }] },
+  check: { run: checkMain, value: ['--coverage-from', '--shard'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--no-cache'], edition: true, forms: [{ only: { boolean: ['--json', '--no-cache'], list: GATE_FLAGS, value: ['--coverage-from', '--shard'] } }, { only: { boolean: ['--staged'] }, edition: false }] },
   slot: { run: slotMain, boolean: ['--json'], forms: [{ operands: '<path>' }] },
   emit: { run: emitMain, forms: [{}] },
 };
@@ -197,6 +201,7 @@ const PARSED_FLAGS = new Set([...Object.values(PARSED).flatMap(flagsOf), '--edit
 
 /** The placeholder of a value flag in the usage; any other prints as <name>. */
 const PLACEHOLDERS: Record<string, string> = {
+  '--gate': `<${CHECK_GATES.join('|')}>`,
   '--registry-visibility': 'public|private', '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
   '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
   '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--image': '<service>=<ref>', '--sha': '<sha>',
@@ -345,7 +350,12 @@ function printExplain(e: Dynamic, out: (text: string) => unknown): void {
 
 /** The family selectors given, as families; none given selects `fallback`. */
 function selectedFamilies(opts: Opts, fallback: readonly FamilyId[]): Set<FamilyId> {
-  const given = FAMILIES.filter((family) => opts[family] === true);
+  const given = (listFlag(opts, 'gate') ?? []).map((value) => {
+    if (value === 'codecov') return 'sonar';
+    const family = FAMILIES.find((candidate) => candidate === value);
+    if (family === undefined) throw new Error(`--gate accepts ${CHECK_GATES.join('|')}; got ${JSON.stringify(value)}`);
+    return family;
+  });
   return new Set(given.length > 0 ? given : fallback);
 }
 
@@ -491,7 +501,7 @@ function printCheckProofs(result: Dynamic, out: (text: string) => unknown): void
 }
 
 /** The flags `check --staged` refuses: it is the pre-commit guard alone, so none of the whole-app pass's options means anything with it. */
-const STAGED_REFUSES = ['--json', '--full', '--coverage-from', '--shard', ...FAMILY_FLAGS] as const;
+const STAGED_REFUSES = ['--json', '--no-cache', '--coverage-from', '--shard', ...GATE_FLAGS] as const;
 
 /** The family a finding belongs to, for naming it when a verified run disagrees with the cache. */
 function familyOf(finding: { code?: string | null; engine?: string }): FamilyId {
@@ -564,22 +574,25 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
   }
   const coverageFrom = valueFlag(opts, 'coverage-from');
   const shard = valueFlag(opts, 'shard');
-  if (shard !== undefined) {
-    // The sharded full unit run of CI (--test --full --shard <i>/<n>): the shard's Jest run in the shape the shard merge reads; nothing is recorded.
-    const match = /^(\d+)\/(\d+)$/.exec(shard);
-    if (match === null || opts.test !== true || opts.full !== true) throw new Error('--shard <i>/<n> belongs to `starci app check --test --full`');
-    return runTestShard(repoRoot, Number(match[1]), Number(match[2]));
-  }
   const explicit = selectedFamilies(opts, []);
+  if (shard !== undefined) {
+    // A selected test shard is always a whole-unit shard, in the shape the coverage merge reads; nothing is recorded.
+    const match = /^(\d+)\/(\d+)$/.exec(shard);
+    if (explicit.size !== 1 || !explicit.has('test') || coverageFrom !== undefined) throw new Error('--shard <i>/<n> requires --gate test alone and takes no --coverage-from');
+    const index = Number(match?.[1]);
+    const total = Number(match?.[2]);
+    if (match === null || !Number.isSafeInteger(index) || !Number.isSafeInteger(total) || index < 1 || total < index) throw new Error('--shard needs <i>/<n> with 1 <= i <= n');
+    return runTestShard(repoRoot, index, total);
+  }
   // A coverage report judged on its own (the merge job of a sharded run) runs no family; with selectors it comes on top of them.
   const selected = explicit.size > 0 ? explicit : coverageFrom === undefined ? new Set<FamilyId>(DEFAULT_FAMILIES) : new Set<FamilyId>();
-  const full = opts.full === true ? new Set(selected) : undefined;
+  const full = opts['no-cache'] === true ? new Set(selected) : undefined;
   if (io.env[CACHE_ENV] === 'verify') return verifyCache(io, selected, coverageFrom);
   const { result, seconds } = await checkRun({ io, selected, full, use: coverageFrom !== undefined && explicit.size === 0 ? 'bypass' : 'normal', coverageFrom });
   if (opts.json) out(`${JSON.stringify(result, null, 2)}\n`);
   else { printCheck(result, out); printCheckProofs(result, out); if (result.gate.line) out(`${result.gate.line}\n`); }
   const exit = result.eslint?.errors.length ? 2 : result.ok ? 0 : 1;
-  writeRunLog(repoRoot, { command: `check${[...selected].map((family) => ` --${family}`).join('')}${opts.full === true ? ' --full' : ''}`, seconds, exit, families: (result.families as FamilyReport[]).map((report) => ({ ...report, seconds: 0 })) }, io.env);
+  writeRunLog(repoRoot, { command: `check${[...new Set(listFlag(opts, 'gate') ?? [])].map((gate) => ` --gate ${gate}`).join('')}${opts['no-cache'] === true ? ' --no-cache' : ''}${coverageFrom === undefined ? '' : ` --coverage-from ${JSON.stringify(coverageFrom)}`}`, seconds, exit, families: (result.families as FamilyReport[]).map((report) => ({ ...report, seconds: 0 })) }, io.env);
   return exit;
 }
 
