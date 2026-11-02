@@ -1,4 +1,5 @@
 import { byCodeUnit } from '../../lib/list.mjs';
+import { dirname, relative } from 'node:path';
 import type { ArchitectureConfig, TypeScriptApi } from './config.mjs';
 import { isBoundsExport } from './contract-bounds.mjs';
 import type { ImportVerdict } from '../slots.mjs';
@@ -199,7 +200,16 @@ function contractMetadataEdge(graph: HfsGraph, ts: TypeScriptApi, edge: GraphEdg
     if (!declaration.exportClause || !ts.isNamedExports(declaration.exportClause)) return false;
     names = declaration.exportClause.elements.map(item => (item.propertyName ?? item.name).text);
   } else return false;
-  return names.length > 0 && names.every(name => isBoundsExport(to.abs, name));
+  const apiOwner = to.owner;
+  const dirnameOfEntry = dirname(to.abs);
+  const ownsGenerated = (file: string): boolean => {
+    const rel = `${apiOwner.root}/${relative(dirnameOfEntry, file).replaceAll('\\', '/')}`;
+    const classified = graph.resolver.classifyPath(rel);
+    const owner = graph.resolver.ownerOf(rel);
+    return classified.status === 'owned' && classified.slot === 'fe.transport.generated' &&
+      owner?.slot === apiOwner.slot && owner.root === apiOwner.root;
+  };
+  return names.length > 0 && names.every(name => isBoundsExport(ts, to.abs, name, ownsGenerated));
 }
 
 function inspectTierEdge(graph: HfsGraph, ts: TypeScriptApi, edge: GraphEdge, tierRule: string, counts: TierCounts, violations: ArchitectureViolation[], coverage: { edgesChecked: number; unclassifiedEdges: number }) {

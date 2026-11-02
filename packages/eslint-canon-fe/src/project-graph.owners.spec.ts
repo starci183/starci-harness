@@ -163,21 +163,33 @@ test("FE_TIER_DIRECTION: hooks consume generated contract exports without consum
     const api = "apps/web/src/modules/api/"
     const hooks = "apps/web/src/hooks/rhf/"
     const s = scene(t, { files: {
-        [api + "index.ts"]: 'export { INPUT_BOUNDS as bounds, inputBoundsIssues } from "./graphql/__generated__/input-bounds"\nexport { call } from "./graphql/query"\n',
-        [api + "graphql/__generated__/input-bounds.ts"]: 'export const INPUT_BOUNDS = {}\nexport const inputBoundsIssues = () => []\nexport type Bound = string\n',
-        [api + "graphql/query.ts"]: 'export const call = () => 1\n',
+        [api + "index.ts"]: `export { INPUT_BOUNDS as bounds, inputBoundsIssues, missing, duplicate } from "./graphql/__generated__/input-bounds"
+export { call, fakeComment, fakeString, fakeTemplate, duplicate } from "./graphql/query"
+export type { Model } from "./graphql/query"
+// export { fakeComment } from "./graphql/__generated__/input-bounds"
+const text = 'export { fakeString } from "./graphql/__generated__/input-bounds"'
+const template = \`export { fakeTemplate } from "./graphql/__generated__/input-bounds"\`
+`,
+        [api + "graphql/__generated__/input-bounds.ts"]: 'export const INPUT_BOUNDS = {}\nexport const inputBoundsIssues = () => []\nexport const duplicate = 1\nexport type Bound = string\n',
+        [api + "graphql/query.ts"]: 'export const call = () => 1\nexport const fakeComment = call\nexport const fakeString = call\nexport const fakeTemplate = call\nexport const duplicate = call\nexport type Model = string\n',
         [hooks + "useGoodForm.ts"]: 'import { bounds as renamed, inputBoundsIssues } from "../../modules/api"\nexport const useGoodForm = () => [renamed, inputBoundsIssues]\n',
         [hooks + "useMixedForm.ts"]: 'import { bounds, call } from "../../modules/api"\nexport const useMixedForm = () => [bounds, call]\n',
         [hooks + "useTypeForm.ts"]: 'import { bounds, type call } from "../../modules/api"\nexport const useTypeForm = () => bounds\n',
         [hooks + "useNamespaceForm.ts"]: 'import * as api from "../../modules/api"\nexport const useNamespaceForm = () => api.bounds\n',
         [hooks + "usePrivateForm.ts"]: 'import { INPUT_BOUNDS } from "../../modules/api/graphql/__generated__/input-bounds"\nexport const usePrivateForm = () => INPUT_BOUNDS\n',
+        [hooks + "useCommentForm.ts"]: 'import { fakeComment } from "../../modules/api"\nexport const useCommentForm = () => fakeComment\n',
+        [hooks + "useStringForm.ts"]: 'import { fakeString } from "../../modules/api"\nexport const useStringForm = () => fakeString\n',
+        [hooks + "useTemplateForm.ts"]: 'import { fakeTemplate } from "../../modules/api"\nexport const useTemplateForm = () => fakeTemplate\n',
+        [hooks + "useAmbiguousForm.ts"]: 'import { duplicate } from "../../modules/api"\nexport const useAmbiguousForm = () => duplicate\n',
+        [hooks + "useMissingForm.ts"]: 'import { missing } from "../../modules/api"\nexport const useMissingForm = () => missing\n',
+        [hooks + "useModelForm.ts"]: 'import { bounds, type Model } from "../../modules/api"\nexport const useModelForm = () => bounds\n',
         [hooks + "useRequireForm.ts"]: 'export const useRequireForm = () => require("../../modules/api")\n',
         [hooks + "useDynamicForm.ts"]: 'export const useDynamicForm = () => import("../../modules/api")\n',
         [hooks + "useReexportForm.ts"]: 'export { bounds as renamed } from "../../modules/api"\n',
     } })
     s.tester.run("tier-direction", ruleOf("tier-direction"), {
         valid: [s.good(hooks + "useGoodForm.ts"), s.good(hooks + "useReexportForm.ts")],
-        invalid: [s.bad(hooks + "useMixedForm.ts", 1), s.bad(hooks + "useTypeForm.ts", 1), s.bad(hooks + "useNamespaceForm.ts", 1), s.bad(hooks + "usePrivateForm.ts", 1), s.bad(hooks + "useDynamicForm.ts", 1), s.bad(hooks + "useRequireForm.ts", 1)],
+        invalid: [s.bad(hooks + "useMixedForm.ts", 1), s.bad(hooks + "useTypeForm.ts", 1), s.bad(hooks + "useNamespaceForm.ts", 1), s.bad(hooks + "usePrivateForm.ts", 1), s.bad(hooks + "useDynamicForm.ts", 1), s.bad(hooks + "useRequireForm.ts", 1), s.bad(hooks + "useCommentForm.ts", 1), s.bad(hooks + "useStringForm.ts", 1), s.bad(hooks + "useTemplateForm.ts", 1), s.bad(hooks + "useAmbiguousForm.ts", 1), s.bad(hooks + "useMissingForm.ts", 1), s.bad(hooks + "useModelForm.ts", 1)],
     })
 })
 

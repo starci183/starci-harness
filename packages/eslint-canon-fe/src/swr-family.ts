@@ -2,6 +2,7 @@
 import { hfsOf } from "./lib/hfs.ts"
 import { readFileSync, readdirSync, type Dirent } from "node:fs"
 import { join } from "node:path"
+import ts from "typescript"
 import { isBoundsExport } from "#runtime/scripts/hfs/architecture/contract-bounds.mjs"
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import { stringOf, walk } from "./lib/ast.ts"
@@ -158,9 +159,16 @@ const importsOnlyBounds = (context: AnyContext, node: InspectedNode, value: unkn
   if (!specifiers.length || typeof value !== "string") return false
   const target = resolveImport(context, value)
   if (target === null) return false
+  const hfs = hfsOf(context)
+  const owner = hfs.ownerOf(target)
+  const ownsGenerated = (file: string): boolean => {
+    const found = hfs.classify(file)
+    return owner !== null && hfs.ownerOf(file) === owner && found.status === "owned" &&
+      (found.slot === "fe.transport.generated" || found.slot === "fe.package.api")
+  }
   return specifiers.every((s) => {
     const name = s.type === "ImportSpecifier" ? exportName(s.imported) : s.type === "ExportSpecifier" ? exportName(s.local) : undefined
-    return name !== undefined && isBoundsExport(target, name)
+    return name !== undefined && isBoundsExport(ts, target, name, ownsGenerated)
   })
 }
 

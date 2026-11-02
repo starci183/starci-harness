@@ -201,8 +201,12 @@ test("R285: values generated from the contract's input bounds are data, not oper
   const api = join(root, "apps", "web", "src", "modules", "api")
   mkdirSync(join(api, "graphql", "__generated__"), { recursive: true })
   mkdirSync(join(api, "graphql", "queries"), { recursive: true })
-  writeFileSync(join(api, "index.ts"), 'export { INPUT_BOUNDS, inputBoundsIssues, queryOrders } from "./graphql"\nexport type { GraphQLResponse } from "./graphql"\n')
-  writeFileSync(join(api, "graphql", "index.ts"), 'export { INPUT_BOUNDS, inputBoundsIssues } from "./__generated__/input-bounds"\nexport { queryOrders } from "./queries/query-orders"\n')
+  writeFileSync(join(api, "index.ts"), `export { INPUT_BOUNDS, inputBoundsIssues, queryOrders, fakeComment, fakeString, missing } from "./graphql"
+export type { GraphQLResponse } from "./graphql"
+// export { fakeComment } from "./graphql/__generated__/input-bounds"
+const text = 'export { fakeString } from "./graphql/__generated__/input-bounds"'
+`)
+  writeFileSync(join(api, "graphql", "index.ts"), 'export { INPUT_BOUNDS, inputBoundsIssues, missing } from "./__generated__/input-bounds"\nexport { queryOrders, fakeComment, fakeString } from "./queries/query-orders"\n')
   writeFileSync(join(api, "graphql", "__generated__", "input-bounds.ts"), "export const INPUT_BOUNDS = {}\nexport const inputBoundsIssues = () => []\n")
   writeFileSync(join(api, "graphql", "queries", "query-orders.ts"), "export const queryOrders = {}\n")
   const hfs = hfsFromDeclaration(appDeclaration("fe", { apps: [{ name: "web", kind: "next" }] }), root)
@@ -220,6 +224,9 @@ test("R285: values generated from the contract's input bounds are data, not oper
     invalid: [
       { filename: form, code: 'import { INPUT_BOUNDS, queryOrders } from "@/modules/api"; export const both = [INPUT_BOUNDS, queryOrders]', errors: [{ messageId: "outside" }] },
       { filename: form, code: 'import { queryOrders } from "@/modules/api"; export const op = queryOrders', errors: [{ messageId: "outside" }] },
+      { filename: form, code: 'import { fakeComment } from "@/modules/api"; export const op = fakeComment', errors: [{ messageId: "outside" }] },
+      { filename: form, code: 'import { fakeString } from "@/modules/api"; export const op = fakeString', errors: [{ messageId: "outside" }] },
+      { filename: form, code: 'import { missing } from "@/modules/api"; export const op = missing', errors: [{ messageId: "outside" }] },
       { filename: form, code: 'import * as api from "@/modules/api"; export const all = api', errors: [{ messageId: "outside" }] },
       { filename: form, code: 'import api, { INPUT_BOUNDS } from "@/modules/api"; export const all = [api, INPUT_BOUNDS]', errors: [{ messageId: "outside" }] },
     ],
