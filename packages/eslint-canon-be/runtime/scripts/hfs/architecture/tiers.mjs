@@ -1,4 +1,5 @@
 import { byCodeUnit } from '../../lib/list.mjs';
+import { dirname, relative } from 'node:path';
 import { isBoundsExport } from './contract-bounds.mjs';
 import { registryListImport, registrySlot } from './entity-registry.mjs';
 /**
@@ -168,7 +169,16 @@ function contractMetadataEdge(graph, ts, edge, verdict) {
     }
     else
         return false;
-    return names.length > 0 && names.every(name => isBoundsExport(to.abs, name));
+    const apiOwner = to.owner;
+    const dirnameOfEntry = dirname(to.abs);
+    const ownsGenerated = (file) => {
+        const rel = `${apiOwner.root}/${relative(dirnameOfEntry, file).replaceAll('\\', '/')}`;
+        const classified = graph.resolver.classifyPath(rel);
+        const owner = graph.resolver.ownerOf(rel);
+        return classified.status === 'owned' && classified.slot === 'fe.transport.generated' &&
+            owner?.slot === apiOwner.slot && owner.root === apiOwner.root;
+    };
+    return names.length > 0 && names.every(name => isBoundsExport(ts, to.abs, name, ownsGenerated));
 }
 function inspectTierEdge(graph, ts, edge, tierRule, counts, violations, coverage) {
     const verdict = graph.resolver.importAllowed(edge.from, edge.to);
