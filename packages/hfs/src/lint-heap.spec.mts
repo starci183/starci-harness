@@ -1,7 +1,7 @@
 // The ESLint child of `starci app lint` and `starci app check` runs on the heap the starci CLI hands it (STARCI_ESLINT_HEAP_MB, from the eslint
 // memory of ops/liveness.yaml): a typed lint of a large back end outgrew node's default 4 GB heap. Unset, ESLint runs on node's default.
 import test from 'node:test';
-import { nativeTestNode } from './fixtures/heavy-node.mjs';
+import { nativeTestNode } from './fixtures/heavy-node.mts';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

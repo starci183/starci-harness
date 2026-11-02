@@ -1,7 +1,7 @@
 // The `--test` family of the app check cache: a spec re-runs when its closure changes and only then, the merged total equals a full run's, a failed spec is never
 // stored, the per-file threshold is judged on the merged total, and the closure key comes from Jest's own resolver (the e2e test at the end runs a real Jest).
 import test from 'node:test';
-import { nativeTestNode } from './fixtures/heavy-node.mjs';
+import { nativeTestNode } from './fixtures/heavy-node.mts';
 import type { HeavyNodeRequest } from '../runtime/scripts/api/node/run-node.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

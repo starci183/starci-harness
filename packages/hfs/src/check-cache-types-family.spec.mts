@@ -1,7 +1,7 @@
 // The `--types` family of the app check cache: a program's key is reused while nothing it reads changed, a change re-runs that program alone, the `.tsbuildinfo` lives in the
 // untracked tool cache and never in the app, and a tsc that did not complete stores nothing. The last test runs the real TypeScript.
 import test from 'node:test';
-import { nativeTestNode } from './fixtures/heavy-node.mjs';
+import { nativeTestNode } from './fixtures/heavy-node.mts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

@@ -1,5 +1,5 @@
 import test from 'node:test';
-import { nativeTestNode } from './fixtures/heavy-node.mjs';
+import { nativeTestNode } from './fixtures/heavy-node.mts';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
