@@ -149,12 +149,17 @@ function nestedDataObjects(ts: TypeScriptApi, expression: Node | undefined, bind
   }
 }
 
+/** The one app status-owner binding of FE-ERROR-1, shared by clone and body-flow proofs. */
+export function canonicalStatusOwnerBinding(module: string | null, name: string | null): boolean {
+  return name === 'SlotView' && module !== null && /(?:^|\/)components\/composites\/SlotView(?:\/index)?(?:\.[cm]?tsx?)?$/.test(module);
+}
+
 /** Resolve the canonical status owner through its import binding, including aliases and namespaces. */
 function statusOwner(ts: TypeScriptApi, tag: JsxTagNameExpression, bindingOf: BindingOf): boolean {
   const binding = ts.isIdentifier(tag) ? bindingOf(tag) : ts.isPropertyAccessExpression(tag) && ts.isIdentifier(tag.expression) ? bindingOf(tag.expression) : null;
   const module = binding?.kind === 'component' || binding?.kind === 'namespace' ? binding.module : null;
   const name = binding?.kind === 'component' ? binding.name : ts.isPropertyAccessExpression(tag) ? tag.name.text : null;
-  return name === 'SlotView' && module !== null && /(?:^|\/)components\/composites\/SlotView(?:\/index)?(?:\.[cm]?tsx?)?$/.test(module);
+  return canonicalStatusOwnerBinding(module, name);
 }
 
 /** The mandated status wiring breaks clone windows; its render body remains ordinary compared code. */

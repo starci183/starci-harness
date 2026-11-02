@@ -2,6 +2,7 @@
 
 import type { TSESTree } from "@typescript-eslint/utils"
 import { defineRule, type Node, type Rules, type Recommended } from "./lib/rule.ts"
+import { rootPageChildren } from "./lib/root-page.ts"
 import { declarationsOf, fileOf as declarationFile } from "./lib/types.ts"
 import { isComponentFile, isComponentPath, isProductSource, kindOfFile } from "./lib/scope.ts"
 
@@ -301,16 +302,16 @@ export const propsFieldsReadonly = defineRule({
 
 /**
  * Children belong to frames. A frame owns a region and draws what its caller places in it; a leaf's only child is its text label; a
- * block, a composite and a branch draw a fixed anatomy from fields and named slots, so nested JSX under them is a type error for every
- * caller (`children?: never`). The tier is the layer folder of the unit (FE-FUNCTION-2).
+ * composite and branch draw fixed anatomy from named fields. A block receives atoms and takes children only when its mounted
+ * one-level RootPage composition is proved; ordinary blocks declare `children?: never` (FE-FUNCTION-2).
  */
 export const tierChildren = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "Only a frame takes children; a leaf takes its text label; blocks, composites and branches take none." },
+    docs: { description: "A frame takes children, a leaf its text label; a block takes children only as the proven one-level connected root of the route Page." },
     schema: [],
     messages: {
-      none: "A {{layer}} unit takes no children: name the slot for its role, or move the unit to components/frames when its job is to host content.",
+      none: "A {{layer}} unit takes no children. A block receives atoms; only the proven one-level connected root of the route Page receives owner content. A pure region host belongs in components/frames.",
       leaf: "A leaf takes its text label as children: string, never a node: name the slot for the node, or move the unit to components/frames.",
       withChildren: "PropsWithChildren gives a {{layer}} unit nested JSX: declare children?: never, or children: string for a leaf.",
     },
@@ -324,7 +325,7 @@ export const tierChildren = defineRule({
       TSPropertySignature(node) {
         if (propertyName(node) !== "children") return
         const type = node.typeAnnotation?.typeAnnotation
-        if (type?.type === "TSNeverKeyword" || (text && type?.type === "TSStringKeyword")) return
+        if (type?.type === "TSNeverKeyword" || (text && type?.type === "TSStringKeyword") || (layer === "blocks" && rootPageChildren(context, node))) return
         context.report({ node, messageId: text ? "leaf" : "none", data: { layer: layer.replace(/s$/, "") } })
       },
       TSTypeReference(node) {

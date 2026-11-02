@@ -205,3 +205,20 @@ declare module "*/runtime/scripts/hfs/project-graph.mjs" {
   /** Forget every cached project graph, so the next rule run reads the disk again. */
   export function resetProjectGraphs(): void
 }
+
+/** The selected-export source graph shared with the universal boundary proof. */
+declare module "@starci/eslint-canon-fe/lib/owner-source.mjs" {
+  type ReaderContext = import("./lib/types.ts").ReaderContext
+  type ParsedContext = import("./lib/types.ts").ParsedContext
+  type Node = import("./lib/types.ts").Node
+  export interface Owner { readonly context: ParsedContext; readonly value: Node }
+  export function importedHeader(context: ReaderContext, opening: import("@typescript-eslint/types").TSESTree.JSXOpeningElement): Owner | null
+  export function parsedSource(context: ReaderContext, filename: string): ParsedContext
+  export function headerProofs(context: ReaderContext): Map<string, boolean>
+}
+
+declare module "@starci/eslint-canon-fe/lib/root-page.mjs" {
+  type ReaderContext = import("./lib/types.ts").ReaderContext
+  export function connectedPageDrawing(context: ReaderContext, opening: import("@typescript-eslint/types").TSESTree.JSXOpeningElement): import("@starci/eslint-canon-fe/lib/owner-source.mjs").Owner | null
+  export function isPageRenderer(context: ReaderContext, opening: import("@typescript-eslint/types").TSESTree.JSXOpeningElement): boolean
+}

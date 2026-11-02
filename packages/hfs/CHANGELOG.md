@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.0.4
+
+- Changed: Record the existing shared Page semantic role in the selected canonical Grammar component contract, so universal composition proof does not infer concrete API names or accept an app-controlled switch.
+
 ## 5.0.3
 
 - Changed: Bundled canon pins name the builder-provenance BE canon release and its coherent dependency cohort. This package changes no runtime behavior or rule severity.

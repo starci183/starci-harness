@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.9.8
+
+- Changed: Enforce the documented one-level connected RootPage children composition with mounted selected-export and actual sibling-Base proof shared with R325. Keep ordinary block/atom restrictions and inspect shape records for rendered trees.
+
 ## 9.9.7
 
 - Changed: Bundled canon pins name the builder-provenance BE canon release and its coherent dependency cohort. This package changes no runtime behavior or rule severity.

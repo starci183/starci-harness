@@ -16,3 +16,7 @@ export declare function buildTypeScriptContext(
 
 /** The forward-slash path of `file` relative to `root`. */
 export declare function relativePath(root: string, file: string): string
+
+/** Workspace public-source resolution shared with the architecture owner. */
+export interface Workspace { readonly root: string; readonly workspace: boolean; readonly name: string | null; readonly manifest: unknown; readonly exports?: unknown }
+export declare function workspaceSourceEntry(typescript: typeof ts, workspace: Workspace, specifier: string): string | null

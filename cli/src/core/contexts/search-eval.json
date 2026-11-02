@@ -2,6 +2,7 @@
   "schema": "starci/contexts-search-eval@2",
   "threshold": { "lexical": 0.92, "hybrid": 0.95 },
   "questions": [
+    { "q": "when may a connected root Page block and its Base take children instead of a shape node record", "expect": ["FE-FUNCTION-2", "page-frame", "contexts/ui/components/page-header.md#choose"], "miss": { "on": "2026-11-02", "what": "the generic block children ban contradicted the documented one-level page composition while Base shape records skipped rendered-tree validation", "cause": ["no-enforcer"], "fix": ["FE-FUNCTION-2", "FE-ARCHITECTURE-3", "page-frame"] } },
     { "q": "which component for a destructive confirm", "expect": ["CTA-4", "contexts/ui/components/dialog-drawer.md#choose"] },
     { "q": "how is a BE error thrown", "expect": ["BE-ERROR-3", "BE-ERROR-1"] },
     { "q": "what is the slot of a webhook handler", "expect": ["be.feature.webhooks", "be.feature.webhooks.http", "BE-WEBHOOK-1"] },

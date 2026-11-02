@@ -8,6 +8,7 @@ import path from "node:path"
 import type { TSESTree } from "@typescript-eslint/types"
 import { walk } from "@starci/eslint-canon-fe/lib/ast.mjs"
 import { hfsOf } from "@starci/eslint-canon-fe/lib/hfs.mjs"
+import { connectedPageDrawing } from "@starci/eslint-canon-fe/lib/root-page.mjs"
 import { importedHeader, parsedSource } from "./app-shell-owner-source.ts"
 import type { ParsedContext, ReaderContext } from "./types.ts"
 
@@ -89,7 +90,7 @@ const blockFiles = (context: ReaderContext, opening: TSESTree.JSXOpeningElement)
  * hands to other blocks is not followed.
  */
 export const blockDrawsPage = (context: ReaderContext, opening: TSESTree.JSXOpeningElement): boolean =>
-  blockFiles(context, opening)?.some((file) => pagesIn(file).length > 0) === true
+  connectedPageDrawing(context, opening) !== null
 
 /**
  * True when a unit (a layout owner) draws a `Page` whose header carries `tabs`: itself, through its pure half, or through

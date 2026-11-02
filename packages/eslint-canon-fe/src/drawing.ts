@@ -9,7 +9,7 @@
  * THE PURE HALF TAKES ATOMS. `component.tsx` receives `{ shape?, props, on? }`: `props` is data
  * (strings, numbers, booleans, arrays, plain objects), `on` is actions whose arguments are data,
  * and feature composition may also take named `render` callbacks inside `props` to render supplied
- * blocks. A layout alone also takes `children`, because the router puts the page there.
+ * blocks. A layout takes the router's `children`; the proven one-level connected root of a route Page and its Base take that owner's children into the Page body.
  *
  * ONLY ITS OWN INDEX MAY IMPORT IT. Other tiers use the connected export, so the pure half stays a
  * private drawing surface that audit can render from a fixture.
@@ -23,6 +23,7 @@ import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import { defineRule, type Node, type Rules, type Recommended } from "./lib/rule.ts"
 import { classifyImport, roleOfFile } from "./lib/scope.ts"
 
+import { rootPageChildren } from "./lib/root-page.ts"
 import { inSplitTier, pureHalf } from "./lib/drawing-scope.ts"
 
 /** Type names that carry a rendered tree rather than data. */
@@ -97,7 +98,7 @@ const keyOf = (member: TSESTree.TypeElement): unknown => {
 export const basePropsAtom = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "A pure `XBase` takes `shape`, atom `props` and `on` actions; feature composition may receive named render callbacks in `props`." },
+    docs: { description: "A pure `XBase` takes `shape`, atom `props` and `on` actions; a layout and a structurally proven RootPage may take children." },
     fixable: "code",
     schema: [],
     messages: {
@@ -222,7 +223,10 @@ export const basePropsAtom = defineRule({
         for (const member of membersOf(annotation, types)) {
           const key = keyOf(member)
           const type = memberType(member)
-          if (key === "shape") continue
+          if (key === "shape") {
+            checkData(type, "shape", new Set())
+            continue
+          }
           if (key === "state") {
             const stateKey = "key" in member ? member.key : undefined
             context.report({
@@ -234,7 +238,7 @@ export const basePropsAtom = defineRule({
           }
           if (key === "props") checkData(type, "props", new Set())
           else if (key === "on") checkActions(type)
-          else if (key === "children" && tier === "layouts") continue
+          else if (key === "children" && (tier === "layouts" || tier === "blocks" && rootPageChildren(context, member))) continue
           else {
             context.report({
               node: member,

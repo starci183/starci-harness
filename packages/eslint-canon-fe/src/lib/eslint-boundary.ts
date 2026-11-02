@@ -8,8 +8,8 @@
  * run time, so the two views are joined here, in one place, and nowhere else.
  */
 import type { TSESLint } from "@typescript-eslint/utils"
-import type { ESLint, Rule as EslintRule } from "eslint"
-import type { Rule, Rules } from "./rule.ts"
+import type { SourceCode as EslintSourceCode, ESLint, Rule as EslintRule } from "eslint"
+import type { SourceCode, Rule, Rules } from "./rule.ts"
 
 /** A canon rule (or a rule already written at ESLint's type, as the Grammar families write theirs) as ESLint's rule type: the same object. */
 export const eslintRule = (rule: Rule<string, readonly unknown[]> | EslintRule.RuleModule): EslintRule.RuleModule =>
@@ -22,3 +22,6 @@ export const sharedRule = (rule: Rule<string, readonly unknown[]> | EslintRule.R
 /** The canon's rules as an ESLint plugin: the same objects, under ESLint's plugin type. */
 export const eslintPlugin = (plugin: { readonly meta: { readonly name: string }; readonly rules: Rules }): ESLint.Plugin =>
   plugin as unknown as ESLint.Plugin
+
+/** The independently parsed source object at the same ESLint/typescript-eslint boundary. */
+export const sourceCodeView = (sourceCode: EslintSourceCode): SourceCode => sourceCode as unknown as SourceCode

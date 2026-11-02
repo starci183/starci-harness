@@ -20,7 +20,8 @@ const SRC = import.meta.dirname
 /** Source files that name the disk or TypeScript's `sys` but read nothing a declaration is needed for, and why. */
 const ACCOUNTED: Readonly<Record<string, string>> = {}
 
-const READS_DISK = /from\s+["'](?:node:)?fs(?:\/promises)?["']|\bts\.sys\b/
+// The selected-export parser lives in the peer canon; its thin owner re-export still carries those inputs.
+const READS_DISK = /from\s+["'](?:node:)?fs(?:\/promises)?["']|\bts\.sys\b|from\s+["\']@starci\/eslint-canon-fe\/lib\/owner-source\.mjs["\']/
 
 const sourceFiles = (folder = SRC): string[] =>
   readdirSync(folder, { withFileTypes: true }).flatMap((entry) => {

@@ -34,7 +34,11 @@ Enforced by: R26 (`tier-direction`), R27 (`owner-cycle`), R30 (`owner-export-byp
 A block that reads data, session, store, locale or the router owns that in its `"use client"` `index.tsx` and renders
 its sibling `XBase`; pages and layouts are server components that resolve copy with `getTranslations` and compose
 blocks, reading no data; frames, composites, branches and leaves own at most intrinsic interaction (the axes each tier holds
-are [function.md](function.md) FE-FUNCTION-2).
+are [function.md](function.md) FE-FUNCTION-2). When client data builds the page header, the server page or
+segment layout composes one connected block as its sole root, handing its owner content as `children` through that
+block to its own Base's Page. This is the one-level composition of
+[page-header.choose.head:page](../../ui/components/page-header.md), not a block-to-block import or a generic render
+slot: an ordinary block, a relay, a nested root or an unused Page proves no content door.
 
 Why: each region reads its own data and fails alone, and every pure half can be drawn from a fixture.
 

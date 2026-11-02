@@ -3,6 +3,7 @@
 /** The architecture configuration of a repository. */
 export interface ArchitectureConfig {
   readonly root: string
+  readonly workspaces: readonly string[]
 }
 
 /** Load the architecture configuration of the repository at `repositoryRoot`. */

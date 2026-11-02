@@ -56,6 +56,12 @@ declare intent and leave variants to Grammar. It contains destructive confirms i
 dialog, counts mutually exclusive render paths separately and reserves commit for the view's
 decision rather than repeated collection items.
 
+The R92 `tier-children` and `base-props-atom` checks share the existing R325 one-level RootPage proof: a mounted
+page or segment layout composes one connected root, that root renders its own Base, and the Base owns the selected
+canonical page renderer. Only those exact input members may take `children`; ordinary blocks, relays, fake or unused
+renderers and shape records containing rendered trees remain refused. The selected canonical Grammar catalog owns
+semantic renderer bindings; universal code carries no concrete renderer spelling.
+
 Regression specs belong to this package. Application front ends and Grammar libraries have no specs.
 
 ## The runtime copy

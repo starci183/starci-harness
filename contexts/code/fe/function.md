@@ -20,10 +20,16 @@ Enforced by: R92 (`public-component-signature`, `no-inline-parameter-type`), R91
 
 A page, layout, overlay or block is split: the connected `X(props: XProps)` in `index.tsx` and the pure
 `XBase(props: XBaseProps)` in `component.tsx`, where `XBaseProps` is `{ shape?, props, on? }`. `props` holds atoms
-(strings, numbers, booleans, arrays and plain objects of them, one `DataSlot<T>` per read, the resolved labels, and for
-a named `render` callback only on a client branch, never in a block, which takes data), `on` holds actions whose arguments are atoms, a block takes no
-`children` and a node it shows is a named slot, only a layout and a frame (the tier whose job it is) take `children`, and the pure half calls no hook of the world. Only its sibling `index.tsx` imports
-`component.tsx`, which never re-exports `XBase`, so only `X` leaves the folder.
+(strings, numbers, booleans, arrays and plain objects of them, one `DataSlot<T>` per read and resolved labels), and
+`on` holds actions whose arguments are atoms. Feature composition may receive named `render` callbacks on a client
+branch; blocks receive data. A layout receives the router's `children`. A connected block and its Base receive
+`children` only when they are the one-level root that owns the route's Page under
+[page-header.choose.head:page](../../ui/components/page-header.md): a mounted page or segment layout composes that
+sole connected root, the connected half passes `children` to its own Base, and that Base returns the selected
+Grammar's Page and draws the content in its body. A segment's Page carries its link tabs. Ordinary blocks receive
+neither children nor rendered trees through named props or shape records. A frame receives children by its tier;
+a leaf receives only text as children. Every pure half calls no hook of the world. Only its sibling `index.tsx`
+imports `component.tsx`, which never re-exports `XBase`, so only `X` leaves the folder.
 
 The unit is drawn on three axes, and none stands in for another:
 
@@ -70,8 +76,7 @@ Enforced by: R92 (`connected-block-has-presentational-twin`), R55 (`use-client-o
 
 A frame, composite, branch or leaf has no twin and takes the flat fields it draws (`label`, `items`, `isLoading`,
 `onRetry`, and `shape` for a composite with shapes), already resolved by its block; it never resolves copy, reads data
-or chooses between a component and its resting copy, and a leaf hands `isLoading` to the grammar component it draws. Only a frame takes `children`;
-a leaf's `children` is its text (`children: string`), and a composite, a branch or a block names a slot for a node (`body`, `render`).
+or chooses between a component and its resting copy, and a leaf hands `isLoading` to the grammar component it draws. A frame takes `children`, and a leaf's `children` is its text (`children: string`). A composite or branch names a node slot by its role; a block follows the atom contract and the proven RootPage composition of FE-FUNCTION-2.
 
 Why: a reusable unit stays reusable only while it knows nothing about the product, the session or the catalog.
 

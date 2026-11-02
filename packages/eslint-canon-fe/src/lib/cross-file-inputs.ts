@@ -36,7 +36,15 @@ export interface CrossFileInput {
 export const HISTORY_MIN_LINES = 400
 
 /** Every disk read of this canon's rules beyond the import graph. */
+const ROOT_PAGE_INPUTS = ["**/src/app/**/*.{ts,tsx}", "**/src/features/**/*.{ts,tsx}", "**/src/components/{blocks,frames,composites,branches,leaves}/**/*.{ts,tsx}", "packages/*/package.json", "packages/*/src/**/*.{ts,tsx}"] as const
+const ROOT_PAGE_DEPENDANTS = ["**/src/components/blocks/**/*.{ts,tsx}"] as const
+
 export const crossFileInputs: readonly CrossFileInput[] = [
+  ...["tier-children", "base-props-atom"].flatMap((rule): CrossFileInput[] => [
+    { rule, kind: "content", relativeTo: "side", globs: ROOT_PAGE_INPUTS, appliesTo: ROOT_PAGE_DEPENDANTS, reader: "lib/owner-source.ts" },
+    { rule, kind: "content", relativeTo: "side", globs: ROOT_PAGE_INPUTS, appliesTo: ROOT_PAGE_DEPENDANTS, reader: "lib/root-page.ts" },
+    { rule, kind: "exists", relativeTo: "side", globs: ["**/src/app", "**/src/app/**"], appliesTo: ROOT_PAGE_DEPENDANTS, reader: "lib/root-page.ts" },
+  ]),
   // the manifest name of the package that owns the linted file (the nearest package.json upward)
   { rule: "no-grammar-shim", kind: "content", relativeTo: "side", globs: ["**/package.json", "../package.json"], appliesTo: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"], reader: "grammar-shim.ts" },
   // an operation import is told from a workspace package by that package's manifest and entry
