@@ -196,16 +196,19 @@ that key.
    file's resolved local imports (TypeScript `preProcessFile` and `resolveModuleName` under the side's tsconfig: static,
    type-only and dynamic imports, re-exports, triple-slash references, JSON) and its **type surface**: the digest of
    TypeScript's isolated declaration emit of the file (`ts.transpileDeclaration`, which reads the file alone; a script,
-   a declaration file or a JSON file stands for its content hash) and whether the surface is *open*. A surface is open when
-   the emit reports a diagnostic (a type the compiler must infer from other files) or names a local module (a re-export, a
-   type imported from a local file), so what an importer reads of the file can change while the file's own text does not.
+   a declaration file or a JSON file stands for its content hash), the local files that emit names (`refs`: a type
+   imported from them, a re-export) and whether the surface is *inferred* (`open`: the emit reported a diagnostic, a type
+   the compiler must infer from bodies and other files; a function whose only diagnostic is a missing return type and
+   whose every return is JSX, `null` or `undefined` is not inferred, its type being the JSX namespace's). An explicit
+   surface is its emit text plus the surfaces of the files it names, nothing else.
    The dirty set holds every changed, added or removed file, every file whose imports resolve elsewhere than recorded, and
    every file that imports a file whose surface changed, in the new graph and the cached one (a file that stopped
-   importing it still holds a result from the old types). A file's surface changed when it was added or removed, gained
-   an import, its digest differs from the record, or it is dirty and open. A body-only edit, a comment at the end of a file,
-   therefore lints that file alone; a changed signature, export list or doc comment (`@deprecated` is read by rules) its
-   direct importers; an inferred type carries on one more level at a time. A record from before the surface was kept, or a
-   TypeScript older than 5.5 without `transpileDeclaration`, has no digest and counts as changed and open. Imports are
+   importing it still holds a result from the old types). A dirty file's surface changed when it was added or removed,
+   gained an import, its digest differs from the record, it is inferred, or it names a file whose surface changed. A
+   body-only edit, a comment at the end of a file, therefore lints that file alone; a changed signature, export list or doc
+   comment (`@deprecated` is read by rules) its direct importers, and on through the files that re-export or name its
+   types; an inferred type carries on one more level at a time. A record from before the surface was kept, or a
+   TypeScript older than 5.5 without `transpileDeclaration`, has no digest and counts as changed and inferred. Imports are
    resolved again for every file when a path of the side was added or removed, since a new file can change where an
    unchanged import resolves. A changed file that declares globals (a `.d.ts` with no import or export, `declare global`, a module
    augmentation) dirties its whole side, and so does a change to the side's untracked program inputs.

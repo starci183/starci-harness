@@ -21,7 +21,7 @@ class World {
   constructor(context: TestContext) {
     this.root = fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-diff-'));
     context.after(() => fs.rmSync(this.root, { recursive: true, force: true }));
-    this.write('tsconfig.json', JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', target: 'es2022', strict: true } }));
+    this.write('tsconfig.json', JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', target: 'es2022', strict: true, jsx: 'preserve' } }));
   }
 
   write(file: string, text: string): void {
@@ -44,7 +44,7 @@ class World {
     return out.sort();
   }
 
-  get scope(): string[] { return this.walk().filter((file) => /\.ts$/.test(file)); }
+  get scope(): string[] { return this.walk().filter((file) => /\.tsx?$/.test(file)); }
 
   canon(): CanonDeclarations {
     return { name: 'fake-canon', graphRules: false, projectGraph: null, crossFileInputs: [{ rule: 'fake/sibling', kind: 'content', relativeTo: 'file', globs: ['*.txt'], appliesTo: ['**/*.ts'] }] };
@@ -156,6 +156,44 @@ test('an export whose type is inferred from another file carries the change one 
   world.write('src/inferred.ts', "import { base } from './base';\nexport const inferred = base() + '';\n");
   const third = await world.next(second.written);
   assert.deepEqual(third.called, [['src/consumer.ts', 'src/inferred.ts']]);
+});
+
+test('a file whose explicit surface names a type of another file carries a change of that type, and no edit of its body', async (context) => {
+  const world = new World(context);
+  world.write('src/user.ts', 'export interface User {\n  name: string;\n}\n');
+  world.write('src/service.ts', "import type { User } from './user';\nexport function find(): User {\n  return { name: 'a' };\n}\n");
+  world.write('src/page.ts', "import { find } from './service';\nexport function page(): string {\n  return find().name;\n}\n");
+  const records = await warm(world);
+  const surface = (written: readonly CacheRecord[], file: string): { open?: boolean; refs?: string[] } => (written.find((record) => record.step === 'imports' && record.path === file)?.data ?? {}) as { open?: boolean; refs?: string[] };
+  assert.equal(surface(records, 'src/service.ts').open, false);
+  assert.deepEqual(surface(records, 'src/service.ts').refs, ['src/user.ts']);
+  world.write('src/service.ts', "import type { User } from './user';\nexport function find(): User {\n  return { name: 'b' };\n}\n");
+  const body = await world.next(records);
+  assert.deepEqual(body.called, [['src/service.ts']]);
+  world.write('src/user.ts', 'export interface User {\n  name: string;\n  age?: number;\n}\n');
+  const type = await world.next(body.written);
+  assert.deepEqual(type.called, [['src/page.ts', 'src/service.ts', 'src/user.ts']]);
+});
+
+test('a component that returns only JSX has the surface its props give, whatever its body reads; one that returns something else is inferred', async (context) => {
+  const world = new World(context);
+  world.write('src/card.tsx', 'export const Card = (props: { title: string }) => <div>{props.title}</div>;\n');
+  world.write('src/screen.tsx', "import { Card } from './card';\nexport const Screen = () => <Card title=\"x\" />;\n");
+  world.write('src/app.tsx', "import { Screen } from './screen';\nexport function App() {\n  return <main><Screen /></main>;\n}\n");
+  world.write('src/picked.tsx', "export function Picked(props: { items: string[] }) {\n  const first = props.items[0];\n  return first;\n}\n");
+  world.write('src/use-picked.tsx', "import { Picked } from './picked';\nexport function UsePicked() {\n  return <Picked items={[]} />;\n}\n");
+  const records = await warm(world);
+  const open = (file: string): boolean | undefined => ((records.find((record) => record.step === 'imports' && record.path === file)?.data ?? {}) as { open?: boolean }).open;
+  assert.deepEqual(['card', 'screen', 'app', 'picked'].map((name) => open(`src/${name}.tsx`)), [false, false, false, true]);
+  world.write('src/card.tsx', 'export const Card = (props: { title: string }) => <section>{props.title}</section>;\n');
+  const body = await world.next(records);
+  assert.deepEqual(body.called, [['src/card.tsx']]);
+  world.write('src/card.tsx', 'export const Card = (props: { title: string; tone: string }) => <section>{props.title}</section>;\n');
+  const props = await world.next(body.written);
+  assert.deepEqual(props.called, [['src/card.tsx', 'src/screen.tsx']]);
+  world.write('src/picked.tsx', "export function Picked(props: { items: string[] }) {\n  const first = props.items[1];\n  return first;\n}\n");
+  const inferred = await world.next(props.written);
+  assert.deepEqual(inferred.called, [['src/picked.tsx', 'src/use-picked.tsx']]);
 });
 
 test('an added file is linted alone; the files that did not change keep their results', async (context) => {

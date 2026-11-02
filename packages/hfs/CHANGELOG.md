@@ -2,7 +2,7 @@
 
 ## 5.0.8
 
-- Changed: The app-check ESLint cache dirties a file only when the type surface it reads can have changed. Each file records the digest of its isolated declaration emit and whether that surface is open (inferred from other files); a body-only edit lints that file alone, a changed signature its direct importers, an inferred type one more level at a time. Records without a surface are read as changed.
+- Changed: The app-check ESLint cache dirties a file only when the type surface it reads can have changed. Each file records the digest of its isolated declaration emit and whether that surface is open (inferred from other files); a body-only edit lints that file alone, a changed signature its direct importers, an inferred type one more level at a time. A file that only names the types of others (a re-export, an imported type in a signature) and a component that returns only JSX carry a change of those types, never an edit of their bodies. Records without a surface are read as changed.
 - Fixed: A file edited while the ESLint of a side ran loses only its own cache records instead of the records of the whole side.
 - Changed: The files of a diff or `--changed` lint go to ONE ESLint child through a job file read by a small runner (`lint/eslint-list.cjs`) on the ESLint API of the side's install, instead of several chunked command lines that each built the TypeScript program again. The heavy-node request carries the number of files it judges (`files`).
 
