@@ -140,19 +140,8 @@ export const jobsNamed = (jobs: readonly RunJob[], id: string): RunJob[] =>
 
 const describe = (job: RunJob): string => `${job.name}: ${job.status === "completed" ? job.conclusion : job.status}`
 
-/**
- * Judges a run for `sha`: it is a run of the managed CI workflow, of a push (or a dispatch) event, of exactly this commit; it is not red or
- * cancelled; and every required job concluded `success` (a skipped, cancelled, failed or unfinished one is refused; a job the run never had
- * is refused), and an optional job the run has is not red. Returns what was checked, or refuses with the first reason. Pure: the run's facts and jobs are given.
- */
-export const judgeRun = (sha: string, run: RunFacts, jobs: readonly RunJob[], standard: RequiredJobs): CiRunEvidence => {
-    const urlSuffix = run.url === "" ? "" : ` (${run.url})`
-    const here = `run ${String(run.id)}${urlSuffix}`
-    if (run.sha !== sha) throw new Refusal("CI_RUN_SHA_MISMATCH", `${here} is a run of ${run.sha === "" ? "an unknown commit" : run.sha.slice(0, 9)}, not of the commit being deployed (${sha.slice(0, 9)}); only a run of that exact commit is evidence`)
-    if (run.path !== CI_WORKFLOW_PATH) throw new Refusal("CI_RUN_WORKFLOW", `${here} is a run of ${run.path === "" ? "an unknown workflow" : run.path}; the evidence is a run of ${CI_WORKFLOW_PATH}`)
-    if (!EVIDENCE_EVENTS.includes(run.event)) throw new Refusal("CI_RUN_WORKFLOW", `${here} was started by ${run.event === "" ? "an unknown event" : run.event}; only a ${EVIDENCE_EVENTS.join(" or ")} run is evidence`)
-    if (run.status === "completed" && run.conclusion !== "success") throw new Refusal("CI_NOT_GREEN", `${here} of ${sha.slice(0, 9)} concluded ${run.conclusion === "" ? "without a verdict" : run.conclusion}`)
-    if (run.status !== "completed" && run.status !== "in_progress") throw new Refusal("CI_NOT_GREEN", `${here} of ${sha.slice(0, 9)} is ${run.status === "" ? "in an unknown state" : run.status}, not running yet`)
+/** Every required job of the standard that is green in the run, and what is wrong with a required job that is not or an optional one that is red. */
+const judgeJobs = (jobs: readonly RunJob[], standard: RequiredJobs): { readonly checked: { job: string; names: string[] }[]; readonly problems: string[] } => {
     const checked: { job: string; names: string[] }[] = []
     const problems: string[] = []
     for (const id of standard.required) {
@@ -165,6 +154,33 @@ export const judgeRun = (sha: string, run: RunFacts, jobs: readonly RunJob[], st
         const red = jobsNamed(jobs, id).filter((job) => job.status !== "completed" || (job.conclusion !== "success" && job.conclusion !== "skipped"))
         if (red.length > 0) problems.push(`optional job ${id} is in the run and not green: ${red.map(describe).join(", ")}`)
     }
+    return { checked, problems }
+}
+
+/** Refuses a run that concluded red or cancelled, or that is not running yet. */
+const assertRunState = (sha: string, run: RunFacts, here: string): void => {
+    if (run.status === "completed" && run.conclusion !== "success") throw new Refusal("CI_NOT_GREEN", `${here} of ${sha.slice(0, 9)} concluded ${run.conclusion === "" ? "without a verdict" : run.conclusion}`)
+    if (run.status !== "completed" && run.status !== "in_progress") throw new Refusal("CI_NOT_GREEN", `${here} of ${sha.slice(0, 9)} is ${run.status === "" ? "in an unknown state" : run.status}, not running yet`)
+}
+
+/** Refuses a run that is not the managed CI workflow's push run of exactly this commit, or that is red, cancelled or not running yet. */
+const assertEvidence = (sha: string, run: RunFacts, here: string): void => {
+    if (run.sha !== sha) throw new Refusal("CI_RUN_SHA_MISMATCH", `${here} is a run of ${run.sha === "" ? "an unknown commit" : run.sha.slice(0, 9)}, not of the commit being deployed (${sha.slice(0, 9)}); only a run of that exact commit is evidence`)
+    if (run.path !== CI_WORKFLOW_PATH) throw new Refusal("CI_RUN_WORKFLOW", `${here} is a run of ${run.path === "" ? "an unknown workflow" : run.path}; the evidence is a run of ${CI_WORKFLOW_PATH}`)
+    if (!EVIDENCE_EVENTS.includes(run.event)) throw new Refusal("CI_RUN_WORKFLOW", `${here} was started by ${run.event === "" ? "an unknown event" : run.event}; only a ${EVIDENCE_EVENTS.join(" or ")} run is evidence`)
+    assertRunState(sha, run, here)
+}
+
+/**
+ * Judges a run for `sha`: it is a run of the managed CI workflow, of a push (or a dispatch) event, of exactly this commit; it is not red or
+ * cancelled; and every required job concluded `success` (a skipped, cancelled, failed or unfinished one is refused; a job the run never had
+ * is refused), and an optional job the run has is not red. Returns what was checked, or refuses with the first reason. Pure: the run's facts and jobs are given.
+ */
+export const judgeRun = (sha: string, run: RunFacts, jobs: readonly RunJob[], standard: RequiredJobs): CiRunEvidence => {
+    const urlSuffix = run.url === "" ? "" : ` (${run.url})`
+    const here = `run ${String(run.id)}${urlSuffix}`
+    assertEvidence(sha, run, here)
+    const { checked, problems } = judgeJobs(jobs, standard)
     if (problems.length > 0) throw new Refusal("CI_NOT_GREEN", `${here} of ${sha.slice(0, 9)} is not deployable: ${problems.join("; ")}`)
     return { runId: run.id, url: run.url, sha, checked }
 }

@@ -11,6 +11,36 @@ const ACTIONS = ["discover-chat", "status", "notify", "bridge"] as const
 
 const CONNECTED = "StarCi is connected: only questions that need your decision arrive here. Reply to one to answer it; /status sums up the workflows, /tickets lists the open tickets, /ask <project> <request> sends a request."
 
+/** Stores the owner chat the bot was written from, the one `--chat` names when several wrote. */
+const discoverChat = async (bot: ReturnType<typeof telegramBot>, flags: { readonly chat: string | undefined }): Promise<VerbResult<unknown>> => {
+    const offset = withChannelStore(readChannel).offset
+    const updates = await getUpdates(bot, offset, 0)
+    const chats = chatsOf(updates)
+    const picked = flags.chat ?? (chats.size === 1 ? [...chats.keys()][0] : undefined)
+    if (picked === undefined) {
+        if (chats.size === 0) throw new Refusal("TELEGRAM_NO_CHAT", "no private chat wrote to the bot since the last read: the owner sends the bot any message (/start), then runs this again")
+        const chatsText = [...chats].map(([id, name]) => `${id} (${name})`).join(", ")
+        throw new Refusal("TELEGRAM_CHAT_AMBIGUOUS", `several chats wrote to the bot; pick one with --chat: ${chatsText}`)
+    }
+    const name = chats.get(picked)
+    if (name === undefined) throw new Refusal("TELEGRAM_NO_CHAT", `chat ${picked} did not write to the bot since the last read; chats: ${[...chats.keys()].join(", ") || "none"}`)
+    storeChat(picked, name, 0)
+    advanceOffset(updates)
+    await sendMessage(bot, picked, CONNECTED)
+    return { data: { chat: { id: picked, name } }, message: `telegram: owner chat ${name} (${picked}) stored; facts from now on reach it` }
+}
+
+/** What `connect telegram status` reports: the token, the owner chat, the bridge and the notice counts. */
+const telegramStatus = (config: ReturnType<typeof loadTelegram>): VerbResult<unknown> => {
+    const { channel, counts } = withChannelStore((db) => ({ channel: readChannel(db), counts: channelCounts(db) }))
+    const source = tokenSource(config)
+    const bridge = bridgeLiveness(channel, config)
+    const data = { variable: config.tokenVariable, configured: source !== null, source, chat: channel.chatId === null ? null : { id: channel.chatId, name: channel.chatName, connectedAt: channel.connectedAt }, bridge, ...counts }
+    const token = source === null ? `${config.tokenVariable} not set (${secretHome(config.tokenVariable)})` : `${config.tokenVariable} set (${source})`
+    const chat = channel.chatId === null ? "no owner chat (connect telegram discover-chat)" : `owner chat ${channel.chatName ?? channel.chatId} since ${channel.connectedAt ?? "-"}`
+    return { data, message: `telegram: ${token}; ${chat}; bridge ${bridge}; notices ${JSON.stringify(counts.notices)}; replies ${String(counts.inbound.owner)} from the owner, ${String(counts.inbound.ignored)} ignored` }
+}
+
 /**
  * `starci connect telegram <discover-chat|status|notify|bridge>`: the owner's Telegram channel, its one home. `discover-chat`
  * reads the bot's updates once and stores the chat that wrote to it (the owner sends the bot a message first; `--chat` picks one
@@ -40,13 +70,7 @@ export const connectTelegramVerb = defineVerb({
         if (flags.mode !== undefined || flags.once) throw new Refusal("CLI_USAGE", `connect telegram ${action} takes no ${flags.mode ?? "--once"}; they are bridge's`, EXIT_USAGE)
         const config = loadTelegram()
         if (action === "status") {
-            const { channel, counts } = withChannelStore((db) => ({ channel: readChannel(db), counts: channelCounts(db) }))
-            const source = tokenSource(config)
-            const bridge = bridgeLiveness(channel, config)
-            const data = { variable: config.tokenVariable, configured: source !== null, source, chat: channel.chatId === null ? null : { id: channel.chatId, name: channel.chatName, connectedAt: channel.connectedAt }, bridge, ...counts }
-            const token = source === null ? `${config.tokenVariable} not set (${secretHome(config.tokenVariable)})` : `${config.tokenVariable} set (${source})`
-            const chat = channel.chatId === null ? "no owner chat (connect telegram discover-chat)" : `owner chat ${channel.chatName ?? channel.chatId} since ${channel.connectedAt ?? "-"}`
-            return { data, message: `telegram: ${token}; ${chat}; bridge ${bridge}; notices ${JSON.stringify(counts.notices)}; replies ${String(counts.inbound.owner)} from the owner, ${String(counts.inbound.ignored)} ignored` }
+            return telegramStatus(config)
         }
         if (callerRole() === "debug") throw new Refusal("ROLE_REFUSED", `connect telegram ${action} is the owner's or the Supervisor's; Debug reads connect telegram status`)
         const bot = telegramBot(config)
@@ -54,20 +78,6 @@ export const connectTelegramVerb = defineVerb({
             const sweep = await sweepNotices(bot, connectedChannel())
             return { data: sweep, message: `telegram notify: sent ${String(sweep.sent.length)}, failed ${String(sweep.failed.length)}, deferred ${String(sweep.deferred)}` }
         }
-        const offset = withChannelStore(readChannel).offset
-        const updates = await getUpdates(bot, offset, 0)
-        const chats = chatsOf(updates)
-        const picked = flags.chat ?? (chats.size === 1 ? [...chats.keys()][0] : undefined)
-        if (picked === undefined) {
-            if (chats.size === 0) throw new Refusal("TELEGRAM_NO_CHAT", "no private chat wrote to the bot since the last read: the owner sends the bot any message (/start), then runs this again")
-            const chatsText = [...chats].map(([id, name]) => `${id} (${name})`).join(", ")
-            throw new Refusal("TELEGRAM_CHAT_AMBIGUOUS", `several chats wrote to the bot; pick one with --chat: ${chatsText}`)
-        }
-        const name = chats.get(picked)
-        if (name === undefined) throw new Refusal("TELEGRAM_NO_CHAT", `chat ${picked} did not write to the bot since the last read; chats: ${[...chats.keys()].join(", ") || "none"}`)
-        storeChat(picked, name, 0)
-        advanceOffset(updates)
-        await sendMessage(bot, picked, CONNECTED)
-        return { data: { chat: { id: picked, name } }, message: `telegram: owner chat ${name} (${picked}) stored; facts from now on reach it` }
+        return await discoverChat(bot, flags)
     },
 })

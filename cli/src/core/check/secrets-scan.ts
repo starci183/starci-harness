@@ -75,17 +75,9 @@ export const exceptSecrets = (root: string, hits: readonly SecretHit[], policy: 
     return { findings: open.map(bare), excepted: excepted.map((hit): ExceptedSecret => ({ ...bare(hit), kind: hit.kind, decision: hit.decision, reason: hit.reason })), stale: stale.map(({ path, rule, kind, index }) => ({ path, rule, kind, index })) }
 }
 
-/**
- * Scans `files` (repository-relative) with the rules of shared/secrets.ts as the files stand: forbidden paths by name, every
- * line of every readable file by content. A neverRead file is judged by its name alone. `complete` says the files are the
- * whole tree, so a `match` entry that covers nothing there is stale.
- */
-export const scanSecrets = (root: string, files: readonly string[], policy: Policy, profile: string, complete: boolean): SecretReport => {
+/** Reads each present file under the scan's bound and adds its hits to `raw`; a neverRead file is judged by its name alone. */
+const readFiles = (root: string, present: readonly string[], policy: Policy, allowed: boolean, raw: SecretHit[]): { readonly unjudged: string[]; readonly unread: number } => {
     const maxBytes = policy.loosening.scan.maxFileBytes
-    const allowed = envelopesAllowed(policy, profile)
-    // A deleted file holds no secret any more; existence is asked of the file system, so a neverRead file is never opened.
-    const present = files.filter((file) => existsSync(join(root, file)))
-    const raw: SecretHit[] = scanDiff("", present, () => undefined)
     const unjudged: string[] = []
     let unread = 0
     for (const file of present) {
@@ -103,6 +95,20 @@ export const scanSecrets = (root: string, files: readonly string[], policy: Poli
         }
         raw.push(...judgeFile(file, read.text))
     }
+    return { unjudged, unread }
+}
+
+/**
+ * Scans `files` (repository-relative) with the rules of shared/secrets.ts as the files stand: forbidden paths by name, every
+ * line of every readable file by content. A neverRead file is judged by its name alone. `complete` says the files are the
+ * whole tree, so a `match` entry that covers nothing there is stale.
+ */
+export const scanSecrets = (root: string, files: readonly string[], policy: Policy, profile: string, complete: boolean): SecretReport => {
+    const allowed = envelopesAllowed(policy, profile)
+    // A deleted file holds no secret any more; existence is asked of the file system, so a neverRead file is never opened.
+    const present = files.filter((file) => existsSync(join(root, file)))
+    const raw: SecretHit[] = scanDiff("", present, () => undefined)
+    const { unjudged, unread } = readFiles(root, present, policy, allowed, raw)
     const judged = exceptSecrets(root, raw, policy)
     const stale = complete ? judged.stale : []
     const verdict = judged.findings.length === 0 && stale.length === 0 && unjudged.length === 0 ? "green" : "red"

@@ -102,6 +102,23 @@ const toSlash = (path: string): string => path.split(sep).join("/")
 const trackedUnder = async (root: string, paths: readonly string[]): Promise<string[]> =>
     paths.length === 0 ? [] : nulPaths(await git(root, ["ls-files", "-z", "--", ...paths.map((path) => `:(top,literal)${path}`)]))
 
+/** The files a check judges: none for a workflow's final verify (its obligations stand alone), the changed ones, or the tracked ones under `paths` when nothing changed. */
+const judgedFiles = async (root: string, judging: Judging, changed: string[], paths: readonly string[]): Promise<string[]> => {
+    let judged = changed
+    if (judging.workflow !== undefined) judged = []
+    else if (changed.length === 0) judged = await trackedUnder(root, paths)
+    return judged
+}
+
+/** The composition a check judges: its workflow's, its task's, or its wave's tasks together; none otherwise. */
+const compositionOf = (root: string, judging: Judging): Composition => {
+    let composition = NO_COMPOSITION
+    if (judging.workflow !== undefined) composition = workflowComposition(root, judging.workflow)
+    else if (judging.task !== undefined) composition = taskComposition(root, judging.task)
+    else if (judging.wave !== undefined && judging.wave.length > 0) composition = waveComposition(root, judging.wave)
+    return composition
+}
+
 /**
  * Decides what to check: every package with --all, else the packages that own a judged file, the changed ones or, when the
  * diff changes nothing, the tracked files under `paths`; an app-wide configuration file widens to all. A diff and paths both empty leave
@@ -123,14 +140,9 @@ export const resolveScope = async (cwd: string, baseFlag: string | undefined, al
     const diff = (await changedFiles(root, base)).filter((file) => !within || underPaths(file, paths))
     const own = judging.task === undefined ? undefined : await ownChanges(root, judging.task)
     const changed = own === undefined ? diff : diff.filter((file) => own.has(file))
-    let composition = NO_COMPOSITION
-    if (judging.workflow !== undefined) composition = workflowComposition(root, judging.workflow)
-    else if (judging.task !== undefined) composition = taskComposition(root, judging.task)
-    else if (judging.wave !== undefined && judging.wave.length > 0) composition = waveComposition(root, judging.wave)
+    const composition = compositionOf(root, judging)
     const obligated = await trackedUnder(root, composition.obligations.flatMap((each) => each.paths))
-    let judged = changed
-    if (judging.workflow !== undefined) judged = []
-    else if (changed.length === 0) judged = await trackedUnder(root, paths)
+    const judged = await judgedFiles(root, judging, changed, paths)
     const files = [...new Set([...judged, ...obligated])]
     const appWide = appWideFiles()
     const widen = all || files.some((file) => appWide.test(file))
@@ -168,6 +180,24 @@ const typecheckGroup = async (scope: Scope, pkg: WorkspacePackage, dir: string, 
         return { label, run: await withHeavySlot("tsc", `tsc ${label}`, dir, options, (held) => captureTool(process.execPath, [tsc, "-p", config, "--noEmit", ...extra], dir, held.options)) }
     }))
 
+/** The tsconfig folders the judged TypeScript files of a package fall under, and the judged and unchanged files that fall under none. */
+const tsconfigGroups = (scope: Scope, pkg: WorkspacePackage, files: readonly string[], own: boolean): { readonly groups: Set<string>; readonly missing: string[]; readonly outside: string[] } => {
+    const groups = new Set<string>()
+    const judged = new Set(scope.files)
+    const missing: string[] = []
+    const outside: string[] = []
+    for (const file of files) {
+        const dir = resolveTsconfig(scope.root, dirname(join(scope.root, file)))
+        if (dir === undefined) (judged.has(file) ? missing : outside).push(file)
+        else groups.add(dir)
+    }
+    if (files.length === 0 && own) groups.add(pkg.dir)
+    if (pkg.workspaceRoot) groups.delete(pkg.dir)
+    // A package whose TypeScript sits under no tsconfig is not typechecked: that is a red, never a pass.
+    if (groups.size === 0 && missing.length === 0 && outside.length > 0 && !pkg.workspaceRoot) missing.push(...outside)
+    return { groups, missing, outside }
+}
+
 /**
  * `tsc --noEmit` over the judged TypeScript files of the package (every tracked one it owns with --all), within the runtime
  * tier's deadline when one is given. Each file is checked by the nearest `tsconfig.json` from its folder up to the repository
@@ -183,19 +213,7 @@ export const typecheckPackage = async (scope: Scope, target: ScopeTarget, option
     const files = (await lintableFiles(scope, target)).filter((file) => TYPESCRIPT_FILE.test(file))
     const own = pkg.hasTsconfig && !pkg.workspaceRoot
     if (files.length === 0 && !pkg.hasTsconfig) return skipped(pkg, "typecheck", "no TypeScript file and no tsconfig")
-    const groups = new Set<string>()
-    const judged = new Set(scope.files)
-    const missing: string[] = []
-    const outside: string[] = []
-    for (const file of files) {
-        const dir = resolveTsconfig(scope.root, dirname(join(scope.root, file)))
-        if (dir === undefined) (judged.has(file) ? missing : outside).push(file)
-        else groups.add(dir)
-    }
-    if (files.length === 0 && own) groups.add(pkg.dir)
-    if (pkg.workspaceRoot) groups.delete(pkg.dir)
-    // A package whose TypeScript sits under no tsconfig is not typechecked: that is a red, never a pass.
-    if (groups.size === 0 && missing.length === 0 && outside.length > 0 && !pkg.workspaceRoot) missing.push(...outside)
+    const { groups, missing, outside } = tsconfigGroups(scope, pkg, files, own)
     if (groups.size === 0 && missing.length === 0) return skipped(pkg, "typecheck", pkg.workspaceRoot ? "workspace root: its members are typechecked" : "no judged TypeScript file under a tsconfig.json")
     const runs = (await Promise.all([...groups].sort((left, right) => left.localeCompare(right)).map((dir) => typecheckGroup(scope, pkg, dir, options)))).flat()
     const ran = runs.filter((each): each is { readonly label: string; readonly run: ToolRun } => each.run !== undefined)
@@ -298,18 +316,8 @@ const lintGroup = async (scope: Scope, pkg: WorkspacePackage, group: LintGroup, 
     return { label: label + noted(), ran: true, red: false, output: "" }
 }
 
-/**
- * ESLint over the judged source files of the package (every file it owns with --all), warnings counted as errors. Each file is
- * linted with the config ESLint itself resolves for it, the nearest `eslint.config.*` from its folder up to the repository root,
- * so one package holding several configs (a one-app repository's `be/` and `fe/`) runs one ESLint per config. A judged file of
- * the scope (a changed one, or one under the paths a task that changes nothing proves) with no config up to the root is red with
- * LINT_CONFIG_MISSING, naming it; an unchanged file the whole-package lint meets outside every config is counted, not linted.
- */
-export const lintPackage = async (scope: Scope, target: ScopeTarget, options: RunOptions = {}): Promise<StepResult> => {
-    const { pkg } = target
-    const files = await lintableFiles(scope, target)
-    if (files.length === 0) return skipped(pkg, "lint", "no judged source file")
-    if (loadPolicy(scope.root).quality.runtime.compilerLint.includes(pkg.relativeDir)) return compilerLintPackage(scope, pkg, options)
+/** The ESLint configs the judged source files of a package fall under, and the judged and unchanged files that fall under none. */
+const eslintGroups = (scope: Scope, files: readonly string[]): { readonly groups: Map<string, { file: string; paths: string[] }>; readonly missing: string[]; readonly outside: string[] } => {
     const groups = new Map<string, { file: string; paths: string[] }>()
     const judged = new Set(scope.files)
     const missing: string[] = []
@@ -325,6 +333,22 @@ export const lintPackage = async (scope: Scope, target: ScopeTarget, options: Ru
         group.paths.push(toSlash(relative(config.dir, join(scope.root, file))))
         groups.set(config.dir, group)
     }
+    return { groups, missing, outside }
+}
+
+/**
+ * ESLint over the judged source files of the package (every file it owns with --all), warnings counted as errors. Each file is
+ * linted with the config ESLint itself resolves for it, the nearest `eslint.config.*` from its folder up to the repository root,
+ * so one package holding several configs (a one-app repository's `be/` and `fe/`) runs one ESLint per config. A judged file of
+ * the scope (a changed one, or one under the paths a task that changes nothing proves) with no config up to the root is red with
+ * LINT_CONFIG_MISSING, naming it; an unchanged file the whole-package lint meets outside every config is counted, not linted.
+ */
+export const lintPackage = async (scope: Scope, target: ScopeTarget, options: RunOptions = {}): Promise<StepResult> => {
+    const { pkg } = target
+    const files = await lintableFiles(scope, target)
+    if (files.length === 0) return skipped(pkg, "lint", "no judged source file")
+    if (loadPolicy(scope.root).quality.runtime.compilerLint.includes(pkg.relativeDir)) return compilerLintPackage(scope, pkg, options)
+    const { groups, missing, outside } = eslintGroups(scope, files)
     const runs = await Promise.all([...groups].map(([dir, group]) => lintGroup(scope, pkg, { dir, ...group }, options)))
     const ran = runs.filter((each) => each.ran)
     // Source under no eslint.config.* is not linted: that is a red, never a pass.
