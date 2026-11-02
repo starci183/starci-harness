@@ -57,7 +57,7 @@ const VARIANT_REMOVED = new Set(['Input', 'Textarea', 'SearchField', 'NumberFiel
   'Select', 'ComboBox', 'DatePicker', 'DateRangePicker', 'CopyField', 'OtpInput', 'Tabs']);
 /** Components that lost `size="control"`: a bar sets it from context. */
 const CONTROL_SIZED = new Set(['Button', 'IconButton', 'Input', 'SearchField', 'SegmentedControl']);
-/** Components whose `control` step was their `lg`: the attribute becomes `size="lg"`, which draws the same. */
+/** Components whose `control` step was their `lg`: the attribute becomes `size="lg"`, which draws the same, except in a navbar band, where `control` stays. */
 const CONTROL_IS_LG = new Set(['Switch', 'Avatar', 'AvatarButton']);
 const TONES: ReadonlyMap<string, string> = new Map([['live', 'success'], ['reconnecting', 'warning'], ['lost', 'danger']]);
 const OTP_RENAMES: ReadonlyMap<string, string> = new Map([['disabled', 'isDisabled'], ['invalid', 'isInvalid'], ['onChange', 'onValueChange']]);
@@ -188,6 +188,24 @@ export function transformSmallRenames({ ts, text, file = 'component.tsx' }: { ts
     if (ts.isPropertyAccessExpression(tag) && ts.isIdentifier(tag.expression) && namespaces.has(tag.expression.text) && !shadowed(ts, tag.expression)) return { name: tag.name.text, namespace: tag.expression.text, binding: null };
     return null;
   };
+  /**
+   * Whether `node` sits in a navbar band: the children of a TopBar, the `header` or `compactHeader` of a WorkspaceShell, or the `trigger` of a Drawer.
+   * A bar control keeps `size="control"`: `starci-grammar/navbar-control-size` requires it there and `starci-fe/control-height` accepts it,
+   * while `size="lg"` fails both.
+   */
+  const inBar = (node: Node): boolean => {
+    for (let at: Node | undefined = node.parent; at && !ts.isSourceFile(at); at = at.parent) {
+      const bar = ts.isJsxElement(at) ? at.openingElement : ts.isJsxSelfClosingElement(at) ? at : null;
+      if (bar !== null && resolve(bar.tagName)?.name === 'TopBar') return true;
+      if (ts.isJsxAttribute(at)) {
+        const owner = at.parent.parent;
+        const tag = ts.isJsxOpeningElement(owner) || ts.isJsxSelfClosingElement(owner) ? resolve(owner.tagName)?.name : undefined;
+        const prop = at.name.getText(source);
+        if ((tag === 'WorkspaceShell' && (prop === 'header' || prop === 'compactHeader')) || (tag === 'Drawer' && prop === 'trigger')) return true;
+      }
+    }
+    return false;
+  };
   const conflict = (node: Node, name: string, component: string): void => { flag(node, 'IMPORT_NAME_CONFLICT', `${name} is already bound to something that is not the grammar export; rewrite by hand`, component); };
 
   // Exports renamed one to one.
@@ -225,7 +243,7 @@ export function transformSmallRenames({ ts, text, file = 'component.tsx' }: { ts
     if (VARIANT_REMOVED.has(name)) drop('variant', 'VARIANT_REMOVED');
     if ((name === 'Button' || name === 'IconButton') && has('variant')) flag(props.get('variant') ?? opening, 'BUTTON_VARIANT', 'run `starci app codemod button-intent` first: that codemod owns variant', component);
     if (CONTROL_SIZED.has(name) && sizeValue === 'control') drop('size', 'SIZE_CONTROL_REMOVED');
-    if (CONTROL_IS_LG.has(name) && sizeValue === 'control') { const attribute = props.get('size'); if (attribute) { change(attribute, 'SIZE_CONTROL_LG', attribute.getText(source), 'size="lg"'); edit(attribute.getStart(source), attribute.end, 'size="lg"'); } }
+    if (CONTROL_IS_LG.has(name) && sizeValue === 'control' && !inBar(opening)) { const attribute = props.get('size'); if (attribute) { change(attribute, 'SIZE_CONTROL_LG', attribute.getText(source), 'size="lg"'); edit(attribute.getStart(source), attribute.end, 'size="lg"'); } }
 
     switch (name) {
       case 'ChatBubble': {
