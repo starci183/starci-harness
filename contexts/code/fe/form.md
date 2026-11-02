@@ -10,7 +10,7 @@ How a form is validated and submitted, and how the outcome of a write reaches th
 A form is `hooks/rhf/use<X>Form.ts`: `useForm` with `zodResolver` over a zod schema built in `useMemo` from the
 translator, with `values` or `defaultValues` from its caller; the connected half calls it, submits through
 `form.handleSubmit` into a domain command hook, and hands `XBase` the watched values, the pending flag and the first
-error message; the input bounds come from the generated `INPUT_BOUNDS` through `inputBoundsIssues` in `superRefine`,
+error message; the input bounds come through the API owner entry from the generated `INPUT_BOUNDS` and `inputBoundsIssues` in `superRefine`,
 never from a copied number.
 
 Why: one form shape keeps messages translated and submission tied to the command that owns the write, and contract

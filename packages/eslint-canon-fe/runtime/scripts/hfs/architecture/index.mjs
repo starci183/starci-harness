@@ -243,7 +243,7 @@ function runHfsMachine(config, context, paths, injectedTypeScript, base, fast, v
         return hfsChecks;
     const graph = buildHfsGraph(config, hfsContext);
     const input = { config, context: hfsContext, graph, base };
-    const runs = { tiers: () => checkTiers(graph), reachability: () => checkReachability(input), deadExports: () => checkDeadExports(input),
+    const runs = { tiers: () => checkTiers(graph, hfsContext.ts), reachability: () => checkReachability(input), deadExports: () => checkDeadExports(input),
         requiredFiles: () => checkRequiredFiles(input), clones: () => checkClones(input), symbols: () => checkSymbols(input), docLanguage: () => checkDocLanguage(input) };
     if (graph.profile === 'be')
         for (const [name, [check]] of Object.entries(BACKEND_MACHINE))

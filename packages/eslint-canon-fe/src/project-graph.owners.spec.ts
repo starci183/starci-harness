@@ -159,6 +159,28 @@ test("FE_TIER_DIRECTION: an import goes only to a tier the slot matrix allows", 
     })
 })
 
+test("FE_TIER_DIRECTION: hooks consume generated contract exports without consuming operations", (t) => {
+    const api = "apps/web/src/modules/api/"
+    const hooks = "apps/web/src/hooks/rhf/"
+    const s = scene(t, { files: {
+        [api + "index.ts"]: 'export { INPUT_BOUNDS as bounds, inputBoundsIssues } from "./graphql/__generated__/input-bounds"\nexport { call } from "./graphql/query"\n',
+        [api + "graphql/__generated__/input-bounds.ts"]: 'export const INPUT_BOUNDS = {}\nexport const inputBoundsIssues = () => []\nexport type Bound = string\n',
+        [api + "graphql/query.ts"]: 'export const call = () => 1\n',
+        [hooks + "useGoodForm.ts"]: 'import { bounds as renamed, inputBoundsIssues } from "../../modules/api"\nexport const useGoodForm = () => [renamed, inputBoundsIssues]\n',
+        [hooks + "useMixedForm.ts"]: 'import { bounds, call } from "../../modules/api"\nexport const useMixedForm = () => [bounds, call]\n',
+        [hooks + "useTypeForm.ts"]: 'import { bounds, type call } from "../../modules/api"\nexport const useTypeForm = () => bounds\n',
+        [hooks + "useNamespaceForm.ts"]: 'import * as api from "../../modules/api"\nexport const useNamespaceForm = () => api.bounds\n',
+        [hooks + "usePrivateForm.ts"]: 'import { INPUT_BOUNDS } from "../../modules/api/graphql/__generated__/input-bounds"\nexport const usePrivateForm = () => INPUT_BOUNDS\n',
+        [hooks + "useRequireForm.ts"]: 'export const useRequireForm = () => require("../../modules/api")\n',
+        [hooks + "useDynamicForm.ts"]: 'export const useDynamicForm = () => import("../../modules/api")\n',
+        [hooks + "useReexportForm.ts"]: 'export { bounds as renamed } from "../../modules/api"\n',
+    } })
+    s.tester.run("tier-direction", ruleOf("tier-direction"), {
+        valid: [s.good(hooks + "useGoodForm.ts"), s.good(hooks + "useReexportForm.ts")],
+        invalid: [s.bad(hooks + "useMixedForm.ts", 1), s.bad(hooks + "useTypeForm.ts", 1), s.bad(hooks + "useNamespaceForm.ts", 1), s.bad(hooks + "usePrivateForm.ts", 1), s.bad(hooks + "useDynamicForm.ts", 1), s.bad(hooks + "useRequireForm.ts", 1)],
+    })
+})
+
 // ---- app-isolation (FE_APP_ISOLATION) ---------------------------------------------------------------------------------------
 
 test("FE_APP_ISOLATION: an app never imports another app", (t) => {
@@ -167,6 +189,9 @@ test("FE_APP_ISOLATION: an app never imports another app", (t) => {
         files: {
             "apps/web/src/features/pages/A/index.tsx": "import { z } from '../../../../../admin/src/modules/z'\nexport const A = z\n",
             "apps/admin/src/modules/z/index.ts": "export const z = 1\n",
+            "apps/admin/src/modules/api/index.ts": 'export { INPUT_BOUNDS } from "./graphql/__generated__/input-bounds"\n',
+            "apps/admin/src/modules/api/graphql/__generated__/input-bounds.ts": "export const INPUT_BOUNDS = {}\n",
+            "apps/web/src/hooks/rhf/useCrossForm.ts": 'import { INPUT_BOUNDS } from "../../../../admin/src/modules/api"\nexport const useCrossForm = () => INPUT_BOUNDS\n',
             "apps/web/src/features/pages/C/index.tsx": "import { m } from '../../../modules/m'\nexport const C = m\n",
             "apps/web/src/modules/m/index.ts": "export const m = 1\n",
         },
@@ -178,7 +203,7 @@ test("FE_APP_ISOLATION: an app never imports another app", (t) => {
             s.good("apps/web/src/modules/m/index.ts"),
             s.good("apps/admin/src/modules/z/index.ts"),
         ],
-        invalid: [s.bad("apps/web/src/features/pages/A/index.tsx", 1)],
+        invalid: [s.bad("apps/web/src/features/pages/A/index.tsx", 1), s.bad("apps/web/src/hooks/rhf/useCrossForm.ts", 1)],
     })
 })
 

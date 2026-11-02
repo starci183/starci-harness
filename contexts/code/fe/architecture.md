@@ -21,7 +21,7 @@ Enforced by: R54 (`route-files-thin`, `route-adapter`), R57 (`owner-reachable`),
 
 Route → features, modules; features → components, hooks, modules, and a page or layout owner → an overlay; blocks →
 frames → composites → branches → leaves, never block to block and never up; components → hooks only for intrinsic or
-domain view hooks; hooks → hooks, modules, and `hooks/swr` alone → `modules/api`; modules → modules, acyclic.
+domain view hooks; hooks → hooks and modules; `hooks/swr` alone imports API operations, while hooks import generated contract bounds through the API owner entry; modules → modules, acyclic.
 
 Why: a one-way graph lets each unit be read alone, and a cycle makes two owners one.
 
