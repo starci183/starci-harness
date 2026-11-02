@@ -185,7 +185,7 @@ export const installProbe = (judgePart: Judge): void => {
             }
         }
         const layer = value.slice(0, end).replace(/(?:rgba?|hsla?|oklch|oklab|lab|lch|color)\([^)]*\)/gi, "")
-        const lengths = Array.from(layer.matchAll(/(-?\d*\.?\d+)px/g)).map((match) => Number(match[1]))
+        const lengths = Array.from(layer.matchAll(/(-?(?:\d+(?:\.\d+)?|\.\d+))px/g)).map((match) => Number(match[1]))
         return [lengths[0] ?? 0, lengths[1] ?? 0, lengths[2] ?? 0, lengths[3] ?? 0]
     }
     const matrixOf = (element: Element): { scale: number; x: number; y: number } => {
@@ -650,7 +650,7 @@ export const installProbe = (judgePart: Judge): void => {
                 return finish(index, collector)
             }
             const wholeScope = variant.kind === "count" && variant.select.startsWith(DOCUMENT) ? doc.documentElement : root
-        const scopes = variant.scope === null ? [wholeScope] : queryAll(variant.scope, root)
+            const scopes = variant.scope === null ? [wholeScope] : queryAll(variant.scope, root)
             collector.matched = scopes.length
             for (const scopeElement of scopes) {
                 const within = scopeElement === doc.documentElement ? null : scopeElement

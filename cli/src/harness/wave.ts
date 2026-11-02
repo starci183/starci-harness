@@ -111,10 +111,20 @@ const printedAs = (file: string): string => file.split("/").slice(-2).join("/")
  * a tsc `<path>(line,col): error`, a jest `FAIL <path>`. A summary line (`red lint ... (config be/eslint.config.mjs)`) leads with
  * a word, never a path, so a config a step names is no finding.
  */
-const FINDING_LINE = /^\s*(?:FAIL\s+)?((?:[A-Za-z]:)?[^\s:()]*\/[^\s:()]*\.[A-Za-z]{1,5})(?:$|[\s:(])/
+const FINDING_TOKEN = /^\s*(?:FAIL\s+)?((?:[A-Za-z]:)?[^\s:()]+)(?=$|[\s:(])/
+const FILE_EXTENSION = /^[A-Za-z]{1,5}$/
+
+/** The path a line of output leads with: a run of path characters that holds a slash before its last dot, and ends in a 1 to 5 letter extension. */
+const findingPath = (line: string): string[] => {
+    const token = FINDING_TOKEN.exec(line)?.[1]
+    if (token === undefined) return []
+    const dot = token.lastIndexOf(".")
+    const slash = token.indexOf("/")
+    return slash >= 0 && slash < dot && FILE_EXTENSION.test(token.slice(dot + 1)) ? [token] : []
+}
 
 /** The files a red check's output reports findings in, slash-separated as printed (absolute, or relative to a package). */
-const findingFiles = (detail: string): string[] => [...new Set(toSlash(detail).split("\n").flatMap((line) => FINDING_LINE.exec(line)?.slice(1, 2) ?? []))]
+const findingFiles = (detail: string): string[] => [...new Set(toSlash(detail).split("\n").flatMap(findingPath))]
 
 /** Whether a printed path names this repository file: the same path, absolute, or printed relative to a package. */
 const names = (printed: string, file: string): boolean => printed === file || printed.endsWith(`/${file}`) || file.endsWith(`/${printed}`)

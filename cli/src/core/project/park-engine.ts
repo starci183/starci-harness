@@ -26,6 +26,7 @@ import { RELAUNCH_LIMIT } from "../kernel/driver.js"
 import { launchQueuedWorkers } from "../supervisor/workers.js"
 import { cancelTask } from "../task/cancel.js"
 import { stepWorkflow } from "../workflow/engine.js"
+import { trimEndChars } from "../../shared/trim.js"
 
 /** The workflow statuses a park pauses: every started one that has not ended. */
 const PARKABLE: ReadonlySet<WorkflowStatus> = new Set<WorkflowStatus>(["running", "blocked", "paused"])
@@ -87,7 +88,7 @@ const withLedger = <T>(root: string, work: (db: DatabaseSync) => T): T => {
 const firstLine = (error: unknown): string => `${asRefusal(error).code}: ${asRefusal(error).message.split("\n")[0] ?? ""}`
 
 const folderKey = (path: string): string => {
-    const slashed = resolve(path).replaceAll("\\", "/").replace(/\/+$/, "")
+    const slashed = trimEndChars(resolve(path).replaceAll("\\", "/"), "/")
     return process.platform === "win32" ? slashed.toLowerCase() : slashed
 }
 

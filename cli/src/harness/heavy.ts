@@ -13,6 +13,7 @@ import { managedCpuTimes } from "./host-holders.js"
 import { governorStorePath, now } from "./ledger.js"
 import { withMachine } from "./machine.js"
 import { locateOps } from "./ops.js"
+import { trimEndChars } from "../shared/trim.js"
 
 /** What a heavy command is, for its memory cap: a typecheck, a lint, a test or suite run, a build, an npm install, a uat container. */
 export type HeavyKind = "tsc" | "eslint" | "test" | "build" | "install" | "uat"
@@ -380,7 +381,7 @@ export const repositoryKeyOf = (cwd: string): string => {
         const dotGit = join(dir, ".git")
         if (existsSync(dotGit)) {
             if (statSync(dotGit).isDirectory()) return dir
-            const gitdir = /^gitdir:\s*(.+)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
+            const gitdir = /^gitdir:\s*(\S.*)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
             return (gitdir === undefined ? undefined : /^(.*)\/\.git\/worktrees\/[^/]+$/.exec(gitdir)?.[1]) ?? dir
         }
         const parent = dirname(dir)
@@ -604,7 +605,7 @@ export const queuedSince = (owner: number, since: string): number =>
 
 /** A folder as `taskQueuedMs` compares it: resolved, forward slashes, no trailing slash, lower case on Windows. */
 const folderKey = (path: string): string => {
-    const slashed = resolve(path).replaceAll("\\", "/").replace(/\/+$/, "")
+    const slashed = trimEndChars(resolve(path).replaceAll("\\", "/"), "/")
     return process.platform === "win32" ? slashed.toLowerCase() : slashed
 }
 

@@ -291,7 +291,7 @@ export const heldBy = async (folder: string, reap: Reap): Promise<string> => {
         return `working in it: ${workingText}`
     }
     const { lockers, how } = await lockersOf(folder)
-    if (lockers !== null) return `held by (${how}): ${lockers.replaceAll(/\s*\n\s*/g, "; ")}`
+    if (lockers !== null) return `held by (${how}): ${lockers.split(/(\s+)/).map((part, at) => (at % 2 === 1 && part.includes("\n") ? "; " : part)).join("")}`
     const scan = typeof listed === "string" ? `the process table could not be read (${listed})` : `no process works inside it (${String(listed.length)} processes read)`
     return `holder unknown: ${scan}; ${how}`
 }

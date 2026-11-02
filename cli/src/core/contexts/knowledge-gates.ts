@@ -102,7 +102,7 @@ const heroNames = (source: string): Set<string> => {
         for (const part of (match[2] ?? "").split(",")) {
             const token = part.trim()
             if (token === "" || token.startsWith("type ")) continue
-            const name = (token.split(/\s+as\s+/)[0] ?? "").trim()
+            const name = (token.split(/\s/)[0] ?? "").trim()
             if (/^[A-Z][a-z]/.test(name)) names.add(name)
         }
     }

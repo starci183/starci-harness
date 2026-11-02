@@ -7,6 +7,7 @@ import { Refusal } from "../shared/errors.js"
 import { now } from "./ledger.js"
 import { readMachine, textOf, withMachine } from "./machine.js"
 import { locateOps } from "./ops.js"
+import { trimEndChars, trimStartChars } from "../shared/trim.js"
 
 /**
  * Shared needs (cli/README.md "Shared needs"): a worker that finds a shared capability, package or configuration missing never
@@ -48,11 +49,11 @@ export const normalizeNeedKey = (raw: string): string => {
         if (!PACKAGE.test(target)) throw invalid("is no npm package name")
         return `package:${target}`
     }
-    const dotted = target
+    const collapsed = target
         .replaceAll(/[\\/]+/g, ".")
         .replaceAll(/[\s_]+/g, "-")
         .replaceAll(/\.+/g, ".")
-        .replace(/^\.+|\.+$/g, "")
+    const dotted = trimStartChars(trimEndChars(collapsed, "."), ".")
     if (!DOTTED.test(dotted)) throw invalid("has a target outside the grammar")
     return `${kind}:${dotted}`
 }

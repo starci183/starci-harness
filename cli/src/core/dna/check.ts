@@ -10,6 +10,7 @@ import { installProbe, settlePage } from "./measure.js"
 import type { PageBegin, PageVariant } from "./measure.js"
 import { serveFolder } from "./serve.js"
 import type { StaticSite } from "./serve.js"
+import { trimEndChars } from "../../shared/trim.js"
 
 /*
  * `starci dna check`: the measured laws of contexts/grammars/contract.yaml, judged on rendered pages in one headless browser. A
@@ -89,7 +90,7 @@ const pagesOf = async (cwd: string, flags: { target: string | undefined; storybo
     if (given.length !== 1) throw new UsageError("name one source: a <target> (url, built Storybook, folder or html file), --storybook or --url")
     const routes = (flags.routes ?? "/").split(",").map((route) => route.trim()).filter((route) => route !== "")
     const place = flags.url ?? flags.storybook ?? flags.target ?? ""
-    if (/^https?:\/\//i.test(place)) return { pages: routes.map((route) => ({ label: route, url: `${place.replace(/\/+$/, "")}/${route.replace(/^\/+/, "")}`, story: false })), site: undefined }
+    if (/^https?:\/\//i.test(place)) return { pages: routes.map((route) => ({ label: route, url: `${trimEndChars(place, "/")}/${route.replace(/^\/+/, "")}`, story: false })), site: undefined }
     const path = resolve(cwd, place)
     if (!existsSync(path)) throw new Refusal("DNA_SOURCE", `${path} does not exist`)
     const folder = statSync(path).isDirectory() ? path : dirname(path)

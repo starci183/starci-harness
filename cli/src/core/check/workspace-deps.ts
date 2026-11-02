@@ -11,6 +11,7 @@ import { evidenceTail } from "../../shared/output.js"
 import { listPackages, workspacePatterns } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import type { StepResult } from "./scope.js"
+import { trimEndChars } from "../../shared/trim.js"
 
 /** The code of a workspace dependency that did not build, on its own step and on every step it held back. */
 export const DEP_BUILD_FAILED = "CHECK_WORKSPACE_DEP_BUILD_FAILED"
@@ -33,7 +34,7 @@ const toSlash = (path: string): string => path.split(sep).join("/")
 
 const sha256 = (data: string | Buffer): string => createHash("sha256").update(data).digest("hex")
 
-const globOf = (pattern: string): string => pattern.replace(/^\.\//, "").replace(/\/+$/, "")
+const globOf = (pattern: string): string => trimEndChars(pattern.replace(/^\.\//, ""), "/")
 
 /** Whether a workspace-relative folder is a member under the workspace's globs: one include matches it and no `!` glob excludes it. */
 const isMember = (patterns: readonly string[], path: string): boolean => {
@@ -200,7 +201,7 @@ export const buildWorkspaceDependencies = async (root: string, given: readonly W
         if (run.exitCode !== 0 || still.length > 0) {
             failed.add(pkg)
             const deadlineSuffix = run.timedOut ? " at the deadline" : ""
-    const why = run.exitCode !== 0 ? `exited ${String(run.exitCode)}${deadlineSuffix}` : `exited 0 but left ${still.join(", ")} missing`
+            const why = run.exitCode !== 0 ? `exited ${String(run.exitCode)}${deadlineSuffix}` : `exited 0 but left ${still.join(", ")} missing`
             steps.push(step(pkg, "red", `${DEP_BUILD_FAILED}: npm run build of ${pkg.name} in ${pkg.relativeDir} ${why}`, evidenceTail(run.stdout, run.stderr)))
             continue
         }

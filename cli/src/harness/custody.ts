@@ -229,7 +229,7 @@ export const declaredKeys = (files: readonly string[], root: string): DeclaredKe
 const mainCheckout = (root: string): string => {
     const dotGit = join(root, ".git")
     if (!existsSync(dotGit) || statSync(dotGit).isDirectory()) return root
-    const gitdir = /^gitdir:\s*(.+)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
+    const gitdir = /^gitdir:\s*(\S.*)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
     const main = gitdir === undefined ? undefined : /^(.*)\/\.git\/worktrees\/[^/]+$/.exec(gitdir)?.[1]
     return main !== undefined && existsSync(main) ? main : root
 }

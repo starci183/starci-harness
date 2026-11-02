@@ -96,7 +96,7 @@ export const patternsOfPaths = async (checkout: string, paths: readonly string[]
         const prefix = relative(checkout, app.root).replaceAll("\\", "/")
         const hits = paths.flatMap((path) => {
             const underPrefix = path.startsWith(`${prefix}/`) ? path.slice(prefix.length + 1) : undefined
-    const inApp = prefix === "" ? path : underPrefix
+            const inApp = prefix === "" ? path : underPrefix
             if (inApp === undefined) return []
             const slot = byId.get(explainPath({ repoRoot: app.root, input: inApp, manifest }).slot ?? "")
             return slot === undefined ? [] : [{ slot, path: inApp }]
@@ -109,7 +109,7 @@ export const patternsOfPaths = async (checkout: string, paths: readonly string[]
 
 /** The opt-in patterns an HFS_SLOT_NOT_ENABLED finding names (`<path> belongs to <slot>, an opt-in slot ...`) in a check's output. */
 export const patternsOfFindings = async (outputs: readonly string[]): Promise<PatternNeed[]> => {
-    const named = outputs.flatMap((text) => [...text.matchAll(/(\S+) belongs to ([a-z][\w.-]*), an opt-in slot/g)].map((match) => ({ path: match[1] ?? "", slot: match[2] ?? "" })))
+    const named = outputs.flatMap((text) => [...text.matchAll(/(?<!\S)(\S+) belongs to ([a-z][\w.-]*), an opt-in slot/g)].map((match) => ({ path: match[1] ?? "", slot: match[2] ?? "" })))
     if (named.length === 0) return []
     try {
         const byId = new Map((await loadManifest()).map((slot) => [slot.id, slot]))

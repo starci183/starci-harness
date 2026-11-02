@@ -185,7 +185,7 @@ const holdsLiveCheckout = (folder: string): boolean => {
     if (!existsSync(dotGit)) return false
     try {
         if (statSync(dotGit).isDirectory()) return true
-        const gitdir = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync(dotGit, "utf8"))?.[1]
+        const gitdir = /^gitdir:\s*(\S.*)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim()
         return gitdir === undefined || existsSync(resolve(folder, gitdir))
     } catch {
         return true

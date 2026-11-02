@@ -363,7 +363,7 @@ const answerText = (notice: NoticeRow, body: string): string => {
 /** The target of an answer to a notice: an owner request carrying it, and for a ticket's notice the ticket and the bare answer. */
 const answerTarget = (notice: NoticeRow, body: string): Target => ({ project: notice.project, text: answerText(notice, body), ...(notice.kind === "ticket" ? { ticket: notice.subject, body } : {}) })
 
-const COMMAND = /^\/(\w+)(?:@\w+)?(?:\s+([\s\S]*))?$/
+const COMMAND = /^\/(\w+)(?:@\w+)?(?:\s([\s\S]*))?$/
 
 /** Reads what an owner message asks: `/answer <id> <text>`, `/ask <project> <text>`, or a reply to a notice. */
 const targetOf = async (message: TelegramMessage, chatId: string): Promise<Target> => {

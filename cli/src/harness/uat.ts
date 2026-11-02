@@ -11,6 +11,7 @@ import { loadHeavyRules, withHeavySlot } from "./heavy.js"
 import type { ToolRun } from "../shared/exec.js"
 import { stateBase } from "./ledger.js"
 import { locateOps } from "./ops.js"
+import { trimEndChars } from "../shared/trim.js"
 
 const uatSchema = z.object({
     schema: z.literal("starci/uat@1"),
@@ -361,7 +362,7 @@ export const appUnserved = (receipt: UatReceipt): boolean => receipt.pages !== u
 
 const underFolder = (folder: string, parent: string): boolean => {
     const fold = (path: string): string => {
-        const full = resolve(path).replaceAll("\\", "/").replace(/\/+$/, "")
+        const full = trimEndChars(resolve(path).replaceAll("\\", "/"), "/")
         return process.platform === "win32" ? full.toLowerCase() : full
     }
     const child = fold(folder)

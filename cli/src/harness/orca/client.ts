@@ -7,6 +7,7 @@ import { ToolNotStarted, captureTool, probeTool } from "../../shared/exec.js"
 import type { ToolRun } from "../../shared/exec.js"
 import { mainCheckout } from "../../shared/git.js"
 import { inOrder } from "../sequential.js"
+import { trimEndChars } from "../../shared/trim.js"
 
 /** The orca binary this host runs, and how it was found. */
 export interface OrcaBinary {
@@ -411,7 +412,7 @@ export const terminalClose = async (binary: OrcaBinary, handle: string, cwd: str
 
 /** A folder spelled one way for comparison: forward slashes, no trailing slash, lower case on Windows. */
 const folderKey = (path: string): string => {
-    const slashed = resolve(path).replaceAll("\\", "/").replace(/\/+$/, "")
+    const slashed = trimEndChars(resolve(path).replaceAll("\\", "/"), "/")
     return process.platform === "win32" ? slashed.toLowerCase() : slashed
 }
 

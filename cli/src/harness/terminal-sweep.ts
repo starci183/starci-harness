@@ -6,6 +6,7 @@ import type { ListedTerminal, OrcaBinary } from "./orca/client.js"
 import { CLOSED_SEAT_STATUSES } from "./seats.js"
 import { inOrder } from "./sequential.js"
 import { recordEvent } from "./tasks.js"
+import { trimEndChars } from "../shared/trim.js"
 
 /**
  * The titles the harness gives the terminals it launches (`[Op] `, `[Kernel] `, `[Supervisor] `, `[Worker] `, set by `opTitle`,
@@ -27,7 +28,7 @@ interface HarnessRecords {
     readonly worktrees: ReadonlySet<string>
 }
 
-const folderKey = (path: string): string => path.replaceAll("\\", "/").replace(/\/+$/, "").toLowerCase()
+const folderKey = (path: string): string => trimEndChars(path.replaceAll("\\", "/"), "/").toLowerCase()
 
 const add = (holders: Map<string, Holder[]>, terminal: unknown, holder: Holder): void => {
     const handle = textOf(terminal)
