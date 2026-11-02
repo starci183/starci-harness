@@ -9,6 +9,11 @@
 // proves: FE_PLACEHOLDER_OBJECT@lite FE_PLACEHOLDER_OBJECT@full
 import assert from "node:assert/strict"
 import test from "node:test"
+import ts from "typescript"
+import tsParser from "@typescript-eslint/parser"
+import { RuleTester } from "eslint"
+import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.ts"
+import { canonTester } from "../fixtures/typed/tester.ts"
 import { at, slotTester } from "../fixtures/typed/tester.ts"
 import { why } from "./lib/why.ts"
 import { recommended, rules } from "./skeleton-states.ts"
@@ -37,13 +42,51 @@ test("R367 no-swr-default-array: a hook that folds a read to [] returns that rea
       { filename: HOOK, code: "export const useTeam = () => { const read = useRead(); return { members: read.data ?? [], error: read.error } }" },
       { filename: SWR_HOOK, code: "export const useTeamRead = () => { const read = useRead(); return { members: read.data ?? [] } }" },
       { filename: HOOK, code: "export const useTeam = (x) => x.name ?? 'none'" },
+      { filename: HOOK, code: "import { useState } from 'react'; export const useTeam = () => { const [state] = useState(null); return { members: state?.draft.members ?? [] } }" },
+      { filename: HOOK, code: "import { useMemo as remember } from 'react'; export const useTeam = () => { const copies = remember(() => data?.items, [data]); return { members: copies ?? [] } }" },
+      { filename: HOOK, code: "import { useMemo } from 'react'; export const useTeam = () => { const read = useRead(); const copies = useMemo(() => read.data?.items, [read.data]); return { members: copies ?? [], isLoading: read.isLoading, error: read.error } }" },
+      { filename: HOOK, code: "import { slotOfReads } from '../slot'; export const useTeam = () => { const read = useRead(); const members = read.data ?? []; const slot = slotOfReads([read], () => members); return { slot } }" },
     ],
     invalid: [
       { filename: HOOK, code: "export const useTeam = () => { const read = useRead(); return { members: read.data ?? [] } }", errors: [{ messageId: "fold" }] },
       { filename: HOOK, code: "export const useTeam = () => { const { data } = useRead(); return data?.items?.map((i) => i.id) ?? [] }", errors: [{ messageId: "fold" }] },
       { filename: HOOK, code: "export const useTeam = () => { const a = useRead(); const b = useOther(); return { x: a.data ?? [], y: b.data ?? [], isLoading: a.isLoading } }", errors: [{ messageId: "fold" }] },
+      { filename: HOOK, code: "import { slotOfReads } from '../slot'; export const useTeam = () => { const a = useRead(); const b = useOther(); const members = a.data ?? []; const slot = slotOfReads([b], () => members); return { slot } }", errors: [{ messageId: "fold" }] },
+      { filename: HOOK, code: "import { slotOfReads } from '../slot'; export const useTeam = () => { const read = useRead(); const members = read.data ?? []; const slot = slotOfReads([read], () => []); return { slot, members } }", errors: [{ messageId: "fold" }] },
+      { filename: HOOK, code: "import { slotOfReads } from '../slot'; export const useTeam = () => { const read = useRead(); const members = read.data ?? []; const unused = slotOfReads([read], () => members); return { members } }", errors: [{ messageId: "fold" }] },
+      { filename: HOOK, code: "const slotOfReads = (reads, project) => project(); export const useTeam = () => { const read = useRead(); const members = read.data ?? []; return { slot: slotOfReads([read], () => members) } }", errors: [{ messageId: "fold" }] },
+      { filename: HOOK, code: "import { useMemo as remember } from 'react'; export const useTeam = () => { const read = useRead(); const copies = remember(() => read.data?.items, [read.data]); return { members: copies ?? [] } }", errors: [{ messageId: "fold" }] },
     ],
   }))
+})
+
+test("R367 composite data keeps the exact provenance of every exported underlying read through the returned slot", t => {
+  const view = (reads: string, returned = "slot") => `import { useBoard } from './useBoard'; import { slotOfReads } from '../slot'; export const useView = () => { const board = useBoard(); const cards = board.data?.cards ?? []; const shown = cards.filter(card => card.enabled); const slot = slotOfReads([${reads}], () => ({ shown })); return { ${returned} }; }`
+  const files = {
+    "apps/web/src/hooks/slot/index.ts": "export const slotOfReads = <T>(reads: unknown[], render: () => T) => ({ items: render() });",
+    "apps/web/src/hooks/board/useBoard.ts": [
+      "const useOverview = () => ({ data: { cards: [{ enabled: true }] }, isLoading: false, error: undefined });",
+      "const useAccounts = () => ({ data: [{ id: 'a' }], isLoading: false, error: undefined });",
+      "export const useBoard = () => {",
+      "  const overview = useOverview(); const accounts = useAccounts();",
+      "  const data = overview.data === undefined || accounts.data === undefined ? undefined : { ...overview.data, accounts: accounts.data };",
+      "  return { reads: { overview, accounts }, data };",
+      "};",
+    ].join("\n"),
+    "apps/web/src/hooks/board/useProtected.ts": view("board.reads.overview, board.reads.accounts"),
+    "apps/web/src/hooks/board/useMissingRead.ts": view("board.reads.accounts"),
+    "apps/web/src/hooks/board/useUnrelated.ts": view("unrelated"),
+    "apps/web/src/hooks/board/useUnreturned.ts": view("board.reads.overview, board.reads.accounts", "shown"),
+  }
+  const fixture = projectFixture({ profile: "fe", files })
+  t.after(fixture.cleanup)
+  const program = ts.createProgram(Object.keys(files).map(fixture.at), { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true })
+  const typed = canonTester(new RuleTester({ languageOptions: { parser: tsParser, parserOptions: { programs: [program] } } }))
+  const source = (rel: keyof typeof files) => ({ filename: fixture.at(rel), code: files[rel] })
+  typed.run("no-swr-default-array", rule("no-swr-default-array"), {
+    valid: [source("apps/web/src/hooks/board/useProtected.ts")],
+    invalid: ["apps/web/src/hooks/board/useMissingRead.ts", "apps/web/src/hooks/board/useUnrelated.ts", "apps/web/src/hooks/board/useUnreturned.ts"].map(rel => ({ ...source(rel as keyof typeof files), errors: [{ messageId: "fold" }] })),
+  })
 })
 
 test("R367 no-foreign-slot-status: a slot never copies another slot's loading or error", () => {
