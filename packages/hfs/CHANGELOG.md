@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.0.7
+
+- Changed: Refresh aligned canonical package pins.
+
 ## 5.0.6
 
 - Changed: Support sealed per-project quality-service credentials and preserve valid composite cache entries and reused spec records.

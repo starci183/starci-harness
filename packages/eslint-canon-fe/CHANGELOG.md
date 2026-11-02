@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.9.11
+
+- Changed: Recognize declared module hook roles through real hook-call provenance.
+
 ## 9.9.10
 
 - Changed: Refresh shared repository identity and release-aligned canon data.

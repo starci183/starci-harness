@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.11
+
+- Changed: Align the Grammar family with the updated FE canon.
+
 ## 0.21.10
 
 - Changed: Align the Grammar family release with the shared lint and canon updates.

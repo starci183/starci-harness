@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.11.18
+
+- Changed: Refresh aligned canonical package pins.
+
 ## 3.11.17
 
 - Changed: Refresh shared repository identity and quality-service rule data.

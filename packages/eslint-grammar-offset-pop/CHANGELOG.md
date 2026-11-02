@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.11
+
+- Changed: Align the Grammar family and its exact core dependency.
+
 ## 0.21.10
 
 - Changed: Align the Grammar family release and its exact core dependency.

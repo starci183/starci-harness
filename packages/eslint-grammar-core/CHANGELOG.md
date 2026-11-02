@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.11
+
+- Changed: Require the updated FE canon and align the Grammar family.
+
 ## 0.21.10
 
 - Changed: Refresh quality-service rule data and require the aligned FE canon release.
