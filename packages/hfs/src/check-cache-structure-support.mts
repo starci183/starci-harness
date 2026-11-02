@@ -1,7 +1,7 @@
 // check-cache-structure-support.mts - the fixture the structure-cache specs (check-cache-structure*.spec.mts) share: a small two-sided app in a real
 // temp git repository (the pass reads git, the work tree and the cache folder), and a run of the structure pass against a disk session over it.
 import fs from 'node:fs';
-import { createRequire } from 'node:module';
+import module, { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import type { TestContext } from 'node:test';
@@ -101,3 +101,43 @@ export function changed(before: readonly CacheRecord[], after: readonly CacheRec
   const b = hashes(after);
   return [...new Set([...a.keys(), ...b.keys()])].filter((key) => a.get(key) !== b.get(key)).map((key) => key.replace('\0', ' ')).sort();
 }
+
+const METHODS = ['readFileSync', 'existsSync', 'statSync', 'lstatSync', 'readdirSync', 'realpathSync', 'openSync', 'accessSync', 'opendirSync', 'readlinkSync'] as const;
+
+/** Every file-system access `run` makes under `root` (outside node_modules, which the lockfile in the fingerprint stands for), as `method path`. */
+export function recordFs<T>(root: string, run: () => T): { value: T; accessed: Set<string> } {
+  const base = root.split(path.sep).join('/');
+  const accessed = new Set<string>();
+  const originals = METHODS.map((name) => [name, fs[name]] as const);
+  const table = fs as unknown as Record<string, (...args: unknown[]) => unknown>;
+  for (const [name, original] of originals) {
+    table[name] = function patched(this: unknown, target: unknown, ...rest: unknown[]): unknown {
+      if (typeof target === 'string') {
+        const absolute = path.resolve(target).split(path.sep).join('/');
+        if (absolute.startsWith(`${base}/`) && !absolute.includes('/node_modules/')) accessed.add(`${name} ${absolute.slice(base.length + 1)}`);
+      }
+      return (original as (...args: unknown[]) => unknown).call(this, target, ...rest);
+    };
+  }
+  module.syncBuiltinESMExports();
+  try { return { value: run(), accessed }; } finally {
+    for (const [name, original] of originals) table[name] = original as never;
+    module.syncBuiltinESMExports();
+  }
+}
+
+export const filesOf = (accessed: Set<string>): Set<string> => new Set([...accessed].map((entry) => entry.slice(entry.indexOf(' ') + 1)));
+
+/** The fixture of the per-file rules: a secret, a bypass marker, a long source, a README beside a stack manifest and files that are clean. */
+export const RULE_FILES: Readonly<Record<string, string>> = {
+  ...FILES,
+  'be/src/secret.ts': `export const key = '${FAKE_KEY}';\n`,
+  'be/src/bypass.ts': '// @ts-ignore\nexport const bypassed: number = "x";\n',
+  'be/src/long.ts': `${'export const line = 1;\n'.repeat(600)}`,
+  'be/src/clean.ts': 'export const clean = 1;\n',
+  'fe/src/secret.ts': `export const key = '${FAKE_KEY}';\n`,
+  'fe/src/long.ts': `${'export const line = 1;\n'.repeat(600)}`,
+  'docs/README.md': `# docs\n\n${FAKE_KEY}\n`,
+  'docs/.starcistacks/application-stacks.yaml': `note: ${FAKE_KEY}\n`,
+  '.env': 'TOKEN=abc\n',
+};

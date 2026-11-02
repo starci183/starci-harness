@@ -39,6 +39,8 @@ import { workflowContextsFindings } from './workflow-contexts.mjs';
 import { ciStandardAppFindings } from './ci-standard.mjs';
 import { feBuildArgsFindings } from './fe-build-args.mjs';
 import type { Parsed } from './rule-types.mjs';
+import type { CheckFinding } from '../check.mjs';
+import { memoKeyed } from '../rule-memo.mjs';
 // finders-import-end
 
 /** The failure codes the finders above emit, so `starci app check` ships their labels (check.mjs adds them to CHECK_CODES). Append-only; the coordinator regenerates it at merge time. */
@@ -94,13 +96,22 @@ export const FINDERS = [
   // finders-end
 ];
 
+/**
+ * The finders the result cache keeps by the files they read: each reads the tracked tree only through `readText` / `readJson` (rules/read.mts) and the tracked
+ * path lists it is given, so its findings are a function of those. `check-cache-structure-rules.spec.mts` proves every member under a file-system recorder
+ * and fails on a read it does not go through the gateway. A finder that stats, lists or walks the work tree (stacks-release, the stacks gate) is not a member.
+ */
+export const KEYED_FINDERS: ReadonlySet<(context: Parsed) => Parsed> = new Set();
+
 /** Findings of every alpha.15 content rule over one repository. */
 export function a15Findings(context: Parsed) {
   // `starci app check` always passes the full context; a partial one (a finder spec driving the registry with only the fields its rule reads) must not crash the finders of other rules.
   const full = Boolean(context.repoRoot && context.repo && context.resolver && context.manifest);
   return FINDERS.flatMap((finder) => {
-    if (full) return finder(context);
-    try { return finder(context); } catch { return []; }
+    const run = () => finder(context);
+    const once = KEYED_FINDERS.has(finder) && full ? () => memoKeyed(context.repoRoot, finder.name, run as () => CheckFinding[]) as ReturnType<typeof run> : run;
+    if (full) return once();
+    try { return once(); } catch { return []; }
   });
 }
 

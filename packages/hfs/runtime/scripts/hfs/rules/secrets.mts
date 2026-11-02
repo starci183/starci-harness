@@ -50,6 +50,9 @@ export function secretFileFindings({ file, text, manifestText }: { file: string;
   return findings;
 }
 
+/** The application-stacks manifest beside a README (the one other file a README's secret findings read), in the README's own scope; null for any other file. */
+export const readmeManifestOf = (file: string): string[] | null => (/(?:^|\/)README\.md$/.test(file) ? [path.posix.join(path.posix.dirname(file), '.starcistacks/application-stacks.yaml')] : null);
+
 /** The findings of R06 over `files` (tracked paths) of `repoRoot`; `resolver` names the slots. */
 export function secretFindings({ repoRoot, files, resolver }: { repoRoot: string; files: string[]; resolver: Resolver }) {
   const findings = [];
@@ -60,7 +63,8 @@ export function secretFindings({ repoRoot, files, resolver }: { repoRoot: string
       findings.push(found(PLAINTEXT_SECRET, file, `${file} is a plaintext secret file tracked in ${slot.slot}${destination}`, { slot: slot.slot, goesTo: slot.goesTo }));
       continue;
     }
-    const manifestText = /(?:^|\/)README\.md$/.test(file) ? readText(repoRoot, path.posix.join(path.posix.dirname(file), '.starcistacks/application-stacks.yaml')) : undefined;
+    const manifestPath = readmeManifestOf(file)?.[0];
+    const manifestText = manifestPath === undefined ? undefined : readText(repoRoot, manifestPath);
     findings.push(...secretFileFindings({ file, text: readText(repoRoot, file), manifestText }));
   }
   return findings;

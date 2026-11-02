@@ -86,7 +86,8 @@ import { lintSuppressionFindings } from './rules/lint-suppression.mjs';
 import { bypassMarkerFindings } from './rules/bypass-markers.mjs';
 import { repoLocalCheckFindings } from './rules/repo-local-checks.mjs';
 import { liteSecretFindings } from './rules/lite-secrets.mjs';
-import { untrackedSecretFindings } from './rules/secrets.mjs';
+import { readmeManifestOf, untrackedSecretFindings } from './rules/secrets.mjs';
+import { memoFiles, type FileRule } from './rule-memo.mjs';
 import { liteStarciworkFinding, pathFindings } from './path-findings.mjs';
 import { onLintSurface } from './architecture/surface.mjs';
 import type { Surface } from './architecture/index.mjs';
@@ -230,19 +231,31 @@ function minimumInstanceFindings(resolver: CheckResolver, required: RequiredPath
 }
 
 interface ContentRuleInput {
-  repoRoot: string; repo: CheckRepo; resolver: CheckResolver; files: string[]; all: string[]; scoped: Set<string> | null; pins: CanonPins;
+  repoRoot: string; repo: CheckRepo; resolver: CheckResolver; files: string[]; all: string[]; scoped: Set<string> | null; pins: CanonPins; fileFindings: CheckFinding[];
   inScope: (file: string) => boolean; isRoot: boolean; appSide: boolean; editionDeclaration: boolean; manifest: CheckManifest; phase: string
 }
 
-function contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pins, inScope, isRoot, appSide, editionDeclaration, manifest, phase }: ContentRuleInput): CheckFinding[] {
+/**
+ * The rules whose findings for a file depend on that file alone (and the files `deps` names), so the result cache keeps them per file by content hash
+ * (contexts/project/check-cache.md "Which step reuses what"): the plaintext secrets (R06 and the lite custody L17), the bypass markers (R303) and, in a side, the soft file size.
+ * Each rule's findings carry the path of the file they judge; `check-cache-structure-rules.spec.mts` proves that and the declared `deps` under a file-system recorder.
+ */
+export function perFileRules({ repoRoot, repo, resolver, inScope, isRoot }: { repoRoot: string; repo: CheckRepo; resolver: CheckResolver; inScope: (file: string) => boolean; isRoot: boolean }): FileRule[] {
+  return [
+    { id: 'secret', run: (list) => liteSecretFindings({ repoRoot, files: list.filter((file) => inScope(file)), resolver, repo }), deps: (file) => readmeManifestOf(file) ?? [] },
+    { id: 'bypass-marker', run: (list) => bypassMarkerFindings({ repoRoot, files: list.filter((file) => inScope(file)) }) },
+    ...(isRoot ? [] : [{ id: 'size-soft', run: (list: string[]) => sizeSoftFindings({ repoRoot, resolver, files: list, inScope }) }]),
+  ];
+}
+
+function contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pins, fileFindings, inScope, isRoot, appSide, editionDeclaration, manifest, phase }: ContentRuleInput): CheckFinding[] {
   const findings: CheckFinding[] = [
     ...pinFindings({ repoRoot, files, profile: repo.profile, pins, only: scoped }),
-    ...liteSecretFindings({ repoRoot, files: files.filter((file) => inScope(file)), resolver, repo }),
+    ...fileFindings,
     ...editionFindings({ repoRoot, files: files.filter((file) => inScope(file)), repo, resolver, manifest, withDeclaration: editionDeclaration }),
     ...feStackFindings({ repoRoot, files: files.filter((file) => inScope(file)), repo, manifest }),
     ...repoLocalCheckFindings({ repoRoot, files }),
     ...lintSuppressionFindings({ repoRoot, files }),
-    ...bypassMarkerFindings({ repoRoot, files: files.filter((file) => inScope(file)) }),
     ...a15Findings({ repoRoot, files, all, repo, resolver, manifest, isRoot, appSide, inScope }),
   ];
   findings.push(...trackedStacksGateFindings({ repoRoot, files, all, repo, resolver, manifest, isRoot, inScope, existingFindings: findings as { code: string; path: string; message: string }[] }));
@@ -296,8 +309,8 @@ function scopeFindings({ repoRoot, root, harness, repo, resolver, files, all = f
   if (repo.kind === RUNTIME_KIND) return findings;
 
   const pins = canonPins({ root, ...(harness ? { harness } : {}) });
-  findings.push(...contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pins, inScope, isRoot, appSide, editionDeclaration, manifest, phase }));
-  if (!isRoot) findings.push(...sizeSoftFindings({ repoRoot, resolver, files, inScope }));
+  const fileFindings = memoFiles(repoRoot, files, perFileRules({ repoRoot, repo, resolver, inScope, isRoot }));
+  findings.push(...contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pins, fileFindings, inScope, isRoot, appSide, editionDeclaration, manifest, phase }));
   return findings;
 }
 
