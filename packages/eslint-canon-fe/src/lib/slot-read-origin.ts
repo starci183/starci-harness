@@ -102,7 +102,7 @@ const readArray = (context: AnyContext, input: Node | undefined, seen = new Set<
   if (!node || seen.has(node)) return null
   seen.add(node)
   if (node.type === "Identifier") return readArray(context, initializer(context, node) ?? undefined, seen)
-  return node.type === "ArrayExpression" && node.elements.every(element => element !== null && element.type !== "SpreadElement") ? node.elements.filter((element): element is TSESTree.Expression => element !== null && element.type !== "SpreadElement") : null
+  return node.type === "ArrayExpression" && node.elements.every(element => element !== null && element.type !== "SpreadElement") ? node.elements : null
 }
 
 /** A composite hook's returned data is traced to its own read declarations, then back to its public read paths. */
