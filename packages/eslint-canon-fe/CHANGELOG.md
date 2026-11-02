@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.9.12
+
+- Changed: Carry the bundled runtime of @starci/hfs 5.0.8 (the rule texts name `app check`, the read-set helper of the rule memo) and its canon pins; the comments name `app check` for the removed lint verb.
+
 ## 9.9.11
 
 - Changed: Recognize declared module hook roles through real hook-call provenance.

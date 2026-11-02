@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2.5.1 - 2026-11-03
+
+- Changed: the comments name `app check` for the removed lint verb; the rules are unchanged.
+
 ## 2.5.0 - 2026-11-02
 
 - Added: `starci/no-grammar-private-token` (R61, `FE_STYLE_TOKEN_ONLY`; the audit's R364): an app stylesheet neither reads nor writes `--grammar-*`, `--starci-core-*` or `--offset-pop-*`.

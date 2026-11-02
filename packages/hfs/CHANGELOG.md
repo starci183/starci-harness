@@ -1,10 +1,14 @@
 # Changelog
 
-## Unreleased
+## 5.0.8
 
+- Removed: the `starci app lint` verb. `starci app check` is the one verb for app quality and carries what the lint verb carried: `--side be|fe` limits the lint gate to one side (reading and writing that side's cache records), `--out <file>` writes the merged Sonar Generic Issue Import document of the run (the findings of the selected gates under `starci-hfs`, then ESLint and stylelint), and `--fix` runs ESLint and stylelint with `--fix` before the check (with `--gate lint`). There is no `--changed` and no `--workspace`: the cache makes a whole-app check of an unchanged tree take seconds. The rendered `lint` and `lint:fix` scripts, the managed CI lint step and the release gate's Sonar row call `app check --gate lint`, and rule R13 requires that form.
+- Changed: usage is printed only for a usage error (`UsageError`), not for a failed check.
+- Fixed: the `small-renames` codemod keeps `size="control"` on a bar control instead of rewriting it to `lg`.
+- Changed: the structure pass keeps its work in the committed cache. A side key carries the hash it took of each input, so a stable untracked input (generated code) no longer discards the record of a scoped step, and `CheckSession.unchanged(paths, captured?)` compares an input with that hash. The per-file content rules (plaintext secrets, bypass markers, soft file size) are kept by the file's hash, the cross-file finders by the read set they recorded, and `--gate secrets` reuses the same per-file records, so a warm run judges nothing and a run after an edit judges that file. The whole-program records of a side with untracked program inputs are kept.
 - Changed: The app-check ESLint cache dirties a file only when the type surface it reads can have changed. Each file records the digest of its isolated declaration emit and whether that surface is open (inferred from other files); a body-only edit lints that file alone, a changed signature its direct importers, an inferred type one more level at a time. A file that only names the types of others (a re-export, an imported type in a signature) and a component that returns only JSX carry a change of those types, never an edit of their bodies. Records without a surface are read as changed.
 - Fixed: A file edited while the ESLint of a side ran loses only its own cache records instead of the records of the whole side.
-- Changed: The files of a diff or `--changed` lint go to ONE ESLint child through a job file read by a small runner (`lint/eslint-list.cjs`) on the ESLint API of the side's install, instead of several chunked command lines that each built the TypeScript program again. The heavy-node request carries the number of files it judges (`files`).
+- Changed: The files of a diff lint go to ONE ESLint child through a job file read by a small runner (`lint/eslint-list.cjs`) on the ESLint API of the side's install, instead of several chunked command lines that each built the TypeScript program again. The heavy-node request carries the number of files it judges (`files`).
 - Changed: The import graph of the app-check lint cache remembers the files and folders it probes while resolving imports, and the launcher takes the side's scope from the cache instead of enumerating it again; the graph of a large side builds in a sixth of the time.
 
 ## 5.0.7

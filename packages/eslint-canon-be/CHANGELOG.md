@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.11.19
+
+- Changed: Carry the bundled runtime of @starci/hfs 5.0.8 (the rule texts name `app check`, the read-set helper of the rule memo) and its canon pins; the comments name `app check` for the removed lint verb.
+
 ## 3.11.18
 
 - Changed: Refresh aligned canonical package pins.

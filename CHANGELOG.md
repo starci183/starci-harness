@@ -22,6 +22,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.49] - 2026-11-03
+
+### Removed
+
+- `starci app lint`. `starci app check` is the one verb for app quality (owner, 2026-11-03) and takes `--side`, `--out` and `--fix`; with them it writes, so it is a local-write verb for the writing roles.
+
 ### Changed
 
 - The eslint heavy budget scales with the files the child judges: `heavy.timeoutMinutesPer1000Files` of ops/liveness.yaml raises it above `timeoutMinutes` (never below), so a large side on a slow runner is not ended as hung; it is a liveness bound, not a quality threshold. A request from an @starci/hfs after 5.0.7 names its file count; an older one keeps the flat budget.
