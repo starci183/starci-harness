@@ -18,7 +18,7 @@ test('the app implementation loads with no installed dependency and refuses a mi
   assert.match(err, /^starci app scaffold <name>/m);
   assert.match(err, /^starci app secret list/m);
   assert.match(err, /^starci app coverage merge --out <lcov>/m);
-  assert.deepEqual(VERBS, ['scaffold', 'add', 'lint', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'coverage', 'codemod']);
+  assert.deepEqual(VERBS, ['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'coverage', 'codemod']);
 });
 
 test('global options use cwd, upgrade refuses a lite app because editions are fixed at scaffold, and a full app it cannot give a world', async (t) => {
@@ -180,7 +180,6 @@ test('the usage is generated from the parser tables: every flag every verb parse
   const { BASELINE_OPTIONS } = await import('../runtime/scripts/hfs/db-baseline-verb.mjs');
   const { RESTAMP_OPTIONS } = await import('../runtime/scripts/hfs/db-restamp-verb.mjs');
   const db = Object.fromEntries(await Promise.all(['migrate', 'post-cutover', 'dump', 'new', 'drift'].map(async (verb: string): Promise<[string, FlagsSpec]> => [verb, (await import(`../db/${verb}.mjs`)).SPEC])));
-  const { parseLintArgs } = await import('../lint/run.mjs');
   const { codemodArguments } = await import('../codemod/button-intent.mjs');
   const { spacingRolesArguments } = await import('../codemod/main.mjs');
   const { upgradeArguments } = await import('../upgrade/index.mjs');
@@ -201,7 +200,7 @@ test('the usage is generated from the parser tables: every flag every verb parse
   expect('ci local', flagsOfSpec(LOCAL_FLAGS));
   for (const [verb, names] of [['baseline', BASELINE_OPTIONS], ['restamp', RESTAMP_OPTIONS]] as Array<[string, readonly string[]]>) expect(`db ${verb}`, names.map((name: string) => `--${name}`));
   for (const [verb, spec] of Object.entries(db)) expect(`db ${verb}`, flagsOfSpec(spec));
-  expect('lint', flagsOfParser(parseLintArgs));
+  expect('check', ['--gate', '--side', '--fix', '--out', '--coverage-from', '--shard', '--json', '--no-cache', '--staged']);
   expect('codemod button-intent', flagsOfParser(codemodArguments));
   expect('codemod spacing-roles', flagsOfParser(spacingRolesArguments));
   expect('upgrade', flagsOfParser(upgradeArguments).filter((flag) => !['--repo', '--edition'].includes(flag)));
@@ -210,7 +209,8 @@ test('the usage is generated from the parser tables: every flag every verb parse
   for (const line of ['starci app slot <path> [--json]', 'starci app world <up|down|status>', 'starci app add service <dir> <name> [--inject <binding>]...', 'starci app add spec <file>.service.ts', 'starci app add image',
     'starci app check [--staged]', 'starci app sync [--execute]', 'starci app upgrade [--execute]', 'starci app codemod button-intent [--execute] [--json] [--format json|markdown] [--out ', 'starci app codemod spacing-roles [--execute] [--json] [--format json|markdown] [--out ']) assert.ok(out.includes(line), line);
   for (const name of CODEMODS) assert.match(out, new RegExp(`^starci app codemod ${name} \\[--execute\\]`, 'm'), `the usage lists the ${name} codemod`);
-  assert.match(out, /^starci app lint .*\[--json\] \[--out <file>\]$/m);
+  assert.match(out, /^starci app check .*\[--fix\] .*\[--side be\|fe\] \[--out <path>\]/m);
+  assert.doesNotMatch(out, /starci app lint/, 'the lint verb is gone');
   assert.match(out, /^starci app scaffold <name> \[--registry-visibility public\|private\] \[--edition full\|lite\]$/m);
   assert.doesNotMatch(out, /app (hygiene|explain|new|sonar)\b|--plan|--write|--check\b|--into\b(?!-)|--report|app stack <up/, 'the usage lists no old spelling');
 });

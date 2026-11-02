@@ -15,11 +15,10 @@ interface Run { side: string; args: string[] }
 /** The fields of the CLI's JSON report this spec reads. */
 interface Report {
   ok: boolean;
-  schema: string;
   gate: { pass: boolean };
-  counts: { error: number; warning?: number };
+  counts: { error: number; warning?: number; info?: number };
   counting?: Record<string, number>;
-  findings: { code: string; rule?: string; severity?: string }[];
+  findings: { code: string; rule?: string; severity?: string; level?: string }[];
   eslint: { sides: unknown; errors: unknown };
 }
 
@@ -116,15 +115,69 @@ test('CLI app check executes both FE packages in one ESLint invocation, retains 
   assert.deepEqual(checked.report.eslint.sides, { be: { files: 1 }, fe: { files: 2 } });
 });
 
-test('app lint uses the shared ESLint execution once and calls the in-process HFS checker without recursively invoking app check', async context => {
+test('app check --gate lint --side fe runs the shared ESLint execution of that side once and calls the in-process HFS checker once', async context => {
   const app = fixture(context), runs: Run[] = [];
   let checks = 0;
-  const checked = await invoke(['lint', '--changed', 'fe/src/family.tsx'], app, ({ repoRoot }) => { checks++; return cleanCheck(repoRoot); }, transport(app, runs));
+  const checked = await invoke(['check', '--gate', 'lint', '--side', 'fe'], app, ({ repoRoot }) => { checks++; return cleanCheck(repoRoot); }, transport(app, runs));
   assert.equal(checks, 1);
   assert.deepEqual(runs.map(run => run.side), ['fe']);
   assert.equal(checked.exit, 0, 'one ordinary finding is under the threshold');
-  assert.equal(checked.report.schema, 'starci/lint@1');
   assert.deepEqual(checked.report.findings.map(finding => finding.code), [familyCode]);
+  assert.deepEqual(checked.report.eslint.sides, { fe: { files: 2 } });
+});
+
+test('app check --gate lint --side be judges the back end alone, and a side that is neither is a usage error with the usage', async context => {
+  const app = fixture(context), runs: Run[] = [];
+  const checked = await invoke(['check', '--gate', 'lint', '--side', 'be'], app, ({ repoRoot }) => cleanCheck(repoRoot), transport(app, runs));
+  assert.deepEqual(runs.map(run => run.side), ['be']);
+  assert.deepEqual(checked.report.findings, []);
+  let stderr = '';
+  const exit = await main(['check', '--gate', 'lint', '--side', 'web'], { cwd: app.root, checkApp: ({ repoRoot }) => cleanCheck(repoRoot), runLinter: transport(app, []), stdout: () => undefined, stderr: (text) => { stderr += text; } });
+  assert.equal(exit, 2);
+  assert.match(stderr, /^starci app: LINT_SIDE_INVALID: --side is be or fe\n/);
+  assert.match(stderr, /^starci app check /m, 'a usage error is followed by the usage');
+});
+
+test('app check --fix runs ESLint and stylelint with --fix before the check, and is refused unless --gate lint is selected', async context => {
+  const app = fixture(context);
+  const calls: { pkg: string; args: string[] }[] = [];
+  const run: LinterRunner = async (spec) => {
+    calls.push({ pkg: spec.pkg, args: spec.args });
+    return { results: spec.pkg === 'eslint' ? app.files[path.basename(spec.cwd)]!.map((file) => ({ filePath: path.join(spec.cwd, file), messages: [] })) : [] };
+  };
+  const checked = await invoke(['check', '--gate', 'lint', '--fix', '--side', 'fe'], app, ({ repoRoot }) => cleanCheck(repoRoot), run);
+  assert.deepEqual(calls.map(call => [call.pkg, call.args.includes('--fix')]), [['eslint', true], ['stylelint', true], ['eslint', false]], 'the fixing pass comes first, the judging pass after it');
+  assert.deepEqual(checked.report.eslint.errors, []);
+  assert.equal(checked.exit, 0);
+  let stderr = '';
+  const exit = await main(['check', '--fix'], { cwd: app.root, checkApp: ({ repoRoot }) => cleanCheck(repoRoot), runLinter: run, stdout: () => undefined, stderr: (text) => { stderr += text; } });
+  assert.equal(exit, 2);
+  assert.match(stderr, /^starci app: --fix runs the linters and needs --gate lint\n/);
+  assert.equal(calls.length, 3, 'a refused --fix runs no linter');
+});
+
+test('app check --out writes the merged Sonar import of every finding the run produced', async context => {
+  const app = fixture(context);
+  const target = path.join(app.root, 'reports', 'lint.fe.sonar.json');
+  const checked = await invoke(['check', '--gate', 'lint', '--side', 'fe', '--out', 'reports/lint.fe.sonar.json'], app, ({ repoRoot }) => cleanCheck(repoRoot, [{ code: 'HFS_MANAGED_FILE_DRIFT', level: 'error', path: 'fe/package.json', message: 'Managed output differs.' }]), transport(app, []));
+  assert.equal(checked.exit, 0);
+  const document = JSON.parse(fs.readFileSync(target, 'utf8')) as { rules: { id: string; engineId: string }[]; issues: { ruleId: string; primaryLocation: { filePath: string } }[] };
+  assert.deepEqual(document.rules.map(rule => [rule.engineId, rule.id]).sort(), [['eslint', 'starci-grammar/app-shell-frame'], ['starci-hfs', 'HFS_MANAGED_FILE_DRIFT']]);
+  assert.ok(document.issues.some(issue => issue.ruleId === 'starci-grammar/app-shell-frame' && issue.primaryLocation.filePath === 'fe/src/family.tsx'));
+});
+
+test('a refusal or a tool failure prints its code and message alone; only a usage error is followed by the usage', async context => {
+  const app = fixture(context);
+  const failed = async (checkApp: () => unknown) => {
+    let stderr = '';
+    const exit = await main(['check', '--gate', 'lint'], { cwd: app.root, checkApp, runLinter: transport(app, []), stdout: () => undefined, stderr: (text) => { stderr += text; } });
+    return { exit, stderr };
+  };
+  const tool = await failed(() => { throw new Error('HFS_NODE_INCOMPLETE: eslint did not complete'); });
+  assert.deepEqual(tool, { exit: 2, stderr: 'starci app: HFS_NODE_INCOMPLETE: eslint did not complete\n' });
+  let stderr = '';
+  assert.equal(await main(['check', '--nope'], { cwd: app.root, stdout: () => undefined, stderr: (text) => { stderr += text; } }), 2);
+  assert.match(stderr, /^starci app: unknown flag --nope\nstarci app scaffold /);
 });
 
 test('CLI app check refuses an unavailable ESLint transport with exit 2 and preserves its tool errors', async context => {
@@ -148,12 +201,13 @@ test('a counting-cohort warning is reported and counted per rule and never enter
     const run = await base(spec);
     return { results: (run.results ?? []).map((result: { filePath: string; messages: unknown[] }) => ({ ...result, messages: [...result.messages, ...Array.from({ length: 25 }, () => warning)] })) };
   };
-  const checked = await invoke(['lint', '--changed', 'fe/src/family.tsx'], app, ({ repoRoot }) => cleanCheck(repoRoot), counting);
-  assert.equal(checked.exit, 0, '25 warnings sit above the error threshold and still leave the gate green');
+  const checked = await invoke(['check', '--gate', 'lint', '--side', 'fe'], app, ({ repoRoot }) => cleanCheck(repoRoot), counting);
+  assert.equal(checked.exit, 0, '50 warnings sit above the error threshold and still leave the gate green');
   assert.equal(checked.report.gate.pass, true);
-  assert.deepEqual(checked.report.counts, { error: 1, warning: 25 });
-  assert.deepEqual(checked.report.counting, { 'starci-fe/no-spacing-utility': 25 });
-  assert.equal(checked.report.findings.filter(finding => finding.severity === 'warning').length, 25);
+  assert.deepEqual(checked.report.counts, { error: 1, warning: 50, info: 0 });
+  assert.deepEqual(checked.report.counting, { 'starci-fe/no-spacing-utility': 50 });
+  assert.equal(checked.report.findings.filter(finding => finding.severity === 'warning').length, 50);
+  assert.equal(checked.report.findings.filter(finding => finding.severity === 'warning' && finding.level === 'warning').length, 50, 'a counting-cohort finding is a warning, never an error');
 });
 
 
