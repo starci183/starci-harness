@@ -969,8 +969,8 @@ export const mailOrType = async (binary: OrcaBinary, mail: MailSend, fallback: {
         try {
             await terminalSend(binary, { terminal: fallback.terminal, text: fallback.text, retryRequest: requestIdOf("wake-typed", mail.retryRequest) }, cwd)
             return `${failed}; typed the wake prompt into terminal ${fallback.terminal}`
-        } catch (typed: unknown) {
-            return `${failed}; the wake prompt was not typed either (${failureOf(typed).code})`
+        } catch (error_: unknown) {
+            return `${failed}; the wake prompt was not typed either (${failureOf(error_).code})`
         }
     }
 }

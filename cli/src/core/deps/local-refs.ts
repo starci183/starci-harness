@@ -35,7 +35,8 @@ export interface LocalReference {
 
 const LOCKFILE = /^(?:package-lock|npm-shrinkwrap)\.json$/
 const RESOLVED = /"resolved"\s*:\s*("(?:[^"\\]|\\.)*")/g
-const NPMRC_REGISTRY = /^\s*(?:@[\w.-]+:)?registry\s*=\s*(?:("(?:[^"\\]|\\.)*")|'([^']*)'|([^;\s#]+))/i
+const NPMRC_KEY = /^\s*(?:@[\w.-]+:)?registry\s*=\s*/i
+const NPMRC_VALUE = /^(?:("(?:[^"\\]|\\.)*")|'([^']*)'|([^;\s#]+))/
 
 const registryAddress = (url: string): string => {
     const parsed = new URL(url.replace(/^\/\//, "http://"))
@@ -53,7 +54,9 @@ const jsonString = (text: string | undefined): string | undefined => {
 }
 
 const npmrcRegistry = (line: string): string | undefined => {
-    const match = NPMRC_REGISTRY.exec(line)
+    const key = NPMRC_KEY.exec(line)
+    if (key === null) return undefined
+    const match = NPMRC_VALUE.exec(line.slice(key[0].length))
     return jsonString(match?.[1]) ?? match?.[2] ?? match?.[3]
 }
 

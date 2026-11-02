@@ -94,7 +94,7 @@ const tickLoop = async (context: VerbContext, dryRun: boolean, ticksFlag: string
             const tick = await tickPass(context, dryRun)
             ticks = n
             last = tick.data
-            context.progress(`${new Date().toISOString()} tick ${String(n)}: ${tick.message.split("\n").join("\n  ")}`)
+            context.progress(`${new Date().toISOString()} tick ${String(n)}: ${tick.message.replaceAll("\n", "\n  ")}`)
             if (n >= limit) return
         } else {
             seen = stamp

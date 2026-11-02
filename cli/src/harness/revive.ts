@@ -25,7 +25,7 @@ export const TASK_REVIVED = "task-revived"
 
 // The seat states of a launch whose worker never started its turn, and the states a closed seat ends in; any other state a seat
 // of the attempt reached (an Orca running state, worker-lost) proves its worker ran.
-const NOT_STARTED: readonly string[] = ["starting", "launch-unknown", "launch-failed", "launch-unsettled", "released", "stopped"]
+const NOT_STARTED: ReadonlySet<string> = new Set(["starting", "launch-unknown", "launch-failed", "launch-unsettled", "released", "stopped"])
 
 // The no-verdict events of core/task/verify.ts `noVerdict`; only the two the harness causes make a task harness-killed.
 const NO_VERDICT_EVENTS: readonly string[] = ["verify-infra", "verify-deadline", "verify-error", "preserve-failed", "settle-refused"]
@@ -39,7 +39,7 @@ const workerStarted = (db: DatabaseSync, attemptId: string): boolean => {
         .prepare("SELECT json_extract(e.data_json, '$.to') AS state FROM events e JOIN seats s ON s.id = e.subject WHERE e.kind = 'seat-status' AND s.attempt_id = ?")
         .all(attemptId)
         .map((row) => text(row.state) ?? "")
-    return reached.some((state) => state !== "" && !NOT_STARTED.includes(state) && !unknownStart.includes(state))
+    return reached.some((state) => state !== "" && !NOT_STARTED.has(state) && !unknownStart.includes(state))
 }
 
 /**

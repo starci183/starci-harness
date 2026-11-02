@@ -135,8 +135,8 @@ const cpuRuleOf = (rules: HeavyRules, cpuPercent: number, managed: number | null
  * reports). `starved` (the queue admitted nothing for cpuStarveMinutes, `starvedQueue`) lets one command start under a hot
  * CPU: high CPU slows the queue, it never stops it.
  */
-export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly string[] = [], kind?: HeavyKind, cores?: number, starved = false, managedCpu: number | null = null): HostLoad & { readonly admits: boolean; readonly cpuHolds: boolean } => {
-    const cap = slotCap(rules, cores)
+export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly string[] = [], kind?: HeavyKind, starved = false, managedCpu: number | null = null): HostLoad & { readonly admits: boolean; readonly cpuHolds: boolean } => {
+    const cap = slotCap(rules)
     const estimates: Readonly<Record<string, number>> = rules.estimateMb
     // A row of a kind this build does not know (an older or newer CLI) is held at the largest estimate.
     const estimate = (name: string): number => (name in estimates ? (estimates[name] ?? 0) : Math.max(...Object.values(estimates)))
@@ -361,7 +361,7 @@ export const hostLoad = async (rules: HeavyRules = loadHeavyRules()): Promise<Ho
     const { cpu, managed } = await cpuLoad(rules)
     heavySlots()
     const { running, starved } = withGovernor((db) => ({ running: runningKinds(db), starved: starvedQueue(db, rules) }))
-    return admission(rules, Math.floor(freemem() / 1_048_576), cpu, running, undefined, undefined, starved, managed)
+    return admission(rules, Math.floor(freemem() / 1_048_576), cpu, running, undefined, starved, managed)
 }
 
 const repositoryKeys = new Map<string, string>()
@@ -462,7 +462,7 @@ const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at">, rules: H
         const kinds = runningKinds(db)
         const freeMb = Math.floor(freemem() / 1_048_576)
         const starved = starvedQueue(db, rules)
-        const judge = (kind: string): ReturnType<typeof admission> => admission(rules, freeMb, cpu.cpu, kinds, kind as HeavyKind, undefined, starved, cpu.managed)
+        const judge = (kind: string): ReturnType<typeof admission> => admission(rules, freeMb, cpu.cpu, kinds, kind as HeavyKind, starved, cpu.managed)
         const order = servingOrder(rows, rules)
         const first = order.find((row) => judge(row.kind).admits)
         const load = judge(slot.kind)
@@ -722,7 +722,7 @@ export const clockOf = (at: string): string => {
  * would be admitted. The full arithmetic is `admission(...).reason`.
  */
 export const heldWhy = (rules: HeavyRules, load: Pick<HostLoad, "freeMb" | "cpuPercent" | "managedCpuPercent">, running: readonly string[], kind: HeavyKind): string | undefined => {
-    const judged = admission(rules, load.freeMb, load.cpuPercent, running, kind, undefined, false, load.managedCpuPercent)
+    const judged = admission(rules, load.freeMb, load.cpuPercent, running, kind, false, load.managedCpuPercent)
     if (judged.admits) return undefined
     if (judged.cpuHolds) {
         const managed = load.managedCpuPercent

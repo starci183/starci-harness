@@ -348,7 +348,8 @@ const landedNote = (settlement: Settlement | null, commit: boolean, preserved: P
     return `not settled: ${work}`
 }
 
-const reply = (taskId: string, attempt: AttemptRow, task: TaskRow, built: CleanVerify | null, ending: Ending, commit: boolean, pruned: readonly string[], worktree: WorktreeRemoval | null): VerbResult<VerifyData> => {
+const reply = (taskId: string, attempt: AttemptRow, task: TaskRow, built: CleanVerify | null, ending: Ending, cleanup: { readonly commit: boolean; readonly pruned: readonly string[]; readonly worktree: WorktreeRemoval | null }): VerbResult<VerifyData> => {
+    const { commit, pruned, worktree } = cleanup
     const { status, settlement, preserved, conflict, seats } = ending
     const checks = built?.checks ?? []
     const verdict = built?.verdict ?? "red"
@@ -626,7 +627,7 @@ const judgeTask = async (db: DatabaseSync, callerRoot: string, ops: Ops, task: T
         const built = await cleanVerify({ ...input, ...(onto === undefined ? {} : { onto }), ...(made === undefined ? {} : { fork: made.fork }) })
         recordRuns(db, taskId, attempt.id, task.contractHash, built.checks)
         recordEvent(db, "task-verified", taskId, { attempt: attempt.id, verdict: built.verdict, candidate: built.candidate, base: built.base, foreign: built.foreign, settle: false })
-        return reply(taskId, attempt, task, noted(built), { ...unsettled, status: getTask(db, taskId).status }, false, pruned, null)
+        return reply(taskId, attempt, task, noted(built), { ...unsettled, status: getTask(db, taskId).status }, { commit: false, pruned, worktree: null })
     }
     const frozen = await freezeWorker(root, taskId)
     const me = thisVerifier(taskId)
@@ -653,7 +654,7 @@ const judgeTask = async (db: DatabaseSync, callerRoot: string, ops: Ops, task: T
     )
     const seats = closing.seats.length > 0 ? closing.seats : frozen
     const worktree = getTask(db, taskId).intent === null ? ((await removeOpWorktree(callerRoot, taskId).catch(() => undefined)) ?? null) : null
-    return reply(taskId, attempt, task, noted(settled.built), { ...settled.ending, ...closing, seats }, true, pruned, worktree)
+    return reply(taskId, attempt, task, noted(settled.built), { ...settled.ending, ...closing, seats }, { commit: true, pruned, worktree })
 }
 
 /** `--recover` of a repair intent: finishes the reset from the preserve's manifest, then drops the intent. */

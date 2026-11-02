@@ -37,7 +37,7 @@ const ENDED: readonly WorkflowStatus[] = ["done", "stopping", "stopped"]
  */
 const tasksOf = (ledger: DatabaseSync, workflow: string): { readonly done: number; readonly remaining: number } => {
     const status = hasGraphTables(ledger) ? ledger.prepare("SELECT status FROM workflows WHERE id = ?").get(workflow)?.status : undefined
-    if (typeof status !== "string" || ENDED.some((ended) => ended === status)) return { done: 0, remaining: 0 }
+    if (typeof status !== "string" || (ENDED as readonly string[]).includes(status)) return { done: 0, remaining: 0 }
     const views = snapshotOf(ledger, workflow).views
     const done = views.filter((view) => view.state === "done").length
     return { done, remaining: views.length - done }

@@ -188,14 +188,14 @@ const busyLeftovers = (root: string, judged: readonly GcEntry[], now: boolean): 
             .map((record) => {
                 const due = now || busyDue(record) || !existsSync(record.path)
                 const reason = `left busy at attempt ${String(record.attempt)}${record.holders === "" ? "" : ` (${record.holders})`}${due ? "" : `; retried from ${record.nextAt}`}`
-                return { path: record.path, kind: (WORKTREE_KINDS.includes(record.kind as WorktreeKind) ? record.kind : "orphan") as WorktreeKind, owner: record.owner, due, reason, preserved: null, removed: false, busy: true, detail: "", repo: record.repo }
+                return { path: record.path, kind: (WORKTREE_KINDS.has(record.kind as WorktreeKind) ? record.kind : "orphan") as WorktreeKind, owner: record.owner, due, reason, preserved: null, removed: false, busy: true, detail: "", repo: record.repo }
             })
     } finally {
         db.close()
     }
 }
 
-const WORKTREE_KINDS: readonly WorktreeKind[] = ["op", "workflow", "worker", "package", "orphan"]
+const WORKTREE_KINDS: ReadonlySet<WorktreeKind> = new Set<WorktreeKind>(["op", "workflow", "worker", "package", "orphan"])
 
 /** The package edit worktrees of this Git repository whose handed-off head is on main. */
 const landedPackages = async (root: string): Promise<GcEntry[]> => {

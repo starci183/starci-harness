@@ -28,10 +28,10 @@ import { cancelTask } from "../task/cancel.js"
 import { stepWorkflow } from "../workflow/engine.js"
 
 /** The workflow statuses a park pauses: every started one that has not ended. */
-const PARKABLE: readonly WorkflowStatus[] = ["running", "blocked", "paused"]
+const PARKABLE: ReadonlySet<WorkflowStatus> = new Set<WorkflowStatus>(["running", "blocked", "paused"])
 
 /** The task statuses whose open seat is a worker still working: a park stops it and keeps its work (`task-parked`). */
-const WORKING: readonly TaskStatus[] = ["queued", "running", "effect_unknown"]
+const WORKING: ReadonlySet<TaskStatus> = new Set<TaskStatus>(["queued", "running", "effect_unknown"])
 
 /** One workflow a park paused, the status and reason it had, and what became of its Kernel terminal. */
 export interface ParkedWorkflow {
@@ -180,7 +180,7 @@ const pauseWorkflows = (repo: string, dryRun: boolean): Omit<ParkedWorkflow, "ke
     withLedger(repo, (db) =>
         inTransaction(db, () =>
             listWorkflows(db)
-                .filter((workflow) => PARKABLE.includes(workflow.status))
+                .filter((workflow) => PARKABLE.has(workflow.status))
                 .map((workflow) => {
                     const was = isParkedReason(workflow.reason) ? parkedFrom(workflow.reason ?? "") : { status: workflow.status, reason: workflow.reason }
                     if (!dryRun && !isParkedReason(workflow.reason)) setWorkflowStatus(db, workflow.id, "paused", parkedReason(workflow.status, workflow.reason), "park")
@@ -208,7 +208,7 @@ const stopTask = async (repo: string, task: string, workers: readonly WorkerReco
     const { row, key } = withLedger(repo, (db) => ({ row: getTask(db, task), key: textOf(db.prepare("SELECT plan_key FROM tasks WHERE id = ?").get(task)?.plan_key) }))
     const worker = workers.find((one) => one.task_id === task)?.id ?? null
     const base = { repo, task, key, workflow: row.workflowId, worker }
-    if (!WORKING.includes(row.status) && row.intent !== "cancelling") {
+    if (!WORKING.has(row.status) && row.intent !== "cancelling") {
         if (dryRun) return { ...base, action: "seats-closed", detail: `would close the open seats of this ${row.status} task` }
         const closed = await closeSeatsOfTask(repo, task)
         return { ...base, action: "seats-closed", detail: closed.map((seat) => `seat ${seat.seat} ${seat.outcome}`).join(", ") }

@@ -340,7 +340,7 @@ const PAGES_LINE = /^starci-uat-pages (\{.*\})\s*$/
 
 /** The pages a run's stderr tallied (its last tally line), or undefined when it printed none. */
 export const pagesOf = (stderr: string): UatReceipt["pages"] => {
-    const line = stderr.split("\n").map((each) => PAGES_LINE.exec(each)?.[1]).filter((each): each is string => each !== undefined).at(-1)
+    const line = stderr.split("\n").map((each) => PAGES_LINE.exec(each)?.[1]).findLast((each): each is string => each !== undefined)
     if (line === undefined) return undefined
     try {
         const parsed = uatReceiptSchema.shape.pages.safeParse(JSON.parse(line))

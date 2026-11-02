@@ -276,7 +276,7 @@ const tendOwned = (place: Place, need: NeedRow): StepAction[] => {
 /** How a resolver stands: done (with the commits it landed, oldest first), failed (why), or still working. */
 type ResolverStatus = { readonly kind: "done"; readonly commits: readonly string[]; readonly detail: string } | { readonly kind: "failed"; readonly detail: string } | { readonly kind: "pending" }
 
-const FAILED_TASK: readonly string[] = ["failed", "cancelled", "awaiting_owner"]
+const FAILED_TASK: ReadonlySet<string> = new Set(["failed", "cancelled", "awaiting_owner"])
 
 /**
  * The commits a done task landed, oldest first: every commit its settle wrote carries its `Starci-Task` trailer (a Work commit
@@ -293,7 +293,7 @@ const landedCommits = async (repo: string, taskId: string, settle: string | null
 const taskStatus = async (repo: string, taskId: string): Promise<ResolverStatus> => {
     const task = withLedger(repo, (db) => getTask(db, taskId))
     if (task.status === "done") return { kind: "done", commits: await landedCommits(repo, taskId, task.settleCommit), detail: `task ${taskId} done` }
-    return FAILED_TASK.includes(task.status) ? { kind: "failed", detail: `its resolver task ${taskId} is ${task.status}` } : { kind: "pending" }
+    return FAILED_TASK.has(task.status) ? { kind: "failed", detail: `its resolver task ${taskId} is ${task.status}` } : { kind: "pending" }
 }
 
 /** The resolver keys of a workflow resolver: its `keys`, else its one `key`. */
@@ -615,7 +615,8 @@ const release = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
     const ended = withMachine((db) => mine.filter((waiter) => allEnded(db, need.project, waiterRowsOfTask(db, need.project, waiter.repo, waiter.task))))
     // A held waiter stays parked, its row unreleased: once its hold or ticket ends, a later pass retries it from its kept work.
     const held = withLedger(place.root, (db) => ended.flatMap((waiter) => {
-        const why = holdOf(db, waiter.task) ?? ((ticket) => (ticket === null ? null : `waits on ticket ${ticket}`))(ticketHoldingTask(need.project, waiter.task))
+        const ticket = ticketHoldingTask(need.project, waiter.task)
+        const why = holdOf(db, waiter.task) ?? (ticket === null ? null : `waits on ticket ${ticket}`)
         return why === null ? [] : [action(`need ${need.key} ${need.state}: waiter ${waiter.taskKey ?? waiter.task} not released, ${why}`, "wait", waiter.task, waiter.taskKey)]
     }))
     const ready = ended.filter((waiter) => !held.some((one) => one.task === waiter.task))

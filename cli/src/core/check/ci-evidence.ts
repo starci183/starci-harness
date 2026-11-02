@@ -88,7 +88,7 @@ export const requiredJobsOf = (edition: Edition): RequiredJobs => {
 }
 
 /** A message with anything shaped like a GitHub token removed: nothing this check prints may carry one. */
-const scrubbed = (message: string): string => message.replaceAll(/\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]{8,}/gu, "[token]")
+const scrubbed = (message: string): string => message.replaceAll(/\b(?:gh[pousr]_|github_pat_)\w{8,}/gu, "[token]")
 
 const repoPath = (): string => {
     const named = process.env.GITHUB_REPOSITORY ?? ""

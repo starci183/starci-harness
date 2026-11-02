@@ -50,7 +50,8 @@ void test("a removed spelling marked shipped is refused anywhere in packages/hfs
         put(root, "packages/hfs/runtime/scripts/draw.mts", "const C = new Set(['SurfaceCard', 'SurfaceListCard'])\n")
         put(root, "packages/hfs/codemod/a.mts", "SurfaceListCard\n")
         const found = judgeShippedVocabulary(knowledge).map((finding) => `${finding.subject}:${finding.detail.split(" ")[0] ?? ""}`)
-        assert.deepEqual(found.sort((a, b) => a.localeCompare(b)), ["SurfaceListCard:../packages/hfs/runtime/knowledge/grammars/core/playbook.yaml:1", "SurfaceListCard:../packages/hfs/runtime/scripts/draw.mts:1"])
+        found.sort((a, b) => a.localeCompare(b))
+        assert.deepEqual(found, ["SurfaceListCard:../packages/hfs/runtime/knowledge/grammars/core/playbook.yaml:1", "SurfaceListCard:../packages/hfs/runtime/scripts/draw.mts:1"])
     } finally {
         done()
     }

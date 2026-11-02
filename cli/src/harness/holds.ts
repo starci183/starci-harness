@@ -36,7 +36,7 @@ export const TASK_HELD = "task-held"
 export const HOLD_RELEASED = "hold-released"
 
 /** The decision kinds on a task that a command answering it without moving the task holds. */
-const HELD_KINDS: readonly string[] = ["red", "question", "check-premise", "conflict"]
+const HELD_KINDS: ReadonlySet<string> = new Set(["red", "question", "check-premise", "conflict"])
 
 /** What a hold reads of the command that makes it. */
 export interface HoldingCommand {
@@ -60,7 +60,7 @@ export const decidedTasks = (db: DatabaseSync, answers: readonly string[]): { re
     answers.flatMap((id) => {
         const row = db.prepare("SELECT kind, subject FROM decisions WHERE id = ? AND scope = 'kernel'").get(id)
         const subject = textOf(row?.subject) ?? ""
-        return row !== undefined && HELD_KINDS.includes(String(row.kind)) && subject.startsWith("t-") ? [{ id, task: subject }] : []
+        return row !== undefined && HELD_KINDS.has(String(row.kind)) && subject.startsWith("t-") ? [{ id, task: subject }] : []
     })
 
 /**

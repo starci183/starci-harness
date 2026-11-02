@@ -25,7 +25,7 @@ export interface HostProcess {
 
 // A process's working folder on Windows sits in its PEB (RTL_USER_PROCESS_PARAMETERS.CurrentDirectory), which no CIM class
 // carries; this reads it for a 64-bit process this user may open, and answers null for any other.
-const CWD_READER = String.raw`
+const CWD_READER = `
 using System;
 using System.Runtime.InteropServices;
 using System.Text;

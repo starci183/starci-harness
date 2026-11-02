@@ -44,7 +44,9 @@ export const judgeRuleDocs = (knowledge: string): KnowledgeFinding[] => {
     return ids.filter((id) => !named.has(id)).map((id) => ({ kind: "rule-no-doc" as const, subject: id, detail: `${id} is in hfs/rules.yaml and no page of the living knowledge names it: add it where its law is taught (contexts/code/<side>/*.md or contexts/ui/...)` }))
 }
 
-const code = (token: string): RegExp => new RegExp("(?:`" + token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "`|<" + token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[ >/])")
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
+
+const code = (token: string): RegExp => new RegExp("(?:`" + escapeRegExp(token) + "`|<" + escapeRegExp(token) + "[ >/])")
 
 /**
  * rulings.yaml `removedVocabulary`: a spelling it lists is not written, as code (in backticks or as a JSX tag), in the living
@@ -81,7 +83,7 @@ export const judgeShippedVocabulary = (knowledge: string): KnowledgeFinding[] =>
     for (const path of walk(runtime, (name) => /\.(?:md|yaml|json|mts|ts)$/.test(name))) {
         const lines = read(path).split("\n")
         for (const spelling of spellings) {
-            const pattern = new RegExp("(?<![\\w.-])" + spelling.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![\\w-])")
+            const pattern = new RegExp(String.raw`(?<![\w.-])` + escapeRegExp(spelling) + String.raw`(?![\w-])`)
             lines.forEach((line, index) => {
                 if (pattern.test(line)) found.push({ kind: "removed-vocabulary-used", subject: spelling, detail: `${relative(knowledge, path).replaceAll("\\", "/")}:${String(index + 1)} writes the removed ${spelling}; rulings.yaml removedVocabulary names what replaces it` })
             })

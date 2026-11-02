@@ -87,7 +87,7 @@ export const installProbe = (judgePart: Judge): void => {
     } = { input: { rootAttribute: "data-grammar-family", family: "", maxBroken: 20 }, root: null, fixture: {}, targets: new Map(), beforeValues: new Map(), ringBaseline: new Map() }
 
     const rootSelector = (): string => `[${state.input.rootAttribute}="${state.input.family}"]`
-    const list = (items: ArrayLike<Element>): Element[] => Array.from(items)
+    const list = <T extends Element>(items: ArrayLike<T>): T[] => Array.from(items)
     const round = (value: number): number => Math.round(value * 100) / 100
     const px = (value: string): number => Number.parseFloat(value) || 0
     const visible = (element: Element): boolean => element.getClientRects().length > 0
@@ -148,7 +148,8 @@ export const installProbe = (judgePart: Judge): void => {
             at = at.parentElement
         }
         let ground: [number, number, number] = [255, 255, 255]
-        for (const [r, g, b, a] of layers.reverse()) ground = [r * a + ground[0] * (1 - a), g * a + ground[1] * (1 - a), b * a + ground[2] * (1 - a)]
+        layers.reverse()
+        for (const [r, g, b, a] of layers) ground = [r * a + ground[0] * (1 - a), g * a + ground[1] * (1 - a), b * a + ground[2] * (1 - a)]
         return ground
     }
     const luminance = (rgb: readonly [number, number, number]): number => {
@@ -451,7 +452,7 @@ export const installProbe = (judgePart: Judge): void => {
         // The probe sits inside the element so a token defined on the element itself resolves; a void element cannot hold one.
         const host = anchor.matches("input,img,hr,br,textarea,select") ? (anchor.parentElement ?? anchor) : anchor
         const probe = doc.createElement("span")
-        probe.setAttribute("data-dna-reference", "probe")
+        probe.dataset.dnaReference = "probe"
         probe.style.setProperty("position", "absolute")
         probe.style.setProperty("visibility", "hidden")
         probe.style.setProperty(property, raw)
@@ -470,8 +471,8 @@ export const installProbe = (judgePart: Judge): void => {
     const vendorReference = (component: string, props: Readonly<Record<string, string | number | boolean>>, anchor: Element): Element | null => {
         const wanted = Object.entries(props).map(([key, value]) => [key, typeof value === "string" && value.startsWith("$") ? (anchor.getAttribute(value.slice(1)) ?? "") : value] as const)
         return (
-            list(doc.querySelectorAll(`[data-dna-vendor="${component}"]`)).find((candidate) => {
-                const declared = JSON.parse(candidate.getAttribute("data-dna-props") ?? "{}") as Record<string, unknown>
+            list(doc.querySelectorAll<HTMLElement>(`[data-dna-vendor="${component}"]`)).find((candidate) => {
+                const declared = JSON.parse(candidate.dataset.dnaProps ?? "{}") as Record<string, unknown>
                 return wanted.every(([key, value]) => String(declared[key]) === String(value))
             }) ?? null
         )
@@ -481,7 +482,7 @@ export const installProbe = (judgePart: Judge): void => {
         if (typeof value !== "object") return { alternatives: [[canon(value)]] }
         if ("token" in value) {
             const resolved = metrics.map((metric) => resolveToken(anchor, value.token, metric))
-            return resolved.some((item) => item === null) ? { skip: `${value.token} is not set where the element is` } : { alternatives: [resolved] }
+            return resolved.includes(null) ? { skip: `${value.token} is not set where the element is` } : { alternatives: [resolved] }
         }
         if ("threshold" in value) return { skip: "a threshold is read before the page" }
         if ("vendor" in value) {
@@ -549,8 +550,8 @@ export const installProbe = (judgePart: Judge): void => {
     }
 
     /** The part one element gives for a metric list, an operator and a value; a reason string when it cannot be measured. */
-    const partOf = (element: Element, variant: DnaVariant, metrics: readonly string[], op: DnaVariant["op"], value: DnaValue | undefined, kind: string, scope: Element | null, beforeKey: string): DnaPart | string => {
-        const resolved = resolve(element, value, metrics, { scope, rows: 0, beforeKey })
+    const partOf = (element: Element, variant: DnaVariant, metrics: readonly string[], op: DnaVariant["op"], value: DnaValue | undefined, kind: string, place: { readonly scope: Element | null; readonly beforeKey: string }): DnaPart | string => {
+        const resolved = resolve(element, value, metrics, { ...place, rows: 0 })
         if ("skip" in resolved) return resolved.skip
         if (resolved.alternatives.length === 0 && op !== "set") return "the measure has no value"
         return { metric: metrics.join(","), op, measured: readAll(element, kind, metrics, variant.pseudo), expected: resolved.alternatives, pattern: patternFlag(value), tolerance: toleranceOf(variant) }
@@ -620,7 +621,7 @@ export const installProbe = (judgePart: Judge): void => {
                 collector.matched = matches.length
                 matches.forEach((original, position) => {
                     const element = variant.target === "painted-box" ? paintedBox(original) : original
-                    add(pathOf(original), [partOf(element, variant, variant.metrics, variant.op, variant.value, variant.kind, null, beforeKeys?.[position] ?? "")])
+                    add(pathOf(original), [partOf(element, variant, variant.metrics, variant.op, variant.value, variant.kind, { scope: null, beforeKey: beforeKeys?.[position] ?? "" })])
                 })
                 return finish(index, collector)
             }

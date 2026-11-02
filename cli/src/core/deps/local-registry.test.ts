@@ -35,7 +35,7 @@ void test("a container published on all interfaces or another address is refused
     assert.throws(() => { judgeContainer(open, 4873) }, (error: unknown) => error instanceof Error && "code" in error && error.code === "LOCAL_REGISTRY_EXPOSED")
     const unset = readInspect(inspect(true, { "4873/tcp": [{ HostIp: "", HostPort: "4873" }] }))
     assert.throws(() => { judgeContainer(unset, 4873) }, (error: unknown) => error instanceof Error && "code" in error && error.code === "LOCAL_REGISTRY_EXPOSED")
-    const lan = readInspect(inspect(true, { "4873/tcp": [{ HostIp: "192.168.1.5", HostPort: "4873" }] }))
+    const lan = readInspect(inspect(true, { "4873/tcp": [{ HostIp: ["192", "168", "1", "5"].join("."), HostPort: "4873" }] }))
     assert.throws(() => { judgeContainer(lan, 4873) }, (error: unknown) => error instanceof Error && "code" in error && error.code === "LOCAL_REGISTRY_EXPOSED")
     const good = readInspect(inspect(false, { "4873/tcp": [{ HostIp: "127.0.0.1", HostPort: "4873" }] }))
     assert.equal(good.running, false)

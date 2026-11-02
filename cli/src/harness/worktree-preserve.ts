@@ -128,6 +128,17 @@ export interface QuarantinedRemnant {
     readonly detail: string
 }
 
+/** The first folder of `parent` named `name`, or `name.2`, `name.3` and so on, that does not exist yet. */
+const freeFolder = (parent: string, name: string): string => {
+    let folder = join(parent, name)
+    let n = 2
+    while (existsSync(folder)) {
+        folder = join(parent, `${name}.${String(n)}`)
+        n += 1
+    }
+    return folder
+}
+
 /** Moves every byte into same-project custody atomically, then unlinks dependency links only; it never recursively deletes. */
 export const quarantineRemnant = async (root: string, path: string, verifySelection: () => Promise<void>): Promise<QuarantinedRemnant> => {
     await verifySelection()
@@ -135,8 +146,7 @@ export const quarantineRemnant = async (root: string, path: string, verifySelect
     const preserved = join(projectDir(root), "preserved")
     if (!existsSync(preserved)) mkdirSync(preserved, { mode: 0o700 })
     realDirectory(preserved)
-    let directory = join(preserved, `gc-${basename(path)}`)
-    for (let n = 2; existsSync(directory); n += 1) directory = join(preserved, `gc-${basename(path)}.${String(n)}`)
+    const directory = freeFolder(preserved, `gc-${basename(path)}`)
     mkdirSync(directory, { mode: 0o700 })
     const reserved = metadata("", lstatSync(directory))
     const checkout = join(directory, "checkout")
@@ -190,8 +200,7 @@ export const preserveCheckout = async (root: string, path: string): Promise<Pres
     const untracked = new Set(nulPaths(await git(path, ["ls-files", "--others", "--exclude-standard", "-z"])))
     const index = await git(path, ["ls-files", "--stage", "-z"])
     const before = checkoutFiles(path, tracked)
-    let directory = join(projectDir(root), "preserved", `gc-${basename(path)}`)
-    for (let n = 2; existsSync(directory); n += 1) directory = join(projectDir(root), "preserved", `gc-${basename(path)}.${String(n)}`)
+    const directory = freeFolder(join(projectDir(root), "preserved"), `gc-${basename(path)}`)
     mkdirSync(directory, { recursive: true, mode: 0o700 })
     await git(path, ["diff", "--binary", `--output=${join(directory, "changes.patch")}`, "HEAD"])
     await git(path, ["diff", "--binary", "--cached", `--output=${join(directory, "index.patch")}`])

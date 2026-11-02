@@ -13,12 +13,11 @@ import type { CustodyEvidence } from "../../harness/custody.js"
 import { fileResult, getTask, latestAttempt, markIntent, openAttempt, recordEvent, resultOf, setStatus, taskCheckout } from "../../harness/tasks.js"
 import type { AttemptRow, ResultStatus, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
-import { repositoryRoot } from "../../shared/git.js"
+import { mainCheckout, repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import { parseNeeds, reportNeeds } from "../../harness/needs.js"
 import type { NeedReport } from "../../harness/needs.js"
 import { projectOf } from "../../harness/work.js"
-import { mainCheckout } from "../../shared/git.js"
 
 const RESULT_STATUSES: readonly ResultStatus[] = ["done", "blocked", "mismatch", "failed"]
 

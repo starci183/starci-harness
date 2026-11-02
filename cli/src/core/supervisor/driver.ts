@@ -703,8 +703,7 @@ export const supervisorNext = async (context: VerbContext, project: Project, wai
         const { repos, problems } = await projectRepositories(project)
         actions.push(...problems.filter((problem) => !actions.includes(problem)))
         if (attached !== null && binary !== null) {
-            actions.push(...(await inOrder(repos, (repo) => sweepKernels(context, repo, binary, rules, attached, false))).flat())
-            actions.push(...(await tendWorkers(context, attached, binary, project)))
+            actions.push(...(await inOrder(repos, (repo) => sweepKernels(context, repo, binary, rules, attached, false))).flat(), ...(await tendWorkers(context, attached, binary, project)))
         }
         sweepMs = Math.max(sweepMs, Date.now() - swept)
         // Every escalation the Supervisor cannot rule, and every task left awaiting the owner, becomes its ticket: a defect for
@@ -941,8 +940,13 @@ export const supervisorTick = async (context: VerbContext, dryRun = false): Prom
         const unparked = await finishUnpark(context, one.project, binary, seat).catch((error: unknown) => ({ workflows: [], workers: [], problems: [`unpark not finished (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`] }))
         lines.push(...unparked.workflows.map((workflow) => `${workflow.workflow}: unparked, ${workflow.status}; ${workflow.kernel}`), ...unparked.workers, ...unparked.problems)
         const { repos, problems: unresolved } = await projectRepositories(one.project)
-        lines.push(...unresolved, ...(await inOrder(repos, (repo) => sweepKernels(context, repo, binary, rules, seat, true))).flat())
-        lines.push(...repos.flatMap(blockedPromptLines), ...(await inOrder(repos, gcLines)).flat(), ...(await inOrder(repos, (repo) => lineageLines(repo, binary, context.cwd))).flat())
+        lines.push(
+            ...unresolved,
+            ...(await inOrder(repos, (repo) => sweepKernels(context, repo, binary, rules, seat, true))).flat(),
+            ...repos.flatMap(blockedPromptLines),
+            ...(await inOrder(repos, gcLines)).flat(),
+            ...(await inOrder(repos, (repo) => lineageLines(repo, binary, context.cwd))).flat(),
+        )
         try {
             const line = await supervisorStall(binary, context.cwd, seat, repos, await terminalList(binary, context.cwd).catch(() => null), rules)
             if (line !== null) lines.push(line)

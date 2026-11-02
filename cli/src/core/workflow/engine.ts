@@ -579,8 +579,7 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
         actions.push(...(await finalVerify(context, root, snapshot)))
         snapshot = reconcile(root, id)
     }
-    actions.push(...(await closeKernelActions(context, root, snapshot)))
-    actions.push(...(await endedWorktreeActions(root, readSnapshot(root, id))))
+    actions.push(...(await closeKernelActions(context, root, snapshot)), ...(await endedWorktreeActions(root, readSnapshot(root, id))))
     await priorWorkOfInline(root, readSnapshot(root, id))
     return reportOf(root, readSnapshot(root, id), actions)
 }

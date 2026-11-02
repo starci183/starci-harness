@@ -256,7 +256,7 @@ export const relayTask = (template: Pick<PlanNode, "contract" | "route">, plan: 
                 `${how} (the harness applied them up to the first that conflicts, leaving git's markers in its files). Resolve every conflict so that both ` +
                 "sides' intent holds: keep what this branch built and what the need's commits add, never dropping either side to make it apply." +
                 (plan.evidence.length === 0 ? "" : ` The need's evidence, what its waiters reported it for: ${plan.evidence.join("; ")}.`),
-            extend: { ...(template.contract.input.extend ?? {}), [RELAY_COMMITS]: plan.commits.join(" ") },
+            extend: { ...template.contract.input.extend, [RELAY_COMMITS]: plan.commits.join(" ") },
         },
     })
     return { key: relayKeyOf(plan.need, plan.round), contract, dependsOn: [], route: template.route, round: 0 }

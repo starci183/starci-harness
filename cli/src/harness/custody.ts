@@ -379,7 +379,7 @@ export interface CustodyEvidence {
  * `TEST_WORLD_NOT_DECLARED` lines and each custody refusal code it names. Undefined when it shows neither, so its report stands.
  */
 export const custodyEvidence = (output: unknown): CustodyEvidence | undefined => {
-    const text = JSON.stringify(output).replaceAll("\\n", "\n")
+    const text = JSON.stringify(output).replaceAll(String.raw`\n`, "\n")
     const codes = [...CUSTODY_CODES, CUSTODY_KEY_NOT_HANDED].filter((code) => text.includes(code))
     return codes.length === 0 && !text.includes("TEST_WORLD_NOT_DECLARED") ? undefined : { keys: undeclaredIn(text), codes }
 }

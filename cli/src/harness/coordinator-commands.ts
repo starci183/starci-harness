@@ -58,7 +58,7 @@ export const ESCALATION_KINDS = ["budget", "scope", "conflict", "owner", "harnes
 export const OWNER_TOPICS = ["scope", "money", "credentials", "legal", "product"] as const
 
 /** The owner topics no default settles: the owner rules them even when the escalation proposes one. */
-const OWNER_ONLY: readonly (typeof OWNER_TOPICS)[number][] = ["scope", "money", "credentials", "legal"]
+const OWNER_ONLY: ReadonlySet<(typeof OWNER_TOPICS)[number]> = new Set<(typeof OWNER_TOPICS)[number]>(["scope", "money", "credentials", "legal"])
 
 /**
  * The escalation kinds the Supervisor does not rule: `owner` (the owner's decisions, `OWNER_TOPICS`; the Supervisor asks the owner
@@ -66,7 +66,7 @@ const OWNER_ONLY: readonly (typeof OWNER_TOPICS)[number][] = ["scope", "money", 
  * (`defaultRuling`); and `harness` (a harness defect, Debug's to fix; its answer arrives as Debug's `supervisor ask`). The
  * Supervisor relays either ruling (ops/coordinators/supervisor.md).
  */
-const OWNER_RULED: readonly (typeof ESCALATION_KINDS)[number][] = ["owner", "harness"]
+const OWNER_RULED: ReadonlySet<(typeof ESCALATION_KINDS)[number]> = new Set<(typeof ESCALATION_KINDS)[number]>(["owner", "harness"])
 
 const escalationSchema = z
     .strictObject({
@@ -371,7 +371,7 @@ export const escalationOf = (decision: Decision): Partial<Escalation> | null => 
  */
 export const defaultRuling = (decision: Decision): { readonly ruling: string; readonly reason: string } | null => {
     const escalation = escalationOf(decision)
-    if (escalation?.kind !== "owner" || escalation.default === undefined || escalation.topic === undefined || OWNER_ONLY.includes(escalation.topic)) return null
+    if (escalation?.kind !== "owner" || escalation.default === undefined || escalation.topic === undefined || OWNER_ONLY.has(escalation.topic)) return null
     return { ruling: escalation.default, reason: escalation.reason ?? "" }
 }
 
@@ -383,7 +383,7 @@ export const defaultRuling = (decision: Decision): { readonly ruling: string; re
  */
 export const awaitsOwner = (decision: Decision): boolean => {
     const kind = escalationOf(decision)?.kind
-    return kind !== undefined && OWNER_RULED.includes(kind) && defaultRuling(decision) === null
+    return kind !== undefined && OWNER_RULED.has(kind) && defaultRuling(decision) === null
 }
 
 /** One decision by id. */
@@ -442,6 +442,6 @@ const assertRuling = (db: DatabaseSync, command: Command): void => {
     if (undecidedAnswered(db, command).length === 0) throw new Refusal("COMMAND_NOT_YOURS", `a Supervisor submits a ${command.kind} only to rule a ${KERNEL_UNDECIDED} decision of workflow ${command.workflow}, named in answers; otherwise it is the Kernel's`)
     const escalation = command.escalation
     if (command.kind !== "escalation" || escalation === undefined) return
-    if (!OWNER_RULED.includes(escalation.kind)) throw new Refusal("RULING_WITHIN_AUTHORITY", `a ${escalation.kind} escalation is the Supervisor's own to rule: rule it with a workflow-change (or a goal-change, or budget raise); a ruling escalates only to the owner (kind owner) or to Debug (kind harness)`)
+    if (!OWNER_RULED.has(escalation.kind)) throw new Refusal("RULING_WITHIN_AUTHORITY", `a ${escalation.kind} escalation is the Supervisor's own to rule: rule it with a workflow-change (or a goal-change, or budget raise); a ruling escalates only to the owner (kind owner) or to Debug (kind harness)`)
     if (escalation.topic === "product" && escalation.default !== undefined) throw new Refusal("RULING_WITHIN_AUTHORITY", "a product choice that carries a default is the Supervisor's to rule on that default: rule it with a workflow-change")
 }
