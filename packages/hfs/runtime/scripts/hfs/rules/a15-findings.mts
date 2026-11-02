@@ -101,7 +101,7 @@ export const FINDERS = [
  * path lists it is given, so its findings are a function of those. `check-cache-structure-rules.spec.mts` proves every member under a file-system recorder
  * and fails on a read it does not go through the gateway. A finder that stats, lists or walks the work tree (stacks-release, the stacks gate) is not a member.
  */
-export const KEYED_FINDERS: ReadonlySet<(context: Parsed) => Parsed> = new Set();
+export const KEYED_FINDERS: ReadonlySet<(context: Parsed) => Parsed> = new Set([docFreshFindings, scriptHygieneFindings, databaseConfigFindings, feBuildArgsFindings]);
 
 /** Findings of every alpha.15 content rule over one repository. */
 export function a15Findings(context: Parsed) {
