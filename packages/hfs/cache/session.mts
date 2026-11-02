@@ -144,7 +144,7 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
       // A file edited while the run read it gets no record.
       const settled = new Map<string, readonly CacheRecord[]>();
       for (const [folder, { records }] of replaced) {
-        settled.set(folder, records.filter((record) => index.hashOf(record.path) === undefined || hashFile(path.join(root, record.path)) === record.hash));
+        settled.set(folder, records.filter((record) => index.hashOf(record.path) === undefined || hashFile(path.join(root, record.path)) === index.hashOf(record.path)));
       }
       if (trust.kind === 'base') {
         const committed = new Map<string, CacheRecord[]>();

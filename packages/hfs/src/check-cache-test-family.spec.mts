@@ -10,6 +10,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createFakeSession } from '../cache/fake-session.mjs';
+import { createDiskSession } from '../cache/session.mjs';
+import { silentProgress } from '../cache/progress.mjs';
+import { readCacheDir } from '../cache/trust.mjs';
 import { hashText } from '../cache/hash.mjs';
 import { serializeRecords, parseRecords } from '../cache/jsonl.mjs';
 import { ALWAYS_FULL_PROJECTS, TEST_FOLDER, SPEC_STEP, createJestEnvironment, installedSpecMerge, runTestFamily, shardArgs, snapshotOf, sourcesOf, specKey } from '../cache/test-family.mjs';
@@ -117,14 +120,125 @@ interface Run { session: ReturnType<typeof createFakeSession>; result: TestFamil
 
 async function runOnce(w: World, stored: readonly CacheRecord[], options: { mode?: 'full' | 'diff'; configHash?: string; root?: string } = {}): Promise<Run> {
   const root = options.root ?? fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-test-'));
+  writeFiles(root, w.files);
   const session = createFakeSession({ files: w.files, records: { [TEST_FOLDER]: stored }, mode: options.mode ?? 'diff' });
   const merge = fakeMerge();
-  const jest = fakeJest(w, options.configHash, () => w.duringRun?.(session));
+  const jest = fakeJest(w, options.configHash, () => w.duringRun?.({ ...session, setFile: (file, text) => {
+    session.setFile(file, text);
+    if (text === undefined) fs.rmSync(path.join(root, file), { force: true });
+    else writeFiles(root, { [file]: text });
+  } }));
   const result = await runTestFamily({ session: { ...session, root }, jest, side: 'be', merge, judge, scratch: fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-scratch-')) });
   return { session, result, merge };
 }
 
 const stored = (run: Run): CacheRecord[] => [...(run.session.replaced.get(TEST_FOLDER) ?? [])];
+
+function writeFiles(root: string, files: Readonly<Record<string, string>>): void {
+  for (const [file, text] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    fs.writeFileSync(path.join(root, file), text);
+  }
+}
+
+async function runDisk(w: World, root: string, options: { tracked?: readonly string[]; duringRun?: () => void } = {}) {
+  const session = createDiskSession({ root, tracked: options.tracked ?? Object.keys(w.files), env: {}, progress: silentProgress, fingerprint: { parts: [{ name: 'hfs', sha256: 'h1' }], portable: true, localReasons: [] } });
+  const merge = fakeMerge();
+  const result = await runTestFamily({ session, jest: fakeJest(w, 'config-1', options.duringRun), side: 'be', merge, judge });
+  return { session, result, merge, flush: session.flush() };
+}
+
+test('a cold disk session persists composite spec records, a warm run writes identical bytes, and a changed dependency reruns its spec', async (t) => {
+  const w = world();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-disk-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  writeFiles(root, w.files);
+  const first = await runDisk(w, root);
+  assert.equal(first.result.ok, true);
+  assert.deepEqual(first.result.ran, Object.keys(w.closures));
+  assert.ok(first.flush.written.some((file) => file.startsWith('.starcistacks/cache/test-coverage/')));
+  assert.deepEqual(first.flush.warnings, []);
+  const bytes = readCacheDir(root);
+  w.ran = [];
+  const warm = await runDisk(w, root);
+  assert.deepEqual(w.ran, []);
+  assert.deepEqual(warm.result.reused, Object.keys(w.closures));
+  assert.equal(warm.result.ok, true);
+  assert.deepEqual(warm.flush, { written: [], removed: [], warnings: [] });
+  assert.deepEqual(readCacheDir(root), bytes);
+  assert.deepEqual(warm.session.records(TEST_FOLDER), first.session.records(TEST_FOLDER));
+
+  fs.appendFileSync(path.join(root, 'be/src/b.service.ts'), '// changed dependency\n');
+  const changed = await runDisk(w, root);
+  assert.deepEqual(changed.result.ran, ['be/src/b.service.spec.ts']);
+  assert.deepEqual(changed.result.reused, ['be/src/a.service.spec.ts']);
+  assert.equal(changed.result.ok, true);
+  assert.notEqual(changed.session.records(TEST_FOLDER).find((record) => record.path === 'be/src/b.service.spec.ts')?.hash, first.session.records(TEST_FOLDER).find((record) => record.path === 'be/src/b.service.spec.ts')?.hash);
+});
+
+test('fresh disk records refuse tracked source, spec, snapshot and untracked resolved dependency drift', async (t) => {
+  const spec = 'be/src/a.service.spec.ts';
+  const cases = [
+    { name: 'tracked source edit', file: 'be/src/a.service.ts', action: 'edit' },
+    { name: 'spec edit', file: spec, action: 'edit' },
+    { name: 'snapshot edit', file: snapshotOf(spec), action: 'edit' },
+    { name: 'snapshot deletion', file: snapshotOf(spec), action: 'delete' },
+    { name: 'untracked dependency edit', file: 'be/generated/value.ts', action: 'edit' },
+  ] as const;
+  for (const entry of cases) {
+    await t.test(entry.name, async (child) => {
+      const w = world();
+      w.files[snapshotOf(spec)] = 'exports[`a`] = 1;\n';
+      w.files['be/generated/value.ts'] = 'export const value = 1;\n';
+      w.closures[spec] = ['be/src/a.service.ts', 'be/generated/value.ts'];
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-drift-'));
+      child.after(() => fs.rmSync(root, { recursive: true, force: true }));
+      writeFiles(root, w.files);
+      const before = judge.seen.length;
+      const run = await runDisk(w, root, {
+        tracked: Object.keys(w.files).filter((file) => file !== 'be/generated/value.ts'),
+        duringRun: () => {
+          if (entry.action === 'delete') fs.rmSync(path.join(root, entry.file));
+          else fs.appendFileSync(path.join(root, entry.file), '// changed during the run\n');
+        },
+      });
+      const affected = entry.file === 'be/src/a.service.ts' ? Object.keys(w.closures) : [spec];
+      assert.equal(run.result.ok, false);
+      assert.deepEqual([...run.result.failed].sort(), affected);
+      assert.equal(run.result.threshold, undefined);
+      assert.equal(judge.seen.length, before);
+      assert.ok(run.session.records(TEST_FOLDER).every((record) => !affected.includes(record.path)));
+      const persisted = [...readCacheDir(root)].filter(([file]) => file.startsWith('test-coverage/')).flatMap(([, text]) => parseRecords(text).records);
+      assert.ok(persisted.every((record) => !affected.includes(record.path)));
+      assert.deepEqual(run.flush.warnings, []);
+    });
+  }
+});
+
+test('a reused disk record whose closure changes while another spec runs is refused and the partial total cannot pass', async (t) => {
+  const w = world();
+  w.closures['be/src/b.service.spec.ts'] = ['be/src/b.service.ts'];
+  w.covers['be/src/a.service.spec.ts'] = { 'src/a.service.ts': { lines: 4, covered: [1, 2, 3, 4] } };
+  w.covers['be/src/b.service.spec.ts'] = { 'src/b.service.ts': { lines: 2, covered: [1, 2] } };
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-reused-drift-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  writeFiles(root, w.files);
+  assert.equal((await runDisk(w, root)).result.ok, true);
+  fs.appendFileSync(path.join(root, 'be/src/b.service.ts'), '// b needs a rerun\n');
+  const before = judge.seen.length;
+  const run = await runDisk(w, root, { duringRun: () => fs.appendFileSync(path.join(root, 'be/src/a.service.ts'), '// a changed while b ran\n') });
+  assert.deepEqual(run.result.ran, ['be/src/b.service.spec.ts']);
+  assert.deepEqual(run.result.reused, []);
+  assert.deepEqual(run.result.failed, ['be/src/a.service.spec.ts']);
+  assert.equal(run.result.ok, false);
+  assert.equal(run.result.threshold, undefined);
+  assert.equal(judge.seen.length, before);
+  assert.equal(run.result.report.reused, 0);
+  assert.equal(run.result.report.newFindings, 1);
+  assert.deepEqual(run.session.records(TEST_FOLDER).map((record) => record.path), ['be/src/b.service.spec.ts']);
+  const persisted = [...readCacheDir(root)].filter(([file]) => file.startsWith('test-coverage/')).flatMap(([, text]) => parseRecords(text).records);
+  assert.deepEqual(persisted.map((record) => record.path), ['be/src/b.service.spec.ts']);
+});
 
 test('the first run runs every spec and stores one record per spec under its closure key; the total is judged once', async () => {
   const w = world();
