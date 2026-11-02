@@ -10,6 +10,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.43] - 2026-11-02
+
+### Changed
+
+- The CLI requires @starci/hfs@5.0.2, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
+
 ## [1.1.0-alpha.42] - 2026-11-02
 
 - Refreshed the generated contexts index before packaging the canonical app-check surface. HFS callable-provenance fixes ship through the new package cohort; the CLI's HFS dependency follows public npm publication separately.
