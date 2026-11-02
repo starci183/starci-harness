@@ -15,11 +15,11 @@ interface Doc {
   ci: { github: { repository?: string; visibility?: string | undefined } };
   services: {
     codecov: { mode: string; badgeToken?: string; flag?: string };
-    sonar: { mode: string; provider: string; projects: { key: string }[]; badgeToken?: string };
+    sonar: { mode: string; provider: string; projects: { key: string; repository: string }[]; badgeToken?: string };
   };
 }
 const doc = (): Doc => ({ ci: { github: { repository: 'team/product', visibility: 'private' } }, services: {
-  codecov: { mode: 'hosted' }, sonar: { mode: 'hosted', provider: 'sonarcloud', projects: [{ key: 'product' }] },
+  codecov: { mode: 'hosted' }, sonar: { mode: 'hosted', provider: 'sonarcloud', projects: [{ key: 'product', repository: 'product' }] },
 } });
 const fakeGh = (json: Gh['json']): Gh => ({ run: () => assert.fail('the run seam is not used'), repository: () => 'team/product', json });
 const block = (image: string) => `${begin}\n\n${image}\n\n${end}\n`;

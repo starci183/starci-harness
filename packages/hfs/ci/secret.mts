@@ -5,7 +5,7 @@ import { boundSealedKey, type ServiceBinding } from '../runtime/scripts/hfs/ci-d
 
 /** An input pipe or file is an input source even before its bytes arrive; fstat never consumes its value. */
 export function redirectedSecretInput(): boolean {
-  try { const input = fs.fstatSync(0); return input.isFIFO() || input.isFile(); }
+  try { const input = fs.fstatSync(0); return !input.isCharacterDevice(); }
   catch { return false; }
 }
 

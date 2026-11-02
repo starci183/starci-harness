@@ -79,7 +79,7 @@ test('service CI set dry-run judges custody but never decrypts, reads stdin, or 
     tools: { spawn: (_command: string, args: string[], spawnOptions: { input?: unknown }) => { calls.push({ args, input: spawnOptions.input }); return { status: 0, stdout: '' }; } } };
   const argv = ['secret', 'set', 'SONAR_TOKEN', '--from-custody', '--repo', 'owner/project-a'];
   assert.equal(await ciMain(argv, options), 0, err.join(''));
-  assert.equal(opens, 0); assert.deepEqual(calls, []);
+  assert.equal(opens, 0); assert.equal(calls.length, 0);
   assert.equal(await ciMain(argv, { ...options, stdin: () => { reads += 1; return 'synthetic-stdin'; } }), 2);
   assert.equal(reads, 0); assert.equal(opens, 0);
   assert.equal(await ciMain([...argv, '--execute'], options), 0, err.join(''));

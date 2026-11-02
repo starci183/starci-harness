@@ -178,7 +178,7 @@ test('a quality gate ERROR fails the sonar row after a scanner exit 0 and names 
   assert.equal(result.ok, false);
   const sonar = (result.data!.results as GateRow[]).find(row => row.name === 'sonar')!;
   assert.equal(sonar.pass, false);
-  assert.match(sonar.detail, /^RELEASE_SONAR_GATE_FAILED: quality gate ERROR \(new_critical_violations GT 0 \(actual 5\)\)/u);
+  assert.match(sonar.detail, /^RELEASE_SONAR_GATE_FAILED: quality gate ERROR \(new_critical_violations GT 0 \(actual 5\);/u);
   assert.doesNotMatch(sonar.detail, /new_coverage/u);
   assert.match(fs.readFileSync(sonar.log, 'utf8'), /failed: new_critical_violations GT 0 \(actual 5\)/u);
   for (const value of [privateHost, privateToken]) {
