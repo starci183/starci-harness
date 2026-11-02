@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { spawnSync } from 'node:child_process';
+import { completedNode, runHeavyNode, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { combineHashes, hashFile } from './hash.mjs';
 import { canonicalJson } from './jsonl.mjs';
 import type { CacheRecord, CheckSession, FamilyReport, JsonValue } from './types.mjs';
@@ -51,7 +51,7 @@ export interface JestEnvironment {
   /** The digest of the unit project's configuration, free of host paths. */
   readonly configHash: string;
   /** Runs `specs` (all of them when `specs` is every spec) writing the per-spec coverage into `coverageDir`. */
-  run(specs: readonly string[], coverageDir: string): RunOutcome;
+  run(specs: readonly string[], coverageDir: string): RunOutcome | Promise<RunOutcome>;
   /** Reads what the reporter wrote into `coverageDir`. */
   readCoverage(coverageDir: string): readonly SpecCoverageOutput[];
 }
@@ -128,7 +128,7 @@ function recordOf(spec: string, key: string, sources: Readonly<Record<string, So
  * Runs the unit specs against the cache. Diff mode runs the specs with no current record, full mode all of them; a passing spec's coverage is stored under its key,
  * a failing one's is not, and the folder is replaced with exactly the current specs' records. The merged total is written to `<side>/coverage/lcov.info` and judged.
  */
-export function runTestFamily(options: TestFamilyOptions): TestFamilyResult {
+export async function runTestFamily(options: TestFamilyOptions): Promise<TestFamilyResult> {
   const { session, jest, side, merge, judge } = options;
   const decision = session.decide('test');
   const hashOf = (file: string): string | undefined => session.index.hashOf(file) ?? hashFile(path.join(session.root, file));
@@ -151,7 +151,7 @@ export function runTestFamily(options: TestFamilyOptions): TestFamilyResult {
     try {
       fs.rmSync(scratch, { recursive: true, force: true });
       fs.mkdirSync(scratch, { recursive: true });
-      output = jest.run(toRun, scratch).output;
+      output = (await jest.run(toRun, scratch)).output;
       const reported = new Map(jest.readCoverage(scratch).map((file) => [file.spec, file]));
       for (const spec of toRun) {
         const file = reported.get(posix(path.relative(path.join(session.root, side), path.join(session.root, spec))));
@@ -230,7 +230,7 @@ export function projectConfigHash(config: ProjectConfigLike): string {
  * The app's own Jest, resolved from `jestFrom` (a package.json or folder inside the app's install): its unit project's configuration, its haste map and resolver
  * (so `moduleNameMapper`, `jest.mock` targets and setup files count as Jest sees them), and its binary to run specs. `side` is the Jest root, app-relative.
  */
-export async function createJestEnvironment({ appRoot, side, jestFrom, project = 'unit' }: { appRoot: string; side: string; jestFrom?: string; project?: string }): Promise<JestEnvironment> {
+export async function createJestEnvironment({ appRoot, side, jestFrom, project = 'unit', execute }: { appRoot: string; side: string; jestFrom?: string; project?: string; execute?: HeavyNodeRun | undefined }): Promise<JestEnvironment> {
   const root = path.resolve(appRoot, side);
   const fromApp = createRequire(jestFrom ?? path.join(root, 'package.json'));
   const jestPackage = fromApp.resolve('jest/package.json');
@@ -272,7 +272,7 @@ export async function createJestEnvironment({ appRoot, side, jestFrom, project =
   const setup = (name: 'setupFiles' | 'setupFilesAfterEnv'): string[] => [...(config[name] ?? [])];
   const setupClosure = closureFrom([...setup('setupFiles'), ...setup('setupFilesAfterEnv')]).map(relative);
 
-  const listed = spawnSync(process.execPath, [jestBin, '--selectProjects', project, '--listTests'], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const listed = completedNode(await runHeavyNode(execute, { kind: 'test', label: `app check jest ${project} discovery`, args: [jestBin, '--selectProjects', project, '--listTests'], cwd: root, maxBuffer: 64 * 1024 * 1024 }), 'jest discovery');
   if (listed.status !== 0) throw new Error(`jest --listTests failed under ${side}: ${(listed.stderr || listed.stdout).split('\n')[0]}`);
   const specs = listed.stdout.split(/\r?\n/u).map((line) => line.trim()).filter((line) => path.isAbsolute(line)).map((line) => relative(path.resolve(line))).sort();
   const closures = new Map<string, readonly string[]>();
@@ -288,7 +288,7 @@ export async function createJestEnvironment({ appRoot, side, jestFrom, project =
       closures.set(spec, closure);
       return closure;
     },
-    run(toRun, coverageDir) {
+    async run(toRun, coverageDir) {
       const base = [jestBin, '--selectProjects', project, '--coverage', '--ci'];
       const everything = toRun.length === specs.length;
       const sideRelative = toRun.map((spec) => posix(path.relative(root, path.resolve(appRoot, spec))));
@@ -303,7 +303,7 @@ export async function createJestEnvironment({ appRoot, side, jestFrom, project =
       let output = '';
       for (const chunk of chunks) {
         const args = chunk.length > 0 ? [...base, '--runTestsByPath', ...chunk] : base;
-        const result = spawnSync(process.execPath, args, { cwd: root, encoding: 'utf8', env: { ...process.env, STARCI_SPEC_COVERAGE_DIR: coverageDir }, maxBuffer: 256 * 1024 * 1024 });
+        const result = completedNode(await runHeavyNode(execute, { kind: 'test', label: `app check jest ${project} coverage`, args, cwd: root, env: { ...process.env, STARCI_SPEC_COVERAGE_DIR: coverageDir }, maxBuffer: 256 * 1024 * 1024 }), 'jest coverage');
         status = status || (result.status ?? 1);
         output += `${result.stdout}${result.stderr}`;
       }

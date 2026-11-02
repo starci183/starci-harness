@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { appWiring, appWiringMain, BOOT_PROOF_TIMEOUT, BOOT_PROOF_TIMEOUT_ENV, wiringFixturePath, workerBudget } from '../runtime/scripts/hfs/app-wiring.mjs';
+import { appWiring, appWiringAsync, appWiringMain, BOOT_PROOF_TIMEOUT, BOOT_PROOF_TIMEOUT_ENV, wiringFixturePath, workerBudget } from '../runtime/scripts/hfs/app-wiring.mjs';
 import { bootProofFindings } from '../runtime/scripts/hfs/rules/boot-proof.mjs';
 import { a15Findings } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 
@@ -295,4 +295,28 @@ test('BOOT_PROOF_TIMEOUT lite: one timeout is retried and a green retry is a gre
 test('BOOT_PROOF_TIMEOUT lite: without the CLI the worker keeps the four-deadline budget', () => {
   assert.equal(workerBudget(15000, {}), 62000);
   assert.equal(workerBudget(15000, { [BOOT_PROOF_TIMEOUT_ENV]: '300000' }), 300000);
+});
+
+
+test('the admitted boot path shares the synchronous proof result and preserves isolated env and one timeout retry', async t => {
+  const context = fixture(t, { [APP_MODULE]: passingModule });
+  const attempts: { kind: string; timeout?: number | undefined; env: NodeJS.ProcessEnv | undefined }[] = [];
+  let calls = 0;
+  const report = await appWiringAsync({ ...context, execute: async request => {
+    attempts.push({ kind: request.kind, timeout: request.timeoutMs, env: request.env });
+    if (calls++ === 0) return TIMED_OUT;
+    return { status: 0, signal: null, stdout: JSON.stringify({ ok: true }), stderr: '' };
+  } });
+  assert.deepEqual(report, appWiring({ ...context, run: () => ({ status: 0, stdout: JSON.stringify({ ok: true }) }) }));
+  assert.equal(attempts.length, 2);
+  assert.ok(attempts.every(attempt => attempt.kind === 'test' && attempt.timeout === workerBudget(15000)));
+  assert.ok(attempts.every(attempt => Object.keys(attempt.env ?? {}).every(key => ['TEMP', 'TMP', 'TMPDIR'].includes(key))), 'the boot environment stays isolated before the governor adds its own limits');
+  const timed = await appWiringAsync({ ...context, execute: async () => TIMED_OUT });
+  assert.deepEqual(timed.findings.map(finding => [finding.code, finding.level]), [[BOOT_PROOF_TIMEOUT, 'warning']]);
+});
+
+test('the admitted boot path refuses a missing governor only when a real app needs a child', async t => {
+  const context = fixture(t, { [APP_MODULE]: passingModule });
+  await assert.rejects(appWiringAsync(context), /HFS_NODE_GOVERNOR_MISSING/u);
+  assert.equal((await appWiringAsync({ ...context, repo: { edition: 'full' } })).status, 'skipped');
 });

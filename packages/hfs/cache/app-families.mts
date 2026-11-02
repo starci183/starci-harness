@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { spawnSync } from 'node:child_process';
+import { completedNode, runHeavyNode, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { skillRoot } from '../runtime/engine/runtime-root.mjs';
 import { coverageFrom } from '../runtime/scripts/hfs/coverage-from.mjs';
 import { readWhy, type CheckFinding } from '../runtime/scripts/hfs/check.mjs';
@@ -32,11 +32,11 @@ export function programsOf(tracked: readonly string[]): TypesProgram[] {
 }
 
 /** `--types`: `tsc --noEmit` per workspace program through the app's TypeScript, reused by program key. */
-export function runTypesForApp(session: CheckSession, { repoRoot, tracked, env }: { repoRoot: string; tracked: readonly string[]; env: NodeJS.ProcessEnv }): { result: TypesFamilyResult; findings: CheckFinding[] } {
+export async function runTypesForApp(session: CheckSession, { repoRoot, tracked, env, execute }: { repoRoot: string; tracked: readonly string[]; env: NodeJS.ProcessEnv; execute?: HeavyNodeRun | undefined }): Promise<{ result: TypesFamilyResult; findings: CheckFinding[] }> {
   const programs = programsOf(tracked);
   const trackedSet = new Set(tracked);
-  const result = runTypesFamily({
-    session, programs, run: createTscRunner({ appRoot: repoRoot }), toolCacheDir: toolCacheDir(repoRoot, env),
+  const result = await runTypesFamily({
+    session, programs, run: createTscRunner({ appRoot: repoRoot, execute }), toolCacheDir: toolCacheDir(repoRoot, env),
     inputsOf: (program) => {
       const side = program.name.startsWith('be') ? 'be' : 'fe';
       const prefix = `${program.reads?.[0] ?? side}/`;
@@ -48,11 +48,11 @@ export function runTypesForApp(session: CheckSession, { repoRoot, tracked, env }
 }
 
 /** `--test`: the unit specs of the back end through the app's own Jest, reused by closure key; the merged total is judged by `@starci/hfs` (the coverage proof). */
-export async function runTestForApp(session: CheckSession, { repoRoot, tracked }: { repoRoot: string; tracked: readonly string[] }): Promise<{ result: TestFamilyResult | null; findings: CheckFinding[] }> {
+export async function runTestForApp(session: CheckSession, { repoRoot, tracked, execute }: { repoRoot: string; tracked: readonly string[]; execute?: HeavyNodeRun | undefined }): Promise<{ result: TestFamilyResult | null; findings: CheckFinding[] }> {
   if (!tracked.includes('be/package.json') && !tracked.some((file) => file.startsWith('be/'))) return { result: null, findings: [] };
-  const jest = await createJestEnvironment({ appRoot: repoRoot, side: 'be' });
+  const jest = await createJestEnvironment({ appRoot: repoRoot, side: 'be', execute });
   let judged: CheckFinding[] = [];
-  const result = runTestFamily({
+  const result = await runTestFamily({
     session, jest, side: 'be', merge: installedSpecMerge(repoRoot),
     judge: (lcovPath) => {
       const report = coverageFrom({ repoRoot, lcov: fs.readFileSync(lcovPath, 'utf8'), files: [...tracked] }) as { ok: boolean; findings: CheckFinding[] };
@@ -66,10 +66,12 @@ export async function runTestForApp(session: CheckSession, { repoRoot, tracked }
 }
 
 /** `--test --full --shard i/n`: one shard of the full unit run in the shape the shard merge reads; nothing is recorded. */
-export function runTestShard(repoRoot: string, index: number, total: number): number {
+export async function runTestShard(repoRoot: string, index: number, total: number, execute?: HeavyNodeRun): Promise<number> {
   const shard = shardArgs(index, total);
   const jestBin = createRequire(path.join(repoRoot, 'be', 'package.json')).resolve('jest/bin/jest');
-  const run = spawnSync(process.execPath, [jestBin, ...shard.args], { cwd: path.join(repoRoot, 'be'), stdio: 'inherit', env: { ...process.env, ...shard.env } });
+  const run = completedNode(await runHeavyNode(execute, { kind: 'test', label: `app check jest shard ${index}/${total}`, args: [jestBin, ...shard.args], cwd: path.join(repoRoot, 'be'), env: { ...process.env, ...shard.env }, maxBuffer: 256 * 1024 * 1024 }), 'jest shard');
+  process.stdout.write(run.stdout);
+  process.stderr.write(run.stderr);
   return run.status ?? 1;
 }
 

@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { runNode } from '../api/node/run-node.mjs';
+import { runNode, runHeavyNode, type HeavyNodeRun } from '../api/node/run-node.mjs';
 import { fileURLToPath } from 'node:url';
 import { invocationDir } from '../lib/roots.mjs';
 import { isMain } from '../lib/is-main.mjs';
@@ -195,9 +195,11 @@ function wiringApps(repo: WiringRepo, files: string[] | undefined, prefix: strin
   return [...new Set([...declared, ...observed])];
 }
 
-interface FindingInput { repoRoot: string; beRoot: string; prefix: string; app: string; files: string[] | undefined; fixtures: Record<string, string>; timeout: number; run: WorkerRun | undefined }
+interface FindingInput { repoRoot: string; beRoot: string; prefix: string; app: string; files: string[] | undefined; fixtures: Record<string, string>; timeout: number }
 
-function appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, timeout, run }: FindingInput): WiringFinding | null {
+interface WorkerCommand { args: string[]; options: { cwd: string; encoding: 'utf8'; env: NodeJS.ProcessEnv; windowsHide: boolean; timeout: number; maxBuffer: number } }
+
+function* appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, timeout }: FindingInput): Generator<WorkerCommand, WiringFinding | null, WorkerResult> {
   const file = `${prefix}${modulePath(app)}`;
   if (!/^[a-z][a-z0-9-]*$/.test(app) || !fs.existsSync(path.join(repoRoot, file)) || (files && !files.includes(file))) {
     return refusal(file, 'app module is missing');
@@ -207,9 +209,8 @@ function appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, time
   const args = [WORKER, '--worker', JSON.stringify({ repoRoot: beRoot, app, fixture: fixtureExists ? fixture : null, timeout })];
   const budget = workerBudget(timeout);
   const options = { cwd: beRoot, encoding: 'utf8' as const, env: {}, windowsHide: true, timeout: budget, maxBuffer: 1024 * 1024 };
-  const spawnWorker = () => (run ? run(process.execPath, args, options) : runNode(args, options));
-  let result = spawnWorker();
-  if (isTimeout(result)) result = spawnWorker();
+  let result = yield { args, options };
+  if (isTimeout(result)) result = yield { args, options };
   if (isTimeout(result)) return timedOut(file, budget);
   let proof: { ok?: boolean; reason?: string } | undefined;
   try { proof = JSON.parse(result?.stdout ?? ''); } catch { /* Output from app source cannot serve as a proof. */ }
@@ -220,7 +221,7 @@ function appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, time
 /** Synchronous check seam for the dispatcher and content finder. Paths in findings are relative to repoRoot. */
 export interface AppWiringInput { repoRoot: string; repo?: WiringRepo; files?: string[]; fixtures?: Record<string, string>; timeout?: number; run?: WorkerRun }
 
-export function appWiring({ repoRoot, repo = readJson(repoRoot, 'hfs.json'), files, fixtures = {}, timeout = DEFAULT_TIMEOUT, run }: AppWiringInput): WiringResult {
+function* wiringProgram({ repoRoot, repo = readJson(repoRoot, 'hfs.json'), files, fixtures = {}, timeout = DEFAULT_TIMEOUT }: AppWiringInput): Generator<WorkerCommand, WiringResult, WorkerResult> {
   if (repo?.edition !== 'lite' || repo?.profile === 'fe' || repo?.kind === 'fe') return { ok: true, status: 'skipped', findings: [], apps: [] };
   const appRoot = Boolean(repo.sides);
   const beRoot = appRoot ? path.join(repoRoot, 'be') : repoRoot;
@@ -228,10 +229,33 @@ export function appWiring({ repoRoot, repo = readJson(repoRoot, 'hfs.json'), fil
   const apps = wiringApps(repo, files, prefix);
   const findings: WiringFinding[] = [];
   for (const app of apps) {
-    const finding = appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, timeout, run });
+    const finding = yield* appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, timeout });
     if (finding) findings.push(finding);
   }
   return { ok: findings.length === 0, status: 'checked', apps, findings };
+}
+
+/** The synchronous finder and its existing worker doubles drive the same proof program as app check. */
+export function appWiring(input: AppWiringInput): WiringResult {
+  const program = wiringProgram(input);
+  let step = program.next();
+  while (!step.done) {
+    const { args, options } = step.value;
+    step = program.next(input.run ? input.run(process.execPath, args, options) : runNode(args, options));
+  }
+  return step.value;
+}
+
+/** The cache's asynchronous execution seam admits each boot attempt, with the same validation, timeout retry and result judgement. */
+export async function appWiringAsync(input: Omit<AppWiringInput, 'run'> & { execute?: HeavyNodeRun | undefined }): Promise<WiringResult> {
+  const program = wiringProgram(input);
+  let step = program.next();
+  while (!step.done) {
+    const { args, options } = step.value;
+    const result = await runHeavyNode(input.execute, { kind: 'test', label: 'app check wiring boot proof', args, cwd: options.cwd, env: options.env, timeoutMs: options.timeout, maxBuffer: options.maxBuffer });
+    step = program.next(result);
+  }
+  return step.value;
 }
 
 /** Optional standalone entry; coordinator connects the same seam to app check --gate wiring. */

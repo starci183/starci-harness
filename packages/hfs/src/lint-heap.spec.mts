@@ -1,6 +1,7 @@
 // The ESLint child of `starci app lint` and `starci app check` runs on the heap the starci CLI hands it (STARCI_ESLINT_HEAP_MB, from the eslint
 // memory of ops/liveness.yaml): a typed lint of a large back end outgrew node's default 4 GB heap. Unset, ESLint runs on node's default.
 import test from 'node:test';
+import { nativeTestNode } from './fixtures/heavy-node.mjs';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -28,13 +29,13 @@ const withHeap = (t: TestContext, value: string | undefined) => {
 
 test('the ESLint child runs on the heap the CLI sets', async (t) => {
   withHeap(t, '8192');
-  const linted = await runLinter({ cwd: side(t), pkg: 'eslint', bin: 'eslint', args: ['--format', 'json', '.'] });
+  const linted = await runLinter({ cwd: side(t), pkg: 'eslint', bin: 'eslint', args: ['--format', 'json', '.'] }, nativeTestNode);
   assert.match(linted.results![0].messages[0].message, /--max-old-space-size=8192/u);
 });
 
 test('without the CLI the ESLint child keeps node\'s default heap', async (t) => {
   withHeap(t, undefined);
-  const linted = await runLinter({ cwd: side(t), pkg: 'eslint', bin: 'eslint', args: ['--format', 'json', '.'] });
+  const linted = await runLinter({ cwd: side(t), pkg: 'eslint', bin: 'eslint', args: ['--format', 'json', '.'] }, nativeTestNode);
   assert.doesNotMatch(linted.results![0].messages[0].message, /max-old-space-size/u);
 });
 
@@ -42,4 +43,15 @@ test('a heap that is not a whole positive number of MiB is ignored', () => {
   assert.deepEqual(eslintHeapArgs({ [ESLINT_HEAP_ENV]: 'lots' }), []);
   assert.deepEqual(eslintHeapArgs({ [ESLINT_HEAP_ENV]: '0' }), []);
   assert.deepEqual(eslintHeapArgs({ [ESLINT_HEAP_ENV]: '8192' }), ['--max-old-space-size=8192']);
+});
+
+
+test('valid-looking partial linter json is never a completed measurement after timeout or signal', async t => {
+  const cwd = side(t);
+  for (const result of [
+    { status: null, signal: null, error: Object.assign(new Error('deadline'), { code: 'ETIMEDOUT' }) },
+    { status: null, signal: 'SIGTERM' as const },
+  ]) {
+    await assert.rejects(runLinter({ cwd, pkg: 'eslint', bin: 'eslint', args: ['--format', 'json', '.'] }, async () => ({ ...result, stdout: '[]', stderr: '' })), { code: 'HFS_NODE_INCOMPLETE' });
+  }
 });

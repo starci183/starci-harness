@@ -6,6 +6,7 @@
 // resolvers the app root composes, and the OpenAPI 3.1 document of the typed operation table `apps/<app>/src/operations.ts`.
 // That the committed snapshot equals what the app emits now is contractEmitFindings (full pass only, never --fast): it emits every
 // api app into a temp directory through the injected `emit` (packages/hfs/emit) and compares hashes; an emit that cannot run is a finding.
+import { isNodeExecutionRefusal } from '../../api/node/run-node.mjs';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -143,7 +144,11 @@ function artifactFindings({ repoRoot, tracked, scratch, app, artifact, what, emi
  * `openapi.json` and `status` one of `fresh`, `stale`, `not-committed`, `none` (nothing emitted, nothing committed; GraphQL only),
  * `left-behind` (committed, nothing emitted) or `emit-failed`.
  */
-export function contractEmitFindings({ repoRoot, files, repo, emit }: { repoRoot: string; files: string[]; repo: Repo; emit: Parsed }) {
+interface ContractEmitInput { repoRoot: string; files: string[]; repo: Repo; emit: Parsed }
+interface EmitRequest { repoRoot: string; declaration: { apps: Parsed[] }; outDir: string }
+interface EmitResponse { value?: Parsed; error?: unknown }
+
+function* contractProgram({ repoRoot, files, repo }: ContractEmitInput): Generator<EmitRequest, { findings: Finding[]; apps: Parsed[] }, EmitResponse> {
   const findings: Finding[] = [];
   const apps: Parsed[] = [];
   if (repo.profile !== 'be') return { findings, apps };
@@ -154,8 +159,11 @@ export function contractEmitFindings({ repoRoot, files, repo, emit }: { repoRoot
       const artifacts = [{ artifact: SNAPSHOT_OF.graphql, what: 'serves no GraphQL any more' }, { artifact: SNAPSHOT_OF.json, what: 'declares no operations any more' }];
       let emitted;
       try {
-        emitted = emit({ repoRoot, declaration: { apps: [app] }, outDir: scratch });
+        const response = yield { repoRoot, declaration: { apps: [app] }, outDir: scratch };
+        if ('error' in response) throw response.error;
+        emitted = response.value;
       } catch (error) {
+        if (isNodeExecutionRefusal(error)) throw error;
         emitFailure(app, artifacts, error, apps, findings);
         continue;
       }
@@ -168,4 +176,33 @@ export function contractEmitFindings({ repoRoot, files, repo, emit }: { repoRoot
     safeRemove(scratch, { hold: () => null });
   }
   return { findings, apps };
+}
+
+
+/** The synchronous source finder and asynchronous app cache share every emission comparison and failure rule. */
+export function contractEmitFindings(input: ContractEmitInput) {
+  const program = contractProgram(input);
+  let step = program.next();
+  try {
+    while (!step.done) {
+      let response: EmitResponse;
+      try { response = { value: input.emit(step.value) }; } catch (error) { response = { error }; }
+      step = program.next(response);
+    }
+    return step.value;
+  } finally { program.return({ findings: [], apps: [] }); }
+}
+
+/** Awaits actual governed compiler children before the existing drift proof can be recorded. */
+export async function contractEmitFindingsAsync(input: ContractEmitInput) {
+  const program = contractProgram(input);
+  let step = program.next();
+  try {
+    while (!step.done) {
+      let response: EmitResponse;
+      try { response = { value: await input.emit(step.value) }; } catch (error) { response = { error }; }
+      step = program.next(response);
+    }
+    return step.value;
+  } finally { program.return({ findings: [], apps: [] }); }
 }

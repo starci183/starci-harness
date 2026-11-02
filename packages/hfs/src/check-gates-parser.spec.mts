@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { nativeTestNode } from './fixtures/heavy-node.mjs';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -110,7 +111,7 @@ test('a canonical test-only shard dispatches the unchanged full-unit arguments w
   fs.writeFileSync(path.join(bin, 'jest.cjs'), `require('node:fs').writeFileSync(${JSON.stringify(receipt)}, JSON.stringify({ argv: process.argv.slice(2), shard: process.env.STARCI_COVERAGE_SHARD }));`);
   for (const extra of [[], ['--no-cache']]) {
     let err = '';
-    const code = await main(['check', '--gate', 'test', '--gate=test', '--shard', '1/2', ...extra], { cwd: root, env: {}, stdout: () => {}, stderr: text => { err += text; } });
+    const code = await main(['check', '--gate', 'test', '--gate=test', '--shard', '1/2', ...extra], { cwd: root, env: {}, runHeavyNode: nativeTestNode, stdout: () => {}, stderr: text => { err += text; } });
     assert.equal(code, 0, err);
     const actual: { argv: string[]; shard: string } = JSON.parse(fs.readFileSync(receipt, 'utf8'));
     assert.ok(actual.argv.includes('--shard=1/2'));

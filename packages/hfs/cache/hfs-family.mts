@@ -3,13 +3,14 @@
 // secret files, which the same pass finds). The cheap rules always run: they read untracked entries and git state the index does not hold. The
 // costly whole-program parts are scoped steps keyed on the side: the architecture machine per side, the contract emit on the back-end side.
 import path from 'node:path';
+import type { HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { checkRepo, checkRepository, trackedFiles, type CheckFinding, type MachineFn, type MachineReport, type RepositoryResult } from '../runtime/scripts/hfs/check.mjs';
 import { checkArchitecture } from '../runtime/scripts/hfs/architecture/index.mjs';
 import { withoutBootProof } from '../runtime/scripts/hfs/rules/boot-proof.mjs';
 import { withUnusedSymbolMemo, type UnusedSymbolMemo } from '../runtime/scripts/hfs/rules/unused-symbol.mjs';
-import { contractEmitFindings } from '../runtime/scripts/hfs/rules/contract.mjs';
+import { contractEmitFindingsAsync } from '../runtime/scripts/hfs/rules/contract.mjs';
 import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
-import { emitContracts } from '../emit/contracts.mjs';
+import { emitContractsAsync } from '../emit/contracts.mjs';
 import { summarize } from '../runtime/scripts/hfs/check-results.mjs';
 import { managedFindings } from '../sync/managed.mjs';
 import type { Presets } from '../sync/index.mjs';
@@ -40,6 +41,7 @@ export interface PassResult {
 
 export interface PassInput {
   readonly repoRoot: string;
+  readonly execute?: HeavyNodeRun | undefined;
   readonly harness?: { version?: string } | undefined;
   readonly presets?: Presets | undefined;
   readonly tracked?: readonly string[] | undefined;
@@ -85,9 +87,9 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
     const key = keys.get('be');
     const emit = await scopedStep(session, records, {
       path: 'be', step: 'contract-emit', key: key?.key ?? 'none', reuse, inputs: key?.inputs ?? [],
-      compute: () => {
+      compute: async () => {
         const files = tracked.filter((file) => file.startsWith(bePrefix)).map((file) => file.slice(bePrefix.length));
-        const emitted = contractEmitFindings({ repoRoot: path.join(repoRoot, 'be'), files, repo: be as never, emit: emitContracts });
+        const emitted = await contractEmitFindingsAsync({ repoRoot: path.join(repoRoot, 'be'), files, repo: be as never, emit: (request: Parameters<typeof emitContractsAsync>[0]) => emitContractsAsync({ ...request, execute: input.execute }) });
         return JSON.parse(JSON.stringify({ findings: emitted.findings, apps: emitted.apps })) as JsonValue;
       },
       compact: (value) => ((value as { findings: CheckFinding[] }).findings).map(compact),

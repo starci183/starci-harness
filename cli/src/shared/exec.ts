@@ -28,6 +28,8 @@ export interface ToolRun extends ToolOutput {
 
 /** How one tool runs: a deadline after which its whole process tree is killed, and extra environment variables. */
 export interface RunOptions {
+    /** Opt-in complete capture: overflow, a signal or unclosed output pipes refuses instead of returning partial text. */
+    readonly captureBytes?: number
     readonly timeoutMs?: number
     readonly env?: Readonly<Record<string, string>>
     /** The whole environment instead of this process's: a host service must not inherit the agent session that started it. */
@@ -70,6 +72,7 @@ const told = (pid: number | undefined, cwd: string, tool: string, args: readonly
 interface Finished extends ToolRun {
     /** Why the process never started (ENOENT, EINVAL, EACCES ...), or undefined when it ran. */
     readonly notStarted: string | undefined
+    readonly incomplete?: "overflow" | "signal" | "pipes" | "error"
 }
 
 const errorCode = (error: unknown): unknown => (typeof error === "object" && error !== null && "code" in error ? error.code : undefined)
@@ -107,16 +110,20 @@ const killTree = (child: ChildProcess): void => {
 }
 
 /** Collects one output stream up to MAX_BUFFER; the rest is dropped rather than failing the run. */
-const collector = (): { readonly push: (chunk: Buffer) => void; readonly text: () => string } => {
+const collector = (limit = MAX_BUFFER, overflow?: () => void): { readonly push: (chunk: Buffer) => void; readonly text: () => string } => {
     const chunks: Buffer[] = []
     let size = 0
     return {
         push: (chunk: Buffer): void => {
-            if (size >= MAX_BUFFER) return
+            if (size + chunk.length > limit && overflow !== undefined) { overflow(); return }
+            if (size >= limit) return
             chunks.push(chunk)
             size += chunk.length
         },
-        text: (): string => Buffer.concat(chunks).toString("utf8").trim(),
+        text: (): string => {
+            const text = Buffer.concat(chunks).toString("utf8")
+            return overflow === undefined ? text.trim() : text
+        },
     }
 }
 
@@ -131,14 +138,22 @@ const lowerPriority = (pid: number, priority: number): void => {
 
 const execute = (tool: string, args: readonly string[], cwd: string, options: RunOptions): Promise<Finished> =>
     new Promise((settle) => {
+        if (options.captureBytes !== undefined && (!Number.isSafeInteger(options.captureBytes) || options.captureBytes < 1)) throw new Refusal("CLI_USAGE", "captureBytes is a positive integer")
         let timedOut = false
         let notStarted: string | undefined
         let timer: NodeJS.Timeout | undefined
-        const stdout = collector()
-        const stderr = collector()
+        let incomplete: Finished["incomplete"]
+        const overflow = options.captureBytes === undefined ? undefined : (): void => {
+            if (incomplete !== undefined || timedOut) return
+            incomplete = "overflow"
+            killTree(child)
+            setTimeout(() => { finish(null) }, PIPE_GRACE_MS).unref()
+        }
+        const stdout = collector(options.captureBytes, overflow)
+        const stderr = collector(options.captureBytes, overflow)
         const base = options.baseEnv ?? process.env
         const env = options.env === undefined ? base : { ...base, ...options.env }
-        const detached = options.timeoutMs !== undefined && process.platform !== "win32"
+        const detached = (options.timeoutMs !== undefined || options.captureBytes !== undefined) && process.platform !== "win32"
         let child: ChildProcessByStdio<Writable | null, Readable, Readable>
         try {
             child =
@@ -162,17 +177,19 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
         child.stdin?.on("error", () => undefined)
         child.stdin?.end(options.input)
         let done = false
-        const finish = (code: number | null): void => {
+        const finish = (code: number | null, signal: NodeJS.Signals | null = null): void => {
             if (done) return
             done = true
             if (timer !== undefined) clearTimeout(timer)
             const errors = stderr.text()
             const separator = errors === "" ? "" : "\n"
             const note = timedOut ? `${separator}timed out after ${String(Math.round((options.timeoutMs ?? 0) / 1000))}s; the process tree was killed` : ""
-            settle({ exitCode: timedOut ? EXIT_TIMEOUT : (code ?? 1), stdout: stdout.text(), stderr: `${errors}${note}`, notStarted, timedOut })
+            if (signal !== null && !timedOut && incomplete === undefined) incomplete = "signal"
+            settle({ exitCode: timedOut ? EXIT_TIMEOUT : (code ?? 1), stdout: stdout.text(), stderr: `${errors}${note}`, notStarted, timedOut, ...(incomplete === undefined ? {} : { incomplete }) })
         }
         child.on("error", (error: Error) => {
             stderr.push(Buffer.from(error.message))
+            if (options.captureBytes !== undefined && child.pid !== undefined && incomplete === undefined && !timedOut) incomplete = "error"
             // A process that never started (it has no pid) emits no close; a kill error of a running one waits for its close.
             if (child.pid === undefined) {
                 const code = errorCode(error)
@@ -186,6 +203,7 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
         child.on("exit", (code: number | null) => {
             setTimeout(() => {
                 if (done) return
+                if (options.captureBytes !== undefined && incomplete === undefined && !timedOut) incomplete = "pipes"
                 child.stdout.destroy()
                 child.stderr.destroy()
                 finish(code)
@@ -222,6 +240,7 @@ export class ToolNotStarted extends Refusal {
 export const runTool = async (tool: string, args: readonly string[], cwd: string, options: RunOptions = {}): Promise<ToolOutput> => {
     const run = await execute(tool, args, cwd, options)
     if (run.notStarted !== undefined) throw new ToolNotStarted(tool, run.notStarted)
+    if (options.captureBytes !== undefined && run.incomplete !== undefined) throw new Refusal("CLI_TOOL_INCOMPLETE", `child capture did not complete (${run.incomplete})`)
     if (run.timedOut) throw new Refusal("CLI_TOOL_TIMEOUT", `${tool} ${args.join(" ")} ${headline(run.stderr)}`)
     const reason = headline(run.stderr) || `exit ${String(run.exitCode)}`
     if (run.exitCode !== 0) throw new Refusal("CLI_TOOL_FAILED", `${tool} ${args.join(" ")} failed: ${reason}`)
@@ -235,6 +254,7 @@ export const runTool = async (tool: string, args: readonly string[], cwd: string
 export const captureTool = async (tool: string, args: readonly string[], cwd: string, options: RunOptions = {}): Promise<ToolRun> => {
     const run = await execute(tool, args, cwd, options)
     if (run.notStarted !== undefined) throw new ToolNotStarted(tool, run.notStarted)
+    if (options.captureBytes !== undefined && run.incomplete !== undefined) throw new Refusal("CLI_TOOL_INCOMPLETE", `child capture did not complete (${run.incomplete})`)
     return { exitCode: run.exitCode, stdout: run.stdout, stderr: run.stderr, timedOut: run.timedOut }
 }
 

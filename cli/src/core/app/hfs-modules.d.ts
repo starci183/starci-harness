@@ -12,11 +12,13 @@ declare module "@starci/hfs" {
         readonly hostIdentity?: { readonly label: string; readonly read: () => string | undefined } | undefined
         readonly stdout: (text: string) => void
         readonly stderr: (text: string) => void
+        readonly runHeavyNode?: import("@starci/hfs/runtime/scripts/api/node/run-node.mjs").HeavyNodeRun | undefined
     }
 
     /** Runs one `starci app` verb (`argv[0]`) with its arguments; resolves to its exit code. */
     export function main(argv: readonly string[], io: HfsIo): Promise<number>
 }
+
 
 declare module "@starci/hfs/form-bounds" {
     /** The GraphQL Code Generator plugin: the typed form limits of a schema's input-field directives, as module source. */

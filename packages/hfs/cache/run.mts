@@ -1,6 +1,7 @@
 // run.mts - one `starci app check` / `starci app lint` pass over the selected families, against one session. It owns the order of the families,
 // the judging of their findings (edition and the Vietnamese why of every code) and the merge into the one result the verb prints and the gate
 // judges, so the two verbs never hold two answers for one tree.
+import type { HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { skillRoot } from '../runtime/engine/runtime-root.mjs';
 import { readWhy, type CheckFinding, type RepositoryResult } from '../runtime/scripts/hfs/check.mjs';
 import { judgedFindings, summarize, withWhy } from '../runtime/scripts/hfs/check-results.mjs';
@@ -18,6 +19,7 @@ export const DEFAULT_FAMILIES: readonly FamilyId[] = FAMILIES.filter((family) =>
 
 export interface AppRunInput {
   readonly repoRoot: string;
+  readonly execute?: HeavyNodeRun | undefined;
   readonly tracked: readonly string[];
   readonly session: CheckSession;
   readonly selected: ReadonlySet<FamilyId>;
@@ -49,7 +51,7 @@ export async function runAppFamilies(input: AppRunInput): Promise<AppRunResult> 
   const track = (report: FamilyReport | null | undefined): void => void (report && reports.push(report));
   const structure = selected.has('hfs') || selected.has('secrets');
   const pass = structure
-    ? await runStructurePass(session, { repoRoot, harness: input.harness, presets: input.presets, tracked: input.tracked, hfs: selected.has('hfs'), secrets: selected.has('secrets') })
+    ? await runStructurePass(session, { repoRoot, harness: input.harness, presets: input.presets, tracked: input.tracked, hfs: selected.has('hfs'), secrets: selected.has('secrets'), execute: input.execute })
     : null;
   if (pass) { track(pass.report); track(pass.secretsReport); }
   const base: RepositoryResult = pass?.result ?? emptyResult(repoRoot, input.tracked.length);
@@ -66,7 +68,7 @@ export async function runAppFamilies(input: AppRunInput): Promise<AppRunResult> 
   }
   let wiring: AppRunResult['wiring'];
   if (selected.has('wiring')) {
-    const proved = await runWiringFamily(session, { repoRoot, edition: input.edition, files: input.tracked });
+    const proved = await runWiringFamily(session, { repoRoot, edition: input.edition, files: input.tracked, execute: input.execute });
     track(proved.report);
     wiring = { status: proved.wiring.status, apps: proved.wiring.apps, findings: proved.wiring.findings as unknown as CheckFinding[] };
     extra.push(...(proved.wiring.findings as unknown as CheckFinding[]));

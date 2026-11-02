@@ -155,3 +155,27 @@ test('a counting-cohort warning is reported and counted per rule and never enter
   assert.deepEqual(checked.report.counting, { 'starci-fe/no-spacing-utility': 25 });
   assert.equal(checked.report.findings.filter(finding => finding.severity === 'warning').length, 25);
 });
+
+
+for (const code of ['HOST_HELD', 'CLI_TOOL_INCOMPLETE', 'HFS_NODE_GOVERNOR_MISSING', 'HEAVY_DEFERRED']) {
+  test(`app check preserves ${code} through a single child catch and settles the sibling child`, async context => {
+    const app = fixture(context);
+    const refusal = Object.assign(new Error('execution reached no verdict'), { code, exitCode: code === 'HOST_HELD' ? 75 : 2 });
+    const base = transport(app, []);
+    let siblingSettled = false;
+    let stdout = '';
+    const exit = await main(['check', '--gate', 'lint', '--json'], {
+      cwd: app.root, checkApp: ({ repoRoot }) => cleanCheck(repoRoot),
+      runLinter: async spec => {
+        if (path.basename(spec.cwd) === 'be') throw refusal;
+        await Promise.resolve();
+        siblingSettled = true;
+        return base(spec);
+      },
+      stdout: text => { stdout += text; }, stderr: () => undefined,
+    });
+    assert.equal(exit, code === 'HOST_HELD' ? 75 : 2);
+    assert.equal(siblingSettled, true);
+    assert.equal(stdout, '', 'a refused execution is not a completed JSON gate report');
+  });
+}

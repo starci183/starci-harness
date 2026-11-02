@@ -75,6 +75,7 @@
 // Every finding names a why code and carries its Vietnamese text. check, lint and slot read the app, never write to it. Exit codes:
 // 0 clean, 1 error findings, 2 a refusal or bad usage.
 import fs from 'node:fs';
+import { isHostHeld, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -91,13 +92,13 @@ import { HFS_DECLARATION_FILE, HfsSlotsError, loadSlotManifest, readRepoDeclarat
 import { main as syncMain } from '../sync/cli.mjs';
 import { runWorkHygiene } from '../sync/hygiene.mjs';
 import { SyncError, bundledPresets } from '../sync/index.mjs';
-import { emitContracts } from '../emit/contracts.mjs';
+import { emitContractsAsync } from '../emit/contracts.mjs';
 import { ScaffoldError, newService, newSpec } from '../scaffold/service.mjs';
 import { EditionRefusal } from '../scaffold/edition-gate.mjs';
 import { addKind } from '../scaffold/add.mjs';
 import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { newImages } from '../scaffold/image.mjs';
-import { cachedLinters, eslintRepository, lintRepository, parseLintArgs, printLintText } from '../lint/run.mjs';
+import { cachedLinters, eslintRepository, lintRepository, parseLintArgs, printLintText, runLinter as nativeLinter } from '../lint/run.mjs';
 import { runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
 import { CACHE_ENV, createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { DEFAULT_FAMILIES, runAppFamilies } from '../cache/run.mjs';
@@ -154,6 +155,7 @@ interface AppIo {
   run?: unknown; stackMain?: ((argv: string[], io: { cwd: string; out: unknown; err: unknown }) => unknown) | undefined; env: NodeJS.ProcessEnv; stdin?: (() => string) | undefined; prompt?: Prompt | undefined;
   hostIdentity?: AgeHost | null | undefined; sops?: SecretSops | null | undefined; tools?: ({ spawn?: GhSpawn | undefined } & SecretToolOverrides) | undefined; platform?: NodeJS.Platform | undefined; stackIo?: Record<string, unknown> | undefined; runLinter?: LinterRunner | undefined;
   checkApp?: ((args: Dynamic) => Dynamic) | undefined;
+  runHeavyNode?: HeavyNodeRun | undefined;
   /** --quiet: no progress on stderr (the diagnosis stays). */
   quiet?: boolean | undefined; stderrIsTty?: boolean | undefined;
 }
@@ -379,7 +381,7 @@ async function appPass({ repoRoot, harness, only, presets, prettier, io, selecte
 }): Promise<Dynamic> {
   const tracked = trackedFiles(repoRoot);
   const session = given ?? openSession({ repoRoot, tracked, io, full, use: only === undefined ? use : 'bypass', planned: tracked.length * Math.max(1, selected.size) });
-  const result = await runAppFamilies({ repoRoot, tracked, session, selected, harness, presets, prettier, only, edition: undefined });
+  const result = await runAppFamilies({ repoRoot, tracked, session, selected, harness, presets, prettier, only, edition: undefined, execute: io.runHeavyNode });
   if (given !== undefined) return result;
   const flushed = session.flush();
   return { ...result, findings: [...result.findings, ...verdictFindings(session)], cacheWarnings: flushed.warnings };
@@ -530,9 +532,9 @@ async function checkRun({ io, selected, full, use, coverageFrom }: { io: AppIo; 
       eslint = (await cachedLinters({ repoRoot, app, opts: { changed: null, fix: false, format: 'text', out: undefined, workspace: undefined }, workspace: null, onFe: null, run: runLinter, cache: { session } })).eslint;
     } else eslint = await eslintRepository({ repoRoot, changed: null, existing: [], run: runLinter });
   }
-  if (session !== undefined && selected.has('types')) extra.push(...runTypesForApp(session, { repoRoot, tracked, env: io.env }).findings);
+  if (session !== undefined && selected.has('types')) extra.push(...(await runTypesForApp(session, { repoRoot, tracked, env: io.env, execute: io.runHeavyNode })).findings);
   if (session !== undefined && selected.has('test')) {
-    const tests = await runTestForApp(session, { repoRoot, tracked });
+    const tests = await runTestForApp(session, { repoRoot, tracked, execute: io.runHeavyNode });
     extra.push(...tests.findings);
   }
   if (session !== undefined && selected.has('sonar')) lines.push(...(runSonarForApp(session, { repoRoot })?.lines ?? []));
@@ -582,7 +584,7 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
     const index = Number(match?.[1]);
     const total = Number(match?.[2]);
     if (match === null || !Number.isSafeInteger(index) || !Number.isSafeInteger(total) || index < 1 || total < index) throw new Error('--shard needs <i>/<n> with 1 <= i <= n');
-    return runTestShard(repoRoot, index, total);
+    return runTestShard(repoRoot, index, total, io.runHeavyNode);
   }
   // A coverage report judged on its own (the merge job of a sharded run) runs no family; with selectors it comes on top of them.
   const selected = explicit.size > 0 ? explicit : coverageFrom === undefined ? new Set<FamilyId>(DEFAULT_FAMILIES) : new Set<FamilyId>();
@@ -596,11 +598,11 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
   return exit;
 }
 
-function emitMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
+async function emitMain(opts: Opts, { cwd: repoRoot, stdout: out, runHeavyNode }: AppIo): Promise<number> {
   if (opts.positional.length) throw new Error('starci app emit takes no path');
   const be = readRepoDeclaration(loadSlotManifest(), repoRoot).sides?.be;
   if (!be) throw new Error('starci app emit runs at the app root (the folder of hfs.json)');
-  const { written, skipped, standIns } = emitContracts({ repoRoot: path.join(repoRoot, 'be'), declaration: be });
+  const { written, skipped, standIns } = await emitContractsAsync({ repoRoot: path.join(repoRoot, 'be'), declaration: be, execute: runHeavyNode });
   for (const file of written) out(`wrote be/${file}\n`);
   const skipSummary = skipped.length ? `, ${skipped.join(', ')} serve no GraphQL` : '';
   out(`starci app emit: ${written.length} written${skipSummary}\n`);
@@ -708,7 +710,7 @@ function errorMessage(error: unknown): string {
  */
 export async function main(argv: string[], {
   cwd: baseCwd = process.cwd(), harness, stdout = (s: string): unknown => process.stdout.write(s), stderr = (s: string): unknown => process.stderr.write(s), presets, prettier, lock, run, stackMain,
-  env = process.env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, checkApp, stderrIsTty = process.stderr.isTTY === true,
+  env = process.env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, runHeavyNode, checkApp, stderrIsTty = process.stderr.isTTY === true,
 }: MainOptions = {}): Promise<number> {
   try {
     const global = globalOptions(argv, path.resolve(baseCwd));
@@ -718,9 +720,10 @@ export async function main(argv: string[], {
     if (global.help) { out(USAGE); return 0; }
     if (!VERBS.includes(verb as string)) { stderr(USAGE); return 2; }
     const { edition, argv: rest } = editionOption(verb as string, given);
-    return await dispatchMain(verb as string, rest, { cwd: global.cwd, harness, edition, quiet: global.quiet, stderrIsTty, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, checkApp });
+    return await dispatchMain(verb as string, rest, { cwd: global.cwd, harness, edition, quiet: global.quiet, stderrIsTty, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runHeavyNode, runLinter: runLinter ?? ((spec) => nativeLinter(spec, runHeavyNode)), checkApp });
   } catch (error) {
     stderr(errorMessage(error));
+    if (isHostHeld(error)) return 75;
     return 2;
   }
 }

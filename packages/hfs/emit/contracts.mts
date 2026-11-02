@@ -21,6 +21,7 @@
  * * artifact, so a redirected `outDir` (the R23 check mode, which emits into a scratch root) does not get them.
  */
 import { spawnSync } from 'node:child_process';
+import { completedNode, runHeavyNode, type HeavyNodeResult, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -69,20 +70,17 @@ const apiApps = (declaration: HfsDeclaration) => (declaration.apps ?? []).filter
 /** The text written to a snapshot file: the printed schema and one final newline. Pure. */
 export const snapshotText = (printed: string) => `${printed.replace(/\n+$/, '')}\n`;
 
-/** Runs one worker of one app; answers its stdout, or null when the app has nothing of that kind (exit 3). */
-function runWorker(worker: string, repoRoot: string, app: string): { text: string | null, lines: string[] } {
-  const result = spawnSync(process.execPath, [worker, repoRoot, app], { encoding: 'utf8', cwd: repoRoot, env: { PATH: readEnv('PATH') ?? '' }, maxBuffer: 256 * 1024 * 1024 });
+interface WorkerRequest { worker: string; repoRoot: string; app: string }
+interface WorkerOutput { text: string | null; lines: string[] }
+interface EmitInput { repoRoot: string; declaration: HfsDeclaration; outDir?: string }
+interface EmitResult { written: string[]; skipped: string[]; standIns: Record<string, string[]> }
+
+/** Both transports judge the same native worker status and exact text. Exit 3 means the app serves no such contract. */
+function workerOutput(result: Pick<HeavyNodeResult, 'status' | 'stdout' | 'stderr'>, app: string): WorkerOutput {
   if (result.status === 3) return { text: null, lines: [] };
   const lines = (result.stderr ?? '').split(/\r?\n/).filter(Boolean);
   if (result.status !== 0) throw new Error(`starci app emit: ${app} failed (exit ${result.status}): ${(lines.join('\n') || result.stdout).trim()}`);
   return { text: result.stdout, lines: lines.filter((line) => line.startsWith(STAND_IN)) };
-}
-
-/** Emits the GraphQL schema and the operations of one app: `{ graphql, openapi, standIns }`, each text or null. */
-function emitApp(repoRoot: string, app: string) {
-  const graphql = runWorker(WORKER, repoRoot, app);
-  const operations = runWorker(OPERATIONS_WORKER, repoRoot, app);
-  return { graphql: graphql.text, openapi: operations.text, standIns: [...graphql.lines, ...operations.lines] };
 }
 
 /**
@@ -91,12 +89,14 @@ function emitApp(repoRoot: string, app: string) {
  * being the apps with neither. `declaration` is the parsed hfs.json. `outDir` (absolute) redirects the snapshots to another
  * root, keeping their relative paths.
  */
-export function emitContracts({ repoRoot, declaration, outDir = repoRoot }: { repoRoot: string, declaration: HfsDeclaration, outDir?: string }): { written: string[], skipped: string[], standIns: Record<string, string[]> } {
+function* emissionProgram({ repoRoot, declaration, outDir = repoRoot }: EmitInput): Generator<WorkerRequest, EmitResult, WorkerOutput> {
   const written: string[] = [];
   const skipped: string[] = [];
   const standIns: Record<string, string[]> = {};
   for (const app of apiApps(declaration)) {
-    const emitted = emitApp(repoRoot, app);
+    const graphql = yield { worker: WORKER, repoRoot, app };
+    const operations = yield { worker: OPERATIONS_WORKER, repoRoot, app };
+    const emitted = { graphql: graphql.text, openapi: operations.text, standIns: [...graphql.lines, ...operations.lines] };
     if (emitted.graphql === null && emitted.openapi === null) {
       skipped.push(app);
       continue;
@@ -121,4 +121,29 @@ export function emitContracts({ repoRoot, declaration, outDir = repoRoot }: { re
     written.push(relative);
   }
   return { written, skipped, standIns };
+}
+
+
+/** Existing synchronous emitter for source finders and their worker proofs. */
+export function emitContracts(input: EmitInput): EmitResult {
+  const program = emissionProgram(input);
+  let step = program.next();
+  while (!step.done) {
+    const { worker, repoRoot, app } = step.value;
+    const result = spawnSync(process.execPath, [worker, repoRoot, app], { encoding: 'utf8', cwd: repoRoot, env: { PATH: readEnv('PATH') ?? '' }, maxBuffer: 256 * 1024 * 1024 });
+    step = program.next(workerOutput(result, app));
+  }
+  return step.value;
+}
+
+/** App-check/emit execution: each actual compiler worker is admitted separately, with the original isolated environment. */
+export async function emitContractsAsync(input: EmitInput & { execute?: HeavyNodeRun | undefined }): Promise<EmitResult> {
+  const program = emissionProgram(input);
+  let step = program.next();
+  while (!step.done) {
+    const { worker, repoRoot, app } = step.value;
+    const result = completedNode(await runHeavyNode(input.execute, { kind: 'tsc', label: `app emit ${app} ${path.basename(worker)}`, args: [worker, repoRoot, app], cwd: repoRoot, env: { PATH: readEnv('PATH') ?? '' }, maxBuffer: 256 * 1024 * 1024 }), 'contract compiler');
+    step = program.next(workerOutput(result, app));
+  }
+  return step.value;
 }

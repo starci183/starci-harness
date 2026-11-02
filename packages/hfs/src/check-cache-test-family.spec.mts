@@ -1,6 +1,8 @@
 // The `--test` family of the app check cache: a spec re-runs when its closure changes and only then, the merged total equals a full run's, a failed spec is never
 // stored, the per-file threshold is judged on the merged total, and the closure key comes from Jest's own resolver (the e2e test at the end runs a real Jest).
 import test from 'node:test';
+import { nativeTestNode } from './fixtures/heavy-node.mjs';
+import type { HeavyNodeRequest } from '../runtime/scripts/api/node/run-node.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -113,20 +115,20 @@ const judge: JudgeCoverage & { seen: string[] } = Object.assign((lcov: string) =
 
 interface Run { session: ReturnType<typeof createFakeSession>; result: TestFamilyResult; merge: ReturnType<typeof fakeMerge> }
 
-function runOnce(w: World, stored: readonly CacheRecord[], options: { mode?: 'full' | 'diff'; configHash?: string; root?: string } = {}): Run {
+async function runOnce(w: World, stored: readonly CacheRecord[], options: { mode?: 'full' | 'diff'; configHash?: string; root?: string } = {}): Promise<Run> {
   const root = options.root ?? fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-test-'));
   const session = createFakeSession({ files: w.files, records: { [TEST_FOLDER]: stored }, mode: options.mode ?? 'diff' });
   const merge = fakeMerge();
   const jest = fakeJest(w, options.configHash, () => w.duringRun?.(session));
-  const result = runTestFamily({ session: { ...session, root }, jest, side: 'be', merge, judge, scratch: fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-scratch-')) });
+  const result = await runTestFamily({ session: { ...session, root }, jest, side: 'be', merge, judge, scratch: fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-scratch-')) });
   return { session, result, merge };
 }
 
 const stored = (run: Run): CacheRecord[] => [...(run.session.replaced.get(TEST_FOLDER) ?? [])];
 
-test('the first run runs every spec and stores one record per spec under its closure key; the total is judged once', () => {
+test('the first run runs every spec and stores one record per spec under its closure key; the total is judged once', async () => {
   const w = world();
-  const run = runOnce(w, []);
+  const run = await runOnce(w, []);
   assert.deepEqual(w.ran, [['be/src/a.service.spec.ts', 'be/src/b.service.spec.ts']]);
   assert.deepEqual(stored(run).map((record) => [record.path, record.step]), [['be/src/a.service.spec.ts', SPEC_STEP], ['be/src/b.service.spec.ts', SPEC_STEP]]);
   assert.deepEqual(Object.keys(sourcesOf(stored(run)[1] as CacheRecord)), ['be/src/a.service.ts', 'be/src/b.service.ts']);
@@ -136,11 +138,11 @@ test('the first run runs every spec and stores one record per spec under its clo
   assert.equal(run.session.reports[0]?.reused, 0);
 });
 
-test('a warm run with nothing changed runs no spec and reuses every record; the bytes it writes are the first run\'s', () => {
+test('a warm run with nothing changed runs no spec and reuses every record; the bytes it writes are the first run\'s', async () => {
   const w = world();
-  const first = runOnce(w, []);
+  const first = await runOnce(w, []);
   w.ran = [];
-  const warm = runOnce(w, stored(first));
+  const warm = await runOnce(w, stored(first));
   assert.deepEqual(w.ran, []);
   assert.equal(warm.session.reports[0]?.reused, 2);
   assert.equal(warm.session.reports[0]?.checked, 0);
@@ -149,21 +151,21 @@ test('a warm run with nothing changed runs no spec and reuses every record; the 
   assert.equal(warm.result.ok, true);
 });
 
-test('a spec re-runs when a file of its closure changes, and only the specs whose closure holds it', () => {
+test('a spec re-runs when a file of its closure changes, and only the specs whose closure holds it', async () => {
   const w = world();
-  const first = runOnce(w, []);
+  const first = await runOnce(w, []);
   w.ran = [];
   w.files['be/src/b.service.ts'] = 'export const b = 2;\n';
-  const second = runOnce(w, stored(first));
+  const second = await runOnce(w, stored(first));
   assert.deepEqual(w.ran, [['be/src/b.service.spec.ts']]);
   assert.deepEqual(second.result.reused, ['be/src/a.service.spec.ts']);
   w.ran = [];
   w.files['be/src/a.service.ts'] = 'export const a = 2;\n';
-  runOnce(w, stored(second));
+  await runOnce(w, stored(second));
   assert.deepEqual(w.ran, [['be/src/a.service.spec.ts', 'be/src/b.service.spec.ts']], 'a.service is in both closures');
 });
 
-test('the snapshot file, the project configuration and a deleted dependency all change the key', () => {
+test('the snapshot file, the project configuration and a deleted dependency all change the key', async () => {
   const w = world();
   const hashOf = (file: string): string | undefined => (w.files[file] === undefined ? undefined : hashText(w.files[file]));
   const keyOf = (configHash = 'config-1'): string => specKey({ spec: 'be/src/a.service.spec.ts', closure: w.closures['be/src/a.service.spec.ts'] ?? [], configHash, hashOf });
@@ -178,54 +180,54 @@ test('the snapshot file, the project configuration and a deleted dependency all 
   assert.equal(snapshotOf('be/src/a.service.spec.ts'), 'be/src/__snapshots__/a.service.spec.ts.snap');
 });
 
-test('a CRLF checkout and an LF checkout give one key', () => {
+test('a CRLF checkout and an LF checkout give one key', async () => {
   const w = world();
   const lf = specKey({ spec: 'be/src/a.service.spec.ts', closure: ['be/src/a.service.ts'], configHash: 'c', hashOf: (file) => (w.files[file] === undefined ? undefined : hashText(w.files[file])) });
   const crlf = specKey({ spec: 'be/src/a.service.spec.ts', closure: ['be/src/a.service.ts'], configHash: 'c', hashOf: (file) => (w.files[file] === undefined ? undefined : hashText(w.files[file].replace(/\n/gu, '\r\n'))) });
   assert.equal(crlf, lf);
 });
 
-test('a configuration change re-runs every spec', () => {
+test('a configuration change re-runs every spec', async () => {
   const w = world();
-  const first = runOnce(w, []);
+  const first = await runOnce(w, []);
   w.ran = [];
-  runOnce(w, stored(first), { configHash: 'config-2' });
+  await runOnce(w, stored(first), { configHash: 'config-2' });
   assert.deepEqual(w.ran, [['be/src/a.service.spec.ts', 'be/src/b.service.spec.ts']]);
 });
 
-test('the merged total equals the full run\'s, whichever specs were run now and whichever were kept', () => {
+test('the merged total equals the full run\'s, whichever specs were run now and whichever were kept', async () => {
   const w = world();
-  const full = runOnce(w, []);
+  const full = await runOnce(w, []);
   const fullMerged = full.merge.merged;
   w.ran = [];
   w.files['be/src/b.service.ts'] = 'export const b = 3;\n';
-  const warm = runOnce(w, stored(full));
+  const warm = await runOnce(w, stored(full));
   assert.deepEqual(w.ran, [['be/src/b.service.spec.ts']]);
   const normalise = (merged: Array<Record<string, SourceItems>>): unknown => JSON.stringify(merged.map((record) => Object.keys(record).sort()).sort());
   assert.equal(normalise(warm.merge.merged), normalise(fullMerged));
   assert.equal(fs.readFileSync(warm.result.lcov as string, 'utf8'), fs.readFileSync(full.result.lcov as string, 'utf8'));
 });
 
-test('the threshold is judged on the merged total: a file no single spec covers in full passes when the specs together do', () => {
+test('the threshold is judged on the merged total: a file no single spec covers in full passes when the specs together do', async () => {
   const w = world();
-  const run = runOnce(w, []);
+  const run = await runOnce(w, []);
   const lcov = fs.readFileSync(run.result.lcov as string, 'utf8');
   assert.match(lcov, /SF:be\/src\/a\.service\.ts\nLF:4\nLH:4/u, 'a.service is covered 2+2 lines by two specs, 4 of 4 together');
   assert.equal(run.result.threshold?.ok, true);
   // The same file with a line neither spec reaches is below the threshold, and the finding names it.
   const w2 = world();
   w2.covers['be/src/b.service.spec.ts'] = { 'src/a.service.ts': { lines: 4, covered: [3] }, 'src/b.service.ts': { lines: 2, covered: [1, 2] } };
-  const below = runOnce(w2, []);
+  const below = await runOnce(w2, []);
   assert.equal(below.result.ok, false);
   assert.deepEqual(below.result.threshold?.findings.map((finding) => [finding.code, finding.path]), [['BE_COVERAGE_BELOW', 'be/src/a.service.ts']]);
   assert.equal(below.session.reports[0]?.newFindings, 1);
 });
 
-test('a failed spec is never stored; the others are, and the threshold waits for a total with every spec', () => {
+test('a failed spec is never stored; the others are, and the threshold waits for a total with every spec', async () => {
   const w = world();
   w.failing.add('be/src/b.service.spec.ts');
   judge.seen.length = 0;
-  const run = runOnce(w, []);
+  const run = await runOnce(w, []);
   assert.deepEqual(run.result.failed, ['be/src/b.service.spec.ts']);
   assert.deepEqual(stored(run).map((record) => record.path), ['be/src/a.service.spec.ts']);
   assert.equal(run.result.ok, false);
@@ -235,46 +237,46 @@ test('a failed spec is never stored; the others are, and the threshold waits for
   // Fixed, it runs again on the next run (it has no record) and the other keeps its own.
   w.failing.clear();
   w.ran = [];
-  const next = runOnce(w, stored(run));
+  const next = await runOnce(w, stored(run));
   assert.deepEqual(w.ran, [['be/src/b.service.spec.ts']]);
   assert.equal(next.result.ok, true);
 });
 
-test('a spec that fails after it once passed loses its record', () => {
+test('a spec that fails after it once passed loses its record', async () => {
   const w = world();
-  const first = runOnce(w, []);
+  const first = await runOnce(w, []);
   w.files['be/src/a.service.ts'] = 'export const a = "broken";\n';
   w.failing.add('be/src/a.service.spec.ts');
-  const second = runOnce(w, stored(first));
+  const second = await runOnce(w, stored(first));
   // a.service.ts is in both closures: both specs ran, b passed and is stored under its new key, a failed and has no record at all.
   assert.deepEqual(stored(second).map((record) => record.path), ['be/src/b.service.spec.ts']);
   assert.deepEqual(second.result.failed, ['be/src/a.service.spec.ts']);
 });
 
-test('a spec that did not report, and a file edited while the specs ran, are not stored', () => {
+test('a spec that did not report, and a file edited while the specs ran, are not stored', async () => {
   const w = world();
   w.duringRun = (session) => { session.setFile('be/src/a.service.ts', 'export const a = "edited during the run";\n'); };
-  const run = runOnce(w, []);
+  const run = await runOnce(w, []);
   // `a.service.ts` is in both closures, so neither spec's key survived the edit.
   assert.deepEqual(stored(run), []);
   assert.deepEqual([...run.result.failed].sort(), ['be/src/a.service.spec.ts', 'be/src/b.service.spec.ts']);
 });
 
-test('--full runs every spec and ignores the records; a deleted spec drops its record', () => {
+test('--full runs every spec and ignores the records; a deleted spec drops its record', async () => {
   const w = world();
-  const first = runOnce(w, []);
+  const first = await runOnce(w, []);
   w.ran = [];
-  const full = runOnce(w, stored(first), { mode: 'full' });
+  const full = await runOnce(w, stored(first), { mode: 'full' });
   assert.deepEqual(w.ran, [['be/src/a.service.spec.ts', 'be/src/b.service.spec.ts']]);
   assert.equal(full.session.reports[0]?.mode, 'full');
   w.closures = { 'be/src/a.service.spec.ts': ['be/src/a.service.ts'] };
   w.ran = [];
-  const shrunk = runOnce(w, stored(full));
+  const shrunk = await runOnce(w, stored(full));
   assert.deepEqual(stored(shrunk).map((record) => record.path), ['be/src/a.service.spec.ts']);
   assert.deepEqual(w.ran, []);
 });
 
-test('the integration, e2e and contract projects are never the cache\'s, and a shard records nothing', () => {
+test('the integration, e2e and contract projects are never the cache\'s, and a shard records nothing', async () => {
   assert.deepEqual([...ALWAYS_FULL_PROJECTS], ['integration', 'e2e', 'contract']);
   assert.deepEqual(shardArgs(2, 5), { args: ['--shard=2/5', '--coverage', '--ci', '--selectProjects', 'unit'], env: { STARCI_COVERAGE_SHARD: '1' } });
   assert.throws(() => shardArgs(0, 3), /--shard needs/u);
@@ -333,7 +335,10 @@ function totalsOf(lcov: string): Record<string, string> {
 test('with a real Jest: closures come from its resolver and mapper, warm runs re-run only the changed closure, and the merged total equals the full run', { skip: presetBuilt ? false : 'jest-preset is not built or installed' }, async () => {
   const app = realApp();
   try {
-    const env = await createJestEnvironment({ appRoot: app, side: 'be', jestFrom: path.join(presetRoot, 'package.json') });
+    const requests: HeavyNodeRequest[] = [];
+    const env = await createJestEnvironment({ appRoot: app, side: 'be', jestFrom: path.join(presetRoot, 'package.json'), execute: async request => { requests.push(request); return nativeTestNode(request); } });
+    assert.equal(requests[0]?.kind, 'test');
+    assert.ok(requests[0]?.args.includes('--listTests'));
     assert.deepEqual(env.specs, ['alpha', 'beta', 'gamma'].map((name) => `be/src/modules/domain/${name}/${name}.service.spec.ts`));
     // beta imports alpha through the @modules alias of the project's moduleNameMapper: alpha is in beta's closure.
     assert.ok(env.closureOf(env.specs[1] as string).includes('be/src/modules/domain/alpha/alpha.service.ts'));
@@ -349,13 +354,14 @@ test('with a real Jest: closures come from its resolver and mapper, warm runs re
       const bad = Object.entries(totalsOf(fs.readFileSync(lcov, 'utf8'))).filter(([, line]) => /LF=(\d+) LH=(?!\1\b)/u.test(line));
       return { ok: bad.length === 0, findings: bad.map(([name, line]) => ({ code: 'BE_COVERAGE_BELOW', path: name, message: line })) };
     };
-    const runReal = (records: readonly CacheRecord[]): Run['session'] & { result: TestFamilyResult } => {
+    const runReal = async (records: readonly CacheRecord[]): Promise<Run['session'] & { result: TestFamilyResult }> => {
       const session = createFakeSession({ files: files(), records: { [TEST_FOLDER]: records } });
-      const result = runTestFamily({ session: { ...session, root: app }, jest: env, side: 'be', merge, judge: proof });
+      const result = await runTestFamily({ session: { ...session, root: app }, jest: env, side: 'be', merge, judge: proof });
       return Object.assign(session, { result });
     };
 
-    const first = runReal([]);
+    const first = await runReal([]);
+    assert.ok(requests.some(request => request.kind === 'test' && request.args.includes('--coverage') && typeof request.env?.['STARCI_SPEC_COVERAGE_DIR'] === 'string'));
     assert.deepEqual(first.result.failed, []);
     assert.deepEqual(first.result.ran, env.specs);
     const whole = totalsOf(fullRunLcov(app));
@@ -364,20 +370,20 @@ test('with a real Jest: closures come from its resolver and mapper, warm runs re
     assert.equal(first.result.threshold?.ok, true, JSON.stringify(first.result.threshold));
 
     const records = first.replaced.get(TEST_FOLDER) ?? [];
-    const warm = runReal(records);
+    const warm = await runReal(records);
     assert.deepEqual(warm.result.ran, []);
     assert.deepEqual(totalsOf(fs.readFileSync(warm.result.lcov as string, 'utf8')), whole);
 
     // Touch alpha's source (a comment): alpha's and beta's specs re-run, gamma's does not.
     fs.appendFileSync(path.join(app, 'be/src/modules/domain/alpha/alpha.service.ts'), '// touched\n');
-    const touched = runReal(records);
+    const touched = await runReal(records);
     assert.deepEqual(touched.result.ran, env.specs.slice(0, 2));
     assert.deepEqual(touched.result.reused, [env.specs[2]]);
     assert.deepEqual(totalsOf(fs.readFileSync(touched.result.lcov as string, 'utf8')), totalsOf(fullRunLcov(app)), 'the partial run merged with the kept records equals a full run of the touched tree');
 
     // A spec that fails stores nothing and the total is not judged.
     fs.writeFileSync(path.join(app, 'be/src/modules/domain/gamma/gamma.service.spec.ts'), 'import { GammaService } from "./gamma.service";\ntest("id", () => expect(new GammaService().id()).toBe("other"));\n');
-    const broken = runReal(records);
+    const broken = await runReal(records);
     assert.deepEqual(broken.result.failed, [env.specs[2]]);
     assert.ok(!(broken.replaced.get(TEST_FOLDER) ?? []).some((record) => record.path === env.specs[2]));
     assert.equal(broken.result.threshold, undefined);
@@ -386,7 +392,7 @@ test('with a real Jest: closures come from its resolver and mapper, warm runs re
   }
 });
 
-test('the installed preset merge names the package when it is missing', () => {
+test('the installed preset merge names the package when it is missing', async () => {
   const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-nopreset-'));
   try {
     const merge = installedSpecMerge(empty);
@@ -394,4 +400,18 @@ test('the installed preset merge names the package when it is missing', () => {
   } finally {
     fs.rmSync(empty, { recursive: true, force: true });
   }
+});
+
+
+test('an interrupted asynchronous Jest run cannot read partial per-spec coverage or replace the cache', async () => {
+  const w = world();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jest-admission-'));
+  try {
+    const session = { ...createFakeSession({ files: w.files }), root };
+    const jest = fakeJest(w);
+    jest.run = async () => { throw new Error('child did not complete'); };
+    jest.readCoverage = () => { assert.fail('partial coverage is not a completed run'); };
+    await assert.rejects(runTestFamily({ session, jest, side: 'be', merge: fakeMerge(), judge }), /did not complete/u);
+    assert.equal(session.replaced.has(TEST_FOLDER), false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

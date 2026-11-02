@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { spawnSync } from 'node:child_process';
+import { completedNode, runHeavyNode, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { CACHE_DIR } from './types.mjs';
 import { combineHashes, hashFile } from './hash.mjs';
 import { sortFindings } from './jsonl.mjs';
@@ -46,7 +46,7 @@ export interface TypesFamilyOptions {
   readonly session: CheckSession;
   readonly programs: readonly TypesProgram[];
   /** Runs one program's `tsc`; `buildInfo` is where its `.tsbuildinfo` goes (the untracked tool cache). */
-  readonly run: (program: TypesProgram, buildInfo: string) => TscOutcome;
+  readonly run: (program: TypesProgram, buildInfo: string) => TscOutcome | Promise<TscOutcome>;
   /** The untracked tool cache of slot `app.tool-cache` (`<STARCI_CACHE_HOME>/<repo>/app-check`). */
   readonly toolCacheDir: string;
   readonly inputsOf?: (program: TypesProgram) => ProgramInputs;
@@ -132,7 +132,7 @@ const identity = (finding: Finding): string => `${finding.path}\0${finding.rule}
  * Runs the type check of every program against the cache. A program whose key is unchanged takes its recorded diagnostics; a changed one runs in full (all of them
  * under `--full`). A run that produced no diagnostics and failed (tsc itself could not complete) stores nothing, and so does a program whose files changed while it ran.
  */
-export function runTypesFamily(options: TypesFamilyOptions): TypesFamilyResult {
+export async function runTypesFamily(options: TypesFamilyOptions): Promise<TypesFamilyResult> {
   const { session, programs, run, toolCacheDir } = options;
   const decision = session.decide('types');
   const previous = new Map(session.records(TYPES_FOLDER).filter((record) => record.step === TSC_STEP).map((record) => [record.path, record]));
@@ -155,7 +155,7 @@ export function runTypesFamily(options: TypesFamilyOptions): TypesFamilyResult {
       records.push(before);
       reused.push(program.name);
     } else {
-      const outcome = run(program, tsBuildInfoPath(toolCacheDir, session.root, program));
+      const outcome = await run(program, tsBuildInfoPath(toolCacheDir, session.root, program));
       ran.push(program.name);
       current = parseTscOutput(outcome.output, session.root, program.tsconfig);
       if (current.length === 0 && outcome.status !== 0) incomplete.push(program.name);
@@ -180,14 +180,15 @@ export function runTypesFamily(options: TypesFamilyOptions): TypesFamilyResult {
  * The real `tsc` of an app: the program's own TypeScript (resolved from its folder, so the version the lockfile pins), `--noEmit` with an incremental build info in the
  * tool cache, run from the app root so paths in the output are app-relative.
  */
-export function createTscRunner({ appRoot, typescriptFrom }: { appRoot: string; typescriptFrom?: string }): TypesFamilyOptions['run'] {
-  return (program, buildInfo) => {
+export function createTscRunner({ appRoot, typescriptFrom, execute }: { appRoot: string; typescriptFrom?: string; execute?: HeavyNodeRun | undefined }): TypesFamilyOptions['run'] {
+  return async (program, buildInfo) => {
     const folder = path.resolve(appRoot, path.posix.dirname(program.tsconfig));
     const tsc = path.join(path.dirname(createRequire(typescriptFrom ?? path.join(folder, 'package.json')).resolve('typescript/package.json')), 'bin', 'tsc');
     fs.mkdirSync(path.dirname(buildInfo), { recursive: true });
-    const result = spawnSync(process.execPath, [tsc, '-p', posix(path.relative(appRoot, path.resolve(appRoot, program.tsconfig))), '--noEmit', '--incremental', '--tsBuildInfoFile', buildInfo, '--pretty', 'false'], {
-      cwd: appRoot, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024,
-    });
+    const result = completedNode(await runHeavyNode(execute, {
+      kind: 'tsc', label: `app check tsc ${program.name}`, args: [tsc, '-p', posix(path.relative(appRoot, path.resolve(appRoot, program.tsconfig))), '--noEmit', '--incremental', '--tsBuildInfoFile', buildInfo, '--pretty', 'false'],
+      cwd: appRoot, maxBuffer: 256 * 1024 * 1024,
+    }), 'tsc');
     return { status: result.status ?? 1, output: `${result.stdout}${result.stderr}` };
   };
 }

@@ -1,4 +1,6 @@
-import { hfsLimitsEnv } from "../../harness/heavy.js"
+import { hfsLimitsEnv, testWorkerArgs, withHeavySlot } from "../../harness/heavy.js"
+import { captureCommand } from "../../shared/exec.js"
+import type { HeavyNodeRun } from "@starci/hfs/runtime/scripts/api/node/run-node.mjs"
 import { loadPolicy } from "../../harness/policy.js"
 import { hostAgeIdentity } from "../../harness/secret-env.js"
 import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
@@ -81,6 +83,25 @@ const parsed = (text: string): unknown => {
     }
 }
 
+/** The HFS child execution port: admission and worker limits apply to each actual Node tool. */
+export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): HeavyNodeRun => async (request) =>
+    admit(request.kind, request.label, request.cwd, {
+        baseEnv: request.env ?? process.env,
+        env: { NODE_OPTIONS: request.env === undefined ? process.env.NODE_OPTIONS ?? "" : request.env.NODE_OPTIONS ?? "" },
+        captureBytes: request.maxBuffer,
+        ...(request.timeoutMs === undefined ? {} : { timeoutMs: request.timeoutMs }),
+    }, async (held) => {
+        const argv = [process.execPath, ...request.args]
+        const run = await capture(request.kind === "test" && !argv.includes("--runInBand") ? testWorkerArgs(argv, held) : argv, request.cwd, held.options)
+        return {
+            status: run.timedOut ? null : run.exitCode,
+            signal: null,
+            stdout: run.stdout,
+            stderr: run.stderr,
+            ...(run.timedOut ? { error: Object.assign(new Error("child deadline reached"), { code: "ETIMEDOUT" }) } : {}),
+        }
+    })
+
 /**
  * Runs `starci app <verb>` in @starci/hfs, in-process, in the verb's working directory. In human mode its stdout and stderr
  * stream as it prints them and the CLI adds nothing; under `--json` the CLI passes `--json` to a verb that `printsJson` and
@@ -97,9 +118,10 @@ export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly
     Object.assign(process.env, hfsLimitsEnv(), { STARCI_GATE_ERROR_LIMIT: String(loadPolicy().quality.gate.errorLimit) })
     const { hostIdentity = hostAgeIdentity(context.cwd), ...more } = extra
     const harness = { version: packageVersion(), ...more }
+    const runHeavyNode = hfsNodeRunner()
     const io = context.json
-        ? { cwd: context.cwd, harness, stdin, hostIdentity, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
-        : { cwd: context.cwd, harness, stdin, hostIdentity, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
+        ? { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
+        : { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
     const { main } = await import("@starci/hfs")
     const exitCode = await main([verb, ...full], io)
     const data: HfsRunData = { verb, argv: full, exitCode, output: context.json ? parsed(stdout.trim()) : null, stderr }
