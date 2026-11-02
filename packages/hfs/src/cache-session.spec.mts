@@ -11,6 +11,7 @@ import { resolveTrust, readCacheAt, verifyCommitted, FORGED, STALE, MISSING } fr
 import { hashText } from '../cache/hash.mjs';
 import { git } from '../cache/git.mjs';
 import { toolCacheDir } from '../cache/run-log.mjs';
+import { SPEC_STEP, specKey } from '../cache/test-family.mjs';
 import type { CacheRecord, FingerprintPart } from '../cache/types.mjs';
 
 const PORTABLE = { parts: [{ name: 'hfs', sha256: 'h1' }] as FingerprintPart[], portable: true, localReasons: [] };
@@ -104,16 +105,58 @@ test('a new fingerprint drops the folders the run did not rewrite', (t) => {
 });
 
 test('a file edited while the run read it gets no record', (t) => {
-  const root = repo({ 'a.ts': 'x\n', 'b.ts': 'y\n' });
+  const root = repo({ 'a.ts': 'x\n', 'b.ts': 'y\n', 'c.ts': 'z\n' });
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const session = createDiskSession(options(root, ['a.ts', 'b.ts']));
+  const session = createDiskSession(options(root, ['a.ts', 'b.ts', 'c.ts']));
   fs.writeFileSync(path.join(root, 'a.ts'), 'edited\n');
+  fs.writeFileSync(path.join(root, 'c.ts'), 'edited\n');
   assert.equal(session.unchanged(['a.ts']), false);
   assert.equal(session.unchanged(['b.ts']), true);
-  session.replace('check/format', [rec('a.ts', 'x\n'), rec('b.ts', 'y\n')]);
+  session.replace('check/format', [rec('a.ts', 'x\n'), rec('b.ts', 'y\n'), rec('c.ts', 'edited\n')]);
   session.flush();
   const text = fs.readFileSync(path.join(root, '.starcistacks/cache/check/format/root.jsonl'), 'utf8');
-  assert.ok(text.includes('"b.ts"') && !text.includes('"a.ts"'));
+  assert.ok(text.includes('"b.ts"') && !text.includes('"a.ts"') && !text.includes('"c.ts"'));
+});
+
+test('flush retains a stable tracked spec under its composite key and drops it when the spec changes', (t) => {
+  const spec = 'be/src/a.service.spec.ts';
+  const root = repo({ [spec]: 'test("a", () => {});\n', 'be/src/a.service.ts': 'export const a = 1;\n' });
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const tracked = [spec, 'be/src/a.service.ts'];
+  const first = createDiskSession(options(root, tracked));
+  const hash = specKey({ spec, closure: ['be/src/a.service.ts'], configHash: 'config-1', hashOf: first.index.hashOf });
+  const record: CacheRecord = { path: spec, step: SPEC_STEP, hash, findings: [], data: { sources: {} } };
+  assert.notEqual(hash, first.index.hashOf(spec));
+  first.replace('test-coverage', [record]);
+  assert.deepEqual(first.flush().warnings, []);
+  const second = createDiskSession(options(root, tracked));
+  assert.deepEqual(second.records('test-coverage'), [record]);
+  second.replace('test-coverage', second.records('test-coverage'));
+  assert.deepEqual(second.flush().written, []);
+  fs.appendFileSync(path.join(root, spec), '// edited during the run\n');
+  second.flush();
+  assert.deepEqual(createDiskSession(options(root, tracked)).records('test-coverage'), []);
+});
+
+test('CI still compares composite spec records with the trusted result and rejects forged findings', (t) => {
+  const spec = 'be/src/a.service.spec.ts';
+  const root = repo({ [spec]: 'test("a", () => {});\n' });
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const seed = createDiskSession(options(root, [spec]));
+  const hash = specKey({ spec, closure: [], configHash: 'config-1', hashOf: seed.index.hashOf });
+  const record: CacheRecord = { path: spec, step: SPEC_STEP, hash, findings: [{ path: spec, line: 1, column: 1, rule: 'result', message: 'computed finding' }] };
+  seed.replace('test-coverage', [record]);
+  const file = seed.flush().written.find((entry) => entry.startsWith('.starcistacks/cache/test-coverage/'));
+  assert.ok(file);
+  const base = commit(root, 'trusted spec result');
+  fs.writeFileSync(path.join(root, file), JSON.stringify({ ...record, findings: [] }) + '\n');
+  commit(root, 'edited result');
+  const ci = createDiskSession(options(root, [spec], { env: { CI: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main' } }));
+  assert.equal(ci.trust.base, base);
+  assert.deepEqual(ci.records('test-coverage'), [record]);
+  ci.replace('test-coverage', [record]);
+  assert.deepEqual(ci.flush().written, []);
+  assert.deepEqual(ci.verdicts().map((verdict) => [verdict.code, verdict.level, verdict.path]), [[FORGED, 'error', spec]]);
 });
 
 test('a union-merged fingerprint with two digests for one part never matches', () => {

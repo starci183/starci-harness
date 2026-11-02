@@ -77,7 +77,7 @@ export interface TestFamilyResult {
   readonly ok: boolean;
   readonly ran: readonly string[];
   readonly reused: readonly string[];
-  /** Specs that failed or did not report: nothing of theirs is stored. */
+  /** Specs that failed, did not report, or whose inputs changed: nothing of theirs is stored. */
   readonly failed: readonly string[];
   /** The merged lcov, or undefined when no spec has a record. */
   readonly lcov: string | undefined;
@@ -155,19 +155,26 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
       const reported = new Map(jest.readCoverage(scratch).map((file) => [file.spec, file]));
       for (const spec of toRun) {
         const file = reported.get(posix(path.relative(path.join(session.root, side), path.join(session.root, spec))));
-        const key = specKey({ spec, closure: jest.closureOf(spec), configHash: jest.configHash, hashOf });
-        // A spec that failed, did not report, or whose files changed while it ran stores nothing.
-        if (file?.passed === true && key === keys.get(spec)) fresh.push(recordOf(spec, key, file.sources, side));
+        const key = keys.get(spec);
+        if (file?.passed === true && key !== undefined) fresh.push(recordOf(spec, key, file.sources, side));
         else failed.push(spec);
       }
     } finally {
       if (options.scratch === undefined) fs.rmSync(scratch, { recursive: true, force: true });
     }
   }
-  progress.tick(jest.specs.length, kept.length, toRun.length);
+  // Recheck every candidate against disk, including a reused spec whose inputs another running spec could change.
+  const records = [...kept, ...fresh].filter((record) => {
+    const key = specKey({ spec: record.path, closure: jest.closureOf(record.path), configHash: jest.configHash, hashOf: (file) => hashFile(path.join(session.root, file)) });
+    if (key === keys.get(record.path)) return true;
+    failed.push(record.path);
+    return false;
+  });
+  const settled = new Set(records.map((record) => record.path));
+  const reused = kept.filter((record) => settled.has(record.path));
+  progress.tick(jest.specs.length, reused.length, toRun.length);
   progress.end();
 
-  const records = [...kept, ...fresh];
   session.replace(TEST_FOLDER, records);
 
   let lcov: string | undefined;
@@ -186,13 +193,13 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
     mode: decision.mode,
     reason: decision.reason,
     checked: toRun.length,
-    reused: kept.length,
+    reused: reused.length,
     newFindings: failed.length + thresholdFindings,
     knownFindings: 0,
     fixedFindings: 0,
   };
   session.report(report);
-  return { ok: failed.length === 0 && (threshold?.ok ?? records.length === 0), ran: toRun, reused: kept.map((record) => record.path), failed, lcov, threshold, report, output };
+  return { ok: failed.length === 0 && (threshold?.ok ?? records.length === 0), ran: toRun, reused: reused.map((record) => record.path), failed, lcov, threshold, report, output };
 }
 
 // ---- the real Jest of an app ------------------------------------------------------------------------------------------------------------------------------
