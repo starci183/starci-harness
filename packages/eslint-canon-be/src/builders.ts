@@ -20,6 +20,7 @@ import ts from "typescript"
 import { INSERTING_SQL, isDatabaseReceiver, methodOf, queryText, WRITING_SQL } from "./lib/db-writes.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { moduleOf, resolvedSymbol, typed } from "./lib/types.ts"
+import { isKitBuilderOverride } from "./lib/builder-provenance.ts"
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import type { Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
@@ -126,6 +127,7 @@ export const specNoRepeatedRowLiteral: RuleModule = {
             ObjectExpression(node) {
                 if (node.properties.length === 0 || node.properties.some((property) => property.type === "SpreadElement")) return
                 const tsNode = toTs(node)
+                if (tsNode && isKitBuilderOverride(checker, tsNode)) return
                 const [entity] = entityClassesOf(checker, tsNode && checker.getContextualType(tsNode))
                 if (!entity) return
                 const seen = firstLine.get(entity)

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.11.14 - 2026-11-02
+
+- Fixed: canonical test builders accept repeated override literals by proving the actual kit factory through imports and immutable value aliases. Repeated raw entity rows, arbitrary partial-row callbacks and callable type annotations remain checked.
+
 ## 3.11.13
 
 - Changed: Align bundled canon pins and exact sibling requirements with Grammar and its lint families at 0.21.6. Runtime behavior and rule severity are unchanged.
