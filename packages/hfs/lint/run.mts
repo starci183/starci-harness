@@ -22,12 +22,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { completedNode, isHostHeld, isNodeExecutionRefusal, runHeavyNode, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
+import { makeTempDir } from '../runtime/scripts/api/fs/make-temp-dir.mjs';
+import { completedNode, isHostHeld, isNodeExecutionRefusal, runHeavyNode, type HeavyNodeResult, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { linterReport, mergeReports, sonarReport, sourceRootsOf } from '../report/sonar.mjs';
 import { SIDES, appRelativeMessages, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { isSide } from '../runtime/scripts/hfs/slot-manifest-shape.mjs';
-import { chunkByChars, mapBounded, mergeRuns } from './chunk.mjs';
 import { STYLE_GLOB } from '../sync/index.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { braceVariants, globExpression } from '../runtime/scripts/lib/glob.mjs';
@@ -46,8 +46,14 @@ export interface LintOptions { changed: string[] | null; fix: boolean; format: s
 export interface LintCache { session: CheckSession }
 /** What a linter run answers: its json results, or why it could not complete (both when the run was partial). */
 export interface LinterRun { results?: Dynamic[]; error?: string }
+/**
+ * What a linter run is asked for. `list` is the files an ESLint run lints (cwd-relative, posix) when they are named one by one: they go to the child
+ * through a file, never the command line, and `args` then holds the options alone. `files` is the number of source files the run judges, which the
+ * heavy-command budget of the ESLint kind scales with (a list names its own count).
+ */
+export interface LinterSpec { cwd: string; pkg: string; bin: string; args: string[]; bound?: string | null; list?: readonly string[] | undefined; files?: number | undefined }
 /** The seam that runs a linter through the app's own install from cwd. */
-export type LinterRunner = (spec: { cwd: string; pkg: string; bin: string; args: string[]; bound?: string | null }) => Promise<LinterRun>;
+export type LinterRunner = (spec: LinterSpec) => Promise<LinterRun>;
 /** One finding of the lint report. */
 export interface LintFinding {
   engine: string; rule: string; code: string | null; severity: string; path: string | null; line: number | null; column: number | null; message: string; titleVi?: string; nextStepVi?: string;
@@ -124,8 +130,11 @@ export function eslintHeapArgs(env: NodeJS.ProcessEnv = process.env): string[] {
   return Number.isInteger(mb) && mb > 0 ? [`--max-old-space-size=${mb}`] : [];
 }
 
+/** The ESLint list runner (eslint-list.cts, built beside this file). */
+const LIST_RUNNER = fileURLToPath(new URL('./eslint-list.cjs', import.meta.url));
+
 /** A linter's json results through the app's own install, run from `cwd` (a side folder): `{ results }` or `{ error }`. The child runs while the caller goes on. */
-export async function runLinter({ cwd, pkg, bin, args, bound = null }: { cwd: string; pkg: string; bin: string; args: string[]; bound?: string | null }, execute?: HeavyNodeRun): Promise<LinterRun> {
+export async function runLinter({ cwd, pkg, bin, args, bound = null, list, files }: LinterSpec, execute?: HeavyNodeRun): Promise<LinterRun> {
   let entry: string;
   try {
     const manifest = createRequire(path.join(cwd, 'package.json')).resolve(`${pkg}/package.json`);
@@ -135,7 +144,21 @@ export async function runLinter({ cwd, pkg, bin, args, bound = null }: { cwd: st
     return { error: `${pkg} is not installed for ${cwd}` };
   }
   const heap = pkg === 'eslint' ? eslintHeapArgs() : [];
-  const run = completedNode(await runHeavyNode(execute, { kind: 'eslint', label: `app lint ${pkg} ${path.basename(cwd)}`, args: [...heap, ...(bound ? linterBoundArgs() : []), entry, ...args], cwd, maxBuffer: 64 * 1024 * 1024, ...(bound ? { env: { ...process.env, [BOUND_ENV]: bound } } : {}) }), pkg);
+  // A named list is written to a file the runner reads: ESLint lints all of it in one process, and no command line holds a path.
+  const listed = pkg === 'eslint' && list !== undefined ? makeTempDir('starci-eslint-') : null;
+  let childArgs: string[] = [entry, ...args];
+  if (listed !== null && list !== undefined) {
+    const job = path.join(listed, 'job.json');
+    fs.writeFileSync(job, JSON.stringify({ files: list, fix: args.includes('--fix') }));
+    childArgs = [LIST_RUNNER, job];
+  }
+  const count = list?.length ?? files;
+  let run: HeavyNodeResult;
+  try {
+    run = completedNode(await runHeavyNode(execute, { kind: 'eslint', label: `app lint ${pkg} ${path.basename(cwd)}`, args: [...heap, ...(bound ? linterBoundArgs() : []), ...childArgs], cwd, maxBuffer: 64 * 1024 * 1024, ...(count === undefined || pkg !== 'eslint' ? {} : { files: count }), ...(bound ? { env: { ...process.env, [BOUND_ENV]: bound } } : {}) }), pkg);
+  } finally {
+    if (listed !== null) fs.rmSync(listed, { recursive: true, force: true });
+  }
   // ESLint prints its report on stdout; stylelint uses stderr. JSON does not prove a completed child: only exits 0/1
   // without a spawn error or signal are measurable, and exit 1 must carry findings.
   let results: Dynamic;
@@ -307,8 +330,6 @@ function checkedEslintResults({ results, expected, cwd, scope, changed }: { resu
   return { results: valid, errors };
 }
 
-const ESLINT_ARGV_BUDGET = 24_000;
-const ESLINT_CONCURRENCY = 3;
 /** A launch that threw instead of returning a record is a tool error of the run (exit 2), not a crash of the CLI. */
 const spawnFailure = (error: unknown) => {
   if (isNodeExecutionRefusal(error)) throw error;
@@ -329,10 +350,10 @@ async function launchEslint({ app, repoRoot, opts, changed, existing, workspace,
     try { expected = changed ? sources : await sourceFiles({ repoRoot, cwd, side, scope: onFe }); }
     catch (error) { launches.push({ side, scopeError: `eslint source scope is unavailable in ${side}/: ${String((error as Error | undefined)?.message ?? error)}` }); continue; }
     const head = ['--format', 'json', ...(opts.fix ? ['--fix'] : [])];
-    const launch = (files: string[]): Promise<LinterRun> => Promise.resolve().then(() => run({ cwd, pkg: 'eslint', bin: 'eslint', args: [...head, ...files], bound: repoRoot }));
-    // A diff of hundreds of files exceeds the Windows command line: the sources go in chunks and the reports are merged.
-    const chunks = changed ? chunkByChars(sources, ESLINT_ARGV_BUDGET) : [[onFe ?? '.']];
-    launches.push({ side, cwd, expected, run: chunks.length === 1 ? launch(chunks[0] as string[]).catch(spawnFailure) : mapBounded(chunks, launch, ESLINT_CONCURRENCY).then(mergeRuns) });
+    // The files of a diff go to ONE child through a file (a diff of hundreds of long paths outgrows the Windows command line, and each extra
+    // child would build the whole TypeScript program again); the whole side is a single directory argument.
+    const launch = Promise.resolve().then(() => run(changed ? { cwd, pkg: 'eslint', bin: 'eslint', args: head, list: sources, bound: repoRoot } : { cwd, pkg: 'eslint', bin: 'eslint', args: [...head, onFe ?? '.'], files: expected.length, bound: repoRoot }));
+    launches.push({ side, cwd, expected, run: launch.catch(spawnFailure) });
   }
   return launches;
 }

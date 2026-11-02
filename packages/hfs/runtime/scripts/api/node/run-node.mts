@@ -14,6 +14,11 @@ export interface HeavyNodeRequest {
   /** When supplied, this is the entire child environment, not an overlay. */
   readonly env?: NodeJS.ProcessEnv | undefined;
   readonly timeoutMs?: number | undefined;
+  /**
+   * The number of source files the child judges, when it is a whole-program lint of them. The CLI scales the liveness budget of the kind with it
+   * (ops/liveness.yaml heavy.timeoutMinutesPer1000Files): a larger side legitimately runs longer, and the budget still ends a hung child.
+   */
+  readonly files?: number | undefined;
   readonly maxBuffer: number;
 }
 

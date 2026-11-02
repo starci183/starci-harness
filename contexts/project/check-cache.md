@@ -222,7 +222,11 @@ that key.
    changed path matching a `content` input dirties the files that declare it; an added or removed path dirties its
    `exists` dependants. A canon installed without the declaration makes every change in its side a whole-side lint.
 
-The dirty set is linted in one ESLint run per side through the launcher, chunking and result validation of a full run;
+The dirty set is linted in one ESLint run per side, one child process however long the list: the files go to the child
+through a job file, not the command line (a diff of hundreds of long paths outgrows the Windows command line, and each extra
+child built the whole TypeScript program again), where a small runner (`lint/eslint-list.cts`) lints them once with the
+ESLint API of the side's own install and prints the results as the CLI's `--format json` does. The launcher and result
+validation are those of a full run, and a child that did not complete (killed, timed out) stores nothing and fails the run;
 every other file of the side's canon scope (enumerated afresh) takes its record, a file of the scope with no record is
 dirty, and a record outside the scope is dropped. `app check` and `app lint` call the same cached ESLint and the same
 cached app pass on the same records, so the two verbs never hold two answers for one tree.

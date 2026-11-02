@@ -1,4 +1,4 @@
-// lint-chunk.spec.mjs - ESLint launches split a long changed list under the command-line limit and merge the reports exactly.
+// lint-chunk.spec.mjs - the chunk helpers, and the ESLint launch of a long changed list: one launch, the list outside the command line.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -54,19 +54,18 @@ const fixture = () => {
 const app = { sides: true };
 const file = (i: number) => `fe/${'d'.repeat(120)}/f${i}.ts`;
 
-test('eslintRepository splits a long changed list across launches and merges the results', async () => {
+test('eslintRepository sends a long changed list to ONE launch, as a list and not as arguments', async () => {
   const root = fixture();
   const existing = Array.from({ length: 600 }, (_, i) => file(i));
-  const calls: number[] = [];
-  const run: LinterRunner = async ({ cwd, args }) => {
-    const files = args.slice(2);
-    calls.push(files.length);
-    assert.ok(args.join(' ').length < 25_000);
-    return { results: files.map((f) => ({ filePath: path.join(cwd, f), messages: [] })) };
+  const calls: { args: string[]; list: readonly string[] | undefined }[] = [];
+  const run: LinterRunner = async ({ cwd, args, list }) => {
+    calls.push({ args, list });
+    return { results: (list ?? []).map((f) => ({ filePath: path.join(cwd, f), messages: [] })) };
   };
   const out = await eslintRepository({ repoRoot: root, app, opts: { side: 'fe' }, changed: [...new Set(existing)], existing, run });
-  assert.ok(calls.length > 1);
-  assert.equal(calls.reduce((a, b) => a + b, 0), 600);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]?.list?.length, 600);
+  assert.ok((calls[0]?.args.join(' ').length ?? Infinity) < 200, 'the command line holds the options alone');
   assert.equal(out.raw.length, 600);
   assert.deepEqual(out.errors, []);
   assert.equal(out.engine.sides['fe']?.files, 600);
@@ -76,18 +75,6 @@ test('a spawn failure is an eslint error entry, not an escaped rejection', async
   const root = fixture();
   const existing = [file(1), file(2)];
   const run = async () => { throw new Error('spawn ENAMETOOLONG'); };
-  const out = await eslintRepository({ repoRoot: root, app, opts: { side: 'fe' }, changed: [...new Set(existing)], existing, run });
-  assert.ok(out.errors.some((e) => /ENAMETOOLONG/.test(e)));
-});
-
-test('a spawn failure in one of many chunks is reported while the others still count', async () => {
-  const root = fixture();
-  const existing = Array.from({ length: 600 }, (_, i) => file(i));
-  let n = 0;
-  const run: LinterRunner = async ({ cwd, args }) => {
-    if (n++ === 1) throw new Error('spawn ENAMETOOLONG');
-    return { results: args.slice(2).map((f) => ({ filePath: path.join(cwd, f), messages: [] })) };
-  };
   const out = await eslintRepository({ repoRoot: root, app, opts: { side: 'fe' }, changed: [...new Set(existing)], existing, run });
   assert.ok(out.errors.some((e) => /ENAMETOOLONG/.test(e)));
 });

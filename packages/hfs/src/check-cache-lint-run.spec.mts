@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import type { TestContext } from 'node:test';
 import { createFakeSession } from '../cache/fake-session.mjs';
 import type { CacheRecord } from '../cache/types.mjs';
-import { lintRepository, parseLintArgs, type LinterRunner } from '../lint/run.mjs';
+import { lintRepository, parseLintArgs, runLinter, type LinterRunner } from '../lint/run.mjs';
 
 interface Fixture { root: string; files: Record<string, string[]> }
 interface Call { side: string; files: string[] }
@@ -73,10 +73,10 @@ const cleanCheck = () => ({ findings: [] as Record<string, unknown>[], tracked: 
 
 /** A linter that answers one finding per file named `bad.ts`, and records what it was asked. */
 function linter(calls: Call[]): LinterRunner {
-  return async ({ cwd, pkg, args }) => {
+  return async ({ cwd, pkg, args, list }) => {
     assert.equal(pkg, 'eslint');
     const side = path.basename(cwd);
-    const requested = args.slice(2);
+    const requested = list === undefined ? args.slice(2) : [...list];
     const files = requested[0] === '.' ? fs.readdirSync(path.join(cwd, 'src')).map((name) => `src/${name}`) : requested;
     calls.push({ side, files });
     return { results: files.map((file) => ({ filePath: path.join(cwd, file), messages: fs.readFileSync(path.join(cwd, file), 'utf8').includes('BAD') ? [{ ruleId: 'fake/no-bad', message: `BAD in ${file}`, line: 1, column: 1 }] : [] })) };
@@ -183,5 +183,18 @@ test('a tool error stores nothing', async (context) => {
   const session = createFakeSession({ files: treeOf(app.root) });
   const out = await lintRepository({ repoRoot: app.root, opts: parseLintArgs([]), hfsCheck: cleanCheck, runLinter: async () => ({ error: 'eslint did not start' }), cache: { session } });
   assert.equal(out.exit, 2);
+  assert.equal(session.replaced.size, 0);
+});
+
+test('an eslint child killed during a diff stores no record and the failure is surfaced', async (context) => {
+  const app = fixture(context);
+  installedPackage(app.root, 'eslint', '');
+  fs.writeFileSync(path.join(app.root, 'node_modules', 'eslint', 'package.json'), JSON.stringify({ name: 'eslint', version: '0.0.0', bin: { eslint: 'index.mjs' } }));
+  const calls: Call[] = [];
+  const first = await lint(app, [], {}, calls);
+  fs.writeFileSync(path.join(app.root, 'be/src/backend.ts'), 'export const value = 2;' + String.fromCharCode(10));
+  const session = createFakeSession({ files: treeOf(app.root), records: recordsOf(first.session) });
+  const killed = (spec: Parameters<LinterRunner>[0]) => runLinter(spec, async () => ({ status: null, signal: 'SIGKILL' as const, stdout: '[]', stderr: '' }));
+  await assert.rejects(lintRepository({ repoRoot: app.root, opts: parseLintArgs([]), hfsCheck: cleanCheck, runLinter: killed, cache: { session } }), { code: 'HFS_NODE_INCOMPLETE', message: /eslint did not complete/ });
   assert.equal(session.replaced.size, 0);
 });

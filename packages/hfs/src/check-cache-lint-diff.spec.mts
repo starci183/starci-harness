@@ -9,7 +9,7 @@ import ts from 'typescript';
 import type { TestContext } from 'node:test';
 import { createFakeSession } from '../cache/fake-session.mjs';
 import { lintSide, type CanonDeclarations, type EslintResult, type LintSideOutcome } from '../cache/lint-family.mjs';
-import type { CacheRecord } from '../cache/types.mjs';
+import type { CacheRecord, JsonValue } from '../cache/types.mjs';
 
 const SIDE = 'be';
 
@@ -231,7 +231,7 @@ test('records from before the type surface was kept are read as changed, never a
   const old = records.map((record) => {
     if (record.step !== 'imports') return record;
     const { api: _api, open: _open, ...rest } = record.data as { [key: string]: unknown };
-    return { ...record, data: rest as CacheRecord['data'] };
+    return { ...record, data: rest as JsonValue };
   });
   world.write('src/lib.ts', 'export function lib(x: number): number {\n  return x + 3;\n}\n');
   const second = await world.next(old);

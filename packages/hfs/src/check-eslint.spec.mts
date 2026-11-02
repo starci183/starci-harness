@@ -69,9 +69,10 @@ const cleanCheck = (root: string, findings: Record<string, unknown>[] = []) => (
   findings, counts: { error: findings.length, warning: 0, info: 0 }, machine: { status: 'ran', files: 3, kinds: ['backend', 'frontend'] } });
 
 function transport(fixture: Fixture, calls: Run[]): LinterRunner {
-  return async ({ cwd, pkg, args }) => {
+  return async ({ cwd, pkg, args: options, list }) => {
     assert.equal(pkg, 'eslint');
     const side = path.basename(cwd);
+    const args = [...options, ...(list ?? [])];
     calls.push({ side, args });
     const universal = await import(fixture.entries[side]!);
     const family = side === 'fe' ? await import(fixture.entries['family']!) : null;
