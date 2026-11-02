@@ -6,6 +6,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.41] - 2026-11-02
+
+- Bundled app-check knowledge uses repeatable `--gate` selectors and `--no-cache` for the existing refresh mode. Check engines, cache trust, quality predictions and server-owned CI verdicts retain their existing behavior.
+
 ## [1.1.0-alpha.40] - 2026-11-02
 
 - Bundled knowledge documents the consolidated Grammar preservation roles, headless figure ownership and native pending/message/date semantics.

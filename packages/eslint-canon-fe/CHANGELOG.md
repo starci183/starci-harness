@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 9.9.4 - 2026-11-02
+
+- Changed: refreshed bundled canonical pins for the HFS 5.0.0 project quality-gate cohort; the Grammar component runtime stays at 0.21.3.
+
 ## 9.9.3 - 2026-11-02
 
 - Changed: bundled canonical pins follow the consolidated Grammar 0.21.3 preservation API cohort; runtime rules are unchanged.

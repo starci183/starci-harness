@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 3.11.11 - 2026-11-02
+
+- Changed: refreshed bundled canonical pins for the HFS 5.0.0 CLI selector cohort; the Grammar component runtime stays at 0.21.3.
+- Fixed: TypeORM read-query selectors retain their query shape instead of being treated as entity row fixtures; actual entity and partial row literals remain checked.
+
 ## 3.11.10 - 2026-11-02
 
 - Changed: bundled canonical pins follow the consolidated Grammar 0.21.3 preservation API cohort; runtime rules are unchanged.

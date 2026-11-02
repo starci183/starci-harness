@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 5.0.0 - 2026-11-02
+
+- Changed: repeatable `app check --gate` selectors dispatch to the existing check families. Sonar and Codecov selectors reuse the combined quality-baseline engine and retain its prediction labels.
+- Changed: `--no-cache` invokes the existing recompute-and-refresh mode; ordinary `app check` retains content-keyed cache reuse.
+- Breaking: replaced individual family flags and `app check --full` with `--gate <name>` and `--no-cache`.
+
 ## 4.17.3 - 2026-11-02
 
 - Changed: bundled canonical pins follow the consolidated Grammar 0.21.3 preservation API cohort; runtime rules are unchanged.
