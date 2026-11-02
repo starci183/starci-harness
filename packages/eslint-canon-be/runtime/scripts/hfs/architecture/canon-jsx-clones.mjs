@@ -17,7 +17,7 @@ function importBindings(ts, scope, statement) {
         return;
     const module = statement.moduleSpecifier.text;
     if (clause.name)
-        scope.bindings.set(clause.name.text, { kind: 'component' });
+        scope.bindings.set(clause.name.text, { kind: 'component', module, name: 'default' });
     const named = clause.namedBindings;
     if (!named)
         return;
@@ -28,8 +28,9 @@ function importBindings(ts, scope, statement) {
             if (element.isTypeOnly)
                 continue;
             const imported = element.propertyName?.text ?? element.name.text;
-            const kind = TRANSLATION_MODULES.has(module) && TRANSLATION_FACTORIES.has(imported) ? 'translation-factory' : 'component';
-            scope.bindings.set(element.name.text, { kind });
+            const binding = TRANSLATION_MODULES.has(module) && TRANSLATION_FACTORIES.has(imported)
+                ? { kind: 'translation-factory' } : { kind: 'component', module, name: imported };
+            scope.bindings.set(element.name.text, binding);
         }
 }
 function lexicalBindings(ts, sourceFile) {
@@ -151,12 +152,55 @@ function nestedDataObjects(ts, expression, bindingOf, excluded) {
                 nestedDataObjects(ts, element, bindingOf, excluded);
     }
 }
+/** Resolve the canonical status owner through its import binding, including aliases and namespaces. */
+function statusOwner(ts, tag, bindingOf) {
+    const binding = ts.isIdentifier(tag) ? bindingOf(tag) : ts.isPropertyAccessExpression(tag) && ts.isIdentifier(tag.expression) ? bindingOf(tag.expression) : null;
+    const module = binding?.kind === 'component' || binding?.kind === 'namespace' ? binding.module : null;
+    const name = binding?.kind === 'component' ? binding.name : ts.isPropertyAccessExpression(tag) ? tag.name.text : null;
+    return name === 'SlotView' && module !== null && /(?:^|\/)components\/composites\/SlotView(?:\/index)?(?:\.[cm]?tsx?)?$/.test(module);
+}
+/** The mandated status wiring breaks clone windows; its render body remains ordinary compared code. */
+function statusRecipe(ts, opening, bindingOf, excluded) {
+    if (!statusOwner(ts, opening.tagName, bindingOf))
+        return;
+    const attributes = opening.attributes.properties;
+    const render = attributes.find(attribute => ts.isJsxAttribute(attribute) && ts.isIdentifier(attribute.name) && attribute.name.text === 'render');
+    const value = render && ts.isJsxAttribute(render) && render.initializer && ts.isJsxExpression(render.initializer) ? unwrap(ts, render.initializer.expression) : undefined;
+    if (!value || !ts.isArrowFunction(value) || value.parameters.length !== 2 || ts.isBlock(value.body))
+        return;
+    const waiting = value.parameters[1];
+    if (!waiting || !ts.isIdentifier(waiting.name) || waiting.initializer || waiting.dotDotDotToken)
+        return;
+    const waitingBinding = bindingOf(waiting.name);
+    let forwardsLoading = false;
+    const visit = (node) => {
+        if (ts.isJsxAttribute(node) && ts.isIdentifier(node.name) && node.name.text === 'isLoading'
+            && node.initializer && ts.isJsxExpression(node.initializer)) {
+            const flag = unwrap(ts, node.initializer.expression);
+            if (flag && ts.isIdentifier(flag) && waitingBinding && bindingOf(flag) === waitingBinding)
+                forwardsLoading = true;
+        }
+        ts.forEachChild(node, visit);
+    };
+    visit(value.body);
+    if (!forwardsLoading)
+        return;
+    const wiring = attributes.filter(attribute => ts.isJsxSpreadAttribute(attribute) ? dataMapping(ts, attribute.expression, bindingOf)
+        : ts.isIdentifier(attribute.name) && ['slot', 'placeholder', 'labels', 'onRetry'].includes(attribute.name.text)
+            && !!attribute.initializer && ts.isJsxExpression(attribute.initializer) && dataMapping(ts, attribute.initializer.expression, bindingOf));
+    const hasSlot = wiring.some(attribute => ts.isJsxSpreadAttribute(attribute) || ts.isJsxAttribute(attribute) && ts.isIdentifier(attribute.name) && attribute.name.text === 'slot');
+    if (!hasSlot)
+        return;
+    for (const attribute of wiring)
+        excluded.add(attribute);
+}
 /** Canon data prop objects qualify through an imported component binding, never its chosen name or file path. */
 export function canonJsxCloneNodes(ts, sourceFile) {
     const bindingOf = lexicalBindings(ts, sourceFile);
     const excluded = new Set();
     const visit = (node) => {
         if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && importedComponent(ts, node.tagName, bindingOf)) {
+            statusRecipe(ts, node, bindingOf, excluded);
             for (const attribute of node.attributes.properties) {
                 if (!ts.isJsxAttribute(attribute) || !attribute.initializer || !ts.isJsxExpression(attribute.initializer))
                     continue;
