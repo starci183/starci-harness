@@ -29,6 +29,7 @@ interface Variation {
   readonly statusSource?: string
   readonly statusRender?: string
   readonly statusRetarget?: boolean
+  readonly helper?: string
 }
 
 const STATUS_RECIPE = `export const SlotView = (props) => {
@@ -58,6 +59,7 @@ const fixture = (t: TestContext, edition: "lite" | "full", variation: Variation 
         const Body = (props: BodyProps) => <Region slot={read} placeholder={false} render={() => ${variation.statusRender ?? "props.body"}} />;`
           : ""
       }
+      ${variation.helper ?? ""}
       export interface RootBaseProps { readonly children: ReactNode; readonly props: { readonly title: string; ${variation.extra ?? ""} }; ${variation.shape ?? ""} }
       export const RootBase = (props: RootBaseProps) => ${variation.drawing ?? `<Canvas header={{ title: props.props.title${variation.segment ? ', tabs: { label: "Tabs", items: [{ id: "one", label: "One", href: "/one" }] }' : ""} }}>${variation.status ? '<Areas areas={["body"]}><Cell area="body"><Body body={props.children} /></Cell></Areas>' : "{props.children}"}</Canvas>`};`,
     ...(variation.status
@@ -196,6 +198,70 @@ for (const edition of ["lite", "full"] as const) {
     assert.deepEqual(ids(app, "index.tsx"), [])
     assert.deepEqual(ids(app, "component.tsx"), [])
   })
+
+  const nativeImports = 'import { Page as Canvas, PaneGrid as Areas, Pane as Cell, Stack as Flow, PaneSection as Band, Section as Group } from "@starci/grammar/common";'
+  for (const family of ["core", "offset-pop"]) {
+    for (const as of ["", ' as="div"', ' as="header"', ' as="footer"'])
+      test(`${edition}/${family}: the selected native Stack${as || " default"} preserves the Page body`, (t) => {
+        const app = fixture(t, edition, { family, roleImport: nativeImports, drawing: `<Canvas><Flow gap="region"${as}>{props.children}</Flow></Canvas>` })
+        assert.deepEqual(ids(app, "index.tsx"), [])
+        assert.deepEqual(ids(app, "component.tsx"), [])
+      })
+    for (const kind of ["", ' kind="region"'])
+      test(`${edition}/${family}: real Pane context survives local Detail into native Section${kind || " default"}`, (t) => {
+        const app = fixture(t, edition, {
+          family, roleImport: nativeImports,
+          helper: `const Detail = (props) => <Group title="Detail"${kind}><Flow gap="row">{props.findings}</Flow></Group>;`,
+          drawing: '<Canvas><Areas areas={["detail"]}><Cell area="detail"><Band gap="section"><Detail findings={props.children} /></Band></Cell></Areas></Canvas>'
+        })
+        assert.deepEqual(ids(app, "index.tsx"), [])
+        assert.deepEqual(ids(app, "component.tsx"), [])
+      })
+    test(`${edition}/${family}: a finite local body helper retains the canonical ancestor context`, (t) => {
+      const app = fixture(t, edition, {
+        family, roleImport: nativeImports,
+        helper: 'const Detail = (props) => <Band><Flow gap="row">{props.findings}</Flow></Band>;',
+        drawing: '<Canvas><Areas areas={["detail"]}><Cell area="detail"><Detail findings={props.children} /></Cell></Areas></Canvas>'
+      })
+      assert.deepEqual(ids(app, "index.tsx"), [])
+      assert.deepEqual(ids(app, "component.tsx"), [])
+    })
+  }
+
+  const body = (child: string): string => `<Canvas><Areas areas={["detail"]}><Cell area="detail">${child}</Cell></Areas></Canvas>`
+  for (const [name, variation] of Object.entries({
+    noPane: { drawing: '<Canvas><Band>{props.children}</Band></Canvas>' },
+    customStackAs: { drawing: '<Canvas><Flow as={Custom}>{props.children}</Flow></Canvas>' },
+    unknownStackAs: { drawing: '<Canvas><Flow as="img">{props.children}</Flow></Canvas>' },
+    duplicateStackAs: { drawing: '<Canvas><Flow as="div" as={Custom}>{props.children}</Flow></Canvas>' },
+    foreignStack: { roleImport: `${nativeImports.replace("Stack as Flow, ", "")} import { Stack as Flow } from "foreign-design";`, drawing: '<Canvas><Flow>{props.children}</Flow></Canvas>' },
+    foreignPane: { roleImport: `${nativeImports.replace("Pane as Cell, ", "")} import { Pane as Cell } from "foreign-design";`, drawing: body('<Band>{props.children}</Band>') },
+    foreignPaneSection: { roleImport: `${nativeImports.replace("PaneSection as Band, ", "")} import { PaneSection as Band } from "foreign-design";`, drawing: body('<Band>{props.children}</Band>') },
+    shadowedPane: { drawing: `{ const Cell = (props) => <div>{props.children}</div>; return ${body('<Band>{props.children}</Band>')}; }` },
+    spreadPane: { drawing: '<Canvas><Areas areas={["detail"]}><Cell area="detail" {...view}><Band>{props.children}</Band></Cell></Areas></Canvas>' },
+    siblingContext: { drawing: '<Canvas><Cell area="other" /><Band>{props.children}</Band></Canvas>' },
+    paneError: { drawing: body('<Band error={{ message: "failed" }}>{props.children}</Band>') },
+    dynamicPaneError: { drawing: body('<Band error={error}>{props.children}</Band>') },
+    undefinedPaneError: { drawing: body('<Band error={undefined}>{props.children}</Band>') },
+    paneSpread: { drawing: body('<Band {...view}>{props.children}</Band>') },
+    customPaneSectionAs: { drawing: body('<Band as={Custom}>{props.children}</Band>') },
+    listSection: { drawing: body('<Band><Group kind="list">{props.children}</Group></Band>') },
+    figuresSection: { drawing: body('<Band><Group kind="figures">{props.children}</Group></Band>') },
+    dynamicSection: { drawing: body('<Band><Group kind={kind}>{props.children}</Group></Band>') },
+    unknownSection: { drawing: body('<Band><Group kind="unknown">{props.children}</Group></Band>') },
+    sectionError: { drawing: body('<Band><Group error={error}>{props.children}</Group></Band>') },
+    undefinedSectionError: { drawing: body('<Band><Group error={undefined}>{props.children}</Group></Band>') },
+    sectionSpread: { drawing: body('<Band><Group {...view}>{props.children}</Group></Band>') },
+    foreignSection: { roleImport: `${nativeImports.replace(", Section as Group", "")} import { Section as Group } from "foreign-design";`, drawing: body('<Band><Group>{props.children}</Group></Band>') },
+    duplicatedLayout: { drawing: body('<Band><Flow>{props.children}{props.children}</Flow></Band>') },
+    droppedLayout: { drawing: '<Canvas><Flow gap="region" /></Canvas>' },
+    hiddenRefusal: { helper: 'const Detail = (props) => <Group>{false ? props.findings : null}</Group>;', drawing: body('<Band><Detail findings={props.children} /></Band>') }
+  } satisfies Record<string, Variation>))
+    test(`${edition}: native body capability refuses ${name}`, (t) => {
+      const app = fixture(t, edition, { roleImport: nativeImports, ...variation })
+      assert.ok(ids(app, "index.tsx").includes("none"))
+      assert.ok(ids(app, "component.tsx").includes("member"))
+    })
 
   test(`${edition}: a selected export alias within the real canonical region entry keeps its owner proof`, (t) => {
     const app = fixture(t, edition, {

@@ -2,7 +2,7 @@
 import type { TSESTree } from "@typescript-eslint/utils"
 import { grammarContractFor } from "#runtime/scripts/lib/grammar-lint.mjs"
 import { canonicalStatusOwnerBinding } from "#runtime/scripts/hfs/architecture/canon-jsx-clones.mjs"
-import { attribute, attributeValue, walk } from "./ast.ts"
+import { attribute, attributeValue, stringOf, walk } from "./ast.ts"
 import { isFn, unwrap, variableOf } from "./bindings.ts"
 import { hfsOf } from "./hfs.ts"
 import { importedHeader, jsxImport, type Owner } from "./owner-source.ts"
@@ -46,18 +46,38 @@ const references = (content: Content, node: Node): number => {
   return count
 }
 
-const bodyContainer = (owner: Owner, opening: TSESTree.JSXOpeningElement): boolean => {
+const bodyContainer = (owner: Owner, opening: TSESTree.JSXOpeningElement, contexts: ReadonlySet<string>): ReadonlySet<string> | null => {
   const family = hfsOf(owner.context).grammar
-  if (!family) return false
+  if (!family) return null
   const roles = grammarContractFor(family).semanticRoles
   const page = record(roles) ? roles.page : null
-  if (!record(page) || !Array.isArray(page.bodyContainers) || !Array.isArray(page.entries)) return false
+  if (!record(page) || !Array.isArray(page.bodyContainers) || !Array.isArray(page.entries)) return null
   const imported = jsxImport(owner.context, opening)
-  return (
-    imported !== null &&
-    page.bodyContainers.includes(imported.exported) &&
-    page.entries.some((entry) => typeof entry === "string" && entry.replace("<family>", family) === imported.source)
-  )
+  if (!imported || !page.bodyContainers.includes(imported.exported) || !page.entries.some((entry) => typeof entry === "string" && entry.replace("<family>", family) === imported.source)) return null
+  if (page.bodyContainerConstraints !== undefined && !record(page.bodyContainerConstraints)) return null
+  const constraint = record(page.bodyContainerConstraints) ? page.bodyContainerConstraints[imported.exported] : undefined
+  if (constraint === undefined) return contexts
+  if (!record(constraint) || Object.keys(constraint).some((key) => !["requiresContext", "providesContext", "absentProps", "literalProps"].includes(key))) return null
+  if (constraint.requiresContext !== undefined && (typeof constraint.requiresContext !== "string" || !contexts.has(constraint.requiresContext))) return null
+  if (constraint.absentProps !== undefined) {
+    const absent = constraint.absentProps
+    if (!Array.isArray(absent) || !absent.every((name) => typeof name === "string")) return null
+    if (opening.attributes.some((item) => item.type === "JSXAttribute" && item.name.type === "JSXIdentifier" && absent.includes(item.name.name))) return null
+  }
+  if (constraint.literalProps !== undefined) {
+    if (!record(constraint.literalProps)) return null
+    for (const [name, choices] of Object.entries(constraint.literalProps)) {
+      if (!Array.isArray(choices) || !choices.every((choice) => typeof choice === "string")) return null
+      for (const item of opening.attributes) {
+        if (item.type !== "JSXAttribute" || item.name.type !== "JSXIdentifier" || item.name.name !== name) continue
+        const value = attributeValue(item)
+        const literal = value && stringOf(unwrap(value))
+        if (literal === null || !choices.includes(literal)) return null
+      }
+    }
+  }
+  if (constraint.providesContext === undefined) return contexts
+  return typeof constraint.providesContext === "string" ? new Set(contexts).add(constraint.providesContext) : null
 }
 
 /** The exactly returned fragment/expression, with no unused or duplicated call hidden beside it. */
@@ -176,10 +196,10 @@ const helperOwner = (content: Content, opening: TSESTree.JSXOpeningElement, read
 }
 
 /** A finite path must consume the content exactly once; unknown JSX/calls/branches fail closed. */
-const rendered = (content: Content, node: Node, readers: BodyReaders, seen: ReadonlySet<Node>): boolean => {
+const rendered = (content: Content, node: Node, readers: BodyReaders, seen: ReadonlySet<Node>, contexts: ReadonlySet<string>): boolean => {
   if (parameterMember(content, node)) return true
-  if (node.type === "JSXExpressionContainer") return rendered(content, node.expression, readers, seen)
-  if (node.type === "JSXFragment") return renderedChildren(content, node.children, readers, seen)
+  if (node.type === "JSXExpressionContainer") return rendered(content, node.expression, readers, seen, contexts)
+  if (node.type === "JSXFragment") return renderedChildren(content, node.children, readers, seen, contexts)
   if (node.type !== "JSXElement" || node.openingElement.attributes.some((item) => item.type === "JSXSpreadAttribute")) return false
   const imported = jsxImport(content.owner.context, node.openingElement)
   if (imported && canonicalStatusOwnerBinding(imported.source, imported.exported)) {
@@ -190,9 +210,10 @@ const rendered = (content: Content, node: Node, readers: BodyReaders, seen: Read
     const values = readers.returned({ ...content.owner, value: callback })
     return values !== null && values.length > 0 && values.every((value) => parameterMember(content, value))
   }
-  if (bodyContainer(content.owner, node.openingElement)) {
+  const containerContexts = bodyContainer(content.owner, node.openingElement, contexts)
+  if (containerContexts !== null) {
     if (node.openingElement.attributes.some((item) => references(content, item) > 0)) return false
-    return renderedChildren(content, node.children, readers, seen)
+    return renderedChildren(content, node.children, readers, seen, containerContexts)
   }
   const helper = helperOwner(content, node.openingElement, readers)
   if (!helper || seen.has(helper.value)) return false
@@ -206,13 +227,13 @@ const rendered = (content: Content, node: Node, readers: BodyReaders, seen: Read
     references(target, helper.value) === 1 &&
     values !== null &&
     values.length > 0 &&
-    values.every((value) => rendered(target, value, readers, new Set(seen).add(helper.value)))
+    values.every((value) => rendered(target, value, readers, new Set(seen).add(helper.value), contexts))
   )
 }
 
-const renderedChildren = (content: Content, children: readonly TSESTree.JSXChild[], readers: BodyReaders, seen: ReadonlySet<Node>): boolean => {
+const renderedChildren = (content: Content, children: readonly TSESTree.JSXChild[], readers: BodyReaders, seen: ReadonlySet<Node>, contexts: ReadonlySet<string> = new Set()): boolean => {
   const carrying = children.filter((child) => references(content, child) > 0)
-  return carrying.length === 1 && carrying[0] !== undefined && rendered(content, carrying[0], readers, seen)
+  return carrying.length === 1 && carrying[0] !== undefined && rendered(content, carrying[0], readers, seen, contexts)
 }
 
 /** Only Page's body carries owner content; a header/unknown attribute/dead callback cannot stand in for it. */
