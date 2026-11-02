@@ -4,6 +4,8 @@
 
 - Changed: Refresh shared repository identity and quality-service rule data.
 
+- Fixed: Preserve generated-contract provenance in front-end tier and bounds checks.
+
 ## 3.11.16
 
 - Changed: Refresh the generated canon pins for the governed app-check release.

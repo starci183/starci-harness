@@ -4,6 +4,8 @@
 
 - Changed: Refresh shared repository identity and release-aligned canon data.
 
+- Fixed: Preserve generated-contract provenance in front-end tier and bounds checks.
+
 ## 9.9.9
 
 - Changed: Preserve mounted RootPage children through selected native body layouts only when their metadata constraints, immutable props and required context are proven. Retain exact body and import identity, and refresh the generated canon pins.
