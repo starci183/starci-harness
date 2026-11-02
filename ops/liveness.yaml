@@ -49,7 +49,7 @@ reviveMax: 3
 # next`, `supervisor tick`) never waits in it: its own heavy command is refused and its step's verifies and waves run as detached jobs; the wait is logged (stderr and a `heavy-wait` host event) and
 # never fails its check: a `task verify` command still waiting at the verify's contract budget is refused HOST_HELD, a verify with
 # no verdict that spends no try and is verified again on the next step. Its timeout starts at admission, never in the queue: timeoutMinutes for its kind (an install's budget is
-# sized for a cold npm ci on this host), else the caller's (a test command's comes from its contract). Each runs below normal OS
+# sized for a cold npm ci on this host, an eslint's grows with the files it names, timeoutMinutesPer1000Files), else the caller's (a test command's comes from its contract). Each runs below normal OS
 # priority; a node tool under `--max-old-space-size` of its kind's memoryMb, a uat container under `--memory`; a test runner
 # (jest, vitest) with `--maxWorkers` testWorkers, or 1 under pressure (fewer admitted than the cap). A worker seat launches
 # only while free memory is at least seatFreeMb; otherwise its task stays queued and the hold is recorded (since when, on what
@@ -94,6 +94,11 @@ heavy:
     install: 15
     tsc: 10
     eslint: 10
+  # Liveness, not quality: the longest a child may run before it is ended as hung, never a threshold its result is judged by. A lint that names
+  # the files it judges (an ESLint child of an app check or app lint) gets max(timeoutMinutes, rate x files / 1000), so a large side on a slow
+  # two-core runner is not ended for being large (a whole typed back end of 11,000 files outgrew a flat 10 min in CI); a hung child is still ended.
+  timeoutMinutesPer1000Files:
+    eslint: 5
   testWorkers: "50%"
   seatFreeMb: 6144
   starvedTicketMinutes: 45

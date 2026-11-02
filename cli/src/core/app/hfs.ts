@@ -1,6 +1,6 @@
 import { hfsLimitsEnv, testWorkerArgs, withHeavySlot } from "../../harness/heavy.js"
 import { captureCommand } from "../../shared/exec.js"
-import type { HeavyNodeRun } from "@starci/hfs/runtime/scripts/api/node/run-node.mjs"
+import type { HeavyNodeRequest, HeavyNodeRun } from "@starci/hfs/runtime/scripts/api/node/run-node.mjs"
 import { loadPolicy } from "../../harness/policy.js"
 import { hostAgeIdentity } from "../../harness/secret-env.js"
 import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
@@ -83,13 +83,17 @@ const parsed = (text: string): unknown => {
     }
 }
 
-/** The HFS child execution port: admission and worker limits apply to each actual Node tool. */
-export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): HeavyNodeRun => async (request) =>
+/**
+ * The HFS child execution port: admission and worker limits apply to each actual Node tool. A request that names the number of files it judges
+ * (`files`, @starci/hfs 5.0.8 and later) has its kind's liveness budget scaled with it (`heavyTimeoutMinutes`).
+ */
+export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): HeavyNodeRun => async (request: HeavyNodeRequest & { readonly files?: number | undefined }) =>
     admit(request.kind, request.label, request.cwd, {
         baseEnv: request.env ?? process.env,
         env: { NODE_OPTIONS: request.env === undefined ? process.env.NODE_OPTIONS ?? "" : request.env.NODE_OPTIONS ?? "" },
         captureBytes: request.maxBuffer,
         ...(request.timeoutMs === undefined ? {} : { timeoutMs: request.timeoutMs }),
+        ...(request.files === undefined ? {} : { files: request.files }),
     }, async (held) => {
         const argv = [process.execPath, ...request.args]
         const run = await capture(request.kind === "test" && !argv.includes("--runInBand") ? testWorkerArgs(argv, held) : argv, request.cwd, held.options)

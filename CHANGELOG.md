@@ -22,6 +22,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- The eslint heavy budget scales with the files the child judges: `heavy.timeoutMinutesPer1000Files` of ops/liveness.yaml raises it above `timeoutMinutes` (never below), so a large side on a slow runner is not ended as hung; it is a liveness bound, not a quality threshold. A request from @starci/hfs 5.0.8 and later names its file count; an older one keeps the flat budget.
+
 ## [1.1.0-alpha.48] - 2026-11-02
 
 ### Changed

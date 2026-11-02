@@ -32,6 +32,7 @@ const heavySchema = z.strictObject({
     estimateMb: z.strictObject(Object.fromEntries(HEAVY_KINDS.map((kind) => [kind, z.number().int().positive()])) as Record<HeavyKind, z.ZodNumber>),
     memoryMb: z.strictObject(Object.fromEntries(HEAVY_KINDS.map((kind) => [kind, z.number().int().positive()])) as Record<HeavyKind, z.ZodNumber>),
     timeoutMinutes: z.partialRecord(z.enum(HEAVY_KINDS), z.number().positive()),
+    timeoutMinutesPer1000Files: z.partialRecord(z.enum(HEAVY_KINDS), z.number().positive()).optional(),
     testWorkers: z.string().regex(/^(?:\d+|\d{1,3}%)$/),
     seatFreeMb: z.number().int().positive(),
     starvedTicketMinutes: z.number().positive(),
@@ -59,6 +60,18 @@ export const loadHeavyRules = (dir: string = locateOps()): HeavyRules => {
     if (!parsed.success) throw new Refusal("OPS_INVALID", `${file} heavy block is invalid: ${z.prettifyError(parsed.error)}`)
     loaded.set(dir, parsed.data.heavy)
     return parsed.data.heavy
+}
+
+/**
+ * The liveness budget of one heavy command in minutes, or undefined when the kind declares none (the caller's applies): the kind's
+ * `timeoutMinutes`, raised for a command that names the number of files it judges to `timeoutMinutesPer1000Files` for each thousand of them, and
+ * never below `timeoutMinutes`. It bounds a hung child; it measures no quality, and a command that finishes early is never judged by it.
+ */
+export const heavyTimeoutMinutes = (rules: HeavyRules, kind: HeavyKind, files?: number): number | undefined => {
+    const base = rules.timeoutMinutes[kind]
+    if (base === undefined) return undefined
+    const rate = rules.timeoutMinutesPer1000Files?.[kind]
+    return rate === undefined || files === undefined ? base : Math.max(base, (rate * files) / 1000)
 }
 
 /**
@@ -642,7 +655,7 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
     const env = { ...options.env, [HEAVY_HELD_ENV]: "1", NODE_OPTIONS: nodeOptions(rules, kind, options.env) }
     // The kind's own budget (an install sized for a cold npm ci) replaces the caller's; it runs from the child's spawn, which
     // comes after admission, so time in the queue never counts against it.
-    const budget = rules.timeoutMinutes[kind]
+    const budget = heavyTimeoutMinutes(rules, kind, options.files)
     const timed = budget === undefined ? options : { ...options, timeoutMs: budget * 60_000 }
     const base: RunOptions = { ...timed, env, priority: constants.priority.PRIORITY_BELOW_NORMAL }
     if (process.env[HEAVY_HELD_ENV] === "1") return work({ options: base, pressure: false, rules })

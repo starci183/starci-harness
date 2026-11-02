@@ -31,6 +31,8 @@ export interface RunOptions {
     /** Opt-in complete capture: overflow, a signal or unclosed output pipes refuses instead of returning partial text. */
     readonly captureBytes?: number
     readonly timeoutMs?: number
+    /** How many source files the command judges: the heavy-command budget of a kind that scales with its work (harness/heavy.ts `heavyTimeoutMinutes`) grows with it. */
+    readonly files?: number
     readonly env?: Readonly<Record<string, string>>
     /** The whole environment instead of this process's: a host service must not inherit the agent session that started it. */
     readonly baseEnv?: NodeJS.ProcessEnv
