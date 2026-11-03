@@ -5352,7 +5352,7 @@ STACKS_LOCAL_CONFIG_INVALID:
   title_vi: "Khối local của môi trường docker-compose không nhất quán"
   meaning_vi: "environments.<env>.local thiếu hoặc có trường lạ, cổng trùng, dịch vụ không có trong tệp compose, vai trò cơ sở dữ liệu dùng chung, hoặc thăm dò không nằm trên loopback."
   causes_vi:
-    - "Vi phạm R368: khối local được kiểm bằng đúng normalizeLocal mà các động từ starci app stack up, down, doctor dùng."
+    - "Vi phạm R372: khối local được kiểm bằng đúng normalizeLocal mà các động từ starci app stack up, down, doctor dùng."
   nextStep_vi: "Sửa đúng trường nêu trong thông báo (environments.<env>.local.<đường dẫn>), rồi chạy lại starci app check."
   owner: op-retry
   kind: check-finding
@@ -5362,7 +5362,7 @@ STACKS_DEV_UNDECLARED:
   title_vi: "Ứng dụng lite chưa khai báo môi trường dev chạy được"
   meaning_vi: "Không có environment nào có runtime docker-compose và khối local, nên starci app stack up --env dev không có gì để chạy."
   causes_vi:
-    - "Vi phạm R368: môi trường dev vẫn là Swarm hoặc chưa được khai báo."
+    - "Vi phạm R372: môi trường dev vẫn là Swarm hoặc chưa được khai báo."
   nextStep_vi: "Khai báo environments.dev với runtime docker-compose, composeFiles và khối local; runbook của nó nêu starci app stack up --env dev."
   owner: op-retry
   kind: check-finding
@@ -5372,7 +5372,7 @@ STACKS_RUNBOOK_DOCKER_COMMAND:
   title_vi: "Runbook dev chứa lệnh docker hoặc không nêu lệnh khởi động duy nhất"
   meaning_vi: "README của môi trường docker-compose có dòng docker build, run, compose hay stack deploy, hoặc không nêu starci app stack up --env <env>."
   causes_vi:
-    - "Vi phạm R369 và quy tắc cứng 8: Docker do harness chạy, tác tử không chạy tay."
+    - "Vi phạm R373 và quy tắc cứng 8: Docker do harness chạy, tác tử không chạy tay."
   nextStep_vi: "Thay các lệnh docker bằng starci app stack up --env <env> --execute và các động từ down, status, logs của nó."
   owner: op-retry
   kind: check-finding

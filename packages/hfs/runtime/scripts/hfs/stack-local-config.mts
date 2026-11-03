@@ -12,6 +12,7 @@ export const LOCAL_CONFIG_CODE = 'STACKS_LOCAL_CONFIG';
 const NAME = /^[a-z][a-z0-9-]{0,40}$/u;
 const KEY = /^[A-Z][A-Z0-9_]{0,63}$/u;
 const PROJECT = /^[a-z0-9][a-z0-9_-]{0,62}$/u;
+const NAME_PATTERN = /^[a-z][a-z0-9-]{0,40}$/u;
 const SQL_NAME = /^[a-z][a-z0-9_]{0,62}$/u;
 /** The generators `starci app secret init --env <env>` knows (PROJECT-STACKS-5: dev-only values, created once, never replaced). */
 export const GENERATORS = Object.freeze(['hex', 'base64', 'password', 'uuid', 'rsa-pem', 'ec-pem']);
@@ -21,6 +22,8 @@ export interface CustodyRef { member: string; key: string }
 /** A command the verbs run: an argv list (never a shell line), run from `cwd` (app-root relative). */
 export interface LocalCommand {
   name: string; argv: string[]; cwd: string; heavy: 'install' | 'build' | 'none'; skipIfExists: string | null; env: Record<string, string>; files: string[];
+  /** Seed only: `migrate` runs it once the database is migrated, `ready` once the processes answer (a seed that signs up through the api). */
+  after: 'migrate' | 'ready';
 }
 /** A compose service the environment starts and how its readiness is observed. */
 export interface LocalService { name: string; wait: 'healthy' | 'started' | 'tcp'; port: string | null }
@@ -45,6 +48,8 @@ export interface LocalBlock {
   composeEnv: Array<CustodyRef & { name: string }>;
   /** Least grants: the keys one compose service may read, mounted from `STACK_GRANT_<NAME>` (a directory holding only those keys). */
   grants: Array<{ name: string; keys: string[] }>;
+  /** Data directories under the state base (`${data}/<name>`, `STACK_DATA_DIR`), created by `up` before anything starts: bind mounts and file stores of native processes. */
+  dirs: string[];
   custody: CustodyGenerator[];
   setup: LocalCommand[];
   seed: LocalCommand[];
@@ -55,8 +60,9 @@ export interface LocalBlock {
   resources: { diskGb: number; ramMb: number };
 }
 
-const TOP = ['project', 'ports', 'services', 'database', 'composeEnv', 'grants', 'custody', 'setup', 'seed', 'processes', 'ready', 'verify', 'origins', 'resources'];
+const TOP = ['project', 'ports', 'services', 'database', 'composeEnv', 'grants', 'dirs', 'custody', 'setup', 'seed', 'processes', 'ready', 'verify', 'origins', 'resources'];
 const COMMAND = ['name', 'argv', 'cwd', 'heavy', 'skipIfExists', 'env', 'files'];
+const SEED = [...COMMAND, 'after'];
 const PROCESS = [...COMMAND, 'port', 'health'];
 
 const text = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
@@ -86,7 +92,7 @@ function strings(c: Collector, at: string, value: unknown, pattern: RegExp | nul
 }
 
 function command(c: Collector, at: string, value: unknown, allowed: readonly string[], names: Set<string>): LocalCommand {
-  const empty: LocalCommand = { name: '', argv: [], cwd: '.', heavy: 'none', skipIfExists: null, env: {}, files: [] };
+  const empty: LocalCommand = { name: '', argv: [], cwd: '.', heavy: 'none', skipIfExists: null, env: {}, files: [], after: 'migrate' };
   if (!closedFields(c, at, value, allowed, 'local')) return empty;
   const entry = value as Record<string, unknown>;
   const name = String(entry.name ?? '');
@@ -112,8 +118,14 @@ function command(c: Collector, at: string, value: unknown, allowed: readonly str
   return {
     name, argv, cwd: entry.cwd === undefined ? '.' : relative(c, `${at}.cwd`, entry.cwd), heavy: heavy as LocalCommand['heavy'],
     skipIfExists: entry.skipIfExists === undefined ? null : relative(c, `${at}.skipIfExists`, entry.skipIfExists), env,
-    files: strings(c, `${at}.files`, entry.files, KEY),
+    files: strings(c, `${at}.files`, entry.files, KEY), after: afterOf(c, at, entry.after),
   };
+}
+
+function afterOf(c: Collector, at: string, value: unknown): 'migrate' | 'ready' {
+  if (value === undefined) return 'migrate';
+  if (value !== 'migrate' && value !== 'ready') c.problem(`${at}.after`, 'must be migrate or ready');
+  return value === 'ready' ? 'ready' : 'migrate';
 }
 
 function probe(c: Collector, at: string, value: unknown): HttpProbe {
@@ -260,9 +272,10 @@ export function normalizeLocal(raw: unknown, { project, env }: { project: string
       if (keys.length === 0) c.problem(`${at}.keys`, 'must list the keys the service reads');
       return { name: String(value.name), keys };
     }),
+    dirs: strings(c, 'dirs', entry.dirs, NAME_PATTERN),
     custody: custodyOf(c, entry.custody),
     setup: listOf(c, 'setup', entry.setup, (item, index) => command(c, `setup[${index}]`, item, COMMAND, names)),
-    seed: listOf(c, 'seed', entry.seed, (item, index) => command(c, `seed[${index}]`, item, COMMAND, names)),
+    seed: listOf(c, 'seed', entry.seed, (item, index) => command(c, `seed[${index}]`, item, SEED, names)),
     processes: listOf(c, 'processes', entry.processes, (item, index) => {
       const at = `processes[${index}]`;
       const base = command(c, at, item, PROCESS, names);

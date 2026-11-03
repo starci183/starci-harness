@@ -28,6 +28,17 @@ export interface LocalDeps extends HostDeps {
 export const DEFAULT_TIMEOUT_SECONDS = 180;
 export const stateOf = (ctx: StackContext, local: LocalConfig): string => stateDirectory(ctx.env, local.project, local.env);
 
+/** The data directory of the environment under its state directory (`${data}` in a declared value, `STACK_DATA_DIR` in compose). */
+export const dataOf = (ctx: StackContext, local: LocalConfig): string => path.join(stateOf(ctx, local), 'data');
+
+/** Expands `${port.<name>}` and `${data}` in a declared value. */
+export const expand = (ctx: StackContext, local: LocalConfig, value: string): string => expandPorts(value, local.ports).replaceAll('${data}', dataOf(ctx, local).replaceAll('\\', '/'));
+
+/** Creates the declared data directories. */
+export function makeDataDirectories(ctx: StackContext, local: LocalConfig): void {
+  for (const name of local.dirs) fs.mkdirSync(path.join(dataOf(ctx, local), name), { recursive: true });
+}
+
 /** `STACK_PORT_<NAME>` for every declared port: the names compose files interpolate (`127.0.0.1:${STACK_PORT_DB}:5432`). */
 export const portEnvironment = (ports: Readonly<Record<string, number>>): Record<string, string> =>
   Object.fromEntries(Object.entries(ports).map(([name, port]) => [`STACK_PORT_${name.toUpperCase().replaceAll('-', '_')}`, String(port)]));
@@ -36,7 +47,7 @@ export const portEnvironment = (ports: Readonly<Record<string, number>>): Record
 export function grantEnvironment(ctx: StackContext, local: LocalConfig): Record<string, string> {
   if (local.grants.length === 0) return {};
   const directory = materializedDirectory(local.repoRoot, local.env, ctx.env, ctx.platform);
-  return Object.fromEntries(local.grants.map((grant) => [`STACK_GRANT_${grant.name.toUpperCase().replaceAll('-', '_')}`, grantDirectory(directory, grant.name)]));
+  return Object.fromEntries(local.grants.map((grant) => [`STACK_GRANT_${grant.name.toUpperCase().replaceAll('-', '_')}`, grantDirectory(directory, grant.name).replaceAll('\\', '/')]));
 }
 
 /** The docker compose argv of the environment's project and files. */
@@ -48,7 +59,7 @@ export async function compose(ctx: StackContext, local: LocalConfig, args: reado
   const bare = local.composeEnv.filter((item) => !Object.hasOwn(values, item.name)).map((item) => item.name);
   // A command that creates or enters a container needs the real values; the others only interpolate the file, where a placeholder does.
   if (bare.length && ['up', 'exec', 'run', 'create', 'start', 'restart'].includes(String(args[0]))) throw refusal('STACK_LOCAL_COMPOSE_VALUES', `docker compose ${String(args[0])} needs the custody values of ${bare.join(', ')}`);
-  const env = { ...ctx.env, ...portEnvironment(local.ports), ...grantEnvironment(ctx, local), ...Object.fromEntries(bare.map((name) => [name, 'placeholder'])), ...values };
+  const env = { ...ctx.env, ...portEnvironment(local.ports), ...grantEnvironment(ctx, local), STACK_DATA_DIR: dataOf(ctx, local).replaceAll('\\', '/'), ...Object.fromEntries(bare.map((name) => [name, 'placeholder'])), ...values };
   const argv = composeArgs(local, args);
   if (heavy && ctx.heavy) return ctx.heavy({ kind: 'build', label: `${local.project} ${label}`, cwd: local.repoRoot, argv: ['docker', ...argv], env });
   return ctx.spawn('docker', argv, { cwd: local.repoRoot, env, ...(input === undefined ? {} : { input }) });
@@ -67,7 +78,7 @@ export function composeValues(local: LocalConfig, custody: Custody | null): Reco
 /** The environment a command or process runs with: ports expanded, custody as `<KEY>_FILE`, the database URL as the environment declares. */
 export function runEnvironment(ctx: StackContext, local: LocalConfig, run: LocalCommand, custody: Custody | null, role: 'owner' | 'app' | null): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...ctx.env, ...portEnvironment(local.ports) };
-  for (const [key, value] of Object.entries(run.env)) env[key] = expandPorts(value, local.ports);
+  for (const [key, value] of Object.entries(run.env)) env[key] = expand(ctx, local, value);
   if (custody) Object.assign(env, fileEnvironment(custody, run.files));
   const url = custody && role ? databaseUrl(local, custody, role) : null;
   if (local.database && url !== null && custody) {
@@ -97,7 +108,7 @@ const launcher = (ctx: Pick<StackContext, 'platform'>, argv: readonly string[]):
 /** Runs one setup or seed command to its end, through the governor when its class is heavy. A non-zero exit is a failure naming the command and its first error line. */
 export async function runCommand(ctx: StackContext, local: LocalConfig, run: LocalCommand, env: NodeJS.ProcessEnv): Promise<void> {
   const cwd = path.join(local.repoRoot, run.cwd);
-  const [command, args] = launcher(ctx, run.argv.map((part) => expandPorts(part, local.ports)));
+  const [command, args] = launcher(ctx, run.argv.map((part) => expand(ctx, local, part)));
   const result = run.heavy !== 'none' && ctx.heavy
     ? await ctx.heavy({ kind: run.heavy, label: `${local.project} ${run.name}`, cwd, argv: [command, ...args], env })
     : ctx.spawn(command, args, { cwd, env });
@@ -119,7 +130,7 @@ export function startProcess(ctx: StackContext, local: LocalConfig, run: LocalCo
   fs.mkdirSync(path.dirname(log), { recursive: true });
   const descriptor = fs.openSync(log, 'a');
   try {
-    const [command, args] = launcher(ctx, run.argv.map((part) => expandPorts(part, local.ports)));
+    const [command, args] = launcher(ctx, run.argv.map((part) => expand(ctx, local, part)));
     const child = ctx.spawn(command, args, { background: true, detached: true, cwd: path.join(local.repoRoot, run.cwd), env, stdio: ['ignore', descriptor, descriptor], windowsHide: true });
     const pid = child.pid;
     if (typeof pid !== 'number') throw failure('STACK_LOCAL_COMMAND', `${run.name} did not start: ${child.spawnError?.message ?? 'no process id'}`);
@@ -137,7 +148,7 @@ export function stopProcess(ctx: Pick<StackContext, 'spawn' | 'platform'>, pid: 
 
 /** One HTTP probe against its expanded URL; the verdict and a detail line. */
 export async function probe(ctx: StackContext, local: LocalConfig, row: HttpProbe): Promise<{ ok: boolean; detail: string }> {
-  const url = expandPorts(row.url, local.ports);
+  const url = expand(ctx, local, row.url);
   try {
     const response = await ctx.fetch(url, { method: row.method, redirect: 'manual', signal: AbortSignal.timeout(5000) });
     if (response.status !== row.status) return { ok: false, detail: `${row.name}: ${url} answered ${response.status}, ${row.status} expected` };

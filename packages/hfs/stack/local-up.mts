@@ -13,7 +13,7 @@ import type { LocalConfig } from './local-config.mjs';
 import { missingKeys, missingStep, openCustody } from './local-custody.mjs';
 import type { Custody } from './local-custody.mjs';
 import { hostRefusal, preflight, runSetup } from './local-prepare.mjs';
-import { DEFAULT_TIMEOUT_SECONDS, commandDigest, compose, composeValues, databaseUrl, isAlive, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, waitFor } from './local-run.mjs';
+import { DEFAULT_TIMEOUT_SECONDS, makeDataDirectories, commandDigest, compose, composeValues, databaseUrl, isAlive, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, waitFor } from './local-run.mjs';
 import type { LocalDeps } from './local-run.mjs';
 import { readRecord, writeRecord } from './local-state.mjs';
 
@@ -78,11 +78,11 @@ async function migrate(ctx: StackContext, local: LocalConfig, custody: Custody, 
 }
 
 /** Runs the seed commands once each (a receipt keyed by the command's digest); the seed owns its idempotence beyond that. */
-async function seed(ctx: StackContext, local: LocalConfig, custody: Custody): Promise<string[]> {
+async function seed(ctx: StackContext, local: LocalConfig, custody: Custody, after: 'migrate' | 'ready'): Promise<string[]> {
   const dir = stateOf(ctx, local);
   const record = readRecord(dir);
   const out: string[] = [];
-  for (const run of local.seed) {
+  for (const run of local.seed.filter((item) => item.after === after)) {
     if (record.receipts.seed[run.name]?.digest === commandDigest(run)) { out.push(`seed ${run.name}: already done`); continue; }
     await runCommand(ctx, local, run, runEnvironment(ctx, local, run, custody, 'owner'));
     record.receipts.seed[run.name] = { at: new Date(ctx.now()).toISOString(), digest: commandDigest(run) };
@@ -133,6 +133,7 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
   const custody = openCustody(ctx, local);
   lines.push(`custody: ${custody.values.size} key file(s) in the host-local directory`);
   lines.push(...await runSetup(ctx, local, custody));
+  makeDataDirectories(ctx, local);
   const values = composeValues(local, custody);
   const started = await compose(ctx, local, ['up', '-d', ...local.services.map((service) => service.name)], { values, heavy: true, label: 'compose up' });
   if (started.status !== 0) throw failure('STACK_LOCAL_COMPOSE', `docker compose up failed: ${(started.stderr.trim().split(/\r?\n/u)[0] ?? '').slice(0, 200)}`);
@@ -142,12 +143,13 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
     lines.push(`service ${ready.detail}`);
     if (!ready.ok) throw failure('STACK_LOCAL_SERVICE', `${service.name} did not become ready in ${timeoutSeconds}s (${ready.detail}); read it with: starci app stack logs --env ${local.env} --service ${service.name}`);
   }
-  lines.push(await provisionDatabase(ctx, local, custody), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody), ...startProcesses(ctx, local, custody, deps));
+  lines.push(await provisionDatabase(ctx, local, custody), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate'), ...startProcesses(ctx, local, custody, deps));
   for (const row of local.ready) {
     const result = await waitFor(ctx, deadline, () => probe(ctx, local, row));
     lines.push(`${result.ok ? 'ok    ' : 'FAIL  '}ready ${result.detail}`);
     if (!result.ok) throw failure('STACK_LOCAL_READY', `${row.name} is not ready: ${result.detail}; read a process log with: starci app stack logs --env ${local.env} --service ${local.processes.map((run) => run.name).join('|')}`);
   }
+  lines.push(...await seed(ctx, local, custody, 'ready'));
   lines.push(...local.origins.map((origin) => `origin ${origin.name}: ${origin.url.replaceAll(/\$\{port\.([a-z][a-z0-9-]*)\}/gu, (_whole, name: string) => String(local.ports[name]))}`));
   return { ok: true, lines, data: { origins: local.origins } };
 }

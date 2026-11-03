@@ -1,4 +1,4 @@
-// R368 and R369 (rules/stacks-local.mjs): a lite app declares a runnable dev environment, the local block is coherent, and the dev runbook names the
+// R372 and R373 (rules/stacks-local.mjs): a lite app declares a runnable dev environment, the local block is coherent, and the dev runbook names the
 // harness verb instead of docker commands. Also the least grants a compose service mounts (STACK_GRANT_<NAME>).
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,16 +29,16 @@ function app(t: { after: (fn: () => void) => void }, { environment = `  dev:\n  
 const run = (root: string) => stacksLocalFindings({ repoRoot: root, repo: { kind: 'app', edition: 'lite' } as never, isRoot: true });
 const codes = (root: string): string[] => run(root).map((finding) => finding.code);
 
-test('R368 a coherent dev environment with a runbook that names the verb raises nothing', (t) => {
+test('R372 a coherent dev environment with a runbook that names the verb raises nothing', (t) => {
   assert.deepEqual(codes(app(t)), []);
 });
 
-test('R368 a lite app without a docker-compose environment is STACKS_DEV_UNDECLARED, and a swarm dev is not one', (t) => {
+test('R372 a lite app without a docker-compose environment is STACKS_DEV_UNDECLARED, and a swarm dev is not one', (t) => {
   const swarm = app(t, { environment: '  dev:\n    status: supported\n    runtime: docker-swarm\n    composeFiles: [infra/swarm/stack.yaml]\n    components: {}\n    runbook: README.md\n    secrets: []\n' });
   assert.deepEqual(codes(swarm), ['STACKS_DEV_UNDECLARED']);
 });
 
-test('R368 a docker-compose environment without a local block, or with a service the compose files lack, is STACKS_LOCAL_CONFIG_INVALID', (t) => {
+test('R372 a docker-compose environment without a local block, or with a service the compose files lack, is STACKS_LOCAL_CONFIG_INVALID', (t) => {
   const bare = app(t, { environment: '  dev:\n    status: supported\n    runtime: docker-compose\n    composeFiles: [infra/compose/compose.yaml]\n    components: {}\n    runbook: README.md\n    secrets: []\n' });
   assert.deepEqual(codes(bare), ['STACKS_LOCAL_CONFIG_INVALID']);
   const ghost = app(t, { environment: `  dev:\n    status: supported\n    runtime: docker-compose\n    composeFiles: [infra/compose/compose.yaml]\n    components: {}\n    runbook: README.md\n    secrets: []\n    local:\n      ports: {cache: 6380}\n      services: [{name: cache, wait: tcp, port: cache}]\n` });
@@ -47,7 +47,7 @@ test('R368 a docker-compose environment without a local block, or with a service
   assert.match(findings[0]?.message ?? '', /cache is not a service of the compose files of dev/u);
 });
 
-test('R369 a docker command in the dev runbook, or no one-command start, is STACKS_RUNBOOK_DOCKER_COMMAND', (t) => {
+test('R373 a docker command in the dev runbook, or no one-command start, is STACKS_RUNBOOK_DOCKER_COMMAND', (t) => {
   const docker = app(t, { runbook: '# dev\n\n```sh\ndocker compose up -d\n```\n\nRun `starci app stack up --env dev --execute`.\n' });
   const dockerFindings = run(docker);
   assert.deepEqual(dockerFindings.map((finding) => finding.code), ['STACKS_RUNBOOK_DOCKER_COMMAND']);

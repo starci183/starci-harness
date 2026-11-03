@@ -6525,3 +6525,37 @@ rules:
         source: owner
         quote: "The skeleton is the ready structure with its data missing; it is drawn from isLoading alone and from the reads the region shows."
         ruling: "Several reads feed one frame: loading is any read loading with no data; a key change reloads only the region keyed by it; a refresh keeps the content."
+  - id: R372
+    code: "STACKS_LOCAL_CONFIG_INVALID"
+    law: "In lite and full apps, every docker-compose environment of .starcistacks/application-stacks.yaml declares a coherent `local` block, judged by the same normalizeLocal the dev verbs of `starci app stack` (doctor, prepare, up, status, logs, verify, down) use: closed fields, one loopback port each, compose services that exist in the compose files, an environment-owned database role (never postgres, never the app role), dev-only custody generators and loopback probes; and a lite app declares at least one such dev environment, so `starci app stack up --env dev` has something to run."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["STACKS_LOCAL_CONFIG_INVALID", "STACKS_DEV_UNDECLARED"]
+    enforcers:
+      - {kind: hfs, id: stacks-local, at: scripts/hfs/rules/stacks-local.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-6-every-runbook-declares-the-same-operations, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
+    exemplifiedBy:
+      - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks, edition: lite}
+    witness:
+      - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
+  - id: R373
+    code: "STACKS_RUNBOOK_DOCKER_COMMAND"
+    law: "The runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no `docker build|run|compose|create|start|stop|pull|push` or `docker stack deploy` command: Docker is run by the harness verb, never by hand (hard rule 8)."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["STACKS_RUNBOOK_DOCKER_COMMAND"]
+    enforcers:
+      - {kind: hfs, id: stacks-local, at: scripts/hfs/rules/stacks-local.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-10-local-runs, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
+    exemplifiedBy:
+      - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks, edition: lite}
+    witness:
+      - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}

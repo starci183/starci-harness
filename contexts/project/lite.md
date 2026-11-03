@@ -62,7 +62,7 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 ## Infrastructure the project runs
 
 - `.starcistacks/` admits the Swarm infra tree for the production environment and the compose infra tree for the dev environment, no k8s or
-  terraform tree. Owner: the `lite` block of slot `app.starcistacks`; R10, R276, R368. The dev environment is `docker-compose` with a `local`
+  terraform tree. Owner: the `lite` block of slot `app.starcistacks`; R10, R276, R372. The dev environment is `docker-compose` with a `local`
   block, brought up by `starci app stack up --env dev --execute` (PROJECT-STACKS-6): the db container, the declared Redis and the other declared
   dependencies run from its compose file, the api and web natively. The `db:create`, `db:start` and `db:stop` scripts are not the way to start it.
 - The lite verbs are `app db new|plan|migrate|dump|post-cutover`, `app secret init --env dev`, `stack prepare|doctor|up|status|logs|down|verify` for dev, `stack deploy|verify|rollback` for production, `docker build|up|down`.

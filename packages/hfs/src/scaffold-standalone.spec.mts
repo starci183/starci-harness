@@ -173,8 +173,8 @@ test('the lite starter keeps its vector backing in its db service without a Qdra
   assert.deepEqual(declaration.sides.be.backing ?? [], []);
   assert.ok(!Object.keys(pkg.dependencies).some((name: string) => name.startsWith('@qdrant/')));
   assert.deepEqual(stacks.backing, { db: { provider: 'postgres', component: 'db' } });
-  for (const env of ['dev', 'production']) {
-    const model = parseYaml(read(`.starcistacks/${env}/infra/swarm/stack.yaml`));
+  for (const file of ['dev/infra/compose/compose.yaml', 'production/infra/swarm/stack.yaml']) {
+    const model = parseYaml(read(`.starcistacks/${file}`));
     assert.ok(!Object.values<{ image: string }>(model.services).some((service) => service.image.includes('qdrant')));
   }
   const model = parseYaml(read('.starcistacks/production/infra/swarm/stack.yaml'));

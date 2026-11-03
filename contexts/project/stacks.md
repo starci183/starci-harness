@@ -200,13 +200,13 @@ acceptance gate. They are run by the owner or a `deliver` worker; deploying need
 [policy/quality.yaml](../../policy/quality.yaml)).
 
 **The dev kind is a verb set.** For a docker-compose environment the seven operations are `starci app stack prepare|doctor|up|status|logs|down|verify
---env <env>`, driven by the environment's `local` block of `application-stacks.yaml` (R368: ports, compose services, the environment's own database
+--env <env>`, driven by the environment's `local` block of `application-stacks.yaml` (R372: ports, compose services, the environment's own database
 role, dev-only custody to generate, setup and seed commands, native processes, readiness and verification probes). `prepare`, `up` and `down` are dry
 runs until `--execute`; `doctor`, `status`, `logs` and `verify` are read-only. **`up` is the one command**: it checks the host table, opens the dev
 custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor and waits for their health, gives the
 environment its own database role and the app role its own password, migrates with a receipt, runs the declared seed once, starts the native
 processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
-the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R369). `down` ends the processes
+the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
 and stops the compose project, never a volume, image or another project. A vps environment keeps the Swarm verbs below; `up`, `down`, `doctor` and
 `logs` refuse it.
 
@@ -355,5 +355,5 @@ Rules learned from running apps on developer hosts; each holds in every app.
 
 [lite.md](lite.md), [full.md](full.md); slot `app.starcistacks` and `app.plaintext-env` in
 [hfs/slots.yaml](../hfs/slots.yaml); R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299,
-R301 in [hfs/rules.yaml](../hfs/rules.yaml); rulings `lite-production-swarm`, `sealed-secret-custody`,
+R301, R372, R373 in [hfs/rules.yaml](../hfs/rules.yaml); rulings `lite-production-swarm`, `sealed-secret-custody`,
 `single-declared-ingress` and `owner-run-steps` in [decisions/rulings.yaml](../decisions/rulings.yaml).

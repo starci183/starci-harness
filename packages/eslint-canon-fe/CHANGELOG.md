@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.10.1
+
+- Changed: the bundled hfs runtime copy carries the rules R372 and R373 and the pin of @starci/hfs 5.2.0.
+
 ## 9.9.12
 
 - Changed: Carry the bundled runtime of @starci/hfs 5.0.8 (the rule texts name `app check`, the read-set helper of the rule memo) and its canon pins; the comments name `app check` for the removed lint verb.

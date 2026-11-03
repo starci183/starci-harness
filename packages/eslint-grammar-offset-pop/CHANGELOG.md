@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.14
+
+- Changed: the bundled hfs runtime copy carries the rules R372 and R373 and the pin of @starci/hfs 5.2.0; requires @starci/eslint-grammar-core 0.21.14.
+
 ## 0.21.12
 
 - Changed: Align the Grammar family and its exact core dependency.

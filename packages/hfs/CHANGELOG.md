@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.2.0
+
+- Added: `starci app stack prepare|doctor|up|status|logs|down|verify --env <env>` for a docker-compose (dev) environment, driven by the new `environments.<env>.local` block of application-stacks.yaml: ports, compose services and their health, the environment's own database role (the migrations run as it and the app role gets its own password), dev-only custody generators, least grants (`STACK_GRANT_<NAME>`), setup and seed commands, native app processes, readiness and verification probes. `up --execute` is the one command (host table, custody, setup, services, database, migrate with a receipt, seed once, processes, readiness, origins); `prepare`, `up` and `down` are dry runs until `--execute`, `down` never removes a volume, `doctor` prints the owner-run install step per OS for each missing prerequisite and installs nothing. A swarm environment keeps the swarm verbs and refuses the dev-only ones.
+- Added: `starci app secret init --env <dev env> [--execute]` creates the dev-only values `local.custody` declares (hex, base64, password, uuid, rsa-pem, ec-pem), once: a sealed value is kept, a half-present pair is refused, a vps or production environment is refused.
+- Added: `db migrate` runs its client tools inside the database container named by `STARCI_DB_CONTAINER`, so a host without PostgreSQL client tools migrates a dev database.
+- Added: rules R372 (`STACKS_LOCAL_CONFIG_INVALID`, `STACKS_DEV_UNDECLARED`: a coherent local block, and a lite app declares its dev environment) and R373 (`STACKS_RUNBOOK_DOCKER_COMMAND`: the dev runbook names `starci app stack up --env <env>` and carries no docker command).
+- Changed: the lite skeleton's dev environment is `docker-compose` with a local block, a compose file and a runbook of the new verbs (it was a Swarm stack with illustrative digests); slot `app.starcistacks` admits `<env>/infra/compose/**` in lite.
+
 ## 5.0.8
 
 - Removed: the `starci app lint` verb. `starci app check` is the one verb for app quality and carries what the lint verb carried: `--side be|fe` limits the lint gate to one side (reading and writing that side's cache records), `--out <file>` writes the merged Sonar Generic Issue Import document of the run (the findings of the selected gates under `starci-hfs`, then ESLint and stylelint), and `--fix` runs ESLint and stylelint with `--fix` before the check (with `--gate lint`). There is no `--changed` and no `--workspace`: the cache makes a whole-app check of an unchanged tree take seconds. The rendered `lint` and `lint:fix` scripts, the managed CI lint step and the release gate's Sonar row call `app check --gate lint`, and rule R13 requires that form.

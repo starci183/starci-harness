@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.14
+
+- Changed: the bundled hfs runtime copy carries the rules R372 and R373 and the pin of @starci/hfs 5.2.0; requires @starci/eslint-canon-fe 9.10.1.
+
 ## 0.21.12
 
 - Changed: Require the updated FE canon, carry the rule texts of @starci/hfs 5.0.8 and align the Grammar family.

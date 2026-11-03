@@ -55,9 +55,10 @@ test('every secret action but init names its environment with --env; a positiona
     assert.equal(old.code, 2, argv.join(' '));
     assert.match(old.err, /usage: starci app secret/u, argv.join(' '));
   }
+  // init takes --env only for a docker-compose dev environment (secret-dev-init.mjs); an app with no such environment is refused.
   const init = await run(['secret', 'init', '--env', 'dev'], { cwd: root, env });
   assert.equal(init.code, 2);
-  assert.match(init.err, /--env is not valid for init/u);
+  assert.match(init.err, /secret init --env dev/u);
 });
 
 test('secret recipients --add/--remove are dry until --execute: the dry run says what .sops.yaml would become and writes nothing', async (t) => {

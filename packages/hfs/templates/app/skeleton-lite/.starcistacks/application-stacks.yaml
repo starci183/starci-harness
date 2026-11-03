@@ -54,7 +54,10 @@ environments:
     # `starci app stack up --env dev --execute` reads this block (PROJECT-STACKS-6): host prerequisites, dev custody, setup, the compose services,
     # the environment's own database role, migrations, native api and web processes, readiness, origins.
     local:
-      ports: {db: 54322, api: 3001, web: 3000}
+      ports:
+        db: 54322
+        api: 3001
+        web: 3000
       services:
         - {name: db, wait: healthy}
       database:

@@ -1,8 +1,8 @@
-// stacks-local.mjs - R368 and R369: the dev environment of an app is declared runnable and its runbook names the harness verb.
-//   R368 STACKS_LOCAL_CONFIG_INVALID  every docker-compose environment carries a `local` block that the dev verbs of `starci app stack`
+// stacks-local.mjs - R372 and R373: the dev environment of an app is declared runnable and its runbook names the harness verb.
+//   R372 STACKS_LOCAL_CONFIG_INVALID  every docker-compose environment carries a `local` block that the dev verbs of `starci app stack`
 //                                      normalise (scripts/hfs/stack-local-config.mjs), and its compose services exist in the compose files;
 //        STACKS_DEV_UNDECLARED         a lite app declares at least one docker-compose environment (the dev kind of PROJECT-STACKS-3).
-//   R369 STACKS_RUNBOOK_DOCKER_COMMAND the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no
+//   R373 STACKS_RUNBOOK_DOCKER_COMMAND the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no
 //                                      `docker build|run|compose|create|start|stop|pull|push` or `docker stack deploy` command (rules.md rule 8).
 import fs from 'node:fs';
 import path from 'node:path';
