@@ -3,6 +3,8 @@
 # (STARCI_ORCA_BIN honoured), {state} the state base, {runtime} the runtime root, {env:NAME} an environment variable.
 # A check is up when it exits 0 and, with `json`, when the value at `path` of its json output equals `equals`.
 # `install` registers a service to run by itself (kind schedule: a scheduled task named StarCi ...), or nothing (kind none).
+# A check is an `argv` or an `http` URL (the declared status, default 200). `start` may add `env` and `secrets` (secret-loader keys, never argv);
+# `stop` is what `host down` runs (a stop, never a removal); `waitSeconds` on a service overrides the file's for that service.
 schema: starci/host@1
 # How long `host up` waits for a started service's check to turn up, and how long one check may run.
 waitSeconds: 120
@@ -77,3 +79,89 @@ services:
         STARCI_ROLE: owner
       log: "{state}/telegram-bridge.log"
     requires: []
+  # The docker compose group `starci` (project name fixed, container and volume names fixed, so the running group is adopted). Its files
+  # are ops/host/sonar/. `start` runs `docker compose up -d --no-recreate <service>`: only what is down starts, a running container is never
+  # recreated, and no volume is touched. `stop` is `docker stop`, never `compose down`. `secrets` come from the CLI's secret loader
+  # (policy/security.yaml secretKeys) into the compose process's environment only. A check's `http` reads one URL (a status, and with `json` a body value).
+  - id: sonar-postgres
+    summary: the PostgreSQL of the shared SonarQube (container starci-sonarqube-postgres, volume starci-sonarqube-postgres-data), healthy
+    platform: any
+    check:
+      argv: [docker, inspect, --format, '{"status":"{{if .State.Running}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}"}', starci-sonarqube-postgres]
+      json:
+        path: status
+        equals: healthy
+    start:
+      argv: [docker, compose, --project-directory, "{runtime}/ops/host/sonar", -f, "{runtime}/ops/host/sonar/compose.yaml", up, -d, --no-recreate, sonarqube-postgres]
+      secrets: [SONARQUBE_DB_PASSWORD, SONARQUBE_ADMIN_PASSWORD]
+    stop:
+      argv: [docker, stop, starci-sonarqube-postgres]
+    install:
+      kind: none
+    requires: [docker]
+  - id: sonar
+    summary: the shared SonarQube (container starci-sonarqube, served on 127.0.0.1:9010), its status API saying UP
+    platform: any
+    waitSeconds: 300
+    check:
+      http:
+        url: http://127.0.0.1:9010/api/system/status
+      json:
+        path: status
+        equals: UP
+    start:
+      argv: [docker, compose, --project-directory, "{runtime}/ops/host/sonar", -f, "{runtime}/ops/host/sonar/compose.yaml", up, -d, --no-recreate, sonarqube]
+      env:
+        STARCI_PORT_SONARQUBE: "9010"
+      secrets: [SONARQUBE_DB_PASSWORD, SONARQUBE_ADMIN_PASSWORD]
+    stop:
+      argv: [docker, stop, starci-sonarqube]
+    install:
+      kind: none
+    requires: [sonar-postgres]
+  - id: sonar-bootstrap
+    summary: the one-shot job that replaces SonarQube's default admin password (container starci-sonarqube-bootstrap), exited 0
+    platform: any
+    check:
+      argv: [docker, inspect, --format, '{"done":{{if and (eq .State.Status "exited") (eq .State.ExitCode 0)}}true{{else}}false{{end}}}', starci-sonarqube-bootstrap]
+      json:
+        path: done
+        equals: true
+    start:
+      argv: [docker, compose, --project-directory, "{runtime}/ops/host/sonar", -f, "{runtime}/ops/host/sonar/compose.yaml", up, -d, --no-recreate, sonarqube-bootstrap]
+      env:
+        STARCI_PORT_SONARQUBE: "9010"
+      secrets: [SONARQUBE_DB_PASSWORD, SONARQUBE_ADMIN_PASSWORD]
+    install:
+      kind: none
+    requires: [sonar]
+  - id: sonar-tunnel
+    summary: the Cloudflare tunnel (container starci-cloudflared-sonarqube) that publishes the SonarQube as https://sonar.starci.org, the public origin answering
+    platform: any
+    waitSeconds: 60
+    check:
+      http:
+        url: https://sonar.starci.org/api/server/version
+    start:
+      argv: [docker, compose, --project-directory, "{runtime}/ops/host/sonar", -f, "{runtime}/ops/host/sonar/compose.yaml", -f, "{runtime}/ops/host/sonar/cloudflared.yaml", up, -d, --no-recreate, cloudflared-sonarqube]
+      env:
+        STARCI_PORT_SONARQUBE: "9010"
+      secrets: [SONARQUBE_DB_PASSWORD, SONARQUBE_ADMIN_PASSWORD, CLOUDFLARE_TUNNEL_TOKEN]
+    stop:
+      argv: [docker, stop, starci-cloudflared-sonarqube]
+    install:
+      kind: none
+    requires: [sonar, sonar-bootstrap]
+  - id: local-registry
+    summary: the npm registry on 127.0.0.1:4873 that `deps publish-local` publishes to (container starci-local-registry, Verdaccio; config and storage under the state base)
+    platform: any
+    check:
+      http:
+        url: http://127.0.0.1:4873/-/ping
+    start:
+      argv: ["{starci}", deps, registry-up, --execute]
+    stop:
+      argv: [docker, stop, starci-local-registry]
+    install:
+      kind: none
+    requires: [docker]
