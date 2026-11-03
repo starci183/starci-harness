@@ -3251,6 +3251,16 @@ HFS_AUTH_COOKIE_DOMAIN_MISSING:
   owner: op-retry
   kind: check-finding
 
+HFS_BOOT_LOGGER_SILENCED:
+  title: "A back-end app root boots Nest with the logger off"
+  title_vi: "Một app back-end khởi động Nest với logger bị tắt"
+  meaning_vi: "main.ts của một app back-end truyền logger: false cho NestFactory hoặc CommandFactory, nên một provider mà module cần nhưng app root không ghép, hay bất kỳ lỗi khởi động nào, làm tiến trình dừng mà không in gì ra stderr: mọi lệnh cli chết im lặng."
+  causes_vi:
+    - "Vi phạm R376: main.ts của app root đặt logger: false."
+  nextStep_vi: "Truyền logger của app (createNestLogger) và một errorHandler in lỗi rồi thoát với mã khác 0, như main.ts của template, rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
 HFS_BACKING_UNDECLARED:
   title: "A lite app uses undeclared Redis or full-only Qdrant instead of Supabase pgvector"
   title_vi: "App lite dùng Redis chưa khai báo hoặc Qdrant chỉ thuộc full thay cho Supabase pgvector"

@@ -9,14 +9,15 @@ out as groups and sub-commands, thin and unit-tested. That migrations run only t
 ## BE-CLI-1 One cli app boots nest-commander and never serves
 
 Every one-off action runs in `be/apps/cli` (kind `cli`), with its own image run as `cli <group> <command>`. `main.ts`
-reads the environment once and calls `CommandFactory.run(AppModule.register(readCliEnv(env)), { logger: false,
-...createCliFailureHandlers(logger) })`; it never creates an HTTP app or listens. `app.module.ts` composes the platform
+reads the environment once and calls `CommandFactory.run(AppModule.register(...), { logger: createNestLogger(logger),
+errorHandler })`, the error handler printing the failure on stderr and exiting non-zero; it never turns the logger off,
+since a provider the root does not compose then ends every command silently, and it never creates an HTTP app or listens. `app.module.ts` composes the platform
 modules the commands need and `CliModule`; its env, options and compose groups follow BE-ARCHITECTURE-2.
 
 Why: one image for every operator action gives one place to find, deploy and audit them, and a process that never
 listens cannot become an unguarded door.
 
-Enforced by: `cli-bootstrap` (R148), R147.
+Enforced by: `cli-bootstrap` (R148), R147, R376 (`boot-logger`: no `logger: false` in an app root's main), and the boot proof R272.
 
 ## BE-CLI-2 Commands are groups and sub-commands under `features/cli`
 
