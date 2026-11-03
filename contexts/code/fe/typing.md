@@ -4,7 +4,7 @@ slots: []
 # Typing
 
 Which type expresses a front-end value. The strict tsconfig, the ban on type escapes, `Array<T>` and the type-aware
-lint are [shared typing](../shared/typing.md) SHARED-TYPING-1..4.
+lint are [shared typing](../shared/typing.md) SHARED-TYPING-1..5.
 
 ## FE-TYPING-1 Props are readonly all the way down, and unused props are not declared
 

@@ -27,6 +27,8 @@ import { recommended as hygieneRecommended, rules as hygieneRules } from "./hygi
 import { recommended as landmarkRecommended, rules as landmarkRules } from "./landmark.ts"
 import { recommended as listsRecommended, rules as listsRules } from "./lists.ts"
 import { recommended as loadingRecommended, rules as loadingRules } from "./loading.ts"
+import { recommended as directiveFirstRecommended, rules as directiveFirstRules } from "./directive-first.ts"
+import { recommended as explicitSurfaceRecommended, rules as explicitSurfaceRules } from "./explicit-surface.ts"
 import { recommended as skeletonStatesRecommended, rules as skeletonStatesRules } from "./skeleton-states.ts"
 import { recommended as lintEscapeRecommended, rules as lintEscapeRules } from "./lint-escape-hatch.ts"
 import { recommended as namingRecommended, rules as namingRules } from "./naming.ts"
@@ -90,6 +92,8 @@ const CONTRIBUTIONS: Contribution[] = [
   { law: "landmark", rules: landmarkRules, recommended: landmarkRecommended },
   { law: "lists", rules: listsRules, recommended: listsRecommended },
   { law: "loading", rules: loadingRules, recommended: loadingRecommended },
+  { law: "directive-first", rules: directiveFirstRules, recommended: directiveFirstRecommended },
+  { law: "explicit-surface", rules: explicitSurfaceRules, recommended: explicitSurfaceRecommended },
   { law: "skeleton-states", rules: skeletonStatesRules, recommended: skeletonStatesRecommended },
   { law: "lint-escape-hatch", rules: lintEscapeRules, recommended: lintEscapeRecommended },
   { law: "naming", rules: namingRules, recommended: namingRecommended },
@@ -357,5 +361,5 @@ for (const addition of A14_CONTRIBUTIONS) {
 // The result cache of `starci app check --gate lint` (contexts/project/check-cache.md) reads these two declarations of the installed canon.
 export { crossFileInputs } from "./lib/cross-file-inputs.ts"
 export type { CrossFileInput } from "./lib/cross-file-inputs.ts"
-export { projectGraph } from "./project-graph.ts"
+export { projectGraph, projectGraphSnapshot } from "./project-graph.ts"
 export type { ProjectGraphFinding, ProjectGraphSnapshot } from "./project-graph.ts"

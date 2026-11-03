@@ -15,7 +15,7 @@ type SlotViewProps<T> = {
 }
 
 /** The one status view (FE-ERROR-1): every region renders its loading, forbidden, error and empty status through here. */
-export const SlotView = <T,>(props: SlotViewProps<T>) => {
+export const SlotView = <T,>(props: SlotViewProps<T>): ReactNode => {
     const { slot } = props
     if (slot.isLoading === true) return props.render(props.placeholder, true)
     if (slot.isForbidden === true) return props.forbidden === "hide" ? null : <EmptyNotice message={props.labels.forbidden} />

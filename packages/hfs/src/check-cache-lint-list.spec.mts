@@ -85,3 +85,66 @@ test('the list runner lints the list with the ESLint of the side in one process 
   assert.deepEqual(byName.get('bad.js'), ['no-debugger']);
   assert.deepEqual(byName.get('good.js'), []);
 });
+
+const SNAPSHOT = { files: 3, byFile: { 'src/a.ts': [{ rule: 'starci-fe/duplicate-code', code: 'HFS_DUPLICATE_CODE', line: 2, column: 1, message: 'copy of src/b.ts' }] } };
+
+test('a run that asks for the project graph goes through the list runner, a whole side as the list `.`, and returns the snapshot the child wrote', async (context) => {
+  const cwd = side(context);
+  const requests: HeavyNodeRequest[] = [];
+  const jobs: { files: string[]; fix: boolean; graph?: { out: string; canons: { name: string; entry: string }[] } }[] = [];
+  const execute: HeavyNodeRun = async (request) => {
+    requests.push(request);
+    if (!String(request.args.at(-1)).endsWith('job.json')) return { status: 0, signal: null, stdout: '[]', stderr: '' };
+    const job = JSON.parse(fs.readFileSync(String(request.args.at(-1)), 'utf8')) as (typeof jobs)[number];
+    jobs.push(job);
+    if (job.graph !== undefined) fs.writeFileSync(job.graph.out, JSON.stringify({ snapshots: { '@starci/eslint-canon-fe': SNAPSHOT } }));
+    return { status: 0, signal: null, stdout: '[]', stderr: '' };
+  };
+  const canons = [{ name: '@starci/eslint-canon-fe', entry: path.join(cwd, 'canon.mjs') }];
+  const whole = await runLinter({ cwd, pkg: 'eslint', bin: 'eslint', args: ['--format', 'json', '.'], files: 11_126, graph: canons }, execute);
+  assert.deepEqual(jobs[0]?.files, ['.']);
+  assert.deepEqual(jobs[0]?.graph?.canons, canons);
+  assert.deepEqual(whole.graph, { '@starci/eslint-canon-fe': SNAPSHOT });
+  assert.equal(requests[0]?.files, 11_126, 'the heavy budget still counts the files of the scope');
+  assert.ok(requests[0]?.args.some((arg) => String(arg).endsWith('eslint-list.cjs')));
+  const listed = await runLinter({ cwd, pkg: 'eslint', bin: 'eslint', args: ['--format', 'json'], list: [longPath(1)], graph: canons }, execute);
+  assert.deepEqual(jobs[1]?.files, [longPath(1)]);
+  assert.deepEqual(listed.graph, { '@starci/eslint-canon-fe': SNAPSHOT });
+  assert.equal(fs.existsSync(String(jobs[1]?.graph?.out)), false, 'the snapshot file goes with the job file');
+  const plain = await runLinter({ cwd, pkg: 'eslint', bin: 'eslint', args: ['--format', 'json', '.'], files: 3 }, execute);
+  assert.equal(jobs.length, 2, 'a run that asks for no graph is still the eslint binary itself');
+  assert.equal(plain.graph, undefined);
+});
+
+test('a child that wrote no snapshot, a malformed one, or did not complete hands out nothing: the cache builds the graph itself', async (context) => {
+  const cwd = side(context);
+  const canons = [{ name: '@starci/eslint-canon-fe', entry: path.join(cwd, 'canon.mjs') }];
+  const answer = (written: string | null): HeavyNodeRun => async (request) => {
+    const job = JSON.parse(fs.readFileSync(String(request.args.at(-1)), 'utf8')) as { graph: { out: string } };
+    if (written !== null) fs.writeFileSync(job.graph.out, written);
+    return { status: 0, signal: null, stdout: '[]', stderr: '' };
+  };
+  for (const written of [null, '{', '{"snapshots": []}', '{"snapshots": {"a": {"byFile": {"x": 1}}}}']) {
+    const run = await runLinter({ cwd, pkg: 'eslint', bin: 'eslint', args: ['--format', 'json', '.'], files: 1, graph: canons }, answer(written));
+    assert.equal(run.error, undefined);
+    assert.equal(run.graph, undefined, String(written));
+  }
+});
+
+test('the list runner hands the snapshot of each named canon out after the lint, and a canon that cannot answer is left out', async (context) => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-lint-graph-real-'));
+  context.after(() => fs.rmSync(cwd, { recursive: true, force: true }));
+  fs.symlinkSync(path.join(import.meta.dirname, '..', 'node_modules'), path.join(cwd, 'node_modules'), 'junction');
+  fs.writeFileSync(path.join(cwd, 'package.json'), '{"name":"side","private":true}');
+  fs.writeFileSync(path.join(cwd, 'eslint.config.mjs'), "export default [{ files: ['**/*.js'], rules: { 'no-debugger': 'error' } }];\n");
+  fs.writeFileSync(path.join(cwd, 'good.js'), 'export const good = 1;\n');
+  // the first canon builds its graph once per process, as the real canon does
+  fs.writeFileSync(path.join(cwd, 'canon.mjs'), "let built = 0; export const projectGraphSnapshot = ({ repoRoot }) => ({ files: 1, byFile: { 'good.js': [{ rule: 'r', code: 'C', line: 1, column: 1, message: `built ${++built} in ${repoRoot === process.cwd()}` }] } });\n");
+  fs.writeFileSync(path.join(cwd, 'broken.mjs'), "export const projectGraphSnapshot = () => { throw new Error('the graph cannot be built'); };\n");
+  const graph = [{ name: 'canon', entry: path.join(cwd, 'canon.mjs') }, { name: 'broken', entry: path.join(cwd, 'broken.mjs') }, { name: 'absent', entry: path.join(cwd, 'absent.mjs') }];
+  const linted = await runLinter({ cwd, pkg: 'eslint', bin: 'eslint', args: ['--format', 'json', '.'], files: 1, graph }, nativeTestNode);
+  assert.equal(linted.error, undefined);
+  assert.ok(linted.results?.some((result) => path.basename(result.filePath) === 'good.js'));
+  assert.deepEqual(Object.keys(linted.graph ?? {}), ['canon']);
+  assert.deepEqual(linted.graph?.['canon'], { files: 1, byFile: { 'good.js': [{ rule: 'r', code: 'C', line: 1, column: 1, message: 'built 1 in true' }] } });
+});

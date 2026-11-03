@@ -18,20 +18,27 @@ import { byCodeUnit } from '../report/order.mjs';
 import { braceVariants, globExpression } from '../runtime/scripts/lib/glob.mjs';
 import { grammarLintFor } from '../runtime/scripts/lib/grammar-lint.mjs';
 import { mergeBase } from '../runtime/scripts/api/git/merge-base.mjs';
-import { lintFamilyReport, lintSide, loadAppTypeScript, type CanonDeclarations, type EslintResult, type LintSideStats, type LinterOutcome, type StylelintResult } from '../cache/lint-family.mjs';
+import { lintFamilyReport, lintSide, loadAppTypeScript, type CanonDeclarations, type EslintResult, type GraphSnapshot, type LintSideStats, type LinterOutcome, type StylelintResult } from '../cache/lint-family.mjs';
 import type { CheckSession } from '../cache/types.mjs';
 
 // reason: linter json output (eslint, stylelint), package.json and the installed canon config are parsed or imported from the app's own install; each reader checks the fields it uses
 type Dynamic = any;
 
-/** What a linter run answers: its json results, or why it could not complete (both when the run was partial). */
-export interface LinterRun { results?: Dynamic[]; error?: string }
+/**
+ * The project-graph findings of one canon, as its `projectGraphSnapshot` answers them: by side-relative posix path.
+ * The ESLint child builds this graph for the canon's graph rules, so it hands the snapshot out instead of the cache building the same graph again.
+ */
+export type GraphSnapshotParts = Readonly<Record<string, GraphSnapshot>>;
+/** What a linter run answers: its json results, or why it could not complete (both when the run was partial), and the graph snapshots its child handed out, by canon name. */
+export interface LinterRun { results?: Dynamic[]; error?: string; graph?: GraphSnapshotParts }
 /**
  * What a linter run is asked for. `list` is the files an ESLint run lints (cwd-relative, posix) when they are named one by one: they go to the child
  * through a file, never the command line, and `args` then holds the options alone. `files` is the number of source files the run judges, which the
  * heavy-command budget of the ESLint kind scales with (a list names its own count).
  */
-export interface LinterSpec { cwd: string; pkg: string; bin: string; args: string[]; bound?: string | null; list?: readonly string[] | undefined; files?: number | undefined }
+export interface LinterSpec { cwd: string; pkg: string; bin: string; args: string[]; bound?: string | null; list?: readonly string[] | undefined; files?: number | undefined; graph?: readonly GraphCanon[] | undefined }
+/** An installed canon whose graph snapshot the ESLint child hands out: its package name and the entry file the child imports. */
+export interface GraphCanon { name: string; entry: string }
 /** The seam that runs a linter through the app's own install from cwd. */
 export type LinterRunner = (spec: LinterSpec) => Promise<LinterRun>;
 /** One finding of the lint report. */
@@ -63,8 +70,20 @@ export function eslintHeapArgs(env: NodeJS.ProcessEnv = process.env): string[] {
 /** The ESLint list runner (eslint-list.cts, built beside this file). */
 const LIST_RUNNER = fileURLToPath(new URL('./eslint-list.cjs', import.meta.url));
 
+/** The snapshots an ESLint child wrote, by canon name; undefined when it wrote none or a file that is not a snapshot list (the cache then builds the graph itself). */
+function readGraphSnapshots(file: string): GraphSnapshotParts | undefined {
+  try {
+    const written: Dynamic = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const snapshots = written?.snapshots;
+    if (snapshots === null || typeof snapshots !== 'object' || Array.isArray(snapshots)) return undefined;
+    const sound = Object.values(snapshots).every((snapshot: Dynamic) => snapshot !== null && typeof snapshot === 'object' && snapshot.byFile !== null && typeof snapshot.byFile === 'object' && !Array.isArray(snapshot.byFile)
+      && Object.values(snapshot.byFile).every((findings) => Array.isArray(findings)));
+    return sound ? snapshots : undefined;
+  } catch { return undefined; }
+}
+
 /** A linter's json results through the app's own install, run from `cwd` (a side folder): `{ results }` or `{ error }`. The child runs while the caller goes on. */
-export async function runLinter({ cwd, pkg, bin, args, bound = null, list, files }: LinterSpec, execute?: HeavyNodeRun): Promise<LinterRun> {
+export async function runLinter({ cwd, pkg, bin, args, bound = null, list, files, graph }: LinterSpec, execute?: HeavyNodeRun): Promise<LinterRun> {
   let entry: string;
   try {
     const manifest = createRequire(path.join(cwd, 'package.json')).resolve(`${pkg}/package.json`);
@@ -74,18 +93,22 @@ export async function runLinter({ cwd, pkg, bin, args, bound = null, list, files
     return { error: `${pkg} is not installed for ${cwd}` };
   }
   const heap = pkg === 'eslint' ? eslintHeapArgs() : [];
-  // A named list is written to a file the runner reads: ESLint lints all of it in one process, and no command line holds a path.
-  const listed = pkg === 'eslint' && list !== undefined ? makeTempDir('starci-eslint-') : null;
+  // A named list, or a run that hands its project graph out, goes through the list runner: the job is a file it reads (ESLint lints all of it in one
+  // process, no command line holds a path), the whole side is the list `.`, and the graph snapshots come back in a file beside the job.
+  const listed = pkg === 'eslint' && (list !== undefined || graph !== undefined) ? makeTempDir('starci-eslint-') : null;
   let childArgs: string[] = [entry, ...args];
-  if (listed !== null && list !== undefined) {
+  const snapshotFile = listed === null || graph === undefined ? null : path.join(listed, 'graph.json');
+  if (listed !== null) {
     const job = path.join(listed, 'job.json');
-    fs.writeFileSync(job, JSON.stringify({ files: list, fix: args.includes('--fix') }));
+    fs.writeFileSync(job, JSON.stringify({ files: list ?? ['.'], fix: args.includes('--fix'), ...(snapshotFile === null || graph === undefined ? {} : { graph: { out: snapshotFile, canons: graph } }) }));
     childArgs = [LIST_RUNNER, job];
   }
   const count = list?.length ?? files;
   let run: HeavyNodeResult;
+  let handed: GraphSnapshotParts | undefined;
   try {
     run = completedNode(await runHeavyNode(execute, { kind: 'eslint', label: `app check ${pkg} ${path.basename(cwd)}`, args: [...heap, ...(bound ? linterBoundArgs() : []), ...childArgs], cwd, maxBuffer: 64 * 1024 * 1024, ...(count === undefined || pkg !== 'eslint' ? {} : { files: count }), ...(bound ? { env: { ...process.env, [BOUND_ENV]: bound } } : {}) }), pkg);
+    handed = snapshotFile === null ? undefined : readGraphSnapshots(snapshotFile);
   } finally {
     if (listed !== null) fs.rmSync(listed, { recursive: true, force: true });
   }
@@ -96,7 +119,7 @@ export async function runLinter({ cwd, pkg, bin, args, bound = null, list, files
   if (!Array.isArray(results)) return { error: `${pkg} produced a report that is not a result list` };
   const completed = !run.error && !run.signal && [0, 1].includes(run.status as number)
     && (run.status === 0 || results.some((result: Dynamic) => result?.messages?.length || result?.warnings?.length));
-  return { results, ...(completed ? {} : { error: `${pkg} could not complete in ${path.basename(cwd)}/ (exit ${run.status}, signal ${run.signal ?? 'none'}): ${String(run.error?.message || run.stderr || run.stdout || '').trim().split('\n')[0]}` }) };
+  return { results, ...(handed === undefined || !completed ? {} : { graph: handed }), ...(completed ? {} : { error: `${pkg} could not complete in ${path.basename(cwd)}/ (exit ${run.status}, signal ${run.signal ?? 'none'}): ${String(run.error?.message || run.stderr || run.stdout || '').trim().split('\n')[0]}` }) };
 }
 
 const eslintFindings = (results: readonly Dynamic[], appRoot: string): LintFinding[] => results.flatMap((result) => (result.messages ?? []).map((message: Dynamic): LintFinding => ({
@@ -259,9 +282,15 @@ const spawnFailure = (error: unknown) => {
   return { error: `could not start eslint: ${String((error as Error | undefined)?.message ?? error)}` };
 };
 
+/** The installed canon of `side`, which publishes the project-graph rules, as the child imports it; undefined when it cannot be resolved (the cache then builds the graph itself). */
+function graphCanonsOf(repoRoot: string, cwd: string, side: string): GraphCanon[] | undefined {
+  const name = `@starci/eslint-canon-${side}`;
+  try { return [{ name, entry: ownCanonEntry({ repoRoot, cwd }, name) }]; } catch { return undefined; }
+}
+
 /** Starts the ESLint child of every side that has work and returns one record per side: skipped, a scope error, or the running child. */
-async function launchEslint({ app, repoRoot, opts, changed, existing, run = runLinter, scopes = {} }: {
-  app: RepoDeclaration; repoRoot: string; opts: { side?: string | undefined; fix?: boolean }; changed: unknown; existing: readonly string[]; run?: LinterRunner | undefined; scopes?: Readonly<Record<string, readonly string[]>>;
+async function launchEslint({ app, repoRoot, opts, changed, existing, run = runLinter, scopes = {}, handOutGraph = false }: {
+  app: RepoDeclaration; repoRoot: string; opts: { side?: string | undefined; fix?: boolean }; changed: unknown; existing: readonly string[]; run?: LinterRunner | undefined; scopes?: Readonly<Record<string, readonly string[]>>; handOutGraph?: boolean;
 }): Promise<EslintLaunch[]> {
   const launches: EslintLaunch[] = [];
   for (const side of app ? SIDES.filter((candidate: string) => opts.side === undefined || opts.side === candidate) : []) {
@@ -274,22 +303,24 @@ async function launchEslint({ app, repoRoot, opts, changed, existing, run = runL
     try { expected = changed ? sources : known !== undefined ? [...known] : await sourceFiles({ repoRoot, cwd, side }); }
     catch (error) { launches.push({ side, scopeError: `eslint source scope is unavailable in ${side}/: ${String((error as Error | undefined)?.message ?? error)}` }); continue; }
     const head = ['--format', 'json', ...(opts.fix ? ['--fix'] : [])];
+    // the child that builds the canon's project graph for its rules hands the snapshot out when the caller keeps the graph findings (the cache)
+    const graph = handOutGraph ? graphCanonsOf(repoRoot, cwd, side) : undefined;
     // The files of a diff go to ONE child through a file (a diff of hundreds of long paths outgrows the Windows command line, and each extra
     // child would build the whole TypeScript program again); the whole side is a single directory argument.
-    const launch = Promise.resolve().then(() => run(changed ? { cwd, pkg: 'eslint', bin: 'eslint', args: head, list: sources, bound: repoRoot } : { cwd, pkg: 'eslint', bin: 'eslint', args: [...head, '.'], files: expected.length, bound: repoRoot }));
+    const launch = Promise.resolve().then(() => run(changed ? { cwd, pkg: 'eslint', bin: 'eslint', args: head, list: sources, bound: repoRoot, ...(graph === undefined ? {} : { graph }) } : { cwd, pkg: 'eslint', bin: 'eslint', args: [...head, '.'], files: expected.length, bound: repoRoot, ...(graph === undefined ? {} : { graph }) }));
     launches.push({ side, cwd, expected, run: launch.catch(spawnFailure) });
   }
   return launches;
 }
 
 /** Execute each side's installed ESLint config once, whole or over a named list; the cached and the cacheless run share scope, coverage and tool-failure judgment. */
-export async function eslintRepository({ repoRoot, app = readRepoDeclaration(loadSlotManifest(), repoRoot), opts = {}, changed = null, existing = [], run, scopes }: {
-  repoRoot: string; app?: RepoDeclaration; opts?: { side?: string | undefined; fix?: boolean }; changed?: readonly string[] | null; existing?: readonly string[]; run?: LinterRunner | undefined; scopes?: Readonly<Record<string, readonly string[]>> | undefined;
-}): Promise<{ findings: LintFinding[]; errors: string[]; raw: Dynamic[]; engine: { sides: Record<string, { files: number; skipped?: string }> } }> {
-  const findings: LintFinding[] = [], errors: string[] = [], raw: Dynamic[] = [];
+export async function eslintRepository({ repoRoot, app = readRepoDeclaration(loadSlotManifest(), repoRoot), opts = {}, changed = null, existing = [], run, scopes, handOutGraph }: {
+  repoRoot: string; app?: RepoDeclaration; opts?: { side?: string | undefined; fix?: boolean }; changed?: readonly string[] | null; existing?: readonly string[]; run?: LinterRunner | undefined; scopes?: Readonly<Record<string, readonly string[]>> | undefined; handOutGraph?: boolean | undefined;
+}): Promise<{ findings: LintFinding[]; errors: string[]; raw: Dynamic[]; engine: { sides: Record<string, { files: number; skipped?: string }> }; graphs: Record<string, GraphSnapshotParts> }> {
+  const findings: LintFinding[] = [], errors: string[] = [], raw: Dynamic[] = [], graphs: Record<string, GraphSnapshotParts> = {};
   const engine: { sides: Record<string, { files: number; skipped?: string }> } = { sides: {} };
   if (!app.sides) throw new Error('ESLint runs at the app root, the folder of hfs.json');
-  const launches = await launchEslint({ app, repoRoot, opts, changed, existing, run, ...(scopes === undefined ? {} : { scopes }) });
+  const launches = await launchEslint({ app, repoRoot, opts, changed, existing, run, ...(scopes === undefined ? {} : { scopes }), ...(handOutGraph === true ? { handOutGraph } : {}) });
   const settled = await Promise.allSettled(launches.map(launch => launch.run ?? null));
   const rejected = settled.filter((run): run is PromiseRejectedResult => run.status === 'rejected');
   const failed = rejected.find(run => isHostHeld(run.reason)) ?? rejected[0];
@@ -311,8 +342,9 @@ export async function eslintRepository({ repoRoot, app = readRepoDeclaration(loa
       findings.push(...eslintFindings(linted.results, repoRoot));
     }
     engine.sides[side] = { files: linted.results?.length ?? 0 };
+    if (linted.graph !== undefined) graphs[side] = linted.graph;
   });
-  return { findings, errors, raw, engine };
+  return { findings, errors, raw, engine, graphs };
 }
 
 // ------------------------------------------------------------------------------------------------ the cached lint
@@ -380,7 +412,7 @@ export function gitBaseToken(repoRoot: string): string {
 
 /** What the cached linters answer: the ESLint answer in the shape of eslintRepository's, the stylelint results, and each side's counts. */
 export interface CachedLinters {
-  eslint: Awaited<ReturnType<typeof eslintRepository>>;
+  eslint: Omit<Awaited<ReturnType<typeof eslintRepository>>, 'graphs'>;
   stylelint: { results: Dynamic[]; errors: string[]; ran: boolean };
   sides: { side: string; stats: LintSideStats }[];
 }
@@ -410,8 +442,8 @@ export async function cachedLinters({ repoRoot, app, side: only, run, session }:
       canons, styleCanon: styled ? await styleDeclaration({ repoRoot, cwd }) : null, typescript: () => loadAppTypeScript(cwd), extraKey: '', gitToken, full, write: true,
       eslint: async (files): Promise<LinterOutcome<EslintResult>> => {
         const listed = files === null ? null : files.map((file) => `${side}/${file}`);
-        const sub = await eslintRepository({ repoRoot, app, opts: { side }, changed: listed, existing: listed ?? [], run, scopes: { [side]: scope } });
-        return { results: sub.raw as EslintResult[], errors: sub.errors };
+        const sub = await eslintRepository({ repoRoot, app, opts: { side }, changed: listed, existing: listed ?? [], run, scopes: { [side]: scope }, handOutGraph: true });
+        return { results: sub.raw as EslintResult[], errors: sub.errors, ...(sub.graphs[side] === undefined ? {} : { graph: sub.graphs[side] }) };
       },
       stylelint: styled ? async (files): Promise<LinterOutcome<StylelintResult>> => {
         const linted = await (run ?? runLinter)({ cwd, pkg: 'stylelint', bin: 'stylelint', args: [...(files ?? [STYLE_GLOB]), '--formatter', 'json'] });

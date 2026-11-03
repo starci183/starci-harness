@@ -880,6 +880,11 @@ rulings:
     ruling: "An author says what a thing is and the grammar decides how it looks: knowledge is decision tables that cover every UI situation, and a table row names one situation, one component, the spacing role, one story and the lint or type that enforces it. Spacing is a role chosen by the structure (identity 4, inline 8, row 12, section 24, region 32; a card holds 12, a box in a card 8, an empty region 24), never a number an author writes."
     words: "An author says what it is. The grammar decides how it looks. A wrong composition does not compile, and every allowed input looks right."
     owner: "contexts/ui/situations.md; contexts/ui/presentation.md (Space)"
+  - id: explicit-export-surface
+    date: '2026-11-03'
+    status: live
+    ruling: "An exported declaration states its type where it is exported, in every front-end and back-end file: a function's return type, an exported variable's type and a parameter's type are written, never inferred from a body or from other files. A component that returns only JSX, null or undefined is explicit. The lint result cache counts a file with an inferred surface as open and lints every importer again when it changes; one classifier, the isolated declaration emit, serves the cache and the rule, so the rule reports exactly what the cache counts as open."
+    owner: "contexts/code/shared/typing.md SHARED-TYPING-5; lint explicit-export-surface (R368); packages/hfs/runtime/scripts/lib/declaration-surface.mts"
 
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `shipped: true` extends the check to packages/hfs/runtime, the knowledge the eslint packages bundle. `pending` marks a name that still exists in published code until the follow-up lands.

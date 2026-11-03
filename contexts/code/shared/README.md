@@ -11,7 +11,7 @@ to every slot of both sides, so they carry no front matter.
 
 | Topic | Decides | Rules | Read |
 | --- | --- | --- | --- |
-| [typing.md](typing.md) | the strict tsconfig, no type escape, `Array<T>`, the type-aware lint | SHARED-TYPING-1 … 4 | core |
+| [typing.md](typing.md) | the strict tsconfig, no type escape, `Array<T>`, the type-aware lint, a written type on every export | SHARED-TYPING-1 … 5 | core |
 | [format.md](format.md) | Prettier as the only layout, line endings and the managed editor files | SHARED-FORMAT-1, 2 | on demand |
 | [loosening.md](loosening.md) | no inline suppression or escape marker; a wrong rule is changed in its canon | SHARED-LOOSENING-1, 2 | core |
 | [comment.md](comment.md) | the export docblock, line comments that say why, English source | SHARED-COMMENT-1 … 3 | core |

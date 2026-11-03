@@ -1,8 +1,12 @@
 # Changelog
 
-## 0.21.13 - 2026-11-03
+## 0.21.14 - 2026-11-03
 
 - Changed: version stamp only, with the Grammar lint family (the canon runtime copies moved).
+
+## 0.21.13
+
+- Changed: Align the Grammar family with the updated FE canon.
 
 ## 0.21.12
 

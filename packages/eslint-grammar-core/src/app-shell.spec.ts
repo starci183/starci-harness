@@ -41,6 +41,7 @@ for (const lite of [false, true]) {
     tester.run("app-shell-frame", appShellFrame, {
       valid: [
         { filename: FILE, code: bar() },
+        { filename: FILE, code: bar('<><IconButton source={icons.language} /><Switch /><AvatarButton /></>') },
         { filename: FILE, code: 'import { WorkspaceShell as Frame } from "@starci/grammar/common"; const view = <Frame viewport="fixed" />' },
         { filename: FILE, code: 'import * as Grammar from "@starci/grammar/common"; const view = <Grammar.WorkspaceShell viewport="fixed" />' },
         { filename: FILE, code: 'const attrs = { viewport: "fixed" } as const; const view = <WorkspaceShell {...attrs} />' },
@@ -165,7 +166,8 @@ for (const lite of [false, true]) {
         { filename: FILE, code: bar('<><Switch /><IconButton source={icons.language} /><IconButton source={icons.bell} /><AvatarButton /></>'), errors: [{ messageId: "cluster" }] },
         { filename: FILE, code: bar('<><IconButton source={icons.language} /><Button label={copy.theme} /><IconButton source={icons.bell} /><AvatarButton /></>'), errors: [{ messageId: "cluster" }] },
         { filename: FILE, code: bar('<><IconButton source={icons.language} /><Switch /><IconButton source={icons.bell} /><Button label={copy.account} /></>'), errors: [{ messageId: "cluster" }] },
-        { filename: FILE, code: bar('<><IconButton source={icons.language} /><Switch /><AvatarButton /></>'), errors: [{ messageId: "cluster" }] },
+        { filename: FILE, code: `const notifications = useNotifications(); ${bar('<><IconButton source={icons.language} /><Switch /><AvatarButton /></>')}`, errors: [{ messageId: "cluster" }] },
+        { filename: FILE, code: bar('<><IconButton source={icons.language} /><Switch /></>'), errors: [{ messageId: "cluster" }] },
         { filename: FILE, code: bar('<><IconButton source={icons.language} /><Switch /><IconButton source={icons.bell} /><AvatarButton /><Button /></>'), errors: [{ messageId: "cluster" }] },
         { filename: FILE, code: 'const view = <TopBar />', errors: [{ messageId: "cluster" }] },
         { filename: FILE, code: 'import { Navbar } from "./Navbar"; const AppShell = () => <WorkspaceShell viewport="fixed" header={<Navbar />} />', errors: [{ messageId: "cluster" }] },

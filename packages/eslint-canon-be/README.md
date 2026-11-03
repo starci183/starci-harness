@@ -155,6 +155,16 @@ in `src/lib/hfs-view.ts`, which is emitted, so the published declarations of `lo
 untyped runtime file. `fixtures/` is spec data and stays JavaScript with
 `.d.mts` contracts, because the front-end canon and the Grammar lint families import its helpers by path.
 
+The [explicit exported surface](../../contexts/code/shared/typing.md) (R368, SHARED-TYPING-5) is `explicit-export-surface`
+(`HFS_EXPLICIT_EXPORT_SURFACE`): an exported function's return type, an exported variable's type and a parameter's type are
+written where they are exported, never inferred from a body or from other files; a component that returns only JSX, `null` or
+`undefined` is explicit. It reports each export TypeScript's isolated declaration emit cannot write, at the offending span, and says
+which annotation to add. It reads the classifier the lint result cache reads (`declarationSurface`, the bundled
+`runtime/scripts/lib/declaration-surface.mjs`), so it reports exactly the files the cache counts as open.
+
+`projectGraph` and `projectGraphSnapshot` are the cache's two readers of the project graph the graph rules share: the first builds it
+afresh, the second answers from the graph the process has already built, which is how the ESLint child hands its graph to the cache.
+
 ## HFS rules and their why codes
 
 Every rule of this plugin is an enforcer of one HFS rule. The relation (rule id -> HFS rule -> catalogued Vietnamese why code)

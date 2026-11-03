@@ -42,11 +42,16 @@ const rootOf = (input: Node | null | undefined): TSESTree.Identifier | null => {
   return null
 }
 
-const enclosingFunction = (node: Node): Node | null => {
+/**
+ * The outermost function around a node: the hook itself. A fold inside a `useMemo` callback or a `slotOfReads` projector is judged by what the
+ * hook returns of the read's status and by the slot it builds, not by the callback alone, which holds neither.
+ */
+const hookFunction = (node: Node): Node | null => {
+  let found: Node | null = null
   for (let current: Node | undefined = node.parent; current; current = current.parent) {
-    if (current.type === "ArrowFunctionExpression" || current.type === "FunctionDeclaration" || current.type === "FunctionExpression") return current
+    if (current.type === "ArrowFunctionExpression" || current.type === "FunctionDeclaration" || current.type === "FunctionExpression") found = current
   }
-  return null
+  return found
 }
 
 const nameOfKey = (key: Node): string | null => (key.type === "Identifier" ? key.name : key.type === "Literal" && typeof key.value === "string" ? key.value : null)
@@ -89,7 +94,7 @@ const noSwrDefaultArray = defineRule({
         if (node.operator !== "??" || node.right.type !== "ArrayExpression" || node.right.elements.length > 0) return
         const root = rootOf(node.left)
         if (!root || !isHookResult(context, node, root)) return
-        const fn = enclosingFunction(node)
+        const fn = hookFunction(node)
         if (!fn) return
         const text = source.getText(fn)
         const projections = projectedReads(context, root)

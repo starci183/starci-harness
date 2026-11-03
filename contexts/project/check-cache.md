@@ -221,7 +221,10 @@ that key.
    a declaration file or a JSON file stands for its content hash), the local files that emit names (`refs`: a type
    imported from them, a re-export) and whether the surface is *inferred* (`open`: the emit reported a diagnostic, a type
    the compiler must infer from bodies and other files; a function whose only diagnostic is a missing return type and
-   whose every return is JSX, `null` or `undefined` is not inferred, its type being the JSX namespace's). An explicit
+   whose every return is JSX, `null` or `undefined` is not inferred, its type being the JSX namespace's). The classifier is one
+   function, `declarationSurface` of the runtime (`scripts/lib/declaration-surface.mjs`), which the lint rule R368
+   `explicit-export-surface` of both canons also reads: the rule reports each export that makes a file `open`, at error, so a
+   lint-clean side has no inferred surface and a body edit lints that file alone. An explicit
    surface is its emit text plus the surfaces of the files it names, nothing else.
    The dirty set holds every changed, added or removed file, every file whose imports resolve elsewhere than recorded, and
    every file that imports a file whose surface changed, in the new graph and the cached one (a file that stopped
@@ -256,12 +259,14 @@ every other file of the side's canon scope (enumerated afresh) takes its record,
 dirty, and a record outside the scope is dropped. `app check --gate lint` and a default `app check` call the same cached ESLint and the same
 cached app pass on the same records, so they never hold two answers for one tree.
 
-A run builds each side's import graph and its project graph at most once: planning builds them for a diff and the record writing reuses
-them, a whole-side run builds them once after ESLint; the side's scope is enumerated once and handed to the ESLint launcher; and the
-graph build remembers the files and folders it probed (a side's thousands of files resolve their imports against the same few hundred
-folders). The installed canon's `projectGraph` runs again in the CLI process after the ESLint child built the same graph for its
-rules: a canon export that reuses the child's graph is the only way to remove that second build, and until it exists the second
-build is the cost of the records (`graph` step) staying the canon's own answer rather than a reconstruction from ESLint messages.
+A run builds each side's import graph at most once, and its project graph at most once in each process: planning builds them for a diff
+and the record writing reuses them; the side's scope is enumerated once and handed to the ESLint launcher; and the graph build remembers the
+files and folders it probed (a side's thousands of files resolve their imports against the same few hundred folders). The ESLint child
+builds the project graph for its rules, so it hands the snapshot out: the list runner (a whole side is the list `.`) asks each installed
+canon named in its job for `projectGraphSnapshot`, the findings of the graph the canon's rules already built in that process, and writes them
+beside its results; the launcher reads them back and the `graph` records are written from them. A whole-side run therefore builds the project
+graph once, in the child, and a diff builds it in the CLI for the plan and in the child for the rules. A child that wrote no snapshot, or a
+canon without the export, leaves the CLI to build the graph itself through `projectGraph`, so the records are the canon's own answer either way.
 
 ## Unit coverage
 

@@ -1,11 +1,21 @@
 # Changelog
 
-## 5.1.0 - 2026-11-03
+## 5.2.0 - 2026-11-03
 
 - Added: the lite starter composes `@starci/auth`: it depends on the package and on none of the identity libraries, `integrations/passport` is the glue the slot lists (`passport.config.ts`, `passport.options.ts`, `passport.decorators.ts`, `passport.kit.ts`, `errors/`), the web app keeps one `@starci/auth/client` instance in `modules/auth/client.ts`, and the baseline migration holds the package's session tables (`identity_sessions`, `identity_refresh_tokens`) byte for byte.
 - Changed: `infraOwners` own `@nestjs/passport`, `passport*`, `@nestjs/jwt`, `jose` and `bcryptjs` by nobody and `@starci/auth` by `integrations/passport` alone (R328); the `own-jwks-principal` machine refuses a `jwtVerify` call anywhere in the app and requires the `@starci/auth/server` import in the passport integration (R329); `transport-owner` no longer admits an auth door in `modules/auth`; the `auth` stack concern names `@starci/auth` and forbids `jose`, `jwt-decode`, `next-auth`, `@auth/core`, `keycloak-js` and `oidc-client-ts`.
 - Changed: the lite stack templates name `AUTH_WEB_ORIGIN` and the Ed25519 signing key; `AUTH_JWT_PRIVATE_KEY` is an EdDSA key and the public key is derived from it.
 - Added: the canon pin of `@starci/auth` 0.1.0.
+
+## 5.1.0
+
+- Added: `starci app codemod explicit-surface` writes the inferred type of every export the classifier counts as open (R368): return types, variable, parameter and property types, from the app's own TypeScript program. It prefers a named type the program exports, writes `ReactElement` for components and Next's `Metadata` for `generateMetadata`, adds merged type-only imports after a directive prologue, compiles the result beside the original and writes a file only when it gains no diagnostic, and reports (with a suggested fix) destructured exports and anonymous, computed, too long, `any`, unnameable and predicate types. Prettier of the app formats what is written.
+- Added: `starci app codemod directive-first` moves a `"use client"` or `"use server"` below another statement, or in the form `("use client")`, to the first statement of its module (R369).
+- Changed: the test-world declaration (R47, R89) is read in its typed form, `const world: TestWorldApi = defineTestWorld({ ... })` with `useTestWorld` and `useSandbox` exported typed from it, as well as in the destructured form; the template writes the typed form, and a config with neither is still refused.
+- Added: `template-surface.spec.mts` holds every TypeScript template to R368 and R369 (the front-end units are judged through their generators).
+- Changed: the scaffold templates write the type of every export (R368): Nest module definitions export each `ConfigurableModuleHost` member with its type, hooks name their result interface, async pages and layouts return `Promise<ReactElement>`, redux, zustand, next-intl and Apollo exports are typed, SQL texts are `SqlText`, entity and migration lists are `DatabaseConnectionOptions` members. A new app scaffolds clean under `explicit-export-surface`.
+- Added: `runtime/scripts/lib/declaration-surface.mjs`, the one classifier of a TypeScript file's exported type surface (the isolated declaration emit and the exports it cannot write without inference, with the JSX-only component exemption), and `runtime/scripts/hfs/explicit-surface-rule.mjs`, the factory of the `explicit-export-surface` rule both lint canons build (R368). The app-check ESLint cache reads the same classifier for `open`, so the rule reports exactly the files the cache counts as open.
+- Changed: the ESLint child of the cached lint hands its project-graph snapshot out. The list runner (`lint/eslint-list.cjs`, now also the runner of a whole-side run, as the list `.`) asks each installed canon for `projectGraphSnapshot` after the lint and writes the findings beside its results; `lintSide` writes the `graph` records from them and builds the graph itself only for a canon the child did not answer for. A whole-side lint no longer builds the project graph a second time in the CLI process.
 
 ## 5.0.8
 

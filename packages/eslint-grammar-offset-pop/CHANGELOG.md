@@ -1,8 +1,12 @@
 # Changelog
 
-## 0.21.13 - 2026-11-03
+## 0.21.14 - 2026-11-03
 
 - Changed: requires `@starci/eslint-grammar-core` 0.21.13; the runtime copies carry the `@starci/auth` rows.
+
+## 0.21.13
+
+- Changed: Align the Grammar family and its exact core dependency.
 
 ## 0.21.12
 

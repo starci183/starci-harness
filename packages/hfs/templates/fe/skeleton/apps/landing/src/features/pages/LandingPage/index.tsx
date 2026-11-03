@@ -1,3 +1,4 @@
+import type { ReactElement } from "react"
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 import { appUrl } from "@/modules/config"
@@ -10,7 +11,7 @@ export const landingMetadata = async (): Promise<Metadata> => {
 }
 
 /** The landing page, resolved on the server: its copy from the catalog and the product app's origin from the config module. */
-export const LandingPage = async () => {
+export const LandingPage = async (): Promise<ReactElement> => {
     const t = await getTranslations("landing.home")
     return <LandingPageBase props={{ title: t("title"), lede: t("lede"), openApp: t("openApp"), appHref: appUrl() }} />
 }

@@ -86,8 +86,19 @@ const returnedExpressions = (context: Context, fn: TSESTree.ArrowFunctionExpress
 const isFunction = (node: Node | undefined): node is TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression =>
   node !== undefined && (node.type === "ArrowFunctionExpression" || node.type === "FunctionExpression")
 
+/**
+ * The initializer of a `const` the identifier names in this file: a variable that holds a Pane (`const side = <Pane area="side" />`) renders that Pane, so it is
+ * followed to what it holds. A `let`, a parameter, an import or a destructured name holds nothing that can be proved here.
+ */
+const constInitializer = (context: Context, identifier: TSESTree.Identifier): Node | null => {
+  const definition = variableOf(context, identifier)?.defs.find((entry) => entry.type === "Variable")
+  const declarator = definition?.node
+  if (declarator?.type !== "VariableDeclarator" || declarator.id.type !== "Identifier" || declarator.init === null) return null
+  return declarator.parent.type === "VariableDeclaration" && declarator.parent.kind === "const" ? declarator.init : null
+}
+
 /** The leaves an expression can render. */
-const leavesOfExpression = (context: Context, expression: Node): Leaf[] => {
+const leavesOfExpression = (context: Context, expression: Node, followed: ReadonlySet<Node> = new Set()): Leaf[] => {
   switch (expression.type) {
     case "JSXEmptyExpression":
       return []
@@ -99,25 +110,30 @@ const leavesOfExpression = (context: Context, expression: Node): Leaf[] => {
       if (expression.value === null || typeof expression.value === "boolean") return []
       if (typeof expression.value === "string" && expression.value.trim() === "") return []
       return [{ kind: "opaque", node: expression }]
-    case "Identifier":
-      return expression.name === "undefined" ? [] : [{ kind: "opaque", node: expression }]
+    case "Identifier": {
+      if (expression.name === "undefined") return []
+      const init = constInitializer(context, expression)
+      if (init === null || followed.has(init)) return [{ kind: "opaque", node: expression }]
+      // a named value reports on the name, where the author wrote it in the grid, however deep the initializer is followed
+      return leavesOfExpression(context, init, new Set([...followed, init])).map((leaf) => (leaf.kind === "opaque" ? { kind: "opaque", node: expression } : leaf.kind === "element" && nameOf(leaf.node.openingElement.name) === "Pane" ? leaf : { kind: "opaque", node: expression }))
+    }
     case "TSAsExpression":
     case "TSNonNullExpression":
     case "TSSatisfiesExpression":
-      return leavesOfExpression(context, expression.expression)
+      return leavesOfExpression(context, expression.expression, followed)
     case "ConditionalExpression":
-      return [...leavesOfExpression(context, expression.consequent), ...leavesOfExpression(context, expression.alternate)]
+      return [...leavesOfExpression(context, expression.consequent, followed), ...leavesOfExpression(context, expression.alternate, followed)]
     case "LogicalExpression":
       return expression.operator === "&&"
-        ? leavesOfExpression(context, expression.right)
-        : [...leavesOfExpression(context, expression.left), ...leavesOfExpression(context, expression.right)]
+        ? leavesOfExpression(context, expression.right, followed)
+        : [...leavesOfExpression(context, expression.left, followed), ...leavesOfExpression(context, expression.right, followed)]
     case "ArrayExpression":
-      return expression.elements.flatMap((element) => (element === null ? [] : leavesOfExpression(context, element)))
+      return expression.elements.flatMap((element) => (element === null ? [] : leavesOfExpression(context, element, followed)))
     case "CallExpression": {
       const callee = expression.callee
       const method = callee.type === "MemberExpression" && !callee.computed && callee.property.type === "Identifier" ? callee.property.name : null
       const callback = expression.arguments[0]
-      if ((method === "map" || method === "flatMap") && isFunction(callback)) return returnedExpressions(context, callback).flatMap((returned) => leavesOfExpression(context, returned))
+      if ((method === "map" || method === "flatMap") && isFunction(callback)) return returnedExpressions(context, callback).flatMap((returned) => leavesOfExpression(context, returned, followed))
       return [{ kind: "opaque", node: expression }]
     }
     default:
@@ -142,7 +158,7 @@ const leavesOf = (context: Context, parent: TSESTree.JSXElement | TSESTree.JSXFr
 export const paneGridChildren: Rule.RuleModule = exemptFreestyle(defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R345: a PaneGrid child is a Pane element (directly, in a conditional or in a map), never a wrapper component, a fragment or a variable.", url: "knowledge/hfs/rules.yaml#R345" },
+    docs: { description: "R345: a PaneGrid child is a Pane element (directly, in a conditional or in a map, or a `const` that holds one), never a wrapper component, a fragment or a variable the file cannot prove holds a Pane.", url: "knowledge/hfs/rules.yaml#R345" },
     schema: [],
     messages: {
       notPane:

@@ -8,7 +8,7 @@ import { @@Action@@Command } from "../../application/@@action@@.command"
 @Injectable()
 /** The consumer door of the @@event@@ event in the @@reactor@@ reactor: it dispatches one command and forwards the event id. */
 export class @@Event@@Consumer implements EventConsumer<@@Event@@Event> {
-    readonly event = @@Event@@Event
+    readonly event: typeof @@Event@@Event = @@Event@@Event
 
     constructor(@InjectCommandBus() private readonly commandBus: CommandBus) {}
 

@@ -7,7 +7,7 @@ import { @@Step@@Step } from "../../steps/@@step@@.step"
 @Injectable()
 /** The processor of the @@job@@ job: the runner claims and settles, `process` runs the steps in order. */
 export class @@Job@@Processor extends FencedProcessor {
-    readonly queue = @@jobUpper@@_QUEUE
+    readonly queue: string = @@jobUpper@@_QUEUE
 
     constructor(private readonly @@stepCamel@@Step: @@Step@@Step) {
         super()
