@@ -40,6 +40,32 @@ environments:
     runbook: README.md
     # Custody starts empty; add real sealed members after owner provisioning.
     secrets: []
+    # `starci app stack up --env dev --execute` reads this block (PROJECT-STACKS-6): the compose services in dependency order, each
+    # awaited on its healthcheck, then readiness and the origins. The app images come from `starci app stack prepare --env dev --execute`.
+    local:
+      ports:
+        core: 3001
+        app: 3000
+        landing: 3002
+      services:
+        - {name: postgres, wait: healthy}
+        - {name: core, wait: healthy, port: core}
+        - {name: app, wait: healthy, port: app}
+        - {name: landing, wait: healthy, port: landing}
+      ready:
+        - {name: core-live, url: "http://127.0.0.1:${port.core}/health/live"}
+        - {name: core-ready, url: "http://127.0.0.1:${port.core}/health/ready"}
+        - {name: app-live, url: "http://127.0.0.1:${port.app}/health/live"}
+        - {name: landing-live, url: "http://127.0.0.1:${port.landing}/health/live"}
+      verify:
+        - {name: core-live, url: "http://127.0.0.1:${port.core}/health/live"}
+        - {name: core-ready, url: "http://127.0.0.1:${port.core}/health/ready"}
+        - {name: app-live, url: "http://127.0.0.1:${port.app}/health/live"}
+        - {name: landing-live, url: "http://127.0.0.1:${port.landing}/health/live"}
+      origins:
+        - {name: app, url: "http://127.0.0.1:${port.app}"}
+        - {name: landing, url: "http://127.0.0.1:${port.landing}"}
+        - {name: core, url: "http://127.0.0.1:${port.core}"}
   production:
     status: supported
     runtime: docker-swarm

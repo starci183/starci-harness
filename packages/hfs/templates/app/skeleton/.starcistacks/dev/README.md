@@ -1,16 +1,27 @@
 # Development stack
 
-Every development dependency runs in Docker Linux containers. This starter's Docker Compose model contains the core API, the product and landing front ends, and a pinned local PostgreSQL database. Compose is an implementation detail; declared dependencies may also use managed `<dep>:create`, `<dep>:start` and `<dep>:stop` scripts. A declared native profile may run app processes locally while dependencies stay in Docker. Trust authentication is confined to this local, unpublished database.
-Starter release images and external secrets must be prepared before starting the container model. Local source development remains available through the app scripts.
+The dev environment is one command: `starci app stack up --env dev --execute`. It checks the machine, opens the dev custody, starts the
+compose services of `infra/compose/stack.yaml` in Docker Linux containers (the pinned local PostgreSQL first, then the core API and the product
+and landing front ends), waits for each healthcheck and for readiness, and prints the origins. What it runs is the `local` block of
+`environments.dev` in `.starcistacks/application-stacks.yaml` (PROJECT-STACKS-6 in contexts/project/stacks.md); this runbook never carries a
+docker command, an agent never runs docker by hand. Trust authentication is confined to this local, unpublished database.
+
+**A new machine.** Install what `starci app stack doctor --env dev` reports missing (it prints the exact winget, brew or apt step per tool; Node
+from `.nvmrc`, npm, git, Docker with Compose v2 running Linux containers, WSL2 on Windows, sops and age), then run `prepare` and `up`.
+
+**Custody.** The API reads its database connection from the owner-controlled file `/run/starci-secrets/{{project}}/dev/primary-db-url`, which
+the compose model mounts into the API; materialize its real sealed member there before `up`. The scaffold creates no fake secret or
+successful proof.
 
 | Command | Operation |
 | --- | --- |
-| prepare | Build the app images and provide the local database connection through sealed custody. Materialize its real sealed member to the owner-controlled file `/run/starci-secrets/{{project}}/dev/primary-db-url`; Docker Compose mounts that file into the API. |
-| doctor | From this directory, run `docker compose config -f infra/compose/stack.yaml`. Confirm image, secret and database availability. |
-| up | Run `docker compose -f infra/compose/stack.yaml up -d` from this directory after preparation. |
-| status | Run `docker compose -f infra/compose/stack.yaml ps`. |
-| logs | Run `docker compose -f infra/compose/stack.yaml logs core`; never print mounted credentials. |
-| down | Run `docker compose -f infra/compose/stack.yaml down`. |
-| verification | Confirm the API `/health/live` and `/health/ready` endpoints, then run `npm run lint` from the app root. |
+| prepare | `starci app stack prepare --env dev --execute`: checks the machine, opens the custody and builds the app images. |
+| doctor | `starci app stack doctor --env dev`: read-only table of host prerequisites with the owner-run install step per OS, custody, compose render and ports. |
+| up | `starci app stack up --env dev --execute`: prepare, then the services in order and readiness; prints the origins. |
+| status | `starci app stack status --env dev`: desired against running and every readiness probe. |
+| logs | `starci app stack logs --env dev --service core` (a compose service, bounded and redacted; never prints mounted credentials). |
+| down | `starci app stack down --env dev --execute`: stops the compose project; volumes and sealed values stay. |
+| verification | `starci app stack verify --env dev`: the declared liveness and readiness probes after a real start, then `npm run lint` from the app root. |
 
-Keep real sealed members under `.starcistacks/dev/secrets/*.enc`, add them to the manifest after sealing and inventory their key names in the environment record. The scaffold creates no fake secret or successful proof.
+Keep real sealed members under `.starcistacks/dev/secrets/*.enc.yaml`, add them to the manifest after sealing and inventory their key names in
+`.starcistacks/dev/runtime/env/KEYS.md`.
