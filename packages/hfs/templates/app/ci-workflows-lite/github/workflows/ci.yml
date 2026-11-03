@@ -92,7 +92,7 @@ jobs:
         run: npm run typecheck
         env:
           NODE_OPTIONS: {{nodeOptions}}
-{{moduleTestStep}}
+
   lint:
     needs: plan
     if: ${{ needs.plan.outputs.checks == 'true' }}
@@ -101,7 +101,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        side: [be, fe]
+        side: {{lintSides}}
     steps:
 {{> app/ci-workflows/install-steps.yml}}
 {{> app/ci-workflows/lint-base.yml}}

@@ -35,8 +35,9 @@ export type GraphSnapshotParts = Readonly<Record<string, GraphSnapshot>>;
 export interface LinterRun { results?: Dynamic[]; error?: string; graph?: GraphSnapshotParts }
 /**
  * What a linter run is asked for. `list` is the files an ESLint run lints (cwd-relative, posix) when they are named one by one: they go to the child
- * through a file, never the command line, and `args` then holds the options alone. `files` is the number of source files the run judges, which the
- * heavy-command budget of the ESLint kind scales with (a list names its own count).
+ * through a file, never the command line, and `args` then holds the options alone. `files` is the number of source files the child's work is made of,
+ * which the heavy-command budget of the ESLint kind scales with: the typed program and the project graph of a side are built whole for a named list
+ * too, so a list run of a side whose scope is known names the side's count; without `files` a list names its own count.
  */
 export interface LinterSpec { cwd: string; pkg: string; bin: string; args: string[]; bound?: string | null; list?: readonly string[] | undefined; files?: number | undefined; graph?: readonly GraphCanon[] | undefined }
 /** An installed canon whose graph snapshot the ESLint child hands out: its package name and the entry file the child imports. */
@@ -105,7 +106,7 @@ export async function runLinter({ cwd, pkg, bin, args, bound = null, list, files
     fs.writeFileSync(job, JSON.stringify({ files: list ?? ['.'], fix: args.includes('--fix'), ...(snapshotFile === null || graph === undefined ? {} : { graph: { out: snapshotFile, canons: graph } }) }));
     childArgs = [LIST_RUNNER, job];
   }
-  const count = list?.length ?? files;
+  const count = files ?? list?.length;
   let run: HeavyNodeResult;
   let handed: GraphSnapshotParts | undefined;
   try {
@@ -345,8 +346,10 @@ async function launchEslint({ app, repoRoot, opts, changed, existing, run = runL
     // the child that builds the canon's project graph for its rules hands the snapshot out when the caller keeps the graph findings (the cache); the packages are no side folder and have no graph
     const graph = handOutGraph && !packages ? graphCanonsOf(repoRoot, cwd, side) : undefined;
     // The files of a diff go to ONE child through a file (a diff of hundreds of long paths outgrows the Windows command line, and each extra
-    // child would build the whole TypeScript program again); the whole side is a single directory argument.
-    const launch = Promise.resolve().then(() => run(changed ? { cwd, pkg: 'eslint', bin: 'eslint', args: head, list: sources, bound: repoRoot, ...(graph === undefined ? {} : { graph }) } : { cwd, pkg: 'eslint', bin: 'eslint', args: [...head, packages ? PACKAGES : '.'], files: expected.length, bound: repoRoot, ...(graph === undefined ? {} : { graph }) }));
+    // child would build the whole TypeScript program again); the whole side is a single directory argument. Either child builds the typed program
+    // and the project graph of the whole side, so its liveness budget scales with the side's scope when the caller knows it, never with the diff alone.
+    const programFiles = known?.length ?? expected.length;
+    const launch = Promise.resolve().then(() => run(changed ? { cwd, pkg: 'eslint', bin: 'eslint', args: head, list: sources, files: programFiles, bound: repoRoot, ...(graph === undefined ? {} : { graph }) } : { cwd, pkg: 'eslint', bin: 'eslint', args: [...head, packages ? PACKAGES : '.'], files: programFiles, bound: repoRoot, ...(graph === undefined ? {} : { graph }) }));
     launches.push({ side, cwd, expected, run: launch.catch(spawnFailure) });
   }
   return launches;
@@ -458,9 +461,19 @@ export interface CachedLinters {
 }
 
 /**
+ * A scope whose linter reached no complete measurement (a child ended by its liveness budget, a capture cut short) is a tool error of that scope, and the
+ * next scope still runs: the root packages are judged whatever became of the back end. Nothing of the failed scope is recorded (its records are written
+ * only after its child completed). A hold of the host (HOST_HELD, HEAVY_DEFERRED) still ends the run, since no scope would be admitted either.
+ */
+function scopeFailure(error: unknown, scope: string): string {
+  if (!isNodeExecutionRefusal(error) || isHostHeld(error) || (error as { code?: unknown }).code === 'HEAVY_DEFERRED') throw error;
+  return `eslint did not complete in ${scope}/: ${String((error as Error).message).split('\n')[0]}`;
+}
+
+/**
  * ESLint and stylelint through the result cache: per side, the files the records cannot vouch for go to the very launcher, chunking and result
- * validation of a full run (eslintRepository), the rest take their records. The answer has the shape of eslintRepository's, plus the stylelint
- * results, so the lint report is built the same way from either.
+ * validation of a full run (eslintRepository), the rest take their records; then the root packages, linted whole. Each scope runs on its own
+ * (scopeFailure). The answer has the shape of eslintRepository's, plus the stylelint results, so the lint report is built the same way from either.
  */
 export async function cachedLinters({ repoRoot, app, side: only, run, session }: {
   repoRoot: string; app: RepoDeclaration; side?: string | undefined; run?: LinterRunner | undefined; session: CheckSession;
@@ -477,21 +490,28 @@ export async function cachedLinters({ repoRoot, app, side: only, run, session }:
     try { scope = await sourceFiles({ repoRoot, cwd, side }); canons = await canonDeclarations({ repoRoot, cwd, side }); }
     catch (error) { eslint.errors.push(`eslint source scope is unavailable in ${side}/: ${String((error as Error | undefined)?.message ?? error)}`); eslint.engine.sides[side] = { files: 0 }; continue; }
     const styled = side === STYLE_SIDE;
-    const outcome = await lintSide({
-      session, side, sideRoot: cwd, scope, stylesheets: styled ? stylesheetsOf(cwd) : [],
-      canons, styleCanon: styled ? await styleDeclaration({ repoRoot, cwd }) : null, typescript: () => loadAppTypeScript(cwd), extraKey: '', gitToken, full, write: true,
-      eslint: async (files): Promise<LinterOutcome<EslintResult>> => {
-        const listed = files === null ? null : files.map((file) => `${side}/${file}`);
-        const sub = await eslintRepository({ repoRoot, app, opts: { side }, changed: listed, existing: listed ?? [], run, scopes: { [side]: scope }, handOutGraph: true });
-        return { results: sub.raw as EslintResult[], errors: sub.errors, ...(sub.graphs[side] === undefined ? {} : { graph: sub.graphs[side] }) };
-      },
-      stylelint: styled ? async (files): Promise<LinterOutcome<StylelintResult>> => {
-        const linted = await (run ?? runLinter)({ cwd, pkg: 'stylelint', bin: 'stylelint', args: [...(files ?? [STYLE_GLOB]), '--formatter', 'json'] });
-        const appRelative = appRelativeMessages(STYLE_SIDE, cwd);
-        for (const result of linted.results ?? []) for (const warning of result.warnings ?? []) warning.text = appRelative(warning.text);
-        return { results: (linted.results ?? []) as StylelintResult[], errors: linted.error ? [linted.error] : [] };
-      } : null,
-    });
+    let outcome: Awaited<ReturnType<typeof lintSide>>;
+    try {
+      outcome = await lintSide({
+        session, side, sideRoot: cwd, scope, stylesheets: styled ? stylesheetsOf(cwd) : [],
+        canons, styleCanon: styled ? await styleDeclaration({ repoRoot, cwd }) : null, typescript: () => loadAppTypeScript(cwd), extraKey: '', gitToken, full, write: true,
+        eslint: async (files): Promise<LinterOutcome<EslintResult>> => {
+          const listed = files === null ? null : files.map((file) => `${side}/${file}`);
+          const sub = await eslintRepository({ repoRoot, app, opts: { side }, changed: listed, existing: listed ?? [], run, scopes: { [side]: scope }, handOutGraph: true });
+          return { results: sub.raw as EslintResult[], errors: sub.errors, ...(sub.graphs[side] === undefined ? {} : { graph: sub.graphs[side] }) };
+        },
+        stylelint: styled ? async (files): Promise<LinterOutcome<StylelintResult>> => {
+          const linted = await (run ?? runLinter)({ cwd, pkg: 'stylelint', bin: 'stylelint', args: [...(files ?? [STYLE_GLOB]), '--formatter', 'json'] });
+          const appRelative = appRelativeMessages(STYLE_SIDE, cwd);
+          for (const result of linted.results ?? []) for (const warning of result.warnings ?? []) warning.text = appRelative(warning.text);
+          return { results: (linted.results ?? []) as StylelintResult[], errors: linted.error ? [linted.error] : [] };
+        } : null,
+      });
+    } catch (error) {
+      eslint.errors.push(scopeFailure(error, side));
+      eslint.engine.sides[side] = { files: 0 };
+      continue;
+    }
     sides.push({ side, stats: outcome.stats });
     for (const message of outcome.errors) (message.startsWith('stylelint ') ? style.errors : eslint.errors).push(message);
     eslint.raw.push(...outcome.eslint);
@@ -501,11 +521,16 @@ export async function cachedLinters({ repoRoot, app, side: only, run, session }:
   }
   // The root packages are small and have no result records: they are linted whole on every run, through the same launcher.
   if ((only === undefined || only === PACKAGES) && hasPackagesLint(repoRoot)) {
-    const linted = await eslintRepository({ repoRoot, app, opts: { side: PACKAGES }, run });
-    eslint.errors.push(...linted.errors);
-    eslint.raw.push(...linted.raw);
-    eslint.findings.push(...linted.findings);
-    eslint.engine.sides[PACKAGES] = linted.engine.sides[PACKAGES] ?? { files: 0 };
+    try {
+      const linted = await eslintRepository({ repoRoot, app, opts: { side: PACKAGES }, run });
+      eslint.errors.push(...linted.errors);
+      eslint.raw.push(...linted.raw);
+      eslint.findings.push(...linted.findings);
+      eslint.engine.sides[PACKAGES] = linted.engine.sides[PACKAGES] ?? { files: 0 };
+    } catch (error) {
+      eslint.errors.push(scopeFailure(error, PACKAGES));
+      eslint.engine.sides[PACKAGES] = { files: 0 };
+    }
   }
   session.report(lintFamilyReport(sides));
   return { eslint, stylelint: style, sides };

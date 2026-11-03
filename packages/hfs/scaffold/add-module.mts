@@ -66,10 +66,11 @@ function manifests(project: string, name: string, versions: Readonly<Record<stri
     private: true,
     description: `The ${pascalOf(name)} module on the ${project} agent SDK: its template (./template) and workbench declaration (./manifest), both React-free for the back end, its Grammar-only workbench (./workbench) and its public face (./public) for the front end.`,
     exports,
-    scripts: { build: 'tsc -p tsconfig.build.json && tsc -p tsconfig.build.workbench.json', typecheck: 'tsc --noEmit --pretty false', test: 'jest --coverage' },
+    // No test script and no jest config of its own: its specs run in the back end's unit run (the root packages of be/jest.config.js, BE-TEST-13).
+    scripts: { build: 'tsc -p tsconfig.build.json && tsc -p tsconfig.build.workbench.json', typecheck: 'tsc --noEmit --pretty false' },
     dependencies: { [sdk]: '*' },
     peerDependencies: { '@starci/grammar': versions['@starci/grammar'], react: versions['react'] },
-    devDependencies: sortedDependencies({ '@types/jest': versions['@types/jest'] ?? '', '@types/react': versions['@types/react'] ?? '', jest: versions['jest'] ?? '', 'ts-jest': versions['ts-jest'] ?? '', typescript: versions['typescript'] ?? '' }),
+    devDependencies: sortedDependencies({ '@types/jest': versions['@types/jest'] ?? '', '@types/react': versions['@types/react'] ?? '', typescript: versions['typescript'] ?? '' }),
   };
   const build = { rootDir: 'src', noEmit: false, declaration: true, types: [] as string[] };
   return [
@@ -85,7 +86,7 @@ function versionsOf(root: string, feAppFiles: readonly string[]): Record<string,
   const rootPackage = read(path.join(root, 'package.json'));
   const all: Record<string, string> = { ...rootPackage.devDependencies, ...rootPackage.dependencies };
   for (const file of feAppFiles) Object.assign(all, read(file).dependencies);
-  const wanted = ['@starci/grammar', 'react', '@types/jest', '@types/react', 'jest', 'ts-jest', 'typescript'];
+  const wanted = ['@starci/grammar', 'react', '@types/jest', '@types/react', 'typescript'];
   const missing = wanted.filter((name) => all[name] === undefined);
   if (missing.length > 0) throw new ScaffoldError('HFS_ADD_MODULE_PINS', `add module reads the versions of ${missing.join(', ')} from the app's manifests, which declare none of them`);
   return Object.fromEntries(wanted.map((name) => [name, all[name] as string]));
@@ -129,6 +130,7 @@ function context(root: string, name: string): { project: string; declarationFile
   const packageFile = path.join(root, 'package.json');
   if (!fs.existsSync(declarationFile) || !fs.existsSync(packageFile)) throw new ScaffoldError('HFS_ADD_NOT_AN_APP', 'a module verb runs at the app root containing hfs.json and package.json');
   const repo = readRepoDeclaration(loadSlotManifest(), root);
+  if (repo.modules === 'data') throw new ScaffoldError('HFS_MODULES_ARE_DATA', 'hfs.json declares modules: "data": a module of this app is a seed under .starcistacks/seeds/data/modules, not a package, so no module verb applies');
   return { project: repo.project, declarationFile, packageFile };
 }
 

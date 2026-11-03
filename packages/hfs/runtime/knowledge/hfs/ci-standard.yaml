@@ -77,7 +77,7 @@ items:
     check: ci-standard
   - id: sonar-lint-per-side
     title: the Sonar lint runs per side
-    requires: "a lint with a Sonar import (`starci app check --gate lint --out`) names its side (--side be|fe); the reports are merged into reports/lint.sonar.json afterwards; no combined lint with Sonar"
+    requires: "a lint with a Sonar import (`starci app check --gate lint --out`) names its side (--side be|fe|packages); the reports are merged into reports/lint.sonar.json afterwards; no combined lint with Sonar"
     covers: [app-ci, runtime]
     check: ci-standard
   - id: test-sharding
@@ -87,7 +87,7 @@ items:
     check: ci-standard
   - id: lint-parallel
     title: lint each side in its own job
-    requires: "the lint job is a matrix over side [be, fe]; each side lints (with its own Sonar report when a token is set) in parallel, and the sonar job merges the reports"
+    requires: "the lint job is a matrix over side [be, fe], plus packages in an app with root packages; each scope lints (with its own Sonar report when a token is set) in parallel and on its own, and the sonar job merges the reports"
     covers: [app-ci]
     check: ci-standard
   - id: cache-saved-always
