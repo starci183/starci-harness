@@ -1,7 +1,8 @@
 // The seed step (PROJECT-STACKS-12) against a fake psql and a fake sops seam: it plans without writing, applies the shared level and then
 // the environment's in order with one receipt per entry in public.starci_seed_receipts, a rerun with nothing changed applies nothing, an
 // upsert reruns on a changed file or a rotated secret while a once entry never reruns, the opened secret values reach the app command on
-// stdin only (never a line, argv or receipt), a files entry is validated only, and every failure leaves no receipt.
+// stdin only (never a line, argv or receipt), a files entry is validated only, and every failure leaves no receipt. An always entry runs on every
+// run and its receipt keeps the outcome the command answered; an upsert entry with a probe runs again when the probe finds drift.
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -53,7 +54,7 @@ function app(t: TestContext): string {
 
 /** A database whose psql understands the step's statements: the receipts table, its rows, and the seed files a transaction runs. */
 function database() {
-  const state = { present: false, rows: [] as Array<{ scope: string; id: string; hash: string; secrets: string }>, files: [] as string[], fail: '' };
+  const state = { present: false, rows: [] as Array<{ scope: string; id: string; hash: string; secrets: string; outcome: string }>, files: [] as string[], fail: '' };
   const psql = (args: readonly string[]): RunResult => {
     const sql = args.filter((_, index) => args[index - 1] === '-c');
     if (!args.includes('-1')) {
@@ -65,10 +66,10 @@ function database() {
     if (files.some((file) => fs.readFileSync(file, 'utf8').includes(state.fail || '\0'))) return { status: 1, stdout: '', stderr: 'ERROR: boom' };
     for (const statement of sql) {
       if (statement.startsWith('create table')) state.present = true;
-      const values = /values \('([^']*)', '([^']*)', '([^']*)', '([^']*)', '([^']*)'\)/u.exec(statement);
+      const values = /values \('([^']*)', '([^']*)', '([^']*)', '([^']*)', '([^']*)', '([^']*)'\)/u.exec(statement);
       if (values) {
-        const [, scope = '', id = '', hash = '', secrets = ''] = values;
-        state.rows = [...state.rows.filter((row) => row.scope !== scope || row.id !== id), { scope, id, hash, secrets }];
+        const [, scope = '', id = '', hash = '', secrets = '', , outcome = ''] = values;
+        state.rows = [...state.rows.filter((row) => row.scope !== scope || row.id !== id), { scope, id, hash, secrets, outcome }];
       }
     }
     state.files.push(...files.map((file) => path.basename(file)));
@@ -78,7 +79,7 @@ function database() {
 }
 
 /** The step's input over the fake database, a fake sops seam holding `secrets`, and an app command that records its stdin. */
-function step(root: string, db: ReturnType<typeof database>, secrets: Map<string, Record<string, string>>, { execute = true, exit = 0 } = {}) {
+function step(root: string, db: ReturnType<typeof database>, secrets: Map<string, Record<string, string>>, { execute = true, exit = 0, run }: { execute?: boolean; exit?: number; run?: (argv: readonly string[]) => RunResult } = {}) {
   const inputs: Array<{ argv: readonly string[]; input: string }> = [];
   // reason: the step reads only spawn and sops of the context.
   const ctx = {
@@ -87,7 +88,7 @@ function step(root: string, db: ReturnType<typeof database>, secrets: Map<string
     sops: { decrypt: (file: string) => secrets.get(path.basename(file, '.enc.yaml')) ?? assert.fail(`no fixture for ${file}`), decryptBinary: () => '' },
   } as unknown as StackContext;
   const target: DbTarget = { how: 'url', url: 'postgresql://owner@127.0.0.1:5432/app', env: {}, secrets: [] };
-  const input: SeedStepInput = { ctx, repoRoot: root, env: 'production', target, execute, command: (argv, text) => { inputs.push({ argv, input: text }); return { status: exit, stdout: '', stderr: exit ? 'leaked?' : '' }; } };
+  const input: SeedStepInput = { ctx, repoRoot: root, env: 'production', target, execute, command: (argv, text) => { inputs.push({ argv, input: text }); return run?.(argv) ?? { status: exit, stdout: '', stderr: exit ? 'leaked?' : '' }; } };
   return { input, inputs };
 }
 
@@ -246,4 +247,73 @@ test('the deploy runs the seed step between convergence and verification, and it
   const result = await deployRelease(ctx, config, { sourceSha: 'f'.repeat(40), execute: true, out }, deps);
   assert.equal(result.ok, true, result.lines.join('\n'));
   assert.ok(order.indexOf('converge') < order.indexOf('seed') && order.indexOf('seed') < order.indexOf('verify'), order.join(' '));
+});
+
+/** A shared level whose entries learn of drift: a sql and a data entry with a probe, and an always entry. */
+function driftApp(t: TestContext): string {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-stack-seeds-drift-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const files: Record<string, string> = {
+    'be/schemas/graph.schema.json': JSON.stringify({ type: 'object', required: ['name'], properties: { name: { type: 'string' } } }),
+    '.starcistacks/seeds/seeds.yaml': manifest([
+      '{id: plans, kind: sql, path: sql/010-plans.sql, target: primary, mode: upsert, probe: [node, cli.js, plans, probe]}',
+      '{id: flows, kind: data, path: data/flows.json, target: [node, cli.js, flows, seed], schema: be/schemas/graph.schema.json, mode: upsert, probe: [node, cli.js, flows, probe]}',
+      '{id: graphs, kind: data, path: data/graphs.json, target: [node, cli.js, graphs, seed], schema: be/schemas/graph.schema.json, mode: always}',
+    ]),
+    '.starcistacks/seeds/sql/010-plans.sql': "insert into plans values ('free') on conflict do nothing;\n",
+    '.starcistacks/seeds/data/flows.json': JSON.stringify({ name: 'sales' }),
+    '.starcistacks/seeds/data/graphs.json': JSON.stringify({ name: 'agent' }),
+  };
+  for (const [file, text] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    fs.writeFileSync(path.join(root, file), text);
+  }
+  return root;
+}
+
+/** App commands of the drift app: each probe exits `drift` (0: in sync), each loader prints `answer` after a line of its own output. */
+const driftCommands = (drift: number, answer: string) => (argv: readonly string[]): RunResult =>
+  argv[3] === 'probe' ? { status: drift, stdout: 'probe output', stderr: '' } : { status: 0, stdout: `loaded ${String(argv[2])}\n${answer}\n`, stderr: '' };
+
+test('an always entry runs on every run and its receipt keeps the outcome the command answered on its last line, never its other output', (t) => {
+  const root = driftApp(t);
+  const db = database();
+  const plan = seedStep(step(root, db, new Map(), { execute: false }).input).lines;
+  assert.deepEqual(plan, ['plan seed shared/plans: apply (sql, upsert)', 'plan seed shared/flows: apply (data, upsert)', 'plan seed shared/graphs: apply (every run) (data, always)']);
+  const first = seedStep(step(root, db, new Map(), { run: driftCommands(0, 'restored') }).input).lines;
+  assert.deepEqual(first, ['seed shared/plans: applied (sql, upsert, 1 file)', 'seed shared/flows: restored (data, upsert)', 'seed shared/graphs: restored (data, always)']);
+  const again = step(root, db, new Map(), { run: driftCommands(0, 'unchanged') });
+  assert.deepEqual(seedStep(again.input).lines, ['seed shared/plans: unchanged (upsert, the probe found no drift)', 'seed shared/flows: unchanged (upsert, the probe found no drift)', 'seed shared/graphs: unchanged (data, always)']);
+  assert.deepEqual(again.inputs.map((call) => call.argv.slice(2).join(' ')), ['plans probe', 'flows probe', 'graphs seed'], 'the probes ran and only the always entry loaded');
+  assert.deepEqual(db.state.rows.map((row) => `${row.id}:${row.outcome}`), ['plans:applied', 'flows:restored', 'graphs:unchanged']);
+  const odd = seedStep(step(root, db, new Map(), { run: driftCommands(0, 'something else') }).input).lines;
+  assert.equal(odd.at(-1), 'seed shared/graphs: applied (data, always)');
+  assert.equal(JSON.stringify([first, odd, db.state.rows]).includes('loaded'), false, 'the command output is never a line or a receipt');
+});
+
+test('a probe that exits non-zero runs an upsert entry again though its hash is unchanged, with the input the command gets; a dry run runs no probe', (t) => {
+  const root = driftApp(t);
+  const db = database();
+  seedStep(step(root, db, new Map(), { run: driftCommands(0, 'restored') }).input);
+  const drifted = step(root, db, new Map(), { run: driftCommands(1, 'restored') });
+  assert.deepEqual(seedStep(drifted.input).lines, ['seed shared/plans: applied (sql, upsert, the probe found drift, 1 file)', 'seed shared/flows: restored (data, upsert, the probe found drift)', 'seed shared/graphs: restored (data, always)']);
+  const [plansProbe, flowsProbe, flowsSeed] = drifted.inputs;
+  assert.deepEqual(JSON.parse(plansProbe?.input ?? '{}'), { env: 'production', scope: 'shared', entry: 'plans', kind: 'sql' });
+  assert.equal(flowsProbe?.input, flowsSeed?.input, 'the probe reads what the loader reads');
+  assert.deepEqual(db.state.files, ['010-plans.sql', '010-plans.sql']);
+  const dry = step(root, db, new Map(), { execute: false });
+  assert.deepEqual(seedStep(dry.input).lines.slice(0, 2), ['plan seed shared/plans: apply when the probe finds drift or a referenced secret changed (sql, upsert)', 'plan seed shared/flows: apply when the probe finds drift or a referenced secret changed (data, upsert)']);
+  assert.equal(dry.inputs.length, 0);
+});
+
+test('a probe that cannot run and an always command that fails stop the step with no receipt written for them', (t) => {
+  const root = driftApp(t);
+  const db = database();
+  seedStep(step(root, db, new Map(), { run: driftCommands(0, 'restored') }).input);
+  const before = JSON.stringify(db.state.rows);
+  const unrunnable = (argv: readonly string[]): RunResult => (argv[3] === 'probe' ? { status: null, stdout: '', stderr: '', error: new Error('ENOENT') } : driftCommands(0, 'unchanged')(argv));
+  assert.throws(() => seedStep(step(root, db, new Map(), { run: unrunnable }).input), /STACK_SEED_PROBE|shared\/plans: the probe node cli\.js plans probe could not run; its output is withheld/u);
+  const failing = (argv: readonly string[]): RunResult => (argv[2] === 'graphs' ? { status: 4, stdout: 'leaked?', stderr: '' } : driftCommands(0, 'unchanged')(argv));
+  assert.throws(() => seedStep(step(root, db, new Map(), { run: failing }).input), (error: Error) => /shared\/graphs: node cli\.js graphs seed exited 4; its output is withheld/u.test(error.message) && !error.message.includes('leaked'));
+  assert.equal(JSON.stringify(db.state.rows), before);
 });

@@ -109,7 +109,7 @@ test('HFS_SEED_MANIFEST: a level without a manifest, a missing path, an unlisted
       '{id: a, kind: sql, path: sql/a.sql, target: primary, mode: upsert, after: [b]}',
       '{id: b, kind: sql, path: sql/b.sql, target: primary, mode: upsert, after: [a]}',
       '{id: c, kind: sql, path: sql/gone.sql, target: primary, mode: upsert, after: [nope]}',
-      '{id: d, kind: data, path: data/x.json, target: primary, mode: always, extra: 1}',
+      '{id: d, kind: data, path: data/x.json, target: primary, mode: sometimes, extra: 1}',
     ]),
     '.starcistacks/seeds/sql/a.sql': 'select 1;\n',
     '.starcistacks/seeds/sql/b.sql': 'select 1;\n',
@@ -132,6 +132,24 @@ test('the manifest normaliser refuses a wrong schema, a non-list, a duplicate id
   assert.match(problems({ schema: 'starci/seeds@1', entries: [{ ...entry, schema: 'x.json', after: 'a' }] }), /after: must be a list[\s\S]*schema: is a field of a data or test-account entry only/u);
   assert.match(readSeedLevel(tree(t, { '.starcistacks/seeds/seeds.yaml': 'a: [' }), null).problems[0]?.message ?? '', /does not parse/u);
   assert.deepEqual(readSeedLevel(tree(t, { '.starcistacks/seeds/seeds.yaml': '' }), null).problems.map((item) => item.at), ['schema']);
+});
+
+test('the manifest normaliser takes always and a probe where they can run, and refuses them where they cannot', (t) => {
+  const root = tree(t, { 'sql/a.sql': '', 'files/b.png': 'png' });
+  const sql = { id: 'a', kind: 'sql', path: 'sql/a.sql', target: 'primary', mode: 'upsert' };
+  const files = { id: 'b', kind: 'files', path: 'files/b.png', target: 'media', mode: 'once' };
+  const level = (entries: unknown[]) => normalizeSeeds({ schema: 'starci/seeds@1', entries }, root);
+  const problems = (entries: unknown[]) => level(entries).problems.map((item) => `${item.at}: ${item.message}`).join('\n');
+  assert.deepEqual(level([{ ...sql, probe: ['node', 'cli.js', 'plans', 'probe'] }, { ...sql, id: 'c', mode: 'always' }]).entries.map((entry) => [entry.mode, entry.probe]), [['upsert', ['node', 'cli.js', 'plans', 'probe']], ['always', null]]);
+  assert.match(problems([{ ...sql, probe: 'node cli.js probe' }]), /probe: must be the argv list of the app command that exits non-zero when the target drifted \(never a shell line\)/u);
+  assert.match(problems([{ ...sql, mode: 'once', probe: ['probe'] }]), /probe: is a field of an upsert entry only/u);
+  assert.match(problems([{ ...sql, mode: 'always', probe: ['probe'] }]), /probe: is a field of an upsert entry only/u);
+  assert.match(problems([{ ...files, probe: ['probe'] }]), /probe: is no field of a files entry/u);
+  assert.match(problems([{ ...files, mode: 'always' }]), /mode: always is no mode of a files entry/u);
+  const [probed] = level([{ ...sql, probe: ['one'] }]).entries;
+  const [other] = level([{ ...sql, probe: ['two'] }]).entries;
+  assert.ok(probed && other);
+  assert.notEqual(entryDigest(root, probed), entryDigest(root, other), 'a changed probe changes the digest');
 });
 
 test('the apply order is manifest order with each entry after the ones it names, and the digest follows the content', (t) => {

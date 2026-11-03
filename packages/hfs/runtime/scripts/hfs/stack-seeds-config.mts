@@ -1,10 +1,12 @@
 // stack-seeds-config.mjs - reads and judges a seed level's manifest (`seeds.yaml`, schema starci/seeds@1), the declaration of the data an app
 // seeds (contexts/project/stacks.md PROJECT-STACKS-12). A level is `.starcistacks/seeds/` (shared, every environment, first) or
 // `.starcistacks/<env>/seeds/` (that environment only); each holds the manifest and the folders `sql/`, `data/` and `files/`. One entry is
-// `{ id, kind, path, target, mode, after?, schema?, reason? }`: a `sql` entry is idempotent DML the harness runs on the database `target`
+// `{ id, kind, path, target, mode, after?, schema?, reason?, probe? }`: a `sql` entry is idempotent DML the harness runs on the database `target`
 // names, a `data` entry is a document (or a folder of them) an app command (`target`, an argv list) loads after it validates against the JSON
 // schema `schema` names, a `test-account` entry is the one data entry of an environment's level that declares a test account (with its
-// `reason`), a `files` entry is assets for the bucket `target` names. A document names a secret as `{ "secret": "seeds-<name>" }`, a sealed
+// `reason`), a `files` entry is assets for the bucket `target` names. How an entry learns that its target drifted is its `mode`: `once` never
+// runs again, `upsert` runs again when its content hash changes or when its `probe` (an app command, an argv list) exits non-zero, and
+// `always` runs on every stack up for an idempotent, cheap command. A document names a secret as `{ "secret": "seeds-<name>" }`, a sealed
 // member of the environment (`.starcistacks/<env>/secrets/seeds-<name>.enc.yaml`) the seed step opens in memory, never a value. The same
 // normaliser serves `starci app check` (R375) and the seed step of the stack verbs, so a manifest the check passes is one the step applies.
 import crypto from 'node:crypto';
@@ -23,16 +25,21 @@ export const SEEDS_MANIFEST = 'seeds.yaml';
 export const SEED_KINDS = Object.freeze(['sql', 'data', 'test-account', 'files'] as const);
 /** The folders of a level. */
 export const SEED_FOLDERS = Object.freeze(['sql', 'data', 'files'] as const);
-/** `once`: applied a single time; `upsert`: applied again whenever its content hash changes. */
-export const SEED_MODES = Object.freeze(['once', 'upsert'] as const);
+/** `once`: applied a single time; `upsert`: applied again when its content hash changes or its probe finds drift; `always`: applied on every run. */
+export const SEED_MODES = Object.freeze(['once', 'upsert', 'always'] as const);
 /** The placeholder that keeps an empty seed folder tracked. */
 export const SEEDS_KEEP = '.gitkeep';
 
 /** The kind of one entry. */
 export type SeedKind = (typeof SEED_KINDS)[number];
-/** One entry of a level's manifest, normalised; `target` is the database (`sql`), the app command argv (`data`, `test-account`) or the bucket (`files`). */
+/** The mode of one entry. */
+export type SeedMode = (typeof SEED_MODES)[number];
+/**
+ * One entry of a level's manifest, normalised; `target` is the database (`sql`), the app command argv (`data`, `test-account`) or the bucket
+ * (`files`); `probe` is the argv of the app command that exits non-zero when the target drifted from the entry (an `upsert` entry only).
+ */
 export interface SeedEntry {
-  id: string; kind: SeedKind; path: string; target: string | string[]; mode: (typeof SEED_MODES)[number]; after: string[]; schema: string | null; reason: string | null;
+  id: string; kind: SeedKind; path: string; target: string | string[]; mode: SeedMode; after: string[]; schema: string | null; reason: string | null; probe: string[] | null;
 }
 /** One document of a data or test-account entry, level-relative, parsed or with the reason it does not parse. */
 export type SeedDocument = { path: string; doc: unknown; error?: undefined } | { path: string; error: string; doc?: undefined };
@@ -41,7 +48,7 @@ export interface SeedLevel { dir: string; env: string | null; entries: SeedEntry
 
 const ID = /^[a-z0-9][a-z0-9-]{0,62}$/u;
 const NAME = /^[a-z][a-z0-9_-]{0,62}$/u;
-const ENTRY_FIELDS = ['id', 'kind', 'path', 'target', 'mode', 'after', 'schema', 'reason'];
+const ENTRY_FIELDS = ['id', 'kind', 'path', 'target', 'mode', 'after', 'schema', 'reason', 'probe'];
 const DOCUMENT = /\.(?:json|ya?ml)$/u;
 /** The name of a sealed member a seed document may reference. */
 export const SEED_SECRET_MEMBER = /^seeds-[a-z0-9][a-z0-9-]{0,62}$/u;
@@ -74,18 +81,29 @@ export function entryFiles(levelRoot: string, entry: Pick<SeedEntry, 'path'>): s
   return isFile(target) ? [entry.path] : filesBelow(levelRoot, target);
 }
 
-/** The content hash of an entry: its kind, target, mode and every file it covers, by path and bytes. */
+/** The content hash of an entry: its kind, target, mode, probe and every file it covers, by path and bytes. */
 export function entryDigest(levelRoot: string, entry: SeedEntry): string {
-  const hash = crypto.createHash('sha256').update(JSON.stringify([entry.kind, entry.target, entry.mode]));
+  const hash = crypto.createHash('sha256').update(JSON.stringify([entry.kind, entry.target, entry.mode, entry.probe]));
   for (const file of entryFiles(levelRoot, entry)) hash.update('\0').update(file).update('\0').update(fs.readFileSync(path.join(levelRoot, file)));
   return hash.digest('hex');
 }
 
+/** An argv list of an app command, `what` naming its purpose in the problem; a shell line, an empty list or a blank word is a problem. */
+function argvOf(c: ReturnType<typeof collector>, at: string, value: unknown, what: string): string[] {
+  if (!Array.isArray(value) || value.length === 0 || value.some((item) => typeof item !== 'string' || item === '')) c.problem(at, `must be the argv list of the app command that ${what} (never a shell line)`);
+  return Array.isArray(value) ? value.map(String) : [];
+}
+
+/** The probe of an entry: an argv list on an `upsert` entry the step can run, null when the entry declares none. */
+function probeOf(c: ReturnType<typeof collector>, at: string, kind: SeedKind, mode: SeedMode | undefined, value: unknown): string[] | null {
+  if (value === undefined) return null;
+  if (kind === 'files') c.problem(at, 'is no field of a files entry: the harness uploads no file it could probe');
+  else if (mode !== 'upsert') c.problem(at, 'is a field of an upsert entry only: a once entry never runs again and an always entry runs every time');
+  return argvOf(c, at, value, 'exits non-zero when the target drifted');
+}
+
 function targetOf(c: ReturnType<typeof collector>, at: string, kind: SeedKind, value: unknown): string | string[] {
-  if (kind === 'data' || kind === 'test-account') {
-    if (!Array.isArray(value) || value.length === 0 || value.some((item) => typeof item !== 'string' || item === '')) c.problem(at, 'must be the argv list of the app command that loads the data (never a shell line)');
-    return Array.isArray(value) ? value.map(String) : [];
-  }
+  if (kind === 'data' || kind === 'test-account') return argvOf(c, at, value, 'loads the data');
   patternField(c, at, value, NAME);
   return String(value ?? '');
 }
@@ -103,6 +121,7 @@ function entryOf(c: ReturnType<typeof collector>, at: string, value: unknown, le
   else if (!fs.existsSync(path.join(levelRoot, file))) c.problem(`${at}.path`, `${file} does not exist in the level`);
   const mode = SEED_MODES.find((item) => item === raw.mode);
   if (mode === undefined) c.problem(`${at}.mode`, `must be one of ${SEED_MODES.join(', ')}`);
+  else if (mode === 'always' && kind === 'files') c.problem(`${at}.mode`, 'always is no mode of a files entry: the harness only validates its files');
   const after = raw.after === undefined ? [] : raw.after;
   if (!Array.isArray(after) || after.some((item) => typeof item !== 'string')) c.problem(`${at}.after`, 'must be a list of entry ids');
   const documents = isDocumentEntry({ kind });
@@ -113,7 +132,7 @@ function entryOf(c: ReturnType<typeof collector>, at: string, value: unknown, le
   return {
     id: String(raw.id), kind, path: file, target: targetOf(c, `${at}.target`, kind, raw.target), mode: mode ?? 'upsert',
     after: Array.isArray(after) ? after.map(String) : [], schema: documents && typeof raw.schema === 'string' ? raw.schema : null,
-    reason: kind === 'test-account' && typeof raw.reason === 'string' ? raw.reason : null,
+    reason: kind === 'test-account' && typeof raw.reason === 'string' ? raw.reason : null, probe: probeOf(c, `${at}.probe`, kind, mode, raw.probe),
   };
 }
 
