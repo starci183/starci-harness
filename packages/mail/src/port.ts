@@ -1,3 +1,13 @@
+/** One file attached to a message. */
+export interface MailAttachment {
+    /** The file name the reader sees: no path, no control characters, at most 150 characters. */
+    readonly filename: string
+    /** The bytes. */
+    readonly content: Uint8Array
+    /** The media type (`application/pdf`); required while the options list the admitted types. */
+    readonly contentType?: string
+}
+
 /** One message: a one-line subject, a plain-text body and, usually, the HTML twin of it. */
 export interface MailMessage {
     /** The subject, one line. */
@@ -6,6 +16,8 @@ export interface MailMessage {
     readonly text: string
     /** The HTML body. */
     readonly html?: string
+    /** Files to attach, within the count and size limits of the options. */
+    readonly attachments?: readonly MailAttachment[]
 }
 
 /** A message the render helpers produced: the HTML twin is always there. */

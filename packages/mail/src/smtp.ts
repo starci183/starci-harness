@@ -6,6 +6,8 @@ import type { MailErrorCode } from "./errors.ts"
 import { revealed } from "./options.ts"
 import type { ResolvedMailOptions } from "./options.ts"
 import type { SentMail } from "./port.ts"
+import { assertSmtpTarget } from "./target.ts"
+import type { ResolveAddresses } from "./target.ts"
 import type { MailEnvelope, MailTransport } from "./transport.ts"
 
 interface FailureShape {
@@ -99,13 +101,19 @@ export class SmtpTransport implements MailTransport {
     readonly #options: ResolvedMailOptions
     readonly #nodemailer: Transporter<SMTPTransport.SentMessageInfo>
 
-    constructor(options: ResolvedMailOptions) {
+    readonly #resolve: ResolveAddresses | undefined
+
+    constructor(options: ResolvedMailOptions, resolve?: ResolveAddresses) {
+        this.#resolve = resolve
         this.#options = options
         this.#nodemailer = nodemailer.createTransport(smtpSettings(options))
     }
 
     async deliver(envelope: MailEnvelope): Promise<SentMail> {
         const context = { host: this.#options.host, port: this.#options.port }
+        if (this.#options.publicTargetOnly) {
+            await assertSmtpTarget(this.#options.host, this.#options.port, this.#resolve === undefined ? {} : { resolve: this.#resolve })
+        }
         let timer: NodeJS.Timeout | undefined
         const expired = new Promise<never>((_resolve, reject) => {
             timer = setTimeout(() => {
@@ -120,6 +128,15 @@ export class SmtpTransport implements MailTransport {
             subject: envelope.subject,
             text: envelope.text,
             ...(envelope.html === null ? {} : { html: envelope.html }),
+            ...(envelope.attachments.length === 0
+                ? {}
+                : {
+                      attachments: envelope.attachments.map((file) => ({
+                          filename: file.filename,
+                          content: Buffer.from(file.content),
+                          ...(file.contentType === undefined ? {} : { contentType: file.contentType }),
+                      })),
+                  }),
         })
         try {
             const info = await Promise.race([sending, expired])

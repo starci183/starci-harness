@@ -1,4 +1,4 @@
-import type { SentMail } from "./port.ts"
+import type { MailAttachment, SentMail } from "./port.ts"
 
 /** What a transport is asked to deliver: validated mailboxes and a checked message. */
 export interface MailEnvelope {
@@ -8,6 +8,7 @@ export interface MailEnvelope {
     readonly subject: string
     readonly text: string
     readonly html: string | null
+    readonly attachments: readonly MailAttachment[]
 }
 
 /**

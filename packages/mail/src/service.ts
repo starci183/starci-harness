@@ -15,7 +15,7 @@ export class MailService implements Mailer {
 
     async send(request: SendMailRequest): Promise<SentMail> {
         const to = recipientsOf(request.to, this.#options.maxRecipients)
-        checkMessage(request.message, this.#options.maxBodyBytes)
+        checkMessage(request.message, this.#options)
         const from = senderOf(request.from ?? this.#options.from)
         const replyTo = request.replyTo ?? this.#options.replyTo
         return this.#transport.deliver({
@@ -25,6 +25,7 @@ export class MailService implements Mailer {
             subject: request.message.subject,
             text: request.message.text,
             html: request.message.html ?? null,
+            attachments: request.message.attachments ?? [],
         })
     }
 

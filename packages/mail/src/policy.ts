@@ -1,5 +1,5 @@
 import { MAIL_ERROR_CODES, MailError } from "./errors.ts"
-import type { MailSender } from "./options.ts"
+import type { MailSender, ResolvedMailOptions } from "./options.ts"
 import type { MailMessage } from "./port.ts"
 
 const MAX_ADDRESS_LENGTH = 254
@@ -64,12 +64,50 @@ export const senderOf = (sender: MailSender): { readonly name: string; readonly 
     return { name: sender.name, address: mailboxOf(sender.address) }
 }
 
-/** Checks a message against the limits: a one-line subject, a text body, bodies together under `maxBodyBytes`. */
-export const checkMessage = (message: MailMessage, maxBodyBytes: number): void => {
+const MAX_FILENAME_LENGTH = 150
+
+const typeOf = (contentType: string): string => (contentType.split(";")[0] ?? "").trim().toLowerCase()
+
+/** Whether a media type is admitted by a list of exact types and families (`image/*`). */
+export const admitsContentType = (admitted: readonly string[], contentType: string): boolean => {
+    const type = typeOf(contentType)
+    return admitted.some((entry) => {
+        const wanted = entry.trim().toLowerCase()
+        return wanted.endsWith("/*") ? type.startsWith(wanted.slice(0, -1)) : type === wanted
+    })
+}
+
+const checkAttachments = (message: MailMessage, options: ResolvedMailOptions): void => {
+    const files = message.attachments ?? []
+    if (files.length > options.maxAttachments) {
+        throw new MailError(MAIL_ERROR_CODES.MessageInvalid, { detail: `attachments ${String(files.length)} of at most ${String(options.maxAttachments)}` })
+    }
+    let bytes = 0
+    for (const file of files) {
+        const name = file.filename
+        if (name.trim() === "" || name.length > MAX_FILENAME_LENGTH || name === "." || name === ".." || /[\\/]/u.test(name) || hasControlCharacter(name)) {
+            throw new MailError(MAIL_ERROR_CODES.MessageInvalid, { detail: "attachment name" })
+        }
+        if (file.contentType !== undefined && hasControlCharacter(file.contentType)) throw new MailError(MAIL_ERROR_CODES.MessageInvalid, { detail: "attachment type" })
+        if (options.attachmentContentTypes !== null && (file.contentType === undefined || !admitsContentType(options.attachmentContentTypes, file.contentType))) {
+            throw new MailError(MAIL_ERROR_CODES.MessageInvalid, { detail: `attachment type ${file.contentType ?? "none"}` })
+        }
+        bytes += file.content.byteLength
+    }
+    if (bytes > options.maxAttachmentBytes) {
+        throw new MailError(MAIL_ERROR_CODES.MessageInvalid, { detail: `attachments ${String(bytes)} bytes of at most ${String(options.maxAttachmentBytes)}` })
+    }
+}
+
+/** Checks a message against the limits: a one-line subject, a text body, bodies under `maxBodyBytes`, attachments within their count, size, name and type limits. */
+export const checkMessage = (message: MailMessage, options: ResolvedMailOptions): void => {
     if (message.subject.trim() === "" || message.subject.length > MAX_SUBJECT_LENGTH || hasControlCharacter(message.subject)) {
         throw new MailError(MAIL_ERROR_CODES.MessageInvalid, { detail: "subject" })
     }
     if (message.text.trim() === "") throw new MailError(MAIL_ERROR_CODES.MessageInvalid, { detail: "text" })
     const bytes = Buffer.byteLength(message.text) + Buffer.byteLength(message.html ?? "")
-    if (bytes > maxBodyBytes) throw new MailError(MAIL_ERROR_CODES.MessageInvalid, { detail: `body ${String(bytes)} bytes of at most ${String(maxBodyBytes)}` })
+    if (bytes > options.maxBodyBytes) {
+        throw new MailError(MAIL_ERROR_CODES.MessageInvalid, { detail: `body ${String(bytes)} bytes of at most ${String(options.maxBodyBytes)}` })
+    }
+    checkAttachments(message, options)
 }

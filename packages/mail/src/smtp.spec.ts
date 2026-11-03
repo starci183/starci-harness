@@ -314,3 +314,20 @@ describe("classifySmtpFailure", () => {
         assert.deepEqual(error.context, { host: "smtp.acme.test", port: 587, responseCode: 535 })
     })
 })
+
+describe("attachments over SMTP", () => {
+    it("delivers an attachment as a MIME part with its name and type", async () => {
+        const server = await open()
+        try {
+            const mailer = createMailer(optionsFor(server))
+            await mailer.send({ to: "ada@example.com", message: { subject: "Invoice", text: "See attached.", attachments: [{ filename: "invoice.txt", content: new TextEncoder().encode("total: 42"), contentType: "text/plain" }] } })
+            mailer.onModuleDestroy()
+            const raw = server.received[0]?.raw ?? ""
+            assert.match(raw, /Content-Type: multipart\/mixed/u)
+            assert.match(raw, /filename=invoice\.txt/u)
+            assert.ok(Buffer.from(raw.replace(/\r?\n/gu, ""), "latin1").toString().includes(Buffer.from("total: 42").toString("base64")) || raw.includes("total: 42"))
+        } finally {
+            await server.close()
+        }
+    })
+})

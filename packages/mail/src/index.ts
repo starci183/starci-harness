@@ -17,6 +17,8 @@ export { MAIL_ERROR_CODES, MAIL_ERROR_KINDS, MailError } from "./errors.ts"
 export type { MailErrorCode, MailErrorKind } from "./errors.ts"
 export {
     DEFAULT_CONNECTION_TIMEOUT_MS,
+    DEFAULT_MAX_ATTACHMENTS,
+    DEFAULT_MAX_ATTACHMENT_BYTES,
     DEFAULT_GREETING_TIMEOUT_MS,
     DEFAULT_MAX_BODY_BYTES,
     DEFAULT_MAX_RECIPIENTS,
@@ -24,8 +26,10 @@ export {
     DEFAULT_SOCKET_TIMEOUT_MS,
 } from "./options.ts"
 export type { MailAuth, MailOptions, MailSecurity, MailSender, SecretInput } from "./options.ts"
-export type { MailMessage, Mailer, RenderedMail, SendMailRequest, SentMail } from "./port.ts"
-export { isValidMailbox } from "./policy.ts"
+export type { MailAttachment, MailMessage, Mailer, RenderedMail, SendMailRequest, SentMail } from "./port.ts"
+export { admitsContentType, isValidMailbox } from "./policy.ts"
+export { PUBLIC_MAIL_PORTS, assertSmtpTarget, isPrivateAddress, isWellFormedHost } from "./target.ts"
+export type { ResolveAddresses, SmtpTargetPolicy } from "./target.ts"
 export { DEFAULT_ACCENT, SafeHtml, escapeHtml, html, oneLine, raw, renderTransactional, safeUrl } from "./render.ts"
 export type { HtmlValue, MailAction, MailBrand, TransactionalMail } from "./render.ts"
 export { MailService } from "./service.ts"

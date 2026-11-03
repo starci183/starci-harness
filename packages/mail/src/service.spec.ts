@@ -136,3 +136,36 @@ describe("options", () => {
         assert.equal(Object.keys(MAIL_ERROR_KINDS).length, Object.keys(MAIL_ERROR_CODES).length)
     })
 })
+
+describe("attachments", () => {
+    const pdf = { filename: "invoice.pdf", content: new Uint8Array([1, 2, 3]), contentType: "application/pdf" }
+
+    it("carries attachments into the outbox", async () => {
+        const mailer = createMemoryMailer()
+        await mailer.send({ to: "a@x.test", message: { ...message, attachments: [pdf] } })
+        assert.deepEqual(mailer.outbox[0]?.attachments, [pdf])
+    })
+
+    it("refuses too many, too large, badly named and wrongly typed attachments with MAIL_MESSAGE_INVALID", async () => {
+        const mailer = createMemoryMailer(testMailOptions({ maxAttachments: 2, maxAttachmentBytes: 10, attachmentContentTypes: ["application/pdf", "image/*"] }))
+        const big = { ...pdf, content: new Uint8Array(11) }
+        for (const attachments of [
+            [pdf, pdf, pdf],
+            [big],
+            [pdf, { ...pdf, content: new Uint8Array(8) }],
+            [{ ...pdf, filename: "../etc/passwd" }],
+            [{ ...pdf, filename: "a\b.pdf" }],
+            [{ ...pdf, filename: "x\r\n.pdf" }],
+            [{ ...pdf, filename: " " }],
+            [{ ...pdf, filename: ".." }],
+            [{ filename: "a.pdf", content: new Uint8Array(1) }],
+            [{ ...pdf, contentType: "application/x-msdownload" }],
+            [{ ...pdf, contentType: "application/pdf\r\nBcc: x@y.test" }],
+        ]) {
+            const error = await refused(mailer.send({ to: "a@x.test", message: { ...message, attachments } }))
+            assert.equal(error.code, MAIL_ERROR_CODES.MessageInvalid, JSON.stringify(attachments).slice(0, 70))
+        }
+        await mailer.send({ to: "a@x.test", message: { ...message, attachments: [{ filename: "p.PNG", content: new Uint8Array(2), contentType: "Image/PNG; name=p" }] } })
+        assert.equal(mailer.outbox.length, 1)
+    })
+})

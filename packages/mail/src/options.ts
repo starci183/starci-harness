@@ -45,6 +45,14 @@ export interface MailOptions {
     readonly maxRecipients?: number
     /** The longest body (text plus HTML) one send carries, in bytes. Defaults to 1048576. */
     readonly maxBodyBytes?: number
+    /** The most files one message attaches. Defaults to 3. */
+    readonly maxAttachments?: number
+    /** The most bytes all attachments of one message add up to. Defaults to 5242880. */
+    readonly maxAttachmentBytes?: number
+    /** The media types an attachment may have: exact (`application/pdf`) or a family (`image/*`), compared without parameters and ignoring case. Leave out to admit any. */
+    readonly attachmentContentTypes?: readonly string[]
+    /** Refuse, before connecting, a server that is not on a public mail port or resolves to a private, loopback or link-local address (`assertSmtpTarget`): for a server a user chose. Defaults to false. */
+    readonly publicTargetOnly?: boolean
 }
 
 /** The time the connection may take to open when the options name none. */
@@ -59,6 +67,11 @@ export const DEFAULT_SEND_TIMEOUT_MS = 30_000
 export const DEFAULT_MAX_RECIPIENTS = 20
 /** The body one send may carry when the options name no limit. */
 export const DEFAULT_MAX_BODY_BYTES = 1_048_576
+
+/** The files one message may attach when the options name no limit. */
+export const DEFAULT_MAX_ATTACHMENTS = 3
+/** The bytes all attachments may add up to when the options name no limit. */
+export const DEFAULT_MAX_ATTACHMENT_BYTES = 5_242_880
 
 /** The text a `SecretInput` holds. */
 export const revealed = (secret: SecretInput): string => (typeof secret === "string" ? secret : secret.reveal())
@@ -79,6 +92,10 @@ export interface ResolvedMailOptions {
     readonly sendTimeoutMs: number
     readonly maxRecipients: number
     readonly maxBodyBytes: number
+    readonly maxAttachments: number
+    readonly maxAttachmentBytes: number
+    readonly attachmentContentTypes: readonly string[] | null
+    readonly publicTargetOnly: boolean
 }
 
 const positive = (name: string, value: number): number => {
@@ -108,4 +125,8 @@ const resolved = (options: MailOptions): ResolvedMailOptions => ({
     sendTimeoutMs: positive("sendTimeoutMs", options.sendTimeoutMs ?? DEFAULT_SEND_TIMEOUT_MS),
     maxRecipients: positive("maxRecipients", options.maxRecipients ?? DEFAULT_MAX_RECIPIENTS),
     maxBodyBytes: positive("maxBodyBytes", options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES),
+    maxAttachments: positive("maxAttachments", options.maxAttachments ?? DEFAULT_MAX_ATTACHMENTS),
+    maxAttachmentBytes: positive("maxAttachmentBytes", options.maxAttachmentBytes ?? DEFAULT_MAX_ATTACHMENT_BYTES),
+    attachmentContentTypes: options.attachmentContentTypes ?? null,
+    publicTargetOnly: options.publicTargetOnly ?? false,
 })
