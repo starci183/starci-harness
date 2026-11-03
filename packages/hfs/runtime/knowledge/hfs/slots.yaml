@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.16.0
+version: 3.17.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -58,6 +58,7 @@ versioning:
 # 3.13.0 (rulings lite-pgmq-bus-bullmq-jobs and lite-db-image-in-stacks, 2026-10-29) is a change for lite only: ruleParams.db.extensions
 # admits pgmq, the event bus, ruleParams.db.queueOutbox is retired with the pg_cron half of R258, the lite event-bus functions replace
 # event_bus_write in ruleParams.be.dbFunctions, and app.db.image moves to .starcistacks/images/db/Dockerfile (db/ keeps schema and data).
+# 3.17.0 (ruling module-packages, 2026-11-03) adds the optional app.packages and app.module-registry: the workspace packages of the app root (the agent SDK, the module packages, the managed registry).
 # 3.15.0 (ruling app-check-cache, 2026-10-31) adds the optional app.starcistacks.cache, the committed check cache of the app (.starcistacks/cache/, both editions).
 # 3.14.0 (ruling app-secrets-one-standard, 2026-10-29) adds the optional app.ci-stack-key-restore, the managed workflow that writes the
 # deploy server's age identity back from its GitHub Environment backup.
@@ -857,6 +858,31 @@ slots:
     rules: [HFS_PLAINTEXT_SECRET, HFS_SCRIPT_ONE_OFF, BE_SPEC_PLACEMENT, HFS_REPO_LOCAL_CHECK]
     exemplifiedBy:
       - {path: packages/hfs/src/hfs-slot-ownership.spec.mjs, editions: [lite, full]}
+  - id: app.packages
+    since: 3.17.0
+    profiles: [app]
+    editionWhy: Lite and full share the slot; a product's agent SDK and its agent modules are workspace packages in both.
+    # A workspace package of the app ROOT (packages/agent-sdk, packages/module-<name>): first-party source that both sides import through its
+    # package entry points and never past them (ARCH_INTERNAL_IMPORT_OUTSIDE), linted by the root eslint config by subpath.
+    path: "packages/{agent-sdk,module-<name>}/"
+    presence: optional
+    tracked: tracked
+    tier: none
+    requires: [package.json, tsconfig.json, src/index.ts]
+    tests: unit-beside
+    rules: [HFS_UNUSED_EXPORT]
+  - id: app.module-registry
+    since: 3.17.0
+    profiles: [app]
+    editionWhy: Lite and full share the slot; the registry lists the module packages of the app.
+    path: packages/modules/
+    presence: optional
+    tracked: tracked
+    tier: none
+    requires: [package.json, src/index.ts]
+    allows: [package.json, tsconfig.json, tsconfig.build.json, src/index.ts, src/template/index.ts, src/manifest/index.ts]
+    tests: none
+    rules: [HFS_MANAGED_FILE_DRIFT]
   - id: app.sides
     since: 3.1.0
     profiles: [app]

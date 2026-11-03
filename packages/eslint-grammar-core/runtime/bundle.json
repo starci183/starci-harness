@@ -24,6 +24,7 @@
     "scripts/hfs/allows.mjs",
     "scripts/hfs/architecture/component-tiers.mjs",
     "scripts/hfs/architecture/config.mjs",
+    "scripts/hfs/architecture/root-packages.mjs",
     "scripts/hfs/architecture/side-boundary.mjs",
     "scripts/hfs/architecture/type-context.mjs",
     "scripts/hfs/architecture/typescript.mjs",

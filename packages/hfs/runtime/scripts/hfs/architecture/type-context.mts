@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { CompilerOptions, CreateProgramOptions, Diagnostic, ModuleResolutionCache, ModuleResolutionHost, Node, ParsedCommandLine, Program, ProjectReference, SourceFile, TypeChecker } from 'typescript';
-import type { ArchitectureConfig, TypeScriptApi } from './config.mjs';
+import type { ArchitectureConfig, RootPackage, TypeScriptApi } from './config.mjs';
 import type { ProjectRead } from '../typescript-programs.mjs';
 import type { ArchitectureError, ImportEdge, LoadedTypeScript, ModuleReferences, ModuleReference, WorkspaceRecord } from './typescript.mjs';
 
@@ -56,6 +56,9 @@ export interface TypeContextHelpers {
   relativePath(root: string, fileName: string): string;
   packageExported(ts: TypeScriptApi, workspace: WorkspaceRecord, specifier: string, actualTarget: string): boolean;
   boundaryViolation(root: string, edge: ImportEdge, fromWorkspace: WorkspaceRecord | null, toWorkspace: WorkspaceRecord | null, ruleId: string, message: string): ArchitectureError;
+  rootPackageOf(config: Pick<ArchitectureConfig, 'rootPackages'>, specifier: string): RootPackage | null;
+  rootPackageEntryDeclared(item: RootPackage, specifier: string): boolean;
+  rootPackageEntries(item: RootPackage): string[];
 }
 
 interface ProjectState {
@@ -333,8 +336,36 @@ function appendEdge(from: string, sourceFile: SourceFile, project: TypeScriptPro
   }
 }
 
+/**
+ * An import of one of the app's root workspace packages (`@scope/agent-sdk`, `@scope/agent-sdk/workbench`). The package lies outside the side
+ * folder, yet it is first-party source both sides may import: through its package entry points (the `exports` of its manifest) and never past
+ * them. An entry point is no import that leaves the side and adds no edge (the package is not part of this side's graph; the package's own
+ * lint judges its files); a path into the package's source is refused. Returns true when the reference was settled here.
+ */
+function rootPackageReference(sourceFile: SourceFile, project: TypeScriptProject, reference: ModuleReference, state: DependencyState): boolean {
+  const { config, errors, helpers, host, ts } = state;
+  if (!config.rootPackages?.length) return false;
+  const item = helpers.rootPackageOf(config, reference.specifier);
+  if (item === null) return false;
+  if (!helpers.rootPackageEntryDeclared(item, reference.specifier)) {
+    errors.push({
+      ruleId: 'ARCH_INTERNAL_IMPORT_OUTSIDE',
+      project: project.relative,
+      path: helpers.relativePath(config.root, sourceFile.fileName),
+      ...helpers.sourceLocation(sourceFile, reference.node),
+      specifier: reference.specifier,
+      message: `Internal import ${reference.specifier} reaches into the package ${item.name} past its package entry points; import ${helpers.rootPackageEntries(item).join(', ')} instead.`,
+    });
+    return true;
+  }
+  // An entry point that a path alias sends outside the package is no entry point: the ordinary boundary judges it.
+  const resolved = helpers.resolveTypeScriptModule(ts, reference.specifier, sourceFile.fileName, project.options, host, resolutionCache(state, project));
+  return resolved === undefined || helpers.isInside(item.root, helpers.canonical(resolved));
+}
+
 function processReference(from: string, sourceFile: SourceFile, project: TypeScriptProject, owningWorkspace: WorkspaceRecord | null, reference: ModuleReference, state: DependencyState): void {
   const { config, ts, workspaceNames, workspaces, host, errors, helpers } = state;
+  if (rootPackageReference(sourceFile, project, reference, state)) return;
   // A workspace package is read at its source, never at its build: the same import resolves whether or not dist exists.
   const workspaceTarget = workspaces.filter(item => item.root !== helpers.canonical(config.root)).map(item => helpers.workspaceSourceEntry(ts, item, reference.specifier)).find(Boolean);
   const resolvedName = workspaceTarget ?? helpers.resolveTypeScriptModule(ts, reference.specifier, sourceFile.fileName, project.options, host, resolutionCache(state, project));

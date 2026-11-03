@@ -143,3 +143,58 @@ for (const edition of ["lite", "full"] as const) {
         } finally { fixture.cleanup() }
     })
 }
+
+/** The app's own root workspace packages (packages/agent-sdk, packages/module-<name>) are first-party source, not third-party libraries. */
+const OWN_PACKAGES = {
+    "packages/agent-sdk/package.json": JSON.stringify({ name: "@fixture/agent-sdk", version: "0.1.0", private: true }),
+    "packages/module-loyalty/package.json": JSON.stringify({ name: "@fixture/module-loyalty", version: "0.1.0", private: true }),
+}
+
+for (const edition of ["lite", "full"] as const) {
+    test(`R279 ${edition}: an app-owned workspace package declared in workspaces is not a third-party library`, () => {
+        const fixture = projectFixture({
+            edition,
+            files: {},
+            rootFiles: {
+                ...OWN_PACKAGES,
+                "package.json": JSON.stringify({
+                    name: "sdk-owner-fixture", private: true, workspaces: ["fe/apps/*", "packages/*"],
+                    dependencies: { ...DEPENDENCIES, "@fixture/agent-sdk": "*", "@fixture/module-loyalty": "0.1.0" },
+                }),
+            },
+        })
+        try {
+            assert.doesNotThrow(() => { fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
+                valid: [
+                    { filename: fixture.at(DOMAIN), code: 'import { defineTemplate } from "@fixture/agent-sdk"; export { defineTemplate }' },
+                    { filename: fixture.at(DOMAIN), code: 'import { node } from "@fixture/agent-sdk/node"; import { loyalty } from "@fixture/module-loyalty/template"; export { node, loyalty }' },
+                    { filename: fixture.at("apps/core/src/main.ts"), code: 'import { sdk } from "@fixture/agent-sdk"; export { sdk }' },
+                ],
+                // what the package imports and what the app imports besides stay judged.
+                invalid: [
+                    { filename: fixture.at(DOMAIN), code: 'import Stripe from "stripe"; export { Stripe }', errors: [{ messageId: "foreign" }] },
+                ],
+            }) })
+        } finally { fixture.cleanup() }
+    })
+
+    test(`R279 ${edition}: a name that no workspace owns stays a declared third-party dependency`, () => {
+        const fixture = projectFixture({
+            edition,
+            files: {},
+            rootFiles: {
+                ...OWN_PACKAGES,
+                "package.json": JSON.stringify({
+                    name: "sdk-owner-fixture", private: true, workspaces: ["packages/agent-sdk"],
+                    dependencies: { ...DEPENDENCIES, "@fixture/agent-sdk": "*", "@fixture/module-loyalty": "0.1.0" },
+                }),
+            },
+        })
+        try {
+            assert.doesNotThrow(() => { fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
+                valid: [{ filename: fixture.at(DOMAIN), code: 'import { sdk } from "@fixture/agent-sdk"; export { sdk }' }],
+                invalid: [{ filename: fixture.at(DOMAIN), code: 'import { loyalty } from "@fixture/module-loyalty"; export { loyalty }', errors: [{ messageId: "foreign" }] }],
+            }) })
+        } finally { fixture.cleanup() }
+    })
+}

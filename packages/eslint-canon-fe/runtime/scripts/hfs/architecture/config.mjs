@@ -3,7 +3,8 @@ import path from 'node:path';
 import { slash } from '../../lib/path-key.mjs';
 import { readJsonFile as readJson } from '../../lib/json.mjs';
 import { isInside } from '../../lib/walk.mjs';
-import { openHfs } from '../slots.mjs';
+import { createSlotResolver, openHfs, readRepoDeclaration } from '../slots.mjs';
+import { rootPackageRecord, rootWorkspaceDirectories } from './root-packages.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { grammarContractFor } from '../../lib/grammar-lint.mjs';
 /** A file's identity: its resolved real path, or the resolved path when it does not exist. */
@@ -181,6 +182,30 @@ function workspaceDirectories(root, { packageRoot: appPackageRoot = root, side =
         admitFileDependencies(walk, pkg);
     }
     return [...directories].sort(byCodeUnit);
+}
+/** The slots whose directories at the app root are first-party packages of the app (agent SDK, module packages, the managed registry). */
+const ROOT_PACKAGE_SLOTS = new Set(['app.packages', 'app.module-registry']);
+/**
+ * The workspace packages of the app root that no side owns: the `workspaces` patterns of the app's one package.json that do not start
+ * with a side folder (`packages/*`), and the directories the slots `app.packages` and `app.module-registry` place under `packages/`
+ * even when the manifest forgot to list them. A side imports them as first-party packages (through their entry points), never as
+ * "outside the side". A side of the app is judged here; the app root itself already counts them among its workspaces.
+ */
+function rootPackageRecords(root, packageRoot, side, opened) {
+    if (side === null)
+        return [];
+    const candidates = new Set(rootWorkspaceDirectories(packageRoot));
+    if (opened.manifest && existingDirectory(packageRoot, 'packages')) {
+        const resolver = createSlotResolver(opened.manifest, readRepoDeclaration(opened.manifest, packageRoot));
+        const container = path.join(packageRoot, 'packages');
+        for (const entry of fs.readdirSync(container, { withFileTypes: true }).filter(item => item.isDirectory())) {
+            const slot = resolver.classifyPath(`packages/${entry.name}`).slot;
+            if (slot !== undefined && ROOT_PACKAGE_SLOTS.has(slot))
+                candidates.add(path.join(container, entry.name));
+        }
+    }
+    return [...candidates].sort(byCodeUnit).filter(candidate => !isInside(root, candidate))
+        .flatMap(candidate => rootPackageRecord(packageRoot, candidate, canonical) ?? []);
 }
 function discoveredProjects(root, workspaces) {
     const projects = [];
@@ -373,6 +398,7 @@ export function loadArchitectureConfig(repositoryRoot, { hfs } = {}) {
         kinds,
         projects,
         workspaces,
+        rootPackages: rootPackageRecords(root, packageRoot, side, opened),
         apps: apps.map(app => ({ name: app.name, kind: app.kind })),
         hfs: opened,
         owners: derivedOwners(root, opened),

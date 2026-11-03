@@ -101,6 +101,7 @@
     "scripts/hfs/architecture/render-graph.mjs",
     "scripts/hfs/architecture/render-prop-across-server.mjs",
     "scripts/hfs/architecture/required-files.mjs",
+    "scripts/hfs/architecture/root-packages.mjs",
     "scripts/hfs/architecture/route-files-thin.mjs",
     "scripts/hfs/architecture/schema-owner.mjs",
     "scripts/hfs/architecture/server-action.mjs",
