@@ -426,3 +426,21 @@ for (const edition of ['lite', 'full']) {
     assert.equal(codes(envFindingsOf(tree(t, otherEnvironment), otherEnvironment, edition), ENV_DUPLICATE).length, 2);
   });
 }
+
+test('a seeds-<name> member that seed data references is read: an environment level reads its own, the shared level every environment\'s', (t) => {
+  const member = (keys: string[]) => `${keys.map((key) => `${key}: ENC[AES256_GCM,data:eA==,iv:aXY=,tag:dGc=,type:str]`).join('\n')}\nsops:\n  age:\n    - recipient: age1fake\n`;
+  const files = {
+    ...BASE,
+    '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'OPENCLAW_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
+    '.starcistacks/application-stacks.yaml': 'schema: starci/application-stacks@1\nenvironments:\n  dev:\n    services:\n      api:\n        environment:\n          API_PORT: "3000"\n',
+    '.starcistacks/production/seeds/data/owner.json': JSON.stringify({ password: { secret: 'seeds-test-owner' } }),
+    '.starcistacks/seeds/data/catalogue.yaml': 'token:\n  secret: seeds-catalogue\n',
+    '.starcistacks/seeds/data/broken.json': '{ not json',
+    '.starcistacks/production/secrets/seeds-test-owner.enc.yaml': member(['value']),
+    '.starcistacks/dev/secrets/seeds-catalogue.enc.yaml': member(['TOKEN']),
+    '.starcistacks/production/secrets/seeds-catalogue.enc.yaml': member(['TOKEN']),
+    '.starcistacks/dev/secrets/seeds-test-owner.enc.yaml': member(['value']),
+  };
+  const findings = parityOf(tree(t, files), files);
+  assert.deepEqual(codes(findings, ENV_SEALED_UNREAD).map((finding) => finding.path), ['.starcistacks/dev/secrets/seeds-test-owner.enc.yaml'], 'production\'s account member is read there only');
+});

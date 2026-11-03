@@ -13,7 +13,7 @@
 //       `.starcistacks/<env>/runtime/env/KEYS.md`, and the `environment:`/`env:` entries, `runtimeSecrets`, `secrets`
 //       and `vars[].name` of every `.starcistacks` yaml. A `<KEY>_FILE` name declares `<KEY>`.
 // Findings: ENV_REQUIRED_UNSET a required read sits in neither S nor D; ENV_SEALED_UNREAD a sealed key sits in
-// neither R nor a declared consumer; ENV_DUPLICATE one app key in two members of one environment (the transport members, the operator's `deploy.remote.sealed` member and
+// neither R nor a declared consumer (a service credential, or seed data that references its member); ENV_DUPLICATE one app key in two members of one environment (the transport members, the operator's `deploy.remote.sealed` member and
 // `vps-ci`, never reach an app container and may both hold the SSH_GROUP keys, nothing else); ENV_PUBLIC_SEALED a NEXT_PUBLIC_* key in
 // custody; ENV_EXAMPLE_DRIFT a `*.env.example` key nothing reads. The rule judges the app root (`isRoot`): the whole
 // tree `all` is its input, both editions.
@@ -26,6 +26,7 @@ import { SSH_GROUP, sshTransportMembers, declaredServiceKeys, type StacksDocumen
 import { repositoryName, identityQueryEnvironment } from '../repo-identity.mjs';
 import { serviceCredentialNames } from '../ci-declaration.mjs';
 import { memberOfName } from '../../lib/sealed-member.mjs';
+import { secretReferences, seedMemberFile } from '../stack-seeds-config.mjs';
 import { found, readText } from './read.mjs';
 import type { Finding, Parsed, Ts } from './rule-types.mjs';
 
@@ -330,6 +331,27 @@ function sealedMemberFinding(key: string, member: Parsed, reads: Parsed, declare
   return null;
 }
 
+/** A document of a seed level's data/: its environment (none for the shared level). */
+const SEED_DOCUMENT = /^\.starcistacks\/(?:([^/]+)\/)?seeds\/data\/.+\.(?:json|ya?ml)$/u;
+
+/**
+ * The sealed members seed data reads (PROJECT-STACKS-12): a `{ "secret": "seeds-<name>" }` reference in a document of an environment's level
+ * reads that environment's member, one in the shared level reads the member of every environment that seals any; the seed step opens it.
+ */
+function seedReadMembers(repoRoot: string, all: string[]): Set<string> {
+  const environments = [...new Set(all.flatMap((file) => /^\.starcistacks\/([^/]+)\/secrets\//u.exec(file)?.[1] ?? []))];
+  const members = new Set<string>();
+  for (const file of all) {
+    const level = SEED_DOCUMENT.exec(file);
+    const text = level ? readText(repoRoot, file) : null;
+    if (level === null || text === null) continue;
+    let doc: unknown;
+    try { doc = file.endsWith('.json') ? JSON.parse(text) : parseYaml(text); } catch { continue; }
+    for (const member of secretReferences(doc)) for (const env of level[1] === undefined ? environments : [level[1]]) members.add(seedMemberFile(env, member));
+  }
+  return members;
+}
+
 /** The transport members per environment: the `deploy.remote.sealed` member(s) of application-stacks.yaml and `vps-ci`. */
 function transportMembers(repoRoot: string): (environment: string) => Set<string> {
   const text = readText(repoRoot, '.starcistacks/application-stacks.yaml');
@@ -387,7 +409,8 @@ export function envParityFindings({ repoRoot, all = [], isRoot }: { repoRoot: st
   let stacks: StacksDocument = {};
   try { stacks = parseYaml(readText(repoRoot, '.starcistacks/application-stacks.yaml') ?? '') ?? {}; } catch { /* the shape owner reports invalid YAML */ }
   const repository = repositoryName(repoRoot, { env: identityQueryEnvironment(process.env, serviceCredentialNames(stacks)) });
-  const serviceConsumer = (file: string, key: string): boolean => declaredServiceKeys(stacks, repository, file.split('/')[1] as string,
+  const seedMembers = seedReadMembers(repoRoot, all);
+  const serviceConsumer = (file: string, key: string): boolean => seedMembers.has(file) || declaredServiceKeys(stacks, repository, file.split('/')[1] as string,
     memberOfName(file.split('/').pop() as string)).includes(key);
   addRequiredFindings(reads, sealed, declared, findings);
   addSealedFindings(sealed, reads, declared, transportMembers(repoRoot), findings, serviceConsumer);
