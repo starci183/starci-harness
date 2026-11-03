@@ -161,7 +161,7 @@ test('a failing SQL file or app command writes no receipt and names no output; a
   const db = database();
   db.state.fail = "'free'";
   assert.throws(() => seedStep(step(root, db, new Map([['seeds-test-owner', { value: throwaway() }]])).input), /STACK_SEED_SQL|psql failed/u);
-  assert.deepEqual(db.state.rows, []);
+  assert.equal(db.state.rows.length, 0);
   db.state.fail = '';
   const failing = step(root, db, new Map([['seeds-test-owner', { value: throwaway() }]]), { exit: 3 });
   assert.throws(() => seedStep(failing.input), (error: Error) => /production\/owner: node cli\.js accounts seed exited 3; its output is withheld/u.test(error.message) && !error.message.includes('leaked'));
