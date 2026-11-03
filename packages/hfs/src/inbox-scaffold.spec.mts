@@ -59,7 +59,7 @@ test('the lite inbox scaffold installs client replay declarations and migrates i
   assert.match(service, /if \(receiptId === undefined\) return/);
   assert.match(fs.readFileSync(path.join(domain, 'persistence/entities/calendar-inbox.entity.ts'), 'utf8'),
     /@Entity\(\{ schema: "public", name: "calendar_inbox" \}\)\n\/\*\* [^\n]+ \*\/\nexport class CalendarInboxEntity \{/);
-  assert.match(fs.readFileSync(path.join(domain, 'persistence/entities/index.ts'), 'utf8'), /export const calendarInboxEntities = \[CalendarInboxEntity\]/);
+  assert.match(fs.readFileSync(path.join(domain, 'persistence/entities/index.ts'), 'utf8'), /export const calendarInboxEntities: ReadonlyArray<typeof CalendarInboxEntity> = \[CalendarInboxEntity\]/);
   assert.match(fs.readFileSync(path.join(domain, 'index.ts'), 'utf8'), /export \{ calendarInboxEntities \} from "\.\/persistence\/entities\/index"/);
   const entities = fs.readFileSync(path.join(root, 'be/src/modules/platform/database/entities.ts'), 'utf8');
   assert.match(entities, /import \{ calendarInboxEntities \} from "@modules\/domain\/calendar-inbox"/);

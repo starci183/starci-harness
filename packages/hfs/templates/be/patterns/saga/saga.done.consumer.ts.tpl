@@ -8,7 +8,7 @@ import { Complete@@Saga@@Command } from "../../application/complete-@@saga@@.com
 @Injectable()
 /** Consumer of `@@from@@.@@done@@`, the last event of the @@saga@@ saga: hands each delivery to the complete command. */
 export class @@Done@@Consumer implements EventConsumer<@@Done@@Event> {
-    readonly event = @@Done@@Event
+    readonly event: typeof @@Done@@Event = @@Done@@Event
 
     constructor(@InjectCommandBus() private readonly commandBus: CommandBus) {}
 

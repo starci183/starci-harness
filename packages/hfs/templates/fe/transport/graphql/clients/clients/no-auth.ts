@@ -19,7 +19,7 @@ export interface CreateNoAuthApolloClientOptions {
  * The anonymous Apollo client for public operations: retry -> error -> timeout -> locale -> http. It never attaches a
  * token, so a public operation stays public even for a signed-in reader.
  */
-export const createNoAuthApolloClient = ({ signal, report }: CreateNoAuthApolloClientOptions) =>
+export const createNoAuthApolloClient = ({ signal, report }: CreateNoAuthApolloClientOptions): ApolloClient =>
     new ApolloClient({
         link: ApolloLink.from([
             createRetryLink(),

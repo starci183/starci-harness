@@ -2,7 +2,7 @@ import { ApolloLink, Observable } from "@apollo/client"
 import { OPERATION_TIMEOUT_MS } from "./options"
 
 /** Fails the operation when no answer arrived within the timeout; the upstream links see the timeout as an error. */
-export const createTimeoutLink = (timeoutMs = OPERATION_TIMEOUT_MS) =>
+export const createTimeoutLink = (timeoutMs: number = OPERATION_TIMEOUT_MS): ApolloLink =>
     new ApolloLink(
         (operation, forward) =>
             new Observable((observer) => {

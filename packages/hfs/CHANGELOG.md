@@ -2,6 +2,7 @@
 
 ## 5.1.0
 
+- Changed: the scaffold templates write the type of every export (R368): Nest module definitions export each `ConfigurableModuleHost` member with its type, hooks name their result interface, async pages and layouts return `Promise<ReactElement>`, redux, zustand, next-intl and Apollo exports are typed, SQL texts are `SqlText`, entity and migration lists are `DatabaseConnectionOptions` members. A new app scaffolds clean under `explicit-export-surface`.
 - Added: `runtime/scripts/lib/declaration-surface.mjs`, the one classifier of a TypeScript file's exported type surface (the isolated declaration emit and the exports it cannot write without inference, with the JSX-only component exemption), and `runtime/scripts/hfs/explicit-surface-rule.mjs`, the factory of the `explicit-export-surface` rule both lint canons build (R368). The app-check ESLint cache reads the same classifier for `open`, so the rule reports exactly the files the cache counts as open.
 - Changed: the ESLint child of the cached lint hands its project-graph snapshot out. The list runner (`lint/eslint-list.cjs`, now also the runner of a whole-side run, as the list `.`) asks each installed canon for `projectGraphSnapshot` after the lint and writes the findings beside its results; `lintSide` writes the `graph` records from them and builds the graph itself only for a canon the child did not answer for. A whole-side lint no longer builds the project graph a second time in the CLI process.
 

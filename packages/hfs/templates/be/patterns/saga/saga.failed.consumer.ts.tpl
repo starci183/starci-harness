@@ -8,7 +8,7 @@ import { Compensate@@Saga@@Command } from "../../application/compensate-@@saga@@
 @Injectable()
 /** Consumer of `@@from@@.@@failed@@`, the failure event of the @@saga@@ saga: hands each delivery to the compensate command. */
 export class @@Failed@@Consumer implements EventConsumer<@@Failed@@Event> {
-    readonly event = @@Failed@@Event
+    readonly event: typeof @@Failed@@Event = @@Failed@@Event
 
     constructor(@InjectCommandBus() private readonly commandBus: CommandBus) {}
 

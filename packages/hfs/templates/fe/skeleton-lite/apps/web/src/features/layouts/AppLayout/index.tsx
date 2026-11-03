@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
-import type { ReactNode } from "react"
+import type { ReactElement, ReactNode } from "react"
 import { SiteShell } from "@/components/frames/SiteShell"
 import { siteUrl } from "@/modules/config"
 import { APP_ROUTES } from "@/modules/routes"
@@ -17,7 +17,7 @@ export const appLayoutMetadata = async (locale: string): Promise<Metadata> => {
 }
 
 /** The server-resolved app chrome around the routed body. */
-export const AppLayout = async (props: AppLayoutProps) => {
+export const AppLayout = async (props: AppLayoutProps): Promise<ReactElement> => {
     const t = await getTranslations("app.shell")
     return (
         <html lang={props.locale}>

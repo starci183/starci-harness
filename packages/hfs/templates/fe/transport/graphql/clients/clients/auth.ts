@@ -23,7 +23,7 @@ export interface CreateAuthApolloClientOptions {
  * retry (transient network failures) -> error (report) -> timeout -> refresh (one token refresh and replay on
  * UNAUTHENTICATED) -> locale (`Accept-Language`) -> access token (`Authorization: Bearer`, from modules/auth) -> http (terminal).
  */
-export const createAuthApolloClient = ({ signal, report }: CreateAuthApolloClientOptions) =>
+export const createAuthApolloClient = ({ signal, report }: CreateAuthApolloClientOptions): ApolloClient =>
     new ApolloClient({
         link: ApolloLink.from([
             createRetryLink(),

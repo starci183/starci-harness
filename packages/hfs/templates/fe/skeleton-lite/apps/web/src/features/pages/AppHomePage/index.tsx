@@ -1,3 +1,4 @@
+import type { ReactElement } from "react"
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 import { AppGuideOverlay } from "@/features/overlays/AppGuideOverlay"
@@ -10,7 +11,7 @@ export const appHomeMetadata = async (): Promise<Metadata> => {
 }
 
 /** The front door (the session is client-side, drawn by the blocks the page composes). */
-export const AppHomePage = async () => {
+export const AppHomePage = async (): Promise<ReactElement> => {
     const t = await getTranslations("app.home")
     return (
         <>

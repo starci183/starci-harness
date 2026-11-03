@@ -6555,7 +6555,7 @@ rules:
         ruling: "A file whose exported surface is inferred is open in the lint result cache: one body edit lints every importer again. The exported surface is written out, and the rule reports exactly what the cache counts as open."
   - id: R369
     code: "FE_DIRECTIVE_FIRST"
-    law: "A "use client" or "use server" directive is the first statement of its module, above every import: below another statement it is an expression that does nothing (Prettier writes it as ("use client")) and next build refuses the file."
+    law: "A `use client` or `use server` directive is the first statement of its module, above every import: below another statement it is an expression that does nothing (Prettier writes it as a parenthesised string) and next build refuses the file."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_DIRECTIVE_FIRST"]

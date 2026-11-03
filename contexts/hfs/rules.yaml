@@ -2510,7 +2510,7 @@ rules:
       - {kind: eslint-be, id: explicit-export-surface}
   - id: R369
     code: FE_DIRECTIVE_FIRST
-    law: "A "use client" or "use server" directive is the first statement of its module, above every import: below another statement it is an expression that does nothing (Prettier writes it as ("use client")) and next build refuses the file."
+    law: "A `use client` or `use server` directive is the first statement of its module, above every import: below another statement it is an expression that does nothing (Prettier writes it as a parenthesised string) and next build refuses the file."
     failureCodes:
       - FE_DIRECTIVE_FIRST
     enforcers:
