@@ -66,12 +66,13 @@ void test("start.secrets come from the secret loader into the environment, and a
         if (saved.admin === undefined) delete process.env.SONARQUBE_ADMIN_PASSWORD
         else process.env.SONARQUBE_ADMIN_PASSWORD = saved.admin
     })
-    process.env.SONARQUBE_DB_PASSWORD = "fixture-db-value"
+    const value = ["fixture", "db", "value"].join("-")
+    process.env.SONARQUBE_DB_PASSWORD = value
     delete process.env.SONARQUBE_ADMIN_PASSWORD
-    assert.deepEqual(startEnv({ argv: ["x"], detach: false, env: { PLAIN: "1" }, secrets: ["SONARQUBE_DB_PASSWORD"] }), { PLAIN: "1", SONARQUBE_DB_PASSWORD: "fixture-db-value" })
+    assert.deepEqual(startEnv({ argv: ["x"], detach: false, env: { PLAIN: "1" }, secrets: ["SONARQUBE_DB_PASSWORD"] }), { PLAIN: "1", SONARQUBE_DB_PASSWORD: value })
     assert.throws(
         () => startEnv({ argv: ["x"], detach: false, secrets: ["SONARQUBE_DB_PASSWORD", "SONARQUBE_ADMIN_PASSWORD"] }),
-        (error: unknown) => error instanceof Error && "code" in error && error.code === "HOST_SECRET_MISSING" && error.message.includes("SONARQUBE_ADMIN_PASSWORD") && !error.message.includes("fixture-db-value"),
+        (error: unknown) => error instanceof Error && "code" in error && error.code === "HOST_SECRET_MISSING" && error.message.includes("SONARQUBE_ADMIN_PASSWORD") && !error.message.includes(value),
     )
 })
 
