@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.1.0 - 2026-11-03
+
+- Added: the lite starter composes `@starci/auth`: it depends on the package and on none of the identity libraries, `integrations/passport` is the glue the slot lists (`passport.config.ts`, `passport.options.ts`, `passport.decorators.ts`, `passport.kit.ts`, `errors/`), the web app keeps one `@starci/auth/client` instance in `modules/auth/client.ts`, and the baseline migration holds the package's session tables (`identity_sessions`, `identity_refresh_tokens`) byte for byte.
+- Changed: `infraOwners` own `@nestjs/passport`, `passport*`, `@nestjs/jwt`, `jose` and `bcryptjs` by nobody and `@starci/auth` by `integrations/passport` alone (R328); the `own-jwks-principal` machine refuses a `jwtVerify` call anywhere in the app and requires the `@starci/auth/server` import in the passport integration (R329); `transport-owner` no longer admits an auth door in `modules/auth`; the `auth` stack concern names `@starci/auth` and forbids `jose`, `jwt-decode`, `next-auth`, `@auth/core`, `keycloak-js` and `oidc-client-ts`.
+- Changed: the lite stack templates name `AUTH_WEB_ORIGIN` and the Ed25519 signing key; `AUTH_JWT_PRIVATE_KEY` is an EdDSA key and the public key is derived from it.
+- Added: the canon pin of `@starci/auth` 0.1.0.
+
 ## 5.0.8
 
 - Removed: the `starci app lint` verb. `starci app check` is the one verb for app quality and carries what the lint verb carried: `--side be|fe` limits the lint gate to one side (reading and writing that side's cache records), `--out <file>` writes the merged Sonar Generic Issue Import document of the run (the findings of the selected gates under `starci-hfs`, then ESLint and stylelint), and `--fix` runs ESLint and stylelint with `--fix` before the check (with `--gate lint`). There is no `--changed` and no `--workspace`: the cache makes a whole-app check of an unchanged tree take seconds. The rendered `lint` and `lint:fix` scripts, the managed CI lint step and the release gate's Sonar row call `app check --gate lint`, and rule R13 requires that form.

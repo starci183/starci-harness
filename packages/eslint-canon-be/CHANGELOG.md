@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.12.0 - 2026-11-03
+
+- Changed: `own-jwks-only` refuses `jwtVerify`, `decodeJwt`, `decodeProtectedHeader` and `createRemoteJWKSet` of jose in every app file; `refresh-token-cookie-only` no longer exempts `integrations/passport` (the package sets the cookie); the infrastructure table owns the identity libraries by nobody and `@starci/auth` by `integrations/passport` (R328, R329, R330).
+
 ## 3.11.19
 
 - Changed: Carry the bundled runtime of @starci/hfs 5.0.8 (the rule texts name `app check`, the read-set helper of the rule memo) and its canon pins; the comments name `app check` for the removed lint verb.

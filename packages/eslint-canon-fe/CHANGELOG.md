@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.10.0 - 2026-11-03
+
+- Changed: `modules/auth` holds the front-end transport rules like `modules/api`: no auth door file takes axios or `fetch`, and no file keeps module-level mutable state (the access token lives in the `@starci/auth` client); the stack concern `auth` names `@starci/auth`.
+
 ## 9.9.12
 
 - Changed: Carry the bundled runtime of @starci/hfs 5.0.8 (the rule texts name `app check`, the read-set helper of the rule memo) and its canon pins; the comments name `app check` for the removed lint verb.
