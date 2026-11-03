@@ -44,7 +44,7 @@ export function spacingRolesArguments(argv: readonly string[]): { write: boolean
 }
 
 /** One of the report-style codemods run at an app root: its report object and the Markdown of it. */
-function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'button-intent' | 'explicit-surface' | 'account-doors'>, root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
+function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'button-intent' | 'explicit-surface' | 'account-doors' | 'module-definition'>, root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
   if (name === 'seeds-layout') {
     const report = migrateSeedsLayout({ root, write });
     return { report, markdown: seedsLayoutMarkdown(report) };
@@ -56,10 +56,6 @@ function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'button-intent' | '
   if (name === 'sops-rules') {
     const report = migrateSopsRules({ root, write });
     return { report, markdown: sopsRulesMarkdown(report) };
-  }
-  if (name === 'module-definition') {
-    const report = migrateModuleDefinition({ root, write });
-    return { report, markdown: moduleDefinitionMarkdown(report) };
   }
   if (name === 'secrets-cache') {
     const report = migrateSecretsCache({ root, write });
@@ -130,6 +126,13 @@ async function explicitSurfaceMain(argv: readonly string[], io: Io): Promise<num
   return emit(options, { report, markdown: explicitSurfaceMarkdown(report) }, io);
 }
 
+/** `starci app codemod module-definition`: it formats each rewritten definition with the app's Prettier, which is asynchronous. */
+async function moduleDefinitionMain(argv: readonly string[], io: Io): Promise<number> {
+  const options = reportArguments(argv);
+  const report = await migrateModuleDefinition({ root: path.resolve(io.cwd), write: options.write });
+  return emit(options, { report, markdown: moduleDefinitionMarkdown(report) }, io);
+}
+
 /** `starci app codemod account-doors [--contract]`: the expand migration of the account doors, or (a release later) the contract migration that revokes the old grants. */
 function accountDoorsMain(argv: readonly string[], io: Io): number {
   const contract = argv.includes('--contract');
@@ -147,6 +150,7 @@ export function codemodMain(argv: string[], io: Io): number | Promise<number> {
   if (name === 'button-intent') return buttonIntentMain(argv, io);
   if (name === 'explicit-surface') return explicitSurfaceMain(rest, io);
   if (name === 'account-doors') return accountDoorsMain(rest, io);
+  if (name === 'module-definition') return moduleDefinitionMain(rest, io);
   if (name === undefined || !CODEMODS.includes(name)) throw new Error(`starci app codemod takes ${CODEMODS.join(' or ')}`);
   const options = reportArguments(rest);
   return emit(options, runCodemod(name as Parameters<typeof runCodemod>[0], path.resolve(io.cwd), options.write), io);

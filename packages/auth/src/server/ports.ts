@@ -55,6 +55,8 @@ export interface RefreshTokenRecord {
     readonly expiresAt: Date
     /** When the token was rotated away, or null while it is the live one. */
     readonly usedAt: Date | null
+    /** How many successors replays of this token obtained within the grace window after its rotation (bounded). */
+    readonly racedCount: number
 }
 
 /** A device session to open. */
@@ -71,11 +73,13 @@ export interface SessionTransaction {
     /** Opens a device session. */
     openSession(session: NewSession): Promise<void>
     /** Stores a live refresh token. */
-    insertToken(token: Omit<RefreshTokenRecord, "usedAt">): Promise<void>
+    insertToken(token: Omit<RefreshTokenRecord, "usedAt" | "racedCount">): Promise<void>
     /** The token with this digest, locked for update (a pessimistic write lock), or null. */
     findTokenForUpdate(tokenHash: string): Promise<RefreshTokenRecord | null>
     /** Marks a token as rotated away at `at`. */
     markTokenUsed(tokenId: string, at: Date): Promise<void>
+    /** Records how many successors replays of a rotated token obtained within the grace window. */
+    markTokenRaced(tokenId: string, racedCount: number): Promise<void>
     /** Deletes the tokens of an account that expired before `before`. */
     deleteExpiredTokens(userId: string, before: Date): Promise<void>
 }
@@ -88,7 +92,7 @@ export interface SessionStore {
     findToken(tokenHash: string): Promise<RefreshTokenRecord | null>
     /** Marks a session refreshed. */
     touchSession(sessionId: string, now: Date): Promise<void>
-    /** Ends one session (and with it every token of it). */
+    /** Ends one session and revokes every token of it (logout, reuse, a gone or disabled account). */
     closeSession(sessionId: string): Promise<void>
     /** Ends every session of an account but one. */
     closeOtherSessions(userId: string, keepSessionId: string): Promise<void>
@@ -130,8 +134,6 @@ export interface SessionTokens {
     readonly accessExpiresIn: number
     /** The opaque token the refresh cookie carries. */
     readonly cookieToken: string
-    /** True when the answer did not rotate the token (a racing request, or the non-rotating session door): the caller leaves the cookie as it is. */
-    readonly cookieKept?: true
     readonly refreshMaxAgeSeconds: number
     readonly user: SessionUser
 }

@@ -19,6 +19,7 @@ const row = (usedAt: Date | null): IdentityRefreshTokenEntity => ({
     createdAt: NOW,
     expiresAt: LATER,
     usedAt,
+    racedCount: 0,
 })
 
 const build = async (entityManager: MockEntityManager = mockEntityManager()) => {
@@ -39,11 +40,11 @@ describe("IdentitySessionStoreService.transaction", () => {
         })
 
         expect(entityManager.insert).toHaveBeenCalledWith(IdentitySessionEntity, { id: "s-1", userId: "u-1", createdAt: NOW, refreshedAt: NOW, userAgent: "agent", ip: "203.0.113.9" })
-        expect(entityManager.insert).toHaveBeenCalledWith(IdentityRefreshTokenEntity, { id: "t-1", sessionId: "s-1", userId: "u-1", tokenHash: "h-1", expiresAt: LATER, usedAt: null })
+        expect(entityManager.insert).toHaveBeenCalledWith(IdentityRefreshTokenEntity, { id: "t-1", sessionId: "s-1", userId: "u-1", tokenHash: "h-1", expiresAt: LATER, usedAt: null, racedCount: 0 })
         expect(transaction.commits).toBe(1)
     })
 
-    it("reads the token for update, marks it used and drops the expired ones", async () => {
+    it("reads the token for update, marks it used or raced and drops the expired ones", async () => {
         const { subject, entityManager } = await build(
             mockEntityManager({
                 findOne: [[IdentityRefreshTokenEntity, row(NOW)], [IdentityRefreshTokenEntity, null]],
@@ -56,13 +57,15 @@ describe("IdentitySessionStoreService.transaction", () => {
         const missing = await subject.transaction((tx) => tx.findTokenForUpdate("h-2"))
         await subject.transaction(async (tx) => {
             await tx.markTokenUsed("t-1", NOW)
+            await tx.markTokenRaced("t-1", 2)
             await tx.deleteExpiredTokens("u-1", NOW)
         })
 
-        expect(found).toEqual({ id: "t-1", sessionId: "s-1", userId: "u-1", tokenHash: "h-1", expiresAt: LATER, usedAt: NOW })
+        expect(found).toEqual({ id: "t-1", sessionId: "s-1", userId: "u-1", tokenHash: "h-1", expiresAt: LATER, usedAt: NOW, racedCount: 0 })
         expect(missing).toBeNull()
         expect(entityManager.findOne).toHaveBeenCalledWith(IdentityRefreshTokenEntity, { where: { tokenHash: "h-1" }, lock: { mode: "pessimistic_write" } })
         expect(entityManager.update).toHaveBeenCalledWith(IdentityRefreshTokenEntity, { id: "t-1" }, { usedAt: NOW })
+        expect(entityManager.update).toHaveBeenCalledWith(IdentityRefreshTokenEntity, { id: "t-1" }, { racedCount: 2 })
         expect(entityManager.delete).toHaveBeenCalledWith(IdentityRefreshTokenEntity, { userId: "u-1", expiresAt: LessThan(NOW) })
     })
 

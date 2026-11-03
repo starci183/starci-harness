@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.14.1 - 2026-11-03
+
+- Changed: the runtime copies carry the canon pins of `@starci/auth` 0.2.1, `@starci/auth-oidc` 0.1.1, the Grammar family 0.21.16 and `@starci/hfs` 5.4.0.
+
 ## 3.14.0 - 2026-11-03
 
 - Changed: `@starci/nest-kit` is a framework import like `@nestjs/common` (`third-party-import-owner` lets any module definition import it).

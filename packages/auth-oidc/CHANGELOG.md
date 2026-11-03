@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 - 2026-11-03
+
+- Changed: requires `@starci/auth` 0.2.1 (the raced refresh gets its own successor cookie; `SessionTokens.cookieKept` is gone). Nothing of this package reads it.
+
 ## 0.1.0 - 2026-11-03
 
 The OIDC client of a full StarCi app (Keycloak) in one package, behind the `PrincipalVerifier` interface of `@starci/auth`. Lifted from the Keycloak integration of the first full app and generalised: no product names, every setting a typed option, no environment read.

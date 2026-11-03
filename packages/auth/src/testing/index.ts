@@ -62,13 +62,18 @@ export class MemorySessionStore implements SessionStore {
                 return Promise.resolve()
             },
             insertToken: (token) => {
-                this.tokens.set(token.id, { ...token, usedAt: null })
+                this.tokens.set(token.id, { ...token, usedAt: null, racedCount: 0 })
                 return Promise.resolve()
             },
             findTokenForUpdate: (tokenHash) => Promise.resolve(this.#byHash(tokenHash)),
             markTokenUsed: (tokenId, at) => {
                 const row = this.tokens.get(tokenId)
                 if (row !== undefined) this.tokens.set(tokenId, { ...row, usedAt: at })
+                return Promise.resolve()
+            },
+            markTokenRaced: (tokenId, racedCount) => {
+                const row = this.tokens.get(tokenId)
+                if (row !== undefined) this.tokens.set(tokenId, { ...row, racedCount })
                 return Promise.resolve()
             },
             deleteExpiredTokens: (userId, before) => {

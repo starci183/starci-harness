@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.12.1 - 2026-11-03
+
+- Changed: the runtime copies carry the canon pins of `@starci/auth` 0.2.1, `@starci/auth-oidc` 0.1.1, the Grammar family 0.21.16 and `@starci/hfs` 5.4.0.
+
 ## 9.12.0 - 2026-11-03
 
 - Changed: the runtime copies carry R368's acceptance of the module-definition helpers, the module-per-transport confinement of the helpers and the `@starci/nest-kit` and `@starci/next-i18n` pins; `i18n-stack-in-one-module` refuses every product-source call of a next-intl layer builder (the stack is `@starci/next-i18n`'s).
