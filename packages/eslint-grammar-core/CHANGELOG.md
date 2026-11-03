@@ -2,7 +2,7 @@
 
 ## 0.21.14 - 2026-11-03
 
-- Changed: requires `@starci/eslint-canon-fe` 9.10.0; the runtime copies of the slot manifest, stack and pins carry the `@starci/auth` rows.
+- Changed: requires `@starci/eslint-canon-fe` 9.11.0; the runtime copies of the slot manifest, stack and pins carry the `@starci/auth` rows.
 
 ## 0.21.13
 

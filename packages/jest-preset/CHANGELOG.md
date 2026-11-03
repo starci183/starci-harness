@@ -2,7 +2,7 @@
 
 ## 2.6.1 - 2026-11-03
 
-- Changed: `@starci/auth` is compiled to CommonJS like `jose` and `@starci/ai-router`, so a spec that builds the lite AppModule loads the sign-in package.
+- Changed: `@starci/auth` and `@starci/object-storage` are compiled to CommonJS like `jose` and `@starci/ai-router`, so a spec that builds the lite AppModule loads the sign-in and the storage packages.
 
 ## 2.6.0 - 2026-10-31
 

@@ -26,6 +26,9 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Added
 
+- `starci app remove module <name>` (a new verb file, `core/app/remove.ts`) reverses `starci app add module <name>`; both are implemented by @starci/hfs.
+- The dev verbs of `starci app stack` (`prepare|doctor|up|status|logs|down|verify --env <env>`, `starci app secret init --env <dev env>`) run a docker-compose environment under the governor; they are carried by @starci/hfs 5.2.0.
+- The seat start heals the product's git hooks in the worker's checkout (`materialiseHooks`) and refuses `WORKTREE_HOOKS_MISSING` before it claims the task when the checkout still has none.
 - The dev verbs of `starci app stack` get the heavy-command governor: `npm ci`, a compose build and a compose up of `up` and `prepare` wait for a slot of the host-wide semaphore like every other heavy command (`stackIo.heavy`, handed to the @starci/hfs release that carries the dev verbs).
 
 ## [1.1.0-alpha.51] - 2026-11-03
