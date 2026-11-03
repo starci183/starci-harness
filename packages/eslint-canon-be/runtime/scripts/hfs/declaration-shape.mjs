@@ -140,7 +140,7 @@ function observeBlockProblems(observe) {
         bad.push('observe.reporter must name the optional error reporter');
     return bad;
 }
-const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'lexicon', 'observe']);
+const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'modules', 'lexicon', 'observe']);
 const RUNTIME_DECLARATION_KEYS = new Set(['hfs', 'kind', 'project']);
 function productDeclarationProblems(declaration, profiles) {
     const bad = [];
@@ -150,6 +150,8 @@ function productDeclarationProblems(declaration, profiles) {
     bad.push(...dbBlockProblems(declaration.db), ...lexiconBlockProblems(declaration.lexicon), ...observeBlockProblems(declaration.observe));
     if (declaration.browser !== undefined && declaration.browser !== true)
         bad.push('browser is `true` when the app has a browser journey (slot app.browser), and is left out otherwise');
+    if (declaration.modules !== undefined && declaration.modules !== 'data')
+        bad.push('modules is `"data"` when the app keeps its modules as data (seeds, no rendered registry package), and is left out otherwise');
     if (declaration.kind !== APP_KIND)
         bad.push(`kind must be ${APP_KIND} (a product is one app repository with a be and an fe side) or ${RUNTIME_KIND} (the StarCi runtime repository)`);
     if (!isPlainObject(declaration.sides) || Object.keys(declaration.sides).sort(byCodeUnit).join() !== profiles.join()) {
