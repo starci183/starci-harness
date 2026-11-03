@@ -15,6 +15,7 @@ const jestBin = require.resolve('jest/bin/jest');
 const presetIndex = require.resolve('../dist/index.js');
 const tsJestPreset = require.resolve('ts-jest/jest-preset.js');
 const tsJestTransformer = require.resolve('ts-jest');
+const tslibFolder = path.dirname(require.resolve('tslib/package.json'));
 const preset = require(presetIndex) as { starciJestConfig(options: unknown): { projects: Array<{ displayName?: unknown; roots?: string[] }> } };
 
 const scope = { roots: ['src/modules/domain/*/'], roles: ['service'], files: [], excludes: [] };
@@ -34,6 +35,8 @@ function fixture(t: TestContext, { covered }: { covered: boolean }): string {
     fs.writeFileSync(file, text);
   };
   write('be/package.json', JSON.stringify({ name: 'coverage-packages-fixture', private: true }));
+  // an app installs tslib at its root (a Nest back end depends on it): the unit options import their helpers from it (importHelpers)
+  fs.cpSync(tslibFolder, path.join(app, 'node_modules', 'tslib'), { recursive: true });
   // the back end's options come through its extends chain, as @starci/tsconfig/be.json brings them, beside its own path aliases
   write('be/tsconfig.base.json', JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'commonjs', strict: true, esModuleInterop: true, resolveJsonModule: true, isolatedModules: true } }));
   write('be/tsconfig.json', JSON.stringify({ extends: './tsconfig.base', compilerOptions: { paths: { '@modules/*': ['./src/modules/*'] } } }));
