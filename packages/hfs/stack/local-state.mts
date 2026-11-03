@@ -1,5 +1,6 @@
 // local-state.mjs - where a dev environment keeps what it started: process ids, logs and receipts, under the per-host state base
-// (STARCI_LOCAL_ROOT, else the runtime's .runtime), never in the app's checkout (README "Harness state lives in the runtime").
+// (starciLocalRoot: STARCI_LOCAL_ROOT, else a checkout's .runtime or an installed copy's per-user base), never in the app's checkout nor
+// inside an installed package, so `npm ci` and a package copy never delete a running environment's data.
 import fs from 'node:fs';
 import path from 'node:path';
 import { starciLocalRoot } from '../runtime/engine/runtime-root.mjs';

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseYaml} from './yaml.mjs';
@@ -27,17 +28,77 @@ export const LOCAL_ROOT_ENV = 'STARCI_LOCAL_ROOT';
 /** The host-data directory of a runtime root. Git-ignored and never packed; the example fixtures under examples/.runtimes are a separate, public exception. */
 export const RUNTIME_STATE_DIR = '.runtime';
 /**
- * <root>/.runtime. The root is the `.claude` of the host Source: the checkout, or the copy `starci runtime install` places at
- * <app>/.claude. ~/.starci/runtime/node_modules/starci is only the CLI's download cache (it supplies the installer and hosts no
- * state), and `starci runtime link` merely points the launcher at a root, so the state follows the code's own location.
+ * <root>/.runtime, the state base of a runtime root that is a checkout (the harness repository, or a copy of it placed on the host).
+ * An installed or locally sourced copy keeps none (see installedStateBase).
  */
 export const runtimeStateDir = (root: string = skillRoot): string => path.join(root, RUNTIME_STATE_DIR);
+/** True when `root` is a copy an install or `starci deps source --local` placed below a node_modules folder, not a checkout. */
+export const installedRoot = (root: string = skillRoot): boolean => path.resolve(root).split(/[\\/]/).includes('node_modules');
+/**
+ * The per-user state base of an installed copy: LOCALAPPDATA (Windows), else XDG_STATE_HOME, else ~/.local/state, then
+ * starci-harness/state. It lies outside every package and every product repository, so `npm ci` and a package copy never delete a
+ * running stack's data, and every installed copy on the host shares one machine.sqlite and one stack/<project>/<env> per environment.
+ */
+export const installedStateBase = (env: NodeJS.ProcessEnv = process.env): string =>
+  path.join(env['LOCALAPPDATA'] || env['XDG_STATE_HOME'] || path.join(os.homedir(), '.local', 'state'), 'starci-harness', 'state');
 /**
  * The per-host state base, the one owner of every host-state location: machine.sqlite, projects/<ledger_id>/runtime.sqlite, archive/,
- * artifacts/ (the blob store), guards/, host-lock/ and the other process state sit under it. Default <runtime root>/.runtime;
- * LOCAL_ROOT_ENV replaces it wholesale. Nothing is read from or moved out of the earlier %LOCALAPPDATA%/StarCi and ~/.starci locations.
+ * artifacts/ (the blob store), guards/, host-lock/, stack/<project>/<env>/ and the other process state sit under it. LOCAL_ROOT_ENV
+ * replaces it wholesale; else a checkout keeps it in <runtime root>/.runtime and an installed copy in installedStateBase.
  */
-export const starciLocalRoot = (env: NodeJS.ProcessEnv = process.env, root: string = skillRoot): string => (env[LOCAL_ROOT_ENV] ? path.resolve(env[LOCAL_ROOT_ENV]) : runtimeStateDir(root));
+export const starciLocalRoot = (env: NodeJS.ProcessEnv = process.env, root: string = skillRoot): string => {
+  if (env[LOCAL_ROOT_ENV]) return path.resolve(env[LOCAL_ROOT_ENV]);
+  return installedRoot(root) ? installedStateBase(env) : runtimeStateDir(root);
+};
+
+/** The refusal of a legacy state base a running process still holds (a stack's bind mounts, an open log). */
+export class LegacyStateHeld extends Error {
+  readonly code = 'HFS_STATE_LEGACY_HELD';
+  readonly legacy: string;
+  constructor(legacy: string, cause: unknown) {
+    super(`${legacy} holds the state of a running stack and cannot move out of the package yet; run \`starci app stack down --env <env>\` for each running environment, then any \`starci app\` verb moves it`, { cause });
+    this.legacy = legacy;
+  }
+}
+
+/** What adopting a legacy state base moved: the entries now under `to`, and the ones `to` already held, kept under `to/legacy-<stamp>/`. */
+export interface StateAdoption {
+  readonly from: string;
+  readonly to: string;
+  readonly moved: readonly string[];
+  readonly kept: readonly string[];
+}
+
+const HELD = new Set(['EPERM', 'EBUSY', 'EACCES']);
+const isHeld = (error: unknown): boolean => HELD.has(String((error as NodeJS.ErrnoException | null)?.code));
+
+/**
+ * Moves the state an installed copy kept inside itself (<copy>/.runtime, before installedStateBase) out to the state base, once: the
+ * folder is first renamed to <copy>/.runtime.adopting (a rename a running stack's open files refuse, LegacyStateHeld), then copied
+ * entry by entry and removed. An entry the state base already holds is kept beside it under legacy-<stamp>/, never overwritten. An
+ * interrupted adoption resumes from .runtime.adopting. Null when there is nothing to adopt: a checkout, LOCAL_ROOT_ENV set, or no
+ * legacy folder.
+ */
+export function adoptLegacyState(env: NodeJS.ProcessEnv = process.env, root: string = skillRoot, now: () => Date = () => new Date()): StateAdoption | null {
+  if (env[LOCAL_ROOT_ENV] || !installedRoot(root)) return null;
+  const from = runtimeStateDir(root);
+  const parked = `${from}.adopting`;
+  if (!fs.existsSync(parked)) {
+    if (!fs.existsSync(from)) return null;
+    try { fs.renameSync(from, parked); } catch (error) { if (isHeld(error)) throw new LegacyStateHeld(from, error); throw error; }
+  }
+  const to = installedStateBase(env);
+  const aside = path.join(to, `legacy-${now().toISOString().replace(/[^0-9]/g, '').slice(0, 14)}`);
+  const moved: string[] = [];
+  const kept: string[] = [];
+  for (const name of fs.readdirSync(parked).sort()) {
+    const taken = fs.existsSync(path.join(to, name));
+    fs.cpSync(path.join(parked, name), path.join(taken ? aside : to, name), { recursive: true, verbatimSymlinks: true, errorOnExist: true, force: false });
+    (taken ? kept : moved).push(name);
+  }
+  fs.rmSync(parked, { recursive: true, force: true });
+  return { from, to, moved, kept };
+}
 
 /**
  * Read a runtime contract document. `parts` are path segments under `skillRoot`

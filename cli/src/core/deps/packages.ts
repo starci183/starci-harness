@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, relative, sep } from "node:path"
 import { z } from "zod"
 import { depsLocalPath, existingDepsLocalPath, mainCheckoutOf, openExistingLedger, runtimeRoot } from "../../harness/ledger.js"
@@ -267,10 +267,62 @@ export interface Copied {
     readonly warnings: readonly string[]
 }
 
+/** The host state a copy of `@starci/hfs` kept inside itself before it moved to its per-user base: a package copy carries it over. */
+const KEPT_STATE = [join("runtime", ".runtime"), join("runtime", ".runtime.adopting")]
+
+const HELD_CODES = new Set(["EPERM", "EBUSY", "EACCES"])
+
+/** True when a rename failed because a running process holds a file of the folder (Windows locks an open file's folder). */
+const isHeld = (error: unknown): boolean => error instanceof Error && HELD_CODES.has((error as NodeJS.ErrnoException).code ?? "")
+
+const heldRefusal = (target: string, name: string): Refusal =>
+    new Refusal("DEPS_TARGET_HELD", `${target} is in use by a running process, so ${name} was not copied and the installed copy is unchanged; stop what holds it (starci app stack down --env <env>, a dev server, an editor) and run again`)
+
+/** Writes the package's publishable files and its marker into a staging folder beside `target`, which `swapIn` puts in place. */
+const stage = (pkg: LocalPackage, files: readonly string[], target: string): string => {
+    const staging = `${target}.starci-staging`
+    rmSync(staging, { recursive: true, force: true })
+    for (const file of files) {
+        mkdirSync(dirname(join(staging, file)), { recursive: true })
+        copyFileSync(join(pkg.folder, file), join(staging, file))
+    }
+    const mark: LocalMark = { schema: "starci/deps-local-copy@1", name: pkg.name, version: pkg.version, folder: slashed(pkg.folder), copiedAt: new Date().toISOString() }
+    writeFileSync(join(staging, LOCAL_MARKER), `${JSON.stringify(mark, null, 2)}\n`)
+    return staging
+}
+
+/**
+ * Puts a staged copy in place of `target` by renames only, so a failure never leaves a half-deleted package: the host state the old
+ * copy kept inside itself moves into the staged one first, then the old copy moves aside whole and the staged one takes its name.
+ * A rename a running process's open file refuses (EPERM, EBUSY) removes the staging folder, moves any state back and refuses
+ * DEPS_TARGET_HELD with the old copy as it was.
+ */
+const swapIn = (staging: string, target: string, name: string): void => {
+    const aside = `${target}.starci-old`
+    rmSync(aside, { recursive: true, force: true })
+    const moved: string[] = []
+    try {
+        for (const state of KEPT_STATE.filter((entry) => existsSync(join(target, entry)))) {
+            mkdirSync(dirname(join(staging, state)), { recursive: true })
+            renameSync(join(target, state), join(staging, state))
+            moved.push(state)
+        }
+        if (existsSync(target)) renameSync(target, aside)
+    } catch (error: unknown) {
+        for (const state of moved) renameSync(join(staging, state), join(target, state))
+        rmSync(staging, { recursive: true, force: true })
+        if (isHeld(error)) throw heldRefusal(target, name)
+        throw error
+    }
+    renameSync(staging, target)
+    rmSync(aside, { recursive: true, force: true })
+}
+
 /**
  * Copies a package folder's publishable files over every installed copy of it in the app (the root's when none is
- * installed), each with its marker. A copy that is a link (a junction or symlink someone made) is refused
- * DEPS_TARGET_LINKED rather than followed: removing through a link would delete the folder it points at.
+ * installed), each with its marker, staged beside the copy and swapped in by rename (`swapIn`). A copy that is a link (a
+ * junction or symlink someone made) is refused DEPS_TARGET_LINKED rather than followed: removing through a link would delete
+ * the folder it points at.
  */
 export const copyLocal = async (root: string, manifests: readonly string[], pkg: LocalPackage): Promise<Copied> => {
     const files = await packFiles(pkg.folder)
@@ -281,15 +333,7 @@ export const copyLocal = async (root: string, manifests: readonly string[], pkg:
             throw new Refusal("DEPS_TARGET_LINKED", `${target} is a link; remove it (or run starci deps source --npm) before copying ${pkg.name} over it`)
         }
     }
-    for (const target of targets) {
-        rmSync(target, { recursive: true, force: true })
-        for (const file of files) {
-            mkdirSync(dirname(join(target, file)), { recursive: true })
-            copyFileSync(join(pkg.folder, file), join(target, file))
-        }
-        const mark: LocalMark = { schema: "starci/deps-local-copy@1", name: pkg.name, version: pkg.version, folder: slashed(pkg.folder), copiedAt: new Date().toISOString() }
-        writeFileSync(join(target, LOCAL_MARKER), `${JSON.stringify(mark, null, 2)}\n`)
-    }
+    for (const target of targets) swapIn(stage(pkg, files, target), target, pkg.name)
     const manifest = readManifest(join(pkg.folder, "package.json"))
     const missing = Object.keys(manifest.dependencies ?? {}).filter((dependency) => !targets.every((target) => resolvable(dependency, target, root)))
     const warnings = missing.map((dependency) => `${pkg.name} ${pkg.version} depends on ${dependency}, which the app has not installed; publish the package and raise the pin, or install ${dependency} in the app`)
@@ -327,6 +371,12 @@ export const clearRecord = (root: string): void => {
     if (file !== undefined) rmSync(file, { force: true })
 }
 
+/** A failed copy as a line: a refusal with its code (DEPS_TARGET_HELD names the remedy), any other error by its message. */
+const failureText = (error: unknown): string => {
+    if (error instanceof Refusal) return `${error.code}: ${error.message}`
+    return error instanceof Error ? error.message : String(error)
+}
+
 /** What re-applying a repository's local sources to another of its checkouts did; undefined when the repository is in npm mode. */
 export interface Reapplied {
     readonly status: "green" | "red"
@@ -359,7 +409,7 @@ export const reapplyLocal = async (source: string, checkout: string): Promise<Re
     } catch (error: unknown) {
         // An install the host held in the heavy queue judged nothing: the verify reaches no verdict, never a red copy.
         if (error instanceof Refusal && error.code === HOST_HELD) throw error
-        return { status: "red", detail: [...healed.map((one) => `warning: ${describeHealed(one)}`), `the repository is in local package mode (starci deps source) but its copy failed: ${error instanceof Error ? error.message : String(error)}`].join("\n") }
+        return { status: "red", detail: [...healed.map((one) => `warning: ${describeHealed(one)}`), `the repository is in local package mode (starci deps source) but its copy failed: ${failureText(error)}`].join("\n") }
     }
 }
 

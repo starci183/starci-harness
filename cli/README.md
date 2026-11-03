@@ -552,7 +552,9 @@ takes them from a package folder on this machine instead, the mechanism and its 
 `core/deps/packages.ts`. Every checkout of a repository in local mode gets the same copies (`reapplyLocal`): a worker's
 before its launch (`seat start`), a clean verify's or a wave's and a walk's over its install (`installCheckout` in
 `harness/install-cache.ts`, which `uat run` calls through `prepareWorkspace` for each install its checkout holds), a work
-tree's after its own `npm ci` (`deps source --sync`). Each heals the record first (`healRecord`): an entry whose folder no longer holds its package is repointed to
+tree's after its own `npm ci` (`deps source --sync`). A copy is staged beside the installed one and swapped in by renames
+(`swapIn`), carrying over the host state an older `@starci/hfs` copy kept inside itself, so a running process holding the
+installed copy refuses `DEPS_TARGET_HELD` with that copy whole, never a half-deleted package. Each heals the record first (`healRecord`): an entry whose folder no longer holds its package is repointed to
 the harness's own `packages/` folder of that name, or dropped to npm when the harness has none, with a `deps-local-healed`
 event, so a vanished folder never fails a launch, a sync or a verify; `worktree gc` heals this repository's record once it
 removed a package edit worktree. `--local` takes `packages/` of the harness's main checkout unless `--cwd` names another

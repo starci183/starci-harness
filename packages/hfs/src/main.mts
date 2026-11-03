@@ -79,7 +79,8 @@ import { pathToFileURL } from 'node:url';
 import { isMain } from '../runtime/scripts/lib/is-main.mjs';
 import { explainPath, readWhy, trackedFiles, withCheckProofs } from '../runtime/scripts/hfs/check.mjs';
 import { withWhy } from '../runtime/scripts/hfs/check-results.mjs';
-import { skillRoot } from '../runtime/engine/runtime-root.mjs';
+import { LegacyStateHeld, adoptLegacyState, skillRoot } from '../runtime/engine/runtime-root.mjs';
+import type { StateAdoption } from '../runtime/engine/runtime-root.mjs';
 import { secretMain } from '../runtime/scripts/hfs/secret.mjs';
 import { dbBaselineMain } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { dbRestampMain } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
@@ -155,6 +156,8 @@ interface AppIo {
   hostIdentity?: AgeHost | null | undefined; sops?: SecretSops | null | undefined; tools?: ({ spawn?: GhSpawn | undefined } & SecretToolOverrides) | undefined; platform?: NodeJS.Platform | undefined; stackIo?: Record<string, unknown> | undefined; runLinter?: LinterRunner | undefined;
   checkApp?: ((args: Dynamic) => Dynamic) | undefined;
   runHeavyNode?: HeavyNodeRun | undefined;
+  /** The runtime root whose host state main moves out of an installed copy before a verb (adoptLegacyState); this package's by default. */
+  stateRoot?: string | undefined;
   /** --quiet: no progress on stderr (the diagnosis stays). */
   quiet?: boolean | undefined; stderrIsTty?: boolean | undefined;
 }
@@ -725,10 +728,16 @@ function dispatchMain(verb: string, argv: string[], io: AppIo): Promise<number> 
   return (PARSED[verb] as ParsedVerb).run(parse(verb, argv), io);
 }
 
+/** The line `main` prints once the state an installed copy kept inside itself moved to the state base. */
+function adoptionNotice({ from, to, kept }: StateAdoption): string {
+  const aside = kept.length ? ` (${kept.join(', ')} already there; the older copy is kept under legacy-*)` : '';
+  return `starci app: moved the state this installed copy kept in ${from} to ${to}${aside}\n`;
+}
+
 /** What `main` prints for a thrown error: the usage only after a usage error; a refusal or a tool failure prints its code and message alone. */
 function errorMessage(error: unknown): string {
   if (error instanceof EditionRefusal || error instanceof UpgradeError || error instanceof HfsSlotsError || error instanceof SyncError) return `${(error as Error).message}\n`;
-  if (error instanceof ScaffoldError) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
+  if (error instanceof ScaffoldError || error instanceof LegacyStateHeld) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
   if (error instanceof UsageError) return `starci app: ${error.message}\n${USAGE}`;
   return `starci app: ${(error as Error).message}\n`;
 }
@@ -741,7 +750,7 @@ function errorMessage(error: unknown): string {
  */
 export async function main(argv: string[], {
   cwd: baseCwd = process.cwd(), harness, stdout = (s: string): unknown => process.stdout.write(s), stderr = (s: string): unknown => process.stderr.write(s), presets, prettier, lock, run, stackMain,
-  env = process.env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, runHeavyNode, checkApp, stderrIsTty = process.stderr.isTTY === true,
+  env = process.env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, runHeavyNode, checkApp, stderrIsTty = process.stderr.isTTY === true, stateRoot = skillRoot,
 }: MainOptions = {}): Promise<number> {
   try {
     const global = globalOptions(argv, path.resolve(baseCwd));
@@ -751,6 +760,8 @@ export async function main(argv: string[], {
     if (global.help) { out(USAGE); return 0; }
     if (!VERBS.includes(verb as string)) { stderr(USAGE); return 2; }
     const { edition, argv: rest } = editionOption(verb as string, given);
+    const adopted = adoptLegacyState(env, stateRoot);
+    if (adopted) stderr(adoptionNotice(adopted));
     return await dispatchMain(verb as string, rest, { cwd: global.cwd, harness, edition, quiet: global.quiet, stderrIsTty, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runHeavyNode, runLinter: runLinter ?? ((spec) => nativeLinter(spec, runHeavyNode)), checkApp });
   } catch (error) {
     stderr(errorMessage(error));
