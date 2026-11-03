@@ -477,6 +477,11 @@ rulings:
     ruling: "The one front-end locale writer sends Accept-Language, and back-end localization reads that header."
     owner: "contexts/code/fe/transport.md FE-API-GRAPHQL; lint R50"
     absorbs: [accept-language-locale-header]
+  - id: next-i18n-package
+    date: '2026-11-03'
+    status: live
+    ruling: "The next-intl stack of every front end is the published @starci/next-i18n package: defineI18n over the app's locales, the locale-negotiating proxy, the locale-aware navigation, the request config that loads the app's own catalogs and the locale read of the [locale] layout. The app (or the one shared i18n workspace package of a multi-app product) keeps only the description of its languages and its message catalogs, and no product source calls defineRouting, createNavigation, getRequestConfig or createMiddleware."
+    owner: "packages/next-i18n; contexts/code/fe/i18n.md FE-I18N-1; contexts/hfs/rules.yaml R59 (i18n-stack-in-one-module)"
   - id: hooks-compose-hooks
     date: '2026-10-16'
     status: live
