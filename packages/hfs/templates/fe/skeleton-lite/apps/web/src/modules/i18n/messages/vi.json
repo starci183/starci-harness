@@ -56,6 +56,7 @@
       "close": "Đóng"
     },
     "emailAuth": {
+      "name": "Họ và tên (không bắt buộc)",
       "email": "Email",
       "password": "Mật khẩu",
       "newPassword": "Mật khẩu mới",

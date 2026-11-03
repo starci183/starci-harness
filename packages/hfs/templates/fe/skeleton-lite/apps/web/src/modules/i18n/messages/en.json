@@ -56,6 +56,7 @@
       "close": "Close"
     },
     "emailAuth": {
+      "name": "Full name (optional)",
       "email": "Email",
       "password": "Password",
       "newPassword": "New password",

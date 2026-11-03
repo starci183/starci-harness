@@ -17,6 +17,8 @@ export interface SignupData {
     readonly email: string
     /** The chosen password. */
     readonly password: string
+    /** The person's full name, when the request names one. */
+    readonly name: string | undefined
     /** The language of the confirmation mail, when the request names one. */
     readonly language: MailLanguage | undefined
 }

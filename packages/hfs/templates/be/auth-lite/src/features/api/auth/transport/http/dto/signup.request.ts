@@ -15,6 +15,13 @@ export class SignupRequest {
     @MaxLength(128)
     password!: string
 
+    /** The person's full name, kept on the account's profile keys; left out, the account has none. */
+    @IsOptional()
+    @IsString()
+    @MinLength(1)
+    @MaxLength(200)
+    name?: string
+
     /** The language of the mail; the app's default when left out. */
     @IsOptional()
     @IsIn(["vi", "en"])

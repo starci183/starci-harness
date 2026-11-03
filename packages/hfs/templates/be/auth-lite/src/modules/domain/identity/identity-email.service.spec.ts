@@ -110,7 +110,7 @@ describe("IdentityEmailService.signup", () => {
         expect(sent?.to).toBe("new@example.test")
     })
 
-    it("keeps the generated id when the create door answers no row", async () => {
+    it("keeps the generated id when the create door answers no row, and the full name in the profile keys", async () => {
         const entityManager = mockEntityManager({
             query: [
                 [USER_BY_EMAIL, []],
@@ -122,8 +122,16 @@ describe("IdentityEmailService.signup", () => {
         fakeTransaction(entityManager)
         const { subject } = await build(entityManager)
 
-        await subject.signup("new@example.test", "correct horse")
+        await subject.signup("new@example.test", "correct horse", "en", "Ada Lovelace")
 
+        expect(entityManager.query).toHaveBeenCalledWith(CREATE_USER, [
+            NEW_ID,
+            "new@example.test",
+            "new-hash",
+            false,
+            JSON.stringify({ full_name: "Ada Lovelace", name: "Ada Lovelace" }),
+            NOW,
+        ])
         expect(entityManager.insert).toHaveBeenCalledWith(
             IdentityEmailTokenEntity,
             expect.objectContaining({ userId: NEW_ID }),

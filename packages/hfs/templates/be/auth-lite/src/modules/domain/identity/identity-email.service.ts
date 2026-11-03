@@ -51,8 +51,11 @@ export class IdentityEmailService {
         private readonly sessions: IdentitySessionStoreService,
     ) {}
 
-    /** Creates an unconfirmed password account and mails the confirmation link; an address that already has an account is answered the same way. */
-    async signup(email: string, password: string, language?: string): Promise<void> {
+    /**
+     * Creates an unconfirmed password account, its full name (when given) in the profile keys a Google sign-in fills too, and mails the
+     * confirmation link; an address that already has an account is answered the same way and its profile is left as it is.
+     */
+    async signup(email: string, password: string, language?: string, name?: string): Promise<void> {
         const address = normalizeEmail(email)
         await this.admit("signup", address)
         if (!isAcceptablePassword(password)) throw new IdentityError({ code: IdentityErrorCode.PasswordInvalid })
@@ -69,7 +72,7 @@ export class IdentityEmailService {
             email: address,
             hash,
             confirmed: false,
-            meta: "{}",
+            meta: JSON.stringify(name === undefined ? {} : { full_name: name, name }),
             now,
         })
         await this.sendConfirmation(created ?? id, address, language)

@@ -97,7 +97,9 @@ export class AuthController {
     @RateLimit(RateTier.Strict)
     signup(@Body() body: SignupRequest): Promise<void> {
         return this.commandBus.execute(
-            new SignupCommand({ request: { email: body.email, password: body.password, language: body.language } }),
+            new SignupCommand({
+                request: { email: body.email, password: body.password, name: body.name, language: body.language },
+            }),
         )
     }
 

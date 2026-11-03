@@ -21,6 +21,7 @@ export class SignupHandler extends ICQRSHandler<SignupCommand, void> {
             command.params.request.email,
             command.params.request.password,
             command.params.request.language,
+            command.params.request.name,
         )
     }
 }

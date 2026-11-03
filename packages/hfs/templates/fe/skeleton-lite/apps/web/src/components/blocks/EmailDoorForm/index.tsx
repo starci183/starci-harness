@@ -19,6 +19,7 @@ interface DoorCopy {
     readonly description: string
     readonly submit: string
     readonly done: string
+    readonly name: string | undefined
     readonly email: string | undefined
     readonly password: string | undefined
 }
@@ -27,6 +28,12 @@ interface DoorCopy {
 const fieldOf = (input: FormData, name: string): string | undefined => {
     const value = input.get(name)
     return typeof value === "string" ? value : undefined
+}
+
+/** The full name of the submitted form: left blank, the door is sent none. */
+const nameOf = (input: FormData): string | undefined => {
+    const value = fieldOf(input, "name")?.trim()
+    return value === undefined || value === "" ? undefined : value
 }
 
 /** The language a mail is written in: the page's, when the back end writes mail in it. */
@@ -38,11 +45,11 @@ export const EmailDoorForm = (props: EmailDoorFormProps) => {
     const locale = useLocale()
     const { failure, done, pending, submit, reject } = useEmailDoor(props.door)
     const copy = {
-        signup: { title: t("signup.title"), description: t("signup.description"), submit: t("signup.submit"), done: t("signup.done"), email: t("email"), password: t("password") },
-        resend: { title: t("resend.title"), description: t("resend.description"), submit: t("resend.submit"), done: t("resend.done"), email: t("email"), password: undefined },
-        forgot: { title: t("forgot.title"), description: t("forgot.description"), submit: t("forgot.submit"), done: t("forgot.done"), email: t("email"), password: undefined },
-        confirm: { title: t("confirm.title"), description: t("confirm.description"), submit: t("confirm.submit"), done: t("confirm.done"), email: undefined, password: undefined },
-        reset: { title: t("reset.title"), description: t("reset.description"), submit: t("reset.submit"), done: t("reset.done"), email: undefined, password: t("newPassword") },
+        signup: { title: t("signup.title"), description: t("signup.description"), submit: t("signup.submit"), done: t("signup.done"), name: t("name"), email: t("email"), password: t("password") },
+        resend: { title: t("resend.title"), description: t("resend.description"), submit: t("resend.submit"), done: t("resend.done"), name: undefined, email: t("email"), password: undefined },
+        forgot: { title: t("forgot.title"), description: t("forgot.description"), submit: t("forgot.submit"), done: t("forgot.done"), name: undefined, email: t("email"), password: undefined },
+        confirm: { title: t("confirm.title"), description: t("confirm.description"), submit: t("confirm.submit"), done: t("confirm.done"), name: undefined, email: undefined, password: undefined },
+        reset: { title: t("reset.title"), description: t("reset.description"), submit: t("reset.submit"), done: t("reset.done"), name: undefined, email: undefined, password: t("newPassword") },
     } satisfies Record<FormDoor, DoorCopy>
     const links = {
         signup: [{ href: APP_ROUTES.home, label: t("toSignIn") }, { href: APP_ROUTES.resend, label: t("toResend") }],
@@ -63,13 +70,14 @@ export const EmailDoorForm = (props: EmailDoorFormProps) => {
         const email = fieldOf(input, "email")
         const password = fieldOf(input, "password")
         if ((chosen.email !== undefined && email === undefined) || (chosen.password !== undefined && password === undefined)) reject()
-        else submit({ email, password, token: props.token, language: languageOf(locale) })
+        else submit({ email, password, name: chosen.name === undefined ? undefined : nameOf(input), token: props.token, language: languageOf(locale) })
     }
     return (
         <EmailDoorFormBase
             props={{
                 title: chosen.title,
                 description: chosen.description,
+                nameLabel: chosen.name,
                 emailLabel: chosen.email,
                 passwordLabel: chosen.password,
                 submitLabel: chosen.submit,
