@@ -97,6 +97,11 @@ environments:
             AUTH_WEB_ORIGIN: "http://localhost:${port.web}"
             AUTH_JWT_AUDIENCE: {{project}}
             AUTH_JWT_KEY_ID: dev-1
+            MAIL_HOST: 127.0.0.1
+            MAIL_PORT: "1025"
+            MAIL_SECURITY: none
+            MAIL_FROM: no-reply@{{project}}.example.invalid
+            MAIL_FROM_NAME: {{project}}
             STORAGE_ENDPOINT: "http://127.0.0.1:9000"
             STORAGE_REGION: us-east-1
             STORAGE_BUCKET: {{project}}-dev

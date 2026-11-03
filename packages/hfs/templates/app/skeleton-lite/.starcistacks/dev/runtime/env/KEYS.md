@@ -18,5 +18,8 @@ Names only. Dev values are generated once by the owner-armed `starci app secret 
 | `AUTH_JWT_PRIVATE_KEY` | API Ed25519 (EdDSA) signing key (member `auth`) |
 | `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET` | API storage address |
 | `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY` | API storage credentials (member `storage`) |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_SECURITY`, `MAIL_FROM`, `MAIL_FROM_NAME` | API outgoing mail server (a local mail sink on the dev port, plain channel) and the sender of the confirmation and reset mails |
+| `MAIL_DEFAULT_LANGUAGE`, `MAIL_CONFIRM_TTL_SECONDS`, `MAIL_RESET_TTL_SECONDS` | API mail language (`vi` or `en`) and link lifetimes; optional |
+| `MAIL_USER`, `MAIL_PASSWORD` | API mail server login; optional, the password reads `MAIL_PASSWORD_FILE` |
 | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_GRAPHQL_URL` | Front-end site, auth doors and GraphQL transport |
 | `DATABASE_URL` | `starci app db` verbs; the stack verb composes it in memory for the migration |

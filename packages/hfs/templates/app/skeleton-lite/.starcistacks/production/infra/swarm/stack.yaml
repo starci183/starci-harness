@@ -17,6 +17,11 @@ services:
       AUTH_JWT_KEY_ID: production-1
       AUTH_COOKIE_DOMAIN: {{project}}.example.invalid
       AUTH_JWT_PRIVATE_KEY_FILE: /run/secrets/auth-jwt-private-key
+      MAIL_HOST: smtp.{{project}}.example.invalid
+      MAIL_PORT: "587"
+      MAIL_SECURITY: starttls
+      MAIL_FROM: no-reply@{{project}}.example.invalid
+      MAIL_FROM_NAME: {{project}}
       STORAGE_ENDPOINT: https://storage.{{project}}.example.invalid
       STORAGE_REGION: us-east-1
       STORAGE_BUCKET: {{project}}-production
