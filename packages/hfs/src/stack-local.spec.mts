@@ -203,7 +203,10 @@ test('up applies the seed levels after the migrations, in the database container
   assert.ok(steps.some((step) => step.includes('postgresql://demo_dev')), 'the owner role of the environment');
   const loaded = h.calls.find((call) => call.command === 'node' && call.args.includes('modules'));
   assert.deepEqual(JSON.parse(String(loaded?.input)).documents, [{ path: 'data/modules.json', document: { id: 'sales' } }]);
-  assert.ok(Object.keys(loaded?.env ?? {}).some((key) => key.startsWith('PRIMARY_DB_URL')), 'the app command reaches the database as the owner role');
+  assert.equal(loaded?.env?.PORT, '3001', 'the app command gets the api process environment, its ports expanded');
+  assert.ok(loaded?.env?.JWT_KEY_FILE, 'and its custody files as *_FILE pointers');
+  assert.ok(Object.keys(loaded?.env ?? {}).some((key) => key.startsWith('PRIMARY_DB_URL')), 'and the database URL the api reads');
+  assert.equal(JSON.stringify(h.out).includes('value-of-JWT_KEY'), false, 'no opened value reaches the output');
   const dry = host(root);
   assert.equal(await run(root, ['up', '--env', 'dev'], dry), 0);
   assert.match(dry.out.join(''), /plan seed levels: \.starcistacks\/seeds, then \.starcistacks\/dev\/seeds/u);

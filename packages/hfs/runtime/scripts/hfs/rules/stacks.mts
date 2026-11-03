@@ -17,8 +17,8 @@ const STACKS_SHAPE = 'HFS_STACKS_SHAPE';
 const STACKS_SLOT = 'app.starcistacks';
 const HOST_SONAR_ROOT = '.claude/ext/sonar';
 const INSIDE_SECRETS = /^[^/]+\/secrets\/[^/]+\.enc(?:\.yaml)?$/;
-/** The folders of .starcistacks/ that are no environment, each with what it holds. */
-const RESERVED: ReadonlyArray<[string, string]> = [['cache', 'the committed check cache'], ['seeds', 'the shared seed level']];
+/** The folders of .starcistacks/ that are no environment, each with what it holds: the one list every stack check reads. */
+export const RESERVED_STACK_FOLDERS: ReadonlyMap<string, string> = new Map([['cache', 'the committed check cache'], ['seeds', 'the shared seed level']]);
 
 /** The anchored expressions of a slot's `allows` entries: `<name>` is one path segment, braces alternate. */
 const allowedExpressions = (allows: Parsed) => allows.flatMap((entry: Parsed) => braceVariants(entry.replace(/<[a-z][a-z0-9-]*>/g, '*'))).map((variant: Parsed) => globExpression(variant.endsWith('/') ? `${variant}**` : variant));
@@ -41,7 +41,7 @@ function declarationFindings(files: string[], prefix: string, declaration: Parse
   if (!files.includes(declared)) return [];
   const findings = [];
   const environments = declaration.doc?.environments;
-  for (const [name, holds] of RESERVED) {
+  for (const [name, holds] of RESERVED_STACK_FOLDERS) {
     if (environments !== null && typeof environments === 'object' && Object.hasOwn(environments, name)) findings.push(shapeFinding(declared, `${declared} declares an environment named ${name}; the name is reserved for ${holds} (.starcistacks/${name}/)`));
   }
   if (declaration.error) return [shapeFinding(declared, `${declared} cannot be read: ${declaration.error}`)];

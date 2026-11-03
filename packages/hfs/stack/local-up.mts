@@ -83,8 +83,9 @@ async function migrate(ctx: StackContext, local: LocalConfig, custody: Custody, 
 
 /**
  * Applies the seed levels (seeds.mjs, PROJECT-STACKS-12) on the environment's database under its owner role, the role the migrations ran as: the
- * receipts in the database keep a rerun from applying anything that did not change. A document entry's app command runs from the app root with
- * the owner's environment, the documents on its stdin.
+ * receipts in the database keep a rerun from applying anything that did not change. A document entry's app command runs from the app root in
+ * the environment the app's api process gets (the first declared process: its env with the ports expanded, its custody files, the app
+ * role's database URL; runEnvironment owns that), the documents on its stdin.
  */
 async function seedLevels(ctx: StackContext, local: LocalConfig, custody: Custody): Promise<string[]> {
   const database = local.database;
@@ -92,7 +93,8 @@ async function seedLevels(ctx: StackContext, local: LocalConfig, custody: Custod
   if (!database || url === null) return [];
   const container = firstLine((await compose(ctx, local, ['ps', '-q', database.service])).stdout);
   const target = dbTarget({ ...ctx, env: { ...ctx.env, DATABASE_URL: url, STARCI_DB_CONTAINER: container } }, 'DATABASE_URL');
-  const env = runEnvironment(ctx, local, { name: 'seed', argv: [], cwd: '.', heavy: 'none', skipIfExists: null, env: {}, files: [...custody.values.keys()], after: 'migrate' }, custody, 'owner');
+  const [api] = local.processes;
+  const env = runEnvironment(ctx, local, api ?? { name: 'seed', argv: [], cwd: '.', heavy: 'none', skipIfExists: null, env: {}, files: [], after: 'migrate' }, custody, 'app');
   const command = (argv: readonly string[], input: string): RunResult => {
     const [program, args] = launch(ctx.platform, argv[0] ?? '', argv.slice(1));
     return ctx.spawn(program, args, { cwd: local.repoRoot, env, input });
