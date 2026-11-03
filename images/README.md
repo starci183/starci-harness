@@ -64,8 +64,8 @@ Dockerfile names in `STARCI_RUNTIME_USER` to that user when it does not own it y
 drops to it with `setpriv`; then exports the secrets of `STARCI_SECRETS` from `/run/secrets`, runs the init and the relay, starts the gateway), `openclaw-init.mjs` (merges the gateway settings into `openclaw.json`: loopback and token auth, no
 cron or heartbeat, session maintenance, an optional OpenAI-compatible provider from `AI_BASE_URL` and `STARCI_AI_KEY`, and the plugins it
 finds) and `openclaw-relay.mjs` (a byte-for-byte relay from `OPENCLAW_RELAY_PORT` to the loopback gateway). Its build context is its own
-folder. [sources.json](sources.json) records it as `openclaw-runtime` (`layerOf: openclaw`, `base`, `pluginDirectory`, `published: null`
-until published); the workflow [images.yml](../.github/workflows/images.yml) publishes it when the owner dispatches it, and the
+folder. [sources.json](sources.json) records it as `openclaw-runtime` (`layerOf: openclaw`, `base`, `pluginDirectory`, and `published`, the
+reference and run of its last publication); the workflow [images.yml](../.github/workflows/images.yml) publishes it when the owner dispatches it, and the
 published digest is recorded in `published` afterwards.
 
 The contract for an app: its image folder `.starcistacks/images/openclaw/Dockerfile` is `FROM ghcr.io/starci183/openclaw-runtime:<tag>@sha256:...`

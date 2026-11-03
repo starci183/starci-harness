@@ -43,7 +43,11 @@
       "linux/amd64"
     ],
     "pluginDirectory": "/opt/starci/plugins",
-    "published": null,
+    "published": {
+      "reference": "ghcr.io/starci183/openclaw-runtime:2026.10.10-beta.5-starci.2@sha256:4257c488955dd17f403e18e5edd1d2253b4b6982ef0e3f235e3e3381b39953af",
+      "run": "https://github.com/starci183/starci-harness/actions/runs/41729046785",
+      "workflow": ".github/workflows/images.yml"
+    },
     "workflow": ".github/workflows/images.yml"
   }
 }
