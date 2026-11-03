@@ -43,6 +43,16 @@ test("intlTagOf is the locale itself unless the app maps it to a BCP 47 tag", ()
     const tagged = defineI18n({ locales: ["vi", "en"], defaultLocale: "vi", timeZone: "UTC", intlTags: { vi: "vi-VN", en: "en-GB" } })
     assert.equal(tagged.intlTagOf("vi"), "vi-VN")
     assert.equal(tagged.intlTagOf("en"), "en-GB")
+    assert.equal(tagged.intlTagOf("fr"), "vi-VN")
+    assert.equal(vi.intlTagOf(undefined), "vi")
+})
+
+test("localeDetection and alternateLinks pass through to the routing only when the app states them", () => {
+    assert.equal("localeDetection" in vi.routing, false)
+    assert.equal("alternateLinks" in vi.routing, false)
+    const stated = defineI18n({ locales: ["vi", "en"], defaultLocale: "vi", timeZone: "UTC", localeDetection: false, alternateLinks: false })
+    assert.equal(stated.routing.localeDetection, false)
+    assert.equal(stated.routing.alternateLinks, false)
 })
 
 test("the locales stay a literal union, so a catalog loader and a layout see exactly the served locales", () => {

@@ -28,6 +28,10 @@ export interface I18nOptions<Locales extends readonly string[], Prefix extends L
     readonly localeCookie?: LocaleCookieOptions
     /** The BCP 47 tag the UI kit's date and number parts take for a locale; the locale itself when omitted. */
     readonly intlTags?: Readonly<Record<Locales[number], string>>
+    /** Whether the proxy negotiates the locale from the `Accept-Language` header of a reader with no cookie; next-intl's default (true) when omitted. */
+    readonly localeDetection?: boolean
+    /** Whether the proxy sets the `hreflang` alternate links; next-intl's default (true) when omitted. */
+    readonly alternateLinks?: boolean
 }
 
 /** The routing table next-intl reads: the locales, the default, the prefix mode and the cookie; no localized pathnames or domains. */
@@ -46,8 +50,8 @@ export interface I18n<Locales extends readonly string[], Prefix extends LocalePr
     readonly isLocale: (value: unknown) => value is Locales[number]
     /** The value when it is a served locale, else the default (a stale cookie, an unknown option). */
     readonly localeOf: (value: unknown) => Locales[number]
-    /** The BCP 47 tag of a served locale. */
-    readonly intlTagOf: (locale: Locales[number]) => string
+    /** The BCP 47 tag of a served locale; any other value reads as the default locale. */
+    readonly intlTagOf: (value: unknown) => string
 }
 
 /**
@@ -62,10 +66,13 @@ export const defineI18n = <const Locales extends readonly [string, ...string[]],
     const cookie = options.localeCookie
     const localeCookieName = cookie?.name ?? DEFAULT_LOCALE_COOKIE
     const isLocale = (value: unknown): value is Locales[number] => typeof value === "string" && options.locales.includes(value)
+    const localeOf = (value: unknown): Locales[number] => (isLocale(value) ? value : options.defaultLocale)
     const routing = defineRouting({
         locales: options.locales,
         defaultLocale: options.defaultLocale,
         localePrefix,
+        ...(options.localeDetection === undefined ? {} : { localeDetection: options.localeDetection }),
+        ...(options.alternateLinks === undefined ? {} : { alternateLinks: options.alternateLinks }),
         ...(cookie === undefined
             ? {}
             : { localeCookie: { name: cookie.name, path: "/", ...(cookie.maxAge === undefined ? {} : { maxAge: cookie.maxAge }), sameSite: cookie.sameSite ?? "lax" } }),
@@ -78,7 +85,10 @@ export const defineI18n = <const Locales extends readonly [string, ...string[]],
         localeCookieName,
         routing,
         isLocale,
-        localeOf: (value) => (isLocale(value) ? value : options.defaultLocale),
-        intlTagOf: (locale) => options.intlTags?.[locale] ?? locale,
+        localeOf,
+        intlTagOf: (value) => {
+            const locale = localeOf(value)
+            return options.intlTags?.[locale] ?? locale
+        },
     }
 }
