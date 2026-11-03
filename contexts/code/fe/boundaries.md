@@ -49,17 +49,18 @@ Enforced by: R55 (`use-client-only-at-boundary`, `client-no-server-import`, `ser
 
 `app/[locale]/providers.tsx` nests, once, the next-intl client provider, the redux provider, the vendor i18n
 provider, the theme provider, the grammar root (given the router's `navigate` and `useHref`, FE-I18N-4), the SWR
-configuration keyed by the viewer, the toast region and the app-wide side effects (`features/layouts/SideEffectsLayout`, which mounts the `hooks/effects` components); the
+configuration keyed by the viewer (`viewerCacheKey` and `viewerSwrConfig` of `@starci/next-data`), the toast region and the app-wide side effects (`features/layouts/SideEffectsLayout`, which mounts the `hooks/effects` components); the
 locale layout renders it around its children.
 
 Why: one provider stack per app makes the client runtime readable in one file, and keying the SWR cache by the viewer
-drops one user's cached data when another signs in.
+drops one user's cached data when another signs in, and the one `viewerSwrConfig` lists the polling middleware every read
+needs.
 
 ```tsx
 <NextIntlClientProvider locale={props.locale} messages={props.messages} timeZone={props.timeZone}>
     <ReduxProvider>
         <GrammarProviders>
-            <SWRConfig key={viewerId ?? "signed-out"} value={{ ...READ_DEFAULTS, provider: () => new Map() }}>
+            <SWRConfig key={viewerCacheKey(viewerId)} value={viewerSwrConfig(READ_DEFAULTS)}>
                 {props.children}
                 <ToastProvider />
                 <SideEffectsLayout />

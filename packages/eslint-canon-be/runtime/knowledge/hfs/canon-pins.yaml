@@ -30,6 +30,13 @@ pins:
     side: fe
     source: packages/event-stream/package.json
     why: 'the one server-sent-events client of every front end (fe-stack event-stream, owner:event-stream-package): the transport client layer (modules/api/sse/clients) creates one instance for the app with the bearer token source and the stream operations follow on it; it carries Last-Event-ID resume, the capped doubling backoff, the heartbeat timeout, the single 401 renewal and the useSWRSubscription adapter, so no app keeps a hand-written reader.'
+  '@starci/next-data':
+    version: 0.1.0
+    group: starci
+    install: registry
+    side: fe
+    source: packages/next-data/package.json
+    why: 'the SWR data helpers of every front end (fe-stack data, owner:next-data-package): pollingRestart, the viewer and tenant key helpers, viewerSwrConfig and the viewer cache; each operation hook stays in the app and the package holds no component.'
   '@starci/grammar':
     version: 0.21.13
     group: starci

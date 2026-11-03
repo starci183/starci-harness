@@ -8,6 +8,7 @@ schema: starci/stack-pins@1
 pins:
   '@starci/heroicons': {version: 0.3.5, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
   '@starci/event-stream': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
+  '@starci/next-data': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the SWR middleware pollingRestart, the viewer and tenant key helpers and the viewer cache of a front end; each operation's hook stays in the app"}
   '@starci/grammar': {version: 0.21.13, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
   '@starci/eslint-canon-be': {version: 3.12.0, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
   '@starci/eslint-canon-fe': {version: 9.10.0, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}

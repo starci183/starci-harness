@@ -471,6 +471,11 @@ rulings:
     status: live
     ruling: "The server-sent-events client of every front end is the published @starci/event-stream package (token renewal, resume, backoff, heartbeat, an SWR adapter); apps create one instance and keep no hand-written reader."
     owner: "contexts/code/fe/realtime.md FE-REALTIME"
+  - id: next-data-package
+    date: '2026-11-03'
+    status: live
+    ruling: "The SWR data helpers of every front end are the published @starci/next-data package: the pollingRestart middleware (a function refreshInterval that stopped at 0 starts again for newer data), the viewer and tenant key helpers, viewerSwrConfig and the viewer cache writes. It is pure logic with no component; each operation's SWR hook stays in the app, which writes no SWR middleware or viewer-cache binding of its own."
+    owner: "packages/next-data; contexts/code/fe/data.md FE-DATA-SWR, FE-DATA-KEY; contexts/hfs/rules.yaml R244 (swr-extension-from-package)"
   - id: locale-accept-language
     date: '2026-10-14'
     status: live
