@@ -58,12 +58,13 @@ function manifests(project: string, name: string, versions: Readonly<Record<stri
     './template': { types: './dist/template/index.d.ts', default: './dist/template/index.js' },
     './manifest': { types: './dist/manifest/index.d.ts', default: './dist/manifest/index.js' },
     './workbench': { types: './dist/esm/workbench/index.d.ts', default: './dist/esm/workbench/index.js' },
+    './public': { types: './dist/esm/public/index.d.ts', default: './dist/esm/public/index.js' },
   };
   const packageJson = {
     name: `@${project}/${MODULE_PREFIX}${name}`,
     version: '0.0.0',
     private: true,
-    description: `The ${pascalOf(name)} module on the ${project} agent SDK: its template (./template) and workbench declaration (./manifest), both React-free for the back end, and its Grammar-only workbench (./workbench) for the front end.`,
+    description: `The ${pascalOf(name)} module on the ${project} agent SDK: its template (./template) and workbench declaration (./manifest), both React-free for the back end, its Grammar-only workbench (./workbench) and its public face (./public) for the front end.`,
     exports,
     scripts: { build: 'tsc -p tsconfig.build.json && tsc -p tsconfig.build.workbench.json', typecheck: 'tsc --noEmit --pretty false', test: 'jest --coverage' },
     dependencies: { [sdk]: '*' },
@@ -74,7 +75,7 @@ function manifests(project: string, name: string, versions: Readonly<Record<stri
   return [
     { relative: 'package.json', body: packageJsonText(packageJson) },
     { relative: 'tsconfig.json', body: packageJsonText({ extends: '@starci/tsconfig/next.json', compilerOptions: { incremental: false, types: ['jest', 'node'] }, include: ['src/**/*.ts', 'src/**/*.tsx', 'src/**/*.json'], exclude: ['node_modules', 'dist'] }) },
-    { relative: 'tsconfig.build.json', body: packageJsonText({ extends: './tsconfig.json', compilerOptions: { ...build, outDir: 'dist', module: 'node16', moduleResolution: 'node16' }, exclude: ['node_modules', 'dist', 'src/**/*.spec.ts', 'src/workbench/**'] }) },
+    { relative: 'tsconfig.build.json', body: packageJsonText({ extends: './tsconfig.json', compilerOptions: { ...build, outDir: 'dist', module: 'node16', moduleResolution: 'node16' }, exclude: ['node_modules', 'dist', 'src/**/*.spec.ts', 'src/workbench/**', 'src/public/**'] }) },
     { relative: 'tsconfig.build.workbench.json', body: packageJsonText({ extends: './tsconfig.json', compilerOptions: { ...build, outDir: 'dist/esm' }, include: ['src/**/*.ts', 'src/**/*.tsx', 'src/**/*.json'], exclude: ['node_modules', 'dist', 'src/**/*.spec.ts'] }) },
   ];
 }

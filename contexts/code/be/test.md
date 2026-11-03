@@ -134,8 +134,9 @@ Enforced by: `tests-no-override`, `e2e-uses-production-transport`, `e2e-asserts-
 The unit project measures every logic-role file of the measured roots (`src/modules/{domain,integrations,platform}/*`,
 minus `errors/`, `messages/`, `persistence/`), and every file a measured slot declares in `logic`, at 100 lines, branches,
 functions and statements per file. A file that carries logic without a role suffix is declared by its slot, never by a new
-role name. The scope is rendered once into the managed `jest.config.js`, `sonar-project.properties` and `codecov.yml`; no
-file carries a coverage ignore.
+role name. The logic of a module package (`./template` and `./manifest` of `packages/module-<name>`, [project/README.md](../../project/README.md)
+PROJECT-3) is inside the scope at the same bar, run by the package's own `jest --coverage`. The scope is rendered once into the managed
+`jest.config.js`, `sonar-project.properties` and `codecov.yml`; no file carries a coverage ignore.
 
 Why: decisions live in the modules' logic, so a per-file bar on exactly those files is meaningful, and one denominator
 everywhere makes a gap visible wherever it is read.

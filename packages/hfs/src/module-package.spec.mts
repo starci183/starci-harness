@@ -45,7 +45,7 @@ for (const edition of ['lite', 'full']) {
   test(`${edition}: add module writes the package, registers it and renders the registry`, (t) => {
     const root = appWithSdk(t, edition);
     const result = addModule({ root, name: 'loyalty-points' });
-    for (const file of ['package.json', 'tsconfig.json', 'tsconfig.build.json', 'tsconfig.build.workbench.json', 'jest.config.js', 'src/index.ts', 'src/manifest/declaration.ts', 'src/manifest/declaration.spec.ts',
+    for (const file of ['package.json', 'tsconfig.json', 'tsconfig.build.json', 'tsconfig.build.workbench.json', 'jest.config.js', 'src/index.ts', 'src/manifest/declaration.ts', 'src/manifest/declaration.spec.ts', 'src/public/index.ts',
       'src/template/loyalty-points.template.ts', 'src/template/loyalty-points.template.spec.ts', 'src/workbench/components/LoyaltyPointsWorkbenchView.tsx']) assert.ok(result.created.includes(`packages/module-loyalty-points/${file}`), file);
     const manifest = JSON.parse(text(root, 'packages/module-loyalty-points/package.json'));
     assert.equal(manifest.name, '@demo/module-loyalty-points');

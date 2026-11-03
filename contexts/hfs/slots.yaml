@@ -1213,11 +1213,11 @@ slots:
       - HFS_SCRIPT_ONE_OFF
       - BE_SPEC_PLACEMENT
       - HFS_REPO_LOCAL_CHECK
-  - id: app.module-packages
+  - id: app.packages
     profiles:
       - app
-    editionWhy: Lite and full share the slot; a product's agent modules are workspace packages in both.
-    path: packages/module-<name>/
+    editionWhy: Lite and full share the slot; a product's agent SDK and its agent modules are workspace packages in both.
+    path: packages/{agent-sdk,module-<name>}/
     presence: optional
     tracked: tracked
     tier: package
