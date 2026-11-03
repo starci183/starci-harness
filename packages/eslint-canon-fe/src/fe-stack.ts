@@ -73,9 +73,41 @@ export const feStackImport = defineRule({
   },
 })
 
+/** The SWR types an app needs only to write its own middleware or to bind the writes of a viewer's cache by hand. */
+const PACKAGE_OWNED_SWR_TYPES = new Set(["Middleware", "ScopedMutator"])
+
+/**
+ * The SWR extension points belong to `@starci/next-data`: `pollingRestart` is the one middleware and `createViewerCache` the one
+ * binding of the viewer's cache, so an app that imports the `Middleware` or `ScopedMutator` type is writing a second one.
+ */
+export const swrExtensionFromPackage = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "An app writes no SWR middleware and no cache binding of its own." },
+    schema: [],
+    messages: {
+      own: "`{{name}}` of `swr` is the type of an SWR extension the stack already ships. Use `pollingRestart`, `viewerSwrConfig` and `createViewerCache` of `@starci/next-data` (FE-DATA-SWR, FE-DATA-KEY) instead of writing a second one.",
+    },
+  },
+  create(context) {
+    if (!isProductSource(context)) return {}
+    return {
+      ImportDeclaration(node) {
+        if (node.source.value !== "swr") return
+        for (const specifier of node.specifiers) {
+          if (specifier.type !== "ImportSpecifier") continue
+          const name = specifier.imported.type === "Identifier" ? specifier.imported.name : String(specifier.imported.value)
+          if (PACKAGE_OWNED_SWR_TYPES.has(name)) context.report({ node: specifier, messageId: "own", data: { name } })
+        }
+      },
+    }
+  },
+})
+
 /** The rules this law contributes to the plugin. */
 export const rules: Rules = {
   "fe-stack-import": feStackImport,
+  "swr-extension-from-package": swrExtensionFromPackage,
 }
 
 /** Every rule is an error: a second library for a concern is the defect, not a style. */

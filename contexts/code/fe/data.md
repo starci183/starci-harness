@@ -11,7 +11,9 @@ How a unit reads and writes server data and which store owns which state. Librar
 Each `modules/api` operation has one `hooks/swr` wrapper: a query uses `useSWR` (an on-demand read `useSWRMutation`),
 passes SWR's abort `signal` to the operation, fails as [error.md](error.md) FE-ERROR-2 says and returns the field the
 feature reads; a status that changes on the server refreshes by exactly one door, an SWR `refreshInterval` that returns `0`
-once settled or a push ([realtime.md](realtime.md)); no unit fetches in an effect or runs its own timer.
+once settled or a push ([realtime.md](realtime.md)); no unit fetches in an effect or runs its own timer. The function form
+restarts for newer data because the app's `SWRConfig` lists `pollingRestart` of `@starci/next-data` (`viewerSwrConfig`
+adds it); SWR alone never schedules a chain again once it answered `0`, and an app writes no middleware of its own.
 
 Why: cache identity, deduplication and revalidation are one decision per resource; a unit that calls the transport
 repeats it and drifts.
@@ -36,14 +38,18 @@ Enforced by: R285 (`swr-only-in-family`, `operations-only-in-swr-hooks`), R50 (`
 
 ## FE-DATA-KEY A key carries every identity that changes the answer
 
-A key is `[NAME, ...identities]` built by the app's key helpers (the tenant id read from the store, then the
+A key is `[NAME, ...identities]` built by the key helpers of `@starci/next-data` (`tenantKey`, `tenantParamsKey`,
+`tenantRequestKey`, `viewerKey`) from the values the app's key hook reads from the store (the tenant id, then the
 request's own arguments), `null` while an input is missing; the viewer is isolated by the SWR cache the providers key
-by viewer id ([boundaries.md](boundaries.md) FE-BOUNDARY-3), and a stream key also carries the viewer id.
+by `viewerCacheKey` ([boundaries.md](boundaries.md) FE-BOUNDARY-3), and a stream key also carries the viewer id. A write
+that must reach that cache goes through the app's one `createViewerCache()` instance, because SWR's exported `mutate`
+reaches only its default cache.
 
 Why: cache identity is product behaviour; a key without the tenant or the viewer shows one workspace's or one user's
 data to the next.
 
-Enforced by: R50 (`swr-data-lifecycle`); the use of the key helpers is review only.
+Enforced by: R50 (`swr-data-lifecycle`); R244 (`swr-extension-from-package`) refuses an app's own SWR middleware or cache
+binding; the use of the key helpers is review only.
 
 ## FE-DATA-COMMAND A user-started write runs through a domain command hook
 

@@ -11,7 +11,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, slotTester } from "../fixtures/typed/tester.ts"
-import { feStackImport, rules } from "./fe-stack.ts"
+import { feStackImport, rules, swrExtensionFromPackage } from "./fe-stack.ts"
 import { feStack, forbiddingConcern, packageNameOf } from "./lib/fe-stack.ts"
 
 const tester = slotTester()
@@ -131,5 +131,23 @@ test("FE-STACK-2: one library per concern; no Supabase client anywhere", () => {
     ],
   })
 
+  })
+})
+
+test("FE-DATA-SWR: the SWR middleware and the viewer-cache binding come from @starci/next-data, never from an app's own Middleware or ScopedMutator", () => {
+  assert.doesNotThrow(() => {
+    tester.run("swr-extension-from-package", swrExtensionFromPackage, {
+      valid: [
+        { filename: HOOK, code: "import useSWR, { SWRConfig, useSWRConfig } from 'swr'
+import type { SWRConfiguration } from 'swr'
+import { pollingRestart } from '@starci/next-data'" },
+        { filename: HOOK, code: "import { Middleware } from 'other-swr'" },
+      ],
+      invalid: [
+        { filename: API, code: "import type { Middleware } from 'swr'", errors: [{ messageId: "own" }] },
+        { filename: BLOCK, code: "import { type ScopedMutator, SWRConfig } from 'swr'", errors: [{ messageId: "own" }] },
+        { filename: HOOK, code: "import type { Middleware as Own, ScopedMutator } from 'swr'", errors: [{ messageId: "own" }, { messageId: "own" }] },
+      ],
+    })
   })
 })

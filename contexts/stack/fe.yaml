@@ -42,11 +42,11 @@ concerns:
     why: one HTTP client, only for what GraphQL cannot carry.
   - id: data
     tier: core
-    packages: [swr]
+    packages: [swr, '@starci/next-data']
     home: [fe.hooks.swr]
     pattern: FE-DATA-SWR
     forbids: ['@tanstack/react-query', react-query]
-    why: one cache with one hook per operation.
+    why: one cache with one hook per operation; the polling-restart middleware, the key helpers and the viewer cache come from @starci/next-data, never written in the app.
   - id: toast
     tier: core
     packages: ['@starci/grammar']

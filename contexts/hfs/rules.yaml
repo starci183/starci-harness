@@ -1564,12 +1564,13 @@ rules:
       - {kind: eslint-fe, id: no-server-action}
   - id: R244
     code: FE_STACK_FORBIDDEN
-    law: A front end depends on no package that contexts/stack/fe.yaml forbids for a concern, and avatar generation stays inside the Grammar.
+    law: A front end depends on no package that contexts/stack/fe.yaml forbids for a concern, writes no SWR middleware or viewer-cache binding of its own (they are @starci/next-data's), and avatar generation stays inside the Grammar.
     failureCodes:
       - FE_STACK_FORBIDDEN
     enforcers:
       - {kind: hfs, id: fe-stack}
       - {kind: eslint-fe, id: fe-stack-import}
+      - {kind: eslint-fe, id: swr-extension-from-package}
   - id: R245
     code: BE_APP_OPTIONS_COMPOSITION
     law: An app's `src/` holds the five app roles, `main.ts`, `<app>.env.ts`, `<app>.options.ts`, `compose/<area>.ts` and `app.module.ts`, each with its single responsibility.
