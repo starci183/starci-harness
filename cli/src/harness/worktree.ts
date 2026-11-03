@@ -113,6 +113,12 @@ export const materialiseHooks = async (root: string, worktree: string): Promise<
     return hooks
 }
 
+/** The seat start's step on the worker's checkout: heal its generated hooks (materialiseHooks), then refuse a checkout that still would skip the product's gate (assertWorktreeHooks). */
+export const healWorktreeHooks = async (root: string, checkout: string): Promise<void> => {
+    await materialiseHooks(root, checkout)
+    await assertWorktreeHooks(checkout)
+}
+
 /**
  * Refuses WORKTREE_HOOKS_MISSING when the repository declares a hooks folder the worktree lacks, declares husky without setting
  * `core.hooksPath` to it, or holds a hook git would skip there: either way its commits would skip the product's own gate.

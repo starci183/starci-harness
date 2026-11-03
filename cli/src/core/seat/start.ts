@@ -1,5 +1,5 @@
 import { resolve } from "node:path"
-import { assertWorktreeHooks, materialiseHooks } from "../../harness/worktree.js"
+import { healWorktreeHooks } from "../../harness/worktree.js"
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { pointerSpec, writeBrief } from "../../harness/brief.js"
@@ -563,8 +563,7 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
         // The worker's checkout, whoever made it, runs the product's commit gate: a worktree without its generated hooks is healed (husky of
         // the main checkout, else a copy) and a checkout that still has none refuses the launch before the task is claimed.
         const checkout = worktreeFolder(options.worktree, cwd, root)
-        await materialiseHooks(root, checkout)
-        await assertWorktreeHooks(checkout)
+        await healWorktreeHooks(root, checkout)
 
         const claim = inTransaction(db, () => {
             const current = getTask(db, options.task)
