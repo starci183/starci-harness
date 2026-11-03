@@ -758,13 +758,29 @@ scheduler's command line carries one quoted path; without `--execute` it prints 
 installed with its evidence, and lists every other StarCi-named task (a disabled one as legacy) without changing it;
 `host up` starts what is down in `requires` order; `host uninstall` removes only the schedules ops/host.yaml declares.
 
+The host also keeps the docker compose group `starci` (the shared SonarQube) and the local npm registry as services:
+`sonar-postgres`, `sonar`, `sonar-bootstrap`, `sonar-tunnel` (files in [ops/host/sonar/](../ops/host/sonar/)) and `local-registry`,
+each behind `docker`. A check is an `argv` or an `http` URL (a status, and with `json` a body value): `sonar` is up when
+`GET 127.0.0.1:9010/api/system/status` says `UP`, `sonar-tunnel` when `https://sonar.starci.org/api/server/version` answers 200,
+`sonar-postgres` when its container is healthy, `sonar-bootstrap` when its one-shot container exited 0, `local-registry` when
+`127.0.0.1:4873/-/ping` answers. `host up` runs `docker compose up -d --no-recreate <service>` only for a service whose check is
+down, so the running `starci` containers are adopted (same project name, container names and named volumes) and never
+recreated, and no volume is touched; the registry starts through `deps registry-up --execute`, the container
+`deps publish-local --execute` also ensures (config and storage under the state base). `host down <service>...` stops a
+service and what requires it, dependents first, with `docker stop` (a service with no `stop`, the bootstrap job among them, is
+left alone); it never runs `compose down` and removes no container or volume, and it refuses to run with no service named
+(`HOST_DOWN_NEEDS_SERVICE`). A service's `start.secrets` (`SONARQUBE_DB_PASSWORD`, `SONARQUBE_ADMIN_PASSWORD`,
+`CLOUDFLARE_TUNNEL_TOKEN`, all in policy/security.yaml `secretKeys`) are resolved by the loader below into the environment of the
+one compose process, never argv, a file, output or evidence; an unset one is `HOST_SECRET_MISSING`, naming the key. These
+services register no schedule: Docker's `restart: unless-stopped` brings the containers back with Docker Desktop. Never `down -v`.
+
 ### Host secrets
 
 `harness/secret-env.ts` is the one reader of a credential: `lookupSecret(key)` returns the key from the
 process environment, else from `secret.env` at the harness root (the folder above policy/), parsing dotenv lines (`KEY=VALUE`, `export`, quotes, `#` comments) and
 keeping no other key. It reads only the keys [policy/security.yaml](../policy/security.yaml) `secretKeys` lists and refuses any
 other `SECRET_KEY_UNLISTED` before it opens the file; no message, envelope or evidence carries a value. A host service
-(`telegram-bridge`, `supervisor tick`) reads the file itself, so a key `host up` strips from its environment still arrives.
+(`telegram-bridge`, `supervisor tick`) reads the file itself, so a key `host up` strips from its environment still arrives. A compose service's `start.secrets` name keys the loader hands to that one start (`startEnv` in `harness/host.ts`).
 [secret.env.example](../secret.env.example) names every key the host's secret.env holds. A provider key the owner sets once
 for several apps (`OPENROUTER_API_KEY`) reaches each app's sealed custody through `app secret set --env <env> <member> <KEY>
 --from-host <HOST_KEY>` (`core/app/secret.ts`): the CLI reads HOST_KEY through the loader and hands the value to @starci/hfs as
