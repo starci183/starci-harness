@@ -4,12 +4,12 @@
 // dependencies that the app compiles against are linked to the sibling packages of this repository (so the Grammar API the templates
 // use is the one in the tree, not the last published one), and ONE `npm install` serves every assertion: `tsc` of the back end (app
 // and tests), the build of the workspace packages, `tsc` and `next build` of each front-end app, and the back end build.
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import type { LockResult } from '../scaffold/app.mjs';
 import { bundledPresets } from '../sync/index.mjs';
 import { scaffoldApp } from '../scaffold/app.mjs';
@@ -28,6 +28,7 @@ const LINKED: Readonly<Record<string, string>> = {
   'test-world': '../../test-world/dist',
   auth: '../../auth/dist',
   'object-storage': '../../object-storage/dist',
+  'nest-kit': '../../nest-kit/dist',
 };
 const PACKAGES = path.resolve(import.meta.dirname, '..', '..');
 
@@ -47,12 +48,24 @@ function npmCli(): string {
   return found;
 }
 
-/** Runs a node script in a folder and fails with the tail of its output when it exits non-zero. */
-function runNode(cwd: string, script: string, args: readonly string[]): void {
-  const done = spawnSync(process.execPath, [script, ...args], { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1', CI: '1' } });
-  const output = `${done.stdout}${done.stderr}`;
-  assert.equal(done.status, 0, `${path.basename(script)} ${args.join(' ')} in ${path.relative(path.dirname(cwd), cwd)}:\n${output.slice(-6000)}`);
+/** Runs a node script in a folder without blocking the process, so independent checks overlap; rejects with the tail of its output when it exits non-zero. */
+function runNode(cwd: string, script: string, args: readonly string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [script, ...args], { cwd, env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1', CI: '1' } });
+    let output = '';
+    child.stdout.on('data', (chunk: Buffer) => { output = `${output}${chunk.toString()}`.slice(-64_000); });
+    child.stderr.on('data', (chunk: Buffer) => { output = `${output}${chunk.toString()}`.slice(-64_000); });
+    child.on('error', reject);
+    child.on('close', (status) => {
+      if (status === 0) resolve();
+      else reject(new Error(`${path.basename(script)} ${args.join(' ')} in ${path.relative(path.dirname(cwd), cwd)} exited ${String(status)}:
+${output.slice(-6000)}`));
+    });
+  });
 }
+
+/** `npm install` in a folder, awaited. */
+const install = (cwd: string, args: readonly string[]): Promise<void> => runNode(cwd, npmCli(), args);
 
 /** Every package.json of the app outside node_modules. */
 const manifests = (folder: string): string[] =>
@@ -93,42 +106,47 @@ function linkSiblings(root: string): void {
 
 const subfolders = (folder: string): string[] => (fs.existsSync(folder) ? fs.readdirSync(folder, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => path.join(folder, entry.name)).sort() : []);
 
-for (const edition of ['lite', 'full']) {
-  test(`a fresh ${edition} app type-checks and builds on every side`, { timeout: 1_200_000 }, async (t: TestContext) => {
-    for (const [name, built] of Object.entries(LINKED)) assert.ok(fs.existsSync(path.resolve(import.meta.dirname, built)), `${name} is built (${built}): install and build the sibling package before this spec`);
-    const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, `starci-scaffold-types-${edition}-`), harness: { version: '1.1.0-alpha.3' }, edition,
-      presets: bundledPresets(), lock: lockedOk, initGit: init });
-    linkSiblings(root);
-    const started = Date.now();
-    runNode(root, npmCli(), ['install', '--no-audit', '--no-fund', '--ignore-scripts', '--install-links=true', '--prefer-offline']);
-    t.diagnostic(`${edition}: npm install ${((Date.now() - started) / 1000).toFixed(0)}s`);
-    /** A step of the edition's checks, its wall time reported beside the result. */
-    const step = async (title: string, check: () => void): Promise<void> => {
-      await t.test(title, (sub) => {
-        const begun = Date.now();
-        try { check(); } finally { sub.diagnostic(`${edition}: ${title} ${((Date.now() - begun) / 1000).toFixed(0)}s`); }
-      });
-    };
-    const bin = (...parts: string[]): string => path.join(root, 'node_modules', ...parts);
-    const tsc = bin('typescript', 'bin', 'tsc');
-    const next = bin('next', 'dist', 'bin', 'next');
-
-    await step('the back end type-checks (sources and specs)', () => {
-      runNode(root, tsc, ['-p', 'be/tsconfig.json']);
-      if (fs.existsSync(path.join(root, 'be', 'src', 'tests', 'tsconfig.json'))) runNode(root, tsc, ['-p', 'be/src/tests/tsconfig.json']);
-    });
-    await step('the back end builds', () => {
-      runNode(path.join(root, 'be'), tsc, ['-p', 'tsconfig.build.json']);
-      runNode(path.join(root, 'be'), bin('tsc-alias', 'dist', 'bin', 'index.js'), ['-p', 'tsconfig.build.json']);
-    });
-    await step('the front-end workspace packages build', () => {
-      for (const folder of subfolders(path.join(root, 'fe', 'packages'))) runNode(folder, tsc, ['-p', 'tsconfig.build.json']);
-    });
-    for (const folder of subfolders(path.join(root, 'fe', 'apps'))) {
-      await step(`the front-end app ${path.basename(folder)} type-checks and builds`, () => {
-        runNode(folder, tsc, ['--noEmit']);
-        runNode(folder, next, ['build']);
-      });
-    }
-  });
+/**
+ * The checks of one edition, overlapped where they are independent: the back end (type-check, then build) runs beside the front end (the
+ * workspace packages build first, since the apps import their dist, then every app type-checks and builds at once). The two editions run
+ * together as well, each with its own install; nothing is skipped, so the coverage is the same and the wall time is the slowest chain.
+ */
+async function checkEdition(t: TestContext, edition: string): Promise<void> {
+  for (const [name, built] of Object.entries(LINKED)) assert.ok(fs.existsSync(path.resolve(import.meta.dirname, built)), `${name} is built (${built}): install and build the sibling package before this spec`);
+  const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, `starci-scaffold-types-${edition}-`), harness: { version: '1.1.0-alpha.3' }, edition,
+    presets: bundledPresets(), lock: lockedOk, initGit: init });
+  linkSiblings(root);
+  const started = Date.now();
+  await install(root, ['install', '--no-audit', '--no-fund', '--ignore-scripts', '--install-links=true', '--prefer-offline']);
+  t.diagnostic(`${edition}: npm install ${((Date.now() - started) / 1000).toFixed(0)}s`);
+  /** One chain of checks, its wall time reported; a failure is kept with the chain's title so every failing chain is reported. */
+  const chain = async (title: string, check: () => Promise<void>): Promise<string | null> => {
+    const begun = Date.now();
+    try { await check(); return null; } catch (error) { return `${title}: ${error instanceof Error ? error.message : String(error)}`; } finally { t.diagnostic(`${edition}: ${title} ${((Date.now() - begun) / 1000).toFixed(0)}s`); }
+  };
+  const bin = (...parts: string[]): string => path.join(root, 'node_modules', ...parts);
+  const tsc = bin('typescript', 'bin', 'tsc');
+  const next = bin('next', 'dist', 'bin', 'next');
+  const failures = await Promise.all([
+    chain('the back end type-checks (sources and specs) and builds', async () => {
+      await Promise.all([
+        runNode(root, tsc, ['-p', 'be/tsconfig.json']).then(async () => {
+          if (fs.existsSync(path.join(root, 'be', 'src', 'tests', 'tsconfig.json'))) await runNode(root, tsc, ['-p', 'be/src/tests/tsconfig.json']);
+        }),
+        runNode(path.join(root, 'be'), tsc, ['-p', 'tsconfig.build.json']).then(() => runNode(path.join(root, 'be'), bin('tsc-alias', 'dist', 'bin', 'index.js'), ['-p', 'tsconfig.build.json'])),
+      ]);
+    }),
+    chain('the front-end workspace packages build, then every app type-checks and builds', async () => {
+      await Promise.all(subfolders(path.join(root, 'fe', 'packages')).map((folder) => runNode(folder, tsc, ['-p', 'tsconfig.build.json'])));
+      await Promise.all(subfolders(path.join(root, 'fe', 'apps')).map(async (folder) => {
+        await runNode(folder, tsc, ['--noEmit']);
+        await runNode(folder, next, ['build']);
+      }));
+    }),
+  ]);
+  assert.deepEqual(failures.filter((failure) => failure !== null), []);
 }
+
+describe('a fresh app type-checks and builds on every side', { concurrency: 2 }, () => {
+  for (const edition of ['lite', 'full']) test(`${edition}`, { timeout: 1_200_000 }, (t) => checkEdition(t, edition));
+});

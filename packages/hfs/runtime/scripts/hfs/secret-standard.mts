@@ -225,6 +225,106 @@ function childLine(lines: string[], block: Block, key: string): number {
   return -1;
 }
 
+/** One quality service of application-stacks.yaml as far as the binding of a member reads it. */
+interface ToolingService {
+  credentials?: Array<{ id?: string; project?: string; key?: string; custody?: { repository?: string; path?: string } }>;
+  projects?: Array<{ key?: string }>;
+  ci?: { secrets?: Array<{ name?: string; credential?: string }> };
+}
+
+/** The service of `services:` that `member` is the sealed credential of: named like the member (`sonar`), or one whose credential custody path is the member's file. */
+function toolingServiceOf(document: StacksDocument, member: string): { name: string; service: ToolingService } | null {
+  const services = (document["services"] ?? {}) as Record<string, ToolingService | null>;
+  for (const [name, service] of Object.entries(services)) {
+    if (service === null || typeof service !== "object") continue;
+    const owns = (service.credentials ?? []).some((credential) => new RegExp(`/${member}\\.enc(?:\\.yaml)?$`, "u").test(credential?.custody?.path ?? ""));
+    if (name === member || owns) return { name, service };
+  }
+  return null;
+}
+
+/** What `secret set` did with a member that is a service credential (tooling, never an app runtime secret): the keys it bound, or the remedy to apply by hand. */
+export interface ToolingOutcome { bound: string[]; remedy: string }
+
+/**
+ * A tooling member (sonar.enc.yaml: the analysis token a CI job reads) is a credential of a service, not a secret the app reads at runtime, so it never
+ * becomes an `environments.<env>.secrets` entry (CI custody refuses a runtime-granted CI secret, APP_SECRET_IN_CI). Its binding is the service's
+ * `credentials` entry (custody names the sealed file) and the `ci.secrets` entry that reads it. A missing binding of the shape the template renders
+ * (`credentials: []`) is written; any other shape returns the exact binding to add by hand.
+ */
+function bindTooling(file: string, text: string, document: StacksDocument, repository: string, environment: string, member: string, keys: string[], found: { name: string; service: ToolingService }): ToolingOutcome {
+  const bound = new Set((found.service.credentials ?? []).map((credential) => credential.key));
+  const missing = keys.filter((key) => !bound.has(key));
+  if (!missing.length) return { bound: [], remedy: "" };
+  const project = found.service.projects?.[0]?.key ?? repository;
+  const custodyPath = `.starcistacks/${environment}/secrets/${member}.enc.yaml`;
+  const first = !(found.service.credentials ?? []).length;
+  const credentials = missing.map((key, index) => ({ id: first && index === 0 ? "analysis" : key.toLowerCase().replaceAll("_", "-"), project, key, custody: { repository, path: custodyPath } }));
+  const ciSecrets = credentials.map((credential) => ({ name: credential.key, credential: credential.id }));
+  const remedy = `${member} is a tooling credential of services.${found.name}, not an app runtime secret, so it is not declared in environments.${environment}.secrets; bind it by hand: services.${found.name}.credentials: ${JSON.stringify(credentials)} and services.${found.name}.ci.secrets: ${JSON.stringify(ciSecrets)}`;
+  const newline = text.includes("\r\n") ? "\r\n" : "\n";
+  const lines = text.replace(/\r\n/gu, "\n").split("\n");
+  const root = lines.findIndex((line) => /^services:\s*(?:#.*)?$/u.test(line));
+  const serviceLine = root < 0 ? -1 : childLine(lines, blockOf(lines, root), found.name);
+  const credentialsLine = serviceLine < 0 ? -1 : childLine(lines, blockOf(lines, serviceLine), "credentials");
+  if (credentialsLine < 0 || !/^ *credentials:\s*\[\s*\]\s*(?:#.*)?$/u.test(lines[credentialsLine] as string) || !first) return { bound: [], remedy };
+  const pad = indentOf(lines[credentialsLine] as string);
+  const ciLine = childLine(lines, blockOf(lines, serviceLine), "ci");
+  const expected = structuredClone(document);
+  const target = (expected["services"] as Record<string, ToolingService>)[found.name] as ToolingService;
+  target.credentials = credentials;
+  if (target.ci !== undefined) target.ci.secrets = [...(target.ci.secrets ?? []), ...ciSecrets];
+  if (target.ci !== undefined) {
+    const ci = ciLine < 0 ? "" : (lines[ciLine] as string);
+    const secrets = `[${ciSecrets.map((entry) => `{name: ${entry.name}, credential: ${entry.credential}}`).join(", ")}]`;
+    if (/secrets:\s*\[\s*\]/u.test(ci)) lines[ciLine] = ci.replace(/secrets:\s*\[\s*\]/u, `secrets: ${secrets}`);
+    else if (/^ *ci:\s*\{.*\}\s*$/u.test(ci) && !/secrets:/u.test(ci)) lines[ciLine] = ci.replace(/\}\s*$/u, `, secrets: ${secrets}}`);
+    else return { bound: [], remedy };
+  }
+  const block = credentials.flatMap((credential) => [`${" ".repeat(pad + 2)}- id: ${credential.id}`, `${" ".repeat(pad + 4)}project: ${JSON.stringify(credential.project)}`, `${" ".repeat(pad + 4)}key: ${credential.key}`, `${" ".repeat(pad + 4)}custody: {repository: ${JSON.stringify(credential.custody.repository)}, path: ${credential.custody.path}}`]);
+  lines.splice(credentialsLine, 1, `${" ".repeat(pad)}credentials:`, ...block);
+  const edited = lines.join(newline);
+  let parsed: unknown;
+  try { parsed = parseYaml(edited); } catch { parsed = undefined; }
+  if (JSON.stringify(parsed) !== JSON.stringify(expected)) return { bound: [], remedy };
+  fs.writeFileSync(file, edited);
+  return { bound: missing, remedy: "" };
+}
+
+/** One sealed tooling member `bindToolingMembers` judged: what it bound, the remedy when it could not, and the runtime entries an earlier `secret set` declared for it. */
+export interface ToolingMember { environment: string; member: string; service: string; outcome: ToolingOutcome; runtimeEntries: string[] }
+
+/**
+ * The tooling members of the app (a sealed `.starcistacks/<env>/secrets/<member>.enc.yaml` that a service of application-stacks.yaml owns): each is bound
+ * to its service when `write` and the binding is missing in the shape the template renders. The runtime `secrets:` entries an earlier `secret set` declared for
+ * the member are named, not removed: the owner deletes them (CI custody refuses the token while one stands).
+ */
+export function bindToolingMembers(repoRoot: string, write: boolean): ToolingMember[] {
+  const file = path.join(repoRoot, ".starcistacks", "application-stacks.yaml");
+  if (!fs.existsSync(file)) return [];
+  const text = fs.readFileSync(file, "utf8");
+  const document: StacksDocument = parseYaml(text) ?? {}; // reason: parsed YAML boundary, read from disk
+  const repository = repositoryName(repoRoot, { env: identityQueryEnvironment(process.env, serviceCredentialNames(document)) });
+  const found: ToolingMember[] = [];
+  for (const environment of Object.keys(document.environments ?? {})) {
+    const directory = path.join(repoRoot, ".starcistacks", environment, "secrets");
+    if (!fs.existsSync(directory)) continue;
+    for (const name of fs.readdirSync(directory).filter((entry) => entry.endsWith(MEMBER_SUFFIX)).sort()) {
+      const member = name.slice(0, -MEMBER_SUFFIX.length);
+      const service = toolingServiceOf(document, member);
+      if (service === null) continue;
+      const keys = envelopeOf(fs.readFileSync(path.join(directory, name), "utf8")).keys;
+      const entries = Array.isArray(document.environments?.[environment]?.secrets) ? (document.environments?.[environment]?.secrets as SecretsEntry[]) : [];
+      const runtimeEntries = entries.filter((entry) => memberOfEntry(entry) === member).map((entry) => String(entry.name ?? entry.key ?? member));
+      const outcome = write
+        ? bindTooling(file, fs.readFileSync(file, "utf8"), parseYaml(fs.readFileSync(file, "utf8")) ?? {}, repository, environment, member, keys, service)
+        : { bound: [], remedy: (service.service.credentials ?? []).length ? "" : `services.${service.name} has no credential for ${member}` };
+      found.push({ environment, member, service: service.name, outcome, runtimeEntries });
+    }
+  }
+  return found;
+}
+
 /**
  * Declares each of `keys` of `member` in environment `environment`'s `secrets:` of application-stacks.yaml, one entry per key
  * (`name: <kebab of the key>, member, key, where: secrets/<member>`), so the key is materialized as its own `<KEY>_FILE`. A key
@@ -236,13 +336,15 @@ export function declareKeys(
   environment: string,
   member: string,
   keys: string[],
-): { declared: string[]; byHand: string[] } {
+): { declared: string[]; byHand: string[]; tooling?: ToolingOutcome } {
   const file = path.join(repoRoot, ".starcistacks", "application-stacks.yaml");
   if (!fs.existsSync(file)) return { declared: [], byHand: [] };
   const text = fs.readFileSync(file, "utf8");
   const document: StacksDocument = parseYaml(text) ?? {}; // reason: parsed YAML boundary, read from disk
   const spec = document.environments?.[environment];
   if (!spec) return { declared: [], byHand: [] };
+  const tooling = toolingServiceOf(document, member);
+  if (tooling !== null) return { declared: [], byHand: [], tooling: bindTooling(file, text, document, repositoryName(repoRoot, { env: identityQueryEnvironment(process.env, serviceCredentialNames(document)) }), environment, member, keys, tooling) };
   const serviceKeys = declaredServiceKeys(document, repositoryName(repoRoot, { env: identityQueryEnvironment(process.env, serviceCredentialNames(document)) }), environment, member);
   const missing = keys.filter((key) => !declaredKeys(spec, member, keys).includes(key) && !serviceKeys.includes(key));
   if (!missing.length) return { declared: [], byHand: [] };

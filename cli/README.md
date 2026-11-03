@@ -610,7 +610,7 @@ Kernel while the owner or Debug paused it (`pausedBy` in `harness/workflow.ts`),
 workflow is parked.
 `workflow start` of an orca workflow runs only in the terminal of the Supervisor of the workflow's project
 (`SUPERVISOR_REQUIRED` elsewhere): it makes (or reuses) the workflow's one git worktree (`workflows.worktree`, default
-`<project state>/worktrees/<workflow>` on branch `starci/<workflow>`) and launches the Kernel by `worker-start
+`<project state>/worktrees/<workflow>` on branch `starci/<workflow>`, forked from the header's `base`, HEAD of the main checkout by default; a `base` that names no commit is refused `WORKFLOW_BASE_MISSING`) and launches the Kernel by `worker-start
 --run/--parent/--from` into that Supervisor's Run, titled `[Kernel] <workflow>`; `kernel start` relaunches one Orca reports
 gone (any Kernel with `--replace`), or adopts a running workflow, under the same rule. A start first retires every Kernel seat
 of the workflow still open (stopped, released, its tab closed) and refuses while Orca does not settle one, so a workflow never

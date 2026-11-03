@@ -229,7 +229,9 @@ function fromFiles(entries: string[] | undefined, keys: string[]): Record<string
 }
 
 /** What `set` declared in the environment's stack `secrets:`, or the keys to declare by hand; nothing when all were declared. */
-function declarationLine(environment: string, { declared, byHand }: { declared: string[]; byHand: string[] }): string {
+function declarationLine(environment: string, { declared, byHand, tooling }: { declared: string[]; byHand: string[]; tooling?: { bound: string[]; remedy: string } | undefined }): string {
+  if (tooling?.bound.length) return `bound ${tooling.bound.join(", ")} to the service credentials and ci.secrets of application-stacks.yaml (a tooling member is not a runtime secret)\n`;
+  if (tooling?.remedy) return `${tooling.remedy}\n`;
   if (declared.length) return `declared ${declared.join(", ")} in environments.${environment}.secrets of application-stacks.yaml\n`;
   if (byHand.length) return `declare ${byHand.join(", ")} in environments.${environment}.secrets of application-stacks.yaml (this environment's shape is wired by hand)\n`;
   return "";
