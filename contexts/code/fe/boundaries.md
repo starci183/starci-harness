@@ -43,7 +43,7 @@ Why: a client layout ships its whole subtree and catalog to every page, and a se
 breaks the build or leaks a secret.
 
 Enforced by: R55 (`use-client-only-at-boundary`, `client-no-server-import`, `server-module-marks-server-only`,
-`client-reaches-server`), R369 (`directive-first`).
+`client-reaches-server`), R369 (`directive-first`). An app moves a misplaced directive, including the `("use client")` Prettier writes, to the top of its module with `starci app codemod directive-first` (dry run by default; `--execute` writes).
 
 ## FE-BOUNDARY-3 The client providers are one file under the locale layout
 

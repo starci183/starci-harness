@@ -89,7 +89,7 @@ be inferred from a body or from the files the body calls, so the file's surface 
 isolated declaration emit, `ts.transpileDeclaration`). A component that returns only JSX, `null` or `undefined` already
 has the type the JSX namespace gives it and needs no annotation; a component that returns a variable, is `async` or
 returns anything else does. Re-exports and type-only exports are explicit by construction. The annotation names the
-type, never `any`; a rule does not fix it by inserting one.
+type, never `any`; a rule does not fix it by inserting one. An app moves onto it with `starci app codemod explicit-surface` (dry run by default; `--execute` writes): it writes the type the app's own checker infers where that type is short, named (an exported type of the program, `ReactElement` for a component, `Metadata` for `generateMetadata`), free of `any` and compiles the same, adds the type-only imports, and reports every other export with a suggested fix: a destructured export, an anonymous, computed, too long or unnameable type.
 
 Why: an inferred surface moves with the body, so a one-line edit changes what every importer sees, and the lint result
 cache has to lint every importer again for it (a file with an inferred surface is `open` in `contexts/project/check-cache.md`
