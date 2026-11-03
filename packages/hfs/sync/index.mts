@@ -38,6 +38,7 @@ import { byCodeUnit } from '../report/order.mjs';
 import { isRuntimeExampleApp } from '../runtime/scripts/lib/runtime-example.mjs';
 import { ciWorkflowCommands } from './ci-commands.mjs';
 import { MODULE_PREFIX, moduleNames, registryFiles } from '../scaffold/module-registry.mjs';
+import { canonImport, canonList } from './canon-layout.mjs';
 import { dependabotUpdates, hasDeclaredServices, readDeclaredQuality, readDeclaredBadges, sonarHostLine } from './quality-services.mjs';
 import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
 import { grammarLintFor } from '../runtime/scripts/lib/grammar-lint.mjs';
@@ -452,20 +453,21 @@ function registryTargets(app: ResolvedApp, source: AppSourceFacts | undefined): 
  * reaches `packages/`, so this managed file lints their source by subpath. The back-end canon judges everything but the front-end subpaths
  * (`src/workbench/` outside its contract, `src/public/`), the front-end canon and the selected Grammar family those, each over the package view of
  * the app root. An app without a root package has no such file; the family factory for packages is the family's `<name>GrammarPackagesConfig`.
+ * It is laid out as the canon Prettier config prints it (`canonList`, `canonImport`), so the app's format check passes it as rendered.
  */
 function packagesLintTargets(app: ResolvedApp, source: AppSourceFacts | undefined): RenderedTarget[] {
   if (!(source?.modules?.length || source?.otherPackages?.length)) return [];
   const grammar = grammarLintFor(app.sides.fe.grammar);
-  const factory = grammar.package ? grammar.factory.replace(/Config$/, 'PackagesConfig') : null;
+  const family = grammar.package ? { name: grammar.package, factory: grammar.factory.replace(/Config$/, 'PackagesConfig') } : null;
   const content = [
     'import { loadPackagesHfs as loadBePackages, starciBePackagesConfig } from "@starci/eslint-canon-be"',
     'import { loadPackagesHfs as loadFePackages, starciFePackagesConfig } from "@starci/eslint-canon-fe"',
-    ...(grammar.package ? [`import { ${factory} } from "${grammar.package}"`] : []),
+    ...(family ? [canonImport({ names: [family.factory], from: family.name })] : []),
     '',
     'const be = loadBePackages(import.meta.url)',
     'const fe = loadFePackages(import.meta.url)',
     '',
-    `export default [...(await starciBePackagesConfig({ hfs: be })), ...starciFePackagesConfig({ hfs: fe })${grammar.package ? `, ...${factory}({ hfs: fe })` : ''}]`,
+    canonList({ head: 'export default ', items: ['...(await starciBePackagesConfig({ hfs: be }))', '...starciFePackagesConfig({ hfs: fe })', ...(family ? [`...${family.factory}({ hfs: fe })`] : [])] }),
     '',
   ].join(LINE);
   return [{ path: PACKAGES_LINT_FILE, scope: APP_SCOPE, mode: 'file', content, hash: hashOf(content) }];

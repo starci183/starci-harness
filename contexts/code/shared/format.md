@@ -7,7 +7,10 @@ topic never restates them.
 
 The app's Prettier setting is the one line `"@starci/prettier-config"`, and Prettier lays out every file it reads:
 indent, quotes, semicolons, wrapping, import layout. No ESLint rule judges layout, import order is not enforced, and
-`prettier-ignore` does not exist. An op runs Prettier on the files it changed before it reports.
+`prettier-ignore` does not exist. An op runs Prettier on the files it changed before it reports. A managed file is
+rendered already formatted (the managed templates are Prettier output and `starci app sync` lays out the code and JSON it
+writes itself as Prettier does, `packages/hfs/sync/canon-layout.mts`), so formatting it changes nothing and never makes
+R05 drift.
 
 Why: a formatter that decides layout removes a class of review noise; and nothing between the op and the push checks
 format (the runtime tier runs no format gate and the harness commit runs no hook, SHARED-SCRIPTS-4), so an unformatted file first fails
@@ -18,7 +21,7 @@ npx prettier --write <changed files>
 ```
 
 Enforced by: R19 HFS_FORMAT (the app's `format:check` in CI and its pre-commit hook), the `canon` gate (the Prettier
-setting names the canon package), R18 for `prettier-ignore`.
+setting names the canon package), R18 for `prettier-ignore`; a managed file's layout by `packages/hfs/src/sync-prettier.spec.mts`.
 
 ## SHARED-FORMAT-2 Line endings and editor settings are managed files
 
