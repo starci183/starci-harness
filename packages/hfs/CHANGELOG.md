@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.6.1 - 2026-11-04
+
+- Fixed: the OpenClaw runtime layer recipe (`stack/images/openclaw-runtime`) starts as root only to give the gateway's state folder `~/.openclaw` to `STARCI_RUNTIME_USER` (named once, in its Dockerfile) when that user does not own it, then drops to the user with `setpriv`; a bind folder the host created as root no longer crash-loops the gateway with EACCES.
+- Fixed: moving an installed copy's legacy `runtime/.runtime` out keeps each entry's owner and mode: it renames the entry, or on another volume copies it with mode, uid and gid restored.
+- Changed: the R348 law names the written `PaneGrid` child of `Page chrome="panes"`.
+
 ## 5.6.0 - 2026-11-04
 
 - Fixed: an installed or locally sourced copy keeps its host state outside itself. A stack's bind-mounted data, logs and receipts, `machine.sqlite` and the blob store live in the per-user base `installedStateBase` (`%LOCALAPPDATA%`, else `$XDG_STATE_HOME`, else `~/.local/state`, then `starci-harness/state`; a stack's state keyed by project and environment below it), so `npm ci` and a package copy no longer delete a running stack's data; a checkout keeps `<root>/.runtime`, and `STARCI_LOCAL_ROOT` overrides both.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.15.3 - 2026-11-04
+
+- Changed: the runtime copies carry `engine/runtime-root.mjs`, which moves an installed copy's legacy state with its owner and mode (`@starci/hfs` 5.6.1), and the release-5 canon pins. The runtime copy of the laws carries the R348 wording.
+
 ## 3.15.2 - 2026-11-04
 
 - Changed: the runtime copies carry `engine/runtime-root.mjs` with the per-user state base of an installed copy (`@starci/hfs` 5.6.0) and the canon pins of release 4 (`@starci/auth` 0.4.0, `@starci/auth-oidc` 0.1.3).
