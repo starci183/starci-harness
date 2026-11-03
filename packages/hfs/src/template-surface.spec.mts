@@ -4,13 +4,17 @@
 // placeholder that stands for a name becomes an identifier, a placeholder that stands for a whole line is dropped. The front-end units
 // (`fe/units/**`) are filled by structure (shapes, tabs, forms), so they are rendered by their generators and linted with the canons in
 // fe-unit-shape-slot.spec.mts, which this spec requires to exist and to name every unit directory.
-import { test } from 'node:test';
+import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
+import tsParser from '@typescript-eslint/parser';
+import { Linter } from 'eslint';
 import { declarationSurface } from '../runtime/scripts/lib/declaration-surface.mjs';
 import { TEMPLATES_DIR } from '../sync/index.mjs';
+import { rules as surfaceRules } from '../../eslint-canon-fe/src/explicit-surface.ts';
+import { rules as directiveRules } from '../../eslint-canon-fe/src/directive-first.ts';
 
 const SOURCE = /\.(?:tsx?|mts|cts)(?:\.tpl)?$/;
 const DECLARATION = /\.d\.[cm]?ts$/;
@@ -30,7 +34,18 @@ const rendered = (text: string): string =>
     .replace(/\{\{[A-Za-z0-9_.]+\}\}/g, 'Sample')
     .replace(/@@[A-Za-z0-9]+@@/g, 'Sample');
 
-const templates = walk(TEMPLATES_DIR).map((file) => ({ file, relative: path.relative(TEMPLATES_DIR, file).split(path.sep).join('/') }));
+/** A tool config at the root of an app (`next.config.ts`) is outside the lint scope of the canons, which judge `src/`. */
+const isRootConfig = (relative: string): boolean => /\.config\.ts$/.test(relative) && !relative.includes('/src/');
+
+/** Every template outside the generated front-end units, rendered once and shared by the assertions. */
+const templates: { relative: string; text: string; kind: string }[] = [];
+before(() => {
+  for (const file of walk(TEMPLATES_DIR)) {
+    const relative = path.relative(TEMPLATES_DIR, file).split(path.sep).join('/');
+    templates.push({ relative, text: rendered(fs.readFileSync(file, 'utf8')), kind: /x(?:\.tpl)?$/.test(relative) ? 'template.tsx' : 'template.ts' });
+  }
+});
+const judged = () => templates.filter(({ relative }) => !relative.startsWith(UNITS) && !isRootConfig(relative));
 
 /** The directive strings of a module that sit below another statement. */
 function misplacedDirectives(source: ts.SourceFile): string[] {
@@ -48,22 +63,31 @@ test('the templates are found', () => {
   assert.ok(templates.length > 300, `${templates.length} TypeScript templates`);
 });
 
-/** A tool config at the root of an app (`next.config.ts`) is outside the lint scope of the canons, which judge `src/`. */
-const isRootConfig = (relative: string): boolean => /\.config\.ts$/.test(relative) && !relative.includes('/src/');
-
 test('R368: no template exports a type the declaration emit cannot write', () => {
   const findings: string[] = [];
-  for (const { file, relative } of templates) {
-    if (relative.startsWith(UNITS) || isRootConfig(relative)) continue;
-    const text = rendered(fs.readFileSync(file, 'utf8'));
-    const kind = /x(?:\.tpl)?$/.test(relative) ? 'template.tsx' : 'template.ts';
+  for (const { relative, text, kind } of judged()) {
     const surface = declarationSurface(ts, kind, text);
     assert.ok(surface, 'the compiler has transpileDeclaration');
-    const syntax = ts.transpileDeclaration(text, { fileName: kind, reportDiagnostics: true, compilerOptions: { jsx: ts.JsxEmit.Preserve } }).diagnostics?.some((diagnostic) => diagnostic.code < 9000);
-    assert.notEqual(syntax, true, `${relative} renders to source TypeScript can read`);
     for (const problem of surface.problems) findings.push(`${relative}:${text.slice(0, problem.start).split('\n').length} ${problem.name} (${problem.annotate}: ${problem.reason})`);
   }
   assert.deepEqual(findings, []);
+});
+
+test('R368 and R369: the canon rules, run in one process over every rendered template, report nothing', () => {
+  const linter = new Linter();
+  const config = [{
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: 'module', parserOptions: { ecmaFeatures: { jsx: true } } },
+    plugins: { starci: { rules: { ...surfaceRules, ...directiveRules } } },
+    rules: { 'starci/explicit-export-surface': 'error', 'starci/directive-first': 'error' },
+  }] as unknown as Linter.Config[];
+  const reported: string[] = [];
+  for (const { relative, text, kind } of judged()) {
+    for (const message of linter.verify(text, config, { filename: `sample/${kind}` })) {
+      reported.push(`${relative}:${message.line} ${message.ruleId ?? 'parse'} ${message.message.slice(0, 90)}`);
+    }
+  }
+  assert.deepEqual(reported, []);
 });
 
 test('R368: the front-end units are judged by their generators in fe-unit-shape-slot.spec.mts', () => {
@@ -75,8 +99,7 @@ test('R368: the front-end units are judged by their generators in fe-unit-shape-
 
 test('R369: no template places a module directive below another statement', () => {
   const misplaced: string[] = [];
-  for (const { file, relative } of templates) {
-    const text = rendered(fs.readFileSync(file, 'utf8'));
+  for (const { relative, text } of templates) {
     if (!/use (?:client|server)/.test(text)) continue;
     const source = ts.createSourceFile(relative, text, ts.ScriptTarget.Latest, true, /x(?:\.tpl)?$/.test(relative) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
     for (const directive of misplacedDirectives(source)) misplaced.push(`${relative}: "${directive}"`);
