@@ -275,3 +275,8 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   Orca; until then a CLI change is proved by running the built CLI (CONTRIBUTING.md CONTRIB-1). A record that cites a bench
   scenario as proof (the CHANGELOG, earlier rulings) is history; ruling `cli-proven-by-bench` is amended to say the bench is
   removed.
+- **No state inside a package.** A copy of `@starci/hfs` that an install or `starci deps source --local` placed below a
+  `node_modules` folder keeps its host state (a stack's bind-mounted data, logs and receipts, `machine.sqlite`, the blob store)
+  in the per-user base `installedStateBase`, never in itself, so `npm ci` and a package copy never delete a running stack's data;
+  the state such a copy kept inside itself moves out on its first `starci app` verb ([state.md](state.md) "Where state lives",
+  `packages/hfs/runtime/engine/runtime-root.mts`).

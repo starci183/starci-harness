@@ -33,7 +33,7 @@ interface ViewOptions { strict?: boolean; base: string }
 
 export const ARTIFACT_ROOT_ENV = 'STARCI_ARTIFACT_ROOT';
 /**
- * The blob store: ARTIFACT_ROOT_ENV, else <starciLocalRoot>/artifacts (<runtime root>/.runtime/artifacts on a host). Inside a node --test
+ * The blob store: ARTIFACT_ROOT_ENV, else <starciLocalRoot>/artifacts (a checkout's .runtime/artifacts, an installed copy's per-user base). Inside a node --test
  * process tree a default outside the OS temp directory is replaced by a temp one, so a bare spec never writes into the checkout.
  */
 export const artifactRoot = (env: NodeJS.ProcessEnv = process.env): string => {
