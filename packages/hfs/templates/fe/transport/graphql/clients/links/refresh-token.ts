@@ -15,7 +15,7 @@ const isUnauthenticated = (error: unknown): boolean =>
  * On an UNAUTHENTICATED answer, asks modules/auth for a fresh access token once and replays the operation with it. When no
  * token comes back (the session ended) the original error travels on.
  */
-export const createRefreshTokenLink = (refreshAccessToken: () => Promise<string | undefined>) =>
+export const createRefreshTokenLink = (refreshAccessToken: () => Promise<string | undefined>): ErrorLink =>
     new ErrorLink(({ error, operation, forward }) => {
         if (!isUnauthenticated(error) || operation.getContext()[REFRESHED] === true) return
         return new Observable((observer) => {

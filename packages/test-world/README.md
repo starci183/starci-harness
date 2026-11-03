@@ -4,7 +4,7 @@ The shared e2e library of every StarCi back end. It owns everything that touches
 
 ```
 be/src/tests/world/
-  test-world.config.ts   the declaration (repo-owned): export const { useTestWorld, useSandbox } = defineTestWorld({ stack, stacks, fakes, ... })
+  test-world.config.ts   the declaration (repo-owned): const world: TestWorldApi = defineTestWorld({ stack, stacks, fakes, ... }), exporting useTestWorld and useSandbox typed from it
   use-test-world.ts      the spec entry: export { useTestWorld, useSandbox } from "./test-world.config"
   global-setup.ts        export { default } from "@starci/test-world/global-setup"
   global-teardown.ts     export { default } from "@starci/test-world/global-teardown"
@@ -20,8 +20,9 @@ Nothing in a spec reads or writes `process.env`, starts a container, imports `Da
 ```ts
 import { openaiCompatibleFake, sepayFake, smtpFake } from "@starci/test-world/fakes"
 import { defineTestWorld } from "@starci/test-world"
+import type { TestWorldApi } from "@starci/test-world"
 
-export const { useTestWorld, useSandbox } = defineTestWorld({
+const world: TestWorldApi = defineTestWorld({
     stack: ".starcistacks/dev",                       // relative to the app root (never be/); service list and image versions come from its compose files
     stacks: {
         postgresql: { connections: [{ name: "primary", seeds: [".starcistacks/dev/seeds/01.sql"] }] },
@@ -45,6 +46,9 @@ export const { useTestWorld, useSandbox } = defineTestWorld({
     modules: { base: (w) => [/* clock, logging, database module over w.db */] },              // base of { modules } specs
     sandbox: { base: () => [HttpModule.register({ isGlobal: true })] },                        // contract specs
 })
+
+export const useTestWorld: TestWorldApi["useTestWorld"] = world.useTestWorld
+export const useSandbox: TestWorldApi["useSandbox"] = world.useSandbox
 ```
 
 `w` (the wiring) carries every URL of the run, built before any app boots: `w.apps.<name>.{url,port}` (ports are reserved first, so apps that call each other know each other), `w.db.<conn>.{url,host,port,user,password,database,schema}`, `w.redis`, `w.minio`, `w.qdrant`, `w.kafka.{brokers,topic(name),group(name),clientId(name)}` (every topic, consumer group and client id of an app under test comes from here, so it is the slot's), `w.keycloak.{baseUrl,realm,issuer,tokenUrl,jwksUrl,clientId,clientSecret(client)}` (every confidential client of the realm file gets a secret generated per run; the file never carries one), `w.fake.<name>.{url,port,values,endpoints,ca}`, `w.services`, `w.cluster`, `w.directory(name)`, `w.secret(label)`. A service the declaration does not run throws `TEST_WORLD_NOT_DECLARED` when read.

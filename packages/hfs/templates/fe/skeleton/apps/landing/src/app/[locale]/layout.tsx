@@ -1,4 +1,5 @@
-import type { ReactNode } from "react"
+import type { Metadata } from "next"
+import type { ReactElement, ReactNode } from "react"
 import { LocaleShell } from "@{{project}}/ui"
 import { LandingLayout, landingLayoutMetadata } from "@/features/layouts/LandingLayout"
 import { landingI18n } from "@/modules/i18n"
@@ -10,10 +11,10 @@ type LayoutProps = {
 }
 
 /** The localized document title and description of the landing. */
-export const generateMetadata = async (props: LayoutProps) => landingLayoutMetadata((await props.params).locale)
+export const generateMetadata = async (props: LayoutProps): Promise<Metadata> => landingLayoutMetadata((await props.params).locale)
 
 /** The locale segment's layout slot: the document of the address's language around the landing's chrome. */
-const Layout = async (props: LayoutProps) => (
+const Layout = async (props: LayoutProps): Promise<ReactElement> => (
     <LocaleShell {...await landingI18n.readLocaleSegment(props.params)} content={<LandingLayout content={props.children} />} />
 )
 

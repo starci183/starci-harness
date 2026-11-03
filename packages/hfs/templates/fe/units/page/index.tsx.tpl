@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import type { ReactElement } from "react"
 import { getTranslations } from "next-intl/server"
 import { APP_ROUTES } from "@/modules/routes"
 import { {{Name}}Base } from "./component"
@@ -23,7 +24,7 @@ const copyOf = async (isLoading: boolean): Promise<{{Name}}BaseProps["props"]> =
 }
 
 /** The {{route}} page: a server owner that resolves its copy and composes its blocks; it reads no data. */
-export const {{Name}} = async () => <{{Name}}Base props={await copyOf(false)} />
+export const {{Name}} = async (): Promise<ReactElement> => <{{Name}}Base props={await copyOf(false)} />
 
 /** The {{route}} route's loading view: the same page drawn in skeleton mode, never a separate layout (STATE-8). */
-export const {{LoadingName}} = async () => <{{Name}}Base props={await copyOf(true)} />
+export const {{LoadingName}} = async (): Promise<ReactElement> => <{{Name}}Base props={await copyOf(true)} />

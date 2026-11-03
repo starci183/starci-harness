@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
-import type { ReactNode } from "react"
+import type { ReactElement, ReactNode } from "react"
 import { SiteShell } from "@{{project}}/ui"
 import { siteUrl } from "@/modules/config"
 import { APP_ROUTES } from "@/modules/routes"

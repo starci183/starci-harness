@@ -18,8 +18,11 @@ const INDICATOR: Record<"success" | "danger" | "warning" | "info", ReactNode> = 
     info: <InformationCircleIcon className="size-6" />,
 }
 
+/** The app's toast: HeroUI's, with the four status methods wrapped. */
+type AppToast = typeof heroToast
+
 /** The app's toast: HeroUI's imperative toast with the status indicator injected; the region is mounted by the providers. */
-export const toast = {
+export const toast: AppToast = {
     ...heroToast,
     success: (message: ReactNode, options?: StatusToastOptions) =>
         heroToast.success(message, { indicator: INDICATOR.success, ...options }),

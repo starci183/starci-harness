@@ -1,4 +1,4 @@
-export const AppLayout = async (props: AppLayoutProps) => {
+export const AppLayout = async (props: AppLayoutProps): Promise<ReactElement> => {
     const t = await getTranslations("app.shell")
     return (
         <SiteShell brand={t("brand")} homeHref={APP_ROUTES.home}>

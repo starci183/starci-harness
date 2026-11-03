@@ -4,8 +4,14 @@ import { ACCESS_TOKEN_VERIFIER } from "@modules/domain/identity"
 import { OWN_TOKEN_VERIFIER } from "@modules/integrations/passport"
 import { OBJECT_STORAGE } from "@modules/integrations/object-storage"
 
+/** What a wiring proof hands the compiled root: public options and the infrastructure doubles. */
+export interface WiringProof {
+    readonly options: Readonly<Record<string, unknown>>
+    readonly overrides: ReadonlyArray<{ readonly token: unknown; readonly value: unknown }>
+}
+
 /** Compiles the real API root with public configuration and explicit infrastructure doubles. */
-export const buildWiringProof = () => ({
+export const buildWiringProof = (): WiringProof => ({
     options: {
         server: { port: 3000 },
         httpSecurity: {

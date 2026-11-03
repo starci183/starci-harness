@@ -1,9 +1,10 @@
+import type { DatabaseConnectionOptions } from "@modules/platform/database"
 import { InboxClaimEntity } from "./entities/inbox-claim.entity"
 import { CreateInboxClaims1789800005000 } from "./migrations/1789800005000-create-inbox-claims"
 import { ClientOperationOutcomes1792800000000 } from "./migrations/1792800000000-client-operation-outcomes"
 
 /** The entities of the inbox capability, for the connection that holds them. */
-export const inboxEntities = [InboxClaimEntity]
+export const inboxEntities: DatabaseConnectionOptions["entities"] = [InboxClaimEntity]
 
 /** The migrations of the inbox capability, in the order they run. */
-export const inboxMigrations = [CreateInboxClaims1789800005000, ClientOperationOutcomes1792800000000]
+export const inboxMigrations: DatabaseConnectionOptions["migrations"] = [CreateInboxClaims1789800005000, ClientOperationOutcomes1792800000000]
