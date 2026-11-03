@@ -75,6 +75,7 @@ test("every rule fires through the factory config on a stylesheet that breaks it
     [".a { width: 4px; }", undefined],
     [".a { @apply w-[4px]; }", undefined],
     [".a { color: var(--accent) !important; }", undefined],
+    [":root { --accent: var(--accent); }", undefined],
     [".a { color: var(--accent); }", "repo/src/app/globals.css"],
     [".a { --accent: var(--muted); }", undefined],
     [".card { --accent: #fff; }", "repo/src/modules/brand/brand.css"],

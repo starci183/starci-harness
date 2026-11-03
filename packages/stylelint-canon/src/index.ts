@@ -19,6 +19,7 @@ import { spacingScale } from "./spacing-scale.ts"
 import { globalsShape } from "./globals-shape.ts"
 import { noApplyRaw } from "./no-apply-raw.ts"
 import { noImportant } from "./no-important.ts"
+import { noSelfReference } from "./no-self-reference.ts"
 import { noInlineLintConfig } from "./no-inline-lint-config.ts"
 import { noGrammarPrivateToken } from "./no-grammar-private-token.ts"
 import { noTokenRedefinition } from "./no-token-redefinition.ts"
@@ -40,6 +41,7 @@ export const rules = {
   "raw-brand-value": rawBrandValue,
   "no-apply-raw": noApplyRaw,
   "no-important": noImportant,
+  "no-self-reference": noSelfReference,
   "globals-shape": globalsShape,
   "no-token-redefinition": noTokenRedefinition,
   "no-grammar-private-token": noGrammarPrivateToken,

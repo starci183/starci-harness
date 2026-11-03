@@ -36,12 +36,47 @@ const PRIVATE = /--(starci-core|offset-pop)-([a-z][a-z0-9-]*)/g;
 /** The mapped name of one private token, or null when HeroUI has no token for it. */
 const mapped = (prefix: string, name: string): string | null => (prefix === 'starci-core' ? CORE_TOKENS : OFFSET_POP_TOKENS)[name] ?? null;
 
+/**
+ * The lines left once the self-referential aliases are dropped (`null` marks a dropped line): the blank lines that would sit just before a
+ * closing brace go, and a rule block left empty goes with the selector lines and the comment that introduced it.
+ */
+function tidyDropped(lines: readonly (string | null)[]): string[] {
+  const kept: string[] = [];
+  let dropped = false;
+  for (const line of lines) {
+    if (line === null) {
+      dropped = true;
+      continue;
+    }
+    if (dropped && /^\s*\}\s*$/.test(line)) {
+      while ((kept[kept.length - 1] ?? 'x').trim() === '') kept.pop();
+      const open = kept.length - 1;
+      if (open >= 0 && /\{\s*$/.test(kept[open] ?? '') && !/^\s*@/.test(kept[open] ?? '')) {
+        let start = open;
+        while (start > 0 && /,\s*$/.test(kept[start - 1] ?? '')) start -= 1;
+        if (start > 0 && /\*\/\s*$/.test(kept[start - 1] ?? '')) {
+          let comment = start - 1;
+          while (comment > 0 && !/^\s*\/\*/.test(kept[comment] ?? '')) comment -= 1;
+          start = comment;
+        }
+        kept.length = start;
+        while (kept.length > 0 && (kept[kept.length - 1] ?? '').trim() === '') kept.pop();
+        dropped = false;
+        continue;
+      }
+    }
+    if (line.trim() !== '' || !dropped) dropped = false;
+    kept.push(line);
+  }
+  return kept;
+}
+
 /** One stylesheet or component file rewritten; `changes` and `findings` carry 1-based lines. */
 export function transformThemeTokens({ text, file = '' }: { text: string; file?: string }): { text: string; changes: ThemeChange[]; findings: ThemeFinding[] } {
   const changes: ThemeChange[] = [];
   const findings: ThemeFinding[] = [];
   const isCss = file.endsWith('.css') || file === '';
-  const lines = text.split('\n').map((line, index) => {
+  const mappedLines = text.split('\n').map((line, index): string | null => {
     const number = index + 1;
     let out = line;
     if (isCss) {
@@ -65,13 +100,20 @@ export function transformThemeTokens({ text, file = '' }: { text: string; file?:
         changes.push({ file, line: number, from: token, to: `--${to}` });
         return `--${to}`;
       });
+      // `--starci-core-accent: var(--accent)` became `--accent: var(--accent)`: a custom property that names itself is invalid at computed-value
+      // time and blanks the colour, and the grammar reads HeroUI's token directly, so the alias is dropped, not renamed.
+      const self = /^\s*(--[a-z][a-z0-9-]*)\s*:\s*var\(\s*(--[a-z][a-z0-9-]*)\s*\)\s*;?\s*$/.exec(out);
+      if (self !== null && self[1] === self[2] && out !== line) {
+        changes.push({ file, line: number, from: line.trim(), to: '(dropped: the alias names itself)' });
+        return null;
+      }
     } else {
       const root = /<(?:Core|OffsetPop)?GrammarRoot\b[^>]*\btheme=/.exec(line);
       if (root !== null) findings.push({ file, line: number, code: 'THEME_ROOT_PROP', text: root[0], reason: 'GrammarRoot theme sets nothing now: remove it and put `.dark` on html (the app owns the mode)' });
     }
     return out;
   });
-  return { text: lines.join('\n'), changes, findings };
+  return { text: tidyDropped(mappedLines).join('\n'), changes, findings };
 }
 
 function sourceFiles(dir: string): string[] {

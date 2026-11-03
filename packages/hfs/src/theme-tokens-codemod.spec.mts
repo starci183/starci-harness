@@ -32,7 +32,6 @@ test('a Core brand layer moves from the private names and the family root onto H
     '    --background: #faf9f5;',
     '    --accent: #141413;',
     '    --accent-soft-foreground: #141413;',
-    '    --accent: var(--accent);',
     '}',
     '.dark {',
     '    --background: #1f1e1d;',

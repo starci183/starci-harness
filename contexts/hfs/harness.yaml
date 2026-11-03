@@ -251,6 +251,11 @@ slots:
       - ops/telegram.yaml
     holds: check presets, routing, routes, lanes, liveness thresholds, the host, the uat image and the Telegram channel, as data the CLI validates
     rule: CONTRIB-9 data is data
+  - id: ops.host-services
+    path: "ops/host/**"
+    presence: optional
+    holds: the compose files and tunnel config of the host services ops/host.yaml declares (Sonar, its database, the tunnel), as data the host verbs run
+    rule: CONTRIB-9 data is data
   - id: ops.labels
     path: "ops/ops/*.md"
     presence: required
@@ -413,9 +418,10 @@ slots:
       - "packages/<name>/migrations/*.sql"
       - packages/grammar/scripts/theme-proof/app-theme.css
       - "packages/hfs/templates/"
+      - "packages/hfs/stack/images/"
       - "packages/<name>/**/*.{fixture,partial}"
     presence: optional
-    holds: data a package reads and never compiles (lint fixtures that keep their violations, app templates, emit partials, SQL migrations a package ships for the app to render)
+    holds: data a package reads and never compiles (lint fixtures that keep their violations, app templates, the runtime-layer recipes `starci app stack up` builds, emit partials, SQL migrations a package ships for the app to render)
     rule: CONTRIB-9 data is data
   - id: packages.rule-docs
     path: "packages/<name>/docs/*.md"

@@ -38,6 +38,11 @@ export const why: Record<string, Why> = {
     en: "`!important` in `<file>` (`<what>`). It wins the priority fight by making the next one unwinnable, and lets a grammar override survive a rebrand.",
     fix: "Drop `!important`; fix the cascade order (grammar's layers already decide who wins).",
   },
+  "no-self-reference": {
+    code: "FE_STYLE_TOKEN_ONLY",
+    en: "`<file>` declares a custom property as `var(` of itself (`<what>`). A property that names itself is invalid at computed-value time and resolves empty, so the colour it was meant to carry disappears.",
+    fix: "Delete the declaration; the token already holds the value (a rename of an alias onto the token's own name leaves exactly this line).",
+  },
   "globals-shape": {
     code: "FE_STYLE_TOKEN_ONLY",
     en: "`globals.css` (`<file>`) contains `<what>`. The global stylesheet holds only `@import`, `@source` and token declaration blocks.",

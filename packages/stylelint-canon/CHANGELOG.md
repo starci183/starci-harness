@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 2.6.0 - 2026-11-03
+
+- Added: `starci/no-self-reference` (R61, `FE_STYLE_TOKEN_ONLY`): no custom property takes `var(--itself)` as its value, in any stylesheet. A property that names itself is invalid at computed-value time and resolves empty; a rename of a `--starci-core-*` alias onto the token's own name left twenty of them in a brand layer and blanked every brand colour.
 
 ## 2.5.1 - 2026-11-03
 

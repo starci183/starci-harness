@@ -1269,6 +1269,7 @@ rules:
       - {kind: stylelint, id: raw-brand-value}
       - {kind: stylelint, id: no-apply-raw}
       - {kind: stylelint, id: no-important}
+      - {kind: stylelint, id: no-self-reference}
       - {kind: stylelint, id: globals-shape}
       - {kind: stylelint, id: globals-import-order}
       - {kind: stylelint, id: no-token-redefinition}
