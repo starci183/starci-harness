@@ -10,9 +10,9 @@ Starting a job is queues.md; which process runs it background.md. A lite app dec
 ## BE-JOBS-1 `platform/jobs` alone writes the job row, claiming it atomically
 
 `platform/jobs` owns the job table (a migration of the app; in lite under `db/migrations/`), its `jobs.sql.ts`
-and `JobClaims`. `claim` is one atomic upsert keyed by the delivery (the outbox id) that bumps and returns
-`fencingToken`; a finished job or a live claim answers `null`. The runner claims each delivery, calls the processor and
-settles with a guarded `complete` or `fail`. Nothing else writes the row.
+and `JobClaims`. `claim` is one atomic upsert keyed by the delivery (the outbox id, without the `-r<n>` a resume adds) that bumps and
+returns `fencingToken`; a finished job or a live claim answers `null`. The runner claims each delivery, calls the processor and
+settles with a guarded `complete`, a `fail` the queue retries, or a `park` (BE-RESILIENCE-2). Nothing else writes the row.
 
 Why: a read-modify-write claim races, and a second writer defeats the fence.
 
@@ -92,3 +92,18 @@ Why: cron in a replicated process fires once per replica; the lock serialises th
 claim lets exactly one of them enqueue, in the transaction that writes the outbox row.
 
 Enforced by: R335, `infra-import-owner` (R90).
+
+## BE-JOBS-7 A job a retry cannot fix is parked, alerted once and resumed
+
+The runner classifies every failure with `classifyFailure` (BE-RESILIENCE-2): a transient one with attempts left is `fail`ed and
+rethrown; any other parks the row as `failed_awaiting_fix` with `failure_class`, `parked_build` and `parked_at`, and `park` answers
+whether its one alert is due (`alerted_at`). `ParkedJobResumer` resumes at boot every job parked under another build, the
+`parked-jobs:sweep` tick (lite `JOB_TICKS`; in full a scheduler on `PARKED_JOBS_SWEEP_QUEUE`) every parked job, and
+`resume({ jobId })` one job for the owner's "resume now"; each resume counts `resume_count` and hands the job back as
+`<jobKey>-r<resume_count>`. An app whose jobs table predates the park applies `jobs-failed-awaiting-fix` (lite, a db migration) or
+`JobsFailedAwaitingFix` (full) once.
+
+Why: the row already holds the fence and the recorded steps, so parking and resuming it keeps every guarantee of BE-JOBS-1 to
+BE-JOBS-3 while no failure ends as a dead letter nobody restarts.
+
+Enforced by: R377 `BE_FLOW_FAILURE_SWALLOWED`, `job-write-owner` (R157).

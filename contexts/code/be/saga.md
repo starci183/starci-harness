@@ -24,7 +24,9 @@ Enforced by: R169 BE_SAGA_STEP_COMPENSATION, R01 HFS_SLOT_UNDECLARED.
 ## BE-SAGA-2 The state of a run is typed, versioned and moved only through the fenced store
 `<saga>.saga-state.ts` exports the state type with `status` and `version: number`. The orchestrator is thin; `platform/saga` owns the
 run: a transition names the version it read and moves it by one, after taking its event through the inbox. A saga consumer passes
-the delivery's `eventId` to its command. A failing compensation gives the event back so the redelivery resumes the run.
+the delivery's `eventId` to its command. A failing step or compensation lets its failure reach the runner, which retries a transient
+one and parks any other with one alert until a resume (BE-RESILIENCE-2); the resumed delivery replays through the inbox and the
+version fence, so a step already done is not repeated.
 
 Why: deliveries repeat and arrive late; the version fence stops a late delivery from moving a run twice, and the inbox makes a
 redelivery a no-op.

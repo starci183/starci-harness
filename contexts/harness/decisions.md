@@ -301,3 +301,11 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   count. An owner-triggered full release gate stays available as an explicit opt-in (`app release gate --full`, the `full` input of
   `ci.yml`), never the default (`packages/hfs/release/cache-verify-lock.mts`, [check-cache.md](../project/check-cache.md) "The
   nightly verify").
+- **Every job and saga flow runs itself again after a failure of any kind (`self-recovering-flows`).** The owner, 2026-11-04: every side
+  effect and async step goes through the transactional outbox in the transaction of the state change and is consumed idempotently
+  through the inbox; an inbound delivery is stored raw first and processed as a replay of the stored row. A transient failure retries
+  with bounded, jittered backoff; a non-transient one (input, code, config) parks the flow as `failed_awaiting_fix`, never a silent
+  final dead letter, with ONE owner alert carrying the run or job id, shown in the owner UI as a work item with "resume now". Parked
+  flows resume automatically when the build changes and on a scheduled sweep, and on demand; done saga steps keep their outputs and
+  pivots never repeat; compensations follow the same rules; no hand-written catch-and-wait. Names: `classifyFailure`,
+  `failed_awaiting_fix`, `resume` ([code/be/resilience.md](../code/be/resilience.md) BE-RESILIENCE-2, `packages/hfs/templates/be/patterns/jobs`).

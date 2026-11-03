@@ -33,8 +33,10 @@ Enforced by: `queue-producer-shape`, `outbox-write-tx` (R154, R152).
 
 Only `platform/queue` imports BullMQ or Redis for the queue. Its relay reads committed outbox rows and adds each job
 with the outbox id as job id, marking the row sent only after Redis confirmed the job durably, so a relay that crashes
-in between re-adds harmlessly. Attempts, backoff, retention and per-workspace limits are `queue.policy.ts`; a job out
-of attempts stays failed as the dead letter. Redis runs with append-only persistence on a named volume.
+in between re-adds harmlessly. Attempts, backoff, retention and per-workspace limits are `queue.policy.ts`; a job that fails in a way a retry cannot
+fix, or runs out of attempts, is parked as `failed_awaiting_fix` and resumed on its own (BE-RESILIENCE-2), never kept as a dead
+letter. `QueueRedelivery` hands a resumed job back under its new delivery id. Redis runs with append-only persistence on a named
+volume.
 
 Why: the relay is at least once; a deterministic job id makes it effectively once.
 

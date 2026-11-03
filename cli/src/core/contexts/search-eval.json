@@ -114,6 +114,7 @@
     { "q": "where does the seed data of an app live per environment, and may a seed file change the schema", "expect": ["PROJECT-STACKS-12", "R375"] },
     { "q": "seeds.yaml manifest entries sql data files once upsert after, shared seed level then the environment seed level", "expect": ["PROJECT-STACKS-12"] },
     { "q": "what must every push of an app carry so CI only re-checks the diff, and what refuses a push without warm check cache records", "expect": ["contexts/project/check-cache.md#the-operating-procedure"] },
-    { "q": "does the release gate run the checks in full or trust the committed cache, and what locks a release when the nightly cache verify is red", "expect": ["contexts/project/check-cache.md#the-nightly-verify"] }
+    { "q": "does the release gate run the checks in full or trust the committed cache, and what locks a release when the nightly cache verify is red", "expect": ["contexts/project/check-cache.md#the-nightly-verify"] },
+    { "q": "what happens when a background job or saga step fails for good, is it a dead letter, and how does it run again after a fix", "expect": ["BE-RESILIENCE-2"] }
   ]
 }
