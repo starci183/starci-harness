@@ -40,7 +40,8 @@ const profile = (patch: Partial<GoogleProfile> = {}): GoogleProfile => ({
 type Stubs = ReadonlyArray<readonly [string, unknown]>
 
 const build = async (answers: Stubs, matches = true) => {
-    const entityManager: MockEntityManager = answers.length === 0 ? mockEntityManager() : mockEntityManager({ query: answers })
+    const entityManager: MockEntityManager =
+        answers.length === 0 ? mockEntityManager() : mockEntityManager({ query: answers })
     fakeTransaction(entityManager)
     const passwords = mock<AuthPasswords>()
     passwords.verify.mockResolvedValue(matches)
@@ -70,7 +71,10 @@ describe("IdentityAuthenticatorService.verifyPassword", () => {
             [TOUCH_USER, []],
         ])
 
-        expect(await subject.verifyPassword("  A@Example.test ", "correct horse")).toEqual({ userId: "u-1", email: "a@example.test" })
+        expect(await subject.verifyPassword("  A@Example.test ", "correct horse")).toEqual({
+            userId: "u-1",
+            email: "a@example.test",
+        })
 
         expect(budget.counted).toHaveBeenCalledWith("login", "a@example.test", expect.any(Function))
         expect(passwords.verify).toHaveBeenCalledWith("correct horse", "hash")
@@ -82,7 +86,9 @@ describe("IdentityAuthenticatorService.verifyPassword", () => {
         const unknown = await build([[USER_BY_EMAIL, []]])
         const wrong = await build([[USER_BY_EMAIL, [accountByEmailRow()]]], false)
 
-        await expect(unknown.subject.verifyPassword("a@example.test", "pw")).rejects.toEqual(refusal(IdentityErrorCode.PairRefused))
+        await expect(unknown.subject.verifyPassword("a@example.test", "pw")).rejects.toEqual(
+            refusal(IdentityErrorCode.PairRefused),
+        )
         await expect(wrong.subject.verifyPassword("a@example.test", "pw")).rejects.toBeInstanceOf(IdentityError)
         expect(unknown.passwords.verify).toHaveBeenCalledWith("pw", "")
         expect(wrong.entityManager.query).not.toHaveBeenCalledWith(TOUCH_USER, expect.anything())
@@ -100,8 +106,12 @@ describe("IdentityAuthenticatorService.verifyPassword", () => {
         const disabled = await build([[USER_BY_EMAIL, [accountByEmailRow("disabled")]]])
         const unconfirmed = await build([[USER_BY_EMAIL, [accountByEmailRow("unconfirmed")]]])
 
-        await expect(disabled.subject.verifyPassword("a@example.test", "pw")).rejects.toEqual(refusal(IdentityErrorCode.AccountDisabled))
-        await expect(unconfirmed.subject.verifyPassword("a@example.test", "pw")).rejects.toEqual(refusal(IdentityErrorCode.EmailNotConfirmed))
+        await expect(disabled.subject.verifyPassword("a@example.test", "pw")).rejects.toEqual(
+            refusal(IdentityErrorCode.AccountDisabled),
+        )
+        await expect(unconfirmed.subject.verifyPassword("a@example.test", "pw")).rejects.toEqual(
+            refusal(IdentityErrorCode.EmailNotConfirmed),
+        )
         expect(disabled.entityManager.query).not.toHaveBeenCalledWith(TOUCH_USER, expect.anything())
         expect(unconfirmed.entityManager.query).not.toHaveBeenCalledWith(TOUCH_USER, expect.anything())
     })
@@ -111,8 +121,12 @@ describe("IdentityAuthenticatorService.signInWithGoogle", () => {
     it("refuses a profile without a verified address, and calls no door", async () => {
         const { subject, entityManager } = await build([])
 
-        await expect(subject.signInWithGoogle(profile({ emailVerified: false }))).rejects.toEqual(refusal(PassportErrorCode.GoogleRejected))
-        await expect(subject.signInWithGoogle(profile({ email: null }))).rejects.toEqual(refusal(PassportErrorCode.GoogleRejected))
+        await expect(subject.signInWithGoogle(profile({ emailVerified: false }))).rejects.toEqual(
+            refusal(PassportErrorCode.GoogleRejected),
+        )
+        await expect(subject.signInWithGoogle(profile({ email: null }))).rejects.toEqual(
+            refusal(PassportErrorCode.GoogleRejected),
+        )
         expect(entityManager.query).not.toHaveBeenCalled()
     })
 
@@ -128,7 +142,12 @@ describe("IdentityAuthenticatorService.signInWithGoogle", () => {
 
         expect(entityManager.query).not.toHaveBeenCalledWith(USER_BY_EMAIL, expect.anything())
         expect(entityManager.query).not.toHaveBeenCalledWith(CREATE_USER, expect.anything())
-        expect(entityManager.query).toHaveBeenCalledWith(TOUCH_USER, ["u-1", NOW, true, expect.stringContaining('"full_name":"A"')])
+        expect(entityManager.query).toHaveBeenCalledWith(TOUCH_USER, [
+            "u-1",
+            NOW,
+            true,
+            expect.stringContaining('"full_name":"A"'),
+        ])
     })
 
     it("links an existing account by its verified address", async () => {
@@ -143,10 +162,14 @@ describe("IdentityAuthenticatorService.signInWithGoogle", () => {
         expect(await subject.signInWithGoogle(profile())).toEqual({ userId: "u-1", email: "a@example.test" })
 
         expect(entityManager.query).toHaveBeenCalledWith(USER_BY_EMAIL, ["a@example.test"])
-        expect(entityManager.query).toHaveBeenCalledWith(LINK_GOOGLE, ["u-1", "g-1", expect.stringContaining('"sub":"g-1"'), NOW])
+        expect(entityManager.query).toHaveBeenCalledWith(LINK_GOOGLE, [
+            "u-1",
+            "g-1",
+            expect.stringContaining('"sub":"g-1"'),
+            NOW,
+        ])
         expect(entityManager.query).not.toHaveBeenCalledWith(CREATE_USER, expect.anything())
     })
-
 })
 
 describe("IdentityAuthenticatorService.signInWithGoogle (new accounts and refusals)", () => {
@@ -162,8 +185,20 @@ describe("IdentityAuthenticatorService.signInWithGoogle (new accounts and refusa
 
         expect(await subject.signInWithGoogle(profile())).toEqual({ userId: NEW_ID, email: "a@example.test" })
 
-        expect(entityManager.query).toHaveBeenCalledWith(CREATE_USER, [NEW_ID, "a@example.test", null, true, expect.stringContaining('"full_name":"A"'), NOW])
-        expect(entityManager.query).toHaveBeenCalledWith(LINK_GOOGLE, [NEW_ID, "g-1", expect.stringContaining("g-1"), NOW])
+        expect(entityManager.query).toHaveBeenCalledWith(CREATE_USER, [
+            NEW_ID,
+            "a@example.test",
+            null,
+            true,
+            expect.stringContaining('"full_name":"A"'),
+            NOW,
+        ])
+        expect(entityManager.query).toHaveBeenCalledWith(LINK_GOOGLE, [
+            NEW_ID,
+            "g-1",
+            expect.stringContaining("g-1"),
+            NOW,
+        ])
         expect(logger.info).toHaveBeenCalledWith(IdentitySignInLogEvent.AccountCreated, { userId: NEW_ID })
     })
 
@@ -177,7 +212,12 @@ describe("IdentityAuthenticatorService.signInWithGoogle (new accounts and refusa
 
         await subject.signInWithGoogle(profile({ name: null, picture: "https://img.example.test/a.png" }))
 
-        const keys = { avatar_url: "https://img.example.test/a.png", picture: "https://img.example.test/a.png", email: "A@Example.test", email_verified: true }
+        const keys = {
+            avatar_url: "https://img.example.test/a.png",
+            picture: "https://img.example.test/a.png",
+            email: "A@Example.test",
+            email_verified: true,
+        }
         expect(entityManager.query).toHaveBeenCalledWith(TOUCH_USER, ["u-1", NOW, true, JSON.stringify(keys)])
     })
 
@@ -202,8 +242,14 @@ describe("IdentityAuthenticatorService.signInWithGoogle (new accounts and refusa
         const gone = await build([...linked, [USER_BY_ID, []]])
         const addressless = await build([...linked, [USER_BY_ID, [accountByIdRow("addressless")]]])
 
-        await expect(disabled.subject.signInWithGoogle(profile())).rejects.toEqual(refusal(IdentityErrorCode.AccountDisabled))
-        await expect(gone.subject.signInWithGoogle(profile())).rejects.toEqual(refusal(PassportErrorCode.GoogleRejected))
-        await expect(addressless.subject.signInWithGoogle(profile())).rejects.toEqual(refusal(PassportErrorCode.GoogleRejected))
+        await expect(disabled.subject.signInWithGoogle(profile())).rejects.toEqual(
+            refusal(IdentityErrorCode.AccountDisabled),
+        )
+        await expect(gone.subject.signInWithGoogle(profile())).rejects.toEqual(
+            refusal(PassportErrorCode.GoogleRejected),
+        )
+        await expect(addressless.subject.signInWithGoogle(profile())).rejects.toEqual(
+            refusal(PassportErrorCode.GoogleRejected),
+        )
     })
 })

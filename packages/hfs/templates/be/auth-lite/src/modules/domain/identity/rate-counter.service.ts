@@ -31,9 +31,18 @@ export class IdentityRateCounterService implements RateCounter {
         const [live] = returnedRows(counted.raw, isCountedWindow)
         if (live !== undefined) return live.hits <= limit
         const resetAt = new Date(now.getTime() + windowMs)
-        const restarted = await this.entityManager.update(IdentityAttemptEntity, { key, resetAt: LessThanOrEqual(now) }, { hits: 1, resetAt })
+        const restarted = await this.entityManager.update(
+            IdentityAttemptEntity,
+            { key, resetAt: LessThanOrEqual(now) },
+            { hits: 1, resetAt },
+        )
         if ((restarted.affected ?? 0) === 0) {
-            await this.entityManager.createQueryBuilder(IdentityAttemptEntity, "attempt").insert().values({ key, hits: 1, resetAt }).orIgnore().execute()
+            await this.entityManager
+                .createQueryBuilder(IdentityAttemptEntity, "attempt")
+                .insert()
+                .values({ key, hits: 1, resetAt })
+                .orIgnore()
+                .execute()
         }
         return limit >= 1
     }

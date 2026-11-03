@@ -38,7 +38,15 @@ const SETTINGS = {
 } as unknown as MailOptions
 
 const refusal = (code: string): unknown => expect.objectContaining({ code })
-const tokenRow = (purpose: string): IdentityEmailTokenEntity => ({ id: "t-1", userId: "u-1", purpose, tokenHash: "h", expiresAt: new Date("2026-02-04T00:00:00.000Z"), usedAt: null, createdAt: NOW })
+const tokenRow = (purpose: string): IdentityEmailTokenEntity => ({
+    id: "t-1",
+    userId: "u-1",
+    purpose,
+    tokenHash: "h",
+    expiresAt: new Date("2026-02-04T00:00:00.000Z"),
+    usedAt: null,
+    createdAt: NOW,
+})
 
 const build = async (entityManager: MockEntityManager) => {
     const passwords = mock<AuthPasswords>()
@@ -68,42 +76,75 @@ const build = async (entityManager: MockEntityManager) => {
 
 describe("IdentityEmailService.signup", () => {
     it("creates an unconfirmed account through the door, stores only the digest of the link token and mails the link", async () => {
-        const entityManager = mockEntityManager({ query: [[USER_BY_EMAIL, []], [CREATE_USER, [{ be_auth_create_user: NEW_ID }]]], insert: [IdentityEmailTokenEntity, {}], update: [IdentityEmailTokenEntity, {}] })
+        const entityManager = mockEntityManager({
+            query: [
+                [USER_BY_EMAIL, []],
+                [CREATE_USER, [{ be_auth_create_user: NEW_ID }]],
+            ],
+            insert: [IdentityEmailTokenEntity, {}],
+            update: [IdentityEmailTokenEntity, {}],
+        })
         fakeTransaction(entityManager)
         const { subject, budget, mailer } = await build(entityManager)
 
         await subject.signup(" New@Example.test ", "correct horse")
 
         expect(budget.admit).toHaveBeenCalledWith("signup", "new@example.test")
-        expect(entityManager.query).toHaveBeenCalledWith(CREATE_USER, [NEW_ID, "new@example.test", "new-hash", false, "{}", NOW])
+        expect(entityManager.query).toHaveBeenCalledWith(CREATE_USER, [
+            NEW_ID,
+            "new@example.test",
+            "new-hash",
+            false,
+            "{}",
+            NOW,
+        ])
         const sent = mailer.send.mock.calls[0]?.[0]
         const url = /https:\/\/[^\s"<]+/u.exec(sent?.message.text ?? "")?.[0] ?? ""
         const token = new URL(url).searchParams.get("token") ?? ""
         expect(new URL(url).pathname).toBe("/auth/confirm")
         expect(token).toHaveLength(64)
-        expect(entityManager.insert).toHaveBeenCalledWith(IdentityEmailTokenEntity, expect.objectContaining({ userId: NEW_ID, purpose: "confirm", tokenHash: digestOf(token), usedAt: null }))
+        expect(entityManager.insert).toHaveBeenCalledWith(
+            IdentityEmailTokenEntity,
+            expect.objectContaining({ userId: NEW_ID, purpose: "confirm", tokenHash: digestOf(token), usedAt: null }),
+        )
         expect(sent?.to).toBe("new@example.test")
     })
 
     it("keeps the generated id when the create door answers no row", async () => {
-        const entityManager = mockEntityManager({ query: [[USER_BY_EMAIL, []], [CREATE_USER, []]], insert: [IdentityEmailTokenEntity, {}], update: [IdentityEmailTokenEntity, {}] })
+        const entityManager = mockEntityManager({
+            query: [
+                [USER_BY_EMAIL, []],
+                [CREATE_USER, []],
+            ],
+            insert: [IdentityEmailTokenEntity, {}],
+            update: [IdentityEmailTokenEntity, {}],
+        })
         fakeTransaction(entityManager)
         const { subject } = await build(entityManager)
 
         await subject.signup("new@example.test", "correct horse")
 
-        expect(entityManager.insert).toHaveBeenCalledWith(IdentityEmailTokenEntity, expect.objectContaining({ userId: NEW_ID }))
+        expect(entityManager.insert).toHaveBeenCalledWith(
+            IdentityEmailTokenEntity,
+            expect.objectContaining({ userId: NEW_ID }),
+        )
     })
 
     it("refuses a password the policy rejects before it touches an account", async () => {
         const { subject, mailer } = await build(mockEntityManager())
 
-        await expect(subject.signup("a@example.test", "short")).rejects.toEqual(refusal(IdentityErrorCode.PasswordInvalid))
+        await expect(subject.signup("a@example.test", "short")).rejects.toEqual(
+            refusal(IdentityErrorCode.PasswordInvalid),
+        )
         expect(mailer.send).not.toHaveBeenCalled()
     })
 
     it("mails a new link to an unconfirmed account and says nothing about a confirmed one", async () => {
-        const unconfirmed = mockEntityManager({ query: [USER_BY_EMAIL, [account("unconfirmed")]], insert: [IdentityEmailTokenEntity, {}], update: [IdentityEmailTokenEntity, {}] })
+        const unconfirmed = mockEntityManager({
+            query: [USER_BY_EMAIL, [account("unconfirmed")]],
+            insert: [IdentityEmailTokenEntity, {}],
+            update: [IdentityEmailTokenEntity, {}],
+        })
         fakeTransaction(unconfirmed)
         const confirmed = mockEntityManager({ query: [USER_BY_EMAIL, [account()]] })
         const first = await build(unconfirmed)
@@ -118,7 +159,14 @@ describe("IdentityEmailService.signup", () => {
     })
 
     it("answers as if the mail was sent when the mail server fails, and logs the failure", async () => {
-        const entityManager = mockEntityManager({ query: [[USER_BY_EMAIL, []], [CREATE_USER, [{ be_auth_create_user: NEW_ID }]]], insert: [IdentityEmailTokenEntity, {}], update: [IdentityEmailTokenEntity, {}] })
+        const entityManager = mockEntityManager({
+            query: [
+                [USER_BY_EMAIL, []],
+                [CREATE_USER, [{ be_auth_create_user: NEW_ID }]],
+            ],
+            insert: [IdentityEmailTokenEntity, {}],
+            update: [IdentityEmailTokenEntity, {}],
+        })
         fakeTransaction(entityManager)
         const { subject, mailer, logger } = await build(entityManager)
         mailer.send.mockRejectedValue(new Error("down"))
@@ -131,7 +179,9 @@ describe("IdentityEmailService.signup", () => {
         const { subject, budget } = await build(mockEntityManager())
         budget.admit.mockRejectedValue(new AuthError(IdentityErrorCode.TooManyAttempts))
 
-        await expect(subject.signup("a@example.test", "correct horse")).rejects.toEqual(refusal(IdentityErrorCode.TooManyAttempts))
+        await expect(subject.signup("a@example.test", "correct horse")).rejects.toEqual(
+            refusal(IdentityErrorCode.TooManyAttempts),
+        )
         budget.admit.mockRejectedValue(new Error("store down"))
         await expect(subject.resend("a@example.test")).rejects.toThrow("store down")
     })
@@ -139,7 +189,11 @@ describe("IdentityEmailService.signup", () => {
 
 describe("IdentityEmailService.resend", () => {
     it("mails only an unconfirmed password account", async () => {
-        const entityManager = mockEntityManager({ query: [USER_BY_EMAIL, [account("unconfirmed")]], insert: [IdentityEmailTokenEntity, {}], update: [IdentityEmailTokenEntity, {}] })
+        const entityManager = mockEntityManager({
+            query: [USER_BY_EMAIL, [account("unconfirmed")]],
+            insert: [IdentityEmailTokenEntity, {}],
+            update: [IdentityEmailTokenEntity, {}],
+        })
         fakeTransaction(entityManager)
         const { subject, mailer } = await build(entityManager)
         await subject.resend("a@example.test")
@@ -155,13 +209,20 @@ describe("IdentityEmailService.resend", () => {
 
 describe("IdentityEmailService.confirm", () => {
     it("spends a live link and stamps the confirmation through the door", async () => {
-        const entityManager = mockEntityManager({ findOne: [IdentityEmailTokenEntity, tokenRow("confirm")], update: [IdentityEmailTokenEntity, {}], query: [CONFIRM_USER, []] })
+        const entityManager = mockEntityManager({
+            findOne: [IdentityEmailTokenEntity, tokenRow("confirm")],
+            update: [IdentityEmailTokenEntity, {}],
+            query: [CONFIRM_USER, []],
+        })
         fakeTransaction(entityManager)
         const { subject } = await build(entityManager)
 
         await subject.confirm("the-token-of-the-link")
 
-        expect(entityManager.findOne).toHaveBeenCalledWith(IdentityEmailTokenEntity, expect.objectContaining({ lock: { mode: "pessimistic_write" } }))
+        expect(entityManager.findOne).toHaveBeenCalledWith(
+            IdentityEmailTokenEntity,
+            expect.objectContaining({ lock: { mode: "pessimistic_write" } }),
+        )
         expect(entityManager.query).toHaveBeenCalledWith(CONFIRM_USER, ["u-1", NOW])
     })
 
@@ -176,12 +237,18 @@ describe("IdentityEmailService.confirm", () => {
 
 describe("IdentityEmailService.forgot", () => {
     it("mails a reset link to a live account and to nobody else, with the same answer", async () => {
-        const entityManager = mockEntityManager({ query: [USER_BY_EMAIL, [account()]], insert: [IdentityEmailTokenEntity, {}], update: [IdentityEmailTokenEntity, {}] })
+        const entityManager = mockEntityManager({
+            query: [USER_BY_EMAIL, [account()]],
+            insert: [IdentityEmailTokenEntity, {}],
+            update: [IdentityEmailTokenEntity, {}],
+        })
         fakeTransaction(entityManager)
         const known = await build(entityManager)
         await known.subject.forgot("a@example.test", "vi")
         expect(known.budget.admit).toHaveBeenCalledWith("reset", "a@example.test")
-        expect(known.mailer.send.mock.calls[0]?.[0].message.text).toContain("https://app.example.test/auth/reset?token=")
+        expect(known.mailer.send.mock.calls[0]?.[0].message.text).toContain(
+            "https://app.example.test/auth/reset?token=",
+        )
         await known.subject.forgot("a@example.test")
         expect(known.mailer.send).toHaveBeenCalledTimes(2)
 
@@ -195,7 +262,11 @@ describe("IdentityEmailService.forgot", () => {
 
 describe("IdentityEmailService.reset", () => {
     it("sets the new password and confirms the mailbox its link proved through the door, then ends every session of the person", async () => {
-        const entityManager = mockEntityManager({ findOne: [IdentityEmailTokenEntity, tokenRow("reset")], update: [IdentityEmailTokenEntity, {}], query: [SET_PASSWORD, []] })
+        const entityManager = mockEntityManager({
+            findOne: [IdentityEmailTokenEntity, tokenRow("reset")],
+            update: [IdentityEmailTokenEntity, {}],
+            query: [SET_PASSWORD, []],
+        })
         fakeTransaction(entityManager)
         const { subject, sessions } = await build(entityManager)
 
@@ -219,7 +290,14 @@ describe("IdentityEmailService.reset", () => {
 describe("IdentityEmailService language", () => {
     it("writes the mail in the language the request names, and in the default one when it names none the mails are written in", async () => {
         const subjectFor = async (language?: string): Promise<string | undefined> => {
-            const entityManager = mockEntityManager({ query: [[USER_BY_EMAIL, []], [CREATE_USER, [{ be_auth_create_user: NEW_ID }]]], insert: [IdentityEmailTokenEntity, {}], update: [IdentityEmailTokenEntity, {}] })
+            const entityManager = mockEntityManager({
+                query: [
+                    [USER_BY_EMAIL, []],
+                    [CREATE_USER, [{ be_auth_create_user: NEW_ID }]],
+                ],
+                insert: [IdentityEmailTokenEntity, {}],
+                update: [IdentityEmailTokenEntity, {}],
+            })
             fakeTransaction(entityManager)
             const { subject, mailer } = await build(entityManager)
             await subject.signup("a@example.test", "correct horse", language)

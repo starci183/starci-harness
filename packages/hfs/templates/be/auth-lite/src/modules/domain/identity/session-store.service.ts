@@ -37,7 +37,10 @@ const transactionOf = (scoped: EntityManager): SessionTransaction => ({
         })
     },
     findTokenForUpdate: async (tokenHash) => {
-        const row = await scoped.findOne(IdentityRefreshTokenEntity, { where: { tokenHash }, lock: { mode: "pessimistic_write" } })
+        const row = await scoped.findOne(IdentityRefreshTokenEntity, {
+            where: { tokenHash },
+            lock: { mode: "pessimistic_write" },
+        })
         return row === null ? null : recordOf(row)
     },
     markTokenUsed: async (tokenId, at) => {

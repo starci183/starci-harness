@@ -31,7 +31,10 @@ const build = async (entityManager: MockEntityManager) => {
 describe("IdentityRateCounterService.consume", () => {
     it("counts a hit in the live window and compares it with the limit", async () => {
         const entityManager = mockEntityManager()
-        const [counting] = queueQueryBuilders(entityManager, [{ execute: { raw: [{ hits: 3 }] } }, { execute: { raw: [{ hits: 4 }] } }])
+        const [counting] = queueQueryBuilders(entityManager, [
+            { execute: { raw: [{ hits: 3 }] } },
+            { execute: { raw: [{ hits: 4 }] } },
+        ])
         const subject = await build(entityManager)
 
         expect(await subject.consume("login:abc", WINDOW_MS, 3)).toBe(true)
@@ -50,7 +53,11 @@ describe("IdentityRateCounterService.consume", () => {
 
         expect(await subject.consume("login:abc", WINDOW_MS, 3)).toBe(true)
 
-        expect(entityManager.update).toHaveBeenCalledWith(IdentityAttemptEntity, { key: "login:abc", resetAt: LessThanOrEqual(NOW) }, { hits: 1, resetAt: RESET_AT })
+        expect(entityManager.update).toHaveBeenCalledWith(
+            IdentityAttemptEntity,
+            { key: "login:abc", resetAt: LessThanOrEqual(NOW) },
+            { hits: 1, resetAt: RESET_AT },
+        )
     })
 
     it("opens a window when the restart reports no affected count", async () => {

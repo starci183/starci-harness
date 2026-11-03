@@ -31,22 +31,46 @@ const build = async (entityManager: MockEntityManager = mockEntityManager()) => 
 
 describe("IdentitySessionStoreService.transaction", () => {
     it("opens a session and stores a live token in one transaction", async () => {
-        const { subject, entityManager, transaction } = await build(mockEntityManager({ insert: [[IdentitySessionEntity, {}], [IdentityRefreshTokenEntity, {}]] }))
+        const { subject, entityManager, transaction } = await build(
+            mockEntityManager({
+                insert: [
+                    [IdentitySessionEntity, {}],
+                    [IdentityRefreshTokenEntity, {}],
+                ],
+            }),
+        )
 
         await subject.transaction(async (tx) => {
             await tx.openSession({ id: "s-1", userId: "u-1", now: NOW, userAgent: "agent", ip: "203.0.113.9" })
             await tx.insertToken({ id: "t-1", sessionId: "s-1", userId: "u-1", tokenHash: "h-1", expiresAt: LATER })
         })
 
-        expect(entityManager.insert).toHaveBeenCalledWith(IdentitySessionEntity, { id: "s-1", userId: "u-1", createdAt: NOW, refreshedAt: NOW, userAgent: "agent", ip: "203.0.113.9" })
-        expect(entityManager.insert).toHaveBeenCalledWith(IdentityRefreshTokenEntity, { id: "t-1", sessionId: "s-1", userId: "u-1", tokenHash: "h-1", expiresAt: LATER, usedAt: null })
+        expect(entityManager.insert).toHaveBeenCalledWith(IdentitySessionEntity, {
+            id: "s-1",
+            userId: "u-1",
+            createdAt: NOW,
+            refreshedAt: NOW,
+            userAgent: "agent",
+            ip: "203.0.113.9",
+        })
+        expect(entityManager.insert).toHaveBeenCalledWith(IdentityRefreshTokenEntity, {
+            id: "t-1",
+            sessionId: "s-1",
+            userId: "u-1",
+            tokenHash: "h-1",
+            expiresAt: LATER,
+            usedAt: null,
+        })
         expect(transaction.commits).toBe(1)
     })
 
     it("reads the token for update, marks it used and drops the expired ones", async () => {
         const { subject, entityManager } = await build(
             mockEntityManager({
-                findOne: [[IdentityRefreshTokenEntity, row(NOW)], [IdentityRefreshTokenEntity, null]],
+                findOne: [
+                    [IdentityRefreshTokenEntity, row(NOW)],
+                    [IdentityRefreshTokenEntity, null],
+                ],
                 update: [IdentityRefreshTokenEntity, {}],
                 delete: [IdentityRefreshTokenEntity, {}],
             }),
@@ -59,11 +83,24 @@ describe("IdentitySessionStoreService.transaction", () => {
             await tx.deleteExpiredTokens("u-1", NOW)
         })
 
-        expect(found).toEqual({ id: "t-1", sessionId: "s-1", userId: "u-1", tokenHash: "h-1", expiresAt: LATER, usedAt: NOW })
+        expect(found).toEqual({
+            id: "t-1",
+            sessionId: "s-1",
+            userId: "u-1",
+            tokenHash: "h-1",
+            expiresAt: LATER,
+            usedAt: NOW,
+        })
         expect(missing).toBeNull()
-        expect(entityManager.findOne).toHaveBeenCalledWith(IdentityRefreshTokenEntity, { where: { tokenHash: "h-1" }, lock: { mode: "pessimistic_write" } })
+        expect(entityManager.findOne).toHaveBeenCalledWith(IdentityRefreshTokenEntity, {
+            where: { tokenHash: "h-1" },
+            lock: { mode: "pessimistic_write" },
+        })
         expect(entityManager.update).toHaveBeenCalledWith(IdentityRefreshTokenEntity, { id: "t-1" }, { usedAt: NOW })
-        expect(entityManager.delete).toHaveBeenCalledWith(IdentityRefreshTokenEntity, { userId: "u-1", expiresAt: LessThan(NOW) })
+        expect(entityManager.delete).toHaveBeenCalledWith(IdentityRefreshTokenEntity, {
+            userId: "u-1",
+            expiresAt: LessThan(NOW),
+        })
     })
 
     it("rolls the transaction back when the work throws", async () => {
@@ -77,14 +114,23 @@ describe("IdentitySessionStoreService.transaction", () => {
 
 describe("IdentitySessionStoreService", () => {
     it("finds a token outside a transaction, or none", async () => {
-        const { subject } = await build(mockEntityManager({ findOne: [[IdentityRefreshTokenEntity, row(null)], [IdentityRefreshTokenEntity, null]] }))
+        const { subject } = await build(
+            mockEntityManager({
+                findOne: [
+                    [IdentityRefreshTokenEntity, row(null)],
+                    [IdentityRefreshTokenEntity, null],
+                ],
+            }),
+        )
 
         expect(await subject.findToken("h-1")).toMatchObject({ id: "t-1", usedAt: null })
         expect(await subject.findToken("h-2")).toBeNull()
     })
 
     it("touches, closes and closes the others of a session", async () => {
-        const { subject, entityManager } = await build(mockEntityManager({ update: [IdentitySessionEntity, {}], delete: [IdentitySessionEntity, {}] }))
+        const { subject, entityManager } = await build(
+            mockEntityManager({ update: [IdentitySessionEntity, {}], delete: [IdentitySessionEntity, {}] }),
+        )
 
         await subject.touchSession("s-1", NOW)
         await subject.closeSession("s-1")

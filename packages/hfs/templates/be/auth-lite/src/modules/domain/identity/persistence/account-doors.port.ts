@@ -49,7 +49,11 @@ const isAccountByEmail: (value: unknown) => value is AccountByEmail = rowShape({
     email_confirmed_at: "date?",
     disabled: "boolean",
 })
-const isAccountById: (value: unknown) => value is AccountById = rowShape({ id: "string", email: "string?", disabled: "boolean" })
+const isAccountById: (value: unknown) => value is AccountById = rowShape({
+    id: "string",
+    email: "string?",
+    disabled: "boolean",
+})
 const isLinkedAccount = rowShape({ be_auth_user_by_google: "string?" })
 const isCreatedAccount = rowShape({ be_auth_create_user: "string" })
 
@@ -60,7 +64,10 @@ const isCreatedAccount = rowShape({ be_auth_create_user: "string" })
 export const accountDoors = {
     /** The account of an exact address, or undefined. */
     async userByEmail(manager: EntityManager, email: string): Promise<AccountByEmail | undefined> {
-        const [row] = returnedRows(await callDbFunction(manager, "public.be_auth_user_by_email", [email]), isAccountByEmail)
+        const [row] = returnedRows(
+            await callDbFunction(manager, "public.be_auth_user_by_email", [email]),
+            isAccountByEmail,
+        )
         return row
     },
     /** The standing of an account by id, or undefined. */
@@ -70,7 +77,10 @@ export const accountDoors = {
     },
     /** The account a Google subject is linked to, or null. */
     async userByGoogle(manager: EntityManager, subject: string): Promise<string | null> {
-        const [row] = returnedRows(await callDbFunction(manager, "public.be_auth_user_by_google", [subject]), isLinkedAccount)
+        const [row] = returnedRows(
+            await callDbFunction(manager, "public.be_auth_user_by_google", [subject]),
+            isLinkedAccount,
+        )
         return row?.be_auth_user_by_google ?? null
     },
     /** Creates an account and answers its id. */
@@ -88,7 +98,13 @@ export const accountDoors = {
         await callDbFunction(manager, "public.be_auth_confirm_user", [userId, now])
     },
     /** Sets the password hash of an account; `confirm` also confirms the mailbox, as a spent reset link proves it. */
-    async setPassword(manager: EntityManager, userId: string, hash: string, confirm: boolean, now: Date): Promise<void> {
+    async setPassword(
+        manager: EntityManager,
+        userId: string,
+        hash: string,
+        confirm: boolean,
+        now: Date,
+    ): Promise<void> {
         await callDbFunction(manager, "public.be_auth_set_password", [userId, hash, confirm, now])
     },
     /** Records a sign-in, confirms the mailbox when asked, and fills the profile keys the person has not set. */

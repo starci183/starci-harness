@@ -8,7 +8,12 @@ import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
 import { IDENTITY_AUTH_DOORS, IDENTITY_AUTH_SESSIONS } from "./identity.decorators"
 import { IdentitySignInService } from "./sign-in.service"
 
-const GRANT: AccessGrant = { accessToken: "token", expiresIn: 900, expiresAt: "2026-02-03T04:20:06.000Z", user: { id: "u-1", email: "a@example.test" } }
+const GRANT: AccessGrant = {
+    accessToken: "token",
+    expiresIn: 900,
+    expiresAt: "2026-02-03T04:20:06.000Z",
+    user: { id: "u-1", email: "a@example.test" },
+}
 const REDIRECT: GoogleRedirect = { url: "https://app.example.test/", statusCode: 303 }
 const EXCHANGE = mock<HttpExchange>()
 
@@ -16,7 +21,11 @@ const build = async () => {
     const doors = mock<AuthDoors>()
     const sessions = mock<AuthSessions>()
     const moduleRef = await Test.createTestingModule({
-        providers: [IdentitySignInService, { provide: IDENTITY_AUTH_DOORS, useValue: doors }, { provide: IDENTITY_AUTH_SESSIONS, useValue: sessions }],
+        providers: [
+            IdentitySignInService,
+            { provide: IDENTITY_AUTH_DOORS, useValue: doors },
+            { provide: IDENTITY_AUTH_SESSIONS, useValue: sessions },
+        ],
     }).compile()
     return { subject: moduleRef.get(IdentitySignInService), doors, sessions }
 }
@@ -38,7 +47,15 @@ describe("IdentitySignInService", () => {
         await subject.beginGoogle(EXCHANGE)
         expect(await subject.completeGoogle(EXCHANGE)).toBe(REDIRECT)
 
-        for (const door of [doors.login, doors.refresh, doors.session, doors.logout, doors.beginGoogle, doors.completeGoogle]) expect(door).toHaveBeenCalledWith(EXCHANGE)
+        for (const door of [
+            doors.login,
+            doors.refresh,
+            doors.session,
+            doors.logout,
+            doors.beginGoogle,
+            doors.completeGoogle,
+        ])
+            expect(door).toHaveBeenCalledWith(EXCHANGE)
     })
 
     it("serves the public keys", async () => {
@@ -61,7 +78,9 @@ describe("IdentitySignInService", () => {
         const { subject, sessions } = await build()
         sessions.endOthers.mockRejectedValue(new AuthError("IDENTITY_UNAUTHENTICATED"))
 
-        await expect(subject.endOthers({ id: "u-1", role: "authenticated" })).rejects.toMatchObject({ code: IdentityErrorCode.Unauthenticated })
+        await expect(subject.endOthers({ id: "u-1", role: "authenticated" })).rejects.toMatchObject({
+            code: IdentityErrorCode.Unauthenticated,
+        })
         expect(sessions.endOthers).toHaveBeenCalledWith("u-1", undefined)
     })
 

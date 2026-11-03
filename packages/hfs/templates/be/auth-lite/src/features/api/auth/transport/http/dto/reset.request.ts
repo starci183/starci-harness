@@ -14,5 +14,4 @@ export class ResetRequest {
     @MinLength(1)
     @MaxLength(128)
     password!: string
-
 }

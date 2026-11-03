@@ -15,7 +15,20 @@ import { ResetHandler } from "./application/reset.handler"
 import { ConfigurableModuleClass } from "./auth.module-definition"
 
 @Module({
-    providers: [LoginHandler, RefreshHandler, SessionHandler, LogoutHandler, GoogleBeginHandler, GoogleCompleteHandler, GetJwksHandler, SignupHandler, ResendHandler, ConfirmHandler, ForgotHandler, ResetHandler],
+    providers: [
+        LoginHandler,
+        RefreshHandler,
+        SessionHandler,
+        LogoutHandler,
+        GoogleBeginHandler,
+        GoogleCompleteHandler,
+        GetJwksHandler,
+        SignupHandler,
+        ResendHandler,
+        ConfirmHandler,
+        ForgotHandler,
+        ResetHandler,
+    ],
 })
 /** The auth feature: the handlers behind the sign-in doors. */
 export class AuthApiModule extends ConfigurableModuleClass {}

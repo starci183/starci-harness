@@ -10,7 +10,10 @@ export type EmailDoorName = "signup" | "resend" | "confirm" | "forgot" | "reset"
 const doors = createAuthClient({ apiOrigin: () => apiUrl() })
 
 /** Calls one email door with its posted fields; answers its failure (the wire code and its kind), or undefined when the back end accepted it. */
-export const sendEmailDoor = async (door: EmailDoorName, body: Readonly<Record<string, string | undefined>>): Promise<AuthFailure | undefined> => {
+export const sendEmailDoor = async (
+    door: EmailDoorName,
+    body: Readonly<Record<string, string | undefined>>,
+): Promise<AuthFailure | undefined> => {
     const outcome = await doors.send(door, body)
     return outcome.success ? undefined : { code: outcome.error, kind: outcome.message, message: "" }
 }

@@ -96,7 +96,9 @@ export class AuthController {
     @Public({ reason: PublicReason.AuthHandshake })
     @RateLimit(RateTier.Strict)
     signup(@Body() body: SignupRequest): Promise<void> {
-        return this.commandBus.execute(new SignupCommand({ request: { email: body.email, password: body.password, language: body.language } }))
+        return this.commandBus.execute(
+            new SignupCommand({ request: { email: body.email, password: body.password, language: body.language } }),
+        )
     }
 
     /** Mails a new confirmation link; always answers 204. */

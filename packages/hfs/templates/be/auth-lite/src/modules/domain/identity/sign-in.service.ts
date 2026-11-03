@@ -4,7 +4,14 @@ import { AuthError, PassportError, PassportErrorCode } from "@modules/integratio
 import type { Principal } from "@modules/platform/cqrs"
 import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
 import { InjectAuthDoors, InjectAuthSessions } from "./identity.decorators"
-import type { AccessGrant, AuthDoors, AuthSessions, GoogleRedirect, HttpExchange, JwksDocument } from "@modules/integrations/passport"
+import type {
+    AccessGrant,
+    AuthDoors,
+    AuthSessions,
+    GoogleRedirect,
+    HttpExchange,
+    JwksDocument,
+} from "@modules/integrations/passport"
 
 /** The wire codes of the package that belong to the passport family (the token, key and Google legs). */
 const PASSPORT_CODES: ReadonlyArray<PassportErrorCode> = [
