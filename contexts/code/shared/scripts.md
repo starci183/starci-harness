@@ -37,7 +37,7 @@ diff); R52 FE_WIRE_GENERATED.
 ## SHARED-SCRIPTS-3 CI judges the app after the push
 
 The app's one workflow (`.github/workflows/ci.yml`, managed) runs on main: a fast job (production dependency audit,
-`format:check`, `typecheck`), lint per side, the unit suite in shards with one coverage merge proving 100 per measured
+`format:check`, in lite the boot proof `app check --gate wiring` of R272, `typecheck`), lint per side, the unit suite in shards with one coverage merge proving 100 per measured
 file, the build of the back end and of each front-end app, the Sonar gate on `v*` tags, and in lite the database
 migration checks and the row types. An op neither waits for it nor edits it; a red CI becomes its own task scoped to
 the red checks.

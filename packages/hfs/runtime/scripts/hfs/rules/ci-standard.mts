@@ -132,6 +132,18 @@ function cacheSavedAlways(doc: Parsed, say: Parsed) {
   return out;
 }
 
+const BOOT_PROOF = /\bapp check\b[^\n]*--gate[ =]wiring\b/;
+
+function bootProof(doc: Parsed, edition: string, say: Parsed) {
+  if (edition !== 'lite') return [];
+  const steps = record(doc.jobs?.fast) ? stepsOf(doc.jobs.fast) : [];
+  const proof = steps.findIndex((step: Parsed) => BOOT_PROOF.test(runOf(step)));
+  const typecheck = steps.findIndex((step: Parsed) => /\bnpm run typecheck\b/.test(runOf(step)));
+  return proof < 0 || (typecheck >= 0 && proof > typecheck)
+    ? [say('boot-proof', 'the fast job runs the boot proof (starci app check --gate wiring) before its typecheck')]
+    : [];
+}
+
 function fullHistory(doc: Parsed, say: Parsed) {
   const out = [];
   for (const [id, job] of jobsOf(doc)) {
@@ -223,6 +235,7 @@ export function ciStandardFindings({ doc, file, scope, edition = 'full', standar
   const say = (item: Parsed, why: string) => found(CI_STANDARD, file, `${CI_STANDARD} ${file}: [${item}] ${why} (knowledge/hfs/ci-standard.yaml)`, { item });
   const checks = {
     'job-shape': () => jobShape(doc, edition, standard, say),
+    'boot-proof': () => bootProof(doc, edition, say),
     'full-history-base-ref': () => fullHistory(doc, say),
     'heap-per-step': () => heapPerStep(doc, standard, say),
     'sonar-lint-per-side': () => sonarLintPerSide(doc, say),
