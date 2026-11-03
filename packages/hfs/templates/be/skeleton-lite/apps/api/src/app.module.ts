@@ -10,7 +10,7 @@ import { domainModules } from "./compose/domain"
 import { systemModules } from "./compose/system"
 import { apiModules } from "./compose/api"
 import { webhooksModules } from "./compose/webhooks"
-import { integrationProviders } from "./compose/integrations"
+import { integrationModules, integrationProviders } from "./compose/integrations"
 import type { ApiOptions } from "./api.options"
 
 @Module({})
@@ -23,6 +23,7 @@ export class AppModule {
             module: AppModule,
             imports: [
                 ...platformModules(options),
+                ...integrationModules(options),
                 ...domainModules(tokens.verify),
                 ...systemModules(),
                 ...apiModules(),

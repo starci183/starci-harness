@@ -76,7 +76,7 @@ test('logic is refused off a coverage-required unit-beside directory slot, outsi
   }
 });
 
-const STORAGE_FILES = ['index.ts', 'object-storage.client.ts', 'object-storage.client.spec.ts', 'object-storage.config.ts', 'object-storage.decorators.ts', 'object-storage.options.ts'];
+const STORAGE_FILES = ['index.ts', 'object-storage.config.spec.ts', 'object-storage.config.ts', 'object-storage.decorators.ts', 'object-storage.module.ts', 'object-storage.options.ts'];
 const OLD_STORAGE_FILES = ['index.ts', 'storage.client.ts', 'storage.config.ts', 'storage.decorators.ts', 'storage.options.ts'];
 
 /** A clean lite app whose object-storage folder holds exactly `names` (with the skeleton's own content where it has the file). */
@@ -100,7 +100,7 @@ test('a scaffold-shaped object-storage tree with the skeleton names is complete 
   const repoRoot = storageApp(made, STORAGE_FILES);
   assert.deepEqual(storageFindings(checkRepo({ repoRoot, manifest })), []);
   const resolver = resolverOf('lite');
-  for (const name of [...STORAGE_FILES, 'object-storage.module.ts', 'object-storage.module-definition.ts', 'errors/object-storage.error.ts']) {
+  for (const name of [...STORAGE_FILES.filter((file) => !file.endsWith('.spec.ts')), 'errors/object-storage.error.ts']) {
     assert.equal(allowsFile(resolver, `be/${STORAGE}${name}`)?.allowed, true, name);
   }
 });
@@ -110,7 +110,12 @@ test('the old storage.* names leave the object-storage slot incomplete and are n
   t.after(() => cleanup(made));
   const repoRoot = storageApp(made, OLD_STORAGE_FILES);
   const missing = storageFindings(checkRepo({ repoRoot, manifest })).filter((finding) => finding.code === 'HFS_SLOT_REQUIRED_MISSING').map((finding) => finding.path).sort();
-  assert.deepEqual(missing, ['client', 'config', 'decorators', 'options'].map((part) => `be/${STORAGE}object-storage.${part}.ts`));
+  assert.deepEqual(missing, ['config', 'decorators', 'module', 'options'].map((part) => `be/${STORAGE}object-storage.${part}.ts`));
   const resolver = resolverOf('lite');
   for (const name of OLD_STORAGE_FILES.filter((name) => name !== 'index.ts')) assert.equal(allowsFile(resolver, `be/${STORAGE}${name}`)?.allowed, false, name);
+});
+
+test('the hand-written S3 client of the storage integration is no name the slot admits: the package owns it', () => {
+  const resolver = resolverOf('lite');
+  for (const name of ['object-storage.client.ts', 'object-storage.client.spec.ts', 'object-storage.module-definition.ts']) assert.equal(allowsFile(resolver, `be/${STORAGE}${name}`)?.allowed, false, name);
 });
