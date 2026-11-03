@@ -58,12 +58,12 @@ test("refresh-token-cookie-only: the refresh token is never a body field and no 
     })
 })
 
-test("infra-import-owner: the identity libraries belong to no app file, @starci/auth to integrations/passport, and the S3 client to integrations/object-storage", () => {
+test("infra-import-owner: the identity libraries belong to no app file, @starci/auth to integrations/passport, and @starci/object-storage to integrations/object-storage (the S3 libraries to no app file)", () => {
     tester.run("infra-import-owner", infraImportOwner, {
         valid: [
             { filename: PASSPORT, code: `import { AuthModule } from "@starci/auth/server"; export const m = AuthModule` },
             { filename: PASSPORT, code: `import { generateTestKeyPair } from "@starci/auth/testing"; export const g = generateTestKeyPair` },
-            { filename: STORAGE, code: `import { S3Client } from "@aws-sdk/client-s3"; import { getSignedUrl } from "@aws-sdk/s3-request-presigner"; export const s = [S3Client, getSignedUrl]` },
+            { filename: STORAGE, code: `import { ObjectStorageModule } from "@starci/object-storage"; export const s = ObjectStorageModule` },
         ],
         invalid: [
             { filename: DOMAIN, code: `import { AuthModule } from "@starci/auth/server"; export const m = AuthModule`, errors: [{ messageId: "foreign" }] },
@@ -72,8 +72,9 @@ test("infra-import-owner: the identity libraries belong to no app file, @starci/
             { filename: PASSPORT, code: `import { compare } from "bcryptjs"; export const c = compare`, errors: [{ messageId: "nowhere" }] },
             { filename: PASSPORT, code: `import { SignJWT } from "jose"; export const s = SignJWT`, errors: [{ messageId: "nowhere" }] },
             { filename: DOMAIN, code: `import { JwtService } from "@nestjs/jwt"; export const j = JwtService`, errors: [{ messageId: "nowhere" }] },
-            { filename: DOMAIN, code: `import { S3Client } from "@aws-sdk/client-s3"; export const s = S3Client`, errors: [{ messageId: "foreign" }] },
+            { filename: DOMAIN, code: `import { S3Client } from "@aws-sdk/client-s3"; export const s = S3Client`, errors: [{ messageId: "nowhere" }] },
             { filename: STORAGE, code: `import { Client } from "minio"; export const c = Client`, errors: [{ messageId: "nowhere" }] },
+            { filename: STORAGE, code: `import { S3Client } from "@aws-sdk/client-s3"; export const s = S3Client`, errors: [{ messageId: "nowhere" }] },
             { filename: PASSPORT, code: `import { hash } from "bcrypt"; export const h = hash`, errors: [{ messageId: "nowhere" }] },
             { filename: PASSPORT, code: `import { createClient } from "@supabase/supabase-js"; export const c = createClient`, errors: [{ messageId: "nowhere" }] },
         ],
