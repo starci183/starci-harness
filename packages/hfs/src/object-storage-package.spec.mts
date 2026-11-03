@@ -45,17 +45,17 @@ test('the lite starter imports the package in its object-storage folder alone an
   assert.deepEqual([...importers], ['src/modules/integrations/object-storage']);
 });
 
-test('the glue is a module, the typed options, the config parser and the injectors, with no hand-written S3 client', () => {
+test('the glue is a module with its definition, the typed options, the config parser and the injectors, with no hand-written S3 client', () => {
   const names = fs.readdirSync(GLUE).filter((name) => fs.statSync(path.join(GLUE, name)).isFile()).sort();
-  assert.deepEqual(names, ['index.ts', 'object-storage.config.spec.ts', 'object-storage.config.ts', 'object-storage.decorators.ts', 'object-storage.module.ts', 'object-storage.options.ts']);
+  assert.deepEqual(names, ['index.ts', 'object-storage.config.ts', 'object-storage.decorators.ts', 'object-storage.module-definition.ts', 'object-storage.module.ts', 'object-storage.options.ts']);
   const module = fs.readFileSync(path.join(GLUE, 'object-storage.module.ts'), 'utf8');
-  assert.match(module, /ObjectStorageModule\.registerAsync\(/);
-  assert.match(module, /isGlobal: true/);
+  assert.match(module, /StorageModule\.registerAsync\(/);
+  assert.match(module, /extends ConfigurableModuleClass/);
 });
 
 test('the starter composes the module once, in the integration modules of the API root, and binds no storage token by hand', () => {
   const compose = fs.readFileSync(path.join(STARTER, 'apps', 'api', 'src', 'compose', 'integrations.ts'), 'utf8');
-  assert.match(compose, /integrationModules[^]*objectStorageModule\(options\.objectStorage\)/);
+  assert.match(compose, /integrationModules[^]*ObjectStorageModule\.register\(\{ \.\.\.options\.objectStorage, isGlobal: true \}\)/);
   assert.doesNotMatch(compose, /provide: OBJECT_STORAGE\b/);
   assert.match(fs.readFileSync(path.join(STARTER, 'apps', 'api', 'src', 'app.module.ts'), 'utf8'), /\.\.\.integrationModules\(options\)/);
 });
