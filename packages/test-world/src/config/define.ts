@@ -31,8 +31,20 @@ export interface DefinedTestWorld<
 }
 
 /**
+ * The world API of a declaration whose apps, fakes and siblings are not named in the type: what a config file annotates its world with so it can export
+ * `useTestWorld` and `useSandbox` with explicit types (`const world: TestWorldApi = defineTestWorld({ ... })`). An app name is any string here; the
+ * declaration itself still checks its own apps, fakes and stacks.
+ */
+export type TestWorldApi = DefinedTestWorld<
+    Readonly<Record<string, RegisterableModule<never>>>,
+    Readonly<Record<string, FakeDefinition>>,
+    Readonly<Record<string, SiblingServiceDeclaration>>,
+    StacksDeclaration
+>
+
+/**
  * The ONE declaration of a repository's test world, written in `src/tests/world/test-world.config.ts`:
- * `export const { useTestWorld, useSandbox } = defineTestWorld({ stack, stacks, k3d, services, fakes, apps, migrate, identity })`, the one
+ * `const world: TestWorldApi = defineTestWorld({ stack, stacks, k3d, services, fakes, apps, migrate, identity })` with `export const useTestWorld: TestWorldApi["useTestWorld"] = world.useTestWorld` and the same for `useSandbox` (the destructured export of the call is read too), the one
  * named form R47 reads (R89 refuses a default export); `use-test-world.ts` re-exports `useTestWorld` and `useSandbox`, the entry the specs import.
  * Selection and overrides only: service list and image versions come from the stack definition. The jest globalSetup
  * (`@starci/test-world/global-setup`) loads this file, attaches to (or starts) the shared warm stack, migrates once and

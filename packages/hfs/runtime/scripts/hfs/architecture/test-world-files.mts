@@ -60,9 +60,10 @@ type FakeProviders = Map<string, string>;
  *    its own slot, be.tests.world.kit) plus files at its root whose role suffix is in ruleParams.be.suffixes
  *    (`stripe.client.ts`, `checkout.contracts.ts`, `test-world.config.ts`, ...). Every tracked file below the world root is
  *    matched by the slot's own entries through `allowsFile`.
- * 2. The declaration. `test-world.config.ts` declares the world in ONE form, the named export R89 allows:
- *    `export const { useTestWorld, useSandbox } = defineTestWorld({ ... })` (an exported `const` initialized by a
- *    `defineTestWorld(<object literal>)` call). A config without it (a default export, or a declaration the machine cannot
+ * 2. The declaration. `test-world.config.ts` declares the world in a named form R89 allows: the destructured export
+ *    `export const { useTestWorld, useSandbox } = defineTestWorld({ ... })`, or the typed form
+ *    `const world: TestWorldApi = defineTestWorld({ ... })` whose `useTestWorld` and `useSandbox` are exported consts typed from
+ *    `TestWorldApi` (a `const` initialized by a `defineTestWorld(<object literal>)` call). A config without it (a default export, or a declaration the machine cannot
  *    read) is refused: the world it declares could not be judged.
  * 3. Fakes against the stack (owner refinement 2026-09-30). Every service the stack declares runs real in the world; a fake
  *    (a `fakes/<provider>/` folder, or a `fakes` entry of the declaration such as `smtp: smtpFake()`) is a network-edge fake
@@ -84,6 +85,7 @@ const FAKES_DIRECTORY = 'fakes/';
 const CONFIG_FILE = 'test-world.config.ts';
 const DEFINE = 'defineTestWorld';
 const NAMED_FORM = `export const { useTestWorld, useSandbox } = ${DEFINE}({ ... })`;
+const TYPED_FORM = `const world: TestWorldApi = ${DEFINE}({ ... })` + ' with export const useTestWorld / useSandbox typed from it';
 const defaultEnvironment = DEFAULT_ENVIRONMENT;
 const KEBAB = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
@@ -100,17 +102,32 @@ function defineLiteral(ts: TypeScriptApi, expression: Expression): ObjectLiteral
   return literal && ts.isObjectLiteralExpression(literal) ? literal : null;
 }
 
-/** The declaration of the world: the object literal of an exported `const` initialized by `defineTestWorld({ ... })`, or null. */
+/**
+ * The declaration of the world: the object literal of a top-level `const` initialized by `defineTestWorld({ ... })`, or null. The config
+ * exports `useTestWorld` and `useSandbox` either by destructuring that call (the original form) or, typed, from the world the call
+ * built: `const world: TestWorldApi = defineTestWorld({ ... })` with `export const useTestWorld: TestWorldApi["useTestWorld"] = world.useTestWorld`.
+ * Both are read; a world no exported name reaches is refused by the caller.
+ */
 function configLiteral(ts: TypeScriptApi, sourceFile: SourceFile): ObjectLiteralExpression | null {
   for (const statement of sourceFile.statements) {
-    if (!ts.isVariableStatement(statement) || !isExported(ts, statement)) continue;
+    if (!ts.isVariableStatement(statement)) continue;
     if (!hasAnyFlag(statement.declarationList.flags, ts.NodeFlags.Const)) continue;
     for (const declaration of statement.declarationList.declarations) {
       const literal = declaration.initializer ? defineLiteral(ts, declaration.initializer) : null;
-      if (literal) return literal;
+      if (literal && (isExported(ts, statement) || exportsWorld(ts, sourceFile))) return literal;
     }
   }
   return null;
+}
+
+/** Whether the file exports both `useTestWorld` and `useSandbox` as consts (the typed form re-exports them from the built world). */
+function exportsWorld(ts: TypeScriptApi, sourceFile: SourceFile): boolean {
+  const exported = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement) || !isExported(ts, statement)) continue;
+    for (const declaration of statement.declarationList.declarations) if (ts.isIdentifier(declaration.name)) exported.add(declaration.name.text);
+  }
+  return exported.has('useTestWorld') && exported.has('useSandbox');
 }
 
 /** `stack` as the environment it names: the last segment of `".starcistacks/<env>"`; null when absent or not a literal. */
@@ -194,7 +211,7 @@ function worldDeclaration(graph: HfsGraph, ts: TypeScriptApi, worldRoot: string 
   if (configFile && !literal) {
     violations.push({
       ruleId: RULE, path: configPath, line: 1, column: 1, slot: WORLD_SLOT,
-      message: `${configPath} declares no world the machine can read. Declare it in the one named form \`${NAMED_FORM}\` (an exported const of a ${DEFINE} call with an object literal, imported from @starci/test-world); a default export is refused by R89 and is not read.`,
+      message: `${configPath} declares no world the machine can read. Declare it in the named form \`${NAMED_FORM}\` or the typed form \`${TYPED_FORM}\` (a const of a ${DEFINE} call with an object literal, imported from @starci/test-world); a default export is refused by R89 and is not read.`,
     });
   }
   return { configPath, configFile, literal };

@@ -735,3 +735,31 @@ test("sql-returning: a CTE-wrapped RETURNING, an INSERT RETURNING and plain writ
         invalid: [...invalid(f, RETURNING_FILES, { "src/modules/domain/stock/persistence/stock-bad.sql.ts": [2, 3, 4] })],
     })
 })
+
+test("test-world-files: the world is read in its destructured form and in its typed form, and a config with neither is refused", (t) => {
+    const typed = [
+        "import { defineTestWorld } from '@starci/test-world'",
+        "import type { TestWorldApi } from '@starci/test-world'",
+        "const world: TestWorldApi = defineTestWorld({ stack: '.starcistacks/dev', stacks: { postgresql: { connections: [] } } })",
+        "/** Registers the world around a spec. */",
+        "export const useTestWorld: TestWorldApi['useTestWorld'] = world.useTestWorld",
+        "/** The contract layer. */",
+        "export const useSandbox: TestWorldApi['useSandbox'] = world.useSandbox",
+        "",
+    ].join("\n")
+    const unexported = "import { defineTestWorld } from '@starci/test-world'\nconst world = defineTestWorld({ stack: '.starcistacks/dev' })\nexport const unused = world\n"
+    const files = { "src/tests/world/test-world.config.ts": typed, "src/tests/world/global-setup.ts": EXPORT }
+    const rootFiles = stack({ postgres: "postgres:16" })
+    const f = projectFixture({ files, rootFiles, declaration: { optionalSlots: [] } })
+    t.after(f.cleanup)
+    f.tester.run("test-world-files", ruleNamed(rules, "test-world-files"), {
+        valid: valid(f, files, ["src/tests/world/test-world.config.ts"]),
+        invalid: [],
+    })
+    const g = projectFixture({ files: { "src/tests/world/test-world.config.ts": unexported }, rootFiles, declaration: { optionalSlots: [] } })
+    t.after(g.cleanup)
+    g.tester.run("test-world-files", ruleNamed(rules, "test-world-files"), {
+        valid: [],
+        invalid: invalid(g, { "src/tests/world/test-world.config.ts": unexported }, { "src/tests/world/test-world.config.ts": [1] }),
+    })
+})
