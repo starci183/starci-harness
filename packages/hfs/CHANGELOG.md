@@ -12,8 +12,15 @@
   1. `npx starci app codemod account-doors --execute` writes the expand migration (the six doors and the index).
   2. `npx starci app sync --execute` moves the glue onto the doors and deletes the two entity files; `npx starci app check` is green except R255 until step 3.
   3. `npx starci app codemod account-doors --contract --execute` writes the contract migration that revokes the old grants. It refuses while a migration defines no door or a back-end source still maps `schema: "auth"`.
-  4. Release the three together: R255 reports the old grants until step 3 is in the chain, so they cannot ship apart. The deploy applies the expand migration before the services and the contract migration after the accept; the release before this one still reads the auth tables, so a rollback to it after the accept needs the grants given back by hand.
-  5. An app that already defines the doors in its own migrations (the same text) skips step 1; its hfs.json `sides.be.dbFunctions` may drop the six names, which the canon now lists.
+  4. Ship the three steps in one release, in this order: expand, sync, contract. R255 is strict and has no transition window: it reports the old grants until step 3 is in the chain, so the steps cannot ship apart. The deploy applies the expand migration before the services and the contract migration after the accept.
+  5. Rollback: the release before this one still reads the auth tables, so a rollback to it after the accept must restore the grants by hand, as the database owner:
+     ```sql
+     grant usage on schema auth to app_be;
+     grant select, insert, update on table auth.users to app_be;
+     grant select, insert on table auth.identities to app_be;
+     ```
+     (use the role `db.appRole` of hfs.json when it is not app_be). Revoke them again with the contract migration when the rollback is undone.
+  6. An app that already defines the doors in its own migrations (the same text) skips step 1; its hfs.json `sides.be.dbFunctions` may drop the six names, which the canon now lists.
 
 ## 5.2.0 - 2026-11-03
 
