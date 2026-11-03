@@ -42,78 +42,84 @@ components:
 environments:
   dev:
     status: supported
-    runtime: docker-swarm
-    composeFiles: [infra/swarm/stack.yaml]
+    runtime: docker-compose
+    composeFiles: [infra/compose/compose.yaml]
     components:
-      api: {replicas: 1, port: 3001}
-      web: {replicas: 1, port: 3000}
-      db: {replicas: 1, port: 5432}
-      ingress: {replicas: 1, port: 80}
+      db: {port: 54322}
+      api: {port: 3001}
+      web: {port: 3000}
     runbook: README.md
-    ingress:
-      component: ingress
-      hosts: ["dev.{{project}}.example.invalid"]
-    dns:
-      - host: "dev.{{project}}.example.invalid"
-        owner: Development operator
-        receipt: .starcistacks/dev/infra/swarm/owner-actions.md#dns
-    tls:
-      owner: Development operator
-      receipt: .starcistacks/dev/infra/swarm/owner-actions.md#tls
-    release:
-      imagesLock: .starcistacks/dev/infra/swarm/releases/images.lock.yaml
-      pointer: .starcistacks/dev/infra/swarm/releases/current.yaml
-      previous: .starcistacks/dev/infra/swarm/releases/previous.yaml
-      healthAssertions: [API /health/live, API /health/ready, Web /health/live]
-    backup:
-      - component: ingress
-        target: Owner-provisioned encrypted off-host storage for both ingress volumes
-        retention: Seven daily snapshots
-        owner: Development operator
-        restoreProof: .starcistacks/dev/infra/swarm/recovery/restore-proof.md
-      - component: db
-        target: Owner-provisioned encrypted off-host storage for starci app db dump archives
-        retention: Seven daily exports
-        owner: Development operator
-        restoreProof: .starcistacks/dev/infra/swarm/recovery/restore-proof.md
-    # Scaffolding seals generated placeholders to this app's own recipient; set real values before use.
-    secrets:
-      - name: primary-db-url
-        runtimeName: "{{project}}-dev-primary-db-url-v1"
-        version: 1
-        where: secrets/primary-db-url
-        recipientPolicy: This app's own age recipient configured in .sops.yaml
-        keyCustody: SOPS_AGE_KEY in the host's untracked .claude/secret.env
-      - name: db-password
-        runtimeName: "{{project}}-dev-db-password-v1"
-        version: 1
-        where: secrets/db-password
-        recipientPolicy: This app's own age recipient configured in .sops.yaml
-        keyCustody: SOPS_AGE_KEY in the host's untracked .claude/secret.env
-      - name: google-client-secret
-        runtimeName: "{{project}}-dev-google-client-secret-v1"
-        version: 1
-        where: secrets/google-client-secret
-        recipientPolicy: This app's own age recipient configured in .sops.yaml
-        keyCustody: SOPS_AGE_KEY in the host's untracked .claude/secret.env
-      - name: auth-jwt-private-key
-        runtimeName: "{{project}}-dev-auth-jwt-private-key-v1"
-        version: 1
-        where: secrets/auth-jwt-private-key
-        recipientPolicy: This app's own age recipient configured in .sops.yaml
-        keyCustody: SOPS_AGE_KEY in the host's untracked .claude/secret.env
-      - name: storage-access-key-id
-        runtimeName: "{{project}}-dev-storage-access-key-id-v1"
-        version: 1
-        where: secrets/storage-access-key-id
-        recipientPolicy: This app's own age recipient configured in .sops.yaml
-        keyCustody: SOPS_AGE_KEY in the host's untracked .claude/secret.env
-      - name: storage-secret-access-key
-        runtimeName: "{{project}}-dev-storage-secret-access-key-v1"
-        version: 1
-        where: secrets/storage-secret-access-key
-        recipientPolicy: This app's own age recipient configured in .sops.yaml
-        keyCustody: SOPS_AGE_KEY in the host's untracked .claude/secret.env
+    # Dev custody is generated once, dev-only, by the owner-armed `starci app secret init --env dev --execute`, which also declares each key here.
+    secrets: []
+    # `starci app stack up --env dev --execute` reads this block (PROJECT-STACKS-6): host prerequisites, dev custody, setup, the compose services,
+    # the environment's own database role, migrations, native api and web processes, readiness, origins.
+    local:
+      ports:
+        db: 54322
+        api: 3001
+        web: 3000
+      services:
+        - {name: db, wait: healthy}
+      database:
+        service: db
+        port: db
+        urlEnv: PRIMARY_DB_URL
+        appRole: app_be
+        password: {member: db, key: DEV_DB_OWNER_PASSWORD}
+        adminPassword: {member: db, key: POSTGRES_PASSWORD}
+        appPassword: {member: db, key: DEV_DB_APP_PASSWORD}
+      grants:
+        - {name: db, keys: [POSTGRES_PASSWORD]}
+      custody:
+        - {member: db, key: POSTGRES_PASSWORD, kind: password}
+        - {member: db, key: DEV_DB_OWNER_PASSWORD, kind: password}
+        - {member: db, key: DEV_DB_APP_PASSWORD, kind: password}
+        - {member: auth, key: AUTH_JWT_PRIVATE_KEY, kind: ec-pem}
+        - {member: google, key: GOOGLE_CLIENT_SECRET, kind: hex}
+        - {member: storage, key: STORAGE_ACCESS_KEY_ID, kind: hex, bytes: 12}
+        - {member: storage, key: STORAGE_SECRET_ACCESS_KEY, kind: hex}
+      setup:
+        - {name: install, argv: [npm, ci], heavy: install, skipIfExists: node_modules}
+        - {name: codegen, argv: [npm, run, codegen, --silent], heavy: build}
+      processes:
+        - name: api
+          # Transpile only: the type check is the typecheck and lint gates' job, not the dev loop's.
+          argv: [npx, ts-node-dev, --transpile-only, --respawn, -r, tsconfig-paths/register, apps/api/src/main.ts]
+          cwd: be
+          port: api
+          files: [GOOGLE_CLIENT_SECRET, AUTH_JWT_PRIVATE_KEY, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY]
+          env:
+            PORT: "${port.api}"
+            HTTP_SECURITY_ALLOWED_ORIGINS: "http://localhost:${port.web}"
+            PRIMARY_DB_SCHEMA: public
+            GOOGLE_CLIENT_ID: dev-local-client-id
+            GOOGLE_CALLBACK_URL: "http://localhost:${port.api}/auth/google/callback"
+            AUTH_JWT_ISSUER: "http://localhost:${port.api}"
+            AUTH_JWT_AUDIENCE: {{project}}
+            AUTH_JWT_KEY_ID: dev-1
+            STORAGE_ENDPOINT: "http://127.0.0.1:9000"
+            STORAGE_REGION: us-east-1
+            STORAGE_BUCKET: {{project}}-dev
+          health: {url: "http://localhost:${port.api}/health/live"}
+        - name: web
+          argv: [npm, run, dev:fe]
+          port: web
+          env:
+            NEXT_PUBLIC_SITE_URL: "http://localhost:${port.web}"
+            NEXT_PUBLIC_API_URL: "http://localhost:${port.api}"
+            NEXT_PUBLIC_GRAPHQL_URL: "http://localhost:${port.api}/graphql"
+          health: {url: "http://localhost:${port.web}/health/live"}
+      ready:
+        - {name: api-live, url: "http://localhost:${port.api}/health/live"}
+        - {name: api-ready, url: "http://localhost:${port.api}/health/ready"}
+        - {name: web-live, url: "http://localhost:${port.web}/health/live"}
+      verify:
+        - {name: api-live, url: "http://localhost:${port.api}/health/live"}
+        - {name: api-ready, url: "http://localhost:${port.api}/health/ready"}
+        - {name: web-live, url: "http://localhost:${port.web}/health/live"}
+      origins:
+        - {name: web, url: "http://localhost:${port.web}"}
+        - {name: api, url: "http://localhost:${port.api}"}
   production:
     status: supported
     runtime: docker-swarm

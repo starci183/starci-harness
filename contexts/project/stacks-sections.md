@@ -13,9 +13,9 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
   - PROJECT-STACKS-3 Two kinds of environment, each with its runbook · `PROJECT-STACKS-3` · 2 KB — Two kinds, named by the project:
   - PROJECT-STACKS-4 One declared ingress publishes, and only in the open it must · `PROJECT-STACKS-4` · 2 KB — One declared ingress component per environment is the only thing that publishes a port (R266, R275); every other service sits on internal networks.
   - PROJECT-STACKS-5 Secrets are sealed, granted least and never regenerated · `PROJECT-STACKS-5` · 11 KB
-  - PROJECT-STACKS-6 Every runbook declares the same operations · `PROJECT-STACKS-6` · 4 KB — Every environment's runbook declares the same seven operations, one row each, with the project's command and its acceptance gate.
+  - PROJECT-STACKS-6 Every runbook declares the same operations · `PROJECT-STACKS-6` · 5 KB — Every environment's runbook declares the same seven operations, one row each, with the project's command and its acceptance gate.
   - PROJECT-STACKS-7 CI holds names; every value stays with its consumer · `PROJECT-STACKS-7` · 2 KB — One key belongs to one class, and the manifest's `ci` block declares names and public values only:
   - PROJECT-STACKS-8 Quality services are declared and required · `PROJECT-STACKS-8` · 3 KB — The manifest's `services` block names the delivery, quality and platform services the code and CI use (a static analysis server, coverage upload, the dependency bot, the ...
   - PROJECT-STACKS-9 A remote application API is consumed, not administered · `PROJECT-STACKS-9` · 1 KB — An application the app calls that runs elsewhere (on a cluster or another host) is an application API to its caller, whatever runs it.
-  - PROJECT-STACKS-10 Local runs · `PROJECT-STACKS-10` · 1 KB — Rules learned from running apps on developer hosts; each holds in every app.
-  - Read with · `contexts/project/stacks.md#read-with` · 1 KB — lite.md, full.md; slot `app.starcistacks` and `app.plaintext-env` in hfs/slots.yaml; R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299, R301 in ...
+  - PROJECT-STACKS-10 Local runs · `PROJECT-STACKS-10` · 3 KB — Rules learned from running apps on developer hosts; each holds in every app.
+  - Read with · `contexts/project/stacks.md#read-with` · 1 KB — lite.md, full.md; slot `app.starcistacks` and `app.plaintext-env` in hfs/slots.yaml; R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299, R301, R372, R373 ...

@@ -51,12 +51,12 @@ function jobDeclarationIssues(id: string, component: Mapping, components: Mappin
 }
 
 /** Inventory rules are independent of a selected environment or rendered deployment model. */
-export function swarmInventoryIssues({ components, lite = false }: { components: unknown; lite?: boolean }): SwarmIssue[] {
+export function swarmInventoryIssues({ components, lite = false, swarm }: { components: unknown; lite?: boolean; swarm?: ReadonlySet<string> }): SwarmIssue[] {
   const errors: SwarmIssue[] = [], catalog = mapping(components);
   const add: AddIssue = (at, message) => { errors.push({ at, message }); };
   for (const [id, entry] of Object.entries(catalog)) {
     const component = mapping(entry);
-    if (lite && present(component.image) && BACKING_IMAGE.test(repositoryOf(component.image)))
+    if (lite && (swarm === undefined || swarm.has(id)) && present(component.image) && BACKING_IMAGE.test(repositoryOf(component.image)))
       add(`components.${id}.image`, 'lite runs no backing image; its db component runs the image .starcistacks/images/db/Dockerfile builds, storage is the external S3 endpoint, identity the API');
     jobDeclarationIssues(id, component, catalog, add);
   }

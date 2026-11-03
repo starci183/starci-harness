@@ -57,6 +57,11 @@ export interface PipeResult {
   stderr: string;
 }
 
+/** One heavy command the dev verbs run (`npm ci`, a compose build or up): admitted by the harness's heavy-command governor when it hands one in. */
+export interface HeavyRequest { kind: 'install' | 'build'; label: string; cwd: string; argv: string[]; env: NodeJS.ProcessEnv }
+/** The governed runner: waits for a slot of the host-wide semaphore, runs the argv without a shell and returns its result. */
+export type HeavyRun = (request: HeavyRequest) => Promise<RunResult>;
+
 /** The secret seam: decrypts the app's sops files. */
 export interface Sops {
   decrypt(file: string, format?: string): Record<string, string>;
@@ -130,6 +135,9 @@ export interface StackIo {
   hostIdentity?: AgeHost | null | undefined;
   harness?: { role?: string | undefined } | undefined;
   importer?: ((file: string) => Promise<Record<string, unknown>>) | undefined;
+  heavy?: HeavyRun | undefined;
+  /** The seams of the dev verbs a spec replaces (stack/local-run.mjs LocalDeps). */
+  localDeps?: import('./local-run.mjs').LocalDeps | undefined;
 }
 
 /** The context of one stack invocation (see stackContext). */
@@ -147,6 +155,8 @@ export interface StackContext {
   readonly fetch: typeof fetch;
   readonly pipe: (source: PipeEnd, sink: PipeEnd) => Promise<PipeResult>;
   readonly sops: Sops;
+  /** The governed runner of heavy commands (the harness CLI hands it in); absent, a dev verb runs them directly. */
+  readonly heavy?: HeavyRun | undefined;
   /** The command-owned SSH connection, set by the Docker transport (docker-transport.mjs). */
   readonly stackSsh?: SshConnection | undefined;
 }
@@ -180,6 +190,7 @@ export function stackContext(io: StackIo = {}): StackContext {
     stderr: io.stderr ?? ((text: string) => process.stderr.write(text)),
     fetch: io.fetch ?? globalThis.fetch,
     pipe: io.pipe ?? realPipe,
+    heavy: io.heavy,
     /** The secret seam: the app's own sops/age tools, created on first use so verbs that open no custody never need them. */
     get sops(): Sops {
       const opened: Sops = sops ?? io.openSops?.() ?? defaultSops(env, cwd, io.platform ?? process.platform, undefined, io.hostIdentity ?? null);

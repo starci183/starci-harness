@@ -97,6 +97,8 @@ function liteEnvironmentFindings({ doc, environments, deployments }: { doc: Pars
     findings.push(found(CODE, DECLARATION, `${DECLARATION}: lite Swarm delivery must declare backing.db with provider: postgres and component: db (its db service)`));
   for (const [environment, spec] of Object.entries<Parsed>(environments)) {
     if (!Array.isArray(spec?.composeFiles) || !spec.composeFiles.length) continue;
+    // The dev kind (PROJECT-STACKS-3): docker-compose sources under infra/compose/ with the local block `starci app stack up` runs; judged by R372.
+    if (spec.runtime === 'docker-compose' && spec.local !== undefined && spec.composeFiles.every((file: string) => typeof file === 'string' && file.startsWith('infra/compose/'))) continue;
     if (spec.runtime !== 'docker-swarm' || spec.composeFiles.some((file: string) => typeof file !== 'string' || !file.startsWith('infra/swarm/')))
       findings.push(found(CODE, DECLARATION, `${DECLARATION}: environments.${environment} lite delivery must use runtime: docker-swarm and infra/swarm sources`));
   }
@@ -111,11 +113,14 @@ function undeclaredSwarmFindings(deployments: Parsed, environments: Parsed, sour
   });
 }
 
+/** The component ids a docker-swarm environment binds: the only ones the lite refusal of backing images judges (a dev compose environment runs its own MinIO, Redis and agent runtime). */
+const swarmBoundComponents = (environments: Parsed): Set<string> => new Set(Object.values<Parsed>(environments).filter((spec) => spec?.runtime === 'docker-swarm').flatMap((spec) => Object.keys(mapping(spec.components))));
+
 /** Declared Swarm sources are checked for both editions; lite additionally refuses local managed backing images. */
 export function stacksRuntimeFindings({ repoRoot, files, doc, edition = 'full' }: { repoRoot: string; files: string[]; doc: Parsed; edition?: string }) {
   const findings = [], lite = edition === 'lite', components = mapping(doc?.components), environments = mapping(doc?.environments);
   const deployments = swarmDeploymentFiles(repoRoot, files), sources = new Set();
-  findings.push(...swarmInventoryIssues({ components, lite }).map((issue: Parsed) => issueFinding(DECLARATION, issue)));
+  findings.push(...swarmInventoryIssues({ components, lite, swarm: swarmBoundComponents(environments) }).map((issue: Parsed) => issueFinding(DECLARATION, issue)));
   if (lite) findings.push(...liteEnvironmentFindings({ doc, environments, deployments }));
   for (const [environment, entry] of Object.entries<Parsed>(environments)) {
     const spec = mapping(entry);

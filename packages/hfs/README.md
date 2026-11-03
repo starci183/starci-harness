@@ -24,9 +24,18 @@ starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [-
 starci app slot <path> [--cwd <dir>] [--json]
 starci app emit [--cwd <dir>]
 starci app db drift [--db-url-env <NAME>] [--json] [--cwd <dir>]
-starci app secret init | <set|get|unset|rename|remove|materialize|list|verify|recipients|migrate|split|audit|server-key> --env <env> ... [--cwd <dir>]
+starci app stack <prepare|up|down> --env <dev env> [--execute] | <doctor|status|verify> --env <dev env> | logs --env <dev env> --service <name> [--lines <n>]
+starci app secret init [--env <dev env> [--execute]] | <set|get|unset|rename|remove|materialize|list|verify|recipients|migrate|split|audit|server-key> --env <env> ... [--cwd <dir>]
 starci app ci secret set <NAME> [--from-custody] [--env <env>] [--repo <owner/name>] [--execute]
 ```
+
+**The dev environment in one command.** `starci app stack up --env dev --execute` brings a docker-compose environment up from its `local` block of
+`.starcistacks/application-stacks.yaml` (PROJECT-STACKS-6 of `contexts/project/stacks.md`): the host table (`doctor` prints the owner-run install
+step per OS for each missing prerequisite and installs nothing), the dev custody (`secret init --env dev --execute` creates the dev-only values once),
+the setup commands, the compose services and their health, the environment's own database role, the migrations with a receipt (`db migrate` runs its
+client tools in the database container named by `STARCI_DB_CONTAINER`, so the host needs no PostgreSQL client), the seed once, the native app
+processes, readiness and the origins. `prepare`, `up` and `down` are dry runs until `--execute`; `down` never removes a volume. State (process ids,
+logs, receipts) is under the state base (`STARCI_LOCAL_ROOT`), the opened custody under the private secrets directory outside the checkout.
 
 `starci app add` writes every front-end unit, in either edition, already in the shape of the harness's `contexts/code/fe`
 and `contexts/ui`, from `templates/fe/units`, with its copy in every catalog; nothing that exists is overwritten.

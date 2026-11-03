@@ -5347,6 +5347,36 @@ SEALED_FILE_IN_WORK:
 
 # --- HFS rule catalog (knowledge/hfs/rules.yaml): one code per rule, from R01 up ---
 
+STACKS_LOCAL_CONFIG_INVALID:
+  title: "The local block of a docker-compose environment is not coherent"
+  title_vi: "Khối local của môi trường docker-compose không nhất quán"
+  meaning_vi: "environments.<env>.local thiếu hoặc có trường lạ, cổng trùng, dịch vụ không có trong tệp compose, vai trò cơ sở dữ liệu dùng chung, hoặc thăm dò không nằm trên loopback."
+  causes_vi:
+    - "Vi phạm R372: khối local được kiểm bằng đúng normalizeLocal mà các động từ starci app stack up, down, doctor dùng."
+  nextStep_vi: "Sửa đúng trường nêu trong thông báo (environments.<env>.local.<đường dẫn>), rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
+STACKS_DEV_UNDECLARED:
+  title: "A lite app declares no runnable dev environment"
+  title_vi: "Ứng dụng lite chưa khai báo môi trường dev chạy được"
+  meaning_vi: "Không có environment nào có runtime docker-compose và khối local, nên starci app stack up --env dev không có gì để chạy."
+  causes_vi:
+    - "Vi phạm R372: môi trường dev vẫn là Swarm hoặc chưa được khai báo."
+  nextStep_vi: "Khai báo environments.dev với runtime docker-compose, composeFiles và khối local; runbook của nó nêu starci app stack up --env dev."
+  owner: op-retry
+  kind: check-finding
+
+STACKS_RUNBOOK_DOCKER_COMMAND:
+  title: "A dev runbook carries a docker command or omits the one-command start"
+  title_vi: "Runbook dev chứa lệnh docker hoặc không nêu lệnh khởi động duy nhất"
+  meaning_vi: "README của môi trường docker-compose có dòng docker build, run, compose hay stack deploy, hoặc không nêu starci app stack up --env <env>."
+  causes_vi:
+    - "Vi phạm R373 và quy tắc cứng 8: Docker do harness chạy, tác tử không chạy tay."
+  nextStep_vi: "Thay các lệnh docker bằng starci app stack up --env <env> --execute và các động từ down, status, logs của nó."
+  owner: op-retry
+  kind: check-finding
+
 STACKS_DEPLOY_CONFIG_INVALID:
   title: "A deploy block of application-stacks.yaml is not coherent"
   title_vi: "Khối deploy trong application-stacks.yaml không nhất quán"

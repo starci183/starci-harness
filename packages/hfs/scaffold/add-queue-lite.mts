@@ -341,6 +341,55 @@ function keysPatch(file: string): FilePatch | null {
   return { file, text: lines.join('\n') };
 }
 
+const DEV_REDIS_PORT = 56379;
+
+/** The redis service a dev compose file gains: loopback only, append-only, on the host port the environment declares. */
+const devRedisService = `  redis:
+    image: ${REDIS_IMAGE}
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:\${STACK_PORT_REDIS}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+`;
+
+/**
+ * A docker-compose dev environment (runtime docker-compose, a `local` block) runs the declared Redis from its compose file, on its own loopback
+ * port, and the queue processes reach it there: the compose service, the port, the service entry and the api and worker processes' queue settings.
+ */
+function devQueuePatches(repoRoot: string, manifest: YamlNode, edit: YamlBlockEdit, consumers: readonly string[]): FilePatch[] {
+  const patches: FilePatch[] = [];
+  const dev = Object.entries<YamlNode>(manifest?.environments ?? {}).filter(([, environment]) => environment?.runtime === 'docker-compose' && environment.local);
+  for (const [name, environment] of dev) {
+    const composeRelative = `.starcistacks/${name}/${environment.composeFiles?.[0] ?? 'infra/compose/compose.yaml'}`;
+    const composeFile = path.join(repoRoot, ...composeRelative.split('/'));
+    const compose = read(composeFile).replace(/\r\n/g, '\n');
+    if (/^ {2}redis:/m.test(compose)) continue;
+    const base = ['environments', name] as const;
+    const value = edit.value.environments[name];
+    edit.append([...base, 'components'], `redis: {port: ${DEV_REDIS_PORT}}\n`);
+    value.components.redis = { port: DEV_REDIS_PORT };
+    edit.append([...base, 'local', 'ports'], `redis: ${DEV_REDIS_PORT}\n`);
+    value.local.ports.redis = DEV_REDIS_PORT;
+    edit.append([...base, 'local', 'services'], '- {name: redis, wait: healthy}\n');
+    value.local.services.push({ name: 'redis', wait: 'healthy' });
+    for (const run of value.local.processes ?? []) {
+      if (!consumers.includes(run.name)) continue;
+      edit.append([...base, 'local', 'processes', { item: 'name', is: run.name }, 'env'], 'QUEUE_ENABLED: "true"\nQUEUE_REDIS_HOST: 127.0.0.1\nQUEUE_REDIS_PORT: "${port.redis}"\n');
+      Object.assign(run.env, { QUEUE_ENABLED: 'true', QUEUE_REDIS_HOST: '127.0.0.1', QUEUE_REDIS_PORT: '${port.redis}' });
+    }
+    const head = compose.includes('\nvolumes:\n') ? compose.replace('\nvolumes:\n', `\n${devRedisService}volumes:\n`) : `${compose.replace(/\n*$/, '\n')}${devRedisService}volumes:\n`;
+    patches.push({ file: composeFile, text: `${head.replace(/\n*$/, '\n')}  redis-data: {}\n` });
+  }
+  return patches;
+}
+
 /** Every stack file the declared Redis adds to or changes, planned before anything is written. */
 function stackFiles(repoRoot: string, { project, consumers }: { project: string, consumers: readonly string[] }): { patches: FilePatch[], created: GeneratedFile[], environments: string[] } {
   const manifestRelative = '.starcistacks/application-stacks.yaml';
@@ -366,6 +415,7 @@ function stackFiles(repoRoot: string, { project, consumers }: { project: string,
     if (fs.existsSync(keys)) patches.push(keysPatch(keys));
     if (!fs.existsSync(path.join(repoRoot, ...recovery.split('/')))) created.push({ relative: recovery, text: recoveryRecord });
   }
+  patches.push(...devQueuePatches(repoRoot, manifest, edit, consumers));
   patches.unshift({ file: manifestFile, text: edit.text() });
   return { patches: patches.filter((patch): patch is FilePatch => patch !== null), created, environments: swarm.map(([name]) => name) };
 }

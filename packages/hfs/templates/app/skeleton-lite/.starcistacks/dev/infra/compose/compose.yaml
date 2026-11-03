@@ -1,0 +1,25 @@
+# The dev environment's dependencies, run by `starci app stack up --env dev --execute` (PROJECT-STACKS-3, PROJECT-STACKS-6).
+# Host ports come from environments.dev.local.ports through STACK_PORT_<NAME>; the superuser password is read from a file through the least
+# grant STACK_GRANT_DB (a directory holding only POSTGRES_PASSWORD), never from the environment. Every port publishes on loopback only. The api and web run natively against these containers.
+name: {{project}}-dev
+services:
+  db:
+    build:
+      context: ../../../images/db
+    image: {{project}}-db:local
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
+    ports:
+      - "127.0.0.1:${STACK_PORT_DB}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ${STACK_GRANT_DB}:/run/secrets:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    restart: unless-stopped
+volumes:
+  db-data: {}

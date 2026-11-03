@@ -237,6 +237,11 @@ const VERB_USAGE: Record<string, string[]> = {
   stack: [
     ...STACK_ACTIONS.map((action) => line(`starci app stack ${action}`, STACK_OPERANDS[action], STACK_READ_ONLY.includes(action) ? flagUsage('--env', { value: true }) : '--env <env>',
       STACK_FLAGS[action].map((flag: string) => flagUsage(flag, { value: STACK_VALUE.has(flag), repeat: STACK_REPEAT.has(flag) })), '[--json]')),
+    // The dev actions of a docker-compose environment (stack/local-cli.mts); prepare, status and verify above answer them too.
+    'starci app stack doctor --env <env> [--json]',
+    'starci app stack up --env <env> [--execute] [--timeout <seconds>] [--json]',
+    'starci app stack down --env <env> [--execute] [--json]',
+    'starci app stack logs --env <env> --service <name> [--lines <n>] [--json]',
   ],
   release: Object.entries(RELEASE_FLAGS).map(([action, spec]) => line(`starci app release ${action}`, specUsage(spec))),
   secret: SECRET_VERBS.map((verb: string) => line(`starci app secret ${verb}`, secretUsage(verb))),
