@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { exportedSymbol, moduleFile, nameAnonymousParts, namesInScope, relativeSpecifier, type NamingContext } from './explicit-surface-names.mjs';
+import { declarationOf, exportedSymbol, moduleFile, nameAnonymousParts, namesInScope, relativeSpecifier, type NamingContext } from './explicit-surface-names.mjs';
 import type * as TsTypes from 'typescript';
 
 /** An import the written type needs: `name` exported by the module `specifier`. */
@@ -87,8 +87,7 @@ function resolveNeed(c: NamingContext, scope: Map<string, TsTypes.Symbol>, name:
   if (file === undefined || target === undefined) return refuse('TYPE_UNNAMEABLE', `\`${name}\` is not exported by a module the file can import`, `export ${name} from its module, or declare a named type in this file`);
   const taken = scope.get(name);
   if (taken !== undefined) {
-    const bound = (taken.flags & c.ts.SymbolFlags.Alias) === 0 ? taken : c.checker.getAliasedSymbol(taken);
-    if (bound === target) return { specifier: null };
+    if (declarationOf(c, taken) === declarationOf(c, target)) return { specifier: null };
     const global = taken.declarations?.every(declaration => !c.ts.isExternalModule(declaration.getSourceFile())) === true;
     if (!global || new RegExp(`\\b${name}\\b`).test(c.text)) return refuse('TYPE_UNNAMEABLE', `\`${name}\` is already another name in this file`, `rename one of the two, or declare a named type in this file`);
   }
@@ -109,9 +108,9 @@ function rewrite(c: NamingContext, node: TsTypes.TypeNode, scope: Map<string, Ts
   const named = (id: TsTypes.Identifier): void => {
     const symbol = (id as { symbol?: TsTypes.Symbol }).symbol;
     if (symbol === undefined) return;
-    const target = (symbol.flags & ts.SymbolFlags.Alias) === 0 ? symbol : c.checker.getAliasedSymbol(symbol);
+    if ((symbol.flags & ts.SymbolFlags.TypeParameter) !== 0) return;
     const taken = scope.get(id.text);
-    if (taken !== undefined && ((taken.flags & ts.SymbolFlags.Alias) === 0 ? taken : c.checker.getAliasedSymbol(taken)) === target) return;
+    if (taken !== undefined && declarationOf(c, taken) === declarationOf(c, symbol)) return;
     const file = symbol.declarations?.[0]?.getSourceFile();
     if (file !== undefined && ts.isExternalModule(file)) need(id.text, file.fileName);
   };
@@ -127,10 +126,11 @@ function rewrite(c: NamingContext, node: TsTypes.TypeNode, scope: Map<string, Ts
       }
       if (ts.isTypeReferenceNode(child) && JSX_ELEMENT.has(entityText(ts, child.typeName))) { need('ReactElement', 'react'); return context.factory.createTypeReferenceNode('ReactElement'); }
       if (ts.isTypeReferenceNode(child)) named(rootIdentifier(ts, child.typeName));
+      if (ts.isTypeQueryNode(child)) named(rootIdentifier(ts, child.exprName));
       if (child.kind === ts.SyntaxKind.AnyKeyword) { refused ??= refuse('TYPE_ANY', 'the inferred type contains `any`', 'write the type the value really has; an `any` on a surface hides the contract'); return child; }
       if (ts.isTypeLiteralNode(child) && child.members.length > 0) { refused ??= refuse('TYPE_ANONYMOUS', 'the inferred type is an anonymous object type', 'declare a named type (`type X = ...`), export it and annotate with it'); return child; }
-      if (ts.isMappedTypeNode(child) || ts.isConditionalTypeNode(child) || ts.isTypeQueryNode(child) || (ts.isTypeOperatorNode(child) && child.operator === ts.SyntaxKind.UniqueKeyword)) {
-        refused ??= refuse('TYPE_ANONYMOUS', 'the inferred type is computed (mapped, conditional, `typeof` or `unique symbol`)', 'declare a named type for it and annotate with it');
+      if (ts.isMappedTypeNode(child) || ts.isConditionalTypeNode(child) || (ts.isTypeOperatorNode(child) && child.operator === ts.SyntaxKind.UniqueKeyword)) {
+        refused ??= refuse('TYPE_ANONYMOUS', 'the inferred type is computed (mapped, conditional or `unique symbol`)', 'declare a named type for it and annotate with it');
         return child;
       }
       return ts.visitEachChild(child, visit, context);

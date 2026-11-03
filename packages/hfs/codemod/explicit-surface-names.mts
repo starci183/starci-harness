@@ -40,6 +40,12 @@ export function exportedSymbol(c: NamingContext, file: TsTypes.SourceFile, name:
   return (found.flags & c.ts.SymbolFlags.Alias) === 0 ? found : c.checker.getAliasedSymbol(found);
 }
 
+/** The declaration `symbol` stands for: an import resolved to what it imports, a local export to its export symbol, so two names of one declaration compare equal. */
+export function declarationOf(c: NamingContext, symbol: TsTypes.Symbol): TsTypes.Symbol {
+  const target = (symbol.flags & c.ts.SymbolFlags.Alias) === 0 ? symbol : c.checker.getAliasedSymbol(symbol);
+  return c.checker.getExportSymbolOfSymbol(target);
+}
+
 /** The key that groups candidate types before the expensive assignability test: the sorted property names. */
 const shapeKey = (names: readonly string[]): string => [...names].sort().join(',');
 
@@ -71,7 +77,7 @@ function namedTypes(c: NamingContext): Map<string, NamedType[]> {
 
 /** The names that can be written at `enclosing` without an import, as symbols; what a function body declares is not visible from its signature. */
 export function namesInScope(c: NamingContext, enclosing: TsTypes.Node): Map<string, TsTypes.Symbol> {
-  const flags = c.ts.SymbolFlags.Type | c.ts.SymbolFlags.Namespace | c.ts.SymbolFlags.Alias;
+  const flags = c.ts.SymbolFlags.Type | c.ts.SymbolFlags.Namespace | c.ts.SymbolFlags.Alias | c.ts.SymbolFlags.Value;
   const body = (enclosing as { body?: TsTypes.Node }).body;
   const inBody = (symbol: TsTypes.Symbol): boolean => body !== undefined && symbol.declarations?.length !== 0 && symbol.declarations?.every(declaration => declaration.pos >= body.pos && declaration.end <= body.end) === true;
   return new Map(c.checker.getSymbolsInScope(enclosing, flags).filter(symbol => !inBody(symbol)).map(symbol => [symbol.name, symbol]));

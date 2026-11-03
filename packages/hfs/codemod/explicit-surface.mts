@@ -285,10 +285,8 @@ async function migrateGroup({ ts, root, group, open, maxLength, report }: { ts: 
     planned.set(file.absolute, plan);
     if (plan.edits.length) rewritten.set(file.absolute, applyEdits(file.text, [...plan.edits, ...importEdits(ts, source, file.text, plan.needs)]));
   }
-  if (!rewritten.size) {
-    for (const plan of planned.values()) report.findings.push(...plan.findings);
-    return rewritten;
-  }
+  for (const [absolute, plan] of planned) if (!rewritten.has(absolute)) report.findings.push(...plan.findings);
+  if (!rewritten.size) return rewritten;
   const after = programWith(ts, group, rewritten, program);
   for (const [absolute, text] of [...rewritten]) {
     const plan = planned.get(absolute) as FilePlan;
