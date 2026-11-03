@@ -31,6 +31,7 @@ const HINTS: Readonly<Record<string, string>> = {
   'parameter type': 'Give the parameter a type: `(value: Input)`.',
   'property type': 'Give the property a type: `name: Result = ...`.',
   'accessor type': 'Give the accessor a type: `get name(): Result` (a setter takes it from its parameter).',
+  'destructured export': 'A destructuring pattern cannot carry a type per name: export each name as its own variable with a type, `export const name: Type = source.name`.',
   'exported value': 'Declare the type (an interface or a type alias) and annotate the export with it: `export const name: Shape = ...`.',
 };
 

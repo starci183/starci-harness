@@ -58,7 +58,7 @@ function returnsOnlyJsx(ts, source, start) {
 /** What to annotate for each isolated-declaration diagnostic code; any other code asks for the exported value's type. */
 const ANNOTATE = new Map([
     [9007, 'return type'], [9008, 'return type'], [9009, 'accessor type'], [9010, 'variable type'], [9011, 'parameter type'], [9012, 'property type'],
-    [9025, 'parameter type'],
+    [9019, 'destructured export'], [9025, 'parameter type'],
 ]);
 /** The declaration kinds whose name labels the export a diagnostic sits in, innermost first. */
 function nameOf(ts, source, start) {
@@ -73,6 +73,8 @@ function nameOf(ts, source, start) {
     for (let node = innermost; node !== undefined && node !== source; node = node.parent) {
         if (ts.isExportAssignment(node))
             return 'default export';
+        if (ts.isBindingElement(node) && ts.isIdentifier(node.name))
+            return node.name.text;
         if ((ts.isVariableDeclaration(node) || ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node) || ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node) || ts.isPropertyAssignment(node) || ts.isGetAccessorDeclaration(node)) && node.name !== undefined && ts.isIdentifier(node.name))
             return node.name.text;
         if (ts.isFunctionDeclaration(node) && (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Default) !== 0)

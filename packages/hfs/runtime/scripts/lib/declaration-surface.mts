@@ -17,7 +17,7 @@ export interface SurfaceProblem {
   length: number;
   /** The name of the export (or member) the span sits in, or `default export`. */
   name: string;
-  /** What to annotate: `return type`, `variable type`, `parameter type`, `property type`, `accessor type` or `exported value`. */
+  /** What to annotate: `return type`, `variable type`, `parameter type`, `property type`, `accessor type`, `destructured export` or `exported value`. */
   annotate: string;
   /** TypeScript's own reason, one sentence. */
   reason: string;
@@ -80,7 +80,7 @@ function returnsOnlyJsx(ts: TypeScript, source: SourceFile, start: number): bool
 /** What to annotate for each isolated-declaration diagnostic code; any other code asks for the exported value's type. */
 const ANNOTATE = new Map<number, string>([
   [9007, 'return type'], [9008, 'return type'], [9009, 'accessor type'], [9010, 'variable type'], [9011, 'parameter type'], [9012, 'property type'],
-  [9025, 'parameter type'],
+  [9019, 'destructured export'], [9025, 'parameter type'],
 ]);
 
 /** The declaration kinds whose name labels the export a diagnostic sits in, innermost first. */
@@ -94,6 +94,7 @@ function nameOf(ts: TypeScript, source: SourceFile, start: number): string {
   ts.forEachChild(source, descend);
   for (let node: Node | undefined = innermost; node !== undefined && node !== source; node = node.parent) {
     if (ts.isExportAssignment(node)) return 'default export';
+    if (ts.isBindingElement(node) && ts.isIdentifier(node.name)) return node.name.text;
     if ((ts.isVariableDeclaration(node) || ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node) || ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node) || ts.isPropertyAssignment(node) || ts.isGetAccessorDeclaration(node)) && node.name !== undefined && ts.isIdentifier(node.name)) return node.name.text;
     if (ts.isFunctionDeclaration(node) && (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Default) !== 0) return 'default export';
   }
