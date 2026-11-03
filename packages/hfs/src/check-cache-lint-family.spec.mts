@@ -18,6 +18,8 @@ class World {
   readonly root: string;
   readonly eslintCalls: (string[] | null)[] = [];
   readonly styleCalls: (string[] | null)[] = [];
+  /** How many times the CLI process built the canon's project graph itself (the ESLint child builds its own). */
+  graphBuilds = 0;
   /** Edits the tree while the linter runs (the edit-during-run case). */
   onLint: (() => void) | null = null;
 
@@ -95,7 +97,7 @@ class World {
 
   canon(overrides: Partial<CanonDeclarations> = {}): CanonDeclarations {
     const sibling: CrossFileInput = { rule: 'fake/sibling', kind: 'content', relativeTo: 'file', globs: ['*.txt'], appliesTo: ['**/*.ts'] };
-    return { name: 'fake-canon', crossFileInputs: [sibling], graphRules: true, projectGraph: () => this.graph(), ...overrides };
+    return { name: 'fake-canon', crossFileInputs: [sibling], graphRules: true, projectGraph: () => { this.graphBuilds += 1; return this.graph(); }, ...overrides };
   }
 
   styleCanon(overrides: Partial<CanonDeclarations> = {}): CanonDeclarations {
@@ -104,7 +106,7 @@ class World {
   }
 
   /** Runs the family once over this tree against `records` and answers the outcome with the records it wrote. */
-  async run(records: readonly CacheRecord[], options: { full?: string | null; canon?: CanonDeclarations; write?: boolean; style?: boolean; styleCanon?: CanonDeclarations; gitToken?: string } = {}): Promise<{ outcome: LintSideOutcome; written: readonly CacheRecord[] | undefined }> {
+  async run(records: readonly CacheRecord[], options: { full?: string | null; canon?: CanonDeclarations; write?: boolean; style?: boolean; styleCanon?: CanonDeclarations; gitToken?: string; handOutGraph?: boolean } = {}): Promise<{ outcome: LintSideOutcome; written: readonly CacheRecord[] | undefined }> {
     const files: Record<string, string> = {};
     for (const file of this.walk()) files[`${SIDE}/${file}`] = this.text(file);
     const session = createFakeSession({ files, records: { [`lint/${SIDE}`]: records } });
@@ -117,7 +119,7 @@ class World {
         this.eslintCalls.push(list === null ? null : [...list]);
         const results = (list ?? this.scope).map((file) => this.lintOne(file));
         this.onLint?.();
-        return { results, errors: [] };
+        return { results, errors: [], ...(options.handOutGraph === true ? { graph: { 'fake-canon': JSON.parse(JSON.stringify(this.graph())) as GraphSnapshot } } : {}) };
       },
       stylelint: style ? async (list) => {
         this.styleCalls.push(list === null ? null : [...list]);
@@ -425,4 +427,34 @@ test('a rule that compares with git history ties the files above its line count 
   const moved = await world.run(first.written as CacheRecord[], { canon, gitToken: 'base-2' });
   assert.deepEqual(world.eslintCalls, [['src/long.ts']]);
   assert.equal(moved.outcome.stats.reused, 5);
+});
+
+test('the graph records come from the snapshot the ESLint child handed out: the CLI builds no second graph, and the records are the ones a second build gives', async (context) => {
+  const world = new World(context);
+  seed(world);
+  world.write('src/p.ts', 'export const p = "DUP";\n');
+  world.write('src/q.ts', 'export const q = "DUP";\n');
+  const built = await world.run([]);
+  assert.equal(world.graphBuilds, 1, 'without a hand-out the CLI builds the graph after the run');
+  assert.ok(built.written?.some((record) => record.step === 'graph'));
+
+  const handed = await world.run([], { handOutGraph: true });
+  assert.equal(world.graphBuilds, 1, 'with the snapshot of the child the CLI builds nothing');
+  assert.deepEqual(handed.written, built.written, 'the records are byte-identical to those of a second build');
+  assert.deepEqual(shape(handed.outcome.eslint), shape(built.outcome.eslint));
+});
+
+test('a canon the child handed nothing for builds its graph in the CLI, and a diff run keeps one build for its plan', async (context) => {
+  const world = new World(context);
+  seed(world);
+  world.write('src/p.ts', 'export const p = "DUP";\n');
+  world.write('src/q.ts', 'export const q = "DUP";\n');
+  const first = await world.run([], { handOutGraph: true, canon: world.canon({ name: 'another-canon' }) });
+  assert.equal(world.graphBuilds, 1, 'a snapshot under another canon name does not belong to this canon');
+  assert.ok(first.written?.some((record) => record.step === 'graph'));
+  world.graphBuilds = 0;
+  world.write('src/c.ts', 'export const c = "BAD";\n');
+  const second = await world.run(first.written as CacheRecord[], { handOutGraph: true });
+  assert.equal(world.graphBuilds, 1, 'the plan of a diff compares with the recorded findings, once; the records reuse that build');
+  assert.deepEqual(shape(second.outcome.eslint), shape((await world.full()).eslint));
 });

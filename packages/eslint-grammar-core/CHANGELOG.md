@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.21.13
+
+- Changed: Require the updated FE canon, carry the rule catalog of @starci/hfs 5.1.0 (R368) and align the Grammar family.
+- Changed: `navbar-cluster` (FE-APP-SHELL-3) requires notifications only where the shell has a notification source (a `use...Notification...` call in its file).
+- Fixed: `route-page-is-one-page` declares the blocks its page proof reads as cross-file inputs, so a changed block re-judges the route and the page owner.
+- Changed: `pane-grid-children` (R345) follows a `const` that holds a Pane.
+
 ## 0.21.12
 
 - Changed: Require the updated FE canon, carry the rule texts of @starci/hfs 5.0.8 and align the Grammar family.

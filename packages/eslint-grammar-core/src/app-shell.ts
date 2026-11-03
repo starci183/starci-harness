@@ -17,6 +17,10 @@ import type { Node, ReaderContext, Resolved } from "./lib/types.ts"
 const CANON = "knowledge/ui/composition/app-shell.yaml"
 const BOTTOM_TABS = /^(?:BottomNavigation|BottomTabBar|MobileBottomNav|MobileTabBar)$/
 const EXPECTED_CLUSTER = ["language:IconButton", "theme:Switch", "notifications:IconButton", "account:AvatarButton"]
+/** The cluster of a shell with no notification source (a platform-admin shell with no workspace): notifications are required only where a read feeds them, so a shell without one may omit them. */
+const NO_SOURCE_CLUSTER = EXPECTED_CLUSTER.filter((kind) => !kind.startsWith("notifications:"))
+/** A notification source: a call of a hook that reads notifications (`useNotifications`, `useWorkspaceNotificationFeed`). */
+const NOTIFICATION_READ = /use\w*Notification\w*\s*\(/
 
 const meta = (code: string, description: string, messages: Record<string, string>): Rule.RuleMetaData => ({
   type: "problem",
@@ -169,10 +173,11 @@ export const navbarCluster: Rule.RuleModule = defineRule({
       const { alternatives, ownsBar } = clusterAlternatives(context, actions.value, shellHeader)
       if (ownsBar) return
       if (shellHeader && delegatesImportedBar(context, actions.value)) return
-      const desktop = EXPECTED_CLUSTER.join("|")
-      const mobile = EXPECTED_CLUSTER.slice(2).join("|")
+      const shapes = [EXPECTED_CLUSTER, ...(NOTIFICATION_READ.test(context.sourceCode.text) ? [] : [NO_SOURCE_CLUSTER])]
       const sequences = alternatives.map((sequence) => sequence.join("|"))
-      if (!sequences.includes(desktop) || sequences.some((sequence) => sequence !== desktop && sequence !== mobile)) context.report({ node, messageId: "cluster" })
+      const desktop = shapes.map((shape) => shape.join("|"))
+      const mobile = shapes.map((shape) => shape.slice(2).join("|"))
+      if (!sequences.some((sequence) => desktop.includes(sequence)) || sequences.some((sequence) => !desktop.includes(sequence) && !mobile.includes(sequence))) context.report({ node, messageId: "cluster" })
     } }
   },
 })

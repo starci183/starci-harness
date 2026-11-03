@@ -95,7 +95,7 @@ import { EditionRefusal } from '../scaffold/edition-gate.mjs';
 import { addKind } from '../scaffold/add.mjs';
 import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { newImages } from '../scaffold/image.mjs';
-import { cachedLinters, eslintRepository, runLinter as nativeLinter } from '../lint/run.mjs';
+import { cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
 import { runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
 import { CACHE_ENV, createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { DEFAULT_FAMILIES, runAppFamilies } from '../cache/run.mjs';
@@ -500,7 +500,7 @@ async function checkRun({ io, selected, full, use, coverageFrom, side, fix = fal
   const extra: Dynamic[] = [];
   const lines: string[] = [];
   const raw: LinterRaw = { eslint: [], stylelint: [] };
-  let eslint: Awaited<ReturnType<typeof eslintRepository>> | null = null;
+  let eslint: CachedLinters['eslint'] | null = null;
   let style: { results: Dynamic[]; errors: string[] } = { results: [], errors: [] };
   if (selected.has('lint')) {
     if (session !== undefined) {

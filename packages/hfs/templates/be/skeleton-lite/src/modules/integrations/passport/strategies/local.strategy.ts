@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common"
+import type { Type } from "@nestjs/common"
 import { PassportStrategy } from "@nestjs/passport"
 import { Strategy } from "passport-local"
 import { PassportError, PassportErrorCode } from "../errors/passport.error"
@@ -18,9 +19,12 @@ export interface PasswordAccount {
 /** The lookup the identity domain provides: the account of one email, or undefined. */
 export type FindPasswordAccount = (email: string) => Promise<PasswordAccount | undefined>
 
+/** The Passport strategy base of the local scheme, typed as the class the strategy extends. */
+const LocalStrategyBase: Type<object> = PassportStrategy(Strategy, "local")
+
 @Injectable()
 /** Email and password sign-in: bcrypt against the stored hash; a miss and a wrong password fail alike. */
-export class LocalStrategy extends PassportStrategy(Strategy, "local") {
+export class LocalStrategy extends LocalStrategyBase {
     constructor(@InjectPasswordAccounts() private readonly findAccount: FindPasswordAccount) {
         super({ usernameField: "email", passwordField: "password" })
     }

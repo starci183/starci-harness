@@ -7,7 +7,11 @@ export const DEFAULT_LOCALE = "vi" as const
 export const PRODUCT_TIME_ZONE = "Asia/Ho_Chi_Minh"
 
 /** The one locale-routing table of the web app. */
-export const routing = {
+export const routing: {
+    readonly locales: typeof LOCALES
+    readonly defaultLocale: typeof DEFAULT_LOCALE
+    readonly localePrefix: "as-needed"
+} = {
     locales: LOCALES,
     defaultLocale: DEFAULT_LOCALE,
     localePrefix: "as-needed" as const,

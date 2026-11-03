@@ -42,6 +42,8 @@ export const crossFileInputs: readonly CrossFileInput[] = [
   { rule: "page-tabs-in-header", kind: "exists", relativeTo: "side", globs: ["**/src/app", "**/src/app/**"], appliesTo: ["**/src/features/pages/**/*.{ts,tsx}"], reader: "lib/page-frame.ts" },
   { rule: "route-page-is-one-page", kind: "exists", relativeTo: "side", globs: ["**/src/app", "**/src/app/**"], appliesTo: ["**/src/features/pages/**/*.{ts,tsx}"], reader: "lib/page-frame.ts" },
   { rule: "route-page-is-one-page", kind: "content", relativeTo: "side", globs: ["**/src/app/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}"], appliesTo: ["**/src/features/pages/**/*.{ts,tsx}"], reader: "lib/page-frame.ts" },
+  // the page owner is judged by the blocks it renders as its root (a block that draws the Page, its own sub-blocks and the feature files it imports): a changed block re-judges the owner
+  { rule: "route-page-is-one-page", kind: "content", relativeTo: "side", globs: ["**/src/components/{blocks,frames,composites,branches,leaves}/**/*.{ts,tsx}", "**/src/features/**/*.{ts,tsx}"], appliesTo: ["**/src/features/pages/**/*.{ts,tsx}", "**/src/app/**/*.{ts,tsx}"], reader: "lib/page-frame.ts" },
   // the theme an app defines its tokens in: the route slot's globals.css and the brand slot's brand.css
   { rule: "no-unresolved-token-class", kind: "content", relativeTo: "side", globs: ["**/globals.css", "**/brand.css"], appliesTo: ["**/*.{ts,tsx}"], reader: "tokens.ts" },
 ]

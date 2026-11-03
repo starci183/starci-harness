@@ -8,7 +8,7 @@ export interface CreateHttpLinkParams {
 }
 
 /** The terminal link: POSTs the operation to the back end's GraphQL endpoint (modules/config). */
-export const createHttpLink = ({ withCredentials = false, signal }: CreateHttpLinkParams) =>
+export const createHttpLink = ({ withCredentials = false, signal }: CreateHttpLinkParams): HttpLink =>
     new HttpLink({
         uri: graphqlUrl(),
         credentials: withCredentials ? "include" : "same-origin",

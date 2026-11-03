@@ -45,11 +45,17 @@ test("R345: a PaneGrid child is a Pane element", () => {
       { filename: BLOCK, code: IMPORTS + "export const A = () => <PaneGrid areas={{ base: [\"a\"] }}><Pane area=\"a\" inset=\"flush\"><PaneGrid areas={{ base: [\"b\"] }}><Pane area=\"b\" /></PaneGrid></Pane></PaneGrid>" },
       // a Freestyle subtree is the app's own: its raw wrapper is not judged
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Freestyle reason=\"legacy canvas\"><PaneGrid areas={{ base: [\"a\"] }}><div /></PaneGrid></Freestyle>" },
+      // a const that holds a Pane (or a conditional of Panes) renders that Pane: the grid places it by its area
+      { filename: BLOCK, code: IMPORTS + "export const A = (p: P) => { const side = <Pane area=\"side\" />; const detail = p.open ? <Pane area=\"detail\" /> : null; return <PaneGrid areas={{ base: [\"side detail\"] }}>{side}{detail}</PaneGrid> }" },
       // another element's children are not a grid's
       { filename: BLOCK, code: IMPORTS + "export const A = () => <div><CategoryPane /></div>" },
       { filename: SCRIPT, code: IMPORTS + "export const A = () => <PaneGrid areas={{ base: [\"a\"] }}><CategoryPane /></PaneGrid>" },
     ],
     invalid: [
+      // a variable that holds anything but a Pane, a let and a parameter prove nothing
+      { filename: BLOCK, code: IMPORTS + "export const A = () => { const side = <CategoryPane area=\"side\" />; return <PaneGrid areas={{ base: [\"side\"] }}>{side}</PaneGrid> }", errors: [{ messageId: "notPane", data: { what: "An expression" } }] },
+      { filename: BLOCK, code: IMPORTS + "export const A = (p: P) => { let side = <Pane area=\"side\" />; return <PaneGrid areas={{ base: [\"side\"] }}>{side}</PaneGrid> }", errors: [{ messageId: "notPane", data: { what: "An expression" } }] },
+      { filename: BLOCK, code: IMPORTS + "export const A = (p: P) => <PaneGrid areas={{ base: [\"side\"] }}>{p.side}</PaneGrid>", errors: [{ messageId: "notPane", data: { what: "An expression" } }] },
       // the CategoryPane wrapper PaneGrid dropped: a blank pane
       { filename: BLOCK, code: IMPORTS + "export const A = () => <PaneGrid areas={{ base: [\"list main\"] }}><Pane area=\"list\" /><CategoryPane area=\"main\" /></PaneGrid>", errors: [{ messageId: "notPane", data: { what: "`<CategoryPane>`" } }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <PaneGrid areas={{ base: [\"a\"] }}><div /></PaneGrid>", errors: [{ messageId: "notPane", data: { what: "`<div>`" } }] },

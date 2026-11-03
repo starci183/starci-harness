@@ -50,7 +50,24 @@ export interface ProjectGraphSnapshot {
  */
 export const projectGraph = ({ repoRoot, injectedTypeScript }: { repoRoot: string; injectedTypeScript?: object }): ProjectGraphSnapshot => {
   resetProjectGraphs()
-  const graph = buildProjectGraph({ repoRoot, ...(injectedTypeScript === undefined ? {} : { injectedTypeScript }), runtimeRoot: RUNTIME })
+  return snapshotOf(buildProjectGraph({ repoRoot, ...(injectedTypeScript === undefined ? {} : { injectedTypeScript }), runtimeRoot: RUNTIME }))
+}
+
+/**
+ * The same findings from the graph this process has already built, so a process that linted the side hands them out without building the graph again.
+ *
+ * The rules read one graph per process and per side, built when the first file is linted. The ESLint child of `starci app check --gate lint` calls
+ * this after its run and writes the result beside its report; the result cache keeps the graph findings from it instead of building the graph a
+ * second time in the CLI. A process that has not built the graph yet builds it here, once, exactly as `projectGraph` does, and the value is the
+ * same: `projectGraph` is a fresh build, this is the build the rules used.
+ *
+ * @param input - The side folder (`repoRoot`, the folder of the side's `eslint.config.mjs`).
+ * @returns The findings of the rules of `recommended`, keyed by path relative to the side folder.
+ */
+export const projectGraphSnapshot = ({ repoRoot }: { repoRoot: string }): ProjectGraphSnapshot => snapshotOf(buildProjectGraph({ repoRoot, runtimeRoot: RUNTIME }))
+
+/** The findings of the rules of this canon in a built graph, by side-relative path, each list sorted by line, column, code and message. */
+const snapshotOf = (graph: ReturnType<typeof buildProjectGraph>): ProjectGraphSnapshot => {
   const byFile: Record<string, ProjectGraphFinding[]> = {}
   for (const [file, findings] of graph.byFile) {
     for (const finding of findings) {

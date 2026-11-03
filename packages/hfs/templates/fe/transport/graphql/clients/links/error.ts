@@ -15,7 +15,7 @@ const codeOf = (error: GraphQLErrorEntry): string =>
  * Reports what came back from downstream to `report` when the app passes one. The operation maps every error to its
  * GraphQLResponse, so this link never swallows or rewrites one.
  */
-export const createErrorLink = (report?: ErrorReporter) =>
+export const createErrorLink = (report?: ErrorReporter): ErrorLink =>
     new ErrorLink(({ error, operation }) => {
         if (report === undefined) return
         if (CombinedGraphQLErrors.is(error)) {

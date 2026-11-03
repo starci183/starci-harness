@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common"
+import type { Type } from "@nestjs/common"
 import { PassportStrategy } from "@nestjs/passport"
 import { Strategy } from "passport-google-oauth20"
 import type { Profile } from "passport-google-oauth20"
@@ -14,9 +15,12 @@ export interface GoogleIdentity {
     readonly email?: string
 }
 
+/** The Passport strategy base of the google scheme, typed as the class the strategy extends. */
+const GoogleStrategyBase: Type<object> = PassportStrategy(Strategy, "google")
+
 @Injectable()
 /** Google OAuth 2.0 (authorization code with state and PKCE): it proves the Google identity and never signs the user in itself. */
-export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
+export class GoogleStrategy extends GoogleStrategyBase {
     constructor(@InjectPassportOptions() options: PassportOptions) {
         super({
             clientID: options.google.clientId,

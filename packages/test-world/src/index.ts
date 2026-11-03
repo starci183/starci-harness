@@ -6,7 +6,7 @@
  * `@starci/test-world/global-setup` and `/global-teardown`; the warm docker stack is run by `starci app stack`.
  */
 export { defineTestWorld } from "./config/define"
-export type { DefinedTestWorld } from "./config/define"
+export type { DefinedTestWorld, TestWorldApi } from "./config/define"
 export { INFRA_SERVICES } from "./config/types"
 export type {
     AppDeclaration,

@@ -47,7 +47,7 @@ export const Credential = (metadata: CredentialMetadata): DoorDecorator =>
     applyDecorators(SetMetadata(CREDENTIAL_KEY, metadata), ServerToServer())
 
 /** The authenticated caller established by the default-deny guard. */
-export const CurrentPrincipal = createParamDecorator((_data: unknown, context: ExecutionContext): Principal => {
+export const CurrentPrincipal: ReturnType<typeof createParamDecorator> = createParamDecorator((_data: unknown, context: ExecutionContext): Principal => {
     const principal = requestOf(context).principal
     if (!principal) throw new IdentityError({ code: IdentityErrorCode.Unauthenticated })
     return principal
