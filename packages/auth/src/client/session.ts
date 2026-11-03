@@ -5,6 +5,7 @@ export type SessionEvent = "INITIAL_SESSION" | "SIGNED_IN" | "SIGNED_OUT" | "TOK
 export interface SessionPerson {
     readonly id: string
     readonly email: string
+    readonly name?: string
 }
 
 /** What a view reads: loading until the first answer, then signed in or out. The object changes only when the session does. */
@@ -38,7 +39,7 @@ export interface SessionStore<User extends SessionPerson> {
     getSnapshot: () => SessionSnapshot<User>
     /** The snapshot for server rendering: always loading. */
     getServerSnapshot: () => SessionSnapshot<User>
-    /** Publishes the snapshot of a signed-in person; watchers hear it only when status, id or email changed. */
+    /** Publishes the snapshot of a signed-in person; watchers hear it only when status, id, email or name changed. */
     signedIn: (user: User | null) => void
     /** Publishes the signed-out snapshot. */
     signedOut: () => void
@@ -58,7 +59,7 @@ export const createSessionStore = <User extends SessionPerson>(source: SessionSo
     const watchers = new Set<() => void>()
 
     const set = (next: SessionSnapshot<User>): void => {
-        if (snapshot.status === next.status && snapshot.user?.id === next.user?.id && snapshot.user?.email === next.user?.email) return
+        if (snapshot.status === next.status && snapshot.user?.id === next.user?.id && snapshot.user?.email === next.user?.email && snapshot.user?.name === next.user?.name) return
         snapshot = next
         for (const watcher of watchers) watcher()
     }

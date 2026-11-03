@@ -2,7 +2,7 @@ import { AUTH_ERROR_CODES } from "../contracts/index.ts"
 import type { JwksDocument } from "../contracts/index.ts"
 import { AuthError } from "./errors.ts"
 import type { AuthOptions } from "./options.ts"
-import type { AuthClock, AuthIds, AuthLogger, AuthSubject, DeviceMeta, RefreshTokenRecord, SessionTokens } from "./ports.ts"
+import type { AccountStanding, AuthClock, AuthIds, AuthLogger, AuthSubject, DeviceMeta, RefreshTokenRecord, SessionTokens } from "./ports.ts"
 import { digestOf } from "./primitives.ts"
 import type { AuthTokens } from "./tokens.ts"
 
@@ -20,6 +20,9 @@ export const RACED_SUCCESSORS_MAX = 3
 export const REFRESH_REUSE_EVENT = "auth.refresh-reuse-detected"
 
 const MILLISECONDS = 1000
+
+/** The subject of a standing account: its id, its address and its full name when the directory knows one. */
+const subjectOf = (user: AccountStanding, email: string): AuthSubject => ({ userId: user.id, email, ...(user.name === undefined ? {} : { name: user.name }) })
 
 type Rotation =
     | { readonly kind: "rotated"; readonly row: RefreshTokenRecord; readonly next: string }
@@ -115,7 +118,7 @@ export class AuthSessions {
             throw new AuthError(AUTH_ERROR_CODES.AccountDisabled)
         }
         await this.#store.touchSession(rotation.row.sessionId, now)
-        return this.#tokensFor({ userId: user.id, email: user.email }, rotation.row.sessionId, rotation.next, now)
+        return this.#tokensFor(subjectOf(user, user.email), rotation.row.sessionId, rotation.next, now)
     }
 
     /**
@@ -161,18 +164,19 @@ export class AuthSessions {
             await this.#store.closeSession(row.sessionId)
             throw new AuthError(AUTH_ERROR_CODES.AccountDisabled)
         }
-        return this.#tokensFor({ userId: user.id, email: user.email }, row.sessionId, presented, now)
+        return this.#tokensFor(subjectOf(user, user.email), row.sessionId, presented, now)
     }
 
     async #tokensFor(subject: AuthSubject, sessionId: string, refreshToken: string, now: Date): Promise<SessionTokens> {
-        const access = await this.#deps.tokens.sign({ sub: subject.userId, email: subject.email, sessionId }, now)
+        const name = subject.name === undefined ? {} : { name: subject.name }
+        const access = await this.#deps.tokens.sign({ sub: subject.userId, email: subject.email, sessionId, ...name }, now)
         return {
             accessToken: access.token,
             accessExpiresAt: access.expiresAt.toISOString(),
             accessExpiresIn: Math.round((access.expiresAt.getTime() - now.getTime()) / MILLISECONDS),
             cookieToken: refreshToken,
             refreshMaxAgeSeconds: this.#deps.options.refreshTtlSeconds,
-            user: { id: subject.userId, email: subject.email },
+            user: { id: subject.userId, email: subject.email, ...name },
         }
     }
 

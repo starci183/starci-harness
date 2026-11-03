@@ -22,6 +22,13 @@ describe("AuthTokens sign and verify", () => {
         assert.deepEqual(verified, { kind: "ok", value: claims })
     })
 
+    it("carries the full name as its own claim when the account has one", async () => {
+        const clock = new FakeClock()
+        const tokens = new AuthTokens(options([testSigningKey()]))
+        const { token } = await tokens.sign({ ...claims, name: "Ada Lovelace" }, clock.now())
+        assert.deepEqual(await tokens.verify(token, clock.now()), { kind: "ok", value: { ...claims, name: "Ada Lovelace" } })
+    })
+
     it("verifies a token without an email claim", async () => {
         const clock = new FakeClock()
         const tokens = new AuthTokens(options([testSigningKey()]))

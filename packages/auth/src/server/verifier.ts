@@ -28,8 +28,8 @@ export class AuthPrincipalVerifier implements PrincipalVerifier {
     async verify(token: string, now: Date = this.#clock.now()): Promise<Outcome<AuthPrincipal>> {
         const verified = await this.#tokens.verify(token, now)
         if (verified.kind === "refused") return refused(AUTH_ERROR_CODES.AccessTokenInvalid)
-        const { sub, email, sessionId } = verified.value
-        return ok({ id: sub, role: AUTH_ROLE, sessionId, ...(email === undefined ? {} : { email }) })
+        const { sub, email, name, sessionId } = verified.value
+        return ok({ id: sub, role: AUTH_ROLE, sessionId, ...(email === undefined ? {} : { email }), ...(name === undefined ? {} : { name }) })
     }
 }
 

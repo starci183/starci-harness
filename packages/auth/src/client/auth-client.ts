@@ -54,7 +54,7 @@ export interface AuthClient {
     accessToken(): Promise<string | undefined>
     /** The held access token without any request. */
     peek(): string | undefined
-    /** The signed-in person (id and email), or null when signed out. */
+    /** The signed-in person (id, email and the full name when the account has one), or null when signed out. */
     user(): Promise<SessionUser | null>
     /** The `Authorization` header of the current session (an empty object when signed out). */
     headers(): Promise<Record<string, string>>
@@ -85,7 +85,7 @@ const isGrant = (value: unknown): value is AccessGrant =>
 const fieldOf = (value: unknown, key: string): unknown =>
     typeof value === "object" && value !== null ? Object.entries(value).find(([name]) => name === key)?.[1] : undefined
 
-const claimsOf = (token: string): { readonly sub?: unknown; readonly email?: unknown } => {
+const claimsOf = (token: string): { readonly sub?: unknown; readonly email?: unknown; readonly name?: unknown } => {
     const payload = token.split(".")[1]
     if (payload === undefined) return {}
     try {
@@ -96,10 +96,15 @@ const claimsOf = (token: string): { readonly sub?: unknown; readonly email?: unk
     }
 }
 
+/** The full name of a person, when a grant or a token names one. */
+const nameOf = (name: unknown): { readonly name?: string } => (typeof name === "string" ? { name } : {})
+
 const userOf = (grant: AccessGrant): SessionUser | null => {
-    if (typeof grant.user === "object" && typeof grant.user.id === "string") return { id: grant.user.id, email: typeof grant.user.email === "string" ? grant.user.email : "" }
-    const { sub, email } = claimsOf(grant.accessToken)
-    return typeof sub === "string" ? { id: sub, email: typeof email === "string" ? email : "" } : null
+    if (typeof grant.user === "object" && typeof grant.user.id === "string") {
+        return { id: grant.user.id, email: typeof grant.user.email === "string" ? grant.user.email : "", ...nameOf(fieldOf(grant.user, "name")) }
+    }
+    const { sub, email, name } = claimsOf(grant.accessToken)
+    return typeof sub === "string" ? { id: sub, email: typeof email === "string" ? email : "", ...nameOf(name) } : null
 }
 
 const MILLISECONDS = 1000

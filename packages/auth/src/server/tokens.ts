@@ -47,6 +47,7 @@ export class AuthTokens {
             [AUTH_CLAIMS.role]: AUTH_ROLE,
             [AUTH_CLAIMS.sessionId]: claims.sessionId,
             ...(claims.email === undefined ? {} : { [AUTH_CLAIMS.email]: claims.email }),
+            ...(claims.name === undefined ? {} : { [AUTH_CLAIMS.name]: claims.name }),
         })
             .setProtectedHeader({ alg: AUTH_ALGORITHM, kid: signer.keyId, typ: "JWT" })
             .setSubject(claims.sub)
@@ -73,7 +74,8 @@ export class AuthTokens {
                 return refused(AUTH_ERROR_CODES.AccessTokenInvalid)
             }
             const email = payload[AUTH_CLAIMS.email]
-            return ok({ sub: payload.sub, sessionId, ...(typeof email === "string" ? { email } : {}) })
+            const name = payload[AUTH_CLAIMS.name]
+            return ok({ sub: payload.sub, sessionId, ...(typeof email === "string" ? { email } : {}), ...(typeof name === "string" ? { name } : {}) })
         } catch (cause) {
             return refused(AUTH_ERROR_CODES.AccessTokenInvalid, { cause: String(cause) })
         }

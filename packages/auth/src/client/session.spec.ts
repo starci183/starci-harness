@@ -104,7 +104,7 @@ describe("createSessionStore", () => {
         assert.deepEqual(store.getSnapshot(), { status: "signed-out", user: null })
     })
 
-    it("calls the watchers only when the status, the id or the email changed, and keeps the object stable otherwise", () => {
+    it("calls the watchers only when the status, the id, the email or the name changed, and keeps the object stable otherwise", () => {
         const store = createSessionStore<SessionPerson>(source({ announced: true }).facts)
         let calls = 0
         store.watch(() => {
@@ -119,11 +119,13 @@ describe("createSessionStore", () => {
         assert.equal(calls, 2, "a new email is a change")
         store.signedIn({ id: "u2", email: "new@example.com" })
         assert.equal(calls, 3, "a new id is a change")
+        store.signedIn({ id: "u2", email: "new@example.com", name: "Ada Lovelace" })
+        assert.equal(calls, 4, "a new full name is a change")
         store.signedOut()
         store.signedOut()
-        assert.equal(calls, 4, "signing out twice is one change")
+        assert.equal(calls, 5, "signing out twice is one change")
         store.signedIn(null)
-        assert.equal(calls, 5, "signed in with no person is another status")
+        assert.equal(calls, 6, "signed in with no person is another status")
     })
 
     it("tells every listener the event with the id of the person it concerns", () => {

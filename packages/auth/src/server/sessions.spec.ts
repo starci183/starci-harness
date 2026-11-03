@@ -5,6 +5,7 @@ import { testAuthOptions } from "../testing/index.ts"
 import { AuthError } from "./errors.ts"
 import { DEFAULT_REUSE_GRACE_MS, RACED_SUCCESSORS_MAX, REFRESH_REUSE_EVENT, AuthSessions } from "./sessions.ts"
 import { AuthTokens } from "./tokens.ts"
+import { AuthPrincipalVerifier } from "./verifier.ts"
 import { digestOf } from "./primitives.ts"
 
 const device = { userAgent: "agent", ip: "203.0.113.9" }
@@ -245,5 +246,25 @@ describe("AuthSessions end", () => {
         await sessions.refresh(first.cookieToken)
         options.clock.advance(1001)
         await assert.rejects(sessions.refresh(first.cookieToken), refusal(AUTH_ERROR_CODES.RefreshReused))
+    })
+})
+
+describe("AuthSessions full name", () => {
+    it("answers the full name the directory knows on a refresh and the session door, in the body and the access token", async () => {
+        const { options, tokens, sessions } = build()
+        options.accounts.set({ id: "user-1", email: "a@example.test", disabled: false, name: "Ada Lovelace" })
+        const first = await sessions.start(subject, device)
+        assert.equal(first.user.name, undefined, "a subject without a name signs in without one")
+        const refreshed = await sessions.refresh(first.cookieToken)
+        assert.deepEqual(refreshed.user, { id: "user-1", email: "a@example.test", name: "Ada Lovelace" })
+        assert.deepEqual((await sessions.access(refreshed.cookieToken)).user, refreshed.user)
+        const principal = await new AuthPrincipalVerifier(tokens, options.clock).verify(refreshed.accessToken)
+        assert.deepEqual(principal.kind === "ok" ? principal.value : null, {
+            id: "user-1",
+            role: "authenticated",
+            sessionId: [...options.sessions.sessions.keys()][0],
+            email: "a@example.test",
+            name: "Ada Lovelace",
+        })
     })
 })

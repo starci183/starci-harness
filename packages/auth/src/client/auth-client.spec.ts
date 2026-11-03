@@ -252,6 +252,15 @@ describe("AuthClient events and snapshots", () => {
         const { client: bare } = harness(() => ({ status: 200, body: { accessToken: "opaque", expiresIn: 60 } }))
         assert.equal(await bare.user(), null)
     })
+
+    it("keeps the full name of the person from the grant, or from the token when the grant carries no user", async () => {
+        const named = { ...grant("u-named"), user: { id: "u-named", email: "n@example.test", name: "Ada Lovelace" } }
+        const { client } = harness(() => ({ status: 200, body: named }))
+        assert.deepEqual(await client.user(), { id: "u-named", email: "n@example.test", name: "Ada Lovelace" })
+        const token = jwt({ sub: "u-claims", email: "c@example.test", name: "Grace Hopper" })
+        const { client: fromToken } = harness(() => ({ status: 200, body: { accessToken: token, expiresIn: 60 } }))
+        assert.deepEqual(await fromToken.user(), { id: "u-claims", email: "c@example.test", name: "Grace Hopper" })
+    })
 })
 
 describe("AuthClient doors", () => {

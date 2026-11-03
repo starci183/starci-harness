@@ -6,6 +6,8 @@ export interface AuthSubject {
     readonly userId: string
     /** The account email. */
     readonly email: string
+    /** The person's full name, when the account has one. */
+    readonly name?: string | undefined
 }
 
 /** What Google told us about the person who consented. */
@@ -38,6 +40,8 @@ export interface AccountStanding {
     readonly email: string | null
     /** Whether the account is disabled or gone. */
     readonly disabled: boolean
+    /** The person's full name, when the account has one (the session answers and the access token carry it). */
+    readonly name?: string | undefined
 }
 
 /** The app's user table, seen only as far as sessions need it. */
@@ -146,6 +150,8 @@ export interface AccessClaims {
     readonly email?: string | undefined
     /** The device session the token belongs to. */
     readonly sessionId: string
+    /** The person's full name at issue time, when the account has one. */
+    readonly name?: string | undefined
 }
 
 /** The principal domain code builds from a verified access token. */
@@ -154,6 +160,7 @@ export interface AuthPrincipal {
     readonly role: "authenticated"
     readonly sessionId: string
     readonly email?: string
+    readonly name?: string
 }
 
 /** A freshly signed access token. */

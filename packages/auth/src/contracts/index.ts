@@ -36,6 +36,7 @@ export const AUTH_CLAIMS = {
     role: "role",
     sessionId: "session_id",
     email: "email",
+    name: "name",
 } as const
 
 /** The signature algorithm of every access token: pinned, never negotiated. */
@@ -91,6 +92,8 @@ export interface SessionUser {
     readonly id: string
     /** The account email. */
     readonly email: string
+    /** The person's full name, when the account has one. */
+    readonly name?: string
 }
 
 /** What a sign-in, refresh or session door answers in the body. */
