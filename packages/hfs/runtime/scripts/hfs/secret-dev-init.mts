@@ -19,10 +19,11 @@ export function generateValues(entry: CustodyGenerator, random: (bytes: number) 
   if (entry.kind === "password") return { [entry.key]: random(entry.bytes).toString("base64url") };
   if (entry.kind === "uuid") return { [entry.key]: randomUUID() };
   if (entry.kind === "rsa-pem" || entry.kind === "ec-pem" || entry.kind === "ed25519-pem") {
-    const encodings = { privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } } as const;
     const pair = entry.kind === "rsa-pem"
-      ? generateKeyPairSync("rsa", { modulusLength: 2048, ...encodings })
-      : entry.kind === "ec-pem" ? generateKeyPairSync("ec", { namedCurve: "P-256", ...encodings }) : generateKeyPairSync("ed25519", encodings);
+      ? generateKeyPairSync("rsa", { modulusLength: 2048, privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } })
+      : entry.kind === "ec-pem"
+        ? generateKeyPairSync("ec", { namedCurve: "P-256", privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } })
+        : generateKeyPairSync("ed25519", { privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } });
     return { [entry.key]: pair.privateKey, ...(entry.publicKey ? { [entry.publicKey]: pair.publicKey } : {}) };
   }
   throw new SecretError(`the generator ${entry.kind} is unknown`);
