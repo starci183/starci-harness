@@ -2539,3 +2539,13 @@ pending:
       - STACKS_RUNBOOK_DOCKER_COMMAND
     enforcers:
       - {kind: hfs, id: stacks-local}
+  - id: R374
+    code: STACKS_CODE_BIND_MOUNT
+    law: A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned, and whose final stage is the harness's image for that service, the fork or its runtime layer, when the harness owns one), the same image in every environment; no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, and read-only plain config data files stay allowed).
+    failureCodes:
+      - STACKS_CODE_BIND_MOUNT
+      - STACKS_IMAGE_BASE_UNPINNED
+      - STACKS_IMAGE_BASE_NOT_FORK
+      - STACKS_IMAGE_ENV_DIVERGES
+    enforcers:
+      - {kind: hfs, id: stacks-service-images}

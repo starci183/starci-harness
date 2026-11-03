@@ -32,7 +32,10 @@ one deliberate change that also rebuilds and republishes the own images.
 Why: a moving tag makes two runs of the same commit different; the world and the deployment read the image from the stack, so the
 version is decided once there.
 
-Enforced by: R164 HFS_IMAGE_UNPINNED.
+A service the app customises is such an own image, built from `.starcistacks/images/<name>/` with no code mounted into it
+([project/stacks.md](../../project/stacks.md) PROJECT-STACKS-11).
+
+Enforced by: R164 HFS_IMAGE_UNPINNED, R374.
 
 ## BE-SERVICES-3 The contract between services is vendored and checked against the provider
 A synchronous API keeps its committed snapshot (`be/contracts/<service>/schema.graphql`, `openapi.json`). The async contract is

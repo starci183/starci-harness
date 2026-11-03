@@ -6611,3 +6611,16 @@ rules:
       - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks, edition: lite}
     witness:
       - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
+  - id: R374
+    code: "STACKS_CODE_BIND_MOUNT"
+    law: "A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned and whose final stage is the harness's image for that service, the fork or its runtime layer, when the harness owns one), the same image in every environment; no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, least grants and read-only plain config data files stay allowed)."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["STACKS_CODE_BIND_MOUNT", "STACKS_IMAGE_BASE_UNPINNED", "STACKS_IMAGE_BASE_NOT_FORK", "STACKS_IMAGE_ENV_DIVERGES"]
+    enforcers:
+      - {kind: hfs, id: stacks-service-images, at: scripts/hfs/rules/stacks-service-images.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-11-a-customised-service-is-an-image-the-app-builds-the-same-in-every-environment, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/stacks-service-images.spec.mjs, editions: [lite, full]}

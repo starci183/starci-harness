@@ -3,7 +3,10 @@
     "repository": "https://github.com/starci183/minio",
     "commit": "cab42e3b8431048bbe8d902e4bb464af7513bdd8",
     "sourceDockerfile": "Dockerfile.starci",
-    "platforms": ["linux/amd64", "linux/arm64"],
+    "platforms": [
+      "linux/amd64",
+      "linux/arm64"
+    ],
     "buildArgs": {
       "MINIO_VERSION": "2025-10-15T17-29-55Z",
       "IMAGE_VERSION": "RELEASE.2025-10-15T17-29-55Z-starci.1"
@@ -18,7 +21,9 @@
     "repository": "https://github.com/starci183/openclaw",
     "commit": "0a956010aced6bd65e80f45a2b360b14d79a55ed",
     "sourceDockerfile": "Dockerfile",
-    "platforms": ["linux/amd64"],
+    "platforms": [
+      "linux/amd64"
+    ],
     "buildArgs": {
       "OPENCLAW_DOCKER_BUILD_VERSION": "2026.10.10-beta.5"
     },
@@ -27,5 +32,18 @@
       "run": "https://github.com/starci183/openclaw/actions/runs/41282226747",
       "workflow": ".github/workflows/starci-image.yml"
     }
+  },
+  "openclaw-runtime": {
+    "layerOf": "openclaw",
+    "image": "ghcr.io/starci183/openclaw-runtime",
+    "dockerfile": "images/openclaw-runtime/Dockerfile",
+    "context": "images/openclaw-runtime",
+    "base": "ghcr.io/starci183/openclaw:2026.10.10-beta.5-starci.1@sha256:0770c1da11ec4a46607ec16957ac3cff68d05db4a287f59f0e1d0e76de980ff8",
+    "platforms": [
+      "linux/amd64"
+    ],
+    "pluginDirectory": "/opt/starci/plugins",
+    "published": null,
+    "workflow": ".github/workflows/images.yml"
   }
 }

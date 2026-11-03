@@ -34,6 +34,7 @@ import { stacksLiteBackingFindings } from './stacks-lite-backing.mjs';
 import { stackToolingFindings } from './stack-tooling.mjs';
 import { stacksDeployFindings } from './stacks-deploy.mjs';
 import { stacksLocalFindings } from './stacks-local.mjs';
+import { stacksServiceImageFindings } from './stacks-service-images.mjs';
 import { stacksAuthCookieDomainFindings } from './stacks-auth-cookie-domain.mjs';
 import { ciCustodyFindings } from './ci-custody.mjs';
 import { workflowContextsFindings } from './workflow-contexts.mjs';
@@ -94,6 +95,7 @@ export const FINDERS = [
   stackToolingFindings,
   stacksDeployFindings,
   stacksLocalFindings,
+  stacksServiceImageFindings,
   stacksAuthCookieDomainFindings,
   ciCustodyFindings,
   // finders-end

@@ -353,7 +353,26 @@ Rules learned from running apps on developer hosts; each holds in every app.
 
 ## Read with
 
+## PROJECT-STACKS-11 A customised service is an image the app builds, the same in every environment
+
+A service the app customises (wrapper scripts, plugins, configuration code) is built from an image folder
+`.starcistacks/images/<name>/` whose Dockerfile starts every `FROM` at a digest-pinned base; when the harness owns a StarCi
+image for that service ([images/README.md](../../images/README.md), `images/sources.json`: the fork, or the runtime layer built on it, such as
+`openclaw-runtime`) the final stage is `FROM` that harness image and the app only adds its own files to the layer's documented directory (the
+OpenClaw plugin directory `/opt/starci/plugins`), never wrapper or entrypoint code. No stack or compose file bind-mounts code, plugins or scripts into a service container. The line: allowed are a named
+volume, a secret or config grant, a bind under the data root (`${data}` or `STACK_DATA_DIR`), the Docker socket read-only and a
+read-only plain data file (json, yaml, toml, conf, ini, properties, txt, pem, crt, csv); every other bind is refused. Dev and
+production run the same image of the service: a compose service builds from `images/<name>` and a stack service names the
+project's own or a variable image reference, never a literal upstream image beside the folder.
+
+Why: code mounted at run time is a second, unreviewed build whose bytes the image digest does not name, and a service that
+differs between dev and production proves nothing about production.
+
+Enforced by: R374 (`stacks-service-images`: `STACKS_CODE_BIND_MOUNT`, `STACKS_IMAGE_BASE_UNPINNED`, `STACKS_IMAGE_BASE_NOT_FORK`,
+`STACKS_IMAGE_ENV_DIVERGES`); the fork list is `runtime/knowledge/hfs/fork-images.yaml`, held equal to `images/sources.json` by
+`stacks-service-images.spec.mts`.
+
 [lite.md](lite.md), [full.md](full.md); slot `app.starcistacks` and `app.plaintext-env` in
 [hfs/slots.yaml](../hfs/slots.yaml); R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299,
-R301, R372, R373 in [hfs/rules.yaml](../hfs/rules.yaml); rulings `lite-production-swarm`, `sealed-secret-custody`,
+R301, R372 to R374 in [hfs/rules.yaml](../hfs/rules.yaml); rulings `lite-production-swarm`, `customised-service-image`, `sealed-secret-custody`,
 `single-declared-ingress` and `owner-run-steps` in [decisions/rulings.yaml](../decisions/rulings.yaml).

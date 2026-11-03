@@ -1,0 +1,7 @@
+# The images the harness owns as StarCi forks (the harness repository's images/sources.json is their owner; stacks-service-images.spec.mts keeps this list
+# equal to it). A service of an app that has an image folder named like a key here is built FROM that repository (R374 STACKS_IMAGE_BASE_NOT_FORK):
+# the fork itself, or the harness runtime layer built on it (openclaw-runtime, images/README.md).
+schema: starci/fork-images@1
+images:
+  minio: ghcr.io/starci183/minio
+  openclaw: ghcr.io/starci183/openclaw-runtime
