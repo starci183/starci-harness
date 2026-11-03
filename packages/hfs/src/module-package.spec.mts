@@ -152,6 +152,8 @@ test('the module noun of addKind registers the package, and the root packages en
   assert.match(scripts['build:be'] ?? '', /^npm run build:modules --silent && cd be && tsc /);
   assert.equal(scripts['test:modules'], undefined, 'no second test run: the unit run and its CI shards hold the packages');
   assert.doesNotMatch(body('.github/workflows/ci.yml'), /test:modules/);
+  assert.match(body('.github/workflows/ci.yml'), /^ {8}side: \[be, fe, packages\]$/m, 'the root packages lint in a job of their own');
+  assert.match(body('.github/workflows/ci.yml'), /const files = \['reports\/lint\.be\.sonar\.json', 'reports\/lint\.fe\.sonar\.json', 'reports\/lint\.packages\.sonar\.json'\];/);
   assert.match(scripts['typecheck'] ?? '', /^npm run build:modules --silent && /);
 });
 
@@ -159,6 +161,9 @@ test('an app whose only root package is the agent SDK builds it first and runs i
   const root = appWithSdk(t, 'full');
   const bare = rendered(root).find((target) => target.path === 'be/jest.config.js')?.content ?? '';
   assert.doesNotMatch(bare, /packages:/, 'a folder with no src is no root package');
+  const ci = rendered(root).find((target) => target.path === '.github/workflows/ci.yml')?.content ?? '';
+  assert.match(ci, /^ {8}side: \[be, fe\]$/m);
+  assert.match(ci, /const files = \['reports\/lint\.be\.sonar\.json', 'reports\/lint\.fe\.sonar\.json'\];/);
   fs.mkdirSync(path.join(root, 'packages', 'agent-sdk', 'src'), { recursive: true });
   fs.writeFileSync(path.join(root, 'packages', 'agent-sdk', 'src', 'index.ts'), 'export {}\n');
   const targets = rendered(root);

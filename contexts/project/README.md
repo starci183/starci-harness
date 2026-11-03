@@ -73,7 +73,8 @@ face and its barrels, at 100 per file (BE-TEST-13), inside the Sonar and Codecov
 judged by the front-end canon and the Grammar lint (FE-PACKAGES-2). The sides import a root package by its package name through the `exports` of its manifest and never
 past them (`ARCH_INTERNAL_IMPORT_OUTSIDE`); no side config reaches `packages/`, so `starci app sync` renders the app root's
 `eslint.config.mjs` (slot `app.packages-lint`) whenever a root package exists, and `starci app check --gate lint` runs it as a third
-scope: the back-end canon over `packages/<pkg>/src/**` but the front-end subpaths, the front-end canon and the Grammar lint over
+scope, on its own: a side whose linter does not complete is a tool error of that side and the packages are still judged, `--side packages`
+limits the gate to them and the managed CI lints them in a job of the lint matrix beside `be` and `fe`. The scope applies the back-end canon over `packages/<pkg>/src/**` but the front-end subpaths, the front-end canon and the Grammar lint over
 `src/workbench/**` (outside `src/workbench/contract/`, which is React-free and stays back end) and `src/public/**`, each with the rules of
 its side over the package view of the app root. The project-graph rules judge the side folders and not the packages.
 

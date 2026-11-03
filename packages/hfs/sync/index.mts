@@ -538,7 +538,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     sonarSources: ['be/apps', 'be/src', 'fe/apps', ...(packages ? ['fe/packages'] : []), ...moduleDirs.map(dir => `${dir}/src`)].join(','),
     lcovReport: LCOV_REPORT,
     cpdExclusions: SONAR_CPD_EXCLUSIONS.join(','),
-    ...ciWorkflowCommands(source, LCOV_REPORT, source.qualityDeclared === false ? undefined : source.quality, { app, packages }),
+    ...ciWorkflowCommands(source, LCOV_REPORT, source.qualityDeclared === false ? undefined : source.quality, { app, packages, rootPackages: moduleDirs.length > 0 }),
     // The coverage scope is the same in both editions: lite measures exactly what full measures (ruling:R212/case-1, amended by ruling:R212/case-4).
     jestCoverage: scope === 'be' ? jestCoverageSource(jestCoverage(manifest, providers)) : '',
     jestPackages: scope === 'be' ? jestPackagesSource(rootPackages) : '',

@@ -218,3 +218,30 @@ test('native push dry-run isolates service and age identities from its children 
     assert.equal(env.GH_TOKEN, 'synthetic-github-auth');
   }
 });
+
+test('the release lint report lints the root packages as a scope of their own when the app has their managed config, and merges their report', async t => {
+  const { produceLintReports } = await import('../release/lint-report.mjs');
+  const root = lintFixture(t, 'hfs-sonar-lint-packages-');
+  const asked: string[] = [];
+  const spawn = (_command: string, args: string[]) => {
+    const scope = args[args.indexOf('--side') + 1] as string;
+    asked.push(scope);
+    const out = args[args.indexOf('--out') + 1] as string;
+    fs.mkdirSync(path.dirname(path.join(root, out)), { recursive: true });
+    fs.writeFileSync(path.join(root, out), JSON.stringify({ rules: [{ id: `rule-${scope}` }], issues: [{ scope }] }));
+    return { status: 0, stdout: '', stderr: '' };
+  };
+  const launch = (argv: string[]): [string, string[]] => [argv[0] as string, argv.slice(1)];
+  // reason: produceLintReports reads only cwd and spawn of the context.
+  const ctx = { cwd: root, spawn } as unknown as VerbContext;
+  assert.equal(produceLintReports(ctx, { launch, platform: 'linux', env: {} }).pass, true);
+  assert.deepEqual(asked, ['be', 'fe'], 'a packages folder without its managed config is no lint scope');
+  fs.mkdirSync(path.join(root, 'packages'));
+  fs.writeFileSync(path.join(root, 'eslint.config.mjs'), 'export default []\n');
+  asked.length = 0;
+  const done = produceLintReports(ctx, { launch, platform: 'linux', env: {} });
+  assert.equal(done.pass, true, done.text);
+  assert.deepEqual(asked, ['be', 'fe', 'packages']);
+  const merged = JSON.parse(fs.readFileSync(path.join(root, 'reports', 'lint.sonar.json'), 'utf8')) as { issues: { scope: string }[] };
+  assert.deepEqual(merged.issues.map((issue) => issue.scope), ['be', 'fe', 'packages']);
+});

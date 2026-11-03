@@ -175,8 +175,58 @@ test('an eslint child killed during a diff stores no record and the failure is s
   fs.writeFileSync(path.join(app.root, 'be/src/backend.ts'), 'export const value = 2;' + String.fromCharCode(10));
   const session = createFakeSession({ files: treeOf(app.root), records: recordsOf(first.session) });
   const killed = (spec: Parameters<LinterRunner>[0]) => runLinter(spec, async () => ({ status: null, signal: 'SIGKILL' as const, stdout: '[]', stderr: '' }));
-  await assert.rejects(cachedLinters({ repoRoot: app.root, app: readRepoDeclaration(loadSlotManifest(), app.root), run: killed, session }), { code: 'HFS_NODE_INCOMPLETE', message: /eslint did not complete/ });
+  const answer = await cachedLinters({ repoRoot: app.root, app: readRepoDeclaration(loadSlotManifest(), app.root), run: killed, session });
+  assert.deepEqual(answer.eslint.errors, ['eslint did not complete in be/: eslint did not complete'], 'the changed side is a tool error and the unchanged one needs no child');
   assert.equal(session.replaced.size, 0);
+});
+
+/** The root packages of the fixture app: the managed root config and one package whose source carries a finding. */
+function withPackages(app: Fixture): void {
+  fs.writeFileSync(path.join(app.root, 'eslint.config.mjs'), "export default [{ files: ['packages/*/src/**/*.ts'] }];\n");
+  fs.mkdirSync(path.join(app.root, 'packages', 'sdk', 'src'), { recursive: true });
+  fs.writeFileSync(path.join(app.root, 'packages', 'sdk', 'src', 'pick.ts'), 'export const value = "BAD";\n');
+}
+
+/** A linter whose be child is ended by its liveness budget (`failure`); fe and the root packages answer one finding per BAD file. */
+function failingBe(failure: Error): LinterRunner {
+  const sides = linter([]);
+  return async (spec) => {
+    if (path.basename(spec.cwd) === 'be') throw failure;
+    if (path.basename(spec.cwd) === 'fe') return sides(spec);
+    const files = (spec.list ?? ['packages/sdk/src/pick.ts']).map((file) => path.join(spec.cwd, file));
+    return { results: files.map((file) => ({ filePath: file, messages: fs.readFileSync(file, 'utf8').includes('BAD') ? [{ ruleId: 'fake/no-bad', message: 'BAD', line: 1, column: 1 }] : [] })) };
+  };
+}
+
+test('a side whose child does not complete is a tool error of that side, and the next side and the root packages are still judged and reported', async (context) => {
+  const app = fixture(context);
+  withPackages(app);
+  const out = await lint(app, undefined, {}, [], 'diff', failingBe(Object.assign(new Error('eslint did not complete'), { code: 'HFS_NODE_INCOMPLETE' })));
+  assert.deepEqual(out.eslint.errors, ['eslint did not complete in be/: eslint did not complete']);
+  assert.deepEqual(out.eslint.engine.sides['be'], { files: 0 });
+  assert.equal(out.eslint.engine.sides['packages']?.files, 1);
+  assert.deepEqual(out.eslint.findings.map((finding) => finding.path), ['packages/sdk/src/pick.ts']);
+  assert.deepEqual([...out.session.replaced.keys()], ['lint/fe'], 'the failed side records nothing, the judged one does');
+});
+
+test('a hold of the host still ends the lint run: no scope would be admitted', async (context) => {
+  const app = fixture(context);
+  withPackages(app);
+  for (const code of ['HOST_HELD', 'HEAVY_DEFERRED']) {
+    await assert.rejects(lint(app, undefined, {}, [], 'diff', failingBe(Object.assign(new Error('held'), { code, exitCode: 75 }))), { code });
+  }
+});
+
+test('--side packages lints the root packages alone, and a packages child that does not complete is their own tool error', async (context) => {
+  const app = fixture(context);
+  withPackages(app);
+  const calls: Call[] = [];
+  const out = await lint(app, 'packages', {}, calls, 'diff', failingBe(new Error('be is never asked')));
+  assert.deepEqual(Object.keys(out.eslint.engine.sides), ['packages']);
+  assert.deepEqual(out.eslint.findings.map((finding) => finding.path), ['packages/sdk/src/pick.ts']);
+  const failed = await lint(app, 'packages', {}, [], 'diff', async () => { throw Object.assign(new Error('child capture did not complete (overflow)'), { code: 'CLI_TOOL_INCOMPLETE' }); });
+  assert.deepEqual(failed.eslint.errors, ['eslint did not complete in packages/: child capture did not complete (overflow)']);
+  assert.deepEqual(failed.eslint.engine.sides['packages'], { files: 0 });
 });
 
 test('the cached lint asks the child of each side for the project graph of the installed canon and writes its graph records from the answer', async (context) => {
