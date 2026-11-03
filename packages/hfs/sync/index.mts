@@ -495,11 +495,25 @@ function parseScripts(text: string): Record<string, unknown> | null {
 }
 
 /**
+ * The rendered targets of an app declaration. Without source facts the app counts the back-end source files its own targets
+ * render (the managed sign-in glue), as a check reading the disk after the targets are written does, so a render of a declaration
+ * alone is already in sync with itself.
+ */
+export function renderTargets(hfs: unknown, presets: Presets | null | undefined, options: {
+  sonarKey?: string | null | undefined; readTemplate?: (name: string) => string; manifest?: SlotManifest; source?: AppSourceFacts | undefined;
+} = {}): RenderedTarget[] {
+  const first = renderOnce(hfs, presets, options);
+  if (options.source !== undefined) return first;
+  const settled = settleSource({ files: [], read: () => '' } as unknown as AppSourceFacts, first); // reason: the settled facts name only the rendered source files; every other fact stays absent as without source
+  return settled.files.length === 0 ? first : renderOnce(hfs, presets, { ...options, source: settled });
+}
+
+/**
  * The managed content of every target of the app: [{ path, mode, content, hash, scope }], paths app-relative (a side's targets under
  * its folder); a scripts target also carries `scripts`, the parsed block. `sonarKey` is the key the be side's stack declaration
  * names; without one the key is the project.
  */
-export function renderTargets(hfs: unknown, presets: Presets | null | undefined, { sonarKey, readTemplate = readBundled, manifest = loadSlotManifest() as SlotManifest, source }: {
+function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKey, readTemplate = readBundled, manifest = loadSlotManifest() as SlotManifest, source }: {
   sonarKey?: string | null | undefined; readTemplate?: (name: string) => string; manifest?: SlotManifest; source?: AppSourceFacts | undefined;
 } = {}): RenderedTarget[] {
   const app = validateHfs(hfs, manifest);
@@ -623,13 +637,31 @@ export function loadHfs(root: string, manifest: SlotManifest = loadSlotManifest(
   return hfs;
 }
 
+/**
+ * The source facts as they stand once the rendered back-end source files are on disk: a managed `.ts` target of the be side counts as a
+ * file of the app (and reads as its render), so the CI shard count and the coverage scope that count or read the source name the same
+ * files before and after the targets are written, and one sync leaves the app in sync.
+ */
+export function settleSource(source: AppSourceFacts, targets: readonly RenderedTarget[]): AppSourceFacts {
+  const added = new Map<string, string>();
+  for (const target of targets) {
+    const rel = target.scope === 'be' && target.path.startsWith('be/') ? target.path.slice('be/'.length) : '';
+    if (SOURCE_FILE.test(rel) && (rel.startsWith('apps/') || rel.startsWith('src/')) && !source.files.includes(rel)) added.set(rel, target.content);
+  }
+  if (added.size === 0) return source;
+  return { ...source, files: [...source.files, ...added.keys()].sort(byCodeUnit), read: (file: string): string => added.get(file) ?? source.read(file) };
+}
+
 /** The rendered targets of the app at `root`: its hfs.json, the Sonar key the be side's stack declaration names, the presets it installs. */
 export async function renderRepo(root: string, { presets, parseYaml, notices, manifest = loadSlotManifest() as SlotManifest }: {
   presets?: Presets | undefined; parseYaml?: ParseYaml | undefined; notices?: string[] | undefined; manifest?: SlotManifest;
 } = {}): Promise<{ hfs: Record<string, any>; targets: RenderedTarget[] }> { // reason: hfs is the parsed hfs.json
   const hfs = loadHfs(root, manifest);
   const sonarKey = await readDeclaredSonarKey(root, { parseYaml, fail: (message: string) => { throw new SyncError('HFS_SYNC_SONAR_KEY', message); } });
-  return { hfs, targets: renderTargets(hfs, presets ?? await loadPresets(root), { sonarKey, manifest, source: appSource(root, { parseYaml, notices }) }) };
+  const installed = presets ?? await loadPresets(root);
+  const source = appSource(root, { parseYaml, notices });
+  const settled = settleSource(source, renderTargets(hfs, installed, { sonarKey, manifest, source }));
+  return { hfs, targets: renderTargets(hfs, installed, { sonarKey, manifest, source: settled }) };
 }
 
 /** The folders a lite app's sync retires (ruling lite-self-hosted-postgres-passport-minio): the generated Supabase row types nothing reads any more. */

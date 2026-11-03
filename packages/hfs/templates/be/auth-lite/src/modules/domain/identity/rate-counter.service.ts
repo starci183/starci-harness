@@ -12,7 +12,7 @@ const isCountedWindow = rowShape({ hits: "number" })
 
 @Injectable()
 /** The package's rate counter over identity_attempts: a fixed window per key, counted in one statement so every replica agrees. */
-export class IdentityRateCounterAdapter implements RateCounter {
+export class IdentityRateCounterService implements RateCounter {
     constructor(
         @InjectPrimaryEntityManager() private readonly entityManager: EntityManager,
         @InjectClock() private readonly clock: Clock,

@@ -8,7 +8,7 @@ import { IdentitySessionEntity } from "./identity-session.entity"
 export { AuthIdentityEntity, AuthUserEntity, IdentityAttemptEntity, IdentityRefreshTokenEntity, IdentitySessionEntity }
 
 /** The entities of the identity capability, named in PRIMARY_ENTITIES of platform/database/entities.ts. */
-export const identityEntities = [
+export const identityEntities: ReadonlyArray<new () => object> = [
     AuthIdentityEntity,
     AuthUserEntity,
     IdentityAttemptEntity,

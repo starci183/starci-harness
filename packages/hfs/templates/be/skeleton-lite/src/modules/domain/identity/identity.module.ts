@@ -1,15 +1,15 @@
 import { Module } from "@nestjs/common"
 import type { DynamicModule, Provider } from "@nestjs/common"
 import { PASSPORT_ACCOUNTS, PASSPORT_AUTHENTICATOR, PASSPORT_RATE_COUNTER, PASSPORT_SESSION_STORE } from "@modules/integrations/passport"
-import { IdentityAccountDirectoryAdapter } from "./account-directory.adapter"
+import { IdentityAccountDirectoryService } from "./account-directory.service"
 import { AuthGuard } from "./auth.guard"
 import { IdentityAuthenticatorService } from "./authenticator.service"
 import { CredentialGuard } from "./credential.guard"
 import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
 import { ACCESS_TOKEN_VERIFIER, CREDENTIAL_AUTHENTICATOR } from "./identity.decorators"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./identity.module-definition"
-import { IdentityRateCounterAdapter } from "./rate-counter.adapter"
-import { IdentitySessionStoreAdapter } from "./session-store.adapter"
+import { IdentityRateCounterService } from "./rate-counter.service"
+import { IdentitySessionStoreService } from "./session-store.service"
 import { IdentitySignInService } from "./sign-in.service"
 
 const refusingAuthenticator: Provider = {
@@ -40,14 +40,14 @@ export class IdentityModule extends ConfigurableModuleClass {
                 authenticator,
                 CredentialGuard,
                 AuthGuard,
-                IdentitySessionStoreAdapter,
-                IdentityAccountDirectoryAdapter,
-                IdentityRateCounterAdapter,
+                IdentitySessionStoreService,
+                IdentityAccountDirectoryService,
+                IdentityRateCounterService,
                 IdentityAuthenticatorService,
                 IdentitySignInService,
-                { provide: PASSPORT_SESSION_STORE, useExisting: IdentitySessionStoreAdapter },
-                { provide: PASSPORT_ACCOUNTS, useExisting: IdentityAccountDirectoryAdapter },
-                { provide: PASSPORT_RATE_COUNTER, useExisting: IdentityRateCounterAdapter },
+                { provide: PASSPORT_SESSION_STORE, useExisting: IdentitySessionStoreService },
+                { provide: PASSPORT_ACCOUNTS, useExisting: IdentityAccountDirectoryService },
+                { provide: PASSPORT_RATE_COUNTER, useExisting: IdentityRateCounterService },
                 { provide: PASSPORT_AUTHENTICATOR, useExisting: IdentityAuthenticatorService },
             ],
             exports: [

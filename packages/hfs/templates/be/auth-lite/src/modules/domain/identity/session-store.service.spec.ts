@@ -6,7 +6,7 @@ import { fakeTransaction, mockEntityManager } from "@starci/jest-preset"
 import type { MockEntityManager } from "@starci/jest-preset"
 import { PRIMARY_ENTITY_MANAGER } from "@modules/platform/database"
 import { IdentityRefreshTokenEntity, IdentitySessionEntity } from "./persistence/entities"
-import { IdentitySessionStoreAdapter } from "./session-store.adapter"
+import { IdentitySessionStoreService } from "./session-store.service"
 
 const NOW = new Date("2026-02-03T04:05:06.000Z")
 const LATER = new Date("2026-03-03T04:05:06.000Z")
@@ -24,12 +24,12 @@ const row = (usedAt: Date | null): IdentityRefreshTokenEntity => ({
 const build = async (entityManager: MockEntityManager = mockEntityManager()) => {
     const transaction = fakeTransaction(entityManager)
     const moduleRef = await Test.createTestingModule({
-        providers: [IdentitySessionStoreAdapter, { provide: PRIMARY_ENTITY_MANAGER, useValue: entityManager }],
+        providers: [IdentitySessionStoreService, { provide: PRIMARY_ENTITY_MANAGER, useValue: entityManager }],
     }).compile()
-    return { subject: moduleRef.get(IdentitySessionStoreAdapter), entityManager, transaction }
+    return { subject: moduleRef.get(IdentitySessionStoreService), entityManager, transaction }
 }
 
-describe("IdentitySessionStoreAdapter.transaction", () => {
+describe("IdentitySessionStoreService.transaction", () => {
     it("opens a session and stores a live token in one transaction", async () => {
         const { subject, entityManager, transaction } = await build(mockEntityManager({ insert: [[IdentitySessionEntity, {}], [IdentityRefreshTokenEntity, {}]] }))
 
@@ -75,7 +75,7 @@ describe("IdentitySessionStoreAdapter.transaction", () => {
     })
 })
 
-describe("IdentitySessionStoreAdapter", () => {
+describe("IdentitySessionStoreService", () => {
     it("finds a token outside a transaction, or none", async () => {
         const { subject } = await build(mockEntityManager({ findOne: [[IdentityRefreshTokenEntity, row(null)], [IdentityRefreshTokenEntity, null]] }))
 

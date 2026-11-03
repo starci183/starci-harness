@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.15.0
+version: 3.16.0
 presenceValues:
   - required
   - optional
@@ -2882,12 +2882,14 @@ slots:
       - passport.options.ts
       - passport.decorators.ts
       - passport.kit.ts
+      - passport.module.ts
     allows:
       - index.ts
       - passport.config.ts
       - passport.options.ts
       - passport.decorators.ts
       - passport.kit.ts
+      - passport.module.ts
       - errors/
     logic:
       - passport.kit.ts
@@ -2901,6 +2903,36 @@ slots:
       - BE_AUTH_JWT_OWN_JWKS
       - BE_AUTH_REFRESH_COOKIE
     coverage: required
+  - id: be.identity.sign-in
+    profiles:
+      - be
+    editions:
+      - lite
+    editionWhy: lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written; full uses its identity provider.
+    path: "{src/modules/domain/identity/account-directory.service.spec.ts,src/modules/domain/identity/account-directory.service.ts,src/modules/domain/identity/authenticator.service.spec.ts,src/modules/domain/identity/authenticator.service.ts,src/modules/domain/identity/persistence/entities/auth-identity.entity.ts,src/modules/domain/identity/persistence/entities/auth-user.entity.ts,src/modules/domain/identity/persistence/entities/identity-attempt.entity.ts,src/modules/domain/identity/persistence/entities/identity-refresh-token.entity.ts,src/modules/domain/identity/persistence/entities/identity-session.entity.ts,src/modules/domain/identity/persistence/entities/index.ts,src/modules/domain/identity/rate-counter.service.spec.ts,src/modules/domain/identity/rate-counter.service.ts,src/modules/domain/identity/session-store.service.spec.ts,src/modules/domain/identity/session-store.service.ts,src/modules/domain/identity/sign-in.service.spec.ts,src/modules/domain/identity/sign-in.service.ts}"
+    presence: required
+    tracked: tracked
+    tier: inherit
+    tests: none
+    coverage: none
+    managedBy: auth-lite
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+  - id: be.feature.auth
+    profiles:
+      - be
+    editions:
+      - lite
+    editionWhy: lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written; full uses its identity provider.
+    path: "{src/features/api/auth/application/auth.contracts.ts,src/features/api/auth/application/get-jwks.handler.ts,src/features/api/auth/application/get-jwks.query.ts,src/features/api/auth/application/google-begin.command.ts,src/features/api/auth/application/google-begin.handler.ts,src/features/api/auth/application/google-complete.command.ts,src/features/api/auth/application/google-complete.handler.ts,src/features/api/auth/application/login.command.ts,src/features/api/auth/application/login.handler.ts,src/features/api/auth/application/logout.command.ts,src/features/api/auth/application/logout.handler.ts,src/features/api/auth/application/refresh.command.ts,src/features/api/auth/application/refresh.handler.ts,src/features/api/auth/application/session.command.ts,src/features/api/auth/application/session.handler.ts,src/features/api/auth/auth.module-definition.ts,src/features/api/auth/auth.module.ts,src/features/api/auth/auth.options.ts,src/features/api/auth/index.ts,src/features/api/auth/transport/http/auth-http.module-definition.ts,src/features/api/auth/transport/http/auth-http.module.ts,src/features/api/auth/transport/http/auth-http.options.ts,src/features/api/auth/transport/http/auth.controller.ts,src/features/api/auth/transport/http/dto/google-start.request.ts,src/features/api/auth/transport/http/dto/login.request.ts}"
+    presence: required
+    tracked: tracked
+    tier: inherit
+    tests: none
+    coverage: none
+    managedBy: auth-lite
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
   - id: be.integrations.object-storage
     profiles:
       - be

@@ -1,4 +1,4 @@
-// Managed by starci app sync (slot be.identity.sign-in); do not edit: run "npx starci app sync --execute".
+// Managed by starci app sync (slot be.feature.auth); do not edit: run "npx starci app sync --execute".
 import { CommandHandler } from "@nestjs/cqrs"
 import { IdentitySignInService } from "@modules/domain/identity"
 import type { AccessGrant } from "@modules/integrations/passport"

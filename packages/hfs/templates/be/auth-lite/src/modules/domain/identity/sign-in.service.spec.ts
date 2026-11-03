@@ -18,7 +18,7 @@ import { CLOCK, ClockModule } from "@modules/platform/clock"
 import { PRIMARY_ENTITY_MANAGER } from "@modules/platform/database"
 import { IdsModule } from "@modules/platform/ids"
 import { IdentityModule } from "./identity.module"
-import { IdentityRateCounterAdapter } from "./rate-counter.adapter"
+import { IdentityRateCounterService } from "./rate-counter.service"
 import { AuthUserEntity, IdentityRefreshTokenEntity, IdentitySessionEntity } from "./persistence/entities"
 import { IdentitySignInService } from "./sign-in.service"
 
@@ -135,7 +135,7 @@ const boot = async () => {
     })
         .overrideProvider(CLOCK)
         .useValue(clock)
-        .overrideProvider(IdentityRateCounterAdapter)
+        .overrideProvider(IdentityRateCounterService)
         .useValue(new MemoryCounter())
         .compile()
     await moduleRef.init()

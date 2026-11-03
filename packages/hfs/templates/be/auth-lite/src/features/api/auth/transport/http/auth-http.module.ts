@@ -1,4 +1,4 @@
-// Managed by starci app sync (slot be.identity.sign-in); do not edit: run "npx starci app sync --execute".
+// Managed by starci app sync (slot be.feature.auth); do not edit: run "npx starci app sync --execute".
 import { Module } from "@nestjs/common"
 import { AuthApiModule } from "../../auth.module"
 import { AuthController } from "./auth.controller"

@@ -18,7 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { loadSlotManifest, resolveAppDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { HARNESS_PACKAGE, canonPins } from '../runtime/scripts/hfs/canon-pins.mjs';
-import { TEMPLATES_DIR, appSource, imageFiles, render, renderTargets, writeTargets, type Presets } from '../sync/index.mjs';
+import { TEMPLATES_DIR, appSource, imageFiles, render, renderTargets, settleSource, writeTargets, type Presets } from '../sync/index.mjs';
 import type { SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
 import { ScaffoldError } from './service.mjs';
 import { testWorldFiles } from './test-world.mjs';
@@ -724,7 +724,8 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', re
   const writes = scaffoldWrites(root, original);
   try {
     for (const file of files) writes.write(file.path, file.content);
-    const targets = renderTargets(declaration, presets, { manifest, source: appSource(root) });
+    const source = appSource(root);
+    const targets = renderTargets(declaration, presets, { manifest, source: settleSource(source, renderTargets(declaration, presets, { manifest, source })) });
     for (const target of targets) writes.claim(target.path);
     writeTargets(root, targets);
     const secretFiles = initializeScaffoldSecrets(root, writes);

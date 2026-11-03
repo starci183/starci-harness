@@ -50,7 +50,7 @@ const transactionOf = (scoped: EntityManager): SessionTransaction => ({
 
 @Injectable()
 /** The package's session store over the entities of its tables: one transaction per rotation, the token row locked for update. */
-export class IdentitySessionStoreAdapter implements SessionStore {
+export class IdentitySessionStoreService implements SessionStore {
     constructor(@InjectPrimaryEntityManager() private readonly entityManager: EntityManager) {}
 
     /** Runs the work in one database transaction. */

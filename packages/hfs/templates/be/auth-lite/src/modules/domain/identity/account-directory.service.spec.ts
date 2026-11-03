@@ -4,7 +4,7 @@ import { Test } from "@nestjs/testing"
 import { FakeClock, mockEntityManager } from "@starci/jest-preset"
 import { CLOCK } from "@modules/platform/clock"
 import { PRIMARY_ENTITY_MANAGER } from "@modules/platform/database"
-import { IdentityAccountDirectoryAdapter, isDisabled } from "./account-directory.adapter"
+import { IdentityAccountDirectoryService, isDisabled } from "./account-directory.service"
 import { AuthUserEntity } from "./persistence/entities"
 
 const AT = "2026-02-03T04:05:06.000Z"
@@ -31,15 +31,15 @@ const build = async (rows: ReadonlyArray<AuthUserEntity | null>) => {
     const entityManager = mockEntityManager({ findOne: rows.map((result) => [AuthUserEntity, result] as const) })
     const moduleRef = await Test.createTestingModule({
         providers: [
-            IdentityAccountDirectoryAdapter,
+            IdentityAccountDirectoryService,
             { provide: PRIMARY_ENTITY_MANAGER, useValue: entityManager },
             { provide: CLOCK, useValue: new FakeClock(AT) },
         ],
     }).compile()
-    return moduleRef.get(IdentityAccountDirectoryAdapter)
+    return moduleRef.get(IdentityAccountDirectoryService)
 }
 
-describe("IdentityAccountDirectoryAdapter.find", () => {
+describe("IdentityAccountDirectoryService.find", () => {
     it("answers the standing of a live account, a banned one, a deleted one and a missing one", async () => {
         const subject = await build([user({}), user({ bannedUntil: AFTER }), user({ bannedUntil: BEFORE }), user({ deletedAt: BEFORE }), null])
 

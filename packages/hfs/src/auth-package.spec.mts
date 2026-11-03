@@ -5,6 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 import { canonPins } from '../runtime/scripts/hfs/canon-pins.mjs';
@@ -13,6 +14,9 @@ import { bundledPresets } from '../sync/index.mjs';
 import { scaffoldApp } from '../scaffold/app.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
+import { renderRepo, writeTargets } from '../sync/index.mjs';
+import { managedFindings } from '../sync/managed.mjs';
+import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 
 const REPOSITORY = path.resolve(import.meta.dirname, '..', '..', '..');
 const AUTH_SQL = path.join(REPOSITORY, 'packages', 'auth', 'migrations', 'identity-sessions.sql');
@@ -77,4 +81,30 @@ test('the pin of @starci/auth names the folder and the version of the package', 
   const pin = canonPins()['@starci/auth'];
   assert.equal(pin?.source, 'packages/auth/package.json');
   assert.equal(pin?.version, JSON.parse(fs.readFileSync(path.join(REPOSITORY, 'packages', 'auth', 'package.json'), 'utf8')).version);
+});
+
+test('the sign-in glue is managed: the doors, the stores and their specs render with the lite starter, and an edit is drift', async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-auth-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const declaration = structuredClone(APP);
+  declaration.edition = 'lite';
+  declaration.sides.be.connections = [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'postgres' }];
+  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify(declaration));
+  const { targets } = await renderRepo(root, { presets: PRESETS });
+  writeTargets(root, targets);
+  const tracked = ['hfs.json', ...targets.map((target) => target.path)];
+  const controller = 'be/src/features/api/auth/transport/http/auth.controller.ts';
+  const managed = ['be/src/modules/domain/identity/session-store.service.ts', 'be/src/modules/domain/identity/account-directory.service.ts', 'be/src/modules/domain/identity/rate-counter.service.ts',
+    'be/src/modules/domain/identity/authenticator.service.ts', 'be/src/modules/domain/identity/sign-in.service.ts', 'be/src/modules/domain/identity/sign-in.service.spec.ts', controller];
+  for (const file of managed) assert.ok(tracked.includes(file), file);
+  const flow = fs.readFileSync(path.join(root, 'be/src/modules/domain/identity/sign-in.service.spec.ts'), 'utf8');
+  assert.match(flow, /login, an authenticated request, refresh, reuse of the old refresh token, logout/u);
+  for (const door of ['login', 'refresh', 'session', 'logout', 'google', 'google/callback', 'jwks']) assert.ok(fs.readFileSync(path.join(root, controller), 'utf8').includes(`("${door}")`), door);
+  const input = { repoRoot: root, tracked, presets: PRESETS };
+  assert.deepEqual((await managedFindings(input)).map((finding) => finding.code), []);
+  const rendered = fs.readFileSync(path.join(root, controller), 'utf8');
+  fs.writeFileSync(path.join(root, controller), `${rendered}// edited\n`);
+  assert.deepEqual((await managedFindings(input)).map((finding) => [finding.code, finding.path]), [['HFS_MANAGED_FILE_DRIFT', controller]]);
+  fs.writeFileSync(path.join(root, controller), rendered);
+  assert.deepEqual((await managedFindings(input)).map((finding) => finding.code), []);
 });

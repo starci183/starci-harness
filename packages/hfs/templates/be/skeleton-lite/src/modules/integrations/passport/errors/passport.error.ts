@@ -4,7 +4,7 @@ import { DomainError } from "@modules/platform/errors"
 import type { ErrorKind } from "@modules/platform/errors"
 
 /** The codes of sign-in: the wire codes @starci/auth names, the same on both sides of the doors. */
-export const PassportErrorCode = AUTH_ERROR_CODES
+export const PassportErrorCode: typeof AUTH_ERROR_CODES = AUTH_ERROR_CODES
 export type PassportErrorCode = AuthErrorCode
 
 /** How each sign-in code travels. */

@@ -1,4 +1,4 @@
-// Managed by starci app sync (slot be.identity.sign-in); do not edit: run "npx starci app sync --execute".
+// Managed by starci app sync (slot be.feature.auth); do not edit: run "npx starci app sync --execute".
 import { IsOptional, IsString, MaxLength } from "class-validator"
 
 /** The query that starts a Google sign-in. */

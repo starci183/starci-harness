@@ -13,7 +13,7 @@ export const isDisabled = (user: AuthUserEntity, now: Date): boolean =>
 
 @Injectable()
 /** The package's account directory over auth.users: whether an account still stands, for a refresh to go on. */
-export class IdentityAccountDirectoryAdapter implements AccountDirectory {
+export class IdentityAccountDirectoryService implements AccountDirectory {
     constructor(
         @InjectPrimaryEntityManager() private readonly entityManager: EntityManager,
         @InjectClock() private readonly clock: Clock,
