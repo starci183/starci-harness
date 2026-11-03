@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0 - 2026-11-03
+
+- Added: `createSessionStore` and `createSingleFlight` in `@starci/auth/client`, the provider-agnostic session snapshot (snapshot, listeners, watchers, the first answer of a subscription) and the refresh-race guard (many requests answered 401 together refresh once, the others await it), each explicitly typed; `createAuthClient` is built on them and behaves as before. `@starci/auth-oidc/client` imports them instead of keeping a copy. Specs: `src/client/session.spec.ts` (one test per race case).
+
 ## 0.1.0 - 2026-11-03
 
 The sign-in of a lite StarCi app in one package, lifted from the product that ran it in production and generalised: no product names, every setting a typed option, no environment read.

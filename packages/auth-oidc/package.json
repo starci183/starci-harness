@@ -66,6 +66,7 @@
     "prepublishOnly": "npm test && npm run build"
   },
   "dependencies": {
+    "@starci/auth": "0.2.0",
     "jose": "6.2.12"
   },
   "peerDependencies": {

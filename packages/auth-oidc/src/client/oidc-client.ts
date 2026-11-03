@@ -1,18 +1,17 @@
+import { createSessionStore, createSingleFlight } from "@starci/auth/client"
+import type { SessionEvent, SessionListener, SessionSnapshot } from "@starci/auth/client"
 import { OIDC_CLIENT_CODES } from "../contracts/index.ts"
 import type { OidcClientOutcome, OidcFailureKind, OidcSessionUser } from "../contracts/index.ts"
 import { challengeOf, claimsOf, randomText, sameSitePath, textOf } from "./pkce.ts"
 
 /** The event a listener hears: the same four as `AuthEvent` of `@starci/auth/client`. */
-export type OidcEvent = "INITIAL_SESSION" | "SIGNED_IN" | "SIGNED_OUT" | "TOKEN_REFRESHED"
+export type OidcEvent = SessionEvent
 
 /** Called on every sign-in, sign-out and token refresh with the id of the person (null when signed out). */
-export type OidcListener = (event: OidcEvent, userId: string | null) => void
+export type OidcListener = SessionListener
 
 /** What a view reads: loading until the first answer, then signed in or out. The object changes only when the session does. */
-export interface OidcSnapshot {
-    readonly status: "loading" | "signed-in" | "signed-out"
-    readonly user: OidcSessionUser | null
-}
+export type OidcSnapshot = SessionSnapshot<OidcSessionUser>
 
 /** The small part of `Storage` the client needs: the transaction of one redirect lives here (and a sign-in hint), never a token. */
 export interface OidcStorage {
@@ -110,7 +109,6 @@ interface Discovery {
     readonly endSession: string | undefined
 }
 
-const LOADING: OidcSnapshot = { status: "loading", user: null }
 const TRANSACTION_KEY = "starci.oidc.tx."
 const HINT_KEY = "starci.oidc.hint"
 const SILENT_KEY = "starci.oidc.silent"
@@ -200,21 +198,18 @@ export const createOidcClient = (options: OidcClientOptions): OidcAuthClient => 
     let expiresAt = 0
     let announced = false
     let user: OidcSessionUser | null = null
-    let inFlight: Promise<string | undefined> | undefined
-    let snapshot: OidcSnapshot = LOADING
     let discovered: Promise<Discovery> | undefined
-    const listeners = new Set<OidcListener>()
-    const watchers = new Set<() => void>()
-
-    const setSnapshot = (next: OidcSnapshot): void => {
-        if (snapshot.status === next.status && snapshot.user?.id === next.user?.id && snapshot.user?.email === next.user?.email) return
-        snapshot = next
-        for (const watcher of watchers) watcher()
-    }
-
-    const notify = (event: OidcEvent): void => {
-        for (const listener of listeners) listener(event, user?.id ?? null)
-    }
+    // The snapshot, the listeners and the watchers are the session store of @starci/auth/client, the one every provider's client shares.
+    const store = createSessionStore<OidcSessionUser>({
+        announced: () => announced,
+        announce: () => {
+            announced = true
+        },
+        held: () => token !== undefined,
+        userId: () => user?.id ?? null,
+        renew: () => renew(),
+        refreshing: () => flight.running(),
+    })
 
     const userOf = (grant: Grant): OidcSessionUser | null => {
         const { sub, email } = claimsOf(grant.idToken ?? grant.accessToken)
@@ -230,8 +225,8 @@ export const createOidcClient = (options: OidcClientOptions): OidcAuthClient => 
         announced = true
         user = userOf(grant)
         storage.setItem(HINT_KEY, "1")
-        setSnapshot({ status: "signed-in", user })
-        notify(event)
+        store.signedIn(user)
+        store.emit(event, user?.id ?? null)
     }
 
     const drop = (): void => {
@@ -242,8 +237,8 @@ export const createOidcClient = (options: OidcClientOptions): OidcAuthClient => 
         expiresAt = 0
         announced = true
         user = null
-        setSnapshot({ status: "signed-out", user: null })
-        if (had) notify("SIGNED_OUT")
+        store.signedOut()
+        if (had) store.emit("SIGNED_OUT", null)
     }
 
     function refreshEvent(): OidcEvent {
@@ -308,12 +303,9 @@ export const createOidcClient = (options: OidcClientOptions): OidcAuthClient => 
         }
     }
 
-    const renew = (): Promise<string | undefined> => {
-        inFlight ??= requestRefresh().finally(() => {
-            inFlight = undefined
-        })
-        return inFlight
-    }
+    // Many requests answered 401 together refresh once: the others await the one in flight.
+    const flight = createSingleFlight(() => requestRefresh())
+    const renew = (): Promise<string | undefined> => flight.run()
 
     const accessToken = async (): Promise<string | undefined> => (token !== undefined && expiresAt - refreshAheadMs > now() ? token : renew())
 
@@ -408,32 +400,6 @@ export const createOidcClient = (options: OidcClientOptions): OidcAuthClient => 
         navigate(url.toString())
     }
 
-    const subscribe: OidcAuthClient["subscribe"] = (listener) => {
-        listeners.add(listener)
-        if (announced) {
-            listener("INITIAL_SESSION", user?.id ?? null)
-        } else {
-            void renew().then(() => {
-                if (!announced) announced = true
-                if (token === undefined) {
-                    setSnapshot({ status: "signed-out", user: null })
-                    listener("INITIAL_SESSION", null)
-                }
-            })
-        }
-        return () => {
-            listeners.delete(listener)
-        }
-    }
-
-    const watch: OidcAuthClient["watch"] = (onChange) => {
-        watchers.add(onChange)
-        if (!announced && inFlight === undefined) void renew().then(() => undefined)
-        return () => {
-            watchers.delete(onChange)
-        }
-    }
-
     return {
         signIn,
         completeSignIn,
@@ -448,9 +414,9 @@ export const createOidcClient = (options: OidcClientOptions): OidcAuthClient => 
             return held === undefined ? {} : { authorization: `Bearer ${held}` }
         },
         drop,
-        subscribe,
-        getSnapshot: () => snapshot,
-        getServerSnapshot: () => LOADING,
-        watch,
+        subscribe: store.subscribe,
+        getSnapshot: store.getSnapshot,
+        getServerSnapshot: store.getServerSnapshot,
+        watch: store.watch,
     }
 }
