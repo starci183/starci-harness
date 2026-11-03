@@ -4084,6 +4084,7 @@ rules:
     enforcers:
       - {kind: hfs, id: fe-stack, at: scripts/hfs/rules/fe-stack.mjs}
       - {kind: eslint-fe, id: fe-stack-import}
+      - {kind: eslint-fe, id: swr-extension-from-package}
     proves:
       - {path: packages/eslint/fe/frontend-boundary-coverage.spec.mjs, editions: [lite, full], codes: [FE_STACK_FORBIDDEN]}
       - {path: packages/hfs/src/frontend-boundary-coverage.spec.mjs, editions: [lite, full], codes: [FE_STACK_FORBIDDEN]}

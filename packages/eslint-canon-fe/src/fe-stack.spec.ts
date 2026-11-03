@@ -138,9 +138,7 @@ test("FE-DATA-SWR: the SWR middleware and the viewer-cache binding come from @st
   assert.doesNotThrow(() => {
     tester.run("swr-extension-from-package", swrExtensionFromPackage, {
       valid: [
-        { filename: HOOK, code: "import useSWR, { SWRConfig, useSWRConfig } from 'swr'
-import type { SWRConfiguration } from 'swr'
-import { pollingRestart } from '@starci/next-data'" },
+        { filename: HOOK, code: "import useSWR, { SWRConfig, useSWRConfig } from 'swr'; import type { SWRConfiguration } from 'swr'; import { pollingRestart } from '@starci/next-data'" },
         { filename: HOOK, code: "import { Middleware } from 'other-swr'" },
       ],
       invalid: [

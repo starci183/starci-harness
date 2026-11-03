@@ -43,11 +43,11 @@ concerns:
     why: modules/api/rest/<area>/*.ts for uploads and presigned URLs, and modules/auth/auth-door.ts for the app's own auth doors only; GraphQL carries every other call.
   - id: data
     tier: core
-    packages: [swr]
+    packages: [swr, '@starci/next-data']
     home: [fe.hooks.swr]
     pattern: FE-DATA-SWR
     forbids: ['@tanstack/react-query', react-query]
-    why: hooks/swr/api/{graphql,rest}/{queries,mutations}/use*Swr.ts wrap one operation each; components call hooks only.
+    why: hooks/swr/api/{graphql,rest}/{queries,mutations}/use*Swr.ts wrap one operation each; components call hooks only. The polling-restart middleware (pollingRestart), the key helpers, the viewer-keyed config and the viewer cache are @starci/next-data's (owner next-data-package); an app imports no Middleware or ScopedMutator type of swr and writes none of them.
   - id: toast
     tier: core
     packages: ['@heroui/react']
