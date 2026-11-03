@@ -23,8 +23,8 @@ import { FIT_OPTIONS, LANES_FIT_OPTIONS, LANES_MAX_ZOOM, MAX_ZOOM, Refit, labelF
 import { COMMON_SPACING_PX } from "../../../common/spacing.js"
 import {
     FLOW_GRAPH_NODE_MAX_WIDTH,
-    LANES_COLUMN_STEP,
     LANES_HEADER_ROOM,
+    LANES_NODE_WIDTH,
     flowGraphRoot,
     layerCoordinate,
     layeredPositions,
@@ -252,7 +252,7 @@ export const FlowGraph = ({
         return headers.flatMap((header, index) => {
             // A column header shows only over a column that holds a node.
             if (held !== null && !held.has(header.at)) return []
-            const along = layout === "lanes" ? header.at * LANES_COLUMN_STEP : layout === "layered" ? layerCoordinate(header.at, flowDirection) : header.at
+            const along = lanes !== null ? (lanes.columnX[header.at] ?? 0) : layout === "layered" ? layerCoordinate(header.at, flowDirection) : header.at
             return [{
                 id: `grammar-flow-header-${index}`,
                 type: "flowGraphHeader",
@@ -284,7 +284,7 @@ export const FlowGraph = ({
         target: edge.target,
         type: layout === "radial" ? "straight" : layout === "lanes" ? "flowGraphLane" : "smoothstep",
         ...(lanes === null ? {} : {
-            data: { stepPosition: lanesStepPosition((lanes.columns.get(edge.target) ?? 0) - (lanes.columns.get(edge.source) ?? 0), lanes.forks.get(edge.source) ?? 0) },
+            data: { stepPosition: lanesStepPosition((lanes.columnX[lanes.columns.get(edge.target) ?? 0] ?? 0) - (lanes.columnX[lanes.columns.get(edge.source) ?? 0] ?? 0) - LANES_NODE_WIDTH, lanes.forks.get(edge.source) ?? 0) },
             markerEnd: { type: MarkerType.ArrowClosed, width: COMMON_SPACING_PX[6], height: COMMON_SPACING_PX[6], color: "var(--muted)" },
         }),
         ...(stepPosition === undefined ? {} : { pathOptions: { stepPosition } }),
