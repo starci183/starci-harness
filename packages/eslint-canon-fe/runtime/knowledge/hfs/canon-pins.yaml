@@ -112,6 +112,13 @@ pins:
     side: be
     source: packages/ai-router/package.json
     why: 'the AI pool router of a back end: a NestJS module that routes OpenAI-compatible chat, stream and embeddings calls across keys, models and providers, with @starci/ai-router/testing for its specs; @starci/jest-preset compiles it as an ESM-only dependency.'
+  '@starci/object-storage':
+    version: 0.1.0
+    group: starci
+    install: registry
+    side: be
+    source: packages/object-storage/package.json
+    why: 'object storage of a back end: a NestJS module and the ObjectStorage port over S3-compatible storage (presigned PUT and GET that sign the content type and size, head, get, put, list, delete, bucket setup, size and content-type limits, coded errors), with @starci/object-storage/testing for its specs; the only importer of @aws-sdk/client-s3 and @aws-sdk/s3-request-presigner (R331).'
   '@starci/hfs':
     version: 5.1.0
     group: starci
@@ -550,12 +557,12 @@ pins:
     version: 3.1150.0
     group: framework
     side: be
-    why: 'the S3 transport of integrations/object-storage, the one ObjectStorage adapter of both editions (MinIO, S3, Spaces); 3.1150.0 is the release of 2026-10-12, chosen over newer ones that had not aged two weeks.'
+    why: 'the S3 transport inside @starci/object-storage, the one ObjectStorage adapter of both editions (MinIO, S3, Spaces), which depends on it at exactly this version and which no app file imports; 3.1150.0 is the release of 2026-10-12, chosen over newer ones that had not aged two weeks.'
   '@aws-sdk/s3-request-presigner':
     version: 3.1150.0
     group: framework
     side: be
-    why: 'signs the presigned PUT and GET of integrations/object-storage locally, the same release as client-s3.'
+    why: 'signs the presigned PUT and GET inside @starci/object-storage locally, the same release as client-s3; no app file imports it.'
   '@apollo/server':
     version: 5.5.1
     group: framework

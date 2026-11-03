@@ -236,9 +236,10 @@ ruleParams:
       "node:https": [platform/http]
       http: [platform/http]
       https: [platform/http]
-      "@aws-sdk/client-s3": [integrations/object-storage]       # the ObjectStorage port: one S3 adapter for MinIO, S3 and Spaces (R331)
-      "@aws-sdk/s3-request-presigner": [integrations/object-storage]
-      minio: []                                          # storage goes through the S3 client of integrations/object-storage
+      "@aws-sdk/client-s3": []                           # the S3 client is a dependency of @starci/object-storage, imported by no app file (R331)
+      "@aws-sdk/s3-request-presigner": []
+      "@starci/object-storage": [integrations/object-storage]   # the ObjectStorage port: one S3 adapter for MinIO, S3 and Spaces (R331)
+      minio: []                                          # storage goes through @starci/object-storage
       "@supabase": []                                    # no Supabase client in a back end
       "@nestjs/passport": [integrations/passport]        # the identity libraries (R328)
       passport: [integrations/passport]
@@ -1998,16 +1999,17 @@ slots:
     profiles: [be]
     exemplifiedBy:
       - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/
-    # The one owner of the S3 client (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) over S3-compatible storage (MinIO in
-    # lite): the ObjectStorage port with presigned PUT and GET; no other module imports an S3 SDK or minio.
+    # The glue of @starci/object-storage, the owner of the S3 client (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) over
+    # S3-compatible storage (MinIO in lite): this folder keeps the bucket, parses the settings and registers the module; no app
+    # file imports an S3 SDK or minio, and no other module imports the package.
     path: "src/modules/integrations/object-storage/"
     presence: optional
     litePresence: required
     tracked: tracked
     tier: integrations
     owner: true
-    requires: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.client.ts]
-    allows: [index.ts, object-storage.module.ts, object-storage.module-definition.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.client.ts, errors/]
+    requires: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.module-definition.ts, object-storage.module.ts]
+    allows: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.module-definition.ts, object-storage.module.ts, errors/]
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_STORAGE_OWNER]
     coverage: required

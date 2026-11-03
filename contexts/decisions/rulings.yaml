@@ -476,6 +476,11 @@ rulings:
     status: live
     ruling: "The SWR data helpers of every front end are the published @starci/next-data package: the pollingRestart middleware (a function refreshInterval that stopped at 0 starts again for newer data), the viewer and tenant key helpers, viewerSwrConfig and the viewer cache writes. It is pure logic with no component; each operation's SWR hook stays in the app, which writes no SWR middleware or viewer-cache binding of its own."
     owner: "packages/next-data; contexts/code/fe/data.md FE-DATA-SWR, FE-DATA-KEY; contexts/hfs/rules.yaml R244 (swr-extension-from-package)"
+  - id: object-storage-package
+    date: '2026-11-03'
+    status: live
+    ruling: "Object storage is the published @starci/object-storage package (a Nest module and the ObjectStorage port: presigned PUT and GET that sign the content type and size, head, get, put, list, delete, bucket setup, size and content-type limits, coded errors, no environment read, an in-memory double in ./testing); it is the only owner of @aws-sdk/client-s3 and @aws-sdk/s3-request-presigner, an app imports neither and imports the package only in integrations/object-storage, and the app keeps its buckets, the key layout of each domain and the parsing of its settings."
+    owner: "packages/object-storage; contexts/code/be/infra.md BE-INFRA-1; contexts/hfs/rules.yaml R331; contexts/hfs/slots.yaml (ruleParams.be.infraOwners, be.integrations.object-storage)"
   - id: locale-accept-language
     date: '2026-10-14'
     status: live

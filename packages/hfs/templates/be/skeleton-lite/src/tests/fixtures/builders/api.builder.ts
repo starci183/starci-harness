@@ -37,7 +37,7 @@ export const buildWiringProof = (): WiringProof => ({
             bucket: "fixture",
             accessKeyId: new Secret("fixture-only"),
             secretAccessKey: new Secret("fixture-only"),
-            presignTtlSeconds: 300,
+            defaultExpiresIn: 300,
         },
     },
     overrides: [

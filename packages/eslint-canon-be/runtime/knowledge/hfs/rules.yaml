@@ -5765,7 +5765,7 @@ rules:
         ruling: "The refresh token of the lite identity rotates and lives only in an httpOnly cookie; the browser holds no credential."
   - id: R331
     code: "BE_STORAGE_OWNER"
-    law: "The S3 client (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) is imported only by integrations/object-storage, the ObjectStorage port over S3-compatible storage (MinIO in lite) with presigned PUT and GET; no module imports minio."
+    law: "The S3 client libraries (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) are the dependencies of @starci/object-storage, the ObjectStorage port over S3-compatible storage (MinIO in lite) with presigned PUT and GET, and are imported by no app file; @starci/object-storage is imported only by integrations/object-storage, its one glue; no module imports minio."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_STORAGE_OWNER"]
@@ -5774,11 +5774,11 @@ rules:
     editions: [lite, full]
     docs: [contexts/code/be/infra.md]
     proves:
-      - packages/eslint-canon-be/src/auth-passport.spec.ts
+      - packages/eslint-canon-be/src/object-storage-package.spec.ts
     exemplifiedBy:
-      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/object-storage.client.ts, edition: lite}
+      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/object-storage.module.ts, edition: lite}
     witness:
-      - {path: packages/eslint-canon-be/src/auth-passport.spec.ts, editions: [lite, full], codes: [BE_STORAGE_OWNER]}
+      - {path: packages/eslint-canon-be/src/object-storage-package.spec.ts, editions: [lite, full], codes: [BE_STORAGE_OWNER]}
     cases:
       - id: case-1
         date: "2026-10-29"

@@ -1,6 +1,6 @@
 /**
  * Twin tests for the lite identity law (R329 `BE_AUTH_JWT_OWN_JWKS`, R330 `BE_AUTH_REFRESH_COOKIE`) and the infrastructure rows
- * it leans on (R328 `BE_AUTH_PASSPORT_OWNER`, R331 `BE_STORAGE_OWNER`, judged by `infra-import-owner`).
+ * it leans on (R328 `BE_AUTH_PASSPORT_OWNER`, judged by `infra-import-owner`).
  *
  *   node --test src/auth-passport.spec.ts
  */
@@ -18,7 +18,6 @@ const tester = canonRuleTester({
 })
 
 const PASSPORT = at("src/modules/integrations/passport/passport.tokens.ts")
-const STORAGE = at("src/modules/integrations/object-storage/object-storage.client.ts")
 const IDENTITY = at("src/modules/domain/identity/auth.guard.ts")
 const DOMAIN = at("src/modules/domain/order/order.service.ts")
 
@@ -56,17 +55,14 @@ test("refresh-token-cookie-only: the refresh token is never a body field and onl
     })
 })
 
-test("infra-import-owner: the identity libraries belong to integrations/passport and the S3 client to integrations/object-storage", () => {
+test("infra-import-owner: the identity libraries belong to integrations/passport", () => {
     tester.run("infra-import-owner", infraImportOwner, {
         valid: [
             { filename: PASSPORT, code: `import { PassportStrategy } from "@nestjs/passport"; import { compare } from "bcryptjs"; export const p = [PassportStrategy, compare]` },
-            { filename: STORAGE, code: `import { S3Client } from "@aws-sdk/client-s3"; import { getSignedUrl } from "@aws-sdk/s3-request-presigner"; export const s = [S3Client, getSignedUrl]` },
         ],
         invalid: [
             { filename: DOMAIN, code: `import { PassportStrategy } from "@nestjs/passport"; export const p = PassportStrategy`, errors: [{ messageId: "foreign" }] },
             { filename: DOMAIN, code: `import { JwtService } from "@nestjs/jwt"; export const j = JwtService`, errors: [{ messageId: "foreign" }] },
-            { filename: DOMAIN, code: `import { S3Client } from "@aws-sdk/client-s3"; export const s = S3Client`, errors: [{ messageId: "foreign" }] },
-            { filename: STORAGE, code: `import { Client } from "minio"; export const c = Client`, errors: [{ messageId: "nowhere" }] },
             { filename: PASSPORT, code: `import { hash } from "bcrypt"; export const h = hash`, errors: [{ messageId: "nowhere" }] },
             { filename: PASSPORT, code: `import { createClient } from "@supabase/supabase-js"; export const c = createClient`, errors: [{ messageId: "nowhere" }] },
         ],

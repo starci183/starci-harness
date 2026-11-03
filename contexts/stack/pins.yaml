@@ -9,6 +9,7 @@ pins:
   '@starci/heroicons': {version: 0.3.5, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
   '@starci/event-stream': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
   '@starci/next-data': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the SWR middleware pollingRestart, the viewer and tenant key helpers and the viewer cache of a front end; each operation's hook stays in the app"}
+  '@starci/object-storage': {version: 0.1.0, group: starci, side: be, install: registry, why: "object storage of a back end: the ObjectStorage port over S3-compatible storage; the only importer of the AWS S3 client libraries"}
   '@starci/grammar': {version: 0.21.13, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
   '@starci/eslint-canon-be': {version: 3.12.0, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
   '@starci/eslint-canon-fe': {version: 9.10.0, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
@@ -107,8 +108,8 @@ pins:
   '@graphql-tools/utils': {version: 12.1.0, group: framework, side: be, why: "an override of every app root, never a dependency: closes an advisory under @nestjs/graphql 13; drop with the 14 upgrade"}
   multer: {version: 2.5.0, group: framework, side: be, why: "an override of every app root, never a dependency: closes an advisory under @nestjs/platform-express; drop when Nest depends on a fixed release"}
   '@nestjs/apollo': {version: 13.4.5, group: framework, side: be, why: "the Apollo driver, on the @nestjs/graphql line"}
-  '@aws-sdk/client-s3': {version: 3.1150.0, group: framework, side: be, why: "the S3 client of integrations/object-storage, the one ObjectStorage adapter of both editions (MinIO in lite)"}
-  '@aws-sdk/s3-request-presigner': {version: 3.1150.0, group: framework, side: be, why: "signs presigned PUT and GET; the client-s3 release"}
+  '@aws-sdk/client-s3': {version: 3.1150.0, group: framework, side: be, why: "the S3 client inside @starci/object-storage, the one ObjectStorage adapter of both editions (MinIO in lite); the package depends on it at exactly this version and no app file imports it"}
+  '@aws-sdk/s3-request-presigner': {version: 3.1150.0, group: framework, side: be, why: "signs presigned PUT and GET inside @starci/object-storage; the client-s3 release; no app file imports it"}
   '@apollo/server': {version: 5.5.1, group: framework, side: be, why: "the server behind @nestjs/apollo"}
   '@nestjs/websockets': {version: 11.2.5, group: framework, side: be, why: "the socket.io gateway; the @nestjs/core line"}
   '@nestjs/platform-socket.io': {version: 11.2.5, group: framework, side: be, why: "the socket.io platform; the @nestjs/core line"}

@@ -276,9 +276,9 @@ ruleParams:
         - platform/http
       https:
         - platform/http
-      "@aws-sdk/client-s3":
-        - integrations/object-storage
-      "@aws-sdk/s3-request-presigner":
+      "@aws-sdk/client-s3": []
+      "@aws-sdk/s3-request-presigner": []
+      "@starci/object-storage":
         - integrations/object-storage
       minio: []
       "@supabase": []
@@ -2914,7 +2914,7 @@ slots:
   - id: be.integrations.object-storage
     profiles:
       - be
-    editionWhy: lite requires its S3-compatible storage (MinIO); full adds it when it stores objects.
+    editionWhy: lite requires its S3-compatible storage (MinIO) through @starci/object-storage, composed here; full adds it when it stores objects.
     path: src/modules/integrations/object-storage/
     presence: optional
     litePresence: required
@@ -2926,15 +2926,15 @@ slots:
       - object-storage.config.ts
       - object-storage.options.ts
       - object-storage.decorators.ts
-      - object-storage.client.ts
+      - object-storage.module-definition.ts
+      - object-storage.module.ts
     allows:
       - index.ts
-      - object-storage.module.ts
-      - object-storage.module-definition.ts
       - object-storage.config.ts
       - object-storage.options.ts
       - object-storage.decorators.ts
-      - object-storage.client.ts
+      - object-storage.module-definition.ts
+      - object-storage.module.ts
       - errors/
     tests: unit-beside
     rules:

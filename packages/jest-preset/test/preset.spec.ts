@@ -1011,3 +1011,14 @@ test('no file the package ships or compiles as a fixture carries an inline suppr
   assert.ok(files.includes(path.join('test', 'probe-kit.fixture')) && files.includes(path.join('assets', 'unit-metadata.generated.js')), 'the scan reaches the fixtures and the generated anchor');
   for (const name of files) assert.doesNotMatch(fs.readFileSync(path.join(root, name), 'utf8'), directive, `${name} suppresses nothing`);
 });
+
+test('the ESM-only dependencies a back end composes are compiled to CommonJS: jose, @starci/ai-router and @starci/object-storage', () => {
+  const config = preset.starciJestConfig(OPTIONS);
+  for (const project of config.projects) {
+    const pattern = Object.keys(project.transform ?? {}).find((key) => key.includes('node_modules'));
+    assert.ok(pattern, `${String(project.displayName)} transforms the ESM-only dependencies`);
+    const matches = (path: string) => new RegExp(pattern).test(path);
+    for (const name of ['jose', '@starci/ai-router', '@starci/object-storage']) assert.equal(matches(`/app/node_modules/${name}/dist/index.js`), true, name);
+    assert.equal(matches('/app/node_modules/@starci/other/dist/index.js'), false);
+  }
+});

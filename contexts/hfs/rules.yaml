@@ -2233,7 +2233,7 @@ rules:
       - {kind: eslint-be, id: refresh-token-cookie-only}
   - id: R331
     code: BE_STORAGE_OWNER
-    law: "The S3 client (@aws-sdk/client-s3, @aws-sdk/s3-request-presigner) is imported only by `integrations/object-storage`; minio is imported nowhere."
+    law: "The S3 client libraries (@aws-sdk/client-s3, @aws-sdk/s3-request-presigner) are the dependencies of @starci/object-storage and are imported by no app file; @starci/object-storage is imported only by `integrations/object-storage`, its one glue; minio is imported nowhere."
     failureCodes:
       - BE_STORAGE_OWNER
     enforcers:
