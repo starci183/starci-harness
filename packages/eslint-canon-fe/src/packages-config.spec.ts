@@ -22,14 +22,14 @@ const TSCONFIG = JSON.stringify({
 const DECLARATION = { hfs: 3, kind: "app", project: "fixture", sides: { be: { apps: [{ name: "core", kind: "api" }] }, fe: { grammar: "core", apps: [{ name: "web", kind: "next" }] } } }
 
 /** An app root with a root package `@fixture/agent-sdk`, its `files` written, and the package view of it. */
-const appWith = (files: Readonly<Record<string, string>>) => {
+const appWith = (files: Readonly<Record<string, string>>, starci?: unknown) => {
   const root = mkdtempSync(join(tmpdir(), "starci-fe-packages-"))
   const write = (relative: string, text: string) => {
     mkdirSync(dirname(join(root, relative)), { recursive: true })
     writeFileSync(join(root, relative), text)
   }
   write("package.json", JSON.stringify({ name: "fixture", private: true, workspaces: ["packages/*"] }))
-  write("packages/agent-sdk/package.json", JSON.stringify({ name: "@fixture/agent-sdk", version: "0.1.0", private: true }))
+  write("packages/agent-sdk/package.json", JSON.stringify({ name: "@fixture/agent-sdk", version: "0.1.0", private: true, ...(starci === undefined ? {} : { starci }) }))
   write("packages/agent-sdk/tsconfig.json", TSCONFIG)
   write("packages/agent-sdk/src/index.ts", "export const sdk: number = 1\n")
   for (const [relative, text] of Object.entries(files)) write(`packages/agent-sdk/${relative}`, text)
@@ -89,4 +89,22 @@ test("a package view is the fe profile over the paths of the app root and carrie
     assert.equal(app.hfs.slotOf("packages/agent-sdk/src/workbench/index.ts"), "app.packages")
     assert.equal(app.hfs.tierOf("fe/apps/web/src/app/page.tsx"), null)
   } finally { app.cleanup() }
+})
+
+test("a package's workbench declares the one result union its manifest names (starci.outcome); an ad-hoc union beside it is refused (R51)", () => {
+  const union = (name: string) => `/** A result. */\nexport type ${name} = { readonly ok: true; readonly value: string } | { readonly ok: false; readonly reason: string }\n`
+  const declared = `${union("AgentResult")}${union("StepResult")}`
+  const elsewhere = union("AgentResult")
+  const app = appWith({ "src/workbench/outcome.ts": declared, "src/workbench/view.ts": elsewhere }, { outcome: { name: "AgentResult", file: "src/workbench/outcome.ts" } })
+  const bare = appWith({ "src/workbench/outcome.ts": elsewhere })
+  try {
+    const unions = (root: string, hfs: ReturnType<typeof packagesHfsFromDeclaration>, file: string, text: string) =>
+      lint(root, hfs, file, text).filter((message) => message.ruleId === "starci-fe/one-outcome-union").map((message) => message.message.split("`")[1])
+    assert.deepEqual(unions(app.root, app.hfs, "packages/agent-sdk/src/workbench/outcome.ts", declared), ["StepResult"], "the declared name in the declared file passes, a second union there does not")
+    assert.deepEqual(unions(app.root, app.hfs, "packages/agent-sdk/src/workbench/view.ts", elsewhere), ["AgentResult"], "the declared name in another file is a second union")
+    assert.deepEqual(unions(bare.root, bare.hfs, "packages/agent-sdk/src/workbench/outcome.ts", elsewhere), ["AgentResult"], "without a declaration a package has no outcome home")
+  } finally {
+    app.cleanup()
+    bare.cleanup()
+  }
 })

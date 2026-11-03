@@ -25,7 +25,7 @@ import { isNode } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { forbiddingConcern, packageNameOf } from "./lib/fe-stack.ts"
 import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
-import { globalReferences, inSlot, isApiClient, isApiLayer, isApiRest, isOutcomeModule } from "./lib/scope.ts"
+import { globalReferences, inSlot, isApiClient, isApiLayer, isApiRest, isOutcomeModule, packageOutcomeOf } from "./lib/scope.ts"
 import { typed } from "./lib/types.ts"
 
 /** Where a canonical transport library may be imported, and the test of that place. */
@@ -809,7 +809,9 @@ const aliasDeclaration = (tsNode: ts.Node): ts.TypeAliasDeclaration => {
 
 /**
  * A result vocabulary is declared once per repository: `GraphQLResponse` in the file of the slot the manifest marks `outcomeHome`
- * (`fe.transport.outcome`: `modules/api/graphql/types.ts`, or `fe.package.api.outcome`: the api package's `src/graphql/types.ts`).
+ * (`fe.transport.outcome`: `modules/api/graphql/types.ts`, or `fe.package.api.outcome`: the api package's `src/graphql/types.ts`). A root
+ * workspace package, which cannot import it, declares its one union in its manifest (`starci.outcome`: `{ name, file }`): that alias, in
+ * that file, is its outcome home and every other result union of the package is refused.
  *
  * A union type alias is a result union when its members are object types that ALL carry the same literal-typed discriminant, in the
  * result vocabulary: `success` or `ok` (both `true` and `false` among the members) or `kind` (a member of kind `"ok"` beside at least one failure
@@ -832,11 +834,12 @@ export const oneOutcomeUnion = defineRule({
   },
   create(context) {
     if (isOutcomeModule(context)) return {}
+    const declaredOutcome = packageOutcomeOf(context)
     const { checker, toTs } = typed(context)
     return {
       TSTypeAliasDeclaration(node) {
         // typescript-eslint 6 and later produce no TSParenthesizedType node: a parenthesised type is its inner node.
-        if (node.typeAnnotation.type !== "TSUnionType") return
+        if (node.typeAnnotation.type !== "TSUnionType" || node.id.name === declaredOutcome) return
         const mapped = toTs(node)
         if (!mapped) return
         const tsNode = aliasDeclaration(mapped)

@@ -2,6 +2,7 @@
 // their rules (`settings.starci.hfs`). Both @starci/eslint-canon-be and @starci/eslint-canon-fe ship a byte copy of this file in their
 // runtime/ bundle (scripts/hfs/sync-runtime.mjs), so a path-scoped rule in either package asks the SAME resolver the
 // architecture machine and `starci app check` use, and never tests a path with a regular expression of its own.
+import fs from 'node:fs';
 import path from 'node:path';
 import { allowsFile } from './allows.mjs';
 import { openHfs } from './slots.mjs';
@@ -28,6 +29,24 @@ export interface HfsView {
   ownerOf: (file: string) => string | null;
   allows: (file: string) => AllowsResult | null;
   slot: OpenedHfs['slot'];
+  /** The vocabulary a root workspace package declares for itself (`starci` of its manifest); only the view of the root packages has it. */
+  packageContract?: (file: string) => PackageContract | null;
+}
+
+/** A type a root package declares: its name and the file of the package that declares it, relative to the app root. */
+export interface PackageDeclaredType {
+  readonly name: string;
+  readonly file: string;
+}
+
+/**
+ * What a root workspace package declares in the `starci` key of its own `package.json`, since it cannot import the app's
+ * `platform/errors` or its `GraphQLResponse<T>`: `errorBase` is the class its errors derive from, `outcome` its one result union, each
+ * `{ name, file }` with `file` relative to the package folder.
+ */
+export interface PackageContract {
+  readonly errorBase?: PackageDeclaredType;
+  readonly outcome?: PackageDeclaredType;
 }
 
 const posix = (p: unknown): string => String(p).replaceAll('\\', '/');
@@ -96,6 +115,35 @@ export const openHfsView = ({ runtimeRoot, repoRoot }: { runtimeRoot: string; re
  */
 export const declaredHfsView = ({ runtimeRoot, declaration, repoRoot, side }: { runtimeRoot: string; declaration: Parsed; repoRoot: string; side: string }): HfsView => hfsView(openHfs({ root: runtimeRoot, declaration, side }), repoRoot);
 
+const CONTRACT_KEYS = ['errorBase', 'outcome'] as const;
+
+/**
+ * The contract of the package at `packageDir` (app-root relative, `packages/<pkg>`), read from the `starci` key of its manifest. A
+ * declaration that is not `{ name, file }` with an identifier name and a file inside `src/` stops the lint, because a rule must not guess.
+ *
+ * @param {string} repoRoot - The absolute app root.
+ * @param {string} packageDir - The package folder, relative to the app root.
+ * @returns {object} The declared error base and outcome union, each with its file relative to the app root.
+ */
+export const readPackageContract = (repoRoot: string, packageDir: string): PackageContract => {
+  const manifestPath = path.join(repoRoot, packageDir, 'package.json');
+  const manifest = (fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : null) as { starci?: unknown } | null;
+  const declared = manifest?.starci;
+  if (declared === undefined) return {};
+  if (typeof declared !== 'object' || declared === null) throw new Error(`${packageDir}/package.json: "starci" is an object ({ errorBase, outcome })`);
+  const contract: Record<string, PackageDeclaredType> = {};
+  for (const key of CONTRACT_KEYS) {
+    const entry: unknown = (declared as Record<string, unknown>)[key];
+    if (entry === undefined) continue;
+    const { name, file } = (typeof entry === 'object' && entry !== null ? entry : {}) as Record<string, unknown>;
+    if (typeof name !== 'string' || !/^[A-Za-z_$][\w$]*$/.test(name) || typeof file !== 'string' || !/^src\/(?:[\w.-]+\/)*[\w.-]+\.ts$/.test(file)) {
+      throw new Error(`${packageDir}/package.json: "starci.${key}" is { "name": "<Identifier>", "file": "src/<path>.ts" }`);
+    }
+    contract[key] = Object.freeze({ name, file: `${packageDir}/${file}` });
+  }
+  return Object.freeze(contract);
+};
+
 /**
  * The view of the root workspace packages of an app (`packages/<pkg>/src/**`, slots app.packages and app.module-registry), as the lint of one
  * side sees them: the rule parameters, the apps and the Grammar of `side` (a package is judged by the laws of the side whose subpath a file
@@ -127,6 +175,13 @@ function packagesView(opened: OpenedHfs, repoRoot: string, side: 'be' | 'fe'): H
     const relative = rel(file);
     return slot !== undefined && ROOT_PACKAGE_SLOTS.has(slot) ? relative.split('/').slice(0, 2).join('/') : null;
   };
+  const contracts = new Map<string, PackageContract>();
+  const packageContract = (file: string): PackageContract | null => {
+    const dir = packageOf(file);
+    if (dir === null) return null;
+    if (!contracts.has(dir)) contracts.set(dir, readPackageContract(repoRoot, dir));
+    return contracts.get(dir) as PackageContract;
+  };
   return Object.freeze({
     repoRoot,
     profile: side,
@@ -145,6 +200,7 @@ function packagesView(opened: OpenedHfs, repoRoot: string, side: 'be' | 'fe'): H
     ownerOf: () => null,
     allows: (file: string) => allowsFile(opened, rel(file)),
     slot: (id: string) => opened.slot(id),
+    packageContract,
   });
 }
 

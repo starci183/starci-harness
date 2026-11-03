@@ -16,6 +16,10 @@
  *     (`AbstractException`, a framework `HttpException` subclass, a bare `extends Error`) is refused.
  *   - `throw-domain-error` refuses a `throw` whose type does not derive from `DomainError` (`throw new Error`, the Nest
  *     `HttpException` family, a thrown string or object), and a domain owner that throws a platform error outward.
+ *
+ * The error base of a file is `DomainError` of `platform/errors`; a root workspace package, which cannot import an app owner, declares
+ * its own base in its manifest (`starci.errorBase`: `{ name, file }`), and both rules read that class, in that file, as its `DomainError`:
+ * the base itself is its host and a package has no owner layout to place its subclasses in.
  *   - `error-family-shape` holds the one shape of `errors/<c>.error.ts`: a `<C>ErrorCode` string enum, a
  *     `<C>_ERROR_KINDS: Record<<C>ErrorCode, ErrorKind>` table, and an empty `<C>Error extends DomainError<<C>ErrorCode>`.
  *     Code uniqueness across the repository is the architecture machine's job, not a single file's.
@@ -24,11 +28,12 @@ import { nameOrValue, some, walk } from "./lib/ast.ts"
 import {
     derives,
     derivesFromBuiltinError,
-    derivesFromDomainError,
+    derivesFromErrorBase,
     errorHomeOf,
     isOwnedBy,
     isOwnedType,
     ownerName,
+    packageErrorBaseOf,
     partsOf,
     typeOf,
 } from "./lib/declared.ts"
@@ -245,7 +250,7 @@ export const errorHome: RuleModule = {
         messages: {
             place: "`{{name}}` derives from `DomainError` but is not declared in `errors/{{owner}}.error.ts` of its owner. An owner has one error class, in that file; move it there.",
             mustExtendDomainError:
-                "`{{name}}` derives from the built-in `Error` without deriving from `DomainError` (`AbstractException`, a framework exception or a bare `extends Error`). Extend `DomainError` from `platform/errors` in the owner's `errors/<capability>.error.ts`.",
+                "`{{name}}` derives from the built-in `Error` without deriving from `DomainError` (`AbstractException`, a framework exception or a bare `extends Error`). Extend `DomainError` from `platform/errors` in the owner's `errors/<capability>.error.ts`; in a root workspace package, extend the error base its `package.json` declares (`starci.errorBase`).",
         },
     },
     create(context) {
@@ -255,10 +260,13 @@ export const errorHome: RuleModule = {
             if (!node.id) return
             const type = typeOf(context, node.id)
             if (!type) return
-            const isDomainErrorHost = node.id.name === "DomainError" && isOwnedBy(hfs, filename, "platform", "errors")
-            if (isDomainErrorHost) return
-            if (derivesFromDomainError(context, type)) {
-                if (isWorldErrorHome(hfs, filename)) return
+            const packageBase = packageErrorBaseOf(hfs, filename)
+            const isErrorBaseHost =
+                (node.id.name === "DomainError" && isOwnedBy(hfs, filename, "platform", "errors")) ||
+                (packageBase !== null && node.id.name === packageBase.name && hfs.relative(filename) === packageBase.file)
+            if (isErrorBaseHost) return
+            if (derivesFromErrorBase(context, type)) {
+                if (packageBase !== null || isWorldErrorHome(hfs, filename)) return
                 // A spec-local subclass of the abstract base is a test double for code that takes any DomainError, not an error family.
                 if (isSpecLocalClass(filename, node)) return
                 const home = errorHomeOf(hfs, filename)
@@ -306,7 +314,7 @@ export const throwDomainError: RuleModule = {
         messages: {
             bareError: "`throw new Error(...)` carries a sentence and no code, so nothing downstream can group or map it. Throw the `<C>Error` of the owning capability with one of its codes.",
             framework: "`throw new {{name}}(...)` carries an HTTP status and no identity. Throw the `<C>Error` of the owning capability; the one filter of `platform/errors` maps its code to a status.",
-            notDomainError: "This `throw` does not throw a `DomainError`. Throw the `<C>Error` of the owning capability with one of its codes, or return an `Outcome` and let the transport unwrap it.",
+            notDomainError: "This `throw` does not throw a `DomainError`. Throw the `<C>Error` of the owning capability with one of its codes, or return an `Outcome` and let the transport unwrap it; a root workspace package throws the error base its `package.json` declares (`starci.errorBase`).",
             platformThrown: "A domain owner throws `{{name}}`, an error of a platform owner. Translate it into the error of this capability so platform details do not cross the boundary.",
         },
     },
@@ -322,7 +330,7 @@ export const throwDomainError: RuleModule = {
                 if (thrown.type === "Identifier" && isCaughtValue(context, thrown)) return
                 const type = typeOf(context, thrown)
                 const parts = partsOf(type)
-                const foreign = parts.find((part) => !derivesFromDomainError(context, part))
+                const foreign = parts.find((part) => !derivesFromErrorBase(context, part))
                 if (parts.length === 0 || foreign) {
                     if (foreign && isHttpException(foreign)) {
                         context.report({ node: thrown, messageId: "framework", data: { name: foreign.getSymbol()?.name ?? "HttpException" } })

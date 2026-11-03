@@ -73,7 +73,10 @@ past them (`ARCH_INTERNAL_IMPORT_OUTSIDE`); no side config reaches `packages/`, 
 `eslint.config.mjs` (slot `app.packages-lint`) whenever a root package exists, and `starci app check --gate lint` runs it as a third
 scope: the back-end canon over `packages/<pkg>/src/**` but the front-end subpaths, the front-end canon and the Grammar lint over
 `src/workbench/**` (outside `src/workbench/contract/`, which is React-free and stays back end) and `src/public/**`, each with the rules of
-its side over the package view of the app root. The project-graph rules judge the side folders and not the packages. Open gap: the CI
+its side over the package view of the app root. A package cannot import the app's owners, so the vocabulary those rules ask of a side
+it declares for itself in the `starci` key of its manifest: `errorBase`, the class its errors derive from (BE-ERROR-1), and `outcome`, its one
+result union (FE-ERROR-2), each `{ "name", "file" }` with the file under its `src/` (`readPackageContract` of the package view). The
+project-graph rules judge the side folders and not the packages. Open gap: the CI
 coverage shards do not reach `packages/` yet; until they do, a module package is measured by its own `test` script.
 
 ## Where to read for a task

@@ -171,7 +171,7 @@ switch (outcome.kind) {
 
 ## `starci-fe/one-outcome-union`
 
-A result union (`success` / `ok` / `kind` discriminant) is declared only in the outcome-home slot (`outcomeHome: true` in the slot manifest: `modules/api/graphql/types.ts`, or the api package's `src/graphql/types.ts`); elsewhere the code composes `GraphQLResponse<T>`.
+A result union (`success` / `ok` / `kind` discriminant) is declared only in the outcome-home slot (`outcomeHome: true` in the slot manifest: `modules/api/graphql/types.ts`, or the api package's `src/graphql/types.ts`); elsewhere the code composes `GraphQLResponse<T>`. A root workspace package, which cannot import it, names its one union in its `package.json` (`"starci": { "outcome": { "name": "AgentResult", "file": "src/workbench/outcome.ts" } }`): that alias, in that file, is its outcome home, and every other result union of the package is refused.
 
 A union type alias is a result union when its resolved members are all object types that carry the same literal-typed discriminant in the result vocabulary: `success` or `ok` (each member pins it to one value, `true` and `false` both present) or `kind` (at least one literal of the Outcome vocabulary: `ok`, `refused`, `forbidden`, `invalid`, `not-found`, `unavailable`). The members are read through the type checker, so `Ok<T> | Failure` and intersections are seen as what they are; no name (`*Outcome`, `*Result`) decides anything. UI state unions (`status`, `state`, `type`, a `kind` of tree nodes or menu items) are not result vocabulary and pass; so does an alias that only composes the one union (`type Read = Outcome<Course>`, `Exclude<Outcome<T>, ...>`). `Outcome<T> | { ok: false; kind: "conflict" }` adds an arm to the one union and is refused.
 

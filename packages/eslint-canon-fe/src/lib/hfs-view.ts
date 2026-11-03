@@ -75,4 +75,18 @@ export interface HfsView {
   ownerOf(file: string): string | null
   allows(file: string): HfsAllowance | null
   slot(id: string): HfsSlot | null
+  /** The vocabulary the root package of a file declares in the `starci` key of its manifest (the view of the root packages only), or null outside a package. */
+  readonly packageContract?: (file: string) => HfsPackageContract | null
+}
+
+/** A type a root package declares: its name and the app-root relative file that declares it. */
+export interface HfsPackageDeclaredType {
+  readonly name: string
+  readonly file: string
+}
+
+/** The error base and the outcome union a root package declares for itself, since it cannot import the app's `platform/errors` or `GraphQLResponse<T>`. */
+export interface HfsPackageContract {
+  readonly errorBase?: HfsPackageDeclaredType
+  readonly outcome?: HfsPackageDeclaredType
 }

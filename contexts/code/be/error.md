@@ -13,7 +13,10 @@ logging.md; its display text messages.md.
 formatter. Each capability (domain, platform or integration) owns `errors/<capability>.error.ts` with exactly one code
 enum `<Capability>ErrorCode`, one exhaustive `<CAPABILITY>_ERROR_KINDS: Record<Code, ErrorKind>` and one empty class
 `<Capability>Error extends DomainError<<Capability>ErrorCode>`. The index exports the table, which the app composes into
-`ErrorsModule.register({ kinds })`. No per-case class, no `exceptions/` folder, no status on an error.
+`ErrorsModule.register({ kinds })`. No per-case class, no `exceptions/` folder, no status on an error. A root workspace package
+([PROJECT-3](../../project/README.md#project-3-a-products-agent-modules-are-workspace-packages)) cannot import `platform/errors`, so it
+declares its own base in its `package.json` (`"starci": { "errorBase": { "name": "<Pkg>Error", "file": "src/<path>.ts" } }`): that class,
+in that file, is its `DomainError`, every error it throws derives from it, and a package without the declaration may throw nothing of its own.
 
 Why: a code enum with a `Record` table makes the compiler prove every code has a kind, and the policy stays with the
 capability that decides it.

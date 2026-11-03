@@ -23,6 +23,8 @@ export type {
     HfsApp,
     HfsClassification,
     HfsConnection,
+    HfsPackageContract,
+    HfsPackageDeclaredType,
     HfsParamName,
     HfsRuleParams,
     HfsSlot,

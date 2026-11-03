@@ -11,7 +11,8 @@ How a front-end failure is represented and where it goes: a read failure becomes
 
 A GraphQL failure rejects (the hook throws when an answer carries no data, so SWR holds it as `error`); a non-Apollo
 call that can fail as a business outcome (an identity-provider action, the toast runner) returns the one
-`GraphQLResponse<T>` (`success`, `message`, `error`, `data`) declared once in the outcome slot; an unauthenticated
+`GraphQLResponse<T>` (`success`, `message`, `error`, `data`) declared once in the outcome slot (a root workspace package, which cannot
+import it, names its own one union in its `package.json`: `"starci": { "outcome": { "name", "file" } }`); an unauthenticated
 answer is refreshed once and then refused; nothing turns a failure into `null`, `[]` or a silent default.
 
 Why: one vocabulary keeps a failure distinct from valid empty data, and a collapsed failure renders as "nothing here".

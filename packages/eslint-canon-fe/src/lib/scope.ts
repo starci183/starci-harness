@@ -98,6 +98,16 @@ export const isOutcomeModule = (context: AnyContext): boolean => {
   return slot !== null && hfs.slot(slot)?.outcomeHome === true
 }
 
+/**
+ * The one result union a root workspace package declares for itself (`starci.outcome` of its manifest: a package cannot import the app's
+ * `GraphQLResponse<T>`) when the linted file is its declared file, or null: only the alias of that name in that file is its outcome home.
+ */
+export const packageOutcomeOf = (context: AnyContext): string | null => {
+  const hfs = hfsOf(context)
+  const outcome = hfs.packageContract?.(context.filename)?.outcome
+  return outcome !== undefined && hfs.relative(context.filename) === outcome.file ? outcome.name : null
+}
+
 /** The basename of a path without directories. */
 export const baseName = (filename: string): string => normalizePath(filename).split("/").pop() ?? ""
 

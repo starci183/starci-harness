@@ -22,7 +22,7 @@ const TSCONFIG = JSON.stringify({
 const DECLARATION = appDeclaration("be", { apps: [{ name: "core", kind: "api" }] })
 
 /** An app root (hfs.json, the one package.json) with a root package `@fixture/agent-sdk`, its `files` written, and the package view of it. */
-const appWith = (files: Readonly<Record<string, string>>) => {
+const appWith = (files: Readonly<Record<string, string>>, starci?: unknown) => {
     const root = mkdtempSync(join(tmpdir(), "starci-be-packages-"))
     const write = (relative: string, text: string) => {
         mkdirSync(dirname(join(root, relative)), { recursive: true })
@@ -30,7 +30,7 @@ const appWith = (files: Readonly<Record<string, string>>) => {
     }
     write("hfs.json", JSON.stringify(DECLARATION))
     write("package.json", JSON.stringify({ name: "fixture", private: true, workspaces: ["packages/*"], dependencies: { "@fixture/agent-sdk": "*", stripe: "1.0.0" } }))
-    write("packages/agent-sdk/package.json", JSON.stringify({ name: "@fixture/agent-sdk", version: "0.1.0", private: true }))
+    write("packages/agent-sdk/package.json", JSON.stringify({ name: "@fixture/agent-sdk", version: "0.1.0", private: true, ...(starci === undefined ? {} : { starci }) }))
     write("packages/agent-sdk/tsconfig.json", TSCONFIG)
     write("packages/agent-sdk/src/index.ts", "export const sdk: number = 1\n")
     for (const [relative, text] of Object.entries(files)) write(`packages/agent-sdk/${relative}`, text)
@@ -115,5 +115,63 @@ test("a package view is the be profile over the paths of the app root: the tier 
         assert.equal(app.hfs.slotOf("packages/modules/src/index.ts"), "app.module-registry")
         assert.equal(app.hfs.tierOf("be/src/main.ts"), null)
         assert.ok(app.hfs.ruleParams?.infraOwners, "the infrastructure owners of the be side judge what a package imports")
+    } finally { app.cleanup() }
+})
+
+
+const ERROR_BASE = { errorBase: { name: "AgentSdkError", file: "src/errors.ts" } }
+const BASE_TEXT = "/** The error every refusal of the SDK derives from. */\nexport class AgentSdkError extends Error {}\n"
+
+/** The findings of the error rules (R38) on a package file. */
+const errorFindings = async (root: string, hfs: ReturnType<typeof packagesHfsFromDeclaration>, file: string, text: string) =>
+    (await lint(root, hfs, file, text)).filter((message) => ["starci-be/throw-domain-error", "starci-be/error-home"].includes(message.ruleId ?? "")).map((message) => message.ruleId)
+
+test("a root package throws the error base its manifest declares (starci.errorBase), and a raw Error is still refused (R38)", async () => {
+    const own = [
+        'import { AgentSdkError } from "../errors"',
+        "",
+        "/** A refusal of the SDK. */",
+        "export class StepRefused extends AgentSdkError {}",
+        "",
+        "/** Refuses a step. */",
+        "export const refuse = (): never => {",
+        '    throw new StepRefused("no")',
+        "}",
+        "",
+    ].join("\n")
+    const raw = '/** Refuses a step. */\nexport const refuse = (): never => {\n    throw new Error("no")\n}\n'
+    const app = appWith({ "src/errors.ts": BASE_TEXT, "src/node/refuse.ts": own, "src/node/raw.ts": raw }, ERROR_BASE)
+    try {
+        assert.deepEqual(await errorFindings(app.root, app.hfs, "packages/agent-sdk/src/errors.ts", BASE_TEXT), [], "the declared base is its own host, like DomainError in platform/errors")
+        assert.deepEqual(await errorFindings(app.root, app.hfs, "packages/agent-sdk/src/node/refuse.ts", own), [], "a subclass of the declared base is declared and thrown anywhere in the package")
+        assert.deepEqual(await errorFindings(app.root, app.hfs, "packages/agent-sdk/src/node/raw.ts", raw), ["starci-be/throw-domain-error"])
+    } finally { app.cleanup() }
+})
+
+test("without a declaration, or with the name declared in another file, the package's own Error class is refused (R38)", async () => {
+    const bare = appWith({ "src/errors.ts": BASE_TEXT })
+    const elsewhere = appWith({ "src/errors.ts": BASE_TEXT }, { errorBase: { name: "AgentSdkError", file: "src/other.ts" } })
+    try {
+        for (const app of [bare, elsewhere]) {
+            assert.deepEqual(await errorFindings(app.root, app.hfs, "packages/agent-sdk/src/errors.ts", BASE_TEXT), ["starci-be/error-home"])
+        }
+    } finally {
+        bare.cleanup()
+        elsewhere.cleanup()
+    }
+})
+
+test("a package declaration that is not { name, file } stops the lint instead of being guessed", () => {
+    for (const starci of [true, { errorBase: { name: "Agent Sdk", file: "src/errors.ts" } }, { outcome: { name: "Result", file: "../outside.ts" } }, { errorBase: "AgentSdkError" }]) {
+        const app = appWith({}, starci)
+        try {
+            assert.throws(() => app.hfs.packageContract?.(join(app.root, "packages/agent-sdk/src/index.ts")), /package\.json: "starci/u, JSON.stringify(starci))
+        } finally { app.cleanup() }
+    }
+    const app = appWith({}, { outcome: { name: "AgentResult", file: "src/outcome.ts" } })
+    try {
+        assert.deepEqual(app.hfs.packageContract?.(join(app.root, "packages/agent-sdk/src/index.ts")), { outcome: { name: "AgentResult", file: "packages/agent-sdk/src/outcome.ts" } })
+        assert.equal(app.hfs.packageContract?.(join(app.root, "be/src/main.ts")), null, "outside a package there is no contract")
+        assert.deepEqual(app.hfs.packageContract?.(join(app.root, "packages/module-sales/src/index.ts")), {}, "a package folder without a manifest declares nothing")
     } finally { app.cleanup() }
 })
