@@ -23,7 +23,7 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
   with USAGE for its roles, and the app role's search_path is `public, extensions`, so a migration may name
   `extensions.vector` or set its function's search_path to `''`; pgmq is the one exception, since its control file fixes
   its own schema `pgmq` (`create extension pgmq`, never `with schema extensions`). Identity is the app's own Passport
-  integration and storage the S3-compatible MinIO of the host. Owners: slots `app.db*` and `ruleParams.db.extensions` in
+  integration and storage the S3-compatible MinIO of the host, reached through the package `@starci/object-storage` composed in the object-storage integration. Owners: slots `app.db*` and `ruleParams.db.extensions` in
   [hfs/slots.yaml](../hfs/slots.yaml); rulings `lite-self-hosted-postgres-passport-minio`,
   `lite-official-postgres-image` and `lite-pgmq-bus-bullmq-jobs`; the `postgres` image pin in [stack/pins.yaml](../stack/pins.yaml).
 - Redis is the only declarable backing service (`sides.be.backing`), run durably; vectors use pgvector in the db service,
