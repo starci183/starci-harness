@@ -13,8 +13,9 @@ Names only. Dev values are generated once by the owner-armed `starci app secret 
 | `DEV_DB_APP_PASSWORD` | The password of the `app_be` role in this environment's database (member `db`) |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CALLBACK_URL` | API Google OAuth client and callback (local placeholders in the manifest) |
 | `GOOGLE_CLIENT_SECRET` | API Google OAuth client secret (member `google`) |
-| `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE`, `AUTH_JWT_KEY_ID` | API access-token claims and key id |
-| `AUTH_JWT_PRIVATE_KEY` | API ES256 signing key (member `auth`) |
+| `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE`, `AUTH_JWT_KEY_ID` | API access-token claims and key id (the key id is published in the JWKS) |
+| `AUTH_WEB_ORIGIN` | API origin of the web app: where the Google callback lands and the only origin a return address may name |
+| `AUTH_JWT_PRIVATE_KEY` | API Ed25519 (EdDSA) signing key (member `auth`) |
 | `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET` | API storage address |
 | `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY` | API storage credentials (member `storage`) |
 | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_GRAPHQL_URL` | Front-end site, auth doors and GraphQL transport |

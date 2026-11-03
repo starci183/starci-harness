@@ -1,7 +1,7 @@
 // A slot may declare which of its own files carry logic (`logic`): each is measured at 100 per file like a logic-role file
 // (scripts/hfs/coverage-scope.mjs, R204, R273), and its `<file>.spec.ts` beside it is admitted by the slot without being listed
-// (scripts/hfs/allows.mjs). No role name joins ruleParams.be.logicRoles. be.integrations.passport declares its tokens, password and
-// cookie files. The same file also proves the object-storage slot's names are the capability folder's (`object-storage.*`).
+// (scripts/hfs/allows.mjs). No role name joins ruleParams.be.logicRoles. be.integrations.passport declares its kit file (the verifier
+// mapping over @starci/auth). The same file also proves the object-storage slot's names are the capability folder's (`object-storage.*`).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -17,26 +17,26 @@ import { APP, cleanup, gitAdd, installTypeScript, writeCleanRepo } from './helpe
 
 const manifest = loadSlotManifest();
 const PASSPORT = 'src/modules/integrations/passport/';
-const DECLARED = ['passport.cookie.ts', 'passport.password.ts', 'passport.tokens.ts'].map((file) => `${PASSPORT}${file}`);
+const DECLARED = ['passport.kit.ts'].map((file) => `${PASSPORT}${file}`);
 const STORAGE = 'src/modules/integrations/object-storage/';
 const SKELETON_STORAGE = path.resolve(import.meta.dirname, '..', 'templates', 'be', 'skeleton-lite', STORAGE);
 const resolverOf = (edition: string) => createSlotResolver(manifest, resolveRepoDeclaration(manifest, { ...APP, edition }));
 const passportSlot = () => manifest.slots.find((slot) => slot.id === 'be.integrations.passport');
 
-test('be.integrations.passport declares its tokens, password and cookie files as logic, and no role name is added for them', () => {
-  assert.deepEqual(passportSlot()!.logic, ['passport.tokens.ts', 'passport.password.ts', 'passport.cookie.ts']);
+test('be.integrations.passport declares its kit file as logic, and no role name is added for it', () => {
+  assert.deepEqual(passportSlot()!.logic, ['passport.kit.ts']);
   assert.equal(passportSlot()!.coverage, 'required');
-  for (const part of ['tokens', 'password', 'cookie']) assert.equal(manifest.ruleParams.be.logicRoles.includes(part), false, part);
+  for (const part of ['kit']) assert.equal(manifest.ruleParams.be.logicRoles.includes(part), false, part);
 });
 
 test('the coverage scope measures every declared logic file at 100 per file: jest files, R273 measured, never a Sonar coverage exclusion', () => {
   const scope = coverageScope(manifest);
   assert.deepEqual(scope.files, DECLARED);
   assert.deepEqual(jestCoverage(manifest).files, DECLARED);
-  assert.match(jestCoverageSource(jestCoverage(manifest)), /files: \[\s*"src\/modules\/integrations\/passport\/passport\.cookie\.ts",/);
+  assert.match(jestCoverageSource(jestCoverage(manifest)), /files: \["src\/modules\/integrations\/passport\/passport\.kit\.ts"\]/);
   for (const file of DECLARED) assert.equal(isMeasured(manifest, file), true, file);
   assert.equal(isMeasured(manifest, `${PASSPORT}passport.config.ts`), false, 'an undeclared file of no logic role stays unmeasured');
-  assert.equal(isMeasured(manifest, `${PASSPORT}passport.tokens.spec.ts`), false);
+  assert.equal(isMeasured(manifest, `${PASSPORT}passport.kit.spec.ts`), false);
   const sonar = sonarCoverageExclusions(manifest);
   const excluded = (file: string) => !withoutCovered([...sonar, file]).includes(file);
   for (const file of DECLARED) assert.equal(excluded(`be/${file}`), false, `${file} is measured, so no Sonar coverage exclusion covers it`);

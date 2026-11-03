@@ -10,7 +10,7 @@ const uncovered = 'be/src/modules/domain/orders/policies/payment.policy.ts';
 const platformCovered = 'be/src/modules/platform/clock/clock.service.ts';
 const platformUncovered = 'be/src/modules/platform/clock/deadline.policy.ts';
 // A logic file its slot declares (`logic` of be.integrations.passport) is measured like a logic-role file.
-const declaredLogic = 'be/src/modules/integrations/passport/passport.tokens.ts';
+const declaredLogic = 'be/src/modules/integrations/passport/passport.kit.ts';
 const measured = [covered, uncovered, platformCovered, platformUncovered, declaredLogic];
 // A shard reports every loaded import, including files outside the slot-derived logic scope.
 const report = [

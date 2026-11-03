@@ -481,6 +481,41 @@ rulings:
     status: live
     ruling: "Object storage is the published @starci/object-storage package (a Nest module and the ObjectStorage port: presigned PUT and GET that sign the content type and size, head, get, put, list, delete, bucket setup, size and content-type limits, coded errors, no environment read, an in-memory double in ./testing); it is the only owner of @aws-sdk/client-s3 and @aws-sdk/s3-request-presigner, an app imports neither and imports the package only in integrations/object-storage, and the app keeps its buckets, the key layout of each domain and the parsing of its settings."
     owner: "packages/object-storage; contexts/code/be/infra.md BE-INFRA-1; contexts/hfs/rules.yaml R331; contexts/hfs/slots.yaml (ruleParams.be.infraOwners, be.integrations.object-storage)"
+  - id: auth-package
+    date: '2026-11-03'
+    status: live
+    ruling: "The lite sign-in is the published @starci/auth package (server module, front-end client, contracts, test doubles); an app composes it in integrations/passport and modules/auth and imports the identity libraries (passport*, jose, bcryptjs, @nestjs/jwt) nowhere."
+    owner: "packages/auth; contexts/code/be/api-auth.md BE-AUTH-2; contexts/hfs/rules.yaml R328, R329, R330; contexts/code/fe/transport.md FE-AUTH"
+  - id: auth-token-eddsa
+    date: '2026-11-03'
+    status: live
+    ruling: "Access tokens are signed with EdDSA (Ed25519) under the issuer, claims and key id format the production lite app already issues, so its live sessions stay valid; the key set holds one signing key and any number of retired keys published as the JWKS."
+    owner: "packages/auth src/server/tokens.ts; contexts/code/be/api-auth.md BE-AUTH-2"
+  - id: auth-session-tables-package
+    date: '2026-11-03'
+    status: live
+    ruling: "The package owns the session and refresh-token tables: it ships their migration (packages/auth/migrations/identity-sessions.sql), the lite starter renders it into its baseline, and the app keeps its user and profile tables."
+    owner: "packages/auth/migrations/identity-sessions.sql; packages/hfs/src/auth-package.spec.mts"
+  - id: auth-one-package-subpaths
+    date: '2026-11-03'
+    status: live
+    ruling: "The sign-in is one package with the subpath exports ./server, ./client (with ./client/react), ./contracts and ./testing, so the door contract is the same version on both sides; the full edition gets @starci/auth-oidc later behind the same PrincipalVerifier interface."
+    owner: "packages/auth/package.json exports"
+  - id: auth-no-cross-product-sso
+    date: '2026-11-03'
+    status: live
+    ruling: "There is no cross-product single sign-on: each product has its own issuer and key set."
+    owner: "contexts/code/be/api-auth.md BE-AUTH-2"
+  - id: auth-tenancy-channels-not-packaged
+    date: '2026-11-03'
+    status: live
+    ruling: "Tenancy (workspaces, members, invites, grants) and the channel clients (Zalo, Telegram, SePay) are not packaged until a second product needs them."
+    owner: "contexts/code/README.md CODE-REVIEW-2"
+  - id: auth-sign-in-managed
+    date: '2026-11-03'
+    status: live
+    ruling: "The lite starter signs people in with no hand-written auth code: its sign-in doors, session, account and rate stores, authenticator and front-end auth client are managed files rendered from @starci/auth's glue, and an edit is drift."
+    owner: "contexts/hfs/slots.yaml be.identity.sign-in, be.feature.auth, fe.modules.auth.client; packages/hfs/templates/be/auth-lite"
   - id: locale-accept-language
     date: '2026-10-14'
     status: live

@@ -5697,7 +5697,7 @@ rules:
         ruling: "A model call made straight from code uses LangChain with retrieved context, through the ai-router gateway (owner ruling be-ai-langchain-gateway): the LangChain clients point at the gateway's base URL with its virtual key."
   - id: R328
     code: "BE_AUTH_PASSPORT_OWNER"
-    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are imported only by integrations/passport, the one owner of the Google OAuth 2.0 strategy (state and PKCE), the local email and password strategy (bcrypt) and the app's own access tokens; bcrypt and every Supabase client are owned nowhere."
+    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth and are imported by no app file; @starci/auth/server is imported only by integrations/passport, its one glue. bcrypt and every Supabase client are owned nowhere."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_AUTH_PASSPORT_OWNER"]
@@ -5719,7 +5719,7 @@ rules:
         ruling: "Lite leaves Supabase: its identity is the app own Passport integration (Google OAuth and email/password) on its self-hosted PostgreSQL; full keeps Keycloak."
   - id: R329
     code: "BE_AUTH_JWT_OWN_JWKS"
-    law: "A lite back-end principal comes only from the app's own access token verified by integrations/passport against its own key set (jose jwtVerify over createLocalJWKSet, issuer, audience and algorithms pinned), never from a remote JWKS, an unverified decode or a request body claim; domain/identity builds the principal from that verification."
+    law: "A lite back-end principal comes only from the app's own access token, verified by @starci/auth (EdDSA pinned, issuer and audience checked, a local key set that may hold several keys), never from a remote JWKS, a token decoded without its signature check, a jwtVerify call in the app or a body claim."
     kinds: [check, lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_AUTH_JWT_OWN_JWKS"]
@@ -5743,7 +5743,7 @@ rules:
         ruling: "The lite back end verifies its own asymmetric access tokens against its own JWKS; it trusts no remote identity provider."
   - id: R330
     code: "BE_AUTH_REFRESH_COOKIE"
-    law: "A refresh token travels only in an httpOnly, Secure, SameSite=Strict cookie scoped to the refresh door (set and cleared only through integrations/passport), is rotated on every use with reuse detection, and never appears as a field of a request or response body."
+    law: "A refresh token travels only in the httpOnly, Secure cookie that @starci/auth sets, rotates (with a reuse grace window and reuse detection) and clears; no app file writes that cookie, and the token never appears as a field of a request or response body."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_AUTH_REFRESH_COOKIE"]

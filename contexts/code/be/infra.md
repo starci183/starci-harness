@@ -16,8 +16,9 @@ follow [ai.md](ai.md) (BE-AI-1, BE-AI-3). The S3 client (`@aws-sdk/client-s3`, `
 a dependency of `@starci/object-storage` alone and no app file imports it; the package (the ObjectStorage port with presigned PUT
 and GET that sign the content type and size, head, list, delete and size and content-type limits, over S3-compatible storage,
 MinIO in lite) is imported only by `integrations/object-storage`, which keeps the bucket, parses the settings and registers the
-module, while the key layout of an object belongs to the domain that stores it; `minio` is imported nowhere; in lite the identity libraries belong to `integrations/passport`
-([api-auth.md](api-auth.md) BE-AUTH-2). `@nestjs/config`,
+module, while the key layout of an object belongs to the domain that stores it; `minio` is imported nowhere; in lite the identity
+libraries are the dependencies of `@starci/auth` and no app file imports them, and that package is imported only by
+`integrations/passport` ([api-auth.md](api-auth.md) BE-AUTH-2). `@nestjs/config`,
 `dotenv` and `@nestjs/event-emitter` are imported nowhere; `@nestjs/schedule` and `cron` only by the tick scheduler of
 `platform/jobs` ([jobs.md](jobs.md) BE-JOBS-6). In lite a backing library is legal only
 when `sides.be.backing` declares it (Redis for the queue and the realtime hub); vectors are pgvector.

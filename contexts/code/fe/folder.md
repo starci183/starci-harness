@@ -100,8 +100,9 @@ Enforced by: R63 (machine `package-shape`), R30 (`package-export-bypass`), R25 (
 
 ## FE-PACKAGES-2 A shared package holds no visual
 
-A shared front-end package holds transport, the i18n stack, catalogs, types or pure data and logic, never a component,
-a class string, a colour or a world lifecycle; visuals two apps share belong to the grammar.
+A shared front-end package holds transport, the i18n stack, catalogs, types, pure data and logic, and the context
+provider and hooks over its own client (a provider draws nothing), never a component that draws, a class string, a
+colour or a world lifecycle; visuals two apps share belong to the grammar.
 
 Why: a second visual owner beside the grammar is a fork of the design system.
 

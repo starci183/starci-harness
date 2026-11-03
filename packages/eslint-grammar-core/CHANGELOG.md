@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.14 - 2026-11-03
+
+- Changed: requires `@starci/eslint-canon-fe` 9.10.0; the runtime copies of the slot manifest, stack and pins carry the `@starci/auth` rows.
+
 ## 0.21.13
 
 - Changed: Require the updated FE canon, carry the rule catalog of @starci/hfs 5.1.0 (R368) and align the Grammar family.

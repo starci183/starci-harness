@@ -232,7 +232,7 @@ export function readRepoDeclaration(manifest, repoRoot) {
 function createScopeResolver(manifest, repo) {
     const profile = repo.profile;
     const edition = repo.edition ?? 'full';
-    const slots = manifest.slots.filter((s) => s.profiles.includes(profile) && slotInEdition(manifest, s, edition)).map((s) => effectiveSlot(s, profile, edition));
+    const slots = manifest.slots.filter((s) => s.managedOnly !== true && s.profiles.includes(profile) && slotInEdition(manifest, s, edition)).map((s) => effectiveSlot(s, profile, edition));
     const scope = { manifest, repo, profile, slots, byId: new Map(slots.map((s) => [s.id, s])), variants: slots.flatMap(variantsOf), appKind: new Map(repo.apps.map((a) => [a.name, a.kind])) };
     const classifyPath = (input) => classifyIn(scope, input);
     /** tracked | ignored | external for the slot owning `p`, or null when no slot owns it. */

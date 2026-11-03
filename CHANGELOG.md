@@ -22,11 +22,17 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
-## [1.1.0-alpha.51] - 2026-11-03
+## [1.1.0-alpha.52] - 2026-11-03
 
 ### Added
 
 - The dev verbs of `starci app stack` get the heavy-command governor: `npm ci`, a compose build and a compose up of `up` and `prepare` wait for a slot of the host-wide semaphore like every other heavy command (`stackIo.heavy`, handed to the @starci/hfs release that carries the dev verbs).
+
+## [1.1.0-alpha.51] - 2026-11-03
+
+### Changed
+
+- The CLI requires @starci/hfs@5.1.0, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
 
 ## [1.1.0-alpha.50] - 2026-11-03
 

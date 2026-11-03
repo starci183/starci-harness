@@ -15,7 +15,7 @@ const PROJECT = /^[a-z0-9][a-z0-9_-]{0,62}$/u;
 const NAME_PATTERN = /^[a-z][a-z0-9-]{0,40}$/u;
 const SQL_NAME = /^[a-z][a-z0-9_]{0,62}$/u;
 /** The generators `starci app secret init --env <env>` knows (PROJECT-STACKS-5: dev-only values, created once, never replaced). */
-export const GENERATORS = Object.freeze(['hex', 'base64', 'password', 'uuid', 'rsa-pem', 'ec-pem']);
+export const GENERATORS = Object.freeze(['hex', 'base64', 'password', 'uuid', 'rsa-pem', 'ec-pem', 'ed25519-pem']);
 
 /** A key of a sealed member of the environment. */
 export interface CustodyRef { member: string; key: string }
@@ -212,8 +212,8 @@ function custodyOf(c: Collector, value: unknown): CustodyGenerator[] {
     const bytes = entry.bytes === undefined ? 32 : entry.bytes;
     if (!Number.isInteger(bytes) || (bytes as number) < 8 || (bytes as number) > 1024) c.problem(`${at}.bytes`, 'must be a whole byte count from 8 to 1024');
     if (entry.publicKey !== undefined) {
-      if (entry.kind === 'rsa-pem' || entry.kind === 'ec-pem') patternField(c, `${at}.publicKey`, entry.publicKey, KEY);
-      else c.problem(`${at}.publicKey`, 'is only for kind rsa-pem or ec-pem');
+      if (entry.kind === 'rsa-pem' || entry.kind === 'ec-pem' || entry.kind === 'ed25519-pem') patternField(c, `${at}.publicKey`, entry.publicKey, KEY);
+      else c.problem(`${at}.publicKey`, 'is only for kind rsa-pem, ec-pem or ed25519-pem');
     }
     return { ...base, kind: String(entry.kind), bytes: bytes as number, publicKey: text(entry.publicKey) ? entry.publicKey : null };
   });

@@ -2208,7 +2208,7 @@ rules:
       - {kind: eslint-be, id: ai-client-through-gateway}
   - id: R328
     code: BE_AUTH_PASSPORT_OWNER
-    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose, bcryptjs) are imported only by `integrations/passport`; bcrypt and every Supabase client are imported nowhere."
+    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth and are imported by no app file; @starci/auth/server is imported only by integrations/passport, its one glue. bcrypt and every Supabase client are owned nowhere."
     editions: [lite]
     failureCodes:
       - BE_AUTH_PASSPORT_OWNER
@@ -2216,7 +2216,7 @@ rules:
       - {kind: eslint-be, id: infra-import-owner}
   - id: R329
     code: BE_AUTH_JWT_OWN_JWKS
-    law: A lite principal comes only from the app's own access token, verified in `integrations/passport` against its own key set with issuer, audience and algorithms pinned; never a remote JWKS, an unverified decode or a body claim.
+    law: "A lite back-end principal comes only from the app's own access token, verified by @starci/auth (EdDSA pinned, issuer and audience checked, a local key set that may hold several keys), never from a remote JWKS, a token decoded without its signature check, a jwtVerify call in the app or a body claim."
     editions: [lite]
     failureCodes:
       - BE_AUTH_JWT_OWN_JWKS
@@ -2225,7 +2225,7 @@ rules:
       - {kind: eslint-be, id: own-jwks-only}
   - id: R330
     code: BE_AUTH_REFRESH_COOKIE
-    law: A refresh token travels only in the httpOnly, Secure, SameSite=Strict cookie that `integrations/passport` sets, rotates and clears; it is never a field of a body.
+    law: A refresh token travels only in the httpOnly, Secure cookie that @starci/auth sets, rotates (with a reuse grace window and reuse detection) and clears; no app file writes that cookie, and the token never appears as a field of a request or response body.
     editions: [lite]
     failureCodes:
       - BE_AUTH_REFRESH_COOKIE

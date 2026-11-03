@@ -12,6 +12,7 @@ services:
       GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google-client-secret
       GOOGLE_CALLBACK_URL: https://api.{{project}}.example.invalid/auth/google/callback
       AUTH_JWT_ISSUER: https://api.{{project}}.example.invalid
+      AUTH_WEB_ORIGIN: https://{{project}}.example.invalid
       AUTH_JWT_AUDIENCE: {{project}}
       AUTH_JWT_KEY_ID: production-1
       AUTH_COOKIE_DOMAIN: {{project}}.example.invalid

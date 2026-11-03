@@ -13,10 +13,11 @@ This inventory declares names, consumers and mounted file paths. Scaffolding gen
 | `GOOGLE_CLIENT_SECRET` | API Google OAuth client; reads `GOOGLE_CLIENT_SECRET_FILE` at `/run/secrets/google-client-secret` |
 | `GOOGLE_CALLBACK_URL` | API Google OAuth callback door |
 | `AUTH_JWT_ISSUER` | API access-token issuer |
+| `AUTH_WEB_ORIGIN` | API origin of the web app: where the Google callback lands and the only origin a return address may name |
 | `AUTH_JWT_AUDIENCE` | API access-token audience |
 | `AUTH_JWT_KEY_ID` | API signing key id, published in the JWKS |
 | `AUTH_COOKIE_DOMAIN` | API cookie `Domain` (a bare domain such as `example.com`, no scheme or port); optional while the web and the API share one host, required when they are served on different hosts, because a host-only refresh cookie never reaches the web server's forwarded `Cookie` header |
-| `AUTH_JWT_PRIVATE_KEY` | API ES256 signing key; reads `AUTH_JWT_PRIVATE_KEY_FILE` at `/run/secrets/auth-jwt-private-key` |
+| `AUTH_JWT_PRIVATE_KEY` | API Ed25519 (EdDSA) signing key; reads `AUTH_JWT_PRIVATE_KEY_FILE` at `/run/secrets/auth-jwt-private-key` |
 | `STORAGE_ENDPOINT` | API S3-compatible storage endpoint |
 | `STORAGE_REGION` | API storage signing region |
 | `STORAGE_BUCKET` | API storage bucket |

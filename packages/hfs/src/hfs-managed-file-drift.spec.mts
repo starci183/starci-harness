@@ -6,11 +6,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { renderTargets, writeTargets } from '../sync/index.mjs';
+import { renderRepo, writeTargets } from '../sync/index.mjs';
 import { managedFindings } from '../sync/managed.mjs';
 import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 
-const synced = (context: TestContext, edition: string) => {
+const synced = async (context: TestContext, edition: string) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-'));
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const declaration = structuredClone(APP);
@@ -19,7 +19,7 @@ const synced = (context: TestContext, edition: string) => {
     { name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'postgres' },
   ];
   fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify(declaration));
-  const targets = renderTargets(declaration, PRESETS);
+  const { targets } = await renderRepo(root, { presets: PRESETS });
   writeTargets(root, targets);
   const tracked = ['hfs.json', ...targets.map(target => target.path)];
   return { root, tracked, findings: () => managedFindings({ repoRoot: root, tracked, presets: PRESETS }) };
@@ -27,7 +27,7 @@ const synced = (context: TestContext, edition: string) => {
 
 for (const edition of ['lite', 'full']) {
   test(`${edition}: an edited managed hook fails and restoring its render passes`, async context => {
-    const { root, findings } = synced(context, edition);
+    const { root, findings } = await synced(context, edition);
     const file = path.join(root, '.husky/pre-push');
     const rendered = fs.readFileSync(file, 'utf8');
     assert.deepEqual(await findings(), []);
@@ -45,7 +45,7 @@ for (const edition of ['lite', 'full']) {
 // Direct checker calls also expose these real mutation cases to the coverage proof analysis.
 for (const edition of ['lite', 'full']) {
   test(`${edition}: an edited managed formatter ignore file is invalid and restoring its render passes`, async context => {
-    const { root, tracked } = synced(context, edition);
+    const { root, tracked } = await synced(context, edition);
     const input = { repoRoot: root, tracked, presets: PRESETS };
     const file = path.join(root, '.prettierignore');
     const rendered = fs.readFileSync(file, 'utf8');

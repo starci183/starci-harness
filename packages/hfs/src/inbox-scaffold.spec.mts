@@ -63,7 +63,7 @@ test('the lite inbox scaffold installs client replay declarations and migrates i
   assert.match(fs.readFileSync(path.join(domain, 'index.ts'), 'utf8'), /export \{ calendarInboxEntities \} from "\.\/persistence\/entities\/index"/);
   const entities = fs.readFileSync(path.join(root, 'be/src/modules/platform/database/entities.ts'), 'utf8');
   assert.match(entities, /import \{ calendarInboxEntities \} from "@modules\/domain\/calendar-inbox"/);
-  assert.match(entities, /PRIMARY_ENTITIES: ReadonlyArray<EntityClass> = \[\.\.\.httpSecurityEntities, \.\.\.calendarInboxEntities\]/);
+  assert.match(entities, /PRIMARY_ENTITIES: ReadonlyArray<EntityClass> = \[\.\.\.httpSecurityEntities, \.\.\.identityEntities, \.\.\.calendarInboxEntities\]/);
   // No raw receipt insert remains: the claim writes the receipt.
   assert.equal(fs.existsSync(path.join(root, 'be/src/modules/platform/database/webhook-inbox.client.ts')), false);
   assert.doesNotMatch(fs.readFileSync(path.join(root, 'be/src/modules/platform/database/index.ts'), 'utf8'), /recordWebhookDelivery/);

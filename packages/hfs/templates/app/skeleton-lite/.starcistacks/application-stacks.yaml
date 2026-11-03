@@ -74,7 +74,7 @@ environments:
         - {member: db, key: POSTGRES_PASSWORD, kind: password}
         - {member: db, key: DEV_DB_OWNER_PASSWORD, kind: password}
         - {member: db, key: DEV_DB_APP_PASSWORD, kind: password}
-        - {member: auth, key: AUTH_JWT_PRIVATE_KEY, kind: ec-pem}
+        - {member: auth, key: AUTH_JWT_PRIVATE_KEY, kind: ed25519-pem}
         - {member: google, key: GOOGLE_CLIENT_SECRET, kind: hex}
         - {member: storage, key: STORAGE_ACCESS_KEY_ID, kind: hex, bytes: 12}
         - {member: storage, key: STORAGE_SECRET_ACCESS_KEY, kind: hex}
@@ -94,6 +94,7 @@ environments:
             GOOGLE_CLIENT_ID: dev-local-client-id
             GOOGLE_CALLBACK_URL: "http://localhost:${port.api}/auth/google/callback"
             AUTH_JWT_ISSUER: "http://localhost:${port.api}"
+            AUTH_WEB_ORIGIN: "http://localhost:${port.web}"
             AUTH_JWT_AUDIENCE: {{project}}
             AUTH_JWT_KEY_ID: dev-1
             STORAGE_ENDPOINT: "http://127.0.0.1:9000"

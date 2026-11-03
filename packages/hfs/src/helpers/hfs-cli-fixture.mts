@@ -200,6 +200,9 @@ export function writeCleanRepo(declaration: AppDeclaration = APP, { declare = tr
   const { put, write } = writers;
   writeManifests(dir, declaration, put);
   writeTargets(dir, renderTargets(declaration, PRESETS));
+  // A lite app's auth client is a managed file of the web app; the entry the scaffold writes beside it is app-owned.
+  const authDir = 'fe/apps/web/src/modules/auth';
+  if (fs.existsSync(path.join(dir, authDir, 'client.ts')) && !fs.existsSync(path.join(dir, authDir, 'index.ts'))) put(`${authDir}/index.ts`, 'export {};\n');
   put('.starcistacks/application-stacks.yaml', STACKS_DECLARATION);
   // Dockerfiles are app-owned scaffold output; managed workflows stay identical to sync output.
   // reason: resolveRepoDeclaration returns the RepoView of a declaration that validateHfs would resolve to this ResolvedApp; the optional edition is read as declared.
