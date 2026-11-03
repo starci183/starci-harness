@@ -13,10 +13,11 @@ This roster declares names only. Scaffolding generates the six declared encrypte
 | `GOOGLE_CLIENT_SECRET` | API Google OAuth client; `.starcistacks/dev/secrets/google-client-secret.enc` maps to external `{{project}}-dev-google-client-secret-v1` and mounted `/run/secrets/google-client-secret` |
 | `GOOGLE_CALLBACK_URL` | API Google OAuth callback door |
 | `AUTH_JWT_ISSUER` | API access-token issuer |
+| `AUTH_WEB_ORIGIN` | API origin of the web app: where the Google callback lands and the only origin a return address may name |
 | `AUTH_JWT_AUDIENCE` | API access-token audience |
 | `AUTH_JWT_KEY_ID` | API signing key id, published in the JWKS |
 | `AUTH_COOKIE_DOMAIN` | API cookie `Domain` (a bare domain such as `example.com`, no scheme or port); optional while the web and the API share one host, required when they are served on different hosts, because a host-only refresh cookie never reaches the web server's forwarded `Cookie` header |
-| `AUTH_JWT_PRIVATE_KEY` | API ES256 signing key; `.starcistacks/dev/secrets/auth-jwt-private-key.enc` maps to external `{{project}}-dev-auth-jwt-private-key-v1` and mounted `/run/secrets/auth-jwt-private-key` |
+| `AUTH_JWT_PRIVATE_KEY` | API Ed25519 (EdDSA) signing key; `.starcistacks/dev/secrets/auth-jwt-private-key.enc` maps to external `{{project}}-dev-auth-jwt-private-key-v1` and mounted `/run/secrets/auth-jwt-private-key` |
 | `STORAGE_ENDPOINT` | API S3-compatible storage endpoint |
 | `STORAGE_REGION` | API storage signing region |
 | `STORAGE_BUCKET` | API storage bucket |

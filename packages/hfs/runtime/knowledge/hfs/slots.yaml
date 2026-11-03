@@ -254,13 +254,15 @@ ruleParams:
       "@aws-sdk/s3-request-presigner": [integrations/object-storage]
       minio: []                                          # storage goes through the S3 client of integrations/object-storage
       "@supabase": []                                    # no Supabase client in a back end
-      "@nestjs/passport": [integrations/passport]        # the identity libraries (R328)
-      passport: [integrations/passport]
-      passport-google-oauth20: [integrations/passport]
-      passport-local: [integrations/passport]
-      "@nestjs/jwt": [integrations/passport]
-      jose: [integrations/passport]
-      bcryptjs: [integrations/passport]
+      "@nestjs/passport": []                             # the identity libraries are @starci/auth's dependencies, never an app's (R328)
+      passport: []
+      passport-google-oauth20: []
+      passport-local: []
+      "@nestjs/jwt": []
+      jose: []
+      bcryptjs: []
+      "@starci/auth": [integrations/passport]            # the lite sign-in package: its server entry is reached only through integrations/passport (R328)
+      "@starci/auth/testing": [integrations/passport]   # its test doubles, for the glue's specs
       bcrypt: []
       cache-manager: [integrations/cache, integrations/redis]
       "@nestjs/cache-manager": [integrations/cache, integrations/redis]     # the CACHE_MANAGER token: caching goes through the cache capability
@@ -2028,18 +2030,19 @@ slots:
     editions: [lite]
     exemplifiedBy:
       - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/
-    # The one owner of the lite identity libraries (ruleParams.be.infraOwners: @nestjs/passport, passport, passport-google-oauth20,
-    # passport-local, @nestjs/jwt, jose, bcryptjs): the Google OAuth 2.0 strategy (state and PKCE), the local email and password
-    # strategy (bcrypt), the app's own asymmetric access tokens and their JWKS, and the rotating refresh cookie. domain/identity
-    # verifies a token through this integration's verifier and builds the principal (contexts/code/be/api-auth.md).
+    # The glue of @starci/auth, the lite sign-in package (Google OAuth with state and PKCE, email and password, EdDSA access tokens with
+    # their JWKS, rotating refresh sessions): the one importer of the package (ruleParams.be.infraOwners), which owns the identity
+    # libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose, bcryptjs) that no app imports.
+    # It parses the typed options, builds the verifier and names the injectors; domain/identity verifies a token through the kit and
+    # builds the principal (contexts/code/be/api-auth.md).
     path: "src/modules/integrations/passport/"
     presence: required
     tracked: tracked
     tier: integrations
     owner: true
-    requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.tokens.ts, passport.password.ts, passport.cookie.ts]   # Secrets, no defaults (R44); options and named injectors (R83); tokens and JWKS; bcrypt; the refresh cookie
-    allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.tokens.ts, passport.password.ts, passport.cookie.ts, strategies/, errors/]
-    logic: [passport.tokens.ts, passport.password.ts, passport.cookie.ts]   # JWT sign and verify over the own JWKS, bcrypt, the refresh cookie: measured at 100 per file
+    requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts]   # Secrets, no defaults (R44); options and named injectors (R83); the kit over @starci/auth
+    allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, errors/]
+    logic: [passport.kit.ts]   # the verifier mapping over the package: measured at 100 per file
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_AUTH_JWT_OWN_JWKS, BE_AUTH_REFRESH_COOKIE]
     coverage: required
@@ -2591,7 +2594,7 @@ slots:
     profiles: [fe]
     # The identity-provider client (fe-stack auth, FE-AUTH): the session, the access token the Apollo link attaches and the
     # sign-in/sign-out calls. It talks only to the app's own back-end auth doors and holds no credential: the refresh token lives in
-    # the back end's httpOnly cookie and the access token in memory (ruling:lite-self-hosted-postgres-passport-minio).
+    # the back end's httpOnly cookie and the access token in the memory of the one @starci/auth client (ruling:lite-self-hosted-postgres-passport-minio).
     path: "apps/<app>/src/modules/auth/"
     presence: optional
     tracked: tracked

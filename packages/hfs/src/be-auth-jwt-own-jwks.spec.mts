@@ -11,7 +11,9 @@ export declare function createLocalJWKSet(jwks: unknown): { kind: 'local' };
 export declare function jwtVerify(token: string, jwks: unknown, options: { issuer: string; audience: string; algorithms: string[] }): Promise<unknown>;
 export declare function decodeJwt(token: string): unknown;`;
 
-function fixture(t: TestContext, verifier: string, extra: Record<string, string> = {}) {
+const AUTH_SERVER = 'export declare class AuthTokens { verify(token: string): Promise<unknown> }';
+
+function fixture(t: TestContext, glue: string, extra: Record<string, string> = {}) {
   const declaration = appDeclaration('be', { apps: [{ name: 'core', kind: 'api' }] });
   const declared: Record<string, unknown> = declaration; // reason: appDeclaration types the declaration without edition and the side fields; this fixture adds them
   declared['edition'] = 'lite';
@@ -20,51 +22,45 @@ function fixture(t: TestContext, verifier: string, extra: Record<string, string>
     '../hfs.json': JSON.stringify(declaration),
     '../node_modules/jose/package.json': JSON.stringify({ name: 'jose', types: 'index.d.ts' }),
     '../node_modules/jose/index.d.ts': JOSE,
-    'src/modules/integrations/passport/passport.tokens.ts': verifier,
+    '../node_modules/@starci/auth/package.json': JSON.stringify({ name: '@starci/auth', exports: { './server': { types: './server.d.ts' } } }),
+    '../node_modules/@starci/auth/server.d.ts': AUTH_SERVER,
+    'src/modules/integrations/passport/index.ts': glue,
     ...extra,
   } });
 }
 
-const OWN = `import { createLocalJWKSet, jwtVerify } from 'jose';
-const keys = createLocalJWKSet({ keys: [] });
-export const verify = (token: string) => jwtVerify(token, keys, { issuer: 'https://api.fixture.invalid', audience: 'app', algorithms: ['ES256'] });`;
+const GLUE = `import { AuthTokens } from '@starci/auth/server';
+export const tokens = (): AuthTokens => ({} as AuthTokens);`;
 
-test(`${code}: the passport integration verifies against the app's own key set`, t => {
-  const report = runArch(fixture(t, OWN));
+test(`${code}: the passport integration composes @starci/auth, and no app file verifies a token`, t => {
+  const report = runArch(fixture(t, GLUE));
   assert.ok('checkedRuleIds' in report.coverage && report.coverage.checkedRuleIds?.includes(code));
   assert.deepEqual(findings(report, code), []);
 });
 
-test(`${code}: a remote key set, an unverified decode and a verifier outside the integration are refused`, t => {
-  const remote = `import { createRemoteJWKSet, jwtVerify, decodeJwt } from 'jose';
-const keys = createRemoteJWKSet(new URL('https://idp.fixture.invalid/.well-known/jwks.json'));
-export const verify = (token: string) => { decodeJwt(token); return jwtVerify(token, keys, { issuer: 'https://idp.fixture.invalid', audience: 'app', algorithms: ['ES256'] }); };`;
-  const report = runArch(fixture(t, remote, {
+test(`${code}: a passport integration that does not import @starci/auth/server is refused`, t => {
+  const report = runArch(fixture(t, 'export const nothing = 1;'));
+  assert.ok(findings(report, code).some(item => /does not import @starci\/auth\/server/.test(item.message)));
+});
+
+test(`${code}: a jwtVerify call and an unverified decode are refused in the integration and everywhere else`, t => {
+  const verify = `import { createLocalJWKSet, jwtVerify, decodeJwt } from 'jose';
+import { AuthTokens } from '@starci/auth/server';
+const keys = createLocalJWKSet({ keys: [] });
+export const kit = AuthTokens;
+export const verify = (token: string) => { decodeJwt(token); return jwtVerify(token, keys, { issuer: 'https://api.fixture.invalid', audience: 'app', algorithms: ['EdDSA'] }); };`;
+  const report = runArch(fixture(t, verify, {
     'src/modules/domain/identity/auth.guard.ts': `import { createLocalJWKSet, jwtVerify } from 'jose';
-export const verify = (token: string) => jwtVerify(token, createLocalJWKSet({ keys: [] }), { issuer: 'x', audience: 'app', algorithms: ['ES256'] });`,
+export const verify = (token: string) => jwtVerify(token, createLocalJWKSet({ keys: [] }), { issuer: 'x', audience: 'app', algorithms: ['EdDSA'] });`,
   }));
   const violations = findings(report, code);
   assert.ok(violations.some(item => /decodes a token without/.test(item.message)));
-  assert.ok(violations.some(item => /own key set/.test(item.message)));
-  assert.ok(violations.some(item => /outside be\.integrations\.passport/.test(item.message)));
+  assert.equal(violations.filter(item => /jwtVerify is called in the app/.test(item.message)).length, 2);
 });
 
-const OPTIONS = `export interface TokenOptions { readonly issuer: string; readonly audience: string }`;
-const verifierWith = (signature: string, audience: string) => `import { createLocalJWKSet, jwtVerify } from 'jose';
-import type { TokenOptions } from './passport.options';
-const keys = createLocalJWKSet({ keys: [] });
-export const verify = (${signature}) => jwtVerify(token, keys, { issuer: options.issuer, audience: ${audience}, algorithms: ['ES256'] });`;
-
-test(`${code}: an audience of typed configuration is pinned, as the lite skeleton's TokenOptions passes it (R260 accepts the same)`, t => {
-  const report = runArch(fixture(t, verifierWith('token: string, options: TokenOptions', 'options.audience'), {
-    'src/modules/integrations/passport/passport.options.ts': OPTIONS,
+test(`${code}: authorization claims read from a request body are refused`, t => {
+  const report = runArch(fixture(t, GLUE, {
+    'src/modules/domain/identity/auth.guard.ts': 'export const roleOf = (request: { body: { role: string } }) => request.body.role;',
   }));
-  assert.deepEqual(findings(report, code), []);
-});
-
-test(`${code}: an audience that is neither a literal nor typed configuration is refused`, t => {
-  const report = runArch(fixture(t, verifierWith('token: string, options: TokenOptions, audience: string', 'audience'), {
-    'src/modules/integrations/passport/passport.options.ts': OPTIONS,
-  }));
-  assert.ok(findings(report, code).some(item => /pin issuer, audience/.test(item.message)));
+  assert.ok(findings(report, code).some(item => /read from the request body/.test(item.message)));
 });

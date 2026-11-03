@@ -12,6 +12,7 @@ services:
       GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google-client-secret
       GOOGLE_CALLBACK_URL: http://dev.{{project}}.example.invalid/auth/google/callback
       AUTH_JWT_ISSUER: http://dev.{{project}}.example.invalid
+      AUTH_WEB_ORIGIN: http://dev.{{project}}.example.invalid
       AUTH_JWT_AUDIENCE: {{project}}
       AUTH_JWT_KEY_ID: dev-1
       AUTH_JWT_PRIVATE_KEY_FILE: /run/secrets/auth-jwt-private-key
