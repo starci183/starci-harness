@@ -41,7 +41,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
   - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R102, R103, HFS_SCRIPT_ONE_OFF (no rule)
   - `integration/*.mjs` — **app.scripts.integration** optional · R06, R102, R103, HFS_SCRIPT_ONE_OFF (no rule)
 - `packages/`
-  - `{agent-sdk,module-<name>}/` — **app.packages** optional · R25
+  - `<name>/` — **app.packages** optional · R25
   - `modules/` — **app.module-registry** optional · R05
 - `{be,fe}/` — **app.sides** required
 - `.starciwork/` — **app.starciwork** required · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)

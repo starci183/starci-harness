@@ -3,6 +3,7 @@
 ## 0.21.17 - 2026-11-03
 
 - Changed: version stamp only, with `@starci/grammar` 0.21.17; the runtime copies carry the root-packages view, the R187 and seed laws and the canon pins of this release; requires `@starci/eslint-canon-fe` 9.13.0.
+- Changed: the package's slot manifest places any root workspace package `packages/<name>/` in `app.packages` (a block library such as `packages/blocks-core` beside the agent SDK and the module packages), so the root packages config lints it.
 
 ## 0.21.16 - 2026-11-03
 

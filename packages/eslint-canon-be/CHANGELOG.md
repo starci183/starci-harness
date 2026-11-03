@@ -4,6 +4,7 @@
 
 - Changed: `throw-domain-error` and `error-home` judge a root workspace package by the error base its `package.json` declares (`starci.errorBase: { name, file }`), the way they judge an app by `DomainError` of `platform/errors`; a raw `Error` and an undeclared `Error` subclass stay refused, and a malformed declaration stops the lint. Specs: `src/packages-config.spec.ts`.
 - Changed: the runtime copies carry the root-packages view (`readPackageContract`, the `modules` declaration), the R187 build-context law, the seed rules (R375, R332) and the canon pins of this release.
+- Changed: the package's slot manifest places any root workspace package `packages/<name>/` in `app.packages` (a block library such as `packages/blocks-core` beside the agent SDK and the module packages), so the root packages config lints it.
 
 ## 3.14.1 - 2026-11-03
 

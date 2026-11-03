@@ -7,7 +7,7 @@ import { loadArchitectureConfig } from '../runtime/scripts/hfs/architecture/conf
 import { buildTypeScriptContext } from '../runtime/scripts/hfs/architecture/typescript.mjs';
 import { withTypeScriptProgramRun } from '../runtime/scripts/hfs/typescript-programs.mjs';
 
-// An app's ROOT workspace packages (packages/agent-sdk, packages/module-<name>, the managed packages/modules) lie outside both side
+// An app's ROOT workspace packages (packages/<name>: the agent SDK, a block library, a module package, the managed packages/modules) lie outside both side
 // folders, and both sides import them by their package name. The import graph reads them as first-party packages: an import through a
 // package entry point (an `exports` subpath) is not an import that leaves the side and never stops the graph; an import into the
 // package's source stays refused (ARCH_INTERNAL_IMPORT_OUTSIDE). Nivo's `@nivo/agent-sdk/workbench` crashed the front-end lint run, and
@@ -70,6 +70,14 @@ test('the root workspace packages of the app are read as first-party packages fr
 test('the slots app.packages and app.module-registry name root packages that the workspaces forgot to list', (t) => {
   const { config } = graphErrors(t, 'be', [], packageFiles('modules', { '.': { default: './dist/index.js' } }), ['fe/apps/*']);
   assert.deepEqual((config.rootPackages ?? []).map(item => item.name), ['@fixture/agent-sdk', '@fixture/module-loyalty', '@fixture/modules']);
+});
+
+test('a block library is a root package by any name: the workspaces list it, and app.packages places it when they do not', (t) => {
+  const blocks = packageFiles('blocks-core', { '.': { default: './dist/index.js' } });
+  const listed = graphErrors(t, 'fe', [], blocks);
+  assert.deepEqual((listed.config.rootPackages ?? []).map(item => item.relative), ['packages/agent-sdk', 'packages/blocks-core', 'packages/module-loyalty']);
+  const placed = graphErrors(t, 'be', [], blocks, ['fe/apps/*']);
+  assert.deepEqual((placed.config.rootPackages ?? []).map(item => item.relative), ['packages/agent-sdk', 'packages/blocks-core', 'packages/module-loyalty']);
 });
 
 test('a front-end import of a package entry point (@scope/pkg/workbench) neither leaves the side nor stops the graph', (t) => {

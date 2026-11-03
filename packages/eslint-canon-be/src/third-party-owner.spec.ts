@@ -145,7 +145,7 @@ for (const edition of ["lite", "full"] as const) {
     })
 }
 
-/** The app's own root workspace packages (packages/agent-sdk, packages/module-<name>) are first-party source, not third-party libraries. */
+/** The app's own root workspace packages (packages/<name>: the agent SDK, a block library, a module package) are first-party source, not third-party libraries. */
 const OWN_PACKAGES = {
     "packages/agent-sdk/package.json": JSON.stringify({ name: "@fixture/agent-sdk", version: "0.1.0", private: true }),
     "packages/module-loyalty/package.json": JSON.stringify({ name: "@fixture/module-loyalty", version: "0.1.0", private: true }),

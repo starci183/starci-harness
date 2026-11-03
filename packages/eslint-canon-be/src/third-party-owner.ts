@@ -80,7 +80,7 @@ const dependenciesOf = (hfs: HfsView): Dependencies => {
     if (!existsSync(manifest)) throw new Error("third-party-import-owner needs the app-root package.json beside be/ to derive SDK ownership")
     const declaration: unknown = JSON.parse(readFileSync(manifest, "utf8"))
     const dependencies = new Map<string, string>()
-    // The app's own workspace packages (packages/agent-sdk, packages/module-<name>) are first-party source, not third-party libraries: whatever
+    // The app's own workspace packages (packages/<name>: the agent SDK, a block library, a module package) are first-party source, not third-party libraries: whatever
     // version range the root manifest writes for one of them, it names no SDK to own. What such a package imports is judged in the package.
     const own = rootPackageNames(dirname(manifest))
     for (const section of ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"]) {

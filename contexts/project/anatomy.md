@@ -77,7 +77,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
   - `{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}` — **app.scripts.delivery** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`), HFS_SCRIPT_ONE_OFF (no rule)
   - `integration/*.mjs` — **app.scripts.integration** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`), HFS_SCRIPT_ONE_OFF (no rule)
 - `packages/`
-  - `{agent-sdk,module-<name>}/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
+  - `<name>/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
   - `modules/` — **app.module-registry** optional · R05 (hfs `managed-file-drift`)
 - `{be,fe}/` — **app.sides** required
 - `.starciwork/` — **app.starciwork** optional · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)
@@ -268,7 +268,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
   - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`), HFS_SCRIPT_ONE_OFF (no rule)
   - `integration/*.mjs` — **app.scripts.integration** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`), HFS_SCRIPT_ONE_OFF (no rule)
 - `packages/`
-  - `{agent-sdk,module-<name>}/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
+  - `<name>/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
   - `modules/` — **app.module-registry** optional · R05 (hfs `managed-file-drift`)
 - `{be,fe}/` — **app.sides** required
 - `.starciwork/` — **app.starciwork** required · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)

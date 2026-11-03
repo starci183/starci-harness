@@ -478,7 +478,7 @@ function registryTargets(app: ResolvedApp, source: AppSourceFacts | undefined): 
 }
 
 /**
- * The root `eslint.config.mjs` of an app that has root workspace packages (packages/agent-sdk, packages/module-<name>, the registry): no side config
+ * The root `eslint.config.mjs` of an app that has root workspace packages (packages/<name>: the agent SDK, a block library, a module package, the registry): no side config
  * reaches `packages/`, so this managed file lints their source by subpath. The back-end canon judges everything but the front-end subpaths
  * (`src/workbench/` outside its contract, `src/public/`), the front-end canon and the selected Grammar family those, each over the package view of
  * the app root. An app without a root package has no such file; the family factory for packages is the family's `<name>GrammarPackagesConfig`.

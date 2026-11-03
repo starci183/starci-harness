@@ -859,10 +859,10 @@ slots:
   - id: app.packages
     since: 3.17.0
     profiles: [app]
-    editionWhy: Lite and full share the slot; a product's agent SDK and its agent modules are workspace packages in both.
-    # A workspace package of the app ROOT (packages/agent-sdk, packages/module-<name>): first-party source that both sides import through its
+    editionWhy: Lite and full share the slot; every root workspace package of a product (its agent SDK, a block library, a module package, a reviewed plugin package) is one in both.
+    # A workspace package of the app ROOT (packages/<name>: the agent SDK, a block library, packages/module-<name>): first-party source that both sides import through its
     # package entry points and never past them (ARCH_INTERNAL_IMPORT_OUTSIDE), linted by the root eslint config by subpath.
-    path: "packages/{agent-sdk,module-<name>}/"
+    path: "packages/<name>/"
     presence: optional
     tracked: tracked
     tier: none

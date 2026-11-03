@@ -751,6 +751,11 @@ rulings:
     status: live
     ruling: "A product's agent modules live as workspace packages (packages/module-<name>) built on the product's agent SDK, added and removed with `starci app add|remove module <name>`. A module's workbench package draws only with Grammar. The logic of a module package is inside the 100%-per-file coverage scope (BE-TEST-13, R273): the codecov, sonar and jest scope templates no longer exclude packages."
     owner: "contexts/code/fe/folder.md FE-PACKAGES-2; contexts/code/be/test.md BE-TEST-13; contexts/hfs/slots.yaml (app.packages, app.module-registry); contexts/project/README.md PROJECT-3; lint R273"
+  - id: root-packages-any-name
+    date: '2026-11-03'
+    status: live
+    ruling: "An app's packages/ holds its agent SDK, its block libraries and, later, reviewed plugin packages beside the module packages: slot app.packages places any packages/<name>/ (a root workspace package with a package.json and a src/), so each is linted by the root eslint config (--side packages) and measured in the back end's unit run like the SDK."
+    owner: "contexts/hfs/slots.yaml (app.packages); packages/hfs/src/architecture-root-packages.spec.mts"
   - id: customised-service-image
     date: '2026-11-03'
     status: live

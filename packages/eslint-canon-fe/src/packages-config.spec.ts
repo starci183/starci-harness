@@ -87,6 +87,8 @@ test("a package view is the fe profile over the paths of the app root and carrie
     assert.equal(app.hfs.grammar, "core")
     assert.equal(app.hfs.tierOf("packages/agent-sdk/src/workbench/index.ts"), "package")
     assert.equal(app.hfs.slotOf("packages/agent-sdk/src/workbench/index.ts"), "app.packages")
+    assert.equal(app.hfs.slotOf("packages/blocks-core/src/workbench/index.ts"), "app.packages", "a block library is a root package by any name")
+    assert.equal(app.hfs.tierOf("packages/blocks-core/src/public/page.ts"), "package")
     assert.equal(app.hfs.tierOf("fe/apps/web/src/app/page.tsx"), null)
   } finally { app.cleanup() }
 })

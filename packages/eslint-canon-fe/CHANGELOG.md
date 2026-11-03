@@ -4,6 +4,7 @@
 
 - Changed: `one-outcome-union` accepts in a root workspace package only the result union its `package.json` names (`starci.outcome: { name, file }`); every other result union stays refused. Specs: `src/packages-config.spec.ts`.
 - Changed: the runtime copies carry the root-packages view, the `modules` declaration and the canon pins of this release (no release-age wording).
+- Changed: the package's slot manifest places any root workspace package `packages/<name>/` in `app.packages` (a block library such as `packages/blocks-core` beside the agent SDK and the module packages), so the root packages config lints it.
 
 ## 9.12.1 - 2026-11-03
 

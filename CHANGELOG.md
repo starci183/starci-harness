@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.55 - 2026-11-03
+
+- Changed: the contexts search eval records the seed-levels rule (PROJECT-STACKS-12, R375) among its questions, so the eval holds the seed rules the index carries.
+
 ## 1.1.0-alpha.53 - 2026-11-03
 
 - Added: a lane step is satisfied only by work on the tree being judged (`task-green`): a done task of another workflow counts when its landed commit is an ancestor of the workflow's `base`, so a stopped workflow's tasks on an archive branch no longer satisfy `workflow define --check`.
