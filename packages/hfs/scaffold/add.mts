@@ -23,6 +23,7 @@ import { ScaffoldError, pascalOf } from './service.mjs';
 import { addTable, graphqlPlatformFiles } from './add-table.mjs';
 import { addModuleImport, compositionCode, readComposeGroup, writeComposeGroup } from './add-compose.mjs';
 import { addApp } from './add-app.mjs';
+import { addModule } from './add-module.mjs';
 import { FE_UNIT_LAYERS, addFeUnit } from './add-fe-unit.mjs';
 import { addFePage } from './add-fe-page.mjs';
 import { addFeOverlay } from './add-fe-overlay.mjs';
@@ -104,6 +105,10 @@ export function addKind({ repoRoot, noun, name, options = {}, now = Date.now }: 
   if (noun === 'app') {
     const result = addApp({ root: repoRoot, name });
     return { ...result, registered: { patterns: [], kinds: [] } };
+  }
+  if (noun === 'module') {
+    const result = addModule({ root: repoRoot, name });
+    return { created: [...result.created, ...result.updated], registered: { patterns: [], kinds: [] } };
   }
   const feOwner = FE_OWNERS[noun];
   if (feOwner !== undefined || Object.hasOwn(FE_UNIT_LAYERS, noun)) {

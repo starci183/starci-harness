@@ -1,13 +1,14 @@
 import { hfsLimitsEnv, testWorkerArgs, withHeavySlot } from "../../harness/heavy.js"
 import { captureCommand } from "../../shared/exec.js"
 import type { HeavyNodeRequest, HeavyNodeRun } from "@starci/hfs/runtime/scripts/api/node/run-node.mjs"
+import type { HeavyCommandRun } from "@starci/hfs"
 import { loadPolicy } from "../../harness/policy.js"
 import { hostAgeIdentity } from "../../harness/secret-env.js"
 import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
 import { packageVersion } from "../version.js"
 
 /** The `starci app` verbs @starci/hfs implements; each is one verb file of this folder. */
-export type HfsVerb = "add" | "check" | "ci" | "codemod" | "coverage" | "db" | "emit" | "release" | "scaffold" | "secret" | "slot" | "stack" | "sync" | "upgrade" | "world"
+export type HfsVerb = "add" | "remove" | "check" | "ci" | "codemod" | "coverage" | "db" | "emit" | "release" | "scaffold" | "secret" | "slot" | "stack" | "sync" | "upgrade" | "world"
 
 /**
  * What the CLI hands @starci/hfs besides its version, for the verbs that use it: the caller's role an urgent release record names, and the
@@ -107,6 +108,21 @@ export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): 
     })
 
 /**
+ * The governed runner of the dev verbs' heavy commands (`starci app stack up`: `npm ci`, a compose build or up): one slot of the host-wide
+ * semaphore per command, run without a shell, the result handed back as the spawn seam's shape.
+ */
+export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand): HeavyCommandRun => async (request) =>
+    admit(request.kind, request.label, request.cwd, { baseEnv: request.env }, async (held) => {
+        const run = await capture(request.argv, request.cwd, held.options)
+        return {
+            status: run.timedOut ? null : run.exitCode,
+            stdout: run.stdout,
+            stderr: run.stderr,
+            ...(run.timedOut ? { error: Object.assign(new Error("child deadline reached"), { code: "ETIMEDOUT" }) } : {}),
+        }
+    })
+
+/**
  * Runs `starci app <verb>` in @starci/hfs, in-process, in the verb's working directory. In human mode its stdout and stderr
  * stream as it prints them and the CLI adds nothing; under `--json` the CLI passes `--json` to a verb that `printsJson` and
  * carries what it printed. The CLI passes its own version as `harness`: it is the starci-harness an app is judged and scaffolded at,
@@ -123,9 +139,10 @@ export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly
     const { hostIdentity = hostAgeIdentity(context.cwd), ...more } = extra
     const harness = { version: packageVersion(), ...more }
     const runHeavyNode = hfsNodeRunner()
+    const stackIo = { heavy: hfsCommandRunner() }
     const io = context.json
-        ? { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
-        : { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
+        ? { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stackIo, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
+        : { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stackIo, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
     const { main } = await import("@starci/hfs")
     const exitCode = await main([verb, ...full], io)
     const data: HfsRunData = { verb, argv: full, exitCode, output: context.json ? parsed(stdout.trim()) : null, stderr }

@@ -37,17 +37,17 @@ concerns:
   - id: rest
     tier: core
     packages: [axios]
-    home: [fe.modules.api, fe.modules.auth]
+    home: [fe.modules.api]
     pattern: FE-API-REST
     forbids: [ky, superagent, node-fetch, cross-fetch, isomorphic-fetch]
-    why: modules/api/rest/<area>/*.ts for uploads and presigned URLs, and modules/auth/auth-door.ts for the app's own auth doors only; GraphQL carries every other call.
+    why: modules/api/rest/<area>/*.ts for uploads and presigned URLs, only; GraphQL carries every other call.
   - id: data
     tier: core
-    packages: [swr]
+    packages: [swr, '@starci/next-data']
     home: [fe.hooks.swr]
     pattern: FE-DATA-SWR
     forbids: ['@tanstack/react-query', react-query]
-    why: hooks/swr/api/{graphql,rest}/{queries,mutations}/use*Swr.ts wrap one operation each; components call hooks only.
+    why: hooks/swr/api/{graphql,rest}/{queries,mutations}/use*Swr.ts wrap one operation each; components call hooks only. The polling-restart middleware (pollingRestart), the key helpers, the viewer-keyed config and the viewer cache are @starci/next-data's (owner next-data-package); an app imports no Middleware or ScopedMutator type of swr and writes none of them.
   - id: toast
     tier: core
     packages: ['@heroui/react']
@@ -96,11 +96,11 @@ concerns:
       hand-written reader (read-event-stream.ts) and no second SSE library is installed.
   - id: auth
     tier: core
-    packages: []
+    packages: ['@starci/auth']
     home: [fe.modules.auth]
     pattern: FE-AUTH
-    forbids: ['@supabase/supabase-js', '@supabase/ssr', '@supabase/auth-js']
-    why: modules/auth is the session issuer's client (lite - auth-door.ts over the app's own back-end auth doors with the in-memory token store; full - the app's IdP client); it yields the session and the access token for the Apollo link and never reads data.
+    forbids: ['@supabase/supabase-js', '@supabase/ssr', '@supabase/auth-js', jose, jwt-decode, next-auth, '@auth/core', keycloak-js, oidc-client-ts]
+    why: modules/auth is the session issuer's client (one @starci/auth client instance over the app's own back-end auth doors, the access token in its memory; full - the app's IdP client); it yields the session and the access token for the Apollo link and never reads data.
   - id: i18n
     tier: core
     packages: [next-intl, '@starci/next-i18n']

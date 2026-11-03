@@ -21,15 +21,18 @@ const INDICATOR: Record<"success" | "danger" | "warning" | "info", ReactNode> = 
 /** The app's toast: HeroUI's, with the four status methods wrapped. */
 type AppToast = typeof heroToast
 
-/** The app's toast: HeroUI's imperative toast with the status indicator injected; the region is mounted by the providers. */
-export const toast: AppToast = {
-    ...heroToast,
-    success: (message: ReactNode, options?: StatusToastOptions) =>
-        heroToast.success(message, { indicator: INDICATOR.success, ...options }),
-    danger: (message: ReactNode, options?: StatusToastOptions) =>
-        heroToast.danger(message, { indicator: INDICATOR.danger, ...options }),
-    warning: (message: ReactNode, options?: StatusToastOptions) =>
-        heroToast.warning(message, { indicator: INDICATOR.warning, ...options }),
-    info: (message: ReactNode, options?: StatusToastOptions) =>
-        heroToast.info(message, { indicator: INDICATOR.info, ...options }),
-}
+/** The app's toast: HeroUI's imperative toast, callable as it is, with the four status methods wrapped to inject the status indicator; the region is mounted by the providers. */
+export const toast: AppToast = Object.assign(
+    (message: ReactNode, options?: Parameters<typeof heroToast>[1]) => heroToast(message, options),
+    heroToast,
+    {
+        success: (message: ReactNode, options?: StatusToastOptions) =>
+            heroToast.success(message, { indicator: INDICATOR.success, ...options }),
+        danger: (message: ReactNode, options?: StatusToastOptions) =>
+            heroToast.danger(message, { indicator: INDICATOR.danger, ...options }),
+        warning: (message: ReactNode, options?: StatusToastOptions) =>
+            heroToast.warning(message, { indicator: INDICATOR.warning, ...options }),
+        info: (message: ReactNode, options?: StatusToastOptions) =>
+            heroToast.info(message, { indicator: INDICATOR.info, ...options }),
+    },
+)

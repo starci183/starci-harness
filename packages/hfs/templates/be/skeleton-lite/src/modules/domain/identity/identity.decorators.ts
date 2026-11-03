@@ -2,13 +2,34 @@ import { SetMetadata, applyDecorators, createParamDecorator } from "@nestjs/comm
 import type { ExecutionContext } from "@nestjs/common"
 import { injector } from "@modules/platform/composition"
 import type { DoorDecorator, TypedParameterDecorator } from "@modules/platform/composition"
-import type { VerifyAccessToken } from "@modules/integrations/passport"
+import type { AuthDoors, AuthPasswords, AuthSessions, SignInBudget, VerifyAccessToken } from "@modules/integrations/passport"
 import { ServerToServer, requestOf } from "@modules/platform/http-security"
 import type { Principal } from "@modules/platform/cqrs"
 import type { CredentialAuthenticator, CredentialMetadata } from "./credential.contracts"
 import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
 import { PublicReason } from "./identity.contracts"
 import type { PublicMetadata } from "./identity.contracts"
+
+/** Token of the sign-in doors of the package, provided by the identity module from the passport integration. */
+export const IDENTITY_AUTH_DOORS: unique symbol = Symbol("domain.identity.auth-doors")
+/** Token of the rotating sessions of the package. */
+export const IDENTITY_AUTH_SESSIONS: unique symbol = Symbol("domain.identity.auth-sessions")
+/** Token of the password hasher of the package. */
+export const IDENTITY_AUTH_PASSWORDS: unique symbol = Symbol("domain.identity.auth-passwords")
+/** Token of the failures-only sign-in budget of the package. */
+export const IDENTITY_SIGN_IN_BUDGET: unique symbol = Symbol("domain.identity.sign-in-budget")
+
+/** Injects the sign-in doors. Parameter type: AuthDoors. */
+export const InjectAuthDoors = (): TypedParameterDecorator<AuthDoors> => injector<AuthDoors>(IDENTITY_AUTH_DOORS)
+
+/** Injects the rotating sessions. Parameter type: AuthSessions. */
+export const InjectAuthSessions = (): TypedParameterDecorator<AuthSessions> => injector<AuthSessions>(IDENTITY_AUTH_SESSIONS)
+
+/** Injects the password hasher. Parameter type: AuthPasswords. */
+export const InjectAuthPasswords = (): TypedParameterDecorator<AuthPasswords> => injector<AuthPasswords>(IDENTITY_AUTH_PASSWORDS)
+
+/** Injects the sign-in budget. Parameter type: SignInBudget. */
+export const InjectSignInBudget = (): TypedParameterDecorator<SignInBudget> => injector<SignInBudget>(IDENTITY_SIGN_IN_BUDGET)
 
 /** Token of the access-token verifier the composition root hands to identity. */
 export const ACCESS_TOKEN_VERIFIER: unique symbol = Symbol("domain.identity.access-token-verifier")

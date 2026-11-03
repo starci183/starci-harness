@@ -52,16 +52,18 @@ test('--source-sha is an unknown flag, and --reason/--remote still refuse beside
   assert.match(beside.err, /STACK_USAGE: --reason and --remote belong to the one-command urgent deploy without --image and --sha/);
 });
 
-test('every stack effect names its environment; prepare is one, doctor is not an action', async (t) => {
+test('every stack effect names its environment; prepare is one, doctor is a dev action', async (t) => {
   assert.ok(!READ_ONLY.includes('prepare'));
   const bare = await stack(t, ['prepare']);
   assert.equal(bare.code, 2);
   assert.match(bare.err, /STACK_USAGE: stack prepare has an effect: name its environment with --env <env>/);
-  assert.ok(!(ACTIONS as readonly string[]).includes('doctor')); // widened: 'doctor' is deliberately not an Action
+  assert.ok(!(ACTIONS as readonly string[]).includes('doctor')); // widened: 'doctor' is a dev action (stack/local-cli.mjs), not a swarm Action
   const gone = await stack(t, ['doctor', '--env', 'staging']);
   assert.equal(gone.code, 2);
-  assert.match(gone.err, /STACK_USAGE: starci app stack takes /);
+  assert.match(gone.err, /STACK_LOCAL_NOT_DEV: environment staging runs docker-swarm/);
   assert.deepEqual(gone.seen, []);
+  const noEnv = await stack(t, ['up']);
+  assert.match(noEnv.err, /STACK_USAGE: stack up names its environment with --env <env>/);
 });
 
 test('prepare without --execute reaches the action as a dry run', async (t) => {

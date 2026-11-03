@@ -37,6 +37,7 @@ backing services and its grammar). No product content lives here; product record
 | `budget` | size budgets of the slot (lines per file, files, exports, hooks); the one owner of those numbers |
 | `trigger`, `pattern`, `appKind`, `composedBy`, `provider` | the feature kind, the declared pattern that enables it, the app kind it describes, the app kinds that compose it, the connection provider that enables it |
 | `managedBy`, `liteManagedBy` | the template directory the app sync renders it from; a difference is drift |
+| `managedOnly` | true: the slot only lists files sync renders (it needs `managedBy`); the slot that owns the path judges the file, so a rendered service keeps the rules and the tier of its folder |
 | `editions`, `lite`, `editionWhy` | the editions it exists in, the fields it carries under lite, and why lite differs |
 | `rules` | finding codes of [rules.yaml](rules.yaml) that judge the slot |
 
@@ -122,6 +123,8 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R283 | removed words stay removed | Replace the word `hfs.json` `lexicon.removed` lists with its replacement. |
 | R293 | deploy tooling has one owner | Call the canon stack verbs instead of re-implementing them in scripts or workflows. |
 | R294 | deploy config is coherent | Fix the environment's deploy block until the stack verbs normalise it against the real tree. |
+| R372 | dev environment is runnable | Declare `environments.dev` as docker-compose with a `local` block the dev verbs normalise; a lite app has one. |
+| R373 | dev runbook names the verb | Replace docker commands in the runbook with `starci app stack up --env <env> --execute` and its siblings. |
 | R296 | service custody and CI execution copies | Bind each sealed tooling copy to its exact product service, project, environment, member and key; keep runtime keys out of CI. |
 | R297 | app secrets are not CI secrets | Remove from CI secrets or vars any key granted to the app container. |
 | R298 | CI declarations match use | Declare each referenced secret or variable in its CI class, and drop declarations nothing consumes. |

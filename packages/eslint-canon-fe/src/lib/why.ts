@@ -394,6 +394,11 @@ export const why = {
     en: "`<file>` starts a recurring timer that reads the wall clock for live time labels.",
     fix: "Render Grammar RelativeTime with the target dateTime, locale and mode; its shared ticker owns live relative time and countdown updates.",
   },
+  "swr-extension-from-package": {
+    code: "FE_STACK_FORBIDDEN",
+    en: "`<file>` imports the `Middleware` or `ScopedMutator` type of `swr`, so it writes an SWR middleware or a cache binding the stack already ships.",
+    fix: "List `viewerSwrConfig` (it carries `pollingRestart`) in the app's SWRConfig and write through the `createViewerCache()` instance of `@starci/next-data`.",
+  },
   "fe-stack-import": {
     code: "FE_STACK_FORBIDDEN",
     en: "`<file>` imports `<what>`, a package or scoped package family the front-end stack forbids.",

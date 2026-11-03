@@ -5347,6 +5347,36 @@ SEALED_FILE_IN_WORK:
 
 # --- HFS rule catalog (knowledge/hfs/rules.yaml): one code per rule, from R01 up ---
 
+STACKS_LOCAL_CONFIG_INVALID:
+  title: "The local block of a docker-compose environment is not coherent"
+  title_vi: "Khối local của môi trường docker-compose không nhất quán"
+  meaning_vi: "environments.<env>.local thiếu hoặc có trường lạ, cổng trùng, dịch vụ không có trong tệp compose, vai trò cơ sở dữ liệu dùng chung, hoặc thăm dò không nằm trên loopback."
+  causes_vi:
+    - "Vi phạm R372: khối local được kiểm bằng đúng normalizeLocal mà các động từ starci app stack up, down, doctor dùng."
+  nextStep_vi: "Sửa đúng trường nêu trong thông báo (environments.<env>.local.<đường dẫn>), rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
+STACKS_DEV_UNDECLARED:
+  title: "A lite app declares no runnable dev environment"
+  title_vi: "Ứng dụng lite chưa khai báo môi trường dev chạy được"
+  meaning_vi: "Không có environment nào có runtime docker-compose và khối local, nên starci app stack up --env dev không có gì để chạy."
+  causes_vi:
+    - "Vi phạm R372: môi trường dev vẫn là Swarm hoặc chưa được khai báo."
+  nextStep_vi: "Khai báo environments.dev với runtime docker-compose, composeFiles và khối local; runbook của nó nêu starci app stack up --env dev."
+  owner: op-retry
+  kind: check-finding
+
+STACKS_RUNBOOK_DOCKER_COMMAND:
+  title: "A dev runbook carries a docker command or omits the one-command start"
+  title_vi: "Runbook dev chứa lệnh docker hoặc không nêu lệnh khởi động duy nhất"
+  meaning_vi: "README của môi trường docker-compose có dòng docker build, run, compose hay stack deploy, hoặc không nêu starci app stack up --env <env>."
+  causes_vi:
+    - "Vi phạm R373 và quy tắc cứng 8: Docker do harness chạy, tác tử không chạy tay."
+  nextStep_vi: "Thay các lệnh docker bằng starci app stack up --env <env> --execute và các động từ down, status, logs của nó."
+  owner: op-retry
+  kind: check-finding
+
 STACKS_DEPLOY_CONFIG_INVALID:
   title: "A deploy block of application-stacks.yaml is not coherent"
   title_vi: "Khối deploy trong application-stacks.yaml không nhất quán"
@@ -5674,3 +5704,35 @@ BE_JOBS_SCHEDULER_OWNER:
   nextStep_vi: "Khai tick vào JOB_TICKS của platform/jobs/job-ticks.contracts.ts (name, cron, timeZone UTC, queue, payload) và xoá lịch tự viết; giữ advisoryXactLock và job_tick_claim trong JobTickService."
   owner: op-retry
   kind: check-finding
+
+STACKS_CODE_BIND_MOUNT:
+  title: "A stack or compose file bind-mounts code into a service container"
+  title_vi: "Tệp stack hoặc compose gắn (bind-mount) mã vào container của dịch vụ"
+  meaning_vi: "Một dịch vụ gắn thư mục hoặc tệp mã, plugin, script hay đường dẫn ghi được của repository từ máy chủ vào container."
+  causes_vi:
+    - "Vi phạm R374: mã của dịch vụ phải nằm trong image dựng từ .starcistacks/images/<tên>/, không gắn lúc chạy."
+  nextStep_vi: "Đưa mã vào Dockerfile của .starcistacks/images/<tên>/ (FROM image đã ghim digest, hoặc image fork của harness) và bỏ bind-mount; chỉ giữ volume dữ liệu, secret và tệp cấu hình thuần dữ liệu chỉ đọc."
+
+STACKS_IMAGE_BASE_UNPINNED:
+  title: "A service image folder has a FROM that is not digest-pinned"
+  title_vi: "Thư mục image của dịch vụ có FROM chưa ghim digest"
+  meaning_vi: "Dockerfile trong .starcistacks/images/<tên>/ dùng FROM theo tag, không theo name@sha256:..."
+  causes_vi:
+    - "Vi phạm R374: mọi image nền phải ghim digest."
+  nextStep_vi: "Ghim FROM bằng name@sha256:<digest>."
+
+STACKS_IMAGE_BASE_NOT_FORK:
+  title: "A service image folder does not build on the harness fork image"
+  title_vi: "Thư mục image của dịch vụ không dựng trên image fork của harness"
+  meaning_vi: "Harness sở hữu image fork StarCi cho dịch vụ này (images/sources.json) nhưng giai đoạn cuối của Dockerfile không FROM image đó."
+  causes_vi:
+    - "Vi phạm R374: dịch vụ tùy biến phải dựng trên image fork do harness ghim."
+  nextStep_vi: "Đặt FROM <repository fork>@sha256:<digest> ở giai đoạn cuối."
+
+STACKS_IMAGE_ENV_DIVERGES:
+  title: "A service with an image folder runs a third-party image in an environment"
+  title_vi: "Dịch vụ có thư mục image chạy image bên thứ ba ở một môi trường"
+  meaning_vi: "Dev và production phải cùng chạy một image dựng từ .starcistacks/images/<tên>/."
+  causes_vi:
+    - "Vi phạm R374: một môi trường dùng image upstream hoặc image nước ngoài thay vì image dựng từ thư mục."
+  nextStep_vi: "Dùng build.context trỏ tới thư mục image (compose) hoặc tham chiếu image của dự án (stack)."

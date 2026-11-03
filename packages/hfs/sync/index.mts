@@ -37,6 +37,7 @@ import { DB_DOCKERFILE, DB_IMAGE_APP, RETIRED_DB_DOCKERFILE } from '../db/image.
 import { byCodeUnit } from '../report/order.mjs';
 import { isRuntimeExampleApp } from '../runtime/scripts/lib/runtime-example.mjs';
 import { ciWorkflowCommands } from './ci-commands.mjs';
+import { MODULE_PREFIX, moduleNames, registryFiles } from '../scaffold/module-registry.mjs';
 import { dependabotUpdates, hasDeclaredServices, readDeclaredQuality, readDeclaredBadges, sonarHostLine } from './quality-services.mjs';
 import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
 import { grammarLintFor } from '../runtime/scripts/lib/grammar-lint.mjs';
@@ -93,6 +94,7 @@ type ParseYaml = (text: string) => any;
 /** The app's source facts sync renders from (appSource). */
 export interface AppSourceFacts {
   runtimeExample: boolean; files: string[]; read: (file: string) => string; workPresent: boolean; hasImage: (file: string) => boolean;
+  modules?: readonly string[]; otherPackages?: readonly string[]; // the module packages (packages/module-<name>) and the other folders of packages/
   stack: any; quality: any; badges: string; qualityDeclared: boolean; // reason: stack and quality come from the YAML-parsed declaration
 }
 
@@ -292,6 +294,14 @@ const SOURCE_SKIPPED = new Set(['node_modules', 'dist', 'coverage']);
  * lite brand tree exists, so sync can preserve its absence. `hasImage` identifies authored optional Dockerfiles without reading
  * their content. An app with no be folder has no source files.
  */
+/** The folders of `packages/` that are neither a module package nor the registry. */
+function otherPackages(root: string): string[] {
+  try {
+    return fs.readdirSync(path.join(root, 'packages'), { withFileTypes: true })
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith(MODULE_PREFIX) && entry.name !== 'modules').map(entry => entry.name).sort(byCodeUnit);
+  } catch { return []; }
+}
+
 export function appSource(root: string, { parseYaml, notices }: { parseYaml?: ParseYaml | undefined; notices?: string[] | undefined } = {}): AppSourceFacts {
   const files: string[] = [];
   const walk = (dir: string): void => {
@@ -304,6 +314,7 @@ export function appSource(root: string, { parseYaml, notices }: { parseYaml?: Pa
   };
   for (const dir of ['apps', 'src']) walk(dir);
   return { runtimeExample: isRuntimeExampleApp(root), files: files.sort(byCodeUnit), read: (file: string) => fs.readFileSync(path.join(root, 'be', file), 'utf8'),
+    modules: moduleNames(root), otherPackages: otherPackages(root),
     workPresent: fs.existsSync(path.join(root, '.starciwork')), hasImage: (file: string) => isFile(path.join(root, file), { followLinks: false }),
     stack: readDeclaredStack(root, { parseYaml }), quality: readDeclaredQuality(root, { parseYaml }),
     badges: readDeclaredBadges(root, { parseYaml, notices }),
@@ -338,7 +349,7 @@ export function jestCoverageSource(coverage: { roots: string[]; roles: string[];
  * `docker:build:<app>` builds the image of one app (the exact command its Dockerfile header states, tag `<project>/<app>:dev`) and
  * `docker:build` builds every image, one after the other, never pushing.
  */
-export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage'>> | undefined): string {
+export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage' | 'modules'>> | undefined): string {
   const line = (name: string, command: string): string => `${JSON.stringify(name)}: ${JSON.stringify(command)},`;
   const be = app.sides.be.apps;
   const fe = app.sides.fe.apps;
@@ -360,6 +371,7 @@ export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
     }),
     ...fe.map(entry => line(`start:${entry.name}`, `npm run start -w ${workspace(entry)}`)),
     ...(app.edition !== 'lite' && app.optionalSlots.includes('app.browser') ? [line('test:browser', 'playwright test -c browser/playwright.config.ts')] : []),
+    ...(source?.modules?.length ? [line('build:modules', 'turbo run build --filter=./packages/*'), line('test:modules', 'turbo run test --filter=./packages/module-*')] : []),
     line('docker:build', images.map(image => `npm run docker:build:${image.entry.name}`).join(' && ')),
     ...images.map(image => line(`docker:build:${image.entry.name}`, imageCommand(image))),
   ].join('\n    ');
@@ -423,6 +435,14 @@ export function imageFiles(app: ResolvedApp, source?: Partial<Pick<AppSourceFact
 }
 
 /** Every value a template of `scope` can name, derived from hfs.json and the presets. */
+/** What a module package keeps out of the measured scope: its workbench (drawn with Grammar, a front end has no tests) and its specs. The logic of its template and manifest is measured. */
+const moduleExclusions = (dirs: readonly string[]): string[] => dirs.flatMap(dir => [`${dir}/src/workbench/**`, `${dir}/src/**/index.ts`]);
+
+/** The managed files of the registry package for the module packages the app has (empty when it has none). */
+function registryTargets(app: ResolvedApp, source: AppSourceFacts | undefined): RenderedTarget[] {
+  return registryFiles(app.project, source?.modules ?? []).map((file): RenderedTarget => ({ path: file.path, scope: APP_SCOPE, mode: 'file', content: file.content, hash: hashOf(file.content) }));
+}
+
 export function variables(app: ResolvedApp, scope: string, presets: Presets | null | undefined, sonarKey: string | null | undefined, manifest: SlotManifest = loadSlotManifest(), source: Pick<AppSourceFacts, 'files' | 'read'> & Partial<AppSourceFacts> = { files: [], read: () => '' }): Record<string, string> {
   const stack = source.stack ?? { images: [], passEnv: [] };
   const fe = app.sides.fe;
@@ -430,6 +450,10 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   const lite = app.edition === 'lite';
   const providers = (app.sides.be.connections ?? []).map(connection => connection.provider);
   const quality = source.quality ?? qualityServices({});
+  const modules = source.modules ?? [];
+  const moduleDirs = modules.map(name => `packages/${MODULE_PREFIX}${name}`);
+  // The module packages are built before anything imports them (typecheck, lint, the fe build and the be run all follow the registry).
+  const modulesFirst = modules.length ? 'npm run build:modules --silent && ' : '';
   const grammarLint = scope === 'fe' ? grammarLintFor(fe.grammar) : null;
   return {
     header: HEADER(scope),
@@ -447,11 +471,12 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     // A lite app's declared Redis (sides.be.backing, ruling:R212/case-10) runs in development as one container of its pinned image.
     backingScripts: lite && (app.sides.be.backing ?? []).includes('redis') ? redisDevText(app.project) : '',
     // turbo builds every fe app workspace; ^build (turbo.json) builds the packages each app imports first, and caches both.
-    buildFe: 'npm run codegen --silent && turbo run build --filter=./fe/apps/*',
+    buildFe: `${modulesFirst}npm run codegen --silent && turbo run build --filter=./fe/apps/*`,
     // The be side with its tsc; every fe workspace with its own typecheck script through turbo (the packages are built first: ^build).
-    typecheck: 'npm run codegen --silent && tsc -p be/tsconfig.json && turbo run typecheck',
+    typecheck: `${modulesFirst}npm run codegen --silent && tsc -p be/tsconfig.json && turbo run typecheck`,
     // The typed lint reads the types the fe packages declare (their dist), so the packages are built first.
-    lintPrefix: packages ? 'npm run codegen --silent && turbo run build --filter=./fe/packages/* && ' : 'npm run codegen --silent && ',
+    lintPrefix: `${modulesFirst}${packages ? 'npm run codegen --silent && turbo run build --filter=./fe/packages/* && ' : 'npm run codegen --silent && '}`,
+    moduleTests: modules.length ? ' && npm run test:modules' : '',
     nodeMajor: String(NODE_MAJOR),
     // The deploy server's age identity the restore workflow writes (stack/server-key.mjs owns the path).
     serverAgeIdentity: SERVER_AGE_IDENTITY,
@@ -461,19 +486,19 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     sonarHostLine: sonarHostLine(quality.sonar),
     sonarExclusions: sonarScope(presets).exclusions.join(','),
     sonarTestInclusions: sonarScope(presets).tests.join(','),
-    sonarSources: ['be/apps', 'be/src', 'fe/apps', ...(packages ? ['fe/packages'] : [])].join(','),
+    sonarSources: ['be/apps', 'be/src', 'fe/apps', ...(packages ? ['fe/packages'] : []), ...moduleDirs.map(dir => `${dir}/src`)].join(','),
     lcovReport: LCOV_REPORT,
     cpdExclusions: SONAR_CPD_EXCLUSIONS.join(','),
     ...ciWorkflowCommands(source, LCOV_REPORT, source.qualityDeclared === false ? undefined : source.quality, { app, packages }),
     // The coverage scope is the same in both editions: lite measures exactly what full measures (ruling:R212/case-1, amended by ruling:R212/case-4).
     jestCoverage: scope === 'be' ? jestCoverageSource(jestCoverage(manifest, providers)) : '',
-    coverageExclusions: scope === APP_SCOPE ? sonarCoverageExclusions(manifest, providers).join(',') : '',
-    codecovExclusions: scope === APP_SCOPE ? (sonarCoverageExclusions(manifest, providers) as string[]).map(glob => `  - ${JSON.stringify(glob)}`).join('\n') : '',
-    codecovPaths: scope === APP_SCOPE ? (codecovPaths(manifest, providers) as string[]).map(glob => `          - ${JSON.stringify(glob)}`).join('\n') : '',
+    coverageExclusions: scope === APP_SCOPE ? [...sonarCoverageExclusions(manifest, providers), ...moduleExclusions(moduleDirs)].join(',') : '',
+    codecovExclusions: scope === APP_SCOPE ? ([...sonarCoverageExclusions(manifest, providers), ...moduleExclusions(moduleDirs)] as string[]).map(glob => `  - ${JSON.stringify(glob)}`).join('\n') : '',
+    codecovPaths: scope === APP_SCOPE ? ([...codecovPaths(manifest, providers), ...moduleDirs.flatMap(dir => [`${dir}/src/manifest/**`, `${dir}/src/template/**`])] as string[]).map(glob => `          - ${JSON.stringify(glob)}`).join('\n') : '',
     codecovComponents: scope === APP_SCOPE ? componentsYaml(coverageComponents(manifest, { ...source, apps: app.sides.be.apps, providers })) : '',
     codecovTarget: quality.codecov.target,
     dependabotUpdates: dependabotUpdates(quality.dependabot),
-    tsconfigPaths: ['be/tsconfig.json', ...fe.apps.map(entry => `fe/apps/${entry.name}/tsconfig.json`), ...(packages ? ['fe/packages/*/tsconfig.json'] : [])].join(','),
+    tsconfigPaths: ['be/tsconfig.json', ...fe.apps.map(entry => `fe/apps/${entry.name}/tsconfig.json`), ...(packages ? ['fe/packages/*/tsconfig.json'] : []), ...moduleDirs.map(dir => `${dir}/tsconfig.json`)].join(','),
     styleGlob: STYLE_GLOB,
     grammarLintImport: grammarLint?.package ? `import { ${grammarLint.factory} } from "${grammarLint.package}"` : '',
     grammarLintExport: grammarLint?.package ? `export default [...starciFeConfig({ hfs }), ...${grammarLint.factory}({ hfs })]` : 'export default starciFeConfig({ hfs })',
@@ -495,11 +520,25 @@ function parseScripts(text: string): Record<string, unknown> | null {
 }
 
 /**
+ * The rendered targets of an app declaration. Without source facts the app counts the back-end source files its own targets
+ * render (the managed sign-in glue), as a check reading the disk after the targets are written does, so a render of a declaration
+ * alone is already in sync with itself.
+ */
+export function renderTargets(hfs: unknown, presets: Presets | null | undefined, options: {
+  sonarKey?: string | null | undefined; readTemplate?: (name: string) => string; manifest?: SlotManifest; source?: AppSourceFacts | undefined;
+} = {}): RenderedTarget[] {
+  const first = renderOnce(hfs, presets, options);
+  if (options.source !== undefined) return first;
+  const settled = settleSource({ files: [], read: () => '' } as unknown as AppSourceFacts, first); // reason: the settled facts name only the rendered source files; every other fact stays absent as without source
+  return settled.files.length === 0 ? first : renderOnce(hfs, presets, { ...options, source: settled });
+}
+
+/**
  * The managed content of every target of the app: [{ path, mode, content, hash, scope }], paths app-relative (a side's targets under
  * its folder); a scripts target also carries `scripts`, the parsed block. `sonarKey` is the key the be side's stack declaration
  * names; without one the key is the project.
  */
-export function renderTargets(hfs: unknown, presets: Presets | null | undefined, { sonarKey, readTemplate = readBundled, manifest = loadSlotManifest() as SlotManifest, source }: {
+function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKey, readTemplate = readBundled, manifest = loadSlotManifest() as SlotManifest, source }: {
   sonarKey?: string | null | undefined; readTemplate?: (name: string) => string; manifest?: SlotManifest; source?: AppSourceFacts | undefined;
 } = {}): RenderedTarget[] {
   const app = validateHfs(hfs, manifest);
@@ -511,7 +550,7 @@ export function renderTargets(hfs: unknown, presets: Presets | null | undefined,
     if (scope === APP_SCOPE && source?.badges) declaredTargets.push({ path: 'README.md', mode: 'block', markdown: true, template: 'app/readme-badges/README.md' });
     const targets = declaredTargets
       .filter(target => !(app.edition === 'lite' && source?.workPresent === false && target.path === '.starciwork/.gitignore'));
-    return targets.map((target): RenderedTarget => {
+    return [...(scope === APP_SCOPE ? registryTargets(app, source) : []), ...targets.map((target): RenderedTarget => {
       const template = target.path === 'codecov.yml' && source?.quality?.codecov.enabled === false
         ? '{{header}}\n# Codecov is disabled in the manifest.\ncodecov:\n  require_ci_to_pass: false\n'
         : readTemplate(target.template);
@@ -527,7 +566,7 @@ export function renderTargets(hfs: unknown, presets: Presets | null | undefined,
       const spacing = target.markdown ? '\n' : '';
       const managed = target.mode === 'block' ? `${markers.begin}\n${spacing}${trailingNewline(body)}${spacing}${markers.end}\n` : body;
       return { path: where, scope, mode: target.mode, markdown: target.markdown, markers, content: managed, hash: hashOf(managed) };
-    });
+    })];
   });
 }
 
@@ -623,13 +662,31 @@ export function loadHfs(root: string, manifest: SlotManifest = loadSlotManifest(
   return hfs;
 }
 
+/**
+ * The source facts as they stand once the rendered back-end source files are on disk: a managed `.ts` target of the be side counts as a
+ * file of the app (and reads as its render), so the CI shard count and the coverage scope that count or read the source name the same
+ * files before and after the targets are written, and one sync leaves the app in sync.
+ */
+export function settleSource(source: AppSourceFacts, targets: readonly RenderedTarget[]): AppSourceFacts {
+  const added = new Map<string, string>();
+  for (const target of targets) {
+    const rel = target.scope === 'be' && target.path.startsWith('be/') ? target.path.slice('be/'.length) : '';
+    if (SOURCE_FILE.test(rel) && (rel.startsWith('apps/') || rel.startsWith('src/')) && !source.files.includes(rel)) added.set(rel, target.content);
+  }
+  if (added.size === 0) return source;
+  return { ...source, files: [...source.files, ...added.keys()].sort(byCodeUnit), read: (file: string): string => added.get(file) ?? source.read(file) };
+}
+
 /** The rendered targets of the app at `root`: its hfs.json, the Sonar key the be side's stack declaration names, the presets it installs. */
 export async function renderRepo(root: string, { presets, parseYaml, notices, manifest = loadSlotManifest() as SlotManifest }: {
   presets?: Presets | undefined; parseYaml?: ParseYaml | undefined; notices?: string[] | undefined; manifest?: SlotManifest;
 } = {}): Promise<{ hfs: Record<string, any>; targets: RenderedTarget[] }> { // reason: hfs is the parsed hfs.json
   const hfs = loadHfs(root, manifest);
   const sonarKey = await readDeclaredSonarKey(root, { parseYaml, fail: (message: string) => { throw new SyncError('HFS_SYNC_SONAR_KEY', message); } });
-  return { hfs, targets: renderTargets(hfs, presets ?? await loadPresets(root), { sonarKey, manifest, source: appSource(root, { parseYaml, notices }) }) };
+  const installed = presets ?? await loadPresets(root);
+  const source = appSource(root, { parseYaml, notices });
+  const settled = settleSource(source, renderTargets(hfs, installed, { sonarKey, manifest, source }));
+  return { hfs, targets: renderTargets(hfs, installed, { sonarKey, manifest, source: settled }) };
 }
 
 /** The folders a lite app's sync retires (ruling lite-self-hosted-postgres-passport-minio): the generated Supabase row types nothing reads any more. */

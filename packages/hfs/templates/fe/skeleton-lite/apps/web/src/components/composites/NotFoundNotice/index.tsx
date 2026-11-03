@@ -1,4 +1,4 @@
-import { Heading, TextAction } from "@starci/grammar/common"
+import { Link, Page } from "@starci/grammar/common"
 
 /** The words of a missing page and the way home. */
 type NotFoundNoticeProps = {
@@ -9,10 +9,7 @@ type NotFoundNoticeProps = {
 
 /** A missing page with one destination back to the app's front door. */
 export const NotFoundNotice = (props: NotFoundNoticeProps) => (
-    <>
-        <Heading level={1}>{props.title}</Heading>
-        <TextAction appearance="inline" href={props.homeHref}>
-            {props.homeLabel}
-        </TextAction>
-    </>
+    <Page header={{ title: props.title }} measure="reading">
+        <Link href={props.homeHref}>{props.homeLabel}</Link>
+    </Page>
 )

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.6.1 - 2026-11-03
+
+- Changed: `@starci/auth` and `@starci/object-storage` are compiled to CommonJS like `jose` and `@starci/ai-router`, so a spec that builds the lite AppModule loads the sign-in and the storage packages.
+
 ## 2.6.0 - 2026-10-31
 
 - Added: the per-spec coverage of the app check cache. With `STARCI_SPEC_COVERAGE_DIR=<folder>` the config adds the reporter `spec-coverage-reporter.js` and runs like a shard (no all-files instrumentation, no threshold): each spec file writes the covered and not-covered statements, functions and branch locations of every measured source as flags, never hit counts, and a failed spec writes none. `@starci/jest-preset/spec-coverage` merges the records of every spec (an item is covered when any spec covers it) into the lcov and coverage-final.json an unsharded run writes. Specs: `test/spec-coverage.spec.ts`.
