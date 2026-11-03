@@ -102,7 +102,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-
           - `ambient/` — **fe.modules.types.ambient** optional · R22
         - `auth/` — **fe.modules.auth** optional · [fe/transport](../code/fe/transport.md) · R244, R50
         - `toast/` — **fe.modules.toast** optional · [fe/form](../code/fe/form.md) · R58, R56, R51
-  - `web/src/modules/auth/client.ts` — **fe.modules.auth.client** required · R05
+  - `web/src/modules/auth/client.ts` — **fe.modules.auth.client** optional · R05
 
 Git-ignored: `repo.build-output`, `repo.generated`, `fe.transport.generated`.
 Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-local`, `repo.tool-cache`, `repo.agent-output`, `repo.worktrees`, `repo.plaintext-env`, `fe.source-root-middleware`.
