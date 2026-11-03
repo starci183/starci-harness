@@ -1,44 +1,40 @@
 // Managed by starci app sync (slot be.identity.sign-in); do not edit: run "npx starci app sync --execute".
 const BEFORE = new Date("2026-02-03T04:00:00.000Z")
-const AFTER = new Date("2026-02-03T05:00:00.000Z")
 
-/** The kinds of account a sign-in spec needs. */
-export type AuthUserVariant = "live" | "banned" | "ban-ended" | "deleted" | "unconfirmed" | "addressless" | "passwordless" | "created"
+/** The kinds of account the sign-in reads by address. */
+export type AccountByEmailVariant = "live" | "disabled" | "unconfirmed" | "passwordless"
 
-/** A row of auth.users as the sign-in reads it (the shape of AuthUserEntity). */
-export interface AuthUserRow {
+/** The kinds of account the sign-in reads by id. */
+export type AccountByIdVariant = "live" | "disabled" | "addressless"
+
+/** A row of the by-address door: `disabled` is what the database decided at its own now(). */
+export interface AccountByEmailRow {
     id: string
-    aud: string | null
-    role: string | null
+    email: string
+    encrypted_password: string | null
+    email_confirmed_at: Date | null
+    disabled: boolean
+}
+
+/** A row of the by-id door. */
+export interface AccountByIdRow {
+    id: string
     email: string | null
-    encryptedPassword: string | null
-    emailConfirmedAt: Date | null
-    lastSignInAt: Date | null
-    bannedUntil: Date | null
-    deletedAt: Date | null
-    isAnonymous: boolean
-    createdAt: Date | null
-    updatedAt: Date | null
+    disabled: boolean
 }
 
-/** Until when an account of this variant is banned, or null. */
-const bannedUntilOf = (variant: AuthUserVariant): Date | null => {
-    if (variant === "banned") return AFTER
-    return variant === "ban-ended" ? BEFORE : null
-}
+/** The row the by-address door answers for a confirmed password account of the given variant. */
+export const accountByEmailRow = (variant: AccountByEmailVariant = "live"): AccountByEmailRow => ({
+    id: "u-1",
+    email: "a@example.test",
+    encrypted_password: variant === "passwordless" ? null : "hash",
+    email_confirmed_at: variant === "unconfirmed" ? null : BEFORE,
+    disabled: variant === "disabled",
+})
 
-/** A confirmed, live password account of the given variant; \`created\` is the account the first Google sign-in makes (the first id the fake ids hand out). */
-export const authUserRow = (variant: AuthUserVariant = "live"): AuthUserRow => ({
-    id: variant === "created" ? "00000000-0000-4000-8000-000000000001" : "u-1",
-    aud: "authenticated",
-    role: "authenticated",
+/** The row the by-id door answers for the account of the given variant; `id` is the account the spec stands for. */
+export const accountByIdRow = (variant: AccountByIdVariant = "live", id = "u-1"): AccountByIdRow => ({
+    id,
     email: variant === "addressless" ? null : "a@example.test",
-    encryptedPassword: variant === "passwordless" || variant === "created" ? null : "hash",
-    emailConfirmedAt: variant === "unconfirmed" ? null : BEFORE,
-    lastSignInAt: null,
-    bannedUntil: bannedUntilOf(variant),
-    deletedAt: variant === "deleted" ? BEFORE : null,
-    isAnonymous: false,
-    createdAt: BEFORE,
-    updatedAt: BEFORE,
+    disabled: variant === "disabled",
 })

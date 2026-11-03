@@ -1,6 +1,7 @@
 // Managed by starci app sync (slot be.identity.sign-in); do not edit: run "npx starci app sync --execute".
 import { Injectable } from "@nestjs/common"
 import { AuthError, PassportError, PassportErrorCode } from "@modules/integrations/passport"
+import type { Principal } from "@modules/platform/cqrs"
 import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
 import { InjectAuthDoors, InjectAuthSessions } from "./identity.decorators"
 import type { AccessGrant, AuthDoors, AuthSessions, GoogleRedirect, HttpExchange, JwksDocument } from "@modules/integrations/passport"
@@ -69,6 +70,11 @@ export class IdentitySignInService {
     /** Finishes the Google round trip; a failure redirects to the sign-in page instead of throwing. */
     completeGoogle(exchange: HttpExchange): Promise<GoogleRedirect> {
         return this.refusing(() => this.doors.completeGoogle(exchange))
+    }
+
+    /** Signs the person out of every other device; the session of the caller stays. */
+    endOthers(principal: Principal): Promise<void> {
+        return this.refusing(() => this.sessions.endOthers(principal.id, principal.sessionId))
     }
 
     /** The public key document access tokens verify against. */

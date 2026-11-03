@@ -1,0 +1,90 @@
+-- The account doors of a lite app: the only way app_be reaches auth.users and auth.identities (it holds no grant on schema auth). Six
+-- SECURITY DEFINER functions with a pinned search_path, EXECUTE revoked from public and the browser roles and granted to app_be alone: an
+-- account comes back only for an exact address or id, a hash only for an exact address, and no door writes role, app metadata or the hash.
+-- The text is the canon owner of the doors (templates/app/auth-doors.sql.partial); the back end calls them through persistence/account-doors.port.ts.
+
+-- Looks up an address in lower case; the bootstrap index serves email as written, not lower(email).
+create index if not exists users_email_lower_idx on auth.users (lower(email)) where is_anonymous = false;
+
+-- A person by sign-in address (lower-cased), with the stored bcrypt hash so the back end can verify it.
+CREATE FUNCTION public.be_auth_user_by_email(p_email text)
+    RETURNS TABLE(id uuid, email text, encrypted_password text, email_confirmed_at timestamp with time zone, disabled boolean)
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  select u.id, u.email::text, u.encrypted_password::text, u.email_confirmed_at,
+         (u.deleted_at is not null or (u.banned_until is not null and u.banned_until > now()))
+    from auth.users u
+   where lower(u.email) = p_email and u.is_anonymous = false
+   order by u.created_at asc nulls last
+   limit 1;
+$$;
+
+-- One person by id.
+CREATE FUNCTION public.be_auth_user_by_id(p_user uuid)
+    RETURNS TABLE(id uuid, email text, last_sign_in_at timestamp with time zone, meta jsonb, disabled boolean)
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  select u.id, u.email::text, u.last_sign_in_at, coalesce(u.raw_user_meta_data, '{}'::jsonb),
+         (u.deleted_at is not null or (u.banned_until is not null and u.banned_until > now()))
+    from auth.users u where u.id = p_user;
+$$;
+
+-- The person a Google account is linked to, if any.
+CREATE FUNCTION public.be_auth_user_by_google(p_provider_id text) RETURNS uuid
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  select i.user_id from auth.identities i where i.provider = 'google' and i.provider_id = p_provider_id limit 1;
+$$;
+
+-- Creates a person; a null hash is an invited or Google-only account that has no password yet.
+CREATE FUNCTION public.be_auth_create_user(p_id uuid, p_email text, p_hash text, p_confirmed boolean, p_meta jsonb, p_now timestamp with time zone)
+    RETURNS uuid
+    LANGUAGE sql VOLATILE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, invited_at,
+                          raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+  values ('00000000-0000-0000-0000-000000000000', p_id, 'authenticated', 'authenticated', p_email, p_hash,
+          case when p_confirmed then p_now end, case when p_hash is null and not p_confirmed then p_now end,
+          '{"provider":"email","providers":["email"]}'::jsonb, p_meta, p_now, p_now)
+  returning id;
+$$;
+
+-- Links a Google account to a person.
+CREATE FUNCTION public.be_auth_link_google(p_user uuid, p_provider_id text, p_data jsonb, p_now timestamp with time zone) RETURNS void
+    LANGUAGE sql VOLATILE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  insert into auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+  values (p_provider_id, p_user, p_data, 'google', p_now, p_now, p_now)
+  on conflict (provider_id, provider) do update set last_sign_in_at = p_now, updated_at = p_now;
+$$;
+
+-- Records a sign-in; a verified Google address also confirms the mailbox; profile keys only fill what the person has not set.
+CREATE FUNCTION public.be_auth_touch_user(p_user uuid, p_now timestamp with time zone, p_confirm boolean, p_meta jsonb) RETURNS void
+    LANGUAGE sql VOLATILE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  update auth.users
+     set last_sign_in_at = p_now,
+         updated_at = p_now,
+         email_confirmed_at = case when p_confirm then coalesce(email_confirmed_at, p_now) else email_confirmed_at end,
+         raw_user_meta_data = p_meta || coalesce(raw_user_meta_data, '{}'::jsonb)
+   where id = p_user;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.be_auth_user_by_email(text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.be_auth_user_by_email(text) TO app_be;
+REVOKE EXECUTE ON FUNCTION public.be_auth_user_by_id(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.be_auth_user_by_id(uuid) TO app_be;
+REVOKE EXECUTE ON FUNCTION public.be_auth_user_by_google(text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.be_auth_user_by_google(text) TO app_be;
+REVOKE EXECUTE ON FUNCTION public.be_auth_create_user(uuid, text, text, boolean, jsonb, timestamp with time zone) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.be_auth_create_user(uuid, text, text, boolean, jsonb, timestamp with time zone) TO app_be;
+REVOKE EXECUTE ON FUNCTION public.be_auth_link_google(uuid, text, jsonb, timestamp with time zone) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.be_auth_link_google(uuid, text, jsonb, timestamp with time zone) TO app_be;
+REVOKE EXECUTE ON FUNCTION public.be_auth_touch_user(uuid, timestamp with time zone, boolean, jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.be_auth_touch_user(uuid, timestamp with time zone, boolean, jsonb) TO app_be;
