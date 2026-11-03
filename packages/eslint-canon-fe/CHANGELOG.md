@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added: `starciFePackagesConfig`, `loadPackagesHfs` and `scopeToPackages`: the rules of the front end over `packages/<pkg>/src/workbench/**` and `src/public/**` of the root workspace packages, over the package view of the app root, for the managed root `eslint.config.mjs`; the workbench contract stays with the back-end canon and the project-graph rules with the side folders.
+- Changed: the runtime copy of the slot manifest carries the slots `app.packages`, `app.module-registry` and `app.packages-lint`.
+
 ## 9.11.0 - 2026-11-03
 
 - Changed: `modules/auth` holds the front-end transport rules like `modules/api`: no auth door file takes axios or `fetch`, and no file keeps module-level mutable state (the access token lives in the `@starci/auth` client); the stack concern `auth` names `@starci/auth`.

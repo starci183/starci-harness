@@ -1860,7 +1860,7 @@ rules:
       - {kind: eslint-be, id: rest-route-declared}
   - id: R279
     code: BE_THIRD_PARTY_OWNER
-    law: A third-party SDK outside the library allowlists is imported only by its one `integrations/<provider>` capability.
+    law: A third-party SDK outside the library allowlists is imported only by its one `integrations/<provider>` capability; a workspace package of the app itself (a folder its root `workspaces` name) is first-party source, no SDK, and what it imports is judged over its own files.
     failureCodes:
       - BE_THIRD_PARTY_OWNER
     enforcers:

@@ -19,19 +19,22 @@ const TSCONFIG = JSON.stringify({
     include: ["src"],
 })
 
-/** An app root with a root package `@fixture/agent-sdk`, its `files` written, and the package view of it. */
-const appWith = (files: Readonly<Record<string, string>>, dependencies: Readonly<Record<string, string>> = {}) => {
+const DECLARATION = appDeclaration("be", { apps: [{ name: "core", kind: "api" }] })
+
+/** An app root (hfs.json, the one package.json) with a root package `@fixture/agent-sdk`, its `files` written, and the package view of it. */
+const appWith = (files: Readonly<Record<string, string>>) => {
     const root = mkdtempSync(join(tmpdir(), "starci-be-packages-"))
     const write = (relative: string, text: string) => {
         mkdirSync(dirname(join(root, relative)), { recursive: true })
         writeFileSync(join(root, relative), text)
     }
-    write("package.json", JSON.stringify({ name: "fixture", private: true, workspaces: ["packages/*"], dependencies: { "@fixture/agent-sdk": "*", stripe: "1.0.0", ...dependencies } }))
+    write("hfs.json", JSON.stringify(DECLARATION))
+    write("package.json", JSON.stringify({ name: "fixture", private: true, workspaces: ["packages/*"], dependencies: { "@fixture/agent-sdk": "*", stripe: "1.0.0" } }))
     write("packages/agent-sdk/package.json", JSON.stringify({ name: "@fixture/agent-sdk", version: "0.1.0", private: true }))
     write("packages/agent-sdk/tsconfig.json", TSCONFIG)
     write("packages/agent-sdk/src/index.ts", "export const sdk: number = 1\n")
     for (const [relative, text] of Object.entries(files)) write(`packages/agent-sdk/${relative}`, text)
-    const hfs = packagesHfsFromDeclaration(appDeclaration("be", { apps: [{ name: "core", kind: "api" }] }), root)
+    const hfs = packagesHfsFromDeclaration(DECLARATION, root)
     return { root, hfs, cleanup: () => rmSync(root, { recursive: true, force: true }) }
 }
 
@@ -57,9 +60,10 @@ test("the config narrows the files to the package source, leaving the front-end 
         assert.ok((ruleBlocks[0]?.ignores ?? []).includes("packages/*/src/workbench/**"))
         assert.ok((ruleBlocks[0]?.ignores ?? []).includes("packages/*/src/public/**"))
         assert.equal(ruleBlocks[1]?.ignores, undefined)
-        const graph = Object.keys(recommended).filter((name) => name.startsWith("starci-be/") && ruleBlocks[0]?.rules && !(name in ruleBlocks[0].rules))
-        assert.ok(graph.length > 0 && graph.length < 10, `only the project-graph rules of a side folder stay off: ${graph.join(", ")}`)
-        assert.ok(graph.every((name) => /duplicate-code|dead-exports|owner|import|cycle|graph|reach|dependency|surface|coupling|boundary|route|unused|clone/.test(name)), graph.join(", "))
+        const rules = ruleBlocks[0]?.rules ?? {}
+        for (const on of ["starci-be/explicit-export-surface", "starci-be/third-party-import-owner", "starci-be/infra-import-owner", "starci-be/throw-domain-error"]) assert.equal(rules[on], "error", on)
+        for (const off of ["starci-be/duplicate-code", "starci-be/dead-exports", "starci-be/tier-direction"]) assert.equal(off in rules, false, `${off} judges the import graph of a side folder`)
+        assert.ok(Object.keys(recommended).filter((name) => name in rules).length > 100, "the rest of the canon is on")
     } finally { app.cleanup() }
 })
 
@@ -71,9 +75,9 @@ test("the code of a package is linted by the be rules: the explicit surface (R36
         'export const client = new Stripe("key")',
         "",
     ].join("\n")
-    const app = appWith({ "src/node/index.ts": text })
+    const app = appWith({ "src/node/total.ts": text })
     try {
-        const messages = await lint(app.root, app.hfs, "packages/agent-sdk/src/node/index.ts", text)
+        const messages = await lint(app.root, app.hfs, "packages/agent-sdk/src/node/total.ts", text)
         const found = messages.map((message) => message.ruleId).sort()
         assert.ok(found.includes("starci-be/explicit-export-surface"), `R368 judges the package: ${found.join(", ")}`)
         assert.ok(found.includes("starci-be/third-party-import-owner"), `an SDK import in a package is refused, the app's own package is not: ${found.join(", ")}`)
@@ -82,31 +86,32 @@ test("the code of a package is linted by the be rules: the explicit surface (R36
 })
 
 test("a clean package file passes, and the workbench contract is back end while the workbench and public subpaths are not", async () => {
-    const clean = "export const total = (value: number): number => value + 1\n"
+    const clean = "/** The next value. */\nexport const total = (value: number): number => value + 1\n"
+    const contract = "/** What a view needs. */\nexport interface Contract {\n    /** The identifier of the view. */\n    readonly id: string\n}\n"
     const app = appWith({
-        "src/node/index.ts": clean,
-        "src/workbench/contract/index.ts": "export interface Contract { readonly id: string }\n",
-        "src/workbench/index.ts": "export const View = 1\n",
-        "src/public/index.ts": "export const Public = 1\n",
+        "src/node/total.ts": clean,
+        "src/workbench/contract/contract.ts": contract,
+        "src/workbench/view.ts": "export const View = 1\n",
+        "src/public/page.ts": "export const Public = 1\n",
     })
     try {
         const render = (messages: readonly TSESLint.Linter.LintMessage[]) => messages.map((message) => `${message.ruleId}: ${message.message}`)
-        assert.deepEqual(render(await lint(app.root, app.hfs, "packages/agent-sdk/src/node/index.ts", clean)), [])
-        assert.deepEqual(render(await lint(app.root, app.hfs, "packages/agent-sdk/src/workbench/contract/index.ts", "export interface Contract { readonly id: string }\n")), [])
-        for (const front of ["src/workbench/index.ts", "src/public/index.ts"]) {
+        assert.deepEqual(render(await lint(app.root, app.hfs, "packages/agent-sdk/src/node/total.ts", clean)), [])
+        assert.deepEqual(render(await lint(app.root, app.hfs, "packages/agent-sdk/src/workbench/contract/contract.ts", contract)), [])
+        for (const front of ["src/workbench/view.ts", "src/public/page.ts"]) {
             const messages = await lint(app.root, app.hfs, `packages/agent-sdk/${front}`, "export const View = 1\n")
             assert.match(render(messages).join("\n"), /No matching configuration/, `${front} is for the front-end canon`)
         }
     } finally { app.cleanup() }
 })
 
-test("a package view is the be profile over the paths of the app root, the package its own owner of the tier package", () => {
+test("a package view is the be profile over the paths of the app root: the tier package, no owner of the module laws", () => {
     const app = appWith({})
     try {
         assert.equal(app.hfs.profile, "be")
         assert.equal(app.hfs.slotOf(join(app.root, "packages/agent-sdk/src/index.ts")), "app.packages")
         assert.equal(app.hfs.tierOf("packages/agent-sdk/src/index.ts"), "package")
-        assert.equal(app.hfs.ownerOf("packages/agent-sdk/src/node/index.ts"), "packages/agent-sdk")
+        assert.equal(app.hfs.ownerOf("packages/agent-sdk/src/node/total.ts"), null, "a package's public surface is the exports of its manifest, not one index.ts at an owner root")
         assert.equal(app.hfs.slotOf("packages/modules/src/index.ts"), "app.module-registry")
         assert.equal(app.hfs.tierOf("be/src/main.ts"), null)
         assert.ok(app.hfs.ruleParams?.infraOwners, "the infrastructure owners of the be side judge what a package imports")

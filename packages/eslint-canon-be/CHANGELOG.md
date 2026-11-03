@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Fixed: `third-party-import-owner` (R279) skips a name that the app's root `workspaces` own (`@scope/agent-sdk`): an app-owned workspace package is first-party source, not a third-party SDK; its manifests are cross-file inputs of the rule. The app manifest of a package view is the one at the app root.
+- Added: `starciBePackagesConfig` and `loadPackagesHfs`: the rules of the back end over the back-end subpaths of the root workspace packages (`packages/<pkg>/src/**` but `workbench/` and `public/`, the workbench contract kept), over the package view of the app root, for the managed root `eslint.config.mjs`; the project-graph rules stay with the side folders. `unit-test-colocated` leaves the specs of a package (a spec sits beside any source of a package).
+- Changed: the runtime copy of the slot manifest carries the slots `app.packages`, `app.module-registry` and `app.packages-lint`.
+
 ## 3.13.0 - 2026-11-03
 
 - Changed: the runtime copies of the slot manifest carry the managed sign-in slots and the slot field `managedOnly`.

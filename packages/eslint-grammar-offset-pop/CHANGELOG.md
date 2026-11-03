@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added: `offsetPopGrammarPackagesConfig`: the inherited family rules over the front-end subpaths of the root workspace packages.
+- Changed: the runtime copy of the slot manifest carries the slots `app.packages`, `app.module-registry` and `app.packages-lint`.
+
 ## 0.21.14 - 2026-11-03
 
 - Changed: requires `@starci/eslint-grammar-core` 0.21.14; the runtime copies carry the `@starci/auth` rows.

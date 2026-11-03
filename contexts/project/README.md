@@ -68,8 +68,13 @@ registry, the root and front-end dependencies on it and the `build:modules` and 
 `starci app sync`, so a hand edit is drift ([hfs/slots.yaml](../hfs/slots.yaml) slots `app.packages` and
 `app.module-registry`). The logic of `./template` and `./manifest` is measured at 100 per file by the package's own unit run
 (BE-TEST-13) and is inside the Sonar and Codecov scope; the workbench is a front end and is judged by the front-end canon and the
-Grammar lint (FE-PACKAGES-2). Open gap: the root `lint` gate and the CI coverage shards do not reach `packages/` yet; until they
-do, a module package is checked by its own `typecheck` and `test` scripts.
+Grammar lint (FE-PACKAGES-2). The sides import a root package by its package name through the `exports` of its manifest and never
+past them (`ARCH_INTERNAL_IMPORT_OUTSIDE`); no side config reaches `packages/`, so `starci app sync` renders the app root's
+`eslint.config.mjs` (slot `app.packages-lint`) whenever a root package exists, and `starci app check --gate lint` runs it as a third
+scope: the back-end canon over `packages/<pkg>/src/**` but the front-end subpaths, the front-end canon and the Grammar lint over
+`src/workbench/**` (outside `src/workbench/contract/`, which is React-free and stays back end) and `src/public/**`, each with the rules of
+its side over the package view of the app root. The project-graph rules judge the side folders and not the packages. Open gap: the CI
+coverage shards do not reach `packages/` yet; until they do, a module package is measured by its own `test` script.
 
 ## Where to read for a task
 

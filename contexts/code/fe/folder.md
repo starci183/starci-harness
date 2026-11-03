@@ -102,14 +102,16 @@ Enforced by: R63 (machine `package-shape`), R30 (`package-export-bypass`), R25 (
 
 A shared front-end package holds transport, the i18n stack, catalogs, types, pure data and logic, and the context
 provider and hooks over its own client (a provider draws nothing). It owns no visual of its own: no class string, colour
-or world lifecycle, and no component built from anything but the grammar's. A workbench package (the `./workbench`
-subpath of a module package, [project/README.md](../../project/README.md) PROJECT-3) draws its screens with grammar
-components alone; a visual two apps share belongs to the grammar.
+or world lifecycle, and no component built from anything but the grammar's. A workbench package (the `src/workbench/`
+and `src/public/` subpaths of a root module package, [project/README.md](../../project/README.md) PROJECT-3) draws its
+screens with grammar components alone, and the front-end canon and the grammar lint judge those subpaths from the
+app root's managed `eslint.config.mjs` with the rules of the front end; a visual two apps share belongs to the grammar.
 
 Why: a second visual owner beside the grammar is a fork of the design system, and drawing with the grammar's own parts
 adds none.
 
-Enforced by: R91 (`monorepo-tier-belongs-to-its-side`), R63 (machine `package-shape`).
+Enforced by: R91 (`monorepo-tier-belongs-to-its-side`), R63 (machine `package-shape`), the front-end canon and the
+grammar lint over the package view (`starciFePackagesConfig`, the family's `<family>GrammarPackagesConfig`).
 
 ## FE-PACKAGES-3 One version of every dependency, from the declared stack
 

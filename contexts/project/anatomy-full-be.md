@@ -18,6 +18,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
 - `{.editorconfig,.nvmrc}` — **app.tool-config** required · R05
 - `{.prettierrc,.prettierignore}` — **app.format-config** required · R05, R16
 - `{.npmrc,.npmignore}` — **app.tool-config-optional** optional
+- `eslint.config.mjs` — **app.packages-lint** optional · R05
 - `{sonar-project.properties,codecov.yml}` — **app.quality-config** required · R11, R05
 - `.husky/{pre-commit,pre-push}` — **app.hooks** required · R05, HFS_CI_E2E_AUTOMATIC (no rule)
 - `.github/`
