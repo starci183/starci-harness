@@ -1,6 +1,7 @@
 import { hfsLimitsEnv, testWorkerArgs, withHeavySlot } from "../../harness/heavy.js"
 import { captureCommand } from "../../shared/exec.js"
 import type { HeavyNodeRequest, HeavyNodeRun } from "@starci/hfs/runtime/scripts/api/node/run-node.mjs"
+import type { HeavyCommandRun } from "@starci/hfs"
 import { loadPolicy } from "../../harness/policy.js"
 import { hostAgeIdentity } from "../../harness/secret-env.js"
 import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
@@ -110,7 +111,7 @@ export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): 
  * The governed runner of the dev verbs' heavy commands (`starci app stack up`: `npm ci`, a compose build or up): one slot of the host-wide
  * semaphore per command, run without a shell, the result handed back as the spawn seam's shape.
  */
-export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand) => async (request: { readonly kind: "install" | "build"; readonly label: string; readonly cwd: string; readonly argv: readonly string[]; readonly env: NodeJS.ProcessEnv }) =>
+export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand): HeavyCommandRun => async (request) =>
     admit(request.kind, request.label, request.cwd, { baseEnv: request.env }, async (held) => {
         const run = await capture(request.argv, request.cwd, held.options)
         return {
