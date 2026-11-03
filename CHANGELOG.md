@@ -22,6 +22,12 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.50] - 2026-11-03
+
+### Changed
+
+- The CLI source clears the SonarCloud code smells of `starci183_starci-harness` (nested templates and ternaries, cognitive complexity, awaits in loops, backtracking regular expressions and one-off rules) by refactoring with unchanged output; `inOrder` lives in `shared/sequential.ts`.
+
 ## [1.1.0-alpha.49] - 2026-11-03
 
 ### Removed
