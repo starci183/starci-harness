@@ -11,7 +11,6 @@ export { AuthFlows } from "./flows.ts"
 export type { GoogleCompletion } from "./flows.ts"
 export { DEFAULT_GOOGLE_STATE_COOKIE, GOOGLE_STATE_PATH, GOOGLE_STATE_TTL_MS, GoogleStateClient } from "./google-state.ts"
 export type { CookieWrite, HttpExchange, HttpRequest, HttpResponse } from "./http.ts"
-export { IDENTITY_SESSIONS_MIGRATION_FILE, identitySessionsMigration } from "./migrations.ts"
 export type { AuthOptions, BudgetOptions, GoogleOptions, RefreshCookieOptions, SigningKeyOptions } from "./options.ts"
 export { AuthPasswords } from "./passwords.ts"
 export type {

@@ -17,7 +17,7 @@ import {
 import { AuthPrincipalVerifier, refuseSessions } from "./verifier.ts"
 import { AuthTokens } from "./tokens.ts"
 import { FakeClock, testSigningKey } from "../testing/index.ts"
-import { identitySessionsMigration } from "./migrations.ts"
+import { readFileSync } from "node:fs"
 
 describe("contracts", () => {
     it("gives every code a kind and puts every door under the prefix", () => {
@@ -105,7 +105,7 @@ describe("principal verifiers", () => {
 
 describe("migrations", () => {
     it("ships the session tables with row level security and the app role's grants", () => {
-        const sql = identitySessionsMigration()
+        const sql = readFileSync(new URL("../../migrations/identity-sessions.sql", import.meta.url), "utf8")
         for (const table of ["identity_sessions", "identity_refresh_tokens"]) {
             assert.match(sql, new RegExp(`create table public\\.${table}`, "u"))
             assert.match(sql, new RegExp(`alter table public\\.${table} force row level security`, "u"))
