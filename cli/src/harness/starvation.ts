@@ -45,10 +45,11 @@ export const tickStarvation = async (): Promise<StarvationTick> => {
         ...(held.admissionSince === null ? [] : [`heavy admission held ${String(Math.floor(minutesSince(held.admissionSince)))} min (${String(held.waiting)} waiting, since ${clockOf(held.admissionSince)})`]),
         ...(held.seatSince === null ? [] : [`seat launches held ${String(Math.floor(minutesSince(held.seatSince)))} min (${String(held.seatHeld)} task(s), since ${clockOf(held.seatSince)})`]),
     ]
+    const groupsSuffix = holders.unmanagedGroups === "" ? "" : ` (${holders.unmanagedGroups})`
     const holderLines =
         holders.unreadable === null
             ? [
-                  `unmanaged ${gb(holders.unmanagedMb)} of ${String(holders.processes)} processes${holders.unmanagedGroups === "" ? "" : ` (${holders.unmanagedGroups})`}, managed ${gb(holders.managedMb)}`,
+                  `unmanaged ${gb(holders.unmanagedMb)} of ${String(holders.processes)} processes${groupsSuffix}, managed ${gb(holders.managedMb)}`,
                   "top unmanaged holders:",
                   ...unmanaged.map((item) => `  ${String(item.pid)} ${item.name} ${String(item.workingSetMb)} MB [${item.group}] ${item.command}`),
               ]

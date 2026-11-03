@@ -82,6 +82,35 @@ const indentAt = (text: string, offset: number): string | undefined => {
 
 const memberOf = (node: Node, key: string): Node | undefined => (node.kind === "object" ? node.members.find((member) => member.key === key)?.value : undefined)
 
+/** The text with the quoted values added to the array `leaf` of `parent` (inline or broken as it is), or the array created as the parent's last member. */
+const spliceValues = (text: string, parent: Node, leaf: string, added: { readonly quoted: readonly string[]; readonly eol: string; readonly parentPath: readonly string[] }): string => {
+    const { quoted, eol, parentPath } = added
+    let edited: string
+    const array = memberOf(parent, leaf)
+    if (array?.kind === "array") {
+        const last = array.items.at(-1)
+        const inline = !text.slice(array.span.start, array.span.end).includes("\n")
+        if (last === undefined || inline) {
+            const items = [...array.items.map((item) => text.slice(item.span.start, item.span.end)), ...quoted]
+            edited = `${text.slice(0, array.span.start)}[${items.join(", ")}]${text.slice(array.span.end)}`
+        } else {
+            const indent = indentAt(text, last.span.start) ?? ""
+            const quotedText = quoted.map((item) => `,${eol}${indent}${item}`).join("")
+            edited = `${text.slice(0, last.span.end)}${quotedText}${text.slice(last.span.end)}`
+        }
+    } else if (parent.kind === "object") {
+        const last = parent.members.at(-1)
+        const member = `${JSON.stringify(leaf)}: [${quoted.join(", ")}]`
+        if (last === undefined) edited = `${text.slice(0, parent.span.start)}{ ${member} }${text.slice(parent.span.end)}`
+        else {
+            const indent = indentAt(text, last.keyStart)
+            const gap = indent === undefined ? " " : `${eol}${indent}`
+            edited = `${text.slice(0, last.value.span.end)},${gap}${member}${text.slice(last.value.span.end)}`
+        }
+    } else throw new Refusal("JSON_EDIT_FAILED", `${parentPath.join(".")} is no object`)
+    return edited
+}
+
 /**
  * Adds `values` to the string array at `path` of a JSON text, add only: a value already listed stays where it is, the array is
  * created as the last member of its parent object when absent, and every other byte of the text (key order, inline or broken
@@ -105,28 +134,7 @@ export const addToStringArray = (text: string, path: readonly string[], values: 
     const parent = parentPath.reduce<Node | undefined>((node, key) => (node === undefined ? undefined : memberOf(node, key)), parseSpans(text))
     if (parent === undefined) throw new Refusal("JSON_EDIT_FAILED", `${parentPath.join(".")} is no object`)
     const quoted = added.map((value) => JSON.stringify(value))
-    let edited: string
-    const array = memberOf(parent, leaf)
-    if (array?.kind === "array") {
-        const last = array.items.at(-1)
-        const inline = !text.slice(array.span.start, array.span.end).includes("\n")
-        if (last === undefined || inline) {
-            const items = [...array.items.map((item) => text.slice(item.span.start, item.span.end)), ...quoted]
-            edited = `${text.slice(0, array.span.start)}[${items.join(", ")}]${text.slice(array.span.end)}`
-        } else {
-            const indent = indentAt(text, last.span.start) ?? ""
-            edited = `${text.slice(0, last.span.end)}${quoted.map((item) => `,${eol}${indent}${item}`).join("")}${text.slice(last.span.end)}`
-        }
-    } else if (parent.kind === "object") {
-        const last = parent.members.at(-1)
-        const member = `${JSON.stringify(leaf)}: [${quoted.join(", ")}]`
-        if (last === undefined) edited = `${text.slice(0, parent.span.start)}{ ${member} }${text.slice(parent.span.end)}`
-        else {
-            const indent = indentAt(text, last.keyStart)
-            const gap = indent === undefined ? " " : `${eol}${indent}`
-            edited = `${text.slice(0, last.value.span.end)},${gap}${member}${text.slice(last.value.span.end)}`
-        }
-    } else throw new Refusal("JSON_EDIT_FAILED", `${parentPath.join(".")} is no object`)
+    const edited = spliceValues(text, parent, leaf, { quoted, eol, parentPath })
     const expected = structuredClone(parsed)
     const holder = parentPath.reduce<unknown>((node, key) => (isRecord(node) ? node[key] : undefined), expected)
     if (isRecord(holder)) holder[leaf] = [...listed, ...added]

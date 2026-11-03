@@ -4,6 +4,7 @@ import { captureTool } from "../shared/exec.js"
 import { findLedgerId, openExistingLedger } from "./ledger.js"
 import { recordEvent } from "./tasks.js"
 import { openTicket } from "./tickets.js"
+import { trimEndChars } from "../shared/trim.js"
 
 /**
  * A worktree removal the host refused because something still holds the folder after its reap (harness/reap.ts) ended what the
@@ -56,7 +57,7 @@ export interface BusyRecord {
 
 /** The subject a folder's busy events are kept under: one spelling of the path, whatever slashes or case a caller used. */
 export const busySubject = (path: string): string => {
-    const slashed = resolve(path).replaceAll("\\", "/").replace(/\/+$/, "")
+    const slashed = trimEndChars(resolve(path).replaceAll("\\", "/"), "/")
     return process.platform === "win32" ? slashed.toLowerCase() : slashed
 }
 

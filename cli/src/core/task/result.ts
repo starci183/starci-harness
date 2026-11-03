@@ -13,12 +13,11 @@ import type { CustodyEvidence } from "../../harness/custody.js"
 import { fileResult, getTask, latestAttempt, markIntent, openAttempt, recordEvent, resultOf, setStatus, taskCheckout } from "../../harness/tasks.js"
 import type { AttemptRow, ResultStatus, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
-import { repositoryRoot } from "../../shared/git.js"
+import { mainCheckout, repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import { parseNeeds, reportNeeds } from "../../harness/needs.js"
 import type { NeedReport } from "../../harness/needs.js"
 import { projectOf } from "../../harness/work.js"
-import { mainCheckout } from "../../shared/git.js"
 
 const RESULT_STATUSES: readonly ResultStatus[] = ["done", "blocked", "mismatch", "failed"]
 
@@ -53,7 +52,12 @@ const recordNeeds = async (db: DatabaseSync, root: string, taskId: string, needs
         const taskKey = db.prepare("SELECT plan_key FROM tasks WHERE id = ?").get(taskId)?.plan_key
         const repo = await mainCheckout(root)
         const attached = reportNeeds(needs, { project: project.key, repo, workflow: task.workflowId, task: taskId, taskKey: typeof taskKey === "string" ? taskKey : null })
-        return `; waits on ${attached.map((one) => `${one.need.key} (${one.opened ? "opened" : `${one.need.state}, ${one.attached ? "joined" : "already waiting"}`})`).join(", ")}`
+        const attachedText = attached.map((one) => {
+            const attachedWord = one.attached ? "joined" : "already waiting"
+            const openedText = one.opened ? "opened" : `${one.need.state}, ${attachedWord}`
+            return `${one.need.key} (${openedText})`
+        }).join(", ")
+        return `; waits on ${attachedText}`
     } catch (error: unknown) {
         return `; needs ${needs.map((need) => need.key).join(", ")} kept in the result, not yet in the host store (${error instanceof Error ? error.message : String(error)}); the next step records them`
     }
@@ -118,6 +122,51 @@ const unservedOf = async (filing: Filing, callerRoot: string): Promise<UatReceip
     return unservedWalk(filing.task.contract.context.allowPaths.map((path) => join(root, path)), filing.attempt?.startedAt ?? filing.task.createdAt)
 }
 
+/** The line a filed result prints: what was kept, what broke, the worktree, the needs and the custody or walk findings. */
+const reportMessage = (data: ResultData, parts: { readonly preserved: Preserved | null; readonly repair: string | null; readonly worktree: NonNullable<Awaited<ReturnType<typeof removeOpWorktree>>> | null; readonly waiting: string }): string => {
+    const { preserved, repair, worktree, waiting } = parts
+    const dir = preserved?.dir ?? null
+    const kept = dir === null || repair !== null ? "" : `; dirty work preserved in ${dir} and reset`
+    const broken = repair === null ? "" : `; its work is saved in ${repair} but not every path was put back: starci task verify ${data.task} --recover finishes the reset`
+    let removed = ""
+    if (worktree !== null) removed = `; worktree ${worktree.path} ${worktree.removed ? "removed" : "left"}`
+    const keys = data.recheck === null ? "" : [...data.recheck.codes, ...data.recheck.keys].join(", ")
+    const recheck = data.recheck === null ? "" : `; its run was stopped by custody (${keys || "TEST_WORLD_NOT_DECLARED"}), so the harness judges it by its own run with the keys custody holds (starci task verify ${data.task}); no try is spent on the worker's run`
+    const walk = data.unserved === null ? "" : `; its walk into ${data.unserved.folder} met no app (every page it opened answered 5xx, ${UAT_APP_UNSERVED}): an environment failure, not the task's verdict, so it ends as the harness's own and its workflow dispatches it again at the same try`
+    const message = `filed ${data.status} on ${data.attempt}${data.inline ? " (inline attempt)" : ""}; task ${data.task} is ${data.taskStatus}${kept}${broken}${removed}${waiting}${recheck}${walk}`
+    return message
+}
+
+/** A failed task's dirty work is saved and reset in the task's own checkout; a reset that broke names the folder to repair. */
+const preserveFailed = async (db: ReturnType<typeof openLedger>, checked: ReturnType<typeof filingOf>, callerRoot: string, fails: boolean): Promise<{ readonly preserved: Preserved | null; readonly repair: string | null }> => {
+    let preserved: Preserved | null = null
+    let repair: string | null = null
+    if (fails) {
+        const root = await taskCheckout(checked.task, callerRoot)
+        try {
+            preserved = await preserveTaskPaths(root, checked.task, db)
+        } catch (error: unknown) {
+            if (!(error instanceof PreserveIncomplete)) throw error
+            repair = error.dir
+            preserved = { dir: error.dir, patch: null, tracked: [], untracked: [] }
+        }
+    }
+    return { preserved, repair }
+}
+
+/** The status, shared needs and output a result files, refused when they contradict each other. */
+const reportOf = (context: { readonly cwd: string }, flags: { readonly status: string; readonly output: string; readonly needs: readonly string[]; readonly rule: string | undefined; readonly paths: readonly string[]; readonly note: string | undefined }): { readonly status: ResultStatus; readonly needs: ReturnType<typeof parseNeeds>; readonly output: unknown } => {
+    const status = flags.status
+    if (!isResultStatus(status)) throw new Refusal("RESULT_BAD_STATUS", `--status must be one of ${RESULT_STATUSES.join(", ")}, not "${status}"`, EXIT_USAGE)
+    const given = parseOutput(context.cwd, flags.output)
+    // A shared need is kept normalized and canonical in the output the ledger holds, so every later step reads one key.
+    const needs = parseNeeds({ needs: flags.needs, rule: flags.rule, paths: flags.paths, note: flags.note }, given)
+    if (needs.length > 0 && status !== "blocked") throw new Refusal("RESULT_NEEDS_NOT_BLOCKED", `a shared need is reported with --status blocked, not ${status}`, EXIT_USAGE)
+    if (needs.length === 0 && (flags.rule !== undefined || flags.paths.length > 0 || flags.note !== undefined)) throw new Refusal("RESULT_NEEDS_MISSING", "--rule, --paths and --note describe a --needs key; name the key", EXIT_USAGE)
+    const output = needs.length === 0 ? given : { ...(typeof given === "object" && given !== null ? given : { value: given }), needs }
+    return { status, needs, output }
+}
+
 /**
  * `starci task result <task-id>`: files the one immutable result of the task's open attempt and hands the task back to the Kernel.
  * A failed or blocked output whose evidence shows the worker's run was stopped by custody (harness/custody.ts `custodyEvidence`)
@@ -143,14 +192,7 @@ export const taskResultVerb = defineVerb({
         note: { kind: "string", summary: "with --needs: one line on what is missing" },
     },
     run: async (context, flags) => {
-        const status = flags.status
-        if (!isResultStatus(status)) throw new Refusal("RESULT_BAD_STATUS", `--status must be one of ${RESULT_STATUSES.join(", ")}, not "${status}"`, EXIT_USAGE)
-        const given = parseOutput(context.cwd, flags.output)
-        // A shared need is kept normalized and canonical in the output the ledger holds, so every later step reads one key.
-        const needs = parseNeeds({ needs: flags.needs, rule: flags.rule, paths: flags.paths, note: flags.note }, given)
-        if (needs.length > 0 && status !== "blocked") throw new Refusal("RESULT_NEEDS_NOT_BLOCKED", `a shared need is reported with --status blocked, not ${status}`, EXIT_USAGE)
-        if (needs.length === 0 && (flags.rule !== undefined || flags.paths.length > 0 || flags.note !== undefined)) throw new Refusal("RESULT_NEEDS_MISSING", "--rule, --paths and --note describe a --needs key; name the key", EXIT_USAGE)
-        const output = needs.length === 0 ? given : { ...(typeof given === "object" && given !== null ? given : { value: given }), needs }
+        const { status, needs, output } = reportOf(context, flags)
         const callerRoot = await repositoryRoot(context.cwd)
         const db = openLedger(callerRoot)
         try {
@@ -162,18 +204,7 @@ export const taskResultVerb = defineVerb({
             // A failed or blocked report whose run custody stopped is not the task's verdict: the harness judges it by its own run.
             const custody = unserved === undefined && (status === "failed" || status === "blocked") && needs.length === 0 ? custodyEvidence(output) : undefined
             const fails = unserved !== undefined || (status === "failed" && custody === undefined)
-            let preserved: Preserved | null = null
-            let repair: string | null = null
-            if (fails) {
-                const root = await taskCheckout(checked.task, callerRoot)
-                try {
-                    preserved = await preserveTaskPaths(root, checked.task, db)
-                } catch (error: unknown) {
-                    if (!(error instanceof PreserveIncomplete)) throw error
-                    repair = error.dir
-                    preserved = { dir: error.dir, patch: null, tracked: [], untracked: [] }
-                }
-            }
+            const { preserved, repair } = await preserveFailed(db, checked, callerRoot, fails)
             const data = inTransaction(db, (): ResultData => {
                 const filing = filingOf(db, flags.task)
                 let task = filing.task
@@ -191,14 +222,7 @@ export const taskResultVerb = defineVerb({
             })
             const waiting = needs.length === 0 ? "" : await recordNeeds(db, callerRoot, data.task, needs)
             const worktree = data.taskStatus === "failed" && repair === null ? ((await removeOpWorktree(callerRoot, data.task).catch(() => undefined)) ?? null) : null
-            const dir = preserved?.dir ?? null
-            const kept = dir === null || repair !== null ? "" : `; dirty work preserved in ${dir} and reset`
-            const broken = repair === null ? "" : `; its work is saved in ${repair} but not every path was put back: starci task verify ${data.task} --recover finishes the reset`
-            const removed = worktree === null ? "" : `; worktree ${worktree.path} ${worktree.removed ? "removed" : "left"}`
-            const keys = data.recheck === null ? "" : [...data.recheck.codes, ...data.recheck.keys].join(", ")
-            const recheck = data.recheck === null ? "" : `; its run was stopped by custody (${keys || "TEST_WORLD_NOT_DECLARED"}), so the harness judges it by its own run with the keys custody holds (starci task verify ${data.task}); no try is spent on the worker's run`
-            const walk = data.unserved === null ? "" : `; its walk into ${data.unserved.folder} met no app (every page it opened answered 5xx, ${UAT_APP_UNSERVED}): an environment failure, not the task's verdict, so it ends as the harness's own and its workflow dispatches it again at the same try`
-            const message = `filed ${data.status} on ${data.attempt}${data.inline ? " (inline attempt)" : ""}; task ${data.task} is ${data.taskStatus}${kept}${broken}${removed}${waiting}${recheck}${walk}`
+            const message = reportMessage(data, { preserved, repair, worktree, waiting })
             return { data, message, ...(repair === null ? {} : { exitCode: 1 }) }
         } finally {
             db.close()

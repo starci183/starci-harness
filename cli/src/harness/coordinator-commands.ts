@@ -58,7 +58,7 @@ export const ESCALATION_KINDS = ["budget", "scope", "conflict", "owner", "harnes
 export const OWNER_TOPICS = ["scope", "money", "credentials", "legal", "product"] as const
 
 /** The owner topics no default settles: the owner rules them even when the escalation proposes one. */
-const OWNER_ONLY: readonly (typeof OWNER_TOPICS)[number][] = ["scope", "money", "credentials", "legal"]
+const OWNER_ONLY: ReadonlySet<(typeof OWNER_TOPICS)[number]> = new Set<(typeof OWNER_TOPICS)[number]>(["scope", "money", "credentials", "legal"])
 
 /**
  * The escalation kinds the Supervisor does not rule: `owner` (the owner's decisions, `OWNER_TOPICS`; the Supervisor asks the owner
@@ -66,7 +66,7 @@ const OWNER_ONLY: readonly (typeof OWNER_TOPICS)[number][] = ["scope", "money", 
  * (`defaultRuling`); and `harness` (a harness defect, Debug's to fix; its answer arrives as Debug's `supervisor ask`). The
  * Supervisor relays either ruling (ops/coordinators/supervisor.md).
  */
-const OWNER_RULED: readonly (typeof ESCALATION_KINDS)[number][] = ["owner", "harness"]
+const OWNER_RULED: ReadonlySet<(typeof ESCALATION_KINDS)[number]> = new Set<(typeof ESCALATION_KINDS)[number]>(["owner", "harness"])
 
 const escalationSchema = z
     .strictObject({
@@ -236,6 +236,35 @@ const assertBasedOn = (db: DatabaseSync, command: Command, workflow: WorkflowRow
     if (command.kind === "goal-change" && goal === undefined) throw new Refusal("COMMAND_INVALID", "a goal-change names basedOn.goal")
 }
 
+/** The route, settle, hold and need checks a command is held to: the Kernel's own, or a Supervisor's ruling judged as the Kernel's. */
+const assertScoped = (db: DatabaseSync, scope: CommandScope, command: Command, dir: string): void => {
+    if (scope === "kernel") {
+        assertSettle(db, command)
+        assertHold(db, command)
+        if (!isHold(command)) assertRoute(db, command, dir)
+        assertNeedAnswer(db, scope, command, dir)
+    } else if (isRuling(command)) {
+        assertRuling(db, command)
+        const ruled = rulingAsKernel(db, command)
+        assertSettle(db, ruled)
+        assertHold(db, ruled)
+        if (!isHold(ruled)) assertRoute(db, ruled, dir)
+        assertNeedAnswer(db, "kernel", ruled, dir)
+    } else {
+        assertNeedAnswer(db, scope, command, dir)
+        if (command.hold !== undefined) throw new Refusal("COMMAND_INVALID", `a ${command.kind} carries no hold; a hold is a workflow-change's, the Kernel's or a ruling's`)
+    }
+}
+
+/** Refuses a command whose answers name a decision that is unknown to this scope or answered already. */
+const assertAnswersOpen = (db: DatabaseSync, command: Command, scope: CommandScope): void => {
+    for (const id of ledgerAnswers(command, scope)) {
+        const decision = getDecision(db, id)
+        if (decision?.scope !== scope) throw new Refusal("DECISION_UNKNOWN", `answers names ${id}, which is no ${scope} decision in this ledger`)
+        if (decision.answeredBy !== null) throw new Refusal("STALE", `decision ${id} was answered already by ${decision.answeredBy}; re-read with ${scope} next`)
+    }
+}
+
 /**
  * Admits a command under compare-and-swap, before any side effect: a known cmdId with the same bytes replays its recorded
  * outcome (a failed one is applied again), with other bytes refuses CMD_CONFLICT; a basedOn that is not the current graph or
@@ -252,27 +281,8 @@ export const admitCommand = (db: DatabaseSync, scope: CommandScope, file: Comman
         if (known?.status === "applying") throw new Refusal("CMD_IN_FLIGHT", `command ${command.cmdId} is being applied; read its outcome with the next ${scope} next`)
         const workflow = getWorkflow(db, command.workflow)
         assertBasedOn(db, command, workflow)
-        for (const id of ledgerAnswers(command, scope)) {
-            const decision = getDecision(db, id)
-            if (decision?.scope !== scope) throw new Refusal("DECISION_UNKNOWN", `answers names ${id}, which is no ${scope} decision in this ledger`)
-            if (decision.answeredBy !== null) throw new Refusal("STALE", `decision ${id} was answered already by ${decision.answeredBy}; re-read with ${scope} next`)
-        }
-        if (scope === "kernel") {
-            assertSettle(db, command)
-            assertHold(db, command)
-            if (!isHold(command)) assertRoute(db, command, file.dir)
-            assertNeedAnswer(db, scope, command, file.dir)
-        } else if (isRuling(command)) {
-            assertRuling(db, command)
-            const ruled = rulingAsKernel(db, command)
-            assertSettle(db, ruled)
-            assertHold(db, ruled)
-            if (!isHold(ruled)) assertRoute(db, ruled, file.dir)
-            assertNeedAnswer(db, "kernel", ruled, file.dir)
-        } else {
-            assertNeedAnswer(db, scope, command, file.dir)
-            if (command.hold !== undefined) throw new Refusal("COMMAND_INVALID", `a ${command.kind} carries no hold; a hold is a workflow-change's, the Kernel's or a ruling's`)
-        }
+        assertAnswersOpen(db, command, scope)
+        assertScoped(db, scope, command, file.dir)
         db.prepare("DELETE FROM commands WHERE cmd_id = ? AND status = 'failed'").run(command.cmdId)
         db.prepare("INSERT INTO commands (cmd_id, scope, workflow_id, kind, based_on_json, sha256, body_json, status, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'applying', ?)").run(
             command.cmdId,
@@ -371,7 +381,7 @@ export const escalationOf = (decision: Decision): Partial<Escalation> | null => 
  */
 export const defaultRuling = (decision: Decision): { readonly ruling: string; readonly reason: string } | null => {
     const escalation = escalationOf(decision)
-    if (escalation?.kind !== "owner" || escalation.default === undefined || escalation.topic === undefined || OWNER_ONLY.includes(escalation.topic)) return null
+    if (escalation?.kind !== "owner" || escalation.default === undefined || escalation.topic === undefined || OWNER_ONLY.has(escalation.topic)) return null
     return { ruling: escalation.default, reason: escalation.reason ?? "" }
 }
 
@@ -383,7 +393,7 @@ export const defaultRuling = (decision: Decision): { readonly ruling: string; re
  */
 export const awaitsOwner = (decision: Decision): boolean => {
     const kind = escalationOf(decision)?.kind
-    return kind !== undefined && OWNER_RULED.includes(kind) && defaultRuling(decision) === null
+    return kind !== undefined && OWNER_RULED.has(kind) && defaultRuling(decision) === null
 }
 
 /** One decision by id. */
@@ -442,6 +452,6 @@ const assertRuling = (db: DatabaseSync, command: Command): void => {
     if (undecidedAnswered(db, command).length === 0) throw new Refusal("COMMAND_NOT_YOURS", `a Supervisor submits a ${command.kind} only to rule a ${KERNEL_UNDECIDED} decision of workflow ${command.workflow}, named in answers; otherwise it is the Kernel's`)
     const escalation = command.escalation
     if (command.kind !== "escalation" || escalation === undefined) return
-    if (!OWNER_RULED.includes(escalation.kind)) throw new Refusal("RULING_WITHIN_AUTHORITY", `a ${escalation.kind} escalation is the Supervisor's own to rule: rule it with a workflow-change (or a goal-change, or budget raise); a ruling escalates only to the owner (kind owner) or to Debug (kind harness)`)
+    if (!OWNER_RULED.has(escalation.kind)) throw new Refusal("RULING_WITHIN_AUTHORITY", `a ${escalation.kind} escalation is the Supervisor's own to rule: rule it with a workflow-change (or a goal-change, or budget raise); a ruling escalates only to the owner (kind owner) or to Debug (kind harness)`)
     if (escalation.topic === "product" && escalation.default !== undefined) throw new Refusal("RULING_WITHIN_AUTHORITY", "a product choice that carries a default is the Supervisor's to rule on that default: rule it with a workflow-change")
 }

@@ -6,6 +6,7 @@ import type { ListedTerminal, OrcaBinary } from "./orca/client.js"
 import { CLOSED_SEAT_STATUSES } from "./seats.js"
 import { inOrder } from "./sequential.js"
 import { recordEvent } from "./tasks.js"
+import { trimEndChars } from "../shared/trim.js"
 
 /**
  * The titles the harness gives the terminals it launches (`[Op] `, `[Kernel] `, `[Supervisor] `, `[Worker] `, set by `opTitle`,
@@ -27,7 +28,7 @@ interface HarnessRecords {
     readonly worktrees: ReadonlySet<string>
 }
 
-const folderKey = (path: string): string => path.replaceAll("\\", "/").replace(/\/+$/, "").toLowerCase()
+const folderKey = (path: string): string => trimEndChars(path.replaceAll("\\", "/"), "/").toLowerCase()
 
 const add = (holders: Map<string, Holder[]>, terminal: unknown, holder: Holder): void => {
     const handle = textOf(terminal)
@@ -120,7 +121,10 @@ const verdict = (terminal: ListedTerminal, records: HarnessRecords, lastOutput: 
     const held = records.holders.get(terminal.handle) ?? []
     const titled = harnessTitled(terminal, records.worktrees)
     if (held.length === 0 && !titled) return null
-    if (terminal.orphaned) return `orphaned by an Orca restart${held.length === 0 ? "" : `; recorded by ${held.map((holder) => holder.who).join(", ")}`}`
+    if (terminal.orphaned) {
+        const heldSuffix = held.length === 0 ? "" : `; recorded by ${held.map((holder) => holder.who).join(", ")}`
+        return `orphaned by an Orca restart${heldSuffix}`
+    }
     if (held.some((holder) => holder.live)) return null
     if (held.length > 0) return `its record is closed: ${held.map((holder) => holder.who).join(", ")}`
     return olderThan(lastOutput, graceMinutes) ? `harness-titled with no ledger seat, quiet past ${String(graceMinutes)} min` : null

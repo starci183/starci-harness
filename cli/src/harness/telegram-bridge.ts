@@ -79,7 +79,8 @@ const requestNotices = (since: string, chars: number): Notice[] =>
         const project: Project = { key: String(row.project), root, name: basename(root) }
         const id = String(row.id)
         const workflow = textOf(row.workflow_id)
-        const text = [`[StarCi] ${project.name}: request ${id} was taken up by ${String(row.closed_by)}${workflow === null ? "" : ` (workflow ${workflow})`}.`, `"${clip(String(row.text), chars)}"`].join("\n")
+        const workflowSuffix = workflow === null ? "" : ` (workflow ${workflow})`
+        const text = [`[StarCi] ${project.name}: request ${id} was taken up by ${String(row.closed_by)}${workflowSuffix}.`, `"${clip(String(row.text), chars)}"`].join("\n")
         return { key: `request:${id}`, kind: "request", project, workflow, subject: id, text, at: String(row.closed_at) }
     })
 
@@ -288,6 +289,12 @@ const projectNamed = async (name: string): Promise<{ readonly project: Project |
 
 const HELP = "Reply to a StarCi question to answer it, or send /answer <ticket id> <answer>, /ask <project> <request>, /status for the workflows, /tickets for the open tickets."
 
+/** The marker a workflow's status line opens with. */
+const statusIcon = (status: string): string => {
+    if (status === "blocked") return "🔴"
+    return status === "paused" ? "⏸" : "🟢"
+}
+
 const STATUS_ORDER = ["blocked", "running", "paused", "stopping", "defined", "done", "stopped"] as const
 
 /**
@@ -318,7 +325,10 @@ const statusMessage = async (chars: number): Promise<string> => {
         const live = STATUS_ORDER.slice(0, 3).flatMap((status) => all.filter((workflow) => workflow.status === status).toSorted((a, b) => a.id.localeCompare(b.id)))
         return [
             `<b>${escapeHtml(name)}</b>: ${counts.join(", ")}`,
-            ...live.map((workflow) => `${workflow.status === "blocked" ? "🔴" : workflow.status === "paused" ? "⏸" : "🟢"} ${escapeHtml(workflow.id)} ${workflow.status}${workflow.status === "blocked" && workflow.reason !== null ? `: ${escapeHtml(clip(workflow.reason, chars))}` : ""}`),
+            ...live.map((workflow) => {
+                const statusSuffix = workflow.status === "blocked" && workflow.reason !== null ? `: ${escapeHtml(clip(workflow.reason, chars))}` : ""
+                return `${statusIcon(workflow.status)} ${escapeHtml(workflow.id)} ${workflow.status}${statusSuffix}`
+            }),
         ]
     })
     const open = [...listTickets({ state: "open" }), ...listTickets({ state: "in-progress" })]
@@ -343,34 +353,51 @@ const statusMessage = async (chars: number): Promise<string> => {
 type Target = { readonly project: Project; readonly text: string; readonly ticket?: string; readonly body?: string } | { readonly reply: string; readonly outcome: string; readonly html?: boolean; readonly keyboard?: Keyboard }
 
 const answerText = (notice: NoticeRow, body: string): string => {
-    if (notice.kind === "decision") return `Owner answer to ${notice.subject}${notice.workflow === null ? "" : ` (workflow ${notice.workflow})`}, via Telegram: ${body}`
+    if (notice.kind === "decision") {
+        const workflowSuffix = notice.workflow === null ? "" : ` (workflow ${notice.workflow})`
+        return `Owner answer to ${notice.subject}${workflowSuffix}, via Telegram: ${body}`
+    }
     return `Owner, via Telegram, about ${notice.kind} ${notice.subject}: ${body}`
 }
 
 /** The target of an answer to a notice: an owner request carrying it, and for a ticket's notice the ticket and the bare answer. */
 const answerTarget = (notice: NoticeRow, body: string): Target => ({ project: notice.project, text: answerText(notice, body), ...(notice.kind === "ticket" ? { ticket: notice.subject, body } : {}) })
 
-const COMMAND = /^\/(\w+)(?:@\w+)?(?:\s+([\s\S]*))?$/
+const COMMAND = /^\/(\w+)(?:@\w+)?(?:\s([\s\S]*))?$/
 
-/** Reads what an owner message asks: `/answer <id> <text>`, `/ask <project> <text>`, or a reply to a notice. */
-const targetOf = async (message: TelegramMessage, chatId: string): Promise<Target> => {
-    const text = (message.text ?? "").trim()
-    const command = COMMAND.exec(text)
-    if (command !== null) {
+/** `/ticket <id>`: the ticket's details. */
+const ticketCommand = (first: string): Target => {
+    const ticket = findTicket(first)
+    if (ticket === undefined) return { reply: `No ticket ${first || "(no id)"}; /tickets lists the open ones.`, outcome: "unknown ticket" }
+    return { reply: ticketDetails(ticket), outcome: `ticket ${ticket.id}`, html: true }
+}
+
+/** `/ask <project> <text>`: the text as an owner request of the project. */
+const askCommand = async (first: string, body: string): Promise<Target> => {
+    const { project, known } = await projectNamed(first)
+    if (project === undefined) return { reply: `No project ${first || "(no name)"}; projects: ${known.join(", ") || "none registered"}.`, outcome: "unknown project" }
+    if (body === "") return { reply: `Say the request after the project: /ask ${project.name} <request>.`, outcome: "empty" }
+    return { project, text: body }
+}
+
+/** `/answer <id> <text>`: the notice it names answered with the text. */
+const answerCommand = (first: string, body: string): Target => {
+    const notice = noticeBySubject(first)
+    if (notice === undefined) return { reply: `No notice ${first || "(no id)"} was sent here. ${HELP}`, outcome: "unknown subject" }
+    if (body === "") return { reply: `Say the answer after the id: /answer ${first} <your answer>.`, outcome: "empty" }
+    return answerTarget(notice, body)
+}
+
+/** What an owner's `/command` asks: an answer, a request, the status, the tickets or one ticket; the help otherwise. */
+const commandTarget = async (command: RegExpExecArray): Promise<Target> => {
         const verb = (command[1] ?? "").toLowerCase()
         const [first = "", ...rest] = (command[2] ?? "").trim().split(/\s+/)
         const body = rest.join(" ").trim()
         if (verb === "answer") {
-            const notice = noticeBySubject(first)
-            if (notice === undefined) return { reply: `No notice ${first || "(no id)"} was sent here. ${HELP}`, outcome: "unknown subject" }
-            if (body === "") return { reply: `Say the answer after the id: /answer ${first} <your answer>.`, outcome: "empty" }
-            return answerTarget(notice, body)
+            return answerCommand(first, body)
         }
         if (verb === "ask") {
-            const { project, known } = await projectNamed(first)
-            if (project === undefined) return { reply: `No project ${first || "(no name)"}; projects: ${known.join(", ") || "none registered"}.`, outcome: "unknown project" }
-            if (body === "") return { reply: `Say the request after the project: /ask ${project.name} <request>.`, outcome: "empty" }
-            return { project, text: body }
+            return await askCommand(first, body)
         }
         if (verb === "status") return { reply: await statusMessage(loadTelegram().questionChars), outcome: "status", html: true }
         if (verb === "tickets") {
@@ -378,11 +405,17 @@ const targetOf = async (message: TelegramMessage, chatId: string): Promise<Targe
             return { reply: list.text, outcome: "tickets", html: true, keyboard: list.keyboard }
         }
         if (verb === "ticket") {
-            const ticket = findTicket(first)
-            if (ticket === undefined) return { reply: `No ticket ${first || "(no id)"}; /tickets lists the open ones.`, outcome: "unknown ticket" }
-            return { reply: ticketDetails(ticket), outcome: `ticket ${ticket.id}`, html: true }
+            return ticketCommand(first)
         }
         return { reply: HELP, outcome: `help (/${verb})` }
+}
+
+/** Reads what an owner message asks: `/answer <id> <text>`, `/ask <project> <text>`, or a reply to a notice. */
+const targetOf = async (message: TelegramMessage, chatId: string): Promise<Target> => {
+    const text = (message.text ?? "").trim()
+    const command = COMMAND.exec(text)
+    if (command !== null) {
+        return await commandTarget(command)
     }
     const replied = message.reply_to_message?.message_id
     const notice = replied === undefined ? undefined : noticeByMessage(chatId, replied)

@@ -111,10 +111,20 @@ const printedAs = (file: string): string => file.split("/").slice(-2).join("/")
  * a tsc `<path>(line,col): error`, a jest `FAIL <path>`. A summary line (`red lint ... (config be/eslint.config.mjs)`) leads with
  * a word, never a path, so a config a step names is no finding.
  */
-const FINDING_LINE = /^\s*(?:FAIL\s+)?((?:[A-Za-z]:)?[^\s:()]*\/[^\s:()]*\.[A-Za-z]{1,5})(?:$|[\s:(])/
+const FINDING_TOKEN = /^\s*(?:FAIL\s+)?((?:[A-Za-z]:)?[^\s:()]+)(?=$|[\s:(])/
+const FILE_EXTENSION = /^[A-Za-z]{1,5}$/
+
+/** The path a line of output leads with: a run of path characters that holds a slash before its last dot, and ends in a 1 to 5 letter extension. */
+const findingPath = (line: string): string[] => {
+    const token = FINDING_TOKEN.exec(line)?.[1]
+    if (token === undefined) return []
+    const dot = token.lastIndexOf(".")
+    const slash = token.indexOf("/")
+    return slash >= 0 && slash < dot && FILE_EXTENSION.test(token.slice(dot + 1)) ? [token] : []
+}
 
 /** The files a red check's output reports findings in, slash-separated as printed (absolute, or relative to a package). */
-const findingFiles = (detail: string): string[] => [...new Set(toSlash(detail).split("\n").flatMap((line) => FINDING_LINE.exec(line)?.slice(1, 2) ?? []))]
+const findingFiles = (detail: string): string[] => [...new Set(toSlash(detail).split("\n").flatMap(findingPath))]
 
 /** Whether a printed path names this repository file: the same path, absolute, or printed relative to a package. */
 const names = (printed: string, file: string): boolean => printed === file || printed.endsWith(`/${file}`) || file.endsWith(`/${printed}`)
@@ -269,7 +279,9 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
     const tasks = await waveTasks(db, checkout, ids)
     const parents = [...new Set(tasks.flatMap((each) => (each.parent === null ? [] : [each.parent])))]
     const head = await resolveSha(checkout, "HEAD")
-    const base = parents.length === 0 ? head : parents.length === 1 ? (parents[0] ?? head) : (await git(checkout, ["merge-base", "--octopus", ...parents])).trim()
+    let base = head
+    if (parents.length === 1) base = parents[0] ?? head
+    else if (parents.length > 1) base = (await git(checkout, ["merge-base", "--octopus", ...parents])).trim()
     const allowPaths = [...new Set(tasks.flatMap((each) => each.task.contract.context.allowPaths))]
     const union: Contract = { ...tasks[0]?.task.contract ?? getTask(db, first).contract }
     // A scoped check judges exactly what the tasks landed (`check run --within`): the union of their own diffs, never another
@@ -278,7 +290,12 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
     const scoped: Contract = { ...union, context: { ...union.context, allowPaths: landed.length === 0 ? allowPaths : landed } }
     // The scope decision is written before any command runs (contexts/authority/wave.md): the diff, its files, the commands, what is skipped.
     const changed = base === head ? [] : nulPaths(await git(checkout, ["diff", "--name-only", "-z", base, head]))
-    const commands = [...new Set(tasks.flatMap((each) => each.checks.map((check) => (check.check.kind === "command" ? [check.check.run].flat().join(" ") : check.check.kind === "starci" ? `starci ${check.check.args.join(" ")} --base ${base.slice(0, 12)}${landed.length > 0 ? ` --within -- <${String(landed.length)} landed file(s)>` : ""}` : check.name))))]
+    const commands = [...new Set(tasks.flatMap((each) => each.checks.map((check) => {
+        if (check.check.kind === "command") return [check.check.run].flat().join(" ")
+        if (check.check.kind !== "starci") return check.name
+        const withinSuffix = landed.length > 0 ? ` --within -- <${String(landed.length)} landed file(s)>` : ""
+        return `starci ${check.check.args.join(" ")} --base ${base.slice(0, 12)}${withinSuffix}`
+    })))]
     const scope = {
         diff: `${base}..${head}`,
         changed,
@@ -311,7 +328,7 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
         const ran = new Map<string, CheckOutcome>()
         const outcomes: Record<string, CheckOutcome[]> = {}
         if (prepared.every((outcome) => outcome.status === "green")) {
-            for (const each of tasks) {
+            await inOrder(tasks, async (each) => {
                 outcomes[each.task.id] = await inOrder(each.checks, async (check) => {
                     // A task its live suite's custody stopped runs nothing more here: it is judged once the key is sealed or the declaration read.
                     if (blocked.has(each.task.id)) return { name: check.name, kind: check.check.kind, status: "green", exitCode: null, detail: "not run: blocked on custody" }
@@ -336,7 +353,7 @@ const judgeWave = async (db: DatabaseSync, workflow: string, checkout: string, t
                     ran.set(key, outcome)
                     return outcome
                 })
-            }
+            })
         }
         return { prepared, outcomes }
     }).catch((error: unknown) => {

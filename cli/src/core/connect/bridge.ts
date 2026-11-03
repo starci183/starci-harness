@@ -23,7 +23,8 @@ export const telegramBridge = async (context: VerbContext, mode: string | undefi
         const { channel, counts } = withChannelStore((db) => ({ channel: readChannel(db), counts: channelCounts(db) }))
         const liveness = bridgeLiveness(channel, config)
         const data = { liveness, pid: channel.bridgePid, beat: channel.bridgeBeat, configured: tokenSource(config) !== null, chat: channel.chatId !== null, ...counts }
-        return { data, message: `telegram bridge: ${liveness}${channel.bridgeBeat === null ? "" : ` (pid ${String(channel.bridgePid ?? "-")}, beat ${channel.bridgeBeat})`}` }
+        const bridgeBeatSuffix = channel.bridgeBeat === null ? "" : ` (pid ${String(channel.bridgePid ?? "-")}, beat ${channel.bridgeBeat})`
+        return { data, message: `telegram bridge: ${liveness}${bridgeBeatSuffix}` }
     }
     if (callerRole() === "debug") throw new Refusal("ROLE_REFUSED", "connect telegram bridge run is the owner's host service; Debug reads its status")
     const bot = telegramBot(config)

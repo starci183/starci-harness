@@ -9,6 +9,7 @@ import { BEHAVIOURAL_KINDS, checkEntrySchema, entryApplies, entryFile, entryShar
 import type { CheckArgs, CheckEntry, Op, Ops, OutputSpec, OutputType, PrimitiveCheck, TrustTier } from "./ops.js"
 import { loadPolicy, neverRead } from "./policy.js"
 import { rulePagesOf } from "./rule-pages.js"
+import { trimEndChars } from "../shared/trim.js"
 
 /**
  * A repository path as the harness compares it: forward slashes, no `./` or `.` segments, no doubled or trailing slash.
@@ -382,7 +383,7 @@ const WORK_ID = /^[a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+$/
 export const workNamesIn = (text: string): Set<string> => {
     const names = new Set<string>()
     for (const raw of text.split(/[^A-Za-z0-9._/-]+/)) {
-        const token = raw.replace(/[./]+$/, "")
+        const token = trimEndChars(raw, "./")
         if (WORK_ID.test(token) || token.startsWith(`${WORK_TREE}/`)) names.add(token)
     }
     return names

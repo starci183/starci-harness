@@ -25,7 +25,7 @@ export const TASK_REVIVED = "task-revived"
 
 // The seat states of a launch whose worker never started its turn, and the states a closed seat ends in; any other state a seat
 // of the attempt reached (an Orca running state, worker-lost) proves its worker ran.
-const NOT_STARTED: readonly string[] = ["starting", "launch-unknown", "launch-failed", "launch-unsettled", "released", "stopped"]
+const NOT_STARTED: ReadonlySet<string> = new Set(["starting", "launch-unknown", "launch-failed", "launch-unsettled", "released", "stopped"])
 
 // The no-verdict events of core/task/verify.ts `noVerdict`; only the two the harness causes make a task harness-killed.
 const NO_VERDICT_EVENTS: readonly string[] = ["verify-infra", "verify-deadline", "verify-error", "preserve-failed", "settle-refused"]
@@ -39,7 +39,30 @@ const workerStarted = (db: DatabaseSync, attemptId: string): boolean => {
         .prepare("SELECT json_extract(e.data_json, '$.to') AS state FROM events e JOIN seats s ON s.id = e.subject WHERE e.kind = 'seat-status' AND s.attempt_id = ?")
         .all(attemptId)
         .map((row) => text(row.state) ?? "")
-    return reached.some((state) => state !== "" && !NOT_STARTED.includes(state) && !unknownStart.includes(state))
+    return reached.some((state) => state !== "" && !NOT_STARTED.has(state) && !unknownStart.includes(state))
+}
+
+/** The cause of an attempt that ended with a result or none: a wave that returned it, a fenced consumer, a lost launch, or a verify that gave no verdict. */
+const causeOfEnding = (db: DatabaseSync, found: { readonly taskId: string; readonly status: string; readonly attempt: Record<string, unknown>; readonly attemptId: string }): HarnessCause | null => {
+    const { taskId, status, attempt, attemptId } = found
+    const result = db.prepare("SELECT status, filed_at FROM results WHERE attempt_id = ?").get(attemptId)
+    if (result !== undefined && text(result.status) !== "done") return null
+    const wave = db.prepare("SELECT data_json FROM events WHERE kind = 'wave-returned' AND subject = ? ORDER BY id DESC LIMIT 1").get(taskId)
+    if (wave !== undefined) return status === "failed" && (JSON.parse(text(wave.data_json) ?? "{}") as { readonly own?: boolean }).own === false ? "wave-foreign" : null
+    const outcome = text(attempt.outcome)
+    if (outcome === CONSUMER_FENCED_OUTCOME) return "consumer-fenced"
+    if (outcome === "launch-failed") return "launch-lost"
+    if (result === undefined) return status === "cancelled" && !workerStarted(db, attemptId) ? "launch-lost" : null
+    const marks = NO_VERDICT_EVENTS.map(() => "?").join(", ")
+    const last = text(db.prepare(`SELECT kind FROM events WHERE subject = ? AND kind IN (${marks}) AND at >= ? ORDER BY id DESC LIMIT 1`).get(taskId, ...NO_VERDICT_EVENTS, text(result.filed_at) ?? "")?.kind)
+    return last === "verify-infra" || last === "verify-deadline" ? last : null
+}
+
+/** The cause of a failed task the land orphaned, or of a cancelled one a park stopped. */
+const parkedOrOrphaned = (db: DatabaseSync, taskId: string, status: string): HarnessCause | null => {
+    if (status === "failed" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ?").get(LAND_ORPHANED, taskId) !== undefined) return LAND_ORPHANED
+    if (status === "cancelled" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ?").get(TASK_PARKED, taskId) !== undefined) return "parked"
+    return null
 }
 
 /**
@@ -52,24 +75,14 @@ const workerStarted = (db: DatabaseSync, attemptId: string): boolean => {
 export const harnessCause = (db: DatabaseSync, taskId: string): HarnessCause | null => {
     const status = text(db.prepare("SELECT status FROM tasks WHERE id = ?").get(taskId)?.status)
     if (status !== "failed" && status !== "cancelled") return null
-    if (status === "failed" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ?").get(LAND_ORPHANED, taskId) !== undefined) return LAND_ORPHANED
-    if (status === "cancelled" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ?").get(TASK_PARKED, taskId) !== undefined) return "parked"
+    const early = parkedOrOrphaned(db, taskId, status)
+    if (early !== null) return early
     const attempt = db.prepare("SELECT id, outcome, verdict FROM attempts WHERE task_id = ? ORDER BY seq DESC LIMIT 1").get(taskId)
     if (attempt === undefined || text(attempt.verdict) === "red") return null
     const attemptId = text(attempt.id) ?? ""
     // A walk that met no app ends its attempt whatever the worker filed: the result is the harness's environment, not the task's words.
     if (status === "failed" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ? AND json_extract(data_json, '$.attempt') = ?").get(WALK_UNSERVED, taskId, attemptId) !== undefined) return WALK_UNSERVED
-    const result = db.prepare("SELECT status, filed_at FROM results WHERE attempt_id = ?").get(attemptId)
-    if (result !== undefined && text(result.status) !== "done") return null
-    const wave = db.prepare("SELECT data_json FROM events WHERE kind = 'wave-returned' AND subject = ? ORDER BY id DESC LIMIT 1").get(taskId)
-    if (wave !== undefined) return status === "failed" && (JSON.parse(text(wave.data_json) ?? "{}") as { readonly own?: boolean }).own === false ? "wave-foreign" : null
-    const outcome = text(attempt.outcome)
-    if (outcome === CONSUMER_FENCED_OUTCOME) return "consumer-fenced"
-    if (outcome === "launch-failed") return "launch-lost"
-    if (result === undefined) return status === "cancelled" && !workerStarted(db, attemptId) ? "launch-lost" : null
-    const marks = NO_VERDICT_EVENTS.map(() => "?").join(", ")
-    const last = text(db.prepare(`SELECT kind FROM events WHERE subject = ? AND kind IN (${marks}) AND at >= ? ORDER BY id DESC LIMIT 1`).get(taskId, ...NO_VERDICT_EVENTS, text(result.filed_at) ?? "")?.kind)
-    return last === "verify-infra" || last === "verify-deadline" ? last : null
+    return causeOfEnding(db, { taskId, status, attempt, attemptId })
 }
 
 /** The event a hold's release records on a task the harness ended: it comes back to ready at the same try, past `reviveMax` too (holds.ts). */

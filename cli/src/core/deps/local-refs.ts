@@ -1,6 +1,7 @@
 import { posix } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { git, nulPaths } from "../../shared/git.js"
+import { inOrder } from "../../harness/sequential.js"
 
 /** The registry every judgement of "what npm serves" asks, whatever the caller's npm configuration or environment says. */
 export const NPMJS_REGISTRY = "https://registry.npmjs.org/"
@@ -35,7 +36,8 @@ export interface LocalReference {
 
 const LOCKFILE = /^(?:package-lock|npm-shrinkwrap)\.json$/
 const RESOLVED = /"resolved"\s*:\s*("(?:[^"\\]|\\.)*")/g
-const NPMRC_REGISTRY = /^\s*(?:@[\w.-]+:)?registry\s*=\s*(?:("(?:[^"\\]|\\.)*")|'([^']*)'|([^;\s#]+))/i
+const NPMRC_KEY = /^\s*(?:@[\w.-]+:)?registry\s*=\s*/i
+const NPMRC_VALUE = /^(?:("(?:[^"\\]|\\.)*")|'([^']*)'|([^;\s#]+))/
 
 const registryAddress = (url: string): string => {
     const parsed = new URL(url.replace(/^\/\//, "http://"))
@@ -53,7 +55,9 @@ const jsonString = (text: string | undefined): string | undefined => {
 }
 
 const npmrcRegistry = (line: string): string | undefined => {
-    const match = NPMRC_REGISTRY.exec(line)
+    const key = NPMRC_KEY.exec(line)
+    if (key === null) return undefined
+    const match = NPMRC_VALUE.exec(line.slice(key[0].length))
     return jsonString(match?.[1]) ?? match?.[2] ?? match?.[3]
 }
 
@@ -70,11 +74,9 @@ const resolvedCandidates = (text: string): { readonly url: string | undefined; r
 /** The lines of one committed file that name a loopback registry: a lockfile's `resolved` URL, or a `registry` setting of an `.npmrc`. */
 export const localReferences = (file: string, text: string): LocalReference[] => {
     const base = posix.basename(file)
-    const candidates = LOCKFILE.test(base)
-        ? resolvedCandidates(text)
-        : base === ".npmrc"
-            ? text.split("\n").map((raw, index) => ({ url: npmrcRegistry(raw), line: index + 1 }))
-            : []
+    let candidates: { readonly url: string | undefined; readonly line: number }[] = []
+    if (LOCKFILE.test(base)) candidates = resolvedCandidates(text)
+    else if (base === ".npmrc") candidates = text.split("\n").map((raw, index) => ({ url: npmrcRegistry(raw), line: index + 1 }))
     return candidates.flatMap(({ url, line }): LocalReference[] => {
         const host = url === undefined ? undefined : hostOf(url.replace(/^\/\//, "http://"))
         return url !== undefined && host !== undefined && isLoopbackHost(host) ? [{ file, line, url }] : []
@@ -90,8 +92,7 @@ export const judgeLocalRegistry = async (root: string, revision: string): Promis
     const files = nulPaths(await git(root, ["ls-tree", "-r", "-z", "--name-only", revision])).filter(
         (file) => !file.split("/").includes("node_modules") && (LOCKFILE.test(posix.basename(file)) || posix.basename(file) === ".npmrc"),
     )
-    const found: LocalReference[] = []
-    for (const file of files) found.push(...localReferences(file, await git(root, ["show", `${revision}:${file}`])))
+    const found = (await inOrder(files, async (file) => localReferences(file, await git(root, ["show", `${revision}:${file}`])))).flat()
     if (found.length === 0) return
     const listed = found.slice(0, 5).map((one) => `${one.file}:${String(one.line)} ${registryAddress(one.url)}`).join("; ")
     const more = found.length > 5 ? ` and ${String(found.length - 5)} more` : ""

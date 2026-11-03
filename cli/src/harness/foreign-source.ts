@@ -6,7 +6,7 @@ import type { PlanNode } from "./graph.js"
 /** The refusal of a contract that takes another workflow's code as its source instead of routing the need. */
 export const NEEDS_REQUIRED = "NEEDS_REQUIRED"
 
-const escape = (text: string): string => text.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")
+const escape = (text: string): string => text.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
 
 /** Every text of a contract's input a worker reads as its instructions: summary, details, and each named input. */
 const inputTexts = (node: PlanNode): string[] => {
@@ -20,7 +20,7 @@ const foreignSources = (db: DatabaseSync, workflowId: string): { readonly branch
         .prepare("SELECT id FROM workflows WHERE id != ?")
         .all(workflowId)
         .map((row) => String(row.id))
-        .map((workflow) => ({ workflow, pattern: new RegExp(`(?:^|[^\\w./-])(?:refs/heads/|origin/)?starci/${escape(workflow)}(?![\\w-])`) }))
+        .map((workflow) => ({ workflow, pattern: new RegExp(String.raw`(?:^|[^\w./-])(?:refs/heads/|origin/)?starci/${escape(workflow)}(?![\w-])`) }))
     const commits = db
         .prepare("SELECT settle_commit, workflow_id, id FROM tasks WHERE settle_commit IS NOT NULL AND (workflow_id IS NULL OR workflow_id != ?)")
         .all(workflowId)

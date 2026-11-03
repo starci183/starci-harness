@@ -27,6 +27,22 @@ const lineSuffix = (line: number | null): string => (line === null ? "" : `:${St
 const describeFindings = (findings: readonly SecretFinding[]): string =>
     findings.map((finding) => `${finding.file}${lineSuffix(finding.line)} (${finding.pattern})`).join("; ")
 
+/** Refuses a pushed range that adds secret material, judged on its diff and on the sealed files as they stand at head. */
+const assertNoSecretsAdded = async (root: string, head: string, previous: string | null): Promise<void> => {
+    const range = previous === null ? [EMPTY_TREE, head] : [`${previous}..${head}`]
+    const files = nulPaths(await git(root, ["diff", "--name-only", "-z", "--diff-filter=AMR", ...range]))
+    const diff = await git(root, ["diff", "-U0", "--no-color", "--diff-filter=AMR", ...range])
+    const encrypted = new Map<string, string>()
+    const shownFiles = await Promise.all(
+        files
+            .filter((name) => isSealedPath(name))
+            .map(async (file) => ({ file, shown: await captureGit(["show", `${head}:${file}`], root) })),
+    )
+    for (const { file, shown } of shownFiles) if (shown.exitCode === 0) encrypted.set(file, shown.stdout)
+    const { findings } = exceptSecrets(root, scanDiff(diff, files, (file) => encrypted.get(file)), loadPolicy(root))
+    if (findings.length > 0) throw new Refusal("PUSH_SECRET_FOUND", `the pushed range adds secret material: ${describeFindings(findings)}`)
+}
+
 /** `starci release push`: the light gate of ruling push-main-after-scoped-check: on the branch, clean, fast-forward, no secret; then git push with hooks. */
 export const releasePushVerb = defineVerb({
     path: ["release", "push"],
@@ -61,23 +77,13 @@ export const releasePushVerb = defineVerb({
         }
         if (previous !== null && !(await isAncestor(root, previous, head))) throw new Refusal("PUSH_NOT_FAST_FORWARD", `${remoteRef} has commits this branch lacks; merge or rebase onto it first`)
         const base = previous ?? EMPTY_TREE
-        const range = previous === null ? [EMPTY_TREE, head] : [`${previous}..${head}`]
-        const files = nulPaths(await git(root, ["diff", "--name-only", "-z", "--diff-filter=AMR", ...range]))
-        const diff = await git(root, ["diff", "-U0", "--no-color", "--diff-filter=AMR", ...range])
-        const encrypted = new Map<string, string>()
-        const shownFiles = await Promise.all(
-            files
-                .filter((name) => isSealedPath(name))
-                .map(async (file) => ({ file, shown: await captureGit(["show", `${head}:${file}`], root) })),
-        )
-        for (const { file, shown } of shownFiles) if (shown.exitCode === 0) encrypted.set(file, shown.stdout)
-        const { findings } = exceptSecrets(root, scanDiff(diff, files, (file) => encrypted.get(file)), loadPolicy(root))
-        if (findings.length > 0) throw new Refusal("PUSH_SECRET_FOUND", `the pushed range adds secret material: ${describeFindings(findings)}`)
+        await assertNoSecretsAdded(root, head, previous)
         const judged = isHarnessCheckout(root) ? await judgeHarnessPush(root, head, previous) : undefined
         const commits = previous === null ? Number(await git(root, ["rev-list", "--count", head])) : Number(await git(root, ["rev-list", "--count", `${base}..${head}`]))
         if (!dryRun) await git(root, ["push", remote, `HEAD:refs/heads/${branch}`])
         const data: PushData = { remote, branch, head, previous, commits, pushed: !dryRun, dryRun }
-        return { data, message: `${dryRun ? "would push" : "pushed"} ${String(commits)} commit(s) to ${remoteRef} (${head.slice(0, 9)})${dryRun ? " (dry run; add --execute)" : ""}; CI is the critic: starci check ci --sha ${head}${judged === undefined ? "" : `
-${judged}`}` }
+        const judgedSuffix = judged === undefined ? "" : `
+${judged}`
+        return { data, message: `${dryRun ? "would push" : "pushed"} ${String(commits)} commit(s) to ${remoteRef} (${head.slice(0, 9)})${dryRun ? " (dry run; add --execute)" : ""}; CI is the critic: starci check ci --sha ${head}${judgedSuffix}` }
     },
 })

@@ -29,7 +29,7 @@ const withLedger = <T>(root: string, work: (db: DatabaseSync) => T): T => {
 }
 
 /** The states a coordinator may answer a need in: routed to it, or open between passes. */
-const ANSWERABLE: readonly string[] = ["open", "routed", "owned"]
+const ANSWERABLE: ReadonlySet<string> = new Set(["open", "routed", "owned"])
 
 /** Where a command's need lives: its project, the repository of the ledger and its normalized key. */
 interface NeedPlace {
@@ -45,7 +45,10 @@ const answerable = (db: DatabaseSync, place: NeedPlace, by: "kernel" | "supervis
     const guidance = by === "kernel" ? KERNEL_NEED_GUIDANCE : SUPERVISOR_NEED_GUIDANCE
     const need = needOf(db, place.project, place.key)
     if (need === undefined) throw new Refusal("NEED_ANSWER_INVALID", `no shared need ${place.key} in this project (starci needs list); ${guidance}`)
-    if (!ANSWERABLE.includes(need.state)) throw new Refusal("NEED_ANSWER_INVALID", `need ${place.key} is ${need.state}${need.mergedInto === null ? "" : ` into ${need.mergedInto}`}, past answering; re-read with ${by} next`)
+    if (!ANSWERABLE.has(need.state)) {
+        const mergedIntoSuffix = need.mergedInto === null ? "" : ` into ${need.mergedInto}`
+        throw new Refusal("NEED_ANSWER_INVALID", `need ${place.key} is ${need.state}${mergedIntoSuffix}, past answering; re-read with ${by} next`)
+    }
     if (by === "supervisor" && need.level === "kernel" && need.state !== "owned") throw new Refusal("NEED_ANSWER_INVALID", `need ${place.key} is routed to a Kernel, not to the Supervisor; it reaches you once it is shared or past its deadline`)
     return need
 }
@@ -79,11 +82,12 @@ export const recordKernelNeed = async (root: string, command: Command): Promise<
  */
 const resolveBy = (db: DatabaseSync, place: NeedPlace, command: Command, need: NeedRow): NeedRow => {
     const keys = resolverKeys(command.need?.resolver)
+    const keysText = keys.map((key) => `${command.workflow}:${key}`).join(", ")
     const resolving = patchNeed(
         db,
         place.project,
         place.key,
-        { state: "resolving", owner: { kind: "workflow", repo: place.repo, workflow: command.workflow }, resolver: { kind: "task", repo: place.repo, workflow: command.workflow, key: keys[0] ?? null, keys, task: null }, reason: `resolver ${keys.map((key) => `${command.workflow}:${key}`).join(", ")} named by ${command.cmdId}` },
+        { state: "resolving", owner: { kind: "workflow", repo: place.repo, workflow: command.workflow }, resolver: { kind: "task", repo: place.repo, workflow: command.workflow, key: keys[0] ?? null, keys, task: null }, reason: `resolver ${keysText} named by ${command.cmdId}` },
         "owned",
     )
     return need.state === "resolving" ? resolving : breakCycle(db, resolving)

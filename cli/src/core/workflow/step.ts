@@ -27,7 +27,10 @@ export const workflowStepVerb = defineVerb({
     run: async (context, flags): Promise<VerbResult<unknown>> => {
         if (flags.loop) return loopWorkflow(context, flags.workflow, flags)
         const loose = (["interval", "until", "max-ticks"] as const).filter((name) => flags[name] !== undefined)
-        if (loose.length > 0) throw new Refusal("CLI_USAGE", `${loose.map((name) => `--${name}`).join(", ")} shape a loop: add --loop`, EXIT_USAGE)
+        if (loose.length > 0) {
+            const looseText = loose.map((name) => `--${name}`).join(", ")
+            throw new Refusal("CLI_USAGE", `${looseText} shape a loop: add --loop`, EXIT_USAGE)
+        }
         const report = await stepWorkflow(context, await repositoryRoot(context.cwd), flags.workflow)
         return { data: report, message: reportMessage(report), exitCode: exitOf(report) }
     },

@@ -9,6 +9,7 @@ import { textOf } from "./machine.js"
 import { locateOps } from "./ops.js"
 import { lookupSecret, secretHome } from "./secret-env.js"
 import type { SecretSource } from "./secret-env.js"
+import { trimEndChars } from "../shared/trim.js"
 
 /** The kinds of notice the channel can send; ops/telegram.yaml `notices` says what each is and lists the ones that go out. */
 export const NOTICE_KINDS = ["question", "defect", "request", "workflow"] as const
@@ -72,7 +73,7 @@ const replySchema = z.looseObject({ ok: z.boolean(), result: z.unknown().optiona
 export const telegramBot = (config: TelegramConfig = loadTelegram()): TelegramBot => {
     const token = lookupSecret(config.tokenVariable)?.value
     if (token === undefined) throw new Refusal("TELEGRAM_NOT_CONFIGURED", `${config.tokenVariable} is not set; ${secretHome(config.tokenVariable)}`)
-    const api = config.apiBase.replace(/\/+$/, "")
+    const api = trimEndChars(config.apiBase, "/")
     const redact = (text: string): string => text.replaceAll(token, "<token>")
     const call = async <T>(method: string, body: Readonly<Record<string, unknown>> | FormData, schema: z.ZodType<T>, waitSeconds = 0): Promise<T> => {
         const form = body instanceof FormData

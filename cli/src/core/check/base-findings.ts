@@ -35,7 +35,8 @@ export interface BaseRun {
 }
 
 /** A line that counts or labels findings and is none itself: a summary (`✖ 5 problems`, `Found 3 errors`) or a group label (`--- config ...`). */
-const SUMMARY = /^\s*(?:--- |[✖×]\s|\d+ problems?\b|found \d+ errors?\b|\d+ errors?\b.*\bwarnings?\b)/i
+const SUMMARY_LABEL = /^\s*(?:--- |[✖×]\s)/
+const SUMMARY_COUNT = /^\s*(?:\d+ problems?\b|found \d+ errors?\b|\d+ errors?\b.*\bwarnings?\b)/i
 
 const escaped = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
 
@@ -51,7 +52,7 @@ export const findingKeys = (output: string, roots: readonly string[]): string[] 
     const keys: string[] = []
     for (const raw of output.split(/\r?\n/)) {
         const line = raw.replaceAll("\\", "/").replace(rootPattern, "")
-        if (line.trim() === "" || SUMMARY.test(line)) continue
+        if (line.trim() === "" || SUMMARY_LABEL.test(line) || SUMMARY_COUNT.test(line)) continue
         const indented = /^\s/.test(line)
         if (!indented && !/\s/.test(line.trim())) {
             file = line.trim()

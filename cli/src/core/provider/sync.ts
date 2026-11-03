@@ -6,7 +6,7 @@ import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 
 // A reply saved by Windows PowerShell starts with a byte order mark, which JSON.parse refuses.
-const BOM = String.fromCharCode(0xfeff)
+const BOM = String.fromCodePoint(0xfeff)
 
 /**
  * `starci provider sync`: reads each provider's usage now from Orca (`orca account list --json`, read-only), or from a saved

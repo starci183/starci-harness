@@ -17,15 +17,28 @@ export const ownerLine = (need: NeedRow): string => {
         const keys = need.resolver.keys ?? (need.resolver.key === null ? [] : [need.resolver.key])
         return keys.map((key) => `${need.resolver?.kind === "task" ? (need.resolver.workflow ?? "?") : "?"}:${key}`).join(", ") || "-"
     }
-    if (need.resolver?.kind === "package") return `package edit${need.resolver.handoff === null ? "" : ` ${need.resolver.handoff.branch}`}${need.resolver.worker === null ? "" : ` by ${need.resolver.worker}`}`
+    if (need.resolver?.kind === "package") {
+        const handoffSuffix = need.resolver.handoff === null ? "" : ` ${need.resolver.handoff.branch}`
+        const workerSuffix = need.resolver.worker === null ? "" : ` by ${need.resolver.worker}`
+        return `package edit${handoffSuffix}${workerSuffix}`
+    }
     if (need.owner?.kind === "workflow") return `workflow ${need.owner.workflow}`
     if (need.owner?.kind === "worker") return `worker ${need.owner.worker}`
     return "-"
 }
 
 /** One waiter in a few words: where it waits and whether it is reported, parked or released. */
-export const waiterLine = (waiter: WaiterRow): string => `${waiter.workflow ?? "worker"}:${waiter.taskKey ?? "-"} (${waiter.task}${waiter.releasedAt === null ? (waiter.parkedAt === null ? ", reported" : ", parked") : ", released"})`
+export const waiterLine = (waiter: WaiterRow): string => `${waiter.workflow ?? "worker"}:${waiter.taskKey ?? "-"} (${waiter.task}${waiterStage(waiter)})`
+
+const waiterStage = (waiter: WaiterRow): string => {
+    if (waiter.releasedAt !== null) return ", released"
+    return waiter.parkedAt === null ? ", reported" : ", parked"
+}
 
 /** One relay in a line: the waiting workflow and branch, how it went, and each resolving commit with the commit it became there. */
-export const relayLine = (relay: RelayRecord): string =>
-    `relay to ${relay.workflow} (${relay.branch}, round ${String(relay.round)}): ${relay.status}${relay.relayed.length === 0 ? "" : ` ${relay.relayed.map((one) => `${one.from.slice(0, 12)} -> ${one.to.slice(0, 12)}`).join(", ")}`}${relay.files.length === 0 ? "" : `; conflict in ${relay.files.join(", ")}`}`
+export const relayLine = (relay: RelayRecord): string => {
+    const commitsText = relay.relayed.map((one) => `${one.from.slice(0, 12)} -> ${one.to.slice(0, 12)}`).join(", ")
+    const relayedSuffix = relay.relayed.length === 0 ? "" : ` ${commitsText}`
+    const filesSuffix = relay.files.length === 0 ? "" : `; conflict in ${relay.files.join(", ")}`
+    return `relay to ${relay.workflow} (${relay.branch}, round ${String(relay.round)}): ${relay.status}${relayedSuffix}${filesSuffix}`
+}

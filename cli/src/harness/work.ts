@@ -110,7 +110,7 @@ export const projectOf = async (cwd: string, mint = true): Promise<Project> => {
 
 const SEGMENT = "[a-z0-9][a-z0-9-]*"
 
-const WORK_SEGMENT = new RegExp(String.raw`^${SEGMENT}$`)
+const WORK_SEGMENT = new RegExp(`^${SEGMENT}$`)
 
 const UAT_ID = new RegExp(String.raw`^uat\.(${SEGMENT})\.(${SEGMENT}(?:\.${SEGMENT})*)$`)
 

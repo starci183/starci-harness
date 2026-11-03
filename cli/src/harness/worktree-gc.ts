@@ -59,39 +59,62 @@ export const inside = (folder: string, path: string): string | undefined => {
     return rel === "" || rel.startsWith("..") || rel.includes(":") ? undefined : rel.split(sep).join("/")
 }
 
+/** A worker's worktree: due once the Supervisor ended the worker. */
+const judgeWorker = (entry: Listed, first: string): Judged | undefined => {
+    const machine = openMachine()
+    try {
+        const workers = machine.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'supervisor_workers'").get()
+        const worker = workers === undefined ? undefined : machine.prepare("SELECT id, ended_at, ended_by FROM supervisor_workers WHERE id = ?").get(first)
+        if (worker !== undefined) {
+            const ended = worker.ended_at !== null
+            return { path: entry.path, kind: "worker", owner: first, due: ended, reason: ended ? `worker ${first} was ${String(worker.ended_by ?? "ended")}` : `worker ${first} is live` }
+        }
+    } finally {
+        machine.close()
+    }
+    return undefined
+}
+
+/** A workflow's worktree: due once the workflow ended and its Kernel is gone. */
+const judgeWorkflow = (db: NonNullable<ReturnType<typeof openExistingLedger>>, entry: Listed, first: string): Judged => {
+    const workflow = getWorkflow(db, first)
+    const ended = ENDED_WORKFLOW.has(workflow.status) && (workflow.header.runner !== "orca" || workflow.kernel.closedAt !== null || workflow.kernel.terminal === null)
+    return { path: entry.path, kind: "workflow", owner: first, due: ended, reason: ended ? `workflow ${first} is ${workflow.status}; its branch ${entry.branch ?? "-"} keeps its commits` : `workflow ${first} is ${workflow.status}` }
+}
+
+/** What a gc judges of one worktree before it is removed. */
+type Judged = Omit<GcEntry, "preserved" | "removed" | "detail">
+
+/** An Op worktree: due once its task ended and its Kernel settled it; an unknown task makes it an orphan. */
+const judgeOp = (db: ReturnType<typeof openExistingLedger>, entry: Listed, second: string): Judged => {
+    const task = db === undefined ? undefined : (() => { try { return getTask(db, second) } catch { return undefined } })()
+    if (task === undefined) return { path: entry.path, kind: "orphan", owner: null, due: true, reason: `no task ${second} in the ledger` }
+    const ended = isTerminal(task.status) && task.status !== "awaiting_owner" && task.intent === null
+    // An ended attempt whose Kernel has not decided keeps its worktree: nothing is removed before its settle (harness/prior.ts).
+    const pending = ended && db !== undefined && settlePending(db, task)
+    const settled = ended && !pending
+    let reason: string
+    if (settled) reason = `task ${task.id} is ${task.status}`
+    else if (pending) reason = `task ${task.id} is ${task.status}; its Kernel has not settled it (merge, discard or repair)`
+    else reason = `task ${task.id} is ${task.status}${task.intent === null ? "" : " (" + task.intent + ")"}`
+    return { path: entry.path, kind: "op", owner: task.id, due: settled, reason }
+}
+
 /** A harness worktree of one repository's state folder, with the owner whose end makes it due. */
-const judge = (root: string, entry: Listed, stateWorktrees: string): Omit<GcEntry, "preserved" | "removed" | "detail"> | undefined => {
+const judge = (root: string, entry: Listed, stateWorktrees: string): Judged | undefined => {
     const rel = inside(stateWorktrees, entry.path)
     if (rel === undefined) return undefined
     const db = openExistingLedger(root)
     try {
         const [first = "", second] = rel.split("/")
         if (first.endsWith(".ops") && second !== undefined) {
-            const task = db === undefined ? undefined : (() => { try { return getTask(db, second) } catch { return undefined } })()
-            if (task === undefined) return { path: entry.path, kind: "orphan", owner: null, due: true, reason: `no task ${second} in the ledger` }
-            const ended = isTerminal(task.status) && task.status !== "awaiting_owner" && task.intent === null
-            // An ended attempt whose Kernel has not decided keeps its worktree: nothing is removed before its settle (harness/prior.ts).
-            const pending = ended && db !== undefined && settlePending(db, task)
-            const settled = ended && !pending
-            const reason = settled ? `task ${task.id} is ${task.status}` : pending ? `task ${task.id} is ${task.status}; its Kernel has not settled it (merge, discard or repair)` : `task ${task.id} is ${task.status}${task.intent === null ? "" : " (" + task.intent + ")"}`
-            return { path: entry.path, kind: "op", owner: task.id, due: settled, reason }
+            return judgeOp(db, entry, second)
         }
         if (db?.prepare("SELECT 1 FROM workflows WHERE id = ?").get(first) !== undefined) {
-            const workflow = getWorkflow(db, first)
-            const ended = ENDED_WORKFLOW.has(workflow.status) && (workflow.header.runner !== "orca" || workflow.kernel.closedAt !== null || workflow.kernel.terminal === null)
-            return { path: entry.path, kind: "workflow", owner: first, due: ended, reason: ended ? `workflow ${first} is ${workflow.status}; its branch ${entry.branch ?? "-"} keeps its commits` : `workflow ${first} is ${workflow.status}` }
+            return judgeWorkflow(db, entry, first)
         }
-        const machine = openMachine()
-        try {
-            const workers = machine.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'supervisor_workers'").get()
-            const worker = workers === undefined ? undefined : machine.prepare("SELECT id, ended_at, ended_by FROM supervisor_workers WHERE id = ?").get(first)
-            if (worker !== undefined) {
-                const ended = worker.ended_at !== null
-                return { path: entry.path, kind: "worker", owner: first, due: ended, reason: ended ? `worker ${first} was ${String(worker.ended_by ?? "ended")}` : `worker ${first} is live` }
-            }
-        } finally {
-            machine.close()
-        }
+        const worker = judgeWorker(entry, first)
+        if (worker !== undefined) return worker
         return { path: entry.path, kind: "orphan", owner: null, due: true, reason: `no task, workflow or worker of this project owns ${rel}` }
     } finally {
         db?.close()
@@ -187,15 +210,17 @@ const busyLeftovers = (root: string, judged: readonly GcEntry[], now: boolean): 
             .filter((record) => !judged.some((entry) => samePath(entry.path, record.path)))
             .map((record) => {
                 const due = now || busyDue(record) || !existsSync(record.path)
-                const reason = `left busy at attempt ${String(record.attempt)}${record.holders === "" ? "" : ` (${record.holders})`}${due ? "" : `; retried from ${record.nextAt}`}`
-                return { path: record.path, kind: (WORKTREE_KINDS.includes(record.kind as WorktreeKind) ? record.kind : "orphan") as WorktreeKind, owner: record.owner, due, reason, preserved: null, removed: false, busy: true, detail: "", repo: record.repo }
+                const holdersSuffix = record.holders === "" ? "" : ` (${record.holders})`
+                const dueSuffix = due ? "" : `; retried from ${record.nextAt}`
+                const reason = `left busy at attempt ${String(record.attempt)}${holdersSuffix}${dueSuffix}`
+                return { path: record.path, kind: (WORKTREE_KINDS.has(record.kind as WorktreeKind) ? record.kind : "orphan") as WorktreeKind, owner: record.owner, due, reason, preserved: null, removed: false, busy: true, detail: "", repo: record.repo }
             })
     } finally {
         db.close()
     }
 }
 
-const WORKTREE_KINDS: readonly WorktreeKind[] = ["op", "workflow", "worker", "package", "orphan"]
+const WORKTREE_KINDS: ReadonlySet<WorktreeKind> = new Set<WorktreeKind>(["op", "workflow", "worker", "package", "orphan"])
 
 /** The package edit worktrees of this Git repository whose handed-off head is on main. */
 const landedPackages = async (root: string): Promise<GcEntry[]> => {
@@ -308,32 +333,158 @@ const liveWorkerReason = (path: string): string | undefined => {
     }
 }
 
+/** Why a selected path is neither a listed linked worktree of this repository nor a proven project remnant; undefined when it is one. */
+const provenanceGap = async (root: string, path: string, actual: string, entry: Listed | undefined): Promise<string | undefined> => {
+    if (entry !== undefined) return (await sameRepository(root, actual)) ? undefined : "selected path is not a listed linked worktree of this repository"
+    try {
+        inspectRemnant(root, path)
+        return undefined
+    } catch (error: unknown) {
+        return `selected path is not a listed linked worktree or a proven project remnant: ${error instanceof Error ? error.message : "provenance unavailable"}`
+    }
+}
+
+/** Why a selected path still has a live holder: a live worker, a process working in it, or an unreadable process inventory. */
+const liveReason = (actual: string, processes: Awaited<ReturnType<typeof listProcesses>>): string | undefined =>
+    liveWorkerReason(actual) ?? (typeof processes === "string" ? "process inventory unavailable; liveness cannot be proved" : processBlockReason(actual, processes))
+
+/** One explicitly selected path: blocked when it is protected or live, else due with its owner's judgement or as a project remnant. */
+const selectOne = async (requested: string, found: { readonly root: string; readonly listed: readonly Listed[]; readonly known: readonly Collected[]; readonly selection: GcSelection; readonly main: string; readonly callers: readonly string[]; readonly processes: Awaited<ReturnType<typeof listProcesses>> }): Promise<Collected> => {
+    const { root, listed, known, selection, main, callers, processes } = found
+    const path = resolve(selection.caller ?? process.cwd(), requested)
+    const base: Collected = { path, kind: "orphan", owner: null, due: false, reason: "", preserved: null, removed: false, detail: "" }
+    const blocked = (reason: string): Collected => ({ ...base, reason, blocked: true })
+    if (!existsSync(path)) return blocked("selected path does not exist")
+    const actual = canonical(path)
+    if (samePath(main, actual)) return blocked("the primary checkout is protected")
+    if (callers.some((caller) => contains(actual, caller))) return blocked("the caller's checkout is protected")
+    const entry = listed.find((one) => existsSync(one.path) && samePath(canonical(one.path), actual))
+    const unprovable = await provenanceGap(root, path, actual, entry)
+    if (unprovable !== undefined) return blocked(unprovable)
+    const owner = entry === undefined ? judge(root, { path, branch: null }, join(projectDir(root), "worktrees")) : known.find((one) => samePath(one.path, entry.path))
+    if (owner !== undefined && !owner.due) return blocked(owner.reason)
+    const held = liveReason(actual, processes)
+    if (held !== undefined) return blocked(held)
+    return { ...base, ...owner, path: entry?.path ?? path, due: true, reason: entry === undefined ? "explicitly selected project remnant; quarantine all bytes and unlink dependency links without deleting" : "explicitly selected linked worktree; preserve its work and references before removal", ...(entry === undefined ? { remnant: true } : {}) }
+}
+
 const selectedPaths = async (root: string, listed: readonly Listed[], known: readonly Collected[], selection: GcSelection): Promise<Collected[]> => {
     const main = canonical(await mainCheckout(root))
     const callers = [canonical(process.cwd()), canonical(selection.caller ?? process.cwd())]
     const processes = await listProcesses(true)
     return inOrder([...new Set(selection.paths ?? [])], async (requested): Promise<Collected> => {
-        const path = resolve(selection.caller ?? process.cwd(), requested)
-        const base: Collected = { path, kind: "orphan", owner: null, due: false, reason: "", preserved: null, removed: false, detail: "" }
-        const blocked = (reason: string): Collected => ({ ...base, reason, blocked: true })
-        if (!existsSync(path)) return blocked("selected path does not exist")
-        const actual = canonical(path)
-        if (samePath(main, actual)) return blocked("the primary checkout is protected")
-        if (callers.some((caller) => contains(actual, caller))) return blocked("the caller's checkout is protected")
-        const entry = listed.find((one) => existsSync(one.path) && samePath(canonical(one.path), actual))
-        if (entry === undefined) {
-            try {
-                inspectRemnant(root, path)
-            } catch (error: unknown) {
-                return blocked(`selected path is not a listed linked worktree or a proven project remnant: ${error instanceof Error ? error.message : "provenance unavailable"}`)
-            }
-        } else if (!(await sameRepository(root, actual))) return blocked("selected path is not a listed linked worktree of this repository")
-        const owner = entry === undefined ? judge(root, { path, branch: null }, join(projectDir(root), "worktrees")) : known.find((one) => samePath(one.path, entry.path))
-        if (owner !== undefined && !owner.due) return blocked(owner.reason)
-        const held = liveWorkerReason(actual) ?? (typeof processes === "string" ? "process inventory unavailable; liveness cannot be proved" : processBlockReason(actual, processes))
-        if (held !== undefined) return blocked(held)
-        return { ...base, ...owner, path: entry?.path ?? path, due: true, reason: entry === undefined ? "explicitly selected project remnant; quarantine all bytes and unlink dependency links without deleting" : "explicitly selected linked worktree; preserve its work and references before removal", ...(entry === undefined ? { remnant: true } : {}) }
+        return selectOne(requested, { root, listed, known, selection, main, callers, processes })
     })
+}
+
+/** Every worktree the harness made for the repository that is judged, the unlisted Op leftovers, the landed packages and the project remnants. */
+const knownWorktrees = async (root: string, listed: readonly Listed[], stateWorktrees: string, now: boolean): Promise<Collected[]> => {
+    const owned = [
+        ...listed.flatMap((entry) => {
+            const one = judge(root, entry, stateWorktrees)
+            return one === undefined ? [] : [{ ...one, preserved: null, removed: false, detail: "" }]
+        }),
+        ...unlistedOpLeftovers(root, listed),
+        ...(await landedPackages(root)),
+    ]
+    const remnants = remnantsUnder(root, listed, now).filter((remnant) => !owned.some((entry) => samePath(entry.path, remnant.path)))
+    const known: Collected[] = [...owned, ...remnants]
+    return known
+}
+
+/** The busy record of a worktree folder in the ledger of `root`, if one is held. */
+const busyOf = (root: string, path: string): ReturnType<typeof busyRecordOf> => {
+    const db = openExistingLedger(root)
+    try {
+        return db === undefined ? undefined : busyRecordOf(db, path)
+    } finally {
+        db?.close()
+    }
+}
+
+/** The entry when its folder and its repository are this project's; nothing otherwise. */
+const sameRepositoryEntry = async (root: string, stateWorktrees: string, entry: Collected): Promise<Collected[]> => {
+    const repo = entry.repo ?? (existsSync(join(entry.path, ".git")) ? entry.path : root)
+    const pathOwned = existsSync(join(entry.path, ".git")) ? await sameRepository(root, entry.path) : inside(stateWorktrees, entry.path) !== undefined
+    return pathOwned && (await sameRepository(root, repo)) ? [entry] : []
+}
+
+/** An explicitly selected project remnant: every byte quarantined (re-judged first), recorded as a gc event. */
+const quarantineSelected = async (root: string, found: { readonly collected: Collected; readonly entry: GcEntry; readonly selection: GcSelection }): Promise<GcEntry> => {
+    const { collected, entry, selection } = found
+        const custody = await quarantineRemnant(root, entry.path, async () => {
+            const fresh = (await selectedPaths(root, await listWorktrees(root), [collected], { paths: [entry.path], caller: selection.caller ?? process.cwd() }))[0]
+            if (fresh === undefined || fresh.blocked === true || !fresh.due) throw new Refusal("WORKTREE_GC_BLOCKED", fresh?.reason ?? "selected remnant scope cannot be proved; nothing moved")
+        })
+        const result = { ...entry, preserved: custody.directory, removed: custody.removed, quarantine: custody.quarantine, detail: custody.detail }
+        const db = openExistingLedger(root)
+        try {
+            if (db !== undefined) recordEvent(db, "worktree-gc", entry.owner, result)
+        } finally {
+            db?.close()
+        }
+        return result
+}
+
+/** The selected path as it stands now, when it became blocked since it was judged; undefined while it still may go. */
+const blockedNow = async (root: string, collected: Collected, selection: GcSelection): Promise<GcEntry | undefined> => {
+    const [fresh] = await selectedPaths(root, await listWorktrees(root), [collected], { paths: [collected.path], caller: selection.caller ?? process.cwd() })
+    return fresh?.blocked === true ? reported(fresh) : undefined
+}
+
+/** Removes the worktree: an Op through its owner's removal, any other directly. */
+const removeFor = async (root: string, entry: GcEntry, how: { readonly explicit: boolean; readonly now: boolean; readonly repo: string | undefined; readonly remnant: boolean | undefined }): Promise<Awaited<ReturnType<typeof removeWorktree>>> => {
+    const { explicit, now, repo, remnant } = how
+    const removal =
+        !explicit && entry.kind === "op" && entry.owner !== null
+            ? await removeOpWorktree(root, entry.owner, now).then((made) => (made === undefined ? removeWorktree(root, entry, true, repo, false, now) : { removed: made.removed, busy: made.busy === true, detail: made.detail }))
+            : await removeWorktree(root, entry, entry.kind !== "package" && remnant !== true, repo, remnant === true, now)
+    return removal
+}
+
+/** A folder left busy waits for its backoff: the entry says so, and nothing is preserved again or tried before then. */
+const busyHold = (root: string, entry: GcEntry, now: boolean): GcEntry | undefined => {
+    const busy = busyOf(root, entry.path)
+    if (busy !== undefined && !now && !busyDue(busy) && existsSync(entry.path)) {
+        const holdersSuffix = busy.holders === "" ? "" : `; ${busy.holders}`
+        return { ...entry, due: false, busy: true, detail: `left busy (attempt ${String(busy.attempt)}${holdersSuffix}); retried from ${busy.nextAt}` }
+    }
+    return undefined
+}
+
+/** One due worktree: preserved, re-judged when it was selected, then removed, and recorded as a gc event. */
+const removeCollected = async (root: string, collected: Collected, run: { readonly explicit: boolean; readonly now: boolean; readonly selection: GcSelection }): Promise<GcEntry> => {
+    const { explicit, now, selection } = run
+    const { repo, remnant } = collected
+    const entry = reported(collected)
+    if (!entry.due) return entry
+    // A folder left busy waits for its backoff: nothing is preserved again or tried before then.
+    const waiting = busyHold(root, entry, now)
+    if (waiting !== undefined) return waiting
+    if (explicit) {
+        const blocked = await blockedNow(root, collected, selection)
+        if (blocked !== undefined) return blocked
+    }
+    if (explicit && remnant === true) {
+        return await quarantineSelected(root, { collected, entry, selection })
+    }
+    const snapshot = await preserveCheckout(root, entry.path)
+    await snapshot?.verify()
+    if (explicit) {
+        const blocked = await blockedNow(root, collected, selection)
+        if (blocked !== undefined) return { ...blocked, preserved: snapshot?.directory ?? null }
+        await snapshot?.verify()
+    }
+    const removal = await removeFor(root, entry, { explicit, now, repo, remnant })
+    const db = openExistingLedger(root)
+    if (db !== undefined) {
+        try {
+            recordEvent(db, "worktree-gc", entry.owner, { path: entry.path, kind: entry.kind, reason: entry.reason, preserved: snapshot?.directory ?? null, ...removal })
+        } finally {
+            db.close()
+        }
+    }
+    return { ...entry, preserved: snapshot?.directory ?? null, ...removal }
 }
 
 /**
@@ -348,21 +499,10 @@ const selectedPaths = async (root: string, listed: readonly Listed[], known: rea
 export const worktreeGc = async (root: string, dryRun: boolean, now = false, selection: GcSelection = {}): Promise<GcEntry[]> => {
     const stateWorktrees = join(projectDir(root), "worktrees")
     const listed = await listWorktrees(root)
-    const owned = [
-        ...listed.flatMap((entry) => {
-            const one = judge(root, entry, stateWorktrees)
-            return one === undefined ? [] : [{ ...one, preserved: null, removed: false, detail: "" }]
-        }),
-        ...unlistedOpLeftovers(root, listed),
-        ...(await landedPackages(root)),
-    ]
-    const remnants = remnantsUnder(root, listed, now).filter((remnant) => !owned.some((entry) => samePath(entry.path, remnant.path)))
-    const known: Collected[] = [...owned, ...remnants]
+    const known = await knownWorktrees(root, listed, stateWorktrees, now)
     const candidates: Collected[] = [...known, ...busyLeftovers(root, known, now)]
     const scoped = await inOrder(candidates, async (entry): Promise<Collected[]> => {
-        const repo = entry.repo ?? (existsSync(join(entry.path, ".git")) ? entry.path : root)
-        const pathOwned = existsSync(join(entry.path, ".git")) ? await sameRepository(root, entry.path) : inside(stateWorktrees, entry.path) !== undefined
-        return pathOwned && (await sameRepository(root, repo)) ? [entry] : []
+        return sameRepositoryEntry(root, stateWorktrees, entry)
     })
     const explicit = (selection.paths?.length ?? 0) > 0
     const judged = explicit ? await selectedPaths(root, listed, scoped.flat(), selection) : scoped.flat()
@@ -374,57 +514,7 @@ export const worktreeGc = async (root: string, dryRun: boolean, now = false, sel
     // The prior-work store keeps one patch per key, of a kept kind only; each other row is dropped with a prior-dropped event.
     if (!explicit) pruneUnkeptPrior(root)
     const done = await inOrder(judged, async (collected): Promise<GcEntry> => {
-        const { repo, remnant } = collected
-        const entry = reported(collected)
-        if (!entry.due) return entry
-        // A folder left busy waits for its backoff: nothing is preserved again or tried before then.
-        const busy = (() => {
-            const db = openExistingLedger(root)
-            try {
-                return db === undefined ? undefined : busyRecordOf(db, entry.path)
-            } finally {
-                db?.close()
-            }
-        })()
-        if (busy !== undefined && !now && !busyDue(busy) && existsSync(entry.path)) return { ...entry, due: false, busy: true, detail: `left busy (attempt ${String(busy.attempt)}${busy.holders === "" ? "" : `; ${busy.holders}`}); retried from ${busy.nextAt}` }
-        if (explicit) {
-            const fresh = (await selectedPaths(root, await listWorktrees(root), [collected], { paths: [entry.path], caller: selection.caller ?? process.cwd() }))[0]
-            if (fresh?.blocked === true) return reported(fresh)
-        }
-        if (explicit && remnant === true) {
-            const custody = await quarantineRemnant(root, entry.path, async () => {
-                const fresh = (await selectedPaths(root, await listWorktrees(root), [collected], { paths: [entry.path], caller: selection.caller ?? process.cwd() }))[0]
-                if (fresh === undefined || fresh.blocked === true || !fresh.due) throw new Refusal("WORKTREE_GC_BLOCKED", fresh?.reason ?? "selected remnant scope cannot be proved; nothing moved")
-            })
-            const result = { ...entry, preserved: custody.directory, removed: custody.removed, quarantine: custody.quarantine, detail: custody.detail }
-            const db = openExistingLedger(root)
-            try {
-                if (db !== undefined) recordEvent(db, "worktree-gc", entry.owner, result)
-            } finally {
-                db?.close()
-            }
-            return result
-        }
-        const snapshot = await preserveCheckout(root, entry.path)
-        await snapshot?.verify()
-        if (explicit) {
-            const fresh = (await selectedPaths(root, await listWorktrees(root), [collected], { paths: [entry.path], caller: selection.caller ?? process.cwd() }))[0]
-            if (fresh?.blocked === true) return { ...reported(fresh), preserved: snapshot?.directory ?? null }
-            await snapshot?.verify()
-        }
-        const removal =
-            !explicit && entry.kind === "op" && entry.owner !== null
-                ? await removeOpWorktree(root, entry.owner, now).then((made) => (made === undefined ? removeWorktree(root, entry, true, repo, false, now) : { removed: made.removed, busy: made.busy === true, detail: made.detail }))
-                : await removeWorktree(root, entry, entry.kind !== "package" && remnant !== true, repo, remnant === true, now)
-        const db = openExistingLedger(root)
-        if (db !== undefined) {
-            try {
-                recordEvent(db, "worktree-gc", entry.owner, { path: entry.path, kind: entry.kind, reason: entry.reason, preserved: snapshot?.directory ?? null, ...removal })
-            } finally {
-                db.close()
-            }
-        }
-        return { ...entry, preserved: snapshot?.directory ?? null, ...removal }
+        return removeCollected(root, collected, { explicit, now, selection })
     })
     // Heal this repository's local record; other projects heal their own records when they next resolve package sources.
     const healed = done.some((entry) => entry.kind === "package" && entry.removed) ? healRecord(root).healed : []

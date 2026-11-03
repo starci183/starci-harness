@@ -36,7 +36,7 @@ export const TASK_HELD = "task-held"
 export const HOLD_RELEASED = "hold-released"
 
 /** The decision kinds on a task that a command answering it without moving the task holds. */
-const HELD_KINDS: readonly string[] = ["red", "question", "check-premise", "conflict"]
+const HELD_KINDS: ReadonlySet<string> = new Set(["red", "question", "check-premise", "conflict"])
 
 /** What a hold reads of the command that makes it. */
 export interface HoldingCommand {
@@ -60,7 +60,7 @@ export const decidedTasks = (db: DatabaseSync, answers: readonly string[]): { re
     answers.flatMap((id) => {
         const row = db.prepare("SELECT kind, subject FROM decisions WHERE id = ? AND scope = 'kernel'").get(id)
         const subject = textOf(row?.subject) ?? ""
-        return row !== undefined && HELD_KINDS.includes(String(row.kind)) && subject.startsWith("t-") ? [{ id, task: subject }] : []
+        return row !== undefined && HELD_KINDS.has(String(row.kind)) && subject.startsWith("t-") ? [{ id, task: subject }] : []
     })
 
 /**
@@ -142,8 +142,12 @@ export const holdOf = (db: DatabaseSync, taskId: string): string | null => {
 }
 
 /** How a hold's condition reads in one line. */
-export const holdLine = (until: Hold): string =>
-    until.ticket !== undefined ? `ticket ${until.ticket}` : until.commit !== undefined ? `commit ${until.commit} on harness main` : until.need !== undefined ? `need ${until.need}` : `time ${until.time ?? "-"}`
+export const holdLine = (until: Hold): string => {
+    if (until.ticket !== undefined) return `ticket ${until.ticket}`
+    if (until.commit !== undefined) return `commit ${until.commit} on harness main`
+    if (until.need !== undefined) return `need ${until.need}`
+    return `time ${until.time ?? "-"}`
+}
 
 /** Why a hold's condition is met, or null while it is not: the ticket ended, harness main holds the commit, the need ended, or the time passed. */
 const metBy = async (root: string, until: Hold): Promise<string | null> => {

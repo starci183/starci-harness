@@ -11,6 +11,7 @@ import { loadHeavyRules, withHeavySlot } from "./heavy.js"
 import type { ToolRun } from "../shared/exec.js"
 import { stateBase } from "./ledger.js"
 import { locateOps } from "./ops.js"
+import { trimEndChars } from "../shared/trim.js"
 
 const uatSchema = z.object({
     schema: z.literal("starci/uat@1"),
@@ -340,7 +341,7 @@ const PAGES_LINE = /^starci-uat-pages (\{.*\})\s*$/
 
 /** The pages a run's stderr tallied (its last tally line), or undefined when it printed none. */
 export const pagesOf = (stderr: string): UatReceipt["pages"] => {
-    const line = stderr.split("\n").map((each) => PAGES_LINE.exec(each)?.[1]).filter((each): each is string => each !== undefined).at(-1)
+    const line = stderr.split("\n").map((each) => PAGES_LINE.exec(each)?.[1]).findLast((each): each is string => each !== undefined)
     if (line === undefined) return undefined
     try {
         const parsed = uatReceiptSchema.shape.pages.safeParse(JSON.parse(line))
@@ -361,7 +362,7 @@ export const appUnserved = (receipt: UatReceipt): boolean => receipt.pages !== u
 
 const underFolder = (folder: string, parent: string): boolean => {
     const fold = (path: string): string => {
-        const full = resolve(path).replaceAll("\\", "/").replace(/\/+$/, "")
+        const full = trimEndChars(resolve(path).replaceAll("\\", "/"), "/")
         return process.platform === "win32" ? full.toLowerCase() : full
     }
     const child = fold(folder)
