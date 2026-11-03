@@ -6,10 +6,11 @@ import type { ViewerId } from "@starci/next-data"
 import { ThemeProvider } from "next-themes"
 import type { ReactNode } from "react"
 import { SWRConfig, useSWRConfig } from "swr"
+import { useViewerId } from "@/hooks/auth"
 import { useAuthSessionEffect } from "@/hooks/effects"
 import { SwrSideEffects } from "@/hooks/swr"
 import { viewerCache } from "@/modules/viewer-cache"
-import { ReduxProvider, useAppSelector } from "@/redux"
+import { ReduxProvider } from "@/redux"
 
 /** What the app providers wrap: the routed tree. */
 type AppProvidersProps = { readonly children: ReactNode }
@@ -39,33 +40,27 @@ const ViewerCacheBinding = (): null => {
     return null
 }
 
-/** The person the session belongs to: undefined until modules/auth answers, null when signed out (the viewer of @starci/next-data). */
-const useViewerId = (): ViewerId => {
-    const session = useAppSelector((state) => state.session)
-    if (session.status === "unknown") return undefined
-    return session.session?.userId ?? null
-}
-
 /**
  * Each viewer gets their own SWR cache (FE-BOUNDARY-3): a change of person remounts the config on a fresh Map, and
  * `viewerSwrConfig` lists pollingRestart so a read whose refreshInterval stopped at 0 polls again for newer data.
  */
-const ViewerSwrScope = (props: AppProvidersProps): ReactNode => {
-    const viewerId = useViewerId()
-    return (
-        <SWRConfig key={viewerCacheKey(viewerId)} value={viewerSwrConfig(SWR_DEFAULTS)}>
-            <ViewerCacheBinding />
-            <SwrSideEffects />
-            {props.children}
-            <ToastProvider />
-        </SWRConfig>
-    )
-}
+const renderViewerScope = (viewerId: ViewerId, children: ReactNode): ReactNode => (
+    <SWRConfig key={viewerCacheKey(viewerId)} value={viewerSwrConfig(SWR_DEFAULTS)}>
+        <ViewerCacheBinding />
+        <SwrSideEffects />
+        {children}
+        <ToastProvider />
+    </SWRConfig>
+)
+
+/** The SWR config of the viewer on screen around the routed tree. */
+const ViewerSwrScope = (props: AppProvidersProps): ReactNode => renderViewerScope(useViewerId(), props.children)
 
 /**
  * The one client provider stack the locale layout mounts, outer to inner: the theme (light and dark through the `.light` /
- * `.dark` class the grammar and the brand layer read, the system theme by default), the redux store, the session effect, the viewer-keyed SWR
- * config, the app-wide effects and the HeroUI toast region modules/toast writes to. Each part is composed here, in its one owner.
+ * `.dark` class the grammar and the brand layer read, the system theme by default), the redux store, the session effect, the
+ * SWR config keyed by the viewer, the app-wide effects and the HeroUI toast region modules/toast writes to. Each part is
+ * composed here, in its one owner.
  */
 export const AppProviders = (props: AppProvidersProps) => (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
