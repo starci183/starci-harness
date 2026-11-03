@@ -77,13 +77,17 @@ test('3. the contract step waits for the doors and for the sync, then revokes th
   assert.match(created!.file, /^db\/migrations\/\d{14}_contract_revoke-auth-grants\.sql$/u);
   const text = fs.readFileSync(path.join(root, created!.file), 'utf8');
   for (const line of ['revoke select, insert, update on table auth.users from app_be;', 'revoke select, insert on table auth.identities from app_be;', 'revoke usage on schema auth from app_be;']) assert.ok(text.includes(line), line);
-  assert.deepEqual(migrateAccountDoors({ root, contract: true, write: true, now: () => NOW }).changes, [], 'the contract step is done once');
+  const again = migrateAccountDoors({ root, contract: true, write: true, now: () => NOW });
+  assert.deepEqual(again.changes, [], 'the contract step is done once');
+  assert.match(again.next.join(' '), /already in the chain/u);
 });
 
 test('4. a full app is refused, and an app that never granted on schema auth has nothing to revoke', () => {
   assert.match(migrateAccountDoors({ root: app({}, { edition: 'full' }), now: () => NOW }).findings[0]!.reason, /lite edition/u);
   const clean = app({ [BASELINE]: 'create role app_be login noinherit nobypassrls nosuperuser;\n', 'db/migrations/20260102120000_account-doors.sql': DOORS }, { synced: true });
-  assert.deepEqual(migrateAccountDoors({ root: clean, contract: true, now: () => NOW }).changes, []);
+  const nothing = migrateAccountDoors({ root: clean, contract: true, now: () => NOW });
+  assert.deepEqual(nothing.changes, []);
+  assert.match(accountDoorsMarkdown(nothing), /no migration grants the application role on schema auth/u, 'an empty contract step says why');
 });
 
 test('5. the two migrations pass the database checks: R255 flags the old grants until the contract migration revokes them', async () => {

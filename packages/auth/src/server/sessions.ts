@@ -6,8 +6,15 @@ import type { AuthClock, AuthIds, AuthLogger, AuthSubject, DeviceMeta, RefreshTo
 import { digestOf } from "./primitives.ts"
 import type { AuthTokens } from "./tokens.ts"
 
-/** A rotated token presented again this soon after its rotation is a racing tab, not a theft. */
+/**
+ * A rotated token presented again this soon after its rotation is a racing request or a browser that never received the successor (the
+ * response was cut by a navigation): it gets a successor of its own, set as the cookie, so the browser never keeps a spent token. Later,
+ * it is a replay and ends the session.
+ */
 export const DEFAULT_REUSE_GRACE_MS = 30_000
+
+/** How many successors one rotated token may obtain within the grace window; one more is a replay and ends the session. */
+export const RACED_SUCCESSORS_MAX = 3
 
 /** The log event of a replayed refresh token. */
 export const REFRESH_REUSE_EVENT = "auth.refresh-reuse-detected"
@@ -17,7 +24,6 @@ const MILLISECONDS = 1000
 type Rotation =
     | { readonly kind: "rotated"; readonly row: RefreshTokenRecord; readonly next: string }
     | { readonly kind: "invalid" }
-    | { readonly kind: "raced"; readonly row: RefreshTokenRecord }
     | { readonly kind: "reused"; readonly sessionId: string }
 
 /** What the sessions need from the module. */
@@ -31,8 +37,8 @@ export interface SessionsDeps {
 
 /**
  * Device sessions: opens one at sign-in, rotates its refresh token on every refresh (a replayed token ends the session) and ends it
- * at sign-out. A token rotated within the grace window is a racing request: it is answered with an access token only, the cookie
- * is left as the winner wrote it.
+ * at sign-out. A token rotated within the grace window gets a successor of its own in the same session, at most
+ * {@link RACED_SUCCESSORS_MAX} times.
  */
 export class AuthSessions {
     readonly #deps: SessionsDeps
@@ -69,8 +75,9 @@ export class AuthSessions {
 
     /**
      * Exchanges a refresh token for a new pair; the presented token is spent. Throws when it is unknown, expired, or rotated long
-     * ago (reuse ends the session). A token a sibling request rotated within the grace window answers an access token marked
-     * `cookieKept`, so the caller leaves the cookie alone: the sibling already wrote the successor.
+     * ago (reuse ends the session). A token rotated within the grace window gets a successor of its own in the same session (its
+     * cookie is set: the response of the first rotation may never have reached the browser), at most {@link RACED_SUCCESSORS_MAX}
+     * times; one more replay is reuse.
      */
     async refresh(presented: string): Promise<SessionTokens> {
         if (presented === "") throw new AuthError(AUTH_ERROR_CODES.RefreshInvalid)
@@ -79,12 +86,13 @@ export class AuthSessions {
         const rotation = await this.#store.transaction(async (tx): Promise<Rotation> => {
             const row = await tx.findTokenForUpdate(digestOf(presented))
             if (row === null || row.expiresAt <= now) return { kind: "invalid" }
-            if (row.usedAt !== null) {
-                return now.getTime() - row.usedAt.getTime() <= this.#graceMs
-                    ? { kind: "raced", row }
-                    : { kind: "reused", sessionId: row.sessionId }
+            if (row.usedAt === null) {
+                await tx.markTokenUsed(row.id, now)
+            } else {
+                const raced = now.getTime() - row.usedAt.getTime() <= this.#graceMs
+                if (!raced || row.racedCount >= RACED_SUCCESSORS_MAX) return { kind: "reused", sessionId: row.sessionId }
+                await tx.markTokenRaced(row.id, row.racedCount + 1)
             }
-            await tx.markTokenUsed(row.id, now)
             await tx.insertToken({
                 id: this.#deps.ids.next(),
                 sessionId: row.sessionId,
@@ -101,7 +109,6 @@ export class AuthSessions {
             throw new AuthError(AUTH_ERROR_CODES.RefreshReused)
         }
         if (rotation.kind === "invalid") throw new AuthError(AUTH_ERROR_CODES.RefreshInvalid)
-        if (rotation.kind === "raced") return this.#accessOf(rotation.row, presented, now)
         const user = await this.#deps.options.accounts.find(rotation.row.userId)
         if (user === undefined || user.disabled || user.email === null) {
             await this.#store.closeSession(rotation.row.sessionId)
@@ -154,8 +161,7 @@ export class AuthSessions {
             await this.#store.closeSession(row.sessionId)
             throw new AuthError(AUTH_ERROR_CODES.AccountDisabled)
         }
-        const tokens = await this.#tokensFor({ userId: user.id, email: user.email }, row.sessionId, presented, now)
-        return { ...tokens, cookieKept: true }
+        return this.#tokensFor({ userId: user.id, email: user.email }, row.sessionId, presented, now)
     }
 
     async #tokensFor(subject: AuthSubject, sessionId: string, refreshToken: string, now: Date): Promise<SessionTokens> {

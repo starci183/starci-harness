@@ -31,4 +31,8 @@ export class IdentityRefreshTokenEntity {
     /** When the token was rotated away, or null while it is the live one. */
     @Column({ name: "used_at", type: "timestamptz", nullable: true })
     usedAt!: Date | null
+
+    /** How many successors replays of this token obtained within the grace window after its rotation (bounded). */
+    @Column({ name: "raced_count", type: "integer", default: 0 })
+    racedCount!: number
 }

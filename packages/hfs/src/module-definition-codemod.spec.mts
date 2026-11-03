@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import prettier from 'prettier';
 import ts from 'typescript';
 import { CODEMODS, codemodMain } from '../codemod/main.mjs';
 import { migrateModuleDefinition, moduleDefinitionMarkdown, transformModuleDefinition } from '../codemod/module-definition.mjs';
@@ -147,7 +148,7 @@ function app(files: Record<string, string>): { root: string; done(): void } {
   return { root, done: () => fs.rmSync(root, { recursive: true, force: true }) };
 }
 
-test('7. the app is migrated file by file; a dry run writes nothing, --execute rewrites and adds the dependency once', () => {
+test('7. the app is migrated file by file; a dry run writes nothing, --execute rewrites and adds the dependency once', async () => {
   const fixture = app({
     'package.json': `${JSON.stringify({ name: 'demo', dependencies: { '@nestjs/common': '11.2.5' } }, null, 2)}\n`,
     'be/src/features/api/hours/hours.module-definition.ts': DESTRUCTURED,
@@ -156,18 +157,18 @@ test('7. the app is migrated file by file; a dry run writes nothing, --execute r
     'be/src/modules/platform/clock/clock.service.ts': 'export const clock = 1\n',
   });
   try {
-    const dry = migrateModuleDefinition({ root: fixture.root, ts });
+    const dry = await migrateModuleDefinition({ root: fixture.root, ts, prettier: null });
     assert.deepEqual([dry.schema, dry.filesScanned, dry.filesChanged.length, dry.write, dry.dependency.declared, dry.dependency.added], ['starci/module-definition-report@1', 2, 2, false, false, false]);
     assert.equal(fs.readFileSync(path.join(fixture.root, 'be/src/features/api/hours/hours.module-definition.ts'), 'utf8'), DESTRUCTURED, 'a dry run writes nothing');
     assert.match(moduleDefinitionMarkdown(dry), /2 would be rewritten/);
     const out: string[] = [];
-    assert.equal(codemodMain(['module-definition', '--execute'], { cwd: fixture.root, stdout: (text) => out.push(text) }), 0);
+    assert.equal(await codemodMain(['module-definition', '--execute'], { cwd: fixture.root, stdout: (text) => out.push(text) }), 0);
     assert.match(out.join(''), /was added to package.json/);
     assert.match(fs.readFileSync(path.join(fixture.root, 'be/src/modules/platform/http/http.module-definition.ts'), 'utf8'), /defineCapabilityModule<HttpOptions>/);
     const manifest = JSON.parse(fs.readFileSync(path.join(fixture.root, 'package.json'), 'utf8')) as { dependencies: Record<string, string> };
     assert.deepEqual(Object.keys(manifest.dependencies), ['@nestjs/common', '@starci/nest-kit']);
     assert.match(manifest.dependencies['@starci/nest-kit'] as string, /^\d+\.\d+\.\d+$/);
-    const again = migrateModuleDefinition({ root: fixture.root, ts });
+    const again = await migrateModuleDefinition({ root: fixture.root, ts, prettier: null });
     assert.deepEqual([again.filesChanged, again.changes, again.findings, again.dependency.declared], [[], [], [], true]);
     assert.ok(CODEMODS.includes('module-definition'));
   } finally {
@@ -175,15 +176,107 @@ test('7. the app is migrated file by file; a dry run writes nothing, --execute r
   }
 });
 
-test('8. a case left for a person exits 1 and the app without a back end is refused', () => {
+test('8. a case left for a person exits 1 and the app without a back end is refused', async () => {
   const stuck = app({ 'be/src/features/api/hours/hours.module-definition.ts': DESTRUCTURED.replace('"register"', '"forRoot"') });
   const bare = app({ 'README.md': '# app\n' });
   try {
-    assert.equal(codemodMain(['module-definition'], { cwd: stuck.root, stdout: () => undefined }), 1);
-    assert.match(moduleDefinitionMarkdown(migrateModuleDefinition({ root: stuck.root, ts })), /Left for a person/);
-    assert.throws(() => migrateModuleDefinition({ root: bare.root, ts }), /be\/ directory/);
+    assert.equal(await codemodMain(['module-definition'], { cwd: stuck.root, stdout: () => undefined }), 1);
+    assert.match(moduleDefinitionMarkdown(await migrateModuleDefinition({ root: stuck.root, ts, prettier: null })), /Left for a person/);
+    await assert.rejects(migrateModuleDefinition({ root: bare.root, ts }), /be\/ directory/);
   } finally {
     stuck.done();
     bare.done();
+  }
+});
+
+/** The typed form an app wrote with `ConfigurableModuleCls` annotations: the doc sits on the builder, the Nest import names the builder and the class type. */
+const ANNOTATED = `import { ConfigurableModuleBuilder, ConfigurableModuleCls } from "@nestjs/common"
+import type { LedgerOptions } from "./ledger.options"
+
+/** The configurable module base of the ledger capability. */
+const definition = new ConfigurableModuleBuilder<LedgerOptions>()
+    .setExtras({ isGlobal: false }, (definition, extras) => ({ ...definition, global: extras.isGlobal }))
+    .build()
+export const ConfigurableModuleClass: ConfigurableModuleCls<
+    LedgerOptions,
+    "register",
+    "create",
+    {
+        isGlobal: boolean
+    }
+> = definition.ConfigurableModuleClass
+export const OPTIONS_TYPE: LedgerOptions &
+    Partial<{
+        isGlobal: boolean
+    }> = definition.OPTIONS_TYPE
+`;
+
+/** A type-only Nest import that keeps a binding the rest of the file reads. */
+const TYPE_ONLY = `import { ConfigurableModuleBuilder } from "@nestjs/common"
+import type { ConfigurableModuleHost, InjectionToken } from "@nestjs/common"
+import type { PassportOptions } from "./passport.options"
+
+/** The options a registration takes. */
+export interface PassportRegistration extends PassportOptions {
+    readonly authenticator: InjectionToken
+}
+
+const built = new ConfigurableModuleBuilder<PassportRegistration>()
+    .setClassMethodName("register")
+    .setExtras({ isGlobal: false }, (definition, extras) => ({ ...definition, global: extras.isGlobal }))
+    .build()
+type Host = ConfigurableModuleHost<PassportRegistration, "register", "create", { isGlobal: boolean }>
+
+/** The configurable-module base of the passport integration. */
+export const ConfigurableModuleClass: Host["ConfigurableModuleClass"] = built.ConfigurableModuleClass
+/** The options of a synchronous registration, for the register signature. */
+export const OPTIONS_TYPE: Host["OPTIONS_TYPE"] = built.OPTIONS_TYPE
+`;
+
+const KIT_IMPORT = 'import { defineCapabilityModule } from "@starci/nest-kit"\n';
+
+test('9. every Nest binding the rewrite made unused goes, the ones the file still reads keep their type modifier, and the builder doc is kept', () => {
+  assert.equal(run(ANNOTATED).text, `${KIT_IMPORT}import type { LedgerOptions } from "./ledger.options"
+
+/** The configurable module base of the ledger capability. */
+export const { ConfigurableModuleClass, OPTIONS_TYPE } = defineCapabilityModule<LedgerOptions>()
+`);
+  const kept = run(TYPE_ONLY).text;
+  assert.ok(kept.startsWith(`${KIT_IMPORT}import type { InjectionToken } from "@nestjs/common"\nimport type { PassportOptions }`), kept);
+  assert.doesNotMatch(kept, /ConfigurableModule(?:Builder|Host|Cls)\b/);
+  const mixed = run(ANNOTATED.replace('ConfigurableModuleCls } from', 'ConfigurableModuleCls, Inject, type Provider } from').replace('export const OPTIONS_TYPE', 'export const extra: Provider = { provide: Inject, useValue: 1 }\nexport const OPTIONS_TYPE'));
+  assert.ok(mixed.text.startsWith(`${KIT_IMPORT}import { Inject, type Provider } from "@nestjs/common"\n`), mixed.text);
+  const unread = run(`import { Logger } from "@nestjs/common"\n${ANNOTATED}`);
+  assert.ok(unread.text.startsWith(`${KIT_IMPORT}import { Logger } from "@nestjs/common"\n`), 'a binding the old file never read is not the rewrite\'s to drop');
+  const renamed = run(ANNOTATED.replace('{ ConfigurableModuleBuilder, ConfigurableModuleCls }', 'Nest, { ConfigurableModuleBuilder, ConfigurableModuleCls as Cls }').replace('ConfigurableModuleCls<', 'Cls<'));
+  assert.ok(renamed.text.startsWith(`${KIT_IMPORT}import Nest from "@nestjs/common"\n`), renamed.text);
+  const namespaced = run(`import * as common from "@nestjs/common"\n${ANNOTATED}`);
+  assert.ok(namespaced.text.includes('\nimport * as common from "@nestjs/common"\n'), namespaced.text);
+});
+
+/** The canon Prettier options (`@starci/prettier-config`), as the app's own config file holds them. */
+const CANON_PRETTIER: prettier.Options = { printWidth: 120, tabWidth: 4, useTabs: false, semi: false, singleQuote: false, trailingComma: 'all', bracketSpacing: true, arrowParens: 'always', endOfLine: 'auto' };
+
+test('10. --execute writes each definition the way the app\'s Prettier prints it, a long options token included', async () => {
+  const longToken = TYPED_CAPABILITY.replaceAll('HTTP_OPTIONS', 'HTTP_SECURITY_OPTIONS').replaceAll('HttpOptions', 'HttpSecurityOptions')
+    .replace('export const OPTIONS_TYPE', 'export const MODULE_OPTIONS_TOKEN: Host["MODULE_OPTIONS_TOKEN"] = built.MODULE_OPTIONS_TOKEN\nexport const OPTIONS_TYPE');
+  const files = {
+    'be/src/modules/platform/http-security/http-security.module-definition.ts': longToken,
+    'be/src/modules/domain/ledger/ledger.module-definition.ts': ANNOTATED,
+    'be/src/modules/integrations/passport/passport.module-definition.ts': TYPE_ONLY,
+  };
+  const fixture = app({ ...files, '.prettierrc.json': `${JSON.stringify(CANON_PRETTIER)}\n` });
+  try {
+    await migrateModuleDefinition({ root: fixture.root, ts, prettier, write: true });
+    for (const file of Object.keys(files)) {
+      const target = path.join(fixture.root, file);
+      const written = fs.readFileSync(target, 'utf8');
+      assert.ok(await prettier.check(written, { ...CANON_PRETTIER, filepath: target }), `${file} is prettier-clean`);
+      assert.doesNotMatch(written, /ConfigurableModule(?:Builder|Host|Cls)\b/, file);
+    }
+    const security = fs.readFileSync(path.join(fixture.root, 'be/src/modules/platform/http-security/http-security.module-definition.ts'), 'utf8');
+    assert.ok(security.endsWith(' =\n    defineCapabilityModule<HttpSecurityOptions>({ optionsInjectionToken: HTTP_SECURITY_OPTIONS })\n'), security);
+  } finally {
+    fixture.done();
   }
 });

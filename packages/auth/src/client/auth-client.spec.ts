@@ -75,6 +75,19 @@ describe("AuthClient shared refresh", () => {
         assert.equal(refreshCalls(calls), 2, "a later call starts a new refresh")
     })
 
+    it("renews with ONE refresh call when two requests are answered 401 at once", async () => {
+        let release: () => void = () => undefined
+        const gate = new Promise<void>((resolve) => {
+            release = resolve
+        })
+        const { client, calls } = harness(() => ({ status: 200, body: grant() }), gate)
+        const pending = [client.renew(), client.renew()]
+        release()
+        const [a, b] = await Promise.all(pending)
+        assert.equal(refreshCalls(calls), 1)
+        assert.equal(a, b)
+    })
+
     it("refreshes again after the first refresh finished and the token is about to expire, not before", async () => {
         const { client, calls, advance } = harness(() => ({ status: 200, body: grant("user-1", 100) }))
         await client.accessToken()
@@ -138,6 +151,20 @@ describe("AuthClient signs out only on 401 or 403", () => {
         assert.equal(client.getSnapshot().status, "signed-in")
     })
 
+    it("waits between retries on its own timer when no sleep is given", async () => {
+        let calls = 0
+        const client = createAuthClient({
+            apiOrigin: "https://api.example.test",
+            retryBaseMs: 1,
+            fetch: () => {
+                calls += 1
+                return Promise.resolve(calls === 1 ? new Response(null, { status: 503 }) : new Response(JSON.stringify(grant()), { status: 200 }))
+            },
+        })
+        assert.ok(await client.renew())
+        assert.equal(calls, 2)
+    })
+
     it("treats an answer that is no grant as no token without signing out", async () => {
         const { client } = harness(() => ({ status: 200, body: { nope: true } }))
         assert.equal(await client.renew(), undefined)
@@ -176,6 +203,14 @@ describe("AuthClient events and snapshots", () => {
         assert.deepEqual(events, [["INITIAL_SESSION", null]])
     })
 
+    it("announces nobody when the first answer is no grant", async () => {
+        const { client, events, listen } = harness(() => ({ status: 200, body: { nope: true } }))
+        listen()
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        assert.deepEqual(events, [["INITIAL_SESSION", null]])
+        assert.equal(client.getSnapshot().status, "signed-out")
+    })
+
     it("tells a late listener the current session at once", async () => {
         const { client, events, listen } = harness(() => ({ status: 200, body: grant() }))
         await client.renew()
@@ -203,6 +238,12 @@ describe("AuthClient events and snapshots", () => {
         stop()
         client.drop()
         assert.equal(notified, 2)
+    })
+
+    it("reads no person from a grant with no user and a token whose claims are no JSON", async () => {
+        const { client } = harness(() => ({ status: 200, body: { accessToken: "head.%%%.sig", expiresIn: 900, expiresAt: "2026-01-01T00:15:00.000Z" } }))
+        await client.renew()
+        assert.equal(await client.user(), null)
     })
 
     it("reads the person from the token when the grant carries no user", async () => {

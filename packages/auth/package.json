@@ -1,6 +1,6 @@
 {
   "name": "@starci/auth",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "The sign-in of a StarCi lite app in one package: a NestJS module (EdDSA access tokens with a multi-key JWKS, bcrypt passwords, Google OAuth with state and PKCE, rotating refresh tokens with a reuse grace window and reuse detection, a failures-only sign-in limit, the refresh cookie), the door contracts, a front-end auth client (access token in memory, one shared refresh, signed out only on 401 or 403) with React bindings, and test doubles.",
   "keywords": [
     "auth",

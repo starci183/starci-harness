@@ -156,6 +156,26 @@ describe("AuthModule wiring and the passport flows", () => {
         await moduleRef.close()
     })
 
+    it("sets a cookie on a raced refresh whose earlier Set-Cookie never reached the browser", async () => {
+        const { moduleRef, directory, options, doors } = await boot(false)
+        directory.hashes.set("a@example.test", { id: "user-1", hash: await moduleRef.get<AuthPasswords>(AUTH_PASSWORDS).hash("correct horse") })
+        options.accounts.set({ id: "user-1", email: "a@example.test", disabled: false })
+        const login = exchange({ body: { email: "a@example.test", password: "correct horse" } })
+        await doors.login(login.exchange)
+        const spent = must(login.res.cookies.find((entry) => entry.name === "auth_refresh"))
+        await doors.refresh(exchange({ cookie: `auth_refresh=${spent.value}` }).exchange)
+        options.clock.advance(1000)
+        const reload = exchange({ cookie: `auth_refresh=${spent.value}` })
+        await doors.refresh(reload.exchange)
+        const successor = must(reload.res.cookies[0])
+        assert.notEqual(successor.value, spent.value, "the raced refresh set its own successor")
+        options.clock.advance(31_000)
+        const later = exchange({ cookie: `auth_refresh=${successor.value}` })
+        await doors.refresh(later.exchange)
+        assert.ok(later.res.cookies.some((entry) => entry.name === "auth_refresh"), "the browser stays signed in after the grace window")
+        await moduleRef.close()
+    })
+
     it("refuses a wrong password and counts only failures", async () => {
         const { moduleRef, directory, doors } = await boot(false)
         directory.hashes.set("a@example.test", { id: "user-1", hash: await moduleRef.get<AuthPasswords>(AUTH_PASSWORDS).hash("right-password") })
@@ -224,6 +244,47 @@ describe("AuthModule wiring and the passport flows", () => {
         assert.equal(must(directory.googleProfiles[0]).subject, "g-1")
         assert.equal(must(directory.googleProfiles[0]).emailVerified, true)
         assert.ok(callback.res.cookies.some((entry) => entry.name === "auth_refresh"))
+        await moduleRef.close()
+    })
+
+    it("rejects a Google begin whose strategy fails, and sends a failed token exchange back to the sign-in page", async () => {
+        const { moduleRef, doors } = await boot(true)
+        const strategy = moduleRef.get<Record<string, unknown>>(AUTH_GOOGLE_STRATEGY)
+        const stateStore = strategy._stateStore as Record<string, unknown>
+        const store = stateStore.store
+        Object.assign(stateStore, {
+            store: () => {
+                throw new Error("state store down")
+            },
+        })
+        await assert.rejects(doors.beginGoogle(exchange({}).exchange), /state store down/u)
+        Object.assign(stateStore, { store })
+        const begin = exchange({})
+        await doors.beginGoogle(begin.exchange)
+        const handle = new URL(begin.res.headers.get("location") ?? "").searchParams.get("state") ?? ""
+        const stateCookie = must(begin.res.cookies.find((entry) => entry.name === "auth_google_state"))
+        Object.assign(strategy._oauth2 as object, {
+            getOAuthAccessToken: (_code: string, _params: unknown, done: (error: unknown) => void) => {
+                done(new Error("token endpoint down"))
+            },
+        })
+        const failed = await doors.completeGoogle(exchange({ query: { code: "c", state: handle }, cookie: `auth_google_state=${stateCookie.value}` }).exchange)
+        assert.equal(failed.url, "https://app.example.test/sign-in?auth=error")
+        await moduleRef.close()
+    })
+
+    it("answers the session door from the cookie without touching it", async () => {
+        const { moduleRef, directory, options, doors } = await boot(false)
+        directory.hashes.set("a@example.test", { id: "user-1", hash: await moduleRef.get<AuthPasswords>(AUTH_PASSWORDS).hash("correct horse") })
+        options.accounts.set({ id: "user-1", email: "a@example.test", disabled: false })
+        const login = exchange({ body: { email: "a@example.test", password: "correct horse" } })
+        await doors.login(login.exchange)
+        const cookie = must(login.res.cookies.find((entry) => entry.name === "auth_refresh"))
+        const session = exchange({ cookie: `auth_refresh=${cookie.value}` })
+        const grant = await doors.session(session.exchange)
+        assert.equal(grant.user.id, "user-1")
+        assert.deepEqual(session.res.cookies, [])
+        assert.deepEqual(session.res.cleared, [])
         await moduleRef.close()
     })
 

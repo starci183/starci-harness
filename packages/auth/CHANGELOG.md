@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 - 2026-11-03
+
+- Fixed: a refresh replayed inside the grace window no longer signs the person out 30 seconds later. When a rotation's response never reached the browser (a navigation or an abort cut it), the next load presented the spent token, was answered an access token with no cookie (`cookieKept`) and the first load after the grace was reuse. Now `AuthSessions.refresh` gives such a replay a successor of its own in the same session and `AuthDoors.refresh` sets it as the cookie, at most `RACED_SUCCESSORS_MAX` (3) times per rotated token (`raced_count`); one more replay is reuse and ends the session, which revokes every token of it, as sign-out does. `SessionTokens.cookieKept` is removed; the session door never touched the cookie.
+- Changed: `RefreshTokenRecord` carries `racedCount`, `SessionTransaction` gains `markTokenRaced(tokenId, racedCount)`, and `insertToken` takes neither `usedAt` nor `racedCount`; `MemorySessionStore` implements them. `migrations/identity-sessions.sql` holds `raced_count integer not null default 0`, and `migrations/identity-refresh-raced-successors.sql` adds it to a baseline rendered from 0.2.0. Specs: the raced successor refreshes once, the sibling works, a replay after the grace ends the session, the cap, reuse revokes every sibling, and two parallel 401s renew with one refresh.
+
 ## 0.2.0 - 2026-11-03
 
 - Added: `createSessionStore` and `createSingleFlight` in `@starci/auth/client`, the provider-agnostic session snapshot (snapshot, listeners, watchers, the first answer of a subscription) and the refresh-race guard (many requests answered 401 together refresh once, the others await it), each explicitly typed; `createAuthClient` is built on them and behaves as before. `@starci/auth-oidc/client` imports them instead of keeping a copy. Specs: `src/client/session.spec.ts` (one test per race case).
