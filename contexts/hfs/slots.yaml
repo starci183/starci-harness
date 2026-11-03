@@ -3810,7 +3810,7 @@ slots:
     editions:
       - lite
     editionWhy: lite signs people in with the package @starci/auth, so its auth client is rendered, not written; full wires its identity provider.
-    path: apps/web/src/modules/auth/client.ts
+    path: "apps/web/src/modules/auth/{client.ts,email-doors.ts,index.ts}"
     presence: optional
     tracked: tracked
     tier: inherit

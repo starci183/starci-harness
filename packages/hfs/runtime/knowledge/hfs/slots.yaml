@@ -2664,8 +2664,8 @@ slots:
     profiles: [fe]
     editions: [lite]
     editionWhy: "lite signs people in with the package @starci/auth, so its auth client is rendered, not written (owner ruling auth-package); full wires its identity provider."
-    # The AuthClient every edition shares, implemented by one @starci/auth/client instance over the app's own back-end auth doors.
-    path: "apps/web/src/modules/auth/client.ts"
+    # The AuthClient every edition shares, implemented by one @starci/auth/client instance over the app's own back-end auth doors.  email-doors.ts is the lite-only call of the five email doors (sign up, resend, confirm, forgot, reset), kept off the shared AuthClient interface because the full edition identity provider owns its own recovery flows; index.ts is the module entry that exports both.
+    path: "apps/web/src/modules/auth/{client.ts,email-doors.ts,index.ts}"
     presence: optional
     tracked: tracked
     tier: inherit

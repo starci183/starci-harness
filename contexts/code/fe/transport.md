@@ -71,7 +71,7 @@ Enforced by: review only.
 session, the access-token getter the Apollo links and the event stream read (the import direction is api -> auth, never
 auth -> api), and an auth-change subscription. In lite it is one `@starci/auth/client` instance (`modules/auth/client.ts`)
 over the app's own back-end auth doors (`/auth/...`: login, signup, refresh, logout, password reset, resend verification):
-the access token lives in the client's memory, overlapping callers share one refresh, and only a 401 or 403 from a
+the email doors (sign up, confirm, resend, forgot, reset) are called through `modules/auth/email-doors.ts`, a lite-only call kept off the shared `AuthClient` interface because the full edition's identity provider owns its own recovery flows; the links of the confirmation and reset mails open the app pages `/auth/confirm?token=` and `/auth/reset?token=` (the default locale is unprefixed), and confirming is a button press so a mail scanner opening the link spends nothing; the access token lives in the client's memory, overlapping callers share one refresh, and only a 401 or 403 from a
 refresh signs the reader out (a 429, a server error or a lost connection is retried and keeps the session); the refresh
 token never reaches script. Every other REST call stays in `modules/api/rest`.
 

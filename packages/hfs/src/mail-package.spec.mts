@@ -86,3 +86,29 @@ test('the email tokens are kept as digests in a table of the baseline migration,
     for (const key of ['MAIL_HOST', 'MAIL_PORT', 'MAIL_SECURITY', 'MAIL_FROM', 'MAIL_FROM_NAME']) assert.ok(text.includes(key), `${keys} ${key}`);
   }
 });
+
+const WEB = path.join(import.meta.dirname, '..', 'templates', 'fe', 'skeleton-lite', 'apps', 'web', 'src');
+
+test('the links of the mails open pages that exist: the routes are the paths the service builds, under the unprefixed default locale', () => {
+  const service = fs.readFileSync(path.join(AUTH, 'src', 'modules', 'domain', 'identity', 'identity-email.service.ts'), 'utf8');
+  const routes = fs.readFileSync(path.join(WEB, 'modules', 'routes', 'index.ts'), 'utf8');
+  for (const door of ['confirm', 'reset']) {
+    assert.ok(service.includes(`/auth/${door}?token=`), door);
+    assert.ok(routes.includes(`${door}: "/auth/${door}"`), door);
+    assert.ok(fs.existsSync(path.join(WEB, 'app', '[locale]', 'auth', door, 'page.tsx')), door);
+  }
+  for (const door of ['signup', 'resend', 'forgot']) assert.ok(fs.existsSync(path.join(WEB, 'app', '[locale]', 'auth', door, 'page.tsx')), door);
+  assert.match(fs.readFileSync(path.join(WEB, 'modules', 'i18n', 'routing.ts'), 'utf8'), /localePrefix: "as-needed"/u);
+});
+
+test('the email doors have copy in both languages and stay off the AuthClient interface the full edition satisfies', () => {
+  const en = JSON.parse(fs.readFileSync(path.join(WEB, 'modules', 'i18n', 'messages', 'en.json'), 'utf8')); // reason: parsed catalog
+  const vi = JSON.parse(fs.readFileSync(path.join(WEB, 'modules', 'i18n', 'messages', 'vi.json'), 'utf8')); // reason: parsed catalog
+  const keys = (value: unknown, prefix = ''): string[] => (typeof value === 'object' && value !== null ? Object.entries(value).flatMap(([name, inner]) => keys(inner, `${prefix}${name}.`)) : [prefix]);
+  assert.deepEqual(keys(vi.app.emailAuth).sort(), keys(en.app.emailAuth).sort());
+  const contracts = fs.readFileSync(path.join(import.meta.dirname, '..', 'templates', 'fe', 'skeleton', 'apps', '__app__', 'src', 'modules', 'auth', 'contracts.ts'), 'utf8');
+  assert.doesNotMatch(contracts, /signup|forgot|resend/iu);
+  const slot = manifest.slots.find((entry: { id: string }) => entry.id === 'fe.modules.auth.client');
+  assert.ok(slot);
+  assert.equal(slot.path, 'apps/web/src/modules/auth/{client.ts,email-doors.ts,index.ts}');
+});

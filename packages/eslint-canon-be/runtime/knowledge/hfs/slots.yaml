@@ -2613,7 +2613,7 @@ slots:
     editions: [lite]
     editionWhy: "lite signs people in with the package @starci/auth, so its auth client is rendered, not written (owner ruling auth-package); full wires its identity provider."
     # The AuthClient every edition shares, implemented by one @starci/auth/client instance over the app's own back-end auth doors.
-    path: "apps/web/src/modules/auth/client.ts"
+    path: "apps/web/src/modules/auth/{client.ts,email-doors.ts,index.ts}"
     presence: optional
     tracked: tracked
     tier: inherit

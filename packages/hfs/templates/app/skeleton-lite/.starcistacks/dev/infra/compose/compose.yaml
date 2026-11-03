@@ -1,6 +1,8 @@
 # The dev environment's dependencies, run by `starci app stack up --env dev --execute` (PROJECT-STACKS-3, PROJECT-STACKS-6).
 # Host ports come from environments.dev.local.ports through STACK_PORT_<NAME>; the superuser password is read from a file through the least
-# grant STACK_GRANT_DB (a directory holding only POSTGRES_PASSWORD), never from the environment. Every port publishes on loopback only. The api and web run natively against these containers.
+# grant STACK_GRANT_DB (a directory holding only POSTGRES_PASSWORD), never from the environment. Every port publishes on loopback only.
+# `mail` is the dev mail sink (Mailpit, an unmodified upstream image pinned by digest in contexts/stack/pins.yaml): the api sends the
+# confirmation and reset mails to its SMTP port, over a plain channel that exists on loopback only, and a person reads them in its web UI. The api and web run natively against these containers.
 name: {{project}}-dev
 services:
   db:
@@ -20,6 +22,22 @@ services:
       timeout: 5s
       retries: 30
       start_period: 10s
+    restart: unless-stopped
+  mail:
+    image: axllent/mailpit:v1.31.6@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+    environment:
+      MP_SMTP_BIND_ADDR: 0.0.0.0:1025
+      MP_UI_BIND_ADDR: 0.0.0.0:8025
+      MP_MAX_MESSAGES: "500"
+    ports:
+      - "127.0.0.1:${STACK_PORT_MAIL}:1025"
+      - "127.0.0.1:${STACK_PORT_MAILUI}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
     restart: unless-stopped
 volumes:
   db-data: {}

@@ -58,8 +58,11 @@ environments:
         db: 54322
         api: 3001
         web: 3000
+        mail: 1025
+        mailui: 8025
       services:
         - {name: db, wait: healthy}
+        - {name: mail, wait: healthy}
       database:
         service: db
         port: db
@@ -98,7 +101,7 @@ environments:
             AUTH_JWT_AUDIENCE: {{project}}
             AUTH_JWT_KEY_ID: dev-1
             MAIL_HOST: 127.0.0.1
-            MAIL_PORT: "1025"
+            MAIL_PORT: "${port.mail}"
             MAIL_SECURITY: none
             MAIL_FROM: no-reply@{{project}}.example.invalid
             MAIL_FROM_NAME: {{project}}
@@ -125,6 +128,7 @@ environments:
       origins:
         - {name: web, url: "http://localhost:${port.web}"}
         - {name: api, url: "http://localhost:${port.api}"}
+        - {name: mail, url: "http://localhost:${port.mailui}"}
   production:
     status: supported
     runtime: docker-swarm

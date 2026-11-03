@@ -2,6 +2,7 @@ import type { ReactElement } from "react"
 import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 import { AppGuideOverlay } from "@/features/overlays/AppGuideOverlay"
+import { APP_ROUTES } from "@/modules/routes"
 import { AppHomePageBase } from "./component"
 
 /** The document title of the home page. */
@@ -15,7 +16,9 @@ export const AppHomePage = async (): Promise<ReactElement> => {
     const t = await getTranslations("app.home")
     return (
         <>
-            <AppHomePageBase props={{ title: t("title") }} />
+            <AppHomePageBase
+                props={{ title: t("title"), signupLabel: t("signup"), signupHref: APP_ROUTES.signup, forgotLabel: t("forgot"), forgotHref: APP_ROUTES.forgot }}
+            />
             <AppGuideOverlay />
         </>
     )
