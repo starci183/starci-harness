@@ -1,2 +1,2 @@
-/** The locale served at the unprefixed path and used by the global error boundary. */
-export { DEFAULT_LOCALE, PRODUCT_TIME_ZONE, routing } from "./routing"
+/** The web app's description of its languages and the locale served at the unprefixed path (the global error boundary). */
+export { DEFAULT_LOCALE, i18n } from "./routing"

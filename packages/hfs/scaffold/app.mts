@@ -266,23 +266,23 @@ const FE_APP_DEPENDENCIES = Object.freeze({
 });
 
 /**
- * The lite fe workspace: the same base without the shared packages, plus server-only for its own next-intl request config. It
- * holds no identity SDK: modules/auth talks only to the app's own back-end auth doors.
+ * The lite fe workspace: the same base without the shared packages (its next-intl stack is @starci/next-i18n's, a core package of the
+ * fe stack). It holds no identity SDK: modules/auth talks only to the app's own back-end auth doors.
  */
 const LITE_FE_APP_DEPENDENCIES = Object.freeze({
   '@heroicons/react': null, '@heroui/react': null, '@heroui/styles': null, '@starci/grammar': null, '@starci/heroicons': null, '@xyflow/react': null, 'react-aria-components': null,
-  next: null, 'next-intl': null, react: null, 'react-dom': null, 'server-only': null,
+  next: null, 'next-intl': null, react: null, 'react-dom': null,
 });
 
 /**
  * The shared fe workspace packages of the starter, fe/packages/<project>-<name> named @<project>/<name>: each one's exported
  * subpaths (built to dist) and the runtime dependencies its own source imports. ui holds the drawings both apps mount; i18n the
- * next-intl stack (the entry, a server module: createAppI18n; ./proxy, the locale negotiation the apps' proxy.ts re-exports;
- * ./routing, client-safe: the default locale a client boundary reads).
+ * product's description of its languages over @starci/next-i18n (the entry, a server module: createAppI18n; ./proxy, the locale
+ * negotiation the apps' proxy.ts re-exports; ./routing, client-safe: the description and the default locale a client boundary reads).
  */
 const FE_PACKAGES: Readonly<Record<string, { readonly exports: readonly string[]; readonly dependencies: DependencyEntries }>> = Object.freeze({
   ui: { exports: ['.'], dependencies: { '@heroui/react': null, '@starci/grammar': null, '@starci/heroicons': null, '@xyflow/react': null, 'react-aria-components': null, 'next-intl': null, react: null, 'react-dom': null } },
-  i18n: { exports: ['.', './proxy', './routing'], dependencies: { next: null, 'next-intl': null, 'server-only': null } },
+  i18n: { exports: ['.', './proxy', './routing'], dependencies: { '@starci/next-i18n': null, next: null, 'server-only': null } },
 });
 
 /** The scripts of every fe package workspace: tsc builds it to dist and type-checks it. */
