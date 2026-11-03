@@ -18,7 +18,11 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { envelopeOf } from '../runtime/scripts/hfs/secret-document.mjs';
 import { entryDigest, entryFiles, isDocumentEntry, readSeedLevel, resolveSecrets, secretReferences, seedDocuments, seedMemberFile } from '../runtime/scripts/hfs/stack-seeds-config.mjs';
 import type { SeedEntry, SeedLevel } from '../runtime/scripts/hfs/stack-seeds-config.mjs';
+import type { DeployConfig } from './config.mjs';
+import { lines as splitLines, tool } from './context.mjs';
 import type { RunResult, StackContext } from './context.mjs';
+import { DB_WAIT_SECONDS } from './db-phases.mjs';
+import type { DeployDatabase, FloorDeps } from './db-phases.mjs';
 import { failure, refusal } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';
 
@@ -174,4 +178,39 @@ export function seedStep(input: SeedStepInput): ActionResult {
   }
   if (planned.length === 0) lines.push('seed: no entry in .starcistacks/seeds or the environment\'s level');
   return { ok: true, lines, data: { applied, entries: planned.length } };
+}
+
+/** The running container of a service of the stack on this daemon, or undefined. */
+function serviceContainer(ctx: StackContext, config: Pick<DeployConfig, 'stack'>, service: string): string | undefined {
+  const found = tool(ctx, 'docker', ['ps', '-q', '--filter', `label=com.docker.swarm.service.name=${config.stack}_${service}`, '--filter', 'status=running']);
+  return splitLines(found.stdout)[0];
+}
+
+/** True when either seed level of the environment declares an entry. */
+export function hasSeedEntries(repoRoot: string, env: string): boolean {
+  return readSeedLevel(repoRoot, null).entries.length > 0 || readSeedLevel(repoRoot, env).entries.length > 0;
+}
+
+/** What a deploy's dry run says of the seed step: every entry of the two levels, each applied unless its receipt holds. */
+export function seedPlanLine(repoRoot: string, env: string): string {
+  const entries = levelsOf(repoRoot, env).flatMap((level) => level.entries.map((entry) => `${level.env ?? SHARED_SCOPE}/${entry.id} (${entry.kind}, ${entry.mode})`));
+  return `seed after convergence, each entry unless its receipt in ${SEED_RECEIPTS} holds: ${entries.join(', ')}`;
+}
+
+/**
+ * The seed step of a deploy (PROJECT-STACKS-6), after convergence so a document entry's app command is the new release's: in the database
+ * container under the credentials it holds (the role the migrations ran as), each app command inside a running task of the jobs service
+ * (`deploy.jobs.service`), the documents on its stdin.
+ */
+export async function seedDeployed(ctx: StackContext, config: DeployConfig, database: Pick<DeployDatabase, 'service'>, f: Pick<FloorDeps, 'dbContainer' | 'containerTarget'>): Promise<ActionResult> {
+  const container = await f.dbContainer(ctx, config, { service: database.service, seconds: DB_WAIT_SECONDS });
+  if (!container) return { ok: false, lines: [`FAIL  seed  no running container of ${config.stack}_${database.service} within ${DB_WAIT_SECONDS}s`] };
+  const command = (argv: readonly string[], input: string): RunResult => {
+    const service = config.jobs?.service;
+    if (service === undefined) throw refusal('STACK_SEED_NO_SERVICE', 'a data entry runs its app command in the jobs service; declare deploy.jobs of the environment');
+    const task = serviceContainer(ctx, config, service);
+    if (!task) return { status: null, stdout: '', stderr: '', error: new Error(`no running container of ${config.stack}_${service}`) };
+    return tool(ctx, 'docker', ['exec', '-i', task, ...argv], { input });
+  };
+  return seedStep({ ctx, repoRoot: config.repoRoot, env: config.env, target: f.containerTarget(ctx, container), execute: true, command });
 }

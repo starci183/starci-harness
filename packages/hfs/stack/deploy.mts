@@ -29,7 +29,8 @@ import { firstLine, tool } from './context.mjs';
 import type { StackContext } from './context.mjs';
 import { hasPlaceholderDigest, isReleaseId } from './digest.mjs';
 import { contractPhase, declaredDatabase, expandPhase, firstStartHooks, FLOOR_DEPS, unknownDatabaseService } from './db-phases.mjs';
-import type { PhaseInput } from './db-phases.mjs';
+import type { DeployDatabase, PhaseInput } from './db-phases.mjs';
+import { hasSeedEntries, seedPlanLine } from './seeds.mjs';
 import { failure, refusal } from './errors.mjs';
 import { recordedAttempt } from './journal.mjs';
 import type { AttemptMeta, Recorder } from './journal.mjs';
@@ -91,6 +92,8 @@ export interface DeployDeps {
   convergeStack: (ctx: StackContext, config: DeployConfig, options: { since: string; timeoutSeconds?: number | undefined }) => Promise<ActionResult>;
   reconcileEdge: (ctx: StackContext, config: DeployConfig, file: string) => ActionResult | Promise<ActionResult>;
   postDeployStack: (ctx: StackContext, config: DeployConfig) => Promise<ActionResult>;
+  /** The seed step after convergence (seeds.mjs seedDeployed). */
+  seedRelease: (ctx: StackContext, config: DeployConfig, database: DeployDatabase, f: FloorDeps) => Promise<ActionResult>;
   verifyStack: (ctx: StackContext, config: DeployConfig, options: { retrySeconds?: number | undefined; skipPublic?: boolean; stackFile?: string }) => Promise<ActionResult>;
   pruneStack: (ctx: StackContext, config: DeployConfig, options: { keepFiles: string[]; execute: boolean }) => Promise<ActionResult>;
   releaseStore: (config: DeployConfig, ssh: Runner, options?: { gated?: boolean | undefined }) => ReleaseStore;
@@ -119,6 +122,7 @@ export const DEFAULT_DEPS: Readonly<DeployDeps> = Object.freeze({
   convergeStack,
   reconcileEdge: reconcileEdgeAliases,
   postDeployStack,
+  seedRelease: lazy<Parameters<DeployDeps['seedRelease']>, ActionResult>('./seeds.mjs', 'seedDeployed'),
   verifyStack,
   pruneStack,
   releaseStore: createReleaseStore,
@@ -407,6 +411,7 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
     ['deploy', () => stackDeploy(ctx, config, stackFile)],
     ['edge', async () => d.reconcileEdge(ctx, config, stackFile)],
     ['converge', async () => { const converged = await d.convergeStack(ctx, config, { since, timeoutSeconds: options.timeoutSeconds }); snapshot(ctx, config, d, rec, 'converge'); return converged; }],
+    ...(database && hasSeedEntries(config.repoRoot, config.env) ? [['seed', () => d.seedRelease(ctx, config, database, { ...FLOOR_DEPS, ...d.floor })] satisfies Step] : []),
     ...(config.postDeploy.length > 0 ? [['post-deploy', () => d.postDeployStack(ctx, config)] satisfies Step] : []),
     ['verify', () => d.verifyStack(ctx, config, { retrySeconds: options.retrySeconds, skipPublic: skipPublic === true, stackFile: path.join(out, 'stack.yaml') })],
     ...(skipPublic ? [] : [['accept', async () => { await acceptObserved(ctx, config, d, store, rec, { out, releaseId }); return { ok: true, lines: [`accepted release ${releaseId}`] }; }] satisfies Step]),
@@ -465,7 +470,7 @@ export async function deployRelease(ctx: StackContext, config: DeployConfig, opt
       const { rendered, releaseId } = await render();
       const post = config.postDeploy.length > 0 ? ` post-deploy tasks (${config.postDeploy.join(', ')}),` : '';
       const database = options.urgent === true ? null : await declaredDatabase(ctx, config);
-      const databasePlan = database ? `; database (${database.target === 'stack' ? `inside the ${database.service} container, no URL held` : 'external, by --db-url-env'}): migrate preview, a verified backup only when a migration is pending, the expand migrations before the deploy, the contract migrations after the accept, and an automatic first start when no release was ever accepted` : '';
+      const databasePlan = database ? `; database (${database.target === 'stack' ? `inside the ${database.service} container, no URL held` : 'external, by --db-url-env'}): migrate preview, a verified backup only when a migration is pending, the expand migrations before the deploy, the contract migrations after the accept, and an automatic first start when no release was ever accepted${hasSeedEntries(config.repoRoot, config.env) ? `; ${seedPlanLine(config.repoRoot, config.env)}` : ''}` : '';
       const plan = options.skipPublic
         ? `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} and verified inside the stack (public hosts skipped); it would stay pending until ingress publish and stack accept${databasePlan}`
         : `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} verified, accepted${databasePlan}`;

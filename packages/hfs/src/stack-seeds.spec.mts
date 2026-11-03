@@ -11,7 +11,11 @@ import os from 'node:os';
 import path from 'node:path';
 import type { DbTarget } from '../db/postgres.mjs';
 import type { RunResult, StackContext } from '../stack/context.mjs';
-import { SEED_RECEIPTS, seedStep } from '../stack/seeds.mjs';
+import type { DeployConfig } from '../stack/config.mjs';
+import { deployRelease } from '../stack/deploy.mjs';
+import type { DeployDeps } from '../stack/deploy.mjs';
+import { hasSeedEntries, SEED_RECEIPTS, seedDeployed, seedPlanLine, seedStep } from '../stack/seeds.mjs';
+import { recordsDouble } from './stack-records-double.mjs';
 import type { SeedStepInput } from '../stack/seeds.mjs';
 
 const manifest = (entries: string[]): string => `schema: starci/seeds@1\nentries:\n${entries.map((entry) => `  - ${entry}\n`).join('')}`;
@@ -179,4 +183,67 @@ test('an app without seed entries says so and creates no table; the receipts tab
   assert.deepEqual(seedStep(step(root, db, new Map()).input).lines, ['seed: no entry in .starcistacks/seeds or the level of the environment']);
   assert.equal(db.state.present, false);
   assert.equal(SEED_RECEIPTS, 'public.starci_seed_receipts');
+});
+
+/** A deploy config of `root` whose jobs run in the `api` service. */
+// reason: the seed step reads only these fields of a normalised DeployConfig.
+const deployConfig = (root: string, jobs = true): DeployConfig => ({ stack: 'shop', env: 'production', repoRoot: root, ...(jobs ? { jobs: { service: 'api', command: ['node', 'jobs.js'] } } : {}) }) as unknown as DeployConfig;
+
+test('a deploy seeds after convergence in the database container, each app command in a running task of the jobs service', async (t) => {
+  const root = app(t);
+  const db = database();
+  const secrets = new Map([['seeds-test-owner', { value: throwaway() }]]);
+  const execs: Array<{ args: readonly string[]; input: unknown }> = [];
+  // reason: the step reads only spawn and sops of the context.
+  const ctx = {
+    env: {}, cwd: root,
+    spawn: (command: string, args: readonly string[], options: { input?: unknown } = {}) => {
+      if (command === 'psql') return db.psql(args);
+      if (args[0] === 'ps') return { status: 0, stdout: 'task123\n', stderr: '' };
+      execs.push({ args, input: options.input });
+      return { status: 0, stdout: '', stderr: '' };
+    },
+    sops: { decrypt: (file: string) => secrets.get(path.basename(file, '.enc.yaml')) ?? {}, decryptBinary: () => '' },
+  } as unknown as StackContext;
+  const target: DbTarget = { how: 'double', url: 'postgresql://app@127.0.0.1:5432/app', env: {}, secrets: [] };
+  const floor = { dbContainer: async () => 'db1', containerTarget: () => target };
+  const result = await seedDeployed(ctx, deployConfig(root), { service: 'db' }, floor);
+  assert.equal(result.ok, true, result.lines.join('\n'));
+  assert.deepEqual(execs.map((call) => call.args), [['exec', '-i', 'task123', 'node', 'cli.js', 'accounts', 'seed']]);
+  assert.deepEqual(db.state.files, ['010-plans.sql', 'first.sql']);
+  const rerun = await seedDeployed(ctx, deployConfig(root), { service: 'db' }, floor);
+  assert.ok(rerun.lines.every((line) => !/: applied \(/u.test(line)), 'a second deploy applies nothing');
+  assert.equal(execs.length, 1);
+  assert.equal((await seedDeployed(ctx, deployConfig(root), { service: 'db' }, { ...floor, dbContainer: async () => undefined })).ok, false);
+  const noTask = { ...ctx, spawn: (command: string, args: readonly string[]) => (command === 'psql' ? database().psql(args) : { status: 0, stdout: '', stderr: '' }) } as unknown as StackContext;
+  await assert.rejects(seedDeployed(noTask, deployConfig(root), { service: 'db' }, floor), /owner: node cli\.js accounts seed could not run/u);
+  await assert.rejects(seedDeployed(ctx, deployConfig(root, false), { service: 'db' }, { ...floor, containerTarget: () => ({ ...target }) }).then(() => seedDeployed({ ...ctx, spawn: (command: string, args: readonly string[]) => (command === 'psql' ? database().psql(args) : { status: 0, stdout: '', stderr: '' }) } as unknown as StackContext, deployConfig(root, false), { service: 'db' }, floor)), /STACK_SEED_NO_SERVICE|declare deploy\.jobs/u);
+});
+
+test('the deploy runs the seed step between convergence and verification, and its dry run lists the entries', async (t) => {
+  const root = app(t);
+  fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), 'database:\n  target: stack\n  service: db\n');
+  fs.writeFileSync(path.join(root, '.sops.yaml'), `creation_rules:\n  - age: age1${'q'.repeat(58)}\n`);
+  assert.equal(hasSeedEntries(root, 'production'), true);
+  assert.match(seedPlanLine(root, 'production'), /each entry unless its receipt in public\.starci_seed_receipts holds: shared\/plans \(sql, upsert\), shared\/banner \(files, once\), production\/first-run \(sql, once\), production\/owner \(test-account, upsert\)/u);
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-seed-deploy-'));
+  t.after(() => fs.rmSync(out, { recursive: true, force: true }));
+  const order: string[] = [];
+  const ok = (name: string) => async () => { order.push(name); return { ok: true, lines: [] }; };
+  const store = { ...recordsDouble(), current: async () => 'a'.repeat(16), store: ok('store'), accept: ok('accept'), fetch: async () => undefined };
+  // reason: the collaborators are stubs that answer only what deployRelease reads from them.
+  const deps = {
+    renderRelease: async (_ctx: unknown, _config: unknown, options: { out: string }) => { fs.writeFileSync(path.join(options.out, 'stack.yaml'), `services:\n  api:\n    image: registry.example/shop-api@sha256:${'e'.repeat(64)}\n`); return { ok: true, lines: [] }; },
+    provisionRelease: ok('provision'), releaseStore: () => store, ssh: async () => ({ cleanup() {} }), reconcileEdge: ok('edge'), convergeStack: ok('converge'),
+    seedRelease: ok('seed'), postDeployStack: ok('post-deploy'), verifyStack: ok('verify'), pruneStack: ok('prune'),
+    floor: { dbContainer: async () => 'db1', containerTarget: () => ({}), migrate: async (_ctx: unknown, { execute }: { execute: boolean }) => ({ ok: true, lines: [], data: execute ? { done: true, pushed: [] } : { done: true, pushFiles: [] } }), emptiness: async () => ({ empty: false, history: true, publicTables: 1 }) },
+  } as unknown as Partial<DeployDeps>;
+  // reason: the deploy reads only these members of the context.
+  const ctx = { env: {}, cwd: root, now: () => 1000, spawn: () => ({ status: 0, stdout: '', stderr: '' }) } as unknown as StackContext;
+  const config = { stack: 'shop', project: 'shop', env: 'production', repoRoot: root, remote: { serverRecipient: null }, backup: null, ingress: null, tasks: {}, postDeploy: [], services: new Set(['api', 'db']) } as unknown as DeployConfig;
+  const dry = await deployRelease(ctx, config, { sourceSha: 'f'.repeat(40), out }, deps);
+  assert.match(dry.lines.join('\n'), /seed after convergence, each entry unless its receipt/u);
+  const result = await deployRelease(ctx, config, { sourceSha: 'f'.repeat(40), execute: true, out }, deps);
+  assert.equal(result.ok, true, result.lines.join('\n'));
+  assert.ok(order.indexOf('converge') < order.indexOf('seed') && order.indexOf('seed') < order.indexOf('verify'), order.join(' '));
 });
