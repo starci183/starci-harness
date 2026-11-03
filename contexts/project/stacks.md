@@ -364,6 +364,7 @@ volume, a secret or config grant, a bind under the data root (`${data}` or `STAC
 read-only plain data file (json, yaml, toml, conf, ini, properties, txt, pem, crt, csv); every other bind is refused. Dev and
 production run the same image of the service: a compose service builds from `images/<name>` and a stack service names the
 project's own or a variable image reference, never a literal upstream image beside the folder.
+While the harness has not published such a layer, `starci app stack up` builds it from the recipe `@starci/hfs` ships (`stack/images/<layer>/`, byte-equal to the harness `images/<layer>/`) as a governed heavy build, tagged with the reference the Dockerfile names minus its digest; a layer the host holds or the registry serves is left alone (`stack/runtime-layers.mts`, `stack-runtime-layers.spec.mts`).
 
 Why: code mounted at run time is a second, unreviewed build whose bytes the image digest does not name, and a service that
 differs between dev and production proves nothing about production.
