@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 - 2026-11-04
+
+- Added: `RefreshCookieOptions.domains`: the refresh cookie's `Domain` follows the request host (its `Host` header without the port). A host equal to a listed domain, or ending in `.` and one, takes the longest that fits; any other host takes `domain`, else stays host-only, so one api signs in on localhost (host-only) and on a tunnel origin (its parent domain).
+- Changed: `RefreshCookie.issue(response, tokens, request)` and `clear(response, request)` take the request; `AuthDoors` passes it at every write and clear. Specs: `src/server/cookie.spec.ts` (localhost host-only, a tunnel host under a listed domain, the longest fit, an unlisted host and no host fall back).
+
 ## 0.3.0 - 2026-11-03
 
 - Added: a session carries the person's full name when the account directory knows it: `AccountStanding.name` and `AuthSubject.name` in; `SessionUser.name`, the `name` access-token claim (`AUTH_CLAIMS.name`), `AccessClaims.name` and `AuthPrincipal.name` out. The client keeps it (from the grant, or from the token when the grant carries no user) and announces a change of it. An account without a name answers as before.

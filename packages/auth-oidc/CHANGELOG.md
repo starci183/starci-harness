@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3 - 2026-11-04
+
+- Changed: requires `@starci/auth` 0.4.0 (the refresh cookie's domain by request host). Nothing of this package reads it.
+
 ## 0.1.2 - 2026-11-03
 
 - Changed: requires `@starci/auth` 0.3.0 (the optional person name of a session). Nothing of this package reads it.

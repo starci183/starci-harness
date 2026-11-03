@@ -43,7 +43,7 @@ export class AuthDoors {
     async login(exchange: HttpExchange): Promise<AccessGrant> {
         const subject = await this.#deps.flows.authenticateLocal(exchange)
         const tokens = await this.#deps.sessions.start(subject, this.#deps.cookie.deviceOf(exchange.req))
-        this.#deps.cookie.issue(exchange.res, tokens)
+        this.#deps.cookie.issue(exchange.res, tokens, exchange.req)
         return accessOf(tokens)
     }
 
@@ -51,10 +51,10 @@ export class AuthDoors {
     async refresh(exchange: HttpExchange): Promise<AccessGrant> {
         try {
             const tokens = await this.#deps.sessions.refresh(this.#deps.cookie.read(exchange.req))
-            this.#deps.cookie.issue(exchange.res, tokens)
+            this.#deps.cookie.issue(exchange.res, tokens, exchange.req)
             return accessOf(tokens)
         } catch (cause) {
-            this.#deps.cookie.clear(exchange.res)
+            this.#deps.cookie.clear(exchange.res, exchange.req)
             throw cause
         }
     }
@@ -67,7 +67,7 @@ export class AuthDoors {
     /** Ends the session of the cookie and clears it. */
     async logout(exchange: HttpExchange): Promise<void> {
         await this.#deps.sessions.end(this.#deps.cookie.read(exchange.req))
-        this.#deps.cookie.clear(exchange.res)
+        this.#deps.cookie.clear(exchange.res, exchange.req)
     }
 
     /** Sends the browser to the Google consent screen. */
@@ -84,10 +84,10 @@ export class AuthDoors {
         try {
             const completion = await this.#deps.flows.completeGoogle(exchange)
             const tokens = await this.#deps.sessions.start(completion.subject, this.#deps.cookie.deviceOf(exchange.req))
-            this.#deps.cookie.issue(exchange.res, tokens)
+            this.#deps.cookie.issue(exchange.res, tokens, exchange.req)
             return { url: `${this.#deps.returnOrigin}${completion.next}`, statusCode: SEE_OTHER }
         } catch (cause) {
-            this.#deps.cookie.clear(exchange.res)
+            this.#deps.cookie.clear(exchange.res, exchange.req)
             this.#deps.logger?.warn(GOOGLE_SIGN_IN_FAILED_EVENT, { cause: String(cause) })
             return { url: `${this.#deps.returnOrigin}/sign-in?auth=error`, statusCode: SEE_OTHER }
         }

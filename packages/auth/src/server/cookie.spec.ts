@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import type { CookieWrite, HttpResponse } from "./http.ts"
+import type { CookieWrite, HttpRequest, HttpResponse } from "./http.ts"
 import { RefreshCookie } from "./cookie.ts"
 import type { SessionTokens } from "./ports.ts"
 
@@ -12,6 +12,8 @@ const tokens: SessionTokens = {
     refreshMaxAgeSeconds: 100,
     user: { id: "u", email: "e@example.test" },
 }
+
+const from = (host?: string | string[]): HttpRequest => ({ headers: host === undefined ? {} : { host } })
 
 const recorder = () => {
     const calls: { kind: "set" | "clear"; name: string; value?: string; options: Partial<CookieWrite> }[] = []
@@ -26,7 +28,7 @@ const recorder = () => {
 describe("RefreshCookie flags", () => {
     it("writes httpOnly, Secure, SameSite=Lax on the root path with the lifetime of the session, and clears the legacy path first", () => {
         const { calls, response } = recorder()
-        new RefreshCookie({ name: "app_refresh" }).issue(response, tokens)
+        new RefreshCookie({ name: "app_refresh" }).issue(response, tokens, from("api.example.test"))
         assert.deepEqual(calls, [
             { kind: "clear", name: "app_refresh", options: { httpOnly: true, secure: true, sameSite: "lax", path: "/auth" } },
             { kind: "set", name: "app_refresh", value: "refresh-value", options: { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 100_000 } },
@@ -36,8 +38,8 @@ describe("RefreshCookie flags", () => {
     it("carries the configured domain, path, legacy paths and SameSite on every write and clear", () => {
         const { calls, response } = recorder()
         const cookie = new RefreshCookie({ name: "r", domain: "example.test", path: "/auth/refresh", legacyPaths: ["/", "/old"], sameSite: "strict" })
-        cookie.issue(response, tokens)
-        cookie.clear(response)
+        cookie.issue(response, tokens, from("api.example.test"))
+        cookie.clear(response, from("api.example.test"))
         assert.equal(calls.length, 2 + 1 + 3)
         for (const call of calls) {
             assert.equal(call.options.httpOnly, true)
@@ -51,8 +53,37 @@ describe("RefreshCookie flags", () => {
 
     it("clears the root path and the legacy path", () => {
         const { calls, response } = recorder()
-        new RefreshCookie({ name: "r" }).clear(response)
+        new RefreshCookie({ name: "r" }).clear(response, from())
         assert.deepEqual(calls.map((call) => call.options.path), ["/", "/auth"])
+    })
+})
+
+describe("RefreshCookie domain by request host", () => {
+    const cookie = new RefreshCookie({ name: "r", domains: ["starci.org", "local.starci.org", "example.test"], domain: "fallback.test" })
+    const domains = (request: HttpRequest) => {
+        const { calls, response } = recorder()
+        cookie.issue(response, tokens, request)
+        cookie.clear(response, request)
+        return [...new Set(calls.map((call) => call.options.domain ?? "host-only"))]
+    }
+
+    it("keeps localhost host-only when no domain is configured", () => {
+        const { calls, response } = recorder()
+        const plain = new RefreshCookie({ name: "r", domains: ["starci.org"] })
+        plain.issue(response, tokens, from("localhost:3000"))
+        plain.clear(response, from("localhost"))
+        assert.ok(calls.every((call) => !("domain" in call.options)))
+    })
+
+    it("sets the listed domain a tunnel host falls under, the longest that fits, without its port", () => {
+        assert.deepEqual(domains(from("nivo-local.starci.org")), ["starci.org"])
+        assert.deepEqual(domains(from("api.local.starci.org:443")), ["local.starci.org"])
+        assert.deepEqual(domains(from(["EXAMPLE.test:8080"])), ["example.test"])
+    })
+
+    it("falls back to the configured domain for an unlisted host, and for no host", () => {
+        assert.deepEqual(domains(from("evilstarci.org")), ["fallback.test"])
+        assert.deepEqual(domains(from()), ["fallback.test"])
     })
 })
 

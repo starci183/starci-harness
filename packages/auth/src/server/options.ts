@@ -27,8 +27,13 @@ export interface GoogleOptions {
 export interface RefreshCookieOptions {
     /** The cookie name. */
     readonly name: string
-    /** The `Domain` of the cookie; undefined keeps it host-only. */
+    /** The `Domain` of the cookie when the request host is under none of `domains`; undefined keeps it host-only. */
     readonly domain?: string | undefined
+    /**
+     * The domains a request host may set the cookie on: a host equal to one, or ending in "." and one, gets that one as the `Domain`
+     * (the longest that fits), so one api serves sign-in on localhost (host-only) and on a tunnel origin (its parent domain).
+     */
+    readonly domains?: readonly string[] | undefined
     /** The path the cookie is sent on (the web app's server reads it on its own pages and forwards it to the api). */
     readonly path?: string | undefined
     /** The paths older sessions wrote the cookie under; each is cleared so a stale copy never shadows the live one. */
