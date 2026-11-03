@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.1.0
+
+- Added: `runtime/scripts/lib/declaration-surface.mjs`, the one classifier of a TypeScript file's exported type surface (the isolated declaration emit and the exports it cannot write without inference, with the JSX-only component exemption), and `runtime/scripts/hfs/explicit-surface-rule.mjs`, the factory of the `explicit-export-surface` rule both lint canons build (R368). The app-check ESLint cache reads the same classifier for `open`, so the rule reports exactly the files the cache counts as open.
+- Changed: the ESLint child of the cached lint hands its project-graph snapshot out. The list runner (`lint/eslint-list.cjs`, now also the runner of a whole-side run, as the list `.`) asks each installed canon for `projectGraphSnapshot` after the lint and writes the findings beside its results; `lintSide` writes the `graph` records from them and builds the graph itself only for a canon the child did not answer for. A whole-side lint no longer builds the project graph a second time in the CLI process.
+
 ## 5.0.8
 
 - Removed: the `starci app lint` verb. `starci app check` is the one verb for app quality and carries what the lint verb carried: `--side be|fe` limits the lint gate to one side (reading and writing that side's cache records), `--out <file>` writes the merged Sonar Generic Issue Import document of the run (the findings of the selected gates under `starci-hfs`, then ESLint and stylelint), and `--fix` runs ESLint and stylelint with `--fix` before the check (with `--gate lint`). There is no `--changed` and no `--workspace`: the cache makes a whole-app check of an unchanged tree take seconds. The rendered `lint` and `lint:fix` scripts, the managed CI lint step and the release gate's Sonar row call `app check --gate lint`, and rule R13 requires that form.

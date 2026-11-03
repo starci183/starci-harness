@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.13
+
+- Changed: Require the updated FE canon, carry the rule catalog of @starci/hfs 5.1.0 (R368) and align the Grammar family.
+
 ## 0.21.12
 
 - Changed: Require the updated FE canon, carry the rule texts of @starci/hfs 5.0.8 and align the Grammar family.
