@@ -62,3 +62,22 @@ test('a grant names the keys one service reads, and an empty one is refused', ()
   const empty = normalizeLocal({ ports: { db: 54322 }, services: [{ name: 'db', wait: 'started' }], grants: [{ name: 'agent', keys: [] }] }, { project: 'demo', env: 'dev' });
   assert.match(empty.problems.map((item) => item.message).join('|'), /must list the keys the service reads/u);
 });
+
+test('a lite app may run its dev environment on docker-compose and a backing image in it, but not in a Swarm environment', async () => {
+  const { stacksRuntimeFindings } = await import('../runtime/scripts/hfs/rules/stacks-runtime.mjs');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-stacks-runtime-'));
+  try {
+    const doc = (swarmBinds: boolean) => ({
+      backing: { db: { provider: 'postgres', component: 'db' } },
+      components: { db: { role: 'stateful', image: 'demo/db:1' }, 'demo-minio': { role: 'stateful', image: 'ghcr.io/starci183/minio:RELEASE.2025-10-15T17-29-55Z-starci.1' } },
+      environments: {
+        dev: { runtime: 'docker-compose', composeFiles: ['infra/compose/compose.yaml'], components: { db: {}, 'demo-minio': {} }, local: { ports: { db: 54322 } } },
+        production: { runtime: 'docker-swarm', composeFiles: ['infra/swarm/stack.yaml'], components: swarmBinds ? { db: {}, 'demo-minio': {} } : { db: {} } },
+      },
+    });
+    const messages = (swarmBinds: boolean): string[] => stacksRuntimeFindings({ repoRoot: root, files: [], doc: doc(swarmBinds), edition: 'lite' }).map((finding: { message: string }) => finding.message);
+    assert.ok(!messages(false).some((text) => /lite runs no backing image/u.test(text)), 'a backing image only the dev environment binds is allowed');
+    assert.ok(!messages(false).some((text) => /environments\.dev lite delivery/u.test(text)), 'a docker-compose dev environment with a local block is lite delivery');
+    assert.ok(messages(true).some((text) => /lite runs no backing image/u.test(text)), 'a backing image a Swarm environment binds is still refused');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});

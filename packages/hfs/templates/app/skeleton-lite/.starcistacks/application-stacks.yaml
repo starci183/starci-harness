@@ -68,8 +68,8 @@ environments:
         password: {member: db, key: DEV_DB_OWNER_PASSWORD}
         adminPassword: {member: db, key: POSTGRES_PASSWORD}
         appPassword: {member: db, key: DEV_DB_APP_PASSWORD}
-      composeEnv:
-        - {name: POSTGRES_PASSWORD, member: db, key: POSTGRES_PASSWORD}
+      grants:
+        - {name: db, keys: [POSTGRES_PASSWORD]}
       custody:
         - {member: db, key: POSTGRES_PASSWORD, kind: password}
         - {member: db, key: DEV_DB_OWNER_PASSWORD, kind: password}
