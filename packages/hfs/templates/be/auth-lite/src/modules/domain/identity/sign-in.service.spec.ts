@@ -83,7 +83,9 @@ describe("IdentitySignInService", () => {
         })
         expect(sessions.endOthers).toHaveBeenCalledWith("u-1", undefined)
     })
+})
 
+describe("IdentitySignInService refusals", () => {
     it("turns a refusal of the package into the error family that owns its code", async () => {
         const { subject, doors } = await build()
         doors.refresh.mockRejectedValue(new AuthError("IDENTITY_REFRESH_REUSED"))

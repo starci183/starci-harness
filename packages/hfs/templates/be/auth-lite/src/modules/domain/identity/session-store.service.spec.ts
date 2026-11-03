@@ -63,7 +63,9 @@ describe("IdentitySessionStoreService.transaction", () => {
         })
         expect(transaction.commits).toBe(1)
     })
+})
 
+describe("IdentitySessionStoreService.transaction (a rotation)", () => {
     it("reads the token for update, marks it used and drops the expired ones", async () => {
         const { subject, entityManager } = await build(
             mockEntityManager({

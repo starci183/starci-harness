@@ -138,7 +138,9 @@ describe("IdentityEmailService.signup", () => {
         )
         expect(mailer.send).not.toHaveBeenCalled()
     })
+})
 
+describe("IdentityEmailService.signup (an address already known, a failing mail server, a spent budget)", () => {
     it("mails a new link to an unconfirmed account and says nothing about a confirmed one", async () => {
         const unconfirmed = mockEntityManager({
             query: [USER_BY_EMAIL, [account("unconfirmed")]],

@@ -99,7 +99,7 @@ test('sync renders the root config for an app with root packages, selecting the 
   assert.equal(target.scope, 'app');
   assert.match(target.content, /import \{ loadPackagesHfs as loadBePackages, starciBePackagesConfig \} from "@starci\/eslint-canon-be"/);
   assert.match(target.content, /import \{ loadPackagesHfs as loadFePackages, starciFePackagesConfig \} from "@starci\/eslint-canon-fe"/);
-  assert.match(target.content, /export default \[\.\.\.\(await starciBePackagesConfig\(\{ hfs: be \}\)\), \.\.\.starciFePackagesConfig\(\{ hfs: fe \}\), \.\.\.coreGrammarPackagesConfig\(\{ hfs: fe \}\)\]/);
+  assert.match(target.content, /export default \[\n {4}\.\.\.\(await starciBePackagesConfig\(\{ hfs: be \}\)\),\n {4}\.\.\.starciFePackagesConfig\(\{ hfs: fe \}\),\n {4}\.\.\.coreGrammarPackagesConfig\(\{ hfs: fe \}\),\n\]/, 'laid out as the canon config prints it (src/sync-prettier.spec.mts)');
   fs.rmSync(path.join(root, 'packages'), { recursive: true });
   const bare = await renderRepo(root, { presets: PRESETS });
   assert.equal(bare.targets.some((item) => item.path === 'eslint.config.mjs'), false);

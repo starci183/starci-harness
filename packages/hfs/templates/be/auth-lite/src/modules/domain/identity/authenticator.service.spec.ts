@@ -220,7 +220,9 @@ describe("IdentityAuthenticatorService.signInWithGoogle (new accounts and refusa
         }
         expect(entityManager.query).toHaveBeenCalledWith(TOUCH_USER, ["u-1", NOW, true, JSON.stringify(keys)])
     })
+})
 
+describe("IdentityAuthenticatorService.signInWithGoogle (refusals of a new account)", () => {
     it("refuses when the create door answers no account", async () => {
         const { subject, entityManager } = await build([
             [USER_BY_GOOGLE, [{ be_auth_user_by_google: null }]],
