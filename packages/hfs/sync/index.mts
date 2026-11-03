@@ -31,6 +31,7 @@ import { feAppPackageName } from '../runtime/scripts/hfs/rules/monorepo.mjs';
 import { DEFAULT_PORT, NODE_IMAGE, dockerfilePath } from '../runtime/scripts/hfs/rules/docker.mjs';
 import { isFile } from '../runtime/scripts/lib/fs-kind.mjs';
 import { readDeclaredSonarKey } from './sonar-key.mjs';
+import { RETIRED_GROUP, guardWrites, heldLines, isGuardedSource, type GuardedWrite } from './compile-guard.mjs';
 import { readDeclaredStack, stackWorkflowVariables } from './stack-images.mjs';
 import type { ImageApp } from './stack-images.mjs';
 import { DB_DOCKERFILE, DB_IMAGE_APP, RETIRED_DB_DOCKERFILE } from '../db/image.mjs';
@@ -76,12 +77,14 @@ export type ResolvedApp = AppRepo;
 type ManifestSlot = Slot;
 export type { SlotManifest };
 /** A file sync manages, before it is rendered: its path (relative to its scope), template and mode. */
-export interface Target { path: string; template: string; mode: string; slot?: string; markdown?: boolean }
+export interface Target { path: string; template: string; mode: string; slot?: string; group?: string; markdown?: boolean }
 /** The markers around a managed block. */
 export interface Markers { begin: string; end: string }
 /** A rendered target: its path (app-relative), scope, mode, content and hash, with the parsed scripts of a scripts target. */
 export interface RenderedTarget {
   path: string; scope: string; mode: string; content: string; hash: string; scripts?: Record<string, unknown>; markdown?: boolean | undefined; markers?: Markers;
+  /** The managed group of a slot's file (`managedBy`), which sync writes or holds whole (compile-guard.mjs). */
+  group?: string;
 }
 /** What comparing a rendered target with the disk answers. */
 export interface TargetCheck {
@@ -135,7 +138,7 @@ function slotTargets(slot: ManifestSlot, scope: string, edition: string, manifes
     if (!literalFile(file)) throw new SyncError('HFS_SYNC_MANIFEST_MANAGED', `slot ${slot.id} names ${managedKey} but its path ${effectivePath} is not a list of literal files (${file})`);
     const template = managedTemplate(scope, group, file, hasTemplate);
     if (!template) throw new SyncError('HFS_SYNC_TEMPLATE_MISSING', `slot ${slot.id} manages ${file} for ${scope}, but templates/{${scope},common}/${group} has no template for it`);
-    return { path: file, template, mode: MODE_OF_GROUP[group] ?? 'file', slot: slot.id };
+    return { path: file, template, mode: MODE_OF_GROUP[group] ?? 'file', slot: slot.id, group };
   });
 }
 
@@ -615,7 +618,7 @@ function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKe
       const markers = target.markdown ? { begin: '<!-- >>> starci app sync (managed block; do not edit) >>> -->', end: '<!-- <<< starci app sync <<< -->' } : { begin: BLOCK_BEGIN, end: BLOCK_END };
       const spacing = target.markdown ? '\n' : '';
       const managed = target.mode === 'block' ? `${markers.begin}\n${spacing}${trailingNewline(body)}${spacing}${markers.end}\n` : body;
-      return { path: where, scope, mode: target.mode, markdown: target.markdown, markers, content: managed, hash: hashOf(managed) };
+      return { path: where, scope, mode: target.mode, markdown: target.markdown, markers, content: managed, hash: hashOf(managed), ...(target.group === undefined ? {} : { group: target.group }) };
     })];
   });
 }
@@ -767,6 +770,17 @@ export function retiredFiles(root: string, hfs: { edition?: string } | null | un
   return found;
 }
 
+/** The writes of `targets` and the deletions of `retired` the compile guard judges: every file sync would change, with its managed group. */
+export function guardedWrites(root: string, targets: readonly RenderedTarget[], retired: readonly string[]): GuardedWrite[] {
+  const changed = checkTargets(root, targets).filter(result => result.status !== 'ok' && isGuardedSource(result.path));
+  const writes = changed.map((result): GuardedWrite => {
+    const target = targets.find(candidate => candidate.path === result.path) as RenderedTarget;
+    const file = path.join(root, target.path);
+    return { path: target.path, group: target.group ?? target.path, text: writtenContent(target, fs.existsSync(file) ? lf(fs.readFileSync(file, 'utf8')) : '') };
+  });
+  return [...writes, ...retired.map((file): GuardedWrite => ({ path: file, group: RETIRED_GROUP, text: null }))];
+}
+
 /** `starci app sync [--execute] [--cwd <dir>]` at the app root: the dry run reports drift, --execute writes; returns 0 clean, 1 drift, 2 usage. */
 function syncOptions(argv: readonly string[]): { write: boolean; cwdAt: number } | null {
   const write = argv.includes('--execute');
@@ -792,8 +806,10 @@ function reportSyncCheck(root: string, targets: readonly RenderedTarget[], out: 
   return bad.length || retired.length ? 1 : 0;
 }
 
-export async function runSync(argv: string[], { cwd = process.cwd(), out = (line: string): unknown => process.stdout.write(`${line}\n`), presets, parseYaml }: {
+export async function runSync(argv: string[], { cwd = process.cwd(), out = (line: string): unknown => process.stdout.write(`${line}\n`), presets, parseYaml, loadTs }: {
   cwd?: string; out?: (line: string) => unknown; presets?: Presets | undefined; parseYaml?: ParseYaml | undefined;
+  /** The TypeScript of a side folder the compile guard compiles with; the app's own install by default. */
+  loadTs?: Parameters<typeof guardWrites>[2];
 } = {}): Promise<number> {
   const options = syncOptions(argv);
   if (!options) {
@@ -808,12 +824,18 @@ export async function runSync(argv: string[], { cwd = process.cwd(), out = (line
     const retired = retiredFiles(root, hfs);
     if (targets.some(target => target.path === 'README.md')) for (const notice of new Set(notices)) out(notice);
     if (write) {
-      const written = writeTargets(root, targets);
+      const { held, unchecked } = guardWrites(root, guardedWrites(root, targets, retired), loadTs);
+      const holds = new Set(held.flatMap(group => group.files));
+      const free = targets.filter(target => !holds.has(target.path));
+      const written = writeTargets(root, free);
+      const removed = retired.filter(file => !holds.has(file));
       for (const file of written) out(`wrote ${file}`);
-      for (const file of retired) { fs.rmSync(path.join(root, file)); out(`removed ${file} (retired)`); }
-      for (const dir of LITE_RETIRED_DIRS) if (retired.length && fs.existsSync(path.join(root, dir)) && !fs.readdirSync(path.join(root, dir)).length) fs.rmdirSync(path.join(root, dir));
-      out(`starci app sync: ${written.length} written, ${targets.length - written.length} already in sync`);
-      return 0;
+      for (const file of removed) { fs.rmSync(path.join(root, file)); out(`removed ${file} (retired)`); }
+      for (const dir of LITE_RETIRED_DIRS) if (removed.length && fs.existsSync(path.join(root, dir)) && !fs.readdirSync(path.join(root, dir)).length) fs.rmdirSync(path.join(root, dir));
+      for (const project of unchecked) out(`notice: the writes compiled by ${project} were not type-checked: its TypeScript is not installed (run npm install, then "npx --no-install starci app check")`);
+      for (const group of held) for (const line of heldLines(group)) out(line);
+      out(`starci app sync: ${written.length} written, ${free.length - written.length} already in sync${holds.size ? `, ${holds.size} held` : ''}`);
+      return held.length ? 1 : 0;
     }
     return reportSyncCheck(root, targets, out, retired);
   } catch (error) {

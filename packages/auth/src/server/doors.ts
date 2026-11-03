@@ -30,7 +30,7 @@ export interface DoorsDeps {
 
 /**
  * The cookie doors of sign-in over the flows, the sessions and the cookie: what a controller calls. The refresh token only goes
- * into the cookie; a refresh that cannot be used clears it, one a sibling request just rotated leaves it as the sibling wrote it.
+ * into the cookie; every refresh rotates and sets its successor (a racing one included), and a refresh that cannot be used clears it.
  */
 export class AuthDoors {
     readonly #deps: DoorsDeps
@@ -47,11 +47,11 @@ export class AuthDoors {
         return accessOf(tokens)
     }
 
-    /** Rotates the cookie token and answers a new access token; a cookie that cannot be used is cleared and the refusal rethrown. */
+    /** Rotates the cookie token and sets the successor (every refresh rotates, a racing one included); a cookie that cannot be used is cleared and the refusal rethrown. */
     async refresh(exchange: HttpExchange): Promise<AccessGrant> {
         try {
             const tokens = await this.#deps.sessions.refresh(this.#deps.cookie.read(exchange.req))
-            if (tokens.cookieKept !== true) this.#deps.cookie.issue(exchange.res, tokens)
+            this.#deps.cookie.issue(exchange.res, tokens)
             return accessOf(tokens)
         } catch (cause) {
             this.#deps.cookie.clear(exchange.res)

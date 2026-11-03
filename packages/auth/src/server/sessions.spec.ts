@@ -3,7 +3,7 @@ import { describe, it } from "node:test"
 import { AUTH_ERROR_CODES } from "../contracts/index.ts"
 import { testAuthOptions } from "../testing/index.ts"
 import { AuthError } from "./errors.ts"
-import { DEFAULT_REUSE_GRACE_MS, REFRESH_REUSE_EVENT, AuthSessions } from "./sessions.ts"
+import { DEFAULT_REUSE_GRACE_MS, RACED_SUCCESSORS_MAX, REFRESH_REUSE_EVENT, AuthSessions } from "./sessions.ts"
 import { AuthTokens } from "./tokens.ts"
 import { digestOf } from "./primitives.ts"
 
@@ -25,6 +25,9 @@ const build = () => {
     return { options, tokens, sessions, events }
 }
 
+const rowOf = (options: ReturnType<typeof build>["options"], token: string) =>
+    [...options.sessions.tokens.values()].find((row) => row.tokenHash === digestOf(token))
+
 const refusal = (code: string) => (error: unknown) => error instanceof AuthError && error.code === code
 
 describe("AuthSessions.start", () => {
@@ -41,7 +44,6 @@ describe("AuthSessions.start", () => {
         assert.deepEqual(issued.user, { id: "user-1", email: "a@example.test" })
         const verified = await tokens.verify(issued.accessToken, options.clock.now())
         assert.equal(verified.kind === "ok" && verified.value.sessionId, [...options.sessions.sessions.keys()][0])
-        assert.equal(issued.cookieKept, undefined)
         assert.match(issued.cookieToken, /^[0-9a-z]+$/u)
     })
 })
@@ -53,25 +55,62 @@ describe("AuthSessions.refresh", () => {
         options.clock.advance(60_000)
         const second = await sessions.refresh(first.cookieToken)
         assert.notEqual(second.cookieToken, first.cookieToken)
-        assert.equal(second.cookieKept, undefined)
         const spent = options.sessions.tokens.get([...options.sessions.tokens.values()].find((row) => row.tokenHash === digestOf(first.cookieToken))?.id ?? "")
         assert.equal(spent?.usedAt?.getTime(), options.clock.now().getTime())
         assert.equal(options.sessions.tokens.size, 2)
     })
 
-    it("answers a replay inside the grace window with an access token and no rotation (a racing tab)", async () => {
+    it("gives a replay inside the grace window a successor of its own, which refreshes exactly once (a lost Set-Cookie)", async () => {
         const { options, sessions, events } = build()
         const first = await sessions.start(subject, device)
-        const winner = await sessions.refresh(first.cookieToken)
+        await sessions.refresh(first.cookieToken)
         options.clock.advance(DEFAULT_REUSE_GRACE_MS - 1)
-        const loser = await sessions.refresh(first.cookieToken)
-        assert.equal(loser.cookieKept, true)
-        assert.equal(loser.cookieToken, first.cookieToken)
-        assert.equal(options.sessions.tokens.size, 2, "the loser stored no successor")
-        assert.equal(options.sessions.sessions.size, 1, "the session stays")
+        const raced = await sessions.refresh(first.cookieToken)
+        assert.notEqual(raced.cookieToken, first.cookieToken)
+        assert.equal(options.sessions.tokens.size, 3, "the raced replay stored its own successor")
+        assert.equal(options.sessions.sessions.size, 1, "in the same session")
+        assert.equal(rowOf(options, first.cookieToken)?.racedCount, 1)
         assert.equal(events.length, 0)
-        const next = await sessions.refresh(winner.cookieToken)
-        assert.notEqual(next.cookieToken, winner.cookieToken)
+        const next = await sessions.refresh(raced.cookieToken)
+        assert.notEqual(next.cookieToken, raced.cookieToken)
+        options.clock.advance(DEFAULT_REUSE_GRACE_MS + 1)
+        await assert.rejects(sessions.refresh(raced.cookieToken), refusal(AUTH_ERROR_CODES.RefreshReused), "the raced successor is spent by its one refresh")
+    })
+
+    it("leaves the sibling successor working after a raced replay", async () => {
+        const { options, sessions } = build()
+        const first = await sessions.start(subject, device)
+        const winner = await sessions.refresh(first.cookieToken)
+        options.clock.advance(1000)
+        const raced = await sessions.refresh(first.cookieToken)
+        const fromWinner = await sessions.refresh(winner.cookieToken)
+        const fromRaced = await sessions.refresh(raced.cookieToken)
+        assert.notEqual(fromWinner.cookieToken, fromRaced.cookieToken)
+        assert.equal(options.sessions.sessions.size, 1)
+    })
+
+    it("caps the raced successors of one rotated token, and treats one more replay as reuse", async () => {
+        const { options, sessions, events } = build()
+        const first = await sessions.start(subject, device)
+        await sessions.refresh(first.cookieToken)
+        for (let n = 0; n < RACED_SUCCESSORS_MAX; n += 1) await sessions.refresh(first.cookieToken)
+        assert.equal(rowOf(options, first.cookieToken)?.racedCount, RACED_SUCCESSORS_MAX)
+        await assert.rejects(sessions.refresh(first.cookieToken), refusal(AUTH_ERROR_CODES.RefreshReused))
+        assert.equal(options.sessions.sessions.size, 0)
+        assert.equal(options.sessions.tokens.size, 0)
+        assert.equal(events[0]?.event, REFRESH_REUSE_EVENT)
+    })
+
+    it("revokes every sibling of the session on reuse, raced successors included", async () => {
+        const { options, sessions } = build()
+        const first = await sessions.start(subject, device)
+        const winner = await sessions.refresh(first.cookieToken)
+        const raced = await sessions.refresh(first.cookieToken)
+        options.clock.advance(DEFAULT_REUSE_GRACE_MS + 1)
+        await assert.rejects(sessions.refresh(first.cookieToken), refusal(AUTH_ERROR_CODES.RefreshReused))
+        assert.equal(options.sessions.tokens.size, 0)
+        await assert.rejects(sessions.refresh(winner.cookieToken), refusal(AUTH_ERROR_CODES.RefreshInvalid))
+        await assert.rejects(sessions.refresh(raced.cookieToken), refusal(AUTH_ERROR_CODES.RefreshInvalid))
     })
 
     it("ends the whole session when a spent token comes back after the grace window", async () => {
@@ -145,7 +184,7 @@ describe("AuthSessions.access", () => {
         const first = await sessions.start(subject, device)
         const a = await sessions.access(first.cookieToken)
         const b = await sessions.access(first.cookieToken)
-        assert.equal(a.cookieKept, true)
+        assert.equal(a.cookieToken, first.cookieToken)
         assert.equal(b.cookieToken, first.cookieToken)
         assert.equal(options.sessions.tokens.size, 1)
     })
@@ -155,7 +194,7 @@ describe("AuthSessions.access", () => {
         const first = await sessions.start(subject, device)
         await sessions.refresh(first.cookieToken)
         options.clock.advance(1000)
-        assert.equal((await sessions.access(first.cookieToken)).cookieKept, true)
+        assert.equal((await sessions.access(first.cookieToken)).cookieToken, first.cookieToken)
         options.clock.advance(DEFAULT_REUSE_GRACE_MS)
         await assert.rejects(sessions.access(first.cookieToken), refusal(AUTH_ERROR_CODES.RefreshReused))
         assert.equal(options.sessions.sessions.size, 0)
@@ -195,7 +234,7 @@ describe("AuthSessions end", () => {
         await assert.rejects(sessions.endOthers("user-1", undefined), refusal(AUTH_ERROR_CODES.Unauthenticated))
         await sessions.endOthers("user-1", hereId)
         assert.deepEqual([...options.sessions.sessions.keys()], [hereId])
-        assert.equal((await sessions.access(here.cookieToken)).cookieKept, true)
+        assert.equal((await sessions.access(here.cookieToken)).cookieToken, here.cookieToken)
         assert.equal((await sessions.jwks()).keys.length, 1)
     })
 
