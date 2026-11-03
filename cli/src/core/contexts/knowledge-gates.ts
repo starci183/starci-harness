@@ -109,6 +109,38 @@ const heroNames = (source: string): Set<string> => {
     return names
 }
 
+/** Adds a finding for each override of a wrapper row that cites a ruling rulings.yaml does not hold. */
+const judgeOverrides = (row: Record<string, unknown>, rowFile: string, rulings: readonly Record<string, unknown>[], found: KnowledgeFinding[]): void => {
+    for (const override of list(row.overrides).map(object)) {
+        const ruling = text(override.ruling)
+        if (!rulings.some((entry) => text(entry.id) === ruling)) found.push({ kind: "wrapper-ruling-unknown", subject: rowFile, detail: `an override of ${rowFile} cites ruling ${ruling}, which rulings.yaml does not hold` })
+    }
+}
+
+/** Judges each row of vendor/wrappers.yaml against the HeroUI components its Grammar file imports; the files the rows name. */
+const judgeWrapperRows = (rows: readonly Record<string, unknown>[], imported: ReadonlyMap<string, Set<string>>, grammarSource: string, rulings: readonly Record<string, unknown>[], found: KnowledgeFinding[]): Set<string> => {
+    const declared = new Set<string>()
+    for (const row of rows) {
+        const rowFile = text(row.file)
+        declared.add(rowFile)
+        const actual = imported.get(rowFile)
+        const wrapsNothing = list(row.wraps).length === 0
+        if (actual === undefined && wrapsNothing && existsSync(join(grammarSource, rowFile))) continue
+        if (actual === undefined) {
+            found.push({ kind: "wrapper-stale", subject: rowFile, detail: `${rowFile} is a row of vendor/wrappers.yaml and ${existsSync(join(grammarSource, rowFile)) ? "imports no HeroUI component" : "does not exist"}: remove the row` })
+            continue
+        }
+        const wraps = new Set(list(row.wraps).map(text))
+        const missing = [...actual].filter((name) => !wraps.has(name))
+        const extra = [...wraps].filter((name) => !actual.has(name))
+        if (missing.length > 0 || extra.length > 0) {
+            found.push({ kind: "wrapper-wraps-drift", subject: rowFile, detail: `${rowFile} wraps ${[...actual].sort((left, right) => left.localeCompare(right)).join(", ")}; the row says ${[...wraps].sort((left, right) => left.localeCompare(right)).join(", ")}` })
+        }
+        judgeOverrides(row, rowFile, rulings, found)
+    }
+    return declared
+}
+
 /**
  * vendor/wrappers.yaml against the Grammar source it describes (the part of the parity gate that needs no vendor cache):
  *   - every row's file exists and still imports a HeroUI component (else the row is stale; a row with `wraps: []` is a role override on a file that wraps nothing and stands while the file exists);
@@ -130,28 +162,7 @@ export const judgeVendorWrappers = (knowledge: string, grammarSource: string): K
         const names = heroNames(read(path))
         if (names.size > 0) imported.set(relative(grammarSource, path).replaceAll("\\", "/"), names)
     }
-    const declared = new Set<string>()
-    for (const row of rows) {
-        const rowFile = text(row.file)
-        declared.add(rowFile)
-        const actual = imported.get(rowFile)
-        const wrapsNothing = list(row.wraps).length === 0
-        if (actual === undefined && wrapsNothing && existsSync(join(grammarSource, rowFile))) continue
-        if (actual === undefined) {
-            found.push({ kind: "wrapper-stale", subject: rowFile, detail: `${rowFile} is a row of vendor/wrappers.yaml and ${existsSync(join(grammarSource, rowFile)) ? "imports no HeroUI component" : "does not exist"}: remove the row` })
-            continue
-        }
-        const wraps = new Set(list(row.wraps).map(text))
-        const missing = [...actual].filter((name) => !wraps.has(name))
-        const extra = [...wraps].filter((name) => !actual.has(name))
-        if (missing.length > 0 || extra.length > 0) {
-            found.push({ kind: "wrapper-wraps-drift", subject: rowFile, detail: `${rowFile} wraps ${[...actual].sort((left, right) => left.localeCompare(right)).join(", ")}; the row says ${[...wraps].sort((left, right) => left.localeCompare(right)).join(", ")}` })
-        }
-        for (const override of list(row.overrides).map(object)) {
-            const ruling = text(override.ruling)
-            if (!rulings.some((entry) => text(entry.id) === ruling)) found.push({ kind: "wrapper-ruling-unknown", subject: rowFile, detail: `an override of ${rowFile} cites ruling ${ruling}, which rulings.yaml does not hold` })
-        }
-    }
+    const declared = judgeWrapperRows(rows, imported, grammarSource, rulings, found)
     for (const [path, names] of imported) {
         if (!declared.has(path)) found.push({ kind: "wrapper-undeclared", subject: path, detail: `${path} imports ${[...names].sort((left, right) => left.localeCompare(right)).join(", ")} from @heroui/react and has no row in vendor/wrappers.yaml` })
     }

@@ -5,7 +5,7 @@ import { runtimeRoot } from "../../harness/ledger.js"
 import { inOrder } from "../../harness/sequential.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { EVERYONE, defineVerb } from "../../shared/verb.js"
-import type { VerbResult } from "../../shared/verb.js"
+import type { VerbContext, VerbResult } from "../../shared/verb.js"
 import { EVAL_FILE } from "./anchors.js"
 import { corpusRoot } from "./anchors-verb.js"
 import { SEARCH_SCOPES, readCorpus } from "./search-corpus.js"
@@ -166,6 +166,58 @@ const evalFile = (cwd: string, flag: string | undefined): string => {
     return isAbsolute(flag) ? flag : resolve(cwd, flag)
 }
 
+/** `contexts search <question>`: the ranked hits of the question and its other phrasings. */
+const searchIndex = async (index: ReturnType<typeof indexOrRefuse>, flags: { readonly question: string | undefined; readonly also: readonly string[]; readonly scope: string | undefined; readonly limit: string | undefined; readonly lexical: boolean }): Promise<VerbResult<SearchData>> => {
+    if (flags.question === undefined || flags.question.trim() === "") throw new UsageError("contexts search needs a question (or none, to judge the index, or --eval)")
+    if ([flags.question, ...flags.also].some((phrasing) => NON_ENGLISH_LETTER.test(phrasing))) {
+        throw new Refusal("SEARCH_QUERY_NOT_ENGLISH", "the contexts are English: translate the question to English first and search again, keeping rule ids and names as written")
+    }
+    const ranking = await search(index, flags.question, { scopes: parseScopes(flags.scope), limit: parseLimit(flags.limit), lexicalOnly: flags.lexical, also: flags.also })
+    const asked = 1 + flags.also.length
+    const data: SearchData = { mode: "search", ...describe(index), ranking: ranking.mode, fallback: ranking.fallback, hits: ranking.hits }
+    const head = ranking.fallback === undefined ? `${ranking.mode} ranking; cite the anchor, \`starci contexts anchor <anchor>\` resolves it` : `lexical ranking (BM25 only: ${ranking.fallback})`
+    const body = ranking.hits.map((hit, at) => {
+        const askedSuffix = asked === 1 ? "" : `  found by ${String(hit.phrasings)}/${String(asked)}`
+        return `${String(at + 1)}. ${hit.anchor}${hit.citable ? "" : " (not a rules-cited id)"}${askedSuffix}  ${hit.path}:${String(hit.line)}  score ${String(hit.score)}\n   ${snippet(hit.text)}`
+    })
+    return { data, message: [head, ...(body.length === 0 ? ["no hit"] : body)].join("\n") }
+}
+
+/** `contexts search --eval`: recall@5 and MRR of each ranking on the eval set. */
+const evaluate = async (context: VerbContext, flags: { readonly file: string | undefined }, index: ReturnType<typeof indexOrRefuse>): Promise<VerbResult<SearchData>> => {
+    const result = await runEval(index, evalFile(context.cwd, flags.file))
+    const data: SearchData = { mode: "eval", ...describe(index), eval: result }
+    const lines = result.scores.map(
+        (score) =>
+            `${score.held ? "held" : "SEARCH_RECALL_LOW"} ${score.mode}: recall@5 ${String(score.recallAt5)} (floor ${String(score.threshold)}), MRR ${String(score.mrr)}, ${String(score.misses.length)} miss(es)${score.fallback === undefined ? "" : " (fallback: " + score.fallback + ")"}`,
+    )
+    const unknown = result.unknownIds.length === 0 ? "" : `\nexpected or fix ids the index lacks: ${result.unknownIds.join(", ")}`
+    const red = unknown !== "" || result.scores.some((score) => !score.held)
+    return { data, message: `${String(result.questions)} question(s), ${String(result.misses)} of them recorded misses, vectors: ${data.embedding}\n${lines.join("\n")}${unknown}`, exitCode: red ? 1 : 0 }
+}
+
+/** `contexts search` with no question: judges the built index against the files of the tree. */
+const judgeIndex = (context: VerbContext, flags: { readonly cwd: string | undefined }, index: ReturnType<typeof indexOrRefuse>): VerbResult<SearchData> => {
+    const stale = staleness(index.file, readCorpus(corpusRoot(context.cwd, flags.cwd)))
+    const data: SearchData = { mode: "check", ...describe(index), stale }
+    const size = `${String(Math.round(statSync(INDEX_PATH).size / 1024))} KB`
+    return {
+        data,
+        message: stale === undefined ? `green: ${INDEX_PATH} (${String(data.chunks)} chunks, ${size}) matches the tree; vectors: ${data.embedding}` : `SEARCH_INDEX_STALE: ${stale}; run \`starci contexts search --execute\` (or \`npm run build\` in cli/)`,
+        exitCode: stale === undefined ? 0 : 1,
+    }
+}
+
+/** `contexts search --execute`: rebuilds the index from the harness's own tree. */
+const rebuild = async (context: VerbContext, flags: { readonly cwd: string | undefined }, judging: boolean): Promise<VerbResult<BuildData>> => {
+    if (!judging) throw new UsageError("--execute rebuilds the index; it takes no question and no --eval")
+    if (flags.cwd !== undefined) throw new UsageError("--execute rebuilds the harness's own index; --cwd only names a tree to compare it with")
+    const built = await buildIndex(runtimeRoot(), context.progress)
+    writeIndex(built)
+    const vectors = built.embedding === null ? `none (${built.embeddingNote})` : built.embeddingNote
+    return { data: { mode: "build", chunks: built.chunks.length, files: built.files, embedding: vectors } satisfies BuildData, message: `wrote ${INDEX_PATH}: ${String(built.chunks.length)} chunks from ${String(built.files)} files; vectors: ${vectors}` }
+}
+
 /**
  * `starci contexts search`: layer two of the context, knowledge looked up on demand. Ranks the chunks of contexts/, the op
  * files, policy/, the starci skill and the harness documents (each a Markdown section or a yaml entry) for a question, by BM25
@@ -197,47 +249,15 @@ export const contextsSearchVerb = defineVerb({
         const judging = flags.question === undefined && !flags.eval
         if (flags.also.length > 0 && flags.question === undefined) throw new UsageError("--also adds a phrasing to a question; give the question first")
         if (flags.execute) {
-            if (!judging) throw new UsageError("--execute rebuilds the index; it takes no question and no --eval")
-            if (flags.cwd !== undefined) throw new UsageError("--execute rebuilds the harness's own index; --cwd only names a tree to compare it with")
-            const built = await buildIndex(runtimeRoot(), context.progress)
-            writeIndex(built)
-            const vectors = built.embedding === null ? `none (${built.embeddingNote})` : built.embeddingNote
-            return { data: { mode: "build", chunks: built.chunks.length, files: built.files, embedding: vectors } satisfies BuildData, message: `wrote ${INDEX_PATH}: ${String(built.chunks.length)} chunks from ${String(built.files)} files; vectors: ${vectors}` }
+            return await rebuild(context, flags, judging)
         }
         const index = indexOrRefuse()
         if (judging) {
-            const stale = staleness(index.file, readCorpus(corpusRoot(context.cwd, flags.cwd)))
-            const data: SearchData = { mode: "check", ...describe(index), stale }
-            const size = `${String(Math.round(statSync(INDEX_PATH).size / 1024))} KB`
-            return {
-                data,
-                message: stale === undefined ? `green: ${INDEX_PATH} (${String(data.chunks)} chunks, ${size}) matches the tree; vectors: ${data.embedding}` : `SEARCH_INDEX_STALE: ${stale}; run \`starci contexts search --execute\` (or \`npm run build\` in cli/)`,
-                exitCode: stale === undefined ? 0 : 1,
-            }
+            return judgeIndex(context, flags, index)
         }
         if (flags.eval) {
-            const result = await runEval(index, evalFile(context.cwd, flags.file))
-            const data: SearchData = { mode: "eval", ...describe(index), eval: result }
-            const lines = result.scores.map(
-                (score) =>
-                    `${score.held ? "held" : "SEARCH_RECALL_LOW"} ${score.mode}: recall@5 ${String(score.recallAt5)} (floor ${String(score.threshold)}), MRR ${String(score.mrr)}, ${String(score.misses.length)} miss(es)${score.fallback === undefined ? "" : " (fallback: " + score.fallback + ")"}`,
-            )
-            const unknown = result.unknownIds.length === 0 ? "" : `\nexpected or fix ids the index lacks: ${result.unknownIds.join(", ")}`
-            const red = unknown !== "" || result.scores.some((score) => !score.held)
-            return { data, message: `${String(result.questions)} question(s), ${String(result.misses)} of them recorded misses, vectors: ${data.embedding}\n${lines.join("\n")}${unknown}`, exitCode: red ? 1 : 0 }
+            return await evaluate(context, flags, index)
         }
-        if (flags.question === undefined || flags.question.trim() === "") throw new UsageError("contexts search needs a question (or none, to judge the index, or --eval)")
-        if ([flags.question, ...flags.also].some((phrasing) => NON_ENGLISH_LETTER.test(phrasing))) {
-            throw new Refusal("SEARCH_QUERY_NOT_ENGLISH", "the contexts are English: translate the question to English first and search again, keeping rule ids and names as written")
-        }
-        const ranking = await search(index, flags.question, { scopes: parseScopes(flags.scope), limit: parseLimit(flags.limit), lexicalOnly: flags.lexical, also: flags.also })
-        const asked = 1 + flags.also.length
-        const data: SearchData = { mode: "search", ...describe(index), ranking: ranking.mode, fallback: ranking.fallback, hits: ranking.hits }
-        const head = ranking.fallback === undefined ? `${ranking.mode} ranking; cite the anchor, \`starci contexts anchor <anchor>\` resolves it` : `lexical ranking (BM25 only: ${ranking.fallback})`
-        const body = ranking.hits.map((hit, at) => {
-            const askedSuffix = asked === 1 ? "" : `  found by ${String(hit.phrasings)}/${String(asked)}`
-            return `${String(at + 1)}. ${hit.anchor}${hit.citable ? "" : " (not a rules-cited id)"}${askedSuffix}  ${hit.path}:${String(hit.line)}  score ${String(hit.score)}\n   ${snippet(hit.text)}`
-        })
-        return { data, message: [head, ...(body.length === 0 ? ["no hit"] : body)].join("\n") }
+        return await searchIndex(index, flags)
     },
 })
