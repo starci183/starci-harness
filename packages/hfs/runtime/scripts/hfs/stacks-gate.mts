@@ -391,7 +391,7 @@ const checkStacksManifest=(manifest: Parsed,model: Parsed,{stacksRoot,environmen
   const lite=repo.edition==='lite';
   checkStacksTree({stacksRoot,manifest,environmentNames,add,lite});
   checkKubernetesDeclaration(manifest,add);
-  for(const issue of swarmInventoryIssues({components:manifest.components,lite}))add('HFS_STACKS_SHAPE',issue.at,issue.message);
+  for(const issue of swarmInventoryIssues({components:manifest.components,lite,swarm:new Set(Object.values(object(manifest.environments)?manifest.environments:{}).filter((spec: Parsed)=>spec?.runtime==='docker-swarm').flatMap((spec: Parsed)=>Object.keys(object(spec.components)?spec.components:{})))}))add('HFS_STACKS_SHAPE',issue.at,issue.message);
   checkSelectedEnvironment({environment,environmentNames,environments,stacksRoot,ids,root,model,manifest,lite,repo,add});
 };
 

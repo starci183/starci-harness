@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.13.0 - 2026-11-03
+
+- Changed: the runtime copies of the slot manifest carry the managed sign-in slots and the slot field `managedOnly`.
+- Changed: `own-jwks-only` refuses `jwtVerify`, `decodeJwt`, `decodeProtectedHeader` and `createRemoteJWKSet` of jose in every app file; `refresh-token-cookie-only` no longer exempts `integrations/passport` (the package sets the cookie); the infrastructure table owns the identity libraries by nobody and `@starci/auth` by `integrations/passport` (R328, R329, R330).
+
 ## 3.12.0
 
 - Added: `starci-be/explicit-export-surface` (R368, `HFS_EXPLICIT_EXPORT_SURFACE`) at error: an exported function's return type, an exported variable's type and a parameter's type are written, not inferred from a body or from other files. It reports each export the isolated declaration emit cannot write, at the offending span, and says what to annotate. It reads the classifier the lint result cache reads.

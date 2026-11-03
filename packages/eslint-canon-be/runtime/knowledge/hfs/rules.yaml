@@ -4084,6 +4084,7 @@ rules:
     enforcers:
       - {kind: hfs, id: fe-stack, at: scripts/hfs/rules/fe-stack.mjs}
       - {kind: eslint-fe, id: fe-stack-import}
+      - {kind: eslint-fe, id: swr-extension-from-package}
     proves:
       - {path: packages/eslint/fe/frontend-boundary-coverage.spec.mjs, editions: [lite, full], codes: [FE_STACK_FORBIDDEN]}
       - {path: packages/hfs/src/frontend-boundary-coverage.spec.mjs, editions: [lite, full], codes: [FE_STACK_FORBIDDEN]}
@@ -5696,7 +5697,7 @@ rules:
         ruling: "A model call made straight from code uses LangChain with retrieved context, through the ai-router gateway (owner ruling be-ai-langchain-gateway): the LangChain clients point at the gateway's base URL with its virtual key."
   - id: R328
     code: "BE_AUTH_PASSPORT_OWNER"
-    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are imported only by integrations/passport, the one owner of the Google OAuth 2.0 strategy (state and PKCE), the local email and password strategy (bcrypt) and the app's own access tokens; bcrypt and every Supabase client are owned nowhere."
+    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth and are imported by no app file; @starci/auth/server is imported only by integrations/passport, its one glue. bcrypt and every Supabase client are owned nowhere."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_AUTH_PASSPORT_OWNER"]
@@ -5718,7 +5719,7 @@ rules:
         ruling: "Lite leaves Supabase: its identity is the app own Passport integration (Google OAuth and email/password) on its self-hosted PostgreSQL; full keeps Keycloak."
   - id: R329
     code: "BE_AUTH_JWT_OWN_JWKS"
-    law: "A lite back-end principal comes only from the app's own access token verified by integrations/passport against its own key set (jose jwtVerify over createLocalJWKSet, issuer, audience and algorithms pinned), never from a remote JWKS, an unverified decode or a request body claim; domain/identity builds the principal from that verification."
+    law: "A lite back-end principal comes only from the app's own access token, verified by @starci/auth (EdDSA pinned, issuer and audience checked, a local key set that may hold several keys), never from a remote JWKS, a token decoded without its signature check, a jwtVerify call in the app or a body claim."
     kinds: [check, lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_AUTH_JWT_OWN_JWKS"]
@@ -5742,7 +5743,7 @@ rules:
         ruling: "The lite back end verifies its own asymmetric access tokens against its own JWKS; it trusts no remote identity provider."
   - id: R330
     code: "BE_AUTH_REFRESH_COOKIE"
-    law: "A refresh token travels only in an httpOnly, Secure, SameSite=Strict cookie scoped to the refresh door (set and cleared only through integrations/passport), is rotated on every use with reuse detection, and never appears as a field of a request or response body."
+    law: "A refresh token travels only in the httpOnly, Secure cookie that @starci/auth sets, rotates (with a reuse grace window and reuse detection) and clears; no app file writes that cookie, and the token never appears as a field of a request or response body."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_AUTH_REFRESH_COOKIE"]
@@ -5764,7 +5765,7 @@ rules:
         ruling: "The refresh token of the lite identity rotates and lives only in an httpOnly cookie; the browser holds no credential."
   - id: R331
     code: "BE_STORAGE_OWNER"
-    law: "The S3 client (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) is imported only by integrations/object-storage, the ObjectStorage port over S3-compatible storage (MinIO in lite) with presigned PUT and GET; no module imports minio."
+    law: "The S3 client libraries (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) are the dependencies of @starci/object-storage, the ObjectStorage port over S3-compatible storage (MinIO in lite) with presigned PUT and GET, and are imported by no app file; @starci/object-storage is imported only by integrations/object-storage, its one glue; no module imports minio."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_STORAGE_OWNER"]
@@ -5773,11 +5774,11 @@ rules:
     editions: [lite, full]
     docs: [contexts/code/be/infra.md]
     proves:
-      - packages/eslint-canon-be/src/auth-passport.spec.ts
+      - packages/eslint-canon-be/src/object-storage-package.spec.ts
     exemplifiedBy:
-      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/object-storage.client.ts, edition: lite}
+      - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/object-storage.module.ts, edition: lite}
     witness:
-      - {path: packages/eslint-canon-be/src/auth-passport.spec.ts, editions: [lite, full], codes: [BE_STORAGE_OWNER]}
+      - {path: packages/eslint-canon-be/src/object-storage-package.spec.ts, editions: [lite, full], codes: [BE_STORAGE_OWNER]}
     cases:
       - id: case-1
         date: "2026-10-29"
@@ -6576,3 +6577,50 @@ rules:
         source: owner
         quote: "no lint caught it"
         ruling: "A directive below an import broke Nivo's CI build on 2026-11-02; the directive is the first statement of its module and a lint reports it elsewhere."
+  - id: R372
+    code: "STACKS_LOCAL_CONFIG_INVALID"
+    law: "In lite and full apps, every docker-compose environment of .starcistacks/application-stacks.yaml declares a coherent `local` block, judged by the same normalizeLocal the dev verbs of `starci app stack` (doctor, prepare, up, status, logs, verify, down) use: closed fields, one loopback port each, compose services that exist in the compose files, an environment-owned database role (never postgres, never the app role), dev-only custody generators and loopback probes; and a lite app declares at least one such dev environment, so `starci app stack up --env dev` has something to run."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["STACKS_LOCAL_CONFIG_INVALID", "STACKS_DEV_UNDECLARED"]
+    enforcers:
+      - {kind: hfs, id: stacks-local, at: scripts/hfs/rules/stacks-local.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-6-every-runbook-declares-the-same-operations, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
+    exemplifiedBy:
+      - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks, edition: lite}
+    witness:
+      - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
+  - id: R373
+    code: "STACKS_RUNBOOK_DOCKER_COMMAND"
+    law: "The runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no `docker build|run|compose|create|start|stop|pull|push` or `docker stack deploy` command: Docker is run by the harness verb, never by hand (hard rule 8)."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["STACKS_RUNBOOK_DOCKER_COMMAND"]
+    enforcers:
+      - {kind: hfs, id: stacks-local, at: scripts/hfs/rules/stacks-local.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-10-local-runs, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
+    exemplifiedBy:
+      - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks, edition: lite}
+    witness:
+      - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
+  - id: R374
+    code: "STACKS_CODE_BIND_MOUNT"
+    law: "A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned and whose final stage is the harness's image for that service, the fork or its runtime layer, when the harness owns one), the same image in every environment; no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, least grants and read-only plain config data files stay allowed)."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["STACKS_CODE_BIND_MOUNT", "STACKS_IMAGE_BASE_UNPINNED", "STACKS_IMAGE_BASE_NOT_FORK", "STACKS_IMAGE_ENV_DIVERGES"]
+    enforcers:
+      - {kind: hfs, id: stacks-service-images, at: scripts/hfs/rules/stacks-service-images.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-11-a-customised-service-is-an-image-the-app-builds-the-same-in-every-environment, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/stacks-service-images.spec.mjs, editions: [lite, full]}

@@ -82,7 +82,12 @@ test('lite add queue wires every service that runs the queue, a worker as well a
   const grants = yamlOf(root, '.starcistacks/application-stacks.yaml').environments.production.deploy.secrets.grants;
   assert.deepEqual(grants.find((grant: { service: string }) => grant.service === 'worker'), { service: 'worker', from: [{ member: 'redis-password' }] });
   assert.ok(grants.find((grant: { service: string }) => grant.service === 'api').from.some((entry: { member: string }) => entry.member === 'redis-password'));
-  assert.equal(yamlOf(root, '.starcistacks/dev/infra/swarm/stack.yaml').services.worker, undefined, 'an environment without the worker wires its api only');
+  const dev = yamlOf(root, '.starcistacks/application-stacks.yaml').environments.dev;
+  assert.equal(dev.local.ports.redis, 56379, 'the dev environment runs the declared Redis on its own loopback port');
+  assert.ok(dev.local.services.some((service: { name: string }) => service.name === 'redis'));
+  assert.equal(dev.local.processes.find((run: { name: string }) => run.name === 'api').env.QUEUE_REDIS_PORT, '${port.redis}');
+  assert.equal(yamlOf(root, '.starcistacks/dev/infra/compose/compose.yaml').services.redis.ports[0], '127.0.0.1:${STACK_PORT_REDIS}:6379');
+  assert.equal(yamlOf(root, '.starcistacks/dev/infra/compose/compose.yaml').volumes['redis-data'] !== undefined, true);
 });
 
 test('lite add queue refuses a stack with no service of an api or worker app before writing anything', (t) => {

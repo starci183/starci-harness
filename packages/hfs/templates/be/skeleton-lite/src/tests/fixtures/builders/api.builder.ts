@@ -27,9 +27,16 @@ export const buildWiringProof = (): WiringProof => ({
             schema: "public",
         },
         passport: {
-            google: { clientId: "fixture", clientSecret: new Secret("fixture-only"), callbackUrl: "https://api.fixture.example/auth/google/callback" },
-            tokens: { issuer: "https://api.fixture.example", audience: "fixture", privateKey: new Secret("fixture-only"), keyId: "k1", accessTtlSeconds: 900 },
-            refresh: { name: "refresh_token", path: "/auth/refresh", ttlSeconds: 2592000 },
+            issuer: "https://api.fixture.example",
+            audience: "fixture",
+            keys: [{ privateKey: new Secret("fixture-only"), keyId: "k1" }],
+            accessTtlSeconds: 900,
+            refreshTtlSeconds: 2592000,
+            bcryptCost: 4,
+            returnOrigin: "https://app.fixture.example",
+            google: null,
+            cookie: { name: "refresh_token" },
+            budget: { loginAttempts: 10, resetAttempts: 5, windowMs: 900000 },
         },
         objectStorage: {
             endpoint: "https://storage.fixture.example",
@@ -37,7 +44,7 @@ export const buildWiringProof = (): WiringProof => ({
             bucket: "fixture",
             accessKeyId: new Secret("fixture-only"),
             secretAccessKey: new Secret("fixture-only"),
-            presignTtlSeconds: 300,
+            defaultExpiresIn: 300,
         },
     },
     overrides: [

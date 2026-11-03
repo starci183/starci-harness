@@ -1,20 +1,30 @@
 # Development stack
 
-Every development dependency runs in Docker Linux containers. The `db` service (the official postgres image plus pgvector, built from `.starcistacks/images/db/Dockerfile`) starts with `npm run db:start` and takes the migrations with `npm run db:push`; storage is the S3-compatible MinIO the environment names. Every other declared dependency, such as Redis, starts through its managed `<dep>:create`, `<dep>:start` and `<dep>:stop` scripts or the declared container model; Compose is an implementation detail. The app services may run in the local Docker Swarm model or through a declared native development profile while dependencies stay in Docker.
-The application image references contain illustrative all-zero digests. Replace them with verified published release digests in the manifest, model and `.starcistacks/dev/infra/swarm/releases/images.lock.yaml` before starting the container model. Seal the local database connection and the integration credentials; a container cannot use the host's loopback address without owner-configured networking. Local source development remains available through the app scripts.
+The dev environment is one command: `starci app stack up --env dev --execute`. It checks the machine, opens the dev custody, runs the setup
+commands, starts the dependencies in Docker Linux containers (the `db` service: the official postgres image plus pgvector, built from
+`.starcistacks/images/db/Dockerfile`), gives the environment its own database role, migrates, runs the seed, starts the api and web
+processes natively and waits for readiness. What it runs is the `local` block of `environments.dev` in `.starcistacks/application-stacks.yaml`
+(PROJECT-STACKS-6 in contexts/project/stacks.md); this runbook never carries a docker command, an agent never runs docker by hand.
 
-The runtime template tracks no encrypted members. Scaffolding generates the six declared members with placeholder values encrypted to this app's own recipient in `.sops.yaml`. Replace those values with `starci app secret set --env dev` using the matching host age identity in untracked local custody. Existing generated envelopes are decryptable with that app identity and can be updated in place. Each Docker secret contains the corresponding key's real value, and the API receives it through its declared mounted file.
+**A new machine.** Install what `starci app stack doctor --env dev` reports missing (it prints the exact winget, brew or apt step per tool; Node
+from `.nvmrc`, npm, git, Docker with Compose v2 running Linux containers, WSL2 on Windows, sops and age), then run `up`. A fresh clone needs
+nothing else: `up` runs `npm ci` and the codegen itself.
+
+**Custody.** Dev values are sealed like any secret and generated once, dev-only: the owner arms `starci app secret init --env dev --execute`, which
+creates every value `local.custody` declares, declares its key in the manifest and never replaces a value that is already sealed. A machine that
+lacks the age identity of an existing dev member is refused with the owner step to obtain it. The `db` service takes `POSTGRES_PASSWORD`, the
+migrations run as the environment's own owner role and the api connects as the `app_be` role with its own password, so no role is shared with
+another environment.
 
 | Command | Operation |
 | --- | --- |
-| prepare | Run `npm run db:start` at the app root; then `npm run db:push` to apply the migrations; export `DATABASE_URL` for the database verbs. For a declared Redis (its `redis:create`, `redis:start` and `redis:stop` scripts arrive in package.json with the first queue or job), run the create script once, then the start script when using the native app profile. An owner who chooses local Swarm initializes it, labels its node `{{project}}=dev` and provisions the ingress volumes; the model starts its declared Redis with the app. Replace the reserved development host consistently in the manifest, Caddyfile and public configuration; resolve it to the node and record this in `.starcistacks/dev/infra/swarm/owner-actions.md`. Create the external development secrets named in the model from real sealed members. |
-| doctor | From this directory, run `docker stack config -c infra/swarm/stack.yaml`. Confirm image, secret and local database availability. |
-| up | Run `docker stack deploy -c infra/swarm/stack.yaml {{project}}-dev` from this directory after preparation. |
-| status | Run `docker stack services {{project}}-dev`. |
-| logs | Run `docker service logs {{project}}-dev_api`; never print mounted credentials. |
-| down | Run `docker stack rm {{project}}-dev`. |
-| verification | Confirm the API `/health/live` and `/health/ready` endpoints and web `/health/live`, then run `npm run lint` from the app root. Retain the last accepted release in `.starcistacks/dev/infra/swarm/releases/previous.yaml` before recording the verified release in `.starcistacks/dev/infra/swarm/releases/current.yaml`. |
+| prepare | `starci app stack prepare --env dev --execute`: checks the machine, opens the custody, runs the setup commands and builds the images. |
+| doctor | `starci app stack doctor --env dev`: read-only table of host prerequisites with the owner-run install step per OS, custody, compose render and ports. |
+| up | `starci app stack up --env dev --execute`: prepare, then the services, the database role, migrations with a receipt, the seed, the processes and readiness; prints the origins. |
+| status | `starci app stack status --env dev`: desired against running, the migration receipt and every readiness probe. |
+| logs | `starci app stack logs --env dev --service api` (a process or a compose service, bounded and redacted). |
+| down | `starci app stack down --env dev --execute`: ends the processes and stops the compose project; volumes and sealed values stay. |
+| verification | `starci app stack verify --env dev`: the declared liveness and readiness probes after a real start, then `npm run lint` from the app root. |
 
-Keep real sealed members under `.starcistacks/dev/secrets/*.enc` at the declared paths and inventory their key names in `.starcistacks/dev/runtime/env/KEYS.md`. Rotation creates a new immutable `-v<N>` external secret and updates its version and runtime name together in the manifest and model. Only the declared ingress publishes port 80; the local route uses HTTP with automatic TLS disabled.
-
-The manifest declares seven daily encrypted off-host database exports and ingress-volume snapshots owned by the development operator. `.starcistacks/dev/infra/swarm/recovery/restore-proof.md` is a pending recovery record. Complete an isolated restore and attach a dated receipt before relying on these backups. Release, DNS and restore records remain explicitly pending until an operator supplies real evidence.
+The database volume `db-data` is rebuildable development data: `starci app db migrate` recreates its schema from `db/bootstrap.sql` and
+`db/migrations`. Key names of the environment are in `.starcistacks/dev/runtime/env/KEYS.md`.

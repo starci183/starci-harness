@@ -66,41 +66,43 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-
       - `clients/` — **fe.package.api.client** optional · [fe/folder](../code/fe/folder.md) · R50
       - `types.ts` — **fe.package.api.outcome** optional · [fe/folder](../code/fe/folder.md) · R51
   - `<family>-i18n/` — **fe.package.i18n** opt-in · [fe/folder](../code/fe/folder.md), [fe/i18n](../code/fe/i18n.md) · R59, R63, R25
-- `apps/<app>/`
-  - `Dockerfile` — **repo.app-image** optional · R187, R188, R189, R190, R191
-  - `{package.json,next.config.ts,tsconfig.json,postcss.config.mjs}` — **fe.app.next** required · [fe/architecture](../code/fe/architecture.md), [fe/boundaries](../code/fe/boundaries.md), [fe/folder](../code/fe/folder.md) · R64, R53, R54, R144, R146
-  - `public/` — **fe.app-optional** optional
-  - `src/`
-    - `app/` — **fe.route** required · [fe/architecture](../code/fe/architecture.md), [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/function](../code/fe/function.md) · R54, R55, R57, R243
-    - `{proxy.ts,instrumentation.ts,instrumentation-client.ts,sentry.server.config.ts,sentry.edge.config.ts}` — **fe.source-root-pinned** optional · [fe/architecture](../code/fe/architecture.md) · R54
-    - `features/{pages,layouts,overlays}/<name>/` — **fe.feature** required · [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/folder](../code/fe/folder.md), [fe/function](../code/fe/function.md), [fe/ui](../code/fe/ui.md) · R57, R58, FE_SIZE_BUDGET (no rule)
-    - `components/`
-      - `{blocks,frames,composites,branches,leaves}/<name>/` — **fe.components** optional · [fe/boundaries](../code/fe/boundaries.md), [fe/folder](../code/fe/folder.md), [fe/function](../code/fe/function.md), [fe/ui](../code/fe/ui.md) · R92, R58, R62, R55
-      - `providers/<name>/` — **fe.components.providers** optional · [fe/data](../code/fe/data.md), [fe/form](../code/fe/form.md), [fe/realtime](../code/fe/realtime.md) · R55
-    - `hooks/`
-      - `<domain>/` — **fe.hooks** optional · [fe/boundaries](../code/fe/boundaries.md), [fe/folder](../code/fe/folder.md) · R56, FE_DATA_FRESHNESS (no rule)
-      - `swr/` — **fe.hooks.swr** optional · [fe/data](../code/fe/data.md), [fe/realtime](../code/fe/realtime.md) · R56, FE_DATA_FRESHNESS (no rule)
-      - `rhf/` — **fe.hooks.rhf** optional · [fe/form](../code/fe/form.md) · R56
-      - `zustand/<store>/` — **fe.hooks.zustand** optional · [fe/data](../code/fe/data.md) · R56
-      - `socketio/` — **fe.hooks.socketio** optional · [fe/realtime](../code/fe/realtime.md) · R56
-      - `effects/` — **fe.hooks.effects** optional · [fe/data](../code/fe/data.md) · R56
-      - `reuseables/` — **fe.hooks.reuseables** optional · R56
-    - `redux/` — **fe.redux** optional · [fe/data](../code/fe/data.md) · R91, R56, R57
-    - `modules/`
-      - `<capability>/` — **fe.modules** required · [fe/data](../code/fe/data.md), [fe/folder](../code/fe/folder.md) · R49, R50
-      - `api/` — **fe.modules.api** optional · [fe/error](../code/fe/error.md), [fe/realtime](../code/fe/realtime.md), [fe/transport](../code/fe/transport.md) · R50, R51, R52
-        - `graphql/`
-          - `clients/` — **fe.transport.client** optional · [fe/error](../code/fe/error.md), [fe/transport](../code/fe/transport.md) · R50
-          - `types.ts` — **fe.transport.outcome** optional · [fe/error](../code/fe/error.md), [fe/transport](../code/fe/transport.md) · R51
-        - `sse/clients/` — **fe.transport.stream** optional · [fe/error](../code/fe/error.md), [fe/realtime](../code/fe/realtime.md), [fe/transport](../code/fe/transport.md) · R50
-      - `config/` — **fe.modules.config** required · R49
-      - `i18n/` — **fe.modules.i18n** required · [fe/i18n](../code/fe/i18n.md) · R59, R60
-      - `brand/brand.css` — **fe.modules.brand** optional · [fe/ui](../code/fe/ui.md) · R61
-      - `routes/` — **fe.modules.routes** required · [fe/i18n](../code/fe/i18n.md) · R57
-      - `types/` — **fe.modules.types** optional · R22
-        - `ambient/` — **fe.modules.types.ambient** optional · R22
-      - `auth/` — **fe.modules.auth** optional · [fe/transport](../code/fe/transport.md) · R244, R50
-      - `toast/` — **fe.modules.toast** optional · [fe/form](../code/fe/form.md) · R58, R56, R51
+- `apps/`
+  - `<app>/`
+    - `Dockerfile` — **repo.app-image** optional · R187, R188, R189, R190, R191
+    - `{package.json,next.config.ts,tsconfig.json,postcss.config.mjs}` — **fe.app.next** required · [fe/architecture](../code/fe/architecture.md), [fe/boundaries](../code/fe/boundaries.md), [fe/folder](../code/fe/folder.md) · R64, R53, R54, R144, R146
+    - `public/` — **fe.app-optional** optional
+    - `src/`
+      - `app/` — **fe.route** required · [fe/architecture](../code/fe/architecture.md), [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/function](../code/fe/function.md) · R54, R55, R57, R243
+      - `{proxy.ts,instrumentation.ts,instrumentation-client.ts,sentry.server.config.ts,sentry.edge.config.ts}` — **fe.source-root-pinned** optional · [fe/architecture](../code/fe/architecture.md) · R54
+      - `features/{pages,layouts,overlays}/<name>/` — **fe.feature** required · [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/folder](../code/fe/folder.md), [fe/function](../code/fe/function.md), [fe/ui](../code/fe/ui.md) · R57, R58, FE_SIZE_BUDGET (no rule)
+      - `components/`
+        - `{blocks,frames,composites,branches,leaves}/<name>/` — **fe.components** optional · [fe/boundaries](../code/fe/boundaries.md), [fe/folder](../code/fe/folder.md), [fe/function](../code/fe/function.md), [fe/ui](../code/fe/ui.md) · R92, R58, R62, R55
+        - `providers/<name>/` — **fe.components.providers** optional · [fe/data](../code/fe/data.md), [fe/form](../code/fe/form.md), [fe/realtime](../code/fe/realtime.md) · R55
+      - `hooks/`
+        - `<domain>/` — **fe.hooks** optional · [fe/boundaries](../code/fe/boundaries.md), [fe/folder](../code/fe/folder.md) · R56, FE_DATA_FRESHNESS (no rule)
+        - `swr/` — **fe.hooks.swr** optional · [fe/data](../code/fe/data.md), [fe/realtime](../code/fe/realtime.md) · R56, FE_DATA_FRESHNESS (no rule)
+        - `rhf/` — **fe.hooks.rhf** optional · [fe/form](../code/fe/form.md) · R56
+        - `zustand/<store>/` — **fe.hooks.zustand** optional · [fe/data](../code/fe/data.md) · R56
+        - `socketio/` — **fe.hooks.socketio** optional · [fe/realtime](../code/fe/realtime.md) · R56
+        - `effects/` — **fe.hooks.effects** optional · [fe/data](../code/fe/data.md) · R56
+        - `reuseables/` — **fe.hooks.reuseables** optional · R56
+      - `redux/` — **fe.redux** optional · [fe/data](../code/fe/data.md) · R91, R56, R57
+      - `modules/`
+        - `<capability>/` — **fe.modules** required · [fe/data](../code/fe/data.md), [fe/folder](../code/fe/folder.md) · R49, R50
+        - `api/` — **fe.modules.api** optional · [fe/error](../code/fe/error.md), [fe/realtime](../code/fe/realtime.md), [fe/transport](../code/fe/transport.md) · R50, R51, R52
+          - `graphql/`
+            - `clients/` — **fe.transport.client** optional · [fe/error](../code/fe/error.md), [fe/transport](../code/fe/transport.md) · R50
+            - `types.ts` — **fe.transport.outcome** optional · [fe/error](../code/fe/error.md), [fe/transport](../code/fe/transport.md) · R51
+          - `sse/clients/` — **fe.transport.stream** optional · [fe/error](../code/fe/error.md), [fe/realtime](../code/fe/realtime.md), [fe/transport](../code/fe/transport.md) · R50
+        - `config/` — **fe.modules.config** required · R49
+        - `i18n/` — **fe.modules.i18n** required · [fe/i18n](../code/fe/i18n.md) · R59, R60
+        - `brand/brand.css` — **fe.modules.brand** optional · [fe/ui](../code/fe/ui.md) · R61
+        - `routes/` — **fe.modules.routes** required · [fe/i18n](../code/fe/i18n.md) · R57
+        - `types/` — **fe.modules.types** optional · R22
+          - `ambient/` — **fe.modules.types.ambient** optional · R22
+        - `auth/` — **fe.modules.auth** optional · [fe/transport](../code/fe/transport.md) · R244, R50
+        - `toast/` — **fe.modules.toast** optional · [fe/form](../code/fe/form.md) · R58, R56, R51
+  - `web/src/modules/auth/client.ts` — **fe.modules.auth.client** optional · R05
 
 Git-ignored: `repo.build-output`, `repo.generated`, `fe.transport.generated`.
 Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-local`, `repo.tool-cache`, `repo.agent-output`, `repo.worktrees`, `repo.plaintext-env`, `fe.source-root-middleware`.

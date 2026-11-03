@@ -18,7 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { loadSlotManifest, resolveAppDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { HARNESS_PACKAGE, canonPins } from '../runtime/scripts/hfs/canon-pins.mjs';
-import { TEMPLATES_DIR, appSource, imageFiles, render, renderTargets, writeTargets, type Presets } from '../sync/index.mjs';
+import { TEMPLATES_DIR, appSource, imageFiles, render, renderTargets, settleSource, writeTargets, type Presets } from '../sync/index.mjs';
 import type { SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
 import { ScaffoldError } from './service.mjs';
 import { testWorldFiles } from './test-world.mjs';
@@ -239,15 +239,14 @@ const STARTER_DEPENDENCIES = Object.freeze({
 const LITE_STARTER_DEPENDENCIES = Object.freeze({
   dependencies: {
     '@apollo/server': null, '@nestjs/apollo': null, '@nestjs/common': null, '@nestjs/core': null, '@nestjs/cqrs': null, '@nestjs/graphql': null,
-    '@nestjs/platform-express': null, '@nestjs/typeorm': null, '@nestjs/passport': null, passport: null, 'passport-google-oauth20': null, 'passport-local': null,
-    '@aws-sdk/client-s3': null, '@aws-sdk/s3-request-presigner': null, bcryptjs: null,
-    'class-transformer': null, 'class-validator': null, graphql: null, jose: null, pg: null,
+    '@nestjs/platform-express': null, '@nestjs/typeorm': null, '@starci/auth': null, '@starci/object-storage': null,
+    'class-transformer': null, 'class-validator': null, graphql: null, pg: null,
     'reflect-metadata': null, rxjs: null, tslib: null, typeorm: null, undici: null, zod: null,
   },
   devDependencies: {
     turbo: null, '@nestjs/testing': null, '@starci/eslint-canon-be': null, '@starci/eslint-canon-fe': null,
     '@starci/jest-preset': null, '@starci/prettier-config': null, '@starci/stylelint-canon': null, '@starci/tsconfig': null, 'starci-harness': null, '@tailwindcss/postcss': null,
-    '@types/express': null, '@types/jest': null, '@types/node': null, '@types/passport-google-oauth20': null, '@types/passport-local': null, '@types/react': null, '@types/react-dom': null,
+    '@types/express': null, '@types/jest': null, '@types/node': null, '@types/react': null, '@types/react-dom': null,
     eslint: null, 'eslint-plugin-react-hooks': null, husky: null, jest: null, 'postcss-value-parser': null, prettier: null,
     stylelint: null, tailwindcss: null, 'ts-jest': null, 'ts-node-dev': null, 'tsc-alias': null,
     'tsconfig-paths': null, typescript: null,
@@ -270,7 +269,7 @@ const FE_APP_DEPENDENCIES = Object.freeze({
  * holds no identity SDK: modules/auth talks only to the app's own back-end auth doors.
  */
 const LITE_FE_APP_DEPENDENCIES = Object.freeze({
-  '@heroicons/react': null, '@heroui/react': null, '@heroui/styles': null, '@starci/grammar': null, '@starci/heroicons': null, '@xyflow/react': null, 'react-aria-components': null,
+  '@heroicons/react': null, '@heroui/react': null, '@heroui/styles': null, '@starci/auth': null, '@starci/grammar': null, '@starci/heroicons': null, '@xyflow/react': null, 'react-aria-components': null,
   next: null, 'next-intl': null, react: null, 'react-dom': null, 'server-only': null,
 });
 
@@ -724,7 +723,8 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', re
   const writes = scaffoldWrites(root, original);
   try {
     for (const file of files) writes.write(file.path, file.content);
-    const targets = renderTargets(declaration, presets, { manifest, source: appSource(root) });
+    const source = appSource(root);
+    const targets = renderTargets(declaration, presets, { manifest, source: settleSource(source, renderTargets(declaration, presets, { manifest, source })) });
     for (const target of targets) writes.claim(target.path);
     writeTargets(root, targets);
     const secretFiles = initializeScaffoldSecrets(root, writes);

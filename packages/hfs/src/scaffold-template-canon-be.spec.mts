@@ -25,8 +25,9 @@ import { loadHfs, starciBeConfig } from '../../eslint-canon-be/dist/index.js';
 
 const HFS = path.resolve(import.meta.dirname, '..');
 const KIT = path.resolve(HFS, '..', 'jest-preset');
+const AUTH = path.resolve(HFS, '..', 'auth');
 /** Where the types a skeleton file imports are installed: this package's dev dependencies and the kit's (jest's globals). */
-const INSTALLS = [path.join(HFS, 'node_modules'), path.join(KIT, 'node_modules')];
+const INSTALLS = [path.join(HFS, 'node_modules'), path.join(KIT, 'node_modules'), path.join(AUTH, 'node_modules')];
 
 const lockedOk = (root: string): LockResult => {
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');
@@ -52,6 +53,11 @@ const lintProject = (be: string) => {
 /** The kit, built, where an app installs it. */
 const installKit = (root: string) => {
   for (const part of ['package.json', 'dist']) fs.cpSync(path.join(KIT, part), path.join(root, 'node_modules', '@starci', 'jest-preset', part), { recursive: true });
+};
+
+/** The sign-in package, built, where a lite app installs it (its dependencies resolve from the package's own installs). */
+const installAuth = (root: string) => {
+  for (const part of ['package.json', 'dist']) fs.cpSync(path.join(AUTH, part), path.join(root, 'node_modules', '@starci', 'auth', part), { recursive: true });
 };
 
 /** The entity base of platform/database and the entity of the table `add table` writes over a postgres connection. */
@@ -87,6 +93,7 @@ for (const edition of ['full', 'lite']) {
     addTable(root);
     gitAdd(installTypeScript(root));
     installKit(root);
+    if (edition === 'lite') installAuth(root);
     const be = path.join(root, 'be');
     const project = lintProject(be);
     // reason: the canon answers typescript-eslint's FlatConfig blocks; they are eslint's flat config, but under exactOptionalPropertyTypes its
@@ -97,8 +104,9 @@ for (const edition of ['full', 'lite']) {
       ...config, { files: ['**/*.ts'], languageOptions: { parserOptions: { projectService: false, project, tsconfigRootDir: be } } },
     ] });
     // lite also lints the specs beside the logic files be.integrations.passport declares (`logic`): unit specs held to the canon form.
-    const passportSpecs = edition === 'lite' ? ['tokens', 'password', 'cookie'].map((part) => `src/modules/integrations/passport/passport.${part}.spec.ts`) : [];
-    const results = await eslint.lintFiles(['src/modules/platform/**/*.ts', TABLE_ENTITY, ...passportSpecs]);
+    const passportSpecs = edition === 'lite' ? ['kit'].map((part) => `src/modules/integrations/passport/passport.${part}.spec.ts`) : [];
+    const signIn = edition === 'lite' ? ['src/modules/domain/identity/{account-directory,authenticator,rate-counter,session-store,sign-in}.service*.ts', 'src/modules/domain/identity/persistence/**/*.ts', 'src/modules/integrations/passport/{index,passport.config,passport.decorators,passport.kit,passport.kit.spec,passport.options,passport.registration}.ts', 'src/modules/integrations/passport/errors/*.ts', 'src/tests/fixtures/builders/identity.builder.ts'] : [];
+    const results = await eslint.lintFiles(['src/modules/platform/**/*.ts', TABLE_ENTITY, ...passportSpecs, ...signIn]);
     const linted = results.map((result) => path.relative(be, result.filePath).split(path.sep).join('/'));
     assert.ok(linted.includes('src/modules/platform/http/fetch-http-client.client.ts'), 'the client is linted');
     assert.ok(linted.includes('src/modules/platform/http/fetch-http-client.client.spec.ts'), 'its spec is linted');

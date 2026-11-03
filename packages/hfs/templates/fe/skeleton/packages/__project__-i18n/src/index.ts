@@ -53,7 +53,7 @@ export interface AppI18n {
  * module: a client component reads the default locale from `./routing`.
  */
 export const createAppI18n = (app: string, loadMessages: LoadMessages): AppI18n => ({
-    navigation: createNavigation(routing),
+    navigation: createNavigation<ProductRouting["locales"], "as-needed">(routing),
     /**
      * The locale is the `[locale]` route param read through `next/root-params` (`experimental.rootParams` in the app's next.config.ts,
      * FE-I18N-1), never the deprecated `requestLocale`. An unrecognised locale resolves to the default before the loader runs, so a

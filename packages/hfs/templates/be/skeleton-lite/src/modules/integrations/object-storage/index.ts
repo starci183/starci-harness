@@ -1,4 +1,4 @@
-export { createObjectStorage } from "./object-storage.client"
+export { OBJECT_STORAGE } from "@starci/object-storage"
 export { parseObjectStorageConfig } from "./object-storage.config"
-export { InjectObjectStorage, OBJECT_STORAGE } from "./object-storage.decorators"
-export type { ObjectStorage, PresignedRequest, ObjectStorageOptions } from "./object-storage.options"
+export { ObjectStorageModule } from "./object-storage.module"
+export type { ObjectStorageOptions } from "./object-storage.options"

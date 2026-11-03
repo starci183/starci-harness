@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.15.0
+version: 3.16.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -117,6 +117,8 @@ versioning:
 #               liteManagedBy is managed only in lite; its effective lite.path still lists literal files.
 #               the managed file list lives here and nowhere in code. A difference is HFS_MANAGED_FILE_DRIFT (a
 #               back end's tsconfig.json: HFS_TS_STRICT when a flag or an option was added).
+#   managedOnly true: the slot only lists files sync renders (needs managedBy); the path is judged by the slot that owns it, so the rendered
+#               file keeps the rules and the tier of its folder (a sign-in service is a domain service)
 #   rules       rule codes from knowledge/hfs/rules.yaml.
 #   editions    the editions (below) the slot exists in; default all of them. A slot outside the declared edition owns
 #               no path - under lite, what full keeps absent is removed, and what lite forbids is a finding.
@@ -250,19 +252,22 @@ ruleParams:
       "node:https": [platform/http]
       http: [platform/http]
       https: [platform/http]
-      "@aws-sdk/client-s3": [integrations/object-storage]       # the ObjectStorage port: one S3 adapter for MinIO, S3 and Spaces (R331)
-      "@aws-sdk/s3-request-presigner": [integrations/object-storage]
-      minio: []                                          # storage goes through the S3 client of integrations/object-storage
+      "@aws-sdk/client-s3": []                           # the S3 client is a dependency of @starci/object-storage, imported by no app file (R331)
+      "@aws-sdk/s3-request-presigner": []
+      "@starci/object-storage": [integrations/object-storage]   # the ObjectStorage port: one S3 adapter for MinIO, S3 and Spaces (R331)
+      minio: []                                          # storage goes through @starci/object-storage
       nodemailer: []                                     # the SMTP client is a dependency of @starci/mail alone; no app file imports it
       "@starci/mail": [integrations/mail]                # outgoing mail: the Mailer port, parsed and registered by its one glue
       "@supabase": []                                    # no Supabase client in a back end
-      "@nestjs/passport": [integrations/passport]        # the identity libraries (R328)
-      passport: [integrations/passport]
-      passport-google-oauth20: [integrations/passport]
-      passport-local: [integrations/passport]
-      "@nestjs/jwt": [integrations/passport]
-      jose: [integrations/passport]
-      bcryptjs: [integrations/passport]
+      "@nestjs/passport": []                             # the identity libraries are @starci/auth's dependencies, never an app's (R328)
+      passport: []
+      passport-google-oauth20: []
+      passport-local: []
+      "@nestjs/jwt": []
+      jose: []
+      bcryptjs: []
+      "@starci/auth": [integrations/passport]            # the lite sign-in package: its server entry is reached only through integrations/passport (R328)
+      "@starci/auth/testing": [integrations/passport]   # its test doubles, for the glue's specs
       bcrypt: []
       cache-manager: [integrations/cache, integrations/redis]
       "@nestjs/cache-manager": [integrations/cache, integrations/redis]     # the CACHE_MANAGER token: caching goes through the cache capability
@@ -911,7 +916,7 @@ slots:
     # The db service supplies the database; schedules are platform/jobs ticks (R335); production has no Compose or host cron.
     lite:
       requires: [application-stacks.yaml]
-      allows: [application-stacks.yaml, images/db/Dockerfile, "<env>/README.md", "<env>/environment.json", "<env>/infra/swarm/**", "<env>/infra/metadata.json",
+      allows: [application-stacks.yaml, images/db/Dockerfile, "<env>/README.md", "<env>/environment.json", "<env>/infra/{compose,swarm}/**", "<env>/infra/metadata.json",
                "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.{enc.yaml,enc}", "<env>/secrets/.gitkeep", "<env>/seeds/**"]
       forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]
     rules: [HFS_STACKS_SHAPE, HFS_STACKS_IN_SIDE, HFS_PLAINTEXT_SECRET, HFS_IDENTITY_CUSTODY]
@@ -2030,36 +2035,68 @@ slots:
     editions: [lite]
     exemplifiedBy:
       - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/
-    # The one owner of the lite identity libraries (ruleParams.be.infraOwners: @nestjs/passport, passport, passport-google-oauth20,
-    # passport-local, @nestjs/jwt, jose, bcryptjs): the Google OAuth 2.0 strategy (state and PKCE), the local email and password
-    # strategy (bcrypt), the app's own asymmetric access tokens and their JWKS, and the rotating refresh cookie. domain/identity
-    # verifies a token through this integration's verifier and builds the principal (contexts/code/be/api-auth.md).
+    # The glue of @starci/auth, the lite sign-in package (Google OAuth with state and PKCE, email and password, EdDSA access tokens with
+    # their JWKS, rotating refresh sessions): the one importer of the package (ruleParams.be.infraOwners), which owns the identity
+    # libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose, bcryptjs) that no app imports.
+    # It parses the typed options, builds the verifier and names the injectors; domain/identity verifies a token through the kit and
+    # builds the principal (contexts/code/be/api-auth.md).
     path: "src/modules/integrations/passport/"
     presence: required
     tracked: tracked
     tier: integrations
     owner: true
-    requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.tokens.ts, passport.password.ts, passport.cookie.ts]   # Secrets, no defaults (R44); options and named injectors (R83); tokens and JWKS; bcrypt; the refresh cookie
-    allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.tokens.ts, passport.password.ts, passport.cookie.ts, strategies/, errors/]
-    logic: [passport.tokens.ts, passport.password.ts, passport.cookie.ts]   # JWT sign and verify over the own JWKS, bcrypt, the refresh cookie: measured at 100 per file
+    requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.registration.ts]   # Secrets, no defaults (R44); options and named injectors (R83); the kit and the module over @starci/auth
+    allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.registration.ts, errors/]
+    logic: [passport.kit.ts]   # the verifier mapping over the package: measured at 100 per file
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_AUTH_JWT_OWN_JWKS, BE_AUTH_REFRESH_COOKIE]
     coverage: required
     since: 3.9.0
+  - id: be.identity.sign-in
+    since: 3.16.0
+    profiles: [be]
+    editions: [lite]
+    editionWhy: "lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written (owner ruling auth-package); full uses its identity provider."
+    # The identity capability's sign-in glue over @starci/auth: the entities of the session, attempt and user tables, the stores the package asks for (sessions, accounts, rate counter), the authenticator and the service the doors call, with their specs. `starci app sync` renders them; a hand edit is drift.
+    path: "{src/modules/domain/identity/account-directory.service.spec.ts,src/modules/domain/identity/account-directory.service.ts,src/modules/domain/identity/authenticator.service.spec.ts,src/modules/domain/identity/authenticator.service.ts,src/modules/domain/identity/persistence/entities/auth-identity.entity.ts,src/modules/domain/identity/persistence/entities/auth-user.entity.ts,src/modules/domain/identity/persistence/entities/identity-attempt.entity.ts,src/modules/domain/identity/persistence/entities/identity-refresh-token.entity.ts,src/modules/domain/identity/persistence/entities/identity-session.entity.ts,src/modules/domain/identity/persistence/entities/index.ts,src/modules/domain/identity/rate-counter.service.spec.ts,src/modules/domain/identity/rate-counter.service.ts,src/modules/domain/identity/session-store.service.spec.ts,src/modules/domain/identity/session-store.service.ts,src/modules/domain/identity/sign-in.service.spec.ts,src/modules/domain/identity/sign-in.service.ts,src/tests/fixtures/builders/identity.builder.ts}"
+    presence: optional
+    tracked: tracked
+    tier: inherit
+    tests: unit-beside
+    coverage: none
+    managedBy: auth-lite
+    managedOnly: true     # lists files sync renders; the slot owning the path judges them
+    rules: [HFS_MANAGED_FILE_DRIFT]
+  - id: be.feature.auth
+    since: 3.16.0
+    profiles: [be]
+    editions: [lite]
+    editionWhy: "lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written (owner ruling auth-package); full uses its identity provider."
+    # The auth feature: the REST doors under /auth (login, refresh, session, logout, Google start and callback, jwks) over IdentitySignInService, one command or query and handler per door.
+    path: "{src/features/api/auth/application/auth.contracts.ts,src/features/api/auth/application/get-jwks.handler.ts,src/features/api/auth/application/get-jwks.query.ts,src/features/api/auth/application/google-begin.command.ts,src/features/api/auth/application/google-begin.handler.ts,src/features/api/auth/application/google-complete.command.ts,src/features/api/auth/application/google-complete.handler.ts,src/features/api/auth/application/login.command.ts,src/features/api/auth/application/login.handler.ts,src/features/api/auth/application/logout.command.ts,src/features/api/auth/application/logout.handler.ts,src/features/api/auth/application/refresh.command.ts,src/features/api/auth/application/refresh.handler.ts,src/features/api/auth/application/session.command.ts,src/features/api/auth/application/session.handler.ts,src/features/api/auth/auth.module-definition.ts,src/features/api/auth/auth.module.ts,src/features/api/auth/auth.options.ts,src/features/api/auth/index.ts,src/features/api/auth/transport/http/auth-http.module-definition.ts,src/features/api/auth/transport/http/auth-http.module.ts,src/features/api/auth/transport/http/auth-http.options.ts,src/features/api/auth/transport/http/auth.controller.ts,src/features/api/auth/transport/http/dto/google-start.request.ts,src/features/api/auth/transport/http/dto/login.request.ts}"
+    presence: optional
+    tracked: tracked
+    tier: inherit
+    tests: none
+    coverage: none
+    managedBy: auth-lite
+    managedOnly: true     # lists files sync renders; the slot owning the path judges them
+    rules: [HFS_MANAGED_FILE_DRIFT]
   - id: be.integrations.object-storage
     profiles: [be]
     exemplifiedBy:
       - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/
-    # The one owner of the S3 client (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) over S3-compatible storage (MinIO in
-    # lite): the ObjectStorage port with presigned PUT and GET; no other module imports an S3 SDK or minio.
+    # The glue of @starci/object-storage, the owner of the S3 client (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) over
+    # S3-compatible storage (MinIO in lite): this folder keeps the bucket, parses the settings and registers the module; no app
+    # file imports an S3 SDK or minio, and no other module imports the package.
     path: "src/modules/integrations/object-storage/"
     presence: optional
     litePresence: required
     tracked: tracked
     tier: integrations
     owner: true
-    requires: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.client.ts]
-    allows: [index.ts, object-storage.module.ts, object-storage.module-definition.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.client.ts, errors/]
+    requires: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.module-definition.ts, object-storage.module.ts]
+    allows: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.module-definition.ts, object-storage.module.ts, errors/]
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_STORAGE_OWNER]
     coverage: required
@@ -2593,7 +2630,7 @@ slots:
     profiles: [fe]
     # The identity-provider client (fe-stack auth, FE-AUTH): the session, the access token the Apollo link attaches and the
     # sign-in/sign-out calls. It talks only to the app's own back-end auth doors and holds no credential: the refresh token lives in
-    # the back end's httpOnly cookie and the access token in memory (ruling:lite-self-hosted-postgres-passport-minio).
+    # the back end's httpOnly cookie and the access token in the memory of the one @starci/auth client (ruling:lite-self-hosted-postgres-passport-minio).
     path: "apps/<app>/src/modules/auth/"
     presence: optional
     tracked: tracked
@@ -2603,6 +2640,20 @@ slots:
     tests: none
     since: 3.0.0
     rules: [FE_STACK_FORBIDDEN]
+  - id: fe.modules.auth.client
+    since: 3.16.0
+    profiles: [fe]
+    editions: [lite]
+    editionWhy: "lite signs people in with the package @starci/auth, so its auth client is rendered, not written (owner ruling auth-package); full wires its identity provider."
+    # The AuthClient every edition shares, implemented by one @starci/auth/client instance over the app's own back-end auth doors.
+    path: "apps/web/src/modules/auth/client.ts"
+    presence: optional
+    tracked: tracked
+    tier: inherit
+    tests: none
+    managedBy: auth-lite
+    managedOnly: true     # lists files sync renders; the slot owning the path judges them
+    rules: [HFS_MANAGED_FILE_DRIFT]
   - id: fe.modules.toast
     profiles: [fe]
     # Mutation feedback (fe-stack toast, FE-TOAST): the HeroUI toast wrapper, showGraphQLToast over a GraphQLResponse and the

@@ -57,6 +57,20 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 - **Settle and state.** Who writes a record's state and what counts as evidence is PROJECT-WORK-5 and PROJECT-WORK-6
   in [work.md](work.md).
 
+## PROJECT-3 A product's agent modules are workspace packages
+
+A product that builds agent modules keeps them as workspace packages at the app root, under `packages/` (root `workspaces`
+lists `packages/*`): its agent SDK `packages/agent-sdk`, one package `packages/module-<name>` (`@<project>/module-<name>`) per
+module, and the managed registry `packages/modules` (`@<project>/modules`) that lists them. A module package has the subpaths
+`./template` and `./manifest` (React-free, for the back end), `./workbench` (drawn with Grammar alone) and `./public` (its public
+face, for the front end) beside its `src/index.ts`; `starci app add module <name>` writes it and `starci app remove module <name>` reverses every step. The
+registry, the root and front-end dependencies on it and the `build:modules` and `test:modules` scripts are rendered by
+`starci app sync`, so a hand edit is drift ([hfs/slots.yaml](../hfs/slots.yaml) slots `app.packages` and
+`app.module-registry`). The logic of `./template` and `./manifest` is measured at 100 per file by the package's own unit run
+(BE-TEST-13) and is inside the Sonar and Codecov scope; the workbench is a front end and is judged by the front-end canon and the
+Grammar lint (FE-PACKAGES-2). Open gap: the root `lint` gate and the CI coverage shards do not reach `packages/` yet; until they
+do, a module package is checked by its own `typecheck` and `test` scripts.
+
 ## Where to read for a task
 
 | task | read, in order |

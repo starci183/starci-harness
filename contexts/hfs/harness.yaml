@@ -206,7 +206,12 @@ slots:
   - id: images.dockerfile
     path: "images/<image>/Dockerfile"
     presence: optional
-    holds: the canonical Dockerfile that builds a service image from its pinned fork source context
+    holds: the canonical Dockerfile that builds a service image from its pinned fork source context, or a runtime layer from its pinned fork image
+    rule: images/README.md
+  - id: images.runtime-layer
+    path: "images/<image>/{entrypoint.sh,*.mjs}"
+    presence: optional
+    holds: the wrapper files a runtime layer adds on its fork image (the entrypoint, the settings init and the relay of the OpenClaw gateway)
     rule: images/README.md
 
   # --- knowledge: only in contexts/

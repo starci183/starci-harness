@@ -1,0 +1,95 @@
+import type { AccessGrant, GoogleRedirect } from "../contracts/index.ts"
+import type { RefreshCookie } from "./cookie.ts"
+import type { AuthFlows } from "./flows.ts"
+import type { HttpExchange } from "./http.ts"
+import type { AuthLogger, SessionTokens } from "./ports.ts"
+import type { AuthSessions } from "./sessions.ts"
+
+/** The status of the Google callback redirect. */
+export const SEE_OTHER = 303
+
+/** The log event of a failed Google sign-in. */
+export const GOOGLE_SIGN_IN_FAILED_EVENT = "auth.google-sign-in-failed"
+
+/** The body a sign-in, refresh or session door answers. */
+export const accessOf = (tokens: SessionTokens): AccessGrant => ({
+    accessToken: tokens.accessToken,
+    expiresIn: tokens.accessExpiresIn,
+    expiresAt: tokens.accessExpiresAt,
+    user: tokens.user,
+})
+
+/** What the doors need. */
+export interface DoorsDeps {
+    readonly flows: AuthFlows
+    readonly sessions: AuthSessions
+    readonly cookie: RefreshCookie
+    readonly returnOrigin: string
+    readonly logger?: AuthLogger | undefined
+}
+
+/**
+ * The cookie doors of sign-in over the flows, the sessions and the cookie: what a controller calls. The refresh token only goes
+ * into the cookie; a refresh that cannot be used clears it, one a sibling request just rotated leaves it as the sibling wrote it.
+ */
+export class AuthDoors {
+    readonly #deps: DoorsDeps
+
+    constructor(deps: DoorsDeps) {
+        this.#deps = deps
+    }
+
+    /** Email and password through the local strategy; the refresh token goes into the cookie. */
+    async login(exchange: HttpExchange): Promise<AccessGrant> {
+        const subject = await this.#deps.flows.authenticateLocal(exchange)
+        const tokens = await this.#deps.sessions.start(subject, this.#deps.cookie.deviceOf(exchange.req))
+        this.#deps.cookie.issue(exchange.res, tokens)
+        return accessOf(tokens)
+    }
+
+    /** Rotates the cookie token and answers a new access token; a cookie that cannot be used is cleared and the refusal rethrown. */
+    async refresh(exchange: HttpExchange): Promise<AccessGrant> {
+        try {
+            const tokens = await this.#deps.sessions.refresh(this.#deps.cookie.read(exchange.req))
+            if (tokens.cookieKept !== true) this.#deps.cookie.issue(exchange.res, tokens)
+            return accessOf(tokens)
+        } catch (cause) {
+            this.#deps.cookie.clear(exchange.res)
+            throw cause
+        }
+    }
+
+    /** Answers a fresh access token for the cookie session without rotating the cookie. */
+    async session(exchange: HttpExchange): Promise<AccessGrant> {
+        return accessOf(await this.#deps.sessions.access(this.#deps.cookie.read(exchange.req)))
+    }
+
+    /** Ends the session of the cookie and clears it. */
+    async logout(exchange: HttpExchange): Promise<void> {
+        await this.#deps.sessions.end(this.#deps.cookie.read(exchange.req))
+        this.#deps.cookie.clear(exchange.res)
+    }
+
+    /** Sends the browser to the Google consent screen. */
+    beginGoogle(exchange: HttpExchange): Promise<void> {
+        return this.#deps.flows.beginGoogle(exchange)
+    }
+
+    /**
+     * Finishes the Google round trip: state, PKCE and profile are verified, the account found, linked or created, its session opened
+     * and its cookie set. A failure never throws: the browser is sent back to the sign-in page, because a redirect-only door has
+     * nowhere to show an error body.
+     */
+    async completeGoogle(exchange: HttpExchange): Promise<GoogleRedirect> {
+        try {
+            const completion = await this.#deps.flows.completeGoogle(exchange)
+            const tokens = await this.#deps.sessions.start(completion.subject, this.#deps.cookie.deviceOf(exchange.req))
+            this.#deps.cookie.issue(exchange.res, tokens)
+            return { url: `${this.#deps.returnOrigin}${completion.next}`, statusCode: SEE_OTHER }
+        } catch (cause) {
+            this.#deps.cookie.clear(exchange.res)
+            this.#deps.logger?.warn(GOOGLE_SIGN_IN_FAILED_EVENT, { cause: String(cause) })
+            return { url: `${this.#deps.returnOrigin}/sign-in?auth=error`, statusCode: SEE_OTHER }
+        }
+    }
+}

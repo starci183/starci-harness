@@ -1,6 +1,5 @@
 import type { ReactNode } from "react"
-import { GrammarRoot, PageContainer, TextAction, TopBar, WorkspaceShell } from "@starci/grammar/common"
-import { siteShellClassNames } from "./classNames"
+import { GrammarRoot, Link, TopBar, WorkspaceShell } from "@starci/grammar/common"
 
 /** What the app chrome hands the shell. */
 type SiteShellProps = {

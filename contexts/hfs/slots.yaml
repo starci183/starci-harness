@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.15.0
+version: 3.17.0
 presenceValues:
   - required
   - optional
@@ -276,28 +276,25 @@ ruleParams:
         - platform/http
       https:
         - platform/http
-      "@aws-sdk/client-s3":
-        - integrations/object-storage
-      "@aws-sdk/s3-request-presigner":
+      "@aws-sdk/client-s3": []
+      "@aws-sdk/s3-request-presigner": []
+      "@starci/object-storage":
         - integrations/object-storage
       minio: []
       nodemailer: []
       "@starci/mail":
         - integrations/mail
       "@supabase": []
-      "@nestjs/passport":
+      "@nestjs/passport": []
+      passport: []
+      passport-google-oauth20: []
+      passport-local: []
+      "@nestjs/jwt": []
+      jose: []
+      bcryptjs: []
+      "@starci/auth":
         - integrations/passport
-      passport:
-        - integrations/passport
-      passport-google-oauth20:
-        - integrations/passport
-      passport-local:
-        - integrations/passport
-      "@nestjs/jwt":
-        - integrations/passport
-      jose:
-        - integrations/passport
-      bcryptjs:
+      "@starci/auth/testing":
         - integrations/passport
       bcrypt: []
       cache-manager:
@@ -1219,6 +1216,47 @@ slots:
       - HFS_SCRIPT_ONE_OFF
       - BE_SPEC_PLACEMENT
       - HFS_REPO_LOCAL_CHECK
+  - id: app.packages
+    profiles:
+      - app
+    editionWhy: Lite and full share the slot; a product's agent SDK and its agent modules are workspace packages in both.
+    path: packages/{agent-sdk,module-<name>}/
+    presence: optional
+    tracked: tracked
+    tier: package
+    owner: true
+    requires:
+      - package.json
+      - tsconfig.json
+      - src/index.ts
+    tests: unit-beside
+    coverage: none
+    rules:
+      - HFS_UNUSED_EXPORT
+  - id: app.module-registry
+    profiles:
+      - app
+    editionWhy: Lite and full share the slot; the registry lists the module packages of the app.
+    path: packages/modules/
+    presence: optional
+    tracked: tracked
+    tier: package
+    owner: true
+    managedOnly: true
+    requires:
+      - package.json
+      - src/index.ts
+    allows:
+      - package.json
+      - tsconfig.json
+      - tsconfig.build.json
+      - src/index.ts
+      - src/template/index.ts
+      - src/manifest/index.ts
+    tests: none
+    coverage: none
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
   - id: app.sides
     profiles:
       - app
@@ -1309,7 +1347,7 @@ slots:
         - images/db/Dockerfile
         - <env>/README.md
         - <env>/environment.json
-        - <env>/infra/swarm/**
+        - <env>/infra/{compose,swarm}/**
         - <env>/infra/metadata.json
         - <env>/runtime/{config,env}/**
         - <env>/runtime/env/KEYS.md
@@ -2876,7 +2914,7 @@ slots:
       - be
     editions:
       - lite
-    editionWhy: lite issues its own identity (Google OAuth and email/password) here; full uses Keycloak.
+    editionWhy: lite issues its own identity (Google OAuth and email/password) through @starci/auth, composed here; full uses Keycloak.
     path: src/modules/integrations/passport/
     presence: required
     tracked: tracked
@@ -2887,23 +2925,18 @@ slots:
       - passport.config.ts
       - passport.options.ts
       - passport.decorators.ts
-      - passport.tokens.ts
-      - passport.password.ts
-      - passport.cookie.ts
+      - passport.kit.ts
+      - passport.registration.ts
     allows:
       - index.ts
       - passport.config.ts
       - passport.options.ts
       - passport.decorators.ts
-      - passport.tokens.ts
-      - passport.password.ts
-      - passport.cookie.ts
-      - strategies/
+      - passport.kit.ts
+      - passport.registration.ts
       - errors/
     logic:
-      - passport.tokens.ts
-      - passport.password.ts
-      - passport.cookie.ts
+      - passport.kit.ts
     tests: unit-beside
     rules:
       - BE_TIER_DIRECTION
@@ -2914,10 +2947,42 @@ slots:
       - BE_AUTH_JWT_OWN_JWKS
       - BE_AUTH_REFRESH_COOKIE
     coverage: required
+  - id: be.identity.sign-in
+    profiles:
+      - be
+    editions:
+      - lite
+    editionWhy: lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written; full uses its identity provider.
+    path: "{src/modules/domain/identity/account-directory.service.spec.ts,src/modules/domain/identity/account-directory.service.ts,src/modules/domain/identity/authenticator.service.spec.ts,src/modules/domain/identity/authenticator.service.ts,src/modules/domain/identity/persistence/entities/auth-identity.entity.ts,src/modules/domain/identity/persistence/entities/auth-user.entity.ts,src/modules/domain/identity/persistence/entities/identity-attempt.entity.ts,src/modules/domain/identity/persistence/entities/identity-refresh-token.entity.ts,src/modules/domain/identity/persistence/entities/identity-session.entity.ts,src/modules/domain/identity/persistence/entities/index.ts,src/modules/domain/identity/rate-counter.service.spec.ts,src/modules/domain/identity/rate-counter.service.ts,src/modules/domain/identity/session-store.service.spec.ts,src/modules/domain/identity/session-store.service.ts,src/modules/domain/identity/sign-in.service.spec.ts,src/modules/domain/identity/sign-in.service.ts,src/tests/fixtures/builders/identity.builder.ts}"
+    presence: optional
+    tracked: tracked
+    tier: inherit
+    tests: unit-beside
+    coverage: none
+    managedBy: auth-lite
+    managedOnly: true
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+  - id: be.feature.auth
+    profiles:
+      - be
+    editions:
+      - lite
+    editionWhy: lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written; full uses its identity provider.
+    path: "{src/features/api/auth/application/auth.contracts.ts,src/features/api/auth/application/get-jwks.handler.ts,src/features/api/auth/application/get-jwks.query.ts,src/features/api/auth/application/google-begin.command.ts,src/features/api/auth/application/google-begin.handler.ts,src/features/api/auth/application/google-complete.command.ts,src/features/api/auth/application/google-complete.handler.ts,src/features/api/auth/application/login.command.ts,src/features/api/auth/application/login.handler.ts,src/features/api/auth/application/logout.command.ts,src/features/api/auth/application/logout.handler.ts,src/features/api/auth/application/refresh.command.ts,src/features/api/auth/application/refresh.handler.ts,src/features/api/auth/application/session.command.ts,src/features/api/auth/application/session.handler.ts,src/features/api/auth/auth.module-definition.ts,src/features/api/auth/auth.module.ts,src/features/api/auth/auth.options.ts,src/features/api/auth/index.ts,src/features/api/auth/transport/http/auth-http.module-definition.ts,src/features/api/auth/transport/http/auth-http.module.ts,src/features/api/auth/transport/http/auth-http.options.ts,src/features/api/auth/transport/http/auth.controller.ts,src/features/api/auth/transport/http/dto/google-start.request.ts,src/features/api/auth/transport/http/dto/login.request.ts}"
+    presence: optional
+    tracked: tracked
+    tier: inherit
+    tests: none
+    coverage: none
+    managedBy: auth-lite
+    managedOnly: true
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
   - id: be.integrations.object-storage
     profiles:
       - be
-    editionWhy: lite requires its S3-compatible storage (MinIO); full adds it when it stores objects.
+    editionWhy: lite requires its S3-compatible storage (MinIO) through @starci/object-storage, composed here; full adds it when it stores objects.
     path: src/modules/integrations/object-storage/
     presence: optional
     litePresence: required
@@ -2929,15 +2994,15 @@ slots:
       - object-storage.config.ts
       - object-storage.options.ts
       - object-storage.decorators.ts
-      - object-storage.client.ts
+      - object-storage.module-definition.ts
+      - object-storage.module.ts
     allows:
       - index.ts
-      - object-storage.module.ts
-      - object-storage.module-definition.ts
       - object-storage.config.ts
       - object-storage.options.ts
       - object-storage.decorators.ts
-      - object-storage.client.ts
+      - object-storage.module-definition.ts
+      - object-storage.module.ts
       - errors/
     tests: unit-beside
     rules:
@@ -3714,12 +3779,27 @@ slots:
     owner: true
     requires:
       - index.ts
-    why: the session issuer's client; in lite auth-door.ts alone calls the app's own back-end auth doors
-      with the REST client and token-store.ts alone keeps the in-memory access token
+    why: the session issuer's client; in lite one @starci/auth client instance calls the app's own back-end
+      auth doors and keeps the access token in its memory
     tests: none
     rules:
       - FE_STACK_FORBIDDEN
       - FE_TRANSPORT_OWNER
+  - id: fe.modules.auth.client
+    profiles:
+      - fe
+    editions:
+      - lite
+    editionWhy: lite signs people in with the package @starci/auth, so its auth client is rendered, not written; full wires its identity provider.
+    path: apps/web/src/modules/auth/client.ts
+    presence: optional
+    tracked: tracked
+    tier: inherit
+    tests: none
+    managedBy: auth-lite
+    managedOnly: true
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
   - id: fe.modules.toast
     profiles:
       - fe

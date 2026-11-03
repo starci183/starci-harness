@@ -68,8 +68,8 @@ const inRoleSlot = (hfs: HfsView, role: SpecRole, filename: string): boolean => 
 const slotRelative = (found: HfsClassification): string => (found.root !== undefined && found.path.startsWith(`${found.root}/`) ? found.path.slice(found.root.length + 1) : baseOf(found.path))
 
 /**
- * The optional spec role of a spec beside a logic file its slot declares (`logic`): `passport.tokens.spec.ts` beside the declared
- * `passport.tokens.ts` gives `{ role: "tokens", spec: "tokens.spec" }`, so the subject resolves as a logic role's does. It holds for that
+ * The optional spec role of a spec beside a logic file its slot declares (`logic`): `passport.kit.spec.ts` beside the declared
+ * `passport.kit.ts` gives `{ role: "kit", spec: "kit.spec" }`, so the subject resolves as a logic role's does. It holds for that
  * one declared file only, never for another `*.tokens.ts`, and adds no role name to the manifest.
  */
 const declaredLogicRole = (hfs: HfsView, filename: string): SpecRole | null => {

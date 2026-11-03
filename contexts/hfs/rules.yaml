@@ -1564,12 +1564,13 @@ rules:
       - {kind: eslint-fe, id: no-server-action}
   - id: R244
     code: FE_STACK_FORBIDDEN
-    law: A front end depends on no package that contexts/stack/fe.yaml forbids for a concern, and avatar generation stays inside the Grammar.
+    law: A front end depends on no package that contexts/stack/fe.yaml forbids for a concern, writes no SWR middleware or viewer-cache binding of its own (they are @starci/next-data's), and avatar generation stays inside the Grammar.
     failureCodes:
       - FE_STACK_FORBIDDEN
     enforcers:
       - {kind: hfs, id: fe-stack}
       - {kind: eslint-fe, id: fe-stack-import}
+      - {kind: eslint-fe, id: swr-extension-from-package}
   - id: R245
     code: BE_APP_OPTIONS_COMPOSITION
     law: An app's `src/` holds the five app roles, `main.ts`, `<app>.env.ts`, `<app>.options.ts`, `compose/<area>.ts` and `app.module.ts`, each with its single responsibility.
@@ -2207,7 +2208,7 @@ rules:
       - {kind: eslint-be, id: ai-client-through-gateway}
   - id: R328
     code: BE_AUTH_PASSPORT_OWNER
-    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose, bcryptjs) are imported only by `integrations/passport`; bcrypt and every Supabase client are imported nowhere."
+    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth and are imported by no app file; @starci/auth/server is imported only by integrations/passport, its one glue. bcrypt and every Supabase client are owned nowhere."
     editions: [lite]
     failureCodes:
       - BE_AUTH_PASSPORT_OWNER
@@ -2215,7 +2216,7 @@ rules:
       - {kind: eslint-be, id: infra-import-owner}
   - id: R329
     code: BE_AUTH_JWT_OWN_JWKS
-    law: A lite principal comes only from the app's own access token, verified in `integrations/passport` against its own key set with issuer, audience and algorithms pinned; never a remote JWKS, an unverified decode or a body claim.
+    law: "A lite back-end principal comes only from the app's own access token, verified by @starci/auth (EdDSA pinned, issuer and audience checked, a local key set that may hold several keys), never from a remote JWKS, a token decoded without its signature check, a jwtVerify call in the app or a body claim."
     editions: [lite]
     failureCodes:
       - BE_AUTH_JWT_OWN_JWKS
@@ -2224,7 +2225,7 @@ rules:
       - {kind: eslint-be, id: own-jwks-only}
   - id: R330
     code: BE_AUTH_REFRESH_COOKIE
-    law: A refresh token travels only in the httpOnly, Secure, SameSite=Strict cookie that `integrations/passport` sets, rotates and clears; it is never a field of a body.
+    law: A refresh token travels only in the httpOnly, Secure cookie that @starci/auth sets, rotates (with a reuse grace window and reuse detection) and clears; no app file writes that cookie, and the token never appears as a field of a request or response body.
     editions: [lite]
     failureCodes:
       - BE_AUTH_REFRESH_COOKIE
@@ -2232,7 +2233,7 @@ rules:
       - {kind: eslint-be, id: refresh-token-cookie-only}
   - id: R331
     code: BE_STORAGE_OWNER
-    law: "The S3 client (@aws-sdk/client-s3, @aws-sdk/s3-request-presigner) is imported only by `integrations/object-storage`; minio is imported nowhere."
+    law: "The S3 client libraries (@aws-sdk/client-s3, @aws-sdk/s3-request-presigner) are the dependencies of @starci/object-storage and are imported by no app file; @starci/object-storage is imported only by `integrations/object-storage`, its one glue; minio is imported nowhere."
     failureCodes:
       - BE_STORAGE_OWNER
     enforcers:
@@ -2523,3 +2524,28 @@ pending:
   - {gap: slot-rule-unknown, subject: HFS_CI_E2E_AUTOMATIC, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
   - {gap: slot-rule-unknown, subject: HFS_IDENTITY_CUSTODY, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
   - {gap: slot-rule-unknown, subject: HFS_SCRIPT_ONE_OFF, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - id: R372
+    code: STACKS_LOCAL_CONFIG_INVALID
+    law: Every docker-compose environment declares a coherent `local` block under the dev verbs' own normalization, and a lite app declares one such dev environment, so `starci app stack up --env dev` has something to run.
+    failureCodes:
+      - STACKS_LOCAL_CONFIG_INVALID
+      - STACKS_DEV_UNDECLARED
+    enforcers:
+      - {kind: hfs, id: stacks-local}
+  - id: R373
+    code: STACKS_RUNBOOK_DOCKER_COMMAND
+    law: The runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker build, run, compose or stack deploy command.
+    failureCodes:
+      - STACKS_RUNBOOK_DOCKER_COMMAND
+    enforcers:
+      - {kind: hfs, id: stacks-local}
+  - id: R374
+    code: STACKS_CODE_BIND_MOUNT
+    law: A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned, and whose final stage is the harness's image for that service, the fork or its runtime layer, when the harness owns one), the same image in every environment; no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, and read-only plain config data files stay allowed).
+    failureCodes:
+      - STACKS_CODE_BIND_MOUNT
+      - STACKS_IMAGE_BASE_UNPINNED
+      - STACKS_IMAGE_BASE_NOT_FORK
+      - STACKS_IMAGE_ENV_DIVERGES
+    enforcers:
+      - {kind: hfs, id: stacks-service-images}

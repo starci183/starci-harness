@@ -73,6 +73,7 @@ export interface Slot {
   role?: string;
   importedBy?: string[];
   rewrittenBy?: string;
+  managedOnly?: boolean;
   logic?: string[];
   generatedBy?: string;
 }
@@ -269,7 +270,7 @@ export const MANIFEST_KINDS = [APP_KIND, RUNTIME_KIND];
 export const manifestKind = (m: Parsed): string => (isPlainObject(m) && m.kind !== undefined ? m.kind : APP_KIND);
 const strList = (v: Parsed) => stringList(v);
 
-const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'rewrittenBy', 'logic'];
+const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'rewrittenBy', 'logic', 'managedOnly'];
 /** The roles a file slot may play that a rule reads (`role`): the entity registry of persistence.md BE-PERSISTENCE-3 (architecture/entity-registry.mjs). */
 const SLOT_ROLES = ['entity-registry'];
 /** The fields a slot's `lite` overlay may hold: the same keys it would carry in the slot body, resolved under edition lite. */
@@ -364,6 +365,7 @@ function slotListProblems(slot: Parsed, at: string): string[] {
   if (slot.roles !== undefined && !rolesValid(slot.roles)) bad.push(`${at}: roles must map a role name to a file name`);
   if (slot.composedBy !== undefined && !composedByValid(slot.composedBy)) bad.push(`${at}: composedBy must be a non-empty list of unique app kinds`);
   if (slot.budget !== undefined && !budgetValid(slot.budget)) bad.push(`${at}: budget must map names to positive integers`);
+  if (slot.managedOnly !== undefined && (slot.managedOnly !== true || slot.managedBy === undefined)) bad.push(`${at}: managedOnly is true and needs managedBy: the slot only lists files sync renders, and the slot owning the path judges them`);
   for (const key of ['managedBy', 'liteManagedBy']) if (slot[key] !== undefined && !NAME.test(String(slot[key]))) bad.push(`${at}: ${key} must be a template id`);
   return bad;
 }

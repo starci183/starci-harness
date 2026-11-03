@@ -54,3 +54,20 @@ The recorded images already exist. Importing the recipes does not rebuild, repub
 Runtime adoption separately verifies the product's version, gateway protocol, mounts and configuration against its
 managed stack before changing a pinned image. The app base-image pins remain owned by
 [contexts/stack/pins.yaml](../contexts/stack/pins.yaml).
+
+## The OpenClaw runtime layer
+
+`images/openclaw-runtime/` is a thin layer on the source-built fork: its Dockerfile is `FROM` the recorded `published.reference` of
+`openclaw` (a new fork build raises that line in the same change) and adds the generic gateway wrapper under `/opt/starci/`, owned by
+root and not writable by the runtime user: `entrypoint.sh` (exports the secrets of `STARCI_SECRETS` from `/run/secrets`, runs the init and
+the relay, starts the gateway), `openclaw-init.mjs` (merges the gateway settings into `openclaw.json`: loopback and token auth, no
+cron or heartbeat, session maintenance, an optional OpenAI-compatible provider from `AI_BASE_URL` and `STARCI_AI_KEY`, and the plugins it
+finds) and `openclaw-relay.mjs` (a byte-for-byte relay from `OPENCLAW_RELAY_PORT` to the loopback gateway). Its build context is its own
+folder. [sources.json](sources.json) records it as `openclaw-runtime` (`layerOf: openclaw`, `base`, `pluginDirectory`, `published: null`
+until published); the workflow [images.yml](../.github/workflows/images.yml) publishes it when the owner dispatches it, and the
+published digest is recorded in `published` afterwards.
+
+The contract for an app: its image folder `.starcistacks/images/openclaw/Dockerfile` is `FROM ghcr.io/starci183/openclaw-runtime:<tag>@sha256:...`
+and only `COPY`s its own plugin folder into `/opt/starci/plugins/<plugin>/` (a folder holding an `openclaw.plugin.json`); the init loads and
+enables every plugin it finds there. The app carries no wrapper, entrypoint or init code, bind-mounts none, and runs this one image in dev and
+production ([contexts/project/stacks.md](../contexts/project/stacks.md) PROJECT-STACKS-11, lint R374).

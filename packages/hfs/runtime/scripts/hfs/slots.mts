@@ -347,7 +347,7 @@ export function readRepoDeclaration(manifest: SlotManifest, repoRoot: string): R
 function createScopeResolver(manifest: SlotManifest, repo: RepoView): ScopeResolver {
   const profile = repo.profile;
   const edition = repo.edition ?? 'full';
-  const slots = manifest.slots.filter((s) => s.profiles.includes(profile) && slotInEdition(manifest, s, edition)).map((s) => effectiveSlot(s, profile, edition));
+  const slots = manifest.slots.filter((s) => s.managedOnly !== true && s.profiles.includes(profile) && slotInEdition(manifest, s, edition)).map((s) => effectiveSlot(s, profile, edition));
   const scope: Scope = { manifest, repo, profile, slots, byId: new Map(slots.map((s): [string, Slot] => [s.id, s])), variants: slots.flatMap(variantsOf), appKind: new Map(repo.apps.map((a): [string, string] => [a.name, a.kind])) };
   const classifyPath = (input: string): ClassifiedPath => classifyIn(scope, input);
   /** tracked | ignored | external for the slot owning `p`, or null when no slot owns it. */

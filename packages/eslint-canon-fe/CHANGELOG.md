@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.11.0 - 2026-11-03
+
+- Changed: `modules/auth` holds the front-end transport rules like `modules/api`: no auth door file takes axios or `fetch`, and no file keeps module-level mutable state (the access token lives in the `@starci/auth` client); the stack concern `auth` names `@starci/auth`.
+
 ## 9.10.0
 
 - Added: `starci-fe/directive-first` (R369, `FE_DIRECTIVE_FIRST`) at error: a `"use client"` or `"use server"` directive is the first statement of its module; below an import it does nothing and `next build` refuses the file.
