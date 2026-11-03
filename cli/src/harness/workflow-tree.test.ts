@@ -25,11 +25,11 @@ const commit = (root: string, file: string): string => {
 /** A scratch repository on main with one commit, and a state base for the ledger registry. */
 const scratch = (t: { after: (fn: () => void) => void }): { readonly root: string } => {
     const base = realpathSync(mkdtempSync(join(tmpdir(), "starci-tree-")))
-    const before = process.env["STARCI_LOCAL_ROOT"]
-    process.env["STARCI_LOCAL_ROOT"] = join(base, "state")
+    const before = process.env.STARCI_LOCAL_ROOT
+    process.env.STARCI_LOCAL_ROOT = join(base, "state")
     t.after(() => {
-        if (before === undefined) delete process.env["STARCI_LOCAL_ROOT"]
-        else process.env["STARCI_LOCAL_ROOT"] = before
+        if (before === undefined) delete process.env.STARCI_LOCAL_ROOT
+        else process.env.STARCI_LOCAL_ROOT = before
         rmSync(base, { recursive: true, force: true })
     })
     const root = join(base, "app")
