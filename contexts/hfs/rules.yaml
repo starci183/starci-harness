@@ -81,7 +81,7 @@ rules:
       - {kind: hfs, id: managed-file-drift}
   - id: R06
     code: HFS_PLAINTEXT_SECRET
-    law: Secrets exist only as sealed `.starcistacks/<env>/secrets/<slug>.enc` members.
+    law: Secrets exist only as sealed `.starcistacks/<env>/secrets/<slug>.enc` members, and the committed check cache holds codes, paths, positions and digests, never a message that could carry one.
     failureCodes:
       - HFS_PLAINTEXT_SECRET
     enforcers:

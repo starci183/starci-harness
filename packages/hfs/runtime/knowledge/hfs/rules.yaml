@@ -133,8 +133,8 @@ rules:
       - {path: packages/hfs/src/hfs-managed-file-drift.spec.mjs, edition: full, codes: [HFS_MANAGED_FILE_DRIFT]}
   - id: R06
     code: "HFS_PLAINTEXT_SECRET"
-    law: "Secrets exist only as `.starcistacks/<env>/secrets/<slug>.enc`."
-    kinds: [check, design]
+    law: "Secrets exist only as `.starcistacks/<env>/secrets/<slug>.enc`; the committed check cache (`.starcistacks/cache/check/secrets/`) holds codes, paths, positions and digests only, and is judged by what it holds."
+    kinds: [check, design, codemod]
     gates: [pre-commit, land, ci]
     failureCodes: ["HFS_PLAINTEXT_SECRET"]
     enforcers:
@@ -143,7 +143,7 @@ rules:
     editions: [lite, full]
     docs: [docs/legacy-managed-rule-coverage.md#r06-plaintext-secrets]
     templateNa: "Encrypted secrets are supplied by the app secret command; plaintext secret files are forbidden and are never scaffolded."
-    proves: [packages/hfs/src/hfs-plaintext-secret.spec.mjs]
+    proves: [packages/hfs/src/hfs-plaintext-secret.spec.mjs, packages/hfs/src/check-cache-secret-records.spec.mjs]
     exemplifiedBy:
       - {path: packages/hfs/src/hfs-plaintext-secret.spec.mjs, editions: [lite, full]}
     witness:
@@ -5083,7 +5083,7 @@ rules:
       - {path: packages/hfs/src/hfs-stacks-deploy.spec.mjs, editions: [lite, full]}
   - id: R295
     code: "BE_MODULE_DEFINITION_MISSING"
-    law: "Every NestJS module of the product has a module definition (owner ruling 2026-10-15, owner:module-definition-everywhere): capability modules, sub-modules, features, transport modules and cli groups alike. For a module `<x>` the folder holds `<x>.module-definition.ts` (`export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE } = new ConfigurableModuleBuilder<XOptions>().setClassMethodName(\"register\").build()`; the representative module of a capability keeps `.setExtras({ isGlobal: false }, ...)`), `<x>.options.ts` (`export type XOptions`, `Record<string, never>` with a one-line doc when it takes nothing yet) and `<x>.module.ts` (`@Module({...}) export class XModule extends ConfigurableModuleClass {}`, no `register` override except the capability representative's). A module appears in an `imports` array or in an app composition group only as `XModule.register({...})`, never as a bare class. The `AppModule` of an app root and the test world are composition roots and are not judged."
+    law: "Every NestJS module of the product has a module definition (owner ruling 2026-10-15, owner:module-definition-everywhere): capability modules, sub-modules, features, transport modules and cli groups alike. For a module `<x>` the folder holds `<x>.module-definition.ts` (`export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE, ASYNC_OPTIONS_TYPE } = defineConfigurableModule<XOptions>()` of `@starci/nest-kit`, which states the exported types so the file is neither an inferred surface (R368) nor a clone of its neighbour (R21); the representative module of a capability calls `defineCapabilityModule<XOptions>()`, which adds the `isGlobal` extra defaulting to `false`; `starci app codemod module-definition` rewrites a definition written with `ConfigurableModuleBuilder`), `<x>.options.ts` (`export type XOptions`, `Record<string, never>` with a one-line doc when it takes nothing yet) and `<x>.module.ts` (`@Module({...}) export class XModule extends ConfigurableModuleClass {}`, no `register` override except the capability representative's). A module appears in an `imports` array or in an app composition group only as `XModule.register({...})`, never as a bare class. The `AppModule` of an app root and the test world are composition roots and are not judged."
     kinds: [lint, codemod]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_MODULE_DEFINITION_MISSING"]

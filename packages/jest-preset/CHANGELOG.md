@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.6.2 - 2026-11-03
+
+- Changed: `@starci/nest-kit` is compiled to CommonJS like `@starci/auth` and `@starci/object-storage`, so a spec that loads a module definition (`defineConfigurableModule`, `defineCapabilityModule`) loads the package. Specs: `test/preset.spec.ts`.
+
 ## 2.6.1 - 2026-11-03
 
 - Changed: `@starci/auth` and `@starci/object-storage` are compiled to CommonJS like `jose` and `@starci/ai-router`, so a spec that builds the lite AppModule loads the sign-in and the storage packages.

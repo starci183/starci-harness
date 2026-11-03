@@ -59,7 +59,7 @@ Enforced by: `app-composition-only`, `entrypoint-only-in-apps`, `app-options-com
 
 ## BE-ARCHITECTURE-3 One module shape; a capability is registered once, at the app root
 
-Every Nest module has `<x>.module-definition.ts` (`new ConfigurableModuleBuilder<XOptions>()...build()`),
+Every Nest module has `<x>.module-definition.ts` (one call of `@starci/nest-kit`: `defineConfigurableModule<XOptions>()`, or `defineCapabilityModule<XOptions>()` for a capability's representative module),
 `<x>.options.ts` (`Record<string, never>` until it takes options) and `<x>.module.ts` extending
 `ConfigurableModuleClass`, and is listed only as `X.register({...})`. A capability's definition adds the `isGlobal`
 extra and its module overrides `static register` to add providers and exports; the app root registers it once as
@@ -67,13 +67,13 @@ extra and its module overrides `static register` to add providers and exports; t
 one legal cross-module import is a transport module importing its own feature's application module. No `@Global()`,
 no `new` of a provider, no module-level `let`, one module per file.
 
+The helper states the types of every name it returns, so the definition is a surface R368 accepts without a `Host` type and re-exports, and one line that two modules cannot make a clone (R21). A definition written with `ConfigurableModuleBuilder` is rewritten by `starci app codemod module-definition`.
+
 Why: a stateful module imported by two consumers is two instances (two pools, two clients); registering it once at the
 root makes globality a composition decision.
 
 ```ts
-export const { ConfigurableModuleClass, OPTIONS_TYPE } = new ConfigurableModuleBuilder<OrdersOptions>()
-    .setExtras({ isGlobal: false }, (definition, extras) => ({ ...definition, global: extras.isGlobal }))
-    .build()
+export const { ConfigurableModuleClass, OPTIONS_TYPE } = defineCapabilityModule<OrdersOptions>()
 
 @Module({})
 /** The orders of a workspace: the only writer of the orders table. */

@@ -17,7 +17,7 @@ import { trimTrailingSlashes } from '../trailing-slashes.mjs';
  *
  *   - a `*.module.ts` file below a transport folder other than `<f>-<protocol>.module.ts`, a `*.module-definition.ts` that is
  *     not the sibling of the application module or of the transport module of its own folder, and an `@Module` class (or a
- *     `ConfigurableModuleBuilder`/`ConfigurableModuleClass` use) in a feature file that is neither the application module, the
+ *     `ConfigurableModuleBuilder`/`ConfigurableModuleClass` use or a `defineConfigurableModule`/`defineCapabilityModule` call of `@starci/nest-kit`) in a feature file that is neither the application module, the
  *     transport module of its own folder nor that module's definition are refused;
  *   - apps import only transport modules, of the kinds their app kind allows: the `composedBy` list of each transport slot
  *     in knowledge/hfs/slots.yaml (api: graphql, http, websocket; worker: schedule, message). An app root (app.module.ts
@@ -147,12 +147,17 @@ function reportModuleClassLocation(file: GraphFile, name: Identifier, place: Mod
   if (file.rel !== own) report(file, name, `${name.text} is a Nest module declared in ${file.rel}; a feature declares exactly its application module (${place.feature}.module.ts) and one module per transport folder (${place.feature}-<protocol>.module.ts), never a module per operation.`, { feature: place.feature });
 }
 
+/** The module-definition helpers of @starci/nest-kit: each builds the definition of one module, like `ConfigurableModuleBuilder`. */
+const DEFINITION_HELPERS = ['defineConfigurableModule', 'defineCapabilityModule'];
+
 function reportConfigurableModuleUses(file: GraphFile, checker: TypeChecker, kit: MachineKit, ts: TypeScriptApi, place: ModulePlace, env: { composedModuleOf: ComposedModuleOf; report: ReportAt }): void {
   const own = ownModuleOf(place, file.rel, env.composedModuleOf);
   const isDefinition = file.rel === definitionOf(own);
   kit.walk(file.sourceFile, node => {
     if (ts.isNewExpression(node) && kit.isImportOf(checker, node.expression, 'ConfigurableModuleBuilder', '@nestjs/common') && !isDefinition) {
       env.report(file, node, `ConfigurableModuleBuilder builds the module definition of one module; in feature ${place.feature} it is written only in ${path.posix.basename(definitionOf(own))}, beside ${path.posix.basename(own)}.`, { feature: place.feature });
+    } else if (ts.isCallExpression(node) && !isDefinition && DEFINITION_HELPERS.some(name => kit.isImportOf(checker, node.expression, name, '@starci/nest-kit'))) {
+      env.report(file, node, `${node.expression.getText(file.sourceFile)} builds the module definition of one module; in feature ${place.feature} it is written only in ${path.posix.basename(definitionOf(own))}, beside ${path.posix.basename(own)}.`, { feature: place.feature });
     } else if (ts.isHeritageClause(node) && file.rel !== own) {
       for (const type of node.types) if (kit.isImportOf(checker, type.expression, 'ConfigurableModuleClass', '@nestjs/common')) {
         env.report(file, type, `ConfigurableModuleClass is extended by the module of its own definition only (${path.posix.basename(own)}); feature ${place.feature} declares no other configurable module.`, { feature: place.feature });

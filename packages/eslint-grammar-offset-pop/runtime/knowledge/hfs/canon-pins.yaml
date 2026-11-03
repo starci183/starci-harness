@@ -92,7 +92,7 @@ pins:
     side: both
     source: packages/prettier-config/package.json
   '@starci/jest-preset':
-    version: 2.6.1
+    version: 2.6.2
     group: starci
     install: registry
     side: be
@@ -112,6 +112,13 @@ pins:
     side: be
     source: packages/ai-router/package.json
     why: 'the AI pool router of a back end: a NestJS module that routes OpenAI-compatible chat, stream and embeddings calls across keys, models and providers, with @starci/ai-router/testing for its specs; @starci/jest-preset compiles it as an ESM-only dependency.'
+  '@starci/nest-kit':
+    version: 0.1.0
+    group: starci
+    install: registry
+    side: be
+    source: packages/nest-kit/package.json
+    why: 'the module definition of every back-end module: defineConfigurableModule and defineCapabilityModule return the module base class, the options token and the options types with their types stated, so a <x>.module-definition.ts is one call that the lint on stated export types (R368) and the duplicate-code check (R21) both accept; @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/auth':
     version: 0.1.0
     group: starci

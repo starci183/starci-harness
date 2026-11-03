@@ -4,7 +4,7 @@
 // Two readers share it and cannot drift: the ESLint result cache (hfs cache/import-graph.mjs: a file with a problem is `open`, its importers are
 // linted again whenever it changes) and the `explicit-export-surface` rule of both lint canons (scripts/hfs/explicit-surface-rule.mjs, which reports
 // each problem with what to annotate). A component that returns only JSX has the type the JSX namespace gives it, whatever its body reads, so it
-// is not a problem. `ts` is the caller's compiler (the app's own install); nothing here resolves a package.
+// is not a problem, and a destructured export of a module-definition helper of @starci/nest-kit has the type that helper's declaration writes. `ts` is the caller's compiler (the app's own install); nothing here resolves a package.
 import type { Diagnostic, Expression, FunctionLikeDeclaration, Node, SourceFile } from 'typescript';
 import type { TypeScript } from './ts-ast.mjs';
 
@@ -77,6 +77,48 @@ function returnsOnlyJsx(ts: TypeScript, source: SourceFile, start: number): bool
   return only;
 }
 
+/** The package whose module-definition helpers return a type they state in their own declaration (R368 accepts a destructured export of their call). */
+export const STATED_SURFACE_PACKAGE = '@starci/nest-kit';
+/** The helpers of that package: each is called with the options type as a type argument and returns the explicitly typed definition. */
+export const STATED_SURFACE_HELPERS: ReadonlySet<string> = new Set(['defineConfigurableModule', 'defineCapabilityModule']);
+
+/** The local names under which `source` imports a stated-surface helper from its package (`import { defineConfigurableModule as define }` gives `define`). */
+function statedHelperNames(ts: TypeScript, source: SourceFile): Set<string> {
+  const names = new Set<string>();
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== STATED_SURFACE_PACKAGE) continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (bindings === undefined || !ts.isNamedImports(bindings)) continue;
+    for (const element of bindings.elements) if (STATED_SURFACE_HELPERS.has((element.propertyName ?? element.name).text)) names.add(element.name.text);
+  }
+  return names;
+}
+
+/**
+ * Whether the destructured export the diagnostic at `start` points at is `export const { A, B } = helper<Options>()` for a stated-surface helper:
+ * each name has the type the helper's declaration gives it, written there, so the file states its surface by naming the helper and the options
+ * type, exactly as `export const A: Host["A"] = built.A` states it through `Host`.
+ */
+function statesSurfaceThroughHelper(ts: TypeScript, source: SourceFile, start: number): string | null {
+  const helpers = statedHelperNames(ts, source);
+  if (helpers.size === 0) return null;
+  let innermost: Node = source;
+  const descend = (node: Node): void => {
+    if (start < node.getFullStart() || start >= node.end) return;
+    innermost = node;
+    ts.forEachChild(node, descend);
+  };
+  ts.forEachChild(source, descend);
+  for (let node: Node | undefined = innermost; node !== undefined && node !== source; node = node.parent) {
+    if (!ts.isVariableDeclaration(node)) continue;
+    const call = node.initializer;
+    const stated = ts.isObjectBindingPattern(node.name) && call !== undefined && ts.isCallExpression(call) && ts.isIdentifier(call.expression) && helpers.has(call.expression.text)
+      && (call.typeArguments?.length ?? 0) > 0 && node.name.elements.every((element) => ts.isIdentifier(element.name) && element.dotDotDotToken === undefined);
+    return stated && call !== undefined ? call.getText(source) : null;
+  }
+  return null;
+}
+
 /** What to annotate for each isolated-declaration diagnostic code; any other code asks for the exported value's type. */
 const ANNOTATE = new Map<number, string>([
   [9007, 'return type'], [9008, 'return type'], [9009, 'accessor type'], [9010, 'variable type'], [9011, 'parameter type'], [9012, 'property type'],
@@ -115,7 +157,11 @@ export function declarationSurface(ts: TypeScript, file: string, text: string, m
   if (diagnostics.length === 0) return { outputText: declared.outputText, problems: [] };
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const problems: SurfaceProblem[] = [];
+  // The emit writes `any` for a destructured export; the call that states its type joins the digest, so a change of the options type reaches the importers.
+  const stated = new Set<string>();
   for (const diagnostic of diagnostics) {
+    const call = diagnostic.code === 9019 && diagnostic.start !== undefined ? statesSurfaceThroughHelper(ts, source, diagnostic.start) : null;
+    if (call !== null) { stated.add(call); continue; }
     const exempt = (diagnostic.code === 9007 || diagnostic.code === 9008) && diagnostic.start !== undefined && returnsOnlyJsx(ts, source, diagnostic.start);
     if (exempt) continue;
     const start = diagnostic.start ?? 0;
@@ -124,5 +170,6 @@ export function declarationSurface(ts: TypeScript, file: string, text: string, m
       reason: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n').split('\n')[0] ?? '',
     });
   }
-  return { outputText: declared.outputText, problems };
+  const outputText = stated.size === 0 ? declared.outputText : `${declared.outputText}${[...stated].sort().map((call) => `// stated by ${call}\n`).join('')}`;
+  return { outputText, problems };
 }

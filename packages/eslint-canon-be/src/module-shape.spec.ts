@@ -205,6 +205,8 @@ test("a file declares one module", () => {
 const BASE = 'import { ConfigurableModuleClass, OPTIONS_TYPE } from "./plan.module-definition"\nimport type { DynamicModule } from "@nestjs/common"\n'
 const DEFINITION = at("src/modules/domain/plan/plan.module-definition.ts")
 const CHAIN = "export const { ConfigurableModuleClass, OPTIONS_TYPE } = new ConfigurableModuleBuilder<PlanOptions>().setExtras({ isGlobal: false }, (d, e) => ({ ...d, global: e.isGlobal })).build()"
+const NEST_KIT = 'import { defineCapabilityModule, defineConfigurableModule } from "@starci/nest-kit"
+'
 const PLAIN_CHAIN = 'export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE } = new ConfigurableModuleBuilder<CheckoutOptions>().setClassMethodName("register").build()'
 
 test("BE_MODULE_DEFINITION_MISSING in lite and full: a valid representative definition carries the isGlobal extras and every other valid definition is the plain register chain; an invalid chain is refused", () => {
@@ -214,6 +216,12 @@ test("BE_MODULE_DEFINITION_MISSING in lite and full: a valid representative defi
                 // the representative of a capability: setExtras, optionally the default method name
                 { filename: DEFINITION, code: CHAIN },
                 { filename: at("src/modules/platform/cache/cache.module-definition.ts"), code: "export const { ConfigurableModuleClass } = new ConfigurableModuleBuilder<CacheOptions>().setExtras({ isGlobal: false }, (d, e) => ({ ...d, global: e.isGlobal })).setClassMethodName('register').build()" },
+                // the same two definitions as one call of @starci/nest-kit, which states their types
+                { filename: DEFINITION, code: `${NEST_KIT}export const { ConfigurableModuleClass, OPTIONS_TYPE } = defineCapabilityModule<PlanOptions>()` },
+                { filename: DEFINITION, code: `${NEST_KIT}export const { ConfigurableModuleClass, OPTIONS_TYPE } = defineCapabilityModule<PlanOptions>({ optionsInjectionToken: PLAN_OPTIONS })` },
+                { filename: at("src/features/api/checkout/checkout.module-definition.ts"), code: `${NEST_KIT}export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE } = defineConfigurableModule<CheckoutOptions>()` },
+                { filename: at("src/features/cli/migrate/migrate.module-definition.ts"), code: `import { defineConfigurableModule as define } from "@starci/nest-kit"
+export const { ConfigurableModuleClass } = define<MigrateOptions>()` },
                 // a sub-module, a feature, a transport and a cli group: setClassMethodName("register").build()
                 { filename: at("src/modules/domain/plan/plan-items.module-definition.ts"), code: PLAIN_CHAIN },
                 { filename: at("src/features/api/checkout/checkout.module-definition.ts"), code: PLAIN_CHAIN },
@@ -252,6 +260,17 @@ test("BE_MODULE_DEFINITION_MISSING in lite and full: a valid representative defi
                 { filename: at("src/features/api/checkout/transport/graphql/checkout-graphql.module-definition.ts"), code: 'export const builder = new ConfigurableModuleBuilder<CheckoutGraphqlOptions>().setClassMethodName("register")', errors: [{ messageId: "chain" }] },
                 { filename: at("src/modules/domain/plan/plan-items.module-definition.ts"), code: CHAIN, errors: [{ messageId: "chain" }] },
                 { filename: at("src/features/cli/migrate/migrate.module-definition.ts"), code: "export const x = 1", errors: [{ messageId: "chain" }] },
+                // the helper of the kind, with its options type
+                { filename: DEFINITION, code: `${NEST_KIT}export const { ConfigurableModuleClass, OPTIONS_TYPE } = defineConfigurableModule<PlanOptions>()`, errors: [{ messageId: "chain" }] },
+                { filename: at("src/features/api/checkout/checkout.module-definition.ts"), code: `${NEST_KIT}export const { ConfigurableModuleClass } = defineCapabilityModule<CheckoutOptions>()`, errors: [{ messageId: "chain" }] },
+                { filename: DEFINITION, code: `${NEST_KIT}export const { ConfigurableModuleClass } = defineCapabilityModule()`, errors: [{ messageId: "chain" }] },
+                { filename: at("src/features/api/checkout/checkout.module-definition.ts"), code: `import { defineConfigurableModule as define } from "@starci/nest-kit"
+export const { ConfigurableModuleClass } = define()`, errors: [{ messageId: "chain" }] },
+                { filename: DEFINITION, code: `import { somethingElse } from "@starci/nest-kit"
+export const { ConfigurableModuleClass } = somethingElse<PlanOptions>()`, errors: [{ messageId: "chain" }] },
+                // a helper that is not the one of @starci/nest-kit is no definition
+                { filename: DEFINITION, code: `import { defineCapabilityModule } from "./elsewhere"
+export const { ConfigurableModuleClass } = defineCapabilityModule<PlanOptions>()`, errors: [{ messageId: "chain" }] },
             ],
         })
     })

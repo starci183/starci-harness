@@ -670,7 +670,7 @@ rulings:
   - id: module-definition-everywhere
     date: '2026-10-15'
     status: live
-    ruling: "Every NestJS module has a module definition (ConfigurableModuleBuilder with register, an options type, a module class) and is registered with XModule.register(...)."
+    ruling: "Every NestJS module has a module definition (one defineConfigurableModule or defineCapabilityModule call of @starci/nest-kit: the module class, the options token and the options types) and is registered with XModule.register(...)."
     owner: "contexts/code/be/architecture.md; lint R295"
   - id: typed-app-environment
     date: '2026-10-14'
@@ -920,6 +920,11 @@ rulings:
     status: live
     ruling: "An exported declaration states its type where it is exported, in every front-end and back-end file: a function's return type, an exported variable's type and a parameter's type are written, never inferred from a body or from other files. A component that returns only JSX, null or undefined is explicit. The lint result cache counts a file with an inferred surface as open and lints every importer again when it changes; one classifier, the isolated declaration emit, serves the cache and the rule, so the rule reports exactly what the cache counts as open."
     owner: "contexts/code/shared/typing.md SHARED-TYPING-5; lint explicit-export-surface (R368); packages/hfs/runtime/scripts/lib/declaration-surface.mts"
+  - id: module-definition-helper
+    date: '2026-11-03'
+    status: live
+    ruling: "A module definition is one call of @starci/nest-kit, defineConfigurableModule<XOptions>() or, for the representative module of a capability, defineCapabilityModule<XOptions>(), destructured into the names the module uses. The helper states the type of every name it returns, so the definition is a surface the explicit-export-surface rule accepts and one line that two modules cannot make a clone (R21). The lint on stated export types accepts a destructured export of those two calls and no other; a definition written with ConfigurableModuleBuilder is rewritten by starci app codemod module-definition."
+    owner: "contexts/code/be/architecture.md BE-ARCHITECTURE-3; packages/nest-kit; lint capability-module-shape (R45) and explicit-export-surface (R368); packages/hfs/runtime/scripts/lib/declaration-surface.mts"
 
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `shipped: true` extends the check to packages/hfs/runtime, the knowledge the eslint packages bundle. `pending` marks a name that still exists in published code until the follow-up lands.
