@@ -25,6 +25,8 @@ const LINKED: Readonly<Record<string, string>> = {
   'event-stream': '../../event-stream/dist',
   'jest-preset': '../../jest-preset/dist',
   'test-world': '../../test-world/dist',
+  auth: '../../auth/dist',
+  'object-storage': '../../object-storage/dist',
 };
 const PACKAGES = path.resolve(import.meta.dirname, '..', '..');
 
