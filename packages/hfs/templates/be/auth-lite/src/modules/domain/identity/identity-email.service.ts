@@ -29,6 +29,9 @@ const NO_SESSION = "00000000-0000-0000-0000-000000000000"
 
 type Purpose = typeof CONFIRM | typeof RESET
 
+/** The languages the mails are written in. */
+const LANGUAGES: readonly MailLanguage[] = ["vi", "en"]
+
 @Injectable()
 /**
  * The email doors of sign-in: sign up, confirm the mailbox, resend the confirmation, forget and reset the password. A link is a
@@ -41,7 +44,7 @@ export class IdentityEmailService {
         @InjectAuthPasswords() private readonly passwords: AuthPasswords,
         @InjectSignInBudget() private readonly budget: SignInBudget,
         @InjectMailer() private readonly mailer: Mailer,
-        @InjectMailSettings() private readonly settings: MailOptions,
+        @InjectMailSettings() private readonly options: MailOptions,
         @InjectClock() private readonly clock: Clock,
         @InjectIds() private readonly ids: Ids,
         @InjectLogger() private readonly logger: Logger,
@@ -49,7 +52,7 @@ export class IdentityEmailService {
     ) {}
 
     /** Creates an unconfirmed password account and mails the confirmation link; an address that already has an account is answered the same way. */
-    async signup(email: string, password: string, language?: MailLanguage): Promise<void> {
+    async signup(email: string, password: string, language?: string): Promise<void> {
         const address = normalizeEmail(email)
         await this.admit("signup", address)
         if (!isAcceptablePassword(password)) throw new IdentityError({ code: IdentityErrorCode.PasswordInvalid })
@@ -66,7 +69,7 @@ export class IdentityEmailService {
     }
 
     /** Mails a new confirmation link to an unconfirmed account; any other address is answered the same way. */
-    async resend(email: string, language?: MailLanguage): Promise<void> {
+    async resend(email: string, language?: string): Promise<void> {
         const address = normalizeEmail(email)
         await this.admit("signup", address)
         const user = await accountDoors.userByEmail(this.entityManager, address)
@@ -85,14 +88,14 @@ export class IdentityEmailService {
     }
 
     /** Mails a reset link when the address has a live password account; the answer never says whether it does. */
-    async forgot(email: string, language?: MailLanguage): Promise<void> {
+    async forgot(email: string, language?: string): Promise<void> {
         const address = normalizeEmail(email)
         await this.admit("reset", address)
         const user = await accountDoors.userByEmail(this.entityManager, address)
         if (user === undefined || user.disabled) return
-        const token = await this.mint(user.id, RESET, this.settings.resetTtlSeconds)
-        const url = `${this.settings.webOrigin}/auth/reset?token=${encodeURIComponent(token)}`
-        const mail = resetPasswordMail(language ?? this.settings.defaultLanguage, { brand: this.settings.brandName, url, hours: this.hoursOf(this.settings.resetTtlSeconds) })
+        const token = await this.mint(user.id, RESET, this.options.resetTtlSeconds)
+        const url = `${this.options.webOrigin}/auth/reset?token=${encodeURIComponent(token)}`
+        const mail = resetPasswordMail(this.languageOf(language), { brand: this.options.brandName, url, hours: this.hoursOf(this.options.resetTtlSeconds) })
         await this.deliver(address, mail, RESET)
     }
 
@@ -128,10 +131,15 @@ export class IdentityEmailService {
         return row
     }
 
-    private async sendConfirmation(userId: string, address: string, language: MailLanguage | undefined): Promise<void> {
-        const token = await this.mint(userId, CONFIRM, this.settings.confirmTtlSeconds)
-        const url = `${this.settings.webOrigin}/auth/confirm?token=${encodeURIComponent(token)}`
-        const mail = confirmEmailMail(language ?? this.settings.defaultLanguage, { brand: this.settings.brandName, url, hours: this.hoursOf(this.settings.confirmTtlSeconds) })
+    /** The language a request named when it is one the mails are written in, else the default of the settings. */
+    private languageOf(language: string | undefined): MailLanguage {
+        return LANGUAGES.find((candidate) => candidate === language) ?? this.options.defaultLanguage
+    }
+
+    private async sendConfirmation(userId: string, address: string, language: string | undefined): Promise<void> {
+        const token = await this.mint(userId, CONFIRM, this.options.confirmTtlSeconds)
+        const url = `${this.options.webOrigin}/auth/confirm?token=${encodeURIComponent(token)}`
+        const mail = confirmEmailMail(this.languageOf(language), { brand: this.options.brandName, url, hours: this.hoursOf(this.options.confirmTtlSeconds) })
         await this.deliver(address, mail, CONFIRM)
     }
 

@@ -56,7 +56,7 @@ const build = async (entityManager: MockEntityManager) => {
             { provide: IDENTITY_AUTH_PASSWORDS, useValue: passwords },
             { provide: IDENTITY_SIGN_IN_BUDGET, useValue: budget },
             { provide: MAILER, useValue: mailer },
-            { provide: MAIL_SETTINGS, useValue: SETTINGS },
+            { provide: MAIL_SETTINGS, useValue: mock<MailOptions>(SETTINGS) },
             { provide: CLOCK, useValue: new FakeClock(AT) },
             { provide: IDS, useValue: fakeIds() },
             { provide: LOGGER, useValue: logger },
@@ -213,5 +213,21 @@ describe("IdentityEmailService.reset", () => {
         fakeTransaction(entityManager)
         const dead = await build(entityManager)
         await expect(dead.subject.reset("t", "a better password")).rejects.toBeInstanceOf(IdentityError)
+    })
+})
+
+describe("IdentityEmailService language", () => {
+    it("writes the mail in the language the request names, and in the default one when it names none the mails are written in", async () => {
+        const subjectFor = async (language?: string): Promise<string | undefined> => {
+            const entityManager = mockEntityManager({ query: [[USER_BY_EMAIL, []], [CREATE_USER, [{ be_auth_create_user: NEW_ID }]]], insert: [IdentityEmailTokenEntity, {}], update: [IdentityEmailTokenEntity, {}] })
+            fakeTransaction(entityManager)
+            const { subject, mailer } = await build(entityManager)
+            await subject.signup("a@example.test", "correct horse", language)
+            return mailer.send.mock.calls[0]?.[0].message.subject
+        }
+        const english = await subjectFor("en")
+        expect(await subjectFor("vi")).not.toBe(english)
+        expect(await subjectFor("xx")).toBe(english)
+        expect(await subjectFor()).toBe(english)
     })
 })

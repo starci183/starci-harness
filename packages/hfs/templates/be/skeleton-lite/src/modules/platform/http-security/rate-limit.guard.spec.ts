@@ -129,6 +129,17 @@ describe("RateLimitGuard", () => {
         expect(entityManager.update).not.toHaveBeenCalled()
     })
 
+    it("counts with an increment the database evaluates, so concurrent hits never overwrite each other", async () => {
+        const { entityManager, counting } = liveWindow(2)
+        const { guard } = await build(entityManager)
+
+        await guard.canActivate(contextOf("127.0.0.1"))
+
+        const assignment: unknown = counting?.callsOf("set")[0]?.[0]
+        const increment: unknown = typeof assignment === "object" && assignment !== null && "hits" in assignment && typeof assignment.hits === "function" ? Reflect.apply(assignment.hits, undefined, []) : undefined
+        expect(increment).toBe("hits + 1")
+    })
+
     it("refuses a caller whose shared window is over the default limit", async () => {
         const { guard } = await build(liveWindow(3).entityManager)
 

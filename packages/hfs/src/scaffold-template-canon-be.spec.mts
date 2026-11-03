@@ -26,8 +26,9 @@ import { loadHfs, starciBeConfig } from '../../eslint-canon-be/dist/index.js';
 const HFS = path.resolve(import.meta.dirname, '..');
 const KIT = path.resolve(HFS, '..', 'jest-preset');
 const AUTH = path.resolve(HFS, '..', 'auth');
+const MAIL = path.resolve(HFS, '..', 'mail');
 /** Where the types a skeleton file imports are installed: this package's dev dependencies and the kit's (jest's globals). */
-const INSTALLS = [path.join(HFS, 'node_modules'), path.join(KIT, 'node_modules'), path.join(AUTH, 'node_modules')];
+const INSTALLS = [path.join(HFS, 'node_modules'), path.join(KIT, 'node_modules'), path.join(AUTH, 'node_modules'), path.join(MAIL, 'node_modules')];
 
 const lockedOk = (root: string): LockResult => {
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');
@@ -58,6 +59,11 @@ const installKit = (root: string) => {
 /** The sign-in package, built, where a lite app installs it (its dependencies resolve from the package's own installs). */
 const installAuth = (root: string) => {
   for (const part of ['package.json', 'dist']) fs.cpSync(path.join(AUTH, part), path.join(root, 'node_modules', '@starci', 'auth', part), { recursive: true });
+};
+
+/** The mail package, built, where a lite app installs it (the email doors send through its Mailer). */
+const installMail = (root: string) => {
+  for (const part of ['package.json', 'dist']) fs.cpSync(path.join(MAIL, part), path.join(root, 'node_modules', '@starci', 'mail', part), { recursive: true });
 };
 
 /** The entity base of platform/database and the entity of the table `add table` writes over a postgres connection. */
@@ -93,7 +99,7 @@ for (const edition of ['full', 'lite']) {
     addTable(root);
     gitAdd(installTypeScript(root));
     installKit(root);
-    if (edition === 'lite') installAuth(root);
+    if (edition === 'lite') { installAuth(root); installMail(root); }
     const be = path.join(root, 'be');
     const project = lintProject(be);
     // reason: the canon answers typescript-eslint's FlatConfig blocks; they are eslint's flat config, but under exactOptionalPropertyTypes its
@@ -105,7 +111,7 @@ for (const edition of ['full', 'lite']) {
     ] });
     // lite also lints the specs beside the logic files be.integrations.passport declares (`logic`): unit specs held to the canon form.
     const passportSpecs = edition === 'lite' ? ['kit'].map((part) => `src/modules/integrations/passport/passport.${part}.spec.ts`) : [];
-    const signIn = edition === 'lite' ? ['src/modules/domain/identity/{account-directory,authenticator,rate-counter,session-store,sign-in}.service*.ts', 'src/modules/domain/identity/identity-sign-in.log-events.ts', 'src/modules/domain/identity/persistence/**/*.ts', 'src/modules/integrations/passport/{index,passport.config,passport.decorators,passport.kit,passport.kit.spec,passport.options,passport.registration}.ts', 'src/modules/integrations/passport/errors/*.ts', 'src/tests/fixtures/builders/identity.builder.ts'] : [];
+    const signIn = edition === 'lite' ? ['src/modules/domain/identity/{account-directory,authenticator,identity-email,rate-counter,session-store,sign-in}.service*.ts', 'src/modules/domain/identity/identity-sign-in.log-events.ts', 'src/modules/domain/identity/identity-email.log-events.ts', 'src/modules/domain/identity/persistence/**/*.ts', 'src/modules/integrations/passport/{index,passport.config,passport.decorators,passport.kit,passport.kit.spec,passport.options,passport.registration}.ts', 'src/modules/integrations/passport/errors/*.ts', 'src/tests/fixtures/builders/identity.builder.ts'] : [];
     const results = await eslint.lintFiles(['src/modules/platform/**/*.ts', TABLE_ENTITY, ...passportSpecs, ...signIn]);
     const linted = results.map((result) => path.relative(be, result.filePath).split(path.sep).join('/'));
     assert.ok(linted.includes('src/modules/platform/http/fetch-http-client.client.ts'), 'the client is linted');
