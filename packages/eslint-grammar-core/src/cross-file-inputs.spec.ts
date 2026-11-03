@@ -119,3 +119,11 @@ test("a file the linted file imports is carried by the import graph, not by a de
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test("route-page-is-one-page re-judges a route and a page owner when a block the page proof reads changes", () => {
+  const blocks = crossFileInputs.filter((input) => input.rule === "route-page-is-one-page" && input.kind === "content" && input.globs.some((glob) => glob.includes("components/{blocks")))
+  assert.equal(blocks.length, 1)
+  const [input] = blocks
+  assert.ok(input?.appliesTo.some((glob) => glob.startsWith("**/src/app/")), "the route files depend on the blocks")
+  assert.ok(input?.appliesTo.some((glob) => glob.startsWith("**/src/features/pages/")), "the page owners depend on the blocks")
+})
