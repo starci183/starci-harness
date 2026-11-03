@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.19.0
+version: 3.20.0
 presenceValues:
   - required
   - optional
@@ -1090,6 +1090,20 @@ slots:
       GitHub Environment secret; this workflow writes it back (ruling app-secrets-one-standard).
     path: .github/workflows/stack-key-restore.yml
     presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: ci-workflows
+    liteManagedBy: ci-workflows-lite
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.ci-cache-verify
+    profiles:
+      - app
+    editionWhy: both editions commit a check cache that CI and the release gate trust; this scheduled workflow verifies it every
+      night and its red run locks the release gate (ruling release-gate-warm-cache).
+    path: .github/workflows/cache-verify.yml
+    presence: required
     tracked: tracked
     tier: none
     tests: none

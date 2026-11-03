@@ -5,7 +5,7 @@ name: ci
 #   pull_request  the checks and the image builds of a change to main, with no secret and no environment (a Dependabot or fork run has none anyway);
 #                 and no run of this workflow executes a pull request's code with a token that can write
 #   main          judged only when no release tag points at the pushed commit (the release push sends main and its tag together; the tag run is the release run)
-#   candidate     release/candidate-<version>: the full run of a release the tag run then reuses
+#   candidate     release/candidate-<version>: the run of a release the tag run then reuses
 #   tag v*        the release run: plan, checks and images in parallel, the verdict, then the deploy of every environment with deploy.auto
 on:
   push:
@@ -14,14 +14,22 @@ on:
   pull_request:
     branches: ["main"]
   workflow_dispatch:
+    inputs:
+      full:
+        description: The owner's full run, judging every family without the committed check cache (never the default)
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 # The committed check cache (.starcistacks/cache, contexts/project/check-cache.md): a run judges only what differs from the cache at its trusted base
-# (the first parent of a push to main). A release candidate and a release tag judge in full and never read the cache.
+# (the first parent of a push to main, the merge-base with main of a release candidate or tag, whose cache main's CI verified); the nightly
+# cache-verify.yml proves that trust. Only a dispatch with the `full` input, the owner's explicit opt-in, judges in full without the cache.
 env:
-  STARCI_APP_CHECK_CACHE: ${{ (startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/release/candidate-')) && 'full' || '' }}
+  STARCI_APP_CHECK_CACHE: ${{ github.event_name == 'workflow_dispatch' && inputs.full && 'full' || '' }}
+  STARCI_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
 
 # One run per ref. A pull request run is replaced by the next push to it; every other run, a release tag above all, is never cancelled.
 concurrency:
@@ -65,9 +73,9 @@ jobs:
               release=true
               [[ "$GITHUB_REF_NAME" == "v$(node -p "require('./package.json').version")" ]] || { echo "::error::the release tag does not match the package version"; exit 1; }
               reused=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${GITHUB_SHA}&event=push&status=success&per_page=100" --jq '[.workflow_runs[] | select(.head_branch | startswith("release/candidate-"))] | first | .id // empty')
-              if [[ -n "$reused" ]]; then checks=false ci_run="$reused" note="release run: the green candidate run $reused judged this commit; images are built and pushed here"; else note="release run: full checks and images"; fi
+              if [[ -n "$reused" ]]; then checks=false ci_run="$reused" note="release run: the green candidate run $reused judged this commit; images are built and pushed here"; else note="release run: the release checks (Sonar included) against the warm cache, and images"; fi
             elif [[ "$GITHUB_REF" == refs/heads/release/candidate-* ]]; then
-              note="candidate run: full checks; images are built and pushed under sha-<sha>"
+              note="candidate run: the release checks (Sonar included) against the warm cache; images are built and pushed under sha-<sha>"
             elif [[ -n "$(git tag --points-at "$GITHUB_SHA" --list 'v*')" ]]; then
               checks=false images=false push=false full=false note="deferred: the release tag run of this commit judges it"
             else

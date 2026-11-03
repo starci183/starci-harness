@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.19.0
+version: 3.20.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -64,6 +64,7 @@ versioning:
 # 3.18.0 (ruling seed-levels, 2026-11-03) gives app.starcistacks its two seed levels, the shared .starcistacks/seeds/ and each environment's
 # <env>/seeds/, each a seeds.yaml manifest and the folders sql/, data/ and files/, and retires app.db.seed (its rows are the shared level's
 # sql/ entries); `starci app codemod seeds-layout` moves an older app's seed data into them.
+# 3.20.0 (ruling release-gate-warm-cache, 2026-11-04) adds the required app.ci-cache-verify, the managed nightly verify of the committed check cache.
 # 3.19.0 (ruling root-packages-any-name, 2026-11-03) widens app.packages to any packages/<name>/: the agent SDK, a block library, a module package.
 # 3.15.0 (ruling app-check-cache, 2026-10-31) adds the optional app.starcistacks.cache, the committed check cache of the app (.starcistacks/cache/, both editions).
 # 3.14.0 (ruling app-secrets-one-standard, 2026-10-29) adds the optional app.ci-stack-key-restore, the managed workflow that writes the
@@ -741,6 +742,19 @@ slots:
     # The server identity restore workflow: workflow_dispatch only (like app.ci-stack-deploy); `starci app secret server-key --env <env> --restore github` dispatches it, rendered by starci app sync.
     path: ".github/workflows/stack-key-restore.yml"
     presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: ci-workflows
+    liteManagedBy: ci-workflows-lite
+    rules: [HFS_MANAGED_FILE_DRIFT]
+  - id: app.ci-cache-verify
+    since: 3.20.0
+    profiles: [app]
+    editionWhy: "ruling:release-gate-warm-cache: both editions commit a check cache that CI and the release gate trust; this scheduled workflow verifies it every night and its red run locks the release gate."
+    # The nightly verify of the committed check cache: schedule and workflow_dispatch on the default branch, STARCI_APP_CHECK_CACHE=verify; rendered by starci app sync.
+    path: ".github/workflows/cache-verify.yml"
+    presence: required
     tracked: tracked
     tier: none
     tests: none

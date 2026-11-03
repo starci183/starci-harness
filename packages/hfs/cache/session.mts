@@ -12,7 +12,7 @@ import { SECRETS_FOLDER, safeSecretRecords } from './secret-records.mjs';
 import { readCacheDir, resolveTrust, verifyCommitted, type CacheVerdict, type TrustSource } from './trust.mjs';
 import { CACHE_DIR, type CacheRecord, type CheckSession, type ContentIndex, type FamilyDecision, type FamilyId, type FamilyReport, type FlushResult, type ProgressSink } from './types.mjs';
 
-/** `STARCI_APP_CHECK_CACHE`: `full` ignores the cache (the release gate sets it), `verify` is read by the caller (runs diff, then full, compares). */
+/** `STARCI_APP_CHECK_CACHE`: `full` ignores the cache (the owner's full gate sets it), `verify` is read by the caller (runs diff, then full, compares). */
 export const CACHE_ENV = 'STARCI_APP_CHECK_CACHE';
 const FINGERPRINT_FILE = 'fingerprint.jsonl';
 
@@ -112,7 +112,7 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
   let verdictList: CacheVerdict[] = [];
 
   const global = (family: FamilyId): FamilyDecision | undefined => {
-    if (forcedFull) return { mode: 'full', reason: `${CACHE_ENV}=full, the release gate never reads the cache` };
+    if (forcedFull) return { mode: 'full', reason: `${CACHE_ENV}=full, the full gate never reads the cache` };
     if (!fingerprint.portable) return { mode: 'full', reason: `no portable fingerprint, nothing is written (${fingerprint.localReasons[0] ?? 'a local package'})` };
     if (trust.kind === 'none') return { mode: 'full', reason: `no trusted base (${trust.reason})` };
     if (cachedFingerprint.length === 0) return { mode: 'full', reason: trust.kind === 'base' ? 'no cache at the trusted base' : 'no cache in the tree' };

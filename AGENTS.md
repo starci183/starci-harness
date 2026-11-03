@@ -33,6 +33,10 @@ Rules that are easy to forget:
   first, while `git worktree remove` or a recursive delete through a junction empties its target
   ([contexts/authority/README.md](contexts/authority/README.md) "Worktrees").
 - In a shared checkout, commit only your paths through a temporary index (`GIT_INDEX_FILE`), never the shared index.
+- An app's `starci app check` runs on its warm committed cache: warm it once after a pin bump, check only the diff in a loop
+  (`--gate`, `--side`, `--staged`), never pass `--no-cache` in a loop or CI, and commit `.starcistacks/cache/` as the run left it;
+  the pre-push hook refuses a push without warm records (`app check --fresh`)
+  ([contexts/project/check-cache.md](contexts/project/check-cache.md) "The operating procedure", decision `warm-cache-push`).
 
 ## Environment gotchas
 

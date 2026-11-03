@@ -226,7 +226,9 @@ The last two names dispatch to the same existing combined prediction family and 
 Predictions remain diagnostics; actual Sonar CI/release checks and Codecov CI uploads keep their existing ownership and verdicts.
 `app check --staged` remains the separate pre-commit guard. Each family prints `<family>: <full|diff> (<reason>), checked n, reused n;
 findings n new, n known, n fixed`. Progress goes to stderr (`--quiet` silences it). `STARCI_APP_CHECK_CACHE=verify` runs diff then full and exits 2 on any difference;
-`STARCI_APP_CHECK_CACHE=full` never reads the cache (the release gate).
+`STARCI_APP_CHECK_CACHE=full` never reads the cache (the owner's full gate, `app release gate --full`); `app check --fresh`, run by the managed
+pre-push hook, refuses a push whose committed cache a real run on its tree changes (`HFS_CHECK_CACHE_UNWARMED`, `HFS_CHECK_CACHE_UNPORTABLE`), and a red
+nightly `cache-verify.yml` refuses the release gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`).
 
 Exit codes: 0 clean, 1 an error finding, 2 a tool could not run or a refusal (not a Git work tree, bad flag). `starci app check` writes only `.starcistacks/cache/` (and `--out`'s file; `--fix` lets ESLint and stylelint fix in place).
 
