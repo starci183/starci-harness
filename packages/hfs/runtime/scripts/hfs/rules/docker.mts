@@ -4,7 +4,8 @@
 // instructions (scripts/lib/dockerfile.mjs), never by matching the text:
 //   HFS_DOCKER_BUILD_CONTEXT  the header comment states the app's own build command (`starci docker build <app>` or `docker build -f <side>/apps/<app>/Dockerfile ... .`, the
 //                             context the app root) and no COPY or ADD source leaves the context (`..`, an absolute path); a Next image of a front end
-//                             that reads be/contracts/ copies that folder exactly when the app holds it (its codegen input; a COPY of a missing folder fails the build)
+//                             that reads be/contracts/ copies that folder only when the back end holds it (a COPY of a missing folder fails the build); the
+//                             COPY stays the app's choice when it does, since the side-wide read does not say which of its Next apps runs the codegen
 //   HFS_DOCKER_STAGES         a `build` stage and a last `runtime` stage; the runtime is unprivileged (`USER node`) and runs no build; every install
 //                             is `npm ci` (never `npm install`); a back-end runtime installs `--omit=dev --ignore-scripts`, a front-end runtime installs nothing
 //   HFS_DOCKER_ENTRY          the runtime starts the app's own built entry (be: node be/dist/apps/<app>/src/main.js; fe: node fe/apps/<app>/server.js); an api or
@@ -121,12 +122,11 @@ function contextFindings(file: string, parsed: Parsed, side: string, app: Parsed
 }
 
 
-/** R187: a Next image copies be/contracts, the contract its codegen reads, when the app holds it, and never when it does not. */
+/** R187: a Next image copies be/contracts only when the back end holds it (a back end that emits no contract has no such folder). */
 function contractCopyFindings(file: string, parsed: Parsed, holdsContracts: boolean) {
+  if (holdsContracts) return [];
   const copies = parsed.instructions.filter((entry: Parsed) => entry.keyword === 'COPY' || entry.keyword === 'ADD').find((entry: Parsed) => contextSources(entry).some((source) => source.replace(/\/$/u, '') === CONTRACTS));
-  if (copies && !holdsContracts) return [found(DOCKER_BUILD_CONTEXT, file, `${file}:${copies.line} copies ${CONTRACTS}, which the app does not hold (its back end emits no contract), so the image build fails; drop the COPY until a contract is emitted.`, { line: copies.line, source: CONTRACTS })];
-  if (!copies && holdsContracts) return [found(DOCKER_BUILD_CONTEXT, file, `${file} does not copy ${CONTRACTS}, the contract the front end's codegen reads; add \`COPY ${CONTRACTS} ${CONTRACTS}\` before the codegen.`, { source: CONTRACTS })];
-  return [];
+  return copies ? [found(DOCKER_BUILD_CONTEXT, file, `${file}:${copies.line} copies ${CONTRACTS}, which the app does not hold (its back end emits no contract), so the image build fails; drop the COPY until a contract is emitted.`, { line: copies.line, source: CONTRACTS })] : [];
 }
 
 /** R188: the stages and the install, the user and the build discipline of each. */

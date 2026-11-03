@@ -92,15 +92,13 @@ function contractFindings(t: TestContext, { rendered, held }: { rendered: boolea
   return { copies: next.includes(COPY_CONTRACTS), messages: findings.map((finding) => finding.message) };
 }
 
-test('a Next image copies be/contracts exactly when the back end holds them, and the build context rule refuses either mismatch', (t) => {
+test('a Next image copies be/contracts only when the back end holds them: a COPY of a missing folder is refused, a Next app that reads none may skip it', (t) => {
   assert.deepEqual(contractFindings(t, { rendered: true, held: true }), { copies: true, messages: [] });
   assert.deepEqual(contractFindings(t, { rendered: false, held: false }), { copies: false, messages: [] }, 'a back end that emits no contract gets no COPY of a missing folder');
   const missing = contractFindings(t, { rendered: true, held: false });
   assert.equal(missing.messages.length, 1);
   assert.match(missing.messages[0] ?? '', /copies be\/contracts, which the app does not hold/u);
-  const forgotten = contractFindings(t, { rendered: false, held: true });
-  assert.equal(forgotten.messages.length, 1);
-  assert.match(forgotten.messages[0] ?? '', /does not copy be\/contracts, the contract the front end's codegen reads/u);
+  assert.deepEqual(contractFindings(t, { rendered: false, held: true }), { copies: false, messages: [] }, 'the side-wide read does not oblige every Next app to copy the contract');
 });
 
 for (const edition of ['lite', 'full']) {

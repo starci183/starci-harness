@@ -3299,7 +3299,7 @@ rules:
     code: "HFS_DOCKER_BUILD_CONTEXT"
     editions: [lite, full]
     docs: [docs/application-stacks.md#r187]
-    law: "Every app image is built from the app root: the header comment of an app's Dockerfile states `starci docker build <app>` for its own path, no COPY or ADD source leaves the build context (a `..` segment or an absolute path), and the image of a Next app whose front end reads be/contracts/ copies that folder exactly when the app holds it (a COPY of a missing folder fails the build, a missing COPY leaves the codegen without its contract)."
+    law: "Every app image is built from the app root: the header comment of an app's Dockerfile states `starci docker build <app>` for its own path, no COPY or ADD source leaves the build context (a `..` segment or an absolute path), and the image of a Next app whose front end reads be/contracts/ copies that folder only when the back end holds it (a back end that emits no contract has none, and a COPY of a missing folder fails the build)."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["HFS_DOCKER_BUILD_CONTEXT"]
