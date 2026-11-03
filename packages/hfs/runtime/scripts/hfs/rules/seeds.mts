@@ -5,15 +5,18 @@
 //   HFS_SEED_MANIFEST     a manifest that is missing, does not parse or names a path that is not there, a file no entry covers, an after cycle;
 //   HFS_SEED_DDL          a statement of a sql entry that changes the schema or its grants (seed data is never a migration);
 //   HFS_SEED_DATA_SCHEMA  a data document that does not validate against the JSON schema its entry names;
-//   HFS_SEED_TEST_DATA    a test marker (an example.test identity, a uat- or test- prefix) in a level a production environment applies: the
-//                         shared level and the level of every environment that is not docker-compose.
+//   HFS_SEED_TEST_DATA    a test marker (an example.test identity, a uat- or test- prefix) in a level a production environment applies (the
+//                         shared level and the level of every environment that is not docker-compose), outside its one test-account entry;
+//   HFS_SEED_SECRET_REF   a document's secret reference `{ "secret": "<member>" }` to a name that is no seeds-<name>, or to a member the
+//                         environment does not seal (`.starcistacks/<env>/secrets/<member>.enc.yaml`; the shared level: every environment).
 // A plaintext secret on any seed line is R06's and a real identity R259's (HFS_SEED_PII). A finding names the file and line, never a value.
 import path from 'node:path';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { validateAgainstSchema } from '../../lib/json-schema.mjs';
 import { findStackDeclaration } from '../../lib/stack-declaration.mjs';
 import { databaseExecutableTokens, databaseSqlStatements, databaseSqlTokens } from './database-migrations.mjs';
-import { entryFiles, readSeedLevel, SEEDS_DIR, SEEDS_KEEP, SEEDS_MANIFEST } from '../stack-seeds-config.mjs';
+import { envelopeOf } from '../secret-document.mjs';
+import { entryFiles, isDocumentEntry, readSeedLevel, resolveSecrets, SEED_SECRET_MEMBER, secretReferences, seedDocuments, seedMemberFile, SEEDS_DIR, SEEDS_KEEP, SEEDS_MANIFEST } from '../stack-seeds-config.mjs';
 import type { SeedEntry, SeedLevel } from '../stack-seeds-config.mjs';
 import { found, readText } from './read.mjs';
 import type { Finding, Parsed } from './rule-types.mjs';
@@ -23,6 +26,9 @@ export const HFS_SEED_MANIFEST = 'HFS_SEED_MANIFEST';
 export const HFS_SEED_DDL = 'HFS_SEED_DDL';
 export const HFS_SEED_DATA_SCHEMA = 'HFS_SEED_DATA_SCHEMA';
 export const HFS_SEED_TEST_DATA = 'HFS_SEED_TEST_DATA';
+export const HFS_SEED_SECRET_REF = 'HFS_SEED_SECRET_REF';
+/** What a secret's value reads as where no value is opened: the schema check and the dry run. */
+const SEALED = '[sealed]';
 
 /** A seed file: `.starcistacks/seeds/<rest>` or `.starcistacks/<env>/seeds/<rest>`, captured as [level folder, rest]. */
 const SEED_PATH = /^(\.starcistacks\/(?:[^/]+\/)?seeds)\/(.+)$/u;
@@ -92,26 +98,57 @@ function manifestFindings(repoRoot: string, level: SeedLevel, files: string[]): 
   ];
 }
 
-/** The findings of one entry's files: DDL in SQL, data that fails its schema, test markers where production applies the level. */
-function entryFindings(repoRoot: string, level: SeedLevel, entry: SeedEntry, production: boolean): Finding[] {
-  const findings: Finding[] = [];
-  const schemaText = entry.schema === null ? null : readText(repoRoot, entry.schema);
-  let schema: unknown = null;
-  try { schema = schemaText === null ? null : parseYaml(schemaText); } catch { schema = null; }
-  if (entry.kind === 'data' && schema === null) findings.push(found(HFS_SEED_DATA_SCHEMA, `${level.dir}/${SEEDS_MANIFEST}`, `entry ${entry.id} names the schema ${String(entry.schema)}, which is not a readable JSON or YAML schema`));
+/** The parsed JSON schema an entry names, or null when it names none or it cannot be read. */
+function entrySchema(repoRoot: string, entry: SeedEntry): unknown {
+  const text = entry.schema === null ? null : readText(repoRoot, entry.schema);
+  try { return text === null ? null : parseYaml(text); } catch { return null; }
+}
+
+/** The findings of the secret references of one document: a name that is no seed member, or a member an environment of the level lacks. */
+function referenceFindings(file: string, doc: unknown, environments: string[], files: ReadonlySet<string>): Finding[] {
+  return secretReferences(doc).flatMap((member) => {
+    if (!SEED_SECRET_MEMBER.test(member)) return [found(HFS_SEED_SECRET_REF, file, `${file} references the secret ${member}; a seed references a sealed member named seeds-<name> of its environment`)];
+    const missing = environments.filter((env) => !files.has(seedMemberFile(env, member)));
+    return missing.map((env) => found(HFS_SEED_SECRET_REF, file, `${file} references ${member}, which ${seedMemberFile(env, member)} does not hold; seal it with starci app secret set --env ${env}`));
+  });
+}
+
+/** What the schema sees for a secret reference: the member's keys, each a sealed placeholder (the envelope names them; no value is opened). */
+function sealedShape(repoRoot: string, environments: string[], member: string): Record<string, string> {
+  const text = environments.map((env) => readText(repoRoot, seedMemberFile(env, member))).find((item) => item !== null) ?? null;
+  let keys: string[] = [];
+  try { keys = text === null ? [] : envelopeOf(text).keys; } catch { keys = []; }
+  return Object.fromEntries(keys.map((key) => [key, SEALED]));
+}
+
+/** The findings of a document entry: a document off its schema (secret references read as their sealed keys) and its secret references. */
+function documentFindings(repoRoot: string, level: SeedLevel, entry: SeedEntry, scope: { environments: string[]; files: ReadonlySet<string> }): Finding[] {
+  const manifest = `${level.dir}/${SEEDS_MANIFEST}`;
+  const schema = entrySchema(repoRoot, entry);
+  if (schema === null) return [found(HFS_SEED_DATA_SCHEMA, manifest, `entry ${entry.id} names the schema ${String(entry.schema)}, which is not a readable JSON or YAML schema`)];
+  return seedDocuments(path.join(repoRoot, level.dir), entry).flatMap((document) => {
+    const file = `${level.dir}/${document.path}`;
+    if (document.error !== undefined) return [found(HFS_SEED_DATA_SCHEMA, file, `${file} does not parse: ${document.error}`)];
+    const errors = validateAgainstSchema(resolveSecrets(document.doc, (member) => sealedShape(repoRoot, scope.environments, member)), schema);
+    return [
+      ...(errors.length > 0 ? [found(HFS_SEED_DATA_SCHEMA, file, `${file} does not validate against ${String(entry.schema)}: ${errors[0] ?? ''}`)] : []),
+      ...referenceFindings(file, document.doc, scope.environments, scope.files),
+    ];
+  });
+}
+
+/** The findings of one entry's files: DDL in SQL, documents and secret references, test markers where production applies the level. */
+function entryFindings(repoRoot: string, level: SeedLevel, entry: SeedEntry, scope: { environments: string[]; files: ReadonlySet<string>; production: boolean }): Finding[] {
+  const findings = isDocumentEntry(entry) ? documentFindings(repoRoot, level, entry, scope) : [];
+  // The one test account a level declares holds test data by design; every other entry of a production level holds none.
+  const judged = scope.production && entry.kind !== 'test-account';
   for (const file of entryFiles(path.join(repoRoot, level.dir), entry).map((name) => `${level.dir}/${name}`)) {
-    if (production && TEST_MARKER.test(path.posix.basename(file))) findings.push(found(HFS_SEED_TEST_DATA, file, `${file} is named as test data in a level a production environment applies`));
+    if (judged && TEST_MARKER.test(path.posix.basename(file))) findings.push(found(HFS_SEED_TEST_DATA, file, `${file} is named as test data in a level a production environment applies`));
     const text = entry.kind === 'files' ? null : readText(repoRoot, file);
     if (text === null) continue;
     if (entry.kind === 'sql') for (const { line, word } of schemaStatements(text)) findings.push(found(HFS_SEED_DDL, file, `${file}:${line} runs ${word}, a schema change; seed data is never a migration: the schema change is a migration (BE-PERSISTENCE-1) and a seed only writes rows`, { line }));
-    if (entry.kind === 'data' && schema !== null && DOCUMENT.test(file)) {
-      let doc: unknown;
-      try { doc = file.endsWith('.json') ? JSON.parse(text) : parseYaml(text); } catch { doc = undefined; }
-      const errors = doc === undefined ? ['the document does not parse'] : validateAgainstSchema(doc, schema);
-      if (errors.length > 0) findings.push(found(HFS_SEED_DATA_SCHEMA, file, `${file} does not validate against ${String(entry.schema)}: ${errors[0] ?? ''}`));
-    }
-    const marker = production ? seedLiterals(file, text).find((literal) => TEST_MARKER.test(literal.v)) : undefined;
-    if (marker) findings.push(found(HFS_SEED_TEST_DATA, file, `${file}:${marker.line} holds test data (an example.test identity or a uat- or test- prefix) in a level a production environment applies`, { line: marker.line }));
+    const marker = judged ? seedLiterals(file, text).find((literal) => TEST_MARKER.test(literal.v)) : undefined;
+    if (marker) findings.push(found(HFS_SEED_TEST_DATA, file, `${file}:${marker.line} holds test data (an example.test identity or a uat- or test- prefix) in a level a production environment applies; the one test account of an environment is its test-account entry`, { line: marker.line }));
   }
   return findings;
 }
@@ -125,10 +162,15 @@ export function seedsFindings({ repoRoot, files }: { repoRoot: string; files: st
   const placed = seeds.filter((file) => !findings.some((finding) => finding.path === file) && !file.endsWith(`/${SEEDS_KEEP}`));
   const shared = readSeedLevel(repoRoot, null);
   const levels = [shared, ...[...(environments ?? new Map<string, string>()).keys()].map((env) => readSeedLevel(repoRoot, env, new Set(shared.entries.map((entry) => entry.id))))];
+  const tracked = new Set(files);
   for (const level of levels) {
     findings.push(...manifestFindings(repoRoot, level, placed));
-    const production = level.env === null || environments?.get(level.env) !== 'docker-compose';
-    for (const entry of level.entries) findings.push(...entryFindings(repoRoot, level, entry, production));
+    const scope = {
+      environments: level.env === null ? [...(environments?.keys() ?? [])] : [level.env],
+      files: tracked,
+      production: level.env === null || environments?.get(level.env) !== 'docker-compose',
+    };
+    for (const entry of level.entries) findings.push(...entryFindings(repoRoot, level, entry, scope));
   }
   return findings;
 }

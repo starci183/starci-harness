@@ -18,8 +18,9 @@
 //   HFS_MIN_INSTANCES             fewer instances of a slot than minInstances
 //   HFS_PLAINTEXT_SECRET          (R06, rules/secrets.mjs) a plaintext secret file or value in a tracked file; a `.enc` that is no sops envelope
 //   HFS_STACKS_SHAPE              (R10, rules/stacks.mjs) invalid stack shape, Swarm runtime policy, host crontab installation or lite backing duplication
-//   HFS_SEEDS_SHAPE, HFS_SEED_MANIFEST, HFS_SEED_DDL, HFS_SEED_DATA_SCHEMA, HFS_SEED_TEST_DATA (R375, rules/seeds.mjs) seed data outside the seed levels of
-//                                 .starcistacks or unlisted in their manifests, custody, a schema statement, a document off its schema, test data production applies
+//   HFS_SEEDS_SHAPE, HFS_SEED_MANIFEST, HFS_SEED_DDL, HFS_SEED_DATA_SCHEMA, HFS_SEED_TEST_DATA, HFS_SEED_SECRET_REF (R375, rules/seeds.mjs) seed
+//                                 data outside the seed levels or unlisted, custody, a schema statement, a document off its schema, test data
+//                                 production applies outside its one test account, a secret reference to no sealed seeds-<name> member
 //   HFS_CI_MISSING_CANON          (R13, rules/pipeline.mjs) CI without the pinned `starci app check`, pre-push without typecheck or lint
 //   HFS_DEP_VERSION_SKEW          (R14, rules/deps.mjs) a dependency at two versions in the workspace, or a nested copy in the lockfile
 //   HFS_CONTRACT_SNAPSHOT_DRIFT   (R23, rules/contract.mjs) an uncommitted back-end snapshot, or a front-end copy that differs from it
@@ -114,7 +115,7 @@ export const CHECK_CODES = Object.freeze([
   'HFS_SLOT_UNDECLARED', 'HFS_SLOT_NOT_ENABLED', 'HFS_SLOT_AMBIGUOUS', 'HFS_TRACKED_MUST_BE_IGNORED', 'HFS_FORBIDDEN_PRESENT',
   'HFS_SLOT_REQUIRED_MISSING', 'HFS_MIN_INSTANCES', 'HFS_CANON_PIN_DRIFT', 'HFS_SIZE_SOFT_BACKLOG', 'BE_SOURCE_FORM',
   'HFS_MANAGED_FILE_DRIFT', 'HFS_TOOL_CONFIG_LOCAL', 'HFS_RULE_OFF_WITHOUT_REPLACEMENT', 'HFS_TS_STRICT',
-  'HFS_PLAINTEXT_SECRET', 'HFS_STACKS_SHAPE', 'HFS_SEEDS_SHAPE', 'HFS_SEED_MANIFEST', 'HFS_SEED_DDL', 'HFS_SEED_DATA_SCHEMA', 'HFS_SEED_TEST_DATA', 'HFS_CI_MISSING_CANON', 'HFS_DEP_VERSION_SKEW', 'HFS_CONTRACT_SNAPSHOT_DRIFT', 'HFS_MCP_TOOLS_SNAPSHOT',
+  'HFS_PLAINTEXT_SECRET', 'HFS_STACKS_SHAPE', 'HFS_SEEDS_SHAPE', 'HFS_SEED_MANIFEST', 'HFS_SEED_DDL', 'HFS_SEED_DATA_SCHEMA', 'HFS_SEED_TEST_DATA', 'HFS_SEED_SECRET_REF', 'HFS_CI_MISSING_CANON', 'HFS_DEP_VERSION_SKEW', 'HFS_CONTRACT_SNAPSHOT_DRIFT', 'HFS_MCP_TOOLS_SNAPSHOT',
   'BE_TEST_TOPOLOGY', 'BE_SPEC_PLACEMENT', 'HFS_REPO_LOCAL_CHECK', 'HFS_LINT_SUPPRESSION_FILE', 'HFS_BYPASS_MARKER', 'HFS_PROOF_COMMAND_FILE_MISSING', 'HFS_PEER_INTEGRATION_MISSING', 'BE_INTEGRATION_SPEC_MISSING', 'FE_GRAPHQL_CONTRACT', 'FE_NO_TESTS', 'HFS_MONO_WORKSPACES', 'HFS_MONO_FE_WORKSPACE', 'HFS_MONO_NEST_PROJECTS', 'HFS_MONO_WORKSPACE_DEP', 'BE_CLI_REQUIRED', 'FE_WIRE_GENERATED', 'FE_I18N_PLACEMENT', 'FE_I18N_CATALOG', 'HFS_SERVICE_PLACEMENT', 'HFS_IMAGE_UNPINNED', 'HFS_SERVICE_STACK_DECLARATION', 'HFS_EVENT_CONTRACT', 'BE_ASYNC_SPEC_MISSING', 'BE_SAGA_STEP_COMPENSATION', 'BE_SAGA_STATE_VERSIONED', 'BE_SAGA_EVENT_CONTRACT', 'BE_SAGA_CONSUMER_DEDUPE', 'BE_EVENT_CLASS_CONTRACT', 'BE_PATTERN_SPEC_MISSING', 'BE_CONTRACT_BREAKING', 'BE_KIND_DECLARATION', 'BE_KIND_EMPTY', 'HFS_DOCKER_BUILD_CONTEXT', 'HFS_DOCKER_STAGES', 'HFS_DOCKER_ENTRY', 'HFS_DOCKER_BASE_PIN', 'HFS_DOCKER_SECRETS', 'BE_SAGA_E2E_MISSING',
   'FE_STACK_FORBIDDEN', 'HFS_EDITION_FORBIDDEN_PRESENT', 'HFS_BACKING_UNDECLARED', 'HFS_BACKING_UNUSED', 'HFS_LITE_SECRET_CUSTODY', 'HFS_STARCIWORK_LITE_FORBIDDEN',
   'DB_MIGRATION_SHAPE', 'DB_RLS_REQUIRED', 'DB_DYNAMIC_DDL', 'DB_POLICY_SHAPE', 'DB_DEFINER_SAFE', 'DB_STORAGE_POLICY', 'LITE_DB_MIGRATION',

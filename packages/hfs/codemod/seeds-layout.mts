@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { declaredEnvironments } from '../runtime/scripts/hfs/rules/seeds.mjs';
 import { SEED_FILE } from '../runtime/scripts/hfs/rules/database-constants.mjs';
-import { addSeedEntries, SEED_KINDS, SEEDS_KEEP, SEEDS_MANIFEST, SEEDS_SCHEMA, seedLevelDir } from '../runtime/scripts/hfs/stack-seeds-config.mjs';
+import { addSeedEntries, SEED_FOLDERS, SEEDS_KEEP, SEEDS_MANIFEST, SEEDS_SCHEMA, seedLevelDir } from '../runtime/scripts/hfs/stack-seeds-config.mjs';
 import type { SeedEntryInput } from '../runtime/scripts/hfs/stack-seeds-config.mjs';
 import { filesUnder, relativePosix, sideFolders } from './source-tree.mjs';
 
@@ -54,7 +54,7 @@ function referenceFindings(root: string): SeedsLayoutFinding[] {
 function levelSkeleton(root: string, env: string | null, landed: ReadonlySet<string>): string[] {
   const dir = seedLevelDir(env);
   const manifest = isFile(path.join(root, dir, SEEDS_MANIFEST)) || landed.has(`${dir}/${SEEDS_MANIFEST}`) ? [] : [`${dir}/${SEEDS_MANIFEST}`];
-  const keeps = SEED_KINDS.map((kind) => `${dir}/${kind}`).filter((folder) => !landed.has(folder) && (!isFolder(path.join(root, folder)) || fs.readdirSync(path.join(root, folder)).length === 0));
+  const keeps = SEED_FOLDERS.map((kind) => `${dir}/${kind}`).filter((folder) => !landed.has(folder) && (!isFolder(path.join(root, folder)) || fs.readdirSync(path.join(root, folder)).length === 0));
   return [...manifest, ...keeps.map((folder) => `${folder}/${SEEDS_KEEP}`)];
 }
 

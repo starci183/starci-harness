@@ -978,7 +978,7 @@ slots:
                "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.{enc.yaml,enc}", "<env>/secrets/.gitkeep",
              "seeds/seeds.yaml", "seeds/{sql,data,files}/**", "<env>/seeds/seeds.yaml", "<env>/seeds/{sql,data,files}/**"]
       forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]
-    rules: [HFS_STACKS_SHAPE, HFS_STACKS_IN_SIDE, HFS_PLAINTEXT_SECRET, HFS_IDENTITY_CUSTODY, HFS_SEEDS_SHAPE, HFS_SEED_MANIFEST, HFS_SEED_DDL, HFS_SEED_DATA_SCHEMA, HFS_SEED_TEST_DATA, HFS_SEED_PII]
+    rules: [HFS_STACKS_SHAPE, HFS_STACKS_IN_SIDE, HFS_PLAINTEXT_SECRET, HFS_IDENTITY_CUSTODY, HFS_SEEDS_SHAPE, HFS_SEED_MANIFEST, HFS_SEED_DDL, HFS_SEED_DATA_SCHEMA, HFS_SEED_TEST_DATA, HFS_SEED_SECRET_REF, HFS_SEED_PII]
   - id: app.sops
     since: 3.1.0
     profiles: [app]

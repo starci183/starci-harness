@@ -1403,6 +1403,7 @@ slots:
       - HFS_SEED_DDL
       - HFS_SEED_DATA_SCHEMA
       - HFS_SEED_TEST_DATA
+      - HFS_SEED_SECRET_REF
       - HFS_SEED_PII
   - id: app.sops
     profiles:

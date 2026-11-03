@@ -4277,10 +4277,20 @@ HFS_SEED_DATA_SCHEMA:
 HFS_SEED_TEST_DATA:
   title: "A level production applies holds no test data"
   title_vi: "Seed áp dụng cho production chứa dữ liệu thử"
-  meaning_vi: "Cấp seed dùng chung hoặc cấp của một môi trường không phải docker-compose có danh tính example.test hoặc giá trị, tên tệp bắt đầu bằng uat- hay test-."
+  meaning_vi: "Cấp seed dùng chung hoặc cấp của một môi trường không phải docker-compose có danh tính example.test hoặc giá trị, tên tệp bắt đầu bằng uat- hay test- ngoài mục test-account duy nhất mà môi trường đó khai báo."
   causes_vi:
     - "Vi phạm R375: dữ liệu thử (tài khoản mẫu, workspace mẫu) chỉ nằm trong cấp seed của môi trường dev."
-  nextStep_vi: "Chuyển dữ liệu thử vào `.starcistacks/dev/seeds/` và chỉ để dữ liệu ban đầu thật (gói, danh mục) ở cấp dùng chung và cấp production."
+  nextStep_vi: "Chuyển dữ liệu thử vào `.starcistacks/dev/seeds/`, hoặc khai báo tài khoản thử duy nhất của production là một mục `kind: test-account` có `reason`; chỉ để dữ liệu ban đầu thật (gói, danh mục) ở cấp dùng chung."
+  owner: op-retry
+  kind: check-finding
+
+HFS_SEED_SECRET_REF:
+  title: "A seed names a secret only as a sealed seeds-<name> member of its environment"
+  title_vi: "Tham chiếu secret của seed sai tên hoặc thiếu member niêm phong"
+  meaning_vi: "Một tài liệu seed có `{ \"secret\": \"<member>\" }` mà tên không có dạng seeds-<name>, hoặc môi trường của cấp đó (cấp dùng chung: mọi môi trường) không có `.starcistacks/<env>/secrets/<member>.enc.yaml`."
+  causes_vi:
+    - "Vi phạm R375: giá trị bí mật của seed nằm trong custody sops của môi trường, được bước seed mở trong bộ nhớ, không bao giờ nằm trong tệp seed."
+  nextStep_vi: "Niêm phong giá trị bằng `starci app secret set --env <env>` vào member seeds-<name> của môi trường đó và tham chiếu đúng tên."
   owner: op-retry
   kind: check-finding
 

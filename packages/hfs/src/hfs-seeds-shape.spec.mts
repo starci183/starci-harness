@@ -1,5 +1,6 @@
 // proves: HFS_SEEDS_SHAPE@lite HFS_SEEDS_SHAPE@full HFS_SEED_MANIFEST@lite HFS_SEED_MANIFEST@full HFS_SEED_DDL@lite HFS_SEED_DDL@full
 // proves: HFS_SEED_DATA_SCHEMA@lite HFS_SEED_DATA_SCHEMA@full HFS_SEED_TEST_DATA@lite HFS_SEED_TEST_DATA@full
+// proves: HFS_SEED_SECRET_REF@lite HFS_SEED_SECRET_REF@full
 // The seed data of an app lives in the seed levels of .starcistacks (R375): the shared seeds/ and <env>/seeds/ of a declared environment, each a
 // seeds.yaml manifest (starci/seeds@1) listing every file of its sql/, data/ and files/; no custody, no schema statement (seed data is never a
 // migration), data that validates against its declared schema, no test data where production applies; a plaintext secret is R06's, and the
@@ -16,7 +17,7 @@ import { liteDbPathFindings } from '../runtime/scripts/hfs/rules/database.mjs';
 import { databaseConfigFindings } from '../runtime/scripts/hfs/rules/database-config.mjs';
 import { declaredEnvironments, isSeedFile, seedLiterals, seedsFindings } from '../runtime/scripts/hfs/rules/seeds.mjs';
 import { secretFileFindings } from '../runtime/scripts/hfs/rules/secrets.mjs';
-import { addSeedEntries, entryDigest, normalizeSeeds, readSeedLevel } from '../runtime/scripts/hfs/stack-seeds-config.mjs';
+import { addSeedEntries, entryDigest, normalizeSeeds, readSeedLevel, resolveSecrets, secretReference, secretReferences } from '../runtime/scripts/hfs/stack-seeds-config.mjs';
 import { scaffoldApp } from '../scaffold/app.mjs';
 import type { LockResult } from '../scaffold/app.mjs';
 import { bundledPresets } from '../sync/index.mjs';
@@ -50,7 +51,7 @@ function tree(t: TestContext, files: Record<string, string>): string {
 }
 
 const judge = (t: TestContext, files: Record<string, string>) => seedsFindings({ repoRoot: tree(t, files), files: Object.keys(files) });
-const codes = (list: Array<{ code: string; path: string }>) => list.map((item) => `${item.code} ${item.path}`).sort();
+const codes = (list: Array<{ code: string; path?: string | undefined }>) => list.map((item) => `${item.code} ${String(item.path)}`).sort();
 const lockedOk = (root: string): LockResult => {
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');
   return { ok: true };
@@ -126,9 +127,9 @@ test('the manifest normaliser refuses a wrong schema, a non-list, a duplicate id
   assert.match(problems([]), /manifest: must be a mapping/u);
   const entry = { id: 'a', kind: 'sql', path: 'sql/a.sql', target: 'primary', mode: 'once' };
   assert.match(problems({ schema: 'starci/seeds@1', entries: [entry, entry] }), /a is declared twice/u);
-  assert.match(problems({ schema: 'starci/seeds@1', entries: [{ ...entry, kind: 'blob' }] }), /kind: must be one of sql, data, files/u);
+  assert.match(problems({ schema: 'starci/seeds@1', entries: [{ ...entry, kind: 'blob' }] }), /kind: must be one of sql, data, test-account, files/u);
   assert.match(problems({ schema: 'starci/seeds@1', entries: [{ ...entry, path: 'data/a.sql' }] }), /path: must be a path under sql\//u);
-  assert.match(problems({ schema: 'starci/seeds@1', entries: [{ ...entry, schema: 'x.json', after: 'a' }] }), /after: must be a list[\s\S]*schema: is a field of a data entry only/u);
+  assert.match(problems({ schema: 'starci/seeds@1', entries: [{ ...entry, schema: 'x.json', after: 'a' }] }), /after: must be a list[\s\S]*schema: is a field of a data or test-account entry only/u);
   assert.match(readSeedLevel(tree(t, { '.starcistacks/seeds/seeds.yaml': 'a: [' }), null).problems[0]?.message ?? '', /does not parse/u);
   assert.deepEqual(readSeedLevel(tree(t, { '.starcistacks/seeds/seeds.yaml': '' }), null).problems.map((item) => item.at), ['schema']);
 });
@@ -232,3 +233,62 @@ for (const edition of ['lite', 'full'] as const) {
     }
   });
 }
+
+/** A sealed-looking member: its key names in the clear, its values as sops ciphertext (no value of this fixture is ever opened). */
+const sealedMember = (keys: string[]): string => `${keys.map((key) => `${key}: ENC[AES256_GCM,data:eA==,iv:aXY=,tag:dGc=,type:str]`).join('\n')}\nsops:\n  age:\n    - recipient: age1fake\n`;
+const ACCOUNT_SCHEMA = JSON.stringify({
+  type: 'object', required: ['email', 'password'],
+  properties: { email: { type: 'string' }, password: { type: 'object', required: ['value'], properties: { value: { type: 'string' } } }, zaloOa: { type: 'object' } },
+});
+/** Production's one test account: its login and its connector credentials are references to sealed members of production. */
+const ACCOUNT: Record<string, string> = {
+  'be/schemas/account.schema.json': ACCOUNT_SCHEMA,
+  '.starcistacks/production/seeds/seeds.yaml': manifest([
+    '{id: logo, kind: files, path: files/brand, target: media, mode: once}',
+    '{id: demo-account, kind: test-account, path: data/demo-account.json, target: [npm, run, -w, be, cli, --, accounts, seed], schema: be/schemas/account.schema.json, mode: upsert, reason: "the one account the owner signs in with to test the connectors on production"}',
+  ]),
+  '.starcistacks/production/seeds/data/demo-account.json': JSON.stringify({ email: 'owner-test@example.test', password: { secret: 'seeds-test-owner' }, zaloOa: { secret: 'seeds-test-zalo' } }),
+  '.starcistacks/production/secrets/seeds-test-owner.enc.yaml': sealedMember(['value']),
+  '.starcistacks/production/secrets/seeds-test-zalo.enc.yaml': sealedMember(['APP_ID', 'SECRET']),
+};
+
+test('a production level declares one test account: its test identity and its sealed references are no finding', (t) => {
+  assert.deepEqual(judge(t, { ...VALID, ...ACCOUNT }), []);
+});
+
+test('HFS_SEED_SECRET_REF: a reference to no seeds-<name> member, or to a member the environment does not seal; the shared level needs every environment', (t) => {
+  const list = judge(t, {
+    ...VALID, ...ACCOUNT,
+    '.starcistacks/production/seeds/data/demo-account.json': JSON.stringify({ email: 'a@example.test', password: { secret: 'owner-password' }, zaloOa: { secret: 'seeds-test-gone' } }),
+    '.starcistacks/seeds/data/modules/sales.json': JSON.stringify({ id: 'sales', key: { secret: 'seeds-catalogue' } }),
+    '.starcistacks/dev/secrets/seeds-catalogue.enc.yaml': sealedMember(['TOKEN']),
+  });
+  assert.deepEqual(list.map((item) => `${item.code} ${item.message}`).filter((line) => line.startsWith('HFS_SEED_SECRET_REF')).map((line) => line.replace(/^.*? references /u, '')).sort(), [
+    'seeds-catalogue, which .starcistacks/production/secrets/seeds-catalogue.enc.yaml does not hold; seal it with starci app secret set --env production',
+    'seeds-test-gone, which .starcistacks/production/secrets/seeds-test-gone.enc.yaml does not hold; seal it with starci app secret set --env production',
+    'the secret owner-password; a seed references a sealed member named seeds-<name> of its environment',
+  ]);
+});
+
+test('a secret reference reads as its sealed keys for the schema, so a document off its schema still fails and a member without keys is empty', (t) => {
+  const off = judge(t, { ...VALID, ...ACCOUNT, '.starcistacks/production/secrets/seeds-test-owner.enc.yaml': '{ not json' });
+  assert.deepEqual(codes(off), ['HFS_SEED_DATA_SCHEMA .starcistacks/production/seeds/data/demo-account.json']);
+});
+
+test('the test account is no free pass: a marker in another production entry stays refused, and the shared level and a second account are refused', (t) => {
+  const elsewhere = judge(t, { ...VALID, ...ACCOUNT, '.starcistacks/production/seeds/files/brand/test-banner.png': 'png' });
+  assert.deepEqual(codes(elsewhere), ['HFS_SEED_TEST_DATA .starcistacks/production/seeds/files/brand/test-banner.png']);
+  const twice = normalizeSeeds({ schema: 'starci/seeds@1', entries: [
+    { id: 'a', kind: 'test-account', path: 'data/a.json', target: ['x'], schema: 's.json', mode: 'once', reason: 'one' },
+    { id: 'b', kind: 'test-account', path: 'data/b.json', target: ['x'], schema: 's.json', mode: 'once' },
+    { id: 'c', kind: 'data', path: 'data/c.json', target: ['x'], schema: 's.json', mode: 'once', reason: 'no' },
+  ] }, tree(t, { 'data/a.json': '{}', 'data/b.json': '{}', 'data/c.json': '{}' }), null).problems.map((item) => `${item.at}: ${item.message}`).join('\n');
+  for (const expected of [/a, b: the shared level declares no test account/u, /a, b: a level declares at most one test account/u, /entries\[1\]\.reason: must say why/u, /entries\[2\]\.reason: is a field of a test-account entry only/u]) assert.match(twice, expected);
+});
+
+test('the document helpers find, resolve and leave alone what is no reference', () => {
+  const doc = { a: { secret: 'seeds-x' }, list: [{ secret: 'seeds-y' }, { secret: 'seeds-x' }], other: { secret: 'seeds-z', extra: 1 }, n: 1 };
+  assert.deepEqual(secretReferences(doc), ['seeds-x', 'seeds-y']);
+  assert.deepEqual(resolveSecrets(doc, (member) => `<${member}>`), { a: '<seeds-x>', list: ['<seeds-y>', '<seeds-x>'], other: { secret: 'seeds-z', extra: 1 }, n: 1 });
+  assert.equal(secretReference(['seeds-x']), null);
+});
