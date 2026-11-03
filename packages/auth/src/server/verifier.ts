@@ -2,6 +2,7 @@ import { AUTH_ERROR_CODES, AUTH_ROLE } from "../contracts/index.ts"
 import { ok, refused } from "./errors.ts"
 import type { Outcome } from "./errors.ts"
 import type { AuthClock, AuthPrincipal } from "./ports.ts"
+import { systemClock } from "./runtime.ts"
 import type { AuthTokens } from "./tokens.ts"
 
 /**
@@ -19,7 +20,7 @@ export class AuthPrincipalVerifier implements PrincipalVerifier {
     readonly #tokens: AuthTokens
     readonly #clock: AuthClock
 
-    constructor(tokens: AuthTokens, clock: AuthClock) {
+    constructor(tokens: AuthTokens, clock: AuthClock = systemClock) {
         this.#tokens = tokens
         this.#clock = clock
     }

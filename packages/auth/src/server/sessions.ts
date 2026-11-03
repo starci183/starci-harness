@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto"
 import { AUTH_ERROR_CODES } from "../contracts/index.ts"
 import type { JwksDocument } from "../contracts/index.ts"
 import { AuthError } from "./errors.ts"
@@ -29,12 +28,6 @@ export interface SessionsDeps {
     readonly ids: AuthIds
     readonly logger?: AuthLogger | undefined
 }
-
-/** The default id source. */
-export const randomIds: AuthIds = { next: () => randomUUID() }
-
-/** The system clock. */
-export const systemClock: AuthClock = { now: () => new Date() }
 
 /**
  * Device sessions: opens one at sign-in, rotates its refresh token on every refresh (a replayed token ends the session) and ends it

@@ -1,4 +1,4 @@
-import { createHash, createHmac } from "node:crypto"
+import { createHash, createHmac, createPrivateKey, createPublicKey } from "node:crypto"
 import { SignJWT, calculateJwkThumbprint, createLocalJWKSet, exportJWK, importPKCS8, importSPKI, jwtVerify } from "jose"
 import type { CryptoKey, KeyObject } from "jose"
 import { AUTH_ALGORITHM, AUTH_AUDIENCE, AUTH_CLAIMS, AUTH_ERROR_CODES, AUTH_ROLE } from "../contracts/index.ts"
@@ -125,8 +125,14 @@ export class AuthTokens {
     }
 }
 
+const publicPemOf = (key: AuthOptions["keys"][number]): string => {
+    if (key.publicKey !== undefined) return pemOf(key.publicKey)
+    if (key.privateKey === undefined) throw new Error("a key needs a public key or a private key")
+    return createPublicKey(createPrivateKey(pemOf(revealed(key.privateKey)))).export({ type: "spki", format: "pem" }).toString()
+}
+
 const publicJwkOf = async (publicKey: string, keyId: string | undefined): Promise<{ jwk: PublicJwk; keyId: string }> => {
-    const key = await importSPKI(pemOf(publicKey), AUTH_ALGORITHM, { extractable: true })
+    const key = await importSPKI(publicKey, AUTH_ALGORITHM, { extractable: true })
     const exported = await exportJWK(key)
     const kid = keyId ?? (await calculateJwkThumbprint(exported))
     const jwk: Record<string, string> = {}
@@ -140,7 +146,7 @@ const loadKey = async (key: AuthOptions["keys"][number]): Promise<LoadedKey> => 
     try {
         const [privateKey, published] = await Promise.all([
             key.privateKey === undefined ? Promise.resolve(undefined) : importPKCS8(pemOf(revealed(key.privateKey)), AUTH_ALGORITHM),
-            publicJwkOf(key.publicKey, key.keyId),
+            publicJwkOf(publicPemOf(key), key.keyId),
         ])
         return { keyId: published.keyId, jwk: published.jwk, privateKey }
     } catch (cause) {

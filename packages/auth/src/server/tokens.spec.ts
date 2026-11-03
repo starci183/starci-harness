@@ -129,6 +129,14 @@ describe("AuthTokens key rotation", () => {
         }
     })
 
+    it("derives the public key from the private key when only the private key is given, and refuses a key with neither", async () => {
+        const pair = generateTestKeyPair()
+        const derived = new AuthTokens(options([{ privateKey: pair.privateKey, keyId: "d" }]))
+        const explicit = new AuthTokens(options([testSigningKey(pair, "d")]))
+        assert.deepEqual(await derived.jwks(), await explicit.jwks())
+        await assert.rejects(new AuthTokens(options([{ keyId: "none" }])).jwks(), AuthError)
+    })
+
     it("accepts a one-line PEM with escaped line breaks and a secret holder", async () => {
         const pair = generateTestKeyPair()
         const tokens = new AuthTokens(

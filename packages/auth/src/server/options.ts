@@ -3,8 +3,8 @@ import type { AccountDirectory, AuthClock, AuthIds, AuthLogger, RateCounter, Ses
 
 /** One signing key of the key set. */
 export interface SigningKeyOptions {
-    /** The public key (SPKI PEM) published at the JWKS door. */
-    readonly publicKey: string
+    /** The public key (SPKI PEM) published at the JWKS door. Derived from the private key when absent; a verify-only key needs it. */
+    readonly publicKey?: string | undefined
     /** The Ed25519 private key (PKCS#8 PEM). Exactly one key of the set carries it: the active signer. A key without it only verifies. */
     readonly privateKey?: SecretInput | undefined
     /** The `kid` of the key; the RFC 7638 thumbprint of the public key when absent. */
