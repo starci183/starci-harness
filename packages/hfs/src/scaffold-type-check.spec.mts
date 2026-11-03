@@ -29,6 +29,7 @@ const LINKED: Readonly<Record<string, string>> = {
   auth: '../../auth/dist',
   'object-storage': '../../object-storage/dist',
   'nest-kit': '../../nest-kit/dist',
+  mail: '../../mail/dist',
 };
 const PACKAGES = path.resolve(import.meta.dirname, '..', '..');
 

@@ -66,9 +66,10 @@ test('a lite starter\'s passport integration is the glue the slot lists and its 
     assert.ok(allowed.some((entry) => entry === file || (entry.endsWith('/') && file.startsWith(entry))), `${file} is admitted by the slot`);
   }
   const auth = path.join(root, 'fe', 'apps', 'web', 'src', 'modules', 'auth');
-  assert.deepEqual(fs.readdirSync(auth).sort(), ['client.ts', 'contracts.ts', 'index.ts']);
+  assert.deepEqual(fs.readdirSync(auth).sort(), ['client.ts', 'contracts.ts', 'email-doors.ts', 'index.ts']);
   assert.ok(fs.readFileSync(path.join(auth, 'client.ts'), 'utf8').startsWith('// Managed by starci app sync (slot fe.modules.auth.client)'));
   assert.match(fs.readFileSync(path.join(auth, 'client.ts'), 'utf8'), /from "@starci\/auth\/client"/u);
+  assert.ok(fs.readFileSync(path.join(auth, 'email-doors.ts'), 'utf8').startsWith('// Managed by starci app sync (slot fe.modules.auth.client)'));
 });
 
 test('the identity libraries are owned by no app file and @starci/auth by integrations/passport alone', () => {

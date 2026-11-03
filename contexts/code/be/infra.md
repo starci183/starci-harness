@@ -16,7 +16,7 @@ follow [ai.md](ai.md) (BE-AI-1, BE-AI-3). The S3 client (`@aws-sdk/client-s3`, `
 a dependency of `@starci/object-storage` alone and no app file imports it; the package (the ObjectStorage port with presigned PUT
 and GET that sign the content type and size, head, list, delete and size and content-type limits, over S3-compatible storage,
 MinIO in lite) is imported only by `integrations/object-storage`, which keeps the bucket, parses the settings and registers the
-module, while the key layout of an object belongs to the domain that stores it; `minio` is imported nowhere; in lite the identity
+module, while the key layout of an object belongs to the domain that stores it; `minio` is imported nowhere; the SMTP client `nodemailer` is a dependency of `@starci/mail` alone and no app file imports it, and the package (the Mailer port with timeouts, required STARTTLS, coded errors and typed render helpers) is imported only by `integrations/mail`, which parses the settings and registers the module while the words and the layout of each mail belong to the domain that sends it; in lite the identity
 libraries are the dependencies of `@starci/auth` and no app file imports them, and that package is imported only by
 `integrations/passport`; in full `jose` is a dependency of `@starci/auth-oidc`, no JWT or OIDC library (`jose`, `jsonwebtoken`,
 `jwks-rsa`, `jwt-decode`, `openid-client`) is imported by an app file, and that package is imported only by `integrations/keycloak`

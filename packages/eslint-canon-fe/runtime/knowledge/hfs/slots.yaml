@@ -240,6 +240,8 @@ ruleParams:
       "@aws-sdk/s3-request-presigner": []
       "@starci/object-storage": [integrations/object-storage]   # the ObjectStorage port: one S3 adapter for MinIO, S3 and Spaces (R331)
       minio: []                                          # storage goes through @starci/object-storage
+      nodemailer: []                                     # the SMTP client is a dependency of @starci/mail alone; no app file imports it
+      "@starci/mail": [integrations/mail]                # outgoing mail: the Mailer port, parsed and registered by its one glue
       "@supabase": []                                    # no Supabase client in a back end
       "@nestjs/passport": []                             # the identity libraries are @starci/auth's dependencies, never an app's (R328)
       passport: []
@@ -2011,7 +2013,7 @@ slots:
     editions: [lite]
     editionWhy: "lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written (owner ruling auth-package); full uses its identity provider."
     # The identity capability's sign-in glue over @starci/auth: the entities of the session, attempt and user tables, the stores the package asks for (sessions, accounts, rate counter), the authenticator and the service the doors call, with their specs. `starci app sync` renders them; a hand edit is drift.
-    path: "{src/modules/domain/identity/account-directory.service.spec.ts,src/modules/domain/identity/account-directory.service.ts,src/modules/domain/identity/authenticator.service.spec.ts,src/modules/domain/identity/authenticator.service.ts,src/modules/domain/identity/persistence/entities/auth-identity.entity.ts,src/modules/domain/identity/persistence/entities/auth-user.entity.ts,src/modules/domain/identity/persistence/entities/identity-attempt.entity.ts,src/modules/domain/identity/persistence/entities/identity-refresh-token.entity.ts,src/modules/domain/identity/persistence/entities/identity-session.entity.ts,src/modules/domain/identity/persistence/entities/index.ts,src/modules/domain/identity/rate-counter.service.spec.ts,src/modules/domain/identity/rate-counter.service.ts,src/modules/domain/identity/session-store.service.spec.ts,src/modules/domain/identity/session-store.service.ts,src/modules/domain/identity/sign-in.service.spec.ts,src/modules/domain/identity/sign-in.service.ts,src/tests/fixtures/builders/identity.builder.ts}"
+    path: "{src/modules/domain/identity/account-directory.service.spec.ts,src/modules/domain/identity/account-directory.service.ts,src/modules/domain/identity/authenticator.service.spec.ts,src/modules/domain/identity/authenticator.service.ts,src/modules/domain/identity/identity-email.log-events.ts,src/modules/domain/identity/identity-email.service.spec.ts,src/modules/domain/identity/identity-email.service.ts,src/modules/domain/identity/persistence/entities/auth-identity.entity.ts,src/modules/domain/identity/persistence/entities/auth-user.entity.ts,src/modules/domain/identity/persistence/entities/identity-attempt.entity.ts,src/modules/domain/identity/persistence/entities/identity-email-token.entity.ts,src/modules/domain/identity/persistence/entities/identity-refresh-token.entity.ts,src/modules/domain/identity/persistence/entities/identity-session.entity.ts,src/modules/domain/identity/persistence/entities/index.ts,src/modules/domain/identity/rate-counter.service.spec.ts,src/modules/domain/identity/rate-counter.service.ts,src/modules/domain/identity/session-store.service.spec.ts,src/modules/domain/identity/session-store.service.ts,src/modules/domain/identity/sign-in.service.spec.ts,src/modules/domain/identity/sign-in.service.ts,src/tests/fixtures/builders/identity.builder.ts}"
     presence: optional
     tracked: tracked
     tier: inherit
@@ -2026,7 +2028,7 @@ slots:
     editions: [lite]
     editionWhy: "lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written (owner ruling auth-package); full uses its identity provider."
     # The auth feature: the REST doors under /auth (login, refresh, session, logout, Google start and callback, jwks) over IdentitySignInService, one command or query and handler per door.
-    path: "{src/features/api/auth/application/auth.contracts.ts,src/features/api/auth/application/get-jwks.handler.ts,src/features/api/auth/application/get-jwks.query.ts,src/features/api/auth/application/google-begin.command.ts,src/features/api/auth/application/google-begin.handler.ts,src/features/api/auth/application/google-complete.command.ts,src/features/api/auth/application/google-complete.handler.ts,src/features/api/auth/application/login.command.ts,src/features/api/auth/application/login.handler.ts,src/features/api/auth/application/logout.command.ts,src/features/api/auth/application/logout.handler.ts,src/features/api/auth/application/refresh.command.ts,src/features/api/auth/application/refresh.handler.ts,src/features/api/auth/application/session.command.ts,src/features/api/auth/application/session.handler.ts,src/features/api/auth/auth.module-definition.ts,src/features/api/auth/auth.module.ts,src/features/api/auth/auth.options.ts,src/features/api/auth/index.ts,src/features/api/auth/transport/http/auth-http.module-definition.ts,src/features/api/auth/transport/http/auth-http.module.ts,src/features/api/auth/transport/http/auth-http.options.ts,src/features/api/auth/transport/http/auth.controller.ts,src/features/api/auth/transport/http/dto/google-start.request.ts,src/features/api/auth/transport/http/dto/login.request.ts}"
+    path: "{src/features/api/auth/application/auth.contracts.ts,src/features/api/auth/application/confirm.command.ts,src/features/api/auth/application/confirm.handler.ts,src/features/api/auth/application/forgot.command.ts,src/features/api/auth/application/forgot.handler.ts,src/features/api/auth/application/get-jwks.handler.ts,src/features/api/auth/application/get-jwks.query.ts,src/features/api/auth/application/google-begin.command.ts,src/features/api/auth/application/google-begin.handler.ts,src/features/api/auth/application/google-complete.command.ts,src/features/api/auth/application/google-complete.handler.ts,src/features/api/auth/application/login.command.ts,src/features/api/auth/application/login.handler.ts,src/features/api/auth/application/logout.command.ts,src/features/api/auth/application/logout.handler.ts,src/features/api/auth/application/refresh.command.ts,src/features/api/auth/application/refresh.handler.ts,src/features/api/auth/application/resend.command.ts,src/features/api/auth/application/resend.handler.ts,src/features/api/auth/application/reset.command.ts,src/features/api/auth/application/reset.handler.ts,src/features/api/auth/application/session.command.ts,src/features/api/auth/application/session.handler.ts,src/features/api/auth/application/signup.command.ts,src/features/api/auth/application/signup.handler.ts,src/features/api/auth/auth.module-definition.ts,src/features/api/auth/auth.module.ts,src/features/api/auth/auth.options.ts,src/features/api/auth/index.ts,src/features/api/auth/transport/http/auth-http.module-definition.ts,src/features/api/auth/transport/http/auth-http.module.ts,src/features/api/auth/transport/http/auth-http.options.ts,src/features/api/auth/transport/http/auth.controller.ts,src/features/api/auth/transport/http/dto/forgot.request.ts,src/features/api/auth/transport/http/dto/google-start.request.ts,src/features/api/auth/transport/http/dto/login.request.ts,src/features/api/auth/transport/http/dto/resend.request.ts,src/features/api/auth/transport/http/dto/reset.request.ts,src/features/api/auth/transport/http/dto/signup.request.ts,src/features/api/auth/transport/http/dto/token.request.ts}"
     presence: optional
     tracked: tracked
     tier: inherit
@@ -2035,6 +2037,25 @@ slots:
     managedBy: auth-lite
     managedOnly: true     # lists files sync renders; the slot owning the path judges them
     rules: [HFS_MANAGED_FILE_DRIFT]
+  - id: be.integrations.mail
+    profiles: [be]
+    editions: [lite]
+    exemplifiedBy:
+      - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/mail/
+    # The glue of @starci/mail, the owner of the SMTP client (nodemailer): this folder parses the settings (the server, the sender and the
+    # link lifetimes of the confirmation and reset mails), registers the module and names the injectors; no app file imports nodemailer,
+    # and no other module imports the package. The words and layout of each mail belong to the domain that sends it.
+    path: "src/modules/integrations/mail/"
+    presence: required
+    tracked: tracked
+    tier: integrations
+    owner: true
+    requires: [index.ts, mail.config.ts, mail.options.ts, mail.decorators.ts, mail.module-definition.ts, mail.module.ts]
+    allows: [index.ts, mail.config.ts, mail.options.ts, mail.decorators.ts, mail.module-definition.ts, mail.module.ts, errors/]
+    tests: unit-beside
+    rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER]
+    coverage: required
+    since: 5.3.0
   - id: be.integrations.object-storage
     profiles: [be]
     exemplifiedBy:
@@ -2618,7 +2639,7 @@ slots:
     editions: [lite]
     editionWhy: "lite signs people in with the package @starci/auth, so its auth client is rendered, not written (owner ruling auth-package); full wires its identity provider."
     # The AuthClient every edition shares, implemented by one @starci/auth/client instance over the app's own back-end auth doors.
-    path: "apps/web/src/modules/auth/client.ts"
+    path: "apps/web/src/modules/auth/{client.ts,email-doors.ts,index.ts}"
     presence: optional
     tracked: tracked
     tier: inherit

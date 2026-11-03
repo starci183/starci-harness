@@ -117,10 +117,10 @@ function transform(tsconfig: string | Record<string, unknown>): Record<string, [
  * `jose` is the Supabase access-token verifier of every lite back end (be.integrations.supabase); a lite app keeps full's unit
  * run (ruling:R212/case-1, amended by ruling:R212/case-4), so a spec that imports its guard must load it. `@starci/ai-router`
  * is the AI pool module, `@starci/auth` the sign-in a lite back end composes in its passport integration, `@starci/auth-oidc` the sign-in a full back end composes
- * in its keycloak integration, `@starci/object-storage` the storage module it registers in its AppModule and `@starci/nest-kit` the module
+ * in its keycloak integration, `@starci/object-storage` the storage module it registers in its AppModule, `@starci/mail` the mailer of its mail integration and `@starci/nest-kit` the module
  * definition of every module, so a spec that builds the AppModule must load them.
  */
-const ESM_ONLY_DEPENDENCIES = Object.freeze(["jose", String.raw`@starci[\\/]ai-router`, String.raw`@starci[\\/]auth`, String.raw`@starci[\\/]auth-oidc`, String.raw`@starci[\\/]object-storage`, String.raw`@starci[\\/]nest-kit`])
+const ESM_ONLY_DEPENDENCIES = Object.freeze(["jose", String.raw`@starci[\\/]ai-router`, String.raw`@starci[\\/]auth`, String.raw`@starci[\\/]auth-oidc`, String.raw`@starci[\\/]object-storage`, String.raw`@starci[\\/]mail`, String.raw`@starci[\\/]nest-kit`])
 const ESM_DEPENDENCY_TRANSFORM = String.raw`^.+[\\/]node_modules[\\/](?:${ESM_ONLY_DEPENDENCIES.join("|")})[\\/].+\.js$`
 
 function esmDependencyTransform(): Record<string, [string, Record<string, unknown>]> {

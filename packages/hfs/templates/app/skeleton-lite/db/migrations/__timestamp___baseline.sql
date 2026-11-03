@@ -87,6 +87,28 @@ create policy identity_refresh_tokens_app_be_all on public.identity_refresh_toke
 create policy identity_attempts_app_be_all on public.identity_attempts
     for all to app_be using (current_user = 'app_be') with check (current_user = 'app_be');
 
+-- The single-use links that confirm a mailbox or reset a password (the email doors of sign-in): only the sha256 of the token is
+-- stored, a spent link stays marked used, and a new link of the same purpose ends the older ones.
+create table public.identity_email_tokens (
+    id uuid primary key,
+    user_id uuid not null references auth.users (id) on delete cascade,
+    purpose varchar(16) not null check (purpose in ('confirm', 'reset')),
+    token_hash varchar(64) not null,
+    expires_at timestamptz not null,
+    used_at timestamptz,
+    created_at timestamptz not null,
+    constraint identity_email_tokens_hash_key unique (token_hash)
+);
+
+create index identity_email_tokens_user_idx on public.identity_email_tokens (user_id, purpose);
+
+alter table public.identity_email_tokens enable row level security;
+alter table public.identity_email_tokens force row level security;
+revoke all on table public.identity_email_tokens from public;
+grant select, insert, update, delete on table public.identity_email_tokens to app_be;
+create policy identity_email_tokens_app_be_all on public.identity_email_tokens
+    for all to app_be using (current_user = 'app_be') with check (current_user = 'app_be');
+
 create table public.profiles (
     id uuid primary key references auth.users (id) on delete cascade,
     display_name text not null check (char_length(display_name) between 1 and 120),

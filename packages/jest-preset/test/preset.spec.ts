@@ -1012,13 +1012,13 @@ test('no file the package ships or compiles as a fixture carries an inline suppr
   for (const name of files) assert.doesNotMatch(fs.readFileSync(path.join(root, name), 'utf8'), directive, `${name} suppresses nothing`);
 });
 
-test('the ESM-only dependencies a back end composes are compiled to CommonJS: jose, @starci/ai-router, @starci/auth, @starci/auth-oidc, @starci/object-storage and @starci/nest-kit', () => {
+test('the ESM-only dependencies a back end composes are compiled to CommonJS: jose, @starci/ai-router, @starci/auth, @starci/auth-oidc, @starci/object-storage, @starci/mail and @starci/nest-kit', () => {
   const config = preset.starciJestConfig(OPTIONS);
   for (const project of config.projects) {
     const pattern = Object.keys(project.transform ?? {}).find((key) => key.includes('node_modules'));
     assert.ok(pattern, `${String(project.displayName)} transforms the ESM-only dependencies`);
     const matches = (path: string) => new RegExp(pattern).test(path);
-    for (const name of ['jose', '@starci/ai-router', '@starci/auth', '@starci/auth-oidc', '@starci/object-storage', '@starci/nest-kit']) assert.equal(matches(`/app/node_modules/${name}/dist/index.js`), true, name);
+    for (const name of ['jose', '@starci/ai-router', '@starci/auth', '@starci/auth-oidc', '@starci/object-storage', '@starci/mail', '@starci/nest-kit']) assert.equal(matches(`/app/node_modules/${name}/dist/index.js`), true, name);
     assert.equal(matches('/app/node_modules/@starci/other/dist/index.js'), false);
   }
 });

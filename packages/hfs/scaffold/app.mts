@@ -239,7 +239,7 @@ const STARTER_DEPENDENCIES = Object.freeze({
 const LITE_STARTER_DEPENDENCIES = Object.freeze({
   dependencies: {
     '@apollo/server': null, '@nestjs/apollo': null, '@nestjs/common': null, '@nestjs/core': null, '@nestjs/cqrs': null, '@nestjs/graphql': null,
-    '@nestjs/platform-express': null, '@nestjs/typeorm': null, '@starci/auth': null, '@starci/nest-kit': null, '@starci/object-storage': null,
+    '@nestjs/platform-express': null, '@nestjs/typeorm': null, '@starci/auth': null, '@starci/mail': null, '@starci/nest-kit': null, '@starci/object-storage': null,
     'class-transformer': null, 'class-validator': null, graphql: null, pg: null,
     'reflect-metadata': null, rxjs: null, tslib: null, typeorm: null, undici: null, zod: null,
   },

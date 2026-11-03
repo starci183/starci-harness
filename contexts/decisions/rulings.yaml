@@ -521,6 +521,11 @@ rulings:
     status: live
     ruling: "The lite starter signs people in with no hand-written auth code: its sign-in doors, session, account and rate stores, authenticator and front-end auth client are managed files rendered from @starci/auth's glue, and an edit is drift."
     owner: "contexts/hfs/slots.yaml be.identity.sign-in, be.feature.auth, fe.modules.auth.client; packages/hfs/templates/be/auth-lite"
+  - id: mail-package
+    date: '2026-11-03'
+    status: live
+    ruling: "Outgoing mail is the published @starci/mail package (a Nest module and the Mailer port over SMTP: connect, greeting, socket and total timeouts, STARTTLS required by default, recipient, message and attachment checks, a shared SMTP target policy, coded errors, no environment read, typed escaping render helpers returning { subject, text, html } in place of a template engine, an in-memory outbox in ./testing); it is the only owner of nodemailer, an app imports nodemailer nowhere and imports the package only in integrations/mail, and the app keeps its sender, the parsing of its settings and the words and layout of each mail (its i18n copy and typed render functions)."
+    owner: "packages/mail; contexts/code/be/infra.md BE-INFRA-1; contexts/hfs/rules.yaml R90; contexts/hfs/slots.yaml (ruleParams.be.infraOwners)"
   - id: locale-accept-language
     date: '2026-10-14'
     status: live

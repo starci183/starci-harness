@@ -23,6 +23,10 @@ This inventory declares names, consumers and mounted file paths. Scaffolding gen
 | `STORAGE_BUCKET` | API storage bucket |
 | `STORAGE_ACCESS_KEY_ID` | API storage credential; reads `STORAGE_ACCESS_KEY_ID_FILE` at `/run/secrets/storage-access-key-id` |
 | `STORAGE_SECRET_ACCESS_KEY` | API storage credential; reads `STORAGE_SECRET_ACCESS_KEY_FILE` at `/run/secrets/storage-secret-access-key` |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_SECURITY` | API outgoing mail server and how its channel is secured (`starttls` is required to succeed, `tls` is implicit TLS) |
+| `MAIL_FROM`, `MAIL_FROM_NAME` | API sender address and name of the confirmation and reset mails |
+| `MAIL_DEFAULT_LANGUAGE`, `MAIL_CONFIRM_TTL_SECONDS`, `MAIL_RESET_TTL_SECONDS` | API mail language (`vi` or `en`) and link lifetimes; optional |
+| `MAIL_USER`, `MAIL_PASSWORD` | API mail server login; optional, the password reads `MAIL_PASSWORD_FILE` at `/run/secrets/mail-password` |
 | `DATABASE_URL` | `starci app db` verbs (migrate, dump) and `contract:emit`, from the operator's environment |
 | `NEXT_PUBLIC_SITE_URL` | Front-end site URL |
 | `NEXT_PUBLIC_API_URL` | Front-end auth doors of the API |

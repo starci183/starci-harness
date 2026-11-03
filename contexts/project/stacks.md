@@ -207,7 +207,7 @@ acceptance gate. They are run by the owner or a `deliver` worker; deploying need
 --env <env>`, driven by the environment's `local` block of `application-stacks.yaml` (R372: ports, compose services, the environment's own database
 role, dev-only custody to generate, setup and seed commands, native processes, readiness and verification probes). `prepare`, `up` and `down` are dry
 runs until `--execute`; `doctor`, `status`, `logs` and `verify` are read-only. **`up` is the one command**: it checks the host table, opens the dev
-custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor and waits for their health, gives the
+custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor (a lite app's dev compose runs its database and Mailpit, the `mail` sink the sign-in mails reach on loopback, its web UI an origin) and waits for their health, gives the
 environment its own database role and the app role its own password, migrates with a receipt, runs the declared seed once, starts the native
 processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
 the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes

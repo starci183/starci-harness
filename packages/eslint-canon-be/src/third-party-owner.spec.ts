@@ -13,7 +13,7 @@ const DOMAIN = "src/modules/domain/order/order.service.ts"
 const MAILER = "src/modules/integrations/mailer/mailer.client.ts"
 const OTHER = "src/modules/integrations/other/other.client.ts"
 const DEPENDENCIES = {
-    nodemailer: "1.0.0", stripe: "1.0.0", googleapis: "1.0.0", "@new-vendor/io-sdk": "1.0.0",
+    "@sendgrid/mail": "1.0.0", stripe: "1.0.0", googleapis: "1.0.0", "@new-vendor/io-sdk": "1.0.0",
     "class-validator": "1.0.0", rxjs: "1.0.0", "@nestjs/common": "1.0.0", "@nestjs/core": "1.0.0", typeorm: "1.0.0",
     axios: "1.0.0", bullmq: "1.0.0", dotenv: "1.0.0", "@aws-sdk/client-s3": "1.0.0", jose: "1.0.0",
 }
@@ -53,7 +53,7 @@ for (const edition of ["lite", "full"] as const) {
                     { filename: fixture.at(DOMAIN), code: 'import axios from "axios"; import "dotenv/config"; import { Queue } from "bullmq"; export { axios, Queue }' },
                 ],
                 invalid: [
-                    { filename: fixture.at(DOMAIN), code: 'import mail from "nodemailer"; export { mail }', errors: [{ messageId: "foreign" }] },
+                    { filename: fixture.at(DOMAIN), code: 'import mail from "@sendgrid/mail"; export { mail }', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at(DOMAIN), code: 'import Stripe from "stripe"; export { Stripe }', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at(DOMAIN), code: 'import { google } from "googleapis"; export { google }', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at(DOMAIN), code: 'export const load = () => import("stripe/lib/resources")', errors: [{ messageId: "foreign" }] },
@@ -61,7 +61,7 @@ for (const edition of ["lite", "full"] as const) {
                     { filename: fixture.at(DOMAIN), code: 'import sdk = require("googleapis"); export { sdk }', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at(DOMAIN), code: 'export * from "stripe"', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at(DOMAIN), code: 'import type { Client } from "@new-vendor/io-sdk"; export type { Client }', errors: [{ messageId: "foreign" }] },
-                    { filename: fixture.at("src/features/api/order/application/send.handler.ts"), code: 'export { default as mail } from "nodemailer"', errors: [{ messageId: "foreign" }] },
+                    { filename: fixture.at("src/features/api/order/application/send.handler.ts"), code: 'export { default as mail } from "@sendgrid/mail"', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at("src/modules/platform/http/http.client.ts"), code: 'import sdk from "stripe"; export { sdk }', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at("src/modules/domain/order/order.service.spec.ts"), code: 'import sdk from "stripe"; export { sdk }', errors: [{ messageId: "foreign" }] },
                     { filename: fixture.at("apps/core/src/main.ts"), code: 'import sdk from "@new-vendor/io-sdk"; export { sdk }', errors: [{ messageId: "foreign" }] },
@@ -72,17 +72,17 @@ for (const edition of ["lite", "full"] as const) {
 
     test(`R279 ${edition}: one provider can use the SDK in multiple files, including its tests`, () => {
         const fixture = fixtureFor({ edition, files: {
-            [MAILER]: 'import mail from "nodemailer"; export { mail }',
-            "src/modules/integrations/mailer/mail.model.ts": 'export type { SendMailOptions } from "nodemailer/lib/mailer"',
+            [MAILER]: 'import mail from "@sendgrid/mail"; export { mail }',
+            "src/modules/integrations/mailer/mail.model.ts": 'export type { SendMailOptions } from "@sendgrid/mail/lib/mail"',
         } })
         try {
             assert.doesNotThrow(() => { fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
                 valid: [
-                    { filename: fixture.at(MAILER), code: 'import mail from "nodemailer"; export { mail }' },
-                    { filename: fixture.at("src/modules/integrations/mailer/mailer.client.spec.ts"), code: 'import type { SendMailOptions } from "nodemailer/lib/mailer"; export type { SendMailOptions }' },
+                    { filename: fixture.at(MAILER), code: 'import mail from "@sendgrid/mail"; export { mail }' },
+                    { filename: fixture.at("src/modules/integrations/mailer/mailer.client.spec.ts"), code: 'import type { SendMailOptions } from "@sendgrid/mail/lib/mail"; export type { SendMailOptions }' },
                     { filename: fixture.at("src/modules/integrations/object-storage/object-storage.client.ts"), code: 'import { S3Client } from "@aws-sdk/client-s3"; import { createLocalJWKSet } from "jose"; export { S3Client, createLocalJWKSet }' },
                 ],
-                invalid: [{ filename: fixture.at(OTHER), code: 'import mail from "nodemailer"; export { mail }', errors: [{ messageId: "multiple" }] }],
+                invalid: [{ filename: fixture.at(OTHER), code: 'import mail from "@sendgrid/mail"; export { mail }', errors: [{ messageId: "multiple" }] }],
             }) })
         } finally { fixture.cleanup() }
     })

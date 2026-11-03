@@ -5,7 +5,9 @@
       "brand": "{{project}}"
     },
     "home": {
-      "title": "Home"
+      "title": "Home",
+      "signup": "Create an account",
+      "forgot": "Forgot your password?"
     },
     "signIn": {
       "title": "Sign in",
@@ -52,6 +54,53 @@
       "title": "Getting started",
       "description": "Sign in to use the application. You can close this guide and open it again at any time.",
       "close": "Close"
+    },
+    "emailAuth": {
+      "email": "Email",
+      "password": "Password",
+      "newPassword": "New password",
+      "toSignIn": "Back to sign in",
+      "toResend": "Send the confirmation again",
+      "toForgot": "Request a new reset link",
+      "toSignup": "Create an account",
+      "toForgotPassword": "Forgot your password?",
+      "signup": {
+        "title": "Create an account",
+        "description": "Choose a password of at least 8 characters. We email a link to confirm your address.",
+        "submit": "Create account",
+        "done": "Check your inbox: we sent a link to confirm your email."
+      },
+      "resend": {
+        "title": "Confirm your email again",
+        "description": "Enter your address and we email a new confirmation link if the account is waiting for one.",
+        "submit": "Send the link",
+        "done": "If that address is waiting for confirmation, a new link is on its way."
+      },
+      "forgot": {
+        "title": "Forgot your password",
+        "description": "Enter your address and we email a link to choose a new password.",
+        "submit": "Send the link",
+        "done": "If that address has an account, a reset link is on its way."
+      },
+      "reset": {
+        "title": "Choose a new password",
+        "description": "The link works once. Every device is signed out when the password changes.",
+        "submit": "Save password",
+        "done": "Your password is changed. Sign in with the new one."
+      },
+      "confirm": {
+        "title": "Confirm your email",
+        "description": "Press the button to confirm your email address.",
+        "submit": "Confirm email",
+        "done": "Your email is confirmed. You can sign in."
+      },
+      "errors": {
+        "invalid": "Enter a valid value in every field.",
+        "password": "The password needs at least 8 characters and at most 72 bytes.",
+        "link": "The link is invalid or has expired. Request a new one.",
+        "tooMany": "Too many attempts. Try again later.",
+        "unavailable": "This is unavailable. Try again shortly."
+      }
     }
   }
 }

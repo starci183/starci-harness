@@ -1,4 +1,4 @@
-export { AuthError, isPresentablePassword, normalizeEmail } from "@starci/auth/server"
+export { AuthError, digestOf, isAcceptablePassword, isPresentablePassword, normalizeEmail } from "@starci/auth/server"
 export type {
     AccountDirectory,
     AccountStanding,
