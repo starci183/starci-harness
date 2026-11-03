@@ -1306,7 +1306,7 @@ slots:
         - images/db/Dockerfile
         - <env>/README.md
         - <env>/environment.json
-        - <env>/infra/swarm/**
+        - <env>/infra/{compose,swarm}/**
         - <env>/infra/metadata.json
         - <env>/runtime/{config,env}/**
         - <env>/runtime/env/KEYS.md

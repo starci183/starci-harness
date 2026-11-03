@@ -1,30 +1,21 @@
-# Environment key roster
+# Environment key roster (dev)
 
-This roster declares names only. Scaffolding generates the six declared encrypted members with placeholder values encrypted to this app's own age recipient. Replace their values through `starci app secret set --env dev` before creating external secrets. The runtime template tracks no ciphertext; its specs generate members with ephemeral identities in disposable copies. Store product credential values in sealed custody and materialize private KEY files outside the repository.
+Names only. Dev values are generated once by the owner-armed `starci app secret init --env dev --execute`, sealed in
+`.starcistacks/dev/secrets/<member>.enc.yaml` and opened by `starci app stack up --env dev --execute` into private files outside the repository
+(`<KEY>_FILE`, which the back end reads first). The public front-end configuration is supplied by the manifest's `local.processes` environment.
 
 | Key | Consumer |
 | --- | --- |
-| `PORT` | API listener |
-| `HTTP_SECURITY_ALLOWED_ORIGINS` | API origin allowlist |
-| `PRIMARY_DB_URL` | API least-privilege database connection; `.starcistacks/dev/secrets/primary-db-url.enc` maps to external `{{project}}-dev-primary-db-url-v1` and mounted `/run/secrets/primary-db-url` |
-| `PRIMARY_DB_SCHEMA` | API primary database schema |
-| `POSTGRES_PASSWORD` | The db service's superuser password; `.starcistacks/dev/secrets/db-password.enc` maps to external `{{project}}-dev-db-password-v1` and mounted `/run/secrets/db-password` |
-| `GOOGLE_CLIENT_ID` | API Google OAuth client |
-| `GOOGLE_CLIENT_SECRET` | API Google OAuth client; `.starcistacks/dev/secrets/google-client-secret.enc` maps to external `{{project}}-dev-google-client-secret-v1` and mounted `/run/secrets/google-client-secret` |
-| `GOOGLE_CALLBACK_URL` | API Google OAuth callback door |
-| `AUTH_JWT_ISSUER` | API access-token issuer |
-| `AUTH_JWT_AUDIENCE` | API access-token audience |
-| `AUTH_JWT_KEY_ID` | API signing key id, published in the JWKS |
-| `AUTH_COOKIE_DOMAIN` | API cookie `Domain` (a bare domain such as `example.com`, no scheme or port); optional while the web and the API share one host, required when they are served on different hosts, because a host-only refresh cookie never reaches the web server's forwarded `Cookie` header |
-| `AUTH_JWT_PRIVATE_KEY` | API ES256 signing key; `.starcistacks/dev/secrets/auth-jwt-private-key.enc` maps to external `{{project}}-dev-auth-jwt-private-key-v1` and mounted `/run/secrets/auth-jwt-private-key` |
-| `STORAGE_ENDPOINT` | API S3-compatible storage endpoint |
-| `STORAGE_REGION` | API storage signing region |
-| `STORAGE_BUCKET` | API storage bucket |
-| `STORAGE_ACCESS_KEY_ID` | API storage credential; `.starcistacks/dev/secrets/storage-access-key-id.enc` maps to external `{{project}}-dev-storage-access-key-id-v1` and mounted `/run/secrets/storage-access-key-id` |
-| `STORAGE_SECRET_ACCESS_KEY` | API storage credential; `.starcistacks/dev/secrets/storage-secret-access-key.enc` maps to external `{{project}}-dev-storage-secret-access-key-v1` and mounted `/run/secrets/storage-secret-access-key` |
-| `DATABASE_URL` | `starci app db` verbs (migrate, dump) and `contract:emit`, from the operator's environment |
-| `NEXT_PUBLIC_SITE_URL` | Front-end site URL |
-| `NEXT_PUBLIC_API_URL` | Front-end auth doors of the API |
-| `NEXT_PUBLIC_GRAPHQL_URL` | Front-end GraphQL transport |
-
-Public front-end configuration is supplied at build time and stays outside sealed custody. The database verbs read `DATABASE_URL` from the operator's environment; the GitHub secret store carries only the age identity.
+| `PORT`, `HTTP_SECURITY_ALLOWED_ORIGINS`, `PRIMARY_DB_SCHEMA` | API listener, origin allowlist, primary schema (manifest `local.processes.api.env`) |
+| `PRIMARY_DB_URL` | API least-privilege connection as `app_be` with this environment's own password; composed by the stack verb, read through `PRIMARY_DB_URL_FILE` |
+| `POSTGRES_PASSWORD` | The db service's superuser password (member `db`) |
+| `DEV_DB_OWNER_PASSWORD` | The environment's own owner role, which runs the migrations (member `db`) |
+| `DEV_DB_APP_PASSWORD` | The password of the `app_be` role in this environment's database (member `db`) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CALLBACK_URL` | API Google OAuth client and callback (local placeholders in the manifest) |
+| `GOOGLE_CLIENT_SECRET` | API Google OAuth client secret (member `google`) |
+| `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE`, `AUTH_JWT_KEY_ID` | API access-token claims and key id |
+| `AUTH_JWT_PRIVATE_KEY` | API ES256 signing key (member `auth`) |
+| `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET` | API storage address |
+| `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY` | API storage credentials (member `storage`) |
+| `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_GRAPHQL_URL` | Front-end site, auth doors and GraphQL transport |
+| `DATABASE_URL` | `starci app db` verbs; the stack verb composes it in memory for the migration |

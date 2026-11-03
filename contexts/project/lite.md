@@ -18,7 +18,7 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
   `starci app db migrate --db-url-env <NAME>`. Its image is the managed `.starcistacks/images/db/Dockerfile`: the Docker Official `postgres` image
   pinned by digest plus pgvector from PGDG and pgmq from its pinned release (verified by sha256), so its extensions are
   pgvector, pgmq and the image's contrib set (pgcrypto, pg_trgm, unaccent, uuid-ossp, btree_gist), with no pg_cron, pg_net
-  or supabase_vault; the local container (`npm run db:create`), the drift scratch database and the release image all build
+  or supabase_vault; the dev container (`starci app stack up --env dev`), the drift scratch database and the release image all build
   that file. An allowed extension is created `with schema extensions`, the schema the managed `db/bootstrap.sql` creates
   with USAGE for its roles, and the app role's search_path is `public, extensions`, so a migration may name
   `extensions.vector` or set its function's search_path to `''`; pgmq is the one exception, since its control file fixes
@@ -61,10 +61,11 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 
 ## Infrastructure the project runs
 
-- `.starcistacks/` admits only the Swarm infra tree for an environment, no compose, k8s or terraform tree. Owner: the
-  `lite` block of slot `app.starcistacks`; R10, R276. The local dependencies are the db container (`npm run db:create`,
-  `db:start`, `db:stop`) and the declared Redis.
-- The lite verbs are `app db new|plan|migrate|dump|post-cutover`, `stack deploy|verify|rollback`, `docker build|up|down`.
+- `.starcistacks/` admits the Swarm infra tree for the production environment and the compose infra tree for the dev environment, no k8s or
+  terraform tree. Owner: the `lite` block of slot `app.starcistacks`; R10, R276, R368. The dev environment is `docker-compose` with a `local`
+  block, brought up by `starci app stack up --env dev --execute` (PROJECT-STACKS-6): the db container, the declared Redis and the other declared
+  dependencies run from its compose file, the api and web natively. The `db:create`, `db:start` and `db:stop` scripts are not the way to start it.
+- The lite verbs are `app db new|plan|migrate|dump|post-cutover`, `app secret init --env dev`, `stack prepare|doctor|up|status|logs|down|verify` for dev, `stack deploy|verify|rollback` for production, `docker build|up|down`.
   Owner: [README.md](../../README.md) (verb groups; `starci explain` lists what is built).
 
 ## Deploy targets

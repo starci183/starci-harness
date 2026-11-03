@@ -57,7 +57,7 @@ function app(t: { after: (fn: () => void) => void }, { sealed = true, runtime = 
   return root;
 }
 
-interface Call { command: string; args: readonly string[]; input?: unknown; env?: NodeJS.ProcessEnv; background?: boolean }
+interface Call { command: string; args: readonly string[]; input?: unknown; env?: NodeJS.ProcessEnv | undefined; background?: boolean }
 
 /** A host with every tool; `missing` names commands that are not installed, `held` ports someone else listens on. */
 function host(root: string, { platform = 'linux', missing = [], decrypt }: { platform?: NodeJS.Platform; missing?: string[]; decrypt?: Sops['decrypt'] } = {}) {
@@ -97,7 +97,7 @@ function host(root: string, { platform = 'linux', missing = [], decrypt }: { pla
 }
 
 const deps = (extra: LocalDeps = {}): LocalDeps => ({ portFree: async () => true, diskFreeGb: () => 100, memoryMb: () => ({ free: 8000, total: 16000 }), alive: () => false, tcpOpen: async () => true, migrate: async () => 0, ...extra });
-const run = (root: string, argv: string[], h: ReturnType<typeof host>, extra: LocalDeps = {}): Promise<number> => stackMain(argv, { ...h.io, localDeps: deps(extra) });
+const run = (_root: string, argv: string[], h: ReturnType<typeof host>, extra: LocalDeps = {}): Promise<number> => stackMain(argv, { ...h.io, localDeps: deps(extra) });
 
 test('the local block is judged: closed fields, one port each, an own role, the app role with its password', () => {
   const good = normalizeLocal({ ports: { db: 54322 }, services: [{ name: 'db', wait: 'healthy' }] }, { project: 'demo', env: 'dev' });

@@ -180,6 +180,11 @@ image, so any digest-pinned supported reverse proxy serves.
 - **Never printed.** No agent opens, decrypts, echoes or logs a secret; a member is judged by its name
   ([contexts/harness/rules.md](../harness/rules.md) hard rule 1, `neverRead` in [policy/security.yaml](../../policy/security.yaml)).
   Logs keep tokens, prompts and decrypted values out.
+- **Dev values are created once, by the owner's yes.** `starci app secret init --env <dev env> [--execute]` creates the dev-only values the
+  environment's `local.custody` declares (hex, base64, password, uuid, RSA or EC key pairs), seals them like any member, declares their keys and
+  keeps every value that is already sealed; it refuses a vps or production environment and a half-present pair. `up` and `prepare` open the
+  members into private files outside the checkout; a machine that holds no identity the members are sealed to is refused with the owner step to
+  obtain it.
 - **Refuse, never regenerate.** Missing ciphertext or a missing or wrong identity refuses `prepare`; a failed decrypt
   is never answered by minting a replacement. Rotation mints a new value under a new versioned name, re-encrypts,
   updates the grant, waits for every consumer and only then retires the old version; a name is never reused. Key
@@ -192,9 +197,18 @@ image, so any digest-pinned supported reverse proxy serves.
 Every environment's runbook declares the same seven operations, one row each, with the project's command and its
 acceptance gate. They are run by the owner or a `deliver` worker; deploying needs the owner's approval
 ([contexts/harness/rules.md](../harness/rules.md) hard rule 5) and `deploy.prod` waits for green CI (`requireCi` in
-[policy/quality.yaml](../../policy/quality.yaml)). The harness verbs that will run them are listed in
-[README.md](../../README.md) (verb groups; `starci explain` lists what is built) and are not built yet, so today the
-runbook is the operation and these rules are held by review.
+[policy/quality.yaml](../../policy/quality.yaml)).
+
+**The dev kind is a verb set.** For a docker-compose environment the seven operations are `starci app stack prepare|doctor|up|status|logs|down|verify
+--env <env>`, driven by the environment's `local` block of `application-stacks.yaml` (R368: ports, compose services, the environment's own database
+role, dev-only custody to generate, setup and seed commands, native processes, readiness and verification probes). `prepare`, `up` and `down` are dry
+runs until `--execute`; `doctor`, `status`, `logs` and `verify` are read-only. **`up` is the one command**: it checks the host table, opens the dev
+custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor and waits for their health, gives the
+environment its own database role and the app role its own password, migrates with a receipt, runs the declared seed once, starts the native
+processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
+the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R369). `down` ends the processes
+and stops the compose project, never a volume, image or another project. A vps environment keeps the Swarm verbs below; `up`, `down`, `doctor` and
+`logs` refuse it.
 
 | operation | does | safety rule |
 |---|---|---|
@@ -314,16 +328,28 @@ mock and called verified.
 Rules learned from running apps on developer hosts; each holds in every app.
 
 - **Through the ingress.** The person and the `uat` worker open the app at the dev ingress origin
-  (PROJECT-STACKS-4).
+  (PROJECT-STACKS-4); a dev environment whose app processes run natively declares no compose ingress, and the origin `up` prints (the web
+  process on its loopback port) is that origin.
 - **Bind Next to `localhost`.** A Next dev server started with `-H 127.0.0.1` normalizes its own host to `localhost`
   and loops on locale redirects. The dev server binds `localhost` (its default); the 127.0.0.1 address belongs to
   the ingress in front of it.
 - **Caches outside the tree, where the host allows.** Tool caches live outside the repository (slot `app.tool-cache`
   names the location). A Windows host may refuse the SWC cache under AppData; the dev runbook then names a writable
   cache directory outside the repository rather than letting the cache fall back into the checkout.
-- **A clean checkout runs its setup.** Generated code is never committed (SHARED-SCRIPTS-2), so `prepare` runs the
-  project's setup commands, the same ones a task contract carries in `context.setup` ([README.md](README.md) "Life
-  cycle of a piece of work").
+- **A clean checkout runs its setup.** Generated code is never committed (SHARED-SCRIPTS-2), so `prepare` and `up` run the
+  project's setup commands (`local.setup`: the install, then codegen), the same ones a task contract carries in `context.setup`
+  ([README.md](README.md) "Life cycle of a piece of work").
+- **A new machine.** `starci app stack doctor --env dev` prints one row per prerequisite, read-only: Node at the version of `.nvmrc` or
+  `engines.node`, npm, git, Docker running Linux containers with Compose v2, WSL2 on Windows, sops and age when sealed dev members exist, free
+  disk and memory against `local.resources`, and every declared port free (a holder is named). Each missing row carries the exact owner-run step
+  for the OS (winget, brew or apt). The harness installs no host tool: installing software and Docker Desktop is the owner's action (hard rule 5),
+  and an agent runs no Docker or package manager by hand (hard rule 8), so the doctor prints the commands and `up` refuses a machine that fails
+  the table before any effect. On a fresh clone `up --execute` then needs nothing but the identity: the owner obtains the age identity of the
+  environment into the harness secret.env, or, when the app has no dev values yet, arms `secret init --env dev --execute` once.
+- **One database per environment.** A dev database is a container of its own compose project, so its roles are this environment's alone: the
+  migrations run as the environment's own owner role, the app role the migrations create gets a password of this environment, and neither is a
+  role of another environment or server. The client tools of `db migrate` run inside that container (`STARCI_DB_CONTAINER`), so the host needs no
+  PostgreSQL client.
 
 ## Read with
 

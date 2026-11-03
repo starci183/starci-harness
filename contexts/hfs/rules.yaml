@@ -1985,6 +1985,21 @@ rules:
       - STACKS_DEPLOY_CONFIG_INVALID
     enforcers:
       - {kind: hfs, id: stacks-deploy}
+  - id: R368
+    code: STACKS_LOCAL_CONFIG_INVALID
+    law: Every docker-compose environment declares a coherent `local` block under the dev verbs' own normalization, and a lite app declares one such dev environment, so `starci app stack up --env dev` has something to run.
+    failureCodes:
+      - STACKS_LOCAL_CONFIG_INVALID
+      - STACKS_DEV_UNDECLARED
+    enforcers:
+      - {kind: hfs, id: stacks-local}
+  - id: R369
+    code: STACKS_RUNBOOK_DOCKER_COMMAND
+    law: The runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker build, run, compose or stack deploy command.
+    failureCodes:
+      - STACKS_RUNBOOK_DOCKER_COMMAND
+    enforcers:
+      - {kind: hfs, id: stacks-local}
   - id: R295
     code: BE_MODULE_DEFINITION_MISSING
     law: Every NestJS module has its module definition and options files and is imported only through `register`.

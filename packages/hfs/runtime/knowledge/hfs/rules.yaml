@@ -5080,6 +5080,40 @@ rules:
       - {path: packages/hfs/src/hfs-stacks-deploy.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/hfs-stacks-deploy.spec.mjs, editions: [lite, full]}
+  - id: R368
+    code: "STACKS_LOCAL_CONFIG_INVALID"
+    law: "In lite and full apps, every docker-compose environment of .starcistacks/application-stacks.yaml declares a coherent `local` block, judged by the same normalizeLocal the dev verbs of `starci app stack` (doctor, prepare, up, status, logs, verify, down) use: closed fields, one loopback port each, compose services that exist in the compose files, an environment-owned database role (never postgres, never the app role), dev-only custody generators and loopback probes; and a lite app declares at least one such dev environment, so `starci app stack up --env dev` has something to run."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["STACKS_LOCAL_CONFIG_INVALID", "STACKS_DEV_UNDECLARED"]
+    enforcers:
+      - {kind: hfs, id: stacks-local, at: scripts/hfs/rules/stacks-local.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-6-every-runbook-declares-the-same-operations, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
+    exemplifiedBy:
+      - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks, edition: lite}
+    witness:
+      - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
+  - id: R369
+    code: "STACKS_RUNBOOK_DOCKER_COMMAND"
+    law: "The runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no `docker build|run|compose|create|start|stop|pull|push` or `docker stack deploy` command: Docker is run by the harness verb, never by hand (hard rule 8)."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["STACKS_RUNBOOK_DOCKER_COMMAND"]
+    enforcers:
+      - {kind: hfs, id: stacks-local, at: scripts/hfs/rules/stacks-local.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-10-local-runs, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
+    exemplifiedBy:
+      - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks, edition: lite}
+    witness:
+      - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
   - id: R295
     code: "BE_MODULE_DEFINITION_MISSING"
     law: "Every NestJS module of the product has a module definition (owner ruling 2026-10-15, owner:module-definition-everywhere): capability modules, sub-modules, features, transport modules and cli groups alike. For a module `<x>` the folder holds `<x>.module-definition.ts` (`export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE } = new ConfigurableModuleBuilder<XOptions>().setClassMethodName(\"register\").build()`; the representative module of a capability keeps `.setExtras({ isGlobal: false }, ...)`), `<x>.options.ts` (`export type XOptions`, `Record<string, never>` with a one-line doc when it takes nothing yet) and `<x>.module.ts` (`@Module({...}) export class XModule extends ConfigurableModuleClass {}`, no `register` override except the capability representative's). A module appears in an `imports` array or in an app composition group only as `XModule.register({...})`, never as a bare class. The `AppModule` of an app root and the test world are composition roots and are not judged."
