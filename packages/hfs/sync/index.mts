@@ -285,6 +285,10 @@ export function sonarScope(presets: Presets | null | undefined): { tests: string
   return { tests, exclusions: [...new Set([...preset, '**/.next/**', '**/node_modules/**'])] };
 }
 
+/** The managed ESLint config at the app root that lints the root workspace packages. */
+export const PACKAGES_LINT_FILE = 'eslint.config.mjs';
+const LINE = '\n';
+
 const SOURCE_FILE = /\.[cm]?ts$/;
 const SOURCE_SKIPPED = new Set(['node_modules', 'dist', 'coverage']);
 
@@ -443,6 +447,30 @@ function registryTargets(app: ResolvedApp, source: AppSourceFacts | undefined): 
   return registryFiles(app.project, source?.modules ?? []).map((file): RenderedTarget => ({ path: file.path, scope: APP_SCOPE, mode: 'file', content: file.content, hash: hashOf(file.content) }));
 }
 
+/**
+ * The root `eslint.config.mjs` of an app that has root workspace packages (packages/agent-sdk, packages/module-<name>, the registry): no side config
+ * reaches `packages/`, so this managed file lints their source by subpath. The back-end canon judges everything but the front-end subpaths
+ * (`src/workbench/` outside its contract, `src/public/`), the front-end canon and the selected Grammar family those, each over the package view of
+ * the app root. An app without a root package has no such file; the family factory for packages is the family's `<name>GrammarPackagesConfig`.
+ */
+function packagesLintTargets(app: ResolvedApp, source: AppSourceFacts | undefined): RenderedTarget[] {
+  if (!(source?.modules?.length || source?.otherPackages?.length)) return [];
+  const grammar = grammarLintFor(app.sides.fe.grammar);
+  const factory = grammar.package ? grammar.factory.replace(/Config$/, 'PackagesConfig') : null;
+  const content = [
+    'import { loadPackagesHfs as loadBePackages, starciBePackagesConfig } from "@starci/eslint-canon-be"',
+    'import { loadPackagesHfs as loadFePackages, starciFePackagesConfig } from "@starci/eslint-canon-fe"',
+    ...(grammar.package ? [`import { ${factory} } from "${grammar.package}"`] : []),
+    '',
+    'const be = loadBePackages(import.meta.url)',
+    'const fe = loadFePackages(import.meta.url)',
+    '',
+    `export default [...(await starciBePackagesConfig({ hfs: be })), ...starciFePackagesConfig({ hfs: fe })${grammar.package ? `, ...${factory}({ hfs: fe })` : ''}]`,
+    '',
+  ].join(LINE);
+  return [{ path: PACKAGES_LINT_FILE, scope: APP_SCOPE, mode: 'file', content, hash: hashOf(content) }];
+}
+
 export function variables(app: ResolvedApp, scope: string, presets: Presets | null | undefined, sonarKey: string | null | undefined, manifest: SlotManifest = loadSlotManifest(), source: Pick<AppSourceFacts, 'files' | 'read'> & Partial<AppSourceFacts> = { files: [], read: () => '' }): Record<string, string> {
   const stack = source.stack ?? { images: [], passEnv: [] };
   const fe = app.sides.fe;
@@ -550,7 +578,7 @@ function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKe
     if (scope === APP_SCOPE && source?.badges) declaredTargets.push({ path: 'README.md', mode: 'block', markdown: true, template: 'app/readme-badges/README.md' });
     const targets = declaredTargets
       .filter(target => !(app.edition === 'lite' && source?.workPresent === false && target.path === '.starciwork/.gitignore'));
-    return [...(scope === APP_SCOPE ? registryTargets(app, source) : []), ...targets.map((target): RenderedTarget => {
+    return [...(scope === APP_SCOPE ? [...registryTargets(app, source), ...packagesLintTargets(app, source)] : []), ...targets.map((target): RenderedTarget => {
       const template = target.path === 'codecov.yml' && source?.quality?.codecov.enabled === false
         ? '{{header}}\n# Codecov is disabled in the manifest.\ncodecov:\n  require_ci_to_pass: false\n'
         : readTemplate(target.template);

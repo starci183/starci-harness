@@ -607,13 +607,24 @@ slots:
   - id: app.tool-config-local
     since: 3.1.0
     profiles: [app]
-    path: "{tsconfig.json,.eslintrc,.eslintrc.*,.eslintignore,eslint.config.*,.stylelintrc,.stylelintrc.*,.stylelintignore,stylelint.config.*,.prettierrc.*,prettier.config.*,jest.config.*,lint-staged.config.*,.lintstagedrc*}"
+    path: "{tsconfig.json,.eslintrc,.eslintrc.*,.eslintignore,eslint.config.js,eslint.config.cjs,eslint.config.ts,eslint.config.mts,eslint.config.cts,.stylelintrc,.stylelintrc.*,.stylelintignore,stylelint.config.*,.prettierrc.*,prettier.config.*,jest.config.*,lint-staged.config.*,.lintstagedrc*}"
     presence: forbidden
     tracked: external
     tier: none
     tests: none
-    goesTo: "nowhere at the app root: each side holds exactly its managed tool configuration (be.tool-config, fe.tool-config) and the root only the formatter (app.format-config)"
+    goesTo: "nowhere at the app root: each side holds exactly its managed tool configuration (be.tool-config, fe.tool-config) and the root only the formatter (app.format-config) and the eslint config of its root packages (app.packages-lint)"
     rules: [HFS_TOOL_CONFIG_LOCAL]
+  - id: app.packages-lint
+    since: 3.17.0
+    profiles: [app]
+    # The one eslint config at the app root: `starci app sync` renders it when the app has root workspace packages (app.packages), and it lints their
+    # source by subpath (the back-end canon, the front-end canon and the Grammar family each over their own subpaths). No other tool config lives here.
+    path: eslint.config.mjs
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules: [HFS_MANAGED_FILE_DRIFT]
   - id: app.quality-config
     since: 3.1.0
     profiles: [app]

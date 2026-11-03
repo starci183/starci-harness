@@ -57,7 +57,7 @@ export const crossFileInputs: readonly CrossFileInput[] = [
     { rule: "third-party-import-owner", kind: "content", relativeTo: "side", globs: [`**/*.${SOURCE}`], appliesTo: [`**/modules/integrations/**/*.${SOURCE}`], reader: "third-party-owner.ts" },
     // the app's own workspace packages (the folders its `workspaces` name, packages/* and the like) are first-party, not third-party: their names are read from their manifests
     { rule: "third-party-import-owner", kind: "content", relativeTo: "side", globs: ["../*/package.json", "../*/*/package.json"], appliesTo: [`**/*.${SOURCE}`], reader: "third-party-owner.ts" },
-    { rule: "third-party-import-owner", kind: "exists", relativeTo: "side", globs: ["../*", "../*/*", "../*/*/package.json"], appliesTo: [`**/*.${SOURCE}`], reader: "third-party-owner.ts" },
+    { rule: "third-party-import-owner", kind: "exists", relativeTo: "side", globs: ["hfs.json", "../*", "../*/*", "../*/*/package.json"], appliesTo: [`**/*.${SOURCE}`], reader: "third-party-owner.ts" },
     // an over-budget file is compared with its size at the merge-base with the base branch
     { rule: "file-size-growth", kind: "git", relativeTo: "side", globs: [], minLines: HISTORY_MIN_LINES, appliesTo: [`**/*.${SOURCE}`], reader: "size-budget.ts" },
 ]

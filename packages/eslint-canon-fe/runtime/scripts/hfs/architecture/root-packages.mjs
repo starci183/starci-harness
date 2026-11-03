@@ -9,6 +9,8 @@ import { readJsonFile as readJson } from '../../lib/json.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { isInside } from '../../lib/walk.mjs';
 import { slash } from '../../lib/path-key.mjs';
+/** The slots whose directories at the app root are first-party packages of the app (agent SDK, module packages, the managed registry). */
+export const ROOT_PACKAGE_SLOTS = new Set(['app.packages', 'app.module-registry']);
 const SIDE_PREFIX = /^(?:be|fe)\//;
 /** A workspace pattern this reader expands (a literal path, or `*` as a whole segment); the others are judged by the workspace rules. */
 const expandablePattern = (written) => !path.isAbsolute(written) && written.split('/').every(segment => segment !== '..' && (!segment.includes('*') || segment === '*'));

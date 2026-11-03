@@ -1,8 +1,10 @@
-// The linters of `starci app check --gate lint`: ESLint once per side and stylelint over the fe stylesheets, through the app's own install.
+// The linters of `starci app check --gate lint`: ESLint once per side (and once for the root workspace packages) and stylelint over the fe stylesheets, through the app's own install.
 //
 //   1. ESLint runs from the side folder with that side's eslint.config.mjs (be/ the be canon, fe/ the fe canon: the per-file rules and the
 //      project-graph rules of the architecture machine, findings on the line of the offending TypeScript file); each side lints only its own
 //      files, so the be rules never see fe/ and the fe rules never see be/;
+//   1b. the root workspace packages (packages/<pkg>/src/**) are a third scope: ESLint runs from the app root with the managed root eslint.config.mjs (sync renders it), the files
+//      app-relative, whole on every run (no result records), the project graph left to the sides;
 //   2. stylelint judges the fe side's stylesheets (sync STYLE_GLOB) from fe/ with its stylelint.config.mjs.
 // `cachedLinters` is the one entry of `app check`: per side it judges only what the records of `.starcistacks/cache/lint/<side>/` cannot
 // vouch for (cache/lint-family.mjs, contexts/project/check-cache.md), and `eslintRepository` is the launcher it and the cacheless run share.
@@ -129,6 +131,39 @@ const eslintFindings = (results: readonly Dynamic[], appRoot: string): LintFindi
 
 /** The files of `changed` (app-relative) below `side`/, relative to the side folder. */
 const onSide = (changed: readonly string[], side: string): string[] => changed.filter((file) => file.startsWith(`${side}/`)).map((file) => file.slice(side.length + 1));
+
+/**
+ * The root workspace packages of an app (`packages/<pkg>/src/**`) are linted by the managed `eslint.config.mjs` of the app root, as a third scope beside
+ * the two sides: its files are app-relative and its working directory is the app root. It has a scope only while the config is there.
+ */
+export const PACKAGES = 'packages';
+export const PACKAGES_CONFIG = 'eslint.config.mjs';
+const hasPackagesLint = (repoRoot: string): boolean => fs.existsSync(path.join(repoRoot, PACKAGES_CONFIG)) && fs.existsSync(path.join(repoRoot, PACKAGES));
+
+/** The root config of the app, its default export awaited: the flat config the packages are linted by. */
+async function packagesConfig(repoRoot: string): Promise<Dynamic[]> {
+  const loaded = await import(`${pathToFileURL(path.join(repoRoot, PACKAGES_CONFIG)).href}?scope=${Date.now()}`);
+  const config = await loaded.default;
+  if (!Array.isArray(config)) throw new Error(`${PACKAGES_CONFIG} did not export a flat config`);
+  return config;
+}
+
+/** The package sources the root config selects, app-relative: the walk stays below `packages/`, where the config's selectors point. */
+async function packageSources(repoRoot: string): Promise<string[]> {
+  const scope = canonScope(await packagesConfig(repoRoot));
+  const files: string[] = [];
+  const visit = (folder: string): void => {
+    for (const child of fs.readdirSync(path.join(repoRoot, folder), { withFileTypes: true })) {
+      const file = posix(path.join(folder, child.name));
+      if (scope.ignored(file) || scope.ignored(`${file}/__starci_scope_probe__`)) continue;
+      if (child.isSymbolicLink()) throw new Error(`cannot enumerate symlink ${file}`);
+      if (child.isDirectory()) visit(file);
+      else if (child.isFile() && scope.source(file)) files.push(file);
+    }
+  };
+  visit(PACKAGES);
+  return files.sort(byCodeUnit);
+}
 
 const fileKey = (file: string): string => process.platform === 'win32' ? path.resolve(file).toLowerCase() : path.resolve(file);
 const inside = (root: string, file: string): boolean => { const rel = path.relative(root, file); return rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel); };
@@ -293,21 +328,25 @@ async function launchEslint({ app, repoRoot, opts, changed, existing, run = runL
   app: RepoDeclaration; repoRoot: string; opts: { side?: string | undefined; fix?: boolean }; changed: unknown; existing: readonly string[]; run?: LinterRunner | undefined; scopes?: Readonly<Record<string, readonly string[]>>; handOutGraph?: boolean;
 }): Promise<EslintLaunch[]> {
   const launches: EslintLaunch[] = [];
-  for (const side of app ? SIDES.filter((candidate: string) => opts.side === undefined || opts.side === candidate) : []) {
-    const sources = onSide(existing, side).filter((file) => /\.(?:[cm]?[jt]sx?)$/.test(file));
+  const scopesToLint = app ? [...SIDES, ...(hasPackagesLint(repoRoot) ? [PACKAGES] : [])].filter((candidate: string) => opts.side === undefined || opts.side === candidate) : [];
+  for (const side of scopesToLint) {
+    const packages = side === PACKAGES;
+    const sources = (packages ? existing.filter((file) => file.startsWith(`${PACKAGES}/`)) : onSide(existing, side)).filter((file) => /\.(?:[cm]?[jt]sx?)$/.test(file));
     if (changed !== null && !sources.length) { launches.push({ side, skipped: 'no changed source file' }); continue; }
-    const cwd = path.join(repoRoot, side);
+    const cwd = packages ? repoRoot : path.join(repoRoot, side);
     let expected: string[];
     // a caller that enumerated the side's scope already (the cache) hands it over: the canon config is loaded and the folders walked once per run
     const known = scopes[side];
-    try { expected = changed ? sources : known !== undefined ? [...known] : await sourceFiles({ repoRoot, cwd, side }); }
-    catch (error) { launches.push({ side, scopeError: `eslint source scope is unavailable in ${side}/: ${String((error as Error | undefined)?.message ?? error)}` }); continue; }
+    try { expected = changed ? sources : known !== undefined ? [...known] : packages ? await packageSources(repoRoot) : await sourceFiles({ repoRoot, cwd, side }); }
+    catch (error) { launches.push({ side, scopeError: `eslint source scope is unavailable in ${packages ? `${PACKAGES}/` : `${side}/`}: ${String((error as Error | undefined)?.message ?? error)}` }); continue; }
+    // nothing the root config selects below packages/ is a scope with no file, not a run
+    if (packages && !expected.length) { launches.push({ side, skipped: 'no package source' }); continue; }
     const head = ['--format', 'json', ...(opts.fix ? ['--fix'] : [])];
-    // the child that builds the canon's project graph for its rules hands the snapshot out when the caller keeps the graph findings (the cache)
-    const graph = handOutGraph ? graphCanonsOf(repoRoot, cwd, side) : undefined;
+    // the child that builds the canon's project graph for its rules hands the snapshot out when the caller keeps the graph findings (the cache); the packages are no side folder and have no graph
+    const graph = handOutGraph && !packages ? graphCanonsOf(repoRoot, cwd, side) : undefined;
     // The files of a diff go to ONE child through a file (a diff of hundreds of long paths outgrows the Windows command line, and each extra
     // child would build the whole TypeScript program again); the whole side is a single directory argument.
-    const launch = Promise.resolve().then(() => run(changed ? { cwd, pkg: 'eslint', bin: 'eslint', args: head, list: sources, bound: repoRoot, ...(graph === undefined ? {} : { graph }) } : { cwd, pkg: 'eslint', bin: 'eslint', args: [...head, '.'], files: expected.length, bound: repoRoot, ...(graph === undefined ? {} : { graph }) }));
+    const launch = Promise.resolve().then(() => run(changed ? { cwd, pkg: 'eslint', bin: 'eslint', args: head, list: sources, bound: repoRoot, ...(graph === undefined ? {} : { graph }) } : { cwd, pkg: 'eslint', bin: 'eslint', args: [...head, packages ? PACKAGES : '.'], files: expected.length, bound: repoRoot, ...(graph === undefined ? {} : { graph }) }));
     launches.push({ side, cwd, expected, run: launch.catch(spawnFailure) });
   }
   return launches;
@@ -336,7 +375,8 @@ export async function eslintRepository({ repoRoot, app = readRepoDeclaration(loa
       const checked = checkedEslintResults({ results: linted.results, expected: launch.expected as string[], cwd: launch.cwd as string, changed: changed !== null });
       errors.push(...checked.errors);
       linted.results = checked.results;
-      const appRelative = appRelativeMessages(side, path.join(repoRoot, side));
+      // the paths of a side's messages are side-relative and become app-relative; the packages' are app-relative already
+      const appRelative = side === PACKAGES ? ((message: string): string => message) : appRelativeMessages(side, path.join(repoRoot, side));
       for (const result of linted.results) for (const message of result.messages ?? []) message.message = appRelative(message.message);
       raw.push(...linted.results);
       findings.push(...eslintFindings(linted.results, repoRoot));
@@ -458,6 +498,14 @@ export async function cachedLinters({ repoRoot, app, side: only, run, session }:
     eslint.findings.push(...eslintFindings(outcome.eslint, repoRoot));
     eslint.engine.sides[side] = { files: outcome.eslint.length };
     if (styled) { style.results.push(...outcome.stylelint); style.ran = true; }
+  }
+  // The root packages are small and have no result records: they are linted whole on every run, through the same launcher.
+  if ((only === undefined || only === PACKAGES) && hasPackagesLint(repoRoot)) {
+    const linted = await eslintRepository({ repoRoot, app, opts: { side: PACKAGES }, run });
+    eslint.errors.push(...linted.errors);
+    eslint.raw.push(...linted.raw);
+    eslint.findings.push(...linted.findings);
+    eslint.engine.sides[PACKAGES] = linted.engine.sides[PACKAGES] ?? { files: 0 };
   }
   session.report(lintFamilyReport(sides));
   return { eslint, stylelint: style, sides };

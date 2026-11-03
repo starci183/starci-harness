@@ -12,3 +12,14 @@ export declare const declaredHfsView: (input: {
   readonly repoRoot: string
   readonly side: string
 }) => HfsView
+
+/** The view of the root packages of the app at `repoRoot` (the app root), for the laws of `side`. */
+export declare const openPackagesHfsView: (input: { readonly runtimeRoot: string; readonly repoRoot: string; readonly side: "be" | "fe" }) => HfsView
+
+/** The view of the root packages of an in-memory app declaration. */
+export declare const declaredPackagesHfsView: (input: {
+  readonly runtimeRoot: string
+  readonly declaration: unknown
+  readonly repoRoot: string
+  readonly side: "be" | "fe"
+}) => HfsView

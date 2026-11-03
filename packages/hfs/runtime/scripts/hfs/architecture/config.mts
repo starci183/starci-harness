@@ -4,7 +4,7 @@ import { slash } from '../../lib/path-key.mjs';
 import { readJsonFile as readJson } from '../../lib/json.mjs';
 import { isInside } from '../../lib/walk.mjs';
 import { createSlotResolver, openHfs, readRepoDeclaration } from '../slots.mjs';
-import { rootPackageRecord, rootWorkspaceDirectories } from './root-packages.mjs';
+import { ROOT_PACKAGE_SLOTS, rootPackageRecord, rootWorkspaceDirectories } from './root-packages.mjs';
 import type { RootPackage } from './root-packages.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { grammarContractFor } from '../../lib/grammar-lint.mjs';
@@ -247,9 +247,6 @@ function workspaceDirectories(root: string, { packageRoot: appPackageRoot = root
   }
   return [...directories].sort(byCodeUnit);
 }
-
-/** The slots whose directories at the app root are first-party packages of the app (agent SDK, module packages, the managed registry). */
-const ROOT_PACKAGE_SLOTS = new Set(['app.packages', 'app.module-registry']);
 
 /**
  * The workspace packages of the app root that no side owns: the `workspaces` patterns of the app's one package.json that do not start

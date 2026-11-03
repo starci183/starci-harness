@@ -4773,7 +4773,7 @@ rules:
 
   - id: R279
     code: "BE_THIRD_PARTY_OWNER"
-    law: "Third-party SDK ownership is derived from the app's package.json dependencies rather than a finite SDK table. A dependency outside the pure-library and framework allowlists is imported only by one integrations/<provider> capability; domain services call that integration's public API. Existing infrastructure owner restrictions remain in force."
+    law: "Third-party SDK ownership is derived from the app's package.json dependencies rather than a finite SDK table. A dependency outside the pure-library and framework allowlists is imported only by one integrations/<provider> capability; domain services call that integration's public API. A workspace package of the app itself (a folder the root workspaces of package.json name) is first-party source and no SDK; what it imports is judged over its own files. Existing infrastructure owner restrictions remain in force."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_THIRD_PARTY_OWNER"]

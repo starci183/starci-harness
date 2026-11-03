@@ -1,7 +1,7 @@
 /** Core Grammar API rules, versioned with the Grammar family that owns their concrete vocabulary. */
 import type { ESLint, Linter, Rule } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { SOURCE_FILES, linterOptions as canonLinterOptions } from "@starci/eslint-canon-fe/lib/config.mjs"
+import { SOURCE_FILES, linterOptions as canonLinterOptions, scopeToPackages } from "@starci/eslint-canon-fe/lib/config.mjs"
 import { rules as appShellRules } from "./app-shell.ts"
 import { rules as chipLabelRules } from "./chip-label.ts"
 import { rules as drawingRules } from "./drawing.ts"
@@ -112,6 +112,15 @@ export const coreGrammarConfig: (input: {
     rules: { ...recommended },
   }]
 }
+
+/**
+ * The Grammar family's rules for the front-end subpaths of an app's root workspace packages (`packages/<pkg>/src/workbench/**` and `src/public/**`):
+ * the config of `coreGrammarConfig` over the package view (`loadPackagesHfs` of the universal canon), narrowed to those subpaths, so a module
+ * package draws with the Grammar's components alone under the very laws of the front end (FE-PACKAGES-2).
+ * @param input - The package view of the app root and the family.
+ * @returns A typed source block with every family rule at error over the package subpaths.
+ */
+export const coreGrammarPackagesConfig: typeof coreGrammarConfig = (input) => scopeToPackages(coreGrammarConfig(input))
 
 // The result cache of `starci app check --gate lint` (contexts/project/check-cache.md) reads the disk inputs the family rules declare.
 export { crossFileInputs } from "./lib/cross-file-inputs.ts"

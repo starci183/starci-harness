@@ -16,7 +16,7 @@
  * every conversation about the failure. Aliasing one here to match a target's older spelling would
  * leave two names for one rule and no way to tell which a message came from.
  */
-import { buildBeConfig } from "./lib/config.ts"
+import { buildBeConfig, buildBePackagesConfig } from "./lib/config.ts"
 import { pluginForEdition } from "./lib/edition.ts"
 import { recommended as aiGatewayRecommended, rules as aiGatewayRules } from "./ai-gateway.ts"
 import { recommended as authPassportRecommended, rules as authPassportRules } from "./auth-passport.ts"
@@ -216,8 +216,20 @@ export default plugin
  */
 export const starciBeConfig = ({ hfs }: { hfs?: HfsView | null | undefined }): Promise<TSESLint.FlatConfig.ConfigArray> => buildBeConfig({ hfs, plugin: pluginForEdition({ plugin, hfs }), recommended })
 
+/** The levels a package is judged by: every rule of the be side but the project-graph rules, which judge the import graph of a side folder (the packages are not part of it). */
+const packageRecommended: Recommended = Object.fromEntries(Object.entries(recommended).filter(([name]) => !(name in projectGraphRecommended)))
+
+/**
+ * The flat config of the root workspace packages of an app (`packages/<pkg>/src/**` minus the front-end subpaths), for the managed root
+ * `eslint.config.mjs`: `starciBePackagesConfig({ hfs: loadPackagesHfs(import.meta.url) })`. The same rules as `starciBeConfig`, over the package view.
+ *
+ * @param input - The package view of the app root.
+ * @returns The flat config.
+ */
+export const starciBePackagesConfig = ({ hfs }: { hfs?: HfsView | null | undefined }): Promise<TSESLint.FlatConfig.ConfigArray> => buildBePackagesConfig({ hfs, plugin: pluginForEdition({ plugin, hfs }), recommended: packageRecommended })
+
 export { linterOptions } from "./lib/config.ts"
-export { loadHfs } from "./lib/hfs.ts"
+export { loadHfs, loadPackagesHfs } from "./lib/hfs.ts"
 
 // A12 registration is appended so the shared registry can be union-merged.
 import { recommended as thirdPartyOwnerRecommended, rules as thirdPartyOwnerRules } from "./third-party-owner.ts"

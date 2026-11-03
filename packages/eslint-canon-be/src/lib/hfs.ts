@@ -13,7 +13,7 @@
  */
 import { dirname } from "node:path"
 import { fileURLToPath } from "node:url"
-import { declaredHfsView, openHfsView } from "#runtime/scripts/hfs/view.mjs"
+import { declaredHfsView, declaredPackagesHfsView, openHfsView, openPackagesHfsView } from "#runtime/scripts/hfs/view.mjs"
 import type { HfsView } from "./hfs-view.ts"
 import type { Context } from "./rule.ts"
 import { RUNTIME_ROOT as RUNTIME } from "./runtime-root.ts"
@@ -38,6 +38,24 @@ export type {
  * @returns The frozen HFS view (profile, apps, connections, ruleParams, slotOf, tierOf, ownerOf).
  */
 export const loadHfs = (configUrl: string): HfsView => openHfsView({ runtimeRoot: RUNTIME, repoRoot: dirname(fileURLToPath(configUrl)) })
+
+/**
+ * The HFS view of the root workspace packages of an app, judged by the laws of the be side: the managed root `eslint.config.mjs`
+ * (`packages/*` of the app root) calls this. Paths are the app's own; a package file is of the tier `package` and its owner is its folder.
+ *
+ * @param configUrl - `import.meta.url` of the app root's `eslint.config.mjs`.
+ * @returns The frozen HFS view (profile be over the paths of the app root).
+ */
+export const loadPackagesHfs = (configUrl: string): HfsView => openPackagesHfsView({ runtimeRoot: RUNTIME, repoRoot: dirname(fileURLToPath(configUrl)), side: "be" })
+
+/**
+ * The HFS view of the root packages of an in-memory app declaration, for rule tests.
+ *
+ * @param declaration - An app `hfs.json` object.
+ * @param repoRoot - The absolute app root the linted filenames live under.
+ * @returns The frozen HFS view.
+ */
+export const packagesHfsFromDeclaration = (declaration: object, repoRoot: string): HfsView => declaredPackagesHfsView({ runtimeRoot: RUNTIME, declaration, repoRoot, side: "be" })
 
 /**
  * The HFS view of the be side of an in-memory app declaration, for rule tests: no file is read except the shipped manifest.

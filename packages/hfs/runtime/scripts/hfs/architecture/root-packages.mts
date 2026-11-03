@@ -24,6 +24,9 @@ export interface RootPackage {
   app: false;
 }
 
+/** The slots whose directories at the app root are first-party packages of the app (agent SDK, module packages, the managed registry). */
+export const ROOT_PACKAGE_SLOTS: ReadonlySet<string> = new Set(['app.packages', 'app.module-registry']);
+
 const SIDE_PREFIX = /^(?:be|fe)\//;
 
 /** A workspace pattern this reader expands (a literal path, or `*` as a whole segment); the others are judged by the workspace rules. */

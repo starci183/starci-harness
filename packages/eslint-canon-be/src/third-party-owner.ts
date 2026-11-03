@@ -74,7 +74,8 @@ const referencesOf = (file: string, text: string) => {
 const dependenciesOf = (hfs: HfsView): Dependencies => {
     const cached = DEPENDENCIES.get(hfs)
     if (cached) return cached
-    const appManifest = join(dirname(hfs.repoRoot), "package.json")
+    // A package view (the root workspace packages) has the app root itself as its repoRoot: hfs.json sits there, and so does the one manifest.
+    const appManifest = existsSync(join(hfs.repoRoot, "hfs.json")) ? join(hfs.repoRoot, "package.json") : join(dirname(hfs.repoRoot), "package.json")
     const manifest = existsSync(appManifest) ? appManifest : join(hfs.repoRoot, "package.json")
     if (!existsSync(manifest)) throw new Error("third-party-import-owner needs the app-root package.json beside be/ to derive SDK ownership")
     const declaration: unknown = JSON.parse(readFileSync(manifest, "utf8"))
