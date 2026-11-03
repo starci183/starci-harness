@@ -239,6 +239,8 @@ ruleParams:
       "@aws-sdk/client-s3": [integrations/object-storage]       # the ObjectStorage port: one S3 adapter for MinIO, S3 and Spaces (R331)
       "@aws-sdk/s3-request-presigner": [integrations/object-storage]
       minio: []                                          # storage goes through the S3 client of integrations/object-storage
+      nodemailer: []                                     # the SMTP client is a dependency of @starci/mail alone; no app file imports it
+      "@starci/mail": [integrations/mail]                # outgoing mail: the Mailer port, parsed and registered by its one glue
       "@supabase": []                                    # no Supabase client in a back end
       "@nestjs/passport": [integrations/passport]        # the identity libraries (R328)
       passport: [integrations/passport]

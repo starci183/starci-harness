@@ -281,6 +281,9 @@ ruleParams:
       "@aws-sdk/s3-request-presigner":
         - integrations/object-storage
       minio: []
+      nodemailer: []
+      "@starci/mail":
+        - integrations/mail
       "@supabase": []
       "@nestjs/passport":
         - integrations/passport

@@ -14,7 +14,10 @@ libraries, `node:async_hooks`) is imported only by the platform capability the t
 dependency outside the framework and pure-library allowlists only by its one provider integration; model libraries
 follow [ai.md](ai.md) (BE-AI-1, BE-AI-3). The S3 client (`@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`) is
 imported only by `integrations/object-storage`, the ObjectStorage port with presigned PUT and GET over S3-compatible storage
-(MinIO in lite), and `minio` nowhere; in lite the identity libraries belong to `integrations/passport`
+(MinIO in lite), and `minio` nowhere; the SMTP client `nodemailer` is a dependency of `@starci/mail` alone and no app file
+imports it: the package (the Mailer port with timeouts, required STARTTLS, coded errors and typed render helpers) is imported only by
+`integrations/mail`, which parses the settings and registers the module, while the words and the layout of each mail belong to the
+domain that sends it; in lite the identity libraries belong to `integrations/passport`
 ([api-auth.md](api-auth.md) BE-AUTH-2). `@nestjs/config`,
 `dotenv` and `@nestjs/event-emitter` are imported nowhere; `@nestjs/schedule` and `cron` only by the tick scheduler of
 `platform/jobs` ([jobs.md](jobs.md) BE-JOBS-6). In lite a backing library is legal only

@@ -8,6 +8,7 @@ schema: starci/stack-pins@1
 pins:
   '@starci/heroicons': {version: 0.3.5, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
   '@starci/event-stream': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
+  '@starci/mail': {version: 0.1.0, group: starci, side: be, install: registry, why: "outgoing mail of a back end: the Mailer port over SMTP with timeouts, required STARTTLS, coded errors, typed render helpers; the only importer of nodemailer"}
   '@starci/grammar': {version: 0.21.13, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
   '@starci/eslint-canon-be': {version: 3.12.0, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
   '@starci/eslint-canon-fe': {version: 9.10.0, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
@@ -108,6 +109,7 @@ pins:
   '@nestjs/apollo': {version: 13.4.5, group: framework, side: be, why: "the Apollo driver, on the @nestjs/graphql line"}
   '@aws-sdk/client-s3': {version: 3.1150.0, group: framework, side: be, why: "the S3 client of integrations/object-storage, the one ObjectStorage adapter of both editions (MinIO in lite)"}
   '@aws-sdk/s3-request-presigner': {version: 3.1150.0, group: framework, side: be, why: "signs presigned PUT and GET; the client-s3 release"}
+  nodemailer: {version: 10.1.7, group: framework, side: be, why: "the SMTP client inside @starci/mail, which depends on it at exactly this version and which no app file imports; 10.1.7 is the release of 2026-10-18, chosen over newer ones that had not aged two weeks"}
   '@apollo/server': {version: 5.5.1, group: framework, side: be, why: "the server behind @nestjs/apollo"}
   '@nestjs/websockets': {version: 11.2.5, group: framework, side: be, why: "the socket.io gateway; the @nestjs/core line"}
   '@nestjs/platform-socket.io': {version: 11.2.5, group: framework, side: be, why: "the socket.io platform; the @nestjs/core line"}

@@ -105,6 +105,13 @@ pins:
     side: be
     source: packages/ai-router/package.json
     why: 'the AI pool router of a back end: a NestJS module that routes OpenAI-compatible chat, stream and embeddings calls across keys, models and providers, with @starci/ai-router/testing for its specs; @starci/jest-preset compiles it as an ESM-only dependency.'
+  '@starci/mail':
+    version: 0.1.0
+    group: starci
+    install: registry
+    side: be
+    source: packages/mail/package.json
+    why: 'outgoing mail of a back end: a NestJS module and the Mailer port over SMTP (connect, greeting, socket and total timeouts, STARTTLS required by default, recipient and message checks, coded errors, typed escaping render helpers returning { subject, text, html }), with @starci/mail/testing for its specs; the only importer of nodemailer (R90).'
   '@starci/hfs':
     version: 5.1.0
     group: starci
@@ -549,6 +556,11 @@ pins:
     group: framework
     side: be
     why: 'signs the presigned PUT and GET of integrations/object-storage locally, the same release as client-s3.'
+  nodemailer:
+    version: 10.1.7
+    group: framework
+    side: be
+    why: 'the SMTP client inside @starci/mail, which depends on it at exactly this version and which no app file imports; 10.1.7 is the release of 2026-10-18, chosen over newer ones that had not aged two weeks.'
   '@apollo/server':
     version: 5.5.1
     group: framework
