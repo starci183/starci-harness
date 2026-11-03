@@ -65,7 +65,7 @@ export const workflowDefineVerb = defineVerb({
         const lanes = (() => {
             try {
                 assertOwnSources(known, source.header.id, built.nodes)
-                return flowLines(assertFlow(source.header.id, built.nodes, { repo: root, db: known, requires: source.header.requires ?? [] }, ops))
+                return flowLines(assertFlow(source.header.id, built.nodes, { repo: root, db: known, requires: source.header.requires ?? [], workflowId: source.header.id, base: source.header.base }, ops))
             } finally {
                 known?.close()
             }

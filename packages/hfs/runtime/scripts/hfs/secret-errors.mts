@@ -1,11 +1,20 @@
 // secret-errors.mjs - sanitized public errors shared by app secret operations.
 
-export class SecretError extends Error {}
+/** A refusal with a message safe to print; `code` names it when a caller or a spec keys on it. */
+export class SecretError extends Error {
+  code: string | undefined;
+
+  constructor(message: string, code?: string) {
+    super(message);
+    this.code = code;
+  }
+}
 
 export const publicStorage = <T,>(action: () => T): T => {
   try {
     return action();
   } catch (caught: unknown) {
+    if (caught instanceof SecretError) throw caught;
     // reason: a thrown value is untyped; storage failures are Node errors carrying an optional code.
     const error = caught as NodeJS.ErrnoException;
     throw new SecretError(

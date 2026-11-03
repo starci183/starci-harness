@@ -13,3 +13,5 @@ export {
     strengthKey,
 } from "./shared.ts"
 export type { AuthErrorKey, Strength } from "./shared.ts"
+export { createSessionStore, createSingleFlight } from "./session.ts"
+export type { SessionEvent, SessionListener, SessionPerson, SessionSnapshot, SessionSource, SessionStore, SingleFlight } from "./session.ts"

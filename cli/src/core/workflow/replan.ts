@@ -162,7 +162,7 @@ export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, 
     const plannedUnder = graphVersions(db, workflow.id).find((version) => version.version === workflow.graphVersion)?.goalVersion ?? goal.version
     assertDeliverables(workflow.id, snapshot.nodes, built.nodes, plannedUnder, goal)
     // The lanes are judged on the workflow branch's head (its worktree), where its records are written, whatever checkout asked.
-    assertFlow(workflow.id, built.nodes, { repo: flowCheckoutOf(db, workflow.id) ?? place.repo, db, requires: header.requires ?? [] }, ops)
+    assertFlow(workflow.id, built.nodes, { repo: flowCheckoutOf(db, workflow.id) ?? place.repo, db, requires: header.requires ?? [], workflowId: workflow.id, base: header.base }, ops)
     assertOwnSources(db, workflow.id, built.nodes, new Set(snapshot.nodes.map((node) => contractHash(node.contract))))
     const problems: string[] = []
     for (const row of classification) {

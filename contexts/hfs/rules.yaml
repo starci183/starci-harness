@@ -81,7 +81,7 @@ rules:
       - {kind: hfs, id: managed-file-drift}
   - id: R06
     code: HFS_PLAINTEXT_SECRET
-    law: Secrets exist only as sealed `.starcistacks/<env>/secrets/<slug>.enc` members.
+    law: Secrets exist only as sealed `.starcistacks/<env>/secrets/<slug>.enc` members, and the committed check cache holds codes, paths, positions and digests, never a message that could carry one.
     failureCodes:
       - HFS_PLAINTEXT_SECRET
     enforcers:
@@ -594,7 +594,7 @@ rules:
       - {kind: eslint-fe, id: no-copy-resolution-below-block}
   - id: R59
     code: FE_I18N_PLACEMENT
-    law: Front-end i18n uses `next-intl` with a `[locale]` segment, its routing and navigation owned by `modules/i18n` and `modules/routes` or a shared i18n package, and the proxy never evaluates navigation runtime.
+    law: Front-end i18n uses `next-intl` with a `[locale]` segment; its stack (routing, proxy, navigation, request config, the layout's locale read) is built by `@starci/next-i18n` over the app's `defineI18n` description, kept in `modules/i18n` or in the shared i18n package, and no product source builds a layer of it; the proxy never evaluates navigation runtime.
     failureCodes:
       - FE_I18N_PLACEMENT
       - FE_I18N_NAVIGATION
@@ -2208,8 +2208,8 @@ rules:
       - {kind: eslint-be, id: ai-client-through-gateway}
   - id: R328
     code: BE_AUTH_PASSPORT_OWNER
-    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth and are imported by no app file; @starci/auth/server is imported only by integrations/passport, its one glue. bcrypt and every Supabase client are owned nowhere."
-    editions: [lite]
+    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth (lite) and of @starci/auth-oidc (full, which owns jose for its provider tokens) and are imported by no app file; @starci/auth/server is imported only by integrations/passport and @starci/auth-oidc/server only by integrations/keycloak, each package's one glue. bcrypt and every Supabase client are owned nowhere."
+    editions: [lite, full]
     failureCodes:
       - BE_AUTH_PASSPORT_OWNER
     enforcers:

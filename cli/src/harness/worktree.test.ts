@@ -7,7 +7,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 import { captureGitSync } from "../shared/git.js"
-import { assertWorktreeHooks, declaresHusky, materialiseHooks, requiredHooksPath } from "./worktree.js"
+import { assertWorktreeHooks, declaresHusky, healWorktreeHooks, materialiseHooks, requiredHooksPath } from "./worktree.js"
 
 const git = (cwd: string, ...args: string[]): string => {
     const run = captureGitSync(["-c", "user.name=t", "-c", "user.email=t@t.t", "-c", "commit.gpgsign=false", ...args], cwd)
@@ -23,6 +23,9 @@ const HUSKY_BIN = [
     'fs.writeFileSync(".husky/_/pre-commit", "#!/usr/bin/env sh")',
     'execFileSync("git", ["config", "core.hooksPath", ".husky/_"])',
 ].join("\n")
+
+/** The husky fixture whose generated pre-commit runs the product's tracked one, the way husky 9's does. */
+const HUSKY_BIN_GATED = HUSKY_BIN.replace('fs.writeFileSync(".husky/_/pre-commit", "#!/usr/bin/env sh")', 'fs.writeFileSync(".husky/_/pre-commit", ["#!/bin/sh", "sh .husky/pre-commit"].join(String.fromCharCode(10)) + String.fromCharCode(10), { mode: 0o755 })')
 
 /** A product repository that tracks .husky/pre-commit and has husky installed in its main checkout, plus a linked worktree of it. */
 const product = (t: { after: (fn: () => void) => void }, installed: boolean): { readonly root: string; readonly worktree: string } => {
@@ -76,4 +79,24 @@ void test("a product that declares no husky and no hooks path is left alone", as
     git(base, "init", "-q", "-b", "main", join(base, "app"))
     assert.equal(await materialiseHooks(join(base, "app"), join(base, "app")), undefined)
     await assert.doesNotReject(assertWorktreeHooks(join(base, "app")))
+})
+
+void test("a seat start heals a worktree that lacks its generated hooks, and a commit in it then runs the product's gate", async (t) => {
+    const { root, worktree } = product(t, true)
+    writeFileSync(join(root, ".husky", "pre-commit"), "#!/bin/sh\necho gate > .gate-ran\nexit 0\n")
+    writeFileSync(join(root, "node_modules", "husky", "bin.js"), HUSKY_BIN_GATED)
+    git(root, "add", ".")
+    git(root, "commit", "-q", "-m", "gate")
+    git(worktree, "merge", "-q", "main")
+    await assert.rejects(assertWorktreeHooks(worktree), { code: "WORKTREE_HOOKS_MISSING" })
+    await healWorktreeHooks(root, worktree)
+    writeFileSync(join(worktree, "change.txt"), "x")
+    git(worktree, "add", ".")
+    git(worktree, "commit", "-q", "-m", "change")
+    assert.equal(existsSync(join(worktree, ".gate-ran")), true, "the product's pre-commit ran for the commit")
+})
+
+void test("a seat start refuses a checkout whose hooks cannot be healed", async (t) => {
+    const { root, worktree } = product(t, false)
+    await assert.rejects(healWorktreeHooks(root, worktree), { code: "WORKTREE_HOOKS_MISSING" })
 })

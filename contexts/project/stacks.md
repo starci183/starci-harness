@@ -100,12 +100,16 @@ image, so any digest-pinned supported reverse proxy serves.
   [code/be/config.md](../code/be/config.md) says. `set` declares the keys of a compose environment itself; a swarm
   environment's secret is wired with its stack (runtimeName and the deploy grant) by hand.
   A delivery or quality-service key is declared by its exact `services.<id>.credentials[]` member path and `key`
-  instead (PROJECT-STACKS-8); `set` keeps it out of runtime secret declarations. The audit recognizes both consumers.
+  instead (PROJECT-STACKS-8); `set` keeps it out of runtime secret declarations and binds a quality-service member (`sonar.enc.yaml`) to its service, the
+  `credentials` entry and the `ci.secrets` entry the template shows, or prints the exact binding when the file's shape is not the template's
+  (`starci app codemod quality-binding` binds an app scaffolded before). The audit recognizes both consumers.
 - **One owner identity, found by itself; one rule per environment.** Every member is sealed to the public recipients of
   its environment's rule in the app's `.sops.yaml`, which `starci app secret init` and `recipients` manage: dev to the owner
   key, production to the production server key and the owner key both, so the owner sets and rotates production from his
   machine and the server opens it with its own key. A member is sealed to that whole set, and a rewrite (`set`, `migrate`,
-  `split`, an edit) seals to the rule's set, or to the member's own set when no rule names it, so none drops the server key;
+  `split`, an edit) seals to the rule's set, or to the member's own set when no rule reaches an existing member, so none drops the server key; a new
+  member no rule reaches is refused `SECRET_SOPS_RULE_MISSING` before sops runs (a rule written for the legacy `.enc` spelling does not reach a `.enc.yaml` member;
+  `secret init --env <env>` writes the per-environment rules and `starci app codemod sops-rules` migrates a legacy file);
   a decrypt opens a member when its identity's recipient is one of the set. The owner's private identity is `SOPS_AGE_KEY` in
   the harness's secret.env, backed up by the owner (R253); every verb that opens a member (`starci app secret`, `stack`,
   `release`, `db`, the CLI's custody) finds it with nothing exported or pointed to through one lookup, taking the first of:
@@ -203,7 +207,7 @@ acceptance gate. They are run by the owner or a `deliver` worker; deploying need
 --env <env>`, driven by the environment's `local` block of `application-stacks.yaml` (R372: ports, compose services, the environment's own database
 role, dev-only custody to generate, setup and seed commands, native processes, readiness and verification probes). `prepare`, `up` and `down` are dry
 runs until `--execute`; `doctor`, `status`, `logs` and `verify` are read-only. **`up` is the one command**: it checks the host table, opens the dev
-custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor and waits for their health, gives the
+custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor (a lite app's dev compose runs its database and Mailpit, the `mail` sink the sign-in mails reach on loopback, its web UI an origin) and waits for their health, gives the
 environment its own database role and the app role its own password, migrates with a receipt, runs the declared seed once, starts the native
 processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
 the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
@@ -364,6 +368,7 @@ volume, a secret or config grant, a bind under the data root (`${data}` or `STAC
 read-only plain data file (json, yaml, toml, conf, ini, properties, txt, pem, crt, csv); every other bind is refused. Dev and
 production run the same image of the service: a compose service builds from `images/<name>` and a stack service names the
 project's own or a variable image reference, never a literal upstream image beside the folder.
+While the harness has not published such a layer, `starci app stack up` builds it from the recipe `@starci/hfs` ships (`stack/images/<layer>/`, byte-equal to the harness `images/<layer>/`) as a governed heavy build, tagged with the reference the Dockerfile names minus its digest; a layer the host holds or the registry serves is left alone (`stack/runtime-layers.mts`, `stack-runtime-layers.spec.mts`).
 
 Why: code mounted at run time is a second, unreviewed build whose bytes the image digest does not name, and a service that
 differs between dev and production proves nothing about production.

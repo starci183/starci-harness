@@ -9,6 +9,7 @@ import { captureTool, headline, runTool, startDetached, ToolNotStarted } from ".
 import { hostLauncherPath, runtimeRoot, stateBase } from "./ledger.js"
 import { orcaBinarySync } from "./orca/client.js"
 import { locateOps } from "./ops.js"
+import { lookupSecret, secretHome } from "./secret-env.js"
 import { inOrder } from "./sequential.js"
 
 const argvSchema = z.array(z.string().min(1)).min(1)
@@ -23,17 +24,34 @@ const scheduleSchema = z.strictObject({
     log: z.string().min(1).optional(),
 })
 
+/** What a check reads: an argv's exit (and json output), or an http answer (and json body); `json` judges the output or the body. */
+const checkSchema = z
+    .strictObject({
+        argv: argvSchema.optional(),
+        http: z.strictObject({ url: z.url(), status: z.number().int().min(100).max(599).default(200) }).optional(),
+        json: z.strictObject({ path: z.string().min(1), equals: z.union([z.string(), z.number(), z.boolean(), z.null()]) }).optional(),
+    })
+    .refine((check) => (check.argv === undefined) !== (check.http === undefined), "a check names exactly one of argv and http")
+
 const serviceSchema = z.strictObject({
     id: z.string().regex(/^[a-z][a-z0-9-]*$/),
     summary: z.string().min(1),
+    // How long `host up` and `host down` wait for this service's check to turn (default: the file's waitSeconds).
+    waitSeconds: z.number().int().positive().optional(),
     platform: z.enum(["win32", "linux", "darwin", "any"]),
-    check: z
+    check: checkSchema.optional(),
+    start: z
         .strictObject({
             argv: argvSchema,
-            json: z.strictObject({ path: z.string().min(1), equals: z.union([z.string(), z.number(), z.boolean(), z.null()]) }).optional(),
+            detach: z.boolean().default(false),
+            // Plain environment for the started process, on top of this process's session-free one.
+            env: z.record(z.string().regex(/^[A-Za-z_]\w*$/), z.string()).optional(),
+            // Secret keys (policy/security.yaml secretKeys) the secret loader resolves into the started process's environment; never argv, a file or output.
+            secrets: z.array(z.string().regex(/^[A-Za-z_]\w*$/)).optional(),
         })
         .optional(),
-    start: z.strictObject({ argv: argvSchema, detach: z.boolean().default(false) }).optional(),
+    // How `host down` stops it (never removes data: a compose service is stopped, never `down`ed, and no volume is touched).
+    stop: z.strictObject({ argv: argvSchema }).optional(),
     install: z.discriminatedUnion("kind", [z.strictObject({ kind: z.literal("none") }), scheduleSchema]),
     requires: z.array(z.string()).default([]),
 })
@@ -149,11 +167,40 @@ export interface Probe {
 const valueAt = (value: unknown, path: string): unknown =>
     path.split(".").reduce<unknown>((at, key) => (typeof at === "object" && at !== null && key in at ? (at as Record<string, unknown>)[key] : undefined), value)
 
-/** Runs a service's check without a shell: up when it exits 0 and its json value, when named, equals the expected one. */
+/** Judges a check's output or body: up when it is not json-checked, else when the value at the json path equals the expected one. */
+const judgeJson = (check: NonNullable<HostService["check"]>, text: string, what: string): Probe => {
+    if (check.json === undefined) return { up: true, evidence: what }
+    let parsed: unknown
+    try {
+        parsed = JSON.parse(text)
+    } catch {
+        return { up: false, evidence: `${what}, but it is not json` }
+    }
+    const value = valueAt(parsed, check.json.path)
+    return { up: value === check.json.equals, evidence: `${check.json.path} = ${value === undefined ? "absent" : JSON.stringify(value)}` }
+}
+
+/** An http check: one GET (no redirects followed), up when the status is the declared one and the json body, when named, matches. */
+const probeHttp = async (check: NonNullable<HostService["check"]>, url: string, status: number, timeoutSeconds: number): Promise<Probe> => {
+    let response: Response
+    try {
+        response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(timeoutSeconds * 1000) })
+    } catch (error: unknown) {
+        const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")
+        return { up: false, evidence: timedOut ? `${url} did not answer within ${String(timeoutSeconds)}s` : `${url} is unreachable: ${error instanceof Error ? (error.cause instanceof Error ? error.cause.message : error.message) : String(error)}` }
+    }
+    const body = check.json === undefined ? "" : await response.text()
+    if (response.status !== status) return { up: false, evidence: `GET ${url} answered ${String(response.status)}, not ${String(status)}` }
+    const judged = judgeJson(check, body, `GET ${url} answered ${String(status)}`)
+    return { up: judged.up, evidence: check.json === undefined ? judged.evidence : `GET ${url} answered ${String(status)}, ${judged.evidence}` }
+}
+
+/** Runs a service's check without a shell: up when it exits 0 (or its http answer is the declared status) and its json value, when named, equals the expected one. */
 export const probeService = async (check: NonNullable<HostService["check"]>, cwd: string, timeoutSeconds: number): Promise<Probe> => {
+    if (check.http !== undefined) return probeHttp(check, check.http.url, check.http.status, timeoutSeconds)
     let argv: string[]
     try {
-        argv = expandArgv(check.argv)
+        argv = expandArgv(check.argv ?? [])
     } catch (error: unknown) {
         return { up: false, evidence: error instanceof Error ? error.message : String(error) }
     }
@@ -168,15 +215,7 @@ export const probeService = async (check: NonNullable<HostService["check"]>, cwd
     }
     if (run.timedOut) return { up: false, evidence: `check timed out after ${String(timeoutSeconds)}s` }
     if (run.exitCode !== 0) return { up: false, evidence: `exit ${String(run.exitCode)}: ${headline(run.stderr) || headline(run.stdout) || "no output"}` }
-    if (check.json === undefined) return { up: true, evidence: "exit 0" }
-    let parsed: unknown
-    try {
-        parsed = JSON.parse(run.stdout)
-    } catch {
-        return { up: false, evidence: "exit 0, but its output is not json" }
-    }
-    const value = valueAt(parsed, check.json.path)
-    return { up: value === check.json.equals, evidence: `${check.json.path} = ${value === undefined ? "absent" : JSON.stringify(value)}` }
+    return judgeJson(check, run.stdout, "exit 0")
 }
 
 /** One scheduled task of the host's scheduler: its name (without its folder), whether it is enabled, and its first action. */
@@ -436,23 +475,35 @@ const SESSION_VARIABLE = /^(CLAUDE|CLAUDECODE$|ANTHROPIC_|CODEX_|OPENAI_|ORCA_|S
 /** This process's environment without the agent-session variables, for a host service to start from. */
 export const serviceEnv = (): NodeJS.ProcessEnv => Object.fromEntries(Object.entries(process.env).filter(([name]) => !SESSION_VARIABLE.test(name)))
 
+/** The environment a started service gets: the session-free one, the service's plain `env`, and each of its `secrets` from the secret loader (HOST_SECRET_MISSING names a key that is unset, never a value). */
+export const startEnv = (start: NonNullable<HostService["start"]>): Record<string, string> => {
+    const env: Record<string, string> = { ...start.env }
+    for (const key of start.secrets ?? []) {
+        const secret = lookupSecret(key)
+        if (secret === undefined) throw new Refusal("HOST_SECRET_MISSING", `${key} is not set: ${secretHome(key)}`)
+        env[key] = secret.value
+    }
+    return env
+}
+
 /** Starts a service by its start argv, from a clean environment: detached, or run to its end within waitSeconds. */
-const startService = async (start: NonNullable<HostService["start"]>, config: HostConfig, cwd: string): Promise<void> => {
+const startService = async (start: NonNullable<HostService["start"]>, waitSeconds: number, cwd: string): Promise<void> => {
     const argv = expandArgv(start.argv)
+    const env = startEnv(start)
     if (start.detach) {
-        await startDetached(argv, cwd, serviceEnv())
+        await startDetached(argv, cwd, { ...serviceEnv(), ...env })
         return
     }
     const [tool, ...args] = argv
-    if (tool !== undefined) await runTool(tool, args, cwd, { timeoutMs: config.waitSeconds * 1000, baseEnv: serviceEnv() })
+    if (tool !== undefined) await runTool(tool, args, cwd, { timeoutMs: waitSeconds * 1000, baseEnv: serviceEnv(), env })
 }
 
-/** Probes a started service until its check says up or the deadline passes, POLL_MS apart. */
-const awaitUp = async (check: NonNullable<HostService["check"]>, config: HostConfig, cwd: string, deadline: number): Promise<Probe> => {
-    const probe = await probeService(check, cwd, config.checkTimeoutSeconds)
-    if (probe.up || Date.now() >= deadline) return probe
+/** Probes a service until its check says `wantUp` or the deadline passes, POLL_MS apart. */
+const awaitState = async (check: NonNullable<HostService["check"]>, wantUp: boolean, host: { readonly config: HostConfig; readonly cwd: string }, deadline: number): Promise<Probe> => {
+    const probe = await probeService(check, host.cwd, host.config.checkTimeoutSeconds)
+    if (probe.up === wantUp || Date.now() >= deadline) return probe
     await sleep(POLL_MS)
-    return awaitUp(check, config, cwd, deadline)
+    return awaitState(check, wantUp, host, deadline)
 }
 
 /** `host up` for one service, its requirements already handled (`upIds` holds those that are up). */
@@ -468,9 +519,54 @@ const upService = async (
     if (down.length > 0) return { id: service.id, outcome: "blocked", evidence: `requires ${down.join(", ")}, which is not up` }
     if (service.start === undefined || service.check === undefined) return { id: service.id, outcome: "not startable", evidence: status.evidence }
     host.progress(`starting ${service.id}`)
-    await startService(service.start, config, cwd)
-    const probe = await awaitUp(service.check, config, cwd, Date.now() + config.waitSeconds * 1000)
+    const waitSeconds = service.waitSeconds ?? config.waitSeconds
+    await startService(service.start, waitSeconds, cwd)
+    const probe = await awaitState(service.check, true, { config, cwd }, Date.now() + waitSeconds * 1000)
     return { id: service.id, outcome: probe.up ? "started" : "still down", evidence: probe.evidence }
+}
+
+/** What `host down` did for one service. */
+export interface DownOutcome {
+    readonly id: string
+    readonly outcome: "already down" | "stopped" | "still up" | "not stoppable" | "other platform"
+    readonly evidence: string
+}
+
+/** The services named and every service that requires them (transitively), ordered so that each comes before what it requires: dependents stop first. */
+export const inStopOrder = (config: HostConfig, services: readonly HostService[]): HostService[] => {
+    const closure = new Set(services.map((service) => service.id))
+    for (let grew = true; grew; ) {
+        grew = false
+        for (const service of config.services) {
+            if (!closure.has(service.id) && service.requires.some((need) => closure.has(need))) {
+                closure.add(service.id)
+                grew = true
+            }
+        }
+    }
+    return inRequiresOrder(config, config.services.filter((service) => closure.has(service.id)))
+        .filter((service) => closure.has(service.id))
+        .reverse()
+}
+
+/**
+ * Stops every service named, and what requires it, that is up, dependents first; one already down is left alone and one with no
+ * `stop` is not stoppable. It stops, never removes: no container, volume or data is deleted.
+ */
+export const hostDown = async (config: HostConfig, services: readonly HostService[], cwd: string, progress: (line: string) => void): Promise<DownOutcome[]> => {
+    const tasks = process.platform === "win32" ? await listScheduledTasks(cwd) : []
+    return inOrder(inStopOrder(config, services), async (service): Promise<DownOutcome> => {
+        if (!appliesTo(service, process.platform)) return { id: service.id, outcome: "other platform", evidence: `runs on ${service.platform}` }
+        const status = await statusOf(service, config, tasks, cwd)
+        if (status.state !== "up") return { id: service.id, outcome: "already down", evidence: status.evidence }
+        if (service.stop === undefined || service.check === undefined) return { id: service.id, outcome: "not stoppable", evidence: "ops/host.yaml declares no stop for it" }
+        progress(`stopping ${service.id}`)
+        const waitSeconds = service.waitSeconds ?? config.waitSeconds
+        const [tool, ...args] = expandArgv(service.stop.argv)
+        if (tool !== undefined) await runTool(tool, args, cwd, { timeoutMs: waitSeconds * 1000, baseEnv: serviceEnv() })
+        const probe = await awaitState(service.check, false, { config, cwd }, Date.now() + waitSeconds * 1000)
+        return { id: service.id, outcome: probe.up ? "still up" : "stopped", evidence: probe.evidence }
+    })
 }
 
 /** What `host install` or `host uninstall` did (or, without --execute, would do) for one service. */

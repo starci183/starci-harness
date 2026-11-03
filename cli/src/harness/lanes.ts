@@ -164,6 +164,10 @@ export interface FlowPlace {
     readonly repo: string
     readonly db: DatabaseSync | undefined
     readonly requires: readonly string[]
+    /** The workflow judged: its own done tasks count as evidence whatever they landed. */
+    readonly workflowId?: string
+    /** The revision the workflow forks from (its header's `base`, HEAD by default): a done task of another workflow counts only when its landed commit is an ancestor of it. */
+    readonly base?: string
 }
 
 /** The role (be, fe) workspace.yaml gives an impl record's repository, if it names it. */
@@ -189,10 +193,22 @@ const fileExists = (repo: string, path: unknown): path is string => typeof path 
 /** The asset slots a ui record declares (`assets`: {slot, file?}). */
 const slotsOf = (record: Record<string, unknown> | undefined): unknown[] => (Array.isArray(record?.assets) ? (record.assets as unknown[]) : [])
 
-/** Whether a done task of a label over the record (or its feature) is in the project's ledger. */
+/**
+ * Whether a task's work is on the tree the workflow is judged on: a task of the workflow itself (its work is on its branch), or a task of
+ * another workflow whose landed commit is an ancestor of the workflow's base. A task that landed nothing, or whose workflow was stopped on
+ * a branch the base does not hold, proves nothing about this tree.
+ */
+export const onThisTree = (place: FlowPlace, row: Record<string, unknown>): boolean => {
+    if (place.workflowId !== undefined && row.workflow_id === place.workflowId) return true
+    const commit = typeof row.settle_commit === "string" && row.settle_commit !== "" ? row.settle_commit : undefined
+    return commit !== undefined && captureGitSync(["merge-base", "--is-ancestor", commit, place.base ?? "HEAD"], place.repo).exitCode === 0
+}
+
+/** Whether a done task of a label over the record (or its feature) is in the project's ledger and its work is on the tree being judged (onThisTree). */
 const greenTask = (place: FlowPlace, ref: WorkRef, label: string, over: LaneStep["over"]): string | undefined => {
     if (place.db === undefined) return undefined
-    for (const row of place.db.prepare("SELECT id, contract_json FROM tasks WHERE status = 'done' AND label = ? ORDER BY created_at DESC").all(label)) {
+    for (const row of place.db.prepare("SELECT id, contract_json, workflow_id, settle_commit FROM tasks WHERE status = 'done' AND label = ? ORDER BY created_at DESC").all(label)) {
+        if (!onThisTree(place, row)) continue
         let contract: Contract
         try {
             contract = parseContract(JSON.parse(String(row.contract_json)))
@@ -548,7 +564,7 @@ export const workflowLanes = (db: DatabaseSync, workflowId: string): readonly st
     if (repo === undefined || !existsSync(repo)) return []
     try {
         const nodes = graphOf(db, workflowId, workflow.graphVersion)
-        const report = evaluateFlow(nodes, { repo, db, requires: workflow.header.requires ?? [] }, loadLanes(loadOps()))
+        const report = evaluateFlow(nodes, { repo, db, requires: workflow.header.requires ?? [], workflowId, base: workflow.header.base }, loadLanes(loadOps()))
         return [...flowLines(report), ...report.problems.map((problem) => `missing: ${problem}`)]
     } catch (error: unknown) {
         return [`lanes unreadable: ${error instanceof Error ? error.message : String(error)}`]

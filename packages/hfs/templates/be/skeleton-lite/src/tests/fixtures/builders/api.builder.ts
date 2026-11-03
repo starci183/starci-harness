@@ -46,6 +46,17 @@ export const buildWiringProof = (): WiringProof => ({
             secretAccessKey: new Secret("fixture-only"),
             defaultExpiresIn: 300,
         },
+        mail: {
+            host: "127.0.0.1",
+            port: 2525,
+            security: "none",
+            from: { name: "Fixture", address: "no-reply@fixture.example" },
+            webOrigin: "https://app.fixture.example",
+            brandName: "Fixture",
+            defaultLanguage: "en",
+            confirmTtlSeconds: 86400,
+            resetTtlSeconds: 3600,
+        },
     },
     overrides: [
         { token: PRIMARY_DATA_SOURCE, value: { manager: {} } },

@@ -133,8 +133,8 @@ rules:
       - {path: packages/hfs/src/hfs-managed-file-drift.spec.mjs, edition: full, codes: [HFS_MANAGED_FILE_DRIFT]}
   - id: R06
     code: "HFS_PLAINTEXT_SECRET"
-    law: "Secrets exist only as `.starcistacks/<env>/secrets/<slug>.enc`."
-    kinds: [check, design]
+    law: "Secrets exist only as `.starcistacks/<env>/secrets/<slug>.enc`; the committed check cache (`.starcistacks/cache/check/secrets/`) holds codes, paths, positions and digests only, and is judged by what it holds."
+    kinds: [check, design, codemod]
     gates: [pre-commit, land, ci]
     failureCodes: ["HFS_PLAINTEXT_SECRET"]
     enforcers:
@@ -143,7 +143,7 @@ rules:
     editions: [lite, full]
     docs: [docs/legacy-managed-rule-coverage.md#r06-plaintext-secrets]
     templateNa: "Encrypted secrets are supplied by the app secret command; plaintext secret files are forbidden and are never scaffolded."
-    proves: [packages/hfs/src/hfs-plaintext-secret.spec.mjs]
+    proves: [packages/hfs/src/hfs-plaintext-secret.spec.mjs, packages/hfs/src/check-cache-secret-records.spec.mjs]
     exemplifiedBy:
       - {path: packages/hfs/src/hfs-plaintext-secret.spec.mjs, editions: [lite, full]}
     witness:
@@ -1216,7 +1216,7 @@ rules:
     code: "FE_I18N_PLACEMENT"
     editions: [lite, full]
     docs: [docs/architecture.md#r59]
-    law: "`next-intl` with `[locale]`; multiple apps share one `fe/packages/<family>-i18n` stack through `createAppI18n`. A single app keeps routing and request configuration in `modules/i18n` and `createNavigation` in the `modules/routes` public entry. The proxy imports routing or a routing-only shared proxy export without evaluating navigation runtime."
+    law: "`next-intl` with `[locale]`; the stack (routing, proxy, navigation, request config, the layout's locale read) is built by `@starci/next-i18n` over the app's `defineI18n` description and by no product source. A single app keeps the description and its request config in `modules/i18n` and builds its navigation with `createI18nNavigation` in the `modules/routes` public entry; apps that share a product share one `fe/packages/<family>-i18n` workspace package that holds the description and composes the package's factories through `createAppI18n`. The proxy is `createProxy` of `@starci/next-i18n/proxy` and never evaluates navigation runtime."
     kinds: [check, codemod, lint]
     gates: [settle, land, ci]
     failureCodes: ["FE_I18N_PLACEMENT", "FE_I18N_NAVIGATION", "FE_I18N_FORMATTER"]
@@ -5083,7 +5083,7 @@ rules:
       - {path: packages/hfs/src/hfs-stacks-deploy.spec.mjs, editions: [lite, full]}
   - id: R295
     code: "BE_MODULE_DEFINITION_MISSING"
-    law: "Every NestJS module of the product has a module definition (owner ruling 2026-10-15, owner:module-definition-everywhere): capability modules, sub-modules, features, transport modules and cli groups alike. For a module `<x>` the folder holds `<x>.module-definition.ts` (`export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE } = new ConfigurableModuleBuilder<XOptions>().setClassMethodName(\"register\").build()`; the representative module of a capability keeps `.setExtras({ isGlobal: false }, ...)`), `<x>.options.ts` (`export type XOptions`, `Record<string, never>` with a one-line doc when it takes nothing yet) and `<x>.module.ts` (`@Module({...}) export class XModule extends ConfigurableModuleClass {}`, no `register` override except the capability representative's). A module appears in an `imports` array or in an app composition group only as `XModule.register({...})`, never as a bare class. The `AppModule` of an app root and the test world are composition roots and are not judged."
+    law: "Every NestJS module of the product has a module definition (owner ruling 2026-10-15, owner:module-definition-everywhere): capability modules, sub-modules, features, transport modules and cli groups alike. For a module `<x>` the folder holds `<x>.module-definition.ts` (`export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE, ASYNC_OPTIONS_TYPE } = defineConfigurableModule<XOptions>()` of `@starci/nest-kit`, which states the exported types so the file is neither an inferred surface (R368) nor a clone of its neighbour (R21); the representative module of a capability calls `defineCapabilityModule<XOptions>()`, which adds the `isGlobal` extra defaulting to `false`; `starci app codemod module-definition` rewrites a definition written with `ConfigurableModuleBuilder`), `<x>.options.ts` (`export type XOptions`, `Record<string, never>` with a one-line doc when it takes nothing yet) and `<x>.module.ts` (`@Module({...}) export class XModule extends ConfigurableModuleClass {}`, no `register` override except the capability representative's). A module appears in an `imports` array or in an app composition group only as `XModule.register({...})`, never as a bare class. The `AppModule` of an app root and the test world are composition roots and are not judged."
     kinds: [lint, codemod]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_MODULE_DEFINITION_MISSING"]
@@ -5697,20 +5697,23 @@ rules:
         ruling: "A model call made straight from code uses LangChain with retrieved context, through the ai-router gateway (owner ruling be-ai-langchain-gateway): the LangChain clients point at the gateway's base URL with its virtual key."
   - id: R328
     code: "BE_AUTH_PASSPORT_OWNER"
-    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth and are imported by no app file; @starci/auth/server is imported only by integrations/passport, its one glue. bcrypt and every Supabase client are owned nowhere."
+    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth (lite) and of @starci/auth-oidc (full, which owns jose for its provider tokens) and are imported by no app file; @starci/auth/server is imported only by integrations/passport and @starci/auth-oidc/server only by integrations/keycloak, each package's one glue. bcrypt and every Supabase client are owned nowhere."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_AUTH_PASSPORT_OWNER"]
     enforcers:
       - {kind: eslint-be, id: infra-import-owner}
-    editions: [lite]
+    editions: [lite, full]
     docs: [contexts/code/be/api-auth.md]
     proves:
       - packages/eslint-canon-be/src/auth-passport.spec.ts
+      - packages/eslint-canon-be/src/auth-oidc-package.spec.ts
     exemplifiedBy:
       - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/passport.tokens.ts, edition: lite}
+      - {path: packages/auth-oidc/src/server/index.ts, edition: full}
     witness:
       - {path: packages/eslint-canon-be/src/auth-passport.spec.ts, edition: lite, codes: [BE_AUTH_PASSPORT_OWNER]}
+      - {path: packages/eslint-canon-be/src/auth-oidc-package.spec.ts, edition: full, codes: [BE_AUTH_PASSPORT_OWNER]}
     cases:
       - id: case-1
         date: "2026-10-29"

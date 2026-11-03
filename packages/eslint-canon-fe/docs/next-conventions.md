@@ -207,9 +207,7 @@ router.push(routes.newWorkspace())
 
 ## `starci-fe/i18n-stack-in-one-module`
 
-The shared i18n package owns a multi-app stack. A single app keeps routing/request config in `modules/i18n` and navigation in the `modules/routes` public entry.
-
-`defineRouting` and `getRequestConfig` remain in the i18n owner. `createNavigation` belongs to a shared `fe.package.i18n` owner or the single app's `fe.modules.routes` owner. A single app's proxy mounts locale middleware using the routing-only public i18n entry. A shared package exposes its routing-only proxy entry as a declared package export. The proxy does not import `next-intl/navigation` or the app's routes/navigation barrel. Named import aliases and namespace imports keep their factory identity.
+The next-intl stack is built by `@starci/next-i18n`, never by a product source. `defineRouting`, `createNavigation`, `getRequestConfig` and `createMiddleware` are called by no file of an app or of a shared package, wherever it sits. An app states its languages with `defineI18n` and builds the proxy, the navigation, the request config and the layout's locale read with `createProxy`, `createI18nNavigation`, `createRequestConfig` and `createReadLocaleSegment`. The proxy does not import `next-intl/navigation` or the app's routes/navigation barrel. Named import aliases and namespace imports keep their factory identity.
 
 **Invalid** (`apps/web/src/modules/i18n/request.ts`, a repository with two apps)
 
@@ -218,15 +216,17 @@ import { getRequestConfig } from "next-intl/server"
 export default getRequestConfig(async () => ({ locale: "vi", messages: {} }))
 ```
 
-**Valid** (`apps/web/src/modules/i18n/index.ts`)
+**Valid** (`apps/web/src/modules/i18n/request.ts`)
 
 ```ts
-import { createAppI18n } from "@acme/i18n"
-export const i18n = createAppI18n({ locales: ["vi"] })
+import { createRequestConfig } from "@starci/next-i18n/request"
+import { i18n } from "./routing"
+
+export default createRequestConfig(i18n, { app: "web", loadMessages: (locale) => import(`./messages/${locale}.json`) })
 ```
 
 **Finding code:** `FE_I18N_PLACEMENT`
 
-**Why:** `<file>` builds a layer of the next-intl stack itself (`defineRouting`, `createNavigation`, `getRequestConfig`, `createMiddleware`). The stack may be written only once per repo.
+**Why:** `<file>` builds a layer of the next-intl stack itself (`defineRouting`, `createNavigation`, `getRequestConfig`, `createMiddleware`). The stack is written once, in `@starci/next-i18n`.
 
-**Fix:** Use the shared i18n factory, or keep routing/request configuration in the single app's i18n module and navigation in its public routes entry. Keep navigation imports out of the proxy.
+**Fix:** Describe the languages with `defineI18n` and call `createProxy`, `createI18nNavigation`, `createRequestConfig` and `createReadLocaleSegment` of `@starci/next-i18n`. Keep navigation imports out of the proxy.

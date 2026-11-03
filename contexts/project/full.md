@@ -20,8 +20,10 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
   ruling `lite-vector-is-pgvector`.
 - The event bus is Kafka with a transactional outbox. Owners: slot `be.platform.event-bus`; ruling
   `be-bounded-contexts`; [code/be/event-bus.md](../code/be/event-bus.md).
-- Identity is the project's own identity provider (Keycloak in the full stack verbs). Owners:
-  [README.md](../../README.md) (verb groups; `starci explain` lists what is built); [code/be/api-auth.md](../code/be/api-auth.md) BE-AUTH-2.
+- Identity is the project's own identity provider (Keycloak in the full stack verbs), reached through the package `@starci/auth-oidc`
+  composed in `integrations/keycloak` behind the `PrincipalVerifier` interface of the lite edition. Owners:
+  [README.md](../../README.md) (verb groups; `starci explain` lists what is built); [code/be/api-auth.md](../code/be/api-auth.md) BE-AUTH-2;
+  slot `be.integrations.keycloak` in [hfs/slots.yaml](../hfs/slots.yaml); ruling `auth-oidc-package`.
 
 ## Patterns
 

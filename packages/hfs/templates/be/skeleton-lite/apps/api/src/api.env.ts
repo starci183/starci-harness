@@ -4,6 +4,7 @@ import { parsePrimaryDatabaseConfig } from "@modules/platform/database"
 import { parseHttpConfig } from "@modules/platform/http"
 import { parseHttpSecurityConfig } from "@modules/platform/http-security"
 import { parsePassportConfig } from "@modules/integrations/passport"
+import { parseMailConfig } from "@modules/integrations/mail"
 import { parseObjectStorageConfig } from "@modules/integrations/object-storage"
 
 /** The API environment values required before composition. */
@@ -20,6 +21,8 @@ export interface ApiEnv {
     readonly passport: ReturnType<typeof parsePassportConfig>
     /** S3-compatible object storage. */
     readonly objectStorage: ReturnType<typeof parseObjectStorageConfig>
+    /** Outgoing mail: the SMTP server and the app's own mail settings. */
+    readonly mail: ReturnType<typeof parseMailConfig>
 }
 
 /** Reads the API environment; missing or invalid values fail boot, and secrets use `_FILE` first. */
@@ -30,4 +33,5 @@ export const readApiEnv = (env: EnvSource): ApiEnv => ({
     database: parsePrimaryDatabaseConfig(env),
     passport: parsePassportConfig(env),
     objectStorage: parseObjectStorageConfig(env),
+    mail: parseMailConfig(env),
 })

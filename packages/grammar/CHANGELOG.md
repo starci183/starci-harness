@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.15 - 2026-11-03
+
+- Changed: version stamp only, with the Grammar lint family (the canon runtime copies moved).
+
 ## 0.21.14 - 2026-11-03
 
 - Changed: version stamp only, with the Grammar lint family (the canon runtime copies moved).

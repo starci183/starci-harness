@@ -8,6 +8,7 @@ import { createContentIndex } from './content-index.mjs';
 import { computeFingerprint, fingerprintDifferences, parseFingerprint, serializeFingerprint, type Fingerprint } from './fingerprint.mjs';
 import { hashFile } from './hash.mjs';
 import { groupByArea, parseRecords, serializeRecords } from './jsonl.mjs';
+import { SECRETS_FOLDER, safeSecretRecords } from './secret-records.mjs';
 import { readCacheDir, resolveTrust, verifyCommitted, type CacheVerdict, type TrustSource } from './trust.mjs';
 import { CACHE_DIR, type CacheRecord, type CheckSession, type ContentIndex, type FamilyDecision, type FamilyId, type FamilyReport, type FlushResult, type ProgressSink } from './types.mjs';
 
@@ -129,10 +130,11 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
       return global() ?? { mode: 'diff', reason: `against ${trust.reason}` };
     },
     records(folder: string): readonly CacheRecord[] {
-      return replaced.get(folder)?.records ?? trustedRecords(folder);
+      return replaced.get(folder)?.records ?? (folder === SECRETS_FOLDER ? safeSecretRecords(trustedRecords(folder)) : trustedRecords(folder));
     },
     replace(folder, records, replaceOptions): void {
-      replaced.set(folder, { records, depth: replaceOptions?.depth ?? 2 });
+      // The secrets family never stores secret material, whoever produced the records (secret-records.mts).
+      replaced.set(folder, { records: folder === SECRETS_FOLDER ? safeSecretRecords(records) : records, depth: replaceOptions?.depth ?? 2 });
     },
     unchanged: (paths, captured) => paths.every((file) => {
       const now = hashFile(path.join(root, file));

@@ -5,7 +5,9 @@
       "brand": "{{project}}"
     },
     "home": {
-      "title": "Trang chủ"
+      "title": "Trang chủ",
+      "signup": "Tạo tài khoản",
+      "forgot": "Quên mật khẩu?"
     },
     "signIn": {
       "title": "Đăng nhập",
@@ -52,6 +54,53 @@
       "title": "Bắt đầu",
       "description": "Đăng nhập để sử dụng ứng dụng. Bạn có thể đóng hướng dẫn này và mở lại bất cứ lúc nào.",
       "close": "Đóng"
+    },
+    "emailAuth": {
+      "email": "Email",
+      "password": "Mật khẩu",
+      "newPassword": "Mật khẩu mới",
+      "toSignIn": "Quay lại đăng nhập",
+      "toResend": "Gửi lại thư xác nhận",
+      "toForgot": "Yêu cầu liên kết đặt lại mới",
+      "toSignup": "Tạo tài khoản",
+      "toForgotPassword": "Quên mật khẩu?",
+      "signup": {
+        "title": "Tạo tài khoản",
+        "description": "Chọn mật khẩu ít nhất 8 ký tự. Chúng tôi gửi email một liên kết để xác nhận địa chỉ của bạn.",
+        "submit": "Tạo tài khoản",
+        "done": "Hãy kiểm tra hộp thư: chúng tôi đã gửi liên kết xác nhận email."
+      },
+      "resend": {
+        "title": "Xác nhận email lại",
+        "description": "Nhập địa chỉ của bạn, chúng tôi gửi liên kết xác nhận mới nếu tài khoản đang chờ xác nhận.",
+        "submit": "Gửi liên kết",
+        "done": "Nếu địa chỉ đó đang chờ xác nhận, một liên kết mới đang được gửi."
+      },
+      "forgot": {
+        "title": "Quên mật khẩu",
+        "description": "Nhập địa chỉ của bạn, chúng tôi gửi email một liên kết để chọn mật khẩu mới.",
+        "submit": "Gửi liên kết",
+        "done": "Nếu địa chỉ đó có tài khoản, một liên kết đặt lại đang được gửi."
+      },
+      "reset": {
+        "title": "Chọn mật khẩu mới",
+        "description": "Liên kết chỉ dùng được một lần. Mọi thiết bị sẽ bị đăng xuất khi đổi mật khẩu.",
+        "submit": "Lưu mật khẩu",
+        "done": "Mật khẩu đã được đổi. Hãy đăng nhập bằng mật khẩu mới."
+      },
+      "confirm": {
+        "title": "Xác nhận email",
+        "description": "Nhấn nút để xác nhận địa chỉ email của bạn.",
+        "submit": "Xác nhận email",
+        "done": "Email đã được xác nhận. Bạn có thể đăng nhập."
+      },
+      "errors": {
+        "invalid": "Hãy nhập giá trị hợp lệ ở mọi ô.",
+        "password": "Mật khẩu cần ít nhất 8 ký tự và tối đa 72 byte.",
+        "link": "Liên kết không hợp lệ hoặc đã hết hạn. Hãy yêu cầu liên kết mới.",
+        "tooMany": "Quá nhiều lần thử. Hãy thử lại sau.",
+        "unavailable": "Chưa thể thực hiện. Hãy thử lại sau."
+      }
     }
   }
 }

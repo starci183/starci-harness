@@ -126,7 +126,7 @@ export const ensureWorkflowWorktree = async (root: string, workflowId: string): 
     const { workflow, known } = withRecord(root, (db) => ({ workflow: getWorkflow(db, workflowId), known: workflowWorktreeOf(db, workflowId) }))
     if (known !== undefined && existsSync(known)) return known
     const given = workflow.header.worktree
-    const { path, branch, created } = given === undefined ? await harnessWorktree(root, workflowId) : namedWorktree(root, workflowId, given)
+    const { path, branch, created } = given === undefined ? await harnessWorktree(root, workflowId, workflow.header.base) : namedWorktree(root, workflowId, given)
     withRecord(root, (db) => {
         db.prepare("UPDATE workflows SET worktree = ? WHERE id = ?").run(path, workflowId)
         recordEvent(db, "workflow-worktree", workflowId, { path, branch, created })
@@ -153,14 +153,17 @@ const namedWorktree = (root: string, workflowId: string, given: string): Worktre
 
 /**
  * The harness's own worktree of a workflow or a Supervisor's `[Worker]`, `<project state>/worktrees/<name>` on branch
- * `starci/<name>`, added from HEAD when missing.
+ * `starci/<name>`, added from `base` (a branch, tag or commit; HEAD of the main checkout by default) when missing. A workflow's `base` is its
+ * fork point, so nobody pre-creates the branch by hand; a base that is no commit is refused (WORKFLOW_BASE_MISSING) before anything is made.
  */
-export const harnessWorktree = async (root: string, name: string): Promise<WorktreeMade> => {
+export const harnessWorktree = async (root: string, name: string, base = "HEAD"): Promise<WorktreeMade> => {
     const path = join(projectDir(root), "worktrees", name)
     const branch = `starci/${name}`
     if (existsSync(path)) return { path, branch, created: false }
+    const exists = await refExists(root, `refs/heads/${branch}`)
+    if (!exists && !(await refExists(root, `${base}^{commit}`))) throw new Refusal("WORKFLOW_BASE_MISSING", `${name} forks from base ${base}, which names no commit of ${root}; create or fetch it, or change the workflow's base`)
     mkdirSync(dirname(path), { recursive: true })
-    const args = (await refExists(root, `refs/heads/${branch}`)) ? ["worktree", "add", path, branch] : ["worktree", "add", "-b", branch, path, "HEAD"]
+    const args = exists ? ["worktree", "add", path, branch] : ["worktree", "add", "-b", branch, path, base]
     await git(root, args)
     await materialiseHooks(root, path)
     return { path, branch, created: true }

@@ -21,7 +21,7 @@ import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 const REPOSITORY = path.resolve(import.meta.dirname, '..', '..', '..');
 const AUTH_SQL = path.join(REPOSITORY, 'packages', 'auth', 'migrations', 'identity-sessions.sql');
 const DOORS_SQL = path.join(REPOSITORY, 'packages', 'hfs', 'templates', 'app', 'auth-doors.sql.partial');
-const ACCOUNT_DOORS = ['be_auth_user_by_email', 'be_auth_user_by_id', 'be_auth_user_by_google', 'be_auth_create_user', 'be_auth_link_google', 'be_auth_touch_user'];
+const ACCOUNT_DOORS = ['be_auth_user_by_email', 'be_auth_user_by_id', 'be_auth_user_by_google', 'be_auth_create_user', 'be_auth_link_google', 'be_auth_touch_user', 'be_auth_confirm_user', 'be_auth_set_password'];
 const IDENTITY_LIBRARIES = ['@nestjs/passport', 'passport', 'passport-google-oauth20', 'passport-local', '@nestjs/jwt', 'jose', 'bcryptjs'];
 
 const lockedOk = (root: string): LockResult => {
@@ -61,7 +61,7 @@ test('the baseline migration of a lite starter holds the package\'s session tabl
   }
 });
 
-test('the six account doors are the canon\'s listed database functions, so an app lists none of them in hfs.json', () => {
+test('the eight account doors are the canon\'s listed database functions, so an app lists none of them in hfs.json', () => {
   const listed = Object.fromEntries((loadSlotManifest().ruleParams.be?.dbFunctions ?? []).map((entry) => [entry.name, entry.reason]));
   for (const door of ACCOUNT_DOORS) assert.match(String(listed[`public.${door}`]), /^domain\/identity \(lite sign-in\)/u, door);
 });
@@ -79,9 +79,10 @@ test('a lite starter\'s passport integration is the glue the slot lists and its 
     assert.ok(allowed.some((entry) => entry === file || (entry.endsWith('/') && file.startsWith(entry))), `${file} is admitted by the slot`);
   }
   const auth = path.join(root, 'fe', 'apps', 'web', 'src', 'modules', 'auth');
-  assert.deepEqual(fs.readdirSync(auth).sort(), ['client.ts', 'contracts.ts', 'index.ts']);
+  assert.deepEqual(fs.readdirSync(auth).sort(), ['client.ts', 'contracts.ts', 'email-doors.ts', 'index.ts']);
   assert.ok(fs.readFileSync(path.join(auth, 'client.ts'), 'utf8').startsWith('// Managed by starci app sync (slot fe.modules.auth.client)'));
   assert.match(fs.readFileSync(path.join(auth, 'client.ts'), 'utf8'), /from "@starci\/auth\/client"/u);
+  assert.ok(fs.readFileSync(path.join(auth, 'email-doors.ts'), 'utf8').startsWith('// Managed by starci app sync (slot fe.modules.auth.client)'));
 });
 
 test('the identity libraries are owned by no app file and @starci/auth by integrations/passport alone', () => {

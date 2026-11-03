@@ -17,6 +17,10 @@ export enum IdentityErrorCode {
     PairRefused = "IDENTITY_INVALID_CREDENTIALS",
     /** The mailbox was never confirmed. */
     EmailNotConfirmed = "IDENTITY_EMAIL_NOT_CONFIRMED",
+    /** The new password does not fit the policy (at least 8 characters, at most 72 bytes). */
+    PasswordInvalid = "IDENTITY_PASSWORD_INVALID",
+    /** The confirmation or reset link is unknown, expired or already spent. */
+    ResetTokenInvalid = "IDENTITY_RESET_TOKEN_INVALID",
 }
 
 /** How each identity code travels. */
@@ -28,6 +32,8 @@ export const IDENTITY_ERROR_KINDS: Record<IdentityErrorCode, ErrorKind> = {
     [IdentityErrorCode.TooManyAttempts]: "rate-limited",
     [IdentityErrorCode.PairRefused]: "unauthenticated",
     [IdentityErrorCode.EmailNotConfirmed]: "forbidden",
+    [IdentityErrorCode.PasswordInvalid]: "invalid",
+    [IdentityErrorCode.ResetTokenInvalid]: "invalid",
 }
 
 /** The one error class of the identity capability. */

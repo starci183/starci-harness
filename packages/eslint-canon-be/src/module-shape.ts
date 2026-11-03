@@ -13,10 +13,12 @@
  *     import its own modules (a transport module its feature's application module, a representative its sub-modules);
  *     the app composes every owner.
  *   - `capability-module-shape` holds the definition of every module (owner ruling module-definition-everywhere): the representative
- *     `<c>.module-definition.ts` of a capability is a typed `ConfigurableModuleBuilder` with `.setExtras({ isGlobal: false }, ...)`
- *     and `.build()`; every other module's definition (a sub-module, a feature, a transport, a cli group) is
- *     `.setClassMethodName("register").build()` with no extras; only a representative may override
- *     `static register(options: typeof OPTIONS_TYPE): DynamicModule`.
+ *     `<c>.module-definition.ts` of a capability is `defineCapabilityModule<XOptions>()` of `@starci/nest-kit` (or a typed
+ *     `ConfigurableModuleBuilder` with `.setExtras({ isGlobal: false }, ...)` and `.build()`); every other module's definition (a
+ *     sub-module, a feature, a transport, a cli group) is `defineConfigurableModule<XOptions>()` (or
+ *     `.setClassMethodName("register").build()` with no extras); only a representative may override
+ *     `static register(options: typeof OPTIONS_TYPE): DynamicModule`. The helper states its result type, so the definition is one call that
+ *     R368 and R21 both accept.
  *   - `module-definition-required` holds that every module has one: a `<x>.module.ts` of a feature, capability or projection has a
  *     sibling `<x>.module-definition.ts` and `<x>.options.ts`, its class extends the `ConfigurableModuleClass` of that definition,
  *     and a module of the product appears in an `imports` array only as `X.register(...)`, never as a bare class
@@ -379,6 +381,19 @@ const chainFaults = (calls: ReadonlyArray<ChainCall>, representative: boolean): 
     return missing
 }
 
+/** The package whose helpers define a module in one call. */
+const NEST_KIT = "@starci/nest-kit"
+
+/** The reasons a call of a `@starci/nest-kit` function is not the module definition of its kind (an empty list when it is). */
+const helperFaults = (imported: string | undefined, wanted: string, call: TSESTree.CallExpression): string[] => {
+    if (imported !== "defineConfigurableModule" && imported !== "defineCapabilityModule") return [`\`${imported ?? "this call"}\` is not a module definition helper`]
+    const missing: string[] = []
+    if (imported !== wanted) missing.push(wanted === "defineCapabilityModule" ? "the representative module of a capability defines itself with `defineCapabilityModule`, which adds the `isGlobal` extra defaulting to false" : "a sub-module, feature, transport or cli group is never global, so it defines itself with `defineConfigurableModule`")
+    const typeArguments: unknown = call.typeArguments ?? Reflect.get(call, "typeParameters")
+    if (!(isNode(typeArguments) && typeArguments.type === "TSTypeParameterInstantiation" && typeArguments.params.length > 0)) missing.push("the call does not state its options type (`<XOptions>`)")
+    return missing
+}
+
 /** The module scope of a file: its kind, tier and name when it is a `<x>.module.ts` or `<x>.module-definition.ts` of a product tier, else null. */
 const moduleFileOf = (hfs: HfsView, filename: string): { kind: "module" | "definition"; tier: string | null; name: string; representative: boolean } | null => {
     const base = filename.split("/").at(-1) ?? ""
@@ -416,19 +431,27 @@ export const capabilityModuleShape: RuleModule = {
         const scope = moduleFileOf(hfsOf(context), filename)
         if (!scope) return {}
         if (scope.kind === "definition") {
+            const helper = scope.representative ? "defineCapabilityModule" : "defineConfigurableModule"
             const shape = scope.representative
-                ? "`new ConfigurableModuleBuilder<XOptions>().setExtras({ isGlobal: false }, (d, e) => ({ ...d, global: e.isGlobal })).build()`"
-                : '`new ConfigurableModuleBuilder<XOptions>().setClassMethodName("register").build()`'
+                ? "`defineCapabilityModule<XOptions>()` of `@starci/nest-kit` (or `new ConfigurableModuleBuilder<XOptions>().setExtras({ isGlobal: false }, (d, e) => ({ ...d, global: e.isGlobal })).build()`)"
+                : '`defineConfigurableModule<XOptions>()` of `@starci/nest-kit` (or `new ConfigurableModuleBuilder<XOptions>().setClassMethodName("register").build()`)'
             return {
                 Program(program) {
                     let found = false
+                    const kit = importsFrom(program, (source) => source === NEST_KIT)
                     walk(program, (node) => {
+                        if (node.type === "CallExpression" && node.callee.type === "Identifier" && kit.has(node.callee.name)) {
+                            found = true
+                            const missing = helperFaults(kit.get(node.callee.name), helper, node)
+                            if (missing.length > 0) context.report({ node, messageId: "chain", data: { shape, missing: missing.join("; ") } })
+                            return
+                        }
                         if (node.type !== "NewExpression" || node.callee.type !== "Identifier" || node.callee.name !== "ConfigurableModuleBuilder") return
                         found = true
                         const missing = chainFaults(builderChain(node), scope.representative)
                         if (missing.length > 0) context.report({ node, messageId: "chain", data: { shape, missing: missing.join("; ") } })
                     })
-                    if (!found) context.report({ node: program, loc: { line: 1, column: 0 }, messageId: "chain", data: { shape, missing: "no `new ConfigurableModuleBuilder<XOptions>()` is built here" } })
+                    if (!found) context.report({ node: program, loc: { line: 1, column: 0 }, messageId: "chain", data: { shape, missing: `no \`${helper}<XOptions>()\` is called here` } })
                 },
             }
         }

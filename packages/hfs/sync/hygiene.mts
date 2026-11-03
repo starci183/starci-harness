@@ -40,6 +40,8 @@ const PLAINTEXT_NAME = /(^|\/)(\.env(\..*)?|[^/]*\.(pem|key|identity|age))$/;
 /** The app root's work tree and stack tree, app-relative (`starci app check --staged` runs at the app root). */
 const WORK = '.starciwork/';
 const STACKS = '.starcistacks/';
+/** The committed check cache: written by the CLI, judged by what its files hold (secret-records.mjs through the secret judgement), never by a `secrets/` folder in its path. */
+const CACHE = '.starcistacks/cache/';
 const GUARDED = (file: string): boolean => file.startsWith(WORK) || file.startsWith(STACKS);
 
 /** The subset of `files` git ignores (as if untracked), asked in one call: a Set of paths. */
@@ -61,7 +63,7 @@ export function hygieneFindings(files: readonly string[], ignored: ReadonlySet<s
     if (file.startsWith(WORK) && ignored.has(file)) {
       findings.push({ file, code: 'HFS_WORK_AGENT_DATA', message: 'is agent output, which .starciwork/.gitignore refuses; keep it in the scratchpad or the blob store' });
     }
-    if (file.startsWith(STACKS) && !/\.enc(?:\.yaml)?$/.test(file) && !file.endsWith('.env.example') && !file.endsWith('/secrets/.gitkeep')) {
+    if (file.startsWith(STACKS) && !file.startsWith(CACHE) && !/\.enc(?:\.yaml)?$/.test(file) && !file.endsWith('.env.example') && !file.endsWith('/secrets/.gitkeep')) {
       if (file.includes('/secrets/')) findings.push({ file, code: 'HFS_PLAINTEXT_SECRET', message: 'sits under secrets/ but is not sealed; only <slug>.enc may be tracked' });
       else if (PLAINTEXT_NAME.test(file)) findings.push({ file, code: 'HFS_PLAINTEXT_SECRET', message: 'is a plaintext secret; seal it to .starcistacks/<env>/secrets/<slug>.enc' });
     }

@@ -476,7 +476,9 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     typecheck: `${modulesFirst}npm run codegen --silent && tsc -p be/tsconfig.json && turbo run typecheck`,
     // The typed lint reads the types the fe packages declare (their dist), so the packages are built first.
     lintPrefix: `${modulesFirst}${packages ? 'npm run codegen --silent && turbo run build --filter=./fe/packages/* && ' : 'npm run codegen --silent && '}`,
-    moduleTests: modules.length ? ' && npm run test:modules' : '',
+    // The unit run, the back-end build and every CI job that imports a module package find it built (build:modules precedes them); the logic of a package is held at 100 per file by its own jest run, a step of the fast job.
+    modulesFirst,
+    moduleTestStep: modules.length ? '      - name: module packages\n        run: npm run test:modules\n' : '',
     nodeMajor: String(NODE_MAJOR),
     // The deploy server's age identity the restore workflow writes (stack/server-key.mjs owns the path).
     serverAgeIdentity: SERVER_AGE_IDENTITY,

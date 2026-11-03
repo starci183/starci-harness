@@ -83,6 +83,14 @@ export const accountDoors = {
     async linkGoogle(manager: EntityManager, userId: string, subject: string, data: string, now: Date): Promise<void> {
         await callDbFunction(manager, "public.be_auth_link_google", [userId, subject, data, now])
     },
+    /** Stamps the confirmation of a mailbox (a spent confirmation link) without recording a sign-in. */
+    async confirmUser(manager: EntityManager, userId: string, now: Date): Promise<void> {
+        await callDbFunction(manager, "public.be_auth_confirm_user", [userId, now])
+    },
+    /** Sets the password hash of an account; `confirm` also confirms the mailbox, as a spent reset link proves it. */
+    async setPassword(manager: EntityManager, userId: string, hash: string, confirm: boolean, now: Date): Promise<void> {
+        await callDbFunction(manager, "public.be_auth_set_password", [userId, hash, confirm, now])
+    },
     /** Records a sign-in, confirms the mailbox when asked, and fills the profile keys the person has not set. */
     async touchUser(manager: EntityManager, userId: string, now: Date, confirm: boolean, meta: string): Promise<void> {
         await callDbFunction(manager, "public.be_auth_touch_user", [userId, now, confirm, meta])

@@ -17,14 +17,31 @@ export interface AccountDoorsReport {
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /** The owner of the account doors: the partial the lite baseline includes, byte for byte. */
 const DOORS_PARTIAL = path.join(PACKAGE_ROOT, 'templates', 'app', 'auth-doors.sql.partial');
-/** A migration defines the by-address door once this text is in it. */
-const DOOR_MARKER = /create\s+(?:or\s+replace\s+)?function\s+public\.be_auth_user_by_email\b/iu;
+/** One door of the partial: its name, its argument types, its function text and its REVOKE and GRANT lines. */
+interface Door { name: string; types: string; block: string; grants: string }
 /** A grant to anyone on schema auth or on a table in it. */
 const AUTH_GRANT = /\bgrant\b[^;]*?\bon\b\s+(?:schema\s+auth\b|(?:table\s+)?auth\.)/iu;
 const EXPAND_NAME = 'account-doors';
 const CONTRACT_NAME = 'contract_revoke-auth-grants';
 const SOURCE = /\.[cm]?tsx?$/iu;
 const ENTITY_FILES = ['auth-user.entity.ts', 'auth-identity.entity.ts'];
+
+/** The argument types of a signature, the `p_` parameter names dropped and case and spacing folded: a door is known by its name and types alone. */
+const typesOf = (args: string): string => args.split(',').map((arg) => arg.trim().replace(/^p_\w+\s+/u, '').replace(/\s+/gu, ' ').toLowerCase()).join(', ');
+
+/** The partial split into its head (the comment and the index) and its doors, in the partial's order. */
+function partialParts(text: string): { head: string; doors: Door[] } {
+  const lines = text.split('\n');
+  const doors = [...text.matchAll(/^(?:-- [^\n]*\n)?CREATE FUNCTION public\.(\w+)\(([^)]*)\)[\s\S]*?\$\$;\n/gmu)].map((match): Door => {
+    const own = lines.filter((line) => /^(?:REVOKE|GRANT) EXECUTE ON FUNCTION public\.(\w+)\(/u.exec(line)?.[1] === match[1] && typesOf(/\(([^)]*)\)/u.exec(line)![1]!) === typesOf(match[2]!));
+    return { name: match[1]!, types: typesOf(match[2]!), block: match[0], grants: `${own.join('\n')}\n` };
+  });
+  return { head: text.slice(0, text.indexOf(doors[0]!.block)), doors };
+}
+
+/** The doors a text defines, as name(types) keys. */
+const definedDoors = (statements: string): string[] =>
+  [...statements.matchAll(/create\s+(?:or\s+replace\s+)?function\s+public\.(\w+)\s*\(([^)]*)\)/giu)].map((match) => `${match[1]!.toLowerCase()}(${typesOf(match[2]!)})`);
 
 const migrationsOf = (root: string): string[] => {
   const dir = path.join(root, MIGRATIONS_DIR);
@@ -64,7 +81,7 @@ function contractText(role: string): string {
 
 /**
  * Upgrade of a lite app that signs in over direct grants on auth.users and auth.identities to the account doors. The expand step (default)
- * writes the migration that creates the six doors, with the text the lite baseline includes; the app then runs `starci app sync --execute`
+ * writes the migration that creates the doors the app lacks, with the text the lite baseline includes; the app then runs `starci app sync --execute`
  * (the sign-in glue switches to the doors and the two entity files go). The contract step (`contract`) writes the migration that revokes the three
  * grants, once the doors exist and no be source maps the auth tables; R255 reports the grants until that migration is in the chain. Nothing is written while a case is left for a person, and a step that is already
  * done changes nothing.
@@ -78,18 +95,22 @@ export function migrateAccountDoors({ root, write = false, contract = false, now
     return report;
   }
   const names = migrationsOf(root);
-  const hasDoors = names.some((name) => DOOR_MARKER.test(statementsOf(root, name)));
+  const parts = partialParts(fs.readFileSync(DOORS_PARTIAL, 'utf8'));
+  const defined = new Set(names.flatMap((name) => definedDoors(statementsOf(root, name))));
+  const missing = parts.doors.filter((door) => !defined.has(`${door.name}(${door.types})`));
   const stamp = nextStamp(names, now());
   if (!contract) {
-    if (hasDoors) return report;
+    if (!missing.length) return report;
     const file = `${MIGRATIONS_DIR}/${stamp}_${EXPAND_NAME}.sql`;
-    report.changes.push({ file, phase, why: 'creates the six account doors (SECURITY DEFINER, pinned search_path, EXECUTE for the application role alone) and the lower(email) index the by-address door reads' });
+    const kept = missing.length === parts.doors.length ? 'all' : missing.map((door) => door.name).join(', ');
+    report.changes.push({ file, phase, why: `creates the account doors the app lacks (${kept}; SECURITY DEFINER, pinned search_path, EXECUTE for the application role alone) and the lower(email) index the by-address door reads` });
     report.next.push('run `npx starci app sync --execute` (the sign-in glue moves onto the doors and the retired entity files are deleted), then verify and release both together',
       'then run `npx starci app codemod account-doors --contract --execute` to revoke the old grants (R255 reports them until that migration is in the chain) and release the three together');
-    if (write) fs.writeFileSync(path.join(root, file), fs.readFileSync(DOORS_PARTIAL, 'utf8'), { flag: 'wx' });
+    const text = `${parts.head}${missing.map((door) => door.block).join('\n')}\n${missing.map((door) => door.grants).join('')}`;
+    if (write) fs.writeFileSync(path.join(root, file), text, { flag: 'wx' });
     return report;
   }
-  if (!hasDoors) report.findings.push({ file: MIGRATIONS_DIR, reason: 'no migration defines public.be_auth_user_by_email: run the expand step first and release it' });
+  if (missing.length) report.findings.push({ file: MIGRATIONS_DIR, reason: `no migration defines the account doors ${missing.map((door) => door.name).join(', ')}: run the expand step first` });
   for (const file of accountTableReferences(root)) {
     report.findings.push({ file, reason: 'still maps or names the auth tables; run `npx starci app sync --execute` so the sign-in glue uses the doors, and release that before the contract migration' });
   }

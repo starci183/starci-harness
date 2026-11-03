@@ -54,15 +54,38 @@ const settledOnRegistry = async (pkg: WorkspacePackage, root: string, deadline: 
     return settledOnRegistry(pkg, root, deadline)
 }
 
-const publishRow = async (row: PlanRow, packages: readonly WorkspacePackage[], root: string): Promise<string | undefined> => {
-    const pkg = packages.find((candidate) => candidate.name === row.package)
-    if (pkg === undefined) return undefined
+/** Runs `npm publish` for one row; the failure line when npm refuses it. Reading it back is the batch's (settleBatch). */
+const publishRow = async (pkg: WorkspacePackage, row: PlanRow): Promise<string | undefined> => {
     // Provenance needs a CI identity (GitHub Actions OIDC): CI's publish job signs every tarball, Debug's fallback from a workstation goes without it.
     const provenance = process.env.GITHUB_ACTIONS === "true" ? ["--provenance"] : ["--provenance=false"]
     const run = await captureNpm(["publish", "--tag", row.distTag, ...provenance, ...NPMJS_FLAGS], pkg.dir)
-    if (run.exitCode !== 0) throw new Refusal("PUBLISH_FAILED", `npm publish of ${row.package}@${row.version} failed: ${(run.stderr || run.stdout).split("\n").slice(-3).join(" ")}`)
-    if (!(await settledOnRegistry(pkg, root, Date.now() + REGISTRY_SETTLE_MS))) throw new Refusal("PUBLISH_NOT_CONFIRMED", `${row.package}@${row.version} is not readable on the registry ${String(REGISTRY_SETTLE_MS / 1000)} s after publishing`)
-    return `${row.package}@${row.version}`
+    return run.exitCode === 0 ? undefined : `${row.package}@${row.version}: ${(run.stderr || run.stdout).split("\n").slice(-3).join(" ")}`
+}
+
+interface BatchOutcome {
+    readonly published: readonly string[]
+    readonly failed: readonly string[]
+    readonly unconfirmed: readonly string[]
+}
+
+/**
+ * Publishes a batch, then reads it back. Each row gets its own `npm publish` in order (a dependency before its dependent;
+ * npm does not need the dependency readable to accept the dependent), and one refusal holds back only that row. Then every
+ * published row is polled at once against one shared deadline, so the registry's delay is paid once per batch, not once per package.
+ */
+const settleBatch = async (rows: readonly PlanRow[], packages: readonly WorkspacePackage[], root: string): Promise<BatchOutcome> => {
+    const failed: string[] = []
+    const sent: { readonly row: PlanRow; readonly pkg: WorkspacePackage }[] = []
+    await inOrder(rows, async (row) => {
+        const pkg = packages.find((candidate) => candidate.name === row.package)
+        if (pkg === undefined) return
+        const refusal = await publishRow(pkg, row)
+        if (refusal === undefined) sent.push({ row, pkg })
+        else failed.push(refusal)
+    })
+    const deadline = Date.now() + REGISTRY_SETTLE_MS
+    const read = await Promise.all(sent.map(async ({ row, pkg }) => ({ name: `${row.package}@${row.version}`, served: await settledOnRegistry(pkg, root, deadline) })))
+    return { published: read.filter((item) => item.served).map((item) => item.name), failed, unconfirmed: read.filter((item) => !item.served).map((item) => item.name) }
 }
 
 /**
@@ -72,14 +95,23 @@ const publishRow = async (row: PlanRow, packages: readonly WorkspacePackage[], r
  */
 const HELD_DIR = "cli"
 
-/** Publishes the due rows one after the other (npm publishes stay ordered), the held CLI only at its pins; stops at the first refusal. */
+/**
+ * Publishes the due rows: the siblings as one batch, then the held CLI at its pins once npm serves them (its lockfile installs
+ * from npm). Every row gets its attempt; the refusal afterwards names each one npm refused or never served, and a rerun
+ * publishes what is left.
+ */
 const publishDue = async (due: readonly PlanRow[], packages: readonly WorkspacePackage[], root: string, published: string[]): Promise<void> => {
-    await due.reduce(async (previous, row) => {
-        await previous
-        if (row.dir === HELD_DIR) assertCliPins(root)
-        const done = await publishRow(row, packages, root)
-        if (done !== undefined) published.push(done)
-    }, Promise.resolve())
+    const siblings = await settleBatch(due.filter((row) => row.dir !== HELD_DIR), packages, root)
+    published.push(...siblings.published)
+    const held = due.filter((row) => row.dir === HELD_DIR)
+    const blocked = siblings.failed.length > 0 || siblings.unconfirmed.length > 0
+    if (held.length > 0 && !blocked) assertCliPins(root)
+    const cli = held.length > 0 && !blocked ? await settleBatch(held, packages, root) : { published: [], failed: [], unconfirmed: [] }
+    published.push(...cli.published)
+    const failed = [...siblings.failed, ...cli.failed]
+    const unconfirmed = [...siblings.unconfirmed, ...cli.unconfirmed]
+    if (failed.length > 0) throw new Refusal("PUBLISH_FAILED", `npm publish failed: ${failed.join("; ")}${held.length > 0 && blocked ? "; the CLI waits for its siblings" : ""}`)
+    if (unconfirmed.length > 0) throw new Refusal("PUBLISH_NOT_CONFIRMED", `not readable on the registry ${String(REGISTRY_SETTLE_MS / 1000)} s after publishing: ${unconfirmed.join(", ")}`)
 }
 
 /** The due rows in publication order: a row after every due sibling it requires, so a dependency reaches npm before its dependent, and the held CLI last. */
@@ -209,15 +241,17 @@ export const releasePublishVerb = defineVerb({
     schema: "starci/release-publish@1",
     flags: {
         execute: { kind: "boolean", summary: "perform the plan (default: a dry run that prints it only)" },
-        package: { kind: "string", summary: "only this package (its folder or name)" },
+        package: { kind: "list", summary: "only these packages (a folder or name; repeat for several, published as one batch)" },
         base: { kind: "string", summary: "refuse RELEASE_VERSION_NOT_BUMPED for a package changed since this commit (empty: any package) whose version is on npm" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
         if (flags.execute) assertMayPushBranch(await currentBranch(root))
         const all = listPackages(root)
-        const packages = all.filter((pkg) => flags.package === undefined || pkg.relativeDir === flags.package || pkg.name === flags.package)
-        if (packages.length === 0) throw new Refusal("RELEASE_PACKAGE_UNKNOWN", `no package matches ${flags.package ?? "this repository"}`)
+        const named = flags.package
+        const packages = all.filter((pkg) => named.length === 0 || named.includes(pkg.relativeDir) || named.includes(pkg.name))
+        const unknown = named.filter((name) => !all.some((pkg) => pkg.relativeDir === name || pkg.name === name))
+        if (unknown.length > 0 || packages.length === 0) throw new Refusal("RELEASE_PACKAGE_UNKNOWN", `no package matches ${unknown.length > 0 ? unknown.join(", ") : "this repository"}`)
         const everyRow = await judgePlan(root, all, flags.base)
         const rows = everyRow.filter((row) => packages.some((pkg) => pkg.name === row.package))
         const due = publicationOrder(rows.filter((row) => row.action === "publish"), all)

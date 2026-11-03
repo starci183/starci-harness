@@ -11,7 +11,9 @@
 #   assets-exist        the ui record declares asset slots and every slot's `file` exists
 #   owners-landed       every owner path of an impl record has a commit in the workflow's repository
 #   uat-receipted       a uat record is done and its evidence.yaml cites a run
-#   task-green          a done task of the step's label over the record (or its feature, `over: feature`) is in the ledger
+#   task-green          a done task of the step's label over the record (or its feature, `over: feature`) is in the ledger and its work is on the tree
+#                       being judged: a task of the workflow itself, or one whose landed commit is an ancestor of the workflow's `base` (a task of a
+#                       stopped workflow on another branch, or one that landed nothing, proves nothing; `onThisTree` of harness/lanes.ts)
 # optionalWhen: a fact of the record that makes the step optional (hasNoArtworkSlots: the record is drawn and declares no
 #   asset slot). optionalUnless: a goal flag without which the step is optional (requiresSecurity, requiresPerf: the
 #   workflow file's `requires` names security, perf).

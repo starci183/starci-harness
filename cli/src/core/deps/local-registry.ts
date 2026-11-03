@@ -14,7 +14,7 @@ import { NPMJS_REGISTRY } from "./local-refs.js"
  * committed files, and it never serves a version npm already serves (Verdaccio refuses to publish over one).
  */
 export const CONTAINER = "starci-local-registry"
-export const IMAGE = "verdaccio/verdaccio:5.33.0"
+export const IMAGE = "verdaccio/verdaccio:5.33.0@sha256:9d622d256378c6e7ae09f384774ee2f0f8ac67a66c066db55921a0b7218abc4c"
 export const DEFAULT_PORT = 4873
 export const LOOPBACK = "127.0.0.1"
 const INNER_PORT = 4873

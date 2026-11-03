@@ -26,6 +26,7 @@ import {
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./identity.module-definition"
 import { IdentityRateCounterService } from "./rate-counter.service"
 import { IdentitySessionStoreService } from "./session-store.service"
+import { IdentityEmailService } from "./identity-email.service"
 import { IdentitySignInService } from "./sign-in.service"
 
 const refusingAuthenticator: Provider = {
@@ -61,6 +62,7 @@ export class IdentityModule extends ConfigurableModuleClass {
                 IdentityRateCounterService,
                 IdentityAuthenticatorService,
                 IdentitySignInService,
+                IdentityEmailService,
                 { provide: IDENTITY_AUTH_DOORS, useExisting: PASSPORT_DOORS },
                 { provide: IDENTITY_AUTH_SESSIONS, useExisting: PASSPORT_SESSIONS },
                 { provide: IDENTITY_AUTH_PASSWORDS, useExisting: PASSPORT_PASSWORDS },
@@ -76,6 +78,7 @@ export class IdentityModule extends ConfigurableModuleClass {
                 AuthGuard,
                 ACCESS_TOKEN_VERIFIER,
                 IdentitySignInService,
+                IdentityEmailService,
                 PASSPORT_SESSION_STORE,
                 PASSPORT_ACCOUNTS,
                 PASSPORT_RATE_COUNTER,

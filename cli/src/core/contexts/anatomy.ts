@@ -137,16 +137,16 @@ export const contextsAnatomyVerb = defineVerb({
         const judged = { gaps: gate.red, pending: gate.pending }
         if (!existsSync(file)) throw new Refusal("ANATOMY_NOT_FOUND", `${file} does not exist`)
         const text = lf(readFileSync(file, "utf8"))
-        const whole = wholeFiles(knowledge)
         if (flags.execute) {
+            // The contexts index records anatomy.md's size, so the whole files render after anatomy.md is written: one run settles.
             writeFileSync(file, spliceAnatomy(text, block, file))
-            const files = whole.map((target) => settleWhole(target, true))
+            const files = wholeFiles(knowledge).map((target) => settleWhole(target, true))
             return Promise.resolve({
                 data: { file, mode: "write", verdict: "written", dangling, firstDifference: null, files, ...judged } satisfies AnatomyData,
                 message: `wrote ${file} and ${String(files.length)} generated file(s): ${files.map((item) => item.file).join(", ")}${note}`,
             })
         }
         spliceAnatomy(text, block, file)
-        return Promise.resolve(checkAnatomy(file, firstDifference(generatedOf(text), block), whole, dangling, gate))
+        return Promise.resolve(checkAnatomy(file, firstDifference(generatedOf(text), block), wholeFiles(knowledge), dangling, gate))
     },
 })

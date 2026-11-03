@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.15 - 2026-11-03
+
+- Changed: requires `@starci/eslint-grammar-core` 0.21.15; the runtime copies carry the new pins.
+
 ## 0.21.14 - 2026-11-03
 
 - Changed: requires `@starci/eslint-grammar-core` 0.21.14; the runtime copies carry the `@starci/auth` rows.

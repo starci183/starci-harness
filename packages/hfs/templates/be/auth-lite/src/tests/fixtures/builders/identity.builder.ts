@@ -2,7 +2,7 @@
 const BEFORE = new Date("2026-02-03T04:00:00.000Z")
 
 /** The kinds of account the sign-in reads by address. */
-export type AccountByEmailVariant = "live" | "disabled" | "unconfirmed" | "passwordless"
+export type AccountByEmailVariant = "live" | "disabled" | "unconfirmed" | "passwordless" | "invited"
 
 /** The kinds of account the sign-in reads by id. */
 export type AccountByIdVariant = "live" | "disabled" | "addressless"
@@ -27,8 +27,8 @@ export interface AccountByIdRow {
 export const accountByEmailRow = (variant: AccountByEmailVariant = "live"): AccountByEmailRow => ({
     id: "u-1",
     email: "a@example.test",
-    encrypted_password: variant === "passwordless" ? null : "hash",
-    email_confirmed_at: variant === "unconfirmed" ? null : BEFORE,
+    encrypted_password: variant === "passwordless" || variant === "invited" ? null : "hash",
+    email_confirmed_at: variant === "unconfirmed" || variant === "invited" ? null : BEFORE,
     disabled: variant === "disabled",
 })
 

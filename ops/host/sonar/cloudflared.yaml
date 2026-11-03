@@ -1,0 +1,21 @@
+# Publishes the local SonarQube as https://sonar.starci.org (the host every product's GitHub CI scans against). Merged over
+# compose.yaml by ops/host.yaml's `sonar-tunnel` service (`-f compose.yaml -f cloudflared.yaml`), same Compose project, so the
+# running starci-cloudflared-sonarqube container is adopted. Public exposure is the owner's standing decision (rules.md rule 5);
+# this file only keeps the connector running. The Cloudflare control plane stays at Source scope.
+#
+# The tunnel's run token is never stored here (rules.md rule 1): ${CLOUDFLARE_TUNNEL_TOKEN} is filled in the one process
+# `host up` starts, from the CLI's secret loader (policy/security.yaml secretKeys), and `host up` refuses HOST_SECRET_MISSING
+# naming the key when it is unset.
+services:
+  cloudflared-sonarqube:
+    image: cloudflare/cloudflared:2026.8.2@sha256:0aa26e284f05e6c77ae375b8c9c11d9eb6a448fb7bcd8d40f31cb6176189eb38
+    container_name: ${STARCI_HOST_PROJECT:-starci}-cloudflared-sonarqube
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in the harness secret.env or the environment}
+    depends_on:
+      sonarqube:
+        condition: service_healthy
+      sonarqube-bootstrap:
+        condition: service_completed_successfully
+    restart: unless-stopped

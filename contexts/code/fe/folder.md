@@ -100,7 +100,7 @@ Enforced by: R63 (machine `package-shape`), R30 (`package-export-bypass`), R25 (
 
 ## FE-PACKAGES-2 A shared package draws only with the grammar
 
-A shared front-end package holds transport, the i18n stack, catalogs, types, pure data and logic, and the context
+A shared front-end package holds transport, the i18n description of the languages (the stack itself is `@starci/next-i18n`'s, FE-I18N-1), catalogs, types, pure data and logic, and the context
 provider and hooks over its own client (a provider draws nothing). It owns no visual of its own: no class string, colour
 or world lifecycle, and no component built from anything but the grammar's. A workbench package (the `./workbench`
 subpath of a module package, [project/README.md](../../project/README.md) PROJECT-3) draws its screens with grammar

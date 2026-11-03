@@ -2,6 +2,8 @@ import { AUTH_DOORS } from "../contracts/index.ts"
 import type { AccessGrant, AuthDoorName, AuthOutcome, SessionUser } from "../contracts/index.ts"
 import { authFailure, authOk, failureOfStatus, isSignedOutStatus, isTransientStatus } from "./outcome.ts"
 import type { StatusCodes } from "./outcome.ts"
+import { createSessionStore, createSingleFlight } from "./session.ts"
+import type { SessionEvent, SessionListener, SessionSnapshot } from "./session.ts"
 
 /** What a door answered. A refusal is an answer, not a throw: the status says what happened. */
 export interface AuthDoorAnswer {
@@ -10,16 +12,13 @@ export interface AuthDoorAnswer {
 }
 
 /** The event a listener hears. */
-export type AuthEvent = "INITIAL_SESSION" | "SIGNED_IN" | "SIGNED_OUT" | "TOKEN_REFRESHED"
+export type AuthEvent = SessionEvent
 
 /** Called on every sign-in, sign-out and token refresh with the id of the person the session belongs to (null when signed out). */
-export type AuthListener = (event: AuthEvent, userId: string | null) => void
+export type AuthListener = SessionListener
 
 /** What a view reads: loading until the first answer, then signed in or out. The object changes only when the session does. */
-export interface AuthSnapshot {
-    readonly status: "loading" | "signed-in" | "signed-out"
-    readonly user: SessionUser | null
-}
+export type AuthSnapshot = SessionSnapshot<SessionUser>
 
 /** The options of the client. */
 export interface AuthClientOptions {
@@ -75,8 +74,6 @@ export interface AuthClient {
     checkSession(cookie: string | null): Promise<AuthOutcome<true>>
 }
 
-const LOADING: AuthSnapshot = { status: "loading", user: null }
-
 const isGrant = (value: unknown): value is AccessGrant =>
     typeof value === "object" &&
     value !== null &&
@@ -129,28 +126,26 @@ export const createAuthClient = (options: AuthClientOptions): AuthClient => {
     let expiresAt = 0
     let announced = false
     let user: SessionUser | null = null
-    let inFlight: Promise<string | undefined> | undefined
-    let snapshot: AuthSnapshot = LOADING
-    const listeners = new Set<AuthListener>()
-    const watchers = new Set<() => void>()
-
-    const setSnapshot = (next: AuthSnapshot): void => {
-        if (snapshot.status === next.status && snapshot.user?.id === next.user?.id && snapshot.user?.email === next.user?.email) return
-        snapshot = next
-        for (const watcher of watchers) watcher()
-    }
-
-    const notify = (event: AuthEvent): void => {
-        for (const listener of listeners) listener(event, user?.id ?? null)
-    }
+    // The snapshot, the listeners and the watchers are the session store shared with every provider's client (./session.ts); the first
+    // answer of a subscription reads this client's facts at call time.
+    const store = createSessionStore<SessionUser>({
+        announced: () => announced,
+        announce: () => {
+            announced = true
+        },
+        held: () => token !== undefined,
+        userId: () => user?.id ?? null,
+        renew: () => renew(),
+        refreshing: () => flight.running(),
+    })
 
     const keep = (grant: AccessGrant, event: AuthEvent = "TOKEN_REFRESHED"): void => {
         token = grant.accessToken
         expiresAt = now() + grant.expiresIn * MILLISECONDS
         announced = true
         user = userOf(grant)
-        setSnapshot({ status: "signed-in", user })
-        notify(event)
+        store.signedIn(user)
+        store.emit(event, user?.id ?? null)
     }
 
     const drop = (): void => {
@@ -159,8 +154,8 @@ export const createAuthClient = (options: AuthClientOptions): AuthClient => {
         expiresAt = 0
         announced = true
         user = null
-        setSnapshot({ status: "signed-out", user: null })
-        if (had) notify("SIGNED_OUT")
+        store.signedOut()
+        if (had) store.emit("SIGNED_OUT", null)
     }
 
     const door = async (name: AuthDoorName, body?: object, cookie?: string): Promise<AuthDoorAnswer> => {
@@ -203,12 +198,9 @@ export const createAuthClient = (options: AuthClientOptions): AuthClient => {
         }
     }
 
-    const renew = (): Promise<string | undefined> => {
-        inFlight ??= requestRefresh().finally(() => {
-            inFlight = undefined
-        })
-        return inFlight
-    }
+    // Many requests answered 401 together refresh once: the others await the one in flight.
+    const flight = createSingleFlight(() => requestRefresh())
+    const renew = (): Promise<string | undefined> => flight.run()
 
     const accessToken = async (): Promise<string | undefined> =>
         token !== undefined && expiresAt - refreshAheadMs > now() ? token : renew()
@@ -245,32 +237,6 @@ export const createAuthClient = (options: AuthClientOptions): AuthClient => {
         drop()
     }
 
-    const subscribe: AuthClient["subscribe"] = (listener) => {
-        listeners.add(listener)
-        if (announced) {
-            listener("INITIAL_SESSION", user?.id ?? null)
-        } else {
-            void renew().then(() => {
-                if (!announced) announced = true
-                if (token === undefined) {
-                    setSnapshot({ status: "signed-out", user: null })
-                    listener("INITIAL_SESSION", null)
-                }
-            })
-        }
-        return () => {
-            listeners.delete(listener)
-        }
-    }
-
-    const watch: AuthClient["watch"] = (onChange) => {
-        watchers.add(onChange)
-        if (!announced && inFlight === undefined) void renew().then(() => undefined)
-        return () => {
-            watchers.delete(onChange)
-        }
-    }
-
     const checkSession: AuthClient["checkSession"] = async (cookie) => {
         if (cookie === null || cookie === "") return authFailure("refused", "no-session")
         try {
@@ -297,10 +263,10 @@ export const createAuthClient = (options: AuthClientOptions): AuthClient => {
         },
         keep,
         drop,
-        subscribe,
-        getSnapshot: () => snapshot,
-        getServerSnapshot: () => LOADING,
-        watch,
+        subscribe: store.subscribe,
+        getSnapshot: store.getSnapshot,
+        getServerSnapshot: store.getServerSnapshot,
+        watch: store.watch,
         checkSession,
     }
 }

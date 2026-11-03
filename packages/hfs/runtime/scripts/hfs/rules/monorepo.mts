@@ -1,6 +1,6 @@
 // monorepo.mjs - every product is a monorepo, even a single app: the app root holds one package.json and lockfile whose npm
 // workspaces are the fe apps and packages (turbo runs their tasks), and the back end is a Nest monorepo of be/apps/<app>.
-//   HFS_MONO_WORKSPACES          the root package.json: `workspaces` exactly fe/apps/* and fe/packages/*, `packageManager` npm at an
+//   HFS_MONO_WORKSPACES          the root package.json: `workspaces` exactly fe/apps/* and fe/packages/* (and packages/* once the app tracks a root workspace package, slot app.packages), `packageManager` npm at an
 //                                exact version, turbo a root devDependency (its version is the canon pin); turbo.json is app.task-graph
 //   HFS_MONO_FE_WORKSPACE        every fe app's package.json is @<project>/<app>, private, with exactly the workspace scripts; every
 //                                fe package's package.json is private with build and typecheck scripts and the workspace lint
@@ -25,6 +25,11 @@ const MONO_WORKSPACE_DEP = 'HFS_MONO_WORKSPACE_DEP';
 
 /** The npm workspaces of every app, in this order. */
 export const WORKSPACES = Object.freeze(['fe/apps/*', 'fe/packages/*']);
+/** The workspace of the app's own root packages (slot app.packages: packages/agent-sdk, packages/module-<name>), added after the fe ones once one is tracked. */
+export const ROOT_PACKAGES_WORKSPACE = 'packages/*';
+
+/** The workspaces the tracked tree `files` calls for: the fe ones, then `packages/*` when a root package tracks its package.json. */
+export const workspacesFor = (files: readonly string[]): readonly string[] => (files.some((file) => /^packages\/[^/]+\/package\.json$/.test(file)) ? [...WORKSPACES, ROOT_PACKAGES_WORKSPACE] : WORKSPACES);
 /** The scripts of every fe app workspace, exactly: turbo runs build, dev and typecheck; start serves a build. The lint is the root's (`starci app check --gate lint`), never a workspace script. */
 export const FE_APP_SCRIPTS: Readonly<Record<string, string>> = Object.freeze({ build: 'next build', dev: 'next dev', start: 'next start', typecheck: 'tsc --noEmit' });
 /** The scripts every fe package workspace has (its build and typecheck commands are its own); it has no lint script. */
@@ -55,11 +60,12 @@ function workspacesOf(files: string[]) {
 }
 
 /** R143: the root package.json declares the workspaces, the package manager and turbo. */
-function rootFindings(repoRoot: string) {
+function rootFindings(repoRoot: string, files: string[]) {
   const pkg = readJson(repoRoot, MANIFEST);
   if (!pkg) return [];
   const findings = [];
-  if (!sameList(pkg.workspaces, WORKSPACES)) findings.push(found(MONO_WORKSPACES, MANIFEST, `${MANIFEST} declares workspaces ${JSON.stringify(pkg.workspaces ?? null)}; every app is a monorepo whose npm workspaces are exactly ${JSON.stringify(WORKSPACES)} (each fe app and package has its own package.json; be has none).`, { workspaces: pkg.workspaces ?? null }));
+  const wanted = workspacesFor(files);
+  if (!sameList(pkg.workspaces, wanted)) findings.push(found(MONO_WORKSPACES, MANIFEST, `${MANIFEST} declares workspaces ${JSON.stringify(pkg.workspaces ?? null)}; every app is a monorepo whose npm workspaces are exactly ${JSON.stringify(wanted)} (each fe app and package has its own package.json; be has none; ${ROOT_PACKAGES_WORKSPACE} is listed when the app tracks a root package).`, { workspaces: pkg.workspaces ?? null }));
   if (!PACKAGE_MANAGER_FORM.test(String(pkg.packageManager ?? ''))) findings.push(found(MONO_WORKSPACES, MANIFEST, `${MANIFEST} declares packageManager ${JSON.stringify(pkg.packageManager ?? null)}; turbo needs \`npm@<exact version>\` there.`, { packageManager: pkg.packageManager ?? null }));
   if (typeof pkg.devDependencies?.turbo !== 'string') findings.push(found(MONO_WORKSPACES, MANIFEST, `${MANIFEST} does not declare turbo in its devDependencies; the turbo task graph (turbo.json) runs build, dev and typecheck over the fe workspaces.`, { missing: 'turbo' }));
   return findings;
@@ -220,7 +226,7 @@ export function monorepoFindings({ repoRoot, files, repo }: { repoRoot: string; 
   const workspaces = workspacesOf(files);
   const beApps = repo.sides.be.apps;
   return [
-    ...rootFindings(repoRoot),
+    ...rootFindings(repoRoot, files),
     ...workspaceManifestFindings(repoRoot, repo.project, workspaces),
     ...nestFindings(repoRoot, files, beApps),
     ...workspaceDepFindings(repoRoot, files, workspaces),

@@ -499,8 +499,13 @@ rulings:
   - id: auth-one-package-subpaths
     date: '2026-11-03'
     status: live
-    ruling: "The sign-in is one package with the subpath exports ./server, ./client (with ./client/react), ./contracts and ./testing, so the door contract is the same version on both sides; the full edition gets @starci/auth-oidc later behind the same PrincipalVerifier interface."
+    ruling: "The sign-in is one package with the subpath exports ./server, ./client (with ./client/react), ./contracts and ./testing, so the door contract is the same version on both sides; the full edition gets @starci/auth-oidc (ruling auth-oidc-package) behind the same PrincipalVerifier interface."
     owner: "packages/auth/package.json exports"
+  - id: auth-oidc-package
+    date: '2026-11-03'
+    status: live
+    ruling: "The full-edition sign-in is the published @starci/auth-oidc package (a Nest module: issuer discovery, the provider's JWKS with caching and rotation, algorithm-pinned token checks, role mapping, the authorization code flow with S256 PKCE, state and nonce, and an OidcPrincipalVerifier behind the PrincipalVerifier interface of @starci/auth; a front-end client; a fake OIDC issuer in ./testing); it is the only owner of jose in a full app, an app imports neither and imports the package only in integrations/keycloak, and the app keeps the realm and client registration, the parsing of its settings and its own session."
+    owner: "packages/auth-oidc; contexts/code/be/api-auth.md BE-AUTH-2; contexts/hfs/rules.yaml R328; contexts/hfs/slots.yaml (ruleParams.be.infraOwners, be.integrations.keycloak)"
   - id: auth-no-cross-product-sso
     date: '2026-11-03'
     status: live
@@ -516,12 +521,22 @@ rulings:
     status: live
     ruling: "The lite starter signs people in with no hand-written auth code: its sign-in doors, session, account and rate stores, authenticator and front-end auth client are managed files rendered from @starci/auth's glue, and an edit is drift."
     owner: "contexts/hfs/slots.yaml be.identity.sign-in, be.feature.auth, fe.modules.auth.client; packages/hfs/templates/be/auth-lite"
+  - id: mail-package
+    date: '2026-11-03'
+    status: live
+    ruling: "Outgoing mail is the published @starci/mail package (a Nest module and the Mailer port over SMTP: connect, greeting, socket and total timeouts, STARTTLS required by default, recipient, message and attachment checks, a shared SMTP target policy, coded errors, no environment read, typed escaping render helpers returning { subject, text, html } in place of a template engine, an in-memory outbox in ./testing); it is the only owner of nodemailer, an app imports nodemailer nowhere and imports the package only in integrations/mail, and the app keeps its sender, the parsing of its settings and the words and layout of each mail (its i18n copy and typed render functions)."
+    owner: "packages/mail; contexts/code/be/infra.md BE-INFRA-1; contexts/hfs/rules.yaml R90; contexts/hfs/slots.yaml (ruleParams.be.infraOwners)"
   - id: locale-accept-language
     date: '2026-10-14'
     status: live
     ruling: "The one front-end locale writer sends Accept-Language, and back-end localization reads that header."
     owner: "contexts/code/fe/transport.md FE-API-GRAPHQL; lint R50"
     absorbs: [accept-language-locale-header]
+  - id: next-i18n-package
+    date: '2026-11-03'
+    status: live
+    ruling: "The next-intl stack of every front end is the published @starci/next-i18n package: defineI18n over the app's locales, the locale-negotiating proxy, the locale-aware navigation, the request config that loads the app's own catalogs and the locale read of the [locale] layout. The app (or the one shared i18n workspace package of a multi-app product) keeps only the description of its languages and its message catalogs, and no product source calls defineRouting, createNavigation, getRequestConfig or createMiddleware."
+    owner: "packages/next-i18n; contexts/code/fe/i18n.md FE-I18N-1; contexts/hfs/rules.yaml R59 (i18n-stack-in-one-module)"
   - id: hooks-compose-hooks
     date: '2026-10-16'
     status: live
@@ -670,7 +685,7 @@ rulings:
   - id: module-definition-everywhere
     date: '2026-10-15'
     status: live
-    ruling: "Every NestJS module has a module definition (ConfigurableModuleBuilder with register, an options type, a module class) and is registered with XModule.register(...)."
+    ruling: "Every NestJS module has a module definition (one defineConfigurableModule or defineCapabilityModule call of @starci/nest-kit: the module class, the options token and the options types) and is registered with XModule.register(...)."
     owner: "contexts/code/be/architecture.md; lint R295"
   - id: typed-app-environment
     date: '2026-10-14'
@@ -920,6 +935,11 @@ rulings:
     status: live
     ruling: "An exported declaration states its type where it is exported, in every front-end and back-end file: a function's return type, an exported variable's type and a parameter's type are written, never inferred from a body or from other files. A component that returns only JSX, null or undefined is explicit. The lint result cache counts a file with an inferred surface as open and lints every importer again when it changes; one classifier, the isolated declaration emit, serves the cache and the rule, so the rule reports exactly what the cache counts as open."
     owner: "contexts/code/shared/typing.md SHARED-TYPING-5; lint explicit-export-surface (R368); packages/hfs/runtime/scripts/lib/declaration-surface.mts"
+  - id: module-definition-helper
+    date: '2026-11-03'
+    status: live
+    ruling: "A module definition is one call of @starci/nest-kit, defineConfigurableModule<XOptions>() or, for the representative module of a capability, defineCapabilityModule<XOptions>(), destructured into the names the module uses. The helper states the type of every name it returns, so the definition is a surface the explicit-export-surface rule accepts and one line that two modules cannot make a clone (R21). The lint on stated export types accepts a destructured export of those two calls and no other; a definition written with ConfigurableModuleBuilder is rewritten by starci app codemod module-definition."
+    owner: "contexts/code/be/architecture.md BE-ARCHITECTURE-3; packages/nest-kit; lint capability-module-shape (R45) and explicit-export-surface (R368); packages/hfs/runtime/scripts/lib/declaration-surface.mts"
 
 # Spellings knowledge no longer uses. A check refuses them in knowledge and instructions; `replacedBy` is what to
 # write instead. `shipped: true` extends the check to packages/hfs/runtime, the knowledge the eslint packages bundle. `pending` marks a name that still exists in published code until the follow-up lands.

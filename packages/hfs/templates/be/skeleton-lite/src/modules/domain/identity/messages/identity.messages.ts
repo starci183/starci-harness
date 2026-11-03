@@ -11,6 +11,8 @@ export const IDENTITY_MESSAGES: MessageBundle = {
         "errors.IDENTITY_TOO_MANY_ATTEMPTS": "Quá nhiều lần thử. Hãy thử lại sau.",
         "errors.IDENTITY_INVALID_CREDENTIALS": "Email hoặc mật khẩu không đúng.",
         "errors.IDENTITY_EMAIL_NOT_CONFIRMED": "Hãy xác nhận email trước khi đăng nhập.",
+        "errors.IDENTITY_PASSWORD_INVALID": "Mật khẩu cần ít nhất 8 ký tự và tối đa 72 byte.",
+        "errors.IDENTITY_RESET_TOKEN_INVALID": "Liên kết không hợp lệ hoặc đã hết hạn.",
     },
     en: {
         "errors.IDENTITY_UNAUTHENTICATED": "You need to sign in to do this.",
@@ -20,5 +22,7 @@ export const IDENTITY_MESSAGES: MessageBundle = {
         "errors.IDENTITY_TOO_MANY_ATTEMPTS": "Too many attempts. Try again later.",
         "errors.IDENTITY_INVALID_CREDENTIALS": "The email or password is wrong.",
         "errors.IDENTITY_EMAIL_NOT_CONFIRMED": "Confirm your email before signing in.",
+        "errors.IDENTITY_PASSWORD_INVALID": "The password needs at least 8 characters and at most 72 bytes.",
+        "errors.IDENTITY_RESET_TOKEN_INVALID": "The link is invalid or has expired.",
     },
 }

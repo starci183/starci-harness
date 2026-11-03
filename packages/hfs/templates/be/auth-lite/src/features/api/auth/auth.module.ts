@@ -7,10 +7,15 @@ import { LogoutHandler } from "./application/logout.handler"
 import { GoogleBeginHandler } from "./application/google-begin.handler"
 import { GoogleCompleteHandler } from "./application/google-complete.handler"
 import { GetJwksHandler } from "./application/get-jwks.handler"
+import { SignupHandler } from "./application/signup.handler"
+import { ResendHandler } from "./application/resend.handler"
+import { ConfirmHandler } from "./application/confirm.handler"
+import { ForgotHandler } from "./application/forgot.handler"
+import { ResetHandler } from "./application/reset.handler"
 import { ConfigurableModuleClass } from "./auth.module-definition"
 
 @Module({
-    providers: [LoginHandler, RefreshHandler, SessionHandler, LogoutHandler, GoogleBeginHandler, GoogleCompleteHandler, GetJwksHandler],
+    providers: [LoginHandler, RefreshHandler, SessionHandler, LogoutHandler, GoogleBeginHandler, GoogleCompleteHandler, GetJwksHandler, SignupHandler, ResendHandler, ConfirmHandler, ForgotHandler, ResetHandler],
 })
 /** The auth feature: the handlers behind the sign-in doors. */
 export class AuthApiModule extends ConfigurableModuleClass {}
