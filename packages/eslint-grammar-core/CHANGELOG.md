@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.21 - 2026-11-04
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.21; requires `@starci/eslint-canon-fe` 9.13.4. the runtime copies carry the R343, R251, R272 and R376 laws of `@starci/hfs` 5.7.0 and the release-6 canon pins.
+
 ## 0.21.20 - 2026-11-04
 
 - Changed: `pane-grid-page` (R348) refuses a `Page chrome="panes"` whose child is not one `PaneGrid` element written there: a wrapper or component that renders the grid, a fragment, a variable, a condition, no child or several, each of which Page throws `PAGE_PANES_CHILD_NOT_PANE_GRID` for at run time; the grid-side "wrapped" finding is this one. Requires `@starci/eslint-canon-fe` 9.13.3. the runtime copies carry `engine/runtime-root.mjs`, which moves an installed copy's legacy state with its owner and mode (`@starci/hfs` 5.6.1), and the release-5 canon pins.

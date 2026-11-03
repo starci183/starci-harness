@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.15.4 - 2026-11-04
+
+- Changed: the runtime copies carry the R343, R251, R272 and R376 laws of `@starci/hfs` 5.7.0 and the release-6 canon pins.
+
 ## 3.15.3 - 2026-11-04
 
 - Changed: the runtime copies carry `engine/runtime-root.mjs`, which moves an installed copy's legacy state with its owner and mode (`@starci/hfs` 5.6.1), and the release-5 canon pins. The runtime copy of the laws carries the R348 wording.

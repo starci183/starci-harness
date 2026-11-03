@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.13.4 - 2026-11-04
+
+- Changed: the runtime copy of the canon pins names the release-6 versions.
+
 ## 9.13.3 - 2026-11-04
 
 - Changed: the runtime copies carry `engine/runtime-root.mjs`, which moves an installed copy's legacy state with its owner and mode (`@starci/hfs` 5.6.1), and the release-5 canon pins.

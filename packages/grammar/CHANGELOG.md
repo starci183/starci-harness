@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.21 - 2026-11-04
+
+- Changed: version stamp only, with the Grammar lint family (their runtime copies moved).
+
 ## 0.21.20 - 2026-11-04
 
 - Changed: version stamp only, with the Grammar lint family (`pane-grid-page` judges the child of `Page chrome="panes"`).

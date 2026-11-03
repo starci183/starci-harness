@@ -1,5 +1,15 @@
 # Changelog
 
+## 5.7.0 - 2026-11-04
+
+- Changed: the check cache fingerprint is judged per family: a part makes only the families that read it run full, and the diagnosis names the family and the part. `package-lock.json` counts per family by its toolchain's resolved installs, `package.json` by shape outside the hfs-run families; a bump of `@starci/hfs` never re-runs ESLint, and a library bump re-lints only the files that import it, through the package digests of the import graph. The types and test families still run full on a change of their toolchain's resolved installs.
+- Added: `starci app check --fresh`, run by the managed pre-push hook, refuses a push whose committed cache a real run on its tree changes (`HFS_CHECK_CACHE_UNWARMED`) or a host that cannot write a portable cache (`HFS_CHECK_CACHE_UNPORTABLE`, naming `deps source --npm`).
+- Changed: the release gate runs every row diff-only against the warm cache (`app release gate --full` is the owner's opt-in), and a red or unreadable nightly verify refuses it with `HFS_CHECK_CACHE_VERIFY_LOCKED`; CI trusts a release candidate or tag at its merge-base with main. `HFS_CHECK_CACHE_FORGED` stays a hard blocker at any count.
+- Added: the managed `.github/workflows/cache-verify.yml` (slot `app.ci-cache-verify`, slots 3.20.0), the nightly `STARCI_APP_CHECK_CACHE=verify` on the default branch; `ci.yml` reads the trusted cache on every event and goes full only on a dispatch with its `full` input, never passing `--no-cache`; R251 and `CI_TRIGGERS_RELEASE_ONLY` admit that one schedule.
+- Added: R376 `HFS_BOOT_LOGGER_SILENCED`: an app root's `main.ts` never boots Nest with `logger: false`, so a DI or bootstrap failure prints on stderr and exits non-zero instead of ending every command silently (BE-CLI-1 rewritten).
+- Changed: the lite app CI's fast job runs the R272 boot proof (`starci app check --gate wiring`) before typecheck, and ci-standard item `boot-proof` requires it, so a provider a domain module needs and an app root does not compose fails CI, not every boot.
+- Upgrade: `npx starci app sync --execute` renders `cache-verify.yml`, the pre-push hook and `ci.yml`; replace `logger: false` in `be/apps/cli/src/main.ts` with the template's logger and error handler; then run `npx starci app check` once and commit `.starcistacks/cache/` (the new lock parts make lint, types and test run full once).
+
 ## 5.6.1 - 2026-11-04
 
 - Fixed: the OpenClaw runtime layer recipe (`stack/images/openclaw-runtime`) starts as root only to give the gateway's state folder `~/.openclaw` to `STARCI_RUNTIME_USER` (named once, in its Dockerfile) when that user does not own it, then drops to the user with `setpriv`; a bind folder the host created as root no longer crash-loops the gateway with EACCES.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.21 - 2026-11-04
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.21; requires `@starci/eslint-grammar-core` 0.21.21; the runtime copy of the canon pins names the release-6 versions.
+
 ## 0.21.20 - 2026-11-04
 
 - Changed: version stamp only, with `@starci/grammar` 0.21.20; requires `@starci/eslint-grammar-core` 0.21.20. the runtime copies carry `engine/runtime-root.mjs`, which moves an installed copy's legacy state with its owner and mode (`@starci/hfs` 5.6.1), and the release-5 canon pins.
