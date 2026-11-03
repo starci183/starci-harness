@@ -195,6 +195,19 @@ export class FakeOidcIssuer {
         return { request: (request) => this.#serve(request) }
     }
 
+    /**
+     * Moves the issuer to another origin (`https://127.0.0.1:41001`), for a host that serves it on an address it only knows after it listens, as a
+     * test-world fake does. Tokens minted afterwards carry the new `iss` and the discovery document names the new endpoints; the keys stay.
+     */
+    rebase(origin: string): void {
+        this.#issuer = `${origin}/realms/${this.#realm}`
+    }
+
+    /** Answers one request as the issuer's endpoints do (the request's URL is under the issuer's address); a host that serves the issuer itself calls this from its listener. */
+    serve(request: OidcHttpRequest): Promise<OidcHttpResponse> {
+        return this.#serve(request)
+    }
+
     /** The same endpoints as a `fetch`, for a front-end client under test (the browser client takes a `fetch`, not an `OidcHttp`). */
     get fetch(): typeof fetch {
         return async (input, init) => {

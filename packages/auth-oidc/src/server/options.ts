@@ -11,7 +11,7 @@ export interface OidcHttpRequest {
     /** The deadline of this request, in milliseconds. */
     readonly timeoutMs: number
     /** A form-encoded body (`application/x-www-form-urlencoded`) for a POST. */
-    readonly form?: Readonly<Record<string, string>> | undefined
+    readonly form?: Readonly<Record<string, string>>
 }
 
 /** The answer to an outbound request: the status and the parsed JSON body (`undefined` when the body is not JSON). */

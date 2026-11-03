@@ -2120,8 +2120,8 @@ slots:
     tracked: tracked
     tier: integrations
     owner: true
-    requires: [index.ts, keycloak.config.ts, keycloak.options.ts, keycloak.decorators.ts, keycloak.module.ts]
-    allows: [index.ts, keycloak.config.ts, keycloak.options.ts, keycloak.decorators.ts, keycloak.module.ts, errors/, messages/]
+    requires: [index.ts, keycloak.config.ts, keycloak.options.ts, keycloak.decorators.ts, keycloak.registration.ts]
+    allows: [index.ts, keycloak.config.ts, keycloak.options.ts, keycloak.decorators.ts, keycloak.registration.ts, errors/, messages/]
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_INTEGRATION_SPEC_MISSING]
     coverage: required

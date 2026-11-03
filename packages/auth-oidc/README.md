@@ -39,6 +39,20 @@ The package reads no environment. The app parses its settings (BE-CONFIG-2) and 
 
 Endpoints a discovery document advertises are trusted only on the issuer's origin, over https, without credentials; `http:` is admitted only with `allowInsecureHttp` (a developer machine or a test double).
 
+### The glue in an app
+
+`integrations/keycloak` (slot `be.integrations.keycloak`) is declaration only, five files; no unit spec sits beside them (the proof is the integration spec of `src/tests/integration/keycloak/`, which drives an outage with `FakeOidcIssuer`, and the guard's own spec):
+
+| file | holds |
+|---|---|
+| `keycloak.options.ts` | the typed registered client (`issuer`, `audience`, `clientId`, `clientSecret: Secret`, `callbackUri`, `postLogoutUri`, `timeoutMs`) |
+| `keycloak.config.ts` | `parseKeycloakConfig(env: EnvSource)`: `env.url`, `env.string`, `env.secret`, `env.int`; no default address or credential |
+| `keycloak.decorators.ts` | the token of the package's verifier (`OIDC_PRINCIPAL_VERIFIER`), which `domain/identity` provides under its own `ACCESS_TOKEN_VERIFIER` |
+| `keycloak.registration.ts` | `keycloakModule(options, { isGlobal })` = `OidcModule.registerAsync` over `HTTP_CLIENT` and `CLOCK`, the `http` option adapting `HttpClient.request` with its correlation id |
+| `index.ts` | what the rest of the app reads: the config parser, the module function, the token and the package's `PrincipalVerifier` and `OidcPrincipal` types |
+
+`AuthGuard` of `domain/identity` reads the bearer token and asks the injected `PrincipalVerifier`, exactly as the lite guard asks `@starci/auth`'s: a verified principal is left on the request, a refusal is `IDENTITY_UNAUTHENTICATED`, and an `unavailable` error is not caught (the errors filter maps its kind to a 503).
+
 ## Front end
 
 ```ts

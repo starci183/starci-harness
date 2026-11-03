@@ -123,6 +123,18 @@ describe("FakeOidcIssuer in memory", () => {
     })
 })
 
+describe("FakeOidcIssuer behind a host", () => {
+    it("moves to the origin its host listens on, and answers the requests the host passes to serve", async () => {
+        const issuer = await FakeOidcIssuer.create({ audience: "api" })
+        issuer.rebase("https://127.0.0.1:41001")
+        assert.equal(issuer.issuer, "https://127.0.0.1:41001/realms/test")
+        const document = await issuer.serve({ method: "GET", url: `${issuer.issuer}/.well-known/openid-configuration`, timeoutMs: 1 })
+        assert.equal((document.body as { issuer: string }).issuer, issuer.issuer)
+        const oidc = createOidc(issuer.options({ http: { request: (request) => issuer.serve(request) } }))
+        assert.equal((await oidc.verifier.verify(await issuer.mintAccessToken())).kind, "ok")
+    })
+})
+
 describe("FakeOidcIssuer on a socket", () => {
     it("serves the same issuer over http on 127.0.0.1, for the platform fetch and a browser", async () => {
         const issuer = await FakeOidcIssuer.create({ listen: true })

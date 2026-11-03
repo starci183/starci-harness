@@ -3034,13 +3034,13 @@ slots:
       - keycloak.config.ts
       - keycloak.options.ts
       - keycloak.decorators.ts
-      - keycloak.module.ts
+      - keycloak.registration.ts
     allows:
       - index.ts
       - keycloak.config.ts
       - keycloak.options.ts
       - keycloak.decorators.ts
-      - keycloak.module.ts
+      - keycloak.registration.ts
       - errors/
       - messages/
     tests: unit-beside
