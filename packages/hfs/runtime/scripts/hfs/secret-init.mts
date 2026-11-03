@@ -251,6 +251,22 @@ export function configuredRecipients(repoRoot: string, file: string): string[] {
   return recipients;
 }
 
+/**
+ * Whether sops itself finds a creation rule for `file`: the first rule whose path_regex matches the path as written (sops reads the file's own
+ * name, so a `.enc.yaml` member is not matched by a rule written for the legacy `.enc` spelling, which configuredRecipients tolerates when it
+ * only reads recipients). A rule with no path_regex matches everything.
+ */
+export function sopsFindsRule(repoRoot: string, file: string): boolean {
+  let config: SopsConfig | null | undefined; // reason: parsed YAML boundary, read from disk
+  try { config = parseYaml(fs.readFileSync(path.join(repoRoot, ".sops.yaml"), "utf8")); } catch { return false; }
+  const relative = path.relative(repoRoot, file).split(path.sep).join("/");
+  return (config?.creation_rules ?? []).some((entry) => {
+    try {
+      return !entry.path_regex || new RegExp(entry.path_regex).test(relative) || new RegExp(entry.path_regex).test(relative.replaceAll("/", "\\"));
+    } catch { return false; }
+  });
+}
+
 /** Resolve required tools without exposing subprocess output (which can contain private data). */
 export function secretTools(
   env: NodeJS.ProcessEnv,

@@ -10,12 +10,13 @@ import { migrateSurfaceCardKinds, surfaceCardKindsMarkdown } from './surface-car
 import { explicitSurfaceMarkdown, migrateExplicitSurface } from './explicit-surface.mjs';
 import { directiveFirstMarkdown, migrateDirectiveFirst } from './directive-first.mjs';
 import { migrateModuleDefinition, moduleDefinitionMarkdown } from './module-definition.mjs';
+import { migrateSopsRules, sopsRulesMarkdown } from './sops-rules.mjs';
 import { migrateSecretsCache, secretsCacheMarkdown } from './secrets-cache.mjs';
 import { migrateThemeTokens, themeTokensMarkdown } from './theme-tokens.mjs';
 import { migrateTierBinding, tierBindingMarkdown } from './tier-binding.mjs';
 
 /** The codemods `starci app codemod` runs, by name. */
-export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding', 'loading-states', 'explicit-surface', 'directive-first', 'secrets-cache', 'module-definition']);
+export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding', 'loading-states', 'explicit-surface', 'directive-first', 'secrets-cache', 'module-definition', 'sops-rules']);
 
 /** The arguments of every report-style `starci app codemod`: --execute, --json, --format and --out; any other is refused. */
 export function spacingRolesArguments(argv: readonly string[]): { write: boolean; format: 'json' | 'markdown'; out?: string } {
@@ -41,6 +42,10 @@ export function spacingRolesArguments(argv: readonly string[]): { write: boolean
 
 /** One of the report-style codemods run at an app root: its report object and the Markdown of it. */
 function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'button-intent' | 'explicit-surface'>, root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
+  if (name === 'sops-rules') {
+    const report = migrateSopsRules({ root, write });
+    return { report, markdown: sopsRulesMarkdown(report) };
+  }
   if (name === 'module-definition') {
     const report = migrateModuleDefinition({ root, write });
     return { report, markdown: moduleDefinitionMarkdown(report) };
