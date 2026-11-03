@@ -17,6 +17,8 @@ const checkout = (t: TestContext, tags: Record<string, string>) => {
   const root = fs.mkdtempSync(path.join(tempRoot(), 'hfs-release-tag-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const spawn = (command: string, args: string[]) => {
+    // the nightly cache verify the gate reads (cache-verify-lock.mts): no finished run yet, so the gate is open
+    if (command === 'gh') return { status: 0, stdout: '[]' };
     assert.equal(command, 'git');
     if (args[0] === 'rev-parse' && args[1] === 'HEAD') return { status: 0, stdout: HEAD };
     if (args[0] === 'rev-parse' && args[1] === '--abbrev-ref') return { status: 0, stdout: 'main' };

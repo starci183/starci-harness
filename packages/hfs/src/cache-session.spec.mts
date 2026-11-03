@@ -199,7 +199,14 @@ test('CI trusts the cache at the merge-base, not the change own edits', (t) => {
   assert.equal(ci.writes, false);
   assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'schedule' } }).kind, 'none');
   assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main' } }).kind, 'base');
-  assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/tags/v1' } }).kind, 'none');
+  // a release (candidate or tag) trusts the cache main's CI verified, at its merge-base with the default branch; the nightly verify trusts the tip of the default branch
+  assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/tags/v1' } }).base, base);
+  assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/release/candidate-1.0.0' } }).base, base);
+  assert.match(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/tags/v1', STARCI_DEFAULT_BRANCH: 'trunk' } }).reason, /no merge-base of the release with origin\/trunk/);
+  const tip = git(root, ['rev-parse', 'HEAD']).stdout.trim();
+  assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'schedule', GITHUB_REF: 'refs/heads/main' } }).base, tip);
+  assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_REF: 'refs/heads/trunk', STARCI_DEFAULT_BRANCH: 'trunk' } }).base, tip);
+  assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'schedule', GITHUB_REF: 'refs/heads/feature' } }).kind, 'none');
 });
 
 test('a committed record that matches the tree and disagrees with the computed one is FORGED, a touched key with no record STALE', () => {

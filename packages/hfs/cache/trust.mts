@@ -1,8 +1,9 @@
 // trust.mts - where the cache is trusted from. On a host the cache in the working tree is trusted (a local run is the developer's own
 // view). In CI the cache is trusted only as it stands at the trusted base: the merge-base with the default branch for a pull request,
-// the first parent for a push to the default branch. The change's own edits to the cache are never trusted: CI judges everything the base
-// cache does not cover and then compares the committed cache with what it inherited or computed (verifyCommitted).
-// No trusted base (a tag build, a schedule, an unreadable base) is a full run.
+// the first parent for a push to the default branch, the merge-base with the default branch for a release (a release candidate or a release
+// tag, whose commit main's CI already verified), and the branch tip itself for a scheduled or dispatched run on the default branch (the nightly
+// verify). The change's own edits to the cache are never trusted: CI judges everything the base cache does not cover and then compares the
+// committed cache with what it inherited or computed (verifyCommitted). No trusted base (any other event, an unreadable base) is a full run.
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from './jsonl.mjs';
@@ -80,15 +81,26 @@ const DEFAULT_BRANCHES = new Set(['main', 'master']);
 /** The commit CI trusts the cache at, or why there is none. */
 export function trustedBase(root: string, env: NodeJS.ProcessEnv): { base: string } | { reason: string } {
   const event = env['GITHUB_EVENT_NAME'];
+  const ref = env['GITHUB_REF'] ?? '';
+  const branch = ref.replace(/^refs\/heads\//, '');
+  const isDefault = (name: string): boolean => DEFAULT_BRANCHES.has(name) || name === env['STARCI_DEFAULT_BRANCH'];
+  const defaultBranch = env['STARCI_DEFAULT_BRANCH'] ?? 'main';
   if (event === 'pull_request' || event === 'pull_request_target') {
     const target = env['GITHUB_BASE_REF'];
     if (!target) return { reason: 'a pull request with no base ref' };
     const merged = git(root, ['merge-base', 'HEAD', `origin/${target}`]);
     return merged.ok && merged.stdout.trim() !== '' ? { base: merged.stdout.trim() } : { reason: `no merge-base with origin/${target} (fetch it)` };
   }
+  if (event === 'push' && (ref.startsWith('refs/tags/') || branch.startsWith('release/candidate-'))) {
+    const merged = git(root, ['merge-base', 'HEAD', `origin/${defaultBranch}`]);
+    return merged.ok && merged.stdout.trim() !== '' ? { base: merged.stdout.trim() } : { reason: `no merge-base of the release with origin/${defaultBranch} (fetch it)` };
+  }
+  if ((event === 'schedule' || event === 'workflow_dispatch') && isDefault(branch)) {
+    const head = git(root, ['rev-parse', '--verify', '-q', 'HEAD']);
+    return head.ok && head.stdout.trim() !== '' ? { base: head.stdout.trim() } : { reason: 'no HEAD commit' };
+  }
   if (event === 'push') {
-    const branch = (env['GITHUB_REF'] ?? '').replace(/^refs\/heads\//, '');
-    if (!(DEFAULT_BRANCHES.has(branch) || branch === env['STARCI_DEFAULT_BRANCH'])) return { reason: `a push to ${branch || 'a non-branch ref'}, not the default branch` };
+    if (!isDefault(branch)) return { reason: `a push to ${branch || 'a non-branch ref'}, not the default branch` };
     const parent = git(root, ['rev-parse', '--verify', '-q', 'HEAD^1']);
     return parent.ok && parent.stdout.trim() !== '' ? { base: parent.stdout.trim() } : { reason: 'no first parent (fetch depth 1)' };
   }

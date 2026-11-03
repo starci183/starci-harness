@@ -71,6 +71,13 @@ test('a push the bundled gate allows is still refused when the dependency push g
   assert.match(result.stderr, /DEPS_PIN_UNPUBLISHED/);
 });
 
+test('a push the bundled and dependency gates allow is still refused when its check cache is not warm', t => {
+  const repo = repository(t, HOOK, { freshExit: 1 });
+  const result = push(repo, [ref('refs/heads/main', repo.head, repo.older)]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /HFS_CHECK_CACHE_UNWARMED/);
+});
+
 test('backups retain their push and delete behavior; another allowed ref cannot hide a main refusal', t => {
   const repo = fixture(t);
   for (const sha of [repo.head, ZERO]) assert.equal(push(repo, [ref('refs/backup/lane', sha)]).status, 0);
