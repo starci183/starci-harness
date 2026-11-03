@@ -2,7 +2,7 @@
 
 The dev environment is one command: `starci app stack up --env dev --execute`. It checks the machine, opens the dev custody, runs the setup
 commands, starts the dependencies in Docker Linux containers (the `db` service: the official postgres image plus pgvector, built from
-`.starcistacks/images/db/Dockerfile`; the `mail` service: Mailpit, the dev mail sink), gives the environment its own database role, migrates, runs the seed, starts the api and web
+`.starcistacks/images/db/Dockerfile`; the `mail` service: Mailpit, the dev mail sink), gives the environment its own database role, migrates, applies the seed levels `.starcistacks/seeds/` then `.starcistacks/dev/seeds/`, starts the api and web
 processes natively and waits for readiness. What it runs is the `local` block of `environments.dev` in `.starcistacks/application-stacks.yaml`
 (PROJECT-STACKS-6 in contexts/project/stacks.md); this runbook never carries a docker command, an agent never runs docker by hand.
 
@@ -20,7 +20,7 @@ another environment.
 | --- | --- |
 | prepare | `starci app stack prepare --env dev --execute`: checks the machine, opens the custody, runs the setup commands and builds the images. |
 | doctor | `starci app stack doctor --env dev`: read-only table of host prerequisites with the owner-run install step per OS, custody, compose render and ports. |
-| up | `starci app stack up --env dev --execute`: prepare, then the services, the database role, migrations with a receipt, the seed, the processes and readiness; prints the origins. |
+| up | `starci app stack up --env dev --execute`: prepare, then the services, the database role, migrations with a receipt, the seed levels `.starcistacks/seeds/` then `.starcistacks/dev/seeds/`, each entry once per content hash, the processes and readiness; prints the origins. |
 | status | `starci app stack status --env dev`: desired against running, the migration receipt and every readiness probe. |
 | logs | `starci app stack logs --env dev --service api` (a process or a compose service, bounded and redacted). |
 | down | `starci app stack down --env dev --execute`: ends the processes and stops the compose project; volumes and sealed values stay. |

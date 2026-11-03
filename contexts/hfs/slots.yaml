@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.17.0
+version: 3.18.0
 presenceValues:
   - required
   - optional
@@ -829,7 +829,7 @@ ruleParams:
     # R334 (lite): the only `.query(` outside platform/database's composer and the test world is the pass-through of a file listed here
     # (or in hfs.json sides.be.sqlPassThrough), whose SQL text is not the app's own. Paths are relative to the side folder.
     sqlPassThrough:
-      - {file: src/modules/platform/database/seed-runner.service.ts, reason: "the tracked seed file's text, run as it is (db/seed.sql); the app writes no SQL there"}
+      - {file: src/modules/platform/database/seed-runner.service.ts, reason: "the tracked seed files' text, run as it is (the sql/ entries of .starcistacks/seeds/, then of .starcistacks/<env>/seeds/); the app writes no SQL there"}
     lite:
       schemaAuthority: sql
       infraOwners:
@@ -1359,7 +1359,10 @@ slots:
       - <env>/runtime/env/KEYS.md
       - "<env>/secrets/<slug>.{enc.yaml,enc}"
       - <env>/secrets/.gitkeep
-      - <env>/seeds/**
+      - seeds/seeds.yaml
+      - seeds/{sql,data,files}/**
+      - <env>/seeds/seeds.yaml
+      - <env>/seeds/{sql,data,files}/**
     forbids:
       - <env>/runtime/files/**
       - "**/*.enc outside <env>/secrets/"
@@ -1380,7 +1383,10 @@ slots:
         - <env>/runtime/env/KEYS.md
         - "<env>/secrets/<slug>.{enc.yaml,enc}"
         - <env>/secrets/.gitkeep
-        - <env>/seeds/**
+        - seeds/seeds.yaml
+        - seeds/{sql,data,files}/**
+        - <env>/seeds/seeds.yaml
+        - <env>/seeds/{sql,data,files}/**
       forbids:
         - <env>/runtime/files/**
         - "**/*.enc outside <env>/secrets/"
@@ -1392,6 +1398,13 @@ slots:
       - HFS_STACKS_IN_SIDE
       - HFS_PLAINTEXT_SECRET
       - HFS_IDENTITY_CUSTODY
+      - HFS_SEEDS_SHAPE
+      - HFS_SEED_MANIFEST
+      - HFS_SEED_DDL
+      - HFS_SEED_DATA_SCHEMA
+      - HFS_SEED_TEST_DATA
+      - HFS_SEED_SECRET_REF
+      - HFS_SEED_PII
   - id: app.sops
     profiles:
       - app
@@ -1486,16 +1499,6 @@ slots:
     editions:
       - lite
     path: db/migrations/archive/
-    presence: optional
-    tracked: tracked
-    tier: none
-    tests: none
-  - id: app.db.seed
-    profiles:
-      - app
-    editions:
-      - lite
-    path: db/seed.sql
     presence: optional
     tracked: tracked
     tier: none

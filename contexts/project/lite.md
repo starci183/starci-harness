@@ -96,7 +96,7 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 ## Moving an app off Supabase
 
 An app scaffolded on the earlier lite edition moves in one commit on hfs 4.10: `git mv supabase/migrations db/migrations`
-(an `_archive/` folder becomes `db/migrations/archive/`), `git mv supabase/seed.sql db/seed.sql`, then delete
+(an `_archive/` folder becomes `db/migrations/archive/`), `git mv supabase/seed.sql db/seed.sql` and then `starci app codemod seeds-layout --execute` (PROJECT-STACKS-12 of [stacks.md](stacks.md)), then delete
 `supabase/config.toml`, `supabase/types/` and the rest of `supabase/`; in hfs.json replace the `supabase` block with an
 optional `db` block (`forceRls`, `appRole`), set every connection's `provider` to `postgres`, drop `supabase/types/` from
 `sides.<side>.reads`, and list the app's database functions, schema-qualified (`public.job_claim`), in `sides.be.dbFunctions`; run `npx --no-install starci app sync --execute`
@@ -116,7 +116,7 @@ Apply the whole active chain to a rehearsal database with `starci app db migrate
 `starci app db baseline --squash --db-url-env <NAME> --stamp <ts14> --seed-tables <reference tables>` (add `--drop-extension`
 for each extension the db image lacks beyond the default `pg_net,pg_cron`, and `--drop-pgmq-queue` for queues whose work
 moved to BullMQ), read its report, and repeat with `--execute`. The verb writes the one baseline, the marked role section of
-`db/bootstrap.sql` and `db/seed.sql`, archives the chain, and refuses unless the replay on the app's db image equals the
+`db/bootstrap.sql` and the shared seed entry `reference` (`.starcistacks/seeds/sql/reference.sql`), archives the chain, and refuses unless the replay on the app's db image equals the
 rehearsal minus what it drops; nobody writes a migration after it by hand. Production then takes `starci app db migrate` on
 its empty database and the seed. The verb's flags and outputs are the hfs README's `db baseline --squash`.
 

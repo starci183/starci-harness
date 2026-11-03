@@ -7,7 +7,7 @@ import type { ConnectionOpener, SeedFileReader } from "./database.port"
 import { DEFAULT_SEED_ENV, seedConnections, seedDirectoryOf } from "./seed-connections.client"
 
 @Injectable()
-/** The one seed runner: reads the seed files of a stack environment, runs them on the connections they name and logs the report. */
+/** The one seed runner: reads the shared seed files and then those of a stack environment, runs them on the connections they name and logs the report. */
 export class SeedRunnerService {
     constructor(
         @InjectDatabaseOptions() private readonly options: DatabaseOptions,
@@ -16,9 +16,9 @@ export class SeedRunnerService {
         @InjectLogger() private readonly logger: Logger,
     ) {}
 
-    /** Reads the seed files of the environment (the dev seeds when none is named), runs them on their connections and logs the report. */
+    /** Reads the shared SQL seeds, then those of the environment (dev when none is named), runs them on their connections and logs the report. */
     async run(env: string = DEFAULT_SEED_ENV): Promise<void> {
-        const files = await this.reader.read(seedDirectoryOf(env))
+        const files = [...(await this.reader.read(seedDirectoryOf())), ...(await this.reader.read(seedDirectoryOf(env)))]
         const report = await seedConnections(this.options.connections, files, this.opener)
         this.logger.info(LoggingLogEvent.SeedsApplied, {
             env,

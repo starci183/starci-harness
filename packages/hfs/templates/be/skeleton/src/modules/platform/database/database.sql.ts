@@ -38,7 +38,7 @@ function assertSqlIdent(_value: string): asserts _value is SqlIdent {
 {{> be/common/sql-ident.ts.partial}}
 
 /**
- * Brands the statements of one tracked seed file (`.starcistacks/<env>/seeds/<connection>-<name>.sql`) as SQL text. A seed file
+ * Brands the statements of one tracked seed file (`.starcistacks/seeds/sql/<connection>-<name>.sql` or `.starcistacks/<env>/seeds/sql/<connection>-<name>.sql`) as SQL text. A seed file
  * is source reviewed like a migration and run as written by the cli seed command; no value is ever spliced into it.
  */
 export const seedText = (text: string): SqlText => {

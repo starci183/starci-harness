@@ -73,7 +73,7 @@ const pgmqFailures: [string, Contents][] = [
   ['dynamic queue constant', { [QUEUE]: "export const RECEIPTS_QUEUE = queueName();" }],
   ['dynamic pgmq.create name', { [MIGRATION]: "select pgmq.create(current_setting('queue.name'));" }],
   ['pgmq.create in application SQL', { 'be/src/modules/platform/queue/persistence/queue.sql.ts': "export const createQueue = sql`select pgmq.create('receipts')`;" }],
-  ['pgmq.create in a seed', { 'db/seed.sql': CREATE }],
+  ['pgmq.create in a seed', { 'db/migrations/20261014120000_seed.sql': 'select 1;', '.starcistacks/seeds/sql/queues.sql': CREATE }],
   ['deferred SQL function queue creation', { [MIGRATION]: "create function private.install_queue() returns void language sql as $$select pgmq.create('receipts')$$;" }],
   ['deferred PLpgSQL function queue creation', { [MIGRATION]: "create function private.install_queue() returns void language plpgsql as $$begin perform pgmq.create('receipts'); end$$;" }],
   ['deferred SQL-standard function queue creation', { [MIGRATION]: "create function private.install_queue() returns void language sql return pgmq.create('receipts');" }],
