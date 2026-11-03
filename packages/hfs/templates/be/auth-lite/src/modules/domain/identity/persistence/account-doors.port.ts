@@ -1,6 +1,7 @@
 // Managed by starci app sync (slot be.identity.sign-in); do not edit: run "npx starci app sync --execute".
 import type { EntityManager } from "typeorm"
 import { callDbFunction, returnedRows, rowShape } from "@modules/platform/database"
+import { isRecord } from "@modules/platform/primitives"
 
 /** The account an address stands for, with the stored hash the password is checked against. */
 export interface AccountByEmail {
@@ -22,9 +23,15 @@ export interface AccountById {
     readonly id: string
     /** The sign-in address, or null. */
     readonly email: string | null
+    /** The profile keys of the account (raw_user_meta_data), as the door returns them. */
+    readonly meta: unknown
     /** True when the account is deleted or banned at the database's now(). */
     readonly disabled: boolean
 }
+
+/** The full name the profile keys of an account hold (`full_name`, written by the sign-up and the Google sign-in), or undefined. */
+export const fullNameOf = (meta: unknown): string | undefined =>
+    isRecord(meta) && typeof meta.full_name === "string" && meta.full_name !== "" ? meta.full_name : undefined
 
 /** An account to create: the id, the address, the profile keys as JSON text and the instant. */
 export interface NewAccount {
@@ -52,6 +59,7 @@ const isAccountByEmail: (value: unknown) => value is AccountByEmail = rowShape({
 const isAccountById: (value: unknown) => value is AccountById = rowShape({
     id: "string",
     email: "string?",
+    meta: "json",
     disabled: "boolean",
 })
 const isLinkedAccount = rowShape({ be_auth_user_by_google: "string?" })

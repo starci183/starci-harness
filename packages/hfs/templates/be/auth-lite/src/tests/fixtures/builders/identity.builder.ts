@@ -5,7 +5,7 @@ const BEFORE = new Date("2026-02-03T04:00:00.000Z")
 export type AccountByEmailVariant = "live" | "disabled" | "unconfirmed" | "passwordless" | "invited"
 
 /** The kinds of account the sign-in reads by id. */
-export type AccountByIdVariant = "live" | "disabled" | "addressless"
+export type AccountByIdVariant = "live" | "disabled" | "addressless" | "named"
 
 /** A row of the by-address door: `disabled` is what the database decided at its own now(). */
 export interface AccountByEmailRow {
@@ -20,6 +20,7 @@ export interface AccountByEmailRow {
 export interface AccountByIdRow {
     id: string
     email: string | null
+    meta: Record<string, string>
     disabled: boolean
 }
 
@@ -36,5 +37,6 @@ export const accountByEmailRow = (variant: AccountByEmailVariant = "live"): Acco
 export const accountByIdRow = (variant: AccountByIdVariant = "live", id = "u-1"): AccountByIdRow => ({
     id,
     email: variant === "addressless" ? null : "a@example.test",
+    meta: variant === "named" ? { full_name: "Ada Lovelace", name: "Ada Lovelace" } : {},
     disabled: variant === "disabled",
 })

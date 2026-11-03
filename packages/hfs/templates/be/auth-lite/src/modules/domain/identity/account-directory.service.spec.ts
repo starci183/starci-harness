@@ -32,6 +32,21 @@ describe("IdentityAccountDirectoryService.find", () => {
         expect(await addressless.directory.find("u-1")).toEqual({ id: "u-1", email: null, disabled: false })
     })
 
+    it("answers the full name the profile keys hold, and none for an empty or a missing one", async () => {
+        const named = await build([accountByIdRow("named")])
+        const blank = await build([{ ...accountByIdRow(), meta: { full_name: "" } }])
+        const raw = await build([{ ...accountByIdRow(), meta: null }])
+
+        expect(await named.directory.find("u-1")).toEqual({
+            id: "u-1",
+            email: "a@example.test",
+            disabled: false,
+            name: "Ada Lovelace",
+        })
+        expect((await blank.directory.find("u-1"))?.name).toBeUndefined()
+        expect((await raw.directory.find("u-1"))?.name).toBeUndefined()
+    })
+
     it("answers undefined for an account that does not exist", async () => {
         const { directory } = await build([])
 

@@ -150,6 +150,21 @@ describe("IdentityAuthenticatorService.signInWithGoogle", () => {
         ])
     })
 
+    it("answers the full name the account's profile keys hold with the person", async () => {
+        const { subject } = await build([
+            [USER_BY_GOOGLE, [{ be_auth_user_by_google: "u-1" }]],
+            [LINK_GOOGLE, []],
+            [TOUCH_USER, []],
+            [USER_BY_ID, [accountByIdRow("named")]],
+        ])
+
+        expect(await subject.signInWithGoogle(profile())).toEqual({
+            userId: "u-1",
+            email: "a@example.test",
+            name: "Ada Lovelace",
+        })
+    })
+
     it("links an existing account by its verified address", async () => {
         const { subject, entityManager } = await build([
             [USER_BY_GOOGLE, [{ be_auth_user_by_google: null }]],

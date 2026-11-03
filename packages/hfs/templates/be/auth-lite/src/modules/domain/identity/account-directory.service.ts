@@ -3,10 +3,10 @@ import { Injectable } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
 import type { AccountDirectory, AccountStanding } from "@modules/integrations/passport"
 import { InjectPrimaryEntityManager } from "@modules/platform/database"
-import { accountDoors } from "./persistence/account-doors.port"
+import { accountDoors, fullNameOf } from "./persistence/account-doors.port"
 
 @Injectable()
-/** The package's account directory over the account doors: whether an account still stands, for a refresh to go on. */
+/** The package's account directory over the account doors: whether an account still stands, for a refresh to go on, and the person's full name. */
 export class IdentityAccountDirectoryService implements AccountDirectory {
     constructor(@InjectPrimaryEntityManager() private readonly entityManager: EntityManager) {}
 
@@ -14,6 +14,12 @@ export class IdentityAccountDirectoryService implements AccountDirectory {
     async find(userId: string): Promise<AccountStanding | undefined> {
         const account = await accountDoors.userById(this.entityManager, userId)
         if (account === undefined) return undefined
-        return { id: account.id, email: account.email, disabled: account.disabled }
+        const name = fullNameOf(account.meta)
+        return {
+            id: account.id,
+            email: account.email,
+            disabled: account.disabled,
+            ...(name === undefined ? {} : { name }),
+        }
     }
 }

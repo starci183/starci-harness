@@ -19,7 +19,7 @@ import type { Logger } from "@modules/platform/logging"
 import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
 import { InjectAuthPasswords, InjectSignInBudget } from "./identity.decorators"
 import { IdentitySignInLogEvent } from "./identity-sign-in.log-events"
-import { accountDoors } from "./persistence/account-doors.port"
+import { accountDoors, fullNameOf } from "./persistence/account-doors.port"
 
 /** A Google profile whose email Google verified, so it has one. */
 type VerifiedProfile = GoogleProfile & { readonly email: string }
@@ -88,7 +88,8 @@ export class IdentityAuthenticatorService implements AuthAuthenticator {
         if (account?.email === undefined || account.email === null)
             throw new PassportError({ code: PassportErrorCode.GoogleRejected })
         if (account.disabled) throw new IdentityError({ code: IdentityErrorCode.AccountDisabled })
-        return { userId: account.id, email: account.email }
+        const name = fullNameOf(account.meta)
+        return { userId: account.id, email: account.email, ...(name === undefined ? {} : { name }) }
     }
 
     private async createFor(
