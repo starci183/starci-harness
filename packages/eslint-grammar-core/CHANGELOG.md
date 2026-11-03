@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.17 - 2026-11-03
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.17; the runtime copies carry the root-packages view, the R187 and seed laws and the canon pins of this release; requires `@starci/eslint-canon-fe` 9.13.0.
+
 ## 0.21.16 - 2026-11-03
 
 - Changed: version stamp only, with `@starci/grammar` 0.21.16 (the FlowGraph lanes layout and branch labels); the runtime copy of the canon pins names the Grammar family at 0.21.16, `@starci/auth` 0.2.1, `@starci/auth-oidc` 0.1.1, `@starci/eslint-canon-be` 3.14.1, `@starci/eslint-canon-fe` 9.12.1 and `@starci/hfs` 5.4.0; requires `@starci/eslint-canon-fe` 9.12.1.

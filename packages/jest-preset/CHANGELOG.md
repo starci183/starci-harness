@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.7.0 - 2026-11-03
+
+- Added: `starciJestConfig` takes `packages: { folders, files, excludes }`: the root workspace packages join the unit project and the coverage scope, and the spec-coverage reporter judges their files. Specs: `test/coverage-packages.spec.ts`.
+
 ## 2.6.2 - 2026-11-03
 
 - Changed: `@starci/nest-kit`, `@starci/auth-oidc` and `@starci/mail` are compiled to CommonJS like `@starci/auth` and `@starci/object-storage`, so a spec that loads a module definition (`defineConfigurableModule`, `defineCapabilityModule`) or the Keycloak sign-in of a full back end loads the package. Specs: `test/preset.spec.ts`.

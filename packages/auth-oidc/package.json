@@ -1,6 +1,6 @@
 {
   "name": "@starci/auth-oidc",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "The OIDC client of a StarCi full app (Keycloak) behind the same PrincipalVerifier interface as @starci/auth: a NestJS module (issuer discovery, JWKS with caching and rotation, algorithm-pinned token checks, role mapping, the authorization code flow with PKCE and nonce), a front-end client (PKCE redirect, callback, one shared refresh, in memory token) and a fake OIDC issuer for tests.",
   "keywords": [
     "auth",
@@ -66,7 +66,7 @@
     "prepublishOnly": "npm test && npm run build"
   },
   "dependencies": {
-    "@starci/auth": "0.2.1",
+    "@starci/auth": "0.3.0",
     "jose": "6.2.12"
   },
   "peerDependencies": {

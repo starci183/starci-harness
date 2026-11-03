@@ -1,5 +1,10 @@
 # Changelog
 
+## 9.13.0 - 2026-11-03
+
+- Changed: `one-outcome-union` accepts in a root workspace package only the result union its `package.json` names (`starci.outcome: { name, file }`); every other result union stays refused. Specs: `src/packages-config.spec.ts`.
+- Changed: the runtime copies carry the root-packages view, the `modules` declaration and the canon pins of this release (no release-age wording).
+
 ## 9.12.1 - 2026-11-03
 
 - Changed: the runtime copies carry the canon pins of `@starci/auth` 0.2.1, `@starci/auth-oidc` 0.1.1, the Grammar family 0.21.16 and `@starci/hfs` 5.4.0.

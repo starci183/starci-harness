@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.15.0 - 2026-11-03
+
+- Changed: `throw-domain-error` and `error-home` judge a root workspace package by the error base its `package.json` declares (`starci.errorBase: { name, file }`), the way they judge an app by `DomainError` of `platform/errors`; a raw `Error` and an undeclared `Error` subclass stay refused, and a malformed declaration stops the lint. Specs: `src/packages-config.spec.ts`.
+- Changed: the runtime copies carry the root-packages view (`readPackageContract`, the `modules` declaration), the R187 build-context law, the seed rules (R375, R332) and the canon pins of this release.
+
 ## 3.14.1 - 2026-11-03
 
 - Changed: the runtime copies carry the canon pins of `@starci/auth` 0.2.1, `@starci/auth-oidc` 0.1.1, the Grammar family 0.21.16 and `@starci/hfs` 5.4.0.

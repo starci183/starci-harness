@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 - 2026-11-03
+
+- Added: a session carries the person's full name when the account directory knows it: `AccountStanding.name` and `AuthSubject.name` in; `SessionUser.name`, the `name` access-token claim (`AUTH_CLAIMS.name`), `AccessClaims.name` and `AuthPrincipal.name` out. The client keeps it (from the grant, or from the token when the grant carries no user) and announces a change of it. An account without a name answers as before.
+
 ## 0.2.1 - 2026-11-03
 
 - Fixed: a refresh replayed inside the grace window no longer signs the person out 30 seconds later. When a rotation's response never reached the browser (a navigation or an abort cut it), the next load presented the spent token, was answered an access token with no cookie (`cookieKept`) and the first load after the grace was reuse. Now `AuthSessions.refresh` gives such a replay a successor of its own in the same session and `AuthDoors.refresh` sets it as the cookie, at most `RACED_SUCCESSORS_MAX` (3) times per rotated token (`raced_count`); one more replay is reuse and ends the session, which revokes every token of it, as sign-out does. `SessionTokens.cookieKept` is removed; the session door never touched the cookie.
