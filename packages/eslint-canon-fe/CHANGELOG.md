@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.13.1 - 2026-11-04
+
+- Changed: the runtime copy of the canon pins names the release-3 versions (`@starci/hfs` 5.5.1, `@starci/jest-preset` 2.7.1, `@starci/eslint-canon-be` 3.15.1, the Grammar family 0.21.18).
+
 ## 9.13.0 - 2026-11-03
 
 - Changed: `one-outcome-union` accepts in a root workspace package only the result union its `package.json` names (`starci.outcome: { name, file }`); every other result union stays refused. Specs: `src/packages-config.spec.ts`.

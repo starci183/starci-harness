@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.15.1 - 2026-11-04
+
+- Changed: the runtime copy of the laws carries the R187 wording of `@starci/hfs` 5.5.1, and the canon pins name the release-3 versions.
+
 ## 3.15.0 - 2026-11-03
 
 - Changed: `throw-domain-error` and `error-home` judge a root workspace package by the error base its `package.json` declares (`starci.errorBase: { name, file }`), the way they judge an app by `DomainError` of `platform/errors`; a raw `Error` and an undeclared `Error` subclass stay refused, and a malformed declaration stops the lint. Specs: `src/packages-config.spec.ts`.

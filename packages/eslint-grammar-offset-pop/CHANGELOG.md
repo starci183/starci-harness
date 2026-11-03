@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.18 - 2026-11-04
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.18; requires `@starci/eslint-grammar-core` 0.21.18, and the runtime copy of the canon pins names the release-3 versions.
+
 ## 0.21.17 - 2026-11-03
 
 - Changed: version stamp only, with `@starci/grammar` 0.21.17; requires `@starci/eslint-grammar-core` 0.21.17, and the runtime copies carry the root-packages view and the canon pins of this release.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.18 - 2026-11-04
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.18; the runtime copies carry the R187 wording of `@starci/hfs` 5.5.1 and the release-3 canon pins; requires `@starci/eslint-canon-fe` 9.13.1.
+
 ## 0.21.17 - 2026-11-03
 
 - Changed: version stamp only, with `@starci/grammar` 0.21.17; the runtime copies carry the root-packages view, the R187 and seed laws and the canon pins of this release; requires `@starci/eslint-canon-fe` 9.13.0.

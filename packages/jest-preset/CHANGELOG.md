@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.7.1 - 2026-11-04
+
+- Fixed: the root packages unit project compiles with the compiler options of the back end's `tsconfig.json` (its `extends` chain, less its path options) under the unit options; ts-jest had searched its config from the app root and found none, so a root-package spec with a JSON default import failed for lack of `esModuleInterop`. Specs: `test/coverage-packages.spec.ts`.
+
 ## 2.7.0 - 2026-11-03
 
 - Added: `starciJestConfig` takes `packages: { folders, files, excludes }`: the root workspace packages join the unit project and the coverage scope, and the spec-coverage reporter judges their files. Specs: `test/coverage-packages.spec.ts`.

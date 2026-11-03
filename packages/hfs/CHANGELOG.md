@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.5.1 - 2026-11-04
+
+- Fixed: a seed `data` or `test-account` command run by `app stack up` gets the environment the app's api process gets in that environment (`runEnvironment`: its declared env, the sealed `_FILE` pointers and the database URL of the app role), beside the seed-secret values on stdin; it ran with an empty environment, so an app's seed CLI could not start.
+- Fixed: `ENV_SEALED_UNREAD` counts a `{"secret": "seeds-<name>"}` reference in seed data as a read of that member (a shared-level reference reads it in every environment).
+- Fixed: `HFS_STACKS_SHAPE` accepts the shared seed level `.starcistacks/seeds/`: the reserved folder names of `.starcistacks/` are one list, `RESERVED_STACK_FOLDERS` (`cache`, `seeds`), which the stacks gate reads.
+- Fixed: R187 (`HFS_DOCKER_BUILD_CONTEXT`) refuses a Next image's `COPY be/contracts` only when the back end holds no contracts (the COPY would fail the build); when it holds them, the COPY is the app's choice for each image, neither required nor refused.
+
 ## 5.5.0 - 2026-11-03
 
 - Changed: the back end's unit run holds the root packages (`packages/<name>` with a `package.json` and a `src/`, never the registry): their specs run in `npm test`, `app check --gate test` and the CI shards, and their logic is measured at 100 per file (the workbench, the public face and the barrels aside) inside the Sonar and Codecov scope. `test:modules`, the fast job's module-packages step and the per-package `jest.config.js` are removed; `starci app sync` renders the change (PROJECT-3, BE-TEST-13).
