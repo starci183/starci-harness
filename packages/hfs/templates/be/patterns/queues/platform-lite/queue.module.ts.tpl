@@ -5,6 +5,7 @@ import type { EntityManager } from "typeorm"
 import {
     QUEUE_FACTORY,
     QUEUE_OUTBOX,
+    QUEUE_REDELIVERY,
     QUEUE_RELAY_MANAGERS,
     QUEUE_TRANSPORT,
     QUEUE_WORKER_REGISTRY,
@@ -67,8 +68,9 @@ export class QueueModule extends ConfigurableModuleClass {
                 QueueRelayService,
                 QueueWorkerService,
                 { provide: QUEUE_WORKER_REGISTRY, useExisting: QueueWorkerService },
+                { provide: QUEUE_REDELIVERY, useExisting: QueueWorkerService },
             ],
-            exports: [QUEUE_OUTBOX, QUEUE_WORKER_REGISTRY, QUEUE_TRANSPORT],
+            exports: [QUEUE_OUTBOX, QUEUE_WORKER_REGISTRY, QUEUE_REDELIVERY, QUEUE_TRANSPORT],
         }
     }
 }

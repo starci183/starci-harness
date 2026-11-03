@@ -101,6 +101,19 @@ describe("QueueWorkerService", () => {
         })
     })
 
+    describe("redeliver", () => {
+        it("adds the parked delivery under its new id and waits until Redis holds it", async () => {
+            const { workers, transport } = await build()
+            transport.add.mockResolvedValue(undefined)
+            transport.persist.mockResolvedValue(undefined)
+
+            await workers.redeliver("mail", "job-1-r1", { orderId: "o-1" }, "req-1")
+
+            expect(transport.add).toHaveBeenCalledWith("mail", "job-1-r1", { orderId: "o-1" }, "req-1")
+            expect(transport.persist).toHaveBeenCalledWith([{ queue: "mail", jobId: "job-1-r1" }])
+        })
+    })
+
     describe("onApplicationShutdown", () => {
         it("closes the workers and the queues", async () => {
             const { workers, transport } = await build()

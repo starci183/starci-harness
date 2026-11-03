@@ -181,6 +181,13 @@ files:
   - path: src/modules/platform/queue/queue.policy.spec.ts
     slot: be.platform.queue
     template: queues/platform/queue.policy.spec.ts.tpl
+  - path: src/modules/platform/queue/queue.failure.ts
+    slot: be.platform.queue
+    role: "classifyFailure: the class of a flow failure (transient, input, code, config), BE-RESILIENCE-2."
+    template: queues/platform/queue.failure.ts.tpl
+  - path: src/modules/platform/queue/queue.failure.spec.ts
+    slot: be.platform.queue
+    template: queues/platform/queue.failure.spec.ts.tpl
   - path: src/modules/platform/queue/queue.log-events.ts
     slot: be.platform.queue
     template: queues/platform/queue.log-events.ts.tpl
@@ -269,7 +276,7 @@ liteAdapter:
   summary: >-
     Under lite the queue pattern is full's, adapter included: producers write the outbox in the caller's transaction, the relay
     adds each committed row to BullMQ with the outbox id as the job id, BullMQ workers run the processors with the queue policy's
-    attempts and exponential backoff, and a job that exhausts its attempts stays in BullMQ's failed set (the dead letter). The
+    attempts and exponential backoff, and a job that exhausts its attempts, or fails in a way a retry cannot fix, is parked by platform/jobs as failed_awaiting_fix and resumed (BE-RESILIENCE-2). The
     queue needs Redis: a lite app that declares queue or fenced-job declares `backing: [redis]` in hfs.json sides.be, and its
     stack runs one Redis with AOF persistence (appendonly yes, appendfsync everysec) on a named volume. One difference from
     full's adapter: the relay marks an outbox row sent only after the transport's persist step confirms Redis wrote the job to
@@ -282,7 +289,7 @@ liteAdapter:
     - {port: QueueOutbox (platform/queue), adapter: "the outbox row written through the caller's tx by queue_write, and the relay's queue_waiting and queue_mark_sent, functions of the queue migration in db/migrations called through callDbFunction of platform/database (R334)"}
     - {port: queue transport (queue-transport.port.ts), adapter: "full's bullmq-queue-transport.client.ts over the declared Redis (host, port, db and the password read from its sealed secret file), plus persist(jobs): WAITAOF 1 0 on each queue's connection, then each job's state, refusing with QUEUE_NOT_PERSISTED or QUEUE_JOB_LOST (errors/queue.error.ts)"}
     - {port: outbox relay (queue-relay.service.ts), adapter: "full's relay, which calls persist after the adds and before it marks the rows sent, so a refusal rolls the mark back and the next pass adds the rows again"}
-    - {port: QueueWorkerRegistry (platform/queue), adapter: "full's BullMQ worker per queue: attempts and exponential backoff from queue.policy.ts, failed jobs kept as the dead letter"}
+    - {port: QueueWorkerRegistry (platform/queue), adapter: "full's BullMQ worker per queue: attempts and exponential backoff from queue.policy.ts; a job a retry cannot fix is parked by platform/jobs as failed_awaiting_fix, never a dead letter"}
     - {port: schedulers, adapter: "a BullMQ job scheduler declared with its queue, as full, or a platform/jobs tick (JobTickService, R335) that writes one row of the tick's queue into the queue outbox under its lock and minute claim"}
   forbids: [kafkajs]
   proof: >-
