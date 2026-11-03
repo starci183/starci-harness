@@ -3251,6 +3251,16 @@ HFS_AUTH_COOKIE_DOMAIN_MISSING:
   owner: op-retry
   kind: check-finding
 
+BE_FLOW_FAILURE_SWALLOWED:
+  title: "A job or saga flow swallows a failure or deletes its failed job"
+  title_vi: "Một job hoặc saga nuốt lỗi hoặc xoá job đã lỗi"
+  meaning_vi: "Một processor, step, saga step, compensation hay consumer bắt lỗi mà không ném lại cũng không park, hoặc một file đặt removeOnFail: luồng dừng mà không retry, không park failed_awaiting_fix và không có cảnh báo, nên không bao giờ tự chạy lại."
+  causes_vi:
+    - "Vi phạm R377: một catch trong file luồng không throw cũng không gọi park."
+    - "Vi phạm R377: removeOnFail xoá job đã lỗi mà resume cần."
+  nextStep_vi: "Bỏ catch để lỗi tới runner (runner retry lỗi tạm thời và park phần còn lại với một cảnh báo), bỏ removeOnFail, rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
 HFS_BOOT_LOGGER_SILENCED:
   title: "A back-end app root boots Nest with the logger off"
   title_vi: "Một app back-end khởi động Nest với logger bị tắt"
