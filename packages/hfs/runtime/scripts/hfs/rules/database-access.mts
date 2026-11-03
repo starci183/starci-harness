@@ -175,7 +175,7 @@ function authSchemaFindings(analyses: Parsed, appRole: Parsed) {
     }
   }
   return [...held.values()].filter((state) => state.privileges.size > 0)
-    .map((state) => note(DB_APP_ROLE, state, `${appRole} holds a grant on ${state.target}; reach accounts through the identity account doors (SECURITY DEFINER functions), never through a grant on schema ${ACCOUNT_SCHEMA}; an app on the old sign-in glue runs `starci app codemod account-doors`, `starci app sync --execute` and `starci app codemod account-doors --contract` in one release`, { target: state.target }));
+    .map((state) => note(DB_APP_ROLE, state, `${appRole} holds a grant on ${state.target}; reach accounts through the identity account doors (SECURITY DEFINER functions), never through a grant on schema ${ACCOUNT_SCHEMA}; an app on the old sign-in glue runs "starci app codemod account-doors", "starci app sync --execute" and "starci app codemod account-doors --contract" in one release`, { target: state.target }));
 }
 
 function roleStatementFindings(statement: Parsed, appRole: Parsed) {
