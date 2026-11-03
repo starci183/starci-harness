@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, extname, join, resolve } from "node:path"
 import type { Config } from "jest"
 
 import { mock, createMock } from "./mock.ts"
@@ -161,11 +161,42 @@ const TRANSFORM_IGNORE_PATTERNS = Object.freeze([String.raw`[\\/]node_modules[\\
 /** The unit project transpiles each file independently; helpers stay in tslib, source maps distinguish generated metadata, and type checks run separately. */
 const UNIT_COMPILER_OPTIONS = Object.freeze({ isolatedModules: true, importHelpers: true, sourceMap: true })
 
+/** The options of a tsconfig that name paths relative to the file declaring them: the back end's own, meaningless to a root package. */
+const PATH_COMPILER_OPTIONS = Object.freeze(["baseUrl", "paths", "rootDir", "rootDirs", "outDir", "declarationDir", "typeRoots", "tsBuildInfoFile"])
+
+/** The tsconfig file an `extends` entry of `from` names: a relative path (`.json` implied) or a package subpath, resolved from the folder of `from`. */
+function extendedConfig(from: string, entry: string): string {
+  if (!entry.startsWith(".")) return require.resolve(entry, { paths: [dirname(from)] })
+  const file = resolve(dirname(from), entry)
+  return extname(file) === ".json" ? file : `${file}.json`
+}
+
+/** The raw compiler options of the tsconfig `file`, its `extends` chain included (a later entry and the file itself win), read with the app's TypeScript. */
+function compilerOptionsOf(file: string): Record<string, unknown> {
+  const typescript = require("typescript") as typeof import("typescript")
+  // TypeScript names a file with forward slashes, and asserts it when it attaches a diagnostic to one
+  const { config, error } = typescript.readConfigFile(file.replaceAll("\\", "/"), typescript.sys.readFile)
+  if (error !== undefined) throw new Error(`starciJestConfig cannot read ${file}: ${typescript.flattenDiagnosticMessageText(error.messageText, " ")}`)
+  const bases = [config?.extends ?? []].flat() as string[]
+  return Object.assign({}, ...bases.map((entry) => compilerOptionsOf(extendedConfig(file, entry))), config?.compilerOptions)
+}
+
+/**
+ * The compiler options of the root packages project: those the back end's unit project compiles with (its tsconfig.json, found from its rootDir, under the
+ * unit options), without the back end's path options. ts-jest takes an inline tsconfig over the config file it finds from the project's rootDir, which for
+ * the packages is the app root and not the back end, so the back end's options (esModuleInterop and resolveJsonModule among them) are named here.
+ */
+function packagesCompilerOptions(root: string): Record<string, unknown> {
+  const file = join(root, "tsconfig.json")
+  const options = existsSync(file) ? compilerOptionsOf(file) : {}
+  return Object.fromEntries(Object.entries({ ...options, ...UNIT_COMPILER_OPTIONS }).filter(([key]) => !PATH_COMPILER_OPTIONS.includes(key)))
+}
+
 /** Generated constructor metadata keeps its runtime guards, mapped to a generated-metadata coverage anchor instead of source parameters. */
-function unitTransform(): Record<string, [string, Record<string, unknown>]> {
+function unitTransform(compilerOptions: Record<string, unknown> = UNIT_COMPILER_OPTIONS): Record<string, [string, Record<string, unknown>]> {
   const unitMetadata = require.resolve("./unit-metadata.js")
   return {
-    [TS_TRANSFORM]: [unitMetadata, { tsconfig: { ...UNIT_COMPILER_OPTIONS }, diagnostics: false, astTransformers: { after: [unitMetadata] } }],
+    [TS_TRANSFORM]: [unitMetadata, { tsconfig: { ...compilerOptions }, diagnostics: false, astTransformers: { after: [unitMetadata] } }],
     ...esmDependencyTransform(),
   }
 }
@@ -373,7 +404,7 @@ function starciJestConfig(options: StarciJestOptions): StarciJestConfig {
         rootDir: APP_ROOT,
         roots: packages.folders.map((folder) => `<rootDir>/${folder}/src`),
         transformIgnorePatterns: shared.transformIgnorePatterns,
-        transform: unitTransform(),
+        transform: unitTransform(packagesCompilerOptions(root)),
         displayName: "unit",
         clearMocks: true,
         setupFilesAfterEnv: [require.resolve("./matchers.js")],
