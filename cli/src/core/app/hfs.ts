@@ -107,6 +107,21 @@ export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): 
     })
 
 /**
+ * The governed runner of the dev verbs' heavy commands (`starci app stack up`: `npm ci`, a compose build or up): one slot of the host-wide
+ * semaphore per command, run without a shell, the result handed back as the spawn seam's shape.
+ */
+export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand) => async (request: { readonly kind: "install" | "build"; readonly label: string; readonly cwd: string; readonly argv: readonly string[]; readonly env: NodeJS.ProcessEnv }) =>
+    admit(request.kind, request.label, request.cwd, { baseEnv: request.env }, async (held) => {
+        const run = await capture(request.argv, request.cwd, held.options)
+        return {
+            status: run.timedOut ? null : run.exitCode,
+            stdout: run.stdout,
+            stderr: run.stderr,
+            ...(run.timedOut ? { error: Object.assign(new Error("child deadline reached"), { code: "ETIMEDOUT" }) } : {}),
+        }
+    })
+
+/**
  * Runs `starci app <verb>` in @starci/hfs, in-process, in the verb's working directory. In human mode its stdout and stderr
  * stream as it prints them and the CLI adds nothing; under `--json` the CLI passes `--json` to a verb that `printsJson` and
  * carries what it printed. The CLI passes its own version as `harness`: it is the starci-harness an app is judged and scaffolded at,
@@ -123,9 +138,10 @@ export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly
     const { hostIdentity = hostAgeIdentity(context.cwd), ...more } = extra
     const harness = { version: packageVersion(), ...more }
     const runHeavyNode = hfsNodeRunner()
+    const stackIo = { heavy: hfsCommandRunner() }
     const io = context.json
-        ? { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
-        : { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
+        ? { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stackIo, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
+        : { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stackIo, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
     const { main } = await import("@starci/hfs")
     const exitCode = await main([verb, ...full], io)
     const data: HfsRunData = { verb, argv: full, exitCode, output: context.json ? parsed(stdout.trim()) : null, stderr }
