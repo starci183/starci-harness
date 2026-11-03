@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { accountDoorsMarkdown, migrateAccountDoors } from './account-doors.mjs';
 import { codemodMain as buttonIntentMain } from './button-intent.mjs';
 import { migratePageNavigation, pageNavigationMarkdown } from './page-navigation.mjs';
 import { loadingStatesMarkdown, migrateLoadingStates } from './loading-states.mjs';
@@ -13,7 +14,7 @@ import { migrateThemeTokens, themeTokensMarkdown } from './theme-tokens.mjs';
 import { migrateTierBinding, tierBindingMarkdown } from './tier-binding.mjs';
 
 /** The codemods `starci app codemod` runs, by name. */
-export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding', 'loading-states', 'explicit-surface', 'directive-first']);
+export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding', 'loading-states', 'explicit-surface', 'directive-first', 'account-doors']);
 
 /** The arguments of every report-style `starci app codemod`: --execute, --json, --format and --out; any other is refused. */
 export function spacingRolesArguments(argv: readonly string[]): { write: boolean; format: 'json' | 'markdown'; out?: string } {
@@ -38,7 +39,7 @@ export function spacingRolesArguments(argv: readonly string[]): { write: boolean
 }
 
 /** One of the report-style codemods run at an app root: its report object and the Markdown of it. */
-function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'button-intent' | 'explicit-surface'>, root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
+function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'button-intent' | 'explicit-surface' | 'account-doors'>, root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
   if (name === 'directive-first') {
     const report = migrateDirectiveFirst({ root, write });
     return { report, markdown: directiveFirstMarkdown(report) };
@@ -104,6 +105,14 @@ async function explicitSurfaceMain(argv: readonly string[], io: Io): Promise<num
   return emit(options, { report, markdown: explicitSurfaceMarkdown(report) }, io);
 }
 
+/** `starci app codemod account-doors [--contract]`: the expand migration of the account doors, or (a release later) the contract migration that revokes the old grants. */
+function accountDoorsMain(argv: readonly string[], io: Io): number {
+  const contract = argv.includes('--contract');
+  const options = reportArguments(argv.filter((arg) => arg !== '--contract'));
+  const report = migrateAccountDoors({ root: path.resolve(io.cwd), write: options.write, contract });
+  return emit(options, { report, markdown: accountDoorsMarkdown(report) }, io);
+}
+
 /**
  * CLI boundary of `starci app codemod <name>`. Dry run by default; --execute writes only the safe rewrites. A codemod
  * that leaves a case for a person exits 1 with the complete report.
@@ -112,6 +121,7 @@ export function codemodMain(argv: string[], io: Io): number | Promise<number> {
   const [name, ...rest] = argv;
   if (name === 'button-intent') return buttonIntentMain(argv, io);
   if (name === 'explicit-surface') return explicitSurfaceMain(rest, io);
+  if (name === 'account-doors') return accountDoorsMain(rest, io);
   if (name === undefined || !CODEMODS.includes(name)) throw new Error(`starci app codemod takes ${CODEMODS.join(' or ')}`);
   const options = reportArguments(rest);
   return emit(options, runCodemod(name as Parameters<typeof runCodemod>[0], path.resolve(io.cwd), options.write), io);

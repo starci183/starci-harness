@@ -62,8 +62,8 @@ test('the baseline migration of a lite starter holds the package\'s session tabl
 });
 
 test('the six account doors are the canon\'s listed database functions, so an app lists none of them in hfs.json', () => {
-  const listed = new Map(loadSlotManifest().ruleParams.be.dbFunctions.map((entry: { name: string; reason: string }) => [entry.name, entry.reason]));
-  for (const door of ACCOUNT_DOORS) assert.match(String(listed.get(`public.${door}`)), /^domain\/identity \(lite sign-in\)/u, door);
+  const listed = Object.fromEntries((loadSlotManifest().ruleParams.be?.dbFunctions ?? []).map((entry) => [entry.name, entry.reason]));
+  for (const door of ACCOUNT_DOORS) assert.match(String(listed[`public.${door}`]), /^domain\/identity \(lite sign-in\)/u, door);
 });
 
 test('a lite starter\'s passport integration is the glue the slot lists and its front end keeps one auth client', (t) => {

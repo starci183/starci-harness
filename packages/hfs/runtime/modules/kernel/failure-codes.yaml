@@ -1802,7 +1802,7 @@ DB_APP_ROLE:
     - "Vi phạm R255: app role vượt qua RLS hoặc được cấp quyền rộng hơn công việc của back end."
     - "Role không khai báo rõ noinherit và nobypassrls, hoặc nhận grant all trên schema hay bảng."
     - "Role nhận grant trên schema auth: tài khoản chỉ được truy cập qua các hàm SECURITY DEFINER be_auth_* (account doors) của baseline."
-  nextStep_vi: "Khai báo app role với noinherit, nobypassrls và các thuộc tính không đặc quyền; bỏ superuser, bypassrls và grant all, rồi cấp từng quyền cần thiết. Với grant trên schema auth: thêm các account doors, đồng bộ code, rồi thu hồi grant trong một migration *_contract_*."
+  nextStep_vi: "Khai báo app role với noinherit, nobypassrls và các thuộc tính không đặc quyền; bỏ superuser, bypassrls và grant all, rồi cấp từng quyền cần thiết. Với grant trên schema auth: chạy `starci app codemod account-doors --execute`, `starci app sync --execute`, rồi `starci app codemod account-doors --contract --execute`."
   owner: op-retry
   kind: check-finding
 
