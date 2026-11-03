@@ -5,7 +5,7 @@ import {
   readRepoDeclaration,
   resolveAppDeclaration,
 } from "../runtime/scripts/hfs/slots.mjs";
-import { imageFiles, render, TEMPLATES_DIR } from "../sync/index.mjs";
+import { appSource, imageFiles, render, TEMPLATES_DIR } from "../sync/index.mjs";
 import { ScaffoldError, pascalOf } from "./service.mjs";
 import { PARTIAL_VARIABLES, coreFeApps, jsonText, packageJsonText } from "./app.mjs";
 
@@ -180,7 +180,7 @@ export function addApp({ root, name }: { root: string, name: string }): { create
   const planned: PlannedFile[] = [...planAppTemplates(repo, name), ...planWorkspaceManifests(root, repo, repo.sides.fe.apps, name)];
   const declaration = JSON.parse(fs.readFileSync(declarationFile, "utf8"));
   declaration.sides.fe.apps.push({ name, kind: "next" });
-  const image = imageFiles(resolveAppDeclaration(manifest, declaration)).find((file: { path: string }) => file.path === `${targetBase}/Dockerfile`);
+  const image = imageFiles(resolveAppDeclaration(manifest, declaration), appSource(root)).find((file: { path: string }) => file.path === `${targetBase}/Dockerfile`);
   if (!image && repo.edition !== "lite")
     throw new ScaffoldError(
       "HFS_ADD_TEMPLATE_MISSING",
