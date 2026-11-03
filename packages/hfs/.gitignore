@@ -9,6 +9,8 @@
 # Spec fixtures are test data; each module a spec imports has a hand-written .d.mts beside it.
 !src/fixtures/**
 !templates/**
+# The runtime-layer recipes starci app stack up builds are copies of the harness images/<layer>/ (npm run bundles), scripts included.
+!stack/images/**
 # The vendored yaml bundle and the catalog gen-catalog writes, each with its hand-written types, are tracked as they are.
 !runtime/engine/yaml.mjs
 !runtime/engine/yaml.d.mts
