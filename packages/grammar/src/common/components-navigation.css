@@ -1988,7 +1988,7 @@
     /*
      * The lanes layout (branch lanes): every node is one width, its words wrap at the body size, and the tone follows the node kind
      * through the soft pair (tint and soft foreground; the trigger is the neutral surface). An edge is a clear stroke in the muted ink with
-     * an arrowhead, and a branch label sits on the page background so no line runs through its text. A column header is sentence case.
+     * an arrowhead, and a branch label is an opaque chip above every line so no line runs through its text. A column header is sentence case.
      */
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-node {
         inline-size: 8rem;
@@ -2008,8 +2008,21 @@
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-label { overflow: visible; font-weight: var(--grammar-weight-medium); text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-description { overflow: visible; color: inherit; opacity: var(--grammar-opacity-secondary); text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow { --xy-edge-stroke: var(--muted); --xy-edge-stroke-width: 1.75; }
-    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow__edge-textbg { fill: var(--surface); stroke: none; }
-    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow__edge-text { fill: var(--muted); font-size: var(--grammar-text-xs); }
+    /*
+     * A branch label is an opaque chip in React Flow's edge label layer, above every edge line, so no line (its own or another branch's
+     * running into the same node) ever crosses its words. It never wraps: the layout widens the column for its words.
+     */
+    .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-lane-label {
+        position: absolute;
+        padding: 0.25rem 0.5rem;
+        border-radius: var(--grammar-radius-sm);
+        background-color: var(--surface);
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+        white-space: nowrap;
+        pointer-events: none;
+    }
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .react-flow__arrowhead polyline { stroke: var(--muted); fill: var(--muted); }
     .starci-core-flow-graph[data-grammar-flow-layout="lanes"] .starci-core-flow-graph-header {
         color: var(--muted);

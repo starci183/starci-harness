@@ -3,6 +3,7 @@
 ## 0.21.16 - 2026-11-03
 
 - Fixed: `FlowGraph layout="lanes"` nodes no longer overlap or collapse. A row is as tall as its tallest node (the layout estimates the wrapped lines of the label, the description and the count chip) and its nodes sit in the middle of it, so a long label never runs into the row below; the count chip wraps to a line of its own instead of squeezing the label into a few letters a line; a column that a labelled edge runs out of is wide enough for the label, so the words never run under the node they point at. `lanesLayout` returns `columnX` (the column centres) and `contentHeight`; `lanesStepPosition` takes the run in graph units.
+- Fixed: a `FlowGraph layout="lanes"` branch label no longer reads as struck through. It was an SVG label painted inside its own edge, so the line of an edge drawn after it (another branch running into the same node along the same row) crossed its words; it is now an opaque chip in React Flow's edge label layer, above every line, centred on the straight part of its last run between the corner and the arrowhead (`data-grammar-flow-edge-label`). A column that a labelled edge runs out of also makes room for the fork point of its source and for air on either side of the chip. Held by `DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES` and `DNA-COMMON-FLOW-LANE-LABEL-OPAQUE`.
 
 ## 0.21.15 - 2026-11-03
 

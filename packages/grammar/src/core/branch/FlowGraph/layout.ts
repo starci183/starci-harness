@@ -174,9 +174,13 @@ const LANES_DESCRIPTION_LINE = 13
 const LANES_NODE_CHROME = 24
 const LANES_COPY_GAP = 4
 const LANES_COUNT_ROW = 28
-/** The width of one character of an edge label, and the room its chip needs beside the fork and the arrowhead. */
+/**
+ * The width of one character of an edge label at the extra-small size, and the room its chip needs beside its words: the chip's inline
+ * padding on both sides (16), the corner of the turn before it and the arrowhead after it (12 each, the lanes edge in index.tsx) and a
+ * spacing step of air on either side of the chip (16).
+ */
 const LANES_EDGE_LABEL_CHAR = 6.5
-const LANES_EDGE_LABEL_ROOM = 40
+const LANES_EDGE_LABEL_ROOM = 56
 
 /** How many lines `text` takes when it wraps at `chars` characters a line; a word longer than a line breaks inside itself, as the CSS does. */
 export const wrappedLines = (text: string, chars: number): number => {
@@ -227,13 +231,14 @@ export type LanesLayout = {
 
 /**
  * The centre of every column. The step between two centres is {@link LANES_COLUMN_STEP}, or wider when a labelled edge runs into the next column: its
- * label sits on the last run of the edge, so the gap holds the fork, the label and the arrowhead and the words never run under the node
- * they point at.
+ * label sits on the last run of the edge, after the fork point of its source (which moves right for each further forking node of the
+ * column), so the gap holds the fork, the label and the arrowhead and the words never run under the node they point at.
  */
 const lanesColumnX = (
     columnCount: number,
     edges: ReadonlyArray<FlowGraphEdge>,
     columns: ReadonlyMap<string, number>,
+    forks: ReadonlyMap<string, number>,
 ): ReadonlyArray<number> => {
     const step = new Array<number>(columnCount).fill(LANES_COLUMN_STEP)
     for (const edge of edges) {
@@ -241,7 +246,8 @@ const lanesColumnX = (
         const from = columns.get(edge.source)
         const to = columns.get(edge.target)
         if (label === "" || from === undefined || to !== (from + 1)) continue
-        step[from] = Math.max(step[from] ?? LANES_COLUMN_STEP, LANES_NODE_WIDTH + LANES_FORK_FIRST + label.length * LANES_EDGE_LABEL_CHAR + LANES_EDGE_LABEL_ROOM)
+        const turn = LANES_FORK_FIRST + (forks.get(edge.source) ?? 0) * LANES_FORK_STEP
+        step[from] = Math.max(step[from] ?? LANES_COLUMN_STEP, LANES_NODE_WIDTH + turn + label.length * LANES_EDGE_LABEL_CHAR + LANES_EDGE_LABEL_ROOM)
     }
     const x: number[] = []
     let at = 0
@@ -302,14 +308,6 @@ export const lanesLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
         rowTop.push(bottom)
         bottom += height + LANES_ROW_GAP
     }
-    const columnX = lanesColumnX(columnCount, edges, columns)
-    const positions = new Map<string, FlowGraphPoint>()
-    // A position is the centre of the node, and a node sits in the middle of its row, so an edge along one row stays a straight line
-    // whatever the heights of its nodes.
-    for (const node of nodes) {
-        const row = rows.get(node.id) ?? 0
-        positions.set(node.id, { x: columnX[columns.get(node.id) ?? 0] ?? 0, y: (rowTop[row] ?? 0) + (rowHeight[row] ?? 0) / 2 })
-    }
     const forks = new Map<string, number>()
     const perColumn = new Map<number, number>()
     const children = new Map<string, string[]>()
@@ -325,6 +323,14 @@ export const lanesLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
         const k = perColumn.get(column) ?? 0
         forks.set(node.id, k)
         perColumn.set(column, k + 1)
+    }
+    const columnX = lanesColumnX(columnCount, edges, columns, forks)
+    const positions = new Map<string, FlowGraphPoint>()
+    // A position is the centre of the node, and a node sits in the middle of its row, so an edge along one row stays a straight line
+    // whatever the heights of its nodes.
+    for (const node of nodes) {
+        const row = rows.get(node.id) ?? 0
+        positions.set(node.id, { x: columnX[columns.get(node.id) ?? 0] ?? 0, y: (rowTop[row] ?? 0) + (rowHeight[row] ?? 0) / 2 })
     }
     return {
         forks,

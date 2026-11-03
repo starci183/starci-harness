@@ -4,6 +4,7 @@ import {
     BaseEdge,
     Background,
     Controls,
+    EdgeLabelRenderer,
     getSmoothStepPath,
     Handle,
     MarkerType,
@@ -161,28 +162,43 @@ const FlowGraphHeaderView = memo(({ data }: NodeProps<Node<HeaderData>>) => (
 ))
 FlowGraphHeaderView.displayName = "FlowGraphHeaderView"
 
-/** A lanes edge: orthogonal with rounded corners, an arrowhead, and its label on its own last run, where the page background hides the line behind the words. */
+/**
+ * A lanes edge: orthogonal with rounded corners, an arrowhead, and its label on its own last run. The label is an opaque chip in the
+ * edge label layer, which React Flow paints above every edge line: an SVG label paints in its own edge's group, so the line of an edge
+ * drawn after it (another branch running into the same node along the same row) would cross the words and read as struck through.
+ */
 const LANE_RADIUS = COMMON_SPACING_PX[3]
-const LANE_LABEL_PADDING: [number, number] = [COMMON_SPACING_PX[2], COMMON_SPACING_PX[1]]
-const LABEL_RADIUS = COMMON_SPACING_PX[1]
+/** The room the arrowhead takes at the end of the last run, kept clear of the label. */
+const LANE_ARROW_ROOM = COMMON_SPACING_PX[3]
 const FlowGraphLaneEdge = memo(({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, label, data }: EdgeProps) => {
     const share: unknown = data?.["stepPosition"]
     const stepPosition = typeof share === "number" ? share : 0.5
     const [path] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: LANE_RADIUS, stepPosition })
     const turnX = sourceX + (targetX - sourceX) * stepPosition
-    const labelX = turnX + (targetX - turnX) * 0.62
+    // The label is centred on the straight part of the last run, between the corner of the turn and the arrowhead.
+    const labelX = (turnX + LANE_RADIUS + targetX - LANE_ARROW_ROOM) / 2
     return (
-        <BaseEdge
-            path={path}
-            {...(markerEnd === undefined ? {} : { markerEnd })}
-            {...(label === undefined ? {} : { label, labelX, labelY: targetY, labelShowBg: true, labelBgPadding: LANE_LABEL_PADDING, labelBgBorderRadius: LABEL_RADIUS })}
-        />
+        <>
+            <BaseEdge path={path} {...(markerEnd === undefined ? {} : { markerEnd })} />
+            {typeof label === "string" && label !== "" ? (
+                <EdgeLabelRenderer>
+                    <span
+                        className="starci-core-flow-graph-lane-label"
+                        data-grammar-flow-edge-label="true"
+                        style={{ transform: `translate(-50%, -50%) translate(${String(labelX)}px, ${String(targetY)}px)` }}
+                    >
+                        {label}
+                    </span>
+                </EdgeLabelRenderer>
+            ) : null}
+        </>
     )
 })
 FlowGraphLaneEdge.displayName = "FlowGraphLaneEdge"
 
 const EDGE_TYPES: EdgeTypes = { flowGraphLane: FlowGraphLaneEdge }
 const EDGE_LABEL_PADDING: [number, number] = [COMMON_SPACING_PX[2], COMMON_SPACING_PX[1]]
+const LABEL_RADIUS = COMMON_SPACING_PX[1]
 const NODE_TYPES: NodeTypes = { flowGraph: FlowGraphNodeView, flowGraphHeader: FlowGraphHeaderView }
 const HEADER_OFFSET = 70
 const HEADER_SIDE_GAP = COMMON_SPACING_PX[6]
