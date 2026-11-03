@@ -2926,12 +2926,14 @@ slots:
       - object-storage.config.ts
       - object-storage.options.ts
       - object-storage.decorators.ts
+      - object-storage.module-definition.ts
       - object-storage.module.ts
     allows:
       - index.ts
       - object-storage.config.ts
       - object-storage.options.ts
       - object-storage.decorators.ts
+      - object-storage.module-definition.ts
       - object-storage.module.ts
       - errors/
     tests: unit-beside

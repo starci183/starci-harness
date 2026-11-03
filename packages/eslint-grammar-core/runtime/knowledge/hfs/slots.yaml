@@ -2008,8 +2008,8 @@ slots:
     tracked: tracked
     tier: integrations
     owner: true
-    requires: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.module.ts]
-    allows: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.module.ts, errors/]
+    requires: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.module-definition.ts, object-storage.module.ts]
+    allows: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.module-definition.ts, object-storage.module.ts, errors/]
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_STORAGE_OWNER]
     coverage: required
