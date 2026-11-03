@@ -10,10 +10,10 @@ export interface @@Provider@@DeliveryRecordedPayload {
 
 /** Version 1 of `@@provider@@.delivery-recorded`, published once by the provider inbox intake. */
 export class @@Provider@@DeliveryRecordedEvent extends BaseEvent {
-    static readonly eventName = "@@provider@@.delivery-recorded"
+    static readonly eventName: string = "@@provider@@.delivery-recorded"
     static readonly version = 1
 
-    readonly eventName = @@Provider@@DeliveryRecordedEvent.eventName
+    readonly eventName: string = @@Provider@@DeliveryRecordedEvent.eventName
 
     private constructor(
         readonly eventId: string,

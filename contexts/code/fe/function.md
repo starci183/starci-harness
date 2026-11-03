@@ -55,6 +55,11 @@ The unit is drawn on three axes, and none stands in for another:
 Why: a pure half of atoms renders from a fixture, so every shape can be drawn and audited without standing the world
 up; a status or a failure kept out of `shape` leaves no shape nobody drew, and a slot fails and waits alone.
 
+A pane layout is the same law, not an exception to it. A region that places `props.children` in a Pane (a `PaneGrid` frame, a composite
+around the children) is a pure region host: it reads no data and owns no slot, so it lives in `components/frames` and takes children there. A
+block takes `children` only as the one-level connected root of a route `Page` (R325), where the Page's body is the one place the children land;
+a block that wraps them in a composite of its own has a second owner of the body, which `tier-children` refuses by design (R92).
+
 Enforced by: R361 (machine `render-prop-across-server`: a function never crosses from a server file into a client component; a block takes data), R92 (`public-component-signature`, `tier-children`, `base-props-atom`, `base-import-pair`, `no-data-status-shape`,
 `presentational-purity`, `component-purity`); the shape words of a composite, which is not split, are review only.
 

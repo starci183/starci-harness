@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.4
+
+- Added: the `TestWorldApi` type, the world API of a declaration whose apps are not named in its type, so a config exports `useTestWorld` and `useSandbox` with explicit types (R368).
+
 ## 1.3.3 - 2026-10-30
 
 - Changed: the stack contracts and the README name the test world's command, `starci app world up|down|status`.

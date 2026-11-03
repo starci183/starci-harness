@@ -8,6 +8,7 @@ import type { DynamicModule } from "@nestjs/common"
 import { smtpFake } from "../fakes/shared/smtp"
 import { rememberedDeclaration } from "./registry"
 import { defineTestWorld } from "./define"
+import type { TestWorldApi } from "./define"
 
 interface ApiOptions {
     readonly port: number
@@ -84,6 +85,7 @@ const compile = (source: string): ReadonlyArray<{ readonly line: number; readonl
 const PROBE_HEADER = `import { Module } from "@nestjs/common"
 import type { DynamicModule } from "@nestjs/common"
 import { defineTestWorld } from "./define"
+import type { TestWorldApi } from "./define"
 interface ApiOptions { readonly port: number; readonly databaseUrl: string; readonly smtpHost: string }
 @Module({})
 class ApiApp { static register(options: ApiOptions): DynamicModule { return { module: ApiApp, providers: [{ provide: "OPTIONS", useValue: options }] } } }
@@ -139,4 +141,12 @@ test("useTestWorld registers the boot, a shared outage-lock hold around every te
     } finally {
         for (const [name, value] of saved) hooks[name] = value
     }
+})
+
+test("a declaration is exported through the explicit TestWorldApi type", () => {
+    const world: TestWorldApi = defineTestWorld({ stack: ".starcistacks/dev", apps: {}, modules: { base: [] } } as never)
+    const useTestWorld: TestWorldApi["useTestWorld"] = world.useTestWorld
+    const useSandbox: TestWorldApi["useSandbox"] = world.useSandbox
+    assert.equal(typeof useTestWorld, "function")
+    assert.equal(typeof useSandbox, "function")
 })

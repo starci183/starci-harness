@@ -26,7 +26,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Added
 
-- The dev verbs of `starci app stack` get the heavy-command governor: `npm ci`, a compose build and a compose up of `up` and `prepare` wait for a slot of the host-wide semaphore like every other heavy command (`stackIo.heavy`, handed to @starci/hfs 5.1.0 and later).
+- The dev verbs of `starci app stack` get the heavy-command governor: `npm ci`, a compose build and a compose up of `up` and `prepare` wait for a slot of the host-wide semaphore like every other heavy command (`stackIo.heavy`, handed to the @starci/hfs release that carries the dev verbs).
 
 ## [1.1.0-alpha.50] - 2026-11-03
 

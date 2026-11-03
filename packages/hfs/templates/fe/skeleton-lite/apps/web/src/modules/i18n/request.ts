@@ -21,7 +21,7 @@ const LOCALE_HEADER = "x-next-intl-locale"
  * The request config next-intl's plugin loads. The locale is the one the middleware negotiated: this module is reachable from the proxy
  * through the navigation, and `next/root-params` can only be imported inside the app directory.
  */
-export default getRequestConfig(async () => {
+const requestConfig: ReturnType<typeof getRequestConfig> = getRequestConfig(async () => {
     const requested = (await headers()).get(LOCALE_HEADER)
     const locale = hasLocale(routing.locales, requested) ? requested : routing.defaultLocale
     return {
@@ -31,3 +31,5 @@ export default getRequestConfig(async () => {
         getMessageFallback: ({ namespace, key }) => `web:${namespace ?? ""}.${key}`,
     }
 })
+
+export default requestConfig

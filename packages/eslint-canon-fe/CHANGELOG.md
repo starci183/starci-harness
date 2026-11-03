@@ -1,8 +1,12 @@
 # Changelog
 
-## 9.10.1
+## 9.10.0
 
-- Changed: the bundled hfs runtime copy carries the rules R372 and R373 and the pin of @starci/hfs 5.2.0.
+- Added: `starci-fe/directive-first` (R369, `FE_DIRECTIVE_FIRST`) at error: a `"use client"` or `"use server"` directive is the first statement of its module; below an import it does nothing and `next build` refuses the file.
+- Added: `starci-fe/explicit-export-surface` (R368, `HFS_EXPLICIT_EXPORT_SURFACE`) at error: an exported function's return type, an exported variable's type and a parameter's type are written, not inferred from a body or from other files; a component that returns only JSX, `null` or `undefined` is explicit. It reports each export the isolated declaration emit cannot write, at the offending span, and says what to annotate. It reads the classifier the lint result cache reads.
+- Added: `projectGraphSnapshot`, the findings of the project graph the process has already built, which the ESLint child hands to the cache; `projectGraph` stays the fresh build.
+- Changed: carry the bundled runtime of @starci/hfs 5.1.0 (the classifier, the rule factory, the rule catalog with R368, the canon pins).
+- Fixed: `no-swr-default-array` (R367) judges a `?? []` inside a `useMemo` callback or a `slotOfReads` projector by the hook that holds it, so a slot carrying the read's status is no longer reported.
 
 ## 9.9.12
 

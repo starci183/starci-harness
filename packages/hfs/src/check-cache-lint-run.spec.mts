@@ -178,3 +178,24 @@ test('an eslint child killed during a diff stores no record and the failure is s
   await assert.rejects(cachedLinters({ repoRoot: app.root, app: readRepoDeclaration(loadSlotManifest(), app.root), run: killed, session }), { code: 'HFS_NODE_INCOMPLETE', message: /eslint did not complete/ });
   assert.equal(session.replaced.size, 0);
 });
+
+test('the cached lint asks the child of each side for the project graph of the installed canon and writes its graph records from the answer', async (context) => {
+  const app = fixture(context);
+  const asked: { side: string; graph: { name: string; entry: string }[] | undefined }[] = [];
+  const finding = { rule: 'starci-be/duplicate-code', code: 'HFS_DUPLICATE_CODE', line: 3, column: 1, message: 'copy of src/other.ts' };
+  const answering: LinterRunner = async (spec) => {
+    const side = path.basename(spec.cwd);
+    asked.push({ side, graph: spec.graph === undefined ? undefined : [...spec.graph] });
+    const files = fs.readdirSync(path.join(spec.cwd, 'src')).map((name) => `src/${name}`);
+    return { results: files.map((file) => ({ filePath: path.join(spec.cwd, file), messages: [] })), ...(side === 'be' ? { graph: { '@starci/eslint-canon-be': { byFile: { 'src/backend.ts': [finding] } } } } : {}) };
+  };
+  const first = await lint(app, undefined, {}, [], 'diff', answering);
+  assert.deepEqual(asked.map((entry) => entry.side), ['be', 'fe']);
+  for (const entry of asked) {
+    assert.equal(entry.graph?.length, 1);
+    assert.equal(entry.graph?.[0]?.name, `@starci/eslint-canon-${entry.side}`);
+    assert.equal(fs.realpathSync(entry.graph?.[0]?.entry ?? ''), fs.realpathSync(path.join(app.root, 'node_modules', '@starci', `eslint-canon-${entry.side}`, 'index.mjs')));
+  }
+  const graphRecords = (first.session.replaced.get('lint/be') ?? []).filter((record) => record.step === 'graph');
+  assert.deepEqual(graphRecords.map((record) => [record.path, record.findings.map((entry) => [entry.rule, entry.line, entry.column])]), [['src/backend.ts', [['HFS_DUPLICATE_CODE', 3, 1]]]]);
+});

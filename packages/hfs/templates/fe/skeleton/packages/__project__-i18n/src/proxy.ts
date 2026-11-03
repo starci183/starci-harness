@@ -20,5 +20,5 @@ const negotiate = createMiddleware(routing)
  * the default and serves the default locale (vi) without a prefix. One routing table for every app; each app's `src/proxy.ts`
  * re-exports this.
  */
-export const proxy = (request: NextRequest) =>
+export const proxy = (request: NextRequest): NextResponse =>
     isUnnegotiated(request.nextUrl.pathname) ? NextResponse.next() : negotiate(request)

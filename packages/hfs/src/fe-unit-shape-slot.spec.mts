@@ -275,7 +275,7 @@ test('a page is one Page with its own loading and error views, an overlay is a D
   assert.match(read(...route, 'error.tsx'), /^"use client"[\s\S]*<HandoffsErrorPage onRetry=\{props\.reset\} \/>/);
   const page = read('src', 'features', 'pages', 'HandoffsPage', 'component.tsx');
   assert.match(page, /<Page\s+header=\{\{[\s\S]*breadcrumbs:[\s\S]*isLoading=\{props\.props\.isLoading\}\s*>\s*<SignInForm \/>\s*<\/Page>/, 'one Page, its body the block');
-  assert.match(read('src', 'features', 'pages', 'HandoffsPage', 'index.tsx'), /export const HandoffsLoadingPage = async \(\) => <HandoffsPageBase props=\{await copyOf\(true\)\} \/>/, 'the loading view is the page in skeleton mode');
+  assert.match(read('src', 'features', 'pages', 'HandoffsPage', 'index.tsx'), /export const HandoffsLoadingPage = async \(\): Promise<ReactElement> => <HandoffsPageBase props=\{await copyOf\(true\)\} \/>/, 'the loading view is the page in skeleton mode');
   assert.match(read('stories', 'pages', 'HandoffsPage.stories.tsx'), /dna: \{ pair: "Ready", phase: "loading" \}/);
   assert.match(read('src', 'features', 'pages', 'SettingsBillingPage', 'component.tsx'), /<EmptyNotice message=\{props\.props\.empty\} \/>/);
   assert.doesNotMatch(read('src', 'features', 'pages', 'SettingsBillingPage', 'component.tsx'), /tabs:|tabsLabel/, 'no --tabs, no page tabs');

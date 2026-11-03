@@ -1,5 +1,6 @@
 import { useSWRConfig } from "swr"
 import useSWRMutation from "swr/mutation"
+import type { SWRMutationResponse } from "swr/mutation"
 import type { GraphQLResponse } from "@/modules/api"
 import { mutateCreate{{Singular}} } from "@/modules/api/graphql/mutations/mutation-create-{{singular}}"
 import type { MutateCreate{{Singular}}Data } from "@/modules/api/graphql/mutations/types/create-{{singular}}"
@@ -12,7 +13,7 @@ export const MUTATE_CREATE_{{singularUpper}}_SWR_KEY = "MUTATE_CREATE_{{singular
  * Creates one {{singular}} row; answers the GraphQLResponse so the caller reports it through modules/toast
  * (useGraphQLWithToast). A success primes the {{singular}} query of the new row with that response.
  */
-export const useMutateCreate{{Singular}}Swr = () => {
+export const useMutateCreate{{Singular}}Swr = (): SWRMutationResponse<GraphQLResponse<MutateCreate{{Singular}}Data>, Error, string, never> => {
     const { mutate } = useSWRConfig()
     return useSWRMutation(MUTATE_CREATE_{{singularUpper}}_SWR_KEY, async () => {
         const response: GraphQLResponse<MutateCreate{{Singular}}Data> = await mutateCreate{{Singular}}({ request: {} })

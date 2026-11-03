@@ -6,7 +6,7 @@ const documentLocale = (): string | undefined =>
     typeof document === "undefined" || document.documentElement.lang === "" ? undefined : document.documentElement.lang
 
 /** The one writer of `Accept-Language`: every operation declares the language the back end answers and localizes its errors in. */
-export const createAttachLocaleLink = (locale: () => string | undefined = documentLocale) =>
+export const createAttachLocaleLink = (locale: () => string | undefined = documentLocale): SetContextLink =>
     new SetContextLink((context) => {
         const value = locale()
         if (value === undefined) return {}

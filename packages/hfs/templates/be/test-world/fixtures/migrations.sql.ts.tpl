@@ -1,5 +1,6 @@
 import type { EntityManager } from "typeorm"
 import { sql } from "@modules/platform/database"
+import type { SqlText } from "@modules/platform/database"
 
 /** One row of a connection's migration ledger: the name of a migration the cli migrate step applied. */
 export interface AppliedMigrationRow {

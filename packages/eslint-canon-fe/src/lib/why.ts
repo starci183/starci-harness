@@ -104,6 +104,16 @@ export const why = {
     en: "`<file>` draws a skeleton by hand.",
     fix: "Pass isLoading to the Grammar component and let it draw its loading structure; the block hands it the same-shape placeholder (FE-ERROR-1).",
   },
+  "directive-first": {
+    code: "FE_DIRECTIVE_FIRST",
+    en: "`<file>` has a `<what>` directive below another statement.",
+    fix: "Put the directive on the first line of the module, above every import; Next.js reads it only there.",
+  },
+  "explicit-export-surface": {
+    code: "HFS_EXPLICIT_EXPORT_SURFACE",
+    en: "`<file>` exports `<what>` with a type left to inference.",
+    fix: "Write the type where it is exported: the return type after the parameter list, the type of the exported variable, or the type of the parameter.",
+  },
   "destructive-confirm-in-dialog": {
     code: "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG",
     en: "`<file>` renders a final destructive press outside its confirmation dialog.",

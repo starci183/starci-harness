@@ -1,8 +1,11 @@
 # Changelog
 
-## 0.21.14
+## 0.21.13
 
-- Changed: the bundled hfs runtime copy carries the rules R372 and R373 and the pin of @starci/hfs 5.2.0; requires @starci/eslint-canon-fe 9.10.1.
+- Changed: Require the updated FE canon, carry the rule catalog of @starci/hfs 5.1.0 (R368) and align the Grammar family.
+- Changed: `navbar-cluster` (FE-APP-SHELL-3) requires notifications only where the shell has a notification source (a `use...Notification...` call in its file).
+- Fixed: `route-page-is-one-page` declares the blocks its page proof reads as cross-file inputs, so a changed block re-judges the route and the page owner.
+- Changed: `pane-grid-children` (R345) follows a `const` that holds a Pane.
 
 ## 0.21.12
 

@@ -6,6 +6,7 @@ import { getMessages, getRequestConfig } from "next-intl/server"
 import { notFound } from "next/navigation"
 import { locale as routeLocale } from "next/root-params"
 import { PRODUCT_TIME_ZONE, routing } from "./routing"
+import type { ProductRouting } from "./routing"
 
 /** Loads one app's own catalog for a served locale. */
 type LoadMessages = (locale: string) => Promise<unknown>
@@ -27,6 +28,23 @@ const isLocaleReader = (value: unknown): value is () => Promise<unknown> => type
 
 const readRouteLocale = async (): Promise<unknown> => (isLocaleReader(routeLocale) ? routeLocale() : undefined)
 
+/** The language the address states, its catalog and the product time zone. */
+interface LocaleSegment {
+    readonly locale: string
+    readonly messages: AbstractIntlMessages
+    readonly timeZone: string
+}
+
+/** The navigation helpers of the product's routing (links, redirects, the locale-aware router). */
+type ProductNavigation = ReturnType<typeof createNavigation<ProductRouting["locales"], "as-needed">>
+
+/** What one app of the product reads of its next-intl stack. */
+export interface AppI18n {
+    readonly navigation: ProductNavigation
+    readonly requestConfig: ReturnType<typeof getRequestConfig>
+    readonly readLocaleSegment: (params: Promise<{ readonly locale: string }>) => Promise<LocaleSegment>
+}
+
 /**
  * The next-intl stack of one app of the product, written once here and called once by each app's `modules/i18n` (R59): the
  * product's one routing with its locale-aware navigation, the request config next-intl's plugin loads (the app's
@@ -34,7 +52,7 @@ const readRouteLocale = async (): Promise<unknown> => (isLocaleReader(routeLocal
  * the app in the text of a message its catalog lacks (`<app>:<namespace>.<key>`); `loadMessages` loads its own catalogs. A server
  * module: a client component reads the default locale from `./routing`.
  */
-export const createAppI18n = (app: string, loadMessages: LoadMessages) => ({
+export const createAppI18n = (app: string, loadMessages: LoadMessages): AppI18n => ({
     navigation: createNavigation(routing),
     /**
      * The locale is the `[locale]` route param read through `next/root-params` (`experimental.rootParams` in the app's next.config.ts,

@@ -37,13 +37,13 @@ Enforced by: R53 (`no-null-suspense-fallback`; machine `error-boundary-missing`)
 Route files, page and layout owners and pure halves are server components; `"use client"` sits on a connected block's
 `index.tsx`, an overlay entry, a leaf with intrinsic interaction, an error boundary, `app/[locale]/providers.tsx`,
 `redux/ReduxProvider.tsx`, `modules/toast/toast.tsx` and a `hooks/effects/*SideEffect.tsx`; a client file never imports
-`next/headers`, `server-only` or a Node built-in, and a module that does starts with `import "server-only"`.
+`next/headers`, `server-only` or a Node built-in, and a module that does starts with `import "server-only"`. A directive (`"use client"`, `"use server"`) is the first statement of its module, above every import: anywhere below, it is an expression that does nothing and `next build` stops with "The 'use client' directive must be placed before other expressions".
 
 Why: a client layout ships its whole subtree and catalog to every page, and a server module reached from the client
 breaks the build or leaks a secret.
 
 Enforced by: R55 (`use-client-only-at-boundary`, `client-no-server-import`, `server-module-marks-server-only`,
-`client-reaches-server`).
+`client-reaches-server`), R369 (`directive-first`). An app moves a misplaced directive, including the `("use client")` Prettier writes, to the top of its module with `starci app codemod directive-first` (dry run by default; `--execute` writes).
 
 ## FE-BOUNDARY-3 The client providers are one file under the locale layout
 
