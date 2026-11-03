@@ -7,6 +7,7 @@
 // its inputs (the compiler, a file reader, the hashes), so a spec drives it with fixtures and the cache itself stays in lint-family.mts.
 import path from 'node:path';
 import type TypeScript from 'typescript';
+import { DECLARATION, SCRIPT, TYPESCRIPT, declarationSurface } from '../runtime/scripts/lib/declaration-surface.mjs';
 import { hashText } from './hash.mjs';
 
 type Ts = typeof TypeScript;
@@ -143,48 +144,6 @@ export function resolveImports(host: GraphHost, options: TypeScript.CompilerOpti
   return [...found].sort();
 }
 
-/** Whether `expression` is a JSX element, fragment, `null` or `undefined`, or a conditional of those: its type does not depend on any other file. */
-function isJsxValue(ts: Ts, expression: TypeScript.Expression | undefined): boolean {
-  if (expression === undefined) return false;
-  let node: TypeScript.Expression = expression;
-  while (ts.isParenthesizedExpression(node)) node = node.expression;
-  if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node) || node.kind === ts.SyntaxKind.NullKeyword) return true;
-  if (ts.isIdentifier(node)) return node.text === 'undefined';
-  return ts.isConditionalExpression(node) && isJsxValue(ts, node.whenTrue) && isJsxValue(ts, node.whenFalse);
-}
-
-/**
- * Whether the function (or method) the declaration diagnostic at `start` points at has the type `JSX.Element | null | undefined` whatever its body
- * reads: not async, not a generator, and every `return` of its own (and its concise body) a JSX value. A React component written without a return
- * type is the common case; its inferred type is one the JSX namespace of the installed packages gives, which a lockfile change dirties as a whole.
- */
-function returnsOnlyJsx(ts: Ts, source: TypeScript.SourceFile, start: number): boolean {
-  let found: TypeScript.FunctionLikeDeclaration | undefined;
-  const find = (node: TypeScript.Node): void => {
-    if (found !== undefined || start < node.getFullStart() || start >= node.end) return;
-    const named = (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) && node.name !== undefined && node.name.getStart(source) === start;
-    if (named || ((ts.isArrowFunction(node) || ts.isFunctionExpression(node)) && node.getStart(source) === start)) { found = node as TypeScript.FunctionLikeDeclaration; return; }
-    ts.forEachChild(node, find);
-  };
-  find(source);
-  const fn = found as TypeScript.FunctionLikeDeclaration | undefined;
-  if (fn === undefined || fn.type !== undefined || fn.body === undefined) return false;
-  if (fn.asteriskToken !== undefined || (ts.getCombinedModifierFlags(fn) & ts.ModifierFlags.Async) !== 0) return false;
-  if (!ts.isBlock(fn.body)) return isJsxValue(ts, fn.body);
-  let only = true;
-  const visit = (node: TypeScript.Node): void => {
-    if (!only || ts.isFunctionLike(node) || ts.isClassLike(node)) return;
-    if (ts.isReturnStatement(node) && node.expression !== undefined && !isJsxValue(ts, node.expression)) only = false;
-    ts.forEachChild(node, visit);
-  };
-  ts.forEachChild(fn.body, visit);
-  return only;
-}
-
-const SCRIPT = /\.(?:[cm]?jsx?)$/;
-const DECLARATION = /\.d\.[cm]?ts$/;
-const TYPESCRIPT = /\.(?:[cm]?tsx?)$/;
-
 /**
  * The type surface of one source file: the digest of its isolated declaration emit (`ts.transpileDeclaration`, TypeScript 5.5 and later, which reads the
  * file alone) and whether it is open. A body-only edit leaves the emit, and so the digest, as it was; a changed signature, export list or doc comment
@@ -195,15 +154,11 @@ export function surfaceOf(host: GraphHost, options: TypeScript.CompilerOptions, 
   const { ts } = host;
   if (DECLARATION.test(file) || SCRIPT.test(file)) return { api: hashText(text), open: true, refs: undefined };
   if (!TYPESCRIPT.test(file)) return { api: hashText(text), open: false, refs: [] };
-  const emit = (ts as { transpileDeclaration?: (input: string, options: { compilerOptions?: TypeScript.CompilerOptions; fileName?: string; reportDiagnostics?: boolean }) => { outputText: string; diagnostics?: readonly unknown[] } }).transpileDeclaration;
-  if (emit === undefined) return { api: undefined, open: true, refs: undefined };
   try {
-    const declared = emit.call(ts, text, { compilerOptions: { jsx: ts.JsxEmit.Preserve, target: ts.ScriptTarget.Latest, ...(options.module === undefined ? {} : { module: options.module }) }, fileName: file, reportDiagnostics: true });
-    const diagnostics = (declared.diagnostics ?? []) as readonly TypeScript.Diagnostic[];
-    // a declaration whose only diagnostics are components returning JSX has the surface its emit shows
-    const source = diagnostics.length === 0 ? undefined : ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
-    const inferred = source !== undefined && !diagnostics.every((diagnostic) => (diagnostic.code === 9007 || diagnostic.code === 9008) && diagnostic.start !== undefined && returnsOnlyJsx(ts, source, diagnostic.start));
-    return { api: hashText(declared.outputText), open: inferred, refs: resolveImports(host, options, file, declared.outputText) };
+    const surface = declarationSurface(ts, file, text, options.module);
+    if (surface === null) return { api: undefined, open: true, refs: undefined };
+    // the classifier is the one the explicit-export-surface rule of the canons reports with: a file is open exactly when it has a problem
+    return { api: hashText(surface.outputText), open: surface.problems.length > 0, refs: resolveImports(host, options, file, surface.outputText) };
   } catch {
     return { api: undefined, open: true, refs: undefined };
   }

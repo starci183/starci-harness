@@ -1,0 +1,25 @@
+{
+  "about": "Source files and what the isolated declaration emit says of their exported surface: `open` when some export needs inference, `annotate` the kind of annotation each problem asks for, in source order. The hfs cache (surfaceOf) and the explicit-export-surface rule of both lint canons are held to this one table.",
+  "cases": [
+    {"name": "an arrow hook without a return type", "code": "export const useAvatar = () => {\n  const doors = useDoors()\n  return useUpload(doors)\n}\n", "open": true, "annotate": ["return type"]},
+    {"name": "an async function without a return type", "code": "export async function load(id: string) {\n  return fetchIt(id)\n}\n", "open": true, "annotate": ["return type"]},
+    {"name": "a function with an untyped parameter", "code": "export function twice(value): number {\n  return value * 2\n}\n", "open": true, "annotate": ["parameter type"]},
+    {"name": "a const initialised by a call", "code": "export const settings = makeSettings()\n", "open": true, "annotate": ["variable type"]},
+    {"name": "an object literal with an inferred member", "code": "export const route = {\n  path: \"/a\",\n  load: makeLoader(),\n}\n", "open": true, "annotate": ["exported value"]},
+    {"name": "an object literal with a spread and a shorthand member", "code": "const base = { a: 1 }\nconst name = \"x\"\nexport const merged: { a: number } = { ...base }\nexport const open = { ...base, name }\n", "open": true, "annotate": ["exported value", "exported value"]},
+    {"name": "a local binding exported by name", "code": "const hidden = make()\nexport { hidden }\n", "open": true, "annotate": ["variable type"]},
+    {"name": "a static class property from a call", "code": "export class Store {\n  static shared = make()\n}\n", "open": true, "annotate": ["property type"]},
+    {"name": "a default export function without a return type", "code": "export default function () {\n  return make()\n}\n", "open": true, "annotate": ["return type"]},
+    {"name": "a default export of a local const", "code": "const view = make()\nexport default view\n", "open": true, "annotate": ["variable type"]},
+    {"name": "a default export object holding a call", "code": "export default { a: make() }\n", "open": true, "annotate": ["exported value"]},
+    {"name": "a component returning a variable", "code": "export const Card = () => {\n  const element = <div />\n  return element\n}\n", "open": true, "annotate": ["return type"]},
+    {"name": "an async component", "code": "export async function Page() {\n  return <div />\n}\n", "open": true, "annotate": ["return type"]},
+    {"name": "a component returning one JSX value", "code": "export const Card = ({ title }: { title: string }) => <section>{title}</section>\n", "open": false, "annotate": []},
+    {"name": "a component returning JSX, a conditional of JSX and null", "code": "export function Maybe({ on }: { on: boolean }) {\n  if (!on) return null\n  return on ? <b /> : <i />\n}\n", "open": false, "annotate": []},
+    {"name": "re-exports", "code": "export { thing } from \"./thing\"\nexport * from \"./all\"\nexport type { Shape } from \"./shape\"\n", "open": false, "annotate": []},
+    {"name": "explicit annotations", "code": "interface Upload { id: string }\ninterface Settings { retries: number }\nexport const useAvatar = (): Upload => useUpload()\nexport const settings: Settings = makeSettings()\nexport async function load(id: string): Promise<Upload> {\n  return fetchIt(id)\n}\n", "open": false, "annotate": []},
+    {"name": "type-only exports", "code": "export type Id = ReturnType<typeof make>\nexport interface Shape { a: number }\nexport enum Level { Low = 1 }\n", "open": false, "annotate": []},
+    {"name": "literal values", "code": "export const retries = 3\nexport const name = \"x\"\nexport const list = [1, 2] as const\nexport const tag = { kind: \"a\", size: 1 }\n", "open": false, "annotate": []},
+    {"name": "an inferred helper that is not exported", "code": "const inner = () => make()\nexport const used: number = inner()\n", "open": false, "annotate": []}
+  ]
+}
