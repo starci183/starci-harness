@@ -89,6 +89,8 @@ const pushFilterValid = (options: Parsed, ci: Parsed) => record(options) && Obje
   && (options.branches === undefined || (Array.isArray(options.branches) && options.branches.length > 0 && new Set(options.branches).size === options.branches.length && options.branches.every((branch: Parsed) => branch === CANDIDATE_BRANCHES || (ci && branch === 'main'))));
 
 const isCi = (file: string) => /(^|\/)ci\.ya?ml$/.test(file);
+/** The managed nightly verify of the committed check cache, the one app workflow that runs on a schedule (ruling release-gate-warm-cache). */
+const isCacheVerify = (file: string) => /(^|\/)cache-verify\.ya?ml$/.test(file);
 
 /** A pull request to main in ci.yml: the checks of a change. Read-only workflow permissions, no environment on a job of the file itself (a call of a reusable workflow cannot have one). */
 function pullRequestFindings(doc: Parsed, options: Parsed, refuse: Parsed, file: string) {
@@ -114,13 +116,13 @@ function triggerFindings(doc: Parsed, refuse: Parsed, file = '') {
     findings.push(refuse(TRIGGER, `the release CI must run on push of branches ['${CANDIDATE_BRANCHES}']: starci app release push waits for that run (starci app sync renders it)`));
   }
   for (const [event, options] of Object.entries<Parsed>(on)) {
-    if (event === 'workflow_dispatch' || event === 'workflow_call') continue;
+    if (event === 'workflow_dispatch' || event === 'workflow_call' || (event === 'schedule' && isCacheVerify(file))) continue;
     if (event === 'pull_request') {
       findings.push(...pullRequestFindings(doc, options, refuse, file));
       continue;
     }
     if (event !== 'push') {
-      findings.push(refuse(TRIGGER, `trigger ${event} is forbidden; app CI starts only on release tags [v*], the release candidate branches, main and pull requests to main in ci.yml, workflow_call or workflow_dispatch`));
+      findings.push(refuse(TRIGGER, `trigger ${event} is forbidden; app CI starts only on release tags [v*], the release candidate branches, main and pull requests to main in ci.yml, workflow_call or workflow_dispatch, and the schedule of cache-verify.yml`));
       continue;
     }
     if (!pushFilterValid(options, isCi(file))) {

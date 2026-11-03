@@ -281,3 +281,23 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   the state such a copy kept inside itself moves out on its first `starci app` verb ([state.md](state.md) "Where state lives",
   `packages/hfs/runtime/engine/runtime-root.mts`). The base is per user (`starci-harness/state`, never the retired
   `%LOCALAPPDATA%/StarCi`), a stack's state below it is keyed by project and environment, and `STARCI_LOCAL_ROOT` overrides it.
+- **App check and CI run on the warm committed cache (`warm-cache-push`).** The owner, 2026-11-04: app check and CI run on the
+  warm committed cache. One full warm run per base, only after a harness pin bump (a version change invalidates it); fix loops
+  check only the diff (`--staged`, a gate- or side-scoped run); never `--no-cache` in a loop or in CI. Every push carries fresh
+  `.starcistacks/cache` records from a real run, never hand-edited (`HFS_CHECK_CACHE_FORGED`), and a push without them is refused:
+  the managed pre-push hook runs `starci app check --fresh` (`HFS_CHECK_CACHE_UNWARMED`, `HFS_CHECK_CACHE_UNPORTABLE`;
+  `packages/hfs/cache/freshness.mts`, [check-cache.md](../project/check-cache.md) "The operating procedure").
+- **Cache invalidation is rare and per family (`cache-fingerprint-per-family`).** The owner, 2026-11-04: a fingerprint per family,
+  built only from the parts that family reads, so a bump of `@starci/auth` or `@starci/hfs` never cold-starts lint; the lockfile counts
+  by the resolved versions of each family's toolchain, and the diagnosis line names which part invalidated which family
+  (`packages/hfs/cache/fingerprint.mts`, [check-cache.md](../project/check-cache.md) "The fingerprint"). A library's type surface
+  reaches ESLint through the import graph's package digests; the types and test families read every resolved install until their
+  records name the packages they load.
+- **The release gate trusts the warm cache, with a nightly verify (`release-gate-warm-cache`).** The owner, 2026-11-04: the release
+  gate (`starci app release gate` and the CI run a release waits for) runs diff-only against the trusted cache at the release commit,
+  since main's cache is already verified by CI. A scheduled nightly CI job (`cache-verify.yml`) runs `STARCI_APP_CHECK_CACHE=verify`
+  (diff-only, then full, compared) on main; any difference is red with family and record, and it locks releases (the release gate
+  refuses `HFS_CHECK_CACHE_VERIFY_LOCKED`) until a green verify run clears it. `HFS_CHECK_CACHE_FORGED` stays a hard blocker at any
+  count. An owner-triggered full release gate stays available as an explicit opt-in (`app release gate --full`, the `full` input of
+  `ci.yml`), never the default (`packages/hfs/release/cache-verify-lock.mts`, [check-cache.md](../project/check-cache.md) "The
+  nightly verify").

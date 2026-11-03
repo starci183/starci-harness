@@ -53,7 +53,7 @@ test('a tree with no cache runs full, writes the records byte-stably and the nex
   assert.equal(fs.readFileSync(path.join(root, '.starcistacks/cache/check/format/root.jsonl'), 'utf8'), bytes);
 });
 
-test('--full, a release env and a differing fingerprint each force a full run with their reason', (t) => {
+test('--full, a release env and a differing part each force a full run of the families that read it, with their reason', (t) => {
   const root = repo({ 'a.ts': 'x\n' });
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const seed = createDiskSession(options(root, ['a.ts']));
@@ -65,7 +65,11 @@ test('--full, a release env and a differing fingerprint each force a full run wi
   assert.equal(release.decide('lint').mode, 'full');
   assert.equal(release.writes, false);
   const changed = createDiskSession(options(root, ['a.ts'], { fingerprint: { ...PORTABLE, parts: [{ name: 'hfs', sha256: 'h2' }] } }));
-  assert.match(changed.decide('lint').reason, /the fingerprint differs \(hfs\)/);
+  assert.match(changed.decide('hfs').reason, /the hfs parts of the fingerprint differ \(hfs\)/);
+  assert.equal(changed.decide('lint').mode, 'diff', 'a new @starci/hfs never re-runs ESLint');
+  const toolchain = createDiskSession(options(root, ['a.ts'], { fingerprint: { ...PORTABLE, parts: [...PORTABLE.parts, { name: 'lock:lint', sha256: 'eslint-2' }] } }));
+  assert.match(toolchain.decide('lint').reason, /the lint parts of the fingerprint differ \(lock:lint\)/);
+  assert.equal(toolchain.decide('hfs').mode, 'diff');
   const local = createDiskSession(options(root, ['a.ts'], { fingerprint: { parts: [], portable: false, localReasons: ['@starci/x is linked'] } }));
   assert.match(local.decide('lint').reason, /no portable fingerprint, nothing is written/);
   assert.equal(local.writes, false);
@@ -89,18 +93,20 @@ test('the full set used by --no-cache writes refreshed records through the exist
   assert.deepEqual(next.records('check/format'), [fresh]);
 });
 
-test('a new fingerprint drops the folders the run did not rewrite', (t) => {
+test('a differing part drops the folders of the families that read it which the run did not rewrite, and keeps the others', (t) => {
   const root = repo({ 'a.ts': 'x\n' });
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const seed = createDiskSession(options(root, ['a.ts']));
   seed.replace('check/format', [rec('a.ts', 'x\n')]);
+  seed.replace('check/wiring', [rec('a.ts', 'x\n')]);
   seed.replace('lint/be', [rec('a.ts', 'x\n')]);
   seed.flush();
   const next = createDiskSession(options(root, ['a.ts'], { fingerprint: { ...PORTABLE, parts: [{ name: 'hfs', sha256: 'h2' }] } }));
   next.replace('check/format', [rec('a.ts', 'x\n')]);
   next.flush();
   assert.ok(fs.existsSync(path.join(root, '.starcistacks/cache/check/format/root.jsonl')));
-  assert.ok(!fs.existsSync(path.join(root, '.starcistacks/cache/lint')));
+  assert.ok(!fs.existsSync(path.join(root, '.starcistacks/cache/check/wiring')), 'wiring is an hfs-run family');
+  assert.ok(fs.existsSync(path.join(root, '.starcistacks/cache/lint/be')), 'ESLint results outlive a new @starci/hfs');
   assert.deepEqual(parseFingerprint(fs.readFileSync(path.join(root, '.starcistacks/cache/fingerprint.jsonl'), 'utf8')), [{ name: 'hfs', sha256: 'h2' }]);
 });
 
@@ -193,7 +199,14 @@ test('CI trusts the cache at the merge-base, not the change own edits', (t) => {
   assert.equal(ci.writes, false);
   assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'schedule' } }).kind, 'none');
   assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main' } }).kind, 'base');
-  assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/tags/v1' } }).kind, 'none');
+  // a release (candidate or tag) trusts the cache main's CI verified, at its merge-base with the default branch; the nightly verify trusts the tip of the default branch
+  assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/tags/v1' } }).base, base);
+  assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/release/candidate-1.0.0' } }).base, base);
+  assert.match(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/tags/v1', STARCI_DEFAULT_BRANCH: 'trunk' } }).reason, /no merge-base of the release with origin\/trunk/);
+  const tip = git(root, ['rev-parse', 'HEAD']).stdout.trim();
+  assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'schedule', GITHUB_REF: 'refs/heads/main' } }).base, tip);
+  assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_REF: 'refs/heads/trunk', STARCI_DEFAULT_BRANCH: 'trunk' } }).base, tip);
+  assert.equal(resolveTrust({ root, env: { CI: 'true', GITHUB_EVENT_NAME: 'schedule', GITHUB_REF: 'refs/heads/feature' } }).kind, 'none');
 });
 
 test('a committed record that matches the tree and disagrees with the computed one is FORGED, a touched key with no record STALE', () => {

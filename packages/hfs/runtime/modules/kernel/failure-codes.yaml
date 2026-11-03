@@ -3696,6 +3696,38 @@ HFS_CHECK_CACHE_MISSING:
   owner: op-retry
   kind: check-finding
 
+HFS_CHECK_CACHE_UNWARMED:
+  title: "The pushed check cache is not the one a run on its tree writes"
+  title_vi: "Cache kiểm tra được push không phải cache mà một lần chạy trên cây này ghi ra"
+  meaning_vi: "`starci app check --fresh` (hook pre-push) chạy mọi họ kiểm tra theo diff với cache trong cây và phải ghi hoặc xóa tệp trong `.starcistacks/cache/`, hoặc cây còn tệp cache chưa commit: bản ghi đi kèm lần push không đủ ấm, nên CI sẽ phải kiểm tra lạnh và vượt ngân sách ESLint."
+  causes_vi:
+    - "Sửa mã mà chưa chạy `starci app check` rồi commit cache"
+    - "Nâng phiên bản một pin của harness (một phần fingerprint đổi) nhưng chưa chạy lại một lần cho ấm"
+  nextStep_vi: "Commit `.starcistacks/cache/` đúng như lần chạy vừa để lại rồi push lại; không sửa tay thư mục cache."
+  owner: op-retry
+  kind: check-finding
+
+HFS_CHECK_CACHE_UNPORTABLE:
+  title: "This host cannot write a check cache CI can trust"
+  title_vi: "Máy này không ghi được cache kiểm tra mà CI tin được"
+  meaning_vi: "Fingerprint của lần chạy không di động: một gói `@starci/*` hoặc CLI được link hay chép từ thư mục cục bộ (không có integrity ghi lại), nên cache không được ghi và lần push không mang bản ghi ấm."
+  causes_vi:
+    - "Đang dùng `starci deps source --local` hoặc một bản link của gói harness"
+  nextStep_vi: "Chạy `starci deps source --npm`, rồi `starci app check`, commit `.starcistacks/cache/` và push."
+  owner: op-retry
+  kind: check-finding
+
+HFS_CHECK_CACHE_VERIFY_LOCKED:
+  title: "The nightly verify of the check cache locks the release gate"
+  title_vi: "Lần verify cache kiểm tra hằng đêm đang khóa cổng release"
+  meaning_vi: "Lần chạy `cache-verify.yml` hoàn tất mới nhất trên nhánh mặc định bị đỏ (chạy diff rồi chạy đầy đủ cho kết quả khác nhau) hoặc không đọc được, nên cổng release, vốn tin cache ấm, từ chối cho tới khi một lần verify xanh."
+  causes_vi:
+    - "Một bản ghi cache trên main khác kết quả chạy đầy đủ (bước không xác định hoặc phần fingerprint thiếu)"
+    - "`gh` chưa đăng nhập hoặc không đọc được các lần chạy"
+  nextStep_vi: "Sửa bản ghi hoặc bước mà lần verify nêu tên, dispatch `cache-verify.yml` cho tới khi xanh; hoặc chủ dự án chạy cổng đầy đủ `starci app release gate --full`."
+  owner: op-retry
+  kind: check-finding
+
 HFS_FORMAT:
   title: "Prettier is the only formatter"
   title_vi: "Chưa format bằng Prettier"

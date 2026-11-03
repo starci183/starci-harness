@@ -130,3 +130,16 @@ test('coverage-from alone judges no gate while explicit gates remain selected be
   const selected = await probe(t, ['--coverage-from', 'merged.lcov', '--gate', 'format', '--no-cache']);
   assert.deepEqual(selected.calls, [{ selected: ['format'], full: ['format'] }]);
 });
+
+test('--fresh (the push gate) judges every family against the cache and takes no selector or modifier', async (t) => {
+  const fresh = await probe(t, ['--fresh']);
+  assert.match(fresh.err, new RegExp(PROBE));
+  assert.deepEqual(fresh.calls, [{ selected: [...FAMILIES], full: null }]);
+  for (const argv of [['--gate', 'hfs'], ['--side', 'be'], ['--no-cache'], ['--coverage-from', 'r.lcov'], ['--fix', '--gate', 'lint']]) {
+    const refused = await probe(t, ['--fresh', ...argv]);
+    assert.equal(refused.code, 2, argv.join(' '));
+    assert.match(refused.err, /--fresh judges the whole cache of the tree/u, argv.join(' '));
+    assert.deepEqual(refused.calls, [], argv.join(' '));
+  }
+  assert.ok(USAGE.split('\n').some((line) => line.startsWith('starci app check ') && line.includes('[--fresh]')));
+});

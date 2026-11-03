@@ -174,5 +174,10 @@ for (const edition of ['lite', 'full']) {
       assert.ok(findings(CI, (on) => { on[event] = {}; }).join('\n').includes(`the trigger \`${event}\` is not allowed`), event);
     }
     assert.match(findings('.github/workflows/images.yml', (on) => { on.pull_request = { branches: ['main'] }; }).join('\n'), /may start only ci\.yml/u, 'no other workflow runs the code of a pull request');
+    // the one schedule: the managed nightly verify of the check cache, rendered for every app
+    const verify = (targets.find(target => target.path === '.github/workflows/cache-verify.yml') as RenderedTarget).content;
+    assert.deepEqual(gitTriggerFindings({ files: ['.github/workflows/cache-verify.yml'], read: () => verify }), []);
+    assert.match(gitTriggerFindings({ files: ['.github/workflows/images.yml'], read: () => verify }).map(finding => finding.message).join('\n'), /a schedule only cache-verify\.yml/u);
+    assert.match(verify, /STARCI_APP_CHECK_CACHE: verify/u);
   });
 }

@@ -2,12 +2,29 @@
 
 Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check`
 and the unit specs judge only what differs from the cache, on a developer host and in CI
-alike. Ruling `app-check-cache` (live, owner-approved 2026-10-31) decided:
-`HFS_CHECK_CACHE_FORGED` is a hard blocker at any count and `HFS_CHECK_CACHE_STALE` and `HFS_CHECK_CACHE_MISSING` only warn; the release is
-always full; branch protection requiring the check is a later follow-up. The code is `packages/hfs/cache/`; the slot is
-`app.starcistacks.cache` (slots 3.15.0). Its one rule
-is that a reused result is always the one a full run would produce now; whenever the cache cannot prove that, the step
-runs in full.
+alike. Ruling `app-check-cache` (live, owner-approved 2026-10-31) decided: `HFS_CHECK_CACHE_FORGED` is a hard blocker at
+any count and `HFS_CHECK_CACHE_STALE` and `HFS_CHECK_CACHE_MISSING` only warn in CI. Rulings `warm-cache-push` and
+`release-gate-warm-cache` (2026-11-04, [harness/decisions.md](../harness/decisions.md)) decided that app check and CI run on
+the warm committed cache: every push carries fresh records from a real run, the release gate trusts them, and a nightly verify
+proves the trust. The code is `packages/hfs/cache/`; the slot is `app.starcistacks.cache` (slots 3.15.0). Its one rule is
+that a reused result is always the one a full run would produce now; whenever the cache cannot prove that, the step runs in
+full.
+
+## The operating procedure
+
+For a lane, a lead and an app session alike:
+
+1. Warm once per base: run `starci app check` after a harness pin bump (a fingerprint part changed) or on a new
+   checkout whose cache is cold, and commit `.starcistacks/cache/` with the change. Only the families the bump reads run
+   full; the diagnosis line names the family and the part.
+2. In a fix loop, check only the diff: `starci app check --gate <gate>` or `--side <side>`, and `app check --staged` before a
+   commit. Never `--no-cache` in a loop or in CI.
+3. Commit the cache as the run left it, with the code it judged. Never edit a record by hand (`HFS_CHECK_CACHE_FORGED`).
+4. Push: the pre-push hook runs `starci app check --fresh`, which refuses a cache that run had to change
+   (`HFS_CHECK_CACHE_UNWARMED`) or a host that cannot write a portable one (`HFS_CHECK_CACHE_UNPORTABLE`); commit what it
+   wrote and push again. A push without warm records never reaches CI.
+5. Release with `starci app release gate`: every row runs diff-only against the warm cache. A red nightly verify refuses it
+   (`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a green `cache-verify.yml` run; `--full` is the owner's explicit full gate.
 
 ## The command surface
 
@@ -79,13 +96,18 @@ state and stay out of git; `.starcistacks/cache/` holds results only.
 |---|---|
 | no cache in the tree (a new app, first adoption) | full, and it writes the cache |
 | `--no-cache` | full for the selected families, ignoring their records; it writes the refreshed records |
-| the fingerprint differs from the cache's | full, and it rewrites the cache |
-| `starci app release gate` (every gate row, the urgent back-fill included) and the CI run a release waits for | full, never reading the cache |
-| anything else, on a host or in CI | diff-only against the trusted cache (below) |
+| a fingerprint part a family reads differs from the cache's | full for the families that read it, and it rewrites their records |
+| `starci app release gate --full` or a dispatch of `ci.yml` with the `full` input (the owner's explicit opt-in) | full, never reading the cache |
+| anything else, on a host or in CI, `starci app release gate` and the CI run a release waits for included | diff-only against the trusted cache (below) |
+
+### The nightly verify
 
 `STARCI_APP_CHECK_CACHE=verify` runs diff-only and then full and fails with exit 2 on any difference, naming family and
-file; the specs use it, and it proves the cache on a real app before anyone relies on it. Times are printed, never
-stored.
+record. The managed `.github/workflows/cache-verify.yml` (slot `app.ci-cache-verify`) runs it on the default branch every
+night and on dispatch, trusting the cache at the branch tip. Its newest finished run is the lock of the release gate
+(`packages/hfs/release/cache-verify-lock.mts`): green, or none yet, leaves the gate open; red or unreadable refuses it with
+`HFS_CHECK_CACHE_VERIFY_LOCKED`, naming the run, until a green run clears it. A forged record stays a hard blocker at any
+count. Times are printed, never stored.
 
 ## Layout and format
 
@@ -118,18 +140,32 @@ content index and outside every step's file set.
 
 ## The fingerprint
 
-A part is anything a step reads that is not an app source; any part that differs makes the whole run full, for check,
-lint and coverage alike, since the three share one fingerprint. Parts are portable (equal on every host for one commit):
+A part is anything a step reads that is not an app source, and each part names the families that read it
+(`familiesOfPart`, `packages/hfs/cache/fingerprint.mts`): a part that differs makes only those families full, the diagnosis
+line names the family and the part, and the folders of the other families keep their records. Invalidation is therefore rare
+and per family: a bump of `@starci/hfs` re-runs the hfs-run families and never ESLint, and a bump of a library such as
+`@starci/auth` re-runs nothing by fingerprint. Parts are portable (equal on every host for one commit):
 
-- the cache format version and the CLI version;
-- the `@starci/hfs` that runs, which carries the slot manifest, the failure codes and the pins;
-- every installed `@starci/*` package, by its version and the integrity the install recorded;
-- `package-lock.json` (ESLint, typescript-eslint, TypeScript, Prettier, stylelint, Jest and their transforms, every type
-  package);
-- by normalised content: `hfs.json`, every `package.json` and `tsconfig*.json`, each side's `eslint.config.mjs`,
-  `stylelint.config.mjs` and jest configuration, the Prettier configuration files, `.prettierignore`, `.editorconfig`,
-  `.gitignore`, `.gitattributes`, `turbo.json`, `sonar-project.properties`, `codecov.yml`;
-- the quality profile of the policy the CLI runs under.
+| part | families |
+|---|---|
+| the cache format version | every family |
+| the CLI version, the `@starci/hfs` that runs (slot manifest, failure codes, pins) | hfs, secrets, wiring, db |
+| an installed `@starci/*` package by version and recorded integrity: the canon and Grammar ESLint packages and `stylelint-canon`; `prettier-config`; `tsconfig`; `jest-preset` and `test-world` | lint and sonar; format; types, lint, test and sonar; test and sonar (any other `@starci` package is a library, no part) |
+| `lock:<family>`: the resolved installs of that family's toolchain in `package-lock.json` (ESLint, typescript-eslint, TypeScript, stylelint and their plugins for lint; Prettier for format) | that family, and sonar for lint and test |
+| `lock:types`, `lock:test`: every resolved install | types; test and sonar |
+| `hfs.json` | hfs, secrets, wiring, db, lint, sonar |
+| each `package.json` whole / by shape (dependency versions blanked) | hfs, secrets, wiring, db / lint, types, test, format, sonar |
+| `tsconfig*.json`; `eslint.config.mjs`, `stylelint.config.mjs`; the jest configuration | types, lint, test, sonar; lint, sonar; test, sonar |
+| the Prettier configuration files, `.prettierignore`, `.editorconfig` | format |
+| `sonar-project.properties`, `codecov.yml` | hfs, secrets, wiring, db, sonar |
+| `.gitignore`, `.gitattributes`, `turbo.json` | hfs, secrets, wiring, db |
+
+A library's type surface reaches ESLint through the import graph, not the fingerprint: the graph records the installed
+packages each file imports and the side keeps their install digests, so a bump dirties the files that import the package and
+their dependents (ESLint, below). The types and test families key their records by the local files a program or a spec reads,
+never by the installed packages, so they read every resolved install (`lock:types`, `lock:test`) and run full on any
+dependency bump; narrowing them needs their records to name their packages first. The quality profile of the policy is not a
+part (the gate threshold only judges the verdict).
 
 A run whose CLI or any `@starci` package is linked or copied from a local folder (no recorded integrity) has no
 portable fingerprint: it runs in full, says so, and writes nothing into `.starcistacks/cache/`, so a developer testing a
@@ -145,17 +181,19 @@ findings were deleted by hand, so where the cache is trusted from depends on who
 - **On a host** the cache in the working tree is trusted. A local run is the developer's own view; it updates the
   folder and the developer commits it with the change.
 - **In CI** the cache is trusted only as it stands at the trusted base: the merge-base with the default branch for a pull
-  request, the first parent for a push to the default branch, read with `git show <base>:<path>` (the managed workflow
-  fetches it). The change's own edits to the cache are never trusted: CI judges everything the base cache does not
+  request, the first parent for a push to the default branch, the merge-base with the default branch for a release candidate
+  or a release tag (whose commit main's CI already verified), and the branch tip for a scheduled or dispatched run on the
+  default branch (the nightly verify), read with `git show <base>:<path>` (the managed workflow fetches it). The change's own edits to the cache are never trusted: CI judges everything the base cache does not
   cover, then compares the change's committed cache with what it inherited or computed. A record whose key matches the
   tree and whose findings differ is `HFS_CHECK_CACHE_FORGED`, a hard blocker at any count, whether the record was edited
   by hand or a step is not deterministic across hosts. A key the change touched with no current record is
-  `HFS_CHECK_CACHE_STALE`. No trusted base (a tag build, a schedule, an unreadable base) is a full run.
+  `HFS_CHECK_CACHE_STALE`. No trusted base (any other event, an unreadable base) is a full run.
 
 A pull request that edits cache files directly therefore gains nothing: its records are never read in CI, a forged one
 turns CI red, and a deleted or stale one costs only time. The default branch only receives a cache that a pull
 request's CI compared record by record; a direct push to it is verified by its own CI run against its first parent, and
-the release run is full, so a cache that bypassed review is caught before it ships.
+the nightly verify compares main's cache with a full run, locking releases on any difference, so a cache that bypassed
+review is caught before it ships.
 
 ## Which step reuses what
 
@@ -307,9 +345,11 @@ The servers stay the judges; a prediction never passes or fails a run.
   `.starcistacks/application-stacks.yaml` refuses as an environment.
 - **Templates.** The managed `.gitignore` block re-includes `!.starcistacks/cache/**` after its `.starcistacks/**` deny;
   `.gitattributes` gains the line above; `.prettierignore` skips the folder. The managed CI workflow fetches the trusted
-  base, runs `app check` (the `lint` job: `--gate lint` per side) diff-only against it, uploads the merged lcov, and passes `--no-cache` on the run a
-  release waits for (a full unit run there is sharded: `--gate test --shard <i>/<n>` per job records nothing, and the
-  merge job judges the merged report with `--coverage-from`). The release gate sets `STARCI_APP_CHECK_CACHE=full` on every gate row.
+  base, runs `app check` (the `lint` job: `--gate lint` per side) diff-only against it and uploads the merged lcov (the
+  unit run is sharded: `--gate test --shard <i>/<n>` per job records nothing, and the merge job judges the merged report with
+  `--coverage-from`); it never passes `--no-cache`, and only a dispatch with its `full` input sets `STARCI_APP_CHECK_CACHE=full`.
+  The managed `cache-verify.yml` is the nightly verify, the managed pre-push hook runs `app check --fresh`, and the release
+  gate runs every row diff-only against the warm cache unless `--full` is given.
 - **Scaffold.** `app scaffold` writes the templates above and no cache; the app's first check builds it in full.
 - **Adoption.** `app sync --execute` and `app upgrade` bring an existing app the same templates and never create,
   move or delete cache records; its first run after them is full and writes the folder, which the developer commits.
@@ -320,9 +360,11 @@ The servers stay the judges; a prediction never passes or fails a run.
 a record whose key matches the tree and whose findings differ from the inherited or computed result is
 `HFS_CHECK_CACHE_FORGED` (a hard blocker), a touched key without a current record is `HFS_CHECK_CACHE_STALE`, and a
 missing cache is `HFS_CHECK_CACHE_MISSING`. Why: CI trusts a committed artifact only where review and CI already
-judged it, so a hand edit can cost time but never pass a file. Enforcement (owner decision):
-forged fails at any count; stale and missing warn (report-only, the run is full or wider and still correct), so a first
-adoption and a forgotten refresh never block a change.
+judged it, so a hand edit can cost time but never pass a file. Enforcement (owner decisions):
+forged fails at any count; stale and missing warn in CI (report-only, the run is full or wider and still correct); a push
+whose cache a real run on its tree changes is refused at the pre-push hook (`HFS_CHECK_CACHE_UNWARMED`,
+`HFS_CHECK_CACHE_UNPORTABLE`, `packages/hfs/cache/freshness.mts`), so CI never goes cold and past its ESLint budget; and a red
+or unreadable nightly verify refuses the release gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`).
 
 ## Edge cases
 
@@ -335,16 +377,15 @@ adoption and a forgotten refresh never block a change.
 - **A step that throws or a linter that cannot complete** stores nothing of that step.
 - **Branch switches and merges** are content changes like any edit; a union-merged folder is normalised by the next
   write.
-- **A cache from another hfs or CLI** differs in the fingerprint, so it is replaced, never read.
+- **A cache from another hfs or CLI** differs in the hfs and CLI parts, so the records of the hfs-run families are replaced, never read; the other families keep theirs.
 - **A disk error writing the cache** is a warning in the cache line and never changes the exit code.
 
 ## As built
 
-- The quality profile of the policy is not a fingerprint part: the gate threshold only judges the verdict, which is never cached.
 - `--fix` runs the linters with `--fix` before the check reads the cache, so the rewritten files are the dirty set of that same run.
 - `--quiet` mutes progress and keeps the diagnosis on stdout for `check`; other verbs still mute stdout.
-- The managed CI keeps its triggers (push to main, release candidates, tags); a push to main is trusted against its first parent, a candidate or tag
-  run sets `STARCI_APP_CHECK_CACHE=full` and never reads the cache. The `format` step runs `app check --gate format`.
+- The managed CI keeps its triggers (push to main, release candidates, tags) and adds the nightly `cache-verify.yml`; a push to main is
+  trusted against its first parent, a candidate or tag run against its merge-base with main. The `format` step runs `app check --gate format`.
 - Side keys take the untracked program inputs from the side's tsconfig `include` (generated code), not from import resolution of files outside it.
 
 ## Read with

@@ -1616,7 +1616,7 @@ rules:
       - {kind: hfs, id: deploy-scan}
   - id: R251
     code: HFS_DEPLOY_WORKFLOW
-    law: Deployment workflows declare protected environments, permissions and concurrency, materialize only sealed secrets, pin every action by full commit SHA, and trigger only on the allowed refs.
+    law: Deployment workflows declare protected environments, permissions and concurrency, materialize only sealed secrets, pin every action by full commit SHA, and trigger only on the allowed refs (and cache-verify.yml, the nightly verify of the check cache, on its schedule).
     failureCodes:
       - HFS_DEPLOY_WORKFLOW
       - HFS_WORKFLOW_PIN
@@ -2324,11 +2324,14 @@ rules:
 
   - id: R343
     code: HFS_CHECK_CACHE_FORGED
-    law: An app's committed check cache (.starcistacks/cache/) is trusted in CI only as it stands at the trusted base; a record whose key matches the tree and whose findings differ from the inherited or computed result is HFS_CHECK_CACHE_FORGED (a hard blocker at any count), a touched key without a current record is HFS_CHECK_CACHE_STALE and a missing cache is HFS_CHECK_CACHE_MISSING (both report-only warnings).
+    law: An app's committed check cache (.starcistacks/cache/) is trusted in CI only as it stands at the trusted base; a record whose key matches the tree and whose findings differ from the inherited or computed result is HFS_CHECK_CACHE_FORGED (a hard blocker at any count), a touched key without a current record is HFS_CHECK_CACHE_STALE and a missing cache is HFS_CHECK_CACHE_MISSING (both report-only warnings in CI); every push carries the warm cache a real run on its tree writes, refused at the pre-push hook as HFS_CHECK_CACHE_UNWARMED (a cache that run had to change, or uncommitted cache files) or HFS_CHECK_CACHE_UNPORTABLE (a host whose fingerprint is not portable); and the release gate, which trusts the warm cache, is refused HFS_CHECK_CACHE_VERIFY_LOCKED while the newest nightly verify of the default branch is red or cannot be read.
     failureCodes:
       - HFS_CHECK_CACHE_FORGED
       - HFS_CHECK_CACHE_STALE
       - HFS_CHECK_CACHE_MISSING
+      - HFS_CHECK_CACHE_UNWARMED
+      - HFS_CHECK_CACHE_UNPORTABLE
+      - HFS_CHECK_CACHE_VERIFY_LOCKED
     enforcers:
       - {kind: hfs, id: check-cache}
   - id: R344

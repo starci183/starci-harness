@@ -19,9 +19,9 @@ export const git = (cwd: string, ...args: string[]): string => {
 
 /**
  * Install a package-resolution wrapper so the rendered hook runs the actual bundled gate in a disposable Git repository, beside a
- * stand-in for the harness's `starci deps check` that exits with `depsExit`.
+ * stand-in for the harness's `starci deps check` that exits with `depsExit` and its `starci app check --fresh` that exits with `freshExit`.
  */
-export function repository(t: Pick<TestContext, 'after'>, hookText: string, { depsExit = 0 }: { depsExit?: number } = {}): PrePushRepository {
+export function repository(t: Pick<TestContext, 'after'>, hookText: string, { depsExit = 0, freshExit = 0 }: { depsExit?: number; freshExit?: number } = {}): PrePushRepository {
   const root = mkdtemp(t, 'hfs-pre-push-');
   git(root, 'init', '-q', '-b', 'main');
   fs.writeFileSync(path.join(root, 'a.txt'), 'first');
@@ -38,7 +38,14 @@ export function repository(t: Pick<TestContext, 'after'>, hookText: string, { de
   fs.writeFileSync(path.join(pkg, 'gate.mjs'), `export { main } from ${JSON.stringify(gate)};\n`);
   const harness = path.join(root, 'node_modules', 'starci-harness', 'dist');
   fs.mkdirSync(harness, { recursive: true });
-  fs.writeFileSync(path.join(harness, 'main.js'), `if (process.argv[2] !== 'deps' || process.argv[3] !== 'check') process.exit(2);\nif (${depsExit} !== 0) console.error('DEPS_PIN_UNPUBLISHED: stand-in');\nprocess.exit(${depsExit});\n`);
+  fs.writeFileSync(path.join(harness, 'main.js'), [
+    "const verb = process.argv.slice(2).join(' ');",
+    `if (verb === 'app check --fresh') { if (${freshExit} !== 0) console.error('HFS_CHECK_CACHE_UNWARMED: stand-in'); process.exit(${freshExit}); }`,
+    "if (verb !== 'deps check') process.exit(2);",
+    `if (${depsExit} !== 0) console.error('DEPS_PIN_UNPUBLISHED: stand-in');`,
+    `process.exit(${depsExit});`,
+    '',
+  ].join('\n'));
   const hook = path.join(root, 'pre-push.sh');
   fs.writeFileSync(hook, hookText);
   return { root, hook, head, older };

@@ -126,9 +126,9 @@ interface ReleaseAction { spec: FlagSpec; run: (ctx: VerbContext, flags: VerbFla
 
 const ACTIONS: Record<string, ReleaseAction> = {
   gate: {
-    spec: { boolean: ['--execute', '--json'], value: ['--sha', '--tag-prefix', '--backfill'] },
+    spec: { boolean: ['--execute', '--json', '--full'], value: ['--sha', '--tag-prefix', '--backfill'] },
     run: (ctx, flags, harness) => releaseGate(ctx, loadReleaseConfig(ctx.cwd), {
-      execute: flags.execute === true, source: flags.sha, tagPrefix: flags['tag-prefix'], backfill: flags.backfill, openTicket: harness?.openTicket,
+      execute: flags.execute === true, source: flags.sha, tagPrefix: flags['tag-prefix'], backfill: flags.backfill, openTicket: harness?.openTicket, full: flags.full === true,
     }),
   },
   push: {

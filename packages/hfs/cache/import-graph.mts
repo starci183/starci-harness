@@ -19,9 +19,10 @@ type Ts = typeof TypeScript;
  * declaration file, stands for itself: its content hash). `open` says the surface is inferred: the emit reported a diagnostic (a type the compiler
  * has to infer from the bodies and the files they use), so it can change while the emit text does not. `refs` is the local files the emit names (a
  * type imported from them, a re-export): an explicit surface is its emit text plus the surfaces of those files, nothing else. An absent `api`,
- * `open` or `refs` (a record from before they existed) is read as "changed", "inferred" and "unknown".
+ * `open` or `refs` (a record from before they existed) is read as "changed", "inferred" and "unknown". `packages` is the installed packages the file imports
+ * (by package name), whose types a type-aware rule reads too; absent on a record from before it existed, read as "unknown".
  */
-export interface ImportNode { hash: string; imports: string[]; declaresGlobals: boolean; api?: string | undefined; open?: boolean | undefined; refs?: string[] | undefined }
+export interface ImportNode { hash: string; imports: string[]; declaresGlobals: boolean; api?: string | undefined; open?: boolean | undefined; refs?: string[] | undefined; packages?: string[] | undefined }
 /** The graph of a side: side-relative posix path to node. Leaves (a JSON file, a declaration file out of the lint scope) are nodes with no imports. */
 export type ImportGraph = ReadonlyMap<string, ImportNode>;
 
@@ -119,8 +120,14 @@ const resolutionCacheOf = (ts: Ts, sideRoot: string, options: TypeScript.Compile
   return cache;
 };
 
-/** The local files `file` (side-relative) imports, resolved with the side's compiler options. Unresolved and installed-package imports are not edges. */
-export function resolveImports(host: GraphHost, options: TypeScript.CompilerOptions, file: string, text: string): string[] {
+/** The package name of a bare specifier (`@s/y/sub` is `@s/y`, `x/sub` is `x`). */
+export function packageOf(specifier: string): string {
+  const parts = specifier.split('/');
+  return specifier.startsWith('@') ? parts.slice(0, 2).join('/') : (parts[0] as string);
+}
+
+/** The local files `file` (side-relative) imports, resolved with the side's compiler options, and the installed packages it imports. Unresolved imports are neither. */
+export function resolveReferences(host: GraphHost, options: TypeScript.CompilerOptions, file: string, text: string): { imports: string[]; packages: string[] } {
   const { ts, sideRoot } = host;
   const absolute = path.join(sideRoot, file);
   const { specifiers, paths } = referencesOf(ts, text);
@@ -131,9 +138,14 @@ export function resolveImports(host: GraphHost, options: TypeScript.CompilerOpti
     getCurrentDirectory: () => sideRoot,
   };
   const found = new Set<string>();
+  const packages = new Set<string>();
   for (const specifier of specifiers) {
     const resolved = ts.resolveModuleName(specifier, absolute, options, moduleHost, resolutionCacheOf(ts, sideRoot, options)).resolvedModule;
-    if (!resolved || resolved.isExternalLibraryImport) continue;
+    if (!resolved) continue;
+    if (resolved.isExternalLibraryImport === true) {
+      if (!specifier.startsWith('.')) packages.add(packageOf(specifier));
+      continue;
+    }
     const local = localPath(sideRoot, resolved.resolvedFileName);
     if (local !== null && local !== file) found.add(local);
   }
@@ -141,7 +153,12 @@ export function resolveImports(host: GraphHost, options: TypeScript.CompilerOpti
     const local = localPath(sideRoot, path.resolve(path.dirname(absolute), reference));
     if (local !== null && host.fileExists(path.join(sideRoot, local))) found.add(local);
   }
-  return [...found].sort();
+  return { imports: [...found].sort(), packages: [...packages].sort() };
+}
+
+/** The local files `file` (side-relative) imports (`resolveReferences` without the packages). */
+export function resolveImports(host: GraphHost, options: TypeScript.CompilerOptions, file: string, text: string): string[] {
+  return resolveReferences(host, options, file, text).imports;
 }
 
 /**
@@ -188,7 +205,7 @@ export function buildImportGraph(host: GraphHost, files: readonly string[], reco
     if (hash === null) return;
     const before = recorded?.get(file);
     // a record from before the type surface was kept has none: the file is read once more to give it one
-    if (!pathsChanged && before !== undefined && before.hash === hash && (before.api !== undefined || !/\.(?:[cm]?[jt]sx?)$/.test(file))) {
+    if (!pathsChanged && before !== undefined && before.hash === hash && ((before.api !== undefined && before.packages !== undefined) || !/\.(?:[cm]?[jt]sx?)$/.test(file))) {
       graph.set(file, before);
       reused += 1;
     } else if (/\.(?:[cm]?[jt]sx?)$/.test(file)) {
@@ -196,7 +213,7 @@ export function buildImportGraph(host: GraphHost, files: readonly string[], reco
       scanned += 1;
       graph.set(file, text === null
         ? { hash, imports: [], declaresGlobals: false, api: undefined, open: true, refs: undefined }
-        : { hash, imports: resolveImports(host, compiler, file, text), declaresGlobals: declaresGlobals(host.ts, file, text), ...surfaceOf(host, compiler, file, text) });
+        : { hash, ...resolveReferences(host, compiler, file, text), declaresGlobals: declaresGlobals(host.ts, file, text), ...surfaceOf(host, compiler, file, text) });
     } else graph.set(file, { hash, imports: [], declaresGlobals: false, api: hash, open: false, refs: [] });
     for (const next of graph.get(file)?.imports ?? []) visit(next);
   };
@@ -234,7 +251,8 @@ export interface DirtySet { dirty: Set<string>; wholeSide: string | null; change
 /**
  * The files to lint again after a change from `previous` (the recorded graph, null when none) to `next`.
  *
- * A file is dirty when it changed, was added or removed, resolves its imports to other files than recorded, or imports a file whose type surface
+ * A file is dirty when it changed, was added or removed, resolves its imports to other files than recorded, imports an installed package whose
+ * install changed (`changedPackages`; its surface counts as changed, since it may re-export the package's types), or imports a file whose type surface
  * changed, in the new graph or the recorded one (a file that stopped importing such a file still holds a result from the old types). A dirty file's
  * surface changed when it was added or removed, gained an import, its surface digest differs from the record (or either is unknown), its surface
  * is inferred (`open`: whatever dirtied it can have changed the inferred type), or its explicit surface names a file (`refs`) whose surface changed.
@@ -242,7 +260,7 @@ export interface DirtySet { dirty: Set<string>; wholeSide: string | null; change
  * changed signature its direct importers, and a type it re-exports or names carries on through the files that name it. A changed file that
  * declares globals, now or before, dirties the whole side.
  */
-export function dirtySetOf(previous: ImportGraph | null, next: ImportGraph): DirtySet {
+export function dirtySetOf(previous: ImportGraph | null, next: ImportGraph, changedPackages: ReadonlySet<string> = new Set()): DirtySet {
   const changed = changedPaths(previous, next);
   if (previous === null) return { dirty: new Set(next.keys()), wholeSide: 'no recorded import graph', changed };
   for (const file of changed) {
@@ -261,11 +279,13 @@ export function dirtySetOf(previous: ImportGraph | null, next: ImportGraph): Dir
     known.add(file);
     importers.set(target, known);
   }
-  const dirty = new Set<string>([...changed, ...rewired]);
+  // a file that imports a package whose install changed reads other types than before, and so may say other types to its importers
+  const repackaged = new Set([...next].filter(([, node]) => changedPackages.size > 0 && (node.packages === undefined || node.packages.some((name) => changedPackages.has(name)))).map(([file]) => file));
+  const dirty = new Set<string>([...changed, ...rewired, ...repackaged]);
   const surface = new Set<string>();
   const surfaceChanged = (file: string): boolean => {
     const after = next.get(file), before = previous.get(file);
-    if (after === undefined || before === undefined) return true;
+    if (after === undefined || before === undefined || repackaged.has(file)) return true;
     // a new edge can resolve a name the emit already used to a file that was not there, so what the importers read of this file may differ
     if (rewired.has(file) && after.imports.some((target) => !before.imports.includes(target))) return true;
     if (after.hash !== before.hash && (after.api === undefined || before.api === undefined || after.api !== before.api)) return true;

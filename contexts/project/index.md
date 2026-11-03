@@ -170,7 +170,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [harness/axes.md](../harness/axes.md) · 1 KB
 - [harness/cli-canonical.md](../harness/cli-canonical.md) · 13 KB — Owner ruling `cli-canonical-2026-10-30` (decisions.md): the flag dictionary and the command tree below are the target surface of both layers, the harness verbs (`starci <group> ...
   - sections: One flag dictionary (every verb, both layers) · The command tree
-- [harness/decisions.md](../harness/decisions.md) · 32 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
+- [harness/decisions.md](../harness/decisions.md) · 34 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
 - [harness/questions.md](../harness/questions.md) · 1 KB
 - [harness/roles.md](../harness/roles.md) · 7 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
 - [harness/rules.md](../harness/rules.md) · 4 KB — These hold for every role and every task.
@@ -182,15 +182,15 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.runtime-layer, images.sources, never.build-output, never.cli-js, never.env and 38 more
 - [hfs/rules.yaml](../hfs/rules.yaml) · 121 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
   - ids: R01, R02, R03, R04, R05, R06, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113, R12, R13 and 266 more
-- [hfs/slots.yaml](../hfs/slots.yaml) · 108 KB — The HFS slot manifest: what may exist in an app repository and where.
-  - ids: app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore, app.format-config, app.git-meta, app.gitattributes and 139 more
+- [hfs/slots.yaml](../hfs/slots.yaml) · 109 KB — The HFS slot manifest: what may exist in an app repository and where.
+  - ids: app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore, app.format-config, app.git-meta and 140 more
 - [project/README.md](../project/README.md) · 10 KB — What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read for each kind of task.
   - sections: PROJECT-1 A project is one app root that holds the Work of every side · PROJECT-2 Work travels from a record to a settled commit · PROJECT-3 A product's agent modules are workspace packages · Where to read for a task · Files
-- [project/anatomy.md](../project/anatomy.md) · 81 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
+- [project/anatomy.md](../project/anatomy.md) · 82 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
-- [project/check-cache.md](../project/check-cache.md) · 32 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
-  - sections: The command surface · Progress and the run log · When a run is full · Layout and format · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · The slot, the templates and adoption · The law · Edge cases · As built · Read with
-- [project/cicd.md](../project/cicd.md) · 35 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
+- [project/check-cache.md](../project/check-cache.md) · 36 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
+  - sections: The operating procedure · The command surface · Progress and the run log · When a run is full · Layout and format · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · The slot, the templates and adoption · The law · Edge cases · As built · Read with
+- [project/cicd.md](../project/cicd.md) · 36 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
   - sections: What an app has today · Triggers and what runs · The pipeline graph · Database migrations · Secrets and access · Gates · Records · Compared with common practice · Work packages · As built by the work packages (integration, 2026-10-31) · Open decisions · Sources · Read with
 - [project/full.md](../project/full.md) · 4 KB — Only the differences of a full app from the shared project model (README.md); everything not named here is the same in both editions.
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work · Read with

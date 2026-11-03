@@ -5,6 +5,7 @@ import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import type { VerifyLock } from '../release/cache-verify-lock.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { tempRoot } from '../runtime/engine/temp-root.mjs';
@@ -23,6 +24,9 @@ const git = (cwd: string, ...args: string[]): string => {
 interface CheckRow { name: string; pass: boolean; reused?: boolean }
 
 const GATES = (red: string[] = []) => ['typecheck', 'build-be', 'app-check', 'lint', 'test'].map((name) => ({ name, command: ['node', red.includes(name) ? 'fail.mjs' : 'ok.mjs'] }));
+
+/** The nightly cache verify of the gate, as an app with no finished verify run yet answers it. */
+const openLock = (): VerifyLock => ({ state: 'open', line: 'cache verify   no finished cache-verify.yml run yet' });
 
 /** An app repository at version 1.0.0 with a bare origin; `red` names the gates that fail. Returns { root, remote, head, config, ctx }. */
 function app(t: TestContext, red: string[] = []) {
@@ -118,7 +122,7 @@ test('a red fast check refuses the urgent release: nothing tagged, nothing pushe
 
 test('a green row the gate recorded for HEAD is reused, not run again', async (t) => {
   const { ctx, config, root } = app(t, ['test']);
-  await releaseGate(ctx, config, { execute: true, platform: process.platform });
+  await releaseGate(ctx, config, { execute: true, platform: process.platform, readLock: openLock });
   const result = await releaseUrgentPush(ctx, config, { execute: true, reason: 'gate red on test only' });
   assert.equal(result.ok, true, result.lines!.join('\n'));
   assert.ok(readUrgent(common(root), git(root, 'rev-parse', 'HEAD')).checks.every((row: CheckRow) => row.reused === true));
@@ -128,14 +132,14 @@ test('back-fill green promotes the urgent record to L4 with no new tag and no pu
   const { ctx, config, root, remote, head } = app(t);
   await releaseUrgentPush(ctx, config, { execute: true, reason: 'tonight' });
   const before = git(remote, 'for-each-ref');
-  const result = await releaseGate(ctx, config, { execute: true, backfill: 'v1.0.0', platform: process.platform, openTicket: () => assert.fail('no ticket on green') });
+  const result = await releaseGate(ctx, config, { execute: true, backfill: 'v1.0.0', platform: process.platform, readLock: openLock, openTicket: () => assert.fail('no ticket on green') });
   assert.equal(result.ok, true, result.lines!.join('\n'));
   assert.equal(result.data!.promoted, true);
   const l4 = JSON.parse(fs.readFileSync(path.join(common(root), `${head}.l4.json`), 'utf8'));
   assert.equal(l4.promotedFrom.reason, 'tonight');
   assert.equal(readUrgent(common(root), head).backfill.state, 'promoted');
   assert.equal(git(remote, 'for-each-ref'), before, 'the remote is untouched');
-  const again = await releaseGate(ctx, config, { execute: true, backfill: 'v1.0.0', platform: process.platform });
+  const again = await releaseGate(ctx, config, { execute: true, backfill: 'v1.0.0', platform: process.platform, readLock: openLock });
   assert.equal(again.data!.promoted, true);
   assert.equal(again.data!.executed, false, 'a promoted release is not judged twice');
 });
@@ -144,7 +148,7 @@ test('back-fill red opens one fix ticket and changes nothing else', async (t) =>
   const { ctx, config, root, head } = app(t, ['lint']);
   await releaseUrgentPush(ctx, config, { execute: true, reason: 'tonight' });
   const tickets: Array<{ code: string; title: string }> = [];
-  const result = await releaseGate(ctx, config, { execute: true, backfill: 'v1.0.0', platform: process.platform, openTicket: (input: { code: string; title: string }) => { tickets.push(input); return 'tk-000000000001'; } });
+  const result = await releaseGate(ctx, config, { execute: true, backfill: 'v1.0.0', platform: process.platform, readLock: openLock, openTicket: (input: { code: string; title: string }) => { tickets.push(input); return 'tk-000000000001'; } });
   assert.equal(result.ok, false);
   assert.equal(tickets.length, 1);
   assert.equal(tickets[0]!.code, 'RELEASE_BACKFILL_RED');
@@ -156,7 +160,7 @@ test('back-fill red opens one fix ticket and changes nothing else', async (t) =>
 test('back-fill refuses a tag that is not HEAD or not an urgent release', async (t) => {
   const { ctx, config } = app(t);
   await assert.rejects(releaseGate(ctx, config, { execute: true, backfill: 'v9.9.9' }), (error: { code?: string }) => error.code === 'RELEASE_BACKFILL_TAG_UNKNOWN');
-  const gated = await releaseGate(ctx, config, { execute: true, platform: process.platform });
+  const gated = await releaseGate(ctx, config, { execute: true, platform: process.platform, readLock: openLock });
   assert.equal(gated.ok, true, gated.lines!.join('\n'));
   await assert.rejects(releaseGate(ctx, config, { execute: true, backfill: 'v1.0.0' }), (error: { code?: string }) => error.code === 'RELEASE_BACKFILL_NOT_URGENT');
 });

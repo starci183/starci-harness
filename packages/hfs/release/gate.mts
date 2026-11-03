@@ -17,6 +17,7 @@ import { produceLintReports } from './lint-report.mjs';
 import { URGENT_RULING, l4Path, readUrgent, recordRow, writeUrgent } from './records.mjs';
 import { sonarQualityGate } from './sonar-quality-gate.mjs';
 import type { SpawnResult, VerbContext, VerbResult } from './index.mjs';
+import { readVerifyLock, type VerifyLock } from './cache-verify-lock.mjs';
 
 /** One gate of the release: a name, an argument array (never a shell string), an optional jest summary and extra environment. */
 export interface Gate {
@@ -43,7 +44,7 @@ export interface ChosenTag { tag: string; state: 'on-head' | 'taken' | 'free' }
 /** The facts known before a gate runs. */
 export interface Facts { head: string; chosen: ChosenTag; red: string[]; out: string[] }
 /** The options of one gate run. */
-export interface RunOptions { dir: string; platform: string; credentialNames: string[]; preface?: string }
+export interface RunOptions { dir: string; platform: string; credentialNames: string[]; preface?: string; full?: boolean }
 
 export const RELEASE_CODE = 'RELEASE_CONFIG_INVALID';
 const SONAR_UNREACHABLE = 'SONAR_UNREACHABLE';
@@ -64,8 +65,11 @@ const THRESHOLD_MISS = /coverage threshold .* not met/gu;
 const WRAPPED = new Set(['npm', 'npx']);
 // Every row the managed CI runs, so a release that does not wait for its candidate CI (release.requireCi false) still ran them all locally:
 // fast (audit, format, typecheck), lint, test + coverage (the managed `test` script is the per-file 100 threshold), build, the lite database lint, and Sonar.
-/** A release judges in full and never reads the committed check cache (contexts/project/check-cache.md): every gate row, the urgent back-fill included, runs with this set. */
-export const RELEASE_CACHE_ENV: Readonly<Record<string, string>> = Object.freeze({ STARCI_APP_CHECK_CACHE: 'full' });
+/**
+ * The cache use of every gate row, the urgent back-fill included (contexts/project/check-cache.md, "The release"): diff-only against the warm committed cache
+ * the release commit carries, which main's CI verified and the nightly verify watches; `--full`, the owner's explicit opt-in, never reads it.
+ */
+export const releaseCacheEnv = (full: boolean): Readonly<Record<string, string>> => Object.freeze({ STARCI_APP_CHECK_CACHE: full ? 'full' : '' });
 const SCRIPT_GATES = ['format:check', 'typecheck', 'build:be', 'lint', 'db:lint', 'build:fe', 'test'];
 // A full app has a test world (integration, e2e and contract projects, always present: the managed `test:e2e` script marks it), so those layers are rows of its gate;
 // a lite app's integration project exists only where it has integration specs, so it has no world rows.
@@ -325,7 +329,7 @@ export async function runAvailableGate(ctx: VerbContext, gate: Gate, options: Ru
     if (!gate.provider) return runGate(ctx, gate, options);
     // The scanner imports the app's declared external issues report: produce it first with the app's own lint, as the managed CI does.
     const started = ctx.now();
-    const lint = produceLintReports(ctx, { launch, platform: options.platform, env: { ...withoutCredentials(ctx.env, options.credentialNames), ...RELEASE_CACHE_ENV } });
+    const lint = produceLintReports(ctx, { launch, platform: options.platform, env: { ...withoutCredentials(ctx.env, options.credentialNames), ...releaseCacheEnv(options.full === true) } });
     if (lint.pass) return judgeQualityGate(ctx, gate, runGate(ctx, gate, { ...options, preface: lint.text }));
     fs.writeFileSync(log, lint.text);
     return { name: gate.name, command: gate.command.join(' '), pass: false, detail: 'lint report failed (see log)', seconds: Math.round((ctx.now() - started) / 1000),
@@ -361,12 +365,12 @@ export const withoutCredentials = (values: Record<string, string | undefined> | 
   return Object.fromEntries(Object.entries(values ?? {}).filter(([key]) => !selected.has(key.toUpperCase())));
 };
 
-export function runGate(ctx: VerbContext, gate: Gate, { dir, platform, credentialNames, preface = '' }: RunOptions): GateRow {
+export function runGate(ctx: VerbContext, gate: Gate, { dir, platform, credentialNames, preface = '', full = false }: RunOptions): GateRow {
   const log = path.join(dir, `${gate.name}.log`);
   const started = ctx.now();
   const [command, args] = launch(gate.command, platform);
   // The native scanner alone consumes Sonar credentials; ordinary gates cannot inherit or reintroduce them.
-  const env = { ...ctx.env, ...(gate.provider ? gate.env : withoutCredentials(gate.env, credentialNames)), ...RELEASE_CACHE_ENV };
+  const env = { ...ctx.env, ...(gate.provider ? gate.env : withoutCredentials(gate.env, credentialNames)), ...releaseCacheEnv(full) };
   const run = tool(ctx, command, args, { cwd: ctx.cwd, env });
   const output = `${run.stdout ?? ''}${run.stderr ?? ''}`;
   const text = redactGateText(gate, output);
@@ -509,6 +513,7 @@ function backfillRed(ctx: VerbContext, { common, urgent, failed, openTicket }: {
  */
 export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, options: {
   execute?: boolean; source?: string | boolean | undefined; tagPrefix?: string | boolean | undefined; platform?: string; backfill?: string | boolean | undefined; openTicket?: unknown;
+  full?: boolean; readLock?: (ctx: VerbContext, defaultBranch: string) => VerifyLock;
 } = {}): Promise<VerbResult> {
   // Sonar is a row of the managed CI, so it is a row of the local gate whenever the app declares services.sonar; a missing token is a refusal, never a skip.
   if (config.services?.sonar) config = { ...config, gates: [...config.gates.filter((gate) => gate.name !== 'sonar'), sonarGate(config.services, ctx, options.execute === true)] };
@@ -526,8 +531,13 @@ export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, optio
   const base = { head: facts.head, tag: facts.chosen.tag, record: recordPath, gates: config.gates.map((gate) => gate.name), ...(urgent ? { backfill: urgent.tag } : {}) };
   if (urgent?.backfill?.state === 'promoted') return { ok: true, lines: [...plan, `back-fill already promoted ${urgent.tag} to ${urgent.backfill.l4}. Nothing to do.`], data: { ...base, red: [], executed: false, promoted: true } };
   if (facts.red.length > 0) return { ok: false, lines: [...plan, ...facts.red.map((item) => `RED: ${item}`), 'nothing was run.'], data: { ...base, red: facts.red, executed: false } };
+  // The gate trusts the warm cache unless the owner asked for the full gate; a red or unreadable nightly verify locks it until a green one.
+  const full = options.full === true;
+  const lock = full ? null : (options.readLock ?? readVerifyLock)(ctx, config.defaultBranch);
+  plan.push(full ? 'cache          full gate (--full): every row judges in full and never reads the committed cache' : `cache          diff-only against the committed cache; ${lock?.line ?? ''}`);
+  if (lock !== null && lock.state !== 'open') return { ok: false, lines: [...plan, `RED: ${lock.line}`, 'nothing was run.'], data: { ...base, red: [lock.line], executed: false, locked: true } };
   if (options.execute !== true) return { ok: true, lines: [...plan, '', 'dry run: no gate was run, nothing written. preconditions OK.'], data: { ...base, red: [], executed: false } };
-  const results = await runAll(ctx, config, { dir, common, head: facts.head, platform: options.platform ?? process.platform, credentialNames });
+  const results = await runAll(ctx, config, { dir, common, head: facts.head, platform: options.platform ?? process.platform, credentialNames, full });
   const report = results.map(summaryOf);
   const failed = results.filter((result) => !result.pass);
   if (failed.length > 0 && urgent) {

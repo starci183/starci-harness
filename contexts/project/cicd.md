@@ -38,17 +38,19 @@ on the release tag; the tag run is the release run, and the pipeline keys every 
 | `pull_request` to `main` (Dependabot, an owner branch) | diff-only against the merge-base cache | built, not pushed (proves the Dockerfiles) | never |
 | push of `main` whose sha a `v*` tag points at | skipped: the `plan` job sees the tag and defers to the tag run | none | none |
 | push of `main` with no tag (only when the hook was bypassed) | diff-only against the first parent | none | none |
-| push of `release/candidate-<version>` (apps with `release.requireCi: true`) | full | built and pushed under `sha-<sha>` | none; the candidate verdict is reused by the tag run |
-| push of tag `v<version>` | full (the release run of check-cache.md), or reused from a green candidate run of the same sha | built once, pushed with SBOM and provenance | every environment with `deploy.auto: true`, in declared order, after every required job is green |
-| push of tag `v<version>` whose annotation carries `Starci-Urgent:` | full: this run is the back-fill | built and pushed | skipped when the environment's accepted release already has this sha (the urgent deploy did it); otherwise as a normal tag |
+| push of `release/candidate-<version>` (apps with `release.requireCi: true`) | the release checks, diff-only against the cache at its merge-base with `main` | built and pushed under `sha-<sha>` | none; the candidate verdict is reused by the tag run |
+| push of tag `v<version>` | the release checks, diff-only against the cache at its merge-base with `main` (check-cache.md "Trust"), or reused from a green candidate run of the same sha | built once, pushed with SBOM and provenance | every environment with `deploy.auto: true`, in declared order, after every required job is green |
+| push of tag `v<version>` whose annotation carries `Starci-Urgent:` | the release checks: this run is the back-fill | built and pushed | skipped when the environment's accepted release already has this sha (the urgent deploy did it); otherwise as a normal tag |
+| schedule (nightly) and `workflow_dispatch` of `cache-verify.yml` on `main` | `STARCI_APP_CHECK_CACHE=verify`: diff-only, then full, compared; red locks the release gate | none | none |
+| `workflow_dispatch` of `ci.yml` with the `full` input (the owner's opt-in) | full, never reading the cache | as the ref | as the ref |
 | `workflow_dispatch` of `stack-deploy.yml` | none; it requires a tag whose CI run is green (or an urgent annotation) | reused by digest from that run | `deploy`, `redeploy` or `rollback` of one environment |
 
 `pull_request` is a new trigger for app workflows (R221 and R251 admit only tags, candidate branches, `main` for
 `ci.yml` and dispatch). It runs with read-only permissions, no environment and no secret; a fork's or Dependabot's run
-gets none anyway. `pull_request_target`, `workflow_run`, schedules and path filters stay refused.
+gets none anyway. `pull_request_target`, `workflow_run` and path filters stay refused, and so does every schedule but the nightly `cache-verify.yml`.
 
-**One sha is judged once.** The first job, `plan`, reads the event and the refs and decides: `full`, `diff` (with its
-trusted base, per check-cache.md "Trust"), `defer` (main push of a tagged sha) or `reuse` (a successful `ci.yml` run of
+**One sha is judged once.** The first job, `plan`, reads the event and the refs and decides: `full` (the release checks of a
+candidate or tag, Sonar included, still diff-only against the trusted cache), `diff` (with its trusted base, per check-cache.md "Trust"), `defer` (main push of a tagged sha) or `reuse` (a successful `ci.yml` run of
 the same sha on its candidate branch, found through the API, whose run id becomes the evidence). Its outputs drive every
 other job's `if:`; a skipped check job never means a green one, because the deploy gate below reads the evidence, not
 the job graph.
@@ -71,9 +73,9 @@ plan ──► fast ─┐
 ```
 
 **Checks.** The jobs stay the CI standard's shape (`fast`, `lint`, `test`, `coverage`, `build`, `sonar`; ci-standard.yaml
-`jobs`). Under `diff` they run `app check` (the `lint` job: `--gate lint` per side) against the trusted base cache and the test shards run only
-the specs whose closure changed; under `full` (every tag run, every candidate run) they pass `--no-cache`, shard the units
-(`--gate test --shard <i>/<n>`) and the coverage job judges the merged report with `--coverage-from`. Sonar and the
+`jobs`). Every run judges `app check` (the `lint` job: `--gate lint` per side) against the trusted base cache, never with
+`--no-cache`, and the test shards run only the specs whose closure changed; under `full` (every tag run, every candidate run)
+the units are sharded (`--gate test --shard <i>/<n>`) and the coverage job judges the merged report with `--coverage-from`. Sonar and the
 Codecov upload run on every `full` run, so a release is analysed before it ships rather than only on tags after the fact,
 and the quality gate's verdict, never the scanner's exit, is the job's result (PROJECT-STACKS-8). The verdicts follow
 `gate-threshold-20`: `app check` is green under 20 error findings with no hard blocker; typecheck, build,

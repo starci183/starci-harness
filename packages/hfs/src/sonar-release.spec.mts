@@ -42,6 +42,8 @@ test('native release sends selected Sonar credentials only to its scanner and ke
   const calls: { command: string; args: string[]; env?: NodeJS.ProcessEnv | undefined }[] = [];
   const spawn = (command: string, args: string[], options: SpawnOptions = {}) => {
     calls.push({command, args, env: options.env});
+    // the nightly cache verify the gate reads (cache-verify-lock.mts): no finished run yet, so the gate is open
+    if (command === 'gh') return {status: 0, stdout: '[]'};
     if (command === 'git') {
       if (args[0] === 'rev-parse' && args[1] === 'HEAD') return {status: 0, stdout: head};
       if (args[0] === 'rev-parse' && args[1] === '--abbrev-ref') return {status: 0, stdout: 'main'};
@@ -123,6 +125,8 @@ test('a failing lint fails the sonar row and the scanner never runs', async t =>
   const head = 'b'.repeat(40), calls: { command: string; args: string[] }[] = [];
   const spawn = (command: string, args: string[]) => {
     calls.push({command, args});
+    // the nightly cache verify the gate reads (cache-verify-lock.mts): no finished run yet, so the gate is open
+    if (command === 'gh') return {status: 0, stdout: '[]'};
     if (command === 'git') {
       if (args[1] === 'HEAD') return {status: 0, stdout: head};
       if (args[1] === '--abbrev-ref') return {status: 0, stdout: 'main'};
@@ -151,6 +155,8 @@ test('a quality gate ERROR fails the sonar row after a scanner exit 0 and names 
   const calls: { command: string; args: string[]; env: NodeJS.ProcessEnv }[] = [];
   const spawn = (command: string, args: string[], options: SpawnOptions = {}) => {
     calls.push({command, args, env: options.env ?? {}});
+    // the nightly cache verify the gate reads (cache-verify-lock.mts): no finished run yet, so the gate is open
+    if (command === 'gh') return {status: 0, stdout: '[]'};
     if (command === 'git') {
       if (args[1] === 'HEAD') return {status: 0, stdout: head};
       if (args[1] === '--abbrev-ref') return {status: 0, stdout: 'main'};

@@ -1,5 +1,6 @@
 // CI_TRIGGERS_RELEASE_ONLY: runtime workflows and app ci.yml may judge main; release candidates, v* tags and manual dispatch retain their scope. ci.yml also judges pull requests
-// to main (pull_request only: no secret reaches it; pull_request_target, workflow_run and schedules stay refused); a reusable workflow (workflow_call) has no trigger of its own.
+// to main (pull_request only: no secret reaches it; pull_request_target and workflow_run stay refused); a reusable workflow (workflow_call) has no trigger of its own. The
+// one schedule is the managed nightly verify of the check cache, cache-verify.yml (ruling release-gate-warm-cache): it reads and judges main, and writes nothing.
 import { parseWorkflow, workflowFindings } from './workflow-source.mjs';
 import { workflowEventOptions } from '../../lib/workflow-events.mjs';
 import type { Parsed } from '../rules/rule-types.mjs';
@@ -11,6 +12,8 @@ const RUNTIME_BRANCH = 'main';
 export const CANDIDATE_BRANCHES = 'release/candidate-*';
 /** The workflows that judge an app release (every app ci.yml): they must run on the candidate refs. The runtime's own workflows judge each push to main instead. */
 const RELEASE_WORKFLOW = /(^|\/)ci\.ya?ml$/;
+/** The managed nightly verify of the committed check cache, the one workflow a schedule starts. */
+const CACHE_VERIFY_WORKFLOW = /(^|\/)cache-verify\.ya?ml$/;
 
 const isReleaseTagFilter = (tags: Parsed) => Array.isArray(tags) && tags.length === 1 && String(tags[0]) === RELEASE_TAGS;
 /** The branches a filter may name: main (runtime workflows and app ci.yml) and the candidate pattern. */
@@ -51,9 +54,9 @@ function pullRequestFindings({ file, config, refuse }: { file: string; config: P
 }
 
 function eventFindings({ file, event, config, ownBranch, refuse, release }: { file: string; event: Parsed; config: Parsed; ownBranch: Parsed; refuse: Parsed; release: Parsed }) {
-  if (event === 'workflow_dispatch' || event === 'workflow_call') return [];
+  if (event === 'workflow_dispatch' || event === 'workflow_call' || (event === 'schedule' && CACHE_VERIFY_WORKFLOW.test(file))) return [];
   if (event === 'pull_request') return pullRequestFindings({ file, config, refuse });
-  if (event !== 'push') return [refuse(`the trigger \`${event}\` is not allowed: only a push of release tags [${RELEASE_TAGS}], of '${CANDIDATE_BRANCHES}' (and, in runtime workflows or app ci.yml, of branch ${RUNTIME_BRANCH}), a pull request to ${RUNTIME_BRANCH} in ci.yml, workflow_call and workflow_dispatch may start CI`)];
+  if (event !== 'push') return [refuse(`the trigger \`${event}\` is not allowed: only a push of release tags [${RELEASE_TAGS}], of '${CANDIDATE_BRANCHES}' (and, in runtime workflows or app ci.yml, of branch ${RUNTIME_BRANCH}), a pull request to ${RUNTIME_BRANCH} in ci.yml, workflow_call and workflow_dispatch may start CI, and a schedule only cache-verify.yml`)];
   return pushFindings({ ownBranch, config, refuse, release });
 }
 

@@ -368,6 +368,9 @@ for (const edition of ['lite', 'full']) {
     }
     const other = pipeline();
     assert.match(trigger(other, '.github/workflows/stack-deploy.yml').join('\n'), /pull_request may start only ci\.yml/u, 'no other app workflow runs a pull request');
+    const nightly = pipeline();
+    nightly.on = { schedule: [{ cron: '17 2 * * *' }], workflow_dispatch: {} };
+    assert.deepEqual(trigger(nightly, '.github/workflows/cache-verify.yml'), [], 'the nightly verify of the check cache runs on its schedule');
   });
 
   test(`HFS_APP_WORKFLOW_TRIGGER ${edition}: a reusable workflow has workflow_call and no trigger of its own`, (t) => {

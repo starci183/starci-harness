@@ -5,14 +5,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createContentIndex } from './content-index.mjs';
-import { computeFingerprint, fingerprintDifferences, parseFingerprint, serializeFingerprint, type Fingerprint } from './fingerprint.mjs';
+import { computeFingerprint, differencesByFamily, familyOfFolder, fingerprintDifferences, parseFingerprint, serializeFingerprint, type Fingerprint } from './fingerprint.mjs';
 import { hashFile } from './hash.mjs';
 import { groupByArea, parseRecords, serializeRecords } from './jsonl.mjs';
 import { SECRETS_FOLDER, safeSecretRecords } from './secret-records.mjs';
 import { readCacheDir, resolveTrust, verifyCommitted, type CacheVerdict, type TrustSource } from './trust.mjs';
 import { CACHE_DIR, type CacheRecord, type CheckSession, type ContentIndex, type FamilyDecision, type FamilyId, type FamilyReport, type FlushResult, type ProgressSink } from './types.mjs';
 
-/** `STARCI_APP_CHECK_CACHE`: `full` ignores the cache (the release gate sets it), `verify` is read by the caller (runs diff, then full, compares). */
+/** `STARCI_APP_CHECK_CACHE`: `full` ignores the cache (the owner's full gate sets it), `verify` is read by the caller (runs diff, then full, compares). */
 export const CACHE_ENV = 'STARCI_APP_CHECK_CACHE';
 const FINGERPRINT_FILE = 'fingerprint.jsonl';
 
@@ -102,14 +102,22 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
   };
   const cachedFingerprint = parseFingerprint(trustedCache().get(FINGERPRINT_FILE) ?? '');
   const differences = cachedFingerprint.length === 0 ? [] : fingerprintDifferences(cachedFingerprint, fingerprint.parts);
+  const invalidated = differencesByFamily(differences);
+  /** Whether the records of a folder were computed under parts that differ now (every folder when there is no cached fingerprint). */
+  const folderInvalid = (folder: string): boolean => {
+    if (cachedFingerprint.length === 0) return true;
+    const family = familyOfFolder(folder);
+    return family === null ? differences.length > 0 : invalidated.has(family);
+  };
   let verdictList: CacheVerdict[] = [];
 
-  const global = (): FamilyDecision | undefined => {
-    if (forcedFull) return { mode: 'full', reason: `${CACHE_ENV}=full, the release gate never reads the cache` };
+  const global = (family: FamilyId): FamilyDecision | undefined => {
+    if (forcedFull) return { mode: 'full', reason: `${CACHE_ENV}=full, the full gate never reads the cache` };
     if (!fingerprint.portable) return { mode: 'full', reason: `no portable fingerprint, nothing is written (${fingerprint.localReasons[0] ?? 'a local package'})` };
     if (trust.kind === 'none') return { mode: 'full', reason: `no trusted base (${trust.reason})` };
     if (cachedFingerprint.length === 0) return { mode: 'full', reason: trust.kind === 'base' ? 'no cache at the trusted base' : 'no cache in the tree' };
-    if (differences.length > 0) return { mode: 'full', reason: `the fingerprint differs (${differences.slice(0, 3).join(', ')}${differences.length > 3 ? ', ...' : ''})` };
+    const parts = invalidated.get(family);
+    if (parts !== undefined) return { mode: 'full', reason: `the ${family} parts of the fingerprint differ (${parts.slice(0, 3).join(', ')}${parts.length > 3 ? ', ...' : ''})` };
     return undefined;
   };
 
@@ -127,7 +135,7 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
     },
     decide(family: FamilyId): FamilyDecision {
       if (options.full?.has(family) === true) return { mode: 'full', reason: '--full' };
-      return global() ?? { mode: 'diff', reason: `against ${trust.reason}` };
+      return global(family) ?? { mode: 'diff', reason: `against ${trust.reason}` };
     },
     records(folder: string): readonly CacheRecord[] {
       return replaced.get(folder)?.records ?? (folder === SECRETS_FOLDER ? safeSecretRecords(trustedRecords(folder)) : trustedRecords(folder));
@@ -170,10 +178,11 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
         const base = path.join(root, ...CACHE_DIR.split('/'));
         const stalePrint = cachedFingerprint.length === 0 || differences.length > 0;
         if (stalePrint) {
-          // A new fingerprint invalidates every folder this run did not rewrite: they were computed under the old one.
+          // A part that differs invalidates the folders of the families that read it which this run did not rewrite: they were computed under the old part.
           for (const file of filesUnder(base)) {
             const rel = path.relative(base, file).split(path.sep).join('/');
             if (rel === FINGERPRINT_FILE || [...settled.keys()].some((folder) => rel.startsWith(`${folder}/`))) continue;
+            if (!folderInvalid(rel.split('/').slice(0, rel.startsWith('check/') || rel.startsWith('lint/') ? 2 : 1).join('/'))) continue;
             fs.rmSync(file);
             removed.push(file);
             removeEmptyDirs(path.dirname(file), base);
