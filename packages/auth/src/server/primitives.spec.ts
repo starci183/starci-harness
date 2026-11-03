@@ -17,6 +17,7 @@ import {
 import { AuthPrincipalVerifier, refuseSessions } from "./verifier.ts"
 import { AuthTokens } from "./tokens.ts"
 import { FakeClock, testSigningKey } from "../testing/index.ts"
+import { createHmac } from "node:crypto"
 import { readFileSync } from "node:fs"
 
 describe("contracts", () => {
@@ -42,6 +43,8 @@ describe("signed state", () => {
         const body = Buffer.from("not json").toString("base64url")
         const signature = signStateToken(key, state).split(".")[1] ?? ""
         assert.equal(verifyStateToken(key, `${body}.${signature}`, 1), null)
+        const signedNotJson = `${body}.${createHmac("sha256", key).update(body).digest().toString("base64url")}`
+        assert.equal(verifyStateToken(key, signedNotJson, 1), null, "a signed body that is no JSON is no state")
         const wrongShape = signStateToken(key, { w: 1 } as unknown as typeof state)
         assert.equal(verifyStateToken(key, wrongShape, 1), null)
     })
@@ -112,6 +115,13 @@ describe("migrations", () => {
         }
         assert.match(sql, /token_hash text not null/u)
         assert.match(sql, /used_at timestamptz/u)
+        assert.match(sql, /raced_count integer not null default 0/u)
         assert.match(sql, /constraint identity_refresh_tokens_hash_key unique \(token_hash\)/u)
+    })
+
+    it("ships the raced-successor column as an expand-only step for a baseline of 0.2.0", () => {
+        const sql = readFileSync(new URL("../../migrations/identity-refresh-raced-successors.sql", import.meta.url), "utf8")
+        assert.match(sql, /^alter table public\.identity_refresh_tokens add column raced_count integer not null default 0;$/mu)
+        assert.doesNotMatch(sql, /(?:drop|update|delete)/iu)
     })
 })

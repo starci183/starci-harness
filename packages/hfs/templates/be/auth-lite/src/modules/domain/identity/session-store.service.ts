@@ -13,6 +13,7 @@ const recordOf = (row: IdentityRefreshTokenEntity): RefreshTokenRecord => ({
     tokenHash: row.tokenHash,
     expiresAt: row.expiresAt,
     usedAt: row.usedAt,
+    racedCount: row.racedCount,
 })
 
 const transactionOf = (scoped: EntityManager): SessionTransaction => ({
@@ -34,6 +35,7 @@ const transactionOf = (scoped: EntityManager): SessionTransaction => ({
             tokenHash: token.tokenHash,
             expiresAt: token.expiresAt,
             usedAt: null,
+            racedCount: 0,
         })
     },
     findTokenForUpdate: async (tokenHash) => {
@@ -42,6 +44,9 @@ const transactionOf = (scoped: EntityManager): SessionTransaction => ({
     },
     markTokenUsed: async (tokenId, at) => {
         await scoped.update(IdentityRefreshTokenEntity, { id: tokenId }, { usedAt: at })
+    },
+    markTokenRaced: async (tokenId, racedCount) => {
+        await scoped.update(IdentityRefreshTokenEntity, { id: tokenId }, { racedCount })
     },
     deleteExpiredTokens: async (userId, before) => {
         await scoped.delete(IdentityRefreshTokenEntity, { userId, expiresAt: LessThan(before) })
@@ -69,7 +74,7 @@ export class IdentitySessionStoreService implements SessionStore {
         await this.entityManager.update(IdentitySessionEntity, { id: sessionId }, { refreshedAt: now })
     }
 
-    /** Ends one session; its tokens go with it (the foreign key cascades). */
+    /** Ends one session and revokes every token of it (the foreign key cascades). */
     async closeSession(sessionId: string): Promise<void> {
         await this.entityManager.delete(IdentitySessionEntity, { id: sessionId })
     }

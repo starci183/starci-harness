@@ -25,7 +25,8 @@ end;
 $$;
 
 -- The device sessions and rotating refresh tokens of @starci/auth. A token is stored by its sha256 only; a rotated token stays,
--- marked used, so a replay is detected (a replay inside the grace window is a racing tab, an older one ends the session).
+-- marked used, so a replay is detected: a replay inside the grace window gets a successor of its own (raced_count bounds how many),
+-- an older one ends the session and every token of it.
 -- identity_attempts counts the sign-in attempts of one address in a window every replica shares (the budget of failures).
 -- The app owns auth.users (db/bootstrap.sql) and the role app_be.
 
@@ -48,6 +49,7 @@ create table public.identity_refresh_tokens (
     created_at timestamptz not null default now(),
     expires_at timestamptz not null,
     used_at timestamptz,
+    raced_count integer not null default 0,
     constraint identity_refresh_tokens_hash_key unique (token_hash)
 );
 

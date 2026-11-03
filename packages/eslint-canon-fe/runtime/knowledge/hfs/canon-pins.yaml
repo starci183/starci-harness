@@ -127,14 +127,14 @@ pins:
     source: packages/nest-kit/package.json
     why: 'the module definition of every back-end module: defineConfigurableModule and defineCapabilityModule return the module base class, the options token and the options types with their types stated, so a <x>.module-definition.ts is one call that the lint on stated export types (R368) and the duplicate-code check (R21) both accept; @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/auth':
-    version: 0.2.0
+    version: 0.2.1
     group: starci
     install: registry
     side: both
     source: packages/auth/package.json
     why: 'the lite sign-in: the NestJS module (EdDSA access tokens with a multi-key JWKS, passwords, Google OAuth with state and PKCE, rotating refresh sessions, the sign-in budget, the refresh cookie), the front-end client and its React bindings, the door contracts and test doubles; the one importer of the identity libraries, reached by a back end only through integrations/passport; @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/auth-oidc':
-    version: 0.1.0
+    version: 0.1.1
     group: starci
     install: registry
     side: both
