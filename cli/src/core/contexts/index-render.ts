@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
 import { join, relative } from "node:path"
 import { ruleIdsIn } from "../../harness/contract.js"
 import { SLICE_EDITIONS, SLICE_SIDES, sliceFile } from "./anatomy-render.js"
@@ -73,7 +73,8 @@ const entryOf = (contexts: string, path: string): string[] => {
     const file = join(contexts, path)
     const lines = readFileSync(file, "utf8").replaceAll("\r\n", "\n").split("\n")
     const markdown = path.endsWith(".md")
-    const kb = Math.max(1, Math.round(statSync(file).size / 1024))
+    // Sized from the LF text, so a CRLF checkout renders the same index as CI.
+    const kb = Math.max(1, Math.round(Buffer.byteLength(lines.join("\n"), "utf8") / 1024))
     const summary = markdown ? markdownSummary(lines) : yamlSummary(lines)
     const sections = markdown ? lines.flatMap((line) => SECTION.exec(line)?.[1]?.trim() ?? []).map(plain) : []
     // A heading's ids already show in its section; the ids line names the others (a yaml `id:`, a deeper heading).
