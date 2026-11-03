@@ -2508,6 +2508,13 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: explicit-export-surface}
       - {kind: eslint-be, id: explicit-export-surface}
+  - id: R369
+    code: FE_DIRECTIVE_FIRST
+    law: "A "use client" or "use server" directive is the first statement of its module, above every import: below another statement it is an expression that does nothing (Prettier writes it as ("use client")) and next build refuses the file."
+    failureCodes:
+      - FE_DIRECTIVE_FIRST
+    enforcers:
+      - {kind: eslint-fe, id: directive-first}
 pending:
   - {gap: slot-rule-unknown, subject: BE_E2E_FLOW, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
   - {gap: slot-rule-unknown, subject: FE_DATA_FRESHNESS, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}

@@ -6553,3 +6553,26 @@ rules:
         source: owner
         quote: "enforce it by lint"
         ruling: "A file whose exported surface is inferred is open in the lint result cache: one body edit lints every importer again. The exported surface is written out, and the rule reports exactly what the cache counts as open."
+  - id: R369
+    code: "FE_DIRECTIVE_FIRST"
+    law: "A "use client" or "use server" directive is the first statement of its module, above every import: below another statement it is an expression that does nothing (Prettier writes it as ("use client")) and next build refuses the file."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_DIRECTIVE_FIRST"]
+    enforcers:
+      - {kind: eslint-fe, id: directive-first}
+    editions: [lite, full]
+    docs: [contexts/code/fe/boundaries.md]
+    templateNa: "A template places its directives first."
+    proves:
+      - {path: packages/eslint-canon-fe/src/directive-first.spec.ts, editions: [lite, full], codes: [FE_DIRECTIVE_FIRST]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/directive-first.spec.ts, editions: [lite, full], codes: [FE_DIRECTIVE_FIRST]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/directive-first.spec.ts, editions: [lite, full], codes: [FE_DIRECTIVE_FIRST]}
+    cases:
+      - id: case-1
+        date: "2026-11-03"
+        source: owner
+        quote: "no lint caught it"
+        ruling: "A directive below an import broke Nivo's CI build on 2026-11-02; the directive is the first statement of its module and a lint reports it elsewhere."
