@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bundledPins } from '../runtime/scripts/hfs/canon-pins.mjs';
 import { loadTypescript } from '../runtime/scripts/lib/package-at.mjs';
+import type { Prettier } from '../sync/format.mjs';
+import { formatted, prettierOf } from './app-prettier.mjs';
 import { filesUnder, relativePosix, sideFolders } from './source-tree.mjs';
 import type * as TsTypes from 'typescript';
 
@@ -138,7 +140,7 @@ function readDefinition(ts: Ts, source: TsTypes.SourceFile): Outcome {
     if (exported === undefined || !typed || !ts.isIdentifier(exported.name) || initializer.name.text !== exported.name.text || !EXPORTED.has(exported.name.text)) continue;
     names.push(exported.name.text);
     drop.add(statement);
-    if (at === null) { at = statement; doc = docOf(ts, source, statement); }
+    if (at === null) { at = statement; doc = docOf(ts, source, statement) || docOf(ts, source, builtStatement); }
   }
   if (at === null || names.length === 0) return unfit(source, builtStatement, 'MODULE_DEFINITION_NAMES', 'the built definition is not re-exported by name (`export const ConfigurableModuleClass: Host["ConfigurableModuleClass"] = built.ConfigurableModuleClass`)');
   drop.delete(at);
@@ -148,22 +150,32 @@ function readDefinition(ts: Ts, source: TsTypes.SourceFile): Outcome {
   return { ...read, names: [...names].sort((a, b) => [...EXPORTED].indexOf(a) - [...EXPORTED].indexOf(b)), doc, drop, at, from: 'typed builder' };
 }
 
-/** The one export of the new definition, laid out the way Prettier prints it at the width of the canon (break the arguments of a call that takes a token, else after the `=`). */
+/** The one export of the new definition, laid out the way Prettier prints it at the width of the canon (one line; else the options object opens on the line of the `=` when that fits; else the call breaks after the `=`). */
 function exportLine(reading: Reading, helper: string): string {
   const head = `export const { ${reading.names.join(', ')} } =`;
   const call = `${helper}<${reading.options}>(${reading.token === null ? '' : `{ optionsInjectionToken: ${reading.token} }`})`;
   if (`${head} ${call}`.length <= PRINT_WIDTH) return `${head} ${call}`;
-  return reading.token === null ? `${head}\n    ${call}` : `${head} ${helper}<${reading.options}>({\n    optionsInjectionToken: ${reading.token},\n})`;
+  const hug = `${head} ${helper}<${reading.options}>({`;
+  return reading.token !== null && hug.length <= PRINT_WIDTH ? `${hug}\n    optionsInjectionToken: ${reading.token},\n})` : `${head}\n    ${call}`;
 }
 
-/** The import declaration of `@nestjs/common` without the builder names, or null when nothing else is imported from it. */
-function nestImport(ts: Ts, source: TsTypes.SourceFile, statement: TsTypes.ImportDeclaration): string | null {
-  const bindings = statement.importClause?.namedBindings;
-  if (bindings === undefined || !ts.isNamedImports(bindings)) return statement.getText(source);
-  const kept = bindings.elements.filter((element) => !['ConfigurableModuleBuilder', 'ConfigurableModuleHost'].includes((element.propertyName ?? element.name).text));
+/** The words of `text` (identifier characters), so a binding is known to be read by its name. */
+const wordsOf = (text: string): ReadonlySet<string> => new Set(text.match(/[\w$]+/g));
+
+/**
+ * An import declaration without the named bindings the rewrite made unused (read by the dropped statements, by none of the kept ones), or null
+ * when nothing is left of it; `import type` and inline `type` stay as written.
+ */
+function prunedImport(ts: Ts, source: TsTypes.SourceFile, statement: TsTypes.ImportDeclaration, before: ReadonlySet<string>, after: ReadonlySet<string>): string | null {
+  const clause = statement.importClause;
+  const bindings = clause?.namedBindings;
+  if (clause === undefined || bindings === undefined || !ts.isNamedImports(bindings)) return statement.getText(source);
+  const kept = bindings.elements.filter((element) => after.has(element.name.text) || !before.has(element.name.text));
   if (kept.length === bindings.elements.length) return statement.getText(source);
-  if (kept.length === 0 && statement.importClause?.name === undefined) return null;
-  return `import { ${kept.map((element) => element.getText(source)).join(', ')} } from "@nestjs/common"`;
+  if (kept.length === 0 && clause.name === undefined) return null;
+  const named = kept.length === 0 ? '' : `{ ${kept.map((element) => element.getText(source)).join(', ')} }`;
+  const head = [clause.name?.text, named].filter((part) => part !== undefined && part !== '').join(', ');
+  return `import ${clause.isTypeOnly ? 'type ' : ''}${head} from ${statement.moduleSpecifier.getText(source)}`;
 }
 
 /** Rewrite one definition file's text to the helper form; `text` unchanged when the file holds no definition the codemod can rewrite. */
@@ -175,12 +187,11 @@ export function transformModuleDefinition({ ts, text, file = 'x.module-definitio
   if (read === null) return none;
   if ('reason' in read) return { ...none, findings: [{ file, line: read.line, code: read.code, reason: read.reason }] };
   const helper = read.representative ? 'defineCapabilityModule' : 'defineConfigurableModule';
-  const imports: string[] = [`import { ${helper} } from "${KIT}"`];
   const body: string[] = [];
+  const declarations: TsTypes.ImportDeclaration[] = [];
   for (const statement of source.statements) {
     if (ts.isImportDeclaration(statement)) {
-      const nest = ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === '@nestjs/common' ? nestImport(ts, source, statement) : statement.getText(source);
-      if (nest !== null) imports.push(nest);
+      declarations.push(statement);
       continue;
     }
     if (read.drop.has(statement)) continue;
@@ -190,6 +201,9 @@ export function transformModuleDefinition({ ts, text, file = 'x.module-definitio
     }
     body.push(text.slice(statement.pos, statement.end).replace(/^\s*\n/, '').trimEnd());
   }
+  const before = wordsOf(source.statements.filter((statement) => !ts.isImportDeclaration(statement)).map((statement) => statement.getText(source)).join('\n'));
+  const after = wordsOf(body.join('\n'));
+  const imports = [`import { ${helper} } from "${KIT}"`, ...declarations.flatMap((statement) => prunedImport(ts, source, statement, before, after) ?? [])];
   const output = `${imports.join('\n')}\n\n${body.join('\n\n')}\n`;
   return { text: output, changes: [{ file, from: read.from, helper, names: read.names }], findings: [] };
 }
@@ -199,11 +213,18 @@ function kitVersion(): string {
   return bundledPins()[KIT]?.version ?? '0.1.0';
 }
 
-/** Preview or apply the rewrite in one app: every `*.module-definition.ts` under its sides, then the dependency in the root package.json. */
-export function migrateModuleDefinition({ root, write = false, ts = loadTypescript(root, PACKAGE_ROOT) }: { root: string; write?: boolean; ts?: Ts | null }): ModuleDefinitionReport {
+/** What `migrateModuleDefinition` takes: the app root, whether to write, and the compiler and formatter of the app (found in it when left out; `prettier: null` writes the codemod's own layout). */
+export interface ModuleDefinitionOptions { root: string; write?: boolean; ts?: Ts | null; prettier?: Prettier | null }
+
+/**
+ * Preview or apply the rewrite in one app: every `*.module-definition.ts` under its sides, each rewritten file formatted by the app's Prettier
+ * (so `app check --format` and the app's hook accept it as written), then the dependency in the root package.json.
+ */
+export async function migrateModuleDefinition({ root, write = false, ts = loadTypescript(root, PACKAGE_ROOT), prettier }: ModuleDefinitionOptions): Promise<ModuleDefinitionReport> {
   if (!ts) throw new Error('module-definition needs TypeScript installed in the app or @starci/hfs development checkout');
   const folders = sideFolders(root);
   if (!folders.length) throw new Error('module-definition runs at an app root with a be/ directory');
+  const formatter = prettier === undefined ? prettierOf(root, folders) : prettier ?? undefined;
   const packageFile = path.join(root, 'package.json');
   const manifest = fs.existsSync(packageFile) ? JSON.parse(fs.readFileSync(packageFile, 'utf8')) as { dependencies?: Record<string, string> } : null; // reason: package.json parsed from disk, only dependencies is read
   const declared = manifest?.dependencies?.[KIT] !== undefined;
@@ -217,7 +238,7 @@ export function migrateModuleDefinition({ root, write = false, ts = loadTypescri
     report.findings.push(...result.findings);
     if (result.text !== original) {
       report.filesChanged.push(file);
-      if (write) fs.writeFileSync(target, result.text);
+      if (write) fs.writeFileSync(target, formatter === undefined ? result.text : await formatted(formatter, root, target, result.text));
     }
   }
   if (report.filesChanged.length > 0 && !declared && manifest !== null) {
