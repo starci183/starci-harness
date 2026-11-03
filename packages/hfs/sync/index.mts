@@ -94,6 +94,7 @@ type ParseYaml = (text: string) => any;
 /** The app's source facts sync renders from (appSource). */
 export interface AppSourceFacts {
   runtimeExample: boolean; files: string[]; read: (file: string) => string; workPresent: boolean; hasImage: (file: string) => boolean;
+  hasContracts: boolean; // the back end holds be/contracts/ (a back end that emits no contract has none)
   modules?: readonly string[]; otherPackages?: readonly string[]; // the module packages (packages/module-<name>) and the other folders of packages/
   stack: any; quality: any; badges: string; qualityDeclared: boolean; // reason: stack and quality come from the YAML-parsed declaration
 }
@@ -319,7 +320,7 @@ export function appSource(root: string, { parseYaml, notices }: { parseYaml?: Pa
   for (const dir of ['apps', 'src']) walk(dir);
   return { runtimeExample: isRuntimeExampleApp(root), files: files.sort(byCodeUnit), read: (file: string) => fs.readFileSync(path.join(root, 'be', file), 'utf8'),
     modules: moduleNames(root), otherPackages: otherPackages(root),
-    workPresent: fs.existsSync(path.join(root, '.starciwork')), hasImage: (file: string) => isFile(path.join(root, file), { followLinks: false }),
+    workPresent: fs.existsSync(path.join(root, '.starciwork')), hasContracts: fs.existsSync(path.join(root, 'be', 'contracts')), hasImage: (file: string) => isFile(path.join(root, file), { followLinks: false }),
     stack: readDeclaredStack(root, { parseYaml }), quality: readDeclaredQuality(root, { parseYaml }),
     badges: readDeclaredBadges(root, { parseYaml, notices }),
     qualityDeclared: hasDeclaredServices(root, { parseYaml }) };
@@ -421,11 +422,13 @@ const IMAGE_TEMPLATE: Readonly<Record<string, string>> = Object.freeze({ api: 'b
 /**
  * The Dockerfile of every declared app, [{ path, content }] (app-relative): written once by starci app scaffold from templates/<side>/image/<kind>
  * and then the app's own, judged by the docker rules (R187-R191). A Next image copies the fe packages only when the fe side opts into
- * them and the be contracts only when the fe side reads them, so each COPY names a folder the app has.
+ * them and the be contracts only when the fe side reads them and the back end holds them (`source.hasContracts`: a back end that emits no
+ * contract has no be/contracts/, and a COPY of a missing folder fails the image build), so each COPY names a folder the app has.
  */
-export function imageFiles(app: ResolvedApp, source?: Partial<Pick<AppSourceFacts, 'hasImage'>>): { path: string; content: string }[] {
+export function imageFiles(app: ResolvedApp, source?: Partial<Pick<AppSourceFacts, 'hasImage' | 'hasContracts'>>): { path: string; content: string }[] {
   const side = app.sides.fe;
-  const inputs = [...(opensPackages(side) ? ['fe/packages'] : []), ...((side.reads ?? []).includes('be/contracts/') ? ['be/contracts'] : [])];
+  const contracts = (side.reads ?? []).includes('be/contracts/') && source?.hasContracts === true;
+  const inputs = [...(opensPackages(side) ? ['fe/packages'] : []), ...(contracts ? ['be/contracts'] : [])];
   const copyInputs = inputs.map(folder => `COPY ${folder} ${folder}\n`).join('');
   // The folders outside be/ that the back end declares it reads (the generated database types of a lite back end, db/types/) are in every one of its images.
   const beFolders = (app.sides.be.reads ?? []).map(folder => folder.replace(/\/$/, ''));
