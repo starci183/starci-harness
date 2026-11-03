@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.12.0 - 2026-11-03
+
+- Changed: the runtime copies carry R368's acceptance of the module-definition helpers, the module-per-transport confinement of the helpers and the `@starci/nest-kit` and `@starci/next-i18n` pins; `i18n-stack-in-one-module` refuses every product-source call of a next-intl layer builder (the stack is `@starci/next-i18n`'s).
+
 ## 9.11.0 - 2026-11-03
 
 - Changed: `modules/auth` holds the front-end transport rules like `modules/api`: no auth door file takes axios or `fetch`, and no file keeps module-level mutable state (the access token lives in the `@starci/auth` client); the stack concern `auth` names `@starci/auth`.

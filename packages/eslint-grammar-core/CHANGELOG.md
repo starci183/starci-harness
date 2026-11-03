@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.15 - 2026-11-03
+
+- Changed: requires `@starci/eslint-canon-fe` 9.12.0; the runtime copies carry the R06 and R295 laws and the `@starci/nest-kit` and `@starci/next-i18n` pins.
+
 ## 0.21.14 - 2026-11-03
 
 - Changed: requires `@starci/eslint-canon-fe` 9.11.0; the runtime copies of the slot manifest, stack and pins carry the `@starci/auth` rows.

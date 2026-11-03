@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.14.0 - 2026-11-03
+
+- Changed: `capability-module-shape` accepts the module definition as one call of `defineCapabilityModule` (a capability's representative module) or `defineConfigurableModule` (every other module) of `@starci/nest-kit`, each stating its options type, beside the typed `ConfigurableModuleBuilder` chains; the runtime copies carry R368's acceptance of that call's destructured export, the module-per-transport confinement of the helpers, the R295 law and the `@starci/nest-kit` and `@starci/next-i18n` pins.
+
 ## 3.13.0 - 2026-11-03
 
 - Changed: the runtime copies of the slot manifest carry the managed sign-in slots and the slot field `managedOnly`.

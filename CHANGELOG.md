@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0-alpha.53 - 2026-11-03
+
+- Added: a lane step is satisfied only by work on the tree being judged (`task-green`): a done task of another workflow counts when its landed commit is an ancestor of the workflow's `base`, so a stopped workflow's tasks on an archive branch no longer satisfy `workflow define --check`.
+- Added: `workflow start` forks the workflow branch from the header's `base` (HEAD by default) and refuses a base that names no commit, `WORKFLOW_BASE_MISSING`.
+- Added: host services of the `starci` compose group (`sonar-postgres`, `sonar`, `sonar-bootstrap`, `sonar-tunnel`) and the local registry in `ops/host.yaml`, http checks, `host down`, `deps registry-up`, the secret keys `SONARQUBE_DB_PASSWORD`, `SONARQUBE_ADMIN_PASSWORD` and `CLOUDFLARE_TUNNEL_TOKEN`.
+- Changed: the seat start's hook heal is one function, `healWorktreeHooks`, with a spec that a commit in a healed worktree runs the product's gate. The served `@starci/hfs` requirement stays until CI follows package publication.
+
 ## 1.1.0-alpha.46
 
 - Changed: Admit each actual app-check child through the host governor, apply test worker limits and refuse incomplete tool capture. Keep the served HFS requirement until CI follows package publication.

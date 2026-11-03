@@ -100,12 +100,16 @@ image, so any digest-pinned supported reverse proxy serves.
   [code/be/config.md](../code/be/config.md) says. `set` declares the keys of a compose environment itself; a swarm
   environment's secret is wired with its stack (runtimeName and the deploy grant) by hand.
   A delivery or quality-service key is declared by its exact `services.<id>.credentials[]` member path and `key`
-  instead (PROJECT-STACKS-8); `set` keeps it out of runtime secret declarations. The audit recognizes both consumers.
+  instead (PROJECT-STACKS-8); `set` keeps it out of runtime secret declarations and binds a quality-service member (`sonar.enc.yaml`) to its service, the
+  `credentials` entry and the `ci.secrets` entry the template shows, or prints the exact binding when the file's shape is not the template's
+  (`starci app codemod quality-binding` binds an app scaffolded before). The audit recognizes both consumers.
 - **One owner identity, found by itself; one rule per environment.** Every member is sealed to the public recipients of
   its environment's rule in the app's `.sops.yaml`, which `starci app secret init` and `recipients` manage: dev to the owner
   key, production to the production server key and the owner key both, so the owner sets and rotates production from his
   machine and the server opens it with its own key. A member is sealed to that whole set, and a rewrite (`set`, `migrate`,
-  `split`, an edit) seals to the rule's set, or to the member's own set when no rule names it, so none drops the server key;
+  `split`, an edit) seals to the rule's set, or to the member's own set when no rule reaches an existing member, so none drops the server key; a new
+  member no rule reaches is refused `SECRET_SOPS_RULE_MISSING` before sops runs (a rule written for the legacy `.enc` spelling does not reach a `.enc.yaml` member;
+  `secret init --env <env>` writes the per-environment rules and `starci app codemod sops-rules` migrates a legacy file);
   a decrypt opens a member when its identity's recipient is one of the set. The owner's private identity is `SOPS_AGE_KEY` in
   the harness's secret.env, backed up by the owner (R253); every verb that opens a member (`starci app secret`, `stack`,
   `release`, `db`, the CLI's custody) finds it with nothing exported or pointed to through one lookup, taking the first of:
