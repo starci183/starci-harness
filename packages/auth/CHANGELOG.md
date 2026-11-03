@@ -1,0 +1,12 @@
+# Changelog
+
+## 0.1.0 - 2026-11-03
+
+The sign-in of a lite StarCi app in one package, lifted from the product that ran it in production and generalised: no product names, every setting a typed option, no environment read.
+
+- Added: `@starci/auth/server`, the NestJS module `AuthModule.register` / `registerAsync`. `AuthTokens` signs and verifies EdDSA access tokens (the algorithm pinned, issuer, audience, `role` and `session_id` claims, a `kid` from the key or its RFC 7638 thumbprint) over a key set: one signing key and any number of retired keys, all verified and all published by `jwks()`, so a key rotates without signing anybody out. `AuthSessions` opens device sessions and rotates the refresh token on every refresh with reuse detection: a spent token replayed inside the grace window (30 seconds) is a racing tab and is answered with an access token and no rotation (`cookieKept`), an older replay ends the session. `SignInBudget` counts sign-in failures only (a right password clears its address). `RefreshCookie` writes the httpOnly, Secure, SameSite cookie with a configurable name, domain, path and legacy paths. `AuthFlows` runs the passport local and Google strategies (state and PKCE in a signed cookie, a same-site landing path only). `AuthDoors` is what a controller calls. `AuthPasswords` is the one owner of bcrypt. `AuthPrincipalVerifier` implements `PrincipalVerifier`, the interface the identity domain injects.
+- Added: ports the app implements over its own tables: `SessionStore`, `AccountDirectory`, `RateCounter`, `AuthAuthenticator`.
+- Added: `migrations/identity-sessions.sql`, the session tables (`identity_sessions`, `identity_refresh_tokens`) the starter renders.
+- Added: `@starci/auth/contracts`, the door paths, wire codes, claim names and answer shapes both sides read.
+- Added: `@starci/auth/client`, `createAuthClient`: the access token in memory only, one shared refresh for overlapping callers with refresh-ahead, retries of 429, 5xx and a lost connection with backoff, signed out only on 401 or 403, an event listener and a stable snapshot, the server-side `checkSession`. `@starci/auth/client/react` holds `AuthProvider` (a context that draws nothing), `useAuthSession`, `useAuthClient`, `useWhenSignedIn` and `useCooldown`.
+- Added: `@starci/auth/testing`, test keys, a fake clock, in-memory stores and `testAuthOptions`.
