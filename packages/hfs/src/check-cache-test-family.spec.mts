@@ -414,14 +414,14 @@ const SOURCES: Record<string, string> = {
 };
 const SCOPE = { coverage: { roots: ['src/modules/domain/*/'], roles: ['service'], excludes: [] } };
 
-function realApp(): string {
+function realApp(scope: object = SCOPE, extra: Record<string, string> = {}): string {
   const app = fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-real-'));
-  for (const [file, text] of Object.entries(SOURCES)) {
+  for (const [file, text] of Object.entries({ ...SOURCES, ...extra })) {
     fs.mkdirSync(path.dirname(path.join(app, file)), { recursive: true });
     fs.writeFileSync(path.join(app, file), text);
   }
   fs.mkdirSync(path.join(app, 'be', 'apps'), { recursive: true });
-  fs.writeFileSync(path.join(app, 'be', 'jest.config.js'), `const config = require(${JSON.stringify(path.join(presetRoot, 'dist', 'index.js'))}).starciJestConfig(${JSON.stringify(SCOPE)})
+  fs.writeFileSync(path.join(app, 'be', 'jest.config.js'), `const config = require(${JSON.stringify(path.join(presetRoot, 'dist', 'index.js'))}).starciJestConfig(${JSON.stringify(scope)})
 for (const project of config.projects) {
   delete project.preset
   for (const entry of Object.values(project.transform)) entry[0] = require.resolve(entry[0], { paths: [${JSON.stringify(path.join(presetRoot, 'node_modules'))}] })
@@ -501,6 +501,43 @@ test('with a real Jest: closures come from its resolver and mapper, warm runs re
     assert.deepEqual(broken.result.failed, [env.specs[2]]);
     assert.ok(!(broken.replaced.get(TEST_FOLDER) ?? []).some((record) => record.path === env.specs[2]));
     assert.equal(broken.result.threshold, undefined);
+  } finally {
+    fs.rmSync(app, { recursive: true, force: true });
+  }
+});
+
+/** A root workspace package (PROJECT-3) beside the back end: its specs run in a second unit project rooted at the app root. */
+const PACKAGE_SOURCES: Record<string, string> = {
+  'packages/sdk/package.json': JSON.stringify({ name: '@demo/sdk', private: true }),
+  'packages/sdk/src/index.ts': 'export { pick } from "./pick";\n',
+  'packages/sdk/src/pick.ts': 'export const pick = (flag: boolean): string => (flag ? "yes" : "no");\n',
+  'packages/sdk/src/pick.spec.ts': 'import { pick } from "./pick";\ntest("pick", () => expect([pick(true), pick(false)]).toEqual(["yes", "no"]));\n',
+};
+const PACKAGES_SCOPE = { ...SCOPE, packages: { folders: ['packages/sdk'], files: ['packages/sdk/src/**/*.ts'], excludes: ['packages/sdk/src/**/index.ts'] } };
+
+test('with a real Jest: the specs of a root package are discovered, keyed by their own closure and recorded with app-relative sources beside the back end ones', { skip: presetBuilt ? false : 'jest-preset is not built or installed' }, async () => {
+  const app = realApp(PACKAGES_SCOPE, PACKAGE_SOURCES);
+  try {
+    const env = await createJestEnvironment({ appRoot: app, side: 'be', jestFrom: path.join(presetRoot, 'package.json'), execute: nativeTestNode });
+    assert.deepEqual(env.specs, [...['alpha', 'beta', 'gamma'].map((name) => `be/src/modules/domain/${name}/${name}.service.spec.ts`), 'packages/sdk/src/pick.spec.ts'].sort());
+    const own = env.specs.find((spec) => spec.startsWith('packages/')) as string;
+    assert.ok(env.closureOf(own).includes('packages/sdk/src/pick.ts'), 'the closure of the package spec comes from the resolver of its own project');
+    assert.ok(env.closureOf(own).some((file) => file.endsWith('matchers.js')), 'the setup file of its project is in its closure');
+    const files = (): Record<string, string> => Object.fromEntries(Object.keys({ ...SOURCES, ...PACKAGE_SOURCES }).map((file) => [file, fs.readFileSync(path.join(app, file), 'utf8')]));
+    const merge = installedSpecMerge(app, path.join(presetRoot, 'package.json'));
+    const judge: JudgeCoverage = () => ({ ok: true, findings: [] });
+    const run = async (records: readonly CacheRecord[]): Promise<Run['session'] & { result: TestFamilyResult }> => {
+      const session = createFakeSession({ files: files(), records: { [TEST_FOLDER]: records } });
+      return Object.assign(session, { result: await runTestFamily({ session: { ...session, root: app }, jest: env, side: 'be', merge, judge }) });
+    };
+    const first = await run([]);
+    assert.deepEqual(first.result.failed, []);
+    const records = first.replaced.get(TEST_FOLDER) ?? [];
+    assert.deepEqual(Object.keys(sourcesOf(records.find((record) => record.path === own) as CacheRecord)), ['packages/sdk/src/pick.ts']);
+    assert.match(fs.readFileSync(first.result.lcov as string, 'utf8'), /^SF:\.\.[\\/]packages[\\/]sdk[\\/]src[\\/]pick\.ts$/mu, 'the merged lcov names the package file from the jest root');
+    fs.appendFileSync(path.join(app, 'packages/sdk/src/pick.ts'), '// touched\n');
+    const touched = await run(records);
+    assert.deepEqual(touched.result.ran, [own], 'a change to the package re-runs its spec alone');
   } finally {
     fs.rmSync(app, { recursive: true, force: true });
   }

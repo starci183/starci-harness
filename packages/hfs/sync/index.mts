@@ -21,7 +21,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { braceVariants } from '../runtime/scripts/lib/glob.mjs';
-import { codecovPaths, coverageComponents, jestCoverage, sonarCoverageExclusions } from '../runtime/scripts/hfs/coverage-scope.mjs';
+import { codecovPaths, coverageComponents, jestCoverage, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
 import { APP_SCOPE, SIDES, litePresenceOf, loadSlotManifest, resolveAppDeclaration, slotInEdition, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
 import type { AppRepo } from '../runtime/scripts/hfs/slot-app-view.mjs';
 import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
@@ -298,13 +298,22 @@ const SOURCE_SKIPPED = new Set(['node_modules', 'dist', 'coverage']);
  * lite brand tree exists, so sync can preserve its absence. `hasImage` identifies authored optional Dockerfiles without reading
  * their content. An app with no be folder has no source files.
  */
-/** The folders of `packages/` that are neither a module package nor the registry. */
+/**
+ * The packages of `packages/` that are neither a module package nor the registry: a folder that holds a `package.json` and a `src/` (an install folder
+ * the workspaces leave there, `packages/node_modules`, is none).
+ */
 function otherPackages(root: string): string[] {
   try {
     return fs.readdirSync(path.join(root, 'packages'), { withFileTypes: true })
-      .filter(entry => entry.isDirectory() && !entry.name.startsWith(MODULE_PREFIX) && entry.name !== 'modules').map(entry => entry.name).sort(byCodeUnit);
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith(MODULE_PREFIX) && entry.name !== 'modules'
+        && isFile(path.join(root, 'packages', entry.name, 'package.json'), { followLinks: false }) && fs.existsSync(path.join(root, 'packages', entry.name, 'src')))
+      .map(entry => entry.name).sort(byCodeUnit);
   } catch { return []; }
 }
+
+/** The app-relative folders of the root packages whose logic the back end's unit run measures: every module package and every other package, never the registry. */
+export const rootPackageFolders = (source: Partial<Pick<AppSourceFacts, 'modules' | 'otherPackages'>> | undefined): string[] =>
+  [...(source?.modules ?? []).map(name => `packages/${MODULE_PREFIX}${name}`), ...(source?.otherPackages ?? []).map(name => `packages/${name}`)];
 
 export function appSource(root: string, { parseYaml, notices }: { parseYaml?: ParseYaml | undefined; notices?: string[] | undefined } = {}): AppSourceFacts {
   const files: string[] = [];
@@ -375,7 +384,7 @@ export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
     }),
     ...fe.map(entry => line(`start:${entry.name}`, `npm run start -w ${workspace(entry)}`)),
     ...(app.edition !== 'lite' && app.optionalSlots.includes('app.browser') ? [line('test:browser', 'playwright test -c browser/playwright.config.ts')] : []),
-    ...(source?.modules?.length ? [line('build:modules', 'turbo run build --filter=./packages/*'), line('test:modules', 'turbo run test --filter=./packages/module-*')] : []),
+    ...(rootPackageFolders(source).length ? [line('build:modules', 'turbo run build --filter=./packages/*')] : []),
     line('docker:build', images.map(image => `npm run docker:build:${image.entry.name}`).join(' && ')),
     ...images.map(image => line(`docker:build:${image.entry.name}`, imageCommand(image))),
   ].join('\n    ');
@@ -439,8 +448,18 @@ export function imageFiles(app: ResolvedApp, source?: Partial<Pick<AppSourceFact
 }
 
 /** Every value a template of `scope` can name, derived from hfs.json and the presets. */
-/** What a module package keeps out of the measured scope: its workbench (drawn with Grammar, a front end has no tests) and its specs. The logic of its template and manifest is measured. */
-const moduleExclusions = (dirs: readonly string[]): string[] => dirs.flatMap(dir => [`${dir}/src/workbench/**`, `${dir}/src/**/index.ts`]);
+/**
+ * The `packages` option of the managed be/jest.config.js (`starciJestConfig`), laid out as prettier lays it out (width 120, indent 4): the root packages whose
+ * specs the unit run holds, with the files measured in them; an app without one has no such option.
+ */
+export function jestPackagesSource(packages: PackagesCoverage): string {
+  if (packages.folders.length === 0) return '';
+  const list = (key: string, items: readonly string[]): string => {
+    const one = `        ${key}: [${items.map(item => JSON.stringify(item)).join(', ')}],`;
+    return one.length <= 120 ? one : [`        ${key}: [`, ...items.map(item => `            ${JSON.stringify(item)},`), '        ],'].join('\n');
+  };
+  return ['', '    packages: {', list('folders', packages.folders), list('files', packages.files), list('excludes', packages.excludes), '    },'].join('\n');
+}
 
 /** The managed files of the registry package for the module packages the app has (empty when it has none). */
 function registryTargets(app: ResolvedApp, source: AppSourceFacts | undefined): RenderedTarget[] {
@@ -478,10 +497,11 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   const lite = app.edition === 'lite';
   const providers = (app.sides.be.connections ?? []).map(connection => connection.provider);
   const quality = source.quality ?? qualityServices({});
-  const modules = source.modules ?? [];
-  const moduleDirs = modules.map(name => `packages/${MODULE_PREFIX}${name}`);
-  // The module packages are built before anything imports them (typecheck, lint, the fe build and the be run all follow the registry).
-  const modulesFirst = modules.length ? 'npm run build:modules --silent && ' : '';
+  // The root packages (the agent SDK, the module packages and the rest) are built before anything imports them (typecheck, lint, the fe build and the be
+  // run), and their logic is measured by the back end's unit run like its own (packagesCoverage, BE-TEST-13).
+  const rootPackages = packagesCoverage(rootPackageFolders(source));
+  const moduleDirs = rootPackages.folders;
+  const modulesFirst = moduleDirs.length ? 'npm run build:modules --silent && ' : '';
   const grammarLint = scope === 'fe' ? grammarLintFor(fe.grammar) : null;
   return {
     header: HEADER(scope),
@@ -504,9 +524,8 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     typecheck: `${modulesFirst}npm run codegen --silent && tsc -p be/tsconfig.json && turbo run typecheck`,
     // The typed lint reads the types the fe packages declare (their dist), so the packages are built first.
     lintPrefix: `${modulesFirst}${packages ? 'npm run codegen --silent && turbo run build --filter=./fe/packages/* && ' : 'npm run codegen --silent && '}`,
-    // The unit run, the back-end build and every CI job that imports a module package find it built (build:modules precedes them); the logic of a package is held at 100 per file by its own jest run, a step of the fast job.
+    // The unit run, the back-end build and every CI job that imports a root package find it built (build:modules precedes them); its specs run in the unit run and its shards.
     modulesFirst,
-    moduleTestStep: modules.length ? '      - name: module packages\n        run: npm run test:modules\n' : '',
     nodeMajor: String(NODE_MAJOR),
     // The deploy server's age identity the restore workflow writes (stack/server-key.mjs owns the path).
     serverAgeIdentity: SERVER_AGE_IDENTITY,
@@ -522,9 +541,10 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     ...ciWorkflowCommands(source, LCOV_REPORT, source.qualityDeclared === false ? undefined : source.quality, { app, packages }),
     // The coverage scope is the same in both editions: lite measures exactly what full measures (ruling:R212/case-1, amended by ruling:R212/case-4).
     jestCoverage: scope === 'be' ? jestCoverageSource(jestCoverage(manifest, providers)) : '',
-    coverageExclusions: scope === APP_SCOPE ? [...sonarCoverageExclusions(manifest, providers), ...moduleExclusions(moduleDirs)].join(',') : '',
-    codecovExclusions: scope === APP_SCOPE ? ([...sonarCoverageExclusions(manifest, providers), ...moduleExclusions(moduleDirs)] as string[]).map(glob => `  - ${JSON.stringify(glob)}`).join('\n') : '',
-    codecovPaths: scope === APP_SCOPE ? ([...codecovPaths(manifest, providers), ...moduleDirs.flatMap(dir => [`${dir}/src/manifest/**`, `${dir}/src/template/**`])] as string[]).map(glob => `          - ${JSON.stringify(glob)}`).join('\n') : '',
+    jestPackages: scope === 'be' ? jestPackagesSource(rootPackages) : '',
+    coverageExclusions: scope === APP_SCOPE ? [...sonarCoverageExclusions(manifest, providers), ...rootPackages.excludes].join(',') : '',
+    codecovExclusions: scope === APP_SCOPE ? ([...sonarCoverageExclusions(manifest, providers), ...rootPackages.excludes] as string[]).map(glob => `  - ${JSON.stringify(glob)}`).join('\n') : '',
+    codecovPaths: scope === APP_SCOPE ? ([...codecovPaths(manifest, providers), ...moduleDirs.map(dir => `${dir}/src/**`)] as string[]).map(glob => `          - ${JSON.stringify(glob)}`).join('\n') : '',
     codecovComponents: scope === APP_SCOPE ? componentsYaml(coverageComponents(manifest, { ...source, apps: app.sides.be.apps, providers })) : '',
     codecovTarget: quality.codecov.target,
     dependabotUpdates: dependabotUpdates(quality.dependabot),

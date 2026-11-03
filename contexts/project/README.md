@@ -64,17 +64,18 @@ lists `packages/*`): its agent SDK `packages/agent-sdk`, one package `packages/m
 module, and the managed registry `packages/modules` (`@<project>/modules`) that lists them. A module package has the subpaths
 `./template` and `./manifest` (React-free, for the back end), `./workbench` (drawn with Grammar alone) and `./public` (its public
 face, for the front end) beside its `src/index.ts`; `starci app add module <name>` writes it and `starci app remove module <name>` reverses every step. The
-registry, the root and front-end dependencies on it and the `build:modules` and `test:modules` scripts are rendered by
+registry, the root and front-end dependencies on it and the `build:modules` script are rendered by
 `starci app sync`, so a hand edit is drift ([hfs/slots.yaml](../hfs/slots.yaml) slots `app.packages` and
-`app.module-registry`). The logic of `./template` and `./manifest` is measured at 100 per file by the package's own unit run
-(BE-TEST-13) and is inside the Sonar and Codecov scope; the workbench is a front end and is judged by the front-end canon and the
-Grammar lint (FE-PACKAGES-2). The sides import a root package by its package name through the `exports` of its manifest and never
+`app.module-registry`). A root package has no jest of its own: the managed `be/jest.config.js` names every root package but the registry
+(a folder of `packages/` with a `package.json` and a `src/`), so the back end's unit run (`npm test`, `app check --gate test`, the CI
+shards and their merged coverage proof) runs its specs and measures its logic, everything below its `src/` but its workbench, its public
+face and its barrels, at 100 per file (BE-TEST-13), inside the Sonar and Codecov scope; the workbench and the public face are front ends,
+judged by the front-end canon and the Grammar lint (FE-PACKAGES-2). The sides import a root package by its package name through the `exports` of its manifest and never
 past them (`ARCH_INTERNAL_IMPORT_OUTSIDE`); no side config reaches `packages/`, so `starci app sync` renders the app root's
 `eslint.config.mjs` (slot `app.packages-lint`) whenever a root package exists, and `starci app check --gate lint` runs it as a third
 scope: the back-end canon over `packages/<pkg>/src/**` but the front-end subpaths, the front-end canon and the Grammar lint over
 `src/workbench/**` (outside `src/workbench/contract/`, which is React-free and stays back end) and `src/public/**`, each with the rules of
-its side over the package view of the app root. The project-graph rules judge the side folders and not the packages. Open gap: the CI
-coverage shards do not reach `packages/` yet; until they do, a module package is measured by its own `test` script.
+its side over the package view of the app root. The project-graph rules judge the side folders and not the packages.
 
 ## Where to read for a task
 

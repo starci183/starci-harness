@@ -36,8 +36,19 @@ export interface StarciCoverageScope {
   readonly files?: readonly string[]
   readonly excludes: readonly string[]
 }
+/**
+ * The root workspace packages of an app (`packages/<name>` at the app root, PROJECT-3), as `starci app sync` renders them from the same derivation as the
+ * coverage scope, every path relative to the app root: the package folders whose `src/` holds specs, the files measured in them and the ones never measured.
+ */
+export interface StarciPackagesScope {
+  readonly folders: readonly string[]
+  readonly files: readonly string[]
+  readonly excludes: readonly string[]
+}
 export interface StarciJestOptions {
   readonly coverage: StarciCoverageScope
+  /** The app's root packages; absent in an app without one. */
+  readonly packages?: StarciPackagesScope
 }
 /** One project of the config (`unit`, `integration`, `e2e`, `contract`). */
 export type StarciJestProject = Exclude<NonNullable<Config["projects"]>[number], string>
@@ -74,13 +85,20 @@ function rootGlob(root: string, roles: readonly string[]): string {
  * jest's `collectCoverageFrom` of a coverage scope `{ roots, roles, files, excludes }`: the glob of every root, every declared logic file, then
  * the none directories inside a root (`excludes`, each a glob that ends in `**`) and the generated folders as negations.
  */
-function collectCoverageFrom(coverage: StarciCoverageScope): string[] {
+function collectCoverageFrom(coverage: StarciCoverageScope, packages: StarciPackagesScope = NO_PACKAGES): string[] {
   return [
     ...coverage.roots.map((root) => rootGlob(root, coverage.roles)),
     ...(coverage.files ?? []),
-    ...[...coverage.excludes, ...COVERAGE_EXCLUDES].map((glob) => `!${glob}`),
+    // A root package file is matched relative to the rootDir of the unit project that runs it, the app root; a back-end file relative to the jest root.
+    ...packages.files,
+    ...[...coverage.excludes, ...packages.excludes, ...COVERAGE_EXCLUDES].map((glob) => `!${glob}`),
   ]
 }
+
+/** The scope of an app with no root package. */
+const NO_PACKAGES: StarciPackagesScope = Object.freeze({ folders: [], files: [], excludes: [] })
+/** The app root seen from the jest root: the back end sits in its own folder of the app root (`be/`), beside `packages/`. */
+const APP_ROOT = ".."
 
 /** One union glob keeps Jest's per-file checks while a scoped map may contain files from only one measured root or declared logic file. */
 function coverageThresholdOf(coverage: StarciCoverageScope, root: string): Record<string, { lines: number; branches: number; functions: number; statements: number }> {
@@ -88,6 +106,16 @@ function coverageThresholdOf(coverage: StarciCoverageScope, root: string): Recor
   if (rootGlobs.length === 0) return {}
   const glob = rootGlobs.length === 1 ? rootGlobs[0] : `{${rootGlobs.join(",")}}`
   return { [`./${glob}`]: { ...COVERAGE_THRESHOLD } }
+}
+
+/**
+ * The per-file thresholds of the root packages: one glob key per measured package glob, written from the jest root (jest resolves a key against it), so
+ * each key names normalised paths outside the back end. A key also matches a file the scope excludes, which jest never holds to it: it only checks the files
+ * of its coverage map, and an excluded file is never in it.
+ */
+function packageThresholdsOf(packages: StarciPackagesScope, root: string): Record<string, { lines: number; branches: number; functions: number; statements: number }> {
+  const globs = packages.files.map((glob) => `${APP_ROOT}/${glob}`).filter((glob) => hasCoverageSubjects(root, glob))
+  return Object.fromEntries(globs.map((glob) => [`./${glob}`, { ...COVERAGE_THRESHOLD }]))
 }
 
 /**
@@ -159,8 +187,9 @@ const underTests = (folder: string): string => String.raw`[\\/]src[\\/]tests[\\/
 /**
  * The whole jest config of a Nest repository: projects `unit` (colocated `<name>.spec.ts`), `integration`
  * (`src/tests/integration/<capability>/<name>.integration-spec.ts`), `e2e` (`src/tests/e2e/<area>/<name>.e2e-spec.ts`) and
- * `contract` (`src/tests/contract/<provider>/<name>.contract-spec.ts`). It takes ONE option, the coverage scope: the repository's `jest.config.js` is a managed file
- * (R05), rendered by `starci app sync` as `module.exports = require("@starci/jest-preset").starciJestConfig({ coverage: { roots, roles, excludes } })`, the scope derived from the slot manifest.
+ * `contract` (`src/tests/contract/<provider>/<name>.contract-spec.ts`). It takes the coverage scope and, in an app with root workspace packages, those packages: the
+ * repository's `jest.config.js` is a managed file (R05), rendered by `starci app sync` as `module.exports = require("@starci/jest-preset").starciJestConfig({ coverage: { roots, roles,
+ * files, excludes }, packages: { folders, files, excludes } })`, both derived from the slot manifest; the specs of the packages run in a second `unit` project.
  *
  * The managed scripts select one project each (`test` = unit, `test:integration`, `test:e2e`, `test:contract`); the
  * contract project is never part of `test` or `test:e2e`, and a contract spec skips itself without sandbox config. The
@@ -260,9 +289,23 @@ function coverageOf(options: unknown): StarciCoverageScope {
   return { roots, roles, files, excludes }
 }
 
+/** The root packages of an options object (none when absent), or a refusal: each field is a list of app-relative paths `starci app sync` renders. */
+function packagesOf(options: unknown): StarciPackagesScope {
+  const packages = fieldOf(options, "packages")
+  if (packages === undefined) return NO_PACKAGES
+  const folders = fieldOf(packages, "folders")
+  const files = fieldOf(packages, "files")
+  const excludes = fieldOf(packages, "excludes")
+  if (!isList(folders) || !isList(files) || !isList(excludes)) {
+    throw new Error("starciJestConfig({ packages: { folders, files, excludes } }) needs the root packages starci app sync renders; run \"npx starci app sync --execute\"")
+  }
+  return { folders, files, excludes }
+}
+
 /** The whole jest config: projects `unit`, `integration`, `e2e` and `contract`. It takes the coverage scope the managed repository config renders; without it it refuses. */
 function starciJestConfig(options: StarciJestOptions): StarciJestConfig {
   const coverage = coverageOf(options)
+  const packages = packagesOf(options)
   const root = process.cwd()
   const world = hasTestWorld(root)
   const shared = {
@@ -302,11 +345,11 @@ function starciJestConfig(options: StarciJestOptions): StarciJestConfig {
   const shard = process.env.STARCI_COVERAGE_SHARD === "1" || Boolean(specCoverageDir)
   return {
     coverageProvider: "v8",
-    ...(specCoverageDir ? { reporters: ["default", [require.resolve("./spec-coverage-reporter.js"), { dir: specCoverageDir, include: collectCoverageFrom(coverage) }]] satisfies StarciJestConfig["reporters"] } : {}),
+    ...(specCoverageDir ? { reporters: ["default", [require.resolve("./spec-coverage-reporter.js"), { dir: specCoverageDir, include: collectCoverageFrom(coverage, packages) }]] satisfies StarciJestConfig["reporters"] } : {}),
     ...(shard ? {} : {
-      collectCoverageFrom: collectCoverageFrom(coverage),
+      collectCoverageFrom: collectCoverageFrom(coverage, packages),
       // A glob key is applied to every matching file on its own: each measured file must reach 100, not the average.
-      coverageThreshold: coverageThresholdOf(coverage, root),
+      coverageThreshold: { ...coverageThresholdOf(coverage, root), ...packageThresholdsOf(packages, root) },
     }),
     coverageDirectory: "coverage",
     // lcov is what Sonar imports (coverage/lcov.info); text-summary and text are what the developer reads; a shard writes the json the merge reads.
@@ -322,6 +365,21 @@ function starciJestConfig(options: StarciJestOptions): StarciJestConfig {
         testMatch: ["**/*.spec.ts"],
         testPathIgnorePatterns: ["/node_modules/", ...TEST_KIND_FOLDERS.map(underTests)],
       },
+      // The root packages are unit specs too, in a second project named unit, so every `--selectProjects unit` (the test script, the CI shards, the check
+      // cache) runs them. Its rootDir is the app root because jest keeps the v8 coverage of the files below a project's rootDir only.
+      ...(packages.folders.length === 0 ? [] : [{
+        preset: shared.preset,
+        testEnvironment: shared.testEnvironment,
+        rootDir: APP_ROOT,
+        roots: packages.folders.map((folder) => `<rootDir>/${folder}/src`),
+        transformIgnorePatterns: shared.transformIgnorePatterns,
+        transform: unitTransform(),
+        displayName: "unit",
+        clearMocks: true,
+        setupFilesAfterEnv: [require.resolve("./matchers.js")],
+        testMatch: ["**/*.spec.ts"],
+        testPathIgnorePatterns: ["/node_modules/", "/dist/"],
+      } satisfies StarciJestProject]),
       // Jest validates every project's world hooks even under --selectProjects unit. An unfinished full scaffold
       // keeps only unit; a lite app's present integration/contract lanes need no test world.
       ...testProjects,
@@ -349,6 +407,7 @@ export {
   fakeIds,
   FakeIds,
   collectCoverageFrom,
+  packagesOf,
   rootGlob,
   sonarExclusions,
   hasCoverageSubjects,

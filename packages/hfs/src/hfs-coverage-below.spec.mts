@@ -239,3 +239,21 @@ test('HFS_COVERAGE_BELOW: an explicit coverage proof refuses an fe side instead 
   assert.equal(output, '');
   assert.match(errors, /requires an app root or its be side/);
 });
+
+test('HFS_COVERAGE_BELOW measures the logic of the root packages at the app root, named from the jest root in the lcov, and refuses one below 100%', (t) => {
+  const PACKAGE_LOGIC = 'packages/agent-sdk/src/registry.ts';
+  const files = [LOGIC, PACKAGE_LOGIC, 'packages/agent-sdk/package.json', 'packages/agent-sdk/src/index.ts', 'packages/agent-sdk/src/registry.spec.ts', 'packages/agent-sdk/src/workbench/view.ts', 'packages/agent-sdk/src/public/face.ts',
+    'packages/modules/package.json', 'packages/modules/src/index.ts', 'packages/notes/README.md'];
+  const covered = fixture(t, 'lite', `${record('src/modules/domain/orders/orders.service.ts')}${record('../packages/agent-sdk/src/registry.ts')}`, files);
+  const report = coverageBelowReport(covered);
+  assert.deepEqual(report.findings, []);
+  assert.deepEqual(report.measured, [LOGIC, PACKAGE_LOGIC]);
+  for (const file of ['packages/agent-sdk/src/index.ts', 'packages/agent-sdk/src/workbench/view.ts', 'packages/agent-sdk/src/public/face.ts']) assert.ok(report.unmeasured.includes(file), file);
+  assert.ok(report.unmeasuredScopes.includes('packages/agent-sdk/src/workbench/**'));
+  assert.ok(!report.unmeasured.some((file: string) => file.startsWith('packages/modules/')), 'the registry is no root package');
+  const missing = coverageBelowReport(fixture(t, 'lite', record('src/modules/domain/orders/orders.service.ts'), files));
+  assert.deepEqual(missing.findings.map((finding: Finding) => finding.path), [PACKAGE_LOGIC]);
+  assert.match(missing.findings[0].message, /no lcov source record/);
+  const partial = coverageBelowReport(fixture(t, 'full', `${record('src/modules/domain/orders/orders.service.ts')}${record('../packages/agent-sdk/src/registry.ts', { branch: 0 })}`, files));
+  assert.deepEqual(partial.findings.map((finding: Finding) => finding.path), [PACKAGE_LOGIC]);
+});

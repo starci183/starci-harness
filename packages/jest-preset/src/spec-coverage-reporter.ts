@@ -34,19 +34,25 @@ function isPassed(result: TestResult): boolean {
   return !result.testExecError && !result.failureMessage && result.numFailingTests === 0
 }
 
+/**
+ * Writes one file per spec. A source is selected the way jest's `collectCoverageFrom` selects it, relative to the rootDir of the spec's project, and every
+ * path it writes (the spec's and its sources') is relative to the jest root, so the specs of a root package's project (rootDir the app root) and of the back
+ * end's land in one tree of paths.
+ */
 class SpecCoverageReporter {
   private readonly options: SpecCoverageOptions
   private readonly pending: Array<Promise<void>> = []
+  private readonly jestRoot: string
 
-  constructor(_globalConfig: Config.GlobalConfig, options: SpecCoverageOptions) {
+  constructor(globalConfig: Config.GlobalConfig, options: SpecCoverageOptions) {
     if (typeof options?.dir !== "string" || !Array.isArray(options.include)) throw new Error("the spec coverage reporter needs { dir, include }")
     this.options = options
+    this.jestRoot = globalConfig.rootDir
     fs.mkdirSync(options.dir, { recursive: true })
   }
 
   onTestResult(test: Test, result: TestResult): void {
-    const root = test.context.config.rootDir
-    this.pending.push(this.write(root, posix(path.relative(root, test.path)), result))
+    this.pending.push(this.write(test.context.config.rootDir, posix(path.relative(this.jestRoot, test.path)), result))
   }
 
   async onRunComplete(): Promise<void> {
@@ -78,7 +84,7 @@ class SpecCoverageReporter {
     fs.writeFileSync(path.join(this.options.dir, specCoverageFileName(spec)), JSON.stringify(record))
   }
 
-  /** The project-relative posix path of a measured source (a path or file URL), undefined when it is not measured. */
+  /** The jest-root-relative posix path of a source (a path or file URL) measured in the project rooted at `root`, undefined when it is not measured. */
   private relativeSource(root: string, location: string): string | undefined {
     const resolved = path.resolve(location.startsWith("file:") ? fileURLToPath(location) : location)
     if (resolved === METADATA_SOURCE) return undefined
@@ -87,7 +93,7 @@ class SpecCoverageReporter {
     const positive = this.options.include.filter((glob) => !glob.startsWith("!"))
     const negative = this.options.include.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1))
     const measured = micromatch.isMatch(relative, positive, { dot: true }) && !(negative.length > 0 && micromatch.isMatch(relative, negative, { dot: true }))
-    return measured ? relative : undefined
+    return measured ? posix(path.relative(this.jestRoot, resolved)) : undefined
   }
 }
 

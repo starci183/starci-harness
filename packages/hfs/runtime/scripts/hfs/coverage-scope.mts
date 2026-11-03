@@ -270,3 +270,37 @@ export function measuredBy({ roots, roles, files, excludes }: { roots: string[];
 
 /** True when the be-relative `file` is measured by the scope of the whole manifest (measuredBy). */
 export const isMeasured = (manifest: ScopeManifest, file: string): boolean => measuredBy(coverageScope(manifest))(file);
+
+/**
+ * The parts of a root workspace package (`packages/<name>` at the app root, PROJECT-3) that are never measured: its workbench and its public face (front
+ * ends, judged by the front-end canon and the Grammar lint) and its barrels. Everything else below its `src/` is its logic.
+ */
+const PACKAGE_UNMEASURED = Object.freeze(['src/workbench/**', 'src/public/**', 'src/**/index.ts']);
+
+/** The measured scope of the app's root packages, every path app-relative: the folders that hold specs, the files measured and the ones never measured. */
+export interface PackagesCoverage { folders: string[]; files: string[]; excludes: string[] }
+
+/**
+ * THE derivation of what the root packages measure (BE-TEST-13): every TypeScript file below a package's `src/` but its front-end subtrees and barrels, at
+ * 100 per file in the back end's unit run. The rendered be/jest.config.js, Sonar's coverage exclusions and sources, Codecov's paths and R273 read it.
+ */
+export function packagesCoverage(folders: readonly string[]): PackagesCoverage {
+  const sorted = [...new Set(folders)].sort(byCodeUnit);
+  return { folders: sorted, files: sorted.map((folder) => `${folder}/src/**/*.ts`), excludes: sorted.flatMap((folder) => PACKAGE_UNMEASURED.map((glob) => `${folder}/${glob}`)) };
+}
+
+/** The registry of the module packages (slot app.module-registry): managed, it lists the modules and carries no logic of its own. */
+const PACKAGE_REGISTRY = 'modules';
+
+/** The app-relative folders of the root packages a tracked file list holds: each `packages/<name>/` with a `package.json` and a `src/`, the registry aside. */
+export function rootPackageFoldersOf(files: readonly string[]): string[] {
+  const names = new Set(files.map((file) => /^packages\/([^/]+)\/package\.json$/.exec(file)?.[1]).filter((name): name is string => name !== undefined && name !== PACKAGE_REGISTRY));
+  return [...names].filter((name) => files.some((file) => file.startsWith(`packages/${name}/src/`))).map((name) => `packages/${name}`).sort(byCodeUnit);
+}
+
+/** The one test of whether an app-relative file is measured by a packages scope (a spec never is): R273 asks it. */
+export function packageMeasuredBy({ files, excludes }: PackagesCoverage): (file: string) => boolean {
+  const measured = files.map((glob) => globExpression(glob));
+  const unmeasured = excludes.map((glob) => globExpression(glob));
+  return (file: string): boolean => !/\.spec\.ts$/.test(file) && measured.some((glob) => glob.test(file)) && !unmeasured.some((glob) => glob.test(file));
+}
