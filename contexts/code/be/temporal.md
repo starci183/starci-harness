@@ -5,7 +5,7 @@ slots: [be.platform]
 
 Where code reads "now" or mints an id, and how a spec drives both.
 
-## BE-TEMPORAL-1 The Clock and Ids ports are the only ambient readers
+## BE-TEMPORAL-1 The current time in a service comes from the injected Clock so tests control it; the Clock and Ids ports are the only ambient readers
 
 `platform/clock` exports `Clock { now(): Date }`, `SystemClockService` (the one ambient reader) and `InjectClock()`;
 `platform/ids` exports `Ids { next(): string }` and `InjectIds()`. Outside them, `Date.now`, an argument-less
