@@ -1216,7 +1216,7 @@ rules:
     code: "FE_I18N_PLACEMENT"
     editions: [lite, full]
     docs: [docs/architecture.md#r59]
-    law: "`next-intl` with `[locale]`; multiple apps share one `fe/packages/<family>-i18n` stack through `createAppI18n`. A single app keeps routing and request configuration in `modules/i18n` and `createNavigation` in the `modules/routes` public entry. The proxy imports routing or a routing-only shared proxy export without evaluating navigation runtime."
+    law: "`next-intl` with `[locale]`; the stack (routing, proxy, navigation, request config, the layout's locale read) is built by `@starci/next-i18n` over the app's `defineI18n` description and by no product source. A single app keeps the description and its request config in `modules/i18n` and builds its navigation with `createI18nNavigation` in the `modules/routes` public entry; apps that share a product share one `fe/packages/<family>-i18n` workspace package that holds the description and composes the package's factories through `createAppI18n`. The proxy is `createProxy` of `@starci/next-i18n/proxy` and never evaluates navigation runtime."
     kinds: [check, codemod, lint]
     gates: [settle, land, ci]
     failureCodes: ["FE_I18N_PLACEMENT", "FE_I18N_NAVIGATION", "FE_I18N_FORMATTER"]

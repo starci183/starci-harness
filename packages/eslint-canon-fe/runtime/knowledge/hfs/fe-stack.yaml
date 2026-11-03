@@ -103,11 +103,11 @@ concerns:
     why: modules/auth is the session issuer's client (lite - auth-door.ts over the app's own back-end auth doors with the in-memory token store; full - the app's IdP client); it yields the session and the access token for the Apollo link and never reads data.
   - id: i18n
     tier: core
-    packages: [next-intl]
+    packages: [next-intl, '@starci/next-i18n']
     home: [fe.modules.i18n]
     pattern: FE-I18N
     forbids: [i18next, react-i18next, next-i18next, react-intl, '@lingui/react']
-    why: useTranslations for copy and the next-intl formatter for numbers, fixed dates and currency; FE-DATE owns live time display.
+    why: useTranslations for copy and the next-intl formatter for numbers, fixed dates and currency; FE-DATE owns live time display. The routing, the proxy, the navigation, the request config and the locale read of the layout are @starci/next-i18n's (owner next-i18n-package); an app calls no defineRouting, createNavigation, getRequestConfig or createMiddleware.
   - id: ui
     tier: core
     packages: ['@heroui/react', '@heroui/styles', tailwindcss, '@starci/grammar', react-aria-components]

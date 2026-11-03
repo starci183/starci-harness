@@ -3800,8 +3800,8 @@ slots:
       - src/index.ts
       - tsconfig.json
     tests: none
-    why: the next-intl stack (routing, navigation, request config) written once, exported as the
-      createAppI18n factory every app calls
+    why: the product's languages (defineI18n of @starci/next-i18n) written once and composed into the
+      createAppI18n factory every app calls; the next-intl stack itself is the package's
     rules:
       - FE_I18N_PLACEMENT
       - FE_PACKAGE_SHAPE

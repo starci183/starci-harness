@@ -386,8 +386,8 @@ export const why = {
   },
   "i18n-stack-in-one-module": {
     code: "FE_I18N_PLACEMENT",
-    en: "`<file>` builds a layer of the next-intl stack itself (`defineRouting`, `createNavigation`, `getRequestConfig`, `createMiddleware`). The stack is written once for the whole repo.",
-    fix: "Use the shared i18n factory; a single app keeps routing/request config in modules/i18n and navigation in modules/routes. The proxy imports routing without navigation.",
+    en: "`<file>` builds a layer of the next-intl stack itself (`defineRouting`, `createNavigation`, `getRequestConfig`, `createMiddleware`). The stack is written once, in `@starci/next-i18n`.",
+    fix: "Describe the languages with `defineI18n` and call `createProxy`, `createI18nNavigation`, `createRequestConfig` and `createReadLocaleSegment` of `@starci/next-i18n`; the proxy imports no navigation.",
   },
   "no-app-relative-clock": {
     code: "FE_SIZE_AND_STATE_BUDGET",

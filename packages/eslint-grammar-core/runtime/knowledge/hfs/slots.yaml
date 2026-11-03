@@ -2485,9 +2485,9 @@ slots:
     presence: required
     tracked: tracked
     tier: foundation
-    # The app's routing, request config and catalogs, or its adapter to the shared i18n factory. A single app
-    # owns createNavigation in fe.modules.routes, keeping this public entry safe for its proxy. Shared stacks
-    # belong to fe.package.i18n and expose a routing-only proxy entry separately from navigation.
+    # The app's description of its languages (defineI18n of @starci/next-i18n), its request config and catalogs, or its adapter to the
+    # shared i18n workspace package. A single app builds its navigation (createI18nNavigation) in fe.modules.routes, keeping this
+    # public entry safe for its proxy. A description shared by several apps belongs to fe.package.i18n.
     requires: [index.ts]
     tests: none
     rules: [FE_I18N_PLACEMENT, FE_I18N_CATALOG]
@@ -2625,7 +2625,7 @@ slots:
     owner: true
     requires: [package.json, src/index.ts, tsconfig.json]
     tests: none
-    why: the next-intl stack (routing, navigation, request config) written once, exported as the createAppI18n factory every app calls
+    why: the product's languages (defineI18n of @starci/next-i18n) written once and composed into the createAppI18n factory every app calls; the next-intl stack itself is the package's
     rules: [FE_I18N_PLACEMENT, FE_PACKAGE_SHAPE, HFS_UNUSED_EXPORT]
 
 # Checks that read this manifest (all ship from .claude; none keeps its own path list)
