@@ -718,9 +718,24 @@ rulings:
   - id: lite-production-swarm
     date: '2026-10-14'
     status: live
-    ruling: "Production runs on a declared Docker Swarm stack (lite and full), the lite database included; dev runs every dependency in Docker; scheduling is app-owned and the host runs no crontab."
+    ruling: "Production runs on a declared Docker Swarm stack (lite and full), the lite database included; scheduling is app-owned and the host runs no crontab. A lite app's dev environment is the docker-compose environment of ruling lite-dev-compose."
     owner: "contexts/hfs/slots.yaml (app.starcistacks)"
     absorbs: [dev-docker-prod-swarm]
+  - id: lite-dev-compose
+    date: '2026-11-03'
+    status: live
+    ruling: "A lite app's dev environment is docker-compose, declared under .starcistacks/dev/infra/compose/ and driven by its application-stacks.yaml `local` block through `starci app stack up --env dev`; every dependency runs from the compose file and the app natively. Production stays on the Swarm stack. The edition requires a declared dev environment."
+    owner: "contexts/hfs/slots.yaml (app.starcistacks); contexts/project/stacks.md PROJECT-STACKS-6; lint R10, R276, R372, R373"
+  - id: db-client-in-container
+    date: '2026-11-03'
+    status: live
+    ruling: "`starci app db migrate` runs the PostgreSQL client tools inside the environment's database container, named by STARCI_DB_CONTAINER, so a host needs no PostgreSQL client installed; without the variable the tools run on the host."
+    owner: "packages/hfs db/ (db migrate); contexts/project/stacks.md PROJECT-STACKS-6"
+  - id: module-packages
+    date: '2026-11-03'
+    status: live
+    ruling: "A product's agent modules live as workspace packages (packages/module-<name>) built on the product's agent SDK, added and removed with `starci app add|remove module <name>`. A module's workbench package draws only with Grammar. The logic of a module package is inside the 100%-per-file coverage scope (BE-TEST-13, R273): the codecov, sonar and jest scope templates no longer exclude packages."
+    owner: "contexts/code/fe/folder.md FE-PACKAGES-2; contexts/code/be/test.md BE-TEST-13; contexts/hfs/slots.yaml (repo.module-package); lint R273"
   - id: single-declared-ingress
     date: '2026-10-14'
     status: live

@@ -93,6 +93,7 @@ import { emitContractsAsync } from '../emit/contracts.mjs';
 import { ScaffoldError, newService, newSpec } from '../scaffold/service.mjs';
 import { EditionRefusal } from '../scaffold/edition-gate.mjs';
 import { addKind } from '../scaffold/add.mjs';
+import { removeModule } from '../scaffold/add-module.mjs';
 import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { newImages } from '../scaffold/image.mjs';
 import { cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
@@ -168,7 +169,7 @@ type UsageForm = ParsedVerb['forms'][number];
 /** An argument the parser refuses (an unknown flag, a missing value, a form a verb does not take): the one error `main` follows with the usage. */
 export class UsageError extends Error {}
 
-export const VERBS = Object.freeze(['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'coverage', 'codemod']);
+export const VERBS = Object.freeze(['scaffold', 'add', 'remove', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'coverage', 'codemod']);
 const DATABASE_VERBS = new Map<string | undefined, (argv: string[], io: VerbIo) => Promise<number> | number>([['baseline', dbBaselineMain], ['restamp', dbRestampMain],['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['new', dbNewMain], ['drift', dbDriftMain]]);
 
 /**
@@ -187,12 +188,13 @@ const PARSED: Record<string, ParsedVerb> = {
   add: {
     run: addMain, ...ADD_FLAGS, list: ['--inject'],
     forms: [
-      { operands: '<api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app|block|frame|composite|branch|leaf|page|overlay|layout> <name>', only: ADD_FLAGS },
+      { operands: '<api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app|module|block|frame|composite|branch|leaf|page|overlay|layout> <name>', only: ADD_FLAGS },
       { operands: 'service <dir> <name>', only: { list: ['--inject'] } },
       { operands: 'spec <file>.service.ts', flags: [] },
       { operands: 'image', flags: [] },
     ],
   },
+  remove: { run: removeMain, forms: [{ operands: 'module <name>', flags: [] }] },
   check: { run: checkMain, value: ['--coverage-from', '--shard', '--side', '--out'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--no-cache', '--fix'], edition: true, forms: [{ only: { boolean: ['--json', '--no-cache', '--fix'], list: GATE_FLAGS, value: ['--coverage-from', '--shard', '--side', '--out'] } }, { only: { boolean: ['--staged'] }, edition: false }] },
   slot: { run: slotMain, boolean: ['--json'], forms: [{ operands: '<path>' }] },
   emit: { run: emitMain, forms: [{}] },
@@ -657,6 +659,18 @@ function addMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
   const kinds = registered.kinds.length ? `; kinds ${registered.kinds.join(', ')}` : '';
   // A noun that registers nothing in hfs.json (a table, an app, a front-end unit) ends with what it wrote.
   if (registered.patterns.length || registered.kinds.length) out(`starci app add ${noun}: registered patterns ${registered.patterns.join(', ')}${kinds}\n`);
+  return 0;
+}
+
+/** `remove module <name>`: deletes the module package and its registrations and re-renders the registry. */
+function removeMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
+  const [noun, name, ...extra] = opts.positional;
+  if (noun !== 'module' || !name || extra.length) throw new UsageError('starci app remove takes `module <name>`');
+  const { removed, updated, created } = removeModule({ root: repoRoot, name });
+  for (const file of removed) out(`removed ${file}
+`);
+  for (const file of [...updated, ...created]) out(`updated ${file}
+`);
   return 0;
 }
 

@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.16.0
+version: 3.17.0
 presenceValues:
   - required
   - optional
@@ -1213,6 +1213,47 @@ slots:
       - HFS_SCRIPT_ONE_OFF
       - BE_SPEC_PLACEMENT
       - HFS_REPO_LOCAL_CHECK
+  - id: app.module-packages
+    profiles:
+      - app
+    editionWhy: Lite and full share the slot; a product's agent modules are workspace packages in both.
+    path: packages/module-<name>/
+    presence: optional
+    tracked: tracked
+    tier: package
+    owner: true
+    requires:
+      - package.json
+      - tsconfig.json
+      - src/index.ts
+    tests: unit-beside
+    coverage: none
+    rules:
+      - HFS_UNUSED_EXPORT
+  - id: app.module-registry
+    profiles:
+      - app
+    editionWhy: Lite and full share the slot; the registry lists the module packages of the app.
+    path: packages/modules/
+    presence: optional
+    tracked: tracked
+    tier: package
+    owner: true
+    managedOnly: true
+    requires:
+      - package.json
+      - src/index.ts
+    allows:
+      - package.json
+      - tsconfig.json
+      - tsconfig.build.json
+      - src/index.ts
+      - src/template/index.ts
+      - src/manifest/index.ts
+    tests: none
+    coverage: none
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
   - id: app.sides
     profiles:
       - app
