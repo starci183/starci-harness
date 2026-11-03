@@ -1,3 +1,5 @@
+import type { FailureClass } from "@modules/platform/queue"
+
 /** A job a worker claimed: the token it must pass to every write. */
 export interface ClaimedJob {
     /** The originating request id carried explicitly by the durable queue delivery. */
@@ -49,6 +51,92 @@ export interface FailWrite extends GuardedWrite {
     /** Why the job failed. */
     readonly reason: string
 }
+
+/** A guarded write that parks the job as `failed_awaiting_fix` (BE-RESILIENCE-2). */
+export interface ParkWrite extends GuardedWrite {
+    /** The class `classifyFailure` gave the failure. */
+    readonly failureClass: FailureClass
+    /** Why the job failed. */
+    readonly reason: string
+    /** The build the job parked under: a later build resumes it. */
+    readonly build: string
+}
+
+/** What a park answers: whether this park is the first since the job last ran, so its one alert is still due. */
+export interface ParkResult {
+    /** True when no alert was raised for this park yet. */
+    readonly alertDue: boolean
+}
+
+/**
+ * Which parked jobs to resume: one by id (the owner's "resume now"), every one parked under another build than `parkedBefore` (a
+ * deploy), or every parked one (the sweep, which keeps their alert raised so a failure that persists does not alert again).
+ */
+export type ResumeFilter = { readonly jobId: string } | { readonly parkedBefore: string } | { readonly sweep: true }
+
+/** The queue of the scheduled sweep of parked jobs; its tick is in JOB_TICKS (lite) or the app's schedulers (full). */
+export const PARKED_JOBS_SWEEP_QUEUE = "platform.jobs.sweep"
+
+/** A parked job handed back to its queue: the queue and the delivery id it is added under, and what its handler receives. */
+export interface ResumedJob {
+    /** The id of the job row. */
+    readonly jobId: string
+    /** The queue the job runs on. */
+    readonly kind: string
+    /** The delivery id of this resume: `<jobKey>-r<resumeCount>`. */
+    readonly deliveryId: string
+    /** The payload the producer wrote. */
+    readonly payload: object
+    /** The originating request id. */
+    readonly correlationId: string
+}
+
+/** A job parked as `failed_awaiting_fix`: one work item of the owner, resumed by `resume({ jobId })`. */
+export interface ParkedJob {
+    /** The id of the job row. */
+    readonly jobId: string
+    /** The queue the job runs on. */
+    readonly kind: string
+    /** The class of its failure. */
+    readonly failureClass: FailureClass
+    /** Why it failed. */
+    readonly reason: string
+    /** When it parked. */
+    readonly parkedAt: Date
+    /** The build it parked under. */
+    readonly parkedBuild: string
+    /** How many times it was resumed before. */
+    readonly resumeCount: number
+}
+
+/** The one alert of a parked job: the owner's work item, whose action resumes it. */
+export interface ParkedFlowAlert {
+    /** The kind of the work item. */
+    readonly kind: "flow-parked"
+    /** The id of the job row, which `resume({ jobId })` takes. */
+    readonly jobId: string
+    /** The queue the job runs on. */
+    readonly flowKind: string
+    /** The class of its failure. */
+    readonly failureClass: FailureClass
+    /** Why it failed. */
+    readonly reason: string
+    /** The originating request id. */
+    readonly correlationId: string
+    /** The build it parked under. */
+    readonly build: string
+    /** The action the work item offers. */
+    readonly action: "resume"
+}
+
+/** The suffix of the delivery id of a resumed job: `<jobKey>-r<n>`. */
+const RESUMED_DELIVERY = /-r\d+$/u
+
+/** The job key a delivery claims: the delivery id, without the suffix a resume added. */
+export const jobKeyOf = (deliveryId: string): string => deliveryId.replace(RESUMED_DELIVERY, "")
+
+/** The delivery id of the `resumeCount`th resume of a job. */
+export const resumedDeliveryId = (jobKey: string, resumeCount: number): string => `${jobKey}-r${String(resumeCount)}`
 
 /** The idempotency key of an external effect: only `JobClaims.runKey` makes one. */
 export type RunKey = string & {

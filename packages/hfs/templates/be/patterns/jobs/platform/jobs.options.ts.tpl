@@ -8,4 +8,8 @@ export interface JobsOptions {
     readonly workerId: string
     /** How long a claim lasts: after it a stalled job may be claimed again, and the old worker is fenced out. */
     readonly leaseMs: number
+    /** The build this process runs: a job parked under another build is resumed at boot (BE-RESILIENCE-2). */
+    readonly build: string
+    /** The token of the app's FlowAlerts provider (its owner work items); without it a park alerts through the log. */
+    readonly alerts?: InjectionToken
 }

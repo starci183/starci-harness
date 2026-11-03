@@ -4,7 +4,8 @@ import { InjectClock } from "@modules/platform/clock"
 import type { Clock } from "@modules/platform/clock"
 import { JobsError, JobsErrorCode } from "./errors/jobs.error"
 import type { sql } from "@modules/platform/database"
-import { isRunKey } from "./jobs.contracts"
+import type { FailureClass } from "@modules/platform/queue"
+import { isRunKey, resumedDeliveryId } from "./jobs.contracts"
 import type {
     AdvanceWrite,
     ClaimedJob,
@@ -12,12 +13,69 @@ import type {
     ClaimResult,
     FailWrite,
     GuardedWrite,
+    ParkedJob,
+    ParkResult,
+    ParkWrite,
+    ResumedJob,
+    ResumeFilter,
     RunKey,
 } from "./jobs.contracts"
 import { InjectJobsManagers } from "./jobs.decorators"
 import type { JobClaims } from "./jobs.port"
-import { ADVANCE_JOB, CLAIM_JOB, COMPLETE_JOB, FAIL_JOB } from "./persistence/jobs.sql"
+import { ADVANCE_JOB, AWAITING_FIX_JOBS, CLAIM_JOB, COMPLETE_JOB, FAIL_JOB, PARK_JOB, RESUME_JOBS } from "./persistence/jobs.sql"
 import type { ClaimedRow } from "./persistence/jobs.rows"
+
+/** The record job_resume returns. */
+interface ResumedRecord {
+    /** The id of the job row. */
+    readonly id: string
+    /** The kind of the job. */
+    readonly kind: string
+    /** The key the job was first delivered under. */
+    readonly job_key: string
+    /** The payload, as the database returns the jsonb value. */
+    readonly payload: object
+    /** The resume number after this resume. */
+    readonly resume_count: number
+}
+
+/** The record job_awaiting_fix returns. */
+interface ParkedRecord {
+    /** The id of the job row. */
+    readonly id: string
+    /** The kind of the job. */
+    readonly kind: string
+    /** The class of its failure. */
+    readonly failure_class: FailureClass
+    /** Why it failed. */
+    readonly error: string
+    /** When it parked. */
+    readonly parked_at: Date
+    /** The build it parked under. */
+    readonly parked_build: string
+    /** How many times it was resumed. */
+    readonly resume_count: number
+}
+
+/** A resumed row as the resumer hands it back: the correlation id of a resume is the job's own id, the delivery id carries the resume number. */
+const resumedOf = (row: ResumedRecord): ResumedJob => ({
+    jobId: row.id,
+    kind: row.kind,
+    deliveryId: resumedDeliveryId(row.job_key, row.resume_count),
+    payload: row.payload,
+    correlationId: `resume:${row.id}`,
+})
+
+/** A parked row as the owner's work item. */
+const parkedOf = (row: ParkedRecord): ParkedJob => ({
+    jobId: row.id,
+    kind: row.kind,
+    failureClass: row.failure_class,
+    reason: row.error,
+    parkedAt: row.parked_at,
+    parkedBuild: row.parked_build,
+    resumeCount: row.resume_count,
+})
 
 @Injectable()
 /**
@@ -68,6 +126,40 @@ export class JobClaimService implements JobClaims {
     /** Marks the job failed under the token the caller holds, so BullMQ can retry it. */
     fail(write: FailWrite): Promise<void> {
         return this.guarded(FAIL_JOB, [write.jobId, write.expectedFencingToken, write.reason, this.clock.now()], write)
+    }
+
+    /** Parks the job as failed_awaiting_fix under the token the caller holds; answers whether its one alert is still due. */
+    async park(write: ParkWrite): Promise<ParkResult> {
+        const rows: Array<{ readonly alert_due: boolean }> = await this.writer().query(PARK_JOB, [
+            write.jobId,
+            write.expectedFencingToken,
+            write.failureClass,
+            write.reason,
+            write.build,
+            this.clock.now(),
+        ])
+        const row = rows[0]
+        if (row === undefined) {
+            throw new JobsError({ code: JobsErrorCode.FencedOut, params: { jobId: write.jobId, token: write.expectedFencingToken } })
+        }
+        return { alertDue: row.alert_due }
+    }
+
+    /** Marks the parked jobs the filter names as resumed and answers each with the delivery id it goes back under. */
+    async resume(filter: ResumeFilter): Promise<ReadonlyArray<ResumedJob>> {
+        const rows: Array<ResumedRecord> = await this.writer().query(RESUME_JOBS, [
+            "jobId" in filter ? filter.jobId : null,
+            "parkedBefore" in filter ? filter.parkedBefore : null,
+            "sweep" in filter,
+            this.clock.now(),
+        ])
+        return rows.map(resumedOf)
+    }
+
+    /** The parked jobs, oldest first. */
+    async awaitingFix(): Promise<ReadonlyArray<ParkedJob>> {
+        const rows: Array<ParkedRecord> = await this.writer().query(AWAITING_FIX_JOBS, [])
+        return rows.map(parkedOf)
     }
 
     /** The idempotency key of one step of this claim: it includes the token, so a zombie's repeat is a different key than the live worker's. */

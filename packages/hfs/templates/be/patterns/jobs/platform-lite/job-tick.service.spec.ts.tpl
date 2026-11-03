@@ -1,4 +1,5 @@
 import { SchedulerRegistry } from "@nestjs/schedule"
+import type { CronJob } from "cron"
 import { Test } from "@nestjs/testing"
 import { FakeClock, fakeTransaction, mockEntityManager } from "@starci/jest-preset"
 import { CLOCK } from "@modules/platform/clock"
@@ -18,7 +19,7 @@ const TICK: JobTick = { name: "nightly-digest", cron: "0 2 * * *", timeZone: "UT
 const build = async (claimed: boolean) => {
     const transaction = fakeTransaction(mockEntityManager({ query: [[LOCK_TICK, []], [CLAIM_TICK, [{ claimed }]]] }))
     const outbox = { write: jest.fn().mockResolvedValue(undefined) }
-    const registry = { addCronJob: jest.fn() }
+    const registry = { addCronJob: jest.fn<void, [string, CronJob]>() }
     const moduleRef = await Test.createTestingModule({
         providers: [
             JobTickService,
@@ -55,11 +56,12 @@ describe("JobTickService", () => {
         expect(outbox.write).not.toHaveBeenCalled()
     })
 
-    it("registers no cron job while the tick list is empty", async () => {
+    it("registers one started cron job per tick, the sweep of parked jobs among them", async () => {
         const { ticks, registry } = await build(true)
 
         ticks.onApplicationBootstrap()
 
-        expect(registry.addCronJob).not.toHaveBeenCalled()
+        expect(registry.addCronJob).toHaveBeenCalledWith("parked-jobs:sweep", expect.objectContaining({ isActive: true }))
+        for (const [, job] of registry.addCronJob.mock.calls) job.stop()
     })
 })

@@ -128,7 +128,7 @@ test('lite add job writes the platform/jobs tick scheduler, its minute claim and
   addKind({ repoRoot: root, noun: 'job', name: 'digest', options: { noTypes: true }, now: () => SCAFFOLDED + 60_000 });
 
   const jobs = 'be/src/modules/platform/jobs';
-  assert.match(read(root, `${jobs}/job-ticks.contracts.ts`), /export const JOB_TICKS: ReadonlyArray<JobTick> = \[\]/);
+  assert.match(read(root, `${jobs}/job-ticks.contracts.ts`), /name: "parked-jobs:sweep", cron: "\*\/15 \* \* \* \*", timeZone: "UTC", queue: PARKED_JOBS_SWEEP_QUEUE/);
   const service = read(root, `${jobs}/job-tick.service.ts`);
   assert.match(service, /advisoryXactLock\(tx, `tick:\$\{tick\.name\}`\)/);
   assert.match(service, /callDbFunction<TickClaim>\(tx, "public\.job_tick_claim"/);
@@ -136,6 +136,8 @@ test('lite add job writes the platform/jobs tick scheduler, its minute claim and
   assert.match(read(root, `${jobs}/jobs.module.ts`), /ScheduleModule\.forRoot\(\)/);
   const migrations = fs.readdirSync(path.join(root, 'db', 'migrations')).filter((file) => file.endsWith('.sql'));
   assert.ok(migrations.some((file) => /create function public\.job_tick_claim/.test(read(root, `db/migrations/${file}`))), 'the jobs migration carries the minute claim');
+  assert.ok(migrations.some((file) => /create function public\.job_park[\s\S]*create function public\.job_resume/.test(read(root, `db/migrations/${file}`))), 'the jobs migration carries the park and the resume');
+  assert.match(read(root, `${jobs}/jobs.module.ts`), /\{ provide: FLOW_ALERTS, useExisting: options\.alerts \?\? LoggedFlowAlerts \}/);
   const after = JSON.parse(read(root, 'package.json'));
   assert.equal(after.dependencies['@nestjs/schedule'], bundledPins()['@nestjs/schedule']!.version);
   assert.equal(after.dependencies.cron, bundledPins().cron!.version);

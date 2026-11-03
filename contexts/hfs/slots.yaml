@@ -804,6 +804,9 @@ ruleParams:
       - {name: public.job_advance, reason: "platform/jobs (add job, lite): the token-guarded step write of jobs.sql"}
       - {name: public.job_complete, reason: "platform/jobs (add job, lite): the token-guarded completion of jobs.sql"}
       - {name: public.job_fail, reason: "platform/jobs (add job, lite): the token-guarded failure of jobs.sql"}
+      - {name: public.job_park, reason: "platform/jobs (add job, lite): the token-guarded park as failed_awaiting_fix of jobs.sql (BE-RESILIENCE-2)"}
+      - {name: public.job_resume, reason: "platform/jobs (add job, lite): marks parked jobs resumed by id, build or sweep, jobs.sql (BE-RESILIENCE-2)"}
+      - {name: public.job_awaiting_fix, reason: "platform/jobs (add job, lite): the parked jobs, the owner's work items, jobs.sql (BE-RESILIENCE-2)"}
       - {name: public.job_tick_claim, reason: "platform/jobs (add job, lite): the once-per-minute claim of a scheduler tick, jobs.sql (R335)"}
       - {name: public.queue_write, reason: "platform/queue (add queue, lite): the outbox insert of queue-outbox.sql"}
       - {name: public.queue_waiting, reason: "platform/queue (add queue, lite): the relay read FOR UPDATE SKIP LOCKED of queue-outbox.sql"}
@@ -2684,8 +2687,8 @@ slots:
     lite:
       why: "the same QueueOutbox and QueueWorkerRegistry ports and full's BullMQ adapter on the declared
         Redis (backing: [redis]): the relay adds each committed outbox row with the outbox id as the
-        job id, workers retry with exponential backoff and keep a job that exhausts its attempts as
-        failed (the dead letter); the outbox table comes from a db migration, and a schedule
+        job id, workers retry a transient failure with exponential backoff and platform/jobs parks a
+        job a retry cannot fix as failed_awaiting_fix until it is resumed; the outbox table comes from a db migration, and a schedule
         is a BullMQ job scheduler or a platform/jobs tick that writes one outbox row (R335)
         (contexts/code/be/queues.yaml liteAdapter)"
     requires:

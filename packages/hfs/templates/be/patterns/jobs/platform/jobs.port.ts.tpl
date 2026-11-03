@@ -5,6 +5,12 @@ import type {
     ClaimResult,
     FailWrite,
     GuardedWrite,
+    ParkedFlowAlert,
+    ParkedJob,
+    ParkResult,
+    ParkWrite,
+    ResumedJob,
+    ResumeFilter,
     RunKey,
 } from "./jobs.contracts"
 import type { FencedProcessor } from "./fenced.processor"
@@ -19,6 +25,12 @@ export interface JobClaims {
     complete(write: GuardedWrite): Promise<void>
     /** Fails the job so BullMQ can retry it; throws `JobFencedOut` when the token is stale. */
     fail(write: FailWrite): Promise<void>
+    /** Parks the job as `failed_awaiting_fix` until a resume; throws `JobFencedOut` when the token is stale. */
+    park(write: ParkWrite): Promise<ParkResult>
+    /** Marks the parked jobs the filter names as resumed and answers each with the delivery id it goes back to its queue under. */
+    resume(filter: ResumeFilter): Promise<ReadonlyArray<ResumedJob>>
+    /** The parked jobs, oldest first: the owner's work items. */
+    awaitingFix(): Promise<ReadonlyArray<ParkedJob>>
     /** The idempotency key of one step of this claim: `<jobId>:<step>:<fencingToken>`. */
     runKey(job: ClaimedJob, step: string): RunKey
 }
@@ -27,6 +39,12 @@ export interface JobClaims {
 export interface JobStep {
     /** Performs the effect of the step for the claimed job. */
     run(job: ClaimedJob): Promise<void>
+}
+
+/** Where the one alert of a parked job goes: the app binds it to the owner's work items or notifier. */
+export interface FlowAlerts {
+    /** Raises the work item of a parked job; it is called once per park. */
+    raise(alert: ParkedFlowAlert): Promise<void>
 }
 
 /** Where a job module registers its processor. */

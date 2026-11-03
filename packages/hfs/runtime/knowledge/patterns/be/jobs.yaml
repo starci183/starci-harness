@@ -188,11 +188,32 @@ files:
     template: jobs/platform/job-claim.service.spec.ts.tpl
   - path: src/modules/platform/jobs/job-runner.service.ts
     slot: be.platform.jobs
-    role: "Subscribes processors to their queues; claim, process, complete or fail, fenced out means stop."
+    role: "Subscribes processors to their queues; claim, process, complete, fail a transient failure for a retry or park the rest with one alert, fenced out means stop."
     template: jobs/platform/job-runner.service.ts.tpl
   - path: src/modules/platform/jobs/job-runner.service.spec.ts
     slot: be.platform.jobs
     template: jobs/platform/job-runner.service.spec.ts.tpl
+  - path: src/modules/platform/jobs/parked-job-resumer.service.ts
+    slot: be.platform.jobs
+    role: "Resumes parked jobs: at boot those of an earlier build, on the sweep every one, and one on the owner's demand (BE-RESILIENCE-2)."
+    template: jobs/platform/parked-job-resumer.service.ts.tpl
+  - path: src/modules/platform/jobs/parked-job-resumer.service.spec.ts
+    slot: be.platform.jobs
+    template: jobs/platform/parked-job-resumer.service.spec.ts.tpl
+  - path: src/modules/platform/jobs/parked-jobs-sweep.processor.ts
+    slot: be.platform.jobs
+    role: "The scheduled sweep of parked jobs on PARKED_JOBS_SWEEP_QUEUE."
+    template: jobs/platform/parked-jobs-sweep.processor.ts.tpl
+  - path: src/modules/platform/jobs/parked-jobs-sweep.processor.spec.ts
+    slot: be.platform.jobs
+    template: jobs/platform/parked-jobs-sweep.processor.spec.ts.tpl
+  - path: src/modules/platform/jobs/logged-flow-alerts.ts
+    slot: be.platform.jobs
+    role: "The FlowAlerts port until the app binds its owner work items: the one alert of a park as a log line."
+    template: jobs/platform/logged-flow-alerts.ts.tpl
+  - path: src/modules/platform/jobs/logged-flow-alerts.spec.ts
+    slot: be.platform.jobs
+    template: jobs/platform/logged-flow-alerts.spec.ts.tpl
   - path: src/modules/platform/jobs/fenced.processor.ts
     slot: be.platform.jobs
     role: "The base class every processor extends."
@@ -286,7 +307,7 @@ liteAdapter:
     a declared replicated-job running a cli command.
   ports:
     - {port: job claim (platform/jobs), adapter: "the claim and guarded writes as the job_claim, job_advance, job_complete and job_fail functions of the jobs migration in db/migrations, called through callDbFunction of platform/database (R334)"}
-    - {port: processor delivery, adapter: "full's BullMQ worker (attempts and exponential backoff from the queue policy, failed jobs kept as the dead letter)"}
+    - {port: processor delivery, adapter: "full's BullMQ worker (attempts and exponential backoff from the queue policy, a job a retry cannot fix parked as failed_awaiting_fix and resumed at a new build, by the sweep or on demand (BE-RESILIENCE-2))"}
     - {port: tick scheduler (platform/jobs), adapter: "JOB_TICKS of job-ticks.contracts.ts as data and JobTickService (job-tick.service.ts, composed with ScheduleModule.forRoot() by the lite jobs.module.ts): one CronJob per tick in SchedulerRegistry, each firing taking advisoryXactLock and claiming the tick's UTC minute through the job_tick_claim function of the jobs migration before it writes the queue outbox (R335, contexts/code/be/jobs.md BE-JOBS-6)"}
   proof: >-
     Unit specs as full (job-claim.service.spec.ts); declaring fenced-job requires integration specs titled

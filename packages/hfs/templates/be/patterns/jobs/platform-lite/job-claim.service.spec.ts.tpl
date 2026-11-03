@@ -12,6 +12,9 @@ const CLAIM_JOB = 'SELECT * FROM "public"."job_claim"($1, $2, $3, $4, $5, $6)'
 const ADVANCE_JOB = 'SELECT * FROM "public"."job_advance"($1, $2, $3, $4)'
 const COMPLETE_JOB = 'SELECT * FROM "public"."job_complete"($1, $2, $3)'
 const FAIL_JOB = 'SELECT * FROM "public"."job_fail"($1, $2, $3, $4)'
+const PARK_JOB = 'SELECT * FROM "public"."job_park"($1, $2, $3, $4, $5, $6)'
+const RESUME_JOB = 'SELECT * FROM "public"."job_resume"($1, $2, $3, $4)'
+const AWAITING_FIX = 'SELECT * FROM "public"."job_awaiting_fix"()'
 
 const AT = "2026-02-03T04:05:06.000Z"
 
@@ -139,6 +142,45 @@ describe("JobClaimService", () => {
 
             expect(() => claims.runKey(claimed, "send:twice")).toThrow(JobsError)
             expect(() => claims.runKey(claimed, "send:twice")).toThrow(JobsErrorCode.RunKeyInvalid)
+        })
+    })
+
+    describe("park, resume and the work items", () => {
+        it("parks the job under its token and answers whether its one alert is due; a stale token is fenced out", async () => {
+            const manager = mockEntityManager({ query: [[PARK_JOB, [{ alert_due: true }]], [PARK_JOB, []]] })
+            const { claims } = await build(manager)
+            const write = { jobId: "j-1", expectedFencingToken: 3, failureClass: "code" as const, reason: "boom", build: "b-2" }
+
+            await expect(claims.park(write)).resolves.toEqual({ alertDue: true })
+            await expect(claims.park(write)).rejects.toMatchObject({ code: JobsErrorCode.FencedOut })
+
+            expect(manager.query).toHaveBeenCalledWith(PARK_JOB, ["j-1", 3, "code", "boom", "b-2", new Date(AT)])
+        })
+
+        it("resumes by id, by build or for the sweep and answers each job with its next delivery id", async () => {
+            const row = { id: "j-1", kind: "mail", job_key: "k-1", payload: { id: "m-1" }, resume_count: 2 }
+            const manager = mockEntityManager({ query: [RESUME_JOB, [row]] })
+            const { claims } = await build(manager)
+
+            await expect(claims.resume({ jobId: "j-1" })).resolves.toEqual([
+                { jobId: "j-1", kind: "mail", deliveryId: "k-1-r2", payload: { id: "m-1" }, correlationId: "resume:j-1" },
+            ])
+            await claims.resume({ parkedBefore: "b-2" })
+            await claims.resume({ sweep: true })
+
+            expect(manager.query).toHaveBeenCalledWith(RESUME_JOB, ["j-1", null, false, new Date(AT)])
+            expect(manager.query).toHaveBeenCalledWith(RESUME_JOB, [null, "b-2", false, new Date(AT)])
+            expect(manager.query).toHaveBeenCalledWith(RESUME_JOB, [null, null, true, new Date(AT)])
+        })
+
+        it("lists the parked jobs as the owner's work items", async () => {
+            const parkedAt = new Date(AT)
+            const row = { id: "j-1", kind: "mail", failure_class: "input", error: "bad row", parked_at: parkedAt, parked_build: "b-1", resume_count: 0 }
+            const { claims } = await build(mockEntityManager({ query: [AWAITING_FIX, [row]] }))
+
+            await expect(claims.awaitingFix()).resolves.toEqual([
+                { jobId: "j-1", kind: "mail", failureClass: "input", reason: "bad row", parkedAt, parkedBuild: "b-1", resumeCount: 0 },
+            ])
         })
     })
 
