@@ -209,7 +209,7 @@ test('the usage is generated from the parser tables: every flag every verb parse
   for (const line of ['starci app slot <path> [--json]', 'starci app world <up|down|status>', 'starci app add service <dir> <name> [--inject <binding>]...', 'starci app add spec <file>.service.ts', 'starci app add image',
     'starci app check [--staged]', 'starci app sync [--execute]', 'starci app upgrade [--execute]', 'starci app codemod button-intent [--execute] [--json] [--format json|markdown] [--out ', 'starci app codemod spacing-roles [--execute] [--json] [--format json|markdown] [--out ']) assert.ok(out.includes(line), line);
   for (const name of CODEMODS) assert.match(out, new RegExp(`^starci app codemod ${name} \\[--execute\\]`, 'm'), `the usage lists the ${name} codemod`);
-  assert.match(out, /^starci app check .*\[--fix\] .*\[--side be\|fe\] \[--out <path>\]/m);
+  assert.match(out, /^starci app check .*\[--fix\] .*\[--side be\|fe\|packages\] \[--out <path>\]/m);
   assert.match(out, /^starci app scaffold <name> \[--registry-visibility public\|private\] \[--edition full\|lite\]$/m);
   assert.doesNotMatch(out, /app (hygiene|explain|new|sonar)\b|--plan|--write|--check\b|--into\b(?!-)|--report|app stack <up/, 'the usage lists no old spelling');
 });
