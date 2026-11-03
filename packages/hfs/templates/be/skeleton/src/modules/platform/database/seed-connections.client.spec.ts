@@ -36,9 +36,10 @@ const file = (name: string, text: string): SeedFile => ({
 })
 
 describe("seedDirectoryOf", () => {
-    it("is the seeds folder of the environment under .starcistacks, relative to the app root", async () => {
+    it("is the SQL folder of the shared seed level or of an environment, relative to the app root", async () => {
         const client = await setup()
-        expect(client.seedDirectoryOf("dev")).toBe(join(".starcistacks", "dev", "seeds"))
+        expect(client.seedDirectoryOf()).toBe(join(".starcistacks", "seeds", "sql"))
+        expect(client.seedDirectoryOf("dev")).toBe(join(".starcistacks", "dev", "seeds", "sql"))
     })
 })
 

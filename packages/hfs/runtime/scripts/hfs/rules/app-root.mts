@@ -4,7 +4,8 @@
 //   (HFS_MONO_*, monorepo.mjs), the one cli app (BE_CLI_REQUIRED, cli.mjs), BE_INTEGRATION_SPEC_MISSING (R112,
 //   integration-specs.mjs), FE_GRAPHQL_CONTRACT (R113, fe-contract-documents.mjs), HFS_CI_MISSING_CANON (R13, pipeline.mjs),
 //   BE_TEST_TOPOLOGY (R47, test-topology.mjs), HFS_PROOF_COMMAND_FILE_MISSING (R105, proof-commands.mjs), the app front-end
-//   tree (FE_WIRE_GENERATED, FE_I18N_PLACEMENT, frontend-tree.mjs) and HFS_STACKS_SHAPE (R10, stacks.mjs).
+//   tree (FE_WIRE_GENERATED, FE_I18N_PLACEMENT, frontend-tree.mjs), HFS_STACKS_SHAPE (R10, stacks.mjs) and the root seed data
+//   (HFS_SEED_*: R375, seeds.mjs).
 import { cliFindings } from './cli.mjs';
 import { contractCompatFindings } from './contract-compat.mjs';
 import { depFindings } from './deps.mjs';
@@ -19,6 +20,7 @@ import { peerIntegrationFindings } from './peer-integrations.mjs';
 import { pipelineFindings } from './pipeline.mjs';
 import { proofCommandFindings } from './proof-commands.mjs';
 import { sagaFindings } from './saga.mjs';
+import { seedsFindings } from './seeds.mjs';
 import { serviceFindings } from './services.mjs';
 import { stacksFindings } from './stacks.mjs';
 import { testTopologyFindings } from './test-topology.mjs';
@@ -49,5 +51,6 @@ export function appRootFindings({ repoRoot, files, all, repo, resolver, pins, ph
     ...proofCommandFindings({ repoRoot, files: all, resolver, sides: Object.keys(repo.sides ?? {}) }),
     ...appFrontendFindings({ repoRoot, files: all, repo, phase }),
     ...stacksFindings({ repoRoot, files, resolver }),
+    ...seedsFindings({ repoRoot, files }),
   ];
 }

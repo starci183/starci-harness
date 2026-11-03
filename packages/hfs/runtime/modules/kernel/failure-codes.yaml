@@ -4233,6 +4233,57 @@ HFS_SEED_PII:
   owner: op-retry
   kind: check-finding
 
+HFS_SEEDS_SHAPE:
+  title: "Seed data lives in a seed level of .starcistacks and holds no custody"
+  title_vi: "Dữ liệu seed nằm ngoài cấp seed hoặc chứa custody"
+  meaning_vi: "Một tệp dưới `.starcistacks/seeds/` hoặc `.starcistacks/<env>/seeds/` không phải `seeds.yaml` và không nằm trong `sql/`, `data/`, `files/`; hoặc thuộc cấp seed của một môi trường không được khai báo; hoặc là custody (envelope `.enc`, khoá `.pem`/`.key`, tệp `.env`)."
+  causes_vi:
+    - "Vi phạm R375: dữ liệu seed chỉ nằm trong hai cấp seed của `.starcistacks/`, mỗi cấp là một manifest và các thư mục sql/, data/, files/."
+    - "Một secret được đặt cạnh seed thay vì niêm phong bằng sops trong `.starcistacks/<env>/secrets/`."
+  nextStep_vi: "Chuyển tệp vào thư mục loại của cấp seed (`starci app codemod seeds-layout` chuyển dữ liệu cũ); niêm phong secret bằng `starci app secret set --env <env>` và xoá bản rõ."
+  owner: op-retry
+  kind: check-finding
+
+HFS_SEED_MANIFEST:
+  title: "Every seed file is an entry of its level's seeds.yaml"
+  title_vi: "Manifest seeds.yaml thiếu, sai hoặc không liệt kê tệp seed"
+  meaning_vi: "Cấp seed có tệp nhưng không có `seeds.yaml`, manifest không đọc được hoặc sai schema starci/seeds@1, một mục trỏ tới đường dẫn không tồn tại, `after` nêu id không có hoặc tạo vòng, hay một tệp trong sql/, data/, files/ không thuộc mục nào."
+  causes_vi:
+    - "Vi phạm R375: manifest là nơi khai báo thứ tự, loại, đích và chế độ (once, upsert) của mọi seed."
+  nextStep_vi: "Thêm hoặc sửa mục `{ id, kind, path, target, mode, after? }` trong `seeds.yaml` của cấp đó cho tệp được nêu."
+  owner: op-retry
+  kind: check-finding
+
+HFS_SEED_DDL:
+  title: "A seed only writes rows: seed data is never a migration"
+  title_vi: "Seed chứa câu lệnh thay đổi schema"
+  meaning_vi: "Một tệp SQL của mục sql có câu lệnh CREATE, ALTER, DROP, TRUNCATE, GRANT, REVOKE hoặc COMMENT: thay đổi schema hoặc quyền, việc chỉ migration được làm."
+  causes_vi:
+    - "Vi phạm R375 và BE-PERSISTENCE-1: dữ liệu seed không bao giờ là migration, và migration là nơi duy nhất thay đổi schema."
+  nextStep_vi: "Chuyển câu lệnh schema thành một migration (lite: `db/migrations/<ts14>_<kebab>.sql`), để seed chỉ ghi dòng dữ liệu một cách idempotent (`on conflict do nothing` hoặc upsert)."
+  owner: op-retry
+  kind: check-finding
+
+HFS_SEED_DATA_SCHEMA:
+  title: "A data seed validates against the schema its entry names"
+  title_vi: "Tài liệu seed không khớp schema đã khai báo"
+  meaning_vi: "Một tài liệu JSON hoặc YAML của mục data không qua được JSON schema mà mục đó nêu (`schema`, do app khai báo), hoặc schema đó không đọc được."
+  causes_vi:
+    - "Vi phạm R375: app sở hữu ý nghĩa và schema của dữ liệu, harness kiểm tra tài liệu trước khi lệnh của app nạp nó."
+  nextStep_vi: "Sửa tài liệu cho khớp schema, hoặc sửa đường dẫn `schema` của mục trỏ tới schema app khai báo."
+  owner: op-retry
+  kind: check-finding
+
+HFS_SEED_TEST_DATA:
+  title: "A level production applies holds no test data"
+  title_vi: "Seed áp dụng cho production chứa dữ liệu thử"
+  meaning_vi: "Cấp seed dùng chung hoặc cấp của một môi trường không phải docker-compose có danh tính example.test hoặc giá trị, tên tệp bắt đầu bằng uat- hay test-."
+  causes_vi:
+    - "Vi phạm R375: dữ liệu thử (tài khoản mẫu, workspace mẫu) chỉ nằm trong cấp seed của môi trường dev."
+  nextStep_vi: "Chuyển dữ liệu thử vào `.starcistacks/dev/seeds/` và chỉ để dữ liệu ban đầu thật (gói, danh mục) ở cấp dùng chung và cấp production."
+  owner: op-retry
+  kind: check-finding
+
 HFS_SERVICE_PLACEMENT:
   title: "A back-end service lives only at be/apps/<service>"
   title_vi: "Dịch vụ back end nằm ngoài be/apps/<service>"
@@ -5668,10 +5719,10 @@ BE_STORAGE_OWNER:
 LITE_DB_MIGRATION:
   title: "A lite schema change lives outside db/migrations"
   title_vi: "Thay đổi schema của app lite nằm ngoài db/migrations"
-  meaning_vi: "`<path>` là tệp của thư mục supabase/ hoặc một tệp SQL ngoài db/ (trừ seed của .starcistacks)."
+  meaning_vi: "`<path>` là tệp của thư mục supabase/, một tệp SQL ngoài db/ (trừ mục sql của các cấp seed trong `.starcistacks/`), hoặc một tệp SQL trong db/ không phải migration, archive hay bootstrap."
   causes_vi:
-    - "Vi phạm R332: schema của app lite chỉ nằm trong db/migrations/<ts14>_<kebab>.sql, archive và seed trong db/."
-  nextStep_vi: "Chuyển migration sang db/migrations (giữ nguyên stamp), seed sang db/seed.sql, types sang db/types/; xoá supabase/."
+    - "Vi phạm R332: schema của app lite chỉ nằm trong db/migrations/<ts14>_<kebab>.sql, archive và db/bootstrap.sql; dữ liệu seed nằm trong các cấp seed của `.starcistacks/` (R375)."
+  nextStep_vi: "Chuyển migration sang db/migrations (giữ nguyên stamp), seed sang `.starcistacks/seeds/sql/` (`starci app codemod seeds-layout`), types sang db/types/; xoá supabase/."
   owner: op-retry
   kind: check-finding
 

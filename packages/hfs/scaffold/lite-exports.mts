@@ -183,7 +183,7 @@ const REGISTRATIONS: Readonly<Record<string, readonly Registration[]>> = Object.
     {
       file: "be/src/modules/platform/database/index.ts",
       source: "./seed-runner.service",
-      names: ["SeedRunnerService"],
+      names: ["DEFAULT_SEED_ENV", "SeedRunnerService"],
       beforeSource: "./database.options",
     },
   ],

@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.17.0
+version: 3.18.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -61,6 +61,9 @@ versioning:
 # 3.17.0 (ruling auth-oidc-package, 2026-11-03) adds the optional full-edition be.integrations.keycloak, the glue of @starci/auth-oidc (the OIDC client of the
 # identity provider behind the PrincipalVerifier of @starci/auth), and gives @starci/auth-oidc to it in ruleParams.be.infraOwners.
 # 3.17.0 (ruling module-packages, 2026-11-03) adds the optional app.packages and app.module-registry: the workspace packages of the app root (the agent SDK, the module packages, the managed registry).
+# 3.18.0 (ruling seed-levels, 2026-11-03) gives app.starcistacks its two seed levels, the shared .starcistacks/seeds/ and each environment's
+# <env>/seeds/, each a seeds.yaml manifest and the folders sql/, data/ and files/, and retires app.db.seed (its rows are the shared level's
+# sql/ entries); `starci app codemod seeds-layout` moves an older app's seed data into them.
 # 3.15.0 (ruling app-check-cache, 2026-10-31) adds the optional app.starcistacks.cache, the committed check cache of the app (.starcistacks/cache/, both editions).
 # 3.14.0 (ruling app-secrets-one-standard, 2026-10-29) adds the optional app.ci-stack-key-restore, the managed workflow that writes the
 # deploy server's age identity back from its GitHub Environment backup.
@@ -502,7 +505,7 @@ ruleParams:
     # R334 (lite): the only `.query(` outside platform/database's composer and the test world is the pass-through of a file listed here
     # (or in hfs.json sides.be.sqlPassThrough), whose SQL text is not the app's own. Paths are relative to the side folder.
     sqlPassThrough:
-      - {file: src/modules/platform/database/seed-runner.service.ts, reason: "the tracked seed file's text, run as it is (db/seed.sql); the app writes no SQL there"}
+      - {file: src/modules/platform/database/seed-runner.service.ts, reason: "the tracked seed files' text, run as it is (the sql/ entries of .starcistacks/seeds/, then of .starcistacks/<env>/seeds/); the app writes no SQL there"}
 
     lite:
       schemaAuthority: sql
@@ -964,16 +967,18 @@ slots:
     tests: none
     requires: [application-stacks.yaml]
     allows: [application-stacks.yaml, "<env>/README.md", "<env>/environment.json", "<env>/infra/{compose,swarm,k8s,terraform}/**", "<env>/infra/metadata.json",
-             "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.{enc.yaml,enc}", "<env>/secrets/.gitkeep", "<env>/seeds/**"]
+             "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.{enc.yaml,enc}", "<env>/secrets/.gitkeep",
+             "seeds/seeds.yaml", "seeds/{sql,data,files}/**", "<env>/seeds/seeds.yaml", "<env>/seeds/{sql,data,files}/**"]
     forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]
-    # Owner ruling 2026-10-14: lite declares docker-swarm production, app runtime config, sealed custody and seed data.
+    # Owner ruling 2026-10-14: lite declares docker-swarm production, app runtime config, sealed custody and the seed levels.
     # The db service supplies the database; schedules are platform/jobs ticks (R335); production has no Compose or host cron.
     lite:
       requires: [application-stacks.yaml]
       allows: [application-stacks.yaml, images/db/Dockerfile, "<env>/README.md", "<env>/environment.json", "<env>/infra/{compose,swarm}/**", "<env>/infra/metadata.json",
-               "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.{enc.yaml,enc}", "<env>/secrets/.gitkeep", "<env>/seeds/**"]
+               "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.{enc.yaml,enc}", "<env>/secrets/.gitkeep",
+             "seeds/seeds.yaml", "seeds/{sql,data,files}/**", "<env>/seeds/seeds.yaml", "<env>/seeds/{sql,data,files}/**"]
       forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]
-    rules: [HFS_STACKS_SHAPE, HFS_STACKS_IN_SIDE, HFS_PLAINTEXT_SECRET, HFS_IDENTITY_CUSTODY]
+    rules: [HFS_STACKS_SHAPE, HFS_STACKS_IN_SIDE, HFS_PLAINTEXT_SECRET, HFS_IDENTITY_CUSTODY, HFS_SEEDS_SHAPE, HFS_SEED_MANIFEST, HFS_SEED_DDL, HFS_SEED_DATA_SCHEMA, HFS_SEED_TEST_DATA, HFS_SEED_PII]
   - id: app.sops
     since: 3.1.0
     profiles: [app]
@@ -1068,15 +1073,6 @@ slots:
     # without a re-run, and the older files move here. `starci app db migrate` never applies this folder and no migration rule judges it.
     path: "db/migrations/archive/"
     presence: optional
-    tracked: tracked
-    tier: none
-    tests: none
-    since: 3.9.0
-  - id: app.db.seed
-    profiles: [app]
-    editions: [lite]
-    path: "db/seed.sql"
-    presence: optional            # synthetic dev data only; a lite app seeds nothing it cannot regenerate
     tracked: tracked
     tier: none
     tests: none
