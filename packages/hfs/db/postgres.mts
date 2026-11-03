@@ -47,7 +47,14 @@ export function dbTarget(ctx: VerbContext, name = DEFAULT_DB_URL_ENV): DbTarget 
   if (typeof value !== 'string' || value === '') throw refusal('DB_URL_ENV_MISSING', `${name} is not set`);
   const parsed = parseConnection(value);
   if (!parsed) throw refusal('DB_URL_INVALID', `${name} is not a postgres connection URL`);
-  return { kind: 'url', how: `connection string from ${name}`, urlEnv: name, url: parsed.url, env: parsed.password ? { PGPASSWORD: parsed.password } : {}, secrets: [value, parsed.password].filter(Boolean) };
+  const target: DbTarget & { kind: 'url'; urlEnv: string } = { kind: 'url', how: `connection string from ${name}`, urlEnv: name, url: parsed.url, env: parsed.password ? { PGPASSWORD: parsed.password } : {}, secrets: [value, parsed.password].filter(Boolean) };
+  // A dev environment's database runs in its own container (starci app stack up): STARCI_DB_CONTAINER runs the client tools inside it, so the host needs no PostgreSQL client.
+  const container = ctx.env.STARCI_DB_CONTAINER;
+  if (!container) return target;
+  const inside = inContainer(target, container);
+  const url = new URL(inside.url);
+  url.port = '5432';
+  return { ...target, ...inside, kind: 'url', urlEnv: name, url: url.toString() };
 }
 
 /** Where a `-f` file of an in-container target is copied before the client reads it. */
