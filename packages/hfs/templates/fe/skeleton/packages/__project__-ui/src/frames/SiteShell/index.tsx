@@ -1,6 +1,5 @@
 import type { ReactNode } from "react"
-import { GrammarRoot, PageContainer, TextAction, TopBar, WorkspaceShell } from "@starci/grammar/common"
-import { siteShellClassNames } from "./classNames"
+import { GrammarRoot, Link, TopBar, WorkspaceShell } from "@starci/grammar/common"
 
 /** What an app's chrome hands the shell: the brand, its home link and the routed body. */
 type SiteShellProps = {
@@ -14,6 +13,6 @@ type SiteShellProps = {
 
 /**
  * The document chrome both apps share: Grammar's Common boundary, the brand header (the top bar carrying the wordmark that links
- * home), then the routed body in the shell's main landmark at reading measure.
+ * home), then the routed body in the shell's main landmark (each page draws its own measure).
  */
 {{> fe/common/site-shell.tsx.partial}}

@@ -83,8 +83,7 @@ environments:
         - {name: codegen, argv: [npm, run, codegen, --silent], heavy: build}
       processes:
         - name: api
-          # Transpile only: the type check is the typecheck and lint gates' job, not the dev loop's.
-          argv: [npx, ts-node-dev, --transpile-only, --respawn, -r, tsconfig-paths/register, apps/api/src/main.ts]
+          argv: [npx, ts-node-dev, --respawn, -r, tsconfig-paths/register, apps/api/src/main.ts]
           cwd: be
           port: api
           files: [GOOGLE_CLIENT_SECRET, AUTH_JWT_PRIVATE_KEY, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY]

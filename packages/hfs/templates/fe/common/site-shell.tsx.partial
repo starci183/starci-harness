@@ -1,10 +1,10 @@
 export const SiteShell = (props: SiteShellProps) => (
-    <GrammarRoot className={siteShellClassNames.frame}>
+    <GrammarRoot>
         <WorkspaceShell
             viewport="flow"
             primaryLabel={props.brand}
-            header={<TopBar brand={<TextAction href={props.homeHref}>{props.brand}</TextAction>} />}
-            primary={<PageContainer measure="reading">{props.children}</PageContainer>}
+            header={<TopBar brand={<Link href={props.homeHref}>{props.brand}</Link>} />}
+            primary={props.children}
         />
     </GrammarRoot>
 )

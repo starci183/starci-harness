@@ -9,7 +9,7 @@ export interface SessionState {
 }
 
 /** The reducers of the session slice. */
-interface SessionReducers {
+type SessionReducers = {
     sessionChanged: CaseReducer<SessionState, PayloadAction<AuthSession | undefined>>
 }
 
