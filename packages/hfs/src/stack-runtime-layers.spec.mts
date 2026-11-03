@@ -81,3 +81,15 @@ test('the recipe this package ships is byte-equal to the harness images/openclaw
   assert.deepEqual(fs.readdirSync(shipped).sort(), fs.readdirSync(owner).sort());
   for (const name of fs.readdirSync(owner)) assert.ok(fs.readFileSync(path.join(shipped, name)).equals(fs.readFileSync(path.join(owner, name))), `${name}: run npm run bundles in packages/hfs`);
 });
+
+test('the layer starts as root only to hand its state folder to the one runtime user the Dockerfile names, then drops to it', () => {
+  const recipe = recipeDirectory('openclaw-runtime');
+  const dockerfile = fs.readFileSync(path.join(recipe, 'Dockerfile'), 'utf8');
+  const entrypoint = fs.readFileSync(path.join(recipe, 'entrypoint.sh'), 'utf8');
+  assert.deepEqual(dockerfile.match(/^USER .+$/gmu)?.at(-1), 'USER root', 'the entrypoint needs root to give a host-created bind folder away');
+  assert.deepEqual(dockerfile.match(/^ENV STARCI_RUNTIME_USER=.+$/gmu), ['ENV STARCI_RUNTIME_USER=node'], 'one place names the runtime user');
+  assert.doesNotMatch(entrypoint, /\bnode:|--reuid=node|chown -R node/u, 'the entrypoint reads the user, it never names it');
+  const drop = entrypoint.indexOf('exec setpriv --reuid="$user" --regid="$user" --init-groups');
+  assert.ok(drop > 0 && drop < entrypoint.indexOf('file="/run/secrets/$name"'), 'nothing reads a secret or starts a process before the drop');
+  assert.match(entrypoint, /if \[ "\$\(stat -c %u "\$state"\)" != "\$\(id -u "\$user"\)" \]; then chown -R "\$user:" "\$state"; fi/u, 'the folder is given away only when the user does not own it yet');
+});

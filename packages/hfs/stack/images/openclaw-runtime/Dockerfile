@@ -13,6 +13,9 @@ RUN mkdir -p /opt/starci/plugins \
     && chown -R root:root /opt/starci \
     && chmod 0755 /opt/starci /opt/starci/plugins
 
-USER node
+# The container starts as root only for the entrypoint to hand the gateway's state folder (a bind mount the host may have created as root) to
+# the runtime user, then drops to that user for good: STARCI_RUNTIME_USER is the one place the image names it.
+USER root
+ENV STARCI_RUNTIME_USER=node
 ENV STARCI_PLUGINS_DIR=/opt/starci/plugins
 ENTRYPOINT ["tini", "-s", "--", "sh", "/opt/starci/entrypoint.sh"]
