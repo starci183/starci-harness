@@ -92,7 +92,7 @@ jobs:
         run: npm run typecheck
         env:
           NODE_OPTIONS: {{nodeOptions}}
-
+{{moduleTestStep}}
   lint:
     needs: plan
     if: ${{ needs.plan.outputs.checks == 'true' }}

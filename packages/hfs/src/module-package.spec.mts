@@ -122,6 +122,9 @@ test('the module noun of addKind registers the package, and the module packages 
   assert.match(body('codecov.yml'), /packages\/module-loyalty\/src\/template\/\*\*/);
   const scripts = targets.find((target) => target.path === 'package.json')?.scripts as Record<string, string>;
   assert.equal(scripts['build:modules'], 'turbo run build --filter=./packages/*');
-  assert.match(scripts['test'] ?? '', /npm run test:modules$/);
+  assert.match(scripts['test'] ?? '', /^npm run build:modules --silent && cd be && jest --selectProjects unit --coverage$/, 'the unit run finds the packages built, and jest keeps the arguments npm test passes');
+  assert.match(scripts['build:be'] ?? '', /^npm run build:modules --silent && cd be && tsc /);
+  assert.equal(scripts['test:modules'], 'turbo run test --filter=./packages/module-*');
+  assert.match(body('.github/workflows/ci.yml'), /- name: module packages\n\s+run: npm run test:modules\n/);
   assert.match(scripts['typecheck'] ?? '', /^npm run build:modules --silent && /);
 });

@@ -1,4 +1,4 @@
-    "build:be": "cd be && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:be": "{{modulesFirst}}cd be && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "build:fe": "{{buildFe}}",
     "codegen": "node scripts/codegen.mjs",
     "codegen:graphql": "node scripts/codegen.mjs --graphql",
