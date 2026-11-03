@@ -208,7 +208,7 @@ acceptance gate. They are run by the owner or a `deliver` worker; deploying need
 role, dev-only custody to generate, setup and seed commands, native processes, readiness and verification probes). `prepare`, `up` and `down` are dry
 runs until `--execute`; `doctor`, `status`, `logs` and `verify` are read-only. **`up` is the one command**: it checks the host table, opens the dev
 custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor (a lite app's dev compose runs its database and Mailpit, the `mail` sink the sign-in mails reach on loopback, its web UI an origin) and waits for their health, gives the
-environment its own database role and the app role its own password, migrates with a receipt, runs the declared seed once (its data is the seed levels, PROJECT-STACKS-12), starts the native
+environment its own database role and the app role its own password, migrates with a receipt, applies the seed levels with their receipts (PROJECT-STACKS-12), runs the declared seed commands once, starts the native
 processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
 the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
 and stops the compose project, never a volume, image or another project. A vps environment keeps the Swarm verbs below; `up`, `down`, `doctor` and
@@ -390,15 +390,20 @@ of those folders, one entry each `{ id, kind, path, target, mode, after?, schema
 - `kind: sql`: idempotent DML (`insert ... on conflict`, an upsert) on the database `target` names; never a statement that changes the schema
   or its grants, which is a migration's (BE-PERSISTENCE-1).
 - `kind: data`: a JSON or YAML document, or a folder of them, that the app command `target` (an argv list) loads; it validates against the
-  JSON schema the app declares at `schema` (app-root relative). The app owns the meaning, the harness the order and the validation.
+  JSON schema the app declares at `schema` (app-root relative). The app owns the meaning, the harness the order, the receipt and the validation.
+- `kind: test-account`: the one data entry of an environment's level that declares a test account (its owner login, a test workspace and
+  the product's own connector test credentials, never a customer's), with the `reason` it exists; the shared level declares none.
 - `kind: files`: assets for the bucket `target` names, each keyed by its path.
 - `mode`: `once` applies an entry a single time, `upsert` again whenever its content hash changes; `after` names the entries of the level, or
   of the shared level, it follows. The apply order is the migrations, then the shared level, then the environment's, each in manifest order
   with `after` respected.
 
-A seed never holds custody: a secret it needs is a sealed member of `.starcistacks/<env>/secrets/` (PROJECT-STACKS-5). Its identities are
-synthetic (`HFS_SEED_PII`), and a level a production environment applies (the shared level, and the level of every environment that is
-not docker-compose) holds no test data: no example.test identity, no uat- or test- prefix.
+A seed never holds a secret. A document names one as a reference, `{ "secret": "seeds-<name>" }`, to a member sealed for that environment
+at `.starcistacks/<env>/secrets/seeds-<name>.enc.yaml` with the environment's own recipients (PROJECT-STACKS-5); the shared level's
+references need the member in every environment. The test account's login password is such a member too: the seed sets it, nobody types
+it. Identities are synthetic (`HFS_SEED_PII`), and a level a production environment applies (the shared level, and the level of every
+environment that is not docker-compose) holds no test data (no example.test identity, no uat- or test- prefix) but in its one
+test-account entry.
 
 A new app is scaffolded with the three levels, each an empty manifest and a `.gitkeep` in each kind folder. `starci app codemod
 seeds-layout` moves an older app's `db/seed.sql` to the shared level's `sql/reference.sql` and each loose SQL file of `<env>/seeds/` into
@@ -408,14 +413,23 @@ old seed home for a person. `starci app db baseline --squash --seed-tables` writ
 Why: one structure per level puts seed data beside the environment that applies it, keeps it apart from schema and custody, and lets the
 harness order, validate and judge every seed while the app keeps what the data means.
 
-Open gap: the harness's own apply, the content hash of each entry recorded in the app database (`starci_seed_receipts`) so a `once` entry
-never runs twice and an `upsert` entry runs when its hash changes, run by `starci app stack up` after the migrations and by the production
-deploy after migrate with a dry run that lists what would apply, is not built yet; `stack up` runs the declared `local.seed` commands once
-(PROJECT-STACKS-6), and the scaffold's `cli seed run` applies the `sql/` folders of the shared level and then the environment's.
+**The seed step** (`packages/hfs/stack/seeds.mts`) applies both levels on the database the migrations ran on, under their role. It keeps
+its receipts in that database, `public.starci_seed_receipts` (scope, id, content hash, the referenced members with a digest of their
+values, environment, time), a table the step creates and no app migration owns: a `once` entry with a receipt never runs again, an
+`upsert` entry runs again when its content or a referenced secret changed, and a rerun with nothing changed applies nothing. A `sql`
+entry runs in one transaction with its receipt. A `data` or `test-account` entry validates its documents, opens each secret reference in
+memory with the environment's age identity and hands the resolved documents to its app command on stdin; no opened value reaches a file,
+argv, a log or a receipt, and a failing command's output is withheld. A `files` entry is validated only: the harness has no
+object-storage client, so the upload stays the app's. `starci app stack up` runs the step after the migrations; a deploy runs it after
+convergence (so a data command is the new release's), its app commands in a task of the jobs service, and its dry run names every
+entry, each applied unless its receipt holds. The scaffold's `cli seed run` still applies the `sql/` folders of the shared level and then
+the environment's for a manual run.
 
-Enforced by: R375 (`seeds-shape`: `HFS_SEEDS_SHAPE`, `HFS_SEED_MANIFEST`, `HFS_SEED_DDL`, `HFS_SEED_DATA_SCHEMA`, `HFS_SEED_TEST_DATA`), R06
+Enforced by: R375 (`seeds-shape`: `HFS_SEEDS_SHAPE`, `HFS_SEED_MANIFEST`, `HFS_SEED_DDL`, `HFS_SEED_DATA_SCHEMA`, `HFS_SEED_TEST_DATA`,
+`HFS_SEED_SECRET_REF`), R06
 (a plaintext secret on any tracked line), R259 (`HFS_SEED_PII` over the SQL and the JSON and YAML data), R332 (no SQL under `db/` but
-migrations, the archive and the bootstrap); the scaffold and the codemod by `hfs-seeds-shape.spec.mts` and `seeds-layout-codemod.spec.mts`.
+migrations, the archive and the bootstrap); the scaffold and the codemod by `hfs-seeds-shape.spec.mts` and `seeds-layout-codemod.spec.mts`,
+the seed step by `stack-seeds.spec.mts` and `stack-local.spec.mts`.
 
 ## Read with
 

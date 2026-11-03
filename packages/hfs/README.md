@@ -33,9 +33,9 @@ starci app ci secret set <NAME> [--from-custody] [--env <env>] [--repo <owner/na
 `.starcistacks/application-stacks.yaml` (PROJECT-STACKS-6 of `contexts/project/stacks.md`): the host table (`doctor` prints the owner-run install
 step per OS for each missing prerequisite and installs nothing), the dev custody (`secret init --env dev --execute` creates the dev-only values once),
 the setup commands, the compose services and their health, the environment's own database role, the migrations with a receipt (`db migrate` runs its
-client tools in the database container named by `STARCI_DB_CONTAINER`, so the host needs no PostgreSQL client), the seed once (its data the seed
-levels of `.starcistacks/`, PROJECT-STACKS-12; `app codemod seeds-layout` moves an older app's seed data into them), the native app processes,
-readiness and the origins. `prepare`, `up` and `down` are dry runs until `--execute`; `down` never removes a volume. State (process ids,
+client tools in the database container named by `STARCI_DB_CONTAINER`, so the host needs no PostgreSQL client), the seed levels of `.starcistacks/`
+with their receipts in the database (`stack/seeds.mts`, PROJECT-STACKS-12; `app codemod seeds-layout` moves an older app's seed data into them),
+the declared seed commands once, the native app processes, readiness and the origins. `prepare`, `up` and `down` are dry runs until `--execute`; `down` never removes a volume. State (process ids,
 logs, receipts) is under the state base (`STARCI_LOCAL_ROOT`), the opened custody under the private secrets directory outside the checkout.
 
 `starci app add` writes every front-end unit, in either edition, already in the shape of the harness's `contexts/code/fe`
