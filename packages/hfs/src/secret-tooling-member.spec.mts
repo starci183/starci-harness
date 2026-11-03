@@ -54,14 +54,14 @@ test('1. a tooling member with no binding gets the credential and the ci secret 
   assert.deepEqual([document.services.sonar.credentials.length, credential?.id, credential?.project, credential?.key, credential?.custody.path], [1, 'analysis', 'demo', 'SONAR_TOKEN', '.starcistacks/dev/secrets/sonar.enc.yaml']);
   assert.deepEqual(document.services.sonar.ci.secrets, [{ name: 'SONAR_TOKEN', credential: 'analysis' }]);
   const again = declareKeys(root, 'dev', 'sonar', ['SONAR_TOKEN']);
-  assert.deepEqual([again.declared, again.tooling?.bound, again.tooling?.remedy], [[], [], ''], 'a second set changes nothing');
+  assert.deepEqual(again, { declared: [], byHand: [] }, 'a second set changes nothing');
 });
 
 test('2. a member whose binding exists is left alone, runtime entry included', (t) => {
   const { root, read } = fixture(t, BOUND);
   const before = fs.readFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), 'utf8');
   const result = declareKeys(root, 'dev', 'sonar', ['SONAR_TOKEN']);
-  assert.deepEqual([result.declared, result.byHand, result.tooling?.bound], [[], [], []]);
+  assert.deepEqual(result, { declared: [], byHand: [] });
   assert.equal(fs.readFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), 'utf8'), before);
   assert.deepEqual(read().environments.dev.secrets, []);
 });

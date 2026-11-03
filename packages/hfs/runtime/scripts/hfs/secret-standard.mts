@@ -344,7 +344,10 @@ export function declareKeys(
   const spec = document.environments?.[environment];
   if (!spec) return { declared: [], byHand: [] };
   const tooling = toolingServiceOf(document, member);
-  if (tooling !== null) return { declared: [], byHand: [], tooling: bindTooling(file, text, document, repositoryName(repoRoot, { env: identityQueryEnvironment(process.env, serviceCredentialNames(document)) }), environment, member, keys, tooling) };
+  if (tooling !== null) {
+    const outcome = bindTooling(file, text, document, repositoryName(repoRoot, { env: identityQueryEnvironment(process.env, serviceCredentialNames(document)) }), environment, member, keys, tooling);
+    return outcome.bound.length || outcome.remedy ? { declared: [], byHand: [], tooling: outcome } : { declared: [], byHand: [] };
+  }
   const serviceKeys = declaredServiceKeys(document, repositoryName(repoRoot, { env: identityQueryEnvironment(process.env, serviceCredentialNames(document)) }), environment, member);
   const missing = keys.filter((key) => !declaredKeys(spec, member, keys).includes(key) && !serviceKeys.includes(key));
   if (!missing.length) return { declared: [], byHand: [] };

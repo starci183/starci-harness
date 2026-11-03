@@ -14,7 +14,7 @@ const MAILER = "src/modules/integrations/mailer/mailer.client.ts"
 const OTHER = "src/modules/integrations/other/other.client.ts"
 const DEPENDENCIES = {
     "@sendgrid/mail": "1.0.0", stripe: "1.0.0", googleapis: "1.0.0", "@new-vendor/io-sdk": "1.0.0",
-    "class-validator": "1.0.0", rxjs: "1.0.0", "@nestjs/common": "1.0.0", "@nestjs/core": "1.0.0", typeorm: "1.0.0",
+    "class-validator": "1.0.0", rxjs: "1.0.0", "@nestjs/common": "1.0.0", "@nestjs/core": "1.0.0", "@starci/nest-kit": "1.0.0", typeorm: "1.0.0",
     axios: "1.0.0", bullmq: "1.0.0", dotenv: "1.0.0", "@aws-sdk/client-s3": "1.0.0", jose: "1.0.0",
 }
 
@@ -45,6 +45,7 @@ for (const edition of ["lite", "full"] as const) {
             assert.doesNotThrow(() => { fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
                 valid: [
                     { filename: fixture.at(DOMAIN), code: 'import { IsString } from "class-validator"; import { map } from "rxjs/operators"; export { IsString, map }' },
+                    { filename: fixture.at(DOMAIN), code: 'import { defineConfigurableModule } from "@starci/nest-kit"; export { defineConfigurableModule }' },
                     { filename: fixture.at(DOMAIN), code: 'import { Injectable } from "@nestjs/common"; import type { EntityManager } from "typeorm"; export { Injectable }; export type { EntityManager }' },
                     { filename: fixture.at(DOMAIN), code: 'import type { Mail } from "@modules/integrations/mailer"; import { helper } from "./order.policy"; export { helper }; export type { Mail }' },
                     { filename: fixture.at(DOMAIN), code: 'import { randomUUID } from "node:crypto"; export { randomUUID }' },

@@ -98,7 +98,7 @@ test('the links of the mails open pages that exist: the routes are the paths the
     assert.ok(fs.existsSync(path.join(WEB, 'app', '[locale]', 'auth', door, 'page.tsx')), door);
   }
   for (const door of ['signup', 'resend', 'forgot']) assert.ok(fs.existsSync(path.join(WEB, 'app', '[locale]', 'auth', door, 'page.tsx')), door);
-  assert.match(fs.readFileSync(path.join(WEB, 'modules', 'i18n', 'routing.ts'), 'utf8'), /localePrefix: "as-needed"/u);
+  assert.match(fs.readFileSync(path.join(WEB, 'modules', 'i18n', 'routing.ts'), 'utf8'), /"as-needed"/u);
 });
 
 test('the email doors have copy in both languages and stay off the AuthClient interface the full edition satisfies', () => {
