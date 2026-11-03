@@ -35,8 +35,9 @@ export type GraphSnapshotParts = Readonly<Record<string, GraphSnapshot>>;
 export interface LinterRun { results?: Dynamic[]; error?: string; graph?: GraphSnapshotParts }
 /**
  * What a linter run is asked for. `list` is the files an ESLint run lints (cwd-relative, posix) when they are named one by one: they go to the child
- * through a file, never the command line, and `args` then holds the options alone. `files` is the number of source files the run judges, which the
- * heavy-command budget of the ESLint kind scales with (a list names its own count).
+ * through a file, never the command line, and `args` then holds the options alone. `files` is the number of source files the child's work is made of,
+ * which the heavy-command budget of the ESLint kind scales with: the typed program and the project graph of a side are built whole for a named list
+ * too, so a list run of a side whose scope is known names the side's count; without `files` a list names its own count.
  */
 export interface LinterSpec { cwd: string; pkg: string; bin: string; args: string[]; bound?: string | null; list?: readonly string[] | undefined; files?: number | undefined; graph?: readonly GraphCanon[] | undefined }
 /** An installed canon whose graph snapshot the ESLint child hands out: its package name and the entry file the child imports. */
@@ -105,7 +106,7 @@ export async function runLinter({ cwd, pkg, bin, args, bound = null, list, files
     fs.writeFileSync(job, JSON.stringify({ files: list ?? ['.'], fix: args.includes('--fix'), ...(snapshotFile === null || graph === undefined ? {} : { graph: { out: snapshotFile, canons: graph } }) }));
     childArgs = [LIST_RUNNER, job];
   }
-  const count = list?.length ?? files;
+  const count = files ?? list?.length;
   let run: HeavyNodeResult;
   let handed: GraphSnapshotParts | undefined;
   try {
@@ -345,8 +346,10 @@ async function launchEslint({ app, repoRoot, opts, changed, existing, run = runL
     // the child that builds the canon's project graph for its rules hands the snapshot out when the caller keeps the graph findings (the cache); the packages are no side folder and have no graph
     const graph = handOutGraph && !packages ? graphCanonsOf(repoRoot, cwd, side) : undefined;
     // The files of a diff go to ONE child through a file (a diff of hundreds of long paths outgrows the Windows command line, and each extra
-    // child would build the whole TypeScript program again); the whole side is a single directory argument.
-    const launch = Promise.resolve().then(() => run(changed ? { cwd, pkg: 'eslint', bin: 'eslint', args: head, list: sources, bound: repoRoot, ...(graph === undefined ? {} : { graph }) } : { cwd, pkg: 'eslint', bin: 'eslint', args: [...head, packages ? PACKAGES : '.'], files: expected.length, bound: repoRoot, ...(graph === undefined ? {} : { graph }) }));
+    // child would build the whole TypeScript program again); the whole side is a single directory argument. Either child builds the typed program
+    // and the project graph of the whole side, so its liveness budget scales with the side's scope when the caller knows it, never with the diff alone.
+    const programFiles = known?.length ?? expected.length;
+    const launch = Promise.resolve().then(() => run(changed ? { cwd, pkg: 'eslint', bin: 'eslint', args: head, list: sources, files: programFiles, bound: repoRoot, ...(graph === undefined ? {} : { graph }) } : { cwd, pkg: 'eslint', bin: 'eslint', args: [...head, packages ? PACKAGES : '.'], files: programFiles, bound: repoRoot, ...(graph === undefined ? {} : { graph }) }));
     launches.push({ side, cwd, expected, run: launch.catch(spawnFailure) });
   }
   return launches;

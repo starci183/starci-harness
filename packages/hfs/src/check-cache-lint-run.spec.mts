@@ -122,6 +122,17 @@ test('a changed file is the only one sent to the linter, through the same launch
   assert.deepEqual(second.eslint.findings.map((finding) => finding.path), ['be/src/backend.ts']);
 });
 
+test('a diff names the whole side to the liveness budget of its child, whose typed program and project graph are those of the side', async (context) => {
+  const app = fixture(context);
+  for (const name of ['other', 'third']) fs.writeFileSync(path.join(app.root, `be/src/${name}.ts`), 'export const value = 1;\n');
+  const first = await lint(app, 'be', {}, []);
+  fs.writeFileSync(path.join(app.root, 'be/src/backend.ts'), 'export const value = 3;\n');
+  const asked: { list: readonly string[] | undefined; files: number | undefined }[] = [];
+  const answering = linter([]);
+  await lint(app, 'be', recordsOf(first.session), [], 'diff', async (spec) => { asked.push({ list: spec.list, files: spec.files }); return answering(spec); });
+  assert.deepEqual(asked, [{ list: ['src/backend.ts'], files: 3 }]);
+});
+
 test('a side limits the lint to that side and its records', async (context) => {
   const app = fixture(context);
   const calls: Call[] = [];
