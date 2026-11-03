@@ -220,7 +220,7 @@ test("FE-NEXT-9: a route is built by modules/routes, not written at the call", (
   }))
 })
 
-test("FE-NEXT-10: the next-intl stack is written once per repository", () => {
+test("FE-I18N-1: the next-intl stack is built by @starci/next-i18n, never by a product source", () => {
   const multi = slotTester()
   const single = slotTester({ declaration: { ...FE_DECLARATION, apps: [{ name: "web", kind: "next" }] } })
   const ROUTING = 'import { defineRouting } from "next-intl/routing"\nexport const routing = defineRouting({ locales: ["vi"], defaultLocale: "vi", localePrefix: "as-needed" })'
@@ -230,64 +230,54 @@ test("FE-NEXT-10: the next-intl stack is written once per repository", () => {
   const PACKAGE = at("packages/shop-i18n/src/app.ts")
   const APP_INDEX = at("apps/web/src/modules/i18n/index.ts")
   const APP_REQUEST = at("apps/web/src/modules/i18n/request.ts")
-  assert.doesNotThrow(() => multi.run("i18n-stack-in-one-module", i18nStackInOneModule, {
-    valid: [
-      // the package factory is where the stack is written, all four layers
-      { filename: PACKAGE, code: ROUTING },
-      { filename: PACKAGE, code: NAVIGATION },
-      { filename: PACKAGE, code: REQUEST },
-      { filename: PACKAGE, code: MIDDLEWARE },
-      { filename: at("packages/shop-i18n/src/request.ts"), code: REQUEST },
-      // an app calls the package factory, not next-intl's
-      { filename: APP_INDEX, code: 'import { createAppI18n } from "@shop/i18n"\nexport const i18n = createAppI18n({ locales: ["vi"] })' },
-      { filename: APP_REQUEST, code: 'import { i18n } from "./index"\nexport default i18n.requestConfig' },
-      // using the stack's products is not building one
-      { filename: at("apps/web/src/features/pages/home/component.tsx"), code: 'import { useTranslations } from "next-intl"\nimport { getTranslations } from "next-intl/server"\nconst t = await getTranslations("home")' },
-      // a function that only has the name, not bound to next-intl
-      { filename: APP_REQUEST, code: 'import { getRequestConfig } from "./config"\nexport default getRequestConfig(async () => ({}))' },
-      { filename: APP_REQUEST, code: "const getRequestConfig = (f) => f\nexport default getRequestConfig(() => 1)" },
-      { filename: APP_REQUEST, code: "export const x = api.createNavigation(routing)" },
-      // the same name from the same module, but not called
-      { filename: APP_INDEX, code: 'import type { defineRouting } from "next-intl/routing"\nexport type Define = typeof defineRouting' },
-    ],
-    invalid: [
-      // a multi-app repository: no app builds a layer, whichever layer and however it is imported
-      { filename: APP_REQUEST, code: REQUEST, errors: [{ messageId: "stack" }] },
-      { filename: at("apps/admin/src/modules/i18n/request.ts"), code: REQUEST, errors: [{ messageId: "stack" }] },
-      { filename: at("apps/web/src/modules/i18n/routing.ts"), code: ROUTING, errors: [{ messageId: "stack" }] },
-      { filename: at("apps/web/src/modules/i18n/navigation.ts"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
-      { filename: at("apps/web/src/proxy.ts"), code: MIDDLEWARE, errors: [{ messageId: "stack" }] },
-      { filename: APP_REQUEST, code: 'import { getRequestConfig as request } from "next-intl/server"\nexport default request(async () => ({}))', errors: [{ messageId: "stack" }] },
-      { filename: APP_REQUEST, code: 'import * as server from "next-intl/server"\nexport default server.getRequestConfig(async () => ({}))', errors: [{ messageId: "stack" }] },
-      { filename: APP_REQUEST, code: 'import mw from "next-intl/middleware"\nexport const proxy = mw(routing)', errors: [{ messageId: "stack" }] },
-      // outside `modules/i18n` altogether, and in a package that is not the i18n package
-      { filename: at("apps/web/src/hooks/lesson/useLesson.ts"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
-      { filename: at("packages/shop-ui/src/leaves/Menu/component.tsx"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
-      { filename: at("packages/shop-api/src/client.ts"), code: REQUEST, errors: [{ messageId: "stack" }] },
-    ],
-  }))
-  assert.doesNotThrow(() => single.run("i18n-stack-in-one-module", i18nStackInOneModule, {
-    valid: [
-      // a repository with exactly one app writes the stack in that app's modules/i18n
-      { filename: APP_REQUEST, code: REQUEST },
-      { filename: at("apps/web/src/modules/i18n/routing.ts"), code: ROUTING },
-      { filename: at("apps/web/src/modules/routes/index.ts"), code: NAVIGATION },
-      { filename: PACKAGE, code: REQUEST },
-      // the proxy mounts the locale middleware built from the one routing (apps/web/src/proxy.ts)
-      { filename: at("apps/web/src/proxy.ts"), code: MIDDLEWARE },
-    ],
-    invalid: [
-      // Navigation belongs to routes; the proxy builds only middleware, never routing or navigation.
-      { filename: at("apps/web/src/modules/i18n/navigation.ts"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
-      { filename: at("apps/web/src/hooks/lesson/useLesson.ts"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
-      { filename: at("apps/web/src/features/pages/home/component.tsx"), code: REQUEST, errors: [{ messageId: "stack" }] },
-      { filename: at("apps/web/src/proxy.ts"), code: ROUTING, errors: [{ messageId: "stack" }] },
-    ],
-  }))
+  const FACTORIES = {
+    config: 'import { defineI18n } from "@starci/next-i18n"\nexport const i18n = defineI18n({ locales: ["vi", "en"], defaultLocale: "vi", timeZone: "UTC" })',
+    request: 'import { createRequestConfig } from "@starci/next-i18n/request"\nexport default createRequestConfig(i18n, { app: "web", loadMessages })',
+    navigation: 'import { createI18nNavigation } from "@starci/next-i18n/navigation"\nexport const { Link } = createI18nNavigation(i18n)',
+    proxy: 'import { createProxy } from "@starci/next-i18n/proxy"\nexport const proxy = createProxy(i18n)',
+  }
+  for (const tester of [multi, single]) {
+    assert.doesNotThrow(() => tester.run("i18n-stack-in-one-module", i18nStackInOneModule, {
+      valid: [
+        // the app and the i18n workspace package call the factories of the package
+        { filename: APP_INDEX, code: FACTORIES.config },
+        { filename: APP_REQUEST, code: FACTORIES.request },
+        { filename: at("apps/web/src/proxy.ts"), code: FACTORIES.proxy },
+        { filename: at("apps/web/src/modules/routes/index.ts"), code: FACTORIES.navigation },
+        { filename: PACKAGE, code: FACTORIES.config },
+        // using the stack's products is not building one
+        { filename: at("apps/web/src/features/pages/home/component.tsx"), code: 'import { useTranslations } from "next-intl"\nimport { getTranslations } from "next-intl/server"\nconst t = await getTranslations("home")' },
+        // a function that only has the name, not bound to next-intl
+        { filename: APP_REQUEST, code: 'import { getRequestConfig } from "./config"\nexport default getRequestConfig(async () => ({}))' },
+        { filename: APP_REQUEST, code: "const getRequestConfig = (f) => f\nexport default getRequestConfig(() => 1)" },
+        { filename: APP_REQUEST, code: "export const x = api.createNavigation(routing)" },
+        // the same name from the same module, but not called
+        { filename: APP_INDEX, code: 'import type { defineRouting } from "next-intl/routing"\nexport type Define = typeof defineRouting' },
+      ],
+      invalid: [
+        // no layer is built by a product source: whichever layer, wherever it sits and however it is imported
+        { filename: APP_REQUEST, code: REQUEST, errors: [{ messageId: "stack" }] },
+        { filename: at("apps/admin/src/modules/i18n/request.ts"), code: REQUEST, errors: [{ messageId: "stack" }] },
+        { filename: at("apps/web/src/modules/i18n/routing.ts"), code: ROUTING, errors: [{ messageId: "stack" }] },
+        { filename: at("apps/web/src/modules/routes/index.ts"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
+        { filename: at("apps/web/src/proxy.ts"), code: MIDDLEWARE, errors: [{ messageId: "stack" }] },
+        { filename: PACKAGE, code: ROUTING, errors: [{ messageId: "stack" }] },
+        { filename: PACKAGE, code: REQUEST, errors: [{ messageId: "stack" }] },
+        { filename: PACKAGE, code: NAVIGATION, errors: [{ messageId: "stack" }] },
+        { filename: PACKAGE, code: MIDDLEWARE, errors: [{ messageId: "stack" }] },
+        { filename: APP_REQUEST, code: 'import { getRequestConfig as request } from "next-intl/server"\nexport default request(async () => ({}))', errors: [{ messageId: "stack" }] },
+        { filename: APP_REQUEST, code: 'import * as server from "next-intl/server"\nexport default server.getRequestConfig(async () => ({}))', errors: [{ messageId: "stack" }] },
+        { filename: APP_REQUEST, code: 'import mw from "next-intl/middleware"\nexport const proxy = mw(routing)', errors: [{ messageId: "stack" }] },
+        { filename: at("apps/web/src/hooks/lesson/useLesson.ts"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
+        { filename: at("packages/shop-ui/src/leaves/Menu/component.tsx"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
+        { filename: at("packages/shop-api/src/client.ts"), code: REQUEST, errors: [{ messageId: "stack" }] },
+      ],
+    }))
+  }
 })
 
 for (const edition of ["lite", "full"] as const) {
-  test(`R59 ${edition} separates navigation ownership from the middleware-safe routing entry`, () => {
+  test(`R59 ${edition} builds the stack with @starci/next-i18n and keeps the navigation out of the proxy`, () => {
     const one = fixtureHfs({ ...FE_DECLARATION, apps: [{ name: "web", kind: "next" }] }, { lite: edition === "lite" })
     const many = fixtureHfs(FE_DECLARATION, { lite: edition === "lite" })
     const entry = (file: string, code: string, hfs: HfsView = one) => ({ filename: at(file), code, settings: { starci: { hfs } } })
@@ -298,19 +288,20 @@ for (const edition of ["lite", "full"] as const) {
     const navigation = 'import { createNavigation as navigate } from "next-intl/navigation"; export const nav = navigate(routing)'
     assert.doesNotThrow(() => tester.run("i18n-stack-in-one-module", i18nStackInOneModule, {
       valid: [
-        entry(routes, navigation),
-        entry(routes, 'import * as intl from "next-intl/navigation"; export const nav = intl.createNavigation(routing)'),
-        entry(i18n, 'import { defineRouting } from "next-intl/routing"; export const routing = defineRouting({ locales: ["vi"], defaultLocale: "vi" })'),
-        entry(proxy, 'import createMiddleware from "next-intl/middleware"; import { routing } from "@/modules/i18n"; export const proxy = createMiddleware(routing)'),
+        entry(routes, 'import { createI18nNavigation } from "@starci/next-i18n/navigation"; export const nav = createI18nNavigation(i18n)'),
+        entry(i18n, 'import { defineI18n } from "@starci/next-i18n"; export const i18n = defineI18n({ locales: ["vi"], defaultLocale: "vi", timeZone: "UTC" })'),
+        entry(proxy, 'import { createProxy } from "@starci/next-i18n/proxy"; import { i18n } from "@/modules/i18n"; export const proxy = createProxy(i18n)'),
         entry(proxy, 'export { proxy } from "@shop/i18n/proxy"', many),
         entry(proxy, 'import type { Navigation } from "@/modules/routes"; export type { Navigation }'),
-        entry("packages/shop-i18n/src/navigation.ts", navigation, many),
       ],
       invalid: [
         rejected(i18n, navigation, "stack"),
+        rejected(routes, navigation, "stack"),
         rejected(routes, navigation, "stack", many),
+        rejected(routes, 'import * as intl from "next-intl/navigation"; export const nav = intl.createNavigation(routing)', "stack"),
         rejected(routes, 'import { defineRouting } from "next-intl/routing"; export const routing = defineRouting(config)', "stack"),
         rejected(routes, 'import { getRequestConfig } from "next-intl/server"; export default getRequestConfig(load)', "stack"),
+        rejected(proxy, 'import createMiddleware from "next-intl/middleware"; export const proxy = createMiddleware(routing)', "stack"),
         rejected(proxy, 'import { createNavigation } from "next-intl/navigation"', "proxyNavigation"),
         rejected(proxy, 'import { routing } from "@/modules/routes"', "proxyNavigation"),
         rejected(proxy, 'export { useRouter } from "@/modules/routes"', "proxyNavigation"),

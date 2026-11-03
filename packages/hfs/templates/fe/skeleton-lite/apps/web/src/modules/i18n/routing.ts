@@ -1,18 +1,17 @@
+import { defineI18n } from "@starci/next-i18n"
+import type { I18n } from "@starci/next-i18n"
+
 const LOCALES = ["vi", "en"] as const
 
+/** The description of the web app's languages: the locales and the `as-needed` prefix mode that `defineI18n` types. */
+export type WebI18n = I18n<typeof LOCALES, "as-needed">
+
 /** The locale served at the unprefixed path. */
-export const DEFAULT_LOCALE = "vi" as const
+export const DEFAULT_LOCALE: WebI18n["defaultLocale"] = "vi"
 
-/** The fixed product time zone used by the server and hydrated client. */
-export const PRODUCT_TIME_ZONE = "Asia/Ho_Chi_Minh"
-
-/** The one locale-routing table of the web app. */
-export const routing: {
-    readonly locales: typeof LOCALES
-    readonly defaultLocale: typeof DEFAULT_LOCALE
-    readonly localePrefix: "as-needed"
-} = {
-    locales: LOCALES,
-    defaultLocale: DEFAULT_LOCALE,
-    localePrefix: "as-needed" as const,
-}
+/**
+ * The one description of the web app's languages, read by the proxy, the request config and the locale layout: vi default, a prefix
+ * only when the locale is not the default, and a fixed time zone so the server and the hydrated client format the same instant the
+ * same way. The stack that reads it is `@starci/next-i18n`'s (FE-I18N-1).
+ */
+export const i18n: WebI18n = defineI18n({ locales: LOCALES, defaultLocale: DEFAULT_LOCALE, timeZone: "Asia/Ho_Chi_Minh" })

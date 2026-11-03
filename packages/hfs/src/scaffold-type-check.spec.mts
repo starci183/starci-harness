@@ -22,6 +22,7 @@ const LINKED: Readonly<Record<string, string>> = {
   grammar: '../../grammar/dist',
   heroicons: '../../heroicons/dist',
   'next-data': '../../next-data/dist',
+  'next-i18n': '../../next-i18n/dist',
   'event-stream': '../../event-stream/dist',
   'jest-preset': '../../jest-preset/dist',
   'test-world': '../../test-world/dist',

@@ -98,11 +98,11 @@ concerns:
     why: the session issuer's client of the app (lite - one @starci/auth client over the app's own back-end auth doors); identity only, never data.
   - id: i18n
     tier: core
-    packages: [next-intl]
+    packages: [next-intl, '@starci/next-i18n']
     home: [fe.modules.i18n]
     pattern: FE-I18N-1
     forbids: [i18next, react-i18next, next-i18next, react-intl, '@lingui/react']
-    why: one catalog, plural syntax and formatter per locale.
+    why: one catalog, plural syntax and formatter per locale; the routing, the proxy, the navigation, the request config and the locale read of the layout come from @starci/next-i18n, never written in the app.
   - id: ui
     tier: core
     packages: ['@starci/grammar', '@heroui/react', '@heroui/styles', react-aria-components, tailwindcss]

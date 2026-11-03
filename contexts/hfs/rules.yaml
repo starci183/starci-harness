@@ -594,7 +594,7 @@ rules:
       - {kind: eslint-fe, id: no-copy-resolution-below-block}
   - id: R59
     code: FE_I18N_PLACEMENT
-    law: Front-end i18n uses `next-intl` with a `[locale]` segment, its routing and navigation owned by `modules/i18n` and `modules/routes` or a shared i18n package, and the proxy never evaluates navigation runtime.
+    law: Front-end i18n uses `next-intl` with a `[locale]` segment; its stack (routing, proxy, navigation, request config, the layout's locale read) is built by `@starci/next-i18n` over the app's `defineI18n` description, kept in `modules/i18n` or in the shared i18n package, and no product source builds a layer of it; the proxy never evaluates navigation runtime.
     failureCodes:
       - FE_I18N_PLACEMENT
       - FE_I18N_NAVIGATION

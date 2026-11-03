@@ -27,9 +27,13 @@ for (const edition of ['lite', 'full']) {
       invalid: [{ filename: block, code: 'import { t } from "@lingui/core";', errors: [{ messageId: 'stack' }] }],
     });
     const routing = 'import { defineRouting } from "next-intl/routing"; export const routing = defineRouting({ locales: ["vi"], defaultLocale: "vi" });';
+    const described = 'import { defineI18n } from "@starci/next-i18n"; export const i18n = defineI18n({ locales: ["vi"], defaultLocale: "vi", timeZone: "UTC" });';
     tester.run('i18n-stack-in-one-module', i18nStackInOneModule, {
-      valid: [{ filename: at('apps/web/src/modules/i18n/routing.ts'), code: routing }],
-      invalid: [{ filename: at('apps/web/src/hooks/lesson/useLesson.ts'), code: routing, errors: [{ messageId: 'stack' }] }],
+      valid: [{ filename: at('apps/web/src/modules/i18n/routing.ts'), code: described }],
+      invalid: [
+        { filename: at('apps/web/src/hooks/lesson/useLesson.ts'), code: routing, errors: [{ messageId: 'stack' }] },
+        { filename: at('apps/web/src/modules/i18n/routing.ts'), code: routing, errors: [{ messageId: 'stack' }] },
+      ],
     });
     tester.run('navigation-from-intl', navigationFromIntl, {
       valid: [{ filename: block, code: 'import { Link } from "@/modules/routes";' }],

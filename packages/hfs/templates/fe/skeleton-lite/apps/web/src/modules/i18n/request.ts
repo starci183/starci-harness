@@ -1,35 +1,12 @@
-import "server-only"
-import { hasLocale } from "next-intl"
-import type { AbstractIntlMessages } from "next-intl"
-import { getRequestConfig } from "next-intl/server"
-import { headers } from "next/headers"
-import { PRODUCT_TIME_ZONE, routing } from "./routing"
-
-/** The message tree a catalog module exports as its default: the module is read as `unknown` and checked, never trusted as `any`. */
-const isMessages = (value: unknown): value is AbstractIntlMessages => typeof value === "object" && value !== null
-
-const messagesOf = (loaded: unknown): AbstractIntlMessages => {
-    const messages = typeof loaded === "object" && loaded !== null && "default" in loaded ? loaded.default : undefined
-    if (!isMessages(messages)) throw new TypeError("A message catalog module must export its messages as default")
-    return messages
-}
-
-/** The header the next-intl middleware sets on the request with the locale it negotiated. */
-const LOCALE_HEADER = "x-next-intl-locale"
+import { createRequestConfig } from "@starci/next-i18n/request"
+import type { I18nRequestConfig } from "@starci/next-i18n/request"
+import { i18n } from "./routing"
 
 /**
- * The request config next-intl's plugin loads. The locale is the one the middleware negotiated: this module is reachable from the proxy
- * through the navigation, and `next/root-params` can only be imported inside the app directory.
+ * The request config next-intl's plugin loads: the app's own catalogs over the shared stack. The locale is the one the proxy
+ * negotiated (a route the proxy does not negotiate reads the cookie, then the default); `next/root-params` can only be imported
+ * inside the app directory, so no route reader is passed.
  */
-const requestConfig: ReturnType<typeof getRequestConfig> = getRequestConfig(async () => {
-    const requested = (await headers()).get(LOCALE_HEADER)
-    const locale = hasLocale(routing.locales, requested) ? requested : routing.defaultLocale
-    return {
-        locale,
-        timeZone: PRODUCT_TIME_ZONE,
-        messages: messagesOf(await import(`./messages/${locale}.json`)),
-        getMessageFallback: ({ namespace, key }) => `web:${namespace ?? ""}.${key}`,
-    }
-})
+const requestConfig: I18nRequestConfig = createRequestConfig(i18n, { app: "web", loadMessages: (locale) => import(`./messages/${locale}.json`) })
 
 export default requestConfig

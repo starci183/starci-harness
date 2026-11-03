@@ -13,6 +13,7 @@ pins:
   '@starci/nest-kit': {version: 0.1.0, group: starci, side: be, install: registry, why: "the module definition of every back-end module: defineConfigurableModule and defineCapabilityModule, one typed call per <x>.module-definition.ts"}
   '@starci/auth': {version: 0.1.0, group: starci, side: both, install: registry, why: "the lite sign-in: server module, front-end client, contracts and test doubles; the only importer of the identity libraries"}
   '@starci/grammar': {version: 0.21.14, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
+  '@starci/next-i18n': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the next-intl stack of a front end: defineI18n, the locale proxy, the navigation, the request config and the locale read of the [locale] layout; the app keeps its catalogs"}
   '@starci/eslint-canon-be': {version: 3.13.0, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
   '@starci/eslint-canon-fe': {version: 9.11.0, group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
   '@starci/eslint-grammar-core': {version: 0.21.14, group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits (open-grammar D-7); versioned with the grammar"}

@@ -1,81 +1,44 @@
 import "server-only"
-import { hasLocale } from "next-intl"
-import type { AbstractIntlMessages } from "next-intl"
-import { createNavigation } from "next-intl/navigation"
-import { getMessages, getRequestConfig } from "next-intl/server"
-import { notFound } from "next/navigation"
+import { createReadLocaleSegment } from "@starci/next-i18n/layout"
+import type { ReadLocaleSegment } from "@starci/next-i18n/layout"
+import { createI18nNavigation } from "@starci/next-i18n/navigation"
+import type { I18nNavigation } from "@starci/next-i18n/navigation"
+import { createRequestConfig } from "@starci/next-i18n/request"
+import type { I18nRequestConfig } from "@starci/next-i18n/request"
+import type { LoadCatalog } from "@starci/next-i18n"
 import { locale as routeLocale } from "next/root-params"
-import { PRODUCT_TIME_ZONE, routing } from "./routing"
-import type { ProductRouting } from "./routing"
+import { i18n } from "./routing"
+import type { ProductI18n } from "./routing"
 
-/** Loads one app's own catalog for a served locale. */
-type LoadMessages = (locale: string) => Promise<unknown>
+/** The locales the product serves, as the catalog loader of an app receives them. */
+type ProductLocale = ProductI18n["locales"][number]
 
-/** The missing message next-intl asks a fallback for. */
-type MissingMessage = { readonly namespace?: string; readonly key: string }
-
-/** The message tree a catalog module exports as its default: the module is read as `unknown` and checked, never trusted as `any`. */
-const isMessages = (value: unknown): value is AbstractIntlMessages => typeof value === "object" && value !== null
-
-const messagesOf = (loaded: unknown): AbstractIntlMessages => {
-    const messages = typeof loaded === "object" && loaded !== null && "default" in loaded ? loaded.default : undefined
-    if (!isMessages(messages)) throw new TypeError("A message catalog module must export its messages as default")
-    return messages
+/** What one app of the product reads of its next-intl stack. */
+export interface AppI18n {
+    readonly navigation: I18nNavigation<ProductI18n["locales"], ProductI18n["localePrefix"]>
+    readonly requestConfig: I18nRequestConfig
+    readonly readLocaleSegment: ReadLocaleSegment<ProductLocale>
 }
 
 /** `next/root-params` is typed only after Next generates its types, so the reader is checked before it is called. */
 const isLocaleReader = (value: unknown): value is () => Promise<unknown> => typeof value === "function"
 
+/**
+ * The `[locale]` route param, read through `next/root-params` (`experimental.rootParams` in the app's next.config.ts), never the
+ * deprecated `requestLocale`. `next/root-params` is importable only where Next bundles it, which is why this workspace package, not
+ * `@starci/next-i18n`, reads it.
+ */
 const readRouteLocale = async (): Promise<unknown> => (isLocaleReader(routeLocale) ? routeLocale() : undefined)
 
-/** The language the address states, its catalog and the product time zone. */
-interface LocaleSegment {
-    readonly locale: string
-    readonly messages: AbstractIntlMessages
-    readonly timeZone: string
-}
-
-/** The navigation helpers of the product's routing (links, redirects, the locale-aware router). */
-type ProductNavigation = ReturnType<typeof createNavigation<ProductRouting["locales"], "as-needed">>
-
-/** What one app of the product reads of its next-intl stack. */
-export interface AppI18n {
-    readonly navigation: ProductNavigation
-    readonly requestConfig: ReturnType<typeof getRequestConfig>
-    readonly readLocaleSegment: (params: Promise<{ readonly locale: string }>) => Promise<LocaleSegment>
-}
-
 /**
- * The next-intl stack of one app of the product, written once here and called once by each app's `modules/i18n` (R59): the
- * product's one routing with its locale-aware navigation, the request config next-intl's plugin loads (the app's
- * `modules/i18n/request.ts` default-exports it) and what the app's `[locale]` layout resolves before it mounts the shell. `app` names
- * the app in the text of a message its catalog lacks (`<app>:<namespace>.<key>`); `loadMessages` loads its own catalogs. A server
- * module: a client component reads the default locale from `./routing`.
+ * What one app of the product calls from its `modules/i18n` (R59): the locale-aware navigation, the request config next-intl's
+ * plugin loads (the app's `modules/i18n/request.ts` default-exports it) and what the app's `[locale]` layout resolves before it
+ * mounts the shell, all built by `@starci/next-i18n` over the product's one description of its languages. `app` names the app in the
+ * text of a message its catalog lacks (`<app>:<namespace>.<key>`); `loadMessages` loads its own catalogs. A server module: a client
+ * component reads the default locale from `./routing`.
  */
-export const createAppI18n = (app: string, loadMessages: LoadMessages): AppI18n => ({
-    navigation: createNavigation<ProductRouting["locales"], "as-needed">(routing),
-    /**
-     * The locale is the `[locale]` route param read through `next/root-params` (`experimental.rootParams` in the app's next.config.ts,
-     * FE-I18N-1), never the deprecated `requestLocale`. An unrecognised locale resolves to the default before the loader runs, so a
-     * missing catalog file is never imported.
-     */
-    requestConfig: getRequestConfig(async () => {
-        const requested = await readRouteLocale()
-        const locale = hasLocale(routing.locales, requested) ? requested : routing.defaultLocale
-        return {
-            locale,
-            timeZone: PRODUCT_TIME_ZONE,
-            messages: messagesOf(await loadMessages(locale)),
-            getMessageFallback: ({ namespace, key }: MissingMessage) => `${app}:${namespace ?? ""}.${key}`,
-        }
-    }),
-    /**
-     * The language the address states, its catalog and the product time zone. An unknown segment is a route that does not exist,
-     * not a request to fall back silently.
-     */
-    readLocaleSegment: async (params: Promise<{ readonly locale: string }>) => {
-        const { locale } = await params
-        if (!hasLocale(routing.locales, locale)) notFound()
-        return { locale, messages: await getMessages(), timeZone: PRODUCT_TIME_ZONE }
-    },
+export const createAppI18n = (app: string, loadMessages: LoadCatalog<ProductLocale>): AppI18n => ({
+    navigation: createI18nNavigation(i18n),
+    requestConfig: createRequestConfig(i18n, { app, loadMessages, readRouteLocale }),
+    readLocaleSegment: createReadLocaleSegment(i18n),
 })

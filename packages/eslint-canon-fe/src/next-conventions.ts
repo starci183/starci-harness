@@ -404,13 +404,13 @@ const stackFactoryOf = (context: AnyContext, callee: TSESTree.Expression): Stack
 }
 
 /**
- * The next-intl stack is written once per repository.
+ * The next-intl stack is written once, in `@starci/next-i18n`.
  *
  * `defineRouting` (`next-intl/routing`), `createNavigation` (`next-intl/navigation`), `getRequestConfig` (`next-intl/server`) and
  * `createMiddleware` (`next-intl/middleware`), resolved by the import that binds the called name (a renamed import or a namespace
- * member counts), have one owner. A shared i18n package owns its stack. In a one-app repository, routing and request
- * config belong to modules/i18n while createNavigation belongs to modules/routes. The proxy imports routing without
- * evaluating navigation: next-intl's navigation module selects React runtime exports unavailable in the proxy.
+ * member counts), are called by that package and by no product source: an app describes its languages with `defineI18n` and builds
+ * the proxy, the navigation, the request config and the layout's locale read with the package's factories. The proxy imports the
+ * routing without evaluating navigation: next-intl's navigation module selects React runtime exports unavailable in the proxy.
  *
  * It does not replace `no-second-i18n-stack`: that rule refuses another i18n LIBRARY at its import, this one refuses a second copy of
  * next-intl's own stack. Different evidence, different remedy.
@@ -418,22 +418,17 @@ const stackFactoryOf = (context: AnyContext, callee: TSESTree.Expression): Stack
 export const i18nStackInOneModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "A shared i18n package owns the stack; one app keeps routing/request config in i18n and navigation in routes, with a routing-only proxy entry." },
+    docs: { description: "The next-intl stack is built by @starci/next-i18n; an app calls its factories and never next-intl's own, and its proxy never evaluates the navigation." },
     schema: [],
     messages: {
       stack:
-        "`{{name}}` builds the next-intl stack outside its owner. Keep {{where}} and import the owned result through its public entry.",
+        "`{{name}}` builds the next-intl stack in the app. Describe the languages with `defineI18n` and build the proxy, the navigation, the request config and the locale read of the layout with `createProxy`, `createI18nNavigation`, `createRequestConfig` and `createReadLocaleSegment` of `@starci/next-i18n` (FE-I18N-1).",
       proxyNavigation:
-        "The proxy imports navigation runtime through {{source}}. Import routing from the i18n public entry, or use the shared package's routing-only proxy export; the proxy must not evaluate the routes/navigation barrel.",
+        "The proxy imports navigation runtime through {{source}}. Build the proxy with `createProxy` of `@starci/next-i18n/proxy` over the i18n description; the proxy must not evaluate the routes/navigation barrel.",
     },
   },
   create(context) {
-    const hfs = hfsOf(context)
-    const slot = slotOfFile(context)
-    const single = hfs.apps.length === 1
-    const proxy = single && slot === "fe.source-root-pinned" && roleOfFile(context) === "proxy"
-    const proxyFile = slot === "fe.source-root-pinned" && roleOfFile(context) === "proxy"
-    const where = single ? "routing/request config in modules/i18n and navigation in modules/routes" : "the stack in the shared i18n package that every app calls"
+    const proxyFile = slotOfFile(context) === "fe.source-root-pinned" && roleOfFile(context) === "proxy"
     const safeProxyImport = (node: ModuleStatement): void => {
       if (!proxyFile || !node.source || (node.type === "ImportDeclaration" ? node.importKind === "type" : node.exportKind === "type")) return
       const specifiers = node.type === "ExportAllDeclaration" ? undefined : node.specifiers
@@ -449,13 +444,7 @@ export const i18nStackInOneModule = defineRule({
       ExportAllDeclaration: safeProxyImport,
       CallExpression(node: TSESTree.CallExpression) {
         const factory = stackFactoryOf(context, node.callee)
-        // In a one-app repository the proxy (role `proxy`) mounts the locale middleware built from the one routing; a shared repository
-        // builds it in the i18n package and the proxy re-exports it.
-        if (factory?.name === "createMiddleware" && proxy) return
-        if (slot === "fe.package.i18n") return
-        if (single && factory?.name === "createNavigation" && slot === "fe.modules.routes") return
-        if (single && factory?.name !== "createNavigation" && slot === "fe.modules.i18n") return
-        if (factory) context.report({ node, messageId: "stack", data: { name: factory.name, where } })
+        if (factory) context.report({ node, messageId: "stack", data: { name: factory.name } })
       },
     }
   },
