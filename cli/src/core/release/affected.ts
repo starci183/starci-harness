@@ -149,6 +149,38 @@ const changedBetween = async (root: string, base: string, head: string): Promise
     return diff.exitCode === 0 ? diff.stdout.split("\0").filter((path) => path !== "") : null
 }
 
+/** Adds, until nothing grows, each node that needs an affected one. */
+const addNeeders = (hit: Set<string>, needs: ReadonlyMap<string, ReturnType<typeof needsOf>>): void => {
+    let grew = true
+    while (grew) {
+        grew = false
+        for (const [dir, needed] of needs) {
+            if (!hit.has(dir) && [...anyNeeds(needed)].some((need) => hit.has(need))) {
+                hit.add(dir)
+                grew = true
+            }
+        }
+    }
+}
+
+/** Adds the node owning a changed file, the CLI for a file of the trees it reads, and each node whose text names the file. */
+const addFileHits = (hit: Set<string>, nodes: readonly Node[], file: string): void => {
+    const owner = nodes.find((node) => file.startsWith(`${node.pkg.relativeDir}/`))
+    if (owner !== undefined) hit.add(owner.pkg.relativeDir)
+    if (HARNESS_TREES.some((tree) => file === tree || file.startsWith(tree))) hit.add("cli")
+    if (owner !== undefined) for (const node of nodes) if (node !== owner && node.all.some((text) => text.includes(file))) hit.add(node.pkg.relativeDir)
+}
+
+/** The folders of every node a diff affects: the nodes owning a changed file, then each node that needs an affected one. */
+const hitSet = (nodes: readonly Node[], needs: ReadonlyMap<string, ReturnType<typeof needsOf>>, full: boolean, files: readonly string[]): Set<string> => {
+    const hit = new Set<string>(full ? nodes.map((node) => node.pkg.relativeDir) : [])
+    for (const file of files) {
+        addFileHits(hit, nodes, file)
+    }
+    addNeeders(hit, needs)
+    return hit
+}
+
 /**
  * The CI nodes a diff affects. A file under a node is that node's; a file under the trees the CLI reads is the CLI's; a node's file
  * whose repository path another node's text names (a canon pin `packages/<name>/package.json`) is that other node's too; a change under .github/, or
@@ -164,23 +196,7 @@ export const affectedBy = async (cwd: string, baseFlag: string | undefined, head
         .map((pkg) => ({ pkg, ...textsOf(pkg.dir) }))
     const needs = new Map(nodes.map((node) => [node.pkg.relativeDir, needsOf(node, nodes)]))
     const full = changed === null || changed.some((file) => FULL_TREES.some((tree) => file.startsWith(tree)))
-    const hit = new Set<string>(full ? nodes.map((node) => node.pkg.relativeDir) : [])
-    for (const file of full ? [] : changed) {
-        const owner = nodes.find((node) => file.startsWith(`${node.pkg.relativeDir}/`))
-        if (owner !== undefined) hit.add(owner.pkg.relativeDir)
-        if (HARNESS_TREES.some((tree) => file === tree || file.startsWith(tree))) hit.add("cli")
-        if (owner !== undefined) for (const node of nodes) if (node !== owner && node.all.some((text) => text.includes(file))) hit.add(node.pkg.relativeDir)
-    }
-    let grew = true
-    while (grew) {
-        grew = false
-        for (const [dir, needed] of needs) {
-            if (!hit.has(dir) && [...anyNeeds(needed)].some((need) => hit.has(need))) {
-                hit.add(dir)
-                grew = true
-            }
-        }
-    }
+    const hit = hitSet(nodes, needs, full, full ? [] : changed)
     const packageOnly = (dirs: ReadonlySet<string>): Set<string> => new Set([...dirs].filter((need) => need.startsWith("packages/")))
     const packageNeeds = new Map([...needs].map(([dir, needed]) => [dir, { hard: packageOnly(needed.hard), built: packageOnly(needed.built), soft: packageOnly(needed.soft) }]))
     const edges = buildEdges(packageNeeds)

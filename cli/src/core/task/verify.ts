@@ -514,6 +514,31 @@ interface Settling {
     readonly deferred: readonly string[]
 }
 
+/** A red verify: the task fails with its work preserved, and a uat task's record turns blocked in a Work commit. */
+const failRed = async (at: Settling, built: CleanVerify, underLand: <T>(work: () => Promise<T>) => Promise<T>): Promise<Pass> => {
+    const { db, root, task, attempt, input, target, unsettled } = at
+    const { preserved, repair } = await preserveEnding(db, root, task, attempt.id)
+    const escaped = await returnEscaped(db, task, attempt.id, target, underLand)
+    failTask(db, task.id, attempt.id, repair)
+    // A uat task's record turns blocked in a Work commit of its own on the target branch, under its land lock.
+    const work = await underLand(() => blockWork(target.checkout, task, input.result, built.checks.filter((check) => check.status === "red").map((check) => check.name)))
+    if (work !== null) recordEvent(db, "work-written", task.id, work)
+    return { built, ending: { ...unsettled, status: "failed", work, preserved, ...(repair === null ? {} : { repair }), ...escapedOf(escaped) } }
+}
+
+/** A clean verify that threw: custody, a held host or a missing verdict end the settle; a conflict fails the task and keeps its work. */
+const refuseVerify = async (at: Settling, error: unknown, underLand: <T>(work: () => Promise<T>) => Promise<T>): Promise<Pass> => {
+    const { db, root, task, attempt, target, me, unsettled } = at
+    assertSettleLockHeld(db, me, verifyLockKey(task.id))
+    if (CUSTODY_CODES.has(asRefusal(error).code)) throw blockOnCustody(db, task.id, "verifying", asRefusal(error))
+    if (asRefusal(error).code === HOST_HELD) throw hostHeld(db, task.id, error)
+    if (!(error instanceof LandConflict)) throw noVerdict(db, task.id, attempt.id, asRefusal(error).code === VERIFY_INFRA ? "verify-infra" : "verify-error", error)
+    const { preserved } = await preserveEnding(db, root, task, attempt.id)
+    const escaped = await returnEscaped(db, task, attempt.id, target, underLand)
+    conflictTask(db, task.id, attempt.id, error, preserved)
+    return { built: null, ending: { ...unsettled, status: "failed", preserved, conflict: error.files, ...escapedOf(escaped) } }
+}
+
 /**
  * One pass of a settling verify. The candidate is built in the task's checkout and, for an Op worktree, rebased onto the head
  * of the branch it lands on, then checked on a clean checkout. A conflict preserves the work and returns the task `conflict`;
@@ -521,7 +546,7 @@ interface Settling {
  * moved since the rebase makes an unlocked pass return `moved`, so the caller verifies again under the lock.
  */
 const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
-    const { db, root, task, attempt, input, target, me, unsettled, deferred } = at
+    const { db, task, attempt, input, target, me, unsettled, deferred } = at
     const underLand = <T>(work: () => Promise<T>): Promise<T> => (locked ? work() : withSettleLock(db, me, input.timeoutMs ?? MINUTE_MS, landLockKey(target), work))
     const made = opWorktreeOf(db, task.id)
     const onto = target.own ? undefined : await resolveSha(target.checkout, `refs/heads/${target.branch}`)
@@ -529,14 +554,7 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
     try {
         built = await cleanVerify({ ...input, ...(onto === undefined ? {} : { onto }), ...(made === undefined ? {} : { fork: made.fork }) })
     } catch (error: unknown) {
-        assertSettleLockHeld(db, me, verifyLockKey(task.id))
-        if (CUSTODY_CODES.has(asRefusal(error).code)) throw blockOnCustody(db, task.id, "verifying", asRefusal(error))
-        if (asRefusal(error).code === HOST_HELD) throw hostHeld(db, task.id, error)
-        if (!(error instanceof LandConflict)) throw noVerdict(db, task.id, attempt.id, asRefusal(error).code === VERIFY_INFRA ? "verify-infra" : "verify-error", error)
-        const { preserved } = await preserveEnding(db, root, task, attempt.id)
-        const escaped = await returnEscaped(db, task, attempt.id, target, underLand)
-        conflictTask(db, task.id, attempt.id, error, preserved)
-        return { built: null, ending: { ...unsettled, status: "failed", preserved, conflict: error.files, ...escapedOf(escaped) } }
+        return await refuseVerify(at, error, underLand)
     }
     // A verify that outlived its deadline lost its lock: it records, preserves and lands nothing (the catch above holds the same fence).
     assertSettleLockHeld(db, me, verifyLockKey(task.id))
@@ -550,13 +568,7 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
         if ((await declarePatterns(at, "verify-red", await patternsOfFindings(reds))).commit !== null) return "moved"
     }
     if (built.verdict === "red") {
-        const { preserved, repair } = await preserveEnding(db, root, task, attempt.id)
-        const escaped = await returnEscaped(db, task, attempt.id, target, underLand)
-        failTask(db, task.id, attempt.id, repair)
-        // A uat task's record turns blocked in a Work commit of its own on the target branch, under its land lock.
-        const work = await underLand(() => blockWork(target.checkout, task, input.result, built.checks.filter((check) => check.status === "red").map((check) => check.name)))
-        if (work !== null) recordEvent(db, "work-written", task.id, work)
-        return { built, ending: { ...unsettled, status: "failed", work, preserved, ...(repair === null ? {} : { repair }), ...escapedOf(escaped) } }
+        return await failRed(at, built, underLand)
     }
     let settlement: Settlement
     try {

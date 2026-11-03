@@ -621,6 +621,41 @@ const relayedByNode = (place: Place, need: NeedRow, key: string, view: NodeView)
     return done
 }
 
+/** The waiters whose task still stands in the workflow as the one that waited, so an amend can retry it. */
+const stillWaiting = (snapshot: ReturnType<typeof snapshotOf>, lastNeed: readonly WaiterRow[]): WaiterRow[] => {
+    return lastNeed.filter((waiter) => {
+        const view = snapshot.views.find((candidate) => candidate.key === waiter.taskKey)
+        return view !== undefined && (view.task === null || view.task.id === waiter.task)
+    })
+}
+
+/** The wait actions of the waiters whose every need ended but that a hold or a live ticket keeps parked. */
+const heldWaiters = (place: Place, need: NeedRow, ended: readonly WaiterRow[]): StepAction[] => {
+    return withLedger(place.root, (db) => ended.flatMap((waiter) => {
+        const ticket = ticketHoldingTask(need.project, waiter.task)
+        const why = holdOf(db, waiter.task) ?? (ticket === null ? null : `waits on ticket ${ticket}`)
+        return why === null ? [] : [action(`need ${need.key} ${need.state}: waiter ${waiter.taskKey ?? waiter.task} not released, ${why}`, "wait", waiter.task, waiter.taskKey)]
+    }))
+}
+
+/** Retries the released waiters in one amend of the workflow, written as a change file; the dispatched action, or the problem that kept it. */
+const amendRelease = async (place: Place, need: NeedRow, keys: readonly string[], carried: string | null): Promise<StepAction> => {
+    const dir = join(projectDir(place.root), "needs")
+    mkdirSync(dir, { recursive: true })
+    const digestText = createHash("sha256").update(`${need.project}\0${need.key}\0${String(need.round)}\0${place.workflow}\0${keys.join(",")}`).digest("hex").slice(0, 16)
+    const id = `need-release-${digestText}`
+    const file = join(dir, `${id}.yaml`)
+    const why = need.state === "resolved" ? `shared need ${need.key} resolved` : `shared need ${need.key} rejected: ${need.reason ?? "not shared"}`
+    writeFileSync(file, JSON.stringify({ schema: CHANGE_SCHEMA, workflow: place.workflow, reason: why, changes: keys.map((key) => ({ op: "retry", id: key })) }, null, 2))
+    try {
+        await workflowAmendVerb.run({ ...place.context, cwd: place.root }, { workflow: place.workflow, desired: undefined, change: file, goal: undefined, "based-on": undefined, "cmd-id": id, "keep-effect": undefined, accept: undefined })
+    } catch (error: unknown) {
+        return action(`need ${need.key}: waiters ${keys.join(", ")} not released yet (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}; the next step retries`, "problem")
+    }
+    const carriedSuffix = carried === null ? "" : `; ${carried}`
+    return action(`need ${need.key} ${need.state}: released ${keys.join(", ")} (retried from their preserved work)${carriedSuffix}`, "dispatched")
+}
+
 /**
  * Releases the waiters of an ended need in this workflow, once the resolving commits are on its branch: the harness relays them
  * itself, or a relay node applies what does not apply cleanly (routeRelay) and the waiters, which depend on it, wait for it to
@@ -636,11 +671,7 @@ const release = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
     const mine = waiting(withMachine((db) => waitersOf(db, need.project, need.key))).filter((waiter) => waiter.workflow === place.workflow && sameRepo(waiter.repo, place.repo))
     const ended = withMachine((db) => mine.filter((waiter) => allEnded(db, need.project, waiterRowsOfTask(db, need.project, waiter.repo, waiter.task))))
     // A held waiter stays parked, its row unreleased: once its hold or ticket ends, a later pass retries it from its kept work.
-    const held = withLedger(place.root, (db) => ended.flatMap((waiter) => {
-        const ticket = ticketHoldingTask(need.project, waiter.task)
-        const why = holdOf(db, waiter.task) ?? (ticket === null ? null : `waits on ticket ${ticket}`)
-        return why === null ? [] : [action(`need ${need.key} ${need.state}: waiter ${waiter.taskKey ?? waiter.task} not released, ${why}`, "wait", waiter.task, waiter.taskKey)]
-    }))
+    const held = heldWaiters(place, need, ended)
     const ready = ended.filter((waiter) => !held.some((one) => one.task === waiter.task))
     if (ready.length === 0) return held
     const node = relayByNode(place, need)
@@ -657,27 +688,13 @@ const release = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
     const carried = ruled ?? (relayed.status === "skipped" ? null : relayed.detail)
     const snapshot = withLedger(place.root, (db) => snapshotOf(db, place.workflow))
     const lastNeed = withMachine((db) => ready.filter((waiter) => waiterRowsOfTask(db, need.project, waiter.repo, waiter.task).every((row) => row.key === need.key || row.releasedAt !== null)))
-    const retry = lastNeed.filter((waiter) => {
-        const view = snapshot.views.find((candidate) => candidate.key === waiter.taskKey)
-        return view !== undefined && (view.task === null || view.task.id === waiter.task)
-    })
+    const retry = stillWaiting(snapshot, lastNeed)
     const keys = [...new Set(retry.map((waiter) => waiter.taskKey).filter((key): key is string => key !== null))]
     const actions: StepAction[] = [...held]
     if (keys.length > 0) {
-        const dir = join(projectDir(place.root), "needs")
-        mkdirSync(dir, { recursive: true })
-        const digestText = createHash("sha256").update(`${need.project}\0${need.key}\0${String(need.round)}\0${place.workflow}\0${keys.join(",")}`).digest("hex").slice(0, 16)
-        const id = `need-release-${digestText}`
-        const file = join(dir, `${id}.yaml`)
-        const why = need.state === "resolved" ? `shared need ${need.key} resolved` : `shared need ${need.key} rejected: ${need.reason ?? "not shared"}`
-        writeFileSync(file, JSON.stringify({ schema: CHANGE_SCHEMA, workflow: place.workflow, reason: why, changes: keys.map((key) => ({ op: "retry", id: key })) }, null, 2))
-        try {
-            await workflowAmendVerb.run({ ...place.context, cwd: place.root }, { workflow: place.workflow, desired: undefined, change: file, goal: undefined, "based-on": undefined, "cmd-id": id, "keep-effect": undefined, accept: undefined })
-        } catch (error: unknown) {
-            return [action(`need ${need.key}: waiters ${keys.join(", ")} not released yet (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}; the next step retries`, "problem")]
-        }
-        const carriedSuffix = carried === null ? "" : `; ${carried}`
-        actions.push(action(`need ${need.key} ${need.state}: released ${keys.join(", ")} (retried from their preserved work)${carriedSuffix}`, "dispatched"))
+        const amended = await amendRelease(place, need, keys, carried)
+        if (amended.action === "problem") return [amended]
+        actions.push(amended)
     }
     const how = { by: need.state, round: need.round, reason: need.reason, carried, relay: { status: relayed.status, relayed: relayed.relayed, files: relayed.files, relayVersion: RELAY_VERSION }, retried: keys }
     withMachine((db) => {

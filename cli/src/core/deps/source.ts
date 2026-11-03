@@ -81,8 +81,6 @@ const npmCi = async (root: string): Promise<void> => {
 
 /** `deps source --local`: builds the chosen @starci packages, copies them (and the ones already recorded) into the app, and records them. */
 const takeLocal = async (context: VerbContext, flags: { readonly cwd: string | undefined; readonly package: readonly string[]; readonly prebuilt: boolean }, root: string, pins: Awaited<ReturnType<typeof workingPins>>, warnings: string[]): Promise<{ readonly added: string[]; readonly copied: Copied[] }> => {
-    let added: string[] = []
-    let copied: Copied[] = []
     assertNpm(root)
     const from = resolve(flags.cwd ?? defaultPackagesRoot())
     const available = localPackages(from)
@@ -107,9 +105,9 @@ const takeLocal = async (context: VerbContext, flags: { readonly cwd: string | u
     const recorded = healRecord(root)
     warnings.push(...recorded.healed.map(describeHealed))
     const keptPackages = recorded.packages.filter((pkg) => !chosen.some((one) => one.name === pkg.name))
-    added = await installMissing(root, [...chosen, ...keptPackages])
+    const added = await installMissing(root, [...chosen, ...keptPackages])
     const manifests = await manifestFiles(root)
-    copied = await inOrder([...chosen, ...keptPackages], (pkg) => copyLocal(root, manifests, pkg))
+    const copied = await inOrder([...chosen, ...keptPackages], (pkg) => copyLocal(root, manifests, pkg))
     for (const one of copied) {
         warnings.push(...one.warnings)
         const differing = pins.filter((pin) => pin.name === one.name && pin.spec !== one.version)

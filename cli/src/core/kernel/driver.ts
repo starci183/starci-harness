@@ -218,6 +218,17 @@ const redChecks = (db: DatabaseSync, taskId: string): unknown[] =>
 /** Raises one Kernel decision of the workflow (each fact once); returns its id. */
 type Raise = (kind: KernelDecisionKind, subject: string, evidence: unknown) => string
 
+/** Raises the conflict, check-premise or red decision of a failed node. */
+const raiseFailure = (db: DatabaseSync, view: Snapshot["views"][number], task: NonNullable<Snapshot["views"][number]["task"]>, raise: Raise): void => {
+    const outcome = view.state === "failed" ? (latestAttempt(db, task.id)?.outcome ?? null) : null
+    if (outcome === LAND_CONFLICT) raise("conflict", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, conflict: lastEvent(db, LAND_CONFLICT_EVENT, task.id) ?? null })
+    else if (view.state === "failed") {
+        const premise = premiseChecks(db, task.id)
+        if (premise === undefined) raise("red", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, outcome, redChecks: redChecks(db, task.id), harnessCause: harnessCause(db, task.id) })
+        else raise(CHECK_PREMISE, task.id, { key: view.key, why: view.why, tryNo: task.tryNo, checks: premise })
+    }
+}
+
 /**
  * A failed or lost node is red, unless its verified work did not rebase onto the workflow's head (attempt outcome
  * `conflict`, harness/land.ts): that is a conflict, whose work is preserved for an amend on the new head; or its only reds are
@@ -228,13 +239,7 @@ const raiseNodeStates = (db: DatabaseSync, snapshot: Snapshot, raise: Raise): vo
     for (const view of snapshot.views) {
         const task = view.task
         if (task === null) continue
-        const outcome = view.state === "failed" ? (latestAttempt(db, task.id)?.outcome ?? null) : null
-        if (outcome === LAND_CONFLICT) raise("conflict", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, conflict: lastEvent(db, LAND_CONFLICT_EVENT, task.id) ?? null })
-        else if (view.state === "failed") {
-            const premise = premiseChecks(db, task.id)
-            if (premise === undefined) raise("red", task.id, { key: view.key, why: view.why, tryNo: task.tryNo, outcome, redChecks: redChecks(db, task.id), harnessCause: harnessCause(db, task.id) })
-            else raise(CHECK_PREMISE, task.id, { key: view.key, why: view.why, tryNo: task.tryNo, checks: premise })
-        }
+        raiseFailure(db, view, task, raise)
         if (view.state === "lost") raise("red", task.id, { key: view.key, why: view.why, lost: "Orca reported its worker gone; the task is effect_unknown and keeps its worktree" })
         if (view.state === "returned") {
             const attempt = latestAttempt(db, task.id)
@@ -495,6 +500,41 @@ export const sweepOpStalls = async (root: string, binary: OrcaBinary, cwd: strin
     return done.filter((action) => action !== null)
 }
 
+/** A launch that never started: its worker is fenced, its attempt closes launch-failed and its task goes back to the queue. */
+const fenceDeadDispatch = async (root: string, binary: OrcaBinary, cwd: string, found: { readonly key: string | null; readonly task: string; readonly seat: SeatRow; readonly dispatchId: string; readonly shown: NonNullable<Awaited<ReturnType<typeof workerShow>>>; readonly states: readonly string[]; readonly terminal: ReturnType<typeof judgeStart>["terminal"]; readonly verdict: ReturnType<typeof judgeStart>["verdict"] }): Promise<StepAction> => {
+    const { key, task, seat, dispatchId, shown, states, terminal, verdict } = found
+    const closed = await closeWorker(binary, dispatchId, cwd, terminal)
+    const fence = closed.stopped ? `stopped (${closed.stop})` : `abandoned (${await workerAbandon(binary, dispatchId, cwd, requestIdOf("doa-abandon", seat.id))})`
+    const kind = stallKindOf(shown.failureText)
+    const requeued = withLedger(root, (db) => inTransaction(db, () => {
+        const attempt = latestAttempt(db, task)
+        if (attempt !== undefined) db.prepare("UPDATE attempts SET outcome = 'launch-failed', ended_at = COALESCE(ended_at, ?) WHERE id = ? AND outcome IS NULL").run(now(), attempt.id)
+        const failure = deadOnArrivalFailure(kind, states, shown.failureText, terminal)
+        recordSeat(db, seat.id, { status: closed.settled ? SEAT_LAUNCH_FAILED : SEAT_STOPPED, handle: dispatchId, failure, facts: { deadOnArrival: { verdict, states, failure: shown.failureText }, closed } })
+        recordEvent(db, "seat-dead-on-arrival", task, { seat: seat.id, dispatchId, states, verdict, fence })
+        if (getTask(db, task).status !== "effect_unknown") return false
+        setStatus(db, task, "queued")
+        return true
+    }))
+    if (seat.agent !== null) reportStalled(seat.agent, kind, `dispatch ${dispatchId} of ${task} never started (${states.join("/") || "no answer"})`)
+    return { key, task, action: "lost", detail: `dispatch ${dispatchId} dead on arrival (${states.join("/") || "no answer"}): ${fence}; attempt launch-failed${requeued ? ", task queued again" : ""}` }
+}
+
+/** A launch Orca shows started: its seat is adopted, the task runs, and the launch is reported resolved. */
+const adoptStarted = (root: string, found: { readonly key: string | null; readonly task: string; readonly seat: SeatRow; readonly dispatchId: string; readonly shown: NonNullable<Awaited<ReturnType<typeof workerShow>>>; readonly said: string; readonly resubmitted: string | null; readonly start: Pick<ReturnType<typeof judgeStart>, "states" | "terminal" | "printed"> }): StepAction => {
+    const { key, task, seat, dispatchId, shown, said, resubmitted } = found
+    const { states, terminal, printed } = found.start
+    const status = shown.state === null || UNKNOWN_STATES.includes(shown.state) || loadStallRules().startUnknownStates.includes(shown.state) ? "ready" : shown.state
+    withLedger(root, (db) => { inTransaction(db, () => {
+        recordSeat(db, seat.id, { status, handle: dispatchId, terminal, facts: { adopted: { dispatchId, states, printed } } })
+        if (getTask(db, task).status === "effect_unknown") setStatus(db, task, "running")
+        recordEvent(db, "seat-adopted", task, { seat: seat.id, dispatchId, state: shown.state, printed })
+    }); })
+    const printedSuffix = printed === null ? "" : `, last printed ${printed}`
+    const resubmittedSuffix = resubmitted === null ? "" : `; ${resubmitted}`
+    return { key, task, action: "launched", detail: `effect_unknown launch resolved: dispatch ${dispatchId} is ${said}${printedSuffix}, adopted${resubmittedSuffix}` }
+}
+
 /**
  * A completed launch request whose receipt names a dispatch is judged by that dispatch, never replayed (a replay answers the same
  * receipt forever), through `judgeStart` (harness/liveness.ts): a worker Orca shows started, or whose live terminal printed after
@@ -516,15 +556,7 @@ const judgeLaunchedDispatch = async (root: string, binary: OrcaBinary, cwd: stri
     const resubmitted = shown !== null && (verdict === "waiting" || verdict === "quiet" || verdict === "started") ? await resubmitPendingComposer(binary, cwd, root, { id: seat.id, terminal }, loadRouting()) : null
     if (resubmitted !== null && verdict !== "started") return { key, task, action: "wait", detail: `dispatch ${dispatchId}: ${resubmitted}` }
     if (verdict === "started" && shown !== null) {
-        const status = shown.state === null || UNKNOWN_STATES.includes(shown.state) || loadStallRules().startUnknownStates.includes(shown.state) ? "ready" : shown.state
-        withLedger(root, (db) => { inTransaction(db, () => {
-            recordSeat(db, seat.id, { status, handle: dispatchId, terminal, facts: { adopted: { dispatchId, states, printed } } })
-            if (getTask(db, task).status === "effect_unknown") setStatus(db, task, "running")
-            recordEvent(db, "seat-adopted", task, { seat: seat.id, dispatchId, state: shown.state, printed })
-        }); })
-        const printedSuffix = printed === null ? "" : `, last printed ${printed}`
-        const resubmittedSuffix = resubmitted === null ? "" : `; ${resubmitted}`
-        return { key, task, action: "launched", detail: `effect_unknown launch resolved: dispatch ${dispatchId} is ${said}${printedSuffix}, adopted${resubmittedSuffix}` }
+        return adoptStarted(root, { key, task, seat, dispatchId, shown, said, resubmitted, start: { states, terminal, printed } })
     }
     if (verdict === "quiet") {
         const deadline = loadCoordinatorLiveness().effectUnknownDeadlineMinutes
@@ -532,21 +564,7 @@ const judgeLaunchedDispatch = async (root: string, binary: OrcaBinary, cwd: stri
         return { key, task, action: "wait", detail: `dispatch ${dispatchId} is ${said}; its terminal ${terminal ?? "-"} is listed and quiet: never fenced while it lives` }
     }
     if (verdict === "waiting" || shown === null) return { key, task, action: "wait", detail: `dispatch ${dispatchId} is ${said}; its worker has not started yet` }
-    const closed = await closeWorker(binary, dispatchId, cwd, terminal)
-    const fence = closed.stopped ? `stopped (${closed.stop})` : `abandoned (${await workerAbandon(binary, dispatchId, cwd, requestIdOf("doa-abandon", seat.id))})`
-    const kind = stallKindOf(shown.failureText)
-    const requeued = withLedger(root, (db) => inTransaction(db, () => {
-        const attempt = latestAttempt(db, task)
-        if (attempt !== undefined) db.prepare("UPDATE attempts SET outcome = 'launch-failed', ended_at = COALESCE(ended_at, ?) WHERE id = ? AND outcome IS NULL").run(now(), attempt.id)
-        const failure = deadOnArrivalFailure(kind, states, shown.failureText, terminal)
-        recordSeat(db, seat.id, { status: closed.settled ? SEAT_LAUNCH_FAILED : SEAT_STOPPED, handle: dispatchId, failure, facts: { deadOnArrival: { verdict, states, failure: shown.failureText }, closed } })
-        recordEvent(db, "seat-dead-on-arrival", task, { seat: seat.id, dispatchId, states, verdict, fence })
-        if (getTask(db, task).status !== "effect_unknown") return false
-        setStatus(db, task, "queued")
-        return true
-    }))
-    if (seat.agent !== null) reportStalled(seat.agent, kind, `dispatch ${dispatchId} of ${task} never started (${states.join("/") || "no answer"})`)
-    return { key, task, action: "lost", detail: `dispatch ${dispatchId} dead on arrival (${states.join("/") || "no answer"}): ${fence}; attempt launch-failed${requeued ? ", task queued again" : ""}` }
+    return await fenceDeadDispatch(root, binary, cwd, { key, task, seat, dispatchId, shown, states, terminal, verdict })
 }
 
 /**

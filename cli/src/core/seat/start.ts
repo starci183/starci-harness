@@ -498,6 +498,28 @@ const kernelOf = async (db: DatabaseSync, task: TaskRow, binary: OrcaBinary, opt
     return launchableKernel(getWorkflow(db, workflowId))
 }
 
+/** Refreshes the install of the Op worktree and gives the worker's checkout the repository's local package copies. */
+const syncCheckout = async (db: DatabaseSync, root: string, claim: { readonly task: { readonly id: string } }, folder: string, opPath: string | undefined): Promise<void> => {
+    const made = opPath === undefined ? undefined : opWorktreeOf(db, claim.task.id)
+    if (made !== undefined) await refreshOpInstall(root, claim.task.id, made).catch((error: unknown) => {
+        recordEvent(db, "op-install-refresh-deferred", claim.task.id, { error: asRefusal(error).message, code: asRefusal(error).code })
+    })
+    // A repository in local package mode gives the worker's checkout the same local @starci copies as its work tree; a
+    // failed copy is recorded and the launch goes on, since the worker can still run `starci deps source --sync`.
+    const synced = await reapplyLocal(root, folder)
+    if (synced !== undefined) recordEvent(db, synced.status === "green" ? "deps-local-synced" : "deps-local-sync-failed", claim.task.id, { detail: synced.detail })
+}
+
+/** Refuses a launch while free RAM is under the seat floor, recording the hold; an admitting floor ends every hold. */
+const assertSeatRoom = (root: string, task: { readonly id: string }, given: { readonly dryRun?: boolean | undefined }): void => {
+    const room = seatRoom()
+    if (!room.ok && given.dryRun !== true) {
+        recordSeatHold(root, task.id, room)
+        throw new Refusal("SEAT_RAM_LOW", `free RAM ${String(room.freeMb)} MB is under the seat floor ${String(room.floorMb)} MB; task ${task.id} stays queued, launch it once memory is free`)
+    }
+    if (room.ok) clearSeatHolds()
+}
+
 /**
  * Launches one Orca worker on a queued task. The claim comes first, in one BEGIN IMMEDIATE transaction (queued -> running, a
  * new attempt, an open seat carrying the launch record), so two concurrent starts cannot both launch; only then is Orca called.
@@ -512,12 +534,7 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
         // Every agent terminal costs memory: nothing launches while free RAM is under the seat floor (ops/liveness.yaml heavy.seatFreeMb).
         // The hold is recorded (since when, on what memory) so `workflow status` and the starvation ticket can name it; the floor
         // admitting again ends every hold.
-        const room = seatRoom()
-        if (!room.ok && given.dryRun !== true) {
-            recordSeatHold(root, task.id, room)
-            throw new Refusal("SEAT_RAM_LOW", `free RAM ${String(room.freeMb)} MB is under the seat floor ${String(room.floorMb)} MB; task ${task.id} stays queued, launch it once memory is free`)
-        }
-        if (room.ok) clearSeatHolds()
+        assertSeatRoom(root, task, given)
         // Every Op of a workflow works in a worktree of its own, cut from the branch of the workflow's worktree (or of the folder
         // --worktree names), and lands back on it; a task outside a workflow runs where --worktree says, else in this repository.
         const recorded = task.workflowId === null ? undefined : workflowWorktreeOf(db, task.workflowId)
@@ -556,14 +573,7 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
         await beginWork(root, worktreeFolder(options.worktree, cwd, root), claim.task)
         // The prior work may carry a lockfile the install the Op was given does not satisfy: its own install replaces it first. One
         // that cannot run now (the heavy queue in a coordinator's turn) is recorded; the worker's dry replay installs it.
-        const made = opPath === undefined ? undefined : opWorktreeOf(db, claim.task.id)
-        if (made !== undefined) await refreshOpInstall(root, claim.task.id, made).catch((error: unknown) => {
-            recordEvent(db, "op-install-refresh-deferred", claim.task.id, { error: asRefusal(error).message, code: asRefusal(error).code })
-        })
-        // A repository in local package mode gives the worker's checkout the same local @starci copies as its work tree; a
-        // failed copy is recorded and the launch goes on, since the worker can still run `starci deps source --sync`.
-        const synced = await reapplyLocal(root, worktreeFolder(options.worktree, cwd, root))
-        if (synced !== undefined) recordEvent(db, synced.status === "green" ? "deps-local-synced" : "deps-local-sync-failed", claim.task.id, { detail: synced.detail })
+        await syncCheckout(db, root, claim, worktreeFolder(options.worktree, cwd, root), opPath)
         const files = writeBrief(claim.task, ops, root)
         const launched = await launch(db, binary, claim.seat, claim.record, claim.record.run, root, cwd)
         return await settleLaunch({ root, db, binary, cwd, task: claim.task, seat: claim.seat, files, resumed: false, kernel }, launched)

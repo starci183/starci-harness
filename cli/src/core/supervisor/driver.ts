@@ -176,6 +176,31 @@ const attachedKernel = (seat: SeatRow, dispatchTerminal: string | null, live: Te
     (dispatchTerminal === null || dispatchTerminal === seat.terminal) &&
     (live === null || live.truncated || live.handles.has(seat.terminal))
 
+/** A Kernel launch that is gone or never started: its dispatch is fenced and closed launch-failed, and the Kernel relaunched once the fence held. */
+const fenceKernelLaunch = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatRow, dispatchId: string, found: { readonly shown: NonNullable<Awaited<ReturnType<typeof workerShow>>>; readonly states: readonly string[]; readonly terminal: ReturnType<typeof judgeStart>["terminal"]; readonly verdict: ReturnType<typeof judgeStart>["verdict"]; readonly said: string }): Promise<string> => {
+    const { root, binary, cwd, rules, acting } = scope
+    const { shown, states, terminal, verdict, said } = found
+    const closed = await closeWorker(binary, dispatchId, cwd, terminal)
+    if (!closed.stopped) {
+        withLedger(root, (db) => { recordSeat(db, seat.id, { status: seat.status, handle: dispatchId, facts: { notFenced: { verdict, states, closed } } }); })
+        return `${workflow.id}: Kernel launch ${seat.id} ${verdict} (${said}) but Orca did not fence dispatch ${dispatchId} (${closed.stop}): no second Kernel until it does`
+    }
+    const failure = deadOnArrivalFailure(stallKindOf(shown.failureText), states, shown.failureText, terminal)
+    withLedger(root, (db) => {
+        noteTab(db, seat.id, closed)
+        recordSeat(db, seat.id, { status: SEAT_LAUNCH_FAILED, handle: dispatchId, failure, facts: { deadOnArrival: { verdict, states, failure: shown.failureText }, closed } })
+    })
+    return relaunch(root, binary, cwd, workflow, `Kernel launch ${seat.id} ${verdict === "gone" ? "is gone" : "never started"} (${said})`, { replace: false, acting }, rules)
+}
+
+/** A quiet launch in a live terminal is waited on, and escalated to the Supervisor past the deadline, never fenced. */
+const quietLaunch = (scope: SweepScope, workflow: WorkflowRow, seat: SeatRow, dispatchId: string, said: string, terminal: ReturnType<typeof judgeStart>["terminal"]): string => {
+    const { root, rules } = scope
+    if (!olderThan(seat.startedAt, rules.effectUnknownDeadlineMinutes)) return `${workflow.id}: Kernel launch ${seat.id} is ${said} with its terminal ${terminal ?? "-"} listed and quiet: waiting, never fenced while it lives`
+    withLedger(root, (db) => raiseDecision(db, { scope: "supervisor", workflowId: workflow.id, kind: "escalation", subject: `stuck-launch:${seat.id}`, evidence: { project: root, escalation: { kind: "harness", question: `the Kernel launch ${seat.id} (dispatch ${dispatchId}) is ${said} and its terminal ${terminal ?? "-"} is alive but printed nothing since the launch; look at that terminal, then seat stop it and kernel start, or let it attach` } } }))
+    return `${workflow.id}: Kernel launch ${seat.id} quiet in a live terminal past the deadline: escalated, not fenced`
+}
+
 /**
  * A Kernel launch's dispatch, judged by `judgeStart` (harness/liveness.ts) with the Kernel's attach as its own proof of life,
  * since Orca keeps a worker whose turn start it could not observe at start_unknown even once the agent runs. `started` is
@@ -186,7 +211,7 @@ const attachedKernel = (seat: SeatRow, dispatchTerminal: string | null, live: Te
  * relaunched once on the coordinator tier's order, and only once the fence held: nothing is launched beside a live dispatch.
  */
 const judgeKernelDispatch = async (scope: SweepScope, workflow: WorkflowRow, seat: SeatRow, dispatchId: string, live: TerminalInventory | null): Promise<string | null> => {
-    const { root, binary, cwd, rules, acting } = scope
+    const { root, binary, cwd } = scope
     const stall = loadStallRules()
     const shown = await workerShow(binary, dispatchId, cwd).catch(() => null)
     const attached = shown !== null && attachedKernel(seat, shown.terminal, live)
@@ -207,21 +232,9 @@ const judgeKernelDispatch = async (scope: SweepScope, workflow: WorkflowRow, sea
         return `${workflow.id}: Kernel launch ${seat.id} reconciled (dispatch ${dispatchId} is ${said}${attachedText})`
     }
     if (verdict === "quiet") {
-        if (!olderThan(seat.startedAt, rules.effectUnknownDeadlineMinutes)) return `${workflow.id}: Kernel launch ${seat.id} is ${said} with its terminal ${terminal ?? "-"} listed and quiet: waiting, never fenced while it lives`
-        withLedger(root, (db) => raiseDecision(db, { scope: "supervisor", workflowId: workflow.id, kind: "escalation", subject: `stuck-launch:${seat.id}`, evidence: { project: root, escalation: { kind: "harness", question: `the Kernel launch ${seat.id} (dispatch ${dispatchId}) is ${said} and its terminal ${terminal ?? "-"} is alive but printed nothing since the launch; look at that terminal, then seat stop it and kernel start, or let it attach` } } }))
-        return `${workflow.id}: Kernel launch ${seat.id} quiet in a live terminal past the deadline: escalated, not fenced`
+        return quietLaunch(scope, workflow, seat, dispatchId, said, terminal)
     }
-    const closed = await closeWorker(binary, dispatchId, cwd, terminal)
-    if (!closed.stopped) {
-        withLedger(root, (db) => { recordSeat(db, seat.id, { status: seat.status, handle: dispatchId, facts: { notFenced: { verdict, states, closed } } }); })
-        return `${workflow.id}: Kernel launch ${seat.id} ${verdict} (${said}) but Orca did not fence dispatch ${dispatchId} (${closed.stop}): no second Kernel until it does`
-    }
-    const failure = deadOnArrivalFailure(stallKindOf(shown.failureText), states, shown.failureText, terminal)
-    withLedger(root, (db) => {
-        noteTab(db, seat.id, closed)
-        recordSeat(db, seat.id, { status: SEAT_LAUNCH_FAILED, handle: dispatchId, failure, facts: { deadOnArrival: { verdict, states, failure: shown.failureText }, closed } })
-    })
-    return relaunch(root, binary, cwd, workflow, `Kernel launch ${seat.id} ${verdict === "gone" ? "is gone" : "never started"} (${said})`, { replace: false, acting }, rules)
+    return await fenceKernelLaunch(scope, workflow, seat, dispatchId, { shown, states, terminal, verdict, said })
 }
 
 /**

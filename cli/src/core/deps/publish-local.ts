@@ -61,10 +61,9 @@ const stepFailed = (what: string, run: { readonly stdout: string; readonly stder
 /** Builds what the due rows need and publishes them in order to the local registry; the npmrc the app installs through. */
 const publishDue = async (context: VerbContext, port: number, given: { readonly root: string; readonly all: ReturnType<typeof listPackages>; readonly order: readonly string[]; readonly due: readonly Row[]; readonly published: string[] }): Promise<string | undefined> => {
     const { root, all, order, due, published } = given
-    let installNpmrc: string | undefined
     if (due.length === 0) context.progress("nothing to publish")
     const files = writeNpmrcs(port)
-    installNpmrc = files.install
+    const installNpmrc = files.install
     const plan = await affectedBy(root, undefined, undefined)
     const needed = new Set(due.flatMap((row) => (row.dir === CLI_DIR ? [CLI_DIR] : (plan.packages.find((one) => one.dir === row.dir)?.build ?? [row.dir]))))
     const builds = order.filter((dir) => needed.has(dir))
