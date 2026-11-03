@@ -37,7 +37,7 @@ const ENDED: readonly WorkflowStatus[] = ["done", "stopping", "stopped"]
  */
 const tasksOf = (ledger: DatabaseSync, workflow: string): { readonly done: number; readonly remaining: number } => {
     const status = hasGraphTables(ledger) ? ledger.prepare("SELECT status FROM workflows WHERE id = ?").get(workflow)?.status : undefined
-    if (typeof status !== "string" || ENDED.some((ended) => ended === status)) return { done: 0, remaining: 0 }
+    if (typeof status !== "string" || (ENDED as readonly string[]).includes(status)) return { done: 0, remaining: 0 }
     const views = snapshotOf(ledger, workflow).views
     const done = views.filter((view) => view.state === "done").length
     return { done, remaining: views.length - done }
@@ -61,7 +61,9 @@ const outlookOf = (budget: WorkflowBudget, tasks: { readonly done: number; reado
         tasks.remaining === 0
             ? []
             : [...(["minutes", "tries"] as const).filter((key) => budget.used[key] >= budget.ceiling[key] * fraction), ...(budget.ceiling.tries - budget.used.tries < tasks.remaining ? (["tasks"] as const) : [])]
-    const state = budget.exhausted.length > 0 ? "exhausted" : near.length > 0 ? "near" : "ok"
+    let state: "ok" | "near" | "exhausted" = "ok"
+    if (budget.exhausted.length > 0) state = "exhausted"
+    else if (near.length > 0) state = "near"
     return { ...budget, state, tasks, near, proposed: near.length === 0 ? null : proposedRaise(budget, tasks, fraction) }
 }
 
@@ -146,7 +148,8 @@ export const tickBudgets = async (): Promise<string[]> => {
                     key: nearKey(outlook),
                     waiters: [],
                 })
-                return [`budget near: workflow ${outlook.workflow} (${outlook.near.join(", ")}; ${budgetLine(outlook)}): question ticket ${ticket.id} ${outcome === "opened" ? "opened" : `seen ${String(ticket.occurrences)} times`}, proposing: ${raiseCommand(outlook)}`]
+                const outcomeText = outcome === "opened" ? "opened" : `seen ${String(ticket.occurrences)} times`
+                return [`budget near: workflow ${outlook.workflow} (${outlook.near.join(", ")}; ${budgetLine(outlook)}): question ticket ${ticket.id} ${outcomeText}, proposing: ${raiseCommand(outlook)}`]
             })
         } catch {
             return []

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url"
 import { captureNpm, captureTool } from "../shared/exec.js"
 import { evidenceTail } from "../shared/output.js"
 import { mainCheckoutOf, runtimeRoot, stateBase } from "./ledger.js"
+import { trimEndChars } from "../shared/trim.js"
 
 /**
  * The skeleton an app is judged against is the one of the @starci/hfs version the app pins and installs, never the CLI's
@@ -112,7 +113,7 @@ const realOf = (path: string): string => {
     }
 }
 
-const canonical = (path: string): string => realOf(path).replaceAll("\\", "/").replace(/\/+$/, "")
+const canonical = (path: string): string => trimEndChars(realOf(path).replaceAll("\\", "/"), "/")
 
 /** The folders of the CLI's own @starci/hfs: the harness checkout's `packages/hfs` (its main checkout's too) and the copy the CLI installs. */
 export const bundledHfsRoots = (): string[] => {

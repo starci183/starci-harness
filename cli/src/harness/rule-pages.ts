@@ -28,22 +28,12 @@ interface Variant {
     readonly score: number
 }
 
-/** Expands the first `{a,b}` group of a slot path, recursively: `src/{api/,jobs/}<f>/` is `src/api/<f>/` and `src/jobs/<f>/`. */
-const braceVariants = (path: string): string[] => {
-    const open = path.indexOf("{")
-    if (open < 0) return [path]
+/** The comma-separated options of a brace group, leaving the commas of nested groups alone. */
+const splitOptions = (inner: string): string[] => {
     let depth = 0
-    let close = -1
-    for (let index = open; index < path.length && close < 0; index += 1) {
-        if (path[index] === "{") depth += 1
-        if (path[index] === "}") depth -= 1
-        if (depth === 0) close = index
-    }
-    if (close < 0) return [path]
     const options: string[] = []
     let current = ""
-    depth = 0
-    for (const char of path.slice(open + 1, close)) {
+    for (const char of inner) {
         if (char === "{") depth += 1
         if (char === "}") depth -= 1
         if (char === "," && depth === 0) {
@@ -52,6 +42,28 @@ const braceVariants = (path: string): string[] => {
         } else current += char
     }
     options.push(current)
+    return options
+}
+
+/** The index of the `}` that closes the `{` at `open`, or -1 when it never closes. */
+const closingBrace = (path: string, open: number): number => {
+    let depth = 0
+    let close = -1
+    for (let index = open; index < path.length && close < 0; index += 1) {
+        if (path[index] === "{") depth += 1
+        if (path[index] === "}") depth -= 1
+        if (depth === 0) close = index
+    }
+    return close
+}
+
+/** Expands the first `{a,b}` group of a slot path, recursively: `src/{api/,jobs/}<f>/` is `src/api/<f>/` and `src/jobs/<f>/`. */
+const braceVariants = (path: string): string[] => {
+    const open = path.indexOf("{")
+    if (open < 0) return [path]
+    const close = closingBrace(path, open)
+    if (close < 0) return [path]
+    const options = splitOptions(path.slice(open + 1, close))
     const head = path.slice(0, open)
     const tail = path.slice(close + 1)
     return options.flatMap((option) => braceVariants(head + option + tail))
@@ -119,6 +131,35 @@ const exists = (slot: Slot, side: string, edition: string | undefined): boolean 
     return presence !== undefined && presence !== "forbidden"
 }
 
+/** Where a path meets the variants of one slot: inside it (with the specificity) or above it. */
+const hitsOfSlot = (slot: Slot, rest: readonly string[], kinds: readonly string[]): { readonly inside: { readonly slot: Slot; readonly score: number }[]; readonly below: Slot[] } => {
+    const inside: { readonly slot: Slot; readonly score: number }[] = []
+    const below: Slot[] = []
+    for (const variant of variantsOf(slot)) {
+        const met = meet(rest, variant, 0, 0, {})
+        if (met === undefined) continue
+        const app = met.bindings.app
+        if (slot.appKind !== undefined && app !== undefined && kinds.includes(app) && app !== slot.appKind) continue
+        if (met.kind === "inside") inside.push({ slot, score: variant.score })
+        else below.push(slot)
+    }
+    return { inside, below }
+}
+
+/** The slots a path lies inside (with their specificity) and the slots that lie below it. */
+const slotHits = (catalog: SlotCatalog, where: { readonly side: string; readonly edition: string | undefined; readonly rest: readonly string[]; readonly kinds: readonly string[] }): { readonly inside: { readonly slot: Slot; readonly score: number }[]; readonly below: Slot[] } => {
+    const { side, edition, rest, kinds } = where
+    const inside: { readonly slot: Slot; readonly score: number }[] = []
+    const below: Slot[] = []
+    for (const slot of catalog.slots) {
+        if (!slot.profiles.includes(side as "app" | "be" | "fe") || !exists(slot, side, edition)) continue
+        const hits = hitsOfSlot(slot, rest, kinds)
+        inside.push(...hits.inside)
+        below.push(...hits.below)
+    }
+    return { inside, below }
+}
+
 /**
  * The slots one repository path governs: the most specific slots it lies inside (HFS gives a path exactly one; equal
  * specificity keeps each), and every slot that lies below it when it is a folder. An app-kind slot (`apps/<app>/src/` of
@@ -131,19 +172,7 @@ const slotsOfPath = (path: string, catalog: SlotCatalog, edition: string | undef
     const side = SIDES.has(first) ? first : "app"
     const rest = side === "app" ? parts : parts.slice(1)
     const kinds = catalog.appKinds[side] ?? []
-    const inside: { readonly slot: Slot; readonly score: number }[] = []
-    const below: Slot[] = []
-    for (const slot of catalog.slots) {
-        if (!slot.profiles.includes(side as "app" | "be" | "fe") || !exists(slot, side, edition)) continue
-        for (const variant of variantsOf(slot)) {
-            const met = meet(rest, variant, 0, 0, {})
-            if (met === undefined) continue
-            const app = met.bindings.app
-            if (slot.appKind !== undefined && app !== undefined && kinds.includes(app) && app !== slot.appKind) continue
-            if (met.kind === "inside") inside.push({ slot, score: variant.score })
-            else below.push(slot)
-        }
-    }
+    const { inside, below } = slotHits(catalog, { side, edition, rest, kinds })
     const best = Math.max(...inside.map((hit) => hit.score))
     const slots = [...inside.filter((hit) => hit.score === best).map((hit) => hit.slot), ...below]
     return { side, slots: [...new Set(slots)] }

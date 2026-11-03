@@ -8,6 +8,7 @@ import type { WaveReport } from "../../harness/wave.js"
 import { asRefusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import type { VerbContext, VerbResult } from "../../shared/verb.js"
 import { finalVerifyDue, readSnapshot, reconcile, runFinalVerify } from "./engine.js"
 
 /** What `workflow wave` did: the wave it ran, or nothing when none was due; `last` is the newest recorded wave verdict. */
@@ -37,6 +38,45 @@ const waitFree = async (db: DatabaseSync, workflow: string, deadline: number): P
     return waitFree(db, workflow, deadline)
 }
 
+/** What a run wave prints: its tasks, commands, prepared steps, outcomes, returned tasks and errors. */
+const waveResult = (data: WaveData, wave: WaveReport): VerbResult<WaveData> => {
+    const lines = [
+        `wave ${wave.verdict}: ${String(wave.tasks.length)} task(s), ${wave.base.slice(0, 12)}..${wave.head.slice(0, 12)}, ${String(wave.changed.length)} changed file(s)`,
+        ...wave.commands.map((command) => `  ran: ${command}`),
+        ...wave.prepared.map((outcome) => `${outcome.status} ${outcome.name}: ${outcome.detail.split("\n")[0] ?? ""}`),
+        ...Object.entries(wave.outcomes).flatMap(([task, outcomes]) => outcomes.map((outcome) => `${outcome.status} ${outcome.name} (${task})`)),
+        ...wave.returned.map((task) => `returned: ${task} failed, back to the Kernel${wave.free.includes(task) ? " (not proven its own: no try spent)" : ""}`),
+        ...wave.errors.map((error) => `wave error, no task failed: ${error}`),
+    ]
+    return { data, message: lines.join("\n"), exitCode: wave.verdict === "green" ? 0 : 1 }
+}
+
+/** Runs the due wave; a wave that reached no verdict is recorded, so a detached job's failure is seen. */
+const runRecorded = async (db: ReturnType<typeof openLedger>, root: string, workflow: string): Promise<WaveReport | undefined> => {
+    const flags = { workflow }
+    let wave: WaveReport | undefined
+    try {
+        wave = await runWave(db, root, flags.workflow, loadPolicy(root).quality.runtime.stepTimeoutSeconds * 1000)
+    } catch (error: unknown) {
+        const refusal = asRefusal(error)
+        // A wave that reached no verdict is recorded, so a detached job's failure is seen; another runner's wave is not a failure.
+        if (refusal.code !== WAVE_RUNNING) recordEvent(db, "wave-error", flags.workflow, { code: refusal.code, message: refusal.message })
+        throw error
+    }
+    return wave
+}
+
+/** `workflow wave --final`: runs the workflow's due final verify and records its verdict. */
+const finalVerifyResult = async (context: VerbContext, root: string, workflow: string): Promise<VerbResult<WaveData>> => {
+    const flags = { workflow }
+    const snapshot = readSnapshot(root, flags.workflow)
+    const done = finalVerifyDue(snapshot) ? await runFinalVerify(context, root, snapshot) : []
+    reconcile(root, flags.workflow)
+    const line = done[0]?.detail ?? null
+    const data: WaveData = { workflow: flags.workflow, wave: null, last: null, final: line }
+    return { data, message: `workflow ${flags.workflow}: ${line ?? "no final verify is due"}`, exitCode: done[0]?.action === "problem" ? 1 : 0 }
+}
+
 /**
  * `starci workflow wave <id>`: runs the workflow's due wave verify now (harness/wave.ts), the round a settling step starts once a
  * batch has landed: its scope decision recorded first, then the heavy checks the landed tasks left, once over their union.
@@ -60,12 +100,7 @@ export const workflowWaveVerb = defineVerb({
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
         if (flags.final) {
-            const snapshot = readSnapshot(root, flags.workflow)
-            const done = finalVerifyDue(snapshot) ? await runFinalVerify(context, root, snapshot) : []
-            reconcile(root, flags.workflow)
-            const line = done[0]?.detail ?? null
-            const data: WaveData = { workflow: flags.workflow, wave: null, last: null, final: line }
-            return { data, message: `workflow ${flags.workflow}: ${line ?? "no final verify is due"}`, exitCode: done[0]?.action === "problem" ? 1 : 0 }
+            return await finalVerifyResult(context, root, flags.workflow)
         }
         const db = openLedger(root)
         try {
@@ -73,15 +108,7 @@ export const workflowWaveVerb = defineVerb({
             if (waitMs > 0 && !(await waitFree(db, flags.workflow, Date.now() + waitMs))) {
                 return { data: { workflow: flags.workflow, wave: null, last: lastWave(db, flags.workflow) }, message: `workflow ${flags.workflow}: the wave still runs after ${String(flags.wait)} s`, exitCode: 1 }
             }
-            let wave: WaveReport | undefined
-            try {
-                wave = await runWave(db, root, flags.workflow, loadPolicy(root).quality.runtime.stepTimeoutSeconds * 1000)
-            } catch (error: unknown) {
-                const refusal = asRefusal(error)
-                // A wave that reached no verdict is recorded, so a detached job's failure is seen; another runner's wave is not a failure.
-                if (refusal.code !== WAVE_RUNNING) recordEvent(db, "wave-error", flags.workflow, { code: refusal.code, message: refusal.message })
-                throw error
-            }
+            const wave = await runRecorded(db, root, flags.workflow)
             // The workflow moves to the status its tasks now call for (a red wave blocks it) without waiting for the next step.
             if (wave !== undefined) reconcile(root, flags.workflow)
             const last = lastWave(db, flags.workflow)
@@ -90,15 +117,7 @@ export const workflowWaveVerb = defineVerb({
                 const verdict = last === null ? "" : `; the last wave was ${last.verdict} at ${last.head.slice(0, 12)} (${last.at})`
                 return { data, message: `workflow ${flags.workflow}: no wave is due${verdict}`, exitCode: last?.verdict === "red" && waitMs > 0 ? 1 : 0 }
             }
-            const lines = [
-                `wave ${wave.verdict}: ${String(wave.tasks.length)} task(s), ${wave.base.slice(0, 12)}..${wave.head.slice(0, 12)}, ${String(wave.changed.length)} changed file(s)`,
-                ...wave.commands.map((command) => `  ran: ${command}`),
-                ...wave.prepared.map((outcome) => `${outcome.status} ${outcome.name}: ${outcome.detail.split("\n")[0] ?? ""}`),
-                ...Object.entries(wave.outcomes).flatMap(([task, outcomes]) => outcomes.map((outcome) => `${outcome.status} ${outcome.name} (${task})`)),
-                ...wave.returned.map((task) => `returned: ${task} failed, back to the Kernel${wave.free.includes(task) ? " (not proven its own: no try spent)" : ""}`),
-                ...wave.errors.map((error) => `wave error, no task failed: ${error}`),
-            ]
-            return { data, message: lines.join("\n"), exitCode: wave.verdict === "green" ? 0 : 1 }
+            return waveResult(data, wave)
         } finally {
             db.close()
         }

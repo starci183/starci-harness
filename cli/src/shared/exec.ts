@@ -138,9 +138,27 @@ const lowerPriority = (pid: number, priority: number): void => {
     }
 }
 
+/** Refuses a capture bound that is not a positive integer. */
+const assertCaptureBytes = (captureBytes: number | undefined): void => {
+    if (captureBytes !== undefined && (!Number.isSafeInteger(captureBytes) || captureBytes < 1)) throw new Refusal("CLI_USAGE", "captureBytes is a positive integer")
+}
+
+/** The line a timed-out run adds to its stderr, after `separator`; none for a run that did not time out. */
+const timeoutNote = (timedOut: boolean, timeoutMs: number | undefined, separator: string): string =>
+    timedOut ? `${separator}timed out after ${String(Math.round((timeoutMs ?? 0) / 1000))}s; the process tree was killed` : ""
+
+/** Whether a run leads its own process group (POSIX), so a timeout or an overflow can end the whole tree. */
+const detaches = (options: RunOptions): boolean => (options.timeoutMs !== undefined || options.captureBytes !== undefined) && process.platform !== "win32"
+
+/** The error code a process that never started failed with, or a generic name for it. */
+const startFailureOf = (error: unknown): string => {
+    const code = errorCode(error)
+    return typeof code === "string" ? code : "spawn failed"
+}
+
 const execute = (tool: string, args: readonly string[], cwd: string, options: RunOptions): Promise<Finished> =>
     new Promise((settle) => {
-        if (options.captureBytes !== undefined && (!Number.isSafeInteger(options.captureBytes) || options.captureBytes < 1)) throw new Refusal("CLI_USAGE", "captureBytes is a positive integer")
+        assertCaptureBytes(options.captureBytes)
         let timedOut = false
         let notStarted: string | undefined
         let timer: NodeJS.Timeout | undefined
@@ -154,8 +172,8 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
         const stdout = collector(options.captureBytes, overflow)
         const stderr = collector(options.captureBytes, overflow)
         const base = options.baseEnv ?? process.env
-        const env = options.env === undefined ? base : { ...base, ...options.env }
-        const detached = (options.timeoutMs !== undefined || options.captureBytes !== undefined) && process.platform !== "win32"
+        const env = { ...base, ...options.env }
+        const detached = detaches(options)
         let child: ChildProcessByStdio<Writable | null, Readable, Readable>
         try {
             child =
@@ -164,8 +182,7 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
                     : spawn(tool, [...args], { cwd, env, windowsHide: true, detached, stdio: ["pipe", "pipe", "pipe"] })
         } catch (error: unknown) {
             // Windows refuses a .cmd or .bat synchronously (spawn EINVAL), before any process exists.
-            const code = errorCode(error)
-            settle({ exitCode: 1, stdout: "", stderr: error instanceof Error ? error.message : String(error), notStarted: typeof code === "string" ? code : "spawn failed", timedOut: false })
+            settle({ exitCode: 1, stdout: "", stderr: error instanceof Error ? error.message : String(error), notStarted: startFailureOf(error), timedOut: false })
             return
         }
         if (child.pid !== undefined) {
@@ -185,7 +202,7 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
             if (timer !== undefined) clearTimeout(timer)
             const errors = stderr.text()
             const separator = errors === "" ? "" : "\n"
-            const note = timedOut ? `${separator}timed out after ${String(Math.round((options.timeoutMs ?? 0) / 1000))}s; the process tree was killed` : ""
+            const note = timeoutNote(timedOut, options.timeoutMs, separator)
             if (signal !== null && !timedOut && incomplete === undefined) incomplete = "signal"
             settle({ exitCode: timedOut ? EXIT_TIMEOUT : (code ?? 1), stdout: stdout.text(), stderr: `${errors}${note}`, notStarted, timedOut, ...(incomplete === undefined ? {} : { incomplete }) })
         }
@@ -194,8 +211,7 @@ const execute = (tool: string, args: readonly string[], cwd: string, options: Ru
             if (options.captureBytes !== undefined && child.pid !== undefined && incomplete === undefined && !timedOut) incomplete = "error"
             // A process that never started (it has no pid) emits no close; a kill error of a running one waits for its close.
             if (child.pid === undefined) {
-                const code = errorCode(error)
-                notStarted = typeof code === "string" ? code : "spawn failed"
+                notStarted = startFailureOf(error)
                 finish(null)
             }
         })

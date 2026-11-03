@@ -8,6 +8,7 @@ import type { RunOptions, ToolRun } from "../shared/exec.js"
 import { evidenceTail } from "../shared/output.js"
 import { withHeavySlot } from "./heavy.js"
 import { installCachePath } from "./ledger.js"
+import { inOrder } from "./sequential.js"
 
 /** What one install of a checkout did: npm's run on a miss (null on a hit), and the line saying where node_modules came from. */
 export interface CachedInstall {
@@ -395,7 +396,7 @@ export const reinstallStale = async (checkout: string, expected: readonly string
         return installSatisfies(join(checkout, folder)) !== true
     })
     const done: Reinstalled[] = []
-    for (const folder of stale) {
+    await inOrder(stale, async (folder) => {
         const dir = join(checkout, folder)
         const modules = join(dir, "node_modules")
         const stat = lstatSync(modules, { throwIfNoEntry: false })
@@ -405,7 +406,7 @@ export const reinstallStale = async (checkout: string, expected: readonly string
             rmSync(modules, { recursive: true, force: true })
         }
         done.push({ folder, ...(await cachedInstall(dir, options, materialize)) })
-    }
+    })
     return done
 }
 

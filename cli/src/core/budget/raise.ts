@@ -67,9 +67,10 @@ export const budgetRaiseVerb = defineVerb({
                     if (typeof key !== "string" || key === "") throw new Refusal("TASK_UNKNOWN", `workflow ${flags.workflow} has no task ${named}`)
                     return { key, ...raiseNodeTries(db, flags.workflow, key, { tries, by, reason: flags.reason.trim() }) }
                 })
+                const taskSuffix = raised.task === null ? "" : ` (last ${raised.task})`
                 return {
                     data: { workflow: flags.workflow, task: raised },
-                    message: `workflow ${flags.workflow}, task ${raised.key}${raised.task === null ? "" : ` (last ${raised.task})`}: tries ${String(raised.before)} -> ${String(raised.after)} (by ${by}: ${flags.reason.trim()}); its retry dispatches now`,
+                    message: `workflow ${flags.workflow}, task ${raised.key}${taskSuffix}: tries ${String(raised.before)} -> ${String(raised.after)} (by ${by}: ${flags.reason.trim()}); its retry dispatches now`,
                 }
             } finally {
                 db.close()
@@ -81,9 +82,10 @@ export const budgetRaiseVerb = defineVerb({
         const raised = raiseWorkflowBudget(root, flags.workflow, { minutes, tries, by, reason: flags.reason.trim() })
         const { before, after } = raised
         const answered = answerNearTicket(before, after, by, flags.reason.trim())
+        const answeredSuffix = answered === null ? "" : `; its near question ${answered.id} is answered`
         return {
             data: { ...raised, answered: answered?.id ?? null },
-            message: `workflow ${flags.workflow}: minutes ${String(before.ceiling.minutes)} -> ${String(after.ceiling.minutes)}, tries ${String(before.ceiling.tries)} -> ${String(after.ceiling.tries)} (by ${by}: ${flags.reason.trim()})${answered === null ? "" : `; its near question ${answered.id} is answered`}`,
+            message: `workflow ${flags.workflow}: minutes ${String(before.ceiling.minutes)} -> ${String(after.ceiling.minutes)}, tries ${String(before.ceiling.tries)} -> ${String(after.ceiling.tries)} (by ${by}: ${flags.reason.trim()})${answeredSuffix}`,
         }
     },
 })

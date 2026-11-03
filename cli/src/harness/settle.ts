@@ -358,6 +358,39 @@ export const workLine = (work: WorkWrite): string => {
     return `work: ${work.record} -> state ${String(work.state)}, activity ${String(work.activity)}${atStep}; run ${work.run} cited in its evidence.yaml (${String(work.commit?.slice(0, 12))})${warning}`
 }
 
+/** The candidate with the Work record of a passed uat task committed on it, or the reason that write was skipped. */
+const withUatWork = async (root: string, built: CleanVerify, task: TaskRow | undefined, binding: UatBinding | undefined): Promise<{ readonly candidate: string; readonly changed: readonly string[]; readonly work: WorkWrite | null; readonly workPaths: string[] }> => {
+    let candidate = built.candidate
+    let changed = built.changed
+    let work: WorkWrite | null = null
+    let workPaths: string[] = []
+    if (task !== undefined && binding !== undefined) {
+        try {
+            const plan = await planWork(root, built.parent, task, binding, { verdict: "passed" })
+            candidate = await commitWork(root, built.candidate, built.parent, plan.files, await git(root, ["log", "-1", "--format=%B", built.candidate]))
+            workPaths = plan.files.map((file) => file.path)
+            changed = [...new Set([...changed, ...workPaths])]
+            work = { ...plan.write, commit: candidate, skipped: null, warning: null }
+        } catch (error: unknown) {
+            work = skippedWrite(binding, "passed", undefined, asRefusal(error).message)
+        }
+    }
+    return { candidate, changed, work, workPaths }
+}
+
+/** Moves the target's branch to the candidate (the ref in place, or a fast-forward of the checkout), refusing when the branch moved meanwhile. */
+const moveBranch = async (root: string, target: LandTarget, built: CleanVerify, landing: { readonly candidate: string; readonly branch: string; readonly stale: Awaited<ReturnType<typeof clearStale>> | null; readonly moved: (head: string) => Refusal }): Promise<void> => {
+    const { candidate, branch, stale, moved } = landing
+    const update = target.own
+        ? await captureGit(["update-ref", "-m", "starci settle", `refs/heads/${branch}`, candidate, built.parent], root)
+        : await captureGit(["merge", "--ff-only", "--quiet", candidate], root)
+    if (update.exitCode !== 0) {
+        const after = await resolveSha(root, "HEAD")
+        if (after !== built.parent) throw moved(after)
+        throw new Refusal("SETTLE_REF_FAILED", `git ${target.own ? "update-ref" : "merge --ff-only"} of ${branch} failed: ${headline(update.stderr)}; ${stale === null ? "the work tree is untouched" : "its dirty paths were cleared first (land-stale)"} and no try is spent, verify again`)
+    }
+}
+
 /**
  * Lands exactly the candidate the checks saw on the target's branch, only while it still points at the candidate's parent
  * (call it under the target's land lock). A task working in the target checkout itself moves the ref and refreshes the index of
@@ -379,31 +412,11 @@ export const settle = async (target: LandTarget, built: CleanVerify, task?: Task
     const head = await resolveSha(root, "HEAD")
     if (head !== built.parent) throw moved(head)
     const binding = task === undefined ? undefined : uatBinding(task.contract, loadOps())
-    let candidate = built.candidate
-    let changed = built.changed
-    let work: WorkWrite | null = null
-    let workPaths: string[] = []
-    if (task !== undefined && binding !== undefined) {
-        try {
-            const plan = await planWork(root, built.parent, task, binding, { verdict: "passed" })
-            candidate = await commitWork(root, built.candidate, built.parent, plan.files, await git(root, ["log", "-1", "--format=%B", built.candidate]))
-            workPaths = plan.files.map((file) => file.path)
-            changed = [...new Set([...changed, ...workPaths])]
-            work = { ...plan.write, commit: candidate, skipped: null, warning: null }
-        } catch (error: unknown) {
-            work = skippedWrite(binding, "passed", undefined, asRefusal(error).message)
-        }
-    }
-    const stale = target.own || db === undefined ? null : await clearStale(root, db, task?.id ?? `land:${branch}`, candidate, task === undefined ? [] : taskPaths(task))
+    const { candidate, changed, work, workPaths } = await withUatWork(root, built, task, binding)
+    let stale: Awaited<ReturnType<typeof clearStale>> | null = null
+    if (!target.own && db !== undefined) stale = await clearStale(root, db, task?.id ?? `land:${branch}`, candidate, task === undefined ? [] : taskPaths(task))
     if (changed.length === 0) return { branch, commit: head, committed: false, warnings: [], work, stale }
-    const update = target.own
-        ? await captureGit(["update-ref", "-m", "starci settle", `refs/heads/${branch}`, candidate, built.parent], root)
-        : await captureGit(["merge", "--ff-only", "--quiet", candidate], root)
-    if (update.exitCode !== 0) {
-        const after = await resolveSha(root, "HEAD")
-        if (after !== built.parent) throw moved(after)
-        throw new Refusal("SETTLE_REF_FAILED", `git ${target.own ? "update-ref" : "merge --ff-only"} of ${branch} failed: ${headline(update.stderr)}; ${stale === null ? "the work tree is untouched" : "its dirty paths were cleared first (land-stale)"} and no try is spent, verify again`)
-    }
+    await moveBranch(root, target, built, { candidate, branch, stale, moved })
     const refreshed = target.own ? [...(await refreshIndex(root, built.paths)), ...(workPaths.length === 0 ? [] : await checkoutWork(root, candidate, workPaths))] : []
     return { branch, commit: candidate, committed: true, warnings: refreshed, work, stale }
 }

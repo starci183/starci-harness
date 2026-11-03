@@ -135,35 +135,8 @@ const ORCA_IMAGE = /^orca(?:[\s-][\w\s-]*)?(?:\.exe)?$/i
 /** True when `child` may be a child of a process that started at `parentStart`: it started no earlier, so its pid is not a reuse. */
 const startedAfter = (child: HostProcess, parentStart: number | null): boolean => child.startedMs === null || parentStart === null || child.startedMs + SAME_PROCESS_MS >= parentStart
 
-/**
- * The processes a reap of `folder` ends, from one read of the process table: the recorded ones still alive (the same process,
- * by its start), the governor's heavy commands working there, every process working inside the folder, and every process under
- * one of those (each hop started after its parent, so a reused pid never makes a stranger a child), less this process and its
- * ancestors.
- */
-const targetsOf = (processes: readonly HostProcess[], folder: string, recorded: readonly Recorded[]): Map<number, ReapedProcess> => {
-    const table = new Map(processes.map((item) => [item.pid, item]))
-    const spared = selfAndAncestors(table)
-    // Orca (its app and its CLI) hosts every terminal of the host: it is asked to let go of the folder, never ended.
-    for (const item of processes) if (ORCA_IMAGE.test(item.name)) spared.add(item.pid)
-    const roots = new Map<number, ReapedProcess["why"]>()
-    // A recorded process that already exited still names the pid its orphans list as their parent, from the time it was recorded.
-    const goneParents = new Map<number, number>()
-    for (const row of recorded) {
-        const live = table.get(row.pid)
-        if (live === undefined) goneParents.set(row.pid, row.since)
-        else if (live.startedMs === null || live.startedMs <= row.since + SAME_PROCESS_MS) roots.set(row.pid, "recorded")
-    }
-    for (const slot of heavySlots().filter((one) => insideFolder(folder, one.cwd))) {
-        for (const pid of slot.childPid === null ? [slot.pid] : [slot.pid, slot.childPid]) if (table.has(pid) && !roots.has(pid)) roots.set(pid, "heavy")
-    }
-    for (const item of processes) if (!roots.has(item.pid) && insideFolder(folder, item.cwd)) roots.set(item.pid, "cwd")
-    for (const pid of spared) roots.delete(pid)
-    const targets = new Map<number, ReapedProcess>()
-    for (const [pid, why] of roots) {
-        const item = table.get(pid)
-        if (item !== undefined) targets.set(pid, { pid, name: item.name, why, cwd: item.cwd })
-    }
+/** Whether a process descends from a root within 32 hops, each hop started after its parent. */
+const underRoots = (table: ReadonlyMap<number, HostProcess>, spared: ReadonlySet<number>, goneParents: ReadonlyMap<number, number>, roots: ReadonlyMap<number, ReapedProcess["why"]>): (item: HostProcess) => boolean => {
     const under = (item: HostProcess): boolean => {
         let child = item
         for (let hops = 0; hops < 32; hops += 1) {
@@ -177,6 +150,50 @@ const targetsOf = (processes: readonly HostProcess[], folder: string, recorded: 
         }
         return false
     }
+    return under
+}
+
+/** Adds the governor's heavy commands working in the folder (and their child processes) as roots. */
+const addHeavyRoots = (roots: Map<number, ReapedProcess["why"]>, table: ReadonlyMap<number, HostProcess>, folder: string): void => {
+    for (const slot of heavySlots().filter((one) => insideFolder(folder, one.cwd))) {
+        for (const pid of slot.childPid === null ? [slot.pid] : [slot.pid, slot.childPid]) if (table.has(pid) && !roots.has(pid)) roots.set(pid, "heavy")
+    }
+}
+
+/** The processes a reap starts from: the recorded ones still alive, the heavy commands working in the folder and every process working inside it, and the parents recorded processes left. */
+const rootsOf = (processes: readonly HostProcess[], table: ReadonlyMap<number, HostProcess>, spared: ReadonlySet<number>, folder: string, recorded: readonly Recorded[]): { readonly roots: Map<number, ReapedProcess["why"]>; readonly goneParents: Map<number, number> } => {
+    const roots = new Map<number, ReapedProcess["why"]>()
+    // A recorded process that already exited still names the pid its orphans list as their parent, from the time it was recorded.
+    const goneParents = new Map<number, number>()
+    for (const row of recorded) {
+        const live = table.get(row.pid)
+        if (live === undefined) goneParents.set(row.pid, row.since)
+        else if (live.startedMs === null || live.startedMs <= row.since + SAME_PROCESS_MS) roots.set(row.pid, "recorded")
+    }
+    addHeavyRoots(roots, table, folder)
+    for (const item of processes) if (!roots.has(item.pid) && insideFolder(folder, item.cwd)) roots.set(item.pid, "cwd")
+    for (const pid of spared) roots.delete(pid)
+    return { roots, goneParents }
+}
+
+/**
+ * The processes a reap of `folder` ends, from one read of the process table: the recorded ones still alive (the same process,
+ * by its start), the governor's heavy commands working there, every process working inside the folder, and every process under
+ * one of those (each hop started after its parent, so a reused pid never makes a stranger a child), less this process and its
+ * ancestors.
+ */
+const targetsOf = (processes: readonly HostProcess[], folder: string, recorded: readonly Recorded[]): Map<number, ReapedProcess> => {
+    const table = new Map(processes.map((item) => [item.pid, item]))
+    const spared = selfAndAncestors(table)
+    // Orca (its app and its CLI) hosts every terminal of the host: it is asked to let go of the folder, never ended.
+    for (const item of processes) if (ORCA_IMAGE.test(item.name)) spared.add(item.pid)
+    const { roots, goneParents } = rootsOf(processes, table, spared, folder, recorded)
+    const targets = new Map<number, ReapedProcess>()
+    for (const [pid, why] of roots) {
+        const item = table.get(pid)
+        if (item !== undefined) targets.set(pid, { pid, name: item.name, why, cwd: item.cwd })
+    }
+    const under = underRoots(table, spared, goneParents, roots)
     for (const item of processes) if (!targets.has(item.pid) && !spared.has(item.pid) && item.pid > 4 && under(item)) targets.set(item.pid, { pid: item.pid, name: item.name, why: "descendant", cwd: item.cwd })
     return targets
 }
@@ -185,6 +202,13 @@ const targetsOf = (processes: readonly HostProcess[], folder: string, recorded: 
 const GRACE_MS = 3_000
 
 const pause = async (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms))
+
+/** Waits in 100 ms pauses, up to the grace period, while any of `pids` is still alive. */
+const waitGone = async (pids: readonly number[], waited = 0): Promise<void> => {
+    if (waited >= GRACE_MS || !pids.some(pidAlive)) return
+    await pause(100)
+    await waitGone(pids, waited + 100)
+}
 
 /** Ends each pid, never its tree by parent id (a reused parent id would take strangers): taskkill /F on Windows, SIGTERM then SIGKILL elsewhere. */
 const endAll = async (pids: readonly number[]): Promise<void> => {
@@ -203,10 +227,10 @@ const endAll = async (pids: readonly number[]): Promise<void> => {
             }
         }
         signal("SIGTERM")
-        for (let waited = 0; waited < GRACE_MS && pids.some(pidAlive); waited += 100) await pause(100)
+        await waitGone(pids)
         signal("SIGKILL")
     }
-    for (let waited = 0; waited < GRACE_MS && pids.some(pidAlive); waited += 100) await pause(100)
+    await waitGone(pids)
 }
 
 /** How long a removal waits after closing a worktree's terminals, for their shells to exit. */
@@ -231,6 +255,27 @@ export const closeFolderTerminals = async (binary: OrcaBinary, folder: string, r
     return { terminals, workspace }
 }
 
+/** Ends the processes in up to two rounds: what the first kill missed, or a dying process started, is named by a fresh read and ended in the second. */
+const endInRounds = async (first: ReadonlyMap<number, ReapedProcess>, folder: string): Promise<{ readonly killed: Map<number, ReapedProcess>; readonly survivors: ReapedProcess[] }> => {
+    const killed = new Map(first)
+    let pending = [...first.keys()]
+    let survivors: ReapedProcess[] = []
+    // Two rounds: what the first kill missed or a dying process started is named by a fresh read and ended in the second.
+    for (let round = 0; round < 2 && pending.length > 0; round += 1) {
+        await endAll(pending)
+        const after = await listProcesses(true).catch(() => undefined)
+        if (after === undefined || typeof after === "string") {
+            survivors = pending.filter(pidAlive).map((pid) => killed.get(pid) ?? { pid, name: "", why: "recorded", cwd: null })
+            break
+        }
+        const again = targetsOf(after, folder, recordedIn(folder))
+        for (const [pid, item] of again) if (!killed.has(pid)) killed.set(pid, item)
+        survivors = [...again.values()]
+        pending = [...again.keys()]
+    }
+    return { killed, survivors }
+}
+
 /**
  * Reaps a worktree in the order a held folder needs: reads the process table first (while the parent chains still stand), closes
  * the Orca terminals working in `folder` (each tab but the caller's own, then `orca terminal close --worktree path:<folder>
@@ -250,22 +295,7 @@ export const reapWorktree = async (folder: string, repo: string, end: boolean, b
     await between()
     if (typeof listed === "string") return { terminals, workspace, killed: [], survivors: [], unreadable: end ? listed : null }
     if (first.size === 0) return { terminals, workspace, killed: [], survivors: [], unreadable: null }
-    const killed = new Map(first)
-    let pending = [...first.keys()]
-    let survivors: ReapedProcess[] = []
-    // Two rounds: what the first kill missed or a dying process started is named by a fresh read and ended in the second.
-    for (let round = 0; round < 2 && pending.length > 0; round += 1) {
-        await endAll(pending)
-        const after = await listProcesses(true).catch(() => undefined)
-        if (after === undefined || typeof after === "string") {
-            survivors = pending.filter(pidAlive).map((pid) => killed.get(pid) ?? { pid, name: "", why: "recorded", cwd: null })
-            break
-        }
-        const again = targetsOf(after, folder, recordedIn(folder))
-        for (const [pid, item] of again) if (!killed.has(pid)) killed.set(pid, item)
-        survivors = [...again.values()]
-        pending = [...again.keys()]
-    }
+    const { killed, survivors } = await endInRounds(first, folder)
     const alive = new Set(survivors.map((item) => item.pid))
     return { terminals, workspace, killed: [...killed.values()].filter((item) => !alive.has(item.pid)), survivors, unreadable: null }
 }
@@ -287,10 +317,11 @@ export const heldBy = async (folder: string, reap: Reap): Promise<string> => {
     const working = typeof listed === "string" ? [] : listed.filter((item) => insideFolder(folder, item.cwd))
     if (working.length > 0) {
         const own = typeof listed === "string" ? new Set<number>() : selfAndAncestors(new Map(listed.map((item) => [item.pid, item])))
-        return `working in it: ${working.map((item) => `${String(item.pid)} ${item.name}${own.has(item.pid) ? " (this process or its ancestor, never ended)" : ""}`).join(", ")}`
+        const workingText = working.map((item) => `${String(item.pid)} ${item.name}${own.has(item.pid) ? " (this process or its ancestor, never ended)" : ""}`).join(", ")
+        return `working in it: ${workingText}`
     }
     const { lockers, how } = await lockersOf(folder)
-    if (lockers !== null) return `held by (${how}): ${lockers.replaceAll(/\s*\n\s*/g, "; ")}`
+    if (lockers !== null) return `held by (${how}): ${lockers.split(/(\s+)/).map((part, at) => (at % 2 === 1 && part.includes("\n") ? "; " : part)).join("")}`
     const scan = typeof listed === "string" ? `the process table could not be read (${listed})` : `no process works inside it (${String(listed.length)} processes read)`
     return `holder unknown: ${scan}; ${how}`
 }

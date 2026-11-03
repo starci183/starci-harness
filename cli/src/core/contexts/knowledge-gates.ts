@@ -44,7 +44,9 @@ export const judgeRuleDocs = (knowledge: string): KnowledgeFinding[] => {
     return ids.filter((id) => !named.has(id)).map((id) => ({ kind: "rule-no-doc" as const, subject: id, detail: `${id} is in hfs/rules.yaml and no page of the living knowledge names it: add it where its law is taught (contexts/code/<side>/*.md or contexts/ui/...)` }))
 }
 
-const code = (token: string): RegExp => new RegExp("(?:`" + token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "`|<" + token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[ >/])")
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
+
+const code = (token: string): RegExp => new RegExp("(?:`" + escapeRegExp(token) + "`|<" + escapeRegExp(token) + "[ >/])")
 
 /**
  * rulings.yaml `removedVocabulary`: a spelling it lists is not written, as code (in backticks or as a JSX tag), in the living
@@ -81,7 +83,7 @@ export const judgeShippedVocabulary = (knowledge: string): KnowledgeFinding[] =>
     for (const path of walk(runtime, (name) => /\.(?:md|yaml|json|mts|ts)$/.test(name))) {
         const lines = read(path).split("\n")
         for (const spelling of spellings) {
-            const pattern = new RegExp("(?<![\\w.-])" + spelling.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![\\w-])")
+            const pattern = new RegExp(String.raw`(?<![\w.-])` + escapeRegExp(spelling) + String.raw`(?![\w-])`)
             lines.forEach((line, index) => {
                 if (pattern.test(line)) found.push({ kind: "removed-vocabulary-used", subject: spelling, detail: `${relative(knowledge, path).replaceAll("\\", "/")}:${String(index + 1)} writes the removed ${spelling}; rulings.yaml removedVocabulary names what replaces it` })
             })
@@ -100,11 +102,43 @@ const heroNames = (source: string): Set<string> => {
         for (const part of (match[2] ?? "").split(",")) {
             const token = part.trim()
             if (token === "" || token.startsWith("type ")) continue
-            const name = (token.split(/\s+as\s+/)[0] ?? "").trim()
+            const name = (token.split(/\s/)[0] ?? "").trim()
             if (/^[A-Z][a-z]/.test(name)) names.add(name)
         }
     }
     return names
+}
+
+/** Adds a finding for each override of a wrapper row that cites a ruling rulings.yaml does not hold. */
+const judgeOverrides = (row: Record<string, unknown>, rowFile: string, rulings: readonly Record<string, unknown>[], found: KnowledgeFinding[]): void => {
+    for (const override of list(row.overrides).map(object)) {
+        const ruling = text(override.ruling)
+        if (!rulings.some((entry) => text(entry.id) === ruling)) found.push({ kind: "wrapper-ruling-unknown", subject: rowFile, detail: `an override of ${rowFile} cites ruling ${ruling}, which rulings.yaml does not hold` })
+    }
+}
+
+/** Judges each row of vendor/wrappers.yaml against the HeroUI components its Grammar file imports; the files the rows name. */
+const judgeWrapperRows = (rows: readonly Record<string, unknown>[], imported: ReadonlyMap<string, Set<string>>, grammarSource: string, rulings: readonly Record<string, unknown>[], found: KnowledgeFinding[]): Set<string> => {
+    const declared = new Set<string>()
+    for (const row of rows) {
+        const rowFile = text(row.file)
+        declared.add(rowFile)
+        const actual = imported.get(rowFile)
+        const wrapsNothing = list(row.wraps).length === 0
+        if (actual === undefined && wrapsNothing && existsSync(join(grammarSource, rowFile))) continue
+        if (actual === undefined) {
+            found.push({ kind: "wrapper-stale", subject: rowFile, detail: `${rowFile} is a row of vendor/wrappers.yaml and ${existsSync(join(grammarSource, rowFile)) ? "imports no HeroUI component" : "does not exist"}: remove the row` })
+            continue
+        }
+        const wraps = new Set(list(row.wraps).map(text))
+        const missing = [...actual].filter((name) => !wraps.has(name))
+        const extra = [...wraps].filter((name) => !actual.has(name))
+        if (missing.length > 0 || extra.length > 0) {
+            found.push({ kind: "wrapper-wraps-drift", subject: rowFile, detail: `${rowFile} wraps ${[...actual].sort((left, right) => left.localeCompare(right)).join(", ")}; the row says ${[...wraps].sort((left, right) => left.localeCompare(right)).join(", ")}` })
+        }
+        judgeOverrides(row, rowFile, rulings, found)
+    }
+    return declared
 }
 
 /**
@@ -128,28 +162,7 @@ export const judgeVendorWrappers = (knowledge: string, grammarSource: string): K
         const names = heroNames(read(path))
         if (names.size > 0) imported.set(relative(grammarSource, path).replaceAll("\\", "/"), names)
     }
-    const declared = new Set<string>()
-    for (const row of rows) {
-        const rowFile = text(row.file)
-        declared.add(rowFile)
-        const actual = imported.get(rowFile)
-        const wrapsNothing = list(row.wraps).length === 0
-        if (actual === undefined && wrapsNothing && existsSync(join(grammarSource, rowFile))) continue
-        if (actual === undefined) {
-            found.push({ kind: "wrapper-stale", subject: rowFile, detail: `${rowFile} is a row of vendor/wrappers.yaml and ${existsSync(join(grammarSource, rowFile)) ? "imports no HeroUI component" : "does not exist"}: remove the row` })
-            continue
-        }
-        const wraps = new Set(list(row.wraps).map(text))
-        const missing = [...actual].filter((name) => !wraps.has(name))
-        const extra = [...wraps].filter((name) => !actual.has(name))
-        if (missing.length > 0 || extra.length > 0) {
-            found.push({ kind: "wrapper-wraps-drift", subject: rowFile, detail: `${rowFile} wraps ${[...actual].sort((left, right) => left.localeCompare(right)).join(", ")}; the row says ${[...wraps].sort((left, right) => left.localeCompare(right)).join(", ")}` })
-        }
-        for (const override of list(row.overrides).map(object)) {
-            const ruling = text(override.ruling)
-            if (!rulings.some((entry) => text(entry.id) === ruling)) found.push({ kind: "wrapper-ruling-unknown", subject: rowFile, detail: `an override of ${rowFile} cites ruling ${ruling}, which rulings.yaml does not hold` })
-        }
-    }
+    const declared = judgeWrapperRows(rows, imported, grammarSource, rulings, found)
     for (const [path, names] of imported) {
         if (!declared.has(path)) found.push({ kind: "wrapper-undeclared", subject: path, detail: `${path} imports ${[...names].sort((left, right) => left.localeCompare(right)).join(", ")} from @heroui/react and has no row in vendor/wrappers.yaml` })
     }

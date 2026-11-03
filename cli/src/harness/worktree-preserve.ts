@@ -36,6 +36,18 @@ const stamp = (root: string, path: string): FileStamp => {
     return metadata(path, stat)
 }
 
+/** Whether a folder is an ignored cache (node_modules and kin) that holds no tracked file, so the inventory leaves it out. */
+const skipsCacheFolder = (found: { readonly root: string; readonly path: string; readonly name: string; readonly inventory: "checkout" | "remnant"; readonly tracked: ReadonlySet<string> }): boolean => {
+    const { root, path, name, inventory, tracked } = found
+    const holdsTracked = [...tracked].some((file) => file.startsWith(`${path}/`))
+    return inventory === "checkout" && CACHE_FOLDERS.has(name) && !holdsTracked && captureGitSync(["check-ignore", "--quiet", "--", path], root).exitCode === 0
+}
+
+/** Refuses a nested checkout (a .git below the root, or any .git of a remnant): its files cannot be preserved safely. */
+const refuseNestedCheckout = (relative: string, inventory: "checkout" | "remnant"): void => {
+    if (relative !== "" || inventory === "remnant") throw new Refusal("WORKTREE_PRESERVE_UNSAFE", `${relative === "" ? "." : relative}: nested checkout needs its own preservation; nothing removed`)
+}
+
 /** Metadata only, never entering links; a remnant includes every install/cache because Git cannot prove its ownership. */
 export const checkoutFiles = (root: string, tracked: ReadonlySet<string> = new Set(), inventory: "checkout" | "remnant" = "checkout"): CheckoutFiles => {
     const files: FileStamp[] = []
@@ -47,15 +59,14 @@ export const checkoutFiles = (root: string, tracked: ReadonlySet<string> = new S
     const walk = (relative: string): void => {
         for (const entry of readdirSync(join(root, relative), { withFileTypes: true }).toSorted((a, b) => a.name.localeCompare(b.name))) {
             if (entry.name.toLowerCase() === ".git") {
-                if (relative !== "" || inventory === "remnant") throw new Refusal("WORKTREE_PRESERVE_UNSAFE", `${relative === "" ? "." : relative}: nested checkout needs its own preservation; nothing removed`)
+                refuseNestedCheckout(relative, inventory)
                 continue
             }
             const path = relative === "" ? entry.name : `${relative}/${entry.name}`
             const stat = lstatSync(join(root, path))
             if (stat.isSymbolicLink()) links.push({ path, target: readlinkSync(join(root, path)), metadata: metadata(path, stat) })
             else if (stat.isDirectory()) {
-                const holdsTracked = [...tracked].some((file) => file.startsWith(`${path}/`))
-                if (inventory === "checkout" && CACHE_FOLDERS.has(entry.name) && !holdsTracked && captureGitSync(["check-ignore", "--quiet", "--", path], root).exitCode === 0) continue
+                if (skipsCacheFolder({ root, path, name: entry.name, inventory, tracked })) continue
                 directories.push(path)
                 directoryMetadata.push(metadata(path, stat))
                 walk(path)
@@ -128,6 +139,17 @@ export interface QuarantinedRemnant {
     readonly detail: string
 }
 
+/** The first folder of `parent` named `name`, or `name.2`, `name.3` and so on, that does not exist yet. */
+const freeFolder = (parent: string, name: string): string => {
+    let folder = join(parent, name)
+    let n = 2
+    while (existsSync(folder)) {
+        folder = join(parent, `${name}.${String(n)}`)
+        n += 1
+    }
+    return folder
+}
+
 /** Moves every byte into same-project custody atomically, then unlinks dependency links only; it never recursively deletes. */
 export const quarantineRemnant = async (root: string, path: string, verifySelection: () => Promise<void>): Promise<QuarantinedRemnant> => {
     await verifySelection()
@@ -135,8 +157,7 @@ export const quarantineRemnant = async (root: string, path: string, verifySelect
     const preserved = join(projectDir(root), "preserved")
     if (!existsSync(preserved)) mkdirSync(preserved, { mode: 0o700 })
     realDirectory(preserved)
-    let directory = join(preserved, `gc-${basename(path)}`)
-    for (let n = 2; existsSync(directory); n += 1) directory = join(preserved, `gc-${basename(path)}.${String(n)}`)
+    const directory = freeFolder(preserved, `gc-${basename(path)}`)
     mkdirSync(directory, { mode: 0o700 })
     const reserved = metadata("", lstatSync(directory))
     const checkout = join(directory, "checkout")
@@ -190,15 +211,17 @@ export const preserveCheckout = async (root: string, path: string): Promise<Pres
     const untracked = new Set(nulPaths(await git(path, ["ls-files", "--others", "--exclude-standard", "-z"])))
     const index = await git(path, ["ls-files", "--stage", "-z"])
     const before = checkoutFiles(path, tracked)
-    let directory = join(projectDir(root), "preserved", `gc-${basename(path)}`)
-    for (let n = 2; existsSync(directory); n += 1) directory = join(projectDir(root), "preserved", `gc-${basename(path)}.${String(n)}`)
+    const directory = freeFolder(join(projectDir(root), "preserved"), `gc-${basename(path)}`)
     mkdirSync(directory, { recursive: true, mode: 0o700 })
     await git(path, ["diff", "--binary", `--output=${join(directory, "changes.patch")}`, "HEAD"])
     await git(path, ["diff", "--binary", "--cached", `--output=${join(directory, "index.patch")}`])
     const copied: { path: string; stored: string; size: number }[] = []
     for (const file of before.files) {
         // Git filters and assume-unchanged flags can omit working bytes from a patch; opaque tracked copies keep those too.
-        const stored = `${tracked.has(file.path) ? "tracked" : untracked.has(file.path) ? "untracked" : "ignored"}/${file.path}`
+        let custody = "ignored"
+        if (tracked.has(file.path)) custody = "tracked"
+        else if (untracked.has(file.path)) custody = "untracked"
+        const stored = `${custody}/${file.path}`
         const target = join(directory, stored)
         mkdirSync(dirname(target), { recursive: true, mode: 0o700 })
         copyFileSync(join(path, file.path), target, constants.COPYFILE_EXCL)

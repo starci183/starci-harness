@@ -107,7 +107,10 @@ export const readInspect = (text: string): ContainerState => {
  */
 export const judgeContainer = (state: ContainerState, port: number): void => {
     const open = state.bindings.filter((one) => !/^127(?:\.\d{1,3}){3}$|^::1$/.test(one.ip))
-    if (open.length > 0) throw new Refusal("LOCAL_REGISTRY_EXPOSED", `${CONTAINER} is published on ${open.map((one) => `${one.ip === "" ? "all interfaces" : one.ip}:${one.port}`).join(", ")}, not on ${LOOPBACK} only; remove it (docker rm -f ${CONTAINER}) and run this again`)
+    if (open.length > 0) {
+        const openText = open.map((one) => `${one.ip === "" ? "all interfaces" : one.ip}:${one.port}`).join(", ")
+        throw new Refusal("LOCAL_REGISTRY_EXPOSED", `${CONTAINER} is published on ${openText}, not on ${LOOPBACK} only; remove it (docker rm -f ${CONTAINER}) and run this again`)
+    }
     if (!state.bindings.some((one) => one.port === String(port))) throw new Refusal("LOCAL_REGISTRY_PORT", `${CONTAINER} listens on ${state.bindings.map((one) => one.port).join(", ") || "no port"}, not ${String(port)}; pass --port to match it, or remove it (docker rm -f ${CONTAINER})`)
 }
 
@@ -128,6 +131,14 @@ export const registryStatus = async (port: number, cwd: string): Promise<"absent
 }
 
 const PING_SECONDS = 60
+
+/** Whether the registry on `port` answers within `seconds`, asked once a second. */
+const answersWithin = async (port: number, seconds: number): Promise<boolean> => {
+    if (seconds <= 0) return false
+    if (await registryAnswers(port)) return true
+    await new Promise((done) => setTimeout(done, 1000))
+    return answersWithin(port, seconds - 1)
+}
 
 /** Whether the registry answers its ping. */
 export const registryAnswers = async (port: number): Promise<boolean> => {
@@ -157,10 +168,7 @@ export const ensureRegistry = async (port: number, cwd: string): Promise<void> =
         const restarted = await docker(["restart", CONTAINER], cwd)
         if (restarted.exitCode !== 0) throw failed(`docker restart ${CONTAINER}`, restarted)
     }
-    for (let waited = 0; waited < PING_SECONDS; waited += 1) {
-        if (await registryAnswers(port)) return
-        await new Promise((done) => setTimeout(done, 1000))
-    }
+    if (await answersWithin(port, PING_SECONDS)) return
     throw new Refusal("LOCAL_REGISTRY_NOT_READY", `${registryUrl(port)} did not answer within ${String(PING_SECONDS)} s; see docker logs ${CONTAINER}`)
 }
 

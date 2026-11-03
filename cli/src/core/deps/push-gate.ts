@@ -10,6 +10,7 @@ import { locateTree } from "../../shared/tree.js"
 import { judgeLocalRegistry, NPMJS_FLAGS } from "./local-refs.js"
 import { committedPins, installsOf, LOCAL_MARKER, manifestFiles } from "./packages.js"
 import type { Install, Pin } from "./packages.js"
+import { trimEndChars } from "../../shared/trim.js"
 
 /** A pin the registry was asked about: its requirement and whether npm can install it. */
 export interface PinVerdict extends Pin {
@@ -69,7 +70,7 @@ const tarballFiles = (archive: Buffer): Map<string, Buffer> => {
             continue
         }
         if (type === "L") {
-            longName = body.toString("utf8").replace(/\0+$/, "")
+            longName = trimEndChars(body.toString("utf8"), "\0")
             continue
         }
         const name = longName ?? (prefix === "" ? field(0, 100) : `${prefix}/${field(0, 100)}`)
@@ -171,7 +172,8 @@ export const judgePush = async (root: string, revision = "HEAD"): Promise<PushJu
     }
     const notes = local.flatMap((copy) => {
         const pinned = verdicts.filter((pin) => pin.name === copy.name && pin.spec !== copy.version)
-        return pinned.length === 0 ? [] : [`${copy.name} runs local ${copy.version} (equal to npm) while ${pinned.map((pin) => `${pin.file} pins ${pin.spec}`).join(", ")}; raise the pin if the app needs ${copy.version}`]
+        const pinnedText = pinned.map((pin) => `${pin.file} pins ${pin.spec}`).join(", ")
+        return pinned.length === 0 ? [] : [`${copy.name} runs local ${copy.version} (equal to npm) while ${pinnedText}; raise the pin if the app needs ${copy.version}`]
     })
     return { app: true, revision, pins: verdicts, local, notes }
 }

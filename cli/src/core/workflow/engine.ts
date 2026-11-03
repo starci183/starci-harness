@@ -261,7 +261,10 @@ const endedWorktreeActions = async (root: string, snapshot: Snapshot): Promise<S
     const entries = await worktreeGc(root, false).catch((error: unknown) => [{ path: "-", removed: false, due: true, kind: "workflow", reason: asRefusal(error).message, preserved: null }])
     return entries
         .filter((entry) => entry.due && entry.kind !== "package")
-        .map((entry) => ({ key: null, task: null, action: removalAction(entry), detail: `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : "left"} (${entry.reason})${entry.preserved === null ? "" : `; work preserved in ${entry.preserved}`}` }))
+        .map((entry) => {
+            const preservedSuffix = entry.preserved === null ? "" : `; work preserved in ${entry.preserved}`
+            return { key: null, task: null, action: removalAction(entry), detail: `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : "left"} (${entry.reason})${preservedSuffix}` }
+        })
 }
 
 /** Closes a stopped workflow's Kernel terminal (after its ops) and reports it; nothing when it has none or it was closed already. */
@@ -579,8 +582,7 @@ export const stepWorkflow = async (context: VerbContext, root: string, id: strin
         actions.push(...(await finalVerify(context, root, snapshot)))
         snapshot = reconcile(root, id)
     }
-    actions.push(...(await closeKernelActions(context, root, snapshot)))
-    actions.push(...(await endedWorktreeActions(root, readSnapshot(root, id))))
+    actions.push(...(await closeKernelActions(context, root, snapshot)), ...(await endedWorktreeActions(root, readSnapshot(root, id))))
     await priorWorkOfInline(root, readSnapshot(root, id))
     return reportOf(root, readSnapshot(root, id), actions)
 }

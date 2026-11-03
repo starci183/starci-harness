@@ -7,6 +7,7 @@ import { ToolNotStarted, captureTool, probeTool } from "../../shared/exec.js"
 import type { ToolRun } from "../../shared/exec.js"
 import { mainCheckout } from "../../shared/git.js"
 import { inOrder } from "../sequential.js"
+import { trimEndChars } from "../../shared/trim.js"
 
 /** The orca binary this host runs, and how it was found. */
 export interface OrcaBinary {
@@ -411,7 +412,7 @@ export const terminalClose = async (binary: OrcaBinary, handle: string, cwd: str
 
 /** A folder spelled one way for comparison: forward slashes, no trailing slash, lower case on Windows. */
 const folderKey = (path: string): string => {
-    const slashed = resolve(path).replaceAll("\\", "/").replace(/\/+$/, "")
+    const slashed = trimEndChars(resolve(path).replaceAll("\\", "/"), "/")
     return process.platform === "win32" ? slashed.toLowerCase() : slashed
 }
 
@@ -950,7 +951,10 @@ export const mailSend = async (binary: OrcaBinary, input: MailSend, cwd: string)
     await callOrca(binary, "send", flags, z.unknown(), cwd)
 }
 
-const failureOf = (error: unknown): Refusal => (error instanceof Refusal ? error : new Refusal("ORCA_FAILED", error instanceof Error ? error.message : String(error)))
+const failureOf = (error: unknown): Refusal => {
+    if (error instanceof Refusal) return error
+    return new Refusal("ORCA_FAILED", error instanceof Error ? error.message : String(error))
+}
 
 /**
  * Wakes a coordinator: the mail first; when Orca refuses it, the wake prompt is typed into the target's own terminal instead
@@ -969,8 +973,8 @@ export const mailOrType = async (binary: OrcaBinary, mail: MailSend, fallback: {
         try {
             await terminalSend(binary, { terminal: fallback.terminal, text: fallback.text, retryRequest: requestIdOf("wake-typed", mail.retryRequest) }, cwd)
             return `${failed}; typed the wake prompt into terminal ${fallback.terminal}`
-        } catch (typed: unknown) {
-            return `${failed}; the wake prompt was not typed either (${failureOf(typed).code})`
+        } catch (error_: unknown) {
+            return `${failed}; the wake prompt was not typed either (${failureOf(error_).code})`
         }
     }
 }

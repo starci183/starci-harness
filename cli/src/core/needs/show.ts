@@ -23,13 +23,18 @@ export const needsShowVerb = defineVerb({
         const need = project.key === "" ? undefined : readNeed(project.key, key)
         if (need === undefined) throw new Refusal("NEED_UNKNOWN", `no shared need ${key} in this project; starci needs list --all names them`)
         const view = viewOf(need)
+        const mergedIntoSuffix = view.mergedInto === null ? "" : `, merged into ${view.mergedInto}`
+        const decisionText = view.decision === null ? "-" : `${view.decision.id} (${view.decision.scope}, ${view.decision.workflow})`
         const lines = [
-            `${view.key}: ${view.state} (round ${String(view.round)}), router ${view.level ?? "-"}, scope ${view.scope}${view.mergedInto === null ? "" : `, merged into ${view.mergedInto}`}`,
-            `decision: ${view.decision === null ? "-" : `${view.decision.id} (${view.decision.scope}, ${view.decision.workflow})`}`,
+            `${view.key}: ${view.state} (round ${String(view.round)}), router ${view.level ?? "-"}, scope ${view.scope}${mergedIntoSuffix}`,
+            `decision: ${decisionText}`,
             `owner: ${ownerLine(view)}`,
             `why: ${view.reason ?? "-"}`,
             `resolving commits: ${view.resolver?.kind === "task" && (view.resolver.commits ?? []).length > 0 ? (view.resolver.commits ?? []).map((commit) => commit.slice(0, 12)).join(", ") : "-"}`,
-            ...view.waiters.map((waiter) => `waiter ${waiterLine(waiter)}: gave ${waiter.given}; rules ${waiter.rules.join(", ") || "-"}; paths ${waiter.paths.join(", ") || "-"}${waiter.note === null ? "" : `; ${waiter.note}`}`),
+            ...view.waiters.map((waiter) => {
+                const noteSuffix = waiter.note === null ? "" : `; ${waiter.note}`
+                return `waiter ${waiterLine(waiter)}: gave ${waiter.given}; rules ${waiter.rules.join(", ") || "-"}; paths ${waiter.paths.join(", ") || "-"}${noteSuffix}`
+            }),
             ...view.relays.map(relayLine),
         ]
         return { data: view, message: lines.join("\n") }

@@ -75,7 +75,10 @@ export const cliPinSkews = (root: string): PinSkew[] => {
 
 /** One line per skew: the package, where, the pin expected and the version found. */
 export const describeSkews = (skews: readonly PinSkew[]): string[] =>
-    skews.map((skew) => `${skew.code} ${skew.package}: ${skew.where} has ${skew.found}, ${STACK_PINS} ${skew.expected === undefined ? "pins no version" : `pins ${skew.expected}`}`)
+    skews.map((skew) => {
+        const expectedText = skew.expected === undefined ? "pins no version" : `pins ${skew.expected}`
+        return `${skew.code} ${skew.package}: ${skew.where} has ${skew.found}, ${STACK_PINS} ${expectedText}`
+    })
 
 /** Refuses CLI_PIN_SKEW, naming each package, where, expected and found, when the CLI's @starci versions differ from their pins. */
 export const assertCliPins = (root: string): void => {

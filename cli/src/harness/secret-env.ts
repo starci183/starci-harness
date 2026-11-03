@@ -29,7 +29,7 @@ const unquote = (raw: string): string => {
 const valueIn = (text: string, key: string): string | undefined => {
     let found: string | undefined
     for (const line of text.split(/\r?\n/)) {
-        const entry = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$/.exec(line)
+        const entry = /^\s*(?:export\s+)?([A-Za-z_]\w*)\s*=(.*)$/.exec(line)
         if (entry?.[1] === key) found = unquote((entry[2] ?? "").trim())
     }
     return found

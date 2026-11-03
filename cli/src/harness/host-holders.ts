@@ -6,6 +6,7 @@ import type { HeavySlot } from "./heavy.js"
 import { stateBase } from "./ledger.js"
 import { listProcesses, psTimeMs } from "./process-table.js"
 import type { HostProcess } from "./process-table.js"
+import { inOrder } from "./sequential.js"
 
 /**
  * Who holds this host's memory: the processes with the largest working set, each grouped as managed (a heavy command the
@@ -183,9 +184,9 @@ export const managedCpuTimes = async (slots: readonly HeavySlot[]): Promise<Map<
     if (typeof listed === "string") return listed
     const tree = withDescendants(listed, roots)
     const times = new Map<number, number>()
-    for (const item of listed.filter((each) => tree.has(each.pid))) {
+    await inOrder(listed.filter((each) => tree.has(each.pid)), async (item) => {
         const cpuMs = item.cpuMs ?? (await cpuMsOf(item.pid))
         if (cpuMs !== null) times.set(item.pid, cpuMs)
-    }
+    })
     return times
 }

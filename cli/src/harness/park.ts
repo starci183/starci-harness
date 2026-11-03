@@ -23,7 +23,10 @@ export const WORKFLOW_UNPARKED = "workflow-unparked"
 const PARKED_PREFIX = "parked: was "
 
 /** The reason a parked workflow carries: the status (and reason) it had, which unpark restores. */
-export const parkedReason = (status: string, reason: string | null): string => `${PARKED_PREFIX}${status}${reason === null ? "" : `: ${reason}`}`
+export const parkedReason = (status: string, reason: string | null): string => {
+    const reasonSuffix = reason === null ? "" : `: ${reason}`
+    return `${PARKED_PREFIX}${status}${reasonSuffix}`
+}
 
 /** True when a workflow's reason says park paused it. */
 export const isParkedReason = (reason: string | null | undefined): boolean => reason?.startsWith(PARKED_PREFIX) === true

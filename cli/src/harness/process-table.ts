@@ -25,7 +25,7 @@ export interface HostProcess {
 
 // A process's working folder on Windows sits in its PEB (RTL_USER_PROCESS_PARAMETERS.CurrentDirectory), which no CIM class
 // carries; this reads it for a 64-bit process this user may open, and answers null for any other.
-const CWD_READER = String.raw`
+const CWD_READER = `
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -117,11 +117,12 @@ const listPosix = async (withCwd: boolean): Promise<HostProcess[] | string> => {
     const cwds = withCwd && !proc ? await lsofCwds() : new Map<number, string>()
     const at = Date.now()
     return run.stdout.split("\n").flatMap((line) => {
-        const match = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+)\s*(.*)$/.exec(line)
+        const match = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+)(?:\s+(\S.*)|\s*)$/.exec(line)
         if (match === null) return []
         const pid = Number(match[1])
         const elapsed = psTimeMs(match[4] ?? "")
-        const cwd = withCwd ? (proc ? procCwd(pid) : (cwds.get(pid) ?? null)) : null
+        let cwd: string | null = null
+        if (withCwd) cwd = proc ? procCwd(pid) : (cwds.get(pid) ?? null)
         return [{ pid, ppid: Number(match[2]), name: match[5] ?? "", workingSetMb: Math.round(Number(match[3]) / 1024), commandLine: match[6] ?? "", cpuMs: null, startedMs: elapsed === null ? null : at - elapsed, cwd }]
     })
 }

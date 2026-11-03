@@ -36,6 +36,9 @@ export const judgeHarnessPush = async (root: string, head: string, previous: str
     await judgePlan(root, listPackages(root), base)
     const report = checkAnchors(loadAnchors(root), { file: join(root, EVAL_FILE), label: EVAL_FILE.replaceAll("\\", "/") })
     const red = [...report.duplicates.map((item) => `ANCHOR_DUPLICATE ${item.id}: ${item.places.join(", ")}`), ...report.dangling.map((item) => `ANCHOR_DANGLING ${item.ref} (named at ${item.from}:${String(item.line)})`)]
-    if (red.length > 0) throw new Refusal("PUSH_ANCHORS_RED", `contexts anchors are red, CI's gate would refuse: ${red.slice(0, 10).join("; ")}${red.length > 10 ? `; and ${String(red.length - 10)} more` : ""}`)
+    if (red.length > 0) {
+        const redSuffix = red.length > 10 ? `; and ${String(red.length - 10)} more` : ""
+        throw new Refusal("PUSH_ANCHORS_RED", `contexts anchors are red, CI's gate would refuse: ${red.slice(0, 10).join("; ")}${redSuffix}`)
+    }
     return `publish plan judged against ${base === "" ? "every package" : base.slice(0, 9)} (${from}); anchors green`
 }

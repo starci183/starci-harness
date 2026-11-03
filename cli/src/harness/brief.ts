@@ -131,7 +131,8 @@ const needsSection = (root: string, task: TaskRow): string | undefined => {
     const lines = released.map((waiter) => {
         const how = (waiter.release ?? {}) as { readonly by?: string; readonly reason?: string | null; readonly carried?: string | null }
         const carried = how.carried === null || how.carried === undefined ? "" : `; ${how.carried}`
-        return `- ${waiter.key} (task ${waiter.task}): ${how.by ?? "released"}${how.reason === null || how.reason === undefined ? "" : `, ${how.reason}`}${carried}`
+        const reasonSuffix = how.reason === null || how.reason === undefined ? "" : `, ${how.reason}`
+        return `- ${waiter.key} (task ${waiter.task}): ${how.by ?? "released"}${reasonSuffix}${carried}`
     })
     return [
         "An earlier attempt of this work waited on these shared needs. A resolved one is in your checkout now: build on it. A rejected one is not shared: do it inside your allowPaths, or report the need that is shared.",
