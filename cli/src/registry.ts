@@ -94,6 +94,7 @@ import { connectTelegramVerb } from "./core/connect/telegram.js"
 import { hostStatusVerb } from "./core/host/status.js"
 import { hostLoadVerb } from "./core/host/load.js"
 import { hostUpVerb } from "./core/host/up.js"
+import { hostDownVerb } from "./core/host/down.js"
 import { hostInstallVerb } from "./core/host/install.js"
 import { hostUninstallVerb } from "./core/host/uninstall.js"
 import { configListVerb } from "./core/config/list.js"
@@ -103,6 +104,7 @@ import { uiVerb } from "./core/ui/serve.js"
 import { dnaCheckVerb } from "./core/dna/check.js"
 import { depsCheckVerb } from "./core/deps/check.js"
 import { depsPublishLocalVerb } from "./core/deps/publish-local.js"
+import { depsRegistryUpVerb } from "./core/deps/registry-up.js"
 import { depsSourceVerb } from "./core/deps/source.js"
 import { pkgBranchVerb } from "./core/pkg/branch.js"
 import { pkgHandoffVerb } from "./core/pkg/handoff.js"
@@ -216,6 +218,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     hostStatusVerb,
     hostLoadVerb,
     hostUpVerb,
+    hostDownVerb,
     hostInstallVerb,
     hostUninstallVerb,
     configListVerb,
@@ -225,6 +228,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     dnaCheckVerb,
     depsSourceVerb,
     depsPublishLocalVerb,
+    depsRegistryUpVerb,
     depsCheckVerb,
     pkgBranchVerb,
     pkgHandoffVerb,
