@@ -118,6 +118,73 @@ export interface DnaCheckData {
     readonly report: readonly string[]
 }
 
+/** The line of one law that is red, not exercised or known, with its first examples when it is red. */
+const lawEntry = (row: LawRow, family: string): string[] => {
+    const lines: string[] = []
+    const followUpSuffix = row.followUp === null ? "" : ` follow-up ${row.followUp}`
+    const statusText = row.status === "not-exercised" ? "not exercised" : `${String(row.broken)} element(s) on ${String(row.pages)} page(s)`
+    lines.push(`${row.status === "known" ? "known" : "red"} ${row.id} [${family}]${followUpSuffix} ${statusText}: ${row.law}`)
+    if (row.status === "red") for (const example of row.examples.slice(0, SHOWN_EXAMPLES)) lines.push(`    ${example.page}: ${example.path}`, `      ${example.breaks[0]?.metric ?? ""} measured ${example.breaks[0]?.measured ?? ""}, wants ${example.breaks[0]?.want ?? ""}`)
+    return lines
+}
+
+/** The report lines: a count per Grammar family and a line, with its first examples, for each law red, not exercised or known. */
+const lawLines = (contract: ReturnType<typeof loadDnaContract>, laws: readonly LawRow[]): string[] => {
+    const lines: string[] = []
+    for (const family of contract.grammars) {
+        const mine = laws.filter((row) => row.family === family)
+        const count = (status: LawRow["status"]): number => mine.filter((row) => row.status === status).length
+        lines.push(`${family}: ${String(mine.length)} law(s): ${String(count("green"))} green, ${String(count("red"))} red, ${String(count("not-exercised"))} not exercised, ${String(count("known"))} known (follow-up), ${String(count("not-run"))} not run here`)
+        for (const row of mine.filter((candidate) => candidate.status === "red" || candidate.status === "not-exercised" || candidate.status === "known")) {
+            lines.push(...lawEntry(row, family))
+        }
+    }
+    return lines
+}
+
+/** Adds one law's report of one width to its row. */
+const recordReport = (row: Row, report: ReturnType<typeof reportsSchema.parse>[number], seen: { readonly page: { readonly label: string }; readonly theme: string; readonly width: number }): void => {
+    const { page, theme, width } = seen
+    row.evaluated += report.evaluated
+    row.broken += report.brokenCount
+    if (report.error !== undefined && !row.notes.includes(`error: ${report.error}`)) row.notes.push(`error: ${report.error}`)
+    for (const reason of report.skipped) if (!row.notes.includes(`skipped: ${reason}`)) row.notes.push(`skipped: ${reason}`)
+    if (report.brokenCount > 0) row.pageSet.add(page.label)
+    for (const broken of report.broken) if (row.examplesMutable.length < 200) row.examplesMutable.push({ page: `${page.label} ${theme}@${String(width)}`, path: broken.path, breaks: broken.breaks })
+}
+
+/** Adds what one width's reports found to the rows of their laws. */
+const recordReports = (reports: ReturnType<typeof reportsSchema.parse>, variants: readonly { readonly index: number; readonly entry: DnaEntry }[], rows: Map<string, Row>, seen: { readonly family: string; readonly page: { readonly label: string }; readonly theme: string; readonly width: number }) => {
+    const { family, page, theme, width } = seen
+    for (const report of reports) {
+        const item = variants.find((candidate) => candidate.index === report.index)
+        const row = item === undefined ? undefined : rows.get(`${family}|${item.entry.id}`)
+        if (item === undefined || row === undefined) continue
+        recordReport(row, report, { page, theme, width })
+    }
+}
+
+/** The page variants each Grammar family is judged on (the static ones), and a row per law not run yet. */
+const planOf = (contract: ReturnType<typeof loadDnaContract>, rows: Map<string, Row>) => {
+    const plan = contract.grammars.map((family) => {
+        const variants: (PageVariant & { entry: DnaEntry })[] = []
+        for (const entry of entriesFor(contract, family)) {
+            const isStatic = entry.variants.some((variant) => variant.kind !== "source" && !isDynamic(variant) && !hasContext(variant))
+            for (const variant of entry.variants) {
+                const key = `${family}|${entry.id}`
+                if (!rows.has(key)) {
+                    const row = { id: entry.id, family, status: "not-run" as LawRow["status"], followUp: entry.followUp, law: entry.law, evaluated: 0, broken: 0, pages: 0, notes: isStatic ? [] : ["not run here: a source, contextual or acting law"], examplesMutable: [], pageSet: new Set<string>() }
+                    rows.set(key, row)
+                }
+                if (variant.kind === "source" || isDynamic(variant) || hasContext(variant)) continue
+                variants.push({ index: variants.length, variant, entry })
+            }
+        }
+        return { family, variants }
+    })
+    return plan
+}
+
 export const dnaCheckVerb = defineVerb({
     path: ["dna", "check"],
     summary: "measure rendered UI (a built Storybook, a url with --routes, a static folder or html file) against the static DNA laws of the Grammar contract in both families, light and dark, at 1920 and 390; red per law id with element path and measured vs wanted",
@@ -149,22 +216,7 @@ export const dnaCheckVerb = defineVerb({
             if (pages.length === 0) throw new Refusal("DNA_NO_PAGES", "the source has no page to open")
             const rows = new Map<string, Row>()
             const problems: string[] = []
-            const plan = contract.grammars.map((family) => {
-                const variants: (PageVariant & { entry: DnaEntry })[] = []
-                for (const entry of entriesFor(contract, family)) {
-                    const isStatic = entry.variants.some((variant) => variant.kind !== "source" && !isDynamic(variant) && !hasContext(variant))
-                    for (const variant of entry.variants) {
-                        const key = `${family}|${entry.id}`
-                        if (!rows.has(key)) {
-                            const row = { id: entry.id, family, status: "not-run" as LawRow["status"], followUp: entry.followUp, law: entry.law, evaluated: 0, broken: 0, pages: 0, notes: isStatic ? [] : ["not run here: a source, contextual or acting law"], examplesMutable: [], pageSet: new Set<string>() }
-                            rows.set(key, row)
-                        }
-                        if (variant.kind === "source" || isDynamic(variant) || hasContext(variant)) continue
-                        variants.push({ index: variants.length, variant, entry })
-                    }
-                }
-                return { family, variants }
-            })
+            const plan = planOf(contract, rows)
             await inOrder(pages, async (page) => {
                 await inOrder(plan, async ({ family, variants }) => {
                     await inOrder(THEMES, async (theme) => {
@@ -187,17 +239,7 @@ export const dnaCheckVerb = defineVerb({
                         await inOrder(widths, async (width) => {
                             await tab.viewport({ width, height: width >= 1000 ? 1080 : 844 })
                             const reports = reportsSchema.parse(await tab.evaluate(`window.__dna.run(${JSON.stringify(variants.map(({ index, variant }) => ({ index, variant })))})`))
-                            for (const report of reports) {
-                                const item = variants.find((candidate) => candidate.index === report.index)
-                                const row = item === undefined ? undefined : rows.get(`${family}|${item.entry.id}`)
-                                if (item === undefined || row === undefined) continue
-                                row.evaluated += report.evaluated
-                                row.broken += report.brokenCount
-                                if (report.error !== undefined && !row.notes.includes(`error: ${report.error}`)) row.notes.push(`error: ${report.error}`)
-                                for (const reason of report.skipped) if (!row.notes.includes(`skipped: ${reason}`)) row.notes.push(`skipped: ${reason}`)
-                                if (report.brokenCount > 0) row.pageSet.add(page.label)
-                                for (const broken of report.broken) if (row.examplesMutable.length < 200) row.examplesMutable.push({ page: `${page.label} ${theme}@${String(width)}`, path: broken.path, breaks: broken.breaks })
-                            }
+                            recordReports(reports, variants, rows, { family, page, theme, width })
                         })
                     })
                 })
@@ -217,18 +259,7 @@ export const dnaCheckVerb = defineVerb({
                 .sort((a, b) => a.family.localeCompare(b.family) || a.id.localeCompare(b.id))
             const failing = laws.filter((row) => row.status === "red" || row.status === "not-exercised")
             const evaluated = laws.reduce((sum, row) => sum + row.evaluated, 0)
-            const lines: string[] = []
-            for (const family of contract.grammars) {
-                const mine = laws.filter((row) => row.family === family)
-                const count = (status: LawRow["status"]): number => mine.filter((row) => row.status === status).length
-                lines.push(`${family}: ${String(mine.length)} law(s): ${String(count("green"))} green, ${String(count("red"))} red, ${String(count("not-exercised"))} not exercised, ${String(count("known"))} known (follow-up), ${String(count("not-run"))} not run here`)
-                for (const row of mine.filter((candidate) => candidate.status === "red" || candidate.status === "not-exercised" || candidate.status === "known")) {
-                    const followUpSuffix = row.followUp === null ? "" : ` follow-up ${row.followUp}`
-                    const statusText = row.status === "not-exercised" ? "not exercised" : `${String(row.broken)} element(s) on ${String(row.pages)} page(s)`
-                    lines.push(`${row.status === "known" ? "known" : "red"} ${row.id} [${family}]${followUpSuffix} ${statusText}: ${row.law}`)
-                    if (row.status === "red") for (const example of row.examples.slice(0, SHOWN_EXAMPLES)) lines.push(`    ${example.page}: ${example.path}`, `      ${example.breaks[0]?.metric ?? ""} measured ${example.breaks[0]?.measured ?? ""}, wants ${example.breaks[0]?.want ?? ""}`)
-                }
-            }
+            const lines = lawLines(contract, laws)
             for (const problem of problems.slice(0, 40)) lines.push(`red ${problem}`)
             const verdict = failing.length === 0 && problems.length === 0 && evaluated > 0 ? "green" : "red"
             lines.push(`${verdict}: ${String(evaluated)} element(s) judged on ${String(pages.length)} page(s) against ${String(contract.entries.length)} law(s) of ${contract.file}; ${String(failing.length)} failing`)

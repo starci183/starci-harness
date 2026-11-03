@@ -6,6 +6,7 @@ import { captureNpm } from "../../shared/exec.js"
 import { repositoryRoot, trackedChanges } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
 import { defineVerb, WRITERS } from "../../shared/verb.js"
+import type { VerbContext } from "../../shared/verb.js"
 import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import { affectedBy } from "../release/affected.js"
@@ -56,6 +57,37 @@ const globalOrder = async (root: string): Promise<string[]> => {
 
 const stepFailed = (what: string, run: { readonly stdout: string; readonly stderr: string }): Refusal =>
     new Refusal("PUBLISH_LOCAL_FAILED", `${what} failed:\n${[run.stderr, run.stdout].join("\n").trim().split("\n").slice(-12).join("\n")}`)
+
+/** Builds what the due rows need and publishes them in order to the local registry; the npmrc the app installs through. */
+const publishDue = async (context: VerbContext, port: number, given: { readonly root: string; readonly all: ReturnType<typeof listPackages>; readonly order: readonly string[]; readonly due: readonly Row[]; readonly published: string[] }): Promise<string | undefined> => {
+    const { root, all, order, due, published } = given
+    let installNpmrc: string | undefined
+    if (due.length === 0) context.progress("nothing to publish")
+    const files = writeNpmrcs(port)
+    installNpmrc = files.install
+    const plan = await affectedBy(root, undefined, undefined)
+    const needed = new Set(due.flatMap((row) => (row.dir === CLI_DIR ? [CLI_DIR] : (plan.packages.find((one) => one.dir === row.dir)?.build ?? [row.dir]))))
+    const builds = order.filter((dir) => needed.has(dir))
+    await inOrder(builds, async (dir) => {
+        const pkg = all.find((one) => one.relativeDir === dir)
+        if (pkg === undefined) return
+        context.progress(`building ${pkg.name} in ${pkg.dir}`)
+        await buildPackage({ name: pkg.name, folder: pkg.dir, version: pkg.version, builds: pkg.scripts.build !== undefined })
+        const row = due.find((one) => one.dir === dir)
+        if (row === undefined) return
+        const pkgNpm = ["--userconfig", files.publish, ...registryFlags(port)]
+        if (row.action === "republish") {
+            const gone = await withHeavySlot("build", `npm unpublish ${row.package}`, pkg.dir, {}, (held) => captureNpm(["unpublish", `${row.package}@${row.version}`, "--force", ...pkgNpm], pkg.dir, held.options))
+            if (gone.exitCode !== 0) throw stepFailed(`npm unpublish ${row.package}@${row.version} from ${registryUrl(port)}`, gone)
+        }
+        context.progress(`publishing ${row.package}@${row.version} to ${registryUrl(port)}`)
+        const run = await withHeavySlot("build", `npm publish ${row.package}`, pkg.dir, {}, (held) => captureNpm(["publish", "--tag", row.distTag, "--provenance=false", ...pkgNpm], pkg.dir, held.options))
+        if (run.exitCode !== 0) throw stepFailed(`npm publish of ${row.package}@${row.version} to ${registryUrl(port)}`, run)
+        if (!(await readable(pkg, port))) throw new Refusal("PUBLISH_NOT_CONFIRMED", `${row.package}@${row.version} is not readable from ${registryUrl(port)} after publishing`)
+        published.push(`${row.package}@${row.version}`)
+    })
+    return installNpmrc
+}
 
 /**
  * `starci deps publish-local`: builds the harness's packages and the CLI and publishes them to an npm registry on this machine, so
@@ -109,30 +141,7 @@ export const depsPublishLocalVerb = defineVerb({
         const published: string[] = []
         let installNpmrc: string | undefined
         if (flags.execute) {
-            if (due.length === 0) context.progress("nothing to publish")
-            const files = writeNpmrcs(port)
-            installNpmrc = files.install
-            const plan = await affectedBy(root, undefined, undefined)
-            const needed = new Set(due.flatMap((row) => (row.dir === CLI_DIR ? [CLI_DIR] : (plan.packages.find((one) => one.dir === row.dir)?.build ?? [row.dir]))))
-            const builds = order.filter((dir) => needed.has(dir))
-            await inOrder(builds, async (dir) => {
-                const pkg = all.find((one) => one.relativeDir === dir)
-                if (pkg === undefined) return
-                context.progress(`building ${pkg.name} in ${pkg.dir}`)
-                await buildPackage({ name: pkg.name, folder: pkg.dir, version: pkg.version, builds: pkg.scripts.build !== undefined })
-                const row = due.find((one) => one.dir === dir)
-                if (row === undefined) return
-                const pkgNpm = ["--userconfig", files.publish, ...registryFlags(port)]
-                if (row.action === "republish") {
-                    const gone = await withHeavySlot("build", `npm unpublish ${row.package}`, pkg.dir, {}, (held) => captureNpm(["unpublish", `${row.package}@${row.version}`, "--force", ...pkgNpm], pkg.dir, held.options))
-                    if (gone.exitCode !== 0) throw stepFailed(`npm unpublish ${row.package}@${row.version} from ${registryUrl(port)}`, gone)
-                }
-                context.progress(`publishing ${row.package}@${row.version} to ${registryUrl(port)}`)
-                const run = await withHeavySlot("build", `npm publish ${row.package}`, pkg.dir, {}, (held) => captureNpm(["publish", "--tag", row.distTag, "--provenance=false", ...pkgNpm], pkg.dir, held.options))
-                if (run.exitCode !== 0) throw stepFailed(`npm publish of ${row.package}@${row.version} to ${registryUrl(port)}`, run)
-                if (!(await readable(pkg, port))) throw new Refusal("PUBLISH_NOT_CONFIRMED", `${row.package}@${row.version} is not readable from ${registryUrl(port)} after publishing`)
-                published.push(`${row.package}@${row.version}`)
-            })
+            installNpmrc = await publishDue(context, port, { root, all, order, due, published })
         }
         const shownRegistry = flags.execute ? "running" : state
         const data: PublishLocalData = { mode: flags.execute ? "publish" : "plan", registry: registryUrl(port), registryState: shownRegistry, rows, published, installNpmrc, warnings }

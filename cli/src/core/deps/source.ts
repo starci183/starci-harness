@@ -6,6 +6,7 @@ import { captureNpm } from "../../shared/exec.js"
 import { withHeavySlot } from "../../harness/heavy.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb, WRITERS } from "../../shared/verb.js"
+import type { VerbContext } from "../../shared/verb.js"
 import {
     assertNpm,
     buildPackage,
@@ -78,6 +79,49 @@ const npmCi = async (root: string): Promise<void> => {
     if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", `npm ci in ${root} failed:\n${[run.stdout, run.stderr].join("\n").trim().split("\n").slice(-15).join("\n")}`)
 }
 
+/** `deps source --local`: builds the chosen @starci packages, copies them (and the ones already recorded) into the app, and records them. */
+const takeLocal = async (context: VerbContext, flags: { readonly cwd: string | undefined; readonly package: readonly string[]; readonly prebuilt: boolean }, root: string, pins: Awaited<ReturnType<typeof workingPins>>, warnings: string[]): Promise<{ readonly added: string[]; readonly copied: Copied[] }> => {
+    let added: string[] = []
+    let copied: Copied[] = []
+    assertNpm(root)
+    const from = resolve(flags.cwd ?? defaultPackagesRoot())
+    const available = localPackages(from)
+    // Every @starci package the app uses: those it pins and those installed through another package (hfs through starci-harness).
+    const pinnedNames = [...new Set([...pins.map((pin) => pin.name), ...installedNames(root)])]
+    const wanted = flags.package.length > 0 ? flags.package.map(packageName) : pinnedNames.filter((name) => available.has(name))
+    const unknown = wanted.filter((name) => !available.has(name))
+    if (unknown.length > 0) throw new Refusal("DEPS_PACKAGE_UNKNOWN", `${from} holds no folder for ${unknown.join(", ")}; it holds ${[...available.keys()].join(", ") || "no @starci package"}`)
+    if (wanted.length === 0) throw new Refusal("DEPS_PACKAGE_UNKNOWN", `the app pins no @starci package that ${from} holds`)
+    if (!existsSync(join(root, "node_modules"))) await npmCi(root)
+    const chosen = wanted.flatMap((name) => {
+        const pkg = available.get(name)
+        return pkg === undefined ? [] : [pkg]
+    })
+    if (!flags.prebuilt) {
+        await inOrder(chosen, (pkg) => {
+            context.progress(`building ${pkg.name} in ${pkg.folder}`)
+            return buildPackage(pkg)
+        })
+    }
+    // npm's reify (installMissing) puts every @starci package back to its locked version, so every recorded package is copied again after it.
+    const recorded = healRecord(root)
+    warnings.push(...recorded.healed.map(describeHealed))
+    const keptPackages = recorded.packages.filter((pkg) => !chosen.some((one) => one.name === pkg.name))
+    added = await installMissing(root, [...chosen, ...keptPackages])
+    const manifests = await manifestFiles(root)
+    copied = await inOrder([...chosen, ...keptPackages], (pkg) => copyLocal(root, manifests, pkg))
+    for (const one of copied) {
+        warnings.push(...one.warnings)
+        const differing = pins.filter((pin) => pin.name === one.name && pin.spec !== one.version)
+        if (differing.length > 0) {
+            const differingText = differing.map((pin) => `${pin.spec} (${pin.file})`).join(", ")
+            warnings.push(`${one.name}: the local folder is ${one.version}, the app pins ${differingText}; CI installs the pinned version, and a push is refused DEPS_LOCAL_AHEAD while the copy holds code no published version does`)
+        }
+    }
+    writeRecord(root, copied.map((one) => ({ name: one.name, folder: one.folder })))
+    return { added, copied }
+}
+
 /**
  * `starci deps source`: where the app's `@starci` packages come from. With no flag it prints each package's mode; `--local`
  * builds each named package (every pinned one the folder holds by default) in `--cwd` (default the harness's
@@ -116,42 +160,9 @@ export const depsSourceVerb = defineVerb({
             clearRecord(root)
         } else if (flags.local) {
             action = "local"
-            assertNpm(root)
-            const from = resolve(flags.cwd ?? defaultPackagesRoot())
-            const available = localPackages(from)
-            // Every @starci package the app uses: those it pins and those installed through another package (hfs through starci-harness).
-            const pinnedNames = [...new Set([...pins.map((pin) => pin.name), ...installedNames(root)])]
-            const wanted = flags.package.length > 0 ? flags.package.map(packageName) : pinnedNames.filter((name) => available.has(name))
-            const unknown = wanted.filter((name) => !available.has(name))
-            if (unknown.length > 0) throw new Refusal("DEPS_PACKAGE_UNKNOWN", `${from} holds no folder for ${unknown.join(", ")}; it holds ${[...available.keys()].join(", ") || "no @starci package"}`)
-            if (wanted.length === 0) throw new Refusal("DEPS_PACKAGE_UNKNOWN", `the app pins no @starci package that ${from} holds`)
-            if (!existsSync(join(root, "node_modules"))) await npmCi(root)
-            const chosen = wanted.flatMap((name) => {
-                const pkg = available.get(name)
-                return pkg === undefined ? [] : [pkg]
-            })
-            if (!flags.prebuilt) {
-                await inOrder(chosen, (pkg) => {
-                    context.progress(`building ${pkg.name} in ${pkg.folder}`)
-                    return buildPackage(pkg)
-                })
-            }
-            // npm's reify (installMissing) puts every @starci package back to its locked version, so every recorded package is copied again after it.
-            const recorded = healRecord(root)
-            warnings.push(...recorded.healed.map(describeHealed))
-            const keptPackages = recorded.packages.filter((pkg) => !chosen.some((one) => one.name === pkg.name))
-            added = await installMissing(root, [...chosen, ...keptPackages])
-            const manifests = await manifestFiles(root)
-            copied = await inOrder([...chosen, ...keptPackages], (pkg) => copyLocal(root, manifests, pkg))
-            for (const one of copied) {
-                warnings.push(...one.warnings)
-                const differing = pins.filter((pin) => pin.name === one.name && pin.spec !== one.version)
-                if (differing.length > 0) {
-                    const differingText = differing.map((pin) => `${pin.spec} (${pin.file})`).join(", ")
-                    warnings.push(`${one.name}: the local folder is ${one.version}, the app pins ${differingText}; CI installs the pinned version, and a push is refused DEPS_LOCAL_AHEAD while the copy holds code no published version does`)
-                }
-            }
-            writeRecord(root, copied.map((one) => ({ name: one.name, folder: one.folder })))
+            const taken = await takeLocal(context, flags, root, pins, warnings)
+            copied = taken.copied
+            added = taken.added
         } else if (flags.sync) {
             action = "sync"
             const synced = await reapplyLocal(root, root)
