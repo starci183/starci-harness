@@ -130,6 +130,7 @@ function context(root: string, name: string): { project: string; declarationFile
   const packageFile = path.join(root, 'package.json');
   if (!fs.existsSync(declarationFile) || !fs.existsSync(packageFile)) throw new ScaffoldError('HFS_ADD_NOT_AN_APP', 'a module verb runs at the app root containing hfs.json and package.json');
   const repo = readRepoDeclaration(loadSlotManifest(), root);
+  if (repo.modules === 'data') throw new ScaffoldError('HFS_MODULES_ARE_DATA', 'hfs.json declares modules: "data": a module of this app is a seed under .starcistacks/seeds/data/modules, not a package, so no module verb applies');
   return { project: repo.project, declarationFile, packageFile };
 }
 

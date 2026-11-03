@@ -27,6 +27,7 @@ record change that follows it are two tasks.
 |---|---|---|
 | edition | `edition`, `lite` or `full` (full when absent), fixed at scaffold | which slots and rules apply and which app verbs the CLI shows; [lite.md](lite.md), [full.md](full.md) |
 | grammar | `sides.fe.grammar` | which grammar package and grammar lint the front end composes ([grammars](../grammars/README.md)) |
+| module data | `modules`, `"data"` or absent | `"data"`: the agent modules are data (`.starcistacks/seeds/data/modules`); sync renders no registry package and the module verbs refuse `HFS_MODULES_ARE_DATA` |
 | policy profile | `policy` | which canon stacks and gates run ([lint.md](lint.md); profiles and defaults are [policy/quality.yaml](../../policy/quality.yaml)) |
 
 A profile left undeclared takes the default of its kind, so a side repository that is only `be` or only `fe`
@@ -66,7 +67,8 @@ module, and the managed registry `packages/modules` (`@<project>/modules`) that 
 face, for the front end) beside its `src/index.ts`; `starci app add module <name>` writes it and `starci app remove module <name>` reverses every step. The
 registry, the root and front-end dependencies on it and the `build:modules` script are rendered by
 `starci app sync`, so a hand edit is drift ([hfs/slots.yaml](../hfs/slots.yaml) slots `app.packages` and
-`app.module-registry`). A root package has no jest of its own: the managed `be/jest.config.js` names every root package but the registry
+`app.module-registry`). An app that declares `"modules": "data"` keeps its modules as seeds instead: sync renders no registry, a
+`packages/modules` it still has is its own, and `add|remove module` refuse. A root package has no jest of its own: the managed `be/jest.config.js` names every root package but the registry
 (a folder of `packages/` with a `package.json` and a `src/`), so the back end's unit run (`npm test`, `app check --gate test`, the CI
 shards and their merged coverage proof) runs its specs and measures its logic, everything below its `src/` but its workbench, its public
 face and its barrels, at 100 per file (BE-TEST-13), inside the Sonar and Codecov scope; the workbench and the public face are front ends,

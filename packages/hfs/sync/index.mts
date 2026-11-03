@@ -464,8 +464,12 @@ export function jestPackagesSource(packages: PackagesCoverage): string {
   return ['', '    packages: {', list('folders', packages.folders), list('files', packages.files), list('excludes', packages.excludes), '    },'].join('\n');
 }
 
-/** The managed files of the registry package for the module packages the app has (empty when it has none). */
+/**
+ * The managed files of the registry package for the module packages the app has (empty when it has none). An app that keeps its modules as data
+ * (hfs.json `modules: "data"`) has no rendered registry: a module is a seed there, and packages/modules, if any, is the app's own.
+ */
 function registryTargets(app: ResolvedApp, source: AppSourceFacts | undefined): RenderedTarget[] {
+  if (app.modules === 'data') return [];
   return registryFiles(app.project, source?.modules ?? []).map((file): RenderedTarget => ({ path: file.path, scope: APP_SCOPE, mode: 'file', content: file.content, hash: hashOf(file.content) }));
 }
 

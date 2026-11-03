@@ -1,5 +1,6 @@
 // module-package.spec.mts - `starci app add module <name>` writes a module package of the product's agent SDK and registers it; `remove module` reverses
-// every step; the registry package is managed (sync renders it, a hand edit is drift); the module packages enter the sonar, codecov and test scope.
+// every step; the registry package is managed (sync renders it, a hand edit is drift) unless the app keeps its modules as data; the module packages
+// enter the sonar, codecov and test scope.
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -112,6 +113,21 @@ test('add module refuses a missing agent SDK, a bad name, a second add and an un
   fs.rmSync(path.join(root, 'packages', 'agent-sdk'), { recursive: true });
   assert.throws(() => addModule({ root, name: 'booking' }), { code: 'HFS_ADD_MODULE_SDK_MISSING' });
   assert.ok(!fs.existsSync(path.join(root, 'packages/module-booking')));
+});
+
+test('an app that declares modules: "data" has no rendered registry, its own packages/modules is no drift, and the module verbs refuse', (t) => {
+  const root = appWithSdk(t, 'lite');
+  addModule({ root, name: 'loyalty' });
+  const declaration = JSON.parse(text(root, 'hfs.json')) as Record<string, unknown>;
+  fs.writeFileSync(path.join(root, 'hfs.json'), `${JSON.stringify({ ...declaration, modules: 'data' }, null, 2)}\n`);
+  fs.writeFileSync(path.join(root, 'packages', 'modules', 'src', 'index.ts'), 'export { MODULE_SERVERS } from "./module-servers"\n');
+  assert.deepEqual(rendered(root).filter((target) => target.path.startsWith('packages/modules/')), []);
+  assert.ok(rendered(root).some((target) => target.path === 'eslint.config.mjs'), 'the module packages are still root packages, linted and measured');
+  assert.throws(() => addModule({ root, name: 'booking' }), { code: 'HFS_MODULES_ARE_DATA' });
+  assert.throws(() => removeModule({ root, name: 'loyalty' }), { code: 'HFS_MODULES_ARE_DATA' });
+  assert.ok(fs.existsSync(path.join(root, 'packages', 'module-loyalty')));
+  fs.writeFileSync(path.join(root, 'hfs.json'), `${JSON.stringify({ ...declaration, modules: 'packages' }, null, 2)}\n`);
+  assert.throws(() => rendered(root), /modules is `"data"`/);
 });
 
 test('the module noun of addKind registers the package, and the root packages enter the sonar, codecov and unit-run scope', (t) => {
