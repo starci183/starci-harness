@@ -15,7 +15,7 @@ Choice `diagram.choose.renderer`: which component draws the structure. The first
 | --- | --- | --- | --- |
 | authored | the structure is Mermaid text the content carries (an article's `mermaid` code fence, a lesson body) | `MermaidDiagram` with the fence's text as `source` and a `label` naming what it shows | `DNA-COMMON-DIAGRAM-NAMED` |
 | data | the app holds the nodes and edges as data, or the reader selects, follows links or zooms | `FlowGraph` with `nodes`, `edges`, and `direction` for a flow | judgement |
-| workflow | the app draws the work of an agent: a trigger, conditions that fork it, steps and outputs, each path read left to right | `FlowGraph layout="lanes"`: a column per stage and one row per branch, the node `kind` (`trigger`, `condition`, `execute`, `output`) sets the tone, a branch label on its own edge, column headers only over a column that holds a node | judgement |
+| workflow | the app draws the work of an agent: a trigger, conditions that fork it, steps and outputs, each path read left to right | `FlowGraph layout="lanes"`: a column per stage and one row per branch, the node `kind` (`trigger`, `condition`, `execute`, `output`) sets the tone, a branch label on its own edge as an opaque chip above every line (its column widens to hold the words), column headers only over a column that holds a node | judgement; `DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES`, `DNA-COMMON-FLOW-LANE-LABEL-OPAQUE` |
 | list | the structure is a sequence of steps with no branches | not a diagram: `Stepper` or `Timeline` | judgement |
 
 Choice `diagram.choose.shape`: the outline of a `FlowGraph` node. Each meaning has one shape.

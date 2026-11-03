@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.16 - 2026-11-03
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.16; requires `@starci/eslint-grammar-core` 0.21.16, and the runtime copy of the canon pins names the Grammar family at 0.21.16.
+
 ## 0.21.15 - 2026-11-03
 
 - Changed: requires `@starci/eslint-grammar-core` 0.21.15; the runtime copies carry the new pins.

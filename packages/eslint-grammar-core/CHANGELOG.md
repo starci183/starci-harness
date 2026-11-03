@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.16 - 2026-11-03
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.16 (the FlowGraph lanes layout and branch labels); the runtime copy of the canon pins names the Grammar family at 0.21.16.
+
 ## 0.21.15 - 2026-11-03
 
 - Changed: requires `@starci/eslint-canon-fe` 9.12.0; the runtime copies carry the R06 and R295 laws and the `@starci/nest-kit` and `@starci/next-i18n` pins.
