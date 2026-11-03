@@ -1,4 +1,4 @@
-// R255-R256 inspect the final database access state: the application role, forced RLS, policies, views and storage prefixes.
+// R255-R256 inspect the final database access state: the application role (its attributes and every grant on schema auth), forced RLS, policies, views and storage prefixes.
 import { found } from './read.mjs';
 import { parseSql } from '../sql/pg-parse.mjs';
 import { eachInOrder } from '../../lib/in-order.mjs';
@@ -23,6 +23,10 @@ const AND = ['AND', 'EXPR'].join('_');
 const OR = ['OR', 'EXPR'].join('_');
 const NOT = ['NOT', 'EXPR'].join('_');
 const SEQUENCE = ['OBJECT', 'SEQUENCE'].join('_');
+const SCHEMA = ['OBJECT', 'SCHEMA'].join('_');
+const TABLE = ['OBJECT', 'TABLE'].join('_');
+const ALL_IN_SCHEMA = ['ACL', 'TARGET', 'ALL', 'IN', 'SCHEMA'].join('_');
+const ACCOUNT_SCHEMA = 'auth';
 const MATVIEW = ['OBJECT', 'MATVIEW'].join('_');
 const note = (code: string, source: Parsed, message: string, extra = {}) => found(code, source.file, `${source.file}:${source.line} ${message}`, { line: source.line, ...extra });
 
@@ -140,6 +144,38 @@ function roleFindings(analyses: Parsed, appRole: Parsed) {
     }
   }
   return findings;
+}
+
+/** What one grant statement names inside schema auth: the schema, a table or sequence of it, every table or sequence in it. */
+function authTargets(grant: Parsed): string[] {
+  if (grant.objtype === SCHEMA) return grant.objects.filter((object: Parsed) => sval(object) === ACCOUNT_SCHEMA).map(() => `schema ${ACCOUNT_SCHEMA}`);
+  if (![TABLE, SEQUENCE].includes(grant.objtype)) return [];
+  if (grant.targtype === ALL_IN_SCHEMA) return grant.objects.filter((object: Parsed) => sval(object) === ACCOUNT_SCHEMA).map(() => `all ${grant.objtype === TABLE ? 'tables' : 'sequences'} in schema ${ACCOUNT_SCHEMA}`);
+  return grant.objects.filter((object: Parsed) => object.RangeVar?.schemaname === ACCOUNT_SCHEMA).map((object: Parsed) => relationName(object.RangeVar));
+}
+
+/**
+ * R255: the application role holds no privilege on schema auth, on a table or sequence in it, or by default privilege for the
+ * schema. The migrations are applied in order, so a grant that a later migration revokes (the contract step of an app that moved
+ * to the identity account doors) is not held; what remains at the end is reported at the grant that left it.
+ */
+function authSchemaFindings(analyses: Parsed, appRole: Parsed) {
+  const held = new Map();
+  for (const { file, facts } of analyses) {
+    const statements = [
+      ...facts.grants.map((grant: Parsed) => ({ grant, targets: authTargets(grant) })),
+      ...facts.defaultPrivileges.map((grant: Parsed) => ({ grant, targets: grant.schemas.includes(ACCOUNT_SCHEMA) ? [`default privileges in schema ${ACCOUNT_SCHEMA}`] : [] })),
+    ].filter(({ grant }) => grant.grantees.includes(appRole));
+    for (const { grant, targets } of statements) {
+      for (const target of targets) {
+        const state = held.get(target) ?? { target, privileges: new Set() };
+        updatePrivileges(state, grant.grant, grant.all ? ['all'] : grant.privileges);
+        held.set(target, { ...state, file, line: grant.line });
+      }
+    }
+  }
+  return [...held.values()].filter((state) => state.privileges.size > 0)
+    .map((state) => note(DB_APP_ROLE, state, `${appRole} holds a grant on ${state.target}; reach accounts through the identity account doors (SECURITY DEFINER functions), never through a grant on schema ${ACCOUNT_SCHEMA}`, { target: state.target }));
 }
 
 function roleStatementFindings(statement: Parsed, appRole: Parsed) {
@@ -271,6 +307,7 @@ export async function databaseAccessFindings({ analyses, exposed, db = {} }: { a
   return [
     ...policyFindings(policies, appRole, helpers),
     ...roleFindings(analyses, appRole),
+    ...authSchemaFindings(analyses, appRole),
     ...forceFindings(analyses, declared, appRole),
     ...viewFindings(analyses, grants, exposed),
     ...storagePrefixFindings(policies, helpers),

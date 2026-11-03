@@ -30,7 +30,7 @@ email and password with bcrypt) and `jose`, signs the access tokens, serves thei
 failures against the limit and rotates the refresh token, which lives only in an httpOnly, Secure cookie the package sets;
 a spent refresh token presented again inside a short grace window is a racing tab and is answered with an access token
 and no rotation, an older replay ends the session. The app parses the settings, implements the stores over its own tables
-(the session tables are the package's managed migration) and imports the package nowhere but `integrations/passport`. The lite starter renders that glue, so a new app signs in without hand-written auth code: the entities, the three stores, the authenticator over `auth.users` and `auth.identities`, `IdentitySignInService` and the `/auth` doors (login, refresh, session, logout, Google start and callback, jwks) are managed files (slots `be.identity.sign-in`, `be.feature.auth`) and an edit is `HFS_MANAGED_FILE_DRIFT`. A tenant header or argument (`@WorkspaceId()`) is a selector, never proof: the domain service
+(the session tables are the package's managed migration) and imports the package nowhere but `integrations/passport`. The lite starter renders that glue, so a new app signs in without hand-written auth code: the entities of the session tables, the three stores, the account directory and the authenticator over the account doors (the SECURITY DEFINER `public.be_auth_*` functions of the baseline migration, called through the managed `persistence/account-doors.port.ts`; the application role holds no grant on schema `auth`), `IdentitySignInService` (with `endOthers`, which signs the caller out of every other device) and the `/auth` doors (login, refresh, session, logout, Google start and callback, jwks) are managed files (slots `be.identity.sign-in`, `be.feature.auth`) and an edit is `HFS_MANAGED_FILE_DRIFT`. A tenant header or argument (`@WorkspaceId()`) is a selector, never proof: the domain service
 proves membership or ownership before it reads or writes, so jobs and other doors cannot bypass it.
 
 Why: authentication is a capability with its own state and errors, and authorization kept in the service holds for
@@ -46,7 +46,7 @@ async find(userId: string, workspaceId: string, orderId: string): Promise<OrderV
 ```
 
 Enforced by: `jwt-alg-pinned` (R260), `tier-direction` (R26), lite `infra-import-owner` (R328), `own-jwks-only` and the
-machine `own-jwks-principal` (R329), `refresh-token-cookie-only` (R330); refresh rotation with reuse detection and
+machine `own-jwks-principal` (R329), `refresh-token-cookie-only` (R330), the hfs check `db-app-role` (R255: no grant of the application role on schema `auth`); refresh rotation with reuse detection and
 resource authorization in the service are held by specs and review.
 
 ## BE-AUTH-3 Constant-time comparison and safe cookies
