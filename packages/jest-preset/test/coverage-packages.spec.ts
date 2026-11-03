@@ -34,7 +34,9 @@ function fixture(t: TestContext, { covered }: { covered: boolean }): string {
     fs.writeFileSync(file, text);
   };
   write('be/package.json', JSON.stringify({ name: 'coverage-packages-fixture', private: true }));
-  write('be/tsconfig.json', JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'commonjs', strict: true, esModuleInterop: true, isolatedModules: true } }));
+  // the back end's options come through its extends chain, as @starci/tsconfig/be.json brings them, beside its own path aliases
+  write('be/tsconfig.base.json', JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'commonjs', strict: true, esModuleInterop: true, resolveJsonModule: true, isolatedModules: true } }));
+  write('be/tsconfig.json', JSON.stringify({ extends: './tsconfig.base', compilerOptions: { paths: { '@modules/*': ['./src/modules/*'] } } }));
   write('be/jest.config.cjs', `const config = require(${JSON.stringify(presetIndex)}).starciJestConfig({ coverage: ${JSON.stringify(scope)}, packages: ${JSON.stringify(packages)} })
 const defaults = require(${JSON.stringify(tsJestPreset)}).transform
 for (const project of config.projects) {
@@ -52,7 +54,9 @@ module.exports = config
   write('packages/sdk/src/pick.ts', 'export const pick = (flag: boolean): string => (flag ? "yes" : "no")\n');
   write('packages/sdk/src/workbench/view.ts', 'export const view = (): string => "drawn by the front end"\n');
   const checks = covered ? 'expect(pick(true)).toBe("yes")\n    expect(pick(false)).toBe("no")' : 'expect(pick(false)).toBe("no")';
-  write('packages/sdk/src/pick.spec.ts', `import { pick } from "./pick"\ntest("picks", () => {\n    ${checks}\n})\n`);
+  write('packages/sdk/src/labels.json', JSON.stringify({ yes: 'yes' }));
+  // a JSON default import runs only under the back end's esModuleInterop, which the packages project does not find from the app root
+  write('packages/sdk/src/pick.spec.ts', `import labels from "./labels.json"\nimport { pick } from "./pick"\ntest("picks", () => {\n    expect(labels.yes).toBe("yes")\n    ${checks}\n})\n`);
   return app;
 }
 
@@ -104,6 +108,27 @@ test('a CI shard measures the package files its specs load, for the merged proof
 ${result.stderr}`);
   const final = Object.keys(JSON.parse(fs.readFileSync(path.join(app, 'be', 'coverage', 'coverage-final.json'), 'utf8')) as Record<string, unknown>).map((name) => name.replaceAll('\\', '/'));
   assert.ok(final.some((file) => file.endsWith('/packages/sdk/src/pick.ts')), JSON.stringify(final));
+});
+
+test('the packages project compiles with the options of the back end tsconfig and its extends, without its path options', (t) => {
+  const app = fixture(t, { covered: true });
+  type Unit = { displayName?: unknown; transform?: Record<string, [string, { tsconfig?: Record<string, unknown> }]> };
+  // starciJestConfig reads the back end from the working directory, as jest runs it in be/; the fixture is removed only after it is left
+  const configured = (): Unit[] => {
+    const cwd = process.cwd();
+    process.chdir(path.join(app, 'be'));
+    try {
+      return (preset.starciJestConfig({ coverage: scope, packages }).projects as Unit[]).filter((project) => project.displayName === 'unit');
+    } finally {
+      process.chdir(cwd);
+    }
+  };
+  const units = configured();
+  const compiled = (unit: Unit | undefined): Record<string, unknown> | undefined => Object.values(unit?.transform ?? {})[0]?.[1].tsconfig;
+  assert.deepEqual(compiled(units[1]), { target: 'ES2022', module: 'commonjs', strict: true, esModuleInterop: true, resolveJsonModule: true, isolatedModules: true, importHelpers: true, sourceMap: true });
+  assert.deepEqual(compiled(units[0]), { isolatedModules: true, importHelpers: true, sourceMap: true }, 'the back end keeps finding its own tsconfig.json from its rootDir');
+  fs.writeFileSync(path.join(app, 'be', 'tsconfig.json'), '{ "extends": ');
+  assert.throws(configured, /starciJestConfig cannot read .*tsconfig\.json/);
 });
 
 test('the root packages are a second unit project rooted at the app root, and a packages option that is not the rendered shape is refused', () => {
