@@ -410,11 +410,12 @@ slots:
   - id: packages.data
     path:
       - "packages/<name>/fixtures/"
+      - "packages/<name>/migrations/*.sql"
       - packages/grammar/scripts/theme-proof/app-theme.css
       - "packages/hfs/templates/"
       - "packages/<name>/**/*.{fixture,partial}"
     presence: optional
-    holds: data a package reads and never compiles (lint fixtures that keep their violations, app templates, emit partials)
+    holds: data a package reads and never compiles (lint fixtures that keep their violations, app templates, emit partials, SQL migrations a package ships for the app to render)
     rule: CONTRIB-9 data is data
   - id: packages.rule-docs
     path: "packages/<name>/docs/*.md"

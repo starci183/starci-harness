@@ -2516,14 +2516,6 @@ rules:
       - FE_DIRECTIVE_FIRST
     enforcers:
       - {kind: eslint-fe, id: directive-first}
-pending:
-  - {gap: slot-rule-unknown, subject: BE_E2E_FLOW, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
-  - {gap: slot-rule-unknown, subject: FE_DATA_FRESHNESS, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
-  - {gap: slot-rule-unknown, subject: FE_SIZE_BUDGET, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
-  - {gap: slot-rule-unknown, subject: HFS_AGENT_DATA_TRACKED, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
-  - {gap: slot-rule-unknown, subject: HFS_CI_E2E_AUTOMATIC, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
-  - {gap: slot-rule-unknown, subject: HFS_IDENTITY_CUSTODY, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
-  - {gap: slot-rule-unknown, subject: HFS_SCRIPT_ONE_OFF, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
   - id: R372
     code: STACKS_LOCAL_CONFIG_INVALID
     law: Every docker-compose environment declares a coherent `local` block under the dev verbs' own normalization, and a lite app declares one such dev environment, so `starci app stack up --env dev` has something to run.
@@ -2549,3 +2541,11 @@ pending:
       - STACKS_IMAGE_ENV_DIVERGES
     enforcers:
       - {kind: hfs, id: stacks-service-images}
+pending:
+  - {gap: slot-rule-unknown, subject: BE_E2E_FLOW, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - {gap: slot-rule-unknown, subject: FE_DATA_FRESHNESS, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - {gap: slot-rule-unknown, subject: FE_SIZE_BUDGET, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - {gap: slot-rule-unknown, subject: HFS_AGENT_DATA_TRACKED, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - {gap: slot-rule-unknown, subject: HFS_CI_E2E_AUTOMATIC, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - {gap: slot-rule-unknown, subject: HFS_IDENTITY_CUSTODY, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - {gap: slot-rule-unknown, subject: HFS_SCRIPT_ONE_OFF, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
