@@ -609,6 +609,18 @@ const folderKey = (path: string): string => {
     return process.platform === "win32" ? slashed.toLowerCase() : slashed
 }
 
+/** The wall clock the spans cover once: overlapping waits count once, and nothing before `from`. */
+const unionMs = (spans: readonly (readonly [number, number])[], from: number): number => {
+    let total = 0
+    let reached = from
+    for (const [start, end] of spans.filter(([start, end]) => end > start).sort((left, right) => left[0] - right[0])) {
+        if (end <= reached) continue
+        total += end - Math.max(start, reached)
+        reached = end
+    }
+    return total
+}
+
 /**
  * How long, in ms of wall clock between `since` (an ISO time) and `at`, at least one heavy command of a task waited in the queue:
  * a command a verify of the task ran (`withHeavyBound` tags it with the task, its baseline checkout included) or one that ran in
@@ -633,14 +645,7 @@ export const taskQueuedMs = (task: string, worktree: string | null, since: strin
         for (const row of db.prepare("SELECT at, cwd, task FROM heavy_slots WHERE state = 'waiting'").all()) {
             if (owns(typeof row.task === "string" ? row.task : null, String(row.cwd))) spans.push([Math.max(Date.parse(String(row.at)), from), at])
         }
-        let total = 0
-        let reached = from
-        for (const [start, end] of spans.filter(([start, end]) => end > start).sort((left, right) => left[0] - right[0])) {
-            if (end <= reached) continue
-            total += end - Math.max(start, reached)
-            reached = end
-        }
-        return total
+        return unionMs(spans, from)
     })
 
 /**

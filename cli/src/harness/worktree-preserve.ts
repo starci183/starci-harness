@@ -36,6 +36,18 @@ const stamp = (root: string, path: string): FileStamp => {
     return metadata(path, stat)
 }
 
+/** Whether a folder is an ignored cache (node_modules and kin) that holds no tracked file, so the inventory leaves it out. */
+const skipsCacheFolder = (found: { readonly root: string; readonly path: string; readonly name: string; readonly inventory: "checkout" | "remnant"; readonly tracked: ReadonlySet<string> }): boolean => {
+    const { root, path, name, inventory, tracked } = found
+    const holdsTracked = [...tracked].some((file) => file.startsWith(`${path}/`))
+    return inventory === "checkout" && CACHE_FOLDERS.has(name) && !holdsTracked && captureGitSync(["check-ignore", "--quiet", "--", path], root).exitCode === 0
+}
+
+/** Refuses a nested checkout (a .git below the root, or any .git of a remnant): its files cannot be preserved safely. */
+const refuseNestedCheckout = (relative: string, inventory: "checkout" | "remnant"): void => {
+    if (relative !== "" || inventory === "remnant") throw new Refusal("WORKTREE_PRESERVE_UNSAFE", `${relative === "" ? "." : relative}: nested checkout needs its own preservation; nothing removed`)
+}
+
 /** Metadata only, never entering links; a remnant includes every install/cache because Git cannot prove its ownership. */
 export const checkoutFiles = (root: string, tracked: ReadonlySet<string> = new Set(), inventory: "checkout" | "remnant" = "checkout"): CheckoutFiles => {
     const files: FileStamp[] = []
@@ -47,15 +59,14 @@ export const checkoutFiles = (root: string, tracked: ReadonlySet<string> = new S
     const walk = (relative: string): void => {
         for (const entry of readdirSync(join(root, relative), { withFileTypes: true }).toSorted((a, b) => a.name.localeCompare(b.name))) {
             if (entry.name.toLowerCase() === ".git") {
-                if (relative !== "" || inventory === "remnant") throw new Refusal("WORKTREE_PRESERVE_UNSAFE", `${relative === "" ? "." : relative}: nested checkout needs its own preservation; nothing removed`)
+                refuseNestedCheckout(relative, inventory)
                 continue
             }
             const path = relative === "" ? entry.name : `${relative}/${entry.name}`
             const stat = lstatSync(join(root, path))
             if (stat.isSymbolicLink()) links.push({ path, target: readlinkSync(join(root, path)), metadata: metadata(path, stat) })
             else if (stat.isDirectory()) {
-                const holdsTracked = [...tracked].some((file) => file.startsWith(`${path}/`))
-                if (inventory === "checkout" && CACHE_FOLDERS.has(entry.name) && !holdsTracked && captureGitSync(["check-ignore", "--quiet", "--", path], root).exitCode === 0) continue
+                if (skipsCacheFolder({ root, path, name: entry.name, inventory, tracked })) continue
                 directories.push(path)
                 directoryMetadata.push(metadata(path, stat))
                 walk(path)

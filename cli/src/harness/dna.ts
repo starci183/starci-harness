@@ -378,6 +378,33 @@ const entryOf = (raw: unknown, group: string, grammars: readonly string[], sourc
     }
 }
 
+/** Refuses a law id declared twice, and a role that lists an id no mustKeep group declares. */
+const assertIds = (file: string, entries: readonly DnaEntry[], document: unknown): void => {
+    const seen = new Set<string>()
+    for (const entry of entries) {
+        if (seen.has(entry.id)) throw new Refusal("DNA_CONTRACT_INVALID", `${file}: the id ${entry.id} is declared twice`)
+        seen.add(entry.id)
+    }
+    const roles = z.object({ roles: z.array(z.looseObject({ id: z.string(), dna: z.array(z.string()).optional() })).optional() }).safeParse(document)
+    for (const role of roles.success ? (roles.data.roles ?? []) : []) {
+        for (const id of role.dna ?? []) if (!seen.has(id)) throw new Refusal("DNA_CONTRACT_INVALID", `${file}: role ${role.id} lists ${id}, which no mustKeep group declares`)
+    }
+}
+
+/** The laws of every mustKeep group, each group refused unless it is common or a grammar and a list of laws. */
+const entriesOf = (file: string, grammars: readonly string[], mustKeep: Record<string, unknown>, sources: Sources): DnaEntry[] => {
+    const entries: DnaEntry[] = []
+    for (const [group, items] of Object.entries(mustKeep)) {
+        if (DOCUMENTATION_KEYS.has(group)) continue
+        if (group !== "common" && !grammars.includes(group)) {
+            throw new Refusal("DNA_CONTRACT_INVALID", `${file}: mustKeep.${group} is neither common nor one of the grammars (${grammars.join(", ")})`)
+        }
+        if (!Array.isArray(items)) throw new Refusal("DNA_CONTRACT_INVALID", `${file}: mustKeep.${group} is a list of laws`)
+        for (const raw of items) entries.push(entryOf(raw, group, grammars, sources))
+    }
+    return entries
+}
+
 /**
  * Reads every measured law of a grammar contract; refuses a malformed entry, a group that is neither `common` nor a grammar of the
  * contract, a repeated id, and a role's `dna` list that names an id no group declares.
@@ -391,24 +418,8 @@ export const loadDnaContract = (file: string = defaultContractFile()): DnaContra
     const thresholdsFile = thresholdsFileOf(file)
     if (!existsSync(thresholdsFile)) throw new Refusal("DNA_CONTRACT_INVALID", `${file} reads thresholds from ${thresholdsFile}, which does not exist`)
     const sources: Sources = { contract: document, thresholds: parse(readFileSync(thresholdsFile, "utf8")), file }
-    const entries: DnaEntry[] = []
-    for (const [group, items] of Object.entries(mustKeep)) {
-        if (DOCUMENTATION_KEYS.has(group)) continue
-        if (group !== "common" && !grammars.includes(group)) {
-            throw new Refusal("DNA_CONTRACT_INVALID", `${file}: mustKeep.${group} is neither common nor one of the grammars (${grammars.join(", ")})`)
-        }
-        if (!Array.isArray(items)) throw new Refusal("DNA_CONTRACT_INVALID", `${file}: mustKeep.${group} is a list of laws`)
-        for (const raw of items) entries.push(entryOf(raw, group, grammars, sources))
-    }
-    const seen = new Set<string>()
-    for (const entry of entries) {
-        if (seen.has(entry.id)) throw new Refusal("DNA_CONTRACT_INVALID", `${file}: the id ${entry.id} is declared twice`)
-        seen.add(entry.id)
-    }
-    const roles = z.object({ roles: z.array(z.looseObject({ id: z.string(), dna: z.array(z.string()).optional() })).optional() }).safeParse(document)
-    for (const role of roles.success ? (roles.data.roles ?? []) : []) {
-        for (const id of role.dna ?? []) if (!seen.has(id)) throw new Refusal("DNA_CONTRACT_INVALID", `${file}: role ${role.id} lists ${id}, which no mustKeep group declares`)
-    }
+    const entries = entriesOf(file, grammars, mustKeep, sources)
+    assertIds(file, entries, document)
     return { file, grammars, entries }
 }
 
@@ -451,6 +462,14 @@ export function judgePart(part: DnaPart): { readonly ok: boolean; readonly want:
         return match?.[1] === undefined ? null : Number(match[1])
     }
     const text = (value: DnaScalar): string => (value === null ? "" : String(value).trim().replace(/\s+/g, " "))
+    // The numeric operators; any other (>=) holds when the measure is not under the value by more than the tolerance.
+    const numeric: Readonly<Record<string, (left: number, right: number) => boolean>> = {
+        "=": (left, right) => Math.abs(left - right) <= part.tolerance,
+        "!=": (left, right) => Math.abs(left - right) > part.tolerance,
+        "<": (left, right) => left < right,
+        "<=": (left, right) => left <= right + part.tolerance,
+        ">": (left, right) => left > right,
+    }
     const holds = (measured: DnaScalar, expected: DnaScalar | undefined): boolean => {
         if (part.op === "set") return measured !== null && text(measured) !== "" && text(measured) !== "none"
         if (expected === undefined) return false
@@ -463,14 +482,7 @@ export function judgePart(part: DnaPart): { readonly ok: boolean; readonly want:
         }
         const left = asNumber(measured)
         const right = asNumber(expected)
-        if (left !== null && right !== null) {
-            if (part.op === "=") return Math.abs(left - right) <= part.tolerance
-            if (part.op === "!=") return Math.abs(left - right) > part.tolerance
-            if (part.op === "<") return left < right
-            if (part.op === "<=") return left <= right + part.tolerance
-            if (part.op === ">") return left > right
-            return left >= right - part.tolerance
-        }
+        if (left !== null && right !== null) return (numeric[part.op] ?? ((lower, upper) => lower >= upper - part.tolerance))(left, right)
         if (part.op === "=") return text(measured) === text(expected)
         if (part.op === "!=") return text(measured) !== text(expected)
         return false

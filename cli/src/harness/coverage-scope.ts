@@ -68,6 +68,33 @@ const resolvedCoverage = async (entry: string, dir: string, place: CoveragePlace
     }
 }
 
+/** The changed source files grouped by the nearest folder holding a jest config. */
+const jestGroups = (place: CoveragePlace, changed: readonly string[]): Map<string, string[]> => {
+    const groups = new Map<string, string[]>()
+    for (const file of changed) {
+        const jestRoot = nearestJestRoot(place.root, dirname(join(place.root, file)))
+        if (jestRoot !== undefined) groups.set(jestRoot, [...(groups.get(jestRoot) ?? []), file])
+    }
+    return groups
+}
+
+/** Adds the changed files of one jest folder that its coverage globs measure, or why they could not be read. */
+const measureGroup = async (place: CoveragePlace, group: readonly [string, readonly string[]], found: { readonly measured: string[]; readonly problems: string[] }): Promise<void> => {
+    const [dir, files] = group
+    const { measured, problems } = found
+    const entry = jestEntry(place.root, dir)
+    if (entry === undefined) {
+        problems.push(`jest is not installed for ${toSlash(relative(place.root, dir)) || "."}`)
+        return
+    }
+    const config = await resolvedCoverage(entry, dir, place)
+    if ("problem" in config) {
+        problems.push(config.problem)
+        return
+    }
+    measured.push(...files.map((file) => toSlash(relative(config.rootDir, join(place.root, file)))).filter((file) => measuredBy(config.globs, file)))
+}
+
 /**
  * The coverage a scoped jest run judges: the changed source files under allowPaths that the app's own `collectCoverageFrom` measures
  * (each read from the nearest jest config, as `jest --showConfig` resolves it), passed back as `--collectCoverageFrom` so jest's own
@@ -76,28 +103,14 @@ const resolvedCoverage = async (entry: string, dir: string, place: CoveragePlace
  */
 export const changedCoverageScope = async (place: CoveragePlace, allowPaths: readonly string[]): Promise<CoverageScope> => {
     const changed = (await changedFiles(place.root, place.diffBase ?? "HEAD")).filter((file) => underPaths(file, allowPaths) && SOURCE.test(file) && existsSync(join(place.root, file)))
-    const groups = new Map<string, string[]>()
-    for (const file of changed) {
-        const jestRoot = nearestJestRoot(place.root, dirname(join(place.root, file)))
-        if (jestRoot !== undefined) groups.set(jestRoot, [...(groups.get(jestRoot) ?? []), file])
-    }
+    const groups = jestGroups(place, changed)
     // No changed logic at all: this attempt holds nothing coverage measures, so no baseline threshold of others' code judges it.
     if (changed.length === 0) return { args: ["--coverage=false"], detail: `coverage: no source file under allowPaths changed since ${place.diffBase ?? "HEAD"}; the measured scope is CI's` }
     if (groups.size === 0) return { args: [], detail: "coverage: no changed source file under allowPaths has a jest config above it; the command runs as named" }
     const measured: string[] = []
     const problems: string[] = []
     await inOrder([...groups], async ([dir, files]) => {
-        const entry = jestEntry(place.root, dir)
-        if (entry === undefined) {
-            problems.push(`jest is not installed for ${toSlash(relative(place.root, dir)) || "."}`)
-            return
-        }
-        const config = await resolvedCoverage(entry, dir, place)
-        if ("problem" in config) {
-            problems.push(config.problem)
-            return
-        }
-        measured.push(...files.map((file) => toSlash(relative(config.rootDir, join(place.root, file)))).filter((file) => measuredBy(config.globs, file)))
+        await measureGroup(place, [dir, files], { measured, problems })
     })
     if (problems.length > 0) return { args: [], detail: `coverage: the scope could not be read (${problems.join("; ")}); the command runs as named` }
     if (measured.length === 0) return { args: ["--coverage=false"], detail: `coverage: none of the ${String(changed.length)} changed source file(s) is measured logic; the measured scope is CI's` }
@@ -112,6 +125,17 @@ const scriptOf = (argv: readonly string[], cwd: string): string | undefined => s
 /** The argv index of the script name a package manager command runs (`npm test`: 1, `npm run test:e2e`: 2). */
 const scriptIndex = (argv: readonly string[]): number => (argv[1] === "run" || argv[1] === "run-script" ? 2 : 1)
 
+/** The script `name` of the package.json `file`, or undefined when the file does not parse or holds none. */
+const scriptInFile = (file: string, name: string, current: string): { readonly script: string; readonly dir: string } | undefined => {
+    try {
+        const scripts: unknown = (JSON.parse(readFileSync(file, "utf8")) as { scripts?: unknown }).scripts
+        const script = typeof scripts === "object" && scripts !== null ? (scripts as Record<string, unknown>)[name] : undefined
+        return typeof script === "string" ? { script, dir: current } : undefined
+    } catch {
+        return undefined
+    }
+}
+
 /** The script a package manager command runs and the folder of the package.json holding it. */
 const scriptAt = (argv: readonly string[], cwd: string): { readonly script: string; readonly dir: string } | undefined => {
     const name = argv[scriptIndex(argv)]
@@ -119,13 +143,7 @@ const scriptAt = (argv: readonly string[], cwd: string): { readonly script: stri
     for (let current = cwd; ; current = dirname(current)) {
         const file = join(current, "package.json")
         if (existsSync(file)) {
-            try {
-                const scripts: unknown = (JSON.parse(readFileSync(file, "utf8")) as { scripts?: unknown }).scripts
-                const script = typeof scripts === "object" && scripts !== null ? (scripts as Record<string, unknown>)[name] : undefined
-                return typeof script === "string" ? { script, dir: current } : undefined
-            } catch {
-                return undefined
-            }
+            return scriptInFile(file, name, current)
         }
         if (dirname(current) === current) return undefined
     }
@@ -226,6 +244,38 @@ const changedSpecs = async (place: TestPlace, allowPaths: readonly string[], fol
     return [...new Set([...changed.filter((file) => SPEC_FILE.test(file)), ...beside])].filter(inside)
 }
 
+/** The task's own changed specs of the selected jest projects, else every spec of those projects under the folder. */
+const ownSpecs = async (projects: readonly string[], folder: string, place: TestPlace, allowPaths: readonly string[]): Promise<{ readonly files: string[]; readonly why: string }> => {
+    const kinds = projects.map((project) => `.${project}-spec.`)
+    const changed = (await changedFiles(place.root, place.diffBase ?? "HEAD")).filter((file) => underPaths(file, allowPaths) && SPEC_FILE.test(file)).map((file) => join(place.root, file))
+    const own = changed.filter((file) => existsSync(file) && kinds.some((kind) => file.includes(kind)))
+    const files = own.length > 0 ? own : specsUnder(folder).filter((file) => kinds.some((kind) => file.includes(kind)) && !isLive(file))
+    const why = own.length > 0 ? "the task's own changed spec files" : `every ${projects.join(", ")} spec under ${toSlash(relative(place.root, folder)) || "."}, live-provider specs left out`
+    return { files, why }
+}
+
+/** The spec files under the paths a test command names, and the changed ones beside them; live-provider specs only when named. */
+const namedSpecs = async (named: readonly string[], folder: string, place: TestPlace, allowPaths: readonly string[]): Promise<{ readonly files: string[]; readonly why: string }> => {
+    const dropped: string[] = []
+    const files = named.flatMap((path) => {
+        const at = [resolve(folder, path), resolve(place.cwd, path)].find((candidate) => existsSync(candidate))
+        if (at === undefined) return []
+        return specsUnder(at).filter((file) => {
+            const kept = file === at || resolve(dirname(file)) === resolve(at) || !isLive(file)
+            if (!kept) dropped.push(toSlash(relative(folder, file)))
+            return kept
+        })
+    })
+    const given = new Set(files.map((file) => resolve(file)))
+    const added = (await changedSpecs(place, allowPaths, folder)).filter((file) => !given.has(resolve(file)) && !isLive(file))
+    files.push(...added)
+    const why =
+        `the spec files under ${named.join(", ")}` +
+        (added.length === 0 ? "" : ` and of the changed files under allowPaths (${added.map((file) => toSlash(relative(folder, file))).join(", ")})`) +
+        (dropped.length === 0 ? "" : `; live-provider specs not named, left out: ${dropped.join(", ")}`)
+    return { files, why }
+}
+
 /**
  * Scopes a package manager script that runs jest to the task's own spec files, passed as `--runTestsByPath <files>` (exact paths,
  * which no array option of the script, such as `--selectProjects e2e`, can swallow as a positional pattern does). A command that
@@ -252,29 +302,13 @@ export const scopedTests = async (argv: readonly string[], place: TestPlace, all
     let files: string[]
     let why: string
     if (named.length > 0) {
-        const dropped: string[] = []
-        files = named.flatMap((path) => {
-            const at = [resolve(folder, path), resolve(place.cwd, path)].find((candidate) => existsSync(candidate))
-            if (at === undefined) return []
-            return specsUnder(at).filter((file) => {
-                const kept = file === at || resolve(dirname(file)) === resolve(at) || !isLive(file)
-                if (!kept) dropped.push(toSlash(relative(folder, file)))
-                return kept
-            })
-        })
-        const given = new Set(files.map((file) => resolve(file)))
-        const added = (await changedSpecs(place, allowPaths, folder)).filter((file) => !given.has(resolve(file)) && !isLive(file))
-        files.push(...added)
-        why =
-            `the spec files under ${named.join(", ")}` +
-            (added.length === 0 ? "" : ` and of the changed files under allowPaths (${added.map((file) => toSlash(relative(folder, file))).join(", ")})`) +
-            (dropped.length === 0 ? "" : `; live-provider specs not named, left out: ${dropped.join(", ")}`)
+        const picked = await namedSpecs(named, folder, place, allowPaths)
+        files = picked.files
+        why = picked.why
     } else {
-        const kinds = projects.map((project) => `.${project}-spec.`)
-        const changed = (await changedFiles(place.root, place.diffBase ?? "HEAD")).filter((file) => underPaths(file, allowPaths) && SPEC_FILE.test(file)).map((file) => join(place.root, file))
-        const own = changed.filter((file) => existsSync(file) && kinds.some((kind) => file.includes(kind)))
-        files = own.length > 0 ? own : specsUnder(folder).filter((file) => kinds.some((kind) => file.includes(kind)) && !isLive(file))
-        why = own.length > 0 ? "the task's own changed spec files" : `every ${projects.join(", ")} spec under ${toSlash(relative(place.root, folder)) || "."}, live-provider specs left out`
+        const picked = await ownSpecs(projects, folder, place, allowPaths)
+        files = picked.files
+        why = picked.why
     }
     const paths = [...new Set(files.map((file) => toSlash(relative(folder, file))))].sort((left, right) => left.localeCompare(right))
     if (paths.length === 0) {

@@ -62,6 +62,40 @@ const keysAfter = (db: DatabaseSync, workflow: string, change: string | undefine
     return keys
 }
 
+/** Refuses resolver keys the workflow's graph will not hold, named twice, or that wait on the need itself. */
+const assertResolver = (db: DatabaseSync, scope: "kernel" | "supervisor", command: NeedAnswerCommand, found: { readonly decision: ReturnType<typeof sharedNeedsAnswered>[number] | undefined; readonly need: NonNullable<NeedAnswerCommand["need"]>; readonly key: string; readonly guidance: string; readonly dir: string }): void => {
+    const { decision, need, key, guidance, dir } = found
+    const keys = resolverKeys(need.resolver)
+    if (new Set(keys).size !== keys.length) throw refuse(`resolver names a task twice`, guidance)
+    // A waiter of the need in this same workflow cannot resolve it; a key of the decision's waiters in another workflow is another task.
+    const ownWaiters = scope === "kernel" ? (decision?.waiters ?? []) : []
+    const graph = keys.length === 0 ? new Set<string>() : keysAfter(db, command.workflow, command.change, dir)
+    for (const one of keys) {
+        if (ownWaiters.includes(one)) throw refuse(`${one} waits on ${key} itself: a cycle; name the task that builds it`, guidance)
+        if (!graph.has(one)) throw refuse(`resolver ${one} is no task of workflow ${command.workflow}${scope === "kernel" ? " after this change" : ""}`, guidance)
+    }
+}
+
+/** Refuses a need that answers no decision of this workflow, a decision that routes another key, or an answer that is not one of resolver and rejection. */
+const assertDecisionFits = (scope: "kernel" | "supervisor", found: { readonly decision: ReturnType<typeof sharedNeedsAnswered>[number] | undefined; readonly need: NonNullable<NeedAnswerCommand["need"]>; readonly key: string; readonly guidance: string }): void => {
+    const { decision, need, key, guidance } = found
+    if (scope === "kernel" && decision === undefined) throw refuse(`need ${key} answers no shared-need decision of this workflow; name the decision in answers`, guidance)
+    if (decision !== undefined && decision.need !== key) throw refuse(`decision ${decision.id} routes ${decision.need}, not ${key}`, guidance)
+    if (need.resolver !== undefined && need.reject !== undefined) throw refuse(`need ${key} names a resolver and a rejection; it is one or the other`, guidance)
+    if (scope === "kernel" && need.resolver === undefined && need.reject === undefined) throw refuse(`need ${key} names neither a resolver nor a rejection`, guidance)
+}
+
+/** The canonical key of the need an answer names, refused with the guidance when it is no valid key. */
+const needKeyOf = (need: { readonly key: string }, guidance: string): string => {
+    let key: string
+    try {
+        key = normalizeNeedKey(need.key)
+    } catch (error: unknown) {
+        throw refuse(error instanceof Error ? error.message : String(error), guidance)
+    }
+    return key
+}
+
 /**
  * Refuses NEED_ANSWER_INVALID, with the guidance of how to answer, a command whose word on a shared need does not fit, before it is
  * applied, so a wrong answer leaves the decision open and never wedges it: a `need` that answers no shared-need decision, one
@@ -81,24 +115,8 @@ export const assertNeedAnswer = (db: DatabaseSync, scope: "kernel" | "supervisor
     }
     if (scope === "supervisor" && command.kind !== "need-owner") throw refuse(`a ${command.kind} carries no need`, guidance)
     if (scope === "kernel" && command.kind !== "workflow-change") throw refuse(`a ${command.kind} carries no need`, guidance)
-    let key: string
-    try {
-        key = normalizeNeedKey(need.key)
-    } catch (error: unknown) {
-        throw refuse(error instanceof Error ? error.message : String(error), guidance)
-    }
+    const key = needKeyOf(need, guidance)
     const decision = answered[0]
-    if (scope === "kernel" && decision === undefined) throw refuse(`need ${key} answers no shared-need decision of this workflow; name the decision in answers`, guidance)
-    if (decision !== undefined && decision.need !== key) throw refuse(`decision ${decision.id} routes ${decision.need}, not ${key}`, guidance)
-    if (need.resolver !== undefined && need.reject !== undefined) throw refuse(`need ${key} names a resolver and a rejection; it is one or the other`, guidance)
-    if (scope === "kernel" && need.resolver === undefined && need.reject === undefined) throw refuse(`need ${key} names neither a resolver nor a rejection`, guidance)
-    const keys = resolverKeys(need.resolver)
-    if (new Set(keys).size !== keys.length) throw refuse(`resolver names a task twice`, guidance)
-    // A waiter of the need in this same workflow cannot resolve it; a key of the decision's waiters in another workflow is another task.
-    const ownWaiters = scope === "kernel" ? (decision?.waiters ?? []) : []
-    const graph = keys.length === 0 ? new Set<string>() : keysAfter(db, command.workflow, command.change, dir)
-    for (const one of keys) {
-        if (ownWaiters.includes(one)) throw refuse(`${one} waits on ${key} itself: a cycle; name the task that builds it`, guidance)
-        if (!graph.has(one)) throw refuse(`resolver ${one} is no task of workflow ${command.workflow}${scope === "kernel" ? " after this change" : ""}`, guidance)
-    }
+    assertDecisionFits(scope, { decision, need, key, guidance })
+    assertResolver(db, scope, command, { decision, need, key, guidance, dir })
 }

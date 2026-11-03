@@ -236,6 +236,35 @@ const assertBasedOn = (db: DatabaseSync, command: Command, workflow: WorkflowRow
     if (command.kind === "goal-change" && goal === undefined) throw new Refusal("COMMAND_INVALID", "a goal-change names basedOn.goal")
 }
 
+/** The route, settle, hold and need checks a command is held to: the Kernel's own, or a Supervisor's ruling judged as the Kernel's. */
+const assertScoped = (db: DatabaseSync, scope: CommandScope, command: Command, dir: string): void => {
+    if (scope === "kernel") {
+        assertSettle(db, command)
+        assertHold(db, command)
+        if (!isHold(command)) assertRoute(db, command, dir)
+        assertNeedAnswer(db, scope, command, dir)
+    } else if (isRuling(command)) {
+        assertRuling(db, command)
+        const ruled = rulingAsKernel(db, command)
+        assertSettle(db, ruled)
+        assertHold(db, ruled)
+        if (!isHold(ruled)) assertRoute(db, ruled, dir)
+        assertNeedAnswer(db, "kernel", ruled, dir)
+    } else {
+        assertNeedAnswer(db, scope, command, dir)
+        if (command.hold !== undefined) throw new Refusal("COMMAND_INVALID", `a ${command.kind} carries no hold; a hold is a workflow-change's, the Kernel's or a ruling's`)
+    }
+}
+
+/** Refuses a command whose answers name a decision that is unknown to this scope or answered already. */
+const assertAnswersOpen = (db: DatabaseSync, command: Command, scope: CommandScope): void => {
+    for (const id of ledgerAnswers(command, scope)) {
+        const decision = getDecision(db, id)
+        if (decision?.scope !== scope) throw new Refusal("DECISION_UNKNOWN", `answers names ${id}, which is no ${scope} decision in this ledger`)
+        if (decision.answeredBy !== null) throw new Refusal("STALE", `decision ${id} was answered already by ${decision.answeredBy}; re-read with ${scope} next`)
+    }
+}
+
 /**
  * Admits a command under compare-and-swap, before any side effect: a known cmdId with the same bytes replays its recorded
  * outcome (a failed one is applied again), with other bytes refuses CMD_CONFLICT; a basedOn that is not the current graph or
@@ -252,27 +281,8 @@ export const admitCommand = (db: DatabaseSync, scope: CommandScope, file: Comman
         if (known?.status === "applying") throw new Refusal("CMD_IN_FLIGHT", `command ${command.cmdId} is being applied; read its outcome with the next ${scope} next`)
         const workflow = getWorkflow(db, command.workflow)
         assertBasedOn(db, command, workflow)
-        for (const id of ledgerAnswers(command, scope)) {
-            const decision = getDecision(db, id)
-            if (decision?.scope !== scope) throw new Refusal("DECISION_UNKNOWN", `answers names ${id}, which is no ${scope} decision in this ledger`)
-            if (decision.answeredBy !== null) throw new Refusal("STALE", `decision ${id} was answered already by ${decision.answeredBy}; re-read with ${scope} next`)
-        }
-        if (scope === "kernel") {
-            assertSettle(db, command)
-            assertHold(db, command)
-            if (!isHold(command)) assertRoute(db, command, file.dir)
-            assertNeedAnswer(db, scope, command, file.dir)
-        } else if (isRuling(command)) {
-            assertRuling(db, command)
-            const ruled = rulingAsKernel(db, command)
-            assertSettle(db, ruled)
-            assertHold(db, ruled)
-            if (!isHold(ruled)) assertRoute(db, ruled, file.dir)
-            assertNeedAnswer(db, "kernel", ruled, file.dir)
-        } else {
-            assertNeedAnswer(db, scope, command, file.dir)
-            if (command.hold !== undefined) throw new Refusal("COMMAND_INVALID", `a ${command.kind} carries no hold; a hold is a workflow-change's, the Kernel's or a ruling's`)
-        }
+        assertAnswersOpen(db, command, scope)
+        assertScoped(db, scope, command, file.dir)
         db.prepare("DELETE FROM commands WHERE cmd_id = ? AND status = 'failed'").run(command.cmdId)
         db.prepare("INSERT INTO commands (cmd_id, scope, workflow_id, kind, based_on_json, sha256, body_json, status, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'applying', ?)").run(
             command.cmdId,

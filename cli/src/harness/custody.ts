@@ -281,6 +281,25 @@ export interface Custody {
     readonly detail: string
 }
 
+/** Reads the values of the keys a run declares from the sealed files that hold them; a file that cannot be read is refused without naming a value. */
+const readCustodyEnv = async (found: Awaited<ReturnType<typeof holdersOf>>): Promise<Record<string, string>> => {
+    const { app, environment, directory, holder } = found
+    const store = await import("@starci/hfs/runtime/scripts/hfs/secret-store.mjs")
+    const { defaultSops } = await import("@starci/hfs/runtime/scripts/hfs/secret-sops.mjs")
+    const env: Record<string, string> = {}
+    for (const member of new Set(holder.values())) {
+        let map: Readonly<Record<string, string>>
+        try {
+            map = store.readMap(join(directory, member), defaultSops(process.env, app, process.platform, undefined, hostAgeIdentity(app)))
+        } catch (error: unknown) {
+            // The message of a sops or identity failure names the file and the cause, never a value.
+            throw new Refusal(CUSTODY_UNREADABLE, `custody of ${environment} holds ${[...holder].filter(([, file]) => file === member).map(([key]) => key).join(", ")} in ${member} but it cannot be opened here: ${error instanceof Error ? (error.message.split("\n")[0] ?? error.message) : "sops refused"}`)
+        }
+        for (const [key, file] of holder) if (file === member && typeof map[key] === "string") env[key] = map[key]
+    }
+    return env
+}
+
 /**
  * The declared keys of the live spec files of the checkout `checkout` a run executes, read from that checkout's custody for one
  * run. A declaration the reader cannot reduce to key names refuses CUSTODY_KEYS_UNRESOLVED before anything runs, naming each
@@ -301,19 +320,7 @@ export const custodyFor = async (liveSpecs: readonly string[], checkout: string)
     const { app, environment, directory, holder } = await holdersOf(checkout, keys)
     const missing = keys.filter((key) => !holder.has(key))
     if (missing.length > 0) throw lacking(missing, environment)
-    const store = await import("@starci/hfs/runtime/scripts/hfs/secret-store.mjs")
-    const { defaultSops } = await import("@starci/hfs/runtime/scripts/hfs/secret-sops.mjs")
-    const env: Record<string, string> = {}
-    for (const member of new Set(holder.values())) {
-        let map: Readonly<Record<string, string>>
-        try {
-            map = store.readMap(join(directory, member), defaultSops(process.env, app, process.platform, undefined, hostAgeIdentity(app)))
-        } catch (error: unknown) {
-            // The message of a sops or identity failure names the file and the cause, never a value.
-            throw new Refusal(CUSTODY_UNREADABLE, `custody of ${environment} holds ${[...holder].filter(([, file]) => file === member).map(([key]) => key).join(", ")} in ${member} but it cannot be opened here: ${error instanceof Error ? (error.message.split("\n")[0] ?? error.message) : "sops refused"}`)
-        }
-        for (const [key, file] of holder) if (file === member && typeof map[key] === "string") env[key] = map[key]
-    }
+    const env = await readCustodyEnv({ app, environment, directory, holder })
     // A key sealed by name with no value, or only blanks, is no credential: it is the owner's to fill, like one never sealed.
     const empty = keys.filter((key) => (env[key] ?? "").trim() === "")
     if (empty.length > 0) throw lacking(empty, environment)

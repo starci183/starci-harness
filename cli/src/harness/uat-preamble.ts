@@ -96,13 +96,20 @@ const afterSize = (line: string): ReaderState => {
     return { left: size + CRLF.length, next: "size" }
 }
 
+/** Skips up to `state.left` bytes of a body that is passed through unread: what is left, the state after, and whether anything moved. */
+const skipBody = (state: Skip, buffered: Buffer): { readonly buffered: Buffer; readonly state: ReaderState; readonly moved: boolean } => {
+    const taken = Math.min(state.left, buffered.length)
+    const next = state.left === taken ? state.next : { left: state.left - taken, next: state.next }
+    return { buffered: buffered.subarray(taken), state: next, moved: taken > 0 || next === "head" || next === "size" }
+}
+
 /**
  * A reader of one direction of an HTTP/1.x connection: it splits the bytes into heads and bodies (a length, chunks with their
  * trailers, or the rest of the connection) and hands each head to `onHead`, which says how its body is framed. Anything it
  * cannot follow (TLS, an upgraded connection, a head past HEAD_LIMIT) turns it off for the rest of the connection.
  */
 const httpReader = (onHead: (head: Head) => Body): ((chunk: Buffer) => void) => {
-    let buffered = Buffer.alloc(0)
+    let buffered: Buffer = Buffer.alloc(0)
     let state: ReaderState = "head"
     const step = (): boolean => {
         if (state === "off" || state === "close") {
@@ -110,10 +117,10 @@ const httpReader = (onHead: (head: Head) => Body): ((chunk: Buffer) => void) => 
             return false
         }
         if (typeof state === "object") {
-            const taken = Math.min(state.left, buffered.length)
-            buffered = buffered.subarray(taken)
-            state = state.left === taken ? state.next : { left: state.left - taken, next: state.next }
-            return taken > 0 || state === "head" || state === "size"
+            const skipped = skipBody(state, buffered)
+            buffered = skipped.buffered
+            state = skipped.state
+            return skipped.moved
         }
         if (state === "head") {
             // A TLS handshake opens with a 0x16 record: the relay pipes it, but nothing in it can be read.

@@ -221,6 +221,36 @@ export interface Pressed {
     readonly request: string | null
 }
 
+/** The button of the tickets closed today: sends them. */
+const sendClosedToday = async (bot: TelegramBot, chatId: string, toast: (text: string) => Promise<void>): Promise<Pressed> => {
+    await sendMessage(bot, chatId, closedTodayMessage(), undefined, { html: true })
+    await toast("Đã gửi danh sách đã đóng.")
+    return { outcome: "callback: closed today", request: null }
+}
+
+/** The button of the ticket list: sends the open tickets. */
+const sendList = async (bot: TelegramBot, chatId: string, toast: (text: string) => Promise<void>): Promise<Pressed> => {
+    const list = openTicketsMessage()
+    await sendMessage(bot, chatId, list.text, undefined, { html: true, keyboard: list.keyboard })
+    await toast("Đã gửi danh sách.")
+    return { outcome: "callback: list", request: null }
+}
+
+/** The button of an answer: the proposed default or one of the listed options answers the question. */
+const answerByChoice = async (ticket: Ticket, choice: string | undefined, via: { readonly cwd: string; readonly toast: (text: string) => Promise<void>; readonly edit: (keyboard: Keyboard) => Promise<void> }): Promise<Pressed> => {
+    const { cwd, toast, edit } = via
+    const answer = choice === "d" ? ticket.proposedDefault : ticket.options[Number(choice)]
+    if (answer === undefined || answer === null) {
+        await toast("Lựa chọn này không còn.")
+        return { outcome: `callback: ${ticket.id} has no choice ${choice ?? "-"}`, request: null }
+    }
+    const closed = closeTicket(ticket.id, { state: "answered", answer, why: choice === "d" ? "the owner accepted the proposed default, via Telegram" : "the owner chose a listed answer, via Telegram" }, "owner")
+    const woken = await wakeOnClose(closed, "owner", cwd)
+    await edit([[{ text: `✅ Đã trả lời: ${clip(answer, 40)}`, callback_data: data("d", ticket.id) }]])
+    await toast("Đã ghi câu trả lời.")
+    return { outcome: `callback: answered ${ticket.id}`, request: woken[0]?.request ?? null }
+}
+
 /**
  * Handles a press of a ticket card's button by the owner's chat (a press from any other chat is the caller's to ignore): it
  * acts through the ticket verbs' functions (details, hand to Debug, the lists, mute, an answer by the default or an option, the
@@ -247,15 +277,10 @@ export const handleTicketCallback = async (bot: TelegramBot, chatId: string, cal
     }
     try {
         if (action === "l") {
-            const list = openTicketsMessage()
-            await sendMessage(bot, chatId, list.text, undefined, { html: true, keyboard: list.keyboard })
-            await toast("Đã gửi danh sách.")
-            return { outcome: "callback: list", request: null }
+            return await sendList(bot, chatId, toast)
         }
         if (action === "c") {
-            await sendMessage(bot, chatId, closedTodayMessage(), undefined, { html: true })
-            await toast("Đã gửi danh sách đã đóng.")
-            return { outcome: "callback: closed today", request: null }
+            return await sendClosedToday(bot, chatId, toast)
         }
         if (action === "m") {
             const until = mute(bot.config.muteMinutes)
@@ -285,16 +310,7 @@ export const handleTicketCallback = async (bot: TelegramBot, chatId: string, cal
             await toast("Gửi câu trả lời ở tin nhắn tiếp theo.")
             return { outcome: `callback: next text answers ${ticket.id}`, request: null }
         }
-        const answer = choice === "d" ? ticket.proposedDefault : ticket.options[Number(choice)]
-        if (answer === undefined || answer === null) {
-            await toast("Lựa chọn này không còn.")
-            return { outcome: `callback: ${ticket.id} has no choice ${choice ?? "-"}`, request: null }
-        }
-        const closed = closeTicket(ticket.id, { state: "answered", answer, why: choice === "d" ? "the owner accepted the proposed default, via Telegram" : "the owner chose a listed answer, via Telegram" }, "owner")
-        const woken = await wakeOnClose(closed, "owner", cwd)
-        await edit([[{ text: `✅ Đã trả lời: ${clip(answer, 40)}`, callback_data: data("d", ticket.id) }]])
-        await toast("Đã ghi câu trả lời.")
-        return { outcome: `callback: answered ${ticket.id}`, request: woken[0]?.request ?? null }
+        return await answerByChoice(ticket, choice, { cwd, toast, edit })
     } catch (error: unknown) {
         const refusal = asRefusal(error)
         await toast(clip(`${refusal.code}: ${refusal.message}`, 180))

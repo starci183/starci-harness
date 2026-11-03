@@ -365,25 +365,39 @@ const answerTarget = (notice: NoticeRow, body: string): Target => ({ project: no
 
 const COMMAND = /^\/(\w+)(?:@\w+)?(?:\s([\s\S]*))?$/
 
-/** Reads what an owner message asks: `/answer <id> <text>`, `/ask <project> <text>`, or a reply to a notice. */
-const targetOf = async (message: TelegramMessage, chatId: string): Promise<Target> => {
-    const text = (message.text ?? "").trim()
-    const command = COMMAND.exec(text)
-    if (command !== null) {
+/** `/ticket <id>`: the ticket's details. */
+const ticketCommand = (first: string): Target => {
+    const ticket = findTicket(first)
+    if (ticket === undefined) return { reply: `No ticket ${first || "(no id)"}; /tickets lists the open ones.`, outcome: "unknown ticket" }
+    return { reply: ticketDetails(ticket), outcome: `ticket ${ticket.id}`, html: true }
+}
+
+/** `/ask <project> <text>`: the text as an owner request of the project. */
+const askCommand = async (first: string, body: string): Promise<Target> => {
+    const { project, known } = await projectNamed(first)
+    if (project === undefined) return { reply: `No project ${first || "(no name)"}; projects: ${known.join(", ") || "none registered"}.`, outcome: "unknown project" }
+    if (body === "") return { reply: `Say the request after the project: /ask ${project.name} <request>.`, outcome: "empty" }
+    return { project, text: body }
+}
+
+/** `/answer <id> <text>`: the notice it names answered with the text. */
+const answerCommand = (first: string, body: string): Target => {
+    const notice = noticeBySubject(first)
+    if (notice === undefined) return { reply: `No notice ${first || "(no id)"} was sent here. ${HELP}`, outcome: "unknown subject" }
+    if (body === "") return { reply: `Say the answer after the id: /answer ${first} <your answer>.`, outcome: "empty" }
+    return answerTarget(notice, body)
+}
+
+/** What an owner's `/command` asks: an answer, a request, the status, the tickets or one ticket; the help otherwise. */
+const commandTarget = async (command: RegExpExecArray): Promise<Target> => {
         const verb = (command[1] ?? "").toLowerCase()
         const [first = "", ...rest] = (command[2] ?? "").trim().split(/\s+/)
         const body = rest.join(" ").trim()
         if (verb === "answer") {
-            const notice = noticeBySubject(first)
-            if (notice === undefined) return { reply: `No notice ${first || "(no id)"} was sent here. ${HELP}`, outcome: "unknown subject" }
-            if (body === "") return { reply: `Say the answer after the id: /answer ${first} <your answer>.`, outcome: "empty" }
-            return answerTarget(notice, body)
+            return answerCommand(first, body)
         }
         if (verb === "ask") {
-            const { project, known } = await projectNamed(first)
-            if (project === undefined) return { reply: `No project ${first || "(no name)"}; projects: ${known.join(", ") || "none registered"}.`, outcome: "unknown project" }
-            if (body === "") return { reply: `Say the request after the project: /ask ${project.name} <request>.`, outcome: "empty" }
-            return { project, text: body }
+            return await askCommand(first, body)
         }
         if (verb === "status") return { reply: await statusMessage(loadTelegram().questionChars), outcome: "status", html: true }
         if (verb === "tickets") {
@@ -391,11 +405,17 @@ const targetOf = async (message: TelegramMessage, chatId: string): Promise<Targe
             return { reply: list.text, outcome: "tickets", html: true, keyboard: list.keyboard }
         }
         if (verb === "ticket") {
-            const ticket = findTicket(first)
-            if (ticket === undefined) return { reply: `No ticket ${first || "(no id)"}; /tickets lists the open ones.`, outcome: "unknown ticket" }
-            return { reply: ticketDetails(ticket), outcome: `ticket ${ticket.id}`, html: true }
+            return ticketCommand(first)
         }
         return { reply: HELP, outcome: `help (/${verb})` }
+}
+
+/** Reads what an owner message asks: `/answer <id> <text>`, `/ask <project> <text>`, or a reply to a notice. */
+const targetOf = async (message: TelegramMessage, chatId: string): Promise<Target> => {
+    const text = (message.text ?? "").trim()
+    const command = COMMAND.exec(text)
+    if (command !== null) {
+        return await commandTarget(command)
     }
     const replied = message.reply_to_message?.message_id
     const notice = replied === undefined ? undefined : noticeByMessage(chatId, replied)

@@ -200,6 +200,33 @@ const gitLists = async (repo: string, path: string): Promise<boolean> => {
     return [...listed.stdout.matchAll(/^worktree (.+)$/gm)].some((match) => samePath((match[1] ?? "").trim(), path))
 }
 
+/** A folder git no longer lists: an empty one is removed, one a half-done removal left is deleted, any other is refused. */
+const removeLeftovers = async (repo: string, path: string, left: { readonly remnant: boolean; readonly listedAtStart: boolean }, refusals: string[]): Promise<void> => {
+    const { remnant, listedAtStart } = left
+    if (existsSync(path) && !(await gitLists(repo, path))) {
+        try {
+            if (readdirSync(path).length === 0) rmdirSync(path)
+            else if ((remnant || listedAtStart) && !holdsLiveCheckout(path)) {
+                unlinkCheckoutLinks(path)
+                rmSync(path, { recursive: true, force: true })
+            } else refusals.push("git no longer lists it, and the folder still holds files")
+        } catch (error: unknown) {
+            refusals.push(`rmdir: ${reason(error)}`)
+        }
+    }
+}
+
+/** Removes the worktree with git when git still lists it, naming a refusal. */
+const gitRemove = async (repo: string, path: string, refusals: string[]): Promise<void> => {
+    if (existsSync(path) && (await gitLists(repo, path))) {
+        const removed = await captureGit(["worktree", "remove", "--force", path], repo)
+        if (removed.exitCode !== 0) {
+            const headlineText = headline(removed.stderr) || `exit ${String(removed.exitCode)}`
+            refusals.push(`git: ${headlineText}`)
+        }
+    }
+}
+
 /**
  * Removes one harness worktree, in the order a held folder needs (harness/reap.ts reapWorktree): the Orca terminals working in
  * it are closed (any terminal, not only a seat's: a process working in the folder keeps Windows from removing it, and a removed
@@ -240,24 +267,8 @@ export const removeWorktreeFolder = async (repo: string, path: string, viaOrca: 
             (error: unknown) => `orca worktree rm: ${reason(error)}`,
         )
     }
-    if (existsSync(path) && (await gitLists(repo, path))) {
-        const removed = await captureGit(["worktree", "remove", "--force", path], repo)
-        if (removed.exitCode !== 0) {
-            const headlineText = headline(removed.stderr) || `exit ${String(removed.exitCode)}`
-            refusals.push(`git: ${headlineText}`)
-        }
-    }
-    if (existsSync(path) && !(await gitLists(repo, path))) {
-        try {
-            if (readdirSync(path).length === 0) rmdirSync(path)
-            else if ((remnant || listedAtStart) && !holdsLiveCheckout(path)) {
-                unlinkCheckoutLinks(path)
-                rmSync(path, { recursive: true, force: true })
-            } else refusals.push("git no longer lists it, and the folder still holds files")
-        } catch (error: unknown) {
-            refusals.push(`rmdir: ${reason(error)}`)
-        }
-    }
+    await gitRemove(repo, path, refusals)
+    await removeLeftovers(repo, path, { remnant, listedAtStart }, refusals)
     if (!existsSync(path)) {
         forgetProcesses(path)
         const ended = reap.killed.length === 0 ? "" : ` after ending ${describeProcesses(reap.killed)}`

@@ -496,6 +496,31 @@ const balanceStep = (stage: Stage, facts: Facts, ordered: readonly Candidate[], 
     return next
 }
 
+/** How the member was chosen: probe, balance, the coordinator's order, exploring or by score. */
+const choiceBy = (record: Stage["record"], input: RouteInput, picked: { readonly balanced: unknown; readonly probe: unknown }): string => {
+    const { balanced, probe } = picked
+    let by = record.explore?.exploring === true ? "explore" : "score"
+    if (input.coordinator !== undefined) by = "order"
+    if (balanced !== undefined) by = "balance"
+    if (probe !== undefined) by = "probe"
+    return by
+}
+
+/** The members behind every other of the tier: a pool with one contract-red attempt of this task, or a member the stall ladder gave up on. */
+const demote = (stage: Stage, input: RouteInput, funded: readonly Candidate[], redsByPool: ReadonlyMap<string, number>): Candidate[] => {
+    const stalledPools = new Set((input.stalled ?? []).map((member) => member.agent))
+    const demoted = funded.filter((candidate) => (redsByPool.get(candidate.pool) ?? 0) === 1 || stalledPools.has(candidate.pool))
+    stage.snapshot("lineage", funded, demoted.length === 0 ? undefined : `demoted after one contract-red or a stall: ${demoted.map((candidate) => candidate.id).join(", ")}`)
+    return demoted
+}
+
+/** How many contract-red attempts of this task each pool already had. */
+const redsOf = (input: RouteInput): Map<string, number> => {
+    const redsByPool = new Map<string, number>()
+    for (const member of redMembers(input.previousRed)) redsByPool.set(member.agent, (redsByPool.get(member.agent) ?? 0) + 1)
+    return redsByPool
+}
+
 /** Runs the decision over gathered facts; pure but for its facts (and their random source). */
 const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteRefusal => {
     const stage = openStage(input, facts, at)
@@ -504,8 +529,7 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
     if (unknownRisk.length > 0) return new RouteRefusal("ROUTE_RISK_UNKNOWN", `risk tags are ${routing.qualification.riskTags.join(", ")}, not ${unknownRisk.join(", ")}`, record)
 
     // 1. Hard filter: pool, tools, lineage exclusion, circuit (open waits for its probe), capacity, qualification of a high-risk task.
-    const redsByPool = new Map<string, number>()
-    for (const member of redMembers(input.previousRed)) redsByPool.set(member.agent, (redsByPool.get(member.agent) ?? 0) + 1)
+    const redsByPool = redsOf(input)
     const { hard, candidates } = hardStep(stage, input, facts, redsByPool)
     if (hard.length === 0) return hardRefusal(stage, input, candidates)
 
@@ -518,9 +542,7 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
 
     // 3. Lineage: a pool with one contract-red attempt of this task, or a member of it the stall ladder gave up on, goes behind
     // every other member of a task's tier (a coordinator's keeps its listed order, step 5).
-    const stalledPools = new Set((input.stalled ?? []).map((member) => member.agent))
-    const demoted = funded.filter((candidate) => (redsByPool.get(candidate.pool) ?? 0) === 1 || stalledPools.has(candidate.pool))
-    stage.snapshot("lineage", funded, demoted.length === 0 ? undefined : `demoted after one contract-red or a stall: ${demoted.map((candidate) => candidate.id).join(", ")}`)
+    const demoted = demote(stage, input, funded, redsByPool)
 
     // 4. Probe: a half-open provider gets this one launch (never a high-risk task's), so no provider stays dark past its probe time.
     const probe = funded.find((candidate) => candidate.circuit.open && candidate.circuit.probe === "due")
@@ -533,10 +555,7 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
     const ordered = input.coordinator === undefined ? scoreStep(stage, input, facts, funded, demoted) : funded
     const balanced = probe === undefined && input.coordinator === undefined ? balanceStep(stage, facts, ordered, demoted) : undefined
     const chosen = probe ?? balanced ?? ordered[0]
-    let by = record.explore?.exploring === true ? "explore" : "score"
-    if (input.coordinator !== undefined) by = "order"
-    if (balanced !== undefined) by = "balance"
-    if (probe !== undefined) by = "probe"
+    const by = choiceBy(record, input, { balanced, probe })
     if (chosen === undefined) return new RouteRefusal("ROUTE_NO_MEMBER", `no member of tier ${record.tier} is left`, record)
     record.chosen = { member: chosen.id, by }
     return {
@@ -673,6 +692,22 @@ const riskOf = (db: DatabaseSync, taskId: string): string[] => {
 /** The attempt outcomes whose member a retry puts behind every other: given up by the stall ladder, fenced over its budget, or a worker that never started (blocked at a prompt among them). */
 const STALLED_OUTCOMES: ReadonlySet<string> = new Set(["stalled", "launch-failed", "blocked-prompt", "over-budget"])
 
+/** Adds the contract-red and stalled members of one task's attempts to the lineage; the number of attempts that ran. */
+const collectAttempts = (db: DatabaseSync, current: string, found: { readonly reds: RouteMember[]; readonly stalled: RouteMember[] }): number => {
+    const { reds, stalled } = found
+    let attempts = 0
+    for (const row of db.prepare("SELECT agent, model, verdict, outcome FROM attempts WHERE task_id = ? ORDER BY seq").all(current)) {
+        // A launch Orca fenced was the harness's error: its attempt never ran and is no step of the lineage.
+        if (textOf(row.outcome) === CONSUMER_FENCED_OUTCOME) continue
+        attempts += 1
+        const agent = textOf(row.agent)
+        const model = textOf(row.model)
+        if (textOf(row.verdict) === "red" && agent !== null && model !== null) reds.push({ agent, model })
+        if (STALLED_OUTCOMES.has(textOf(row.outcome) ?? "") &&agent !== null && model !== null) stalled.push({ agent, model })
+    }
+    return attempts
+}
+
 /** Walks a task's retry chain in its ledger; every attempt but a consumer-fenced one counts toward the attempt number, every red verdict is a red, every stalled or failed start a stall. */
 export const lineageOf = (db: DatabaseSync, taskId: string): Lineage => {
     const task = getTask(db, taskId)
@@ -683,15 +718,7 @@ export const lineageOf = (db: DatabaseSync, taskId: string): Lineage => {
     let current: string | null = task.id
     while (current !== null && !seen.has(current)) {
         seen.add(current)
-        for (const row of db.prepare("SELECT agent, model, verdict, outcome FROM attempts WHERE task_id = ? ORDER BY seq").all(current)) {
-            // A launch Orca fenced was the harness's error: its attempt never ran and is no step of the lineage.
-            if (textOf(row.outcome) === CONSUMER_FENCED_OUTCOME) continue
-            attempts += 1
-            const agent = textOf(row.agent)
-            const model = textOf(row.model)
-            if (textOf(row.verdict) === "red" && agent !== null && model !== null) reds.push({ agent, model })
-            if (STALLED_OUTCOMES.has(textOf(row.outcome) ?? "") &&agent !== null && model !== null) stalled.push({ agent, model })
-        }
+        attempts += collectAttempts(db, current, { reds, stalled })
         current = getTask(db, current).retryOf
     }
     return { label: task.label, attempts, reds, stalled, risk: task.workflowId === null ? [] : riskOf(db, task.id), authors: authorsOf(db, task.id, task.label) }

@@ -42,23 +42,9 @@ const workerStarted = (db: DatabaseSync, attemptId: string): boolean => {
     return reached.some((state) => state !== "" && !NOT_STARTED.has(state) && !unknownStart.includes(state))
 }
 
-/**
- * The harness cause that ended a failed or cancelled task, read from the ledger's facts alone; null for a task that ended by its
- * own red (a red verdict, a wave red its files own) or its worker's own words (a result other than done, filed on an attempt
- * whose walk met an app or that walked nothing), for one cancelled with
- * nothing that names the harness, and for every other status. Such a task returns to ready and its retry spends no try
- * (tasks.ts `tryAfter`, workflow.ts `nodeTasks`).
- */
-export const harnessCause = (db: DatabaseSync, taskId: string): HarnessCause | null => {
-    const status = text(db.prepare("SELECT status FROM tasks WHERE id = ?").get(taskId)?.status)
-    if (status !== "failed" && status !== "cancelled") return null
-    if (status === "failed" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ?").get(LAND_ORPHANED, taskId) !== undefined) return LAND_ORPHANED
-    if (status === "cancelled" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ?").get(TASK_PARKED, taskId) !== undefined) return "parked"
-    const attempt = db.prepare("SELECT id, outcome, verdict FROM attempts WHERE task_id = ? ORDER BY seq DESC LIMIT 1").get(taskId)
-    if (attempt === undefined || text(attempt.verdict) === "red") return null
-    const attemptId = text(attempt.id) ?? ""
-    // A walk that met no app ends its attempt whatever the worker filed: the result is the harness's environment, not the task's words.
-    if (status === "failed" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ? AND json_extract(data_json, '$.attempt') = ?").get(WALK_UNSERVED, taskId, attemptId) !== undefined) return WALK_UNSERVED
+/** The cause of an attempt that ended with a result or none: a wave that returned it, a fenced consumer, a lost launch, or a verify that gave no verdict. */
+const causeOfEnding = (db: DatabaseSync, found: { readonly taskId: string; readonly status: string; readonly attempt: Record<string, unknown>; readonly attemptId: string }): HarnessCause | null => {
+    const { taskId, status, attempt, attemptId } = found
     const result = db.prepare("SELECT status, filed_at FROM results WHERE attempt_id = ?").get(attemptId)
     if (result !== undefined && text(result.status) !== "done") return null
     const wave = db.prepare("SELECT data_json FROM events WHERE kind = 'wave-returned' AND subject = ? ORDER BY id DESC LIMIT 1").get(taskId)
@@ -70,6 +56,33 @@ export const harnessCause = (db: DatabaseSync, taskId: string): HarnessCause | n
     const marks = NO_VERDICT_EVENTS.map(() => "?").join(", ")
     const last = text(db.prepare(`SELECT kind FROM events WHERE subject = ? AND kind IN (${marks}) AND at >= ? ORDER BY id DESC LIMIT 1`).get(taskId, ...NO_VERDICT_EVENTS, text(result.filed_at) ?? "")?.kind)
     return last === "verify-infra" || last === "verify-deadline" ? last : null
+}
+
+/** The cause of a failed task the land orphaned, or of a cancelled one a park stopped. */
+const parkedOrOrphaned = (db: DatabaseSync, taskId: string, status: string): HarnessCause | null => {
+    if (status === "failed" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ?").get(LAND_ORPHANED, taskId) !== undefined) return LAND_ORPHANED
+    if (status === "cancelled" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ?").get(TASK_PARKED, taskId) !== undefined) return "parked"
+    return null
+}
+
+/**
+ * The harness cause that ended a failed or cancelled task, read from the ledger's facts alone; null for a task that ended by its
+ * own red (a red verdict, a wave red its files own) or its worker's own words (a result other than done, filed on an attempt
+ * whose walk met an app or that walked nothing), for one cancelled with
+ * nothing that names the harness, and for every other status. Such a task returns to ready and its retry spends no try
+ * (tasks.ts `tryAfter`, workflow.ts `nodeTasks`).
+ */
+export const harnessCause = (db: DatabaseSync, taskId: string): HarnessCause | null => {
+    const status = text(db.prepare("SELECT status FROM tasks WHERE id = ?").get(taskId)?.status)
+    if (status !== "failed" && status !== "cancelled") return null
+    const early = parkedOrOrphaned(db, taskId, status)
+    if (early !== null) return early
+    const attempt = db.prepare("SELECT id, outcome, verdict FROM attempts WHERE task_id = ? ORDER BY seq DESC LIMIT 1").get(taskId)
+    if (attempt === undefined || text(attempt.verdict) === "red") return null
+    const attemptId = text(attempt.id) ?? ""
+    // A walk that met no app ends its attempt whatever the worker filed: the result is the harness's environment, not the task's words.
+    if (status === "failed" && db.prepare("SELECT 1 FROM events WHERE kind = ? AND subject = ? AND json_extract(data_json, '$.attempt') = ?").get(WALK_UNSERVED, taskId, attemptId) !== undefined) return WALK_UNSERVED
+    return causeOfEnding(db, { taskId, status, attempt, attemptId })
 }
 
 /** The event a hold's release records on a task the harness ended: it comes back to ready at the same try, past `reviveMax` too (holds.ts). */
