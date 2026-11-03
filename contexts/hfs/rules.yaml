@@ -2361,7 +2361,7 @@ rules:
       - {kind: eslint-grammar-core, id: no-pane-section-padding}
   - id: R348
     code: FE_PANE_GRID_FRAME
-    law: "A Grammar PaneGrid is the one child of `Page chrome=\"panes\"` or stands inside a Pane; a PaneGrid drawn in a SurfaceCard of any kind, a Page of another chrome, or wrapped inside `Page chrome=\"panes\"` re-decides the frame and the bottom edge that Page owns. A grid whose frame lives in another file is judged where the frame is, and a Freestyle subtree is not judged."
+    law: "A Grammar PaneGrid is the one child of `Page chrome=\"panes\"`, written there as a PaneGrid element, or stands inside a Pane; a PaneGrid drawn in a SurfaceCard of any kind or a Page of another chrome re-decides the frame and the bottom edge that Page owns, and `Page chrome=\"panes\"` holding anything but one written PaneGrid element (a wrapper element, a component that renders the grid, a fragment, a variable, a condition) throws PAGE_PANES_CHILD_NOT_PANE_GRID at run time. A grid whose frame lives in another file is judged where the frame is, and a Freestyle subtree is not judged."
     failureCodes:
       - FE_PANE_GRID_FRAME
     enforcers:

@@ -9,7 +9,9 @@ import type { Context, Node } from "./lib/types.ts"
 /**
  * The pane laws (HFS R345 `FE_PANE_GRID_CHILD_NOT_PANE`, R346 `FE_PANE_CHILD_NOT_SECTION`, R347 `FE_PANE_SECTION_PADDING`, R348
  * `FE_PANE_GRID_FRAME`): a `PaneGrid` holds `Pane`s, a `Pane` holds `PaneSection`s (or one nested `PaneGrid`), a
- * `PaneSection` takes its inset from the pane it stands in, and a `PaneGrid` stands in a `Page chrome="panes"` or in a `Pane`.
+ * `PaneSection` takes its inset from the pane it stands in, and a `PaneGrid` stands in a `Page chrome="panes"` or in a `Pane`;
+ * the one child of `Page chrome="panes"` is a `PaneGrid` element written there, never a component that renders one (Page throws
+ * `PAGE_PANES_CHILD_NOT_PANE_GRID` at run time for anything else).
  *
  * `PaneGrid` places each child by the `area` of a `Pane` element and drops a child that is not one: a wrapper component
  * renders nothing in its cell. A `Pane` owns its content inset and publishes it to its `PaneSection`s; a raw element or
@@ -24,8 +26,8 @@ import type { Context, Node } from "./lib/types.ts"
  * roots of components declared in the same file and the class strings of imported constants through the type program.
  * Auto and zero values (`mx-auto`, `p-0`) place or reset and inset nothing, so they are not padding.
  *
- * THE EXEMPTION. A raw element inside a `Freestyle` subtree is the app's own (`exemptFreestyle`); a `PaneGrid` inside one is
- * not judged by `pane-grid-page`.
+ * THE EXEMPTION. A raw element inside a `Freestyle` subtree is the app's own (`exemptFreestyle`); a `PaneGrid` or a `Page`
+ * inside one is not judged by `pane-grid-page`.
  *
  * WHERE THEY APPLY. Product source (`isProductSource`).
  */
@@ -368,13 +370,11 @@ const chromeOf = (element: TSESTree.JSXElement): { readonly known: boolean; read
 /** Where a `PaneGrid` stands wrongly, or null when it stands in a pane, in the panes page, or where this file cannot tell. */
 const wrongFrame = (grid: TSESTree.JSXElement): string | null => {
   const frames: TSESTree.JSXElement[] = []
-  let wrapped = false
   for (let current: Node | null | undefined = grid.parent; current !== undefined && current !== null; current = current.parent) {
     if (current.type !== "JSXElement") continue
     const name = nameOf(current.openingElement.name)
     if (name === "Freestyle") return null
     if (name === "Pane" || name === "Page" || (name !== null && SURFACES.has(name))) frames.push(current)
-    else if (frames.length === 0) wrapped = true
   }
   const frame = frames[0]
   if (frame === undefined) return null
@@ -383,30 +383,67 @@ const wrongFrame = (grid: TSESTree.JSXElement): string | null => {
   if (name === "Page") {
     const chrome = chromeOf(frame)
     if (!chrome.known) return null
-    if (chrome.text !== "panes") return chrome.text === null ? "a `Page` without `chrome=\"panes\"`" : `a \`Page chrome="${chrome.text}"\``
-    return wrapped ? "an element inside `Page chrome=\"panes\"` (the grid is the page's one child)" : null
+    if (chrome.text === "panes") return null
+    return chrome.text === null ? "a `Page` without `chrome=\"panes\"`" : `a \`Page chrome="${chrome.text}"\``
   }
   return `a \`${name ?? "frame"}\``
 }
 
-/** A `PaneGrid` stands in `Page chrome="panes"` or in a `Pane`. */
+/** True when an element stands inside a `Freestyle` subtree. */
+const inFreestyle = (element: TSESTree.JSXElement): boolean => {
+  for (let current: Node | null | undefined = element.parent; current !== undefined && current !== null; current = current.parent) {
+    if (current.type === "JSXElement" && nameOf(current.openingElement.name) === "Freestyle") return true
+  }
+  return false
+}
+
+/** The written element an expression is, through type assertions, or null for anything else (a variable, a call, a condition). */
+const writtenElement = (expression: Node): TSESTree.JSXElement | null => {
+  if (expression.type === "JSXElement") return expression
+  if (expression.type === "TSAsExpression" || expression.type === "TSNonNullExpression" || expression.type === "TSSatisfiesExpression") return writtenElement(expression.expression)
+  return null
+}
+
+/** What `Page chrome="panes"` holds instead of one written `PaneGrid` element, or null when it holds one. */
+const panesChildProblem = (page: TSESTree.JSXElement): string | null => {
+  const children = renderedChildren(page.children)
+  const [child] = children
+  if (child === undefined) return "no child"
+  if (children.length > 1) return `${String(children.length)} children`
+  if (child.type === "JSXFragment") return "a fragment"
+  const element = child.type === "JSXElement" ? child : child.type === "JSXExpressionContainer" && child.expression.type !== "JSXEmptyExpression" ? writtenElement(child.expression) : null
+  if (element === null) return "a value it can only know at run time (a variable, a call or a condition)"
+  const name = nameOf(element.openingElement.name)
+  if (name === "PaneGrid") return null
+  return `\`<${name ?? "element"}>\`, which is not a \`PaneGrid\` element (a component that renders one is not one)`
+}
+
+/** A `PaneGrid` stands in `Page chrome="panes"` or in a `Pane`, and `Page chrome="panes"` holds one written `PaneGrid` element. */
 export const paneGridPage: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R348: a PaneGrid is the one child of Page chrome=\"panes\" or stands inside a Pane, never in a card or another page chrome.", url: "knowledge/hfs/rules.yaml#R348" },
+    docs: { description: "R348: a PaneGrid is the one child of Page chrome=\"panes\", written there as an element, or stands inside a Pane, never in a card or another page chrome.", url: "knowledge/hfs/rules.yaml#R348" },
     schema: [],
     messages: {
       frame:
         "This `PaneGrid` is drawn in {{where}}. A grid is the whole body of a page that is panes, so `<Page chrome=\"panes\">` attaches it flush under the header, full width and to the viewport bottom, with no card, radius or gap; inside a pane it nests as the pane's one child. Make it the child of `Page chrome=\"panes\"` (or of a `Pane`) and drop the wrapper.",
+      child:
+        "This `Page chrome=\"panes\"` holds {{found}}. The page lays out exactly one `PaneGrid` element written as its child and throws PAGE_PANES_CHILD_NOT_PANE_GRID at run time for anything else. Write the `<PaneGrid>` here and pass the panes into it from the component, instead of a wrapper that renders the grid.",
     },
   },
   create(context) {
     if (!isProductSource(context)) return {}
     return {
       JSXElement(node) {
-        if (nameOf(node.openingElement.name) !== "PaneGrid") return
-        const where = wrongFrame(node)
-        if (where !== null) context.report({ node: node.openingElement, messageId: "frame", data: { where } })
+        const name = nameOf(node.openingElement.name)
+        if (name === "PaneGrid") {
+          const where = wrongFrame(node)
+          if (where !== null) context.report({ node: node.openingElement, messageId: "frame", data: { where } })
+          return
+        }
+        if (name !== "Page" || chromeOf(node).text !== "panes" || inFreestyle(node)) return
+        const found = panesChildProblem(node)
+        if (found !== null) context.report({ node: node.openingElement, messageId: "child", data: { found } })
       },
     }
   },

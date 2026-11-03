@@ -25,7 +25,7 @@ Choice `pane-grid.choose.page`: where a pane grid is mounted.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| page | a tabbed app page (an instance's setup, a dossier browser, a chat) whose body is panes | `Page chrome="panes"` with the page header band or the trail, the tabs in `header.tabs`, and exactly one `PaneGrid` as its child: the grid attaches flush under the tab line, full width and to the viewport bottom, with no card, radius or gap, never a card around the panes | lint `starci-grammar/pane-grid-page`; `DNA-COMMON-PAGE-PANES-FLUSH` |
+| page | a tabbed app page (an instance's setup, a dossier browser, a chat) whose body is panes | `Page chrome="panes"` with the page header band or the trail, the tabs in `header.tabs`, and exactly one `PaneGrid` element written as its child (a component that renders the grid is not one; Page throws at run time): the grid attaches flush under the tab line, full width and to the viewport bottom, with no card, radius or gap, never a card around the panes | lint `starci-grammar/pane-grid-page`; `DNA-COMMON-PAGE-PANES-FLUSH` |
 | nested | one pane of a grid is itself several panes (a routed tab's own list, thread and side) | a `PaneGrid` as the one child of a `Pane` with `inset="flush"` | lint `starci-grammar/pane-grid-page` |
 | region | a grid inside a page of cards | none: a card page does not host a pane grid; use `SurfaceCard`s or a `Grid kind="main-rail"` | lint `starci-grammar/pane-grid-page` |
 

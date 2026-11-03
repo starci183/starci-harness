@@ -154,7 +154,7 @@ test("R347: a PaneSection's outermost elements carry no padding or margin utilit
   })
 })
 
-test("R348: a PaneGrid stands in Page chrome=\"panes\" or in a Pane", () => {
+test("R348: a PaneGrid stands in Page chrome=\"panes\" or in a Pane, and Page chrome=\"panes\" holds one written PaneGrid element", () => {
   slotTester().run("pane-grid-page", paneGridPage, {
     valid: [
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Page chrome=\"panes\" header={{ title: \"x\" }}><PaneGrid areas={{ base: [\"a\"] }}><Pane area=\"a\" /></PaneGrid></Page>" },
@@ -169,7 +169,9 @@ test("R348: a PaneGrid stands in Page chrome=\"panes\" or in a Pane", () => {
       // a chrome computed at run time is not judged
       { filename: BLOCK, code: IMPORTS + "export const A = (p: P) => <Page chrome={p.chrome}><PaneGrid areas={{ base: [\"a\"] }} /></Page>" },
       { filename: BLOCK, code: IMPORTS + "export const A = (p: P) => <Page {...p}><PaneGrid areas={{ base: [\"a\"] }} /></Page>" },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Page chrome=\"panes\">{<PaneGrid areas={{ base: [\"a\"] }} /> as JSX.Element}</Page>" },
       // the Freestyle region is the app's own
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Freestyle reason=\"legacy canvas\"><Page chrome=\"panes\"><OfficeWorkspace /></Page></Freestyle>" },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Freestyle reason=\"legacy canvas\"><SurfaceCard label=\"x\"><PaneGrid areas={{ base: [\"a\"] }} /></SurfaceCard></Freestyle>" },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"x\"><Freestyle reason=\"legacy canvas\"><PaneGrid areas={{ base: [\"a\"] }} /></Freestyle></SurfaceCard>" },
     ],
@@ -178,7 +180,15 @@ test("R348: a PaneGrid stands in Page chrome=\"panes\" or in a Pane", () => {
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard composition=\"joined\" label=\"x\"><PaneGrid areas={{ base: [\"a\"] }}><Pane area=\"a\" /></PaneGrid></SurfaceCard>", errors: [{ messageId: "frame", data: { where: "a `SurfaceCard`" } }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Page chrome=\"bleed\"><PaneGrid areas={{ base: [\"a\"] }} /></Page>", errors: [{ messageId: "frame", data: { where: "a `Page chrome=\"bleed\"`" } }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Page header={{ title: \"x\" }}><PaneGrid areas={{ base: [\"a\"] }} /></Page>", errors: [{ messageId: "frame", data: { where: "a `Page` without `chrome=\"panes\"`" } }] },
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <Page chrome=\"panes\"><div><PaneGrid areas={{ base: [\"a\"] }} /></div></Page>", errors: [{ messageId: "frame" }] },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Page chrome=\"panes\"><div><PaneGrid areas={{ base: [\"a\"] }} /></div></Page>", errors: [{ messageId: "child", data: { found: "`<div>`, which is not a `PaneGrid` element (a component that renders one is not one)" } }] },
+      // the Office shape: a component that renders the grid, which Page throws on at run time
+      { filename: BLOCK, code: IMPORTS + "const OfficeWorkspace = () => <PaneGrid areas={{ base: [\"a\"] }}><Pane area=\"a\" /></PaneGrid>\nexport const A = () => <Page chrome=\"panes\" header={{ title: \"Office\" }}><OfficeWorkspace /></Page>", errors: [{ messageId: "child", data: { found: "`<OfficeWorkspace>`, which is not a `PaneGrid` element (a component that renders one is not one)" } }] },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Page chrome=\"panes\"><><PaneGrid areas={{ base: [\"a\"] }} /></></Page>", errors: [{ messageId: "child", data: { found: "a fragment" } }] },
+      { filename: BLOCK, code: IMPORTS + "const grid = <PaneGrid areas={{ base: [\"a\"] }} />\nexport const A = () => <Page chrome=\"panes\">{grid}</Page>", errors: [{ messageId: "child", data: { found: "a value it can only know at run time (a variable, a call or a condition)" } }] },
+      { filename: BLOCK, code: IMPORTS + "export const A = (p: P) => <Page chrome=\"panes\">{p.open ? <PaneGrid areas={{ base: [\"a\"] }} /> : null}</Page>", errors: [{ messageId: "child", data: { found: "a value it can only know at run time (a variable, a call or a condition)" } }] },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Page chrome=\"panes\">{/* empty */}</Page>", errors: [{ messageId: "child", data: { found: "no child" } }] },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Page chrome=\"panes\"><PaneGrid areas={{ base: [\"a\"] }} /><PaneGrid areas={{ base: [\"b\"] }} /></Page>", errors: [{ messageId: "child", data: { found: "2 children" } }] },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Page chrome=\"panes\"><G.Pane area=\"a\" /></Page>", errors: [{ messageId: "child", data: { found: "`<Pane>`, which is not a `PaneGrid` element (a component that renders one is not one)" } }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"x\"><div><PaneGrid areas={{ base: [\"a\"] }} /></div></SurfaceCard>", errors: [{ messageId: "frame" }] },
       // a card inside a pane, around the nested grid
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Pane area=\"a\"><SurfaceCard label=\"x\"><PaneGrid areas={{ base: [\"a\"] }} /></SurfaceCard></Pane>", errors: [{ messageId: "frame" }] },

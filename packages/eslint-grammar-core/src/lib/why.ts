@@ -69,8 +69,8 @@ export const why: Record<string, WhyEntry> = {
   },
   "pane-grid-page": {
     code: "FE_PANE_GRID_FRAME",
-    en: "A `PaneGrid` in `<file>` is drawn in a card or a page chrome other than `panes`, or is wrapped inside `Page chrome=\"panes\"`.",
-    fix: "Make the grid the one child of `<Page chrome=\"panes\">` (or the one child of a `Pane`, nested) and drop the card around it.",
+    en: "A `PaneGrid` in `<file>` is drawn in a card or a page chrome other than `panes`, or a `Page chrome=\"panes\"` there holds something other than one written `PaneGrid` element (a wrapper, a component that renders the grid, a fragment, a variable).",
+    fix: "Write the `<PaneGrid>` element as the one child of `<Page chrome=\"panes\">` (or as the one child of a `Pane`, nested), pass the panes into it, and drop the card or wrapper around it.",
   },
   "route-page-is-one-page": {
     code: "FE_ROUTE_PAGE_OUTSIDE_PAGE",
