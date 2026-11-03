@@ -62,6 +62,16 @@ canonical page renderer. Only those exact input members may take `children`; ord
 renderers and shape records containing rendered trees remain refused. The selected canonical Grammar catalog owns
 semantic renderer bindings; universal code carries no concrete renderer spelling.
 
+The [explicit exported surface](../../contexts/code/shared/typing.md) (R368, SHARED-TYPING-5) is `explicit-export-surface`
+(`HFS_EXPLICIT_EXPORT_SURFACE`): an exported function's return type, an exported variable's type and a parameter's type are
+written where they are exported, never inferred from a body or from other files; a component that returns only JSX, `null` or
+`undefined` is explicit. It reports each export TypeScript's isolated declaration emit cannot write, at the offending span, and says
+which annotation to add. It reads the classifier the lint result cache reads (`declarationSurface`, the bundled
+`runtime/scripts/lib/declaration-surface.mjs`), so it reports exactly the files the cache counts as open.
+
+`projectGraph` and `projectGraphSnapshot` are the cache's two readers of the project graph the graph rules share: the first builds it
+afresh, the second answers from the graph the process has already built, which is how the ESLint child hands its graph to the cache.
+
 Regression specs belong to this package. Application front ends and Grammar libraries have no specs.
 
 ## The runtime copy

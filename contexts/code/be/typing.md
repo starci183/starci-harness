@@ -4,7 +4,7 @@ slots: []
 # Typing
 
 Which type expresses a back-end contract, value or boundary, and which validator reads untrusted data. The strict
-flags, `Array<T>`, no type escape and the type-aware rules are shared: [SHARED-TYPING-1 … 4](../shared/typing.md).
+flags, `Array<T>`, no type escape and the type-aware rules are shared: [SHARED-TYPING-1 … 5](../shared/typing.md).
 
 ## BE-TYPING-1 Interfaces for shapes, types for unions and aliases
 

@@ -2500,6 +2500,14 @@ rules:
       - {kind: eslint-fe, id: no-validating-as-loading}
       - {kind: eslint-fe, id: no-placeholder-object}
       - {kind: eslint-fe, id: no-hand-skeleton}
+  - id: R368
+    code: HFS_EXPLICIT_EXPORT_SURFACE
+    law: "An exported declaration states its type where it is exported: the return type of an exported function, the type of an exported variable and the type of its parameters are written, not inferred from a body or from other files, because the isolated declaration emit must be able to write the file's surface alone. A component that returns only JSX is explicit. Each export that cannot be written is reported at its place with what to annotate, in a front-end and a back-end file alike."
+    failureCodes:
+      - HFS_EXPLICIT_EXPORT_SURFACE
+    enforcers:
+      - {kind: eslint-fe, id: explicit-export-surface}
+      - {kind: eslint-be, id: explicit-export-surface}
 pending:
   - {gap: slot-rule-unknown, subject: BE_E2E_FLOW, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
   - {gap: slot-rule-unknown, subject: FE_DATA_FRESHNESS, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}

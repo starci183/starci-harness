@@ -221,7 +221,10 @@ that key.
    a declaration file or a JSON file stands for its content hash), the local files that emit names (`refs`: a type
    imported from them, a re-export) and whether the surface is *inferred* (`open`: the emit reported a diagnostic, a type
    the compiler must infer from bodies and other files; a function whose only diagnostic is a missing return type and
-   whose every return is JSX, `null` or `undefined` is not inferred, its type being the JSX namespace's). An explicit
+   whose every return is JSX, `null` or `undefined` is not inferred, its type being the JSX namespace's). The classifier is one
+   function, `declarationSurface` of the runtime (`scripts/lib/declaration-surface.mjs`), which the lint rule R368
+   `explicit-export-surface` of both canons also reads: the rule reports each export that makes a file `open`, at error, so a
+   lint-clean side has no inferred surface and a body edit lints that file alone. An explicit
    surface is its emit text plus the surfaces of the files it names, nothing else.
    The dirty set holds every changed, added or removed file, every file whose imports resolve elsewhere than recorded, and
    every file that imports a file whose surface changed, in the new graph and the cached one (a file that stopped

@@ -58,3 +58,30 @@ declare module "*/runtime/engine/yaml.mjs" {
     /** Parse one YAML 1.2 document (core schema, unique keys). */
     export function parseYaml(source: string): unknown
 }
+
+declare module "*/runtime/scripts/hfs/explicit-surface-rule.mjs" {
+    import type { TSESLint } from "@typescript-eslint/utils"
+    import type ts from "typescript"
+    /** The rule reporting each export of a TypeScript source whose type the isolated declaration emit cannot write explicitly. */
+    export function explicitSurfaceRule(input: { readonly ts: typeof ts }): TSESLint.RuleModule<"inferred", unknown[]>
+}
+
+declare module "*/runtime/scripts/lib/declaration-surface.mjs" {
+    import type ts from "typescript"
+    /** One export (or part of one) the declaration emit cannot write without inference. */
+    export interface SurfaceProblem {
+        readonly code: number
+        readonly start: number
+        readonly length: number
+        readonly name: string
+        readonly annotate: string
+        readonly reason: string
+    }
+    /** The declaration emit of one file and the exports it could not write explicitly. */
+    export interface DeclarationSurface {
+        readonly outputText: string
+        readonly problems: SurfaceProblem[]
+    }
+    /** The declaration emit of a TypeScript source and its problems, or null when the compiler has no `transpileDeclaration`. */
+    export function declarationSurface(compiler: typeof ts, file: string, text: string, module?: number): DeclarationSurface | null
+}

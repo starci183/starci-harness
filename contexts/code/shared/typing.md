@@ -80,3 +80,31 @@ switch (outcome.kind) {
 Enforced by: the typescript-eslint rules both canons borrow at `error` (`no-floating-promises`, `no-misused-promises`,
 `switch-exhaustiveness-check`, the `no-unsafe-*` family, `no-deprecated`, `no-base-to-string`, `require-await`), plus
 the Sonar way block of each canon.
+
+## SHARED-TYPING-5 An exported declaration states its type
+
+Every export of a TypeScript file writes its type where it is exported: the return type of an exported function or
+method, the type of an exported variable or class property, and the type of every parameter. The type is never left to
+be inferred from a body or from the files the body calls, so the file's surface can be written from the file alone (the
+isolated declaration emit, `ts.transpileDeclaration`). A component that returns only JSX, `null` or `undefined` already
+has the type the JSX namespace gives it and needs no annotation; a component that returns a variable, is `async` or
+returns anything else does. Re-exports and type-only exports are explicit by construction. The annotation names the
+type, never `any`; a rule does not fix it by inserting one.
+
+Why: an inferred surface moves with the body, so a one-line edit changes what every importer sees, and the lint result
+cache has to lint every importer again for it (a file with an inferred surface is `open` in `contexts/project/check-cache.md`
+ESLint). A written type is a contract a reviewer reads in the signature and an importer cannot be broken by a body edit.
+
+```ts
+// wrong: the type is whatever useAvatarUpload returns today
+export const useAccountAvatar = () => useAvatarUpload(doors)
+// right
+export const useAccountAvatar = (): AvatarUpload => useAvatarUpload(doors)
+export const settings: Settings = makeSettings()
+export function twice(value: number): number { return value * 2 }
+```
+
+Enforced by: R368 HFS_EXPLICIT_EXPORT_SURFACE, `starci-fe/explicit-export-surface` and `starci-be/explicit-export-surface`
+at error in the default config of every app. Both are one classifier, `declarationSurface` of the runtime
+(`runtime/scripts/lib/declaration-surface.mjs`), which the cache reads for the same files, so the rule reports exactly
+what the cache counts as open.

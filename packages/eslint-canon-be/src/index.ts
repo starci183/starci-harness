@@ -61,6 +61,7 @@ import { recommended as serviceIsolationRecommended, rules as serviceIsolationRu
 import { recommended as sizeBudgetRecommended, rules as sizeBudgetRules } from "./size-budget.ts"
 import { recommended as specNoSkipRecommended, rules as specNoSkipRules } from "./spec-no-skip.ts"
 import { recommended as specQualityRecommended, rules as specQualityRules } from "./spec-quality.ts"
+import { recommended as explicitSurfaceRecommended, rules as explicitSurfaceRules } from "./explicit-surface.ts"
 import { recommended as suppressionRecommended, rules as suppressionRules } from "./suppression.ts"
 import { recommended as temporalRecommended, rules as temporalRules } from "./temporal.ts"
 import { recommended as testingRecommended, rules as testingRules } from "./testing.ts"
@@ -139,6 +140,7 @@ const CONTRIBUTIONS: Contribution[] = [
     { law: "size-budget", rules: sizeBudgetRules, recommended: sizeBudgetRecommended },
     { law: "spec-no-skip", rules: specNoSkipRules, recommended: specNoSkipRecommended },
     { law: "spec-quality", rules: specQualityRules, recommended: specQualityRecommended },
+    { law: "explicit-surface", rules: explicitSurfaceRules, recommended: explicitSurfaceRecommended },
     { law: "suppression", rules: suppressionRules, recommended: suppressionRecommended },
     { law: "temporal", rules: temporalRules, recommended: temporalRecommended },
     { law: "testing", rules: testingRules, recommended: testingRecommended },

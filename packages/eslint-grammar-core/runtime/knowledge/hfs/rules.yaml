@@ -6525,3 +6525,31 @@ rules:
         source: owner
         quote: "The skeleton is the ready structure with its data missing; it is drawn from isLoading alone and from the reads the region shows."
         ruling: "Several reads feed one frame: loading is any read loading with no data; a key change reloads only the region keyed by it; a refresh keeps the content."
+  - id: R368
+    code: "HFS_EXPLICIT_EXPORT_SURFACE"
+    law: "An exported declaration states its type where it is exported: the return type of an exported function, the type of an exported variable and the type of its parameters are written, not inferred from a body or from other files, because the isolated declaration emit must be able to write the file's surface alone. A component that returns only JSX is explicit. Each export that cannot be written is reported at its place with what to annotate, in a front-end and a back-end file alike."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["HFS_EXPLICIT_EXPORT_SURFACE"]
+    enforcers:
+      - {kind: eslint-fe, id: explicit-export-surface}
+      - {kind: eslint-be, id: explicit-export-surface}
+    editions: [lite, full]
+    docs: [contexts/code/shared/typing.md]
+    templateNa: "A template exports nothing the lint result cache keys on."
+    proves:
+      - {path: packages/eslint-canon-fe/src/explicit-surface.spec.ts, editions: [lite, full], codes: [HFS_EXPLICIT_EXPORT_SURFACE]}
+      - {path: packages/eslint-canon-be/src/explicit-surface.spec.ts, editions: [lite, full], codes: [HFS_EXPLICIT_EXPORT_SURFACE]}
+      - {path: packages/hfs/src/explicit-surface.spec.mts, editions: [lite, full], codes: [HFS_EXPLICIT_EXPORT_SURFACE]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/explicit-surface.spec.ts, editions: [lite, full], codes: [HFS_EXPLICIT_EXPORT_SURFACE]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/explicit-surface.spec.ts, editions: [lite, full], codes: [HFS_EXPLICIT_EXPORT_SURFACE]}
+      - {path: packages/eslint-canon-be/src/explicit-surface.spec.ts, editions: [lite, full], codes: [HFS_EXPLICIT_EXPORT_SURFACE]}
+      - {path: packages/hfs/src/explicit-surface.spec.mts, editions: [lite, full], codes: [HFS_EXPLICIT_EXPORT_SURFACE]}
+    cases:
+      - id: case-1
+        date: "2026-11-03"
+        source: owner
+        quote: "enforce it by lint"
+        ruling: "A file whose exported surface is inferred is open in the lint result cache: one body edit lints every importer again. The exported surface is written out, and the rule reports exactly what the cache counts as open."
