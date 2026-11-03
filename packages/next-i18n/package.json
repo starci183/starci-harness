@@ -1,0 +1,96 @@
+{
+  "name": "@starci/next-i18n",
+  "version": "0.1.0",
+  "description": "The next-intl stack of a StarCi Next.js front end, written once and generic over the app's locales: the typed routing config (defineI18n), the locale-negotiating proxy, the locale-aware navigation, the request config that loads the app's own message catalogs and the locale read of the [locale] layout. The app keeps its catalogs and names its locales.",
+  "keywords": [
+    "next-intl",
+    "nextjs",
+    "i18n",
+    "routing",
+    "proxy",
+    "middleware",
+    "locale"
+  ],
+  "license": "MIT",
+  "author": "starci183",
+  "homepage": "https://github.com/starci183/starci-harness/tree/main/packages/next-i18n#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starci183/starci-harness.git",
+    "directory": "packages/next-i18n"
+  },
+  "bugs": {
+    "url": "https://github.com/starci183/starci-harness/issues"
+  },
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./proxy": {
+      "types": "./dist/proxy.d.ts",
+      "default": "./dist/proxy.js"
+    },
+    "./navigation": {
+      "types": "./dist/navigation.d.ts",
+      "default": "./dist/navigation.js"
+    },
+    "./request": {
+      "types": "./dist/request.d.ts",
+      "default": "./dist/request.js"
+    },
+    "./layout": {
+      "types": "./dist/layout.d.ts",
+      "default": "./dist/layout.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.spec.*",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc -p tsconfig.build.json && node -e \"const fs = require('node:fs'); for (const f of fs.readdirSync('dist', {recursive: true}).filter((n) => n.endsWith('.d.ts'))) fs.writeFileSync('dist/' + f, fs.readFileSync('dist/' + f, 'utf8').replace(/((?:from |import\\()['\\x22]\\.\\.?\\/[^'\\x22]+)\\.ts(['\\x22])/g, (all, head, quote) => head + '.js' + quote))\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "npm run typecheck && npm run lint && node --import ./src/next-esm.setup.ts --test --experimental-test-coverage --test-coverage-include=\"src/**/*.ts\" --test-coverage-exclude=\"src/**/*.spec.ts\" --test-coverage-exclude=\"src/**/*.setup.ts\" --test-coverage-lines=90 \"src/**/*.spec.ts\"",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm test && npm run build"
+  },
+  "dependencies": {
+    "server-only": "0.0.1"
+  },
+  "peerDependencies": {
+    "next": ">=16",
+    "next-intl": ">=4"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "22.20.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "10.13.0",
+    "jiti": "2.7.0",
+    "next": "16.4.2",
+    "next-intl": "4.13.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
