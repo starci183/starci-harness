@@ -104,6 +104,8 @@ slots:
       - "packages/*/src/fixtures/**"
       # app code a package renders into a product repository
       - "packages/*/templates/**"
+      # the runtime-layer recipes `starci app stack up` builds: copies of the harness images/<layer>/ (container scripts, not package code)
+      - "packages/hfs/stack/images/**"
       # the vendored yaml bundle
       - "packages/*/runtime/engine/yaml.mjs"
       # generated modules
