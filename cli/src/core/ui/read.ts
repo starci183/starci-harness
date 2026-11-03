@@ -276,7 +276,7 @@ const attemptsOf = (db: DatabaseSync, taskId: string): AttemptFact[] =>
 /** The lanes of a workflow, judged where its lanes are judged (flowCheckoutOf), else in its repository. */
 const flowOf = (db: DatabaseSync, snapshot: Snapshot, repo: string): FlowReport => {
     const checkout = flowCheckoutOf(db, snapshot.workflow.id) ?? repo
-    return evaluateFlow(snapshot.nodes, { repo: checkout, db, requires: snapshot.workflow.header.requires ?? [] }, loadLanes(loadOps()))
+    return evaluateFlow(snapshot.nodes, { repo: checkout, db, requires: snapshot.workflow.header.requires ?? [], workflowId: snapshot.workflow.id, base: snapshot.workflow.header.base }, loadLanes(loadOps()))
 }
 
 /** The Work record a contract is over and the side (be, fe) its repository's role in workspace.yaml gives it. */
