@@ -1,0 +1,99 @@
+# The shared SonarQube of this host: Sonar Community Build, its PostgreSQL and the one-shot admin-password bootstrap.
+# Owned by ops/host.yaml (services sonar-postgres, sonar, sonar-bootstrap); `starci host up` runs it, never by hand with
+# `down -v`. It moved here from the retired legacy runtime (.claude/ext/sonar/ of starci-academy-backend) with the SAME Compose
+# project (`starci`), container names, service names and named volumes, so the running group and its data are
+# adopted, not recreated: `host up` starts only what is down, with `--no-recreate`, and leaves a running container untouched.
+#
+# No secret is stored here or beside it (contexts/harness/rules.md rule 1). Compose reads ${SONARQUBE_DB_PASSWORD} and
+# ${SONARQUBE_ADMIN_PASSWORD} from the environment of the one process `host up` starts, which the CLI's secret loader
+# (cli/src/harness/secret-env.ts, keys in policy/security.yaml secretKeys) fills from the process environment or the harness
+# secret.env; `host up` refuses HOST_SECRET_MISSING, naming the key, when one is unset. The published port is
+# ${STARCI_PORT_SONARQUBE}; the project prefix ${STARCI_HOST_PROJECT} exists so the CLI can be proved on a scratch project
+# without touching the live `starci` group, and is never set on the live host.
+#
+# The images are pinned by digest (the tag stays for the reader). A digest change is a deliberate edit, not a pull.
+name: ${STARCI_HOST_PROJECT:-starci}
+
+services:
+  sonarqube-postgres:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    container_name: ${STARCI_HOST_PROJECT:-starci}-sonarqube-postgres
+    environment:
+      POSTGRES_USER: sonarqube
+      POSTGRES_PASSWORD: ${SONARQUBE_DB_PASSWORD:?set SONARQUBE_DB_PASSWORD in the harness secret.env or the environment}
+      POSTGRES_DB: sonarqube
+    volumes:
+      - sonarqube-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U sonarqube -d sonarqube
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  sonarqube:
+    image: sonarqube:26.8.0.126808-community@sha256:9026624a61cd25542a402a9e7213dd7dbb39724ac9597e331e6b85362558c079
+    container_name: ${STARCI_HOST_PROJECT:-starci}-sonarqube
+    depends_on:
+      sonarqube-postgres:
+        condition: service_healthy
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonarqube-postgres:5432/sonarqube
+      SONAR_JDBC_USERNAME: sonarqube
+      SONAR_JDBC_PASSWORD: ${SONARQUBE_DB_PASSWORD:?set SONARQUBE_DB_PASSWORD in the harness secret.env or the environment}
+    ports:
+      - "${STARCI_PORT_SONARQUBE:-9010}:9000"
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-extensions:/opt/sonarqube/extensions
+      - sonarqube-logs:/opt/sonarqube/logs
+      - sonarqube-temp:/opt/sonarqube/temp
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          curl --noproxy '*' -fsS http://localhost:9000/api/system/status |
+          grep -q '"status":"UP"'
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    restart: unless-stopped
+
+  sonarqube-bootstrap:
+    image: curlimages/curl:8.15.0@sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+    container_name: ${STARCI_HOST_PROJECT:-starci}-sonarqube-bootstrap
+    depends_on:
+      sonarqube:
+        condition: service_healthy
+    environment:
+      SONARQUBE_ADMIN_PASSWORD: ${SONARQUBE_ADMIN_PASSWORD:?set SONARQUBE_ADMIN_PASSWORD in the harness secret.env or the environment}
+    entrypoint:
+      - /bin/sh
+      - -ec
+    command:
+      - |
+        if curl -fsS -u "admin:$${SONARQUBE_ADMIN_PASSWORD}" \
+          http://sonarqube:9000/api/authentication/validate | grep -q '"valid":true'; then
+          exit 0
+        fi
+        curl -fsS -u admin:admin -X POST \
+            --data-urlencode 'login=admin' \
+            --data-urlencode 'previousPassword=admin' \
+            --data-urlencode "password=$${SONARQUBE_ADMIN_PASSWORD}" \
+            http://sonarqube:9000/api/users/change_password
+    restart: "no"
+
+volumes:
+  sonarqube-postgres-data:
+    name: ${STARCI_HOST_PROJECT:-starci}-sonarqube-postgres-data
+  sonarqube-data:
+    name: ${STARCI_HOST_PROJECT:-starci}-sonarqube-data
+  sonarqube-extensions:
+    name: ${STARCI_HOST_PROJECT:-starci}-sonarqube-extensions
+  sonarqube-logs:
+    name: ${STARCI_HOST_PROJECT:-starci}-sonarqube-logs
+  sonarqube-temp:
+    name: ${STARCI_HOST_PROJECT:-starci}-sonarqube-temp

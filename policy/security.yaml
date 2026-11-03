@@ -35,6 +35,10 @@ secretKeys:
   - TELEGRAM_BOT_TOKEN
   - OPENROUTER_API_KEY
   - SOPS_AGE_KEY
+  # The shared SonarQube group of ops/host.yaml (sonar-postgres, sonar, sonar-bootstrap, sonar-tunnel): `host up` hands them to the compose process alone.
+  - SONARQUBE_DB_PASSWORD
+  - SONARQUBE_ADMIN_PASSWORD
+  - CLOUDFLARE_TUNNEL_TOKEN
 exceptions:
   - path: packages/hfs/templates/be/patterns/realtime/channel.gateway.spec.ts.tpl
     rule: assigned-secret
