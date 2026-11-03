@@ -499,8 +499,13 @@ rulings:
   - id: auth-one-package-subpaths
     date: '2026-11-03'
     status: live
-    ruling: "The sign-in is one package with the subpath exports ./server, ./client (with ./client/react), ./contracts and ./testing, so the door contract is the same version on both sides; the full edition gets @starci/auth-oidc later behind the same PrincipalVerifier interface."
+    ruling: "The sign-in is one package with the subpath exports ./server, ./client (with ./client/react), ./contracts and ./testing, so the door contract is the same version on both sides; the full edition gets @starci/auth-oidc (ruling auth-oidc-package) behind the same PrincipalVerifier interface."
     owner: "packages/auth/package.json exports"
+  - id: auth-oidc-package
+    date: '2026-11-03'
+    status: live
+    ruling: "The full-edition sign-in is the published @starci/auth-oidc package (a Nest module: issuer discovery, the provider's JWKS with caching and rotation, algorithm-pinned token checks, role mapping, the authorization code flow with S256 PKCE, state and nonce, and an OidcPrincipalVerifier behind the PrincipalVerifier interface of @starci/auth; a front-end client; a fake OIDC issuer in ./testing); it is the only owner of jose in a full app, an app imports neither and imports the package only in integrations/keycloak, and the app keeps the realm and client registration, the parsing of its settings and its own session."
+    owner: "packages/auth-oidc; contexts/code/be/api-auth.md BE-AUTH-2; contexts/hfs/rules.yaml R328; contexts/hfs/slots.yaml (ruleParams.be.infraOwners, be.integrations.keycloak)"
   - id: auth-no-cross-product-sso
     date: '2026-11-03'
     status: live

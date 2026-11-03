@@ -96,7 +96,7 @@ concerns:
       hand-written reader (read-event-stream.ts) and no second SSE library is installed.
   - id: auth
     tier: core
-    packages: ['@starci/auth']
+    packages: ['@starci/auth', '@starci/auth-oidc']
     home: [fe.modules.auth]
     pattern: FE-AUTH
     forbids: ['@supabase/supabase-js', '@supabase/ssr', '@supabase/auth-js', jose, jwt-decode, next-auth, '@auth/core', keycloak-js, oidc-client-ts]

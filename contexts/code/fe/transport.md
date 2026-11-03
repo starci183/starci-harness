@@ -73,7 +73,9 @@ auth -> api), and an auth-change subscription. In lite it is one `@starci/auth/c
 over the app's own back-end auth doors (`/auth/...`: login, signup, refresh, logout, password reset, resend verification):
 the access token lives in the client's memory, overlapping callers share one refresh, and only a 401 or 403 from a
 refresh signs the reader out (a 429, a server error or a lost connection is retried and keeps the session); the refresh
-token never reaches script. Every other REST call stays in `modules/api/rest`.
+token never reaches script. In full, a front end whose browser holds the tokens uses one `@starci/auth-oidc/client` instance in the same file (PKCE redirect to the
+identity provider, the callback, one shared refresh, the tokens in memory only, signed out only when the provider ends the session); a
+front end whose back end holds an opaque session cookie keeps one door client in `modules/auth` and no token. Every other REST call stays in `modules/api/rest`.
 
 Why: the back end authorizes every read and write; the front end only proves who the user is, and holds no credential.
 

@@ -12,6 +12,7 @@ pins:
   '@starci/object-storage': {version: 0.1.0, group: starci, side: be, install: registry, why: "object storage of a back end: the ObjectStorage port over S3-compatible storage; the only importer of the AWS S3 client libraries"}
   '@starci/nest-kit': {version: 0.1.0, group: starci, side: be, install: registry, why: "the module definition of every back-end module: defineConfigurableModule and defineCapabilityModule, one typed call per <x>.module-definition.ts"}
   '@starci/auth': {version: 0.1.0, group: starci, side: both, install: registry, why: "the lite sign-in: server module, front-end client, contracts and test doubles; the only importer of the identity libraries"}
+  '@starci/auth-oidc': {version: 0.1.0, group: starci, side: both, install: registry, why: "the full sign-in: the OIDC client of the identity provider (Keycloak) behind the PrincipalVerifier of @starci/auth: server module, front-end client, contracts and a fake issuer; the only importer of jose in a full app"}
   '@starci/grammar': {version: 0.21.14, group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
   '@starci/next-i18n': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the next-intl stack of a front end: defineI18n, the locale proxy, the navigation, the request config and the locale read of the [locale] layout; the app keeps its catalogs"}
   '@starci/eslint-canon-be': {version: 3.13.0, group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
@@ -132,7 +133,7 @@ pins:
   bcryptjs: {version: 3.0.3, group: framework, side: be, why: "bcrypt without a native build; verifies the hashes auth.users carries over, inside @starci/auth"}
   '@types/passport-google-oauth20': {version: 2.0.17, group: framework, side: be}
   '@types/passport-local': {version: 1.0.38, group: framework, side: be}
-  jose: {version: 6.2.12, group: framework, side: be, why: "signs the app's own access tokens and verifies them against its own key set, inside @starci/auth"}
+  jose: {version: 6.2.12, group: framework, side: be, why: "signs the app's own access tokens and verifies them against its own key set inside @starci/auth, and verifies the identity provider's tokens against its JWKS inside @starci/auth-oidc; no app file imports it"}
   class-transformer: {version: 0.5.1, group: framework, side: be, why: "Nest request transformation, pinned with class-validator"}
   class-validator: {version: 0.15.1, group: framework, side: be, why: "Nest boundary validation, pinned with class-transformer"}
 # Base images an app's Dockerfiles build FROM (R190); the image tag is pinned here and nowhere else.

@@ -133,6 +133,13 @@ pins:
     side: both
     source: packages/auth/package.json
     why: 'the lite sign-in: the NestJS module (EdDSA access tokens with a multi-key JWKS, passwords, Google OAuth with state and PKCE, rotating refresh sessions, the sign-in budget, the refresh cookie), the front-end client and its React bindings, the door contracts and test doubles; the one importer of the identity libraries, reached by a back end only through integrations/passport; @starci/jest-preset compiles it as an ESM-only dependency.'
+  '@starci/auth-oidc':
+    version: 0.1.0
+    group: starci
+    install: registry
+    side: both
+    source: packages/auth-oidc/package.json
+    why: 'the full sign-in: the OIDC client of the identity provider (Keycloak) behind the PrincipalVerifier of @starci/auth, so guards do not change between editions: the NestJS module (issuer discovery, the JWKS with caching and rotation, algorithm-pinned token checks, role mapping, the authorization code flow with PKCE and nonce), the front-end client (PKCE redirect, one shared refresh, tokens in memory) and the fake issuer for tests; the one importer of jose in a full app, reached by a back end only through integrations/keycloak; @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/object-storage':
     version: 0.1.0
     group: starci
@@ -684,7 +691,7 @@ pins:
     version: 6.2.12
     group: framework
     side: be
-    why: signs the app's own ES256 access tokens and verifies them against its own key set (createLocalJWKSet) in integrations/passport.
+    why: signs the app's own access tokens and verifies them against its own key set inside @starci/auth, and verifies the identity provider's tokens against its JWKS inside @starci/auth-oidc; no app file imports it.
   class-transformer:
     version: 0.5.1
     group: framework
