@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.19 - 2026-11-04
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.19; requires `@starci/eslint-grammar-core` 0.21.19. the runtime copies carry `engine/runtime-root.mjs` with the per-user state base of an installed copy (`@starci/hfs` 5.6.0) and the canon pins of release 4 (`@starci/auth` 0.4.0, `@starci/auth-oidc` 0.1.3).
+
 ## 0.21.18 - 2026-11-04
 
 - Changed: version stamp only, with `@starci/grammar` 0.21.18; requires `@starci/eslint-grammar-core` 0.21.18, and the runtime copy of the canon pins names the release-3 versions.

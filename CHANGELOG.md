@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.57 - 2026-11-04
+
+- Fixed: `deps source --local` and `--sync` stage each copy beside the installed one and swap it in by renames, carrying over the state an older `@starci/hfs` copy kept inside itself; a copy a running process holds refuses `DEPS_TARGET_HELD` and is left whole, never half deleted, and `uat run` and verify name the refusal.
+
 ## 1.1.0-alpha.55 - 2026-11-03
 
 - Changed: the contexts search eval records the seed-levels rule (PROJECT-STACKS-12, R375) among its questions, so the eval holds the seed rules the index carries.

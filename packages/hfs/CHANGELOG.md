@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.6.0 - 2026-11-04
+
+- Fixed: an installed or locally sourced copy keeps its host state outside itself. A stack's bind-mounted data, logs and receipts, `machine.sqlite` and the blob store live in the per-user base `installedStateBase` (`%LOCALAPPDATA%`, else `$XDG_STATE_HOME`, else `~/.local/state`, then `starci-harness/state`; a stack's state keyed by project and environment below it), so `npm ci` and a package copy no longer delete a running stack's data; a checkout keeps `<root>/.runtime`, and `STARCI_LOCAL_ROOT` overrides both.
+- Added: the first `starci app` verb moves the state a copy kept in `runtime/.runtime` to that base (resumable, an entry the base already holds kept aside as `legacy-<stamp>/`), and refuses `HFS_STATE_LEGACY_HELD`, naming `starci app stack down --env <env>`, while a running stack holds it.
+- Changed: the canon pins name `@starci/auth` 0.4.0 and `@starci/auth-oidc` 0.1.3.
+
 ## 5.5.1 - 2026-11-04
 
 - Fixed: a seed `data` or `test-account` command run by `app stack up` gets the environment the app's api process gets in that environment (`runEnvironment`: its declared env, the sealed `_FILE` pointers and the database URL of the app role), beside the seed-secret values on stdin; it ran with an empty environment, so an app's seed CLI could not start.

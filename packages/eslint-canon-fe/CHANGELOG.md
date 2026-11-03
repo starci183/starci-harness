@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.13.2 - 2026-11-04
+
+- Changed: the runtime copies carry `engine/runtime-root.mjs` with the per-user state base of an installed copy (`@starci/hfs` 5.6.0) and the canon pins of release 4 (`@starci/auth` 0.4.0, `@starci/auth-oidc` 0.1.3).
+
 ## 9.13.1 - 2026-11-04
 
 - Changed: the runtime copy of the canon pins names the release-3 versions (`@starci/hfs` 5.5.1, `@starci/jest-preset` 2.7.1, `@starci/eslint-canon-be` 3.15.1, the Grammar family 0.21.18).
