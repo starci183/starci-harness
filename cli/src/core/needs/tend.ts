@@ -49,6 +49,7 @@ import { listHandoffs } from "../pkg/edit.js"
 import { taskCancelVerb } from "../task/cancel.js"
 import { amendWithRelays, workflowAmendVerb } from "../workflow/amend.js"
 import type { StepAction } from "../workflow/engine.js"
+import { inOrder } from "../../harness/sequential.js"
 
 /**
  * The router of shared needs (cli/README.md "Shared needs"), run by every step of a workflow (harness/engine.ts settleWorkflow:
@@ -170,6 +171,13 @@ export const closeDecision = (ref: NeedDecisionRef | null, why: string): void =>
     }
 }
 
+/** What a router is told to do with a need: the Kernel rules its own, a package edit goes to Debug's worker, the rest is the Supervisor's. */
+const needGuidance = (need: NeedRow, level: NeedLevel, scope: NeedScope): string => {
+    if (level === "kernel") return KERNEL_NEED_GUIDANCE
+    if (scope === "package") return `a package edit, never the owner's: starci supervisor dispatch --need ${need.key} --brief <the fix> (--input package=${need.key.slice("package:".length)} is filled), whose worker runs pkg branch, fixes it and pkg handoff; the waiters are released once Debug merged the handoff`
+    return SUPERVISOR_NEED_GUIDANCE
+}
+
 /** The evidence a need's decision carries: the need, its waiters with what each reported, why it is routed here, and how to answer. */
 export const evidenceOf = (need: NeedRow, waiters: readonly WaiterRow[], level: NeedLevel, scope: NeedScope, extra: Readonly<Record<string, unknown>> = {}): unknown => ({
     project: need.project,
@@ -182,12 +190,7 @@ export const evidenceOf = (need: NeedRow, waiters: readonly WaiterRow[], level: 
     waiters: waiters.map((waiter) => ({ repo: waiter.repo, workflow: waiter.workflow, task: waiter.task, key: waiter.taskKey, given: waiter.given, rules: waiter.rules, paths: waiter.paths, note: waiter.note })),
     rules: [...new Set(waiters.flatMap((waiter) => waiter.rules))],
     paths: [...new Set(waiters.flatMap((waiter) => waiter.paths))],
-    answer:
-        level === "kernel"
-            ? KERNEL_NEED_GUIDANCE
-            : scope === "package"
-              ? `a package edit, never the owner's: starci supervisor dispatch --need ${need.key} --brief <the fix> (--input package=${need.key.slice("package:".length)} is filled), whose worker runs pkg branch, fixes it and pkg handoff; the waiters are released once Debug merged the handoff`
-              : SUPERVISOR_NEED_GUIDANCE,
+    answer: needGuidance(need, level, scope),
     ...extra,
 })
 
@@ -197,6 +200,18 @@ const carrierOf = (place: Place, waiters: readonly WaiterRow[]): { readonly repo
     if (here !== undefined) return { repo: place.repo, workflow: place.workflow }
     const first = waiters.find((waiter) => waiter.workflow !== null)
     return first?.workflow == null ? { repo: place.repo, workflow: place.workflow } : { repo: first.repo, workflow: first.workflow }
+}
+
+/** The level a need is routed at: the owner when it asked for it, else the Supervisor when asked for or floored there, else the Kernel. */
+const routedLevel = (level: NeedLevel, floor: NeedLevel): NeedLevel => {
+    if (level === "owner") return "owner"
+    return level === "supervisor" || floor === "supervisor" ? "supervisor" : "kernel"
+}
+
+/** The router a need is routed to, as the step action names it. */
+const routerLabel = (at: NeedLevel, workflow: string): string => {
+    if (at === "kernel") return `Kernel of ${workflow}`
+    return at === "owner" ? "owner" : "Supervisor"
 }
 
 /**
@@ -209,7 +224,7 @@ const route = (place: Place, need: NeedRow, level: NeedLevel): StepAction[] => {
     if (waiters.length === 0) return []
     const scope = scopeOf(need.key, waiters)
     const floor: NeedLevel = scope === "workflow" ? "kernel" : "supervisor"
-    const at: NeedLevel = level === "owner" ? "owner" : level === "supervisor" || floor === "supervisor" ? "supervisor" : "kernel"
+    const at = routedLevel(level, floor)
     const home = at === "kernel" ? { repo: waiters[0]?.repo ?? place.repo, workflow: waiters[0]?.workflow ?? place.workflow } : carrierOf(place, waiters)
     if (home === null) return []
     const subject = at === "owner" ? `need-deadline:${need.key}#${String(need.round)}` : `need:${need.key}#${String(need.round)}@${at}`
@@ -223,6 +238,7 @@ const route = (place: Place, need: NeedRow, level: NeedLevel): StepAction[] => {
         return current.state === "open" ? patchNeed(db, need.project, need.key, { state: "routed", level: at, scope, decision: ref, routedAt: now() }, "routed") : current
     })
     if (claimed === undefined) return []
+    const waiterNames = waiters.map((waiter) => `${waiter.workflow ?? "worker"}:${waiter.taskKey ?? waiter.task}`).join(", ")
     const evidence =
         at === "owner"
             ? {
@@ -230,7 +246,7 @@ const route = (place: Place, need: NeedRow, level: NeedLevel): StepAction[] => {
                   need: need.key,
                   escalation: {
                       kind: scope === "package" ? "harness" : "owner",
-                      question: `shared need ${need.key} (${String(waiters.length)} waiter(s): ${waiters.map((waiter) => `${waiter.workflow ?? "worker"}:${waiter.taskKey ?? waiter.task}`).join(", ")}) has had no owner past ${String(loadNeedDeadline())} min at the Supervisor; ${scope === "package" ? "Debug: dispatch its package edit or rule it" : "rule who owns it"}, then relay it as a need-owner (or supervisor dispatch --need ${need.key})`,
+                      question: `shared need ${need.key} (${String(waiters.length)} waiter(s): ${waiterNames}) has had no owner past ${String(loadNeedDeadline())} min at the Supervisor; ${scope === "package" ? "Debug: dispatch its package edit or rule it" : "rule who owns it"}, then relay it as a need-owner (or supervisor dispatch --need ${need.key})`,
                   },
               }
             : evidenceOf(claimed, waiters, at, scope)
@@ -239,7 +255,7 @@ const route = (place: Place, need: NeedRow, level: NeedLevel): StepAction[] => {
     } catch (error: unknown) {
         return [action(`need ${need.key}: decision ${ref.id} not raised yet (${asRefusal(error).code}); the next step raises it`, "problem")]
     }
-    return claimed.state === need.state ? [] : [action(`need ${need.key} routed to the ${at === "kernel" ? `Kernel of ${home.workflow}` : at === "owner" ? "owner" : "Supervisor"} as ${ref.id} (${scope}, ${String(waiters.length)} waiter(s))`)]
+    return claimed.state === need.state ? [] : [action(`need ${need.key} routed to the ${routerLabel(at, home.workflow)} as ${ref.id} (${scope}, ${String(waiters.length)} waiter(s))`)]
 }
 
 /** Moves a need one router up: its open decision is closed and it is routed again a level higher (Kernel, Supervisor, owner). */
@@ -276,7 +292,7 @@ const tendOwned = (place: Place, need: NeedRow): StepAction[] => {
 /** How a resolver stands: done (with the commits it landed, oldest first), failed (why), or still working. */
 type ResolverStatus = { readonly kind: "done"; readonly commits: readonly string[]; readonly detail: string } | { readonly kind: "failed"; readonly detail: string } | { readonly kind: "pending" }
 
-const FAILED_TASK: readonly string[] = ["failed", "cancelled", "awaiting_owner"]
+const FAILED_TASK: ReadonlySet<string> = new Set(["failed", "cancelled", "awaiting_owner"])
 
 /**
  * The commits a done task landed, oldest first: every commit its settle wrote carries its `Starci-Task` trailer (a Work commit
@@ -293,7 +309,7 @@ const landedCommits = async (repo: string, taskId: string, settle: string | null
 const taskStatus = async (repo: string, taskId: string): Promise<ResolverStatus> => {
     const task = withLedger(repo, (db) => getTask(db, taskId))
     if (task.status === "done") return { kind: "done", commits: await landedCommits(repo, taskId, task.settleCommit), detail: `task ${taskId} done` }
-    return FAILED_TASK.includes(task.status) ? { kind: "failed", detail: `its resolver task ${taskId} is ${task.status}` } : { kind: "pending" }
+    return FAILED_TASK.has(task.status) ? { kind: "failed", detail: `its resolver task ${taskId} is ${task.status}` } : { kind: "pending" }
 }
 
 /** The resolver keys of a workflow resolver: its `keys`, else its one `key`. */
@@ -347,7 +363,8 @@ const workflowStatus = async (repo: string, workflow: string, keys: readonly str
     })
     if (judged.status !== null) return judged.status
     const ordered = judged.done.toSorted((left, right) => left.task.updatedAt.localeCompare(right.task.updatedAt))
-    return { kind: "done", commits: await keyCommits(repo, workflow, keys), detail: `${ordered.map((one) => `${workflow}:${one.key} (task ${one.task.id})`).join(", ")} landed` }
+    const landedText = ordered.map((one) => `${workflow}:${one.key} (task ${one.task.id})`).join(", ")
+    return { kind: "done", commits: await keyCommits(repo, workflow, keys), detail: `${landedText} landed` }
 }
 
 /** How the resolver of a resolving need stands, read from its ledger, its package handoff and git. */
@@ -428,9 +445,8 @@ const filesOf = async (target: string, commit: string): Promise<string[]> => {
 
 /** Every file the resolving commits change, in the order they first touch it: the need's paths as the source settled them. */
 const pathsOf = async (target: string, commits: readonly string[]): Promise<string[]> => {
-    const files: string[] = []
-    for (const commit of commits) files.push(...(await filesOf(target, commit)))
-    return [...new Set(files)]
+    const files = await inOrder(commits, (commit) => filesOf(target, commit))
+    return [...new Set(files.flat())]
 }
 
 /**
@@ -473,17 +489,18 @@ const relay = async (place: Place, need: NeedRow): Promise<Relay> => {
             if (await holdsFinal(target, start, last, paths)) return { status: "present", relayed: [], files: [], detail: `${branch} holds the resolving commits' content at all ${String(paths.length)} of their file(s)`, commits, branch }
             let head = start
             const relayed: Relayed[] = []
-            for (const commit of commits) {
-                if (await gitSucceeds(target, ["merge-base", "--is-ancestor", commit, head])) continue
+            await inOrder(commits, async (commit) => {
+                if (await gitSucceeds(target, ["merge-base", "--is-ancestor", commit, head])) return
                 const made = await rebaseCandidate(target, commit, await resolveSha(target, `${commit}^`), head)
-                if (made.tree === (await captureGit(["rev-parse", `${head}^{tree}`], target)).stdout.trim()) continue
+                if (made.tree === (await captureGit(["rev-parse", `${head}^{tree}`], target)).stdout.trim()) return
                 relayed.push({ from: commit, to: made.commit })
                 head = made.commit
-            }
+            })
             if (head === start) return { status: "present", relayed, files: [], detail: `${branch} holds every resolving commit's change`, commits, branch }
             const ff = await captureGit(["merge", "--ff-only", "--quiet", head], target)
             if (ff.exitCode !== 0) throw new Refusal("NEED_RELAY_FAILED", `git merge --ff-only in ${target}: ${ff.stderr.trim()}`)
-            return { status: "relayed", relayed, files: [], detail: `relayed ${String(relayed.length)} commit(s) onto ${branch}: ${relayed.map((one) => `${one.from.slice(0, 9)} -> ${one.to.slice(0, 9)}`).join(", ")}`, commits, branch }
+            const relayedText = relayed.map((one) => `${one.from.slice(0, 9)} -> ${one.to.slice(0, 9)}`).join(", ")
+            return { status: "relayed", relayed, files: [], detail: `relayed ${String(relayed.length)} commit(s) onto ${branch}: ${relayedText}`, commits, branch }
         })
     } catch (error: unknown) {
         done =
@@ -528,11 +545,16 @@ const routeRelay = async (place: Place, need: NeedRow, done: Relay, mine: readon
     const target = withLedger(place.root, (db) => workflowWorktreeOf(db, place.workflow)) ?? place.root
     const files = await pathsOf(target, commits)
     const evidence = mine
-        .map((waiter) => `${waiter.taskKey ?? waiter.task}${waiter.rules.length === 0 ? "" : ` (rules ${waiter.rules.join(", ")})`}${waiter.note === null ? "" : `: ${waiter.note}`}`)
+        .map((waiter) => {
+            const rulesSuffix = waiter.rules.length === 0 ? "" : ` (rules ${waiter.rules.join(", ")})`
+            const noteSuffix = waiter.note === null ? "" : `: ${waiter.note}`
+            return `${waiter.taskKey ?? waiter.task}${rulesSuffix}${noteSuffix}`
+        })
         .sort((left, right) => left.localeCompare(right))
     const task = relayTask(template, { need: need.key, round: need.round, commits, conflicts: done.files, files, evidence: [...new Set(evidence)] })
     const waiters = [...new Set(mine.map((waiter) => waiter.taskKey).filter((key): key is string => key !== null))]
-    const cmdId = `need-relay-${createHash("sha256").update(`${need.project}\0${need.key}\0${String(need.round)}\0${place.workflow}`).digest("hex").slice(0, 16)}`
+    const digestText = createHash("sha256").update(`${need.project}\0${need.key}\0${String(need.round)}\0${place.workflow}`).digest("hex").slice(0, 16)
+    const cmdId = `need-relay-${digestText}`
     try {
         await amendWithRelays({ ...place.context, cwd: place.root }, place.workflow, [{ task, waiters }], `shared need ${need.key}: its commits do not apply to this branch; relay node ${task.key} applies them`, cmdId)
     } catch (error: unknown) {
@@ -599,6 +621,41 @@ const relayedByNode = (place: Place, need: NeedRow, key: string, view: NodeView)
     return done
 }
 
+/** The waiters whose task still stands in the workflow as the one that waited, so an amend can retry it. */
+const stillWaiting = (snapshot: ReturnType<typeof snapshotOf>, lastNeed: readonly WaiterRow[]): WaiterRow[] => {
+    return lastNeed.filter((waiter) => {
+        const view = snapshot.views.find((candidate) => candidate.key === waiter.taskKey)
+        return view !== undefined && (view.task === null || view.task.id === waiter.task)
+    })
+}
+
+/** The wait actions of the waiters whose every need ended but that a hold or a live ticket keeps parked. */
+const heldWaiters = (place: Place, need: NeedRow, ended: readonly WaiterRow[]): StepAction[] => {
+    return withLedger(place.root, (db) => ended.flatMap((waiter) => {
+        const ticket = ticketHoldingTask(need.project, waiter.task)
+        const why = holdOf(db, waiter.task) ?? (ticket === null ? null : `waits on ticket ${ticket}`)
+        return why === null ? [] : [action(`need ${need.key} ${need.state}: waiter ${waiter.taskKey ?? waiter.task} not released, ${why}`, "wait", waiter.task, waiter.taskKey)]
+    }))
+}
+
+/** Retries the released waiters in one amend of the workflow, written as a change file; the dispatched action, or the problem that kept it. */
+const amendRelease = async (place: Place, need: NeedRow, keys: readonly string[], carried: string | null): Promise<StepAction> => {
+    const dir = join(projectDir(place.root), "needs")
+    mkdirSync(dir, { recursive: true })
+    const digestText = createHash("sha256").update(`${need.project}\0${need.key}\0${String(need.round)}\0${place.workflow}\0${keys.join(",")}`).digest("hex").slice(0, 16)
+    const id = `need-release-${digestText}`
+    const file = join(dir, `${id}.yaml`)
+    const why = need.state === "resolved" ? `shared need ${need.key} resolved` : `shared need ${need.key} rejected: ${need.reason ?? "not shared"}`
+    writeFileSync(file, JSON.stringify({ schema: CHANGE_SCHEMA, workflow: place.workflow, reason: why, changes: keys.map((key) => ({ op: "retry", id: key })) }, null, 2))
+    try {
+        await workflowAmendVerb.run({ ...place.context, cwd: place.root }, { workflow: place.workflow, desired: undefined, change: file, goal: undefined, "based-on": undefined, "cmd-id": id, "keep-effect": undefined, accept: undefined })
+    } catch (error: unknown) {
+        return action(`need ${need.key}: waiters ${keys.join(", ")} not released yet (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}; the next step retries`, "problem")
+    }
+    const carriedSuffix = carried === null ? "" : `; ${carried}`
+    return action(`need ${need.key} ${need.state}: released ${keys.join(", ")} (retried from their preserved work)${carriedSuffix}`, "dispatched")
+}
+
 /**
  * Releases the waiters of an ended need in this workflow, once the resolving commits are on its branch: the harness relays them
  * itself, or a relay node applies what does not apply cleanly (routeRelay) and the waiters, which depend on it, wait for it to
@@ -614,10 +671,7 @@ const release = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
     const mine = waiting(withMachine((db) => waitersOf(db, need.project, need.key))).filter((waiter) => waiter.workflow === place.workflow && sameRepo(waiter.repo, place.repo))
     const ended = withMachine((db) => mine.filter((waiter) => allEnded(db, need.project, waiterRowsOfTask(db, need.project, waiter.repo, waiter.task))))
     // A held waiter stays parked, its row unreleased: once its hold or ticket ends, a later pass retries it from its kept work.
-    const held = withLedger(place.root, (db) => ended.flatMap((waiter) => {
-        const why = holdOf(db, waiter.task) ?? ((ticket) => (ticket === null ? null : `waits on ticket ${ticket}`))(ticketHoldingTask(need.project, waiter.task))
-        return why === null ? [] : [action(`need ${need.key} ${need.state}: waiter ${waiter.taskKey ?? waiter.task} not released, ${why}`, "wait", waiter.task, waiter.taskKey)]
-    }))
+    const held = heldWaiters(place, need, ended)
     const ready = ended.filter((waiter) => !held.some((one) => one.task === waiter.task))
     if (ready.length === 0) return held
     const node = relayByNode(place, need)
@@ -634,25 +688,13 @@ const release = async (place: Place, need: NeedRow): Promise<StepAction[]> => {
     const carried = ruled ?? (relayed.status === "skipped" ? null : relayed.detail)
     const snapshot = withLedger(place.root, (db) => snapshotOf(db, place.workflow))
     const lastNeed = withMachine((db) => ready.filter((waiter) => waiterRowsOfTask(db, need.project, waiter.repo, waiter.task).every((row) => row.key === need.key || row.releasedAt !== null)))
-    const retry = lastNeed.filter((waiter) => {
-        const view = snapshot.views.find((candidate) => candidate.key === waiter.taskKey)
-        return view !== undefined && (view.task === null || view.task.id === waiter.task)
-    })
+    const retry = stillWaiting(snapshot, lastNeed)
     const keys = [...new Set(retry.map((waiter) => waiter.taskKey).filter((key): key is string => key !== null))]
     const actions: StepAction[] = [...held]
     if (keys.length > 0) {
-        const dir = join(projectDir(place.root), "needs")
-        mkdirSync(dir, { recursive: true })
-        const id = `need-release-${createHash("sha256").update(`${need.project}\0${need.key}\0${String(need.round)}\0${place.workflow}\0${keys.join(",")}`).digest("hex").slice(0, 16)}`
-        const file = join(dir, `${id}.yaml`)
-        const why = need.state === "resolved" ? `shared need ${need.key} resolved` : `shared need ${need.key} rejected: ${need.reason ?? "not shared"}`
-        writeFileSync(file, JSON.stringify({ schema: CHANGE_SCHEMA, workflow: place.workflow, reason: why, changes: keys.map((key) => ({ op: "retry", id: key })) }, null, 2))
-        try {
-            await workflowAmendVerb.run({ ...place.context, cwd: place.root }, { workflow: place.workflow, desired: undefined, change: file, goal: undefined, "based-on": undefined, "cmd-id": id, "keep-effect": undefined, accept: undefined })
-        } catch (error: unknown) {
-            return [action(`need ${need.key}: waiters ${keys.join(", ")} not released yet (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}; the next step retries`, "problem")]
-        }
-        actions.push(action(`need ${need.key} ${need.state}: released ${keys.join(", ")} (retried from their preserved work)${carried === null ? "" : `; ${carried}`}`, "dispatched"))
+        const amended = await amendRelease(place, need, keys, carried)
+        if (amended.action === "problem") return [amended]
+        actions.push(amended)
     }
     const how = { by: need.state, round: need.round, reason: need.reason, carried, relay: { status: relayed.status, relayed: relayed.relayed, files: relayed.files, relayVersion: RELAY_VERSION }, retried: keys }
     withMachine((db) => {
@@ -678,7 +720,7 @@ const registerReturned = async (place: Place): Promise<StepAction[]> => {
         }),
     )
     const actions: StepAction[] = []
-    for (const one of returned) {
+    await inOrder(returned, async (one) => {
         const keys = withMachine((db) =>
             one.reports.map((report) => {
                 const attached = attachWaiter(db, report, { project: place.project, repo: place.repo, workflow: place.workflow, task: one.task, taskKey: one.key })
@@ -690,11 +732,11 @@ const registerReturned = async (place: Place): Promise<StepAction[]> => {
             await taskCancelVerb.run({ ...place.context, cwd: place.root }, { task: one.task, reason: `parked on shared need ${keys.join(", ")}; released when it is resolved or rejected` })
         } catch (error: unknown) {
             actions.push(action(`waiter not parked (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`, "problem", one.task, one.key))
-            continue
+            return
         }
         withMachine((db) => db.prepare("UPDATE shared_need_waiters SET parked_at = ? WHERE project = ? AND repo = ? AND task_id = ? AND parked_at IS NULL").run(now(), place.project, place.repo, one.task))
         actions.push(action(`parked on shared need ${keys.join(", ")} (work preserved)`, "cancelled", one.task, one.key))
-    }
+    })
     return actions
 }
 
@@ -739,13 +781,13 @@ export const tendNeeds = async (context: VerbContext, root: string, workflowId: 
         if (getWorkflowSafe(root, workflowId) === undefined) return []
         const place: Place = { context, project: project.key, repo: needRepo(await mainCheckout(root)), root, workflow: workflowId }
         const actions = await registerReturned(place)
-        for (const need of withMachine((db) => needsOfWorkflow(db, place.project, place.repo, workflowId))) {
+        await inOrder(withMachine((db) => needsOfWorkflow(db, place.project, place.repo, workflowId)), async (need) => {
             try {
                 actions.push(...(await tendOne(place, need)))
             } catch (error: unknown) {
                 actions.push(action(`need ${need.key} not tended (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`, "problem"))
             }
-        }
+        })
         return actions
     } catch (error: unknown) {
         return [action(`shared needs not tended (${asRefusal(error).code}): ${asRefusal(error).message.split("\n")[0] ?? ""}`, "problem")]

@@ -13,6 +13,7 @@ import type { NeedResolver } from "./needs.js"
 import { thisVerifier, withSettleLock } from "./settle.js"
 import { recordEvent } from "./tasks.js"
 import { projectOf } from "./work.js"
+import { inOrder } from "./sequential.js"
 
 /**
  * Opt-in pattern ownership. A slot of the hfs manifest with `pattern: <name>` is enabled only by `sides.<side>.patterns` of the
@@ -95,7 +96,8 @@ export const patternsOfPaths = async (checkout: string, paths: readonly string[]
         const byId = new Map(manifest.slots.map((slot) => [slot.id, slot]))
         const prefix = relative(checkout, app.root).replaceAll("\\", "/")
         const hits = paths.flatMap((path) => {
-            const inApp = prefix === "" ? path : path.startsWith(`${prefix}/`) ? path.slice(prefix.length + 1) : undefined
+            const underPrefix = path.startsWith(`${prefix}/`) ? path.slice(prefix.length + 1) : undefined
+            const inApp = prefix === "" ? path : underPrefix
             if (inApp === undefined) return []
             const slot = byId.get(explainPath({ repoRoot: app.root, input: inApp, manifest }).slot ?? "")
             return slot === undefined ? [] : [{ slot, path: inApp }]
@@ -108,7 +110,7 @@ export const patternsOfPaths = async (checkout: string, paths: readonly string[]
 
 /** The opt-in patterns an HFS_SLOT_NOT_ENABLED finding names (`<path> belongs to <slot>, an opt-in slot ...`) in a check's output. */
 export const patternsOfFindings = async (outputs: readonly string[]): Promise<PatternNeed[]> => {
-    const named = outputs.flatMap((text) => [...text.matchAll(/(\S+) belongs to ([a-z][\w.-]*), an opt-in slot/g)].map((match) => ({ path: match[1] ?? "", slot: match[2] ?? "" })))
+    const named = outputs.flatMap((text) => [...text.matchAll(/(?<!\S)(\S+) belongs to ([a-z][\w.-]*), an opt-in slot/g)].map((match) => ({ path: match[1] ?? "", slot: match[2] ?? "" })))
     if (named.length === 0) return []
     try {
         const byId = new Map((await loadManifest()).map((slot) => [slot.id, slot]))
@@ -169,10 +171,10 @@ const commitFile = async (checkout: string, head: string, file: string, text: st
         writeFileSync(join(dir, "hfs.json"), text)
         const blob = await git(checkout, ["hash-object", "-w", `--path=${file}`, join(dir, "hfs.json")])
         const mode = (await git(checkout, ["ls-tree", head, "--", file])).split(/\s/)[0] ?? "100644"
-        for (const args of [["read-tree", head], ["update-index", "--cacheinfo", `${mode},${blob},${file}`]]) {
+        await inOrder([["read-tree", head], ["update-index", "--cacheinfo", `${mode},${blob},${file}`]], async (args) => {
             const run = await captureGit(args, checkout, { env })
             if (run.exitCode !== 0) throw new Refusal("HFS_PATTERN_NOT_LANDED", `git ${args[0] ?? ""}: ${run.stderr}`)
-        }
+        })
         const tree = await captureGit(["write-tree"], checkout, { env })
         if (tree.exitCode !== 0) throw new Refusal("HFS_PATTERN_NOT_LANDED", `git write-tree: ${tree.stderr}`)
         return await git(checkout, ["commit-tree", tree.stdout, "-p", head, "-m", message])

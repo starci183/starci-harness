@@ -23,6 +23,18 @@ const planKeyOf = (db: DatabaseSync, taskId: string): string | undefined => {
     return typeof row?.plan_key === "string" ? row.plan_key : undefined
 }
 
+/** Adds the relay nodes of the workflows whose relayed files this check judges as their composer, or as a workflow's final verify. */
+const addComposedRelays = (db: NonNullable<ReturnType<typeof openExistingLedger>>, workflows: ReadonlySet<string>, judging: Judging, composers: ReadonlySet<string>, add: (node: string, contract: Parameters<typeof relayHeadOf>[0], paths: readonly string[]) => void): void => {
+    for (const workflowId of workflows) {
+        const graph = graphOf(db, workflowId, getWorkflow(db, workflowId).graphVersion)
+        for (const node of graph) {
+            const composer = composerOf(node, graph)
+            if (!isRelayKey(node.key) || composer === undefined) continue
+            if (judging.workflow === workflowId || composers.has(composer)) add(node.key, node.contract, node.contract.context.allowPaths)
+        }
+    }
+}
+
 /**
  * The relayed sources a check judges for: each relay node it judges as (`--task`, or one of a wave's tasks), and each relay node
  * whose relayed files it judges in full as their composer (its first waiter, graph.ts composerOf, or a workflow's final verify).
@@ -41,14 +53,7 @@ export const relaySources = (root: string, judging: Judging): RelaySource[] => {
         for (const { task, key } of tasks) if (key !== undefined && isRelayKey(key)) add(key, task.contract, task.contract.context.allowPaths)
         const composers = new Set(tasks.flatMap(({ key }) => (key === undefined ? [] : [key])))
         const workflows = new Set([...(judging.workflow === undefined ? [] : [judging.workflow]), ...tasks.flatMap(({ task }) => (task.workflowId === null ? [] : [task.workflowId]))])
-        for (const workflowId of workflows) {
-            const graph = graphOf(db, workflowId, getWorkflow(db, workflowId).graphVersion)
-            for (const node of graph) {
-                const composer = composerOf(node, graph)
-                if (!isRelayKey(node.key) || composer === undefined) continue
-                if (judging.workflow === workflowId || composers.has(composer)) add(node.key, node.contract, node.contract.context.allowPaths)
-            }
-        }
+        addComposedRelays(db, workflows, judging, composers, add)
         return [...sources.values()]
     } finally {
         db.close()

@@ -201,7 +201,9 @@ export const RELAY_COMMITS = "relayCommits"
 /** The key of the relay node of a shared need's round in a waiting workflow. */
 export const relayKeyOf = (need: string, round: number): string => {
     const plain = `${RELAY_PREFIX}${need.toLowerCase().replaceAll(/[^a-z0-9._-]+/g, "-")}.r${String(round)}`
-    return plain.length <= KEY_MAX ? plain : `${RELAY_PREFIX}${sha(`${need}#${String(round)}`).slice(0, 16)}`
+    if (plain.length <= KEY_MAX) return plain
+    const digest = sha(`${need}#${String(round)}`).slice(0, 16)
+    return `${RELAY_PREFIX}${digest}`
 }
 
 /**
@@ -256,7 +258,7 @@ export const relayTask = (template: Pick<PlanNode, "contract" | "route">, plan: 
                 `${how} (the harness applied them up to the first that conflicts, leaving git's markers in its files). Resolve every conflict so that both ` +
                 "sides' intent holds: keep what this branch built and what the need's commits add, never dropping either side to make it apply." +
                 (plan.evidence.length === 0 ? "" : ` The need's evidence, what its waiters reported it for: ${plan.evidence.join("; ")}.`),
-            extend: { ...(template.contract.input.extend ?? {}), [RELAY_COMMITS]: plan.commits.join(" ") },
+            extend: { ...template.contract.input.extend, [RELAY_COMMITS]: plan.commits.join(" ") },
         },
     })
     return { key: relayKeyOf(plan.need, plan.round), contract, dependsOn: [], route: template.route, round: 0 }

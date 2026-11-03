@@ -57,6 +57,6 @@ export const contractCheckVerb = defineVerb({
         const message = data.fit
             ? `fit: ${String(files.length)} context file(s)${weight}, ${String(output.length)} output key(s), ${String(checks.length)} check(s), ${String(checks.filter((check) => check.behavioural).length)} behavioural; hash ${data.hash.slice(0, 12)}`
             : `unfit:\n${problemLines}`
-        return Promise.resolve({ data, message, exitCode: data.fit ? 0 : 1 })
+        return { data, message, exitCode: data.fit ? 0 : 1 }
     },
 })

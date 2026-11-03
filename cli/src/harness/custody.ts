@@ -229,7 +229,7 @@ export const declaredKeys = (files: readonly string[], root: string): DeclaredKe
 const mainCheckout = (root: string): string => {
     const dotGit = join(root, ".git")
     if (!existsSync(dotGit) || statSync(dotGit).isDirectory()) return root
-    const gitdir = /^gitdir:\s*(.+)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
+    const gitdir = /^gitdir:\s*(\S.*)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
     const main = gitdir === undefined ? undefined : /^(.*)\/\.git\/worktrees\/[^/]+$/.exec(gitdir)?.[1]
     return main !== undefined && existsSync(main) ? main : root
 }
@@ -281,6 +281,25 @@ export interface Custody {
     readonly detail: string
 }
 
+/** Reads the values of the keys a run declares from the sealed files that hold them; a file that cannot be read is refused without naming a value. */
+const readCustodyEnv = async (found: Awaited<ReturnType<typeof holdersOf>>): Promise<Record<string, string>> => {
+    const { app, environment, directory, holder } = found
+    const store = await import("@starci/hfs/runtime/scripts/hfs/secret-store.mjs")
+    const { defaultSops } = await import("@starci/hfs/runtime/scripts/hfs/secret-sops.mjs")
+    const env: Record<string, string> = {}
+    for (const member of new Set(holder.values())) {
+        let map: Readonly<Record<string, string>>
+        try {
+            map = store.readMap(join(directory, member), defaultSops(process.env, app, process.platform, undefined, hostAgeIdentity(app)))
+        } catch (error: unknown) {
+            // The message of a sops or identity failure names the file and the cause, never a value.
+            throw new Refusal(CUSTODY_UNREADABLE, `custody of ${environment} holds ${[...holder].filter(([, file]) => file === member).map(([key]) => key).join(", ")} in ${member} but it cannot be opened here: ${error instanceof Error ? (error.message.split("\n")[0] ?? error.message) : "sops refused"}`)
+        }
+        for (const [key, file] of holder) if (file === member && typeof map[key] === "string") env[key] = map[key]
+    }
+    return env
+}
+
 /**
  * The declared keys of the live spec files of the checkout `checkout` a run executes, read from that checkout's custody for one
  * run. A declaration the reader cannot reduce to key names refuses CUSTODY_KEYS_UNRESOLVED before anything runs, naming each
@@ -301,19 +320,7 @@ export const custodyFor = async (liveSpecs: readonly string[], checkout: string)
     const { app, environment, directory, holder } = await holdersOf(checkout, keys)
     const missing = keys.filter((key) => !holder.has(key))
     if (missing.length > 0) throw lacking(missing, environment)
-    const store = await import("@starci/hfs/runtime/scripts/hfs/secret-store.mjs")
-    const { defaultSops } = await import("@starci/hfs/runtime/scripts/hfs/secret-sops.mjs")
-    const env: Record<string, string> = {}
-    for (const member of new Set(holder.values())) {
-        let map: Readonly<Record<string, string>>
-        try {
-            map = store.readMap(join(directory, member), defaultSops(process.env, app, process.platform, undefined, hostAgeIdentity(app)))
-        } catch (error: unknown) {
-            // The message of a sops or identity failure names the file and the cause, never a value.
-            throw new Refusal(CUSTODY_UNREADABLE, `custody of ${environment} holds ${[...holder].filter(([, file]) => file === member).map(([key]) => key).join(", ")} in ${member} but it cannot be opened here: ${error instanceof Error ? (error.message.split("\n")[0] ?? error.message) : "sops refused"}`)
-        }
-        for (const [key, file] of holder) if (file === member && typeof map[key] === "string") env[key] = map[key]
-    }
+    const env = await readCustodyEnv({ app, environment, directory, holder })
     // A key sealed by name with no value, or only blanks, is no credential: it is the owner's to fill, like one never sealed.
     const empty = keys.filter((key) => (env[key] ?? "").trim() === "")
     if (empty.length > 0) throw lacking(empty, environment)
@@ -362,7 +369,8 @@ export const assertKeysHanded = async (output: string, tree: string): Promise<vo
         module: CUSTODY_MODULE,
         waiters: [],
     })
-    throw new Refusal(VERIFY_INFRA, `the run reports ${held.join(", ")} as not declared although custody of ${environment} holds ${held.length === 1 ? "it" : "them"} (${held.map((key) => `${key} in ${holder.get(key) ?? ""}`).join(", ")}): the harness did not hand ${held.length === 1 ? "it" : "them"} to the run (${CUSTODY_KEY_NOT_HANDED}: an infrastructure failure, not the task's; harness-defect ticket ${ticket.id})`)
+    const heldText = held.map((key) => `${key} in ${holder.get(key) ?? ""}`).join(", ")
+    throw new Refusal(VERIFY_INFRA, `the run reports ${held.join(", ")} as not declared although custody of ${environment} holds ${held.length === 1 ? "it" : "them"} (${heldText}): the harness did not hand ${held.length === 1 ? "it" : "them"} to the run (${CUSTODY_KEY_NOT_HANDED}: an infrastructure failure, not the task's; harness-defect ticket ${ticket.id})`)
 }
 
 /** The event that hands a worker's custody-stopped report to the harness's own run (core/task/result.ts), keyed by the attempt it judges. */
@@ -379,7 +387,7 @@ export interface CustodyEvidence {
  * `TEST_WORLD_NOT_DECLARED` lines and each custody refusal code it names. Undefined when it shows neither, so its report stands.
  */
 export const custodyEvidence = (output: unknown): CustodyEvidence | undefined => {
-    const text = JSON.stringify(output).replaceAll("\\n", "\n")
+    const text = JSON.stringify(output).replaceAll(String.raw`\n`, "\n")
     const codes = [...CUSTODY_CODES, CUSTODY_KEY_NOT_HANDED].filter((code) => text.includes(code))
     return codes.length === 0 && !text.includes("TEST_WORLD_NOT_DECLARED") ? undefined : { keys: undeclaredIn(text), codes }
 }

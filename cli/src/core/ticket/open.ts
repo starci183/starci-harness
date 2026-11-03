@@ -5,7 +5,7 @@ import { openExistingLedger } from "../../harness/ledger.js"
 import { textOf } from "../../harness/machine.js"
 import { getTask, latestAttempt } from "../../harness/tasks.js"
 import { isQuestion, openTicket, TICKET_KINDS, TICKET_SEVERITIES } from "../../harness/tickets.js"
-import type { TicketEvidence, TicketKind, TicketSeverity, WaiterInput } from "../../harness/tickets.js"
+import type { Ticket, TicketEvidence, TicketKind, TicketOutcome, TicketSeverity, WaiterInput } from "../../harness/tickets.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { mainCheckout } from "../../shared/git.js"
 import { evidenceTail } from "../../shared/output.js"
@@ -50,6 +50,30 @@ const ledgerEvidence = (repo: string, task: string | undefined, decision: string
     } finally {
         db.close()
     }
+}
+
+/** How an open reports its outcome: opened, reopened, answered already, or a repeat. */
+const saidOf = (ticket: Ticket, outcome: TicketOutcome): string => {
+    let said: string
+    if (outcome === "opened") said = "opened"
+    else if (outcome === "reopened") said = `reopened (round ${String(ticket.round)}; ${ticket.fixedBy ?? "its fix"} did not hold)`
+    else if (ticket.state === "answered") said = `answered already, ${ticket.answer ?? "-"} (by ${ticket.closedBy ?? "-"}); what waits on it is released`
+    else said = `repeat of ${ticket.state} ticket, occurrence ${String(ticket.occurrences)}`
+    return said
+}
+
+/** The tail of the file `--evidence-file` names, refused when it cannot be read. */
+const evidenceFileTail = (cwd: string, evidenceFile: string | undefined): string | undefined => {
+    let tail: string | undefined
+    if (evidenceFile !== undefined) {
+        const file = resolve(cwd, evidenceFile)
+        try {
+            tail = evidenceTail(readFileSync(file, "utf8"))
+        } catch (error: unknown) {
+            throw new Refusal("TICKET_EVIDENCE_UNREADABLE", `${file}: ${error instanceof Error ? error.message : String(error)}`)
+        }
+    }
+    return tail
 }
 
 /**
@@ -98,15 +122,7 @@ export const ticketOpenVerb = defineVerb({
         const where = flags.project === undefined ? context.cwd : resolve(context.cwd, flags.project)
         const project = await projectFrom(context, flags.project, false)
         const repo = (await mainCheckout(where)).replaceAll("\\", "/")
-        let tail: string | undefined
-        if (flags["evidence-file"] !== undefined) {
-            const file = resolve(context.cwd, flags["evidence-file"])
-            try {
-                tail = evidenceTail(readFileSync(file, "utf8"))
-            } catch (error: unknown) {
-                throw new Refusal("TICKET_EVIDENCE_UNREADABLE", `${file}: ${error instanceof Error ? error.message : String(error)}`)
-            }
-        }
+        const tail = evidenceFileTail(context.cwd, flags["evidence-file"])
         const evidence: TicketEvidence = { ...ledgerEvidence(repo, flags.task, flags.decision), ...(tail === undefined ? {} : { tail }) }
         const workflow = evidence.workflow ?? null
         const waiters: WaiterInput[] = [
@@ -130,14 +146,7 @@ export const ticketOpenVerb = defineVerb({
             ...(flags.module === undefined ? {} : { module: flags.module }),
             waiters,
         })
-        const said =
-            outcome === "opened"
-                ? "opened"
-                : outcome === "reopened"
-                  ? `reopened (round ${String(ticket.round)}; ${ticket.fixedBy ?? "its fix"} did not hold)`
-                  : ticket.state === "answered"
-                    ? `answered already, ${ticket.answer ?? "-"} (by ${ticket.closedBy ?? "-"}); what waits on it is released`
-                    : `repeat of ${ticket.state} ticket, occurrence ${String(ticket.occurrences)}`
+        const said = saidOf(ticket, outcome)
         return { data: { ticket, outcome }, message: `ticket ${ticket.id} ${said}: ${ticket.severity} ${ticket.kind}: ${ticket.title}` }
     },
 })

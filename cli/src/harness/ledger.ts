@@ -177,7 +177,7 @@ export const machinePath = (): string => join(stateBase(), "machine.sqlite")
 export const mainCheckoutOf = (root: string): string => {
     const dotGit = join(root, ".git")
     if (!existsSync(dotGit) || statSync(dotGit).isDirectory()) return root
-    const gitdir = /^gitdir:\s*(.+)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
+    const gitdir = /^gitdir:\s*(\S.*)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
     const main = gitdir === undefined ? undefined : /^(.*)\/\.git\/worktrees\/[^/]+$/.exec(gitdir)?.[1]
     return main !== undefined && existsSync(join(main, "cli")) ? main : root
 }

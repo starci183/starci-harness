@@ -177,9 +177,9 @@ export const checkRunVerb = defineVerb({
         // At the source's head the relayed files are judged as they stand there: tracked files under their paths, no diff.
         // Its composition findings are never the source's: the relay node defers them to its composer, which answers for them.
         const except = policy.quality.runtime.compositionRules
-        for (const source of judgedRed ? relaySources(scope.root, judgingOf(flags)) : []) {
+        await inOrder(judgedRed ? relaySources(scope.root, judgingOf(flags)) : [], async (source) => {
             runs.push(await runAtBase(scope.root, source.head, rerun({ base: "HEAD", all: false, within: false, paths: source.paths }), { paths: source.paths, except }))
-        }
+        })
         const based = runs.length === 0 ? undefined : judgeAgainstRuns(scope.root, ran.steps, runs)
         const steps = based?.steps ?? ran.steps
         const red = [...gates, ...steps].some((result) => result.status === "red")

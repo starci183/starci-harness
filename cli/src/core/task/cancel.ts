@@ -94,8 +94,12 @@ export const cancelTask = async (cwd: string, taskId: string, reason: string | u
         })
         const worktree = (await removeOpWorktree(callerRoot, ended.id).catch(() => undefined)) ?? null
         const data: CancelData = { task: ended.id, from, status: ended.status, reason: reason ?? null, seats, preserved, worktree, resumed }
-        const kept = gone ? `; its worktree ${before.worktree ?? "-"} was already gone, so it is discarded with nothing kept` : preserved.dir === null ? "; nothing dirty to preserve" : `; dirty work preserved in ${preserved.dir}`
-        const removed = worktree === null ? "" : `; worktree ${worktree.path} ${worktree.removed ? "removed" : "left"}`
+        let kept: string
+        if (gone) kept = `; its worktree ${before.worktree ?? "-"} was already gone, so it is discarded with nothing kept`
+        else if (preserved.dir === null) kept = "; nothing dirty to preserve"
+        else kept = `; dirty work preserved in ${preserved.dir}`
+        let removed = ""
+        if (worktree !== null) removed = `; worktree ${worktree.path} ${worktree.removed ? "removed" : "left"}`
         return { data, message: `cancelled ${data.task} (was ${data.from}${resumed ? ", resumed" : ""}); ${seatNote(seats)}${kept}${removed}` }
     } finally {
         db.close()

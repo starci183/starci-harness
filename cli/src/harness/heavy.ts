@@ -13,6 +13,7 @@ import { managedCpuTimes } from "./host-holders.js"
 import { governorStorePath, now } from "./ledger.js"
 import { withMachine } from "./machine.js"
 import { locateOps } from "./ops.js"
+import { trimEndChars } from "../shared/trim.js"
 
 /** What a heavy command is, for its memory cap: a typecheck, a lint, a test or suite run, a build, an npm install, a uat container. */
 export type HeavyKind = "tsc" | "eslint" | "test" | "build" | "install" | "uat"
@@ -135,8 +136,8 @@ const cpuRuleOf = (rules: HeavyRules, cpuPercent: number, managed: number | null
  * reports). `starved` (the queue admitted nothing for cpuStarveMinutes, `starvedQueue`) lets one command start under a hot
  * CPU: high CPU slows the queue, it never stops it.
  */
-export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly string[] = [], kind?: HeavyKind, cores?: number, starved = false, managedCpu: number | null = null): HostLoad & { readonly admits: boolean; readonly cpuHolds: boolean } => {
-    const cap = slotCap(rules, cores)
+export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly string[] = [], kind?: HeavyKind, starved = false, managedCpu: number | null = null): HostLoad & { readonly admits: boolean; readonly cpuHolds: boolean } => {
+    const cap = slotCap(rules)
     const estimates: Readonly<Record<string, number>> = rules.estimateMb
     // A row of a kind this build does not know (an older or newer CLI) is held at the largest estimate.
     const estimate = (name: string): number => (name in estimates ? (estimates[name] ?? 0) : Math.max(...Object.values(estimates)))
@@ -149,11 +150,14 @@ export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number,
     const full = running.length >= cap
     const fits = running.length === 0 ? freeMb >= own : room >= own
     const admits = !cpuHolds && !full && fits
-    const fitting = Math.max(0, Math.min(cap - running.length, running.length === 0 && room < own ? (freeMb >= own ? 1 : 0) : Math.floor(room / own)))
+    const startsOne = freeMb >= own ? 1 : 0
+    const byRoom = running.length === 0 && room < own ? startsOne : Math.floor(room / own)
+    const fitting = Math.max(0, Math.min(cap - running.length, byRoom))
     const admitted = running.length + Math.min(cpu.slots, fitting)
+    const maxSlotsSuffix = rules.maxSlots === undefined ? "" : `, maxSlots ${String(rules.maxSlots)}`
     const reasons = [
         ...(cpu.rule === null ? [] : [cpu.rule]),
-        ...(full ? [`${String(running.length)} running reach the cap of ${String(cap)} (floor(cores / 2)${rules.maxSlots === undefined ? "" : `, maxSlots ${String(rules.maxSlots)}`})`] : []),
+        ...(full ? [`${String(running.length)} running reach the cap of ${String(cap)} (floor(cores / 2)${maxSlotsSuffix})`] : []),
         ...(!cpuHolds && !full && room < own ? [`free RAM ${String(freeMb)} MB less the reserve ${String(rules.reserveMb)} MB and the ${String(committedMb)} MB the running commands hold is under the reserve for one more (${String(own)} MB)`] : []),
     ]
     const capacity = `${String(admitted)} of cap ${String(cap)} fit: free ${String(freeMb)} MB - reserve ${String(rules.reserveMb)} MB - running ${String(committedMb)} MB = ${String(room)} MB room`
@@ -361,7 +365,7 @@ export const hostLoad = async (rules: HeavyRules = loadHeavyRules()): Promise<Ho
     const { cpu, managed } = await cpuLoad(rules)
     heavySlots()
     const { running, starved } = withGovernor((db) => ({ running: runningKinds(db), starved: starvedQueue(db, rules) }))
-    return admission(rules, Math.floor(freemem() / 1_048_576), cpu, running, undefined, undefined, starved, managed)
+    return admission(rules, Math.floor(freemem() / 1_048_576), cpu, running, undefined, starved, managed)
 }
 
 const repositoryKeys = new Map<string, string>()
@@ -377,7 +381,7 @@ export const repositoryKeyOf = (cwd: string): string => {
         const dotGit = join(dir, ".git")
         if (existsSync(dotGit)) {
             if (statSync(dotGit).isDirectory()) return dir
-            const gitdir = /^gitdir:\s*(.+)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
+            const gitdir = /^gitdir:\s*(\S.*)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
             return (gitdir === undefined ? undefined : /^(.*)\/\.git\/worktrees\/[^/]+$/.exec(gitdir)?.[1]) ?? dir
         }
         const parent = dirname(dir)
@@ -462,7 +466,7 @@ const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at">, rules: H
         const kinds = runningKinds(db)
         const freeMb = Math.floor(freemem() / 1_048_576)
         const starved = starvedQueue(db, rules)
-        const judge = (kind: string): ReturnType<typeof admission> => admission(rules, freeMb, cpu.cpu, kinds, kind as HeavyKind, undefined, starved, cpu.managed)
+        const judge = (kind: string): ReturnType<typeof admission> => admission(rules, freeMb, cpu.cpu, kinds, kind as HeavyKind, starved, cpu.managed)
         const order = servingOrder(rows, rules)
         const first = order.find((row) => judge(row.kind).admits)
         const load = judge(slot.kind)
@@ -601,8 +605,20 @@ export const queuedSince = (owner: number, since: string): number =>
 
 /** A folder as `taskQueuedMs` compares it: resolved, forward slashes, no trailing slash, lower case on Windows. */
 const folderKey = (path: string): string => {
-    const slashed = resolve(path).replaceAll("\\", "/").replace(/\/+$/, "")
+    const slashed = trimEndChars(resolve(path).replaceAll("\\", "/"), "/")
     return process.platform === "win32" ? slashed.toLowerCase() : slashed
+}
+
+/** The wall clock the spans cover once: overlapping waits count once, and nothing before `from`. */
+const unionMs = (spans: readonly (readonly [number, number])[], from: number): number => {
+    let total = 0
+    let reached = from
+    for (const [start, end] of spans.filter(([start, end]) => end > start).sort((left, right) => left[0] - right[0])) {
+        if (end <= reached) continue
+        total += end - Math.max(start, reached)
+        reached = end
+    }
+    return total
 }
 
 /**
@@ -629,14 +645,7 @@ export const taskQueuedMs = (task: string, worktree: string | null, since: strin
         for (const row of db.prepare("SELECT at, cwd, task FROM heavy_slots WHERE state = 'waiting'").all()) {
             if (owns(typeof row.task === "string" ? row.task : null, String(row.cwd))) spans.push([Math.max(Date.parse(String(row.at)), from), at])
         }
-        let total = 0
-        let reached = from
-        for (const [start, end] of spans.filter(([start, end]) => end > start).sort((left, right) => left[0] - right[0])) {
-            if (end <= reached) continue
-            total += end - Math.max(start, reached)
-            reached = end
-        }
-        return total
+        return unionMs(spans, from)
     })
 
 /**
@@ -664,13 +673,11 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
     const slot = { id: `${String(owner)}-${randomBytes(8).toString("hex")}`, pid: process.pid, kind, label, cwd, task }
     const started = Date.now()
     const holdMs = Number(process.env[HOLD_ENV] ?? Number.NaN)
-    let announced = false
-    let load: HostLoad
-    for (;;) {
+    const admit = async (announced: boolean): Promise<{ readonly load: HostLoad; readonly announced: boolean }> => {
         // Re-judged at every poll from the RAM free now and the commands running now, so admission follows the host as it frees.
         const tried = tryAcquire(slot, rules, await cpuLoad(rules))
-        load = tried.load
-        if (tried.holders === null) break
+        const { load } = tried
+        if (tried.holders === null) return { load, announced }
         if (waitsRefused) {
             release(slot.id)
             throw new Refusal(HEAVY_DEFERRED, `${label} was not admitted at once (${load.reason}) and a coordinator's turn never waits in the heavy queue; it runs detached or on a later turn`)
@@ -682,10 +689,11 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
         }
         if (!announced) {
             process.stderr.write(`starci: ${label} waits for a heavy-command slot (${load.reason}; running: ${tried.holders.join(", ") || "none"})\n`)
-            announced = true
         }
         await sleep(rules.pollSeconds * 1000)
+        return admit(true)
     }
+    const { load, announced } = await admit(false)
     if (announced) {
         const waitedMs = Date.now() - started
         withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs, pid: process.pid, owner, task })))
@@ -722,12 +730,13 @@ export const clockOf = (at: string): string => {
  * would be admitted. The full arithmetic is `admission(...).reason`.
  */
 export const heldWhy = (rules: HeavyRules, load: Pick<HostLoad, "freeMb" | "cpuPercent" | "managedCpuPercent">, running: readonly string[], kind: HeavyKind): string | undefined => {
-    const judged = admission(rules, load.freeMb, load.cpuPercent, running, kind, undefined, false, load.managedCpuPercent)
+    const judged = admission(rules, load.freeMb, load.cpuPercent, running, kind, false, load.managedCpuPercent)
     if (judged.admits) return undefined
     if (judged.cpuHolds) {
         const managed = load.managedCpuPercent
         if (managed !== null && managed < rules.managedCpuFloorPercent) return `CPU ${String(load.cpuPercent)}% is foreign (managed ${String(managed)}%) and its ${String(rules.underForeignPressureSlots)} slots under foreign pressure are in use`
-        return `CPU ${String(load.cpuPercent)}% above ${String(rules.maxCpuPercent)}% (managed ${managed === null ? "unknown" : `${String(managed)}%`})`
+        const managedText = managed === null ? "unknown" : `${String(managed)}%`
+        return `CPU ${String(load.cpuPercent)}% above ${String(rules.maxCpuPercent)}% (managed ${managedText})`
     }
     if (running.length >= judged.cap) return `${String(running.length)} running reach the cap of ${String(judged.cap)}`
     if (load.freeMb < rules.reserveMb) return `free RAM ${gb(load.freeMb)} below reserve ${gb(rules.reserveMb)}`

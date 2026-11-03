@@ -150,13 +150,15 @@ const pause = async (ms: number): Promise<void> => new Promise((done) => setTime
 const orcaRemove = async (binary: OrcaBinary, path: string, repo: string): Promise<string | undefined> => {
     await worktreeRemove(binary, path, repo)
     const deadline = Date.now() + ORCA_REMOVAL_MS
-    for (;;) {
+    const poll = async (): Promise<string | undefined> => {
         const state = await worktreeState(binary, path, repo)
         if (!state.listed) return undefined
         if (state.removalError !== null) return `Orca's removal failed: ${state.removalError}`
         if (Date.now() >= deadline) return `still removing after ${String(ORCA_REMOVAL_MS / 1000)}s`
         await pause(500)
+        return poll()
     }
+    return poll()
 }
 
 /** Drops Orca's record of a removed worktree that Orca still lists (a removal it began and could not finish stays listed as failed). */
@@ -185,7 +187,7 @@ const holdsLiveCheckout = (folder: string): boolean => {
     if (!existsSync(dotGit)) return false
     try {
         if (statSync(dotGit).isDirectory()) return true
-        const gitdir = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync(dotGit, "utf8"))?.[1]
+        const gitdir = /^gitdir:\s*(\S.*)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim()
         return gitdir === undefined || existsSync(resolve(folder, gitdir))
     } catch {
         return true
@@ -196,6 +198,33 @@ const holdsLiveCheckout = (folder: string): boolean => {
 const gitLists = async (repo: string, path: string): Promise<boolean> => {
     const listed = await captureGit(["worktree", "list", "--porcelain"], repo)
     return [...listed.stdout.matchAll(/^worktree (.+)$/gm)].some((match) => samePath((match[1] ?? "").trim(), path))
+}
+
+/** A folder git no longer lists: an empty one is removed, one a half-done removal left is deleted, any other is refused. */
+const removeLeftovers = async (repo: string, path: string, left: { readonly remnant: boolean; readonly listedAtStart: boolean }, refusals: string[]): Promise<void> => {
+    const { remnant, listedAtStart } = left
+    if (existsSync(path) && !(await gitLists(repo, path))) {
+        try {
+            if (readdirSync(path).length === 0) rmdirSync(path)
+            else if ((remnant || listedAtStart) && !holdsLiveCheckout(path)) {
+                unlinkCheckoutLinks(path)
+                rmSync(path, { recursive: true, force: true })
+            } else refusals.push("git no longer lists it, and the folder still holds files")
+        } catch (error: unknown) {
+            refusals.push(`rmdir: ${reason(error)}`)
+        }
+    }
+}
+
+/** Removes the worktree with git when git still lists it, naming a refusal. */
+const gitRemove = async (repo: string, path: string, refusals: string[]): Promise<void> => {
+    if (existsSync(path) && (await gitLists(repo, path))) {
+        const removed = await captureGit(["worktree", "remove", "--force", path], repo)
+        if (removed.exitCode !== 0) {
+            const headlineText = headline(removed.stderr) || `exit ${String(removed.exitCode)}`
+            refusals.push(`git: ${headlineText}`)
+        }
+    }
 }
 
 /**
@@ -238,21 +267,8 @@ export const removeWorktreeFolder = async (repo: string, path: string, viaOrca: 
             (error: unknown) => `orca worktree rm: ${reason(error)}`,
         )
     }
-    if (existsSync(path) && (await gitLists(repo, path))) {
-        const removed = await captureGit(["worktree", "remove", "--force", path], repo)
-        if (removed.exitCode !== 0) refusals.push(`git: ${headline(removed.stderr) || `exit ${String(removed.exitCode)}`}`)
-    }
-    if (existsSync(path) && !(await gitLists(repo, path))) {
-        try {
-            if (readdirSync(path).length === 0) rmdirSync(path)
-            else if ((remnant || listedAtStart) && !holdsLiveCheckout(path)) {
-                unlinkCheckoutLinks(path)
-                rmSync(path, { recursive: true, force: true })
-            } else refusals.push("git no longer lists it, and the folder still holds files")
-        } catch (error: unknown) {
-            refusals.push(`rmdir: ${reason(error)}`)
-        }
-    }
+    await gitRemove(repo, path, refusals)
+    await removeLeftovers(repo, path, { remnant, listedAtStart }, refusals)
     if (!existsSync(path)) {
         forgetProcesses(path)
         const ended = reap.killed.length === 0 ? "" : ` after ending ${describeProcesses(reap.killed)}`
@@ -263,7 +279,8 @@ export const removeWorktreeFolder = async (repo: string, path: string, viaOrca: 
     const detail = refusals.join("; ") || "the folder stayed"
     const busy = isBusyFailure(detail)
     const watching = binary === undefined ? undefined : await worktreeState(binary, path, repo).catch(() => undefined)
-    const orcaHolds = watching?.listed === true ? `Orca still watching: it lists the worktree${watching.removalError === null ? "" : ` (${watching.removalError})`}; ` : ""
+    const removalSuffix = watching?.removalError == null ? "" : ` (${watching.removalError})`
+    const orcaHolds = watching?.listed === true ? `Orca still watching: it lists the worktree${removalSuffix}; ` : ""
     return { removed: false, busy, detail, reap, holders: busy ? `${orcaHolds}${await heldBy(path, reap)}` : null, orca: orca.note }
 }
 

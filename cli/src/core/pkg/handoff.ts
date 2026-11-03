@@ -27,7 +27,10 @@ export const pkgHandoffVerb = defineVerb({
     run: async (context, flags) => {
         if (flags.list) {
             const handoffs = listHandoffs()
-            const lines = handoffs.map((one) => `${one.urgent ? "URGENT " : ""}${one.branch} ${one.head.slice(0, 9)} (${one.app}; ${one.packages.join(", ") || "no package folder"}) ${one.worktree} at ${one.at}${one.note === null ? "" : `: ${one.note}`}`)
+            const lines = handoffs.map((one) => {
+                const noteSuffix = one.note === null ? "" : `: ${one.note}`
+                return `${one.urgent ? "URGENT " : ""}${one.branch} ${one.head.slice(0, 9)} (${one.app}; ${one.packages.join(", ") || "no package folder"}) ${one.worktree} at ${one.at}${noteSuffix}`
+            })
             return { data: { recorded: undefined, handoffs } satisfies HandoffData, message: lines.join("\n") || "no package edit handed off" }
         }
         const worktree = await repositoryRoot(context.cwd)

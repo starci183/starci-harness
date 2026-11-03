@@ -1,9 +1,31 @@
 import { repositoryRoot } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import type { VerbContext } from "../../shared/verb.js"
 import { requireCiGreen, requireCiRunGreen } from "../check/ci.js"
 import { callerRole } from "../../shared/role.js"
 import { Refusal } from "../../shared/errors.js"
 import { argSet, argValue, FORWARDED, leadingOperands, runHfs, withoutArg } from "./hfs.js"
+
+/** Waits for a green CI (or the urgent record) before an executed production deploy, as policy/quality.yaml requireCi asks. */
+const judgeProductionCi = async (context: VerbContext, args: readonly string[], sha: string): Promise<void> => {
+    const accepted = await requireCiGreen(context, await repositoryRoot(context.cwd), "deploy.prod", sha, { urgent: argSet(args, "urgent") })
+    if (accepted !== undefined) {
+        const verdictText = accepted.verdict === "urgent" ? accepted.detail : `CI of ${accepted.sha.slice(0, 9)} is green`
+        context.progress(`deploy.prod: ${verdictText}`)
+    }
+}
+
+/** Judges the CI run `--ci-run` names as the evidence of the commit being deployed (or says it is judged once `--execute` deploys). */
+const judgeNamedRun = async (context: VerbContext, args: readonly string[], deploy: boolean, sha: string | undefined, ciRun: string | undefined): Promise<void> => {
+    if (!deploy) throw new Refusal("CI_RUN_USAGE", "--ci-run belongs to `stack deploy`: it names the CI run that proves the commit being deployed")
+    if (ciRun === undefined || ciRun === "" || ciRun.startsWith("-")) throw new Refusal("CI_RUN_USAGE", "--ci-run takes the id of the GitHub Actions run to judge")
+    if (argSet(args, "urgent")) throw new Refusal("CI_RUN_USAGE", "--ci-run and --urgent exclude each other: an urgent deploy stands on its urgent record, a CI deploy on its run")
+    if (argSet(args, "execute")) {
+        if (sha === undefined) throw new Refusal("CI_RUN_USAGE", "--ci-run judges one exact commit: add --sha <40-hex commit being deployed>")
+        const evidence = await requireCiRunGreen(await repositoryRoot(context.cwd), sha, ciRun)
+        context.progress(`ci evidence: run ${String(evidence.runId)} of ${sha.slice(0, 9)}: ${evidence.checked.map((check) => check.job).join(", ")} green`)
+    } else context.progress(`ci evidence: dry run; run ${ciRun} is judged when --execute deploys`)
+}
 
 /**
  * `starci app stack`: Swarm deploy tooling of an app (prepare to rollback, dry runs without --execute); @starci/hfs runs it in-process in the app with the caller's role. Before it forwards, an
@@ -27,17 +49,9 @@ export const appStackVerb = defineVerb({
         const deploy = leadingOperands(args)[0] === "deploy"
         const ciRun = argValue(args, "ci-run")
         if (withoutArg(args, "ci-run").length !== args.length) {
-            if (!deploy) throw new Refusal("CI_RUN_USAGE", "--ci-run belongs to `stack deploy`: it names the CI run that proves the commit being deployed")
-            if (ciRun === undefined || ciRun === "" || ciRun.startsWith("-")) throw new Refusal("CI_RUN_USAGE", "--ci-run takes the id of the GitHub Actions run to judge")
-            if (argSet(args, "urgent")) throw new Refusal("CI_RUN_USAGE", "--ci-run and --urgent exclude each other: an urgent deploy stands on its urgent record, a CI deploy on its run")
-            if (argSet(args, "execute")) {
-                if (sha === undefined) throw new Refusal("CI_RUN_USAGE", "--ci-run judges one exact commit: add --sha <40-hex commit being deployed>")
-                const evidence = await requireCiRunGreen(await repositoryRoot(context.cwd), sha, ciRun)
-                context.progress(`ci evidence: run ${String(evidence.runId)} of ${sha.slice(0, 9)}: ${evidence.checked.map((check) => check.job).join(", ")} green`)
-            } else context.progress(`ci evidence: dry run; run ${ciRun} is judged when --execute deploys`)
+            await judgeNamedRun(context, args, deploy, sha, ciRun)
         } else if (deploy && argSet(args, "execute") && (argValue(args, "env") ?? "production") === "production" && sha !== undefined) {
-            const accepted = await requireCiGreen(context, await repositoryRoot(context.cwd), "deploy.prod", sha, { urgent: argSet(args, "urgent") })
-            if (accepted !== undefined) context.progress(`deploy.prod: ${accepted.verdict === "urgent" ? accepted.detail : `CI of ${accepted.sha.slice(0, 9)} is green`}`)
+            await judgeProductionCi(context, args, sha)
         }
         return runHfs(context, "stack", args, true, undefined, { role: callerRole() ?? "owner" })
     },

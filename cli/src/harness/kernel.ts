@@ -23,6 +23,7 @@ import { projectOf } from "./work.js"
 import { materialiseHooks } from "./worktree.js"
 import { getWorkflow, recordKernel } from "./workflow.js"
 import type { KernelRecord, WorkflowRow } from "./workflow.js"
+import { inOrder } from "./sequential.js"
 
 /** The exact title of a workflow's Kernel seat and orchestration task. */
 export const kernelTitle = (workflowId: string): string => `[Kernel] ${workflowId}`
@@ -233,7 +234,7 @@ export const startKernel = async (root: string, cwd: string, workflowId: string,
     }
     // The newest open seat is judged by `replace`; an older one still open beside it is a second Kernel and is retired outright.
     const open = withRecord(root, (db) => kernelSeatsOf(db, workflowId))
-    for (const [index, seat] of open.entries()) notes.push(await retireOpenSeat(root, cwd, seat, binary, options.replace === true || index > 0))
+    notes.push(...(await inOrder(open, (seat, index) => retireOpenSeat(root, cwd, seat, binary, options.replace === true || index > 0))))
     if (workflow.kernel.terminal !== null && workflow.kernel.owned && workflow.kernel.closedAt === null && open.length === 0) await terminalClose(binary, workflow.kernel.terminal, cwd).catch(() => "gone")
     const worktree = await ensureWorkflowWorktree(root, workflowId)
     const pick = pickCoordinator("kernel")

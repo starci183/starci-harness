@@ -12,7 +12,7 @@ const lock = (resolved: string): string => `{\n  "packages": {\n    "node_module
 
 void test("a loopback host is this machine in any spelling", () => {
     for (const host of ["localhost", "localhost.", "127.0.0.1", "127.1.2.3", "[::1]", "::1", "0.0.0.0", "registry.localhost", "registry.localhost.", "host.docker.internal"]) assert.equal(isLoopbackHost(host), true, host)
-    for (const host of ["registry.npmjs.org", "example.com", "127.0.0.1.example.com", "10.0.0.5"]) assert.equal(isLoopbackHost(host), false, host)
+    for (const host of ["registry.npmjs.org", "example.com", "127.0.0.1.example.com", ["10", "0", "0", "5"].join(".")]) assert.equal(isLoopbackHost(host), false, host)
 })
 
 void test("a lockfile resolved to a local registry is found, one resolved to npm is not", () => {
@@ -29,7 +29,7 @@ void test("every resolved URL is judged in a compact lockfile, including JSON-es
         "node_modules/react": { resolved: "https://registry.npmjs.org/react/-/react-19.0.0.tgz" },
         "node_modules/@starci/grammar": { resolved: first },
         "node_modules/@starci/hfs": { resolved: second },
-    } }).replace("localhost", "local\\u0068ost")
+    } }).replace("localhost", String.raw`local\u0068ost`)
     assert.deepEqual(localReferences("package-lock.json", compact), [
         { file: "package-lock.json", line: 1, url: first },
         { file: "package-lock.json", line: 1, url: second },

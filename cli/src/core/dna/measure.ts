@@ -87,7 +87,7 @@ export const installProbe = (judgePart: Judge): void => {
     } = { input: { rootAttribute: "data-grammar-family", family: "", maxBroken: 20 }, root: null, fixture: {}, targets: new Map(), beforeValues: new Map(), ringBaseline: new Map() }
 
     const rootSelector = (): string => `[${state.input.rootAttribute}="${state.input.family}"]`
-    const list = (items: ArrayLike<Element>): Element[] => Array.from(items)
+    const list = <T extends Element>(items: ArrayLike<T>): T[] => Array.from(items)
     const round = (value: number): number => Math.round(value * 100) / 100
     const px = (value: string): number => Number.parseFloat(value) || 0
     const visible = (element: Element): boolean => element.getClientRects().length > 0
@@ -105,7 +105,8 @@ export const installProbe = (judgePart: Judge): void => {
         if (element.id !== "") return `${tag}#${element.id}`
         const parent = element.parentElement
         const twins = parent === null ? [] : list(parent.children).filter((child) => child.tagName === element.tagName)
-        return `${tag}${markerOf(element)}${twins.length > 1 ? `:nth-of-type(${String(twins.indexOf(element) + 1)})` : ""}`
+        const twinsSuffix = twins.length > 1 ? `:nth-of-type(${String(twins.indexOf(element) + 1)})` : ""
+        return `${tag}${markerOf(element)}${twinsSuffix}`
     }
     const pathOf = (element: Element): string => {
         const steps: string[] = []
@@ -148,7 +149,8 @@ export const installProbe = (judgePart: Judge): void => {
             at = at.parentElement
         }
         let ground: [number, number, number] = [255, 255, 255]
-        for (const [r, g, b, a] of layers.reverse()) ground = [r * a + ground[0] * (1 - a), g * a + ground[1] * (1 - a), b * a + ground[2] * (1 - a)]
+        layers.reverse()
+        for (const [r, g, b, a] of layers) ground = [r * a + ground[0] * (1 - a), g * a + ground[1] * (1 - a), b * a + ground[2] * (1 - a)]
         return ground
     }
     const luminance = (rgb: readonly [number, number, number]): number => {
@@ -183,7 +185,7 @@ export const installProbe = (judgePart: Judge): void => {
             }
         }
         const layer = value.slice(0, end).replace(/(?:rgba?|hsla?|oklch|oklab|lab|lch|color)\([^)]*\)/gi, "")
-        const lengths = Array.from(layer.matchAll(/(-?\d*\.?\d+)px/g)).map((match) => Number(match[1]))
+        const lengths = Array.from(layer.matchAll(/(-?(?:\d+(?:\.\d+)?|\.\d+))px/g)).map((match) => Number(match[1]))
         return [lengths[0] ?? 0, lengths[1] ?? 0, lengths[2] ?? 0, lengths[3] ?? 0]
     }
     const matrixOf = (element: Element): { scale: number; x: number; y: number } => {
@@ -341,6 +343,20 @@ export const installProbe = (judgePart: Judge): void => {
         const matrix = new DOMMatrix(transform)
         return { x: Math.hypot(matrix.a, matrix.b) || 1, y: Math.hypot(matrix.c, matrix.d) || 1 }
     }
+    const firstLetterCase = (element: Element): DnaScalar => {
+        const letter = Array.from(textOf(element)).find((char) => char.toLowerCase() !== char.toUpperCase())
+        // A label with no letter (a count, a glyph) has no first letter to be cased; it reads as the case the law wants.
+        if (letter === undefined) return "uppercase"
+        return letter === letter.toUpperCase() ? "uppercase" : "lowercase"
+    }
+
+    const tabsLook = (element: Element): DnaScalar => {
+        const selected = element.matches("[role=\"tab\"][aria-selected=\"true\"]") ? element : element.querySelector("[role=\"tab\"][aria-selected=\"true\"]")
+        const indicator = selected?.querySelector(".tabs__indicator") ?? element.querySelector(".tabs__indicator")
+        if (selected === null || indicator === null) return null
+        return indicator.getBoundingClientRect().height >= selected.getBoundingClientRect().height * 0.8 ? "pill" : "underline"
+    }
+
     const readMetric = (element: Element, metric: string, pseudo: string | null): DnaScalar | DnaScalar[] => {
         const rect = element.getBoundingClientRect()
         switch (metric) {
@@ -391,10 +407,7 @@ export const installProbe = (judgePart: Judge): void => {
             case "focus-rings":
                 return ringsOf(element)
             case "tabs-look": {
-                const selected = element.matches("[role=\"tab\"][aria-selected=\"true\"]") ? element : element.querySelector("[role=\"tab\"][aria-selected=\"true\"]")
-                const indicator = selected?.querySelector(".tabs__indicator") ?? element.querySelector(".tabs__indicator")
-                if (selected === null || indicator === null) return null
-                return indicator.getBoundingClientRect().height >= selected.getBoundingClientRect().height * 0.8 ? "pill" : "underline"
+                return tabsLook(element)
             }
             case "navigation": {
                 if (window.__dnaNavigation === undefined) return "reload"
@@ -418,10 +431,7 @@ export const installProbe = (judgePart: Judge): void => {
             case "text":
                 return textOf(element)
             case "first-letter": {
-                const letter = Array.from(textOf(element)).find((char) => char.toLowerCase() !== char.toUpperCase())
-                // A label with no letter (a count, a glyph) has no first letter to be cased; it reads as the case the law wants.
-                if (letter === undefined) return "uppercase"
-                return letter === letter.toUpperCase() ? "uppercase" : "lowercase"
+                return firstLetterCase(element)
             }
             case "lines":
                 return linesOf(element)
@@ -451,7 +461,7 @@ export const installProbe = (judgePart: Judge): void => {
         // The probe sits inside the element so a token defined on the element itself resolves; a void element cannot hold one.
         const host = anchor.matches("input,img,hr,br,textarea,select") ? (anchor.parentElement ?? anchor) : anchor
         const probe = doc.createElement("span")
-        probe.setAttribute("data-dna-reference", "probe")
+        probe.dataset.dnaReference = "probe"
         probe.style.setProperty("position", "absolute")
         probe.style.setProperty("visibility", "hidden")
         probe.style.setProperty(property, raw)
@@ -470,36 +480,51 @@ export const installProbe = (judgePart: Judge): void => {
     const vendorReference = (component: string, props: Readonly<Record<string, string | number | boolean>>, anchor: Element): Element | null => {
         const wanted = Object.entries(props).map(([key, value]) => [key, typeof value === "string" && value.startsWith("$") ? (anchor.getAttribute(value.slice(1)) ?? "") : value] as const)
         return (
-            list(doc.querySelectorAll(`[data-dna-vendor="${component}"]`)).find((candidate) => {
-                const declared = JSON.parse(candidate.getAttribute("data-dna-props") ?? "{}") as Record<string, unknown>
+            list(doc.querySelectorAll<HTMLElement>(`[data-dna-vendor="${component}"]`)).find((candidate) => {
+                const declared = JSON.parse(candidate.dataset.dnaProps ?? "{}") as Record<string, unknown>
                 return wanted.every(([key, value]) => String(declared[key]) === String(value))
             }) ?? null
         )
     }
+    const oneOfAlternatives = (oneOf: Extract<DnaValue, { oneOf: unknown }>["oneOf"], anchor: Element, metrics: readonly string[], context: { readonly scope: Element | null; readonly rows: number; readonly beforeKey: string }): Resolved => {
+        const value = { oneOf }
+        const parts = value.oneOf.map((item) => resolve(anchor, item, metrics, context))
+        const alternatives = parts.flatMap((part) => ("alternatives" in part ? part.alternatives : []))
+        return alternatives.length === 0 ? { skip: "no alternative of oneOf resolves" } : { alternatives }
+    }
+
+    const countAlternatives = (count: string, offset: number | undefined, scope: Element | null): Resolved => {
+        const value = { count, offset }
+        const inside = scope === null ? queryAll(value.count, null).length : queryAll(value.count, scope).length
+        return { alternatives: [[inside + (value.offset ?? 0)]] }
+    }
+
+    const vendorAlternatives = (vendor: Extract<DnaValue, { vendor: unknown }>["vendor"], anchor: Element): Resolved => {
+        const value = { vendor }
+        const reference = vendorReference(value.vendor.component, value.vendor.props, anchor)
+        if (reference === null) return { skip: `no ${value.vendor.component} reference (${JSON.stringify(value.vendor.props)}) is rendered beside the story` }
+        const names = typeof value.vendor.metric === "string" ? [value.vendor.metric] : value.vendor.metric
+        return { alternatives: [readAll(reference, "style", names, null)] }
+    }
+
     const resolve = (anchor: Element, value: DnaValue | undefined, metrics: readonly string[], context: { readonly scope: Element | null; readonly rows: number; readonly beforeKey: string }): Resolved => {
         if (value === undefined) return { alternatives: [] }
         if (typeof value !== "object") return { alternatives: [[canon(value)]] }
         if ("token" in value) {
             const resolved = metrics.map((metric) => resolveToken(anchor, value.token, metric))
-            return resolved.some((item) => item === null) ? { skip: `${value.token} is not set where the element is` } : { alternatives: [resolved] }
+            return resolved.includes(null) ? { skip: `${value.token} is not set where the element is` } : { alternatives: [resolved] }
         }
         if ("threshold" in value) return { skip: "a threshold is read before the page" }
         if ("vendor" in value) {
-            const reference = vendorReference(value.vendor.component, value.vendor.props, anchor)
-            if (reference === null) return { skip: `no ${value.vendor.component} reference (${JSON.stringify(value.vendor.props)}) is rendered beside the story` }
-            const names = typeof value.vendor.metric === "string" ? [value.vendor.metric] : value.vendor.metric
-            return { alternatives: [readAll(reference, "style", names, null)] }
+            return vendorAlternatives(value.vendor, anchor)
         }
         if ("self" in value) return { alternatives: [flat(readMetric(anchor, value.self, null)).map((item) => (typeof item === "number" ? round(item * value.times) : item))] }
         if ("count" in value) {
-            const inside = context.scope === null ? queryAll(value.count, null).length : queryAll(value.count, context.scope).length
-            return { alternatives: [[inside + (value.offset ?? 0)]] }
+            return countAlternatives(value.count, value.offset, context.scope)
         }
         if ("rows" in value) return { alternatives: [[context.rows + value.rows]] }
         if ("oneOf" in value) {
-            const parts = value.oneOf.map((item) => resolve(anchor, item, metrics, context))
-            const alternatives = parts.flatMap((part) => ("alternatives" in part ? part.alternatives : []))
-            return alternatives.length === 0 ? { skip: "no alternative of oneOf resolves" } : { alternatives }
+            return oneOfAlternatives(value.oneOf, anchor, metrics, context)
         }
         if ("before" in value) {
             const saved = state.beforeValues.get(context.beforeKey)
@@ -549,8 +574,8 @@ export const installProbe = (judgePart: Judge): void => {
     }
 
     /** The part one element gives for a metric list, an operator and a value; a reason string when it cannot be measured. */
-    const partOf = (element: Element, variant: DnaVariant, metrics: readonly string[], op: DnaVariant["op"], value: DnaValue | undefined, kind: string, scope: Element | null, beforeKey: string): DnaPart | string => {
-        const resolved = resolve(element, value, metrics, { scope, rows: 0, beforeKey })
+    const partOf = (element: Element, variant: DnaVariant, metrics: readonly string[], op: DnaVariant["op"], value: DnaValue | undefined, kind: string, place: { readonly scope: Element | null; readonly beforeKey: string }): DnaPart | string => {
+        const resolved = resolve(element, value, metrics, { ...place, rows: 0 })
         if ("skip" in resolved) return resolved.skip
         if (resolved.alternatives.length === 0 && op !== "set") return "the measure has no value"
         return { metric: metrics.join(","), op, measured: readAll(element, kind, metrics, variant.pseudo), expected: resolved.alternatives, pattern: patternFlag(value), tolerance: toleranceOf(variant) }
@@ -568,13 +593,7 @@ export const installProbe = (judgePart: Judge): void => {
         const rgba = rgbaOf(value)
         return rgba !== null && rgba[3] > 0
     }
-    const seamBetween = (above: Element, below: Element): { left: number; right: number } | null => {
-        const a = above.getBoundingClientRect()
-        const b = below.getBoundingClientRect()
-        const lower = style(above)
-        if (px(lower.borderBottomWidth) > 0 && lower.borderBottomStyle !== "none" && hasPaint(lower.borderBottomColor)) return { left: a.left, right: a.right }
-        const upper = style(below)
-        if (px(upper.borderTopWidth) > 0 && upper.borderTopStyle !== "none" && hasPaint(upper.borderTopColor)) return { left: b.left, right: b.right }
+    const pseudoSeam = (above: Element, below: Element): { left: number; right: number } | null => {
         for (const [owner, pseudo] of [[above, "::after"], [below, "::before"]] as const) {
             const computed = style(owner, pseudo)
             if (computed.content === "none" || computed.content === "normal") continue
@@ -586,6 +605,18 @@ export const installProbe = (judgePart: Judge): void => {
                 return { left, right }
             }
         }
+        return null
+    }
+
+    const seamBetween = (above: Element, below: Element): { left: number; right: number } | null => {
+        const a = above.getBoundingClientRect()
+        const b = below.getBoundingClientRect()
+        const lower = style(above)
+        if (px(lower.borderBottomWidth) > 0 && lower.borderBottomStyle !== "none" && hasPaint(lower.borderBottomColor)) return { left: a.left, right: a.right }
+        const upper = style(below)
+        if (px(upper.borderTopWidth) > 0 && upper.borderTopStyle !== "none" && hasPaint(upper.borderTopColor)) return { left: b.left, right: b.right }
+        const pseudo = pseudoSeam(above, below)
+        if (pseudo !== null) return pseudo
         const between = list(doc.querySelectorAll("hr,[role=\"separator\"],[data-component=\"Divider\"]")).find((item) => {
             const rect = item.getBoundingClientRect()
             return rect.width > 0 && rect.top >= a.bottom - 1 && rect.bottom <= b.top + 2 && rect.height <= 2
@@ -598,126 +629,171 @@ export const installProbe = (judgePart: Judge): void => {
     }
 
     // ---- the evaluator ----
+    interface Sink {
+        readonly collector: Collector
+        readonly skip: (reason: string) => void
+        readonly add: (path: string, parts: readonly (DnaPart | string)[]) => void
+    }
+    const sinkOf = (collector: Collector): Sink => {
+        const skip = (reason: string): void => {
+            collector.skipped.add(reason)
+        }
+        const add = (path: string, parts: readonly (DnaPart | string)[]): void => {
+            const reasons = parts.filter((part): part is string => typeof part === "string")
+            if (reasons.length > 0) {
+                reasons.forEach(skip)
+                return
+            }
+            judgeInto(collector, path, parts.filter((part): part is DnaPart => typeof part !== "string"))
+        }
+        return { collector, skip, add }
+    }
+
+    /** A variant judged on each element it selects, one part per element. */
+    const evaluateEach = (variant: DnaVariant, root: Element, anchors: readonly Element[] | null, beforeKeys: readonly string[] | null, sink: Sink): void => {
+        const { collector, add } = sink
+        const matches = selectedBy(variant, root, anchors)
+        collector.matched = matches.length
+        matches.forEach((original, position) => {
+            const element = variant.target === "painted-box" ? paintedBox(original) : original
+            add(pathOf(original), [partOf(element, variant, variant.metrics, variant.op, variant.value, variant.kind, { scope: null, beforeKey: beforeKeys?.[position] ?? "" })])
+        })
+    }
+    /** A variant that reads custom properties of the root: set, or ordered against each other. */
+    const evaluateTokens = (variant: DnaVariant, root: Element, sink: Sink): void => {
+        const { collector, add } = sink
+        collector.matched = 1
+        const names = variant.metrics
+        if (variant.op === "set") {
+            for (const name of names) {
+                const raw = style(root).getPropertyValue(name).trim()
+                add(name, [{ metric: name, op: "set", measured: [raw], expected: [], pattern: false, tolerance: 0 }])
+            }
+        } else {
+            const lengths = names.map((name) => {
+                const raw = style(root).getPropertyValue(name).trim()
+                return raw === "" ? null : lengthOf(root, `var(${name})`, "width")
+            })
+            const parts = names.slice(0, -1).map((name, at): DnaPart | string => {
+                const next = names[at + 1] ?? ""
+                const [left, right] = [lengths[at], lengths[at + 1]]
+                if (left === null || left === undefined || right === null || right === undefined) return `${left === null || left === undefined ? name : next} is not set on the root`
+                return { metric: `${name} ${variant.op} ${next}`, op: variant.op, measured: [left], expected: [[right]], pattern: false, tolerance: 0 }
+            })
+            add(pathOf(root), parts)
+        }
+    }
+    /** A variant whose elements in one scope must read alike. */
+    const evaluateUniform = (variant: DnaVariant, scopeElement: Element, within: Element | null, sink: Sink): void => {
+        const { skip, add } = sink
+        const group = queryMeasured(variant.select, scopeElement)
+        if (group.length === 0) {
+            skip("no element of the scope matches")
+            return
+        }
+        const rows = group.map((item) => readAll(item, "style", variant.metrics, variant.pseudo))
+        const first = rows[0] ?? []
+        const measured = rows.flat()
+        const resolved = variant.value === undefined ? { alternatives: [rows.flatMap(() => first)] } : resolve(scopeElement, variant.value, variant.metrics, { scope: within, rows: 0, beforeKey: "" })
+        if ("skip" in resolved) skip(resolved.skip)
+        else add(pathOf(scopeElement), [{ metric: variant.metrics.join(","), op: variant.op, measured, expected: resolved.alternatives, pattern: false, tolerance: toleranceOf(variant) }])
+    }
+    /** One host of a seams variant: its rows, the seams drawn between them and what they are judged against. */
+    const evaluateSeamsOf = (variant: DnaVariant, host: Element, sink: Sink): void => {
+        const { skip, add } = sink
+        const rows = variant.rows === null ? [] : list(host.querySelectorAll(variant.rows)).filter(visible)
+        if (rows.length === 0) {
+            skip("the match has no rows")
+            return
+        }
+        const seams = rows.slice(0, -1).map((row, at) => seamBetween(row, rows[at + 1] ?? row))
+        const drawn = seams.filter((seam): seam is { left: number; right: number } => seam !== null)
+        const inner = paddingBox(host)
+        if (variant.metrics.includes("count")) {
+            const resolved = resolve(host, variant.value, variant.metrics, { scope: null, rows: rows.length, beforeKey: "" })
+            if ("skip" in resolved) skip(resolved.skip)
+            else add(pathOf(host), [{ metric: "count", op: variant.op, measured: [drawn.length], expected: resolved.alternatives, pattern: false, tolerance: 0 }])
+        } else if (drawn.length === 0) {
+            skip("the match draws no seam to measure")
+        } else {
+            const resolved = resolve(host, variant.value, variant.metrics, { scope: null, rows: rows.length, beforeKey: "" })
+            if ("skip" in resolved) skip(resolved.skip)
+            else add(pathOf(host), [{ metric: "inset-inline", op: variant.op, measured: drawn.flatMap((seam) => [round(seam.left - inner.left), round(inner.right - seam.right)]), expected: resolved.alternatives, pattern: false, tolerance: 0.5 }])
+        }
+    }
+    /** A variant that reads the seams between the rows of each match. */
+    const evaluateSeams = (variant: DnaVariant, root: Element, within: Element | null, sink: Sink): void => {
+        for (const host of queryMeasured(variant.select, within ?? root)) evaluateSeamsOf(variant, host, sink)
+    }
+    /** A count variant in one scope: the elements the select finds, judged against the value. */
+    const evaluateCount = (variant: DnaVariant, scopeElement: Element, within: Element | null, sink: Sink): void => {
+        const found = scopeElement === doc.documentElement || (variant.scope === null && variant.select.startsWith(DOCUMENT)) ? queryAll(variant.select, null) : queryAll(variant.select, scopeElement)
+        const kept = variant.where === null ? found : found.filter((item) => variant.where !== null && whereHolds(item, variant.where, variant))
+        sink.add(pathOf(scopeElement), [partOfCount(variant, kept.length, within)])
+    }
+    /** A variant judged once per scope: a count, a uniform read or its seams. */
+    const evaluateScopes = (variant: DnaVariant, root: Element, sink: Sink): void => {
+        const wholeScope = variant.kind === "count" && variant.select.startsWith(DOCUMENT) ? doc.documentElement : root
+        const scopes = variant.scope === null ? [wholeScope] : queryAll(variant.scope, root)
+        sink.collector.matched = scopes.length
+        for (const scopeElement of scopes) {
+            const within = scopeElement === doc.documentElement ? null : scopeElement
+            if (variant.kind === "count") evaluateCount(variant, scopeElement, within, sink)
+            else if (variant.kind === "uniform") evaluateUniform(variant, scopeElement, within, sink)
+            else if (variant.kind === "seams") evaluateSeams(variant, root, within, sink)
+        }
+    }
+    const relationTarget = (ref: NonNullable<DnaVariant["ref"]>, original: Element): Element | null => {
+        const ancestor = original.closest(ref.within)
+        let target: Element | null = null
+        if (ancestor !== null) {
+            if (ref.select === "self") target = ancestor
+            else if (ref.select === "previous") target = original.previousElementSibling
+            else target = ancestor.querySelector(ref.select)
+        }
+        return target
+    }
+
+    /** A variant that compares each match with a reference element. */
+    const evaluateRelation = (variant: DnaVariant, root: Element, anchors: readonly Element[] | null, sink: Sink): void => {
+        const { collector, skip, add } = sink
+        const matches = selectedBy(variant, root, anchors)
+        collector.matched = matches.length
+        for (const original of matches) {
+            const ref = variant.ref
+            if (ref === null) continue
+            const target = relationTarget(ref, original)
+            if (target === null) {
+                skip("the reference element of the relation is not rendered")
+                continue
+            }
+            const reference = readAll(target, "box", ref.metrics, null)
+            const offset = typeof ref.offset === "number" ? ref.offset : Number.parseFloat(ref.offset ?? "0") || 0
+            const element = variant.target === "painted-box" ? paintedBox(original) : original
+            add(pathOf(original), [
+                {
+                    metric: variant.metrics.join(","),
+                    op: variant.op,
+                    measured: readAll(element, "box", variant.metrics, variant.pseudo),
+                    expected: [reference.map((item) => (typeof item === "number" ? round(item + offset) : item))],
+                    pattern: false,
+                    tolerance: toleranceOf(variant),
+                },
+            ])
+        }
+    }
     const evaluate = (variant: DnaVariant, index: number, anchors: readonly Element[] | null, beforeKeys: readonly string[] | null): PageReport => {
         const collector = newCollector()
         const root = state.root
         if (root === null) return finish(index, collector, "no Grammar root of the family on the page")
         try {
-            const skip = (reason: string): void => {
-                collector.skipped.add(reason)
-            }
-            const add = (path: string, parts: readonly (DnaPart | string)[]): void => {
-                const reasons = parts.filter((part): part is string => typeof part === "string")
-                if (reasons.length > 0) {
-                    reasons.forEach(skip)
-                    return
-                }
-                judgeInto(collector, path, parts.filter((part): part is DnaPart => typeof part !== "string"))
-            }
+            const sink = sinkOf(collector)
             const single = variant.kind === "uniform" || variant.kind === "count" || variant.kind === "seams" || variant.kind === "relation" || variant.kind === "tokens"
-            if (!single) {
-                const matches = selectedBy(variant, root, anchors)
-                collector.matched = matches.length
-                matches.forEach((original, position) => {
-                    const element = variant.target === "painted-box" ? paintedBox(original) : original
-                    add(pathOf(original), [partOf(element, variant, variant.metrics, variant.op, variant.value, variant.kind, null, beforeKeys?.[position] ?? "")])
-                })
-                return finish(index, collector)
-            }
-            if (variant.kind === "tokens") {
-                collector.matched = 1
-                const names = variant.metrics
-                if (variant.op === "set") {
-                    for (const name of names) {
-                        const raw = style(root).getPropertyValue(name).trim()
-                        add(name, [{ metric: name, op: "set", measured: [raw], expected: [], pattern: false, tolerance: 0 }])
-                    }
-                } else {
-                    const lengths = names.map((name) => {
-                        const raw = style(root).getPropertyValue(name).trim()
-                        return raw === "" ? null : lengthOf(root, `var(${name})`, "width")
-                    })
-                    const parts = names.slice(0, -1).map((name, at): DnaPart | string => {
-                        const next = names[at + 1] ?? ""
-                        const [left, right] = [lengths[at], lengths[at + 1]]
-                        if (left === null || left === undefined || right === null || right === undefined) return `${left === null || left === undefined ? name : next} is not set on the root`
-                        return { metric: `${name} ${variant.op} ${next}`, op: variant.op, measured: [left], expected: [[right]], pattern: false, tolerance: 0 }
-                    })
-                    add(pathOf(root), parts)
-                }
-                return finish(index, collector)
-            }
-            const scopes = variant.scope === null ? (variant.kind === "count" && variant.select.startsWith(DOCUMENT) ? [doc.documentElement] : [root]) : queryAll(variant.scope, root)
-            collector.matched = scopes.length
-            for (const scopeElement of scopes) {
-                const within = scopeElement === doc.documentElement ? null : scopeElement
-                if (variant.kind === "count") {
-                    const found = scopeElement === doc.documentElement || (variant.scope === null && variant.select.startsWith(DOCUMENT)) ? queryAll(variant.select, null) : queryAll(variant.select, scopeElement)
-                    const kept = variant.where === null ? found : found.filter((item) => variant.where !== null && whereHolds(item, variant.where, variant))
-                    add(pathOf(scopeElement), [partOfCount(variant, kept.length, within)])
-                } else if (variant.kind === "uniform") {
-                    const group = queryMeasured(variant.select, scopeElement)
-                    if (group.length === 0) {
-                        skip("no element of the scope matches")
-                        continue
-                    }
-                    const rows = group.map((item) => readAll(item, "style", variant.metrics, variant.pseudo))
-                    const first = rows[0] ?? []
-                    const measured = rows.flat()
-                    const resolved = variant.value === undefined ? { alternatives: [rows.flatMap(() => first)] } : resolve(scopeElement, variant.value, variant.metrics, { scope: within, rows: 0, beforeKey: "" })
-                    if ("skip" in resolved) skip(resolved.skip)
-                    else add(pathOf(scopeElement), [{ metric: variant.metrics.join(","), op: variant.op, measured, expected: resolved.alternatives, pattern: false, tolerance: toleranceOf(variant) }])
-                } else if (variant.kind === "seams") {
-                    const hosts = queryMeasured(variant.select, within ?? root)
-                    for (const host of hosts) {
-                        const rows = variant.rows === null ? [] : list(host.querySelectorAll(variant.rows)).filter(visible)
-                        if (rows.length === 0) {
-                            skip("the match has no rows")
-                            continue
-                        }
-                        const seams = rows.slice(0, -1).map((row, at) => seamBetween(row, rows[at + 1] ?? row))
-                        const drawn = seams.filter((seam): seam is { left: number; right: number } => seam !== null)
-                        const inner = paddingBox(host)
-                        if (variant.metrics.includes("count")) {
-                            const resolved = resolve(host, variant.value, variant.metrics, { scope: null, rows: rows.length, beforeKey: "" })
-                            if ("skip" in resolved) skip(resolved.skip)
-                            else add(pathOf(host), [{ metric: "count", op: variant.op, measured: [drawn.length], expected: resolved.alternatives, pattern: false, tolerance: 0 }])
-                        } else if (drawn.length === 0) {
-                            skip("the match draws no seam to measure")
-                        } else {
-                            const resolved = resolve(host, variant.value, variant.metrics, { scope: null, rows: rows.length, beforeKey: "" })
-                            if ("skip" in resolved) skip(resolved.skip)
-                            else add(pathOf(host), [{ metric: "inset-inline", op: variant.op, measured: drawn.flatMap((seam) => [round(seam.left - inner.left), round(inner.right - seam.right)]), expected: resolved.alternatives, pattern: false, tolerance: 0.5 }])
-                        }
-                    }
-                }
-            }
-            if (variant.kind === "relation") {
-                const matches = selectedBy(variant, root, anchors)
-                collector.matched = matches.length
-                for (const original of matches) {
-                    const ref = variant.ref
-                    if (ref === null) continue
-                    const ancestor = original.closest(ref.within)
-                    const target = ancestor === null ? null : ref.select === "self" ? ancestor : ref.select === "previous" ? original.previousElementSibling : ancestor.querySelector(ref.select)
-                    if (target === null) {
-                        skip("the reference element of the relation is not rendered")
-                        continue
-                    }
-                    const reference = readAll(target, "box", ref.metrics, null)
-                    const offset = typeof ref.offset === "number" ? ref.offset : Number.parseFloat(ref.offset ?? "0") || 0
-                    const element = variant.target === "painted-box" ? paintedBox(original) : original
-                    add(pathOf(original), [
-                        {
-                            metric: variant.metrics.join(","),
-                            op: variant.op,
-                            measured: readAll(element, "box", variant.metrics, variant.pseudo),
-                            expected: [reference.map((item) => (typeof item === "number" ? round(item + offset) : item))],
-                            pattern: false,
-                            tolerance: toleranceOf(variant),
-                        },
-                    ])
-                }
+            if (!single) evaluateEach(variant, root, anchors, beforeKeys, sink)
+            else if (variant.kind === "tokens") evaluateTokens(variant, root, sink)
+            else {
+                evaluateScopes(variant, root, sink)
+                if (variant.kind === "relation") evaluateRelation(variant, root, anchors, sink)
             }
             return finish(index, collector)
         } catch (error: unknown) {

@@ -113,6 +113,16 @@ export interface DeferredJudgement {
     readonly deferred: number
 }
 
+/** Counts the messages of one ESLint result a deferral defers, and lists the others. */
+const judgeMessages = (result: Record<string, unknown>, file: string, own: boolean, deferral: Deferral, remaining: string[]): number => {
+    let deferred = 0
+    for (const message of (Array.isArray(result.messages) ? result.messages : []).filter(isRecord)) {
+        if (own && isDeferredRule(deferral, message.ruleId)) deferred += 1
+        else remaining.push(`${file}:${String(Number(message.line ?? 0))}:${String(Number(message.column ?? 0))} ${message.severity === 2 ? "error" : "warning"} ${stylishMessage(message.message)} ${String(message.ruleId)}`)
+    }
+    return deferred
+}
+
 /**
  * Judges an ESLint run made with `--format json` under a deferral: a finding of a deferred rule on a file under the deferral's
  * paths is deferred, every other finding counts. Undefined when the output is not ESLint's json (a tool that ignores the
@@ -131,10 +141,7 @@ export const judgeDeferred = (run: ToolRun, root: string, deferral: Deferral): D
     for (const result of parsed.filter(isRecord)) {
         const file = typeof result.filePath === "string" ? toSlash(relative(root, result.filePath)) : "?"
         const own = underPaths(file, deferral.paths)
-        for (const message of (Array.isArray(result.messages) ? result.messages : []).filter(isRecord)) {
-            if (own && isDeferredRule(deferral, message.ruleId)) deferred += 1
-            else remaining.push(`${file}:${String(Number(message.line ?? 0))}:${String(Number(message.column ?? 0))} ${message.severity === 2 ? "error" : "warning"} ${stylishMessage(message.message)} ${String(message.ruleId)}`)
-        }
+        deferred += judgeMessages(result, file, own, deferral, remaining)
     }
     if (run.exitCode !== 0 && remaining.length === 0 && deferred === 0) remaining.push(`eslint exited ${String(run.exitCode)} with no finding: ${run.stderr.trim()}`)
     return { remaining, deferred }

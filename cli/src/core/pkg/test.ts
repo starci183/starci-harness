@@ -9,6 +9,7 @@ import { captureCommand } from "../../shared/exec.js"
 import { captureGit, git } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
 import { appName, BRANCH_PREFIX, changedPackages, harnessRepository } from "./edit.js"
+import { inOrder } from "../../harness/sequential.js"
 
 const TAIL_LINES = 30
 
@@ -45,13 +46,13 @@ const folderOf = (name: string): string => (name.startsWith(PACKAGE_SCOPE) ? nam
 const editTreesOf = async (harness: string, app: string, folder: string): Promise<EditTree[]> => {
     const listing = (await captureGit(["worktree", "list", "--porcelain"], harness)).stdout
     const trees: EditTree[] = []
-    for (const block of listing.split(/\r?\n\r?\n/)) {
+    await inOrder(listing.split(/\r?\n\r?\n/), async (block) => {
         const path = /^worktree (.+)$/m.exec(block)?.[1]?.trim()
         const branch = /^branch refs\/heads\/(.+)$/m.exec(block)?.[1]?.trim()
-        if (path === undefined || branch?.startsWith(`${BRANCH_PREFIX}${app}-`) !== true || !existsSync(join(path, "packages", folder))) continue
-        if (!(await changedPackages(path)).includes(folder)) continue
+        if (path === undefined || branch?.startsWith(`${BRANCH_PREFIX}${app}-`) !== true || !existsSync(join(path, "packages", folder))) return
+        if (!(await changedPackages(path)).includes(folder)) return
         trees.push({ path, branch, at: Number((await git(path, ["log", "-1", "--format=%ct", "HEAD"])).trim()) })
-    }
+    })
     return trees.sort((left, right) => right.at - left.at)
 }
 
@@ -100,10 +101,10 @@ export const pkgTestVerb = defineVerb({
         const scripts = scriptsSchema.parse(JSON.parse(readFileSync(manifest, "utf8"))).scripts ?? {}
         if (scripts.test === undefined) throw new Refusal("PKG_NO_SPECS", `${flags.package} has no test script; a package proves itself with its own specs (CONTRIBUTING.md CONTRIB-2): add them and its test script`)
         const steps: Step[] = []
-        for (const step of stepsOf(scripts)) {
+        await inOrder(stepsOf(scripts), async (step) => {
             const run = await withHeavySlot(step.kind, `${step.step} ${folder}`, dir, {}, (held) => captureCommand(step.argv, dir, held.options))
             steps.push({ step: step.step, status: run.exitCode === 0 ? "green" : "red", exitCode: run.exitCode, output: `${run.stdout}\n${run.stderr}`.trim().split("\n").slice(-TAIL_LINES).join("\n") })
-        }
+        })
         const verdict = steps.every((step) => step.status === "green") ? "green" : "red"
         const data: TestData = { package: flags.package, worktree: tree.path.replaceAll("\\", "/"), branch: tree.branch, folder: dir.replaceAll("\\", "/"), steps, verdict }
         const unInstalled = verdict === "red" && !existsSync(join(dir, "node_modules")) ? [`${dir} has no node_modules: install it (packages/README.md) before testing`] : []

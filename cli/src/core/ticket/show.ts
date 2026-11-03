@@ -21,16 +21,23 @@ export const ticketShowVerb = defineVerb({
         const ticket = getTicket(flags.id)
         const waiters = waitersOf(ticket.id)
         const evidence = ticket.evidence
+        const workflowSuffix = ticket.workflow === null ? "" : `, workflow ${ticket.workflow}`
+        const openedSeatSuffix = ticket.openedSeat === null ? "" : ` (${ticket.openedSeat})`
+        const takenBySuffix = ticket.takenBy === null ? "" : `; taken by ${ticket.takenBy} at ${ticket.takenAt ?? "-"}`
         const lines = [
             `${ticket.id} ${isLive(ticket.state) ? ticket.state : closeLine(ticket)}: ${ticket.severity} ${ticket.kind}, seen ${String(ticket.occurrences)} times, round ${String(ticket.round)}`,
             `title: ${ticket.title}`,
-            `project: ${ticket.project.name || "-"}${ticket.workflow === null ? "" : `, workflow ${ticket.workflow}`}; opened by ${ticket.openedBy}${ticket.openedSeat === null ? "" : ` (${ticket.openedSeat})`} at ${ticket.openedAt}, reported by ${ticket.reporters.join(", ")}, last seen ${ticket.lastSeenAt}${ticket.takenBy === null ? "" : `; taken by ${ticket.takenBy} at ${ticket.takenAt ?? "-"}`}`,
+            `project: ${ticket.project.name || "-"}${workflowSuffix}; opened by ${ticket.openedBy}${openedSeatSuffix} at ${ticket.openedAt}, reported by ${ticket.reporters.join(", ")}, last seen ${ticket.lastSeenAt}${takenBySuffix}`,
             ...(ticket.fixedBy !== null && ticket.state !== "fixed" ? [`regressed after fix ${ticket.fixedBy}`] : []),
             ...(["task", "attempt", "seat", "decision"] as const).flatMap((key) => (evidence[key] === undefined ? [] : [`${key}: ${evidence[key]}`])),
             ...(evidence.question === undefined ? [] : [`question: ${evidence.question}`]),
             ...(ticket.tried === null ? [] : [`tried: ${ticket.tried}`]),
             ...(ticket.proposedDefault === null ? [] : [`proposed default: ${ticket.proposedDefault}`]),
-            ...waiters.map((waiter) => `waiter ${waiter.subject} (${waiter.repo}): ${waiter.releasedAt === null ? "waiting" : `released ${waiter.releasedAt}${waiter.requestId === null ? "" : ` by ${waiter.requestId}`}`}`),
+            ...waiters.map((waiter) => {
+                const requestSuffix = waiter.requestId === null ? "" : ` by ${waiter.requestId}`
+                const releasedAtText = waiter.releasedAt === null ? "waiting" : `released ${waiter.releasedAt}${requestSuffix}`
+                return `waiter ${waiter.subject} (${waiter.repo}): ${releasedAtText}`
+            }),
             ...(evidence.tail === undefined ? [] : ["evidence:", evidence.tail]),
         ]
         return Promise.resolve({ data: { ticket, waiters }, message: lines.join("\n") })

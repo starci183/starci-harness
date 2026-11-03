@@ -243,7 +243,8 @@ const runJsonCheck = (check: ResolvedCheck & { readonly check: { readonly kind: 
     const wrong = expected.filter(([key, value]) => record[key] !== value).map(([key, value]) => `${key} is ${JSON.stringify(record[key])}, expected ${JSON.stringify(value)}`)
     const problems = [...(missing.length === 0 ? [] : [`${document.from} lacks keys: ${missing.join(", ")}`]), ...[...mistyped, ...wrong].map((line) => `${document.from}: ${line}`)]
     const andExpected = expected.length === 0 ? "" : " and " + String(expected.length) + " expected value(s)"
-    const setAside = aside.size === 0 ? "" : `; ${[...aside].join(", ")} set aside: the worker's run lacked the custody keys, the harness's own run judges ${aside.size === 1 ? "it" : "them"}`
+    const pronoun = aside.size === 1 ? "it" : "them"
+    const setAside = aside.size === 0 ? "" : `; ${[...aside].join(", ")} set aside: the worker's run lacked the custody keys, the harness's own run judges ${pronoun}`
     return outcome(check, problems, `${document.from} carries ${String(check.check.requiredKeys.length - check.check.requiredKeys.filter((key) => aside.has(key)).length)} required key(s)${andExpected}${setAside}`)
 }
 
@@ -331,19 +332,8 @@ const recordFilesOf = (name: string): string[] => {
     return /\.ya?ml$/.test(name) ? [name] : [posix.join(name, "index.yaml"), posix.join(name, "resource.yaml")]
 }
 
-/**
- * The Work records a Work key may cite beyond its traced files: each record the trace can read (TraceSource) that a traced Work
- * file (a context file, never a whole allowPath folder) or the contract's inputs (`named`) points at by id or path, keyed by the
- * ids its file names. Only a named record counts, so a task never cites the whole Work tree.
- */
-const readableWork = (trace: CitedTrace, source: TraceSource): Map<string, Set<string>> => {
-    const names = new Map<string, string>()
-    for (const file of trace.files) {
-        const traced = readTraced(source, file)
-        if (traced === undefined || !("text" in traced)) continue
-        for (const name of workNamesIn(traced.text)) if (!names.has(name)) names.set(name, file)
-    }
-    for (const name of trace.named ?? []) if (!names.has(name)) names.set(name, "the inputs")
+/** The ids of the first readable Work record file of each name, unless the trace's own files already hold it. */
+const recordsNamed = (trace: CitedTrace, source: TraceSource, names: ReadonlyMap<string, string>): Map<string, Set<string>> => {
     const records = new Map<string, Set<string>>()
     for (const [name, by] of names) {
         for (const candidate of recordFilesOf(name)) {
@@ -356,6 +346,28 @@ const readableWork = (trace: CitedTrace, source: TraceSource): Map<string, Set<s
         }
     }
     return records
+}
+
+/** The Work record names a trace's files and inputs name, each with what named it. */
+const namesOfWork = (trace: CitedTrace, source: TraceSource): Map<string, string> => {
+    const names = new Map<string, string>()
+    for (const file of trace.files) {
+        const traced = readTraced(source, file)
+        if (traced === undefined || !("text" in traced)) continue
+        for (const name of workNamesIn(traced.text)) if (!names.has(name)) names.set(name, file)
+    }
+    for (const name of trace.named ?? []) if (!names.has(name)) names.set(name, "the inputs")
+    return names
+}
+
+/**
+ * The Work records a Work key may cite beyond its traced files: each record the trace can read (TraceSource) that a traced Work
+ * file (a context file, never a whole allowPath folder) or the contract's inputs (`named`) points at by id or path, keyed by the
+ * ids its file names. Only a named record counts, so a task never cites the whole Work tree.
+ */
+const readableWork = (trace: CitedTrace, source: TraceSource): Map<string, Set<string>> => {
+    const names = namesOfWork(trace, source)
+    return recordsNamed(trace, source, names)
 }
 
 /**
@@ -458,6 +470,45 @@ const stepsOf =(data: Record<string, unknown>): ScopeStep[] =>
         return { package: textOf(step.package), step: textOf(step.step), status: textOf(step.status), reason: textOf(step.reason), output: textOf(step.output) }
     })
 
+/** `args` with `extra` placed before its `--` separator (the allowed paths), or at its end when it has none. */
+const insertBeforeRest = (args: readonly string[], extra: readonly string[]): string[] => {
+    const rest = args.indexOf("--")
+    return rest < 0 ? [...args, ...extra] : [...args.slice(0, rest), ...extra, ...args.slice(rest)]
+}
+
+/** The flags that make `check run` judge as the task or the wave this check belongs to; none when it is not a `check run` or already names one. */
+const judgingFlags = (args: readonly string[], withBase: readonly string[], place: CheckPlace): string[] => {
+    if (args[1] !== "run" || withBase.includes("--task") || withBase.includes("--wave")) return []
+    if (place.taskId !== undefined) return ["--task", place.taskId]
+    if (place.wave !== undefined && place.wave.length > 0) return ["--wave", place.wave.join(",")]
+    return []
+}
+
+/** The base findings a scoped check was judged against, and the evidence lines that name them. */
+const baselineOf = (data: Record<string, unknown>) => {
+    const baseline = asRecord(data.baseline)
+    const based =
+        typeof baseline.base === "string" && Array.isArray(baseline.steps)
+            ? { base: baseline.base, steps: (baseline.steps as unknown[]).map(asRecord).map((one) => ({ package: textOf(one.package), step: textOf(one.step), at: textOf(one.at), findings: Array.isArray(one.findings) ? (one.findings as unknown[]).map(textOf) : [] })) }
+            : undefined
+    const evidence = based === undefined ? [] : based.steps.map((one) => `baseline-findings ${one.package} ${one.step}: ${String(one.findings.length)} finding(s) already at ${one.at.slice(0, 12)}, judged there and not this change's`)
+    return { based, evidence }
+}
+
+/** The steps that ran and the report lines of a scoped check: its scope, each step, and the red ones' output. */
+const scopeReport = (scope: Record<string, unknown>, steps: ReturnType<typeof stepsOf>): { readonly ran: ReturnType<typeof stepsOf>; readonly lines: string[] } => {
+    const ran = steps.filter((step) => step.status !== "skipped")
+    const changed = Array.isArray(scope.changed) ? scope.changed.length : 0
+    const judged = changed === 0 && Array.isArray(scope.files) && scope.files.length > 0 ? `, so ${String(scope.files.length)} tracked file(s) under allowPaths` : ""
+    const lines = [
+        `scope vs ${String(scope.base)}: ${String(changed)} changed file(s)${judged}, ${String(Array.isArray(scope.targets) ? scope.targets.length : 0)} package(s)`,
+        ...steps.map((step) => `${step.status} ${step.step} ${step.package}${step.reason === "" ? "" : " (" + step.reason + ")"}`),
+        ...(ran.length === 0 ? ["no step ran: nothing was typechecked or linted, so this check proves nothing"] : []),
+        ...steps.filter((step) => step.status === "red").map((step) => `--- ${step.package} ${step.step}\n${step.output}`),
+    ]
+    return { ran, lines }
+}
+
 /**
  * A scoped `starci check` verb, run with --json so its steps can be read. It judges what the task changed, or, for a task that
  * changes nothing (a verify-only task whose audit found the code already right), the tracked files under its allowPaths as
@@ -468,10 +519,9 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
     const withBase = place.diffBase === undefined || args.includes("--base") ? args : [...args, "--base", place.diffBase]
     // check run judges as the task: its own changes since its work began, its deferral and its obligations (core/check/scope.ts).
     // A wave's run judges as its tasks together: their deferrals and the modules their composers answer for.
-    const judging = args[1] !== "run" || withBase.includes("--task") || withBase.includes("--wave") ? [] : place.taskId !== undefined ? ["--task", place.taskId] : place.wave !== undefined && place.wave.length > 0 ? ["--wave", place.wave.join(",")] : []
-    const asTask = judging.length === 0 ? withBase : withBase.includes("--") ? [...withBase.slice(0, withBase.indexOf("--")), ...judging, ...withBase.slice(withBase.indexOf("--"))] : [...withBase, ...judging]
-    const rest = asTask.indexOf("--")
-    const within = place.within !== true || asTask.includes("--within") ? asTask : rest < 0 ? [...asTask, "--within"] : [...asTask.slice(0, rest), "--within", ...asTask.slice(rest)]
+    const judging = judgingFlags(args, withBase, place)
+    const asTask = insertBeforeRest(withBase, judging)
+    const within = place.within !== true || asTask.includes("--within") ? asTask : insertBeforeRest(asTask, ["--within"])
     const withPaths = within.includes("--") ? within : [...within, "--", ...allowPaths]
     // No timeout on the verb itself: it waits in the heavy queue for each step, and every step it runs carries its own budget
     // from admission (harness/heavy.ts); a deadline here would count queue time. The verify's lock deadline bounds the whole.
@@ -487,21 +537,8 @@ const runScopedCheck = async (check: ResolvedCheck, args: readonly string[], pla
     const data = asRecord(envelope.data)
     const scope = asRecord(data.scope)
     const steps = stepsOf(data)
-    const ran = steps.filter((step) => step.status !== "skipped")
-    const changed = Array.isArray(scope.changed) ? scope.changed.length : 0
-    const judged = changed === 0 && Array.isArray(scope.files) && scope.files.length > 0 ? `, so ${String(scope.files.length)} tracked file(s) under allowPaths` : ""
-    const lines = [
-        `scope vs ${String(scope.base)}: ${String(changed)} changed file(s)${judged}, ${String(Array.isArray(scope.targets) ? scope.targets.length : 0)} package(s)`,
-        ...steps.map((step) => `${step.status} ${step.step} ${step.package}${step.reason === "" ? "" : " (" + step.reason + ")"}`),
-        ...(ran.length === 0 ? ["no step ran: nothing was typechecked or linted, so this check proves nothing"] : []),
-        ...steps.filter((step) => step.status === "red").map((step) => `--- ${step.package} ${step.step}\n${step.output}`),
-    ]
-    const baseline = asRecord(data.baseline)
-    const based =
-        typeof baseline.base === "string" && Array.isArray(baseline.steps)
-            ? { base: baseline.base, steps: (baseline.steps as unknown[]).map(asRecord).map((one) => ({ package: textOf(one.package), step: textOf(one.step), at: textOf(one.at), findings: Array.isArray(one.findings) ? (one.findings as unknown[]).map(textOf) : [] })) }
-            : undefined
-    const evidence = based === undefined ? [] : based.steps.map((one) => `baseline-findings ${one.package} ${one.step}: ${String(one.findings.length)} finding(s) already at ${one.at.slice(0, 12)}, judged there and not this change's`)
+    const { ran, lines } = scopeReport(scope, steps)
+    const { based, evidence } = baselineOf(data)
     const outcome: CheckOutcome = { name: check.name, kind: check.check.kind, status: run.exitCode === 0 && ran.length > 0 ? "green" : "red", exitCode: run.exitCode, detail: [...lines, ...evidence].join("\n") }
     return based === undefined ? outcome : { ...outcome, baseline: based }
 }
@@ -561,6 +598,9 @@ const judgeAtRelayHead = async (check: ResolvedCheck, run: ToolRun, argv: readon
     }
 }
 
+/** Whether a refusal ends the check instead of reddening it: a custody block, no verdict of the verify, or a host that held the command. */
+const leavesTheCheck = (error: unknown): error is Refusal => error instanceof Refusal && (CUSTODY_CODES.has(error.code) || error.code === VERIFY_INFRA || error.code === HOST_HELD)
+
 /**
  * Runs a command check: its argv (a list, or a string split at blanks), each path it names inside the CLI's own @starci/hfs read
  * in the app's pinned one (harness/pinned-hfs.ts `toPinnedHfs`: a skeleton parity judges the skeleton the app installs), made
@@ -592,7 +632,7 @@ const runCommandCheck = async (check: ResolvedCheck & { readonly check: { readon
     } catch (error: unknown) {
         // A custody block is not the task's red: it leaves the check, and the verify ends awaiting the owner or with no verdict. A
         // command the host held in the heavy queue judged nothing: it leaves the check too, and the verify reaches no verdict.
-        if (error instanceof Refusal && (CUSTODY_CODES.has(error.code) || error.code === VERIFY_INFRA || error.code === HOST_HELD)) throw error
+        if (leavesTheCheck(error)) throw error
         return outcome(check, [error instanceof Error ? error.message : String(error)], "")
     }
 }

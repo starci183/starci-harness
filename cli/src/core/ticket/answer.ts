@@ -30,7 +30,8 @@ export const ticketAnswerVerb = defineVerb({
         if (answer === null) throw new Refusal("TICKET_NO_DEFAULT", `ticket ${ticket.id} proposes no default; answer it with --answer`)
         const by = callerRole() ?? "owner"
         const why = flags.reason?.trim() ?? ""
-        const closed = closeTicket(ticket.id, { state: "answered", answer, why: why === "" ? (flags["accept-default"] ? "the proposed default accepted" : "the owner's call") : why }, by)
+        const defaultWhy = flags["accept-default"] ? "the proposed default accepted" : "the owner's call"
+        const closed = closeTicket(ticket.id, { state: "answered", answer, why: why === "" ? defaultWhy : why }, by)
         const woken = await wakeOnClose(closed, by, context.cwd)
         const wake = woken.map((one) => `; ${one.project}: ${one.request} (${one.mail})`).join("")
         return { data: { ticket: closed.ticket, released: closed.released, movedTo: null, woken }, message: `ticket ${ticket.id} answered: ${answer}; released ${String(closed.released.length)}${wake}` }

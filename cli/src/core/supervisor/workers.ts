@@ -204,15 +204,18 @@ const taskStatusOf = (worker: WorkerRecord): TaskStatus => withLedger(worker.rep
 export const launchQueuedWorkers = async (context: VerbContext, seat: AttachedSupervisor, project: Project): Promise<string[]> => {
     const queued = workersOf(project.key, true).filter((worker) => taskStatusOf(worker) === "queued")
     const lines: string[] = []
-    for (const worker of queued) {
+    let full = false
+    await inOrder(queued, async (worker) => {
+        if (full) return
         const slots = await projectSlots(project)
         if (slots.running >= slots.cap) {
             lines.push(`${worker.id}: queued, project ${project.name} runs ${String(slots.running)} of its ${String(slots.cap)} worker seats`)
-            break
+            full = true
+            return
         }
         const launch = await launchWorker(context, seat, project, worker)
         lines.push(`${worker.id}: ${launch.detail}`)
-    }
+    })
     return lines
 }
 
@@ -327,11 +330,11 @@ export const tendWorkers = async (context: VerbContext, seat: AttachedSupervisor
             const status = taskStatusOf(worker)
             const seats = withLedger(worker.repo, (db) => seatsOfTask(db, worker.task_id))
             if (status === "running") {
-                for (const open of seats.filter((one) => isPingable(one) && !inLaunchGrace(one, rules))) {
+                await inOrder(seats.filter((one) => isPingable(one) && !inLaunchGrace(one, rules)), async (open) => {
                     const answer = await askOrca(binary, open.handle ?? "", context.cwd, rules)
                     const recorded = withLedger(worker.repo, (db) => recordPing(db, open.id, answer))
                     if (recorded.lostTask !== null) lines.push(`${worker.id}: worker lost (${answer.kind === "gone" ? answer.evidence : answer.kind})`)
-                }
+                })
             }
             const after = taskStatusOf(worker)
             const finished = after === "reported" || after === "failed" || after === "effect_unknown" || TERMINAL_STATUSES.includes(after)
@@ -410,9 +413,10 @@ export const rejectWorker = async (context: VerbContext, project: Project, ref: 
     const worker = findWorker(project, ref)
     if (worker.ended_at !== null) throw new Refusal("WORKER_ENDED", `worker ${worker.id} was ended ${worker.ended_by ?? ""} at ${worker.ended_at}`)
     const status = taskStatusOf(worker)
+    const reasonSuffix = reason === undefined ? "" : `: ${reason}`
     const detail = TERMINAL_STATUSES.includes(status)
         ? `task ${worker.task_id} is ${status}`
-        : (await taskCancelVerb.run({ ...context, cwd: worker.repo }, { task: worker.task_id, reason: `worker ${worker.id} rejected by the Supervisor${reason === undefined ? "" : `: ${reason}`}` })).message
+        : (await taskCancelVerb.run({ ...context, cwd: worker.repo }, { task: worker.task_id, reason: `worker ${worker.id} rejected by the Supervisor${reasonSuffix}` })).message
     endWorker(worker.id, "rejected")
     return { worker: worker.id, task: worker.task_id, ended: "rejected", branch: branchOf(worker), detail: `${detail}${await removeWorkerTree(worker.repo)}` }
 }

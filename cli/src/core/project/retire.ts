@@ -56,6 +56,36 @@ const detachFromOrca = async (binary: OrcaBinary, repo: string, cwd: string): Pr
     }
 }
 
+/** One line per worktree the retirement removed or left. */
+const worktreeLines = (worktrees: Awaited<ReturnType<typeof retireWorktrees>>): string[] => {
+    const lines = worktrees.map((entry) => {
+        const preservedSuffix = entry.preserved === null ? "" : `; its work preserved in ${entry.preserved}`
+        return `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : "left"}: ${entry.detail}${preservedSuffix}`
+    })
+    return lines
+}
+
+/** Refuses to retire a ledger whose open seats still have a terminal Orca lists. */
+const assertNoLiveSeats = async (binary: OrcaBinary, cwd: string, open: ReturnType<typeof openSeatsOf>, ledger: string): Promise<void> => {
+    const context = { cwd }
+    const live = await terminalList(binary, context.cwd)
+    const alive = open.filter((seat) => seat.terminal !== null && (live.truncated || live.handles.has(seat.terminal)))
+    if (alive.length > 0) {
+        const aliveText = alive.map((seat) => `${seat.id} (${seat.terminal ?? "-"})`).join(", ")
+        throw new Refusal("RETIRE_LIVE", `ledger ${ledger} has open seats whose terminal Orca lists: ${aliveText}; stop them first (starci seat stop)`)
+    }
+}
+
+/** Retires the worktrees of the repository and detaches it from Orca, recording the cleanup. */
+const retireOrca = async (binary: OrcaBinary | undefined, repo: string, cwd: string, ledger: string): Promise<{ readonly worktrees: Awaited<ReturnType<typeof retireWorktrees>>; readonly orca: string }> => {
+    const present = existsSync(repo)
+    const worktrees = binary !== undefined && present ? await retireWorktrees(repo) : []
+    let orca = "Orca untouched"
+    if (binary !== undefined) orca = present ? await detachFromOrca(binary, repo, cwd).catch((error: unknown) => `Orca not reached: ${asRefusal(error).message.split("\n")[0] ?? ""}`) : `${repo} is gone; Orca untouched`
+    if (binary !== undefined) withMachine((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, ?, ?, ?)").run(now(), "ledger-retired-cleanup", ledger, JSON.stringify({ worktrees, orca })))
+    return { worktrees, orca }
+}
+
 /**
  * `starci project retire <ledger>`: marks an abandoned project's ledger retired in the host registry (machine.sqlite `ledgers`),
  * so no sweep, tick, pool count or outcome read reaches it any more; `--restore` makes it active again. Refused while Orca still
@@ -86,21 +116,16 @@ export const projectRetireVerb = defineVerb({
         const state = flags.restore ? "active" : "retired"
         const binary = state === "retired" ? await locateOrca(context.cwd) : undefined
         if (binary !== undefined) {
-            const live = await terminalList(binary, context.cwd)
-            const alive = open.filter((seat) => seat.terminal !== null && (live.truncated || live.handles.has(seat.terminal)))
-            if (alive.length > 0) throw new Refusal("RETIRE_LIVE", `ledger ${ledger} has open seats whose terminal Orca lists: ${alive.map((seat) => `${seat.id} (${seat.terminal ?? "-"})`).join(", ")}; stop them first (starci seat stop)`)
+            await assertNoLiveSeats(binary, context.cwd, open, ledger)
         }
         withMachine((db) => {
             db.prepare("UPDATE ledgers SET state = ? WHERE ledger_id = ?").run(state, ledger)
             db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, ?, ?, ?)").run(now(), state === "retired" ? "ledger-retired" : "ledger-restored", ledger, JSON.stringify({ name, openSeats: open.map((seat) => seat.id) }))
         })
-        const present = existsSync(repo)
-        const worktrees = binary !== undefined && present ? await retireWorktrees(repo) : []
-        const orca = binary === undefined ? "Orca untouched" : present ? await detachFromOrca(binary, repo, context.cwd).catch((error: unknown) => `Orca not reached: ${asRefusal(error).message.split("\n")[0] ?? ""}`) : `${repo} is gone; Orca untouched`
-        if (binary !== undefined) withMachine((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, ?, ?, ?)").run(now(), "ledger-retired-cleanup", ledger, JSON.stringify({ worktrees, orca })))
+        const { worktrees, orca } = await retireOrca(binary, repo, context.cwd, ledger)
         const data: ProjectRetireData = { ledger, name, state, openSeats: open.map((seat) => seat.id), worktrees, orca }
         const left = open.length === 0 ? "" : `; its open seats (${data.openSeats.join(", ")}) no longer count`
-        const lines = worktrees.map((entry) => `worktree ${entry.kind} ${entry.path} ${entry.removed ? "removed" : "left"}: ${entry.detail}${entry.preserved === null ? "" : `; its work preserved in ${entry.preserved}`}`)
+        const lines = worktreeLines(worktrees)
         return { data, message: [`ledger ${ledger} (${name}) is ${state}${state === "retired" ? left : ""}`, ...lines, ...(state === "retired" ? [`orca: ${orca}`] : [])].join("\n") }
     },
 })
