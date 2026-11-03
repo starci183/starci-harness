@@ -954,17 +954,27 @@ slots:
   - id: app.tool-config-local
     profiles:
       - app
-    path: "{tsconfig.json,.eslintrc,.eslintrc.*,.eslintignore,eslint.config.*,.stylelintrc,.stylelintrc\
-      .*,.stylelintignore,stylelint.config.*,.prettierrc.*,prettier.config.*,jest.config.*,lint-sta\
-      ged.config.*,.lintstagedrc*}"
+    path: "{tsconfig.json,.eslintrc,.eslintrc.*,.eslintignore,eslint.config.js,eslint.config.cjs,eslint.config.ts,eslint.config.mts,eslint.config.cts,.stylelintrc,.stylelintrc.*,.stylelintignore,stylelint.config.*,.prettierrc.*,prettier.config.*,jest.config.*,lint-staged.config.*,.lintstagedrc*}"
     presence: forbidden
     tracked: external
     tier: none
     tests: none
     goesTo: "nowhere at the app root: each side holds exactly its managed tool configuration
-      (be.tool-config, fe.tool-config) and the root only the formatter (app.format-config)"
+      (be.tool-config, fe.tool-config) and the root only the formatter (app.format-config) and the
+      eslint config of its root packages (app.packages-lint)"
     rules:
       - HFS_TOOL_CONFIG_LOCAL
+  - id: app.packages-lint
+    profiles:
+      - app
+    editionWhy: Lite and full share the slot; the root workspace packages are linted in both.
+    path: eslint.config.mjs
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
   - id: app.quality-config
     profiles:
       - app

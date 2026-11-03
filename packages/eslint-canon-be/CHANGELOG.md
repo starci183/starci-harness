@@ -4,6 +4,9 @@
 
 - Changed: `@starci/nest-kit` is a framework import like `@nestjs/common` (`third-party-import-owner` lets any module definition import it).
 - Changed: `capability-module-shape` accepts the module definition as one call of `defineCapabilityModule` (a capability's representative module) or `defineConfigurableModule` (every other module) of `@starci/nest-kit`, each stating its options type, beside the typed `ConfigurableModuleBuilder` chains; the runtime copies carry R368's acceptance of that call's destructured export, the module-per-transport confinement of the helpers, the R295 law and the `@starci/nest-kit` and `@starci/next-i18n` pins.
+- Fixed: `third-party-import-owner` (R279) skips a name that the app's root `workspaces` own (`@scope/agent-sdk`): an app-owned workspace package is first-party source, not a third-party SDK; its manifests are cross-file inputs of the rule. The app manifest of a package view is the one at the app root.
+- Added: `starciBePackagesConfig` and `loadPackagesHfs`: the rules of the back end over the back-end subpaths of the root workspace packages (`packages/<pkg>/src/**` but `workbench/` and `public/`, the workbench contract kept), over the package view of the app root, for the managed root `eslint.config.mjs`; the project-graph rules stay with the side folders. `unit-test-colocated` leaves the specs of a package (a spec sits beside any source of a package).
+- Changed: the runtime copy of the slot manifest carries the slots `app.packages`, `app.module-registry` and `app.packages-lint`.
 
 ## 3.13.0 - 2026-11-03
 
@@ -258,7 +261,6 @@
 - Changed: `no-folder-reexport` admits, in lite only, a capability's `persistence/entities/index.ts` that declares its `<c>Entities` list (BE-PERSISTENCE-3); the machine `schema-owner` (R35) checks the lite shape (the list and its name in `PRIMARY_ENTITIES`), and the dead-export count already counts `<c>Entities` once `PRIMARY_ENTITIES` names it (spec added).
 - Changed: `app-file-budget` (R246 `BE_APP_COMPOSITION_BUDGET`) counts a slot file's lines excluding import declarations, a multi-line import included, so naming one more capability costs no budget; the numbers are unchanged (`<app>.env.ts` 150 in both editions).
 - Changed: the bundled slot manifest 3.9.0 replaces the lite `app.supabase*` slots with `app.db` (`db/migrations`, `db/migrations/archive`, `db/seed.sql`, the managed `db/bootstrap.sql`), `be.integrations.supabase` with `be.integrations.passport` and `be.integrations.object-storage`, removes `fe.route.callback`, sets lite `schemaAuthority: sql`, gives lite TypeORM entities in `be.persistence`, adds `ruleParams.be.dbFunctions`, and moves the S3 SDKs to `integrations/object-storage` and the identity libraries to `integrations/passport` in `infraOwners` (`@supabase/*`, `minio` and `bcrypt` nowhere); the bundled rule catalog retires R216, R217, R219, R254 and R287 and adds R328-R334, so `infra-import-owner` holds R328 `BE_AUTH_PASSPORT_OWNER` and R331 `BE_STORAGE_OWNER`; R36 runs in full only; `jwt-alg-pinned` reads `architecture/jwt-ast.mjs`; the bundled canon pins name hfs 4.10.0, eslint-canon-be 3.7.0, eslint-canon-fe 9.5.0 and the Grammar family 0.15.11, pin `@nestjs/passport` 11.0.5 (CommonJS on the Nest 11 line), `passport` 0.7.0, `passport-google-oauth20` 2.0.0, `passport-local` 1.0.0, `bcryptjs` 3.0.3 and their types (tokens are signed and verified with `jose`; `@nestjs/jwt` stays allowed in `integrations/passport` but unpinned), and drop `@supabase/ssr`, `@supabase/supabase-js` and the `supabase` CLI.
-
 
 ## 3.6.8 - 2026-10-29
 

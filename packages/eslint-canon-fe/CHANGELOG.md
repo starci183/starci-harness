@@ -3,6 +3,8 @@
 ## 9.12.0 - 2026-11-03
 
 - Changed: the runtime copies carry R368's acceptance of the module-definition helpers, the module-per-transport confinement of the helpers and the `@starci/nest-kit` and `@starci/next-i18n` pins; `i18n-stack-in-one-module` refuses every product-source call of a next-intl layer builder (the stack is `@starci/next-i18n`'s).
+- Added: `starciFePackagesConfig`, `loadPackagesHfs` and `scopeToPackages`: the rules of the front end over `packages/<pkg>/src/workbench/**` and `src/public/**` of the root workspace packages, over the package view of the app root, for the managed root `eslint.config.mjs`; the workbench contract stays with the back-end canon and the project-graph rules with the side folders.
+- Changed: the runtime copy of the slot manifest carries the slots `app.packages`, `app.module-registry` and `app.packages-lint`.
 
 ## 9.11.0 - 2026-11-03
 

@@ -182,3 +182,23 @@ export const buildPlainSourceConfig = ({ root, plugin, hooks, reactHooks, tsPlug
     { files: [...PLAIN_SOURCE_FILES], ignores: [...OUTSIDE_THE_SCAN_FILES], plugins: { sonarjs: sonar.sonarjs, unicorn: sonar.unicorn }, rules: sonarWayRules(sonar.sonarjs, "fe").rules },
   ]
 }
+
+/** The front-end subpaths of a root workspace package: its workbench (drawn with Grammar) and its public face; the React-free workbench contract stays back end. */
+export const PACKAGE_SOURCE_FILES = Object.freeze(["packages/*/src/workbench/**/*.{ts,tsx}", "packages/*/src/public/**/*.{ts,tsx}"])
+const PACKAGE_CONTRACT = Object.freeze(["packages/*/src/workbench/contract/**"])
+/** What a package folder never lints: installed packages, build output, generated wire types. */
+export const PACKAGE_IGNORED = Object.freeze(["**/node_modules/**", "**/.next/**", "**/dist/**", "**/coverage/**", "**/__generated__/**"])
+
+/**
+ * A front-end flat config (the canon's or a Grammar family's) narrowed to the front-end subpaths of the root workspace packages of an app:
+ * the very rules of the fe side, over `packages/<pkg>/src/workbench/**` and `src/public/**` of the app root, the workbench contract left to the
+ * back-end canon. The global ignore block becomes the package one. The config is read, never changed.
+ *
+ * @param config - The flat config of a front end built over the package view.
+ * @returns The same blocks with `files` narrowed to the package subpaths.
+ */
+export const scopeToPackages = (config: readonly Linter.Config[]): Linter.Config[] =>
+  config.map((block) => {
+    if (block.files === undefined) return { ...block, ignores: [...PACKAGE_IGNORED] }
+    return { ...block, files: [...PACKAGE_SOURCE_FILES], ignores: [...(block.ignores ?? []), ...PACKAGE_CONTRACT] }
+  })

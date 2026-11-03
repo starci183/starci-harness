@@ -4,7 +4,7 @@ import test from "node:test"
 import { Linter } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { rules as commonRules, why as commonWhy } from "@starci/eslint-grammar-core"
-import plugin, { offsetPopGrammarConfig, rules, why } from "./index.ts"
+import plugin, { offsetPopGrammarConfig, offsetPopGrammarPackagesConfig, rules, why } from "./index.ts"
 
 const lintStatus = (code: string): Linter.LintMessage[] => new Linter().verify(code, [{
   files: ["**/*.tsx"],
@@ -72,4 +72,16 @@ test("Offset Pop flat config attaches every inherited rule at error without an o
   for (const other of ["core", "starci", "starci-core", "heritage"]) {
     assert.throws(() => offsetPopGrammarConfig(refused({ hfs: { ...hfs, grammar: other } })), /does not match the selected Grammar/)
   }
+})
+
+test("Offset Pop lints the front-end subpaths of the root packages with its own family, as the Common config narrows them", () => {
+  const view = { repoRoot: "/app", profile: "fe" as const, grammar: "offset-pop" as const, slotOf: () => "app.packages" }
+  const whole = offsetPopGrammarConfig({ hfs: view })
+  const scoped = offsetPopGrammarPackagesConfig({ hfs: view })
+  assert.equal(scoped.length, whole.length)
+  for (const block of scoped) {
+    assert.deepEqual(block.files, ["packages/*/src/workbench/**/*.{ts,tsx}", "packages/*/src/public/**/*.{ts,tsx}"])
+    assert.ok((block.ignores ?? []).includes("packages/*/src/workbench/contract/**"))
+  }
+  assert.throws(() => offsetPopGrammarPackagesConfig({ hfs: { ...view, grammar: "core" as const } }), /does not match the selected Grammar/)
 })

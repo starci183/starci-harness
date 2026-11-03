@@ -599,13 +599,24 @@ slots:
   - id: app.tool-config-local
     since: 3.1.0
     profiles: [app]
-    path: "{tsconfig.json,.eslintrc,.eslintrc.*,.eslintignore,eslint.config.*,.stylelintrc,.stylelintrc.*,.stylelintignore,stylelint.config.*,.prettierrc.*,prettier.config.*,jest.config.*,lint-staged.config.*,.lintstagedrc*}"
+    path: "{tsconfig.json,.eslintrc,.eslintrc.*,.eslintignore,eslint.config.js,eslint.config.cjs,eslint.config.ts,eslint.config.mts,eslint.config.cts,.stylelintrc,.stylelintrc.*,.stylelintignore,stylelint.config.*,.prettierrc.*,prettier.config.*,jest.config.*,lint-staged.config.*,.lintstagedrc*}"
     presence: forbidden
     tracked: external
     tier: none
     tests: none
-    goesTo: "nowhere at the app root: each side holds exactly its managed tool configuration (be.tool-config, fe.tool-config) and the root only the formatter (app.format-config)"
+    goesTo: "nowhere at the app root: each side holds exactly its managed tool configuration (be.tool-config, fe.tool-config) and the root only the formatter (app.format-config) and the eslint config of its root packages (app.packages-lint)"
     rules: [HFS_TOOL_CONFIG_LOCAL]
+  - id: app.packages-lint
+    since: 3.17.0
+    profiles: [app]
+    # The one eslint config at the app root: `starci app sync` renders it when the app has root workspace packages (app.packages), and it lints their
+    # source by subpath (the back-end canon, the front-end canon and the Grammar family each over their own subpaths). No other tool config lives here.
+    path: eslint.config.mjs
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules: [HFS_MANAGED_FILE_DRIFT]
   - id: app.quality-config
     since: 3.1.0
     profiles: [app]
@@ -837,6 +848,31 @@ slots:
     rules: [HFS_PLAINTEXT_SECRET, HFS_SCRIPT_ONE_OFF, BE_SPEC_PLACEMENT, HFS_REPO_LOCAL_CHECK]
     exemplifiedBy:
       - {path: packages/hfs/src/hfs-slot-ownership.spec.mjs, editions: [lite, full]}
+  - id: app.packages
+    since: 3.17.0
+    profiles: [app]
+    editionWhy: Lite and full share the slot; a product's agent SDK and its agent modules are workspace packages in both.
+    # A workspace package of the app ROOT (packages/agent-sdk, packages/module-<name>): first-party source that both sides import through its
+    # package entry points and never past them (ARCH_INTERNAL_IMPORT_OUTSIDE), linted by the root eslint config by subpath.
+    path: "packages/{agent-sdk,module-<name>}/"
+    presence: optional
+    tracked: tracked
+    tier: none
+    requires: [package.json, tsconfig.json, src/index.ts]
+    tests: unit-beside
+    rules: [HFS_UNUSED_EXPORT]
+  - id: app.module-registry
+    since: 3.17.0
+    profiles: [app]
+    editionWhy: Lite and full share the slot; the registry lists the module packages of the app.
+    path: packages/modules/
+    presence: optional
+    tracked: tracked
+    tier: none
+    requires: [package.json, src/index.ts]
+    allows: [package.json, tsconfig.json, tsconfig.build.json, src/index.ts, src/template/index.ts, src/manifest/index.ts]
+    tests: none
+    rules: [HFS_MANAGED_FILE_DRIFT]
   - id: app.sides
     since: 3.1.0
     profiles: [app]

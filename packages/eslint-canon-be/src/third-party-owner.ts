@@ -10,6 +10,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { isBuiltin } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import ts from "typescript"
+import { rootPackageNames } from "../runtime/scripts/hfs/architecture/root-packages.mjs"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { moduleReferences } from "./lib/import-source.ts"
 import { isSpecFile } from "./lib/path.ts"
@@ -73,15 +74,19 @@ const referencesOf = (file: string, text: string) => {
 const dependenciesOf = (hfs: HfsView): Dependencies => {
     const cached = DEPENDENCIES.get(hfs)
     if (cached) return cached
-    const appManifest = join(dirname(hfs.repoRoot), "package.json")
+    // A package view (the root workspace packages) has the app root itself as its repoRoot: hfs.json sits there, and so does the one manifest.
+    const appManifest = existsSync(join(hfs.repoRoot, "hfs.json")) ? join(hfs.repoRoot, "package.json") : join(dirname(hfs.repoRoot), "package.json")
     const manifest = existsSync(appManifest) ? appManifest : join(hfs.repoRoot, "package.json")
     if (!existsSync(manifest)) throw new Error("third-party-import-owner needs the app-root package.json beside be/ to derive SDK ownership")
     const declaration: unknown = JSON.parse(readFileSync(manifest, "utf8"))
     const dependencies = new Map<string, string>()
+    // The app's own workspace packages (packages/agent-sdk, packages/module-<name>) are first-party source, not third-party libraries: whatever
+    // version range the root manifest writes for one of them, it names no SDK to own. What such a package imports is judged in the package.
+    const own = rootPackageNames(dirname(manifest))
     for (const section of ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"]) {
         const declared: unknown = typeof declaration === "object" && declaration !== null ? Reflect.get(declaration, section) : undefined
         for (const [name, version] of Object.entries(declared ?? {})) {
-            if (/^(?:workspace:|file:|link:)/.test(String(version))) continue
+            if (/^(?:workspace:|file:|link:)/.test(String(version)) || own.has(name)) continue
             const alias = /^npm:((?:@[^/]+\/)?[^@]+)(?:@|$)/.exec(String(version))
             dependencies.set(name, alias?.[1] ?? name)
         }

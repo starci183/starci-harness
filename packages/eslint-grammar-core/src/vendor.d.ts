@@ -155,6 +155,8 @@ declare module "@starci/eslint-canon-fe/lib/config.mjs" {
   export const SOURCE_FILES: readonly string[]
   /** A disable directive is a weakening of lint, and one that suppresses nothing is dead weight. */
   export const linterOptions: Readonly<import("eslint").Linter.LinterOptions>
+  /** A front-end flat config narrowed to the front-end subpaths of the root workspace packages of an app. */
+  export const scopeToPackages: (config: readonly import("eslint").Linter.Config[]) => import("eslint").Linter.Config[]
 }
 
 declare module "@starci/eslint-canon-fe/lib/freestyle.mjs" {

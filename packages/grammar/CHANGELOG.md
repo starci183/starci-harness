@@ -308,7 +308,6 @@
 
 - Changed: no component change; the version moves with its lint family (eslint-grammar-core and offset-pop 0.15.11), which re-pin the hfs 4.10.0 canon.
 
-
 ## 0.15.10 - 2026-10-29
 
 - Changed: no component change; the version moves with its lint family (eslint-grammar-core and offset-pop 0.15.10), which re-pin the hfs 4.9.11 canon.
@@ -407,7 +406,6 @@
 - Changed: the Core DNA id is `core` (was `starci-core`). The CSS class prefix `starci-core-*` and the cascade layers are unchanged.
 - Fixed: a labelled Core `SurfaceCard` insets its label row again. Common's `padding: 0 !important` on the label row, in the earlier layer, beat Core's inset, so the title touched the card edge; the label row now reads `--starci-core-surface-label-padding`, which Core sets. The `Surfaces/SurfaceCard label inset (Core)` story asserts a non-zero inline padding.
 - Changed: versioned together with the Grammar lint families 0.13.0. The package lives in github.com/starci183/starci-harness; `src/common/rule-catalog.generated.ts` is committed source edited in place.
-
 
 ## 0.12.14 - 2026-10-27
 
@@ -1213,7 +1211,6 @@ is repaired here rather than explained to a consumer.
 - No consumer changes. `SurfaceAccordionCard`'s own frameless double stamp and `OtpInput`'s claim are
   out of this fix's scope and unchanged.
 
-
 ## 0.4.9
 
 Fix Core `Tabs` external panel relationships after the underlying collection mounts or updates.
@@ -1225,7 +1222,6 @@ Fix Core `Tabs` external panel relationships after the underlying collection mou
 - Regression tests render real external panels with the real HeroUI collection and cover initial
   linkage, selection, changed/removed callbacks, collection replacement, multiple instances and cleanup.
 - No public API, presentation, dependency or consumer changes.
-
 
 ## 0.4.8
 

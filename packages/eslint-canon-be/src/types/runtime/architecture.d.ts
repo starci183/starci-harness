@@ -48,3 +48,8 @@ declare module "*/runtime/scripts/hfs/architecture/entity-registry.mjs" {
     /** Whether `file` (side-relative) is one of the importers the registry slot admits by deep path (`importedBy`). */
     export function registryImporter(resolver: object | null, slot: { readonly importedBy?: readonly string[] }, file: string): boolean
 }
+
+declare module "*/runtime/scripts/hfs/architecture/root-packages.mjs" {
+    /** The names of the workspace packages of the app root (the folders its package.json `workspaces` name that no side owns). */
+    export function rootPackageNames(packageRoot: string): Set<string>
+}

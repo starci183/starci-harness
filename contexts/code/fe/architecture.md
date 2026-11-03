@@ -47,12 +47,15 @@ Enforced by: R55 (`use-client-only-at-boundary`), R92 (`connected-block-has-pres
 
 ## FE-ARCHITECTURE-4 Apps never import each other; shared code is a built package
 
-Each app is independent; code two apps need is a workspace package under `fe/packages/<pkg>` imported through its
-declared exports, and a package never imports an app.
+Each app is independent; code two apps need is a workspace package, `fe/packages/<pkg>` when only the front end uses it
+or a root package `packages/<pkg>` of the app when both sides do ([project/README.md](../../project/README.md)
+PROJECT-3), imported by its package name through its declared exports and never past them (no relative or aliased path
+into its `src/`), and a package never imports an app.
 
 Why: apps that import each other cannot build or deploy separately, and a package export is a distribution contract.
 
-Enforced by: R64 (`app-isolation`), R21 (`cross-app-duplicate`), R30 (`package-export-bypass`), R26
+Enforced by: R64 (`app-isolation`), R21 (`cross-app-duplicate`), R30 (`package-export-bypass`; for a root package the
+architecture machine's `ARCH_INTERNAL_IMPORT_OUTSIDE`, which stops the lint run and `app check`), R26
 (`package-imports-app`).
 
 ## FE-ROUTE The front end serves no API

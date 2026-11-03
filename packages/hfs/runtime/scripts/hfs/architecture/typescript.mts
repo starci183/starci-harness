@@ -5,7 +5,7 @@ import type { TypeContext } from './type-context.mjs';
 import { createRequire } from 'node:module';
 import type { CallExpression, Diagnostic, ExportDeclaration, ImportDeclaration, Node, SourceFile, TypeChecker } from 'typescript';
 import { canonical, isInside, slash } from './config.mjs';
-import type { ArchitectureConfig, TypeScriptApi } from './config.mjs';
+import type { ArchitectureConfig, RootPackage, TypeScriptApi } from './config.mjs';
 import { crossesSide } from './side-boundary.mjs';
 import { sameOrUnder } from '../../lib/path-key.mjs';
 import { createTypeScriptProgram, readTypeScriptProject, resolveTypeScriptModule, sharedInProgramRun, typeScriptProjectReferencePath } from '../typescript-programs.mjs';
@@ -434,6 +434,26 @@ function packageExported(ts: TypeScriptApi, workspace: WorkspaceRecord, specifie
   });
 }
 
+/** The root workspace package of the app (`packages/agent-sdk`) a specifier names, its name or a subpath of it; the longest name when several match. */
+export function rootPackageOf(config: Pick<ArchitectureConfig, 'rootPackages'>, specifier: string): RootPackage | null {
+  let found: RootPackage | null = null;
+  for (const item of config.rootPackages ?? []) if (sameOrUnder(specifier, item.name) && (found === null || item.name.length > found.name.length)) found = item;
+  return found;
+}
+
+/** Whether a specifier into a root package names one of its entry points: a subpath its `exports` declare, or its root through `exports`, `main`/`types` or `src/index`. A path into its source is not an entry point. */
+export function rootPackageEntryDeclared(item: RootPackage, specifier: string): boolean {
+  if (exportCandidates(item, specifier).length > 0) return true;
+  return specifier === item.name && !item.exports && (manifestEntryTargets(item.manifest).length > 0 || packageIndexSource(item) !== null);
+}
+
+/** The subpaths a root package declares for import (`.` first), for the message of a refused deep import. */
+export function rootPackageEntries(item: RootPackage): string[] {
+  const declaration = item.exports;
+  const keys = declaration && typeof declaration === 'object' && !Array.isArray(declaration) ? Object.keys(declaration).filter(key => key.startsWith('.')) : ['.'];
+  return (keys.length ? keys : ['.']).map(key => (key === '.' ? item.name : `${item.name}${key.slice(1)}`));
+}
+
 function boundaryViolation(root: string, edge: ImportEdge, fromWorkspace: WorkspaceRecord | null, toWorkspace: WorkspaceRecord | null, ruleId: string, message: string): ArchitectureError {
   return {
     ruleId,
@@ -464,7 +484,7 @@ function typeScriptContext(config: ArchitectureConfig, loaded: LoadedTypeScript,
     canonical, compilerError, isInside, slash, readTypeScriptProject, typeScriptProjectReferencePath,
     sameOrUnder, createTypeScriptProgram, isProductionSource, sourceLocation, workspaceMetadata, workspaceOf,
     pathAliasMatches, moduleReferences, workspaceSourceEntry, resolveTypeScriptModule, crossesSide, assetExtension: ASSET_EXTENSION,
-    relativePath, packageExported, boundaryViolation,
+    relativePath, packageExported, boundaryViolation, rootPackageOf, rootPackageEntryDeclared, rootPackageEntries,
   });
 }
 export function relativePath(root: string, fileName: string): string {

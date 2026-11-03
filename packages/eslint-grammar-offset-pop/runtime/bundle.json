@@ -17,6 +17,7 @@
     "modules/models/runtimes.yaml",
     "modules/models/tiers.yaml",
     "scripts/hfs/allows.mjs",
+    "scripts/hfs/architecture/root-packages.mjs",
     "scripts/hfs/declaration-shape.mjs",
     "scripts/hfs/declaration-slots.mjs",
     "scripts/hfs/edition-slots.mjs",

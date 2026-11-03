@@ -50,7 +50,7 @@ import { recommended as projectGraphRecommended, rules as projectGraphRules } fr
 import { recommended as sonarParityRecommended, rules as sonarParityRules } from "./sonar-parity.ts"
 import { recommended as spacingRecommended, rules as spacingRules } from "./spacing.ts"
 import type { ESLint, Linter } from "eslint"
-import { buildFeConfig, buildPlainSourceConfig, COUNTING, type CanonPlugin, type SonarPlugins } from "./lib/config.ts"
+import { buildFeConfig, buildPlainSourceConfig, COUNTING, scopeToPackages, type CanonPlugin, type SonarPlugins } from "./lib/config.ts"
 import type { Rule, Rules } from "./lib/rule.ts"
 import { why } from "./lib/why.ts"
 import { recommended as uiRulingsRecommended, rules as uiRulingsRules } from "./ui-rulings.ts"
@@ -164,7 +164,8 @@ export const recommended: Record<string, "error" | "warn"> = Object.fromEntries(
 
 /** Flat-config options that make inline directives ineffective rather than merely forbidden. */
 export { linterOptions } from "./lib/config.ts"
-export { loadHfs } from "./lib/hfs.ts"
+export { loadHfs, loadPackagesHfs } from "./lib/hfs.ts"
+export { scopeToPackages } from "./lib/config.ts"
 
 /**
  * The Vietnamese why of each rule that carries a catalogue code: `{ code, vi, fixVi }`.
@@ -283,6 +284,22 @@ export const starciFeConfig = ({ hfs }: { readonly hfs?: unknown } = {}): Linter
     sonar: loadSonarPlugins(),
     source: { ...recommended, ...reactHooksRules(reactHooks) },
   })
+}
+
+/**
+ * The flat config of the front-end subpaths of an app's root workspace packages (`packages/<pkg>/src/workbench/**` and `src/public/**`), for the
+ * managed root `eslint.config.mjs`: `starciFePackagesConfig({ hfs: loadPackagesHfs(import.meta.url) })`, composed with the Grammar family's
+ * `...PackagesConfig`. The very rules of `starciFeConfig` over the package view, but the project-graph rules, which judge the import graph of a
+ * side folder that a package is not part of.
+ *
+ * @param input - The package view of the app root.
+ * @returns The flat config.
+ */
+export const starciFePackagesConfig = ({ hfs }: { readonly hfs?: unknown } = {}): Linter.Config[] => {
+  const reactHooks = loadReactHooks()
+  const graph = new Set(Object.keys(projectGraphRecommended))
+  const source = { ...Object.fromEntries(Object.entries(recommended).filter(([name]) => !graph.has(name))), ...reactHooksRules(reactHooks) }
+  return scopeToPackages(buildFeConfig({ hfs, plugin, reactHooks, tsPlugin: loadTsPlugin(), sonar: loadSonarPlugins(), source }))
 }
 
 /**

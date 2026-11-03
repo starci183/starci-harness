@@ -152,6 +152,8 @@ export const unitTestColocated: RuleModule = {
     if (BANNED_TEST_FILE.test(name)) {
       return { Program(node) { context.report({ node, messageId: "suffix", data: { name } }) } }
     }
+    // A root workspace package keeps a spec beside any source file (slot app.packages, tests: unit-beside): the service-role pairing is the module folders'.
+    if (hfs.tierOf(filename) === "package") return {}
     if (isUnitSpecFile(hfs, filename)) {
       const door = doorOfSpec(hfs, filename)
       if (door !== null) return exists(join(dirname(filename), door)) ? {} : { Program(node) { context.report({ node, messageId: "orphan", data: { name } }) } }

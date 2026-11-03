@@ -111,3 +111,30 @@ export const buildBeConfig = async ({ hfs, plugin, recommended }: {
         { files: [...SOURCE_FILES], ignores: [...OUTSIDE_THE_SCAN_FILES], plugins: { sonarjs, unicorn }, rules: sonarWayRules(sonarjs, "be").rules },
     ]
 }
+
+/** The back-end subpaths of a root workspace package: everything under `src/` but the front-end subpaths `workbench/` and `public/`; the workbench contract (`workbench/contract/`) is React-free and stays back end. */
+export const PACKAGE_SOURCE_FILES = Object.freeze(["packages/*/src/**/*.{ts,mts,cts,js,mjs,cjs}"])
+const PACKAGE_FRONT_END = Object.freeze(["packages/*/src/workbench/**", "packages/*/src/public/**"])
+const PACKAGE_CONTRACT_FILES = Object.freeze(["packages/*/src/workbench/contract/**/*.{ts,mts,cts,js,mjs,cjs}"])
+/** What a package folder never lints: build output, coverage output and installed packages. */
+export const PACKAGE_IGNORED = Object.freeze(["**/dist/**", "**/coverage/**", "**/node_modules/**"])
+
+/**
+ * The flat config of the back-end subpaths of the root workspace packages of an app: the config of a back end, with the files narrowed to
+ * `packages/<pkg>/src/**` (the front-end subpaths `workbench/` and `public/` left to the front-end canon, the workbench contract kept). It is
+ * the very rule set of the be side, over the package view of the app root (`loadPackagesHfs`), so a module package obeys the laws of the side
+ * its subpath belongs to and the infrastructure owners judge what the package imports.
+ *
+ * @param {object} input - The attachment options of `buildBeConfig`.
+ * @returns {Promise<Array<object>>} The flat config: one ignore block and the rule and Sonar way blocks over the package subpaths.
+ */
+export const buildBePackagesConfig = async (input: Parameters<typeof buildBeConfig>[0]): Promise<TSESLint.FlatConfig.ConfigArray> => {
+    const [, ...blocks] = await buildBeConfig(input)
+    return [
+        { ignores: [...PACKAGE_IGNORED] },
+        ...blocks.flatMap((block) => [
+            { ...block, files: [...PACKAGE_SOURCE_FILES], ignores: [...(block.ignores ?? []), ...PACKAGE_FRONT_END] },
+            { ...block, files: [...PACKAGE_CONTRACT_FILES] },
+        ]),
+    ]
+}

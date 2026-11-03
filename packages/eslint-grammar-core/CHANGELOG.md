@@ -3,6 +3,8 @@
 ## 0.21.15 - 2026-11-03
 
 - Changed: requires `@starci/eslint-canon-fe` 9.12.0; the runtime copies carry the R06 and R295 laws and the `@starci/nest-kit` and `@starci/next-i18n` pins.
+- Added: `coreGrammarPackagesConfig`: the family rules over the front-end subpaths of the root workspace packages (`src/workbench/**`, `src/public/**`), the config of `coreGrammarConfig` narrowed by `scopeToPackages` of the universal canon.
+- Changed: the runtime copy of the slot manifest carries the slots `app.packages`, `app.module-registry` and `app.packages-lint`.
 
 ## 0.21.14 - 2026-11-03
 
