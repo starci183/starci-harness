@@ -438,15 +438,13 @@ const LITE_APP_REUSED = new Set(['.editorconfig', '.gitattributes', '.nvmrc']);
  * The be files a generator writes when it first needs them, never the starter, so a fresh app carries no file and no export that
  * nothing reads (R25). In both editions: the entity bases of platform/database (abstract.entity.ts, BE-PERSISTENCE-3), written by
  * the first table whose entity extends them, since no starter table has both timestamps. In lite also: the cli's runners, the in-order
- * relay, and the raw SQL helpers of platform/database (the sql tag, and the database-function call statement with its spec), which only
- * the table, queue, jobs and webhook capabilities call; a fresh app reads and writes through entities alone (R334).
+ * relay, and the sql tag of platform/database, which only the table, queue, jobs and webhook capabilities call; a fresh app reads and
+ * writes through entities and, for the account doors of its sign-in, the database-function call of database.client.ts (R334).
  */
 export const ENTITY_BASE_FILE = 'src/modules/platform/database/abstract.entity.ts';
 const DEFERRED_GENERATOR_FILES = new Set([ENTITY_BASE_FILE]);
 const LITE_DEFERRED_GENERATOR_FILES = new Set([
   ...DEFERRED_GENERATOR_FILES,
-  'src/modules/platform/database/database.client.ts',
-  'src/modules/platform/database/database.client.spec.ts',
   'src/modules/platform/database/database.sql.ts',
   'src/modules/platform/database/migration-runner.service.ts',
   'src/modules/platform/database/seed-runner.service.ts',

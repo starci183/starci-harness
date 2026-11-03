@@ -73,7 +73,7 @@ EntityManager (`find`, `findOne`, `count`, `exists`, `insert`, `save`, `update`,
 `lock` option) and `createQueryBuilder(Entity, "alias")` with named parameters for joins, aggregates, `SKIP LOCKED` and jsonb or
 vector operators; every table a migration creates has an entity, and a service maps entities to its contracts, no `<Name>Row`
 interface. Domain code takes the injected manager; specs, builders, fixtures and the world use `world.db.<connection>`.
-Anything an entity cannot express is a database function, called through `callDbFunction(manager, name, args)` of
+Anything an entity cannot express, and any table the application role holds no grant on (the pgmq bus, the `auth` schema), is reached by a database function, called through `callDbFunction(manager, name, args)` of
 `platform/database/database.client.ts`, which accepts only a function `ruleParams.be.dbFunctions` (the canon's) or hfs.json
 `sides.be.dbFunctions` (the app's own, each with its reason) lists: a function of a migration or an extension is named
 schema-qualified (`public.job_claim`, `be_access.chat_target_member`), a pg built-in the canon lists is named bare and called in
@@ -233,7 +233,7 @@ Enforced by: `sql-returning` (R181).
 
 The browser never reaches the database: there is no data API and the front end holds no database credential. The back end
 connects with the least-privilege application role (`db.appRole` of hfs.json, `app_be` by default: LOGIN, NOINHERIT,
-NOBYPASSRLS, named grants only), and its tables enable and force RLS unless `db.forceRlsExemptions` names them. The
+NOBYPASSRLS, named grants only, none on schema `auth`: accounts are reached only through the identity account doors, the SECURITY DEFINER functions of the baseline), and its tables enable and force RLS unless `db.forceRlsExemptions` names them. The
 `anon`, `authenticated` and `service_role` roles of `db/bootstrap.sql` exist NOLOGIN only so migrations written for a
 hosted provider apply; no door logs in as them.
 

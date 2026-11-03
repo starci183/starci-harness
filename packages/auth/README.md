@@ -23,7 +23,7 @@ AuthModule.registerAsync({
 })
 ```
 
-The package reads no environment. The app parses its settings (BE-CONFIG-2) and passes typed options; secrets are passed as `{ reveal(): string }` holders or text. The app implements `SessionStore` over the tables of `migrations/identity-sessions.sql`, `AccountDirectory` over its user table, `RateCounter` over its shared counter, and `AuthAuthenticator` (the password and Google decisions) using `AuthPasswords` and `SignInBudget.counted` from the module.
+The package reads no environment. The app parses its settings (BE-CONFIG-2) and passes typed options; secrets are passed as `{ reveal(): string }` holders or text. The app implements `SessionStore` over the tables of `migrations/identity-sessions.sql`, `AccountDirectory` over its account doors (in a StarCi lite app, the managed `persistence/account-doors.port.ts` over the SECURITY DEFINER `be_auth_*` functions of the baseline), `RateCounter` over its shared counter, and `AuthAuthenticator` (the password and Google decisions) using `AuthPasswords` and `SignInBudget.counted` from the module.
 
 Key rotation: list the new key first with its private key, keep the old key with its public key only, deploy, and drop the old key once its access tokens have expired. Every listed key verifies and is published by `AuthSessions.jwks()`.
 

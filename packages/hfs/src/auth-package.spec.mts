@@ -20,6 +20,8 @@ import { APP, PRESETS } from './helpers/hfs-cli-fixture.mjs';
 
 const REPOSITORY = path.resolve(import.meta.dirname, '..', '..', '..');
 const AUTH_SQL = path.join(REPOSITORY, 'packages', 'auth', 'migrations', 'identity-sessions.sql');
+const DOORS_SQL = path.join(REPOSITORY, 'packages', 'hfs', 'templates', 'app', 'auth-doors.sql.partial');
+const ACCOUNT_DOORS = ['be_auth_user_by_email', 'be_auth_user_by_id', 'be_auth_user_by_google', 'be_auth_create_user', 'be_auth_link_google', 'be_auth_touch_user', 'be_auth_confirm_user', 'be_auth_set_password'];
 const IDENTITY_LIBRARIES = ['@nestjs/passport', 'passport', 'passport-google-oauth20', 'passport-local', '@nestjs/jwt', 'jose', 'bcryptjs'];
 
 const lockedOk = (root: string): LockResult => {
@@ -44,13 +46,24 @@ test('a lite starter depends on @starci/auth at its pin and on none of the ident
   assert.equal(web.dependencies['@starci/auth'], pin.version);
 });
 
-test('the baseline migration of a lite starter holds the package\'s session tables byte for byte', (t) => {
+test('the baseline migration of a lite starter holds the package\'s session tables and the account doors byte for byte, and grants app_be nothing on schema auth', (t) => {
   const root = lite(t);
   const [baseline] = fs.readdirSync(path.join(root, 'db', 'migrations')).filter((name) => name.endsWith('_baseline.sql'));
   assert.ok(baseline);
   const text = fs.readFileSync(path.join(root, 'db', 'migrations', baseline), 'utf8');
   assert.ok(text.includes(fs.readFileSync(AUTH_SQL, 'utf8')), 'packages/auth/migrations/identity-sessions.sql is the owner of the tables');
   assert.doesNotMatch(text, /refresh_sessions/u);
+  assert.ok(text.includes(fs.readFileSync(DOORS_SQL, 'utf8')), 'templates/app/auth-doors.sql.partial is the owner of the account doors');
+  assert.doesNotMatch(text, /grant [^;]* on (?:schema auth|(?:table )?auth\.)/iu, 'app_be reaches accounts through the doors only');
+  for (const door of ACCOUNT_DOORS) {
+    assert.match(text, new RegExp(String.raw`create function public\.${door}\([^)]*\)[^$]*security definer\s+set search_path to ''`, 'iu'), `${door} is a definer with a pinned search_path`);
+    assert.match(text, new RegExp(String.raw`revoke execute on function public\.${door}\([^)]*\) from public, anon, authenticated;\s+grant execute on function public\.${door}\([^)]*\) to app_be;`, 'iu'), `${door} is executable by app_be alone`);
+  }
+});
+
+test('the eight account doors are the canon\'s listed database functions, so an app lists none of them in hfs.json', () => {
+  const listed = Object.fromEntries((loadSlotManifest().ruleParams.be?.dbFunctions ?? []).map((entry) => [entry.name, entry.reason]));
+  for (const door of ACCOUNT_DOORS) assert.match(String(listed[`public.${door}`]), /^domain\/identity \(lite sign-in\)/u, door);
 });
 
 test('a lite starter\'s passport integration is the glue the slot lists and its front end keeps one auth client', (t) => {
@@ -96,9 +109,12 @@ test('the sign-in glue is managed: the doors, the stores and their specs render 
   writeTargets(root, targets);
   const tracked = ['hfs.json', ...targets.map((target) => target.path)];
   const controller = 'be/src/features/api/auth/transport/http/auth.controller.ts';
-  const managed = ['be/src/modules/domain/identity/session-store.service.ts', 'be/src/modules/domain/identity/account-directory.service.ts', 'be/src/modules/domain/identity/rate-counter.service.ts',
+  const managed = ['be/src/modules/domain/identity/persistence/account-doors.port.ts', 'be/src/modules/domain/identity/identity-sign-in.log-events.ts', 'be/src/modules/domain/identity/session-store.service.ts', 'be/src/modules/domain/identity/account-directory.service.ts', 'be/src/modules/domain/identity/rate-counter.service.ts',
     'be/src/modules/domain/identity/authenticator.service.ts', 'be/src/modules/domain/identity/sign-in.service.ts', 'be/src/modules/domain/identity/sign-in.service.spec.ts', 'be/src/tests/fixtures/builders/identity.builder.ts', controller];
   for (const file of managed) assert.ok(tracked.includes(file), file);
+  const identity = tracked.filter((file) => file.startsWith('be/src/modules/domain/identity/persistence/'));
+  assert.deepEqual(identity.filter((file) => /auth-(?:user|identity)\.entity/u.test(file)), [], 'no entity maps auth.users or auth.identities');
+  for (const file of identity) assert.doesNotMatch(fs.readFileSync(path.join(root, file), 'utf8'), /schema: "auth"/u, file);
   // The cookie session itself (login, an authenticated request, refresh with rotation, reuse of the old token rejected, logout) runs in the package's own spec over its in-memory stores.
   assert.match(fs.readFileSync(path.join(REPOSITORY, 'packages/auth/src/server/auth.module.spec.ts'), 'utf8'), /login, an authenticated request, refresh with rotation, reuse of the old refresh token rejected, and logout/u);
   for (const door of ['login', 'refresh', 'session', 'logout', 'google', 'google/callback', 'jwks']) assert.ok(fs.readFileSync(path.join(root, controller), 'utf8').includes(`("${door}")`), door);

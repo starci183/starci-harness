@@ -4264,7 +4264,7 @@ rules:
     editionWhy: "owner:lite-backing-services makes the db service lite's database; application-role and forced-RLS requirements apply to that backing."
     docs: [docs/microservices.md#r255]
     templateNa: "Application roles and table ownership are product-authored db migration content, rather than a scaffolded SQL surface."
-    law: "The declared back-end database role (app_be by default) has only the privileges it needs: role declarations refuse superuser and bypassrls, require noinherit and nobypassrls, and never grant all schema or table privileges. Tables owned by that role enable and force row level security by default; a forceRls exemption identifies the table and carries a nonempty reason. This applies to every edition that declares Supabase."
+    law: "The declared back-end database role (app_be by default) has only the privileges it needs: role declarations refuse superuser and bypassrls, require noinherit and nobypassrls, never grant all schema or table privileges, and leave it with no grant after the last migration on schema auth, on a table or sequence in it, or by default privilege for it (accounts are reached through SECURITY DEFINER doors; a later migration that revokes a grant clears it). Tables owned by that role enable and force row level security by default; a forceRls exemption identifies the table and carries a nonempty reason. This applies to every edition that declares Supabase."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["DB_APP_ROLE", "DB_FORCE_RLS_DEFAULT"]

@@ -111,14 +111,12 @@ const DATABASE_ERROR = 'be/src/modules/platform/database/errors/database.error.t
 
 /** Skeleton files the lite starter leaves out and the queue capabilities use, each from its skeleton template. */
 const SKELETON_FILES: ReadonlyArray<readonly [string, string]> = Object.freeze([
-  ['be/src/modules/platform/database/database.client.ts', 'skeleton-lite/src/modules/platform/database/database.client.ts'],
-  ['be/src/modules/platform/database/database.client.spec.ts', 'skeleton-lite/src/modules/platform/database/database.client.spec.ts'],
   ['be/src/modules/platform/database/database.sql.ts', 'skeleton-lite/src/modules/platform/database/database.sql.ts'],
   ['be/src/modules/platform/primitives/sequence.policy.ts', 'skeleton/src/modules/platform/primitives/sequence.policy.ts'],
   ['be/src/modules/platform/primitives/sequence.policy.spec.ts', 'skeleton/src/modules/platform/primitives/sequence.policy.spec.ts'],
 ]);
 
-/** The database-function call and the sql tag of the outbox and claim statements (with its identifier error) and the in-order relay the queue adapters walk their rows with. */
+/** The sql tag of the outbox and claim statements (with its identifier error) and the in-order relay the queue adapters walk their rows with. */
 function skeletonFiles(repoRoot: string): { created: GeneratedFile[], patches: FilePatch[] } {
   const created = SKELETON_FILES.filter(([relative]) => !fs.existsSync(path.join(repoRoot, ...relative.split('/'))))
     .map(([relative, source]) => ({ relative, text: render(template(`be/${source}`), {}) }));

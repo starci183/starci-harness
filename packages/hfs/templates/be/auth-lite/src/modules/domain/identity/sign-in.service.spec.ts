@@ -48,6 +48,23 @@ describe("IdentitySignInService", () => {
         expect(await subject.jwks()).toEqual({ keys: [] })
     })
 
+    it("signs the caller out of every other device, keeping the session of the token", async () => {
+        const { subject, sessions } = await build()
+        sessions.endOthers.mockResolvedValue()
+
+        await subject.endOthers({ id: "u-1", role: "authenticated", sessionId: "s-1" })
+
+        expect(sessions.endOthers).toHaveBeenCalledWith("u-1", "s-1")
+    })
+
+    it("refuses to sign out the other devices of a token that names no session", async () => {
+        const { subject, sessions } = await build()
+        sessions.endOthers.mockRejectedValue(new AuthError("IDENTITY_UNAUTHENTICATED"))
+
+        await expect(subject.endOthers({ id: "u-1", role: "authenticated" })).rejects.toMatchObject({ code: IdentityErrorCode.Unauthenticated })
+        expect(sessions.endOthers).toHaveBeenCalledWith("u-1", undefined)
+    })
+
     it("turns a refusal of the package into the error family that owns its code", async () => {
         const { subject, doors } = await build()
         doors.refresh.mockRejectedValue(new AuthError("IDENTITY_REFRESH_REUSED"))

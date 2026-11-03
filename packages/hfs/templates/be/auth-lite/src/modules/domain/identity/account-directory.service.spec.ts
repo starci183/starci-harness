@@ -1,46 +1,46 @@
 // Managed by starci app sync (slot be.identity.sign-in); do not edit: run "npx starci app sync --execute".
 import "reflect-metadata"
 import { Test } from "@nestjs/testing"
-import { FakeClock, mockEntityManager } from "@starci/jest-preset"
-import { CLOCK } from "@modules/platform/clock"
+import { mockEntityManager } from "@starci/jest-preset"
 import { PRIMARY_ENTITY_MANAGER } from "@modules/platform/database"
-import { authUserRow as user } from "@tests/fixtures/builders/identity.builder"
-import { AuthUserEntity } from "./persistence/entities"
-import { IdentityAccountDirectoryService, isDisabled } from "./account-directory.service"
+import { accountByIdRow } from "@tests/fixtures/builders/identity.builder"
+import { IdentityAccountDirectoryService } from "./account-directory.service"
 
-const AT = "2026-02-03T04:05:06.000Z"
+const USER_BY_ID = 'SELECT * FROM "public"."be_auth_user_by_id"($1)'
 
-const build = async (rows: ReadonlyArray<AuthUserEntity | null>) => {
-    const entityManager = mockEntityManager({ findOne: rows.map((result) => [AuthUserEntity, result] as const) })
+const build = async (rows: unknown) => {
+    const entityManager = mockEntityManager({ query: [USER_BY_ID, rows] })
     const moduleRef = await Test.createTestingModule({
-        providers: [
-            IdentityAccountDirectoryService,
-            { provide: PRIMARY_ENTITY_MANAGER, useValue: entityManager },
-            { provide: CLOCK, useValue: new FakeClock(AT) },
-        ],
+        providers: [IdentityAccountDirectoryService, { provide: PRIMARY_ENTITY_MANAGER, useValue: entityManager }],
     }).compile()
-    return moduleRef.get(IdentityAccountDirectoryService)
+    return { directory: moduleRef.get(IdentityAccountDirectoryService), entityManager }
 }
 
 describe("IdentityAccountDirectoryService.find", () => {
-    it("answers the standing of a live account, a banned one, a deleted one and a missing one", async () => {
-        const subject = await build([user("live"), user("banned"), user("ban-ended"), user("deleted"), null])
+    it("answers the standing of a live account through the door", async () => {
+        const { directory, entityManager } = await build([accountByIdRow("live")])
 
-        expect(await subject.find("u-1")).toEqual({ id: "u-1", email: "a@example.test", disabled: false })
-        expect((await subject.find("u-1"))?.disabled).toBe(true)
-        expect((await subject.find("u-1"))?.disabled).toBe(false)
-        expect((await subject.find("u-1"))?.disabled).toBe(true)
-        expect(await subject.find("u-2")).toBeUndefined()
+        expect(await directory.find("u-1")).toEqual({ id: "u-1", email: "a@example.test", disabled: false })
+        expect(entityManager.query).toHaveBeenCalledWith(USER_BY_ID, ["u-1"])
     })
-})
 
-describe("isDisabled", () => {
-    it("is true for a deleted account and for a ban that has not ended", () => {
-        const now = new Date(AT)
+    it("answers a disabled account as disabled, and an account without an address with none", async () => {
+        const banned = await build([accountByIdRow("disabled")])
+        const addressless = await build([accountByIdRow("addressless")])
 
-        expect(isDisabled(user("deleted"), now)).toBe(true)
-        expect(isDisabled(user("banned"), now)).toBe(true)
-        expect(isDisabled(user("ban-ended"), now)).toBe(false)
-        expect(isDisabled(user("live"), now)).toBe(false)
+        expect((await banned.directory.find("u-1"))?.disabled).toBe(true)
+        expect(await addressless.directory.find("u-1")).toEqual({ id: "u-1", email: null, disabled: false })
+    })
+
+    it("answers undefined for an account that does not exist", async () => {
+        const { directory } = await build([])
+
+        expect(await directory.find("u-2")).toBeUndefined()
+    })
+
+    it("refuses a door answer that is not the account shape", async () => {
+        const { directory } = await build([{ id: "u-1", email: "a@example.test", disabled: "no" }])
+
+        await expect(directory.find("u-1")).rejects.toMatchObject({ code: "DATABASE_RETURNING_ROW_REJECTED" })
     })
 })

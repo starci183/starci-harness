@@ -17,7 +17,8 @@ import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
 import { InjectAuthPasswords, InjectSignInBudget } from "./identity.decorators"
 import { IdentityEmailLogEvent } from "./identity-email.log-events"
 import { confirmEmailMail, resetPasswordMail } from "./messages/identity-mail.messages"
-import { AuthUserEntity, IdentityEmailTokenEntity } from "./persistence/entities"
+import { accountDoors } from "./persistence/account-doors.port"
+import { IdentityEmailTokenEntity } from "./persistence/entities"
 import { IdentitySessionStoreService } from "./session-store.service"
 
 const CONFIRM = "confirm"
@@ -52,37 +53,24 @@ export class IdentityEmailService {
         const address = normalizeEmail(email)
         await this.admit("signup", address)
         if (!isAcceptablePassword(password)) throw new IdentityError({ code: IdentityErrorCode.PasswordInvalid })
-        const known = await this.entityManager.findOne(AuthUserEntity, { where: { email: address, isAnonymous: false } })
-        if (known !== null) {
-            if (known.emailConfirmedAt === null) await this.sendConfirmation(known.id, address, language)
+        const known = await accountDoors.userByEmail(this.entityManager, address)
+        if (known !== undefined) {
+            if (known.email_confirmed_at === null) await this.sendConfirmation(known.id, address, language)
             return
         }
         const now = this.clock.now()
         const id = this.ids.next()
         const hash = await this.passwords.hash(password)
-        await this.entityManager.insert(AuthUserEntity, {
-            id,
-            aud: "authenticated",
-            role: "authenticated",
-            email: address,
-            encryptedPassword: hash,
-            emailConfirmedAt: null,
-            lastSignInAt: null,
-            bannedUntil: null,
-            deletedAt: null,
-            isAnonymous: false,
-            createdAt: now,
-            updatedAt: now,
-        })
-        await this.sendConfirmation(id, address, language)
+        const created = await accountDoors.createUser(this.entityManager, { id, email: address, hash, confirmed: false, meta: "{}", now })
+        await this.sendConfirmation(created ?? id, address, language)
     }
 
     /** Mails a new confirmation link to an unconfirmed account; any other address is answered the same way. */
     async resend(email: string, language?: MailLanguage): Promise<void> {
         const address = normalizeEmail(email)
         await this.admit("signup", address)
-        const user = await this.entityManager.findOne(AuthUserEntity, { where: { email: address, isAnonymous: false } })
-        if (user === null || user.emailConfirmedAt !== null || user.encryptedPassword === null) return
+        const user = await accountDoors.userByEmail(this.entityManager, address)
+        if (user === undefined || user.email_confirmed_at !== null || user.encrypted_password === null) return
         await this.sendConfirmation(user.id, address, language)
     }
 
@@ -92,7 +80,7 @@ export class IdentityEmailService {
         await this.entityManager.transaction(async (scoped) => {
             const row = await this.spendable(scoped, token, CONFIRM, now)
             await scoped.update(IdentityEmailTokenEntity, { userId: row.userId, purpose: CONFIRM, usedAt: IsNull() }, { usedAt: now })
-            await scoped.update(AuthUserEntity, { id: row.userId }, { emailConfirmedAt: now, updatedAt: now })
+            await accountDoors.confirmUser(scoped, row.userId, now)
         })
     }
 
@@ -100,8 +88,8 @@ export class IdentityEmailService {
     async forgot(email: string, language?: MailLanguage): Promise<void> {
         const address = normalizeEmail(email)
         await this.admit("reset", address)
-        const user = await this.entityManager.findOne(AuthUserEntity, { where: { email: address, isAnonymous: false } })
-        if (user === null || user.deletedAt !== null) return
+        const user = await accountDoors.userByEmail(this.entityManager, address)
+        if (user === undefined || user.disabled) return
         const token = await this.mint(user.id, RESET, this.settings.resetTtlSeconds)
         const url = `${this.settings.webOrigin}/auth/reset?token=${encodeURIComponent(token)}`
         const mail = resetPasswordMail(language ?? this.settings.defaultLanguage, { brand: this.settings.brandName, url, hours: this.hoursOf(this.settings.resetTtlSeconds) })
@@ -116,8 +104,7 @@ export class IdentityEmailService {
         const userId = await this.entityManager.transaction(async (scoped) => {
             const row = await this.spendable(scoped, token, RESET, now)
             await scoped.update(IdentityEmailTokenEntity, { userId: row.userId, usedAt: IsNull() }, { usedAt: now })
-            const user = await scoped.findOne(AuthUserEntity, { where: { id: row.userId } })
-            await scoped.update(AuthUserEntity, { id: row.userId }, { encryptedPassword: hash, emailConfirmedAt: user?.emailConfirmedAt ?? now, updatedAt: now })
+            await accountDoors.setPassword(scoped, row.userId, hash, true, now)
             return row.userId
         })
         await this.sessions.closeOtherSessions(userId, NO_SESSION)

@@ -1644,7 +1644,7 @@ rules:
       - {kind: hfs, id: canon-copy-drift}
   - id: R255
     code: DB_APP_ROLE
-    law: The declared back-end database role holds only the privileges it needs, and the tables it owns force row level security unless exempted with a reason.
+    law: The declared back-end database role holds only the privileges it needs, none of them on schema `auth` (accounts are reached through the identity account doors), and the tables it owns force row level security unless exempted with a reason.
     editions: [lite]
     failureCodes:
       - DB_APP_ROLE

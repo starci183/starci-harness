@@ -290,8 +290,8 @@ export function addLiteWebhookInbox({
   );
   if (!hasHandoffStorage)
     planned[0]!.text = `${template("platform/migration.sql.tpl", renderValues)}\n${template("platform/client-operation-outcomes.sql.tpl", renderValues)}\n${planned[0]!.text}`; // the migration is the first planned file
-  // The sql tag and the database-function call (with its spec) the inbox and the event bus use; the lite starter leaves them out.
-  for (const file of ["database.sql.ts", "database.client.ts", "database.client.spec.ts"]) {
+  // The sql tag the inbox and the event bus use; the lite starter leaves it out.
+  for (const file of ["database.sql.ts"]) {
     const relative = `be/src/modules/platform/database/${file}`;
     if (fs.existsSync(path.join(root, ...relative.split("/")))) continue;
     planned.push({

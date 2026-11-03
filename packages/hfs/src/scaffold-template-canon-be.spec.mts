@@ -105,7 +105,7 @@ for (const edition of ['full', 'lite']) {
     ] });
     // lite also lints the specs beside the logic files be.integrations.passport declares (`logic`): unit specs held to the canon form.
     const passportSpecs = edition === 'lite' ? ['kit'].map((part) => `src/modules/integrations/passport/passport.${part}.spec.ts`) : [];
-    const signIn = edition === 'lite' ? ['src/modules/domain/identity/{account-directory,authenticator,rate-counter,session-store,sign-in}.service*.ts', 'src/modules/domain/identity/persistence/**/*.ts', 'src/modules/integrations/passport/{index,passport.config,passport.decorators,passport.kit,passport.kit.spec,passport.options,passport.registration}.ts', 'src/modules/integrations/passport/errors/*.ts', 'src/tests/fixtures/builders/identity.builder.ts'] : [];
+    const signIn = edition === 'lite' ? ['src/modules/domain/identity/{account-directory,authenticator,rate-counter,session-store,sign-in}.service*.ts', 'src/modules/domain/identity/identity-sign-in.log-events.ts', 'src/modules/domain/identity/persistence/**/*.ts', 'src/modules/integrations/passport/{index,passport.config,passport.decorators,passport.kit,passport.kit.spec,passport.options,passport.registration}.ts', 'src/modules/integrations/passport/errors/*.ts', 'src/tests/fixtures/builders/identity.builder.ts'] : [];
     const results = await eslint.lintFiles(['src/modules/platform/**/*.ts', TABLE_ENTITY, ...passportSpecs, ...signIn]);
     const linted = results.map((result) => path.relative(be, result.filePath).split(path.sep).join('/'));
     assert.ok(linted.includes('src/modules/platform/http/fetch-http-client.client.ts'), 'the client is linted');

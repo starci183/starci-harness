@@ -91,6 +91,18 @@ const roleCases: Case[] = [
   ['alter role to bypassrls', 'create role app_be login noinherit nobypassrls; alter role app_be bypassrls;', true],
   ['declared role is checked', 'create role backend login noinherit bypassrls;', true, { db: { appRole: 'backend' } }],
   ['another role is independent', 'create role maintenance superuser;', false],
+  ['usage on schema auth', 'grant usage on schema auth to app_be;', true],
+  ['select on auth.users', 'grant select on table auth.users to app_be;', true],
+  ['insert and update on auth.identities', 'grant insert, update on auth.identities to app_be;', true],
+  ['a column grant on auth.users', 'grant update (email) on auth.users to app_be;', true],
+  ['every table in schema auth', 'grant select on all tables in schema auth to app_be;', true],
+  ['every sequence in schema auth', 'grant usage on all sequences in schema auth to app_be;', true],
+  ['default privileges in schema auth', 'alter default privileges in schema auth grant select on tables to app_be;', true],
+  ['the declared role is the one judged on schema auth', 'grant usage on schema auth to backend;', true, { db: { appRole: 'backend' } }],
+  ['the browser roles keep their schema auth grants', 'grant usage on schema auth to anon, authenticated, service_role;', false],
+  ['a public table is not schema auth', `${table} grant select on public.items to app_be;`, false],
+  ['a partial revoke leaves the rest of the grant', 'grant select, insert on auth.users to app_be; revoke insert on auth.users from app_be;', true],
+  ['the account doors are the way in', `${definer} revoke execute on function public.identity(uuid) from public, anon, authenticated; grant execute on function public.identity(uuid) to app_be;`, false],
 ];
 
 const owned = `${table} alter table public.items owner to app_be;`;
@@ -177,6 +189,9 @@ const ruleCases: [string, Case[]][] = [
 ];
 
 const historicalCases: [name: string, code: string, initial: string, hardening: string, violates?: boolean][] = [
+  ['a later migration revokes the grants on schema auth', 'DB_APP_ROLE', 'grant usage on schema auth to app_be; grant select, insert, update on table auth.users to app_be; grant select, insert on table auth.identities to app_be;', 'revoke all on table auth.users from app_be; revoke all on table auth.identities from app_be; revoke usage on schema auth from app_be;'],
+  ['a later migration leaves the schema usage in place', 'DB_APP_ROLE', 'grant usage on schema auth to app_be; grant select on table auth.users to app_be;', 'revoke select on table auth.users from app_be;', true],
+  ['a later migration grants again after the revoke', 'DB_APP_ROLE', 'grant select on table auth.users to app_be; revoke all on table auth.users from app_be;', 'grant select on table auth.users to app_be;', true],
   ['view access revoked by the next migration', 'DB_VIEW_UNSAFE', `${table} create view public.item_view as select id from public.items;`, 'revoke select on public.item_view from anon, authenticated;'],
   ['definer revoke completed by the next migration', 'DB_DEFINER_REVOKE', `${definer} revoke execute on function public.identity(uuid) from public, anon;`, 'revoke execute on function public.identity(uuid) from authenticated;'],
   ['definer schema revoke completed by the next migration', 'DB_DEFINER_REVOKE', `${definer} revoke execute on function public.identity(uuid) from public, anon;`, 'revoke all on all functions in schema public from authenticated;'],

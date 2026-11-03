@@ -724,6 +724,8 @@ const LITE_RETIRED_DIRS = Object.freeze(['supabase/types']);
 /** The files a lite app's sync retires, each with the reason the dry run prints. */
 const LITE_RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
   [RETIRED_DB_DOCKERFILE]: `the db image moved to ${DB_DOCKERFILE} (ruling lite-db-image-in-stacks)`,
+  'be/src/modules/domain/identity/persistence/entities/auth-user.entity.ts': 'the sign-in reaches accounts through the account doors (be/src/modules/domain/identity/persistence/account-doors.port.ts); the application role holds no grant on schema auth',
+  'be/src/modules/domain/identity/persistence/entities/auth-identity.entity.ts': 'the sign-in reaches accounts through the account doors (be/src/modules/domain/identity/persistence/account-doors.port.ts); the application role holds no grant on schema auth',
   '.github/workflows/db-deploy.yml': 'the stack deploy migrates the database (a verified backup, the expand migrations before the services, the contract migrations after the accept; ruling app-cicd-auto-deploy)',
 });
 /** Why a retired file goes: a retired file's own reason, else the folder's. */

@@ -24,10 +24,6 @@ begin
 end;
 $$;
 
-grant usage on schema auth to app_be;
-grant select, insert, update on table auth.users to app_be;
-grant select, insert on table auth.identities to app_be;
-
 -- The device sessions and rotating refresh tokens of @starci/auth. A token is stored by its sha256 only; a rotated token stays,
 -- marked used, so a replay is detected (a replay inside the grace window is a racing tab, an older one ends the session).
 -- identity_attempts counts the sign-in attempts of one address in a window every replica shares (the budget of failures).
@@ -86,6 +82,8 @@ create policy identity_refresh_tokens_app_be_all on public.identity_refresh_toke
     for all to app_be using (current_user = 'app_be') with check (current_user = 'app_be');
 create policy identity_attempts_app_be_all on public.identity_attempts
     for all to app_be using (current_user = 'app_be') with check (current_user = 'app_be');
+
+{{> app/auth-doors.sql.partial}}
 
 -- The single-use links that confirm a mailbox or reset a password (the email doors of sign-in): only the sha256 of the token is
 -- stored, a spent link stays marked used, and a new link of the same purpose ends the older ones.
