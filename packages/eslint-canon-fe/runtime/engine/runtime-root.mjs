@@ -58,10 +58,36 @@ export class LegacyStateHeld extends Error {
 }
 const HELD = new Set(['EPERM', 'EBUSY', 'EACCES']);
 const isHeld = (error) => HELD.has(String(error?.code));
+/** Gives `to` and everything below it the mode, owner and group of the matching entry of `from` (a copy keeps neither on its own). */
+function keepOwnership(from, to) {
+    const source = fs.lstatSync(from);
+    const target = fs.lstatSync(to);
+    if (!source.isSymbolicLink())
+        fs.chmodSync(to, source.mode & 0o7777);
+    if (source.uid !== target.uid || source.gid !== target.gid)
+        fs.lchownSync(to, source.uid, source.gid);
+    if (source.isDirectory())
+        for (const name of fs.readdirSync(from))
+            keepOwnership(path.join(from, name), path.join(to, name));
+}
+/** Moves one entry by rename, which keeps its owner and mode; across volumes (EXDEV) it is copied, its ownership restored, then removed. */
+function moveEntry(from, to) {
+    try {
+        fs.renameSync(from, to);
+        return;
+    }
+    catch (error) {
+        if (error?.code !== 'EXDEV')
+            throw error;
+    }
+    fs.cpSync(from, to, { recursive: true, verbatimSymlinks: true, errorOnExist: true, force: false });
+    keepOwnership(from, to);
+    fs.rmSync(from, { recursive: true, force: true });
+}
 /**
  * Moves the state an installed copy kept inside itself (<copy>/.runtime, before installedStateBase) out to the state base, once: the
- * folder is first renamed to <copy>/.runtime.adopting (a rename a running stack's open files refuse, LegacyStateHeld), then copied
- * entry by entry and removed. An entry the state base already holds is kept beside it under legacy-<stamp>/, never overwritten. An
+ * folder is first renamed to <copy>/.runtime.adopting (a rename a running stack's open files refuse, LegacyStateHeld), then each entry
+ * is moved with its owner and mode (a bind folder a container user owns stays that user's) and the folder removed. An entry the state base already holds is kept beside it under legacy-<stamp>/, never overwritten. An
  * interrupted adoption resumes from .runtime.adopting. Null when there is nothing to adopt: a checkout, LOCAL_ROOT_ENV set, or no
  * legacy folder.
  */
@@ -88,7 +114,8 @@ export function adoptLegacyState(env = process.env, root = skillRoot, now = () =
     const kept = [];
     for (const name of fs.readdirSync(parked).sort()) {
         const taken = fs.existsSync(path.join(to, name));
-        fs.cpSync(path.join(parked, name), path.join(taken ? aside : to, name), { recursive: true, verbatimSymlinks: true, errorOnExist: true, force: false });
+        fs.mkdirSync(taken ? aside : to, { recursive: true });
+        moveEntry(path.join(parked, name), path.join(taken ? aside : to, name));
         (taken ? kept : moved).push(name);
     }
     fs.rmSync(parked, { recursive: true, force: true });

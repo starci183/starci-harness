@@ -72,6 +72,41 @@ test('an interrupted adoption resumes from .runtime.adopting; a checkout or STAR
   assert.equal(fs.existsSync(path.join(root, '.runtime', 'machine.sqlite')), true);
 });
 
+test('an entry moves by rename where it can, and across volumes is copied with its mode and owner kept (a bind folder a container user owns)', (t) => {
+  const { root, env, base } = installed(t);
+  const folder = path.join(root, '.runtime', 'stack', 'nivo', 'dev', 'data', 'openclaw-state');
+  write(path.join(folder, 'openclaw.json'), '{}\n');
+  fs.chmodSync(path.join(folder, 'openclaw.json'), 0o444);
+  const parked = path.join(root, '.runtime.adopting', 'stack', 'nivo', 'dev', 'data', 'openclaw-state');
+  const mode = (file: string): number => fs.lstatSync(file).mode & 0o7777;
+  const rename = fs.renameSync;
+  const lstat = fs.lstatSync;
+  const lchown = fs.lchownSync;
+  const owners: Array<[string, number, number]> = [];
+  t.after(() => { fs.renameSync = rename; fs.lchownSync = lchown; });
+  let parking = true;
+  fs.renameSync = (from, to) => {
+    if (parking) { parking = false; rename(from, to); return; }
+    throw Object.assign(new Error('cross-device link'), { code: 'EXDEV' });
+  };
+  // The source folder belongs to the container user (uid 1000); the copy is the caller's until its owner is given back.
+  t.mock.method(fs, 'lstatSync', (file: fs.PathLike, options?: fs.StatSyncOptions) => {
+    const stats = lstat(file, options);
+    return stats !== undefined && String(file).startsWith(parked) ? Object.assign(stats, { uid: 1000, gid: 1000 }) : stats;
+  });
+  fs.lchownSync = (file, uid, gid) => { owners.push([path.relative(base, String(file)), uid, gid]); };
+  const sourceMode = mode(path.join(folder, 'openclaw.json'));
+  assert.deepEqual(adoptLegacyState(env, root)?.moved, ['stack']);
+  const moved = path.join(base, 'stack', 'nivo', 'dev', 'data', 'openclaw-state');
+  assert.equal(mode(path.join(moved, 'openclaw.json')), sourceMode);
+  assert.deepEqual(owners.filter(([file]) => file.includes('openclaw-state')).map(([file, uid, gid]) => [file.split(path.sep).join('/'), uid, gid]),
+    [['stack/nivo/dev/data/openclaw-state', 1000, 1000], ['stack/nivo/dev/data/openclaw-state/openclaw.json', 1000, 1000]]);
+  assert.equal(fs.existsSync(path.join(root, '.runtime.adopting')), false);
+  fs.renameSync = () => { throw Object.assign(new Error('denied'), { code: 'EACCES' }); };
+  write(path.join(root, '.runtime.adopting', 'machine.sqlite'), 'parked');
+  assert.throws(() => adoptLegacyState(env, root), /denied/u, 'a rename failing for another reason is thrown, not copied');
+});
+
 test('a legacy state a running stack holds refuses HFS_STATE_LEGACY_HELD and stays where it is; any other failure is thrown as it is', (t) => {
   const { root, env } = installed(t);
   write(path.join(root, '.runtime', 'machine.sqlite'), 'held');

@@ -59,8 +59,9 @@ managed stack before changing a pinned image. The app base-image pins remain own
 
 `images/openclaw-runtime/` is a thin layer on the source-built fork: its Dockerfile is `FROM` the recorded `published.reference` of
 `openclaw` (a new fork build raises that line in the same change) and adds the generic gateway wrapper under `/opt/starci/`, owned by
-root and not writable by the runtime user: `entrypoint.sh` (exports the secrets of `STARCI_SECRETS` from `/run/secrets`, runs the init and
-the relay, starts the gateway), `openclaw-init.mjs` (merges the gateway settings into `openclaw.json`: loopback and token auth, no
+root and not writable by the runtime user: `entrypoint.sh` (started as root, gives the state folder `~/.openclaw` of the runtime user the
+Dockerfile names in `STARCI_RUNTIME_USER` to that user when it does not own it yet, which a bind folder the host created as root needs, and
+drops to it with `setpriv`; then exports the secrets of `STARCI_SECRETS` from `/run/secrets`, runs the init and the relay, starts the gateway), `openclaw-init.mjs` (merges the gateway settings into `openclaw.json`: loopback and token auth, no
 cron or heartbeat, session maintenance, an optional OpenAI-compatible provider from `AI_BASE_URL` and `STARCI_AI_KEY`, and the plugins it
 finds) and `openclaw-relay.mjs` (a byte-for-byte relay from `OPENCLAW_RELAY_PORT` to the loopback gateway). Its build context is its own
 folder. [sources.json](sources.json) records it as `openclaw-runtime` (`layerOf: openclaw`, `base`, `pluginDirectory`, `published: null`
