@@ -279,4 +279,5 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   `node_modules` folder keeps its host state (a stack's bind-mounted data, logs and receipts, `machine.sqlite`, the blob store)
   in the per-user base `installedStateBase`, never in itself, so `npm ci` and a package copy never delete a running stack's data;
   the state such a copy kept inside itself moves out on its first `starci app` verb ([state.md](state.md) "Where state lives",
-  `packages/hfs/runtime/engine/runtime-root.mts`).
+  `packages/hfs/runtime/engine/runtime-root.mts`). The base is per user (`starci-harness/state`, never the retired
+  `%LOCALAPPDATA%/StarCi`), a stack's state below it is keyed by project and environment, and `STARCI_LOCAL_ROOT` overrides it.
