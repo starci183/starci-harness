@@ -120,7 +120,7 @@ const boot = async (withGoogle: boolean) => {
 }
 
 describe("AuthModule wiring and the passport flows", () => {
-    it("signs in with the local strategy, rotates on refresh and signs out, with a principal the verifier accepts", async () => {
+    it("runs login, an authenticated request, refresh with rotation, reuse of the old refresh token rejected, and logout", async () => {
         const { moduleRef, directory, options, doors } = await boot(false)
         directory.hashes.set("a@example.test", { id: "user-1", hash: await moduleRef.get<AuthPasswords>(AUTH_PASSWORDS).hash("correct horse") })
         options.accounts.set({ id: "user-1", email: "a@example.test", disabled: false })
@@ -140,10 +140,17 @@ describe("AuthModule wiring and the passport flows", () => {
         const rotated = must(refreshed.res.cookies[0])
         assert.notEqual(rotated.value, cookie.value, "refresh rotated the cookie")
 
-        const out = exchange({ cookie: `auth_refresh=${rotated.value}` })
+        options.clock.advance(31_000)
+        const replay = exchange({ cookie: `auth_refresh=${cookie.value}` })
+        await assert.rejects(doors.refresh(replay.exchange), (error: unknown) => error instanceof AuthError && error.code === AUTH_ERROR_CODES.RefreshReused)
+        await assert.rejects(doors.refresh(exchange({ cookie: `auth_refresh=${rotated.value}` }).exchange), (error: unknown) => error instanceof AuthError && error.code === AUTH_ERROR_CODES.RefreshInvalid, "the reuse ended the whole session")
+
+        const second = exchange({ body: { email: "a@example.test", password: "correct horse" } })
+        await doors.login(second.exchange)
+        const out = exchange({ cookie: `auth_refresh=${must(second.res.cookies.find((entry) => entry.name === "auth_refresh")).value}` })
         await doors.logout(out.exchange)
         assert.deepEqual(out.res.cleared, ["auth_refresh", "auth_refresh"])
-        const again = exchange({ cookie: `auth_refresh=${rotated.value}` })
+        const again = exchange({ cookie: `auth_refresh=${must(second.res.cookies.find((entry) => entry.name === "auth_refresh")).value}` })
         await assert.rejects(doors.refresh(again.exchange), (error: unknown) => error instanceof AuthError && error.code === AUTH_ERROR_CODES.RefreshInvalid)
         assert.deepEqual(again.res.cleared, ["auth_refresh", "auth_refresh"], "a refresh that fails clears the cookie")
         await moduleRef.close()

@@ -67,6 +67,7 @@ test('a lite starter\'s passport integration is the glue the slot lists and its 
   }
   const auth = path.join(root, 'fe', 'apps', 'web', 'src', 'modules', 'auth');
   assert.deepEqual(fs.readdirSync(auth).sort(), ['client.ts', 'contracts.ts', 'index.ts']);
+  assert.ok(fs.readFileSync(path.join(auth, 'client.ts'), 'utf8').startsWith('// Managed by starci app sync (slot fe.modules.auth.client)'));
   assert.match(fs.readFileSync(path.join(auth, 'client.ts'), 'utf8'), /from "@starci\/auth\/client"/u);
 });
 
@@ -95,10 +96,10 @@ test('the sign-in glue is managed: the doors, the stores and their specs render 
   const tracked = ['hfs.json', ...targets.map((target) => target.path)];
   const controller = 'be/src/features/api/auth/transport/http/auth.controller.ts';
   const managed = ['be/src/modules/domain/identity/session-store.service.ts', 'be/src/modules/domain/identity/account-directory.service.ts', 'be/src/modules/domain/identity/rate-counter.service.ts',
-    'be/src/modules/domain/identity/authenticator.service.ts', 'be/src/modules/domain/identity/sign-in.service.ts', 'be/src/modules/domain/identity/sign-in.service.spec.ts', controller];
+    'be/src/modules/domain/identity/authenticator.service.ts', 'be/src/modules/domain/identity/sign-in.service.ts', 'be/src/modules/domain/identity/sign-in.service.spec.ts', 'be/src/tests/fixtures/builders/identity.builder.ts', controller];
   for (const file of managed) assert.ok(tracked.includes(file), file);
-  const flow = fs.readFileSync(path.join(root, 'be/src/modules/domain/identity/sign-in.service.spec.ts'), 'utf8');
-  assert.match(flow, /login, an authenticated request, refresh, reuse of the old refresh token, logout/u);
+  // The cookie session itself (login, an authenticated request, refresh with rotation, reuse of the old token rejected, logout) runs in the package's own spec over its in-memory stores.
+  assert.match(fs.readFileSync(path.join(REPOSITORY, 'packages/auth/src/server/auth.module.spec.ts'), 'utf8'), /login, an authenticated request, refresh with rotation, reuse of the old refresh token rejected, and logout/u);
   for (const door of ['login', 'refresh', 'session', 'logout', 'google', 'google/callback', 'jwks']) assert.ok(fs.readFileSync(path.join(root, controller), 'utf8').includes(`("${door}")`), door);
   const input = { repoRoot: root, tracked, presets: PRESETS };
   assert.deepEqual((await managedFindings(input)).map((finding) => finding.code), []);

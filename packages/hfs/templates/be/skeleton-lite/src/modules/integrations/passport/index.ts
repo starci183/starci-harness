@@ -1,4 +1,4 @@
-export { AuthError, cookieValue, isPresentablePassword, normalizeEmail } from "@starci/auth/server"
+export { AuthError, isPresentablePassword, normalizeEmail } from "@starci/auth/server"
 export type {
     AccountDirectory,
     AccountStanding,
@@ -19,12 +19,6 @@ export type {
 export type { AccessGrant, GoogleRedirect, JwksDocument } from "@starci/auth/contracts"
 export { parsePassportConfig } from "./passport.config"
 export {
-    InjectAuthDoors,
-    InjectAuthPasswords,
-    InjectAuthSessions,
-    InjectOwnTokenVerifier,
-    InjectPassportOptions,
-    InjectSignInBudget,
     OWN_TOKEN_VERIFIER,
     PASSPORT_ACCOUNTS,
     PASSPORT_AUTHENTICATOR,
@@ -38,6 +32,5 @@ export {
 } from "./passport.decorators"
 export { PASSPORT_ERROR_KINDS, PassportError, PassportErrorCode } from "./errors/passport.error"
 export { passportKit } from "./passport.kit"
-export type { PassportKit } from "./passport.kit"
-export { passportModule } from "./passport.module"
-export type { OwnPrincipal, PassportOptions, VerifyAccessToken } from "./passport.options"
+export { passportModule } from "./passport.registration"
+export type { PassportOptions, VerifyAccessToken } from "./passport.options"

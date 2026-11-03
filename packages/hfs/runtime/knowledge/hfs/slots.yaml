@@ -117,6 +117,8 @@ versioning:
 #               liteManagedBy is managed only in lite; its effective lite.path still lists literal files.
 #               the managed file list lives here and nowhere in code. A difference is HFS_MANAGED_FILE_DRIFT (a
 #               back end's tsconfig.json: HFS_TS_STRICT when a flag or an option was added).
+#   managedOnly true: the slot only lists files sync renders (needs managedBy); the path is judged by the slot that owns it, so the rendered
+#               file keeps the rules and the tier of its folder (a sign-in service is a domain service)
 #   rules       rule codes from knowledge/hfs/rules.yaml.
 #   editions    the editions (below) the slot exists in; default all of them. A slot outside the declared edition owns
 #               no path - under lite, what full keeps absent is removed, and what lite forbids is a finding.
@@ -2040,8 +2042,8 @@ slots:
     tracked: tracked
     tier: integrations
     owner: true
-    requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.module.ts]   # Secrets, no defaults (R44); options and named injectors (R83); the kit and the module over @starci/auth
-    allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.module.ts, errors/]
+    requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.registration.ts]   # Secrets, no defaults (R44); options and named injectors (R83); the kit and the module over @starci/auth
+    allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.registration.ts, errors/]
     logic: [passport.kit.ts]   # the verifier mapping over the package: measured at 100 per file
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_AUTH_JWT_OWN_JWKS, BE_AUTH_REFRESH_COOKIE]
@@ -2053,13 +2055,14 @@ slots:
     editions: [lite]
     editionWhy: "lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written (owner ruling auth-package); full uses its identity provider."
     # The identity capability's sign-in glue over @starci/auth: the entities of the session, attempt and user tables, the stores the package asks for (sessions, accounts, rate counter), the authenticator and the service the doors call, with their specs. `starci app sync` renders them; a hand edit is drift.
-    path: "{src/modules/domain/identity/account-directory.service.spec.ts,src/modules/domain/identity/account-directory.service.ts,src/modules/domain/identity/authenticator.service.spec.ts,src/modules/domain/identity/authenticator.service.ts,src/modules/domain/identity/persistence/entities/auth-identity.entity.ts,src/modules/domain/identity/persistence/entities/auth-user.entity.ts,src/modules/domain/identity/persistence/entities/identity-attempt.entity.ts,src/modules/domain/identity/persistence/entities/identity-refresh-token.entity.ts,src/modules/domain/identity/persistence/entities/identity-session.entity.ts,src/modules/domain/identity/persistence/entities/index.ts,src/modules/domain/identity/rate-counter.service.spec.ts,src/modules/domain/identity/rate-counter.service.ts,src/modules/domain/identity/session-store.service.spec.ts,src/modules/domain/identity/session-store.service.ts,src/modules/domain/identity/sign-in.service.spec.ts,src/modules/domain/identity/sign-in.service.ts}"
-    presence: required
+    path: "{src/modules/domain/identity/account-directory.service.spec.ts,src/modules/domain/identity/account-directory.service.ts,src/modules/domain/identity/authenticator.service.spec.ts,src/modules/domain/identity/authenticator.service.ts,src/modules/domain/identity/persistence/entities/auth-identity.entity.ts,src/modules/domain/identity/persistence/entities/auth-user.entity.ts,src/modules/domain/identity/persistence/entities/identity-attempt.entity.ts,src/modules/domain/identity/persistence/entities/identity-refresh-token.entity.ts,src/modules/domain/identity/persistence/entities/identity-session.entity.ts,src/modules/domain/identity/persistence/entities/index.ts,src/modules/domain/identity/rate-counter.service.spec.ts,src/modules/domain/identity/rate-counter.service.ts,src/modules/domain/identity/session-store.service.spec.ts,src/modules/domain/identity/session-store.service.ts,src/modules/domain/identity/sign-in.service.spec.ts,src/modules/domain/identity/sign-in.service.ts,src/tests/fixtures/builders/identity.builder.ts}"
+    presence: optional
     tracked: tracked
     tier: inherit
-    tests: none
+    tests: unit-beside
     coverage: none
     managedBy: auth-lite
+    managedOnly: true     # lists files sync renders; the slot owning the path judges them
     rules: [HFS_MANAGED_FILE_DRIFT]
   - id: be.feature.auth
     since: 3.16.0
@@ -2068,12 +2071,13 @@ slots:
     editionWhy: "lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written (owner ruling auth-package); full uses its identity provider."
     # The auth feature: the REST doors under /auth (login, refresh, session, logout, Google start and callback, jwks) over IdentitySignInService, one command or query and handler per door.
     path: "{src/features/api/auth/application/auth.contracts.ts,src/features/api/auth/application/get-jwks.handler.ts,src/features/api/auth/application/get-jwks.query.ts,src/features/api/auth/application/google-begin.command.ts,src/features/api/auth/application/google-begin.handler.ts,src/features/api/auth/application/google-complete.command.ts,src/features/api/auth/application/google-complete.handler.ts,src/features/api/auth/application/login.command.ts,src/features/api/auth/application/login.handler.ts,src/features/api/auth/application/logout.command.ts,src/features/api/auth/application/logout.handler.ts,src/features/api/auth/application/refresh.command.ts,src/features/api/auth/application/refresh.handler.ts,src/features/api/auth/application/session.command.ts,src/features/api/auth/application/session.handler.ts,src/features/api/auth/auth.module-definition.ts,src/features/api/auth/auth.module.ts,src/features/api/auth/auth.options.ts,src/features/api/auth/index.ts,src/features/api/auth/transport/http/auth-http.module-definition.ts,src/features/api/auth/transport/http/auth-http.module.ts,src/features/api/auth/transport/http/auth-http.options.ts,src/features/api/auth/transport/http/auth.controller.ts,src/features/api/auth/transport/http/dto/google-start.request.ts,src/features/api/auth/transport/http/dto/login.request.ts}"
-    presence: required
+    presence: optional
     tracked: tracked
     tier: inherit
     tests: none
     coverage: none
     managedBy: auth-lite
+    managedOnly: true     # lists files sync renders; the slot owning the path judges them
     rules: [HFS_MANAGED_FILE_DRIFT]
   - id: be.integrations.object-storage
     profiles: [be]
@@ -2632,6 +2636,20 @@ slots:
     tests: none
     since: 3.0.0
     rules: [FE_STACK_FORBIDDEN]
+  - id: fe.modules.auth.client
+    since: 3.16.0
+    profiles: [fe]
+    editions: [lite]
+    editionWhy: "lite signs people in with the package @starci/auth, so its auth client is rendered, not written (owner ruling auth-package); full wires its identity provider."
+    # The AuthClient every edition shares, implemented by one @starci/auth/client instance over the app's own back-end auth doors.
+    path: "apps/web/src/modules/auth/client.ts"
+    presence: optional
+    tracked: tracked
+    tier: inherit
+    tests: none
+    managedBy: auth-lite
+    managedOnly: true     # lists files sync renders; the slot owning the path judges them
+    rules: [HFS_MANAGED_FILE_DRIFT]
   - id: fe.modules.toast
     profiles: [fe]
     # Mutation feedback (fe-stack toast, FE-TOAST): the HeroUI toast wrapper, showGraphQLToast over a GraphQLResponse and the

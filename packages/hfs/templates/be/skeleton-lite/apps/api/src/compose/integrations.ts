@@ -5,7 +5,7 @@ import { OBJECT_STORAGE, createObjectStorage } from "@modules/integrations/objec
 import type { ApiOptions } from "../api.options"
 
 /** The sign-in package of the app, registered once with the app's typed settings. */
-export const integrationModules = (options: ApiOptions): Array<DynamicModule> => [passportModule(options.passport)]
+export const integrationModules = (options: ApiOptions): Array<DynamicModule> => [passportModule(options.passport, { isGlobal: true })]
 
 /** The passport and object-storage integration ports bound once for this app. */
 export const integrationProviders = (options: ApiOptions, verifyAccessToken: VerifyAccessToken): Array<Provider> => [

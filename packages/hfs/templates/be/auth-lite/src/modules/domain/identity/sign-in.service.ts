@@ -1,7 +1,37 @@
 // Managed by starci app sync (slot be.identity.sign-in); do not edit: run "npx starci app sync --execute".
 import { Injectable } from "@nestjs/common"
-import { AuthError, InjectAuthDoors, InjectAuthSessions, PassportError } from "@modules/integrations/passport"
+import { AuthError, PassportError, PassportErrorCode } from "@modules/integrations/passport"
+import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
+import { InjectAuthDoors, InjectAuthSessions } from "./identity.decorators"
 import type { AccessGrant, AuthDoors, AuthSessions, GoogleRedirect, HttpExchange, JwksDocument } from "@modules/integrations/passport"
+
+/** The wire codes of the package that belong to the passport family (the token, key and Google legs). */
+const PASSPORT_CODES: ReadonlyArray<PassportErrorCode> = [
+    PassportErrorCode.AccessTokenInvalid,
+    PassportErrorCode.KeyInvalid,
+    PassportErrorCode.MissingCredentials,
+    PassportErrorCode.GoogleStateInvalid,
+    PassportErrorCode.GoogleRejected,
+    PassportErrorCode.GoogleUnavailable,
+]
+
+/** The wire codes of the package that belong to the identity family (the session and the sign-in refusals). */
+const IDENTITY_CODES: ReadonlyArray<IdentityErrorCode> = [
+    IdentityErrorCode.RefreshInvalid,
+    IdentityErrorCode.RefreshReused,
+    IdentityErrorCode.AccountDisabled,
+    IdentityErrorCode.TooManyAttempts,
+    IdentityErrorCode.PairRefused,
+    IdentityErrorCode.EmailNotConfirmed,
+]
+
+/** The error of the family that owns a wire code of the package; a code neither family names reads as unauthenticated. */
+const familyOf = (error: AuthError): IdentityError | PassportError => {
+    const passport = PASSPORT_CODES.find((each) => each === error.code)
+    if (passport !== undefined) return new PassportError({ code: passport, cause: error })
+    const identity = IDENTITY_CODES.find((each) => each === error.code) ?? IdentityErrorCode.Unauthenticated
+    return new IdentityError({ code: identity, cause: error })
+}
 
 @Injectable()
 /** The cookie doors of sign-in for the transport: the package's doors with its refusals turned into the passport error family the errors filter maps. */
@@ -50,7 +80,8 @@ export class IdentitySignInService {
         try {
             return await work()
         } catch (cause) {
-            throw cause instanceof AuthError ? new PassportError({ code: cause.code, cause }) : cause
+            if (cause instanceof AuthError) throw familyOf(cause)
+            throw cause
         }
     }
 }

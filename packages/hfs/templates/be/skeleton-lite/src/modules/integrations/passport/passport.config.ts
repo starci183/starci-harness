@@ -23,7 +23,7 @@ const readKeys = (env: EnvSource): PassportOptions["keys"] => {
     const previous = env.optional("AUTH_JWT_PREVIOUS_PUBLIC_KEY")
     return [
         { privateKey: env.secret("AUTH_JWT_PRIVATE_KEY"), keyId: env.optional("AUTH_JWT_KEY_ID") },
-        ...(previous === undefined ? [] : [{ publicKey: previous, keyId: env.string("AUTH_JWT_PREVIOUS_KEY_ID") }]),
+        ...(previous === undefined ? [] : [{ publicKey: previous, keyId: env.optional("AUTH_JWT_PREVIOUS_KEY_ID") }]),
     ]
 }
 

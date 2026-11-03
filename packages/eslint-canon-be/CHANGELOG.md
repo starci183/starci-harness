@@ -2,6 +2,7 @@
 
 ## 3.13.0 - 2026-11-03
 
+- Changed: the runtime copies of the slot manifest carry the managed sign-in slots and the slot field `managedOnly`.
 - Changed: `own-jwks-only` refuses `jwtVerify`, `decodeJwt`, `decodeProtectedHeader` and `createRemoteJWKSet` of jose in every app file; `refresh-token-cookie-only` no longer exempts `integrations/passport` (the package sets the cookie); the infrastructure table owns the identity libraries by nobody and `@starci/auth` by `integrations/passport` (R328, R329, R330).
 
 ## 3.12.0

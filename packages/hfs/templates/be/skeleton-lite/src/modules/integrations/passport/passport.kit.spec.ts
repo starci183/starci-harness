@@ -1,6 +1,7 @@
 import { Test } from "@nestjs/testing"
+import { AUTH_ERROR_CODES, AUTH_ERROR_KINDS } from "@starci/auth/contracts"
 import { generateTestKeyPair } from "@starci/auth/testing"
-import { PassportErrorCode } from "./errors/passport.error"
+import { PASSPORT_ERROR_KINDS, PassportErrorCode } from "./errors/passport.error"
 import { passportKit } from "./passport.kit"
 import type { PassportOptions } from "./passport.options"
 
@@ -26,6 +27,15 @@ const optionsFor = (keys: PassportOptions["keys"]): PassportOptions => ({
     google: null,
     cookie: { name: "refresh_token" },
     budget: { loginAttempts: 10, resetAttempts: 5, windowMs: 900_000 },
+})
+
+describe("PassportErrorCode", () => {
+    it("names every PASSPORT wire code of @starci/auth with the same kind", () => {
+        const wire = Object.values(AUTH_ERROR_CODES).filter((code) => code.startsWith("PASSPORT_"))
+
+        expect(Object.values(PassportErrorCode).sort()).toEqual(wire.sort())
+        for (const code of Object.values(PassportErrorCode)) expect(PASSPORT_ERROR_KINDS[code]).toBe(AUTH_ERROR_KINDS[code])
+    })
 })
 
 describe("passportKit", () => {

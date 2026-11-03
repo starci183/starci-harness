@@ -501,6 +501,11 @@ rulings:
     status: live
     ruling: "Tenancy (workspaces, members, invites, grants) and the channel clients (Zalo, Telegram, SePay) are not packaged until a second product needs them."
     owner: "contexts/code/README.md CODE-REVIEW-2"
+  - id: auth-sign-in-managed
+    date: '2026-11-03'
+    status: live
+    ruling: "The lite starter signs people in with no hand-written auth code: its sign-in doors, session, account and rate stores, authenticator and front-end auth client are managed files rendered from @starci/auth's glue, and an edit is drift."
+    owner: "contexts/hfs/slots.yaml be.identity.sign-in, be.feature.auth, fe.modules.auth.client; packages/hfs/templates/be/auth-lite"
   - id: locale-accept-language
     date: '2026-10-14'
     status: live

@@ -30,7 +30,7 @@ email and password with bcrypt) and `jose`, signs the access tokens, serves thei
 failures against the limit and rotates the refresh token, which lives only in an httpOnly, Secure cookie the package sets;
 a spent refresh token presented again inside a short grace window is a racing tab and is answered with an access token
 and no rotation, an older replay ends the session. The app parses the settings, implements the stores over its own tables
-(the session tables are the package's managed migration) and imports the package nowhere but `integrations/passport`. A tenant header or argument (`@WorkspaceId()`) is a selector, never proof: the domain service
+(the session tables are the package's managed migration) and imports the package nowhere but `integrations/passport`. The lite starter renders that glue, so a new app signs in without hand-written auth code: the entities, the three stores, the authenticator over `auth.users` and `auth.identities`, `IdentitySignInService` and the `/auth` doors (login, refresh, session, logout, Google start and callback, jwks) are managed files (slots `be.identity.sign-in`, `be.feature.auth`) and an edit is `HFS_MANAGED_FILE_DRIFT`. A tenant header or argument (`@WorkspaceId()`) is a selector, never proof: the domain service
 proves membership or ownership before it reads or writes, so jobs and other doors cannot bypass it.
 
 Why: authentication is a capability with its own state and errors, and authorization kept in the service holds for

@@ -14,6 +14,9 @@ const NOW = new Date(AT)
 const RESET_AT = new Date("2026-02-03T04:20:06.000Z")
 const WINDOW_MS = 900_000
 
+const isIncrement = (value: unknown): value is { readonly hits: () => string } =>
+    typeof value === "object" && value !== null && "hits" in value && typeof value.hits === "function"
+
 const build = async (entityManager: MockEntityManager) => {
     const moduleRef = await Test.createTestingModule({
         providers: [
@@ -35,6 +38,9 @@ describe("IdentityRateCounterService.consume", () => {
         expect(await subject.consume("login:abc", WINDOW_MS, 3)).toBe(false)
 
         expect(counting?.callsOf("where")[0]).toEqual([{ key: "login:abc", resetAt: MoreThan(NOW) }])
+        const [patch] = counting?.callsOf("set")[0] ?? []
+        expect(isIncrement(patch)).toBe(true)
+        if (isIncrement(patch)) expect(patch.hits()).toBe("hits + 1")
     })
 
     it("restarts an ended window at one hit", async () => {
@@ -45,6 +51,16 @@ describe("IdentityRateCounterService.consume", () => {
         expect(await subject.consume("login:abc", WINDOW_MS, 3)).toBe(true)
 
         expect(entityManager.update).toHaveBeenCalledWith(IdentityAttemptEntity, { key: "login:abc", resetAt: LessThanOrEqual(NOW) }, { hits: 1, resetAt: RESET_AT })
+    })
+
+    it("opens a window when the restart reports no affected count", async () => {
+        const entityManager = mockEntityManager({ update: [IdentityAttemptEntity, {}] })
+        const [, inserting] = queueQueryBuilders(entityManager, [{ execute: { raw: [] } }, { execute: { raw: [] } }])
+        const subject = await build(entityManager)
+
+        expect(await subject.consume("login:abc", WINDOW_MS, 3)).toBe(true)
+
+        expect(inserting?.callsOf("execute")).toHaveLength(1)
     })
 
     it("opens a missing window at one hit, and a limit of zero admits nobody", async () => {

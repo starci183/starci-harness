@@ -41,7 +41,7 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
   rulings `lite-persistence-typeorm-entities`, `no-raw-sql-one-style`; [code/be/persistence.md](../code/be/persistence.md).
 - Identity is the app's own, shipped as the package `@starci/auth`: Google OAuth and email and password through Passport, its
   own EdDSA access tokens verified against its own JWKS, a rotating httpOnly refresh cookie, and a front end that holds no
-  credential. Owners: ruling `auth-package`, the package `packages/auth`, slot `be.integrations.passport`. Owners: R328 to
+  credential. Owners: rulings `auth-package` and `auth-sign-in-managed`, the package `packages/auth`, slots `be.integrations.passport`, `be.identity.sign-in`, `be.feature.auth` and `fe.modules.auth.client`. Owners: R328 to
   R330; [code/be/api-auth.md](../code/be/api-auth.md); [code/fe/transport.md](../code/fe/transport.md) FE-AUTH.
 - The event bus is pgmq, not Kafka: a publish sends the event to its pgmq topic in the publisher's transaction, and each
   consumer group reads its own queue with a visibility timeout; jobs stay on BullMQ. Owners: ruling

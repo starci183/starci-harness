@@ -1,3 +1,4 @@
+// Managed by starci app sync (slot fe.modules.auth.client); do not edit: run "npx starci app sync --execute".
 import { createAuthClient } from "@starci/auth/client"
 import { apiUrl } from "@/modules/config"
 import type { AuthClient, AuthFailure, AuthSession } from "./contracts"
