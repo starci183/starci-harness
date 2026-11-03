@@ -115,7 +115,14 @@ export function migrateAccountDoors({ root, write = false, contract = false, now
     report.findings.push({ file, reason: 'still maps or names the auth tables; run `npx starci app sync --execute` so the sign-in glue uses the doors, and release that before the contract migration' });
   }
   if (report.findings.length) return report;
-  if (names.some((name) => name.includes(`_${CONTRACT_NAME}`)) || !names.some((name) => AUTH_GRANT.test(statementsOf(root, name)))) return report;
+  if (names.some((name) => name.includes(`_${CONTRACT_NAME}`))) {
+    report.next.push('the contract migration is already in the chain: nothing is left to revoke');
+    return report;
+  }
+  if (!names.some((name) => AUTH_GRANT.test(statementsOf(root, name)))) {
+    report.next.push('no migration grants the application role on schema auth (the app reached accounts through the doors from the start): nothing to revoke');
+    return report;
+  }
   const file = `${MIGRATIONS_DIR}/${stamp}_${CONTRACT_NAME}.sql`;
   report.changes.push({ file, phase, why: 'revokes the direct grants on schema auth, auth.users and auth.identities from the application role' });
   report.next.push('the deploy applies it right after the accept; the release before the doors cannot sign in after a rollback unless the grants are given back');
