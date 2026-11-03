@@ -40,7 +40,7 @@ const profile = (patch: Partial<GoogleProfile> = {}): GoogleProfile => ({
 type Stubs = ReadonlyArray<readonly [string, unknown]>
 
 const build = async (answers: Stubs, matches = true) => {
-    const entityManager: MockEntityManager = mockEntityManager(answers.length === 0 ? {} : { query: answers })
+    const entityManager: MockEntityManager = answers.length === 0 ? mockEntityManager() : mockEntityManager({ query: answers })
     fakeTransaction(entityManager)
     const passwords = mock<AuthPasswords>()
     passwords.verify.mockResolvedValue(matches)
@@ -165,6 +165,20 @@ describe("IdentityAuthenticatorService.signInWithGoogle (new accounts and refusa
         expect(entityManager.query).toHaveBeenCalledWith(CREATE_USER, [NEW_ID, "a@example.test", null, true, expect.stringContaining('"full_name":"A"'), NOW])
         expect(entityManager.query).toHaveBeenCalledWith(LINK_GOOGLE, [NEW_ID, "g-1", expect.stringContaining("g-1"), NOW])
         expect(logger.info).toHaveBeenCalledWith(IdentitySignInLogEvent.AccountCreated, { userId: NEW_ID })
+    })
+
+    it("fills only the profile keys the Google profile has", async () => {
+        const { subject, entityManager } = await build([
+            [USER_BY_GOOGLE, [{ be_auth_user_by_google: "u-1" }]],
+            [LINK_GOOGLE, []],
+            [TOUCH_USER, []],
+            [USER_BY_ID, [accountByIdRow()]],
+        ])
+
+        await subject.signInWithGoogle(profile({ name: null, picture: "https://img.example.test/a.png" }))
+
+        const keys = { avatar_url: "https://img.example.test/a.png", picture: "https://img.example.test/a.png", email: "A@Example.test", email_verified: true }
+        expect(entityManager.query).toHaveBeenCalledWith(TOUCH_USER, ["u-1", NOW, true, JSON.stringify(keys)])
     })
 
     it("refuses when the create door answers no account", async () => {

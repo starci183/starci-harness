@@ -1,4 +1,5 @@
 export { DatabaseModule } from "./database.module"
+export { callDbFunction } from "./database.client"
 export { DATABASE_PROBE, InjectDatabaseProbe, InjectPrimaryEntityManager, PRIMARY_ENTITY_MANAGER } from "./primary.decorators"
 export { DatabaseProbeService } from "./database-probe.service"
 export type { DatabaseConnectionOptions } from "./database.options"
