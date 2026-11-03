@@ -43,7 +43,7 @@ class World {
     const visit = (folder: string): void => {
       for (const entry of fs.readdirSync(path.join(this.root, folder), { withFileTypes: true })) {
         const rel = folder === '' ? entry.name : `${folder}/${entry.name}`;
-        if (entry.isDirectory()) visit(rel);
+        if (entry.isDirectory()) { if (entry.name !== 'node_modules') visit(rel); }
         else out.push(rel);
       }
     };
@@ -109,7 +109,7 @@ class World {
   async run(records: readonly CacheRecord[], options: { full?: string | null; canon?: CanonDeclarations; write?: boolean; style?: boolean; styleCanon?: CanonDeclarations; gitToken?: string; handOutGraph?: boolean } = {}): Promise<{ outcome: LintSideOutcome; written: readonly CacheRecord[] | undefined }> {
     const files: Record<string, string> = {};
     for (const file of this.walk()) files[`${SIDE}/${file}`] = this.text(file);
-    const session = createFakeSession({ files, records: { [`lint/${SIDE}`]: records } });
+    const session = createFakeSession({ files, records: { [`lint/${SIDE}`]: records }, root: this.root });
     const style = options.style === true;
     const outcome = await lintSide({
       session, side: SIDE, sideRoot: this.root, scope: this.scope, stylesheets: style ? this.stylesheets : [],
@@ -176,6 +176,28 @@ test('a changed file is judged again with the files that reach it through import
   assert.equal(second.outcome.stats.reused, 2);
   assert.equal(second.outcome.stats.newFindings, 3);
   assert.deepEqual(shape(second.outcome.eslint), shape((await world.full()).eslint));
+});
+
+test('a bump of an installed package judges the files that import it and their importers, and nothing else', async (context) => {
+  const world = new World(context);
+  seed(world);
+  const install = (version: string): void => {
+    world.write('node_modules/@s/lib/package.json', JSON.stringify({ name: '@s/lib', version, types: 'index.d.ts' }));
+    world.write('node_modules/@s/lib/index.d.ts', 'export declare const lib: number;\n');
+    world.write('package-lock.json', JSON.stringify({ lockfileVersion: 3, packages: { 'node_modules/@s/lib': { version, integrity: `sha512-${version}` } } }));
+  };
+  install('1.0.0');
+  world.write('src/c.ts', "import { lib } from '@s/lib';\nexport const c = lib;\n");
+  const first = await world.run([]);
+  const unchanged = await world.run(first.written as CacheRecord[]);
+  assert.equal(unchanged.outcome.stats.reason, 'the side key is unchanged');
+  install('1.1.0');
+  world.eslintCalls.length = 0;
+  const bumped = await world.run(first.written as CacheRecord[]);
+  assert.deepEqual(world.eslintCalls, [['src/a.ts', 'src/b.ts', 'src/c.ts']]);
+  assert.equal(bumped.outcome.stats.mode, 'diff');
+  const meta = (bumped.written ?? []).find((record) => record.path === '.side');
+  assert.deepEqual(Object.keys((meta?.data as { packages?: object } | undefined)?.packages ?? {}), ['@s/lib']);
 });
 
 test('type-only imports, re-exports and dynamic imports carry a change to their importers', async (context) => {

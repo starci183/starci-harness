@@ -1,15 +1,74 @@
-// fingerprint.mts - the one fingerprint check, lint and coverage share. A part is anything a step reads that is not an app source; any part
-// that differs makes the whole run full. Parts are portable (equal on every host for one commit): the cache format, the CLI and
-// @starci/hfs that run, every installed @starci package by version and recorded integrity, the lockfile and the configuration files by
-// normalised content. A run whose CLI or any @starci package is linked or copied from a local folder has no portable fingerprint.
+// fingerprint.mts - the fingerprint of the app check cache, judged per family. A part is anything a step reads that is not an app source, and each part names
+// the families that read it (`familiesOfPart`): a part that differs makes only those families full, so a bump of `@starci/hfs` re-runs the hfs-run checks and
+// never ESLint, and a bump of a library no toolchain is made of re-runs nothing by fingerprint (the lint family's import graph re-judges the files that import
+// it). Parts are portable (equal on every host for one commit): the cache format, the CLI and @starci/hfs that run, every installed @starci package by version
+// and recorded integrity, each family's toolchain as the lockfile resolved it, and the configuration files by normalised content. A run whose CLI or any
+// @starci package is linked or copied from a local folder has no portable fingerprint.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { combineHashes, hashFile, hashText } from './hash.mjs';
-import { CACHE_FORMAT_VERSION, type FingerprintPart } from './types.mjs';
+import { CACHE_FORMAT_VERSION, FAMILIES, type FamilyId, type FingerprintPart } from './types.mjs';
 
-/** The tracked files (by base name or exact path) that are parts by content. */
-const CONFIG_NAME = /^(hfs\.json|package\.json|tsconfig[^/]*\.json|eslint\.config\.mjs|stylelint\.config\.mjs|jest\.config\.[cm]?[jt]s|jest\.config\.json|\.prettierrc[^/]*|prettier\.config\.[cm]?[jt]s|\.prettierignore|\.editorconfig|\.gitignore|\.gitattributes|turbo\.json|sonar-project\.properties|codecov\.yml|package-lock\.json)$/;
+/** The tracked files (by base name) that are parts by content. `package-lock.json` is not one: each family reads its own toolchain from it (`lock:<family>`). */
+const CONFIG_NAME = /^(hfs\.json|package\.json|tsconfig[^/]*\.json|eslint\.config\.mjs|stylelint\.config\.mjs|jest\.config\.[cm]?[jt]s|jest\.config\.json|\.prettierrc[^/]*|prettier\.config\.[cm]?[jt]s|\.prettierignore|\.editorconfig|\.gitignore|\.gitattributes|turbo\.json|sonar-project\.properties|codecov\.yml)$/;
+
+/** The families the code of `@starci/hfs` (and the CLI that runs it) computes: a new hfs re-runs these and no other. */
+const HFS_RUN: readonly FamilyId[] = ['hfs', 'secrets', 'wiring', 'db'];
+
+/**
+ * Each family's toolchain as the lockfile resolves it: the installed packages whose version can change that family's results. The types and test families
+ * read every installed package (a dependency's type surface or behaviour reaches their results and neither keys its records by the packages it loads).
+ */
+const LOCK_TOOLCHAIN: Readonly<Record<'lint' | 'format' | 'types' | 'test', RegExp | null>> = {
+  lint: /^(?:eslint|eslint-.+|@eslint\/.+|@eslint-community\/.+|typescript|typescript-eslint|@typescript-eslint\/.+|@stylistic\/.+|stylelint|stylelint-.+|postcss|postcss-.+|globals|jiti|@next\/eslint-plugin-next)$/u,
+  format: /^(?:prettier|prettier-plugin-.+|@prettier\/.+)$/u,
+  types: null,
+  test: null,
+};
+
+/** The @starci packages a family is made of, by name; any other @starci package is a library like any other. */
+const STARCI_FAMILIES: Readonly<Record<string, readonly FamilyId[]>> = {
+  hfs: HFS_RUN,
+  'eslint-canon-be': ['lint', 'sonar'],
+  'eslint-canon-fe': ['lint', 'sonar'],
+  'eslint-grammar-core': ['lint', 'sonar'],
+  'eslint-grammar-offset-pop': ['lint', 'sonar'],
+  'stylelint-canon': ['lint', 'sonar'],
+  'prettier-config': ['format'],
+  tsconfig: ['types', 'lint', 'test', 'sonar'],
+  'jest-preset': ['test', 'sonar'],
+  'test-world': ['test', 'sonar'],
+};
+
+/** The families a configuration file is read by, by base name. */
+function familiesOfConfig(base: string): readonly FamilyId[] {
+  if (base === 'hfs.json') return [...HFS_RUN, 'lint', 'sonar'];
+  if (/^tsconfig/u.test(base)) return ['types', 'lint', 'test', 'sonar'];
+  if (base === 'eslint.config.mjs' || base === 'stylelint.config.mjs') return ['lint', 'sonar'];
+  if (/^jest\.config/u.test(base)) return ['test', 'sonar'];
+  if (/^(?:\.prettier|prettier\.config)/u.test(base) || base === '.editorconfig') return ['format'];
+  if (base === 'sonar-project.properties' || base === 'codecov.yml') return [...HFS_RUN, 'sonar'];
+  return HFS_RUN;
+}
+
+/**
+ * The families that read a part. `cache-format` is read by every family; `file:<path>/package.json` (its whole content) by the hfs-run families and
+ * `shape:<path>/package.json` (its content with every dependency version blanked: workspaces, type, exports, dependency names) by the others, so a version
+ * bump of a dependency reaches them only through its `lock:<family>` part.
+ */
+export function familiesOfPart(name: string): readonly FamilyId[] {
+  if (name === 'cache-format') return FAMILIES;
+  if (name === 'cli' || name === 'hfs') return HFS_RUN;
+  if (name.startsWith('pkg:@starci/')) return STARCI_FAMILIES[name.slice('pkg:@starci/'.length)] ?? [];
+  if (name.startsWith('lock:')) {
+    const family = name.slice('lock:'.length);
+    return family === 'lint' || family === 'test' ? [family, 'sonar'] : (FAMILIES as readonly string[]).includes(family) ? [family as FamilyId] : [];
+  }
+  if (name.startsWith('shape:')) return ['lint', 'types', 'test', 'format', 'sonar'];
+  if (name.startsWith('file:')) return familiesOfConfig(path.posix.basename(name.slice('file:'.length)));
+  return FAMILIES;
+}
 
 /** The fingerprint of a run: its parts, and whether it is portable (and if not, why). */
 export interface Fingerprint {
@@ -27,6 +86,8 @@ export interface FingerprintInput {
   readonly hfsDir?: string | undefined;
 }
 
+type LockEntry = { version?: string; integrity?: string; link?: boolean; resolved?: string };
+
 const sorted = (parts: FingerprintPart[]): FingerprintPart[] => [...parts].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
 function readJson(file: string): Record<string, unknown> | undefined {
@@ -38,9 +99,37 @@ function readJson(file: string): Record<string, unknown> | undefined {
   }
 }
 
-function lockEntries(root: string): Record<string, { integrity?: string; link?: boolean; resolved?: string }> {
+/** The `packages` of the app's `package-lock.json`, keyed by install path (`node_modules/x`, `fe/node_modules/@s/y`). */
+export function lockEntries(root: string): Record<string, LockEntry> {
   const packages = readJson(path.join(root, 'package-lock.json'))?.['packages'];
-  return packages !== null && typeof packages === 'object' ? (packages as Record<string, { integrity?: string; link?: boolean; resolved?: string }>) : {};
+  return packages !== null && typeof packages === 'object' ? (packages as Record<string, LockEntry>) : {};
+}
+
+/** The installed package name of a lock path (`fe/node_modules/@s/y/node_modules/z` is `z`), or null for a workspace entry. */
+export function lockPackageName(key: string): string | null {
+  const at = key.lastIndexOf('node_modules/');
+  return at < 0 ? null : key.slice(at + 'node_modules/'.length);
+}
+
+/** One digest per installed package name: every install of it, by path, version and integrity. */
+export function packageDigests(entries: Readonly<Record<string, LockEntry>>): Map<string, string> {
+  const installs = new Map<string, string[]>();
+  for (const key of Object.keys(entries).sort()) {
+    const name = lockPackageName(key);
+    if (name === null) continue;
+    const entry = entries[key] as LockEntry;
+    installs.set(name, [...(installs.get(name) ?? []), `${key}\0${entry.version ?? ''}\0${entry.integrity ?? entry.resolved ?? ''}`]);
+  }
+  return new Map([...installs].map(([name, lines]) => [name, hashText(lines.join('\n'))]));
+}
+
+/** `package.json` with every dependency version blanked: what a family other than the hfs-run ones reads of a manifest. */
+function manifestShape(file: string): string {
+  const manifest = readJson(file);
+  if (manifest === undefined) return 'absent';
+  const blank = (value: unknown): unknown => (value !== null && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, ''])) : value);
+  const shape = Object.fromEntries(Object.keys(manifest).sort().map((key) => [key, /^(?:dependencies|devDependencies|peerDependencies|optionalDependencies|version)$/u.test(key) ? blank(manifest[key]) : manifest[key]]));
+  return hashText(JSON.stringify(shape));
 }
 
 function installedStarci(root: string): string[] {
@@ -78,10 +167,17 @@ export function computeFingerprint({ root, tracked, cliVersion, hfsDir = fileURL
     if (linked || entry?.integrity === undefined) localReasons.push(`@starci/${name} is linked or copied from a local folder (no recorded integrity)`);
     add(`pkg:@starci/${name}`, `${version}\0${entry?.integrity ?? 'local'}`);
   }
+  const digests = packageDigests(lock);
+  for (const [family, toolchain] of Object.entries(LOCK_TOOLCHAIN)) {
+    const lines = [...digests].filter(([name]) => toolchain === null || toolchain.test(name)).map(([name, digest]) => `${name}\0${digest}`);
+    add(`lock:${family}`, lines.join('\n'));
+  }
   for (const file of tracked) {
-    if (!CONFIG_NAME.test(path.posix.basename(file)) || file.startsWith('node_modules/')) continue;
-    const sha = hashFile(path.join(root, file));
-    parts.push({ name: `file:${file}`, sha256: sha ?? 'absent' });
+    const base = path.posix.basename(file);
+    if (!CONFIG_NAME.test(base) || file.startsWith('node_modules/')) continue;
+    const absolute = path.join(root, file);
+    parts.push({ name: `file:${file}`, sha256: hashFile(absolute) ?? 'absent' });
+    if (base === 'package.json') parts.push({ name: `shape:${file}`, sha256: manifestShape(absolute) });
   }
   return { parts: sorted(parts), portable: localReasons.length === 0, localReasons };
 }
@@ -121,6 +217,23 @@ export function fingerprintDifferences(cached: readonly FingerprintPart[], curre
   const names = new Set(current.map((part) => part.name));
   for (const name of byName.keys()) if (!names.has(name)) differing.add(name);
   return [...differing].sort();
+}
+
+/** The differing parts each family reads: a family absent from the map has a matching fingerprint. */
+export function differencesByFamily(differences: readonly string[]): Map<FamilyId, string[]> {
+  const byFamily = new Map<FamilyId, string[]>();
+  for (const name of differences) for (const family of familiesOfPart(name)) byFamily.set(family, [...(byFamily.get(family) ?? []), name]);
+  return byFamily;
+}
+
+/** The family whose records a cache folder holds (`check/<family>`, `lint/<side>`, `test-coverage`, the Sonar and Codecov baselines). */
+export function familyOfFolder(folder: string): FamilyId | null {
+  const [head, second] = folder.split('/');
+  if (head === 'check') return (FAMILIES as readonly string[]).includes(second ?? '') ? (second as FamilyId) : null;
+  if (head === 'lint') return 'lint';
+  if (head === 'test-coverage') return 'test';
+  if (head === 'sonar-baseline' || head === 'codecov-baseline') return 'sonar';
+  return null;
 }
 
 /** One digest of all parts, for the run log. */

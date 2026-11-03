@@ -17,6 +17,8 @@ export interface FakeSessionOptions {
   /** The run mode every family is told; `full` carries `fullReason`. */
   readonly mode?: RunMode;
   readonly fullReason?: string;
+  /** The app root the families read beside the index (its `package-lock.json`); a folder that does not exist by default. */
+  readonly root?: string;
 }
 
 /** The fake, with the logs a spec asserts on. */
@@ -62,7 +64,7 @@ export function createFakeSession(options: FakeSessionOptions = {}): FakeSession
     },
   };
   const session: FakeSession = {
-    root: '/fake/app',
+    root: options.root ?? '/fake/app',
     index,
     events,
     reports,

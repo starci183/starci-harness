@@ -16,6 +16,7 @@ import { createRequire } from 'node:module';
 import type TypeScript from 'typescript';
 import { braceVariants, globExpression } from '../runtime/scripts/lib/glob.mjs';
 import { combineHashes, hashFile, hashText } from './hash.mjs';
+import { lockEntries, packageDigests } from './fingerprint.mjs';
 import { buildImportGraph, dirtySetOf, posix, type GraphBuild, type GraphHost, type ImportGraph, type ImportNode } from './import-graph.mjs';
 import { canonicalJson, reconcile, sortFindings } from './jsonl.mjs';
 import type { CacheRecord, CheckSession, FamilyReport, Finding, JsonValue } from './types.mjs';
@@ -323,6 +324,10 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
   const validStyle = new Map(reconcile(ofStep(LINT_STEPS.stylelint), hashOf).map((record) => [record.path, record]));
   const meta = ofStep(LINT_STEPS.meta).find((record) => record.path === SIDE_RECORD);
   const metaData = meta === undefined ? {} : dataOf(meta);
+  // the installed packages the side imports, by install digest: a bump re-lints the files that import the package, not the side
+  const installed = packageDigests(lockEntries(session.root));
+  const recordedPackages = metaData['packages'] !== null && typeof metaData['packages'] === 'object' && !Array.isArray(metaData['packages']) ? (metaData['packages'] as Record<string, JsonValue>) : null;
+  const changedPackages = new Set(recordedPackages === null ? [] : Object.keys(recordedPackages).filter((name) => recordedPackages[name] !== (installed.get(name) ?? 'absent')));
   const previousFindings = new Set([...ofStep(LINT_STEPS.eslint), ...ofStep(LINT_STEPS.stylelint)].flatMap((record) => record.findings.map(keyOf)));
 
   const progress = session.progress.step('lint', `lint ${side}`, scope.length + stylesheets.length);
@@ -336,7 +341,7 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
   const crossEslint = new Map<string, string | undefined>();
   const crossStyle = new Map<string, string | undefined>();
 
-  const sideUnchanged = whole === null && meta !== undefined && meta.hash === sideKey && metaData['extra'] === input.extraKey
+  const sideUnchanged = whole === null && meta !== undefined && meta.hash === sideKey && metaData['extra'] === input.extraKey && recordedPackages !== null && changedPackages.size === 0
     && scope.every((file) => validEslint.has(file)) && stylesheets.every((file) => validStyle.has(file))
     && ofStep(LINT_STEPS.eslint).every((record) => scopeSet.has(record.path)) && ofStep(LINT_STEPS.stylelint).every((record) => styleSet.has(record.path))
     // a file the program reads that is no lint source (a JSON module, untracked generated code) is part of the side too
@@ -374,11 +379,12 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
           const data = dataOf(record);
           const imports = Array.isArray(data['imports']) ? (data['imports'] as JsonValue[]).filter((value): value is string => typeof value === 'string') : [];
           const kept = previous.get(record.path);
-          if (kept === undefined || record.hash === hashOf(record.path)) previous.set(record.path, { hash: record.hash, imports, declaresGlobals: data['globals'] === true, api: typeof data['api'] === 'string' ? data['api'] : undefined, open: typeof data['open'] === 'boolean' ? data['open'] : undefined, refs: Array.isArray(data['refs']) ? (data['refs'] as JsonValue[]).filter((value): value is string => typeof value === 'string') : undefined });
+          const strings = (value: JsonValue | undefined): string[] | undefined => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : undefined);
+          if (kept === undefined || record.hash === hashOf(record.path)) previous.set(record.path, { hash: record.hash, imports, declaresGlobals: data['globals'] === true, api: typeof data['api'] === 'string' ? data['api'] : undefined, open: typeof data['open'] === 'boolean' ? data['open'] : undefined, refs: strings(data['refs']), packages: strings(data['packages']) });
         }
         const recordedGraph: ImportGraph | null = previous.size === 0 ? null : previous;
         build = buildImportGraph(graphHost(ts, sideRoot, (file) => hashOf(file) ?? null), scope, recordedGraph, { pathsChanged: metaData['paths'] !== pathsDigest });
-        const dirty = dirtySetOf(recordedGraph, build.graph);
+        const dirty = dirtySetOf(recordedGraph, build.graph, recordedPackages === null ? new Set(installed.keys()) : changedPackages);
         if (dirty.wholeSide !== null) whole = dirty.wholeSide;
         else dirtyEslint = new Set([...dirty.dirty].filter((file) => scopeSet.has(file)));
       } catch (error) {
@@ -497,7 +503,7 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
         build = buildImportGraph(graphHost(ts, sideRoot, (file) => hashOf(file) ?? null), scope, null);
       }
       for (const [file, node] of build.graph) {
-        if (!moved.has(file)) records.push({ path: file, step: LINT_STEPS.imports, hash: node.hash, findings: [], data: { globals: node.declaresGlobals, imports: node.imports, ...(node.api === undefined ? {} : { api: node.api }), open: node.open !== false, ...(node.refs === undefined ? {} : { refs: node.refs }) } });
+        if (!moved.has(file)) records.push({ path: file, step: LINT_STEPS.imports, hash: node.hash, findings: [], data: { globals: node.declaresGlobals, imports: node.imports, ...(node.api === undefined ? {} : { api: node.api }), open: node.open !== false, ...(node.refs === undefined ? {} : { refs: node.refs }), ...(node.packages === undefined ? {} : { packages: node.packages }) } });
       }
       snapshot ??= mergedSnapshot(sideRoot, input.canons, handedGraph);
       for (const [file, findings] of Object.entries(snapshot ?? {})) {
@@ -506,7 +512,12 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
     } catch {
       records.splice(0, records.length, ...records.filter((record) => record.step === LINT_STEPS.eslint || record.step === LINT_STEPS.stylelint));
     }
-    records.push({ path: SIDE_RECORD, step: LINT_STEPS.meta, hash: sideKey, findings: [], data: { extra: input.extraKey, files: scope.length, paths: pathsDigest, stylesheets: stylesheets.length } });
+    const packagesOf = (record: CacheRecord): string[] => {
+      const listed = dataOf(record)['packages'];
+      return Array.isArray(listed) ? listed.filter((entry): entry is string => typeof entry === 'string') : [];
+    };
+    const imported = [...new Set(records.filter((record) => record.step === LINT_STEPS.imports).flatMap(packagesOf))].sort();
+    records.push({ path: SIDE_RECORD, step: LINT_STEPS.meta, hash: sideKey, findings: [], data: { extra: input.extraKey, files: scope.length, paths: pathsDigest, stylesheets: stylesheets.length, packages: Object.fromEntries(imported.map((name) => [name, installed.get(name) ?? 'absent'])) } });
     session.replace(folder, records);
     written = true;
   }
