@@ -25,7 +25,7 @@ import { isNode } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { forbiddingConcern, packageNameOf } from "./lib/fe-stack.ts"
 import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
-import { globalReferences, inSlot, isApiClient, isApiLayer, isApiRest, isAuthDoor, isAuthTokenStore, isOutcomeModule } from "./lib/scope.ts"
+import { globalReferences, inSlot, isApiClient, isApiLayer, isApiRest, isOutcomeModule } from "./lib/scope.ts"
 import { typed } from "./lib/types.ts"
 
 /** Where a canonical transport library may be imported, and the test of that place. */
@@ -40,7 +40,7 @@ interface Placement {
  */
 const PLACED_TRANSPORTS = new Map<string, Placement>([
   ["@apollo/client", { where: "the API layer (`modules/api`)", allowed: (context) => isApiLayer(context) }],
-  ["axios", { where: "the REST calls of the API layer (`modules/api/rest/`) and the auth door (`modules/auth/auth-door.ts`)", allowed: (context) => isApiRest(context) || isAuthDoor(context) }],
+  ["axios", { where: "the REST calls of the API layer (`modules/api/rest/`)", allowed: (context) => isApiRest(context) }],
   ["socket.io-client", { where: "`hooks/socketio/`", allowed: (context) => inSlot(context, "fe.hooks.socketio") }],
   ["graphql-ws", { where: "the Apollo clients of the API layer (`modules/api/graphql/clients/`, or the shared api package's `graphql/clients/`)", allowed: (context) => isApiClient(context) }],
 ])
@@ -156,26 +156,6 @@ const transportUses = (context: AnyContext): TransportUse[] => {
 // -- FE-TRANSPORT-1 --------------------------------------------------------------------------------
 
 /** The HTTP methods of the REST client whose first argument is the request path. */
-const REST_METHODS = new Set(["get", "post", "put", "patch", "delete", "request"])
-
-/** The static text of a path argument (a literal, or a template's fixed parts), or null when nothing about it is fixed. */
-const staticPath = (node: Node | undefined): string | null => {
-  if (node?.type === "Literal" && typeof node.value === "string") return node.value
-  if (node?.type === "TemplateLiteral") return node.quasis.map((quasi) => quasi.value.cooked ?? "").join("<expression>")
-  return null
-}
-
-/** A path segment `auth/`: the app's own back-end auth doors. */
-const AUTH_DOOR_PATH = /(?:^|\/)auth\//
-
-/** In the auth door, a REST call whose path the rule can read must name an `/auth/` door; a fully dynamic path is left to review. */
-const judgeAuthDoorCall = (context: AnyContext, node: TSESTree.CallExpression): void => {
-  if (node.callee.type !== "MemberExpression" || node.callee.computed || node.callee.property.type !== "Identifier" || !REST_METHODS.has(node.callee.property.name)) return
-  const path = staticPath(node.arguments[0])
-  if (path === null || AUTH_DOOR_PATH.test(path)) return
-  context.report({ node, messageId: "authDoor", data: { call: `.${node.callee.property.name}()`, path } })
-}
-
 /**
  * `fetch` is reached only in the API layer, each canonical transport library only in its home, and no other HTTP library exists.
  *
@@ -200,14 +180,11 @@ export const fetchOnlyInApiClient = defineRule({
       placed:
         "`{{name}}` is imported outside {{where}}, the one place the front-end stack gives it. A component or hook that holds the transport itself skips the link chain (token, locale, retry, timeout) and the one result vocabulary. Call an operation of `modules/api` through its SWR hook (`hooks/swr/`), or listen through `hooks/socketio/`.",
       xhr: "`XMLHttpRequest` is a second transport. Use an operation of the API layer (`modules/api`).",
-      authDoor:
-        "`{{call}}` calls `{{path}}` from the auth door. `modules/auth/auth-door.ts` calls only the app's own back-end auth doors (`/auth/...`: login, signup, refresh, logout, password reset, resend verification); every other REST call is `modules/api/rest/`.",
       websocket: "Native `WebSocket` is a second realtime transport. Use socket.io-client in `hooks/socketio/`, the front end's realtime owner.",
     },
   },
   create(context) {
     const layer = isApiLayer(context)
-    const authDoor = isAuthDoor(context)
     const library = (node: Node, source: unknown): void => {
       const name = packageNameOf(source)
       if (name === null || forbiddingConcern(source)) return
@@ -239,7 +216,6 @@ export const fetchOnlyInApiClient = defineRule({
         if (node.source.type === "Literal") library(node, node.source.value)
       },
       CallExpression(node) {
-        if (authDoor) judgeAuthDoorCall(context, node)
         // `require("axios")` where `require` is the CommonJS global.
         const [first] = node.arguments
         if (node.callee.type !== "Identifier" || node.callee.name !== "require" || first?.type !== "Literal") return
@@ -300,7 +276,7 @@ const isTransportFile = (context: AnyContext): boolean => isApiLayer(context) &&
 export const noSharedTransportState = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "The API layer (`modules/api/**`) and `modules/auth` hold no module-level `let`/`var`, but the in-memory access-token store `modules/auth/token-store.ts`." },
+    docs: { description: "The API layer (`modules/api/**`) and `modules/auth` hold no module-level `let`/`var`." },
     schema: [],
     messages: {
       shared:
@@ -308,7 +284,7 @@ export const noSharedTransportState = defineRule({
     },
   },
   create(context) {
-    if (!isTransportFile(context) && !(inSlot(context, "fe.modules.auth") && !isAuthTokenStore(context))) return {}
+    if (!isTransportFile(context) && !inSlot(context, "fe.modules.auth")) return {}
     const check = (node: Node): void => {
       const declaration = node.type === "VariableDeclaration" ? node : node.type === "ExportNamedDeclaration" ? node.declaration : undefined
       if (!declaration || declaration.type !== "VariableDeclaration" || declaration.kind === "const") return
