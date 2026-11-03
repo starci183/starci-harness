@@ -356,8 +356,8 @@ jobs:
         env:
           BUILD: ${{ steps.due.outputs.build }}
         run: for dir in $BUILD; do (cd "$dir" && npm ci --no-audit --no-fund && npm run build --if-present); done
-      # The token reaches npm alone: a user config naming the variable, set only for this step, never echoed. One package per
-      # call, in the judged order (a dependency before its dependent), stopping at the first refusal.
+      # The token reaches npm alone: a user config naming the variable, set only for this step, never echoed. One call for
+      # the due packages, published in the judged order (a dependency before its dependent) and read back together.
       - name: Publish each publishable package not on npm
         if: steps.due.outputs.publish != ''
         env:
@@ -368,11 +368,12 @@ jobs:
           set -euo pipefail
           export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/publish.npmrc"
           printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
-          # Every package gets its attempt, so one transient registry failure (a Sigstore 409) holds back only that package;
-          # the job still fails, naming each one, and a rerun publishes what is left.
-          failed=""
-          for dir in $PUBLISH; do node cli/dist/main.js release publish --execute --base "$BASE" --package "$dir" || failed="$failed $dir"; done
-          if [ -n "$failed" ]; then echo "::error::not published:$failed"; exit 1; fi
+          # One batch: every package gets its `npm publish` in order, then all are read back at once, so the registry's delay is
+          # paid once. One transient refusal (a Sigstore 409) holds back only that package; the step fails naming each, and a
+          # rerun publishes what is left.
+          args=()
+          for dir in $PUBLISH; do args+=(--package "$dir"); done
+          node cli/dist/main.js release publish --execute --base "$BASE" "${args[@]}"
 
   # Phase 2: the CLI (starci-harness), after publish-packages, once the harness job and every gate are green (Sonar and the app
   # job never gate a publish). It publishes as committed, its @starci requirements and lockfile at their stack pins

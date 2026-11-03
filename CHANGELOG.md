@@ -33,6 +33,11 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 - `starci app remove module <name>` (a new verb file, `core/app/remove.ts`) reverses `starci app add module <name>`; both are implemented by @starci/hfs.
 - The dev verbs of `starci app stack` (`prepare|doctor|up|status|logs|down|verify --env <env>`, `starci app secret init --env <dev env>`) run a docker-compose environment under the governor; they are carried by @starci/hfs 5.2.0.
 - The seat start heals the product's git hooks in the worker's checkout (`materialiseHooks`) and refuses `WORKTREE_HOOKS_MISSING` before it claims the task when the checkout still has none.
+
+### Changed
+
+- `release publish --package` can be repeated, and CI publishes its due packages in one call. Each package is still published in dependency order, but they are then read back from the registry together against one deadline, so the registry's delay is paid once per batch instead of once per package. A refused package still holds back only itself, and the refusal names every one.
+- `contexts anatomy --execute` renders the contexts index after it writes anatomy.md, so one run settles. The index sizes each file from its LF text.
 - The dev verbs of `starci app stack` get the heavy-command governor: `npm ci`, a compose build and a compose up of `up` and `prepare` wait for a slot of the host-wide semaphore like every other heavy command (`stackIo.heavy`, handed to the @starci/hfs release that carries the dev verbs).
 
 ## [1.1.0-alpha.51] - 2026-11-03
