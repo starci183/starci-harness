@@ -1,0 +1,12 @@
+// Managed by starci app sync (slot be.identity.sign-in); do not edit: run "npx starci app sync --execute".
+import { Command } from "@nestjs/cqrs"
+import type { AccessGrant } from "@modules/integrations/passport"
+import type { PublicExecuteParams } from "@modules/platform/cqrs"
+import type { ExchangeRequest } from "./auth.contracts"
+
+/** Signs in with email and password through the local strategy and opens a session. */
+export class LoginCommand extends Command<AccessGrant> {
+    constructor(readonly params: PublicExecuteParams<ExchangeRequest>) {
+        super()
+    }
+}

@@ -1,10 +1,16 @@
 import { Module } from "@nestjs/common"
 import type { DynamicModule, Provider } from "@nestjs/common"
+import { PASSPORT_ACCOUNTS, PASSPORT_AUTHENTICATOR, PASSPORT_RATE_COUNTER, PASSPORT_SESSION_STORE } from "@modules/integrations/passport"
+import { IdentityAccountDirectoryAdapter } from "./account-directory.adapter"
 import { AuthGuard } from "./auth.guard"
+import { IdentityAuthenticatorService } from "./authenticator.service"
 import { CredentialGuard } from "./credential.guard"
 import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
 import { ACCESS_TOKEN_VERIFIER, CREDENTIAL_AUTHENTICATOR } from "./identity.decorators"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./identity.module-definition"
+import { IdentityRateCounterAdapter } from "./rate-counter.adapter"
+import { IdentitySessionStoreAdapter } from "./session-store.adapter"
+import { IdentitySignInService } from "./sign-in.service"
 
 const refusingAuthenticator: Provider = {
     provide: CREDENTIAL_AUTHENTICATOR,
@@ -34,8 +40,27 @@ export class IdentityModule extends ConfigurableModuleClass {
                 authenticator,
                 CredentialGuard,
                 AuthGuard,
+                IdentitySessionStoreAdapter,
+                IdentityAccountDirectoryAdapter,
+                IdentityRateCounterAdapter,
+                IdentityAuthenticatorService,
+                IdentitySignInService,
+                { provide: PASSPORT_SESSION_STORE, useExisting: IdentitySessionStoreAdapter },
+                { provide: PASSPORT_ACCOUNTS, useExisting: IdentityAccountDirectoryAdapter },
+                { provide: PASSPORT_RATE_COUNTER, useExisting: IdentityRateCounterAdapter },
+                { provide: PASSPORT_AUTHENTICATOR, useExisting: IdentityAuthenticatorService },
             ],
-            exports: [CredentialGuard, CREDENTIAL_AUTHENTICATOR, AuthGuard, ACCESS_TOKEN_VERIFIER],
+            exports: [
+                CredentialGuard,
+                CREDENTIAL_AUTHENTICATOR,
+                AuthGuard,
+                ACCESS_TOKEN_VERIFIER,
+                IdentitySignInService,
+                PASSPORT_SESSION_STORE,
+                PASSPORT_ACCOUNTS,
+                PASSPORT_RATE_COUNTER,
+                PASSPORT_AUTHENTICATOR,
+            ],
         }
     }
 }

@@ -1,3 +1,4 @@
+import { identityEntities } from "@modules/domain/identity"
 import { httpSecurityEntities } from "@modules/platform/http-security"
 import type { EntityClass } from "./database.options"
 
@@ -7,4 +8,4 @@ import type { EntityClass } from "./database.options"
  * file, from the deep path `@modules/platform/database/entities`; DatabaseModule and the database barrel never do, since the
  * capability barrels import the database capability back.
  */
-export const PRIMARY_ENTITIES: ReadonlyArray<EntityClass> = [...httpSecurityEntities]
+export const PRIMARY_ENTITIES: ReadonlyArray<EntityClass> = [...httpSecurityEntities, ...identityEntities]

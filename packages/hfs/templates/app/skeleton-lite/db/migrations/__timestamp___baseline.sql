@@ -30,6 +30,7 @@ grant select, insert on table auth.identities to app_be;
 
 -- The device sessions and rotating refresh tokens of @starci/auth. A token is stored by its sha256 only; a rotated token stays,
 -- marked used, so a replay is detected (a replay inside the grace window is a racing tab, an older one ends the session).
+-- identity_attempts counts the sign-in attempts of one address in a window every replica shares (the budget of failures).
 -- The app owns auth.users (db/bootstrap.sql) and the role app_be.
 
 create table public.identity_sessions (
@@ -57,19 +58,33 @@ create table public.identity_refresh_tokens (
 create index identity_refresh_tokens_session_idx on public.identity_refresh_tokens (session_id);
 create index identity_refresh_tokens_expiry_idx on public.identity_refresh_tokens (user_id, expires_at);
 
+create table public.identity_attempts (
+    key varchar(128) primary key,
+    hits integer not null,
+    reset_at timestamptz not null
+);
+
+create index identity_attempts_reset_idx on public.identity_attempts (reset_at);
+
 alter table public.identity_sessions enable row level security;
 alter table public.identity_sessions force row level security;
 alter table public.identity_refresh_tokens enable row level security;
 alter table public.identity_refresh_tokens force row level security;
+alter table public.identity_attempts enable row level security;
+alter table public.identity_attempts force row level security;
 
 revoke all on table public.identity_sessions from public;
 revoke all on table public.identity_refresh_tokens from public;
+revoke all on table public.identity_attempts from public;
 grant select, insert, update, delete on table public.identity_sessions to app_be;
 grant select, insert, update, delete on table public.identity_refresh_tokens to app_be;
+grant select, insert, update, delete on table public.identity_attempts to app_be;
 
 create policy identity_sessions_app_be_all on public.identity_sessions
     for all to app_be using (current_user = 'app_be') with check (current_user = 'app_be');
 create policy identity_refresh_tokens_app_be_all on public.identity_refresh_tokens
+    for all to app_be using (current_user = 'app_be') with check (current_user = 'app_be');
+create policy identity_attempts_app_be_all on public.identity_attempts
     for all to app_be using (current_user = 'app_be') with check (current_user = 'app_be');
 
 create table public.profiles (
