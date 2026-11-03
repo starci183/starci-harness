@@ -359,5 +359,5 @@ for (const addition of A14_CONTRIBUTIONS) {
 // The result cache of `starci app check --gate lint` (contexts/project/check-cache.md) reads these two declarations of the installed canon.
 export { crossFileInputs } from "./lib/cross-file-inputs.ts"
 export type { CrossFileInput } from "./lib/cross-file-inputs.ts"
-export { projectGraph } from "./project-graph.ts"
+export { projectGraph, projectGraphSnapshot } from "./project-graph.ts"
 export type { ProjectGraphFinding, ProjectGraphSnapshot } from "./project-graph.ts"

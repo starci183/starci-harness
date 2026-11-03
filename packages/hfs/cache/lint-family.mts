@@ -62,8 +62,11 @@ export interface EslintResult { filePath: string; messages: EslintMessage[]; [ke
 export interface StylelintWarning { rule: string; text: string; line?: number; column?: number; endLine?: number; severity?: string; [key: string]: unknown }
 export interface StylelintResult { source: string; warnings: StylelintWarning[]; [key: string]: unknown }
 
-/** The answer of a linter seam: validated results of the files it was asked about, or why it could not complete. */
-export interface LinterOutcome<R> { results: R[]; errors: string[] }
+/**
+ * The answer of a linter seam: validated results of the files it was asked about, or why it could not complete. `graph` is, for ESLint, the project-graph
+ * snapshot each canon's graph rules built in the child, by canon name: the records of the `graph` step are written from it instead of building the graph again.
+ */
+export interface LinterOutcome<R> { results: R[]; errors: string[]; graph?: Readonly<Record<string, GraphSnapshot>> | undefined }
 
 /** Everything one side's cached lint needs. */
 export interface LintSideInput {
@@ -267,13 +270,18 @@ function graphHost(ts: Ts, sideRoot: string, hashOf: (file: string) => string | 
 /** A record's `data` object, or an empty one. */
 const dataOf = (record: CacheRecord): { readonly [key: string]: JsonValue } => (record.data !== null && typeof record.data === 'object' && !Array.isArray(record.data) ? record.data as { [key: string]: JsonValue } : {});
 
-/** The graph findings of every canon that publishes graph rules, merged by file and sorted. */
-function mergedSnapshot(sideRoot: string, canons: readonly CanonDeclarations[]): Record<string, GraphFinding[]> | null {
+/**
+ * The graph findings of every canon that publishes graph rules, merged by file and sorted. A canon whose snapshot the ESLint child handed out (`handed`, by
+ * canon name) is not asked to build its graph again; any other canon builds it through its `projectGraph`.
+ */
+export function mergedSnapshot(sideRoot: string, canons: readonly CanonDeclarations[], handed?: Readonly<Record<string, GraphSnapshot>>): Record<string, GraphFinding[]> | null {
   const merged: Record<string, GraphFinding[]> = {};
   for (const canon of canons) {
     if (!canon.graphRules) continue;
-    if (canon.projectGraph === null) return null;
-    for (const [file, findings] of Object.entries(canon.projectGraph({ repoRoot: sideRoot }).byFile)) merged[posix(file)] = [...(merged[posix(file)] ?? []), ...findings];
+    const given = handed?.[canon.name];
+    if (given === undefined && canon.projectGraph === null) return null;
+    const { byFile } = given ?? (canon.projectGraph as NonNullable<CanonDeclarations['projectGraph']>)({ repoRoot: sideRoot });
+    for (const [file, findings] of Object.entries(byFile)) merged[posix(file)] = [...(merged[posix(file)] ?? []), ...findings];
   }
   for (const list of Object.values(merged)) list.sort((a, b) => a.line - b.line || a.column - b.column || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0) || (a.message < b.message ? -1 : a.message > b.message ? 1 : 0));
   return merged;
@@ -415,12 +423,14 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
   // ------------------------------------------------------------------ the run
   const eslintList = [...dirtyEslint].sort();
   const styleList = [...dirtyStyle].sort();
+  let handedGraph: Readonly<Record<string, GraphSnapshot>> | undefined;
   const freshEslint = new Map<string, EslintResult>();
   const freshStyle = new Map<string, StylelintResult>();
   const rootOf = (file: string): string => path.relative(sideRoot, file).replace(/\\/g, '/');
   if (eslintList.length > 0) {
     const run = await input.eslint(whole !== null ? null : eslintList);
     errors.push(...run.errors);
+    handedGraph = run.graph;
     for (const result of run.results) freshEslint.set(posix(rootOf(result.filePath)), result);
   }
   if (input.stylelint !== null && styleList.length > 0) {
@@ -489,7 +499,7 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
       for (const [file, node] of build.graph) {
         if (!moved.has(file)) records.push({ path: file, step: LINT_STEPS.imports, hash: node.hash, findings: [], data: { globals: node.declaresGlobals, imports: node.imports, ...(node.api === undefined ? {} : { api: node.api }), open: node.open !== false, ...(node.refs === undefined ? {} : { refs: node.refs }) } });
       }
-      snapshot ??= mergedSnapshot(sideRoot, input.canons);
+      snapshot ??= mergedSnapshot(sideRoot, input.canons, handedGraph);
       for (const [file, findings] of Object.entries(snapshot ?? {})) {
         if (scopeSet.has(file) && !moved.has(file) && findings.length > 0) records.push({ path: file, step: LINT_STEPS.graph, hash: planHash(file), findings: graphRecordFindings(side, file, findings) });
       }
