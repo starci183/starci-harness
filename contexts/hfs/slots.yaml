@@ -289,10 +289,19 @@ ruleParams:
       "@nestjs/jwt": []
       jose: []
       bcryptjs: []
+      jsonwebtoken: []
+      jwks-rsa: []
+      jwt-decode: []
+      passport-jwt: []
+      openid-client: []
       "@starci/auth":
         - integrations/passport
       "@starci/auth/testing":
         - integrations/passport
+      "@starci/auth-oidc":
+        - integrations/keycloak
+      "@starci/auth-oidc/testing":
+        - integrations/keycloak
       bcrypt: []
       cache-manager:
         - integrations/cache
@@ -3009,6 +3018,41 @@ slots:
       - BE_INFRA_OWNER
       - BE_STORAGE_OWNER
     coverage: required
+  - id: be.integrations.keycloak
+    profiles:
+      - be
+    editions:
+      - full
+    editionWhy: full signs people in through the project's identity provider (Keycloak) with @starci/auth-oidc, composed here; lite issues its own identity in integrations/passport.
+    path: src/modules/integrations/keycloak/
+    presence: optional
+    tracked: tracked
+    tier: integrations
+    owner: true
+    requires:
+      - index.ts
+      - keycloak.config.ts
+      - keycloak.options.ts
+      - keycloak.decorators.ts
+      - keycloak.module.ts
+    allows:
+      - index.ts
+      - keycloak.config.ts
+      - keycloak.options.ts
+      - keycloak.decorators.ts
+      - keycloak.module.ts
+      - errors/
+      - messages/
+    tests: unit-beside
+    rules:
+      - BE_TIER_DIRECTION
+      - BE_ERROR_HOME
+      - BE_SECRET_DEFAULT
+      - BE_INFRA_OWNER
+      - BE_AUTH_PASSPORT_OWNER
+      - BE_INTEGRATION_SPEC_MISSING
+    coverage: required
+    since: 3.17.0
   - id: be.tests.world
     profiles:
       - be

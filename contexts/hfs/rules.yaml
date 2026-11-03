@@ -2208,8 +2208,8 @@ rules:
       - {kind: eslint-be, id: ai-client-through-gateway}
   - id: R328
     code: BE_AUTH_PASSPORT_OWNER
-    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth and are imported by no app file; @starci/auth/server is imported only by integrations/passport, its one glue. bcrypt and every Supabase client are owned nowhere."
-    editions: [lite]
+    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth (lite) and of @starci/auth-oidc (full, which owns jose for its provider tokens) and are imported by no app file; @starci/auth/server is imported only by integrations/passport and @starci/auth-oidc/server only by integrations/keycloak, each package's one glue. bcrypt and every Supabase client are owned nowhere."
+    editions: [lite, full]
     failureCodes:
       - BE_AUTH_PASSPORT_OWNER
     enforcers:

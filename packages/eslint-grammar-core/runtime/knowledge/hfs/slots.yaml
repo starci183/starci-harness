@@ -248,8 +248,15 @@ ruleParams:
       "@nestjs/jwt": []
       jose: []
       bcryptjs: []
+      jsonwebtoken: []                                   # no other JWT or OIDC client library in a back end: the tokens of an identity provider are verified by @starci/auth-oidc (R328)
+      jwks-rsa: []
+      jwt-decode: []
+      passport-jwt: []
+      openid-client: []
       "@starci/auth": [integrations/passport]            # the lite sign-in package: its server entry is reached only through integrations/passport (R328)
       "@starci/auth/testing": [integrations/passport]   # its test doubles, for the glue's specs
+      "@starci/auth-oidc": [integrations/keycloak]       # the full sign-in package (jose is its dependency, imported by no app file): its server entry is reached only through integrations/keycloak (R328)
+      "@starci/auth-oidc/testing": [integrations/keycloak]   # its fake issuer, for the glue's specs
       bcrypt: []
       cache-manager: [integrations/cache, integrations/redis]
       "@nestjs/cache-manager": [integrations/cache, integrations/redis]     # the CACHE_MANAGER token: caching goes through the cache capability
@@ -2047,6 +2054,25 @@ slots:
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_STORAGE_OWNER]
     coverage: required
     since: 3.9.0
+  - id: be.integrations.keycloak
+    profiles: [be]
+    editions: [full]
+    # The glue of @starci/auth-oidc, the OIDC client of the full edition's identity provider (Keycloak): discovery, the provider's JWKS,
+    # algorithm-pinned token checks and the authorization code flow with PKCE and nonce behind the PrincipalVerifier of @starci/auth.
+    # This folder parses the typed options, hands the package the app's bounded HTTP client and clock, and names the injectors;
+    # no app file imports jose, and no other module imports the package (ruleParams.be.infraOwners).
+    path: "src/modules/integrations/keycloak/"
+    presence: optional
+    tracked: tracked
+    tier: integrations
+    owner: true
+    requires: [index.ts, keycloak.config.ts, keycloak.options.ts, keycloak.decorators.ts, keycloak.module.ts]
+    allows: [index.ts, keycloak.config.ts, keycloak.options.ts, keycloak.decorators.ts, keycloak.module.ts, errors/, messages/]
+    tests: unit-beside
+    rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_INTEGRATION_SPEC_MISSING]
+    coverage: required
+    since: 3.17.0
+
 
   # ----- BE: tests (owner test layout 2026-09-30). Unit specs are <name>.service.spec.ts beside their service and nothing else; everything else
   # lives under src/tests/, one folder per kind, and the folder and the file suffix always agree (a file whose suffix does

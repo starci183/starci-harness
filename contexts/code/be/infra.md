@@ -18,7 +18,9 @@ and GET that sign the content type and size, head, list, delete and size and con
 MinIO in lite) is imported only by `integrations/object-storage`, which keeps the bucket, parses the settings and registers the
 module, while the key layout of an object belongs to the domain that stores it; `minio` is imported nowhere; in lite the identity
 libraries are the dependencies of `@starci/auth` and no app file imports them, and that package is imported only by
-`integrations/passport` ([api-auth.md](api-auth.md) BE-AUTH-2). `@nestjs/config`,
+`integrations/passport`; in full `jose` is a dependency of `@starci/auth-oidc`, no JWT or OIDC library (`jose`, `jsonwebtoken`,
+`jwks-rsa`, `jwt-decode`, `openid-client`) is imported by an app file, and that package is imported only by `integrations/keycloak`
+([api-auth.md](api-auth.md) BE-AUTH-2). `@nestjs/config`,
 `dotenv` and `@nestjs/event-emitter` are imported nowhere; `@nestjs/schedule` and `cron` only by the tick scheduler of
 `platform/jobs` ([jobs.md](jobs.md) BE-JOBS-6). In lite a backing library is legal only
 when `sides.be.backing` declares it (Redis for the queue and the realtime hub); vectors are pgvector.
