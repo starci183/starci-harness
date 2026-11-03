@@ -44,7 +44,7 @@ Two kinds, named by the project:
 
 - **dev** (conventionally `dev`): every dependency runs in Docker Linux containers on the developer host, rendered
   from the environment's compose files; application processes may run natively against them. Non-secret
-  configuration lives under `<env>/runtime/{config,env}/`, seed data under `<env>/seeds/`.
+  configuration lives under `<env>/runtime/{config,env}/`, its seed data in its seed level `<env>/seeds/` (PROJECT-STACKS-12).
 - **vps** (conventionally `vps`): the app and its dependencies run on a Docker Swarm stack rendered from
   `<env>/infra/swarm/`. Images are immutable and pinned (BE-SERVICES-2 in [code/be/services.md](../code/be/services.md);
   base images in [stack/pins.yaml](../stack/pins.yaml) `images`), secrets are versioned external Swarm secrets, and
@@ -208,7 +208,7 @@ acceptance gate. They are run by the owner or a `deliver` worker; deploying need
 role, dev-only custody to generate, setup and seed commands, native processes, readiness and verification probes). `prepare`, `up` and `down` are dry
 runs until `--execute`; `doctor`, `status`, `logs` and `verify` are read-only. **`up` is the one command**: it checks the host table, opens the dev
 custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor (a lite app's dev compose runs its database and Mailpit, the `mail` sink the sign-in mails reach on loopback, its web UI an origin) and waits for their health, gives the
-environment its own database role and the app role its own password, migrates with a receipt, runs the declared seed once, starts the native
+environment its own database role and the app role its own password, migrates with a receipt, runs the declared seed once (its data is the seed levels, PROJECT-STACKS-12), starts the native
 processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
 the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
 and stops the compose project, never a volume, image or another project. A vps environment keeps the Swarm verbs below; `up`, `down`, `doctor` and
@@ -355,8 +355,6 @@ Rules learned from running apps on developer hosts; each holds in every app.
   role of another environment or server. The client tools of `db migrate` run inside that container (`STARCI_DB_CONTAINER`), so the host needs no
   PostgreSQL client.
 
-## Read with
-
 ## PROJECT-STACKS-11 A customised service is an image the app builds, the same in every environment
 
 A service the app customises (wrapper scripts, plugins, configuration code) is built from an image folder
@@ -377,7 +375,51 @@ Enforced by: R374 (`stacks-service-images`: `STACKS_CODE_BIND_MOUNT`, `STACKS_IM
 `STACKS_IMAGE_ENV_DIVERGES`); the fork list is `runtime/knowledge/hfs/fork-images.yaml`, held equal to `images/sources.json` by
 `stacks-service-images.spec.mts`.
 
-[lite.md](lite.md), [full.md](full.md); slot `app.starcistacks` and `app.plaintext-env` in
+## PROJECT-STACKS-12 Seed data lives in the seed levels of the stack
+
+The data an app seeds lives in two levels of `.starcistacks/`, tracked, one structure at each level:
+
+- `.starcistacks/seeds/`, the shared level, applied in every environment and first: plans, the first-party catalogue, module definitions.
+- `.starcistacks/<env>/seeds/`, applied in that environment only, after the shared level: synthetic accounts, sample workspaces and demo
+  data in the dev environment, a production's initial data in its own. `<env>` is an environment name `application-stacks.yaml` declares,
+  exactly as declared; `seeds` and `cache` are no environment names.
+
+Each level is a manifest, `seeds.yaml` (schema `starci/seeds@1`), and the folders `sql/`, `data/` and `files/`. The manifest lists every file
+of those folders, one entry each `{ id, kind, path, target, mode, after?, schema? }` (`packages/hfs/runtime/scripts/hfs/stack-seeds-config.mts`):
+
+- `kind: sql`: idempotent DML (`insert ... on conflict`, an upsert) on the database `target` names; never a statement that changes the schema
+  or its grants, which is a migration's (BE-PERSISTENCE-1).
+- `kind: data`: a JSON or YAML document, or a folder of them, that the app command `target` (an argv list) loads; it validates against the
+  JSON schema the app declares at `schema` (app-root relative). The app owns the meaning, the harness the order and the validation.
+- `kind: files`: assets for the bucket `target` names, each keyed by its path.
+- `mode`: `once` applies an entry a single time, `upsert` again whenever its content hash changes; `after` names the entries of the level, or
+  of the shared level, it follows. The apply order is the migrations, then the shared level, then the environment's, each in manifest order
+  with `after` respected.
+
+A seed never holds custody: a secret it needs is a sealed member of `.starcistacks/<env>/secrets/` (PROJECT-STACKS-5). Its identities are
+synthetic (`HFS_SEED_PII`), and a level a production environment applies (the shared level, and the level of every environment that is
+not docker-compose) holds no test data: no example.test identity, no uat- or test- prefix.
+
+A new app is scaffolded with the three levels, each an empty manifest and a `.gitkeep` in each kind folder. `starci app codemod
+seeds-layout` moves an older app's `db/seed.sql` to the shared level's `sql/reference.sql` and each loose SQL file of `<env>/seeds/` into
+that level's `sql/`, declares them, completes every level and leaves a conflict, a loose seed that is no SQL and a source that names an
+old seed home for a person. `starci app db baseline --squash --seed-tables` writes its reference rows as the shared entry `reference`.
+
+Why: one structure per level puts seed data beside the environment that applies it, keeps it apart from schema and custody, and lets the
+harness order, validate and judge every seed while the app keeps what the data means.
+
+Open gap: the harness's own apply, the content hash of each entry recorded in the app database (`starci_seed_receipts`) so a `once` entry
+never runs twice and an `upsert` entry runs when its hash changes, run by `starci app stack up` after the migrations and by the production
+deploy after migrate with a dry run that lists what would apply, is not built yet; `stack up` runs the declared `local.seed` commands once
+(PROJECT-STACKS-6), and the scaffold's `cli seed run` applies the `sql/` folders of the shared level and then the environment's.
+
+Enforced by: R375 (`seeds-shape`: `HFS_SEEDS_SHAPE`, `HFS_SEED_MANIFEST`, `HFS_SEED_DDL`, `HFS_SEED_DATA_SCHEMA`, `HFS_SEED_TEST_DATA`), R06
+(a plaintext secret on any tracked line), R259 (`HFS_SEED_PII` over the SQL and the JSON and YAML data), R332 (no SQL under `db/` but
+migrations, the archive and the bootstrap); the scaffold and the codemod by `hfs-seeds-shape.spec.mts` and `seeds-layout-codemod.spec.mts`.
+
+## Read with
+
+[lite.md](lite.md), [full.md](full.md); slots `app.starcistacks` and `app.plaintext-env` in
 [hfs/slots.yaml](../hfs/slots.yaml); R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299,
-R301, R372 to R374 in [hfs/rules.yaml](../hfs/rules.yaml); rulings `lite-production-swarm`, `customised-service-image`, `sealed-secret-custody`,
-`single-declared-ingress` and `owner-run-steps` in [decisions/rulings.yaml](../decisions/rulings.yaml).
+R301, R372 to R375 in [hfs/rules.yaml](../hfs/rules.yaml); rulings `lite-production-swarm`, `customised-service-image`, `sealed-secret-custody`,
+`single-declared-ingress`, `owner-run-steps` and `seed-levels` in [decisions/rulings.yaml](../decisions/rulings.yaml).
