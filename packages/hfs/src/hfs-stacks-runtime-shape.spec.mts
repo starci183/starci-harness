@@ -183,3 +183,16 @@ for (const edition of ['lite', 'full']) {
     }
   });
 }
+
+for (const edition of ['lite', 'full']) {
+  test(`${code} ${edition}: the shared seed level and the check cache are reserved folders, never environments; another folder still is one`, t => {
+    const fixture = swarmFixture(t, edition);
+    fixture.put('.starcistacks/seeds/seeds.yaml', 'schema: starci/seeds@1\nentries: []\n');
+    fixture.put('.starcistacks/cache/fingerprint.jsonl', '');
+    const undeclared = () => checkApplicationStacks({ repoRoot: fixture.root, environment: 'production', deploymentModelFile: fixture.modelFile, repo: { edition } }).errors
+      .filter(item => /is not an environment the declaration admits/u.test(item.message));
+    assert.deepEqual(undeclared(), []);
+    fixture.put('.starcistacks/staging/README.md', '# staging\n');
+    assert.deepEqual(undeclared().map(item => item.path), ['.starcistacks/staging']);
+  });
+}
