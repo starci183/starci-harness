@@ -282,19 +282,16 @@ ruleParams:
         - integrations/object-storage
       minio: []
       "@supabase": []
-      "@nestjs/passport":
+      "@nestjs/passport": []
+      passport: []
+      passport-google-oauth20: []
+      passport-local: []
+      "@nestjs/jwt": []
+      jose: []
+      bcryptjs: []
+      "@starci/auth":
         - integrations/passport
-      passport:
-        - integrations/passport
-      passport-google-oauth20:
-        - integrations/passport
-      passport-local:
-        - integrations/passport
-      "@nestjs/jwt":
-        - integrations/passport
-      jose:
-        - integrations/passport
-      bcryptjs:
+      "@starci/auth/testing":
         - integrations/passport
       bcrypt: []
       cache-manager:
@@ -2873,7 +2870,7 @@ slots:
       - be
     editions:
       - lite
-    editionWhy: lite issues its own identity (Google OAuth and email/password) here; full uses Keycloak.
+    editionWhy: lite issues its own identity (Google OAuth and email/password) through @starci/auth, composed here; full uses Keycloak.
     path: src/modules/integrations/passport/
     presence: required
     tracked: tracked
@@ -2884,23 +2881,16 @@ slots:
       - passport.config.ts
       - passport.options.ts
       - passport.decorators.ts
-      - passport.tokens.ts
-      - passport.password.ts
-      - passport.cookie.ts
+      - passport.kit.ts
     allows:
       - index.ts
       - passport.config.ts
       - passport.options.ts
       - passport.decorators.ts
-      - passport.tokens.ts
-      - passport.password.ts
-      - passport.cookie.ts
-      - strategies/
+      - passport.kit.ts
       - errors/
     logic:
-      - passport.tokens.ts
-      - passport.password.ts
-      - passport.cookie.ts
+      - passport.kit.ts
     tests: unit-beside
     rules:
       - BE_TIER_DIRECTION
@@ -3711,8 +3701,8 @@ slots:
     owner: true
     requires:
       - index.ts
-    why: the session issuer's client; in lite auth-door.ts alone calls the app's own back-end auth doors
-      with the REST client and token-store.ts alone keeps the in-memory access token
+    why: the session issuer's client; in lite one @starci/auth client instance calls the app's own back-end
+      auth doors and keeps the access token in its memory
     tests: none
     rules:
       - FE_STACK_FORBIDDEN

@@ -36,7 +36,7 @@ concerns:
   - id: rest
     tier: core
     packages: [axios]
-    home: [fe.modules.api, fe.modules.auth]
+    home: [fe.modules.api]
     pattern: FE-API-REST
     forbids: [ky, superagent, node-fetch, cross-fetch, isomorphic-fetch]
     why: one HTTP client, only for what GraphQL cannot carry.
@@ -91,11 +91,11 @@ concerns:
     why: the one server-sent-events client; no hand-written stream reader.
   - id: auth
     tier: core
-    packages: []
+    packages: ['@starci/auth']
     home: [fe.modules.auth]
     pattern: FE-AUTH
-    forbids: ['@supabase/supabase-js', '@supabase/ssr', '@supabase/auth-js']
-    why: the session issuer's client of the app (lite - auth-door.ts over the app's own back-end auth doors); identity only, never data.
+    forbids: ['@supabase/supabase-js', '@supabase/ssr', '@supabase/auth-js', jose, jwt-decode, next-auth, '@auth/core', keycloak-js, oidc-client-ts]
+    why: the session issuer's client of the app (lite - one @starci/auth client over the app's own back-end auth doors); identity only, never data.
   - id: i18n
     tier: core
     packages: [next-intl]

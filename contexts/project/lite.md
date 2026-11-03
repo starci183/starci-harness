@@ -22,8 +22,8 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
   that file. An allowed extension is created `with schema extensions`, the schema the managed `db/bootstrap.sql` creates
   with USAGE for its roles, and the app role's search_path is `public, extensions`, so a migration may name
   `extensions.vector` or set its function's search_path to `''`; pgmq is the one exception, since its control file fixes
-  its own schema `pgmq` (`create extension pgmq`, never `with schema extensions`). Identity is the app's own Passport
-  integration and storage the S3-compatible MinIO of the host. Owners: slots `app.db*` and `ruleParams.db.extensions` in
+  its own schema `pgmq` (`create extension pgmq`, never `with schema extensions`). Identity is the app's own, the package `@starci/auth` composed in the Passport
+  integration, and storage the S3-compatible MinIO of the host. Owners: slots `app.db*` and `ruleParams.db.extensions` in
   [hfs/slots.yaml](../hfs/slots.yaml); rulings `lite-self-hosted-postgres-passport-minio`,
   `lite-official-postgres-image` and `lite-pgmq-bus-bullmq-jobs`; the `postgres` image pin in [stack/pins.yaml](../stack/pins.yaml).
 - Redis is the only declarable backing service (`sides.be.backing`), run durably; vectors use pgvector in the db service,
@@ -39,8 +39,9 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
   world: entities, or a listed function through `callDbFunction`; the world keeps raw SQL for probes only.
   Owners: `ruleParams.be.lite.schemaAuthority` and slot `be.persistence`; R213 to R215, R255 to R259, R332, R334;
   rulings `lite-persistence-typeorm-entities`, `no-raw-sql-one-style`; [code/be/persistence.md](../code/be/persistence.md).
-- Identity is the app's own: Google OAuth and email and password through Passport, its own access tokens verified
-  against its own JWKS, a rotating httpOnly refresh cookie, and a front end that holds no credential. Owners: R328 to
+- Identity is the app's own, shipped as the package `@starci/auth`: Google OAuth and email and password through Passport, its
+  own EdDSA access tokens verified against its own JWKS, a rotating httpOnly refresh cookie, and a front end that holds no
+  credential. Owners: ruling `auth-package`, the package `packages/auth`, slot `be.integrations.passport`. Owners: R328 to
   R330; [code/be/api-auth.md](../code/be/api-auth.md); [code/fe/transport.md](../code/fe/transport.md) FE-AUTH.
 - The event bus is pgmq, not Kafka: a publish sends the event to its pgmq topic in the publisher's transaction, and each
   consumer group reads its own queue with a visibility timeout; jobs stay on BullMQ. Owners: ruling

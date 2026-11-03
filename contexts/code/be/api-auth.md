@@ -22,12 +22,15 @@ Enforced by: `default-deny-app-guard`, `public-needs-reason`, `public-reason-clo
 ## BE-AUTH-2 Identity verifies the caller; the domain service authorizes the resource
 
 Token verification belongs to `domain/identity` over the provider integration (in lite, `integrations/passport`,
-which verifies the app's own ES256 access tokens against its own key set with `createLocalJWKSet`; in full, the
-project's identity provider): the verifier pins a literal asymmetric algorithm list, checks issuer and audience, and
-builds the principal only after verification. In lite `integrations/passport` alone holds Passport (Google OAuth 2.0
-with state and PKCE, email and password with bcrypt), signs the access tokens, serves their public JWKS and rotates the
-refresh token, which lives only in an httpOnly, Secure, SameSite=Strict cookie scoped to the refresh door; a refresh
-presented twice revokes its whole family. A tenant header or argument (`@WorkspaceId()`) is a selector, never proof: the domain service
+the glue of the package `@starci/auth`, which verifies the app's own EdDSA access tokens against its own key set, one
+signing key and any number of retired keys published as the JWKS, so a key rotates without signing anybody out; in
+full, the project's identity provider): the verifier pins the algorithm, checks issuer and audience, and builds the
+principal only after verification. In lite `@starci/auth` alone holds Passport (Google OAuth 2.0 with state and PKCE,
+email and password with bcrypt) and `jose`, signs the access tokens, serves their public JWKS, counts only sign-in
+failures against the limit and rotates the refresh token, which lives only in an httpOnly, Secure cookie the package sets;
+a spent refresh token presented again inside a short grace window is a racing tab and is answered with an access token
+and no rotation, an older replay ends the session. The app parses the settings, implements the stores over its own tables
+(the session tables are the package's managed migration) and imports the package nowhere but `integrations/passport`. A tenant header or argument (`@WorkspaceId()`) is a selector, never proof: the domain service
 proves membership or ownership before it reads or writes, so jobs and other doors cannot bypass it.
 
 Why: authentication is a capability with its own state and errors, and authorization kept in the service holds for

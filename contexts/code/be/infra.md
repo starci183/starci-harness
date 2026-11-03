@@ -14,8 +14,8 @@ libraries, `node:async_hooks`) is imported only by the platform capability the t
 dependency outside the framework and pure-library allowlists only by its one provider integration; model libraries
 follow [ai.md](ai.md) (BE-AI-1, BE-AI-3). The S3 client (`@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`) is
 imported only by `integrations/object-storage`, the ObjectStorage port with presigned PUT and GET over S3-compatible storage
-(MinIO in lite), and `minio` nowhere; in lite the identity libraries belong to `integrations/passport`
-([api-auth.md](api-auth.md) BE-AUTH-2). `@nestjs/config`,
+(MinIO in lite), and `minio` nowhere; in lite the identity libraries are the dependencies of `@starci/auth` and no app file imports them, and the package itself
+is imported only by `integrations/passport` ([api-auth.md](api-auth.md) BE-AUTH-2). `@nestjs/config`,
 `dotenv` and `@nestjs/event-emitter` are imported nowhere; `@nestjs/schedule` and `cron` only by the tick scheduler of
 `platform/jobs` ([jobs.md](jobs.md) BE-JOBS-6). In lite a backing library is legal only
 when `sides.be.backing` declares it (Redis for the queue and the realtime hub); vectors are pgvector.
