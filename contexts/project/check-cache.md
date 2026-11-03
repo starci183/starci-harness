@@ -201,13 +201,23 @@ under a file-system recorder, let the cache keep them (`check/hfs/`, records `fi
 
 - a **per-file rule** (`perFileRules` of `check.mts`) judges a file from its bytes and the files its `deps` names, and every finding carries that file's path; the record
   of a file holds each such rule's findings for it. `check/secrets/` keeps the findings of the secrets codes for the new / known / fixed comparison, and `--gate secrets` reuses the same
-  per-file records, so a warm run judges nothing and a run after an edit judges that file;
+  per-file records, so a warm run judges nothing and a run after an edit judges that file (the contract of those records is "The secrets records" below);
 - a **cross-file finder** (`KEYED_FINDERS` of `a15-findings.mts`) reaches the app only through `readText` / `readJson`. The first run records the read set, each file with its hash;
   the record is reused while every file of the set, the tracked path list (the finders derive their file sets from it) and the TypeScript version are the same. A finder that stats,
   lists or walks the work tree is never a member, and the spec fails on a member that does.
 
 The files of the cache folder itself (tracked or not) are judged live and never keyed: every run rewrites them. The cache never changes a verdict: a finding that does not name the file a per-file rule judges makes the whole batch run uncached, and the plain `checkRepo` of every other caller runs the rules
 as before. An edit during the run drops the record of the file it touched at the flush, as for every other step.
+
+### The secrets records
+
+The cache is committed, so the records of `check/secrets/` never hold secret material: a record is `{path, step, hash, findings}` and a finding is `{path, line, column, rule, message}` with
+`rule` one of the secrets family's codes and `message` the digest `sha256:<16 hex>` of the message the run printed (the identity the new / known / fixed comparison needs; the run prints the
+message itself, never the record). The writer projects every record to that form (`safeSecretRecords` of `cache/secret-records.mts`, applied by the session on `replace` and on read, so a cache
+written before the digests compares like with like), and the secret judgement of R06 (`secretFileFindings`, the one judgement `starci app check` and the commit hook share) judges a file of
+`.starcistacks/cache/check/secrets/` by `secretRecordFaults` (`runtime/scripts/lib/secret-records.mts`): a file that holds anything but codes, paths, positions and digests is refused
+`HFS_PLAINTEXT_SECRET`, and a conforming file is accepted wherever it sits, so the `secrets/` folder name does not make the warm cache uncommittable. A cache written before the digests is migrated
+by `starci app codemod secrets-cache --execute`, or rewritten by the next `starci app check --gate secrets`. Proved by `check-cache-secret-records.spec.mts` and `secrets-cache-codemod.spec.mts`.
 
 ## ESLint
 

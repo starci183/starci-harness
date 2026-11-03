@@ -18,18 +18,12 @@ import { withRuleMemo } from '../runtime/scripts/hfs/rule-memo.mjs';
 import { RecordSet, scopedStep } from './records.mjs';
 import { FILE_RULES_STEP, RULE_STEP_PREFIX, UNIT_STEP_PREFIX, createStructureMemo } from './structure-memo.mjs';
 import { makeReport } from './report.mjs';
+import { SECRETS_FOLDER, SECRET_CODES, safeSecretFinding, safeSecretRecords } from './secret-records.mjs';
 import { sideKey } from './side-key.mjs';
 import type { CacheRecord, CheckSession, FamilyReport, Finding, JsonValue } from './types.mjs';
 
 export const HFS_FOLDER = 'check/hfs';
-export const SECRETS_FOLDER = 'check/secrets';
-
-/** The finding codes of the secrets family: plaintext secrets, sealed custody, untracked secret files. */
-export const SECRET_CODES: ReadonlySet<string> = new Set([
-  'HFS_PLAINTEXT_SECRET', 'HFS_SECRET_PLAINTEXT_FILE', 'HFS_SECRET_OUTSIDE_ENC', 'HFS_SCRIPT_PLAINTEXT_LOAD', 'HFS_LITE_SECRET_CUSTODY', 'HFS_IDENTITY_CUSTODY',
-  'HFS_AGE_KEY_CUSTODY', 'RT_SECRET_TRACKED', 'STACKS_SECRET_ENV_LITERAL', 'STACKS_SECRET_NOT_EXTERNAL', 'STACKS_SECRET_UNVERSIONED', 'SEALED_CUSTODY_LOCATION',
-  'APP_SECRET_IN_CI', 'CI_SECRET_SEALED', 'BE_LOG_SECRET', 'BE_SECRET_DEFAULT', 'HFS_DOCKER_SECRETS',
-]);
+export { SECRETS_FOLDER, SECRET_CODES };
 
 /** What the structure pass answers. */
 export interface PassResult {
@@ -178,8 +172,8 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
     const secretDecision = session.decide('secrets');
     const prior = session.records(SECRETS_FOLDER);
     const secretFindings = result.findings.filter((finding) => SECRET_CODES.has(finding.code));
-    session.replace(SECRETS_FOLDER, findingRecords(secretFindings, session.index.hashOf.bind(session.index), 'secrets'));
-    secretsReport = makeReport({ family: 'secrets', mode: secretDecision.mode, reason: secretDecision.reason, checked: filesChecked, reused: filesReused, previous: prior.flatMap((record) => record.findings), current: secretFindings.map(compact) });
+    session.replace(SECRETS_FOLDER, safeSecretRecords(findingRecords(secretFindings, session.index.hashOf.bind(session.index), 'secrets')));
+    secretsReport = makeReport({ family: 'secrets', mode: secretDecision.mode, reason: secretDecision.reason, checked: filesChecked, reused: filesReused, previous: prior.flatMap((record) => record.findings.map(safeSecretFinding)), current: secretFindings.map((finding) => safeSecretFinding(compact(finding))) });
     session.report(secretsReport);
   }
   return { result, contracts, machineReused: reasons, report, secretsReport };

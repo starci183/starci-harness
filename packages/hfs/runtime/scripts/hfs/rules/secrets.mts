@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { FORBIDDEN_FILES, secretHitsInFile } from '../../lib/secret-patterns.mjs';
+import { SECRETS_CACHE_FILE, secretRecordFaults } from '../../lib/secret-records.mjs';
 import { isSopsEnvelope } from '../../lib/sops-envelope.mjs';
 import { found, readText } from './read.mjs';
 import type { Parsed, Repo, Resolver } from './rule-types.mjs';
@@ -30,6 +31,14 @@ export function untrackedSecretFindings({ repoRoot, files, repo }: { repoRoot: s
   return [found(PLAINTEXT_SECRET, 'secrets.env', 'secrets.env is an untracked plaintext secret at the lite app root; seal it with starci app secret set --env <env> into .starcistacks/<env>/secrets/<slug>.enc and remove the plaintext file; read materialized values by *_FILE', { level: 'warning', pattern: 'untracked-secrets-env' })];
 }
 
+/** The findings of a file of the committed secrets cache: it is judged by what it holds (codes, paths, positions and digests, secret-records.mjs), never by the `secrets/` folder it sits in. */
+function cacheRecordFindings(file: string, text: string) {
+  const faults = secretRecordFaults(text);
+  if (faults.length === 0) return [];
+  const more = faults.length > 1 ? ` (and ${faults.length - 1} more)` : '';
+  return [found(PLAINTEXT_SECRET, file, `${file}: ${faults[0]}${more}; the secrets cache holds codes, paths, positions and digests only, so a file that holds more may carry secret material; regenerate it with starci app check --gate secrets, or migrate it with starci app codemod secrets-cache --execute`, { pattern: 'secrets-cache-record' })];
+}
+
 /**
  * The findings of R06 for one tracked file that no forbidden slot claims: a secret by being (an env file, a key file), an `.enc` that is
  * no sops envelope, or a line that matches a secret pattern. `text` is the file's text, or null when it cannot be read (binary, too
@@ -39,6 +48,7 @@ export function secretFileFindings({ file, text, manifestText }: { file: string;
   const being = FORBIDDEN_FILES.find((rule: Parsed) => rule.test(file));
   if (being) return [found(PLAINTEXT_SECRET, file, `${file} is a plaintext secret by being (${being.name}); a secret is committed only as a sops envelope at .starcistacks/<env>/secrets/<slug>.enc`, { pattern: being.name })];
   if (text === null || text === undefined || NOT_SCANNED.test(file)) return [];
+  if (SECRETS_CACHE_FILE.test(file)) return cacheRecordFindings(file, text);
   if (/\.enc(?:\.yaml)?$/.test(file)) return isSopsEnvelope(text) ? [] : [found(PLAINTEXT_SECRET, file, `${file} is named like a sealed secret but is not a sops envelope; encrypt the value with sops and commit only the envelope`, { pattern: 'sops-not-envelope' })];
   const findings = [];
   const seen = new Set();
