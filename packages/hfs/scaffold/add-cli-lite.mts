@@ -51,19 +51,31 @@ export class RunCli extends CommandRunner {
 }
 `;
 
-const SEED_RUN = `import { CommandRunner, SubCommand } from "nest-commander"
-import { SeedRunnerService } from "@modules/platform/database"
+const SEED_RUN = `import { CommandRunner, Option, SubCommand } from "nest-commander"
+import { DEFAULT_SEED_ENV, SeedRunnerService } from "@modules/platform/database"
 
-@SubCommand({ name: "run", description: "Run the tracked seed through the application role" })
-/** \`cli seed run\`: executes the one tracked seed through the shared least-privilege EntityManager. */
+/** The options of \`cli seed run\`. */
+export interface SeedRunOptions {
+    /** The stack environment whose \`.starcistacks/<env>/seeds/sql\` runs after \`.starcistacks/seeds/sql\`. */
+    readonly env?: string
+}
+
+@SubCommand({ name: "run", description: "Run the tracked SQL seeds through the application role" })
+/** \`cli seed run [--env <name>]\`: executes the shared SQL seeds, then the environment's, through the shared least-privilege EntityManager. */
 export class RunSeedsCli extends CommandRunner {
     constructor(private readonly seeds: SeedRunnerService) {
         super()
     }
 
-    /** Executes the tracked seed when it contains at least one statement. */
-    async run(): Promise<void> {
-        await this.seeds.run()
+    /** \`--env <name>\`: the stack environment whose seed runs after the shared one. */
+    @Option({ flags: "--env <name>", description: "The stack environment whose seed runs", defaultValue: DEFAULT_SEED_ENV })
+    parseEnv(value: string): string {
+        return value
+    }
+
+    /** Executes the shared seed and the environment's own. */
+    async run(_passed: Array<string>, options?: SeedRunOptions): Promise<void> {
+        await this.seeds.run(options?.env)
     }
 }
 `;
@@ -73,16 +85,31 @@ import { Test } from "@nestjs/testing"
 import { SeedRunnerService } from "@modules/platform/database"
 import { RunSeedsCli } from "./run.cli"
 
+const build = async () => {
+    const seeds = mock<SeedRunnerService>()
+    const moduleRef = await Test.createTestingModule({
+        providers: [RunSeedsCli, { provide: SeedRunnerService, useValue: seeds }],
+    }).compile()
+    return { command: moduleRef.get(RunSeedsCli), seeds }
+}
+
 describe("RunSeedsCli", () => {
-    it("delegates the tracked seed run to the seed runner once", async () => {
-        const seeds = mock<SeedRunnerService>()
-        const moduleRef = await Test.createTestingModule({
-            providers: [RunSeedsCli, { provide: SeedRunnerService, useValue: seeds }],
-        }).compile()
+    it("delegates the seed run of the named environment to the seed runner once", async () => {
+        const { command, seeds } = await build()
 
-        await expect(moduleRef.get(RunSeedsCli).run()).resolves.toBeUndefined()
+        await expect(command.run([], { env: "production" })).resolves.toBeUndefined()
 
+        expect(seeds.run).toHaveBeenCalledWith("production")
         expect(seeds.run).toHaveBeenCalledTimes(1)
+    })
+
+    it("delegates with no environment when none is named, and takes --env as given", async () => {
+        const { command, seeds } = await build()
+
+        await command.run([])
+
+        expect(seeds.run).toHaveBeenCalledWith(undefined)
+        expect(command.parseEnv("production")).toBe("production")
     })
 })
 `;
@@ -92,7 +119,7 @@ import { SeedCli } from "./seed.cli"
 import { RunSeedsCli } from "./subs/run.cli"
 
 @Module({ providers: [SeedCli, RunSeedsCli] })
-/** The lite seed group: the command and its one tracked seed runner. */
+/** The lite seed group: the command and its runner of the tracked SQL seeds. */
 export class SeedModule {}
 `;
 

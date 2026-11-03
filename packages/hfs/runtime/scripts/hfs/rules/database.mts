@@ -5,7 +5,8 @@ import { contractReleaseFindings, defaultGit, migrationShapeFindings } from './d
 import { migrationSetPolicyFindings, sqlAnalysis } from './database-sql.mjs';
 import { migrationSetDefinerFindings } from './database-plpgsql.mjs';
 import { databaseAccessFindings } from './database-access.mjs';
-import { DB_DIR, DB_MIGRATION_SHAPE, isActiveMigration, LITE_DB_MIGRATION, MIGRATIONS_ARCHIVE_DIR, MIGRATIONS_DIR } from './database-constants.mjs';
+import { BOOTSTRAP_FILE, DB_DIR, DB_MIGRATION_SHAPE, isActiveMigration, LITE_DB_MIGRATION, MIGRATIONS_ARCHIVE_DIR, MIGRATIONS_DIR } from './database-constants.mjs';
+import { isSeedFile } from './seeds.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { eachInOrder } from '../../lib/in-order.mjs';
 
@@ -28,12 +29,9 @@ import type { Finding, Parsed } from './rule-types.mjs';
 /** The schemas the app's tables live in; no schema is exposed to a browser, which reaches data only through the back end. */
 const APP_SCHEMAS = new Set(['public']);
 
-/** A .starcistacks seed is the one SQL file a lite app keeps outside db/. */
-const STACK_SEED = /^\.starcistacks\/[^/]+\/seeds\/.+\.sql$/;
-
 /**
- * LITE_DB_MIGRATION: a lite app's schema lives only under db/: no supabase/ tree and no SQL file outside db/ (but a
- * .starcistacks seed), and every SQL file under db/ is a migration, the archive, the seed or nothing.
+ * LITE_DB_MIGRATION: a lite app's schema lives only under db/: no supabase/ tree and no SQL file outside db/ but its seed data (the seed
+ * levels of .starcistacks/, judged by R375), and every SQL file under db/ is a migration, the archive, the bootstrap or nothing.
  */
 export function liteDbPathFindings(files: string[]) {
   const findings = [];
@@ -42,8 +40,9 @@ export function liteDbPathFindings(files: string[]) {
       findings.push(found(LITE_DB_MIGRATION, file, `${file} is a Supabase project file; a lite app keeps its schema in ${MIGRATIONS_DIR}/<ts14>_<kebab>.sql (move the migrations, delete supabase/)`, {}));
       continue;
     }
-    if (!file.endsWith('.sql') || STACK_SEED.test(file)) continue;
+    if (!file.endsWith('.sql') || isSeedFile(file)) continue;
     if (!file.startsWith(`${DB_DIR}/`)) findings.push(found(LITE_DB_MIGRATION, file, `${file} is SQL outside ${DB_DIR}/; a schema change is one ${MIGRATIONS_DIR}/<ts14>_<kebab>.sql`, {}));
+    else if (!isActiveMigration(file) && !file.startsWith(`${MIGRATIONS_ARCHIVE_DIR}/`) && file !== BOOTSTRAP_FILE) findings.push(found(LITE_DB_MIGRATION, file, `${file} is SQL under ${DB_DIR}/ that is no migration, archive or bootstrap; seed data is an entry of a seed level, .starcistacks/seeds/sql/ or .starcistacks/<env>/seeds/sql/ (starci app codemod seeds-layout moves it)`, {}));
   }
   return findings;
 }

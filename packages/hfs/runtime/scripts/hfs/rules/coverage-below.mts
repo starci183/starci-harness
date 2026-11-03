@@ -3,7 +3,7 @@
 // lcov carries lines, functions and branches; the unit runner also enforces its statement threshold.
 import fs from 'node:fs';
 import path from 'node:path';
-import { coverageScope, measuredBy } from '../coverage-scope.mjs';
+import { coverageScope, measuredBy, packageMeasuredBy, packagesCoverage, rootPackageFoldersOf } from '../coverage-scope.mjs';
 import { editionRuleParams, effectiveSlot, slotInEdition } from '../edition-slots.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { found } from './read.mjs';
@@ -103,11 +103,16 @@ function inventory({ files, all, repo, manifest }: { files: string[]; all: strin
   const effective = manifestOfEdition(manifest, repo.edition ?? 'full');
   const scope = coverageScope(effective, repo.providers ?? repo.sides?.be?.providers ?? []);
   const measures = measuredBy(scope);
-  const candidates = [...new Set((all ?? files ?? []).map(slash))].filter((file) => file.startsWith(prefix) && file.endsWith('.ts') && !SPEC.test(file)).sort(byCodeUnit);
+  const tracked = [...new Set((all ?? files ?? []).map(slash))];
+  // At the app root the root packages are measured too, by the same unit run as the back end (packagesCoverage, BE-TEST-13).
+  const packages = packagesCoverage(prefix ? rootPackageFoldersOf(tracked) : []);
+  const measuresPackage = packageMeasuredBy(packages);
+  const inPackage = (file: string): boolean => packages.folders.some((folder) => file.startsWith(`${folder}/src/`));
+  const candidates = tracked.filter((file) => (file.startsWith(prefix) || inPackage(file)) && file.endsWith('.ts') && !SPEC.test(file)).sort(byCodeUnit);
   const measured: Parsed[] = [];
   const unmeasured: Parsed[] = [];
-  for (const file of candidates) (measures(file.slice(prefix.length)) ? measured : unmeasured).push(file);
-  return { measured, unmeasured, unmeasuredScopes: scope.none.map((entry: Parsed) => `${prefix}${entry}`), scope, prefix };
+  for (const file of candidates) ((inPackage(file) ? measuresPackage(file) : measures(file.slice(prefix.length))) ? measured : unmeasured).push(file);
+  return { measured, unmeasured, unmeasuredScopes: [...scope.none.map((entry: Parsed) => `${prefix}${entry}`), ...packages.excludes], scope, prefix };
 }
 
 function sourcePath(source: Parsed) {
@@ -125,6 +130,8 @@ function matchesSource(source: Parsed, file: string, prefix: string) {
   const choices = [file, relative, ...(prefix ? [] : [`be/${file}`])];
   const windows = /^[a-z]:\//i.test(source) || source.startsWith('//');
   const absolute = source.startsWith('/') || windows;
+  // A relative source is relative to the jest root, the back end: a root package's file is `../packages/<name>/...` there.
+  if (!absolute && prefix && slash(`${prefix}${source}`) === file) return true;
   const key = windows ? source.toLowerCase() : source;
   return choices.some((choice) => {
     const candidate = windows ? choice.toLowerCase() : choice;

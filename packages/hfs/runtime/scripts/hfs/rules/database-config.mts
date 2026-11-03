@@ -1,10 +1,11 @@
-// database-config.mjs - the database content checks of db/ (R259: extensions, custody SQL, destructive migrations, seed data). It starts no
+// database-config.mjs - the database content checks of db/ and seeds/ (R259: extensions, custody SQL, destructive migrations, seed data). It starts no
 // database and no Docker process.
 import { found, readText } from './read.mjs';
 import {
-  DB_EXTENSION_ALLOWED, DB_VAULT_WRITE, HFS_SEED_PII, isActiveMigration, SEED_FILE,
+  DB_EXTENSION_ALLOWED, DB_VAULT_WRITE, HFS_SEED_PII, isActiveMigration,
 } from './database-constants.mjs';
-import { databaseExecutableTokens, databaseSqlStatements, databaseSqlTokens, destructiveMigrationFindings } from './database-migrations.mjs';
+import { databaseExecutableTokens, databaseSqlStatements, destructiveMigrationFindings } from './database-migrations.mjs';
+import { isSeedFile, seedLiterals } from './seeds.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
@@ -104,9 +105,9 @@ function seedPiiFindings(repoRoot: string, seeds: Parsed) {
   for (const file of seeds) {
     const text = readText(repoRoot, file);
     if (text === null) continue;
-    for (const token of databaseSqlTokens(text)) {
-      if (!['string', 'body'].includes(token.t) || !piiLiteral(token.v)) continue;
-      findings.push(found(HFS_SEED_PII, file, `${file}:${token.line} contains an email or phone literal; seed data uses synthetic identities and the example.test domain`, { line: token.line }));
+    for (const literal of seedLiterals(file, text)) {
+      if (!piiLiteral(literal.v)) continue;
+      findings.push(found(HFS_SEED_PII, file, `${file}:${literal.line} contains an email or phone literal; seed data uses synthetic identities and the example.test domain`, { line: literal.line }));
     }
   }
   return findings;
@@ -121,7 +122,7 @@ export function databaseConfigFindings({ repoRoot, files = [], all = files, repo
   const findings = [];
   for (const { file, tokens } of sources) findings.push(...extensionFindings(file, tokens, new Set(parameters.extensions)), ...custodySqlFindings(file, tokens));
   findings.push(...destructiveMigrationFindings({ repoRoot, migrations, files: all }));
-  const seeds = all.filter((file: string) => file === SEED_FILE || /^\.starcistacks\/[^/]+\/seeds\/.+\.sql$/.test(file));
+  const seeds = all.filter((file: string) => isSeedFile(file) && /\/(?:sql|data)\/.+\.(?:sql|json|ya?ml)$/.test(file));
   findings.push(...seedPiiFindings(repoRoot, seeds));
   return findings.filter((finding) => inScope(finding.path));
 }

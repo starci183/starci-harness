@@ -12,10 +12,10 @@ TypeScript everywhere, NestJS in `be/`, Next.js with next-intl in `fe/`, Postgre
 
 ## Repository layout
 
-- `db/`: forward-only SQL migrations, seed data, and generated database types.
+- `db/`: forward-only SQL migrations and generated database types.
 - `be/`: the API, shared platform capabilities, verified identity admission, and the passport and storage integrations.
 - `fe/`: the web app; it holds no credential, signs in through `fe/apps/web/src/modules/auth` and reaches data through `fe/apps/web/src/modules/api`.
-- `.starcistacks/`: value-free environment metadata and encrypted-secret custody.
+- `.starcistacks/`: value-free environment metadata, encrypted-secret custody and the seed levels (`seeds/` for every environment, `<env>/seeds/` for one, each a `seeds.yaml` manifest of `sql/`, `data/` and `files/`).
 - `.starciwork/`: `.gitignore`, `.starciwork/workspace.yaml` project metadata and repo roles, and optional brand drawing records, references, and assets.
 
 ## Status badges

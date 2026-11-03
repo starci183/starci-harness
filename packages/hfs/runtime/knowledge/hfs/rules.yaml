@@ -3299,7 +3299,7 @@ rules:
     code: "HFS_DOCKER_BUILD_CONTEXT"
     editions: [lite, full]
     docs: [docs/application-stacks.md#r187]
-    law: "Every app image is built from the app root: the header comment of an app's Dockerfile states `starci docker build <app>` for its own path, and no COPY or ADD source leaves the build context (a `..` segment or an absolute path)."
+    law: "Every app image is built from the app root: the header comment of an app's Dockerfile states `starci docker build <app>` for its own path, no COPY or ADD source leaves the build context (a `..` segment or an absolute path), and the image of a Next app whose front end reads be/contracts/ copies that folder exactly when the app holds it (a COPY of a missing folder fails the build, a missing COPY leaves the codegen without its contract)."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["HFS_DOCKER_BUILD_CONTEXT"]
@@ -5791,7 +5791,7 @@ rules:
         ruling: "Lite storage is the MinIO already running on the Tay Son host, reached through the one S3 integration."
   - id: R332
     code: "LITE_DB_MIGRATION"
-    law: "A lite app's schema lives only in db/: every schema change is one db/migrations/<ts14>_<kebab>.sql (archive db/migrations/archive/, seed db/seed.sql), and the tree holds no supabase/ folder and no SQL file outside db/ but a .starcistacks seed."
+    law: "A lite app's schema lives only in db/: every schema change is one db/migrations/<ts14>_<kebab>.sql (archive db/migrations/archive/, the managed db/bootstrap.sql), every other SQL file under db/ is refused, and the tree holds no supabase/ folder and no SQL file outside db/ but the sql/ entries of its seed levels (R375)."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["LITE_DB_MIGRATION"]
@@ -6628,3 +6628,16 @@ rules:
       - {path: contexts/project/stacks.md#project-stacks-11-a-customised-service-is-an-image-the-app-builds-the-same-in-every-environment, editions: [lite, full]}
     proves:
       - {path: packages/hfs/src/stacks-service-images.spec.mjs, editions: [lite, full]}
+  - id: R375
+    code: "HFS_SEEDS_SHAPE"
+    law: "Seed data lives only in the seed levels of `.starcistacks/`, where `seeds/` is applied in every environment first and `<env>/seeds/` in the one environment the stack declaration names `<env>`; each level is a `seeds.yaml` manifest (schema starci/seeds@1) whose entries list every file of its `sql/`, `data/` and `files/` folders; a seed is never a migration (no statement that creates, alters, drops, truncates, grants, revokes or comments on an object), never custody, a data document validates against the schema its entry names, a level a production environment applies holds no test data but the one test account an environment declares (a test-account entry with its reason), and a document names a secret only as a reference to a sealed seeds-<name> member of its environment."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["HFS_SEEDS_SHAPE", "HFS_SEED_MANIFEST", "HFS_SEED_DDL", "HFS_SEED_DATA_SCHEMA", "HFS_SEED_TEST_DATA", "HFS_SEED_SECRET_REF"]
+    enforcers:
+      - {kind: hfs, id: seeds-shape, at: scripts/hfs/rules/seeds.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-12-seed-data-lives-in-the-seed-levels-of-the-stack, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/hfs-seeds-shape.spec.mjs, editions: [lite, full]}

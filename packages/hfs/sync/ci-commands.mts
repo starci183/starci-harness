@@ -40,7 +40,7 @@ function codecovSteps(lcovReport: string, codecov: Declaration): string {
 }
 
 /** Sonar is required: on every full run it consumes the test coverage and lint artifacts, and a missing token fails the job with a clear refusal. */
-function sonarJob(sonar: Declaration, lcovReport: string, lcovArtifact: string, nodeMajor: string, timeout: string): string {
+function sonarJob(sonar: Declaration, lcovReport: string, lcovArtifact: string, nodeMajor: string, timeout: string, scopes: readonly string[]): string {
   if (!sonar) return '';
   const condition = SONAR_CONDITION;
   const host = sonar.hostSecret ? `\${{ secrets.${sonar.hostSecret} }}` : sonar.provider === 'sonarcloud' ? 'https://sonarcloud.io' : `\${{ vars.${sonar.hostVar} }}`;
@@ -72,7 +72,7 @@ function sonarJob(sonar: Declaration, lcovReport: string, lcovArtifact: string, 
     '          pattern: sonar-lint-*',
     '          path: reports',
     '          merge-multiple: true',
-    ...sonarMergeSteps(condition),
+    ...sonarMergeSteps(condition, scopes),
     '      - uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7.2.1',
     `        if: ${condition}`,
     '      - uses: SonarSource/sonarqube-quality-gate-action@7a5fffe8e523c40e0c740b6bc2712ab503e52efa # v1.2.1',
@@ -142,15 +142,15 @@ function frontendBuild(source: CiSource | undefined, app: { sides: { fe: { apps:
   return { env: singleEnv, steps };
 }
 
-/** The per-side lint reports (one artifact per lint matrix side) join into the one reports/lint.sonar.json the Sonar import reads, even when one side wrote none. The local release gate writes the same file with mergeSonarReports (release/lint-report.mjs): keep both identical. */
-function sonarMergeSteps(condition: string): string[] {
+/** The per-scope lint reports (one artifact per lint matrix scope) join into the one reports/lint.sonar.json the Sonar import reads, even when one scope wrote none. The local release gate writes the same file with mergeSonarReports (release/lint-report.mjs): keep both identical. */
+function sonarMergeSteps(condition: string, scopes: readonly string[]): string[] {
   return [
     '      - name: merge Sonar lint reports',
     `        if: ${condition}`,
     '        run: |',
     "          node --input-type=module <<'NODE'",
     "          import fs from 'node:fs';",
-    "          const files = ['reports/lint.be.sonar.json', 'reports/lint.fe.sonar.json'];",
+    `          const files = [${scopes.map((scope) => `'reports/lint.${scope}.sonar.json'`).join(', ')}];`,
     "          const reports = files.filter(file => fs.existsSync(file)).map(file => JSON.parse(fs.readFileSync(file, 'utf8')));",
     '          const rules = [...new Map(reports.flatMap(report => report.rules).map(rule => [rule.id, rule])).values()];',
     '          const issues = reports.flatMap(report => report.issues);',
@@ -186,7 +186,7 @@ function ciJobSettings(declaration: Declaration, source: CiSource | undefined): 
 }
 
 /** An omitted quality declaration preserves hosted Sonar, required OIDC Codecov, and the high production dependency audit. */
-export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'be/coverage/lcov.info', quality: Declaration = undefined, { nodeMajor = '22', app, packages = false }: { nodeMajor?: string; packages?: boolean; app?: { sides: { fe: { apps: readonly { name: string }[] } } } } = {}): Record<string, string> {
+export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'be/coverage/lcov.info', quality: Declaration = undefined, { nodeMajor = '22', app, packages = false, rootPackages = false }: { nodeMajor?: string; packages?: boolean; rootPackages?: boolean; app?: { sides: { fe: { apps: readonly { name: string }[] } } } } = {}): Record<string, string> {
   const configuredSonar = quality === undefined ? { token: 'SONAR_TOKEN', hostVar: 'SONAR_HOST_URL' } : quality.sonar;
   const sonar = configuredSonar?.wiring === 'not-used' || configuredSonar?.mode === 'disabled' ? null : configuredSonar;
   const codecov = quality?.codecov ?? { enabled: true, auth: 'oidc' };
@@ -195,8 +195,11 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
   const build = frontendBuild(source, app);
   const settings = ciJobSettings(buildDeclaration(source), source);
   const side = '${{ matrix.side }}';
+  // The lint matrix: one job per side, and one for the root packages of an app that has them (their scope runs whatever became of the sides').
+  const scopes = ['be', 'fe', ...(rootPackages ? ['packages'] : [])];
   return {
     ...settings,
+    lintSides: `[${scopes.join(', ')}]`,
     lcovShardsDir: lcovReport.split('/').slice(0, -1).concat('shards').join('/'),
     // The istanbul JSON a shard writes beside the lcov (STARCI_COVERAGE_SHARD=1): what the coverage job merges.
     shardCoverageReport: lcovReport.split('/').slice(0, -1).concat('coverage-final.json').join('/'),
@@ -231,7 +234,7 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     codecovSteps: codecovSteps(lcovReport, codecov),
     verdictSonarNeed: sonar ? ', sonar' : '',
     verdictSonarCheck: sonar ? `\n          if [[ "$FULL" == true && "$CHECKS" == true ]]; then expect sonar success; else expect sonar idle; fi` : '',
-    sonarJob: sonarJob(sonar, lcovReport, lcovArtifact, nodeMajor, settings.timeoutSonar as string),
+    sonarJob: sonarJob(sonar, lcovReport, lcovArtifact, nodeMajor, settings.timeoutSonar as string, scopes),
     lcovArtifact,
   };
 }

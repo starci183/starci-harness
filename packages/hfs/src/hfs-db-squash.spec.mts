@@ -149,14 +149,15 @@ test('squash previews, proves, writes four outputs that replay green, and refuse
   assert.match(preview.stdout, /^seed public\.plans: 3 row\(s\)$/m);
   assert.match(preview.stdout, /^seed public\.plan_tiers: 3 row\(s\)$/m);
   assert.match(preview.stdout, /^proof: bootstrap \+ baseline \+ seed \(twice\) replayed on postgres:17-alpine/m);
-  assert.equal(fs.existsSync(path.join(root, 'db/seed.sql')), false);
+  assert.equal(fs.existsSync(path.join(root, '.starcistacks/seeds/sql/reference.sql')), false);
   assert.equal(fs.readFileSync(path.join(root, 'db/bootstrap.sql'), 'utf8'), BOOTSTRAP);
 
   const applied = squash(root, CHAIN, source.port, 'source', ['--execute']);
   assert.equal(applied.code, 0, applied.stderr);
   const baseline = fs.readFileSync(path.join(root, `db/migrations/${NEXT}_baseline.sql`), 'utf8');
   const bootstrap = fs.readFileSync(path.join(root, 'db/bootstrap.sql'), 'utf8');
-  const seed = fs.readFileSync(path.join(root, 'db/seed.sql'), 'utf8');
+  const seed = fs.readFileSync(path.join(root, '.starcistacks/seeds/sql/reference.sql'), 'utf8');
+  assert.match(fs.readFileSync(path.join(root, '.starcistacks/seeds/seeds.yaml'), 'utf8'), /id: reference\n\s+kind: sql\n\s+path: sql\/reference\.sql/u);
   assert.deepEqual(baselineMarkers(baseline), [STAMP]);
   assert.ok(fs.existsSync(path.join(root, `db/migrations/archive/${STAMP}_init.sql`)));
   assert.equal(fs.existsSync(path.join(root, MIGRATION)), false);

@@ -48,24 +48,28 @@ const build = async (
 }
 
 describe("SeedRunnerService", () => {
-    it("reads the seeds of the named environment, runs them on their connections and logs the report", async () => {
+    it("reads the shared seeds and then those of the named environment, runs them on their connections and logs the report", async () => {
         const primary = mock<ConnectionSource>()
         const { runner, logger, reader } = await build(
             () => primary,
-            () =>
-                Promise.resolve([
-                    file("primary-notes.sql", "INSERT INTO notes (body) VALUES ('a')"),
-                    file("legacy-users.sql", "INSERT INTO users DEFAULT VALUES"),
-                ]),
+            (directory) =>
+                Promise.resolve(
+                    directory === seedDirectoryOf()
+                        ? [file("primary-plans.sql", "INSERT INTO plans (code) VALUES ('free')")]
+                        : [
+                              file("primary-notes.sql", "INSERT INTO notes (body) VALUES ('a')"),
+                              file("legacy-users.sql", "INSERT INTO users DEFAULT VALUES"),
+                          ],
+                ),
         )
 
         await expect(runner.run("staging")).resolves.toBeUndefined()
 
-        expect(reader.read).toHaveBeenCalledWith(seedDirectoryOf("staging"))
-        expect(primary.query).toHaveBeenCalledWith("INSERT INTO notes (body) VALUES ('a')")
+        expect(reader.read.mock.calls).toEqual([[seedDirectoryOf()], [seedDirectoryOf("staging")]])
+        expect(primary.query.mock.calls).toEqual([["INSERT INTO plans (code) VALUES ('free')"], ["INSERT INTO notes (body) VALUES ('a')"]])
         expect(logger.info).toHaveBeenCalledWith(LoggingLogEvent.SeedsApplied, {
             env: "staging",
-            applied: { primary: ["primary-notes.sql"] },
+            applied: { primary: ["primary-plans.sql", "primary-notes.sql"] },
             unmatched: ["legacy-users.sql"],
         })
     })
@@ -78,6 +82,7 @@ describe("SeedRunnerService", () => {
 
         await expect(runner.run()).resolves.toBeUndefined()
 
+        expect(reader.read).toHaveBeenCalledWith(seedDirectoryOf())
         expect(reader.read).toHaveBeenCalledWith(seedDirectoryOf("dev"))
         expect(logger.info).toHaveBeenCalledWith(LoggingLogEvent.SeedsApplied, {
             env: "dev",

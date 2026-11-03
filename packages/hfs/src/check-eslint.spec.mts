@@ -127,7 +127,7 @@ test('app check --gate lint --side fe runs the shared ESLint execution of that s
   assert.deepEqual(checked.report.eslint.sides, { fe: { files: 2 } });
 });
 
-test('app check --gate lint --side be judges the back end alone, and a side that is neither is a usage error with the usage', async context => {
+test('app check --gate lint --side be judges the back end alone, and a scope that is none of be, fe and packages is a usage error with the usage', async context => {
   const app = fixture(context), runs: Run[] = [];
   const checked = await invoke(['check', '--gate', 'lint', '--side', 'be'], app, ({ repoRoot }) => cleanCheck(repoRoot), transport(app, runs));
   assert.deepEqual(runs.map(run => run.side), ['be']);
@@ -135,7 +135,7 @@ test('app check --gate lint --side be judges the back end alone, and a side that
   let stderr = '';
   const exit = await main(['check', '--gate', 'lint', '--side', 'web'], { cwd: app.root, checkApp: ({ repoRoot }) => cleanCheck(repoRoot), runLinter: transport(app, []), stdout: () => undefined, stderr: (text) => { stderr += text; } });
   assert.equal(exit, 2);
-  assert.match(stderr, /^starci app: LINT_SIDE_INVALID: --side is be or fe\n/);
+  assert.match(stderr, /^starci app: LINT_SIDE_INVALID: --side is be, fe or packages\n/);
   assert.match(stderr, /^starci app check /m, 'a usage error is followed by the usage');
 });
 

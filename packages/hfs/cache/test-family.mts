@@ -120,7 +120,8 @@ export function sourcesOf(record: CacheRecord): Record<string, SourceItems> {
 
 function recordOf(spec: string, key: string, sources: Readonly<Record<string, SourceItems>>, side: string): CacheRecord {
   const prefixed: Record<string, SourceItems> = {};
-  for (const [source, items] of Object.entries(sources)) prefixed[side === '' || side === '.' ? source : `${side}/${source}`] = items;
+  // A source is relative to the Jest root; a root package's (`../packages/<name>/...`) is outside it, so the joined path is normalised to the app root.
+  for (const [source, items] of Object.entries(sources)) prefixed[side === '' || side === '.' ? source : path.posix.normalize(`${side}/${source}`)] = items;
   return { path: spec, step: SPEC_STEP, hash: key, findings: [], data: { sources: prefixed as unknown as JsonValue } };
 }
 
@@ -204,7 +205,7 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
 
 // ---- the real Jest of an app ------------------------------------------------------------------------------------------------------------------------------
 
-/** The part of a Jest project config the closure needs. */
+/** The part of a Jest project config the closure needs. A project's `roots` are where its haste map finds its files. */
 interface ProjectConfigLike {
   readonly rootDir: string;
   readonly displayName?: { readonly name?: string };
@@ -213,7 +214,7 @@ interface ProjectConfigLike {
   readonly [key: string]: unknown;
 }
 interface JestContextLike {
-  readonly hasteFS: { matchFiles(pattern: RegExp | string): string[] };
+  readonly hasteFS: { matchFiles(pattern: RegExp | string): string[]; exists(file: string): boolean };
   readonly resolver: unknown;
 }
 interface RuntimeLike { createContext(config: ProjectConfigLike, options: Record<string, unknown>): Promise<JestContextLike> }
@@ -249,35 +250,37 @@ export async function createJestEnvironment({ appRoot, side, jestFrom, project =
   const { DependencyResolver } = fromCore('jest-resolve-dependencies') as { DependencyResolver: new (resolver: unknown, hasteFS: unknown, snapshotResolver: unknown) => DependencyResolverLike };
   const jestBin = path.join(path.dirname(jestPackage), 'bin', 'jest.js');
 
-  // The preset's config reads the working directory (the back end it describes), so it is read from the Jest root.
+  // The preset's config reads the working directory (the back end it describes), so it is read from the Jest root. Several projects may carry the name
+  // (the back end's unit project and the one of the app's root packages, rooted at the app root): each keeps its own haste map and resolver.
   const previous = process.cwd();
-  let config: ProjectConfigLike | undefined;
-  let context: JestContextLike | undefined;
+  const projects: { config: ProjectConfigLike; resolver: DependencyResolverLike; hasteFS: JestContextLike['hasteFS'] }[] = [];
   try {
     process.chdir(root);
     const { configs } = await readConfigs({ $0: 'jest', _: [], selectProjects: [project] }, [root]);
-    config = configs.find((entry) => entry.displayName?.name === project);
-    if (config === undefined) throw new Error(`the Jest config under ${side} has no project named ${project}`);
-    context = await Runtime.createContext(config, { maxWorkers: 1, watchman: false, console: { log: () => undefined, warn: () => undefined, error: () => undefined } });
+    for (const config of configs.filter((entry) => entry.displayName?.name === project)) {
+      const context = await Runtime.createContext(config, { maxWorkers: 1, watchman: false, console: { log: () => undefined, warn: () => undefined, error: () => undefined } });
+      projects.push({ config, resolver: new DependencyResolver(context.resolver, context.hasteFS, undefined), hasteFS: context.hasteFS });
+    }
+    if (projects.length === 0) throw new Error(`the Jest config under ${side} has no project named ${project}`);
   } finally {
     process.chdir(previous);
   }
-  const resolver = new DependencyResolver(context.resolver, context.hasteFS, undefined);
   const tracked = (file: string): boolean => !file.split(/[\\/]/u).includes('node_modules');
-  const closureFrom = (roots: readonly string[]): string[] => {
+  /** The project whose haste map holds `file`: a module is resolved the way the project that runs its spec resolves it. */
+  const projectOf = (file: string): (typeof projects)[number] => projects.find((entry) => entry.hasteFS.exists(file)) ?? (projects[0] as (typeof projects)[number]);
+  const closureFrom = (roots: readonly string[], owner: (typeof projects)[number]): string[] => {
     const seen = new Set<string>();
     const queue = roots.filter(tracked);
     while (queue.length > 0) {
       const file = queue.pop();
       if (file === undefined || seen.has(file)) continue;
       seen.add(file);
-      for (const next of resolver.resolve(file)) if (tracked(next) && !seen.has(next)) queue.push(next);
+      for (const next of owner.resolver.resolve(file)) if (tracked(next) && !seen.has(next)) queue.push(next);
     }
     return [...seen];
   };
   const relative = (file: string): string => posix(path.relative(appRoot, file));
-  const setup = (name: 'setupFiles' | 'setupFilesAfterEnv'): string[] => [...(config[name] ?? [])];
-  const setupClosure = closureFrom([...setup('setupFiles'), ...setup('setupFilesAfterEnv')]).map(relative);
+  const setupClosures = new Map(projects.map((entry) => [entry, closureFrom([...(entry.config.setupFiles ?? []), ...(entry.config.setupFilesAfterEnv ?? [])], entry).map(relative)]));
 
   const listed = completedNode(await runHeavyNode(execute, { kind: 'test', label: `app check jest ${project} discovery`, args: [jestBin, '--selectProjects', project, '--listTests'], cwd: root, maxBuffer: 64 * 1024 * 1024 }), 'jest discovery');
   if (listed.status !== 0) throw new Error(`jest --listTests failed under ${side}: ${(listed.stderr || listed.stdout).split('\n')[0]}`);
@@ -286,12 +289,14 @@ export async function createJestEnvironment({ appRoot, side, jestFrom, project =
 
   return {
     specs,
-    configHash: projectConfigHash(config),
+    configHash: projects.length === 1 ? projectConfigHash((projects[0] as (typeof projects)[number]).config) : combineHashes(Object.fromEntries(projects.map((entry, index) => [String(index), projectConfigHash(entry.config)]))),
     closureOf(spec) {
       const cached = closures.get(spec);
       if (cached !== undefined) return cached;
-      const own = closureFrom([path.resolve(appRoot, spec)]).map(relative).filter((file) => file !== spec);
-      const closure = [...new Set([...own, ...setupClosure])].sort();
+      const file = path.resolve(appRoot, spec);
+      const owner = projectOf(file);
+      const own = closureFrom([file], owner).map(relative).filter((entry) => entry !== spec);
+      const closure = [...new Set([...own, ...(setupClosures.get(owner) ?? [])])].sort();
       closures.set(spec, closure);
       return closure;
     },

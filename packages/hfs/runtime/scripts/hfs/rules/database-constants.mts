@@ -20,7 +20,8 @@ export const MIGRATIONS_DIR = `${DB_DIR}/migrations`;
 export const MIGRATIONS_ARCHIVE_DIR = `${MIGRATIONS_DIR}/archive`;
 /** True for a migration `starci app db migrate` applies: a path under db/migrations/ outside the archive. */
 export const isActiveMigration = (file: string) => file.startsWith(`${MIGRATIONS_DIR}/`) && !file.startsWith(`${MIGRATIONS_ARCHIVE_DIR}/`);
-export const SEED_FILE = `${DB_DIR}/seed.sql`;
+/** The shared SQL seed `db baseline --squash --seed-tables` writes the reference rows to, an entry of the shared seed level (R375). */
+export const SEED_FILE = '.starcistacks/seeds/sql/reference.sql';
 /** The managed pre-migration bootstrap (slot app.db.bootstrap): `starci app sync` renders it, and `db baseline --squash` owns one marked section. */
 export const BOOTSTRAP_FILE = `${DB_DIR}/bootstrap.sql`;
 export const BOOTSTRAP_SQUASH_BEGIN = '-- >>> starci app db baseline --squash: roles, role settings and grants a per-database dump loses (regenerate with the verb; do not edit) >>>';

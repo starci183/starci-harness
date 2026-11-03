@@ -183,6 +183,32 @@ test('up --execute runs the steps in order, hands custody over as files, and a s
   assert.match(again.out.join(''), /seed owner: already done/u);
 });
 
+test('up applies the seed levels after the migrations, in the database container under the owner role, with the receipts table', async (t) => {
+  const root = app(t);
+  for (const [file, text] of [
+    ['.starcistacks/seeds/seeds.yaml', 'schema: starci/seeds@1\nentries:\n  - {id: plans, kind: sql, path: sql/010-plans.sql, target: primary, mode: upsert}\n  - {id: modules, kind: data, path: data/modules.json, target: [node, cli.js, modules, seed], schema: module.schema.json, mode: upsert}\n'],
+    ['.starcistacks/seeds/sql/010-plans.sql', "insert into plans values ('free') on conflict do nothing;\n"],
+    ['.starcistacks/seeds/data/modules.json', '{"id": "sales"}\n'],
+    ['module.schema.json', '{"type": "object", "required": ["id"]}\n'],
+  ] as const) {
+    fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    fs.writeFileSync(path.join(root, file), text);
+  }
+  const h = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], h), 0, h.err.join(''));
+  assert.match(h.out.join(''), /seed shared\/plans: applied \(sql, upsert, 1 file\)/u);
+  const steps = h.calls.map((call) => call.args.join(' '));
+  const copied = steps.findIndex((step) => step.startsWith('cp ') && step.includes('010-plans.sql cid1:'));
+  assert.ok(copied > 0 && steps.slice(0, copied).some((step) => step.includes('create table if not exists public.starci_seed_receipts')), 'the receipts table first, then the seed file in the database container');
+  assert.ok(steps.some((step) => step.includes('postgresql://demo_dev')), 'the owner role of the environment');
+  const loaded = h.calls.find((call) => call.command === 'node' && call.args.includes('modules'));
+  assert.deepEqual(JSON.parse(String(loaded?.input)).documents, [{ path: 'data/modules.json', document: { id: 'sales' } }]);
+  assert.ok(Object.keys(loaded?.env ?? {}).some((key) => key.startsWith('PRIMARY_DB_URL')), 'the app command reaches the database as the owner role');
+  const dry = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev'], dry), 0);
+  assert.match(dry.out.join(''), /plan seed levels: \.starcistacks\/seeds, then \.starcistacks\/dev\/seeds/u);
+});
+
 test('a missing value is refused with the owner step, and a machine without the identity with the way to obtain it, never a replacement', async (t) => {
   const bare = app(t, { sealed: false });
   const a = host(bare);

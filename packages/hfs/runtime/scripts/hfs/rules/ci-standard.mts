@@ -6,7 +6,7 @@
 //   sonar-lint-per-side    a lint with --out names --side
 //   required-providers      no continue-on-error; Codecov fail_ci_if_error true; no availability probe, no secret-gated Codecov or Sonar step
 //   test-sharding          the test job is a shard matrix; each shard runs --shard=i/N with STARCI_COVERAGE_SHARD and no threshold or pass-empty flag; the coverage job merges, then proves
-//   lint-parallel          the lint job is a matrix over side [be, fe]
+//   lint-parallel          the lint job is a matrix over side [be, fe], or [be, fe, packages] in an app with root packages
 //   cache-saved-always     no cache keyed by the commit sha; actions/cache/save runs under if: always()
 //   timeouts               every job declares timeout-minutes
 //   sha-pinned-actions     every remote `uses:` names a 40-hex commit sha (docker:// a sha256 digest; ./ local actions allowed)
@@ -116,7 +116,8 @@ function testSharding(doc: Parsed, say: Parsed) {
 
 function lintParallel(doc: Parsed, say: Parsed) {
   const sides = record(doc.jobs?.lint) ? doc.jobs.lint.strategy?.matrix?.side : null;
-  return Array.isArray(sides) && sides.map(String).sort(byCodeUnit).join() === 'be,fe' ? [] : [say('lint-parallel', 'the lint job must be a matrix over side [be, fe]')];
+  const joined = Array.isArray(sides) ? sides.map(String).sort(byCodeUnit).join() : '';
+  return joined === 'be,fe' || joined === 'be,fe,packages' ? [] : [say('lint-parallel', 'the lint job must be a matrix over side [be, fe], with packages when the app has root packages')];
 }
 
 function cacheSavedAlways(doc: Parsed, say: Parsed) {
@@ -165,8 +166,8 @@ function sonarLintPerSide(doc: Parsed, say: Parsed) {
   for (const [id, job] of jobsOf(doc)) {
     for (const step of stepsOf(job)) {
       const run = runOf(step);
-      if (/\b(?:npm run lint|app check)\b/.test(run) && /\s--out\b/.test(run) && !/\s--side\s+(?:be\b|fe\b|\$\{\{\s*matrix\.side\s*\}\})/.test(run)) {
-        out.push(say('sonar-lint-per-side', `job ${id}, step ${step.name ?? 'lint'}: a lint with a Sonar import must name its side (--side be|fe) and the reports are merged afterwards; a combined lint with Sonar breaks the standard`));
+      if (/\b(?:npm run lint|app check)\b/.test(run) && /\s--out\b/.test(run) && !/\s--side\s+(?:be\b|fe\b|packages\b|\$\{\{\s*matrix\.side\s*\}\})/.test(run)) {
+        out.push(say('sonar-lint-per-side', `job ${id}, step ${step.name ?? 'lint'}: a lint with a Sonar import must name its side (--side be|fe|packages) and the reports are merged afterwards; a combined lint with Sonar breaks the standard`));
       }
     }
   }

@@ -112,6 +112,16 @@ for (const edition of ['lite', 'full']) {
     for (const item of ['test-sharding', 'lint-parallel', 'sonar-lint-per-side', 'cache-saved-always', 'required-providers']) assert.ok(found.includes(item), item);
   });
 
+  test(`${edition}: ${FAILURE} the lint matrix may add the root packages beside the two sides, never stand in for a side`, () => {
+    const doc = compliant(edition);
+    doc.jobs.lint.strategy!.matrix.side = ['be', 'fe', 'packages'];
+    doc.jobs.lint.steps.push({ run: 'starci app check --gate lint --side packages --out reports/lint.packages.sonar.json', env: HEAP });
+    assert.ok(!items(judge(doc, edition)).includes('lint-parallel'));
+    assert.ok(!items(judge(doc, edition)).includes('sonar-lint-per-side'));
+    doc.jobs.lint.strategy!.matrix.side = ['be', 'packages'];
+    assert.ok(items(judge(doc, edition)).includes('lint-parallel'));
+  });
+
   test(`${edition}: ${FAILURE} fail - the app check reads only the managed ci.yml of an app root`, (t) => {
     const root = mkdtemp(t, 'hfs-ci-standard-');
     const doc = compliant(edition);

@@ -3,7 +3,8 @@
 // The Dockerfile is app-owned (starci app scaffold writes it once from templates/<side>/image) and judged here, structurally, from its parsed
 // instructions (scripts/lib/dockerfile.mjs), never by matching the text:
 //   HFS_DOCKER_BUILD_CONTEXT  the header comment states the app's own build command (`starci docker build <app>` or `docker build -f <side>/apps/<app>/Dockerfile ... .`, the
-//                             context the app root) and no COPY or ADD source leaves the context (`..`, an absolute path)
+//                             context the app root) and no COPY or ADD source leaves the context (`..`, an absolute path); a Next image of a front end
+//                             that reads be/contracts/ copies that folder exactly when the app holds it (its codegen input; a COPY of a missing folder fails the build)
 //   HFS_DOCKER_STAGES         a `build` stage and a last `runtime` stage; the runtime is unprivileged (`USER node`) and runs no build; every install
 //                             is `npm ci` (never `npm install`); a back-end runtime installs `--omit=dev --ignore-scripts`, a front-end runtime installs nothing
 //   HFS_DOCKER_ENTRY          the runtime starts the app's own built entry (be: node be/dist/apps/<app>/src/main.js; fe: node fe/apps/<app>/server.js); an api or
@@ -44,6 +45,8 @@ const SECRET_FOLDERS = new Set(['.starcistacks', '.secrets', '.volume', '.git', 
 const SECRET_SUFFIXES = ['.key', '.pem', '.p12', '.pfx', '.crt'];
 const BUILD_TOOLS = new Set(['tsc', 'tsc-alias', 'next', 'turbo', 'nest', 'webpack', 'vite', 'esbuild']);
 const DIGEST = /@sha256:[0-9a-f]{64}$/;
+/** The back-end contracts a front end reads in place (`sides.fe.reads`), its codegen input. */
+const CONTRACTS = 'be/contracts';
 
 /** The path of the Dockerfile of a be or fe app, app-relative. */
 export const dockerfilePath = (side: string, app: Parsed) => `${side}/apps/${app}/Dockerfile`;
@@ -91,13 +94,16 @@ const statesBuildCommand = (parsed: Parsed, wanted: Parsed, app: Parsed) => pars
   return flag > 0 && parts[flag + 1] === wanted && parts.at(-1) === '.';
 });
 
+/** The context sources of a COPY or ADD (none for a COPY from a stage). */
+const contextSources = (item: Parsed): string[] => {
+  const parts = words(item.text);
+  if (parts.some((part: Parsed) => part.startsWith('--from='))) return [];
+  return parts.filter((part: Parsed) => !part.startsWith('--')).slice(0, -1);
+};
+
 function copySourceFindings(file: string, item: Parsed) {
   const findings: Finding[] = [];
-  const parts = words(item.text).filter((part: Parsed) => !part.startsWith('--'));
-  const sources = parts.slice(0, -1);
-  const fromStage = words(item.text).some((part: Parsed) => part.startsWith('--from='));
-  if (fromStage) return findings;
-  for (const source of sources) {
+  for (const source of contextSources(item)) {
     if (/^[a-z]+:\/\//i.test(source)) continue;
     const segments = source.split('/');
     if (source.startsWith('/') || segments.includes('..')) findings.push(found(DOCKER_BUILD_CONTEXT, file, `${file}:${item.line} ${item.keyword} source ${source} leaves the build context; every source is a path inside the app root.`, { line: item.line, source }));
@@ -112,6 +118,15 @@ function contextFindings(file: string, parsed: Parsed, side: string, app: Parsed
   if (!statesBuildCommand(parsed, wanted, app)) findings.push(found(DOCKER_BUILD_CONTEXT, file, `${file} does not state its build command in a header comment: \`docker build -f ${wanted} -t <image> .\` (the context is the app root, the folder with the one package.json and lockfile).`, { expected: wanted }));
   for (const item of parsed.instructions.filter((entry: Parsed) => entry.keyword === 'COPY' || entry.keyword === 'ADD')) findings.push(...copySourceFindings(file, item));
   return findings;
+}
+
+
+/** R187: a Next image copies be/contracts, the contract its codegen reads, when the app holds it, and never when it does not. */
+function contractCopyFindings(file: string, parsed: Parsed, holdsContracts: boolean) {
+  const copies = parsed.instructions.filter((entry: Parsed) => entry.keyword === 'COPY' || entry.keyword === 'ADD').find((entry: Parsed) => contextSources(entry).some((source) => source.replace(/\/$/u, '') === CONTRACTS));
+  if (copies && !holdsContracts) return [found(DOCKER_BUILD_CONTEXT, file, `${file}:${copies.line} copies ${CONTRACTS}, which the app does not hold (its back end emits no contract), so the image build fails; drop the COPY until a contract is emitted.`, { line: copies.line, source: CONTRACTS })];
+  if (!copies && holdsContracts) return [found(DOCKER_BUILD_CONTEXT, file, `${file} does not copy ${CONTRACTS}, the contract the front end's codegen reads; add \`COPY ${CONTRACTS} ${CONTRACTS}\` before the codegen.`, { source: CONTRACTS })];
+  return [];
 }
 
 /** R188: the stages and the install, the user and the build discipline of each. */
@@ -307,6 +322,8 @@ export function dockerFindings({ repoRoot, files, repo }: { repoRoot: string; fi
     ...repo.sides.fe.apps.map((entry: Parsed) => ({ side: 'fe', app: entry.name, kind: entry.kind })),
   ];
   const ts = apps.some((entry) => entry.side === 'fe' || entry.kind === 'api') ? typescriptFor(repoRoot) : null;
+  const readsContracts = (repo.sides.fe.reads ?? []).includes(`${CONTRACTS}/`);
+  const holdsContracts = files.some((name) => name.startsWith(`${CONTRACTS}/`));
   return apps.flatMap(({ side, app, kind }) => {
     const file = dockerfilePath(side, app);
     if (!tracked.has(file)) return [];
@@ -315,6 +332,7 @@ export function dockerFindings({ repoRoot, files, repo }: { repoRoot: string; fi
     const parsed = parseDockerfile(text);
     return [
       ...contextFindings(file, parsed, side, app),
+      ...(side === 'fe' && kind === 'next' && readsContracts ? contractCopyFindings(file, parsed, holdsContracts) : []),
       ...stageFindings(file, parsed, side, kind),
       ...entryFindings({ repoRoot, file, parsed, side, app, kind, project: repo.project, ts }),
       ...healthReachabilityFindings({ repoRoot, file, parsed, side, app, kind, ts }),

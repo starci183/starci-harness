@@ -1,12 +1,13 @@
 // local-up.mjs - `starci app stack up --env <dev env> [--execute]`: the one command that brings the whole dev environment up (PROJECT-STACKS-6).
 // Order: host prerequisites, dev custody, setup (install, codegen), compose services and their health, the environment's own database role,
-// migrations with a receipt, seed, native app processes, readiness, origins. Idempotent: what runs is kept, what changed is converged.
+// migrations with a receipt, the seed levels with their receipts, the seed commands, native app processes, readiness, origins. Idempotent: what runs is kept, what changed is converged.
 // A dry run prints the plan. It never generates a replacement secret, never removes a volume and touches only its own compose project.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { firstLine } from './context.mjs';
-import type { StackContext } from './context.mjs';
+import type { RunResult, StackContext } from './context.mjs';
+import { dbTarget } from '../db/postgres.mjs';
 import { failure, refusal } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';
 import type { LocalConfig } from './local-config.mjs';
@@ -15,7 +16,9 @@ import type { Custody } from './local-custody.mjs';
 import { hostRefusal, preflight, runSetup } from './local-prepare.mjs';
 import { DEFAULT_TIMEOUT_SECONDS, makeDataDirectories, commandDigest, compose, composeValues, databaseUrl, isAlive, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, waitFor } from './local-run.mjs';
 import type { LocalDeps } from './local-run.mjs';
+import { launch } from './local-host.mjs';
 import { readRecord, writeRecord } from './local-state.mjs';
+import { SEED_RECEIPTS, seedStep } from './seeds.mjs';
 import { ensureRuntimeLayers, layerPlan } from './runtime-layers.mjs';
 
 const SAFE_PASSWORD = /^[A-Za-z0-9_-]{8,}$/u;
@@ -78,6 +81,25 @@ async function migrate(ctx: StackContext, local: LocalConfig, custody: Custody, 
   return `migrate: applied, receipt ${record.receipts.migrate.digest}${await appRolePassword(ctx, local, custody)}`;
 }
 
+/**
+ * Applies the seed levels (seeds.mjs, PROJECT-STACKS-12) on the environment's database under its owner role, the role the migrations ran as: the
+ * receipts in the database keep a rerun from applying anything that did not change. A document entry's app command runs from the app root with
+ * the owner's environment, the documents on its stdin.
+ */
+async function seedLevels(ctx: StackContext, local: LocalConfig, custody: Custody): Promise<string[]> {
+  const database = local.database;
+  const url = databaseUrl(local, custody);
+  if (!database || url === null) return [];
+  const container = firstLine((await compose(ctx, local, ['ps', '-q', database.service])).stdout);
+  const target = dbTarget({ ...ctx, env: { ...ctx.env, DATABASE_URL: url, STARCI_DB_CONTAINER: container } }, 'DATABASE_URL');
+  const env = runEnvironment(ctx, local, { name: 'seed', argv: [], cwd: '.', heavy: 'none', skipIfExists: null, env: {}, files: [...custody.values.keys()], after: 'migrate' }, custody, 'owner');
+  const command = (argv: readonly string[], input: string): RunResult => {
+    const [program, args] = launch(ctx.platform, argv[0] ?? '', argv.slice(1));
+    return ctx.spawn(program, args, { cwd: local.repoRoot, env, input });
+  };
+  return seedStep({ ctx, repoRoot: local.repoRoot, env: local.env, target, execute: true, command }).lines;
+}
+
 /** Runs the seed commands once each (a receipt keyed by the command's digest); the seed owns its idempotence beyond that. */
 async function seed(ctx: StackContext, local: LocalConfig, custody: Custody, after: 'migrate' | 'ready'): Promise<string[]> {
   const dir = stateOf(ctx, local);
@@ -118,7 +140,7 @@ function plan(local: LocalConfig, missing: string[]): string[] {
     ...local.setup.map((run) => `plan setup ${run.name}: ${run.argv.join(' ')}`),
     ...layerPlan(local),
     `plan services: ${local.services.map((service) => `${service.name} (wait ${service.wait})`).join(', ')}`,
-    ...(local.database ? [`plan database: own role ${local.database.role}, database ${local.database.name}, then starci app db migrate`] : []),
+    ...(local.database ? [`plan database: own role ${local.database.role}, database ${local.database.name}, then starci app db migrate`, `plan seed levels: .starcistacks/seeds, then .starcistacks/${local.env}/seeds, each entry once per content hash (receipts in ${SEED_RECEIPTS})`] : []),
     ...local.seed.map((run) => `plan seed ${run.name}: ${run.argv.join(' ')}`),
     ...local.processes.map((run) => `plan process ${run.name}: ${run.argv.join(' ')}`),
     ...local.ready.map((row) => `plan ready ${row.name}: ${row.url}`),
@@ -146,7 +168,7 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
     lines.push(`service ${ready.detail}`);
     if (!ready.ok) throw failure('STACK_LOCAL_SERVICE', `${service.name} did not become ready in ${timeoutSeconds}s (${ready.detail}); read it with: starci app stack logs --env ${local.env} --service ${service.name}`);
   }
-  lines.push(await provisionDatabase(ctx, local, custody), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate'), ...startProcesses(ctx, local, custody, deps));
+  lines.push(await provisionDatabase(ctx, local, custody), await migrate(ctx, local, custody, deps), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate'), ...startProcesses(ctx, local, custody, deps));
   for (const row of local.ready) {
     const result = await waitFor(ctx, deadline, () => probe(ctx, local, row));
     lines.push(`${result.ok ? 'ok    ' : 'FAIL  '}ready ${result.detail}`);

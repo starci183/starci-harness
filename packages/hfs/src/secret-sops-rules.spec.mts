@@ -109,3 +109,22 @@ test('6. a .sops.yaml without rules is left for a person, and an app without one
   const bare = app(t, {});
   assert.deepEqual(migrateSopsRules({ root: bare.root }).changes, []);
 });
+
+test('7. the migration keeps the comment header the file opens with, the managed header of secret init among them', (t) => {
+  const fixture = app(t, {});
+  const file = path.join(fixture.root, '.sops.yaml');
+  const header = '# Managed by starci app secret init and recipients: one rule per environment, public age recipients only.\n\n';
+  fs.writeFileSync(file, `${header}${rules(LEGACY)}`);
+  assert.deepEqual(migrateSopsRules({ root: fixture.root, write: true }).changes, [{ rule: 0, from: LEGACY, to: CURRENT }]);
+  const written = fs.readFileSync(file, 'utf8');
+  assert.ok(written.startsWith(header), 'the header stays as written');
+  assert.equal((parseYaml(written) as { creation_rules: Array<{ path_regex?: string }> }).creation_rules[0]?.path_regex, CURRENT);
+});
+
+test('8. a .sops.yaml that is no YAML is left for a person and kept as it is', (t) => {
+  const fixture = app(t, {});
+  const file = path.join(fixture.root, '.sops.yaml');
+  fs.writeFileSync(file, 'creation_rules: [\n');
+  assert.deepEqual(migrateSopsRules({ root: fixture.root, write: true }).findings.map((finding) => finding.code), ['SOPS_RULES_UNREADABLE']);
+  assert.equal(fs.readFileSync(file, 'utf8'), 'creation_rules: [\n');
+});

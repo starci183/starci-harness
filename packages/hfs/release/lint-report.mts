@@ -5,9 +5,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { firstLine, tool } from '../stack/context.mjs';
+import { PACKAGES, PACKAGES_CONFIG } from '../lint/run.mjs';
 import type { VerbContext } from './index.mjs';
 
-const LINT_SIDES = ['be', 'fe'];
+const LINT_SIDES = ['be', 'fe', PACKAGES];
 const MERGED_REPORT = 'reports/lint.sonar.json';
 const sideReport = (side: string): string => `reports/lint.${side}.sonar.json`;
 
@@ -18,8 +19,8 @@ function mergeSonarReports(reports: readonly { rules: { id: string }[]; issues: 
   return { rules, issues };
 }
 
-/** The sides the app has: a be/ or fe/ folder beside the app root. */
-const sidesOf = (root: string): string[] => LINT_SIDES.filter((side) => fs.existsSync(path.join(root, side)));
+/** The lint scopes the app has: a be/ or fe/ folder beside the app root, and its root packages when it has their managed config. */
+const sidesOf = (root: string): string[] => LINT_SIDES.filter((side) => fs.existsSync(path.join(root, side)) && (side !== PACKAGES || fs.existsSync(path.join(root, PACKAGES_CONFIG))));
 
 /**
  * Runs `starci app check --gate lint --side <side> --out <file>` for every side the app has, then writes reports/lint.sonar.json.

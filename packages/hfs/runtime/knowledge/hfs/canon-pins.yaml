@@ -592,7 +592,7 @@ pins:
     version: 3.1150.0
     group: framework
     side: be
-    why: 'the S3 transport inside @starci/object-storage, the one ObjectStorage adapter of both editions (MinIO, S3, Spaces), which depends on it at exactly this version and which no app file imports; 3.1150.0 is the release of 2026-10-12, chosen over newer ones that had not aged two weeks.'
+    why: 'the S3 transport inside @starci/object-storage, the one ObjectStorage adapter of both editions (MinIO, S3, Spaces), which depends on it at exactly this version and which no app file imports; 3.1150.0 is the release of 2026-10-12.'
   '@aws-sdk/s3-request-presigner':
     version: 3.1150.0
     group: framework
@@ -602,7 +602,7 @@ pins:
     version: 10.1.7
     group: framework
     side: be
-    why: 'the SMTP client inside @starci/mail, which depends on it at exactly this version and which no app file imports; 10.1.7 is the release of 2026-10-18, chosen over newer ones that had not aged two weeks.'
+    why: 'the SMTP client inside @starci/mail, which depends on it at exactly this version and which no app file imports; 10.1.7 is the release of 2026-10-18.'
   '@apollo/server':
     version: 5.5.1
     group: framework
@@ -652,7 +652,7 @@ pins:
     version: 6.29.0
     group: framework
     side: be
-    why: 'the Agent of platform/http (its one owner, R90): FetchHttpClient hands fetch a pool that trusts HttpOptions.trustedCa beside the bundled roots (a test world''s per-run fake CA); the 6 line is the undici the Node 22 runtime of the app images bundles, and its Agent also serves the fetch of Node 24; 6.29.0 is the release of 2026-09-25, chosen over newer ones that had not aged two weeks.'
+    why: 'the Agent of platform/http (its one owner, R90): FetchHttpClient hands fetch a pool that trusts HttpOptions.trustedCa beside the bundled roots (a test world''s per-run fake CA); the 6 line is the undici the Node 22 runtime of the app images bundles, and its Agent also serves the fetch of Node 24; 6.29.0 is the release of 2026-09-25.'
   # --- lite identity (integrations/passport, ruling lite-self-hosted-postgres-passport-minio)
   '@nestjs/passport':
     version: 11.0.5

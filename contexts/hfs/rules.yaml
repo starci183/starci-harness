@@ -1439,7 +1439,7 @@ rules:
       - {kind: eslint-be, id: realtime-topic-scope}
   - id: R187
     code: HFS_DOCKER_BUILD_CONTEXT
-    law: Every app image builds from the app root, and no COPY or ADD source leaves the build context.
+    law: Every app image builds from the app root, no COPY or ADD source leaves the build context, and a Next image copies be/contracts exactly when the app holds it.
     failureCodes:
       - HFS_DOCKER_BUILD_CONTEXT
     enforcers:
@@ -2241,7 +2241,7 @@ rules:
       - {kind: eslint-be, id: infra-import-owner}
   - id: R332
     code: LITE_DB_MIGRATION
-    law: A lite app's schema lives only in `db/` (`db/migrations/<ts14>_<kebab>.sql`, its archive, `db/seed.sql`, the managed `db/bootstrap.sql`); the tree holds no `supabase/` folder and no SQL outside `db/` but a `.starcistacks` seed.
+    law: A lite app's schema lives only in `db/` (`db/migrations/<ts14>_<kebab>.sql`, its archive, the managed `db/bootstrap.sql`; any other SQL under `db/` is refused); the tree holds no `supabase/` folder and no SQL outside `db/` but the `sql/` entries of its seed levels in `.starcistacks/` (R375).
     editions: [lite]
     failureCodes:
       - LITE_DB_MIGRATION
@@ -2542,6 +2542,18 @@ rules:
       - STACKS_IMAGE_ENV_DIVERGES
     enforcers:
       - {kind: hfs, id: stacks-service-images}
+  - id: R375
+    code: HFS_SEEDS_SHAPE
+    law: Seed data lives only in the seed levels of `.starcistacks/`, where `seeds/` is applied in every environment first and `<env>/seeds/` in the one environment the stack declaration names `<env>`; each level is a `seeds.yaml` manifest (schema starci/seeds@1) whose entries list every file of its `sql/`, `data/` and `files/` folders; a seed is never a migration (no statement that creates, alters, drops, truncates, grants, revokes or comments on an object), never custody, a data document validates against the schema its entry names, a level a production environment applies holds no test data but the one test account an environment declares (a test-account entry with its reason), and a document names a secret only as a reference to a sealed seeds-<name> member of its environment.
+    failureCodes:
+      - HFS_SEEDS_SHAPE
+      - HFS_SEED_MANIFEST
+      - HFS_SEED_DDL
+      - HFS_SEED_DATA_SCHEMA
+      - HFS_SEED_TEST_DATA
+      - HFS_SEED_SECRET_REF
+    enforcers:
+      - {kind: hfs, id: seeds-shape}
 pending:
   - {gap: slot-rule-unknown, subject: BE_E2E_FLOW, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
   - {gap: slot-rule-unknown, subject: FE_DATA_FRESHNESS, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}

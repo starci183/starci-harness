@@ -33,8 +33,9 @@ starci app ci secret set <NAME> [--from-custody] [--env <env>] [--repo <owner/na
 `.starcistacks/application-stacks.yaml` (PROJECT-STACKS-6 of `contexts/project/stacks.md`): the host table (`doctor` prints the owner-run install
 step per OS for each missing prerequisite and installs nothing), the dev custody (`secret init --env dev --execute` creates the dev-only values once),
 the setup commands, the compose services and their health, the environment's own database role, the migrations with a receipt (`db migrate` runs its
-client tools in the database container named by `STARCI_DB_CONTAINER`, so the host needs no PostgreSQL client), the seed once, the native app
-processes, readiness and the origins. `prepare`, `up` and `down` are dry runs until `--execute`; `down` never removes a volume. State (process ids,
+client tools in the database container named by `STARCI_DB_CONTAINER`, so the host needs no PostgreSQL client), the seed levels of `.starcistacks/`
+with their receipts in the database (`stack/seeds.mts`, PROJECT-STACKS-12; `app codemod seeds-layout` moves an older app's seed data into them),
+the declared seed commands once, the native app processes, readiness and the origins. `prepare`, `up` and `down` are dry runs until `--execute`; `down` never removes a volume. State (process ids,
 logs, receipts) is under the state base (`STARCI_LOCAL_ROOT`), the opened custody under the private secrets directory outside the checkout.
 
 `starci app add` writes every front-end unit, in either edition, already in the shape of the harness's `contexts/code/fe`
@@ -114,7 +115,7 @@ one is refused with both names. Object references and function bodies stay byte-
 the kept pgmq queues and the grants on objects outside the app schemas), a marked section of `db/bootstrap.sql` (the source's app roles
 with their attributes and no password, their memberships, their allowed role settings such as `search_path`, the grants on schemas the
 bootstrap creates and the database-wide default privileges, none of which a per-database dump keeps; `starci app sync` judges and keeps
-the rest of the file), `db/seed.sql` (the rows of `--seed-tables`, `insert ... on conflict do nothing` in foreign-key order with their
+the rest of the file), `.starcistacks/seeds/sql/reference.sql` (the rows of `--seed-tables`, declared as the entry `reference` of the shared seed level, `insert ... on conflict do nothing` in foreign-key order with their
 sequences set; a table without a primary key or unique constraint is refused) and moves the chain to `db/migrations/archive/`. Before
 writing, a scratch container of the app's db image (built from `.starcistacks/images/db/Dockerfile`, or `--image`) replays bootstrap, baseline and seed (the
 seed twice); the same projection read from the replay must equal the source's, or the verb refuses with the differences. Docker runs every

@@ -72,6 +72,37 @@ const judged = (t: TestContext, edition: string, code: string, mutation?: Mutati
   .filter((finding) => finding.code === code).map((finding) => finding.code);
 const change = (file: string, from: string, to: string): Mutation => ({ path: file, from, to });
 
+const SCHEMA = 'be/contracts/api/schema.graphql';
+const COPY_CONTRACTS = 'COPY be/contracts be/contracts';
+
+/** The build-context findings of a front end that reads be/contracts/: its Next image rendered with or without them, the app holding them or not. */
+function contractFindings(t: TestContext, { rendered, held }: { rendered: boolean; held: boolean }) {
+  const declaration = declarationOf('full');
+  const repo = { ...declaration, sides: { ...declaration.sides, fe: { ...declaration.sides.fe, reads: ['be/contracts/'] } } };
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-docker-contracts-'));
+  t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
+  const files = imageFiles(repo as unknown as ResolvedApp, { hasImage: () => true, hasContracts: rendered }); // reason: the renderer reads only the edition, project and sides of the declaration
+  files.push({ path: CONFIG, content: 'export default { output: "standalone" };\n' }, ...(held ? [{ path: SCHEMA, content: 'type Query { ok: Boolean }\n' }] : []));
+  for (const file of files) {
+    fs.mkdirSync(path.dirname(path.join(repoRoot, file.path)), { recursive: true });
+    fs.writeFileSync(path.join(repoRoot, file.path), file.content);
+  }
+  const next = files.find((file) => file.path === NEXT)?.content ?? '';
+  const findings = dockerFindings({ repoRoot, repo, files: files.map((file) => file.path) }).filter((finding) => finding.code === 'HFS_DOCKER_BUILD_CONTEXT');
+  return { copies: next.includes(COPY_CONTRACTS), messages: findings.map((finding) => finding.message) };
+}
+
+test('a Next image copies be/contracts exactly when the back end holds them, and the build context rule refuses either mismatch', (t) => {
+  assert.deepEqual(contractFindings(t, { rendered: true, held: true }), { copies: true, messages: [] });
+  assert.deepEqual(contractFindings(t, { rendered: false, held: false }), { copies: false, messages: [] }, 'a back end that emits no contract gets no COPY of a missing folder');
+  const missing = contractFindings(t, { rendered: true, held: false });
+  assert.equal(missing.messages.length, 1);
+  assert.match(missing.messages[0] ?? '', /copies be\/contracts, which the app does not hold/u);
+  const forgotten = contractFindings(t, { rendered: false, held: true });
+  assert.equal(forgotten.messages.length, 1);
+  assert.match(forgotten.messages[0] ?? '', /does not copy be\/contracts, the contract the front end's codegen reads/u);
+});
+
 for (const edition of ['lite', 'full']) {
   test(`${edition} HFS_DOCKER_BUILD_CONTEXT accepts valid build headers and sources`, (t) => {
     const code = 'HFS_DOCKER_BUILD_CONTEXT';

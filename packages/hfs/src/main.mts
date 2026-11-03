@@ -1,6 +1,6 @@
 // The @starci/hfs implementation behind `starci app`: one repository, `<app>/`, with one package.json, lockfile and node_modules
 // at its root and two sides, be/ and fe/, declared by the one hfs.json of kind app. Every verb runs at the app root.
-//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov>]... [--side be|fe] [--fix] [--out <sonar file>] [--no-cache] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged
+//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--no-cache] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged
 //                                            every tracked path has a slot; required files exist; nothing forbidden or
 //                                            tracked-that-must-be-ignored; pins match; every managed file equals its render
 //                                            (sync/managed.mjs, the .gitignore block and sonar-project.properties included); no empty or ghost
@@ -21,7 +21,7 @@
 //                                            progress goes to stderr (--quiet silences it). STARCI_APP_CHECK_CACHE=verify runs diff then full and fails (exit 2)
 //                                            on any difference; =full never reads the cache (the release gate).
 //                                            --coverage-from <lcov> judges a coverage report produced elsewhere (the merge of a sharded unit run) and records nothing.
-//                                            --side be|fe limits the lint gate to one side (a CI matrix runs one per side). --out <file> writes every finding of the run as ONE
+//                                            --side be|fe|packages limits the lint gate to one side or to the root packages (a CI matrix runs one per scope). --out <file> writes every finding of the run as ONE
 //                                            Sonar Generic Issue Import document (engine ids starci-hfs, eslint, stylelint). --fix runs ESLint and stylelint with --fix before the
 //                                            check and is refused unless --gate lint is selected.
 //                                            --staged: the pre-commit guard alone (sync/hygiene.mjs: staged .starciwork and .starcistacks paths, the secrets
@@ -96,7 +96,7 @@ import { addKind } from '../scaffold/add.mjs';
 import { removeModule } from '../scaffold/add-module.mjs';
 import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { newImages } from '../scaffold/image.mjs';
-import { cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
+import { PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
 import { runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
 import { CACHE_ENV, createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { DEFAULT_FAMILIES, runAppFamilies } from '../cache/run.mjs';
@@ -207,7 +207,7 @@ const PARSED_FLAGS = new Set([...Object.values(PARSED).flatMap(flagsOf), '--edit
 /** The placeholder of a value flag in the usage; any other prints as <name>. */
 const PLACEHOLDERS: Record<string, string> = {
   '--gate': `<${CHECK_GATES.join('|')}>`,
-  '--registry-visibility': 'public|private', '--side': 'be|fe', '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
+  '--registry-visibility': 'public|private', '--side': 'be|fe|packages', '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
   '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
   '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--image': '<service>=<ref>', '--sha': '<sha>',
   '--previous': '<release>', '--release': '<release>', '--out': '<path>', '--since': '<ISO>', '--timeout': '<seconds>', '--retry': '<seconds>',
@@ -492,7 +492,7 @@ interface LinterRaw { eslint: Dynamic[]; stylelint: Dynamic[] }
 async function fixLint({ repoRoot, side, run }: { repoRoot: string; side: string | undefined; run: LinterRunner | undefined }): Promise<void> {
   const app = readRepoDeclaration(loadSlotManifest(), repoRoot);
   await eslintRepository({ repoRoot, app, opts: { ...(side === undefined ? {} : { side }), fix: true }, run });
-  if (side !== 'be') await (run ?? nativeLinter)({ cwd: path.join(repoRoot, 'fe'), pkg: 'stylelint', bin: 'stylelint', args: [STYLE_GLOB, '--formatter', 'json', '--fix'] });
+  if (side === undefined || side === 'fe') await (run ?? nativeLinter)({ cwd: path.join(repoRoot, 'fe'), pkg: 'stylelint', bin: 'stylelint', args: [STYLE_GLOB, '--formatter', 'json', '--fix'] });
 }
 
 /** One run of the selected families against the cache, then the coverage proof on top; returns the result, what it took and the raw linter results. */
@@ -547,7 +547,7 @@ function writeSonarImport({ repoRoot, file, findings, raw, side }: { repoRoot: s
   try { properties = fs.readFileSync(path.join(repoRoot, 'sonar-project.properties'), 'utf8'); } catch { /* no properties: every finding keeps its own path */ }
   const onSide = (candidate: string): boolean => {
     if (side === undefined) return true;
-    const owner = SIDES.find((each: string) => candidate === each || candidate.startsWith(`${each}/`));
+    const owner = [...SIDES, PACKAGES].find((each: string) => candidate === each || candidate.startsWith(`${each}/`));
     return (owner ?? 'be') === side;
   };
   const sourceRoots = sourceRootsOf(properties).filter(onSide);
@@ -590,7 +590,7 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
   const sonarOut = valueFlag(opts, 'out');
   const fix = booleanFlag(opts, 'fix') === true;
   const explicit = selectedFamilies(opts, []);
-  if (side !== undefined && !['be', 'fe'].includes(side)) throw new UsageError('LINT_SIDE_INVALID: --side is be or fe');
+  if (side !== undefined && !['be', 'fe', PACKAGES].includes(side)) throw new UsageError('LINT_SIDE_INVALID: --side is be, fe or packages');
   if (fix && !explicit.has('lint')) throw new UsageError('--fix runs the linters and needs --gate lint');
   if (shard !== undefined) {
     if (side !== undefined || sonarOut !== undefined) throw new UsageError('--shard <i>/<n> takes no --side or --out');

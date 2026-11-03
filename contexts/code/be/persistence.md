@@ -14,13 +14,14 @@ bounded contexts (BE-PERSISTENCE-11).
 Lite: every schema change is one `db/migrations/<stamp>_<name>.sql` (`npm run db:new -- <kebab-name>`), applied after the
 managed `db/bootstrap.sql` by `starci app db migrate --db-url-env <NAME>`; entities only map tables a migration created. Full: `persistence/migrations/<epochMs13>-<name>.ts`
 of the owning capability, with a `down()` that reverses `up()`. Everywhere `synchronize` is the literal `false`, no
-`migrationsRun`, no DDL string outside a migration, no entity or migration glob. Seed data is never a migration.
+`migrationsRun`, no DDL string outside a migration, no entity or migration glob. Seed data is never a migration: it is an entry of
+a seed level of `.starcistacks/` and holds no schema statement ([project/stacks.md](../../project/stacks.md) PROJECT-STACKS-12).
 
 Why: when an ORM diffs the schema at boot, the live schema is whatever the code implies that day and migrations never
 run.
 
 Enforced by: `no-runtime-schema` (R34), `migration-down-reversible` (R74), R213, R257, R332 (lite migration path,
-shape and baseline); lite entities are checked against the migrated schema by `starci app db drift` (BE_ENTITY_SCHEMA_DRIFT, R333).
+shape and baseline), R375 (`HFS_SEED_DDL`: a seed that changes the schema); lite entities are checked against the migrated schema by `starci app db drift` (BE_ENTITY_SCHEMA_DRIFT, R333).
 
 ## BE-PERSISTENCE-2 The cli applies migrations; serving apps never do
 

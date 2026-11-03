@@ -92,16 +92,16 @@ for (const edition of ['lite', 'full']) {
 
   test(`${edition}: HFS_SEED_PII rejects personal email and phone literals and accepts synthetic seed identities`, () => {
     for (const value of ['demo@real.invalid', '+1 (202) 555-0199', '2025550199']) {
-      const list = findings({ 'db/seed.sql': `insert into fixtures values ('${value}');` }, edition);
+      const list = findings({ '.starcistacks/seeds/sql/fixtures.sql': `insert into fixtures values ('${value}');` }, edition);
       has(list, 'HFS_SEED_PII');
       assert.ok(!JSON.stringify(list).includes(value));
     }
-    assert.deepEqual(findings({ 'db/seed.sql': "-- demo@real.invalid\ninsert into fixtures values ('demo@example.test', '2026-10-14', '00000000-0000-0000-0000-000000000001');" }, edition), []);
+    assert.deepEqual(findings({ '.starcistacks/seeds/sql/fixtures.sql': "-- demo@real.invalid\ninsert into fixtures values ('demo@example.test', '2026-10-14', '00000000-0000-0000-0000-000000000001');" }, edition), []);
   });
 
-  test(`${edition}: .starcistacks seed files are scanned for PII`, () => {
-    has(findings({ '.starcistacks/dev/seeds/demo.sql': "insert into fixtures values ('demo@real.invalid');" }, edition), 'HFS_SEED_PII');
-    assert.deepEqual(findings({ '.starcistacks/dev/seeds/demo.sql': "insert into fixtures values ('demo@example.test');" }, edition), []);
+  test(`${edition}: the SQL seeds of every seed level are scanned for PII`, () => {
+    has(findings({ '.starcistacks/dev/seeds/sql/demo.sql': "insert into fixtures values ('demo@real.invalid');" }, edition), 'HFS_SEED_PII');
+    assert.deepEqual(findings({ '.starcistacks/dev/seeds/sql/demo.sql': "insert into fixtures values ('demo@example.test');" }, edition), []);
   });
 
   const destructiveCases = [

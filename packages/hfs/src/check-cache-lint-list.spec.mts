@@ -47,7 +47,7 @@ test('600 long paths are ONE eslint child, and none of them is on its command li
   assert.equal(requests[0]?.kind, 'eslint');
 });
 
-test('the eslint request names the number of files it judges: a list its own length, a whole side the files of its scope', async (context) => {
+test('the eslint request names the number of files its work is made of: the count of the side when the caller names it, else a list its own length', async (context) => {
   const cwd = side(context);
   const counts: (number | undefined)[] = [];
   const execute: HeavyNodeRun = async (request) => {
@@ -56,7 +56,9 @@ test('the eslint request names the number of files it judges: a list its own len
   };
   await runLinter({ cwd, pkg: 'eslint', bin: 'eslint', args: ['--format', 'json'], list: [longPath(1), longPath(2), longPath(3)] }, execute);
   await runLinter({ cwd, pkg: 'eslint', bin: 'eslint', args: ['--format', 'json', '.'], files: 11_126 }, execute);
-  assert.deepEqual(counts, [3, 11_126]);
+  // a diff of 30 files on a side of 11,126 still builds the typed program and the project graph of the whole side
+  await runLinter({ cwd, pkg: 'eslint', bin: 'eslint', args: ['--format', 'json'], list: [longPath(1), longPath(2)], files: 11_126 }, execute);
+  assert.deepEqual(counts, [3, 11_126, 11_126]);
 });
 
 test('an eslint child that was killed reaches no verdict: the failure is surfaced and no result is returned', async (context) => {

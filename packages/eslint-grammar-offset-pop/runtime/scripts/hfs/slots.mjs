@@ -177,6 +177,7 @@ export function resolveRepoDeclaration(manifest, declaration, { file = HFS_DECLA
         // tsconfig.json that type-checks it, both switched on by `browser: true`.
         apps: Object.freeze([]),
         optionalSlots: Object.freeze(declaration.browser === true ? ['app.browser', 'app.browser-config'] : []),
+        modules: declaration.modules === 'data' ? 'data' : 'packages',
         connections: Object.freeze([]),
         providers,
         reads: Object.freeze([]),

@@ -48,8 +48,9 @@ exports included), and CI derives its trusted base itself. `wiring` is the famil
 `--staged` stays the pre-commit guard alone, outside the cache. `--json` stays.
 
 `app check` is the one verb for app quality (owner, 2026-11-03); there is no `lint` verb. Three flags carry what the lint
-verb carried. `--side be|fe` limits the lint gate to one side, which reads and writes that side's records (the CI lint
-matrix runs one side per job: `app check --gate lint --side <side> --out reports/lint.<side>.sonar.json`). `--out <file>`
+verb carried. `--side be|fe|packages` limits the lint gate to one side, which reads and writes that side's records, or to the
+root packages, which have none (the CI lint matrix runs one scope per job: `app check --gate lint --side <side> --out
+reports/lint.<side>.sonar.json`, with `packages` in an app that has root packages). `--out <file>`
 writes the merged Sonar Generic Issue Import document of every finding the run produced (the repository findings of the
 gates it selected as `starci-hfs`, then ESLint and stylelint), and `--fix` runs ESLint and stylelint with `--fix` before
 the check, which then judges the rewritten files like any change; `--fix` is refused unless `--gate lint` is selected.

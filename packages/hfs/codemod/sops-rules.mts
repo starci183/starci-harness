@@ -24,17 +24,23 @@ export function managedPathRegex(from: string): string {
   return /secrets/.test(from) && from.endsWith(LEGACY_END) ? `${from.slice(0, -LEGACY_END.length)}${MODERN_END}` : from;
 }
 
+/** The comment lines a file opens with (its managed header among them), which a rewrite of the YAML body keeps as written. */
+function leadingComments(text: string): string {
+  return text.replace(/^((?:[ \t]*(?:#[^\n]*)?\r?\n)*)[\s\S]*$/, '$1');
+}
+
 /**
  * Migrate a legacy `.sops.yaml` to the form `starci app secret init --env` writes (public recipients only, a rule per member spelling): a rule whose
  * path_regex matches the legacy `.enc` spelling alone also matches `.enc.yaml`, the spelling `secret set` writes, which sops otherwise refuses with
- * no creation rule. Recipients and the other rules are kept; nothing private is read or written.
+ * no creation rule. Recipients, the other rules and the comment header the file opens with (the managed header of `secret init`) are kept; nothing private is read or written.
  */
 export function migrateSopsRules({ root, write = false }: { root: string; write?: boolean }): SopsRulesReport {
   const report: SopsRulesReport = { schema: 'starci/sops-rules-report@1', root, write, file: FILE, changes: [], findings: [] };
   const target = path.join(root, FILE);
   if (!fs.existsSync(target)) return report;
+  const text = fs.readFileSync(target, 'utf8');
   let config: { creation_rules?: Array<{ path_regex?: unknown; [name: string]: unknown }>; [name: string]: unknown } | null;
-  try { config = parseYaml(fs.readFileSync(target, 'utf8')) as typeof config; } catch { config = null; }
+  try { config = parseYaml(text) as typeof config; } catch { config = null; }
   if (config === null || typeof config !== 'object' || !Array.isArray(config.creation_rules)) {
     report.findings.push({ file: FILE, code: 'SOPS_RULES_UNREADABLE', reason: `${FILE} holds no creation_rules list; write it with starci app secret init --env <env>` });
     return report;
@@ -46,7 +52,7 @@ export function migrateSopsRules({ root, write = false }: { root: string; write?
     report.changes.push({ rule: index, from: rule.path_regex, to });
     rule.path_regex = to;
   });
-  if (report.changes.length > 0 && write) fs.writeFileSync(target, stringifyYaml(config));
+  if (report.changes.length > 0 && write) fs.writeFileSync(target, `${leadingComments(text)}${stringifyYaml(config)}`);
   return report;
 }
 
