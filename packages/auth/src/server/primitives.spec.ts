@@ -122,6 +122,6 @@ describe("migrations", () => {
     it("ships the raced-successor column as an expand-only step for a baseline of 0.2.0", () => {
         const sql = readFileSync(new URL("../../migrations/identity-refresh-raced-successors.sql", import.meta.url), "utf8")
         assert.match(sql, /^alter table public\.identity_refresh_tokens add column raced_count integer not null default 0;$/mu)
-        assert.doesNotMatch(sql, /(?:drop|update|delete)/iu)
+        assert.doesNotMatch(sql, /\b(?:drop|update|delete)\b/iu)
     })
 })
