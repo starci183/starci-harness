@@ -35,7 +35,7 @@ const compliant = (edition: string): Workflow => ({
   on: { push: { tags: ['v*'], branches: ['main', 'release/candidate-*'] }, workflow_dispatch: {} },
   jobs: {
     plan: job([checkout, { run: 'echo plan' }]),
-    fast: job([checkout, { run: 'echo fast' }]),
+    fast: job([checkout, { name: 'boot proof', run: 'npx --no-install starci app check --gate wiring', env: HEAP }, { run: 'npm run typecheck', env: HEAP }]),
     lint: job([checkout, baseRef, { run: 'starci app check --gate lint --side ${{ matrix.side }}', env: HEAP }], { strategy: { matrix: { side: ['be', 'fe'] } } }),
     test: job([checkout, { name: 'unit', run: 'npx jest --shard=${{ matrix.shard }}/2', env: { STARCI_COVERAGE_SHARD: '1' } }], { strategy: { matrix: { shard: [1, 2] } } }),
     coverage: job([
@@ -57,6 +57,22 @@ const judge = (doc: Workflow, edition: string) => ciStandardFindings({ doc, file
 for (const edition of ['lite', 'full']) {
   test(`${edition}: a conforming managed ci.yml is clean`, () => {
     assert.deepEqual(judge(compliant(edition), edition), []);
+  });
+
+  test(`${edition}: the fast job of a lite app runs the boot proof before its typecheck; full keeps its e2e proof`, () => {
+    const missing = compliant(edition);
+    missing.jobs.fast = job([checkout, { run: 'npm run typecheck', env: HEAP }]);
+    const late = compliant(edition);
+    late.jobs.fast = job([checkout, { run: 'npm run typecheck', env: HEAP }, { run: 'npx starci app check --gate=wiring', env: HEAP }]);
+    const alone = compliant(edition);
+    alone.jobs.fast = job([checkout, { run: 'npx starci app check --gate wiring', env: HEAP }]);
+    const noFast = compliant(edition);
+    delete noFast.jobs.fast;
+    const expected = edition === 'lite' ? ['boot-proof'] : [];
+    assert.deepEqual(items(judge(missing, edition)), expected);
+    assert.deepEqual(items(judge(late, edition)), expected);
+    assert.deepEqual(items(judge(alone, edition)), []);
+    assert.ok(items(judge(noFast, edition)).filter((item) => item === 'boot-proof').length === expected.length);
   });
 
   test(`${edition}: the deploy jobs call the reusable stack-deploy.yml after the verdict, and the verdict judges every other job`, () => {

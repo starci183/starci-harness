@@ -37,7 +37,7 @@ defaults:
 # The steps that need a raised Node heap on the GitHub runner, matched on their `run` text, and the least heap they must declare in NODE_OPTIONS.
 heap:
   minMiB: 6144
-  steps: ['npm run typecheck', 'npm run lint', 'app check --gate lint', 'app coverage verify', 'npm run db:lint']
+  steps: ['npm run typecheck', 'app check --gate wiring', 'npm run lint', 'app check --gate lint', 'app coverage verify', 'npm run db:lint']
 
 items:
   - id: candidate-trigger
@@ -65,6 +65,11 @@ items:
     requires: "the deploy of an environment with deploy.auto starts only on a release tag run after the verdict, bound to that GitHub Environment (deployment refs restricted to v* tags); its variable STARCI_DEPLOY_PAUSED=true skips the automatic deploy without a code change; a manual dispatch of stack-deploy.yml ignores the brake"
     covers: [app-ci]
     by: [R251 HFS_DEPLOY_WORKFLOW]
+  - id: boot-proof
+    title: a lite app's fast job proves its Nest composition
+    requires: "the fast job of a lite app's CI runs the boot proof (`starci app check --gate wiring`, R272) before its typecheck, so a provider a domain module needs and an app root does not compose fails the run instead of every boot; full keeps its e2e boot proof"
+    covers: [app-ci]
+    check: ci-standard
   - id: full-history-base-ref
     title: full history and the lint base STARCI_BASE_REF
     requires: "every actions/checkout of the managed CI fetches the full history (fetch-depth: 0), and the lint job writes STARCI_BASE_REF to GITHUB_ENV before it lints"

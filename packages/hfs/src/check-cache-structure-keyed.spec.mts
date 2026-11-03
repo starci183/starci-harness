@@ -54,7 +54,7 @@ test('every keyed finder reaches the app only through readText and readJson', (t
       return value;
     },
   };
-  assert.deepEqual([...KEYED_FINDERS].map((finder) => finder.name).sort(), ['databaseConfigFindings', 'docFreshFindings', 'feBuildArgsFindings', 'scriptHygieneFindings']);
+  assert.deepEqual([...KEYED_FINDERS].map((finder) => finder.name).sort(), ['bootLoggerFindings', 'databaseConfigFindings', 'docFreshFindings', 'feBuildArgsFindings', 'scriptHygieneFindings']);
   assert.ok([...KEYED_FINDERS].every((finder) => FINDERS.includes(finder)));
   withRuleMemo(memo, () => checkRepository({ repoRoot: root, harness: { version: '0.0.0' }, machine: () => ({ ok: true, files: 0, kinds: [], violations: [], errors: [] }) }));
   for (const finder of KEYED_FINDERS) assert.ok(seen.has(finder.name), `${finder.name} ran under the memo`);

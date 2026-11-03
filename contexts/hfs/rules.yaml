@@ -1810,7 +1810,7 @@ rules:
       - {kind: hfs, id: release-provenance}
   - id: R272
     code: BE_APP_BOOT_PROOF_MISSING
-    law: Every lite back-end app proves its real AppModule composition by compiling the dependency graph with fixture options and infrastructure doubles.
+    law: Every lite back-end app proves its real AppModule composition by compiling the dependency graph with fixture options and infrastructure doubles, in `app check` and in the fast job of the app's CI (`starci app check --gate wiring`), so a provider a domain module needs and the app root does not compose never passes tsc and the unit suite to fail at boot.
     editions: [lite]
     failureCodes:
       - BE_APP_BOOT_PROOF_MISSING
@@ -2557,6 +2557,13 @@ rules:
       - HFS_SEED_SECRET_REF
     enforcers:
       - {kind: hfs, id: seeds-shape}
+  - id: R376
+    code: HFS_BOOT_LOGGER_SILENCED
+    law: "A back-end app root boots loudly: its `be/apps/<app>/src/main.ts` never hands Nest `logger: false` (NestFactory or nest-commander's CommandFactory), so a provider a module needs and the root does not compose, or any other bootstrap failure, is printed on stderr and exits non-zero instead of ending every boot or CLI command silently; the main passes the app's logger and an error handler that prints and exits non-zero."
+    failureCodes:
+      - HFS_BOOT_LOGGER_SILENCED
+    enforcers:
+      - {kind: hfs, id: boot-logger}
 pending:
   - {gap: slot-rule-unknown, subject: BE_E2E_FLOW, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
   - {gap: slot-rule-unknown, subject: FE_DATA_FRESHNESS, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}

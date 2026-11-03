@@ -4631,7 +4631,7 @@ rules:
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: full}
   - id: R272
     code: "BE_APP_BOOT_PROOF_MISSING"
-    law: "Every lite back-end app proves its real Nest AppModule composition by compiling the dependency graph with explicit fixture options and infrastructure doubles; unresolved providers, circular dependencies and a missing or failed proof are refused. The proof worker runs within its own budget from its spawn and is retried once when it runs out; a second timeout reaches no verdict and is reported as BOOT_PROOF_TIMEOUT, a warning, never as a failed proof. The app check wiring verb uses the same proof. Full retains its existing e2e boot proof."
+    law: "Every lite back-end app proves its real Nest AppModule composition by compiling the dependency graph with explicit fixture options and infrastructure doubles; unresolved providers, circular dependencies and a missing or failed proof are refused. The proof worker runs within its own budget from its spawn and is retried once when it runs out; a second timeout reaches no verdict and is reported as BOOT_PROOF_TIMEOUT, a warning, never as a failed proof. The app check wiring verb uses the same proof, and the fast job of the lite app CI runs it (`starci app check --gate wiring`), so a provider a domain module needs and the app root does not compose never passes tsc and the unit suite to fail at boot. Full retains its existing e2e boot proof."
     kinds: [check]
     gates: ["settle","land","ci"]
     failureCodes: ["BE_APP_BOOT_PROOF_MISSING", "BOOT_PROOF_TIMEOUT"]
@@ -6647,3 +6647,18 @@ rules:
       - {path: contexts/project/stacks.md#project-stacks-12-seed-data-lives-in-the-seed-levels-of-the-stack, editions: [lite, full]}
     proves:
       - {path: packages/hfs/src/hfs-seeds-shape.spec.mjs, editions: [lite, full]}
+  - id: R376
+    code: "HFS_BOOT_LOGGER_SILENCED"
+    law: "A back-end app root boots loudly: its `be/apps/<app>/src/main.ts` never hands Nest `logger: false` (NestFactory or nest-commander's CommandFactory), so a provider a module needs and the root does not compose, or any other bootstrap failure, is printed on stderr and exits non-zero instead of ending every boot or CLI command silently; the main passes the app's logger and an error handler that prints and exits non-zero."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["HFS_BOOT_LOGGER_SILENCED"]
+    enforcers:
+      - {kind: hfs, id: boot-logger, at: scripts/hfs/rules/boot-logger.mjs}
+    editions: [lite, full]
+    proves:
+      - {path: packages/hfs/src/hfs-boot-logger.spec.mjs, editions: [lite, full]}
+    exemplifiedBy:
+      - {path: packages/hfs/templates/be/skeleton/apps/cli/src/main.ts, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/hfs-boot-logger.spec.mjs, editions: [lite, full]}

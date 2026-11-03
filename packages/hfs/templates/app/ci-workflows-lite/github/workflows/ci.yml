@@ -96,6 +96,10 @@ jobs:
         run: {{auditCommand}}
       - name: format
         run: npx --no-install starci app check --gate format
+      - name: boot proof
+        run: npx --no-install starci app check --gate wiring
+        env:
+          NODE_OPTIONS: {{nodeOptions}}
       - name: typecheck
         run: npm run typecheck
         env:
