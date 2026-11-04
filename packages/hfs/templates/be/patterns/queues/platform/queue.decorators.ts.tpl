@@ -2,7 +2,7 @@ import type { EntityManager } from "typeorm"
 import { injector } from "@modules/platform/composition"
 import type { TypedParameterDecorator } from "@modules/platform/composition"
 import type { QueueOptions } from "./queue.options"
-import type { QueueOutbox, QueueWorkerRegistry } from "./queue.port"
+import type { QueueOutbox, QueueRedelivery, QueueWorkerRegistry } from "./queue.port"
 import type { QueueFactory, QueueTransport } from "./queue-transport.port"
 
 /** Token of the options of the queues, exported so a spec can provide it. */
@@ -13,6 +13,9 @@ export const QUEUE_OUTBOX: unique symbol = Symbol("platform.queue.outbox")
 
 /** Token of the registry a processor registers its queue handler with. */
 export const QUEUE_WORKER_REGISTRY: unique symbol = Symbol("platform.queue.worker-registry")
+
+/** Token of the port that hands a parked delivery to its queue again. */
+export const QUEUE_REDELIVERY: unique symbol = Symbol("platform.queue.redelivery")
 
 /** Token of the BullMQ port; it is also the health probe token of the queues. */
 export const QUEUE_TRANSPORT: unique symbol = Symbol("platform.queue.transport")
@@ -32,6 +35,9 @@ export const InjectQueueOutbox = (): TypedParameterDecorator<QueueOutbox> => inj
 /** Injects the worker registry. Parameter type: QueueWorkerRegistry. */
 export const InjectQueueWorkerRegistry = (): TypedParameterDecorator<QueueWorkerRegistry> =>
     injector<QueueWorkerRegistry>(QUEUE_WORKER_REGISTRY)
+
+/** Injects the redelivery port. Parameter type: QueueRedelivery. */
+export const InjectQueueRedelivery = (): TypedParameterDecorator<QueueRedelivery> => injector<QueueRedelivery>(QUEUE_REDELIVERY)
 
 /** Injects the BullMQ port. Parameter type: QueueTransport. */
 export const InjectQueueTransport = (): TypedParameterDecorator<QueueTransport> =>

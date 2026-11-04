@@ -7,15 +7,16 @@ import type { QueueHandler } from "./queue.contracts"
 import { InjectQueueOptions, InjectQueueTransport } from "./queue.decorators"
 import { QueueLogEvent } from "./queue.log-events"
 import type { QueueOptions } from "./queue.options"
-import type { QueueWorkerRegistry } from "./queue.port"
+import type { QueueRedelivery, QueueWorkerRegistry } from "./queue.port"
 import type { QueueTransport } from "./queue-transport.port"
 
 @Injectable()
 /**
- * The consuming side of the queues: the registry the processors fill, and the workers and schedulers started when the app has
- * registered every handler. A scheduler that cannot be registered is logged and does not stop the app: the next boot upserts it again.
+ * The consuming side of the queues: the registry the processors fill, the workers and schedulers started when the app has
+ * registered every handler, and the redelivery of a parked job. A scheduler that cannot be registered is logged and does not stop the
+ * app: the next boot upserts it again.
  */
-export class QueueWorkerService implements QueueWorkerRegistry, OnApplicationBootstrap, OnApplicationShutdown {
+export class QueueWorkerService implements QueueWorkerRegistry, QueueRedelivery, OnApplicationBootstrap, OnApplicationShutdown {
     private readonly handlers = new Map<string, QueueHandler>()
 
     constructor(
@@ -31,6 +32,12 @@ export class QueueWorkerService implements QueueWorkerRegistry, OnApplicationBoo
             queue: handler.queue,
             handle: (delivery) => this.correlation.run(delivery.correlationId, () => handler.handle(delivery)),
         })
+    }
+
+    /** Adds the delivery under its new id and resolves once Redis holds it durably, as the relay does for an outbox row. */
+    async redeliver(queue: string, deliveryId: string, payload: object, correlationId: string): Promise<void> {
+        await this.transport.add(queue, deliveryId, payload, correlationId)
+        await this.transport.persist([{ queue, jobId: deliveryId }])
     }
 
     /** Starts one worker per registered queue, then registers the schedulers of the options. */

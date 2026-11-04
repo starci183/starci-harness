@@ -16,8 +16,8 @@ export class JobEntity {
     jobKey!: string
 
     /** The state of the job: running, failed or done. */
-    @Column({ name: "status", type: "varchar", length: 16 })
-    status!: "running" | "failed" | "done"
+    @Column({ name: "status", type: "varchar", length: 32 })
+    status!: "running" | "failed" | "failed_awaiting_fix" | "done"
 
     /** The last step a worker recorded. */
     @Column({ name: "current_step", type: "varchar", length: 200, nullable: true })
@@ -44,6 +44,26 @@ export class JobEntity {
     error!: string | null
 
     /** When the job was first claimed. */
+    /** The class of the failure that parked the job, or null while it is not parked. */
+    @Column({ name: "failure_class", type: "varchar", length: 16, nullable: true })
+    failureClass!: "transient" | "input" | "code" | "config" | null
+
+    /** The build the job parked under, or null. */
+    @Column({ name: "parked_build", type: "varchar", length: 200, nullable: true })
+    parkedBuild!: string | null
+
+    /** When the job parked, or null. */
+    @Column({ name: "parked_at", type: "timestamptz", nullable: true })
+    parkedAt!: Date | null
+
+    /** When the one alert of this park was raised, or null. */
+    @Column({ name: "alerted_at", type: "timestamptz", nullable: true })
+    alertedAt!: Date | null
+
+    /** How many times the job was resumed. */
+    @Column({ name: "resume_count", type: "integer", default: 0 })
+    resumeCount!: number
+
     @Column({ name: "created_at", type: "timestamptz" })
     createdAt!: Date
 

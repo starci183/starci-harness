@@ -69,6 +69,23 @@ const REGISTRATIONS: Readonly<Record<string, readonly Registration[]>> = Object.
       names: ["sql"],
       beforeSource: "./errors/database.error",
     },
+    {
+      // The worker runs each job under the correlation id its envelope carries, which the outbox and the transport check.
+      file: "be/src/modules/platform/logging/index.ts",
+      source: "./correlation.policy",
+      names: ["isCorrelationId"],
+    },
+    {
+      file: "be/src/modules/platform/logging/index.ts",
+      source: "./correlation.port",
+      names: ["CorrelationRunner"],
+      type: true,
+    },
+    {
+      file: "be/src/modules/platform/logging/index.ts",
+      source: "./logging.decorators",
+      names: ["CORRELATION_RUNNER", "InjectCorrelationRunner"],
+    },
   ],
   // The jobs capability (add job, the fenced-job pattern): its tick takes a transaction-scoped lock before it claims the minute (R335).
   jobs: [
@@ -174,6 +191,12 @@ const REGISTRATIONS: Readonly<Record<string, readonly Registration[]>> = Object.
     },
   ],
   cli: [
+    {
+      file: "be/src/modules/platform/database/index.ts",
+      source: "./primary.connection",
+      names: ["PRIMARY_CONNECTION"],
+      beforeSource: "./primary.decorators",
+    },
     {
       file: "be/src/modules/platform/database/index.ts",
       source: "./migration-runner.service",

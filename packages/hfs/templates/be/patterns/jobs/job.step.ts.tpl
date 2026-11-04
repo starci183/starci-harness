@@ -14,6 +14,8 @@ export class @@Step@@Step implements JobStep {
      */
     async run(job: ClaimedJob): Promise<void> {
         await this.claims.advance({ jobId: job.jobId, expectedFencingToken: job.fencingToken, step: "@@step@@" })
-        // The one delegating call: the module service takes `job.payload` and `this.claims.runKey(job, "@@step@@")` as the idempotency key of the effect.
+        // The one delegating call: the module service takes `job.payload`, `this.claims.runKey(job, "@@step@@")` as the provider's idempotency
+        // key and `this.claims.effectKey(job, "@@step@@")`, which it claims in the inbox (`inbox.claim(JOB_EFFECT_SOURCE, key, tx)`) in the
+        // transaction of its effect, so a resumed job skips an effect it already made.
     }
 }

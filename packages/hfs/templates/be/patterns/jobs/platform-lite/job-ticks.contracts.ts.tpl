@@ -1,3 +1,5 @@
+import { PARKED_JOBS_SWEEP_QUEUE } from "./jobs.contracts"
+
 /** One recurring tick of platform/jobs: at each minute its cron expression names, one job of `queue` is enqueued with `payload` (R335). */
 export interface JobTick {
     /** The stable name: the advisory lock key, the minute claim and the correlation id carry it. */
@@ -12,5 +14,7 @@ export interface JobTick {
     readonly payload: object
 }
 
-/** The ticks of this app, as data: JobTickService registers one cron job per entry. */
-export const JOB_TICKS: ReadonlyArray<JobTick> = []
+/** The ticks of this app, as data: JobTickService registers one cron job per entry. The sweep of parked jobs runs every 15 minutes (BE-RESILIENCE-2). */
+export const JOB_TICKS: ReadonlyArray<JobTick> = [
+    { name: "parked-jobs:sweep", cron: "*/15 * * * *", timeZone: "UTC", queue: PARKED_JOBS_SWEEP_QUEUE, payload: {} },
+]

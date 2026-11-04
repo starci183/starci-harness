@@ -5,17 +5,23 @@ create table public.jobs (
     id uuid primary key default gen_random_uuid(),
     kind varchar(200) not null,
     job_key varchar(200) not null,
-    status varchar(16) not null,
+    status varchar(32) not null,
     current_step varchar(200),
     fencing_token bigint not null,
     claimed_by varchar(200),
     lease_expires_at timestamptz,
     payload jsonb not null,
     error text,
+    failure_class varchar(16),
+    parked_build varchar(200),
+    parked_at timestamptz,
+    alerted_at timestamptz,
+    resume_count integer not null default 0,
     created_at timestamptz not null,
     updated_at timestamptz not null,
     constraint jobs_job_key_key unique (job_key),
-    constraint jobs_status_check check (status in ('running', 'failed', 'done')),
+    constraint jobs_status_check check (status in ('running', 'failed', 'failed_awaiting_fix', 'done')),
+    constraint jobs_failure_class_check check (failure_class in ('transient', 'input', 'code', 'config')),
     constraint jobs_fencing_token_check check (fencing_token >= 1)
 );
 
@@ -54,7 +60,7 @@ as $$
     values (p_kind, p_job_key, 'running', 1, p_worker, p_lease_end, p_payload, p_now, p_now)
     on conflict (job_key) do update
        set fencing_token = j.fencing_token + 1, claimed_by = p_worker, lease_expires_at = p_lease_end, status = 'running', error = null, updated_at = p_now
-     where j.status = 'failed' or (j.status = 'running' and j.lease_expires_at < p_now)
+     where j.status in ('failed', 'failed_awaiting_fix') or (j.status = 'running' and j.lease_expires_at < p_now)
     returning j.id, j.kind, j.fencing_token, j.current_step, j.payload
 $$;
 
@@ -93,6 +99,54 @@ revoke all on function public.job_complete(uuid, bigint, timestamptz) from publi
 grant execute on function public.job_complete(uuid, bigint, timestamptz) to app_be;
 revoke all on function public.job_fail(uuid, bigint, text, timestamptz) from public;
 grant execute on function public.job_fail(uuid, bigint, text, timestamptz) to app_be;
+
+-- Park, resume and list (BE-RESILIENCE-2). A failure a retry cannot fix parks the job as failed_awaiting_fix under the build that
+-- ran it; job_park answers whether its one alert is still due. job_resume marks the parked jobs it selects (one by id, those of an
+-- earlier build, or every one for the sweep, which keeps the alert raised) and answers each with its next resume number, so the
+-- caller hands it back under `<job_key>-r<n>`; the claim takes a failed_awaiting_fix row again like a failed one.
+create function public.job_park(p_id uuid, p_token bigint, p_class varchar, p_reason text, p_build varchar, p_now timestamptz)
+returns table (alert_due boolean)
+language sql
+as $$
+    with before as (select j.alerted_at from public.jobs as j where j.id = p_id),
+    parked as (
+        update public.jobs as j
+           set status = 'failed_awaiting_fix', failure_class = p_class, error = p_reason, parked_build = p_build, parked_at = p_now,
+               alerted_at = coalesce(j.alerted_at, p_now), lease_expires_at = null, updated_at = p_now
+         where j.id = p_id and j.fencing_token = p_token and j.status = 'running'
+        returning j.id
+    )
+    select (select b.alerted_at from before as b) is null from parked
+$$;
+
+create function public.job_resume(p_id uuid, p_build varchar, p_sweep boolean, p_now timestamptz)
+returns table (id uuid, kind varchar, job_key varchar, payload jsonb, resume_count integer)
+language sql
+as $$
+    update public.jobs as j
+       set resume_count = j.resume_count + 1, alerted_at = case when p_sweep then j.alerted_at end, updated_at = p_now
+     where j.status = 'failed_awaiting_fix'
+       and (p_sweep or j.id = p_id or (p_build is not null and j.parked_build is distinct from p_build))
+    returning j.id, j.kind, j.job_key, j.payload, j.resume_count
+$$;
+
+create function public.job_awaiting_fix()
+returns table (id uuid, kind varchar, failure_class varchar, error text, parked_at timestamptz, parked_build varchar, resume_count integer)
+language sql
+stable
+as $$
+    select j.id, j.kind, j.failure_class, coalesce(j.error, ''), j.parked_at, coalesce(j.parked_build, ''), j.resume_count
+      from public.jobs as j
+     where j.status = 'failed_awaiting_fix'
+     order by j.parked_at, j.id
+$$;
+
+revoke all on function public.job_park(uuid, bigint, varchar, text, varchar, timestamptz) from public;
+grant execute on function public.job_park(uuid, bigint, varchar, text, varchar, timestamptz) to app_be;
+revoke all on function public.job_resume(uuid, varchar, boolean, timestamptz) from public;
+grant execute on function public.job_resume(uuid, varchar, boolean, timestamptz) to app_be;
+revoke all on function public.job_awaiting_fix() from public;
+grant execute on function public.job_awaiting_fix() to app_be;
 
 -- The scheduler ticks of platform/jobs (R335): one row per tick holds the last UTC minute it fired. Every replica's
 -- @nestjs/schedule fires the tick; under advisoryXactLock('tick:<name>') job_tick_claim moves the row to the new minute and

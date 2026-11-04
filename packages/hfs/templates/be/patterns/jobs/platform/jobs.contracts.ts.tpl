@@ -1,3 +1,5 @@
+import type { FailureClass } from "@modules/platform/queue"
+
 /** A job a worker claimed: the token it must pass to every write. */
 export interface ClaimedJob {
     /** The originating request id carried explicitly by the durable queue delivery. */
@@ -50,6 +52,101 @@ export interface FailWrite extends GuardedWrite {
     readonly reason: string
 }
 
+/** A guarded write that parks the job as `failed_awaiting_fix` (BE-RESILIENCE-2). */
+export interface ParkWrite extends GuardedWrite {
+    /** The class `classifyFailure` gave the failure. */
+    readonly failureClass: FailureClass
+    /** Why the job failed. */
+    readonly reason: string
+    /** The build the job parked under: a later build resumes it. */
+    readonly build: string
+}
+
+/** What a park answers: whether this park is the first since the job last ran, so its one alert is still due. */
+export interface ParkResult {
+    /** True when no alert was raised for this park yet. */
+    readonly alertDue: boolean
+}
+
+/**
+ * Which parked jobs to resume: one by id (the owner's "resume now"), every one parked under another build than `parkedBefore` (a
+ * deploy), or every parked one (the sweep, which keeps their alert raised so a failure that persists does not alert again).
+ */
+export type ResumeFilter = { readonly jobId: string } | { readonly parkedBefore: string } | { readonly sweep: true }
+
+/** The queue of the scheduled sweep of parked jobs; its tick is in JOB_TICKS (lite) or the app's schedulers (full). */
+export const PARKED_JOBS_SWEEP_QUEUE = "platform.jobs.sweep"
+
+/**
+ * The resume a sweep delivery asks for: the one job its payload names (`{ jobId }`, the owner's "resume now" written to the sweep
+ * queue through the outbox), else every parked job.
+ */
+export const sweepFilter = (payload: object): ResumeFilter => {
+    const jobId: unknown = Reflect.get(payload, "jobId")
+    return typeof jobId === "string" && jobId !== "" ? { jobId } : { sweep: true }
+}
+
+/** A parked job handed back to its queue: the queue and the delivery id it is added under, and what its handler receives. */
+export interface ResumedJob {
+    /** The id of the job row. */
+    readonly jobId: string
+    /** The queue the job runs on. */
+    readonly kind: string
+    /** The delivery id of this resume: `<jobKey>-r<resumeCount>`. */
+    readonly deliveryId: string
+    /** The payload the producer wrote. */
+    readonly payload: object
+    /** The originating request id. */
+    readonly correlationId: string
+}
+
+/** A job parked as `failed_awaiting_fix`: one work item of the owner, resumed by `resume({ jobId })`. */
+export interface ParkedJob {
+    /** The id of the job row. */
+    readonly jobId: string
+    /** The queue the job runs on. */
+    readonly kind: string
+    /** The class of its failure. */
+    readonly failureClass: FailureClass
+    /** Why it failed. */
+    readonly reason: string
+    /** When it parked. */
+    readonly parkedAt: Date
+    /** The build it parked under. */
+    readonly parkedBuild: string
+    /** How many times it was resumed before. */
+    readonly resumeCount: number
+}
+
+/** The one alert of a parked job: the owner's work item, whose action resumes it. */
+export interface ParkedFlowAlert {
+    /** The kind of the work item. */
+    readonly kind: "flow-parked"
+    /** The id of the job row, which `resume({ jobId })` takes. */
+    readonly jobId: string
+    /** The queue the job runs on. */
+    readonly flowKind: string
+    /** The class of its failure. */
+    readonly failureClass: FailureClass
+    /** Why it failed. */
+    readonly reason: string
+    /** The originating request id. */
+    readonly correlationId: string
+    /** The build it parked under. */
+    readonly build: string
+    /** The action the work item offers. */
+    readonly action: "resume"
+}
+
+/** The suffix of the delivery id of a resumed job: `<jobKey>-r<n>`. */
+const RESUMED_DELIVERY = /-r\d+$/u
+
+/** The job key a delivery claims: the delivery id, without the suffix a resume added. */
+export const jobKeyOf = (deliveryId: string): string => deliveryId.replace(RESUMED_DELIVERY, "")
+
+/** The delivery id of the `resumeCount`th resume of a job. */
+export const resumedDeliveryId = (jobKey: string, resumeCount: number): string => `${jobKey}-r${String(resumeCount)}`
+
 /** The idempotency key of an external effect: only `JobClaims.runKey` makes one. */
 export type RunKey = string & {
     /** The brand that keeps a plain string from passing as a run key; it never exists at run time. */
@@ -61,6 +158,25 @@ const RUN_KEY = /^[^:]+:[^:]+:\d+$/u
 
 /** True when the text has the shape of a run key; the one place a string becomes a `RunKey`. */
 export const isRunKey = (text: string): text is RunKey => RUN_KEY.test(text)
+
+/**
+ * The key of one external effect of a job, the same across its claims and its resumes (BE-RESILIENCE-2): only `JobClaims.effectKey`
+ * makes one. The module service claims it in the inbox under `JOB_EFFECT_SOURCE` in the transaction of the effect, so a resumed job
+ * finds it claimed and never repeats the effect.
+ */
+export type EffectKey = string & {
+    /** The brand that keeps a plain string from passing as an effect key; it never exists at run time. */
+    readonly __effectKey: unique symbol
+}
+
+/** The shape of an effect key: `<jobId>:<step>`. */
+const EFFECT_KEY = /^[^:]+:[^:]+$/u
+
+/** True when the text has the shape of an effect key; the one place a string becomes an `EffectKey`. */
+export const isEffectKey = (text: string): text is EffectKey => EFFECT_KEY.test(text)
+
+/** The inbox source an effect key is claimed under: one ledger of the effects every job made. */
+export const JOB_EFFECT_SOURCE = "job-effect"
 
 /** What a claim answers: the claimed job, or null when the job is done or another worker holds a live claim. */
 export type ClaimResult = ClaimedJob | null

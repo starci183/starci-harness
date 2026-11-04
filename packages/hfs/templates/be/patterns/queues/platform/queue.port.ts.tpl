@@ -7,6 +7,12 @@ export interface QueueOutbox {
     write(tx: EntityManager, queue: string, payload: object, correlationId: string): Promise<void>
 }
 
+/** Hands a parked delivery to its queue again under a new delivery id, so its handler runs it once more (BE-RESILIENCE-2 resume). */
+export interface QueueRedelivery {
+    /** Adds the delivery to `queue` with `deliveryId` and resolves once Redis holds it durably; an id BullMQ already holds changes nothing. */
+    redeliver(queue: string, deliveryId: string, payload: object, correlationId: string): Promise<void>
+}
+
 /** Where a processor registers the handler of its queue; the workers start when the app has registered every handler. */
 export interface QueueWorkerRegistry {
     /** Registers the handler under the queue it names; a second handler for the same queue replaces the first. */
