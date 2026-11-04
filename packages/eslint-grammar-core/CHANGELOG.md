@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.29 - 2026-11-04
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.29; requires `@starci/eslint-canon-fe` 9.13.12. The runtime copies carry the R378 and R379 laws and the canon pins of `@starci/hfs` 5.10.0.
+
 ## 0.21.28 - 2026-11-04
 
 - Changed: version stamp only, with `@starci/grammar` 0.21.28; requires `@starci/eslint-canon-fe` 9.13.11. The runtime copy of the canon pins names `@starci/hfs` 5.9.1.

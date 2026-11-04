@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.68 - 2026-11-05
+
+- Added: `policy/loosening.yaml` `branchProfiles` (decision `branch-profile-dev`: branches `[dev]`, gates `[lint, sonar, codecov]`), validated against a live ruling; an app overlay may narrow it, never widen it. The CLI hands it to `@starci/hfs` (`STARCI_PROFILE_BRANCHES`, `STARCI_PROFILE_GATES`), and `starci explain` says how `app check` picks the branch profile.
+
 ## 1.1.0-alpha.67 - 2026-11-04
 
 - Changed: `@starci/hfs` gets the ESLint child's liveness budget (`STARCI_ESLINT_TIMEOUT_MINUTES`, `STARCI_ESLINT_MINUTES_PER_1000_FILES`, from `heavy.timeoutMinutes.eslint` and `heavy.timeoutMinutesPer1000Files.eslint`), so the CI it renders gives the lint job a timeout above that budget.

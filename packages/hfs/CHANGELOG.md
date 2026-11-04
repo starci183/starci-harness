@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.10.0 - 2026-11-04
+
+- Added (release 7c.5, decision branch-profile-dev): branch profiles. An app declares `branches: { <branch>: { gates: { lint|sonar|codecov: blocking|report|off } } }` in `.starcistacks/application-stacks.yaml`; hfs and the safety gates (types, wiring, db, secrets, format, test) stay blocking on every branch, and the default branch can never be declared (R378 `HFS_BRANCH_PROFILE_INVALID`, a hard blocker; a refused profile lowers nothing). The profile follows the branch (`GITHUB_BASE_REF`, so a PR into main runs the full gate, then `GITHUB_HEAD_REF`, `GITHUB_REF`, else git). A `report` gate runs, writes its records and prints its findings, which never reach the verdict; `off` does not run; each lowered gate prints one notice, and `app check --profile` prints the profile.
+- Added: the lint ratchet (R379 `LINT_RATCHET_RAISED`, a hard blocker): where lint reports, a touched file may not gain findings over its base (the merge-base with `STARCI_BASE_REF` or `origin/<branch>`, else `HEAD^`; `app check --ratchet` against HEAD for the pre-commit hook) and a new file must be clean; both versions are linted as texts in one ESLint child per scope.
+- Changed: the managed pre-commit hook runs the staged linters where lint blocks and `app check --ratchet` where it reports; the rendered CI runs on pushes to profile branches, where a reported Sonar analysis or Codecov upload runs but only a full run judges its quality gate; R251 accepts exactly the declared profile branches.
+- Changed: the canon pins name this release.
+
 ## 5.9.1 - 2026-11-04
 
 - Fixed: the rendered CI's lint job outlasts the ESLint child of its largest side: its `timeout-minutes` is the CLI's liveness budget of that child (max(eslint minutes, minutes per 1000 files x the side's tracked script files), handed to sync as `STARCI_ESLINT_TIMEOUT_MINUTES` and `STARCI_ESLINT_MINUTES_PER_1000_FILES` by `starci-harness` 1.1.0-alpha.67) plus `lintOverheadMinutes` (20) of the CI standard, never below the default 30; a declared `ci.jobs.lint.timeoutMinutes` still wins. An 11,346-file back end renders 77 minutes. The warm-cache path is unchanged.
