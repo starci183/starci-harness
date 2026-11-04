@@ -921,15 +921,16 @@ mustKeep:
       owner: STATE-6/case-5
     - id: DNA-COMMON-FIELD-BY-LAYER
       role: [input, select, copy-field]
-      law: A field on the canvas takes the primary treatment and a field inside a surface the secondary one, never by app choice.
+      law: A field on the canvas takes the primary treatment and a field inside a surface the secondary one, never by app choice; a search box is the field tone (secondary) in both places.
       measure:
         kind: attr
         metric: data-grammar-variant
         op: "="
         cases:
-          - { select: ':is([data-component="Input"],[data-component="Select"],[data-component="SearchField"],[data-component="NumberField"],[data-component="Textarea"],[data-component="CopyField"]):not([data-grammar-nesting="surface"] *)', value: primary }
-          - { select: '[data-grammar-nesting="surface"] :is([data-component="Input"],[data-component="Select"],[data-component="SearchField"],[data-component="NumberField"],[data-component="Textarea"],[data-component="CopyField"])', value: secondary }
-      owner: R318/case-1; UI-10
+          - { select: ':is([data-component="Input"],[data-component="Select"],[data-component="NumberField"],[data-component="Textarea"],[data-component="CopyField"]):not([data-grammar-nesting="surface"] *)', value: primary }
+          - { select: '[data-grammar-nesting="surface"] :is([data-component="Input"],[data-component="Select"],[data-component="NumberField"],[data-component="Textarea"],[data-component="CopyField"])', value: secondary }
+          - { select: '[data-component="SearchField"]', value: secondary }
+      owner: R318/case-1; UI-10; U6-5 (a search box is the field tone wherever it stands)
     - id: DNA-COMMON-FIELD-NAME-IS-LABEL
       role: [input, select]
       law: A field's accessible name is its visible label, never its placeholder.

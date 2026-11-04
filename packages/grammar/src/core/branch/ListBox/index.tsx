@@ -172,7 +172,7 @@ export const ListBox = ({
         data-contract="FOCUS-2 STATE-1 PADDING-0"
         data-tier="branch"
         data-loading={String(isLoading)}
-        {...(isLoading ? { render: (domProps: ComponentPropsWithRef<"div">) => <div {...domProps} aria-busy="true">{loadingSkeleton(allItems, size)}</div> } : {})}
+        {...(isLoading ? { render: (domProps: ComponentPropsWithRef<"div">) => <div {...domProps} aria-busy="true" inert tabIndex={-1}>{loadingSkeleton(allItems, size)}</div> } : {})}
         data-grammar-list-inset={resolvedInset}
         {...(inPane && resolvedInset === "panel" ? { style: { paddingInline: 0 } } : {})}
         data-grammar-list-size={size}
