@@ -2054,7 +2054,7 @@ rules:
       - {kind: hfs, id: bypass-guard}
   - id: R304
     code: BE_SCHEMA_PLACE
-    law: Transport doors validate with `class-validator`, other untrusted data is read through zod schemas declared only in `<name>.schema.ts` files of modules, and no schema is shared with the front end.
+    law: Transport doors validate with `class-validator`, other untrusted data is read through zod schemas declared only in `<name>.schema.ts` files of modules or in a root workspace package, whose node, block and vocabulary contracts are zod schemas, and no schema of a module is shared with the front end.
     failureCodes:
       - BE_SCHEMA_PLACE
     enforcers:

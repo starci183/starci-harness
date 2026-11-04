@@ -756,6 +756,11 @@ rulings:
     status: live
     ruling: "An app's packages/ holds its agent SDK, its block libraries and, later, reviewed plugin packages beside the module packages: slot app.packages places any packages/<name>/ (a root workspace package with a package.json and a src/), so each is linted by the root eslint config (--side packages) and measured in the back end's unit run like the SDK."
     owner: "contexts/hfs/slots.yaml (app.packages); packages/hfs/src/architecture-root-packages.spec.mts"
+  - id: package-zod-contracts
+    date: '2026-11-04'
+    status: live
+    ruling: "A root workspace package (tier package: packages/<name>/, the agent SDK, a block library, a module package) is a contract library whose node, block and vocabulary contracts are zod schemas, so schema-place (R304) lets any of its files import zod; a transport door or dto/ folder in it still answers to class-validator, a <name>.schema.ts in it still holds zod only and never shares a file with class-validator or a GraphQL type, and schema-bounded (R305) holds every schema it builds. App modules keep zod in the <name>.schema.ts of a domain, platform or integrations owner."
+    owner: "contexts/hfs/rules.yaml R304; contexts/code/be/typing.md BE-TYPING-8; @starci/eslint-canon-be boundary-schema.ts, src/packages-config.spec.ts"
   - id: customised-service-image
     date: '2026-11-03'
     status: live
