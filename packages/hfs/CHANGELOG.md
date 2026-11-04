@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.8.3 - 2026-11-04
+
+- Fixed: the test family reports a runner that dies (`runnerDeath`: a V8 heap line, or an abort exit, while specs had not reported) as one `JEST_RUNNER_DIED` finding with that line and the count of specs it never reached; those specs are no longer `JEST_SPEC_FAILED`, a spec that reported its failure still is, and the threshold is not judged on the short total. A coverage run's parent heap is the CLI's `heavy.memoryMb.test` (8192 from `starci-harness` 1.1.0-alpha.65).
+- Changed: the canon pins name this release.
+
 ## 5.8.2 - 2026-11-04
 
 - Fixed: the rendered lite sign-in passes the canon it ships with: `identity-email.service.ts` (`ReadonlyArray<MailLanguage>`, an optional chain), its spec (`mock<MailOptions>({ ... })`, no assertion) and `identity-mail.messages.ts` (`ReadonlyArray<string>`). The template canon checks (`scaffold-template-canon-be`, `-fe`) lint with the canon's whole config as the rendered `eslint.config.mjs` builds it, its borrowed typescript-eslint, stylistic and Sonar way rules included, so a managed file and the canon can no longer contradict each other.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.65 - 2026-11-04
+
+- Fixed: a test run's parent gets `heavy.memoryMb.test` 8192 MB of heap (a back-end coverage run holds every spec's coverage and outgrew 4 GB), and admission holds a test run at that same number: `estimateMb.test` equals it, and the loader refuses them apart (`OPS_INVALID`). Its workers are the parent's estimate plus one per `heavy.testWorkerMb` (1536) of further room, from 1 to `heavy.testWorkers`. While nothing runs, a command whose estimate is more than half the host's memory starts once half of it is free, so a small CI runner still runs it.
+
 ## 1.1.0-alpha.63 - 2026-11-04
 
 - Fixed: the heavy governor gives a jest or vitest run `--maxWorkers` from the RAM room its admission measured (free RAM less `heavy.reserveMb` and the running estimates): its own test estimate holds the first worker and every further test estimate of room one more, from 1 up to `heavy.testWorkers` (`testWorkerCount`). It gave 1 whenever fewer commands were admitted than the slot cap, so a 28-core host with 21 GB free ran every unit run on one worker. `pressure` in `host load` now means the host cannot admit the next command.

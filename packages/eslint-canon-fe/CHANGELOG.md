@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.13.9 - 2026-11-04
+
+- Changed: the runtime copy of the canon pins names `@starci/hfs` 5.8.3.
+
 ## 9.13.8 - 2026-11-04
 
 - Changed: the runtime copy of the canon pins names `@starci/hfs` 5.8.2.
