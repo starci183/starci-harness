@@ -16,6 +16,11 @@
 
 - Changed: version stamp only, with the Grammar lint family (their runtime copies moved).
 
+## Unreleased
+
+- Added: `PaneHeader`, the head band of one pane (back control where a phone shows the pane alone, mark, title with status and one muted line, trailing commands), as tall as a touch target; a loading head keeps its box. DNA law `DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT`.
+- Changed: `EmptyNotice` and the failed-read notice read their message as the title and their description as the muted line; the retry is an alternative command, and in a pane the failure draws as a soft danger band (`data-grammar-error-layout="band"`), elsewhere as the centred notice.
+
 ## 0.21.28 - 2026-11-04
 
 - Changed: version stamp only, with the Grammar lint family (their runtime copies moved).

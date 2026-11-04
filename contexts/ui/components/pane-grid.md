@@ -43,7 +43,7 @@ Choice `pane-grid.choose.band`: which `PaneSection` a band of a pane is.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| head | a title or identity row centred in a shared grid row | `PaneSection align="center"` | judgement |
+| head | a title or identity row centred in a shared grid row | `PaneSection align="center"` holding a `PaneHeader` (`back` where a phone shows the pane alone, `headingLevel={1}` on the pane that holds the page's subject) | `DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT` |
 | fixed | a search field, a filter row, a meter, a composer, a hint line | `PaneSection`, one per band; its own children are spaced by `gap` | lint `starci-grammar/no-pane-section-padding` |
 | list | a list or table that takes the rest of the height and scrolls | `PaneSection grow` holding the `ListBox`, or `scroll` when the band is its own scroll owner | lint `starci-fe/no-list-panel-padding` |
 | thread | a log or conversation that scrolls beside a pinned composer | `PaneSection scroll={{ label, role: "log", tone: "background", scrollRef }}` | `OVERFLOW-4`, `OVERFLOW-5` |

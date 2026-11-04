@@ -115,7 +115,7 @@ type BodyCard = Shell & OptionallyNamed & Head & (PlainSurfaceCard | SoftSurface
 
 type FiguresCard = Shell & (Labelled | SelfNamed) & Head & {
     readonly kind: "figures"
-    /** Two to four key figures as touching cells. */
+    /** Two to five key figures as touching cells. */
     readonly items: readonly Figure[]
 }
 

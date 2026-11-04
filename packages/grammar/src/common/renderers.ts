@@ -39,6 +39,7 @@ export { Grid, type GridCardColumns, type GridKind, type GridProps } from "../co
 export { StateMark, type StateMarkProps } from "../core/StateMark.js"
 export { OtpInput, type OtpInputProps } from "../core/branch/OtpInput/index.js"
 export { Freestyle, type FreestyleProps } from "../core/frame/Freestyle/index.js"
+export { PaneHeader, type PaneHeaderProps } from "../core/composite/PaneHeader/index.js"
 export { EmptyNotice, type EmptyNoticeArtwork, type EmptyNoticeProps } from "../core/composite/EmptyNotice/index.js"
 export { MessageBubble, type MessageBubbleProps, type MessageBubbleSide } from "../core/composite/MessageBubble/index.js"
 export { MessageStatus, type MessageStatusProps, type MessageStatusReaders } from "../core/composite/MessageStatus/index.js"

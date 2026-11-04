@@ -66,8 +66,10 @@ export const EmptyNotice = ({
     >
         {artwork === undefined ? null : <Mascot size="md" {...artwork} />}
         {iconSource === undefined ? null : <IconTile source={iconSource} tone="neutral" size="md" />}
-        <Text size="sm" tone="muted">{message}</Text>
-        {description === undefined ? null : <Text size="xs" tone="muted">{description}</Text>}
+        <div className="starci-core-notice-copy" data-contract="GAP-1">
+            <Text size="sm" isStrong>{message}</Text>
+            {description === undefined ? null : <Text size="sm" tone="muted">{description}</Text>}
+        </div>
         {actionLabel === undefined ? null : (
             <Button
                 intent="commit"

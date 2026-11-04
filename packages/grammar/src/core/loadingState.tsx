@@ -1,6 +1,8 @@
 "use client"
 
 import { createContext, useContext, type ReactNode } from "react"
+import { usePaneContext } from "./paneContext.js"
+import { useSurfaceHost } from "./surfaceContext.js"
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid"
 import { Button } from "./leaf/Button/index.js"
 import { IconTile } from "./leaf/IconTile/index.js"
@@ -54,21 +56,32 @@ export const LoadingScope = ({ isLoading, children }: { readonly isLoading: bool
 
 /**
  * A failed read, in the place the data would have been. It is a live `alert` with a warning mark, so it never looks like
- * the empty line. Built from leaves only, so a branch may draw it too.
+ * the empty line: the message is the title (what happened), the description the way out, and the retry the one next step
+ * as an alternative (outlined) command, since a failure is not the page's commit. In a pane's own band it draws as a
+ * soft danger band that spans the band (`data-grammar-error-layout="band"`: mark, copy and retry in one row); inside a
+ * card, a dialog or on the page it is the centred notice (`"notice"`). Built from leaves only, so a branch may draw it too.
  */
-export const ErrorView = ({ error }: { readonly error: ErrorData }) => (
-    <div
-        role="alert"
-        className="starci-core-empty-notice"
-        data-contract="GAP-3 PADDING-4"
-        data-grammar-error="true"
-        data-grammar-empty-mark="glyph"
-    >
-        <IconTile source={ExclamationTriangleIcon} tone="danger" size="md" />
-        <Text size="sm" tone="muted">{error.message}</Text>
-        {error.description === undefined ? null : <Text size="xs" tone="muted">{error.description}</Text>}
-        {error.actionLabel === undefined ? null : (
-            <Button intent="commit" size="sm" {...(error.onAction === undefined ? {} : { onPress: error.onAction })}>{error.actionLabel}</Button>
-        )}
-    </div>
-)
+export const ErrorView = ({ error }: { readonly error: ErrorData }) => {
+    const inPane = usePaneContext() !== undefined
+    const host = useSurfaceHost()
+    const layout = inPane && host !== "card" && host !== "overlay" ? "band" : "notice"
+    return (
+        <div
+            role="alert"
+            className="starci-core-empty-notice"
+            data-contract="GAP-3 PADDING-4"
+            data-grammar-error="true"
+            data-grammar-error-layout={layout}
+            data-grammar-empty-mark="glyph"
+        >
+            <IconTile source={ExclamationTriangleIcon} tone="danger" size="md" />
+            <div className="starci-core-notice-copy" data-contract="GAP-1">
+                <Text size="sm" isStrong>{error.message}</Text>
+                {error.description === undefined ? null : <Text size="sm" tone="muted">{error.description}</Text>}
+            </div>
+            {error.actionLabel === undefined ? null : (
+                <Button intent="alternative" size="sm" {...(error.onAction === undefined ? {} : { onPress: error.onAction })}>{error.actionLabel}</Button>
+            )}
+        </div>
+    )
+}

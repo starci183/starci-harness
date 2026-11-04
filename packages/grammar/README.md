@@ -367,6 +367,21 @@ an item with a submenu).
 requires, restyles what the vendor decides, or replaces a vendor default, unless an owner-pinned override declares it. `ListBox`
 and `Select` are HeroUI's own list-box items (a `Label`, a `Description`, the item indicator at the end of the row).
 
+**PaneHeader** is the head band of one pane, placed in a `PaneSection align="center"`: `title` (`headingLevel` 1 for the pane that
+holds the page's subject, 2 otherwise), `description` (one muted line), `mark`, `status` (one `Badge`), `actions` (icon buttons
+and at most one `Button`) and `back` (`{ label, onPress }`, drawn only below 48rem where a phone shows one pane at a time).
+It is at least as tall as a touch target so the heads of a grid row share a height, truncates a long title, and takes
+`isLoading` (or the band's) to keep its box under a shimmer.
+
+```tsx
+<Pane area="head" surface>
+  <PaneSection align="center">
+    <PaneHeader title="Alex Morgan" headingLevel={1} description="Website chat, 5 min ago" status={<Badge tone="warning">Needs a decision</Badge>}
+      actions={<IconButton intent="neutral" source={EllipsisHorizontalIcon} label="More" />} back={{ label: "Back to the list", onPress: showList }} />
+  </PaneSection>
+</Pane>
+```
+
 **Navigation & Data (16).** Accordion, AvatarGroup, Calendar, DataTable,
 BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
 

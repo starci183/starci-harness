@@ -2603,6 +2603,57 @@
         justify-content: center;
     }
 
+    /*
+     * The head of one pane: [back] [mark] title (status) / description ... actions, in a row as tall as a touch target,
+     * so the heads of a grid row share one height whether or not they hold a command. The title is the one shrinking part.
+     */
+    .starci-core-pane-header {
+        display: flex;
+        min-width: 0;
+        min-height: var(--grammar-touch-size);
+        align-items: center;
+        gap: var(--grammar-row-gap);
+    }
+
+    .starci-core-pane-header-back,
+    .starci-core-pane-header-mark,
+    .starci-core-pane-header-actions {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+    }
+
+    .starci-core-pane-header-actions { gap: var(--grammar-inline-gap); margin-inline-start: auto; }
+
+    .starci-core-pane-header-copy {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .starci-core-pane-header-title-line {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-pane-header-title {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .starci-core-pane-header-status { display: inline-flex; flex: none; }
+
+    /* The way back belongs to a grid that shows one pane at a time; from 48rem the list is beside the pane. */
+    @container starci-core-pane-grid (min-width: 48rem) {
+        .starci-core-pane-header-back { display: none; }
+    }
+
     .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-align="center"]:only-child {
         flex: 1 1 auto;
     }
@@ -2943,6 +2994,35 @@
         gap: var(--grammar-row-gap);
         padding: var(--grammar-inset-open);
         text-align: center;
+    }
+
+    /* The notice's words: the title (what happened or what is missing) over its one muted supporting line. */
+    .starci-core-notice-copy {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        align-items: inherit;
+        gap: var(--grammar-identity-gap);
+    }
+
+    /*
+     * A failed read in a pane's own band: a soft danger band across the band (mark, copy, retry in one row), the title in
+     * the danger pair's foreground, so the failure sits where the data would have been and never reads as the empty notice.
+     */
+    .starci-core-empty-notice[data-grammar-error-layout="band"] {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: var(--grammar-row-gap);
+        padding: var(--grammar-inset-nested);
+        border-radius: var(--grammar-radius-md);
+        background: var(--danger-soft);
+        color: var(--danger-soft-foreground);
+        text-align: start;
+    }
+
+    .starci-core-empty-notice[data-grammar-error-layout="band"] > .starci-core-notice-copy {
+        flex: 1 1 auto;
+        align-items: flex-start;
     }
 
     /* --- Divider --- */

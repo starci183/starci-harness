@@ -381,21 +381,22 @@ roles:
 
   - id: pane-grid
     ui: ui/components/pane-grid.md
-    renderers: [PaneGrid, Pane, PaneSection]
+    renderers: [PaneGrid, Pane, PaneSection, PaneHeader]
     vendorParity: [Drawer]
-    slots: ["Pane children: PaneSection bands (or one nested PaneGrid), placed by area", "collapseLabel, openLabel, closeLabel: the drawer a collapsing pane becomes", "PaneSection children: the band's content, at the pane inset"]
+    slots: ["Pane children: PaneSection bands (or one nested PaneGrid), placed by area", "collapseLabel, openLabel, closeLabel: the drawer a collapsing pane becomes", "PaneSection children: the band's content, at the pane inset", "PaneHeader: title, description, mark, status, actions, back (label, onPress): the head band of one pane"]
     variants:
       surface: [true, false]
       scroll: [true, false]
       collapse: [drawer]
       inset: { values: [content, flush], chosenBy: app from pane-grid.choose.page }
       section: { values: [grow, scroll, align, bleed, gap, as], chosenBy: app from pane-grid.choose.band }
+      headingLevel: { values: [1, 2], chosenBy: app from the fact that the pane holds the page's subject }
       track: [auto, fill, fill-2, fill-3, compact, standard, wide]
       breakpoint: [base, medium, wide]
     sizes: { fills: "its host's block and inline size" }
-    states: [drawer-open]
+    states: [drawer-open, head-loading]
     grammarMayChange: ["nothing: the grid, the dividers, the surface ground, the pane inset and the drawer are Common's"]
-    dna: []
+    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT]
     lint: [starci-grammar/pane-grid-children, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
 
   - id: freestyle
@@ -1032,6 +1033,11 @@ mustKeep:
       law: An empty notice holds at most one action.
       measure: { kind: count, scope: '[data-component="EmptyNotice"]', select: ':is([data-component="Button"],[data-component="TextAction"])', op: "<=", value: 1 }
       owner: contract roles.empty-state
+    - id: DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT
+      role: pane-grid
+      law: A pane header is at least as tall as a touch target (2.75rem, 44px), so the heads of one grid row share a height with or without a command.
+      measure: { kind: box, select: '[data-component="PaneHeader"]', metric: height, op: ">=", value: 44px }
+      owner: contract roles.pane-grid
     - id: DNA-COMMON-AVATAR-GROUP-ONE-SIZE
       role: avatar
       law: Every member of an avatar group has one size.

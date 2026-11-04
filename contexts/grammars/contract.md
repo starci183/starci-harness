@@ -370,6 +370,16 @@ take no class and no style. Inside a pane, a list resolves the panel inset and a
 track padding, so every box starts at the content edge while the text inside a box keeps the vendor's own padding.
 The grid refuses a child that is not a pane, and a pane holds sections or one nested grid.
 
+`PaneHeader` is the head band of one pane, the content of a `PaneSection align="center"`: the back control of a phone
+(drawn only where the grid shows one pane at a time, below 48rem), an identity mark, the title with one status beside
+it and one muted line under it, and the pane's commands at the trailing end. The row is as tall as a touch target, so
+the heads across one grid row share a height whether or not they hold a command; a long title truncates, and a loading
+head lays its slots out unseen under a shimmer so the band keeps its box. It paints no surface or rule.
+
+A region that fails reads its message as the title, the way out as one muted line and the retry as an alternative
+command: in a pane (not in a card or an overlay) as a soft danger band across the region, elsewhere as the centred
+notice. An empty region reads the same way, its message as the title and its description as the muted line.
+
 ### Freestyle
 
 Freestyle is the one sanctioned escape hatch: a div that fills its host, where the app writes its own plain elements and

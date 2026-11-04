@@ -12,7 +12,7 @@ export const figureItems = (items: readonly Figure[], isLoading: boolean): reado
     isLoading && items.length === 0 ? PLACEHOLDER_FIGURES : items
 
 /**
- * The strip a `kind="figures"` holds: two to four key figures as touching cells, divided by lines, never on the
+ * The strip a `kind="figures"` holds: two to five key figures as touching cells, divided by lines, never on the
  * outer edge. It answers its own width, not the viewport's: one row from 40rem, 2 x 2 from 18rem, one column below.
  * A real `<dl>`: the term, then the figure and its unit, then its meta as a second `<dd>` of the same term.
  */
