@@ -168,7 +168,8 @@ function collectCandidates(state: Parsed, sources: Parsed) {
 
 function metadataDeclaration(ts: Ts, node: Parsed, source: Parsed) {
   if (!ts.isVariableDeclaration(node)) return false;
-  if (CATALOG.test(source.fileName)) return true;
+  // A TS catalog's own objects are its declarations; a function of it (the `draw` that renders a copy) reads like any production code.
+  if (CATALOG.test(source.fileName)) return ts.isObjectLiteralExpression(unwrap(ts, node.initializer) ?? node);
   const name = nameText(ts, node.name, { numbers: true }) ?? '';
   return /(?:ERROR_KINDS|ERROR_MESSAGES|ERROR_CODES|errorKinds|errorMessages)$/u.test(name) && ts.isObjectLiteralExpression(unwrap(ts, node.initializer) ?? node);
 }

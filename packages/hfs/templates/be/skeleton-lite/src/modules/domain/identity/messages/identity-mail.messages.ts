@@ -13,7 +13,7 @@ export interface LinkMailInput {
 
 interface LinkCopy {
     readonly subject: string
-    readonly paragraphs: (input: LinkMailInput) => readonly string[]
+    readonly paragraphs: (input: LinkMailInput) => ReadonlyArray<string>
     readonly button: string
     readonly footer: string
 }

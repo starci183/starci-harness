@@ -30,7 +30,7 @@ const NO_SESSION = "00000000-0000-0000-0000-000000000000"
 type Purpose = typeof CONFIRM | typeof RESET
 
 /** The languages the mails are written in. */
-const LANGUAGES: readonly MailLanguage[] = ["vi", "en"]
+const LANGUAGES: ReadonlyArray<MailLanguage> = ["vi", "en"]
 
 @Injectable()
 /**
@@ -83,7 +83,7 @@ export class IdentityEmailService {
         const address = normalizeEmail(email)
         await this.admit("signup", address)
         const user = await accountDoors.userByEmail(this.entityManager, address)
-        if (user === undefined || user.email_confirmed_at !== null || user.encrypted_password === null) return
+        if (user?.email_confirmed_at !== null || user.encrypted_password === null) return
         await this.sendConfirmation(user.id, address, language)
     }
 

@@ -1,5 +1,5 @@
-// scaffold-template-canon-be.spec.mjs - the skeleton's platform capabilities, code and specs, and the lite passport's declared-logic specs,
-// pass the back-end canon they ship with, and so do the entity base of platform/database and the table entity that extends it, which
+// scaffold-template-canon-be.spec.mjs - the skeleton's platform capabilities, code and specs, the lite sign-in (identity and passport), its
+// specs included, pass the back-end canon they ship with, its borrowed typescript-eslint, stylistic and Sonar way rules included (shippedCanon), and so do the entity base of platform/database and the table entity that extends it, which
 // the first `starci app add table` writes in either edition (persistence.md BE-PERSISTENCE-3, ruling entity-base).
 // An app copies a platform capability byte-identical, so a skeleton file the canon refuses is a finding every app inherits
 // and cannot fix. Each edition is scaffolded into a temp folder and every file under its src/modules/platform is linted, typed, with the
@@ -27,17 +27,29 @@ const HFS = path.resolve(import.meta.dirname, '..');
 const KIT = path.resolve(HFS, '..', 'jest-preset');
 const AUTH = path.resolve(HFS, '..', 'auth');
 const MAIL = path.resolve(HFS, '..', 'mail');
+const NEST_KIT = path.resolve(HFS, '..', 'nest-kit');
 /** Where the types a skeleton file imports are installed: this package's dev dependencies and the kit's (jest's globals). */
-const INSTALLS = [path.join(HFS, 'node_modules'), path.join(KIT, 'node_modules'), path.join(AUTH, 'node_modules'), path.join(MAIL, 'node_modules')];
+const INSTALLS = [path.join(HFS, 'node_modules'), path.join(KIT, 'node_modules'), path.join(AUTH, 'node_modules'), path.join(MAIL, 'node_modules'), path.join(NEST_KIT, 'node_modules')];
 
 const lockedOk = (root: string): LockResult => {
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');
   return { ok: true };
 };
 
-/** The canon's flat config with only its own starci-be rules on: the canon-be laws, not the stock rules it composes. */
-const canonRulesOnly = (config: Linter.Config[]): Linter.Config[] => config.map((block) => (block.rules === undefined ? block : {
-  ...block, rules: Object.fromEntries(Object.entries(block.rules).filter(([id]) => id.startsWith('starci-be/'))),
+/**
+ * The typescript-eslint rules whose verdict is the installed type graph: this fixture installs the packages a judged file's types come from
+ * only where a rule needs them (the kit, nest-kit, auth, mail), so a type of @nestjs/cqrs or typeorm reads as unresolved here and these
+ * rules would judge the fixture, not the template. An app installs everything and its own lint runs them.
+ */
+const TYPE_GRAPH_RULES = new Set(['@typescript-eslint/no-unsafe-assignment', '@typescript-eslint/no-unsafe-member-access', '@typescript-eslint/no-unsafe-call', '@typescript-eslint/no-unsafe-return', '@typescript-eslint/no-unsafe-argument']);
+
+/**
+ * The canon's flat config as the rendered be/eslint.config.mjs builds it: the starci-be laws, the borrowed typescript-eslint rules
+ * (array-type, consistent-type-assertions, ...), the stylistic and Sonar way blocks, all of it but TYPE_GRAPH_RULES. A managed file
+ * `app sync` requires byte for byte and the canon it ships with therefore never contradict each other.
+ */
+const shippedCanon = (config: Linter.Config[]): Linter.Config[] => config.map((block) => (block.rules === undefined ? block : {
+  ...block, rules: Object.fromEntries(Object.entries(block.rules).filter(([id]) => !TYPE_GRAPH_RULES.has(id))),
 }));
 
 /** A tsconfig beside the app's that resolves every package from the installs above; the app's own tsconfig stays as rendered. */
@@ -46,7 +58,7 @@ const lintProject = (be: string) => {
   const file = path.join(be, 'tsconfig.canon.json');
   fs.writeFileSync(file, JSON.stringify({ extends: './tsconfig.json', compilerOptions: {
     typeRoots: INSTALLS.map((dir) => path.join(dir, '@types')), types: ['node', 'jest'],
-    paths: { ...paths, '*': INSTALLS.map((dir) => path.join(dir, '*')) },
+    paths: { ...paths, '@starci/nest-kit': [path.join(NEST_KIT, 'dist', 'index.d.ts')], '*': INSTALLS.map((dir) => path.join(dir, '*')) },
   } }));
   return file;
 };
@@ -54,6 +66,11 @@ const lintProject = (be: string) => {
 /** The kit, built, where an app installs it. */
 const installKit = (root: string) => {
   for (const part of ['package.json', 'dist']) fs.cpSync(path.join(KIT, part), path.join(root, 'node_modules', '@starci', 'jest-preset', part), { recursive: true });
+};
+
+/** The module-definition kit, built, where every back end installs it (each `<x>.module-definition.ts` is one call of it). */
+const installNestKit = (root: string) => {
+  for (const part of ['package.json', 'dist']) fs.cpSync(path.join(NEST_KIT, part), path.join(root, 'node_modules', '@starci', 'nest-kit', part), { recursive: true });
 };
 
 /** The sign-in package, built, where a lite app installs it (its dependencies resolve from the package's own installs). */
@@ -99,19 +116,21 @@ for (const edition of ['full', 'lite']) {
     addTable(root);
     gitAdd(installTypeScript(root));
     installKit(root);
+    installNestKit(root);
     if (edition === 'lite') { installAuth(root); installMail(root); }
     const be = path.join(root, 'be');
     const project = lintProject(be);
     // reason: the canon answers typescript-eslint's FlatConfig blocks; they are eslint's flat config, but under exactOptionalPropertyTypes its
     // LanguageOptions lacks the index signature eslint's own type declares, so the one boundary is named here.
-    const config = canonRulesOnly(await starciBeConfig({ hfs: loadHfs(pathToFileURL(path.join(be, 'eslint.config.mjs')).href) }) as Linter.Config[]);
+    const config = shippedCanon(await starciBeConfig({ hfs: loadHfs(pathToFileURL(path.join(be, 'eslint.config.mjs')).href) }) as Linter.Config[]);
     assert.ok(config.some((block) => Object.keys(block.rules ?? {}).includes('starci-be/http-needs-timeout')), 'the canon rules are on');
+    assert.ok(config.some((block) => Object.keys(block.rules ?? {}).includes('@typescript-eslint/array-type')), 'the borrowed rules are on');
     const eslint = new ESLint({ cwd: be, overrideConfigFile: true, errorOnUnmatchedPattern: false, overrideConfig: [
       ...config, { files: ['**/*.ts'], languageOptions: { parserOptions: { projectService: false, project, tsconfigRootDir: be } } },
     ] });
     // lite also lints the specs beside the logic files be.integrations.passport declares (`logic`): unit specs held to the canon form.
     const passportSpecs = edition === 'lite' ? ['kit'].map((part) => `src/modules/integrations/passport/passport.${part}.spec.ts`) : [];
-    const signIn = edition === 'lite' ? ['src/modules/domain/identity/{account-directory,authenticator,identity-email,rate-counter,session-store,sign-in}.service*.ts', 'src/modules/domain/identity/identity-sign-in.log-events.ts', 'src/modules/domain/identity/identity-email.log-events.ts', 'src/modules/domain/identity/persistence/**/*.ts', 'src/modules/integrations/passport/{index,passport.config,passport.decorators,passport.kit,passport.kit.spec,passport.options,passport.registration}.ts', 'src/modules/integrations/passport/errors/*.ts', 'src/tests/fixtures/builders/identity.builder.ts'] : [];
+    const signIn = edition === 'lite' ? ['src/modules/domain/identity/**/*.ts', 'src/modules/integrations/passport/{index,passport.config,passport.decorators,passport.kit,passport.kit.spec,passport.options,passport.module,passport.module-definition}.ts', 'src/modules/integrations/passport/errors/*.ts', 'src/tests/fixtures/builders/identity.builder.ts'] : [];
     const results = await eslint.lintFiles(['src/modules/platform/**/*.ts', TABLE_ENTITY, ...passportSpecs, ...signIn]);
     const linted = results.map((result) => path.relative(be, result.filePath).split(path.sep).join('/'));
     assert.ok(linted.includes('src/modules/platform/http/fetch-http-client.client.ts'), 'the client is linted');

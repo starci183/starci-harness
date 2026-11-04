@@ -29,13 +29,13 @@ const SET_PASSWORD = 'SELECT * FROM "public"."be_auth_set_password"($1, $2, $3, 
 const NEW_ID = "00000000-0000-4000-8000-000000000001"
 const AT = "2026-02-03T04:05:06.000Z"
 const NOW = new Date(AT)
-const SETTINGS = {
+const SETTINGS = mock<MailOptions>({
     webOrigin: "https://app.example.test",
     brandName: "Acme",
     defaultLanguage: "en",
     confirmTtlSeconds: 86_400,
     resetTtlSeconds: 3_600,
-} as unknown as MailOptions
+})
 
 const refusal = (code: string): unknown => expect.objectContaining({ code })
 const tokenRow = (purpose: string): IdentityEmailTokenEntity => ({
@@ -64,7 +64,7 @@ const build = async (entityManager: MockEntityManager) => {
             { provide: IDENTITY_AUTH_PASSWORDS, useValue: passwords },
             { provide: IDENTITY_SIGN_IN_BUDGET, useValue: budget },
             { provide: MAILER, useValue: mailer },
-            { provide: MAIL_SETTINGS, useValue: mock<MailOptions>(SETTINGS) },
+            { provide: MAIL_SETTINGS, useValue: SETTINGS },
             { provide: CLOCK, useValue: new FakeClock(AT) },
             { provide: IDS, useValue: fakeIds() },
             { provide: LOGGER, useValue: logger },

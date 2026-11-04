@@ -656,3 +656,24 @@ test('a recursive function that spreads its own parameter ends the value walk at
     `,
   }, { workbench: { k_0: 'Zero' } }), []);
 });
+
+for (const edition of ['full', 'lite']) {
+  test(`${edition} reads the copy of a TS catalog through the function of the same file that draws it, over a generic copy type too`, t => {
+    const catalog = (generic: boolean, draw: string) => [
+      'interface Input { readonly brand: string }',
+      `interface LinkCopy${generic ? '<I extends Input>' : ''} { readonly subject: string; readonly paragraphs: (input: ${generic ? 'I' : 'Input'}) => ReadonlyArray<string>; readonly footer: string; label: string }`,
+      `const CONFIRM: Record<"vi" | "en", LinkCopy${generic ? '<Input>' : ''}> = {`,
+      '  vi: { subject: "a", paragraphs: ({ brand }) => [brand], footer: "f", label: "l" },',
+      '  en: { subject: "b", paragraphs: ({ brand }) => [brand], footer: "g", label: "m" },',
+      '};',
+      `const draw = ${generic ? '<I extends Input>(copy: LinkCopy<I>, input: I)' : '(copy: LinkCopy, input: Input)'}: string => ${draw};`,
+      'export const confirmMail = (lang: "vi" | "en", input: Input): string => draw(CONFIRM[lang], input);',
+    ].join('\n');
+    const main = 'import { confirmMail } from "./modules/domain/identity/messages/identity-mail.messages";\nexport const run = (): string => confirmMail("en", { brand: "x" });\n';
+    for (const generic of [false, true]) {
+      const sources = (draw: string) => ({ 'be/src/modules/domain/identity/messages/identity-mail.messages.ts': catalog(generic, draw), 'be/src/main.ts': main });
+      assert.deepEqual(findings(t, edition, sources('copy.subject + copy.paragraphs(input).join("") + copy.footer + copy.label'), {}), [], 'the draw function of the catalog file reads every field');
+      assert.deepEqual(findings(t, edition, sources('copy.subject + copy.paragraphs(input).join("")'), {}), ['footer', 'label'], 'a field no code reads stays unused');
+    }
+  });
+}

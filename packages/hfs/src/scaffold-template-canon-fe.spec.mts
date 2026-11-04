@@ -1,7 +1,8 @@
 // scaffold-template-canon-fe.spec.mjs - every front-end file `starci app scaffold` writes passes the universal front-end canon.
 // The fe skeleton is not sync-managed, so a new app keeps whatever the templates render: a template the canon refuses is a
 // defect every new app inherits. Each edition is scaffolded into a temp folder and its fe sources are linted, typed, with the
-// starci-fe rules of @starci/eslint-canon-fe (the sibling package's source, the factory the rendered fe/eslint.config.mjs calls).
+// config of @starci/eslint-canon-fe as the rendered fe/eslint.config.mjs builds it (shippedCanon) (the sibling package's source): its starci-fe laws and
+// the stock rules it composes alike, so a template and the canon it ships with never contradict each other.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -22,9 +23,15 @@ const lockedOk = (root: string): LockResult => {
   return { ok: true };
 };
 
-/** The canon's flat config with only its own starci-fe rules on: the canon-fe laws, not the stock rules it composes. */
-const canonRulesOnly = (config: Linter.Config[]): Linter.Config[] => config.map((block) => (block.rules === undefined ? block : {
-  ...block, rules: Object.fromEntries(Object.entries(block.rules).filter(([id]) => id.startsWith('starci-fe/'))),
+/**
+ * The typescript-eslint rules whose verdict is the installed type graph: this fixture installs no React, Next or Grammar, so their types
+ * read as unresolved here and these rules would judge the fixture, not the template. An app installs everything and its own lint runs them.
+ */
+const TYPE_GRAPH_RULES = new Set(['@typescript-eslint/no-unsafe-assignment', '@typescript-eslint/no-unsafe-member-access', '@typescript-eslint/no-unsafe-call', '@typescript-eslint/no-unsafe-return', '@typescript-eslint/no-unsafe-argument']);
+
+/** The canon's flat config as the rendered fe/eslint.config.mjs builds it, all of it but TYPE_GRAPH_RULES. */
+const shippedCanon = (config: Linter.Config[]): Linter.Config[] => config.map((block) => (block.rules === undefined ? block : {
+  ...block, rules: Object.fromEntries(Object.entries(block.rules).filter(([id]) => !TYPE_GRAPH_RULES.has(id))),
 }));
 
 for (const edition of ['full', 'lite']) {
@@ -33,8 +40,9 @@ for (const edition of ['full', 'lite']) {
       presets: bundledPresets(), lock: lockedOk, initGit: init });
     gitAdd(installTypeScript(root));
     const fe = path.join(root, 'fe');
-    const config = canonRulesOnly(starciFeConfig({ hfs: loadHfs(pathToFileURL(path.join(fe, 'eslint.config.mjs'))) }));
+    const config = shippedCanon(starciFeConfig({ hfs: loadHfs(pathToFileURL(path.join(fe, 'eslint.config.mjs'))) }));
     assert.ok(config.some((block) => Object.keys(block.rules ?? {}).includes('starci-fe/base-props-atom')), 'the canon rules are on');
+    assert.ok(config.some((block) => Object.keys(block.rules ?? {}).some((id) => id.startsWith('@typescript-eslint/'))), 'the borrowed rules are on');
     const eslint = new ESLint({ cwd: fe, overrideConfigFile: true, overrideConfig: config, errorOnUnmatchedPattern: false });
     const results = await eslint.lintFiles(['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}']);
     assert.ok(results.some((result) => result.filePath.endsWith(path.join('blocks', 'SignInForm', 'component.tsx'))), 'the skeleton blocks are linted');
