@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.10.2 - 2026-11-05
+
+- Changed (release 7c.5.1, BE-RESILIENCE-2): R377 `BE_FLOW_FAILURE_SWALLOWED` accepts BullMQ `removeOnFail` as a bounded retention of the broker copy, an object literal naming `age` or `count` (`removeOnFail: { age: KEEP_FAILED_SECONDS }`), and as `false` or a type member that only declares the option (`readonly removeOnFail: Retention`, `removeOnFail?: ...`): the runner parks the failure durably (`failed_awaiting_fix` in PostgreSQL), so the broker copy is a cache and a bounded one keeps Redis bounded under `noeviction`. `true`, a bare count, an unreadable value and an assignment stay refused. Spec: `hfs-flow-failure.spec.mts`.
+- Changed: the canon pins name this release.
+
 ## 5.10.1 - 2026-11-05
 
 - Fixed (release 7c.5.1): the managed CI builds an app's root workspace packages (the agent SDK, the module packages and every other `packages/*` workspace) before every step that reads their types or compiles code importing them, with the app's managed `build:modules` script (`npm run build:modules --silent`): the fast job before its boot proof (`app check --gate wiring` ran ahead of the typecheck that alone built them: `BE_APP_BOOT_PROOF_MISSING` and `HFS_CHECK_CACHE_FORGED`), every side of the lint matrix in "build the lint inputs" (an unbuilt package read as `any`: `no-unsafe-*` and `HFS_CHECK_CACHE_FORGED`), each build of a multi-front-end app, the Sonar job before its scan, the nightly `cache-verify.yml` and the full edition's `e2e.yml`. An app without root packages renders exactly as before.

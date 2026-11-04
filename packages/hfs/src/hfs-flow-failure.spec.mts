@@ -91,3 +91,27 @@ test(`${BE_FLOW_FAILURE_SWALLOWED}: only an app's root scope is judged, within s
 test(`${BE_FLOW_FAILURE_SWALLOWED} is one of the codes the app check reports`, () => {
   assert.ok(ALL_CHECK_CODES.includes(BE_FLOW_FAILURE_SWALLOWED));
 });
+
+for (const edition of ['lite', 'full']) {
+  test(`${BE_FLOW_FAILURE_SWALLOWED}: ${edition} accepts a bounded retention of the broker copy and a declared option, and refuses every removeOnFail that deletes (BE-RESILIENCE-2)`, (t) => {
+    const source = (option: string) => `await queue.add(name, data, { jobId, attempts: 5, removeOnComplete: { age: 3600 }, ${option} })\n`;
+    const accepted: Record<string, string> = {
+      // The durable failure is the parked row (JobClaims.park, failed_awaiting_fix in PostgreSQL); the broker copy expires, so Redis stays bounded under noeviction.
+      'be/src/modules/platform/queue/age.client.ts': source('removeOnFail: { age: KEEP_FAILED_SECONDS }'),
+      'be/src/modules/platform/queue/count.client.ts': source('removeOnFail: { count: 1000, age: 86400 }'),
+      'be/src/modules/platform/queue/kept.client.ts': source('removeOnFail: false'),
+      'be/src/modules/platform/queue/queue-transport.port.ts': 'export interface Opts {\n    /** Failed broker copies expire; PostgreSQL retains the durable failure. */\n    readonly removeOnFail: BullmqRetention\n    removeOnComplete?: BullmqRetention\n}\nexport type Loose = { removeOnFail?: BullmqRetention }\n',
+    };
+    assert.deepEqual(codesOf(fixture(t, accepted, edition)), []);
+    const refused: Record<string, string> = {
+      'be/src/modules/platform/queue/true.client.ts': source('removeOnFail: true'),
+      'be/src/modules/platform/queue/number.client.ts': source('removeOnFail: 100'),
+      'be/src/modules/platform/queue/value.client.ts': source('removeOnFail: retention'),
+      'be/src/modules/platform/queue/other-key.client.ts': source('removeOnFail: { keep: 1 }'),
+      'be/src/modules/platform/queue/assign.client.ts': 'opts.removeOnFail = true\n',
+    };
+    assert.deepEqual(codesOf(fixture(t, refused, edition)).sort(), Object.keys(refused).map((file) => `${BE_FLOW_FAILURE_SWALLOWED} ${file}`).sort());
+    const message = flowFailureFindings(fixture(t, { 'be/src/q.client.ts': source('removeOnFail: true') }, edition))[0]?.message ?? '';
+    assert.match(message, /removeOnFail: \{ age: <seconds> \}\) \(R377, BE-RESILIENCE-2\)$/u);
+  });
+}

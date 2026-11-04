@@ -2568,7 +2568,7 @@ rules:
       - {kind: hfs, id: boot-logger}
   - id: R377
     code: BE_FLOW_FAILURE_SWALLOWED
-    law: "Every job and saga flow runs itself again after a failure of any kind: a processor, a job step, a saga step or compensation and a message consumer never catch a failure without rethrowing or parking it, and no back-end source sets BullMQ's `removeOnFail`; the runner classifies the failure (`classifyFailure`), retries a transient one and parks any other as `failed_awaiting_fix` with one alert until a resume, so no flow ends as a silent dead letter."
+    law: "Every job and saga flow runs itself again after a failure of any kind: a processor, a job step, a saga step or compensation and a message consumer never catch a failure without rethrowing or parking it, and no back-end source sets BullMQ's `removeOnFail` to delete failed jobs (`true`, a bare count, an unreadable value), while a bounded retention of the broker copy (an object literal naming `age` or `count`), `false` and a type member that only declares the option are accepted, the parked row being the durable failure; the runner classifies the failure (`classifyFailure`), retries a transient one and parks any other as `failed_awaiting_fix` with one alert until a resume, so no flow ends as a silent dead letter."
     failureCodes:
       - BE_FLOW_FAILURE_SWALLOWED
     enforcers:

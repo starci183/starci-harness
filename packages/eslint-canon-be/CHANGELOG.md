@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.17.2 - 2026-11-05
+
+- Changed: the runtime copy of R377 (`BE_FLOW_FAILURE_SWALLOWED`) accepts a bounded `removeOnFail`; the runtime copy of the canon pins names `@starci/hfs` 5.10.2 and the Grammar family 0.21.32.
+
 ## 3.17.1 - 2026-11-05
 
 - Changed: the runtime copy of the canon pins names `@starci/hfs` 5.10.1 and the Grammar family 0.21.31, and the runtime copy of R378 (`HFS_BRANCH_PROFILE_INVALID`) allows a branch pattern that never matches the default branch.
