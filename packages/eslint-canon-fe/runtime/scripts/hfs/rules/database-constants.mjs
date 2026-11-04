@@ -11,6 +11,8 @@ export const DB_ARCHIVE_MUTATED = 'DB_ARCHIVE_MUTATED';
 export const DB_PGMQ_DECLARED = 'DB_PGMQ_DECLARED';
 export const DB_EXTENSION_ALLOWED = 'DB_EXTENSION_ALLOWED';
 export const DB_MIGRATION_DESTRUCTIVE = 'DB_MIGRATION_DESTRUCTIVE';
+/** An owner ruling (hfs.json db.destructiveRulings) whose destroyed object is still referenced, or that names an object or migration it cannot prove. */
+export const DB_DESTRUCTIVE_RULING_UNPROVEN = 'DB_DESTRUCTIVE_RULING_UNPROVEN';
 export const HFS_SEED_PII = 'HFS_SEED_PII';
 export const DB_VAULT_WRITE = 'DB_VAULT_WRITE';
 

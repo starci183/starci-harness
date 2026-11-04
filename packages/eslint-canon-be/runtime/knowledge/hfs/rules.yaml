@@ -4340,13 +4340,14 @@ rules:
     editionWhy: "owner:lite-backing-services makes the db service lite's database; database configuration, extension, migration and seed requirements apply to that backing."
     docs: [docs/microservices.md#r259]
     templateNa: "Extension use, contract migrations, vault operations and seed literals are product-authored db content, rather than a scaffolded SQL surface."
-    law: "DB_CONFIG_EXT: extensions belong to the database allowlist, vault writes and migration role passwords are refused, and seed data holds no real email or phone. Destructive DDL belongs only to *_contract_* migrations whose targets are no longer referenced by back-end SQL or entities, and a contract migration that is new since the previous release tag (the newest v* tag HEAD contains) never destroys an object that the back-end sources of that tag still reference: the deploy applies it right after the accept, while that release is the rollback target, so the code change goes in one release and its contract migration in the next. Seeds contain no real email or phone literals."
+    law: "DB_CONFIG_EXT: extensions belong to the database allowlist, vault writes and migration role passwords are refused, and seed data holds no real email or phone. Destructive DDL belongs only to *_contract_* migrations whose targets are no longer referenced by back-end SQL or entities, and a contract migration that is new since the previous release tag (the newest v* tag HEAD contains) never destroys an object that the back-end sources of that tag still reference: the deploy applies it right after the accept, while that release is the rollback target, so the code change goes in one release and its contract migration in the next. A migration already on the base unchanged is immutable (R213), so its destructive and dynamic DDL is reported as a known item, not a blocker; an owner ruling in hfs.json `db.destructiveRulings` (the exact migration, the exact objects, a reason and the date) accepts those objects outside a contract migration only while the same proof finds them unreferenced, else DB_DESTRUCTIVE_RULING_UNPROVEN. Seeds contain no real email or phone literals."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["DB_EXTENSION_ALLOWED", "DB_MIGRATION_DESTRUCTIVE", "HFS_SEED_PII", "DB_VAULT_WRITE"]
+    failureCodes: ["DB_EXTENSION_ALLOWED", "DB_MIGRATION_DESTRUCTIVE", "DB_DESTRUCTIVE_RULING_UNPROVEN", "HFS_SEED_PII", "DB_VAULT_WRITE"]
     enforcers:
       - {kind: hfs, id: db-config-ext, at: scripts/hfs/rules/database-config.mjs}
       - {kind: hfs, id: db-migration-destructive, at: scripts/hfs/rules/database-migrations.mjs}
+      - {kind: hfs, id: db-migration-landed, at: scripts/hfs/rules/database-landed.mjs}
     proves:
       - {path: packages/hfs/src/hfs-database-config.spec.mjs, editions: [lite], codes: [DB_EXTENSION_ALLOWED, DB_MIGRATION_DESTRUCTIVE, HFS_SEED_PII, DB_VAULT_WRITE]}
     exemplifiedBy:
