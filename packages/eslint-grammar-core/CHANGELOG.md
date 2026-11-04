@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.31 - 2026-11-05
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.31; requires `@starci/eslint-canon-fe` 9.13.13. The runtime copy of R378 (`HFS_BRANCH_PROFILE_INVALID`) allows a branch pattern that never matches the default branch, and the runtime copy of the canon pins names the Grammar family 0.21.31.
+
 ## 0.21.30 - 2026-11-05
 
 - Changed: version stamp only, with `@starci/grammar` 0.21.30; requires `@starci/eslint-canon-fe` 9.13.13. The runtime copy of the canon pins names `@starci/hfs` 5.10.1.

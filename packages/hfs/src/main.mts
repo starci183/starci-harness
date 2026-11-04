@@ -94,7 +94,7 @@ import { dbBaselineMain } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { dbRestampMain } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
 import { formatCoverageReport } from '../runtime/scripts/hfs/coverage-from.mjs';
 import { gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
-import { activeProfile, familyModes, profileNotices, type ActiveProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
+import { activeProfile, familyModes, profileLabel, profileNotices, type ActiveProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
 import { PROFILE_GATES } from '../runtime/scripts/lib/stack-declaration.mjs';
 import { HFS_DECLARATION_FILE, HfsSlotsError, SIDES, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { main as syncMain } from '../sync/cli.mjs';
@@ -551,7 +551,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   const ratchetErrors: string[] = [];
   if (selected.has('lint') && modes.lint === 'report' && profile.profile !== null) {
     const { base } = ratchetBase(repoRoot, io.env, profile.branch);
-    const ratchet = await ratchetFindings({ repoRoot, touched: rangeTouched(repoRoot, base), side, branch: profile.profile, run: runLinter });
+    const ratchet = await ratchetFindings({ repoRoot, touched: rangeTouched(repoRoot, base), side, branch: profile.branch ?? profile.profile, run: runLinter });
     extra.push(...withWhy(ratchet.findings, readWhy(skillRoot, ratchet.findings.length > 0 ? ['LINT_RATCHET_RAISED'] : [])));
     ratchetErrors.push(...ratchet.errors);
   }
@@ -628,7 +628,7 @@ function printProfile(opts: Opts, io: AppIo): number {
   if (opts.json === true) io.stdout(`${JSON.stringify(one === undefined ? profile : { gate: one, mode: profile.modes[one], branch: profile.branch, profile: profile.profile }, null, 2)}\n`);
   else if (one !== undefined) io.stdout(`${profile.modes[one]}\n`);
   else {
-    io.stdout(`branch ${profile.branch ?? '(none)'} (${profile.source}): ${profile.profile === null ? 'no branch profile, the full gate' : `branch profile ${profile.profile}`}\n`);
+    io.stdout(`branch ${profile.branch ?? '(none)'} (${profile.source}): ${profile.profile === null ? 'no branch profile, the full gate' : profileLabel(profile)}\n`);
     for (const gate of PROFILE_GATES) io.stdout(`  ${gate} ${profile.modes[gate]}\n`);
   }
   return 0;
@@ -641,10 +641,10 @@ async function stagedRatchet(io: AppIo): Promise<number> {
     io.stdout(`lint is ${profile.modes.lint} on ${profile.branch === null ? 'this checkout' : `branch ${profile.branch}`}: the lint ratchet applies only where a branch profile reports lint\n`);
     return 0;
   }
-  const ratchet = await ratchetFindings({ repoRoot: io.cwd, touched: stagedTouched(io.cwd), branch: profile.profile, run: io.runLinter });
+  const ratchet = await ratchetFindings({ repoRoot: io.cwd, touched: stagedTouched(io.cwd), branch: profile.branch ?? profile.profile, run: io.runLinter });
   for (const error of ratchet.errors) io.stdout(`lint ratchet tool error: ${error}\n`);
   for (const finding of ratchet.findings) io.stdout(`[ERROR] LINT_RATCHET_RAISED ${finding.message}\n`);
-  io.stdout(`lint ratchet on branch ${profile.profile}: ${String(ratchet.compared)} staged file(s) compared with HEAD, ${String(ratchet.findings.length)} raised\n`);
+  io.stdout(`lint ratchet on branch ${profile.branch ?? profile.profile} (${profileLabel(profile)}): ${String(ratchet.compared)} staged file(s) compared with HEAD, ${String(ratchet.findings.length)} raised\n`);
   return ratchet.errors.length > 0 ? 2 : ratchet.findings.length > 0 ? 1 : 0;
 }
 

@@ -790,7 +790,7 @@ rulings:
   - id: branch-profile-dev
     date: '2026-11-04'
     status: live
-    ruling: "An app's flow-F product branch is dev, and an app may give it a branch profile: per gate blocking, report (runs, prints and records, never counts) or off. Only the polish gates lint, sonar and codecov may be lowered; hfs and the safety gates types, wiring, db, secrets, format and test block on dev; main is never declared or lowered and a pull request into main or a promotion of dev to main runs the full gate. Where lint reports, a commit never adds lint findings to a file it touches (the lint ratchet, blocking); the findings a file already carries stay report-only."
+    ruling: "An app's flow-F product branch is dev, and an app may give it, and the ui/* feature branches that merge into it (a branch pattern, amended 2026-11-05 as the coordinator relayed: product and UI work on dev goes without blocking lint or Sonar), a branch profile: per gate blocking, report (runs, prints and records, never counts) or off. Only the polish gates lint, sonar and codecov may be lowered; hfs and the safety gates types, wiring, db, secrets, format and test block on dev; main is never declared or lowered, by a name or by a pattern that matches it, and a pull request into main or a promotion of dev to main runs the full gate. Where lint reports, a commit never adds lint findings to a file it touches (the lint ratchet, blocking); the findings a file already carries stay report-only."
     owner: "contexts/project/lint.md PROJECT-LINT-2; hfs/rules.yaml R378, R379; policy/loosening.yaml branchProfiles"
   - id: cli-proven-by-bench
     date: '2026-10-29'

@@ -3,7 +3,7 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { refusal } from '../stack/errors.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { ENTITY_LIST } from '../db/entity-list.mjs';
-import { readBranchProfiles, type BranchProfiles } from '../runtime/scripts/lib/stack-declaration.mjs';
+import { isBranchPattern, readBranchProfiles, type BranchProfiles } from '../runtime/scripts/lib/stack-declaration.mjs';
 
 // reason: the stack declaration and its quality services are YAML parsed from disk; each field is read where the CI text needs it
 type Declaration = any;
@@ -26,14 +26,18 @@ const reportRun = (gate: 'sonar' | 'codecov'): string => `needs.plan.outputs.${g
 const runsOn = (gate: 'sonar' | 'codecov'): string => `\${{ !cancelled() && (${FULL_RUN} || ${reportRun(gate)}) }}`;
 const JUDGES = `\${{ !cancelled() && ${FULL_RUN} }}`;
 
+/** A declaration key as a bash case pattern: a name quoted whole, a pattern with each literal part quoted and `*` left bare. */
+const casePattern = (branch: string): string => branch.split('*').map((part) => (part === '' ? '' : JSON.stringify(part))).join('*');
+
 /** The modes the plan of a push to each profile branch sets: the branch profiles of the declaration whose sound entries lower sonar or codecov, or name a branch at all. */
 function planBranchProfiles(profiles: BranchProfiles): string {
-  const branches = Object.entries(profiles.profiles);
+  // A branch's own entry comes before the patterns, as profileFor picks it; a pattern is a bash case glob with its literal parts quoted (`"ui/"*`).
+  const branches = Object.entries(profiles.profiles).sort(([a], [b]) => Number(isBranchPattern(a)) - Number(isBranchPattern(b)));
   if (branches.length === 0) return '';
   const cases = branches.map(([branch, gates]) => {
     const lowered = (['sonar', 'codecov'] as const).map((gate) => `${gate}=${gates[gate] ?? 'blocking'}`).join(' ');
     const named = Object.entries(gates).filter(([, mode]) => mode !== 'blocking').map(([gate, mode]) => `${gate} ${String(mode)}`).join(', ') || 'every gate blocking';
-    return `              ${JSON.stringify(branch)}) ${lowered} note="branch profile ${branch}: checks only; ${named} (.starcistacks/application-stacks.yaml branches)" ;;`;
+    return `              ${casePattern(branch)}) ${lowered} note="branch profile ${branch}: checks only; ${named} (.starcistacks/application-stacks.yaml branches)" ;;`;
   });
   return ['', '          if [[ "$EVENT" == push && "$REF_TYPE" == branch ]]; then', '            case "$GITHUB_REF_NAME" in', ...cases, '            esac', '          fi'].join('\n');
 }

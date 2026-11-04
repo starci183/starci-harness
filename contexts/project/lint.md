@@ -101,17 +101,24 @@ but its findings never count toward the verdict) or `off` (not run). A gate the 
 ```yaml
 branches:
   dev: { gates: { lint: report, sonar: report } }
+  "ui/*": { gates: { lint: report, sonar: report } }
 ```
+
+A key is a branch name or a **branch pattern** that covers the feature branches merging into `dev` (`ui/*` covers `ui/3`): a
+literal first segment, then `/` and segments in which `*` stands for any characters but `/`, as in a GitHub push filter. A
+pattern never starts with `release/` (the release candidates run the release's checks), and one that matches the default
+branch is refused like naming it. A branch takes its own entry, else every pattern that matches it, merged gate by gate to
+the stricter mode. The branch name alone decides, so a hook and CI agree; an upstream or a merge target never does.
 
 - **What may be lowered.** Only the polish gates `lint`, `sonar` and `codecov`, on a branch `branchProfiles` of
   [policy/loosening.yaml](../../policy/loosening.yaml) allows. `hfs` and the safety gates `types`, `wiring`, `db`, `secrets`,
   `format` and `test` block on every branch, and the default branch (`main`, `master` or `ci.github.defaultBranch`) is never
-  declared: it always runs the full gate. A declaration that breaks either is `HFS_BRANCH_PROFILE_INVALID` (R378), a hard
+  declared, by its name or by a pattern that matches it: it always runs the full gate. A declaration that breaks either is `HFS_BRANCH_PROFILE_INVALID` (R378), a hard
   blocker, and lowers nothing.
 - **Which profile a run is under.** The branch the run judges chooses it, automatically: in CI a pull request into the default
   branch (`GITHUB_BASE_REF`) runs the full gate, any other pull request is judged as its source branch (`GITHUB_HEAD_REF`) and
-  a push as its branch (`GITHUB_REF`); elsewhere the checked-out branch. `starci app check --profile` prints it, with one
-  `--gate` only that gate's mode (`packages/hfs/runtime/scripts/hfs/branch-profile.mjs`). `starci app check`, the managed
+  a push as its branch (`GITHUB_REF`); elsewhere the checked-out branch. `starci app check --profile` prints it (`branch profile dev`, or
+  `branch profile ui/* (a pattern covering ui/3)`), with one `--gate` only that gate's mode (`packages/hfs/runtime/scripts/hfs/branch-profile.mjs`). `starci app check`, the managed
   pre-commit and pre-push hooks and the rendered CI all take it: a push to `dev` runs the reduced CI (the lint job reports,
   the Sonar analysis and the Codecov upload of a reported gate run without the quality gate judging), and a pull request into
   `main` runs the full gate. Each gate a profile does not keep blocking prints one notice naming the branch profile.

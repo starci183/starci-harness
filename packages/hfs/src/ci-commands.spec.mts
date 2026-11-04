@@ -34,7 +34,7 @@ function app(t: TestContext, packages: boolean): string {
   return root;
 }
 
-const workflows = (root: string): Record<string, string> => {
+const workflows = (root: string): { ci: string; verify: string } => {
   const targets = renderTargets(JSON.parse(fs.readFileSync(path.join(root, 'hfs.json'), 'utf8')), bundledPresets(), { source: appSource(root) });
   const body = (file: string): string => targets.find((target) => target.path === file)?.content ?? '';
   return { ci: body('.github/workflows/ci.yml'), verify: body('.github/workflows/cache-verify.yml') };

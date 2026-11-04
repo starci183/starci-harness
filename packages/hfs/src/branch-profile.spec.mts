@@ -14,8 +14,8 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { main } from './main.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
-import { activeProfile, familyModes } from '../runtime/scripts/hfs/branch-profile.mjs';
-import { profilePolicy, readBranchProfiles } from '../runtime/scripts/lib/stack-declaration.mjs';
+import { activeProfile, familyModes, profileNotices } from '../runtime/scripts/hfs/branch-profile.mjs';
+import { matchesBranch, profileFor, profilePolicy, readBranchProfiles } from '../runtime/scripts/lib/stack-declaration.mjs';
 import { ciWorkflowCommands } from '../sync/ci-commands.mjs';
 import { deployWorkflowFindings } from '../runtime/scripts/hfs/rules/deploy-workflow.mjs';
 import { parseWorkflow } from '../runtime/scripts/hfs/runtime-rules/workflow-source.mjs';
@@ -56,10 +56,10 @@ test('a dev profile lowers lint and sonar; the default branch and every safety g
   const narrow = readBranchProfiles(doc({ branches: { dev: { gates: { sonar: 'report' } } } }), profilePolicy({ STARCI_PROFILE_GATES: 'lint' }));
   assert.match(narrow.problems[0]?.message ?? '', /sonar may not be lowered: policy\/loosening\.yaml branchProfiles allows lint/u);
   assert.deepEqual(profilePolicy({ STARCI_PROFILE_GATES: 'lint,types' }).gates, new Set(['lint']), 'the policy never widens past the polish gates');
-  const shapes = readBranchProfiles(doc({ branches: { dev: { gates: { lint: 'quiet', nope: 'report' } }, 'feat/*': { gates: {} } } }), POLICY).problems.map((problem) => problem.message);
+  const shapes = readBranchProfiles(doc({ branches: { dev: { gates: { lint: 'quiet', nope: 'report' } }, 'feat/**': { gates: {} } } }), POLICY).problems.map((problem) => problem.message);
   assert.ok(shapes.some((message) => /quiet is not a gate mode/u.test(message)));
   assert.ok(shapes.some((message) => /nope is not a gate/u.test(message)));
-  assert.ok(shapes.some((message) => /feat\/\* is not a branch name/u.test(message)));
+  assert.ok(shapes.some((message) => /feat\/\*\* is not a branch pattern/u.test(message)));
 });
 
 test('HFS_BRANCH_PROFILE_INVALID: the app check refuses a lowered main and a lowered safety gate, and accepts a dev profile', (t) => {
@@ -135,6 +135,44 @@ async function check(app: App, argv: string[], { env = {}, findings = [], run = 
   return { exit, stdout, report: argv.includes('--json') ? JSON.parse(stdout) as Doc : null };
 }
 
+test('a branch pattern covers the feature branches of dev; it never matches the default branch, never starts with release/, and needs the policy', () => {
+  assert.deepEqual(POLICY.branches, ['dev', 'ui/*'], 'the runtime policy allows dev and its ui/* feature branches');
+  for (const [pattern, branch, hit] of [['ui/*', 'ui/3', true], ['ui/*', 'ui/10', true], ['ui/*', 'ui', false], ['ui/*', 'ui/3/x', false], ['ui/*', 'xui/3', false], ['ui/*-x', 'ui/a-x', true], ['dev', 'dev', true], ['ui.v/*', 'uixv/1', false]] as const) {
+    assert.equal(matchesBranch(pattern, branch), hit, `${pattern} ${branch}`);
+  }
+  const sound = readBranchProfiles(doc({ branches: { dev: { gates: { lint: 'report' } }, 'ui/*': { gates: { lint: 'report', sonar: 'report' } } } }), POLICY);
+  assert.deepEqual(sound.problems, []);
+  assert.deepEqual(profileFor(sound.profiles, 'ui/3'), { key: 'ui/*', gates: { lint: 'report', sonar: 'report' } });
+  assert.deepEqual(profileFor(sound.profiles, 'dev'), { key: 'dev', gates: { lint: 'report' } }, "a branch's own entry wins");
+  assert.equal(profileFor(sound.profiles, 'feature/3'), null);
+  const message = (key: string, policy = POLICY, extra: Record<string, unknown> = {}): string => readBranchProfiles(doc({ ...extra, branches: { [key]: { gates: { lint: 'report' } } } }), policy).problems[0]?.message ?? '';
+  // A pattern that could match the default branch is refused, whether the default is main, master or the declared one.
+  assert.match(message('*'), /\* matches the default branch main, master: it always runs the full gate/u);
+  assert.match(message('ma*'), /ma\* matches the default branch main/u);
+  assert.match(message('tr*', POLICY, { ci: { github: { repository: 'o/r', defaultBranch: 'trunk' } } }), /tr\* matches the default branch trunk/u);
+  assert.match(message('*/x', profilePolicy({ STARCI_PROFILE_BRANCHES: '*/x' })), /\*\/x is not a branch pattern: a literal first segment/u, 'a pattern starts with a literal segment');
+  assert.match(message('release/*', profilePolicy({ STARCI_PROFILE_BRANCHES: 'release/*' })), /would cover the release candidates/u);
+  assert.match(message('feature/*'), /feature\/\* may not carry a branch profile: policy\/loosening\.yaml branchProfiles allows dev, ui\/\*/u);
+  assert.deepEqual(readBranchProfiles(doc({ branches: { 'ui/3': { gates: { lint: 'report' } } } }), POLICY).problems, [], 'a name a policy pattern covers may carry its own profile');
+  // Two patterns that both match a branch lower a gate only as far as the stricter of them.
+  const two = readBranchProfiles(doc({ branches: { 'ui/*': { gates: { lint: 'off', sonar: 'report' } }, 'ui/*-x': { gates: { lint: 'report' } } } }), profilePolicy({ STARCI_PROFILE_BRANCHES: 'ui/*,ui/*-x' }));
+  assert.deepEqual(profileFor(two.profiles, 'ui/a-x'), { key: 'ui/* + ui/*-x', gates: { lint: 'report' } });
+});
+
+test('on a ui/* branch the pattern profile applies: lint and sonar report, the safety gates block, main and a pull request into main keep the full gate', (t) => {
+  const app = scratchApp(t, 'ui/3', 'branches:\n  dev:\n    gates:\n      lint: report\n  "ui/*":\n    gates:\n      lint: report\n      sonar: report\n');
+  const profile = activeProfile(app.root, {});
+  assert.deepEqual([profile.branch, profile.profile], ['ui/3', 'ui/*']);
+  assert.deepEqual({ lint: profile.modes.lint, sonar: profile.modes.sonar, codecov: profile.modes.codecov }, { lint: 'report', sonar: 'report', codecov: 'blocking' });
+  for (const family of ['hfs', 'types', 'wiring', 'db', 'secrets', 'format', 'test']) assert.equal(familyModes(profile)[family], 'blocking', `${family} blocks on ui/3`);
+  assert.match(profileNotices(profile)[0] ?? '', /^lint: report, its findings are listed but never count on branch ui\/3 \(branch profile ui\/\* \(a pattern covering ui\/3\) of/u);
+  assert.equal(activeProfile(app.root, { GITHUB_REF: 'refs/heads/ui/7' }).profile, 'ui/*', 'a push to a covered branch');
+  assert.equal(activeProfile(app.root, { GITHUB_BASE_REF: 'dev', GITHUB_HEAD_REF: 'ui/7' }).profile, 'ui/*', 'a pull request from it into dev');
+  assert.equal(activeProfile(app.root, { GITHUB_BASE_REF: 'main', GITHUB_HEAD_REF: 'ui/7' }).profile, null, 'a pull request into main runs the full gate');
+  assert.equal(activeProfile(app.root, { STARCI_DEFAULT_BRANCH: 'ui/3' }).profile, null, 'the default branch never takes a profile, even one a pattern covers');
+  assert.equal(activeProfile(app.root, { GITHUB_REF: 'refs/heads/feature/3' }).profile, null, 'a branch no entry covers runs the full gate');
+});
+
 test('the profile is chosen from the branch the run judges: the checkout, a push, a pull request; a pull request into main and the default branch run the full gate', (t) => {
   const app = scratchApp(t, 'dev');
   assert.equal(activeProfile(app.root, {}).profile, 'dev', 'the checked-out branch');
@@ -179,7 +217,7 @@ test('on dev, lint and sonar report: the lint findings are listed and never coun
     }
   }
   const human = await check(scratchApp(t, 'dev'), ['--gate', 'lint']);
-  assert.match(human.stdout, /lint: report, its findings are listed but never count on branch dev \(branch profile of \.starcistacks\/application-stacks\.yaml; the checked-out branch/u);
+  assert.match(human.stdout, /lint: report, its findings are listed but never count on branch dev \(branch profile dev of \.starcistacks\/application-stacks\.yaml; the checked-out branch/u);
   assert.match(human.stdout, /\[ERROR, REPORT ONLY\] fixture\/no-bad x2/u);
 });
 
@@ -321,4 +359,15 @@ test('CI: a push to dev runs the reduced CI (sonar and codecov report, lint thro
     fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), declaration(''));
     assert.match(triggers()[0]?.message ?? '', /ci\.yml may also name main and the branches with a branch profile \(none declared\)/u);
   }
+});
+
+test('CI: a push to a branch a pattern covers runs the reduced plan; the plan matches the pattern as a case glob after the named branches', () => {
+  const read = (yaml: string) => (file: string): string => { if (file === '../.starcistacks/application-stacks.yaml') return yaml; throw Object.assign(new Error('absent'), { code: 'ENOENT' }); };
+  const commands = ciWorkflowCommands({ files: [], read: read(declaration('branches:\n  "ui/*":\n    gates:\n      lint: report\n      sonar: report\n  dev:\n    gates:\n      lint: report\n')) });
+  assert.equal(commands['pushProfileBranches'], '      - "ui/*"\n      - "dev"');
+  const plan = commands['planBranchProfiles'] ?? '';
+  assert.ok(plan.indexOf('"dev") sonar=blocking') < plan.indexOf('"ui/"*) sonar=report'), plan);
+  const script = `GITHUB_REF_NAME="$1"; sonar=blocking; case "$GITHUB_REF_NAME" in\n${plan.split('\n').filter((line) => /^\s+"/u.test(line)).join('\n')}\nesac; echo "$sonar"`;
+  const run = (branch: string): string => spawnSync('bash', ['-c', script, 'plan', branch], { encoding: 'utf8' }).stdout.trim();
+  assert.deepEqual(['ui/3', 'dev', 'main', 'uix'].map(run), ['report', 'blocking', 'blocking', 'blocking']);
 });

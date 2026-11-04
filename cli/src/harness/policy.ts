@@ -116,7 +116,12 @@ export type LooseningException = z.infer<typeof looseningException>
 /** The polish gates of an app check, the only gates an app's branch profile may lower (@starci/hfs keeps every other gate blocking). */
 export const POLISH_GATES = ["lint", "sonar", "codecov"] as const
 
-const branchName = z.string().regex(/^(?!-)(?!.*\.\.)[A-Za-z0-9._/-]+$/, "a branch name, no glob").refine((name) => !["main", "master"].includes(name), "the default branch is never lowered")
+// A branch name, or a pattern of @starci/hfs (`ui/*`: a literal first segment, then segments where `*` stands for any characters but `/`), which can never be a
+// one-segment branch such as main; @starci/hfs refuses again any entry that names or matches the app's default branch.
+const branchName = z.string()
+    .regex(/^(?!-)(?!.*\.\.)(?:[A-Za-z0-9._/-]+|(?!.*\*\*)[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._*-]+)+)$/, "a branch name, or a pattern with a literal first segment (ui/*)")
+    .refine((name) => !["main", "master"].includes(name), "the default branch is never lowered")
+    .refine((name) => !(name.includes("*") && name.startsWith("release/")), "a pattern never covers the release candidates (release/...)")
 const unique = (entries: readonly string[]): boolean => new Set(entries).size === entries.length
 
 // The owner-approved exception an app's branch profile is (`branches` of its .starcistacks/application-stacks.yaml): the branches that may carry one and

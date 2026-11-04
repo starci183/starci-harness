@@ -6682,7 +6682,7 @@ rules:
       - {path: packages/hfs/src/hfs-flow-failure.spec.mjs, editions: [lite, full]}
   - id: R378
     code: "HFS_BRANCH_PROFILE_INVALID"
-    law: "An app's branch profile (`branches` of .starcistacks/application-stacks.yaml) lowers only the polish gates lint, sonar and codecov, to report or off, on a branch policy/loosening.yaml branchProfiles allows; the safety gates hfs, types, wiring, db, secrets, format and test block on every branch, and the default branch (main, master or ci.github.defaultBranch) is never declared and always runs the full gate, as does a pull request into it; a refused profile lowers nothing."
+    law: "An app's branch profile (`branches` of .starcistacks/application-stacks.yaml) lowers only the polish gates lint, sonar and codecov, to report or off, on a branch, or a branch pattern (`ui/*`: a literal first segment, never release/, `*` any characters but `/`), policy/loosening.yaml branchProfiles allows; the safety gates hfs, types, wiring, db, secrets, format and test block on every branch, and the default branch (main, master or ci.github.defaultBranch) is never declared, by its name or by a pattern that matches it, and always runs the full gate, as does a pull request into it; a refused profile lowers nothing."
     kinds: [check]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["HFS_BRANCH_PROFILE_INVALID"]

@@ -290,6 +290,13 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   `branchProfiles` of [policy/loosening.yaml](../../policy/loosening.yaml), handed to @starci/hfs by `starci app`
   (`cli/src/core/app/hfs.ts`); the selection, the report verdict and the ratchet are `packages/hfs/runtime/scripts/hfs/branch-profile.mts`,
   `packages/hfs/src/main.mts` and `packages/hfs/lint/ratchet.mts`, and the rule is [project/lint.md](../project/lint.md) PROJECT-LINT-2.
+  Amended 2026-11-05 (relayed by the coordinator, owner-aligned: product and UI work on dev goes without blocking lint or Sonar): a profile may
+  cover dev's feature branches by a branch pattern (`ui/*`), declared in `branches` and allowed in `branchProfiles.branches`. A pattern was
+  chosen over "a branch whose upstream or merge target is a profiled branch takes its profile" because the profile must be decidable from the
+  branch name alone, the same way in a pre-commit hook, a pre-push hook and CI: an upstream is local, optional and editable state, a merge
+  target is unknown before a pull request exists and CI's push filter can only match names; a pattern is declared, reviewed and refused by
+  R378 when it matches the default branch, and it has a literal first segment that is never `release`, so it can never reach main or a
+  release candidate (`packages/hfs/runtime/scripts/lib/stack-declaration.mts` `matchesBranch`, `profileFor`).
 - **App check and CI run on the warm committed cache (`warm-cache-push`).** The owner, 2026-11-04: app check and CI run on the
   warm committed cache. One full warm run per base, only after a harness pin bump (a version change invalidates it); fix loops
   check only the diff (`--staged`, a gate- or side-scoped run); never `--no-cache` in a loop or in CI. Every push carries fresh

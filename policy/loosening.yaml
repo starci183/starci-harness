@@ -26,12 +26,14 @@ scan:
   maxFileBytes: 1048576
 # An app's branch profile (`branches` of its .starcistacks/application-stacks.yaml) is the one owner-approved exception that lowers a gate: a
 # branch named here may run the polish gates named here as report or off, never main and never a safety gate (@starci/hfs refuses anything else,
-# HFS_BRANCH_PROFILE_INVALID). `starci app` hands both lists to @starci/hfs; a project's overlay may narrow them, never widen them.
+# HFS_BRANCH_PROFILE_INVALID). An entry may be a pattern (`ui/*`: a literal first segment, `*` any characters but `/`) that covers the feature branches
+# merging into dev; a pattern never matches the default branch and never starts with release/. `starci app` hands both lists to @starci/hfs; a
+# project's overlay may narrow them, never widen them.
 branchProfiles:
   decision: branch-profile-dev
-  branches: [dev]
+  branches: [dev, ui/*]
   gates: [lint, sonar, codecov]
-  reason: "the flow-F product branch of an app takes product and UI work under the full safety gate while lint and Sonar only report (with the lint ratchet blocking on the files a commit touches); main keeps the full gate and promoting dev to main runs it"
+  reason: "the flow-F product branch of an app, and the ui/* feature branches that merge into it, take product and UI work under the full safety gate while lint and Sonar only report (with the lint ratchet blocking on the files a commit touches); main keeps the full gate and promoting dev to main runs it"
 # A code marker reads code, never the text of a string, template or comment; a directive marker reads comments, so a
 # comment that spells a directive is a finding wherever it stands, a rule's doc comment included.
 exceptions:

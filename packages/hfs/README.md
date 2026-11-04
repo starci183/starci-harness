@@ -234,7 +234,7 @@ nightly `cache-verify.yml` refuses the release gate (`HFS_CHECK_CACHE_VERIFY_LOC
 
 Every run is under the branch profile of the branch it judges (`branches` of `.starcistacks/application-stacks.yaml`, the harness's
 contexts/project/lint.md PROJECT-LINT-2): on a profile branch such as `dev` a gate set to `report` runs and records but its findings are marked
-report-only and never count, a gate set to `off` does not run, and each prints one notice. Only `lint`, `sonar` and `codecov` may be lowered, never
+report-only and never count, a gate set to `off` does not run, and each prints one notice. A key may be a branch pattern such as `ui/*` (a literal first segment, `*` any characters but `/`, never `release/`), which covers the feature branches merging into `dev`; a branch takes its own entry, else every matching pattern at the stricter mode per gate, and a pattern that matches the default branch is refused. Only `lint`, `sonar` and `codecov` may be lowered, never
 on the default branch (`HFS_BRANCH_PROFILE_INVALID`); a pull request into main runs the full gate. Where lint reports, the lint ratchet refuses a
 commit that adds lint findings to a file it touches (`LINT_RATCHET_RAISED`): over the commits since the base in the lint family, and over the staged
 files against HEAD with `app check --ratchet`, which the managed pre-commit hook runs in place of the staged eslint and stylelint on such a branch.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.69 - 2026-11-05
+
+- Changed: `policy/loosening.yaml` `branchProfiles.branches` may hold a branch pattern of `@starci/hfs` (`ui/*`: a literal first segment, `*` any characters but `/`, never `release/...`), so a profile covers dev's feature branches; the runtime allows `[dev, ui/*]` (decision `branch-profile-dev`, amended). The CLI hands the list to `@starci/hfs` as before (`STARCI_PROFILE_BRANCHES`), which refuses an entry that names or matches the default branch.
+
 ## 1.1.0-alpha.68 - 2026-11-05
 
 - Added: `policy/loosening.yaml` `branchProfiles` (decision `branch-profile-dev`: branches `[dev]`, gates `[lint, sonar, codecov]`), validated against a live ruling; an app overlay may narrow it, never widen it. The CLI hands it to `@starci/hfs` (`STARCI_PROFILE_BRANCHES`, `STARCI_PROFILE_GATES`), and `starci explain` says how `app check` picks the branch profile.

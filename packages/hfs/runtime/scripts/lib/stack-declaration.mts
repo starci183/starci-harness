@@ -76,6 +76,22 @@ export type GateMode = (typeof GATE_MODES)[number];
 const DEFAULT_BRANCHES = Object.freeze(['main', 'master']);
 /** A branch name a profile may declare: one git ref segment path, no glob and no leading dash. */
 const BRANCH_NAME = /^(?!-)(?!.*\.\.)[A-Za-z0-9._/-]+$/u;
+/**
+ * A branch pattern a profile may declare instead of one name (`ui/*`): a literal first segment, then `/` and segments in which `*` stands for any characters
+ * but `/` (the meaning GitHub gives `*` in a push filter). The literal first segment keeps a pattern off every one-segment branch, the default branch among them,
+ * and off the release candidates (`release/...`); a pattern that still matches a default branch is refused by the reader.
+ */
+const BRANCH_PATTERN = /^(?!-)(?!.*\.\.)(?!.*\*\*)[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._*-]+)+$/u;
+/** True when `name` is a branch pattern (it holds `*`) rather than one branch name. */
+export const isBranchPattern = (name: string): boolean => name.includes('*');
+const escapeRegExp = (value: string): string => value.replace(/[.+?^${}()|[\]\\]/gu, '\\$&');
+/** True when `branch` is `pattern`, or `pattern` holds `*` and matches it segment by segment (`*` any characters but `/`). */
+export function matchesBranch(pattern: string, branch: string): boolean {
+  if (!isBranchPattern(pattern)) return pattern === branch;
+  return new RegExp(`^${pattern.split('*').map(escapeRegExp).join('[^/]+')}$`, 'u').test(branch);
+}
+/** True when the policy's list `allowed` lets `branch` (a name or a pattern) carry a profile: listed as written, or a name a listed pattern matches. */
+const allowedBy = (allowed: readonly string[], branch: string): boolean => allowed.includes(branch) || (!isBranchPattern(branch) && allowed.some((entry) => isBranchPattern(entry) && matchesBranch(entry, branch)));
 
 /**
  * What policy/loosening.yaml `branchProfiles` allows (the harness CLI hands it in as STARCI_PROFILE_BRANCHES and STARCI_PROFILE_GATES): the branches
@@ -83,16 +99,35 @@ const BRANCH_NAME = /^(?!-)(?!.*\.\.)[A-Za-z0-9._/-]+$/u;
  */
 export interface ProfilePolicy { branches: readonly string[]; gates: ReadonlySet<ProfileGate> }
 const listEnv = (value: string | undefined): string[] | null => (value === undefined ? null : value.split(',').map((item) => item.trim()).filter(Boolean));
-/** The profile policy in force: the CLI's, else the runtime's policy/loosening.yaml value (branch dev, gates lint, sonar, codecov); never a gate outside POLISH_GATES. */
+/** The profile policy in force: the CLI's, else the runtime's policy/loosening.yaml value (branches dev and ui/*, gates lint, sonar, codecov); never a gate outside POLISH_GATES. */
 export function profilePolicy(env: NodeJS.ProcessEnv = process.env): ProfilePolicy {
   const gates = (listEnv(env.STARCI_PROFILE_GATES) ?? [...POLISH_GATES]).filter((gate): gate is ProfileGate => POLISH_GATES.has(gate as ProfileGate));
-  return { branches: listEnv(env.STARCI_PROFILE_BRANCHES) ?? ['dev'], gates: new Set(gates) };
+  return { branches: listEnv(env.STARCI_PROFILE_BRANCHES) ?? ['dev', 'ui/*'], gates: new Set(gates) };
 }
 
 /** A problem of the `branches` block: where (a path inside the declaration) and why. */
 export interface ProfileProblem { at: string; message: string }
 /** The branch profiles a declaration states: each branch's mode per gate it names (a gate it leaves out blocks), the default branch, and every problem. */
 export interface BranchProfiles { profiles: Record<string, Partial<Record<ProfileGate, GateMode>>>; defaultBranch: string; problems: ProfileProblem[] }
+
+/**
+ * The profile a branch is under and the declaration key that gave it: the branch's own entry, else every pattern that matches it, merged gate by gate
+ * to the stricter mode (blocking over report over off), so two patterns never lower more than either; null when none applies.
+ */
+export function profileFor(profiles: BranchProfiles['profiles'], branch: string): { key: string; gates: Partial<Record<ProfileGate, GateMode>> } | null {
+  const own = Object.hasOwn(profiles, branch) && !isBranchPattern(branch) ? profiles[branch] : undefined;
+  if (own !== undefined) return { key: branch, gates: own };
+  const matching = Object.keys(profiles).filter((key) => isBranchPattern(key) && matchesBranch(key, branch)).sort();
+  if (matching.length === 0) return null;
+  const rank: Record<GateMode, number> = { off: 0, report: 1, blocking: 2 };
+  const gates: Partial<Record<ProfileGate, GateMode>> = {};
+  for (const gate of PROFILE_GATES) {
+    const modes = matching.map((key) => profiles[key]?.[gate] ?? 'blocking');
+    const strictest = modes.reduce((a, b) => (rank[a] >= rank[b] ? a : b));
+    if (strictest !== 'blocking') gates[gate] = strictest;
+  }
+  return { key: matching.join(' + '), gates };
+}
 
 /** The default branch of a declaration: ci.github.defaultBranch, else main. */
 export const declaredDefaultBranch = (doc: unknown): string => text((plain(doc) && plain(doc['ci']) && plain((doc['ci'] as Record<string, unknown>)['github']) ? ((doc['ci'] as Record<string, Record<string, unknown>>)['github'] as Record<string, unknown>)['defaultBranch'] : null)) ?? 'main';
@@ -113,9 +148,14 @@ export function readBranchProfiles(doc: unknown, policy: ProfilePolicy = profile
   for (const [branch, entry] of Object.entries(block)) {
     const at = `branches.${branch}`;
     const before = result.problems.length;
-    if (defaults.has(branch)) problem(at, `${branch} is the default branch: it always runs the full gate and is never declared or lowered`);
-    else if (!BRANCH_NAME.test(branch)) problem(at, `${branch} is not a branch name (letters, digits, . _ / -, no glob)`);
-    else if (!policy.branches.includes(branch)) problem(at, `${branch} may not carry a branch profile: policy/loosening.yaml branchProfiles allows ${policy.branches.join(', ') || 'none'}`);
+    const pattern = isBranchPattern(branch);
+    const covered = [...defaults].filter((name) => matchesBranch(branch, name));
+    if (covered.length > 0) problem(at, `${branch} ${pattern ? `matches the default branch ${covered.join(', ')}` : 'is the default branch'}: it always runs the full gate and is never declared or lowered`);
+    else if (pattern ? !BRANCH_PATTERN.test(branch) : !BRANCH_NAME.test(branch)) problem(at, pattern
+      ? `${branch} is not a branch pattern: a literal first segment, then / and segments where * stands for any characters but / (ui/*)`
+      : `${branch} is not a branch name (letters, digits, . _ / -)`);
+    else if (pattern && branch.split('/')[0] === 'release') problem(at, `${branch} would cover the release candidates (release/candidate-*), whose run is the release's: a pattern never starts with release/`);
+    else if (!allowedBy(policy.branches, branch)) problem(at, `${branch} may not carry a branch profile: policy/loosening.yaml branchProfiles allows ${policy.branches.join(', ') || 'none'}`);
     if (!plain(entry) || Object.keys(entry).some((key) => key !== 'gates') || !plain(entry['gates'])) { problem(at, 'a branch profile is { gates: { <gate>: blocking|report|off } }'); continue; }
     const gates: Partial<Record<ProfileGate, GateMode>> = {};
     for (const [gate, mode] of Object.entries(entry['gates'] as Record<string, unknown>)) {

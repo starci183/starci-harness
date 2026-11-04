@@ -171,7 +171,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [harness/axes.md](../harness/axes.md) · 1 KB
 - [harness/cli-canonical.md](../harness/cli-canonical.md) · 13 KB — Owner ruling `cli-canonical-2026-10-30` (decisions.md): the flag dictionary and the command tree below are the target surface of both layers, the harness verbs (`starci <group> ...
   - sections: One flag dictionary (every verb, both layers) · The command tree
-- [harness/decisions.md](../harness/decisions.md) · 39 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
+- [harness/decisions.md](../harness/decisions.md) · 40 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
 - [harness/questions.md](../harness/questions.md) · 1 KB
 - [harness/roles.md](../harness/roles.md) · 7 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
 - [harness/rules.md](../harness/rules.md) · 4 KB — These hold for every role and every task.

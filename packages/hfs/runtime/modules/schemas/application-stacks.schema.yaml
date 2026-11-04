@@ -109,9 +109,9 @@ properties:
   ci: {$ref: '#/$defs/ciDeclaration'}
   branches:
     description: >-
-      Branch profiles: per branch, the mode of each gate it names (blocking, report: run, print and record but never count, off: not run); a gate left
+      Branch profiles: per branch, or per branch pattern (ui/*: a literal first segment, * any characters but /, never release/), the mode of each gate it names (blocking, report: run, print and record but never count, off: not run); a gate left
       out blocks. Only lint, sonar and codecov may be lowered, only on a branch policy/loosening.yaml branchProfiles allows, and the default branch is
-      never declared; scripts/lib/stack-declaration.mjs readBranchProfiles judges it (HFS_BRANCH_PROFILE_INVALID) and starci app check, the hooks and
+      never declared, by name or by a pattern that matches it; scripts/lib/stack-declaration.mjs readBranchProfiles judges it (HFS_BRANCH_PROFILE_INVALID) and starci app check, the hooks and
       the rendered CI apply it.
     type: object
     additionalProperties:
