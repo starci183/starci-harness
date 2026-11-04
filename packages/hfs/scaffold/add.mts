@@ -29,6 +29,7 @@ import { addFePage } from './add-fe-page.mjs';
 import { addFeOverlay } from './add-fe-overlay.mjs';
 import { addFeLayout } from './add-fe-layout.mjs';
 import { ensureLiteCli } from './add-cli-lite.mjs';
+import { ensureLiteQueuesCli } from './queues-cli-lite.mjs';
 import { addLiteWebhookInbox } from './add-inbox-lite.mjs';
 import { planLiteQueue } from './add-queue-lite.mjs';
 import { addBuiltinLiteCli, fillKnownForms, formsOf, planKind, readAddContext } from './add-plan.mjs';
@@ -148,10 +149,11 @@ function writeKind({ repoRoot, noun, name, now, manifest, repo, spec: declared, 
   if (spec.wire) wire({ beRoot, wire: spec.wire, forms, noun, name });
   const inboxCreated = addLiteWebhookInbox({ root: repoRoot, repo, noun, provider: name, values, now });
   const queueBacking = liteQueue ? liteQueue.apply() : [];
+  const queuesCli = liteQueue && noun === 'job' ? ensureLiteQueuesCli(repoRoot) : [];
   const platformCreated = noun === 'api' || noun === 'webhook' ? wireFeature({ repoRoot, repo, noun, name }) : [];
   const graphqlDoor = noun === 'api' ? ensureGraphqlPeers(repoRoot) : [];
   const registered = register({ declarationFile, spec: { patterns, trigger: spec.trigger, optionalSlots: noun === 'api' ? [GRAPHQL_CONTRACT_SLOT] : [] } });
-  return { created: [...bootstrapCreated, ...planned.map((file) => path.relative(repoRoot, file.absolute).replaceAll('\\', '/')), ...platformCreated, ...inboxCreated, ...queueBacking, ...graphqlDoor], registered };
+  return { created: [...bootstrapCreated, ...planned.map((file) => path.relative(repoRoot, file.absolute).replaceAll('\\', '/')), ...platformCreated, ...inboxCreated, ...queueBacking, ...queuesCli, ...graphqlDoor], registered };
 }
 
 /** The slot of the emitted GraphQL snapshot (contracts/<app>/schema.graphql), which an app serving a GraphQL api feature opts into. */

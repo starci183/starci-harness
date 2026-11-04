@@ -13,7 +13,7 @@ import { ParkedJobResumer } from "./parked-job-resumer.service"
  * picked up; a delivery that names one job (the owner's "resume now") resumes that job alone.
  */
 export class ParkedJobsSweepProcessor extends FencedProcessor implements OnModuleInit {
-    readonly queue = PARKED_JOBS_SWEEP_QUEUE
+    readonly queue: string = PARKED_JOBS_SWEEP_QUEUE
 
     constructor(
         private readonly resumer: ParkedJobResumer,

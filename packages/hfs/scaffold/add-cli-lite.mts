@@ -7,6 +7,7 @@ import { appScripts, appSource, imageFiles, TEMPLATES_DIR, type AppSourceFacts, 
 import { ScaffoldError } from "./service.mjs";
 import { jsonText, packageJsonText } from "./app.mjs";
 import { registerLiteExports } from "./lite-exports.mjs";
+import { ensureLiteQueuesCli } from "./queues-cli-lite.mjs";
 import { byCodeUnit } from "../report/order.mjs";
 
 const read = (relative: string) =>
@@ -116,11 +117,12 @@ describe("RunSeedsCli", () => {
 
 const SEED_MODULE = `import { Module } from "@nestjs/common"
 import { SeedCli } from "./seed.cli"
+import { ConfigurableModuleClass } from "./seed.module-definition"
 import { RunSeedsCli } from "./subs/run.cli"
 
 @Module({ providers: [SeedCli, RunSeedsCli] })
 /** The lite seed group: the command and its runner of the tracked SQL seeds. */
-export class SeedModule {}
+export class SeedModule extends ConfigurableModuleClass {}
 `;
 
 function enableLiteCliDatabase(root: string): void {
@@ -232,6 +234,30 @@ export function ensureLiteCli({ root, manifest, repo }: { root: string, manifest
       read("be/skeleton/src/features/cli/cli.module.ts"),
     ],
     [
+      "be/src/features/cli/cli.module-definition.ts",
+      read("be/skeleton/src/features/cli/cli.module-definition.ts"),
+    ],
+    [
+      "be/src/features/cli/cli.options.ts",
+      read("be/skeleton/src/features/cli/cli.options.ts"),
+    ],
+    [
+      "be/src/features/cli/migrate/migrate.module-definition.ts",
+      read("be/skeleton/src/features/cli/migrate/migrate.module-definition.ts"),
+    ],
+    [
+      "be/src/features/cli/migrate/migrate.options.ts",
+      read("be/skeleton/src/features/cli/migrate/migrate.options.ts"),
+    ],
+    [
+      "be/src/features/cli/seed/seed.module-definition.ts",
+      read("be/skeleton/src/features/cli/seed/seed.module-definition.ts"),
+    ],
+    [
+      "be/src/features/cli/seed/seed.options.ts",
+      read("be/skeleton/src/features/cli/seed/seed.options.ts"),
+    ],
+    [
       "be/src/features/cli/migrate/migrate.cli.ts",
       read("be/skeleton/src/features/cli/migrate/migrate.cli.ts"),
     ],
@@ -324,5 +350,5 @@ export function ensureLiteCli({ root, manifest, repo }: { root: string, manifest
   fs.writeFileSync(nestFile, jsonText(nest));
   fs.writeFileSync(declarationFile, jsonText(declaration));
   fs.writeFileSync(packageFile, packageJsonText(packageManifest));
-  return files.map(([relative]) => relative);
+  return [...files.map(([relative]) => relative), ...ensureLiteQueuesCli(root)];
 }

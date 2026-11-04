@@ -6,6 +6,7 @@ export type { ClaimedJob, ParkedFlowAlert, ParkedJob, ResumeFilter, RunKey } fro
 export { InjectFlowAlerts, InjectJobClaims, InjectJobProcessorRegistry } from "./jobs.decorators"
 export { JobsModule } from "./jobs.module"
 export type { FlowAlerts, JobClaims, JobProcessorRegistry, JobStep } from "./jobs.port"
+export { ParkedJobResumeRequests } from "./parked-job-resume-requests.service"
 export { ParkedJobResumer } from "./parked-job-resumer.service"
 export { FencedProcessor } from "./fenced.processor"
 export { JOBS_MESSAGES } from "./messages/jobs.messages"

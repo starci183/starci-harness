@@ -200,6 +200,13 @@ files:
   - path: src/modules/platform/jobs/parked-job-resumer.service.spec.ts
     slot: be.platform.jobs
     template: jobs/platform/parked-job-resumer.service.spec.ts.tpl
+  - path: src/modules/platform/jobs/parked-job-resume-requests.service.ts
+    slot: be.platform.jobs
+    role: "Writes a resume request (one job, or every parked one) on PARKED_JOBS_SWEEP_QUEUE through the outbox, for a process with no Redis (the cli)."
+    template: jobs/platform/parked-job-resume-requests.service.ts.tpl
+  - path: src/modules/platform/jobs/parked-job-resume-requests.service.spec.ts
+    slot: be.platform.jobs
+    template: jobs/platform/parked-job-resume-requests.service.spec.ts.tpl
   - path: src/modules/platform/jobs/parked-jobs-sweep.processor.ts
     slot: be.platform.jobs
     role: "The scheduled sweep of parked jobs on PARKED_JOBS_SWEEP_QUEUE."

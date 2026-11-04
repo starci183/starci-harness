@@ -3,7 +3,7 @@ import { ClockModule } from "@modules/platform/clock"
 import { DatabaseModule } from "@modules/platform/database"
 import { PRIMARY_ENTITIES } from "@modules/platform/database/entities"
 import { IdsModule } from "@modules/platform/ids"
-import { HTTP_ERROR_KINDS, HTTP_MESSAGES, HttpModule } from "@modules/platform/http"
+import { HttpModule } from "@modules/platform/http"
 import { LoggingModule } from "@modules/platform/logging"
 import type { CliAppOptions } from "../cli.options"
 

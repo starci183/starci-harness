@@ -193,6 +193,12 @@ const REGISTRATIONS: Readonly<Record<string, readonly Registration[]>> = Object.
   cli: [
     {
       file: "be/src/modules/platform/database/index.ts",
+      source: "./primary.connection",
+      names: ["PRIMARY_CONNECTION"],
+      beforeSource: "./primary.decorators",
+    },
+    {
+      file: "be/src/modules/platform/database/index.ts",
       source: "./migration-runner.service",
       names: ["MigrationRunnerService"],
       beforeSource: "./database.options",

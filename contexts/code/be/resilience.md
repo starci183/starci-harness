@@ -33,7 +33,8 @@ first, and processing it is an idempotent replay of the stored row. `platform/jo
   correlation id. The alert is the owner's work item: the app binds `FlowAlerts` to its owner UI, which lists `JobClaims.awaitingFix()`
   and offers "resume now"; until it does, the alert is a log line.
 - A parked job resumes on its own: at boot when the build changed (`ParkedJobResumer`), on the scheduled sweep (`parked-jobs:sweep`,
-  every 15 minutes), and on demand (`ParkedJobResumer.resume({ jobId })`). It goes back to its queue under `<jobKey>-r<n>` and claims
+  every 15 minutes), and on demand (`ParkedJobResumer.resume({ jobId })`; from a process with no Redis, `cli queues resume [--job <id>]`
+  writes the request on the sweep queue through the outbox, `ParkedJobResumeRequests`). It goes back to its queue under `<jobKey>-r<n>` and claims
   its own row again, so its recorded steps (`claims.advance`) and the outputs they stored are kept, and a pivot never repeats: a
   remote effect carries a key the resume keeps (the inbox claim, the provider's idempotency key), a saga transition its version fence.
 - A compensation is a step like any other and follows the same rules.

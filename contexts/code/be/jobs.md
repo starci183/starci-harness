@@ -99,7 +99,9 @@ The runner classifies every failure with `classifyFailure` (BE-RESILIENCE-2): a 
 rethrown; any other parks the row as `failed_awaiting_fix` with `failure_class`, `parked_build` and `parked_at`, and `park` answers
 whether its one alert is due (`alerted_at`). `ParkedJobResumer` resumes at boot every job parked under another build, the
 `parked-jobs:sweep` tick (lite `JOB_TICKS`; in full a scheduler on `PARKED_JOBS_SWEEP_QUEUE`) every parked job, and
-`resume({ jobId })` one job for the owner's "resume now"; each resume counts `resume_count` and hands the job back as
+`resume({ jobId })` one job for the owner's "resume now" (a sweep delivery carrying `{ jobId }` asks for it: `ParkedJobResumeRequests`,
+registered alone by `JobsModule.register({ requestsOnly: true, connection })`, writes it through the outbox, and the lite cli's
+`cli queues resume [--job <id>]`, rendered once the app has its cli app and its jobs platform, calls it); each resume counts `resume_count` and hands the job back as
 `<jobKey>-r<resume_count>`. An app whose jobs table predates the park applies `jobs-failed-awaiting-fix` (lite, a db migration) or
 `JobsFailedAwaitingFix` (full) once.
 
