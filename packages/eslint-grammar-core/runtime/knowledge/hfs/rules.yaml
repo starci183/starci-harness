@@ -2857,7 +2857,7 @@ rules:
     code: "HFS_SERVICE_PLACEMENT"
     editions: [lite, full]
     docs: [docs/microservices.md#r163]
-    law: "A back-end service lives only at `be/apps/<service>/`: a folder with a `Dockerfile` of its own, or with a `package.json` other than the app root's and those of the fe workspaces (`fe/apps/<app>`, `fe/packages/<pkg>`), outside `be/apps/<service>/` (and outside a front end's `fe/apps/<app>/Dockerfile`) is a second service root and a finding; a service is a Nest app of the one repository that shares the `be/src` libraries and the one package.json, and its image is built from its own Dockerfile."
+    law: "A back-end service lives only at `be/apps/<service>/`: a folder with a `Dockerfile` of its own, or with a `package.json` other than the app root's and those of the workspace packages (`fe/apps/<app>`, `fe/packages/<pkg>`, a root `packages/<name>`), outside `be/apps/<service>/` (and outside a front end's `fe/apps/<app>/Dockerfile`) is a second service root and a finding; a service is a Nest app of the one repository that shares the `be/src` libraries and the one package.json, and its image is built from its own Dockerfile."
     kinds: [check]
     gates: [land, ci]
     failureCodes: ["HFS_SERVICE_PLACEMENT"]
@@ -4185,7 +4185,7 @@ rules:
     editions: [lite, full]
     docs:
       - {path: docs/application-stacks.md#r250-deploy-scan, editions: [lite, full]}
-    law: "In lite and full apps, scheduled work belongs to the back-end queue scheduler, a platform/jobs tick (R335) that enqueues through the queue outbox or a declared replicated-job. Deployment files, scripts, workflows, compose files and Dockerfiles install no host crontab, cron.d entry, systemd timer, @reboot job or at job; a workflow does not schedule app work. Docker compose up, down and pull run only against an explicitly dev environment. Deploy shell scripts delegate to docker, starci or the app CLI, and contain no node -e, psql, inline SQL or downloaded shell logic."
+    law: "In lite and full apps, scheduled work belongs to the back-end queue scheduler, a platform/jobs tick (R335) that enqueues through the queue outbox or a declared replicated-job. Deployment files, scripts, workflows, compose files and Dockerfiles install no host crontab, cron.d entry, systemd timer, @reboot job or at job; a workflow does not schedule app work (the managed nightly cache verify, `cache-verify.yml`, is the one scheduled workflow). Docker compose up, down and pull run only against an explicitly dev environment. Deploy shell scripts delegate to docker, starci or the app CLI, and contain no node -e, psql, inline SQL or downloaded shell logic."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["HFS_HOST_CRON", "HFS_DEPLOY_NO_LOGIC", "HFS_DEPLOY_COMPOSE_ON_VPS", "HFS_DEPLOY_SCHEDULER"]
@@ -6623,7 +6623,7 @@ rules:
       - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
   - id: R374
     code: "STACKS_CODE_BIND_MOUNT"
-    law: "A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned and whose final stage is the harness's image for that service, the fork or its runtime layer, when the harness owns one), the same image in every environment; no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, least grants and read-only plain config data files stay allowed)."
+    law: "A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned and whose final stage is the harness's image for that service, the fork or its runtime layer, when the harness owns one), the same image in every environment (the folder build, or a project-owned reference `<project>` or `<project>-<name>` as the managed images workflow publishes it); no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, least grants and read-only plain config data files stay allowed)."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["STACKS_CODE_BIND_MOUNT", "STACKS_IMAGE_BASE_UNPINNED", "STACKS_IMAGE_BASE_NOT_FORK", "STACKS_IMAGE_ENV_DIVERGES"]
