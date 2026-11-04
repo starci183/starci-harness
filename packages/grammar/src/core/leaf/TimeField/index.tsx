@@ -1,5 +1,7 @@
 "use client"
 
+import { FieldSkeletonScope, loadingFieldProps } from "../Field/index.js"
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { TimeField as HeroTimeField, type TimeValue } from "@heroui/react"
 import {
@@ -15,6 +17,8 @@ import { DateFieldBox, DateSegments } from "../DateField/index.js"
 import type { NoChildren } from "../../tier.js"
 
 export type TimeFieldProps = NoChildren & FieldControlProps & {
+    /** Unresolved (knowledge STATE-8): the ready anatomy as geometry, inert and `aria-busy`, label and description kept; a loading region is inherited. */
+    readonly isLoading?: boolean
     readonly value?: TimeValue | null
     readonly defaultValue?: TimeValue | null
     readonly onValueChange?: (value: TimeValue | null) => void
@@ -32,7 +36,7 @@ export type TimeFieldProps = NoChildren & FieldControlProps & {
  */
 
 /** A typed time of day in locale-ordered spinbutton segments. */
-export const TimeField = ({
+const TimeFieldControl = ({
     value,
     defaultValue,
     onValueChange,
@@ -41,7 +45,7 @@ export const TimeField = ({
     granularity = "minute",
     hourCycle,
     ...field
-}: TimeFieldProps) => {
+}: Omit<TimeFieldProps, "isLoading">) => {
     const variant = useFieldVariant()
     return (
         <HeroTimeField
@@ -69,3 +73,10 @@ export const TimeField = ({
         </HeroTimeField>
     )
 }
+
+/** A typed time of day in locale-ordered spinbutton segments. */
+const TimeFieldRegion = ({ isLoading = false, ...props }: TimeFieldProps) => isLoading
+    ? <FieldSkeletonScope component="TimeField"><TimeFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <TimeFieldControl {...props} />
+
+export const TimeField = withRegionLoading(TimeFieldRegion)

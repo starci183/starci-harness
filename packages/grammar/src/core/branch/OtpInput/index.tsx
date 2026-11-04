@@ -1,5 +1,7 @@
 "use client"
 
+import { FieldSkeletonScope, loadingFieldProps } from "../../leaf/Field/index.js"
+import { withRegionLoading } from "../../regionScope.js"
 import { useCallback, useId, useRef } from "react"
 import { InputOTP, Label as HeroLabel, REGEXP_ONLY_DIGITS } from "@heroui/react"
 import { horizontalScrollRegionClassName } from "../../classNames.js"
@@ -8,6 +10,8 @@ import { useFieldVariant } from "../../surfaceContext.js"
 import type { NoChildren } from "../../tier.js"
 
 export type OtpInputProps = NoChildren & {
+    /** Unresolved (knowledge STATE-8): the ready anatomy as geometry, inert and `aria-busy`, label and description kept; a loading region is inherited. */
+    readonly isLoading?: boolean
     readonly id: string
     readonly name: string
     /**
@@ -34,7 +38,7 @@ export type OtpInputProps = NoChildren & {
  * "Verification code, group" and "Verification code, edit text". The strip scrolls only the slots,
  * which the focused input already reaches, so the region adds no extra Tab stop.
  */
-export const OtpInput = (props: OtpInputProps) => {
+const OtpInputControl = (props: Omit<OtpInputProps, "isLoading">) => {
     const variant = useFieldVariant()
     const regionRef = useRef<HTMLDivElement>(null)
     const generatedLabelId = useId()
@@ -102,3 +106,17 @@ export const OtpInput = (props: OtpInputProps) => {
         </div>
     )
 }
+
+/**
+ * Own the conventional six-digit OTP control and its intrinsic-width overflow treatment.
+ *
+ * The slot strip is a `role="group"` named by `label` (or `labelledBy`), and the single hidden
+ * `<input>` that receives the code carries the same name, so the control is announced as, e.g.,
+ * "Verification code, group" and "Verification code, edit text". The strip scrolls only the slots,
+ * which the focused input already reaches, so the region adds no extra Tab stop.
+ */
+const OtpInputRegion = ({ isLoading = false, ...props }: OtpInputProps) => isLoading
+    ? <FieldSkeletonScope component="OtpInput"><OtpInputControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <OtpInputControl {...props} />
+
+export const OtpInput = withRegionLoading(OtpInputRegion)

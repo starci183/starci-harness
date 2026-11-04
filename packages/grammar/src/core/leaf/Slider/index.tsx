@@ -1,5 +1,7 @@
 "use client"
 
+import { FieldSkeletonScope, loadingFieldProps } from "../Field/index.js"
+import { withRegionLoading } from "../../regionScope.js"
 import { Slider as HeroSlider } from "@heroui/react"
 import { useId, useState } from "react"
 import { FieldLabel, StaticFieldError, fieldStateAttributes, isFieldInvalid, type FieldControlProps } from "../Field/index.js"
@@ -9,6 +11,8 @@ import type { NoChildren } from "../../tier.js"
 export type SliderValue = number | ReadonlyArray<number>
 
 export type SliderProps = NoChildren & FieldControlProps & {
+    /** Unresolved (knowledge STATE-8): the ready anatomy as geometry, inert and `aria-busy`, label and description kept; a loading region is inherited. */
+    readonly isLoading?: boolean
     readonly value?: SliderValue
     readonly defaultValue?: SliderValue
     /** Every change while dragging or stepping. */
@@ -38,7 +42,7 @@ const toVendor = (value: SliderValue): number | Array<number> => (typeof value =
  * vendor slider has no validation or read-only mode: description and error are wired to every thumb
  * through `aria-describedby`, and read-only holds the value while keeping the thumbs focusable.
  */
-export const Slider = ({
+const SliderControl = ({
     value,
     defaultValue,
     onValueChange,
@@ -58,7 +62,7 @@ export const Slider = ({
     isDisabled,
     isReadOnly,
     name,
-}: SliderProps) => {
+}: Omit<SliderProps, "isLoading">) => {
     const id = useId().replaceAll(":", "")
     const [heldValue] = useState<SliderValue>(value ?? defaultValue ?? minValue)
     const invalid = isFieldInvalid({ isInvalid, errorMessage })
@@ -124,3 +128,15 @@ export const Slider = ({
         </HeroSlider>
     )
 }
+
+/**
+ * A value on a continuous or stepped scale. Each thumb is a native range input under the hood, so
+ * arrow keys, Page Up/Down, Home/End and screen-reader value announcements are the vendor's. The
+ * vendor slider has no validation or read-only mode: description and error are wired to every thumb
+ * through `aria-describedby`, and read-only holds the value while keeping the thumbs focusable.
+ */
+const SliderRegion = ({ isLoading = false, ...props }: SliderProps) => isLoading
+    ? <FieldSkeletonScope component="Slider"><SliderControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <SliderControl {...props} />
+
+export const Slider = withRegionLoading(SliderRegion)

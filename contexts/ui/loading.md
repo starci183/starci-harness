@@ -30,6 +30,25 @@ nothing else. The component derives its skeleton from the rows and fields it was
 default of three rows when it was given none. `PaneSection` and `Section` tell every Grammar component inside them, so one flag
 covers the band. `loadingRows`, `loadingContent` and `isSkeleton` no longer exist.
 
+## The region carries it
+
+Loading is published by the region and read by every component inside it (ruling `region-loading`). `Section`, `PaneSection`, `SurfaceCard`,
+`Form` and a `Dialog` or `Drawer` body take the first-load flag and tell everything inside; an app never passes `isLoading` to each field or
+button. A component draws the box it has when ready, inert (not focusable) and under the region's one `aria-busy`:
+
+- static chrome keeps its real words and only goes inert: titles, tab labels, "Cancel", field labels, links and icon buttons;
+- data becomes geometry: values, counts, rows, chips with data, avatars, a button labelled with a count (that button says so with its own
+  `isLoading`, which overrides the region for one control, as does a `Select` waiting for its options);
+- loading is not pending: `isPending` keeps its spinner inside the control and never becomes a skeleton;
+- only a first load counts: a refresh keeps the old data, with no skeleton flash;
+- a `Dialog`, `Drawer` or `Popover` starts a fresh region (the context crosses the portal, so the boundary resets it), and a nested region
+  with its own state overrides its parent;
+- a create form is never loading, an edit form is while it waits for the existing data.
+
+The measure is `DNA-COMMON-LOADING-REGION-INERT` and the story `states-every-component-loading--every-component-loading`; the contract check
+`scripts/check-region-loading.mts` lists the components that do not honour the region, each with its reason, in
+`packages/grammar/src/common/region-loading.ts`.
+
 ## Choose
 
 Choice `loading.choose.status`: what drives a loading flag. The first row that applies wins.

@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionGeometry } from "../../regionScope.js"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { assetSlotAttributes, type AssetSlotProps } from "./assetSlot.js"
 import type { NoChildren } from "../../tier.js"
@@ -40,7 +41,7 @@ export type ImageProps = NoChildren & AssetSlotProps & {
  * The box preserves its ratio and load state; the image and fallback keep the supplied accessible
  * identity. Contract: img MOTION-2 (load choreography preserves the final frame under reduced motion).
  */
-export const Image = ({
+const ImageInner = ({
     src,
     alt,
     aspect = "auto",
@@ -106,3 +107,13 @@ export const Image = ({
         </span>
     )
 }
+
+/**
+ * A reserved-ratio image with loading, loaded and error states.
+ *
+ * The box claims its aspect ratio before the bytes arrive, so lazy images never shift the page.
+ * `MediaFrame` frames approved art with a caption; `Image` is the element inside or outside it.
+ * The box preserves its ratio and load state; the image and fallback keep the supplied accessible
+ * identity. Contract: img MOTION-2 (load choreography preserves the final frame under reduced motion).
+ */
+export const Image = withRegionGeometry(ImageInner)

@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import {
     Background,
     Controls,
@@ -218,7 +219,7 @@ const pathTo = (id: string | null, layout: BubbleMapLayout): ReadonlySet<string>
  * repeats the nodes for screen readers. A graph of steps, layers or lanes is `FlowGraph`.
  * Contract: focus FOCUS-2, selection STATE-1, empty STATE-3.
  */
-export const BubbleMap = ({
+const BubbleMapInner = ({
     label,
     nodes,
     edges,
@@ -489,3 +490,13 @@ export const BubbleMap = ({
         </figure>
     )
 }
+
+/**
+ * A value-sized map drawn with React Flow (`@xyflow/react`, a peer dependency) in grammar tokens: the root in the centre, its
+ * children in sectors on a second ring, their children staggered on a third, and the fans of the open ring-three nodes on a
+ * fourth. Bubbles (`form="bubble"`) are sized by `bubbleDiameter(value, max)` so area tracks value. Nodes are keyboard
+ * focusable (Tab) and selectable with Enter or Space, which also opens or closes a node that holds more; a visually hidden list
+ * repeats the nodes for screen readers. A graph of steps, layers or lanes is `FlowGraph`.
+ * Contract: focus FOCUS-2, selection STATE-1, empty STATE-3.
+ */
+export const BubbleMap = withRegionLoading(BubbleMapInner)

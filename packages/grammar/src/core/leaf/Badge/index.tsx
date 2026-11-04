@@ -1,3 +1,4 @@
+import { withRegionLoading } from "../../regionScope.js"
 import { Chip, skeletonVariants } from "@heroui/react"
 import type { ReactNode } from "react"
 import { StatusDotMark } from "../StatusDot/index.js"
@@ -60,7 +61,7 @@ const capitaliseFirst = (children: ReactNode): ReactNode => {
  * The glyph and its words share one status owner. Contract: TRUTH-1 (the tone is stated, never
  * inferred, and defaults to neutral).
  */
-export const Badge = (props: BadgeProps) => {
+const BadgeInner = (props: BadgeProps) => {
     const { children, startContent, tone = "neutral", isLoading = false } = props
     if (props.isDot === true) {
         const isLive = props.isLive === true
@@ -111,3 +112,13 @@ export const Badge = (props: BadgeProps) => {
         </Chip>
     )
 }
+
+/**
+ * Compact semantic status or figure; product glyph identity remains app-owned. `isDot` draws the dot and then the words on a soft
+ * HeroUI `Chip`, and `isLive` makes it the state of a live feed. `muted` uses HeroUI's tertiary Chip (transparent
+ * fill) with the muted ink on its content, so no vendor rule is overridden.
+ *
+ * The glyph and its words share one status owner. Contract: TRUTH-1 (the tone is stated, never
+ * inferred, and defaults to neutral).
+ */
+export const Badge = withRegionLoading(BadgeInner)

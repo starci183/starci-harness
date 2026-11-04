@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionInert } from "../../regionScope.js"
 import type { ReactNode } from "react"
 import { moveFocusBetweenPeers } from "../../navigationKeys.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
@@ -57,7 +58,7 @@ export const stepStateFor = (steps: ReadonlyArray<StepperStep>, currentStepId: s
  * (accent after a completed step); below 30rem it keeps only the current step's label in the paint.
  * Contract: list HIERARCHY-3 (+FOCUS-2 when interactive), step STATE-1, marker A11Y-2, control FOCUS-1.
  */
-export const Stepper = ({
+const StepperInner = ({
     label,
     steps,
     currentStepId,
@@ -149,3 +150,12 @@ export const Stepper = ({
         </ol>
     </nav>
 )
+
+/**
+ * A multi-step flow's progress. The current step carries `aria-current="step"`; each step exposes
+ * `data-grammar-step-state`. With `onStepSelect` the steps are buttons and the arrow keys move
+ * between them. A horizontal stepper centres each marker over its label and joins the markers with a connector line
+ * (accent after a completed step); below 30rem it keeps only the current step's label in the paint.
+ * Contract: list HIERARCHY-3 (+FOCUS-2 when interactive), step STATE-1, marker A11Y-2, control FOCUS-1.
+ */
+export const Stepper = withRegionInert(StepperInner)

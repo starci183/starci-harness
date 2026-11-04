@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionGeometry } from "../../regionScope.js"
 import { Avatar as HeroAvatar, AvatarGroup as HeroAvatarGroup } from "@heroui/react"
 import type { ReactNode } from "react"
 import { Avatar, AvatarAgentBadge, AvatarInitialsImage, avatarA11yProps, avatarParts, vendorAvatarSize, type AvatarKind, type AvatarSize } from "../../leaf/Avatar/index.js"
@@ -35,7 +36,7 @@ export type AvatarGroupProps = NoChildren & {
  * With five or more members, the fourth grid cell shows the total member count beside three avatars.
  * Contract: each avatar and count A11Y-2 (named once, fallback initials and overflow digits silent).
  */
-export const AvatarGroup = ({ label, items, layout = "row", max = 4, size = "md", overflowLabel }: AvatarGroupProps) => {
+const AvatarGroupInner = ({ label, items, layout = "row", max = 4, size = "md", overflowLabel }: AvatarGroupProps) => {
     const capacity = layout === "grid" ? (items.length > 4 ? 3 : 4) : Math.max(0, max)
     const visible = items.slice(0, capacity)
     const hidden = items.length - visible.length
@@ -111,3 +112,11 @@ export const AvatarGroup = ({ label, items, layout = "row", max = 4, size = "md"
         </HeroAvatarGroup>
     )
 }
+
+/**
+ * A stacked member row or one round composite group identity with an accessible overflow count.
+ * Grid layout splits two members, places one above two for three members, and uses a 2-by-2 grid for four.
+ * With five or more members, the fourth grid cell shows the total member count beside three avatars.
+ * Contract: each avatar and count A11Y-2 (named once, fallback initials and overflow digits silent).
+ */
+export const AvatarGroup = withRegionGeometry(AvatarGroupInner)

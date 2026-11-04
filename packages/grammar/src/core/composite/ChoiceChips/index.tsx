@@ -5,7 +5,8 @@ import { useId, type ReactNode } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { useOverlayContainer } from "../../overlayScope.js"
 import { tooltipContentClassName } from "../../tooltipClassName.js"
-import { ErrorView, useIsLoading, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
+import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
+import { useIsLoading, useRegionOwnsBusy } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
 export type ChoiceChip = {
@@ -66,6 +67,7 @@ const firstKey = (keys: Iterable<Key>): string | undefined => {
 export const ChoiceChips = ({ label, isLabelHidden = false, options, value, defaultValue, onValueChange, empty, isLoading: ownLoading, error }: ChoiceChipsProps) => {
     const labelId = useId()
     const isLoading = useIsLoading(ownLoading)
+    const ownsBusy = useRegionOwnsBusy()
     const labelClass = isLabelHidden ? "starci-core-field-label starci-core-form-label--screen-reader" : "starci-core-field-label"
     return (
         <div
@@ -73,7 +75,7 @@ export const ChoiceChips = ({ label, isLabelHidden = false, options, value, defa
             data-component="ChoiceChips"
             data-tier="composite"
             data-contract="A11Y-1 STATE-6 FOCUS-2"
-            {...(isLoading ? { "aria-busy": true } : {})}
+            {...(isLoading && !ownsBusy ? { "aria-busy": true } : {})}
         >
             <span id={labelId} className={labelClass} data-grammar-field-label="true">{label}</span>
             {isLoading ? (

@@ -1,9 +1,10 @@
 "use client"
 
+import { ErrorView, type ErrorData } from "../../loadingState.js"
+import { withRegionLoading } from "../../regionScope.js"
 import type { ReactNode } from "react"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
-import { ErrorView, type ErrorData } from "../../loadingState.js"
 import type { NoChildren } from "../../tier.js"
 
 /** `incoming`: someone else wrote it (start side, the surface and its foreground). `outgoing`: the reader's own message (end side, the brand fill `--accent` with `--accent-foreground`). */
@@ -101,7 +102,7 @@ const SkeletonBubble = ({ side, hasAvatar, lines = 2 }: { readonly side: Message
  * the author's side tightens to point at the avatar (RADIUS-6). With `isLoading` it draws inert geometry instead, one bubble or a
  * whole loading thread; with `error` the failure.
  */
-export const MessageBubble = (props: MessageBubbleProps) => {
+const MessageBubbleInner = (props: MessageBubbleProps) => {
     if (props.isLoading === true) {
         if (props.side === undefined) {
             return (
@@ -144,3 +145,12 @@ export const MessageBubble = (props: MessageBubbleProps) => {
         </div>
     )
 }
+
+/**
+ * One message of a conversation. The app owns the thread (order, grouping, day dividers with `Divider label`, scroll with
+ * `VerticalScrollRegion`); this owns the anatomy of a single message: avatar column, author line, the bubble face and its
+ * actions. Faces follow SURFACE-2 (incoming, the surface pair) and the brand fill (outgoing, the accent pair; inline content inherits its foreground); the corner on
+ * the author's side tightens to point at the avatar (RADIUS-6). With `isLoading` it draws inert geometry instead, one bubble or a
+ * whole loading thread; with `error` the failure.
+ */
+export const MessageBubble = withRegionLoading(MessageBubbleInner)

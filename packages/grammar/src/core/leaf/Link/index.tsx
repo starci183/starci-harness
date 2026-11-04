@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionInert } from "../../regionScope.js"
 import { Link as HeroLink } from "@heroui/react"
 import type { ReactNode } from "react"
 import { Image, type ImageProps } from "../Image/index.js"
@@ -45,7 +46,7 @@ export type LinkProps = (TextLinkContent | MediaLinkContent) & {
  * visited and current destination states that action chrome does not draw.
  * Contract: anchor ACTION-3 (always a destination) FOCUS-1, external glyph A11Y-2.
  */
-export const Link = ({
+const LinkInner = ({
     children,
     media,
     label,
@@ -83,3 +84,13 @@ export const Link = ({
         </HeroLink>
     )
 }
+
+/**
+ * A destination carried by text or one image.
+ *
+ * It is always a real anchor (middle-click, copy-link and the `link` role come from the platform).
+ * `TextAction` owns action-shaped links; `Link` owns prose and directory links, including the
+ * visited and current destination states that action chrome does not draw.
+ * Contract: anchor ACTION-3 (always a destination) FOCUS-1, external glyph A11Y-2.
+ */
+export const Link = withRegionInert(LinkInner)

@@ -3,6 +3,7 @@
 import { Form as HeroForm } from "@heroui/react"
 import type { FormEvent, ReactNode } from "react"
 import { fieldPresentationState } from "../../leaf/Field/index.js"
+import { LoadingScope, useIsLoading } from "../../regionScope.js"
 
 /** Server-side errors keyed by field `name`; each named control shows its own. */
 export type FormValidationErrors = Readonly<Record<string, string | ReadonlyArray<string>>>
@@ -28,6 +29,8 @@ export type FormProps = {
     readonly validationBehavior?: "native" | "aria"
     /** A submit is in flight: the form announces busy and ignores another submit. */
     readonly isPending?: boolean
+    /** The values are still arriving: every control in the form draws as the geometry of its ready box, inert, with its label kept (a region's flag is inherited). */
+    readonly isLoading?: boolean
 }
 
 /**
@@ -46,7 +49,9 @@ export const Form = ({
     validationErrors,
     validationBehavior = "native",
     isPending = false,
+    isLoading: ownLoading,
 }: FormProps) => {
+    const isLoading = useIsLoading(ownLoading)
     const errors = validationErrors === undefined
         ? undefined
         : Object.fromEntries(Object.entries(validationErrors).map(([key, value]) => [key, typeof value === "string" ? value : [...value]]))
@@ -65,7 +70,8 @@ export const Form = ({
             {...(action === undefined ? {} : { action })}
             {...(method === undefined ? {} : { method })}
             {...(errors === undefined ? {} : { validationErrors: errors })}
-            {...(isPending ? { "aria-busy": true } : {})}
+            {...(isPending || isLoading ? { "aria-busy": true } : {})}
+            {...(isLoading ? { "data-grammar-loading-region": "true" } : {})}
             {...(onReset === undefined ? {} : { onReset: () => onReset() })}
             onSubmit={(event: FormEvent<HTMLFormElement>) => {
                 if (isPending) {
@@ -77,7 +83,7 @@ export const Form = ({
                 onSubmit(new FormData(event.currentTarget), event)
             }}
         >
-            {children}
+            <LoadingScope isLoading={isLoading}>{children}</LoadingScope>
         </HeroForm>
     )
 }

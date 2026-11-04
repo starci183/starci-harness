@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { Checkbox as HeroCheckbox, CheckboxGroup as HeroCheckboxGroup } from "@heroui/react"
 import type { ReactNode } from "react"
@@ -56,7 +57,7 @@ export type CheckboxGroupProps = NoChildren & FieldControlProps & {
  * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const CheckboxGroup = ({ isLoading = false, ...props }: CheckboxGroupProps) => isLoading
+const CheckboxGroupInner = ({ isLoading = false, ...props }: CheckboxGroupProps) => isLoading
     ? <FieldSkeletonScope component="CheckboxGroup"><CheckboxGroupControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <CheckboxGroupControl {...props} />
 
@@ -107,3 +108,9 @@ const CheckboxGroupControl = ({
         </HeroCheckboxGroup>
     )
 }
+
+/**
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const CheckboxGroup = withRegionLoading(CheckboxGroupInner)

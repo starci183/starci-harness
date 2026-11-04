@@ -4,7 +4,8 @@ import { Checkbox as HeroCheckbox, Table as HeroTable, type Selection, type Sort
 import { useEffect, useRef, useState, type CSSProperties, type DragEventHandler, type KeyboardEvent, type MouseEvent, type ReactNode } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
-import { ErrorView, LOADING_ROWS, useIsLoading, type ErrorData } from "../../loadingState.js"
+import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
+import { useIsLoading } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
 export type DataTableColumn<Row extends DataTableRow = DataTableRow> = {

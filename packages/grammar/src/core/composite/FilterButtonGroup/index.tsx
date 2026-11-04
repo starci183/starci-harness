@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { ToggleButton as HeroToggleButton, ToggleButtonGroup as HeroToggleButtonGroup, type Key } from "@heroui/react"
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react"
 import { Button } from "../../leaf/Button/index.js"
@@ -70,7 +71,7 @@ const optionContent = (option: FilterOption): ReactNode => (
  * Selected is the accent soft pair; the rest take the surface.
  */
 /** @deprecated Narrowing a list is `Tabs kind="filter"` (R380). Removed in a later release. */
-export const FilterButtonGroup = ({
+const FilterButtonGroupInner = ({
     label,
     isLabelVisible = false,
     options,
@@ -244,3 +245,13 @@ export const FilterButtonGroup = ({
         </div>
     )
 }
+
+/**
+ * Peer values that filter a collection in place: a group of small toggle buttons on ONE row, one value selected (a radio group
+ * to assistive technology, arrow keys move). The row never wraps: options that do not fit go behind a "+n" button that opens a
+ * searchable list, and a chosen hidden option takes its place in the row. The fit is measured from the real width, and the
+ * row stays hidden until it is measured, so the server render holds one row of the same height and nothing jumps.
+ * Selected is the accent soft pair; the rest take the surface.
+ */
+/** @deprecated Narrowing a list is `Tabs kind="filter"` (R380). Removed in a later release. */
+export const FilterButtonGroup = withRegionLoading(FilterButtonGroupInner)

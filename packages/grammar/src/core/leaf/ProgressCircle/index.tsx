@@ -1,3 +1,4 @@
+import { withRegionGeometry } from "../../regionScope.js"
 import { ProgressCircle as HeroProgressCircle } from "@heroui/react"
 import type { NoChildren } from "../../tier.js"
 
@@ -14,7 +15,7 @@ export type ProgressCircleProps = NoChildren & {
 }
 
 /** LEAF - `ProgressCircle`: compact circular completion, the ring counterpart of `Progress`. */
-export const ProgressCircle = ({ label, value = 0, isIndeterminate = false, size = "md" }: ProgressCircleProps) => (
+const ProgressCircleInner = ({ label, value = 0, isIndeterminate = false, size = "md" }: ProgressCircleProps) => (
     <HeroProgressCircle
         data-tier="leaf"
         data-component="ProgressCircle"
@@ -35,3 +36,6 @@ export const ProgressCircle = ({ label, value = 0, isIndeterminate = false, size
         </HeroProgressCircle.Track>
     </HeroProgressCircle>
 )
+
+/** LEAF - `ProgressCircle`: compact circular completion, the ring counterpart of `Progress`. */
+export const ProgressCircle = withRegionGeometry(ProgressCircleInner, "circle")

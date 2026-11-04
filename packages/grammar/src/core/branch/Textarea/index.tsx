@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { TextArea as HeroTextArea, TextField as HeroTextField } from "@heroui/react"
 import { useId, useMemo, useState, type ClipboardEvent, type KeyboardEvent } from "react"
@@ -100,7 +101,7 @@ export const filterMentionOptions = (options: ReadonlyArray<TextareaMentionOptio
  * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const Textarea = ({ isLoading = false, ...props }: TextareaProps) => isLoading
+const TextareaInner = ({ isLoading = false, ...props }: TextareaProps) => isLoading
     ? <FieldSkeletonScope component="Textarea"><TextareaControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <TextareaControl {...props} />
 
@@ -284,3 +285,9 @@ const TextareaControl = ({
         </HeroTextField>
     )
 }
+
+/**
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const Textarea = withRegionLoading(TextareaInner)

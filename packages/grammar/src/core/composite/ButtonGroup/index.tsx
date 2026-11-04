@@ -5,7 +5,7 @@ import type { ButtonIntent } from "../../buttonIntent.js"
 import { Button } from "../../leaf/Button/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
-import { useIsLoading } from "../../loadingState.js"
+import { useIsLoading } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
 /** One member of the group: a `Button` with its label, or an `IconButton` when it has a `source`. */

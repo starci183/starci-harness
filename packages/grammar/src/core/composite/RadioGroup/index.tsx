@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { Radio as HeroRadio, RadioGroup as HeroRadioGroup } from "@heroui/react"
 import {
@@ -41,7 +42,7 @@ export type RadioGroupProps = NoChildren & FieldControlProps & {
  * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const RadioGroup = ({ isLoading = false, ...props }: RadioGroupProps) => isLoading
+const RadioGroupInner = ({ isLoading = false, ...props }: RadioGroupProps) => isLoading
     ? <FieldSkeletonScope component="RadioGroup"><RadioGroupControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <RadioGroupControl {...props} />
 
@@ -98,3 +99,9 @@ const RadioGroupControl = ({
         </HeroRadioGroup>
     )
 }
+
+/**
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const RadioGroup = withRegionLoading(RadioGroupInner)

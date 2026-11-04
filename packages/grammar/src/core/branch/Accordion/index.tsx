@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionInert } from "../../regionScope.js"
 import { Accordion as HeroAccordion, type Key } from "@heroui/react"
 import { useState, type ReactNode } from "react"
 import { moveFocusBetweenPeers } from "../../navigationKeys.js"
@@ -38,7 +39,7 @@ export type AccordionProps = NoChildren & {
  * `data-grammar-disclosure-state`.
  * Contract: group FOCUS-2 (peer keys), item STATE-7 (controlled open set), trigger FOCUS-1, indicator MOTION-2.
  */
-export const Accordion = ({
+const AccordionInner = ({
     label,
     items,
     expandedIds,
@@ -94,3 +95,11 @@ export const Accordion = ({
         </div>
     )
 }
+
+/**
+ * A generic, unframed stack of disclosures (FAQ, settings groups). `SurfaceCard kind="accordion"` stays
+ * the framed card form. Up/Down/Home/End move between section triggers; each section exposes
+ * `data-grammar-disclosure-state`.
+ * Contract: group FOCUS-2 (peer keys), item STATE-7 (controlled open set), trigger FOCUS-1, indicator MOTION-2.
+ */
+export const Accordion = withRegionInert(AccordionInner)

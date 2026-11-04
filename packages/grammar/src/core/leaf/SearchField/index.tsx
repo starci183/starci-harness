@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { SearchField as HeroSearchField, Spinner as HeroSpinner } from "@heroui/react"
 import type { ClipboardEvent } from "react"
@@ -53,7 +54,7 @@ export type SearchFieldProps = NoChildren & FieldControlProps & {
  * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const SearchField = ({ isLoading = false, ...props }: SearchFieldProps) => isLoading
+const SearchFieldInner = ({ isLoading = false, ...props }: SearchFieldProps) => isLoading
     ? <FieldSkeletonScope component="SearchField"><SearchFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <SearchFieldControl {...props} />
 
@@ -116,3 +117,9 @@ const SearchFieldControl = ({
         </HeroSearchField>
     )
 }
+
+/**
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const SearchField = withRegionLoading(SearchFieldInner)

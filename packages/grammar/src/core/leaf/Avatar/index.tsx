@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { Avatar as HeroAvatar, Badge as HeroBadge } from "@heroui/react"
 import { CpuChipIcon } from "@heroicons/react/16/solid"
 import { Avatar as DiceAvatar, Style } from "@dicebear/core"
@@ -111,7 +112,7 @@ export const AvatarAgentBadge = ({ children, kind, size, renderedScale = 1, clas
 )
 
 /** Uploaded image or local DiceBear initials, with the same person name rule for an AI agent (A11Y-2). */
-export const Avatar = ({ name, src, seed, kind = "person", fallback, size = "md", shape = "circle", isDecorative = false, isCurrent = false, isLoading = false }: AvatarProps) => {
+const AvatarInner = ({ name, src, seed, kind = "person", fallback, size = "md", shape = "circle", isDecorative = false, isCurrent = false, isLoading = false }: AvatarProps) => {
     const avatarClassName = "starci-core-avatar"
     if (isLoading) return (
         <span aria-hidden="true" className={"starci-core-avatar starci-core-avatar-skeleton"}
@@ -131,3 +132,6 @@ export const Avatar = ({ name, src, seed, kind = "person", fallback, size = "md"
         </AvatarAgentBadge>
     )
 }
+
+/** Uploaded image or local DiceBear initials, with the same person name rule for an AI agent (A11Y-2). */
+export const Avatar = withRegionLoading(AvatarInner)

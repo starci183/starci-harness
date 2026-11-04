@@ -3,7 +3,8 @@
 import { createElement, useEffect, type ReactNode, type Ref } from "react"
 import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { usePaneContext } from "../../paneContext.js"
-import { ErrorView, LoadingScope, useIsLoading, type ErrorData } from "../../loadingState.js"
+import { ErrorView, type ErrorData } from "../../loadingState.js"
+import { LoadingScope, useIsLoading } from "../../regionScope.js"
 
 export type PaneSectionProps = {
     readonly children: ReactNode
@@ -53,6 +54,7 @@ export const PaneSection = ({ children: content, grow = false, scroll, align = "
         "data-grammar-pane-section-bleed": bleed,
         "data-grammar-pane-section-grow": grow || scroll !== undefined ? "true" : undefined,
         "aria-busy": isLoading ? true : undefined,
+        "data-grammar-loading-region": isLoading ? "true" : undefined,
     }
     const contract = "PADDING-4 GAP-3"
     if (scroll === undefined) {

@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { ToggleButton as HeroToggleButton, ToggleButtonGroup as HeroToggleButtonGroup, type Key } from "@heroui/react"
 import { useId, useState, type ReactNode } from "react"
 import { fieldStateAttributes, StaticFieldError, FieldSkeletonScope, loadingFieldProps, isFieldInvalid, type FieldControlProps } from "../../leaf/Field/index.js"
@@ -43,7 +44,7 @@ const firstKey = (keys: Iterable<Key>): string | undefined => {
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
 /** @deprecated Choosing a value of a form is `ChoiceChips` or `RadioGroup` (R380); switching a view is `Tabs`. Removed in a later release. */
-export const SegmentedControl = ({ isLoading = false, ...props }: SegmentedControlProps) => isLoading
+const SegmentedControlInner = ({ isLoading = false, ...props }: SegmentedControlProps) => isLoading
     ? <FieldSkeletonScope component="SegmentedControl"><SegmentedControlControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <SegmentedControlControl {...props} />
 
@@ -138,3 +139,10 @@ const SegmentedControlControl = ({
         </div>
     )
 }
+
+/**
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+/** @deprecated Choosing a value of a form is `ChoiceChips` or `RadioGroup` (R380); switching a view is `Tabs`. Removed in a later release. */
+export const SegmentedControl = withRegionLoading(SegmentedControlInner)

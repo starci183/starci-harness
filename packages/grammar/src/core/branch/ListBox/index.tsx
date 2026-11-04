@@ -7,7 +7,8 @@ import { usePaneContext } from "../../paneContext.js"
 import { useSurfaceNesting } from "../../surfaceContext.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import type { ItemDescriptionLines } from "../../collectionItem.js"
-import { ErrorView, LOADING_ROWS, useIsLoading, type ErrorData } from "../../loadingState.js"
+import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
+import { useIsLoading } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
 /** The leading identity slot is 32, 40 or 48px; HeroUI retains the row's own padding and radius. */

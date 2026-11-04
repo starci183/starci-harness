@@ -1,6 +1,5 @@
 "use client"
 
-import { createContext, useContext, type ReactNode } from "react"
 import { usePaneContext } from "./paneContext.js"
 import { useSurfaceHost } from "./surfaceContext.js"
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid"
@@ -38,21 +37,7 @@ export type ErrorData = {
  */
 export const LOADING_ROWS = 3
 
-const LoadingScopeContext = createContext<boolean | null>(null)
-
-/**
- * Whether the region around this component is loading. A region that loads (`PaneSection isLoading`, a `Section`) tells every
- * Grammar component inside it, so a frame passes one flag, not one per child. A component's own `isLoading` wins.
- */
-export const useIsLoading = (own: boolean | undefined): boolean => {
-    const scope = useContext(LoadingScopeContext)
-    return own ?? scope ?? false
-}
-
-/** Tells the Grammar components inside that their region is (or is no longer) loading. */
-export const LoadingScope = ({ isLoading, children }: { readonly isLoading: boolean; readonly children: ReactNode }) => (
-    <LoadingScopeContext.Provider value={isLoading}>{children}</LoadingScopeContext.Provider>
-)
+export { LoadingScope, useIsLoading, useRegionOwnsBusy, withRegionGeometry, withRegionInert, withRegionLoading } from "./regionScope.js"
 
 /**
  * A failed read, in the place the data would have been. It is a live `alert` with a warning mark, so it never looks like

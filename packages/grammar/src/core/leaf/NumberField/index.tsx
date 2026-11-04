@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { NumberField as HeroNumberField } from "@heroui/react"
 import {
@@ -45,7 +46,7 @@ export type NumberFieldProps = NoChildren & FieldControlProps & {
  * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const NumberField = ({ isLoading = false, ...props }: NumberFieldProps) => isLoading
+const NumberFieldInner = ({ isLoading = false, ...props }: NumberFieldProps) => isLoading
     ? <FieldSkeletonScope component="NumberField"><NumberFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <NumberFieldControl {...props} />
 
@@ -100,3 +101,9 @@ const NumberFieldControl = ({
         </HeroNumberField>
     )
 }
+
+/**
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const NumberField = withRegionLoading(NumberFieldInner)

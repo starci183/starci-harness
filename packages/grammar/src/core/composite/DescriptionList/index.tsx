@@ -1,3 +1,4 @@
+import { useRegionOwnsBusy, withRegionLoading } from "../../regionScope.js"
 import type { ReactNode } from "react"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import type { NoChildren } from "../../tier.js"
@@ -36,8 +37,9 @@ export type DescriptionListProps = NoChildren & {
  * them is `SurfaceCard kind="figures"`, which owns the cells, the lines between them and the figure scale.
  * Contract: HIERARCHY-3 (term precedes value in source and paint), TRUTH-1 (no tone carrier on facts).
  */
-export const DescriptionList = (props: DescriptionListProps) => {
+const DescriptionListInner = (props: DescriptionListProps) => {
     const { density = "default", isLoading = false, layout = "columns" } = props
+    const ownsBusy = useRegionOwnsBusy()
     const isDivided = props.isDivided ?? density === "default"
     // Skeleton parity: a loading value is laid out unseen under the shimmer, so the pair keeps the ready value's box.
     const pending = (value: ReactNode) => <SkeletonPlaceholder>{value}</SkeletonPlaceholder>
@@ -47,7 +49,7 @@ export const DescriptionList = (props: DescriptionListProps) => {
             data-component="DescriptionList"
             data-contract="HIERARCHY-3 TRUTH-1"
             data-tier="composite"
-            {...(isLoading ? { "aria-busy": true, "data-loading": "true" } : {})}
+            {...(isLoading ? { "data-loading": "true", ...(ownsBusy ? {} : { "aria-busy": true }) } : {})}
             data-grammar-description-layout={layout}
             data-grammar-description-divided={isDivided ? "true" : "false"}
             data-grammar-description-density={density}
@@ -61,3 +63,10 @@ export const DescriptionList = (props: DescriptionListProps) => {
         </dl>
     )
 }
+
+/**
+ * Term/value pairs (details, metadata, settings summaries) as a real `<dl>`. Key figures are not pairs: a strip of
+ * them is `SurfaceCard kind="figures"`, which owns the cells, the lines between them and the figure scale.
+ * Contract: HIERARCHY-3 (term precedes value in source and paint), TRUTH-1 (no tone carrier on facts).
+ */
+export const DescriptionList = withRegionLoading(DescriptionListInner)

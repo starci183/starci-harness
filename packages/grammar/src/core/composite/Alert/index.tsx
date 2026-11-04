@@ -1,5 +1,6 @@
 "use client"
 
+import { useRegionOwnsBusy, withRegionLoading } from "../../regionScope.js"
 import { Alert as HeroAlert, Spinner as HeroSpinner } from "@heroui/react"
 import { useState, type ReactNode } from "react"
 import type { PresentationState } from "../../../common/state.js"
@@ -93,8 +94,9 @@ const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
  * informative (accent) -> `commit`, negative (danger) -> a confirmed `destructive`, every other tone -> `alternative`.
  * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
  */
-export const Alert = (props: AlertProps) => {
+const AlertInner = (props: AlertProps) => {
     const { title, description, tone: readyTone = "informative", action, urgency, isLoading = false } = props
+    const ownsBusy = useRegionOwnsBusy()
     const tone: PresentationState = isLoading ? "neutral" : readyTone
     const unseen = (node: ReactNode) => isLoading ? <SkeletonPlaceholder>{node}</SkeletonPlaceholder> : node
     const [isDismissed, setIsDismissed] = useState(false)
@@ -113,7 +115,7 @@ export const Alert = (props: AlertProps) => {
             data-grammar-tone={tone}
             data-urgency={resolvedUrgency}
             data-contract="FEEDBACK-3"
-            {...(isLoading ? { "data-loading": "true", "aria-busy": true } : { role: resolvedUrgency === "assertive" ? "alert" : "status" })}
+            {...(isLoading ? { "data-loading": "true", ...(ownsBusy ? {} : { "aria-busy": true }) } : { role: resolvedUrgency === "assertive" ? "alert" : "status" })}
             status={vendorStatusFor(tone)}
             className="starci-core-alert"
         >
@@ -147,3 +149,20 @@ export const Alert = (props: AlertProps) => {
         </HeroAlert>
     )
 }
+
+/**
+ * COMPOSITE - `Alert`: an inline, in-flow banner about the region it sits in.
+ *
+ * Its one look is the tone's soft pair (owner ruling `alert-soft-pair`): the background is `--<tone>-soft` at full strength, the
+ * glyph, title and description are `--<tone>-soft-foreground`, with no shadow and no border. Tones map to the pair
+ * as informative -> accent, affirmative -> success, cautionary -> warning, negative -> danger, and neutral, pending and
+ * unavailable -> default.
+ *
+ * It is not an overlay: it takes layout space and stays until resolved or dismissed. Dismissal is
+ * uncontrolled (the banner removes itself) and `onDismiss` reports it. Tone is echoed on
+ * `data-grammar-tone`; the vendor status supplies the default glyph, `pending` swaps it for a spinner.
+ * The action Button's intent follows the tone (`alertActionIntentFor`, after HeroUI's Alert examples):
+ * informative (accent) -> `commit`, negative (danger) -> a confirmed `destructive`, every other tone -> `alternative`.
+ * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
+ */
+export const Alert = withRegionLoading(AlertInner)

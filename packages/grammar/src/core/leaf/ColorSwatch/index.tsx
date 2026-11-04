@@ -1,3 +1,4 @@
+import { withRegionLoading } from "../../regionScope.js"
 import { ColorSwatch as HeroColorSwatch, type ColorSwatchProps as HeroColorSwatchProps } from "@heroui/react"
 import { SkeletonPlaceholder } from "../Skeleton/index.js"
 import type { NoChildren } from "../../tier.js"
@@ -11,7 +12,7 @@ export type ColorSwatchProps = NoChildren & {
 }
 
 /** A named preview of an actual color value; the vendor owns its paint and transparency checkerboard. */
-export const ColorSwatch = ({ color, label, isLoading = false }: ColorSwatchProps) => {
+const ColorSwatchInner = ({ color, label, isLoading = false }: ColorSwatchProps) => {
     const swatch = (
         <HeroColorSwatch
             aria-label={label}
@@ -25,3 +26,6 @@ export const ColorSwatch = ({ color, label, isLoading = false }: ColorSwatchProp
     )
     return isLoading ? <SkeletonPlaceholder shape="block">{swatch}</SkeletonPlaceholder> : swatch
 }
+
+/** A named preview of an actual color value; the vendor owns its paint and transparency checkerboard. */
+export const ColorSwatch = withRegionLoading(ColorSwatchInner)

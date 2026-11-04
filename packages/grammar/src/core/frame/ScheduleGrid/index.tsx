@@ -4,7 +4,8 @@ import { Button as HeroButton } from "@heroui/react"
 import { useState, type DragEvent, type ReactNode } from "react"
 import { HorizontalScrollRegionPart } from "../HorizontalScrollRegion/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
-import { ErrorView, useIsLoading, type ErrorData } from "../../loadingState.js"
+import { ErrorView, type ErrorData } from "../../loadingState.js"
+import { useIsLoading } from "../../regionScope.js"
 
 export type ScheduleTone = "neutral" | "accent" | "success" | "warning" | "danger"
 

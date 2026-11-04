@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef } from "react"
-import { useIsLoading } from "../../loadingState.js"
+import { useIsLoading } from "../../regionScope.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
 import type { NoChildren } from "../../tier.js"

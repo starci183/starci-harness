@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionInert } from "../../regionScope.js"
 import { Tabs as HeroTabs } from "@heroui/react"
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { PlainPressable } from "../../PlainPressable.js"
@@ -102,7 +103,7 @@ const useLocationPath = (enabled: boolean): readonly [string | undefined, (path:
 }
 
 /** Render peer tabs through Core's selected, accessible and responsive treatment. */
-export const Tabs = (props: TabsProps) => {
+const TabsInner = (props: TabsProps) => {
     const [isClientReady, setIsClientReady] = useState(false)
     const frameRef = useRef<HTMLDivElement>(null)
     useEffect(() => setIsClientReady(true), [])
@@ -269,3 +270,6 @@ export const Tabs = (props: TabsProps) => {
         )}
     </div>
 }
+
+/** Render peer tabs through Core's selected, accessible and responsive treatment. */
+export const Tabs = withRegionInert(TabsInner)

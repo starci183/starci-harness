@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { CheckIcon, DocumentDuplicateIcon, ExclamationCircleIcon } from "@heroicons/react/16/solid"
 import { InputGroup as HeroInputGroup, Label as HeroLabel, Tooltip as HeroTooltip } from "@heroui/react"
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react"
@@ -81,7 +82,7 @@ const writeClipboard = async (text: string | Promise<string>): Promise<void> => 
  * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside `FieldSkeletonScope`
  * (inert, `aria-busy`, the field box painted as a Skeleton), so the loading field keeps the ready box, label and description.
  */
-export const CopyField = (props: CopyFieldProps) => props.isLoading === true
+const CopyFieldInner = (props: CopyFieldProps) => props.isLoading === true
     ? <FieldSkeletonScope component="CopyField"><CopyFieldControl {...props} /></FieldSkeletonScope>
     : <CopyFieldControl {...props} />
 
@@ -224,3 +225,9 @@ const CopyFieldControl = (props: CopyFieldProps) => {
         </div>
     )
 }
+
+/**
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside `FieldSkeletonScope`
+ * (inert, `aria-busy`, the field box painted as a Skeleton), so the loading field keeps the ready box, label and description.
+ */
+export const CopyField = withRegionLoading(CopyFieldInner)

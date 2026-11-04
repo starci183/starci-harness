@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { Checkbox as HeroCheckbox } from "@heroui/react"
 import type { ReactNode } from "react"
@@ -57,7 +58,7 @@ export const CheckboxItem = ({ label, description, errorMessage, isStandalone }:
  * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const Checkbox = ({ isLoading = false, ...props }: CheckboxProps) => isLoading
+const CheckboxInner = ({ isLoading = false, ...props }: CheckboxProps) => isLoading
     ? <FieldSkeletonScope component="Checkbox"><CheckboxControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <CheckboxControl {...props} />
 
@@ -93,3 +94,9 @@ const CheckboxControl = ({
         </HeroCheckbox>
     )
 }
+
+/**
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const Checkbox = withRegionLoading(CheckboxInner)

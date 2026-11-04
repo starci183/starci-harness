@@ -1,5 +1,7 @@
 "use client"
 
+import { FieldSkeletonScope, loadingFieldProps } from "../../leaf/Field/index.js"
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import {
     Calendar as HeroCalendar,
@@ -21,6 +23,8 @@ import { DateSegments, type DateGranularity } from "../../leaf/DateField/index.j
 import type { NoChildren } from "../../tier.js"
 
 export type DatePickerProps = NoChildren & FieldControlProps & {
+    /** Unresolved (knowledge STATE-8): the ready anatomy as geometry, inert and `aria-busy`, label and description kept; a loading region is inherited. */
+    readonly isLoading?: boolean
     readonly value?: DateValue | null
     readonly defaultValue?: DateValue | null
     readonly onValueChange?: (value: DateValue | null) => void
@@ -78,7 +82,7 @@ export const PickerRangeCalendar = () => (
  * A date typed in segments or picked from a month grid in a popover. The trigger is a named button,
  * the popover is a dialog that traps and returns focus, and the grid is the vendor's.
  */
-export const DatePicker = ({
+const DatePickerControl = ({
     value,
     defaultValue,
     onValueChange,
@@ -87,7 +91,7 @@ export const DatePicker = ({
     isDateUnavailable,
     granularity = "day",
     ...field
-}: DatePickerProps) => {
+}: Omit<DatePickerProps, "isLoading">) => {
     const variant = useFieldVariant()
     const { anchor, portalProps } = useGrammarPortal()
     return (
@@ -124,3 +128,13 @@ export const DatePicker = ({
         </HeroDatePicker>
     )
 }
+
+/**
+ * A date typed in segments or picked from a month grid in a popover. The trigger is a named button,
+ * the popover is a dialog that traps and returns focus, and the grid is the vendor's.
+ */
+const DatePickerRegion = ({ isLoading = false, ...props }: DatePickerProps) => isLoading
+    ? <FieldSkeletonScope component="DatePicker"><DatePickerControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <DatePickerControl {...props} />
+
+export const DatePicker = withRegionLoading(DatePickerRegion)

@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { FieldDescription, FieldSkeletonScope, loadingFieldProps } from "../../leaf/Field/index.js"
 import { useEffect, useState, type ClipboardEvent, type ComponentType, type ReactNode } from "react"
@@ -83,7 +84,7 @@ const KINDS = {
  * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside `FieldSkeletonScope`
  * (inert, `aria-busy`, the control box painted as a Skeleton), so the loading field keeps the ready box, label and description.
  */
-export const Input = ({ isLoading = false, ...props }: InputProps) => isLoading
+const InputInner = ({ isLoading = false, ...props }: InputProps) => isLoading
     ? <FieldSkeletonScope component="Input"><InputControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <InputControl {...props} />
 
@@ -247,3 +248,19 @@ const InputControl = ({
         </HeroTextField>
     )
 }
+
+/**
+ * Core ownership boundary for label, guidance, control state, and validation copy.
+ *
+ * Layout: the field is HeroUI's TextField anatomy, a grid of label, control box, description and error in that order. The
+ * description and the error sit under the control and reserve no space until they exist, so showing or clearing either
+ * moves nothing above it: the control box keeps its position and height. A row that puts a trailing action beside the
+ * field (an input and a Delete button) aligns that action to the control box, not to the whole field:
+ * `[data-grammar-input-control="true"]` is the control box (the input and its in-field actions). Give the row
+ * `align-items: start` and offset the action by the label above the box, so a description or an error never shifts it.
+ */
+/**
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside `FieldSkeletonScope`
+ * (inert, `aria-busy`, the control box painted as a Skeleton), so the loading field keeps the ready box, label and description.
+ */
+export const Input = withRegionLoading(InputInner)

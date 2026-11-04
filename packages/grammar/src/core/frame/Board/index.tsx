@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react"
 import { HorizontalScrollRegionPart } from "../HorizontalScrollRegion/index.js"
 import { SurfaceCard } from "../SurfaceCard/index.js"
-import { ErrorView, LoadingScope, useIsLoading, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
+import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
+import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import type { ListRowData } from "../../surfaceCardData.js"
 
 /** One column of a board: a stage that holds items. */

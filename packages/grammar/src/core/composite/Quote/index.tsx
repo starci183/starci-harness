@@ -1,3 +1,4 @@
+import { withRegionLoading } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 
@@ -21,7 +22,7 @@ export type QuoteProps = NoChildren & {
  * drawer without nesting a surface in a surface. Use it to show what was said or stored, never an outcome (that is `Alert`).
  * Contract: INSET-NESTED by `--grammar-inset-nested`, STATE-8 by `isLoading`.
  */
-export const Quote = ({ text, source, byline, isLoading = false }: QuoteProps) => {
+const QuoteInner = ({ text, source, byline, isLoading = false }: QuoteProps) => {
     if (isLoading) {
         return (
             <blockquote
@@ -49,3 +50,11 @@ export const Quote = ({ text, source, byline, isLoading = false }: QuoteProps) =
         </blockquote>
     )
 }
+
+/**
+ * COMPOSITE - `Quote`: words taken from a source, as a `<blockquote>` on a tinted ground at the nested inset, one radius below
+ * the surface that hosts it. It is not a surface: no shadow, no outline and no action, so it stands in a pane, a card or a
+ * drawer without nesting a surface in a surface. Use it to show what was said or stored, never an outcome (that is `Alert`).
+ * Contract: INSET-NESTED by `--grammar-inset-nested`, STATE-8 by `isLoading`.
+ */
+export const Quote = withRegionLoading(QuoteInner)

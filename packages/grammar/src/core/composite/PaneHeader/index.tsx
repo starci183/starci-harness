@@ -6,7 +6,7 @@ import { Heading } from "../../leaf/Heading/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import { Text } from "../../leaf/Text/index.js"
-import { useIsLoading } from "../../loadingState.js"
+import { useIsLoading } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
 export type PaneHeaderProps = NoChildren & {

@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import {
     BaseEdge,
     Background,
@@ -208,7 +209,7 @@ const HEADER_SIDE_GAP = COMMON_SPACING_PX[6]
  * keyboard focusable (Tab) and selectable with Enter or Space; a visually hidden list repeats the nodes for screen readers.
  * Contract: focus FOCUS-2, selection STATE-1, empty STATE-3.
  */
-export const FlowGraph = ({
+const FlowGraphInner = ({
     label,
     nodes,
     edges,
@@ -416,3 +417,11 @@ export const FlowGraph = ({
         </figure>
     )
 }
+
+/**
+ * A node-and-edge map drawn with React Flow (`@xyflow/react`, a peer dependency) in grammar tokens. The radial layout
+ * puts the root in the centre with its children on a ring and their children on an outer ring around them. Nodes are
+ * keyboard focusable (Tab) and selectable with Enter or Space; a visually hidden list repeats the nodes for screen readers.
+ * Contract: focus FOCUS-2, selection STATE-1, empty STATE-3.
+ */
+export const FlowGraph = withRegionLoading(FlowGraphInner)

@@ -1,3 +1,4 @@
+import { LoadingScope } from "./regionScope.js"
 import { Popover as HeroPopover } from "@heroui/react"
 import type { ReactNode } from "react"
 import { SurfaceNesting } from "./surfaceContext.js"
@@ -72,7 +73,7 @@ export const PopoverPart = ({
                             {title === undefined ? null : (
                                 <HeroPopover.Heading className="starci-core-overlay-title">{title}</HeroPopover.Heading>
                             )}
-                            <div className="starci-core-popover-body">{children}</div>
+                            <LoadingScope isLoading={false}><div className="starci-core-popover-body">{children}</div></LoadingScope>
                         </HeroPopover.Dialog>
                     </SurfaceNesting>
                 </HeroPopover.Content>

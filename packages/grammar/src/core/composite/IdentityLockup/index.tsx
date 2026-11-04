@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionGeometry } from "../../regionScope.js"
 import { Avatar, type AvatarShape } from "../../leaf/Avatar/index.js"
 import { PlainPressable } from "../../PlainPressable.js"
 import type { NoChildren } from "../../tier.js"
@@ -24,7 +25,7 @@ export type IdentityLockupProps = NoChildren & {
  * PlainPressable, so it can trigger a menu or popover (the workspace switcher of a top bar). The name is the visible text.
  * Contract: A11Y-2 (the mark is decorative; the lines name the control).
  */
-export const IdentityLockup = ({ title, subtitle, logoSrc, markShape = "square", size, onPress, isDisabled }: IdentityLockupProps) => (
+const IdentityLockupInner = ({ title, subtitle, logoSrc, markShape = "square", size, onPress, isDisabled }: IdentityLockupProps) => (
     <PlainPressable
         {...(size === undefined ? {} : { size })}
         {...(onPress === undefined ? {} : { onPress })}
@@ -39,3 +40,10 @@ export const IdentityLockup = ({ title, subtitle, logoSrc, markShape = "square",
         </span>
     </PlainPressable>
 )
+
+/**
+ * An uploaded logo (transparent and contained by default) or local DiceBear initials beside a title and a muted subtitle, drawn with no caret and no button chrome. The whole lockup is a
+ * PlainPressable, so it can trigger a menu or popover (the workspace switcher of a top bar). The name is the visible text.
+ * Contract: A11Y-2 (the mark is decorative; the lines name the control).
+ */
+export const IdentityLockup = withRegionGeometry(IdentityLockupInner)

@@ -1,9 +1,13 @@
 "use client"
 
+import { FieldSkeletonScope, loadingFieldProps } from "../../leaf/Field/index.js"
+import { withRegionLoading } from "../../regionScope.js"
 import { useId, useState, type ReactNode } from "react"
 import type { NoChildren } from "../../tier.js"
 
 export type RatingProps = NoChildren & {
+    /** Unresolved (knowledge STATE-8): the ready anatomy as geometry, inert and `aria-busy`, label and description kept; a loading region is inherited. */
+    readonly isLoading?: boolean
     /** Names what is being rated. */
     readonly label: string
     /** Controlled value; 0 means unrated. Read-only ratings may be fractional (halves are drawn). */
@@ -38,7 +42,7 @@ const fillFor = (position: number, value: number): "full" | "half" | "empty" => 
  * the radiogroup semantics come from the platform; read-only ratings are one labelled image.
  * Contract: read-only A11Y-3; radiogroup A11Y-3 FOCUS-2 STATE-1; option FOCUS-1; glyph A11Y-2.
  */
-export const Rating = ({
+const RatingControl = ({
     label,
     value,
     defaultValue = 0,
@@ -49,7 +53,7 @@ export const Rating = ({
     valueLabel,
     icon,
     name,
-}: RatingProps) => {
+}: Omit<RatingProps, "isLoading">) => {
     const [uncontrolled, setUncontrolled] = useState(defaultValue)
     const [preview, setPreview] = useState<number | null>(null)
     const generatedName = useId()
@@ -118,3 +122,14 @@ export const Rating = ({
         </span>
     )
 }
+
+/**
+ * A 1..max rating. Interactive ratings are a native radio set, so arrow keys, form submission and
+ * the radiogroup semantics come from the platform; read-only ratings are one labelled image.
+ * Contract: read-only A11Y-3; radiogroup A11Y-3 FOCUS-2 STATE-1; option FOCUS-1; glyph A11Y-2.
+ */
+const RatingRegion = ({ isLoading = false, ...props }: RatingProps) => isLoading
+    ? <FieldSkeletonScope component="Rating"><RatingControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <RatingControl {...props} />
+
+export const Rating = withRegionLoading(RatingRegion)

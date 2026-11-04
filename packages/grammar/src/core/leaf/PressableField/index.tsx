@@ -1,5 +1,7 @@
 "use client"
 
+import { FieldSkeletonScope, loadingFieldProps } from "../Field/index.js"
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { Icon, type IconSource } from "../Icon/index.js"
 import {
@@ -11,6 +13,8 @@ import {
 import type { NoChildren } from "../../tier.js"
 
 export type PressableFieldProps = NoChildren & {
+    /** Unresolved (knowledge STATE-8): the ready anatomy as geometry, inert and `aria-busy`, label and description kept; a loading region is inherited. */
+    readonly isLoading?: boolean
     /** Accessible name of the control; the placeholder is decoration, not a name. */
     readonly label: string
     /** Placeholder-style copy that says what pressing the field will let the reader do. */
@@ -30,7 +34,7 @@ export type PressableFieldProps = NoChildren & {
  * matches them without any application restating field geometry. It never accepts text - the whole
  * field is one press target - so it carries its own accessible name and no form value.
  */
-export const PressableField = ({ label, placeholder, source, shortcut, isDisabled = false, onPress }: PressableFieldProps) => {
+const PressableFieldControl = ({ label, placeholder, source, shortcut, isDisabled = false, onPress }: Omit<PressableFieldProps, "isLoading">) => {
     const variant = useFieldVariant()
     return (
         <button
@@ -53,3 +57,17 @@ export const PressableField = ({ label, placeholder, source, shortcut, isDisable
         </button>
     )
 }
+
+/**
+ * A field you press instead of type into.
+ *
+ * It is input ANATOMY, not a button variant: the height, inset, corner, border and paint come from
+ * the same `--field-*` contract `Input` reads, so a search trigger sitting beside real fields
+ * matches them without any application restating field geometry. It never accepts text - the whole
+ * field is one press target - so it carries its own accessible name and no form value.
+ */
+const PressableFieldRegion = ({ isLoading = false, ...props }: PressableFieldProps) => isLoading
+    ? <FieldSkeletonScope component="PressableField"><PressableFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <PressableFieldControl {...props} />
+
+export const PressableField = withRegionLoading(PressableFieldRegion)

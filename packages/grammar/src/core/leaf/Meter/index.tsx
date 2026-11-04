@@ -1,3 +1,4 @@
+import { useRegionOwnsBusy, withRegionLoading } from "../../regionScope.js"
 import { Label as HeroLabel, Meter as HeroMeter } from "@heroui/react"
 import type { ComponentPropsWithRef } from "react"
 import type { PresentationState } from "../../../common/state.js"
@@ -68,7 +69,7 @@ const wholeNumber = (value: number, fallback: number) => (Number.isFinite(value)
  */
 const renderMeterRoot = (domProps: ComponentPropsWithRef<"div">) => <div {...domProps} role="meter" />
 
-export const Meter = ({
+const MeterInner = ({
     label,
     value,
     minValue = 0,
@@ -80,6 +81,7 @@ export const Meter = ({
     isLoading = false,
     size = "md",
 }: MeterProps) => {
+    const ownsBusy = useRegionOwnsBusy()
     if (isLoading) {
         return (
             <div
@@ -90,7 +92,7 @@ export const Meter = ({
                 data-grammar-skeleton="true"
                 data-grammar-tone="neutral"
                 data-contract="A11Y-3 STATE-8"
-                aria-busy="true"
+                {...(ownsBusy ? {} : { "aria-busy": true })}
                 className="starci-core-meter starci-core-meter-skeleton"
             >
                 <span className="starci-core-meter-header">
@@ -149,3 +151,5 @@ export const Meter = ({
         </HeroMeter>
     )
 }
+
+export const Meter = withRegionLoading(MeterInner)

@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { Tag as HeroTag, TagGroup as HeroTagGroup } from "@heroui/react"
 import { useEffect, useId, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react"
 import { FieldSkeletonScope } from "../../leaf/Field/index.js"
@@ -90,7 +91,7 @@ const tagIdOf = (target: EventTarget | null, root: HTMLElement): string | undefi
  * each move through a live region.
  * Contract: root STATE-1, list FOCUS-2, chip FOCUS-1, remove A11Y-2, empty STATE-3.
  */
-export const TagGroup = (props: TagGroupProps) => props.isLoading === true
+const TagGroupInner = (props: TagGroupProps) => props.isLoading === true
     ? <FieldSkeletonScope component="TagGroup"><TagGroupControl {...props} /></FieldSkeletonScope>
     : <TagGroupControl {...props} />
 
@@ -259,3 +260,16 @@ const TagGroupControl = ({
         </>
     )
 }
+
+/**
+ * Chips/tags: static labels, selectable filters, removable tokens, or a reorderable set.
+ *
+ * Built on the vendor TagGroup, so arrow keys move between chips, Delete removes a removable chip
+ * and Delete/Backspace remove. Each chip exposes `data-grammar-selected`; chips wrap onto new lines
+ * at narrow widths instead of overflowing.
+ * Reordering (`onReorder`) is Grammar's own layer: the vendor TagGroup has no drag-and-drop collection hooks, so the group
+ * wires native drag events for pointer users and Alt+arrow keys for keyboard users on top of the vendor tags, and announces
+ * each move through a live region.
+ * Contract: root STATE-1, list FOCUS-2, chip FOCUS-1, remove A11Y-2, empty STATE-3.
+ */
+export const TagGroup = withRegionLoading(TagGroupInner)

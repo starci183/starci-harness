@@ -3,7 +3,8 @@
 import type { ReactNode } from "react"
 import { assertPresentationState, type PresentationState } from "../../../common/state.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
-import { ErrorView, LOADING_ROWS, useIsLoading, type ErrorData } from "../../loadingState.js"
+import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
+import { useIsLoading } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
 export type TimelineItem = {

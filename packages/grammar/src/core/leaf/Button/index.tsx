@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionInert } from "../../regionScope.js"
 import { Button as HeroButton, Link as HeroLink, Spinner as HeroSpinner, Tooltip as HeroTooltip, buttonVariants, skeletonVariants } from "@heroui/react"
 import { useId, type ReactNode } from "react"
 import { useButtonIntentVariant, type ButtonIntentProps } from "../../buttonIntent.js"
@@ -106,7 +107,7 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
 })
 
 /** Button-shaped action: an anchor for a destination, the vendor button for a command. */
-export const Button = (props: ButtonProps) => {
+const ButtonInner = (props: ButtonProps) => {
     const reasonId = useId()
     const reason = props.disabledReason
     const explained = props.isDisabled === true && reason !== undefined && reason !== ""
@@ -235,3 +236,6 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
         </HeroButton>
     )
 }
+
+/** Button-shaped action: an anchor for a destination, the vendor button for a command. */
+export const Button = withRegionInert(ButtonInner)

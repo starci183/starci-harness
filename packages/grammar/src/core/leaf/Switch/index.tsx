@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { Switch as HeroSwitch } from "@heroui/react"
 import { Icon, type IconSource } from "../Icon/index.js"
 import {
@@ -50,7 +51,7 @@ export type SwitchProps = NoChildren & FieldControlProps & {
  * An immediate on/off setting (`role="switch"`). Use Checkbox for a choice that only takes effect
  * on submit. The label is part of the hit area; Space toggles.
  */
-export const Switch = ({ isLoading = false, ...props }: SwitchProps) => isLoading
+const SwitchInner = ({ isLoading = false, ...props }: SwitchProps) => isLoading
     ? <FieldSkeletonScope component="Switch"><SwitchControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <SwitchControl {...props} />
 
@@ -88,3 +89,9 @@ const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, s
         <FieldErrorText>{field.errorMessage}</FieldErrorText>
     </HeroSwitch>
 )
+
+/**
+ * An immediate on/off setting (`role="switch"`). Use Checkbox for a choice that only takes effect
+ * on submit. The label is part of the hit area; Space toggles.
+ */
+export const Switch = withRegionLoading(SwitchInner)

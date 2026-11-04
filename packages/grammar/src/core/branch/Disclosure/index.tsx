@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionInert } from "../../regionScope.js"
 import { Disclosure as HeroDisclosure } from "@heroui/react"
 import { useId, useState, type ReactNode } from "react"
 import type { NoChildren } from "../../tier.js"
@@ -35,7 +36,7 @@ export type DisclosureProps = NoChildren & {
  * `data-grammar-disclosure-state` mirrors the open state for the stylesheet.
  * Contract: root STATE-7 (controlled expansion), trigger FOCUS-1, indicator MOTION-2.
  */
-export const Disclosure = ({
+const DisclosureInner = ({
     title,
     body,
     summary,
@@ -76,3 +77,11 @@ export const Disclosure = ({
         </HeroDisclosure>
     )
 }
+
+/**
+ * One show/hide section (the generic, unframed disclosure; `SurfaceCard kind="accordion"` is the framed
+ * card form). The trigger is a real button inside a heading with `aria-expanded`/`aria-controls`;
+ * `data-grammar-disclosure-state` mirrors the open state for the stylesheet.
+ * Contract: root STATE-7 (controlled expansion), trigger FOCUS-1, indicator MOTION-2.
+ */
+export const Disclosure = withRegionInert(DisclosureInner)

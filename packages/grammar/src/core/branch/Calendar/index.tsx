@@ -1,5 +1,6 @@
 "use client"
 
+import { useRegionOwnsBusy, withRegionLoading } from "../../regionScope.js"
 import { Calendar as HeroCalendar, type DateValue } from "@heroui/react"
 import { I18nProvider } from "react-aria-components"
 import type { NoChildren } from "../../tier.js"
@@ -44,7 +45,7 @@ export type CalendarProps = NoChildren & {
  * the vendor as `data-*` states on each cell, with `aria-selected` on the chosen day.
  * Contract: root STATE-1 (app-owned date), grid FOCUS-2, nav A11Y-2, day TRUTH-2.
  */
-export const Calendar = ({
+const CalendarInner = ({
     label,
     value,
     defaultValue,
@@ -61,6 +62,7 @@ export const Calendar = ({
     previousLabel,
     nextLabel,
 }: CalendarProps) => {
+    const ownsBusy = useRegionOwnsBusy()
     const calendar = (
     <HeroCalendar
         aria-label={label}
@@ -68,7 +70,7 @@ export const Calendar = ({
         data-component="Calendar"
         data-contract="STATE-1"
         data-tier="branch"
-        {...(isLoading ? { "data-loading": "true", "aria-busy": true } : {})}
+        {...(isLoading ? { "data-loading": "true", ...(ownsBusy ? {} : { "aria-busy": true }) } : {})}
         {...(firstDayOfWeek === undefined ? {} : { firstDayOfWeek })}
         isDisabled={isDisabled || isLoading}
         isReadOnly={isReadOnly}
@@ -110,3 +112,11 @@ export const Calendar = ({
     )
     return locale === undefined ? calendar : <I18nProvider locale={locale}>{calendar}</I18nProvider>
 }
+
+/**
+ * A standalone month calendar (not a date field). Arrow keys move by day/week, Page Up/Down by
+ * month, Home/End to the week edges; today, the selected date and unavailable dates are exposed by
+ * the vendor as `data-*` states on each cell, with `aria-selected` on the chosen day.
+ * Contract: root STATE-1 (app-owned date), grid FOCUS-2, nav A11Y-2, day TRUTH-2.
+ */
+export const Calendar = withRegionLoading(CalendarInner)

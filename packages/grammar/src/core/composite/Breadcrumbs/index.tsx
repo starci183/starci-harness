@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionInert } from "../../regionScope.js"
 import { Breadcrumbs as HeroBreadcrumbs } from "@heroui/react"
 import type { ReactNode } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
@@ -35,7 +36,7 @@ export type BreadcrumbsProps = NoChildren & {
  * keeps one line and scrolls instead of wrapping, and long ancestor labels truncate.
  * Contract: nav LAYOUT-3 OVERFLOW-3 (owns its inline scroll), item ACTION-3 (link vs current), leading A11Y-2.
  */
-export const Breadcrumbs = ({ label, items, separator, onAction }: BreadcrumbsProps) => (
+const BreadcrumbsInner = ({ label, items, separator, onAction }: BreadcrumbsProps) => (
     <nav
         aria-label={label}
         className="starci-core-breadcrumbs"
@@ -81,3 +82,12 @@ export const Breadcrumbs = ({ label, items, separator, onAction }: BreadcrumbsPr
         </HeroBreadcrumbs>
     </nav>
 )
+
+/**
+ * The hierarchical trail to the current page.
+ *
+ * The last item is the current page (`aria-current="page"`, not a link). At narrow widths the trail
+ * keeps one line and scrolls instead of wrapping, and long ancestor labels truncate.
+ * Contract: nav LAYOUT-3 OVERFLOW-3 (owns its inline scroll), item ACTION-3 (link vs current), leading A11Y-2.
+ */
+export const Breadcrumbs = withRegionInert(BreadcrumbsInner)

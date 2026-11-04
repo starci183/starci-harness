@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionGeometry } from "../../regionScope.js"
 import { CheckIcon } from "@heroicons/react/16/solid"
 import { CheckCircleIcon } from "@heroicons/react/24/outline"
 import { Icon } from "../../leaf/Icon/index.js"
@@ -25,7 +26,7 @@ export type MessageStatusProps = NoChildren & { readonly label: string } & (
 const READERS_SHOWN = 3
 
 /** Reports a message's actual delivery or read state with native marks and a polite atomic announcement. */
-export const MessageStatus = (props: MessageStatusProps) => {
+const MessageStatusInner = (props: MessageStatusProps) => {
     const readers = props.kind === "receipt" && props.state === "seen" ? props.readers : undefined
     return (
         <div className="starci-core-message-status" data-component="MessageStatus" data-tier="composite"
@@ -44,3 +45,6 @@ export const MessageStatus = (props: MessageStatusProps) => {
         </div>
     )
 }
+
+/** Reports a message's actual delivery or read state with native marks and a polite atomic announcement. */
+export const MessageStatus = withRegionGeometry(MessageStatusInner, "text")

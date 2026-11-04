@@ -18,7 +18,8 @@ import type {
 } from "../../surfaceCardData.js"
 import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { DEFAULT_SURFACE_HEADING_LEVEL, Label, type SurfaceHeadingLevel } from "../../leaf/Label/index.js"
-import { ErrorView, LoadingScope, useIsLoading, type ErrorData } from "../../loadingState.js"
+import { ErrorView, type ErrorData } from "../../loadingState.js"
+import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import { AccordionRows } from "./AccordionRows.js"
 import { FigureCells, figureItems } from "./FigureCells.js"
 import { ListRows } from "./ListRows.js"
@@ -271,6 +272,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             aria-label={labelled === undefined && !isTile ? accessibleName : undefined}
             aria-labelledby={labelled !== undefined || isTile ? headingId : undefined}
             aria-busy={isLoading || undefined}
+            data-grammar-loading-region={isLoading ? "true" : undefined}
             className={surfaceClassName}
             data-contract={contentContract}
             data-grammar-accent-corner={body?.accentCorner}

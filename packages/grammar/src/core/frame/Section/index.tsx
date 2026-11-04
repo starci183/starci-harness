@@ -4,7 +4,8 @@ import { useId, type ReactNode } from "react"
 import { ListRow } from "../../composite/ListRow/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import { FigureCells, figureItems } from "../SurfaceCard/FigureCells.js"
-import { ErrorView, LOADING_ROWS, LoadingScope, useIsLoading, type ErrorData } from "../../loadingState.js"
+import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
+import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import type { Figure, ListRowData } from "../../surfaceCardData.js"
 import type { NoChildren } from "../../tier.js"
 import { SectionHead, type SectionHeadProps } from "./head.js"
@@ -110,6 +111,7 @@ export const Section = (props: SectionProps) => {
             aria-labelledby={title === undefined ? undefined : headingId}
             aria-label={props.kind === "figures" && props.title === undefined ? props.ariaLabel : undefined}
             aria-busy={isLoading ? true : undefined}
+            data-grammar-loading-region={isLoading ? "true" : undefined}
             className="starci-core-section"
             data-component="Section"
             data-tier="frame"

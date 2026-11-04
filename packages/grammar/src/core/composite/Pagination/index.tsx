@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionInert } from "../../regionScope.js"
 import { Pagination as HeroPagination } from "@heroui/react"
 import type { ReactNode } from "react"
 import type { NoChildren } from "../../tier.js"
@@ -54,7 +55,7 @@ export const paginationTokens = (page: number, pageCount: number, siblingCount =
  * fits a 360px viewport without horizontal scroll.
  * Contract: list FOCUS-2 (tab order = page order), steps A11Y-2 FOCUS-1, pages FOCUS-1 STATE-1.
  */
-export const Pagination = ({
+const PaginationInner = ({
     label,
     page,
     pageCount,
@@ -127,3 +128,13 @@ export const Pagination = ({
         </HeroPagination>
     )
 }
+
+/**
+ * Page-by-page navigation over one ordered result set.
+ *
+ * The current page carries `aria-current="page"`. Below 30rem the previous/next labels and the
+ * non-adjacent page numbers leave the paint (the first, last and current page stay), so the strip
+ * fits a 360px viewport without horizontal scroll.
+ * Contract: list FOCUS-2 (tab order = page order), steps A11Y-2 FOCUS-1, pages FOCUS-1 STATE-1.
+ */
+export const Pagination = withRegionInert(PaginationInner)

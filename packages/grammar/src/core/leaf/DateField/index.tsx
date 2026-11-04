@@ -1,5 +1,7 @@
 "use client"
 
+import { FieldSkeletonScope, loadingFieldProps } from "../Field/index.js"
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { DateField as HeroDateField, type DateValue } from "@heroui/react"
 import type { ReactNode } from "react"
@@ -18,6 +20,8 @@ import type { NoChildren } from "../../tier.js"
 export type DateGranularity = "day" | "hour" | "minute" | "second"
 
 export type DateFieldProps = NoChildren & FieldControlProps & {
+    /** Unresolved (knowledge STATE-8): the ready anatomy as geometry, inert and `aria-busy`, label and description kept; a loading region is inherited. */
+    readonly isLoading?: boolean
     readonly value?: DateValue | null
     readonly defaultValue?: DateValue | null
     readonly onValueChange?: (value: DateValue | null) => void
@@ -78,7 +82,7 @@ export const DateFieldBox = ({ children, isInvalid, isDisabled, variant = "prima
  * A typed date: locale-ordered segments that each take digits and arrow keys, the vendor's. Values
  * are `@internationalized/date` objects (the vendor's `DateValue`), never ambiguous strings.
  */
-export const DateField = ({
+const DateFieldControl = ({
     value,
     defaultValue,
     onValueChange,
@@ -86,7 +90,7 @@ export const DateField = ({
     maxValue,
     granularity = "day",
     ...field
-}: DateFieldProps) => {
+}: Omit<DateFieldProps, "isLoading">) => {
     const variant = useFieldVariant()
     return (
         <HeroDateField
@@ -113,3 +117,13 @@ export const DateField = ({
         </HeroDateField>
     )
 }
+
+/**
+ * A typed date: locale-ordered segments that each take digits and arrow keys, the vendor's. Values
+ * are `@internationalized/date` objects (the vendor's `DateValue`), never ambiguous strings.
+ */
+const DateFieldRegion = ({ isLoading = false, ...props }: DateFieldProps) => isLoading
+    ? <FieldSkeletonScope component="DateField"><DateFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <DateFieldControl {...props} />
+
+export const DateField = withRegionLoading(DateFieldRegion)

@@ -2,7 +2,7 @@
 
 import { useId, useState, type ReactNode } from "react"
 import { fieldStateAttributes, FieldSkeletonScope, loadingFieldProps, StaticFieldError, isFieldInvalid, type FieldControlProps } from "../../leaf/Field/index.js"
-import { useIsLoading } from "../../loadingState.js"
+import { useIsLoading } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
 export type FileDropzoneProps = NoChildren & FieldControlProps & {

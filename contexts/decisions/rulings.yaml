@@ -133,6 +133,11 @@ rulings:
     status: live
     ruling: "A choice among a few has one component by meaning and the Grammar draws no group of attached buttons: Tabs switch a view (page head) or filter a list (kind filter: compact underline tabs with a count, inside the list pane under its search field), ChoiceChips or RadioGroup choose a value of a form (a tablist is not a form field), a date is the Calendar and a time ChoiceChips, actions are separate Buttons or a DropdownMenu. ButtonGroup, FilterButtonGroup and SegmentedControl are deprecated for one release and refused in product source (R380)."
     owner: "contexts/ui/components/tabs.md; contexts/ui/composition.md CTA-1; contexts/grammars/contract.md"
+  - id: region-loading
+    date: '2026-11-05'
+    status: live
+    ruling: "Every Grammar component that can sit in a loading region draws its loading state from the region, never from a prop per control: Section, PaneSection, SurfaceCard, Form and a Dialog or Drawer body publish the first-load flag, and a component inside draws the same box as when ready, inert, with the region carrying the one aria-busy. Static chrome (titles, tab labels, 'Cancel', field labels) keeps its real words and only goes inert; data (values, counts, rows, chips, avatars, a button labelled with a count) becomes geometry. An explicit isLoading overrides the region for one control. Loading is not pending (isPending keeps its spinner), only a first load counts (a refresh keeps its data), a Dialog, Drawer or Popover starts a fresh region, and a create form is never loading. The contract check scripts/check-region-loading.mts fails a component that neither honours the region nor is listed with its reason."
+    owner: "contexts/ui/loading.md; contexts/grammars/contract.md; packages/grammar/src/common/region-loading.ts"
   - id: meter-segments-h1
     date: '2026-09-27'
     status: live

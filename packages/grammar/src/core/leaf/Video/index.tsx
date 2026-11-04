@@ -1,3 +1,4 @@
+import { withRegionGeometry } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
 /** A genuine WebVTT resource timed to the media, including speech and relevant non-speech audio. */
@@ -21,7 +22,7 @@ export type VideoProps = NoChildren & {
 }
 
 /** Native, user-controlled video with genuine captions when available; wrap in MediaFrame for a reserved aspect ratio. */
-export const Video = ({ src, title, poster, captions, crossOrigin }: VideoProps) => (
+const VideoInner = ({ src, title, poster, captions, crossOrigin }: VideoProps) => (
     <video
         className="starci-core-video"
         data-component="Video"
@@ -40,3 +41,6 @@ export const Video = ({ src, title, poster, captions, crossOrigin }: VideoProps)
         )}
     </video>
 )
+
+/** Native, user-controlled video with genuine captions when available; wrap in MediaFrame for a reserved aspect ratio. */
+export const Video = withRegionGeometry(VideoInner)

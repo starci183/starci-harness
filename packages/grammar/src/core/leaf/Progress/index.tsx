@@ -1,3 +1,4 @@
+import { withRegionLoading } from "../../regionScope.js"
 import { ProgressBar, skeletonVariants } from "@heroui/react"
 import type { NoChildren } from "../../tier.js"
 
@@ -34,7 +35,7 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
 })
 
 /** Accessible, full-width completion bar with an inert initial-loading shape. */
-export const Progress = ({ label, value = 0, isLoading = false, steps, valueText, tone = "accent" }: ProgressProps) => {
+const ProgressInner = ({ label, value = 0, isLoading = false, steps, valueText, tone = "accent" }: ProgressProps) => {
     if (steps !== undefined && !isLoading) {
         const total = Math.max(1, Math.round(steps.total))
         const completed = Math.min(total, Math.max(0, Math.round(steps.completed)))
@@ -99,3 +100,6 @@ export const Progress = ({ label, value = 0, isLoading = false, steps, valueText
         </ProgressBar>
     )
 }
+
+/** Accessible, full-width completion bar with an inert initial-loading shape. */
+export const Progress = withRegionLoading(ProgressInner)

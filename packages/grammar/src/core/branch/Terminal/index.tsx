@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { useEffect, useId, useRef } from "react"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import type { NoChildren } from "../../tier.js"
@@ -28,7 +29,7 @@ const FOLLOW_THRESHOLD = 8
  * without interrupting. It follows the end as lines arrive, unless the reader has scrolled up; scrolling back to
  * the end follows again.
  */
-export const Terminal = ({ lines, title, label, isLoading = false }: TerminalProps) => {
+const TerminalInner = ({ lines, title, label, isLoading = false }: TerminalProps) => {
     const titleId = useId()
     const logRef = useRef<HTMLDivElement>(null)
     const following = useRef(true)
@@ -62,3 +63,10 @@ export const Terminal = ({ lines, title, label, isLoading = false }: TerminalPro
         </div>
     )
 }
+
+/**
+ * BRANCH - `Terminal`: a dark monospace log tail. `role="log"` with `aria-live="polite"`, so new lines are announced
+ * without interrupting. It follows the end as lines arrive, unless the reader has scrolled up; scrolling back to
+ * the end follows again.
+ */
+export const Terminal = withRegionLoading(TerminalInner)

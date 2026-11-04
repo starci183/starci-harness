@@ -1,3 +1,4 @@
+import { withRegionGeometry } from "../../regionScope.js"
 import type { ReactNode } from "react"
 import { assetSlotAttributes, type AssetSlotProps } from "../Image/assetSlot.js"
 import type { AccentCorner } from "../../accentCorner.js"
@@ -18,7 +19,7 @@ export type MediaFrameProps = NoChildren & AssetSlotProps & {
  * Product-family frame for an approved illustration, photograph or generated bitmap.
  * Asset purpose and generation authority stay with the consuming product workflow.
  */
-export const MediaFrame = ({
+const MediaFrameInner = ({
     media,
     caption,
     aspect = "landscape",
@@ -46,3 +47,9 @@ export const MediaFrame = ({
         {caption === undefined ? null : <figcaption className="starci-core-media-caption" data-contract="FLOW-3">{caption}</figcaption>}
     </figure>
 )
+
+/**
+ * Product-family frame for an approved illustration, photograph or generated bitmap.
+ * Asset purpose and generation authority stay with the consuming product workflow.
+ */
+export const MediaFrame = withRegionGeometry(MediaFrameInner)

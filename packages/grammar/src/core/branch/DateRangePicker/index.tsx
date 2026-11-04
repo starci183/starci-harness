@@ -1,5 +1,7 @@
 "use client"
 
+import { FieldSkeletonScope, loadingFieldProps } from "../../leaf/Field/index.js"
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import {
     DateField as HeroDateField,
@@ -23,6 +25,8 @@ import type { NoChildren } from "../../tier.js"
 export type DateRangeValue = RangeValue<DateValue>
 
 export type DateRangePickerProps = NoChildren & Omit<FieldControlProps, "name"> & {
+    /** Unresolved (knowledge STATE-8): the ready anatomy as geometry, inert and `aria-busy`, label and description kept; a loading region is inherited. */
+    readonly isLoading?: boolean
     readonly value?: DateRangeValue | null
     readonly defaultValue?: DateRangeValue | null
     readonly onValueChange?: (value: DateRangeValue | null) => void
@@ -50,7 +54,7 @@ export type DateRangePickerProps = NoChildren & Omit<FieldControlProps, "name"> 
  */
 
 /** A start and an end date, typed in two segment groups or picked as a span on a month grid. */
-export const DateRangePicker = ({
+const DateRangePickerControl = ({
     value,
     defaultValue,
     onValueChange,
@@ -62,7 +66,7 @@ export const DateRangePicker = ({
     startName,
     endName,
     ...field
-}: DateRangePickerProps) => {
+}: Omit<DateRangePickerProps, "isLoading">) => {
     const variant = useFieldVariant()
     const { anchor, portalProps } = useGrammarPortal()
     return (
@@ -104,3 +108,10 @@ export const DateRangePicker = ({
         </HeroDateRangePicker>
     )
 }
+
+/** A start and an end date, typed in two segment groups or picked as a span on a month grid. */
+const DateRangePickerRegion = ({ isLoading = false, ...props }: DateRangePickerProps) => isLoading
+    ? <FieldSkeletonScope component="DateRangePicker"><DateRangePickerControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    : <DateRangePickerControl {...props} />
+
+export const DateRangePicker = withRegionLoading(DateRangePickerRegion)

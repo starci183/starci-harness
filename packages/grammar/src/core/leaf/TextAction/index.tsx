@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionInert } from "../../regionScope.js"
 import { Spinner, skeletonVariants } from "@heroui/react"
 import { useRef, type ReactNode } from "react"
 import { getActionClassName, type ActionAppearance, type ActionTextSize } from "../actionStyles.js"
@@ -97,7 +98,7 @@ const getActionContract = (appearance: ActionAppearance, size: ActionTextSize, i
 }
 
 /** Text-shaped action: an anchor for a destination, a button for a command. */
-export const TextAction = (props: TextActionProps) => {
+const TextActionInner = (props: TextActionProps) => {
     const {
         children,
         startContent,
@@ -171,3 +172,6 @@ export const TextAction = (props: TextActionProps) => {
 }
 
 export type { ActionAppearance as TextActionAppearance, ActionTextSize as TextActionSize }
+
+/** Text-shaped action: an anchor for a destination, a button for a command. */
+export const TextAction = withRegionInert(TextActionInner)

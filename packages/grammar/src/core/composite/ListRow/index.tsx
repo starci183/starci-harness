@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { useId, type DragEvent, type KeyboardEvent } from "react"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { staticRowClassName } from "../../classNames.js"
@@ -53,7 +54,7 @@ const RowAction = ({ action }: { readonly action: ItemAction }) => (
  * badges, one supporting line, one visible command and a menu, with an optional detail under the copy. It is an `<li>`
  * and is never rendered loose; the collection that holds it is the list.
  */
-export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
+const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
     const state = row.state ?? "neutral"
     const treatment = treatmentFor(state)
     const hasLeading = row.leading !== undefined
@@ -170,3 +171,10 @@ export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
         </ButtonPlacementProvider>
     )
 }
+
+/**
+ * The one drawing of a row, inside `SurfaceCard kind="list"` and the `Section` of rows: leading mark, title with its
+ * badges, one supporting line, one visible command and a menu, with an optional detail under the copy. It is an `<li>`
+ * and is never rendered loose; the collection that holds it is the list.
+ */
+export const ListRow = withRegionLoading(ListRowInner)

@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { Tooltip as HeroTooltip, skeletonVariants } from "@heroui/react"
 import { useOverlayContainer } from "../../overlayScope.js"
 import { tooltipContentClassName } from "../../tooltipClassName.js"
@@ -72,7 +73,7 @@ const DotOnly = ({ tone, size, echo, label }: { readonly tone: StatusDotTone; re
  * expands and fades in the tone's light stop. The dot and the dot-size token are shared with `Badge isDot`, which is the form
  * with words.
  */
-export const StatusDot = ({ tone = "neutral", size = "md", "aria-label": label, echo = false, isLoading = false }: StatusDotProps) => {
+const StatusDotInner = ({ tone = "neutral", size = "md", "aria-label": label, echo = false, isLoading = false }: StatusDotProps) => {
     if (isLoading) {
         return (
             <span aria-hidden="true" className={`starci-core-status-dot ${SKELETON_CLASS_NAME}`} data-tier="leaf" data-component="StatusDot" data-variant="static" data-tone={tone} data-size={size} data-loading="true">
@@ -82,3 +83,10 @@ export const StatusDot = ({ tone = "neutral", size = "md", "aria-label": label, 
     }
     return <DotOnly tone={tone} size={size} echo={echo} label={label} />
 }
+
+/**
+ * LEAF - `StatusDot`: a status as a coloured dot alone, with its name in a Tooltip on hover and focus. `echo` adds a ring that
+ * expands and fades in the tone's light stop. The dot and the dot-size token are shared with `Badge isDot`, which is the form
+ * with words.
+ */
+export const StatusDot = withRegionLoading(StatusDotInner)

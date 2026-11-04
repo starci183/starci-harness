@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionInert } from "../../regionScope.js"
 import { Button as HeroButton, Link as HeroLink, Spinner as HeroSpinner, buttonVariants, cn, skeletonVariants } from "@heroui/react"
 import { Icon, type IconSource } from "../Icon/index.js"
 import { useButtonIntentVariant, type ButtonIntent, type ButtonIntentProps } from "../../buttonIntent.js"
@@ -71,7 +72,7 @@ export const iconButtonBadgeText = (badge: number | string | undefined, max = 99
 const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base()
 
 /** Circular glyph-only action with a mandatory accessible name (A11Y-2). */
-export const IconButton = ({
+const IconButtonInner = ({
     source: givenSource,
     label,
     intent,
@@ -151,3 +152,6 @@ export const IconButton = ({
     </HeroButton>
     )
 }
+
+/** Circular glyph-only action with a mandatory accessible name (A11Y-2). */
+export const IconButton = withRegionInert(IconButtonInner)

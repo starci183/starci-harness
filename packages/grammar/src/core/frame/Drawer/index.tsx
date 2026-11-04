@@ -1,5 +1,6 @@
 "use client"
 
+import { LoadingScope } from "../../regionScope.js"
 import { Drawer as HeroDrawer } from "@heroui/react"
 import { useId, type ReactNode } from "react"
 import { SurfaceNesting } from "../../surfaceContext.js"
@@ -16,6 +17,8 @@ export type DrawerProps = OverlayOpenState & {
     readonly title: string
     readonly description?: ReactNode
     readonly children?: ReactNode
+    /** The body is still loading: every component in it draws as the geometry of its ready box, inert, with real labels. */
+    readonly isLoading?: boolean
     readonly footer?: OverlayFooter
     /** A Common `Button`/`IconButton` (any React Aria pressable) that opens the drawer. */
     readonly trigger?: ReactNode
@@ -44,6 +47,7 @@ export const Drawer = ({
     title,
     description,
     children,
+    isLoading = false,
     footer,
     trigger,
     closeLabel,
@@ -79,7 +83,7 @@ export const Drawer = ({
                 >
                     {({ close }) => (
                         <ButtonPlacementProvider placement="decision">
-                        <SurfaceNesting host="overlay">
+                        <LoadingScope isLoading={false}><SurfaceNesting host="overlay">
                             {hasHandle ? <HeroDrawer.Handle data-grammar-drawer-handle="true" className="starci-core-drawer-handle" /> : null}
                             <HeroDrawer.Header className="starci-core-overlay-header">
                                 <div className="starci-core-overlay-heading-group">
@@ -91,14 +95,14 @@ export const Drawer = ({
                                 {closeLabel === undefined ? null : <IconButton intent="dismiss" label={closeLabel} onPress={close} />}
                             </HeroDrawer.Header>
                             {children === undefined ? null : (
-                                <HeroDrawer.Body className="starci-core-overlay-body">{children}</HeroDrawer.Body>
+                                <HeroDrawer.Body className="starci-core-overlay-body" {...(isLoading ? { "aria-busy": true, "data-grammar-loading-region": "true" } : {})}><LoadingScope isLoading={isLoading}>{children}</LoadingScope></HeroDrawer.Body>
                             )}
                             {footer === undefined ? null : (
                                 <HeroDrawer.Footer className="starci-core-overlay-footer">
                                     {typeof footer === "function" ? footer(close) : footer}
                                 </HeroDrawer.Footer>
                             )}
-                        </SurfaceNesting>
+                        </SurfaceNesting></LoadingScope>
                         </ButtonPlacementProvider>
                     )}
                 </HeroDrawer.Dialog>

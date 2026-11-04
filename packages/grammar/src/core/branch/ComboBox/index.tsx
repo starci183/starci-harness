@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import {
     ComboBox as HeroComboBox,
@@ -63,7 +64,7 @@ export type ComboBoxProps = NoChildren & FieldControlProps & {
  * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const ComboBox = ({ isLoading = false, ...props }: ComboBoxProps) => isLoading
+const ComboBoxInner = ({ isLoading = false, ...props }: ComboBoxProps) => isLoading
     ? <FieldSkeletonScope component="ComboBox"><ComboBoxControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <ComboBoxControl {...props} />
 
@@ -151,3 +152,9 @@ const ComboBoxControl = ({
         </HeroComboBox>
     )
 }
+
+/**
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const ComboBox = withRegionLoading(ComboBoxInner)

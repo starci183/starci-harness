@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionGeometry } from "../../regionScope.js"
 import { useEffect, useMemo, useSyncExternalStore } from "react"
 import { Text, type TextTone } from "../Text/index.js"
 import { getClockSnapshot, getServerClockSnapshot, subscribeClock } from "./clock.js"
@@ -78,7 +79,7 @@ const digitalLabel = (seconds: number) => {
 }
 
 /** Accessible live time; all leaves subscribe to the same clock and own no interval or wall-clock read. */
-export const RelativeTime = ({ dateTime, locale, mode = "relative", format = "relative", expiredLabel, template = "{time}", fallback, id, size = "sm", tone = "muted" }: RelativeTimeProps) => {
+const RelativeTimeInner = ({ dateTime, locale, mode = "relative", format = "relative", expiredLabel, template = "{time}", fallback, id, size = "sm", tone = "muted" }: RelativeTimeProps) => {
     const instant = useMemo(() => parseInstant(dateTime), [dateTime])
     useEffect(() => {
         if (instant === null && process.env.NODE_ENV !== "production") {
@@ -101,3 +102,6 @@ export const RelativeTime = ({ dateTime, locale, mode = "relative", format = "re
         </time>
     )
 }
+
+/** Accessible live time; all leaves subscribe to the same clock and own no interval or wall-clock read. */
+export const RelativeTime = withRegionGeometry(RelativeTimeInner, "text")

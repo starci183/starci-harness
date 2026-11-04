@@ -1,5 +1,6 @@
 "use client"
 
+import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { useCollectionItemPresentation, type ItemDescriptionLines } from "../../collectionItem.js"
 import {
@@ -94,7 +95,7 @@ export const ListOptions = ({ options }: { readonly options: ReadonlyArray<ListO
  * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-export const Select = ({ isLoading = false, ...props }: SelectProps) => isLoading
+const SelectInner = ({ isLoading = false, ...props }: SelectProps) => isLoading
     ? <FieldSkeletonScope component="Select"><SelectControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <SelectControl {...props} />
 
@@ -164,3 +165,9 @@ const SelectControl = ({
         </HeroSelect>
     )
 }
+
+/**
+ * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
+ * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
+ */
+export const Select = withRegionLoading(SelectInner)

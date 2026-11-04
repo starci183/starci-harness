@@ -1,5 +1,6 @@
 "use client"
 
+import { LoadingScope } from "../../regionScope.js"
 import { Modal as HeroModal } from "@heroui/react"
 import { useId, type ReactNode } from "react"
 import { SurfaceNesting } from "../../surfaceContext.js"
@@ -18,6 +19,8 @@ export type DialogProps = OverlayOpenState & {
     /** Supporting sentence under the heading, wired as `aria-describedby`. */
     readonly description?: ReactNode
     readonly children?: ReactNode
+    /** The body is still loading: every component in it draws as the geometry of its ready box, inert, with real labels. */
+    readonly isLoading?: boolean
     readonly footer?: OverlayFooter
     /**
      * The control that opens the dialog: a Common `Button`/`IconButton` (any React Aria pressable).
@@ -46,6 +49,7 @@ export const Dialog = ({
     title,
     description,
     children,
+    isLoading = false,
     footer,
     trigger,
     closeLabel,
@@ -79,7 +83,7 @@ export const Dialog = ({
                 >
                     {({ close }) => (
                         <ButtonPlacementProvider placement="decision">
-                        <SurfaceNesting host="overlay">
+                        <LoadingScope isLoading={false}><SurfaceNesting host="overlay">
                             <HeroModal.Header className="starci-core-overlay-header">
                                 <div className="starci-core-overlay-heading-group">
                                     <HeroModal.Heading className="starci-core-overlay-title">{title}</HeroModal.Heading>
@@ -90,14 +94,14 @@ export const Dialog = ({
                                 {closeLabel === undefined ? null : <IconButton intent="dismiss" label={closeLabel} onPress={close} />}
                             </HeroModal.Header>
                             {children === undefined ? null : (
-                                <HeroModal.Body className="starci-core-overlay-body">{children}</HeroModal.Body>
+                                <HeroModal.Body className="starci-core-overlay-body" {...(isLoading ? { "aria-busy": true, "data-grammar-loading-region": "true" } : {})}><LoadingScope isLoading={isLoading}>{children}</LoadingScope></HeroModal.Body>
                             )}
                             {footer === undefined ? null : (
                                 <HeroModal.Footer className="starci-core-overlay-footer">
                                     {typeof footer === "function" ? footer(close) : footer}
                                 </HeroModal.Footer>
                             )}
-                        </SurfaceNesting>
+                        </SurfaceNesting></LoadingScope>
                         </ButtonPlacementProvider>
                     )}
                 </HeroModal.Dialog>

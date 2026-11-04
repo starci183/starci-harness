@@ -2,7 +2,8 @@
 
 import type { CSSProperties, ReactNode } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
-import { ErrorView, useIsLoading, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
+import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
+import { useIsLoading, useRegionOwnsBusy } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
 /** One bar: a value for a label (a day, a channel, a week). */
@@ -40,6 +41,7 @@ type BarStyle = CSSProperties & { readonly "--starci-core-bar-share": string }
  */
 export const BarChart = ({ label, bars, empty, isLoading: ownLoading, error }: BarChartProps) => {
     const isLoading = useIsLoading(ownLoading)
+    const ownsBusy = useRegionOwnsBusy()
     if (!isLoading && error !== undefined) return <ErrorView error={error} />
     if (!isLoading && bars.length === 0) return <>{empty}</>
     const shown: readonly BarChartBar[] = isLoading && bars.length === 0
@@ -52,7 +54,7 @@ export const BarChart = ({ label, bars, empty, isLoading: ownLoading, error }: B
             data-component="BarChart"
             data-contract="GAP-1 STATE-8"
             className="starci-core-bar-chart"
-            {...(isLoading ? { "aria-busy": true, "data-loading": "true" } : {})}
+            {...(isLoading ? { "data-loading": "true", ...(ownsBusy ? {} : { "aria-busy": true }) } : {})}
         >
             <ol className="starci-core-bar-chart-bars" aria-label={label}>
                 {shown.map((bar, index) => {

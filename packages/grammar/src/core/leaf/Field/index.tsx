@@ -1,5 +1,6 @@
 "use client"
 
+import { useRegionOwnsBusy, withRegionLoading } from "../../regionScope.js"
 import {
     Description as HeroDescription,
     FieldError as HeroFieldError,
@@ -208,7 +209,7 @@ export type FieldProps = NoChildren & FieldControlProps & {
  * for everything else, with the id and `aria-describedby` / `aria-invalid` wiring handed to the
  * control so a custom control is announced exactly like a Grammar one.
  */
-export const Field = ({ isLoading = false, ...props }: FieldProps) => isLoading
+const FieldInner = ({ isLoading = false, ...props }: FieldProps) => isLoading
     ? <FieldSkeletonScope component="Field"><FieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <FieldControl {...props} />
 
@@ -279,21 +280,33 @@ const FieldControl = ({
  * root's `aria-busy`), and paints every control box in it (`data-grammar-field-control`, the Input control, the choice
  * controls) as a Skeleton: its value, indicator or thumb is not drawn. Label and description stay real text.
  */
-export const FieldSkeletonScope = ({ component, children }: { readonly component: string; readonly children: ReactNode }) => (
-    <div
-        className="starci-core-field-skeleton-scope"
-        data-grammar-skeleton-of={component}
-        data-grammar-field-skeleton="true"
-        data-grammar-skeleton="true"
-        data-loading="true"
-        data-contract="A11Y-1 STATE-8"
-        aria-busy="true"
-        inert
-    >
-        {children}
-    </div>
-)
+export const FieldSkeletonScope = ({ component, children }: { readonly component: string; readonly children: ReactNode }) => {
+    // Inside a loading region the region carries the one `aria-busy`; a field loading on its own flag carries it itself.
+    const regionBusy = useRegionOwnsBusy()
+    return (
+        <div
+            className="starci-core-field-skeleton-scope"
+            data-grammar-skeleton-of={component}
+            data-grammar-field-skeleton="true"
+            data-grammar-skeleton="true"
+            data-loading="true"
+            data-contract="A11Y-1 STATE-8"
+            {...(regionBusy ? {} : { "aria-busy": "true" })}
+            inert
+        >
+            {children}
+        </div>
+    )
+}
 
 /** What a loading control drops from its props: nothing is invalid, in error or pending while it loads. */
 export const loadingFieldProps = <P extends object>(props: P): P =>
     ({ ...props, errorMessage: undefined, isInvalid: undefined, isError: undefined, isPending: undefined }) as P
+
+/**
+ * Label, control, description and error, in HeroUI's field order, for ANY control: a native element, a third-party
+ * widget, or an app's own input. Grammar's own form controls already render this anatomy; `Field` is the same anatomy
+ * for everything else, with the id and `aria-describedby` / `aria-invalid` wiring handed to the
+ * control so a custom control is announced exactly like a Grammar one.
+ */
+export const Field = withRegionLoading(FieldInner)
