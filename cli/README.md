@@ -316,8 +316,8 @@ harness-held (`hostHeldAttempt` of `harness/tasks.ts`): its retry spends no try 
 reads (package.json, package-lock.json, npm-shrinkwrap.json, .npmrc), which also opens one harness-defect ticket
 (`INSTALL_RED_HARNESS`, every repeat landing on it). No try is spent, a wave fails, returns and revives no task (they stay
 due, `wave-infra`), and the next step verifies again, going on once the install is green. Each child runs below normal priority, a node tool under
-its kind's `--max-old-space-size`, a uat container under `--memory`, a jest or vitest run with `--maxWorkers` (1 under
-pressure), and inherits `STARCI_HEAVY_HELD`, so a `starci check run` it starts runs under its slot instead of waiting on
+its kind's `--max-old-space-size`, a uat container under `--memory`, a jest or vitest run with `--maxWorkers` scaled to the RAM room its admission
+measured (`testWorkerCount`: one on a starved host, up to `heavy.testWorkers`), and inherits `STARCI_HEAVY_HELD`, so a `starci check run` it starts runs under its slot instead of waiting on
 it. `check heavy-sites` (a CI gate) is red for a spawn site in `cli/src` that runs a heavy command outside the governor.
 `seat start` refuses `SEAT_RAM_LOW` while free memory is under the seat floor, which `workflow step` reports as a wait, and
 records the hold (`seat_holds`: since when, on what memory) until the task launches or the floor admits again.

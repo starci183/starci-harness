@@ -85,8 +85,9 @@ export const HEAVY_HELD_ENV = "STARCI_HEAVY_HELD"
  * The host's load as admission reads it: free memory, the CPU average over the window, the share of it the governor's own running
  * commands burn (`managedCpuPercent`, read only while the CPU is above its ceiling, null otherwise or when the process table
  * cannot be read), the CPU rule that applied (`cpuRule`, null under the ceiling), the count cap, the memory the running commands
- * are estimated to hold, and `admitted`, how many heavy commands may run now (the running ones plus how many more of the
- * smallest estimate fit), with why.
+ * are estimated to hold, `roomMb` (free RAM less the reserve and what the running commands hold), and `admitted`, how many heavy
+ * commands may run now (the running ones plus how many more of the smallest estimate fit), with why. `pressure` is true when no
+ * command beyond the running ones fits now: the host cannot admit the next one.
  */
 export interface HostLoad {
     readonly freeMb: number
@@ -96,6 +97,7 @@ export interface HostLoad {
     readonly cap: number
     readonly reserveMb: number
     readonly committedMb: number
+    readonly roomMb: number
     readonly running: number
     readonly admitted: number
     readonly pressure: boolean
@@ -169,11 +171,12 @@ export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number,
         cap,
         reserveMb: rules.reserveMb,
         committedMb,
+        roomMb: room,
         running: running.length,
         admitted,
         admits,
         cpuHolds,
-        pressure: admitted < cap,
+        pressure: admitted <= running.length,
         reason: reasons.length === 0 ? capacity : `${reasons.join("; ")}; ${capacity}`,
     }
 }
@@ -508,21 +511,42 @@ const nodeOptions = (rules: HeavyRules, kind: HeavyKind, env: RunOptions["env"])
     return `${kept} --max-old-space-size=${String(rules.memoryMb[kind])}`.trim()
 }
 
-/** A heavy command's run options with its slot: the memory cap, below-normal OS priority, the pid hook and HEAVY_HELD_ENV for its children. */
+/**
+ * A heavy command's run options with its slot: the memory cap, below-normal OS priority, the pid hook and HEAVY_HELD_ENV for its
+ * children, and `roomMb`, the room admission measured for it (null for a command that runs under its parent's slot).
+ */
 export interface Held {
     readonly options: RunOptions
-    readonly pressure: boolean
+    readonly roomMb: number | null
     readonly rules: HeavyRules
 }
 
+/** The most workers a test run takes: `heavy.testWorkers`, a count or a percent of the logical cores, at least one. */
+export const testWorkerCap = (rules: HeavyRules, cores: number = availableParallelism()): number => {
+    const percent = /^(\d{1,3})%$/.exec(rules.testWorkers)?.[1]
+    return Math.max(1, percent === undefined ? Number(rules.testWorkers) : Math.floor((cores * Number(percent)) / 100))
+}
+
 /**
- * The worker count a test runner (jest or vitest, named in the argv) runs with: `heavy.testWorkers`, or one under pressure,
- * added as `--maxWorkers` unless the argv sets it already. An argv that names neither is returned as it is.
+ * The workers a test run of the room `roomMb` gets: its own estimate (`estimateMb.test`, what one worker typically holds) holds
+ * the first, and every further estimate of room one more, clamped to 1..testWorkerCap; a run under its parent's slot (null) takes the cap. So a
+ * host with room runs wide, a starved one runs one worker, and the count follows the RAM free at admission, never the slot cap.
+ */
+export const testWorkerCount = (rules: HeavyRules, roomMb: number | null, cores: number = availableParallelism()): number => {
+    const cap = testWorkerCap(rules, cores)
+    if (roomMb === null) return cap
+    const extra = Math.floor(Math.max(0, roomMb - rules.estimateMb.test) / rules.estimateMb.test)
+    return Math.min(cap, 1 + extra)
+}
+
+/**
+ * The argv of a test runner (jest or vitest, named in the argv) with `--maxWorkers` of `testWorkerCount` for the room its slot
+ * was admitted with, unless the argv sets it already. An argv that names neither is returned as it is.
  */
 export const testWorkerArgs = (argv: readonly string[], held: Held): readonly string[] => {
     const runner = argv.some((part) => /^(?:jest|vitest)(?:\.[cm]?js)?$/.test(basename(part)))
     if (!runner || argv.some((part) => part.startsWith("--maxWorkers"))) return argv
-    return [...argv, `--maxWorkers=${held.pressure ? "1" : held.rules.testWorkers}`]
+    return [...argv, `--maxWorkers=${String(testWorkerCount(held.rules, held.roomMb))}`]
 }
 
 /** The refusal a heavy command meets in a coordinator's turn (`refuseHeavyWaits`) when the governor does not admit it at once. */
@@ -667,7 +691,7 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
     const budget = heavyTimeoutMinutes(rules, kind, options.files)
     const timed = budget === undefined ? options : { ...options, timeoutMs: budget * 60_000 }
     const base: RunOptions = { ...timed, env, priority: constants.priority.PRIORITY_BELOW_NORMAL }
-    if (process.env[HEAVY_HELD_ENV] === "1") return work({ options: base, pressure: false, rules })
+    if (process.env[HEAVY_HELD_ENV] === "1") return work({ options: base, roomMb: null, rules })
     const owner = heavyOwner()
     const task = process.env[TASK_ENV] ?? null
     const slot = { id: `${String(owner)}-${randomBytes(8).toString("hex")}`, pid: process.pid, kind, label, cwd, task }
@@ -699,7 +723,7 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
         withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs, pid: process.pid, owner, task })))
     }
     try {
-        return await work({ options: { ...base, onSpawn: (pid) => { setChild(slot.id, pid) } }, pressure: load.pressure, rules })
+        return await work({ options: { ...base, onSpawn: (pid) => { setChild(slot.id, pid) } }, roomMb: load.roomMb, rules })
     } finally {
         release(slot.id)
     }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.63 - 2026-11-04
+
+- Fixed: the heavy governor gives a jest or vitest run `--maxWorkers` from the RAM room its admission measured (free RAM less `heavy.reserveMb` and the running estimates): its own test estimate holds the first worker and every further test estimate of room one more, from 1 up to `heavy.testWorkers` (`testWorkerCount`). It gave 1 whenever fewer commands were admitted than the slot cap, so a 28-core host with 21 GB free ran every unit run on one worker. `pressure` in `host load` now means the host cannot admit the next command.
+
 ## 1.1.0-alpha.59 - 2026-11-04
 
 - Changed: the contexts search eval asks for the warm-cache push rule and the nightly verify lock.

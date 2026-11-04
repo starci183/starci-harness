@@ -51,7 +51,9 @@ reviveMax: 3
 # no verdict that spends no try and is verified again on the next step. Its timeout starts at admission, never in the queue: timeoutMinutes for its kind (an install's budget is
 # sized for a cold npm ci on this host, an eslint's grows with the files it names, timeoutMinutesPer1000Files), else the caller's (a test command's comes from its contract). Each runs below normal OS
 # priority; a node tool under `--max-old-space-size` of its kind's memoryMb, a uat container under `--memory`; a test runner
-# (jest, vitest) with `--maxWorkers` testWorkers, or 1 under pressure (fewer admitted than the cap). A worker seat launches
+# (jest, vitest) with `--maxWorkers` from the room its admission measured (free RAM - reserveMb - the running estimates): its own
+# test estimate holds one worker and every further test estimate of room one more, from 1 up to testWorkers (a count or a percent of the
+# logical cores), so a starved host runs one worker and a host with room runs wide. A worker seat launches
 # only while free memory is at least seatFreeMb; otherwise its task stays queued and the hold is recorded (since when, on what
 # memory), so `workflow status` names it. `starci host load` shows the capacity, the CPU rule that applied, each queued
 # command's wait and why, and who holds the memory (managed: the harness's heavy commands and seats; unmanaged: other node,
