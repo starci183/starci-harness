@@ -1,6 +1,7 @@
 // R250: host scheduling and application logic do not belong in deployment sources; compose mutations stay in dev.
 import { parseWorkflow } from '../runtime-rules/workflow-source.mjs';
 import { words } from '../../lib/dockerfile.mjs';
+import { isCacheVerify } from './deploy-workflow.mjs';
 import { found, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
@@ -212,7 +213,7 @@ function sourceFindings(file: string, text: string, doc: Parsed) {
   const cronContainer = CRON_CONTAINER.test(text);
   const host = HOST_CRON.test(text) || HOST_CRON_PATH.test(file) || cronTable(text) || cronContainer || /\b(?:service\s+cron|cron\s+-[a-z]|cron\s*$)/im.test(text);
   if (host) findings.push(found('HFS_HOST_CRON', file, 'Host cron, systemd timers and at jobs are forbidden; use an app-owned scheduler or a declared replicated-job'));
-  if ((WORKFLOW.test(file) && workflowSchedule(doc, text)) || (DEPLOY.test(file) && host) || cronContainer || SLEEP_LOOP.test(text)) {
+  if ((WORKFLOW.test(file) && !isCacheVerify(file) && workflowSchedule(doc, text)) || (DEPLOY.test(file) && host) || cronContainer || SLEEP_LOOP.test(text)) {
     findings.push(found('HFS_DEPLOY_SCHEDULER', file, 'Deployment sources must not own recurring schedules; move scheduled work into the app and declare its job'));
   }
   if (deploymentLogic(file, text)) {

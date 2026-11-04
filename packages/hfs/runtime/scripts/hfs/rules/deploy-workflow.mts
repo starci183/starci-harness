@@ -90,7 +90,7 @@ const pushFilterValid = (options: Parsed, ci: Parsed) => record(options) && Obje
 
 const isCi = (file: string) => /(^|\/)ci\.ya?ml$/.test(file);
 /** The managed nightly verify of the committed check cache, the one app workflow that runs on a schedule (ruling release-gate-warm-cache). */
-const isCacheVerify = (file: string) => /(^|\/)cache-verify\.ya?ml$/.test(file);
+export const isCacheVerify = (file: string): boolean => /(^|\/)cache-verify\.ya?ml$/.test(file);
 
 /** A pull request to main in ci.yml: the checks of a change. Read-only workflow permissions, no environment on a job of the file itself (a call of a reusable workflow cannot have one). */
 function pullRequestFindings(doc: Parsed, options: Parsed, refuse: Parsed, file: string) {
