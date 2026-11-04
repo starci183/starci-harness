@@ -68,6 +68,8 @@ type PaneCollapseProps =
     | {
         /** Wherever the pane's area is not arranged (below 48rem for a single `areas`) the pane becomes a Drawer opened from a trigger above the grid. */
         readonly collapse: "drawer"
+        /** `bar` (default): the grid draws the opener above itself. `none`: see the next variant. */
+        readonly trigger?: "bar"
         /** Accessible name of the drawer. */
         readonly collapseLabel: string
         /** Visible and accessible label of the trigger. */
@@ -80,7 +82,18 @@ type PaneCollapseProps =
         readonly onOpenChange: (isOpen: boolean) => void
     }
     | {
+        /** The app owns `isOpen` and draws the opener itself (an icon in a pane head): the grid draws no trigger bar, at any width. */
+        readonly collapse: "drawer"
+        readonly trigger: "none"
+        readonly collapseLabel: string
+        readonly openLabel?: never
+        readonly closeLabel: string
+        readonly isOpen: boolean
+        readonly onOpenChange: (isOpen: boolean) => void
+    }
+    | {
         readonly collapse?: undefined
+        readonly trigger?: never
         readonly collapseLabel?: never
         readonly openLabel?: never
         readonly closeLabel?: never
@@ -245,7 +258,7 @@ export const PaneGrid = (props: PaneGridProps) => {
         [areas, columns, rows, collapsedKey],
     )
     const style: CustomProperties = gridVars(models, (breakpoint) =>
-        drawers.some((pane) => models[breakpoint].edges[pane.props.area] === undefined))
+        drawers.some((pane) => pane.props.trigger !== "none" && models[breakpoint].edges[pane.props.area] === undefined))
 
     return (
         <section
@@ -257,7 +270,7 @@ export const PaneGrid = (props: PaneGridProps) => {
             data-grammar-pane-grid="true"
         >
             {drawers.length === 0 ? null : (
-                <div className="starci-core-pane-grid-triggers" data-contract="BOUNDARY-1 PADDING-4 PADDING-2" style={style}>
+                <div className="starci-core-pane-grid-triggers" data-grammar-triggers={drawers.some((pane) => pane.props.trigger !== "none") ? "bar" : "none"} data-contract="BOUNDARY-1 PADDING-4 PADDING-2" style={style}>
                     {drawers.map((pane) => (
                         <PaneDrawer
                             key={pane.props.area}
@@ -301,9 +314,11 @@ const PaneDrawer = ({ pane, placement, models }: {
     Object.assign(triggerStyle, vars)
     return (
         <Drawer isOpen={props.isOpen} onOpenChange={props.onOpenChange}>
-            <Drawer.Trigger className="starci-core-pane-trigger" style={triggerStyle} data-contract="PADDING-3 SURFACE-2 FONT-2 TONE-1">
-                {props.openLabel}
-            </Drawer.Trigger>
+            {props.trigger === "none" ? null : (
+                <Drawer.Trigger className="starci-core-pane-trigger" style={triggerStyle} data-contract="PADDING-3 SURFACE-2 FONT-2 TONE-1">
+                    {props.openLabel}
+                </Drawer.Trigger>
+            )}
             <Drawer.Backdrop>
                 <Drawer.Content className="starci-core-pane-drawer-content" placement={placement}>
                     <Drawer.Dialog className="starci-core-pane-drawer-dialog" data-grammar-nesting="surface">

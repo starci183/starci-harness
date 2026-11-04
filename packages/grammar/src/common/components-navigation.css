@@ -973,6 +973,25 @@
         }
     }
 
+    /* Compact density: a detail pane's facts, a 9rem term column and rows about 28px tall (20px line, 4px above and below), no separators. */
+    .starci-core-description-list[data-grammar-description-density="compact"] .starci-core-description-pair {
+        gap: 0;
+        padding-block: var(--grammar-identity-gap);
+    }
+
+    .starci-core-description-list[data-grammar-description-density="compact"] .starci-core-description-term,
+    .starci-core-description-list[data-grammar-description-density="compact"] .starci-core-description-value {
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-md);
+    }
+
+    @media (min-width: 30rem) {
+        .starci-core-description-list[data-grammar-description-layout="columns"][data-grammar-description-density="compact"] .starci-core-description-pair {
+            grid-template-columns: 9rem minmax(0, 1fr);
+            gap: var(--grammar-row-gap);
+        }
+    }
+
     /*
      * Stat strip: 2-4 key figures as one flush grid of touching cells (gap 0), the way a PaneGrid's panes touch. Each
      * cell is a box in a card, so it takes the nested inset (--grammar-inset-nested, 8) on every side, and the cells are

@@ -1516,6 +1516,20 @@
     .starci-core-list-row[data-grammar-row-pressable="true"] .starci-core-list-row-actions { position: relative; z-index: 1; }
     .starci-core-list-row[data-grammar-row-draggable="true"] { cursor: grab; }
 
+    /* The end group: the row's one fact and its state chips, before the commands. */
+    .starci-core-list-row-trail {
+        display: flex;
+        min-width: 0;
+        flex: 0 1 auto;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-list-row-skeleton-badge { display: block; inline-size: 4.5rem; block-size: 1.375rem; }
+    .starci-core-list-row-skeleton-badge > .starci-core-skeleton { block-size: 100%; aspect-ratio: auto; border-radius: var(--grammar-radius-pill); }
+
     .starci-core-list-row-badges {
         display: inline-flex;
         flex-wrap: wrap;
@@ -1592,10 +1606,10 @@
         }
 
         /* The end fact takes its own auto track before the commands. */
-        .starci-core-list-row[data-grammar-meta="true"] { grid-template-columns: minmax(0, 1fr) auto auto; }
-        .starci-core-list-row[data-grammar-meta="true"][data-grammar-leading="true"] { grid-template-columns: auto minmax(0, 1fr) auto auto; }
-        .starci-core-list-row[data-grammar-meta="true"][data-grammar-actions="false"] { grid-template-columns: minmax(0, 1fr) auto; }
-        .starci-core-list-row[data-grammar-meta="true"][data-grammar-leading="true"][data-grammar-actions="false"] { grid-template-columns: auto minmax(0, 1fr) auto; }
+        .starci-core-list-row[data-grammar-trail="true"] { grid-template-columns: minmax(0, 1fr) auto auto; }
+        .starci-core-list-row[data-grammar-trail="true"][data-grammar-leading="true"] { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+        .starci-core-list-row[data-grammar-trail="true"][data-grammar-actions="false"] { grid-template-columns: minmax(0, 1fr) auto; }
+        .starci-core-list-row[data-grammar-trail="true"][data-grammar-leading="true"][data-grammar-actions="false"] { grid-template-columns: auto minmax(0, 1fr) auto; }
 
         .starci-core-list-row-actions {
             justify-content: flex-end;

@@ -17,8 +17,13 @@ export type DescriptionListProps = NoChildren & {
      */
     readonly layout?: DescriptionListLayout
     readonly items: ReadonlyArray<DescriptionListItem>
-    /** Draw a separator between pairs. */
+    /** Draw a separator between pairs. Default: yes, and no in the compact density. */
     readonly isDivided?: boolean
+    /**
+     * `compact`: the detail of an item in a side pane or a card (a 9rem term column, 13px rows about 28px tall, no separators);
+     * `default`: a settings or summary list with room around each pair.
+     */
+    readonly density?: "default" | "compact"
     /**
      * Unresolved values (knowledge STATE-8): every `term` stays real text; each `description` is laid out unseen under a
      * shimmer bar, so every pair keeps its ready size (skeleton parity). The list is `aria-busy`.
@@ -32,7 +37,8 @@ export type DescriptionListProps = NoChildren & {
  * Contract: HIERARCHY-3 (term precedes value in source and paint), TRUTH-1 (no tone carrier on facts).
  */
 export const DescriptionList = (props: DescriptionListProps) => {
-    const { isDivided = true, isLoading = false, layout = "columns" } = props
+    const { density = "default", isLoading = false, layout = "columns" } = props
+    const isDivided = props.isDivided ?? density === "default"
     // Skeleton parity: a loading value is laid out unseen under the shimmer, so the pair keeps the ready value's box.
     const pending = (value: ReactNode) => <SkeletonPlaceholder>{value}</SkeletonPlaceholder>
     return (
@@ -44,6 +50,7 @@ export const DescriptionList = (props: DescriptionListProps) => {
             {...(isLoading ? { "aria-busy": true, "data-loading": "true" } : {})}
             data-grammar-description-layout={layout}
             data-grammar-description-divided={isDivided ? "true" : "false"}
+            data-grammar-description-density={density}
         >
             {props.items.map((item) => (
                 <div key={item.id} className="starci-core-description-pair" data-grammar-description-pair="true">

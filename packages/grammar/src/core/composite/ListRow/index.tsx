@@ -59,6 +59,7 @@ export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
     const hasLeading = row.leading !== undefined
     const hasMark = !hasLeading && treatment.mark === "check"
     const hasActions = row.action !== undefined || row.menu !== undefined
+    const hasTrail = row.meta !== undefined || row.badges !== undefined
     const drag = row.drag
     const hintId = useId()
     const pressKeys = drag?.onMoveKey === undefined ? {} : {
@@ -83,7 +84,7 @@ export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-treatment={treatmentFor("neutral").tone}
                 data-grammar-leading={hasLeading ? "true" : "false"}
                 data-grammar-actions={hasActions ? "true" : "false"}
-                {...(row.meta === undefined ? {} : { "data-grammar-meta": "true" })}
+                {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 data-contract="GAP-3 PADDING-4 BOUNDARY-3 STATE-8"
             >
                 {hasLeading ? <span className="starci-core-list-row-leading"><Skeleton shape="circle" size="md" /></span> : null}
@@ -91,7 +92,12 @@ export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
                     <span className="starci-core-list-row-title"><span className="starci-core-list-row-name"><Skeleton shape="text" /></span></span>
                     {row.description === undefined ? null : <span className="starci-core-list-row-description"><Skeleton shape="text" /></span>}
                 </span>
-                {row.meta === undefined ? null : <span className="starci-core-list-row-meta" data-grammar-skeleton-meta="true"><Skeleton shape="text" /></span>}
+                {hasTrail ? (
+                    <span className="starci-core-list-row-trail">
+                        {row.meta === undefined ? null : <span className="starci-core-list-row-meta" data-grammar-skeleton-meta="true"><Skeleton shape="text" /></span>}
+                        {row.badges === undefined ? null : <span className="starci-core-list-row-skeleton-badge"><Skeleton shape="rect" /></span>}
+                    </span>
+                ) : null}
                 {hasActions ? <span className="starci-core-list-row-actions"><span className="starci-core-list-row-skeleton-action"><Skeleton shape="rect" /></span></span> : null}
                 {row.detail == null ? null : <div className="starci-core-list-row-detail" data-contract="GAP-3">{row.detail}</div>}
             </li>
@@ -108,7 +114,7 @@ export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-treatment={treatment.tone}
                 data-grammar-leading={hasLeading || hasMark ? "true" : "false"}
                 data-grammar-actions={hasActions ? "true" : "false"}
-                {...(row.meta === undefined ? {} : { "data-grammar-meta": "true" })}
+                {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 {...(row.verdict === undefined ? {} : { "data-verdict": row.verdict })}
                 {...(row.onPress === undefined ? {} : { "data-grammar-row-pressable": "true" })}
                 {...(drag === undefined ? {} : {
@@ -134,15 +140,19 @@ export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
                                     ? row.title
                                     : <button type="button" className="starci-core-list-row-press" data-grammar-row-press="true" onClick={row.onPress} {...pressKeys}>{row.title}</button>}
                         </span>
+                    </span>
+                    {row.description === undefined ? null : <span className="starci-core-list-row-description" data-contract="TONE-2 FONT-2">{row.description}</span>}
+                </span>
+                {hasTrail ? (
+                    <span className="starci-core-list-row-trail" data-contract="GAP-2">
+                        {row.meta === undefined ? null : <span className="starci-core-list-row-meta" data-tone={row.meta.tone ?? "muted"} data-contract="FONT-2">{row.meta.text}</span>}
                         {row.badges === undefined ? null : (
                             <span className="starci-core-list-row-badges" data-contract="GAP-2">
                                 {row.badges.map((badge) => <RowBadge key={badge.label} badge={badge} />)}
                             </span>
                         )}
                     </span>
-                    {row.description === undefined ? null : <span className="starci-core-list-row-description" data-contract="TONE-2 FONT-2">{row.description}</span>}
-                </span>
-                {row.meta === undefined ? null : <span className="starci-core-list-row-meta" data-tone={row.meta.tone ?? "muted"} data-contract="FONT-2">{row.meta.text}</span>}
+                ) : null}
                 {hasActions ? (
                     <span className="starci-core-list-row-actions" data-contract="GAP-2">
                         {row.action === undefined ? null : <RowAction action={row.action} />}
