@@ -1,6 +1,6 @@
 // stacks.mjs - HFS_STACKS_SHAPE (R10): standard stack shape, Sonar owner and deployment runtime consistency.
 //   - every tracked path under the app root's `.starcistacks/` is one the app.starcistacks slot allows (its `allows` list is the shape:
-//     application-stacks.yaml and <env>/{README.md, environment.json, infra/{compose,swarm,k8s,terraform}, runtime/{config,env},
+//     application-stacks.yaml, images/<name>/** (a customised service's image folder) and <env>/{README.md, environment.json, infra/{compose,swarm,k8s,terraform}, runtime/{config,env},
 //     secrets/<slug>.enc.yaml}, and the seed levels seeds/ and <env>/seeds/); a `.enc` outside <env>/secrets/ is never allowed, `runtime/files/`, a root `DESIGN.md`,
 //     `deployment.json` and `k8s/` are not in the list, so they fall out of it;
 //   - the declaration (read by scripts/lib/stack-declaration.mjs, the one reader of it) states a sonar service, a local
@@ -18,7 +18,7 @@ const STACKS_SLOT = 'app.starcistacks';
 const HOST_SONAR_ROOT = '.claude/ext/sonar';
 const INSIDE_SECRETS = /^[^/]+\/secrets\/[^/]+\.enc(?:\.yaml)?$/;
 /** The folders of .starcistacks/ that are no environment, each with what it holds: the one list every stack check reads. */
-export const RESERVED_STACK_FOLDERS: ReadonlyMap<string, string> = new Map([['cache', 'the committed check cache'], ['seeds', 'the shared seed level']]);
+export const RESERVED_STACK_FOLDERS: ReadonlyMap<string, string> = new Map([['cache', 'the committed check cache'], ['images', 'the image folders of the services the app customises'], ['seeds', 'the shared seed level']]);
 
 /** The anchored expressions of a slot's `allows` entries: `<name>` is one path segment, braces alternate. */
 const allowedExpressions = (allows: Parsed) => allows.flatMap((entry: Parsed) => braceVariants(entry.replace(/<[a-z][a-z0-9-]*>/g, '*'))).map((variant: Parsed) => globExpression(variant.endsWith('/') ? `${variant}**` : variant));
@@ -31,7 +31,7 @@ function treeFindings(files: string[], allowed: Parsed, prefix: string) {
   for (const file of files.filter((f: Parsed) => f.startsWith(prefix) && !f.startsWith(`${prefix}cache/`))) {
     const rel = file.slice(prefix.length);
     if (/\.enc(?:\.yaml)?$/.test(rel) && !INSIDE_SECRETS.test(rel)) findings.push(shapeFinding(file, `${file} is a sealed secret outside <env>/secrets/<slug>.enc.yaml; move it to .starcistacks/<env>/secrets/`));
-    else if (!allowed.some((expression: Parsed) => expression.test(rel))) findings.push(shapeFinding(file, `${file} is not part of the standard .starcistacks shape (application-stacks.yaml, images/db/Dockerfile in lite and <env>/{README.md, environment.json, infra, runtime/{config,env}, secrets/<slug>.enc.yaml}, and the seed levels seeds/ and <env>/seeds/ with their seeds.yaml, sql/, data/ and files/); move or delete it`));
+    else if (!allowed.some((expression: Parsed) => expression.test(rel))) findings.push(shapeFinding(file, `${file} is not part of the standard .starcistacks shape (application-stacks.yaml, images/<name>/ and <env>/{README.md, environment.json, infra, runtime/{config,env}, secrets/<slug>.enc.yaml}, and the seed levels seeds/ and <env>/seeds/ with their seeds.yaml, sql/, data/ and files/); move or delete it`));
   }
   return findings;
 }

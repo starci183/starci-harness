@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.20.0
+version: 3.21.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -65,6 +65,7 @@ versioning:
 # <env>/seeds/, each a seeds.yaml manifest and the folders sql/, data/ and files/, and retires app.db.seed (its rows are the shared level's
 # sql/ entries); `starci app codemod seeds-layout` moves an older app's seed data into them.
 # 3.20.0 (ruling release-gate-warm-cache, 2026-11-04) adds the required app.ci-cache-verify, the managed nightly verify of the committed check cache.
+# 3.21.0 (ruling customised-service-image) admits .starcistacks/images/<name>/** in app.starcistacks, both editions: the image folder of a service the app customises (PROJECT-STACKS-11), the db image among them.
 # 3.19.0 (ruling root-packages-any-name, 2026-11-03) widens app.packages to any packages/<name>/: the agent SDK, a block library, a module package.
 # 3.15.0 (ruling app-check-cache, 2026-10-31) adds the optional app.starcistacks.cache, the committed check cache of the app (.starcistacks/cache/, both editions).
 # 3.14.0 (ruling app-secrets-one-standard, 2026-10-29) adds the optional app.ci-stack-key-restore, the managed workflow that writes the
@@ -981,7 +982,7 @@ slots:
     tier: none
     tests: none
     requires: [application-stacks.yaml]
-    allows: [application-stacks.yaml, "<env>/README.md", "<env>/environment.json", "<env>/infra/{compose,swarm,k8s,terraform}/**", "<env>/infra/metadata.json",
+    allows: [application-stacks.yaml, "images/<name>/**", "<env>/README.md", "<env>/environment.json", "<env>/infra/{compose,swarm,k8s,terraform}/**", "<env>/infra/metadata.json",
              "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.{enc.yaml,enc}", "<env>/secrets/.gitkeep",
              "seeds/seeds.yaml", "seeds/{sql,data,files}/**", "<env>/seeds/seeds.yaml", "<env>/seeds/{sql,data,files}/**"]
     forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]
@@ -989,7 +990,7 @@ slots:
     # The db service supplies the database; schedules are platform/jobs ticks (R335); production has no Compose or host cron.
     lite:
       requires: [application-stacks.yaml]
-      allows: [application-stacks.yaml, images/db/Dockerfile, "<env>/README.md", "<env>/environment.json", "<env>/infra/{compose,swarm}/**", "<env>/infra/metadata.json",
+      allows: [application-stacks.yaml, "images/<name>/**", "<env>/README.md", "<env>/environment.json", "<env>/infra/{compose,swarm}/**", "<env>/infra/metadata.json",
                "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.{enc.yaml,enc}", "<env>/secrets/.gitkeep",
              "seeds/seeds.yaml", "seeds/{sql,data,files}/**", "<env>/seeds/seeds.yaml", "<env>/seeds/{sql,data,files}/**"]
       forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]

@@ -141,6 +141,12 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(paths(only(scan(t, edition, entries), 'HFS_DEPLOY_SCHEDULER')), Object.keys(entries).sort((left, right) => left.localeCompare(right)));
   });
 
+  test(`HFS_DEPLOY_SCHEDULER@${edition}: the managed cache-verify.yml keeps its nightly schedule; any other workflow's schedule is still refused`, (t) => {
+    const nightly = 'on:\n  schedule:\n    - cron: "17 3 * * *"\n  workflow_dispatch: {}\njobs: {}\n';
+    const findings = only(scan(t, edition, { '.github/workflows/cache-verify.yml': nightly, '.github/workflows/nightly.yml': nightly }), 'HFS_DEPLOY_SCHEDULER');
+    assert.deepEqual(paths(findings), ['.github/workflows/nightly.yml']);
+  });
+
   test(`HFS_DEPLOY_SCHEDULER@${edition}: manual release workflows and declared one-shot jobs pass`, (t) => {
     assert.deepEqual(only(scan(t, edition, {
       '.github/workflows/ship.yml': workflow('docker stack deploy -c stack.yaml app'),

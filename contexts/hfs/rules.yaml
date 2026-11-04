@@ -1269,7 +1269,7 @@ rules:
       - {kind: eslint-be, id: projection-shape}
   - id: R163
     code: HFS_SERVICE_PLACEMENT
-    law: A back-end service lives only at `be/apps/<service>/`, sharing the `be/src` libraries and the one package.json; any other service root is refused.
+    law: A back-end service lives only at `be/apps/<service>/`, sharing the `be/src` libraries and the one package.json; any other service root is refused, and a workspace package's manifest (`fe/apps/<app>`, `fe/packages/<pkg>`, a root `packages/<name>`) is none.
     failureCodes:
       - HFS_SERVICE_PLACEMENT
     enforcers:
@@ -1606,7 +1606,7 @@ rules:
       - {kind: hfs, id: env-value-shape}
   - id: R250
     code: HFS_HOST_CRON
-    law: Scheduled work belongs to the app's queue scheduler, platform/jobs ticks or declared replicated jobs, never to a host crontab, and deploy scripts only delegate to docker or the app CLI.
+    law: Scheduled work belongs to the app's queue scheduler, platform/jobs ticks or declared replicated jobs, never to a host crontab or a workflow schedule (the managed nightly cache verify, cache-verify.yml, aside), and deploy scripts only delegate to docker or the app CLI.
     failureCodes:
       - HFS_HOST_CRON
       - HFS_DEPLOY_NO_LOGIC
@@ -2538,7 +2538,7 @@ rules:
       - {kind: hfs, id: stacks-local}
   - id: R374
     code: STACKS_CODE_BIND_MOUNT
-    law: A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned, and whose final stage is the harness's image for that service, the fork or its runtime layer, when the harness owns one), the same image in every environment; no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, and read-only plain config data files stay allowed).
+    law: A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned, and whose final stage is the harness's image for that service, the fork or its runtime layer, when the harness owns one), the same image in every environment (the folder build, or a project-owned reference `<project>` or `<project>-<name>` as the managed images workflow publishes it); no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, and read-only plain config data files stay allowed).
     failureCodes:
       - STACKS_CODE_BIND_MOUNT
       - STACKS_IMAGE_BASE_UNPINNED

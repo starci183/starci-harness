@@ -72,6 +72,17 @@ test('R374 a service with an image folder runs the folder image in every environ
   assert.deepEqual(codes(app(t, { dockerfile, compose: built, swarm: upstream })), ['STACKS_IMAGE_ENV_DIVERGES']);
 });
 
+test('R374 a project image the deploy renders (registry/<owner>/<project>-<name>, its placeholder digest) is the folder image; a foreign one diverges', (t) => {
+  const dockerfile = { name: 'db', text: `FROM postgres:17@${DIGEST}\n` };
+  const built = 'services:\n  db:\n    build: {context: ../../images/db}\n';
+  const rendered = `services:\n  db:\n    image: ghcr.io/owner/demo-db@sha256:${'0'.repeat(64)}\n`;
+  const bare = 'services:\n  db:\n    image: demo:1.0.0\n';
+  const foreign = `services:\n  db:\n    image: ghcr.io/owner/demonstration-db@sha256:${'0'.repeat(64)}\n`;
+  assert.deepEqual(codes(app(t, { dockerfile, compose: built, swarm: rendered })), []);
+  assert.deepEqual(codes(app(t, { dockerfile, compose: built, swarm: bare })), []);
+  assert.deepEqual(codes(app(t, { dockerfile, compose: built, swarm: foreign })), ['STACKS_IMAGE_ENV_DIVERGES']);
+});
+
 test('R374 the fork list is the harness images/sources.json', () => {
   const sources = JSON.parse(fs.readFileSync(new URL('../../../images/sources.json', import.meta.url), 'utf8')) as Record<string, { layerOf?: string; image?: string; base?: string; published: { reference: string } | null }>;
   const repository = (reference: string): string => reference.replace(/@sha256:[0-9a-f]+$/u, '').replace(/:[^/:]+$/u, '');

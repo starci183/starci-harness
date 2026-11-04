@@ -240,6 +240,15 @@ for (const edition of ['lite', 'full'] as const) {
     assert.deepEqual(codes(relevant), ['HFS_SEEDS_SHAPE .starcistacks/dev/seeds/old.sql', 'HFS_STACKS_SHAPE .starcistacks/dev/seeds/old.sql']);
   });
 
+  test(`${edition}: app.starcistacks places a customised service's image folder .starcistacks/images/<name>/; a file beside the folders is still outside the shape`, (t) => {
+    const files = { ...VALID, '.starcistacks/images/openclaw/Dockerfile': 'FROM scratch\n', '.starcistacks/images/openclaw/nivo-bridge/index.js': 'export {}\n', '.starcistacks/images/Dockerfile': 'FROM scratch\n' };
+    const root = tree(t, files);
+    const declaration = { hfs: 3, kind: 'app', project: 'fixture', edition, sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
+    const report = checkRepo({ repoRoot: root, declaration, files: Object.keys(files), tree: false });
+    const shape = report.findings.filter((item) => item.code === 'HFS_STACKS_SHAPE' && item.path !== '.starcistacks/application-stacks.yaml');
+    assert.deepEqual(codes(shape), ['HFS_STACKS_SHAPE .starcistacks/images/Dockerfile']);
+  });
+
   test(`${edition}: a new app is scaffolded with the shared level and a level per declared environment, each with an empty manifest`, (t) => {
     const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-seeds-scaffold-'), harness: { version: '1.1.0-alpha.3' }, edition, presets: bundledPresets(), lock: lockedOk, initGit: init });
     const environments = [...(declaredEnvironments(root)?.keys() ?? [])];
