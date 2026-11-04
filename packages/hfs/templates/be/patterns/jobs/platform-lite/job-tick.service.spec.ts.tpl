@@ -10,14 +10,15 @@ import { JOBS_MANAGERS } from "./jobs.decorators"
 import { JobTickService, tickMinute } from "./job-tick.service"
 
 // The statements advisoryXactLock and callDbFunction of platform/database send for one firing.
-const LOCK_TICK = "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))"
+const HASH_TICK = 'SELECT * FROM "pg_catalog"."hashtextextended"($1, $2)'
+const LOCK_TICK = 'SELECT * FROM "pg_catalog"."pg_advisory_xact_lock"($1)'
 const CLAIM_TICK = 'SELECT * FROM "public"."job_tick_claim"($1, $2)'
 
 const AT = "2026-02-03T04:05:06.000Z"
 const TICK: JobTick = { name: "nightly-digest", cron: "0 2 * * *", timeZone: "UTC", queue: "digests", payload: { kind: "nightly" } }
 
 const build = async (claimed: boolean) => {
-    const transaction = fakeTransaction(mockEntityManager({ query: [[LOCK_TICK, []], [CLAIM_TICK, [{ claimed }]]] }))
+    const transaction = fakeTransaction(mockEntityManager({ query: [[HASH_TICK, [{ hashtextextended: "42" }]], [LOCK_TICK, [{}]], [CLAIM_TICK, [{ claimed }]]] }))
     const outbox = { write: jest.fn().mockResolvedValue(undefined) }
     const registry = { addCronJob: jest.fn<void, [string, CronJob]>() }
     const moduleRef = await Test.createTestingModule({
@@ -43,8 +44,9 @@ describe("JobTickService", () => {
 
         await expect(ticks.fire(TICK)).resolves.toBe(true)
 
-        expect(transaction.em.query).toHaveBeenNthCalledWith(1, LOCK_TICK, ["tick:nightly-digest"])
-        expect(transaction.em.query).toHaveBeenNthCalledWith(2, CLAIM_TICK, ["nightly-digest", "2026-02-03T04:05"])
+        expect(transaction.em.query).toHaveBeenNthCalledWith(1, HASH_TICK, ["tick:nightly-digest", 0])
+        expect(transaction.em.query).toHaveBeenNthCalledWith(2, LOCK_TICK, ["42"])
+        expect(transaction.em.query).toHaveBeenNthCalledWith(3, CLAIM_TICK, ["nightly-digest", "2026-02-03T04:05"])
         expect(outbox.write).toHaveBeenCalledWith(expect.anything(), "digests", { kind: "nightly" }, "tick:nightly-digest:2026-02-03T04:05")
     })
 
