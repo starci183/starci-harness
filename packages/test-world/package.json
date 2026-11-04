@@ -80,7 +80,7 @@
     "@nestjs/cqrs": "^11.0.0",
     "@nestjs/platform-express": "11.2.7",
     "@types/jest": "^29.5.0",
-    "@types/node": "^22.13.0",
+    "@types/node": "^26.6.6",
     "@types/pg": "^8.15.0",
     "eslint": "10.11.0",
     "jiti": "2.7.0",
