@@ -37,7 +37,7 @@ import type { ImageApp } from './stack-images.mjs';
 import { DB_DOCKERFILE, DB_IMAGE_APP, RETIRED_DB_DOCKERFILE } from '../db/image.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { isRuntimeExampleApp } from '../runtime/scripts/lib/runtime-example.mjs';
-import { ciWorkflowCommands } from './ci-commands.mjs';
+import { BUILD_MODULES, ciWorkflowCommands } from './ci-commands.mjs';
 import { MODULE_PREFIX, moduleNames, registryFiles } from '../scaffold/module-registry.mjs';
 import { canonImport, canonList } from './canon-layout.mjs';
 import { dependabotUpdates, hasDeclaredServices, readDeclaredQuality, readDeclaredBadges, sonarHostLine } from './quality-services.mjs';
@@ -513,7 +513,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   // run), and their logic is measured by the back end's unit run like its own (packagesCoverage, BE-TEST-13).
   const rootPackages = packagesCoverage(rootPackageFolders(source));
   const moduleDirs = rootPackages.folders;
-  const modulesFirst = moduleDirs.length ? 'npm run build:modules --silent && ' : '';
+  const modulesFirst = moduleDirs.length ? `${BUILD_MODULES} && ` : '';
   const grammarLint = scope === 'fe' ? grammarLintFor(fe.grammar) : null;
   return {
     header: HEADER(scope),

@@ -332,3 +332,12 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   `@starci/hfs` ships the previous release's managed templates as a versioned snapshot, so `starci app codemod self-recovery`
   applies the change between that snapshot and the current template to an app file and leaves a file the app edited by hand for a
   person (`packages/hfs/templates/snapshots/`, `packages/hfs/codemod/self-recovery.mts`).
+- **The managed CI builds an app's root packages with its `build:modules` script (`ci-root-packages-built-first`).** The harness lead,
+  2026-11-05, after a red Nivo main run whose tests and build passed: every CI job whose checks read the types of an app's root
+  workspace packages or compile code importing them builds those packages first, with `npm run build:modules` (`BUILD_MODULES` of
+  `packages/hfs/sync/ci-commands.mts`). That script is the source of truth because sync itself renders it exactly when the app has root
+  packages (`rootPackageFolders`, the agent SDK, the module packages and the root workspaces outside the sides), with the same
+  `turbo run build --filter=./packages/*` the managed typecheck, lint, test and build scripts already run first; reading the root
+  `workspaces` again in the CI render would be a second derivation of the same set, and a hand-written turbo filter would drift from the
+  script the app runs locally. An app with no root package renders no step and no prefix, byte for byte as before. R301 holds it
+  (ci-standard.yaml `packages-built-first`), and [cicd.md](../project/cicd.md) "Root packages are built before they are read" says why.

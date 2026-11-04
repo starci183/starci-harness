@@ -7,6 +7,7 @@
 //   required-providers      no continue-on-error; Codecov fail_ci_if_error true; no availability probe, no secret-gated Codecov or Sonar step
 //   test-sharding          the test job is a shard matrix; each shard runs --shard=i/N with STARCI_COVERAGE_SHARD and no threshold or pass-empty flag; the coverage job merges, then proves
 //   lint-parallel          the lint job is a matrix over side [be, fe], or [be, fe, packages] in an app with root packages
+//   packages-built-first   in an app with root packages, a step that reads their types (rootPackages.readers) follows, or is, a step that builds them (rootPackages.builders)
 //   cache-saved-always     no cache keyed by the commit sha; actions/cache/save runs under if: always()
 //   timeouts               every job declares timeout-minutes
 //   sha-pinned-actions     every remote `uses:` names a 40-hex commit sha (docker:// a sha256 digest; ./ local actions allowed)
@@ -15,7 +16,7 @@
 import fs from 'node:fs';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { parseWorkflow } from '../runtime-rules/workflow-source.mjs';
-import { found } from './read.mjs';
+import { found, readText } from './read.mjs';
 import { appWorkflowFindings } from './app-workflow-findings.mjs';
 import { isPlainObject as record } from '../../../engine/plain-object.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
@@ -118,6 +119,30 @@ function lintParallel(doc: Parsed, say: Parsed) {
   const sides = record(doc.jobs?.lint) ? doc.jobs.lint.strategy?.matrix?.side : null;
   const joined = Array.isArray(sides) ? sides.map(String).sort(byCodeUnit).join() : '';
   return joined === 'be,fe' || joined === 'be,fe,packages' ? [] : [say('lint-parallel', 'the lint job must be a matrix over side [be, fe], with packages when the app has root packages')];
+}
+
+/** True when the lint matrix names the root packages' scope: sync renders it exactly for an app with root packages. */
+const lintsPackages = (doc: Parsed): boolean => {
+  const sides = record(doc.jobs?.lint) ? doc.jobs.lint.strategy?.matrix?.side : null;
+  return Array.isArray(sides) && sides.map(String).includes('packages');
+};
+
+/** packages-built-first: every reading step of a job comes at or after the first step of that job that builds the root packages. */
+function packagesBuiltFirst(doc: Parsed, standard: Parsed, rootPackages: boolean, say: Parsed) {
+  if (!rootPackages) return [];
+  const { readers, builders } = standard.rootPackages;
+  const builds = (step: Parsed) => builders.some((needle: string) => runOf(step).includes(needle));
+  const reads = (step: Parsed) => readers.steps.some((needle: string) => runOf(step).includes(needle)) || readers.uses.some((prefix: string) => usesOf(step).startsWith(prefix));
+  const out: Parsed[] = [];
+  for (const [id, job] of jobsOf(doc)) {
+    const steps = stepsOf(job);
+    const built = steps.findIndex(builds);
+    steps.forEach((step: Parsed, at: number) => {
+      if (!reads(step) || (built >= 0 && built <= at)) return;
+      out.push(say('packages-built-first', `job ${id}, step ${step.name ?? (usesOf(step) || runOf(step).split('\n')[0].slice(0, 60))}: it reads the root packages' types or compiles code that imports them, so a step of the job before it builds them (npm run build:modules); unbuilt, each import resolves to nothing (BE_APP_BOOT_PROOF_MISSING, no-unsafe-*, HFS_CHECK_CACHE_FORGED)`));
+    });
+  }
+  return out;
 }
 
 function cacheSavedAlways(doc: Parsed, say: Parsed) {
@@ -229,7 +254,7 @@ function shaPinned(doc: Parsed, say: Parsed) {
 }
 
 /** The R301 findings of one workflow document: scope `app-ci` (with the app's edition) or `runtime`. Pure over the document and the standard. */
-export function ciStandardFindings({ doc, file, scope, edition = 'full', standard = ciStandard() }: { doc: Parsed; file: string; scope: Parsed; edition?: string; standard?: Parsed }) {
+export function ciStandardFindings({ doc, file, scope, edition = 'full', standard = ciStandard(), rootPackages }: { doc: Parsed; file: string; scope: Parsed; edition?: string; standard?: Parsed; rootPackages?: boolean }) {
   if (!record(doc)) return [];
   const items = checkedItems(standard, scope);
   const say = (item: Parsed, why: string) => found(CI_STANDARD, file, `${CI_STANDARD} ${file}: [${item}] ${why} (knowledge/hfs/ci-standard.yaml)`, { item });
@@ -242,6 +267,7 @@ export function ciStandardFindings({ doc, file, scope, edition = 'full', standar
     'required-providers': () => requiredProviders(doc, say),
     'test-sharding': () => testSharding(doc, say),
     'lint-parallel': () => lintParallel(doc, say),
+    'packages-built-first': () => packagesBuiltFirst(doc, standard, rootPackages === true || lintsPackages(doc), say),
     'cache-saved-always': () => cacheSavedAlways(doc, say),
     timeouts: () => timeouts(doc, say),
     'sha-pinned-actions': () => shaPinned(doc, say),
@@ -249,9 +275,21 @@ export function ciStandardFindings({ doc, file, scope, edition = 'full', standar
   return Object.entries(checks).filter(([id]) => items.has(id)).flatMap(([, check]) => check());
 }
 
+/** True when the app's root package.json declares the build:modules script, which sync renders for an app with root packages. */
+function declaresBuildModules(repoRoot: string | undefined): boolean {
+  if (!repoRoot) return false;
+  try {
+    const scripts = (JSON.parse(readText(repoRoot, 'package.json') ?? '{}') as Parsed)?.scripts;
+    return record(scripts) && typeof scripts['build:modules'] === 'string';
+  } catch {
+    return false;
+  }
+}
+
 /** R301 over an app: its managed .github/workflows/ci.yml (the app check, and the runtime check over every example app). */
 export function ciStandardAppFindings(ctx: Parsed) {
   const edition = ctx.repo?.edition === 'lite' ? 'lite' : 'full';
+  const rootPackages = declaresBuildModules(ctx.repoRoot);
   return appWorkflowFindings({ ...ctx, inScope: (file: string) => file === APP_CI && (ctx.inScope ?? (() => true))(file) },
-    ({ path: file, text }: { path: string; text: string }) => ciStandardFindings({ doc: parseWorkflow(text), file, scope: 'app-ci', edition }), { dedupe: true });
+    ({ path: file, text }: { path: string; text: string }) => ciStandardFindings({ doc: parseWorkflow(text), file, scope: 'app-ci', edition, rootPackages }), { dedupe: true });
 }

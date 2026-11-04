@@ -157,4 +157,46 @@ for (const edition of ['lite', 'full']) {
     fs.writeFileSync(path.join(root, FILE), JSON.stringify(compliant(edition)));
     assert.deepEqual(ciStandardAppFindings({ repoRoot: root, files: [FILE], repo: { kind: 'app', edition }, isRoot: true }), []);
   });
+
+  test(`${edition}: ${FAILURE} packages-built-first - in an app with root packages a step that reads their types follows a step that builds them`, (t) => {
+    const BUILD = { name: 'build the workspace packages', run: 'npm run build:modules --silent' };
+    const withPackages = (): Workflow => {
+      const doc = compliant(edition);
+      doc.jobs.lint.strategy!.matrix.side = ['be', 'fe', 'packages'];
+      return doc;
+    };
+    // The managed shape before 5.10.1: the boot proof ahead of the typecheck that alone built the packages, a lint that built only the fe packages, a scan with none.
+    const before = withPackages();
+    before.jobs.lint.steps.splice(2, 0, { name: 'build the lint inputs', run: 'npm run codegen --silent && npx --no-install turbo run build --filter=./fe/packages/*' });
+    before.jobs.build!.steps.push({ uses: `SonarSource/sonarqube-scan-action@${SHA}` });
+    const messages = judge(before, edition).filter((finding) => finding.item === 'packages-built-first').map((finding) => finding.message);
+    assert.deepEqual(messages.map((message) => /job (\w+), step ([^:]+):/.exec(message)?.slice(1).join(' ')), ['fast boot proof', 'lint starci app check --gate lint --side ${{ matrix.side }}', `build SonarSource/sonarqube-scan-action@${SHA}`]);
+    assert.match(messages[0] ?? '', /builds them \(npm run build:modules\); unbuilt, each import resolves to nothing \(BE_APP_BOOT_PROOF_MISSING, no-unsafe-\*, HFS_CHECK_CACHE_FORGED\)/);
+
+    // The managed shape now: a build step ahead of the boot proof and the scan, the lint inputs prefixed with build:modules.
+    const after = withPackages();
+    after.jobs.fast!.steps.splice(1, 0, BUILD);
+    after.jobs.lint.steps.splice(2, 0, { name: 'build the lint inputs', run: 'npm run build:modules --silent && npm run codegen --silent' });
+    after.jobs.build!.steps.push(BUILD, { uses: `SonarSource/sonarqube-scan-action@${SHA}` });
+    assert.deepEqual(judge(after, edition), []);
+
+    // A build after the reader is no build for it; a managed script that runs build:modules first is one.
+    const fastFindings = (doc: Workflow): string[] => judge(doc, edition).filter((finding) => finding.item === 'packages-built-first' && /job fast,/.test(finding.message)).map((finding) => finding.message);
+    const late = withPackages();
+    late.jobs.fast!.steps.push(BUILD);
+    assert.equal(fastFindings(late).length, 1);
+    const script = withPackages();
+    script.jobs.fast!.steps.splice(1, 0, { run: 'npm run typecheck', env: HEAP });
+    assert.deepEqual(fastFindings(script), []);
+
+    // An app without root packages is judged as before; the app check learns of them from the root package.json even when the matrix leaves them out.
+    assert.ok(!items(judge(compliant(edition), edition)).includes('packages-built-first'));
+    const root = mkdtemp(t, 'hfs-ci-packages-');
+    fs.mkdirSync(path.join(root, '.github/workflows'), { recursive: true });
+    fs.writeFileSync(path.join(root, FILE), JSON.stringify(compliant(edition)));
+    const ctx = { repoRoot: root, files: [FILE], repo: { kind: 'app', edition }, isRoot: true };
+    assert.deepEqual(ciStandardAppFindings(ctx), []);
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { 'build:modules': 'turbo run build --filter=./packages/*' } }));
+    assert.deepEqual(ciStandardAppFindings(ctx).map((finding) => /job (\w+),/.exec(finding.message)?.[1]), ['fast', 'lint']);
+  });
 }

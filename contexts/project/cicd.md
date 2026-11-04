@@ -82,6 +82,17 @@ and the quality gate's verdict, never the scanner's exit, is the job's result (P
 `gate-threshold-20`: `app check` is green under 20 error findings with no hard blocker; typecheck, build,
 tests, coverage and the Sonar gate are binary.
 
+**Root packages are built before they are read.** An app's root workspace packages (`packages/*`: the agent SDK, the module
+packages and the rest) are imported by their package name, which resolves into their `dist`. Every job that reads their
+types or compiles code importing them builds them first with the app's managed `build:modules` script (`npm run
+build:modules`): the `fast` job before its boot proof, every side of the `lint` matrix in its "build the lint inputs"
+step, a multi-front-end build, the `sonar` job before its scan, the nightly `cache-verify` and the full edition's `e2e`
+run; the managed `typecheck`, `lint`, `test`, `build:be` and `build:fe` scripts already run it first. A check that finds a
+package unbuilt reads each import as nothing: the boot proof cannot compile the modules (`BE_APP_BOOT_PROOF_MISSING`), the
+typed lint reads them as `any` (`no-unsafe-*`), and both disagree with the cache records made with the packages built
+(`HFS_CHECK_CACHE_FORGED`). R301 refuses a CI that checks before it builds (ci-standard.yaml `packages-built-first`); an
+app without root packages renders no such step.
+
 **Images.** One job per declared image (`deploy.images` of every environment, merged by app), in parallel with the
 checks, so the deploy waits for `max(checks, images)` instead of their sum. Each builds with `docker/setup-buildx-action`
 and `docker/build-push-action` and pushes to the declared registry (`services.registry`, GHCR by default, logged in

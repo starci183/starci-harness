@@ -63,7 +63,7 @@ function codecovSteps(lcovReport: string, codecov: Declaration): string {
  * Sonar is required: on every full run, and on a push to a branch whose profile reports it, it consumes the test coverage and lint artifacts, and a missing
  * token fails the job with a clear refusal (custody, not a finding). The quality gate step judges on a full run only.
  */
-function sonarJob(sonar: Declaration, lcovReport: string, lcovArtifact: string, nodeMajor: string, timeout: string, scopes: readonly string[]): string {
+function sonarJob(sonar: Declaration, lcovReport: string, lcovArtifact: string, nodeMajor: string, timeout: string, scopes: readonly string[], rootPackages: boolean): string {
   if (!sonar) return '';
   const condition = runsOn('sonar');
   const host = sonar.hostSecret ? `\${{ secrets.${sonar.hostSecret} }}` : sonar.provider === 'sonarcloud' ? 'https://sonarcloud.io' : `\${{ vars.${sonar.hostVar} }}`;
@@ -96,6 +96,8 @@ function sonarJob(sonar: Declaration, lcovReport: string, lcovArtifact: string, 
     '          path: reports',
     '          merge-multiple: true',
     ...sonarMergeSteps(condition, scopes),
+    // The scan's TypeScript program resolves a root package through its manifest's exports, into its dist, as the lint does.
+    ...(rootPackages ? [packagesBuildStep(true, condition)] : []),
     '      - uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7.2.1',
     `        if: ${condition}`,
     '      - uses: SonarSource/sonarqube-quality-gate-action@7a5fffe8e523c40e0c740b6bc2712ab503e52efa # v1.2.1',
@@ -147,8 +149,8 @@ function imageBuildEnv(image: Declaration, gates: Declaration[]): string {
   return ['        env:', ...[...values.keys()].sort(byCodeUnit).map(key => '          ' + key + ': ' + JSON.stringify(values.get(key)))].join('\n');
 }
 
-/** Multiple deployed front ends build separately through the installed turbo (a run step has no node_modules/.bin on PATH), so each fe/apps/<app> and its dependencies see its own public values. */
-function frontendBuild(source: CiSource | undefined, app: { sides: { fe: { apps: readonly { name: string }[] } } } | undefined): { env: string; steps: string } {
+/** Multiple deployed front ends build separately through the installed turbo (a run step has no node_modules/.bin on PATH), so each fe/apps/<app> and its dependencies see its own public values; the root packages are built first, as `npm run build:fe` does. */
+function frontendBuild(source: CiSource | undefined, app: { sides: { fe: { apps: readonly { name: string }[] } } } | undefined, modulesFirst: string): { env: string; steps: string } {
   const declaration = buildDeclaration(source);
   const environments = Object.keys(source?.stack?.imageEnvironments ?? {});
   const environment = (environments.length > 1 ? 'production' : environments[0]) as string;
@@ -159,7 +161,7 @@ function frontendBuild(source: CiSource | undefined, app: { sides: { fe: { apps:
   if (frontend.length <= 1) return { env: singleEnv, steps: ['      - name: build fe', '        run: npm run build:fe', singleEnv].filter(Boolean).join('\n') };
   const steps = frontend.map(image => [
     '      - name: build fe ' + image.app,
-    '        run: npm run codegen --silent && npx --no-install turbo run build --filter=./fe/apps/' + image.app,
+    '        run: ' + modulesFirst + 'npm run codegen --silent && npx --no-install turbo run build --filter=./fe/apps/' + image.app,
     imageBuildEnv(image, gates),
   ].filter(Boolean).join('\n')).join('\n');
   return { env: singleEnv, steps };
@@ -184,6 +186,20 @@ function sonarMergeSteps(condition: string, scopes: readonly string[]): string[]
 }
 
 const STANDARD = new URL('../runtime/knowledge/hfs/ci-standard.yaml', import.meta.url);
+
+/**
+ * The command that builds the app's root workspace packages (the agent SDK, the module packages and every other `packages/*` workspace): the managed
+ * `build:modules` script, which sync renders exactly when the app has root packages (sync/index.mjs appScripts) and which the managed typecheck, lint,
+ * test and build scripts already run first. A CI step that runs a check directly (the boot proof, the app check's lint, the Sonar analysis) reads the
+ * packages' declared types from their dist, so it runs this first; an app with no root package renders no such step and no prefix.
+ */
+export const BUILD_MODULES = 'npm run build:modules --silent';
+
+/** The CI step that builds the root packages, at the indent of a job's steps, under `condition` when given; empty for an app without root packages. */
+export function packagesBuildStep(rootPackages: boolean, condition?: string): string {
+  if (!rootPackages) return '';
+  return ['      - name: build the workspace packages', ...(condition ? [`        if: ${condition}`] : []), `        run: ${BUILD_MODULES}`].join('\n');
+}
 /** jest --shard=i/N gives each shard ceil(specs / N) spec files in order, so shard N is empty unless (N - 1) * ceil(specs / N) < specs. */
 export function filledShards(specs: number, wanted: number): number {
   for (let shards = wanted; shards > 1; shards -= 1) if ((shards - 1) * Math.ceil(specs / shards) < specs) return shards;
@@ -242,7 +258,9 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
   const codecov = quality?.codecov ?? { enabled: true, auth: 'oidc' };
   const audit = quality?.audit ?? { level: 'high', omitDev: true };
   const lcovArtifact = 'coverage-lcov';
-  const build = frontendBuild(source, app);
+  // The root packages are built before every step that reads their types or compiles app code (BUILD_MODULES): an app without one renders as before.
+  const modulesFirst = rootPackages ? `${BUILD_MODULES} && ` : '';
+  const build = frontendBuild(source, app, modulesFirst);
   const side = '${{ matrix.side }}';
   // The lint matrix: one job per side, and one for the root packages of an app that has them (their scope runs whatever became of the sides').
   const scopes = ['be', 'fe', ...(rootPackages ? ['packages'] : [])];
@@ -258,6 +276,8 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     lcovShardsDir: lcovReport.split('/').slice(0, -1).concat('shards').join('/'),
     // The istanbul JSON a shard writes beside the lcov (STARCI_COVERAGE_SHARD=1): what the coverage job merges.
     shardCoverageReport: lcovReport.split('/').slice(0, -1).concat('coverage-final.json').join('/'),
+    // The fast job's boot proof compiles every app root, which imports the root packages: the step that builds them precedes it.
+    ciPackagesBuild: packagesBuildStep(rootPackages),
     ciBuildEnv: build.env,
     ciBuildSteps: build.steps,
     // The coverage judgement alone over the merged report: the fast and lint jobs already ran every other rule of the app check.
@@ -268,8 +288,9 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     sonarTokenSecret: sonar?.token ?? 'SONAR_TOKEN',
     sonarHostVar: sonar?.hostVar ?? 'SONAR_HOST_URL',
     // One lint job per side (the lint matrix): with Sonar each side writes its own report, uploaded as sonar-lint-<side> and merged by the sonar job.
-    // The typed lint reads the generated code and the types the fe packages declare (their dist), so both are built first, the way the root lint script does.
-    ciLintSteps: ['      - name: build the lint inputs', `        run: ${exampleCommand(source, packages ? 'npm run codegen --silent && npx --no-install turbo run build --filter=./fe/packages/*' : 'npm run codegen --silent')}`, ...(sonar ? [
+    // The typed lint reads the generated code and the types the root packages and the fe packages declare (their dist), so all are built first, the way the root
+    // lint script does, on every side of the matrix: a side that imports a package it finds unbuilt reads it as any.
+    ciLintSteps: ['      - name: build the lint inputs', `        run: ${exampleCommand(source, modulesFirst + (packages ? 'npm run codegen --silent && npx --no-install turbo run build --filter=./fe/packages/*' : 'npm run codegen --silent'))}`, ...(sonar ? [
       '      - name: lint with Sonar import',
       `        run: ${exampleCommand(source, 'npx --no-install starci app check --gate lint --side ' + side + ' --out reports/lint.' + side + '.sonar.json')}`,
       '        env:',
@@ -289,7 +310,7 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     codecovSteps: codecovSteps(lcovReport, codecov),
     verdictSonarNeed: sonar ? ', sonar' : '',
     verdictSonarCheck: sonar ? `\n          if [[ "$CHECKS" == true && ( "$FULL" == true || "$SONAR" == report ) ]]; then expect sonar success; else expect sonar idle; fi` : '',
-    sonarJob: sonarJob(sonar, lcovReport, lcovArtifact, nodeMajor, settings.timeoutSonar as string, scopes),
+    sonarJob: sonarJob(sonar, lcovReport, lcovArtifact, nodeMajor, settings.timeoutSonar as string, scopes, rootPackages),
     lcovArtifact,
   };
 }

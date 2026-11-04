@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 {{> app/ci-workflows/install-steps.yml}}
+{{ciPackagesBuild}}
       - name: verify the committed cache
         run: npx --no-install starci app check
         env:

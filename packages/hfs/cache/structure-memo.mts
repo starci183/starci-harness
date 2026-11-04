@@ -63,10 +63,11 @@ export function createStructureMemo(input: { session: CheckSession; records: Rec
   // The hash of an app path now: the index's for a tracked file (the snapshot of this run), the work tree's for anything else, `absent` for a missing one.
   const hashNow = (appPath: string): string => session.index.hashOf(appPath) ?? hashFile(path.join(root, appPath)) ?? 'absent';
   // What every cross-file rule derives its file sets and its parsing from: the tracked path list, and the TypeScript the rules parse with (the lockfile is a fingerprint part, but an app
-  // with no install resolves the compiler from the harness instead).
+  // with no install resolves the compiler from the harness instead). The cache folder's own paths stay out of the list: they are outside every step's file set, and a
+  // record keyed on them would depend on its own commit (a cache commit that adds or removes a record file would stale every `rule:` record, which the next run rewrites).
   let trackedDigest: string | undefined;
   const typescriptVersion = (): string => loadTypescript(root, path.dirname(fileURLToPath(import.meta.url)))?.version ?? 'none';
-  const digestOfTracked = (): string => (trackedDigest ??= hashText(`${[...input.tracked].sort().join('\n')}\0typescript=${typescriptVersion()}`));
+  const digestOfTracked = (): string => (trackedDigest ??= hashText(`${input.tracked.filter((file) => !inCacheDir(file)).sort().join('\n')}\0typescript=${typescriptVersion()}`));
   const prefixOf = (scopeRoot: string): string => {
     const relative = posix(path.relative(root, scopeRoot));
     return relative === '' ? '' : `${relative}/`;
@@ -136,7 +137,8 @@ export function createStructureMemo(input: { session: CheckSession; records: Rec
       if (app.startsWith('..') || path.isAbsolute(app) || app in reads) return;
       reads[app] = hashNow(app);
     }, run);
-    if (session.unchanged(Object.keys(reads), reads)) {
+    // A rule that read a file of the cache folder is judged live, like the per-file rules on those files: its record would go stale with every run's own writes.
+    if (!Object.keys(reads).some(inCacheDir) && session.unchanged(Object.keys(reads), reads)) {
       const stored: CacheRecord = { path: at, step, hash: combineHashes({ tracked: digest, ...Object.fromEntries(Object.entries(reads).map(([file, hash]) => [`read:${file}`, hash])) }), findings: findings.map(compact), data: plain({ tracked: digest, reads, findings }) };
       records.put(stored);
     }

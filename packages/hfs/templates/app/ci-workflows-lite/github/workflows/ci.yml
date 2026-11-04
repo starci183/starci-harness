@@ -104,6 +104,7 @@ jobs:
         run: {{auditCommand}}
       - name: format
         run: npx --no-install starci app check --gate format
+{{ciPackagesBuild}}
       - name: boot proof
         run: npx --no-install starci app check --gate wiring
         env:

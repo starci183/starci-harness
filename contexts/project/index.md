@@ -171,7 +171,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [harness/axes.md](../harness/axes.md) · 1 KB
 - [harness/cli-canonical.md](../harness/cli-canonical.md) · 13 KB — Owner ruling `cli-canonical-2026-10-30` (decisions.md): the flag dictionary and the command tree below are the target surface of both layers, the harness verbs (`starci <group> ...
   - sections: One flag dictionary (every verb, both layers) · The command tree
-- [harness/decisions.md](../harness/decisions.md) · 38 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
+- [harness/decisions.md](../harness/decisions.md) · 39 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
 - [harness/questions.md](../harness/questions.md) · 1 KB
 - [harness/roles.md](../harness/roles.md) · 7 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
 - [harness/rules.md](../harness/rules.md) · 4 KB — These hold for every role and every task.
@@ -189,9 +189,9 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: PROJECT-1 A project is one app root that holds the Work of every side · PROJECT-2 Work travels from a record to a settled commit · PROJECT-3 A product's agent modules are workspace packages · Where to read for a task · Files
 - [project/anatomy.md](../project/anatomy.md) · 82 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
-- [project/check-cache.md](../project/check-cache.md) · 36 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
+- [project/check-cache.md](../project/check-cache.md) · 37 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
   - sections: The operating procedure · The command surface · Progress and the run log · When a run is full · Layout and format · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · The slot, the templates and adoption · The law · Edge cases · As built · Read with
-- [project/cicd.md](../project/cicd.md) · 36 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
+- [project/cicd.md](../project/cicd.md) · 37 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
   - sections: What an app has today · Triggers and what runs · The pipeline graph · Database migrations · Secrets and access · Gates · Records · Compared with common practice · Work packages · As built by the work packages (integration, 2026-10-31) · Open decisions · Sources · Read with
 - [project/full.md](../project/full.md) · 4 KB — Only the differences of a full app from the shared project model (README.md); everything not named here is the same in both editions.
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work · Read with

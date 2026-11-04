@@ -209,7 +209,7 @@ addition, and deleted paths drop every record they own.
 | tracked files, content index, fingerprint, trust | always | never | every run; they decide the rest |
 | managed files against their render | always | never | every run: cheap, and its inputs are the templates and the managed files |
 | plaintext secrets (R06 and the lite custody L17: `--gate secrets` and `--gate hfs`), bypass markers (R303), soft file size | per file | the path's hash is unchanged, and the hash of the one other file the rule reads (a README's `.starcistacks/application-stacks.yaml`) | changed and added paths |
-| documentation freshness, script hygiene, database configuration, front-end build args | read set | every file the rule read through `readText` / `readJson` is unchanged (each recorded with the hash it had) and the tracked path list and the TypeScript version are the same | any change to a file it read; a tracked path added or removed |
+| documentation freshness, script hygiene, database configuration, front-end build args | read set | every file the rule read through `readText` / `readJson` is unchanged (each recorded with the hash it had) and the tracked path list outside the cache folder and the TypeScript version are the same | any change to a file it read; a tracked path outside the cache folder added or removed |
 | recurring-work scan of the Swarm release rules (the `pg_cron` and application SQL it parses) | per file | the path's hash, the stacks manifest and the parsers are unchanged | changed and added paths |
 | slot, tree, pin and the remaining content rules of the app pass, root and sides | always | never | every run: they read untracked entries and git state the index does not hold, or stat and list the work tree, which no key holds; the boot proof, the costly part, is lifted out as its own scoped step below |
 | Prettier (`HFS_FORMAT`) | per file | the path's hash is unchanged | changed and added paths |
@@ -246,7 +246,9 @@ under a file-system recorder, let the cache keep them (`check/hfs/`, records `fi
   of a file holds each such rule's findings for it. `check/secrets/` keeps the findings of the secrets codes for the new / known / fixed comparison, and `--gate secrets` reuses the same
   per-file records, so a warm run judges nothing and a run after an edit judges that file (the contract of those records is "The secrets records" below);
 - a **cross-file finder** (`KEYED_FINDERS` of `a15-findings.mts`) reaches the app only through `readText` / `readJson`. The first run records the read set, each file with its hash;
-  the record is reused while every file of the set, the tracked path list (the finders derive their file sets from it) and the TypeScript version are the same. A finder that stats,
+  the record is reused while every file of the set, the tracked path list outside the cache folder (the finders derive their file sets from it) and the TypeScript version are the same;
+  the cache folder's own paths stay out of that list, so a commit of the cache alone stales no record (a record keyed on them would depend on its own commit and be rewritten by
+  every run after a cache commit), and a finder that read a file of the cache folder is judged live. A finder that stats,
   lists or walks the work tree is never a member, and the spec fails on a member that does.
 
 The files of the cache folder itself (tracked or not) are judged live and never keyed: every run rewrites them. The cache never changes a verdict: a finding that does not name the file a per-file rule judges makes the whole batch run uncached, and the plain `checkRepo` of every other caller runs the rules

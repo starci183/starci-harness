@@ -100,3 +100,17 @@ test('S2 an added or deleted tracked path re-runs the cross-file rules, which de
   assert.ok(rewritten.includes('. rule:scriptHygieneFindings'));
   assert.ok(!rewritten.some((key) => key.startsWith('fe ') && !key.startsWith('fe rule:')), "the fe side whole-program steps are untouched");
 });
+
+test('S2 a commit of the cache folder alone rewrites no record: the tracked list a cross-file rule is keyed on leaves out the cache paths, so no record depends on its own commit', async (t) => {
+  const root = appRepo(t);
+  const cold = await runPass(root);
+  // What a cache commit does to the tracked list: the record files of the run join it (a new area file, a hash bucket), or leave it.
+  git(root, ['add', '-f', '.starcistacks/cache']);
+  write(root, '.starcistacks/cache/check/format/new-area.jsonl', '');
+  git(root, ['add', '-f', '.starcistacks/cache/check/format/new-area.jsonl']);
+  const next = await runPass(root);
+  assert.deepEqual(next.calls, [], 'no program re-runs');
+  assert.deepEqual(steps(changed(cold.hfs, next.hfs)), [], 'every record of the first run stands');
+  const tracked = (records: readonly { path: string; step: string; data?: unknown }[]): unknown => (records.find((record) => record.path === '.' && record.step === 'rule:docFreshFindings')?.data as { tracked?: string } | undefined)?.tracked;
+  assert.equal(tracked(next.hfs), tracked(cold.hfs));
+});

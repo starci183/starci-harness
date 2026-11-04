@@ -46,6 +46,16 @@ heap:
   minMiB: 6144
   steps: ['npm run typecheck', 'app check --gate wiring', 'npm run lint', 'app check --gate lint', 'app coverage verify', 'npm run db:lint']
 
+# The steps of the managed CI that read the declared types of the app's root workspace packages (packages/*: the agent SDK, the module packages and the rest) or
+# compile app code that imports them, matched on their `run` text (or the action they use), and the commands that build those packages first: the managed
+# `build:modules` script, and the managed scripts that run it before anything else (typecheck, lint, test, build:be, build:fe). In an app with root packages a
+# reading step finds them built by an earlier step of its job, or by its own command. A package left unbuilt resolves to nothing: the boot proof cannot compile
+# its modules (BE_APP_BOOT_PROOF_MISSING), the typed lint reads each import as any (no-unsafe-*), and the records judged that way disagree with the committed
+# cache (HFS_CHECK_CACHE_FORGED).
+rootPackages:
+  readers: {steps: ['app check --gate wiring', 'app check --gate lint', 'app db drift', 'turbo run build --filter=./fe/apps/'], uses: ['SonarSource/sonarqube-scan-action@']}
+  builders: ['npm run build:modules', 'npm run typecheck', 'npm run lint', 'npm test', 'npm run build:be', 'npm run build:fe']
+
 items:
   - id: candidate-trigger
     title: the release CI runs on the release candidate ref
@@ -74,9 +84,15 @@ items:
     by: [R251 HFS_DEPLOY_WORKFLOW]
   - id: boot-proof
     title: a lite app's fast job proves its Nest composition
-    requires: "the fast job of a lite app's CI runs the boot proof (`starci app check --gate wiring`, R272) before its typecheck, so a provider a domain module needs and an app root does not compose fails the run instead of every boot; full keeps its e2e boot proof"
+    requires: "the fast job of a lite app's CI runs the boot proof (`starci app check --gate wiring`, R272) before its typecheck (and after the root packages are built, packages-built-first), so a provider a domain module needs and an app root does not compose fails the run instead of every boot; full keeps its e2e boot proof"
     covers: [app-ci]
     check: ci-standard
+  - id: packages-built-first
+    title: the root packages are built before a check reads them
+    requires: "in an app with root workspace packages (the lint matrix names packages, or the app's package.json declares build:modules), every step that matches rootPackages.readers follows a step of its job, or is a step, whose run holds one of rootPackages.builders: the fast job builds them before its boot proof, every side of the lint matrix before it lints, the sonar job before its scan; an app without root packages renders no such step"
+    covers: [app-ci]
+    check: ci-standard
+    by: [render packages/hfs/sync/ci-commands.mjs (also cache-verify.yml and e2e.yml)]
   - id: full-history-base-ref
     title: full history and the lint base STARCI_BASE_REF
     requires: "every actions/checkout of the managed CI fetches the full history (fetch-depth: 0), and the lint job writes STARCI_BASE_REF to GITHUB_ENV before it lints"

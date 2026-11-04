@@ -19,5 +19,6 @@ jobs:
           node-version: {{nodeMajor}}
           cache: npm
       - run: npm ci --ignore-scripts
+{{ciPackagesBuild}}
       - name: e2e
         run: npm run test:e2e
