@@ -85,6 +85,10 @@
         white-space: nowrap;
     }
 
+    /* The trail reads small and muted, the separator a slash, and the current page is the one strong crumb. */
+    .starci-core-breadcrumbs-list { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
+    .starci-core-breadcrumbs-list [data-slot="breadcrumbs-separator"] { color: var(--muted); font-size: var(--grammar-text-xs); }
+
     .starci-core-breadcrumb {
         display: inline-flex;
         min-width: 0;
@@ -119,6 +123,8 @@
 
     .starci-core-breadcrumb-label[data-grammar-current="true"] {
         max-width: none;
+        color: var(--foreground);
+        font-weight: var(--grammar-weight-semibold);
     }
 
     /* A crumb whose label is not known yet (knowledge STATE-8): a short Skeleton text line of the label's size. */

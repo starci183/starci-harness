@@ -1,4 +1,4 @@
-export type ActionAppearance = "inline" | "muted" | "choice" | "route" | "tab" | "section" | "disclosure" | "plain"
+export type ActionAppearance = "inline" | "muted" | "choice" | "route" | "tab" | "section" | "disclosure" | "plain" | "destructive"
 export type ActionTextSize = "xs" | "sm" | "md" | "control"
 
 /**

@@ -35,6 +35,9 @@ type HeadlessFigures = Pick<SectionHeadProps, "id"> & {
     readonly ariaLabel: string
 } & { readonly [Key in keyof Omit<SectionHeadProps, "id">]?: never }
 
+/** A list whose visible heading already belongs to the surrounding region (a pane head): it draws no heading and is named by `ariaLabel`. */
+type HeadlessList = ListSection & HeadlessFigures
+
 type FiguresSection = NoChildren & {
     readonly kind: "figures"
     readonly items: readonly Figure[]
@@ -53,7 +56,7 @@ type SectionStatus = {
     readonly error?: ErrorData
 }
 
-export type SectionProps = SectionStatus & ((SectionHeadProps & (RegionSection | ListSection)) | FiguresSection)
+export type SectionProps = SectionStatus & ((SectionHeadProps & (RegionSection | ListSection)) | HeadlessList | FiguresSection)
 
 const listRows = (props: ListSection, isLoading: boolean) => {
     if (isLoading && props.items.length === 0) {
@@ -95,7 +98,7 @@ const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; read
  * already-headed strip headless, while `title` gives a strip its own visible heading. Those forms cannot be mixed.
  */
 export const Section = (props: SectionProps) => {
-    const { title, description, count, meta, action, headingLevel = 2, id, error } = props
+    const { title, description, count, fact, meta, action, headingLevel = 2, id, error } = props
     const isLoading = useIsLoading(props.isLoading)
     const failed = !isLoading && error !== undefined
     const headingId = useId()
@@ -109,7 +112,7 @@ export const Section = (props: SectionProps) => {
         <section
             id={id}
             aria-labelledby={title === undefined ? undefined : headingId}
-            aria-label={props.kind === "figures" && props.title === undefined ? props.ariaLabel : undefined}
+            aria-label={title === undefined && "ariaLabel" in props ? props.ariaLabel : undefined}
             aria-busy={isLoading ? true : undefined}
             data-grammar-loading-region={isLoading ? "true" : undefined}
             className="starci-core-section"
@@ -125,6 +128,7 @@ export const Section = (props: SectionProps) => {
                 title={title}
                 description={description}
                 count={failed ? undefined : count}
+                fact={failed ? undefined : fact}
                 meta={meta}
                 action={action}
                 isLoading={isLoading}

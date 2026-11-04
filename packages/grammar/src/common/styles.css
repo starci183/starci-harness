@@ -183,7 +183,7 @@
     .starci-core-section-header-copy {
         display: flex;
         min-width: 0;
-        flex: 1 1 min(100%, 20rem);
+        flex: 1 1 min(100%, 12rem);
         flex-direction: column;
         gap: var(--grammar-identity-gap);
     }
@@ -272,7 +272,7 @@
         padding-block-end: 0;
     }
 
-    /* The copy keeps a readable basis, so at phone width the actions wrap under the heading instead of crushing it. */
+    /* The copy keeps a readable basis: the page's one command stays on the title row at phone width while it fits, and wraps under the heading only when the heading would be crushed. */
     .starci-core-page-header-row {
         display: flex;
         min-width: 0;
@@ -285,7 +285,7 @@
     .starci-core-page-header-lead {
         display: flex;
         min-width: 0;
-        flex: 1 1 min(100%, 20rem);
+        flex: 1 1 min(100%, 12rem);
         align-items: center;
         gap: var(--grammar-row-gap);
     }
@@ -347,12 +347,6 @@
 
     .starci-core-page-header[data-grammar-page-header-tabs="true"] .starci-core-page-header-separator {
         margin-block-start: -1px;
-    }
-
-    @media (max-width: 47.999rem) {
-        .starci-core-page-header-actions {
-            flex-basis: 100%;
-        }
     }
 
     /*
@@ -3325,6 +3319,11 @@
     /* Static chrome inside a loading region keeps its words and only goes inert: the wrapper makes no box of its own. */
     .starci-core-region-inert { display: contents; }
 
+    /* A file picker with a note: the control, then one line of guidance or refusal under it. */
+    .starci-core-file-button[data-grammar-file-button-note] { display: inline-flex; flex-direction: column; align-items: flex-start; gap: var(--grammar-identity-gap); }
+    .starci-core-file-button-note { color: var(--muted); font-size: var(--grammar-text-md); line-height: var(--grammar-leading-md); }
+    .starci-core-file-button-note[data-tone="danger"] { color: var(--danger-soft-foreground); }
+
     /* --- Empty notice --- */
     .starci-core-empty-notice {
         display: flex;
@@ -4126,6 +4125,13 @@
     .starci-core-text-action[data-appearance="muted"] {
         color: var(--muted);
         font-weight: var(--grammar-weight-medium);
+    }
+
+    /* A destructive text command (sign out of the other devices, remove): underlined, in the danger pair's foreground, no pill. */
+    .starci-core-text-action[data-appearance="destructive"] {
+        color: var(--danger-soft-foreground);
+        font-weight: var(--grammar-weight-medium);
+        text-decoration-line: underline;
     }
 
     .starci-core-text-action[data-appearance="inline"]:hover,

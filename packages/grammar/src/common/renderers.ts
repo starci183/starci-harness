@@ -39,6 +39,7 @@ export { Grid, type GridCardColumns, type GridKind, type GridProps } from "../co
 export { StateMark, type StateMarkProps } from "../core/StateMark.js"
 export { OtpInput, type OtpInputProps } from "../core/branch/OtpInput/index.js"
 export { Freestyle, type FreestyleProps } from "../core/frame/Freestyle/index.js"
+export { PrimaryRailLayout, type PrimaryRailLayoutProps } from "../core/frame/PrimaryRailLayout/index.js"
 export { ScheduleGrid, type ScheduleColumn, type ScheduleRow, type ScheduleItem, type ScheduleCellLabel, type ScheduleTone, type ScheduleGridProps } from "../core/frame/ScheduleGrid/index.js"
 export { BarChart, type BarChartBar, type BarChartProps } from "../core/composite/BarChart/index.js"
 export { ChoiceChips, type ChoiceChip, type ChoiceChipsProps } from "../core/composite/ChoiceChips/index.js"

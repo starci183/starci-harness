@@ -23,7 +23,7 @@ export type BreadcrumbsProps = NoChildren & {
     /** Names the trail landmark, e.g. "Breadcrumb". */
     readonly label: string
     readonly items: ReadonlyArray<BreadcrumbItem>
-    /** Decorative separator; defaults to the vendor chevron. */
+    /** Decorative separator; defaults to a slash at 12px in the muted tone. */
     readonly separator?: ReactNode
     /** Same-document navigation for router-owned trails. */
     readonly onAction?: (id: string) => void
@@ -46,7 +46,7 @@ const BreadcrumbsInner = ({ label, items, separator, onAction }: BreadcrumbsProp
     >
         <HeroBreadcrumbs
             className="starci-core-breadcrumbs-list"
-            {...(separator === undefined ? {} : { separator })}
+            separator={separator ?? "/"}
             {...(onAction === undefined ? {} : { onAction: (key: string | number) => onAction(String(key)) })}
         >
             {items.map((item, index) => {

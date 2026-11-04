@@ -57,6 +57,8 @@ const getToneRule = (appearance: ActionAppearance, isCurrent: boolean): string |
     case "inline":
     case "plain":
         return "TONE-1"
+    case "destructive":
+        return "TONE-1"
     case "muted":
         return "TONE-2"
     case "choice":

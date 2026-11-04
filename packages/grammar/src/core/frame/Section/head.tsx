@@ -15,6 +15,11 @@ export type SectionHeadProps = {
      * (e.g. "Installations (2)"). It is part of the heading's accessible name.
      */
     readonly count?: number
+    /**
+     * One muted fact on the title line, right after it (" - Technician" in "Candidates - Technician", "Videos - 6 videos"); part of the heading's
+     * accessible name and, like `count`, not drawn while the section loads.
+     */
+    readonly fact?: string
     /** Where and when the section's facts come from (a source time, "Inventoried at 10:00"). Muted, at the end of the head row, before `action`. */
     readonly meta?: string
     /** The section's one page command. It hugs its label at the end of the head row. */
@@ -29,6 +34,7 @@ type HeadDrawing = {
     readonly title: string
     readonly description: string | undefined
     readonly count: number | undefined
+    readonly fact: string | undefined
     readonly meta: string | undefined
     readonly action: ReactNode
     readonly isLoading: boolean
@@ -42,9 +48,12 @@ const hidden = (isLoading: boolean) => (isLoading ? { "aria-hidden": true } as c
  * The head of a section: a plain `div`, never `<header>` (outside a sectioning element a `<header>` is the page banner,
  * and the banner belongs to the application bar). The row is inline, the title and its line are identity.
  */
-export const SectionHead = ({ title, description, count, meta, action, isLoading, headingId, level }: HeadDrawing) => {
+export const SectionHead = ({ title, description, count, fact, meta, action, isLoading, headingId, level }: HeadDrawing) => {
     const countPart = count === undefined || isLoading ? null : (
         <span key="count" className="starci-core-section-count" data-grammar-section-count={count} data-contract="TONE-2">{` (${count})`}</span>
+    )
+    const factPart = fact === undefined || isLoading ? null : (
+        <span key="fact" className="starci-core-section-count" data-grammar-section-fact="true" data-contract="TONE-2">{` \u00b7 ${fact}`}</span>
     )
     return (
         <div className="starci-core-section-header" data-contract="GAP-2" data-grammar-section-header="true">
@@ -54,6 +63,7 @@ export const SectionHead = ({ title, description, count, meta, action, isLoading
                     { className: "starci-core-section-title", id: headingId, "data-contract": "MARGIN-0 FLOW-3" },
                     title,
                     countPart,
+                    factPart,
                 )}
                 {description === undefined ? null : (
                     <div className="starci-core-section-description" {...hidden(isLoading)}>

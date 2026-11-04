@@ -1,7 +1,6 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
-import { useFieldVariant } from "../../surfaceContext.js"
 import { SearchField as HeroSearchField, Spinner as HeroSpinner } from "@heroui/react"
 import type { ClipboardEvent } from "react"
 import {
@@ -77,7 +76,8 @@ const SearchFieldControl = ({
     autoFocus = false,
     ...field
 }: Omit<SearchFieldProps, "isLoading">) => {
-    const variant = useFieldVariant()
+    // A search box is the field tone wherever it stands (page ground or surface), with no border or shadow of its own.
+    const variant = "secondary" as const
     return (
         <HeroSearchField
             data-tier="leaf"
