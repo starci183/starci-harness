@@ -5,7 +5,8 @@
 //   STACKS_IMAGE_BASE_UNPINNED  a Dockerfile of `.starcistacks/images/<name>/` has a FROM that is not digest-pinned.
 //   STACKS_IMAGE_BASE_NOT_FORK  the image folder of a service the harness owns a fork image for (knowledge/hfs/fork-images.yaml) does not end FROM that fork.
 //   STACKS_IMAGE_ENV_DIVERGES   a service that has an image folder runs a literal third-party image in some environment: every environment runs the
-//                               image built from the folder (compose `build.context`, or a project-owned or variable image reference), so dev and production share it.
+//                               image built from the folder (compose `build.context`, or a project-owned or variable image reference: a repository named
+//                               <project> or <project>-<name>, as the managed images workflow publishes it), so dev and production share it.
 import fs from 'node:fs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
@@ -77,13 +78,21 @@ function dockerfileFindings(repoRoot: string, forks: Record<string, string>): Fi
   });
 }
 
-/** Whether a service's image/build is the one built from its image folder, or a project-owned or variable reference. */
+/** The repository name of an image reference: its last path segment, without the tag or digest. */
+const repositoryName = (image: string): string => (image.split('@')[0] ?? '').split('/').at(-1)?.split(':')[0] ?? '';
+
+/**
+ * Whether a service's image/build is the one built from its image folder, or a project-owned or variable reference: a project-owned
+ * image is named `<project>` or `<project>-<name>` (as the managed images workflow publishes it, `ghcr.io/<owner>/<project>-<name>`) or
+ * sits under a `<project>` namespace, whatever its registry and digest (the deploy renders it with its placeholder digest).
+ */
 function builtFromFolder(service: Parsed, name: string, project: string): boolean {
   const build = service.build;
   const context = typeof build === 'string' ? build : typeof mapping(build).context === 'string' ? String(mapping(build).context) : '';
   if (context !== '' && context.replaceAll('\\', '/').includes(`images/${name}`)) return true;
   const image = typeof service.image === 'string' ? service.image : '';
-  return image.includes('${') || image.startsWith(`${project}/`) || image.startsWith(`${project}-`) || image.includes(`/${project}/`);
+  const repository = repositoryName(image);
+  return image.includes('${') || image.startsWith(`${project}/`) || image.includes(`/${project}/`) || repository === project || repository.startsWith(`${project}-`);
 }
 
 /** Findings of R374 for the app root. */
