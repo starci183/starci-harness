@@ -1356,7 +1356,7 @@ BE_SCHEMA_OWNER:
 BE_SCHEMA_PLACE:
   title: "A zod schema is outside its zone"
   title_vi: "Schema zod đặt sai vùng"
-  meaning_vi: "Tệp `<file>` import `zod` ngoài tệp `<name>.schema.ts` của một chủ sở hữu domain, platform hoặc integrations; hoặc import `zod` trong feature, cửa transport hay thư mục `dto/`; hoặc tệp schema còn import `class-validator`, `class-transformer` hay `@nestjs/graphql`."
+  meaning_vi: "Tệp `<file>` import `zod` ngoài tệp `<name>.schema.ts` của một chủ sở hữu domain, platform hoặc integrations và ngoài một gói workspace gốc (`packages/<name>/`, nơi hợp đồng node, block và từ vựng là schema zod); hoặc import `zod` trong feature, cửa transport hay thư mục `dto/`; hoặc tệp schema còn import `class-validator`, `class-transformer` hay `@nestjs/graphql`."
   causes_vi:
     - "Vi phạm luật R304: đầu vào của cửa transport được class-validator kiểm (R42), còn dữ liệu không đi qua DTO (phản hồi của nhà cung cấp, đầu ra có cấu trúc của mô hình, payload hàng đợi hoặc outbox đọc lại) mới đi qua schema zod của chủ sở hữu"
     - "Schema zod viết thẳng trong service, mapper hay lớp DTO thay vì tệp `<name>.schema.ts`"

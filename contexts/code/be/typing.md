@@ -59,8 +59,9 @@ Enforced by: `no-untyped-body` (R41), `json-parse-needs-guard` (R76), `no-return
 
 ## BE-TYPING-8 A zod schema lives in its owner's `*.schema.ts` and is bounded
 
-Zod is imported only by a `<name>.schema.ts` of a domain, platform or integration owner, never by a feature, door or
-`dto/`, and the file holds only zod values and their inferred types. Every string, array, record and map is bounded;
+Zod is imported only by a `<name>.schema.ts` of a domain, platform or integration owner, or by any file of a root
+workspace package (`packages/<name>/`, tier `package`), whose node, block and vocabulary contracts are zod schemas; never
+by a feature, door or `dto/`, and a `<name>.schema.ts` holds only zod values and their inferred types. Every string, array, record and map is bounded;
 `z.any()`, `z.unknown()` and `z.json()` do not exist. The reader calls `safeParse` and maps a failure to its owner's
 error. Use a schema when the shape is deep (model output, tool arguments, wire envelopes); a flat payload may use a
 type guard.

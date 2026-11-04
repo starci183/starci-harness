@@ -175,3 +175,36 @@ test("a package declaration that is not { name, file } stops the lint instead of
         assert.deepEqual(app.hfs.packageContract?.(join(app.root, "packages/module-sales/src/index.ts")), {}, "a package folder without a manifest declares nothing")
     } finally { app.cleanup() }
 })
+
+/** The schema-place findings (R304) of a package file. */
+const schemaFindings = async (root: string, hfs: ReturnType<typeof packagesHfsFromDeclaration>, file: string, text: string) =>
+    (await lint(root, hfs, file, text)).filter((message) => message.ruleId === "starci-be/schema-place").map((message) => message.messageId)
+
+test("a root package declares its node, block and vocabulary contracts in zod in any file; a dto/ folder and a mixed schema file stay refused (R304)", async () => {
+    const node = [
+        'import { z } from "zod"',
+        "",
+        "/** What the node reads. */",
+        "export const input: z.ZodObject<{ id: z.ZodString }> = z.object({ id: z.string().max(64) })",
+        "",
+    ].join("\n")
+    const core = 'import type { ZodType } from "zod"\n\n/** A node of the graph: its contract is a zod schema. */\nexport interface NodeContract {\n    /** What the node reads. */\n    readonly input: ZodType\n}\n'
+    const dto = 'import { z } from "zod"\n\n/** A request body. */\nexport const body: z.ZodString = z.string().max(5)\n'
+    const mixed = 'import { z } from "zod"\nimport { IsString } from "class-validator"\n\n/** A schema. */\nexport const id: z.ZodString = z.string().max(5)\n\n/** The validator. */\nexport const validator: typeof IsString = IsString\n'
+    const files = {
+        "src/nodes/order/ask-missing.node.ts": node,
+        "src/node/node.types.ts": core,
+        "src/blocks/card-grid.block.ts": node,
+        "src/vocabulary/tools.ts": node,
+        "src/transport/dto/body.ts": dto,
+        "src/order/order.schema.ts": mixed,
+    }
+    const app = appWith(files)
+    try {
+        for (const [file, text] of Object.entries(files).filter(([file]) => !file.includes("/dto/") && !file.endsWith(".schema.ts"))) {
+            assert.deepEqual(await schemaFindings(app.root, app.hfs, `packages/agent-sdk/${file}`, text), [], `${file} declares a package contract`)
+        }
+        assert.deepEqual(await schemaFindings(app.root, app.hfs, "packages/agent-sdk/src/transport/dto/body.ts", dto), ["door"], "a dto/ folder answers to class-validator in a package too")
+        assert.deepEqual(await schemaFindings(app.root, app.hfs, "packages/agent-sdk/src/order/order.schema.ts", mixed), ["mixed"], "the two validation layers never share a schema file")
+    } finally { app.cleanup() }
+})

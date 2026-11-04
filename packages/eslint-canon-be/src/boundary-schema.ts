@@ -7,8 +7,10 @@
  * argument, structured model output, a queue or outbox payload. The two territories are kept disjoint by lint, never by memory.
  *
  *   - `schema-place` (R304) holds the territory. `zod` is imported only from a `<name>.schema.ts` file (or its spec) that sits
- *     in a `domain`, `platform` or `integrations` owner; never in a feature (a transport door answers to `class-validator`), never
- *     in a `dto/` folder, and a schema file does not also carry `class-validator` or a GraphQL type.
+ *     in a `domain`, `platform` or `integrations` owner, or from any file of a root workspace package (tier `package`, slots
+ *     `app.packages` and `app.module-registry`), whose node, block and vocabulary contracts are zod schemas; never in a feature
+ *     (a transport door answers to `class-validator`), never in a `dto/` folder, and a schema file does not also carry
+ *     `class-validator` or a GraphQL type.
  *   - `schema-bounded` (R305) holds the cost. Every string, array, set, map and record a schema builds has an upper bound
  *     (`.max(n)`, `.length(n)`, `.size(n)`, or for a record and a map a `.refine`/`.check` on its entry count), and `z.any()`,
  *     `z.unknown()` and `z.json()` are refused: an unbounded array whose elements all fail validation allocates an issue each
@@ -25,6 +27,8 @@ const ZOD = /^zod(?:\/|$)/
 /** The imports of the other validation layer, which never share a file with a schema. */
 const MIXED = new Set(["class-validator", "class-transformer", "@nestjs/graphql"])
 const SCHEMA_FILE = /\.schema(?:\.spec)?\.ts$/
+/** The tier of a root workspace package: a contract library whose node, block and vocabulary contracts are zod schemas. */
+const PACKAGE_TIER = "package"
 
 /** Constructors that build a string-valued schema and owe a `.max(n)` or `.length(n)`. */
 const STRINGY = new Set(["string", "email", "url", "httpUrl", "hostname", "base64", "base64url", "jwt", "emoji", "hex", "iso.datetime", "iso.date", "iso.time", "iso.duration"])
@@ -160,7 +164,7 @@ const referencesZod = (node: Node): Node[] => referenceNodes(node).filter((sourc
 export const schemaPlace: RuleModule = {
     meta: {
         type: "problem",
-        docs: { description: "`zod` is imported only from a `*.schema.ts` file of a domain, platform or integrations owner, never in a transport door or beside a DTO decorator." },
+        docs: { description: "`zod` is imported only from a `*.schema.ts` file of a domain, platform or integrations owner or from a root workspace package, never in a transport door or beside a DTO decorator." },
         schema: [],
         messages: {
             door: "`zod` is imported in a transport door or a `dto/` folder. A door's input is validated by `class-validator` (R42); read untrusted data that is not a DTO through a `<name>.schema.ts` of the owner instead.",
@@ -182,6 +186,7 @@ export const schemaPlace: RuleModule = {
                 if (!first) return
                 if (inDoor) context.report({ node: first, messageId: "door" })
                 else if (tier === "feature") context.report({ node: first, messageId: "tier", data: { tier } })
+                else if (tier === PACKAGE_TIER) return
                 else if (!isSchemaFile) context.report({ node: first, messageId: "file" })
                 else if (!SCHEMA_TIERS.has(tier)) context.report({ node: first, messageId: "tier", data: { tier: tier ?? "non-owner" } })
             },
