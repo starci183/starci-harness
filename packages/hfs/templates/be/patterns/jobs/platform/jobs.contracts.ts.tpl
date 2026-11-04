@@ -77,6 +77,15 @@ export type ResumeFilter = { readonly jobId: string } | { readonly parkedBefore:
 /** The queue of the scheduled sweep of parked jobs; its tick is in JOB_TICKS (lite) or the app's schedulers (full). */
 export const PARKED_JOBS_SWEEP_QUEUE = "platform.jobs.sweep"
 
+/**
+ * The resume a sweep delivery asks for: the one job its payload names (`{ jobId }`, the owner's "resume now" written to the sweep
+ * queue through the outbox), else every parked job.
+ */
+export const sweepFilter = (payload: object): ResumeFilter => {
+    const jobId: unknown = Reflect.get(payload, "jobId")
+    return typeof jobId === "string" && jobId !== "" ? { jobId } : { sweep: true }
+}
+
 /** A parked job handed back to its queue: the queue and the delivery id it is added under, and what its handler receives. */
 export interface ResumedJob {
     /** The id of the job row. */
