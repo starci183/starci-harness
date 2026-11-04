@@ -392,6 +392,11 @@
         color: var(--foreground);
     }
 
+    .starci-core-top-bar[data-grammar-top-bar-density="compact"] .starci-core-top-bar-main {
+        block-size: calc(3.5rem - 1px);
+        min-block-size: calc(3.5rem - 1px);
+    }
+
     .starci-core-top-bar-main {
         box-sizing: border-box;
         display: flex;

@@ -26,7 +26,7 @@ export type PaneHeaderProps = NoChildren & {
      * The way back to the list, for a pane the phone shows alone. Drawn only where the pane grid shows one pane at a time
      * (below 48rem); a wider grid shows the list beside it, so the control is absent there.
      */
-    readonly back?: { readonly label: string; readonly onPress: () => void }
+    readonly back?: { readonly label: string; readonly onPress: () => void; readonly placement?: "narrow" | "always" }
     /** The subject is unresolved (STATE-8): `title`, `description`, `mark`, `status` and `actions` lay out unseen under a shimmer. */
     readonly isLoading?: boolean
 }
@@ -48,7 +48,7 @@ export const PaneHeader = ({ title, headingLevel = 2, description, mark, status,
             {...(isLoading ? { "data-loading": "true", "aria-busy": true } : {})}
         >
             {back === undefined ? null : (
-                <span className="starci-core-pane-header-back">
+                <span className="starci-core-pane-header-back" data-grammar-back-placement={back.placement ?? "narrow"}>
                     <IconButton intent="dismiss" source={ArrowLeftIcon} label={back.label} onPress={back.onPress} />
                 </span>
             )}

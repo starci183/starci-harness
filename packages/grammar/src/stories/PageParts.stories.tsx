@@ -32,3 +32,20 @@ export const PageParts: Story = {
         </Matrix>
     ),
 }
+
+const connectionRows: ReadonlyArray<G.ListRowData> = [
+    { id: "c1", title: "Zalo OA", description: "Mây Bakery OA", leading: { icon: UploadGlyph, size: "md" }, badges: [{ label: "Connected", tone: "success" }], control: <G.Select label="Agent for Zalo OA" isLabelHidden options={[{ id: "a", label: "Sales" }, { id: "b", label: "Chatbot" }]} defaultValue="a" /> },
+    { id: "c2", title: "Telegram", description: "@maybakery_bot", leading: { avatar: { name: "Telegram" }, size: "md" }, control: <G.Switch label="Telegram enabled" isLabelHidden defaultSelected /> },
+]
+
+export const RowControlAndLeading: Story = {
+    render: () => (
+        <Matrix maxWidth={640}>
+            <State label="A row with a control at its end, a 40px leading mark (tile or avatar); loading draws the tile as a rounded square" direction="column">
+                <G.SurfaceCard kind="list" label="Connections" items={connectionRows} empty={empty} />
+            </State>
+            <State label="Loading" direction="column"><G.SurfaceCard kind="list" label="Connections" items={connectionRows} empty={empty} isLoading /></State>
+            <State label="Select with a prefix" direction="column"><G.Select label="Position" prefix="Position:" options={[{ id: "a", label: "Spa technician" }]} defaultValue="a" /></State>
+        </Matrix>
+    ),
+}

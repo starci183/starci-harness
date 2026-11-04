@@ -38,6 +38,8 @@ export type ListOption = {
 export type SelectProps = NoChildren & FieldControlProps & {
     readonly options: ReadonlyArray<ListOption>
     readonly placeholder?: string
+    /** Muted words before the value inside the trigger ("Position:"); the control stays named by `label`. */
+    readonly prefix?: string
     readonly value?: string | null
     readonly defaultValue?: string | null
     readonly onValueChange?: (value: string | null) => void
@@ -109,6 +111,7 @@ const SelectInner = ({ isLoading = false, ...props }: SelectProps) => isLoading
 const SelectControl = ({
     options,
     placeholder,
+    prefix,
     value,
     defaultValue,
     onValueChange,
@@ -150,6 +153,7 @@ const SelectControl = ({
                 data-grammar-field-control="true"
                 isPending={isPending}
             >
+                {prefix === undefined ? null : <span className="starci-core-select-prefix" aria-hidden="true">{prefix}</span>}
                 <HeroSelect.Value />
                 {isPending
                     ? <HeroSpinner size="sm" color="current" aria-hidden="true" className="starci-core-field-spinner" />

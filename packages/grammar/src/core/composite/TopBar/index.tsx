@@ -35,6 +35,8 @@ export type TopBarProps = NoChildren & Omit<ComponentPropsWithoutRef<"header">, 
     /** The mobile menu trigger. */
     readonly menu?: TopBarMenu
     readonly position?: "static" | "sticky"
+    /** `compact`: a 56px bar (a public page under the brand); `default`: 64px, the app's bar. */
+    readonly density?: "default" | "compact"
 }
 
 /**
@@ -46,7 +48,7 @@ export type TopBarProps = NoChildren & Omit<ComponentPropsWithoutRef<"header">, 
  * `header` slot, the shell yields (its wrapper becomes a plain `div`) so the banner is never nested.
  * Contract: menu trigger A11Y-2 STATE-7 (named glyph button, app-owned aria-expanded).
  */
-export const TopBar = ({ brand, navigation, actions, menu, subnavigation, subnavigationLabel, position = "sticky", ...headerProps }: TopBarProps) => (
+export const TopBar = ({ brand, navigation, actions, menu, subnavigation, subnavigationLabel, position = "sticky", density = "default", ...headerProps }: TopBarProps) => (
     <ButtonPlacementProvider placement="chrome" navbar>
     <SurfaceNesting>
     <header
@@ -55,6 +57,7 @@ export const TopBar = ({ brand, navigation, actions, menu, subnavigation, subnav
         data-component="TopBar"
         data-tier="composite"
         data-grammar-top-bar-position={position}
+        data-grammar-top-bar-density={density}
         data-grammar-top-bar-menu={menu === undefined ? "none" : menu.visibility ?? "compact"}
         data-grammar-top-bar-subnavigation={subnavigation === undefined ? "false" : "true"}
     >

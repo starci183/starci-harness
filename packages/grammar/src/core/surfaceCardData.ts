@@ -53,9 +53,9 @@ export type ItemMenu = {
 
 /** The mark that leads a row. */
 export type ItemLeading =
-    | { readonly avatar: AvatarData; readonly icon?: never; readonly position?: never }
-    | { readonly icon: IconSource; readonly avatar?: never; readonly position?: never }
-    | { readonly position: number; readonly avatar?: never; readonly icon?: never }
+    | { readonly avatar: AvatarData; readonly size?: "sm" | "md"; readonly icon?: never; readonly position?: never }
+    | { readonly icon: IconSource; readonly size?: "sm" | "md"; readonly avatar?: never; readonly position?: never }
+    | { readonly position: number; readonly size?: never; readonly avatar?: never; readonly icon?: never }
 
 type ListRowDestination = Pick<LinkProps, "href" | "onFollow"> | {
     readonly href?: never
@@ -97,6 +97,11 @@ export type ListRowData = {
      */
     readonly onPress?: () => void
     readonly drag?: RowDrag
+    /**
+     * One control at the END of the row, after the command and the menu: a `Select` (which agent uses this connection) or a `Switch`
+     * (this agent may). It keeps its own state and label; the row draws it as it draws an action.
+     */
+    readonly control?: ReactNode
     /**
      * One short fact at the END of the row, before the commands (a due date, "8 min ago"): one line, truncating. `tone="danger"`
      * for a fact that is a problem (overdue). Drawn as a Skeleton of its width while the row loads.

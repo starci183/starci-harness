@@ -32,8 +32,8 @@ export type ListRowProps = NoChildren & {
 }
 
 const Leading = ({ leading }: { readonly leading: ItemLeading }) => {
-    if (leading.avatar !== undefined) return <Avatar {...leading.avatar} size="sm" isDecorative />
-    if (leading.icon !== undefined) return <IconTile source={leading.icon} size="sm" />
+    if (leading.avatar !== undefined) return <Avatar {...leading.avatar} size={leading.size ?? "sm"} isDecorative />
+    if (leading.icon !== undefined) return <IconTile source={leading.icon} size={leading.size ?? "sm"} />
     return <LeadingNumber position={leading.position} />
 }
 
@@ -62,7 +62,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
     const treatment = treatmentFor(state)
     const hasLeading = row.leading !== undefined
     const hasMark = !hasLeading && treatment.mark === "check"
-    const hasActions = row.action !== undefined || row.menu !== undefined
+    const hasActions = row.action !== undefined || row.menu !== undefined || row.control != null
     const hasTrail = row.meta !== undefined || row.badges !== undefined
     const drag = row.drag
     const hintId = useId()
@@ -91,7 +91,11 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 data-contract="GAP-3 PADDING-4 BOUNDARY-3 STATE-8"
             >
-                {hasLeading ? <span className="starci-core-list-row-leading"><Skeleton shape="circle" size="md" /></span> : null}
+                {hasLeading ? (
+                    <span className="starci-core-list-row-leading" data-grammar-leading-size={row.leading !== undefined && "size" in row.leading ? row.leading.size ?? "sm" : "sm"}>
+                        {row.leading?.icon === undefined ? <Skeleton shape="circle" size="md" /> : <span className="starci-core-list-row-skeleton-tile"><Skeleton shape="rect" /></span>}
+                    </span>
+                ) : null}
                 <span className="starci-core-list-row-copy" data-contract="GAP-1">
                     <span className="starci-core-list-row-title"><span className="starci-core-list-row-name"><Skeleton shape="text" /></span></span>
                     {row.description === undefined ? null : <span className="starci-core-list-row-description"><Skeleton shape="text" /></span>}
@@ -159,6 +163,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 ) : null}
                 {hasActions ? (
                     <span className="starci-core-list-row-actions" data-contract="GAP-2">
+                        {row.control == null ? null : <span className="starci-core-list-row-control" data-contract="GAP-2">{row.control}</span>}
                         {row.action === undefined ? null : <RowAction action={row.action} />}
                         {row.menu === undefined ? null : (
                             <DropdownMenu
