@@ -73,6 +73,7 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | commands that do not deserve a visible button | [menu](menu.md) |
 | several of one kind of thing; a list that searches, filters or pages (a section); the stages of one process | [list-table](list-table.md) |
 | report an outcome or a notice | [toast-alert](toast-alert.md) |
+| show items as stages, as entries on two axes, or as a few amounts to compare | [data-views](data-views.md) |
 | show words taken from a source (a stored note, a chat line, a template) in a pane, a card or a drawer | [quote](quote.md) |
 | say words, or title a group of blocks | [text](text.md) |
 | show one message of a conversation | [message bubble](message-bubble.md) |

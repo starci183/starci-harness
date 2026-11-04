@@ -380,6 +380,17 @@ A region that fails reads its message as the title, the way out as one muted lin
 command: in a pane (not in a card or an overlay) as a soft danger band across the region, elsewhere as the centred
 notice. An empty region reads the same way, its message as the title and its description as the muted line.
 
+### Data views
+
+Three data views answer situations no other component does, each in the four states of a region. A `Board` is peer
+columns of rows (stages) that scroll as one row and snap, one stage at a time on a phone; each column is a card of rows with
+its title and count, answers for its own empty state, and a loading board keeps its titles and draws its rows as geometry. A
+`ScheduleGrid` places entries by row and column (a week by hour, people by day, a month by week) in a real table with a
+caption, column headings and a heading per row; below 48rem of its own width it reads as an agenda in which each entry names
+its column and empty cells are not drawn, and a loading grid keeps its headings and draws shimmering entries. A `BarChart`
+draws bars on one scale from zero with the value over each bar and the label under it, as a list of values for assistive
+technology; it draws no axis, grid or legend.
+
 ### Freestyle
 
 Freestyle is the one sanctioned escape hatch: a div that fills its host, where the app writes its own plain elements and

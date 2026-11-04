@@ -399,6 +399,18 @@ roles:
     dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT]
     lint: [starci-grammar/pane-grid-children, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
 
+  - id: data-views
+    ui: ui/components/data-views.md
+    renderers: [Board, ScheduleGrid, BarChart]
+    vendorParity: []                              # no HeroUI part: Common regions built from the card, the table and the scroll region
+    slots: ["Board: label, columns (id, title, count, items as list rows, empty)", "ScheduleGrid: label, columns, rows, items placed by row and column (title, meta, tone, onPress), cellLabels, empty", "BarChart: label, bars (id, label, value, valueLabel), empty", "every view: isLoading, error (message, description, actionLabel, onAction)"]
+    variants:
+      tone: { values: [neutral, accent, success, warning, danger], chosenBy: app from the entry's state (ScheduleGrid items) }
+    sizes: none
+    states: [ready, loading, empty, error]
+    grammarMayChange: [column width, bar width, tone paint through tokens]
+    dna: [DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-SCHEDULE-HEADINGS, DNA-COMMON-BAR-CHART-ONE-SCALE]
+
   - id: freestyle
     ui: ui/components/freestyle.md
     renderers: [Freestyle]
@@ -1038,6 +1050,21 @@ mustKeep:
       law: A pane header is at least as tall as a touch target (2.75rem, 44px), so the heads of one grid row share a height with or without a command.
       measure: { kind: box, select: '[data-component="PaneHeader"]', metric: height, op: ">=", value: 44px }
       owner: contract roles.pane-grid
+    - id: DNA-COMMON-BOARD-ONE-WIDTH
+      role: data-views
+      law: The columns of one board share one width.
+      measure: { kind: uniform, scope: '[data-component="Board"]', select: '.starci-core-board-column', metric: [width], op: "=" }
+      owner: contract roles.data-views
+    - id: DNA-COMMON-SCHEDULE-HEADINGS
+      role: data-views
+      law: A schedule that has drawn its grid names its columns, with a column heading for each.
+      measure: { kind: count, scope: '[data-component="ScheduleGrid"]:not([data-grammar-schedule-state="error"])', select: 'th[scope="col"]', op: ">=", value: 1 }
+      owner: contract roles.data-views
+    - id: DNA-COMMON-BAR-CHART-ONE-SCALE
+      role: data-views
+      law: The bars of one chart stand on plots of one height, so their heights compare.
+      measure: { kind: uniform, scope: '[data-component="BarChart"]', select: '.starci-core-bar-chart-plot', metric: [height], op: "=" }
+      owner: contract roles.data-views
     - id: DNA-COMMON-AVATAR-GROUP-ONE-SIZE
       role: avatar
       law: Every member of an avatar group has one size.

@@ -382,6 +382,16 @@ It is at least as tall as a touch target so the heads of a grid row share a heig
 </Pane>
 ```
 
+**Data views.** `Board` (`label`, `columns` of `{ id, title, count, items, empty }`), `ScheduleGrid` (`label`, `columns`, `rows`,
+`items` placed by `row` and `column`, `cellLabels`, `empty`) and `BarChart` (`label`, `bars`, `empty`) each take `isLoading` and `error`.
+A loading view keeps the titles, headings and labels it was given and draws the rest as geometry; the app passes no count.
+
+```tsx
+<Board label="Sales pipeline" columns={stages} isLoading={isLoading} error={error} />
+<ScheduleGrid label="Appointments" columns={days} rows={hours} items={bookings} empty={<EmptyNotice message="No appointments" />} />
+<BarChart label="Engagement per day" bars={perDay} empty={<EmptyNotice message="No data yet" />} />
+```
+
 **Navigation & Data (16).** Accordion, AvatarGroup, Calendar, DataTable,
 BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
 

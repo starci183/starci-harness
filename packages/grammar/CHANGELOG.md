@@ -18,6 +18,7 @@
 
 ## Unreleased
 
+- Added: `Board` (stages as columns of rows that scroll and snap), `ScheduleGrid` (entries placed by row and column; an agenda below 48rem of its width) and `BarChart` (bars on one scale), each with loading, empty and error drawn in the shape of real content. DNA laws `DNA-COMMON-BOARD-ONE-WIDTH`, `DNA-COMMON-SCHEDULE-HEADINGS`, `DNA-COMMON-BAR-CHART-ONE-SCALE`.
 - Added: `PaneHeader`, the head band of one pane (back control where a phone shows the pane alone, mark, title with status and one muted line, trailing commands), as tall as a touch target; a loading head keeps its box. DNA law `DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT`.
 - Changed: `EmptyNotice` and the failed-read notice read their message as the title and their description as the muted line; the retry is an alternative command, and in a pane the failure draws as a soft danger band (`data-grammar-error-layout="band"`), elsewhere as the centred notice.
 
