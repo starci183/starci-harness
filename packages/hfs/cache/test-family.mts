@@ -77,8 +77,13 @@ export interface TestFamilyResult {
   readonly ok: boolean;
   readonly ran: readonly string[];
   readonly reused: readonly string[];
-  /** Specs that failed, did not report, or whose inputs changed: nothing of theirs is stored. */
+  /** Specs that failed, did not report, or whose inputs changed: nothing of theirs is stored. A run whose runner died leaves its unreported specs out. */
   readonly failed: readonly string[];
+  /**
+   * The runner's death (runnerDeath): its fatal line (a V8 heap limit) or its exit, when Jest ended before every spec it ran reported. Its specs that
+   * never reported are counted in `unreported`, never in `failed`: one runner failure, not one per spec.
+   */
+  readonly died: { readonly line: string; readonly unreported: number } | undefined;
   /** The merged lcov, or undefined when no spec has a record. */
   readonly lcov: string | undefined;
   readonly threshold: ReturnType<JudgeCoverage> | undefined;
@@ -125,6 +130,22 @@ function recordOf(spec: string, key: string, sources: Readonly<Record<string, So
   return { path: spec, step: SPEC_STEP, hash: key, findings: [], data: { sources: prefixed as unknown as JsonValue } };
 }
 
+/** The line a V8 heap exhaustion prints (`FATAL ERROR: Reached heap limit ...`, `JavaScript heap out of memory`, the last Mark-Compact). */
+const HEAP_LINE = /^.*(?:FATAL ERROR:.*heap|JavaScript heap out of memory|Reached heap limit).*$/mu;
+
+/**
+ * Whether the runner itself died rather than a spec failing: its output carries a V8 heap exhaustion, or it exited non-zero with specs that
+ * never reported. Returns the line that says so, or undefined when every spec ran to its own verdict.
+ */
+export function runnerDeath(outcome: RunOutcome, unreported: number): string | undefined {
+  const heap = HEAP_LINE.exec(outcome.output)?.[0]?.trim();
+  if (heap !== undefined && unreported > 0) return heap;
+  if (outcome.status !== 0 && unreported > 0 && /\b(?:SIGABRT|SIGKILL|SIGSEGV|exit(?:ed)? (?:with )?code 13[47])\b|Aborted|Segmentation fault/u.test(outcome.output)) {
+    return outcome.output.split(/\r?\n/u).find((line) => /SIGABRT|SIGKILL|SIGSEGV|13[47]|Aborted|Segmentation fault/u.test(line))?.trim();
+  }
+  return undefined;
+}
+
 /**
  * Runs the unit specs against the cache. Diff mode runs the specs with no current record, full mode all of them; a passing spec's coverage is stored under its key,
  * a failing one's is not, and the folder is replaced with exactly the current specs' records. The merged total is written to `<side>/coverage/lcov.info` and judged.
@@ -147,18 +168,24 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
   const fresh: CacheRecord[] = [];
   const failed: string[] = [];
   let output = '';
+  let died: TestFamilyResult['died'];
   if (toRun.length > 0) {
     const scratch = options.scratch ?? fs.mkdtempSync(path.join(os.tmpdir(), 'starci-spec-coverage-'));
     try {
       fs.rmSync(scratch, { recursive: true, force: true });
       fs.mkdirSync(scratch, { recursive: true });
-      output = (await jest.run(toRun, scratch)).output;
+      const outcome = await jest.run(toRun, scratch);
+      output = outcome.output;
       const reported = new Map(jest.readCoverage(scratch).map((file) => [file.spec, file]));
+      const reportOf = (spec: string) => reported.get(posix(path.relative(path.join(session.root, side), path.join(session.root, spec))));
+      const silent = toRun.filter((spec) => reportOf(spec) === undefined);
+      const line = runnerDeath(outcome, silent.length);
+      if (line !== undefined) died = { line, unreported: silent.length };
       for (const spec of toRun) {
-        const file = reported.get(posix(path.relative(path.join(session.root, side), path.join(session.root, spec))));
+        const file = reportOf(spec);
         const key = keys.get(spec);
         if (file?.passed === true && key !== undefined) fresh.push(recordOf(spec, key, file.sources, side));
-        else failed.push(spec);
+        else if (file !== undefined || died === undefined) failed.push(spec);
       }
     } finally {
       if (options.scratch === undefined) fs.rmSync(scratch, { recursive: true, force: true });
@@ -186,7 +213,7 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
     merge(records.map(sourcesOf), { outDir, reportRoot: rootDir, recordRoot: session.root });
     lcov = path.join(outDir, 'lcov.info');
     // A failed spec leaves its sources short in the total, so the threshold is judged only when every spec reported.
-    if (failed.length === 0) threshold = judge(lcov);
+    if (failed.length === 0 && died === undefined) threshold = judge(lcov);
   }
   const thresholdFindings = threshold?.findings.length ?? 0;
   const report: FamilyReport = {
@@ -195,12 +222,12 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
     reason: decision.reason,
     checked: toRun.length,
     reused: reused.length,
-    newFindings: failed.length + thresholdFindings,
+    newFindings: failed.length + (died === undefined ? 0 : 1) + thresholdFindings,
     knownFindings: 0,
     fixedFindings: 0,
   };
   session.report(report);
-  return { ok: failed.length === 0 && (threshold?.ok ?? records.length === 0), ran: toRun, reused: reused.map((record) => record.path), failed, lcov, threshold, report, output };
+  return { ok: failed.length === 0 && died === undefined && (threshold?.ok ?? records.length === 0), ran: toRun, reused: reused.map((record) => record.path), failed, died, lcov, threshold, report, output };
 }
 
 // ---- the real Jest of an app ------------------------------------------------------------------------------------------------------------------------------

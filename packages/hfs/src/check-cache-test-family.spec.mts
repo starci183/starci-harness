@@ -15,7 +15,7 @@ import { silentProgress } from '../cache/progress.mjs';
 import { readCacheDir } from '../cache/trust.mjs';
 import { hashText } from '../cache/hash.mjs';
 import { serializeRecords, parseRecords } from '../cache/jsonl.mjs';
-import { ALWAYS_FULL_PROJECTS, TEST_FOLDER, SPEC_STEP, createJestEnvironment, installedSpecMerge, runTestFamily, shardArgs, snapshotOf, sourcesOf, specKey } from '../cache/test-family.mjs';
+import { ALWAYS_FULL_PROJECTS, TEST_FOLDER, SPEC_STEP, createJestEnvironment, installedSpecMerge, runTestFamily, runnerDeath, shardArgs, snapshotOf, sourcesOf, specKey } from '../cache/test-family.mjs';
 import type { JestEnvironment, JudgeCoverage, MergeSpecRecords, SourceItems, SpecCoverageOutput, TestFamilyResult } from '../cache/test-family.mjs';
 import type { CacheRecord } from '../cache/types.mjs';
 
@@ -33,6 +33,8 @@ interface World {
   /** spec -> what the spec covers (source relative to the Jest root -> covered lines of `lines`); a spec in `failing` fails. */
   covers: Record<string, Record<string, { lines: number; covered: number[] }>>;
   failing: Set<string>;
+  /** The runner dies (a V8 heap limit) after this many specs reported. */
+  diesAfter?: number;
   ran: string[][];
   /** Runs while the specs run (an edit made during the run). */
   duringRun?: (session: ReturnType<typeof createFakeSession>) => void;
@@ -67,13 +69,16 @@ function fakeJest(w: World, configHash = 'config-1', onRun: () => void = () => u
       w.ran.push([...specs]);
       onRun();
       fs.mkdirSync(dir, { recursive: true });
-      for (const spec of specs) {
+      const reporting = w.diesAfter === undefined ? specs : specs.slice(0, w.diesAfter);
+      for (const spec of reporting) {
         const rel = spec.replace(/^be\//u, '');
         const passed = !w.failing.has(spec);
         const sources = passed ? Object.fromEntries(Object.entries(w.covers[spec] ?? {}).map(([name, { lines, covered }]) => [name, source(lines, covered)])) : {};
         fs.writeFileSync(path.join(dir, `${hashText(rel).slice(0, 12)}.json`), JSON.stringify({ spec: rel, passed, sources }));
       }
-      return { status: specs.some((spec) => w.failing.has(spec)) ? 1 : 0, output: specs.map((spec) => (w.failing.has(spec) ? `FAIL ${spec}` : `PASS ${spec}`)).join('\n') };
+      const lines = reporting.map((spec) => (w.failing.has(spec) ? `FAIL ${spec}` : `PASS ${spec}`)).join('\n');
+      if (w.diesAfter !== undefined) return { status: 134, output: `${lines}\n<--- Last few GCs --->\n[1234:0x1] 912345 ms: Mark-Compact 4090.1 (4129.5) -> 4087.9 (4131.0) MB\nFATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory\n` };
+      return { status: reporting.some((spec) => w.failing.has(spec)) ? 1 : 0, output: lines };
     },
     readCoverage(dir) {
       return fs.readdirSync(dir).map((name) => JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as SpecCoverageOutput);
@@ -565,4 +570,28 @@ test('an interrupted asynchronous Jest run cannot read partial per-spec coverage
     await assert.rejects(runTestFamily({ session, jest, side: 'be', merge: fakeMerge(), judge }), /did not complete/u);
     assert.equal(session.replaced.has(TEST_FOLDER), false);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a runner that dies of its heap is one failure of the run: the specs it never reached are not failed specs, a spec that reported failing still is, and nothing is judged', async () => {
+  const died = await runOnce({ ...world(), diesAfter: 1 }, []);
+  assert.equal(died.result.ok, false);
+  assert.deepEqual(died.result.failed, [], 'the unreached spec is no failed spec');
+  assert.deepEqual(died.result.died, { line: 'FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory', unreported: 1 });
+  assert.equal(died.result.threshold, undefined, 'a short total is never judged');
+  assert.deepEqual(stored(died).map((record) => record.path), ['be/src/a.service.spec.ts'], 'the spec that reported keeps its record');
+  assert.equal(died.result.report.newFindings, 1);
+  const failing = await runOnce({ ...world(), diesAfter: 1, failing: new Set(['be/src/a.service.spec.ts']) }, []);
+  assert.deepEqual(failing.result.failed, ['be/src/a.service.spec.ts'], 'a spec that reported its failure stays a failed spec');
+  assert.equal(failing.result.died?.unreported, 1);
+  const alive = await runOnce({ ...world(), failing: new Set(['be/src/b.service.spec.ts']) }, []);
+  assert.equal(alive.result.died, undefined, 'a failing spec with a live runner is no death');
+  assert.deepEqual(alive.result.failed, ['be/src/b.service.spec.ts']);
+});
+
+test('runnerDeath names the heap line or an abort exit, and nothing when every spec reported or the specs failed on their own', () => {
+  const heap = 'PASS x\nFATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory\n';
+  assert.equal(runnerDeath({ status: 134, output: heap }, 3), 'FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory');
+  assert.equal(runnerDeath({ status: 134, output: heap }, 0), undefined, 'every spec reported: the run judged them all');
+  assert.equal(runnerDeath({ status: 1, output: 'FAIL a\n' }, 2), undefined);
+  assert.equal(runnerDeath({ status: 1, output: 'worker exited with code 137 (SIGKILL)\n' }, 2), 'worker exited with code 137 (SIGKILL)');
 });

@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto"
 import { existsSync, readFileSync, statSync } from "node:fs"
-import { availableParallelism, constants, cpus, freemem } from "node:os"
+import { availableParallelism, constants, cpus, freemem, totalmem } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import type { DatabaseSync } from "node:sqlite"
@@ -35,6 +35,7 @@ const heavySchema = z.strictObject({
     timeoutMinutes: z.partialRecord(z.enum(HEAVY_KINDS), z.number().positive()),
     timeoutMinutesPer1000Files: z.partialRecord(z.enum(HEAVY_KINDS), z.number().positive()).optional(),
     testWorkers: z.string().regex(/^(?:\d+|\d{1,3}%)$/),
+    testWorkerMb: z.number().int().positive(),
     seatFreeMb: z.number().int().positive(),
     starvedTicketMinutes: z.number().positive(),
     bootProofTimeoutSeconds: z.number().int().positive(),
@@ -59,6 +60,9 @@ export const loadHeavyRules = (dir: string = locateOps()): HeavyRules => {
     }
     const parsed = z.looseObject({ heavy: heavySchema }).safeParse(raw)
     if (!parsed.success) throw new Refusal("OPS_INVALID", `${file} heavy block is invalid: ${z.prettifyError(parsed.error)}`)
+    // Admission holds what a test run's parent may grow to: its heap ceiling, so a coverage run admitted is never one the host cannot hold.
+    const { estimateMb, memoryMb } = parsed.data.heavy
+    if (estimateMb.test !== memoryMb.test) throw new Refusal("OPS_INVALID", `${file} heavy block is invalid: estimateMb.test ${String(estimateMb.test)} differs from memoryMb.test ${String(memoryMb.test)}; admission holds a test run's parent at its heap ceiling`)
     loaded.set(dir, parsed.data.heavy)
     return parsed.data.heavy
 }
@@ -133,12 +137,13 @@ const cpuRuleOf = (rules: HeavyRules, cpuPercent: number, managed: number | null
  * Dynamic admission from RAM and CPU. A command of `kind` is admitted when the CPU lets one more start (at or under its ceiling;
  * above it, the rule `cpuRuleOf` names from `managedCpu`, the share the governor's own running commands burn), fewer than the
  * cap run, and (free RAM - reserveMb) covers the estimates of the running commands plus its own; while nothing runs, one is
- * admitted once free RAM covers its own estimate, so a host under its reserve still makes progress. The CPU never lifts a RAM
+ * admitted once free RAM covers its own estimate, or half the host's memory (`totalMb`) when its estimate is more than that, so a
+ * host under its reserve, and a small host (a two-core CI runner) whose memory never frees a whole estimate, still make progress. The CPU never lifts a RAM
  * rule. `running` are the kinds running now. Without a kind, `admits` is judged for the smallest estimate (what `host load`
  * reports). `starved` (the queue admitted nothing for cpuStarveMinutes, `starvedQueue`) lets one command start under a hot
  * CPU: high CPU slows the queue, it never stops it.
  */
-export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly string[] = [], kind?: HeavyKind, starved = false, managedCpu: number | null = null): HostLoad & { readonly admits: boolean; readonly cpuHolds: boolean } => {
+export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly string[] = [], kind?: HeavyKind, starved = false, managedCpu: number | null = null, totalMb: number = Math.floor(totalmem() / 1_048_576)): HostLoad & { readonly admits: boolean; readonly cpuHolds: boolean } => {
     const cap = slotCap(rules)
     const estimates: Readonly<Record<string, number>> = rules.estimateMb
     // A row of a kind this build does not know (an older or newer CLI) is held at the largest estimate.
@@ -150,9 +155,10 @@ export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number,
     const cpu = hot ? cpuRuleOf(rules, cpuPercent, managedCpu, running.length, starved) : { slots: Number.MAX_SAFE_INTEGER, rule: null }
     const cpuHolds = cpu.slots === 0
     const full = running.length >= cap
-    const fits = running.length === 0 ? freeMb >= own : room >= own
+    const alone = Math.min(own, Math.floor(totalMb / 2))
+    const fits = running.length === 0 ? freeMb >= alone : room >= own
     const admits = !cpuHolds && !full && fits
-    const startsOne = freeMb >= own ? 1 : 0
+    const startsOne = freeMb >= alone ? 1 : 0
     const byRoom = running.length === 0 && room < own ? startsOne : Math.floor(room / own)
     const fitting = Math.max(0, Math.min(cap - running.length, byRoom))
     const admitted = running.length + Math.min(cpu.slots, fitting)
@@ -528,14 +534,14 @@ export const testWorkerCap = (rules: HeavyRules, cores: number = availableParall
 }
 
 /**
- * The workers a test run of the room `roomMb` gets: its own estimate (`estimateMb.test`, what one worker typically holds) holds
- * the first, and every further estimate of room one more, clamped to 1..testWorkerCap; a run under its parent's slot (null) takes the cap. So a
+ * The workers a test run of the room `roomMb` gets: its own estimate (`estimateMb.test`, the parent's heap ceiling) holds the parent and
+ * the first worker, and every further `testWorkerMb` of room one more, clamped to 1..testWorkerCap; a run under its parent's slot (null) takes the cap. So a
  * host with room runs wide, a starved one runs one worker, and the count follows the RAM free at admission, never the slot cap.
  */
 export const testWorkerCount = (rules: HeavyRules, roomMb: number | null, cores: number = availableParallelism()): number => {
     const cap = testWorkerCap(rules, cores)
     if (roomMb === null) return cap
-    const extra = Math.floor(Math.max(0, roomMb - rules.estimateMb.test) / rules.estimateMb.test)
+    const extra = Math.floor(Math.max(0, roomMb - rules.estimateMb.test) / rules.testWorkerMb)
     return Math.min(cap, 1 + extra)
 }
 
