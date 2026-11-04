@@ -1,9 +1,11 @@
 // seeds.mjs - the seed step (contexts/project/stacks.md PROJECT-STACKS-12): after the migrations, the entries of the shared level and then of
 // the environment's level, each in apply order, on the database the migrations ran on and under the role they ran as. The harness owns
 // the receipts: one row per entry in `public.starci_seed_receipts` of that database, created by this step (never an app migration), holding
-// the entry's content hash and, for a document entry with secret references, the member names and a digest of their values. A `once` entry
-// with a receipt never runs again; an `upsert` entry runs again when its hash (or a referenced secret) changed; a rerun with nothing changed
-// writes nothing. A `sql` entry runs in one transaction with its receipt. A `data` or `test-account` entry validates its documents against the
+// the entry's content hash, the outcome of its last run and, for a document entry with secret references, the member names and a digest of
+// their values. A `once` entry with a receipt never runs again; an `upsert` entry runs again when its hash (or a referenced secret) changed or
+// when its probe (an app command run like a data command, the same input on stdin) exits non-zero, which is drift the hash cannot see; an
+// `always` entry runs on every run. A rerun with nothing changed and no drift writes nothing. An app command answers its outcome on the last
+// line of its output, `unchanged` or `restored`; any other output is withheld and reads as `applied`. A `sql` entry runs in one transaction with its receipt. A `data` or `test-account` entry validates its documents against the
 // app's schema, opens their secret references in memory with the environment's age identity (the sops seam) and hands the resolved documents
 // to the app command it names on stdin, never in argv, a file or a log; its receipt is written once the command succeeded. A `files` entry
 // is validated only: the harness has no object-storage client, so its upload stays the app's. Without `execute` the step reads the
@@ -28,7 +30,12 @@ import type { ActionResult } from './remote.mjs';
 
 /** The receipts table of the seed step, in the app's database. */
 export const SEED_RECEIPTS = 'public.starci_seed_receipts';
-const RECEIPTS_DDL = `create table if not exists ${SEED_RECEIPTS} (scope text not null, id text not null, hash text not null, secrets text not null default '', env text not null, applied_at timestamptz not null default now(), primary key (scope, id))`;
+const RECEIPTS_DDL = [
+  `create table if not exists ${SEED_RECEIPTS} (scope text not null, id text not null, hash text not null, secrets text not null default '', env text not null, outcome text not null default '', applied_at timestamptz not null default now(), primary key (scope, id))`,
+  `alter table ${SEED_RECEIPTS} add column if not exists outcome text not null default ''`,
+];
+/** What an app command may answer on its last output line; anything else reads as `applied` and is never printed. */
+const OUTCOMES = Object.freeze(['unchanged', 'restored'] as const);
 /** The scope of the shared level's receipts; an environment's level uses its name. */
 const SHARED_SCOPE = 'shared';
 /** What a secret's value reads as in a dry run, which opens no member. */
@@ -41,7 +48,7 @@ export interface SeedStepInput {
   env: string;
   target: DbTarget;
   execute: boolean;
-  /** Runs a document entry's app command with the resolved documents on stdin. */
+  /** Runs an app command (a document entry's, or an entry's probe) with its input on stdin. */
   command: (argv: readonly string[], input: string) => RunResult;
 }
 
@@ -70,10 +77,28 @@ function receiptsOf(input: SeedStepInput): Receipt[] {
   return queryRows(input.ctx, input.target, `select scope, id, hash, secrets from ${SEED_RECEIPTS}`).map((row) => ({ scope: String(row.scope), id: String(row.id), hash: String(row.hash), secrets: String(row.secrets) }));
 }
 
-/** The statement that records an entry's receipt. */
-const receiptSql = (item: Planned, env: string, secrets: string): string =>
-  `insert into ${SEED_RECEIPTS} (scope, id, hash, secrets, env) values (${literal(item.scope)}, ${literal(item.entry.id)}, ${literal(item.hash)}, ${literal(secrets)}, ${literal(env)}) ` +
-  'on conflict (scope, id) do update set hash = excluded.hash, secrets = excluded.secrets, env = excluded.env, applied_at = now()';
+/** The statement that records an entry's receipt and the outcome of its run. */
+const receiptSql = (item: Planned, env: string, secrets: string, outcome: string): string =>
+  `insert into ${SEED_RECEIPTS} (scope, id, hash, secrets, env, outcome) values (${literal(item.scope)}, ${literal(item.entry.id)}, ${literal(item.hash)}, ${literal(secrets)}, ${literal(env)}, ${literal(outcome)}) ` +
+  'on conflict (scope, id) do update set hash = excluded.hash, secrets = excluded.secrets, env = excluded.env, outcome = excluded.outcome, applied_at = now()';
+
+/** The outcome an app command answered on its last output line, or `applied`; the rest of its output is never read. */
+function outcomeOf(stdout: string): string {
+  const last = stdout.trimEnd().split('\n').at(-1)?.trim() ?? '';
+  return OUTCOMES.find((outcome) => outcome === last) ?? 'applied';
+}
+
+/** The stdin of an entry's app command and probe: the entry, and the resolved documents of a document entry. */
+const commandInput = (input: SeedStepInput, item: Planned, documents?: unknown): string =>
+  `${JSON.stringify({ env: input.env, scope: item.scope, entry: item.entry.id, kind: item.entry.kind, ...(documents === undefined ? {} : { documents }) })}\n`;
+
+/** True when the entry's probe finds drift (exits non-zero); a probe that cannot run fails the step. Its output is withheld. */
+function drifted(input: SeedStepInput, item: Planned, stdin: string): boolean {
+  const probe = item.entry.probe ?? [];
+  const run = input.command(probe, stdin);
+  if (run.error) throw failure('STACK_SEED_PROBE', `${item.scope}/${item.entry.id}: the probe ${probe.join(' ')} could not run; its output is withheld`);
+  return run.status !== 0;
+}
 
 /** The documents of a document entry with its secret references resolved by `open`, refused when one fails the app's schema. */
 function resolvedDocuments(input: SeedStepInput, item: Planned, open: (member: string) => Record<string, string>): Array<{ path: string; document: unknown }> {
@@ -114,8 +139,8 @@ function sealedMember(input: SeedStepInput, member: string): Record<string, stri
 const secretsReceipt = (opened: ReadonlyMap<string, Record<string, string>>): string =>
   [...opened].map(([member, values]) => `${member}:${sha(JSON.stringify(Object.entries(values).sort(([a], [b]) => (a < b ? -1 : Number(a > b))))).slice(0, 16)}`).join(',');
 
-/** Applies one document entry: the app command with the resolved documents on stdin, then its receipt; answers the receipt's secrets. */
-function applyDocuments(input: SeedStepInput, item: Planned, receipt: Receipt | undefined): string | null {
+/** Applies one document entry: the app command with the resolved documents on stdin, then its receipt; answers the receipt's secrets and the command's outcome. */
+function applyDocuments(input: SeedStepInput, item: Planned, receipt: Receipt | undefined): { secrets: string; outcome: string; drift: boolean } | null {
   const opened = new Map<string, Record<string, string>>();
   const open = (member: string): Record<string, string> => {
     const known = opened.get(member);
@@ -126,11 +151,37 @@ function applyDocuments(input: SeedStepInput, item: Planned, receipt: Receipt | 
   };
   const documents = resolvedDocuments(input, item, open);
   const secrets = secretsReceipt(opened);
-  if (receipt?.hash === item.hash && receipt.secrets === secrets) return null;
-  const run = input.command(item.entry.target as string[], `${JSON.stringify({ env: input.env, scope: item.scope, entry: item.entry.id, kind: item.entry.kind, documents })}\n`);
+  const stdin = commandInput(input, item, documents);
+  const current = item.entry.mode !== 'always' && receipt?.hash === item.hash && receipt.secrets === secrets;
+  const drift = current && item.entry.probe !== null && drifted(input, item, stdin);
+  if (current && !drift) return null;
+  const run = input.command(item.entry.target as string[], stdin);
   if (run.error || run.status !== 0) throw failure('STACK_SEED_COMMAND', `${item.scope}/${item.entry.id}: ${(item.entry.target as string[]).join(' ')} ${run.error ? 'could not run' : `exited ${String(run.status)}`}; its output is withheld (it held the opened secrets)`);
-  psqlTransaction(input.ctx, input.target, [{ sql: receiptSql(item, input.env, secrets) }], { withhold: true, code: 'STACK_SEED_RECEIPT' });
-  return secrets;
+  const outcome = outcomeOf(run.stdout);
+  psqlTransaction(input.ctx, input.target, [{ sql: receiptSql(item, input.env, secrets, outcome) }], { withhold: true, code: 'STACK_SEED_RECEIPT' });
+  return { secrets, outcome, drift };
+}
+
+/** The line of an applied document entry: its outcome, its kind and mode, the drift its probe found and the members it opened. */
+function documentLine(name: string, item: Planned, applied: { secrets: string; outcome: string; drift: boolean }): string {
+  const members = applied.secrets ? `, secrets ${applied.secrets.split(',').map((part) => part.split(':')[0]).join(', ')}` : '';
+  return `seed ${name}: ${applied.outcome} (${item.entry.kind}, ${item.entry.mode}${applied.drift ? ', the probe found drift' : ''}${members})`;
+}
+
+/** What a dry run says an entry would do: it opens no secret and runs no probe. */
+function planLine(item: Planned, receipt: Receipt | undefined): string {
+  if (item.entry.mode === 'always') return 'apply (every run)';
+  if (receipt?.hash !== item.hash) return 'apply';
+  return item.entry.probe === null ? 'apply when a referenced secret changed' : 'apply when the probe finds drift or a referenced secret changed';
+}
+
+/** Applies one sql entry with its receipt in one transaction, or null when its probe finds no drift; answers its line. */
+function applySql(input: SeedStepInput, item: Planned, receipt: Receipt | undefined): string | null {
+  const drift = receipt?.hash === item.hash && item.entry.mode === 'upsert' && drifted(input, item, commandInput(input, item));
+  if (receipt?.hash === item.hash && item.entry.mode === 'upsert' && !drift) return null;
+  const files = entryFiles(path.join(input.repoRoot, item.level.dir), item.entry).map((file) => ({ file: path.join(input.repoRoot, item.level.dir, file) }));
+  psqlTransaction(input.ctx, input.target, [...files, { sql: receiptSql(item, input.env, '', 'applied') }], { code: 'STACK_SEED_SQL' });
+  return `seed ${item.scope}/${item.entry.id}: applied (sql, ${item.entry.mode}${drift ? ', the probe found drift' : ''}, ${files.length} file${files.length === 1 ? '' : 's'})`;
 }
 
 /** The line of an entry the step leaves as it is, or null when it applies. */
@@ -138,7 +189,7 @@ function keptLine(item: Planned, receipt: Receipt | undefined): string | null {
   const name = `seed ${item.scope}/${item.entry.id}`;
   if (item.entry.kind === 'files') return `${name}: validated, not uploaded (files: the harness has no object-storage client; the app uploads them to ${String(item.entry.target)})`;
   if (receipt && item.entry.mode === 'once') return `${name}: kept (once, applied before)`;
-  if (receipt?.hash === item.hash && item.entry.kind === 'sql') return `${name}: unchanged (upsert)`;
+  if (receipt?.hash === item.hash && item.entry.kind === 'sql' && item.entry.mode === 'upsert' && item.entry.probe === null) return `${name}: unchanged (upsert)`;
   return null;
 }
 
@@ -151,7 +202,7 @@ export function seedStep(input: SeedStepInput): ActionResult {
   const receipts = receiptsOf(input);
   const lines: string[] = [];
   const applied: string[] = [];
-  if (input.execute) psqlTransaction(input.ctx, input.target, [{ sql: RECEIPTS_DDL }], { code: 'STACK_SEED_RECEIPT' });
+  if (input.execute) psqlTransaction(input.ctx, input.target, RECEIPTS_DDL.map((sql) => ({ sql })), { code: 'STACK_SEED_RECEIPT' });
   for (const item of planned) {
     const receipt = receipts.find((row) => row.scope === item.scope && row.id === item.entry.id);
     const kept = keptLine(item, receipt);
@@ -160,20 +211,18 @@ export function seedStep(input: SeedStepInput): ActionResult {
     if (!input.execute) {
       const members = isDocumentEntry(item.entry) ? membersOf(input, item) : [];
       if (isDocumentEntry(item.entry)) resolvedDocuments(input, item, (member) => sealedMember(input, member));
-      const unchanged = receipt?.hash === item.hash;
-      lines.push(`plan seed ${name}: ${unchanged ? 'apply when a referenced secret changed' : 'apply'} (${item.entry.kind}, ${item.entry.mode}${members.length ? `, secrets ${members.join(', ')}` : ''})`);
+      lines.push(`plan seed ${name}: ${planLine(item, receipt)} (${item.entry.kind}, ${item.entry.mode}${members.length ? `, secrets ${members.join(', ')}` : ''})`);
       continue;
     }
     if (item.entry.kind === 'sql') {
-      const files = entryFiles(path.join(input.repoRoot, item.level.dir), item.entry).map((file) => ({ file: path.join(input.repoRoot, item.level.dir, file) }));
-      psqlTransaction(input.ctx, input.target, [...files, { sql: receiptSql(item, input.env, '') }], { code: 'STACK_SEED_SQL' });
-      lines.push(`seed ${name}: applied (sql, ${item.entry.mode}, ${files.length} file${files.length === 1 ? '' : 's'})`);
-      applied.push(name);
+      const line = applySql(input, item, receipt);
+      lines.push(line ?? `seed ${name}: unchanged (upsert, the probe found no drift)`);
+      if (line !== null) applied.push(name);
       continue;
     }
-    const secrets = applyDocuments(input, item, receipt);
-    if (secrets === null) { lines.push(`seed ${name}: unchanged (${item.entry.mode})`); continue; }
-    lines.push(`seed ${name}: applied (${item.entry.kind}, ${item.entry.mode}${secrets ? `, secrets ${secrets.split(',').map((part) => part.split(':')[0]).join(', ')}` : ''})`);
+    const done = applyDocuments(input, item, receipt);
+    if (done === null) { lines.push(`seed ${name}: unchanged (${item.entry.mode}${item.entry.probe === null ? '' : ', the probe found no drift'})`); continue; }
+    lines.push(documentLine(name, item, done));
     applied.push(name);
   }
   if (planned.length === 0) lines.push('seed: no entry in .starcistacks/seeds or the environment\'s level');

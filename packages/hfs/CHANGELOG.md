@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.7.1 - 2026-11-04
+
+- Added: a seed entry declares how it learns of drift. `mode: always` runs an idempotent, cheap command on every stack up; an `upsert` entry's optional `probe` (an app command as an argv list, given the entry's input) exits non-zero on drift and runs the entry even when its hash is unchanged; the hash skip stays the default (manifest `starci/seeds@1`, additive). The receipt keeps each run's outcome (`unchanged` or `restored` from the command's last output line, otherwise `applied`) and never any other output; a probe that cannot run is `STACK_SEED_PROBE`, and a probe on a once, always or files entry, a probe that is no argv list, or `always` on a files entry is `HFS_SEED_MANIFEST` (PROJECT-STACKS-12).
+
 ## 5.7.0 - 2026-11-04
 
 - Changed: the check cache fingerprint is judged per family: a part makes only the families that read it run full, and the diagnosis names the family and the part. `package-lock.json` counts per family by its toolchain's resolved installs, `package.json` by shape outside the hfs-run families; a bump of `@starci/hfs` never re-runs ESLint, and a library bump re-lints only the files that import it, through the package digests of the import graph. The types and test families still run full on a change of their toolchain's resolved installs.

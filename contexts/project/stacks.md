@@ -385,7 +385,7 @@ The data an app seeds lives in two levels of `.starcistacks/`, tracked, one stru
   exactly as declared; `seeds` and `cache` are no environment names.
 
 Each level is a manifest, `seeds.yaml` (schema `starci/seeds@1`), and the folders `sql/`, `data/` and `files/`. The manifest lists every file
-of those folders, one entry each `{ id, kind, path, target, mode, after?, schema? }` (`packages/hfs/runtime/scripts/hfs/stack-seeds-config.mts`):
+of those folders, one entry each `{ id, kind, path, target, mode, after?, schema?, reason?, probe? }` (`packages/hfs/runtime/scripts/hfs/stack-seeds-config.mts`):
 
 - `kind: sql`: idempotent DML (`insert ... on conflict`, an upsert) on the database `target` names; never a statement that changes the schema
   or its grants, which is a migration's (BE-PERSISTENCE-1).
@@ -394,8 +394,11 @@ of those folders, one entry each `{ id, kind, path, target, mode, after?, schema
 - `kind: test-account`: the one data entry of an environment's level that declares a test account (its owner login, a test workspace and
   the product's own connector test credentials, never a customer's), with the `reason` it exists; the shared level declares none.
 - `kind: files`: assets for the bucket `target` names, each keyed by its path.
-- `mode`: `once` applies an entry a single time, `upsert` again whenever its content hash changes; `after` names the entries of the level, or
-  of the shared level, it follows. The apply order is the migrations, then the shared level, then the environment's, each in manifest order
+- `mode` says how an entry learns that its target drifted: `once` applies it a single time; `upsert` (the default for an expensive seed)
+  again whenever its content hash changes, or, when it declares a `probe` (the argv of an app command that exits non-zero on drift, given
+  the input the entry's command gets), whenever the probe finds drift the hash cannot see; `always` on every run, for an idempotent, cheap
+  command that answers `unchanged` or `restored` on its last output line. A files entry takes neither `always` nor a probe, and a probe
+  belongs to an upsert entry only. `after` names the entries of the level, or of the shared level, it follows. The apply order is the migrations, then the shared level, then the environment's, each in manifest order
   with `after` respected.
 
 A seed never holds a secret. A document names one as a reference, `{ "secret": "seeds-<name>" }`, to a member sealed for that environment
@@ -415,14 +418,17 @@ harness order, validate and judge every seed while the app keeps what the data m
 
 **The seed step** (`packages/hfs/stack/seeds.mts`) applies both levels on the database the migrations ran on, under their role. It keeps
 its receipts in that database, `public.starci_seed_receipts` (scope, id, content hash, the referenced members with a digest of their
-values, environment, time), a table the step creates and no app migration owns: a `once` entry with a receipt never runs again, an
-`upsert` entry runs again when its content or a referenced secret changed, and a rerun with nothing changed applies nothing. A `sql`
+values, environment, the outcome of the last run, time), a table the step creates and no app migration owns: a `once` entry with a receipt
+never runs again, an `upsert` entry runs again when its content or a referenced secret changed or its probe exits non-zero (the probe
+alone never touches the receipt), an `always` entry runs every time, and a rerun with nothing changed and no drift applies nothing. The
+outcome is what the command answered on its last output line, `unchanged` or `restored`, else `applied`; the rest of its output is
+withheld, never printed or stored. A `sql`
 entry runs in one transaction with its receipt. A `data` or `test-account` entry validates its documents, opens each secret reference in
 memory with the environment's age identity and hands the resolved documents to its app command on stdin; no opened value reaches a file,
-argv, a log or a receipt, and a failing command's output is withheld. A `files` entry is validated only: the harness has no
+argv, a log or a receipt, and a failing command's or probe's output is withheld (`STACK_SEED_COMMAND`, `STACK_SEED_PROBE` for a probe that cannot run). A `files` entry is validated only: the harness has no
 object-storage client, so the upload stays the app's. `starci app stack up` runs the step after the migrations; a deploy runs it after
-convergence (so a data command is the new release's), its app commands in a task of the jobs service, and its dry run names every
-entry, each applied unless its receipt holds. The scaffold's `cli seed run` still applies the `sql/` folders of the shared level and then
+convergence (so a data command is the new release's), its app commands and probes in a task of the jobs service, and its dry run
+names every entry, each applied unless its receipt holds; a dry run runs no probe. The scaffold's `cli seed run` still applies the `sql/` folders of the shared level and then
 the environment's for a manual run.
 
 Enforced by: R375 (`seeds-shape`: `HFS_SEEDS_SHAPE`, `HFS_SEED_MANIFEST`, `HFS_SEED_DDL`, `HFS_SEED_DATA_SCHEMA`, `HFS_SEED_TEST_DATA`,

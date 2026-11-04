@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.22 - 2026-11-04
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.22; requires `@starci/eslint-grammar-core` 0.21.22. the runtime copy of the canon pins names `@starci/hfs` 5.7.1 and the release-7a versions.
+
 ## 0.21.21 - 2026-11-04
 
 - Changed: version stamp only, with `@starci/grammar` 0.21.21; requires `@starci/eslint-grammar-core` 0.21.21; the runtime copy of the canon pins names the release-6 versions.
