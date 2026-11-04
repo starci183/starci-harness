@@ -111,6 +111,19 @@ describe("BullmqQueueTransportClient jobs and schedulers", () => {
     })
 })
 
+describe("BullmqQueueTransportClient persist", () => {
+    it("resolves when the queue holds every job and refuses a job Redis does not hold", async () => {
+        const { client, queue, factory } = await build()
+        queue.getJobState.mockResolvedValueOnce("waiting").mockResolvedValueOnce("unknown")
+
+        await client.persist([{ queue: "mail", jobId: "job-1" }])
+        await expect(client.persist([{ queue: "mail", jobId: "job-2" }])).rejects.toMatchObject({ code: QueueErrorCode.JobLost })
+
+        expect(factory.queue).toHaveBeenCalledTimes(1)
+        expect(queue.getJobState).toHaveBeenNthCalledWith(2, "job-2")
+    })
+})
+
 describe("BullmqQueueTransportClient worker deliveries", () => {
     it("starts a worker that translates BullMQ jobs into queue deliveries", async () => {
         const { client, factory } = await build()

@@ -154,20 +154,47 @@ const SCHEDULER_CLIENTS = Object.freeze(['@nestjs/schedule', 'cron']);
  * earlier capability declared (a cache on ioredis) still gains bullmq; a file already complete is left alone.
  */
 function declarationPatches(repoRoot: string, project: string, patterns: readonly string[]): FilePatch[] {
+  const packageFile = path.join(repoRoot, 'package.json');
+  const pkg = withClients(JSON.parse(read(packageFile)), [...QUEUE_CLIENTS, ...(patterns.includes('fenced-job') ? SCHEDULER_CLIENTS : [])]);
+  pkg.scripts = { ...pkg.scripts, ...redisDevScripts(project) };
+  return [backingPatch(repoRoot), { file: packageFile, text: packageJsonText(pkg) }].filter((patch) => patch.text !== read(patch.file));
+}
+
+/** hfs.json with redis in sides.be.backing, the Redis the queue's clients connect to. */
+function backingPatch(repoRoot: string): FilePatch {
   const file = path.join(repoRoot, 'hfs.json');
   const declaration = JSON.parse(read(file));
   declaration.sides.be.backing = [...new Set([...(declaration.sides.be.backing ?? []), 'redis'])].sort(byCodeUnit);
-  const packageFile = path.join(repoRoot, 'package.json');
-  const pkg = JSON.parse(read(packageFile));
+  return { file, text: jsonText(declaration) };
+}
+
+/** The package manifest with each client it lacks added at its canon pin; a client it already depends on is left as it is. */
+function withClients(pkg: { dependencies?: Record<string, string> }, clients: readonly string[]): { dependencies?: Record<string, string>, scripts?: Record<string, string> } {
   const pins = bundledPins();
-  const clients = [...QUEUE_CLIENTS, ...(patterns.includes('fenced-job') ? SCHEDULER_CLIENTS : [])];
-  const missing = clients.filter((name) => typeof pkg.dependencies?.[name] !== 'string');
-  for (const name of missing) if (!pins[name]) throw new ScaffoldError('HFS_SCAFFOLD_PIN_MISSING', `${name} has no canon pin in knowledge/hfs/canon-pins.yaml`);
-  if (missing.length)
-    pkg.dependencies = Object.fromEntries(Object.entries({ ...pkg.dependencies, ...Object.fromEntries(missing.map((name) => [name, pins[name]?.version])) }).sort(([a], [b]) => a.localeCompare(b)));
-  pkg.scripts = { ...pkg.scripts, ...redisDevScripts(project) };
-  return [{ file, text: jsonText(declaration) }, { file: packageFile, text: packageJsonText(pkg) }]
+  const added = clients.filter((name) => typeof pkg.dependencies?.[name] !== 'string').map((name): [string, string] => {
+    const pin = pins[name];
+    if (!pin) throw new ScaffoldError('HFS_SCAFFOLD_PIN_MISSING', `${name} has no canon pin in knowledge/hfs/canon-pins.yaml`);
+    return [name, pin.version];
+  });
+  if (!added.length) return pkg;
+  return { ...pkg, dependencies: Object.fromEntries(Object.entries({ ...pkg.dependencies, ...Object.fromEntries(added) }).sort(([a], [b]) => a.localeCompare(b))) };
+}
+
+/**
+ * `add queue|job` in a full app: hfs.json declares redis in sides.be.backing and the package.json gains the queue's clients at their
+ * canon pins, so the generated platform/queue compiles; the full stack's Redis is the app's own (its environments declare it).
+ */
+export function planFullQueue({ repoRoot, repo, noun }: { repoRoot: string, repo: LiteRepo, noun: string }): { apply(): string[] } | null {
+  if (repo.edition === 'lite' || !['queue', 'job'].includes(noun)) return null;
+  const packageFile = path.join(repoRoot, 'package.json');
+  const patches = [backingPatch(repoRoot), { file: packageFile, text: packageJsonText(withClients(JSON.parse(read(packageFile)), QUEUE_CLIENTS)) }]
     .filter((patch) => patch.text !== read(patch.file));
+  return {
+    apply() {
+      for (const patch of patches) fs.writeFileSync(patch.file, patch.text);
+      return patches.map((patch) => path.relative(repoRoot, patch.file).split(path.sep).join('/'));
+    },
+  };
 }
 
 const redisComponent = `redis:
