@@ -2044,8 +2044,8 @@ slots:
     tracked: tracked
     tier: integrations
     owner: true
-    requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.registration.ts]   # Secrets, no defaults (R44); options and named injectors (R83); the kit and the module over @starci/auth
-    allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.registration.ts, errors/]
+    requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.module-definition.ts, passport.module.ts]   # Secrets, no defaults (R44); options and named injectors (R83); the kit and the module over @starci/auth
+    allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.module-definition.ts, passport.module.ts, errors/]
     logic: [passport.kit.ts]   # the verifier mapping over the package: measured at 100 per file
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_AUTH_JWT_OWN_JWKS, BE_AUTH_REFRESH_COOKIE]

@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.20.0
+version: 3.21.0
 presenceValues:
   - required
   - optional
@@ -2970,14 +2970,16 @@ slots:
       - passport.options.ts
       - passport.decorators.ts
       - passport.kit.ts
-      - passport.registration.ts
+      - passport.module-definition.ts
+      - passport.module.ts
     allows:
       - index.ts
       - passport.config.ts
       - passport.options.ts
       - passport.decorators.ts
       - passport.kit.ts
-      - passport.registration.ts
+      - passport.module-definition.ts
+      - passport.module.ts
       - errors/
     logic:
       - passport.kit.ts

@@ -32,5 +32,5 @@ export {
 } from "./passport.decorators"
 export { PASSPORT_ERROR_KINDS, PassportError, PassportErrorCode } from "./errors/passport.error"
 export { passportKit } from "./passport.kit"
-export { passportModule } from "./passport.registration"
+export { PassportModule } from "./passport.module"
 export type { PassportOptions, VerifyAccessToken } from "./passport.options"

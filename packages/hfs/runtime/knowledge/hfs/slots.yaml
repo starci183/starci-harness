@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.20.0
+version: 3.21.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -65,6 +65,8 @@ versioning:
 # <env>/seeds/, each a seeds.yaml manifest and the folders sql/, data/ and files/, and retires app.db.seed (its rows are the shared level's
 # sql/ entries); `starci app codemod seeds-layout` moves an older app's seed data into them.
 # 3.20.0 (ruling release-gate-warm-cache, 2026-11-04) adds the required app.ci-cache-verify, the managed nightly verify of the committed check cache.
+# 3.21.0 (2026-11-04) has be.integrations.passport require the capability module every package-backed integration is (passport.module.ts over
+# passport.module-definition.ts, the app's logger handed to @starci/auth) in place of passport.registration.ts; `starci app codemod passport-module` moves an app.
 # 3.19.0 (ruling root-packages-any-name, 2026-11-03) widens app.packages to any packages/<name>/: the agent SDK, a block library, a module package.
 # 3.15.0 (ruling app-check-cache, 2026-10-31) adds the optional app.starcistacks.cache, the committed check cache of the app (.starcistacks/cache/, both editions).
 # 3.14.0 (ruling app-secrets-one-standard, 2026-10-29) adds the optional app.ci-stack-key-restore, the managed workflow that writes the
@@ -2110,8 +2112,8 @@ slots:
     tracked: tracked
     tier: integrations
     owner: true
-    requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.registration.ts]   # Secrets, no defaults (R44); options and named injectors (R83); the kit and the module over @starci/auth
-    allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.registration.ts, errors/]
+    requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.module-definition.ts, passport.module.ts]   # Secrets, no defaults (R44); options and named injectors (R83); the kit and the module over @starci/auth
+    allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.module-definition.ts, passport.module.ts, errors/]
     logic: [passport.kit.ts]   # the verifier mapping over the package: measured at 100 per file
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_AUTH_JWT_OWN_JWKS, BE_AUTH_REFRESH_COOKIE]
