@@ -38,6 +38,7 @@ on the release tag; the tag run is the release run, and the pipeline keys every 
 | `pull_request` to `main` (Dependabot, an owner branch) | diff-only against the merge-base cache | built, not pushed (proves the Dockerfiles) | never |
 | push of `main` whose sha a `v*` tag points at | skipped: the `plan` job sees the tag and defers to the tag run | none | none |
 | push of `main` with no tag (only when the hook was bypassed) | diff-only against the first parent | none | none |
+| push of a branch with a branch profile (`dev`, [lint.md](lint.md) PROJECT-LINT-2) | the checks under the profile: a reported lint lists its findings and fails only on `LINT_RATCHET_RAISED`; a reported Sonar analysis and Codecov upload run, and no quality gate judges them | none | none |
 | push of `release/candidate-<version>` (apps with `release.requireCi: true`) | the release checks, diff-only against the cache at its merge-base with `main` | built and pushed under `sha-<sha>` | none; the candidate verdict is reused by the tag run |
 | push of tag `v<version>` | the release checks, diff-only against the cache at its merge-base with `main` (check-cache.md "Trust"), or reused from a green candidate run of the same sha | built once, pushed with SBOM and provenance | every environment with `deploy.auto: true`, in declared order, after every required job is green |
 | push of tag `v<version>` whose annotation carries `Starci-Urgent:` | the release checks: this run is the back-fill | built and pushed | skipped when the environment's accepted release already has this sha (the urgent deploy did it); otherwise as a normal tag |
@@ -45,8 +46,8 @@ on the release tag; the tag run is the release run, and the pipeline keys every 
 | `workflow_dispatch` of `ci.yml` with the `full` input (the owner's opt-in) | full, never reading the cache | as the ref | as the ref |
 | `workflow_dispatch` of `stack-deploy.yml` | none; it requires a tag whose CI run is green (or an urgent annotation) | reused by digest from that run | `deploy`, `redeploy` or `rollback` of one environment |
 
-`pull_request` is a new trigger for app workflows (R221 and R251 admit only tags, candidate branches, `main` for
-`ci.yml` and dispatch). It runs with read-only permissions, no environment and no secret; a fork's or Dependabot's run
+`pull_request` is a new trigger for app workflows (R221 and R251 admit only tags, candidate branches, `main` and the
+branches with a branch profile for `ci.yml`, and dispatch); a pull request targets `main` alone, so it always runs the full gate. It runs with read-only permissions, no environment and no secret; a fork's or Dependabot's run
 gets none anyway. `pull_request_target`, `workflow_run` and path filters stay refused, and so does every schedule but the nightly `cache-verify.yml`.
 
 **One sha is judged once.** The first job, `plan`, reads the event and the refs and decides: `full` (the release checks of a

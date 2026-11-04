@@ -281,6 +281,15 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   the state such a copy kept inside itself moves out on its first `starci app` verb ([state.md](state.md) "Where state lives",
   `packages/hfs/runtime/engine/runtime-root.mts`). The base is per user (`starci-harness/state`, never the retired
   `%LOCALAPPDATA%/StarCi`), a stack's state below it is keyed by project and environment, and `STARCI_LOCAL_ROOT` overrides it.
+- **Branch profiles: dev reports the polish gates, main keeps the full gate (`branch-profile-dev`).** The owner, 2026-11-04: an
+  app's flow-F branch is `dev`, where product and UI work runs; an app gives it a branch profile in `.starcistacks/application-stacks.yaml`
+  (`branches`), per gate `blocking`, `report` or `off`. Only lint, sonar and codecov may be lowered; hfs (required blocking on dev) and the
+  safety gates types, wiring (the boot proof), db, secrets, format and test block on every branch; main can never be declared or lowered, and a
+  pull request into main runs the full gate. Where lint reports, the lint ratchet blocks a commit that adds lint findings to a file it touches;
+  older findings stay report-only. Promoting dev to main is a named step that runs the full gate. The exception is
+  `branchProfiles` of [policy/loosening.yaml](../../policy/loosening.yaml), handed to @starci/hfs by `starci app`
+  (`cli/src/core/app/hfs.ts`); the selection, the report verdict and the ratchet are `packages/hfs/runtime/scripts/hfs/branch-profile.mts`,
+  `packages/hfs/src/main.mts` and `packages/hfs/lint/ratchet.mts`, and the rule is [project/lint.md](../project/lint.md) PROJECT-LINT-2.
 - **App check and CI run on the warm committed cache (`warm-cache-push`).** The owner, 2026-11-04: app check and CI run on the
   warm committed cache. One full warm run per base, only after a harness pin bump (a version change invalidates it); fix loops
   check only the diff (`--staged`, a gate- or side-scoped run); never `--no-cache` in a loop or in CI. Every push carries fresh

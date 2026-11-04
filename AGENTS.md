@@ -37,6 +37,10 @@ Rules that are easy to forget:
   (`--gate`, `--side`, `--staged`), never pass `--no-cache` in a loop or CI, and commit `.starcistacks/cache/` as the run left it;
   the pre-push hook refuses a push without warm records (`app check --fresh`)
   ([contexts/project/check-cache.md](contexts/project/check-cache.md) "The operating procedure", decision `warm-cache-push`).
+- On an app's `dev` branch the check runs under its branch profile (`starci app check --profile` prints it): fix hfs and the
+  safety gates, never chase a report-only lint or Sonar finding, and never add a lint finding to a file you touch (the lint
+  ratchet, `LINT_RATCHET_RAISED`); promoting `dev` to main runs the full gate
+  ([contexts/project/lint.md](contexts/project/lint.md) PROJECT-LINT-2, decision `branch-profile-dev`).
 
 ## Environment gotchas
 

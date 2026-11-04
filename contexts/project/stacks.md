@@ -33,6 +33,7 @@ against:
 - `secrets`: per environment, each member's `name`, `where` (environment-relative), `recipientPolicy` and
   `keyCustody`; names only, never a value.
 - `ci` and `services`: the names CI reads and the delivery services it calls (PROJECT-STACKS-7, PROJECT-STACKS-8).
+- `branches`: the branch profile of each branch that lowers a polish gate, `dev` only ([lint.md](lint.md) PROJECT-LINT-2).
 - remote application APIs the app consumes, each with its owner (PROJECT-STACKS-9).
 
 A directory under `.starcistacks/` that is not a declared environment is a defect, and so is a compose file no

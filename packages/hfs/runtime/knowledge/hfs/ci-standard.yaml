@@ -46,7 +46,7 @@ heap:
 items:
   - id: candidate-trigger
     title: the release CI runs on the release candidate ref
-    requires: "ci.yml runs on push of branches ['main', 'release/candidate-*'] and tags ['v*'], on pull_request to main and on workflow_dispatch; the release flows wait for the run of the release sha there; pull_request_target, workflow_run and schedules are never triggers"
+    requires: "ci.yml runs on push of branches ['main', 'release/candidate-*'] and of each branch the stack declaration gives a branch profile, and tags ['v*'], on pull_request to main and on workflow_dispatch; the release flows wait for the run of the release sha there; pull_request_target, workflow_run and schedules are never triggers"
     covers: [app-ci, runtime]
     by: [R221 CI_TRIGGERS_RELEASE_ONLY, R251 HFS_APP_WORKFLOW_TRIGGER]
   - id: job-shape

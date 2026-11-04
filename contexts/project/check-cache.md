@@ -29,7 +29,8 @@ For a lane, a lead and an app session alike:
 ## The command surface
 
 `starci app check` with no selector runs every existing family against the committed cache and writes what it judged
-back into it. `--gate <name>` selects a gate and may be repeated; `--no-cache` runs selected work fresh and writes
+back into it. A branch profile ([lint.md](lint.md) PROJECT-LINT-2) changes no cache rule: a family it reports runs and writes
+its records exactly as a blocking one, and a family it turns off runs nothing and writes nothing. `--gate <name>` selects a gate and may be repeated; `--no-cache` runs selected work fresh and writes
 the refreshed records through the same cache writer. The default and a selected gate reuse valid cache records.
 
 ```text

@@ -8,7 +8,10 @@ it touched, then a commit and a hand-off. The heavy rounds belong to the merged 
 
 1. Write the change inside your paths (a contract's `allowPaths`, your package edit branch, your own worktree).
 2. At most a typecheck or a lint of exactly the files you touched, and only when they are TypeScript or a linted file.
-   The cheapest command that covers them wins; with nothing to type or lint, run nothing.
+   The cheapest command that covers them wins; with nothing to type or lint, run nothing. On an app branch with a branch
+   profile ([project/lint.md](../project/lint.md) PROJECT-LINT-2) a finding the check marks report-only is read and never
+   chased: you fix every finding of a blocking gate and every `LINT_RATCHET_RAISED`, so a file you touch keeps no more lint
+   findings than it had.
 3. Commit (a worker files its result and the harness commits; a package edit commits on its own branch), then hand off:
    a result, a `pkg handoff`, or the branch named to whoever merges it ([README.md](README.md) "Roles").
 

@@ -32,8 +32,8 @@ and the laws with their enforcers are [hfs/rules.yaml](../hfs/rules.yaml).
   evidence and `starci task status <task>` prints it.
 - **CI tier**: after the push, on main. Nobody waits for it unless `requireCi` lists the action.
 - **The app's own scripts**: hooks and CI steps the app wires (format check, stylelint, `starci app check`, green at < 20
-  error findings (`gate.errorLimit` of [policy/quality.yaml](../../policy/quality.yaml)) and no hard blocker). The harness
-  does not call them; they run in the app's CI.
+  error findings (`gate.errorLimit` of [policy/quality.yaml](../../policy/quality.yaml)) and no hard blocker), each under the
+  branch profile of the branch it judges (PROJECT-LINT-2). The harness does not call them; they run in the app's CI.
 
 A profile picks the tiers' gates and its canon stacks. `be` and `fe` are a side repository's, `app` a one-repository
 app's (both sides), `lib` and `runtime` carry no canon. A workspace root is never typechecked as one project: the
@@ -91,6 +91,41 @@ its kind (the placement test of [code/fe](../code/fe/README.md#the-placement-tes
 which), its law is added to [hfs/rules.yaml](../hfs/rules.yaml) with the enforcer, the pattern section cites the rule
 id in its "Enforced by" line, and the fact leaves the list above in the same change. Knowledge then states the reason
 only; it never keeps a second wording of what the rule flags, and a gate never carries a fact knowledge still argues.
+
+## PROJECT-LINT-2 A branch profile lowers only the polish gates
+
+An app's product branch is `dev`, and its `.starcistacks/application-stacks.yaml` may give it a branch profile: per gate
+`blocking`, `report` (the gate runs, diff-only against the warm cache as always, prints its findings and writes its records,
+but its findings never count toward the verdict) or `off` (not run). A gate the profile leaves out blocks.
+
+```yaml
+branches:
+  dev: { gates: { lint: report, sonar: report } }
+```
+
+- **What may be lowered.** Only the polish gates `lint`, `sonar` and `codecov`, on a branch `branchProfiles` of
+  [policy/loosening.yaml](../../policy/loosening.yaml) allows. `hfs` and the safety gates `types`, `wiring`, `db`, `secrets`,
+  `format` and `test` block on every branch, and the default branch (`main`, `master` or `ci.github.defaultBranch`) is never
+  declared: it always runs the full gate. A declaration that breaks either is `HFS_BRANCH_PROFILE_INVALID` (R378), a hard
+  blocker, and lowers nothing.
+- **Which profile a run is under.** The branch the run judges chooses it, automatically: in CI a pull request into the default
+  branch (`GITHUB_BASE_REF`) runs the full gate, any other pull request is judged as its source branch (`GITHUB_HEAD_REF`) and
+  a push as its branch (`GITHUB_REF`); elsewhere the checked-out branch. `starci app check --profile` prints it, with one
+  `--gate` only that gate's mode (`packages/hfs/runtime/scripts/hfs/branch-profile.mjs`). `starci app check`, the managed
+  pre-commit and pre-push hooks and the rendered CI all take it: a push to `dev` runs the reduced CI (the lint job reports,
+  the Sonar analysis and the Codecov upload of a reported gate run without the quality gate judging), and a pull request into
+  `main` runs the full gate. Each gate a profile does not keep blocking prints one notice naming the branch profile.
+- **The lint ratchet.** Where lint reports, a commit never adds lint findings to a file it touches: each touched source file
+  has no more ESLint error findings than at the base (the parent commit for the pre-commit hook, `starci app check
+  --ratchet`; for the pre-push hook and CI the merge-base with the pushed range or the remote branch, else `HEAD^`), and a new
+  file has none (`LINT_RATCHET_RAISED`, R379, a hard blocker). Both versions of the touched files are linted through the
+  side's installed config in one ESLint child (`packages/hfs/lint/ratchet.mjs`), so it costs one typed program per touched
+  side. The findings a file already carried stay report-only.
+- **How an agent works on a profile branch.** It fixes every finding of a blocking gate, `hfs` and the safety gates above
+  all, and every `LINT_RATCHET_RAISED`; it reads the findings a run marks report-only and never chases them, so a touched
+  file is left with no more lint findings than it had, never cleaned on the side.
+- **Promotion.** Moving `dev` to `main` is a named step, a pull request (or merge) into `main`, which runs the full gate:
+  every report-only finding counts again there, so whoever promotes fixes what the full gate refuses first.
 
 ## Read with
 

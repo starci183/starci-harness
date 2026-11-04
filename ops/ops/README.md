@@ -84,7 +84,10 @@ The task follows this brief; `starci task status {taskId} --json` shows the same
    out, so a verify still waiting for a slot is no reason to stop it or to file early; let it run. A run refused `HOST_HELD`
    judged nothing (the host held its heavy command for the whole budget): it is no red of yours, so file `done` with what
    it did judge, and the harness's own verify judges the work once the host has room; a question you file after it is the
-   harness's too, and spends neither a try nor a route.
+   harness's too, and spends neither a try nor a route. On an app branch with a branch profile (`dev`,
+   [contexts/project/lint.md](../../contexts/project/lint.md) PROJECT-LINT-2) a finding `starci app check` marks report-only is
+   read, never chased: you fix the findings of every blocking gate (hfs and the safety gates) and every `LINT_RATCHET_RAISED`, so
+   the files you touch gain no lint finding, and you leave the reported rest to the promotion to main, which runs the full gate.
    Your checkout is a worktree of your own, cut from the workflow's branch, that the harness removes once your task settled. A check on `@result` reads the
    output file. The replay hands a live-provider suite (specs calling `useSandbox`) the keys its world declares from the
    app's custody; a suite your op runs itself (a `verify` suite) runs through `starci test live <spec...>` for the same keys,
