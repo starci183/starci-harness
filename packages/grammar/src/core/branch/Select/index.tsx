@@ -1,6 +1,6 @@
 "use client"
 
-import { withRegionLoading } from "../../regionScope.js"
+import { LoadingScope, withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { useCollectionItemPresentation, type ItemDescriptionLines } from "../../collectionItem.js"
 import {
@@ -157,11 +157,11 @@ const SelectControl = ({
             </HeroSelect.Trigger>
             <FieldDescription>{field.description}</FieldDescription>
             <FieldErrorText>{field.errorMessage}</FieldErrorText>
-            <HeroSelect.Popover className="starci-core-list-popover" data-grammar-popover="Select" data-contract="LAYOUT-4" {...portalProps}>
+            <HeroSelect.Popover className="starci-core-list-popover" data-grammar-popover="Select" data-contract="LAYOUT-4" {...portalProps}><LoadingScope isLoading={false}>
                 <HeroListBox className="starci-core-list">
                     <ListOptions options={options} />
                 </HeroListBox>
-            </HeroSelect.Popover>
+            </LoadingScope></HeroSelect.Popover>
         </HeroSelect>
     )
 }

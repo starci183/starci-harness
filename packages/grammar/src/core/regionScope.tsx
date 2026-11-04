@@ -65,7 +65,7 @@ export const withRegionGeometry = <P extends object>(Inner: (props: P) => ReactE
     const Region = (props: P): ReactElement => {
         const isLoading = useIsLoading((props as { readonly isLoading?: boolean | undefined }).isLoading)
         const element = createElement(Inner as unknown as FunctionComponent<Record<string, unknown>>, props as Record<string, unknown>)
-        return isLoading ? createElement(SkeletonPlaceholder, { shape }, element) : element
+        return isLoading ? createElement(SkeletonPlaceholder, { shape }, createElement(LoadingScope, { isLoading: false, children: element })) : element
     }
     Region.displayName = `RegionGeometry(${Inner.name === "" ? "Component" : Inner.name})`
     return Region

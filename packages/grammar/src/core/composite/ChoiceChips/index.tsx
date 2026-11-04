@@ -2,6 +2,7 @@
 
 import { ToggleButton as HeroToggleButton, ToggleButtonGroup as HeroToggleButtonGroup, Tooltip as HeroTooltip, type Key } from "@heroui/react"
 import { useId, type ReactNode } from "react"
+import { FieldSkeletonScope } from "../../leaf/Field/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { useOverlayContainer } from "../../overlayScope.js"
 import { tooltipContentClassName } from "../../tooltipClassName.js"
@@ -78,7 +79,16 @@ export const ChoiceChips = ({ label, isLabelHidden = false, options, value, defa
             {...(isLoading && !ownsBusy ? { "aria-busy": true } : {})}
         >
             <span id={labelId} className={labelClass} data-grammar-field-label="true">{label}</span>
-            {isLoading ? (
+            {isLoading && options.length > 0 ? (
+                // The ready chips laid out as they are, painted as skeletons and made inert by the field scope: the box is the ready box.
+                <FieldSkeletonScope component="ChoiceChips">
+                    <HeroToggleButtonGroup aria-labelledby={labelId} className="starci-core-choice-chips-row" isDetached selectionMode="single" size="sm">
+                        {options.map((option) => (
+                            <HeroToggleButton key={option.value} id={option.value} className="starci-core-choice-chip" data-grammar-choice-control="true">{option.label}</HeroToggleButton>
+                        ))}
+                    </HeroToggleButtonGroup>
+                </FieldSkeletonScope>
+            ) : isLoading ? (
                 <div className="starci-core-choice-chips-row" aria-hidden="true">
                     {Array.from({ length: options.length === 0 ? LOADING_ROWS : options.length }, (_, index) => (
                         <span className="starci-core-choice-chips-skeleton" key={index}><Skeleton shape="rect" /></span>

@@ -1,6 +1,6 @@
 "use client"
 
-import { withRegionLoading } from "../../regionScope.js"
+import { LoadingScope, withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import {
     ComboBox as HeroComboBox,
@@ -138,7 +138,7 @@ const ComboBoxControl = ({
             </HeroComboBox.InputGroup>
             <FieldDescription>{field.description}</FieldDescription>
             <FieldErrorText>{field.errorMessage}</FieldErrorText>
-            <HeroComboBox.Popover className="starci-core-list-popover" data-grammar-popover="ComboBox" data-contract="LAYOUT-4" {...portalProps}>
+            <HeroComboBox.Popover className="starci-core-list-popover" data-grammar-popover="ComboBox" data-contract="LAYOUT-4" {...portalProps}><LoadingScope isLoading={false}>
                 <HeroListBox
                     className="starci-core-list"
                     {...(isPending ? { "aria-busy": true } : {})}
@@ -148,7 +148,7 @@ const ComboBoxControl = ({
                 >
                     <ListOptions options={options} />
                 </HeroListBox>
-            </HeroComboBox.Popover>
+            </LoadingScope></HeroComboBox.Popover>
         </HeroComboBox>
     )
 }

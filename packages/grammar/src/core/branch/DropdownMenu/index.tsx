@@ -1,3 +1,4 @@
+import { LoadingScope } from "../../regionScope.js"
 import { Description as HeroDescription, Dropdown as HeroDropdown, Header as HeroHeader, Kbd as HeroKbd, Label as HeroLabel, Separator as HeroSeparator } from "@heroui/react"
 import type { ReactNode } from "react"
 import { useCollectionItemPresentation, type ItemDescriptionLines } from "../../collectionItem.js"
@@ -160,7 +161,7 @@ export const DropdownMenu = ({
                 <HeroDropdown.Popover
                     data-grammar-overlay-surface="menu"
                     data-contract="LAYOUT-4 BOUNDARY-6 MOTION-2"
-                >
+                ><LoadingScope isLoading={false}>
                     <HeroDropdown.Menu
                         aria-label={item.label}
                         onAction={handleAction}
@@ -170,7 +171,7 @@ export const DropdownMenu = ({
                     >
                         {renderEntries(item.submenu)}
                     </HeroDropdown.Menu>
-                </HeroDropdown.Popover>
+                </LoadingScope></HeroDropdown.Popover>
             </HeroDropdown.SubmenuTrigger>
         )
     }
@@ -216,7 +217,7 @@ export const DropdownMenu = ({
                     placement={placement}
                     data-grammar-overlay-surface="menu"
                     data-contract="LAYOUT-4 BOUNDARY-6 MOTION-2"
-                >
+                ><LoadingScope isLoading={false}>
                     <HeroDropdown.Menu
                         onAction={handleAction}
                         data-tier="branch"
@@ -226,7 +227,7 @@ export const DropdownMenu = ({
                     >
                         {renderEntries(entries)}
                     </HeroDropdown.Menu>
-                </HeroDropdown.Popover>
+                </LoadingScope></HeroDropdown.Popover>
             )}
         </HeroDropdown>
     )

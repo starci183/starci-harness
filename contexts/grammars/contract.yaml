@@ -146,7 +146,7 @@ roles:
     sizes: { steps: [sm, md, lg], default: md, bar: control }
     states: [rest, hover, pressed, focus-visible, disabled, pending, skeleton]
     grammarMayChange: [paint per variant through tokens, corner via radius, press motion]
-    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL]
+    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-LOADING-SAME-BOX, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL]
 
   - id: link
     ui: ui/components/button.md
@@ -841,6 +841,11 @@ mustKeep:
       role: button
       law: "Inside a loading region nothing can be focused or pressed: every control draws inert, static chrome keeps its words, data is geometry, and the region carries the one aria-busy."
       measure: { kind: count, scope: '[data-grammar-loading-region="true"]', select: ':is(button, a[href], input, select, textarea, [tabindex="0"]):not([inert], [inert] *, :disabled)', op: "=", value: 0 }
+      owner: region-loading
+    - id: DNA-COMMON-LOADING-SAME-BOX
+      role: button
+      law: "A component in a loading region has the width and height it has when ready, so nothing moves when the data lands."
+      measure: { kind: uniform, scope: '[data-grammar-twin]', select: '[data-grammar-twin-item]', metric: [width, height], op: "=" }
       owner: region-loading
     - id: DNA-COMMON-DISABLED-REASON
       role: button

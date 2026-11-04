@@ -805,6 +805,7 @@
     .starci-core-meter-label {
         color: var(--foreground);
         font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
         font-weight: var(--grammar-weight-medium);
     }
 

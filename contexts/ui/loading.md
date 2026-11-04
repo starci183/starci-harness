@@ -45,6 +45,12 @@ button. A component draws the box it has when ready, inert (not focusable) and u
   with its own state overrides its parent;
 - a create form is never loading, an edit form is while it waits for the existing data.
 
+`aria-busy` has one owner: the region. `Section`, `PaneSection`, `SurfaceCard`, `Form` and a `Dialog` or `Drawer` body carry it, and nothing inside them adds
+another (the components read `useRegionOwnsBusy`). A component that loads on its own, outside any region (an explicit `isLoading`: a field, `ChoiceChips`,
+`DescriptionList`, `Alert`, `Calendar`, `BarChart`, `Meter`, `Board`, `ScheduleGrid`, a table or list that publishes its own scope), is its own region and carries it.
+A `Dialog`, `Drawer`, `Popover`, `DropdownMenu`, `Select` and `ComboBox` popover starts a fresh region, so their content never inherits the page's loading.
+
+The size is held too: `DNA-COMMON-LOADING-SAME-BOX` measures a loading component against its ready twin (story `states-loading-keeps-the-box--loading-keeps-the-box`).
 The measure is `DNA-COMMON-LOADING-REGION-INERT` and the story `states-every-component-loading--every-component-loading`; the contract check
 `scripts/check-region-loading.mts` lists the components that do not honour the region, each with its reason, in
 `packages/grammar/src/common/region-loading.ts`.
