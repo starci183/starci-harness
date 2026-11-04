@@ -1,16 +1,40 @@
 "use client"
 
-import { ToggleButton as HeroToggleButton, ToggleButtonGroup as HeroToggleButtonGroup, type Key } from "@heroui/react"
+import { ToggleButton as HeroToggleButton, ToggleButtonGroup as HeroToggleButtonGroup, Tooltip as HeroTooltip, type Key } from "@heroui/react"
 import { useId, type ReactNode } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
+import { useOverlayContainer } from "../../overlayScope.js"
+import { tooltipContentClassName } from "../../tooltipClassName.js"
 import { ErrorView, useIsLoading, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
 import type { NoChildren } from "../../tier.js"
 
 export type ChoiceChip = {
     readonly value: string
     readonly label: string
-    /** A taken or unavailable choice stays in place so the others keep their positions; the reason belongs in `label` or beside the group. */
+    /** A taken or unavailable choice stays in place so the others keep their positions. */
     readonly isDisabled?: boolean
+    /** Why the choice is unavailable ("Taken"), given on hover and to a screen reader. Give it with `isDisabled`. */
+    readonly disabledReason?: string
+}
+
+/** The words a disabled chip gives for being unavailable. The platform skips a disabled control, so the vendor trigger around it carries the events. */
+const DisabledReason = ({ reason, children }: { readonly reason: string; readonly children: ReactNode }) => {
+    const reasonId = useId()
+    const { anchor, container } = useOverlayContainer("Tooltip")
+    return (
+        <HeroTooltip>
+            <span id={reasonId} hidden>{reason}</span>
+            <HeroTooltip.Trigger className="starci-core-tooltip-disabled-trigger" data-grammar-tooltip-disabled-trigger="true" role="group" aria-describedby={reasonId}>
+                {children}
+            </HeroTooltip.Trigger>
+            {anchor}
+            {container === null ? null : (
+                <HeroTooltip.Content UNSTABLE_portalContainer={container} placement="top" className={tooltipContentClassName} data-grammar-tooltip-content="true">
+                    {reason}
+                </HeroTooltip.Content>
+            )}
+        </HeroTooltip>
+    )
 }
 
 export type ChoiceChipsProps = NoChildren & {
@@ -74,11 +98,16 @@ export const ChoiceChips = ({ label, isLabelHidden = false, options, value, defa
                         if (next !== undefined) onValueChange?.(next)
                     }}
                 >
-                    {options.map((option) => (
-                        <HeroToggleButton key={option.value} id={option.value} isDisabled={option.isDisabled === true} className="starci-core-choice-chip" data-grammar-option="true">
-                            {option.label}
-                        </HeroToggleButton>
-                    ))}
+                    {options.map((option) => {
+                        const chip = (
+                            <HeroToggleButton key={option.value} id={option.value} isDisabled={option.isDisabled === true} className="starci-core-choice-chip" data-grammar-option="true">
+                                {option.label}
+                            </HeroToggleButton>
+                        )
+                        return option.isDisabled === true && option.disabledReason !== undefined && option.disabledReason !== ""
+                            ? <DisabledReason key={option.value} reason={option.disabledReason}>{chip}</DisabledReason>
+                            : chip
+                    })}
                 </HeroToggleButtonGroup>
             )}
         </div>

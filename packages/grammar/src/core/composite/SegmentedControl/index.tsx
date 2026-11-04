@@ -15,6 +15,7 @@ export type SegmentOption = {
 
 export type SegmentedControlSize = "sm" | "md"
 
+/** @deprecated Choosing a value of a form is `ChoiceChips` or `RadioGroup` (R380); switching a view is `Tabs`. Removed in a later release. */
 export type SegmentedControlProps = NoChildren & FieldControlProps & {
     readonly options: ReadonlyArray<SegmentOption>
     readonly value?: string
@@ -41,6 +42,7 @@ const firstKey = (keys: Iterable<Key>): string | undefined => {
  * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
+/** @deprecated Choosing a value of a form is `ChoiceChips` or `RadioGroup` (R380); switching a view is `Tabs`. Removed in a later release. */
 export const SegmentedControl = ({ isLoading = false, ...props }: SegmentedControlProps) => isLoading
     ? <FieldSkeletonScope component="SegmentedControl"><SegmentedControlControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <SegmentedControlControl {...props} />

@@ -16,6 +16,8 @@ export type TabItem = {
     readonly id: string
     readonly label: string
     readonly leading?: ReactNode
+    /** How many items the view holds, after the label. `0` stays visible; leave it out while the count is unknown. */
+    readonly count?: number
     /** Whether this tab is unavailable for selection or link navigation. */
     readonly isDisabled?: boolean
     /**
@@ -33,6 +35,12 @@ export type TabItem = {
  */
 export type TabsProps = NoChildren & {
     readonly label: string
+    /**
+     * What the tabs do. `views` (default): they switch between views of a page or a region, drawn as an underline. `filter`: they narrow
+     * one list that stays in place, drawn as pills in a track, each with its `count`. A tablist is not a form field: choosing a value
+     * of a form is `ChoiceChips` or `RadioGroup`.
+     */
+    readonly kind?: "views" | "filter"
     /** The selected tab. Required for controlled tabs; link tabs derive it from the current path when it is omitted. */
     readonly selectedKey?: string
     readonly items: ReadonlyArray<TabItem>
@@ -155,12 +163,13 @@ export const Tabs = (props: TabsProps) => {
     const scrollNextLabel = props.scrollNextLabel ?? "Scroll tabs right"
 
     const inset = props.inset ?? "none"
+    const variant = props.kind === "filter" ? "pill" : "primary"
     const frameContract = inset === "page" ? "PADDING-5" : undefined
-    if (!isClientReady) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="pending" data-grammar-tabs-inset={inset} data-grammar-tabs-variant="primary" />
+    if (!isClientReady) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="pending" data-grammar-tabs-inset={inset} data-grammar-tabs-variant={variant} />
 
-    return <div ref={frameRef} className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="ready" data-grammar-tabs-inset={inset} data-grammar-tabs-variant="primary" data-grammar-tab-labels={props.labelVisibility ?? "responsive"}>
+    return <div ref={frameRef} className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="ready" data-grammar-tabs-inset={inset} data-grammar-tabs-variant={variant} data-grammar-tab-labels={props.labelVisibility ?? "responsive"}>
         <HeroTabs
-            variant="secondary"
+            variant={variant === "pill" ? "primary" : "secondary"}
             {...(selectedKey === undefined ? {} : { selectedKey })}
             onSelectionChange={(key) => select(String(key))}
             className={tabsClassName ?? ""}
@@ -177,12 +186,13 @@ export const Tabs = (props: TabsProps) => {
                         id={item.id}
                         isDisabled={item.isDisabled ?? false}
                         {...(item.href === undefined ? {} : { href: item.href })}
-                        aria-label={item.label}
+                        aria-label={item.count === undefined ? item.label : `${item.label} ${item.count}`}
                         data-contract="PADDING-3"
                     >
                         <span className={tabContentClassName} data-contract="GAP-2" data-grammar-tab-id={item.id}>
                             {item.leading}
                             <span className={tabLabelClassName} style={props.labelVisibility === "always" || item.leading == null ? { display: "inline" } : undefined}>{item.label}</span>
+                            {item.count === undefined ? null : <span className="starci-core-tab-count" data-grammar-tab-count="true">{item.count}</span>}
                         </span>
                         <HeroTabs.Indicator />
                     </HeroTabs.Tab>

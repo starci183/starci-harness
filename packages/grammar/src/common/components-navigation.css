@@ -1587,6 +1587,25 @@
         text-decoration-line: line-through;
     }
 
+    /* The reason a date is unavailable is read by a screen reader and shown as the cell's title; the sighted number keeps its strike. */
+    .starci-core-calendar-reason {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    /* A calendar that is loading keeps its header and cells; the numbers are geometry and nothing takes focus. */
+    .starci-core-calendar[data-loading="true"] .starci-core-calendar-day {
+        color: transparent;
+        background: var(--surface-secondary);
+        border-radius: var(--grammar-radius-md);
+        animation: none;
+        pointer-events: none;
+    }
+
     /* ---------- Shared accessibility fallbacks ---------- */
     @media (prefers-reduced-motion: reduce) {
         .starci-core-disclosure-indicator,

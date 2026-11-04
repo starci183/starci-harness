@@ -2587,6 +2587,13 @@ rules:
       - LINT_RATCHET_RAISED
     enforcers:
       - {kind: hfs, id: lint-ratchet}
+  - id: R380
+    code: FE_GROUPED_CHOICE_CONTROL
+    law: "The Grammar draws no group of attached buttons: a `ButtonGroup`, `FilterButtonGroup` or `SegmentedControl` in product source is refused and the message names the replacement by meaning, `Tabs` to switch a view or filter a list (`kind=\"filter\"`), `ChoiceChips` or `RadioGroup` to choose a value of a form, separate `Button`s or a `DropdownMenu` for actions. The three components stay exported and deprecated for one release."
+    failureCodes:
+      - FE_GROUPED_CHOICE_CONTROL
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-grouped-choice-controls}
 pending:
   - {gap: slot-rule-unknown, subject: BE_E2E_FLOW, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
   - {gap: slot-rule-unknown, subject: FE_DATA_FRESHNESS, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}

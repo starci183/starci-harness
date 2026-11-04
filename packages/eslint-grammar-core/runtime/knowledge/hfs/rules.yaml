@@ -6711,3 +6711,20 @@ rules:
       - {path: packages/hfs/src/branch-profile.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/branch-profile.spec.mjs, editions: [lite, full]}
+  - id: R380
+    code: "FE_GROUPED_CHOICE_CONTROL"
+    law: "The Grammar draws no group of attached buttons: a ButtonGroup, FilterButtonGroup or SegmentedControl in product source is refused and the message names the replacement by meaning, Tabs to switch a view or filter a list (kind filter), ChoiceChips or RadioGroup to choose a value of a form, separate Buttons or a DropdownMenu for actions. The three components stay exported and deprecated for one release."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_GROUPED_CHOICE_CONTROL"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-grouped-choice-controls}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/index.yaml#FE-RULE-OWNERSHIP]
+    templateNa: "A template draws no choice control."
+    proves:
+      - packages/eslint/grammar-core/choice-controls.spec.mjs
+    exemplifiedBy:
+      - {path: packages/eslint/grammar-core/choice-controls.spec.mjs, editions: [lite, full], codes: [FE_GROUPED_CHOICE_CONTROL]}
+    witness:
+      - {path: packages/eslint/grammar-core/choice-controls.spec.mjs, editions: [lite, full], codes: [FE_GROUPED_CHOICE_CONTROL]}

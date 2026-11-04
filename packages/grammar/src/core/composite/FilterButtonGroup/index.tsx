@@ -17,6 +17,7 @@ export type FilterOption = {
     readonly isDisabled?: boolean
 }
 
+/** @deprecated Narrowing a list is `Tabs kind="filter"` (R380). Removed in a later release. */
 export type FilterButtonGroupProps = NoChildren & {
     /** Names the group for assistive technology, e.g. "Provider". Hidden from sight unless `isLabelVisible`. */
     readonly label: string
@@ -86,6 +87,7 @@ export const visibleOptionIndexes = (widths: ReadonlyArray<number>, selected: nu
  * row stays hidden until it is measured, so the server render holds one row of the same height and nothing jumps.
  * Selected is the accent soft pair; the rest take the surface.
  */
+/** @deprecated Narrowing a list is `Tabs kind="filter"` (R380). Removed in a later release. */
 export const FilterButtonGroup = ({
     label,
     isLabelVisible = false,

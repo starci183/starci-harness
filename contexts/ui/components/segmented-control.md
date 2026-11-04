@@ -15,12 +15,12 @@ applies wins.
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | panels | the choice swaps whole panels | `tabs.choose.role:panels` | judgement |
-| filter | the choice filters a collection that stays in place | `FilterButtonGroup` (`chip.choose.role:filter`) | judgement |
+| filter | the choice filters a collection that stays in place | `Tabs kind="filter"` (`chip.choose.role:filter`) | judgement |
 | switch | the value is on or off of one setting | `Switch` | judgement |
 | radio | each option needs a sentence of explanation | `RadioGroup` | judgement |
 | chips | six or more short options (times, sizes, days) that all stay visible and wrap onto rows | `ChoiceChips` (a taken option is disabled and keeps its place) | `DNA-COMMON-CHOICE-CHIPS-WRAP` |
 | list | six or more options, or labels too long for one segment | `select.choose.role` | candidate: a `SegmentedControl` holds 2 to 5 segments |
-| segmented | 2 to 5 short, mutually exclusive options, all worth seeing at once | `SegmentedControl` | `DNA-COMMON-SEGMENTED-RADIO` |
+| segmented | 2 to 5 short, mutually exclusive options, all worth seeing at once | `ChoiceChips` (or `RadioGroup` when each needs a sentence); `SegmentedControl` is deprecated and refused by R380 | judgement |
 
 ## Variants
 None for the app. The selected segment carries the selection treatment (CTA-1): never a commit among the options.

@@ -391,6 +391,17 @@ its column and empty cells are not drawn, and a loading grid keeps its headings 
 draws bars on one scale from zero with the value over each bar and the label under it, as a list of values for assistive
 technology; it draws no axis, grid or legend.
 
+The Grammar has no group of attached buttons: a choice among a few has one component by meaning. `Tabs` switches a view or, with
+`kind="filter"`, narrows a list that stays in place (pills in a track, a `count` per tab); `ChoiceChips` or `RadioGroup` chooses a value
+of a form, since a tablist is not a form field; a date is the `Calendar` and a time `ChoiceChips`; actions are separate `Button`s or a
+`DropdownMenu`. `ButtonGroup`, `FilterButtonGroup` and `SegmentedControl` stay exported and deprecated for one release and R380 refuses
+a new use.
+
+The `Calendar` takes a controlled `value`, `minValue` and `maxValue`, `isDateUnavailable` with an `unavailableReason` (a full day says so
+on hover and to a screen reader), a `locale` (and so the week's first day: Monday for Vietnamese) with `firstDayOfWeek` to override,
+and `isLoading` (header and cells kept, numbers as geometry, nothing focusable). A taken time is a `ChoiceChips` option that is
+disabled with a `disabledReason`.
+
 `ChoiceChips` is one choice among a few short options (a time, a size) as pills that wrap onto as many rows as the width needs,
 so every option stays visible. It behaves as a radio group (one selected, arrows move, a taken option is disabled and keeps its
 place) and answers for its own empty, loading and error states. It is neither a filter (`FilterButtonGroup`, one row with a "+n"

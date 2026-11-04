@@ -4,6 +4,7 @@ import tsParser from "@typescript-eslint/parser"
 import { SOURCE_FILES, linterOptions as canonLinterOptions, scopeToPackages } from "@starci/eslint-canon-fe/lib/config.mjs"
 import { rules as appShellRules } from "./app-shell.ts"
 import { rules as chipLabelRules } from "./chip-label.ts"
+import { rules as choiceControlsRules } from "./choice-controls.ts"
 import { rules as drawingRules } from "./drawing.ts"
 import { rules as freestyleRules } from "./freestyle.ts"
 import { rules as grammarBoundaryRules } from "./grammar-boundary.ts"
@@ -36,6 +37,7 @@ export type GrammarHfsView = {
 const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<Record<string, Rule.RuleModule>> }[] = [
   { law: "app-shell", rules: appShellRules },
   { law: "chip-label", rules: chipLabelRules },
+  { law: "choice-controls", rules: choiceControlsRules },
   { law: "drawing", rules: drawingRules },
   { law: "freestyle", rules: freestyleRules },
   { law: "grammar-boundary", rules: grammarBoundaryRules },

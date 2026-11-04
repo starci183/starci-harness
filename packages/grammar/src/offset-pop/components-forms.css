@@ -325,6 +325,12 @@
         font-weight: var(--grammar-weight-extrabold);
     }
 
+    /* A standalone Calendar's chosen day is a pink fill, so its number is ink (a pink fill carries ink text). */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Calendar"] [data-grammar-calendar-day][data-selected="true"] {
+        color: var(--foreground);
+        font-weight: var(--grammar-weight-extrabold);
+    }
+
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] [data-grammar-calendar-cell][data-focus-visible="true"] {
         outline: 2px solid var(--foreground);
         outline-offset: 0;

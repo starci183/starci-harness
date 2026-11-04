@@ -12,8 +12,8 @@ Choice `tabs.choose.role`: what the peer choice changes. Four roles switch or ch
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | panels | the choice swaps whole panels of content | `Tabs`, then `tabs.choose.level` | `DNA-COMMON-TABS-OWN-PANEL` |
-| value | the choice sets one value of a form or toolbar (audience, period, density); nothing is swapped out | `segmented-control.choose.role` | `DNA-COMMON-SEGMENTED-RADIO` |
-| filter | the choice narrows a collection that stays in place | `FilterButtonGroup` (`chip.choose.role:filter`) | judgement |
+| value | the choice sets one value of a form or toolbar (audience, period, density, environment); nothing is swapped out. A tablist is not a form field | `ChoiceChips` or `RadioGroup` (`segmented-control.choose.role`) | judgement |
+| filter | the choice narrows a collection that stays in place | `Tabs kind="filter"`: pills in a track, each with its `count` when the app has one | judgement |
 | nav-item | the choice picks one item of a navigation-like list | `ListBox` selecting by fill with no check (`list-table.choose.role:pick`) | lint `selection-fill-no-check` |
 
 Choice `tabs.choose.level`: page tabs or region tabs. A set nested inside another set's panel is region tabs;

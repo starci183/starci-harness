@@ -128,6 +128,11 @@ rulings:
     ruling: "A notice is the grammar Alert in one look: the tone's soft pair, background x-soft at full strength and glyph, title and description x-soft-foreground, with no shadow and no border, in Core and Offset Pop alike; tones map informative to accent, affirmative to success, cautionary to warning, negative to danger and neutral, pending and unavailable to default; its action is the grammar Button in the variant the Alert gives its tone. The `appearance` prop is a deprecated no-op until it is removed."
     owner: "contexts/ui/components/toast-alert.md; contexts/grammars/core.md"
     absorbs: [ACCENT-5/case-6, alert-white-surface]
+  - id: one-way-to-choose
+    date: '2026-11-05'
+    status: live
+    ruling: "A choice among a few has one component by meaning and the Grammar draws no group of attached buttons: Tabs switch a view or filter a list (kind filter, pills with a count), ChoiceChips or RadioGroup choose a value of a form (a tablist is not a form field), a date is the Calendar and a time ChoiceChips, actions are separate Buttons or a DropdownMenu. ButtonGroup, FilterButtonGroup and SegmentedControl are deprecated for one release and refused in product source (R380)."
+    owner: "contexts/ui/components/tabs.md; contexts/ui/composition.md CTA-1; contexts/grammars/contract.md"
   - id: meter-segments-h1
     date: '2026-09-27'
     status: live

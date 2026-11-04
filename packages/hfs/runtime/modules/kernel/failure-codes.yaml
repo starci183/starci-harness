@@ -2221,6 +2221,16 @@ FE_CHIP_LABEL_CASE:
   owner: op-retry
   kind: check-finding
 
+FE_GROUPED_CHOICE_CONTROL:
+  title: "A group of attached buttons is drawn"
+  title_vi: "Vẽ một nhóm nút dính liền nhau"
+  meaning_vi: "Mã tại <file> dùng ButtonGroup, FilterButtonGroup hoặc SegmentedControl, trong khi Grammar chỉ có một cách chọn trong vài lựa chọn theo ý nghĩa."
+  causes_vi:
+    - "Dùng ButtonGroup để gom nhiều thao tác, hoặc FilterButtonGroup và SegmentedControl để lọc hay chọn một giá trị."
+  nextStep_vi: "Đổi sang thành phần đúng ý nghĩa: Tabs (kind filter) để chuyển màn hoặc lọc danh sách, ChoiceChips hoặc RadioGroup để chọn giá trị trong biểu mẫu, Button riêng hoặc DropdownMenu cho thao tác (quy định one-way-to-choose)."
+  owner: op-retry
+  kind: check-finding
+
 FE_CONTROL_HEIGHT:
   title: "A control picks a larger size or mixes sizes in one row"
   title_vi: "Điều khiển chọn cỡ lớn hơn hoặc trộn nhiều cỡ trong một hàng"

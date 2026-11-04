@@ -1395,6 +1395,9 @@
         display: none;
     }
 
+    .starci-core-tab-count { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: var(--grammar-weight-regular); margin-inline-start: var(--grammar-identity-gap); }
+    .starci-core-tabs-frame[data-grammar-tabs-variant="pill"] { display: block; min-width: 0; }
+
     .starci-core-tabs-frame[data-grammar-tab-labels="always"] .starci-core-tab-label {
         display: inline;
     }
@@ -3173,7 +3176,7 @@
 
     /* --- ChoiceChips: one choice among a few short options, wrapping onto as many rows as the width needs --- */
     .starci-core-choice-chips { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-identity-gap); }
-    .starci-core-choice-chips-row { display: flex; min-width: 0; flex-wrap: wrap; gap: var(--grammar-inline-gap); }
+    .starci-core-choice-chips-row { display: flex; min-width: 0; flex-wrap: wrap; justify-content: flex-start; gap: var(--grammar-inline-gap); }
     .starci-core-choice-chip { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .starci-core-choice-chip { background: var(--surface-secondary); color: var(--foreground); }
     .starci-core-choice-chip[data-selected="true"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }

@@ -189,9 +189,9 @@ roles:
     ui: ui/components/tabs.md
     renderers: [Tabs]
     vendorParity: [tabs]
-    slots: ["items: label, leading, href, isDisabled", panels]
+    slots: ["items: label, leading, count, href, isDisabled", panels]
     variants:
-      look: { values: [underline], meaning: "every tab bar, page and region alike; a filter over a collection is a FilterButtonGroup, never a tab bar", chosenBy: grammar }
+      kind: { values: [views, filter], meaning: "views: switch views of a page or region, drawn as the underline; filter: narrow a collection that stays in place, drawn as pills in a track with a count per tab; a value of a form is ChoiceChips or RadioGroup, never a tab bar", chosenBy: app by tabs.choose.role }
       inset: { values: [page, none], chosenBy: app }
     sizes: { steps: none, bar: md }
     states: [selected, focus-visible, disabled]
@@ -870,13 +870,14 @@ mustKeep:
     # --- tabs, segmented control, fields
     - id: DNA-COMMON-TABS-BY-LAYER
       role: tabs
-      law: Every tab bar draws the underline, on the page and inside a surface alike.
+      law: Every views tab bar draws the underline, on the page and inside a surface alike; a filter tab bar draws pills in a track.
       measure:
         kind: style
         metric: tabs-look
         op: "="
         cases:
-          - { select: '[data-component="Tabs"]', value: underline }
+          - { select: '[data-component="Tabs"]:not([data-grammar-tabs-variant="pill"])', value: underline }
+          - { select: '[data-component="Tabs"][data-grammar-tabs-variant="pill"]', value: pill }
       owner: D-2; spacing-roles
       followUp: C-1
     - id: DNA-COMMON-TABS-INDICATOR

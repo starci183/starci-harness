@@ -23,6 +23,7 @@ export type ButtonGroupAction = {
     readonly isPending?: boolean
 }
 
+/** @deprecated The Grammar draws no group of attached buttons (R380). Use separate `Button`s, or a `DropdownMenu` for the overflow. Removed in a later release. */
 export type ButtonGroupProps = NoChildren & {
     /** Names the group (`role="group"`) for assistive technology. */
     readonly label: string
@@ -39,6 +40,7 @@ export type ButtonGroupProps = NoChildren & {
 }
 
 /** Related actions joined into one visual unit. Each button stays its own tab stop. */
+/** @deprecated The Grammar draws no group of attached buttons (R380). Use separate `Button`s, or a `DropdownMenu` for the overflow. Removed in a later release. */
 export const ButtonGroup = ({ label, actions, orientation = "horizontal", isDisabled = false, isLoading: ownLoading, size = "md", width = "content" }: ButtonGroupProps) => {
     const isLoading = useIsLoading(ownLoading)
     return (

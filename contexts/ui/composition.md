@@ -105,8 +105,11 @@ next step of the page's one job. Every other next step on that view is `neutral`
 `EmptyNotice` owns the command as the commit and the header omits it; once content exists the header owns it.
 Equal-consequence peers get no commit at all: no paint breaks a tie. A landing may repeat its one conversion
 command once, never in the same viewport (`budgets.commitPerView`).
-Peer choices are not buttons: choosing among values is `Tabs`, `SegmentedControl`, a `FilterButtonGroup` or a
-`ListBox`, chosen by [components/tabs.md](components/tabs.md), and no commit sits among them.
+Peer choices are not buttons and there is one component for each meaning: `Tabs` switches a view or filters a list that stays in place
+(`kind="filter"`), `ChoiceChips` or `RadioGroup` chooses a value of a form, a `Calendar` with `ChoiceChips` picks a date and a time,
+and separate `Button`s or a `DropdownMenu` carry actions. The Grammar draws no group of attached buttons (`ButtonGroup`,
+`FilterButtonGroup`, `SegmentedControl`: deprecated, refused by R380), chosen by [components/tabs.md](components/tabs.md), and no commit
+sits among them.
 Lint: `starci-fe/single-commit-per-render`, `starci-fe/no-commit-in-collection-item`.
 
 ### CTA-4 Destructive needs its own authority
@@ -222,7 +225,7 @@ durable owner. Transient confirmations are toasts; see [components/toast-alert.m
 Rows of one kind first reuse the surface that owns their region. Inside an existing surface they are an unpainted
 `Section kind="list"` of typed rows, never another card. On the page canvas, a standalone bounded worklist is one
 `SurfaceCard kind="list"` with its label outside; a list that searches, filters or pages, or has no bound, is a
-`Section kind="list"`, with a `FilterButtonGroup` in its filter slot when it narrows. The selected owner carries the
+`Section kind="list"`, with `Tabs kind="filter"` in its filter slot when it narrows. The selected owner carries the
 list's one visible heading and accessible name, its count and page command; no free heading repeats that name
 (rulings `task-list-card`, `section-is-the-heading`). A published container is used where one exists (see
 [components/list-table.md](components/list-table.md)); none existing is a grammar gap, never a substitute card. Several

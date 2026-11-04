@@ -1,6 +1,7 @@
 "use client"
 
 import { Calendar as HeroCalendar, type DateValue } from "@heroui/react"
+import { I18nProvider } from "react-aria-components"
 import type { NoChildren } from "../../tier.js"
 
 export type CalendarProps = NoChildren & {
@@ -13,6 +14,17 @@ export type CalendarProps = NoChildren & {
     readonly minValue?: DateValue
     readonly maxValue?: DateValue
     readonly isDateUnavailable?: (date: DateValue) => boolean
+    /**
+     * Why an unavailable date cannot be picked ("Fully booked"): given on hover and to a screen reader beside the number. Return
+     * nothing for a date that is unavailable without a story (a closed day shows only the strike).
+     */
+    readonly unavailableReason?: (date: DateValue) => string | undefined
+    /** The app's BCP 47 locale ("vi-VN"): month and weekday names, and the first day of the week it implies (Monday for Vietnamese). */
+    readonly locale?: string
+    /** Overrides the locale's first day of the week. */
+    readonly firstDayOfWeek?: "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat"
+    /** The first read has no data yet (which days are open): the grid keeps its header and cells, the numbers draw as geometry and nothing takes focus. */
+    readonly isLoading?: boolean
     readonly isDisabled?: boolean
     readonly isReadOnly?: boolean
     /** App-owned accessible names of the month navigation buttons. */
@@ -40,18 +52,25 @@ export const Calendar = ({
     minValue,
     maxValue,
     isDateUnavailable,
+    unavailableReason,
+    locale,
+    firstDayOfWeek,
+    isLoading = false,
     isDisabled = false,
     isReadOnly = false,
     previousLabel,
     nextLabel,
-}: CalendarProps) => (
+}: CalendarProps) => {
+    const calendar = (
     <HeroCalendar
         aria-label={label}
         className="starci-core-calendar"
         data-component="Calendar"
         data-contract="STATE-1"
         data-tier="branch"
-        isDisabled={isDisabled}
+        {...(isLoading ? { "data-loading": "true", "aria-busy": true } : {})}
+        {...(firstDayOfWeek === undefined ? {} : { firstDayOfWeek })}
+        isDisabled={isDisabled || isLoading}
         isReadOnly={isReadOnly}
         {...(value === undefined ? {} : { value })}
         {...(defaultValue === undefined ? {} : { defaultValue })}
@@ -70,8 +89,24 @@ export const Calendar = ({
                 {(day: string) => <HeroCalendar.HeaderCell className="starci-core-calendar-weekday">{day}</HeroCalendar.HeaderCell>}
             </HeroCalendar.GridHeader>
             <HeroCalendar.GridBody>
-                {(date) => <HeroCalendar.Cell className="starci-core-calendar-day" data-contract="TRUTH-2" data-grammar-calendar-day="true" date={date} />}
+                {(date) => {
+                    const reason = isLoading || unavailableReason === undefined || isDateUnavailable?.(date) !== true ? undefined : unavailableReason(date)
+                    return reason === undefined
+                        ? <HeroCalendar.Cell className="starci-core-calendar-day" data-contract="TRUTH-2" data-grammar-calendar-day="true" date={date} />
+                        : (
+                            <HeroCalendar.Cell className="starci-core-calendar-day" data-contract="TRUTH-2" data-grammar-calendar-day="true" data-grammar-calendar-reason="true" date={date}>
+                                {({ formattedDate }) => (
+                                    <span title={reason}>
+                                        {formattedDate}
+                                        <span className="starci-core-calendar-reason">{reason}</span>
+                                    </span>
+                                )}
+                            </HeroCalendar.Cell>
+                        )
+                }}
             </HeroCalendar.GridBody>
         </HeroCalendar.Grid>
     </HeroCalendar>
-)
+    )
+    return locale === undefined ? calendar : <I18nProvider locale={locale}>{calendar}</I18nProvider>
+}

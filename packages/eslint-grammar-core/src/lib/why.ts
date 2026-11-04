@@ -17,6 +17,11 @@ export const why: Record<string, WhyEntry> = {
     en: "A StatusDot or Badge label in `<file>` starts with a lowercase letter.",
     fix: "Start the label with an uppercase letter (`Running`, not `running`); the rule fixes a literal label in place.",
   },
+  "no-grouped-choice-controls": {
+    code: "FE_GROUPED_CHOICE_CONTROL",
+    en: "A ButtonGroup, FilterButtonGroup or SegmentedControl in `<file>` draws a group of attached buttons, which the Grammar no longer has.",
+    fix: "Use the component of the meaning: Tabs (kind filter for a list) to switch a view or filter, ChoiceChips or RadioGroup to choose a form value, separate Buttons or a DropdownMenu for actions.",
+  },
   "generated-art-in-mascot-or-media-frame": {
     code: "FE_GENERATED_ART_OUTSIDE_FRAME",
     en: "Generated art (a `.webp` or `.png` under `/images/`) in `<file>` is drawn outside Grammar's `Mascot` and `MediaFrame`, so it takes whatever box the page gives it.",
