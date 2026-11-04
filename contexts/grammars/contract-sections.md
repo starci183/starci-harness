@@ -10,7 +10,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
 - The grammar contract · `contexts/grammars/contract.md#the-grammar-contract` · 1 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - What a grammar provides · `contexts/grammars/contract.md#what-a-grammar-provides` · 3 KB
   - The shared scale · `contexts/grammars/contract.md#the-shared-scale` · 2 KB — A row of controls reads as one object, so its controls share one height.
-  - Intent x placement -> variant · `contexts/grammars/contract.md#intent-x-placement---variant` · 1 KB — The app states what a command does; the composition states where it sits; Common's map turns the pair into a HeroUI variant.
+  - Intent x placement -> variant · `contexts/grammars/contract.md#intent-x-placement---variant` · 2 KB — The app states what a command does; the composition states where it sits; Common's map turns the pair into a HeroUI variant.
   - Roles · `contexts/grammars/contract.md#roles` · 1 KB — Each heading is one role of contract.yaml `roles`.
     - Card · `contexts/grammars/contract.md#card` · 3 KB — Card is one subject on its own surface, and a surface never stands inside another (a card, a `Pane surface`, a `Dialog`, `Drawer`, `AlertDialog` or `Popover`): the card has one ...
     - Button · `contexts/grammars/contract.md#button` · 1 KB — Button is a command (`onPress`) or a destination (`href`) drawn as a button; the kind decides semantics, the shape only paints.
@@ -38,7 +38,8 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - Avatar · `contexts/grammars/contract.md#avatar` · 1 KB — An avatar is an identity mark on the ramp (`sm`, `md`, `lg`, and `control` in a bar), so it matches the controls beside it.
     - Mascot · `contexts/grammars/contract.md#mascot` · 1 KB — A mascot is generated character art on its own size scale, so one character comes out at one size on every screen: square boxes `sm`, `md` and `lg` (Common tokens ...
     - CalendarDay · `contexts/grammars/contract.md#calendarday` · 1 KB — `CalendarDay` is a passive calendar-region heading, not a date-selection control.
-    - PaneGrid · `contexts/grammars/contract.md#panegrid` · 2 KB — A pane grid divides a bounded height into named areas (`["a b c", "d d d"]`): A, B and C side by side with D below.
+    - PaneGrid · `contexts/grammars/contract.md#panegrid` · 3 KB — A pane grid divides a bounded height into named areas (`["a b c", "d d d"]`): A, B and C side by side with D below.
+    - Data views · `contexts/grammars/contract.md#data-views` · 2 KB — Three data views answer situations no other component does, each in the four states of a region.
     - Freestyle · `contexts/grammars/contract.md#freestyle` · 1 KB — Freestyle is the one sanctioned escape hatch: a div that fills its host, where the app writes its own plain elements and CSS because no Grammar component fits (a sign-in brand ...
     - Page · `contexts/grammars/contract.md#page` · 2 KB — A page is one route's frame, and its `header` is data: the trail, the page heading (the document's one h1) with the subject's mark, status chips and summary, the page's commands, ...
     - Section · `contexts/grammars/contract.md#section` · 1 KB — A titled section is a named region whose title is its heading and its landmark name; no free heading exists (ruling `section-is-the-heading`).

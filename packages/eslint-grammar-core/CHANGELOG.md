@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.21.33 - 2026-11-05
 
+- Changed: version stamp, with `@starci/grammar` 0.21.33; requires `@starci/eslint-canon-fe` 9.13.15. The runtime copy of the canon pins names `@starci/hfs` 5.10.3.
 - Added: `starci-grammar/no-grouped-choice-controls` (R380 `FE_GROUPED_CHOICE_CONTROL`): a `ButtonGroup`, `FilterButtonGroup` or `SegmentedControl` in product source is red and the message names the replacement (separate Buttons or a DropdownMenu, `Tabs kind="filter"`, `ChoiceChips` or `RadioGroup`).
 
 ## 0.21.32 - 2026-11-05

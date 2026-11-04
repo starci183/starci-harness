@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.33 - 2026-11-05
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.33; requires `@starci/eslint-grammar-core` 0.21.33 (it inherits `no-grouped-choice-controls`, R380). The runtime copy of the canon pins names `@starci/hfs` 5.10.3.
+
 ## 0.21.32 - 2026-11-05
 
 - Changed: version stamp only, with `@starci/grammar` 0.21.32; requires `@starci/eslint-grammar-core` 0.21.32. The runtime copy of the canon pins names `@starci/hfs` 5.10.2.

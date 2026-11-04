@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.17.3 - 2026-11-05
+
+- Changed: the runtime copy of the rule catalog carries R380 (`FE_GROUPED_CHOICE_CONTROL`); the runtime copy of the canon pins names `@starci/hfs` 5.10.3 and the Grammar family 0.21.33.
+
 ## 3.17.2 - 2026-11-05
 
 - Changed: the runtime copy of R377 (`BE_FLOW_FAILURE_SWALLOWED`) accepts a bounded `removeOnFail`; the runtime copy of the canon pins names `@starci/hfs` 5.10.2 and the Grammar family 0.21.32.

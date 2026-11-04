@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.10.3 - 2026-11-05
+
+- Added (the Grammar batch): R380 `FE_GROUPED_CHOICE_CONTROL` in the rule catalog and the failure codes, the law `starci-grammar/no-grouped-choice-controls` of `@starci/eslint-grammar-core` 0.21.33 enforces (a `ButtonGroup`, `FilterButtonGroup` or `SegmentedControl` in product source; ruling `one-way-to-choose`).
+- Changed: the canon pins name this release and the Grammar family 0.21.33.
+
 ## 5.10.2 - 2026-11-05
 
 - Changed (release 7c.5.1, BE-RESILIENCE-2): R377 `BE_FLOW_FAILURE_SWALLOWED` accepts BullMQ `removeOnFail` as a bounded retention of the broker copy, an object literal naming `age` or `count` (`removeOnFail: { age: KEEP_FAILED_SECONDS }`), and as `false` or a type member that only declares the option (`readonly removeOnFail: Retention`, `removeOnFail?: ...`): the runner parks the failure durably (`failed_awaiting_fix` in PostgreSQL), so the broker copy is a cache and a bounded one keeps Redis bounded under `noeviction`. `true`, a bare count, an unreadable value and an assignment stay refused. Spec: `hfs-flow-failure.spec.mts`.
