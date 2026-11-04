@@ -17,7 +17,7 @@ import type { JobClaims } from "./jobs.port"
  * the owner's demand. Each goes back to its queue under a new delivery id and claims its own row again, which keeps its recorded
  * steps; a job that cannot be handed back stays parked for the next resume.
  */
-export class ParkedJobResumer implements OnApplicationBootstrap {
+export class ParkedJobResumerService implements OnApplicationBootstrap {
     constructor(
         @InjectJobsOptions() private readonly options: JobsOptions,
         @InjectJobClaims() private readonly claims: JobClaims,

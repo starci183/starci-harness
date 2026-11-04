@@ -64,6 +64,6 @@ describe("JobTickService", () => {
         ticks.onApplicationBootstrap()
 
         expect(registry.addCronJob).toHaveBeenCalledWith("parked-jobs:sweep", expect.objectContaining({ isActive: true }))
-        for (const [, job] of registry.addCronJob.mock.calls) job.stop()
+        await Promise.all(registry.addCronJob.mock.calls.map(([, job]) => job.stop()))
     })
 })

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.66 - 2026-11-04
+
+- Changed: the contexts search eval asks for the self-recovering flows (BE-RESILIENCE-2) of release 7b+8.
+
 ## 1.1.0-alpha.65 - 2026-11-04
 
 - Fixed: a test run's parent gets `heavy.memoryMb.test` 8192 MB of heap (a back-end coverage run holds every spec's coverage and outgrew 4 GB), and admission holds a test run at that same number: `estimateMb.test` equals it, and the loader refuses them apart (`OPS_INVALID`). Its workers are the parent's estimate plus one per `heavy.testWorkerMb` (1536) of further room, from 1 to `heavy.testWorkers`. While nothing runs, a command whose estimate is more than half the host's memory starts once half of it is free, so a small CI runner still runs it.

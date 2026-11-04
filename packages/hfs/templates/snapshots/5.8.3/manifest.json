@@ -47,7 +47,6 @@
   ],
   "added": [
     "be/patterns/jobs/platform-lite/jobs-failed-awaiting-fix.sql.tpl",
-    "be/patterns/jobs/platform/logged-flow-alerts.spec.ts.tpl",
     "be/patterns/jobs/platform/logged-flow-alerts.ts.tpl",
     "be/patterns/jobs/platform/parked-job-resume-requests.service.spec.ts.tpl",
     "be/patterns/jobs/platform/parked-job-resume-requests.service.ts.tpl",

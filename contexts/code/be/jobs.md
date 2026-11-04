@@ -97,9 +97,9 @@ Enforced by: R335, `infra-import-owner` (R90).
 
 The runner classifies every failure with `classifyFailure(cause, DomainError)` of `@starci/nest-kit` (BE-RESILIENCE-2): a transient one with attempts left is `fail`ed and
 rethrown; any other parks the row as `failed_awaiting_fix` with `failure_class`, `parked_build` and `parked_at`, and `park` answers
-whether its one alert is due (`alerted_at`). `ParkedJobResumer` resumes at boot every job parked under another build, the
+whether its one alert is due (`alerted_at`). `ParkedJobResumerService` resumes at boot every job parked under another build, the
 `parked-jobs:sweep` tick (lite `JOB_TICKS`; in full a scheduler on `PARKED_JOBS_SWEEP_QUEUE`) every parked job, and
-`resume({ jobId })` one job for the owner's "resume now" (a sweep delivery carrying `{ jobId }` asks for it: `ParkedJobResumeRequests`,
+`resume({ jobId })` one job for the owner's "resume now" (a sweep delivery carrying `{ jobId }` asks for it: `ParkedJobResumeRequestsService`,
 registered alone by `JobsModule.register({ requestsOnly: true, connection })`, writes it through the outbox, and the lite cli's
 `cli queues resume [--job <id>]`, rendered once the app has its cli app and its jobs platform, calls it); each resume counts `resume_count` and hands the job back as
 `<jobKey>-r<resume_count>`. An app rendered before the park moves onto it with `starci app codemod self-recovery`: against the
@@ -119,9 +119,9 @@ the page. The jobs platform gives it the door's two halves and nothing that woul
 
 - the list is `JobClaims.awaitingFix()`: each `ParkedJob` carries `jobId`, `kind` (its queue), `failureClass`, `reason`,
   `parkedAt`, `parkedBuild` and `resumeCount`, which the page shows as one work item each;
-- the action is `ParkedJobResumer.resume({ jobId })` in the process that holds the queue, answering how many jobs went back (0 for
+- the action is `ParkedJobResumerService.resume({ jobId })` in the process that holds the queue, answering how many jobs went back (0 for
   an id that is not parked: the page reports it and refreshes); from a process with no Redis it is
-  `ParkedJobResumeRequests.request(jobId)`, which writes the request through the outbox for the sweep;
+  `ParkedJobResumeRequestsService.request(jobId)`, which writes the request through the outbox for the sweep;
 - `FlowAlerts` is bound to the app's notification of the same person, so the one alert of a parked job (`ParkedFlowAlert`, action
   `resume`) leads to that page.
 
@@ -133,7 +133,7 @@ The door is an ordinary feature of the app, its query and mutation thin doors, i
 export class StoppedWorkService {
     constructor(
         @InjectJobClaims() private readonly claims: JobClaims,
-        private readonly resumer: ParkedJobResumer,
+        private readonly resumer: ParkedJobResumerService,
     ) {}
 
     /** The stopped work the owner sees, one item per parked job. */

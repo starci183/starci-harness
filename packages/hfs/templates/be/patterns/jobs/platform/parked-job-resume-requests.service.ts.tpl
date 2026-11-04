@@ -13,7 +13,7 @@ import { InjectJobsManagers } from "./jobs.decorators"
  * Asks the running app to resume parked jobs (BE-RESILIENCE-2): one job by id (the owner's "resume now") or every parked job, as one
  * row on the sweep queue written through the outbox, so a process with no Redis (the cli) can ask and the app's workers resume.
  */
-export class ParkedJobResumeRequests {
+export class ParkedJobResumeRequestsService {
     constructor(
         @InjectJobsManagers() private readonly managers: ReadonlyArray<EntityManager>,
         @InjectQueueOutbox() private readonly outbox: QueueOutbox,

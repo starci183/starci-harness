@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.22.0
+version: 3.23.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -68,6 +68,7 @@ versioning:
 # 3.21.0 (ruling customised-service-image) admits .starcistacks/images/<name>/** in app.starcistacks, both editions: the image folder of a service the app customises (PROJECT-STACKS-11), the db image among them.
 # 3.22.0 (2026-11-04) has be.integrations.passport require the capability module every package-backed integration is (passport.module.ts over
 # passport.module-definition.ts, the app's logger handed to @starci/auth) in place of passport.registration.ts; `starci app codemod passport-module` moves an app.
+# 3.23.0 (decision self-recovering-flows, 2026-11-04) lets platform/jobs own the park, resume and awaiting-fix database functions of jobs.sql (job_park, job_resume, job_awaiting_fix).
 # 3.19.0 (ruling root-packages-any-name, 2026-11-03) widens app.packages to any packages/<name>/: the agent SDK, a block library, a module package.
 # 3.15.0 (ruling app-check-cache, 2026-10-31) adds the optional app.starcistacks.cache, the committed check cache of the app (.starcistacks/cache/, both editions).
 # 3.14.0 (ruling app-secrets-one-standard, 2026-10-29) adds the optional app.ci-stack-key-restore, the managed workflow that writes the

@@ -458,6 +458,9 @@ ruleParams:
       - {name: public.job_advance, reason: "platform/jobs (add job, lite): the token-guarded step write of jobs.sql"}
       - {name: public.job_complete, reason: "platform/jobs (add job, lite): the token-guarded completion of jobs.sql"}
       - {name: public.job_fail, reason: "platform/jobs (add job, lite): the token-guarded failure of jobs.sql"}
+      - {name: public.job_park, reason: "platform/jobs (add job, lite): the token-guarded park as failed_awaiting_fix of jobs.sql (BE-RESILIENCE-2)"}
+      - {name: public.job_resume, reason: "platform/jobs (add job, lite): marks parked jobs resumed by id, build or sweep, jobs.sql (BE-RESILIENCE-2)"}
+      - {name: public.job_awaiting_fix, reason: "platform/jobs (add job, lite): the parked jobs, the owner's work items, jobs.sql (BE-RESILIENCE-2)"}
       - {name: public.job_tick_claim, reason: "platform/jobs (add job, lite): the once-per-minute claim of a scheduler tick, jobs.sql (R335)"}
       - {name: public.queue_write, reason: "platform/queue (add queue, lite): the outbox insert of queue-outbox.sql"}
       - {name: public.queue_waiting, reason: "platform/queue (add queue, lite): the relay read FOR UPDATE SKIP LOCKED of queue-outbox.sql"}

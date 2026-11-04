@@ -5,7 +5,7 @@ import { PARKED_JOBS_SWEEP_QUEUE, sweepFilter } from "./jobs.contracts"
 import type { ClaimedJob } from "./jobs.contracts"
 import { InjectJobProcessorRegistry } from "./jobs.decorators"
 import type { JobProcessorRegistry } from "./jobs.port"
-import { ParkedJobResumer } from "./parked-job-resumer.service"
+import { ParkedJobResumerService } from "./parked-job-resumer.service"
 
 @Injectable()
 /**
@@ -16,7 +16,7 @@ export class ParkedJobsSweepProcessor extends FencedProcessor implements OnModul
     readonly queue: string = PARKED_JOBS_SWEEP_QUEUE
 
     constructor(
-        private readonly resumer: ParkedJobResumer,
+        private readonly resumer: ParkedJobResumerService,
         @InjectJobProcessorRegistry() private readonly registry: JobProcessorRegistry,
     ) {
         super()

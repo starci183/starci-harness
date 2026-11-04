@@ -100,7 +100,9 @@ describe("QueueWorkerService", () => {
             })
         })
     })
+})
 
+describe("QueueWorkerService redelivery and shutdown", () => {
     describe("redeliver", () => {
         it("adds the parked delivery under its new id and waits until Redis holds it", async () => {
             const { workers, transport } = await build()

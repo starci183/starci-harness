@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.16.4 - 2026-11-04
+
+- Changed: the runtime copies carry the R377 law of `@starci/hfs` 5.9.0 and its canon pins.
+
 ## 3.16.3 - 2026-11-04
 
 - Changed: the runtime copy of the canon pins names `@starci/hfs` 5.8.3.

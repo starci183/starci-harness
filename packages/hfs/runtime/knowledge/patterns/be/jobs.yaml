@@ -218,9 +218,6 @@ files:
     slot: be.platform.jobs
     role: "The FlowAlerts port until the app binds its owner work items: the one alert of a park as a log line."
     template: jobs/platform/logged-flow-alerts.ts.tpl
-  - path: src/modules/platform/jobs/logged-flow-alerts.spec.ts
-    slot: be.platform.jobs
-    template: jobs/platform/logged-flow-alerts.spec.ts.tpl
   - path: src/modules/platform/jobs/fenced.processor.ts
     slot: be.platform.jobs
     role: "The base class every processor extends."

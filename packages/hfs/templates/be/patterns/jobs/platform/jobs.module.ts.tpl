@@ -6,8 +6,8 @@ import { ConfigurableModuleClass, OPTIONS_TYPE } from "./jobs.module-definition"
 import { JobClaimService } from "./job-claim.service"
 import { JobRunnerService } from "./job-runner.service"
 import { LoggedFlowAlerts } from "./logged-flow-alerts"
-import { ParkedJobResumeRequests } from "./parked-job-resume-requests.service"
-import { ParkedJobResumer } from "./parked-job-resumer.service"
+import { ParkedJobResumeRequestsService } from "./parked-job-resume-requests.service"
+import { ParkedJobResumerService } from "./parked-job-resumer.service"
 import { ParkedJobsSweepProcessor } from "./parked-jobs-sweep.processor"
 
 @Module({})
@@ -22,7 +22,7 @@ export class JobsModule extends ConfigurableModuleClass {
             inject: [options.connection],
         }
         if (options.requestsOnly === true) {
-            return { ...base, providers: [...(base.providers ?? []), managers, ParkedJobResumeRequests], exports: [ParkedJobResumeRequests] }
+            return { ...base, providers: [...(base.providers ?? []), managers, ParkedJobResumeRequestsService], exports: [ParkedJobResumeRequestsService] }
         }
         return {
             ...base,
@@ -32,14 +32,14 @@ export class JobsModule extends ConfigurableModuleClass {
                 JobClaimService,
                 JobRunnerService,
                 LoggedFlowAlerts,
-                ParkedJobResumer,
-                ParkedJobResumeRequests,
+                ParkedJobResumerService,
+                ParkedJobResumeRequestsService,
                 ParkedJobsSweepProcessor,
                 { provide: JOB_CLAIMS, useExisting: JobClaimService },
                 { provide: JOB_PROCESSOR_REGISTRY, useExisting: JobRunnerService },
                 { provide: FLOW_ALERTS, useExisting: options.alerts ?? LoggedFlowAlerts },
             ],
-            exports: [JOB_CLAIMS, JOB_PROCESSOR_REGISTRY, ParkedJobResumer, ParkedJobResumeRequests],
+            exports: [JOB_CLAIMS, JOB_PROCESSOR_REGISTRY, ParkedJobResumerService, ParkedJobResumeRequestsService],
         }
     }
 }

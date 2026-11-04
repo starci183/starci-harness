@@ -1,5 +1,14 @@
 # Changelog
 
+## 5.9.0 - 2026-11-04
+
+- Added (release 7b+8, self-recovering flows, BE-RESILIENCE-2): `platform/queue` hands a parked job back to its queue (`QueueRedelivery`); `platform/jobs` parks a job a retry cannot fix as `failed_awaiting_fix` with one alert (`FlowAlerts`), resumes it at a new build, on the `parked-jobs:sweep` tick and on demand (`ParkedJobResumerService`, `ParkedJobResumeRequestsService`, lite `cli queues resume [--job <id>]`), and keys a remote effect by `JobClaims.effectKey` (`<jobId>:<step>`) claimed in the inbox, so a pivot never repeats after a resume. R377 `BE_FLOW_FAILURE_SWALLOWED` refuses a flow file that catches a failure without rethrowing or parking it, and any `removeOnFail`.
+- Changed: a failure is classified by `classifyFailure(cause, DomainError)` of `@starci/nest-kit` 0.2.0, the one rule of the job runner, the lite pgmq consumer and the full event runner; an event consumer's failure a retry cannot fix goes to its dead letter at once under its class. `platform/queue` no longer renders `queue.failure.ts` (decision failure-class-in-nest-kit).
+- Added: `starci app codemod self-recovery`, a three-way move of an app's jobs, queue and event-bus platform onto the self-recovering flows against the versioned template snapshot this package ships (`templates/snapshots/5.8.3`): a file equal to the snapshot's rendering is rewritten, the templates added since are added, a lite app gains the `jobs-failed-awaiting-fix` migration once, and a hand-edited file is left for a person (decision versioned-template-snapshots).
+- Fixed: a full app's `add queue` and `add job` compile: the queue's clients (bullmq, ioredis) at their pins, the correlation exports, and a full `QueueTransport.persist` that resolves once each job is held by its queue (`QUEUE_JOB_LOST` otherwise).
+- Changed: the auth-lite `modules/auth` index no longer re-exports `EmailDoorName`, which no app reads through the owner; the skeleton hook names its door from `sendEmailDoor`.
+- Changed: slots 3.23.0 (the park, resume and awaiting-fix database functions of `platform/jobs`), and the canon pins name this release and `@starci/nest-kit` 0.2.0.
+
 ## 5.8.3 - 2026-11-04
 
 - Fixed: the test family reports a runner that dies (`runnerDeath`: a V8 heap line, or an abort exit, while specs had not reported) as one `JEST_RUNNER_DIED` finding with that line and the count of specs it never reached; those specs are no longer `JEST_SPEC_FAILED`, a spec that reported its failure still is, and the threshold is not judged on the short total. A coverage run's parent heap is the CLI's `heavy.memoryMb.test` (8192 from `starci-harness` 1.1.0-alpha.65).

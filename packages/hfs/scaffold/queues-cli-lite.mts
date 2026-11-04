@@ -1,5 +1,5 @@
 // `cli queues resume [--job <id>]` of a lite app (BE-RESILIENCE-2): the operator's resume of parked jobs. The cli process has no Redis,
-// so the command asks the running app through the outbox (ParkedJobResumeRequests writes one row on the sweep queue) and the app's
+// so the command asks the running app through the outbox (ParkedJobResumeRequestsService writes one row on the sweep queue) and the app's
 // sweep resumes. It is rendered once both halves exist: by `add job` when the cli app is there, by `add cli` when platform/jobs is.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -61,7 +61,7 @@ export type QueuesOptions = Record<string, never>
 `;
 
 const RESUME_CLI = `import { CommandRunner, Option, SubCommand } from "nest-commander"
-import { ParkedJobResumeRequests } from "@modules/platform/jobs"
+import { ParkedJobResumeRequestsService } from "@modules/platform/jobs"
 
 /** The options of \`cli queues resume\`. */
 export interface ResumeOptions {
@@ -72,7 +72,7 @@ export interface ResumeOptions {
 @SubCommand({ name: "resume", description: "Resume a parked job, or every parked job" })
 /** \`cli queues resume [--job <id>]\`: asks the running app to resume through the jobs capability's resume requests; no decision here. */
 export class ResumeCli extends CommandRunner {
-    constructor(private readonly requests: ParkedJobResumeRequests) {
+    constructor(private readonly requests: ParkedJobResumeRequestsService) {
         super()
     }
 
@@ -91,13 +91,13 @@ export class ResumeCli extends CommandRunner {
 
 const RESUME_CLI_SPEC = `import { mock } from "@starci/jest-preset"
 import { Test } from "@nestjs/testing"
-import { ParkedJobResumeRequests } from "@modules/platform/jobs"
+import { ParkedJobResumeRequestsService } from "@modules/platform/jobs"
 import { ResumeCli } from "./resume.cli"
 
 const build = async () => {
-    const requests = mock<ParkedJobResumeRequests>()
+    const requests = mock<ParkedJobResumeRequestsService>()
     const moduleRef = await Test.createTestingModule({
-        providers: [ResumeCli, { provide: ParkedJobResumeRequests, useValue: requests }],
+        providers: [ResumeCli, { provide: ParkedJobResumeRequestsService, useValue: requests }],
     }).compile()
     return { command: moduleRef.get(ResumeCli), requests }
 }

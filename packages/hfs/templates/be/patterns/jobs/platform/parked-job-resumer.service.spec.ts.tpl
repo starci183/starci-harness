@@ -9,7 +9,7 @@ import { JOB_CLAIMS, JOBS_OPTIONS } from "./jobs.decorators"
 import { JobsLogEvent } from "./jobs.log-events"
 import type { JobsOptions } from "./jobs.options"
 import type { JobClaims } from "./jobs.port"
-import { ParkedJobResumer } from "./parked-job-resumer.service"
+import { ParkedJobResumerService } from "./parked-job-resumer.service"
 
 const options: JobsOptions = { connection: "primary", workerId: "w-1", leaseMs: 60000, build: "b-2" }
 const resumed = (jobId: string): ResumedJob => ({ jobId, kind: "mail", deliveryId: `k-${jobId}-r1`, payload: { id: jobId }, correlationId: `resume:${jobId}` })
@@ -22,17 +22,17 @@ const build = async () => {
     const logger = mock<Logger>()
     const moduleRef = await Test.createTestingModule({
         providers: [
-            ParkedJobResumer,
+            ParkedJobResumerService,
             { provide: JOBS_OPTIONS, useValue: options },
             { provide: JOB_CLAIMS, useValue: claims },
             { provide: QUEUE_REDELIVERY, useValue: redelivery },
             { provide: LOGGER, useValue: logger },
         ],
     }).compile()
-    return { resumer: moduleRef.get(ParkedJobResumer), claims, redelivery, logger }
+    return { resumer: moduleRef.get(ParkedJobResumerService), claims, redelivery, logger }
 }
 
-describe("ParkedJobResumer", () => {
+describe("ParkedJobResumerService", () => {
     it("resumes at boot the jobs parked under an earlier build", async () => {
         const { resumer, claims, logger } = await build()
 

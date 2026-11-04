@@ -316,8 +316,8 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   every consumer imports is an unused export (R25 `HFS_UNUSED_EXPORT`) in any app that renders none of them, while a package export
   is no app export. The app's error family is the argument (`classifyFailure(cause, DomainError)`), so the package knows no app type.
 - **A lite app draws its own "stopped work" page (`stopped-work-page-is-the-app`).** The same ruling: lite has no owner role, so the
-  harness renders no owner page; the jobs platform gives the door's halves (`JobClaims.awaitingFix()`, `ParkedJobResumer.resume({ jobId })`,
-  `ParkedJobResumeRequests.request`) and [code/be/jobs.md](../code/be/jobs.md) BE-JOBS-8 the contract and an example, and each app
+  harness renders no owner page; the jobs platform gives the door's halves (`JobClaims.awaitingFix()`, `ParkedJobResumerService.resume({ jobId })`,
+  `ParkedJobResumeRequestsService.request`) and [code/be/jobs.md](../code/be/jobs.md) BE-JOBS-8 the contract and an example, and each app
   guards and draws the page with its own owner check.
 - **The self-recovery codemod diffs against the template the app was rendered from (`versioned-template-snapshots`).** The same ruling:
   `@starci/hfs` ships the previous release's managed templates as a versioned snapshot, so `starci app codemod self-recovery`
