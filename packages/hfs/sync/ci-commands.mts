@@ -170,16 +170,42 @@ export function filledShards(specs: number, wanted: number): number {
 /** The unit specs of the be source: every *.spec.ts outside the test kind folders (src/tests/<kind>), the files the unit project runs. */
 const unitSpecCount = (source: CiSource | undefined): number => (source?.files ?? []).filter((file) => file.endsWith('.spec.ts') && !file.includes('/tests/')).length;
 
+/** The files ESLint judges in a scope (`be`, `fe` or the root `packages`): its tracked script sources. */
+const LINTED = /\.(?:[cm]?[jt]s|[jt]sx)$/u;
+const lintedFiles = (source: CiSource | undefined, scope: string): number => (source?.files ?? []).filter((file) => file.startsWith(`${scope}/`) && LINTED.test(file)).length;
+
+/**
+ * The liveness budget, in minutes, of an ESLint child that judges `files` files: the CLI's rule (heavyTimeoutMinutes of the eslint kind,
+ * max(base, rate x files / 1000)), from the environment the CLI sets for this package; null when it is not set (a run outside the CLI).
+ */
+export function eslintBudgetMinutes(files: number, env: NodeJS.ProcessEnv = process.env): number | null {
+  const base = Number(env.STARCI_ESLINT_TIMEOUT_MINUTES);
+  const rate = Number(env.STARCI_ESLINT_MINUTES_PER_1000_FILES);
+  if (!Number.isFinite(base) || base <= 0) return null;
+  return Number.isFinite(rate) && rate > 0 ? Math.max(base, (rate * files) / 1000) : base;
+}
+
+/**
+ * The timeout of the lint matrix: the manifest's ci.jobs.lint.timeoutMinutes when it declares one, else the larger of the standard's default
+ * and the ESLint budget of the largest scope plus lintOverheadMinutes, so a cold or large-diff lint ends by the child's budget, never the job's.
+ */
+export function lintJobTimeout({ declared, fallback, overhead, scopeFiles, env = process.env }: { declared: unknown; fallback: number; overhead: number; scopeFiles: readonly number[]; env?: NodeJS.ProcessEnv }): number {
+  if (declared !== undefined) return Number(declared);
+  const budget = eslintBudgetMinutes(Math.max(0, ...scopeFiles), env);
+  return budget === null ? fallback : Math.max(fallback, Math.ceil(budget) + overhead);
+}
+
 /** The per-job settings of the managed CI: ci.jobs.<job>.timeoutMinutes and ci.jobs.test.shards of the manifest over the defaults of the CI standard, the shards capped at the count the unit specs fill (an empty shard would fail, never pass empty). */
-function ciJobSettings(declaration: Declaration, source: CiSource | undefined): Record<string, string> {
-  const { defaults, heap } = parseYaml(fs.readFileSync(STANDARD, 'utf8'));
+function ciJobSettings(declaration: Declaration, source: CiSource | undefined, scopes: readonly string[]): Record<string, string> {
+  const { defaults, heap, lintOverheadMinutes } = parseYaml(fs.readFileSync(STANDARD, 'utf8'));
   const jobs = declaration?.ci?.jobs ?? {};
   const timeout = (job: string): string => String(jobs[job]?.timeoutMinutes ?? defaults.timeoutMinutes[job]);
   const wanted = Number(jobs.test?.shards ?? defaults.shards);
   const shards = source?.files?.length ? filledShards(unitSpecCount(source), wanted) : wanted;
   return {
     nodeOptions: `--max-old-space-size=${heap.minMiB}`,
-    timeoutFast: timeout('fast'), timeoutLint: timeout('lint'), timeoutTest: timeout('test'), timeoutCoverage: timeout('coverage'),
+    timeoutFast: timeout('fast'),
+    timeoutLint: String(lintJobTimeout({ declared: jobs.lint?.timeoutMinutes, fallback: Number(defaults.timeoutMinutes.lint), overhead: Number(lintOverheadMinutes), scopeFiles: scopes.map((scope) => lintedFiles(source, scope)) })), timeoutTest: timeout('test'), timeoutCoverage: timeout('coverage'),
     timeoutBuild: timeout('build'), timeoutSonar: timeout('sonar'), timeoutDbTypes: timeout('db-types'),
     testShards: `[${Array.from({ length: shards }, (_, index) => index + 1).join(', ')}]`, testShardTotal: String(shards),
   };
@@ -193,10 +219,10 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
   const audit = quality?.audit ?? { level: 'high', omitDev: true };
   const lcovArtifact = 'coverage-lcov';
   const build = frontendBuild(source, app);
-  const settings = ciJobSettings(buildDeclaration(source), source);
   const side = '${{ matrix.side }}';
   // The lint matrix: one job per side, and one for the root packages of an app that has them (their scope runs whatever became of the sides').
   const scopes = ['be', 'fe', ...(rootPackages ? ['packages'] : [])];
+  const settings = ciJobSettings(buildDeclaration(source), source, scopes);
   return {
     ...settings,
     lintSides: `[${scopes.join(', ')}]`,

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.67 - 2026-11-04
+
+- Changed: `@starci/hfs` gets the ESLint child's liveness budget (`STARCI_ESLINT_TIMEOUT_MINUTES`, `STARCI_ESLINT_MINUTES_PER_1000_FILES`, from `heavy.timeoutMinutes.eslint` and `heavy.timeoutMinutesPer1000Files.eslint`), so the CI it renders gives the lint job a timeout above that budget.
+
 ## 1.1.0-alpha.66 - 2026-11-04
 
 - Changed: the contexts search eval asks for the self-recovering flows (BE-RESILIENCE-2) of release 7b+8.

@@ -33,6 +33,10 @@ deployJobPrefix: deploy-
 defaults:
   shards: 6
   timeoutMinutes: {fast: 20, lint: 30, test: 25, coverage: 15, build: 30, sonar: 20, db-types: 30}
+# The lint job outlasts the ESLint child of its largest side: the CLI's liveness budget of that child (max(eslint minutes, minutes per 1000
+# files x the side's files), handed to sync as STARCI_ESLINT_TIMEOUT_MINUTES and STARCI_ESLINT_MINUTES_PER_1000_FILES), plus these minutes for
+# the install, the cache restore and the Sonar import, so a cold run of an 11k-file back end on a 2-core runner ends by its own budget.
+lintOverheadMinutes: 20
 
 # The steps that need a raised Node heap on the GitHub runner, matched on their `run` text, and the least heap they must declare in NODE_OPTIONS.
 heap:

@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.9.1 - 2026-11-04
+
+- Fixed: the rendered CI's lint job outlasts the ESLint child of its largest side: its `timeout-minutes` is the CLI's liveness budget of that child (max(eslint minutes, minutes per 1000 files x the side's tracked script files), handed to sync as `STARCI_ESLINT_TIMEOUT_MINUTES` and `STARCI_ESLINT_MINUTES_PER_1000_FILES` by `starci-harness` 1.1.0-alpha.67) plus `lintOverheadMinutes` (20) of the CI standard, never below the default 30; a declared `ci.jobs.lint.timeoutMinutes` still wins. An 11,346-file back end renders 77 minutes. The warm-cache path is unchanged.
+- Changed: the canon pins name this release.
+
 ## 5.9.0 - 2026-11-04
 
 - Added (release 7b+8, self-recovering flows, BE-RESILIENCE-2): `platform/queue` hands a parked job back to its queue (`QueueRedelivery`); `platform/jobs` parks a job a retry cannot fix as `failed_awaiting_fix` with one alert (`FlowAlerts`), resumes it at a new build, on the `parked-jobs:sweep` tick and on demand (`ParkedJobResumerService`, `ParkedJobResumeRequestsService`, lite `cli queues resume [--job <id>]`), and keys a remote effect by `JobClaims.effectKey` (`<jobId>:<step>`) claimed in the inbox, so a pivot never repeats after a resume. R377 `BE_FLOW_FAILURE_SWALLOWED` refuses a flow file that catches a failure without rethrowing or parking it, and any `removeOnFail`.
