@@ -1,10 +1,10 @@
 import { BOTH_EDITIONS, defineVerb, WRITERS } from "../../shared/verb.js"
 import { FORWARDED, runHfs } from "./hfs.js"
 
-/** `starci app check`: run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture, or with --staged the pre-commit guard; --fix, --out and the result cache write; @starci/hfs runs it in-process in the app. */
+/** `starci app check`: run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture under the branch profile, or with --staged the pre-commit guard; --fix, --out and the result cache write; @starci/hfs runs it in-process in the app. */
 export const appCheckVerb = defineVerb({
     path: ["app", "check"],
-    summary: "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture; --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard",
+    summary: "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture; --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet",
     editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: WRITERS,

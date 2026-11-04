@@ -129,13 +129,21 @@ export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand
  * never a pin bundled in @starci/hfs. The exit code is @starci/hfs's (0 clean, 1 findings or red, 2 refusal or usage, 3 an unarmed mutation).
  * `stdin`, when given, replaces the process stdin of a verb that reads one (`app secret set`): what it returns stays in memory
  * and reaches @starci/hfs alone. `extra` adds the role and ticket queue of HfsHarness. The limits of ops/liveness.yaml @starci/hfs reads from its
- * environment (`hfsLimitsEnv`: the ESLint heap, the boot proof's budget) are set on this process first, so the children it spawns inherit them.
+ * environment (`hfsLimitsEnv`: the ESLint heap, the boot proof's budget), the gate threshold and the branch profile policy are set on this process
+ * first, so the children it spawns inherit them.
  */
 export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly string[], printsJson: boolean, stdin?: () => string, extra: HfsHarness = {}): Promise<VerbResult<HfsRunData>> => {
     const full = context.json && printsJson ? [...argv, "--json"] : [...argv]
     let stdout = ""
     let stderr = ""
-    Object.assign(process.env, hfsLimitsEnv(), { STARCI_GATE_ERROR_LIMIT: String(loadPolicy().quality.gate.errorLimit) })
+    // The gate threshold (policy/quality.yaml gate.errorLimit) and what an app's branch profile may lower (policy/loosening.yaml branchProfiles, after the
+    // app's own overlay narrowed it), which @starci/hfs reads from its environment.
+    const policy = loadPolicy(context.treeRoot)
+    Object.assign(process.env, hfsLimitsEnv(), {
+        STARCI_GATE_ERROR_LIMIT: String(policy.quality.gate.errorLimit),
+        STARCI_PROFILE_BRANCHES: policy.loosening.branchProfiles.branches.join(","),
+        STARCI_PROFILE_GATES: policy.loosening.branchProfiles.gates.join(","),
+    })
     const { hostIdentity = hostAgeIdentity(context.cwd), ...more } = extra
     const harness = { version: packageVersion(), ...more }
     const runHeavyNode = hfsNodeRunner()

@@ -113,16 +113,37 @@ const looseningException = z.object({ ...exceptionFields, marker: z.enum(LOOSENI
 /** One declared loosening exception. */
 export type LooseningException = z.infer<typeof looseningException>
 
+/** The polish gates of an app check, the only gates an app's branch profile may lower (@starci/hfs keeps every other gate blocking). */
+export const POLISH_GATES = ["lint", "sonar", "codecov"] as const
+
+const branchName = z.string().regex(/^(?!-)(?!.*\.\.)[A-Za-z0-9._/-]+$/, "a branch name, no glob").refine((name) => !["main", "master"].includes(name), "the default branch is never lowered")
+const unique = (entries: readonly string[]): boolean => new Set(entries).size === entries.length
+
+// The owner-approved exception an app's branch profile is (`branches` of its .starcistacks/application-stacks.yaml): the branches that may carry one and
+// the polish gates they may lower, resting on a live ruling; `starci app` hands both to @starci/hfs, which refuses any other branch or gate.
+const branchProfiles = z.object({
+    decision: z.string().trim().min(1),
+    branches: z.array(branchName).refine(unique, "each branch once"),
+    gates: z.array(z.enum(POLISH_GATES)).refine(unique, "each gate once"),
+    reason,
+})
+
+/** What an app's branch profile may lower: the branches and the polish gates, and the ruling the exception rests on. */
+export type BranchProfilePolicy = z.infer<typeof branchProfiles>
+
 const looseningSchema = z.object({
     schema: z.literal("starci/loosening-policy@1"),
     banned: z.array(z.enum(LOOSENING_MARKERS)).min(1),
     scan: z.object({ maxFileBytes: z.number().int().positive() }),
+    branchProfiles,
     exceptions: z.array(looseningException),
 })
 
+// A project's overlay may narrow the branch profiles (fewer branches, fewer gates), never widen them.
 const looseningOverlay = z.object({
     schema: z.literal("starci/loosening-policy@1"),
     banned: z.array(z.enum(LOOSENING_MARKERS)).optional(),
+    branchProfiles: z.object({ branches: z.array(branchName).optional(), gates: z.array(z.enum(POLISH_GATES)).optional() }).optional(),
     exceptions: z.array(looseningException).optional(),
 })
 
@@ -218,6 +239,11 @@ const refuseUnqualified = (file: string, exceptions: readonly KindView[] | undef
     }
 }
 
+/** EXCEPTION_RULING_UNKNOWN when the branch profile exception cites no live ruling. */
+const refuseUnruled = (file: string, profiles: BranchProfilePolicy): void => {
+    if (!liveRulingIds().has(profiles.decision)) throw new Refusal("EXCEPTION_RULING_UNKNOWN", `${file}: branchProfiles cites ${profiles.decision}, which is no live id of contexts/decisions/rulings.yaml`)
+}
+
 /** The runtime's policy files with a project's overlay applied. */
 export interface Policy {
     readonly dir: string
@@ -302,6 +328,7 @@ export const loadPolicy = (repositoryRoot?: string, dir: string = locatePolicy()
     let security = readYaml(join(dir, "security.yaml"), securitySchema)
     refuseUnqualified(join(dir, "loosening.yaml"), loosening.exceptions)
     refuseUnqualified(join(dir, "security.yaml"), security.exceptions)
+    refuseUnruled(join(dir, "loosening.yaml"), loosening.branchProfiles)
     checkCrossReferences(dir, quality, canon, security)
     // The runtime's exceptions name the runtime repository's own files; any other repository starts with none.
     if (repositoryRoot !== undefined && !sameDir(join(repositoryRoot, "policy"), dir)) {
@@ -323,7 +350,13 @@ const applyOverlay = (overlay: string, loosening: LooseningPolicy, security: Sec
     if (existsSync(looseningFile)) {
         const extra = readYaml(looseningFile, looseningOverlay)
         refuseUnqualified(looseningFile, extra.exceptions)
-        tightened = { ...loosening, banned: [...new Set([...loosening.banned, ...(extra.banned ?? [])])], exceptions: extra.exceptions ?? [] }
+        const narrowed = extra.branchProfiles
+        const profiles = narrowed === undefined ? loosening.branchProfiles : {
+            ...loosening.branchProfiles,
+            branches: loosening.branchProfiles.branches.filter((branch) => narrowed.branches?.includes(branch) ?? true),
+            gates: loosening.branchProfiles.gates.filter((gate) => narrowed.gates?.includes(gate) ?? true),
+        }
+        tightened = { ...loosening, banned: [...new Set([...loosening.banned, ...(extra.banned ?? [])])], branchProfiles: profiles, exceptions: extra.exceptions ?? [] }
     }
     const securityFile = join(overlay, "security.yaml")
     if (existsSync(securityFile)) {
