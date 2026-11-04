@@ -127,7 +127,10 @@ Every data file is JSON Lines: one self-contained record per line, sorted by its
 inside each record, LF endings, a final newline, no timestamps, durations, logs, absolute paths or host names. Two runs
 over the same tree write identical bytes. Records are split into one file per area, a side's first two folders
 (`lint/be/modules/billing.jsonl`, `check/fe/apps/web.jsonl`; files of the app root in `root.jsonl`), so a change
-rewrites the files of the areas it touched. Results are sparse: a clean file is a record with its hash and no finding.
+rewrites the files of the areas it touched. An area whose file would pass 32 MB is split one folder deeper, and a single folder
+that still does into hash buckets (`test-coverage/be/src/~3.jsonl`), so no file nears what a git host takes; a reader reads every
+`.jsonl` of a folder, and the pre-push gate refuses a cache file over `STARCI_CACHE_FILE_MAX_MB` (90) as
+`HFS_CHECK_CACHE_FILE_TOO_LARGE` before anything uploads. Results are sparse: a clean file is a record with its hash and no finding.
 Findings are sorted (line, column, rule, message) and their messages carry app-relative posix paths only.
 
 The managed `.gitattributes` marks the folder `text eol=lf merge=union linguist-generated=true`. Because every record

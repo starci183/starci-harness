@@ -37,6 +37,9 @@ defaults:
 # files x the side's files), handed to sync as STARCI_ESLINT_TIMEOUT_MINUTES and STARCI_ESLINT_MINUTES_PER_1000_FILES), plus these minutes for
 # the install, the cache restore and the Sonar import, so a cold run of an 11k-file back end on a 2-core runner ends by its own budget.
 lintOverheadMinutes: 20
+# The unit run takes at least `shards` shards and one more per suitesPerShard spec files, so a large back end (1,676 suites ran 31 minutes on
+# 2 workers) still fits each shard in timeoutMinutes.test: ~150 suites ran ~10 minutes a shard on the 2-vCPU runner.
+suitesPerShard: 150
 
 # The steps that need a raised Node heap on the GitHub runner, matched on their `run` text, and the least heap they must declare in NODE_OPTIONS.
 heap:

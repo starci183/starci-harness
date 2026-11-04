@@ -220,11 +220,12 @@ export function lintJobTimeout({ declared, fallback, overhead, scopeFiles, env =
 
 /** The per-job settings of the managed CI: ci.jobs.<job>.timeoutMinutes and ci.jobs.test.shards of the manifest over the defaults of the CI standard, the shards capped at the count the unit specs fill (an empty shard would fail, never pass empty). */
 function ciJobSettings(declaration: Declaration, source: CiSource | undefined, scopes: readonly string[]): Record<string, string> {
-  const { defaults, heap, lintOverheadMinutes } = parseYaml(fs.readFileSync(STANDARD, 'utf8'));
+  const { defaults, heap, lintOverheadMinutes, suitesPerShard } = parseYaml(fs.readFileSync(STANDARD, 'utf8'));
   const jobs = declaration?.ci?.jobs ?? {};
   const timeout = (job: string): string => String(jobs[job]?.timeoutMinutes ?? defaults.timeoutMinutes[job]);
-  const wanted = Number(jobs.test?.shards ?? defaults.shards);
-  const shards = source?.files?.length ? filledShards(unitSpecCount(source), wanted) : wanted;
+  const specs = unitSpecCount(source);
+  const wanted = Number(jobs.test?.shards ?? Math.max(Number(defaults.shards), Math.ceil(specs / Number(suitesPerShard))));
+  const shards = source?.files?.length ? filledShards(specs, wanted) : wanted;
   return {
     nodeOptions: `--max-old-space-size=${heap.minMiB}`,
     timeoutFast: timeout('fast'),

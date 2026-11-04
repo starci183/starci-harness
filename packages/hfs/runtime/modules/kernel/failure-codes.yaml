@@ -3747,6 +3747,16 @@ HFS_CHECK_CACHE_UNPORTABLE:
   owner: op-retry
   kind: check-finding
 
+HFS_CHECK_CACHE_FILE_TOO_LARGE:
+  title: "A committed check cache file is too large to push"
+  title_vi: "Một tệp cache kiểm tra đã commit quá lớn để push"
+  meaning_vi: "Một tệp trong `.starcistacks/cache/` vượt giới hạn mà một lần push được mang (mặc định 90 MB, `STARCI_CACHE_FILE_MAX_MB`); GitHub từ chối tệp trên 100 MB (GH001) và một tệp lớn làm việc tải lên quá thời gian."
+  causes_vi:
+    - "Cache được ghi bởi một bản `@starci/hfs` cũ, gom mọi bản ghi coverage của một vùng vào một tệp"
+  nextStep_vi: "Chạy `starci app check` với `@starci/hfs` hiện tại (tách bản ghi thành nhiều tệp nhỏ), commit `.starcistacks/cache/` rồi push lại."
+  owner: op-retry
+  kind: check-finding
+
 HFS_CHECK_CACHE_VERIFY_LOCKED:
   title: "The nightly verify of the check cache locks the release gate"
   title_vi: "Lần verify cache kiểm tra hằng đêm đang khóa cổng release"

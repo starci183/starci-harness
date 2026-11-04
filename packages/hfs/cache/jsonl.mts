@@ -99,15 +99,69 @@ export function areaOf(path: string, depth = 2): string {
   return folders.length === 0 ? 'root' : folders.join('/');
 }
 
-/** Records grouped by area file name (`<area>.jsonl`), groups and files sorted. */
-export function groupByArea(records: readonly CacheRecord[], depth = 2): Map<string, CacheRecord[]> {
+/**
+ * The most bytes one record file holds: well under the 100 MB a git host refuses (GitHub GH001) and the size an upload times out on, so a
+ * whole app's coverage records split into files a push carries. The push gate refuses a file over its own limit (freshness.mts).
+ */
+export const RECORD_FILE_MAX_BYTES = 32 * 1024 * 1024;
+
+/** The bytes a record takes in its file: its canonical line and the newline, measured once per record, never by joining a whole file. */
+const recordBytes = new WeakMap<CacheRecord, number>();
+const lineBytes = (record: CacheRecord): number => {
+  const known = recordBytes.get(record);
+  if (known !== undefined) return known;
+  const bytes = Buffer.byteLength(canonicalJson({ ...record, findings: sortFindings(record.findings) })) + 1;
+  recordBytes.set(record, bytes);
+  return bytes;
+};
+const byteLength = (records: readonly CacheRecord[]): number => records.reduce((sum, record) => sum + lineBytes(record), 0);
+
+/** A stable bucket of a path, 0..buckets-1 (FNV-1a), so a record stays in its file while the set around it changes size only a little. */
+function bucketOf(path: string, buckets: number): number {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < path.length; index += 1) hash = Math.imul(hash ^ path.charCodeAt(index), 0x01000193) >>> 0;
+  return hash % buckets;
+}
+
+/** One group split until each file is under `maxBytes`: one folder deeper while that divides it, else into hash buckets `<area>/~<n>.jsonl`. */
+function bounded(area: string, records: CacheRecord[], depth: number, maxBytes: number): Array<[string, CacheRecord[]]> {
+  const size = byteLength(records);
+  if (size <= maxBytes || records.length < 2) return [[`${area}.jsonl`, records]];
+  const deeper = new Map<string, CacheRecord[]>();
+  for (const record of records) {
+    const name = areaOf(record.path, depth + 1);
+    deeper.set(name, [...(deeper.get(name) ?? []), record]);
+  }
+  if (deeper.size > 1) return [...deeper].flatMap(([name, group]) => bounded(name, group, depth + 1, maxBytes));
+  // One folder below holds them all: descend into it while the paths go deeper.
+  const [only] = deeper.keys();
+  if (only !== undefined && only !== area) return bounded(only, records, depth + 1, maxBytes);
+  // Buckets double until each holds under the budget (a single record over it keeps a file of its own).
+  for (let buckets = Math.ceil(size / maxBytes) + 1; ; buckets *= 2) {
+    const split = new Map<number, CacheRecord[]>();
+    for (const record of records) {
+      const bucket = bucketOf(record.path, buckets);
+      split.set(bucket, [...(split.get(bucket) ?? []), record]);
+    }
+    if (buckets >= records.length || [...split.values()].every((group) => group.length < 2 || byteLength(group) <= maxBytes)) {
+      return [...split].map(([bucket, group]): [string, CacheRecord[]] => [`${area}/~${String(bucket)}.jsonl`, group]);
+    }
+  }
+}
+
+/**
+ * Records grouped by area file name (`<area>.jsonl`), groups and files sorted. An area whose file would pass `maxBytes` is split one
+ * folder deeper, and a single folder that still does into hash buckets; a reader reads every `.jsonl` under the folder, so the layout is free.
+ */
+export function groupByArea(records: readonly CacheRecord[], depth = 2, maxBytes = RECORD_FILE_MAX_BYTES): Map<string, CacheRecord[]> {
   const groups = new Map<string, CacheRecord[]>();
   for (const record of records) {
-    const file = `${areaOf(record.path, depth)}.jsonl`;
-    groups.set(file, [...(groups.get(file) ?? []), record]);
+    const area = areaOf(record.path, depth);
+    groups.set(area, [...(groups.get(area) ?? []), record]);
   }
-  for (const [file, group] of groups) groups.set(file, sortRecords(group));
-  return new Map([...groups].sort(([a], [b]) => compare(a, b)));
+  const files = new Map<string, CacheRecord[]>();
+  for (const [area, group] of groups) for (const [file, part] of bounded(area, group, depth, maxBytes)) files.set(file, sortRecords(part));
+  return new Map([...files].sort(([a], [b]) => compare(a, b)));
 }
 
 /** True when `value` survives JSON unchanged: a guard for record payloads. */
