@@ -55,7 +55,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@nestjs/common": "11.2.5",
-    "@nestjs/core": "11.2.5",
+    "@nestjs/core": "12.3.2",
     "@types/node": "22.20.4",
     "eslint": "10.13.0",
     "jiti": "2.7.0",
