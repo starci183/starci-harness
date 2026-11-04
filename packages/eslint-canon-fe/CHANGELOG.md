@@ -2,7 +2,7 @@
 
 ## 9.13.6 - 2026-11-04
 
-- Changed: the runtime copies carry the slot manifest 3.22.0 and the canon pins of `@starci/hfs` 5.8.0.
+- Changed: the runtime copies carry the module shape of `be.integrations.passport` in the package slot manifest and the canon pins of `@starci/hfs` 5.8.0.
 
 ## 9.13.5 - 2026-11-04
 
