@@ -248,8 +248,10 @@ Enforced by: R214, R255 (hfs checks over the migrations).
 A browser-role policy proves a principal predicate (`auth.uid()`), never a constant or `IS NOT NULL`. An exposed view is
 `security_invoker`; a `SECURITY DEFINER` function pins `search_path` and revokes EXECUTE from public and the browser
 roles. Extensions follow `ruleParams.db.extensions`; migrations write no secret or role password; destructive DDL lives
-only in a `*_contract_*` migration after the code stops using the target. An archived migration chain keeps one baseline
-and is never edited.
+only in a `*_contract_*` migration after the code stops using the target, or in the exact objects of one migration that an owner
+ruling in hfs.json `db.destructiveRulings` names, accepted only while the same proof finds them unreferenced. A migration already
+on the base unchanged is immutable, so its destructive or dynamic DDL is a known item: a fix is a new migration. An archived
+migration chain keeps one baseline and is never edited.
 
 Why: a view, definer or configuration change can expose rows while the base table looks protected.
 
