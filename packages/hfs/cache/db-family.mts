@@ -24,7 +24,8 @@ export async function runDbFamily(session: CheckSession, { repoRoot, tracked, ba
   const decision = session.decide('db');
   const records = new RecordSet(session.records(DB_FOLDER));
   const previous = records.findings('db-rules');
-  const inputs = session.index.paths.filter((file) => file.startsWith('db/') || file.startsWith('supabase/') || file.endsWith('.sql'));
+  // hfs.json carries the edition, the db block and its owner rulings (db.destructiveRulings), which the rules read.
+  const inputs = session.index.paths.filter((file) => file === 'hfs.json' || file.startsWith('db/') || file.startsWith('supabase/') || file.endsWith('.sql'));
   const key = keyOfPaths(session.index, inputs, { 'merge-base': base ?? dbMergeBase(repoRoot) });
   const step = session.progress.step('db', 'rules', inputs.length);
   const { value, reused } = await scopedStep(session, records, {

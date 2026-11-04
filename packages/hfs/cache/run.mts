@@ -6,6 +6,7 @@ import { skillRoot } from '../runtime/engine/runtime-root.mjs';
 import { readWhy, type CheckFinding, type RepositoryResult } from '../runtime/scripts/hfs/check.mjs';
 import { judgedFindings, summarize, withWhy } from '../runtime/scripts/hfs/check-results.mjs';
 import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
+import { withLandedMigrationsKnown } from '../runtime/scripts/hfs/rules/database-landed.mjs';
 import type { Presets } from '../sync/index.mjs';
 import type { Prettier } from '../sync/format.mjs';
 import { runDbFamily } from './db-family.mjs';
@@ -75,8 +76,9 @@ export async function runAppFamilies(input: AppRunInput): Promise<AppRunResult> 
   }
   const edition = input.edition ?? declaredEdition(repoRoot);
   const judged = extra.length === 0 ? [] : withWhy(judgedFindings(extra, edition, skillRoot), readWhy(skillRoot, [...new Set(extra.map((finding) => finding.code))])) as CheckFinding[];
-  // A family's findings reach the result once: the pass already holds the ones the always-run rules produced.
-  const findings = [...base.findings, ...judged];
+  // A family's findings reach the result once: the pass already holds the ones the always-run rules produced. A migration already on the
+  // base is immutable, so what only a rewrite of it could clear is reported as a known item (R259, database-landed.mts).
+  const findings = withLandedMigrationsKnown([...base.findings, ...judged], { repoRoot, base: input.base });
   const counts = summarize(findings);
   return { ...base, findings, counts, ok: counts.error === 0, families: reports, ...(wiring ? { wiring } : {}) };
 }

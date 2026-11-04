@@ -1888,6 +1888,16 @@ DB_MIGRATION_DESTRUCTIVE:
   owner: op-retry
   kind: check-finding
 
+DB_DESTRUCTIVE_RULING_UNPROVEN:
+  title: "An owner ruling on destructive DDL holds only while its exact objects are unreferenced"
+  title_vi: "Ruling cho DDL phá hủy chưa được chứng minh"
+  meaning_vi: "hfs.json db.destructiveRulings chấp nhận đúng các đối tượng của đúng một migration, nhưng một đối tượng vẫn được SQL hay entity của back end (hoặc của bản release trước) tham chiếu, hoặc ruling nêu đối tượng hay migration không tồn tại."
+  causes_vi:
+    - "Vi phạm R259: ruling được ghi trước khi ứng dụng ngừng dùng đối tượng, hoặc ruling đã cũ."
+  nextStep_vi: "Bỏ tham chiếu trong ứng dụng, hoặc sửa ruling cho đúng file và đúng đối tượng mà migration phá hủy."
+  owner: op-retry
+  kind: check-finding
+
 DB_MIGRATION_SHAPE:
   title: "A migration is named `<ts14>_<kebab>.sql`, stamped in valid UTC, appended after HEAD's active migrations, and immutable once on the base"
   title_vi: "Migration sai hình dạng hoặc bị sửa"

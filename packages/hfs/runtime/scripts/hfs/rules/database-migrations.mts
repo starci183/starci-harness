@@ -7,8 +7,8 @@ import { tag } from '../../api/git/tag.mjs';
 import { withoutGitLocalEnv } from '../../lib/git.mjs';
 import { eachInOrder, findInOrder } from '../../lib/in-order.mjs';
 import { sameText } from '../../lib/same-text.mjs';
-import { found, readText } from './read.mjs';
-import { DB_MIGRATION_DESTRUCTIVE, DB_MIGRATION_SHAPE, isActiveMigration, MIGRATIONS_ARCHIVE_DIR, MIGRATIONS_DIR } from './database-constants.mjs';
+import { found, readJson, readText } from './read.mjs';
+import { DB_DESTRUCTIVE_RULING_UNPROVEN, DB_MIGRATION_DESTRUCTIVE, DB_MIGRATION_SHAPE, isActiveMigration, MIGRATIONS_ARCHIVE_DIR, MIGRATIONS_DIR } from './database-constants.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadTypescript } from '../../lib/package-at.mjs';
@@ -533,17 +533,43 @@ function migrationDestructiveObjects(text: string) {
   });
 }
 
-function destructiveFileFindings(file: string, text: string, references: Parsed) {
-  const contract = /_contract_[a-z0-9]+(?:[-_][a-z0-9]+)*\.sql$/.test(file);
+const CONTRACT_MIGRATION = /_contract_[a-z0-9]+(?:[-_][a-z0-9]+)*\.sql$/;
+
+/**
+ * The owner rulings of hfs.json `db.destructiveRulings`, by migration file: the exact objects each may destroy outside a contract migration,
+ * held only while the same proof a contract migration gets finds them unreferenced. The declaration shape judges reason and date.
+ */
+function destructiveRulings(repoRoot: string): Map<string, ReadonlySet<string>> {
+  const listed: Parsed = readJson(repoRoot, 'hfs.json')?.db?.destructiveRulings;
+  const rulings = new Map<string, ReadonlySet<string>>();
+  for (const ruling of Array.isArray(listed) ? listed : []) {
+    if (typeof ruling?.migration === 'string' && Array.isArray(ruling.objects)) rulings.set(ruling.migration, new Set(ruling.objects.filter((name: Parsed) => typeof name === 'string')));
+  }
+  return rulings;
+}
+
+/** A ruled object is accepted while no be/src source references it; a reference makes the ruling unproven. */
+function ruledObjectFinding(file: string, object: Parsed, references: Parsed) {
+  const reference = references.find(({ scopes }: { scopes: Parsed }) => referencesObject(scopes, object));
+  return reference ? found(DB_DESTRUCTIVE_RULING_UNPROVEN, file, `${file}:${object.line} destroys ${object.name} under hfs.json db.destructiveRulings, but ${reference.file} still references it; the ruling holds only while its targets are unreferenced`,
+    { line: object.line, object: object.name, reference: reference.file }) : null;
+}
+
+function destructiveFileFindings(file: string, text: string, references: Parsed, ruled: ReadonlySet<string> = new Set()) {
+  const contract = CONTRACT_MIGRATION.test(file);
   const seen = new Set();
   const objects = migrationDestructiveObjects(text);
-  return objects.flatMap((object) => {
+  const findings = objects.flatMap((object) => {
     const key = `${object.line}:${object.kind}:${object.name}`;
     if (seen.has(key)) return [];
     seen.add(key);
-    const finding = destructiveObjectFinding(file, object, contract, references);
+    const finding = !contract && ruled.has(object.name) ? ruledObjectFinding(file, object, references) : destructiveObjectFinding(file, object, contract, references);
     return finding ? [finding] : [];
   });
+  for (const name of ruled) {
+    if (!objects.some((object) => object.name === name)) findings.push(found(DB_DESTRUCTIVE_RULING_UNPROVEN, file, `hfs.json db.destructiveRulings names ${name} for ${file}, which the migration does not destroy; a ruling names exactly the objects its migration destroys`, { object: name }));
+  }
+  return findings;
 }
 
 const BE_SQL_SOURCE = /^be\/src\/.+\.(?:sql|entity)\.[cm]?tsx?$/;
@@ -560,7 +586,8 @@ const RELEASE_TAG_GLOB = 'v*';
  * DB_MIGRATION_DESTRUCTIVE (R259), a hard blocker: ship the code change in one release and its contract migration in the next.
  */
 export async function contractReleaseFindings({ repoRoot, migrations, git }: { repoRoot: string; migrations: Parsed; git: Parsed }) {
-  const contracts = migrations.filter((file: string) => /_contract_[a-z0-9]+(?:[-_][a-z0-9]+)*\.sql$/.test(file));
+  const rulings = destructiveRulings(repoRoot);
+  const contracts = migrations.filter((file: string) => CONTRACT_MIGRATION.test(file) || rulings.has(file));
   if (!contracts.length) return [];
   const previous = await runGit(git, repoRoot, ['previous-release', RELEASE_TAG_GLOB]);
   const release = previous.stdout.trim();
@@ -580,9 +607,11 @@ export async function contractReleaseFindings({ repoRoot, migrations, git }: { r
   return fresh.flatMap((file: string) => {
     const text = readText(repoRoot, file);
     if (text === null) return [];
-    return migrationDestructiveObjects(text).flatMap((object: Parsed) => {
+    // a ruled migration is judged here for its ruled objects only: its other objects are refused at HEAD already
+    const ruled = CONTRACT_MIGRATION.test(file) ? undefined : rulings.get(file);
+    return migrationDestructiveObjects(text).filter((object: Parsed) => ruled === undefined || ruled.has(object.name)).flatMap((object: Parsed) => {
       const reference = references.find(({ scopes }: { scopes: Parsed }) => referencesObject(scopes, object));
-      return reference ? [found(DB_MIGRATION_DESTRUCTIVE, file, `${file}:${object.line} destroys ${object.name}, which the previous release ${release} still references in ${reference.file}; the contract migration runs right after the accept while that release is the rollback target: ship the code change in one release and this contract migration in the next`,
+      return reference ? [found(ruled === undefined ? DB_MIGRATION_DESTRUCTIVE : DB_DESTRUCTIVE_RULING_UNPROVEN, file, `${file}:${object.line} destroys ${object.name}, which the previous release ${release} still references in ${reference.file}; the contract migration runs right after the accept while that release is the rollback target: ship the code change in one release and this contract migration in the next`,
         { line: object.line, object: object.name, release, reference: reference.file })] : [];
     });
   });
@@ -594,8 +623,13 @@ export function destructiveMigrationFindings({ repoRoot, migrations, files }: { 
   const ts = sources.length ? loadTypescript(repoRoot, HERE) : null;
   if (sources.length && !ts) return [found(DB_MIGRATION_DESTRUCTIVE, 'hfs.json', 'destructive migration checks require the TypeScript parser to read be/src references')];
   const references = ts ? sources.map((file: string) => ({ file, scopes: sourceNameScopes(ts, readText(repoRoot, file) ?? '', file) })) : [];
-  return migrations.flatMap((file: string) => {
+  const rulings = destructiveRulings(repoRoot);
+  const findings = migrations.flatMap((file: string) => {
     const text = readText(repoRoot, file);
-    return text === null ? [] : destructiveFileFindings(file, text, references);
+    return text === null ? [] : destructiveFileFindings(file, text, references, rulings.get(file));
   });
+  for (const migration of rulings.keys()) {
+    if (!migrations.includes(migration)) findings.push(found(DB_DESTRUCTIVE_RULING_UNPROVEN, 'hfs.json', `hfs.json db.destructiveRulings names ${migration}, which is no active migration; a ruling names the exact file it covers`, { migration }));
+  }
+  return findings;
 }

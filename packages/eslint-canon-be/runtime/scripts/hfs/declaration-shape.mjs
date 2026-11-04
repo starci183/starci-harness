@@ -5,6 +5,13 @@ import { kindShapeProblems, patternShapeProblems } from './declaration-slots.mjs
 import { byCodeUnit } from '../lib/list.mjs';
 /** Shape problems of the optional hfs.json `db` block of a lite app: the environment variable naming its database, its image, forced RLS and its application role. */
 const isStringList = (value) => Array.isArray(value) && value.every((entry) => typeof entry === 'string' && entry.trim());
+/** One owner ruling on a migration's destructive DDL: the exact file, the exact objects, the reason and the date the owner ruled it. */
+const isDestructiveRuling = (ruling) => isPlainObject(ruling)
+    && typeof ruling.migration === 'string' && /^db\/migrations\/\d{14}_[a-z0-9_-]+\.sql$/.test(ruling.migration)
+    && isStringList(ruling.objects) && ruling.objects.length > 0
+    && typeof ruling.reason === 'string' && ruling.reason.trim() !== ''
+    && typeof ruling.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(ruling.date)
+    && Object.keys(ruling).every((key) => ['migration', 'objects', 'reason', 'date'].includes(key));
 function dbBlockProblems(block) {
     if (block === undefined)
         return [];
@@ -12,7 +19,7 @@ function dbBlockProblems(block) {
         return ['db must be an object'];
     const bad = [];
     for (const key of Object.keys(block))
-        if (!['urlEnv', 'image', 'forceRls', 'forceRlsExemptions', 'appRole'].includes(key))
+        if (!['urlEnv', 'image', 'forceRls', 'forceRlsExemptions', 'appRole', 'destructiveRulings'].includes(key))
             bad.push(`db has unknown key ${key}`);
     if (block.urlEnv !== undefined && (typeof block.urlEnv !== 'string' || !/^[A-Z][A-Z0-9_]*$/.test(block.urlEnv)))
         bad.push('db.urlEnv must name an UPPER_CASE environment variable');
@@ -24,6 +31,8 @@ function dbBlockProblems(block) {
         bad.push('db.appRole must name a role');
     if (block.forceRlsExemptions !== undefined && !Array.isArray(block.forceRlsExemptions))
         bad.push('db.forceRlsExemptions must be a list of { table, reason }');
+    if (block.destructiveRulings !== undefined && !(Array.isArray(block.destructiveRulings) && block.destructiveRulings.every(isDestructiveRuling)))
+        bad.push('db.destructiveRulings must be a list of { migration, objects, reason, date } naming one db/migrations file, the objects it destroys, why and the date the owner ruled it (YYYY-MM-DD)');
     return bad;
 }
 function appShapeProblems(apps, at, side, names) {
