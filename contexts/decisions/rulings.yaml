@@ -84,8 +84,6 @@ rulings:
     status: live
     ruling: "Peer action groups retain the vendor's fused corners and size in ready, pending and loading states. Only the initiating member owns pending; unresolved group content is inert loading geometry. IconButton delegates its busy spinner to the native vendor parts and preserves its accessible name and duplicate-activation guard. Standalone corner rules do not override joined group members."
     owner: "contexts/grammars/contract.yaml roles.button-group; contexts/ui/components/action-group.md; contexts/vendor/wrappers.yaml; packages/grammar/src/core/composite/ButtonGroup; packages/grammar/src/core/leaf/IconButton"
-    pins:
-      contexts/vendor/wrappers.yaml: 8207d82c2356b16a674fc855f1c44939e6b45da5a62b05662c8a081933d9b38d
   - id: entry-task-frame
     date: '2026-11-02'
     status: live
@@ -132,7 +130,9 @@ rulings:
     date: '2026-11-05'
     status: live
     ruling: "A choice among a few has one component by meaning and the Grammar draws no group of attached buttons: Tabs switch a view (page head) or filter a list (kind filter: compact underline tabs with a count, inside the list pane under its search field), ChoiceChips or RadioGroup choose a value of a form (a tablist is not a form field), a date is the Calendar and a time ChoiceChips, actions are separate Buttons or a DropdownMenu. ButtonGroup, FilterButtonGroup and SegmentedControl are deprecated for one release and refused in product source (R380)."
-    owner: "contexts/ui/components/tabs.md; contexts/ui/composition.md CTA-1; contexts/grammars/contract.md"
+    owner: "contexts/ui/components/tabs.md; contexts/ui/composition.md CTA-1; contexts/grammars/contract.md; contexts/vendor/wrappers.yaml (ChoiceChips, ScheduleGrid: wraps only, no override)"
+    pins:
+      contexts/vendor/wrappers.yaml: 781d2a9e5cf6fab5a671230cc9d5b36ccda3394eeb909c0d424f20be7d81f8bd
   - id: region-loading
     date: '2026-11-05'
     status: live
