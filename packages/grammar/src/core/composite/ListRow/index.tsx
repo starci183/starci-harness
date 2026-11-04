@@ -83,6 +83,7 @@ export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-treatment={treatmentFor("neutral").tone}
                 data-grammar-leading={hasLeading ? "true" : "false"}
                 data-grammar-actions={hasActions ? "true" : "false"}
+                {...(row.meta === undefined ? {} : { "data-grammar-meta": "true" })}
                 data-contract="GAP-3 PADDING-4 BOUNDARY-3 STATE-8"
             >
                 {hasLeading ? <span className="starci-core-list-row-leading"><Skeleton shape="circle" size="md" /></span> : null}
@@ -90,6 +91,7 @@ export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
                     <span className="starci-core-list-row-title"><span className="starci-core-list-row-name"><Skeleton shape="text" /></span></span>
                     {row.description === undefined ? null : <span className="starci-core-list-row-description"><Skeleton shape="text" /></span>}
                 </span>
+                {row.meta === undefined ? null : <span className="starci-core-list-row-meta" data-grammar-skeleton-meta="true"><Skeleton shape="text" /></span>}
                 {hasActions ? <span className="starci-core-list-row-actions"><span className="starci-core-list-row-skeleton-action"><Skeleton shape="rect" /></span></span> : null}
                 {row.detail == null ? null : <div className="starci-core-list-row-detail" data-contract="GAP-3">{row.detail}</div>}
             </li>
@@ -106,6 +108,7 @@ export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-treatment={treatment.tone}
                 data-grammar-leading={hasLeading || hasMark ? "true" : "false"}
                 data-grammar-actions={hasActions ? "true" : "false"}
+                {...(row.meta === undefined ? {} : { "data-grammar-meta": "true" })}
                 {...(row.verdict === undefined ? {} : { "data-verdict": row.verdict })}
                 {...(row.onPress === undefined ? {} : { "data-grammar-row-pressable": "true" })}
                 {...(drag === undefined ? {} : {
@@ -139,6 +142,7 @@ export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
                     </span>
                     {row.description === undefined ? null : <span className="starci-core-list-row-description" data-contract="TONE-2 FONT-2">{row.description}</span>}
                 </span>
+                {row.meta === undefined ? null : <span className="starci-core-list-row-meta" data-tone={row.meta.tone ?? "muted"} data-contract="FONT-2">{row.meta.text}</span>}
                 {hasActions ? (
                     <span className="starci-core-list-row-actions" data-contract="GAP-2">
                         {row.action === undefined ? null : <RowAction action={row.action} />}

@@ -1,7 +1,8 @@
 "use client"
 
 import { useId, useState, type ReactNode } from "react"
-import { fieldStateAttributes, StaticFieldError, isFieldInvalid, type FieldControlProps } from "../../leaf/Field/index.js"
+import { fieldStateAttributes, FieldSkeletonScope, loadingFieldProps, StaticFieldError, isFieldInvalid, type FieldControlProps } from "../../leaf/Field/index.js"
+import { useIsLoading } from "../../loadingState.js"
 import type { NoChildren } from "../../tier.js"
 
 export type FileDropzoneProps = NoChildren & FieldControlProps & {
@@ -17,6 +18,12 @@ export type FileDropzoneProps = NoChildren & FieldControlProps & {
     readonly icon?: ReactNode
     /** Hides the list of chosen file names under the target. */
     readonly hideFileList?: boolean
+    /**
+     * Unresolved content (knowledge STATE-8): the ready anatomy at the same props inside an inert, `aria-busy` scope, the drop
+     * target painted as a Skeleton, the label and description kept as real text. A region that is loading (`Section`,
+     * `PaneSection`, a card) tells it so; a region's flag wins only when this is not set.
+     */
+    readonly isLoading?: boolean
 }
 
 /**
@@ -26,7 +33,14 @@ export type FileDropzoneProps = NoChildren & FieldControlProps & {
  * file dropped on a file input is a native change), so the files land in the real input and submit
  * with the form. Grammar adds only the drag-over state, the field anatomy, and the chosen names.
  */
-export const FileDropzone = ({
+export const FileDropzone = ({ isLoading: own, ...props }: FileDropzoneProps) => {
+    const isLoading = useIsLoading(own)
+    return isLoading
+        ? <FieldSkeletonScope component="FileDropzone"><FileDropzoneControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+        : <FileDropzoneControl {...props} />
+}
+
+const FileDropzoneControl = ({
     id: idProp,
     accept,
     multiple = false,
@@ -43,7 +57,7 @@ export const FileDropzone = ({
     isDisabled,
     isReadOnly,
     name,
-}: FileDropzoneProps) => {
+}: Omit<FileDropzoneProps, "isLoading">) => {
     const generated = useId().replaceAll(":", "")
     const id = idProp ?? `file${generated}`
     const [isDragging, setIsDragging] = useState(false)

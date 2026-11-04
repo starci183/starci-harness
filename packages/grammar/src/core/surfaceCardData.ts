@@ -96,6 +96,11 @@ export type ListRowData = {
      */
     readonly onPress?: () => void
     readonly drag?: RowDrag
+    /**
+     * One short fact at the END of the row, before the commands (a due date, "8 min ago"): one line, truncating. `tone="danger"`
+     * for a fact that is a problem (overdue). Drawn as a Skeleton of its width while the row loads.
+     */
+    readonly meta?: { readonly text: string; readonly tone?: "muted" | "danger" }
 } & ListRowDestination
 
 type FigureDestination = Pick<LinkProps, "href" | "onFollow" | "isDisabled"> | {

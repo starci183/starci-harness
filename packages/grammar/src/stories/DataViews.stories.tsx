@@ -148,3 +148,18 @@ const PlaceableSchedule = () => {
 export const ScheduleDropAndCellPress: Story = {
     render: () => <Matrix><State label="Drag an entry to a cell, or press it (picked) then press a cell; an invalid and an open entry" direction="column"><PlaceableSchedule /></State></Matrix>,
 }
+
+const metaRows: ReadonlyArray<G.ListRowData> = [
+    { id: "m1", title: "Follow up with Hoa Sen Spa", description: "Chi Lan", meta: { text: "Overdue 1 day", tone: "danger" }, badges: [{ label: "Open", tone: "warning" }], onPress: noop },
+    { id: "m2", title: "Send the quote", description: "Anh Tuan", meta: { text: "Due today" }, badges: [{ label: "Open", tone: "warning" }], onPress: noop },
+    { id: "m3", title: "Customer replied", description: "Chi Hanh", meta: { text: "8 min" }, onPress: noop },
+]
+
+export const RowEndMeta: Story = {
+    render: () => (
+        <Matrix maxWidth={560}>
+            <State label="Ready (the whole row presses; a short fact at the end, danger when overdue)" direction="column"><G.SurfaceCard kind="list" label="Open work" items={metaRows} empty={emptyLine} /></State>
+            <State label="Loading (same rows as geometry)" direction="column"><G.SurfaceCard kind="list" label="Open work" items={metaRows} empty={emptyLine} isLoading /></State>
+        </Matrix>
+    ),
+}

@@ -1534,6 +1534,22 @@
         white-space: nowrap;
     }
 
+    /* The row's one end fact: a muted line before the commands; a problem (overdue) reads in the danger pair. */
+    .starci-core-list-row-meta {
+        flex: 0 1 auto;
+        min-width: 0;
+        max-inline-size: 10rem;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .starci-core-list-row-meta[data-tone="danger"] { color: var(--danger-soft-foreground); }
+    .starci-core-list-row-meta[data-grammar-skeleton-meta="true"] { inline-size: 4rem; }
+
     .starci-core-list-row-actions {
         display: flex;
         /* Stays at the end of the copy line while leading + 12rem copy + actions fit; wraps only when they do not (0.9.4). */
@@ -1574,6 +1590,12 @@
         .starci-core-list-row[data-grammar-leading="true"][data-grammar-actions="false"] {
             grid-template-columns: auto minmax(0, 1fr);
         }
+
+        /* The end fact takes its own auto track before the commands. */
+        .starci-core-list-row[data-grammar-meta="true"] { grid-template-columns: minmax(0, 1fr) auto auto; }
+        .starci-core-list-row[data-grammar-meta="true"][data-grammar-leading="true"] { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+        .starci-core-list-row[data-grammar-meta="true"][data-grammar-actions="false"] { grid-template-columns: minmax(0, 1fr) auto; }
+        .starci-core-list-row[data-grammar-meta="true"][data-grammar-leading="true"][data-grammar-actions="false"] { grid-template-columns: auto minmax(0, 1fr) auto; }
 
         .starci-core-list-row-actions {
             justify-content: flex-end;

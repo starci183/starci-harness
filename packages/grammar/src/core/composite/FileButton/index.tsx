@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef } from "react"
+import { useIsLoading } from "../../loadingState.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
 import type { NoChildren } from "../../tier.js"
@@ -14,6 +15,8 @@ export type FileButtonProps = NoChildren & {
     readonly accept?: string
     readonly multiple?: boolean
     readonly isDisabled?: boolean
+    /** Unresolved: the control draws as the geometry of the ready button (a Skeleton), nothing opens and no input exists. A loading region tells it too. */
+    readonly isLoading?: boolean
     /** The files the reader picked. Upload, size checks and previews are the app's. */
     readonly onFilesChange: (files: Array<File>) => void
 }
@@ -24,8 +27,16 @@ export type FileButtonProps = NoChildren & {
  * `FileDropzone`. The input is the browser's, so picking, the dialog and the files are native; it is cleared after each pick, so
  * choosing the same file twice still reports it.
  */
-export const FileButton = ({ label, source, accept, multiple = false, isDisabled = false, onFilesChange }: FileButtonProps) => {
+export const FileButton = ({ label, source, accept, multiple = false, isDisabled = false, isLoading: own, onFilesChange }: FileButtonProps) => {
     const input = useRef<HTMLInputElement>(null)
+    const isLoading = useIsLoading(own)
+    if (isLoading) {
+        return (
+            <span className="starci-core-file-button" data-tier="composite" data-component="FileButton" data-loading="true">
+                <IconButton source={source} label={label} intent="neutral" isLoading />
+            </span>
+        )
+    }
     return (
         <span className="starci-core-file-button" data-tier="composite" data-component="FileButton">
             <IconButton source={source} label={label} intent="neutral" isDisabled={isDisabled} onPress={() => input.current?.click()} />
