@@ -163,3 +163,24 @@ export const RowEndMeta: Story = {
         </Matrix>
     ),
 }
+
+const personTile = (isLoading?: boolean) => (
+    <G.SurfaceCard
+        kind="tile"
+        name="Chatbot"
+        mark={{ avatar: { name: "Chatbot" } }}
+        badges={[{ label: "Running", tone: "success" }]}
+        description="Customer care on Zalo OA and Telegram."
+        action={{ label: "Open", press: noop }}
+        menu={{ label: "More actions", entries: [{ kind: "section", id: "s", items: [{ id: "x", label: "Duplicate" }] }] }}
+        {...(isLoading === undefined ? {} : { isLoading })}
+    />
+)
+
+export const TileWithMarkBesideName: Story = {
+    render: () => (
+        <Matrix maxWidth={360}>
+            <State label="Ready: the mark beside the name, status chips under it, the description, the action at the foot start" direction="column"><div data-grammar-twin="Tile"><div data-grammar-twin-item="ready">{personTile()}</div><div data-grammar-twin-item="loading">{personTile(true)}</div></div></State>
+        </Matrix>
+    ),
+}

@@ -43,11 +43,14 @@ const RowBadge = ({ badge }: { readonly badge: BadgeData }) => (
         : <Badge tone={badge.tone ?? "neutral"}>{badge.label}</Badge>
 )
 
-const RowAction = ({ action }: { readonly action: ItemAction }) => (
-    action.href === undefined
-        ? <Button size="sm" intent={action.intent ?? "neutral"} isDisabled={action.isDisabled === true} isPending={action.isPending === true} onPress={action.press}>{action.label}</Button>
-        : <Button size="sm" intent={action.intent ?? "neutral"} isDisabled={action.isDisabled === true} isPending={action.isPending === true} href={action.href}>{action.label}</Button>
-)
+const RowAction = ({ action }: { readonly action: ItemAction }) => {
+    const intent = action.intent === "destructive"
+        ? { intent: "destructive" as const, step: "entry" as const }
+        : { intent: action.intent ?? "neutral" }
+    return action.href === undefined
+        ? <Button size="sm" {...intent} isDisabled={action.isDisabled === true} isPending={action.isPending === true} onPress={action.press}>{action.label}</Button>
+        : <Button size="sm" {...intent} isDisabled={action.isDisabled === true} isPending={action.isPending === true} href={action.href}>{action.label}</Button>
+}
 
 /**
  * The one drawing of a row, inside `SurfaceCard kind="list"` and the `Section` of rows: leading mark, title with its

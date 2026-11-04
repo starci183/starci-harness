@@ -82,7 +82,7 @@ nothing; and the danger pair):
 - emphasis follows consequence, so `commit` takes the top step where a decision is made;
 - a command repeated per item drops a step, because a column of primaries is noise and an item never holds the
   view's commit;
-- `neutral` is quiet everywhere and quietest where it repeats;
+- `neutral` is quiet in chrome and an outlined pill where it repeats per item (a row or tile command: "Open", "Continue setup");
 - `destructive` is the soft danger at entry and the solid danger only at confirm, inside the dialog that
   confirms it, dismiss first and focused.
 

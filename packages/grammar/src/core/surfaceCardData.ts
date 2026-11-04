@@ -36,7 +36,8 @@ export type ImageData = {
 /** One visible command of an item or a tile: a destination or a same-document command, never both. */
 export type ItemAction = Pick<ButtonProps, "isPending"> & {
     readonly label: string
-    readonly intent?: Exclude<ButtonIntent, "destructive">
+    /** The command's consequence. `destructive` draws the soft danger pill of the entry step (sign out, remove); the confirming press belongs in a dialog. Default `neutral`: the outlined pill of an item command. */
+    readonly intent?: ButtonIntent
     readonly isDisabled?: boolean
 } & (
     | { readonly href: string; readonly press?: never }

@@ -53,16 +53,16 @@ export const SurfaceCardTile = ({ data, headingId, headingLevel, isLoading, isDi
 }) => (
     <div className={tileClassName} data-grammar-tile="true" data-grammar-tile-media={data.poster === undefined ? "false" : "true"}>
         {data.poster === undefined ? null : <TilePosterView poster={data.poster} isLoading={isLoading} />}
-        {data.mark === undefined ? null : <TileMarkView mark={data.mark} isLoading={isLoading} />}
-        <div className="starci-core-tile-copy" data-contract="GAP-1">
+        {data.mark === undefined || data.poster !== undefined ? null : <TileMarkView mark={data.mark} isLoading={isLoading} />}
+        <div className="starci-core-tile-copy" data-contract="GAP-1" data-grammar-tile-copy-beside-mark={data.mark !== undefined && data.poster === undefined ? "true" : undefined}>
             <Label as={`h${headingLevel}`} id={headingId} isLoading={isLoading}>{data.name}</Label>
-            {data.description === undefined ? null : (
-                <span className="starci-core-tile-description" data-contract="TONE-2 FONT-2">{isLoading ? <SkeletonPlaceholder>{data.description}</SkeletonPlaceholder> : data.description}</span>
-            )}
             {data.badges === undefined ? null : (
                 <span className="starci-core-tile-badges" data-contract="GAP-2">
                     {data.badges.map((badge) => <TileBadge key={badge.label} badge={badge} isLoading={isLoading} />)}
                 </span>
+            )}
+            {data.description === undefined ? null : (
+                <span className="starci-core-tile-description" data-contract="TONE-2 FONT-2">{isLoading ? <SkeletonPlaceholder>{data.description}</SkeletonPlaceholder> : data.description}</span>
             )}
             {data.facts === undefined ? null : (
                 <span className="starci-core-tile-description" data-grammar-tile-facts="true" data-contract="TONE-2 FONT-2">{isLoading ? <SkeletonPlaceholder>{data.facts}</SkeletonPlaceholder> : data.facts}</span>
@@ -73,14 +73,18 @@ export const SurfaceCardTile = ({ data, headingId, headingLevel, isLoading, isDi
                 {data.badge === undefined ? <span /> : <TileBadge badge={data.badge} isLoading={isLoading} />}
                 <span className="starci-core-tile-actions" data-contract="GAP-2">
                     {data.action === undefined ? null : <TileAction action={data.action} isLoading={isLoading} isDisabled={isDisabled} />}
-                    {data.menu === undefined ? null : isLoading || isDisabled ? (
-                        <IconButton label={data.menu.label} source={EllipsisHorizontalIcon} size="sm" intent="neutral" isLoading={isLoading} isDisabled={isDisabled} />
-                    ) : (
-                        <DropdownMenu
-                            placement="bottom end"
-                            entries={data.menu.entries}
-                            trigger={<IconButton label={data.menu.label} source={EllipsisHorizontalIcon} size="sm" intent="neutral" />}
-                        />
+                    {data.menu === undefined ? null : (
+                        <span className="starci-core-tile-menu">
+                            {isLoading || isDisabled ? (
+                                <IconButton label={data.menu.label} source={EllipsisHorizontalIcon} size="sm" intent="neutral" isLoading={isLoading} isDisabled={isDisabled} />
+                            ) : (
+                                <DropdownMenu
+                                    placement="bottom end"
+                                    entries={data.menu.entries}
+                                    trigger={<IconButton label={data.menu.label} source={EllipsisHorizontalIcon} size="sm" intent="neutral" />}
+                                />
+                            )}
+                        </span>
                     )}
                 </span>
             </div>

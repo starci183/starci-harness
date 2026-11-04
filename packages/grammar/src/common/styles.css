@@ -1747,6 +1747,26 @@
         text-align: center;
     }
 
+    /*
+     * A tile with a mark and no poster draws like a person card: the mark at the start of the first line, the name and its status chips
+     * beside it, then the description and facts under the pair. The one action stands at the start of the foot and the overflow
+     * menu at its end.
+     */
+    .starci-core-tile[data-grammar-tile-media="false"]:has(> .starci-core-tile-mark) {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: start;
+        column-gap: var(--grammar-row-gap);
+        row-gap: var(--starci-core-copy-gap);
+    }
+
+    .starci-core-tile[data-grammar-tile-media="false"]:has(> .starci-core-tile-mark) > .starci-core-tile-copy { display: contents; }
+    .starci-core-tile[data-grammar-tile-media="false"]:has(> .starci-core-tile-mark) > .starci-core-tile-mark { grid-row: 1 / span 2; }
+    .starci-core-tile[data-grammar-tile-media="false"]:has(> .starci-core-tile-mark) > .starci-core-tile-copy > :is(.starci-core-label, h1, h2, h3, h4, h5, h6) { grid-column: 2; grid-row: 1; align-self: end; }
+    .starci-core-tile[data-grammar-tile-media="false"]:has(> .starci-core-tile-mark) > .starci-core-tile-copy > .starci-core-tile-badges { grid-column: 2; grid-row: 2; align-self: start; }
+    .starci-core-tile[data-grammar-tile-media="false"]:has(> .starci-core-tile-mark) > .starci-core-tile-copy > .starci-core-tile-description { grid-column: 1 / -1; margin-block-start: var(--grammar-inline-gap); }
+    .starci-core-tile[data-grammar-tile-media="false"]:has(> .starci-core-tile-mark) > .starci-core-tile-foot { grid-column: 1 / -1; margin-block-start: var(--grammar-inline-gap); }
+
     .starci-core-tile-badges,
     .starci-core-tile-actions {
         display: flex;
@@ -1764,9 +1784,13 @@
         min-block-size: 2rem;
         flex-wrap: wrap;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-start;
         gap: var(--grammar-inline-gap);
     }
+
+    /* The action stands at the start of the foot; the overflow menu is pushed to its end. */
+    .starci-core-tile-foot > .starci-core-tile-actions { flex: 1 1 auto; }
+    .starci-core-tile-menu { display: inline-flex; margin-inline-start: auto; }
 
     .starci-core-accordion-heading {
         margin: 0 !important;

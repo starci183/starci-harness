@@ -39,7 +39,7 @@ export const STARCI_CORE_DNA = Object.freeze({
         alternative: "secondary",
         dismiss: "tertiary",
         neutral: Object.freeze({
-            button: Object.freeze({ decision: "outline", item: "ghost", chrome: "ghost" }),
+            button: Object.freeze({ decision: "outline", item: "outline", chrome: "ghost" }),
             iconButton: Object.freeze({ decision: "outline", item: "ghost", chrome: "ghost", navbar: "tertiary" }),
         }),
         destructive: Object.freeze({ entry: "danger-soft", confirm: "danger" }),
