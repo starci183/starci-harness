@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.8.1 - 2026-11-04
+
+- Fixed: a root workspace package's client (`src/client/**`) and its type modules (`src/**/*.types.ts`, `src/**/*-types.ts`) are outside the back end's unit run, beside its workbench, public face and barrels: the rendered `be/jest.config.js`, `sonar-project.properties` and `codecov.yml` exclude them (BE-TEST-13). R273 (`HFS_COVERAGE_BELOW`) parses each such type module and refuses one that emits code (a value, a function, a value import), naming the first statement.
+- Changed: the canon pins name this release.
+
 ## 5.8.0 - 2026-11-04
 
 - Added: a migration already on the base branch, byte-identical at the merge-base (origin/main, else main, or the base `app check` is given), is landed and immutable (R213): its `DB_MIGRATION_DESTRUCTIVE` and `DB_DYNAMIC_DDL` findings become known items (level info, `landed` names the base) while it stays unchanged; a changed landed file still blocks and a new file is judged in full (`rules/database-landed.mts`, ruling landed-destructive-migration).

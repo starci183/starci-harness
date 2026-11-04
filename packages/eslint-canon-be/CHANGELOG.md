@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.16.1 - 2026-11-04
+
+- Changed: the runtime copies carry the R273 law of `@starci/hfs` 5.8.1 (a root package's type modules hold types only) and its canon pins.
+
 ## 3.16.0 - 2026-11-04
 
 - Changed: `schema-place` (R304) lets any file of a root workspace package (tier `package`: `packages/<name>/`, slots `app.packages` and `app.module-registry`) import `zod`, since its node, block and vocabulary contracts are zod schemas; a door or `dto/` folder there still answers to `class-validator`, a `<name>.schema.ts` there still never shares a file with `class-validator` or a GraphQL type, and `schema-bounded` holds unchanged (ruling package-zod-contracts). Spec: `src/packages-config.spec.ts`.

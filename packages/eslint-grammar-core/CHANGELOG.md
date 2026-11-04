@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.24 - 2026-11-04
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.24; requires `@starci/eslint-canon-fe` 9.13.7. The runtime copies carry the R273 law and the canon pins of `@starci/hfs` 5.8.1.
+
 ## 0.21.23 - 2026-11-04
 
 - Changed: version stamp only, with `@starci/grammar` 0.21.23; requires `@starci/eslint-canon-fe` 9.13.6. The runtime copies carry the module shape of `be.integrations.passport` in the package slot manifest, the R304 law and the canon pins of `@starci/hfs` 5.8.0.

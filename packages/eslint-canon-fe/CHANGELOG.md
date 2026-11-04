@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.13.7 - 2026-11-04
+
+- Changed: the runtime copy of the canon pins names `@starci/hfs` 5.8.1.
+
 ## 9.13.6 - 2026-11-04
 
 - Changed: the runtime copies carry the module shape of `be.integrations.passport` in the package slot manifest and the canon pins of `@starci/hfs` 5.8.0.
