@@ -46,6 +46,7 @@ src/
   as typed, `--help` included, once the CLI's own `--json` and `--cwd` are taken out, and @starci/hfs owns its flags, their
   parsing and its help. The CLI still does what is its own before it forwards: the role and the harness (its version,
   the caller's role, the ticket queue of a back-fill, the age identity), `STARCI_GATE_ERROR_LIMIT` from policy/quality.yaml,
+  `STARCI_PROFILE_BRANCHES` and `STARCI_PROFILE_GATES` from `branchProfiles` of policy/loosening.yaml (after the app's own overlay),
   the green-CI or urgent-record gate of an executed production `app stack deploy`, the install judgement of an executed
   `app release`, and `app secret set --from-host`, which it takes out and resolves. `runHfs` streams hfs's output in human mode (the verb's message is empty) or, under `--json`, passes `--json` to a verb
   that prints a report and carries it in the envelope; the exit code is hfs's, 3 included (a database mutation not
