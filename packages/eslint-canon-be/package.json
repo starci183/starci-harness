@@ -68,7 +68,7 @@
   "devDependencies": {
     "@starci/tsconfig": "file:../tsconfig",
     "@types/node": "24.19.2",
-    "eslint": "^9.18.0",
+    "eslint": "^10.14.0",
     "typescript": "^6.0.3"
   },
   "types": "./dist/index.d.ts"
