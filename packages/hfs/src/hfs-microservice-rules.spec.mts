@@ -61,6 +61,16 @@ test('HFS_SERVICE_PLACEMENT: the Dockerfile of a be app, of a front-end app, the
   }, 'HFS_SERVICE_PLACEMENT'), []);
 });
 
+test('HFS_SERVICE_PLACEMENT: a root workspace package (packages/<name>/package.json) is no service root; a Dockerfile or a nested manifest under packages/ still is', () => {
+  const findings = only(APP, (dir) => {
+    put(dir, 'packages/agent-sdk/package.json', '{}\n');
+    put(dir, 'packages/blocks-core/package.json', '{}\n');
+    put(dir, 'packages/blocks-core/Dockerfile', 'FROM node\n');
+    put(dir, 'packages/blocks-core/server/package.json', '{}\n');
+  }, 'HFS_SERVICE_PLACEMENT');
+  assert.deepEqual(pathsOf(findings), ['packages/blocks-core/Dockerfile', 'packages/blocks-core/server/package.json']);
+});
+
 // ------------------------------------------------------------------------------------------------ R164 HFS_IMAGE_UNPINNED
 
 test('HFS_IMAGE_UNPINNED: a multi-service stack with a moving image (no tag, latest, major only) is refused, each component named', () => {

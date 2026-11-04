@@ -1,7 +1,8 @@
 // services.mjs - the microservice policy of a product that runs more than one service (R163 to R167).
 // A product keeps every back-end service as a Nest app at `be/apps/<service>/` of the one repository, sharing the `be/src` libraries and
 // the one package.json; the services it does not own stay pinned images in the stack. Five tree checks:
-//   R163 HFS_SERVICE_PLACEMENT      a service root (a Dockerfile, or a package.json other than the app's own and a workspace package's)
+//   R163 HFS_SERVICE_PLACEMENT      a service root (a Dockerfile, or a package.json other than the app's own and a workspace package's:
+//                                   fe/apps/<app>, fe/packages/<pkg> or a root packages/<name>)
 //                                   exists only at be/apps/<service>/ (fe/apps/<app>/Dockerfile is a front end's);
 //   R164 HFS_IMAGE_UNPINNED         in a multi-service product every component image of application-stacks.yaml is a digest or an exact
 //                                   version (x.y.z), never a missing tag, `latest`, a branch word or a major/minor-only tag;
@@ -36,7 +37,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SERVICE_KINDS = new Set(['api', 'worker']);
 const BE_SERVICE_FILE = /^be\/apps\/([^/]+)\/(.+)$/;
 const DOCKERFILE = /(?:^|\/)Dockerfile(?:\.[^/]+)?$/;
-const WORKSPACE_PACKAGE_JSON = /^fe\/(?:packages|apps)\/[^/]+\/package\.json$/;
+/** The manifest of a workspace package: a front-end app or package, or a root workspace package (slot app.packages, packages/<name>/). */
+const WORKSPACE_PACKAGE_JSON = /^(?:fe\/(?:packages|apps)|packages)\/[^/]+\/package\.json$/;
 const SNAPSHOT = /^be\/contracts\/([^/]+)\/events\.json$/;
 const DIGEST = /@sha256:[0-9a-f]{64}$/;
 const EXACT_TAG = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
