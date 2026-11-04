@@ -74,10 +74,24 @@ test('a lite adapter refuses generation until its topic supplies an edition tree
 
 test('add queue in full retains the BullMQ adapter and TypeORM schema', (t) => {
   const root = fixture(t, 'full');
+  fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ name: 'demo', private: true, dependencies: { ioredis: '5.0.0' } }, null, 2)}\n`);
+  fs.mkdirSync(path.join(root, 'be', 'src', 'modules', 'platform', 'logging'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'be', 'src', 'modules', 'platform', 'logging', 'index.ts'), 'export { InjectLogger, LOGGER } from "./logging.decorators"\n');
   const result = addKind({ repoRoot: root, noun: 'queue', name: 'send-receipt', now: () => Date.UTC(2026, 9, 24) });
   assert.ok(result.created.includes('be/src/modules/platform/queue/bullmq-queue-transport.client.ts'));
   assert.ok(result.created.includes('be/src/modules/platform/queue/errors/queue.error.ts'));
   assert.ok(result.created.includes('be/src/modules/platform/queue/messages/queue.messages.ts'));
   assert.ok(result.created.includes('be/src/modules/platform/queue/persistence/entities/queue-outbox.entity.ts'));
   assert.equal(result.created.some(file => file.startsWith('supabase/') || /pgmq/.test(file)), false);
+  // The generated queue compiles: the declared Redis, its clients at their pins (one the app holds stays), the correlation helpers.
+  assert.ok(result.created.includes('hfs.json') && result.created.includes('package.json'));
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'hfs.json'), 'utf8')).sides.be.backing, ['redis']);
+  const dependencies = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).dependencies;
+  assert.equal(dependencies.ioredis, '5.0.0');
+  assert.match(String(dependencies.bullmq), /^\d+\.\d+\.\d+$/);
+  const logging = fs.readFileSync(path.join(root, 'be', 'src', 'modules', 'platform', 'logging', 'index.ts'), 'utf8');
+  assert.match(logging, /export \{ CORRELATION_RUNNER, InjectCorrelationRunner, InjectLogger, LOGGER \} from "\.\/logging\.decorators"/);
+  assert.match(logging, /export type \{ CorrelationRunner \} from "\.\/correlation\.port"/);
+  const again = addKind({ repoRoot: root, noun: 'queue', name: 'send-invoice', now: () => Date.UTC(2026, 9, 25) });
+  assert.equal(again.created.includes('package.json'), false, 'a second queue changes no manifest');
 });

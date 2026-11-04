@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common"
-import { isRecord } from "@modules/platform/primitives"
+import { eachInOrder, isRecord } from "@modules/platform/primitives"
 import { InjectLogger, isCorrelationId } from "@modules/platform/logging"
 import type { Logger } from "@modules/platform/logging"
 import { InjectIds } from "@modules/platform/ids"
@@ -17,6 +17,7 @@ import type {
     BullmqQueue,
     BullmqWorker,
     QueueFactory,
+    QueuedJob,
     QueueTransport,
 } from "./queue-transport.port"
 
@@ -46,6 +47,14 @@ export class BullmqQueueTransportClient implements QueueTransport {
                 removeOnComplete: { age: KEEP_COMPLETED_SECONDS },
             },
         )
+    }
+
+    /** Resolves once each job is held by its queue; a job Redis does not hold is QUEUE_JOB_LOST. */
+    async persist(jobs: ReadonlyArray<QueuedJob>): Promise<void> {
+        await eachInOrder(jobs, async (job) => {
+            if ((await this.queueOf(job.queue).getJobState(job.jobId)) === "unknown")
+                throw new QueueError({ code: QueueErrorCode.JobLost, params: { queue: job.queue, jobId: job.jobId } })
+        })
     }
 
     /** Creates or updates the scheduler; BullMQ keeps one per id however many replicas call this. */

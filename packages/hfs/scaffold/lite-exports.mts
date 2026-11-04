@@ -12,6 +12,13 @@ interface Registration {
   readonly beforeSource?: string;
 }
 
+/** The correlation helpers the queue platform imports in either edition: the worker runs each job under the correlation id its envelope carries, which the outbox and the transport check. */
+const QUEUE_CORRELATION: readonly Registration[] = [
+  { file: "be/src/modules/platform/logging/index.ts", source: "./correlation.policy", names: ["isCorrelationId"] },
+  { file: "be/src/modules/platform/logging/index.ts", source: "./correlation.port", names: ["CorrelationRunner"], type: true },
+  { file: "be/src/modules/platform/logging/index.ts", source: "./logging.decorators", names: ["CORRELATION_RUNNER", "InjectCorrelationRunner"] },
+]
+
 const REGISTRATIONS: Readonly<Record<string, readonly Registration[]>> = Object.freeze({
   // The entity base a generated table entity extends (BE-PERSISTENCE-3), in either edition; AbstractEntity stays file-local until an
   // app's own composite-key entity imports it.
@@ -69,24 +76,10 @@ const REGISTRATIONS: Readonly<Record<string, readonly Registration[]>> = Object.
       names: ["sql"],
       beforeSource: "./errors/database.error",
     },
-    {
-      // The worker runs each job under the correlation id its envelope carries, which the outbox and the transport check.
-      file: "be/src/modules/platform/logging/index.ts",
-      source: "./correlation.policy",
-      names: ["isCorrelationId"],
-    },
-    {
-      file: "be/src/modules/platform/logging/index.ts",
-      source: "./correlation.port",
-      names: ["CorrelationRunner"],
-      type: true,
-    },
-    {
-      file: "be/src/modules/platform/logging/index.ts",
-      source: "./logging.decorators",
-      names: ["CORRELATION_RUNNER", "InjectCorrelationRunner"],
-    },
+    ...QUEUE_CORRELATION,
   ],
+  // A full app's queue platform imports the same correlation helpers; its primitives and database barrels already export the rest.
+  "queue-full": QUEUE_CORRELATION,
   // The jobs capability (add job, the fenced-job pattern): its tick takes a transaction-scoped lock before it claims the minute (R335).
   jobs: [
     {
@@ -247,8 +240,15 @@ function addExport(text: string, registration: Registration): string {
 /** The app-relative barrels one generator's registrations edit (a caller snapshots them before registerLiteExports). */
 export const registrationFiles = (generator: string): string[] => [...new Set((REGISTRATIONS[generator] ?? []).map((registration) => registration.file))]
 
-/** Adds only the barrel exports first consumed by one generator; full webhooks share the same optional platform API. */
-export function registerLiteExports({ root, generator }: { root: string, generator: string }): string[] {
+/** One barrel a generator's registrations change: its app-relative path and its text before and after. */
+export interface ExportEdit {
+  readonly relative: string
+  readonly before: string
+  readonly after: string
+}
+
+/** The barrel edits one generator's registrations make, without writing them; a barrel the registrations leave as it is is not listed. */
+export function liteExportEdits({ root, generator }: { root: string, generator: string }): ExportEdit[] {
   const registrations = REGISTRATIONS[generator]
   if (!registrations) throw new ScaffoldError("HFS_ADD_EXPORTS_UNKNOWN", `no export registration exists for ${generator}`)
   const byFile = new Map<string, Registration[]>()
@@ -257,7 +257,7 @@ export function registerLiteExports({ root, generator }: { root: string, generat
     list.push(registration)
     byFile.set(registration.file, list)
   }
-  const changed: string[] = []
+  const edits: ExportEdit[] = []
   for (const [relative, entries] of byFile) {
     const file = path.join(root, ...relative.split("/"))
     if (!fs.existsSync(file)) {
@@ -265,12 +265,16 @@ export function registerLiteExports({ root, generator }: { root: string, generat
     }
     const before = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n")
     const after = entries.reduce(addExport, before)
-    if (after !== before) {
-      fs.writeFileSync(file, after)
-      changed.push(relative)
-    }
+    if (after !== before) edits.push({ relative, before, after })
   }
-  return changed
+  return edits
+}
+
+/** Adds only the barrel exports first consumed by one generator; full webhooks share the same optional platform API. */
+export function registerLiteExports({ root, generator }: { root: string, generator: string }): string[] {
+  const edits = liteExportEdits({ root, generator })
+  for (const edit of edits) fs.writeFileSync(path.join(root, ...edit.relative.split("/")), edit.after)
+  return edits.map((edit) => edit.relative)
 }
 
 /** Makes a domain service public only when a generated transport first imports its module barrel. */

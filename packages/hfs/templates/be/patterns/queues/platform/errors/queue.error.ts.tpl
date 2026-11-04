@@ -3,6 +3,8 @@ import type { ErrorKind } from "@modules/platform/errors"
 
 /** Codes of the queue capability. */
 export enum QueueErrorCode {
+    /** Redis does not hold a job it was handed. */
+    JobLost = "QUEUE_JOB_LOST",
     /** Stored job data does not satisfy the delivery envelope contract. */
     MalformedMessage = "QUEUE_MALFORMED_MESSAGE",
     /** A producer supplied an identity that is unsafe or unbounded. */
@@ -11,6 +13,7 @@ export enum QueueErrorCode {
 
 /** How each queue code travels. */
 export const QUEUE_ERROR_KINDS: Record<QueueErrorCode, ErrorKind> = {
+    [QueueErrorCode.JobLost]: "unavailable",
     [QueueErrorCode.MalformedMessage]: "internal",
     [QueueErrorCode.CorrelationInvalid]: "invalid",
 }

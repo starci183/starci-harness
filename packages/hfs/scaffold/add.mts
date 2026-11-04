@@ -31,7 +31,7 @@ import { addFeLayout } from './add-fe-layout.mjs';
 import { ensureLiteCli } from './add-cli-lite.mjs';
 import { ensureLiteQueuesCli } from './queues-cli-lite.mjs';
 import { addLiteWebhookInbox } from './add-inbox-lite.mjs';
-import { planLiteQueue } from './add-queue-lite.mjs';
+import { planFullQueue, planLiteQueue } from './add-queue-lite.mjs';
 import { addBuiltinLiteCli, fillKnownForms, formsOf, planKind, readAddContext } from './add-plan.mjs';
 import type { AddKindSpec } from './add-plan.mjs';
 export { liteApiTemplates } from './add-plan.mjs';
@@ -122,7 +122,9 @@ export function addKind({ repoRoot, noun, name, options = {}, now = Date.now }: 
   return writeKind({ ...context, ...planKind(context) });
 }
 
-function registerFeatureExports({ repoRoot, repo, noun, values }: { repoRoot: string, repo: RepoLike, noun: string, values: Record<string, string> }): void {
+function registerFeatureExports({ repoRoot, repo, noun, values, patterns }: { repoRoot: string, repo: RepoLike, noun: string, values: Record<string, string>, patterns: readonly string[] }): void {
+  // A full app's queue platform imports the correlation helpers of platform/logging; lite registers them with its queue backing.
+  if (repo.edition !== 'lite' && patterns.includes('queue')) registerLiteExports({ root: repoRoot, generator: 'queue-full' });
   if (noun === 'webhook' || (repo.edition === 'lite' && noun === 'api')) {
     registerLiteExports({ root: repoRoot, generator: repo.edition === 'lite' ? noun : 'webhook-full' });
   }
@@ -140,15 +142,16 @@ function writeKind({ repoRoot, noun, name, now, manifest, repo, spec: declared, 
   const spec: KindSpec = declared;
   if (noun === 'api' || noun === 'webhook') preflightFeatureComposition({ repoRoot, repo, noun, name });
   const liteQueue = planLiteQueue({ repoRoot, repo, noun, patterns, now });
+  const fullQueue = planFullQueue({ repoRoot, repo, noun });
   const bootstrapCreated = noun === 'cli' && repo.edition === 'lite' ? ensureLiteCli({ root: repoRoot, manifest, repo }) : [];
   for (const file of planned) {
     fs.mkdirSync(path.dirname(file.absolute), { recursive: true });
     fs.writeFileSync(file.absolute, file.body);
   }
-  registerFeatureExports({ repoRoot, repo, noun, values });
+  registerFeatureExports({ repoRoot, repo, noun, values, patterns });
   if (spec.wire) wire({ beRoot, wire: spec.wire, forms, noun, name });
   const inboxCreated = addLiteWebhookInbox({ root: repoRoot, repo, noun, provider: name, values, now });
-  const queueBacking = liteQueue ? liteQueue.apply() : [];
+  const queueBacking = [...(liteQueue ? liteQueue.apply() : []), ...(fullQueue ? fullQueue.apply() : [])];
   const queuesCli = liteQueue && noun === 'job' ? ensureLiteQueuesCli(repoRoot) : [];
   const platformCreated = noun === 'api' || noun === 'webhook' ? wireFeature({ repoRoot, repo, noun, name }) : [];
   const graphqlDoor = noun === 'api' ? ensureGraphqlPeers(repoRoot) : [];
