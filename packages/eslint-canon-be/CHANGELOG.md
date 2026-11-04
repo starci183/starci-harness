@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.16.2 - 2026-11-04
+
+- Changed: the runtime copy of the canon pins names `@starci/hfs` 5.8.2.
+
 ## 3.16.1 - 2026-11-04
 
 - Changed: the runtime copies carry the R273 law of `@starci/hfs` 5.8.1 (a root package's type modules hold types only) and its canon pins.

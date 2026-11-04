@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.8.2 - 2026-11-04
+
+- Fixed: the rendered lite sign-in passes the canon it ships with: `identity-email.service.ts` (`ReadonlyArray<MailLanguage>`, an optional chain), its spec (`mock<MailOptions>({ ... })`, no assertion) and `identity-mail.messages.ts` (`ReadonlyArray<string>`). The template canon checks (`scaffold-template-canon-be`, `-fe`) lint with the canon's whole config as the rendered `eslint.config.mjs` builds it, its borrowed typescript-eslint, stylistic and Sonar way rules included, so a managed file and the canon can no longer contradict each other.
+- Fixed: `HFS_UNUSED_SYMBOL` (R280) reads a TS catalog (`*.messages.ts`) through the function of the same file that draws its copy; only the catalog's object declarations are metadata, so a key read as `copy.subject` is no longer reported.
+- Changed: the canon pins name this release.
+
 ## 5.8.1 - 2026-11-04
 
 - Fixed: a root workspace package's client (`src/client/**`) and its type modules (`src/**/*.types.ts`, `src/**/*-types.ts`) are outside the back end's unit run, beside its workbench, public face and barrels: the rendered `be/jest.config.js`, `sonar-project.properties` and `codecov.yml` exclude them (BE-TEST-13). R273 (`HFS_COVERAGE_BELOW`) parses each such type module and refuses one that emits code (a value, a function, a value import), naming the first statement.
