@@ -7,13 +7,16 @@
 //     Sonar is owned by the host (`stack.owner: host`, root `.claude/ext/sonar`).
 // The lite overlay admits Swarm compute and its own db service. Runtime rules are shared with the stack gates.
 // The declaration's quality/delivery services contract (custody, CI wiring, project keys) stays check-starcistacks's.
+// HFS_BRANCH_PROFILE_INVALID (R378): the `branches` block of the declaration (readBranchProfiles of the stack-declaration reader) lowers only a polish gate
+// (lint, sonar, codecov) on a branch policy/loosening.yaml branchProfiles allows, never on the default branch.
 import { braceVariants, globExpression } from '../../lib/glob.mjs';
-import { declaredStack, findStackDeclaration, STACK_ROOT, text } from '../../lib/stack-declaration.mjs';
+import { declaredStack, findStackDeclaration, readBranchProfiles, STACK_ROOT, text } from '../../lib/stack-declaration.mjs';
 import { found } from './read.mjs';
 import { hostCrontabFindings, stacksRuntimeFindings } from './stacks-runtime.mjs';
 import type { Parsed, Resolver } from './rule-types.mjs';
 
 const STACKS_SHAPE = 'HFS_STACKS_SHAPE';
+export const BRANCH_PROFILE_INVALID = 'HFS_BRANCH_PROFILE_INVALID';
 const STACKS_SLOT = 'app.starcistacks';
 const HOST_SONAR_ROOT = '.claude/ext/sonar';
 const INSIDE_SECRETS = /^[^/]+\/secrets\/[^/]+\.enc(?:\.yaml)?$/;
@@ -45,6 +48,7 @@ function declarationFindings(files: string[], prefix: string, declaration: Parse
     if (environments !== null && typeof environments === 'object' && Object.hasOwn(environments, name)) findings.push(shapeFinding(declared, `${declared} declares an environment named ${name}; the name is reserved for ${holds} (.starcistacks/${name}/)`));
   }
   if (declaration.error) return [shapeFinding(declared, `${declared} cannot be read: ${declaration.error}`)];
+  for (const problem of readBranchProfiles(declaration.doc).problems) findings.push(found(BRANCH_PROFILE_INVALID, declared, `${declared} ${problem.at}: ${problem.message}`));
   const services = declaration.doc?.services;
   if (services === undefined || typeof services.sonar !== 'object' || services.sonar === null) {
     findings.push(shapeFinding(declared, `${declared} declares no sonar service; every repository states its Sonar owner (a local one is owned by the host: stack.owner host, root ${HOST_SONAR_ROOT})`));

@@ -1,11 +1,13 @@
 // R251: product workflow custody, immutable dependencies and release-only triggers, in both editions.
 // A release deploys through the reusable stack-deploy.yml: its jobs hold the environment, the age key and the transport; the job of ci.yml that calls it
 // (a deployment caller) holds permissions, concurrency and the environment name it passes. A pull_request run reads and never binds an environment.
+// ci.yml starts on a push of main, the release candidates and the branches the stack declaration gives a branch profile (readBranchProfiles), nothing else.
 import { parseWorkflow } from '../runtime-rules/workflow-source.mjs';
 import { found } from './read.mjs';
 import { appWorkflowFindings } from './app-workflow-findings.mjs';
 import { isPlainObject as record } from '../../../engine/plain-object.mjs';
 import { workflowEventOptions } from '../../lib/workflow-events.mjs';
+import { findStackDeclaration, readBranchProfiles } from '../../lib/stack-declaration.mjs';
 import type { Parsed } from './rule-types.mjs';
 
 const DEPLOY = 'HFS_DEPLOY_WORKFLOW';
@@ -84,9 +86,9 @@ function hasAgeIdentity(job: Parsed, doc: Parsed) {
 
 /** The release candidate branches (OWNER RULING candidate-ci, 2026-10-18): `starci app release push` waits for the ci.yml run of the release sha there. */
 const CANDIDATE_BRANCHES = 'release/candidate-*';
-const pushFilterValid = (options: Parsed, ci: Parsed) => record(options) && Object.keys(options).length > 0 && Object.keys(options).every((key) => key === 'tags' || key === 'branches')
+const pushFilterValid = (options: Parsed, ci: Parsed, profiles: readonly string[]) => record(options) && Object.keys(options).length > 0 && Object.keys(options).every((key) => key === 'tags' || key === 'branches')
   && (options.tags === undefined || (Array.isArray(options.tags) && options.tags.length === 1 && options.tags[0] === 'v*'))
-  && (options.branches === undefined || (Array.isArray(options.branches) && options.branches.length > 0 && new Set(options.branches).size === options.branches.length && options.branches.every((branch: Parsed) => branch === CANDIDATE_BRANCHES || (ci && branch === 'main'))));
+  && (options.branches === undefined || (Array.isArray(options.branches) && options.branches.length > 0 && new Set(options.branches).size === options.branches.length && options.branches.every((branch: Parsed) => branch === CANDIDATE_BRANCHES || (ci && (branch === 'main' || profiles.includes(branch))))));
 
 const isCi = (file: string) => /(^|\/)ci\.ya?ml$/.test(file);
 /** The managed nightly verify of the committed check cache, the one app workflow that runs on a schedule (ruling release-gate-warm-cache). */
@@ -108,7 +110,7 @@ function pullRequestFindings(doc: Parsed, options: Parsed, refuse: Parsed, file:
   return findings;
 }
 
-function triggerFindings(doc: Parsed, refuse: Parsed, file = '') {
+function triggerFindings(doc: Parsed, refuse: Parsed, file = '', profiles: readonly string[] = []) {
   const on = workflowEventOptions(doc.on);
   if (!record(on) || !Object.keys(on).length) return [refuse(TRIGGER, 'declare release tags [v*] and/or workflow_dispatch')];
   const findings = [];
@@ -125,8 +127,8 @@ function triggerFindings(doc: Parsed, refuse: Parsed, file = '') {
       findings.push(refuse(TRIGGER, `trigger ${event} is forbidden; app CI starts only on release tags [v*], the release candidate branches, main and pull requests to main in ci.yml, workflow_call or workflow_dispatch, and the schedule of cache-verify.yml`));
       continue;
     }
-    if (!pushFilterValid(options, isCi(file))) {
-      findings.push(refuse(TRIGGER, `push may contain only tags: [v*] and branches: ['${CANDIDATE_BRANCHES}']; ci.yml may also name main; other branch and path filters are forbidden`));
+    if (!pushFilterValid(options, isCi(file), profiles)) {
+      findings.push(refuse(TRIGGER, `push may contain only tags: [v*] and branches: ['${CANDIDATE_BRANCHES}']; ci.yml may also name main and the branches with a branch profile (${profiles.join(', ') || 'none declared'}); other branch and path filters are forbidden`));
     }
   }
   return findings;
@@ -275,14 +277,15 @@ function toolFindings(doc: Parsed, refuse: Parsed) {
   return findings;
 }
 
-function perWorkflow({ path: file, text }: { path: string; text: string }) {
+function perWorkflow({ path: file, text }: { path: string; text: string }, profiles: readonly string[] = []) {
   const refuse = (code: string, message: string) => found(code, file, `${code} ${file}: ${message}`);
   const doc = parseWorkflow(text);
   if (!record(doc)) return [refuse(TRIGGER, 'the workflow must be valid YAML with a release-only on block'), ...(deployName(file) ? [refuse(DEPLOY, 'the deploy workflow must be valid YAML')] : [])];
-  return [...triggerFindings(doc, refuse, file), ...deploymentFindings(doc, file, refuse), ...ageKeyJobFindings(doc, file, refuse), ...toolFindings(doc, refuse)];
+  return [...triggerFindings(doc, refuse, file, profiles), ...deploymentFindings(doc, file, refuse), ...ageKeyJobFindings(doc, file, refuse), ...toolFindings(doc, refuse)];
 }
 
 /** Synchronous R251 findings over the tracked workflows of a lite/full app. */
 export function deployWorkflowFindings(ctx: Parsed) {
-  return appWorkflowFindings(ctx, perWorkflow);
+  const profiles = Object.keys(readBranchProfiles(findStackDeclaration(ctx.repoRoot).doc).profiles);
+  return appWorkflowFindings(ctx, (workflow: { path: string; text: string }) => perWorkflow(workflow, profiles));
 }

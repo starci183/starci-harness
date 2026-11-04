@@ -1,6 +1,6 @@
 // The @starci/hfs implementation behind `starci app`: one repository, `<app>/`, with one package.json, lockfile and node_modules
 // at its root and two sides, be/ and fe/, declared by the one hfs.json of kind app. Every verb runs at the app root.
-//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--no-cache] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged
+//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--no-cache] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
 //                                            every tracked path has a slot; required files exist; nothing forbidden or
 //                                            tracked-that-must-be-ignored; pins match; every managed file equals its render
 //                                            (sync/managed.mjs, the .gitignore block and sonar-project.properties included); no empty or ghost
@@ -29,6 +29,12 @@
 //                                            --staged: the pre-commit guard alone (sync/hygiene.mjs: staged .starciwork and .starcistacks paths, the secrets
 //                                            guard and the bypass guard over every staged file read from the index, a new back-end logic file staged
 //                                            without its unit spec); it takes no other flag.
+//                                            Every run is under the branch profile of the branch it judges (runtime/scripts/hfs/branch-profile.mjs, `branches` of
+//                                            .starcistacks/application-stacks.yaml; contexts/project/lint.md PROJECT-LINT-2): a gate the profile reports runs and records,
+//                                            its findings marked `report` and outside the verdict; an off gate does not run; each prints one notice. Where lint
+//                                            reports, the lint ratchet (lint/ratchet.mjs) refuses the commits since the base that add lint findings to a file they touch.
+//                                            --profile prints the profile (with one --gate, only that gate's mode: the word the pre-commit hook reads);
+//                                            --ratchet is the pre-commit lint ratchet over the staged files against HEAD. Both take no other flag.
 //                                            Exit 1 at 20 error findings or a hard blocker (gate-threshold.mjs). The root checks run once and
 //                                            the side checks and the machine once per side, the side folder as their root; every path is app-relative.
 //   starci app scaffold <name> [--cwd <dir>]  a new app <dir>/<name>/ (<dir> is the global --cwd): the root (hfs.json, package.json, managed files, .starciwork) and the
@@ -88,6 +94,8 @@ import { dbBaselineMain } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { dbRestampMain } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
 import { formatCoverageReport } from '../runtime/scripts/hfs/coverage-from.mjs';
 import { gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
+import { activeProfile, familyModes, profileNotices, type ActiveProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
+import { PROFILE_GATES } from '../runtime/scripts/lib/stack-declaration.mjs';
 import { HFS_DECLARATION_FILE, HfsSlotsError, SIDES, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { main as syncMain } from '../sync/cli.mjs';
 import { runWorkHygiene } from '../sync/hygiene.mjs';
@@ -100,6 +108,7 @@ import { removeModule } from '../scaffold/add-module.mjs';
 import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { newImages } from '../scaffold/image.mjs';
 import { PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
+import { rangeTouched, ratchetBase, ratchetFindings, stagedTouched } from '../lint/ratchet.mjs';
 import { runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
 import { CACHE_ENV, createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
@@ -201,7 +210,7 @@ const PARSED: Record<string, ParsedVerb> = {
     ],
   },
   remove: { run: removeMain, forms: [{ operands: 'module <name>', flags: [] }] },
-  check: { run: checkMain, value: ['--coverage-from', '--shard', '--side', '--out'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--no-cache', '--fix', '--fresh'], edition: true, forms: [{ only: { boolean: ['--json', '--no-cache', '--fix', '--fresh'], list: GATE_FLAGS, value: ['--coverage-from', '--shard', '--side', '--out'] } }, { only: { boolean: ['--staged'] }, edition: false }] },
+  check: { run: checkMain, value: ['--coverage-from', '--shard', '--side', '--out'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--no-cache', '--fix', '--fresh', '--profile', '--ratchet'], edition: true, forms: [{ only: { boolean: ['--json', '--no-cache', '--fix', '--fresh'], list: GATE_FLAGS, value: ['--coverage-from', '--shard', '--side', '--out'] } }, { only: { boolean: ['--staged'] }, edition: false }, { only: { boolean: ['--ratchet'] }, edition: false }, { only: { boolean: ['--profile', '--json'], list: GATE_FLAGS }, edition: false }] },
   slot: { run: slotMain, boolean: ['--json'], forms: [{ operands: '<path>' }] },
   emit: { run: emitMain, forms: [{}] },
 };
@@ -310,6 +319,8 @@ function printCheckOverview(result: Dynamic, out: (text: string) => unknown): vo
 `);
   for (const warning of (result.cacheWarnings ?? []) as string[]) out(`  cache: ${warning}
 `);
+  for (const notice of (result.branchProfile?.notices ?? []) as string[]) out(`  ${notice}
+`);
   out(`  architecture machine: ${machineDescription(result.machine)}
 `);
   if (result.contracts) out(`  contract snapshots: ${contractDescription(result.contracts)}
@@ -325,8 +336,9 @@ function printCheckOverview(result: Dynamic, out: (text: string) => unknown): vo
 
 function printFindingGroup(code: string, list: Dynamic[], out: (text: string) => unknown): void {
   const first = list[0] as Dynamic;
-  if (first.engine) out(`\n[${first.level.toUpperCase()}] ${code} x${list.length}\n`);
-  else out(`\n[${first.level.toUpperCase()}] ${code} x${list.length}: ${first.titleVi}\n  ${first.whyVi}\n  -> ${first.nextStepVi}\n`);
+  const label = `${String(first.level).toUpperCase()}${first.report === true ? ', REPORT ONLY' : ''}`;
+  if (first.engine) out(`\n[${label}] ${code} x${list.length}\n`);
+  else out(`\n[${label}] ${code} x${list.length}: ${first.titleVi}\n  ${first.whyVi}\n  -> ${first.nextStepVi}\n`);
   for (const finding of list.slice(0, PER_CODE_LIMIT)) out(`  - ${finding.message}\n`);
   if (list.length > PER_CODE_LIMIT) out(`  ... and ${list.length - PER_CODE_LIMIT} more (use --json for all)\n`);
 }
@@ -337,7 +349,7 @@ function printCheck(result: Dynamic, out: (text: string) => unknown): void {
   const byCode = new Map<string, Dynamic[]>();
   for (const f of result.findings) byCode.set(f.code, [...(byCode.get(f.code) ?? []), f]);
   for (const [code, list] of byCode) printFindingGroup(code, list, out);
-  out(`\n${counts.error} error finding${counts.error === 1 ? '' : 's'}, ${counts.warning} warning${counts.warning === 1 ? '' : 's'}, ${counts.info} report-only\n`);
+  out(`\n${counts.error} error finding${counts.error === 1 ? '' : 's'}${counts.reported ? ` (${counts.reported} of them report only, outside the verdict on branch ${result.branchProfile?.profile})` : ''}, ${counts.warning} warning${counts.warning === 1 ? '' : 's'}, ${counts.info} report-only\n`);
   const counting = Object.entries((result.counting ?? {}) as Record<string, number>).sort(([a], [b]) => a.localeCompare(b));
   if (counting.length) out(`counting (warn, not in the verdict): ${counting.map(([rule, count]) => `${rule} ${count}`).join(', ')}\n`);
 }
@@ -502,9 +514,13 @@ async function fixLint({ repoRoot, side, run }: { repoRoot: string; side: string
 }
 
 /** One run of the selected families against the cache, then the coverage proof on top; returns the result, what it took and the raw linter results. */
-async function checkRun({ io, selected, full, use, coverageFrom, side, fix = false, fresh = false }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined; side?: string | undefined; fix?: boolean; fresh?: boolean }): Promise<{ result: Dynamic; seconds: number; raw: LinterRaw }> {
+async function checkRun({ io, selected: requested, full, use, coverageFrom, side, fix = false, fresh = false }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined; side?: string | undefined; fix?: boolean; fresh?: boolean }): Promise<{ result: Dynamic; seconds: number; raw: LinterRaw }> {
   const { cwd: repoRoot, harness, edition, presets, prettier, checkApp = appPass, runLinter } = io;
   const started = Date.now();
+  // The branch profile (branch-profile.mjs): a gate it turns off does not run, a gate it reports runs and records but its findings never count.
+  const profile = activeProfile(repoRoot, io.env);
+  const modes = familyModes(profile);
+  const selected = new Set([...requested].filter((family) => modes[family] !== 'off'));
   if (fix) await fixLint({ repoRoot, side, run: runLinter });
   const tracked = io.checkApp === undefined ? trackedFiles(repoRoot) : [];
   const session = io.checkApp === undefined ? openSession({ repoRoot, tracked, io, full, use, planned: tracked.length * Math.max(1, selected.size) }) : undefined;
@@ -531,6 +547,14 @@ async function checkRun({ io, selected, full, use, coverageFrom, side, fix = fal
     extra.push(...tests.findings);
   }
   if (session !== undefined && selected.has('sonar')) lines.push(...(runSonarForApp(session, { repoRoot })?.lines ?? []));
+  // The lint ratchet of a branch whose profile reports lint: the commits since the base never add lint findings to a file they touch (blocking).
+  const ratchetErrors: string[] = [];
+  if (selected.has('lint') && modes.lint === 'report' && profile.profile !== null) {
+    const { base } = ratchetBase(repoRoot, io.env, profile.branch);
+    const ratchet = await ratchetFindings({ repoRoot, touched: rangeTouched(repoRoot, base), side, branch: profile.profile, run: runLinter });
+    extra.push(...withWhy(ratchet.findings, readWhy(skillRoot, ratchet.findings.length > 0 ? ['LINT_RATCHET_RAISED'] : [])));
+    ratchetErrors.push(...ratchet.errors);
+  }
   const flushed = session?.flush();
   const verdicts = session === undefined ? [] : verdictFindings(session);
   // the push gate: the committed cache is what this run on the tree writes, or the push is refused
@@ -541,14 +565,18 @@ async function checkRun({ io, selected, full, use, coverageFrom, side, fix = fal
   const reports: FamilyReport[] = session === undefined ? [...(checked.families ?? [])] : [...session.reports];
   // A rule of the canon's counting cohort is a warning: listed and counted, never part of the verdict.
   const linterFindings = [...(eslint?.findings ?? []).map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: finding.severity === 'warning' ? 'warning' : 'error' })), ...stylelintFindings(style.results, repoRoot)];
-  const findings = [...proof.findings, ...extra, ...verdicts, ...linterFindings];
+  // A finding of a family the profile reports is marked `report`: listed and recorded, never part of the verdict.
+  const findings = [...proof.findings, ...extra, ...verdicts, ...linterFindings].map((finding) => (modes[familyOf(finding)] === 'report' ? { ...finding, report: true } : finding));
   // Green under the threshold (gate-threshold.mjs): every finding is still listed, only the verdict changes.
-  const verdict = gateVerdict(findings.filter(finding => finding.level === 'error'));
-  const toolErrors = [...(eslint?.errors ?? []), ...style.errors];
+  const verdict = gateVerdict(findings.filter(finding => finding.level === 'error' && finding.report !== true));
+  const toolErrors = [...(eslint?.errors ?? []), ...style.errors, ...ratchetErrors];
   const counts = { ...proof.counts, error: findings.filter(finding => finding.level === 'error').length, warning: findings.filter(finding => finding.level === 'warning').length };
+  const reported = findings.filter(finding => finding.report === true && finding.level === 'error').length;
+  if (reported > 0) Object.assign(counts, { reported });
   const counting: Record<string, number> = {};
   for (const finding of linterFindings) if (finding.level === 'warning') counting[finding.rule] = (counting[finding.rule] ?? 0) + 1;
-  const result = { ...proof, findings, families: reports, predictions: lines, counting, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(eslint ? { eslint: { ...eslint.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
+  const branchProfile = { branch: profile.branch, source: profile.source, profile: profile.profile, modes: profile.modes, notices: profileNotices(profile).filter((notice) => [...requested].some((family) => notice.startsWith(`${family}:`) || (family === 'sonar' && notice.startsWith('codecov:')))) };
+  const result = { ...proof, findings, families: reports, predictions: lines, counting, branchProfile, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(eslint ? { eslint: { ...eslint.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
   return { result, seconds: (Date.now() - started) / 1000, raw };
 }
 
@@ -587,6 +615,39 @@ async function verifyCache(io: AppIo, selected: Set<FamilyId>, coverageFrom: str
   return 2;
 }
 
+/** `--profile`: the branch profile this run is under; with one --gate only that gate's mode (blocking, report or off), the word the managed pre-commit hook reads. */
+function printProfile(opts: Opts, io: AppIo): number {
+  const profile = activeProfile(io.cwd, io.env);
+  const named = (listFlag(opts, 'gate') ?? []).map((gate) => {
+    const known = PROFILE_GATES.find((candidate) => candidate === gate);
+    if (known === undefined) throw new UsageError(`--gate accepts ${PROFILE_GATES.join('|')}; got ${JSON.stringify(gate)}`);
+    return known;
+  });
+  if (named.length > 1) throw new UsageError('--profile takes at most one --gate');
+  const [one] = named;
+  if (opts.json === true) io.stdout(`${JSON.stringify(one === undefined ? profile : { gate: one, mode: profile.modes[one], branch: profile.branch, profile: profile.profile }, null, 2)}\n`);
+  else if (one !== undefined) io.stdout(`${profile.modes[one]}\n`);
+  else {
+    io.stdout(`branch ${profile.branch ?? '(none)'} (${profile.source}): ${profile.profile === null ? 'no branch profile, the full gate' : `branch profile ${profile.profile}`}\n`);
+    for (const gate of PROFILE_GATES) io.stdout(`  ${gate} ${profile.modes[gate]}\n`);
+  }
+  return 0;
+}
+
+/** `--ratchet`: the lint ratchet of the managed pre-commit hook over the staged files against HEAD, on a branch whose profile reports lint (lint/ratchet.mjs). */
+async function stagedRatchet(io: AppIo): Promise<number> {
+  const profile: ActiveProfile = activeProfile(io.cwd, io.env);
+  if (profile.profile === null || profile.modes.lint !== 'report') {
+    io.stdout(`lint is ${profile.modes.lint} on ${profile.branch === null ? 'this checkout' : `branch ${profile.branch}`}: the lint ratchet applies only where a branch profile reports lint\n`);
+    return 0;
+  }
+  const ratchet = await ratchetFindings({ repoRoot: io.cwd, touched: stagedTouched(io.cwd), branch: profile.profile, run: io.runLinter });
+  for (const error of ratchet.errors) io.stdout(`lint ratchet tool error: ${error}\n`);
+  for (const finding of ratchet.findings) io.stdout(`[ERROR] LINT_RATCHET_RAISED ${finding.message}\n`);
+  io.stdout(`lint ratchet on branch ${profile.profile}: ${String(ratchet.compared)} staged file(s) compared with HEAD, ${String(ratchet.findings.length)} raised\n`);
+  return ratchet.errors.length > 0 ? 2 : ratchet.findings.length > 0 ? 1 : 0;
+}
+
 async function checkMain(opts: Opts, io: AppIo): Promise<number> {
   const { cwd: repoRoot, edition, stdout: out } = io;
   if (opts.positional.length) throw new UsageError('starci app check takes no path');
@@ -594,6 +655,12 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
     const given = [...STAGED_REFUSES.filter((flag) => opts[flag.slice(2)] !== undefined), ...(edition === undefined ? [] : ['--edition'])];
     if (given.length) throw new UsageError(`starci app check --staged is the pre-commit guard alone and takes no ${given.join(', ')}`);
     return runWorkHygiene({ cwd: repoRoot, out: (text) => out(`${text}\n`) });
+  }
+  if (opts.profile === true || opts.ratchet === true) {
+    const other = Object.keys(opts).filter((key) => key !== 'positional' && key !== 'profile' && key !== 'ratchet' && !(opts.profile === true && (key === 'gate' || key === 'json')));
+    if (opts.profile === true && opts.ratchet === true) throw new UsageError('--profile and --ratchet are two verbs of their own; give one');
+    if (other.length > 0 || edition !== undefined) throw new UsageError(`starci app check --${opts.profile === true ? 'profile takes only --gate <gate> and --json' : 'ratchet (the pre-commit lint ratchet) takes no other flag'}; got ${[...other.map((key) => `--${key}`), ...(edition === undefined ? [] : ['--edition'])].join(', ')}`);
+    return opts.profile === true ? printProfile(opts, io) : stagedRatchet(io);
   }
   const coverageFrom = valueFlag(opts, 'coverage-from');
   const shard = valueFlag(opts, 'shard');

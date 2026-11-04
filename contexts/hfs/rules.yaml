@@ -2572,6 +2572,20 @@ rules:
       - BE_FLOW_FAILURE_SWALLOWED
     enforcers:
       - {kind: hfs, id: flow-failure}
+  - id: R378
+    code: HFS_BRANCH_PROFILE_INVALID
+    law: "An app's branch profile (`branches` of .starcistacks/application-stacks.yaml) lowers only the polish gates lint, sonar and codecov, to report or off, on a branch policy/loosening.yaml branchProfiles allows; the safety gates hfs, types, wiring, db, secrets, format and test block on every branch, and the default branch (main, master or ci.github.defaultBranch) is never declared and always runs the full gate, as does a pull request into it; a refused profile lowers nothing."
+    failureCodes:
+      - HFS_BRANCH_PROFILE_INVALID
+    enforcers:
+      - {kind: hfs, id: branch-profile}
+  - id: R379
+    code: LINT_RATCHET_RAISED
+    law: "On a branch whose profile runs lint as report, a commit never adds lint findings to a file it touches: each touched source file has no more ESLint error findings than at the base (the parent commit for the pre-commit hook, the merge-base with the pushed range or the remote branch, else HEAD^, for the pre-push hook and CI) and a new file has none, judged by linting both versions of the touched files through the side's installed config; the findings a file already carried stay report-only, and a ratchet violation blocks at any count."
+    failureCodes:
+      - LINT_RATCHET_RAISED
+    enforcers:
+      - {kind: hfs, id: lint-ratchet}
 pending:
   - {gap: slot-rule-unknown, subject: BE_E2E_FLOW, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
   - {gap: slot-rule-unknown, subject: FE_DATA_FRESHNESS, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}

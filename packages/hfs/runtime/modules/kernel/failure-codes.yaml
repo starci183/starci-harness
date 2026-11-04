@@ -4492,6 +4492,28 @@ HFS_STACKS_SHAPE:
   owner: op-retry
   kind: check-finding
 
+HFS_BRANCH_PROFILE_INVALID:
+  title: "A branch profile lowers what it may not, or names the default branch"
+  title_vi: "Một branch profile hạ gate không được hạ, hoặc khai nhánh mặc định"
+  meaning_vi: "Khối `branches` của .starcistacks/application-stacks.yaml chỉ được hạ các gate đánh bóng (lint, sonar, codecov) xuống report hoặc off, trên một nhánh mà policy/loosening.yaml branchProfiles cho phép; các gate an toàn (hfs, types, wiring, db, secrets, format, test) luôn chặn và nhánh mặc định (main) luôn chạy toàn bộ gate. Một khối bị từ chối không hạ gate nào: lần chạy dùng toàn bộ gate."
+  causes_vi:
+    - "Vi phạm R378: khai profile cho main, master hoặc ci.github.defaultBranch."
+    - "Vi phạm R378: đặt một gate an toàn thành report hoặc off, hoặc một nhánh hay gate mà policy không cho phép."
+  nextStep_vi: "Sửa khối branches: chỉ khai nhánh được phép (dev) và chỉ hạ lint, sonar, codecov; bỏ mọi gate an toàn khỏi profile hoặc để blocking, rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
+LINT_RATCHET_RAISED:
+  title: "A commit on a branch that reports lint adds lint findings to a file it touches"
+  title_vi: "Một commit trên nhánh lint ở chế độ report thêm lỗi lint vào file nó sửa"
+  meaning_vi: "Trên nhánh có branch profile đặt lint là report, lỗi lint cũ chỉ được báo, nhưng mỗi file bị commit chạm vào không được có nhiều lỗi lint hơn ở base (commit cha khi pre-commit; merge-base với nhánh remote, hoặc HEAD^, khi pre-push và CI), và một file mới không được có lỗi nào. Vi phạm ratchet luôn chặn, ở mọi số lượng."
+  causes_vi:
+    - "Vi phạm R379: sửa một file và thêm lỗi lint mới vào nó."
+    - "Vi phạm R379: thêm một file mới có lỗi lint."
+  nextStep_vi: "Sửa các lỗi lint mới trong những file đã chạm (lỗi cũ có thể để lại), rồi commit hoặc push lại; không đuổi theo lỗi lint của file không chạm."
+  owner: op-retry
+  kind: check-finding
+
 HFS_STARCIWORK_LITE_FORBIDDEN:
   title: "lite .starciwork holds only workspace.yaml and brand/"
   title_vi: "Work của lite"

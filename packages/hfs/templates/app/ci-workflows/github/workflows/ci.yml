@@ -2,6 +2,9 @@
 name: ci
 
 # CI judges pull requests, main, release candidates and release tags, and a green release tag deploys.
+#   profile branch  a push to a branch the declaration gives a branch profile (.starcistacks/application-stacks.yaml branches): the checks, with each gate
+#                 the profile lowers in its mode (lint reports through the app check and keeps the lint ratchet blocking; a reported sonar or codecov runs
+#                 and uploads, never judged); a pull request into main always runs the full gate
 #   pull_request  the checks and the image builds of a change to main, with no secret and no environment (a Dependabot or fork run has none anyway);
 #                 and no run of this workflow executes a pull request's code with a token that can write
 #   main          judged only when no release tag points at the pushed commit (the release push sends main and its tag together; the tag run is the release run)
@@ -9,7 +12,10 @@ name: ci
 #   tag v*        the release run: plan, checks and images in parallel, the verdict, then the deploy of every environment with deploy.auto
 on:
   push:
-    branches: ["main", "release/candidate-*"]
+    branches:
+      - "main"
+      - "release/candidate-*"
+{{pushProfileBranches}}
     tags: ["v*"]
   pull_request:
     branches: ["main"]
@@ -51,6 +57,8 @@ jobs:
       images: ${{ steps.plan.outputs.images }}
       push: ${{ steps.plan.outputs.push }}
       full: ${{ steps.plan.outputs.full }}
+      sonar: ${{ steps.plan.outputs.sonar }}
+      codecov: ${{ steps.plan.outputs.codecov }}
       release: ${{ steps.plan.outputs.release }}
       ci_run: ${{ steps.plan.outputs.ci_run }}
     steps:
@@ -66,7 +74,7 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
         run: |
           set -euo pipefail
-          checks=true images=true push=false full=false release=false ci_run="$GITHUB_RUN_ID" note="checks and image builds"
+          checks=true images=true push=false full=false release=false ci_run="$GITHUB_RUN_ID" note="checks and image builds" sonar=blocking codecov=blocking
           if [[ "$EVENT" == push ]]; then
             full=true push=true
             if [[ "$REF_TYPE" == tag ]]; then
@@ -81,8 +89,8 @@ jobs:
             else
               images=false push=false full=false note="main without a release tag: checks only"
             fi
-          fi
-          { echo "checks=$checks"; echo "images=$images"; echo "push=$push"; echo "full=$full"; echo "release=$release"; echo "ci_run=$ci_run"; } >> "$GITHUB_OUTPUT"
+          fi{{planBranchProfiles}}
+          { echo "checks=$checks"; echo "images=$images"; echo "push=$push"; echo "full=$full"; echo "release=$release"; echo "ci_run=$ci_run"; echo "sonar=$sonar"; echo "codecov=$codecov"; } >> "$GITHUB_OUTPUT"
           echo "plan: $note" >> "$GITHUB_STEP_SUMMARY"
 
   fast:
@@ -205,6 +213,7 @@ jobs:
           CHECKS: ${{ needs.plan.outputs.checks }}
           IMAGES: ${{ needs.plan.outputs.images }}
           FULL: ${{ needs.plan.outputs.full }}
+          SONAR: ${{ needs.plan.outputs.sonar }}
         run: |
           set -euo pipefail
           fail=0

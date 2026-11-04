@@ -92,11 +92,16 @@ for (const edition of ['lite', 'full']) {
       assert.equal(call.concurrency['cancel-in-progress'], false);
       assert.equal(call.if, "${{ needs.plan.outputs.release == 'true' }}");
     }
-    // The checks never run on a plan that left them out, and sonar and the Codecov upload run on every full run.
+    // The checks never run on a plan that left them out; sonar and the Codecov upload run on every full run and on a push the plan reports them for,
+    // and only a full run judges the Sonar quality gate.
     for (const id of ['fast', 'lint', 'test', 'build']) assert.equal(ci.jobs[id].if, "${{ needs.plan.outputs.checks == 'true' }}", id);
-    assert.equal(ci.jobs.sonar.if, "${{ needs.plan.outputs.full == 'true' }}");
+    assert.equal(ci.jobs.sonar.if, "${{ needs.plan.outputs.full == 'true' || needs.plan.outputs.sonar == 'report' }}");
     const upload = ci.jobs.coverage.steps.find((step: Doc) => step.name === 'coverage upload');
-    assert.equal(upload.if, "${{ !cancelled() && needs.plan.outputs.full == 'true' }}");
+    assert.equal(upload.if, "${{ !cancelled() && (needs.plan.outputs.full == 'true' || needs.plan.outputs.codecov == 'report') }}");
+    assert.equal(upload.with.fail_ci_if_error, true, 'an upload that runs is required, report or not');
+    const gate = ci.jobs.sonar.steps.find((step: Doc) => String(step.uses).startsWith('SonarSource/sonarqube-quality-gate-action@'));
+    assert.equal(gate.if, "${{ !cancelled() && needs.plan.outputs.full == 'true' }}");
+    assert.deepEqual(ci.on.push.branches, ['main', 'release/candidate-*'], 'no branch profile: main and the candidates');
     assert.equal(ci.jobs.fast.steps.find((step: Doc) => step.name === 'format').run, 'npx --no-install starci app check --gate format');
   });
 
@@ -108,7 +113,9 @@ for (const edition of ['lite', 'full']) {
     assert.match(plan.run, /startswith\("release\/candidate-"\)/u);
     assert.match(plan.run, /git tag --points-at "\$GITHUB_SHA" --list 'v\*'/u, 'a main push of a tagged commit defers to the tag run');
     assert.match(plan.run, /does not match the package version/u);
-    for (const output of ['checks', 'images', 'push', 'full', 'release', 'ci_run']) assert.ok(ci.jobs.plan.outputs[output], output);
+    for (const output of ['checks', 'images', 'push', 'full', 'release', 'ci_run', 'sonar', 'codecov']) assert.ok(ci.jobs.plan.outputs[output], output);
+    assert.match(plan.run, /sonar=blocking codecov=blocking/u, 'every run judges sonar and codecov as main does unless a branch profile reports them');
+    assert.doesNotMatch(plan.run, /case "\$GITHUB_REF_NAME"/u, 'no branch profile, no profile case');
     assert.equal(ci.jobs.plan.steps[0].with['fetch-depth'], 0);
   });
 

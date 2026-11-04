@@ -39,7 +39,12 @@ export interface LinterRun { results?: Dynamic[]; error?: string; graph?: GraphS
  * which the heavy-command budget of the ESLint kind scales with: the typed program and the project graph of a side are built whole for a named list
  * too, so a list run of a side whose scope is known names the side's count; without `files` a list names its own count.
  */
-export interface LinterSpec { cwd: string; pkg: string; bin: string; args: string[]; bound?: string | null; list?: readonly string[] | undefined; files?: number | undefined; graph?: readonly GraphCanon[] | undefined }
+export interface LinterSpec { cwd: string; pkg: string; bin: string; args: string[]; bound?: string | null; list?: readonly string[] | undefined; files?: number | undefined; graph?: readonly GraphCanon[] | undefined; texts?: readonly LintText[] | undefined }
+/**
+ * One text an ESLint run lints in place of a file's content (ESLint's lintText with the file's path, so the side's typed config judges it as that file):
+ * the lint ratchet's base and current version of a touched file. The child answers one result per text, in order.
+ */
+export interface LintText { file: string; text: string }
 /** An installed canon whose graph snapshot the ESLint child hands out: its package name and the entry file the child imports. */
 export interface GraphCanon { name: string; entry: string }
 /** The seam that runs a linter through the app's own install from cwd. */
@@ -86,7 +91,7 @@ function readGraphSnapshots(file: string): GraphSnapshotParts | undefined {
 }
 
 /** A linter's json results through the app's own install, run from `cwd` (a side folder): `{ results }` or `{ error }`. The child runs while the caller goes on. */
-export async function runLinter({ cwd, pkg, bin, args, bound = null, list, files, graph }: LinterSpec, execute?: HeavyNodeRun): Promise<LinterRun> {
+export async function runLinter({ cwd, pkg, bin, args, bound = null, list, files, graph, texts }: LinterSpec, execute?: HeavyNodeRun): Promise<LinterRun> {
   let entry: string;
   try {
     const manifest = createRequire(path.join(cwd, 'package.json')).resolve(`${pkg}/package.json`);
@@ -98,15 +103,15 @@ export async function runLinter({ cwd, pkg, bin, args, bound = null, list, files
   const heap = pkg === 'eslint' ? eslintHeapArgs() : [];
   // A named list, or a run that hands its project graph out, goes through the list runner: the job is a file it reads (ESLint lints all of it in one
   // process, no command line holds a path), the whole side is the list `.`, and the graph snapshots come back in a file beside the job.
-  const listed = pkg === 'eslint' && (list !== undefined || graph !== undefined) ? makeTempDir('starci-eslint-') : null;
+  const listed = pkg === 'eslint' && (list !== undefined || graph !== undefined || texts !== undefined) ? makeTempDir('starci-eslint-') : null;
   let childArgs: string[] = [entry, ...args];
   const snapshotFile = listed === null || graph === undefined ? null : path.join(listed, 'graph.json');
   if (listed !== null) {
     const job = path.join(listed, 'job.json');
-    fs.writeFileSync(job, JSON.stringify({ files: list ?? ['.'], fix: args.includes('--fix'), ...(snapshotFile === null || graph === undefined ? {} : { graph: { out: snapshotFile, canons: graph } }) }));
+    fs.writeFileSync(job, JSON.stringify({ files: texts === undefined ? list ?? ['.'] : [], fix: args.includes('--fix'), ...(texts === undefined ? {} : { texts }), ...(snapshotFile === null || graph === undefined ? {} : { graph: { out: snapshotFile, canons: graph } }) }));
     childArgs = [LIST_RUNNER, job];
   }
-  const count = files ?? list?.length;
+  const count = files ?? texts?.length ?? list?.length;
   let run: HeavyNodeResult;
   let handed: GraphSnapshotParts | undefined;
   try {
@@ -142,7 +147,7 @@ export const PACKAGES_CONFIG = 'eslint.config.mjs';
 const hasPackagesLint = (repoRoot: string): boolean => fs.existsSync(path.join(repoRoot, PACKAGES_CONFIG)) && fs.existsSync(path.join(repoRoot, PACKAGES));
 
 /** The root config of the app, its default export awaited: the flat config the packages are linted by. */
-async function packagesConfig(repoRoot: string): Promise<Dynamic[]> {
+export async function packagesConfig(repoRoot: string): Promise<Dynamic[]> {
   const loaded = await import(`${pathToFileURL(path.join(repoRoot, PACKAGES_CONFIG)).href}?scope=${Date.now()}`);
   const config = await loaded.default;
   if (!Array.isArray(config)) throw new Error(`${PACKAGES_CONFIG} did not export a flat config`);

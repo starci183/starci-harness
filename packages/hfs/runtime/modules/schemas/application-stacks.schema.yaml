@@ -107,6 +107,32 @@ properties:
       status: {enum: [deferred, supported]}
       reason: {type: string, minLength: 1}
   ci: {$ref: '#/$defs/ciDeclaration'}
+  branches:
+    description: >-
+      Branch profiles: per branch, the mode of each gate it names (blocking, report: run, print and record but never count, off: not run); a gate left
+      out blocks. Only lint, sonar and codecov may be lowered, only on a branch policy/loosening.yaml branchProfiles allows, and the default branch is
+      never declared; scripts/lib/stack-declaration.mjs readBranchProfiles judges it (HFS_BRANCH_PROFILE_INVALID) and starci app check, the hooks and
+      the rendered CI apply it.
+    type: object
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required: [gates]
+      properties:
+        gates:
+          type: object
+          additionalProperties: false
+          properties:
+            hfs: {$ref: '#/$defs/gateMode'}
+            format: {$ref: '#/$defs/gateMode'}
+            db: {$ref: '#/$defs/gateMode'}
+            secrets: {$ref: '#/$defs/gateMode'}
+            wiring: {$ref: '#/$defs/gateMode'}
+            types: {$ref: '#/$defs/gateMode'}
+            lint: {$ref: '#/$defs/gateMode'}
+            test: {$ref: '#/$defs/gateMode'}
+            sonar: {$ref: '#/$defs/gateMode'}
+            codecov: {$ref: '#/$defs/gateMode'}
   operations:
     $ref: provision-operation.schema.yaml
   services:
@@ -131,6 +157,7 @@ properties:
       analytics: {$ref: '#/$defs/service'}
       error-tracking: {$ref: '#/$defs/service'}
 $defs:
+  gateMode: {enum: [blocking, report, off]}
   service:
     type: object
     additionalProperties: false

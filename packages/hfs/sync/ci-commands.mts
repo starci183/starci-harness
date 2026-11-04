@@ -3,6 +3,7 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { refusal } from '../stack/errors.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { ENTITY_LIST } from '../db/entity-list.mjs';
+import { readBranchProfiles, type BranchProfiles } from '../runtime/scripts/lib/stack-declaration.mjs';
 
 // reason: the stack declaration and its quality services are YAML parsed from disk; each field is read where the CI text needs it
 type Declaration = any;
@@ -17,11 +18,30 @@ const exampleCommand = (source: CiSource | undefined, command: string): string =
 
 const UPLOAD_ARTIFACT = 'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2';
 const DOWNLOAD_ARTIFACT = 'actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0';
-// Sonar and the Codecov upload run on every full run (a release tag or a candidate), so a release is analysed before it ships; the plan job decides.
+// Sonar and the Codecov upload run on every full run (a release tag or a candidate), so a release is analysed before it ships, and on a push to a branch
+// whose profile reports that gate (the plan's `sonar` and `codecov` outputs); the plan job decides. Only a full run judges: the Sonar quality gate step runs
+// on a full run alone, so a report run analyses and uploads but its findings never fail it.
 const FULL_RUN = "needs.plan.outputs.full == 'true'";
-const SONAR_CONDITION = `\${{ !cancelled() && ${FULL_RUN} }}`;
+const reportRun = (gate: 'sonar' | 'codecov'): string => `needs.plan.outputs.${gate} == 'report'`;
+const runsOn = (gate: 'sonar' | 'codecov'): string => `\${{ !cancelled() && (${FULL_RUN} || ${reportRun(gate)}) }}`;
+const JUDGES = `\${{ !cancelled() && ${FULL_RUN} }}`;
 
-/** Codecov uploads on every full run with its required authentication; a missing report, an unavailable endpoint or a rejected upload fails the job. */
+/** The modes the plan of a push to each profile branch sets: the branch profiles of the declaration whose sound entries lower sonar or codecov, or name a branch at all. */
+function planBranchProfiles(profiles: BranchProfiles): string {
+  const branches = Object.entries(profiles.profiles);
+  if (branches.length === 0) return '';
+  const cases = branches.map(([branch, gates]) => {
+    const lowered = (['sonar', 'codecov'] as const).map((gate) => `${gate}=${gates[gate] ?? 'blocking'}`).join(' ');
+    const named = Object.entries(gates).filter(([, mode]) => mode !== 'blocking').map(([gate, mode]) => `${gate} ${String(mode)}`).join(', ') || 'every gate blocking';
+    return `              ${JSON.stringify(branch)}) ${lowered} note="branch profile ${branch}: checks only; ${named} (.starcistacks/application-stacks.yaml branches)" ;;`;
+  });
+  return ['', '          if [[ "$EVENT" == push && "$REF_TYPE" == branch ]]; then', '            case "$GITHUB_REF_NAME" in', ...cases, '            esac', '          fi'].join('\n');
+}
+
+/** The push filter lines of the profile branches (block-sequence entries under on.push.branches), or nothing. */
+const pushProfileBranches = (profiles: BranchProfiles): string => Object.keys(profiles.profiles).map((branch) => `      - ${JSON.stringify(branch)}`).join('\n');
+
+/** Codecov uploads on every full run and on a push to a branch whose profile reports codecov, with its required authentication; a missing report, an unavailable endpoint or a rejected upload fails the job. */
 function codecovSteps(lcovReport: string, codecov: Declaration): string {
   if (codecov.enabled === false || codecov.wiring === 'not-used') return [
     '      - name: coverage upload',
@@ -30,7 +50,7 @@ function codecovSteps(lcovReport: string, codecov: Declaration): string {
   return [
     '      - name: coverage upload',
     '        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5',
-    `        if: ${SONAR_CONDITION}`,
+    `        if: ${runsOn('codecov')}`,
     '        with:',
     codecov.auth === 'token' ? `          token: \${{ secrets.${codecov.token} }}` : '          use_oidc: true',
     `          files: ${lcovReport}`,
@@ -39,15 +59,18 @@ function codecovSteps(lcovReport: string, codecov: Declaration): string {
   ].join('\n');
 }
 
-/** Sonar is required: on every full run it consumes the test coverage and lint artifacts, and a missing token fails the job with a clear refusal. */
+/**
+ * Sonar is required: on every full run, and on a push to a branch whose profile reports it, it consumes the test coverage and lint artifacts, and a missing
+ * token fails the job with a clear refusal (custody, not a finding). The quality gate step judges on a full run only.
+ */
 function sonarJob(sonar: Declaration, lcovReport: string, lcovArtifact: string, nodeMajor: string, timeout: string, scopes: readonly string[]): string {
   if (!sonar) return '';
-  const condition = SONAR_CONDITION;
+  const condition = runsOn('sonar');
   const host = sonar.hostSecret ? `\${{ secrets.${sonar.hostSecret} }}` : sonar.provider === 'sonarcloud' ? 'https://sonarcloud.io' : `\${{ vars.${sonar.hostVar} }}`;
   const header = [
     '  sonar:',
     '    needs: [plan, lint, coverage]',
-    `    if: \${{ ${FULL_RUN} }}`,
+    `    if: \${{ ${FULL_RUN} || ${reportRun('sonar')} }}`,
     `    timeout-minutes: ${timeout}`,
     '    runs-on: ubuntu-latest',
     '    env:',
@@ -76,7 +99,7 @@ function sonarJob(sonar: Declaration, lcovReport: string, lcovArtifact: string, 
     '      - uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7.2.1',
     `        if: ${condition}`,
     '      - uses: SonarSource/sonarqube-quality-gate-action@7a5fffe8e523c40e0c740b6bc2712ab503e52efa # v1.2.1',
-    `        if: ${condition}`,
+    `        if: ${JUDGES}`,
     '        timeout-minutes: 10',
   ].join('\n');
   // Variable strings are inserted after render() expands partials, so resolve Sonar's shared install partial before insertion.
@@ -222,9 +245,14 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
   const side = '${{ matrix.side }}';
   // The lint matrix: one job per side, and one for the root packages of an app that has them (their scope runs whatever became of the sides').
   const scopes = ['be', 'fe', ...(rootPackages ? ['packages'] : [])];
-  const settings = ciJobSettings(buildDeclaration(source), source, scopes);
+  const declaration = buildDeclaration(source);
+  const settings = ciJobSettings(declaration, source, scopes);
+  // A refused branches block renders no profile (readBranchProfiles keeps only the sound entries; the app check names the problems).
+  const profiles = readBranchProfiles(declaration);
   return {
     ...settings,
+    pushProfileBranches: pushProfileBranches(profiles),
+    planBranchProfiles: planBranchProfiles(profiles),
     lintSides: `[${scopes.join(', ')}]`,
     lcovShardsDir: lcovReport.split('/').slice(0, -1).concat('shards').join('/'),
     // The istanbul JSON a shard writes beside the lcov (STARCI_COVERAGE_SHARD=1): what the coverage job merges.
@@ -259,7 +287,7 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     ])].join('\n'),
     codecovSteps: codecovSteps(lcovReport, codecov),
     verdictSonarNeed: sonar ? ', sonar' : '',
-    verdictSonarCheck: sonar ? `\n          if [[ "$FULL" == true && "$CHECKS" == true ]]; then expect sonar success; else expect sonar idle; fi` : '',
+    verdictSonarCheck: sonar ? `\n          if [[ "$CHECKS" == true && ( "$FULL" == true || "$SONAR" == report ) ]]; then expect sonar success; else expect sonar idle; fi` : '',
     sonarJob: sonarJob(sonar, lcovReport, lcovArtifact, nodeMajor, settings.timeoutSonar as string, scopes),
     lcovArtifact,
   };

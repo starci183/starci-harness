@@ -19,6 +19,8 @@ starci app add image [--cwd <dir>]
 starci app sync [--execute] [--cwd <dir>]
 starci app check [--cwd <dir>] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov> ...] [--side be|fe] [--fix] [--out <sonar file>] [--no-cache] [--json] [--coverage-from <lcov>] [--quiet]
 starci app check --staged [--cwd <dir>]
+starci app check --ratchet [--cwd <dir>]
+starci app check --profile [--gate <gate>] [--json] [--cwd <dir>]
 starci app upgrade [--execute]
 starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--cwd <dir>]
 starci app slot <path> [--cwd <dir>] [--json]
@@ -229,6 +231,14 @@ findings n new, n known, n fixed`. Progress goes to stderr (`--quiet` silences i
 `STARCI_APP_CHECK_CACHE=full` never reads the cache (the owner's full gate, `app release gate --full`); `app check --fresh`, run by the managed
 pre-push hook, refuses a push whose committed cache a real run on its tree changes (`HFS_CHECK_CACHE_UNWARMED`, `HFS_CHECK_CACHE_UNPORTABLE`), and a red
 nightly `cache-verify.yml` refuses the release gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`).
+
+Every run is under the branch profile of the branch it judges (`branches` of `.starcistacks/application-stacks.yaml`, the harness's
+contexts/project/lint.md PROJECT-LINT-2): on a profile branch such as `dev` a gate set to `report` runs and records but its findings are marked
+report-only and never count, a gate set to `off` does not run, and each prints one notice. Only `lint`, `sonar` and `codecov` may be lowered, never
+on the default branch (`HFS_BRANCH_PROFILE_INVALID`); a pull request into main runs the full gate. Where lint reports, the lint ratchet refuses a
+commit that adds lint findings to a file it touches (`LINT_RATCHET_RAISED`): over the commits since the base in the lint family, and over the staged
+files against HEAD with `app check --ratchet`, which the managed pre-commit hook runs in place of the staged eslint and stylelint on such a branch.
+`app check --profile` prints the profile; with one `--gate` it prints that gate's mode alone.
 
 Exit codes: 0 clean, 1 an error finding, 2 a tool could not run or a refusal (not a Git work tree, bad flag). `starci app check` writes only `.starcistacks/cache/` (and `--out`'s file; `--fix` lets ESLint and stylelint fix in place).
 

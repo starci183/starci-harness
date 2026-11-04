@@ -6680,3 +6680,34 @@ rules:
       - {path: packages/hfs/templates/be/patterns/jobs/platform/job-runner.service.ts.tpl, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/hfs-flow-failure.spec.mjs, editions: [lite, full]}
+  - id: R378
+    code: "HFS_BRANCH_PROFILE_INVALID"
+    law: "An app's branch profile (`branches` of .starcistacks/application-stacks.yaml) lowers only the polish gates lint, sonar and codecov, to report or off, on a branch policy/loosening.yaml branchProfiles allows; the safety gates hfs, types, wiring, db, secrets, format and test block on every branch, and the default branch (main, master or ci.github.defaultBranch) is never declared and always runs the full gate, as does a pull request into it; a refused profile lowers nothing."
+    kinds: [check]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["HFS_BRANCH_PROFILE_INVALID"]
+    enforcers:
+      - {kind: hfs, id: branch-profile, at: scripts/lib/stack-declaration.mjs}
+      - {kind: hfs, id: stacks-shape, at: scripts/hfs/rules/stacks.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/lint.md#project-lint-2-a-branch-profile-lowers-only-the-polish-gates, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/branch-profile.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/branch-profile.spec.mjs, editions: [lite, full]}
+  - id: R379
+    code: "LINT_RATCHET_RAISED"
+    law: "On a branch whose profile runs lint as report, a commit never adds lint findings to a file it touches: each touched source file has no more ESLint error findings than at the base (the parent commit for the pre-commit hook, the merge-base with the pushed range or the remote branch, else HEAD^, for the pre-push hook and CI) and a new file has none, judged by linting both versions of the touched files through the side's installed config; the findings a file already carried stay report-only, and a ratchet violation blocks at any count."
+    kinds: [check]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["LINT_RATCHET_RAISED"]
+    enforcers:
+      - {kind: hfs, id: lint-ratchet, at: lint/ratchet.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/lint.md#project-lint-2-a-branch-profile-lowers-only-the-polish-gates, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/branch-profile.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/branch-profile.spec.mjs, editions: [lite, full]}
