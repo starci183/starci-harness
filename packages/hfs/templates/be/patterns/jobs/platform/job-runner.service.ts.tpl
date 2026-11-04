@@ -1,8 +1,11 @@
 import { Injectable } from "@nestjs/common"
+import { classifyFailure } from "@starci/nest-kit"
+import type { FailureClass } from "@starci/nest-kit"
+import { DomainError } from "@modules/platform/errors"
 import { InjectLogger } from "@modules/platform/logging"
 import type { Logger } from "@modules/platform/logging"
-import { ATTEMPTS, classifyFailure, InjectQueueWorkerRegistry } from "@modules/platform/queue"
-import type { FailureClass, QueueDelivery, QueueWorkerRegistry } from "@modules/platform/queue"
+import { ATTEMPTS, InjectQueueWorkerRegistry } from "@modules/platform/queue"
+import type { QueueDelivery, QueueWorkerRegistry } from "@modules/platform/queue"
 import { JobsError, JobsErrorCode } from "./errors/jobs.error"
 import { jobKeyOf } from "./jobs.contracts"
 import type { ClaimedJob } from "./jobs.contracts"
@@ -58,7 +61,7 @@ export class JobRunnerService implements JobProcessorRegistry {
                 this.logger.warn(JobsLogEvent.FencedOut, { jobId: job.jobId })
                 return
             }
-            const failureClass = classifyFailure(cause)
+            const failureClass = classifyFailure(cause, DomainError)
             if (failureClass === "transient" && delivery.attempt < ATTEMPTS) {
                 await this.recordFailure(job, cause)
                 throw cause

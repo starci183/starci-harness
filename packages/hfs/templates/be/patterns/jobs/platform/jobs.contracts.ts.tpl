@@ -1,4 +1,4 @@
-import type { FailureClass } from "@modules/platform/queue"
+import type { FailureClass } from "@starci/nest-kit"
 
 /** A job a worker claimed: the token it must pass to every write. */
 export interface ClaimedJob {

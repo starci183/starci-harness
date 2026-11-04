@@ -1,6 +1,6 @@
 {
   "name": "@starci/nest-kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The shared building blocks of a StarCi back end that no capability owns: defineConfigurableModule and defineCapabilityModule, the typed one-line module definitions (register, registerAsync, the options token, isGlobal for a capability) whose exports state their types, so a module definition is neither an inferred surface nor a copy of its neighbour.",
   "keywords": [
     "nestjs",

@@ -181,13 +181,6 @@ files:
   - path: src/modules/platform/queue/queue.policy.spec.ts
     slot: be.platform.queue
     template: queues/platform/queue.policy.spec.ts.tpl
-  - path: src/modules/platform/queue/queue.failure.ts
-    slot: be.platform.queue
-    role: "classifyFailure: the class of a flow failure (transient, input, code, config), BE-RESILIENCE-2."
-    template: queues/platform/queue.failure.ts.tpl
-  - path: src/modules/platform/queue/queue.failure.spec.ts
-    slot: be.platform.queue
-    template: queues/platform/queue.failure.spec.ts.tpl
   - path: src/modules/platform/queue/queue.log-events.ts
     slot: be.platform.queue
     template: queues/platform/queue.log-events.ts.tpl

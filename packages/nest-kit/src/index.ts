@@ -34,3 +34,6 @@ export const defineCapabilityModule = <Options>(settings: CapabilitySettings = {
         .setClassMethodName("register")
         .setExtras({ isGlobal: false }, (definition, extras) => ({ ...definition, global: extras.isGlobal }))
         .build()
+
+export { classifyFailure } from "./failure.ts"
+export type { DomainErrorBase, FailureClass } from "./failure.ts"

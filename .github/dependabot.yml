@@ -1,9 +1,42 @@
 version: 2
 updates:
+  # The lint canon and the Grammar lint families test against the ESLint every app runs (contexts/stack/pins.yaml `eslint`) and
+  # compile each other's fixtures, so their ESLint moves with that pin in one commit across all four, never per folder (a split
+  # leaves two ESLint type trees in one program: TS2345 in eslint-grammar-core).
+  - package-ecosystem: npm
+    directories:
+      - /packages/eslint-canon-be
+      - /packages/eslint-canon-fe
+      - /packages/eslint-grammar-core
+      - /packages/eslint-grammar-offset-pop
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: eslint
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+    open-pull-requests-limit: 10
   - package-ecosystem: npm
     directories:
       - /cli
-      - /packages/*
+      - /packages/ai-router
+      - /packages/auth
+      - /packages/auth-oidc
+      - /packages/event-stream
+      - /packages/grammar
+      - /packages/heroicons
+      - /packages/hfs
+      - /packages/jest-preset
+      - /packages/mail
+      - /packages/nest-kit
+      - /packages/next-data
+      - /packages/next-i18n
+      - /packages/object-storage
+      - /packages/prettier-config
+      - /packages/stylelint-canon
+      - /packages/test-world
+      - /packages/tsconfig
     schedule:
       interval: weekly
     groups:

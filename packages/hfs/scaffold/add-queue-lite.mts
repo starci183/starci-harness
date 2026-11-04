@@ -68,7 +68,7 @@ const LITE_TEMPLATES: Readonly<Record<string, string>> = Object.freeze({
 });
 
 /** The tick scheduler of platform/jobs the lite jobs capability adds beside full's tree: the ticks as data, the scheduler and its spec (R335). */
-const TICK_FILES: ReadonlyArray<readonly [string, string]> = Object.freeze([
+export const TICK_FILES: ReadonlyArray<readonly [string, string]> = Object.freeze([
   ['be/src/modules/platform/jobs/job-ticks.contracts.ts', 'jobs/platform-lite/job-ticks.contracts.ts.tpl'],
   ['be/src/modules/platform/jobs/job-tick.service.ts', 'jobs/platform-lite/job-tick.service.ts.tpl'],
   ['be/src/modules/platform/jobs/job-tick.service.spec.ts', 'jobs/platform-lite/job-tick.service.spec.ts.tpl'],

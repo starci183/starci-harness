@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common"
 import type { OnApplicationBootstrap, OnApplicationShutdown } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
+import { classifyFailure } from "@starci/nest-kit"
+import { DomainError } from "@modules/platform/errors"
 import { InjectLogger, isCorrelationId } from "@modules/platform/logging"
 import type { Logger } from "@modules/platform/logging"
 import { callDbFunction, InjectPrimaryEntityManager } from "@modules/platform/database"
@@ -42,7 +44,8 @@ const isDedupeKey = (value: unknown): value is string => typeof value === "strin
 @Injectable()
 /**
  * The consuming side of the lite event bus: each consumer reads its own pgmq queue with a visibility timeout, archives a message it
- * handled, leaves a failed one to reappear, and moves one past its maxDeliveries, or malformed, to `<queue>__dead`. Delivery is at
+ * handled, leaves one that failed transiently to reappear, and moves to `<queue>__dead` one whose failure a retry cannot fix
+ * (`classifyFailure` of @starci/nest-kit: input, code or config, BE-RESILIENCE-2), one past its maxDeliveries, or a malformed one. Delivery is at
  * least once and unordered, so the command a consumer dispatches claims (consumer, dedupeKey) in the inbox first and reads current
  * state rather than trusting the order of events (BE-EVENT-BUS-4).
  */
@@ -106,6 +109,8 @@ export class EventConsumerService implements EventConsumerRegistry, OnApplicatio
             })
         } catch (cause) {
             this.logger.error(EventBusLogEvent.ConsumerFailed, cause, { consumer: subscription.queue, event: event.eventName, attempt: message.readCt })
+            const failureClass = classifyFailure(cause, DomainError)
+            if (failureClass !== "transient") await this.dead(subscription, message, failureClass, event.eventName)
             return
         }
         await callDbFunction(this.entityManager, "public.event_bus_archive", [subscription.queue, message.msgId])

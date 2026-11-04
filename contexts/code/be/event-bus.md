@@ -43,8 +43,9 @@ Enforced by: R152 BE_OUTBOX_WRITE_TX, R90 BE_INFRA_OWNER, R258 DB_PGMQ_DECLARED,
 ## BE-EVENT-BUS-4 A consumer is a thin door; delivery is at least once with retry and dead letter
 A consumer is `transport/message/<event>.consumer.ts` implementing `EventConsumer<E>` with `readonly event = <Event>Event`;
 `handle(delivery)` dispatches one command forwarding `delivery.eventId` and `delivery.correlationId`. The service the command reaches
-claims the event first (BE-IDEMPOTENCY-1). A throw schedules a retry with exponential backoff on `events.<service>.retry`; after the
-event's attempts the message goes to `events.<service>.dlq`, which an operator reads and requeues through `eventBus.deadLetters(event)`
+claims the event first (BE-IDEMPOTENCY-1). A transient throw (`classifyFailure` of `@starci/nest-kit`, BE-RESILIENCE-2) schedules a
+retry with exponential backoff on `events.<service>.retry`; after the event's attempts, or at once for a failure a retry cannot fix
+(input, code or config, its class prefixed to the reason), the message goes to `events.<service>.dlq`, which an operator reads and requeues through `eventBus.deadLetters(event)`
 and `eventBus.requeue(id)` from a cli command; `eventBus.pendingRetries(event)` lets a failure-injection spec wait for a retry. The
 retry budget fits the consumer's side effects. Lite's consumer loop, dedupe key and dead letter are BE-EVENT-BUS-6.
 
@@ -76,8 +77,9 @@ Lite (ruling `lite-pgmq-bus-bullmq-jobs`):
   in the transaction of its effect (BE-IDEMPOTENCY-1), so a redelivery changes nothing twice.
 - The read loop of `platform/event-bus` (`EventConsumerService`, started at application bootstrap and stopped at shutdown; no
   tick, so no scheduler, BE-JOBS-6) reads a bounded batch of each consumer queue with a visibility timeout. A handled message is
-  archived; a throw leaves it to reappear when the timeout lapses; a message read more than the consumer's `maxDeliveries`
-  (default 5), or with a malformed envelope or dedupe key, moves to `<queue>__dead` while the original is archived, and the move is
+  archived; a transient throw leaves it to reappear when the timeout lapses; a failure a retry cannot fix (`classifyFailure` of
+  `@starci/nest-kit`: input, code or config, the reason its class), a message read more than the consumer's `maxDeliveries`
+  (default 5), or one with a malformed envelope or dedupe key, moves to `<queue>__dead` while the original is archived, and the move is
   logged with the event and the consumer. An operator reads and replays it through `eventBus.deadLetters(queue, limit)` and
   `eventBus.requeue(queue, id)`.
 - Delivery is unordered: two events of one aggregate may arrive in either order and either may repeat, so a reactor reads the

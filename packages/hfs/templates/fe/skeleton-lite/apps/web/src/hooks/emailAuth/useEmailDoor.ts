@@ -2,11 +2,13 @@
 
 import { useState, useTransition } from "react"
 import { sendEmailDoor } from "@/modules/auth"
-import type { EmailDoorName } from "@/modules/auth"
 import { failureOf } from "./emailAuth.shared"
 import type { EmailDoorFailure } from "./emailAuth.shared"
 
 export type { EmailDoorFailure } from "./emailAuth.shared"
+
+/** The door a hook calls: the one `sendEmailDoor` takes. */
+type EmailDoorName = Parameters<typeof sendEmailDoor>[0]
 
 /** What an email door hook answers: whether a request runs, whether the back end accepted it, why it refused, the call itself and `reject`. */
 export interface EmailDoor {

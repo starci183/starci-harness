@@ -4,7 +4,7 @@ import { InjectClock } from "@modules/platform/clock"
 import type { Clock } from "@modules/platform/clock"
 import { JobsError, JobsErrorCode } from "./errors/jobs.error"
 import { callDbFunction } from "@modules/platform/database"
-import type { FailureClass } from "@modules/platform/queue"
+import type { FailureClass } from "@starci/nest-kit"
 import { isEffectKey, isRunKey, resumedDeliveryId } from "./jobs.contracts"
 import type {
     AdvanceWrite,

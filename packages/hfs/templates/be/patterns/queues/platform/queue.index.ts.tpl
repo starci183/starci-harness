@@ -1,9 +1,7 @@
 export { parseQueueConfig } from "./queue.config"
 export type { QueueConfig } from "./queue.config"
 export type { QueueDelivery, QueueSchedulerDefinition } from "./queue.contracts"
-export { classifyFailure } from "./queue.failure"
 export { ATTEMPTS } from "./queue.policy"
-export type { FailureClass } from "./queue.failure"
 export {
     InjectQueueOutbox,
     InjectQueueRedelivery,

@@ -93,7 +93,8 @@ export function addBuiltinLiteCli({ noun, name, repo, repoRoot, manifest }: Pick
 
 const readTopic = (topic: string) => ({ id: topic, doc: parseYaml(fs.readFileSync(path.join(TOPICS_DIR, `${topic}.yaml`), 'utf8')) });
 
-function readTree(topic: string, edition?: string): TreeEntry[] {
+/** The files tree of a pattern topic (knowledge/patterns/be/<topic>.yaml), its lite tree for a lite app. */
+export function readTree(topic: string, edition?: string): TreeEntry[] {
   const file = path.join(TOPICS_DIR, `${topic}.yaml`);
   if (!fs.existsSync(file)) throw new ScaffoldError('HFS_ADD_TOPIC_MISSING', `the pattern topic ${topic} (knowledge/patterns/be/${topic}.yaml) is not carried by this package`);
   const doc = parseYaml(fs.readFileSync(file, 'utf8'));

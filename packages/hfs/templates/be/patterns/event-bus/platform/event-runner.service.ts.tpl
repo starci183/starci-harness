@@ -1,5 +1,8 @@
 import { Injectable } from "@nestjs/common"
 import type { OnApplicationBootstrap } from "@nestjs/common"
+import { classifyFailure } from "@starci/nest-kit"
+import type { FailureClass } from "@starci/nest-kit"
+import { DomainError } from "@modules/platform/errors"
 import { InjectClock } from "@modules/platform/clock"
 import type { Clock } from "@modules/platform/clock"
 import { InjectCorrelationRunner, InjectLogger } from "@modules/platform/logging"
@@ -27,8 +30,9 @@ import {
 @Injectable()
 /**
  * The consumer side of the event bus: the registry the message transport modules fill, and the read loop over the topics of the
- * registered events. A delivery is at least once: the consumer acknowledges by returning; a throw puts the message on the retry
- * topic with a doubling backoff, and after the last attempt on the dead-letter topic, where an operator reads and requeues it.
+ * registered events. A delivery is at least once: the consumer acknowledges by returning; a transient throw puts the message on the
+ * retry topic with a doubling backoff, and after the last attempt on the dead-letter topic, where an operator reads and requeues it; a
+ * failure a retry cannot fix (`classifyFailure` of @starci/nest-kit: input, code or config, BE-RESILIENCE-2) goes there at once, under its class.
  * The runner never throws for a failed delivery, so one poisoned event does not stop the partition behind it.
  */
 export class EventRunnerService implements EventConsumerRegistry, OnApplicationBootstrap {
@@ -116,13 +120,14 @@ export class EventRunnerService implements EventConsumerRegistry, OnApplicationB
         if (buried) return
         const [first] = failures
         if (failures.length > 0) {
-            await this.failed(message, eventName, attempt, first instanceof Error ? first.message : String(first))
+            const parked = failures.map((cause) => classifyFailure(cause, DomainError)).find((failureClass) => failureClass !== "transient")
+            await this.failed(message, eventName, attempt, first instanceof Error ? first.message : String(first), parked)
         }
     }
 
-    private async failed(message: InboundMessage, eventName: string, attempt: number, reason: string): Promise<void> {
-        if (attempt >= ATTEMPTS) {
-            await this.bury(message, eventName, attempt, reason)
+    private async failed(message: InboundMessage, eventName: string, attempt: number, reason: string, parked: FailureClass | undefined): Promise<void> {
+        if (parked !== undefined || attempt >= ATTEMPTS) {
+            await this.bury(message, eventName, attempt, parked === undefined ? reason : `${parked}: ${reason}`)
             return
         }
         const notBefore = this.clock.now().getTime() + backoffMs(attempt)

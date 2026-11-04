@@ -14,6 +14,8 @@ import { EventRunnerService } from "./event-runner.service"
 import type { EventSubscription, EventTransport, InboundMessage } from "./event-transport.port"
 
 const objectLike = (shape: Record<string, unknown>): unknown => expect.objectContaining(shape)
+/** A failure a later attempt can outlive: a dropped connection (classifyFailure of @starci/nest-kit). */
+const transient = (text: string): Error => Object.assign(new Error(text), { code: "ECONNRESET" })
 
 const AT = "2026-02-03T04:05:06.000Z"
 const NOW = new Date(AT).getTime()
@@ -167,7 +169,7 @@ describe("EventRunnerService legacy broker envelopes", () => {
         { attempt: "5", topic: "run-1.events.probe.dlq" },
     ])("promotes a legacy body before sending to $topic", async ({ attempt, topic }) => {
         const { runner, handle, transport } = await build()
-        handle.mockRejectedValue(new Error("provider unavailable"))
+        handle.mockRejectedValue(transient("provider unavailable"))
         const legacy = {
             eventId: "legacy-1",
             eventName: "probe.ping",
@@ -205,9 +207,9 @@ describe("EventRunnerService receive consumer delivery", () => {
         const { runner, handle, transport } = await build()
         const second = jest.fn<Promise<void>, Array<never>>()
         const third = jest.fn<Promise<void>, Array<never>>()
-        handle.mockRejectedValue(new Error("the first consumer failed"))
+        handle.mockRejectedValue(transient("the first consumer failed"))
         second.mockResolvedValue(undefined)
-        third.mockRejectedValue(new Error("the third consumer failed too"))
+        third.mockRejectedValue(transient("the third consumer failed too"))
         runner.add({ event: PingEvent, handle: second })
         runner.add({ event: PingEvent, handle: third })
 
@@ -318,7 +320,7 @@ describe("EventRunnerService receive invalid event payloads", () => {
 describe("EventRunnerService receive failed deliveries", () => {
     it("puts a failed delivery on the retry topic with the next attempt and a doubled backoff", async () => {
         const { runner, handle, transport, logger } = await build()
-        const failure = new Error("the database is down")
+        const failure = transient("the database is down")
         handle.mockRejectedValue(failure)
 
         await runner.receive(message({ headers: { attempt: "2" } }))
@@ -344,7 +346,7 @@ describe("EventRunnerService receive failed deliveries", () => {
 
     it("buries the delivery that ran out of attempts, naming the reason and the topic it came from", async () => {
         const { runner, handle, transport, logger } = await build()
-        handle.mockRejectedValue("a text, not an error")
+        handle.mockRejectedValue(transient("the broker timed out"))
 
         await runner.receive(message({ headers: { attempt: "5" } }))
 
@@ -353,14 +355,26 @@ describe("EventRunnerService receive failed deliveries", () => {
                 topic: "run-1.events.probe.dlq",
                 key: "o-1",
                 value: message().value,
-                headers: { attempt: "5", reason: "a text, not an error", "origin-topic": "run-1.events.probe" },
+                headers: { attempt: "5", reason: "the broker timed out", "origin-topic": "run-1.events.probe" },
             },
         ])
         expect(logger.warn).toHaveBeenCalledWith(EventBusLogEvent.DeliveryBuried, {
             event: "probe.ping",
             attempts: 5,
-            reason: "a text, not an error",
+            reason: "the broker timed out",
         })
+    })
+
+    it("buries at once, under its class, a failure a retry cannot fix", async () => {
+        const { runner, handle, transport } = await build()
+        handle.mockRejectedValue("a text, not an error")
+
+        await runner.receive(message())
+
+        expect(transport.send).toHaveBeenCalledTimes(1)
+        expect(transport.send).toHaveBeenCalledWith([
+            objectLike({ topic: "run-1.events.probe.dlq", headers: objectLike({ attempt: "1", reason: "code: a text, not an error" }) }),
+        ])
     })
 })
 

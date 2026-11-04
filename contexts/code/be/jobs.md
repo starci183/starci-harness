@@ -95,17 +95,63 @@ Enforced by: R335, `infra-import-owner` (R90).
 
 ## BE-JOBS-7 A job a retry cannot fix is parked, alerted once and resumed
 
-The runner classifies every failure with `classifyFailure` (BE-RESILIENCE-2): a transient one with attempts left is `fail`ed and
+The runner classifies every failure with `classifyFailure(cause, DomainError)` of `@starci/nest-kit` (BE-RESILIENCE-2): a transient one with attempts left is `fail`ed and
 rethrown; any other parks the row as `failed_awaiting_fix` with `failure_class`, `parked_build` and `parked_at`, and `park` answers
 whether its one alert is due (`alerted_at`). `ParkedJobResumer` resumes at boot every job parked under another build, the
 `parked-jobs:sweep` tick (lite `JOB_TICKS`; in full a scheduler on `PARKED_JOBS_SWEEP_QUEUE`) every parked job, and
 `resume({ jobId })` one job for the owner's "resume now" (a sweep delivery carrying `{ jobId }` asks for it: `ParkedJobResumeRequests`,
 registered alone by `JobsModule.register({ requestsOnly: true, connection })`, writes it through the outbox, and the lite cli's
 `cli queues resume [--job <id>]`, rendered once the app has its cli app and its jobs platform, calls it); each resume counts `resume_count` and hands the job back as
-`<jobKey>-r<resume_count>`. An app whose jobs table predates the park applies `jobs-failed-awaiting-fix` (lite, a db migration) or
-`JobsFailedAwaitingFix` (full) once.
+`<jobKey>-r<resume_count>`. An app rendered before the park moves onto it with `starci app codemod self-recovery`: against the
+template snapshot of that release (`templates/snapshots/<version>` of `@starci/hfs`) it rewrites each untouched platform file to the
+current template, adds the new ones and, in lite, the `jobs-failed-awaiting-fix` db migration (full adds `JobsFailedAwaitingFix` as
+a file of the tree), and leaves a file the app edited for a person, writing nothing while one is.
 
 Why: the row already holds the fence and the recorded steps, so parking and resuming it keeps every guarantee of BE-JOBS-1 to
 BE-JOBS-3 while no failure ends as a dead letter nobody restarts.
 
 Enforced by: R377 `BE_FLOW_FAILURE_SWALLOWED`, `job-write-owner` (R157).
+
+## BE-JOBS-8 The owner's "stopped work" page is the app's, over the resume door the jobs platform gives
+
+A lite app has no owner role of the harness: who may see and resume stopped work is the app's own authorization, and the app draws
+the page. The jobs platform gives it the door's two halves and nothing that would sit unused in an app without the page:
+
+- the list is `JobClaims.awaitingFix()`: each `ParkedJob` carries `jobId`, `kind` (its queue), `failureClass`, `reason`,
+  `parkedAt`, `parkedBuild` and `resumeCount`, which the page shows as one work item each;
+- the action is `ParkedJobResumer.resume({ jobId })` in the process that holds the queue, answering how many jobs went back (0 for
+  an id that is not parked: the page reports it and refreshes); from a process with no Redis it is
+  `ParkedJobResumeRequests.request(jobId)`, which writes the request through the outbox for the sweep;
+- `FlowAlerts` is bound to the app's notification of the same person, so the one alert of a parked job (`ParkedFlowAlert`, action
+  `resume`) leads to that page.
+
+The door is an ordinary feature of the app, its query and mutation thin doors, its service the only caller of the two ports:
+
+```ts
+// features/api/stopped-work/application/stopped-work.service.ts (the app's own feature; its door is guarded by the app's owner check)
+@Injectable()
+export class StoppedWorkService {
+    constructor(
+        @InjectJobClaims() private readonly claims: JobClaims,
+        private readonly resumer: ParkedJobResumer,
+    ) {}
+
+    /** The stopped work the owner sees, one item per parked job. */
+    list(): Promise<ReadonlyArray<ParkedJob>> {
+        return this.claims.awaitingFix()
+    }
+
+    /** Resumes one parked job; false when it was no longer parked. */
+    async resume(jobId: string): Promise<boolean> {
+        return (await this.resumer.resume({ jobId })) === 1
+    }
+}
+```
+
+The front end's page lists the items with their reason and class and offers "resume now" on each; it never retries on its own, and
+the item leaves the list once the job is no longer parked.
+
+Why: the owner of a lite app is a person the app names, not a harness role, so a page rendered by the harness would guess who may
+resume what; giving the contract and the example keeps every app's page on the same two ports and the same refusal.
+
+Enforced by: held by review; the ports are `job-write-owner` (R157) and R377 `BE_FLOW_FAILURE_SWALLOWED`.

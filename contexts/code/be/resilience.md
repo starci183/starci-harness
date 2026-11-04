@@ -24,9 +24,11 @@ Every side effect and every async step goes through the transactional outbox, wr
 (BE-PERSISTENCE-5, BE-QUEUES-1), and is consumed idempotently through the inbox (BE-IDEMPOTENCY-1); an inbound delivery is stored raw
 first, and processing it is an idempotent replay of the stored row. `platform/jobs` decides what a failure means, in one place:
 
-- `classifyFailure` of `platform/queue` names its class: `transient` (a dropped connection, a timeout, a lock conflict), `input`
-  (a domain error: the data is wrong), `config` (a domain code naming a configuration or connection) or `code` (any other failure); an
-  error that carries `failureClass` names its own.
+- `classifyFailure(cause, DomainError)` of `@starci/nest-kit` names its class, the one rule the job runner, the lite pgmq consumer and
+  the full event runner apply: `transient` (a dropped connection, a timeout, a lock conflict), `input` (an error of the app's
+  `DomainError` family: the data is wrong), `config` (a domain code naming a configuration or connection) or `code` (any other
+  failure); an error that carries `failureClass` names its own. An event consumer's delivery that fails transiently is redelivered;
+  any other goes to its dead letter at once under its class, where the operator's requeue resumes it (BE-EVENT-BUS-4, BE-EVENT-BUS-6).
 - A `transient` failure with attempts left is retried by the queue with bounded, jittered exponential backoff (`queue.policy.ts`).
 - Any other failure, and a transient one on its last attempt, parks the job as `failed_awaiting_fix` under the build that ran it
   (`JobClaims.park`), never as a silent final dead letter, and raises ONE alert through `FlowAlerts` with the job id and the request's

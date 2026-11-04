@@ -44,10 +44,11 @@ const envelope = {
 class RecordingConsumer implements EventConsumer<ReceiptRecordedEvent> {
     readonly event = ReceiptRecordedEvent
     readonly deliveries: Array<EventDelivery<ReceiptRecordedEvent>> = []
-    failing = false
+    /** What the consumer throws, or null while it works. */
+    failure: unknown = null
 
     handle(delivery: EventDelivery<ReceiptRecordedEvent>): Promise<void> {
-        if (this.failing) return Promise.reject(new Error("consumer down"))
+        if (this.failure !== null) return Promise.reject(this.failure)
         this.deliveries.push(delivery)
         return Promise.resolve()
     }
@@ -87,16 +88,31 @@ describe("EventConsumerService", () => {
         expect(primary.query).toHaveBeenCalledWith(ARCHIVE, [QUEUE, "1"])
     })
 
-    it("leaves a failed delivery to reappear after its visibility timeout", async () => {
+    it("leaves a delivery that failed transiently to reappear after its visibility timeout", async () => {
         const primary = mockEntityManager({ query: [READ, [{ msg_id: "1", read_ct: 2, message: envelope }]] })
         const subject = await build(primary)
         const consumer = new RecordingConsumer()
-        consumer.failing = true
+        consumer.failure = Object.assign(new Error("consumer down"), { code: "ECONNRESET" })
 
         await subject.drain({ queue: QUEUE, consumer, maxDeliveries: 5 })
 
         expect(primary.query).toHaveBeenCalledTimes(1)
         expect(logger.error).toHaveBeenCalled()
+    })
+
+    it.each([
+        ["code", new Error("a defect")],
+        ["input", Object.assign(new Error("bad row"), { failureClass: "input" })],
+    ])("parks at once, under its class, a delivery whose failure a retry cannot fix: %s", async (failureClass, failure) => {
+        const row = { msg_id: "1", read_ct: 1, message: envelope }
+        const primary = mockEntityManager({ query: [[READ, [row]], [BURY, [{ event_bus_bury: true }]]] })
+        const subject = await build(primary)
+        const consumer = new RecordingConsumer()
+        consumer.failure = failure
+
+        await subject.drain({ queue: QUEUE, consumer, maxDeliveries: 5 })
+
+        expect(primary.query).toHaveBeenCalledWith(BURY, [QUEUE, "1", 1, JSON.stringify(envelope), failureClass])
     })
 
     it.each([
