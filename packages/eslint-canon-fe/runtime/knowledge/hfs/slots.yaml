@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.13.0
+version: 3.22.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -48,6 +48,8 @@ versioning:
 # 2026-10-24: lite may serve SSE, and SSE is the default door for one-way push), and lets fe.modules.api hold the SSE stream operations (sse/).
 # 3.7.0 is a minor (alpha.31): it ADDS the optional app.scripts.integration slot (scripts/integration/*.mjs, the product test-support scripts that only the integration harness runs) and the optional fe.transport.stream slot, the fetch reader of server-sent-events streams (the stream half of the
 # transport client layer), and lets fe.hooks.swr hold the SWR subscription hooks (api/sse/subscriptions/useSubscribe<X>Swr.ts, one useSWRSubscription per stream operation).
+# 3.8.0 is a minor (urgent release, 2026-10-29): it ADDS the optional fe.dev-server-generated slot (apps/*/AGENTS.md, which `next dev` rewrites) and the
+# slot field rewrittenBy, so the release gate's clean-tree check passes over an untracked file a declared dev server writes, and over nothing else.
 # 3.10.0 is a minor (2026-10-29): it ADDS the lite be.platform.database.entities slot, the entity registry (slot fields role and importedBy), so the
 # tier matrix and the public-entry rules admit exactly its <c>Entities imports and its deep importers (persistence.md BE-PERSISTENCE-3).
 # 3.11.0 (ruling:lite-official-postgres-image, 2026-10-29) is, like 3.9.0, a change for lite only: it ADDS the managed app.db.image slot
@@ -56,6 +58,20 @@ versioning:
 # 3.13.0 (rulings lite-pgmq-bus-bullmq-jobs and lite-db-image-in-stacks, 2026-10-29) is a change for lite only: ruleParams.db.extensions
 # admits pgmq, the event bus, ruleParams.db.queueOutbox is retired with the pg_cron half of R258, the lite event-bus functions replace
 # event_bus_write in ruleParams.be.dbFunctions, and app.db.image moves to .starcistacks/images/db/Dockerfile (db/ keeps schema and data).
+# 3.17.0 (ruling auth-oidc-package, 2026-11-03) adds the optional full-edition be.integrations.keycloak, the glue of @starci/auth-oidc (the OIDC client of the
+# identity provider behind the PrincipalVerifier of @starci/auth), and gives @starci/auth-oidc to it in ruleParams.be.infraOwners.
+# 3.17.0 (ruling module-packages, 2026-11-03) adds the optional app.packages and app.module-registry: the workspace packages of the app root (the agent SDK, the module packages, the managed registry).
+# 3.18.0 (ruling seed-levels, 2026-11-03) gives app.starcistacks its two seed levels, the shared .starcistacks/seeds/ and each environment's
+# <env>/seeds/, each a seeds.yaml manifest and the folders sql/, data/ and files/, and retires app.db.seed (its rows are the shared level's
+# sql/ entries); `starci app codemod seeds-layout` moves an older app's seed data into them.
+# 3.20.0 (ruling release-gate-warm-cache, 2026-11-04) adds the required app.ci-cache-verify, the managed nightly verify of the committed check cache.
+# 3.21.0 (ruling customised-service-image) admits .starcistacks/images/<name>/** in app.starcistacks, both editions: the image folder of a service the app customises (PROJECT-STACKS-11), the db image among them.
+# 3.22.0 (2026-11-04) has be.integrations.passport require the capability module every package-backed integration is (passport.module.ts over
+# passport.module-definition.ts, the app's logger handed to @starci/auth) in place of passport.registration.ts; `starci app codemod passport-module` moves an app.
+# 3.19.0 (ruling root-packages-any-name, 2026-11-03) widens app.packages to any packages/<name>/: the agent SDK, a block library, a module package.
+# 3.15.0 (ruling app-check-cache, 2026-10-31) adds the optional app.starcistacks.cache, the committed check cache of the app (.starcistacks/cache/, both editions).
+# 3.14.0 (ruling app-secrets-one-standard, 2026-10-29) adds the optional app.ci-stack-key-restore, the managed workflow that writes the
+# deploy server's age identity back from its GitHub Environment backup.
 
 # Field meaning, per slot.
 #   id          stable name, never changes meaning inside a major.
@@ -67,6 +83,8 @@ versioning:
 #               A slot is optional in the sense of the requirements list when its presence is not required.
 #   tracked     tracked (committed) | ignored (may exist, must be gitignored) | external (must not exist in the tree;
 #               goesTo says where it lives).
+#   rewrittenBy on an ignored file slot: the dev server that writes the file into the working tree while it runs (`next dev`). The
+#               release gate's clean-tree check (release/gate.mjs dirtyPaths) passes over an untracked file such a slot owns, and only it.
 #   tier        node of the import direction matrix (tiers below); none = takes no part in import checks;
 #               inherit = the tier of the enclosing owner.
 #   owner       true when every directory matching the slot is an owner: the unit cross-owner imports and cycles use.
@@ -110,6 +128,8 @@ versioning:
 #               liteManagedBy is managed only in lite; its effective lite.path still lists literal files.
 #               the managed file list lives here and nowhere in code. A difference is HFS_MANAGED_FILE_DRIFT (a
 #               back end's tsconfig.json: HFS_TS_STRICT when a flag or an option was added).
+#   managedOnly true: the slot only lists files sync renders (needs managedBy); the path is judged by the slot that owns it, so the rendered
+#               file keeps the rules and the tier of its folder (a sign-in service is a domain service)
 #   rules       rule codes from knowledge/hfs/rules.yaml.
 #   editions    the editions (below) the slot exists in; default all of them. A slot outside the declared edition owns
 #               no path - under lite, what full keeps absent is removed, and what lite forbids is a finding.
@@ -203,6 +223,13 @@ tiers:
     modules:      {mayImport: [foundation, modules, transport, package], acyclic: true}
     transport:    {mayImport: [foundation, modules, package]}                     # modules/api: the one fetch
     package:      {mayImport: [package]}
+  # A component library (packages/grammar): src/core/<tier>/<Name>/ and the data-tier stamp equal the tier folder. A tier imports nothing
+  # above itself (FE_GRAMMAR_TIER_DIRECTION); a shared untiered module under src/core is followed, so one hop of indirection hides nothing.
+  grammar:
+    leaf:         {mayImport: [leaf]}                                             # one element or one vendor part
+    branch:       {mayImport: [leaf, branch]}                                     # a leaf plus its own interaction state
+    composite:    {mayImport: [leaf, branch, composite]}                          # a fixed arrangement of lower tiers
+    frame:        {mayImport: [leaf, branch, composite, frame]}                   # owns a region; the one tier that takes children
 crossOwner: every import across owners targets the owner's public entry (index.ts or index.tsx); never export *.
 crossApp: apps never import each other; shared code is a packages/<pkg> slot.
 
@@ -483,7 +510,7 @@ ruleParams:
     # R334 (lite): the only `.query(` outside platform/database's composer and the test world is the pass-through of a file listed here
     # (or in hfs.json sides.be.sqlPassThrough), whose SQL text is not the app's own. Paths are relative to the side folder.
     sqlPassThrough:
-      - {file: src/modules/platform/database/seed-runner.service.ts, reason: "the tracked seed file's text, run as it is (db/seed.sql); the app writes no SQL there"}
+      - {file: src/modules/platform/database/seed-runner.service.ts, reason: "the tracked seed files' text, run as it is (the sql/ entries of .starcistacks/seeds/, then of .starcistacks/<env>/seeds/); the app writes no SQL there"}
 
     lite:
       schemaAuthority: sql
@@ -674,7 +701,7 @@ slots:
     since: 3.1.0
     profiles: [app]
     editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite renders its image workflow; full renders images for its separately deployed services."
-    # Builds every image of the app (one matrix entry per declared app, path-filtered), never pushes: rendered by starci app sync.
+    # The reusable workflow ci.yml calls: builds every image of the app once per commit beside the checks, pushes the deployed ones to the registry by sha-<sha> with SBOM and provenance. Rendered by starci app sync.
     path: ".github/workflows/images.yml"
     presence: required
     tracked: tracked
@@ -686,25 +713,51 @@ slots:
   - id: app.ci-db
     profiles: [app]
     exemplifiedBy:
-      - packages/hfs/templates/app/ci-workflows-lite/github/workflows/db-deploy.yml
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: full}
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite manages its database deploy workflow; full owns an optional provider-specific workflow."
-    # The database deploy workflow: workflow_dispatch only (like app.ci-e2e); starci app sync renders it under the managed ci group.
+    editionWhy: "ruling:app-cicd-auto-deploy: a lite app migrates in the migrate phase of its stack deploy, so its database deploy workflow is retired (starci app sync --execute removes it); full owns an optional provider-specific workflow."
+    # The database deploy workflow: workflow_dispatch only (like app.ci-e2e). A lite app has none: the stack deploy backs up and migrates inside the database container.
     path: ".github/workflows/db-deploy.yml"
     presence: optional
+    litePresence: forbidden     # ruling:app-cicd-auto-deploy: retired in lite; migrations are the deploy's migrate phase
     tracked: tracked
     tier: none
     tests: none
-    liteManagedBy: ci-workflows-lite
+    goesTo: "the stack deploy: starci app stack deploy takes a verified backup, applies the expand migrations before the services update and the contract migrations after the accept (a full app keeps its own optional workflow)"
     rules: [HFS_MANAGED_FILE_DRIFT]
     since: 2.1.0
   - id: app.ci-stack-deploy
     since: 3.3.0
     profiles: [app]
     editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): both editions deploy their images to a Docker Swarm stack through the same starci stack verbs; the workflow lists the images the app declares."
-    # The Swarm stack deploy workflow: workflow_dispatch only (like app.ci-db); a thin file that calls `starci app stack`, rendered by starci app sync.
+    # The Swarm stack deploy workflow: reusable (ci.yml calls it after the verdict for every environment with deploy.auto) and workflow_dispatch for the owner's manual operations; a thin file that calls `starci app stack`, rendered by starci app sync.
     path: ".github/workflows/stack-deploy.yml"
     presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: ci-workflows
+    liteManagedBy: ci-workflows-lite
+    rules: [HFS_MANAGED_FILE_DRIFT]
+  - id: app.ci-stack-key-restore
+    since: 3.14.0
+    profiles: [app]
+    editionWhy: "ruling:app-secrets-one-standard: both editions deploy to a Docker Swarm server whose own age identity the owner backs up as a protected GitHub Environment secret; this workflow writes it back."
+    # The server identity restore workflow: workflow_dispatch only (like app.ci-stack-deploy); `starci app secret server-key --env <env> --restore github` dispatches it, rendered by starci app sync.
+    path: ".github/workflows/stack-key-restore.yml"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: ci-workflows
+    liteManagedBy: ci-workflows-lite
+    rules: [HFS_MANAGED_FILE_DRIFT]
+  - id: app.ci-cache-verify
+    since: 3.20.0
+    profiles: [app]
+    editionWhy: "ruling:release-gate-warm-cache: both editions commit a check cache that CI and the release gate trust; this scheduled workflow verifies it every night and its red run locks the release gate."
+    # The nightly verify of the committed check cache: schedule and workflow_dispatch on the default branch, STARCI_APP_CHECK_CACHE=verify; rendered by starci app sync.
+    path: ".github/workflows/cache-verify.yml"
+    presence: required
     tracked: tracked
     tier: none
     tests: none
@@ -931,17 +984,19 @@ slots:
     tier: none
     tests: none
     requires: [application-stacks.yaml]
-    allows: [application-stacks.yaml, "<env>/README.md", "<env>/environment.json", "<env>/infra/{compose,swarm,k8s,terraform}/**", "<env>/infra/metadata.json",
-             "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.enc", "<env>/secrets/.gitkeep", "<env>/seeds/**"]
+    allows: [application-stacks.yaml, "images/<name>/**", "<env>/README.md", "<env>/environment.json", "<env>/infra/{compose,swarm,k8s,terraform}/**", "<env>/infra/metadata.json",
+             "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.{enc.yaml,enc}", "<env>/secrets/.gitkeep",
+             "seeds/seeds.yaml", "seeds/{sql,data,files}/**", "<env>/seeds/seeds.yaml", "<env>/seeds/{sql,data,files}/**"]
     forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]
-    # Owner ruling 2026-10-14: lite declares docker-swarm production, app runtime config, sealed custody and seed data.
+    # Owner ruling 2026-10-14: lite declares docker-swarm production, app runtime config, sealed custody and the seed levels.
     # The db service supplies the database; schedules are platform/jobs ticks (R335); production has no Compose or host cron.
     lite:
       requires: [application-stacks.yaml]
-      allows: [application-stacks.yaml, images/db/Dockerfile, "<env>/README.md", "<env>/environment.json", "<env>/infra/swarm/**", "<env>/infra/metadata.json",
-               "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.enc", "<env>/secrets/.gitkeep", "<env>/seeds/**"]
+      allows: [application-stacks.yaml, "images/<name>/**", "<env>/README.md", "<env>/environment.json", "<env>/infra/{compose,swarm}/**", "<env>/infra/metadata.json",
+               "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.{enc.yaml,enc}", "<env>/secrets/.gitkeep",
+             "seeds/seeds.yaml", "seeds/{sql,data,files}/**", "<env>/seeds/seeds.yaml", "<env>/seeds/{sql,data,files}/**"]
       forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]
-    rules: [HFS_STACKS_SHAPE, HFS_STACKS_IN_SIDE, HFS_PLAINTEXT_SECRET, HFS_IDENTITY_CUSTODY]
+    rules: [HFS_STACKS_SHAPE, HFS_STACKS_IN_SIDE, HFS_PLAINTEXT_SECRET, HFS_IDENTITY_CUSTODY, HFS_SEEDS_SHAPE, HFS_SEED_MANIFEST, HFS_SEED_DDL, HFS_SEED_DATA_SCHEMA, HFS_SEED_TEST_DATA, HFS_SEED_SECRET_REF, HFS_SEED_PII]
   - id: app.sops
     since: 3.1.0
     profiles: [app]
@@ -995,7 +1050,7 @@ slots:
     tracked: external
     tier: none
     tests: none
-    goesTo: ".starcistacks/<env>/secrets/<slug>.enc (at the app root); decrypted values only in memory or under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE"
+    goesTo: ".starcistacks/<env>/secrets/<slug>.enc.yaml (at the app root); decrypted values only in memory or under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE"
     rules: [HFS_PLAINTEXT_SECRET]
 
   # ----- app root: the database of a lite app (ruling:lite-self-hosted-postgres-passport-minio): a self-hosted PostgreSQL in the app's
@@ -1040,15 +1095,6 @@ slots:
     tier: none
     tests: none
     since: 3.9.0
-  - id: app.db.seed
-    profiles: [app]
-    editions: [lite]
-    path: "db/seed.sql"
-    presence: optional            # synthetic dev data only; a lite app seeds nothing it cannot regenerate
-    tracked: tracked
-    tier: none
-    tests: none
-    since: 3.9.0
   - id: app.db.image
     profiles: [app]
     editions: [lite]
@@ -1064,12 +1110,25 @@ slots:
     tests: none
     since: 3.11.0
     rules: [HFS_MANAGED_FILE_DRIFT]
+  - id: app.starcistacks.cache
+    profiles: [app]
+    # The committed result cache of `starci app check` (ruling app-check-cache, contexts/project/check-cache.md): JSON Lines records keyed by
+    # content, one folder per family. App-owned and written only by the CLI; sync never renders, overwrites or judges it. Both editions.
+    path: ".starcistacks/cache/"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    since: 3.15.0
+    allows: ["fingerprint.jsonl", "check/**", "lint/**", "test-coverage/**", "sonar-baseline/**", "codecov-baseline/**"]
   - id: app.db.bootstrap
     profiles: [app]
     editions: [lite]
-    # The managed pre-migration bootstrap (templates/app/db-bootstrap): the auth and storage schemas, auth.users with the GoTrue column
-    # set, auth.uid/role/jwt stubs and the NOLOGIN browser roles, so migrations written for a hosted Supabase apply to the db service's
-    # official postgres image (nothing else of Supabase: no supabase_admin, extensions schema or realtime publication). `starci app db migrate` applies it before the first migration of an empty database.
+    # The managed pre-migration bootstrap (templates/app/db-bootstrap): the extensions schema every allowed extension is created in, the
+    # auth and storage schemas, auth.users with the GoTrue column set, auth.uid/role/jwt stubs and the NOLOGIN browser roles, so migrations
+    # written for a hosted Supabase apply to the db service's official postgres image (nothing else of Supabase: no supabase_admin or
+    # realtime publication). `starci app db migrate` applies it before the first migration of an empty database; sync renders all of it
+    # but the one marked section `starci app db baseline --squash` writes (the source's app roles and the grants a per-database dump loses).
     path: "db/bootstrap.sql"
     presence: required
     tracked: tracked
@@ -1243,6 +1302,16 @@ slots:
     tier: none
     tests: none
     why: produced by `npm run codegen` (prebuild and pretypecheck); never committed
+  - id: fe.dev-server-generated
+    since: 3.8.0
+    profiles: [fe]
+    path: "apps/*/AGENTS.md"
+    presence: optional
+    tracked: ignored
+    rewrittenBy: next dev
+    tier: none
+    tests: none
+    why: the agent notes `next dev` writes at a Next app's root each time it starts; never committed, and never a dirty tree for the release gate
 
   # ----- never in the working tree: caches, scratch, agent output ----------------------------------------
   - id: repo.tool-cache
@@ -1281,7 +1350,7 @@ slots:
     tracked: external
     tier: none
     tests: none
-    goesTo: ".starcistacks/<env>/secrets/<slug>.enc (at the app root); decrypted values only in memory or under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE"
+    goesTo: ".starcistacks/<env>/secrets/<slug>.enc.yaml (at the app root); decrypted values only in memory or under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE"
     rules: [HFS_PLAINTEXT_SECRET]
   - id: be.root-e2e
     since: 3.1.0
@@ -2044,8 +2113,8 @@ slots:
     tracked: tracked
     tier: integrations
     owner: true
-    requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.registration.ts]   # Secrets, no defaults (R44); options and named injectors (R83); the kit and the module over @starci/auth
-    allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.registration.ts, errors/]
+    requires: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.module-definition.ts, passport.module.ts]   # Secrets, no defaults (R44); options and named injectors (R83); the kit and the module over @starci/auth
+    allows: [index.ts, passport.config.ts, passport.options.ts, passport.decorators.ts, passport.kit.ts, passport.module-definition.ts, passport.module.ts, errors/]
     logic: [passport.kit.ts]   # the verifier mapping over the package: measured at 100 per file
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_AUTH_JWT_OWN_JWKS, BE_AUTH_REFRESH_COOKIE]
@@ -2137,7 +2206,6 @@ slots:
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_INTEGRATION_SPEC_MISSING]
     coverage: required
     since: 3.17.0
-
 
   # ----- BE: tests (owner test layout 2026-09-30). Unit specs are <name>.service.spec.ts beside their service and nothing else; everything else
   # lives under src/tests/, one folder per kind, and the folder and the file suffix always agree (a file whose suffix does
@@ -2682,7 +2750,7 @@ slots:
     profiles: [fe]
     editions: [lite]
     editionWhy: "lite signs people in with the package @starci/auth, so its auth client is rendered, not written (owner ruling auth-package); full wires its identity provider."
-    # The AuthClient every edition shares, implemented by one @starci/auth/client instance over the app's own back-end auth doors.
+    # The AuthClient every edition shares, implemented by one @starci/auth/client instance over the app's own back-end auth doors.  email-doors.ts is the lite-only call of the five email doors (sign up, resend, confirm, forgot, reset), kept off the shared AuthClient interface because the full edition identity provider owns its own recovery flows; index.ts is the module entry that exports both.
     path: "apps/web/src/modules/auth/{client.ts,email-doors.ts,index.ts}"
     presence: optional
     tracked: tracked

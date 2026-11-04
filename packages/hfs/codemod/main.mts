@@ -11,6 +11,7 @@ import { migrateSurfaceCardKinds, surfaceCardKindsMarkdown } from './surface-car
 import { explicitSurfaceMarkdown, migrateExplicitSurface } from './explicit-surface.mjs';
 import { directiveFirstMarkdown, migrateDirectiveFirst } from './directive-first.mjs';
 import { migrateModuleDefinition, moduleDefinitionMarkdown } from './module-definition.mjs';
+import { migratePassportModule, passportModuleMarkdown } from './passport-module.mjs';
 import { migrateQualityBinding, qualityBindingMarkdown } from './quality-binding.mjs';
 import { migrateSopsRules, sopsRulesMarkdown } from './sops-rules.mjs';
 import { migrateSecretsCache, secretsCacheMarkdown } from './secrets-cache.mjs';
@@ -19,7 +20,7 @@ import { migrateThemeTokens, themeTokensMarkdown } from './theme-tokens.mjs';
 import { migrateTierBinding, tierBindingMarkdown } from './tier-binding.mjs';
 
 /** The codemods `starci app codemod` runs, by name. */
-export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding', 'loading-states', 'explicit-surface', 'directive-first', 'secrets-cache', 'module-definition', 'sops-rules', 'quality-binding', 'account-doors', 'seeds-layout']);
+export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding', 'loading-states', 'explicit-surface', 'directive-first', 'secrets-cache', 'module-definition', 'sops-rules', 'quality-binding', 'account-doors', 'seeds-layout', 'passport-module']);
 
 /** The arguments of every report-style `starci app codemod`: --execute, --json, --format and --out; any other is refused. */
 export function spacingRolesArguments(argv: readonly string[]): { write: boolean; format: 'json' | 'markdown'; out?: string } {
@@ -44,7 +45,7 @@ export function spacingRolesArguments(argv: readonly string[]): { write: boolean
 }
 
 /** One of the report-style codemods run at an app root: its report object and the Markdown of it. */
-function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'button-intent' | 'explicit-surface' | 'account-doors' | 'module-definition'>, root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
+function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'button-intent' | 'explicit-surface' | 'account-doors' | 'module-definition' | 'passport-module'>, root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
   if (name === 'seeds-layout') {
     const report = migrateSeedsLayout({ root, write });
     return { report, markdown: seedsLayoutMarkdown(report) };
@@ -133,6 +134,13 @@ async function moduleDefinitionMain(argv: readonly string[], io: Io): Promise<nu
   return emit(options, { report, markdown: moduleDefinitionMarkdown(report) }, io);
 }
 
+/** `starci app codemod passport-module`: it formats each written file with the app's Prettier, which is asynchronous. */
+async function passportModuleMain(argv: readonly string[], io: Io): Promise<number> {
+  const options = reportArguments(argv);
+  const report = await migratePassportModule({ root: path.resolve(io.cwd), write: options.write });
+  return emit(options, { report, markdown: passportModuleMarkdown(report) }, io);
+}
+
 /** `starci app codemod account-doors [--contract]`: the expand migration of the account doors, or (a release later) the contract migration that revokes the old grants. */
 function accountDoorsMain(argv: readonly string[], io: Io): number {
   const contract = argv.includes('--contract');
@@ -151,6 +159,7 @@ export function codemodMain(argv: string[], io: Io): number | Promise<number> {
   if (name === 'explicit-surface') return explicitSurfaceMain(rest, io);
   if (name === 'account-doors') return accountDoorsMain(rest, io);
   if (name === 'module-definition') return moduleDefinitionMain(rest, io);
+  if (name === 'passport-module') return passportModuleMain(rest, io);
   if (name === undefined || !CODEMODS.includes(name)) throw new Error(`starci app codemod takes ${CODEMODS.join(' or ')}`);
   const options = reportArguments(rest);
   return emit(options, runCodemod(name as Parameters<typeof runCodemod>[0], path.resolve(io.cwd), options.write), io);
