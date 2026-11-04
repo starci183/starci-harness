@@ -38,6 +38,8 @@ export type ListOption = {
 export type SelectProps = NoChildren & FieldControlProps & {
     readonly options: ReadonlyArray<ListOption>
     readonly placeholder?: string
+    /** `pill`: the trigger is a 40px pill on the field tone (a picker in a page head: "Position: Technician"); `field` (default): the form field. */
+    readonly appearance?: "field" | "pill"
     /** Muted words before the value inside the trigger ("Position:"); the control stays named by `label`. */
     readonly prefix?: string
     readonly value?: string | null
@@ -112,6 +114,7 @@ const SelectControl = ({
     options,
     placeholder,
     prefix,
+    appearance = "field",
     value,
     defaultValue,
     onValueChange,
@@ -133,6 +136,7 @@ const SelectControl = ({
             data-component="Select"
             data-contract="A11Y-1 STATE-1 STATE-6"
             className="starci-core-select"
+            data-grammar-select-appearance={appearance}
             fullWidth
             variant={variant}
             {...fieldVariantAttributes(variant)}

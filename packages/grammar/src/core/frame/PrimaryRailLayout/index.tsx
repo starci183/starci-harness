@@ -3,7 +3,7 @@ import type { ReactNode } from "react"
 export type PrimaryRailLayoutProps = {
     readonly primary: ReactNode
     readonly rail?: ReactNode
-    readonly railWidth?: "compact" | "standard" | "wide"
+    readonly railWidth?: "compact" | "standard" | "medium" | "wide"
     readonly align?: "start" | "stretch"
     /**
      * Reading order once the container collapses to one column. `primary-first` keeps the dominant

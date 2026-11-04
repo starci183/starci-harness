@@ -35,6 +35,8 @@ export type FieldControlProps = {
     readonly isReadOnly?: boolean
     /** The form field name submitted with the value. */
     readonly name?: string
+    /** In a `Grid kind="form"` (`FormGrid`): `full` makes the field stand alone on its own row across every column (a note, an address). The control itself ignores it. */
+    readonly span?: "full"
 }
 
 /**

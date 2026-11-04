@@ -133,6 +133,11 @@ export type AccordionRowData = {
     readonly id: string
     readonly title: string
     readonly meta?: string
+    /**
+     * A step mark at the start of the row: `done` (a check), `current` (the filled accent number), `problem` (a warning triangle) or
+     * `todo` (a grey number). The step's number is `position`; the state is also said in words by the app (title or meta), never by the mark alone.
+     */
+    readonly leading?: { readonly state: "done" | "current" | "problem" | "todo"; readonly position?: number }
     readonly body: ReactNode
     readonly isOpen: boolean
     readonly isDisabled?: boolean

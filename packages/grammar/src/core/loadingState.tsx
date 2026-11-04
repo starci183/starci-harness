@@ -29,6 +29,11 @@ export type ErrorData = {
     /** The retry command's label. Give it with `onAction`. */
     readonly actionLabel?: string
     readonly onAction?: () => void
+    /**
+     * The failure sits in a row of content (a form card, a booking step) and reads as one line: the warning mark, the title with its
+     * line, and the retry at the end, with no tinted ground. Default: a band in a pane, the centred notice elsewhere.
+     */
+    readonly isInline?: boolean
 }
 
 /**
@@ -49,7 +54,7 @@ export { LoadingScope, useIsLoading, useRegionOwnsBusy, withRegionGeometry, with
 export const ErrorView = ({ error }: { readonly error: ErrorData }) => {
     const inPane = usePaneContext() !== undefined
     const host = useSurfaceHost()
-    const layout = inPane && host !== "card" && host !== "overlay" ? "band" : "notice"
+    const layout = error.isInline === true ? "row" : inPane && host !== "card" && host !== "overlay" ? "band" : "notice"
     return (
         <div
             role="alert"

@@ -19,7 +19,22 @@ export type FormGridProps = {
 export const FormGrid = ({ children, columns = 2 }: FormGridProps) => {
     const fields = Children.toArray(children)
     const rows: ReactNode[][] = []
-    for (let start = 0; start < fields.length; start += columns) rows.push(fields.slice(start, start + columns))
+    const isFull = (field: ReactNode) => isValidElement<{ readonly span?: string }>(field) && field.props.span === "full"
+    let current: ReactNode[] = []
+    for (const field of fields) {
+        if (isFull(field)) {
+            if (current.length > 0) rows.push(current)
+            current = []
+            rows.push([field])
+        } else {
+            current.push(field)
+            if (current.length === columns) {
+                rows.push(current)
+                current = []
+            }
+        }
+    }
+    if (current.length > 0) rows.push(current)
     return (
         <div
             data-tier="frame"
@@ -33,6 +48,7 @@ export const FormGrid = ({ children, columns = 2 }: FormGridProps) => {
                     key={row.map((field) => (isValidElement(field) ? String(field.key) : "")).join("|")}
                     className="starci-core-form-grid-row"
                     data-grammar-form-grid-row="true"
+                    {...(row.length === 1 && isFull(row[0]) ? { "data-grammar-form-grid-full": "true" } : {})}
                 >
                     {row}
                 </div>

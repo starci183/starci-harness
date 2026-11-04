@@ -22,6 +22,11 @@ export type RadioGroupProps = NoChildren & FieldControlProps & {
     readonly defaultValue?: string | null
     readonly onValueChange?: (value: string) => void
     readonly orientation?: ChoiceOrientation
+    /**
+     * `rows`: each option is its own row (a rounded box with its radio, title and description), the chosen row on the accent
+     * soft pair, for a few choices that each need a sentence (a service, a time slot, a plan). `plain` (default): bare radios.
+     */
+    readonly appearance?: "plain" | "rows"
     /** Initial unresolved content (knowledge STATE-8): the same anatomy, inert, its control painted as a Skeleton. */
     readonly isLoading?: boolean
 }
@@ -56,6 +61,7 @@ const RadioGroupControl = ({
     defaultValue,
     onValueChange,
     orientation = "vertical",
+    appearance = "plain",
     ...field
 }: Omit<RadioGroupProps, "isLoading">) => {
     const variant = useFieldVariant()
@@ -65,6 +71,7 @@ const RadioGroupControl = ({
             data-component="RadioGroup"
             data-contract="A11Y-1 STATE-6 FOCUS-2"
             data-grammar-orientation={orientation}
+            data-grammar-radio-appearance={appearance}
             className="starci-core-field starci-core-choice-group"
             orientation={orientation}
             variant={variant}

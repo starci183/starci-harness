@@ -33,6 +33,11 @@ export type AvatarProps = NoChildren & {
     readonly shape?: AvatarShape
     readonly isDecorative?: boolean
     readonly isCurrent?: boolean
+    /**
+     * `accent`: the initials on the accent soft pair (a shop or workspace mark that belongs to the brand) instead of a generated colour
+     * from the name. Default `default`: the generated colour that tells people apart.
+     */
+    readonly tone?: "default" | "accent"
     /** Unresolved identity: an unnamed Skeleton; the owner carries aria-busy (STATE-8). */
     readonly isLoading?: boolean
 }
@@ -112,7 +117,7 @@ export const AvatarAgentBadge = ({ children, kind, size, renderedScale = 1, clas
 )
 
 /** Uploaded image or local DiceBear initials, with the same person name rule for an AI agent (A11Y-2). */
-const AvatarInner = ({ name, src, seed, kind = "person", fallback, size = "md", shape = "circle", isDecorative = false, isCurrent = false, isLoading = false }: AvatarProps) => {
+const AvatarInner = ({ name, src, seed, kind = "person", fallback, size = "md", shape = "circle", isDecorative = false, isCurrent = false, tone = "default", isLoading = false }: AvatarProps) => {
     const avatarClassName = "starci-core-avatar"
     if (isLoading) return (
         <span aria-hidden="true" className={"starci-core-avatar starci-core-avatar-skeleton"}
@@ -126,8 +131,11 @@ const AvatarInner = ({ name, src, seed, kind = "person", fallback, size = "md", 
             <HeroAvatar {...avatarA11yProps(name, isDecorative, kind)} className={avatarClassName}
                 data-component="Avatar" data-contract="A11Y-2" data-tier="leaf" data-grammar-avatar-size={size}
                 data-grammar-avatar-shape={shape} data-grammar-avatar-kind={kind} data-grammar-current={isCurrent ? "true" : "false"}
+                data-grammar-avatar-tone={tone}
                 size={vendorAvatarSize(size)}>
-                {avatarParts(name, src, fallback, seed)}
+                {tone === "accent" && src === undefined
+                    ? <HeroAvatar.Fallback aria-hidden="true" data-grammar-avatar-fallback="true"><span className="starci-core-avatar-letters">{avatarInitials(name)}</span></HeroAvatar.Fallback>
+                    : avatarParts(name, src, fallback, seed)}
             </HeroAvatar>
         </AvatarAgentBadge>
     )

@@ -542,6 +542,16 @@
         color: var(--starci-core-alert-ink);
     }
 
+    /* A row banner: the one press target is the whole banner (an invisible button stretched over it), a chevron at its end. */
+    .starci-core-alert { position: relative; }
+    .starci-core-alert-leading { display: inline-flex; flex: none; align-items: center; }
+    .starci-core-alert-row-press { position: static; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+    .starci-core-alert-row-press::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+    .starci-core-alert-row-press:focus-visible { outline: none; }
+    .starci-core-alert-row-press:focus-visible::after { outline: 2px solid var(--focus); outline-offset: -2px; }
+    .starci-core-alert-row-press-label { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .starci-core-alert-chevron { inline-size: 1rem; block-size: 1rem; flex: none; color: var(--starci-core-alert-ink); }
+
     .starci-core-alert .starci-core-alert-title { font-weight: var(--grammar-weight-semibold); }
     .starci-core-alert .starci-core-alert-description { font-weight: var(--grammar-weight-regular); }
 

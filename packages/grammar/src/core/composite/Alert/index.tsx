@@ -2,6 +2,7 @@
 
 import { useRegionOwnsBusy, withRegionLoading } from "../../regionScope.js"
 import { Alert as HeroAlert, Spinner as HeroSpinner } from "@heroui/react"
+import { ChevronRightIcon } from "@heroicons/react/16/solid"
 import { useState, type ReactNode } from "react"
 import type { PresentationState } from "../../../common/state.js"
 import { vendorStatusFor } from "../../overlayScope.js"
@@ -24,6 +25,11 @@ export type AlertAction = {
      * `usage="leading"` as the Button's `startContent`. Decorative: the label stays the name.
      */
     readonly icon?: IconSource
+    /**
+     * `button` (default): a pill button at the end. `row`: the whole banner is the one press target (an invisible button over the row,
+     * a chevron at its end, the action's `label` as its name), for a banner that opens what it announces ("3 to approve").
+     */
+    readonly kind?: "button" | "row"
 }
 
 type AlertBase = {
@@ -31,6 +37,8 @@ type AlertBase = {
     readonly description?: ReactNode
     /** Render-neutral meaning of the banner. Default `informative`. */
     readonly tone?: PresentationState
+    /** A mark in place of the tone's glyph: an `Avatar` (who asks) or an `IconTile`. */
+    readonly leading?: ReactNode
     readonly action?: AlertAction
     /**
      * How the banner is announced when it appears. Default: `assertive` (`role="alert"`) for a
@@ -95,7 +103,7 @@ const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
  * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
  */
 const AlertInner = (props: AlertProps) => {
-    const { title, description, tone: readyTone = "informative", action, urgency, isLoading = false } = props
+    const { title, description, tone: readyTone = "informative", leading, action, urgency, isLoading = false } = props
     const ownsBusy = useRegionOwnsBusy()
     const tone: PresentationState = isLoading ? "neutral" : readyTone
     const unseen = (node: ReactNode) => isLoading ? <SkeletonPlaceholder>{node}</SkeletonPlaceholder> : node
@@ -119,9 +127,11 @@ const AlertInner = (props: AlertProps) => {
             status={vendorStatusFor(tone)}
             className="starci-core-alert"
         >
-            <HeroAlert.Indicator className="starci-core-alert-indicator">
-                {tone === "pending" ? <HeroSpinner aria-hidden="true" role="presentation" size="sm" color="current" /> : undefined}
-            </HeroAlert.Indicator>
+            {leading === undefined ? (
+                <HeroAlert.Indicator className="starci-core-alert-indicator">
+                    {tone === "pending" ? <HeroSpinner aria-hidden="true" role="presentation" size="sm" color="current" /> : undefined}
+                </HeroAlert.Indicator>
+            ) : <span className="starci-core-alert-leading" data-grammar-alert-leading="true">{isLoading ? <SkeletonPlaceholder shape="block">{leading}</SkeletonPlaceholder> : leading}</span>}
             <HeroAlert.Content className="starci-core-alert-content">
                 <HeroAlert.Title className="starci-core-alert-title">{unseen(title)}</HeroAlert.Title>
                 {description === undefined ? null : (
@@ -130,7 +140,12 @@ const AlertInner = (props: AlertProps) => {
             </HeroAlert.Content>
             {action === undefined && props.dismissLabel === undefined ? null : (
                 <span className="starci-core-alert-actions" data-grammar-alert-actions="true" data-contract="FEEDBACK-2">
-                    {action === undefined ? null : (
+                    {action === undefined ? null : action.kind === "row" ? (
+                        <>
+                            <button type="button" className="starci-core-alert-row-press" onClick={action.onAction} disabled={isLoading}><span className="starci-core-alert-row-press-label">{action.label}</span></button>
+                            <ChevronRightIcon aria-hidden="true" className="starci-core-alert-chevron" />
+                        </>
+                    ) : (
                         <Button
                             isLoading={isLoading}
                             size="sm"

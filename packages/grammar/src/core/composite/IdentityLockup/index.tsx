@@ -14,6 +14,8 @@ export type IdentityLockupProps = NoChildren & {
     readonly logoSrc?: string
     /** `square` (default): a transparent box with no corner, the image contained so round, square and wide logos keep their own shape. `rounded` is an explicit opt-in. */
     readonly markShape?: Extract<AvatarShape, "square" | "rounded">
+    /** `accent`: the initials mark on the accent soft pair instead of a generated colour (a shop or workspace identity). */
+    readonly markTone?: "default" | "accent"
     /** Gives the existing PlainPressable the navbar's shared control height. */
     readonly size?: "control"
     readonly onPress?: () => void
@@ -25,14 +27,14 @@ export type IdentityLockupProps = NoChildren & {
  * PlainPressable, so it can trigger a menu or popover (the workspace switcher of a top bar). The name is the visible text.
  * Contract: A11Y-2 (the mark is decorative; the lines name the control).
  */
-const IdentityLockupInner = ({ title, subtitle, logoSrc, markShape = "square", size, onPress, isDisabled }: IdentityLockupProps) => (
+const IdentityLockupInner = ({ title, subtitle, logoSrc, markShape = "square", markTone = "default", size, onPress, isDisabled }: IdentityLockupProps) => (
     <PlainPressable
         {...(size === undefined ? {} : { size })}
         {...(onPress === undefined ? {} : { onPress })}
         {...(isDisabled === undefined ? {} : { isDisabled })}
     >
         <span className="starci-core-identity-lockup" data-tier="composite" data-component="IdentityLockup" data-contract="A11Y-2">
-            <Avatar name={title} isDecorative shape={markShape} size="md" {...(logoSrc === undefined ? {} : { src: logoSrc })} />
+            <Avatar name={title} isDecorative shape={markShape} tone={markTone} size="md" {...(logoSrc === undefined ? {} : { src: logoSrc })} />
             <span className="starci-core-identity-lockup-copy">
                 <span className="starci-core-identity-lockup-title" data-grammar-lockup-line="title">{title}</span>
                 {subtitle === undefined ? null : <span className="starci-core-identity-lockup-subtitle" data-grammar-lockup-line="subtitle">{subtitle}</span>}

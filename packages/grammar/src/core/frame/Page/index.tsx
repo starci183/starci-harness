@@ -35,6 +35,11 @@ type PageCommonProps = {
     readonly children: ReactNode
     /** The page measure, shared by the header's content and (in `standard`) the body. Default `product`. */
     readonly measure?: PageContainerProps["measure"]
+    /**
+     * `narrow`: below 48rem the header band and the trail are not drawn, so the pane that fills the phone (a record's own head with its back control) is
+     * the page's only head. Pass it only while a narrow grid shows a detail pane; wide screens and a list pane keep the band.
+     */
+    readonly headerCollapse?: "narrow"
     /** Unresolved page subject (STATE-8): passed to the header, which keeps its slots' boxes. The body owns its own loading. */
     readonly isLoading?: boolean
 }
@@ -108,6 +113,7 @@ export const Page = (props: PageProps) => {
             data-grammar-page-chrome={chrome}
             data-grammar-page-header={band === undefined ? "false" : "true"}
             data-grammar-page-trail={trail === undefined ? "false" : "true"}
+            {...(props.headerCollapse === undefined ? {} : { "data-grammar-page-header-collapse": props.headerCollapse })}
         >
             {band === undefined ? null : <PageHeader {...band} measure={chrome === "panes" ? "full" : measure} isLoading={isLoading} />}
             {trail === undefined ? null : (

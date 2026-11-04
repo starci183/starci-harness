@@ -172,4 +172,9 @@
             box-shadow: none;
         }
     }
+
+    /* The current step is a pink fill, so its number is ink. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-accordion-step[data-grammar-step-state="current"] {
+        color: var(--foreground);
+    }
 }

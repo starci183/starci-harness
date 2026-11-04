@@ -348,6 +348,10 @@
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
+        .starci-core-form-grid[data-grammar-form-grid-columns="2"] > .starci-core-form-grid-row[data-grammar-form-grid-full="true"] {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
         .starci-core-form-grid[data-grammar-form-grid-columns="2"] :is(.starci-core-form-grid-row > [data-component]:not(:first-child), .starci-core-form-grid-row > .starci-core-field-skeleton-scope:not(:first-child) > [data-component]) {
             margin-block-start: 0;
         }
@@ -435,6 +439,24 @@
     .starci-core-choice-control {
         flex-shrink: 0;
     }
+
+    /* RadioGroup appearance="rows": every option its own row on the field ground, the chosen one on the accent soft pair. */
+    [data-grammar-radio-appearance="rows"] .starci-core-radio {
+        box-sizing: border-box;
+        inline-size: 100%;
+        padding: var(--grammar-inset);
+        border-radius: var(--field-radius);
+        background: var(--surface-secondary);
+        color: var(--foreground);
+    }
+
+    [data-grammar-radio-appearance="rows"] .starci-core-radio[data-selected="true"] {
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
+    }
+
+    [data-grammar-radio-appearance="rows"] .starci-core-radio [data-slot="description"] { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
+    [data-grammar-radio-appearance="rows"] .starci-core-choice-group-options { gap: var(--grammar-inline-gap); }
 
     .starci-core-choice-group-options {
         display: flex;

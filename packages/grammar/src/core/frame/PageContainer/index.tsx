@@ -2,7 +2,7 @@ import { cn } from "@heroui/react"
 import type { ComponentPropsWithoutRef } from "react"
 
 export type PageContainerProps = Omit<ComponentPropsWithoutRef<"div">, "className"> & {
-    readonly measure?: "reading" | "product" | "full"
+    readonly measure?: "reading" | "narrow" | "product" | "full"
     /** Additional rule ids a composing branch already knows apply to this same element. */
     readonly ["data-contract"]?: string
 }

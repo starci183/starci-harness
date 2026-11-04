@@ -155,6 +155,10 @@
         width: min(100%, var(--starci-core-reading-measure));
     }
 
+    .starci-core-page-container[data-grammar-page-measure="narrow"] {
+        width: min(100%, var(--starci-core-narrow-measure));
+    }
+
     .starci-core-page-container[data-grammar-page-measure="full"] {
         width: 100%;
     }
@@ -551,10 +555,12 @@
     @container starci-core-primary-rail (min-width: 56.001rem) {
         .starci-core-primary-rail-layout[data-grammar-layout-rail="present"] { grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem); }
         .starci-core-primary-rail-layout[data-grammar-layout-rail="present"][data-grammar-layout-rail-width="compact"] { grid-template-columns: minmax(0, 1fr) minmax(14rem, 16rem); }
+        .starci-core-primary-rail-layout[data-grammar-layout-rail="present"][data-grammar-layout-rail-width="medium"] { grid-template-columns: minmax(0, 1fr) minmax(20rem, 22.5rem); }
         .starci-core-primary-rail-layout[data-grammar-layout-rail="present"][data-grammar-layout-rail-width="wide"] { grid-template-columns: minmax(0, 1fr) minmax(20rem, 24rem); }
         /* Leading rail: the same tracks mirrored, the rail drawn first without changing source (reading) order. */
         .starci-core-primary-rail-layout[data-grammar-layout-rail="present"][data-grammar-layout-rail-position="leading"] { grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr); }
         .starci-core-primary-rail-layout[data-grammar-layout-rail="present"][data-grammar-layout-rail-position="leading"][data-grammar-layout-rail-width="compact"] { grid-template-columns: minmax(14rem, 16rem) minmax(0, 1fr); }
+        .starci-core-primary-rail-layout[data-grammar-layout-rail="present"][data-grammar-layout-rail-position="leading"][data-grammar-layout-rail-width="medium"] { grid-template-columns: minmax(20rem, 22.5rem) minmax(0, 1fr); }
         .starci-core-primary-rail-layout[data-grammar-layout-rail="present"][data-grammar-layout-rail-position="leading"][data-grammar-layout-rail-width="wide"] { grid-template-columns: minmax(20rem, 24rem) minmax(0, 1fr); }
         .starci-core-primary-rail-layout[data-grammar-layout-rail-position="leading"] > .starci-core-rail-region { order: -1; }
     }
@@ -1655,6 +1661,28 @@
         justify-content: space-between;
         column-gap: var(--grammar-inline-gap);
     }
+
+    /* A step row: the mark, the title (taking the rest) and the meta at the end, in one line. */
+    .starci-core-accordion-summary[data-grammar-accordion-leading="true"] { flex-wrap: nowrap; align-items: center; column-gap: var(--grammar-row-gap); }
+    .starci-core-accordion-summary[data-grammar-accordion-leading="true"] > .starci-core-accordion-title { flex: 1 1 auto; }
+
+    .starci-core-accordion-step {
+        display: inline-grid;
+        flex: none;
+        inline-size: 1.5rem;
+        block-size: 1.5rem;
+        place-items: center;
+        border-radius: var(--grammar-radius-pill);
+        background: var(--default);
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-semibold);
+    }
+
+    .starci-core-accordion-step > svg { inline-size: 1rem; block-size: 1rem; }
+    .starci-core-accordion-step[data-grammar-step-state="done"] { background: var(--success-soft); color: var(--success-soft-foreground); }
+    .starci-core-accordion-step[data-grammar-step-state="current"] { background: var(--accent); color: var(--accent-foreground); }
+    .starci-core-accordion-step[data-grammar-step-state="problem"] { background: var(--warning-soft); color: var(--warning-soft-foreground); }
 
     .starci-core-accordion-title {
         min-width: 0;
@@ -3332,6 +3360,32 @@
     /* The words before a Select's value ("Position:"): muted, one line, never squeezed. */
     .starci-core-select-prefix { flex: none; color: var(--muted); margin-inline-end: var(--grammar-identity-gap); white-space: nowrap; }
 
+    /* Avatar tone="accent": the initials as text on the accent soft pair, sized by the avatar step. */
+    .starci-core-avatar[data-grammar-avatar-tone="accent"] [data-grammar-avatar-fallback="true"] {
+        display: grid;
+        place-items: center;
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
+        font-weight: var(--grammar-weight-semibold);
+    }
+
+    .starci-core-avatar[data-grammar-avatar-tone="accent"] .starci-core-avatar-letters { font-size: var(--grammar-text-md); line-height: var(--grammar-leading-xs); }
+    .starci-core-avatar[data-grammar-avatar-tone="accent"][data-grammar-avatar-size="sm"] .starci-core-avatar-letters { font-size: var(--grammar-text-xs); }
+    .starci-core-avatar[data-grammar-avatar-tone="accent"][data-grammar-avatar-size="lg"] .starci-core-avatar-letters { font-size: var(--grammar-text-xl); }
+
+    /* PageIntro: the plain heading block of a public page: mark beside a title, fact lines and a sentence, on the page ground. */
+    .starci-core-page-intro { display: flex; min-width: 0; align-items: flex-start; gap: var(--grammar-row-gap); }
+    .starci-core-page-intro-mark { display: inline-flex; flex: none; }
+    .starci-core-page-intro-copy { display: flex; min-width: 0; flex: 1 1 auto; flex-direction: column; gap: var(--grammar-identity-gap); }
+
+    /* A page whose phone shows a record's own head: the band and the trail leave below 48rem. */
+    @media (max-width: 47.999rem) {
+        .starci-core-page[data-grammar-page-header-collapse="narrow"] > :is(.starci-core-page-header, .starci-core-page-trail) { display: none; }
+    }
+
+    /* Select appearance="pill": the trigger is a pill (a picker in a page head), the field tone, no shadow. */
+    .starci-core-select[data-grammar-select-appearance="pill"] .starci-core-select-trigger { border-radius: var(--grammar-radius-pill); background: var(--surface-secondary); box-shadow: none; }
+
     /* --- Empty notice --- */
     .starci-core-empty-notice {
         display: flex;
@@ -3356,7 +3410,7 @@
      * A failed read in a pane's own band: a soft danger band across the band (mark, copy, retry in one row), the title in
      * the danger pair's foreground, so the failure sits where the data would have been and never reads as the empty notice.
      */
-    .starci-core-empty-notice[data-grammar-error-layout="band"] {
+    .starci-core-empty-notice:is([data-grammar-error-layout="band"], [data-grammar-error-layout="row"]) {
         flex-flow: row wrap;
         align-items: flex-start;
         gap: var(--grammar-row-gap);
@@ -3366,6 +3420,11 @@
         color: var(--danger-soft-foreground);
         text-align: start;
     }
+
+    /* The inline row: the same line, on the card's own ground. */
+    .starci-core-empty-notice[data-grammar-error-layout="row"] { background: transparent; color: inherit; padding: 0; }
+    .starci-core-empty-notice[data-grammar-error-layout="row"] > .starci-core-notice-copy { flex: 1 1 10rem; align-items: flex-start; }
+    .starci-core-empty-notice[data-grammar-error-layout="row"] > :last-child:is(button, [data-component="Button"]) { margin-inline-start: auto; }
 
     .starci-core-empty-notice[data-grammar-error-layout="band"] > .starci-core-notice-copy {
         flex: 1 1 10rem;
