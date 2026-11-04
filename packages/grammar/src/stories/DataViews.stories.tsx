@@ -73,3 +73,16 @@ export const BarChartStates: Story = {
         </Matrix>
     ),
 }
+
+const slots: ReadonlyArray<G.ChoiceChip> = ["09:00", "09:30", "10:30", "14:00", "15:30", "16:00", "17:30", "18:00", "18:30", "19:00", "19:30"].map((time) => ({ value: time, label: time, isDisabled: time === "10:30" }))
+
+export const ChoiceChipsStates: Story = {
+    render: () => (
+        <Matrix maxWidth={420}>
+            <State label="Ready (a taken option keeps its place)" direction="column"><G.ChoiceChips label="Time" options={slots} defaultValue="14:00" empty={emptyLine} /></State>
+            <State label="Loading (the options given as geometry)" direction="column"><G.ChoiceChips label="Time" options={slots} empty={emptyLine} isLoading /></State>
+            <State label="Empty" direction="column"><G.ChoiceChips label="Time" options={[]} empty={<G.EmptyNotice message="No free time that day" description="Pick another day." />} /></State>
+            <State label="Error" direction="column"><G.ChoiceChips label="Time" options={slots} empty={emptyLine} error={failure} /></State>
+        </Matrix>
+    ),
+}

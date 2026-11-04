@@ -391,6 +391,11 @@ its column and empty cells are not drawn, and a loading grid keeps its headings 
 draws bars on one scale from zero with the value over each bar and the label under it, as a list of values for assistive
 technology; it draws no axis, grid or legend.
 
+`ChoiceChips` is one choice among a few short options (a time, a size) as pills that wrap onto as many rows as the width needs,
+so every option stays visible. It behaves as a radio group (one selected, arrows move, a taken option is disabled and keeps its
+place) and answers for its own empty, loading and error states. It is neither a filter (`FilterButtonGroup`, one row with a "+n"
+overflow) nor a segmented control (two to five peers in one row).
+
 ### Freestyle
 
 Freestyle is the one sanctioned escape hatch: a div that fills its host, where the app writes its own plain elements and

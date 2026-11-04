@@ -16,7 +16,7 @@ const actions = <G.IconButton intent="neutral" source={EllipsisGlyph} label="Mor
 
 const row = (title: string, isLoading = false) => (
     <div style={{ blockSize: "14rem" }}>
-        <G.PaneGrid label="Heads" areas={["listHead head", "list main"]} columns={["standard", "fill"]} rows={["auto", "fill"]}>
+        <G.PaneGrid label="Heads" areas={{ base: ["head", "main"], medium: ["listHead head", "list main"] }} columns={{ base: ["fill"], medium: ["standard", "fill"] }} rows={{ base: ["auto", "fill"], medium: ["auto", "fill"] }}>
             <G.Pane area="list" surface>
                 <G.PaneSection><G.Text tone="muted">The list.</G.Text></G.PaneSection>
             </G.Pane>

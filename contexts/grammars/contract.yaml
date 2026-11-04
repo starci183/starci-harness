@@ -208,15 +208,15 @@ roles:
 
   - id: segmented-control
     ui: ui/components/segmented-control.md
-    renderers: [SegmentedControl]
+    renderers: [SegmentedControl, ChoiceChips]
     vendorParity: [toggle-button-group, toggle-button]
-    slots: [options]
+    slots: [options, "ChoiceChips: label, options (value, label, isDisabled), empty, error"]
     variants:
       width: { values: [content, fill], chosenBy: app }
     sizes: { steps: [sm, md], default: md }
     states: [selected, focus-visible, disabled, skeleton]
     grammarMayChange: [selected paint (soft accent with accent border)]
-    dna: [DNA-COMMON-SEGMENTED-RAMP, DNA-COMMON-SEGMENTED-RADIO, DNA-CORE-SEGMENT-SELECTED]
+    dna: [DNA-COMMON-SEGMENTED-RAMP, DNA-COMMON-SEGMENTED-RADIO, DNA-CORE-SEGMENT-SELECTED, DNA-COMMON-CHOICE-CHIPS-WRAP]
 
   - id: chip
     ui: ui/components/chip.md
@@ -1050,6 +1050,11 @@ mustKeep:
       law: A pane header is at least as tall as a touch target (2.75rem, 44px), so the heads of one grid row share a height with or without a command.
       measure: { kind: box, select: '[data-component="PaneHeader"]', metric: height, op: ">=", value: 44px }
       owner: contract roles.pane-grid
+    - id: DNA-COMMON-CHOICE-CHIPS-WRAP
+      role: segmented-control
+      law: The chips of one group have one height, so a wrapped row and a short row read as one set.
+      measure: { kind: uniform, scope: '[data-component="ChoiceChips"]', select: '.starci-core-choice-chip', metric: [height], op: "=" }
+      owner: contract roles.segmented-control
     - id: DNA-COMMON-BOARD-ONE-WIDTH
       role: data-views
       law: The columns of one board share one width.
