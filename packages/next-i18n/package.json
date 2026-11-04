@@ -86,7 +86,7 @@
     "next-intl": "4.13.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "typescript": "5.9.3",
+    "typescript": "7.0.2",
     "typescript-eslint": "8.72.0"
   },
   "publishConfig": {
