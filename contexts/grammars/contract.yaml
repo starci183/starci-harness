@@ -332,12 +332,11 @@ roles:
     slots: [title, description, action, dismissLabel]
     variants:
       tone: { values: PresentationState, chosenBy: app from a settled fact }
-      appearance: { values: [surface, soft], chosenBy: app }
       urgency: { values: [polite, assertive], chosenBy: tone }
     sizes: none
     states: [persistent (action or negative), timed, paused on hover or focus]
     grammarMayChange: [tone paint, toast spacing]
-    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-SURFACE, DNA-CORE-ALERT-RAISED, DNA-OFFSET-POP-ALERT-SOFT]
+    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT]
 
   - id: empty-state
     ui: ui/components/empty-state.md
@@ -1035,11 +1034,46 @@ mustKeep:
       measure: { kind: source, check: "lint:starci-grammar/destructive-menu-entry-needs-danger-tone" }
       owner: CTA-4
     # --- alerts, empty states, avatars
-    - id: DNA-COMMON-ALERT-SURFACE
+    - id: DNA-COMMON-ALERT-TONE-PAIR-ACCENT
       role: alert
-      law: An Alert in the surface appearance is drawn on the surface colour; its tone paints only the indicator and the title.
-      measure: { kind: style, select: '[data-component="Alert"][data-grammar-appearance="surface"]', metric: background-color, op: "=", value: { token: --surface } }
-      owner: alert-white-surface; D-12
+      law: A informative Alert is its tone's soft pair, flat - the row is --accent-soft at full strength, the text and glyph --accent-soft-foreground, no shadow and no border.
+      measure:
+        kind: style
+        select: '[data-component="Alert"][data-grammar-tone="informative"]:not([data-loading="true"])'
+        checks: [{ metric: background-color, op: "=", value: { token: --accent-soft } }, { metric: color, op: "=", value: { token: --accent-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
+      owner: alert-soft-pair
+    - id: DNA-COMMON-ALERT-TONE-PAIR-SUCCESS
+      role: alert
+      law: A affirmative Alert is its tone's soft pair, flat - the row is --success-soft at full strength, the text and glyph --success-soft-foreground, no shadow and no border.
+      measure:
+        kind: style
+        select: '[data-component="Alert"][data-grammar-tone="affirmative"]:not([data-loading="true"])'
+        checks: [{ metric: background-color, op: "=", value: { token: --success-soft } }, { metric: color, op: "=", value: { token: --success-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
+      owner: alert-soft-pair
+    - id: DNA-COMMON-ALERT-TONE-PAIR-WARNING
+      role: alert
+      law: A cautionary Alert is its tone's soft pair, flat - the row is --warning-soft at full strength, the text and glyph --warning-soft-foreground, no shadow and no border.
+      measure:
+        kind: style
+        select: '[data-component="Alert"][data-grammar-tone="cautionary"]:not([data-loading="true"])'
+        checks: [{ metric: background-color, op: "=", value: { token: --warning-soft } }, { metric: color, op: "=", value: { token: --warning-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
+      owner: alert-soft-pair
+    - id: DNA-COMMON-ALERT-TONE-PAIR-DANGER
+      role: alert
+      law: A negative Alert is its tone's soft pair, flat - the row is --danger-soft at full strength, the text and glyph --danger-soft-foreground, no shadow and no border.
+      measure:
+        kind: style
+        select: '[data-component="Alert"][data-grammar-tone="negative"]:not([data-loading="true"])'
+        checks: [{ metric: background-color, op: "=", value: { token: --danger-soft } }, { metric: color, op: "=", value: { token: --danger-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
+      owner: alert-soft-pair
+    - id: DNA-COMMON-ALERT-TONE-PAIR-DEFAULT
+      role: alert
+      law: A neutral Alert is its tone's soft pair, flat - the row is --default-soft at full strength, the text and glyph --default-soft-foreground, no shadow and no border.
+      measure:
+        kind: style
+        select: '[data-component="Alert"][data-grammar-tone="neutral"]:not([data-loading="true"])'
+        checks: [{ metric: background-color, op: "=", value: { token: --default-soft } }, { metric: color, op: "=", value: { token: --default-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
+      owner: alert-soft-pair
     - id: DNA-COMMON-EMPTY-ONE-ACTION
       role: empty-state
       law: An empty notice holds at most one action.
@@ -1247,11 +1281,6 @@ mustKeep:
       law: The selected segment sits on the soft accent.
       measure: { kind: style, select: '[data-component="SegmentedControl"] [role="radio"][aria-checked="true"]', metric: background-color, op: "=", value: { token: --accent-soft } }
       owner: CTA-1/case-6
-    - id: DNA-CORE-ALERT-RAISED
-      role: alert
-      law: A surface Alert is raised like a top surface, by its shadow and without a border.
-      measure: { kind: style, select: '[data-component="Alert"][data-grammar-appearance="surface"]', metric: border-width, op: "=", value: 0px }
-      owner: alert-white-surface
     - id: DNA-CORE-PARITY-STRICT
       role: root
       law: core changes HeroUI through tokens only; every other deviation is a ruled override.
@@ -1324,12 +1353,6 @@ mustKeep:
         select: ':is([data-component="Button"],[data-component="Badge"],[data-grammar-surface])'
         checks: [{ metric: box-shadow, op: "=", value: none }, { metric: border-width, op: "=", value: { token: --offset-pop-outline-width } }]
       owner: grammars/offset-pop.md
-    - id: DNA-OFFSET-POP-ALERT-SOFT
-      role: alert
-      law: A soft Alert is its tone's palette fill with ink text.
-      measure: { kind: style, select: '[data-component="Alert"][data-grammar-appearance="soft"]', metric: color, op: "=", value: { token: --foreground } }
-      owner: O-10
-      followUp: O-10
     - id: DNA-OFFSET-POP-PARITY-CUSTOM
       role: root
       law: offset-pop re-skins paint and arrangement only inside its scope; anatomy, roles and behaviour stay HeroUI's.

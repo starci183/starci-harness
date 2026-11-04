@@ -515,42 +515,35 @@
 
     /* ---------------------------------------------------------------- alert banner */
     /*
-     * The Alert IS the HeroUI Alert (owner ruling 2026-09-27 alert-white-surface; @heroui/styles alert.css): a white
-     * bg-surface row with shadow-surface, px-4 py-3, radius min(32px, --radius-3xl), gap-4; the indicator a size-4
-     * glyph with p-1 and the title text-sm/6 medium, both in the tone's soft-foreground; a muted description. Grammar
-     * paints nothing over it (0.5.4: the tone tint, tone border, 12px radius, 20px indicator and overlay-tone indicator
-     * colour are gone). It only lets the row wrap at a narrow width so the action stays inside the surface.
+     * One look, the tone's soft pair (owner ruling alert-soft-pair): the row is `--<tone>-soft` at full strength and its glyph,
+     * title and description are `--<tone>-soft-foreground`; no shadow, no border, the HeroUI row's radius and anatomy. The
+     * tone maps informative -> accent, affirmative -> success, cautionary -> warning, negative -> danger, and neutral,
+     * pending and unavailable -> default. The row wraps at a narrow width so the action stays inside it.
      */
     .starci-core-alert {
+        --starci-core-alert-soft: var(--default-soft);
+        --starci-core-alert-ink: var(--default-soft-foreground);
         min-width: 0;
         flex-wrap: wrap;
-    }
-
-    /*
-     * appearance="soft" (owner ruling 2026-10-11): the tone's soft tint at half strength under the same anatomy, no shadow.
-     * The title keeps the tone's soft-foreground, which clears 3:1 on the lighter half tint (COLOR-5 case-1a).
-     */
-    .starci-core-alert[data-grammar-appearance="soft"] {
-        --starci-core-alert-soft: var(--default-soft, var(--default));
-        background: color-mix(in oklab, var(--starci-core-alert-soft) 50%, transparent);
+        border: 0;
+        background: var(--starci-core-alert-soft);
         box-shadow: none;
+        color: var(--starci-core-alert-ink);
     }
 
-    .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="informative"] {
-        --starci-core-alert-soft: var(--accent-soft, var(--default));
+    .starci-core-alert[data-grammar-tone="informative"] { --starci-core-alert-soft: var(--accent-soft); --starci-core-alert-ink: var(--accent-soft-foreground); }
+    .starci-core-alert[data-grammar-tone="affirmative"] { --starci-core-alert-soft: var(--success-soft); --starci-core-alert-ink: var(--success-soft-foreground); }
+    .starci-core-alert[data-grammar-tone="cautionary"] { --starci-core-alert-soft: var(--warning-soft); --starci-core-alert-ink: var(--warning-soft-foreground); }
+    .starci-core-alert[data-grammar-tone="negative"] { --starci-core-alert-soft: var(--danger-soft); --starci-core-alert-ink: var(--danger-soft-foreground); }
+
+    .starci-core-alert .starci-core-alert-indicator,
+    .starci-core-alert .starci-core-alert-title,
+    .starci-core-alert .starci-core-alert-description {
+        color: var(--starci-core-alert-ink);
     }
 
-    .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="affirmative"] {
-        --starci-core-alert-soft: var(--success-soft, var(--default));
-    }
-
-    .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="cautionary"] {
-        --starci-core-alert-soft: var(--warning-soft, var(--default));
-    }
-
-    .starci-core-alert[data-grammar-appearance="soft"][data-grammar-tone="negative"] {
-        --starci-core-alert-soft: var(--danger-soft, var(--default));
-    }
+    .starci-core-alert .starci-core-alert-title { font-weight: var(--grammar-weight-semibold); }
+    .starci-core-alert .starci-core-alert-description { font-weight: var(--grammar-weight-regular); }
 
     /* HeroUI sizes the content h-full; in a wrapped row that height is circular and pushes the action out of the
        surface, so the content takes its own height. */

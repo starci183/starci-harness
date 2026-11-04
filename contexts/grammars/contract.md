@@ -297,8 +297,8 @@ it differs from the unresolved-content `isLoading` geometry.
 ### Alert
 
 An alert is feedback in the page; a toast is the same anatomy in the one region. The tone is a settled fact and
-paints only the indicator and the title; the surface stays neutral, or takes the tone's soft tint in the `soft`
-appearance. A negative tone is announced assertively, everything else politely. A toast with an action, or a
+is drawn as its soft pair: the row is the tone's soft tint at full strength and the glyph, title and description its soft foreground,
+with no shadow and no border, in every family. A negative tone is announced assertively, everything else politely. A toast with an action, or a
 negative one, stays until dismissed.
 
 ### Quote

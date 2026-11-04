@@ -12,10 +12,7 @@ import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import type { NoChildren } from "../../tier.js"
 
 export type AlertUrgency = "polite" | "assertive"
-/**
- * `surface` (default): the HeroUI white row with the surface shadow. `soft`: the row takes its tone's soft tint at half strength
- * (`--<tone>-soft` / 50, no shadow), for a notice that must read as part of the region it sits in (owner ruling 2026-10-11).
- */
+/** @deprecated An Alert has one look, the tone's soft pair; both values render it. Removed in the next release. */
 export type AlertAppearance = "surface" | "soft"
 
 export type AlertAction = {
@@ -39,6 +36,7 @@ type AlertBase = {
      * `negative` tone, `polite` (`role="status"`) for everything else.
      */
     readonly urgency?: AlertUrgency
+    /** @deprecated No effect: every Alert is drawn on its tone's soft tint. Remove the prop; it is dropped in the next release. */
     readonly appearance?: AlertAppearance
     /**
      * Unresolved banner (knowledge STATE-8): the same anatomy in the neutral tone, not announced (no status role), its
@@ -83,6 +81,11 @@ const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
 /**
  * COMPOSITE - `Alert`: an inline, in-flow banner about the region it sits in.
  *
+ * Its one look is the tone's soft pair (owner ruling `alert-soft-pair`): the background is `--<tone>-soft` at full strength, the
+ * glyph, title and description are `--<tone>-soft-foreground`, with no shadow and no border. Tones map to the pair
+ * as informative -> accent, affirmative -> success, cautionary -> warning, negative -> danger, and neutral, pending and
+ * unavailable -> default.
+ *
  * It is not an overlay: it takes layout space and stays until resolved or dismissed. Dismissal is
  * uncontrolled (the banner removes itself) and `onDismiss` reports it. Tone is echoed on
  * `data-grammar-tone`; the vendor status supplies the default glyph, `pending` swaps it for a spinner.
@@ -91,7 +94,7 @@ const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
  * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
  */
 export const Alert = (props: AlertProps) => {
-    const { title, description, tone: readyTone = "informative", action, urgency, appearance = "surface", isLoading = false } = props
+    const { title, description, tone: readyTone = "informative", action, urgency, isLoading = false } = props
     const tone: PresentationState = isLoading ? "neutral" : readyTone
     const unseen = (node: ReactNode) => isLoading ? <SkeletonPlaceholder>{node}</SkeletonPlaceholder> : node
     const [isDismissed, setIsDismissed] = useState(false)
@@ -108,7 +111,6 @@ export const Alert = (props: AlertProps) => {
             data-tier="composite"
             data-component="Alert"
             data-grammar-tone={tone}
-            data-grammar-appearance={appearance}
             data-urgency={resolvedUrgency}
             data-contract="FEEDBACK-3"
             {...(isLoading ? { "data-loading": "true", "aria-busy": true } : { role: resolvedUrgency === "assertive" ? "alert" : "status" })}

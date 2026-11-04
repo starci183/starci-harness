@@ -122,12 +122,12 @@ rulings:
     status: live
     ruling: "Apps on a grammar write layout-only CSS and every visual element lives in the grammar package; contextual field variants, panel-list alignment and composite group identities are grammar capabilities, and the canon refuses static field variants, app surface paint and stacked list padding."
     owner: "contexts/code/fe/ui.md FE-CSS-1; contexts/ui/composition.md COLLECTION-3; lint R318"
-  - id: alert-white-surface
-    date: '2026-09-27'
+  - id: alert-soft-pair
+    date: '2026-11-05'
     status: live
-    ruling: "A notice is the vendor Alert on its surface with the tone on its indicator and title only; a `soft` appearance (the tone's soft tint, no shadow) is the one tinted alternative; its action is the grammar Button in the variant the Alert gives its tone."
+    ruling: "A notice is the grammar Alert in one look: the tone's soft pair, background x-soft at full strength and glyph, title and description x-soft-foreground, with no shadow and no border, in Core and Offset Pop alike; tones map informative to accent, affirmative to success, cautionary to warning, negative to danger and neutral, pending and unavailable to default; its action is the grammar Button in the variant the Alert gives its tone. The `appearance` prop is a deprecated no-op until it is removed."
     owner: "contexts/ui/components/toast-alert.md; contexts/grammars/core.md"
-    absorbs: [ACCENT-5/case-6]
+    absorbs: [ACCENT-5/case-6, alert-white-surface]
   - id: meter-segments-h1
     date: '2026-09-27'
     status: live

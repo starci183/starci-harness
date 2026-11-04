@@ -147,18 +147,9 @@
     }
 
     /* ---------------------------------------------------------------- alert banner */
+    /* The Alert's one look is Common's soft pair, flat: no ink outline, no sticker shadow. Only the family radius is its own. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Alert"] {
-        border: var(--offset-pop-outline-width) solid var(--border);
         border-radius: var(--offset-pop-control-radius);
-        color: var(--foreground);
-        background: color-mix(in srgb, var(--offset-pop-tone-color) 38%, var(--surface));
-        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
-        font-weight: var(--grammar-weight-semibold);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Alert"] [data-slot="alert-root"],
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Alert"] :is(p, span) {
-        color: inherit;
     }
 
     /* ---------------------------------------------------------------- kbd */

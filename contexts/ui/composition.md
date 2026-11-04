@@ -148,8 +148,7 @@ states any outcome.
 Success, warning and danger appear only where authority reports that state, never as a category, a peer marker
 or decoration. A figure that reports a state keeps the default tone with a toned `Badge` beside it. Status is
 never a text colour choice. A notice is the grammar `Alert`, never a hand-built row and never an `IconTile` posing
-as its indicator: on the canvas it takes the default `surface` appearance; when it belongs to a band, row or step
-it takes `soft`. An informative soft notice spends accent and counts in the budget. The Alert's action variant per
+as its indicator: it has one look, its tone's soft pair. An informative notice spends accent and counts in the budget. The Alert's action variant per
 tone is contract data. See [components/toast-alert.md](components/toast-alert.md).
 
 ### ACCENT-6 Budget and the one strong mass

@@ -18,6 +18,7 @@
 
 ## Unreleased
 
+- Changed: `Alert` has one look in Core and Offset Pop, the tone's soft pair: the row is `--<tone>-soft` at full strength, the glyph, title (semibold) and description (regular) are `--<tone>-soft-foreground`, with no shadow and no border; informative maps to accent, affirmative to success, cautionary to warning, negative to danger, and neutral, pending and unavailable to default. The `appearance` prop is a deprecated no-op (both values render this look) and will be removed in the next release; delete it at call sites. The DNA laws `DNA-COMMON-ALERT-SURFACE`, `DNA-CORE-ALERT-RAISED` and `DNA-OFFSET-POP-ALERT-SOFT` are replaced by `DNA-COMMON-ALERT-TONE-PAIR-*`.
 - Added: `ChoiceChips`, one choice among a few short options as pills that wrap (a time, a day), with empty, loading and error. DNA law `DNA-COMMON-CHOICE-CHIPS-WRAP`.
 - Added: `Board` (stages as columns of rows that scroll and snap), `ScheduleGrid` (entries placed by row and column; an agenda below 48rem of its width) and `BarChart` (bars on one scale), each with loading, empty and error drawn in the shape of real content. DNA laws `DNA-COMMON-BOARD-ONE-WIDTH`, `DNA-COMMON-SCHEDULE-HEADINGS`, `DNA-COMMON-BAR-CHART-ONE-SCALE`.
 - Added: `PaneHeader`, the head band of one pane (back control where a phone shows the pane alone, mark, title with status and one muted line, trailing commands), as tall as a touch target; a loading head keeps its box. DNA law `DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT`.

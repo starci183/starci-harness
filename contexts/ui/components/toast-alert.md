@@ -20,12 +20,8 @@ Choice `toast-alert.choose.owner`: who reports the outcome. The first row that a
 | toast | a transient confirmation of a settled result | a toast, announced once, pausing on hover and focus | `DNA-COMMON-TOASTER-LIVE` |
 | page | something on the page needs the reader's attention | an `Alert` on the canvas, before the collection (HIERARCHY-3) | judgement |
 
-Choice `toast-alert.choose.appearance`: which appearance an `Alert` takes.
-
-| Row | When | Choose | Measure |
-| --- | --- | --- | --- |
-| soft | the notice belongs to a band, a row or a step | `appearance="soft"` | candidate: an `Alert` inside a band or row is soft (G-17) |
-| surface | the notice stands on the canvas | `appearance="surface"` (the default) | `DNA-COMMON-ALERT-SURFACE` |
+An `Alert` has one look: its tone's soft pair on the row, flat (`DNA-COMMON-ALERT-TONE-PAIR-*`). It takes no appearance choice; the
+deprecated `appearance` prop does nothing.
 
 ## Variants
 Tone reports a real outcome (ACCENT-5); informative spends accent. The action's variant per tone is the
