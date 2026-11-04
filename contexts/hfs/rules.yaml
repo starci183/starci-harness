@@ -1819,7 +1819,7 @@ rules:
       - {kind: hfs, id: boot-proof}
   - id: R273
     code: HFS_COVERAGE_BELOW
-    law: A supplied coverage report proves full line, function and branch coverage per back-end logic file (a logic-role file or one its slot declares) in the slot-derived measured scope.
+    law: A supplied coverage report proves full line, function and branch coverage per back-end logic file (a logic-role file or one its slot declares) in the slot-derived measured scope, and a root package's type module, which that scope leaves out, holds types only.
     failureCodes:
       - HFS_COVERAGE_BELOW
     enforcers:

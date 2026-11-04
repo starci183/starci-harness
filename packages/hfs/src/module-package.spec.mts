@@ -142,7 +142,7 @@ test('the module noun of addKind registers the package, and the root packages en
   const body = (file: string): string => targets.find((target) => target.path === file)?.content ?? '';
   for (const folder of ['packages/agent-sdk', 'packages/module-loyalty']) {
     assert.match(body('sonar-project.properties'), new RegExp(`${folder}/src[,\\n]`));
-    for (const unmeasured of ['src/workbench/**', 'src/public/**', 'src/**/index.ts']) assert.ok(body('sonar-project.properties').includes(`${folder}/${unmeasured}`), `${folder}/${unmeasured}`);
+    for (const unmeasured of ['src/workbench/**', 'src/public/**', 'src/client/**', 'src/**/index.ts', 'src/**/*.types.ts', 'src/**/*-types.ts']) assert.ok(body('sonar-project.properties').includes(`${folder}/${unmeasured}`), `${folder}/${unmeasured}`);
     assert.ok(body('codecov.yml').includes(`"${folder}/src/**"`), folder);
   }
   assert.ok(!body('sonar-project.properties').includes('packages/node_modules'));
@@ -154,10 +154,16 @@ test('the module noun of addKind registers the package, and the root packages en
         excludes: [
             "packages/agent-sdk/src/workbench/**",
             "packages/agent-sdk/src/public/**",
+            "packages/agent-sdk/src/client/**",
             "packages/agent-sdk/src/**/index.ts",
+            "packages/agent-sdk/src/**/*.types.ts",
+            "packages/agent-sdk/src/**/*-types.ts",
             "packages/module-loyalty/src/workbench/**",
             "packages/module-loyalty/src/public/**",
+            "packages/module-loyalty/src/client/**",
             "packages/module-loyalty/src/**/index.ts",
+            "packages/module-loyalty/src/**/*.types.ts",
+            "packages/module-loyalty/src/**/*-types.ts",
         ],
     },
 })

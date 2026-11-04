@@ -3,7 +3,10 @@
 // lcov carries lines, functions and branches; the unit runner also enforces its statement threshold.
 import fs from 'node:fs';
 import path from 'node:path';
-import { coverageScope, measuredBy, packageMeasuredBy, packagesCoverage, rootPackageFoldersOf } from '../coverage-scope.mjs';
+import type ts from 'typescript';
+import { fileURLToPath } from 'node:url';
+import { loadTypescript } from '../../lib/package-at.mjs';
+import { coverageScope, measuredBy, PACKAGE_TYPE_MODULE, packageMeasuredBy, packagesCoverage, rootPackageFoldersOf } from '../coverage-scope.mjs';
 import { editionRuleParams, effectiveSlot, slotInEdition } from '../edition-slots.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { found } from './read.mjs';
@@ -199,6 +202,35 @@ function measuredResult(file: string, records: Parsed) {
   return { path: file, metrics, problems: [...new Set(problems)], ok: problems.length === 0 };
 }
 
+/** A statement that emits nothing: a type, an interface, a type-only import or export, an ambient declaration. */
+function typeOnlyStatement(api: typeof ts, statement: ts.Statement): boolean {
+  if (api.isInterfaceDeclaration(statement) || api.isTypeAliasDeclaration(statement) || api.isEmptyStatement(statement)) return true;
+  if (api.isImportDeclaration(statement)) return statement.importClause?.isTypeOnly === true;
+  if (api.isExportDeclaration(statement)) return statement.isTypeOnly;
+  return api.canHaveModifiers(statement) && (api.getModifiers(statement) ?? []).some((modifier) => modifier.kind === api.SyntaxKind.DeclareKeyword);
+}
+
+/** The first statement of a type module (PACKAGE_TYPE_MODULE) that emits code, as written, or null when the module declares types only. */
+export function typeModuleRuntime(text: string, api: typeof ts): string | null {
+  const source = api.createSourceFile('module.ts', text, api.ScriptTarget.Latest, false, api.ScriptKind.TS);
+  const statement = source.statements.find((entry) => !typeOnlyStatement(api, entry));
+  return statement ? (statement.getText(source).split(/\r?\n/u)[0] ?? '').slice(0, 120) : null;
+}
+
+/** R273 over the type modules of the root packages the unit run leaves out: each that holds runtime code is a finding, since nothing measures it. */
+function typeModuleFindings(repoRoot: string | undefined, unmeasured: string[]): Parsed[] {
+  const typeModules = unmeasured.filter((file) => file.startsWith('packages/') && PACKAGE_TYPE_MODULE.test(file));
+  if (!repoRoot || typeModules.length === 0) return [];
+  const api = loadTypescript(repoRoot, path.dirname(fileURLToPath(import.meta.url)));
+  if (api === null) return [found(HFS_COVERAGE_BELOW, typeModules[0]!, 'the type modules of the root packages cannot be judged: no TypeScript resolves from the app; install the app dependencies')];
+  return typeModules.flatMap((file) => {
+    let text: string;
+    try { text = fs.readFileSync(path.join(repoRoot, file), 'utf8'); } catch { return []; }
+    const runtime = typeModuleRuntime(text, api);
+    return runtime === null ? [] : [found(HFS_COVERAGE_BELOW, file, `${file} is a type module, which the unit run does not measure, but it holds runtime code (\`${runtime}\`); move that code to a measured file of the package or give the file a name of its role`)];
+  });
+}
+
 /**
  * Read-only R273 report for an app or be side. `lcov` injects report text; `coverageFrom` selects a path relative to repoRoot.
  * Only an explicit report enables the check; ordinary app check does not infer a stale report from coverage/lcov.info.
@@ -225,6 +257,7 @@ export function coverageBelowReport({ repoRoot, files, all, repo, manifest, cove
     report.results = boundary.measured.map((file) => measuredResult(file, mapped.get(file)));
     for (const result of report.results.filter((entry: Parsed) => !entry.ok)) report.findings.push(found(HFS_COVERAGE_BELOW, result.path, `${result.path}: ${result.problems.join('; ')}; measured logic files require 100% lines, functions and branches`, { coverage: result.metrics }));
   }
+  report.findings.push(...typeModuleFindings(repoRoot, boundary.unmeasured));
   report.ok = report.findings.length === 0;
   return report;
 }

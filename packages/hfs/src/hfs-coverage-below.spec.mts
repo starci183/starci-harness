@@ -257,3 +257,33 @@ test('HFS_COVERAGE_BELOW measures the logic of the root packages at the app root
   const partial = coverageBelowReport(fixture(t, 'full', `${record('src/modules/domain/orders/orders.service.ts')}${record('../packages/agent-sdk/src/registry.ts', { branch: 0 })}`, files));
   assert.deepEqual(partial.findings.map((finding: Finding) => finding.path), [PACKAGE_LOGIC]);
 });
+
+test('HFS_COVERAGE_BELOW leaves a root package\'s type modules and client out of the unit run, and refuses a type module that holds runtime code', (t) => {
+  const PACKAGE_LOGIC = 'packages/agent-sdk/src/registry.ts';
+  const TYPES = ['packages/agent-sdk/src/node/node.types.ts', 'packages/blocks-core/src/blocks/schema-types.ts', 'packages/blocks-core/src/views/views.types.ts'];
+  const CLIENT = ['packages/blocks-core/src/client/core-blocks.ts', 'packages/blocks-core/src/client/composites/useBlockWords.ts'];
+  const RUNTIME_TYPES = 'packages/agent-sdk/src/template/format.types.ts';
+  const files = [LOGIC, PACKAGE_LOGIC, 'packages/agent-sdk/package.json', 'packages/blocks-core/package.json', 'packages/blocks-core/src/blocks/card-grid.block.ts', ...TYPES, ...CLIENT, RUNTIME_TYPES];
+  const lcov = `${record('src/modules/domain/orders/orders.service.ts')}${record('../packages/agent-sdk/src/registry.ts')}${record('../packages/blocks-core/src/blocks/card-grid.block.ts')}`;
+  const context = fixture(t, 'lite', lcov, files);
+  const typeOnly = [
+    'import type { z } from "zod"',
+    'import type { BadgeTone } from "@starci/grammar/common" with { "resolution-mode": "import" }',
+    'export type { Other } from "./other"',
+    '/** A row. */',
+    'export interface Row { readonly id: string }',
+    'export type Rows = ReadonlyArray<Row>',
+    'declare const brand: unique symbol',
+    '',
+  ].join('\n');
+  for (const file of TYPES) fs.writeFileSync(path.join(context.repoRoot, file), typeOnly);
+  fs.writeFileSync(path.join(context.repoRoot, RUNTIME_TYPES), 'export interface Format { readonly width: number }\nexport const MAX_PARAMETERS = 20\n');
+  const report = coverageBelowReport(context);
+  assert.deepEqual(report.measured, [LOGIC, 'packages/agent-sdk/src/registry.ts', 'packages/blocks-core/src/blocks/card-grid.block.ts']);
+  for (const file of [...TYPES, ...CLIENT, RUNTIME_TYPES]) assert.ok(report.unmeasured.includes(file), file);
+  for (const glob of ['packages/blocks-core/src/client/**', 'packages/blocks-core/src/**/*.types.ts', 'packages/blocks-core/src/**/*-types.ts']) assert.ok(report.unmeasuredScopes.includes(glob), glob);
+  assert.deepEqual(report.findings.map((finding: Finding) => finding.path), [RUNTIME_TYPES], 'only the type module that runs code is refused');
+  assert.match(report.findings[0].message, /holds runtime code \(`export const MAX_PARAMETERS = 20`\)/u);
+  fs.writeFileSync(path.join(context.repoRoot, RUNTIME_TYPES), 'import { helper } from "./helper"\nexport type Format = ReturnType<typeof helper>\n');
+  assert.match(coverageBelowReport(context).findings[0]?.message ?? '', /holds runtime code \(`import \{ helper \} from "\.\/helper"`\)/u, 'a value import is emitted, so it is runtime code');
+});

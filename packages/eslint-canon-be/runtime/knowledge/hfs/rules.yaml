@@ -4652,7 +4652,7 @@ rules:
       - {path: packages/hfs/src/hfs-boot-proof.spec.mjs, edition: lite}
   - id: R273
     code: "HFS_COVERAGE_BELOW"
-    law: "An app check supplied with a coverage-from lcov report proves 100 percent lines, functions and branches per tracked back-end logic file (a logic-role file or a file its slot declares in `logic`) in the edition's slot-derived measured scope; a missing source record or unavailable metric is refused. The unit runner also enforces statement coverage. Reports list the measured scope and the source files outside it, including features, cli and webhooks."
+    law: "An app check supplied with a coverage-from lcov report proves 100 percent lines, functions and branches per tracked back-end logic file (a logic-role file or a file its slot declares in `logic`) in the edition's slot-derived measured scope; a missing source record or unavailable metric is refused. The unit runner also enforces statement coverage. Reports list the measured scope and the source files outside it, including features, cli and webhooks. A root package's type module (`<name>.types.ts`, `<name>-types.ts`), which the scope leaves out with its workbench, public face, client and barrels, holds types only: one that emits code is refused."
     kinds: [check]
     gates: [ci]
     failureCodes: ["HFS_COVERAGE_BELOW"]

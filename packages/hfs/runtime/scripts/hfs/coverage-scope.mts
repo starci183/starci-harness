@@ -272,10 +272,17 @@ export function measuredBy({ roots, roles, files, excludes }: { roots: string[];
 export const isMeasured = (manifest: ScopeManifest, file: string): boolean => measuredBy(coverageScope(manifest))(file);
 
 /**
- * The parts of a root workspace package (`packages/<name>` at the app root, PROJECT-3) that are never measured: its workbench and its public face (front
- * ends, judged by the front-end canon and the Grammar lint) and its barrels. Everything else below its `src/` is its logic.
+ * The type modules of a root workspace package: `<name>.types.ts` and `<name>-types.ts` declare types and compile to nothing, so the unit run has no
+ * line of theirs to measure. One that holds runtime code is refused by R273 (rules/coverage-below.mjs, typeModuleRuntime).
  */
-const PACKAGE_UNMEASURED = Object.freeze(['src/workbench/**', 'src/public/**', 'src/**/index.ts']);
+export const PACKAGE_TYPE_MODULE = /[.-]types\.ts$/;
+
+/**
+ * The parts of a root workspace package (`packages/<name>` at the app root, PROJECT-3) that are never measured: its workbench, its public face and its
+ * client (front ends, judged by the front-end canon and the Grammar lint; a lite app measures no front end), its barrels and its type modules
+ * (PACKAGE_TYPE_MODULE). Everything else below its `src/` is its logic.
+ */
+const PACKAGE_UNMEASURED = Object.freeze(['src/workbench/**', 'src/public/**', 'src/client/**', 'src/**/index.ts', 'src/**/*.types.ts', 'src/**/*-types.ts']);
 
 /** The measured scope of the app's root packages, every path app-relative: the folders that hold specs, the files measured and the ones never measured. */
 export interface PackagesCoverage { folders: string[]; files: string[]; excludes: string[] }
