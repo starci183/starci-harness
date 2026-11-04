@@ -48,6 +48,7 @@ export const Board = ({ label, columns, scrollPreviousLabel, scrollNextLabel, is
         : columns
     return (
         <LoadingScope isLoading={isLoading}>
+          <div data-tier="frame" data-component="Board" data-grammar-board-state={isLoading ? "loading" : "ready"}>
             <HorizontalScrollRegionPart
                 aria-label={label}
                 carets={false}
@@ -55,7 +56,6 @@ export const Board = ({ label, columns, scrollPreviousLabel, scrollNextLabel, is
                 {...(scrollPreviousLabel === undefined ? {} : { scrollPreviousLabel })}
                 {...(scrollNextLabel === undefined ? {} : { scrollNextLabel })}
                 className="starci-core-board"
-                data-grammar-board-state={isLoading ? "loading" : "ready"}
                 {...(isLoading ? { "aria-busy": true } : {})}
             >
                 <div className="starci-core-board-columns" data-contract="GAP-3">
@@ -72,6 +72,7 @@ export const Board = ({ label, columns, scrollPreviousLabel, scrollNextLabel, is
                     ))}
                 </div>
             </HorizontalScrollRegionPart>
+          </div>
         </LoadingScope>
     )
 }

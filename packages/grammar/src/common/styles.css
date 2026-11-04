@@ -3034,7 +3034,7 @@
         line-height: var(--grammar-leading-md);
     }
 
-    .starci-core-schedule-column[data-grammar-current="true"] { color: var(--accent); }
+    .starci-core-schedule-column[data-grammar-current="true"] { color: var(--foreground); font-weight: var(--grammar-weight-semibold); }
     .starci-core-schedule-column-label,
     .starci-core-schedule-column-description { display: block; }
 
