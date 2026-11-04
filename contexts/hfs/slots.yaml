@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.20.0
+version: 3.21.0
 presenceValues:
   - required
   - optional
@@ -1365,6 +1365,7 @@ slots:
       - application-stacks.yaml
     allows:
       - application-stacks.yaml
+      - images/<name>/**
       - <env>/README.md
       - <env>/environment.json
       - <env>/infra/{compose,swarm,k8s,terraform}/**
@@ -1388,7 +1389,7 @@ slots:
         - application-stacks.yaml
       allows:
         - application-stacks.yaml
-        - images/db/Dockerfile
+        - images/<name>/**
         - <env>/README.md
         - <env>/environment.json
         - <env>/infra/{compose,swarm}/**
