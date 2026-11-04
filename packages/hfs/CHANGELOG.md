@@ -1,5 +1,16 @@
 # Changelog
 
+## 5.8.0 - 2026-11-04
+
+- Added: a migration already on the base branch, byte-identical at the merge-base (origin/main, else main, or the base `app check` is given), is landed and immutable (R213): its `DB_MIGRATION_DESTRUCTIVE` and `DB_DYNAMIC_DDL` findings become known items (level info, `landed` names the base) while it stays unchanged; a changed landed file still blocks and a new file is judged in full (`rules/database-landed.mts`, ruling landed-destructive-migration).
+- Added: `hfs.json` `db.destructiveRulings` (`{ migration, objects, reason, date }`): an owner ruling accepts exactly those objects of one migration outside a contract migration while the contract proof (no be/src reference now, none in the previous release) holds, else `DB_DESTRUCTIVE_RULING_UNPROVEN`, a hard blocker; the db family keys on `hfs.json`.
+- Fixed: `HFS_DEPLOY_SCHEDULER` accepts the managed `cache-verify.yml`, the one workflow R251 lets schedule.
+- Fixed: `app.starcistacks` places `.starcistacks/images/<name>/**` in both editions, the image folder of a customised service (PROJECT-STACKS-11), and the stacks gate reserves `images/` as no environment (`HFS_STACKS_SHAPE`, `STACKS_UNDECLARED_ENVIRONMENT`).
+- Fixed: `HFS_SERVICE_PLACEMENT` (R163) reads a root workspace package's manifest `packages/<name>/package.json` as no service root; a Dockerfile or a nested manifest under `packages/` still is one.
+- Fixed: `STACKS_IMAGE_ENV_DIVERGES` (R374) reads the project image the deploy renders (`<registry>/<owner>/<project>-<name>@sha256:...`, its placeholder digest included) as the folder's image.
+- Changed: slot `be.integrations.passport` requires the capability module (`passport.module.ts` over `passport.module-definition.ts`, the app logger handed to `@starci/auth`) in place of `passport.registration.ts`, and the lite template renders it; `starci app codemod passport-module` moves an app (slots 3.22.0).
+- Changed: the runtime law R304 says a root workspace package declares its zod contracts in any file (`@starci/eslint-canon-be` 3.16.0, ruling package-zod-contracts); the canon pins name this release.
+
 ## 5.7.1 - 2026-11-04
 
 - Added: a seed entry declares how it learns of drift. `mode: always` runs an idempotent, cheap command on every stack up; an `upsert` entry's optional `probe` (an app command as an argv list, given the entry's input) exits non-zero on drift and runs the entry even when its hash is unchanged; the hash skip stays the default (manifest `starci/seeds@1`, additive). The receipt keeps each run's outcome (`unchanged` or `restored` from the command's last output line, otherwise `applied`) and never any other output; a probe that cannot run is `STACK_SEED_PROBE`, and a probe on a once, always or files entry, a probe that is no argv list, or `always` on a files entry is `HFS_SEED_MANIFEST` (PROJECT-STACKS-12).

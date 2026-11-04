@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.23 - 2026-11-04
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.23; requires `@starci/eslint-grammar-core` 0.21.23. The runtime copies carry the slot manifest 3.22.0 and the canon pins of `@starci/hfs` 5.8.0.
+
 ## 0.21.22 - 2026-11-04
 
 - Changed: version stamp only, with `@starci/grammar` 0.21.22; requires `@starci/eslint-grammar-core` 0.21.22. the runtime copy of the canon pins names `@starci/hfs` 5.7.1 and the release-7a versions.
