@@ -42,7 +42,7 @@ export { Freestyle, type FreestyleProps } from "../core/frame/Freestyle/index.js
 export { ScheduleGrid, type ScheduleColumn, type ScheduleRow, type ScheduleItem, type ScheduleCellLabel, type ScheduleTone, type ScheduleGridProps } from "../core/frame/ScheduleGrid/index.js"
 export { BarChart, type BarChartBar, type BarChartProps } from "../core/composite/BarChart/index.js"
 export { ChoiceChips, type ChoiceChip, type ChoiceChipsProps } from "../core/composite/ChoiceChips/index.js"
-export { Board, type BoardColumn, type BoardProps } from "../core/frame/Board/index.js"
+export { Board, type BoardColumn, type BoardMove, type BoardMoveLabels, type BoardProps } from "../core/frame/Board/index.js"
 export { PaneHeader, type PaneHeaderProps } from "../core/composite/PaneHeader/index.js"
 export { EmptyNotice, type EmptyNoticeArtwork, type EmptyNoticeProps } from "../core/composite/EmptyNotice/index.js"
 export { MessageBubble, type MessageBubbleProps, type MessageBubbleSide } from "../core/composite/MessageBubble/index.js"
@@ -54,7 +54,7 @@ export type { ErrorData } from "../core/loadingState.js"
 export { SurfaceCard, type SurfaceCardProps } from "../core/frame/SurfaceCard/index.js"
 export type {
     AccordionData, AccordionRowData, AvatarData, BadgeData, Band, CardHead, Collection, Figure, ImageData, ItemAction, ItemLeading, ItemMenu,
-    ListData, ListRowData, TileData, TileMark, TilePoster, WholeCardAction,
+    ListData, ListRowData, RowDrag, TileData, TileMark, TilePoster, WholeCardAction,
 } from "../core/surfaceCardData.js"
 export type { AccentCorner, SurfaceCardMotif, SurfaceCardTreatment } from "../core/frame/SurfaceCard/classNames.js"
 export { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame, type FencedCodeBlockProps, type MarkdownArticleProps, type MarkdownTableFrameProps } from "../core/frame/MarkdownArticle/index.js"

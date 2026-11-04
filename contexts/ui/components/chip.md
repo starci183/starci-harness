@@ -19,7 +19,7 @@ Choice `chip.choose.role`: what carries the label or the pick. The first row tha
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | value | one value is chosen in a form | not a chip: `ChoiceChips` or `RadioGroup` (`segmented-control.choose.role`) | judgement |
-| filter | peer values filter a collection that stays in place | `Tabs kind="filter"`: pills in a track, one selected, a `count` per tab when the app has it (R353 refuses a selection on `TagGroup`; `FilterButtonGroup` is deprecated, R380) | judgement |
+| filter | peer values filter a collection that stays in place | `Tabs kind="filter"`: compact underline tabs under the list pane's search field, one selected, a `count` per tab when the app has it (R353 refuses a selection on `TagGroup`; `FilterButtonGroup` is deprecated, R380) | judgement |
 | entered | values the user entered, to remove or order | `TagGroup` tags with their remove action, and `onReorder` when order matters | `DNA-COMMON-TAG-REMOVE`, `DNA-COMMON-TAG-REORDER-KEYS` |
 | dot | a status with no room or need for words beside it (a row marker, presence, a live process) | `StatusDot`, named by `aria-label`; never a `Badge` without text | `DNA-COMMON-DOT-NAMED` |
 | state | an entity's operational state that authority reports (active, failed, pending review) | `Badge` in that state's tone, with `isDot` when the state has a dot | candidate: toned labels per entity at most `budgets.badgesPerEntity` |

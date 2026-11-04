@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
+import { useState } from "react"
 import * as G from "../common/index.js"
 import { Matrix, State, noop } from "./fixtures.js"
 
@@ -85,4 +86,65 @@ export const ChoiceChipsStates: Story = {
             <State label="Error" direction="column"><G.ChoiceChips label="Time" options={slots} empty={emptyLine} error={failure} /></State>
         </Matrix>
     ),
+}
+
+/* ------------------------------------------------------------------ move, press and place */
+
+const stageOf = (stage: string): ReadonlyArray<string> => (stage === "new" ? ["a", "b"] : stage === "qualified" ? ["c"] : [])
+const names: Readonly<Record<string, string>> = { a: "Hoa Sen Spa", b: "Anh Tuan", c: "Tan Phat Company" }
+
+const MovableBoard = () => {
+    const [stages, setStages] = useState<Readonly<Record<string, ReadonlyArray<string>>>>({ new: stageOf("new"), qualified: stageOf("qualified"), proposal: [] })
+    const [opened, setOpened] = useState("nothing opened")
+    const titles: Readonly<Record<string, string>> = { new: "New", qualified: "Qualified", proposal: "Proposal" }
+    const board: ReadonlyArray<G.BoardColumn> = Object.keys(titles).map((id) => ({
+        id,
+        title: titles[id] ?? id,
+        count: (stages[id] ?? []).length,
+        items: (stages[id] ?? []).map((item) => ({ id: item, title: names[item] ?? item, description: "Next: send a quote", onPress: () => setOpened(names[item] ?? item) })),
+        empty: <G.EmptyNotice message="Nothing here" description="Drag a card here." />,
+    }))
+    return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--grammar-row-gap, 0.75rem)" }}>
+            <G.Board
+                label="Sales pipeline"
+                columns={board}
+                onMove={({ itemId, fromColumnId, toColumnId }) => setStages((current) => ({ ...current, [fromColumnId]: (current[fromColumnId] ?? []).filter((id) => id !== itemId), [toColumnId]: [...(current[toColumnId] ?? []), itemId] }))}
+                moveLabels={{ instructions: "Alt and the left or right arrow move this card to the previous or next stage.", announce: (item, column) => `Moved ${item} to ${column}` }}
+            />
+            <G.Text tone="muted" data-story-opened>{`Opened: ${opened}`}</G.Text>
+        </div>
+    )
+}
+
+export const BoardMoveAndPress: Story = {
+    render: () => <Matrix><State label="Drag a card to a column, or Alt + arrow on a focused card; press a card to open it" direction="column"><MovableBoard /></State></Matrix>,
+}
+
+const PlaceableSchedule = () => {
+    const [placed, setPlaced] = useState<Readonly<Record<string, { readonly row: string; readonly column: string }>>>({ lan: { row: "9", column: "mon" }, hung: { row: "11", column: "tue" } })
+    const [picked, setPicked] = useState<string | null>(null)
+    const place = (id: string, row: string, column: string) => { setPlaced((current) => ({ ...current, [id]: { row, column } })); setPicked(null) }
+    const people: ReadonlyArray<G.ScheduleItem> = [
+        { id: "lan", title: "Lan", meta: "Morning", tone: "accent", isDraggable: true, isSelected: picked === "lan", onPress: () => setPicked(picked === "lan" ? null : "lan"), ...placed.lan! },
+        { id: "hung", title: "Hung", meta: "Afternoon", tone: "success", isDraggable: true, isSelected: picked === "hung", onPress: () => setPicked(picked === "hung" ? null : "hung"), ...placed.hung! },
+        { id: "open", title: "Open shift", meta: "Needs one more", isDashed: true, row: "14", column: "thu" },
+        { id: "clash", title: "Mai", meta: "Morning", tone: "warning", isInvalid: true, why: "Already on leave", row: "9", column: "wed" },
+    ]
+    return (
+        <G.ScheduleGrid
+            label="Shifts, 2 to 5 November"
+            columns={days}
+            rows={hours}
+            items={people}
+            empty={emptyLine}
+            onDrop={place}
+            {...(picked === null ? {} : { onCellPress: (row: string, column: string) => place(picked, row, column) })}
+            cellPressLabel={(row, column) => `${column.label} ${column.description ?? ""}, ${row.label}`}
+        />
+    )
+}
+
+export const ScheduleDropAndCellPress: Story = {
+    render: () => <Matrix><State label="Drag an entry to a cell, or press it (picked) then press a cell; an invalid and an open entry" direction="column"><PlaceableSchedule /></State></Matrix>,
 }

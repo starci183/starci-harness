@@ -6,6 +6,9 @@ import { Button } from "../../leaf/Button/index.js"
 import { SearchField } from "../../leaf/SearchField/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { ListBox } from "../../branch/ListBox/index.js"
+import { visibleOptionIndexes } from "../../fitIndexes.js"
+
+export { visibleOptionIndexes }
 import { PopoverPart } from "../../PopoverPart.js"
 import type { NoChildren } from "../../tier.js"
 
@@ -48,7 +51,6 @@ const STROKE_LETTERS: Readonly<Record<string, string>> = { đ: "d", ð: "d", ø:
 const foldForSearch = (text: string): string =>
     text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[đðøłħ]/g, (letter) => STROKE_LETTERS[letter] ?? letter)
 
-const GAP_PX = 8
 const SKELETON_COUNT = 4
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect
 
@@ -59,26 +61,6 @@ const optionContent = (option: FilterOption): ReactNode => (
     </>
 )
 
-/**
- * The options that show in the row: the first option and the selected one always, then the rest in order while they fit with
- * the overflow button after them. `widths` are the measured widths of every option, `plusWidth` the overflow button's.
- */
-export const visibleOptionIndexes = (widths: ReadonlyArray<number>, selected: number, available: number, plusWidth: number): ReadonlyArray<number> => {
-    const all = widths.map((_, index) => index)
-    const total = widths.reduce((sum, width) => sum + width, 0) + GAP_PX * Math.max(0, widths.length - 1)
-    if (total <= available) return all
-    const pinned = new Set<number>([0])
-    if (selected >= 0) pinned.add(selected)
-    const used = (set: ReadonlySet<number>) => [...set].reduce((sum, index) => sum + (widths[index] ?? 0), 0) + GAP_PX * Math.max(0, set.size - 1) + GAP_PX + plusWidth
-    const shown = new Set(pinned)
-    for (const index of all) {
-        if (shown.has(index)) continue
-        const next = new Set(shown).add(index)
-        if (used(next) > available) break
-        shown.add(index)
-    }
-    return all.filter((index) => shown.has(index))
-}
 
 /**
  * Peer values that filter a collection in place: a group of small toggle buttons on ONE row, one value selected (a radio group

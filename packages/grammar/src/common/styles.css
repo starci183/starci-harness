@@ -825,6 +825,7 @@
     .starci-core-surface-label {
         display: flex;
         min-width: 0;
+        flex-direction: row;
         align-items: baseline;
         justify-content: space-between;
         gap: var(--grammar-inline-gap);
@@ -1396,7 +1397,38 @@
     }
 
     .starci-core-tab-count { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: var(--grammar-weight-regular); margin-inline-start: var(--grammar-identity-gap); }
-    .starci-core-tabs-frame[data-grammar-tabs-variant="pill"] { display: block; min-width: 0; }
+    .starci-core-tab-count[data-grammar-attention="true"] { color: var(--danger-soft-foreground); font-weight: var(--grammar-weight-medium); }
+
+    /*
+     * Filter tabs: the page tabs' underline one size smaller, inside the list pane under the search field. 13px labels, a tighter
+     * gap, a 2px accent underline and weight 500 on the selected tab, a hairline under the row; the tabs that do not fit fold into
+     * a "+n" menu at the end.
+     */
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] {
+        display: flex;
+        align-items: flex-end;
+        border-block-end: 1px solid var(--separator);
+    }
+
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"][data-grammar-tabs-measuring-fit="true"] { overflow: hidden; visibility: hidden; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs { flex: 1 1 auto; width: auto; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__list,
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__list-container { gap: var(--grammar-identity-gap); overflow: visible; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab {
+        min-height: 2rem;
+        padding-inline: var(--grammar-inline-gap) !important;
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
+    }
+
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { --starci-core-tab-padding-start: var(--grammar-inline-gap); }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab[aria-selected="true"] { font-weight: var(--grammar-weight-medium); }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__indicator { top: auto !important; bottom: -1px !important; background: var(--accent); }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tab-content { gap: var(--grammar-identity-gap); }
+
+    .starci-core-tabs-more { display: inline-flex; flex: none; align-items: center; min-height: 2rem; padding-inline: var(--grammar-inline-gap); color: var(--muted); font-size: var(--grammar-text-sm); }
+    .starci-core-tabs-more-label { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); }
+    .starci-core-tabs-more-caret { inline-size: 1em; block-size: 1em; }
 
     .starci-core-tabs-frame[data-grammar-tab-labels="always"] .starci-core-tab-label {
         display: inline;
@@ -1456,6 +1488,33 @@
         font-weight: var(--grammar-weight-semibold);
         overflow-wrap: anywhere;
     }
+
+    /* A pressable row: the title is the one focusable button and its hit area is the whole row; commands and the menu sit above it. */
+    .starci-core-list-row[data-grammar-row-pressable="true"] { position: relative; }
+    .starci-core-list-row[data-grammar-row-pressable="true"]:hover { background: var(--surface-secondary); }
+
+    .starci-core-list-row-press {
+        min-width: 0;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: inherit;
+        font: inherit;
+        text-align: start;
+        cursor: pointer;
+    }
+
+    .starci-core-list-row-press::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+    }
+
+    .starci-core-list-row-press:focus-visible { outline: none; }
+    .starci-core-list-row-press:focus-visible::after { outline: 2px solid var(--focus); outline-offset: -2px; }
+    .starci-core-list-row[data-grammar-row-pressable="true"] .starci-core-list-row-actions { position: relative; z-index: 1; }
+    .starci-core-list-row[data-grammar-row-draggable="true"] { cursor: grab; }
 
     .starci-core-list-row-badges {
         display: inline-flex;
@@ -3009,6 +3068,10 @@
         scroll-snap-align: start;
     }
 
+    /* The column a dragged card would land in. */
+    .starci-core-board-column[data-grammar-drop="true"] { outline: 2px dashed var(--accent); outline-offset: 2px; border-radius: var(--grammar-radius-md); }
+    .starci-core-board-announce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
     @media (max-width: 47.999rem) {
         .starci-core-board-columns { grid-auto-columns: 85%; }
     }
@@ -3093,6 +3156,22 @@
     .starci-core-schedule-item[data-grammar-tone="warning"] { background: var(--warning-soft); color: var(--warning-soft-foreground); }
     .starci-core-schedule-item[data-grammar-tone="danger"] { background: var(--danger-soft); color: var(--danger-soft-foreground); }
     .starci-core-schedule-item[data-grammar-pressable="true"] { min-height: var(--grammar-touch-size); cursor: pointer; }
+
+    .starci-core-schedule-cell { position: relative; }
+    .starci-core-schedule-cell[data-grammar-drop="true"] { background: var(--accent-soft); outline: 2px dashed var(--accent); outline-offset: -2px; }
+    .starci-core-schedule-cell-press { position: absolute; inset: 0; z-index: 0; border: 0; background: none; cursor: pointer; }
+    .starci-core-schedule-cell-press:hover { background: var(--surface-secondary); }
+    .starci-core-schedule-cell-press:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+    .starci-core-schedule-cell > .starci-core-schedule-item,
+    .starci-core-schedule-cell > .starci-core-schedule-item-slot,
+    .starci-core-schedule-cell > .starci-core-schedule-cell-label { position: relative; z-index: 1; }
+    .starci-core-schedule-item-slot { display: block; }
+    .starci-core-schedule-item[data-grammar-draggable="true"],
+    .starci-core-schedule-item-slot[draggable="true"] { cursor: grab; }
+    .starci-core-schedule-item[data-grammar-selected="true"] { outline: 2px solid var(--foreground); outline-offset: 1px; }
+    .starci-core-schedule-item[data-grammar-invalid="true"] { background: var(--danger-soft); color: var(--danger-soft-foreground); }
+    .starci-core-schedule-item[data-grammar-dashed="true"] { background: transparent; outline: 1px dashed var(--muted); outline-offset: -1px; }
+    .starci-core-schedule-item-why { display: block; color: var(--danger-soft-foreground); font-size: var(--grammar-text-md); line-height: var(--grammar-leading-md); }
 
     .starci-core-schedule-item-title,
     .starci-core-schedule-item-meta {

@@ -131,7 +131,7 @@ rulings:
   - id: one-way-to-choose
     date: '2026-11-05'
     status: live
-    ruling: "A choice among a few has one component by meaning and the Grammar draws no group of attached buttons: Tabs switch a view or filter a list (kind filter, pills with a count), ChoiceChips or RadioGroup choose a value of a form (a tablist is not a form field), a date is the Calendar and a time ChoiceChips, actions are separate Buttons or a DropdownMenu. ButtonGroup, FilterButtonGroup and SegmentedControl are deprecated for one release and refused in product source (R380)."
+    ruling: "A choice among a few has one component by meaning and the Grammar draws no group of attached buttons: Tabs switch a view (page head) or filter a list (kind filter: compact underline tabs with a count, inside the list pane under its search field), ChoiceChips or RadioGroup choose a value of a form (a tablist is not a form field), a date is the Calendar and a time ChoiceChips, actions are separate Buttons or a DropdownMenu. ButtonGroup, FilterButtonGroup and SegmentedControl are deprecated for one release and refused in product source (R380)."
     owner: "contexts/ui/components/tabs.md; contexts/ui/composition.md CTA-1; contexts/grammars/contract.md"
   - id: meter-segments-h1
     date: '2026-09-27'

@@ -1,7 +1,7 @@
 "use client"
 
 import { Button as HeroButton } from "@heroui/react"
-import type { ReactNode } from "react"
+import { useState, type DragEvent, type ReactNode } from "react"
 import { HorizontalScrollRegionPart } from "../HorizontalScrollRegion/index.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { ErrorView, useIsLoading, type ErrorData } from "../../loadingState.js"
@@ -34,8 +34,17 @@ export type ScheduleItem = {
     readonly meta?: string
     /** The entry's state, by tone; the title and meta carry the meaning, the tone only helps. */
     readonly tone?: ScheduleTone
-    /** Makes the entry a button that opens it. */
+    /** Makes the entry a button that opens it, or, with `onCellPress` on the grid, the one picked to be placed. */
     readonly onPress?: () => void
+    /** The entry can be dragged to another cell of the grid (`onDrop`). The keyboard path is pick it (`onPress`, `isSelected`), then press a cell (`onCellPress`). */
+    readonly isDraggable?: boolean
+    /** The entry is the one picked up to be placed. Drawn with a ring and announced as pressed. */
+    readonly isSelected?: boolean
+    /** The entry breaks a rule where it stands; `why` says which, on a second line. */
+    readonly isInvalid?: boolean
+    readonly why?: string
+    /** An entry that is still open to take (an unfilled shift): a dashed outline. */
+    readonly isDashed?: boolean
 }
 
 /** A small muted label in the top corner of a cell, e.g. the day of the month in a month view. */
@@ -54,6 +63,14 @@ export type ScheduleGridProps = {
     readonly cellLabels?: readonly ScheduleCellLabel[]
     /** What shows under the grid when no entry exists. Required: a schedule answers for its empty state. */
     readonly empty: ReactNode
+    /** An entry was dropped on a cell. The grid keeps no state of its own: apply the move and pass the new `items`. */
+    readonly onDrop?: (itemId: string, row: string, column: string) => void
+    /**
+     * The cells are pressable (pick then place by pointer or keyboard, or add an entry there). `cellPressLabel` names each cell
+     * for assistive technology, e.g. "Monday 2 November, 09:00".
+     */
+    readonly onCellPress?: (row: string, column: string) => void
+    readonly cellPressLabel?: (row: ScheduleRow, column: ScheduleColumn) => string
     readonly isLoading?: boolean
     /** The read failed: this takes the grid's place. Loading comes first, then error, then empty. */
     readonly error?: ErrorData
@@ -62,17 +79,32 @@ export type ScheduleGridProps = {
 /** Cells that hold a placeholder entry while the grid loads: one in three, so the shimmer reads as a schedule. */
 const isPlaceholderCell = (rowIndex: number, columnIndex: number): boolean => (rowIndex + columnIndex) % 3 === 0
 
-const ItemView = ({ item }: { readonly item: ScheduleItem }) => {
+const ItemView = ({ item, onDragStart, onDragEnd }: { readonly item: ScheduleItem; readonly onDragStart: (id: string) => void; readonly onDragEnd: () => void }) => {
     const content = (
         <>
             <span className="starci-core-schedule-item-title">{item.title}</span>
             {item.meta === undefined ? null : <span className="starci-core-schedule-item-meta">{item.meta}</span>}
+            {item.isInvalid === true && item.why !== undefined ? <span className="starci-core-schedule-item-why">{item.why}</span> : null}
         </>
     )
+    const state = {
+        "data-grammar-tone": item.tone ?? "neutral",
+        ...(item.isSelected === true ? { "data-grammar-selected": "true" } : {}),
+        ...(item.isInvalid === true ? { "data-grammar-invalid": "true" } : {}),
+        ...(item.isDashed === true ? { "data-grammar-dashed": "true" } : {}),
+    }
+    const drag = item.isDraggable === true ? {
+        draggable: true,
+        "data-grammar-draggable": "true",
+        onDragStart: (event: DragEvent<HTMLElement>) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", item.id); onDragStart(item.id) },
+        onDragEnd,
+    } : {}
     return item.onPress === undefined ? (
-        <div className="starci-core-schedule-item" data-grammar-tone={item.tone ?? "neutral"}>{content}</div>
+        <div className="starci-core-schedule-item" {...state} {...drag}>{content}</div>
     ) : (
-        <HeroButton className="starci-core-schedule-item" data-grammar-tone={item.tone ?? "neutral"} data-grammar-pressable="true" type="button" onPress={item.onPress}>{content}</HeroButton>
+        <div className="starci-core-schedule-item-slot" {...drag}>
+            <HeroButton className="starci-core-schedule-item" {...state} data-grammar-pressable="true" {...(item.isSelected === true ? { "aria-pressed": true } : {})} type="button" onPress={item.onPress}>{content}</HeroButton>
+        </div>
     )
 }
 
@@ -82,8 +114,10 @@ const ItemView = ({ item }: { readonly item: ScheduleItem }) => {
  * whose entries name their column, and empty cells are not drawn. A loading grid keeps the headings it was given as real
  * text and draws shimmering entries in the shape of real ones, so nothing jumps when the data lands.
  */
-export const ScheduleGrid = ({ label, columns, rows, items, cellLabels = [], empty, isLoading: ownLoading, error }: ScheduleGridProps) => {
+export const ScheduleGrid = ({ label, columns, rows, items, cellLabels = [], empty, onDrop, onCellPress, cellPressLabel, isLoading: ownLoading, error }: ScheduleGridProps) => {
     const isLoading = useIsLoading(ownLoading)
+    const [draggingId, setDraggingId] = useState<string | null>(null)
+    const [overCell, setOverCell] = useState<string | null>(null)
     if (!isLoading && error !== undefined) {
         return <div data-tier="frame" data-component="ScheduleGrid" data-grammar-schedule-state="error"><ErrorView error={error} /></div>
     }
@@ -125,10 +159,30 @@ export const ScheduleGrid = ({ label, columns, rows, items, cellLabels = [], emp
                                     const placeholder = isLoading && isPlaceholderCell(rowIndex, columnIndex)
                                     const hasContent = cell.length > 0 || cellLabel !== undefined || placeholder
                                     return (
-                                        <td key={column.id} className="starci-core-schedule-cell" data-grammar-cell-empty={hasContent ? "false" : "true"} {...(column.isCurrent === true ? { "data-grammar-current": "true" } : {})}>
+                                        <td
+                                            key={column.id}
+                                            className="starci-core-schedule-cell"
+                                            data-grammar-cell-empty={hasContent ? "false" : "true"}
+                                            {...(column.isCurrent === true ? { "data-grammar-current": "true" } : {})}
+                                            {...(overCell === key ? { "data-grammar-drop": "true" } : {})}
+                                            {...(onDrop === undefined || isLoading ? {} : {
+                                                onDragOver: (event: DragEvent<HTMLElement>) => { if (draggingId === null) return; event.preventDefault(); event.dataTransfer.dropEffect = "move"; if (overCell !== key) setOverCell(key) },
+                                                onDragLeave: (event: DragEvent<HTMLElement>) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOverCell((current) => current === key ? null : current) },
+                                                onDrop: (event: DragEvent<HTMLElement>) => {
+                                                    event.preventDefault()
+                                                    const id = draggingId ?? event.dataTransfer.getData("text/plain")
+                                                    setDraggingId(null)
+                                                    setOverCell(null)
+                                                    if (id !== "") onDrop(id, row.id, column.id)
+                                                },
+                                            })}
+                                        >
+                                            {onCellPress === undefined || isLoading ? null : (
+                                                <button type="button" className="starci-core-schedule-cell-press" aria-label={cellPressLabel === undefined ? `${row.label}, ${column.label}` : cellPressLabel(row, column)} onClick={() => onCellPress(row.id, column.id)} />
+                                            )}
                                             <span className="starci-core-schedule-cell-column" aria-hidden="true">{column.label}{column.description === undefined ? "" : ` ${column.description}`}</span>
                                             {cellLabel === undefined ? null : <span className="starci-core-schedule-cell-label">{cellLabel}</span>}
-                                            {placeholder ? <span className="starci-core-schedule-item" data-grammar-tone="neutral"><Skeleton shape="text" lines={2} /></span> : cell.map((item) => <ItemView key={item.id} item={item} />)}
+                                            {placeholder ? <span className="starci-core-schedule-item" data-grammar-tone="neutral"><Skeleton shape="text" lines={2} /></span> : cell.map((item) => <ItemView key={item.id} item={item} onDragStart={setDraggingId} onDragEnd={() => { setDraggingId(null); setOverCell(null) }} />)}
                                         </td>
                                     )
                                 })}

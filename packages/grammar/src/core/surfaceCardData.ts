@@ -61,6 +61,19 @@ type ListRowDestination = Pick<LinkProps, "href" | "onFollow"> | {
     readonly onFollow?: never
 }
 
+/**
+ * A row that can be moved by dragging, with a keyboard alternative (Alt + arrow keys). A `Board` supplies it to its rows; an app
+ * rarely writes it. The row keeps its look at rest: no handle is drawn.
+ */
+export type RowDrag = {
+    readonly onDragStart: () => void
+    readonly onDragEnd: () => void
+    /** Alt + ArrowLeft or ArrowRight on the focused row: move it to the previous or next place. */
+    readonly onMoveKey?: (direction: "previous" | "next") => void
+    /** The words that explain the keyboard move to a screen reader (the app's language). */
+    readonly keyHint?: string
+}
+
 /** One row of a list. A destination links its text title; its sibling commands remain separate targets. */
 export type ListRowData = {
     readonly id: string
@@ -77,6 +90,12 @@ export type ListRowData = {
     readonly menu?: ItemMenu
     /** The one named field for custom drawing under the row's copy: a pre-rendered node, never a function. */
     readonly detail?: ReactNode
+    /**
+     * The whole row opens something: pressing anywhere on it (the title is the one focusable button, its hit area is the row)
+     * runs this. Sibling commands and the menu stay separate targets above it. Exclusive with `href`.
+     */
+    readonly onPress?: () => void
+    readonly drag?: RowDrag
 } & ListRowDestination
 
 type FigureDestination = Pick<LinkProps, "href" | "onFollow" | "isDisabled"> | {

@@ -13,8 +13,15 @@ Choice `tabs.choose.role`: what the peer choice changes. Four roles switch or ch
 | --- | --- | --- | --- |
 | panels | the choice swaps whole panels of content | `Tabs`, then `tabs.choose.level` | `DNA-COMMON-TABS-OWN-PANEL` |
 | value | the choice sets one value of a form or toolbar (audience, period, density, environment); nothing is swapped out. A tablist is not a form field | `ChoiceChips` or `RadioGroup` (`segmented-control.choose.role`) | judgement |
-| filter | the choice narrows a collection that stays in place | `Tabs kind="filter"`: pills in a track, each with its `count` when the app has one | judgement |
+| filter | the choice narrows a collection that stays in place | `Tabs kind="filter"`: underline tabs one size smaller than the page tabs (13px, tighter gap, a 2px accent underline and weight 500 on the selected tab, a hairline under the row), each with its muted `count` and the count of a tab marked `isAttention` in the danger tone; the tabs that do not fit fold into a "+n" menu and the selected one always stays visible | `DNA-COMMON-TABS-FILTER-COMPACT` |
 | nav-item | the choice picks one item of a navigation-like list | `ListBox` selecting by fill with no check (`list-table.choose.role:pick`) | lint `selection-fill-no-check` |
+
+Choice `tabs.choose.placement`: where a tab bar stands. The first row that applies wins.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| filter | the tabs narrow one list | inside the list pane, under its search field and above its rows: `Tabs kind="filter"` | judgement |
+| page | the tabs switch views of the page | the page head: `Page header.tabs` | lint `starci-grammar/page-tabs-in-header` |
 
 Choice `tabs.choose.level`: page tabs or region tabs. A set nested inside another set's panel is region tabs;
 two sets of the same level never nest.

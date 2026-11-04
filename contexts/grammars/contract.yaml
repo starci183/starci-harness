@@ -191,12 +191,12 @@ roles:
     vendorParity: [tabs]
     slots: ["items: label, leading, count, href, isDisabled", panels]
     variants:
-      kind: { values: [views, filter], meaning: "views: switch views of a page or region, drawn as the underline; filter: narrow a collection that stays in place, drawn as pills in a track with a count per tab; a value of a form is ChoiceChips or RadioGroup, never a tab bar", chosenBy: app by tabs.choose.role }
+      kind: { values: [views, filter], meaning: "views: switch views of a page, in the page head; filter: narrow one list, inside the list pane under its search field, the same underline one size smaller with a count per tab and a +n fold; a value of a form is ChoiceChips or RadioGroup, never a tab bar", chosenBy: app by tabs.choose.role }
       inset: { values: [page, none], chosenBy: app }
     sizes: { steps: none, bar: md }
     states: [selected, focus-visible, disabled]
     grammarMayChange: [track, indicator and label paint; current label reads accent text]
-    dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING]
+    dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-FILTER-COMPACT, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING]
 
   - id: filter-button-group
     ui: ui/components/chip.md
@@ -870,16 +870,25 @@ mustKeep:
     # --- tabs, segmented control, fields
     - id: DNA-COMMON-TABS-BY-LAYER
       role: tabs
-      law: Every views tab bar draws the underline, on the page and inside a surface alike; a filter tab bar draws pills in a track.
+      law: Every tab bar draws the underline, on the page and inside a surface alike, views and filter tabs alike.
       measure:
         kind: style
         metric: tabs-look
         op: "="
         cases:
-          - { select: '[data-component="Tabs"]:not([data-grammar-tabs-variant="pill"])', value: underline }
-          - { select: '[data-component="Tabs"][data-grammar-tabs-variant="pill"]', value: pill }
+          - { select: '[data-component="Tabs"]', value: underline }
       owner: D-2; spacing-roles
       followUp: C-1
+    - id: DNA-COMMON-TABS-FILTER-COMPACT
+      role: tabs
+      law: A filter tab is one size smaller than a page tab, 32px tall, with a hairline under the row.
+      measure:
+        kind: box
+        select: '[data-grammar-tabs-kind="filter"] [role="tab"]'
+        metric: height
+        op: "="
+        value: 32px
+      owner: one-way-to-choose
     - id: DNA-COMMON-TABS-INDICATOR
       role: tabs
       law: A tab bar draws exactly one indicator.

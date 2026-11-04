@@ -15,7 +15,7 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 /** Each banned component with the replacement its message names. */
 export const REPLACEMENTS: Readonly<Record<string, string>> = {
   ButtonGroup: "separate `Button`s (one commit, the rest alternative or dismiss), or a `DropdownMenu` for the overflow",
-  FilterButtonGroup: "`Tabs kind=\"filter\"` (pills with a `count` each) to narrow a list that stays in place",
+  FilterButtonGroup: "`Tabs kind=\"filter\"` (compact underline tabs with a `count` each, under the list's search field) to narrow a list that stays in place",
   SegmentedControl: "`ChoiceChips` or `RadioGroup` to choose a value of a form, or `Tabs` only to switch a view",
 }
 

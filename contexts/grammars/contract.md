@@ -392,7 +392,7 @@ draws bars on one scale from zero with the value over each bar and the label und
 technology; it draws no axis, grid or legend.
 
 The Grammar has no group of attached buttons: a choice among a few has one component by meaning. `Tabs` switches a view or, with
-`kind="filter"`, narrows a list that stays in place (pills in a track, a `count` per tab); `ChoiceChips` or `RadioGroup` chooses a value
+`kind="filter"`, narrows a list that stays in place (the same underline one size smaller, inside the list pane under its search field, a `count` per tab, an attention count in the danger tone, the tabs that do not fit folded into a "+n" menu with the selected one always visible); `ChoiceChips` or `RadioGroup` chooses a value
 of a form, since a tablist is not a form field; a date is the `Calendar` and a time `ChoiceChips`; actions are separate `Button`s or a
 `DropdownMenu`. `ButtonGroup`, `FilterButtonGroup` and `SegmentedControl` stay exported and deprecated for one release and R380 refuses
 a new use.

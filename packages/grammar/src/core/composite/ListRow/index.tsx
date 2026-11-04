@@ -1,5 +1,6 @@
 "use client"
 
+import { useId, type DragEvent, type KeyboardEvent } from "react"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { staticRowClassName } from "../../classNames.js"
 import { LeadingNumber } from "../../LeadingNumber.js"
@@ -58,6 +59,17 @@ export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
     const hasLeading = row.leading !== undefined
     const hasMark = !hasLeading && treatment.mark === "check"
     const hasActions = row.action !== undefined || row.menu !== undefined
+    const drag = row.drag
+    const hintId = useId()
+    const pressKeys = drag?.onMoveKey === undefined ? {} : {
+        "aria-keyshortcuts": "Alt+ArrowLeft Alt+ArrowRight",
+        ...(drag.keyHint === undefined ? {} : { "aria-describedby": hintId }),
+        onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+            if (!event.altKey || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return
+            event.preventDefault()
+            drag.onMoveKey?.(event.key === "ArrowLeft" ? "previous" : "next")
+        },
+    }
     if (isLoading) {
         return (
             <li
@@ -95,17 +107,29 @@ export const ListRow = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-leading={hasLeading || hasMark ? "true" : "false"}
                 data-grammar-actions={hasActions ? "true" : "false"}
                 {...(row.verdict === undefined ? {} : { "data-verdict": row.verdict })}
+                {...(row.onPress === undefined ? {} : { "data-grammar-row-pressable": "true" })}
+                {...(drag === undefined ? {} : {
+                    draggable: true,
+                    "data-grammar-row-draggable": "true",
+                    onDragStart: (event: DragEvent<HTMLLIElement>) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", row.id); drag.onDragStart() },
+                    onDragEnd: drag.onDragEnd,
+                })}
+                {...(drag?.onMoveKey !== undefined && row.onPress === undefined && row.href === undefined ? { tabIndex: 0, ...pressKeys } : {})}
+                data-grammar-row-id={row.id}
                 data-contract="GAP-3 PADDING-4 BOUNDARY-3"
             >
+                {drag?.keyHint === undefined ? null : <span id={hintId} hidden>{drag.keyHint}</span>}
                 {row.leading !== undefined
                     ? <span className="starci-core-list-row-leading"><Leading leading={row.leading} /></span>
                     : hasMark ? <span className="starci-core-list-row-leading"><StateMark state={state} /></span> : null}
                 <span className="starci-core-list-row-copy" data-contract="GAP-1">
                     <span className="starci-core-list-row-title">
                         <span className="starci-core-list-row-name">
-                            {row.href === undefined
-                                ? row.title
-                                : <Link href={row.href} {...(row.onFollow === undefined ? {} : { onFollow: row.onFollow })}>{row.title}</Link>}
+                            {row.href !== undefined
+                                ? <Link href={row.href} {...(row.onFollow === undefined ? {} : { onFollow: row.onFollow })}>{row.title}</Link>
+                                : row.onPress === undefined
+                                    ? row.title
+                                    : <button type="button" className="starci-core-list-row-press" data-grammar-row-press="true" onClick={row.onPress} {...pressKeys}>{row.title}</button>}
                         </span>
                         {row.badges === undefined ? null : (
                             <span className="starci-core-list-row-badges" data-contract="GAP-2">

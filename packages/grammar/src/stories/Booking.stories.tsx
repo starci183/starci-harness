@@ -2,13 +2,13 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { parseDate, type DateValue } from "@internationalized/date"
 import { useState } from "react"
 import * as G from "../common/index.js"
-import { Matrix, State, noop } from "./fixtures.js"
+import { Matrix, State } from "./fixtures.js"
 
 /*
  * Booking date and time (ruling one-way-to-choose): a date is the Calendar, a time is ChoiceChips. The calendar is controlled,
  * starts the week on Monday through the Vietnamese locale, bounds the range, marks a closed day and a full day (with its reason)
  * as unavailable, and draws as geometry while the open days load. A taken time keeps its place, disabled with its reason.
- * Tabs filter a list with a count per tab. Shown at 390 and 1920 by the render proof.
+ * Filter tabs (underline, count, +n fold) narrow a list under its search field. Shown at 390 and 1920 by the render proof.
  */
 
 const meta: Meta = { title: "Forms/Booking date and time" }
@@ -70,18 +70,38 @@ export const BookingDateAndTime: Story = {
 
 const requests = [
     { id: "all", label: "All", count: 24 },
+    { id: "review", label: "To approve", count: 3, isAttention: true },
     { id: "new", label: "New", count: 6 },
     { id: "qualified", label: "Qualified", count: 0 },
     { id: "won", label: "Won", count: 5 },
+    { id: "lost", label: "Lost", count: 2 },
+    { id: "archived", label: "Archived", count: 41 },
 ] as const
+
+const FilterTabs = ({ initial, width }: { readonly initial: string; readonly width?: number }) => {
+    const [selected, setSelected] = useState(initial)
+    return (
+        <div style={{ ...(width === undefined ? {} : { width }), display: "flex", flexDirection: "column", gap: "var(--grammar-row-gap, 0.75rem)" }}>
+            <G.SearchField label="Search the list" isLabelHidden placeholder="Search" />
+            <G.Tabs
+                label="Status"
+                kind="filter"
+                selectedKey={selected}
+                items={requests.map((tab) => ({ ...tab }))}
+                onSelect={setSelected}
+                panelId="filtered-list"
+                moreLabel={(count) => `${count} more filters`}
+            />
+            <div id="filtered-list" role="tabpanel"><G.Text tone="muted">{`The list, filtered by ${selected}. Rows go here.`}</G.Text></div>
+        </div>
+    )
+}
 
 export const FilterTabsWithCounts: Story = {
     render: () => (
-        <Matrix maxWidth={520}>
-            <State label="Tabs kind=filter (pills in a track, a count per tab)" direction="column">
-                <G.Tabs label="Status" kind="filter" selectedKey="new" items={requests.map((tab) => ({ id: tab.id, label: tab.label, count: tab.count }))} onSelect={noop} panelId="filtered-list" />
-                <div id="filtered-list" role="tabpanel"><G.Text tone="muted">The filtered list stays in place.</G.Text></div>
-            </State>
+        <Matrix maxWidth={720}>
+            <State label="Filter tabs in a list pane, under the search field: underline, counts, the attention count in the danger tone" direction="column"><FilterTabs initial="all" /></State>
+            <State label="A narrow pane: what does not fit folds into +n, the selected tab stays visible" direction="column"><FilterTabs initial="archived" width={300} /></State>
         </Matrix>
     ),
 }

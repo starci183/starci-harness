@@ -2,6 +2,9 @@
 
 import { Tabs as HeroTabs } from "@heroui/react"
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { PlainPressable } from "../../PlainPressable.js"
+import { visibleOptionIndexes } from "../../fitIndexes.js"
+import { DropdownMenu } from "../DropdownMenu/index.js"
 import { HorizontalScrollFrame } from "../../HorizontalScrollFrame.js"
 import {
     tabContentClassName,
@@ -18,6 +21,8 @@ export type TabItem = {
     readonly leading?: ReactNode
     /** How many items the view holds, after the label. `0` stays visible; leave it out while the count is unknown. */
     readonly count?: number
+    /** The view holds something that waits for the reader (to approve, to answer): its count reads in the danger tone. */
+    readonly isAttention?: boolean
     /** Whether this tab is unavailable for selection or link navigation. */
     readonly isDisabled?: boolean
     /**
@@ -36,11 +41,14 @@ export type TabItem = {
 export type TabsProps = NoChildren & {
     readonly label: string
     /**
-     * What the tabs do. `views` (default): they switch between views of a page or a region, drawn as an underline. `filter`: they narrow
-     * one list that stays in place, drawn as pills in a track, each with its `count`. A tablist is not a form field: choosing a value
-     * of a form is `ChoiceChips` or `RadioGroup`.
+     * What the tabs do. `views` (default): they switch between views of a page, in the page head. `filter`: they narrow one list
+     * that stays in place, inside the list pane under its search field: the same underline one size smaller (13px, tighter), each
+     * with its `count`; the tabs that do not fit fold into a "+n" menu and the selected one always stays visible. A tablist is not a
+     * form field: choosing a value of a form is `ChoiceChips` or `RadioGroup`.
      */
     readonly kind?: "views" | "filter"
+    /** `filter` only: the accessible name of the "+n" menu that holds the folded tabs, e.g. `(count) => \`${count} more filters\``. */
+    readonly moreLabel?: (count: number) => string
     /** The selected tab. Required for controlled tabs; link tabs derive it from the current path when it is omitted. */
     readonly selectedKey?: string
     readonly items: ReadonlyArray<TabItem>
@@ -163,41 +171,101 @@ export const Tabs = (props: TabsProps) => {
     const scrollNextLabel = props.scrollNextLabel ?? "Scroll tabs right"
 
     const inset = props.inset ?? "none"
-    const variant = props.kind === "filter" ? "pill" : "primary"
+    const kind = props.kind ?? "views"
+    const isFilter = kind === "filter"
     const frameContract = inset === "page" ? "PADDING-5" : undefined
-    if (!isClientReady) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="pending" data-grammar-tabs-inset={inset} data-grammar-tabs-variant={variant} />
+    const frameData = { "data-component": "Tabs", "data-tier": "branch", "data-grammar-tabs": "true", "data-grammar-tabs-inset": inset, "data-grammar-tabs-variant": "primary", "data-grammar-tabs-kind": kind } as const
 
-    return <div ref={frameRef} className={tabsFrameClassName} data-contract={frameContract} data-component="Tabs" data-tier="branch" data-grammar-tabs="true" data-grammar-tabs-client="ready" data-grammar-tabs-inset={inset} data-grammar-tabs-variant={variant} data-grammar-tab-labels={props.labelVisibility ?? "responsive"}>
+    // `filter`: the tabs that do not fit fold into a "+n" menu. All tabs draw once to be measured (the widths are kept), then
+    // the fit is recomputed from those widths whenever the frame resizes; the selected tab is always one of the shown.
+    const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(new Set())
+    const [fittedFor, setFittedFor] = useState("")
+    const [, setMeasureTick] = useState(0)
+    const widths = useRef<ReadonlyArray<number>>([])
+    const fitSignature = isFilter ? props.items.map((item) => `${item.id}|${item.label}|${item.count ?? ""}`).join("\u0000") : ""
+    const renderAll = isFilter && fittedFor !== fitSignature
+    const selectedIndex = props.items.findIndex((item) => item.id === selectedKey)
+    const MORE_WIDTH = 64
+    const fit = () => {
+        const frame = frameRef.current
+        if (frame === null || widths.current.length !== props.items.length) return
+        const shown = visibleOptionIndexes(widths.current, selectedIndex, Math.floor(frame.getBoundingClientRect().width), MORE_WIDTH)
+        const next = new Set(props.items.filter((_, index) => !shown.includes(index)).map((item) => item.id))
+        setHiddenIds((previous) => previous.size === next.size && [...next].every((id) => previous.has(id)) ? previous : next)
+    }
+    useLayoutEffect(() => {
+        const frame = frameRef.current
+        if (!isFilter || !isClientReady || frame === null || !renderAll) return undefined
+        const tabs = Array.from(frame.querySelectorAll<HTMLElement>("[role='tab']"))
+        // The vendor collection mounts its tabs after the first commit: measure only once every tab is there.
+        if (tabs.length !== props.items.length) {
+            const observer = new MutationObserver(() => setMeasureTick((tick) => tick + 1))
+            observer.observe(frame, { childList: true, subtree: true })
+            return () => observer.disconnect()
+        }
+        widths.current = tabs.map((tab) => Math.ceil(tab.getBoundingClientRect().width) + 8)
+        setFittedFor(fitSignature)
+        fit()
+        return undefined
+    })
+    useLayoutEffect(() => { if (isFilter && !renderAll) fit() }, [selectedIndex, fittedFor])
+    useEffect(() => {
+        const frame = frameRef.current
+        if (!isFilter || frame === null || typeof ResizeObserver === "undefined") return
+        const observer = new ResizeObserver(() => { if (!renderAll) fit() })
+        observer.observe(frame)
+        return () => observer.disconnect()
+    })
+    const shownItems = !isFilter || renderAll ? props.items : props.items.filter((item) => !hiddenIds.has(item.id))
+    const foldedItems = !isFilter || renderAll ? [] : props.items.filter((item) => hiddenIds.has(item.id))
+    const labelOf = (item: TabItem) => item.count === undefined ? item.label : `${item.label} ${item.count}`
+
+    if (!isClientReady) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} {...frameData} data-grammar-tabs-client="pending" />
+
+    const tabs = shownItems.map((item) => (
+        <HeroTabs.Tab
+            key={item.id}
+            id={item.id}
+            isDisabled={item.isDisabled ?? false}
+            {...(item.href === undefined ? {} : { href: item.href })}
+            aria-label={labelOf(item)}
+            data-contract="PADDING-3"
+        >
+            <span className={tabContentClassName} data-contract="GAP-2" data-grammar-tab-id={item.id}>
+                {item.leading}
+                <span className={tabLabelClassName} style={props.labelVisibility === "always" || item.leading == null ? { display: "inline" } : undefined}>{item.label}</span>
+                {item.count === undefined ? null : <span className="starci-core-tab-count" data-grammar-tab-count="true" {...(item.isAttention === true ? { "data-grammar-attention": "true" } : {})}>{item.count}</span>}
+            </span>
+            <HeroTabs.Indicator />
+        </HeroTabs.Tab>
+    ))
+
+    return <div ref={frameRef} className={tabsFrameClassName} data-contract={frameContract} {...frameData} data-grammar-tabs-client="ready" data-grammar-tab-labels={props.labelVisibility ?? "responsive"} {...(renderAll ? { "data-grammar-tabs-measuring-fit": "true" } : {})}>
         <HeroTabs
-            variant={variant === "pill" ? "primary" : "secondary"}
+            variant="secondary"
             {...(selectedKey === undefined ? {} : { selectedKey })}
             onSelectionChange={(key) => select(String(key))}
             className={tabsClassName ?? ""}
             data-contract="FLOW-2"
         >
-            <HeroTabs.List aria-label={props.label} render={({ children, ref, ...listProps }) => (
+            <HeroTabs.List aria-label={props.label} render={({ children, ref, ...listProps }) => isFilter ? (
+                <div {...listProps} ref={ref} style={listProps.style}>{children}</div>
+            ) : (
                 <HorizontalScrollFrame appearance="tabs" hideScrollBar size={64} scrollPreviousLabel={scrollPreviousLabel} scrollNextLabel={scrollNextLabel}>
                     <div {...listProps} ref={ref} style={listProps.style}>{children}</div>
                 </HorizontalScrollFrame>
             )}>
-                {props.items.map((item) => (
-                    <HeroTabs.Tab
-                        key={item.id}
-                        id={item.id}
-                        isDisabled={item.isDisabled ?? false}
-                        {...(item.href === undefined ? {} : { href: item.href })}
-                        aria-label={item.count === undefined ? item.label : `${item.label} ${item.count}`}
-                        data-contract="PADDING-3"
-                    >
-                        <span className={tabContentClassName} data-contract="GAP-2" data-grammar-tab-id={item.id}>
-                            {item.leading}
-                            <span className={tabLabelClassName} style={props.labelVisibility === "always" || item.leading == null ? { display: "inline" } : undefined}>{item.label}</span>
-                            {item.count === undefined ? null : <span className="starci-core-tab-count" data-grammar-tab-count="true">{item.count}</span>}
-                        </span>
-                        <HeroTabs.Indicator />
-                    </HeroTabs.Tab>
-                ))}
+                {tabs}
             </HeroTabs.List>
         </HeroTabs>
+        {foldedItems.length === 0 ? null : (
+            <span className="starci-core-tabs-more">
+                <DropdownMenu
+                    placement="bottom end"
+                    entries={[{ kind: "section", id: "folded-tabs", items: foldedItems.map((item) => ({ id: item.id, label: labelOf(item), onAction: () => select(item.id) })) }]}
+                    trigger={<PlainPressable aria-label={(props.moreLabel ?? ((count: number) => `${count} more filters`))(foldedItems.length)}><span className="starci-core-tabs-more-label">{`+${foldedItems.length}`}<svg aria-hidden="true" viewBox="0 0 16 16" className="starci-core-tabs-more-caret"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></span></PlainPressable>}
+                />
+            </span>
+        )}
     </div>
 }
