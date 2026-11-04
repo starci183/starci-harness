@@ -5,12 +5,13 @@ import type { Clock } from "@modules/platform/clock"
 import { JobsError, JobsErrorCode } from "./errors/jobs.error"
 import type { sql } from "@modules/platform/database"
 import type { FailureClass } from "@modules/platform/queue"
-import { isRunKey, resumedDeliveryId } from "./jobs.contracts"
+import { isEffectKey, isRunKey, resumedDeliveryId } from "./jobs.contracts"
 import type {
     AdvanceWrite,
     ClaimedJob,
     ClaimParams,
     ClaimResult,
+    EffectKey,
     FailWrite,
     GuardedWrite,
     ParkedJob,
@@ -166,6 +167,14 @@ export class JobClaimService implements JobClaims {
     runKey(job: ClaimedJob, step: string): RunKey {
         const key = `${job.jobId}:${step}:${job.fencingToken}`
         if (!isRunKey(key))
+            throw new JobsError({ code: JobsErrorCode.RunKeyInvalid, params: { jobId: job.jobId, step } })
+        return key
+    }
+
+    /** The ledger key of one effect of this job: it leaves the token out, so a resumed job (a new claim) finds the effect it already made. */
+    effectKey(job: ClaimedJob, step: string): EffectKey {
+        const key = `${job.jobId}:${step}`
+        if (!isEffectKey(key))
             throw new JobsError({ code: JobsErrorCode.RunKeyInvalid, params: { jobId: job.jobId, step } })
         return key
     }

@@ -3,6 +3,7 @@ import type {
     ClaimedJob,
     ClaimParams,
     ClaimResult,
+    EffectKey,
     FailWrite,
     GuardedWrite,
     ParkedFlowAlert,
@@ -33,6 +34,8 @@ export interface JobClaims {
     awaitingFix(): Promise<ReadonlyArray<ParkedJob>>
     /** The idempotency key of one step of this claim: `<jobId>:<step>:<fencingToken>`. */
     runKey(job: ClaimedJob, step: string): RunKey
+    /** The ledger key of one effect of this job: `<jobId>:<step>`, the same after a resume, claimed in the inbox with the effect. */
+    effectKey(job: ClaimedJob, step: string): EffectKey
 }
 
 /** One external effect of a job. */

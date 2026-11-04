@@ -159,5 +159,24 @@ const RUN_KEY = /^[^:]+:[^:]+:\d+$/u
 /** True when the text has the shape of a run key; the one place a string becomes a `RunKey`. */
 export const isRunKey = (text: string): text is RunKey => RUN_KEY.test(text)
 
+/**
+ * The key of one external effect of a job, the same across its claims and its resumes (BE-RESILIENCE-2): only `JobClaims.effectKey`
+ * makes one. The module service claims it in the inbox under `JOB_EFFECT_SOURCE` in the transaction of the effect, so a resumed job
+ * finds it claimed and never repeats the effect.
+ */
+export type EffectKey = string & {
+    /** The brand that keeps a plain string from passing as an effect key; it never exists at run time. */
+    readonly __effectKey: unique symbol
+}
+
+/** The shape of an effect key: `<jobId>:<step>`. */
+const EFFECT_KEY = /^[^:]+:[^:]+$/u
+
+/** True when the text has the shape of an effect key; the one place a string becomes an `EffectKey`. */
+export const isEffectKey = (text: string): text is EffectKey => EFFECT_KEY.test(text)
+
+/** The inbox source an effect key is claimed under: one ledger of the effects every job made. */
+export const JOB_EFFECT_SOURCE = "job-effect"
+
 /** What a claim answers: the claimed job, or null when the job is done or another worker holds a live claim. */
 export type ClaimResult = ClaimedJob | null

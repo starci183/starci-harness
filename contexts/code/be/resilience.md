@@ -36,7 +36,9 @@ first, and processing it is an idempotent replay of the stored row. `platform/jo
   every 15 minutes), and on demand (`ParkedJobResumer.resume({ jobId })`; from a process with no Redis, `cli queues resume [--job <id>]`
   writes the request on the sweep queue through the outbox, `ParkedJobResumeRequests`). It goes back to its queue under `<jobKey>-r<n>` and claims
   its own row again, so its recorded steps (`claims.advance`) and the outputs they stored are kept, and a pivot never repeats: a
-  remote effect carries a key the resume keeps (the inbox claim, the provider's idempotency key), a saga transition its version fence.
+  remote effect is claimed in the inbox under its effect key (`JobClaims.effectKey(job, step)`, `<jobId>:<step>`, the same after
+  a resume; `inbox.claim(JOB_EFFECT_SOURCE, key, tx)` in the transaction of the effect) and a resumed job finds it claimed, a saga
+  transition keeps its version fence.
 - A compensation is a step like any other and follows the same rules.
 
 No code catches a failure to wait and try again, and no code swallows one: a processor, a consumer and a saga step let it reach the

@@ -129,6 +129,21 @@ describe("JobClaimService", () => {
         })
     })
 
+    describe("effectKey", () => {
+        it("names the job and the step but not the token, so a resumed job's new claim keeps the key of the effect it made", async () => {
+            const { claims } = await build(mockEntityManager())
+
+            expect(claims.effectKey(claimed, "send")).toBe("j-1:send")
+            expect(claims.effectKey({ ...claimed, fencingToken: 9 }, "send")).toBe("j-1:send")
+        })
+
+        it("refuses a step name that carries the separator", async () => {
+            const { claims } = await build(mockEntityManager())
+
+            expect(() => claims.effectKey(claimed, "send:twice")).toThrow(JobsErrorCode.RunKeyInvalid)
+        })
+    })
+
     describe("runKey", () => {
         it("includes the job, the step and the fencing token, so a zombie's key differs from the live worker's", async () => {
             const { claims } = await build(mockEntityManager())
