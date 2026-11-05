@@ -371,3 +371,12 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   package bundles are hfs data that move only with an hfs release, so they never make a Grammar change a minor. Reading the Grammar
   version at lint time (option B) is not taken (`packages/hfs/runtime/scripts/lib/pin-range.mts`, `cli/src/core/release/grammar-bump.ts`,
   [grammars/contributing.md](../grammars/contributing.md) "Patch or minor").
+- **A release publishes only what changed (`release-only-what-changed`).** The owner, 2026-11-05: an hfs law or data change used to release the
+  canons and the Grammar family too, since each bundled a copy of the hfs runtime (and the copies the canons kept as their own were stale forks,
+  slots.yaml at 3.13.0 under hfs 3.23.0). The canons and the Grammar lint family now import that runtime from the installed @starci/hfs, which
+  they peer by `~x.y.z`, and keep in runtime/ only what hfs does not ship. The publish plan skips a raised version whose shipped files differ
+  from the served one only by its CHANGELOG, lockfile and version field. R15 reads a same-minor range for the two canons as for the Grammar.
+  @starci/hfs stays exact for apps: it arrives with starci-harness, and the check (the CLI's hfs) and the canon lint (the app's hfs) must be one
+  copy, which an exact pin equal to the CLI's requirement guarantees; the CLI keeps its exact requirement. The canons' TypeScript keeps its own
+  declarations of that runtime through tsconfig paths, read through the canon's HfsView type (`cli/src/core/release/publish.ts`,
+  `packages/eslint-canon-*/src/lib/*root.ts`, [packages/README.md](../../packages/README.md)).

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.0 - 2026-11-05
+
+- Changed: version stamp, with `@starci/grammar` 0.23.0; requires `@starci/eslint-grammar-core` 0.23.0. It bundles no runtime copy (it read none).
+
 ## 0.22.0 - 2026-11-05
 
 - Changed: version stamp only, with `@starci/grammar` 0.22.0; requires `@starci/eslint-grammar-core` 0.22.0. The runtime copy of the canon pins carries the same-minor range of the Grammar family.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.0 - 2026-11-05
+
+- Changed: with `@starci/grammar` 0.23.0; requires `@starci/eslint-canon-fe` `~9.15.0` and peers `@starci/hfs` `~5.13.0`, whose runtime it reads at run time instead of a bundled copy (decision release-only-what-changed); `runtime/` keeps only the knowledge it cites.
+
 ## 0.22.0 - 2026-11-05
 
 - Changed: version stamp only, with `@starci/grammar` 0.22.0; requires `@starci/eslint-canon-fe` 9.14.4. The runtime copies carry the same-minor range of the canon pins (decision grammar-patch-range), R15 and the canon pins of `@starci/hfs` 5.12.0.

@@ -13,7 +13,8 @@ import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { pipelineFindings } from '../runtime/scripts/hfs/rules/pipeline.mjs';
 import { meetsPin } from '../runtime/scripts/lib/pin-range.mjs';
 
-const GRAMMAR_FAMILY = ['@starci/grammar', '@starci/eslint-grammar-core', '@starci/eslint-grammar-offset-pop'];
+/** The packages pinned by a same-minor range (decisions grammar-patch-range, release-only-what-changed): the Grammar family and the two canons. */
+const RANGED = ['@starci/grammar', '@starci/eslint-grammar-core', '@starci/eslint-grammar-offset-pop', '@starci/eslint-canon-be', '@starci/eslint-canon-fe'];
 
 const REPOSITORY = path.resolve(import.meta.dirname, '..', '..', '..');
 const COPY = 'runtime/knowledge/hfs/canon-pins.yaml';
@@ -37,8 +38,8 @@ test('every @starci pin names its folder in starci-harness at the version there'
       assert.equal(pin.version, manifest.version, `${name} is pinned at ${pin.version}, ${source} is ${manifest.version}`);
       continue;
     }
-    // A ranged row (the Grammar family, decision grammar-patch-range): a patch of the folder stays inside the range, so it needs no new pin.
-    assert.ok(GRAMMAR_FAMILY.includes(name), `${name}: only the Grammar family pins a range`);
+    // A ranged row (the Grammar family and the canons): a patch of the folder stays inside the range, so it needs no new pin.
+    assert.ok(RANGED.includes(name), `${name}: only the Grammar family and the canons pin a range; @starci/hfs stays exact`);
     assert.equal(pin.range, `~${pin.version}`, `${name}: the range starts at the pinned version`);
     assert.ok(meetsPin(pin.range, manifest.version), `${name} is pinned at ${pin.range}, ${source} is ${manifest.version}: a minor bump raises the range`);
   }

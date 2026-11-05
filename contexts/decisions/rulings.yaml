@@ -802,6 +802,11 @@ rulings:
     status: live
     ruling: "Message catalogs are excluded from copy-paste detection only; they stay linted and held to every other rule."
     owner: "policy (sonar configuration of the app template)"
+  - id: release-only-what-changed
+    date: '2026-11-05'
+    status: live
+    ruling: "A release publishes only the packages whose content changed. The canons (eslint-canon-be, eslint-canon-fe) and the Grammar lint family read the @starci/hfs runtime (canon pins, slots, failure codes, the architecture machine) from the installed hfs at run time and peer it by a same-minor range, bundling no copy; a raised version whose shipped files differ from the version npm serves only by bookkeeping is skipped. R15 accepts a same-minor range for the canons as for the Grammar family. @starci/hfs stays exact for apps, taken through starci-harness, since the check and the canon lint must read one hfs; the CLI keeps its exact hfs requirement. Owner, 2026-11-05."
+    owner: "packages/README.md; CONTRIBUTING.md CONTRIB-20; cli/src/core/release/publish.ts (shipsTheSame); packages/hfs/runtime/knowledge/hfs/canon-pins.yaml; contexts/stack/pins.yaml"
   - id: grammar-patch-range
     date: '2026-11-05'
     status: live

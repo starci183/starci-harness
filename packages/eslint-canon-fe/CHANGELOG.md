@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.15.0 - 2026-11-05
+
+- Changed (decision release-only-what-changed): the canon reads the @starci/hfs runtime from the installed hfs at run time, which it peers by `~5.13.0`, and bundles no copy; `runtime/` keeps only the project graph rule, the jsdoc, sonar and next helpers and the package-scripts template, and the stale forks (slots 3.13.0) are gone.
+
 ## 9.14.4 - 2026-11-05
 
 - Changed: the runtime copy of the canon pins gives the Grammar family its same-minor range (decision grammar-patch-range) and names `@starci/hfs` 5.12.0 and the Grammar family 0.22.0.

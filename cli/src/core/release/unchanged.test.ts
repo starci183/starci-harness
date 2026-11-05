@@ -1,16 +1,20 @@
 // A raised version whose content equals the version npm serves is skipped, never published (decision release-only-what-changed): only bookkeeping
 // (the CHANGELOG, the lockfile, the version field of package.json) moved; any shipped file or any other package.json field is a change.
 import assert from "node:assert/strict"
-import { execFileSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
+import { captureGitSync } from "../../shared/git.js"
 import { shipsTheSame } from "./publish.js"
 
 const repoWith = () => {
     const root = mkdtempSync(join(tmpdir(), "starci-unchanged-"))
-    const git = (...args: string[]) => execFileSync("git", ["-c", "user.name=spec", "-c", "user.email=spec@example.invalid", "-c", "commit.gpgsign=false", ...args], { cwd: root, encoding: "utf8" }).trim()
+    const git = (...args: string[]) => {
+        const run = captureGitSync(["-c", "user.name=spec", "-c", "user.email=spec@example.invalid", "-c", "commit.gpgsign=false", ...args], root)
+        assert.equal(run.exitCode, 0, run.stderr)
+        return run.stdout.trim()
+    }
     const write = (file: string, text: string) => {
         mkdirSync(dirname(join(root, file)), { recursive: true })
         writeFileSync(join(root, file), text)
