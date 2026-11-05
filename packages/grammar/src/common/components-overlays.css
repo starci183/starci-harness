@@ -533,6 +533,8 @@
 
     /* An informative notice is the info soft pair (blue in Nivo), the accent pair when the theme defines no info pair; accent stays its own tone for "new" and "selected". */
     .starci-core-alert[data-grammar-tone="informative"] { --starci-core-alert-soft: var(--info-soft, var(--accent-soft)); --starci-core-alert-ink: var(--info-soft-foreground, var(--accent-soft-foreground)); }
+    /* accent: the brand soft pair, for a welcome or "new" band (G10b-2). */
+    .starci-core-alert[data-grammar-tone="accent"] { --starci-core-alert-soft: var(--accent-soft); --starci-core-alert-ink: var(--accent-soft-foreground); }
     .starci-core-alert[data-grammar-tone="affirmative"] { --starci-core-alert-soft: var(--success-soft); --starci-core-alert-ink: var(--success-soft-foreground); }
     .starci-core-alert[data-grammar-tone="cautionary"] { --starci-core-alert-soft: var(--warning-soft); --starci-core-alert-ink: var(--warning-soft-foreground); }
     .starci-core-alert[data-grammar-tone="negative"] { --starci-core-alert-soft: var(--danger-soft); --starci-core-alert-ink: var(--danger-soft-foreground); }

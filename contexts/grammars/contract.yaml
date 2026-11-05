@@ -336,7 +336,7 @@ roles:
     sizes: none
     states: [persistent (action or negative), timed, paused on hover or focus]
     grammarMayChange: [tone paint, toast spacing]
-    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-TONE-PAIR-INFO, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT]
+    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-TONE-PAIR-INFO, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-ACCENT]
 
   - id: empty-state
     ui: ui/components/empty-state.md
@@ -395,7 +395,7 @@ roles:
     sizes: { fills: "its host's block and inline size" }
     states: [drawer-open, head-loading]
     grammarMayChange: ["nothing: the grid, the dividers, the surface ground, the pane inset and the drawer are Common's"]
-    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP]
+    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END]
     lint: [starci-grammar/pane-grid-children, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
 
   - id: data-views
@@ -1166,6 +1166,24 @@ mustKeep:
       law: "The current segment of a bar stepper is filled with the accent and every segment is a thin bar (four pixels)."
       measure: { kind: style, select: '[data-grammar-stepper-kind="bar"] [data-grammar-step-state="current"] [data-grammar-step-bar]', checks: [{ metric: background-color, op: "=", value: { token: --accent } }, { metric: height, op: "=", value: 4px }] }
       owner: contract roles.list
+    - id: DNA-COMMON-ALERT-TONE-PAIR-ACCENT
+      role: alert
+      law: "An accent Alert is the accent soft pair, flat: the row is --accent-soft, the text and glyph --accent-soft-foreground, no shadow and no border (G10b-2)."
+      measure:
+        kind: style
+        select: '[data-component="Alert"][data-grammar-tone="accent"]:not([data-loading="true"])'
+        checks: [{ metric: background-color, op: "=", value: { token: --accent-soft } }, { metric: color, op: "=", value: { token: --accent-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
+      owner: contract roles.alert
+    - id: DNA-COMMON-PANE-SCROLL-ALIGN
+      role: pane-grid
+      law: "The content of a scroll band with an align is at least as tall as the band, so it can stand at the foot or in the middle of the free space (G10b-1); the band keeps its own 12px block inset around it, hence the tolerance."
+      measure: { kind: relation, select: '[data-grammar-pane-section-scroll-align] > .starci-core-pane-section-content', metric: height, op: ">=", tolerance: 24.5, ref: { within: '[data-grammar-pane-section-scroll-align]', select: self, metric: height } }
+      owner: contract roles.pane-grid
+    - id: DNA-COMMON-PANE-SCROLL-ALIGN-END
+      role: pane-grid
+      law: "With align end the content ends where the band ends: the last message stands beside the composer (G10b-1)."
+      measure: { kind: relation, select: '[data-grammar-pane-section-scroll-align="end"] > .starci-core-pane-section-content', metric: bottom, op: ">=", tolerance: 12.5, ref: { within: '[data-grammar-pane-section-scroll-align="end"]', select: self, metric: bottom } }
+      owner: contract roles.pane-grid
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.

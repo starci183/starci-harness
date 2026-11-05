@@ -35,8 +35,11 @@ export type AlertAction = {
 type AlertBase = {
     readonly title: string
     readonly description?: ReactNode
-    /** Render-neutral meaning of the banner. Default `informative`. */
-    readonly tone?: PresentationState
+    /**
+     * Render-neutral meaning of the banner. Default `informative`. `accent` is the brand: the accent soft pair, for a welcome or
+     * "new" band that announces no status (it reads and acts as `informative`).
+     */
+    readonly tone?: PresentationState | "accent"
     /** A mark in place of the tone's glyph: an `Avatar` (who asks) or an `IconTile`. */
     readonly leading?: ReactNode
     readonly action?: AlertAction
@@ -106,12 +109,13 @@ const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
 const AlertInner = (props: AlertProps) => {
     const { title, description, tone: readyTone = "informative", leading, action, urgency, isLoading = false } = props
     const ownsBusy = useRegionOwnsBusy()
-    const tone: PresentationState = isLoading ? "neutral" : readyTone
+    const tone: PresentationState | "accent" = isLoading ? "neutral" : readyTone
+    const meaning: PresentationState = tone === "accent" ? "informative" : tone
     const unseen = (node: ReactNode) => isLoading ? <SkeletonPlaceholder>{node}</SkeletonPlaceholder> : node
     const [isDismissed, setIsDismissed] = useState(false)
     if (isDismissed) return null
 
-    const resolvedUrgency = urgency ?? (tone === "negative" ? "assertive" : "polite")
+    const resolvedUrgency = urgency ?? (meaning === "negative" ? "assertive" : "polite")
     const dismiss = () => {
         setIsDismissed(true)
         props.onDismiss?.()
@@ -125,12 +129,12 @@ const AlertInner = (props: AlertProps) => {
             data-urgency={resolvedUrgency}
             data-contract="FEEDBACK-3"
             {...(isLoading ? { "data-loading": "true", ...(ownsBusy ? {} : { "aria-busy": true }) } : { role: resolvedUrgency === "assertive" ? "alert" : "status" })}
-            status={vendorStatusFor(tone)}
+            status={vendorStatusFor(meaning)}
             className="starci-core-alert"
         >
             {leading === undefined ? (
                 <HeroAlert.Indicator className="starci-core-alert-indicator">
-                    {tone === "pending" ? <HeroSpinner aria-hidden="true" role="presentation" size="sm" color="current" /> : undefined}
+                    {meaning === "pending" ? <HeroSpinner aria-hidden="true" role="presentation" size="sm" color="current" /> : undefined}
                 </HeroAlert.Indicator>
             ) : <span className="starci-core-alert-leading" data-grammar-alert-leading="true">{isLoading ? <SkeletonPlaceholder shape="block">{leading}</SkeletonPlaceholder> : leading}</span>}
             <HeroAlert.Content className="starci-core-alert-content">
@@ -151,7 +155,7 @@ const AlertInner = (props: AlertProps) => {
                             isLoading={isLoading}
                             size="sm"
                             width="fill-narrow"
-                            {...alertActionIntentFor(tone)}
+                            {...alertActionIntentFor(meaning)}
                             onPress={action.onAction}
                             {...(action.icon === undefined ? {} : { startContent: <Icon source={action.icon} usage="leading" /> })}
                         >{action.label}</Button>

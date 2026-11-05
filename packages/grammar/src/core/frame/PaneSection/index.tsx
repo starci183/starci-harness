@@ -16,6 +16,12 @@ export type PaneSectionProps = {
         readonly role?: "log" | "region"
         readonly tone?: "surface" | "background"
         readonly scrollRef?: Ref<HTMLDivElement>
+        /**
+         * Where the content stands when it is shorter than the band. `start` (default): at the top. `end`: at the foot, so a thread ends
+         * beside its composer. `center`: in the middle of the free space (an empty thread's greeting). The content is at least as tall as
+         * the band and scrolls once it is taller; nothing above the first line is ever unreachable.
+         */
+        readonly align?: "start" | "center" | "end"
     }
     /** Head band centred in a shared grid row. Default `start`. */
     readonly align?: "start" | "center"
@@ -66,6 +72,7 @@ export const PaneSection = ({ children: content, grow = false, scroll, align = "
             aria-label={scroll.label}
             className="starci-core-pane-section"
             data-grammar-pane-section-scroll="true"
+            {...(scroll.align === undefined || scroll.align === "start" ? {} : { "data-grammar-pane-section-scroll-align": scroll.align })}
             isScrollable
             {...(scroll.role === undefined ? {} : { role: scroll.role })}
             {...(scroll.tone === undefined ? {} : { tone: scroll.tone })}

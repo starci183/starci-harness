@@ -2854,6 +2854,12 @@
         overscroll-behavior: contain;
     }
 
+    /* scroll.align end or center: the content is at least the band's height and places itself in it (G10b-1). */
+    .starci-core-pane-section[data-grammar-pane-section-scroll-align] { display: flex; flex-direction: column; }
+    .starci-core-pane-section[data-grammar-pane-section-scroll-align] > .starci-core-pane-section-content { flex: 1 0 auto; }
+    .starci-core-pane-section[data-grammar-pane-section-scroll-align="end"] > .starci-core-pane-section-content { justify-content: flex-end; }
+    .starci-core-pane-section[data-grammar-pane-section-scroll-align="center"] > .starci-core-pane-section-content { justify-content: center; }
+
     .starci-core-pane-section-content {
         display: flex;
         min-width: 0;

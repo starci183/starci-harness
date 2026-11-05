@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import type { CSSProperties } from "react"
+import type { CSSProperties, ReactNode } from "react"
 import * as G from "../common/index.js"
 import { Matrix, State, noop } from "./fixtures.js"
 
@@ -145,6 +145,40 @@ export const StepperBar: Story = {
                 <G.Stepper kind="bar" label="Setup" steps={barSteps} currentStepId="b" />
                 <G.Stepper kind="bar" label="Setup pick" steps={barSteps} currentStepId="c" onStepSelect={noop} />
                 <G.Stepper kind="bar" label="Setup loading" steps={barSteps} currentStepId="b" isLoading />
+            </State>
+        </Matrix>
+    ),
+}
+
+const thread = ["Hello", "How can I help?", "Book me a cut for Friday"].map((text, index) => <G.Text key={index}>{text}</G.Text>)
+
+const AlignGrid = ({ align, content }: { readonly align: "end" | "center"; readonly content: ReactNode }) => (
+    <div style={{ height: "18rem", display: "flex" }}>
+        <G.PaneGrid label="Chat" areas={["main"]} columns={["fill"]}>
+            <G.Pane area="main" surface label="Thread">
+                <G.PaneSection scroll={{ label: "Messages", role: "log", align }}>{content}</G.PaneSection>
+            </G.Pane>
+        </G.PaneGrid>
+    </div>
+)
+
+/** A short thread stands at the foot of its scroll band, an empty one centres its greeting (DNA-COMMON-PANE-SCROLL-ALIGN, -END). */
+export const ScrollBandAlign: Story = {
+    render: () => (
+        <Matrix maxWidth={420}>
+            <State label="align end, a short thread" direction="column"><AlignGrid align="end" content={thread} /></State>
+            <State label="align center, an empty greeting" direction="column"><AlignGrid align="center" content={<G.Text>Welcome. Ask me anything.</G.Text>} /></State>
+        </Matrix>
+    ),
+}
+
+/** The accent tone: the brand soft pair for a welcome band (DNA-COMMON-ALERT-TONE-PAIR-ACCENT). */
+export const AlertAccentTone: Story = {
+    render: () => (
+        <Matrix maxWidth={460}>
+            <State label="accent, with a dismiss / loading" direction="column">
+                <G.Alert tone="accent" title="Welcome to NIVO" description="Ask a question to begin." dismissLabel="Dismiss" />
+                <G.Alert tone="accent" title="Welcome to NIVO" description="Ask a question to begin." isLoading />
             </State>
         </Matrix>
     ),
