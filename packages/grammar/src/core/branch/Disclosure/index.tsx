@@ -1,6 +1,8 @@
 "use client"
 
-import { withRegionInert } from "../../regionScope.js"
+import { useIsLoading, withRegionInert } from "../../regionScope.js"
+import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
+import { StepMark, type StepLeading } from "../../StepMark.js"
 import { Disclosure as HeroDisclosure } from "@heroui/react"
 import { useId, useState, type ReactNode } from "react"
 import type { NoChildren } from "../../tier.js"
@@ -10,6 +12,8 @@ export type DisclosureProps = NoChildren & {
     readonly title: ReactNode
     /** What the section shows when open. */
     readonly body: ReactNode
+    /** A step mark at the start of the trigger row (a check, the current number, a warning triangle, a grey number); decorative, the words carry the state. */
+    readonly leading?: StepLeading
     /**
      * Muted one-line text at the trailing end of the trigger row (truncated with an ellipsis), visible closed and open: a
      * count, a current value, a status. It is the trigger's accessible DESCRIPTION (`aria-describedby`), not part of its name.
@@ -40,6 +44,7 @@ const DisclosureInner = ({
     title,
     body,
     summary,
+    leading,
     isExpanded,
     defaultExpanded = false,
     onExpandedChange,
@@ -49,6 +54,8 @@ const DisclosureInner = ({
     const [uncontrolled, setUncontrolled] = useState(defaultExpanded)
     const expanded = isExpanded ?? uncontrolled
     const summaryId = useId()
+    // A loading region keeps the title real and draws the data parts (the step mark, the end summary) as the geometry of the ready ones.
+    const isLoading = useIsLoading(undefined)
     const hasSummary = summary !== undefined && summary !== null && summary !== false && summary !== ""
     return (
         <HeroDisclosure
@@ -66,8 +73,11 @@ const DisclosureInner = ({
         >
             <HeroDisclosure.Heading className="starci-core-disclosure-heading" level={headingLevel}>
                 <HeroDisclosure.Trigger className="starci-core-disclosure-trigger" data-contract="FOCUS-1" data-grammar-disclosure-trigger="true" {...(hasSummary ? { "aria-describedby": summaryId } : {})}>
+                    {leading === undefined ? null : isLoading
+                        ? <SkeletonPlaceholder shape="circle"><StepMark state={leading.state} position={leading.position} /></SkeletonPlaceholder>
+                        : <StepMark state={leading.state} position={leading.position} />}
                     <span className="starci-core-disclosure-title">{title}</span>
-                    {hasSummary ? <span id={summaryId} aria-hidden="true" className="starci-core-disclosure-summary" data-grammar-disclosure-summary="true">{summary}</span> : null}
+                    {hasSummary ? <span id={summaryId} aria-hidden="true" className="starci-core-disclosure-summary" data-grammar-disclosure-summary="true">{isLoading ? <SkeletonPlaceholder>{summary}</SkeletonPlaceholder> : summary}</span> : null}
                     <HeroDisclosure.Indicator className="starci-core-disclosure-indicator" data-contract="MOTION-2" />
                 </HeroDisclosure.Trigger>
             </HeroDisclosure.Heading>

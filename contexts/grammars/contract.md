@@ -308,6 +308,14 @@ the surface that hosts it. It is not a surface: it has no shadow, no outline and
 or a drawer without putting a surface inside a surface. It names its source in one short word and, optionally, where and
 when the words were said. It reports no outcome (that is an alert) and carries no thread (that is a message bubble).
 
+`Inset` is the same ground around anything else: a tinted box at the nested inset, one radius below the surface, with an optional
+muted label above its content that also names the group. It is not a surface (a card inside it is refused like a card in a card). A
+loading `Inset` is a loading region: its children draw the geometry of their ready boxes and it carries the one `aria-busy`.
+
+`Disclosure` takes a `leading` step mark (the same mark as an accordion row) and its `summary` stays the meta at the end of the trigger row;
+`DisclosureList` joins sibling disclosures into one list divided by full-bleed lines, each section opening on its own. A loading region keeps
+the titles and draws each step mark and summary as geometry.
+
 ### MessageBubble
 
 Message receipts and transport outcomes use `MessageStatus` in the existing footer slot, without widening the bubble's

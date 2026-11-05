@@ -14,7 +14,7 @@ import { Button } from "../../leaf/Button/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import { Link } from "../../leaf/Link/index.js"
-import { Skeleton } from "../../leaf/Skeleton/index.js"
+import { Skeleton, SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import { EllipsisHorizontalIcon } from "@heroicons/react/16/solid"
 import type { NoChildren } from "../../tier.js"
 import type { BadgeData, ItemAction, ItemLeading, ListRowData } from "../../surfaceCardData.js"
@@ -102,8 +102,12 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 </span>
                 {hasTrail ? (
                     <span className="starci-core-list-row-trail">
-                        {row.meta === undefined ? null : <span className="starci-core-list-row-meta" data-grammar-skeleton-meta="true"><Skeleton shape="text" /></span>}
-                        {row.badges === undefined ? null : <span className="starci-core-list-row-skeleton-badge"><Skeleton shape="rect" /></span>}
+                        {row.meta === undefined ? null : row.meta.text.trim() === ""
+                            ? <span className="starci-core-list-row-meta" data-grammar-skeleton-meta="true"><Skeleton shape="text" /></span>
+                            : <span className="starci-core-list-row-meta"><SkeletonPlaceholder>{row.meta.text}</SkeletonPlaceholder></span>}
+                        {row.badges === undefined ? null : row.badges.every((badge) => badge.label.trim() !== "")
+                            ? <span className="starci-core-list-row-badges"><SkeletonPlaceholder shape="block">{row.badges.map((badge) => <RowBadge key={badge.label} badge={badge} />)}</SkeletonPlaceholder></span>
+                            : <span className="starci-core-list-row-skeleton-badge"><Skeleton shape="rect" /></span>}
                     </span>
                 ) : null}
                 {hasActions ? <span className="starci-core-list-row-actions"><span className="starci-core-list-row-skeleton-action"><Skeleton shape="rect" /></span></span> : null}

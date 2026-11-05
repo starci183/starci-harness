@@ -2,6 +2,7 @@
 
 import { Accordion } from "@heroui/react"
 import type { Key } from "react"
+import { StepMark } from "../../StepMark.js"
 import type { AccordionData } from "../../surfaceCardData.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import {
@@ -12,17 +13,6 @@ import {
     accordionRowClassName,
     accordionTriggerClassName,
 } from "./accordionClassNames.js"
-
-/** The step mark of a row: a check, the current number, a warning triangle or a grey number, in a 24px circle; decorative, the words carry the state. */
-const StepMark = ({ state, position, isLoading }: { readonly state: "done" | "current" | "problem" | "todo"; readonly position: number | undefined; readonly isLoading: boolean }) => (
-    <span className="starci-core-accordion-step" data-grammar-step-state={isLoading ? "todo" : state} aria-hidden="true">
-        {isLoading ? null : state === "done" ? (
-            <svg viewBox="0 0 20 20" focusable="false"><path d="M5 10.5 8.25 14 15 6.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" /></svg>
-        ) : state === "problem" ? (
-            <svg viewBox="0 0 20 20" focusable="false"><path d="M10 4 18 17H2L10 4Zm0 4.5v4m0 2v.01" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" /></svg>
-        ) : <span>{position}</span>}
-    </span>
-)
 
 /** The disclosures a `kind="accordion"` holds: joined rows, each a title (and one muted meta) over a body. */
 export const AccordionRows = ({ data, isLoading }: { readonly data: AccordionData; readonly isLoading: boolean }) => {

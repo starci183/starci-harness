@@ -3386,6 +3386,12 @@
     /* Select appearance="pill": the trigger is a pill (a picker in a page head), the field tone, no shadow. */
     .starci-core-select[data-grammar-select-appearance="pill"] .starci-core-select-trigger { border-radius: var(--grammar-radius-pill); background: var(--surface-secondary); box-shadow: none; }
 
+    /* DisclosureList: sibling disclosures joined into one list, divided by full-bleed lines. */
+    .starci-core-disclosure-list { display: flex; min-width: 0; margin: 0; padding: 0; flex-direction: column; list-style: none; }
+    .starci-core-disclosure-list-item { min-width: 0; }
+    .starci-core-disclosure-list-item + .starci-core-disclosure-list-item { border-block-start: 1px solid var(--separator); }
+    .starci-core-disclosure-trigger > .starci-core-accordion-step { margin-inline-end: var(--grammar-row-gap); }
+
     /* --- Empty notice --- */
     .starci-core-empty-notice {
         display: flex;
@@ -4672,7 +4678,8 @@
      * Quote: words from a source on a tinted ground at the nested inset, one radius below the host surface (the control radius
      * under the surface radius). It is not a surface: no shadow, no outline, no action.
      */
-    .starci-core-quote {
+    .starci-core-quote,
+    .starci-core-inset {
         display: flex;
         min-width: 0;
         margin: 0;
@@ -4683,6 +4690,9 @@
         background: var(--surface-secondary);
         color: var(--foreground);
     }
+
+    .starci-core-inset { gap: var(--grammar-inline-gap); }
+    .starci-core-inset-label { color: var(--muted); font-size: var(--grammar-text-xs); font-weight: var(--grammar-weight-semibold); line-height: var(--grammar-leading-xs); }
 
     .starci-core-quote-source {
         color: var(--muted);

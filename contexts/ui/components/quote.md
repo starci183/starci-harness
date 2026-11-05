@@ -24,6 +24,7 @@ Choice `quote.choose.host`: where a `Quote` stands. The first row that applies w
 | pane | the words sit in a `PaneSection` band | `Quote` directly in the band, on no card (a `Pane surface` is itself the face and holds no card, `pane-grid.choose.frame:cards`) | judgement |
 | card | the words belong to the subject of a card | `Quote` in the card's content; it is not a surface, so it does not nest one | judgement |
 | drawer | the words are part of a task beside the page | `Quote` in the drawer body | judgement |
+| group | rows or a block (not words) need the same quiet ground inside a surface: an approver panel, a short summary | `Inset` with an optional `label`; never a card inside a card | judgement |
 | contradiction | two sources disagree on one fact | a `Section` whose title is the question, the two `Quote`s side by side in a `Cluster` (each names its source), and the answers as a decision group below (`action-group.choose.kind:decision`) | judgement |
 
 ## Variants

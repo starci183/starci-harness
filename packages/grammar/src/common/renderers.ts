@@ -49,6 +49,8 @@ export { PaneHeader, type PaneHeaderProps } from "../core/composite/PaneHeader/i
 export { EmptyNotice, type EmptyNoticeArtwork, type EmptyNoticeProps } from "../core/composite/EmptyNotice/index.js"
 export { MessageBubble, type MessageBubbleProps, type MessageBubbleSide } from "../core/composite/MessageBubble/index.js"
 export { MessageStatus, type MessageStatusProps, type MessageStatusReaders } from "../core/composite/MessageStatus/index.js"
+export { Inset, type InsetProps } from "../core/frame/Inset/index.js"
+export { DisclosureList, type DisclosureListItem, type DisclosureListProps } from "../core/composite/DisclosureList/index.js"
 export { Quote, type QuoteProps } from "../core/composite/Quote/index.js"
 export { HorizontalScrollRegion, type HorizontalScrollRegionProps } from "../core/frame/HorizontalScrollRegion/index.js"
 export { VerticalScrollRegion, type VerticalScrollRegionProps } from "../core/frame/VerticalScrollRegion/index.js"

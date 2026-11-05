@@ -134,6 +134,7 @@
 
 ## Unreleased
 
+- Added: `Inset` (the Quote ground around rows or a block, an optional label, its own loading region); `Disclosure` `leading` (a step mark) with the summary as the end meta and its data parts as geometry in a loading region; `DisclosureList` (sibling disclosures joined into one list).
 ## 0.21.3 - 2026-11-02
 
 - Added: EntryFrame; semantic Grid sections, pair and featured roles; centred wrapped Cluster items; headless or titled unpainted Section figures reusing FigureCells; native ButtonGroup loading, member pending and borrowed size; IconButton pending; typed media tiles; MessageStatus footer semantics; passive CalendarDay. Existing DOM order, form measures, native joined corners and content geometry stay with their owning roles.

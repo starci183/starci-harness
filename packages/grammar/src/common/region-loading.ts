@@ -20,6 +20,7 @@ export const REGION_LOADING_EXEMPT: Readonly<Record<string, string>> = {
     "branch/DragItem": "a drag frame around content the app draws",
     "branch/DropdownMenu": "its entries are an overlay, a fresh region",
     "branch/Tooltip": "an overlay, a fresh region",
+    "composite/DisclosureList": "draws nothing itself: every Disclosure it holds reads the region",
     "composite/EmptyNotice": "an answer that is never drawn while a region loads",
     "composite/Footer": "app chrome",
     "composite/Sidebar": "app chrome",

@@ -87,3 +87,38 @@ export const PublicPageParts: Story = {
         </Matrix>
     ),
 }
+
+const approvalRows: ReadonlyArray<G.ListRowData> = [
+    { id: "q1", title: "Quote for Hoa Sen Spa", description: "12,500,000", badges: [{ label: "Waiting", tone: "warning" }], meta: { text: "5 min" }, onPress: noop },
+    { id: "q2", title: "Order for Anh Quang", description: "26,000,000", badges: [{ label: "Over limit", tone: "danger" }], meta: { text: "1 hour" }, onPress: noop },
+]
+
+const setupItems: ReadonlyArray<G.DisclosureListItem> = [
+    { id: "d1", title: "Connect Zalo", summary: "Done", leading: { state: "done", position: 1 }, body: "Connected." },
+    { id: "d2", title: "Add the webhook", summary: "In progress", leading: { state: "current", position: 2 }, defaultExpanded: true, body: "Paste the address." },
+    { id: "d3", title: "Send a test", summary: "Needs attention", leading: { state: "problem", position: 3 }, body: "The test failed." },
+]
+
+const twin = (name: string, ready: React.ReactNode, loading: React.ReactNode) => (
+    <div data-grammar-twin={name} style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div data-grammar-twin-item="ready" style={{ display: "inline-flex", flexDirection: "column", width: "24rem" }}>{ready}</div>
+        <div data-grammar-twin-item="loading" style={{ display: "inline-flex", flexDirection: "column", width: "24rem" }}>{loading}</div>
+    </div>
+)
+
+export const InsetAndDisclosureList: Story = {
+    render: () => (
+        <Matrix>
+            <State label="Inset around rows (ready, and loading: the region is the inset; same box)" direction="column">
+                {twin("Inset",
+                    <G.Inset label="Waiting for you"><G.Section kind="list" ariaLabel="Approvals" items={approvalRows} empty={empty} /></G.Inset>,
+                    <G.Inset label="Waiting for you" isLoading><G.Section kind="list" ariaLabel="Approvals" items={approvalRows} empty={empty} /></G.Inset>)}
+            </State>
+            <State label="DisclosureList: step marks and end meta; loading keeps the titles and draws the data as geometry" direction="column">
+                {twin("DisclosureList",
+                    <G.SurfaceCard label="Set up"><G.DisclosureList label="Setup steps" items={setupItems} /></G.SurfaceCard>,
+                    <G.SurfaceCard label="Set up" isLoading><G.DisclosureList label="Setup steps" items={setupItems} /></G.SurfaceCard>)}
+            </State>
+        </Matrix>
+    ),
+}
