@@ -55,8 +55,8 @@ reviveMax: 3
 # (jest, vitest) with `--maxWorkers` from the room its admission measured (free RAM - reserveMb - the running estimates): its own
 # test estimate holds the parent and one worker and every further testWorkerMb of room one more, from 1 up to testWorkers (a count or a
 # percent of the logical cores), so a starved host runs one worker and a host with room runs wide. A coverage run's parent holds every
-# spec's coverage until the run ends (a full back-end run outgrew 4 GB), so memoryMb.test is its heap and estimateMb.test, which
-# admission holds, is that same number (the loader refuses them apart). A worker seat launches
+# spec's coverage until the run ends (a full back-end run outgrew 4 GB, then 8 GB: a 1,832-spec run died after 1,236 specs, about 6.6 MB a spec), so memoryMb.test is its heap
+# and estimateMb.test, which admission holds, is that same number (the loader refuses them apart). A worker seat launches
 # only while free memory is at least seatFreeMb; otherwise its task stays queued and the hold is recorded (since when, on what
 # memory), so `workflow status` names it. `starci host load` shows the capacity, the CPU rule that applied, each queued
 # command's wait and why, and who holds the memory (managed: the harness's heavy commands and seats; unmanaged: other node,
@@ -84,14 +84,14 @@ heavy:
   estimateMb:
     tsc: 3072
     eslint: 4096
-    test: 8192
+    test: 12288
     build: 3072
     install: 1500
     uat: 2048
   memoryMb:
     tsc: 8192
     eslint: 8192
-    test: 8192
+    test: 12288
     build: 4096
     install: 2048
     uat: 4096

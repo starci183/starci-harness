@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.72 - 2026-11-05
+
+- Changed: a test run's parent heap and what admission holds for it (`ops/liveness.yaml` `heavy.memoryMb.test` and `heavy.estimateMb.test`, kept equal) are 12288 MB, up from 8192: a 1,832-spec back-end coverage run (`app check --fresh` on Nivo) died with JEST_RUNNER_DIED after 1,236 specs, about 6.6 MB of coverage a spec held until the run ends. `heavy-test-heap.test.ts` holds the number against the largest suite.
+
 ## 1.1.0-alpha.69 - 2026-11-05
 
 - Changed: `policy/loosening.yaml` `branchProfiles.branches` may hold a branch pattern of `@starci/hfs` (`ui/*`: a literal first segment, `*` any characters but `/`, never `release/...`), so a profile covers dev's feature branches; the runtime allows `[dev, ui/*]` (decision `branch-profile-dev`, amended). The CLI hands the list to `@starci/hfs` as before (`STARCI_PROFILE_BRANCHES`), which refuses an entry that names or matches the default branch.
