@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0-alpha.76 - 2026-11-05
+
+- Added (release 7c.9b, decision memory-plan): `starci app check` plans its memory from the app it judges (`cli/src/harness/memory-plan.ts`, constants in `ops/liveness.yaml` `heavy.plan`, fitted on Nivo). It measures the scope from the git index and file sizes (specs and sources per side, the MB of the coverage records and of every cache record) and sizes the check's parent heap, re-executing itself under that heap when node's limit is lower. It also sizes each side's coverage parent, worker heap and worker count, each tsc program's heap, the CI build steps' heap and the lint ratchet's chunk. `--explain` prints the plan, and @starci/hfs receives it as `STARCI_MEMORY_PLAN`.
+- Changed: admission holds a planned child at its planned MB (a `mb` column on `heavy_slots`) instead of its kind's estimate. A child's sampled peak resident memory more than `learnAbovePercent` (20%) over its plan raises that kind's factor for the app's next run (`.starciwork/memory-factors.json`), with a warning.
+- Fixed: the DNA contract loader accepts a `set` check without a value and a per-metric value list (`metric: [width, height], value: [113px, 40px]`), which the Grammar's laws DNA-COMMON-TONE-CUSTOM-COMPLETE and DNA-COMMON-LINK-MEDIA-KEEPS-BOX use. Since those laws landed, the loader had refused the whole contract.
+- Changed (CI): the harness job runs the CLI's tests, so a red CLI test blocks publishing.
+
 ## 1.1.0-alpha.75 - 2026-11-05
 
 - Added (decision release-only-what-changed): `starci release publish` and `starci release push` skip a raised package whose shipped files differ from the version npm serves only by its CHANGELOG, lockfile and version field (`unchanged` in the plan, `shipsTheSame` in `cli/src/core/release/publish.ts`, test `unchanged.test.ts`), and refuse `RELEASE_DEPENDENCY_UNPUBLISHED` when a raised dependent requires such a skipped sibling at its raised version. The CLI keeps its exact `@starci/hfs` requirement.
