@@ -123,7 +123,7 @@ rulings:
   - id: alert-soft-pair
     date: '2026-11-05'
     status: live
-    ruling: "A notice is the grammar Alert in one look: the tone's soft pair, background x-soft at full strength and glyph, title and description x-soft-foreground, with no shadow and no border, in Core and Offset Pop alike; tones map informative to accent, affirmative to success, cautionary to warning, negative to danger and neutral, pending and unavailable to default; its action is the grammar Button in the variant the Alert gives its tone. The `appearance` prop is a deprecated no-op until it is removed."
+    ruling: "A notice is the grammar Alert in one look: the tone's soft pair, background x-soft at full strength and glyph, title and description x-soft-foreground, with no shadow and no border, in Core and Offset Pop alike; tones map informative to info (the accent pair where the theme defines no info pair), affirmative to success, cautionary to warning, negative to danger and neutral, pending and unavailable to default; its action is the grammar Button in the variant the Alert gives its tone. The `appearance` prop is a deprecated no-op until it is removed."
     owner: "contexts/ui/components/toast-alert.md; contexts/grammars/core.md"
     absorbs: [ACCENT-5/case-6, alert-white-surface]
   - id: one-way-to-choose

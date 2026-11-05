@@ -4406,6 +4406,12 @@
     }
 
     /* Badge muted: the content carries the muted ink on HeroUI's transparent tertiary Chip. */
+    /* Badge tone="info": the info soft pair (blue in Nivo), the accent pair when the theme defines no info pair. */
+    [data-component="Badge"][data-tone="info"]:not([data-loading="true"]) {
+        background: var(--info-soft, var(--accent-soft));
+        color: var(--info-soft-foreground, var(--accent-soft-foreground));
+    }
+
     .starci-core-badge-muted {
         display: inline-flex;
         align-items: center;

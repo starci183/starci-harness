@@ -122,3 +122,23 @@ export const InsetAndDisclosureList: Story = {
         </Matrix>
     ),
 }
+
+const infoTheme = { "--info-soft": "#dfe7fc", "--info-soft-foreground": "#203571" } as React.CSSProperties
+
+const infoSample = (
+    <>
+        <G.Alert tone="informative" title="Let NIVO answer for you" description="You approve first; nothing is sent without you." />
+        <G.Cluster gap="inline"><G.Badge tone="info">Info</G.Badge><G.Badge tone="accent">New</G.Badge><G.Badge isDot tone="info">Syncing</G.Badge></G.Cluster>
+    </>
+)
+
+export const InfoAndAccentTones: Story = {
+    render: () => (
+        <Matrix maxWidth={560}>
+            <State label="A theme without an info soft pair: informative falls back to the accent pair" direction="column">{infoSample}</State>
+            <State label="A theme that defines --info-soft and --info-soft-foreground (Nivo: blue): informative and the info Badge use it; accent stays its own tone" direction="column">
+                <div style={{ ...infoTheme, display: "flex", flexDirection: "column", gap: "0.75rem" }}>{infoSample}</div>
+            </State>
+        </Matrix>
+    ),
+}

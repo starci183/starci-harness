@@ -134,6 +134,7 @@
 
 ## Unreleased
 
+- Changed: `informative` (an `Alert`) and the new `Badge tone="info"` use the info soft pair (`--info-soft`, `--info-soft-foreground`; blue in Nivo) and fall back to the accent pair where the theme defines none; accent stays its own tone for "new" and "selected". Core theme defaults derive `--info-soft*` from `--info`. DNA `DNA-COMMON-ALERT-TONE-PAIR-ACCENT` is renamed `-INFO`; new `DNA-COMMON-BADGE-TONE-INFO`.
 - Added: `Inset` (the Quote ground around rows or a block, an optional label, its own loading region); `Disclosure` `leading` (a step mark) with the summary as the end meta and its data parts as geometry in a loading region; `DisclosureList` (sibling disclosures joined into one list).
 ## 0.21.3 - 2026-11-02
 

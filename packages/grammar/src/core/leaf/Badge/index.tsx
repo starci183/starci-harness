@@ -3,7 +3,7 @@ import { Chip, skeletonVariants } from "@heroui/react"
 import type { ReactNode } from "react"
 import { StatusDotMark } from "../StatusDot/index.js"
 
-export type BadgeTone = "neutral" | "accent" | "success" | "warning" | "danger" | "muted"
+export type BadgeTone = "neutral" | "accent" | "info" | "success" | "warning" | "danger" | "muted"
 
 type BadgeBase = {
     readonly children?: string
@@ -38,6 +38,7 @@ const TONE_COLORS = {
     muted: "default",
     neutral: "default",
     accent: "accent",
+    info: "accent",
     success: "success",
     warning: "warning",
     danger: "danger",
@@ -65,7 +66,7 @@ const BadgeInner = (props: BadgeProps) => {
     const { children, startContent, tone = "neutral", isLoading = false } = props
     if (props.isDot === true) {
         const isLive = props.isLive === true
-        const dotTone = tone === "muted" ? "neutral" : tone
+        const dotTone = tone === "muted" ? "neutral" : tone === "info" ? "accent" : tone
         return (
             <Chip
                 data-tier="leaf"

@@ -92,7 +92,7 @@ const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
  *
  * Its one look is the tone's soft pair (owner ruling `alert-soft-pair`): the background is `--<tone>-soft` at full strength, the
  * glyph, title and description are `--<tone>-soft-foreground`, with no shadow and no border. Tones map to the pair
- * as informative -> accent, affirmative -> success, cautionary -> warning, negative -> danger, and neutral, pending and
+ * as informative -> info (accent where the theme has no info pair), affirmative -> success, cautionary -> warning, negative -> danger, and neutral, pending and
  * unavailable -> default.
  *
  * It is not an overlay: it takes layout space and stays until resolved or dismissed. Dismissal is
@@ -170,7 +170,7 @@ const AlertInner = (props: AlertProps) => {
  *
  * Its one look is the tone's soft pair (owner ruling `alert-soft-pair`): the background is `--<tone>-soft` at full strength, the
  * glyph, title and description are `--<tone>-soft-foreground`, with no shadow and no border. Tones map to the pair
- * as informative -> accent, affirmative -> success, cautionary -> warning, negative -> danger, and neutral, pending and
+ * as informative -> info (accent where the theme has no info pair), affirmative -> success, cautionary -> warning, negative -> danger, and neutral, pending and
  * unavailable -> default.
  *
  * It is not an overlay: it takes layout space and stays until resolved or dismissed. Dismissal is

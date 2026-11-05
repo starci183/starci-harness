@@ -34,6 +34,9 @@
         --danger-foreground: oklch(99.11% 0 0);
         --info: oklch(66.8% 0.17 250);
         --info-foreground: oklch(21.03% 0.0059 250);
+        /* The info soft pair, derived from the info colour like HeroUI's other soft pairs; an app that sets its own --info-soft* wins. */
+        --info-soft: color-mix(in oklab, var(--info) 14%, var(--surface));
+        --info-soft-foreground: color-mix(in oklab, var(--info) 50%, var(--foreground));
         --default: color-mix(in oklab, var(--surface-secondary) 98%, var(--foreground));
         --default-foreground: var(--foreground);
         --segment: var(--surface);
