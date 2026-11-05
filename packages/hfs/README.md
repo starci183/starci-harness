@@ -240,6 +240,8 @@ commit that adds lint findings to a file it touches (`LINT_RATCHET_RAISED`): ove
 files against HEAD with `app check --ratchet`, which the managed pre-commit hook runs in place of the staged eslint and stylelint on such a branch.
 `app check --profile` prints the profile; with one `--gate` it prints that gate's mode alone.
 
+An app adds its own laws through rule packs and package slot manifests (the harness's contexts/project/lint.md PROJECT-LINT-3): `hfs.json` `rulePacks` names installed packages that export a `starci/rule-pack@1` manifest (`./rule-pack`); the check runs their machine rules as hfs findings under the pack's codes, the canon ESLint factories load their lint rules, and a pack that tries anything but adding a rule is refused whole (`HFS_RULE_PACK_INVALID`, R381). A root package's `packages/<name>/slots.yaml` (`starci/package-slots@1`) holds its tree like the side slots (R382), and its coverage follows the slots: 100 per file but its barrels, type files and the slots that opt out with a reason.
+
 Exit codes: 0 clean, 1 an error finding, 2 a tool could not run or a refusal (not a Git work tree, bad flag). `starci app check` writes only `.starcistacks/cache/` (and `--out`'s file; `--fix` lets ESLint and stylelint fix in place).
 
 ## Secrets

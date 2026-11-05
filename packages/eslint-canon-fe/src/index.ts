@@ -8,6 +8,7 @@
  * Published IDs identify their owning law. Namespace migrations are explicit in the removed-vocabulary
  * catalog; compatibility aliases cannot create a second owner for a rule.
  */
+import { packEslintConfigs } from "#runtime/scripts/lib/rule-packs.mjs"
 import { createRequire } from "node:module"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -276,14 +277,30 @@ export const starciFeConfig = ({ hfs }: { readonly hfs?: unknown } = {}): Linter
     throw new Error(`starciFeConfig: these published rules are not requested at error: ${notRequested.join(", ")}`)
   }
   const reactHooks = loadReactHooks()
-  return buildFeConfig({
-    hfs,
-    plugin,
-    reactHooks,
-    tsPlugin: loadTsPlugin(),
-    sonar: loadSonarPlugins(),
-    source: { ...recommended, ...reactHooksRules(reactHooks) },
-  })
+  return [
+    ...buildFeConfig({
+      hfs,
+      plugin,
+      reactHooks,
+      tsPlugin: loadTsPlugin(),
+      sonar: loadSonarPlugins(),
+      source: { ...recommended, ...reactHooksRules(reactHooks) },
+    }),
+    ...withPackRules(hfs, "fe"),
+  ]
+}
+
+/**
+ * The ESLint rules of the app's rule packs (hfs.json `rulePacks`, contexts/project/lint.md PROJECT-LINT-3) for one scope: the one sanctioned way an app adds
+ * a lint law, loaded by this factory so no tool config of the app defines a rule. A refused pack throws (HFS_RULE_PACK_INVALID): a lint run never guesses.
+ *
+ * @param hfs - The HFS view the config was built for (its repoRoot is the folder of the eslint.config.mjs).
+ * @param side - The scope: the fe side (the root packages take theirs from starciBePackagesConfig).
+ * @returns The pack blocks, none when the app declares no pack or the view is missing.
+ */
+const withPackRules = (hfs: unknown, side: "fe"): Linter.Config[] => {
+  const root = typeof hfs === "object" && hfs !== null && "repoRoot" in hfs && typeof hfs.repoRoot === "string" ? hfs.repoRoot : null
+  return root === null ? [] : (packEslintConfigs(root, side) as unknown as Linter.Config[])
 }
 
 /**
@@ -299,6 +316,7 @@ export const starciFePackagesConfig = ({ hfs }: { readonly hfs?: unknown } = {})
   const reactHooks = loadReactHooks()
   const graph = new Set(Object.keys(projectGraphRecommended))
   const source = { ...Object.fromEntries(Object.entries(recommended).filter(([name]) => !graph.has(name))), ...reactHooksRules(reactHooks) }
+  // The pack rules of the root packages come once, with starciBePackagesConfig of the same root config (one plugin per pack).
   return scopeToPackages(buildFeConfig({ hfs, plugin, reactHooks, tsPlugin: loadTsPlugin(), sonar: loadSonarPlugins(), source }))
 }
 

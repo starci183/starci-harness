@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.35 - 2026-11-05
+
+- Changed: version stamp only, with `@starci/grammar` 0.21.35; requires `@starci/eslint-canon-fe` 9.14.0. The runtime copies carry the `rulePacks` key of the declaration check, R16, R381 and R382, and the canon pins of `@starci/hfs` 5.11.0.
+
 ## 0.21.34 - 2026-11-05
 
 - Changed: version stamp only, with `@starci/grammar` 0.21.34; requires `@starci/eslint-canon-fe` 9.13.16. The runtime copy of the canon pins names `@starci/hfs` 5.10.4.

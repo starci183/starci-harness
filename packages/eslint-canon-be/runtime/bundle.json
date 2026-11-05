@@ -170,6 +170,7 @@
     "scripts/lib/path-key.mjs",
     "scripts/lib/read-text.mjs",
     "scripts/lib/regex.mjs",
+    "scripts/lib/rule-packs.mjs",
     "scripts/lib/same-text.mjs",
     "scripts/lib/sops-envelope.mjs",
     "scripts/lib/stack-services.mjs",

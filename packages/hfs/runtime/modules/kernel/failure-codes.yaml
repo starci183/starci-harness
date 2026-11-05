@@ -3277,7 +3277,7 @@ BE_FLOW_FAILURE_SWALLOWED:
   meaning_vi: "Một processor, step, saga step, compensation hay consumer bắt lỗi mà không ném lại cũng không park, hoặc một file đặt removeOnFail: luồng dừng mà không retry, không park failed_awaiting_fix và không có cảnh báo, nên không bao giờ tự chạy lại."
   causes_vi:
     - "Vi phạm R377: một catch trong file luồng không throw cũng không gọi park."
-    - "Vi phạm R377: removeOnFail xoá job đã lỗi mà resume cần."
+    - "Vi phạm R377: removeOnFail đặt true, một số trần hoặc giá trị không đọc được, nên xoá ngay job đã lỗi; giữ bản broker có giới hạn bằng { age } hoặc { count } (bản ghi park trong PostgreSQL là lỗi bền)."
   nextStep_vi: "Bỏ catch để lỗi tới runner (runner retry lỗi tạm thời và park phần còn lại với một cảnh báo), bỏ removeOnFail, rồi chạy lại starci app check."
   owner: op-retry
   kind: check-finding
@@ -5902,3 +5902,55 @@ STACKS_IMAGE_ENV_DIVERGES:
   causes_vi:
     - "Vi phạm R374: một môi trường dùng image upstream hoặc image nước ngoài thay vì image dựng từ thư mục."
   nextStep_vi: "Dùng build.context trỏ tới thư mục image (compose) hoặc tham chiếu image của dự án (stack)."
+
+HFS_RULE_PACK_INVALID:
+  title: "A rule pack of hfs.json is refused, or one of its rules cannot judge"
+  title_vi: "Một rule pack trong hfs.json bị từ chối, hoặc một luật của nó không chấm được"
+  meaning_vi: "hfs.json rulePacks chỉ được nêu package đã cài, export ./rule-pack là manifest starci/rule-pack@1; mỗi luật có id, mã finding, mức độ, spec, doc và đúng một engine (check hoặc eslint). Pack chỉ thêm luật: không tắt, không ghi đè, không dùng lại mã của harness. Pack bị từ chối không góp luật nào."
+  causes_vi:
+    - "Vi phạm R381: pack không cài được hoặc không export ./rule-pack hợp lệ."
+    - "Vi phạm R381: một luật thiếu id, code, severity, spec hoặc doc, có khóa khác (off, overrides), hoặc dùng lại mã của harness hay của pack khác."
+    - "Vi phạm R381: một luật check ném lỗi hoặc trả finding không có path."
+  nextStep_vi: "Sửa manifest của pack (hoặc cài lại pack) cho đủ trường và chỉ thêm luật, rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
+HFS_PACKAGE_SLOTS_INVALID:
+  title: "A package's slots.yaml cannot be read as a starci/package-slots@1 manifest"
+  title_vi: "slots.yaml của một package không đọc được theo starci/package-slots@1"
+  meaning_vi: "packages/<name>/slots.yaml phải là manifest starci/package-slots@1: mỗi slot có id, path dưới src/, requires/allows là danh sách, và coverage là measured hoặc { none: <lý do> }."
+  causes_vi:
+    - "Vi phạm R382: sai schema, khóa lạ, id trùng, path ngoài src/, hoặc coverage none không có lý do."
+  nextStep_vi: "Sửa slots.yaml theo đúng khuôn rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
+HFS_PACKAGE_SLOT_MISSING:
+  title: "An instance of a package slot lacks a file its slot requires"
+  title_vi: "Một instance của slot trong package thiếu file mà slot yêu cầu"
+  meaning_vi: "Mỗi thư mục khớp một folder slot của packages/<name>/slots.yaml phải chứa mọi file trong requires của slot đó."
+  causes_vi:
+    - "Vi phạm R382: một block (hay instance khác) thiếu schema, renderer hoặc spec mà slot yêu cầu."
+  nextStep_vi: "Thêm file còn thiếu vào instance, rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
+HFS_PACKAGE_SLOT_DISALLOWED:
+  title: "An instance of a package slot holds a file its slot does not allow"
+  title_vi: "Một instance của slot trong package chứa file mà slot không cho phép"
+  meaning_vi: "Khi slot khai allows, mỗi file trong instance phải khớp requires hoặc allows."
+  causes_vi:
+    - "Vi phạm R382: một file nằm trong instance nhưng không khớp requires hay allows của slot."
+  nextStep_vi: "Chuyển file vào slot đúng của nó, hoặc khai thêm vào allows nếu nó thật sự thuộc slot này."
+  owner: op-retry
+  kind: check-finding
+
+HFS_PACKAGE_SLOT_UNPLACED:
+  title: "A file of a package belongs to no slot of its slots.yaml"
+  title_vi: "Một file của package không thuộc slot nào trong slots.yaml"
+  meaning_vi: "Một package khai slots.yaml (closed, mặc định) thì mọi file dưới src/ phải thuộc một slot đã khai."
+  causes_vi:
+    - "Vi phạm R382: file nằm ngoài mọi slot của manifest."
+  nextStep_vi: "Đặt file vào slot đã khai, hoặc khai slot mới cho nó trong slots.yaml."
+  owner: op-retry
+  kind: check-finding

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.18.0 - 2026-11-05
+
+- Added (PROJECT-LINT-3): `starciBeConfig` and `starciBePackagesConfig` load the ESLint rules of the app's rule packs (hfs.json `rulePacks`) for the be side and the root packages, one plugin per pack, each rule at its severity; a refused pack throws `HFS_RULE_PACK_INVALID`. The runtime copies carry `scripts/lib/rule-packs.mjs`, the `rulePacks` key of the declaration check, R16, R381 and R382, and the canon pins of `@starci/hfs` 5.11.0.
+
 ## 3.17.4 - 2026-11-05
 
 - Changed: the runtime copy of the canon pins names `@starci/hfs` 5.10.4 and the Grammar family 0.21.34.

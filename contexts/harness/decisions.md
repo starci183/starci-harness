@@ -348,3 +348,14 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   `workspaces` again in the CI render would be a second derivation of the same set, and a hand-written turbo filter would drift from the
   script the app runs locally. An app with no root package renders no step and no prefix, byte for byte as before. R301 holds it
   (ci-standard.yaml `packages-built-first`), and [cicd.md](../project/cicd.md) "Root packages are built before they are read" says why.
+- **An app extends the harness's law through rule packs and package slot manifests (`app-rule-packs`).** The owner, 2026-11-05 ("packages
+  của nivo riêng nivo, muốn thêm gate như hfs phải extends"): an app's own laws are the app's, never the generic harness's, and still
+  machine-held. hfs.json `rulePacks` names installed packages that export a `starci/rule-pack@1` manifest; `starci app check` runs their
+  machine rules as hfs findings and the canon factories load their ESLint rules, so the law that a tool config defines no local rule (R16)
+  holds. The manifest is a package export rather than a file the app writes, so a pack is versioned, reviewed and reused like the canon,
+  and it is loaded by the app's own install. A pack only adds: anything that could lower a harness rule (an extra key, a harness code, a
+  duplicate) refuses the whole pack (R381), the stricter choice, since a partly loaded pack would make an app's law depend on which rule was
+  wrong. A root package may declare `packages/<name>/slots.yaml`, held like the side slots (R382), and its coverage follows the slots: 100
+  per file but its barrels, type files and the slots that opt out with a reason. A package without a manifest keeps the default scope, so
+  no app changes until it declares one (`packages/hfs/runtime/scripts/lib/rule-packs.mts`, `packages/hfs/runtime/scripts/hfs/package-slots.mts`,
+  [project/lint.md](../project/lint.md) PROJECT-LINT-3).

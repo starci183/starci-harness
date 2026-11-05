@@ -6,10 +6,10 @@ import path from 'node:path';
 import type ts from 'typescript';
 import { fileURLToPath } from 'node:url';
 import { loadTypescript } from '../../lib/package-at.mjs';
-import { coverageScope, measuredBy, PACKAGE_TYPE_MODULE, packageMeasuredBy, packagesCoverage, rootPackageFoldersOf } from '../coverage-scope.mjs';
+import { coverageScope, declaredPackageScopes, measuredBy, PACKAGE_TYPE_MODULE, packageMeasuredBy, packagesCoverage, rootPackageFoldersOf } from '../coverage-scope.mjs';
 import { editionRuleParams, effectiveSlot, slotInEdition } from '../edition-slots.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
-import { found } from './read.mjs';
+import { found, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
 export const HFS_COVERAGE_BELOW = 'HFS_COVERAGE_BELOW';
@@ -101,14 +101,14 @@ function manifestOfEdition(manifest: Parsed, edition: string) {
   };
 }
 
-function inventory({ files, all, repo, manifest }: { files: string[]; all: string[]; repo: Repo; manifest: Parsed }) {
+function inventory({ files, all, repo, manifest, repoRoot }: { files: string[]; all: string[]; repo: Repo; manifest: Parsed; repoRoot?: string | undefined }) {
   const prefix = repo.profile === 'app' || repo.sides ? 'be/' : '';
   const effective = manifestOfEdition(manifest, repo.edition ?? 'full');
   const scope = coverageScope(effective, repo.providers ?? repo.sides?.be?.providers ?? []);
   const measures = measuredBy(scope);
   const tracked = [...new Set((all ?? files ?? []).map(slash))];
   // At the app root the root packages are measured too, by the same unit run as the back end (packagesCoverage, BE-TEST-13).
-  const packages = packagesCoverage(prefix ? rootPackageFoldersOf(tracked) : []);
+  const packages = packagesCoverage(prefix ? rootPackageFoldersOf(tracked) : [], declaredPackageScopes((file) => (repoRoot !== undefined && tracked.includes(file) ? readText(repoRoot, file) : null)));
   const measuresPackage = packageMeasuredBy(packages);
   const inPackage = (file: string): boolean => packages.folders.some((folder) => file.startsWith(`${folder}/src/`));
   const candidates = tracked.filter((file) => (file.startsWith(prefix) || inPackage(file)) && file.endsWith('.ts') && !SPEC.test(file)).sort(byCodeUnit);
@@ -240,7 +240,7 @@ export function coverageBelowReport({ repoRoot, files, all, repo, manifest, cove
   const reportPath = typeof coverageFrom === 'string' && coverageFrom ? slash(coverageFrom) : '<lcov>';
   const empty: Record<string, Parsed> = { ok: true, enabled, reportPath, metrics: METRICS, measured: [], unmeasured: [], unmeasuredScopes: [], results: [], findings: [] };
   if (!enabled || !repo || !['app', 'be'].some((value) => value === repo.profile)) return empty;
-  const boundary = inventory({ files: files!, all: all!, repo, manifest });
+  const boundary = inventory({ files: files!, all: all!, repo, manifest, repoRoot });
   const report: Record<string, Parsed> = { ...empty, ...boundary };
   const reportFailure = (message: string) => { report.findings.push(found(HFS_COVERAGE_BELOW, reportPath, message)); };
   if (lcov === undefined) {

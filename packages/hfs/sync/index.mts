@@ -21,7 +21,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { braceVariants } from '../runtime/scripts/lib/glob.mjs';
-import { codecovPaths, coverageComponents, jestCoverage, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
+import { codecovPaths, coverageComponents, declaredPackageScopes, jestCoverage, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
 import { APP_SCOPE, SIDES, litePresenceOf, loadSlotManifest, resolveAppDeclaration, slotInEdition, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
 import type { AppRepo } from '../runtime/scripts/hfs/slot-app-view.mjs';
 import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
@@ -100,6 +100,8 @@ export interface AppSourceFacts {
   runtimeExample: boolean; files: string[]; read: (file: string) => string; workPresent: boolean; hasImage: (file: string) => boolean;
   hasContracts: boolean; // the back end holds be/contracts/ (a back end that emits no contract has none)
   modules?: readonly string[]; otherPackages?: readonly string[]; // the module packages (packages/module-<name>) and the other folders of packages/
+  /** The unmeasured globs of each root package that declares a sound slot manifest (packages/<name>/slots.yaml, PROJECT-LINT-3), by app-relative folder. */
+  packageScopes?: Readonly<Record<string, readonly string[]>>;
   stack: any; quality: any; badges: string; qualityDeclared: boolean; // reason: stack and quality come from the YAML-parsed declaration
 }
 
@@ -333,6 +335,10 @@ export function appSource(root: string, { parseYaml, notices }: { parseYaml?: Pa
   for (const dir of ['apps', 'src']) walk(dir);
   return { runtimeExample: isRuntimeExampleApp(root), files: files.sort(byCodeUnit), read: (file: string) => fs.readFileSync(path.join(root, 'be', file), 'utf8'),
     modules: moduleNames(root), otherPackages: otherPackages(root),
+    packageScopes: Object.fromEntries([...moduleNames(root).map((name) => `packages/${MODULE_PREFIX}${name}`), ...otherPackages(root).map((name) => `packages/${name}`)].flatMap((folder) => {
+      const scope = declaredPackageScopes((file) => { try { return fs.readFileSync(path.join(root, file), 'utf8'); } catch { return null; } })(folder);
+      return scope === null ? [] : [[folder, scope]];
+    })),
     workPresent: fs.existsSync(path.join(root, '.starciwork')), hasContracts: fs.existsSync(path.join(root, 'be', 'contracts')), hasImage: (file: string) => isFile(path.join(root, file), { followLinks: false }),
     stack: readDeclaredStack(root, { parseYaml }), quality: readDeclaredQuality(root, { parseYaml }),
     badges: readDeclaredBadges(root, { parseYaml, notices }),
@@ -511,7 +517,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   const quality = source.quality ?? qualityServices({});
   // The root packages (the agent SDK, the module packages and the rest) are built before anything imports them (typecheck, lint, the fe build and the be
   // run), and their logic is measured by the back end's unit run like its own (packagesCoverage, BE-TEST-13).
-  const rootPackages = packagesCoverage(rootPackageFolders(source));
+  const rootPackages = packagesCoverage(rootPackageFolders(source), (folder) => source.packageScopes?.[folder] ?? null);
   const moduleDirs = rootPackages.folders;
   const modulesFirst = moduleDirs.length ? `${BUILD_MODULES} && ` : '';
   const grammarLint = scope === 'fe' ? grammarLintFor(fe.grammar) : null;

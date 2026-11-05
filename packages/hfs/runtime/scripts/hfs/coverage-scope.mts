@@ -16,6 +16,7 @@ import { braceVariants, globExpression } from '../lib/glob.mjs';
 import { declaredLogicOf, logicRolesOf, type Slot, type SlotManifest } from './manifest-shape.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
 import { trimTrailingSlashes } from './trailing-slashes.mjs';
+import { PACKAGE_SLOTS_FILE, readPackageSlots, unmeasuredGlobs } from './package-slots.mjs';
 
 /** The slot and manifest shapes the coverage derivation reads (manifest-shape.mts). */
 export type ScopeSlot = Slot;
@@ -291,9 +292,20 @@ export interface PackagesCoverage { folders: string[]; files: string[]; excludes
  * THE derivation of what the root packages measure (BE-TEST-13): every TypeScript file below a package's `src/` but its front-end subtrees and barrels, at
  * 100 per file in the back end's unit run. The rendered be/jest.config.js, Sonar's coverage exclusions and sources, Codecov's paths and R273 read it.
  */
-export function packagesCoverage(folders: readonly string[]): PackagesCoverage {
+export function packagesCoverage(folders: readonly string[], declared: (folder: string) => readonly string[] | null = () => null): PackagesCoverage {
   const sorted = [...new Set(folders)].sort(byCodeUnit);
-  return { folders: sorted, files: sorted.map((folder) => `${folder}/src/**/*.ts`), excludes: sorted.flatMap((folder) => PACKAGE_UNMEASURED.map((glob) => `${folder}/${glob}`)) };
+  // A package that declares its slots (packages/<name>/slots.yaml) is measured by them: everything but its barrels, type files and opted-out slots.
+  return { folders: sorted, files: sorted.map((folder) => `${folder}/src/**/*.ts`), excludes: sorted.flatMap((folder) => (declared(folder) ?? PACKAGE_UNMEASURED).map((glob) => `${folder}/${glob}`)) };
+}
+
+/** The unmeasured globs of each package that declares a sound slot manifest, read through `read` (app-relative text or null); null for the rest. */
+export function declaredPackageScopes(read: (file: string) => string | null): (folder: string) => readonly string[] | null {
+  return (folder) => {
+    const text = read(`${folder}/${PACKAGE_SLOTS_FILE}`);
+    if (text === null) return null;
+    const manifest = readPackageSlots(text);
+    return manifest.problems.length > 0 ? null : unmeasuredGlobs(manifest);
+  };
 }
 
 /** The registry of the module packages (slot app.module-registry): managed, it lists the modules and carries no logic of its own. */

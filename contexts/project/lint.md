@@ -138,6 +138,32 @@ the stricter mode. The branch name alone decides, so a hook and CI agree; an ups
 - **Promotion.** Moving `dev` to `main` is a named step, a pull request (or merge) into `main`, which runs the full gate:
   every report-only finding counts again there, so whoever promotes fixes what the full gate refuses first.
 
+## PROJECT-LINT-3 An app extends the law through rule packs and package slot manifests
+
+An app's own laws (a block library's shape, a spec schema, a naming rule of its modules) belong to the app, never to the generic harness, and
+they are still machine-held, through two extension points that only add.
+
+- **Rule packs.** `hfs.json` `rulePacks: ["@scope/hfs-rules"]` names installed packages. Each exports `./rule-pack`, a
+  `starci/rule-pack@1` manifest (`packages/hfs/runtime/scripts/lib/rule-packs.mjs`) whose every rule carries an `id` (`NIVO-BLOCK-1`), a
+  finding `code`, a `severity` (`error` or `warning`), the `spec` file of the package that proves it, its `doc` (a file of the package or an
+  https link) and exactly one engine: `check`, a machine rule `starci app check` runs over the tracked files, or `eslint`, a rule the canon
+  factories (`starciBeConfig`, `starciFeConfig`, `starciBePackagesConfig`) load for the sides it names. Because the factories load them, the
+  law that tool configs call only the canon factories and define no local rule still holds.
+- **A pack only adds.** A rule with any other key (an `off`, an `overrides`), a code the harness reports, an id or a code another pack holds,
+  a rule that throws and a finding without a path refuse the whole pack (`HFS_RULE_PACK_INVALID`, R381, a hard finding of the hfs family),
+  and a refused pack lends nothing; the lint run then stops instead of linting without the app's law.
+- **Pack findings go through the same policy.** A `check` rule is an hfs finding: it blocks on every branch, like hfs. An `eslint` rule is a
+  lint finding: it follows the lint gate, so a branch profile that reports lint reports it and the lint ratchet (PROJECT-LINT-2) still holds
+  it on the files a commit touches. A new pack rolls out with the ratchet: new code is clean from day one, existing findings burn down.
+- **Package slot manifests.** A root workspace package may declare `packages/<name>/slots.yaml` (`starci/package-slots@1`,
+  `packages/hfs/runtime/scripts/hfs/package-slots.mjs`): folder slots with placeholders (`src/blocks/<id>/`), the files each instance
+  `requires` and `allows`, glob and file slots, and `closed` (default true: every file below `src/` belongs to a slot). hfs holds the
+  package to it as it holds the be and fe sides to theirs (`HFS_PACKAGE_SLOT_MISSING`, `HFS_PACKAGE_SLOT_DISALLOWED`,
+  `HFS_PACKAGE_SLOT_UNPLACED`, `HFS_PACKAGE_SLOTS_INVALID`, R382).
+- **Package coverage follows the slots.** Every file of a package is measured at 100 per file in the back end's unit run (BE-TEST-13), but
+  its barrels and type files and each slot that opts out with `coverage: { none: "<reason>" }`; an opt-out without its reason is refused.
+  A package without a manifest keeps the harness's default scope (its `workbench/`, `public/` and `client/` subtrees unmeasured).
+
 ## Read with
 
 [README.md](README.md) (the profiles a project picks), [anatomy.md](anatomy.md) (the packages each gate judges),

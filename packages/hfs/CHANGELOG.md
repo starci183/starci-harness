@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.11.0 - 2026-11-05
+
+- Added (release 7c.6, decision app-rule-packs, PROJECT-LINT-3): rule packs. `hfs.json` `rulePacks` names installed packages that export `./rule-pack`, a `starci/rule-pack@1` manifest (`runtime/scripts/lib/rule-packs.mjs`) whose every rule carries an id, a finding code, a severity (error or warning), its spec and its doc, and exactly one engine: `check`, a machine rule the app check runs over the tracked files as an hfs finding under the pack's code, or `eslint`, a rule the canon factories load for the sides it names. A pack only adds: an extra key (`off`, `overrides`), a harness code, a duplicate id or code, a rule that throws or a finding without a path refuses the whole pack (R381 `HFS_RULE_PACK_INVALID`), and the lint factories throw on a refused pack. R16's law names the packs as the one way an app adds a lint rule.
+- Added: package-declared inner slots. A root workspace package may declare `packages/<name>/slots.yaml` (`starci/package-slots@1`, `runtime/scripts/hfs/package-slots.mjs`): folder slots with placeholders, `requires`, `allows`, glob and file slots, `closed`. hfs holds the package to it like the side slots (R382 `HFS_PACKAGE_SLOT_UNPLACED`, `HFS_PACKAGE_SLOT_MISSING`, `HFS_PACKAGE_SLOT_DISALLOWED`, `HFS_PACKAGE_SLOTS_INVALID`).
+- Changed: packages coverage follows the slots. A package with a manifest is measured at 100 per file but its barrels, type files and each slot that opts out with `coverage: { none: "<reason>" }` (a reason required); the unit run's jest config, Sonar's exclusions, Codecov's paths and R273 read it. A package without a manifest keeps the default scope.
+- Changed: the canon pins name this release.
+
 ## 5.10.4 - 2026-11-05
 
 - Fixed: the range lint ratchet (R379) of a profile branch no longer lints a whole far-back diff twice in one child (Nivo dev run 41924573036: "eslint did not complete" about 11 minutes after a full 11,766-file be lint, on a first push whose base was the merge-base with main). It trusts the lint records first, as every family trusts the warm cache: a touched file that the committed cache at the base (`.starcistacks/cache/lint/<side>/` of the base commit, read from git) and this run's lint records both hold with no rule's count risen is settled without a child; the rest is linted in children of at most `RATCHET_TEXTS_PER_CHILD` (600) texts. The check prints `lint ratchet: <n> touched file(s) against <base>; <n> settled by the lint records, <n> linted`.

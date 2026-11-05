@@ -149,7 +149,9 @@ function observeBlockProblems(observe) {
         bad.push('observe.reporter must name the optional error reporter');
     return bad;
 }
-const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'modules', 'lexicon', 'observe']);
+const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'modules', 'lexicon', 'observe', 'rulePacks']);
+/** A rule pack hfs.json names (PROJECT-LINT-3): an npm package name, each once. */
+const RULE_PACK_NAME = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/u;
 const RUNTIME_DECLARATION_KEYS = new Set(['hfs', 'kind', 'project']);
 function productDeclarationProblems(declaration, profiles) {
     const bad = [];
@@ -159,6 +161,8 @@ function productDeclarationProblems(declaration, profiles) {
     bad.push(...dbBlockProblems(declaration.db), ...lexiconBlockProblems(declaration.lexicon), ...observeBlockProblems(declaration.observe));
     if (declaration.browser !== undefined && declaration.browser !== true)
         bad.push('browser is `true` when the app has a browser journey (slot app.browser), and is left out otherwise');
+    if (declaration.rulePacks !== undefined && (!Array.isArray(declaration.rulePacks) || declaration.rulePacks.length === 0 || declaration.rulePacks.some((name) => typeof name !== 'string' || !RULE_PACK_NAME.test(name)) || new Set(declaration.rulePacks).size !== declaration.rulePacks.length))
+        bad.push('rulePacks is a non-empty list of the installed rule pack packages the app adds its laws with, each once (PROJECT-LINT-3)');
     if (declaration.modules !== undefined && declaration.modules !== 'data')
         bad.push('modules is `"data"` when the app keeps its modules as data (seeds, no rendered registry package), and is left out otherwise');
     if (declaration.kind !== APP_KIND)
