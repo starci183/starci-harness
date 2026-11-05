@@ -15,7 +15,7 @@ import { tooltipContentClassName } from "../../tooltipClassName.js"
 export type ButtonVariant = "primary" | "secondary" | "tertiary" | "outline" | "ghost" | "danger" | "danger-soft"
 export type ButtonSize = "sm" | "md" | "lg"
 export type ButtonType = "button" | "submit" | "reset"
-export type ButtonWidth = "content" | "fill"
+export type ButtonWidth = "content" | "fill" | "fill-narrow"
 
 type ButtonBase = {
     /** The visible action label. It remains present while the action is pending. */
@@ -45,6 +45,10 @@ type ButtonBase = {
      * own - a label that WRAPS onto a second line instead of overflowing, the box holding its size
      * step (md 40px) on one line and growing only with the wrapped label - from `.starci-core-button[data-width="fill"]` in the packaged
      * stylesheet. An app never has to reach through the boundary with a descendant width utility.
+     *
+     * `fill-narrow`: content width on a wide screen and `fill` below 30rem (a phone), for a primary submit that is a short
+     * button on a desktop form and a full-width thumb target on a phone. The box keeps the size step on one line and grows only
+     * with a wrapped label, as `fill` does.
      */
     readonly width?: ButtonWidth
 }

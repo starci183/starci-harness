@@ -45,6 +45,10 @@ export const LoadingKeepsTheBox: Story = {
             <Twin name="Rating"><G.Rating label="Rating" defaultValue={3} valueLabel={(value, max) => `${value} of ${max}`} /></Twin>
             <Twin name="RadioGroup"><G.RadioGroup label="Delivery" options={choice} defaultValue="email" /></Twin>
             <Twin name="CheckboxGroup"><G.CheckboxGroup label="Channels" options={choice} /></Twin>
+            <Twin name="RadioGroupRows"><G.RadioGroup label="Service" appearance="rows" options={[{ value: "wash", label: "Herbal wash", description: "60 minutes, 250,000" }, { value: "dye", label: "Colour", description: "90 minutes, 450,000" }]} defaultValue="wash" /></Twin>
+            <Twin name="CheckboxGroupDescribed"><G.CheckboxGroup label="Extras" options={[{ value: "a", label: "Scalp massage", description: "15 minutes" }, { value: "b", label: "Towel service" }]} /></Twin>
+            <Twin name="ChoiceChipsMultiple"><G.ChoiceChips label="Days" selectionMode="multiple" options={["Mon", "Tue", "Wed", "Thu"].map((day) => ({ value: day, label: day }))} defaultValues={["Mon", "Wed"]} empty={null} /></Twin>
+            <Twin name="CalendarFill" width="30rem"><G.Calendar label="Date" previousLabel="Previous" nextLabel="Next" width="fill" defaultValue={parseDate("2026-11-05")} /></Twin>
             <Twin name="ChoiceChips"><G.ChoiceChips label="Time" options={[{ value: "9", label: "09:00" }, { value: "10", label: "10:00" }]} defaultValue="9" empty={null} /></Twin>
             <Twin name="Badge"><G.Badge tone="success">Paid</G.Badge></Twin>
             <Twin name="Avatar"><G.Avatar name="Alex Morgan" size="sm" /></Twin>

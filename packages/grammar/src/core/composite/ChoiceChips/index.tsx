@@ -47,6 +47,15 @@ export type ChoiceChipsProps = NoChildren & {
     readonly value?: string
     readonly defaultValue?: string
     readonly onValueChange?: (value: string) => void
+    /**
+     * `single` (default): one choice, always one once chosen (`value`, `defaultValue`, `onValueChange`). `multiple`: any number of
+     * chips, none allowed (a set of weekdays); read and write it with `values`, `defaultValues` and `onValuesChange`, a chip toggles
+     * on press and the group is announced as a set of toggle buttons.
+     */
+    readonly selectionMode?: "single" | "multiple"
+    readonly values?: ReadonlyArray<string>
+    readonly defaultValues?: ReadonlyArray<string>
+    readonly onValuesChange?: (values: ReadonlyArray<string>) => void
     /** What shows in place of the chips when there are none (no free time). Required: a group answers for its empty state. */
     readonly empty: ReactNode
     /** The first read has no data yet: the options given draw as geometry (three when none). */
@@ -65,10 +74,11 @@ const firstKey = (keys: Iterable<Key>): string | undefined => {
  * arrow keys move, a disabled option keeps its place. It is not a filter (`FilterButtonGroup` narrows a list in one row with a
  * "+n" overflow) and not a segmented control (one row of two to five peers).
  */
-export const ChoiceChips = ({ label, isLabelHidden = false, options, value, defaultValue, onValueChange, empty, isLoading: ownLoading, error }: ChoiceChipsProps) => {
+export const ChoiceChips = ({ label, isLabelHidden = false, options, value, defaultValue, onValueChange, selectionMode = "single", values, defaultValues, onValuesChange, empty, isLoading: ownLoading, error }: ChoiceChipsProps) => {
     const labelId = useId()
     const isLoading = useIsLoading(ownLoading)
     const ownsBusy = useRegionOwnsBusy()
+    const isMultiple = selectionMode === "multiple"
     const labelClass = isLabelHidden ? "starci-core-field-label starci-core-form-label--screen-reader" : "starci-core-field-label"
     return (
         <div
@@ -82,7 +92,7 @@ export const ChoiceChips = ({ label, isLabelHidden = false, options, value, defa
             {isLoading && options.length > 0 ? (
                 // The ready chips laid out as they are, painted as skeletons and made inert by the field scope: the box is the ready box.
                 <FieldSkeletonScope component="ChoiceChips">
-                    <HeroToggleButtonGroup aria-labelledby={labelId} className="starci-core-choice-chips-row" isDetached selectionMode="single" size="sm">
+                    <HeroToggleButtonGroup aria-labelledby={labelId} className="starci-core-choice-chips-row" isDetached selectionMode={selectionMode} size="sm">
                         {options.map((option) => (
                             <HeroToggleButton key={option.value} id={option.value} className="starci-core-choice-chip" data-grammar-choice-control="true">{option.label}</HeroToggleButton>
                         ))}
@@ -100,12 +110,21 @@ export const ChoiceChips = ({ label, isLabelHidden = false, options, value, defa
                     className="starci-core-choice-chips-row"
                     data-grammar-field-control="true"
                     isDetached
-                    selectionMode="single"
-                    disallowEmptySelection
+                    selectionMode={selectionMode}
+                    data-grammar-selection-mode={selectionMode}
+                    {...(isMultiple ? {} : { disallowEmptySelection: true })}
                     size="sm"
-                    {...(value === undefined ? {} : { selectedKeys: [value] })}
-                    {...(defaultValue === undefined ? {} : { defaultSelectedKeys: [defaultValue] })}
+                    {...(isMultiple
+                        ? values === undefined ? {} : { selectedKeys: [...values] }
+                        : value === undefined ? {} : { selectedKeys: [value] })}
+                    {...(isMultiple
+                        ? defaultValues === undefined ? {} : { defaultSelectedKeys: [...defaultValues] }
+                        : defaultValue === undefined ? {} : { defaultSelectedKeys: [defaultValue] })}
                     onSelectionChange={(keys) => {
+                        if (isMultiple) {
+                            onValuesChange?.([...keys].map(String))
+                            return
+                        }
                         const next = firstKey(keys)
                         if (next !== undefined) onValueChange?.(next)
                     }}

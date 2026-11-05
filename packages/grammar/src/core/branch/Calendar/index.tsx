@@ -28,6 +28,11 @@ export type CalendarProps = NoChildren & {
     readonly isLoading?: boolean
     readonly isDisabled?: boolean
     readonly isReadOnly?: boolean
+    /**
+     * `fit` (default): the month's natural width. `fill`: the month takes its container's whole width and the day cells grow with it
+     * (a booking card, a drawer); the heading, the weekday row and the grid keep one rhythm.
+     */
+    readonly width?: "fit" | "fill"
     /** App-owned accessible names of the month navigation buttons. */
     readonly previousLabel: string
     readonly nextLabel: string
@@ -59,6 +64,7 @@ const CalendarInner = ({
     isLoading = false,
     isDisabled = false,
     isReadOnly = false,
+    width = "fit",
     previousLabel,
     nextLabel,
 }: CalendarProps) => {
@@ -70,6 +76,7 @@ const CalendarInner = ({
         data-component="Calendar"
         data-contract="STATE-1"
         data-tier="branch"
+        data-grammar-calendar-width={width}
         {...(isLoading ? { "data-loading": "true", ...(ownsBusy ? {} : { "aria-busy": true }) } : {})}
         {...(firstDayOfWeek === undefined ? {} : { firstDayOfWeek })}
         isDisabled={isDisabled || isLoading}

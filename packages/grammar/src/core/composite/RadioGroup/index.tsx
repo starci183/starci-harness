@@ -1,6 +1,7 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
+import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { Radio as HeroRadio, RadioGroup as HeroRadioGroup } from "@heroui/react"
 import {
@@ -48,7 +49,7 @@ export type RadioGroupProps = NoChildren & FieldControlProps & {
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
 const RadioGroupInner = ({ isLoading = false, ...props }: RadioGroupProps) => isLoading
-    ? <FieldSkeletonScope component="RadioGroup"><RadioGroupControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="RadioGroup"><RadioGroupControl {...loadingFieldProps(props)} isDataLoading /></FieldSkeletonScope>
     : <RadioGroupControl {...props} />
 
 /**
@@ -62,8 +63,9 @@ const RadioGroupControl = ({
     onValueChange,
     orientation = "vertical",
     appearance = "plain",
+    isDataLoading = false,
     ...field
-}: Omit<RadioGroupProps, "isLoading">) => {
+}: Omit<RadioGroupProps, "isLoading"> & { readonly isDataLoading?: boolean }) => {
     const variant = useFieldVariant()
     return (
         <HeroRadioGroup
@@ -96,9 +98,9 @@ const RadioGroupControl = ({
                             <HeroRadio.Control className="starci-core-choice-control" data-grammar-choice-control="radio">
                                 <HeroRadio.Indicator />
                             </HeroRadio.Control>
-                            <FieldLabel>{option.label}</FieldLabel>
+                            <FieldLabel>{isDataLoading ? <SkeletonPlaceholder>{option.label}</SkeletonPlaceholder> : option.label}</FieldLabel>
                         </HeroRadio.Content>
-                        <FieldDescription>{option.description}</FieldDescription>
+                        <FieldDescription>{isDataLoading && option.description != null ? <SkeletonPlaceholder>{option.description}</SkeletonPlaceholder> : option.description}</FieldDescription>
                     </HeroRadio>
                 ))}
             </div>

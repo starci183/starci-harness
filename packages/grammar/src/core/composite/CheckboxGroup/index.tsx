@@ -58,7 +58,7 @@ export type CheckboxGroupProps = NoChildren & FieldControlProps & {
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
 const CheckboxGroupInner = ({ isLoading = false, ...props }: CheckboxGroupProps) => isLoading
-    ? <FieldSkeletonScope component="CheckboxGroup"><CheckboxGroupControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+    ? <FieldSkeletonScope component="CheckboxGroup"><CheckboxGroupControl {...loadingFieldProps(props)} isDataLoading /></FieldSkeletonScope>
     : <CheckboxGroupControl {...props} />
 
 /**
@@ -71,8 +71,9 @@ const CheckboxGroupControl = ({
     defaultValue,
     onValueChange,
     orientation = "vertical",
+    isDataLoading = false,
     ...field
-}: Omit<CheckboxGroupProps, "isLoading">) => {
+}: Omit<CheckboxGroupProps, "isLoading"> & { readonly isDataLoading?: boolean }) => {
     const variant = useFieldVariant()
     return (
         <HeroCheckboxGroup
@@ -100,7 +101,7 @@ const CheckboxGroupControl = ({
                         variant={variant}
                         data-grammar-option="true"
                     >
-                        <CheckboxItem label={option.label} description={option.description} isStandalone={false} />
+                        <CheckboxItem label={option.label} description={option.description} isStandalone={false} isDataLoading={isDataLoading} />
                     </HeroCheckbox>
                 ))}
             </div>

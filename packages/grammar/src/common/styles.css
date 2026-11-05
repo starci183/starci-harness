@@ -4310,6 +4310,38 @@
         white-space: normal !important;
     }
 
+    /* `width="fill-narrow"`: content width on a wide screen; below 30rem the full-width recipe above (stretch, wrap, step floor). */
+    @media (max-width: 30rem) {
+        .starci-core-button[data-width="fill-narrow"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            white-space: normal !important;
+        }
+
+        .starci-core-button[data-width="fill-narrow"]:is([data-size="md"], [data-size="control"]) {
+            block-size: auto !important;
+            min-block-size: var(--starci-core-control-min-size) !important;
+            padding-block: 0.5rem;
+        }
+
+        .starci-core-button[data-width="fill-narrow"][data-size="sm"] {
+            block-size: auto !important;
+            min-block-size: 2rem !important;
+            padding-block: 0.25rem;
+        }
+
+        .starci-core-button[data-width="fill-narrow"][data-size="lg"] {
+            block-size: auto !important;
+            min-block-size: 3rem !important;
+            padding-block: 0.5rem;
+        }
+
+        .starci-core-tooltip-disabled-trigger:has(> [data-component="Button"][data-width="fill-narrow"]) {
+            display: flex;
+            inline-size: 100%;
+        }
+    }
+
     /* --- PaneGrid: the compact drawer trigger's resting paint. --- */
     .starci-core-pane-trigger {
         box-shadow: var(--grammar-shadow-lift);

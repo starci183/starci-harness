@@ -1613,6 +1613,34 @@
         table-layout: fixed;
     }
 
+    /*
+     * `width="fill"`: the month takes its container's width. The vendor draws seven fixed tracks; here they share the width equally and
+     * the weekday labels and the day cells sit centred in their track, so the grid, the weekday row and the heading keep one rhythm.
+     */
+    .starci-core-calendar[data-grammar-calendar-width="fill"] {
+        width: 100%;
+    }
+
+    .starci-core-calendar[data-grammar-calendar-width="fill"] .starci-core-calendar-month {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .starci-core-calendar[data-grammar-calendar-width="fill"] .starci-core-calendar-weekday {
+        justify-content: center;
+        inline-size: auto;
+    }
+
+    .starci-core-calendar[data-grammar-calendar-width="fill"] .starci-core-calendar-month td {
+        display: flex;
+        justify-content: center;
+    }
+
+    .starci-core-calendar[data-grammar-calendar-width="fill"] .starci-core-calendar-day {
+        inline-size: var(--starci-core-control-min-size);
+        block-size: var(--starci-core-control-min-size);
+        flex: none;
+    }
+
     .starci-core-calendar-day[data-unavailable="true"] {
         text-decoration-line: line-through;
     }
@@ -1631,6 +1659,9 @@
     .starci-core-calendar[data-loading="true"] .starci-core-calendar-day {
         color: transparent;
         background: var(--surface-secondary);
+        /* A transparent border inside the box keeps neighbouring geometry cells apart without changing the cell's box. */
+        border: 0.125rem solid transparent;
+        background-clip: padding-box;
         border-radius: var(--grammar-radius-md);
         animation: none;
         pointer-events: none;

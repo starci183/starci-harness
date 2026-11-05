@@ -1,6 +1,7 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
+import { SkeletonPlaceholder } from "../Skeleton/index.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { Checkbox as HeroCheckbox } from "@heroui/react"
 import type { ReactNode } from "react"
@@ -29,21 +30,23 @@ export type CheckboxProps = NoChildren & Omit<FieldControlProps, "isLabelHidden"
 }
 
 /** Shared checkbox anatomy. Also rendered by CheckboxGroup for each of its options. */
-export const CheckboxItem = ({ label, description, errorMessage, isStandalone }: {
+export const CheckboxItem = ({ label, description, errorMessage, isStandalone, isDataLoading = false }: {
     readonly label: ReactNode
     readonly description?: ReactNode
     readonly errorMessage?: ReactNode
     /** A standalone checkbox owns its error slot; inside a group the group owns it. */
     readonly isStandalone: boolean
+    /** The label and description are DATA (an option of a group) and still loading: they paint as geometry of their own text. */
+    readonly isDataLoading?: boolean
 }) => (
     <>
         <HeroCheckbox.Content className="starci-core-choice-content" data-grammar-choice-target="true">
             <HeroCheckbox.Control className="starci-core-choice-control" data-grammar-choice-control="checkbox">
                 <HeroCheckbox.Indicator />
             </HeroCheckbox.Control>
-            <FieldLabel>{label}</FieldLabel>
+            <FieldLabel>{isDataLoading ? <SkeletonPlaceholder>{label}</SkeletonPlaceholder> : label}</FieldLabel>
         </HeroCheckbox.Content>
-        <FieldDescription>{description}</FieldDescription>
+        <FieldDescription>{isDataLoading && description != null ? <SkeletonPlaceholder>{description}</SkeletonPlaceholder> : description}</FieldDescription>
         {isStandalone ? <FieldErrorText>{errorMessage}</FieldErrorText> : null}
     </>
 )

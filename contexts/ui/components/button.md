@@ -39,11 +39,12 @@ equal consequence get no commit at all. "Secondary or ghost" is this table, neve
 renders the secondary step and a `neutral` repeated per item renders quiet, by the contract's
 [intent x placement map](../../grammars/contract.md#intent-x-placement---variant).
 
-Choice `button.choose.width`: content or fill.
+Choice `button.choose.width`: content, fill or fill-narrow.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | fill | the button is a form submit, the action of an auth panel, or the only action of a phone action bar (a single-column band at a narrow width, a pinned action bar) | `width="fill"` | candidate: a fill button's row holds no other control |
+| fill-narrow | the button is a primary submit that hugs its label on a desktop form and fills the width on a phone (a booking card, a public form) | `width="fill-narrow"` (content width above 30rem, `fill` below) | judgement |
 | content | every other place, and always a page or pane command: it hugs its label and sits at the end of its header row (R352 refuses `width="fill"` in `Page` `header.actions` and in `labelEnd`) | omit `width` | judgement |
 
 ## Variants
