@@ -13,6 +13,10 @@
  *     `@Entity` (a per-entity switch is a second authority); a lifecycle hook (`onModuleInit`, `onApplicationBootstrap`) that
  *     writes rows through an `EntityManager` or `DataSource` (seeding is a cli command); a DDL statement in any string
  *     outside the migrations of `persistence/`; and an entity or migration glob. Only the cli (its migrate and seed commands) runs migrations and seeds.
+ *     One declared exception: a root-package file hfs.json `sides.be.ddlRenderers` lists (the renderer a cli command uses to write NEW
+ *     migration files) may hold DDL text, but only to build and return it: in that file a database client import (typeorm, pg, ...) and a
+ *     `.query/.execute/.raw/.unsafe` call are refused, and a file outside the cli and the root packages that imports a symbol the
+ *     renderer declares (directly or through a package barrel) is refused, so the text never reaches a run-time path.
  *   - `no-entity-in-contract` (R37 `BE_ENTITY_IN_CONTRACT`) keeps ORM entities out of the types that cross a boundary:
  *     any type whose declaration carries `@Entity` (from `typeorm`), reached through the type arguments and properties of
  *     a transport signature, the `execute` of a handler, or a `*.contracts.ts`, `*.command.ts` or `*.query.ts` file; and
@@ -21,6 +25,7 @@
  * Where a file lives is asked of the slot view (`be.persistence` and its `migrations/` folder, the transport slots),
  * never of a path pattern.
  */
+import path from "node:path"
 import ts from "typescript"
 import { isTransportSlot } from "./lib/transport-slots.ts"
 import { keyName, walk } from "./lib/ast.ts"
@@ -59,6 +64,24 @@ const WRITE_SQL = /\b(?:INSERT\s+INTO|UPDATE\s+\S+\s+SET|DELETE\s+FROM|MERGE\s+I
 
 /** The Nest lifecycle hooks that run at boot in every process that composes the provider. */
 const BOOT_HOOKS = new Set(["onModuleInit", "onApplicationBootstrap"])
+
+/** Packages whose import in a DDL renderer would let it run the text it builds. */
+const DATABASE_CLIENTS = ["typeorm", "@nestjs/typeorm", "pg", "pg-promise", "postgres", "slonik", "knex", "kysely", "mysql2", "better-sqlite3", "drizzle-orm"]
+
+/** Calls that run SQL text. */
+const EXECUTING_CALLS = new Set(["query", "execute", "exec", "raw", "unsafe"])
+
+/** Whether `rel` (forward slashes) matches a declared renderer path, a `*` only in the file name. */
+const matchesRenderer = (rel: string, patterns: readonly string[]) => patterns.some((pattern) => {
+    const cut = pattern.lastIndexOf("/")
+    if (rel.slice(0, cut + 1) !== pattern.slice(0, cut + 1)) return false
+    const name = pattern.slice(cut + 1)
+    const expression = new RegExp(`^${name.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join("[^/]*")}$`)
+    return expression.test(rel.slice(cut + 1))
+})
+
+/** The app-root-relative paths a declaration file can have under this view (a package view is rooted at the app root, the be view one level below). */
+const appRelatives = (hfs: HfsView, file: string) => [path.relative(hfs.repoRoot, file), path.relative(path.dirname(hfs.repoRoot), file)].map((text) => text.split(path.sep).join("/"))
 
 const isFalse = (node: Node | null | undefined) => node?.type === "Literal" && node.value === false
 
@@ -159,6 +182,9 @@ export const noRuntimeSchema: RuleModule = {
             entitySynchronize: "`synchronize` is set in the options of `@Entity`. A per-entity switch is a second schema authority next to the connection's literal `false`; delete the key.",
             bootSeed: "`{{hook}}` writes rows (`{{call}}`), so every process that composes this provider seeds at boot. Seeding is a cli command, run once per connection.",
             ddl: "A schema-changing statement (`CREATE|ALTER|DROP ...`) outside `persistence/migrations/`. Schema-changing SQL belongs in a migration.",
+            rendererClient: "A declared DDL renderer imports `{{source}}`, a database client. A renderer only builds DDL text and returns it; the cli writes it as a new migration file and the migrate command runs it.",
+            rendererExecutes: "A declared DDL renderer calls `.{{name}}(...)`, which runs SQL text. A renderer only builds and returns DDL; it is never executed at run time.",
+            rendererImported: "`{{name}}` is declared in a DDL renderer (hfs.json sides.be.ddlRenderers) and this file is neither the cli nor a root package. DDL text is rendered by the cli entities command and written as a new migration file, never reached from run-time code.",
             glob: "`{{key}}` is found by glob. List the entities and migrations explicitly from each capability's `index.ts` so what runs is what was reviewed.",
         },
     },
@@ -168,7 +194,42 @@ export const noRuntimeSchema: RuleModule = {
         const hfs = hfsOf(context)
         const migration = isMigrationFile(hfs, filename)
         const migrationHost = isMigrationHost(hfs, filename)
+        const patterns = (hfs.ruleParams.ddlRenderers ?? []).map((entry) => entry.path)
+        const renderer = patterns.length > 0 && matchesRenderer(hfs.relative(filename), patterns)
+        // a file may reach a renderer's symbols only from the cli and from the root packages (the renderer's own package, its barrel and specs)
+        const mayReachRenderer = renderer || inCli(hfs, filename) || hfs.tierOf(filename) === "package"
+        /** Reports an import or re-export of a symbol a declared renderer declares, from a file that may not reach it. */
+        const checkRendererImport = (node: TSESTree.ImportDeclaration | TSESTree.ExportNamedDeclaration | TSESTree.ExportAllDeclaration) => {
+            if (patterns.length === 0 || mayReachRenderer || !node.source) return
+            if ((node.type === "ImportDeclaration" && node.importKind === "type") || (node.type === "ExportNamedDeclaration" && node.exportKind === "type")) return
+            const { checker, toTs } = typed(context)
+            const tsNode = toTs(node)
+            const specifier = tsNode && (ts.isImportDeclaration(tsNode) || ts.isExportDeclaration(tsNode)) ? tsNode.moduleSpecifier : undefined
+            const moduleSymbol = specifier ? checker.getSymbolAtLocation(specifier) : undefined
+            if (!moduleSymbol) return
+            const declaredIn = (symbol: ts.Symbol) => {
+                const target = (symbol.flags & ts.SymbolFlags.Alias) !== 0 ? checker.getAliasedSymbol(symbol) : symbol
+                return (target.declarations ?? []).some((declaration) => matchesRenderer(appRelatives(hfs, declaration.getSourceFile().fileName).find((text) => text.startsWith("packages/")) ?? "", patterns))
+            }
+            const exported = checker.getExportsOfModule(moduleSymbol)
+            const named = node.type === "ImportDeclaration"
+                ? node.specifiers.filter((item) => !(item.type === "ImportSpecifier" && item.importKind === "type")).flatMap((item) => (item.type === "ImportSpecifier" ? [item.imported.type === "Identifier" ? item.imported.name : String(item.imported.value)] : item.type === "ImportDefaultSpecifier" ? ["default"] : null))
+                : node.type === "ExportNamedDeclaration" ? node.specifiers.map((item) => (item.local.type === "Identifier" ? item.local.name : String(item.local.value))) : null
+            const hits = named === null || named.includes(null as never)
+                ? exported.filter(declaredIn)
+                : exported.filter((symbol) => named.includes(symbol.name) && declaredIn(symbol))
+            const first = hits[0]
+            if (first) context.report({ node, messageId: "rendererImported", data: { name: first.name } })
+        }
         return {
+            ImportDeclaration(node) {
+                if (renderer && DATABASE_CLIENTS.some((client) => String(node.source.value) === client || String(node.source.value).startsWith(`${client}/`))) {
+                    context.report({ node, messageId: "rendererClient", data: { source: String(node.source.value) } })
+                }
+                checkRendererImport(node)
+            },
+            ExportNamedDeclaration: checkRendererImport,
+            ExportAllDeclaration: checkRendererImport,
             ObjectExpression(node) {
                 if (isOptionsObject(context, node) && !hasKey(node, "synchronize")) context.report({ node, messageId: "synchronizeMissing" })
             },
@@ -204,6 +265,7 @@ export const noRuntimeSchema: RuleModule = {
                 const callee = node.callee
                 if (callee.type !== "MemberExpression" || callee.computed || callee.property.type !== "Identifier") return
                 const name = callee.property.name
+                if (renderer && EXECUTING_CALLS.has(name)) context.report({ node, messageId: "rendererExecutes", data: { name } })
                 if (SCHEMA_OPERATIONS.has(name)) {
                     if (isPackageType(context, callee.object, "DataSource", "typeorm")) context.report({ node, messageId: "synchronizeCall", data: { name } })
                 } else if (MIGRATION_RUNNERS.has(name)) {
@@ -215,10 +277,10 @@ export const noRuntimeSchema: RuleModule = {
                 }
             },
             Literal(node) {
-                if (!migration && typeof node.value === "string" && DDL.test(node.value)) context.report({ node, messageId: "ddl" })
+                if (!migration && !renderer && typeof node.value === "string" && DDL.test(node.value)) context.report({ node, messageId: "ddl" })
             },
             TemplateElement(node) {
-                if (!migration && DDL.test(node.value.cooked ?? "")) context.report({ node, messageId: "ddl" })
+                if (!migration && !renderer && DDL.test(node.value.cooked ?? "")) context.report({ node, messageId: "ddl" })
             },
         }
     },

@@ -29,6 +29,8 @@ Migrations run only through `cli migrate run` (in lite it delegates to the manag
 migration runner of `platform/database`), before api processes start. Api apps never migrate or seed; seeding is a
 `cli seed ...` command.
 
+DDL text is written in migrations. The one exception is a DDL renderer an app declares in hfs.json `sides.be.ddlRenderers` (`{ path, reason }`, a file of a root package such as `packages/agent-sdk/src/entity/render*.ts`): it builds and returns DDL text, the cli (`cli entities plan --write`) writes it as a new migration file, and nothing executes it at run time. In that file a database client import and a `.query/.execute/.raw/.unsafe` call are refused, and a file outside the cli and the root packages that imports a symbol the renderer declares, directly or through a package barrel, is refused.
+
 Why: two processes racing to migrate corrupt a schema, and a migration inside a serving module cannot be retried alone.
 
 Enforced by: `no-runtime-schema` (R34), R147.

@@ -100,6 +100,8 @@ export interface HfsRuleParams {
     readonly dbFunctions?: readonly { readonly name: string; readonly reason: string }[]
     /** The files whose `.query(` passes through SQL text that is not the app's own, side-relative with a reason (`ruleParams.be.sqlPassThrough` plus hfs.json `sides.be.sqlPassThrough`). */
     readonly sqlPassThrough?: readonly { readonly file: string; readonly reason: string }[]
+    /** The root-package files that render DDL text only to return it, app-root-relative with a reason (hfs.json `sides.be.ddlRenderers`). */
+    readonly ddlRenderers?: readonly { readonly path: string; readonly reason: string }[]
 }
 
 /** The frozen view of one side of an app. */

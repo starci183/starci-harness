@@ -628,7 +628,7 @@ rules:
       - {path: packages/eslint/be/a16-r32-r33-r35-project-graph.spec.mjs, editions: [lite, full], codes: [BE_ENTRYPOINT_ONLY_IN_APPS]}
   - id: R34
     code: "BE_SCHEMA_AUTHORITY"
-    law: "Migrations own the application schema and run only through cli migrate or TestWorld; `synchronize` is `false`. TestWorld infrastructure may provision generated write-fault triggers and functions only in its verified private connection, preserving production constraints and existing triggers, holding its operation lock through catalog-confirmed cleanup."
+    law: "Migrations own the application schema and run only through cli migrate or TestWorld; `synchronize` is `false`. TestWorld infrastructure may provision generated write-fault triggers and functions only in its verified private connection, preserving production constraints and existing triggers, holding its operation lock through catalog-confirmed cleanup. One declared exception: a root-package file hfs.json `sides.be.ddlRenderers` lists (the renderer `cli entities plan --write` uses to write NEW migration files) may hold DDL text only to build and return it; it never imports a database client or calls `.query/.execute`, and no file outside the cli and the root packages imports a symbol it declares."
     kinds: [lint, codemod, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_SCHEMA_AUTHORITY"]

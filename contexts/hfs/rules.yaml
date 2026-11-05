@@ -313,7 +313,7 @@ rules:
       - {kind: eslint-be, id: entrypoint-only-in-apps}
   - id: R34
     code: BE_SCHEMA_AUTHORITY
-    law: Migrations own the application schema and run only through the cli migrate command or the test world, and `synchronize` is false.
+    law: Migrations own the application schema and run only through the cli migrate command or the test world, and `synchronize` is false. One declared exception: a root-package file hfs.json `sides.be.ddlRenderers` lists (the renderer `cli entities plan --write` uses to write NEW migration files) may hold DDL text only to build and return it; it never imports a database client or calls `.query/.execute`, and no file outside the cli and the root packages imports a symbol it declares.
     failureCodes:
       - BE_SCHEMA_AUTHORITY
     enforcers:

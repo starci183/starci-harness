@@ -69,6 +69,12 @@ const dbFunctionNameOk = (name: Parsed, bare: Parsed) => typeof name === 'string
 export const dbFunctionsOk = (list: Parsed, { bare = false }: { bare?: boolean } = {}) => list === undefined || (Array.isArray(list) && list.every((entry: Parsed) => isPlainObject(entry) && Object.keys(entry).sort().join() === 'name,reason' && dbFunctionNameOk(entry.name, bare) && typeof entry.reason === 'string' && entry.reason.trim().length > 0) && new Set(list.map((entry: Parsed) => entry.name)).size === list.length);
 
 /**
+ * True for an absent list or a list of {path, reason} DDL renderers (R34): `path` is a forward-slash path below `packages/` of the app root
+ * (no leading slash, no `..`), whose last segment may carry `*`, unique, and the reason says what the renderer renders and where its text is written.
+ */
+export const ddlRenderersOk = (list: Parsed) => list === undefined || (Array.isArray(list) && list.every((entry: Parsed) => isPlainObject(entry) && Object.keys(entry).sort().join() === 'path,reason' && typeof entry.path === 'string' && /^packages\/[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)*\/[A-Za-z0-9_.*-]+$/.test(entry.path) && !entry.path.split('/').slice(0, -1).some((segment: string) => segment === '..' || segment.includes('*')) && typeof entry.reason === 'string' && entry.reason.trim().length > 0) && new Set(list.map((entry: Parsed) => entry.path)).size === list.length);
+
+/**
  * True for an absent list or a list of {file, reason} SQL pass-through files (R334): `file` is a forward-slash path relative to the
  * side folder (no leading slash, no `..`), unique, and the reason names whose text the file passes through.
  */

@@ -101,6 +101,12 @@ export interface DbFunction {
   reason: string;
 }
 
+/** A file of a root package that renders DDL text only to return it (ruleParams.be.ddlRenderers, hfs.json sides.be.ddlRenderers). */
+export interface DdlRenderer {
+  path: string;
+  reason: string;
+}
+
 /** A file whose `.query(` passes through SQL text that is not the app's own (ruleParams.be.sqlPassThrough, hfs.json sides.be.sqlPassThrough). */
 export interface SqlPassThrough {
   file: string;
@@ -118,6 +124,7 @@ export interface RuleParams {
   bannedSuffixes?: string[];
   dbFunctions?: DbFunction[];
   sqlPassThrough?: SqlPassThrough[];
+  ddlRenderers?: DdlRenderer[];
 }
 
 /** ruleParams.be: the back end's own parameters, which the validators of this folder require. */

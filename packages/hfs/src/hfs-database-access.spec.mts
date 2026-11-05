@@ -331,3 +331,13 @@ test('the be side takes sides.be.engineOwned as one capability, its tables, the 
   for (const bad of [{ ...engine, capability: 'Entity_Engine' }, { ...engine, tables: [] }, { ...engine, partitionsOf: 'other' }, { ...engine, views: 'v_' }, { ...engine, manifest: '../x.json' },
     { ...engine, manifest: 'x.txt' }, { ...engine, extra: 1 }, { capability: 'entity-engine' }, 'records']) assert.equal(problems(bad).length, 1, JSON.stringify(bad));
 });
+
+test('the be side takes sides.be.ddlRenderers as unique root-package paths with a reason, a * only in the file name', () => {
+  const renderer = { path: 'packages/agent-sdk/src/entity/render*.ts', reason: 'renders the DDL that a cli command writes as new migrations' };
+  const problems = (ddlRenderers: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite',
+    sides: { be: { apps: [{ name: 'api', kind: 'api' }], ...(side === 'be' ? { ddlRenderers } : {}) }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core', ...(side === 'fe' ? { ddlRenderers } : {}) } } }, ['be', 'fe']).filter((problem) => problem.includes('ddlRenderers'));
+  assert.deepEqual(problems([renderer]), []);
+  assert.equal(problems([renderer], 'fe').length, 1);
+  for (const bad of [[{ ...renderer, path: 'src/render.ts' }], [{ ...renderer, path: 'packages/a/../b/render.ts' }], [{ ...renderer, path: 'packages/*/src/render.ts' }], [{ ...renderer, reason: ' ' }],
+    [renderer, renderer], [{ path: renderer.path }], [{ ...renderer, extra: 1 }], 'packages/a/render.ts']) assert.equal(problems(bad).length, 1, JSON.stringify(bad));
+});

@@ -3,7 +3,7 @@
 import type { Parsed } from './manifest-shape.mjs';
 import { isPlainObject } from '../../engine/plain-object.mjs';
 import { APP_KIND, connectionShapeProblems, NAME, PACKAGE_NAME, RUNTIME_KIND, SLOT_ID } from './manifest-shape.mjs';
-import { dbFunctionsOk, sqlPassThroughOk } from './rule-params-shape.mjs';
+import { dbFunctionsOk, ddlRenderersOk, sqlPassThroughOk } from './rule-params-shape.mjs';
 import { engineOwnedOk } from './engine-owned.mjs';
 import { kindShapeProblems, patternShapeProblems } from './declaration-slots.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
@@ -94,9 +94,10 @@ function declarationSideProblems(side: Parsed, value: Parsed, names: Parsed): st
   const bad: string[] = [];
   const at = `sides.${side}`;
   if (!isPlainObject(value)) return [`${at} must be an object`];
-  for (const key of Object.keys(value)) if (!['apps', 'optionalSlots', 'patterns', 'kinds', 'connections', 'reads', 'extraPackages', 'grammar', 'backing', 'dbFunctions', 'sqlPassThrough', 'engineOwned'].includes(key)) bad.push(`${at} has unknown key ${key}`);
+  for (const key of Object.keys(value)) if (!['apps', 'optionalSlots', 'patterns', 'kinds', 'connections', 'reads', 'extraPackages', 'grammar', 'backing', 'dbFunctions', 'sqlPassThrough', 'engineOwned', 'ddlRenderers'].includes(key)) bad.push(`${at} has unknown key ${key}`);
   if (value.dbFunctions !== undefined && (side !== 'be' || !dbFunctionsOk(value.dbFunctions, { bare: true }))) bad.push(`${at}.dbFunctions belongs to the be side and lists {name, reason} database functions, each schema-qualified (schema.name, never pg_catalog) or a bare pg built-in of the canon's list, with unique names`);
   if (value.sqlPassThrough !== undefined && (side !== 'be' || !sqlPassThroughOk(value.sqlPassThrough))) bad.push(`${at}.sqlPassThrough belongs to the be side and lists {file, reason} files relative to the side folder, forward slashes, unique, each with the reason its SQL text is not the app's own`);
+  if (value.ddlRenderers !== undefined && (side !== 'be' || !ddlRenderersOk(value.ddlRenderers))) bad.push(`${at}.ddlRenderers belongs to the be side and lists {path, reason} files of a root package (packages/<name>/..., relative to the app root, forward slashes, a * only in the file name), unique, each with the reason it renders DDL text that a cli command writes as a new migration`);
   if (value.engineOwned !== undefined && (side !== 'be' || !engineOwnedOk(value.engineOwned))) bad.push(`${at}.engineOwned belongs to the be side and is { capability (kebab-case folder), tables (snake_case, unique), partitionsOf (one of tables), views (a prefix pattern such as v_*), manifest (a relative .json path below the app root) }`);
   bad.push(...appShapeProblems(value.apps, at, side, names));
   if (isBadUniqueList(value.optionalSlots, (slot: Parsed) => SLOT_ID.test(String(slot)))) bad.push(`${at}.optionalSlots must be a unique list of slot ids`);
