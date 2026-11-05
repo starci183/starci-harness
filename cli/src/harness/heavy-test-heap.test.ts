@@ -11,7 +11,7 @@ const opsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "
 const MB_PER_SPEC = 8192 / 1236
 const LARGEST_SUITE = 1832
 
-test("the test heap is what admission holds, and it holds the coverage of the largest suite", () => {
+void test("the test heap is what admission holds, and it holds the coverage of the largest suite", () => {
     const rules = loadHeavyRules(opsDir)
     assert.equal(rules.memoryMb.test, rules.estimateMb.test, "admission holds a test run's parent at its heap ceiling")
     assert.ok(rules.memoryMb.test >= Math.ceil(MB_PER_SPEC * LARGEST_SUITE), `${String(rules.memoryMb.test)} MB holds ${String(LARGEST_SUITE)} specs at ${MB_PER_SPEC.toFixed(1)} MB each`)
