@@ -13,6 +13,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { main } from './main.mjs';
+import { RATCHET_TEXTS_PER_CHILD, committedLintCounts, ratchetFindings, sessionLintCounts, type RecordedCounts } from '../lint/ratchet.mjs';
+import { hashText } from '../cache/hash.mjs';
+import { completedNode, incompleteReason } from '../runtime/scripts/api/node/run-node.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { activeProfile, familyModes, profileNotices } from '../runtime/scripts/hfs/branch-profile.mjs';
 import { matchesBranch, profileFor, profilePolicy, readBranchProfiles } from '../runtime/scripts/lib/stack-declaration.mjs';
@@ -277,7 +280,7 @@ test('the ratchet: touching a dirty file without adding findings passes, adding 
   const calls: { texts: number }[] = [];
   const clean = await check(app, ['--gate', 'lint', '--json'], { run: counting(calls) });
   assert.equal(clean.exit, 0);
-  assert.deepEqual(calls, [{ texts: 1 }], 'only the touched file is linted, once, as one text (new at the base)');
+  assert.deepEqual(calls, [{ texts: 1 }], 'with no lint records (this fixture checks without the cache session), only the touched file is linted, once, as one text (new at the base)');
   fs.writeFileSync(path.join(app.root, 'be', 'src', 'clean.ts'), 'export const c = "BAD";\n');
   app.git('commit', '-qam', 'a finding added to a touched file');
   const pushed = await check(app, ['--gate', 'lint', '--json']);
@@ -370,4 +373,54 @@ test('CI: a push to a branch a pattern covers runs the reduced plan; the plan ma
   const script = `GITHUB_REF_NAME="$1"; sonar=blocking; case "$GITHUB_REF_NAME" in\n${plan.split('\n').filter((line) => /^\s+"/u.test(line)).join('\n')}\nesac; echo "$sonar"`;
   const run = (branch: string): string => spawnSync('bash', ['-c', script, 'plan', branch], { encoding: 'utf8' }).stdout.trim();
   assert.deepEqual(['ui/3', 'dev', 'main', 'uix'].map(run), ['report', 'blocking', 'blocking', 'blocking']);
+});
+
+test('the range ratchet trusts the lint records: a file the base cache and this run both hold with no rule risen needs no child; the rest is linted in bounded chunks', async (t) => {
+  const app = scratchApp(t, 'dev');
+  const many = Array.from({ length: RATCHET_TEXTS_PER_CHILD + 10 }, (_, index) => ({ file: `be/src/f${String(index)}.ts`, base: 'export const a = "BAD";\n', current: 'export const a = "BAD";\nexport const b = 1;\n' }));
+  const touched = [...many, { file: 'be/src/rose.ts', base: 'export const a = 1;\n', current: 'export const a = "BAD";\n' }];
+  const recorded = (pick: (file: { base: string; current: string }) => string, count: (text: string) => number): RecordedCounts => ({
+    counts: (side, file, hash) => {
+      const found = touched.find((entry) => entry.file === `${side}/${file}` && hashText(pick(entry)) === hash);
+      return found === undefined ? undefined : new Map([['fixture/no-bad', count(pick(found))]]);
+    },
+  });
+  const bad = (text: string): number => [...text.matchAll(/BAD/gu)].length;
+  const calls: { texts: number }[] = [];
+  const cached = await ratchetFindings({ repoRoot: app.root, touched, branch: 'dev', run: counting(calls), base: recorded((entry) => entry.base, bad), now: recorded((entry) => entry.current, bad) });
+  assert.deepEqual([cached.fromCache, cached.linted, cached.findings.map((finding) => finding.path)], [RATCHET_TEXTS_PER_CHILD + 10, 1, ['be/src/rose.ts']], 'only the file whose records rose is linted, and it is judged by the linter');
+  assert.deepEqual(calls, [{ texts: 2 }]);
+  // Without records (a first push whose base holds no cache), the touched files are linted in chunks that never exceed the bound of one child.
+  const bounded: { texts: number }[] = [];
+  const cold = await ratchetFindings({ repoRoot: app.root, touched, branch: 'dev', run: counting(bounded) });
+  assert.equal(cold.fromCache, 0);
+  assert.equal(cold.compared, touched.length);
+  assert.ok(bounded.length > 1 && bounded.every((call) => call.texts <= RATCHET_TEXTS_PER_CHILD), JSON.stringify(bounded));
+  assert.deepEqual(cold.findings.map((finding) => finding.path), ['be/src/rose.ts']);
+});
+
+test('a child that ends without a measurement is named with its cause: the heap it ran out of, the signal, the spawn error', () => {
+  assert.throws(() => completedNode({ status: null, signal: 'SIGKILL', stdout: '', stderr: '' }, 'eslint in be/ (the lint ratchet, 1200 text(s))'),
+    /^Error: eslint in be\/ \(the lint ratchet, 1200 text\(s\)\) did not complete: killed by SIGKILL with no message of its own: most often the out-of-memory killer/u);
+  assert.match(incompleteReason({ status: null, signal: 'SIGABRT', stderr: '<--- Last few GCs --->\nFATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory\n' }), /^it ran out of JavaScript heap .*, SIGABRT; stderr: .*Reached heap limit/u);
+  assert.match(incompleteReason({ status: null, signal: null, stderr: '', error: Object.assign(new Error('deadline'), { code: 'ETIMEDOUT' }) }), /^ETIMEDOUT: deadline$/u);
+  assert.equal(incompleteReason({ status: null, signal: null, stderr: '' }), 'it ended without an exit status');
+});
+
+test('the lint records the ratchet trusts: the committed cache at a commit, read from git, and the records of this run, each by side, path and content hash', (t) => {
+  const app = scratchApp(t, 'dev');
+  const text = 'export const a = "BAD";\n';
+  const record = { path: 'src/a.ts', step: 'eslint', hash: hashText(text), findings: [{ path: 'be/src/a.ts', line: 1, column: 1, rule: 'fixture/no-bad', message: 'BAD' }], data: { ends: [] } };
+  fs.mkdirSync(path.join(app.root, '.starcistacks', 'cache', 'lint', 'be', 'src'), { recursive: true });
+  fs.writeFileSync(path.join(app.root, '.starcistacks', 'cache', 'lint', 'be', 'src.jsonl'), `${JSON.stringify(record)}\n`);
+  app.git('add', '-f', '.starcistacks/cache/lint');
+  app.git('commit', '-qm', 'the cache');
+  const head = app.git('rev-parse', 'HEAD').trim();
+  const committed = committedLintCounts(app.root, head);
+  assert.deepEqual([...(committed.counts('be', 'src/a.ts', hashText(text)) ?? [])], [['fixture/no-bad', 1]]);
+  assert.equal(committed.counts('be', 'src/a.ts', hashText('other')), undefined, 'a record of another content stands for nothing');
+  assert.equal(committedLintCounts(app.root, null).counts('be', 'src/a.ts', hashText(text)), undefined);
+  const run = sessionLintCounts((folder) => (folder === 'lint/be' ? [record] : []));
+  assert.deepEqual([...(run.counts('be', 'src/a.ts', hashText(text)) ?? [])], [['fixture/no-bad', 1]]);
+  assert.equal(run.counts('fe', 'src/a.ts', hashText(text)), undefined);
 });

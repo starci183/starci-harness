@@ -115,7 +115,7 @@ export async function runLinter({ cwd, pkg, bin, args, bound = null, list, files
   let run: HeavyNodeResult;
   let handed: GraphSnapshotParts | undefined;
   try {
-    run = completedNode(await runHeavyNode(execute, { kind: 'eslint', label: `app check ${pkg} ${path.basename(cwd)}`, args: [...heap, ...(bound ? linterBoundArgs() : []), ...childArgs], cwd, maxBuffer: 64 * 1024 * 1024, ...(count === undefined || pkg !== 'eslint' ? {} : { files: count }), ...(bound ? { env: { ...process.env, [BOUND_ENV]: bound } } : {}) }), pkg);
+    run = completedNode(await runHeavyNode(execute, { kind: 'eslint', label: `app check ${pkg} ${path.basename(cwd)}`, args: [...heap, ...(bound ? linterBoundArgs() : []), ...childArgs], cwd, maxBuffer: 64 * 1024 * 1024, ...(count === undefined || pkg !== 'eslint' ? {} : { files: count }), ...(bound ? { env: { ...process.env, [BOUND_ENV]: bound } } : {}) }), `${pkg} in ${path.basename(cwd)}/ (${texts === undefined ? `${String(count ?? 'all')} file(s)` : `the lint ratchet, ${String(texts.length)} text(s)`})`);
     handed = snapshotFile === null ? undefined : readGraphSnapshots(snapshotFile);
   } finally {
     if (listed !== null) fs.rmSync(listed, { recursive: true, force: true });

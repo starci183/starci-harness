@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.34 - 2026-11-05
+
+- Changed: version stamp only, with the Grammar lint family (their runtime copies moved).
+
 ## 0.21.33 - 2026-11-05
 
 - Added: `RadioGroup appearance="rows"`; form field `span="full"`; `Avatar tone="accent"` and `IdentityLockup markTone`; `PageIntro`; `Page measure="narrow"` and rail width `medium`; `ErrorData.isInline`; `AccordionRowData.leading` (a step mark); `Page headerCollapse="narrow"`; `Alert leading` and `action.kind="row"`; `Select appearance="pill"`.

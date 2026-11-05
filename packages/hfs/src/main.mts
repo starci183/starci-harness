@@ -108,7 +108,7 @@ import { removeModule } from '../scaffold/add-module.mjs';
 import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { newImages } from '../scaffold/image.mjs';
 import { PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
-import { rangeTouched, ratchetBase, ratchetFindings, stagedTouched } from '../lint/ratchet.mjs';
+import { committedLintCounts, rangeTouched, ratchetBase, ratchetFindings, sessionLintCounts, stagedTouched } from '../lint/ratchet.mjs';
 import { runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
 import { CACHE_ENV, createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
@@ -550,8 +550,12 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   // The lint ratchet of a branch whose profile reports lint: the commits since the base never add lint findings to a file they touch (blocking).
   const ratchetErrors: string[] = [];
   if (selected.has('lint') && modes.lint === 'report' && profile.profile !== null) {
-    const { base } = ratchetBase(repoRoot, io.env, profile.branch);
-    const ratchet = await ratchetFindings({ repoRoot, touched: rangeTouched(repoRoot, base), side, branch: profile.branch ?? profile.profile, run: runLinter });
+    const { base, source: baseSource } = ratchetBase(repoRoot, io.env, profile.branch);
+    // The committed cache at the base and this run's lint records settle every touched file whose findings rose by no rule (warm-cache-push trusts
+    // them as every family does); only the rest is linted, in bounded chunks.
+    const ratchet = await ratchetFindings({ repoRoot, touched: rangeTouched(repoRoot, base), side, branch: profile.branch ?? profile.profile, run: runLinter,
+      base: committedLintCounts(repoRoot, base), now: session === undefined ? undefined : sessionLintCounts((folder) => session.records(folder)) });
+    lines.push(`  lint ratchet: ${String(ratchet.compared)} touched file(s) against ${baseSource}; ${String(ratchet.fromCache)} settled by the lint records, ${String(ratchet.linted)} linted`);
     extra.push(...withWhy(ratchet.findings, readWhy(skillRoot, ratchet.findings.length > 0 ? ['LINT_RATCHET_RAISED'] : [])));
     ratchetErrors.push(...ratchet.errors);
   }

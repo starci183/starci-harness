@@ -49,8 +49,29 @@ export async function runHeavyNode(run: HeavyNodeRun | undefined, request: Heavy
 
 /** A partial compiler/test report cannot be interpreted or stored as a completed measurement. */
 export function completedNode(result: HeavyNodeResult, label: string): HeavyNodeResult {
-  if (result.error !== undefined || result.signal !== null || result.status === null) throw Object.assign(new Error(`${label} did not complete`), { code: 'HFS_NODE_INCOMPLETE' });
+  if (result.error !== undefined || result.signal !== null || result.status === null) throw Object.assign(new Error(`${label} did not complete: ${incompleteReason(result)}`), { code: 'HFS_NODE_INCOMPLETE' });
   return result;
+}
+
+const HEAP_EXHAUSTED = /JavaScript heap out of memory|Reached heap limit|Allocation failed - JavaScript heap|ERR_WORKER_OUT_OF_MEMORY/u;
+
+/**
+ * Why a child ended without a measurement, in one line: the V8 heap it ran out of, the signal that killed it (SIGKILL with no message of its own is
+ * most often the kernel's out-of-memory killer or a runner's deadline), its spawn error, else no exit status; then the last lines it wrote to stderr.
+ */
+export function incompleteReason(result: Pick<HeavyNodeResult, 'status' | 'signal' | 'stderr' | 'error'>): string {
+  const stderr = String(result.stderr ?? '');
+  const tail = stderr.split('\n').map((line) => line.trim()).filter(Boolean).slice(-3).join(' | ').slice(0, 400);
+  const cause = HEAP_EXHAUSTED.test(stderr)
+    ? `it ran out of JavaScript heap (${/--max-old-space-size=(\d+)/u.exec(String(process.env.NODE_OPTIONS ?? ''))?.[1] ?? 'the default'} MiB in NODE_OPTIONS of this process; the child's own limit is in its arguments)${result.signal === null ? '' : `, ${result.signal}`}`
+    : result.signal === 'SIGKILL'
+      ? 'killed by SIGKILL with no message of its own: most often the out-of-memory killer of the host or a deadline of the runner'
+      : result.signal !== null
+        ? `killed by ${result.signal}`
+        : result.error !== undefined
+          ? `${result.error.code ?? 'error'}: ${result.error.message}`
+          : 'it ended without an exit status';
+  return tail === '' ? cause : `${cause}; stderr: ${tail}`;
 }
 
 /** Runs `node <args>`; options (cwd, env, timeout, input, maxBuffer, stdio) pass through. */

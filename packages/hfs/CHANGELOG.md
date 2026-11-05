@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.10.4 - 2026-11-05
+
+- Fixed: the range lint ratchet (R379) of a profile branch no longer lints a whole far-back diff twice in one child (Nivo dev run 41924573036: "eslint did not complete" about 11 minutes after a full 11,766-file be lint, on a first push whose base was the merge-base with main). It trusts the lint records first, as every family trusts the warm cache: a touched file that the committed cache at the base (`.starcistacks/cache/lint/<side>/` of the base commit, read from git) and this run's lint records both hold with no rule's count risen is settled without a child; the rest is linted in children of at most `RATCHET_TEXTS_PER_CHILD` (600) texts. The check prints `lint ratchet: <n> touched file(s) against <base>; <n> settled by the lint records, <n> linted`.
+- Changed: a child that ends without a measurement says which child and why: `eslint in be/ (the lint ratchet, 1200 text(s)) did not complete: killed by SIGKILL with no message of its own: most often the out-of-memory killer ...`, the V8 heap it ran out of, the signal, or the spawn error, then the last lines of its stderr (`incompleteReason`, `HFS_NODE_INCOMPLETE`).
+- Changed: the canon pins name this release.
+
 ## 5.10.3 - 2026-11-05
 
 - Added (the Grammar batch): R380 `FE_GROUPED_CHOICE_CONTROL` in the rule catalog and the failure codes, the law `starci-grammar/no-grouped-choice-controls` of `@starci/eslint-grammar-core` 0.21.33 enforces (a `ButtonGroup`, `FilterButtonGroup` or `SegmentedControl` in product source; ruling `one-way-to-choose`).

@@ -125,9 +125,13 @@ the stricter mode. The branch name alone decides, so a hook and CI agree; an ups
 - **The lint ratchet.** Where lint reports, a commit never adds lint findings to a file it touches: each touched source file
   has no more ESLint error findings than at the base (the parent commit for the pre-commit hook, `starci app check
   --ratchet`; for the pre-push hook and CI the merge-base with the pushed range or the remote branch, else `HEAD^`), and a new
-  file has none (`LINT_RATCHET_RAISED`, R379, a hard blocker). Both versions of the touched files are linted through the
-  side's installed config in one ESLint child (`packages/hfs/lint/ratchet.mjs`), so it costs one typed program per touched
-  side. The findings a file already carried stay report-only.
+  file has none (`LINT_RATCHET_RAISED`, R379, a hard blocker). The range ratchet trusts the lint records first, as every
+  family trusts the warm cache (decision `warm-cache-push`): a touched file that the committed cache at the base and this run's
+  lint records both hold, with no rule's count risen, is settled without a child, so a first push of a profile branch, whose
+  base is far back, does not lint the whole diff twice. Every other file has both versions linted through the side's installed
+  config, in children of at most `RATCHET_TEXTS_PER_CHILD` texts (`packages/hfs/lint/ratchet.mjs`), so the heap of one child
+  stays bounded; the run prints how many files the records settled and how many were linted. The findings a file already
+  carried stay report-only.
 - **How an agent works on a profile branch.** It fixes every finding of a blocking gate, `hfs` and the safety gates above
   all, and every `LINT_RATCHET_RAISED`; it reads the findings a run marks report-only and never chases them, so a touched
   file is left with no more lint findings than it had, never cleaned on the side.
