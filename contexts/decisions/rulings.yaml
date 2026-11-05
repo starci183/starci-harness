@@ -126,6 +126,11 @@ rulings:
     ruling: "A notice is the grammar Alert in one look: the tone's soft pair, background x-soft at full strength and glyph, title and description x-soft-foreground, with no shadow and no border, in Core and Offset Pop alike; tones map informative to info (the accent pair where the theme defines no info pair), affirmative to success, cautionary to warning, negative to danger and neutral, pending and unavailable to default; its action is the grammar Button in the variant the Alert gives its tone. The `appearance` prop is a deprecated no-op until it is removed."
     owner: "contexts/ui/components/toast-alert.md; contexts/grammars/core.md"
     absorbs: [ACCENT-5/case-6, alert-white-surface]
+  - id: grammar-own-style
+    date: '2026-11-05'
+    status: live
+    ruling: "Each Grammar has its own style. Core draws every colour from HeroUI's palette tokens only: accent, default, success, warning and danger with their soft and foreground pairs (and the neutral ground and text tokens HeroUI defines: background, foreground, surface, muted, border, separator); Core has no palette of its own. Offset Pop and any other Grammar are free to choose their own palette. A debt of one Grammar (Offset Pop's ink on pink, its 44px md Select at 390) never drives a rule of Core. Confirmed by the owner 2026-11-05."
+    owner: "contexts/grammars/contributing.md Paint; contexts/grammars/core.md; contexts/grammars/offset-pop.md"
   - id: one-way-to-choose
     date: '2026-11-05'
     status: live
