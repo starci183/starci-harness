@@ -119,11 +119,13 @@ const forceCases: Case[] = [
   ['another owner has no default-force obligation', `${table} alter table public.items owner to migration_owner;`, false],
 ];
 
-const scoped = { db: { scopeSettings: ['nivo.workspace_id'] } };
+const scopeRoles = [{ role: 'app_engine', reason: 'the engine role entered per transaction' }];
+const scoped = { db: { scopeSettings: ['nivo.workspace_id'], scopeRoles } };
+const engineRole = 'create role app_engine nologin noinherit nobypassrls;';
 const engineScope = "create function public.engine_workspace() returns uuid language sql stable as $$ select nullif(current_setting('nivo.workspace_id', true), '')::uuid $$;";
 const engineOther = "create function public.engine_workspace() returns uuid language sql stable as $$ select nullif(current_setting('nivo.other_id', true), '')::uuid $$;";
-const enginePolicy = (predicate: string) => `${table.replace('tenant_id uuid)', 'tenant_id uuid, workspace_id uuid)')}
-create policy items_engine_select on public.items for select to app_engine using (${predicate});`;
+const enginePolicy = (predicate: string, roles = 'app_engine') => `${engineRole} ${table.replace('tenant_id uuid)', 'tenant_id uuid, workspace_id uuid)')}
+create policy items_engine_select on public.items for select to ${roles} using (${predicate});`;
 
 const policyCases: Case[] = [
   ['literal true', memberPolicy('true'), true, listed],
@@ -149,13 +151,17 @@ const policyCases: Case[] = [
   ['declared scope or true bypasses the principal', `${engineScope} ${enginePolicy('workspace_id = public.engine_workspace() or true')}`, true, scoped],
   ['declared scope present does not filter a row', `${engineScope} ${enginePolicy('public.engine_workspace() is not null')}`, true, scoped],
   ['declared scope compared with itself', `${engineScope} ${enginePolicy('public.engine_workspace() = public.engine_workspace()')}`, true, scoped],
+  ['declared scope for a browser role', `${engineScope} ${enginePolicy('workspace_id = public.engine_workspace()', 'authenticated')}`, true, scoped],
+  ['declared scope for the anonymous role', `${engineScope} ${enginePolicy('workspace_id = public.engine_workspace()', 'anon')}`, true, scoped],
+  ['declared scope in a policy of mixed roles', `${engineScope} ${enginePolicy('workspace_id = public.engine_workspace()', 'app_engine, authenticated')}`, true, scoped],
+  ['declared scope for a role not declared as a scope role', `${engineScope} ${enginePolicy('workspace_id = public.engine_workspace()', 'app_reader')}`, true, scoped],
   ['declared scope compared with the owning column on the right', `${engineScope} ${enginePolicy('public.engine_workspace() = workspace_id')}`, false, scoped],
   ['declared scope may be one conjunct beside other filters', `${engineScope} ${enginePolicy('id is not null and workspace_id = public.engine_workspace()')}`, false, scoped],
   ['declared scope compared with a column that does not own the row', `${engineScope} ${enginePolicy('id = public.engine_workspace()')}`, true, scoped],
   ['declared scope compared with another owner column', `${engineScope} ${enginePolicy('tenant_id = public.engine_workspace()')}`, true, scoped],
   ['declared scope beside a non-null column test', `${engineScope} ${enginePolicy('id is not null and public.engine_workspace() is not null')}`, true, scoped],
   ['declared scope in a non-equality comparison', `${engineScope} ${enginePolicy('workspace_id <> public.engine_workspace()')}`, true, scoped],
-  ['declared scope column list names the owning column', `${engineScope} ${enginePolicy('tenant_id = public.engine_workspace()')}`, false, { db: { scopeSettings: ['nivo.workspace_id'], scopeColumns: ['tenant_id'] } }],
+  ['declared scope column list names the owning column', `${engineScope} ${enginePolicy('tenant_id = public.engine_workspace()')}`, false, { db: { scopeSettings: ['nivo.workspace_id'], scopeRoles, scopeColumns: ['tenant_id'] } }],
   ['public read suffix cannot authorize writes', `${table} create policy items_public_read on public.items for insert to anon with check (true);`, true],
 ];
 
@@ -279,11 +285,34 @@ for (const _edition of ['lite', 'full']) {
 test('the declaration takes db.scopeSettings as dotted custom settings and refuses request claims, bare names and other shapes', () => {
   const sides = { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core' } };
   const declared = (scopeSettings: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeSettings }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
-  assert.deepEqual(declared(['nivo.workspace_id']), []);
+  const withRoles = (scopeSettings: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeSettings, scopeRoles }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
+  assert.deepEqual(withRoles(['nivo.workspace_id']), []);
+  assert.equal(declared(['nivo.workspace_id']).length, 1, 'settings without scope roles');
+  const roles = (list: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeRoles: list }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
+  assert.deepEqual(roles(scopeRoles), []);
+  for (const bad of [[], ['app_engine'], [{ role: 'app_engine' }], [{ role: 'App', reason: 'x' }], [{ role: 'a', reason: ' ' }], [{ role: 'a', reason: 'x', more: 1 }]]) assert.equal(roles(bad).length, 1, JSON.stringify(bad));
   const columns = (scopeColumns: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeColumns }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
   assert.deepEqual(columns(['workspace_id']), []);
   for (const bad of [[], ['Workspace'], 'workspace_id', ['a.b']]) assert.equal(columns(bad).length, 1, JSON.stringify(bad));
   for (const bad of [['workspace_id'], ['request.jwt.claims'], ['Nivo.Workspace'], 'nivo.workspace_id', [''], [1]]) {
-    assert.equal(declared(bad).length, 1, JSON.stringify(bad));
+    assert.equal(withRoles(bad).length, 1, JSON.stringify(bad));
   }
 });
+
+for (const edition of ['lite', 'full']) {
+  const policy = `${table.replace('tenant_id uuid)', 'tenant_id uuid, workspace_id uuid)')} create policy items_engine_select on public.items for select to app_engine using (workspace_id = public.engine_workspace());`;
+  const cases: [name: string, sql: string, violates: boolean][] = [
+    ['a scope role created NOLOGIN NOINHERIT NOBYPASSRLS', `${engineRole} ${policy}`, false],
+    ['a scope role created with LOGIN', `create role app_engine login noinherit nobypassrls; ${policy}`, true],
+    ['a scope role created with BYPASSRLS', `create role app_engine nologin noinherit bypassrls; ${policy}`, true],
+    ['a scope role created inheriting', `create role app_engine nologin inherit nobypassrls; ${policy}`, true],
+    ['a scope role created without stating its attributes', `create role app_engine; ${policy}`, true],
+    ['a scope role altered to LOGIN', `${engineRole} alter role app_engine login; ${policy}`, true],
+    ['a scope role never created by a migration', policy, true],
+  ];
+  for (const [name, sql, violates] of cases) {
+    test(`DB_APP_ROLE@${edition}: ${name}`, async () => {
+      await expectCode(edition, 'DB_APP_ROLE', `${engineScope} ${sql}`, violates, scoped);
+    });
+  }
+}

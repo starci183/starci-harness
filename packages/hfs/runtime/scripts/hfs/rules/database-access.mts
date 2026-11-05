@@ -42,13 +42,12 @@ function structural(node: Parsed): Parsed {
   return Object.fromEntries(Object.entries(node).filter(([key]) => key !== 'location').map(([key, value]): Parsed => [key, structural(value)]));
 }
 
-/** A principal the policy may read: auth.uid(), auth.jwt(), the request JWT claims, a setting the app declares in hfs.json `db.scopeSettings`, or a helper whose body reads one. */
+/** A principal any policy may read: auth.uid(), auth.jwt(), the request JWT claims, or a helper whose body reads one. A declared scope setting is no such principal: only a policy of declared scope roles may read it (scopeCall). */
 function principalCall(call: Parsed, helpers: Parsed) {
   const name = names(call.funcname);
   if (['auth.uid', 'auth.jwt'].includes(name) || helpers.functions.has(name) || helpers.functions.has(qualify(name))) return true;
   if (!['current_setting', 'pg_catalog.current_setting'].includes(name)) return false;
-  const setting = stringValue(call.args?.[0]);
-  return ['request.jwt.claims', 'request.jwt.claim.sub'].includes(setting) || helpers.settings.has(setting);
+  return ['request.jwt.claims', 'request.jwt.claim.sub'].includes(stringValue(call.args?.[0]));
 }
 
 /** A call that reads a declared scope setting, directly or through a helper whose body does. */
@@ -86,7 +85,7 @@ function principalPredicate(expression: Parsed, helpers: Parsed) {
   if (bool?.boolop === NOT) return false;
   const expr = node.A_Expr;
   if (expr && JSON.stringify(structural(expr.lexpr)) === JSON.stringify(structural(expr.rexpr))) return false;
-  if (hasScope(node, helpers)) return scopeComparison(expr, helpers);
+  if (hasScope(node, helpers)) return helpers.scopeAllowed === true && scopeComparison(expr, helpers);
   return hasPrincipal(node, helpers);
 }
 
@@ -98,7 +97,7 @@ async function principalHelpers(analyses: Parsed, scopeSettings: string[], scope
     if (!body) return;
     try { bodies.push({ name: fn.name, ast: await parseSql(body) }); } catch { /* PL/pgSQL safety is checked separately. */ }
   });
-  const helpers = { functions: new Set<string>(), settings: new Set<string>(scopeSettings), scoped: new Set<string>(), columns: new Set<string>(scopeColumns) };
+  const helpers = { functions: new Set<string>(), settings: new Set<string>(scopeSettings), scoped: new Set<string>(), columns: new Set<string>(scopeColumns), scopeAllowed: false };
   for (let remaining = bodies.length; remaining > 0; remaining -= 1) {
     for (const body of bodies) {
       if (hasPrincipal(body.ast, helpers)) helpers.functions.add(body.name);
@@ -147,14 +146,15 @@ function updatePrivileges(state: Parsed, granting: Parsed, privileges: Parsed) {
   if (privileges.some((privilege: Parsed) => ['select', 'all'].includes(privilege))) state.revokedRead = true;
 }
 
-function policyFindings(policies: Parsed, appRole: Parsed, helpers: Parsed) {
+function policyFindings(policies: Parsed, appRole: Parsed, helpers: Parsed, scopeRoles: Set<string>) {
   const findings = [];
   for (const policy of policies) {
     const table = `${policy.schema}.${policy.table}`;
     if (policy.roles.every((role: Parsed) => role === appRole) || publicRead(policy)) continue;
+    const scoped = { ...helpers, scopeAllowed: policy.roles.length > 0 && policy.roles.every((role: Parsed) => scopeRoles.has(role)) };
     const predicates = [policy.qual, policy.withCheck].filter((expression) => expression !== undefined);
-    if (!predicates.length || predicates.some((expression) => !principalPredicate(expression, helpers))) {
-      findings.push(note(DB_POLICY_TAUTOLOGY, policy, `policy ${policy.name} must constrain a principal; constants, IS NOT NULL and self comparisons grant no ownership boundary`, { table, policy: policy.name }));
+    if (!predicates.length || predicates.some((expression) => !principalPredicate(expression, scoped))) {
+      findings.push(note(DB_POLICY_TAUTOLOGY, policy, `policy ${policy.name} must constrain a principal; constants, IS NOT NULL, self comparisons and a scope setting outside policies of declared scope roles (hfs.json db.scopeRoles) grant no ownership boundary`, { table, policy: policy.name }));
     }
   }
   return findings;
@@ -203,6 +203,28 @@ function authSchemaFindings(analyses: Parsed, appRole: Parsed) {
   }
   return [...held.values()].filter((state) => state.privileges.size > 0)
     .map((state) => note(DB_APP_ROLE, state, `${appRole} holds a grant on ${state.target}; reach accounts through the identity account doors (SECURITY DEFINER functions), never through a grant on schema ${ACCOUNT_SCHEMA}; an app on the old sign-in glue runs "starci app codemod account-doors", "starci app sync --execute" and "starci app codemod account-doors --contract" in one release`, { target: state.target }));
+}
+
+/** R255: a declared scope role is created NOLOGIN NOINHERIT NOBYPASSRLS without administrative attributes and is never altered to gain them; one never created in the migrations is refused. */
+function scopeRoleFindings(analyses: Parsed, scopeRoles: Set<string>) {
+  const findings = [];
+  const created = new Set<string>();
+  for (const { file, facts } of analyses) {
+    for (const statement of facts.statements) {
+      const { type, node } = statement;
+      if (!['CreateRoleStmt', 'AlterRoleStmt'].includes(type)) continue;
+      const role = type === 'CreateRoleStmt' ? node.role : roleName(node.role);
+      if (!scopeRoles.has(role)) continue;
+      const options = new Map((node.options ?? []).map(({ DefElem: option }: { DefElem: Parsed }) => [option.defname, option.arg?.Boolean?.boolval]));
+      const unsafe = ['superuser', 'bypassrls', 'createdb', 'createrole', 'replication', 'inherit', 'canlogin'].some((option) => options.get(option) === true);
+      const incomplete = type === 'CreateRoleStmt' && ['canlogin', 'inherit', 'bypassrls'].some((option) => options.get(option) !== false);
+      if (type === 'CreateRoleStmt') created.add(role);
+      if (unsafe || incomplete) findings.push(note(DB_APP_ROLE, { ...statement, file }, `scope role ${role} must be created NOLOGIN NOINHERIT NOBYPASSRLS without SUPERUSER or administrative role attributes`));
+    }
+  }
+  const last = analyses[analyses.length - 1]?.file;
+  for (const role of scopeRoles) if (last && !created.has(role)) findings.push(found(DB_APP_ROLE, last, `${last} ends without a migration that creates scope role ${role} (hfs.json db.scopeRoles) NOLOGIN NOINHERIT NOBYPASSRLS`));
+  return findings;
 }
 
 function roleStatementFindings(statement: Parsed, appRole: Parsed) {
@@ -331,9 +353,11 @@ export async function databaseAccessFindings({ analyses, exposed, db = {} }: { a
   }
   const policies = [...policyMap.values()];
   const strings = (list: unknown): string[] => (Array.isArray(list) ? list.filter((entry: unknown): entry is string => typeof entry === 'string') : []);
+  const scopeRoles = new Set<string>((Array.isArray(declared.scopeRoles) ? declared.scopeRoles : []).map((entry: Parsed) => entry?.role).filter((role: unknown): role is string => typeof role === 'string'));
   const helpers = await principalHelpers(analyses, strings(declared.scopeSettings), declared.scopeColumns === undefined ? ['workspace_id'] : strings(declared.scopeColumns));
   return [
-    ...policyFindings(policies, appRole, helpers),
+    ...policyFindings(policies, appRole, helpers, scopeRoles),
+    ...scopeRoleFindings(analyses, scopeRoles),
     ...roleFindings(analyses, appRole),
     ...authSchemaFindings(analyses, appRole),
     ...forceFindings(analyses, declared, appRole),
