@@ -323,7 +323,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST]
+    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-COMMON-STEPPER-MARKER-FILLS, DNA-COMMON-STEPPER-MARKER-UPCOMING]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -1244,6 +1244,16 @@ mustKeep:
       law: "An empty or no-selection notice in a growing pane section stands at the top of it (its own inset below the section edge), never centred in the free space; the text stays centred across, as the artboards draw it."
       measure: { kind: relation, select: '[data-story-empty-top] .starci-core-empty-notice', metric: top, op: "<=", tolerance: 40, ref: { within: '[data-component="PaneSection"]', select: self, metric: top } }
       owner: contract roles.empty-state
+    - id: DNA-COMMON-STEPPER-MARKER-FILLS
+      role: list
+      law: "In the markers form the current step is a filled accent circle under the accent foreground, and an upcoming step a filled secondary-surface circle with no ring (U0-G9)."
+      measure: { kind: style, select: '[data-component="Stepper"]:not([data-grammar-stepper-kind="bar"]):not([data-loading="true"]) [data-grammar-step-state="current"] [data-grammar-step-marker]', checks: [{ metric: background-color, op: "=", value: { token: --accent } }, { metric: color, op: "=", value: { token: --accent-foreground } }] }
+      owner: contract roles.list
+    - id: DNA-COMMON-STEPPER-MARKER-UPCOMING
+      role: list
+      law: "An upcoming step of the markers form is a filled secondary-surface circle with no ring (U0-G9)."
+      measure: { kind: style, select: '[data-component="Stepper"]:not([data-grammar-stepper-kind="bar"]):not([data-loading="true"]) [data-grammar-step-state="upcoming"] [data-grammar-step-marker]', checks: [{ metric: background-color, op: "=", value: { token: --surface-secondary } }, { metric: border-color, op: "=", value: transparent }] }
+      owner: contract roles.list
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.

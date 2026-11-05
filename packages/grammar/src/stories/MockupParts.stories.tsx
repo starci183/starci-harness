@@ -359,3 +359,17 @@ export const EmptyNoticeAtTop: Story = {
         </div>
     ),
 }
+
+const markerSteps: ReadonlyArray<G.StepperStep> = [{ id: "a", label: "Workspace" }, { id: "b", label: "Channels" }, { id: "c", label: "Agents" }, { id: "d", label: "Done" }]
+
+/** Step markers: the current step a filled accent circle, the others filled neutral circles, no ring (DNA-COMMON-STEPPER-MARKER-FILLS). */
+export const StepperMarkerFills: Story = {
+    render: () => (
+        <Matrix maxWidth={480}>
+            <State label="step 2 current, then 3 and 4 upcoming; error on the last" direction="column">
+                <G.Stepper label="Setup" steps={markerSteps} currentStepId="b" />
+                <G.Stepper label="Setup error" steps={[{ id: "a", label: "Workspace" }, { id: "b", label: "Channels", state: "error" }, { id: "c", label: "Agents" }]} currentStepId="a" />
+            </State>
+        </Matrix>
+    ),
+}

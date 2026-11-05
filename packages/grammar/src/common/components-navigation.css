@@ -306,9 +306,9 @@
         flex: 0 0 auto;
         align-items: center;
         justify-content: center;
-        border: 2px solid var(--border);
+        border: 2px solid transparent;
         border-radius: var(--grammar-radius-pill);
-        background: var(--surface);
+        background: var(--surface-secondary);
         color: var(--muted);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
@@ -322,19 +322,21 @@
     }
 
     /*
-     * Every marker is a pair that holds on any ground: the outlined states draw their circle in `--surface` and their
-     * number in a text token paired with it (muted, the accent as text, the danger as text), the complete state fills
-     * the accent under its own foreground. A SurfaceCard treatment rebinds the surface pair and those text tokens
+     * Every marker is a pair that holds on any ground (U0-G9, approved): the current and complete steps are filled accent circles under
+     * the accent foreground, the upcoming steps filled `--surface-secondary` circles with a muted number and no ring, the error and
+     * paused steps keep their tone ring on `--surface`. A SurfaceCard treatment rebinds the surface pair and those text tokens
      * together, so the number keeps its contrast in every treatment (COLOR-5).
      */
     .starci-core-step[data-grammar-step-state="current"] .starci-core-step-marker {
-        border-color: currentColor;
-        color: var(--accent-soft-foreground);
+        border-color: var(--accent);
+        background: var(--accent);
+        color: var(--accent-foreground);
     }
 
     /* A bare mark wears the tone itself (ruling status-soft-pair-on-background); Offset Pop's light theme sets the --starci-core-mark-* hooks to the soft foreground. */
     .starci-core-step[data-grammar-step-state="error"] .starci-core-step-marker {
         border-color: var(--danger);
+        background: var(--surface);
         color: var(--starci-core-mark-danger, var(--danger));
     }
 
@@ -342,6 +344,7 @@
     .starci-core-step[data-grammar-step-state="paused"] .starci-core-step-marker {
         border-style: dashed;
         border-color: var(--warning);
+        background: var(--surface);
         color: var(--starci-core-mark-warning, var(--warning));
     }
 
