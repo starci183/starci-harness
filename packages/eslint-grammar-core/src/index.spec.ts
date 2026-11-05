@@ -87,7 +87,8 @@ test("the lint package is versioned with its Grammar family", () => {
     return field(peers, name)
   }
   assert.equal(field(manifest("../package.json"), "version"), field(manifest("../../grammar/package.json"), "version"))
-  assert.equal(peerOf("../package.json", "@starci/eslint-canon-fe"), field(manifest("../../eslint-canon-fe/package.json"), "version"))
+  // The canon is peered by its same-minor range (decision release-only-what-changed): a canon patch never re-releases the Grammar.
+  assert.equal(peerOf("../package.json", "@starci/eslint-canon-fe"), `~${String(field(manifest("../../eslint-canon-fe/package.json"), "version"))}`)
 })
 
 /** The factory's input with the family ids widened to strings, for the inputs the factory must refuse. */
