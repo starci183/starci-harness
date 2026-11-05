@@ -1236,8 +1236,8 @@ mustKeep:
       owner: contract roles.button
     - id: DNA-COMMON-LINK-ACCENT-TEXT
       role: link
-      law: "A text link is the accent as text on a ground (--accent-soft-foreground, the token that holds contrast on every Nivo ground in light and dark), underlined."
-      measure: { kind: style, select: '[data-component="Link"][data-grammar-link-content="text"]:not([data-grammar-current="true"]):not([aria-disabled="true"])', checks: [{ metric: color, op: "=", value: { token: --accent-soft-foreground } }] }
+      law: "A text link is the exact primary brand colour (--accent), underlined. Owner exception, 2026-11-05: the raw accent is below 4.5 contrast as text on several Nivo grounds and the owner accepts it, so this law pins the token and no contrast law judges a link."
+      measure: { kind: style, select: '[data-component="Link"][data-grammar-link-content="text"]:not([data-grammar-current="true"]):not([aria-disabled="true"])', checks: [{ metric: color, op: "=", value: { token: --accent } }] }
       owner: contract roles.link
     - id: DNA-COMMON-EMPTY-NOTICE-TOP
       role: empty-state
