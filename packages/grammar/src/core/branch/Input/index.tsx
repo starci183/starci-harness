@@ -23,6 +23,8 @@ export type InputProps = NoChildren & {
     readonly label: ReactNode
     /** Keeps the label as the accessible name but hides it visually (a row of inputs that label themselves by position). */
     readonly isLabelHidden?: boolean
+    /** In a `Grid kind="form"` (`FormGrid`): `full` makes the field stand alone on its own row across every column. The control itself ignores it. */
+    readonly span?: "full"
     readonly kind?: InputKind
     readonly placeholder?: string
     readonly defaultValue?: string

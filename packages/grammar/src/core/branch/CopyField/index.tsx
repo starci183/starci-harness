@@ -24,6 +24,8 @@ type CopyFieldBase = {
     /** Shown in the field's error slot and announced when the copy failed (the clipboard refused, or `onCopy` rejected). */
     readonly copyErrorLabel: string
     readonly isDisabled?: boolean
+    /** In a `Grid kind="form"` (`FormGrid`): `full` makes the field stand alone on its own row across every column. The control itself ignores it. */
+    readonly span?: "full"
     /** Initial unresolved content (knowledge STATE-8): the ready anatomy, inert, its field box painted as a Skeleton. */
     readonly isLoading?: boolean
 }

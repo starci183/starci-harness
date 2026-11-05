@@ -13,6 +13,8 @@ import {
 import type { NoChildren } from "../../tier.js"
 
 export type PressableFieldProps = NoChildren & {
+    /** In a `Grid kind="form"` (`FormGrid`): `full` makes the field stand alone on its own row across every column. The control itself ignores it. */
+    readonly span?: "full"
     /** Unresolved (knowledge STATE-8): the ready anatomy as geometry, inert and `aria-busy`, label and description kept; a loading region is inherited. */
     readonly isLoading?: boolean
     /** Accessible name of the control; the placeholder is decoration, not a name. */

@@ -320,7 +320,8 @@
         align-content: start;
     }
 
-    :is(.starci-core-form-grid-row > [data-component]:not(:first-child), .starci-core-form-grid-row > .starci-core-field-skeleton-scope:not(:first-child) > [data-component]) {
+    /* A later field stacks a section gap below the one before it; a vendor `<template>` or hidden node before the first field is not a field. */
+    :is(.starci-core-form-grid-row > :is([data-component], .starci-core-field-skeleton-scope) ~ [data-component], .starci-core-form-grid-row > :is([data-component], .starci-core-field-skeleton-scope) ~ .starci-core-field-skeleton-scope > [data-component]) {
         margin-block-start: var(--grammar-row-gap);
     }
 
@@ -352,7 +353,7 @@
             grid-template-columns: minmax(0, 1fr);
         }
 
-        .starci-core-form-grid[data-grammar-form-grid-columns="2"] :is(.starci-core-form-grid-row > [data-component]:not(:first-child), .starci-core-form-grid-row > .starci-core-field-skeleton-scope:not(:first-child) > [data-component]) {
+        .starci-core-form-grid[data-grammar-form-grid-columns="2"] :is(.starci-core-form-grid-row > :is([data-component], .starci-core-field-skeleton-scope) ~ [data-component], .starci-core-form-grid-row > :is([data-component], .starci-core-field-skeleton-scope) ~ .starci-core-field-skeleton-scope > [data-component]) {
             margin-block-start: 0;
         }
     }

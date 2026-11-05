@@ -142,3 +142,29 @@ export const InfoAndAccentTones: Story = {
         </Matrix>
     ),
 }
+
+const spanOptions = [{ id: "a", label: "Alpha" }, { id: "b", label: "Beta" }]
+const spanFields = (isLoading: boolean) => (
+    <G.Grid kind="form" columns={2}>
+        <G.Input id="sp-a" name="sp-a" label="Name" isLoading={isLoading} />
+        <G.Input id="sp-b" name="sp-b" label="Address" span="full" isLoading={isLoading} />
+        <G.Select label="Service" options={spanOptions} span="full" isLoading={isLoading} />
+        <G.Textarea label="Note" span="full" isLoading={isLoading} />
+        <G.CopyField label="Link" value="https://example.com/hooks/26465cdf" copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Could not copy" span="full" isLoading={isLoading} />
+        <G.Input id="sp-c" name="sp-c" label="City" isLoading={isLoading} />
+    </G.Grid>
+)
+
+/** Every field component takes `span="full"` from FormGrid; a full field stands alone on its row, and the loading twin keeps the same box. */
+export const FormGridSpanEveryField: Story = {
+    render: () => (
+        <Matrix maxWidth={1600}>
+            <State label="Fields with span=full end the row before them (Input, Select, Textarea, CopyField); ready and loading are one box" direction="column">
+                <div data-grammar-twin="form-grid-span" style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", alignItems: "flex-start" }}>
+                    <div data-grammar-twin-item="ready" style={{ display: "inline-flex", flexDirection: "column", width: "44rem" }}>{spanFields(false)}</div>
+                    <div data-grammar-twin-item="loading" style={{ display: "inline-flex", flexDirection: "column", width: "44rem" }}>{spanFields(true)}</div>
+                </div>
+            </State>
+        </Matrix>
+    ),
+}

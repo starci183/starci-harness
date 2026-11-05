@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added: `span="full"` on `Input`, `CopyField`, `OtpInput` and `PressableField` (every other field already took it from the shared field props). Fixed: in a one-column form row, a field that follows a vendor `<template>` (a ready `Select`) no longer gets an extra section gap above it.
+
 ## 0.21.35 - 2026-11-05
 
 - Changed: version stamp only, with the Grammar lint family (their runtime copies moved).
@@ -922,7 +926,6 @@ Patch, additive (product connections screen; owner approved publishing @starci p
   so a `defaultValue` rendered empty. `value`, `defaultValue` and the change callback now belong to the TextField.
 
 ## 0.8.2 / 0.8.3 - 2026-10-05
-
 
 Minor, additive (lane C0-CANON).
 
