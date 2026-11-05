@@ -2774,6 +2774,13 @@
 
     .starci-core-pane-header-actions { gap: var(--grammar-inline-gap); margin-inline-start: auto; }
 
+    /* The head opener of a drawer pane (`drawerOpener`): shown only where the pane's area is not arranged. */
+    .starci-core-pane-header-opener {
+        display: var(--starci-core-pane-opener-base, none);
+        flex: none;
+        align-items: center;
+    }
+
     .starci-core-pane-header-copy {
         display: flex;
         min-width: 0;
@@ -2949,6 +2956,10 @@
         .starci-core-pane-trigger {
             display: var(--starci-core-pane-trigger-medium, inline-flex);
         }
+
+        .starci-core-pane-header-opener {
+            display: var(--starci-core-pane-opener-medium, none);
+        }
     }
 
     @container starci-core-pane-grid (min-width: 70rem) {
@@ -2971,6 +2982,10 @@
 
         .starci-core-pane-trigger {
             display: var(--starci-core-pane-trigger-wide, inline-flex);
+        }
+
+        .starci-core-pane-header-opener {
+            display: var(--starci-core-pane-opener-wide, none);
         }
     }
 

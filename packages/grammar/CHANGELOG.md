@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added: `Pane collapse="drawer" trigger="head"` and `PaneHeader drawerOpener={{ pane, icon, label }}`: the grid owns the drawer's open state and the head draws the icon button that opens it, shown only where the pane's area is not arranged, so a server page needs no state. The head keeps its height at every width.
+
 ## 0.21.36 - 2026-11-05
 
 - Fixed: a `Pane collapse="drawer"` opened as a drawer rendered unstyled (no section gaps, row spacing or text sizes) because it was portalled into the document body, outside the Grammar root that carries every family rule and token. It now portals into the nearest Grammar root like every other overlay. DNA laws `DNA-COMMON-PANE-DRAWER-SPACING` and `DNA-COMMON-PANE-DRAWER-SECTION-GAP` measure it (story `PaneDrawerSpacing`).

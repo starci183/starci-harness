@@ -1,7 +1,9 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { useContext, useEffect, type CSSProperties, type ReactNode } from "react"
 import { ArrowLeftIcon } from "@heroicons/react/20/solid"
+import { PaneOpenerContext } from "../../paneContext.js"
+import type { IconSource } from "../../leaf/Icon/index.js"
 import { Heading } from "../../leaf/Heading/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
@@ -27,6 +29,12 @@ export type PaneHeaderProps = NoChildren & {
      * (below 48rem); a wider grid shows the list beside it, so the control is absent there.
      */
     readonly back?: { readonly label: string; readonly onPress: () => void; readonly placement?: "narrow" | "always" }
+    /**
+     * Opens the drawer of a pane of the same PaneGrid (`<Pane area="rail" collapse="drawer" trigger="head" ...>`): an icon button at the
+     * trailing end, shown only where that pane's area is not arranged (below its collapse width). The grid owns the open state, so a
+     * server page needs none. `icon` is the button's glyph, `label` its accessible name.
+     */
+    readonly drawerOpener?: { readonly pane: string; readonly icon: IconSource; readonly label: string }
     /** The subject is unresolved (STATE-8): `title`, `description`, `mark`, `status` and `actions` lay out unseen under a shimmer. */
     readonly isLoading?: boolean
 }
@@ -37,8 +45,25 @@ export type PaneHeaderProps = NoChildren & {
  * share one height. It is the content of a `PaneSection align="center"`; it takes no padding of its own (the section
  * applies the pane inset) and draws no surface or rule (the grid draws the dividers).
  */
-export const PaneHeader = ({ title, headingLevel = 2, description, mark, status, actions, back, isLoading: ownLoading }: PaneHeaderProps) => {
+export const PaneHeader = ({ title, headingLevel = 2, description, mark, status, actions, back, drawerOpener, isLoading: ownLoading }: PaneHeaderProps) => {
     const isLoading = useIsLoading(ownLoading)
+    const opener = useContext(PaneOpenerContext)
+    const openerPane = drawerOpener?.pane
+    useEffect(() => {
+        if (openerPane !== undefined && process.env.NODE_ENV !== "production" && opener?.has(openerPane) !== true) {
+            console.error(`PANE_OPENER_WITHOUT_DRAWER: ${openerPane}`)
+        }
+    }, [openerPane, opener])
+    const openerDisplays = drawerOpener === undefined || opener === undefined ? undefined : opener.displays(drawerOpener.pane)
+    const openerButton = drawerOpener === undefined || openerDisplays === undefined ? null : (
+        <span
+            className="starci-core-pane-header-opener"
+            data-grammar-pane-opener={drawerOpener.pane}
+            style={{ "--starci-core-pane-opener-base": openerDisplays.base, "--starci-core-pane-opener-medium": openerDisplays.medium, "--starci-core-pane-opener-wide": openerDisplays.wide } as CSSProperties}
+        >
+            <IconButton intent="neutral" source={drawerOpener.icon} label={drawerOpener.label} onPress={() => opener?.open(drawerOpener.pane)} />
+        </span>
+    )
     return (
         <div
             data-tier="composite"
@@ -62,7 +87,12 @@ export const PaneHeader = ({ title, headingLevel = 2, description, mark, status,
                 </div>
                 {description === undefined ? null : <Text size="xs" tone="muted" isLoading={isLoading}>{description}</Text>}
             </div>
-            {actions === undefined ? null : <span className="starci-core-pane-header-actions" data-contract="GAP-2" aria-hidden={isLoading || undefined}>{isLoading ? <SkeletonPlaceholder shape="block">{actions}</SkeletonPlaceholder> : actions}</span>}
+            {actions === undefined && openerButton === null ? null : (
+                <span className="starci-core-pane-header-actions" data-contract="GAP-2" aria-hidden={isLoading || undefined}>
+                    {actions === undefined ? null : isLoading ? <SkeletonPlaceholder shape="block">{actions}</SkeletonPlaceholder> : actions}
+                    {isLoading ? null : openerButton}
+                </span>
+            )}
         </div>
     )
 }

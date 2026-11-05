@@ -54,3 +54,29 @@ export const PaneHeaderStates: Story = {
         </Matrix>
     ),
 }
+
+/**
+ * `drawerOpener` on a PaneHeader opens the drawer of a pane of the same grid (`collapse="drawer" trigger="head"`): the grid owns the open
+ * state, so no page state is held. The icon button shows only where the rail's area is not arranged (below 48rem here) and takes the
+ * action slot's place, so the head keeps its height at every width.
+ */
+export const HeadDrawerOpener: Story = {
+    render: () => (
+        <div style={{ height: "28rem", display: "flex" }}>
+            <G.PaneGrid label="Conversation" areas={["main rail"]} columns={["fill", "standard"]}>
+                <G.Pane area="main" label="Conversation">
+                    <G.PaneSection align="center">
+                        <G.PaneHeader title="Thu Trang" description="Zalo, 2 min ago" actions={actions} drawerOpener={{ pane: "rail", icon: EllipsisGlyph, label: "Customer info" }} />
+                    </G.PaneSection>
+                    <G.PaneSection><G.Text>Messages</G.Text></G.PaneSection>
+                </G.Pane>
+                <G.Pane area="rail" surface label="Customer" collapse="drawer" trigger="head" collapseLabel="Customer info" closeLabel="Close">
+                    <G.PaneSection gap="section">
+                        <G.Heading level={3}>Customer</G.Heading>
+                        <G.Text>Moc An, two branches.</G.Text>
+                    </G.PaneSection>
+                </G.Pane>
+            </G.PaneGrid>
+        </div>
+    ),
+}

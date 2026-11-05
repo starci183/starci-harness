@@ -3,6 +3,7 @@
 import { Drawer } from "@heroui/react"
 import {
     Children,
+    cloneElement,
     createContext,
     isValidElement,
     useCallback,
@@ -10,6 +11,7 @@ import {
     useEffect,
     useMemo,
     useRef,
+    useState,
     type ComponentPropsWithoutRef,
     type CSSProperties,
     type ReactElement,
@@ -18,7 +20,7 @@ import {
 import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { SurfaceNesting } from "../../surfaceContext.js"
 import { useOverlayContainer } from "../../overlayScope.js"
-import { PaneContext, usePaneContext, type PaneContextValue, type PaneInset } from "../../paneContext.js"
+import { PaneContext, PaneOpenerContext, usePaneContext, type PaneContextValue, type PaneInset, type PaneOpenerValue } from "../../paneContext.js"
 import {
     buildResponsivePaneGridModels,
     paneBreakpoints,
@@ -91,6 +93,19 @@ type PaneCollapseProps =
         readonly closeLabel: string
         readonly isOpen: boolean
         readonly onOpenChange: (isOpen: boolean) => void
+    }
+    | {
+        /**
+         * The grid owns the open state and the opener is a `PaneHeader` `drawerOpener={{ pane: area, ... }}` in the same grid: the page holds
+         * no state (a server page can render it). The grid draws no trigger bar; the head shows the icon button below the collapse width.
+         */
+        readonly collapse: "drawer"
+        readonly trigger: "head"
+        readonly collapseLabel: string
+        readonly openLabel?: never
+        readonly closeLabel: string
+        readonly isOpen?: never
+        readonly onOpenChange?: never
     }
     | {
         readonly collapse?: undefined
@@ -248,6 +263,8 @@ export const PaneGrid = (props: PaneGridProps) => {
     }
     const panes = flat.filter(isPane)
     const drawers = panes.filter((pane) => pane.props.collapse === "drawer")
+    const hasBar = (pane: ReactElement<PaneProps>) => pane.props.trigger === undefined || pane.props.trigger === "bar"
+    const [openHeads, setOpenHeads] = useState<ReadonlySet<string>>(() => new Set())
     const collapsedKey = drawers.map((pane) => pane.props.area).join(" ")
     const models = useMemo(
         () => buildResponsivePaneGridModels(
@@ -259,7 +276,31 @@ export const PaneGrid = (props: PaneGridProps) => {
         [areas, columns, rows, collapsedKey],
     )
     const style: CustomProperties = gridVars(models, (breakpoint) =>
-        drawers.some((pane) => pane.props.trigger !== "none" && models[breakpoint].edges[pane.props.area] === undefined))
+        drawers.some((pane) => hasBar(pane) && models[breakpoint].edges[pane.props.area] === undefined))
+
+    const headAreas = drawers.filter((pane) => pane.props.trigger === "head").map((pane) => pane.props.area).join(" ")
+    const opener = useMemo<PaneOpenerValue>(() => ({
+        has: (area) => headAreas.split(" ").includes(area),
+        open: (area) => setOpenHeads((current) => new Set(current).add(area)),
+        displays: (area) => ({
+            base: models.base.edges[area] === undefined ? "inline-flex" : "none",
+            medium: models.medium.edges[area] === undefined ? "inline-flex" : "none",
+            wide: models.wide.edges[area] === undefined ? "inline-flex" : "none",
+        }),
+    }), [headAreas, models])
+    // A head-opened drawer pane gets the grid's own open state; PaneDrawer then treats it like a pane the app controls.
+    const drawerFor = (pane: ReactElement<PaneProps>): ReactElement<PaneProps> => pane.props.trigger === "head"
+        ? cloneElement(pane, {
+            trigger: "none",
+            isOpen: openHeads.has(pane.props.area),
+            onOpenChange: (isOpen: boolean) => setOpenHeads((current) => {
+                const next = new Set(current)
+                if (isOpen) next.add(pane.props.area)
+                else next.delete(pane.props.area)
+                return next
+            }),
+        } as Partial<PaneProps>)
+        : pane
 
     return (
         <section
@@ -271,11 +312,11 @@ export const PaneGrid = (props: PaneGridProps) => {
             data-grammar-pane-grid="true"
         >
             {drawers.length === 0 ? null : (
-                <div className="starci-core-pane-grid-triggers" data-grammar-triggers={drawers.some((pane) => pane.props.trigger !== "none") ? "bar" : "none"} data-contract="BOUNDARY-1 PADDING-4 PADDING-2" style={style}>
+                <div className="starci-core-pane-grid-triggers" data-grammar-triggers={drawers.some(hasBar) ? "bar" : "none"} data-contract="BOUNDARY-1 PADDING-4 PADDING-2" style={style}>
                     {drawers.map((pane) => (
                         <PaneDrawer
                             key={pane.props.area}
-                            pane={pane}
+                            pane={drawerFor(pane)}
                             placement={isStartColumn(models, pane.props.area) ? "left" : "right"}
                             models={models}
                         />
@@ -283,9 +324,11 @@ export const PaneGrid = (props: PaneGridProps) => {
                 </div>
             )}
             <PaneModelsContext.Provider value={models}>
-                <div className="starci-core-pane-grid-tracks" data-contract="GAP-0" style={style}>
-                    {panes}
-                </div>
+                <PaneOpenerContext.Provider value={opener}>
+                    <div className="starci-core-pane-grid-tracks" data-contract="GAP-0" style={style}>
+                        {panes}
+                    </div>
+                </PaneOpenerContext.Provider>
             </PaneModelsContext.Provider>
         </section>
     )
@@ -316,8 +359,8 @@ const PaneDrawer = ({ pane, placement, models }: {
     }
     Object.assign(triggerStyle, vars)
     return (
-        <Drawer isOpen={props.isOpen} onOpenChange={props.onOpenChange}>
-            {props.trigger === "none" ? null : (
+        <Drawer {...(props.isOpen === undefined ? {} : { isOpen: props.isOpen })} {...(props.onOpenChange === undefined ? {} : { onOpenChange: props.onOpenChange })}>
+            {props.trigger === "none" || props.trigger === "head" ? null : (
                 <Drawer.Trigger className="starci-core-pane-trigger" style={triggerStyle} data-contract="PADDING-3 SURFACE-2 FONT-2 TONE-1">
                     {props.openLabel}
                 </Drawer.Trigger>
