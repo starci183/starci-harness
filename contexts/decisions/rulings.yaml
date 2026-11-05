@@ -797,6 +797,11 @@ rulings:
     status: live
     ruling: "Message catalogs are excluded from copy-paste detection only; they stay linted and held to every other rule."
     owner: "policy (sonar configuration of the app template)"
+  - id: grammar-patch-range
+    date: '2026-11-05'
+    status: live
+    ruling: "The Grammar family (@starci/grammar, eslint-grammar-core, eslint-grammar-offset-pop) is pinned by a same-minor range (~x.y.z) in the canon pins, and an app's exact pin inside it passes R15; every other @starci pin stays exact. A Grammar patch (CSS, renderer fixes, new optional props, stories) publishes the family alone, with no release of @starci/hfs, the canons or the CLI. A minor (a lint rule of the family, a removed or renamed component or prop, a contract the canons read such as DNA law ids or the deprecated and forbidden lists, a Grammar fact eslint-canon-fe needs) raises the range and releases the whole family, and the release refuses a patch bump that carries a minor's change. Reading the Grammar version at lint time instead of bundling it (option B) is not taken. Confirmed by the owner 2026-11-05; it amends the exact pin of the Grammar family."
+    owner: "contexts/grammars/contributing.md (Patch or minor); contexts/stack/pins.yaml; packages/hfs/runtime/knowledge/hfs/canon-pins.yaml; packages/hfs/runtime/scripts/lib/pin-range.mts; cli/src/core/release/grammar-bump.ts; CONTRIBUTING.md CONTRIB-20"
   - id: branch-profile-dev
     date: '2026-11-04'
     status: live

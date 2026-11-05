@@ -11,6 +11,9 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { HARNESS_PACKAGE, bundledPins, canonPins } from '../runtime/scripts/hfs/canon-pins.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { pipelineFindings } from '../runtime/scripts/hfs/rules/pipeline.mjs';
+import { meetsPin } from '../runtime/scripts/lib/pin-range.mjs';
+
+const GRAMMAR_FAMILY = ['@starci/grammar', '@starci/eslint-grammar-core', '@starci/eslint-grammar-offset-pop'];
 
 const REPOSITORY = path.resolve(import.meta.dirname, '..', '..', '..');
 const COPY = 'runtime/knowledge/hfs/canon-pins.yaml';
@@ -30,7 +33,14 @@ test('every @starci pin names its folder in starci-harness at the version there'
     const source = pin.source as string; // the filter above keeps only rows with a source path
     const manifest = JSON.parse(fs.readFileSync(path.join(REPOSITORY, source), 'utf8')); // reason: parsed package.json
     assert.equal(manifest.name, name, source);
-    assert.equal(pin.version, manifest.version, `${name} is pinned at ${pin.version}, ${source} is ${manifest.version}`);
+    if (pin.range === undefined) {
+      assert.equal(pin.version, manifest.version, `${name} is pinned at ${pin.version}, ${source} is ${manifest.version}`);
+      continue;
+    }
+    // A ranged row (the Grammar family, decision grammar-patch-range): a patch of the folder stays inside the range, so it needs no new pin.
+    assert.ok(GRAMMAR_FAMILY.includes(name), `${name}: only the Grammar family pins a range`);
+    assert.equal(pin.range, `~${pin.version}`, `${name}: the range starts at the pinned version`);
+    assert.ok(meetsPin(pin.range, manifest.version), `${name} is pinned at ${pin.range}, ${source} is ${manifest.version}: a minor bump raises the range`);
   }
 });
 
@@ -42,7 +52,7 @@ test('the canon packages carry the same bytes of the pins as @starci/hfs', () =>
 test('contexts/stack/pins.yaml names every @starci package at its bundled pin and pins no command line either', () => {
   const stack = parseYaml(fs.readFileSync(path.join(REPOSITORY, 'contexts', 'stack', 'pins.yaml'), 'utf8')).pins;
   assert.equal(Object.hasOwn(stack, HARNESS_PACKAGE), false);
-  for (const [name, pin] of Object.entries(bundledPins()).filter(([, row]) => row.group === 'starci')) assert.equal(stack[name]?.version, pin.version, name);
+  for (const [name, pin] of Object.entries(bundledPins()).filter(([, row]) => row.group === 'starci')) assert.deepEqual([stack[name]?.version, stack[name]?.range], [pin.version, pin.range], name);
 });
 
 for (const edition of ['lite', 'full']) {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.39 - 2026-11-05
+
+- Changed: version stamp only, with the Grammar lint family (their runtime copies moved). From this release the canon pins give the family the same-minor range `~0.21.39`: a later patch of the family reaches apps with no other package moving (decision grammar-patch-range).
+
 ## 0.21.38 - 2026-11-05
 
 - Changed (G7-11): a `ListRowData` with `actionPlacement="end"` and two or more commands (an action and a menu, or a control) puts the commands under the text on a container narrower than 28rem, so the text column keeps the row width instead of about 130px; one command stays at the end. The loading row follows. Law `DNA-COMMON-ROW-TEXT-FIRST`, story `RowTextFirst`.

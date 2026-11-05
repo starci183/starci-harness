@@ -6,7 +6,7 @@ A package's `runtime/` holds tracked source and generated bundle copies. The can
 
 ## Grammar family versions
 
-`grammar`, `eslint-grammar-core` and `eslint-grammar-offset-pop` always have the identical full release version, including the patch. A metadata-only change to a lint family releases all three together; unchanged component code is rebuilt with the new version stamp. The family equality spec in `eslint-grammar-core/src/index.spec.ts` enforces this release contract.
+`grammar`, `eslint-grammar-core` and `eslint-grammar-offset-pop` always have the identical full release version, including the patch. A metadata-only change to a lint family releases all three together; unchanged component code is rebuilt with the new version stamp. The family equality spec in `eslint-grammar-core/src/index.spec.ts` enforces this release contract. A patch releases the family alone: the canon pins give it a same-minor range (`range: ~x.y.z` beside `version` in `hfs/runtime/knowledge/hfs/canon-pins.yaml`), which R15 and the release's sibling judgement accept, so `@starci/hfs`, the canons and the CLI do not move; a minor raises that range and releases the whole family. Which one a change is, and the release check that refuses a patch carrying a minor's change, is [contexts/grammars/contributing.md](../contexts/grammars/contributing.md) "Patch or minor" (decision `grammar-patch-range`).
 
 ## Build convention
 

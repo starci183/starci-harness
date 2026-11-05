@@ -3,6 +3,7 @@ import { join } from "node:path"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../../shared/errors.js"
+import { meetsPin } from "../release/pin-range.js"
 
 /** The stack pins, the one owner of every shared dependency's version, relative to the repository root. */
 export const STACK_PINS = "contexts/stack/pins.yaml"
@@ -19,7 +20,7 @@ export const CLI_PIN_SKEW = "CLI_PIN_SKEW"
 
 const MANIFEST_FIELDS = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"] as const
 
-const pinsSchema = z.looseObject({ pins: z.record(z.string(), z.looseObject({ version: z.string().min(1) })) })
+const pinsSchema = z.looseObject({ pins: z.record(z.string(), z.looseObject({ version: z.string().min(1), range: z.string().min(1).optional() })) })
 const manifestSchema = z.looseObject(Object.fromEntries(MANIFEST_FIELDS.map((field) => [field, z.record(z.string(), z.string()).optional()])))
 const lockSchema = z.looseObject({ packages: z.record(z.string(), z.looseObject({ version: z.string().optional() })).optional() })
 
@@ -57,8 +58,9 @@ export const cliPinSkews = (root: string): PinSkew[] => {
     const manifest = readParsed(root, CLI_MANIFEST, manifestSchema, JSON.parse)
     const lock = readParsed(root, CLI_LOCK, lockSchema, JSON.parse)
     const skew = (name: string, where: string, found: string): PinSkew[] => {
-        const expected = pins[name]?.version
-        return expected === found ? [] : [{ code: CLI_PIN_SKEW, package: name, where, expected, found }]
+        // A ranged pin (the Grammar family, decision grammar-patch-range) is met by any patch inside it; every other pin is exact.
+        const expected = pins[name]?.range ?? pins[name]?.version
+        return expected !== undefined && meetsPin(expected, found) ? [] : [{ code: CLI_PIN_SKEW, package: name, where, expected, found }]
     }
     const required = MANIFEST_FIELDS.flatMap((field) =>
         Object.entries(manifest[field] ?? {})

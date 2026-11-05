@@ -132,6 +132,24 @@ All of it, in one change.
 
 Rewrite what it changes rather than adding beside it (CONTRIB-6). Delete what it replaces in the same change (law 1 above).
 
+## Patch or minor
+
+The canon pins give the Grammar family a same-minor range (`~0.21.38`, decision `grammar-patch-range`), so a patch reaches every app
+inside it with no release of `@starci/hfs`, the canons or the CLI: an app takes it by raising its pin and lockfile, and R15 accepts
+it. A minor moves the range, and with it the whole family. Which one a change is follows from what the rest of the family reads:
+
+- **A patch:** a CSS or renderer fix, a new optional prop, a new component, a story, a new DNA law, a runtime copy of `@starci/hfs`
+  data an `eslint-grammar-*` package bundles (it moves only with an hfs release, which releases the family anyway).
+- **A minor:** a lint rule an `eslint-grammar-*` package adds or changes (its `src/`), a component or prop removed or renamed, a DNA law
+  id removed or renamed, a `deprecated` or `forbidden` entry of [contract.yaml](contract.yaml) changed, and a Grammar fact
+  `eslint-canon-fe` needs. A minor raises the canon pins' range in `@starci/hfs` (`knowledge/hfs/canon-pins.yaml` and
+  [stack/pins.yaml](../stack/pins.yaml)), which releases hfs, the canons and the CLI with it.
+
+The release judges it: `starci release push` and CI's publish plan refuse a patch bump of `@starci/grammar` whose diff since the version
+npm serves holds a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`, `cli/src/core/release/grammar-bump.ts`). The judge reads source
+lines, so it can over-ask for a minor and never lets one through as a patch; a false alarm is answered with the minor it asks for. The
+three packages keep one version either way ([packages/README.md](../../packages/README.md) "Grammar family versions").
+
 ## Render proof
 
 Lint passing says nothing about looks. Before review:

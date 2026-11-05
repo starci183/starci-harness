@@ -133,7 +133,7 @@ rules:
       - {kind: machine, id: package-manager}
   - id: R15
     code: HFS_CANON_PIN_DRIFT
-    law: Canon packages and frameworks match their pins (stack/pins.yaml).
+    law: "Canon packages and frameworks match their pins (stack/pins.yaml): exactly, or, for the Grammar family alone, an exact version inside its same-minor `range` (decision grammar-patch-range); a pre-release meets a range only when the range names one."
     failureCodes:
       - HFS_CANON_PIN_DRIFT
     enforcers:

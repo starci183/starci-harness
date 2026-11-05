@@ -359,3 +359,15 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   per file but its barrels, type files and the slots that opt out with a reason. A package without a manifest keeps the default scope, so
   no app changes until it declares one (`packages/hfs/runtime/scripts/lib/rule-packs.mts`, `packages/hfs/runtime/scripts/hfs/package-slots.mts`,
   [project/lint.md](../project/lint.md) PROJECT-LINT-3).
+- **A Grammar patch releases the Grammar family alone (`grammar-patch-range`).** The owner, 2026-11-05 (confirmed): every Grammar change
+  used to re-release the whole @starci family, because the canon pins held the exact Grammar version, the canons bundle those pins and the
+  CLI requires the exact hfs, and R15 then made each app bump six pins and rerun `--fresh`. The canon pins now give the Grammar family a
+  same-minor `range` beside its `version` (the version a scaffold writes); R15 accepts an exact app pin inside it, every other pin stays
+  exact, and the release's sibling judgement reads the same range. A range beside the version, not in place of it, keeps every reader of
+  `version` (the scaffold, the stack pins) on one exact number. A patch therefore publishes only the three family packages; a minor raises
+  the range and releases the family, and `RELEASE_GRAMMAR_MINOR_REQUIRED` refuses a patch whose diff since the served version removes a
+  public export or a `readonly` prop, changes a lint rule of the family, or removes a DNA law id or touches a deprecated or forbidden
+  entry of the contract. The judge reads source lines and over-asks rather than under-asks. The runtime copies an eslint-grammar-*
+  package bundles are hfs data that move only with an hfs release, so they never make a Grammar change a minor. Reading the Grammar
+  version at lint time (option B) is not taken (`packages/hfs/runtime/scripts/lib/pin-range.mts`, `cli/src/core/release/grammar-bump.ts`,
+  [grammars/contributing.md](../grammars/contributing.md) "Patch or minor").

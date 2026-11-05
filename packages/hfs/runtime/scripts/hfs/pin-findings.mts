@@ -2,9 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { APP_SCOPE } from './slots.mjs';
 import type { CanonPin, CanonPins } from './canon-pins.mjs';
+import { pinMiss } from '../lib/pin-range.mjs';
 
 const DEP_SECTIONS = ['dependencies', 'devDependencies'];
-const pinnedSpec = (spec: string, pin: CanonPin): string | null => (spec === pin.version ? null : `declared ${spec}, pinned ${pin.version}`);
+// A pin row may carry a same-minor `range` (the Grammar family, decision grammar-patch-range): an exact version inside it meets it.
+const pinnedSpec = (spec: string, pin: CanonPin): string | null => pinMiss(typeof pin.range === 'string' ? pin.range : pin.version, spec);
 
 /** One canon-pin drift finding. */
 export interface PinFinding { code: 'HFS_CANON_PIN_DRIFT'; level: 'error'; path: string; dependency: string; section: string; pinned: string; declared: string; message: string }
@@ -20,7 +22,7 @@ function pinFileFindings(repoRoot: string, file: string, profile: string, pins: 
       const spec = pkg[section]?.[name];
       if (spec === undefined) continue;
       const drift = pinnedSpec(spec, pin);
-      if (drift) findings.push({ code: 'HFS_CANON_PIN_DRIFT', level: 'error', path: file, dependency: name, section, pinned: pin.version, declared: spec, message: `${name} in ${file} ${section}: ${drift}` });
+      if (drift) findings.push({ code: 'HFS_CANON_PIN_DRIFT', level: 'error', path: file, dependency: name, section, pinned: typeof pin.range === 'string' ? pin.range : pin.version, declared: spec, message: `${name} in ${file} ${section}: ${drift}` });
     }
   }
   return findings;

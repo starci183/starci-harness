@@ -11,6 +11,8 @@ import { SPEC_FILE } from "../../shared/spec-file.js"
 import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import { inOrder } from "../../harness/sequential.js"
+import { GRAMMAR_PACKAGE, judgeGrammarBump } from "./grammar-bump.js"
+import { meetsPin } from "./pin-range.js"
 
 /** What publication does with one package. */
 type Action = "publish" | "published" | "private"
@@ -155,7 +157,8 @@ const judgeRequires = async (rows: readonly PlanRow[], packages: readonly Worksp
                 }
                 return
             }
-            if (spec !== sibling.version) {
+            // A same-minor range (`~0.21.38`, the Grammar family) is met by any patch of it at this commit; every other requirement is exact.
+            if (!meetsPin(spec, sibling.version)) {
                 throw new Refusal("RELEASE_DEPENDENCY_SKEW", `${row.package}@${row.version} requires ${name} ${spec}, but ${sibling.dir} is ${sibling.version} at this commit; set the requirement to ${sibling.version} in the commit that raises ${row.package}`)
             }
         })
@@ -223,6 +226,8 @@ export const judgePlan = async (root: string, packages: readonly WorkspacePackag
     const rows = await planOf(packages, root)
     await judgeRequires(rows, packages, root)
     if (base !== undefined) await judgeBumped(rows, root, base)
+    // A Grammar patch reaches apps inside the canon pins' range alone, so a change of a minor's kind refuses a patch bump (decision grammar-patch-range).
+    await judgeGrammarBump(root, rows.find((row) => row.package === GRAMMAR_PACKAGE))
     return rows
 }
 

@@ -13,9 +13,11 @@ export const CANON_PINS_FILE = 'knowledge/hfs/canon-pins.yaml';
 /** The npm name of the command line that runs @starci/hfs, pinned at its own version. */
 export const HARNESS_PACKAGE = 'starci-harness';
 
-/** The pin map of knowledge/hfs/canon-pins.yaml under `root` (the bundled runtime by default). */
-/** One pin row of canon-pins.yaml. */
-export interface CanonPin { version: string; group?: string; install?: string; side?: string; [key: string]: unknown }
+/**
+ * One pin row of canon-pins.yaml: `version` is the exact version a scaffold or sync writes; a Grammar family row may add `range`, the same-minor
+ * range an app's pin must meet instead (`~0.21.38`, decision grammar-patch-range), so a Grammar patch needs no release of hfs or the canons.
+ */
+export interface CanonPin { version: string; range?: string; group?: string; install?: string; side?: string; [key: string]: unknown }
 /** The pin map: package name to its pin row. */
 export type CanonPins = Record<string, CanonPin>;
 

@@ -217,8 +217,12 @@ a publication is never cut short; runs of one phase queue and never overlap, and
 missing. The plan is refused, before anything reaches npm, when a package changed since the base (its
 specs and test folders aside) while its version is already on npm (`RELEASE_VERSION_NOT_BUMPED`, measured from the
 commit npm recorded for that version), and when a due package requires a sibling (`dependencies`, `peerDependencies`)
-at another version than the sibling's folder holds at that commit, or at a version that is neither on npm nor due in the
-same run. A change to a package therefore raises the version in its `package.json` and adds its entry to its CHANGELOG
+at another version than the sibling's folder holds at that commit (a same-minor range `~x.y.z` is met by any patch of it), or at a
+version that is neither on npm nor due in the same run, and when `@starci/grammar` is due at a patch while its diff since the
+version npm serves holds a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`). The Grammar family is the one family whose canon pin is
+a same-minor range (decision `grammar-patch-range`): a Grammar patch publishes the three family packages alone, and a minor raises the
+range in `@starci/hfs` and releases the whole family ([contexts/grammars/contributing.md](contexts/grammars/contributing.md) "Patch or
+minor"). A change to a package therefore raises the version in its `package.json` and adds its entry to its CHANGELOG
 (the CLI's is [CHANGELOG.md](CHANGELOG.md)) in the commit that makes it; a package and the sibling version it requires
 move in one commit. The CLI is the one exception, held for the second phase: `cli/package-lock.json` installs its
 siblings from npm, so its commit requires each at a version npm serves, and it requires every `@starci` package

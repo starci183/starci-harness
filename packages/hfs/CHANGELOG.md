@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.12.0 - 2026-11-05
+
+- Changed (release 7c.8, decision grammar-patch-range): R15 `HFS_CANON_PIN_DRIFT` reads a same-minor range. The canon pins give the Grammar family `range: '~0.21.39'` beside `version` (the version a scaffold writes); an app's exact Grammar family pin inside the range passes, every other `@starci` pin stays exact, and a pre-release meets a range only when the range names a pre-release of that version (`runtime/scripts/lib/pin-range.mjs`). A Grammar patch therefore publishes the family alone and needs no release of this package, the canons or the CLI. Specs: `pin-range.spec.mts`, `canon-pins.spec.mts`.
+- Changed: the canon pins name this release and the Grammar family 0.21.39.
+
 ## 5.11.3 - 2026-11-05
 
 - Changed: the canon pins name the Grammar family 0.21.38 (Grammar batches 4 to 9) and this release.

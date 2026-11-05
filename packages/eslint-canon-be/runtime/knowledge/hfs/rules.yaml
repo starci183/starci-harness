@@ -270,7 +270,7 @@ rules:
       - {path: packages/hfs/src/hfs-package-manager-mixed.spec.mjs, edition: full, codes: [HFS_PACKAGE_MANAGER_MIXED]}
   - id: R15
     code: "HFS_CANON_PIN_DRIFT"
-    law: "Canon packages and frameworks match `canon-pins.yaml`."
+    law: "Canon packages and frameworks match `canon-pins.yaml`: exactly, or, for the Grammar family alone, an exact version inside its same-minor `range` (decision grammar-patch-range); a pre-release meets a range only when the range names one."
     editions: [lite, full]
     docs: [docs/hfs-legacy-tooling.md#canon-package-pins]
     templateNa: "Dependency versions are generated programmatically by pinnedSection and packageManifest in packages/hfs/scaffold/app.mjs rather than rendered from a managed dependency template."
