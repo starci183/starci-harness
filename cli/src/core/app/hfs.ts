@@ -182,9 +182,7 @@ export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): 
             ...(planned === undefined ? {} : { onSpawn }),
         },
         async (held) => {
-            // A planned test runner's parent heap is on its command line; its workers take the worker heap from NODE_OPTIONS.
-            const heap = planned?.workerMb === undefined || planned.memoryMb === undefined ? [] : [`--max-old-space-size=${String(planned.memoryMb)}`]
-            const argv = [process.execPath, ...heap, ...request.args]
+            const argv = [process.execPath, ...request.args]
             const run = await capture(request.kind === "test" && !argv.includes("--runInBand") ? testWorkerArgs(argv, held) : argv, request.cwd, held.options)
             return {
                 status: run.timedOut ? null : run.exitCode,

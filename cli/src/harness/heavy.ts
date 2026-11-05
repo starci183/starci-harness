@@ -541,9 +541,9 @@ const nodeOptions = (rules: HeavyRules, kind: HeavyKind, env: RunOptions["env"],
 }
 
 /**
- * What the memory plan sized for one child (memory-plan.ts): its heap (`memoryMb`, held by admission in place of the kind's estimate) and, for a test
- * runner, the heap of each worker (`workerMb`, the NODE_OPTIONS its workers inherit while the parent's own heap is on its command line) and the most
- * workers the plan gives it.
+ * What the memory plan sized for one child (memory-plan.ts): its heap (`memoryMb`, its --max-old-space-size and what admission holds in place of the
+ * kind's estimate) and, for a test runner, what each worker is planned to hold (`workerMb`, held by admission for every worker after the first) and the
+ * most workers the plan gives it.
  */
 export interface HeavyPlanned {
     readonly memoryMb?: number | undefined
@@ -729,8 +729,9 @@ export const taskQueuedMs = (task: string, worktree: string | null, since: strin
  */
 export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>, planned?: HeavyPlanned): Promise<T> => {
     const rules = loadHeavyRules()
-    // A planned test runner's workers inherit the worker heap; its parent's own heap goes on its command line (hfs.ts), which node reads after NODE_OPTIONS.
-    const env = { ...options.env, [HEAVY_HELD_ENV]: "1", NODE_OPTIONS: nodeOptions(rules, kind, options.env, planned?.workerMb ?? planned?.memoryMb) }
+    // A planned child runs under its planned heap. Jest's workers inherit their parent's heap flags (jest-worker forks with the parent's execArgv and
+    // environment), so a worker's planned heap sizes the worker count and what admission holds, never a cap of its own.
+    const env = { ...options.env, [HEAVY_HELD_ENV]: "1", NODE_OPTIONS: nodeOptions(rules, kind, options.env, planned?.memoryMb) }
     // The kind's own budget (an install sized for a cold npm ci) replaces the caller's; it runs from the child's spawn, which
     // comes after admission, so time in the queue never counts against it.
     const budget = heavyTimeoutMinutes(rules, kind, options.files)

@@ -802,6 +802,16 @@ rulings:
     status: live
     ruling: "Message catalogs are excluded from copy-paste detection only; they stay linted and held to every other rule."
     owner: "policy (sonar configuration of the app template)"
+  - id: memory-plan
+    date: '2026-11-05'
+    status: live
+    ruling: "app check sizes its heaps from the app it judges, not one figure per kind: before the families run it measures the app from its git index and file sizes (per side the unit specs and sources, the MB of the coverage records and of every cache record) and plans the check's parent heap (re-executing itself under it when node's limit is lower), each side's coverage parent, worker heap and worker count, each tsc program's heap, the CI build steps' heap and the lint ratchet's chunk, with the constants fitted on Nivo in ops/liveness.yaml heavy.plan. Admission holds each planned child at its planned MB. A sampled peak more than 20% over its plan raises that kind's factor for the app's next run (.starciwork/memory-factors.json), never lowering one; an out-of-memory names the plan in force. The per-spec coverage records are held as their lines and folded through the preset's merge one at a time. Owner, 2026-11-05 (RAM-SIZING)."
+    owner: "cli/src/harness/memory-plan.ts; ops/liveness.yaml heavy.plan; packages/hfs/cache/jsonl.mts (lazyRecord); packages/hfs/cache/test-family.mts (unionOfRecords); contexts/project/check-cache.md#the-memory-plan"
+  - id: ci-parity
+    date: '2026-11-05'
+    status: live
+    ruling: "A green pre-push gate is not followed by a red CI on a step that needs no database: app check --fresh runs the build and audit families, which read their commands from the app's rendered .github/workflows/ci.yml (the production dependency audit, the typecheck script, npm run build:be and each build fe step, next build per front-end app with its own SWC cache root), and CI's coverage step on the lcov the test family merged; a failed step is CI_PARITY_STEP_FAILED (R383). db:lint and app db drift need a database and stay CI-only. Owner, 2026-11-05."
+    owner: "packages/hfs/cache/parity-family.mts; packages/hfs/src/main.mts (PARITY_FAMILIES); contexts/project/check-cache.md#ci-parity"
   - id: release-only-what-changed
     date: '2026-11-05'
     status: live

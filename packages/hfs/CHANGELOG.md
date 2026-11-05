@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.13.1 - 2026-11-05
+
+- Added (release 7c.9b, decision ci-parity, R383): `starci app check --fresh`, the pre-push gate, also runs the `build` and `audit` families (`cache/parity-family.mts`), which read their commands from the app's rendered `.github/workflows/ci.yml`: the production dependency audit, the `typecheck` script, `npm run build:be` and each `build fe` step (a `next build` per front-end app, with its own SWC cache root, LOCALAPPDATA and XDG_CACHE_HOME under the app's tool cache), and CI's coverage step (`app coverage verify`) on the lcov the test family merged. A failed step is `CI_PARITY_STEP_FAILED`. `--gate build` and `--gate audit` run them alone. `db:lint` and `app db drift` stay CI-only (they need a database).
+- Changed (decision memory-plan): the per-spec coverage records are held as their lines and parsed only when read (`lazyRecord` in `cache/jsonl.mts`, written back as the bytes they were), the session dedupes records by a line's digest, the union of the records folds through the preset's `mergeSourceCoverage` one record at a time (`unionOfRecords`), and a fresh run's records and the reporter's files are held the same way, so the check's parent holds about three times the records' MB instead of seven (`check-cache-streaming.spec.mts`: 80 MB of records read and written back under a 400 MB heap their parsed tree outgrows). `app coverage merge --records` streams the same way.
+- Added: the memory plan starci-harness hands over (`STARCI_MEMORY_PLAN`, `runtime/scripts/api/node/memory-plan.mts`) sets the lint ratchet's chunk, is named by an out-of-memory (`incompleteReason`, `JEST_RUNNER_DIED`) and is kept in the run log. Without one nothing changes.
+- A patch: the runtime the canons read (`runtime/*` under their `~5.13.0` peer) changed compatibly, so the canons and the Grammar family are not released.
+
 ## 5.13.0 - 2026-11-05
 
 - Changed (release 7c.9a, decision release-only-what-changed): the canons and the Grammar lint family read this package's runtime (`runtime/*`, exported) at run time and peer it by `~5.13.0`; the canon pins give the two canons a same-minor `range` as the Grammar family has, and R15 accepts an exact app pin inside it. `@starci/hfs` itself stays exact for apps.

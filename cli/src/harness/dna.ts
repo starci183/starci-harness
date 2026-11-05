@@ -48,6 +48,7 @@ export type DnaLiteral = string | number | boolean
 /** A value as the contract writes it, before the page resolves it. */
 export type DnaValue =
     | DnaLiteral
+    | readonly DnaLiteral[]
     | { readonly token: string }
     | { readonly threshold: string }
     | { readonly vendor: { readonly component: string; readonly props: Readonly<Record<string, DnaLiteral>>; readonly metric: string | readonly string[] } }
@@ -63,6 +64,8 @@ const literalSchema = z.union([z.string(), z.number(), z.boolean()])
 const valueSchema: z.ZodType<DnaValue> = z.lazy(() =>
     z.union([
         literalSchema,
+        // One literal per metric, in the metric list's order (`metric: [width, height], value: [113px, 40px]`).
+        z.array(literalSchema).min(1),
         z.strictObject({ token: z.string().regex(/^--[\w-]+$/) }),
         z.strictObject({ threshold: z.string().min(1) }),
         z.strictObject({ vendor: z.strictObject({ component: z.string().min(1), props: z.record(z.string(), literalSchema), metric: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]) }) }),
@@ -78,7 +81,10 @@ const valueSchema: z.ZodType<DnaValue> = z.lazy(() =>
 const metricSchema = z.union([z.string().min(1), z.array(z.string().min(1)).min(1), z.strictObject({ contract: z.string().min(1) })])
 const opSchema = z.enum(DNA_OPS)
 
-const checkSchema = z.strictObject({ metric: metricSchema, op: opSchema, value: valueSchema })
+// A check states its value, except `set`, which asks only that the metric holds one (the app-tone law: each of a custom tone's four tokens is set).
+const checkSchema = z
+    .strictObject({ metric: metricSchema, op: opSchema, value: valueSchema.optional() })
+    .refine((check) => check.op === "set" || check.value !== undefined, { message: "a check other than `set` states its value" })
 
 const contextSchema = z.strictObject({
     pointer: z.enum(["coarse", "fine"]).optional(),

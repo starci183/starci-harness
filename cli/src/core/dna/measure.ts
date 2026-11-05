@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import type { DnaBreak, DnaPart, DnaScalar, DnaVariant, DnaValue, DnaWhere } from "../../harness/dna.js"
+import type { DnaBreak, DnaLiteral, DnaPart, DnaScalar, DnaVariant, DnaValue, DnaWhere } from "../../harness/dna.js"
 
 /*
  * The page side of `starci dna check`: a self-contained function the browser runs (its source is sent over the DevTools protocol),
@@ -507,9 +507,12 @@ export const installProbe = (judgePart: Judge): void => {
         return { alternatives: [readAll(reference, "style", names, null)] }
     }
 
+    const isLiteralList = (value: DnaValue): value is readonly DnaLiteral[] => Array.isArray(value)
     const resolve = (anchor: Element, value: DnaValue | undefined, metrics: readonly string[], context: { readonly scope: Element | null; readonly rows: number; readonly beforeKey: string }): Resolved => {
         if (value === undefined) return { alternatives: [] }
         if (typeof value !== "object") return { alternatives: [[canon(value)]] }
+        // One literal per metric: the metrics read in order against them.
+        if (isLiteralList(value)) return { alternatives: [value.map((item) => canon(item))] }
         if ("token" in value) {
             const resolved = metrics.map((metric) => resolveToken(anchor, value.token, metric))
             return resolved.includes(null) ? { skip: `${value.token} is not set where the element is` } : { alternatives: [resolved] }

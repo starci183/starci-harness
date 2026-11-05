@@ -380,3 +380,14 @@ goes to [contexts/decisions/rulings.yaml](../decisions/rulings.yaml) instead.
   copy, which an exact pin equal to the CLI's requirement guarantees; the CLI keeps its exact requirement. The canons' TypeScript keeps its own
   declarations of that runtime through tsconfig paths, read through the canon's HfsView type (`cli/src/core/release/publish.ts`,
   `packages/eslint-canon-*/src/lib/*root.ts`, [packages/README.md](../../packages/README.md)).
+- **The check plans its memory from the app (`memory-plan`).** The owner, 2026-11-05: one heap per kind was wrong at both ends, a tiny app held a 12 GB
+  coverage parent and Nivo's parent died on 494 MB of coverage records at node's default heap. `app check` now measures the app (specs and sources per
+  side, the record MB) and sizes each heap with constants fitted on Nivo's runs (ops/liveness.yaml heavy.plan), holds each planned child at its planned MB
+  in admission, learns a factor when a child's peak runs over its plan, and names the plan on an out-of-memory. The coverage records are held as their
+  lines (a lazy record) and folded through the preset's merge one at a time, so the parent holds about three times their MB instead of seven. The CLI
+  measures and plans, and hands the plan to @starci/hfs through STARCI_MEMORY_PLAN, so a CLI never needs a newer hfs to plan
+  ([check-cache.md](../project/check-cache.md#the-memory-plan)).
+- **The pre-push gate runs CI's own steps (`ci-parity`).** The owner, 2026-11-05: main CI went red on a landing `next build` after a green local
+  `--fresh`. The build and audit families read the commands of the app's rendered workflow, never restate them, and run whole in the pre-push gate,
+  a build with its own SWC cache root (the Windows hardened-loader refusal of %LOCALAPPDATA%\swc); CI's coverage step runs on the merged lcov. The
+  database steps stay CI-only (R383, [check-cache.md](../project/check-cache.md#ci-parity)).
