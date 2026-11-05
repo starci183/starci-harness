@@ -32,15 +32,15 @@ async function probe(t: TestContext, argv: string[]) {
   return { code, err, calls, files: fs.readdirSync(root) };
 }
 
-test('all ten public gate choices retain the nine existing core families', async (t) => {
-  assert.deepEqual(FAMILIES, ['hfs', 'format', 'db', 'secrets', 'wiring', 'types', 'lint', 'test', 'sonar']);
-  assert.deepEqual(DEFAULT_FAMILIES, FAMILIES);
+test('the public gate choices retain the nine core families a plain check runs, and the CI parity families only the pre-push gate adds', async (t) => {
+  assert.deepEqual(FAMILIES, ['hfs', 'format', 'db', 'secrets', 'wiring', 'types', 'lint', 'test', 'sonar', 'build', 'audit']);
+  assert.deepEqual(DEFAULT_FAMILIES, FAMILIES.filter((family) => family !== 'build' && family !== 'audit'));
   const result = await probe(t, []);
   assert.equal(result.code, 2);
   assert.match(result.err, new RegExp(PROBE));
-  assert.deepEqual(result.calls, [{ selected: [...FAMILIES], full: null }]);
+  assert.deepEqual(result.calls, [{ selected: [...DEFAULT_FAMILIES], full: null }]);
   const lines = USAGE.split('\n').filter((line) => line.startsWith('starci app check '));
-  assert.ok(lines.some((line) => line.includes('[--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov>]...')));
+  assert.ok(lines.some((line) => line.includes('[--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|build|audit|codecov>]...')));
   assert.ok(lines.some((line) => line.includes('[--no-cache]')));
   for (const old of [...FAMILIES.map((gate) => `--${gate}`), '--full']) assert.ok(lines.every((line) => !line.includes(`[${old}]`)), old);
 });
@@ -59,7 +59,7 @@ test('--no-cache forces exactly the selected gates without changing the normal c
   const selected = await probe(t, ['--gate', 'format', '--gate=format', '--no-cache']);
   assert.deepEqual(selected.calls, [{ selected: ['format'], full: ['format'] }]);
   const every = await probe(t, ['--no-cache']);
-  assert.deepEqual(every.calls, [{ selected: [...FAMILIES], full: [...FAMILIES] }]);
+  assert.deepEqual(every.calls, [{ selected: [...DEFAULT_FAMILIES], full: [...DEFAULT_FAMILIES] }]);
 });
 
 test('missing, empty, unknown and retired selectors refuse before a check or cache write', async (t) => {

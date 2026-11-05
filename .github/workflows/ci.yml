@@ -233,6 +233,10 @@ jobs:
       - name: Build the CLI
         working-directory: cli
         run: npm run build
+      # The CLI's own tests (node --test over the built tests): a red one blocks publish-cli and publish-packages, which need this job.
+      - name: Test the CLI
+        working-directory: cli
+        run: node --test --test-concurrency=2 "dist/**/*.test.js"
 
   # The desktop app typechecks against cli/src/core/ui/contract.ts and installs packages/grammar as a file: copy, built first;
   # its bundles are built by .github/workflows/app.yml.
