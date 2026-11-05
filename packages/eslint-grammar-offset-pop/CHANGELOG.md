@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.1 - 2026-11-05
+
+- Changed: version stamp, with `@starci/grammar` 0.23.1; requires `@starci/eslint-grammar-core` 0.23.1 (0.23.0 of the family's lint packages never reached npm).
+
 ## 0.23.0 - 2026-11-05
 
 - Changed: version stamp, with `@starci/grammar` 0.23.0; requires `@starci/eslint-grammar-core` 0.23.0. It bundles no runtime copy (it read none).

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.1 - 2026-11-05
+
+- Changed: version stamp, with `@starci/grammar` 0.23.1 (the family publishes as one; 0.23.0 of this package never reached npm). The version spec reads the canon-fe peer as its same-minor range.
+
 ## 0.23.0 - 2026-11-05
 
 - Changed: with `@starci/grammar` 0.23.0; requires `@starci/eslint-canon-fe` `~9.15.0` and peers `@starci/hfs` `~5.13.0`, whose runtime it reads at run time instead of a bundled copy (decision release-only-what-changed); `runtime/` keeps only the knowledge it cites.

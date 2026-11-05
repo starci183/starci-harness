@@ -1,8 +1,11 @@
 # Changelog
 
-## 0.23.0 - 2026-11-05
+## 0.23.1 - 2026-11-05
 
 - Changed: `GrammarToneRegistry` lives in `src/common/tone-registry.ts`, a module that imports nothing, and `@starci/grammar/common` re-exports it (an app still augments `"@starci/grammar/common"`), so a component that reads the app's tones no longer reaches the common entry's renderers (FE_GRAMMAR_TIER_DIRECTION).
+
+## 0.23.0 - 2026-11-05
+
 - Added (R4-22, batch 12): `BubbleMapNode.caption` (the name inside a bubble) now wraps to two lines and its type scales with the disc until the longest word fits, and `BubbleMapNode.detail` is one small line under it (a count); both sit in a block 70% of the disc wide, inside its inscribed square, and are never cut. `mark` stays at 4 characters. Laws `DNA-COMMON-BUBBLE-TEXT-INSIDE-START`, `-END`, story `BubbleNames`.
 - Added (R4-27, batch 12): `PaneSection rule="start"`: a hairline (`--separator`) on the block-start edge of the band, for a pinned decision bar or footer. Law `DNA-COMMON-PANE-SECTION-RULE`, story `PaneFooterRule`.
 - Added (R3-48 listing tile): `TileData.byline` (a muted small line under the name, beside the mark), `TileData.facts` takes `string | readonly string[]` (one muted line each), `TileData.figure` (one plain bold value at the start of the action row, the action and menu at its end, one line; a tile with a `figure` has no single `badge`). Loading draws the same box. Laws `DNA-COMMON-TILE-BYLINE`, `-FIGURE-START`, `-FIGURE-BEFORE-ACTION`, story `TileByline`.

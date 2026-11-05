@@ -4,7 +4,7 @@
 
 - Changed (release 7c.9a, decision release-only-what-changed): the canons and the Grammar lint family read this package's runtime (`runtime/*`, exported) at run time and peer it by `~5.13.0`; the canon pins give the two canons a same-minor `range` as the Grammar family has, and R15 accepts an exact app pin inside it. `@starci/hfs` itself stays exact for apps.
 - Fixed: the db records key on the blob ids of their inputs at the merge-base (`baseInputs`), and the Sonar and Codecov baselines on the digest of the base's tree outside the cache folder (`baseContent`), never on its sha: a cache commit or a merge of unrelated work rewrites none of check/db, sonar-baseline and codecov-baseline. Spec: `check-cache-base-keys.spec.mts`.
-- Changed: the canon pins name this release, eslint-canon-be 3.19.0, eslint-canon-fe 9.15.0 and the Grammar family 0.23.0.
+- Changed: the canon pins name this release, eslint-canon-be 3.19.0, eslint-canon-fe 9.15.0 and the Grammar family 0.23.1 (its 0.23.0 reached npm for @starci/grammar alone).
 
 ## 5.12.0 - 2026-11-05
 
