@@ -85,6 +85,16 @@ type GuideData = {
 /** The longest mark a bubble draws, in characters. */
 const MARK_LENGTH = 4
 
+/**
+ * How many em of width the text of a bubble needs: the longest word, or half the caption (it wraps to two lines, with a little waste), or the
+ * detail at its smaller size. The stylesheet divides the disc's text width by it, so the type shrinks until the text fits and is never cut.
+ */
+const captionFit = (caption: string, detail: string): number => {
+    const longest = Math.max(1, ...caption.split(/\s+/).map((word) => [...word].length))
+    const half = Math.ceil([...caption].length / 2) * 1.15
+    return Math.max(longest, half, [...detail].length * 0.85)
+}
+
 /** The token each ring arc and bubble tone paints from. */
 const TONE_PAINT: Readonly<Record<string, string>> = {
     neutral: "var(--muted)",
@@ -126,7 +136,12 @@ const BubbleMapNodeView = memo(({ data }: NodeProps<Node<NodeData>>) => {
     const content = isBubble ? (
         <span className="starci-core-flow-graph-disc">
             {mark === undefined || mark === "" ? null : <span className="starci-core-flow-graph-mark">{mark}</span>}
-            {graphNode.caption === undefined || graphNode.caption === "" ? null : <span className="starci-core-flow-graph-caption">{graphNode.caption}</span>}
+            {(graphNode.caption ?? "") === "" && (graphNode.detail ?? "") === "" ? null : (
+                <span className="starci-core-flow-graph-text" style={{ "--starci-flow-fit": captionFit(graphNode.caption ?? "", graphNode.detail ?? "") } as CSSProperties}>
+                    {(graphNode.caption ?? "") === "" ? null : <span className="starci-core-flow-graph-caption">{graphNode.caption}</span>}
+                    {(graphNode.detail ?? "") === "" ? null : <span className="starci-core-flow-graph-detail">{graphNode.detail}</span>}
+                </span>
+            )}
         </span>
     ) : (
         <>

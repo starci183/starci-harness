@@ -2812,6 +2812,9 @@
     .starci-core-pane-section[data-grammar-pane-section-gap="inline"] { gap: var(--grammar-inline-gap); }
     .starci-core-pane-section[data-grammar-pane-section-gap="section"] { gap: var(--grammar-section-gap); }
 
+    /* rule="start": a hairline across the block-start edge of the band (R4-27, a pinned decision bar). */
+    .starci-core-pane-section[data-grammar-pane-section-rule="start"] { border-block-start: 1px solid var(--separator); }
+
     .starci-core-pane-section[data-grammar-pane-section-grow="true"] {
         min-height: 0;
         flex: 1 1 0%;

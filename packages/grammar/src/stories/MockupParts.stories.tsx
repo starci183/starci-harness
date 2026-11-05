@@ -435,3 +435,41 @@ export const TileByline: Story = {
         </Matrix>
     ),
 }
+
+/** A pinned decision bar with a hairline on its top edge (DNA-COMMON-PANE-SECTION-RULE). */
+export const PaneFooterRule: Story = {
+    render: () => (
+        <div style={{ height: "16rem", display: "flex" }}>
+            <G.PaneGrid label="Public" areas={["main"]} columns={["fill"]}>
+                <G.Pane area="main" surface label="Document">
+                    <G.PaneSection grow scroll={{ label: "Document" }}><G.Text>The open public document.</G.Text></G.PaneSection>
+                    <G.PaneSection as="footer" rule="start">
+                        <G.Cluster gap="inline" justify="end" label="Decisions">
+                            <G.Button intent="dismiss" onPress={noop}>Later</G.Button>
+                            <G.Button intent="alternative" onPress={noop}>Rewrite</G.Button>
+                            <G.Button intent="commit" onPress={noop}>Approve and publish</G.Button>
+                        </G.Cluster>
+                    </G.PaneSection>
+                </G.Pane>
+            </G.PaneGrid>
+        </div>
+    ),
+}
+
+const nameNodes: ReadonlyArray<G.BubbleMapNode> = [
+    { id: "root", label: "NIVO", form: "bubble", mark: "NIVO", diameter: 96, isRoot: true },
+    { id: "legal", label: "Legal", form: "bubble", caption: "Legal", detail: "3 files", diameter: 64 },
+    { id: "premises", label: "Premises", form: "bubble", caption: "Premises", detail: "12 files", diameter: 80 },
+    { id: "prices", label: "Price list and menu", form: "bubble", caption: "Price list and menu", detail: "8 files", diameter: 104 },
+    { id: "labour", label: "Labour contracts", form: "bubble", caption: "Labour contracts and policies", detail: "21 files", diameter: 128 },
+]
+const nameEdges: ReadonlyArray<G.BubbleMapEdge> = nameNodes.slice(1).map((node) => ({ id: `root-${node.id}`, source: "root", target: node.id }))
+
+/** A category bubble prints its name and a count line inside the disc, whatever the name's length, never cut (DNA-COMMON-BUBBLE-TEXT-INSIDE). */
+export const BubbleNames: Story = {
+    render: () => (
+        <div data-story-bubble-names="true">
+            <G.BubbleMap label="Dossier categories" nodes={nameNodes} edges={nameEdges} fit="contain" height="30rem" />
+        </div>
+    ),
+}

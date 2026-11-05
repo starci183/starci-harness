@@ -30,6 +30,8 @@ export type PaneSectionProps = {
     /** Gap between its own children. Default `row`. */
     readonly gap?: "inline" | "row" | "section"
     readonly as?: "div" | "header" | "footer"
+    /** `start`: a hairline on the block-start edge, for a pinned decision bar or footer that the content above must not run into. */
+    readonly rule?: "start"
     /**
      * The first read of this band has no data yet (knowledge STATE-8). The band is `aria-busy` and tells every Grammar component
      * inside it (`Section`, `SurfaceCard`, `ListBox`, `Timeline`, `DataTable`, `MessageBubble`) to draw its loading structure, so
@@ -46,7 +48,7 @@ export type PaneSectionProps = {
  * full-bleed scroll owner and the inset sits on its content, so the scrollbar stays on the pane edge. A section outside
  * a Pane throws `PANE_SECTION_OUTSIDE_PANE`.
  */
-export const PaneSection = ({ children: content, grow = false, scroll, align = "start", bleed, gap = "row", as = "div", isLoading: ownLoading, error }: PaneSectionProps) => {
+export const PaneSection = ({ children: content, grow = false, scroll, align = "start", bleed, gap = "row", as = "div", rule, isLoading: ownLoading, error }: PaneSectionProps) => {
     const pane = usePaneContext()
     const isLoading = useIsLoading(ownLoading)
     const children = !isLoading && error !== undefined ? <ErrorView error={error} /> : <LoadingScope isLoading={isLoading}>{content}</LoadingScope>
@@ -58,6 +60,7 @@ export const PaneSection = ({ children: content, grow = false, scroll, align = "
         "data-grammar-pane-section-align": align,
         "data-grammar-pane-section-gap": gap,
         "data-grammar-pane-section-bleed": bleed,
+        "data-grammar-pane-section-rule": rule,
         "data-grammar-pane-section-grow": grow || scroll !== undefined ? "true" : undefined,
         "aria-busy": isLoading ? true : undefined,
         "data-grammar-loading-region": isLoading ? "true" : undefined,

@@ -18,8 +18,13 @@ export type BubbleMapNode = Omit<FlowGraphNode, "kind" | "position"> & {
     readonly form?: BubbleMapNodeForm
     /** The text inside a bubble, at most 4 characters (`02`, `PDF`); longer text is cut to 4. Hidden under zoom 0.5. */
     readonly mark?: string
-    /** A second line inside a large bubble. Hidden under zoom 0.42. */
+    /**
+     * The name inside a bubble, whatever its length: it wraps to two lines and its type scales with the disc, so it is never cut ("Bang gia va menu").
+     * Hidden under zoom 0.42.
+     */
     readonly caption?: string
+    /** One small line under the caption (a count: "3 hoso"), scaled with it and never cut. Hidden with the caption. */
+    readonly detail?: string
     /** The bubble width in graph units, 24 to 128 (default 48). Size it with `bubbleDiameter(value, max)` so area tracks value. */
     readonly diameter?: number
     /** The paint of the node beyond its tone. Defaults to `soft` for a bubble. */

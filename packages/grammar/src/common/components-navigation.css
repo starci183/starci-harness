@@ -2065,11 +2065,33 @@
         font-weight: var(--grammar-weight-semibold);
         line-height: var(--grammar-leading-tight);
     }
-    .starci-core-flow-graph-mark,
-    .starci-core-flow-graph-caption { display: block; max-inline-size: 100%; overflow: hidden; text-overflow: clip; white-space: nowrap; }
-    .starci-core-flow-graph-caption { font-weight: var(--grammar-weight-medium); }
+    .starci-core-flow-graph-mark { display: block; max-inline-size: 100%; overflow: hidden; text-overflow: clip; white-space: nowrap; }
+    /*
+     * The name and the count inside a bubble (R4-22): a block 70% of the disc wide, which sits inside the disc's inscribed square, so the
+     * round clip never touches it. The type is the map's small size at most, shrinking until the longest word fits the block, the caption
+     * fits two lines and the three lines fit its height (--starci-flow-fit, in em, is computed from the text); it wraps and is never cut.
+     */
+    .starci-core-flow-graph-text {
+        --starci-flow-text-share: 0.7;
+        --starci-flow-em-per-char: 0.62;
+        --starci-flow-height-share: 0.18;
+        --starci-flow-detail-scale: 0.85;
+        display: block;
+        inline-size: calc(var(--starci-flow-diameter) * var(--starci-flow-text-share));
+        max-inline-size: 100%;
+        --starci-flow-text-size: min(
+            calc(var(--grammar-text-xs) / var(--starci-flow-zoom)),
+            calc(var(--starci-flow-diameter) * var(--starci-flow-text-share) / (var(--starci-flow-fit) * var(--starci-flow-em-per-char))),
+            calc(var(--starci-flow-diameter) * var(--starci-flow-height-share))
+        );
+        font-size: var(--starci-flow-text-size);
+        overflow-wrap: anywhere;
+        text-wrap: balance;
+    }
+    .starci-core-flow-graph-caption { display: block; font-weight: var(--grammar-weight-medium); }
+    .starci-core-flow-graph-detail { display: block; font-size: calc(var(--starci-flow-text-size) * var(--starci-flow-detail-scale)); font-weight: var(--grammar-weight-regular); }
     .starci-core-flow-graph[data-grammar-flow-mark="off"] .starci-core-flow-graph-mark,
-    .starci-core-flow-graph[data-grammar-flow-caption="off"] .starci-core-flow-graph-caption { display: none; }
+    .starci-core-flow-graph[data-grammar-flow-caption="off"] .starci-core-flow-graph-text { display: none; }
     .starci-core-flow-graph-node[data-form="bubble"][data-root="true"] { --starci-flow-base: var(--foreground); --starci-flow-on-base: var(--surface); }
 
     /* A status never rests on colour alone: the fill is its form. */
