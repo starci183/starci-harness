@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.74 - 2026-11-05
+
+- Added (decision grammar-patch-range): `starci release publish` and `starci release push` refuse `RELEASE_GRAMMAR_MINOR_REQUIRED` when `@starci/grammar` is due at a patch of the version npm serves while the diff since that version holds a minor's change (a lint rule of the family, a removed export or readonly prop, a removed DNA law id, a deprecated or forbidden entry), `cli/src/core/release/grammar-bump.ts`. The sibling judgement of the publish plan and `starci check pins` read a same-minor range (`~x.y.z`) as met by any patch of it (`cli/src/core/release/pin-range.ts`). Tests: `grammar-bump.test.ts`.
+
 ## 1.1.0-alpha.73 - 2026-11-05
 
 - Fixed: `starci deps source --local` no longer fails with DEPS_MANIFEST_UNREADABLE on the handlebars `package.json` templates of `@starci/hfs` (`templates/**`): a `package.json` under `templates/` is a template, not a manifest (`cli/src/core/deps/packages.ts`, spec `packages.test.ts`).
