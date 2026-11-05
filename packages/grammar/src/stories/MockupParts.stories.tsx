@@ -343,3 +343,19 @@ export const LinkAccentOnEveryGround: Story = {
         </Matrix>
     ),
 }
+
+/** An empty or no-selection notice stands at the top of its region, not centred in it (DNA-COMMON-EMPTY-NOTICE-TOP). */
+export const EmptyNoticeAtTop: Story = {
+    render: () => (
+        <div data-story-empty-top="true" style={{ height: "22rem", display: "flex" }}>
+            <G.PaneGrid label="Inbox" areas={["list main"]} columns={["wide", "fill"]}>
+                <G.Pane area="list" surface label="List">
+                    <G.PaneSection grow><G.EmptyNotice message="Nothing here yet" description="New messages appear in this list." /></G.PaneSection>
+                </G.Pane>
+                <G.Pane area="main" label="Main">
+                    <G.PaneSection grow><G.EmptyNotice message="Choose an item" description="Pick a row on the left to read it." /></G.PaneSection>
+                </G.Pane>
+            </G.PaneGrid>
+        </div>
+    ),
+}

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Checked (item 20d, approved): the Grammar draws no vertical centring of `EmptyNotice` (a content-height column with 24px inset, text centred across, as 2-inbox.empty and 2-inbox.noselection draw it); a notice that reads centred in a pane is app CSS (FE-CSS-1 refuses it). Guarded by law `DNA-COMMON-EMPTY-NOTICE-TOP`, story `EmptyNoticeAtTop`.
 - Changed (item 20b, approved): a text `Link` is the accent as text, still underlined: `--accent-soft-foreground`, not the raw `--accent`, which measures 3.2 to 4.3 against the page ground, the secondary and tertiary surfaces and the dark surfaces of the Nivo theme (below 4.5); the soft foreground is 6.1 to 8.6 on all of them, light and dark. Law `DNA-COMMON-LINK-ACCENT-TEXT`, story `LinkAccentOnEveryGround`.
 - Changed (item 20a, approved): the `alternative` button is the outlined pill (hairline border, `--default-foreground` words) in every placement in Core, as System.html draws the secondary command; it was the grey `--default` fill. `neutral` is unchanged (outline in decision and item, bare in chrome). Buttons carry `data-grammar-intent`. Law `DNA-COMMON-BUTTON-ALTERNATIVE-OUTLINE` replaces `-ALTERNATIVE-INK`, story `AlternativeButtonInk`.
 - Fixed: a `Select` without `placeholder` no longer shows the vendor's English "Select an item" (the Grammar speaks no language of its own): the trigger shows an empty, sized value; pass `placeholder` in the app's language. Law `DNA-COMMON-SELECT-NO-VENDOR-ENGLISH`, story `SelectWithoutPlaceholder`.

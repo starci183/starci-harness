@@ -349,7 +349,7 @@ roles:
     sizes: none
     states: [action-pending]
     grammarMayChange: [glyph and text paint]
-    dna: [DNA-COMMON-EMPTY-ONE-ACTION]
+    dna: [DNA-COMMON-EMPTY-ONE-ACTION, DNA-COMMON-EMPTY-NOTICE-TOP]
     provenance: "the artwork's assetSlot is a required field of EmptyNoticeArtwork (the compiler holds it; lint R338 holds it on a written Mascot)"
 
   - id: avatar
@@ -1239,6 +1239,11 @@ mustKeep:
       law: "A text link is the accent as text on a ground (--accent-soft-foreground, the token that holds contrast on every Nivo ground in light and dark), underlined."
       measure: { kind: style, select: '[data-component="Link"][data-grammar-link-content="text"]:not([data-grammar-current="true"]):not([aria-disabled="true"])', checks: [{ metric: color, op: "=", value: { token: --accent-soft-foreground } }] }
       owner: contract roles.link
+    - id: DNA-COMMON-EMPTY-NOTICE-TOP
+      role: empty-state
+      law: "An empty or no-selection notice in a growing pane section stands at the top of it (its own inset below the section edge), never centred in the free space; the text stays centred across, as the artboards draw it."
+      measure: { kind: relation, select: '[data-story-empty-top] .starci-core-empty-notice', metric: top, op: "<=", tolerance: 40, ref: { within: '[data-component="PaneSection"]', select: self, metric: top } }
+      owner: contract roles.empty-state
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.
