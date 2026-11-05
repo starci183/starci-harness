@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.11.1 - 2026-11-05
+
+- Changed: the canon pins name the Grammar family 0.21.36 (the Pane drawer fix) and this release.
+
 ## 5.11.0 - 2026-11-05
 
 - Added (release 7c.6, decision app-rule-packs, PROJECT-LINT-3): rule packs. `hfs.json` `rulePacks` names installed packages that export `./rule-pack`, a `starci/rule-pack@1` manifest (`runtime/scripts/lib/rule-packs.mjs`) whose every rule carries an id, a finding code, a severity (error or warning), its spec and its doc, and exactly one engine: `check`, a machine rule the app check runs over the tracked files as an hfs finding under the pack's code, or `eslint`, a rule the canon factories load for the sides it names. A pack only adds: an extra key (`off`, `overrides`), a harness code, a duplicate id or code, a rule that throws or a finding without a path refuses the whole pack (R381 `HFS_RULE_PACK_INVALID`), and the lint factories throw on a refused pack. R16's law names the packs as the one way an app adds a lint rule.

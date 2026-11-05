@@ -1,8 +1,11 @@
 # Changelog
 
-## 0.21.35 - 2026-11-05
+## 0.21.36 - 2026-11-05
 
 - Fixed: a `Pane collapse="drawer"` opened as a drawer rendered unstyled (no section gaps, row spacing or text sizes) because it was portalled into the document body, outside the Grammar root that carries every family rule and token. It now portals into the nearest Grammar root like every other overlay. DNA laws `DNA-COMMON-PANE-DRAWER-SPACING` and `DNA-COMMON-PANE-DRAWER-SECTION-GAP` measure it (story `PaneDrawerSpacing`).
+
+## 0.21.35 - 2026-11-05
+
 - Added: `ItemAction.isPrimary` (with `intent="commit"`): a row or tile command that is the region's one primary draws as the filled accent button, not the outlined item pill; at most one per region, counted by `DNA-COMMON-ONE-ACCENT-FILL`. Changed: below 30rem an `Alert` button action stacks under the text, full width, in its tone's intent (the dismiss stays beside the text).
 - Fixed: a loading `RadioGroup` and `CheckboxGroup` draw their option labels and descriptions (data) as geometry of their own text; only the group label stays real.
 - Added: `Calendar width="fill"` (the month takes its container's width; tracks share it, day cells stay centred); `ChoiceChips selectionMode="multiple"` with `values`, `defaultValues`, `onValuesChange` (any number of chips, none allowed); `Button width="fill-narrow"` (content width on a wide screen, full width below 30rem).
