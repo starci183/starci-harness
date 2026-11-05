@@ -183,8 +183,8 @@ export const buildPlainSourceConfig = ({ root, plugin, hooks, reactHooks, tsPlug
   ]
 }
 
-/** The front-end subpaths of a root workspace package: its workbench (drawn with Grammar) and its public face; the React-free workbench contract stays back end. */
-export const PACKAGE_SOURCE_FILES = Object.freeze(["packages/*/src/workbench/**/*.{ts,tsx}", "packages/*/src/public/**/*.{ts,tsx}"])
+/** The front-end files of a root workspace package: its workbench (drawn with Grammar) and its public face, and every `.tsx` file of the package source wherever it sits (a `src/client/` renderer is drawn too: FE-PACKAGES-2); the React-free workbench contract stays back end. */
+export const PACKAGE_SOURCE_FILES = Object.freeze(["packages/*/src/workbench/**/*.{ts,tsx}", "packages/*/src/public/**/*.{ts,tsx}", "packages/*/src/**/*.tsx"])
 const PACKAGE_CONTRACT = Object.freeze(["packages/*/src/workbench/contract/**"])
 /** What a package folder never lints: installed packages, build output, generated wire types. */
 export const PACKAGE_IGNORED = Object.freeze(["**/node_modules/**", "**/.next/**", "**/dist/**", "**/coverage/**", "**/__generated__/**"])

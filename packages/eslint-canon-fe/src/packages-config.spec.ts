@@ -50,7 +50,7 @@ test("the config narrows the files to the front-end subpaths of the packages and
       assert.deepEqual(block.files, [...PACKAGE_SOURCE_FILES])
       assert.ok((block.ignores ?? []).includes("packages/*/src/workbench/contract/**"))
     }
-    assert.deepEqual(PACKAGE_SOURCE_FILES, ["packages/*/src/workbench/**/*.{ts,tsx}", "packages/*/src/public/**/*.{ts,tsx}"])
+    assert.deepEqual(PACKAGE_SOURCE_FILES, ["packages/*/src/workbench/**/*.{ts,tsx}", "packages/*/src/public/**/*.{ts,tsx}", "packages/*/src/**/*.tsx"])
     const rules = scoped.find((block) => block.rules !== undefined && "starci-fe/explicit-export-surface" in block.rules)?.rules ?? {}
     assert.equal(rules["starci-fe/explicit-export-surface"], "error")
     assert.equal("starci-fe/duplicate-code" in rules, false, "the project-graph rules judge the side folders, not the packages")
@@ -109,4 +109,19 @@ test("a package's workbench declares the one result union its manifest names (st
     app.cleanup()
     bare.cleanup()
   }
+})
+
+test("a .tsx file of a package outside workbench and public (src/client/) is linted by the front-end rules, a plain .ts file there is not", () => {
+  const view = "export const total = (value: number) => value + 1\n"
+  const tsx = "export const Total = (value: number) => <span>{value}</span>\n"
+  const app = appWith({ "src/client/Badge.tsx": tsx, "src/client/helper.ts": view, "src/client/deep/inner/Card.tsx": tsx })
+  try {
+    for (const file of ["src/client/Badge.tsx", "src/client/deep/inner/Card.tsx"]) {
+      const messages = lint(app.root, app.hfs, `packages/agent-sdk/${file}`, tsx)
+      assert.doesNotMatch(messages.map((message) => message.message).join(", "), /No matching configuration/, `${file} is ignored`)
+      assert.ok(messages.some((message) => message.ruleId?.startsWith("starci-fe/")), `${file}: ${messages.map((message) => message.ruleId).join(", ")}`)
+    }
+    const plain = lint(app.root, app.hfs, "packages/agent-sdk/src/client/helper.ts", view)
+    assert.match(plain.map((message) => message.message).join(", "), /No matching configuration/, "a .ts file there is the back-end canon's")
+  } finally { app.cleanup() }
 })

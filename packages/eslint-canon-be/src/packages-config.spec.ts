@@ -57,6 +57,8 @@ test("the config narrows the files to the package source, leaving the front-end 
         }
         const ruleBlocks = scoped.filter((block) => block.rules !== undefined && "starci-be/explicit-export-surface" in block.rules)
         assert.deepEqual(ruleBlocks.map((block) => block.files), [[...PACKAGE_SOURCE_FILES], ["packages/*/src/workbench/contract/**/*.{ts,mts,cts,js,mjs,cjs}"]])
+        // every .tsx file of a package source is the front-end canon's (FE-PACKAGES-2), never the back-end canon's
+        assert.ok(PACKAGE_SOURCE_FILES.every((glob) => !glob.includes("tsx")))
         assert.ok((ruleBlocks[0]?.ignores ?? []).includes("packages/*/src/workbench/**"))
         assert.ok((ruleBlocks[0]?.ignores ?? []).includes("packages/*/src/public/**"))
         assert.equal(ruleBlocks[1]?.ignores, undefined)

@@ -67,12 +67,15 @@ test("a workbench file of a package is judged by the family rules: a Freestyle r
     "export const View = (): React.ReactElement => <Freestyle>hand drawn</Freestyle>",
     "",
   ].join("\n")
-  const app = appWith({ "src/workbench/View.tsx": text, "src/node/index.ts": "export const node: number = 1\n" })
+  const app = appWith({ "src/workbench/View.tsx": text, "src/client/Panel.tsx": text, "src/node/index.ts": "export const node: number = 1\n" })
   try {
     const linter = new Linter({ cwd: app.root, configType: "flat" })
     const config = coreGrammarPackagesConfig({ hfs: app.hfs })
     const workbench = linter.verify(text, config, { filename: join(app.root, "packages/agent-sdk/src/workbench/View.tsx") })
     assert.ok(workbench.some((message) => message.ruleId === "starci-grammar/freestyle-has-reason"), workbench.map((message) => message.ruleId).join(", "))
+    // a .tsx renderer outside workbench and public (src/client/) draws with the Grammar too (FE-PACKAGES-2)
+    const client = linter.verify(text, config, { filename: join(app.root, "packages/agent-sdk/src/client/Panel.tsx") })
+    assert.ok(client.some((message) => message.ruleId === "starci-grammar/freestyle-has-reason"), client.map((message) => message.ruleId ?? message.message).join(", "))
     const back = linter.verify("export const node: number = 1\n", config, { filename: join(app.root, "packages/agent-sdk/src/node/index.ts") })
     assert.match(back.map((message) => message.message).join("\n"), /No matching configuration/, "the back-end subpaths are not the family's")
   } finally { app.cleanup() }

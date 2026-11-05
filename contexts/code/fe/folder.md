@@ -105,7 +105,7 @@ provider and hooks over its own client (a provider draws nothing). It owns no vi
 or world lifecycle, and no component built from anything but the grammar's. A workbench package (the `src/workbench/`
 and `src/public/` subpaths of a root module package, [project/README.md](../../project/README.md) PROJECT-3) draws its
 screens with grammar components alone, and the front-end canon and the grammar lint judge those subpaths from the
-app root's managed `eslint.config.mjs` with the rules of the front end; a visual two apps share belongs to the grammar.
+app root's managed `eslint.config.mjs` with the rules of the front end, and so is every other `.tsx` file of a root package source (a `src/client/` renderer); a visual two apps share belongs to the grammar.
 
 Why: a second visual owner beside the grammar is a fork of the design system, and drawing with the grammar's own parts
 adds none.

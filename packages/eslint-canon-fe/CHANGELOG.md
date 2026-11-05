@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.15.1 - 2026-11-05
+
+- Fixed (FE-PACKAGES-2): the package config (`starciFePackagesConfig` and `scopeToPackages`, which the Grammar family's `...PackagesConfig` reads) covered only `packages/*/src/workbench/**` and `src/public/**`, and the back-end package config takes no `.tsx`, so a `.tsx` file anywhere else in a root package (a `src/client/` renderer of a block library) matched no config and was never linted. `PACKAGE_SOURCE_FILES` now also lists `packages/*/src/**/*.tsx`: every React file of a package source gets the front-end canon and the Grammar family rules, as the files of `fe/packages` do. The workbench contract stays back end; a plain `.ts` file outside the two subpaths stays the back-end canon's.
+
 ## 9.15.0 - 2026-11-05
 
 - Changed (decision release-only-what-changed): the canon reads the @starci/hfs runtime from the installed hfs at run time, which it peers by `~5.13.0`, and bundles no copy; `runtime/` keeps only the project graph rule, the jsdoc, sonar and next helpers and the package-scripts template, and the stale forks (slots 3.13.0) are gone.
