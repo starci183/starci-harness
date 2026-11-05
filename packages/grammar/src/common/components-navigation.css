@@ -838,8 +838,14 @@
      * at max-content an editor's TagGroup never wraps its chips and the folded text never wraps, so the table ran
      * past its container. It still scrolls sideways once its columns cannot shrink further.
      */
-    .starci-core-data-table:is([data-grammar-table-editors="true"], [data-grammar-table-narrow="true"]) .starci-core-data-table-content {
+    .starci-core-data-table:is([data-grammar-table-editors="true"], [data-grammar-table-narrow="true"], [data-grammar-table-fit="true"]) .starci-core-data-table-content {
         width: 100%;
+    }
+
+    /* A fitting table lets its headings and cells wrap onto further lines, so its columns can shrink to their longest word. */
+    .starci-core-data-table[data-grammar-table-fit="true"] :is(.starci-core-data-table-column, .starci-core-data-table-cell) {
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
 
     .starci-core-data-table[data-grammar-table-sticky="true"] .starci-core-data-table-header {
@@ -1312,6 +1318,9 @@
     .starci-core-disclosure-trigger {
         font-weight: var(--grammar-weight-semibold);
     }
+
+    /* The chevron first: the title follows it, left-aligned, instead of space-between pushing it to the row's end. */
+    .starci-core-disclosure[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-trigger { justify-content: flex-start; }
 
     .starci-core-disclosure-trigger[data-focus-visible="true"],
     .starci-core-generic-accordion-trigger[data-focus-visible="true"] {

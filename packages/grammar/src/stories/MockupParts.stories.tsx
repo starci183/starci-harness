@@ -233,3 +233,32 @@ export const LabelledActionRow: Story = {
         </Matrix>
     ),
 }
+
+type SeeRow = { readonly id: string; readonly knowledge: string; readonly customer: string; readonly agent: string }
+const seeColumns: ReadonlyArray<G.DataTableColumn<SeeRow>> = [
+    { id: "knowledge", label: "Knowledge", isRowHeader: true },
+    { id: "customer", label: "Customer", align: "end" },
+    { id: "agent", label: "Support agent", align: "end" },
+]
+const seeRows: ReadonlyArray<SeeRow> = [
+    { id: "r1", knowledge: "Public documents", customer: "6", agent: "6" },
+    { id: "r2", knowledge: "Internal documents", customer: "-", agent: "-" },
+    { id: "r3", knowledge: "Public facts", customer: "31", agent: "31" },
+    { id: "r4", knowledge: "Limited by the agent", customer: "-", agent: "-" },
+]
+
+/** A compact table in a narrow aside fits its pane and never clips its last column (DNA-COMMON-TABLE-NO-CLIP); the chevron-first disclosure's title follows the chevron. */
+export const CompactTableInAside: Story = {
+    render: () => (
+        <div style={{ height: "22rem", display: "flex" }}>
+            <G.PaneGrid label="Ask" areas={["main info"]} columns={["fill", "standard"]}>
+                <G.Pane area="main" label="Main"><G.PaneSection><G.Text>Main</G.Text></G.PaneSection></G.Pane>
+                <G.Pane area="info" surface label="What the agent sees">
+                    <G.PaneSection>
+                        <G.DataTable label="Customer and agent" columns={seeColumns} rows={seeRows} renderCell={(row, id) => id === "knowledge" ? row.knowledge : id === "customer" ? row.customer : row.agent} emptyContent={<G.Text>None</G.Text>} />
+                    </G.PaneSection>
+                </G.Pane>
+            </G.PaneGrid>
+        </div>
+    ),
+}

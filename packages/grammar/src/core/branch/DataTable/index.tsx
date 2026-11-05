@@ -8,6 +8,9 @@ import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
 import { useIsLoading } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 
+/** A table of this many columns or fewer fits its container (its columns shrink to their words); a wider one keeps its natural width and scrolls. */
+const FIT_COLUMNS = 4
+
 export type DataTableColumn<Row extends DataTableRow = DataTableRow> = {
     readonly id: string
     readonly label: string
@@ -266,6 +269,7 @@ export const DataTable = <Row extends DataTableRow>({
             data-grammar-table-bounded={maxBlockSize === undefined ? "false" : "true"}
             data-grammar-table-narrow={narrow ? "true" : "false"}
             data-grammar-table-editors={hasEditors ? "true" : "false"}
+            data-grammar-table-fit={shown.length <= FIT_COLUMNS ? "true" : "false"}
         >
             <HeroTable.ScrollContainer ref={scrollRef} className="starci-core-data-table-scroll" data-contract="LAYOUT-3" data-grammar-table-scroll="true" style={scrollStyle} onKeyDownCapture={onCellKeyDown}>
                 <HeroTable.Content

@@ -323,7 +323,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR]
+    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -1203,6 +1203,16 @@ mustKeep:
       role: list
       law: "A bar stepper draws no connector line between its segments: the marker form's connector never reaches a segment (G5-F1)."
       measure: { kind: style, select: '[data-grammar-stepper-kind="bar"] .starci-core-step', pseudo: "::after", metric: content, op: "=", value: none }
+      owner: contract roles.list
+    - id: DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT
+      role: list
+      law: "With the chevron first, the title starts next to it (within one gap), left-aligned, never pushed to the row end."
+      measure: { kind: relation, select: '[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-title', metric: left, op: "<=", tolerance: 16, ref: { within: '.starci-core-disclosure-trigger', select: '.starci-core-disclosure-indicator', metric: right } }
+      owner: contract roles.list
+    - id: DNA-COMMON-TABLE-NO-CLIP
+      role: list
+      law: "A table of four columns or fewer fits its pane: its content never reaches past the box that holds it, so no column is clipped."
+      measure: { kind: relation, select: '[data-component="DataTable"][data-grammar-table-fit="true"] .starci-core-data-table-content', metric: right, op: "<=", tolerance: 1, ref: { within: '.starci-core-data-table-scroll', select: self, metric: right } }
       owner: contract roles.list
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control

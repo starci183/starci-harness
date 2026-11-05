@@ -2,6 +2,8 @@
 
 ## 0.21.37 - 2026-11-05
 
+- Fixed: `Disclosure chevron="start"` leaves the trigger row start-aligned, so the title follows the chevron instead of standing at the row end. Law `DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT`.
+- Fixed: a `DataTable` of four columns or fewer fits its container (columns shrink to their words, so a narrow aside never clips the last column); a wider table keeps its natural width and scrolls inside its own box. Law `DNA-COMMON-TABLE-NO-CLIP`, story `CompactTableInAside`.
 - Fixed (G5-F1): `Stepper kind="bar"` no longer carries the marker form's orientation and size attributes, so the connector `::after` of the markers never paints on a segment. Law `DNA-COMMON-STEPPER-BAR-NO-CONNECTOR`.
 - Changed (G5-F2): `DescriptionList layout="columns"` sits side by side from 16rem of its own width (was 20rem), so a phone drawer's 308px content box keeps terms beside values. Stories measure at 308px.
 - Added: `Tabs kind="filter"` follows a loading region: the labels stay real text (static chrome), each count is the geometry of its ready box, the tabs are inert and the fold fit is unchanged. Law `DNA-COMMON-TABS-FILTER-LOADING-COUNTS`, story `FilterTabsLoading`.
