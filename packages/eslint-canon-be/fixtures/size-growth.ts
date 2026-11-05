@@ -5,7 +5,7 @@
  * the law to the rule catalog.
  */
 import assert from "node:assert/strict"
-import { runGit } from "#runtime/scripts/api/git/lib.mjs"
+import { runGit } from "@starci/hfs/runtime/scripts/api/git/lib.mjs"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"

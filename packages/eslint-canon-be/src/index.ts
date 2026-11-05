@@ -16,7 +16,7 @@
  * every conversation about the failure. Aliasing one here to match a target's older spelling would
  * leave two names for one rule and no way to tell which a message came from.
  */
-import { packEslintConfigs } from "#runtime/scripts/lib/rule-packs.mjs"
+import { packEslintConfigs } from "@starci/hfs/runtime/scripts/lib/rule-packs.mjs"
 import { buildBeConfig, buildBePackagesConfig } from "./lib/config.ts"
 import { pluginForEdition } from "./lib/edition.ts"
 import { recommended as aiGatewayRecommended, rules as aiGatewayRules } from "./ai-gateway.ts"

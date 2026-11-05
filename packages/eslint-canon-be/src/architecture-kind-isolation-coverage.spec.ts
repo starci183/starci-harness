@@ -3,10 +3,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { appDeclaration, archFixture, ts } from '../fixtures/arch-fixture.ts';
-import { loadArchitectureConfig } from '../runtime/scripts/hfs/architecture/config.mjs';
-import { buildTypeScriptContext } from '../runtime/scripts/hfs/architecture/typescript.mjs';
-import { buildHfsGraph } from '../runtime/scripts/hfs/architecture/hfs-graph.mjs';
-import { checkTiers } from '../runtime/scripts/hfs/architecture/tiers.mjs';
+import { loadArchitectureConfig } from '@starci/hfs/runtime/scripts/hfs/architecture/config.mjs';
+import { buildTypeScriptContext } from '@starci/hfs/runtime/scripts/hfs/architecture/typescript.mjs';
+import { buildHfsGraph } from '@starci/hfs/runtime/scripts/hfs/architecture/hfs-graph.mjs';
+import { checkTiers } from '@starci/hfs/runtime/scripts/hfs/architecture/tiers.mjs';
 import { projectFixture } from '../fixtures/project/tester.ts';
 import { rules } from './project-graph.ts';
 import type { TestContext } from "node:test"
@@ -41,7 +41,7 @@ for (const edition of ['lite', 'full'] as const) {
     const root = machineFixture(t, edition, { ...passingFiles, ...violatingFiles });
     const config = loadArchitectureConfig(root);
     const graph = buildHfsGraph(config, buildTypeScriptContext(config, ts, []));
-    const codes = checkTiers(graph).violations.map(hit => hit.ruleId);
+    const codes = checkTiers(graph, ts).violations.map(hit => hit.ruleId);
     assert.deepEqual(codes, ['BE_KIND_ISOLATION', 'BE_KIND_ISOLATION', 'BE_KIND_ISOLATION', 'BE_KIND_ISOLATION']);
   });
 
@@ -49,7 +49,7 @@ for (const edition of ['lite', 'full'] as const) {
     const root = machineFixture(t, edition, passingFiles);
     const config = loadArchitectureConfig(root);
     const graph = buildHfsGraph(config, buildTypeScriptContext(config, ts, []));
-    assert.deepEqual(checkTiers(graph).violations, []);
+    assert.deepEqual(checkTiers(graph, ts).violations, []);
   });
 
   test(`${edition} kind isolation lint accepts valid owners and rejects cross-kind imports`, t => {

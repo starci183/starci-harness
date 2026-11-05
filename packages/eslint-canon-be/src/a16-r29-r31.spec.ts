@@ -8,20 +8,21 @@
 // proves: BE_APPLICATION_TRANSPORT_FRAMEWORK@full
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fileURLToPath } from 'node:url';
+import { RUNTIME_ROOT } from './lib/runtime-root.ts';
+import type { ArchitectureConfig } from '@starci/hfs/runtime/scripts/hfs/architecture/config.mjs';
 import { projectFixture } from '../fixtures/project/tester.ts';
 import { rules } from './project-graph.ts';
-import { checkFeatureShape } from '../runtime/scripts/hfs/architecture/feature-shape.mjs';
-import { openHfs } from '../runtime/scripts/hfs/slots.mjs';
+import { checkFeatureShape } from '@starci/hfs/runtime/scripts/hfs/architecture/feature-shape.mjs';
+import { openHfs } from '@starci/hfs/runtime/scripts/hfs/slots.mjs';
 import type { TestContext } from "node:test"
 import type { ProjectFixture } from "../fixtures/project/tester.ts"
 import { ruleNamed } from '../fixtures/rule-tester.ts';
 
 const FEATURE = 'src/features/api/orders';
 const VALUE = 'export const value = 1;\n';
-const runtimeRoot = fileURLToPath(new URL('../runtime/', import.meta.url));
+const runtimeRoot = RUNTIME_ROOT;
 const shape = (f: ProjectFixture) => checkFeatureShape({
-  config: { root: f.root }, graph: { resolver: openHfs({ root: runtimeRoot, repoRoot: f.root }) },
+  config: { root: f.root } as unknown as ArchitectureConfig, graph: { resolver: openHfs({ root: runtimeRoot, repoRoot: f.root }) },
 });
 
 function fixture(t: TestContext, edition: "full" | "lite", files: Readonly<Record<string, string>>) {

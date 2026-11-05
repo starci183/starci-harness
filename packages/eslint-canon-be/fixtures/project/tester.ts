@@ -10,17 +10,18 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { createRequire } from "node:module"
-import { runGit } from "#runtime/scripts/api/git/lib.mjs"
+import { runGit } from "@starci/hfs/runtime/scripts/api/git/lib.mjs"
 import type tsModule from "typescript"
 import tsParser from "@typescript-eslint/parser"
 import { RuleTester } from "eslint"
 import { resetProjectGraphs } from "../../runtime/scripts/hfs/project-graph.mjs"
-import { declaredHfsView } from "#runtime/scripts/hfs/view.mjs"
+import { RUNTIME_ROOT } from "../../src/lib/runtime-root.ts"
+import { declaredHfsView } from "@starci/hfs/runtime/scripts/hfs/view.mjs"
 import { appDeclaration, type SideDeclaration } from "../app.ts"
 import type { CanonRuleTester } from "../typed/tester.ts"
 
 const ts = createRequire(import.meta.url)("typescript") as typeof tsModule
-const RUNTIME = path.join(import.meta.dirname, "..", "..", "runtime")
+const RUNTIME = RUNTIME_ROOT
 const DEFAULT_APPS: Readonly<Record<"be" | "fe", readonly { readonly name: string; readonly kind: string }[]>> = { be: [{ name: "core", kind: "api" }], fe: [{ name: "web", kind: "next" }] }
 
 /** A fixture app: its side root, a side-relative path resolver, the tester and the cleanup. */

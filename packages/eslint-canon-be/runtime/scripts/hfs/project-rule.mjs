@@ -8,8 +8,8 @@
 // Both lint canons ship a byte copy of this file in runtime/ and build their rules with it.
 import path from 'node:path';
 import { projectGraph } from './project-graph.mjs';
-import { posixPath } from '../lib/path-key.mjs';
-import { belongsTo, codeOf } from './architecture/surface.mjs';
+import { posixPath } from '@starci/hfs/runtime/scripts/lib/path-key.mjs';
+import { belongsTo, codeOf } from '@starci/hfs/runtime/scripts/hfs/architecture/surface.mjs';
 
 /**
  * A rule reporting the graph findings of `codes` on the linted file.
@@ -23,7 +23,7 @@ export const projectRule = ({ enforcer, runtimeRoot, hfsOf }) => {
     create(context) {
       const hfs = hfsOf(context);
       const rel = posixPath(path.relative(hfs.repoRoot, context.filename));
-      if (rel.startsWith('..')) return {};
+      if (rel.startsWith('@starci/hfs/runtime/scripts')) return {};
       const { byFile } = projectGraph({ repoRoot: hfs.repoRoot, runtimeRoot: context.settings?.starci?.injectedRuntimeRoot ?? runtimeRoot, injectedTypeScript: context.settings?.starci?.injectedTypeScript?.() });
       const mine = (byFile.get(rel) ?? []).filter((finding) => belongsTo(enforcer, finding));
       return {

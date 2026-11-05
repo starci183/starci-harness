@@ -2,7 +2,13 @@
   "extends": "@starci/tsconfig/package-esm.json",
   "compilerOptions": {
     "noEmit": true,
-    "rootDir": ".."
+    "rootDir": "..",
+    "paths": {
+      "@starci/hfs/runtime/*": [
+        "../eslint-canon-fe/src/types/runtime/*",
+        "../eslint-canon-be/src/types/runtime/*"
+      ]
+    }
   },
   "include": [
     "src"

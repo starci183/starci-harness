@@ -5,6 +5,9 @@ export interface GitResult {
   readonly ok: boolean
   readonly stdout: string
   readonly stderr: string
+  /** The exit status and spawn error of the child (what runGit returns, a SpawnSyncReturns). */
+  readonly status: number | null
+  readonly error?: Error
 }
 
 /** Run git with `args`; `dir` is passed as `-C`, `config` as `-c key=value`. */

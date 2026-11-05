@@ -13,12 +13,12 @@
 // A graph that cannot be built (no tsconfig, unresolvable import, invalid declaration) is an error: a check that cannot run is
 // never a pass, so `projectGraph` throws the machine's own message and the lint run stops.
 import fs from 'node:fs';
-import { checkArchitecture } from './architecture/index.mjs';
-import { openHfs } from './slots.mjs';
-import { pathFindings } from './path-findings.mjs';
-import { lsFiles } from '../api/git/ls-files.mjs';
-import { posixPath } from '../lib/path-key.mjs';
-import { onLintSurface } from './architecture/surface.mjs';
+import { checkArchitecture } from '@starci/hfs/runtime/scripts/hfs/architecture/index.mjs';
+import { openHfs } from '@starci/hfs/runtime/scripts/hfs/slots.mjs';
+import { pathFindings } from '@starci/hfs/runtime/scripts/hfs/path-findings.mjs';
+import { lsFiles } from '@starci/hfs/runtime/scripts/api/git/ls-files.mjs';
+import { posixPath } from '@starci/hfs/runtime/scripts/lib/path-key.mjs';
+import { onLintSurface } from '@starci/hfs/runtime/scripts/hfs/architecture/surface.mjs';
 
 const cache = new Map();
 

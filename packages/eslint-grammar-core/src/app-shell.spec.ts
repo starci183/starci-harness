@@ -17,7 +17,7 @@ import tsParser from "@typescript-eslint/parser"
 import { at, fixtureHfs } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 import { appShellFrame, navbarCluster, navbarControlSize, noNavbarCreate, noShellBottomTabs, rules } from "./app-shell.ts"
 import { recommended, ruleOwners } from "./index.ts"
-import { phrasesOf } from "../runtime/scripts/lib/source-phrases.mjs"
+import { phrasesOf } from "@starci/hfs/runtime/scripts/lib/source-phrases.mjs"
 import { IMPORTS, CLUSTER, MOBILE_CLUSTER, bar } from "./fixtures/app-shell.ts"
 
 const FILE = at("apps/web/src/features/layouts/AppShell/component.tsx")

@@ -1,13 +1,14 @@
 /** Package and factory contracts prove family adoption alongside the independent universal canon. */
 import assert from "node:assert/strict"
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import test, { after } from "node:test"
 import { Linter } from "eslint"
 import type { Rule } from "eslint"
-import { parseYaml } from "../runtime/engine/yaml.mjs"
+import { parseYaml } from "@starci/hfs/runtime/engine/yaml.mjs"
 import { gatheredPluginSpec } from "../../eslint-canon-be/fixtures/gathered-plugin.ts"
 import { FE_DECLARATION, fixtureHfs } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 import { rules as universal } from "../../eslint-canon-fe/src/index.ts"
@@ -49,6 +50,12 @@ test("family rules and universal rules have distinct owners and retain behaviora
   for (const name of Object.keys(why)) assert.ok(rules[name], `${name} has guidance without a rule`)
 })
 
+/** A cited knowledge file: this package's own runtime copy, else the installed @starci/hfs runtime the canons read at run time. */
+const knowledgeFile = (file: string): string => {
+  const own = fileURLToPath(new URL(`../runtime/${file}`, import.meta.url))
+  return existsSync(own) ? own : join(dirname(createRequire(import.meta.url).resolve("@starci/hfs/package.json")), "runtime", file)
+}
+
 test("published family citations resolve to real knowledge files and declared YAML ids", () => {
   const documents = new Map<string, unknown>()
   const declares = (value: unknown, anchor: string): boolean => value !== null && typeof value === "object" &&
@@ -61,7 +68,7 @@ test("published family citations resolve to real knowledge files and declared YA
       assert.match(citation, /^knowledge\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.yaml(?:#[a-zA-Z0-9-]+)?$/, `${name}: ${citation} must cite canonical knowledge YAML`)
       const [file, anchor] = citation.split("#")
       assert.ok(file !== undefined)
-      if (!documents.has(file)) documents.set(file, parseYaml(readFileSync(new URL(`../runtime/${file}`, import.meta.url), "utf8")))
+      if (!documents.has(file)) documents.set(file, parseYaml(readFileSync(knowledgeFile(file), "utf8")))
       if (anchor) assert.ok(declares(documents.get(file), anchor), `${name}: ${citation} does not declare its anchor`)
     }
   }

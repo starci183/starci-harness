@@ -44,9 +44,13 @@ test('every @starci pin names its folder in starci-harness at the version there'
   }
 });
 
-test('the canon packages carry the same bytes of the pins as @starci/hfs', () => {
-  const own = fs.readFileSync(path.join(import.meta.dirname, '..', COPY));
-  for (const pkg of COPIES) assert.ok(fs.readFileSync(path.join(REPOSITORY, 'packages', pkg, COPY)).equals(own), `packages/${pkg}/${COPY}`);
+test('the canon packages carry no copy of the pins: they read them from the installed @starci/hfs, their same-minor peer', () => {
+  for (const pkg of COPIES) {
+    assert.equal(fs.existsSync(path.join(REPOSITORY, 'packages', pkg, COPY)), false, `packages/${pkg}/${COPY}`);
+    const manifest = JSON.parse(fs.readFileSync(path.join(REPOSITORY, 'packages', pkg, 'package.json'), 'utf8')); // reason: parsed package.json
+    if (pkg === 'eslint-grammar-offset-pop') continue;
+    assert.match(manifest.peerDependencies?.['@starci/hfs'] ?? '', /^~\d+\.\d+\.\d+$/u, `${pkg} peers @starci/hfs by a same-minor range`);
+  }
 });
 
 test('contexts/stack/pins.yaml names every @starci package at its bundled pin and pins no command line either', () => {

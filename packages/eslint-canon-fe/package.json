@@ -51,6 +51,7 @@
     "node": ">=22.13.0"
   },
   "peerDependencies": {
+    "@starci/hfs": "~5.13.0",
     "eslint": ">=9",
     "eslint-plugin-react-hooks": ">=7",
     "typescript": ">=5.9"
@@ -78,6 +79,7 @@
     "eslint-plugin-unicorn": "65.0.0"
   },
   "devDependencies": {
+    "@starci/hfs": "file:../hfs",
     "@starci/tsconfig": "file:../tsconfig",
     "@types/node": "^24.19.2",
     "eslint": "^9.18.0",

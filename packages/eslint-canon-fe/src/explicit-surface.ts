@@ -8,7 +8,7 @@
  * cache reads (`declarationSurface` of the bundled runtime), so the rule reports exactly the files the cache counts as open.
  */
 import ts from "typescript"
-import { explicitSurfaceRule } from "#runtime/scripts/hfs/explicit-surface-rule.mjs"
+import { explicitSurfaceRule } from "@starci/hfs/runtime/scripts/hfs/explicit-surface-rule.mjs"
 import type { Recommended, Rules } from "./lib/rule.ts"
 
 /** The rules this law contributes to the plugin. */

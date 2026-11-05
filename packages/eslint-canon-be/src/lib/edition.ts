@@ -6,7 +6,7 @@
  * returns no listeners. The plugin wiring therefore has one generic gate instead of edition checks
  * scattered through rule bodies.
  */
-import { loadRuleCatalog, type RuleCatalog } from "../../runtime/scripts/hfs/slots.mjs"
+import { loadRuleCatalog, type RuleCatalog } from "@starci/hfs/runtime/scripts/hfs/rule-catalog.mjs"
 import type { CanonPlugin } from "./config.ts"
 import type { RuleModule } from "./rule.ts"
 import { RUNTIME_ROOT as RUNTIME } from "./runtime-root.ts"

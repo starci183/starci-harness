@@ -3,6 +3,7 @@
 // this module is where the real ones are chosen. The integration, e2e and contract specs are not run here: they need a world (`npm run test:integration`, ...) and
 // always run in full wherever they run, so no cache key could hold them.
 import fs from 'node:fs';
+import { hashText } from './hash.mjs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { completedNode, runHeavyNode, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
@@ -77,6 +78,13 @@ export async function runTestShard(repoRoot: string, index: number, total: numbe
   return run.status ?? 1;
 }
 
+/** The digest of the tree at `base` outside the cache folder: the base's content, which the baselines record instead of its sha (a merge or cache commit that moves the sha alone rewrites nothing). */
+export function baseContent(git: (args: readonly string[]) => string | undefined, base: string): string {
+  const listed = git(['ls-tree', '-r', base]);
+  if (listed === undefined) return base;
+  return hashText(listed.split(/\r?\n/u).filter((line) => { const file = line.split('\t')[1]; return file !== undefined && !file.startsWith('.starcistacks/cache/'); }).join('\n'));
+}
+
 /** `--sonar`: the Sonar and Codecov baselines and the predictions from the merged coverage records; they never pass or fail a run. */
 export function runSonarForApp(session: CheckSession, { repoRoot }: { repoRoot: string }): QualityFamilyResult | null {
   const read = (file: string): string | undefined => { try { return fs.readFileSync(path.join(repoRoot, file), 'utf8'); } catch { return undefined; } };
@@ -89,7 +97,7 @@ export function runSonarForApp(session: CheckSession, { repoRoot }: { repoRoot: 
   const diff = git(['diff', '-U0', '--no-color', base]) ?? '';
   const baseRecords = recordsAtCommit(base, git);
   return runQualityFamily({
-    session, sources: { baseCommit: base, sonarGateYaml: gateYaml, sonarProperties: properties, codecovYaml: codecov },
+    session, sources: { baseCommit: base, baseContent: baseContent(git, base), sonarGateYaml: gateYaml, sonarProperties: properties, codecovYaml: codecov },
     changed: changedLinesFromDiff(diff), clones: [], baseCoverage: baseRecords.length > 0 ? lineCoverageOf(baseRecords) : undefined,
   });
 }

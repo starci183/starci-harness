@@ -41,7 +41,7 @@ test("be: every level is one a linter understands", () => {
 test("the generic edition gate disables a full-only catalog enforcer in lite and keeps it active in full", () => {
     const gated = "rest-door-needs-a-reason"
     const shared = "default-deny-guards"
-    const catalog = { enforcerJudgedIn: (_kind: string, id: string, edition: "full" | "lite") => id !== gated || edition === "full" }
+    const catalog = { enforcerJudgedIn: (_kind: string, id: string, edition?: string) => id !== gated || edition === "full" }
 
     const lite = pluginForEdition({ plugin, hfs: { edition: "lite" }, catalog })
     assert.deepEqual(createdWithoutContext(ruleNamed(lite.rules, gated)), {})

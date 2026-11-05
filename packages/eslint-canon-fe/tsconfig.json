@@ -5,7 +5,17 @@
     "noEmit": true,
     "rootDir": "..",
     "allowJs": true,
-    "checkJs": false
+    "checkJs": false,
+    "paths": {
+      "@starci/hfs/runtime/*": [
+        "./src/types/runtime/*",
+        "../eslint-canon-be/src/types/runtime/*"
+      ]
+    }
   },
-  "include": ["src", "fixtures/overlay-host-files.ts", "fixtures/typed/tester.ts"]
+  "include": [
+    "src",
+    "fixtures/overlay-host-files.ts",
+    "fixtures/typed/tester.ts"
+  ]
 }

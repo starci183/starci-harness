@@ -8,7 +8,7 @@
  * Published IDs identify their owning law. Namespace migrations are explicit in the removed-vocabulary
  * catalog; compatibility aliases cannot create a second owner for a rule.
  */
-import { packEslintConfigs } from "#runtime/scripts/lib/rule-packs.mjs"
+import { packEslintConfigs } from "@starci/hfs/runtime/scripts/lib/rule-packs.mjs"
 import { createRequire } from "node:module"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"

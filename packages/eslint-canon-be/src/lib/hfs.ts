@@ -13,7 +13,7 @@
  */
 import { dirname } from "node:path"
 import { fileURLToPath } from "node:url"
-import { declaredHfsView, declaredPackagesHfsView, openHfsView, openPackagesHfsView } from "#runtime/scripts/hfs/view.mjs"
+import { declaredHfsView, declaredPackagesHfsView, openHfsView, openPackagesHfsView } from "@starci/hfs/runtime/scripts/hfs/view.mjs"
 import type { HfsView } from "./hfs-view.ts"
 import type { Context } from "./rule.ts"
 import { RUNTIME_ROOT as RUNTIME } from "./runtime-root.ts"
@@ -39,7 +39,10 @@ export type {
  * @param configUrl - `import.meta.url` of the repository's `eslint.config.mjs`.
  * @returns The frozen HFS view (profile, apps, connections, ruleParams, slotOf, tierOf, ownerOf).
  */
-export const loadHfs = (configUrl: string): HfsView => openHfsView({ runtimeRoot: RUNTIME, repoRoot: dirname(fileURLToPath(configUrl)) })
+/** The view @starci/hfs returns, read through this package's own HfsView type (the runtime object is the same; the types are declared here). */
+const asView = (view: unknown): HfsView => view as HfsView
+
+export const loadHfs = (configUrl: string): HfsView => asView(openHfsView({ runtimeRoot: RUNTIME, repoRoot: dirname(fileURLToPath(configUrl)) }))
 
 /**
  * The HFS view of the root workspace packages of an app, judged by the laws of the be side: the managed root `eslint.config.mjs`
@@ -48,7 +51,7 @@ export const loadHfs = (configUrl: string): HfsView => openHfsView({ runtimeRoot
  * @param configUrl - `import.meta.url` of the app root's `eslint.config.mjs`.
  * @returns The frozen HFS view (profile be over the paths of the app root).
  */
-export const loadPackagesHfs = (configUrl: string): HfsView => openPackagesHfsView({ runtimeRoot: RUNTIME, repoRoot: dirname(fileURLToPath(configUrl)), side: "be" })
+export const loadPackagesHfs = (configUrl: string): HfsView => asView(openPackagesHfsView({ runtimeRoot: RUNTIME, repoRoot: dirname(fileURLToPath(configUrl)), side: "be" }))
 
 /**
  * The HFS view of the root packages of an in-memory app declaration, for rule tests.
@@ -57,7 +60,7 @@ export const loadPackagesHfs = (configUrl: string): HfsView => openPackagesHfsVi
  * @param repoRoot - The absolute app root the linted filenames live under.
  * @returns The frozen HFS view.
  */
-export const packagesHfsFromDeclaration = (declaration: object, repoRoot: string): HfsView => declaredPackagesHfsView({ runtimeRoot: RUNTIME, declaration, repoRoot, side: "be" })
+export const packagesHfsFromDeclaration = (declaration: object, repoRoot: string): HfsView => asView(declaredPackagesHfsView({ runtimeRoot: RUNTIME, declaration, repoRoot, side: "be" }))
 
 /**
  * The HFS view of the be side of an in-memory app declaration, for rule tests: no file is read except the shipped manifest.
@@ -66,7 +69,7 @@ export const packagesHfsFromDeclaration = (declaration: object, repoRoot: string
  * @param repoRoot - The absolute be side folder the linted filenames live under.
  * @returns The frozen HFS view.
  */
-export const hfsFromDeclaration = (declaration: object, repoRoot: string): HfsView => declaredHfsView({ runtimeRoot: RUNTIME, declaration, repoRoot, side: "be" })
+export const hfsFromDeclaration = (declaration: object, repoRoot: string): HfsView => asView(declaredHfsView({ runtimeRoot: RUNTIME, declaration, repoRoot, side: "be" }))
 
 /** Whether a settings value is an HFS view (it answers `slotOf`). */
 const isHfsView = (value: unknown): value is HfsView =>

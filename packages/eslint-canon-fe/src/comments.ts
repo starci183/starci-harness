@@ -14,7 +14,7 @@
  * judgement-based exception would be argued per file forever. The Vietnamese rule has no placement exemption at all.
  */
 
-import { hasSecondLanguage } from "#runtime/scripts/lib/language.mjs"
+import { hasSecondLanguage } from "@starci/hfs/runtime/scripts/lib/language.mjs"
 import { jsdocBefore } from "#runtime/scripts/lib/jsdoc.mjs"
 import type { TSESTree } from "@typescript-eslint/utils"
 import { defineRule, type AnyContext, type Comment, type Listener, type Node, type Recommended, type Rules } from "./lib/rule.ts"

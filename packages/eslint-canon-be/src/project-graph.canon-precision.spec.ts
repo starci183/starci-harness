@@ -4,7 +4,7 @@ import path from "node:path"
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
-import { runGit } from "../runtime/scripts/api/git/lib.mjs"
+import { runGit } from "@starci/hfs/runtime/scripts/api/git/lib.mjs"
 import type { ProjectFixture } from "../fixtures/project/tester.ts"
 import { ruleNamed } from '../fixtures/rule-tester.ts';
 

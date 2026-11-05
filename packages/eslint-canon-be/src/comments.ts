@@ -27,7 +27,7 @@ import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import { nameOrValue } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { normalizePath } from "./lib/path.ts"
-import { hasSecondLanguage } from "../runtime/scripts/lib/language.mjs"
+import { hasSecondLanguage } from "@starci/hfs/runtime/scripts/lib/language.mjs"
 import { jsdocBefore, jsdocDescription } from "../runtime/scripts/lib/jsdoc.mjs"
 import type { Comment, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 

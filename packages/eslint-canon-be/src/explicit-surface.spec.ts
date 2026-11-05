@@ -10,7 +10,7 @@ import tsParser from "@typescript-eslint/parser"
 import { Linter } from "eslint"
 import ts from "typescript"
 import { canonRuleTester } from "../fixtures/rule-tester.ts"
-import { declarationSurface } from "../runtime/scripts/lib/declaration-surface.mjs"
+import { declarationSurface } from "@starci/hfs/runtime/scripts/lib/declaration-surface.mjs"
 import { recommended, rules } from "./explicit-surface.ts"
 import { recommended as pluginRecommended, rules as pluginRules } from "./index.ts"
 

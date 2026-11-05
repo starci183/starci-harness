@@ -26,8 +26,8 @@ import { BORROWED, COUNTING, PLAIN_SOURCE_FILES, SLOT_FREE_RULES } from "./lib/c
 import { eslintPlugin } from "./lib/eslint-boundary.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { PACKAGE_ROOT, RUNTIME_ROOT } from "./lib/package-root.ts"
-import { declaredHfsView } from "#runtime/scripts/hfs/view.mjs"
-import { hasSecondLanguage } from "#runtime/scripts/lib/language.mjs"
+import { declaredHfsView } from "@starci/hfs/runtime/scripts/hfs/view.mjs"
+import { hasSecondLanguage } from "@starci/hfs/runtime/scripts/lib/language.mjs"
 import { appDeclaration } from "../../eslint-canon-be/fixtures/app.ts"
 
 const ROOT = join(PACKAGE_ROOT, "fixtures", "typed")

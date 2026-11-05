@@ -69,7 +69,13 @@ export function scopeDigest(propertiesText: string): string {
 
 /** What the reference records are built from. Texts are the owners' files as they stand; the base commit is the merge-base the new code is measured against. */
 export interface BaselineSources {
+  /** The merge-base the new code is measured against. */
   readonly baseCommit: string;
+  /**
+   * The digest of the base's tree outside the cache folder (`baseContent` of app-families.mjs): what the reference records hold for the base, so a
+   * base that moves without its content moving (a cache commit, a merge of nothing) rewrites no record. The sha alone when it is not given.
+   */
+  readonly baseContent?: string;
   readonly sonarGateYaml: string;
   readonly sonarProperties: string;
   readonly codecovYaml: string;
@@ -83,12 +89,12 @@ export function baselineRecords(sources: BaselineSources): { readonly sonar: rea
   const targets = readCodecovTargets(sources.codecovYaml);
   return {
     sonar: [
-      reference('new-code-base', sources.baseCommit, { baseCommit: sources.baseCommit }),
+      reference('new-code-base', sources.baseContent ?? sources.baseCommit, { baseContent: sources.baseContent ?? sources.baseCommit }),
       reference('quality-gate', hashText(sources.sonarGateYaml), { coverageMinPercent: gate.coverageMinPercent, duplicationMaxPercent: gate.duplicationMaxPercent, owner: 'runtime/knowledge/sonar-gate.yaml' }),
       reference('analysis-scope', scopeDigest(sources.sonarProperties), { digestOf: 'sonar-project.properties' }),
     ],
     codecov: [
-      reference('base', sources.baseCommit, { baseCommit: sources.baseCommit }),
+      reference('base', sources.baseContent ?? sources.baseCommit, { baseContent: sources.baseContent ?? sources.baseCommit }),
       reference('targets', hashText(sources.codecovYaml), { project: targets.project, patch: targets.patch, owner: 'codecov.yml' }),
     ],
   };

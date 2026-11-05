@@ -1,7 +1,7 @@
 /** Finite content provenance inside a root Page: static grammar anatomy, local pure drawing, canonical region status. */
 import type { TSESTree } from "@typescript-eslint/utils"
-import { grammarContractFor } from "#runtime/scripts/lib/grammar-lint.mjs"
-import { canonicalStatusOwnerBinding } from "#runtime/scripts/hfs/architecture/canon-jsx-clones.mjs"
+import { grammarContractFor } from "@starci/hfs/runtime/scripts/lib/grammar-lint.mjs"
+import { canonicalStatusOwnerBinding } from "@starci/hfs/runtime/scripts/hfs/architecture/canon-jsx-clones.mjs"
 import { attribute, attributeValue, stringOf, walk } from "./ast.ts"
 import { isFn, unwrap, variableOf } from "./bindings.ts"
 import { hfsOf } from "./hfs.ts"

@@ -1,14 +1,14 @@
 import assert from "node:assert/strict"
-import { fileURLToPath } from "node:url"
+import { RUNTIME_ROOT } from "./lib/runtime-root.ts"
 import test from "node:test"
 import plugin from "./index.ts"
 import { pluginForEdition } from "./lib/edition.ts"
-import { enforcerJudgedInEdition } from "../runtime/scripts/hfs/edition-slots.mjs"
-import { loadRuleCatalog } from "../runtime/scripts/hfs/slots.mjs"
+import { enforcerJudgedInEdition } from "@starci/hfs/runtime/scripts/hfs/edition-slots.mjs"
+import { loadRuleCatalog } from "@starci/hfs/runtime/scripts/hfs/slots.mjs"
 import { ruleNamed } from "../fixtures/rule-tester.ts"
 import type { RuleModule } from "./lib/rule.ts"
 
-const RUNTIME = fileURLToPath(new URL("../runtime/", import.meta.url))
+const RUNTIME = RUNTIME_ROOT
 const catalog = loadRuleCatalog({ root: RUNTIME })
 
 /** A rule that registers one empty listener: a stand-in whose identity the gate either keeps or replaces. */
@@ -62,7 +62,7 @@ test("an enforcer shared by two catalog rules runs only where both owners are ju
         { editions: ["full"], enforcers: [{ kind: "eslint-be", id: "shared" }] },
     ]
     const twoOwnerCatalog = {
-        enforcerJudgedIn: (kind: string, id: string, edition: "full" | "lite") => enforcerJudgedInEdition(rules, kind, id, edition),
+        enforcerJudgedIn: (kind: string, id: string, edition?: string) => enforcerJudgedInEdition(rules, kind, id, edition === "lite" ? "lite" : "full"),
     }
 
     assert.equal(pluginForEdition({ plugin: shared, hfs: { edition: "full" }, catalog: twoOwnerCatalog }).rules.shared, rule)

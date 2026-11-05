@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import ts from "typescript"
-import { functionSubjectExports, valueObjectSubjects } from "../../runtime/scripts/hfs/architecture/function-spec-providers.mjs"
+import { functionSubjectExports, valueObjectSubjects } from "@starci/hfs/runtime/scripts/hfs/architecture/function-spec-providers.mjs"
 import { importOf } from "./import-source.ts"
 import type { TSESTree } from "@typescript-eslint/utils"
 import { typed } from "./types.ts"

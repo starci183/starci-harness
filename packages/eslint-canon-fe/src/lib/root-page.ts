@@ -6,7 +6,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import type { TSESTree } from "@typescript-eslint/utils"
-import { grammarContractFor } from "#runtime/scripts/lib/grammar-lint.mjs"
+import { grammarContractFor } from "@starci/hfs/runtime/scripts/lib/grammar-lint.mjs"
 import { attribute, attributeValue, walk } from "./ast.ts"
 import { importOf, isFn, unwrap, variableOf } from "./bindings.ts"
 import { hfsOf } from "./hfs.ts"

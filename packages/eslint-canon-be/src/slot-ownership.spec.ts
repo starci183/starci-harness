@@ -21,7 +21,8 @@
 import test from "node:test"
 import fs from "node:fs"
 import path from "node:path"
-import { parseYaml } from "../runtime/engine/yaml.mjs"
+import { parseYaml } from "@starci/hfs/runtime/engine/yaml.mjs"
+import { RUNTIME_ROOT } from "./lib/runtime-root.ts"
 import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
 import { ruleNamed } from "../fixtures/rule-tester.ts"
@@ -37,7 +38,7 @@ const manifestOf = (value: unknown) => {
     return { manifest: value, slots }
 }
 
-const { manifest: SHIPPED, slots: SHIPPED_SLOTS } = manifestOf(parseYaml(fs.readFileSync(path.join(import.meta.dirname, "..", "runtime", "knowledge", "hfs", "slots.yaml"), "utf8")))
+const { manifest: SHIPPED, slots: SHIPPED_SLOTS } = manifestOf(parseYaml(fs.readFileSync(path.join(RUNTIME_ROOT, "knowledge", "hfs", "slots.yaml"), "utf8")))
 const TEMPLATE = SHIPPED_SLOTS.filter(isMapping).find((slot) => slot.id === "repo.build-output")
 
 /** The shipped manifest with two be slots of the same specificity over `src/twin/<name>/`. */

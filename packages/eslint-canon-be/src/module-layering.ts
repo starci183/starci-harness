@@ -26,7 +26,7 @@ import type { TSESTree } from "@typescript-eslint/utils"
 import { hfsOf } from "./lib/hfs.ts"
 import { baseName } from "./lib/ports.ts"
 import { resolveAlias } from "./lib/specifier.ts"
-import { ENTITY_REGISTRY_ROLE, registryImporter } from "../runtime/scripts/hfs/architecture/entity-registry.mjs"
+import { ENTITY_REGISTRY_ROLE, registryImporter } from "@starci/hfs/runtime/scripts/hfs/architecture/entity-registry.mjs"
 import type { Recommended, RuleListener, RuleModule, Rules } from "./lib/rule.ts"
 import type { HfsView } from "./lib/hfs.ts"
 
@@ -85,7 +85,7 @@ const indexExportBudget = (hfs: HfsView, filename: string) =>
 const importsRegistry = (hfs: HfsView, filename: string, target: string) => {
   const id = hfs.slotOf(`${target}.ts`)
   const slot = id ? hfs.slot(id) : undefined
-  return slot?.role === ENTITY_REGISTRY_ROLE && registryImporter(null, slot, hfs.relative(filename))
+  return slot?.role === ENTITY_REGISTRY_ROLE && registryImporter(null, { ...slot, importedBy: [...(slot.importedBy ?? [])] }, hfs.relative(filename))
 }
 
 /**

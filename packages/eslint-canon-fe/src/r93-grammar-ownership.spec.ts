@@ -17,11 +17,11 @@ const ruleOf = (name: string): Rule => {
   if (rule === undefined) throw new Error(`project-graph publishes no ${name}`);
   return rule;
 };
-import { checkArchitecture } from '#runtime/scripts/hfs/architecture/index.mjs';
-import { checkGrammar } from '#runtime/scripts/hfs/architecture/frontend-grammar.mjs';
-import { loadArchitectureConfig } from '#runtime/scripts/hfs/architecture/config.mjs';
-import { buildTypeScriptContext, relativePath } from '#runtime/scripts/hfs/architecture/typescript.mjs';
-import { LINT_ENFORCERS } from '#runtime/scripts/hfs/architecture/surface.mjs';
+import { checkArchitecture } from '@starci/hfs/runtime/scripts/hfs/architecture/index.mjs';
+import { checkGrammar } from '@starci/hfs/runtime/scripts/hfs/architecture/frontend-grammar.mjs';
+import { loadArchitectureConfig } from '@starci/hfs/runtime/scripts/hfs/architecture/config.mjs';
+import { buildTypeScriptContext, relativePath } from '@starci/hfs/runtime/scripts/hfs/architecture/typescript.mjs';
+import { LINT_ENFORCERS } from '@starci/hfs/runtime/scripts/hfs/architecture/surface.mjs';
 
 const ts: typeof TypeScript = createRequire(import.meta.url)('typescript');
 const entry = 'apps/web/src/app/page.tsx';

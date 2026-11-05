@@ -2,12 +2,12 @@
 // size-growth rule compares the working file with.
 import path from 'node:path';
 import { existsSync } from 'node:fs';
-import { runGit } from './lib.mjs';
-import { mergeBase } from './merge-base.mjs';
-import { withoutGitLocalEnv } from '../../lib/git.mjs';
+import { runGit } from '@starci/hfs/runtime/scripts/api/git/lib.mjs';
+import { mergeBase } from '@starci/hfs/runtime/scripts/api/git/merge-base.mjs';
+import { withoutGitLocalEnv } from '@starci/hfs/runtime/scripts/lib/git.mjs';
 import { lineCount } from '../../lib/line-count.mjs';
-import { readEnv } from '../../lib/env.mjs';
-import { folded } from '../../lib/event-contract.mjs';
+import { readEnv } from '@starci/hfs/runtime/scripts/lib/env.mjs';
+import { folded } from '@starci/hfs/runtime/scripts/lib/event-contract.mjs';
 
 const ok = (result) => !result.error && result.status === 0;
 const pathKey = (value) => process.platform === 'win32' ? value.toLowerCase() : value;

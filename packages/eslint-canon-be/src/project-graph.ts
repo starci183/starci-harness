@@ -7,7 +7,7 @@
  * rules and their codes is `LINT_ENFORCERS` of the machine (scripts/hfs/architecture/surface.mjs); `starci app check` keeps the
  * findings that have no TypeScript file to sit on. A graph that cannot be built stops the run with the machine's message.
  */
-import { LINT_ENFORCERS, belongsTo, codeOf } from "../runtime/scripts/hfs/architecture/surface.mjs"
+import { LINT_ENFORCERS, belongsTo, codeOf } from "@starci/hfs/runtime/scripts/hfs/architecture/surface.mjs"
 import { projectGraph as buildProjectGraph, resetProjectGraphs } from "../runtime/scripts/hfs/project-graph.mjs"
 import { projectRule } from "../runtime/scripts/hfs/project-rule.mjs"
 import { hfsOf } from "./lib/hfs.ts"

@@ -9,8 +9,8 @@
  */
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
-import { parseYaml } from "#runtime/engine/yaml.mjs"
-import { globExpression } from "#runtime/scripts/lib/glob.mjs"
+import { parseYaml } from "@starci/hfs/runtime/engine/yaml.mjs"
+import { globExpression } from "@starci/hfs/runtime/scripts/lib/glob.mjs"
 import { RUNTIME_ROOT } from "./package-root.ts"
 
 const CATALOG = join(RUNTIME_ROOT, "knowledge", "hfs", "fe-stack.yaml")

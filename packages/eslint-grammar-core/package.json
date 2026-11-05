@@ -42,6 +42,7 @@
   },
   "peerDependencies": {
     "@starci/eslint-canon-fe": "9.14.4",
+    "@starci/hfs": "~5.13.0",
     "eslint": ">=9",
     "typescript": ">=5.9"
   },
@@ -59,6 +60,7 @@
   },
   "devDependencies": {
     "@starci/eslint-canon-fe": "file:../eslint-canon-fe",
+    "@starci/hfs": "file:../hfs",
     "@starci/tsconfig": "file:../tsconfig",
     "@types/node": "24.19.2",
     "@typescript-eslint/types": "^8.70.0",

@@ -1,7 +1,7 @@
 /** Static create-action semantics in a bar's controls and its attached menu declarations. */
 import { fileURLToPath } from "node:url"
-import { phrasesOf } from "../../runtime/scripts/lib/source-phrases.mjs"
-import { escapeRegExp } from "../../runtime/scripts/lib/regex.mjs"
+import { phrasesOf } from "@starci/hfs/runtime/scripts/lib/source-phrases.mjs"
+import { escapeRegExp } from "@starci/hfs/runtime/scripts/lib/regex.mjs"
 import { propertyKeyText, resolveLocal } from "./app-shell.ts"
 import { isNode } from "./types.ts"
 import type { ReaderContext, Resolved } from "./types.ts"

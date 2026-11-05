@@ -10,8 +10,8 @@ import path from 'node:path';
 import { RuleTester } from 'eslint';
 import parser from '@typescript-eslint/parser';
 import { noNullSuspenseFallback } from './next-conventions.ts';
-import { checkRequiredFiles } from '#runtime/scripts/hfs/architecture/required-files.mjs';
-import { openHfs, type OpenedHfs } from '#runtime/scripts/hfs/slots.mjs';
+import { checkRequiredFiles } from '@starci/hfs/runtime/scripts/hfs/architecture/required-files.mjs';
+import { openHfs, type OpenedHfs } from '@starci/hfs/runtime/scripts/hfs/slots.mjs';
 import { canonTester } from '../fixtures/typed/tester.ts';
 import { RUNTIME_ROOT as RUNTIME } from './lib/package-root.ts';
 
