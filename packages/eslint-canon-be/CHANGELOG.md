@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.18.3 - 2026-11-05
+
+- Changed: the runtime copy of the canon pins names `@starci/hfs` 5.11.3 and the Grammar family 0.21.38.
+
 ## 3.18.2 - 2026-11-05
 
 - Changed: the runtime copy of the canon pins names `@starci/hfs` 5.11.2 and the Grammar family 0.21.37.

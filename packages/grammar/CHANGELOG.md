@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.21.37 - 2026-11-05
+## 0.21.38 - 2026-11-05
 
 - Changed (G7-11): a `ListRowData` with `actionPlacement="end"` and two or more commands (an action and a menu, or a control) puts the commands under the text on a container narrower than 28rem, so the text column keeps the row width instead of about 130px; one command stays at the end. The loading row follows. Law `DNA-COMMON-ROW-TEXT-FIRST`, story `RowTextFirst`.
 - Added: `size="sm"` on `Select`, `ComboBox`, `SearchField`, `NumberField` and `Input`: the compact 32px single-line field for a list head or toolbar (the default `md` is the 40px field). Works with `isLabelHidden` and region loading (the box follows the one field height variable); the touch floor does not lift it, as a sm Button keeps 32px. Law `DNA-COMMON-FIELD-SM` (`DNA-COMMON-FIELD-MD` now leaves compact fields to it), story `CompactFields`.
@@ -24,6 +24,9 @@
 - Fixed (U9c-3): the `alternative` button (HeroUI secondary) writes its words in `--default-foreground`, the pair of its `--default` fill; the vendor used `--accent-soft-foreground`, which is the brand rose in a brand-coloured app (pink words on grey). The info Alert is G7-7 (set `--info-soft` and `--info-soft-foreground` in the theme). Law `DNA-COMMON-BUTTON-ALTERNATIVE-INK`.
 - Changed: `DescriptionList layout="columns"` answers its own width (side by side from 16rem) instead of the viewport (30rem), so a phone-wide drawer keeps terms beside values. Law `DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS`.
 - Added: `Stepper kind="bar"`: one thin segment per step, filled up to the current step, the current label under it (horizontal, pressable with `onStepSelect`, loading keeps the box). Law `DNA-COMMON-STEPPER-BAR`, story `StepperBar`.
+
+## 0.21.37 - 2026-11-05
+
 - Added: `Pane collapse="drawer" trigger="head"` and `PaneHeader drawerOpener={{ pane, icon, label }}`: the grid owns the drawer's open state and the head draws the icon button that opens it, shown only where the pane's area is not arranged, so a server page needs no state. The head keeps its height at every width.
 
 ## 0.21.36 - 2026-11-05
