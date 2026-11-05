@@ -17,15 +17,22 @@ export type ClusterProps = {
     readonly wrap?: boolean
     readonly align?: ClusterAlign
     readonly justify?: ClusterJustify
+    /**
+     * Names the row as one labelled group (`role="group"`, `aria-label`) when separate controls stand together and mean one thing: a
+     * less/more pair, a row of actions on one record. Not a ButtonGroup: the controls stay separate, spaced buttons; the label only
+     * gives assistive technology the set's name.
+     */
+    readonly label?: string
 }
 
 /**
  * Items side by side in the inline axis that wrap onto further lines (chips, filters, a toolbar group, a badge
  * row). The column gap and the row gap are the one relation `gap` names.
  */
-export const Cluster = ({ children, gap, wrap = true, align = "center", justify = "start" }: ClusterProps) => (
+export const Cluster = ({ children, gap, wrap = true, align = "center", justify = "start", label }: ClusterProps) => (
     <div
         className="starci-core-cluster"
+        {...(label === undefined ? {} : { role: "group", "aria-label": label })}
         data-component="Cluster"
         data-tier="frame"
         data-grammar-gap={gap}

@@ -58,6 +58,11 @@ export type ChoiceChipsProps = NoChildren & {
     readonly onValuesChange?: (values: ReadonlyArray<string>) => void
     /** What shows in place of the chips when there are none (no free time). Required: a group answers for its empty state. */
     readonly empty: ReactNode
+    /**
+     * `content` (default): each chip is as wide as its words. `fill`: the chips share the row, growing evenly from their own width, and
+     * wrap onto a further row only when they cannot fit (days of a week, two or three modes).
+     */
+    readonly width?: "content" | "fill"
     /** The first read has no data yet: the options given draw as geometry (three when none). */
     readonly isLoading?: boolean
     readonly error?: ErrorData
@@ -74,7 +79,7 @@ const firstKey = (keys: Iterable<Key>): string | undefined => {
  * arrow keys move, a disabled option keeps its place. It is not a filter (`FilterButtonGroup` narrows a list in one row with a
  * "+n" overflow) and not a segmented control (one row of two to five peers).
  */
-export const ChoiceChips = ({ label, isLabelHidden = false, options, value, defaultValue, onValueChange, selectionMode = "single", values, defaultValues, onValuesChange, empty, isLoading: ownLoading, error }: ChoiceChipsProps) => {
+export const ChoiceChips = ({ label, isLabelHidden = false, options, value, defaultValue, onValueChange, selectionMode = "single", values, defaultValues, onValuesChange, empty, width = "content", isLoading: ownLoading, error }: ChoiceChipsProps) => {
     const labelId = useId()
     const isLoading = useIsLoading(ownLoading)
     const ownsBusy = useRegionOwnsBusy()
@@ -85,6 +90,7 @@ export const ChoiceChips = ({ label, isLabelHidden = false, options, value, defa
             className="starci-core-choice-chips"
             data-component="ChoiceChips"
             data-tier="composite"
+            data-grammar-width={width}
             data-contract="A11Y-1 STATE-6 FOCUS-2"
             {...(isLoading && !ownsBusy ? { "aria-busy": true } : {})}
         >

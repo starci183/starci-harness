@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { CSSProperties, ReactNode } from "react"
 import * as G from "../common/index.js"
-import { Matrix, State, noop } from "./fixtures.js"
+import { Matrix, PlusGlyph, State, noop } from "./fixtures.js"
 
 /* Parts the second round of mockups needs (U2-G6, U2-G8, G7-7..G7-10, G9c-1, G9c-2, the alternative button, the drawer description list, the bar stepper). */
 
@@ -179,6 +179,56 @@ export const AlertAccentTone: Story = {
             <State label="accent, with a dismiss / loading" direction="column">
                 <G.Alert tone="accent" title="Welcome to NIVO" description="Ask a question to begin." dismissLabel="Dismiss" />
                 <G.Alert tone="accent" title="Welcome to NIVO" description="Ask a question to begin." isLoading />
+            </State>
+        </Matrix>
+    ),
+}
+
+const dayOptions = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => ({ value: day, label: day }))
+
+/** ChoiceChips width fill: the chips share the row evenly, and wrap only when they cannot fit (DNA-COMMON-CHOICE-CHIPS-FILL). */
+export const ChoiceChipsFill: Story = {
+    render: () => (
+        <Matrix maxWidth={420}>
+            <State label="fill, one row / narrow, wrapped / loading" direction="column">
+                <G.ChoiceChips label="Days" width="fill" options={dayOptions} defaultValue="Mon" empty={empty} />
+                <div style={{ maxWidth: 200 }}><G.ChoiceChips label="Days narrow" width="fill" options={dayOptions} defaultValue="Mon" empty={empty} /></div>
+                <G.ChoiceChips label="Days loading" width="fill" options={dayOptions} isLoading empty={empty} />
+            </State>
+        </Matrix>
+    ),
+}
+
+/** Filter tabs in a loading region: labels real, counts as geometry (DNA-COMMON-TABS-FILTER-LOADING-COUNTS). */
+export const FilterTabsLoading: Story = {
+    render: () => (
+        <Matrix maxWidth={360}>
+            <State label="ready / loading region" direction="column">
+                <G.Tabs label="Kinds ready" kind="filter" selectedKey="All" onSelect={noop} items={filterItems.slice(0, 4)} />
+                <G.PaneGrid label="Loading" areas={["main"]} columns={["fill"]}>
+                    <G.Pane area="main" label="Loading list">
+                        <G.PaneSection isLoading><G.Tabs label="Kinds loading" kind="filter" selectedKey="All" onSelect={noop} items={filterItems.slice(0, 4)} /></G.PaneSection>
+                    </G.Pane>
+                </G.PaneGrid>
+            </State>
+        </Matrix>
+    ),
+}
+
+/** Separate buttons that mean one thing stand in a labelled group; not a ButtonGroup (DNA-COMMON-CLUSTER-GROUP-NAMED). */
+export const LabelledActionRow: Story = {
+    render: () => (
+        <Matrix>
+            <State label="less / more and a row of actions">
+                <G.Cluster gap="inline" label="Quantity">
+                    <G.IconButton label="Less" source={PlusGlyph} intent="neutral" onPress={noop} />
+                    <G.Text>2</G.Text>
+                    <G.IconButton label="More" source={PlusGlyph} intent="neutral" onPress={noop} />
+                </G.Cluster>
+                <G.Cluster gap="inline" label="Actions on this order">
+                    <G.Button intent="alternative" onPress={noop}>Edit</G.Button>
+                    <G.Button intent="commit" onPress={noop}>Confirm</G.Button>
+                </G.Cluster>
             </State>
         </Matrix>
     ),

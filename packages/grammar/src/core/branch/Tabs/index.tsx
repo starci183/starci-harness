@@ -1,6 +1,7 @@
 "use client"
 
-import { withRegionInert } from "../../regionScope.js"
+import { useIsLoading, withRegionInert } from "../../regionScope.js"
+import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import { Tabs as HeroTabs } from "@heroui/react"
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { PlainPressable } from "../../PlainPressable.js"
@@ -111,6 +112,8 @@ const useLocationPath = (enabled: boolean): readonly [string | undefined, (path:
 const TabsInner = (props: TabsProps) => {
     const [isClientReady, setIsClientReady] = useState(false)
     const frameRef = useRef<HTMLDivElement>(null)
+    // A loading region keeps the labels real (static chrome) and draws each count as the geometry of its ready box; the region makes the tabs inert.
+    const isLoading = useIsLoading(undefined)
     useEffect(() => setIsClientReady(true), [])
     const isLinkTabs = props.items.some((item) => item.href !== undefined)
     const [locationPath, setLocationPath] = useLocationPath(isLinkTabs && props.selectedKey === undefined)
@@ -224,7 +227,7 @@ const TabsInner = (props: TabsProps) => {
     })
     const shownItems = !isFilter || renderAll ? props.items : props.items.filter((item) => !hiddenIds.has(item.id))
     const foldedItems = !isFilter || renderAll ? [] : props.items.filter((item) => hiddenIds.has(item.id))
-    const labelOf = (item: TabItem) => item.count === undefined ? item.label : `${item.label} ${item.count}`
+    const labelOf = (item: TabItem) => item.count === undefined || isLoading ? item.label : `${item.label} ${item.count}`
 
     if (!isClientReady) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} {...frameData} data-grammar-tabs-client="pending" />
 
@@ -240,7 +243,7 @@ const TabsInner = (props: TabsProps) => {
             <span className={tabContentClassName} data-contract="GAP-2" data-grammar-tab-id={item.id}>
                 {item.leading}
                 <span className={tabLabelClassName} style={props.labelVisibility === "always" || item.leading == null ? { display: "inline" } : undefined}>{item.label}</span>
-                {item.count === undefined ? null : <span className="starci-core-tab-count" data-grammar-tab-count="true" {...(item.isAttention === true ? { "data-grammar-attention": "true" } : {})}>{item.count}</span>}
+                {item.count === undefined ? null : <span className="starci-core-tab-count" data-grammar-tab-count="true" {...(item.isAttention === true ? { "data-grammar-attention": "true" } : {})}>{isLoading ? <SkeletonPlaceholder>{item.count}</SkeletonPlaceholder> : item.count}</span>}
             </span>
             <HeroTabs.Indicator />
         </HeroTabs.Tab>

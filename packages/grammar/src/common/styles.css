@@ -3398,6 +3398,9 @@
     .starci-core-choice-chip { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .starci-core-choice-chip { background: var(--surface-secondary); color: var(--foreground); }
     .starci-core-choice-chip[data-selected="true"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
+    /* width="fill": the chips grow evenly from their own width and wrap only when they cannot fit (G-batch6). */
+    .starci-core-choice-chips[data-grammar-width="fill"] :is(.starci-core-choice-chip, .starci-core-choice-chips-skeleton, .starci-core-tooltip-disabled-trigger) { flex: 1 0 auto; justify-content: center; }
+    .starci-core-choice-chips[data-grammar-width="fill"] .starci-core-tooltip-disabled-trigger > .starci-core-choice-chip { inline-size: 100%; }
     .starci-core-choice-chips-skeleton { display: inline-block; inline-size: 4.5rem; block-size: 2.25rem; }
     .starci-core-choice-chips-skeleton > * { inline-size: 100%; block-size: 100%; aspect-ratio: auto; border-radius: var(--grammar-radius-pill); }
 

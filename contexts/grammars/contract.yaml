@@ -196,7 +196,7 @@ roles:
     sizes: { steps: none, bar: md }
     states: [selected, focus-visible, disabled]
     grammarMayChange: [track, indicator and label paint; current label reads accent text]
-    dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-FILTER-COMPACT, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING]
+    dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-FILTER-COMPACT, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING, DNA-COMMON-TABS-FILTER-LOADING-COUNTS]
 
   - id: filter-button-group
     ui: ui/components/chip.md
@@ -216,7 +216,7 @@ roles:
     sizes: { steps: [sm, md], default: md }
     states: [selected, focus-visible, disabled, skeleton]
     grammarMayChange: [selected paint (soft accent with accent border)]
-    dna: [DNA-COMMON-SEGMENTED-RAMP, DNA-COMMON-SEGMENTED-RADIO, DNA-CORE-SEGMENT-SELECTED, DNA-COMMON-CHOICE-CHIPS-WRAP]
+    dna: [DNA-COMMON-SEGMENTED-RAMP, DNA-COMMON-SEGMENTED-RADIO, DNA-CORE-SEGMENT-SELECTED, DNA-COMMON-CHOICE-CHIPS-WRAP, DNA-COMMON-CHOICE-CHIPS-FILL]
 
   - id: chip
     ui: ui/components/chip.md
@@ -460,7 +460,7 @@ roles:
     sizes: shared spacing scale
     states: []
     grammarMayChange: ["nothing; spacing, source order and alignment are Common"]
-    dna: []
+    dna: [DNA-COMMON-CLUSTER-GROUP-NAMED]
 
   - id: grid
     ui: ui/composition.md
@@ -1184,6 +1184,21 @@ mustKeep:
       law: "With align end the content ends where the band ends: the last message stands beside the composer (G10b-1)."
       measure: { kind: relation, select: '[data-grammar-pane-section-scroll-align="end"] > .starci-core-pane-section-content', metric: bottom, op: ">=", tolerance: 12.5, ref: { within: '[data-grammar-pane-section-scroll-align="end"]', select: self, metric: bottom } }
       owner: contract roles.pane-grid
+    - id: DNA-COMMON-TABS-FILTER-LOADING-COUNTS
+      role: tabs
+      law: "In a loading region the filter tabs keep their labels as real text and every count is the geometry of its ready box (an unseen placeholder), never a live number."
+      measure: { kind: count, select: 'document [data-grammar-region-inert] [data-grammar-tabs-kind="filter"] [data-grammar-tab-count]:not(:has(.starci-core-skeleton-placeholder))', op: "=", value: 0 }
+      owner: contract roles.tabs
+    - id: DNA-COMMON-CHOICE-CHIPS-FILL
+      role: segmented-control
+      law: "ChoiceChips with width fill share the row: the last chip of every row ends where the row ends."
+      measure: { kind: relation, select: '[data-grammar-width="fill"] .starci-core-choice-chip:last-child', metric: right, op: ">=", tolerance: 1, ref: { within: '.starci-core-choice-chips-row', select: self, metric: right } }
+      owner: contract roles.segmented-control
+    - id: DNA-COMMON-CLUSTER-GROUP-NAMED
+      role: cluster
+      law: "A Cluster given a label is a group with an accessible name: separate controls stay separate and the set is named."
+      measure: { kind: a11y, select: '[data-component="Cluster"][role="group"]', metric: name, op: set }
+      owner: contract roles.cluster
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.

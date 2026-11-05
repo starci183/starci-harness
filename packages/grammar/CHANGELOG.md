@@ -2,6 +2,9 @@
 
 ## 0.21.37 - 2026-11-05
 
+- Added: `Tabs kind="filter"` follows a loading region: the labels stay real text (static chrome), each count is the geometry of its ready box, the tabs are inert and the fold fit is unchanged. Law `DNA-COMMON-TABS-FILTER-LOADING-COUNTS`, story `FilterTabsLoading`.
+- Added: `ChoiceChips width="fill"`: the chips grow evenly from their own width to share the row and wrap only when they cannot fit; the loading twin fills the same way. Law `DNA-COMMON-CHOICE-CHIPS-FILL`, story `ChoiceChipsFill`.
+- Added: `Cluster label="..."` makes the row a labelled group (`role="group"`, `aria-label`) for separate buttons that mean one thing (less/more, a row of actions). Not a ButtonGroup (R380): the controls stay separate. Law `DNA-COMMON-CLUSTER-GROUP-NAMED`, story `LabelledActionRow`.
 - Added (G10b-1): `PaneSection scroll={{ align: "start" | "center" | "end" }}`: the scroll content is at least as tall as the band and stands at the foot (`end`, a thread beside its composer) or in the middle (`center`, an empty greeting); it still scrolls when taller. Laws `DNA-COMMON-PANE-SCROLL-ALIGN`, `-END`, story `ScrollBandAlign`.
 - Added (G10b-2): `Alert tone="accent"`: the accent soft pair (`--accent-soft`, `--accent-soft-foreground`), flat, for a welcome or "new" band; it acts as informative (commit action, polite). Law `DNA-COMMON-ALERT-TONE-PAIR-ACCENT`, story `AlertAccentTone`.
 - Fixed (U2-G7): Badge, DescriptionList, Quote, ColorSwatch, MediaFrame, Meter, Progress, ProgressCircle, Video (and Toast, DropdownMenu, PopoverPart, the overlay scope) call a region wrapper or a hook and now begin with `"use client"`, so a server component can import them from `@starci/grammar/common`. New contract check `npm run check:client` (in `npm test`) fails any module under `src/core`, `src/common` or `src/offset-pop` that calls a hook, `createContext` or a region wrapper without the directive as its first statement.
