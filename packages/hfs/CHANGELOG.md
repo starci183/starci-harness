@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.11.2 - 2026-11-05
+
+- Changed: the canon pins name the Grammar family 0.21.37 (PaneHeader drawerOpener) and this release.
+
 ## 5.11.1 - 2026-11-05
 
 - Changed: the canon pins name the Grammar family 0.21.36 (the Pane drawer fix) and this release.

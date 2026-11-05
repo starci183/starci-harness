@@ -1,6 +1,6 @@
 {
   "name": "@starci/grammar",
-  "version": "0.21.36",
+  "version": "0.21.37",
   "description": "Reusable StarCi React components, compositions, and packaged visual DNA.",
   "keywords": [
     "starci",

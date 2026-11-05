@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.21.37 - 2026-11-05
 
 - Added: `Pane collapse="drawer" trigger="head"` and `PaneHeader drawerOpener={{ pane, icon, label }}`: the grid owns the drawer's open state and the head draws the icon button that opens it, shown only where the pane's area is not arranged, so a server page needs no state. The head keeps its height at every width.
 
