@@ -76,7 +76,14 @@ const pinsOf = (manifest: Manifest, file: string): Pin[] =>
             .map(([name, spec]) => ({ name, spec, file, field })),
     )
 
-const isManifest = (file: string): boolean => posix.basename(file) === "package.json" && !file.split("/").includes("node_modules")
+/**
+ * A package.json that is a manifest of the repository: not a vendored dependency (`node_modules`) and not a template or fixture file
+ * (`templates/`, such as the harness's handlebars `package-scripts/package.json`, which is not JSON until it is rendered).
+ */
+export const isManifest = (file: string): boolean => {
+    const segments = file.split("/")
+    return posix.basename(file) === "package.json" && !segments.includes("node_modules") && !segments.includes("templates")
+}
 
 /** The tracked package.json files of the repository, the root and every workspace, as repository paths. */
 export const manifestFiles = async (root: string): Promise<string[]> => nulPaths(await git(root, ["ls-files", "-z"])).filter(isManifest)
