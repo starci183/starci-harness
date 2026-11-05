@@ -373,3 +373,17 @@ export const StepperMarkerFills: Story = {
         </Matrix>
     ),
 }
+
+/** The middle title step, 24px: a first-run page title and a welcome card title (DNA-COMMON-HEADING-TITLE-SCALE). */
+export const TitleScale: Story = {
+    render: () => (
+        <Matrix maxWidth={520}>
+            <State label="Heading standard / title / display, and a page header with titleScale title" direction="column">
+                <G.Heading level={2}>Workspace of yours</G.Heading>
+                <G.Heading level={2} scale="title">Welcome to NIVO</G.Heading>
+                <G.Heading level={2} scale="display">Display</G.Heading>
+                <G.PageHeader title="Your workspaces" titleScale="title" description="Pick one to continue." />
+            </State>
+        </Matrix>
+    ),
+}

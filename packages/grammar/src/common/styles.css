@@ -4132,6 +4132,17 @@
         line-height: var(--grammar-leading-xs) !important;
     }
 
+    .starci-core-page-header-title[data-grammar-title-scale="title"] {
+        font-size: var(--grammar-text-3xl);
+        line-height: var(--grammar-leading-tight);
+    }
+
+    .grammar-common-root [data-component="Heading"][data-scale="title"] {
+        font-size: var(--grammar-text-3xl) !important;
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-tight);
+    }
+
     .grammar-common-root [data-component="Heading"][data-scale="display"] {
         font-size: var(--grammar-text-5xl) !important;
         font-weight: var(--grammar-weight-semibold);

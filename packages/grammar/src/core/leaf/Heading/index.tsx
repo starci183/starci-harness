@@ -1,13 +1,16 @@
 import { Typography, cn, skeletonVariants } from "@heroui/react"
 
 export type HeadingLevel = 1 | 2 | 3 | 4
-export type HeadingScale = "standard" | "display"
+export type HeadingScale = "standard" | "title" | "display"
 
 export type HeadingProps = {
     readonly children: string
     /** Outline semantics and the standard visual recipe move together. */
     readonly level?: HeadingLevel
-    /** Display changes emphasis without changing the document outline. */
+    /**
+     * Display changes emphasis without changing the document outline. `title` is the middle step (24px, semibold, tight leading) for the
+     * head of a first-run or lobby screen and a welcome card; `display` is the 36px hero.
+     */
     readonly scale?: HeadingScale
     readonly isLoading?: boolean
     readonly isVisuallyHidden?: boolean

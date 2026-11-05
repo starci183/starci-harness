@@ -25,6 +25,8 @@ export type PageHeaderProps = {
     readonly title: ReactNode
     /** `id` of the `h1`, for a region `aria-labelledby` that names the page by its heading. */
     readonly titleId?: string
+    /** `title` draws the page title at the middle 24px step (a lobby or first-run head); the default is the standard page title. */
+    readonly titleScale?: "standard" | "title"
     readonly breadcrumbs?: PageHeaderBreadcrumbs
     /** The one supporting line under the heading (FONT-2, muted). */
     readonly description?: ReactNode
@@ -64,6 +66,7 @@ const slot = (content: ReactNode, isLoading: boolean, shape: "text" | "block" = 
 export const PageHeader = ({
     title,
     titleId,
+    titleScale = "standard",
     breadcrumbs,
     description,
     meta,
@@ -99,6 +102,7 @@ export const PageHeader = ({
                             <h1
                                 className="starci-core-section-title starci-core-page-header-title"
                                 data-contract="FONT-4 MARGIN-0"
+                                {...(titleScale === "title" ? { "data-grammar-title-scale": "title" } : {})}
                                 {...(titleId === undefined ? {} : { id: titleId })}
                                 {...(isLoading ? { "aria-hidden": true } : {})}
                             >

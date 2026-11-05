@@ -525,7 +525,7 @@ roles:
     sizes: none
     states: [ready, loading (isLoading), error (the error slot), empty (kind list: required)]
     grammarMayChange: [heading weight]
-    dna: []
+    dna: [DNA-COMMON-HEADING-TITLE-SCALE]
     lint: [starci-fe/no-heading-above-card]
 
   - id: diagram
@@ -1254,6 +1254,11 @@ mustKeep:
       law: "An upcoming step of the markers form is a filled secondary-surface circle with no ring (U0-G9)."
       measure: { kind: style, select: '[data-component="Stepper"]:not([data-grammar-stepper-kind="bar"]):not([data-loading="true"]) [data-grammar-step-state="upcoming"] [data-grammar-step-marker]', checks: [{ metric: background-color, op: "=", value: { token: --surface-secondary } }, { metric: border-color, op: "=", value: transparent }] }
       owner: contract roles.list
+    - id: DNA-COMMON-HEADING-TITLE-SCALE
+      role: section
+      law: "The title scale of a Heading and of a PageHeader is 24px (the 3xl step), between the standard headings and display (U0-G10)."
+      measure: { kind: style, select: ':is([data-component="Heading"][data-scale="title"], .starci-core-page-header-title[data-grammar-title-scale="title"])', checks: [{ metric: font-size, op: "=", value: 24px }] }
+      owner: contract roles.section
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.
