@@ -1623,7 +1623,17 @@
     .starci-core-list-row[data-grammar-action-placement="end"] > .starci-core-list-row-detail { grid-column: 1 / -1; }
     .starci-core-list-row[data-grammar-action-placement="end"][data-grammar-leading="true"] > .starci-core-list-row-detail { grid-column: 2 / -1; }
 
-@container starci-core-surface (min-width: 28.001rem) {
+/*
+     * Text first (G7-11): an end-placed row with two or more commands (an action and a menu) would leave the text column about 130px in a
+     * 320px pane, so on a narrow container the commands stand under the text, start-aligned, and the text keeps the row's width. One
+     * command stays at the end. The loading row carries the same attribute, so both boxes are one.
+     */
+    @container starci-core-surface (max-width: 28rem) {
+        .starci-core-list-row[data-grammar-action-placement="end"][data-grammar-actions-multi="true"] > .starci-core-list-row-actions { grid-column: 1 / -1; justify-content: flex-start; flex-wrap: wrap; }
+        .starci-core-list-row[data-grammar-action-placement="end"][data-grammar-actions-multi="true"][data-grammar-leading="true"] > .starci-core-list-row-actions { grid-column: 2 / -1; }
+    }
+
+    @container starci-core-surface (min-width: 28.001rem) {
         .starci-core-list-row {
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;

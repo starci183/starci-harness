@@ -68,6 +68,8 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
     const hasMark = !hasLeading && treatment.mark === "check"
     const hasActions = row.action !== undefined || row.menu !== undefined || row.control != null
     const hasTrail = row.meta !== undefined || row.badges !== undefined
+    // Two or more commands (an action and a menu, a control): on a narrow container they stand under the text, which keeps the row's width.
+    const actionCount = [row.action, row.menu, row.control].filter((part) => part != null).length
     const drag = row.drag
     const hintId = useId()
     const pressKeys = drag?.onMoveKey === undefined ? {} : {
@@ -93,6 +95,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-leading={hasLeading ? "true" : "false"}
                 data-grammar-actions={hasActions ? "true" : "false"}
                 {...(row.actionPlacement === "end" ? { "data-grammar-action-placement": "end" } : {})}
+                {...(actionCount > 1 ? { "data-grammar-actions-multi": "true" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 data-contract="GAP-3 PADDING-4 BOUNDARY-3 STATE-8"
             >
@@ -132,6 +135,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-leading={hasLeading || hasMark ? "true" : "false"}
                 data-grammar-actions={hasActions ? "true" : "false"}
                 {...(row.actionPlacement === "end" ? { "data-grammar-action-placement": "end" } : {})}
+                {...(actionCount > 1 ? { "data-grammar-actions-multi": "true" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 {...(row.verdict === undefined ? {} : { "data-verdict": row.verdict })}
                 {...(row.onPress === undefined ? {} : { "data-grammar-row-pressable": "true" })}

@@ -323,7 +323,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP]
+    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -1219,6 +1219,11 @@ mustKeep:
       law: "A single-line field with size sm is 32px tall, whatever its label or state: a picker in a list head or a toolbar."
       measure: { kind: box, select: '[data-grammar-field-size="sm"] :is(.starci-core-input-field,.starci-core-select-trigger,.starci-core-combo-box-group,.starci-core-search-field-group,.starci-core-number-field-group)', metric: height, op: "=", value: 32px }
       owner: contract roles.select
+    - id: DNA-COMMON-ROW-TEXT-FIRST
+      role: list
+      law: "In a narrow pane a row with two or more commands keeps the text column the row width: the commands stand under the copy, never beside it (G7-11)."
+      measure: { kind: relation, select: '[data-story-narrow-rows] [data-grammar-action-placement="end"][data-grammar-actions-multi="true"] > .starci-core-list-row-actions', metric: top, op: ">=", tolerance: 1, ref: { within: '[data-component="ListRow"]', select: '.starci-core-list-row-copy', metric: bottom } }
+      owner: contract roles.list
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.

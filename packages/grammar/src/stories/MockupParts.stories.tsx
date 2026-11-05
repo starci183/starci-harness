@@ -283,3 +283,18 @@ export const CompactFields: Story = {
         </Matrix>
     ),
 }
+
+const gapRows: ReadonlyArray<G.ListRowData> = [
+    { id: "g1", title: "Return and exchange policy", description: "Customers ask about it most", leading: { icon: PlusGlyph }, action: { label: "Add", press: noop }, actionPlacement: "end", menu: { label: "More", entries: [{ kind: "section", id: "s", items: [{ id: "x", label: "Dismiss", onAction: noop }] }] } },
+    { id: "g2", title: "Opening hours", description: "One command stays at the end", leading: { icon: PlusGlyph }, action: { label: "Add", press: noop }, actionPlacement: "end" },
+]
+
+/** Text first: with an action and a menu in a 20rem pane the commands stand under the text; one command stays at the end (DNA-COMMON-ROW-TEXT-FIRST). */
+export const RowTextFirst: Story = {
+    render: () => (
+        <div data-story-narrow-rows="true" style={{ maxWidth: "20rem" }}>
+            <G.Section title="To add" kind="list" items={gapRows} empty={empty} />
+            <G.Section title="To add loading" kind="list" items={gapRows} empty={empty} isLoading />
+        </div>
+    ),
+}

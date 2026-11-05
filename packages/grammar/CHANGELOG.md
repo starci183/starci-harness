@@ -2,6 +2,7 @@
 
 ## 0.21.37 - 2026-11-05
 
+- Changed (G7-11): a `ListRowData` with `actionPlacement="end"` and two or more commands (an action and a menu, or a control) puts the commands under the text on a container narrower than 28rem, so the text column keeps the row width instead of about 130px; one command stays at the end. The loading row follows. Law `DNA-COMMON-ROW-TEXT-FIRST`, story `RowTextFirst`.
 - Added: `size="sm"` on `Select`, `ComboBox`, `SearchField`, `NumberField` and `Input`: the compact 32px single-line field for a list head or toolbar (the default `md` is the 40px field). Works with `isLabelHidden` and region loading (the box follows the one field height variable); the touch floor does not lift it, as a sm Button keeps 32px. Law `DNA-COMMON-FIELD-SM` (`DNA-COMMON-FIELD-MD` now leaves compact fields to it), story `CompactFields`.
 - Fixed: `Disclosure chevron="start"` leaves the trigger row start-aligned, so the title follows the chevron instead of standing at the row end. Law `DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT`.
 - Fixed: a `DataTable` of four columns or fewer fits its container (columns shrink to their words, so a narrow aside never clips the last column); a wider table keeps its natural width and scrolls inside its own box. Law `DNA-COMMON-TABLE-NO-CLIP`, story `CompactTableInAside`.
