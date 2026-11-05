@@ -213,3 +213,43 @@ export const AlertActionNarrowOtherTones: Story = {
         </Matrix>
     ),
 }
+
+const drawerRows: ReadonlyArray<G.ListRowData> = [
+    { id: "d1", title: "Next step", description: "Send the quote", meta: { text: "1 day" } },
+    { id: "d2", title: "Context", description: "Ms Trang, 0903 418 256" },
+    { id: "d3", title: "Channel", description: "Zalo" },
+]
+
+const DrawerPaneContent = () => (
+    <>
+        <G.PaneSection gap="section">
+            <G.Heading level={3}>Customer</G.Heading>
+            <G.Text>Mộc An, a salon with two branches.</G.Text>
+        </G.PaneSection>
+        <G.PaneSection gap="section">
+            <G.Section title="Details" kind="list" items={drawerRows} empty={empty} />
+        </G.PaneSection>
+    </>
+)
+
+const DrawerSpacingDemo = () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+        <div data-story-pane-grid="aside" style={{ height: "26rem", display: "flex" }}>
+            <G.PaneGrid label="Aside" areas={["main info"]} columns={["fill", "standard"]}>
+                <G.Pane area="main" label="Main"><G.PaneSection><G.Text>Main</G.Text></G.PaneSection></G.Pane>
+                <G.Pane area="info" surface label="Details"><DrawerPaneContent /></G.Pane>
+            </G.PaneGrid>
+        </div>
+        <div data-story-pane-grid="drawer" style={{ height: "4rem", display: "flex" }}>
+            <G.PaneGrid label="Drawer" areas={["main info"]} columns={["fill", "standard"]}>
+                <G.Pane area="main" label="Main"><G.PaneSection><G.Text>Main</G.Text></G.PaneSection></G.Pane>
+                <G.Pane area="info" surface label="Details" collapse="drawer" trigger="none" collapseLabel="Customer info" closeLabel="Close" isOpen onOpenChange={noop}><DrawerPaneContent /></G.Pane>
+            </G.PaneGrid>
+        </div>
+    </div>
+)
+
+/** The same pane as a wide aside and opened as a drawer: the drawer is portalled into the Grammar root, so sections, rows and text keep the same spacing (DNA-COMMON-PANE-DRAWER-SPACING, -SECTION-GAP). */
+export const PaneDrawerSpacing: Story = {
+    render: () => <DrawerSpacingDemo />,
+}

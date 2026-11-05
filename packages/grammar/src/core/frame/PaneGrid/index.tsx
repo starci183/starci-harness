@@ -17,6 +17,7 @@ import {
 } from "react"
 import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { SurfaceNesting } from "../../surfaceContext.js"
+import { useOverlayContainer } from "../../overlayScope.js"
 import { PaneContext, usePaneContext, type PaneContextValue, type PaneInset } from "../../paneContext.js"
 import {
     buildResponsivePaneGridModels,
@@ -303,6 +304,8 @@ const PaneDrawer = ({ pane, placement, models }: {
         () => ({ area: props.area, inset: "content", register: drawerRegister }),
         [props.area],
     )
+    // The drawer portals into the nearest Grammar root, never the body: outside it no family selector, token or spacing rule applies.
+    const { anchor, container } = useOverlayContainer("Drawer")
     if (props.collapse !== "drawer") return null
     const drawerVars: CustomProperties = { "--starci-core-pane-be": "var(--grammar-pane-inset-block-end-outer)" }
     const drawerHeaderStyle: CSSProperties = { paddingInline: "var(--grammar-pane-inset-inline)" }
@@ -319,7 +322,8 @@ const PaneDrawer = ({ pane, placement, models }: {
                     {props.openLabel}
                 </Drawer.Trigger>
             )}
-            <Drawer.Backdrop>
+            {anchor}
+            {container === null ? null : <Drawer.Backdrop UNSTABLE_portalContainer={container}>
                 <Drawer.Content className="starci-core-pane-drawer-content" placement={placement}>
                     <Drawer.Dialog className="starci-core-pane-drawer-dialog" data-grammar-nesting="surface">
                         <SurfaceNesting host="overlay">
@@ -349,7 +353,7 @@ const PaneDrawer = ({ pane, placement, models }: {
                         </SurfaceNesting>
                     </Drawer.Dialog>
                 </Drawer.Content>
-            </Drawer.Backdrop>
+            </Drawer.Backdrop>}
         </Drawer>
     )
 }

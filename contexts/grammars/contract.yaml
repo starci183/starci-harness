@@ -395,7 +395,7 @@ roles:
     sizes: { fills: "its host's block and inline size" }
     states: [drawer-open, head-loading]
     grammarMayChange: ["nothing: the grid, the dividers, the surface ground, the pane inset and the drawer are Common's"]
-    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT]
+    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP]
     lint: [starci-grammar/pane-grid-children, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
 
   - id: data-views
@@ -1109,6 +1109,22 @@ mustKeep:
       role: pane-grid
       law: A pane header is at least as tall as a touch target (2.75rem, 44px), so the heads of one grid row share a height with or without a command.
       measure: { kind: box, select: '[data-component="PaneHeader"]', metric: height, op: ">=", value: 44px }
+      owner: contract roles.pane-grid
+    - id: DNA-COMMON-PANE-DRAWER-SPACING
+      role: pane-grid
+      law: A pane opened as a drawer keeps the spacing of the same pane in the wide aside (the drawer is portalled into the Grammar root, never the body), so its stack gap, section gaps and content inset are the pane's tokens.
+      measure:
+        kind: style
+        select: '.starci-core-pane-drawer-scroll .starci-core-pane-stack'
+        checks: [{ metric: row-gap, op: "=", value: { token: --grammar-row-gap } }]
+      owner: contract roles.pane-grid
+    - id: DNA-COMMON-PANE-DRAWER-SECTION-GAP
+      role: pane-grid
+      law: Inside a drawer pane a section with the section gap stands that far between its blocks, and is inset by the pane inset, as in the wide aside.
+      measure:
+        kind: style
+        select: '.starci-core-pane-drawer-scroll .starci-core-pane-section[data-grammar-pane-section-gap="section"]'
+        checks: [{ metric: row-gap, op: "=", value: { token: --grammar-section-gap } }, { metric: padding-inline-start, op: "=", value: { token: --grammar-pane-inset-inline } }]
       owner: contract roles.pane-grid
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
