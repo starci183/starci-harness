@@ -1,15 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.21.35 - 2026-11-05
 
 - Added: `ItemAction.isPrimary` (with `intent="commit"`): a row or tile command that is the region's one primary draws as the filled accent button, not the outlined item pill; at most one per region, counted by `DNA-COMMON-ONE-ACCENT-FILL`. Changed: below 30rem an `Alert` button action stacks under the text, full width, in its tone's intent (the dismiss stays beside the text).
 - Fixed: a loading `RadioGroup` and `CheckboxGroup` draw their option labels and descriptions (data) as geometry of their own text; only the group label stays real.
 - Added: `Calendar width="fill"` (the month takes its container's width; tracks share it, day cells stay centred); `ChoiceChips selectionMode="multiple"` with `values`, `defaultValues`, `onValuesChange` (any number of chips, none allowed); `Button width="fill-narrow"` (content width on a wide screen, full width below 30rem).
 - Added: `span="full"` on `Input`, `CopyField`, `OtpInput` and `PressableField` (every other field already took it from the shared field props). Fixed: in a one-column form row, a field that follows a vendor `<template>` (a ready `Select`) no longer gets an extra section gap above it.
-
-## 0.21.35 - 2026-11-05
-
-- Changed: version stamp only, with the Grammar lint family (their runtime copies moved).
+- Changed: `informative` (an `Alert`) and the new `Badge tone="info"` use the info soft pair (`--info-soft`, `--info-soft-foreground`; blue in Nivo) and fall back to the accent pair where the theme defines none; accent stays its own tone for "new" and "selected". Core theme defaults derive `--info-soft*` from `--info`. DNA `DNA-COMMON-ALERT-TONE-PAIR-ACCENT` is renamed `-INFO`; new `DNA-COMMON-BADGE-TONE-INFO`.
+- Added: `Inset` (the Quote ground around rows or a block, an optional label, its own loading region); `Disclosure` `leading` (a step mark) with the summary as the end meta and its data parts as geometry in a loading region; `DisclosureList` (sibling disclosures joined into one list).
 
 ## 0.21.34 - 2026-11-05
 
@@ -141,8 +139,6 @@
 
 ## Unreleased
 
-- Changed: `informative` (an `Alert`) and the new `Badge tone="info"` use the info soft pair (`--info-soft`, `--info-soft-foreground`; blue in Nivo) and fall back to the accent pair where the theme defines none; accent stays its own tone for "new" and "selected". Core theme defaults derive `--info-soft*` from `--info`. DNA `DNA-COMMON-ALERT-TONE-PAIR-ACCENT` is renamed `-INFO`; new `DNA-COMMON-BADGE-TONE-INFO`.
-- Added: `Inset` (the Quote ground around rows or a block, an optional label, its own loading region); `Disclosure` `leading` (a step mark) with the summary as the end meta and its data parts as geometry in a loading region; `DisclosureList` (sibling disclosures joined into one list).
 ## 0.21.3 - 2026-11-02
 
 - Added: EntryFrame; semantic Grid sections, pair and featured roles; centred wrapped Cluster items; headless or titled unpainted Section figures reusing FigureCells; native ButtonGroup loading, member pending and borrowed size; IconButton pending; typed media tiles; MessageStatus footer semantics; passive CalendarDay. Existing DOM order, form measures, native joined corners and content geometry stay with their owning roles.
