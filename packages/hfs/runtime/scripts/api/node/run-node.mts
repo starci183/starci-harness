@@ -4,6 +4,7 @@ import type { SpawnSyncOptions, SpawnSyncReturns } from 'node:child_process';
 import { nodeSpawn } from './lib.mjs';
 import { assertMutationFence } from '../../lib/mutation-fence.mjs';
 import { withTempEnv } from '../../../engine/temp-root.mjs';
+import { planClause } from './memory-plan.mjs';
 
 /** A concrete Node child whose admission belongs to the CLI's machine-wide governor. */
 export interface HeavyNodeRequest {
@@ -71,7 +72,10 @@ export function incompleteReason(result: Pick<HeavyNodeResult, 'status' | 'signa
         : result.error !== undefined
           ? `${result.error.code ?? 'error'}: ${result.error.message}`
           : 'it ended without an exit status';
-  return tail === '' ? cause : `${cause}; stderr: ${tail}`;
+  // A heap the memory plan sized is named with its plan, so the out-of-memory says what was in force, not only that it ran out.
+  const plan = HEAP_EXHAUSTED.test(stderr) ? planClause() : '';
+  const named = plan === '' ? cause : `${cause}; ${plan}`;
+  return tail === '' ? named : `${named}; stderr: ${tail}`;
 }
 
 /** Runs `node <args>`; options (cwd, env, timeout, input, maxBuffer, stdio) pass through. */

@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { planInForce, type PlanInForce } from '../runtime/scripts/api/node/memory-plan.mjs';
 import type { FamilyReport } from './types.mjs';
 
 export const RUN_LOG_LIMIT = 100;
@@ -21,6 +22,8 @@ export interface RunEntry {
   readonly seconds: number;
   readonly exit: number;
   readonly families: readonly TimedFamily[];
+  /** The memory plan in force, when the CLI gave one. */
+  readonly memoryPlan?: PlanInForce | undefined;
 }
 
 /** The folder of the untracked tool cache for the app at `root`. */
@@ -33,7 +36,10 @@ export function toolCacheDir(root: string, env: NodeJS.ProcessEnv = process.env)
 }
 
 /** Writes `last-run.json` and appends to `runs.jsonl`, keeping the last 100 runs. A disk error is no failure of the run. */
-export function writeRunLog(root: string, entry: RunEntry, env: NodeJS.ProcessEnv = process.env): void {
+export function writeRunLog(root: string, given: RunEntry, env: NodeJS.ProcessEnv = process.env): void {
+  // The memory plan the run ran under (memory-plan.mjs), kept with it so a slow or killed run is read against what it was given.
+  const plan = planInForce(env);
+  const entry: RunEntry = plan === undefined ? given : { ...given, memoryPlan: plan };
   try {
     const dir = toolCacheDir(root, env);
     fs.mkdirSync(dir, { recursive: true });

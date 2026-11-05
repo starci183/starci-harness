@@ -3736,6 +3736,16 @@ HFS_CHECK_CACHE_MISSING:
   owner: op-retry
   kind: check-finding
 
+CI_PARITY_STEP_FAILED:
+  title: "A step of the app's managed CI fails locally"
+  title_vi: "Một bước của CI được quản lý của app thất bại khi chạy cục bộ"
+  meaning_vi: "`starci app check --fresh` (hook pre-push) chạy các bước CI không cần database đúng như CI chạy chúng (đọc từ .github/workflows/ci.yml: npm audit, script typecheck, npm run build:be, next build từng app fe; và `starci app coverage verify` trên lcov họ test đã gộp). Một bước thất bại ở đây sẽ thất bại trên CI, nên lần push bị chặn."
+  causes_vi:
+    - "Vi phạm R383: next build hoặc build:be lỗi (prerender, cấu hình route, import) dù tsc đã xanh."
+    - "Vi phạm R383: npm audit thấy lỗ hổng mức high trong dependency production."
+  nextStep_vi: "Đọc dòng cuối của bước trong thông báo, sửa đúng lỗi đó (chạy lại lệnh CI được nêu để tái hiện), rồi chạy lại starci app check --fresh."
+  owner: op-retry
+  kind: check-finding
 HFS_CHECK_CACHE_UNWARMED:
   title: "The pushed check cache is not the one a run on its tree writes"
   title_vi: "Cache kiểm tra được push không phải cache mà một lần chạy trên cây này ghi ra"

@@ -40,6 +40,14 @@ const heavySchema = z.strictObject({
     starvedTicketMinutes: z.number().positive(),
     bootProofTimeoutSeconds: z.number().int().positive(),
     scannerCpuPercent: z.number().positive(),
+    plan: z.strictObject({
+        parent: z.strictObject({ baseMb: z.number().positive(), perRecordMb: z.number().positive(), minMb: z.number().int().positive(), maxMb: z.number().int().positive() }),
+        testParent: z.strictObject({ perSpecMb: z.number().positive(), margin: z.number().positive(), minMb: z.number().int().positive(), maxMb: z.number().int().positive() }),
+        testWorker: z.strictObject({ baseMb: z.number().positive(), perSpecMb: z.number().positive(), minMb: z.number().int().positive(), maxMb: z.number().int().positive(), reserveMb: z.number().int().nonnegative() }),
+        types: z.strictObject({ baseMb: z.number().positive(), perFileMb: z.number().positive(), minMb: z.number().int().positive(), maxMb: z.number().int().positive() }),
+        lintChunk: z.strictObject({ files: z.number().int().positive(), min: z.number().int().positive(), max: z.number().int().positive() }),
+        learnAbovePercent: z.number().positive(),
+    }).optional(),
 })
 
 /** The `heavy` block of ops/liveness.yaml: the host's heavy-command slots, the RAM and CPU that admit them, each kind's memory cap and the seat RAM floor. */
@@ -143,13 +151,14 @@ const cpuRuleOf = (rules: HeavyRules, cpuPercent: number, managed: number | null
  * reports). `starved` (the queue admitted nothing for cpuStarveMinutes, `starvedQueue`) lets one command start under a hot
  * CPU: high CPU slows the queue, it never stops it.
  */
-export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly string[] = [], kind?: HeavyKind, starved = false, managedCpu: number | null = null, totalMb: number = Math.floor(totalmem() / 1_048_576)): HostLoad & { readonly admits: boolean; readonly cpuHolds: boolean } => {
+export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly RunningRow[] = [], kind?: HeavyKind, starved = false, managedCpu: number | null = null, totalMb: number = Math.floor(totalmem() / 1_048_576), ownMb?: number): HostLoad & { readonly admits: boolean; readonly cpuHolds: boolean } => {
     const cap = slotCap(rules)
     const estimates: Readonly<Record<string, number>> = rules.estimateMb
     // A row of a kind this build does not know (an older or newer CLI) is held at the largest estimate.
     const estimate = (name: string): number => (name in estimates ? (estimates[name] ?? 0) : Math.max(...Object.values(estimates)))
-    const committedMb = running.reduce((sum, name) => sum + estimate(name), 0)
-    const own = kind === undefined ? Math.min(...Object.values(rules.estimateMb)) : estimate(kind)
+    // A row the memory plan sized holds its planned MB (memory-plan.ts), any other its kind's estimate.
+    const committedMb = running.reduce((sum, row) => sum + (typeof row === "string" ? estimate(row) : row.mb), 0)
+    const own = ownMb ?? (kind === undefined ? Math.min(...Object.values(rules.estimateMb)) : estimate(kind))
     const room = freeMb - rules.reserveMb - committedMb
     const hot = cpuPercent > rules.maxCpuPercent
     const cpu = hot ? cpuRuleOf(rules, cpuPercent, managedCpu, running.length, starved) : { slots: Number.MAX_SAFE_INTEGER, rule: null }
@@ -205,7 +214,10 @@ CREATE TABLE IF NOT EXISTS heavy_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL
 /** Creates the governor's tables, adding the `task` column a store made before it lacks. */
 const ensureTables = (db: DatabaseSync): void => {
     db.exec(TABLES)
-    if (!db.prepare("PRAGMA table_info(heavy_slots)").all().some((column) => column.name === "task")) db.exec("ALTER TABLE heavy_slots ADD COLUMN task TEXT")
+    const columns = db.prepare("PRAGMA table_info(heavy_slots)").all().map((column) => column.name)
+    if (!columns.includes("task")) db.exec("ALTER TABLE heavy_slots ADD COLUMN task TEXT")
+    // The MB the memory plan holds for the row (memory-plan.ts); null for a row sized by its kind's estimate.
+    if (!columns.includes("mb")) db.exec("ALTER TABLE heavy_slots ADD COLUMN mb INTEGER")
 }
 
 /** The heavy_meta row holding the epoch ms of the governor's last admission, what the starvation clock runs from. */
@@ -349,8 +361,15 @@ export const managedCpuPercent = async (rules: HeavyRules): Promise<number | nul
     return managedShare(first, second)
 }
 
+/** A running heavy command as admission counts it: its kind, or its kind and the MB its memory plan holds for it. */
+export type RunningRow = string | { readonly kind: string; readonly mb: number }
+
+/** The heavy commands running now (live processes only), each at its planned MB when the memory plan sized it. */
+const runningRows = (db: DatabaseSync): RunningRow[] =>
+    db.prepare("SELECT kind, mb FROM heavy_slots WHERE state = 'running'").all().map((row) => (typeof row.mb === "number" && row.mb > 0 ? { kind: String(row.kind), mb: row.mb } : String(row.kind)))
+
 /** The kinds of the heavy commands running now (live processes only). */
-const runningKinds = (db: DatabaseSync): string[] => db.prepare("SELECT kind FROM heavy_slots WHERE state = 'running'").all().map((row) => String(row.kind))
+const runningKinds = (db: DatabaseSync): string[] => runningRows(db).map((row) => (typeof row === "string" ? row : row.kind))
 
 /**
  * Whether the queue is starved: commands wait and none was admitted for cpuStarveMinutes, counted from the later of the last
@@ -373,7 +392,7 @@ export const cpuLoad = async (rules: HeavyRules): Promise<{ readonly cpu: number
 export const hostLoad = async (rules: HeavyRules = loadHeavyRules()): Promise<HostLoad> => {
     const { cpu, managed } = await cpuLoad(rules)
     heavySlots()
-    const { running, starved } = withGovernor((db) => ({ running: runningKinds(db), starved: starvedQueue(db, rules) }))
+    const { running, starved } = withGovernor((db) => ({ running: runningRows(db), starved: starvedQueue(db, rules) }))
     return admission(rules, Math.floor(freemem() / 1_048_576), cpu, running, undefined, starved, managed)
 }
 
@@ -465,20 +484,21 @@ export const heavySlots = (): HeavySlot[] =>
  * foreign load leaves underForeignPressureSlots open, the harness's own holds the queue until it is starved (`starvedQueue`) and
  * then admits the first fitting row alone. The load it was judged on, and the holders when it waits.
  */
-const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at">, rules: HeavyRules, cpu: { readonly cpu: number; readonly managed: number | null }): { readonly load: HostLoad; readonly holders: string[] | null } =>
+const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at"> & { readonly mb?: number | undefined }, rules: HeavyRules, cpu: { readonly cpu: number; readonly managed: number | null }): { readonly load: HostLoad; readonly holders: string[] | null } =>
     withGovernor((db) => {
         ensureTables(db)
         for (const row of db.prepare("SELECT id, pid FROM heavy_slots").all()) if (!pidAlive(Number(row.pid))) db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(String(row.id))
-        db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, task, state, at) VALUES (?, ?, ?, ?, ?, ?, 'waiting', ?) ON CONFLICT (id) DO NOTHING").run(slot.id, slot.pid, slot.kind, slot.label, slot.cwd, slot.task, now())
-        const rows = db.prepare("SELECT id, kind, cwd, state, at FROM heavy_slots").all().map((row) => ({ id: String(row.id), kind: String(row.kind), cwd: String(row.cwd), state: String(row.state), at: String(row.at) }))
+        db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, task, state, at, mb) VALUES (?, ?, ?, ?, ?, ?, 'waiting', ?, ?) ON CONFLICT (id) DO NOTHING").run(slot.id, slot.pid, slot.kind, slot.label, slot.cwd, slot.task, now(), slot.mb ?? null)
+        const rows = db.prepare("SELECT id, kind, cwd, state, at, mb FROM heavy_slots").all().map((row) => ({ id: String(row.id), kind: String(row.kind), cwd: String(row.cwd), state: String(row.state), at: String(row.at), mb: typeof row.mb === "number" && row.mb > 0 ? row.mb : undefined }))
         const running = db.prepare("SELECT label, pid FROM heavy_slots WHERE state = 'running'").all()
-        const kinds = runningKinds(db)
+        const held = runningRows(db)
         const freeMb = Math.floor(freemem() / 1_048_576)
         const starved = starvedQueue(db, rules)
-        const judge = (kind: string): ReturnType<typeof admission> => admission(rules, freeMb, cpu.cpu, kinds, kind as HeavyKind, starved, cpu.managed)
+        const plannedOf = new Map(rows.map((row) => [row.id, row.mb] as const))
+        const judge = (id: string, kind: string): ReturnType<typeof admission> => admission(rules, freeMb, cpu.cpu, held, kind as HeavyKind, starved, cpu.managed, undefined, plannedOf.get(id))
         const order = servingOrder(rows, rules)
-        const first = order.find((row) => judge(row.kind).admits)
-        const load = judge(slot.kind)
+        const first = order.find((row) => judge(row.id, row.kind).admits)
+        const load = judge(slot.id, slot.kind)
         if (first?.id !== slot.id) {
             const place = order.findIndex((row) => row.id === slot.id)
             const queued = place < 0 ? "its project runs projectSlots commands while another project waits" : `${String(place)} ahead of it in the queue`
@@ -514,10 +534,21 @@ export const hfsLimitsEnv = (rules: HeavyRules = loadHeavyRules()): Readonly<Rec
 })
 
 /** The `--max-old-space-size` a node tool of this kind runs under, added to whatever NODE_OPTIONS it inherits. */
-const nodeOptions = (rules: HeavyRules, kind: HeavyKind, env: RunOptions["env"]): string => {
+const nodeOptions = (rules: HeavyRules, kind: HeavyKind, env: RunOptions["env"], plannedMb?: number): string => {
     const inherited = env?.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? ""
     const kept = inherited.replaceAll(/--max-old-space-size=\d+/g, "").trim()
-    return `${kept} --max-old-space-size=${String(rules.memoryMb[kind])}`.trim()
+    return `${kept} --max-old-space-size=${String(plannedMb ?? rules.memoryMb[kind])}`.trim()
+}
+
+/**
+ * What the memory plan sized for one child (memory-plan.ts): its heap (`memoryMb`, held by admission in place of the kind's estimate) and, for a test
+ * runner, the heap of each worker (`workerMb`, the NODE_OPTIONS its workers inherit while the parent's own heap is on its command line) and the most
+ * workers the plan gives it.
+ */
+export interface HeavyPlanned {
+    readonly memoryMb?: number | undefined
+    readonly workerMb?: number | undefined
+    readonly workers?: number | undefined
 }
 
 /**
@@ -528,6 +559,8 @@ export interface Held {
     readonly options: RunOptions
     readonly roomMb: number | null
     readonly rules: HeavyRules
+    /** What the memory plan sized for it, when a plan was in force. */
+    readonly planned?: HeavyPlanned | undefined
 }
 
 /** The most workers a test run takes: `heavy.testWorkers`, a count or a percent of the logical cores, at least one. */
@@ -555,7 +588,9 @@ export const testWorkerCount = (rules: HeavyRules, roomMb: number | null, cores:
 export const testWorkerArgs = (argv: readonly string[], held: Held): readonly string[] => {
     const runner = argv.some((part) => /^(?:jest|vitest)(?:\.[cm]?js)?$/.test(basename(part)))
     if (!runner || argv.some((part) => part.startsWith("--maxWorkers"))) return argv
-    return [...argv, `--maxWorkers=${String(testWorkerCount(held.rules, held.roomMb))}`]
+    const byRoom = testWorkerCount(held.rules, held.roomMb)
+    const workers = held.planned?.workers === undefined ? byRoom : Math.max(1, Math.min(byRoom, held.planned.workers))
+    return [...argv, `--maxWorkers=${String(workers)}`]
 }
 
 /** The refusal a heavy command meets in a coordinator's turn (`refuseHeavyWaits`) when the governor does not admit it at once. */
@@ -692,18 +727,21 @@ export const taskQueuedMs = (task: string, worktree: string | null, since: strin
  * `--max-old-space-size`, and inherits HEAVY_HELD_ENV: a process that inherited it already runs under its parent's slot and
  * takes no second one.
  */
-export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>): Promise<T> => {
+export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>, planned?: HeavyPlanned): Promise<T> => {
     const rules = loadHeavyRules()
-    const env = { ...options.env, [HEAVY_HELD_ENV]: "1", NODE_OPTIONS: nodeOptions(rules, kind, options.env) }
+    // A planned test runner's workers inherit the worker heap; its parent's own heap goes on its command line (hfs.ts), which node reads after NODE_OPTIONS.
+    const env = { ...options.env, [HEAVY_HELD_ENV]: "1", NODE_OPTIONS: nodeOptions(rules, kind, options.env, planned?.workerMb ?? planned?.memoryMb) }
     // The kind's own budget (an install sized for a cold npm ci) replaces the caller's; it runs from the child's spawn, which
     // comes after admission, so time in the queue never counts against it.
     const budget = heavyTimeoutMinutes(rules, kind, options.files)
     const timed = budget === undefined ? options : { ...options, timeoutMs: budget * 60_000 }
     const base: RunOptions = { ...timed, env, priority: constants.priority.PRIORITY_BELOW_NORMAL }
-    if (process.env[HEAVY_HELD_ENV] === "1") return work({ options: base, roomMb: null, rules })
+    if (process.env[HEAVY_HELD_ENV] === "1") return work({ options: base, roomMb: null, rules, planned })
     const owner = heavyOwner()
     const task = process.env[TASK_ENV] ?? null
-    const slot = { id: `${String(owner)}-${randomBytes(8).toString("hex")}`, pid: process.pid, kind, label, cwd, task }
+    // A test runner holds its parent and its planned workers; any other planned child its heap.
+    const plannedMb = planned?.memoryMb === undefined ? undefined : planned.memoryMb + (planned.workerMb ?? 0) * Math.max(0, (planned.workers ?? 1) - 1)
+    const slot = { id: `${String(owner)}-${randomBytes(8).toString("hex")}`, pid: process.pid, kind, label, cwd, task, mb: plannedMb }
     const started = Date.now()
     const holdMs = Number(process.env[HOLD_ENV] ?? Number.NaN)
     const admit = async (announced: boolean): Promise<{ readonly load: HostLoad; readonly announced: boolean }> => {
@@ -732,7 +770,7 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
         withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs, pid: process.pid, owner, task })))
     }
     try {
-        return await work({ options: { ...base, onSpawn: (pid) => { setChild(slot.id, pid) } }, roomMb: load.roomMb, rules })
+        return await work({ options: { ...base, onSpawn: (pid) => { setChild(slot.id, pid); options.onSpawn?.(pid) } }, roomMb: load.roomMb, rules, planned })
     } finally {
         release(slot.id)
     }

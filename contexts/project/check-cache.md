@@ -342,6 +342,34 @@ and labels as a prediction: Sonar's new-code coverage and duplication on the lin
 Codecov's patch coverage and project change, the base total computed from the base commit's committed coverage records.
 The servers stay the judges; a prediction never passes or fails a run.
 
+## CI parity
+
+The pre-push gate (`starci app check --fresh`) runs what the app's managed CI runs and no other family does, so a green push gate is not followed by a
+red CI on it (R383, decision `ci-parity`). The `build` and `audit` families read their commands from the app's rendered `.github/workflows/ci.yml`,
+never restate them, and run each whole on every run that selects them (nothing is cached):
+
+- `audit`: the fast job's production dependency audit (`npm audit --omit=dev --audit-level=high`, or what the quality declaration sets).
+- `build`: the fast job's `npm run typecheck` (build:modules, codegen and tsc: the types family runs the tsc programs, not the script), the build job's
+  `npm run build:be` and each `build fe` step, a `next build` per front-end app with its server prerender and route config. A build runs under the
+  heavy governor at the memory plan's largest tsc heap, with its own SWC cache root (`LOCALAPPDATA` and `XDG_CACHE_HOME` under the app's tool cache):
+  Windows' hardened loader refuses the SWC binary next build loads from a `%LOCALAPPDATA%\swc` the user does not own.
+- coverage: after the test family merged its records into `be/coverage/lcov.info` and judged it, the gate runs CI's coverage step on it
+  (`starci app coverage verify`), the local proof of the merge.
+
+`--gate build` and `--gate audit` run them alone. A failed step is `CI_PARITY_STEP_FAILED` with the step's last lines. The database steps
+(`npm run db:lint`, `starci app db drift`) need a running database and stay CI-only: the pre-push gate does not run them.
+
+## The memory plan
+
+Before its families run, `app check` measures the app from its git index and file sizes (per side the unit specs and the sources; the MB of the per-spec
+coverage records and of every cache record) and sizes each heap from that scope with the constants of `ops/liveness.yaml` `heavy.plan`
+(`cli/src/harness/memory-plan.ts`): the check's own parent heap (it re-executes itself under it when node's limit is lower), each side's coverage
+parent, worker heap and worker count, each tsc program's heap and the files one lint ratchet child takes. Admission holds each planned child at its
+planned MB. A child's sampled peak more than 20% over its plan raises that kind's factor for the app's next run (`.starciwork/memory-factors.json`),
+with a warning, and an out-of-memory names the plan that was in force. `--explain` prints the plan. The per-spec coverage records are held as their
+lines and parsed one at a time (a lazy record, `cache/jsonl.mts`), and their union folds through the preset's merge one record at a time, so the
+parent holds about three times the records' MB, not the seven times their parsed tree took.
+
 ## The slot, the templates and adoption
 
 - **Slot.** `app.starcistacks.cache` (both editions): `.starcistacks/cache/`, tracked, presence optional, admitting

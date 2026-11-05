@@ -7,7 +7,7 @@ export const CACHE_FORMAT_VERSION = 1;
 export const CACHE_DIR = '.starcistacks/cache';
 
 /** The families a run selects (`app check --<family>`). */
-export const FAMILIES = ['hfs', 'format', 'db', 'secrets', 'wiring', 'types', 'lint', 'test', 'sonar'] as const;
+export const FAMILIES = ['hfs', 'format', 'db', 'secrets', 'wiring', 'types', 'lint', 'test', 'sonar', 'build', 'audit'] as const;
 export type FamilyId = (typeof FAMILIES)[number];
 
 /** Whether a family judged everything (`full`) or only what differs from the trusted cache (`diff`). */

@@ -88,7 +88,8 @@ function fakeJest(w: World, configHash = 'config-1', onRun: () => void = () => u
 
 /** A merge that unions the flags per statement and writes an lcov (LF/LH per source) the judge below reads; it keeps what it was given. */
 function fakeMerge(): MergeSpecRecords & { merged: Array<Record<string, SourceItems>> } {
-  const merge = ((records, { outDir }) => {
+  const merge = ((given, { outDir }) => {
+    const records = [...given];
     merge.merged = records.map((record) => ({ ...record }));
     const covered = new Map<string, Map<string, number>>();
     for (const record of records) {

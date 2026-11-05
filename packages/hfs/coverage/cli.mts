@@ -71,10 +71,11 @@ function recordFilesUnder(dir: string): string[] {
 function mergeRecords(cwd: string, dir: string, out: string, merge: MergeSpecRecords): { specs: number } {
   const absolute = path.resolve(cwd, dir);
   if (!fs.existsSync(absolute) || !fs.statSync(absolute).isDirectory()) throw new Error(`no ${dir} folder: the check cache holds no unit coverage yet (run starci app check --gate test)`);
-  const records = recordFilesUnder(absolute).flatMap((file) => parseRecords(fs.readFileSync(file, 'utf8')).records).filter((record) => record.step === SPEC_STEP);
+  // Held as their lines and parsed one at a time by the union (memory plan, streaming): the records of a large app are hundreds of MB.
+  const records = recordFilesUnder(absolute).flatMap((file) => parseRecords(fs.readFileSync(file, 'utf8'), { lazy: true }).records).filter((record) => record.step === SPEC_STEP);
   if (records.length === 0) throw new Error(`no unit-spec record under ${dir}: the check cache holds no unit coverage yet (run starci app check --gate test)`);
   const outDir = path.dirname(path.resolve(cwd, out));
-  merge(records.map(sourcesOf), { outDir, reportRoot: path.dirname(outDir), recordRoot: cwd });
+  merge((function* sources() { for (const record of records) yield sourcesOf(record); })(), { outDir, reportRoot: path.dirname(outDir), recordRoot: cwd });
   return { specs: records.length };
 }
 

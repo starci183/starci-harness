@@ -70,7 +70,7 @@ test('--records merges the committed per-spec records of the check cache: the un
   const { out, stdout, stderr } = io();
   const code = await coverageMain(['merge', '--out', 'be/coverage/lcov.info', '--records', '.starcistacks/cache/test-coverage'], {
     cwd: app, stdout, stderr,
-    mergeSpecs: (records, args) => { seen.push({ sources: records.map((record) => Object.keys(record)), ...args }); },
+    mergeSpecs: (records, args) => { seen.push({ sources: [...records].map((record) => Object.keys(record)), ...args }); },
   });
   assert.equal(code, 0, out.stderr);
   assert.deepEqual(seen, [{ sources: [['be/src/a.service.ts'], ['be/src/b.service.ts']], outDir: path.join(app, 'be', 'coverage'), reportRoot: path.join(app, 'be'), recordRoot: app }]);

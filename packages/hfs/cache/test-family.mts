@@ -10,7 +10,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { completedNode, runHeavyNode, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { combineHashes, hashFile } from './hash.mjs';
-import { canonicalJson } from './jsonl.mjs';
+import { canonicalJson, toLazyRecord } from './jsonl.mjs';
 import type { CacheRecord, CheckSession, FamilyReport, JsonValue } from './types.mjs';
 
 /** The folder of the session that holds the records of this family. */
@@ -57,7 +57,7 @@ export interface JestEnvironment {
 }
 
 /** The union of the stored records, written as the lcov and coverage-final.json of the Jest root (`<root>/coverage`). */
-export type MergeSpecRecords = (records: ReadonlyArray<Readonly<Record<string, SourceItems>>>, args: { outDir: string; reportRoot: string; recordRoot: string }) => void;
+export type MergeSpecRecords = (records: Iterable<Readonly<Record<string, SourceItems>>>, args: { outDir: string; reportRoot: string; recordRoot: string }) => void;
 /** The per-file threshold (R273) judged on a report; `starci app check --coverage-from` is this judgement. */
 export type JudgeCoverage = (lcov: string) => { readonly ok: boolean; readonly findings: ReadonlyArray<{ readonly code?: string; readonly path?: string; readonly message?: string }> };
 
@@ -184,7 +184,8 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
       for (const spec of toRun) {
         const file = reportOf(spec);
         const key = keys.get(spec);
-        if (file?.passed === true && key !== undefined) fresh.push(recordOf(spec, key, file.sources, side));
+        // Held as its line from here on (memory plan, streaming): a full run of a large app holds every spec's coverage until the cache is written.
+        if (file?.passed === true && key !== undefined) fresh.push(toLazyRecord(recordOf(spec, key, file.sources, side)));
         else if (file !== undefined || died === undefined) failed.push(spec);
       }
     } finally {
@@ -210,7 +211,7 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
   if (records.length > 0) {
     const rootDir = path.join(session.root, side);
     const outDir = path.join(rootDir, 'coverage');
-    merge(records.map(sourcesOf), { outDir, reportRoot: rootDir, recordRoot: session.root });
+    merge((function* sources() { for (const record of records) yield sourcesOf(record); })(), { outDir, reportRoot: rootDir, recordRoot: session.root });
     lcov = path.join(outDir, 'lcov.info');
     // A failed spec leaves its sources short in the total, so the threshold is judged only when every spec reported.
     if (failed.length === 0 && died === undefined) threshold = judge(lcov);
@@ -349,21 +350,68 @@ export async function createJestEnvironment({ appRoot, side, jestFrom, project =
       return { status, output };
     },
     readCoverage(coverageDir) {
-      return fs.readdirSync(coverageDir).filter((name) => name.endsWith('.json')).map((name) => JSON.parse(fs.readFileSync(path.join(coverageDir, name), 'utf8')) as SpecCoverageOutput);
+      // Each file's sources are read again when asked for and never kept here (memory plan, streaming): the files of a full run are the size of the
+      // whole coverage, and only the spec and its verdict are needed to sort them.
+      return fs.readdirSync(coverageDir).filter((name) => name.endsWith('.json')).map((name): SpecCoverageOutput => {
+        const file = path.join(coverageDir, name);
+        const read = (): SpecCoverageOutput => JSON.parse(fs.readFileSync(file, 'utf8')) as SpecCoverageOutput;
+        const { spec, passed } = read();
+        return { spec, passed, get sources() { return read().sources; } };
+      });
     },
   };
+}
+
+/** The istanbul file coverage the preset's `mergeSourceCoverage` returns per source (`CoverageMap.fileCoverageFor(file).toJSON()`). */
+interface IstanbulRange { readonly start: { readonly line: number; readonly column: number }; readonly end: { readonly line: number; readonly column: number } }
+interface IstanbulFile {
+  readonly statementMap: Readonly<Record<string, IstanbulRange>>;
+  readonly fnMap: Readonly<Record<string, { readonly name: string; readonly decl: IstanbulRange; readonly loc: IstanbulRange }>>;
+  readonly branchMap: Readonly<Record<string, { readonly type: string; readonly loc: IstanbulRange; readonly locations: readonly IstanbulRange[] }>>;
+  readonly s: Readonly<Record<string, number>>;
+  readonly f: Readonly<Record<string, number>>;
+  readonly b: Readonly<Record<string, readonly number[]>>;
+}
+interface IstanbulMap { files(): string[]; fileCoverageFor(file: string): { toJSON(): IstanbulFile } }
+interface SpecCoverageModule {
+  mergeSpecCoverage(args: { records: Iterable<unknown>; outDir: string; projectRoot: string; recordRoot: string }): { files: number };
+  mergeSourceCoverage?: (records: Iterable<Readonly<Record<string, SourceItems>>>) => IstanbulMap;
+}
+
+const rangeOf = (loc: IstanbulRange): [number, number, number, number] => [loc.start.line, loc.start.column, loc.end.line, loc.end.column];
+
+/**
+ * The union of the per-spec records as ONE record, folded one record at a time through the preset's own `mergeSourceCoverage` (istanbul's merge,
+ * so the total is the one the preset computes), with each item's merged count in place of a flag (memory plan, streaming): the merge then holds
+ * the union, never every record at once. The preset's `fileCoverageOf` reads the record back with the same item order and counts, so the lcov and
+ * coverage-final.json are the bytes the merge of every record writes.
+ */
+export function unionOfRecords(records: Iterable<Readonly<Record<string, SourceItems>>>, mergeSourceCoverage: NonNullable<SpecCoverageModule['mergeSourceCoverage']>): Readonly<Record<string, SourceItems>> {
+  const map = mergeSourceCoverage(records);
+  const union: Record<string, SourceItems> = {};
+  for (const source of map.files()) {
+    const data = map.fileCoverageFor(source).toJSON();
+    union[source] = {
+      s: Object.entries(data.statementMap).map(([id, loc]) => [...rangeOf(loc), data.s[id] ?? 0]),
+      f: Object.entries(data.fnMap).map(([id, meta]) => [meta.name, rangeOf(meta.decl), rangeOf(meta.loc), data.f[id] ?? 0]),
+      b: Object.entries(data.branchMap).map(([id, meta]) => [meta.type, rangeOf(meta.loc), meta.locations.map((loc, index) => [rangeOf(loc), data.b[id]?.[index] ?? 0])]),
+    };
+  }
+  return union;
 }
 
 /** The installed preset's union merge (resolved like the shard merge of `app coverage`): the records in, the lcov and coverage-final.json out. */
 export function installedSpecMerge(appRoot: string, from?: string): MergeSpecRecords {
   return (records, { outDir, reportRoot, recordRoot }) => {
-    let load: { mergeSpecCoverage(args: { records: unknown[]; outDir: string; projectRoot: string; recordRoot: string }): { files: number } };
+    let load: SpecCoverageModule;
     try {
       load = createRequire(from ?? path.join(appRoot, 'package.json'))('@starci/jest-preset/spec-coverage') as typeof load;
     } catch (error) {
       throw new Error(`@starci/jest-preset/spec-coverage is not installed under ${appRoot} (${(error as { code?: string }).code ?? (error as Error).message}); install the canon @starci/jest-preset`);
     }
-    load.mergeSpecCoverage({ records: [...records], outDir, projectRoot: reportRoot, recordRoot });
+    // A preset without `mergeSourceCoverage` takes the records as they come (it holds them all).
+    const merged = load.mergeSourceCoverage === undefined ? records : [unionOfRecords(records, load.mergeSourceCoverage)];
+    load.mergeSpecCoverage({ records: merged, outDir, projectRoot: reportRoot, recordRoot });
   };
 }
 

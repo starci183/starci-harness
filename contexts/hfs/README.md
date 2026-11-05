@@ -138,3 +138,4 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R343 | the check cache is trusted only at its base | Re-run the check and commit the computed cache; never edit a record. |
 | R378 | a branch profile lowers only the polish gates ([project/lint.md](../project/lint.md) PROJECT-LINT-2) | Lower only lint, sonar or codecov, on `dev`; keep every safety gate blocking and never declare main. |
 | R379 | a report branch never raises lint (the lint ratchet, PROJECT-LINT-2) | Fix the new lint findings of the files you touched; leave their older ones and every untouched file to the report. |
+| R383 | the pre-push gate runs the CI steps that need no database ([project/check-cache.md](../project/check-cache.md) CI parity) | Reproduce the failed step with the CI command the message names, fix it, and run `starci app check --fresh` again; never skip the step. |

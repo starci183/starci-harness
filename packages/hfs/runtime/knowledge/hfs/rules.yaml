@@ -6758,3 +6758,18 @@ rules:
       - {path: packages/hfs/src/package-slots.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/package-slots.spec.mjs, editions: [lite, full]}
+  - id: R383
+    code: "CI_PARITY_STEP_FAILED"
+    law: "The pre-push gate runs every command of the app's managed CI that needs no database, as CI runs it: `starci app check --fresh` adds the build and audit families, which read their commands from the app's rendered .github/workflows/ci.yml (the fast job's production dependency audit and typecheck script, the build job's `npm run build:be` and each `build fe` step, a next build per front-end app with its own SWC cache root under the app's tool cache), and runs CI's coverage step (`starci app coverage verify`) on the lcov the test family merged from its records; a step that fails is CI_PARITY_STEP_FAILED, so a green push gate is not followed by a red CI on it. The database steps (db:lint, app db drift) need a database and stay CI-only (decision ci-parity)."
+    kinds: [check]
+    gates: [land, ci]
+    failureCodes: ["CI_PARITY_STEP_FAILED"]
+    enforcers:
+      - {kind: hfs, id: ci-parity, at: packages/hfs/cache/parity-family.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/check-cache.md#ci-parity, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/check-cache-parity.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/check-cache-parity.spec.mjs, editions: [lite, full]}

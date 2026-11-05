@@ -12,6 +12,7 @@ import { SIDES } from '../runtime/scripts/hfs/slots.mjs';
 import { PACKAGES, canonScope, installedLintConfig, packagesConfig, runLinter, type LintText, type LinterRunner } from './run.mjs';
 import { hashText } from '../cache/hash.mjs';
 import { parseRecords } from '../cache/jsonl.mjs';
+import { lintChunkOf } from '../runtime/scripts/api/node/memory-plan.mjs';
 import type { CacheRecord } from '../cache/types.mjs';
 
 export const LINT_RATCHET_RAISED = 'LINT_RATCHET_RAISED';
@@ -161,8 +162,10 @@ export async function ratchetFindings({ repoRoot, touched, side, branch, run = r
       result.fromCache += 1;
       return false;
     });
-    for (let start = 0; start < unsettled.length; start += Math.max(1, Math.floor(RATCHET_TEXTS_PER_CHILD / 2))) {
-      const chunk = unsettled.slice(start, start + Math.max(1, Math.floor(RATCHET_TEXTS_PER_CHILD / 2)));
+    // The memory plan's lint chunk when one is in force (memory-plan.mjs), else the fixed bound.
+    const step = Math.max(1, Math.floor(lintChunkOf(RATCHET_TEXTS_PER_CHILD) / 2));
+    for (let start = 0; start < unsettled.length; start += step) {
+      const chunk = unsettled.slice(start, start + step);
       if (!(await judgeChunk({ chunk, cwd, scope, branch, repoRoot, run, result }))) break;
     }
   }

@@ -6,8 +6,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createContentIndex } from './content-index.mjs';
 import { computeFingerprint, differencesByFamily, familyOfFolder, fingerprintDifferences, parseFingerprint, serializeFingerprint, type Fingerprint } from './fingerprint.mjs';
-import { hashFile } from './hash.mjs';
-import { groupByArea, parseRecords, serializeRecords } from './jsonl.mjs';
+import { hashFile, hashText } from './hash.mjs';
+import { groupByArea, parseRecords, recordLine, serializeRecords } from './jsonl.mjs';
 import { SECRETS_FOLDER, safeSecretRecords } from './secret-records.mjs';
 import { readCacheDir, resolveTrust, verifyCommitted, type CacheVerdict, type TrustSource } from './trust.mjs';
 import { CACHE_DIR, type CacheRecord, type CheckSession, type ContentIndex, type FamilyDecision, type FamilyId, type FamilyReport, type FlushResult, type ProgressSink } from './types.mjs';
@@ -15,6 +15,8 @@ import { CACHE_DIR, type CacheRecord, type CheckSession, type ContentIndex, type
 /** `STARCI_APP_CHECK_CACHE`: `full` ignores the cache (the owner's full gate sets it), `verify` is read by the caller (runs diff, then full, compares). */
 export const CACHE_ENV = 'STARCI_APP_CHECK_CACHE';
 const FINGERPRINT_FILE = 'fingerprint.jsonl';
+/** The folders whose records are held as their lines and parsed only when read (jsonl.mts lazyRecord): the per-spec coverage of the test family. */
+const LAZY_FOLDERS: ReadonlySet<string> = new Set(['test-coverage']);
 
 export interface DiskSessionOptions {
   readonly root: string;
@@ -86,14 +88,16 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
     const hit = parsed.get(folder);
     if (hit !== undefined) return hit;
     const prefix = `${folder}/`;
+    // Duplicates (a union merge's) are told apart by the digest of their line, never by keeping every line: the lines of a large folder are hundreds of MB.
     const seen = new Set<string>();
+    const lazy = LAZY_FOLDERS.has(folder);
     const records: CacheRecord[] = [];
     for (const [file, text] of [...trustedCache()].sort(([a], [b]) => (a < b ? -1 : 1))) {
       if (!file.startsWith(prefix) || !file.endsWith('.jsonl')) continue;
-      for (const record of parseRecords(text).records) {
-        const line = JSON.stringify(record);
-        if (seen.has(line)) continue;
-        seen.add(line);
+      for (const record of parseRecords(text, { lazy }).records) {
+        const digest = hashText(recordLine(record));
+        if (seen.has(digest)) continue;
+        seen.add(digest);
         records.push(record);
       }
     }

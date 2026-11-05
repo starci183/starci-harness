@@ -110,6 +110,25 @@ heavy:
   starvedTicketMinutes: 45
   bootProofTimeoutSeconds: 300
   scannerCpuPercent: 50
+  # The memory plan of `app check` (decision memory-plan, RAM-SIZING; cli/src/harness/memory-plan.ts): before its families run, the check measures
+  # the app from its git index and file sizes (per side: S unit specs, F sources; C the MB of the per-spec coverage records, L the MB of every
+  # cache record) and sizes each heap from it instead of one figure per kind. Fitted on Nivo (1,831 back-end specs on 4 to 7 workers at a
+  # 12 GB parent; a back-end tsc of about 7,000 files at 8 GB; a parent that died on 494 MB of coverage records at the default heap):
+  #   parent      = baseMb + perRecordMb x L, the check's own process; it re-executes itself under that heap when node's limit is lower. The
+  #                 records are held as their lines and parsed one at a time (streaming), so 3 MB a record MB; before it, 9 held them parsed.
+  #   test parent = margin x perSpecMb x S, rounded up to 512 (Jest's coverage parent holds every spec's coverage until its run ends).
+  #   test worker = baseMb + perSpecMb x S / workers; workers = floor((free RAM - reserveMb) / worker), 1 to min(cores - 1, testWorkers).
+  #   types       = baseMb + perFileMb x F (one tsc program of a side).
+  #   lint chunk  = files per ESLint child: `files` until a run measured a peak per file, then the budget over it, clamped to min..max.
+  # Each is clamped to minMb..maxMb. A child whose sampled peak resident memory ran over its plan by more than learnAbovePercent raises that
+  # kind's factor for the app's next run (.starciwork/memory-factors.json), with a warning; the factor never falls below 1.
+  plan:
+    parent: { baseMb: 1024, perRecordMb: 3, minMb: 2048, maxMb: 16384 }
+    testParent: { perSpecMb: 6.7, margin: 1.15, minMb: 4096, maxMb: 16384 }
+    testWorker: { baseMb: 1536, perSpecMb: 2.5, minMb: 2048, maxMb: 12288, reserveMb: 6144 }
+    types: { baseMb: 1536, perFileMb: 0.95, minMb: 2048, maxMb: 12288 }
+    lintChunk: { files: 600, min: 200, max: 1200 }
+    learnAbovePercent: 20
 
 # Coordinators (`kernel next`, `supervisor next`): the mechanics the deterministic driver applies, never an LLM's choice.
 coordinators:

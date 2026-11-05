@@ -1,4 +1,8 @@
-import { hfsLimitsEnv, testWorkerArgs, withHeavySlot } from "../../harness/heavy.js"
+import { spawnSync } from "node:child_process"
+import { relative } from "node:path"
+import { hfsLimitsEnv, loadHeavyRules, testWorkerArgs, withHeavySlot, type HeavyPlanned } from "../../harness/heavy.js"
+import { appRootOf, formatPlan, learnPeak, MEMORY_PLAN_ENV, MEMORY_REEXEC_ENV, measureScope, needsReexec, planInForce, planMemory, readFactors, sideOf, type MemoryPlan } from "../../harness/memory-plan.js"
+import { listProcesses } from "../../harness/process-table.js"
 import { captureCommand } from "../../shared/exec.js"
 import type { HeavyNodeRequest, HeavyNodeRun } from "@starci/hfs/runtime/scripts/api/node/run-node.mjs"
 import type { HeavyCommandRun } from "@starci/hfs"
@@ -85,27 +89,139 @@ const parsed = (text: string): unknown => {
 }
 
 /**
- * The HFS child execution port: admission and worker limits apply to each actual Node tool. A request that names the number of files it judges
- * (`files`, @starci/hfs releases after 5.0.7) has its kind's liveness budget scaled with it (`heavyTimeoutMinutes`).
+ * The side of the app a child judges, for its memory plan: a test runner's working folder (`<app>/be`), else the tsconfig a tsc names (`-p fe/...`).
  */
-export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): HeavyNodeRun => async (request: HeavyNodeRequest & { readonly files?: number | undefined }) =>
-    admit(request.kind, request.label, request.cwd, {
-        baseEnv: request.env ?? process.env,
-        env: { NODE_OPTIONS: request.env === undefined ? process.env.NODE_OPTIONS ?? "" : request.env.NODE_OPTIONS ?? "" },
-        captureBytes: request.maxBuffer,
-        ...(request.timeoutMs === undefined ? {} : { timeoutMs: request.timeoutMs }),
-        ...(request.files === undefined ? {} : { files: request.files }),
-    }, async (held) => {
-        const argv = [process.execPath, ...request.args]
-        const run = await capture(request.kind === "test" && !argv.includes("--runInBand") ? testWorkerArgs(argv, held) : argv, request.cwd, held.options)
-        return {
-            status: run.timedOut ? null : run.exitCode,
-            signal: null,
-            stdout: run.stdout,
-            stderr: run.stderr,
-            ...(run.timedOut ? { error: Object.assign(new Error("child deadline reached"), { code: "ETIMEDOUT" }) } : {}),
-        }
+export const requestSide = (request: Pick<HeavyNodeRequest, "args" | "cwd">, appRoot: string): string | null => {
+    const project = request.args.indexOf("-p")
+    const named = project >= 0 ? request.args[project + 1] : undefined
+    if (named !== undefined) return sideOf(named.replaceAll("\\", "/"))
+    return sideOf(relative(appRoot, request.cwd).replaceAll("\\", "/"))
+}
+
+/** What the plan in force sizes for one child: a coverage run's parent and workers, a tsc program's heap; nothing for any other child. */
+export const plannedFor = (plan: MemoryPlan | null, request: Pick<HeavyNodeRequest, "kind" | "args" | "cwd">, appRoot: string): HeavyPlanned | undefined => {
+    if (plan === null) return undefined
+    const side = requestSide(request, appRoot)
+    const sized = side === null ? undefined : plan.sides[side]
+    if (sized === undefined) return undefined
+    if (request.kind === "tsc") return { memoryMb: sized.typesMb }
+    if (request.kind === "test" && request.args.includes("--coverage")) return { memoryMb: sized.testParentMb, workerMb: sized.testWorkerMb, workers: sized.workers }
+    return undefined
+}
+
+/** The root of the app the plan was measured on, where its factors are learned. */
+const PLAN_ROOT_ENV = "STARCI_MEMORY_PLAN_ROOT"
+const PEAK_SAMPLE_MS = 15_000
+
+/** Samples the resident memory of `pid` (the parent) and of its descendants (each worker) until stopped; the peaks in MB. */
+const samplePeaks = (pid: number): { readonly stop: () => Promise<{ readonly parentMb: number; readonly workerMb: number }> } => {
+    let parentMb = 0
+    let workerMb = 0
+    let pending: Promise<void> = Promise.resolve()
+    const sample = (): void => {
+        pending = listProcesses()
+            .then((table) => {
+                if (typeof table === "string") return
+                const children = new Map<number, number[]>()
+                for (const row of table) children.set(row.ppid, [...(children.get(row.ppid) ?? []), row.pid])
+                const memory = new Map(table.map((row) => [row.pid, row.workingSetMb] as const))
+                parentMb = Math.max(parentMb, memory.get(pid) ?? 0)
+                const walk = (at: number): void => {
+                    for (const child of children.get(at) ?? []) {
+                        workerMb = Math.max(workerMb, memory.get(child) ?? 0)
+                        walk(child)
+                    }
+                }
+                walk(pid)
+            })
+            .catch(() => undefined)
+    }
+    const timer = setInterval(sample, PEAK_SAMPLE_MS)
+    timer.unref()
+    return {
+        stop: async () => {
+            clearInterval(timer)
+            await pending
+            return { parentMb, workerMb }
+        },
+    }
+}
+
+/** Learns the sampled peaks of a planned child for the app's next run, printing a warning for each that ran over its plan. */
+const learnPeaks = async (sampler: ReturnType<typeof samplePeaks>, planned: HeavyPlanned, kind: string, appRoot: string): Promise<void> => {
+    if (planned.memoryMb === undefined) return
+    const peaks = await sampler.stop()
+    const above = loadHeavyRules().plan?.learnAbovePercent ?? 20
+    const warnings = [learnPeak(appRoot, kind, planned.memoryMb, peaks.parentMb, above), planned.workerMb === undefined ? null : learnPeak(appRoot, kind, planned.workerMb, peaks.workerMb, above, true)]
+    for (const warning of warnings) if (warning !== null) process.stderr.write(`${warning}\n`)
+}
+
+/**
+ * The HFS child execution port: admission and worker limits apply to each actual Node tool. A request that names the number of files it judges
+ * (`files`, @starci/hfs releases after 5.0.7) has its kind's liveness budget scaled with it (`heavyTimeoutMinutes`). Under a memory plan
+ * (`STARCI_MEMORY_PLAN`, set by `app check`) a coverage run and a tsc program run at their planned heaps, admission holds those, and their sampled
+ * peaks are learned for the app's next run.
+ */
+export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): HeavyNodeRun => async (request: HeavyNodeRequest & { readonly files?: number | undefined }) => {
+    const appRoot = process.env[PLAN_ROOT_ENV] ?? request.cwd
+    const planned = plannedFor(planInForce(), request, appRoot)
+    let sampler: ReturnType<typeof samplePeaks> | undefined
+    const onSpawn = (pid: number): void => {
+        sampler = samplePeaks(pid)
+    }
+    const result = await admit(
+        request.kind,
+        request.label,
+        request.cwd,
+        {
+            baseEnv: request.env ?? process.env,
+            env: { NODE_OPTIONS: request.env === undefined ? process.env.NODE_OPTIONS ?? "" : request.env.NODE_OPTIONS ?? "" },
+            captureBytes: request.maxBuffer,
+            ...(request.timeoutMs === undefined ? {} : { timeoutMs: request.timeoutMs }),
+            ...(request.files === undefined ? {} : { files: request.files }),
+            ...(planned === undefined ? {} : { onSpawn }),
+        },
+        async (held) => {
+            // A planned test runner's parent heap is on its command line; its workers take the worker heap from NODE_OPTIONS.
+            const heap = planned?.workerMb === undefined || planned.memoryMb === undefined ? [] : [`--max-old-space-size=${String(planned.memoryMb)}`]
+            const argv = [process.execPath, ...heap, ...request.args]
+            const run = await capture(request.kind === "test" && !argv.includes("--runInBand") ? testWorkerArgs(argv, held) : argv, request.cwd, held.options)
+            return {
+                status: run.timedOut ? null : run.exitCode,
+                signal: null,
+                stdout: run.stdout,
+                stderr: run.stderr,
+                ...(run.timedOut ? { error: Object.assign(new Error("child deadline reached"), { code: "ETIMEDOUT" }) } : {}),
+            }
+        },
+        planned,
+    )
+    if (sampler !== undefined && planned !== undefined) await learnPeaks(sampler, planned, request.kind, appRoot)
+    return result
+}
+
+/**
+ * The memory plan of an app check (memory-plan.ts): measured on the app at `appRoot`, set in this process's environment for @starci/hfs and the node
+ * runner, and printed under `--explain`. When node's heap is below the planned parent heap the check re-executes itself under it and this returns
+ * the exit code of that run; otherwise undefined, and the check goes on here.
+ */
+export const applyMemoryPlan = (appRoot: string, argv: readonly string[], write: (text: string) => void): number | undefined => {
+    const scope = measureScope(appRoot)
+    if (scope === null) return undefined
+    const plan = planMemory(scope, loadHeavyRules(), undefined, undefined, readFactors(appRoot))
+    if (plan === null) return undefined
+    process.env[MEMORY_PLAN_ENV] = JSON.stringify(plan)
+    process.env[PLAN_ROOT_ENV] = appRoot
+    if (argv.includes("--explain")) write(`${formatPlan(plan).join("\n")}\n`)
+    if (!needsReexec(plan)) return undefined
+    const kept = (process.env.NODE_OPTIONS ?? "").replaceAll(/--max-old-space-size=\d+/g, "").trim()
+    const flags = process.execArgv.filter((flag) => !flag.startsWith("--max-old-space-size"))
+    const run = spawnSync(process.execPath, [`--max-old-space-size=${String(plan.parentMb)}`, ...flags, ...process.argv.slice(1)], {
+        stdio: "inherit",
+        env: { ...process.env, [MEMORY_REEXEC_ENV]: "1", NODE_OPTIONS: kept },
     })
+    return run.status ?? 1
+}
 
 /**
  * The governed runner of the dev verbs' heavy commands (`starci app stack up`: `npm ci`, a compose build or up): one slot of the host-wide
@@ -120,7 +236,14 @@ export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand
             stderr: run.stderr,
             ...(run.timedOut ? { error: Object.assign(new Error("child deadline reached"), { code: "ETIMEDOUT" }) } : {}),
         }
-    })
+    }, buildPlanned(planInForce(), request.kind))
+
+/** A CI build step of an app check (`build` family: the typecheck script, build:be, next build) runs at the largest tsc heap the plan gives a side. */
+export const buildPlanned = (plan: MemoryPlan | null, kind: string): HeavyPlanned | undefined => {
+    if (plan === null || kind !== "build") return undefined
+    const heaps = Object.values(plan.sides).flatMap((sized) => (sized === undefined ? [] : [sized.typesMb]))
+    return heaps.length === 0 ? undefined : { memoryMb: Math.max(...heaps) }
+}
 
 /**
  * Runs `starci app <verb>` in @starci/hfs, in-process, in the verb's working directory. In human mode its stdout and stderr
@@ -151,6 +274,11 @@ export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly
     const io = context.json
         ? { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stackIo, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
         : { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stackIo, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
+    if (verb === "check") {
+        // The memory plan (memory-plan.ts): a check whose parent heap is below its plan ran again under it, and that run printed everything.
+        const rerun = applyMemoryPlan(appRootOf(context.cwd), full, io.stdout)
+        if (rerun !== undefined) process.exit(rerun)
+    }
     const { main } = await import("@starci/hfs")
     const exitCode = await main([verb, ...full], io)
     const data: HfsRunData = { verb, argv: full, exitCode, output: context.json ? parsed(stdout.trim()) : null, stderr }

@@ -32,9 +32,33 @@ export function sortRecords(records: readonly CacheRecord[]): CacheRecord[] {
   return [...records].sort((a, b) => compare(a.path, b.path) || compare(a.step, b.step));
 }
 
+/** The canonical line a lazy record was read from or made of (`lazyRecord`), written back as it is. */
+const RAW_LINE = Symbol('starci.cache.rawLine');
+
+/** The canonical line of one record: a lazy record's own line, else its canonical JSON with its findings sorted. */
+export function recordLine(record: CacheRecord): string {
+  const raw = (record as { [RAW_LINE]?: string })[RAW_LINE];
+  return raw ?? canonicalJson({ ...record, findings: sortFindings(record.findings) });
+}
+
+/**
+ * A record that keeps its canonical line and parses its `data` only when it is read, and again on every read (memory plan, streaming): a family whose
+ * records are large (the per-spec coverage, hundreds of MB in a large app) holds each as one line of text instead of its parsed tree, which is about
+ * seven times larger, and a record the run reuses is written back as the line it was. `line` must be the canonical line of `parsed`.
+ */
+export function lazyRecord(line: string, parsed: CacheRecord): CacheRecord {
+  const record = { path: parsed.path, step: parsed.step, hash: parsed.hash, findings: parsed.findings };
+  Object.defineProperty(record, RAW_LINE, { value: line, enumerable: false });
+  if (parsed.data !== undefined) Object.defineProperty(record, 'data', { enumerable: true, get: (): JsonValue | undefined => (JSON.parse(line) as CacheRecord).data });
+  return record;
+}
+
+/** `record` as a lazy one: its canonical line kept, its data dropped until it is read. */
+export const toLazyRecord = (record: CacheRecord): CacheRecord => lazyRecord(recordLine(record), record);
+
 /** The file text of `records`: sorted, one canonical line each, LF, a final newline; the empty set is the empty text. */
 export function serializeRecords(records: readonly CacheRecord[]): string {
-  const lines = sortRecords(records).map((record) => canonicalJson({ ...record, findings: sortFindings(record.findings) }));
+  const lines = sortRecords(records).map(recordLine);
   return lines.length === 0 ? '' : `${lines.join('\n')}\n`;
 }
 
@@ -51,7 +75,7 @@ export interface ParsedRecords {
 }
 
 /** Parses a record file. CRLF is tolerated; a line that is not a record is counted and skipped, never thrown on. */
-export function parseRecords(text: string): ParsedRecords {
+export function parseRecords(text: string, options: { readonly lazy?: boolean } = {}): ParsedRecords {
   const records: CacheRecord[] = [];
   let invalid = 0;
   for (const raw of text.split('\n')) {
@@ -59,7 +83,8 @@ export function parseRecords(text: string): ParsedRecords {
     if (line.trim() === '') continue;
     try {
       const parsed: unknown = JSON.parse(line);
-      if (isRecord(parsed)) records.push(parsed);
+      // A lazy record keeps its line only when the line is canonical, so writing it back is what serializing it would write.
+      if (isRecord(parsed)) records.push(options.lazy === true && recordLine(parsed) === line ? lazyRecord(line, parsed) : parsed);
       else invalid += 1;
     } catch {
       invalid += 1;

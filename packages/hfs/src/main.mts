@@ -1,6 +1,6 @@
 // The @starci/hfs implementation behind `starci app`: one repository, `<app>/`, with one package.json, lockfile and node_modules
 // at its root and two sides, be/ and fe/, declared by the one hfs.json of kind app. Every verb runs at the app root.
-//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--no-cache] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
+//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov|build|audit>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--no-cache] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
 //                                            every tracked path has a slot; required files exist; nothing forbidden or
 //                                            tracked-that-must-be-ignored; pins match; every managed file equals its render
 //                                            (sync/managed.mjs, the .gitignore block and sonar-project.properties included); no empty or ghost
@@ -83,6 +83,7 @@ import fs from 'node:fs';
 import { isHostHeld, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { isMain } from '../runtime/scripts/lib/is-main.mjs';
 import { explainPath, readWhy, trackedFiles, withCheckProofs } from '../runtime/scripts/hfs/check.mjs';
@@ -113,6 +114,7 @@ import { runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../
 import { CACHE_ENV, createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
 import { DEFAULT_FAMILIES, runAppFamilies } from '../cache/run.mjs';
+import { runParityFamilies, type ParityRun } from '../cache/parity-family.mjs';
 import { createProgress, silentProgress } from '../cache/progress.mjs';
 import { familyLine } from '../cache/report.mjs';
 import { writeRunLog } from '../cache/run-log.mjs';
@@ -490,12 +492,38 @@ function printCheckProofs(result: Dynamic, out: (text: string) => unknown): void
   if (result.coverage) out(formatCoverageReport(result.coverage));
 }
 
+/** The families only the pre-push gate (`--fresh`) and an explicit `--gate` run: whole CI commands, never cached (cache/parity-family.mts). */
+const PARITY_FAMILIES: readonly FamilyId[] = ['build', 'audit'];
+
+/** The heavy command port of the CLI (`stackIo.heavy`) for the parity families, else a plain child of this process. */
+function parityRunner(io: AppIo): ParityRun {
+  const heavy = (io.stackIo as { heavy?: ParityRun } | undefined)?.heavy;
+  if (heavy !== undefined) return heavy;
+  return async ({ cwd, argv, env }) => {
+    const [command = '', ...args] = argv;
+    const result = spawnSync(command, args, { cwd, env, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+    return { status: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '', ...(result.error === undefined ? {} : { error: result.error }) };
+  };
+}
+
+/** CI's coverage step on the lcov the test family merged from its records: a refusal it reports while the family judged green is a parity break. */
+async function coverageParity(repoRoot: string, lcov: string): Promise<Dynamic[]> {
+  const { coverageMain } = await import('../coverage/cli.mjs');
+  let output = '';
+  const report = path.relative(repoRoot, lcov).replaceAll('\\', '/');
+  const code = await coverageMain(['verify', report], { cwd: repoRoot, stdout: (text) => { output += text; }, stderr: (text) => { output += text; } });
+  if (code === 0) return [];
+  const tail = output.trim().split('\n').slice(-3).join(' | ');
+  return withWhy([{ code: 'CI_PARITY_STEP_FAILED', level: 'error', engine: 'test', path: report, message: `starci app coverage verify (the coverage job of the managed CI) refused the lcov the test family merged and judged green (exit ${String(code)}): ${tail}` }], readWhy(skillRoot, ['CI_PARITY_STEP_FAILED']));
+}
+
 /** The flags `check --staged` refuses: it is the pre-commit guard alone, so none of the whole-app pass's options means anything with it. */
 const STAGED_REFUSES = ['--json', '--no-cache', '--fix', '--fresh', '--coverage-from', '--shard', '--side', '--out', ...GATE_FLAGS] as const;
 
 /** The family a finding belongs to, for naming it when a verified run disagrees with the cache. */
 function familyOf(finding: { code?: string | null; engine?: string }): FamilyId {
   const code = finding.code ?? '';
+  if (finding.engine === 'build' || finding.engine === 'audit') return finding.engine;
   if (finding.engine === 'eslint' || finding.engine === 'stylelint') return 'lint';
   if (code === 'HFS_FORMAT') return 'format';
   if (/^(DB_|LITE_DB_)/.test(code)) return 'db';
@@ -545,6 +573,12 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   if (session !== undefined && selected.has('test')) {
     const tests = await runTestForApp(session, { repoRoot, tracked, execute: io.runHeavyNode });
     extra.push(...tests.findings);
+    // The pre-push gate also runs CI's own coverage step on the merged lcov (`app coverage verify`): the local merge proof (decision ci-parity).
+    if (fresh && tests.result?.lcov !== undefined && tests.findings.length === 0) extra.push(...(await coverageParity(repoRoot, tests.result.lcov)));
+  }
+  if (session !== undefined && (selected.has('build') || selected.has('audit'))) {
+    const parity = await runParityFamilies(session, { repoRoot, families: new Set([...selected].filter((family): family is 'build' | 'audit' => family === 'build' || family === 'audit')), env: io.env, run: parityRunner(io) });
+    extra.push(...withWhy(parity.findings, readWhy(skillRoot, parity.findings.length > 0 ? ['CI_PARITY_STEP_FAILED'] : [])));
   }
   if (session !== undefined && selected.has('sonar')) lines.push(...(runSonarForApp(session, { repoRoot })?.lines ?? []));
   // The lint ratchet of a branch whose profile reports lint: the commits since the base never add lint findings to a file they touch (blocking).
@@ -687,7 +721,8 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
     return runTestShard(repoRoot, index, total, io.runHeavyNode);
   }
   // A coverage report judged on its own (the merge job of a sharded run) runs no family; with selectors it comes on top of them.
-  const selected = explicit.size > 0 ? explicit : coverageFrom === undefined ? new Set<FamilyId>(DEFAULT_FAMILIES) : new Set<FamilyId>();
+  // The pre-push gate (`--fresh`) runs the CI parity families too, so a green push gate is not followed by a red CI build or audit (decision ci-parity).
+  const selected = explicit.size > 0 ? explicit : coverageFrom === undefined ? new Set<FamilyId>(fresh ? [...DEFAULT_FAMILIES, ...PARITY_FAMILIES] : DEFAULT_FAMILIES) : new Set<FamilyId>();
   const full = opts['no-cache'] === true ? new Set(selected) : undefined;
   if (io.env[CACHE_ENV] === 'verify') return verifyCache(io, selected, coverageFrom, side);
   const { result, seconds, raw } = await checkRun({ io, selected, full, use: coverageFrom !== undefined && explicit.size === 0 ? 'bypass' : 'normal', coverageFrom, side, fix, fresh });
