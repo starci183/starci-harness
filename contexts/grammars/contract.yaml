@@ -159,7 +159,7 @@ roles:
     sizes: Image owns media dimensions and aspect
     states: [rest, hover, focus-visible, disabled, image loading, image loaded, image error]
     grammarMayChange: [link colour and underline through the existing link treatment]
-    dna: [DNA-COMMON-LINK-MEDIA-KEEPS-BOX]
+    dna: [DNA-COMMON-LINK-MEDIA-KEEPS-BOX, DNA-COMMON-LINK-ACCENT-TEXT]
 
   - id: color-swatch
     ui: ui/components/color-swatch.md
@@ -1234,6 +1234,11 @@ mustKeep:
       law: "An alternative button is outlined (a hairline border, no tinted fill) and writes its words in the default foreground, as the design system draws its secondary command; never the brand-coloured words of the vendor secondary variant."
       measure: { kind: style, select: '[data-component="Button"][data-grammar-intent="alternative"]:not([data-loading="true"])', checks: [{ metric: border-width, op: ">=", value: 1px }, { metric: color, op: "=", value: { token: --default-foreground } }] }
       owner: contract roles.button
+    - id: DNA-COMMON-LINK-ACCENT-TEXT
+      role: link
+      law: "A text link is the accent as text on a ground (--accent-soft-foreground, the token that holds contrast on every Nivo ground in light and dark), underlined."
+      measure: { kind: style, select: '[data-component="Link"][data-grammar-link-content="text"]:not([data-grammar-current="true"]):not([aria-disabled="true"])', checks: [{ metric: color, op: "=", value: { token: --accent-soft-foreground } }] }
+      owner: contract roles.link
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.

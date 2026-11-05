@@ -24,6 +24,13 @@
         overflow-wrap: anywhere;
     }
 
+    /*
+     * A text link is the accent as text, underlined (System.html draws links in the brand rose). The text token is --accent-soft-foreground, not --accent: the
+     * raw accent measures 3.2 to 4.3 against the page ground, the secondary and tertiary surfaces and the dark surfaces of the Nivo theme, below 4.5; the soft
+     * foreground is 6.1 to 8.6 on every one of them, light and dark. A current link keeps its own look (below).
+     */
+    .starci-core-link[data-grammar-link-content="text"] { color: var(--accent-soft-foreground); }
+
     .starci-core-link[data-grammar-link-content="media"] {
         display: inline-flex;
         min-inline-size: 0;

@@ -323,3 +323,23 @@ export const LinkMediaKeepsBox: Story = {
         </Matrix>
     ),
 }
+
+const LinkOn = ({ ground, label }: { readonly ground: string; readonly label: string }) => (
+    <div style={{ background: `var(${ground})`, padding: "0.75rem", borderRadius: "0.5rem" }}>
+        <G.Text>{label}: <G.Link href="#next">See the details</G.Link></G.Text>
+    </div>
+)
+
+/** A text link is the accent as text, underlined, on every ground (DNA-COMMON-LINK-ACCENT-TEXT). */
+export const LinkAccentOnEveryGround: Story = {
+    render: () => (
+        <Matrix maxWidth={420}>
+            <State label="background / surface / secondary / tertiary" direction="column">
+                <LinkOn ground="--background" label="Page" />
+                <LinkOn ground="--surface" label="Surface" />
+                <LinkOn ground="--surface-secondary" label="Secondary" />
+                <LinkOn ground="--surface-tertiary" label="Tertiary" />
+            </State>
+        </Matrix>
+    ),
+}
