@@ -1,9 +1,16 @@
+"use client"
+
 import { cn, skeletonVariants } from "@heroui/react"
 import type { ReactNode } from "react"
 import { Icon, type IconSource } from "../Icon/index.js"
 import type { NoChildren } from "../../tier.js"
+import type { CustomTone } from "../../../common/tones.js"
+import { useCustomTone } from "../../useCustomTone.js"
 
-export type IconTileTone = "neutral" | "accent" | "success" | "warning" | "danger"
+export type IconTileBuiltInTone = "neutral" | "accent" | "success" | "warning" | "danger"
+/** HeroUI's palette tones, and any tone the app declared in `GrammarToneRegistry`. */
+export type IconTileTone = IconTileBuiltInTone | CustomTone
+const BUILT_IN_TONES: readonly string[] = ["neutral", "accent", "success", "warning", "danger"]
 export type IconTileSize = "sm" | "md"
 
 export type IconTileProps = NoChildren & {
@@ -31,7 +38,7 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
  * pairing. `bg-default` (neutral) and the warning/danger soft pairs are not catalogued, so they are
  * left unclaimed.
  */
-const TONE_CONTRACT: Partial<Record<IconTileTone, string>> = {
+const TONE_CONTRACT: Partial<Record<IconTileBuiltInTone, string>> = {
     neutral: "TONE-2",
     accent: "SURFACE-4",
     success: "SURFACE-5",
@@ -47,9 +54,12 @@ export const IconTile = ({
     isLoading = false,
 }: IconTileProps) => {
     const showsArtwork = !isLoading && artwork != null
-    const toneRule = isLoading || showsArtwork ? undefined : TONE_CONTRACT[tone]
+    const custom = useCustomTone(tone, BUILT_IN_TONES)
+    const toneRule = isLoading || showsArtwork ? undefined : (TONE_CONTRACT as Record<string, string | undefined>)[tone]
     return (
         <span
+            ref={custom.ref}
+            {...custom.attrs}
             data-tier="leaf"
             data-component="IconTile"
             data-tone={tone}

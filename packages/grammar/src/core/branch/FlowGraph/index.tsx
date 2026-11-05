@@ -1,6 +1,7 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
+import { useCustomTone } from "../../useCustomTone.js"
 import {
     BaseEdge,
     Background,
@@ -99,13 +100,15 @@ type NodeData = {
     readonly [key: string]: unknown
 }
 
-/** The tone a node kind draws in a `lanes` graph: an execute node keeps its own tone (info by default). */
+const NODE_BUILT_IN_TONES: readonly string[] = ["neutral", "accent", "success", "warning", "danger", "muted"]
+
+/** The tone a node kind draws in a `lanes` graph: an execute node keeps its own tone (accent by default; an app-declared tone paints its own pair). */
 const toneOf = (node: FlowGraphNode): FlowGraphTone => {
     if (node.isPlaceholder === true) return "muted"
     if (node.kind === "trigger") return "neutral"
     if (node.kind === "condition") return "warning"
     if (node.kind === "output") return "accent"
-    if (node.kind === "execute") return node.tone ?? "info"
+    if (node.kind === "execute") return node.tone ?? "accent"
     return node.tone ?? "neutral"
 }
 
@@ -124,6 +127,7 @@ const HANDLE_SIDES = {
 const FlowGraphNodeView = memo(({ data }: NodeProps<Node<NodeData>>) => {
     const { graphNode, isSelected, direction } = data
     const sides = HANDLE_SIDES[direction ?? "radial"]
+    const custom = useCustomTone(toneOf(graphNode), NODE_BUILT_IN_TONES)
     const hasCount = graphNode.count !== undefined && graphNode.count !== ""
     const content = (
         <>
@@ -137,6 +141,8 @@ const FlowGraphNodeView = memo(({ data }: NodeProps<Node<NodeData>>) => {
     return (
         <div
             className="starci-core-flow-graph-node"
+            ref={custom.ref as never}
+            {...custom.attrs}
             data-grammar-flow-node={graphNode.id}
             data-dimmed={graphNode.isDimmed === true ? "true" : undefined}
             data-form="label"

@@ -19,9 +19,10 @@
     }
 
     :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="informative"] {
-        --starci-core-overlay-tone: var(--info, var(--accent));
-        --starci-core-overlay-soft: var(--info-soft, color-mix(in oklab, var(--info, var(--accent)) 15%, transparent));
-        --starci-core-overlay-soft-foreground: var(--info-soft-foreground, color-mix(in oklab, var(--info, var(--accent)) 70%, var(--foreground) 30%));
+        /* informative is an intent that is the accent unless the app writes the optional --informative tokens (owner ruling grammar-own-style). */
+        --starci-core-overlay-tone: var(--informative, var(--accent));
+        --starci-core-overlay-soft: var(--informative-soft, var(--accent-soft));
+        --starci-core-overlay-soft-foreground: var(--informative-soft-foreground, var(--accent-soft-foreground));
     }
 
     :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="affirmative"] {
@@ -531,8 +532,10 @@
         color: var(--starci-core-alert-ink);
     }
 
-    /* An informative notice is the info soft pair (blue in Nivo), the accent pair when the theme defines no info pair; accent stays its own tone for "new" and "selected". */
-    .starci-core-alert[data-grammar-tone="informative"] { --starci-core-alert-soft: var(--info-soft, var(--accent-soft)); --starci-core-alert-ink: var(--info-soft-foreground, var(--accent-soft-foreground)); }
+    /* An informative notice is the accent pair unless the app writes --informative-soft and --informative-soft-foreground; accent stays its own tone for "new" and "selected". */
+    .starci-core-alert[data-grammar-tone="informative"] { --starci-core-alert-soft: var(--informative-soft, var(--accent-soft)); --starci-core-alert-ink: var(--informative-soft-foreground, var(--accent-soft-foreground)); }
+    /* A tone the app declared: its soft pair, read through the component variables customToneProps sets. */
+    .starci-core-alert[data-grammar-tone-custom="true"] { --starci-core-alert-soft: var(--grammar-tone-soft); --starci-core-alert-ink: var(--grammar-tone-soft-foreground); }
     /* accent: the brand soft pair, for a welcome or "new" band (G10b-2). */
     .starci-core-alert[data-grammar-tone="accent"] { --starci-core-alert-soft: var(--accent-soft); --starci-core-alert-ink: var(--accent-soft-foreground); }
     .starci-core-alert[data-grammar-tone="affirmative"] { --starci-core-alert-soft: var(--success-soft); --starci-core-alert-ink: var(--success-soft-foreground); }

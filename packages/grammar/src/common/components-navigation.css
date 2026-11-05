@@ -1627,7 +1627,7 @@
     }
 
     .starci-core-timeline-item[data-grammar-timeline-state="affirmative"] .starci-core-timeline-marker { color: var(--success); }
-    .starci-core-timeline-item[data-grammar-timeline-state="informative"] .starci-core-timeline-marker { color: var(--info, var(--accent)); }
+    .starci-core-timeline-item[data-grammar-timeline-state="informative"] .starci-core-timeline-marker { color: var(--informative, var(--accent)); }
     .starci-core-timeline-item[data-grammar-timeline-state="cautionary"] .starci-core-timeline-marker { color: var(--warning); }
     .starci-core-timeline-item[data-grammar-timeline-state="negative"] .starci-core-timeline-marker { color: var(--danger); }
 
@@ -1655,7 +1655,7 @@
 
     .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="negative"] { --starci-core-timeline-attention-tone: var(--danger); }
     .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="affirmative"] { --starci-core-timeline-attention-tone: var(--success); }
-    .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="informative"] { --starci-core-timeline-attention-tone: var(--info, var(--accent)); }
+    .starci-core-timeline-item[data-grammar-attention="true"][data-grammar-timeline-state="informative"] { --starci-core-timeline-attention-tone: var(--informative, var(--accent)); }
 
     .starci-core-timeline-item[data-grammar-attention="true"]:not(:last-child)::before {
         top: 2rem;
@@ -1867,8 +1867,6 @@
         --warning-foreground: inherit;
         --danger: inherit;
         --danger-foreground: inherit;
-        --info: inherit;
-        --info-foreground: inherit;
         --backdrop: inherit;
         --surface-shadow: inherit;
         --overlay-shadow: inherit;
@@ -1917,9 +1915,6 @@
         --danger-soft: inherit;
         --danger-soft-foreground: inherit;
         --danger-soft-hover: inherit;
-        --info-soft: inherit;
-        --info-soft-foreground: inherit;
-        --info-soft-hover: inherit;
         --background-secondary: inherit;
         --background-tertiary: inherit;
         --background-inverse: inherit;
@@ -2033,7 +2028,8 @@
     .starci-core-flow-graph-node[data-tone="success"] { --starci-flow-tint: var(--success-soft); --starci-flow-ink: var(--success-soft-foreground); --starci-flow-base: var(--success); --starci-flow-on-base: var(--success-foreground); }
     .starci-core-flow-graph-node[data-tone="warning"] { --starci-flow-tint: var(--warning-soft); --starci-flow-ink: var(--warning-soft-foreground); --starci-flow-base: var(--warning); --starci-flow-on-base: var(--warning-foreground); }
     .starci-core-flow-graph-node[data-tone="danger"] { --starci-flow-tint: var(--danger-soft); --starci-flow-ink: var(--danger-soft-foreground); --starci-flow-base: var(--danger); --starci-flow-on-base: var(--danger-foreground); }
-    .starci-core-flow-graph-node[data-tone="info"] { --starci-flow-tint: var(--info-soft, color-mix(in oklab, var(--info, var(--accent)) 15%, transparent)); --starci-flow-ink: var(--info-soft-foreground, color-mix(in oklab, var(--info, var(--accent)) 70%, var(--foreground) 30%)); --starci-flow-base: var(--info, var(--accent)); --starci-flow-on-base: var(--info-foreground, var(--accent-foreground)); }
+    /* An app-declared tone paints a node from the four variables customToneProps sets on it. */
+    .starci-core-flow-graph-node[data-grammar-tone-custom="true"] { --starci-flow-tint: var(--grammar-tone-soft); --starci-flow-ink: var(--grammar-tone-soft-foreground); --starci-flow-base: var(--grammar-tone); --starci-flow-on-base: var(--grammar-tone-foreground); }
     .starci-core-flow-graph-node[data-tone="muted"] { --starci-flow-tint: transparent; --starci-flow-ink: var(--muted); --starci-flow-base: color-mix(in oklab, var(--muted) 55%, transparent); --starci-flow-on-base: var(--surface); }
     .starci-core-flow-graph-node[data-placeholder="true"] { border-style: dashed; }
 

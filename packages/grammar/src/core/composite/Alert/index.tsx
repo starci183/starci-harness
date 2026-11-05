@@ -4,7 +4,9 @@ import { useRegionOwnsBusy, withRegionLoading } from "../../regionScope.js"
 import { Alert as HeroAlert, Spinner as HeroSpinner } from "@heroui/react"
 import { ChevronRightIcon } from "@heroicons/react/16/solid"
 import { useState, type ReactNode } from "react"
-import type { PresentationState } from "../../../common/state.js"
+import { isPresentationState, PRESENTATION_STATES, type PresentationState } from "../../../common/state.js"
+import type { CustomTone } from "../../../common/tones.js"
+import { useCustomTone } from "../../useCustomTone.js"
 import { vendorStatusFor } from "../../overlayScope.js"
 import { Button } from "../../leaf/Button/index.js"
 import type { ButtonIntentProps } from "../../buttonIntent.js"
@@ -37,9 +39,10 @@ type AlertBase = {
     readonly description?: ReactNode
     /**
      * Render-neutral meaning of the banner. Default `informative`. `accent` is the brand: the accent soft pair, for a welcome or
-     * "new" band that announces no status (it reads and acts as `informative`).
+     * "new" band that announces no status (it reads and acts as `informative`). A tone the app declared in `GrammarToneRegistry` (Nivo's
+     * `info`) paints its own soft pair and acts as a neutral notice.
      */
-    readonly tone?: PresentationState | "accent"
+    readonly tone?: PresentationState | "accent" | CustomTone
     /** A mark in place of the tone's glyph: an `Avatar` (who asks) or an `IconTile`. */
     readonly leading?: ReactNode
     readonly action?: AlertAction
@@ -83,6 +86,8 @@ export type AlertProps = NoChildren & AlertBase & (Dismissible | Permanent)
  * | cautionary               | warning       | secondary      |
  * | neutral / pending / unavailable | default | secondary      |
  */
+const ALERT_BUILT_IN_TONES: readonly string[] = [...PRESENTATION_STATES, "accent"]
+
 const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
     const status = vendorStatusFor(tone)
     if (status === "accent") return { intent: "commit" }
@@ -109,8 +114,9 @@ const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
 const AlertInner = (props: AlertProps) => {
     const { title, description, tone: readyTone = "informative", leading, action, urgency, isLoading = false } = props
     const ownsBusy = useRegionOwnsBusy()
-    const tone: PresentationState | "accent" = isLoading ? "neutral" : readyTone
-    const meaning: PresentationState = tone === "accent" ? "informative" : tone
+    const tone: PresentationState | "accent" | CustomTone = isLoading ? "neutral" : readyTone
+    const custom = useCustomTone(tone, ALERT_BUILT_IN_TONES)
+    const meaning: PresentationState = tone === "accent" ? "informative" : isPresentationState(tone) ? tone : "neutral"
     const unseen = (node: ReactNode) => isLoading ? <SkeletonPlaceholder>{node}</SkeletonPlaceholder> : node
     const [isDismissed, setIsDismissed] = useState(false)
     if (isDismissed) return null
@@ -126,6 +132,8 @@ const AlertInner = (props: AlertProps) => {
             data-tier="composite"
             data-component="Alert"
             data-grammar-tone={tone}
+            ref={custom.ref as never}
+            {...custom.attrs}
             data-urgency={resolvedUrgency}
             data-contract="FEEDBACK-3"
             {...(isLoading ? { "data-loading": "true", ...(ownsBusy ? {} : { "aria-busy": true }) } : { role: resolvedUrgency === "assertive" ? "alert" : "status" })}

@@ -1,11 +1,15 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
+import type { CustomTone } from "../../../common/tones.js"
+import { useCustomTone } from "../../useCustomTone.js"
 import { ProgressBar, skeletonVariants } from "@heroui/react"
 import type { NoChildren } from "../../tier.js"
 
 /** The colour of the fill: the meaning of what is measured. `accent` is the default. */
-export type ProgressTone = "accent" | "success" | "warning" | "danger" | "info"
+/** HeroUI's palette tones, and any tone the app declared in `GrammarToneRegistry`. */
+export type ProgressTone = "accent" | "success" | "warning" | "danger" | CustomTone
+const BUILT_IN_TONES: readonly string[] = ["accent", "success", "warning", "danger"]
 
 export type ProgressProps = NoChildren & {
     /** What the bar measures. Required because the visible bar has no drawn label. */
@@ -38,6 +42,7 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
 
 /** Accessible, full-width completion bar with an inert initial-loading shape. */
 const ProgressInner = ({ label, value = 0, isLoading = false, steps, valueText, tone = "accent" }: ProgressProps) => {
+    const custom = useCustomTone(tone, BUILT_IN_TONES)
     if (steps !== undefined && !isLoading) {
         const total = Math.max(1, Math.round(steps.total))
         const completed = Math.min(total, Math.max(0, Math.round(steps.completed)))
@@ -54,6 +59,8 @@ const ProgressInner = ({ label, value = 0, isLoading = false, steps, valueText, 
                 data-loading="false"
                 data-grammar-progress-mode="steps"
                 data-grammar-progress-tone={tone}
+                ref={custom.ref as never}
+                {...custom.attrs}
                 data-contract="MEASURE-2"
                 className="starci-core-progress"
             >
@@ -91,6 +98,8 @@ const ProgressInner = ({ label, value = 0, isLoading = false, steps, valueText, 
             maxValue={100}
             {...(valueText === undefined ? {} : { valueLabel: valueText })}
             data-grammar-progress-tone={tone}
+            ref={custom.ref as never}
+            {...custom.attrs}
             size="sm"
             // Fluid width matches MEASURE-2 in measure.md `## Scale`/catalog.
             data-contract="MEASURE-2"

@@ -1,4 +1,7 @@
-export type FlowGraphTone = "neutral" | "accent" | "success" | "warning" | "danger" | "info" | "muted"
+import type { CustomTone } from "../../../common/tones.js"
+
+/** HeroUI's palette tones, `muted`, and any tone the app declared in `GrammarToneRegistry`. */
+export type FlowGraphTone = "neutral" | "accent" | "success" | "warning" | "danger" | "muted" | CustomTone
 export type FlowGraphNodeSize = "sm" | "md" | "lg"
 export type FlowGraphHeight = "sm" | "md" | "lg"
 /**

@@ -232,7 +232,7 @@ roles:
     sizes: { badge: below the ramp, statusDot: { steps: [sm, md, lg], default: md }, badgeDot: { steps: [sm], equals: the vendor Chip of the same size }, tagGroup: { steps: [sm, md], default: sm } }
     states: [disabled, echo (StatusDot, off under reduced motion), live (Badge isDot isLive: a polite live region, the words carry the state)]
     grammarMayChange: [tone paint through tokens]
-    dna: [DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-DOT-SIZE, DNA-COMMON-DOT-NAMED, DNA-COMMON-ECHO-LIGHT-STOP, DNA-COMMON-ECHO-REDUCED-MOTION, DNA-COMMON-TAG-REMOVE, DNA-COMMON-TAG-REORDER-KEYS]
+    dna: [DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-DOT-SIZE, DNA-COMMON-DOT-NAMED, DNA-COMMON-ECHO-LIGHT-STOP, DNA-COMMON-ECHO-REDUCED-MOTION, DNA-COMMON-TAG-REMOVE, DNA-COMMON-TAG-REORDER-KEYS, DNA-COMMON-TONE-CUSTOM-COMPLETE]
 
   - id: quote
     ui: ui/components/quote.md
@@ -336,7 +336,7 @@ roles:
     sizes: none
     states: [persistent (action or negative), timed, paused on hover or focus]
     grammarMayChange: [tone paint, toast spacing]
-    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-TONE-PAIR-INFO, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-ACCENT]
+    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-ACCENT]
 
   - id: empty-state
     ui: ui/components/empty-state.md
@@ -1055,17 +1055,17 @@ mustKeep:
       measure: { kind: source, check: "lint:starci-grammar/destructive-menu-entry-needs-danger-tone" }
       owner: CTA-4
     # --- alerts, empty states, avatars
-    - id: DNA-COMMON-ALERT-TONE-PAIR-INFO
+    - id: DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE
       role: alert
-      law: An informative Alert is the info soft pair, flat - the row is --info-soft at full strength, the text and glyph --info-soft-foreground, no shadow and no border.
+      law: "An informative Alert is the accent soft pair, flat, unless the app writes --informative-soft and --informative-soft-foreground (the Grammar story theme writes none): the row is --accent-soft, the text and glyph --accent-soft-foreground, no shadow and no border."
       measure:
         kind: style
         select: '[data-component="Alert"][data-grammar-tone="informative"]:not([data-loading="true"])'
-        checks: [{ metric: background-color, op: "=", value: { token: --info-soft } }, { metric: color, op: "=", value: { token: --info-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
+        checks: [{ metric: background-color, op: "=", value: { token: --accent-soft } }, { metric: color, op: "=", value: { token: --accent-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
       owner: alert-soft-pair
     - id: DNA-COMMON-BADGE-TONE-INFO
       role: chip
-      law: "An info Badge is filled with the info soft tint (the text colour is the family's: the soft foreground in Core, ink in Offset Pop)."
+      law: "A Badge of the app-declared tone info is filled with the info soft tint of the app's theme (the text colour is the family's: the soft foreground in Core, ink in Offset Pop)."
       measure: { kind: style, select: '[data-component="Badge"][data-tone="info"]:not([data-loading="true"])', metric: background-color, op: "=", value: { token: --info-soft } }
       owner: alert-soft-pair
     - id: DNA-COMMON-ALERT-TONE-PAIR-SUCCESS
@@ -1264,6 +1264,11 @@ mustKeep:
       law: "The count chip of a tab marked isAttention is the warning soft pair, selected or not."
       measure: { kind: style, select: '[data-grammar-tab-count][data-grammar-attention="true"]', checks: [{ metric: background-color, op: "=", value: { token: --warning-soft } }, { metric: color, op: "=", value: { token: --warning-soft-foreground } }] }
       owner: contract roles.tabs
+    - id: DNA-COMMON-TONE-CUSTOM-COMPLETE
+      role: chip
+      law: "An app-declared tone has all four tokens: on every element stamped data-grammar-tone-custom the four component variables (--grammar-tone, -foreground, -soft, -soft-foreground) resolve to a colour, so a theme that declares a tone without one of its tokens is caught here (and throws in development)."
+      measure: { kind: style, select: '[data-grammar-tone-custom="true"]', checks: [{ metric: --grammar-tone, op: set }, { metric: --grammar-tone-foreground, op: set }, { metric: --grammar-tone-soft, op: set }, { metric: --grammar-tone-soft-foreground, op: set }] }
+      owner: contract roles.chip
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.

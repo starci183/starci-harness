@@ -4,8 +4,12 @@ import { withRegionLoading } from "../../regionScope.js"
 import { Chip, skeletonVariants } from "@heroui/react"
 import type { ReactNode } from "react"
 import { StatusDotMark } from "../StatusDot/index.js"
+import type { CustomTone } from "../../../common/tones.js"
+import { useCustomTone } from "../../useCustomTone.js"
 
-export type BadgeTone = "neutral" | "accent" | "info" | "success" | "warning" | "danger" | "muted"
+/** Core's built-in tones (HeroUI's palette) and the quiet `muted`; an app adds its own through `GrammarToneRegistry` (`tone="info"` where declared). */
+export type BadgeBuiltInTone = "neutral" | "accent" | "success" | "warning" | "danger" | "muted"
+export type BadgeTone = BadgeBuiltInTone | CustomTone
 
 type BadgeBase = {
     readonly children?: string
@@ -40,11 +44,13 @@ const TONE_COLORS = {
     muted: "default",
     neutral: "default",
     accent: "accent",
-    info: "accent",
     success: "success",
     warning: "warning",
     danger: "danger",
 } as const
+
+const BUILT_IN_TONES = Object.keys(TONE_COLORS)
+const colorOf = (tone: string): "default" | "accent" | "success" | "warning" | "danger" => (TONE_COLORS as Record<string, "default" | "accent" | "success" | "warning" | "danger">)[tone] ?? "default"
 
 const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base({
     className: "select-none text-transparent",
@@ -66,9 +72,10 @@ const capitaliseFirst = (children: ReactNode): ReactNode => {
  */
 const BadgeInner = (props: BadgeProps) => {
     const { children, startContent, tone = "neutral", isLoading = false } = props
+    const custom = useCustomTone(tone, BUILT_IN_TONES)
     if (props.isDot === true) {
         const isLive = props.isLive === true
-        const dotTone = tone === "muted" ? "neutral" : tone === "info" ? "accent" : tone
+        const dotTone = tone === "muted" ? "neutral" : tone
         return (
             <Chip
                 data-tier="leaf"
@@ -79,7 +86,9 @@ const BadgeInner = (props: BadgeProps) => {
                 data-tone={dotTone}
                 data-badge-tone={tone}
                 data-loading={isLoading ? "true" : "false"}
-                color={TONE_COLORS[dotTone]}
+                ref={custom.ref}
+                {...custom.attrs}
+                color={colorOf(dotTone)}
                 variant="soft"
                 size="sm"
                 className={isLoading ? `starci-core-badge-dot ${SKELETON_CLASS_NAME}` : "starci-core-badge-dot"}
@@ -99,7 +108,9 @@ const BadgeInner = (props: BadgeProps) => {
             data-contract="TRUTH-1"
             data-tone={tone}
             data-loading={isLoading ? "true" : "false"}
-            color={TONE_COLORS[tone]}
+            ref={custom.ref}
+            {...custom.attrs}
+            color={colorOf(tone)}
             variant={tone === "muted" ? "tertiary" : "soft"}
             size="sm"
             {...(isLoading ? { "aria-hidden": true, className: SKELETON_CLASS_NAME } : {})}

@@ -86,13 +86,12 @@ type GuideData = {
 const MARK_LENGTH = 4
 
 /** The token each ring arc and bubble tone paints from. */
-const TONE_PAINT: Record<FlowGraphTone, string> = {
+const TONE_PAINT: Readonly<Record<string, string>> = {
     neutral: "var(--muted)",
     accent: "var(--accent)",
     success: "var(--success)",
     warning: "var(--warning)",
     danger: "var(--danger)",
-    info: "var(--info)",
     muted: "color-mix(in oklab, var(--muted) 55%, transparent)",
 }
 
@@ -103,7 +102,7 @@ const ringGradient = (ring: ReadonlyArray<BubbleMapRingPart>): string | undefine
     let at = 0
     const stops = ring.filter((part) => part.value > 0).map((part) => {
         const next = at + part.value / total * 100
-        const stop = `${TONE_PAINT[part.tone]} ${at.toFixed(2)}% ${next.toFixed(2)}%`
+        const stop = `${TONE_PAINT[part.tone] ?? `var(--${part.tone})`} ${at.toFixed(2)}% ${next.toFixed(2)}%`
         at = next
         return stop
     })

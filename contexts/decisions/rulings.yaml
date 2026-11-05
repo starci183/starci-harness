@@ -129,7 +129,7 @@ rulings:
   - id: grammar-own-style
     date: '2026-11-05'
     status: live
-    ruling: "Each Grammar has its own style. Core draws every colour from HeroUI's palette tokens only: accent, default, success, warning and danger with their soft and foreground pairs (and the neutral ground and text tokens HeroUI defines: background, foreground, surface, muted, border, separator); Core has no palette of its own. Offset Pop and any other Grammar are free to choose their own palette. A debt of one Grammar (Offset Pop's ink on pink, its 44px md Select at 390) never drives a rule of Core. Confirmed by the owner 2026-11-05."
+    ruling: "Each Grammar has its own style. Core draws every colour from HeroUI's palette tokens only: accent, default, success, warning and danger with their soft and foreground pairs (and the neutral ground and text tokens HeroUI defines: background, foreground, surface, muted, border, separator); Core has no palette of its own. Offset Pop and any other Grammar are free to choose their own palette. An app may ADD tones to Core's built-in ones (Nivo's `info`): it supplies the four tokens `--<tone>`, `--<tone>-foreground`, `--<tone>-soft`, `--<tone>-soft-foreground` in its theme and declares the name in the Grammar's `GrammarToneRegistry` (confirmed by the owner 2026-11-05: Core ships HeroUI's tones only; `informative` is an intent that is the accent unless the app writes `--informative*`). A debt of one Grammar (Offset Pop's ink on pink, its 44px md Select at 390) never drives a rule of Core. Confirmed by the owner 2026-11-05."
     owner: "contexts/grammars/contributing.md Paint; contexts/grammars/core.md; contexts/grammars/offset-pop.md"
   - id: one-way-to-choose
     date: '2026-11-05'

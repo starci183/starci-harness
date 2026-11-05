@@ -1,0 +1,11 @@
+/*
+ * Grammar's own Storybook declares ONE app tone, `info`, the way an app does (ruling grammar-own-style): the four tokens here, the type in
+ * `src/stories/tones.ts`. Core itself ships no `info`.
+ */
+:root,
+.grammar-common-root {
+    --info: oklch(66.8% 0.17 250);
+    --info-foreground: oklch(21.03% 0.0059 250);
+    --info-soft: color-mix(in oklab, var(--info) 14%, var(--surface));
+    --info-soft-foreground: color-mix(in oklab, var(--info) 50%, var(--foreground));
+}

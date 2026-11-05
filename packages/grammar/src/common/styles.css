@@ -80,7 +80,7 @@
      * THE APP OWNS THE THEME. This root declares no HeroUI token: the app sets them in its own CSS, on `:root`, `.light`
      * and `.dark`, and HeroUI derives the rest (`*-soft`, `*-hover`, `--field-*`) where it derives them, so every part
      * below reads the app's values. A family's defaults are the optional `theme.css` beside its `styles.css`.
-     * `--info` and its pairs are the one extension HeroUI lacks; each read of them falls back to `--accent`.
+     * A tone HeroUI lacks is the app's to add (`GrammarToneRegistry`): its four tokens live in the app's theme, the Grammar defaults none.
      */
     .grammar-common-root {
         color: var(--foreground);
@@ -120,8 +120,6 @@
             --warning-foreground: Canvas;
             --danger: CanvasText;
             --danger-foreground: Canvas;
-            --info: CanvasText;
-            --info-foreground: Canvas;
             --surface-shadow: none;
             --overlay-shadow: none;
             --field-shadow: none;
@@ -1058,7 +1056,6 @@
         --success-soft-foreground: color-mix(in oklab, var(--success) 8%, var(--grammar-ink-band-foreground));
         --warning-soft-foreground: color-mix(in oklab, var(--warning) 8%, var(--grammar-ink-band-foreground));
         --danger-soft-foreground: color-mix(in oklab, var(--danger) 8%, var(--grammar-ink-band-foreground));
-        --info-soft-foreground: color-mix(in oklab, var(--info, var(--accent)) 8%, var(--grammar-ink-band-foreground));
         --accent-soft-foreground: var(--grammar-ink-band-foreground);
         --accent-soft: var(--grammar-ink-band-plate);
     }
@@ -3965,6 +3962,11 @@
         color: var(--muted);
     }
 
+    .starci-core-icon-tile[data-grammar-tone-custom="true"][data-artwork="false"][data-loading="false"] {
+        background: var(--grammar-tone-soft);
+        color: var(--grammar-tone-soft-foreground);
+    }
+
     .starci-core-icon-tile[data-tone="accent"][data-artwork="false"][data-loading="false"] {
         background: var(--accent-soft);
         color: var(--accent-soft-foreground);
@@ -4007,7 +4009,7 @@
     .starci-core-progress[data-grammar-progress-tone="success"] { --progress-bar-fill: var(--success); --starci-progress-fill: var(--success); }
     .starci-core-progress[data-grammar-progress-tone="warning"] { --progress-bar-fill: var(--warning); --starci-progress-fill: var(--warning); }
     .starci-core-progress[data-grammar-progress-tone="danger"] { --progress-bar-fill: var(--danger); --starci-progress-fill: var(--danger); }
-    .starci-core-progress[data-grammar-progress-tone="info"] { --progress-bar-fill: var(--info, var(--accent)); --starci-progress-fill: var(--info, var(--accent)); }
+    .starci-core-progress[data-grammar-tone-custom="true"] { --progress-bar-fill: var(--grammar-tone); --starci-progress-fill: var(--grammar-tone); }
 
     @media (prefers-reduced-motion: reduce) {
         .starci-core-progress-step { transition: none; }
@@ -4478,6 +4480,8 @@
         --starci-core-status-dot-light: color-mix(in oklab, var(--starci-core-status-dot-color) 40%, var(--surface));
     }
 
+    /* An app-declared tone paints the dot from the four variables its owner set on the root (the Badge or the StatusDot). */
+    .starci-core-status-dot-mark[data-grammar-tone-dot="true"] { --starci-core-status-dot-color: var(--grammar-tone); }
     .starci-core-status-dot-mark[data-tone="accent"] { --starci-core-status-dot-color: var(--accent); }
     .starci-core-status-dot-mark[data-tone="success"] { --starci-core-status-dot-color: var(--success); }
     .starci-core-status-dot-mark[data-tone="warning"] { --starci-core-status-dot-color: var(--warning); }
@@ -4535,10 +4539,10 @@
     }
 
     /* Badge muted: the content carries the muted ink on HeroUI's transparent tertiary Chip. */
-    /* Badge tone="info": the info soft pair (blue in Nivo), the accent pair when the theme defines no info pair. */
-    [data-component="Badge"][data-tone="info"]:not([data-loading="true"]) {
-        background: var(--info-soft, var(--accent-soft));
-        color: var(--info-soft-foreground, var(--accent-soft-foreground));
+    /* An app-declared Badge tone: the soft pair its tokens give (set by customToneProps on the root). */
+    [data-component="Badge"][data-grammar-tone-custom="true"]:not([data-loading="true"]) {
+        background: var(--grammar-tone-soft);
+        color: var(--grammar-tone-soft-foreground);
     }
 
     .starci-core-badge-muted {

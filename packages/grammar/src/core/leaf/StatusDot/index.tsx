@@ -5,8 +5,13 @@ import { Tooltip as HeroTooltip, skeletonVariants } from "@heroui/react"
 import { useOverlayContainer } from "../../overlayScope.js"
 import { tooltipContentClassName } from "../../tooltipClassName.js"
 import type { NoChildren } from "../../tier.js"
+import type { CustomTone } from "../../../common/tones.js"
+import { useCustomTone } from "../../useCustomTone.js"
 
-export type StatusDotTone = "neutral" | "accent" | "success" | "warning" | "danger"
+export type StatusDotBuiltInTone = "neutral" | "accent" | "success" | "warning" | "danger"
+/** HeroUI's palette tones, and any tone the app declared in `GrammarToneRegistry`. */
+export type StatusDotTone = StatusDotBuiltInTone | CustomTone
+const BUILT_IN_TONES: readonly string[] = ["neutral", "accent", "success", "warning", "danger"]
 /** The same three sizes as HeroUI Chip, which the dot's hit area follows. */
 export type StatusDotSize = "sm" | "md" | "lg"
 
@@ -33,15 +38,19 @@ export const StatusDotMark = ({ tone, echo = false }: { readonly tone: StatusDot
         className="starci-core-status-dot-mark"
         data-slot="status-dot-mark"
         data-tone={tone}
+        {...(BUILT_IN_TONES.includes(tone) ? {} : { "data-grammar-tone-dot": "true" })}
         data-echo={echo ? "true" : "false"}
     />
 )
 
 const DotOnly = ({ tone, size, echo, label }: { readonly tone: StatusDotTone; readonly size: StatusDotSize; readonly echo: boolean; readonly label: string }) => {
     const { anchor, container } = useOverlayContainer("Tooltip")
+    const custom = useCustomTone(tone, BUILT_IN_TONES)
     return (
         <HeroTooltip>
             <HeroTooltip.Trigger
+                ref={custom.ref as never}
+                {...custom.attrs}
                 role="img"
                 aria-label={label}
                 className="starci-core-status-dot"

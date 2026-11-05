@@ -402,3 +402,24 @@ export const TabCountChips: Story = {
         </Matrix>
     ),
 }
+
+/** An app-declared tone, `info` (declared in src/stories/tones.ts, tokens in .storybook/story-tones.css), on every toned component (DNA-COMMON-TONE-CUSTOM-COMPLETE). */
+export const AppTones: Story = {
+    render: () => (
+        <Matrix maxWidth={460}>
+            <State label="Badge, dot Badge, StatusDot, IconTile" direction="column">
+                <G.Cluster gap="inline">
+                    <G.Badge tone="info">Info</G.Badge>
+                    <G.Badge tone="info" isDot>Info dot</G.Badge>
+                    <G.StatusDot tone="info" aria-label="Info status" />
+                    <G.IconTile source={PlusGlyph} tone="info" ariaLabel="Info" />
+                </G.Cluster>
+            </State>
+            <State label="Progress, Alert tone info, Alert informative (the accent pair: no --informative alias here)" direction="column">
+                <G.Progress label="Indexing" value={60} tone="info" />
+                <G.Alert tone="info" title="A declared tone" description="Painted from the app's four tokens." />
+                <G.Alert tone="informative" title="Informative is the accent unless the app overrides it" />
+            </State>
+        </Matrix>
+    ),
+}
