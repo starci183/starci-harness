@@ -64,7 +64,7 @@ test('the eslint request names the number of files its work is made of: the coun
 test('an eslint child that was killed reaches no verdict: the failure is surfaced and no result is returned', async (context) => {
   const cwd = side(context);
   const killed: HeavyNodeRun = async (): Promise<HeavyNodeResult> => ({ status: null, signal: 'SIGKILL', stdout: '[]', stderr: '' });
-  await assert.rejects(runLinter({ cwd, pkg: 'eslint', bin: 'eslint', args: ['--format', 'json'], list: [longPath(1)] }, killed), { code: 'HFS_NODE_INCOMPLETE', message: /eslint did not complete/ });
+  await assert.rejects(runLinter({ cwd, pkg: 'eslint', bin: 'eslint', args: ['--format', 'json'], list: [longPath(1)] }, killed), { code: 'HFS_NODE_INCOMPLETE', message: /^eslint in [^/]+\/ \(1 file\(s\)\) did not complete: killed by SIGKILL with no message of its own/u });
   const timedOut: HeavyNodeRun = async (): Promise<HeavyNodeResult> => ({ status: null, signal: null, stdout: '[]', stderr: '', error: Object.assign(new Error('child deadline reached'), { code: 'ETIMEDOUT' }) });
   await assert.rejects(runLinter({ cwd, pkg: 'eslint', bin: 'eslint', args: ['--format', 'json', '.'], files: 10 }, timedOut), { code: 'HFS_NODE_INCOMPLETE' });
 });

@@ -187,7 +187,7 @@ test('an eslint child killed during a diff stores no record and the failure is s
   const session = createFakeSession({ files: treeOf(app.root), records: recordsOf(first.session) });
   const killed = (spec: Parameters<LinterRunner>[0]) => runLinter(spec, async () => ({ status: null, signal: 'SIGKILL' as const, stdout: '[]', stderr: '' }));
   const answer = await cachedLinters({ repoRoot: app.root, app: readRepoDeclaration(loadSlotManifest(), app.root), run: killed, session });
-  assert.deepEqual(answer.eslint.errors, ['eslint did not complete in be/: eslint did not complete'], 'the changed side is a tool error and the unchanged one needs no child');
+  assert.deepEqual(answer.eslint.errors, ['eslint did not complete in be/: eslint in be/ (1 file(s)) did not complete: killed by SIGKILL with no message of its own: most often the out-of-memory killer of the host or a deadline of the runner'], 'the changed side is a tool error that names its child and cause, and the unchanged one needs no child');
   assert.equal(session.replaced.size, 0);
 });
 
