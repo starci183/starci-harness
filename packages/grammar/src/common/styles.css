@@ -431,6 +431,13 @@
     .starci-core-page-fill[data-grammar-fill-min="md"] { min-height: 28rem; }
     .starci-core-page-fill[data-grammar-fill-min="lg"] { min-height: 36rem; }
 
+    /* A flow workspace shell grows with its content: the fill is then a floor (one viewport at least), not a height, so the Grammar root
+       that paints the canvas reaches the end of a long page instead of stopping after the first screen (U2-G8). */
+    .starci-core-page-fill:has([data-grammar-workspace-viewport="flow"]) {
+        height: auto;
+        min-height: calc(100dvh - var(--starci-core-fill-top) - var(--starci-core-fill-bottom));
+    }
+
     /* The trail alone stands as the region's own child would: full width, wrapping inside it. */
     .starci-core-page-trail {
         display: flex;
@@ -1233,6 +1240,16 @@
         white-space: nowrap;
     }
 
+    /* format="hash": "#1", muted and semibold at the small text size, in a column wide enough for two digits (numbered passages). */
+    .starci-core-leading-number[data-grammar-number-format="hash"] {
+        min-width: 1.5rem;
+        font-family: inherit;
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-xs);
+        text-align: start;
+    }
+
     .starci-core-static-list {
         display: flex;
         margin: 0;
@@ -1592,7 +1609,21 @@
         gap: var(--grammar-row-gap);
     }
 
-    @container starci-core-surface (min-width: 28.001rem) {
+        /* actionPlacement="end": the commands stay at the end of the row at every width (the grid the wide row uses), the copy truncates. */
+    .starci-core-list-row[data-grammar-action-placement="end"] {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .starci-core-list-row[data-grammar-action-placement="end"][data-grammar-leading="true"] { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .starci-core-list-row[data-grammar-action-placement="end"][data-grammar-trail="true"] { grid-template-columns: minmax(0, 1fr) auto auto; }
+    .starci-core-list-row[data-grammar-action-placement="end"][data-grammar-trail="true"][data-grammar-leading="true"] { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+    .starci-core-list-row[data-grammar-action-placement="end"] > .starci-core-list-row-copy { flex: initial; }
+    .starci-core-list-row[data-grammar-action-placement="end"] > .starci-core-list-row-actions { justify-content: flex-end; flex-wrap: nowrap; }
+    .starci-core-list-row[data-grammar-action-placement="end"] > .starci-core-list-row-detail { grid-column: 1 / -1; }
+    .starci-core-list-row[data-grammar-action-placement="end"][data-grammar-leading="true"] > .starci-core-list-row-detail { grid-column: 2 / -1; }
+
+@container starci-core-surface (min-width: 28.001rem) {
         .starci-core-list-row {
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;

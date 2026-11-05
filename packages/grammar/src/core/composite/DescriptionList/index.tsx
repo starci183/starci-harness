@@ -1,3 +1,5 @@
+"use client"
+
 import { useRegionOwnsBusy, withRegionLoading } from "../../regionScope.js"
 import type { ReactNode } from "react"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
@@ -13,7 +15,7 @@ export type DescriptionListLayout = "columns" | "stacked"
 
 export type DescriptionListProps = NoChildren & {
     /**
-     * `columns` pairs each term with its value on one row and falls back to `stacked` below 30rem;
+     * `columns` pairs each term with its value on one row and falls back to `stacked` below 20rem of the list's own width (a phone-wide drawer keeps the pairs side by side);
      * `stacked` always puts the value under its term.
      */
     readonly layout?: DescriptionListLayout

@@ -50,6 +50,11 @@ export type TabsProps = NoChildren & {
     readonly kind?: "views" | "filter"
     /** `filter` only: the accessible name of the "+n" menu that holds the folded tabs, e.g. `(count) => \`${count} more filters\``. */
     readonly moreLabel?: (count: number) => string
+    /**
+     * `filter` only: the word the fold menu draws instead of "+n" (the app's own, e.g. "More"); the menu stays named by `moreLabel`, which
+     * still says how many tabs it holds, so assistive technology hears the count the word does not show.
+     */
+    readonly overflowLabel?: string
     /** The selected tab. Required for controlled tabs; link tabs derive it from the current path when it is omitted. */
     readonly selectedKey?: string
     readonly items: ReadonlyArray<TabItem>
@@ -264,7 +269,7 @@ const TabsInner = (props: TabsProps) => {
                 <DropdownMenu
                     placement="bottom end"
                     entries={[{ kind: "section", id: "folded-tabs", items: foldedItems.map((item) => ({ id: item.id, label: labelOf(item), onAction: () => select(item.id) })) }]}
-                    trigger={<PlainPressable aria-label={(props.moreLabel ?? ((count: number) => `${count} more filters`))(foldedItems.length)}><span className="starci-core-tabs-more-label">{`+${foldedItems.length}`}<svg aria-hidden="true" viewBox="0 0 16 16" className="starci-core-tabs-more-caret"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></span></PlainPressable>}
+                    trigger={<PlainPressable aria-label={(props.moreLabel ?? ((count: number) => `${count} more filters`))(foldedItems.length)}><span className="starci-core-tabs-more-label">{props.overflowLabel ?? `+${foldedItems.length}`}<svg aria-hidden="true" viewBox="0 0 16 16" className="starci-core-tabs-more-caret"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></span></PlainPressable>}
                 />
             </span>
         )}

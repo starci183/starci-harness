@@ -1,3 +1,5 @@
+"use client"
+
 import { withRegionGeometry } from "../../regionScope.js"
 import type { ReactNode } from "react"
 import { assetSlotAttributes, type AssetSlotProps } from "../Image/assetSlot.js"

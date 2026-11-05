@@ -26,6 +26,16 @@ export type DisclosureProps = NoChildren & {
     readonly isDisabled?: boolean
     /** Heading level of the trigger's heading element. */
     readonly headingLevel?: 2 | 3 | 4 | 5 | 6
+    /**
+     * What the trigger is. `row` (default) is the full-size row of a list or a card. `quiet` is a small link-toned line with the
+     * chevron before the words and the content folded under it (a note such as "Evidence (2)" that a reader may skip).
+     */
+    readonly kind?: "row" | "quiet"
+    /**
+     * The side of the chevron. `end` (default for `row`) draws it after the words; `start` draws it before them, pointing toward the
+     * reading direction while closed and down when open (a source text folded under its title). A `quiet` disclosure defaults to `start`.
+     */
+    readonly chevron?: "start" | "end"
 }
 
 /*
@@ -50,7 +60,11 @@ const DisclosureInner = ({
     onExpandedChange,
     isDisabled = false,
     headingLevel = 3,
+    kind = "row",
+    chevron,
 }: DisclosureProps) => {
+    const chevronSide = chevron ?? (kind === "quiet" ? "start" : "end")
+    const indicator = <HeroDisclosure.Indicator className="starci-core-disclosure-indicator" data-contract="MOTION-2" />
     const [uncontrolled, setUncontrolled] = useState(defaultExpanded)
     const expanded = isExpanded ?? uncontrolled
     const summaryId = useId()
@@ -64,6 +78,8 @@ const DisclosureInner = ({
             data-tier="branch"
             data-contract="STATE-7"
             data-grammar-disclosure-state={expanded ? "open" : "closed"}
+            data-grammar-disclosure-kind={kind}
+            data-grammar-disclosure-chevron={chevronSide}
             isDisabled={isDisabled}
             isExpanded={expanded}
             onExpandedChange={(next: boolean) => {
@@ -73,12 +89,13 @@ const DisclosureInner = ({
         >
             <HeroDisclosure.Heading className="starci-core-disclosure-heading" level={headingLevel}>
                 <HeroDisclosure.Trigger className="starci-core-disclosure-trigger" data-contract="FOCUS-1" data-grammar-disclosure-trigger="true" {...(hasSummary ? { "aria-describedby": summaryId } : {})}>
+                    {chevronSide === "start" ? indicator : null}
                     {leading === undefined ? null : isLoading
                         ? <SkeletonPlaceholder shape="circle"><StepMark state={leading.state} position={leading.position} /></SkeletonPlaceholder>
                         : <StepMark state={leading.state} position={leading.position} />}
                     <span className="starci-core-disclosure-title">{title}</span>
                     {hasSummary ? <span id={summaryId} aria-hidden="true" className="starci-core-disclosure-summary" data-grammar-disclosure-summary="true">{isLoading ? <SkeletonPlaceholder>{summary}</SkeletonPlaceholder> : summary}</span> : null}
-                    <HeroDisclosure.Indicator className="starci-core-disclosure-indicator" data-contract="MOTION-2" />
+                    {chevronSide === "end" ? indicator : null}
                 </HeroDisclosure.Trigger>
             </HeroDisclosure.Heading>
             <HeroDisclosure.Content className="starci-core-disclosure-panel" data-grammar-disclosure-panel="true">

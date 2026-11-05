@@ -1,3 +1,5 @@
+"use client"
+
 import { withRegionGeometry } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 

@@ -1,3 +1,5 @@
+"use client"
+
 import { withRegionLoading } from "../../regionScope.js"
 import { Chip, skeletonVariants } from "@heroui/react"
 import type { ReactNode } from "react"

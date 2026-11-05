@@ -34,7 +34,7 @@ export type ListRowProps = NoChildren & {
 const Leading = ({ leading }: { readonly leading: ItemLeading }) => {
     if (leading.avatar !== undefined) return <Avatar {...leading.avatar} size={leading.size ?? "sm"} isDecorative />
     if (leading.icon !== undefined) return <IconTile source={leading.icon} size={leading.size ?? "sm"} />
-    return <LeadingNumber position={leading.position} />
+    return <LeadingNumber position={leading.position} {...(leading.format === undefined ? {} : { format: leading.format })} />
 }
 
 const RowBadge = ({ badge }: { readonly badge: BadgeData }) => (
@@ -92,6 +92,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-treatment={treatmentFor("neutral").tone}
                 data-grammar-leading={hasLeading ? "true" : "false"}
                 data-grammar-actions={hasActions ? "true" : "false"}
+                {...(row.actionPlacement === "end" ? { "data-grammar-action-placement": "end" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 data-contract="GAP-3 PADDING-4 BOUNDARY-3 STATE-8"
             >
@@ -130,6 +131,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-treatment={treatment.tone}
                 data-grammar-leading={hasLeading || hasMark ? "true" : "false"}
                 data-grammar-actions={hasActions ? "true" : "false"}
+                {...(row.actionPlacement === "end" ? { "data-grammar-action-placement": "end" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 {...(row.verdict === undefined ? {} : { "data-verdict": row.verdict })}
                 {...(row.onPress === undefined ? {} : { "data-grammar-row-pressable": "true" })}

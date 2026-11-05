@@ -1,3 +1,5 @@
+"use client"
+
 import { withRegionLoading } from "../../regionScope.js"
 import { ColorSwatch as HeroColorSwatch, type ColorSwatchProps as HeroColorSwatchProps } from "@heroui/react"
 import { SkeletonPlaceholder } from "../Skeleton/index.js"

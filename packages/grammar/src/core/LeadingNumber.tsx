@@ -1,6 +1,8 @@
 export type LeadingNumberProps = {
     /** One-based position of the item inside its authored sequence. */
     readonly position: number
+    /** `ordinal` (default) draws "1."; `hash` draws "#1", muted and semibold, for numbered passages or results. */
+    readonly format?: "ordinal" | "hash"
 }
 
 import { leadingNumberClassName } from "./classNames.js"
@@ -15,9 +17,10 @@ export const LeadingNumber = (props: LeadingNumberProps) => (
     <span
         className={leadingNumberClassName}
         data-component="LeadingNumber"
+        data-grammar-number-format={props.format ?? "ordinal"}
         data-tier="leaf"
         data-contract="FONT-2 TONE-2"
     >
-        {props.position}.
+        {props.format === "hash" ? `#${props.position}` : `${props.position}.`}
     </span>
 )

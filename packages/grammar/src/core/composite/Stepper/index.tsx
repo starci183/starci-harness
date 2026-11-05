@@ -4,6 +4,7 @@ import { withRegionInert } from "../../regionScope.js"
 import type { ReactNode } from "react"
 import { moveFocusBetweenPeers } from "../../navigationKeys.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
+import { StepperBar } from "./StepperBar.js"
 import type { NoChildren } from "../../tier.js"
 
 /** `paused` is a step that stopped for a reason outside the flow (out of credit, waiting on the owner) and resumes by itself. */
@@ -20,20 +21,15 @@ export type StepperStep = {
     readonly isDisabled?: boolean
 }
 
-export type StepperProps = NoChildren & {
+type StepperBaseProps = NoChildren & {
     /** Names the progress landmark, e.g. "Checkout progress". */
     readonly label: string
     readonly steps: ReadonlyArray<StepperStep>
     readonly currentStepId: string
-    readonly orientation?: "horizontal" | "vertical"
-    /** `dense` fits the stepper inside a list row. Defaults to `md`. */
-    readonly size?: StepperSize
     /** Present only when the reader may jump between steps; each step then becomes a button. */
     readonly onStepSelect?: (id: string) => void
     /** App-owned assistive text per state, e.g. "completed". Omitted states are announced by position only. */
     readonly stateLabel?: (state: StepperStepState) => string | undefined
-    /** App-owned marker; defaults to the 1-based step number. */
-    readonly renderMarker?: (step: StepperStep, index: number, state: StepperStepState) => ReactNode
     /**
      * The flow is loading (knowledge STATE-8): step labels stay real text when given (an empty label draws a Skeleton text line), each
      * marker becomes a static Skeleton circle, descriptions are not drawn, no step is current or a button, and the landmark is `aria-busy`.
@@ -41,6 +37,30 @@ export type StepperProps = NoChildren & {
      */
     readonly isLoading?: boolean
 }
+
+/** The numbered form: a marker per step with its label, horizontal or vertical. */
+type MarkerStepperProps = StepperBaseProps & {
+    readonly kind?: "markers"
+    readonly orientation?: "horizontal" | "vertical"
+    /** `dense` fits the stepper inside a list row. Defaults to `md`. */
+    readonly size?: StepperSize
+    /** App-owned marker; defaults to the 1-based step number. */
+    readonly renderMarker?: (step: StepperStep, index: number, state: StepperStepState) => ReactNode
+}
+
+/**
+ * The segmented bar: one equal segment per step (filled up to and including the current step), the current step's label and
+ * description under it. For a short flow whose whole story is "how far along": a drawer's form, a phone. Horizontal only; the other
+ * steps' labels stay in the accessibility tree.
+ */
+type BarStepperProps = StepperBaseProps & {
+    readonly kind: "bar"
+    readonly orientation?: "horizontal"
+    readonly size?: never
+    readonly renderMarker?: never
+}
+
+export type StepperProps = MarkerStepperProps | BarStepperProps
 
 /** Position-derived state: before the current step is complete, after it is upcoming. */
 export const stepStateFor = (steps: ReadonlyArray<StepperStep>, currentStepId: string, index: number): StepperStepState => {
@@ -58,7 +78,12 @@ export const stepStateFor = (steps: ReadonlyArray<StepperStep>, currentStepId: s
  * (accent after a completed step); below 30rem it keeps only the current step's label in the paint.
  * Contract: list HIERARCHY-3 (+FOCUS-2 when interactive), step STATE-1, marker A11Y-2, control FOCUS-1.
  */
-const StepperInner = ({
+const StepperInner = (props: StepperProps) => {
+    if (props.kind === "bar") return <StepperBar {...props} states={props.steps.map((_, index) => stepStateFor(props.steps, props.currentStepId, index))} />
+    return <StepperMarkers {...props} />
+}
+
+const StepperMarkers = ({
     label,
     steps,
     currentStepId,
@@ -68,7 +93,7 @@ const StepperInner = ({
     stateLabel,
     renderMarker,
     isLoading = false,
-}: StepperProps) => isLoading ? (
+}: MarkerStepperProps) => isLoading ? (
     <nav
         aria-label={label}
         aria-busy="true"

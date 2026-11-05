@@ -1,3 +1,5 @@
+"use client"
+
 import { useLayoutEffect, useRef, useState } from "react"
 import type { PresentationState } from "../common/state.js"
 

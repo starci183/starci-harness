@@ -441,6 +441,20 @@
         flex-shrink: 0;
     }
 
+    /*
+     * The alternative button (HeroUI "secondary"): the vendor fills it with --default but writes its words in --accent-soft-foreground, which in
+     * a brand-coloured app (Nivo: rose) reads as pink words on grey. A fill and its words are one pair: --default with --default-foreground.
+     */
+    .starci-core-button.button--secondary { --button-fg: var(--default-foreground); }
+
+    /* An unselected radio or checkbox draws its own ring in the muted foreground (U2-G6). The vendor control paints only the field border and
+       the field shadow, which an app may set to transparent (inputs without an edge): the choice would then be a pale disc on a pale row.
+       A family or app may retune --grammar-choice-ring; it defaults to --muted. */
+    .starci-core-radio:not([data-selected]) [data-grammar-choice-control="radio"],
+    [data-grammar-choice-control="checkbox"]:not([data-selected="true"], [data-indeterminate="true"]) {
+        box-shadow: inset 0 0 0 var(--grammar-ring-width) var(--grammar-choice-ring, var(--muted));
+    }
+
     /* RadioGroup appearance="rows": every option its own row on the field ground, the chosen one on the accent soft pair. */
     [data-grammar-radio-appearance="rows"] .starci-core-radio {
         box-sizing: border-box;

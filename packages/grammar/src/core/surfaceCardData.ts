@@ -60,7 +60,7 @@ export type ItemMenu = {
 export type ItemLeading =
     | { readonly avatar: AvatarData; readonly size?: "sm" | "md"; readonly icon?: never; readonly position?: never }
     | { readonly icon: IconSource; readonly size?: "sm" | "md"; readonly avatar?: never; readonly position?: never }
-    | { readonly position: number; readonly size?: never; readonly avatar?: never; readonly icon?: never }
+    | { readonly position: number; readonly format?: "ordinal" | "hash"; readonly size?: never; readonly avatar?: never; readonly icon?: never }
 
 type ListRowDestination = Pick<LinkProps, "href" | "onFollow"> | {
     readonly href?: never
@@ -93,6 +93,12 @@ export type ListRowData = {
     /** In a collection that reports outcomes: the direction of what this row reports (its leading edge). */
     readonly verdict?: "success" | "danger"
     readonly action?: ItemAction
+    /**
+     * Where the command and the menu stand. `below` (default) lets them wrap under the copy when the row is narrow (below 28rem of its
+     * container); `end` keeps them at the END of the row, vertically centred against the copy, at every width (a two-line row whose
+     * one short command must not take a line of its own). The copy truncates instead of the commands wrapping.
+     */
+    readonly actionPlacement?: "below" | "end"
     readonly menu?: ItemMenu
     /** The one named field for custom drawing under the row's copy: a pre-rendered node, never a function. */
     readonly detail?: ReactNode

@@ -1,3 +1,5 @@
+"use client"
+
 import { useRegionOwnsBusy, withRegionLoading } from "../../regionScope.js"
 import { Label as HeroLabel, Meter as HeroMeter } from "@heroui/react"
 import type { ComponentPropsWithRef } from "react"

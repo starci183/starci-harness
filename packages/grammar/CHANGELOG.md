@@ -2,6 +2,17 @@
 
 ## 0.21.37 - 2026-11-05
 
+- Fixed (U2-G7): Badge, DescriptionList, Quote, ColorSwatch, MediaFrame, Meter, Progress, ProgressCircle, Video (and Toast, DropdownMenu, PopoverPart, the overlay scope) call a region wrapper or a hook and now begin with `"use client"`, so a server component can import them from `@starci/grammar/common`. New contract check `npm run check:client` (in `npm test`) fails any module under `src/core`, `src/common` or `src/offset-pop` that calls a hook, `createContext` or a region wrapper without the directive as its first statement.
+- Fixed (U2-G8): a bleed `Page` that holds a `WorkspaceShell viewport="flow"` no longer fixes its fill at one viewport height; the fill is a floor (`min-height`), so the canvas the Grammar root paints reaches the end of a long public page. Law `DNA-COMMON-PAGE-FILL-GROWS`, story `PageFlowGrows`. No prop.
+- Fixed (U2-G6): an unselected radio and checkbox draw their own ring (`--grammar-choice-ring`, default `--muted`) instead of the field border and shadow, which an app may set to transparent. Law `DNA-COMMON-CHOICE-RING`, story `ChoiceRingWithoutFieldEdge`.
+- Added (G7-7): `ListRowData.actionPlacement: "below" | "end"` (default below); `end` keeps the command and menu at the end of the row, centred against the copy, at every width. Law `DNA-COMMON-ROW-ACTION-END`.
+- Added (G7-8, G9c-2): `Disclosure chevron="start" | "end"` (the chevron before the title points toward the reading direction closed and down open) and `Disclosure kind="quiet"` (a small link-toned line, chevron first, content folded under it). Law `DNA-COMMON-DISCLOSURE-CHEVRON-START`.
+- Added (G7-9): `Tabs overflowLabel` draws the app's word ("More") on the fold menu of `kind="filter"` instead of "+n"; `moreLabel` still names the menu with the count.
+- Added (G7-10): `ItemLeading` position `format: "ordinal" | "hash"`; `hash` draws a muted semibold "#1".
+- Changed (G9c-1): `Section kind="figures"` inside a Pane draws one bordered row (2 x 2 only below 20rem of its own width), the value at the 2xl step. Law `DNA-COMMON-FIGURES-PANE-ROW`.
+- Fixed (U9c-3): the `alternative` button (HeroUI secondary) writes its words in `--default-foreground`, the pair of its `--default` fill; the vendor used `--accent-soft-foreground`, which is the brand rose in a brand-coloured app (pink words on grey). The info Alert is G7-7 (set `--info-soft` and `--info-soft-foreground` in the theme). Law `DNA-COMMON-BUTTON-ALTERNATIVE-INK`.
+- Changed: `DescriptionList layout="columns"` answers its own width (side by side from 20rem) instead of the viewport (30rem), so a phone-wide drawer keeps terms beside values. Law `DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS`.
+- Added: `Stepper kind="bar"`: one thin segment per step, filled up to the current step, the current label under it (horizontal, pressable with `onStepSelect`, loading keeps the box). Law `DNA-COMMON-STEPPER-BAR`, story `StepperBar`.
 - Added: `Pane collapse="drawer" trigger="head"` and `PaneHeader drawerOpener={{ pane, icon, label }}`: the grid owns the drawer's open state and the head draws the icon button that opens it, shown only where the pane's area is not arranged, so a server page needs no state. The head keeps its height at every width.
 
 ## 0.21.36 - 2026-11-05

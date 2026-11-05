@@ -1,3 +1,5 @@
+"use client"
+
 import { LoadingScope } from "../../regionScope.js"
 import { Description as HeroDescription, Dropdown as HeroDropdown, Header as HeroHeader, Kbd as HeroKbd, Label as HeroLabel, Separator as HeroSeparator } from "@heroui/react"
 import type { ReactNode } from "react"

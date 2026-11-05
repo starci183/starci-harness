@@ -330,6 +330,34 @@
     }
 
     /* Dense (a list row): a 20px marker, 12px type, no copy padding, and the connector re-aimed at the smaller circle. */
+    /*
+     * kind="bar": equal segments in one row, filled up to and including the current step; the current step's words stand under them. A
+     * segment is a thin bar, its button a touch-height hit area around it.
+     */
+    .starci-core-stepper[data-grammar-stepper-kind="bar"] { display: flex; flex-direction: column; gap: var(--grammar-inline-gap); }
+    .starci-core-stepper[data-grammar-stepper-kind="bar"] .starci-core-stepper-list { gap: var(--grammar-identity-gap); }
+    .starci-core-stepper[data-grammar-stepper-kind="bar"] .starci-core-step { min-width: 0; flex: 1 1 0; }
+    .starci-core-stepper[data-grammar-stepper-kind="bar"] .starci-core-step::after { content: none; }
+    .starci-core-stepper[data-grammar-stepper-kind="bar"] .starci-core-step-body { display: flex; width: 100%; min-block-size: 0; padding: 0; align-items: center; }
+    .starci-core-stepper[data-grammar-stepper-kind="bar"] .starci-core-step-control { min-block-size: var(--grammar-touch-size); padding-block: 0; }
+    .starci-core-step-bar {
+        display: block;
+        inline-size: 100%;
+        block-size: 0.25rem;
+        overflow: hidden;
+        border-radius: var(--grammar-radius-pill);
+        background: var(--default);
+    }
+
+    .starci-core-step-bar > .starci-core-skeleton { block-size: 100%; aspect-ratio: auto; border-radius: inherit; }
+    .starci-core-step[data-grammar-step-state="complete"] .starci-core-step-bar,
+    .starci-core-step[data-grammar-step-state="current"] .starci-core-step-bar { background: var(--accent); }
+    .starci-core-step[data-grammar-step-state="error"] .starci-core-step-bar { background: var(--danger); }
+    .starci-core-step[data-grammar-step-state="paused"] .starci-core-step-bar { background: var(--warning); }
+    .starci-core-stepper-caption { display: flex; min-width: 0; min-block-size: var(--grammar-leading-md); flex-direction: column; gap: 0; }
+    .starci-core-stepper-caption .starci-core-step-label { color: var(--foreground); font-size: var(--grammar-text-md); font-weight: var(--grammar-weight-medium); line-height: var(--grammar-leading-md); }
+    .starci-core-stepper-caption .starci-core-step-skeleton-label { display: block; inline-size: 8rem; }
+
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-body { padding: 0; gap: var(--grammar-identity-gap); }
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-marker { width: 1.25rem; height: 1.25rem; border-width: 1.5px; font-size: var(--grammar-text-xs); }
     .starci-core-stepper[data-grammar-stepper-size="dense"] .starci-core-step-copy { padding-block-start: 0; gap: 0; }
@@ -950,6 +978,8 @@
         min-width: 0;
         flex-direction: column;
         margin: 0;
+        /* The list answers its own width, not the viewport's: a drawer 390px wide on a phone is wide enough for a term beside its value. */
+        container: starci-core-description-list / inline-size;
     }
 
     .starci-core-description-pair {
@@ -976,7 +1006,7 @@
         overflow-wrap: anywhere;
     }
 
-    @media (min-width: 30rem) {
+    @container starci-core-description-list (min-width: 20rem) {
         .starci-core-description-list[data-grammar-description-layout="columns"] .starci-core-description-pair {
             grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
             align-items: baseline;
@@ -996,7 +1026,7 @@
         line-height: var(--grammar-leading-md);
     }
 
-    @media (min-width: 30rem) {
+    @container starci-core-description-list (min-width: 20rem) {
         .starci-core-description-list[data-grammar-description-layout="columns"][data-grammar-description-density="compact"] .starci-core-description-pair {
             grid-template-columns: 9rem minmax(0, 1fr);
             gap: var(--grammar-row-gap);
@@ -1124,6 +1154,31 @@
         .starci-core-description-list[data-grammar-description-layout="stat-strip"] .starci-core-description-pair {
             flex-basis: 0;
         }
+    }
+
+    /*
+     * The strip inside a Pane (G9c-1): one bordered row, 2 x 2 only below 20rem of its own width. The border is the strip's own edge, so the
+     * dividers between cells still stop short of it; the value takes the 2xl step so four cells fit a 380px list pane.
+     */
+    .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="pane"] {
+        border: 1px solid var(--separator);
+        border-radius: var(--grammar-radius-md);
+    }
+
+    .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="pane"] .starci-core-description-pair { flex-basis: 50%; }
+
+    .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="pane"] .starci-core-description-figure {
+        font-size: var(--grammar-text-2xl);
+        line-height: var(--grammar-leading-xl);
+    }
+
+    .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="pane"] .starci-core-description-stat-term {
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
+    }
+
+    @container starci-core-description-strip (min-width: 20rem) {
+        .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="pane"] .starci-core-description-pair { flex-basis: 0; }
     }
 
     /* ---------- ListBox ---------- */
@@ -1289,6 +1344,30 @@
     .starci-core-generic-accordion-indicator {
         flex: 0 0 auto;
         transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing);
+    }
+
+    /* The chevron before the words (chevron="start"): pointing toward the reading direction closed, down when open. */
+    .starci-core-disclosure[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-indicator { transform: rotate(-90deg); }
+    .starci-core-disclosure[data-grammar-disclosure-chevron="start"][data-grammar-disclosure-state="open"] .starci-core-disclosure-indicator { transform: none; }
+    [dir="rtl"] .starci-core-disclosure[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-indicator { transform: rotate(90deg); }
+    [dir="rtl"] .starci-core-disclosure[data-grammar-disclosure-chevron="start"][data-grammar-disclosure-state="open"] .starci-core-disclosure-indicator { transform: none; }
+
+    /* kind="quiet": a small link-toned line the size of its words; the touch floor still holds on a coarse pointer. */
+    .starci-core-disclosure[data-grammar-disclosure-kind="quiet"] .starci-core-disclosure-trigger {
+        display: inline-flex;
+        width: auto;
+        max-width: 100%;
+        min-block-size: 1.5rem;
+        justify-content: flex-start;
+        gap: var(--grammar-inline-gap);
+        color: var(--accent-soft-foreground);
+        font-size: var(--grammar-text-sm);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-sm);
+    }
+
+    @media (pointer: coarse) {
+        .starci-core-disclosure[data-grammar-disclosure-kind="quiet"] .starci-core-disclosure-trigger { min-block-size: var(--grammar-touch-size); }
     }
 
     .starci-core-disclosure[data-grammar-disclosure-state="open"] .starci-core-disclosure-indicator,

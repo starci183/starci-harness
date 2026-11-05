@@ -1,3 +1,5 @@
+"use client"
+
 import { withRegionLoading } from "../../regionScope.js"
 import { ProgressBar, skeletonVariants } from "@heroui/react"
 import type { NoChildren } from "../../tier.js"

@@ -146,7 +146,7 @@ roles:
     sizes: { steps: [sm, md, lg], default: md, bar: control }
     states: [rest, hover, pressed, focus-visible, disabled, pending, skeleton]
     grammarMayChange: [paint per variant through tokens, corner via radius, press motion]
-    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-LOADING-SAME-BOX, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL]
+    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-LOADING-SAME-BOX, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL, DNA-COMMON-BUTTON-ALTERNATIVE-INK]
 
   - id: link
     ui: ui/components/button.md
@@ -256,7 +256,7 @@ roles:
     sizes: { steps: [md], default: md }
     states: [rest, focus-visible, invalid, disabled, read-only, skeleton]
     grammarMayChange: [fill, border, focus treatment, corner via field-radius]
-    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ONE-RING, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ONE-RING, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-CHOICE-RING]
 
   - id: select
     ui: ui/components/select.md
@@ -323,7 +323,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD]
+    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -512,7 +512,7 @@ roles:
     sizes: none; controls in the header actions keep the ramp, a tab bar lands on md
     states: [ready, skeleton (passed to the header band)]
     grammarMayChange: [the header band's paint, separator paint and weight, title weight]
-    dna: [DNA-COMMON-PAGE-HEADER-FIRST, DNA-COMMON-PAGE-BODY-EDGES, DNA-COMMON-PAGE-BODY-GAP, DNA-COMMON-PAGE-BODY-CLIP, DNA-COMMON-PAGE-BLEED-BODY, DNA-COMMON-PAGE-PANES-FLUSH, DNA-COMMON-PAGE-HEADER-BAND, DNA-COMMON-PAGE-HEADER-INSET, DNA-COMMON-PAGE-HEADER-ONE-H1, DNA-COMMON-PAGE-HEADER-SEPARATOR, DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR, DNA-CORE-PAGE-HEADER-HAIRLINE, DNA-OFFSET-POP-PAGE-HEADER-INK-RULE]
+    dna: [DNA-COMMON-PAGE-HEADER-FIRST, DNA-COMMON-PAGE-BODY-EDGES, DNA-COMMON-PAGE-BODY-GAP, DNA-COMMON-PAGE-BODY-CLIP, DNA-COMMON-PAGE-BLEED-BODY, DNA-COMMON-PAGE-PANES-FLUSH, DNA-COMMON-PAGE-HEADER-BAND, DNA-COMMON-PAGE-HEADER-INSET, DNA-COMMON-PAGE-HEADER-ONE-H1, DNA-COMMON-PAGE-HEADER-SEPARATOR, DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR, DNA-CORE-PAGE-HEADER-HAIRLINE, DNA-OFFSET-POP-PAGE-HEADER-INK-RULE, DNA-COMMON-PAGE-FILL-GROWS]
     lint: [starci-grammar/pane-grid-page]
 
   - id: section
@@ -1126,6 +1126,46 @@ mustKeep:
         select: '.starci-core-pane-drawer-scroll .starci-core-pane-section[data-grammar-pane-section-gap="section"]'
         checks: [{ metric: row-gap, op: "=", value: { token: --grammar-section-gap } }, { metric: padding-inline-start, op: "=", value: { token: --grammar-pane-inset-inline } }]
       owner: contract roles.pane-grid
+    - id: DNA-COMMON-PAGE-FILL-GROWS
+      role: page
+      law: "A bleed Page that holds a flow workspace shell grows with it: the fill is a floor (a viewport at least), never a fixed height, so the canvas painted by the Grammar root reaches the end of a long page (U2-G8)."
+      measure: { kind: relation, select: '[data-grammar-workspace-viewport="flow"]', metric: bottom, op: "<=", ref: { within: '[data-grammar-page-body]', select: self, metric: bottom } }
+      owner: contract roles.page
+    - id: DNA-COMMON-CHOICE-RING
+      role: input
+      law: "An unselected radio draws a ring of its own (the muted foreground), so it stays visible when the app sets the field border and shadow to transparent (U2-G6)."
+      measure: { kind: style, select: '.starci-core-radio:not([data-selected]) [data-grammar-choice-control="radio"]', metric: box-shadow, op: "!=", value: none }
+      owner: contract roles.input
+    - id: DNA-COMMON-BUTTON-ALTERNATIVE-INK
+      role: button
+      law: "The alternative button writes its words in the default foreground that pairs with its default fill, never in the brand accent soft foreground (U9c-3)."
+      measure: { kind: style, select: '.starci-core-button.button--secondary', metric: color, op: "=", value: { token: --default-foreground } }
+      owner: contract roles.button
+    - id: DNA-COMMON-ROW-ACTION-END
+      role: list
+      law: "A row with actionPlacement end keeps its commands on the line of its copy, at the end of the row, at any width (G7-7)."
+      measure: { kind: relation, select: '[data-grammar-action-placement="end"] > .starci-core-list-row-actions', metric: top, op: "<=", ref: { within: '[data-component="ListRow"]', select: '.starci-core-list-row-copy', metric: bottom } }
+      owner: contract roles.list
+    - id: DNA-COMMON-DISCLOSURE-CHEVRON-START
+      role: list
+      law: "A disclosure with chevron start draws its chevron before its title (G7-8)."
+      measure: { kind: relation, select: '[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-indicator', metric: right, op: "<=", ref: { within: '.starci-core-disclosure-trigger', select: '.starci-core-disclosure-title', metric: left } }
+      owner: contract roles.list
+    - id: DNA-COMMON-FIGURES-PANE-ROW
+      role: list
+      law: "Figures in a pane stand in one bordered row while the strip is 20rem wide or more: every cell starts on the line of the first (G9c-1)."
+      measure: { kind: relation, select: '[data-grammar-figures-placement="pane"] .starci-core-description-pair:last-child', metric: top, op: "<=", ref: { within: '[data-grammar-figures-placement="pane"]', select: '.starci-core-description-pair:first-child', metric: bottom } }
+      owner: contract roles.list
+    - id: DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS
+      role: list
+      law: "A description list in the columns layout draws each term beside its value once the list is 20rem wide, a phone-wide drawer included: it answers its own width, not the viewport."
+      measure: { kind: relation, select: '[data-grammar-description-layout="columns"] .starci-core-description-value', metric: left, op: ">=", ref: { within: '.starci-core-description-pair', select: '.starci-core-description-term', metric: right } }
+      owner: contract roles.list
+    - id: DNA-COMMON-STEPPER-BAR
+      role: list
+      law: "The current segment of a bar stepper is filled with the accent and every segment is a thin bar (four pixels)."
+      measure: { kind: style, select: '[data-grammar-stepper-kind="bar"] [data-grammar-step-state="current"] [data-grammar-step-bar]', checks: [{ metric: background-color, op: "=", value: { token: --accent } }, { metric: height, op: "=", value: 4px }] }
+      owner: contract roles.list
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.

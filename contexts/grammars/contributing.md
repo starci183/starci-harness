@@ -106,6 +106,10 @@ Name it: every region, icon-only control and overlay has an accessible name the 
 parity gate). State non-colour cues. Meet the target floors without redrawing the box. Stop motion under reduced motion. Say what a live region
 announces, and when.
 
+## Server safety
+
+A server component imports Grammar components from `@starci/grammar/common`, so a module that calls a React hook, `createContext` or a region wrapper (`withRegionLoading`, `withRegionInert`, `withRegionGeometry`) begins with `"use client"`. Without it the import fails at render with "Attempted to call withRegionLoading() from the server". `npm run check:client` in `packages/grammar` (part of `npm test`) walks `src/core`, `src/common` and `src/offset-pop` and fails on a module that needs the directive and lacks it as its first statement; a frame that only calls `createElement` stays server-safe.
+
 ## Skeleton parity
 
 A component that shows content takes `isLoading` (a frame or list component also an `error` slot beside its `empty` slot), and the loading box equals the ready box. Known text stays real, unresolved values lay out

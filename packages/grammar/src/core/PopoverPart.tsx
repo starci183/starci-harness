@@ -1,3 +1,5 @@
+"use client"
+
 import { LoadingScope } from "./regionScope.js"
 import { Popover as HeroPopover } from "@heroui/react"
 import type { ReactNode } from "react"

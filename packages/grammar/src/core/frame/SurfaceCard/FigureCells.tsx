@@ -1,6 +1,7 @@
 "use client"
 
 import { Link as HeroLink } from "@heroui/react"
+import { usePaneContext } from "../../paneContext.js"
 import type { Figure } from "../../surfaceCardData.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
@@ -14,16 +15,20 @@ export const figureItems = (items: readonly Figure[], isLoading: boolean): reado
 /**
  * The strip a `kind="figures"` holds: two to five key figures as touching cells, divided by lines, never on the
  * outer edge. It answers its own width, not the viewport's: one row from 40rem, 2 x 2 from 18rem, one column below.
+ * Inside a Pane (a `Section kind="figures"` in a pane) the strip is one bordered row: the cells stay in one row down to 20rem of the
+ * strip's own width (2 x 2 below it), the value at the 2xl step so four cells fit a 380px list pane (G9c-1).
  * A real `<dl>`: the term, then the figure and its unit, then its meta as a second `<dd>` of the same term.
  */
 export const FigureCells = ({ items, isLoading, isDisabled = false }: { readonly items: readonly Figure[]; readonly isLoading: boolean; readonly isDisabled?: boolean }) => {
     const pending = (value: string | number) => <SkeletonPlaceholder>{value}</SkeletonPlaceholder>
+    const placement = usePaneContext() === undefined ? "card" : "pane"
     return (
         <dl
             className="starci-core-description-list"
             data-contract="HIERARCHY-3 TRUTH-1"
             data-grammar-description-layout="stat-strip"
             data-grammar-description-divided="true"
+            data-grammar-figures-placement={placement}
             {...(isLoading ? { "aria-busy": true, "data-loading": "true" } : {})}
         >
             {items.map((item) => (

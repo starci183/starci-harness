@@ -1,3 +1,5 @@
+"use client"
+
 import { withRegionLoading } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"

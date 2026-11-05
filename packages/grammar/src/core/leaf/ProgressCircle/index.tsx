@@ -1,3 +1,5 @@
+"use client"
+
 import { withRegionGeometry } from "../../regionScope.js"
 import { ProgressCircle as HeroProgressCircle } from "@heroui/react"
 import type { NoChildren } from "../../tier.js"
