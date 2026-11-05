@@ -191,12 +191,12 @@ roles:
     vendorParity: [tabs]
     slots: ["items: label, leading, count, href, isDisabled", panels]
     variants:
-      kind: { values: [views, filter], meaning: "views: switch views of a page, in the page head; filter: narrow one list, inside the list pane under its search field, the same underline one size smaller with a count per tab and a +n fold; a value of a form is ChoiceChips or RadioGroup, never a tab bar", chosenBy: app by tabs.choose.role }
+      kind: { values: [views, filter], meaning: "views: switch views of a page, in the page head; filter: narrow one list, inside the list pane under its search field, the same underline one size smaller with a count chip per tab and a +n fold; a value of a form is ChoiceChips or RadioGroup, never a tab bar", chosenBy: app by tabs.choose.role }
       inset: { values: [page, none], chosenBy: app }
     sizes: { steps: none, bar: md }
     states: [selected, focus-visible, disabled]
     grammarMayChange: [track, indicator and label paint; current label reads accent text]
-    dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-FILTER-COMPACT, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING, DNA-COMMON-TABS-FILTER-LOADING-COUNTS]
+    dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-FILTER-COMPACT, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING, DNA-COMMON-TABS-FILTER-LOADING-COUNTS, DNA-COMMON-TABS-COUNT-CHIP, DNA-COMMON-TABS-COUNT-CHIP-ATTENTION]
 
   - id: filter-button-group
     ui: ui/components/chip.md
@@ -1259,6 +1259,16 @@ mustKeep:
       law: "The title scale of a Heading and of a PageHeader is 24px (the 3xl step), between the standard headings and display (U0-G10)."
       measure: { kind: style, select: ':is([data-component="Heading"][data-scale="title"], .starci-core-page-header-title[data-grammar-title-scale="title"])', checks: [{ metric: font-size, op: "=", value: 24px }] }
       owner: contract roles.section
+    - id: DNA-COMMON-TABS-COUNT-CHIP
+      role: tabs
+      law: "A tab's count is a chip (a pill with its own ground): neutral by default, the accent soft pair on the selected tab, the warning soft pair when the tab is marked isAttention."
+      measure: { kind: style, select: '[role="tab"][aria-selected="true"] [data-grammar-tab-count]:not([data-grammar-attention="true"])', checks: [{ metric: background-color, op: "=", value: { token: --accent-soft } }, { metric: color, op: "=", value: { token: --accent-soft-foreground } }] }
+      owner: contract roles.tabs
+    - id: DNA-COMMON-TABS-COUNT-CHIP-ATTENTION
+      role: tabs
+      law: "The count chip of a tab marked isAttention is the warning soft pair, selected or not."
+      measure: { kind: style, select: '[data-grammar-tab-count][data-grammar-attention="true"]', checks: [{ metric: background-color, op: "=", value: { token: --warning-soft } }, { metric: color, op: "=", value: { token: --warning-soft-foreground } }] }
+      owner: contract roles.tabs
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.

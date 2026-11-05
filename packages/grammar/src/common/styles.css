@@ -1413,8 +1413,28 @@
         display: none;
     }
 
-    .starci-core-tab-count { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: var(--grammar-weight-regular); margin-inline-start: var(--grammar-identity-gap); }
-    .starci-core-tab-count[data-grammar-attention="true"] { color: var(--danger-soft-foreground); font-weight: var(--grammar-weight-medium); }
+    /*
+     * A tab's count is a chip (owner ruling tabs-counts-as-chips, confirmed 2026-11-05): neutral by default, the accent soft pair on the
+     * selected tab, the warning soft pair when the view waits for the reader (`isAttention`). The tabs keep their underline.
+     */
+    .starci-core-tab-count {
+        display: inline-flex;
+        min-width: 1.25rem;
+        box-sizing: border-box;
+        align-items: center;
+        justify-content: center;
+        margin-inline-start: var(--grammar-identity-gap);
+        padding-inline: var(--grammar-inline-gap);
+        border-radius: var(--grammar-radius-pill);
+        background: var(--default);
+        color: var(--default-foreground);
+        font-size: var(--grammar-text-xs);
+        font-variant-numeric: tabular-nums;
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-xs);
+    }
+    [role="tab"][aria-selected="true"] .starci-core-tab-count { background: var(--accent-soft); color: var(--accent-soft-foreground); }
+    .starci-core-tab-count[data-grammar-attention="true"] { background: var(--warning-soft); color: var(--warning-soft-foreground); }
 
     /*
      * Filter tabs: the page tabs' underline one size smaller, inside the list pane under the search field. 13px labels, a tighter

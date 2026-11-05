@@ -387,3 +387,18 @@ export const TitleScale: Story = {
         </Matrix>
     ),
 }
+
+const chipItems: ReadonlyArray<G.TabItem> = [{ id: "all", label: "All", count: 12 }, { id: "wait", label: "To approve", count: 3, isAttention: true }, { id: "done", label: "Done", count: 0 }]
+
+/** Counts as chips: neutral, accent soft on the selected tab, warning soft when it waits (DNA-COMMON-TABS-COUNT-CHIP). */
+export const TabCountChips: Story = {
+    render: () => (
+        <Matrix maxWidth={420}>
+            <State label="filter tabs, All selected / To approve selected" direction="column">
+                <G.Tabs label="Status" kind="filter" panelId="chip-panel" selectedKey="all" onSelect={noop} items={chipItems} />
+                <G.Tabs label="Status again" kind="filter" panelId="chip-panel" selectedKey="wait" onSelect={noop} items={chipItems} />
+                <div id="chip-panel" role="tabpanel" aria-label="Status"><G.Text>List</G.Text></div>
+            </State>
+        </Matrix>
+    ),
+}
