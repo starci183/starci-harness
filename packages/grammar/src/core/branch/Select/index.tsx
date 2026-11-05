@@ -22,6 +22,7 @@ import {
     useGrammarPortal,
     vendorFieldProps,
     type FieldControlProps,
+    type FieldSizeProps,
 } from "../../leaf/Field/index.js"
 import type { NoChildren } from "../../tier.js"
 
@@ -35,7 +36,7 @@ export type ListOption = {
     readonly isDisabled?: boolean
 }
 
-export type SelectProps = NoChildren & FieldControlProps & {
+export type SelectProps = NoChildren & FieldControlProps & FieldSizeProps & {
     readonly options: ReadonlyArray<ListOption>
     readonly placeholder?: string
     /** `pill`: the trigger is a 40px pill on the field tone (a picker in a page head: "Position: Technician"); `field` (default): the form field. */

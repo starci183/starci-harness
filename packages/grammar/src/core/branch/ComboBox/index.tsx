@@ -20,11 +20,12 @@ import {
     useGrammarPortal,
     vendorFieldProps,
     type FieldControlProps,
+    type FieldSizeProps,
 } from "../../leaf/Field/index.js"
 import { ListOptions, type ListOption } from "../Select/index.js"
 import type { NoChildren } from "../../tier.js"
 
-export type ComboBoxProps = NoChildren & FieldControlProps & {
+export type ComboBoxProps = NoChildren & FieldControlProps & FieldSizeProps & {
     readonly id?: string
     readonly options: ReadonlyArray<ListOption>
     readonly placeholder?: string

@@ -12,10 +12,11 @@ import {
     fieldVariantAttributes,
     vendorFieldProps,
     type FieldControlProps,
+    type FieldSizeProps,
 } from "../Field/index.js"
 import type { NoChildren } from "../../tier.js"
 
-export type SearchFieldProps = NoChildren & FieldControlProps & {
+export type SearchFieldProps = NoChildren & FieldControlProps & FieldSizeProps & {
     readonly id?: string
     readonly placeholder?: string
     readonly value?: string

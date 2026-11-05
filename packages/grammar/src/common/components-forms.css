@@ -756,6 +756,39 @@
         }
     }
 
+    /*
+     * The compact field step (size="sm"): a single-line field 32px tall for a list head or a toolbar. One variable moves the box of every
+     * field (`--starci-core-field-min-height`); the touch floor above does not lift a compact field (as a sm Button keeps its 32px), and the
+     * glyph buttons inside it follow the compact height so the box does not bulge.
+     */
+    [data-grammar-field-size="sm"] { --starci-core-field-min-height: 2rem; }
+
+    [data-grammar-field-size="sm"] :is(
+        .starci-core-select-trigger,
+        .starci-core-combo-box-group,
+        .starci-core-search-field-group,
+        .starci-core-number-field-group,
+        .starci-core-input-field,
+        .starci-core-number-field-step,
+        .starci-core-combo-box-trigger,
+        .starci-core-search-field-clear
+    ) {
+        min-block-size: var(--starci-core-field-min-height);
+    }
+
+    /* The compact box is exactly the step: the vendor's own padding and line height must not lift it above 32px. */
+    [data-grammar-field-size="sm"] :is(
+        .starci-core-select-trigger,
+        .starci-core-combo-box-group,
+        .starci-core-search-field-group,
+        .starci-core-number-field-group,
+        .starci-core-input-field
+    ) {
+        box-sizing: border-box;
+        block-size: var(--starci-core-field-min-height);
+        padding-block: 0;
+    }
+
     @media (prefers-reduced-motion: reduce) {
         .starci-core-file-dropzone-target {
             transition: none;

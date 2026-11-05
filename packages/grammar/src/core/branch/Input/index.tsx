@@ -2,7 +2,7 @@
 
 import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
-import { FieldDescription, FieldSkeletonScope, loadingFieldProps } from "../../leaf/Field/index.js"
+import { FieldDescription, FieldSkeletonScope, loadingFieldProps, type FieldSizeProps } from "../../leaf/Field/index.js"
 import { useEffect, useState, type ClipboardEvent, type ComponentType, type ReactNode } from "react"
 import {
     ErrorMessage as HeroErrorMessage,
@@ -17,7 +17,7 @@ export type InputKind = "email" | "tel" | "password" | "newPassword" | "code" | 
 
 type InputIcon = ComponentType<{ readonly className?: string }>
 
-export type InputProps = NoChildren & {
+export type InputProps = NoChildren & FieldSizeProps & {
     readonly id: string
     readonly name: string
     readonly label: ReactNode
@@ -105,6 +105,7 @@ const InputControl = ({
     isDisabled = false,
     isRequired = false,
     isReadOnly = false,
+    size,
     isCopyable = false,
     copyLabel,
     copiedLabel,
@@ -159,6 +160,7 @@ const InputControl = ({
         <HeroTextField
             data-tier="branch"
             data-component="Input"
+            {...(size === "sm" ? { "data-grammar-field-size": "sm" } : {})}
             fullWidth
             variant={variant}
             data-grammar-variant={variant}

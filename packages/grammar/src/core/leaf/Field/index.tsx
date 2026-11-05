@@ -144,8 +144,14 @@ export const StaticFieldError = ({ id, children }: { readonly id: string, readon
     </FieldErrorContext.Provider>
 )
 
+/**
+ * The compact step of a single-line field: `sm` is 32px (a picker in a list head or a toolbar), `md` (default) the 40px field. One step for
+ * Input, Select, ComboBox, SearchField and NumberField; it keeps the hidden label, the region loading box and every state.
+ */
+export type FieldSizeProps = { readonly size?: "md" | "sm" }
+
 /** The shared anatomy props every vendor field root gets. */
-export const vendorFieldProps = (props: FieldControlProps & { readonly isPending?: boolean | undefined }) => {
+export const vendorFieldProps = (props: FieldControlProps & FieldSizeProps & { readonly isPending?: boolean | undefined }) => {
     const invalid = isFieldInvalid(props)
     // Only a true state is stated: an explicit `false` would override what a Fieldset (disabled) or a
     // Form (`validationErrors`) hands the control through the vendor's context.
@@ -154,6 +160,7 @@ export const vendorFieldProps = (props: FieldControlProps & { readonly isPending
         ...(props.isDisabled === true ? { isDisabled: true } : {}),
         ...(props.isRequired === true ? { isRequired: true } : {}),
         ...(props.name === undefined ? {} : { name: props.name }),
+        ...(props.size === "sm" ? { "data-grammar-field-size": "sm" } : {}),
         ...fieldStateAttributes({
             isInvalid: invalid,
             isDisabled: props.isDisabled,

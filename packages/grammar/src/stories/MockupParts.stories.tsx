@@ -262,3 +262,24 @@ export const CompactTableInAside: Story = {
         </div>
     ),
 }
+
+const agentOptions = [{ id: "all", label: "All agents" }, { id: "care", label: "Care agent" }, { id: "sales", label: "Sales agent" }]
+
+/** The compact field step: a single-line field 32px tall for a list head or toolbar (DNA-COMMON-FIELD-SM); hidden label and loading keep the box. */
+export const CompactFields: Story = {
+    render: () => (
+        <Matrix maxWidth={360}>
+            <State label="Select sm: visible label, hidden label, loading region" direction="column">
+                <G.Select label="Agent" size="sm" options={agentOptions} defaultValue="all" />
+                <G.Select label="Agent for the list" size="sm" isLabelHidden options={agentOptions} defaultValue="all" />
+                <G.Select label="Agent loading" size="sm" isLabelHidden options={agentOptions} defaultValue="all" isLoading />
+            </State>
+            <State label="Same step on SearchField, NumberField, Input, and the md twin" direction="column">
+                <G.SearchField label="Search" size="sm" isLabelHidden placeholder="Search" clearLabel="Clear" />
+                <G.NumberField label="Quantity" size="sm" isLabelHidden defaultValue={2} />
+                <G.Input id="compact-input" name="compact" label="Name" size="sm" isLabelHidden placeholder="Name" />
+                <G.Select label="Agent md" isLabelHidden options={agentOptions} defaultValue="all" />
+            </State>
+        </Matrix>
+    ),
+}

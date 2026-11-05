@@ -256,7 +256,7 @@ roles:
     sizes: { steps: [md], default: md }
     states: [rest, focus-visible, invalid, disabled, read-only, skeleton]
     grammarMayChange: [fill, border, focus treatment, corner via field-radius]
-    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ONE-RING, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-CHOICE-RING]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ONE-RING, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-CHOICE-RING, DNA-COMMON-FIELD-SM]
 
   - id: select
     ui: ui/components/select.md
@@ -268,7 +268,7 @@ roles:
     sizes: { steps: [md], default: md }
     states: [open, selected, focus-visible, invalid, disabled, pending, skeleton]
     grammarMayChange: [trigger and option paint, popover edge, arrangement indicatorSide]
-    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-FIELD-SM]
 
   - id: copy-field
     ui: ui/components/text-field.md
@@ -640,7 +640,7 @@ mustKeep:
     - id: DNA-COMMON-FIELD-MD
       role: [input, select, copy-field]
       law: Every single-line field box (input, select trigger, combo box, search, number, date and time field, copy field) is as tall as an md control, 40px.
-      measure: { kind: box, select: ':is(.starci-core-input-field,.starci-core-select-trigger,.starci-core-combo-box-group,.starci-core-search-field-group,.starci-core-number-field-group,.starci-core-date-group,.starci-core-copy-field-group)', metric: height, op: "=", value: 40px }
+      measure: { kind: box, select: ':is(.starci-core-input-field,.starci-core-select-trigger,.starci-core-combo-box-group,.starci-core-search-field-group,.starci-core-number-field-group,.starci-core-date-group,.starci-core-copy-field-group):not([data-grammar-field-size="sm"] *)', metric: height, op: "=", value: 40px }
       owner: control-height-40
     - id: DNA-COMMON-SEGMENTED-RAMP
       role: segmented-control
@@ -1214,6 +1214,11 @@ mustKeep:
       law: "A table of four columns or fewer fits its pane: its content never reaches past the box that holds it, so no column is clipped."
       measure: { kind: relation, select: '[data-component="DataTable"][data-grammar-table-fit="true"] .starci-core-data-table-content', metric: right, op: "<=", tolerance: 1, ref: { within: '.starci-core-data-table-scroll', select: self, metric: right } }
       owner: contract roles.list
+    - id: DNA-COMMON-FIELD-SM
+      role: [input, select]
+      law: "A single-line field with size sm is 32px tall, whatever its label or state: a picker in a list head or a toolbar."
+      measure: { kind: box, select: '[data-grammar-field-size="sm"] :is(.starci-core-input-field,.starci-core-select-trigger,.starci-core-combo-box-group,.starci-core-search-field-group,.starci-core-number-field-group)', metric: height, op: "=", value: 32px }
+      owner: contract roles.select
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.
