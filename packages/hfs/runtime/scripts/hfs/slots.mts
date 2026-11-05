@@ -28,6 +28,7 @@ import { APP_SCOPE, isSide, manifestShapeProblems, PROFILES } from './slot-manif
 import type { Side } from './slot-manifest-shape.mjs';
 import { manifestSemanticProblems } from './slot-semantic-problems.mjs';
 import { classifyIn, ownerIn, slotEnabled, tierIn } from './slot-classify.mjs';
+import type { EngineOwned } from './engine-owned.mjs';
 import { compileVariant, varsOf, variantsOf } from './slot-match.mjs';
 import { importAllowedIn } from './slot-imports.mjs';
 import { requiredFilesIn, requiredPathsIn } from './slot-required.mjs';
@@ -87,6 +88,8 @@ export interface RepoView {
   reads: readonly string[];
   dbFunctions?: readonly DbFunction[];
   sqlPassThrough?: readonly SqlPassThrough[];
+  /** The engine-owned database objects of the be side (hfs.json sides.be.engineOwned). */
+  engineOwned?: EngineOwned;
   grammar?: string;
   extraPackages?: readonly { name: string; reason: string }[];
   sides?: Record<Side, RepoView>;
@@ -251,6 +254,7 @@ function sideDeclaration(manifest: SlotManifest, declaration: Parsed, name: stri
     reads: Object.freeze([...(s.reads ?? [])]),
     dbFunctions: Object.freeze((s.dbFunctions ?? []).map((entry: Parsed) => Object.freeze({ ...entry }))),
     sqlPassThrough: Object.freeze((s.sqlPassThrough ?? []).map((entry: Parsed) => Object.freeze({ ...entry }))),
+    ...(s.engineOwned === undefined ? {} : { engineOwned: Object.freeze({ ...s.engineOwned, tables: Object.freeze([...s.engineOwned.tables]) }) }),
     ...(s.grammar === undefined ? {} : { grammar: s.grammar }),
     ...(s.extraPackages === undefined ? {} : { extraPackages: Object.freeze(s.extraPackages.map((entry: Parsed) => Object.freeze({ ...entry }))) }),
     manifestVersion: manifest.version,

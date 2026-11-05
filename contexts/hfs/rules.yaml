@@ -320,7 +320,7 @@ rules:
       - {kind: eslint-be, id: no-runtime-schema}
   - id: R35
     code: BE_SCHEMA_OWNER
-    law: Entities and migrations live in the owning capability's `persistence/` and register under exactly one declared connection, except platform capabilities the manifest lists as `perConnection`; in lite a capability's `persistence/entities/index.ts` declares its `<c>Entities` and `platform/database/entities.ts` names it in `PRIMARY_ENTITIES`.
+    law: Entities and migrations live in the owning capability's `persistence/` and register under exactly one declared connection, except platform capabilities the manifest lists as `perConnection`; in lite a capability's `persistence/entities/index.ts` declares its `<c>Entities` and `platform/database/entities.ts` names it in `PRIMARY_ENTITIES`. The engine-owned objects of hfs.json sides.be.engineOwned (the base tables, the partitions of one of them and its views, built by generated migrations) need no entity per table and are mapped by the declared capability alone.
     failureCodes:
       - BE_SCHEMA_OWNER
     enforcers:
@@ -830,7 +830,7 @@ rules:
       - {kind: eslint-be, id: injection-token-exported}
   - id: R86
     code: BE_SQL_TABLE_OWNER
-    law: SQL writes only its own capability's tables, reads only tables of its own context, and bounds every multi-row SELECT.
+    law: SQL writes only its own capability's tables, reads only tables of its own context, and bounds every multi-row SELECT. The engine-owned objects of hfs.json sides.be.engineOwned belong to the declared engine capability alone.
     failureCodes:
       - BE_SQL_TABLE_OWNER
     enforcers:
@@ -1653,7 +1653,7 @@ rules:
       - {kind: hfs, id: db-app-role}
   - id: R256
     code: DB_POLICY_TAUTOLOGY
-    law: "Exposed database objects keep their access boundaries: no tautological policies, principal-scoped policies for every role but the application role (the principal is auth.uid, auth.jwt, the request JWT claims or a transaction setting the app declares in hfs.json db.scopeSettings, read only by policies whose roles are all declared in db.scopeRoles, compared with the owning column of db.scopeColumns), invoker-secured views and revoked execute on exposed definers."
+    law: "Exposed database objects keep their access boundaries: no tautological policies, principal-scoped policies for every role but the application role (the principal is auth.uid, auth.jwt, the request JWT claims or a transaction setting the app declares in hfs.json db.scopeSettings, read only by policies whose roles are all declared in db.scopeRoles, compared with the owning column of db.scopeColumns; a scope role is granted only to the application role), invoker-secured views and revoked execute on exposed definers."
     editions: [lite]
     failureCodes:
       - DB_POLICY_TAUTOLOGY
@@ -2250,7 +2250,7 @@ rules:
       - {kind: hfs, id: lite-db-path}
   - id: R333
     code: BE_ENTITY_SCHEMA_DRIFT
-    law: Every TypeORM entity column of a lite app's entity list matches the schema its `db/migrations` build; `starci app db drift` applies `db/bootstrap.sql` and every migration to an empty database and compares each column.
+    law: Every TypeORM entity column of a lite app's entity list matches the schema its `db/migrations` build; `starci app db drift` applies `db/bootstrap.sql` and every migration to an empty database and compares each column; an app that declares sides.be.engineOwned also has the partitions, views, CHECKs and indexes of the engine-owned objects compared with the engine's entity manifest, both ways.
     editions: [lite]
     failureCodes:
       - BE_ENTITY_SCHEMA_DRIFT

@@ -5,9 +5,11 @@ import type { ArchitectureViolation, GraphFile, HfsGraph } from './hfs-graph.mjs
 import type { CheckResult, ContextModel, HfsCheckInput, MachineKit, SlotResolver } from './context-map.mjs';
 import { analyzeSql, HOLE } from './sql-tokens.mjs';
 import type { SqlAnalysis, SqlTableUse } from './sql-tokens.mjs';
+import type { EngineOwned } from '../engine-owned.mjs';
 import { machineKit } from './machine-ast.mjs';
 import { contextModelOf } from './context-map.mjs';
 import { sqlUniqueSetsOf } from './sql-keys.mjs';
+import { engineKind, isEngineCapability } from '../engine-owned.mjs';
 
 /**
  * R86 `sql-owner` (BE_SQL_TABLE_OWNER). Every `sql` tagged template (the tag declared in platform/database) of a
@@ -21,6 +23,9 @@ import { sqlUniqueSetsOf } from './sql-keys.mjs';
  *     public tables the ordered db/migrations create under the SQL migration authority;
  *   - a SELECT carries LIMIT, or reads a single relation under a complete primary/unique-key equality to scalar values,
  *     or selects only proven scalar aggregates without GROUP BY. Inferred bounds reject multiplying projections and set operations.
+ * The engine-owned objects an app declares (hfs.json sides.be.engineOwned: base tables, partitions of one, views by prefix) belong to
+ * the declared engine capability alone: its SQL reads and writes them (they are created by generated migrations, so no capability
+ * name or entity declares them), and the SQL of any other capability that names one of them, to read or to write, is refused.
  * Table positions that hold a `${...}` substitution (SqlIdent) are dynamic; they are counted in the coverage and judged by
  * nobody. A join needs an explicit result bound because key constraints on its first relation do not bound joined rows.
  */
@@ -277,6 +282,19 @@ function reportSqlSelects({ result, tables, report }: { result: SqlAnalysis; tab
   }
 }
 
+/** The analysis without the engine-owned objects: the engine capability's use of them is its own, any other capability's is reported and dropped. */
+function withoutEngineTables(result: SqlAnalysis, engine: EngineOwned | undefined, file: OwnedFile, report: SqlReport): SqlAnalysis {
+  if (!engine) return result;
+  const own = isEngineCapability(engine, file.owner.root);
+  const keep = (use: SqlTableUse, verb: 'writes' | 'reads'): boolean => {
+    const kind = engineKind(engine, use.table);
+    if (kind === null) return true;
+    if (!own) report(`SQL in ${file.owner.root} ${verb} ${kind} ${use.table}, owned by the ${engine.capability} capability (hfs.json sides.be.engineOwned); only that capability touches the engine-owned tables, partitions and views, other code goes through its public API.`, { table: use.table, tableOwner: engine.capability });
+    return false;
+  };
+  return { ...result, writes: result.writes.filter(use => keep(use, 'writes')), reads: result.reads.filter(use => keep(use, 'reads')) };
+}
+
 function inspectSqlTag(input: SqlInspection, state: SqlState, file: OwnedFile, checker: TypeChecker, node: Node): boolean {
   const { kit, ts, tables, sqlAuthority, model, resolver } = input;
   if (!ts.isTaggedTemplateExpression(node)) return true;
@@ -299,8 +317,9 @@ function inspectSqlTag(input: SqlInspection, state: SqlState, file: OwnedFile, c
   } });
   state.dynamic += result.dynamic;
   const ownTable = capabilityTable(file.owner.root);
-  reportSqlWrites({ result, tables, sqlAuthority, file, ownTable, report });
-  reportSqlReads({ result, tables, sqlAuthority, file, model, resolver, report });
+  const judged = withoutEngineTables(result, resolver.repo?.engineOwned, file, report);
+  reportSqlWrites({ result: judged, tables, sqlAuthority, file, ownTable, report });
+  reportSqlReads({ result: judged, tables, sqlAuthority, file, model, resolver, report });
   reportSqlSelects({ result, tables, report });
   return true;
 }

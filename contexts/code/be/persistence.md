@@ -56,6 +56,14 @@ required, and the registry is imported only by the files its slot's `importedBy`
 exports it, because database.module, the entity list and the capability barrels would form a cycle that fails at boot
 (`InjectPrimaryEntityManager is not a function`).
 
+An engine-owned data model is the one exception to an entity file per table. When hfs.json `sides.be.engineOwned` declares
+`{ capability, tables, partitionsOf, views, manifest }`, that one capability owns the listed base tables (for example `records`,
+`record_links`, `entity_sequences`), every partition `<partitionsOf>_<entity>` and every view matching `views` (`v_*`), all built by
+generated migrations. They need no `*.entity.ts` per partition or view: TypeScript reaches them through the engine's own
+`EntitySchema`s (the base tables) and its generated typed views, and `starci app db drift` (R333) compares the partitions, views,
+CHECKs and indexes with the entity manifest the engine generates (`manifest`, relative to the app root). Any other capability that
+maps one of these objects with an `@Entity` (R35), or writes or reads one in SQL (R86), is refused.
+
 Why: one owner per table gives every schema change one reviewer and keeps platform free of domain types; the one
 registry that names every list is the only place that knowledge meets.
 
@@ -245,7 +253,7 @@ Enforced by: R214, R255 (hfs checks over the migrations).
 
 ## BE-PERSISTENCE-19 Lite: policies, definers and configuration keep the boundary
 
-A policy for any role but the trusted application role proves a principal predicate (`auth.uid()`, `auth.jwt()`, the request JWT claims, or a transaction setting the app declares in hfs.json `db.scopeSettings`, read directly with `current_setting` or through a SQL function whose body reads it, as an engine role entered per transaction does), a declared setting counts only in a policy whose roles are all declared scope roles (hfs.json `db.scopeRoles`, each `{ role, reason }`, created NOLOGIN NOINHERIT NOBYPASSRLS by a migration; R255 `DB_APP_ROLE`), only as `<owning column> = <setting or its function>` (hfs.json `db.scopeColumns`, default `workspace_id`), and never a constant, `IS NOT NULL`, `OR true`, a self comparison or a setting not declared. An exposed view is
+A policy for any role but the trusted application role proves a principal predicate (`auth.uid()`, `auth.jwt()`, the request JWT claims, or a transaction setting the app declares in hfs.json `db.scopeSettings`, read directly with `current_setting` or through a SQL function whose body reads it, as an engine role entered per transaction does), a declared setting counts only in a policy whose roles are all declared scope roles (hfs.json `db.scopeRoles`, each `{ role, reason }`, created NOLOGIN NOINHERIT NOBYPASSRLS by a migration and granted only to the application role; R255 `DB_APP_ROLE`), only as `<owning column> = <setting or its function>` (hfs.json `db.scopeColumns`, default `workspace_id`), and never a constant, `IS NOT NULL`, `OR true`, a self comparison or a setting not declared. An exposed view is
 `security_invoker`; a `SECURITY DEFINER` function pins `search_path` and revokes EXECUTE from public and the browser
 roles. Extensions follow `ruleParams.db.extensions`; migrations write no secret or role password; destructive DDL lives
 only in a `*_contract_*` migration after the code stops using the target, or in the exact objects of one migration that an owner

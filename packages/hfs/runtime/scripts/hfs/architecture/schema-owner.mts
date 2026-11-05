@@ -4,6 +4,8 @@ import { treeOf } from './required-files.mjs';
 import { DATABASE_DIR } from './connection-map.mjs';
 import { collectRegistrations, isPerConnection, persistenceOfFactory } from './context-map.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
+import { engineKind, isEngineCapability } from '../engine-owned.mjs';
+import { entitiesOf } from './sql-owner.mjs';
 import type { ClassDeclaration, ExportDeclaration, ExportSpecifier, Identifier, Node, PropertyDeclaration, Statement, StringLiteral, TypeChecker } from 'typescript';
 import type { TypeScriptApi } from './config.mjs';
 import type { ArchitectureViolation, CheckInput, GraphFile, HfsGraph } from './hfs-graph.mjs';
@@ -57,6 +59,10 @@ interface FoundView {
  *     (`<c>` the camelCase capability name), and no other name coming from `persistence/`;
  *   - a migration file is `<epochMs13>-<kebab-name>.ts`, holds a class `<Pascal><epochMs13>` and a `name` property equal to
  *     that class name, and has no unit spec beside it.
+ *
+ * The engine-owned objects hfs.json sides.be.engineOwned declares (one capability's base tables, the partitions of one of them and
+ * its views, built by generated migrations and reached through the engine's own schemas) need no entity per table, but belong to
+ * the declared capability alone: an `@Entity` of any other capability that maps one of them is refused.
  *
  * Lite (persistence.md BE-PERSISTENCE-3, ruling lite-persistence-typeorm-entities) has entities and no be migration: the
  * capability's `persistence/entities/index.ts` declares `<c>Entities`, its `index.ts` exports that one persistence name, and
@@ -287,6 +293,17 @@ function reportCapabilityIndexes(input: CheckInput, kit: Kit, found: Found, repo
   for (const [capabilityRoot, kinds] of found) reportCapabilityIndex(input, kit, capabilityRoot, kinds, report);
 }
 
+function reportEngineOwned(input: CheckInput, kit: Kit, plain: Plain): void {
+  const engine = kit.resolver.repo?.engineOwned;
+  if (!engine) return;
+  for (const [table, declaration] of entitiesOf(kit, input.graph).tables) {
+    const kind = engineKind(engine, table);
+    if (kind && declaration.owner && !isEngineCapability(engine, declaration.owner)) {
+      plain(declaration.rel ?? 'hfs.json', `${declaration.rel ?? table} maps ${kind} ${table}, which the ${engine.capability} capability owns (hfs.json sides.be.engineOwned); only that capability maps the engine-owned objects.`, { table, tableOwner: engine.capability, capability: declaration.owner });
+    }
+  }
+}
+
 export function checkSchemaOwner(input: CheckInput) {
   const { config, graph } = input;
   const kit = machineKit(input);
@@ -305,5 +322,6 @@ export function checkSchemaOwner(input: CheckInput) {
   reportRegistrationSites(registered, connections, resolver, report);
   reportFoundCapabilities(input, kit, found, registered, connections, plain, report);
   reportCapabilityIndexes(input, kit, found, report);
+  reportEngineOwned(input, kit, plain);
   return { violations, coverage: { status: 'checked', entities: counts.entities, migrations: counts.migrations, capabilities: found.size, connections: connections.size, registrations } };
 }

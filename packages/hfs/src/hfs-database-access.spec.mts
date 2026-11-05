@@ -309,6 +309,11 @@ for (const edition of ['lite', 'full']) {
     ['a scope role created without stating its attributes', `create role app_engine; ${policy}`, true],
     ['a scope role altered to LOGIN', `${engineRole} alter role app_engine login; ${policy}`, true],
     ['a scope role never created by a migration', policy, true],
+    ['a scope role granted to the application role', `${engineRole} create role app_be login noinherit; grant app_engine to app_be; ${policy}`, false],
+    ['a scope role granted to another role', `${engineRole} create role app_reader login noinherit; grant app_engine to app_reader; ${policy}`, true],
+    ['a scope role granted to the application role and another', `${engineRole} create role app_be login noinherit; create role app_reader; grant app_engine to app_be, app_reader; ${policy}`, true],
+    ['a scope role granted to the browser role', `${engineRole} grant app_engine to authenticated; ${policy}`, true],
+    ['a scope role granted to PUBLIC', `${engineRole} grant app_engine to public; ${policy}`, true],
   ];
   for (const [name, sql, violates] of cases) {
     test(`DB_APP_ROLE@${edition}: ${name}`, async () => {
@@ -316,3 +321,13 @@ for (const edition of ['lite', 'full']) {
     });
   }
 }
+
+test('the be side takes sides.be.engineOwned as one capability, its tables, the table whose partitions it owns, a view prefix and a manifest, and refuses any other shape', () => {
+  const engine = { capability: 'entity-engine', tables: ['records', 'record_links'], partitionsOf: 'records', views: 'v_*', manifest: '.starciwork/entities.manifest.json' };
+  const problems = (engineOwned: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite',
+    sides: { be: { apps: [{ name: 'api', kind: 'api' }], ...(side === 'be' ? { engineOwned } : {}) }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core', ...(side === 'fe' ? { engineOwned } : {}) } } }, ['be', 'fe']).filter((problem) => problem.includes('engineOwned'));
+  assert.deepEqual(problems(engine), []);
+  assert.equal(problems(engine, 'fe').length, 1);
+  for (const bad of [{ ...engine, capability: 'Entity_Engine' }, { ...engine, tables: [] }, { ...engine, partitionsOf: 'other' }, { ...engine, views: 'v_' }, { ...engine, manifest: '../x.json' },
+    { ...engine, manifest: 'x.txt' }, { ...engine, extra: 1 }, { capability: 'entity-engine' }, 'records']) assert.equal(problems(bad).length, 1, JSON.stringify(bad));
+});

@@ -11,8 +11,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { main } from './main.mjs';
 import type { VerbContext, VerbResult } from '../release/index.mjs';
-import { compareSchema, driftCheck, loadEntityColumns, migrationFiles } from '../db/drift.mjs';
-import type { DriftFinding, EntityColumn, SchemaColumn } from '../db/drift.mjs';
+import { compareEngineCatalog, compareSchema, driftCheck, loadEntityColumns, migrationFiles } from '../db/drift.mjs';
+import type { DriftFinding, EngineCatalog, EntityColumn, SchemaColumn } from '../db/drift.mjs';
 import { normalizeRelease } from '../release/gate.mjs';
 import { ciWorkflowCommands } from '../sync/ci-commands.mjs';
 
@@ -158,4 +158,79 @@ test('the columns a table entity inherits from the entity base of platform/datab
   const schema = columns.map(({ column, type, nullable }) => ({ schema: 'public', table: 'widgets', column, type, nullable, enumName: null, view: false }));
   const missing = await driftCheck(ctxOf(root), { entityColumns: async () => columns, schema: stubbed(schema.filter((row) => row.column !== 'updated_at')) });
   assert.deepEqual(kinds(missing), ['missing-column updated_at']);
+});
+
+// ---- engine-owned objects (hfs.json sides.be.engineOwned): R333 compares partitions, views, CHECKs and indexes with the engine manifest
+
+const ENGINE = { capability: 'entity-engine', tables: ['records', 'record_links', 'entity_sequences'], partitionsOf: 'records', views: 'v_*', manifest: '.starciwork/entities.manifest.json' };
+const MANIFEST = { version: 1 as const, entities: [
+  { entity: 'order', partition: 'records_order', view: 'v_order', checks: ['records_order_total_check'], indexes: ['records_order_status_idx'] },
+  { entity: 'note', partition: 'records_note' },
+] };
+const CATALOG: EngineCatalog = {
+  partitions: [{ name: 'records_order', parent: 'records' }, { name: 'records_note', parent: 'records' }],
+  views: [{ name: 'v_order' }],
+  checks: [{ relation: 'records_order', name: 'records_order_total_check' }],
+  indexes: [{ relation: 'records_order', name: 'records_order_status_idx' }],
+};
+const engineKinds = (catalog: EngineCatalog, manifest = MANIFEST) => compareEngineCatalog(ENGINE, manifest, catalog).map(({ kind, table }) => `${kind} ${table}`);
+
+test('the engine model whose partitions, views, checks and indexes the manifest declares is green', () => {
+  assert.deepEqual(engineKinds(CATALOG), []);
+});
+
+test('a partition with no declaration, and a declaration with no partition, are findings', () => {
+  assert.deepEqual(engineKinds({ ...CATALOG, partitions: [...CATALOG.partitions, { name: 'records_stray', parent: 'records' }] }), ['partition-undeclared records_stray']);
+  assert.deepEqual(engineKinds({ ...CATALOG, partitions: [CATALOG.partitions[0]!] }), ['partition-missing records_note']);
+  assert.deepEqual(engineKinds({ ...CATALOG, partitions: [...CATALOG.partitions, { name: 'other_part', parent: 'elsewhere' }] }), []);
+});
+
+test('a view with no declaration, and a declared view with no view, are findings; a view outside the engine prefix is not', () => {
+  assert.deepEqual(engineKinds({ ...CATALOG, views: [...CATALOG.views, { name: 'v_stray' }] }), ['view-undeclared v_stray']);
+  assert.deepEqual(engineKinds({ ...CATALOG, views: [] }), ['view-missing v_order']);
+  assert.deepEqual(engineKinds({ ...CATALOG, views: [...CATALOG.views, { name: 'report_totals' }] }), []);
+});
+
+test('a CHECK or an index of a partition is compared with the manifest both ways', () => {
+  assert.deepEqual(engineKinds({ ...CATALOG, checks: [...CATALOG.checks, { relation: 'records_order', name: 'records_order_stray_check' }] }), ['check-undeclared records_order.records_order_stray_check']);
+  assert.deepEqual(engineKinds({ ...CATALOG, checks: [] }), ['check-missing records_order.records_order_total_check']);
+  assert.deepEqual(engineKinds({ ...CATALOG, indexes: [...CATALOG.indexes, { relation: 'records_note', name: 'records_note_stray_idx' }] }), ['index-undeclared records_note.records_note_stray_idx']);
+  assert.deepEqual(engineKinds({ ...CATALOG, indexes: [] }), ['index-missing records_order.records_order_status_idx']);
+});
+
+/** A temporary app root with an hfs.json declaring the engine-owned objects and, when given, its manifest. */
+function engineApp(manifest: unknown): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-drift-engine-'));
+  fs.writeFileSync(path.join(dir, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'engine', edition: 'lite', sides: { be: { apps: [], engineOwned: ENGINE }, fe: { apps: [] } } }));
+  if (manifest !== undefined) {
+    fs.mkdirSync(path.join(dir, '.starciwork'), { recursive: true });
+    fs.writeFileSync(path.join(dir, ENGINE.manifest), typeof manifest === 'string' ? manifest : JSON.stringify(manifest));
+  }
+  return dir;
+}
+const engineSchema = (catalog: EngineCatalog) => async () => ({ columns: [] as SchemaColumn[], files: ['db/migrations/20261105000000_engine.sql'], how: 'a stubbed schema', catalog });
+
+test('the verb judges an app with only engine-owned objects: green when the manifest matches, red for a partition no entity declares', async () => {
+  const dir = engineApp(MANIFEST);
+  try {
+    assert.equal((await driftCheck(ctxOf(dir), { schema: engineSchema(CATALOG) })).ok, true);
+    const red = await driftCheck(ctxOf(dir), { schema: engineSchema({ ...CATALOG, partitions: [...CATALOG.partitions, { name: 'records_stray', parent: 'records' }] }) });
+    assert.equal(red.ok, false);
+    assert.deepEqual(kinds(red), ['partition-undeclared ']);
+    assert.match(linesOf(red).join('\n'), /BE_ENTITY_SCHEMA_DRIFT records_stray: partition of records/u);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a declared engine without its manifest, or with a malformed one, is no verdict', async () => {
+  for (const manifest of [undefined, '{', { version: 2, entities: [] }, { version: 1, entities: [{ entity: 'order' }] }]) {
+    const dir = engineApp(manifest);
+    try { await assert.rejects(driftCheck(ctxOf(dir), { schema: engineSchema(CATALOG) }), /DB_DRIFT_NO_MANIFEST|manifest/u); }
+    finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  }
+});
+
+test('an EntitySchema of the entity list (the engine base table) is compared like a class entity', async () => {
+  const columns = await loadEntityColumns(path.join(path.dirname(APP), 'app-engine'));
+  assert.deepEqual(columns.map(({ table, column, type }) => `${table}.${column}:${type}`).sort(), [
+    'records.data:jsonb', 'records.entity:text', 'records.id:uuid', 'records.version:bigint', 'records.workspace_id:uuid']);
 });

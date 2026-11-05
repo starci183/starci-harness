@@ -8,6 +8,10 @@
 // normalised to PostgreSQL's format_type names) or whose nullability differs, under BE_ENTITY_SCHEMA_DRIFT. Database columns no entity maps
 // are fine. Exit 0 is green, 1 is drift (or a migration that does not apply to an empty database), 2 is a refusal: no verdict, which is
 // also what a host without Docker gets ("needs a database"), never a green.
+// An app that declares engine-owned objects (hfs.json sides.be.engineOwned: base tables, the partitions of one, views by prefix) also has them
+// compared with the entity manifest its engine generates (the declaration's `manifest`, app-root relative): the base tables through the
+// engine's TypeORM EntitySchemas in the entity list as above, and the partitions, views, CHECK constraints and indexes of the partitions
+// against the manifest, both ways (a partition or view the manifest lacks, and one the manifest names that no migration built).
 import fs from 'node:fs';
 import path from 'node:path';
 import Module, { createRequire } from 'node:module';
@@ -19,6 +23,8 @@ import { firstLine, tool } from '../stack/context.mjs';
 import { ENTITY_LIST, hasEntityList } from './entity-list.mjs';
 import { DB_DOCKERFILE, DB_IMAGE_CONTEXT } from './image.mjs';
 import { BOOTSTRAP_FILE } from '../runtime/scripts/hfs/rules/database-constants.mjs';
+import type { EngineOwned } from '../runtime/scripts/hfs/engine-owned.mjs';
+import { engineOwnedOk } from '../runtime/scripts/hfs/engine-owned.mjs';
 
 export { BOOTSTRAP_FILE };
 
@@ -101,7 +107,9 @@ function requireEntityList(ts: AppModule, appRequire: NodeJS.Require, root: stri
 }
 
 /** The entity classes an entity-list module exports: every class, directly or inside an exported array, once. */
-const entityClasses = (exports: unknown): Function[] => [...new Set((Object.values((exports ?? {}) as object) as unknown[]).flat(Infinity).filter((value): value is Function => typeof value === 'function'))];
+// A TypeORM `EntitySchema` instance (the engine's base tables are declared as schemas, not classes) is an entity source like a class.
+const isEntitySource = (value: unknown): value is Function => typeof value === 'function' || (typeof value === 'object' && value !== null && value.constructor?.name === 'EntitySchema');
+const entityClasses = (exports: unknown): Function[] => [...new Set((Object.values((exports ?? {}) as object) as unknown[]).flat(Infinity).filter(isEntitySource))];
 
 /** PostgreSQL spellings TypeORM's normalizeType passes through unchanged, mapped to the name format_type answers. */
 const PG_ALIASES = new Map([['serial', 'integer'], ['serial4', 'integer'], ['bigserial', 'bigint'], ['serial8', 'bigint'], ['smallserial', 'smallint'],
@@ -153,6 +161,25 @@ join pg_catalog.pg_attribute a on a.attrelid = cl.oid and a.attname = c.column_n
 join pg_catalog.pg_type t on t.oid = a.atttypid
 left join pg_catalog.pg_type e on e.oid = t.typelem and t.typcategory = 'A'
 where c.table_schema not in ('pg_catalog', 'information_schema')`;
+
+/** The partitions, views, CHECK constraints and non-inherited indexes of schema public, for the engine-owned comparison. */
+export const CATALOG_SQL = {
+  partitions: `select c.relname as "name", p.relname as "parent" from pg_catalog.pg_inherits i join pg_catalog.pg_class c on c.oid = i.inhrelid
+    join pg_catalog.pg_class p on p.oid = i.inhparent join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r', 'p')`,
+  views: `select c.relname as "name" from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('v', 'm')`,
+  checks: `select cl.relname as "relation", con.conname as "name" from pg_catalog.pg_constraint con join pg_catalog.pg_class cl on cl.oid = con.conrelid
+    join pg_catalog.pg_namespace n on n.oid = cl.relnamespace where n.nspname = 'public' and con.contype = 'c' and con.conparentid = 0`,
+  indexes: `select t.relname as "relation", i.relname as "name" from pg_catalog.pg_index x join pg_catalog.pg_class i on i.oid = x.indexrelid join pg_catalog.pg_class t on t.oid = x.indrelid
+    join pg_catalog.pg_namespace n on n.oid = t.relnamespace left join pg_catalog.pg_inherits h on h.inhrelid = i.oid where n.nspname = 'public' and not x.indisprimary and h.inhrelid is null`,
+};
+
+/** What the migrated schema holds that the engine manifest describes. */
+export interface EngineCatalog {
+  partitions: { name: string; parent: string }[];
+  views: { name: string }[];
+  checks: { relation: string; name: string }[];
+  indexes: { relation: string; name: string }[];
+}
 
 const PUBLIC_RELATIONS_SQL = `select count(*)::int as "count" from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f')`;
@@ -211,7 +238,7 @@ async function connect(ctx: VerbContext, Client: new (connection: Record<string,
  * db/bootstrap.sql and every active migration, each file in one transaction, then is read with SCHEMA_SQL. A file that does not apply to an
  * empty database is a red result of its own (DB_DRIFT_MIGRATION_FAILED). The container is removed in every case.
  */
-export async function migratedSchema(ctx: VerbContext, appRoot: string, { urlEnv }: { urlEnv?: string | undefined } = {}): Promise<{ columns: SchemaColumn[]; files: string[]; how: string }> {
+export async function migratedSchema(ctx: VerbContext, appRoot: string, { urlEnv }: { urlEnv?: string | undefined } = {}): Promise<{ columns: SchemaColumn[]; files: string[]; how: string; catalog: EngineCatalog }> {
   const root = path.resolve(appRoot);
   const files = migrationFiles(root);
   let Client: new (connection: Record<string, unknown>) => AppModule;
@@ -238,7 +265,11 @@ export async function migratedSchema(ctx: VerbContext, appRoot: string, { urlEnv
       catch (error) { throw failure('DB_DRIFT_MIGRATION_FAILED', `${file} does not apply to an empty database: ${scrub(firstLine((error as Error).message))}`); }
     }
     const { rows } = await client.query(SCHEMA_SQL);
-    return { columns: rows.map((row: SchemaColumn) => ({ ...row, type: String(row.type).toLowerCase() })), files, how: scratch.how };
+    const catalog: EngineCatalog = {
+      partitions: (await client.query(CATALOG_SQL.partitions)).rows, views: (await client.query(CATALOG_SQL.views)).rows,
+      checks: (await client.query(CATALOG_SQL.checks)).rows, indexes: (await client.query(CATALOG_SQL.indexes)).rows,
+    };
+    return { columns: rows.map((row: SchemaColumn) => ({ ...row, type: String(row.type).toLowerCase() })), files, how: scratch.how, catalog };
   } finally {
     await client?.end().catch(() => {});
     scratch.stop();
@@ -285,19 +316,87 @@ export function compareSchema(entityColumns: readonly EntityColumn[], schemaColu
   return findings;
 }
 
+/* ---- the engine-owned comparison */
+
+/** One entity of the engine manifest: its partition, its typed view when it has one, and the names of the CHECK constraints and indexes of its partition. */
+export interface ManifestEntity { entity: string; partition: string; view?: string; checks?: string[]; indexes?: string[] }
+/** The manifest the engine generates from its entity declarations. */
+export interface EntityManifest { version: 1; entities: ManifestEntity[] }
+
+const nameList = (value: unknown): boolean => value === undefined || (Array.isArray(value) && value.every((item) => typeof item === 'string' && /^[a-z_][a-z0-9_]*$/u.test(item)));
+const isManifest = (value: unknown): value is EntityManifest => {
+  if (typeof value !== 'object' || value === null || (value as { version?: unknown }).version !== 1) return false;
+  const entities = (value as { entities?: unknown }).entities;
+  return Array.isArray(entities) && entities.every((item) => typeof item === 'object' && item !== null && typeof item.entity === 'string' && typeof item.partition === 'string'
+    && (item.view === undefined || typeof item.view === 'string') && nameList(item.checks) && nameList(item.indexes));
+};
+
+/** The engine-owned declaration of hfs.json sides.be.engineOwned, or undefined when the app declares none; a malformed one is a refusal. */
+export function readEngineOwned(root: string): EngineOwned | undefined {
+  const file = path.join(root, 'hfs.json');
+  if (!fs.existsSync(file)) return undefined;
+  let declared: unknown;
+  try { declared = JSON.parse(fs.readFileSync(file, 'utf8'))?.sides?.be?.engineOwned; } catch { return undefined; }
+  if (declared === undefined) return undefined;
+  if (!engineOwnedOk(declared)) throw refusal('DB_DRIFT_ENGINE_DECLARATION', 'hfs.json sides.be.engineOwned is malformed');
+  return declared as EngineOwned;
+}
+
+/** The entity manifest the declaration names; a missing or malformed one is no verdict, never a green. */
+export function readEntityManifest(root: string, engine: EngineOwned): EntityManifest {
+  const file = path.join(root, engine.manifest);
+  if (!fs.existsSync(file)) throw refusal('DB_DRIFT_NO_MANIFEST', `${engine.manifest} is missing: generate the entity manifest with the engine's entities command, the declarations the partitions and views are compared with`);
+  let manifest: unknown;
+  try { manifest = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { throw refusal('DB_DRIFT_NO_MANIFEST', `${engine.manifest} is not valid JSON`); }
+  if (!isManifest(manifest)) throw refusal('DB_DRIFT_NO_MANIFEST', `${engine.manifest} must be { version: 1, entities: [{ entity, partition, view?, checks?, indexes? }] }`);
+  return manifest;
+}
+
+/**
+ * The drift findings of the engine manifest against the migrated catalog, both ways: a partition of the engine's parent table, a view named
+ * by the engine's view prefix, a CHECK constraint or an index of a partition that the manifest does not declare, and a declared one the
+ * migrations did not build (a declaration with no partition is a finding as much as a partition with no declaration).
+ */
+export function compareEngineCatalog(engine: EngineOwned, manifest: EntityManifest, catalog: EngineCatalog): DriftFinding[] {
+  const findings: DriftFinding[] = [];
+  const found = (kind: string, name: string, message: string): void => { findings.push({ code: DRIFT_CODE, level: 'error', kind, entity: engine.partitionsOf, schema: 'public', table: name, column: '', message: `${name}: ${message}` }); };
+  const prefix = engine.views.slice(0, -1);
+  const partitions = new Set(catalog.partitions.filter((item) => item.parent === engine.partitionsOf).map((item) => item.name));
+  const views = new Set(catalog.views.map((item) => item.name).filter((name) => name.startsWith(prefix)));
+  const declaredPartitions = new Set(manifest.entities.map((item) => item.partition));
+  const declaredViews = new Set(manifest.entities.flatMap((item) => (item.view ? [item.view] : [])));
+  for (const name of [...partitions].sort()) if (!declaredPartitions.has(name)) found('partition-undeclared', name, `partition of ${engine.partitionsOf} no entity declares in ${engine.manifest}`);
+  for (const name of [...declaredPartitions].sort()) if (!partitions.has(name)) found('partition-missing', name, `declared in ${engine.manifest} but no migration creates this partition of ${engine.partitionsOf}`);
+  for (const name of [...views].sort()) if (!declaredViews.has(name)) found('view-undeclared', name, `view no entity declares in ${engine.manifest}`);
+  for (const name of [...declaredViews].sort()) if (!views.has(name)) found('view-missing', name, `declared in ${engine.manifest} but no migration creates this view`);
+  for (const entity of manifest.entities) {
+    if (!partitions.has(entity.partition)) continue;
+    for (const [list, rows, noun] of [[entity.checks ?? [], catalog.checks, 'CHECK constraint'], [entity.indexes ?? [], catalog.indexes, 'index']] as const) {
+      const actual = new Set(rows.filter((row) => row.relation === entity.partition).map((row) => row.name));
+      const kind = noun === 'index' ? 'index' : 'check';
+      for (const name of [...actual].sort()) if (!list.includes(name)) found(`${kind}-undeclared`, `${entity.partition}.${name}`, `${noun} the manifest does not declare for entity ${entity.entity}`);
+      for (const name of [...list].sort()) if (!actual.has(name)) found(`${kind}-missing`, `${entity.partition}.${name}`, `${noun} declared for entity ${entity.entity} but not built by the migrations`);
+    }
+  }
+  return findings;
+}
+
 /**
  * `starci app db drift`. options: { urlEnv, entityColumns(root), schema(ctx, root, { urlEnv }) }, the last two seams for specs. An app with
  * no entity list is green with nothing to compare.
  */
 export async function driftCheck(ctx: VerbContext, options: {
   urlEnv?: string | undefined; entityColumns?: (root: string) => Promise<EntityColumn[]> | EntityColumn[];
-  schema?: (ctx: VerbContext, root: string, flags: { urlEnv?: string | undefined }) => Promise<{ columns: SchemaColumn[]; files?: string[]; how?: string }>;
+  schema?: (ctx: VerbContext, root: string, flags: { urlEnv?: string | undefined }) => Promise<{ columns: SchemaColumn[]; files?: string[]; how?: string; catalog?: EngineCatalog }>;
 } = {}): Promise<VerbResult> {
   const root = path.resolve(ctx.cwd);
-  if (!hasEntityList(root)) return { ok: true, lines: [`no entity list (${ENTITY_LIST}): nothing to compare`], data: { entities: 0, columns: 0, findings: [] } };
-  const entityColumns = await (options.entityColumns ?? loadEntityColumns)(root);
+  const engine = readEngineOwned(root);
+  const manifest = engine ? readEntityManifest(root, engine) : undefined;
+  if (!hasEntityList(root) && !engine) return { ok: true, lines: [`no entity list (${ENTITY_LIST}): nothing to compare`], data: { entities: 0, columns: 0, findings: [] } };
+  const entityColumns = hasEntityList(root) ? await (options.entityColumns ?? loadEntityColumns)(root) : [];
   const schema = await (options.schema ?? migratedSchema)(ctx, root, { urlEnv: options.urlEnv });
-  const findings = compareSchema(entityColumns, schema.columns);
+  const empty: EngineCatalog = { partitions: [], views: [], checks: [], indexes: [] };
+  const findings = [...compareSchema(entityColumns, schema.columns), ...(engine && manifest ? compareEngineCatalog(engine, manifest, schema.catalog ?? empty) : [])];
   const entities = new Set(entityColumns.map((column) => column.entity)).size;
   const head = `${entities} entit${entities === 1 ? 'y' : 'ies'}, ${entityColumns.length} column(s) against ${schema.files?.length ?? 0} SQL file(s) applied to ${schema.how ?? 'the schema'}`;
   const lines = [head, ...findings.map((finding) => `${DRIFT_CODE} ${finding.message}`),

@@ -206,7 +206,7 @@ function authSchemaFindings(analyses: Parsed, appRole: Parsed) {
 }
 
 /** R255: a declared scope role is created NOLOGIN NOINHERIT NOBYPASSRLS without administrative attributes and is never altered to gain them; one never created in the migrations is refused. */
-function scopeRoleFindings(analyses: Parsed, scopeRoles: Set<string>) {
+function scopeRoleFindings(analyses: Parsed, scopeRoles: Set<string>, appRole: string) {
   const findings = [];
   const created = new Set<string>();
   for (const { file, facts } of analyses) {
@@ -220,6 +220,14 @@ function scopeRoleFindings(analyses: Parsed, scopeRoles: Set<string>) {
       const incomplete = type === 'CreateRoleStmt' && ['canlogin', 'inherit', 'bypassrls'].some((option) => options.get(option) !== false);
       if (type === 'CreateRoleStmt') created.add(role);
       if (unsafe || incomplete) findings.push(note(DB_APP_ROLE, { ...statement, file }, `scope role ${role} must be created NOLOGIN NOINHERIT NOBYPASSRLS without SUPERUSER or administrative role attributes`));
+    }
+  }
+  for (const { file, facts } of analyses) {
+    for (const grant of facts.roleGrants) {
+      if (grant.node.is_grant === false) continue;
+      const granted = (grant.node.granted_roles ?? []).map((item: Parsed) => item?.AccessPriv?.priv_name).filter((name: unknown): name is string => typeof name === 'string' && scopeRoles.has(name));
+      const others = (grant.node.grantee_roles ?? []).map((item: Parsed) => roleName(item?.RoleSpec ?? item)).filter((name: unknown) => name !== appRole);
+      if (granted.length && others.length) findings.push(note(DB_APP_ROLE, { ...grant, file }, `scope role ${granted.join(', ')} may be granted only to the application role ${appRole}, never to ${others.join(', ')}`));
     }
   }
   const last = analyses[analyses.length - 1]?.file;
@@ -357,7 +365,7 @@ export async function databaseAccessFindings({ analyses, exposed, db = {} }: { a
   const helpers = await principalHelpers(analyses, strings(declared.scopeSettings), declared.scopeColumns === undefined ? ['workspace_id'] : strings(declared.scopeColumns));
   return [
     ...policyFindings(policies, appRole, helpers, scopeRoles),
-    ...scopeRoleFindings(analyses, scopeRoles),
+    ...scopeRoleFindings(analyses, scopeRoles, appRole),
     ...roleFindings(analyses, appRole),
     ...authSchemaFindings(analyses, appRole),
     ...forceFindings(analyses, declared, appRole),
