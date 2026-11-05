@@ -22,11 +22,12 @@ function dbBlockProblems(block: Parsed): string[] {
   if (block === undefined) return [];
   if (!isPlainObject(block)) return ['db must be an object'];
   const bad: string[] = [];
-  for (const key of Object.keys(block)) if (!['urlEnv', 'image', 'forceRls', 'forceRlsExemptions', 'appRole', 'destructiveRulings'].includes(key)) bad.push(`db has unknown key ${key}`);
+  for (const key of Object.keys(block)) if (!['urlEnv', 'image', 'forceRls', 'forceRlsExemptions', 'appRole', 'scopeSettings', 'destructiveRulings'].includes(key)) bad.push(`db has unknown key ${key}`);
   if (block.urlEnv !== undefined && (typeof block.urlEnv !== 'string' || !/^[A-Z][A-Z0-9_]*$/.test(block.urlEnv))) bad.push('db.urlEnv must name an UPPER_CASE environment variable');
   if (block.image !== undefined && (typeof block.image !== 'string' || !/@sha256:[0-9a-f]{64}$/.test(block.image))) bad.push('db.image must be a digest-pinned image reference');
   if (block.forceRls !== undefined && !isStringList(block.forceRls)) bad.push('db.forceRls must be a list of strings');
   if (block.appRole !== undefined && (typeof block.appRole !== 'string' || !/^[a-z][a-z0-9_]*$/.test(block.appRole))) bad.push('db.appRole must name a role');
+  if (block.scopeSettings !== undefined && !(isStringList(block.scopeSettings) && block.scopeSettings.every((setting: string) => /^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)+$/.test(setting) && !setting.startsWith('request.jwt.')))) bad.push('db.scopeSettings must list custom transaction settings the app sets per request, each a dotted lower-case name such as nivo.workspace_id (never request.jwt.*)');
   if (block.forceRlsExemptions !== undefined && !Array.isArray(block.forceRlsExemptions)) bad.push('db.forceRlsExemptions must be a list of { table, reason }');
   if (block.destructiveRulings !== undefined && !(Array.isArray(block.destructiveRulings) && block.destructiveRulings.every(isDestructiveRuling))) bad.push('db.destructiveRulings must be a list of { migration, objects, reason, date } naming one db/migrations file, the objects it destroys, why and the date the owner ruled it (YYYY-MM-DD)');
   return bad;

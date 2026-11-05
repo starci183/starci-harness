@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { checkDatabase } from '../runtime/scripts/hfs/rules/database.mjs';
+import { declarationShapeProblems } from '../runtime/scripts/hfs/declaration-shape.mjs';
 import { withoutGitLocalEnv } from '../runtime/scripts/lib/git.mjs';
 
 interface CaseOptions { contents?: Record<string, string>; db?: Record<string, unknown> }
@@ -118,6 +119,12 @@ const forceCases: Case[] = [
   ['another owner has no default-force obligation', `${table} alter table public.items owner to migration_owner;`, false],
 ];
 
+const scoped = { db: { scopeSettings: ['nivo.workspace_id'] } };
+const engineScope = "create function public.engine_workspace() returns uuid language sql stable as $$ select nullif(current_setting('nivo.workspace_id', true), '')::uuid $$;";
+const engineOther = "create function public.engine_workspace() returns uuid language sql stable as $$ select nullif(current_setting('nivo.other_id', true), '')::uuid $$;";
+const enginePolicy = (predicate: string) => `${table.replace('tenant_id uuid)', 'tenant_id uuid, workspace_id uuid)')}
+create policy items_engine_select on public.items for select to app_engine using (${predicate});`;
+
 const policyCases: Case[] = [
   ['literal true', memberPolicy('true'), true, listed],
   ['non-null column', memberPolicy('id is not null'), true, listed],
@@ -133,6 +140,15 @@ const policyCases: Case[] = [
   ['ordinary helper is not a principal source', `create function private.constant_id() returns uuid language sql as $$ select null::uuid $$; ${memberPolicy('user_id = private.constant_id()')}`, true, listed],
   ['trusted application role may accept every row', `${table} create policy items_app_be_all on public.items for all to app_be using (id is not null) with check (id is not null);`, false],
   ['intentional public read', publicRead, false],
+  ['declared scope setting through a SQL function', `${engineScope} ${enginePolicy('workspace_id = public.engine_workspace()')}`, false, scoped],
+  ['declared scope setting read directly', enginePolicy("workspace_id = nullif(current_setting('nivo.workspace_id', true), '')::uuid"), false, scoped],
+  ['declared scope setting is no principal when undeclared', `${engineScope} ${enginePolicy('workspace_id = public.engine_workspace()')}`, true, listed],
+  ['an undeclared setting is no principal', enginePolicy("workspace_id = nullif(current_setting('nivo.other_id', true), '')::uuid"), true, scoped],
+  ['declared scope function that reads an undeclared setting', `${engineOther} ${enginePolicy('workspace_id = public.engine_workspace()')}`, true, scoped],
+  ['literal true for the engine role', enginePolicy('true'), true, scoped],
+  ['declared scope or true bypasses the principal', `${engineScope} ${enginePolicy('workspace_id = public.engine_workspace() or true')}`, true, scoped],
+  ['declared scope present does not filter a row', `${engineScope} ${enginePolicy('public.engine_workspace() is not null')}`, true, scoped],
+  ['declared scope compared with itself', `${engineScope} ${enginePolicy('public.engine_workspace() = public.engine_workspace()')}`, true, scoped],
   ['public read suffix cannot authorize writes', `${table} create policy items_public_read on public.items for insert to anon with check (true);`, true],
 ];
 
@@ -252,3 +268,12 @@ for (const edition of ['lite', 'full']) {
 // The same literal-block proof for R254: one block per code, a violating and a passing migration each.
 for (const _edition of ['lite', 'full']) {
 }
+
+test('the declaration takes db.scopeSettings as dotted custom settings and refuses request claims, bare names and other shapes', () => {
+  const sides = { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core' } };
+  const declared = (scopeSettings: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeSettings }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
+  assert.deepEqual(declared(['nivo.workspace_id']), []);
+  for (const bad of [['workspace_id'], ['request.jwt.claims'], ['Nivo.Workspace'], 'nivo.workspace_id', [''], [1]]) {
+    assert.equal(declared(bad).length, 1, JSON.stringify(bad));
+  }
+});

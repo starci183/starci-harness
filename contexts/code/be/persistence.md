@@ -245,7 +245,7 @@ Enforced by: R214, R255 (hfs checks over the migrations).
 
 ## BE-PERSISTENCE-19 Lite: policies, definers and configuration keep the boundary
 
-A browser-role policy proves a principal predicate (`auth.uid()`), never a constant or `IS NOT NULL`. An exposed view is
+A policy for any role but the trusted application role proves a principal predicate (`auth.uid()`, `auth.jwt()`, the request JWT claims, or a transaction setting the app declares in hfs.json `db.scopeSettings`, read directly with `current_setting` or through a SQL function whose body reads it, as an engine role entered per transaction does), never a constant, `IS NOT NULL`, `OR true`, a self comparison or a setting not declared. An exposed view is
 `security_invoker`; a `SECURITY DEFINER` function pins `search_path` and revokes EXECUTE from public and the browser
 roles. Extensions follow `ruleParams.db.extensions`; migrations write no secret or role password; destructive DDL lives
 only in a `*_contract_*` migration after the code stops using the target, or in the exact objects of one migration that an owner

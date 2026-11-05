@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.13.2 - 2026-11-05
+
+- Added (owner ruling 2026-11-05, real database isolation; R256 `DB_POLICY_TAUTOLOGY`, BE-PERSISTENCE-19): hfs.json `db.scopeSettings` lists the transaction settings an app sets per request to enter a scoped database role (for example an engine role entered by a SECURITY INVOKER function that sets `nivo.workspace_id`). A policy for any role but the application role now passes when it reads a declared setting with `current_setting`, directly or through a SQL function whose body reads it. An undeclared setting, a literal true, `OR true`, `IS NOT NULL` and a self comparison are still refused. The declaration shape accepts only dotted lower-case names and never `request.jwt.*`.
+- A patch: the runtime the canons read changed compatibly, so the canons and the Grammar family are not released.
+
 ## 5.13.1 - 2026-11-05
 
 - Added (release 7c.9b, decision ci-parity, R383): `starci app check --fresh`, the pre-push gate, also runs the `build` and `audit` families (`cache/parity-family.mts`), which read their commands from the app's rendered `.github/workflows/ci.yml`: the production dependency audit, the `typecheck` script, `npm run build:be` and each `build fe` step (a `next build` per front-end app, with its own SWC cache root, LOCALAPPDATA and XDG_CACHE_HOME under the app's tool cache), and CI's coverage step (`app coverage verify`) on the lcov the test family merged. A failed step is `CI_PARITY_STEP_FAILED`. `--gate build` and `--gate audit` run them alone. `db:lint` and `app db drift` stay CI-only (they need a database).

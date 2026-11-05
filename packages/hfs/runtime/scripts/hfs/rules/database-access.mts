@@ -42,11 +42,13 @@ function structural(node: Parsed): Parsed {
   return Object.fromEntries(Object.entries(node).filter(([key]) => key !== 'location').map(([key, value]): Parsed => [key, structural(value)]));
 }
 
+/** A principal the policy may read: auth.uid(), auth.jwt(), the request JWT claims, a setting the app declares in hfs.json `db.scopeSettings`, or a helper whose body reads one. */
 function principalCall(call: Parsed, helpers: Parsed) {
   const name = names(call.funcname);
-  if (['auth.uid', 'auth.jwt'].includes(name) || helpers.has(name)) return true;
-  return ['current_setting', 'pg_catalog.current_setting'].includes(name)
-    && ['request.jwt.claims', 'request.jwt.claim.sub'].includes(stringValue(call.args?.[0]));
+  if (['auth.uid', 'auth.jwt'].includes(name) || helpers.functions.has(name) || helpers.functions.has(qualify(name))) return true;
+  if (!['current_setting', 'pg_catalog.current_setting'].includes(name)) return false;
+  const setting = stringValue(call.args?.[0]);
+  return ['request.jwt.claims', 'request.jwt.claim.sub'].includes(setting) || helpers.settings.has(setting);
 }
 
 const hasPrincipal = (node: Parsed, helpers: Parsed) => someNode(node, (item: Parsed) => Boolean(item.FuncCall && principalCall(item.FuncCall, helpers)));
@@ -66,7 +68,7 @@ function principalPredicate(expression: Parsed, helpers: Parsed) {
   return hasPrincipal(node, helpers);
 }
 
-async function principalHelpers(analyses: Parsed) {
+async function principalHelpers(analyses: Parsed, scopeSettings: string[]) {
   const functions = analyses.flatMap(({ facts }: { facts: Parsed }) => facts.functions);
   const bodies: Parsed[] = [];
   await eachInOrder(functions, async (fn: Parsed) => {
@@ -74,9 +76,9 @@ async function principalHelpers(analyses: Parsed) {
     if (!body) return;
     try { bodies.push({ name: fn.name, ast: await parseSql(body) }); } catch { /* PL/pgSQL safety is checked separately. */ }
   });
-  const helpers = new Set();
+  const helpers = { functions: new Set<string>(), settings: new Set<string>(scopeSettings) };
   for (let remaining = bodies.length; remaining > 0; remaining -= 1) {
-    for (const body of bodies) if (hasPrincipal(body.ast, helpers)) helpers.add(body.name);
+    for (const body of bodies) if (hasPrincipal(body.ast, helpers)) helpers.functions.add(body.name);
   }
   return helpers;
 }
@@ -303,7 +305,7 @@ export async function databaseAccessFindings({ analyses, exposed, db = {} }: { a
     for (const grant of facts.grants) applyGrant(grants, grant, file);
   }
   const policies = [...policyMap.values()];
-  const helpers = await principalHelpers(analyses);
+  const helpers = await principalHelpers(analyses, Array.isArray(declared.scopeSettings) ? declared.scopeSettings.filter((setting: unknown): setting is string => typeof setting === 'string') : []);
   return [
     ...policyFindings(policies, appRole, helpers),
     ...roleFindings(analyses, appRole),
