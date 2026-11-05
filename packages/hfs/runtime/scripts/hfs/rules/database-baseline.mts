@@ -4,7 +4,9 @@ import { show } from '../../api/git/show.mjs';
 import { mergeBase } from '../../api/git/merge-base.mjs';
 import { withoutGitLocalEnv } from '../../lib/git.mjs';
 import { sameText } from '../../lib/same-text.mjs';
-import { found, readText } from './read.mjs';
+import { found, readJson, readText } from './read.mjs';
+import { baselineResetOf, resetPending } from './database-reset.mjs';
+import type { BaselineReset } from './database-reset.mjs';
 import { migrationStamp } from './database-migrations.mjs';
 import { DB_BASELINE_SHAPE, DB_ARCHIVE_MUTATED, MIGRATIONS_DIR, MIGRATIONS_ARCHIVE_DIR } from './database-constants.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
@@ -88,8 +90,10 @@ function shapeFindings(repoRoot: string, active: Parsed, archived: Parsed) {
   return { findings, marked };
 }
 
-function archiveFindings(repoRoot: string, current: Parsed, archived: Parsed, marked: Parsed, prior: Parsed, git: Parsed) {
+function archiveFindings(repoRoot: string, current: Parsed, archived: Parsed, marked: Parsed, prior: Parsed, git: Parsed, reset: BaselineReset | null = null) {
   if (!prior) return [];
+  // A declared one-time baseline reset not yet on the base branch retires the committed archive with the rest of the older chain (hfs.json db.baselineReset).
+  if (resetPending(reset, prior.files)) return [];
   const findings = [];
   const oldFiles = new Set(prior.files);
   const newBaseline = marked.length === 1 && !oldFiles.has(marked[0].file);
@@ -138,6 +142,6 @@ export function databaseBaselineFindings({ repoRoot, files = [], all, repo, isRo
   const active = inventory.filter((file) => ACTIVE.test(file));
   const archived = inventory.filter((file) => file.startsWith(`${MIGRATIONS_ARCHIVE_DIR}/`));
   const { findings, marked } = shapeFindings(repoRoot, active, archived);
-  findings.push(...archiveFindings(repoRoot, new Set(inventory), archived, marked, snapshot(repoRoot, git, base), git));
+  findings.push(...archiveFindings(repoRoot, new Set(inventory), archived, marked, snapshot(repoRoot, git, base), git, baselineResetOf(readJson(repoRoot, 'hfs.json')?.db)));
   return typeof inScope === 'function' ? findings.filter((finding) => inScope(finding.path) || finding.path === MIGRATIONS_DIR || inventory.some((file) => file.startsWith(`${MIGRATIONS_DIR}/`) && inScope(file))) : findings;
 }

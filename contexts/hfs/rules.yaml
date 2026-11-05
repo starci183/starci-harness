@@ -313,7 +313,7 @@ rules:
       - {kind: eslint-be, id: entrypoint-only-in-apps}
   - id: R34
     code: BE_SCHEMA_AUTHORITY
-    law: Migrations own the application schema and run only through the cli migrate command or the test world, and `synchronize` is false. One declared exception: a root-package file hfs.json `sides.be.ddlRenderers` lists (the renderer `cli entities plan --write` uses to write NEW migration files) may hold DDL text only to build and return it; it never imports a database client or calls `.query/.execute`, and no file outside the cli and the root packages imports a symbol it declares.
+    law: "Migrations own the application schema and run only through the cli migrate command or the test world, and `synchronize` is false. One declared exception: a root-package file hfs.json `sides.be.ddlRenderers` lists (the renderer `cli entities plan --write` uses to write NEW migration files) may hold DDL text only to build and return it; it never imports a database client or calls `.query/.execute`, and no file outside the cli and the root packages imports a symbol it declares."
     failureCodes:
       - BE_SCHEMA_AUTHORITY
     enforcers:
@@ -1500,7 +1500,7 @@ rules:
       - {kind: hfs, id: lite-brand-work}
   - id: R213
     code: DB_MIGRATION_SHAPE
-    law: A migration is `db/migrations/<ts14>_<kebab>.sql` with a valid unique stamp sorting after the committed active migrations, parses as PostgreSQL, carries no transaction control (it is applied in one transaction with its history row), and is immutable once on the base.
+    law: "A migration is `db/migrations/<ts14>_<kebab>.sql` with a valid unique stamp sorting after the committed active migrations, parses as PostgreSQL, carries no transaction control (it is applied in one transaction with its history row), and is immutable once on the base. A declared one-time baseline reset (hfs.json `db.baselineReset` = `{ baseline, ruling, date, reason }`, the owner ruling for an app that keeps no data worth migrating) makes the one declared baseline file (`-- starci:baseline-reset <ruling>` header) the new base chain while it is not yet on the base branch: the removal of every older active file and of the archive is accepted (R213 immutability, R257 archive immutability); exactly one file may carry the marker, no older active file may stay, and later migrations sort after the baseline. Once the baseline is on the base branch the declaration is spent and every rule applies to it unchanged; without the declaration nothing changes."
     failureCodes:
       - DB_MIGRATION_SHAPE
     enforcers:

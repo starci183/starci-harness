@@ -5,6 +5,7 @@ import { isPlainObject } from '../../engine/plain-object.mjs';
 import { APP_KIND, connectionShapeProblems, NAME, PACKAGE_NAME, RUNTIME_KIND, SLOT_ID } from './manifest-shape.mjs';
 import { dbFunctionsOk, ddlRenderersOk, sqlPassThroughOk } from './rule-params-shape.mjs';
 import { engineOwnedOk } from './engine-owned.mjs';
+import { baselineResetOk } from './rules/database-reset.mjs';
 import { kindShapeProblems, patternShapeProblems } from './declaration-slots.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
 
@@ -23,7 +24,7 @@ function dbBlockProblems(block: Parsed): string[] {
   if (block === undefined) return [];
   if (!isPlainObject(block)) return ['db must be an object'];
   const bad: string[] = [];
-  for (const key of Object.keys(block)) if (!['urlEnv', 'image', 'forceRls', 'forceRlsExemptions', 'appRole', 'scopeSettings', 'scopeColumns', 'scopeRoles', 'destructiveRulings'].includes(key)) bad.push(`db has unknown key ${key}`);
+  for (const key of Object.keys(block)) if (!['urlEnv', 'image', 'forceRls', 'forceRlsExemptions', 'appRole', 'scopeSettings', 'scopeColumns', 'scopeRoles', 'baselineReset', 'destructiveRulings'].includes(key)) bad.push(`db has unknown key ${key}`);
   if (block.urlEnv !== undefined && (typeof block.urlEnv !== 'string' || !/^[A-Z][A-Z0-9_]*$/.test(block.urlEnv))) bad.push('db.urlEnv must name an UPPER_CASE environment variable');
   if (block.image !== undefined && (typeof block.image !== 'string' || !/@sha256:[0-9a-f]{64}$/.test(block.image))) bad.push('db.image must be a digest-pinned image reference');
   if (block.forceRls !== undefined && !isStringList(block.forceRls)) bad.push('db.forceRls must be a list of strings');
@@ -32,6 +33,7 @@ function dbBlockProblems(block: Parsed): string[] {
   if (block.scopeColumns !== undefined && !(isStringList(block.scopeColumns) && block.scopeColumns.length > 0 && block.scopeColumns.every((column: string) => /^[a-z_][a-z0-9_]*$/.test(column)))) bad.push('db.scopeColumns must list the owning column names a scope policy compares (default workspace_id)');
   if (block.scopeRoles !== undefined && !(Array.isArray(block.scopeRoles) && block.scopeRoles.length > 0 && block.scopeRoles.every((entry: Parsed) => isPlainObject(entry) && typeof entry.role === 'string' && /^[a-z][a-z0-9_]*$/.test(entry.role) && typeof entry.reason === 'string' && entry.reason.trim() !== '' && Object.keys(entry).every((key) => key === 'role' || key === 'reason')))) bad.push('db.scopeRoles must be a list of { role, reason } naming the NOLOGIN roles whose policies may read a db.scopeSettings setting');
   if (block.scopeSettings !== undefined && !(Array.isArray(block.scopeRoles) && block.scopeRoles.length > 0)) bad.push('db.scopeSettings needs db.scopeRoles: a declared setting counts only in policies of declared scope roles');
+  if (block.baselineReset !== undefined && !baselineResetOk(block.baselineReset)) bad.push('db.baselineReset must be { baseline (db/migrations/<ts14>_<name>.sql), ruling (an id), date (YYYY-MM-DD), reason } declaring the one baseline that replaces the whole older migration history');
   if (block.forceRlsExemptions !== undefined && !Array.isArray(block.forceRlsExemptions)) bad.push('db.forceRlsExemptions must be a list of { table, reason }');
   if (block.destructiveRulings !== undefined && !(Array.isArray(block.destructiveRulings) && block.destructiveRulings.every(isDestructiveRuling))) bad.push('db.destructiveRulings must be a list of { migration, objects, reason, date } naming one db/migrations file, the objects it destroys, why and the date the owner ruled it (YYYY-MM-DD)');
   return bad;

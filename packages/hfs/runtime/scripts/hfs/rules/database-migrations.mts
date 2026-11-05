@@ -9,6 +9,8 @@ import { eachInOrder, findInOrder } from '../../lib/in-order.mjs';
 import { sameText } from '../../lib/same-text.mjs';
 import { found, readJson, readText } from './read.mjs';
 import { DB_DESTRUCTIVE_RULING_UNPROVEN, DB_MIGRATION_DESTRUCTIVE, DB_MIGRATION_SHAPE, isActiveMigration, MIGRATIONS_ARCHIVE_DIR, MIGRATIONS_DIR } from './database-constants.mjs';
+import { baselineResetFindings, resetPending } from './database-reset.mjs';
+import type { BaselineReset } from './database-reset.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadTypescript } from '../../lib/package-at.mjs';
@@ -159,7 +161,7 @@ function removedMigrationFindings(local: Parsed, retired: Parsed, baseNames: Par
  * cutover is retired from the ordering chain, not removed. New files append after HEAD's active migrations; timestamps
  * on archived migrations, remote branches and the wall clock do not constrain a replacement baseline.
  */
-export async function migrationShapeFindings({ repoRoot, migrations, archived = [], git, base }: { repoRoot: string; migrations: Parsed; archived?: Parsed; git: Parsed; base?: Parsed }) {
+export async function migrationShapeFindings({ repoRoot, migrations, archived = [], git, base, reset = null }: { repoRoot: string; migrations: Parsed; archived?: Parsed; git: Parsed; base?: Parsed; reset?: BaselineReset | null }) {
   const prefix = `${MIGRATIONS_DIR}/`;
   const local = migrations.map((file: string) => {
     const name = file.startsWith(prefix) ? file.slice(prefix.length) : file;
@@ -170,6 +172,11 @@ export async function migrationShapeFindings({ repoRoot, migrations, archived = 
   const headFiles = await migrationFilesAt(git, repoRoot, 'HEAD');
   const baseSha = await baseShaOf(git, repoRoot, base);
   const baseFiles = baseSha ? await migrationFilesAt(git, repoRoot, baseSha.sha) : [];
+  // A declared one-time baseline reset (hfs.json db.baselineReset) that is not yet on the base branch retires the whole older chain: every older active
+  // file is retired from the ordering and its removal is no immutability finding; the declared baseline is the new base chain.
+  const pendingReset = baseSha !== null && reset !== null && resetPending(reset, baseFiles);
+  if (pendingReset) for (const file of [...baseFiles, ...headFiles].filter(isActiveMigration)) retired.add(file.slice(prefix.length));
+  if (reset !== null) findings.push(...baselineResetFindings({ migrations, read: (file: string) => readText(repoRoot, file), reset, baseFiles: baseSha ? baseFiles : [] }));
   const restamps = await verifiedRestamps(local, baseSha ? baseFiles : headFiles, repoRoot, git, baseSha?.sha ?? 'HEAD');
   for (const restamp of restamps) retired.add(restamp.source);
   const history = migrationHistory(headFiles, retired, new Set(local.map((entry: Parsed) => entry.name)));
@@ -180,7 +187,7 @@ export async function migrationShapeFindings({ repoRoot, migrations, archived = 
   await eachInOrder(local, async (entry: Parsed) => {
     findings.push(...await baseMigrationEntryFindings(entry, repoRoot, git, baseSha, onBase));
   });
-  findings.push(...removedMigrationFindings(local, retired, baseNames, baseSha));
+  if (!pendingReset) findings.push(...removedMigrationFindings(local, retired, baseNames, baseSha));
   return findings;
 }
 

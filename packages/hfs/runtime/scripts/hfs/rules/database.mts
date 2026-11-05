@@ -1,6 +1,7 @@
 // The database rules of a lite app's db/ tree (design 4.2, L02-L09). SQL migrations are parsed with libpg-query through
 // database-sql.mjs; Git history and generated-type checks are split into bounded sibling modules.
 import { found, readJson, readText } from './read.mjs';
+import { baselineResetOf } from './database-reset.mjs';
 import { contractReleaseFindings, defaultGit, migrationShapeFindings } from './database-migrations.mjs';
 import { migrationSetPolicyFindings, sqlAnalysis } from './database-sql.mjs';
 import { migrationSetDefinerFindings } from './database-plpgsql.mjs';
@@ -76,7 +77,7 @@ export async function checkDatabase({ repoRoot, files, base, git, edition, db }:
   const archived = files.filter((file: string) => file.startsWith(`${MIGRATIONS_ARCHIVE_DIR}/`));
   if (lite) findings.push(...liteDbPathFindings(files));
   const forceRls = new Set((declared?.forceRls ?? []).map((name: string) => (name.includes('.') ? name : `public.${name}`)));
-  findings.push(...await migrationShapeFindings({ repoRoot, migrations, archived, git: git ?? defaultGit, base }));
+  findings.push(...await migrationShapeFindings({ repoRoot, migrations, archived, git: git ?? defaultGit, base, reset: baselineResetOf(declared) }));
   findings.push(...await contractReleaseFindings({ repoRoot, migrations, git: git ?? defaultGit }));
 
   const analyses = await migrationAnalyses({ repoRoot, migrations, exposed: APP_SCHEMAS, forceRls, findings });

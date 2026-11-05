@@ -261,7 +261,10 @@ roles. Extensions follow `ruleParams.db.extensions`; migrations write no secret 
 only in a `*_contract_*` migration after the code stops using the target, or in the exact objects of one migration that an owner
 ruling in hfs.json `db.destructiveRulings` names, accepted only while the same proof finds them unreferenced. A migration already
 on the base unchanged is immutable, so its destructive or dynamic DDL is a known item: a fix is a new migration. An archived
-migration chain keeps one baseline and is never edited.
+migration chain keeps one baseline and is never edited. The one exception is an owner-ruled one-time reset an app declares in hfs.json
+`db.baselineReset` (`{ baseline, ruling, date, reason }`): the declared baseline file (header `-- starci:baseline-reset <ruling>`) replaces the whole
+older chain and the archive while it is not yet on the base branch; exactly one file carries the marker, no older file stays, and once it
+is on the base the declaration is spent.
 
 Why: a view, definer or configuration change can expose rows while the base table looks protected.
 
