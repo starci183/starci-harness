@@ -63,10 +63,9 @@ export const PublicPageParts: Story = {
                 <G.PageIntro title="Minh Sang Salon" mark={<G.Avatar name="Minh Sang" size="lg" shape="rounded" tone="accent" />} lines={[{ id: "a", text: "42 Le Loi, District 1" }, { id: "h", text: "Open 9:00 to 20:00, closed on Monday" }]} description="Book in a minute: pick a service, a time, leave your phone number." />
             </State>
             <State label="RadioGroup appearance=rows (the chosen row on the accent soft pair)" direction="column"><G.RadioGroup label="Service" appearance="rows" options={radioOptions} defaultValue="wash" /></State>
-            <State label="A form field that spans both columns (span=full)" direction="column">
+            <State label="A form field that spans both columns (span=full ends the row before it)" direction="column">
                 <G.Grid kind="form" columns={2}>
                     <G.Input id="p1" name="p1" label="Your name" />
-                    <G.Input id="p2" name="p2" label="Phone" />
                     <G.Textarea label="Note" span="full" />
                 </G.Grid>
             </State>

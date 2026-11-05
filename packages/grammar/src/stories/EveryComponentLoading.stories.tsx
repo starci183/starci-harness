@@ -35,7 +35,7 @@ const Page = ({ isLoading }: { readonly isLoading?: boolean }) => (
         </G.Cluster>
         <G.Tabs label="Sections" items={[{ id: "a", label: "Overview" }, { id: "b", label: "Orders", count: 3 }]} selectedKey="a" onSelect={noop} panelId="every-panel" />
         <div id="every-panel" role="tabpanel"><G.Text tone="muted">The overview.</G.Text></div>
-        <G.Grid kind="form" columns={2}>
+        <G.Grid kind="form" columns={1}>
             <G.Input id="name" name="name" label="Name" defaultValue="Hoa Sen Spa" />
             <G.Select label="Plan" options={options} defaultValue="b" />
             <G.ComboBox label="Owner" options={options} defaultValue="a" />
