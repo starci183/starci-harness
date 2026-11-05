@@ -3,7 +3,7 @@ import type { Decorator, Preview } from '@storybook/react-vite';
 import { Button, Chip } from '@heroui/react';
 import React, { type CSSProperties, type ReactNode } from 'react';
 import '../node_modules/@heroui/styles/dist/heroui.min.css';
-import './story-tones.css';
+import '../src/stories/tones.css';
 import commonCss from '../src/common/styles.css?inline';
 import coreCss from '../src/core/styles.css?inline';
 import offsetPopCss from '../src/offset-pop/styles.css?inline';

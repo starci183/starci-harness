@@ -1,6 +1,6 @@
 /*
  * Grammar's own Storybook declares ONE app tone, `info`, the way an app does (ruling grammar-own-style): the four tokens here, the type in
- * `src/stories/tones.ts`. Core itself ships no `info`.
+ * `tones.ts` beside it. Core itself ships no `info`.
  */
 :root,
 .grammar-common-root {

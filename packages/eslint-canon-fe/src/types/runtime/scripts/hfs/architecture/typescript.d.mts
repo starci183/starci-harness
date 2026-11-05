@@ -18,5 +18,5 @@ export declare function buildTypeScriptContext(
 export declare function relativePath(root: string, file: string): string
 
 /** Workspace public-source resolution shared with the architecture owner. */
-export interface Workspace { readonly root: string; readonly workspace: boolean; readonly name: string | null; readonly manifest: unknown; readonly exports?: unknown }
-export declare function workspaceSourceEntry(typescript: typeof ts, workspace: Workspace, specifier: string): string | null
+export interface WorkspaceRecord { root: string; relative: string; name: string | null; exports?: unknown; manifest?: unknown; workspace?: boolean; app: boolean }
+export declare function workspaceSourceEntry(typescript: typeof ts, workspace: WorkspaceRecord, specifier: string): string | null

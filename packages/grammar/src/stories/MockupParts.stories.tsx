@@ -403,7 +403,7 @@ export const TabCountChips: Story = {
     ),
 }
 
-/** An app-declared tone, `info` (declared in src/stories/tones.ts, tokens in .storybook/story-tones.css), on every toned component (DNA-COMMON-TONE-CUSTOM-COMPLETE). */
+/** An app-declared tone, `info` (declared in src/stories/tones.ts, tokens in src/stories/tones.css), on every toned component (DNA-COMMON-TONE-CUSTOM-COMPLETE). */
 export const AppTones: Story = {
     render: () => (
         <Matrix maxWidth={460}>

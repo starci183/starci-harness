@@ -3,7 +3,7 @@
 /** A rule of the architecture machine served through ESLint, and the finding codes it reports. */
 export interface LintEnforcer {
   readonly id: string
-  readonly plugins: readonly ("be" | "fe")[]
+  readonly plugins: readonly string[]
   readonly codes: readonly string[]
   readonly description: string
   readonly origin?: string

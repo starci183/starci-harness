@@ -5,7 +5,7 @@ import { parseYamlCached } from './yaml-cached.mjs';
 const CATALOG_FILE = new URL('../../knowledge/grammars/index.yaml', import.meta.url);
 
 /** The component/export contract of a Grammar family. */
-export interface GrammarComponentContract { package: string; entry: string; styleEntry: string; peers: readonly string[] }
+export interface GrammarComponentContract { package: string; entry: string; styleEntry: string; peers: readonly string[]; semanticRoles?: unknown }
 /** The lint contract a family declares; a null package means the family has no rules. */
 export interface GrammarLintDeclaration { package?: string | null; factory?: unknown; prefix?: unknown }
 /** One family entry of knowledge/grammars/index.yaml. */

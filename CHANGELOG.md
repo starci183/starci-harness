@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-alpha.75 - 2026-11-05
+
+- Added (decision release-only-what-changed): `starci release publish` and `starci release push` skip a raised package whose shipped files differ from the version npm serves only by its CHANGELOG, lockfile and version field (`unchanged` in the plan, `shipsTheSame` in `cli/src/core/release/publish.ts`, test `unchanged.test.ts`), and refuse `RELEASE_DEPENDENCY_UNPUBLISHED` when a raised dependent requires such a skipped sibling at its raised version. The CLI keeps its exact `@starci/hfs` requirement.
+- Changed: the release tests run git through the shared `captureGitSync`.
+
 ## 1.1.0-alpha.74 - 2026-11-05
 
 - Added (decision grammar-patch-range): `starci release publish` and `starci release push` refuse `RELEASE_GRAMMAR_MINOR_REQUIRED` when `@starci/grammar` is due at a patch of the version npm serves while the diff since that version holds a minor's change (a lint rule of the family, a removed export or readonly prop, a removed DNA law id, a deprecated or forbidden entry), `cli/src/core/release/grammar-bump.ts`. The sibling judgement of the publish plan and `starci check pins` read a same-minor range (`~x.y.z`) as met by any patch of it (`cli/src/core/release/pin-range.ts`). Tests: `grammar-bump.test.ts`.

@@ -14,7 +14,7 @@ import { walk } from "./ast.ts"
 import { sourceCodeView } from "./eslint-boundary.ts"
 import { loadArchitectureConfig } from "@starci/hfs/runtime/scripts/hfs/architecture/config.mjs"
 import { workspaceSourceEntry } from "@starci/hfs/runtime/scripts/hfs/architecture/typescript.mjs"
-import type { Workspace } from "@starci/hfs/runtime/scripts/hfs/architecture/typescript.mjs"
+import type { WorkspaceRecord } from "@starci/hfs/runtime/scripts/hfs/architecture/typescript.mjs"
 import { openHfs } from "@starci/hfs/runtime/scripts/hfs/slots.mjs"
 import type { Node, AnyContext } from "./rule.ts"
 
@@ -36,7 +36,7 @@ interface RepositoryState {
   readonly root: string
   readonly files: Map<string, ParsedContext>
   readonly proofs: Map<string, boolean>
-  workspaces: Workspace[] | null
+  workspaces: WorkspaceRecord[] | null
 }
 
 const RUNTIME = RUNTIME_ROOT
@@ -55,15 +55,17 @@ const stateOf = (context: ReaderContext): RepositoryState => {
 }
 
 /** A workspace package from the text of its `package.json`. */
-const workspaceOf = (root: string, text: string): Workspace => {
-  const manifest: unknown = JSON.parse(text)
+const workspaceOf = (root: string, relative: string, text: string): WorkspaceRecord => {
+  const manifest = JSON.parse(text) as NonNullable<WorkspaceRecord["manifest"]>
   const record = typeof manifest === "object" && manifest !== null ? manifest : {}
   return {
     root,
+    relative,
+    app: false,
     workspace: true,
     name: "name" in record && typeof record.name === "string" ? record.name : null,
     manifest,
-    exports: "exports" in record ? record.exports : undefined
+    ...("exports" in record ? { exports: record.exports } : {})
   }
 }
 
@@ -74,7 +76,7 @@ const workspaceFile = (context: ReaderContext, source: string): string | null =>
     const config = loadArchitectureConfig(state.root, { hfs })
     state.workspaces = config.workspaces.map((relative) => {
       const root = path.join(state.root, relative)
-      return workspaceOf(root, fs.readFileSync(path.join(root, "package.json"), "utf8"))
+      return workspaceOf(root, relative, fs.readFileSync(path.join(root, "package.json"), "utf8"))
     })
   }
   const workspace = state.workspaces.find((entry) => entry.name && (source === entry.name || source.startsWith(`${entry.name}/`)))
