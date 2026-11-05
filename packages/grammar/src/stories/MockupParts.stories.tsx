@@ -128,9 +128,9 @@ const facts: ReadonlyArray<G.DescriptionListItem> = [
 /** A term stands beside its value in a phone-wide drawer: the list answers its own width (DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS). */
 export const DescriptionListInDrawerWidth: Story = {
     render: () => (
-        <Matrix maxWidth={358}>
-            <State label="compact, 358px wide" direction="column"><G.DescriptionList items={facts} density="compact" /></State>
-            <State label="default, 358px wide" direction="column"><G.DescriptionList items={facts} /></State>
+        <Matrix maxWidth={308}>
+            <State label="compact, 308px wide (a phone drawer: 372px less 32px padding)" direction="column"><G.DescriptionList items={facts} density="compact" /></State>
+            <State label="default, 308px wide" direction="column"><G.DescriptionList items={facts} /></State>
         </Matrix>
     ),
 }
@@ -140,7 +140,7 @@ const barSteps: ReadonlyArray<G.StepperStep> = [{ id: "a", label: "Profile" }, {
 /** The segmented bar stepper (DNA-COMMON-STEPPER-BAR). */
 export const StepperBar: Story = {
     render: () => (
-        <Matrix maxWidth={380}>
+        <Matrix maxWidth={308}>
             <State label="step 2 of 4, pressable at step 3, loading" direction="column">
                 <G.Stepper kind="bar" label="Setup" steps={barSteps} currentStepId="b" />
                 <G.Stepper kind="bar" label="Setup pick" steps={barSteps} currentStepId="c" onStepSelect={noop} />

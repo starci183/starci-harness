@@ -1006,7 +1006,7 @@
         overflow-wrap: anywhere;
     }
 
-    @container starci-core-description-list (min-width: 20rem) {
+    @container starci-core-description-list (min-width: 16rem) {
         .starci-core-description-list[data-grammar-description-layout="columns"] .starci-core-description-pair {
             grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
             align-items: baseline;
@@ -1026,7 +1026,7 @@
         line-height: var(--grammar-leading-md);
     }
 
-    @container starci-core-description-list (min-width: 20rem) {
+    @container starci-core-description-list (min-width: 16rem) {
         .starci-core-description-list[data-grammar-description-layout="columns"][data-grammar-description-density="compact"] .starci-core-description-pair {
             grid-template-columns: 9rem minmax(0, 1fr);
             gap: var(--grammar-row-gap);

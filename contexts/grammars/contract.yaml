@@ -323,7 +323,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR]
+    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -1158,7 +1158,7 @@ mustKeep:
       owner: contract roles.list
     - id: DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS
       role: list
-      law: "A description list in the columns layout draws each term beside its value once the list is 20rem wide, a phone-wide drawer included: it answers its own width, not the viewport."
+      law: "A description list in the columns layout draws each term beside its value once the list is 16rem wide, a phone-wide drawer included: it answers its own width, not the viewport."
       measure: { kind: relation, select: '[data-grammar-description-layout="columns"] .starci-core-description-value', metric: left, op: ">=", ref: { within: '.starci-core-description-pair', select: '.starci-core-description-term', metric: right } }
       owner: contract roles.list
     - id: DNA-COMMON-STEPPER-BAR
@@ -1199,6 +1199,11 @@ mustKeep:
       law: "A Cluster given a label is a group with an accessible name: separate controls stay separate and the set is named."
       measure: { kind: a11y, select: '[data-component="Cluster"][role="group"]', metric: name, op: set }
       owner: contract roles.cluster
+    - id: DNA-COMMON-STEPPER-BAR-NO-CONNECTOR
+      role: list
+      law: "A bar stepper draws no connector line between its segments: the marker form's connector never reaches a segment (G5-F1)."
+      measure: { kind: style, select: '[data-grammar-stepper-kind="bar"] .starci-core-step', pseudo: "::after", metric: content, op: "=", value: none }
+      owner: contract roles.list
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.

@@ -23,8 +23,6 @@ export const StepperBar = ({ label, steps, states, currentStepId, onStepSelect, 
             data-component="Stepper"
             data-tier="composite"
             data-grammar-stepper-kind="bar"
-            data-grammar-stepper-orientation="horizontal"
-            data-grammar-stepper-size="md"
             data-grammar-stepper-interactive={select === undefined ? "false" : "true"}
         >
             <ol

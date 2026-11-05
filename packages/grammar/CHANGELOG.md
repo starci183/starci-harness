@@ -2,6 +2,8 @@
 
 ## 0.21.37 - 2026-11-05
 
+- Fixed (G5-F1): `Stepper kind="bar"` no longer carries the marker form's orientation and size attributes, so the connector `::after` of the markers never paints on a segment. Law `DNA-COMMON-STEPPER-BAR-NO-CONNECTOR`.
+- Changed (G5-F2): `DescriptionList layout="columns"` sits side by side from 16rem of its own width (was 20rem), so a phone drawer's 308px content box keeps terms beside values. Stories measure at 308px.
 - Added: `Tabs kind="filter"` follows a loading region: the labels stay real text (static chrome), each count is the geometry of its ready box, the tabs are inert and the fold fit is unchanged. Law `DNA-COMMON-TABS-FILTER-LOADING-COUNTS`, story `FilterTabsLoading`.
 - Added: `ChoiceChips width="fill"`: the chips grow evenly from their own width to share the row and wrap only when they cannot fit; the loading twin fills the same way. Law `DNA-COMMON-CHOICE-CHIPS-FILL`, story `ChoiceChipsFill`.
 - Added: `Cluster label="..."` makes the row a labelled group (`role="group"`, `aria-label`) for separate buttons that mean one thing (less/more, a row of actions). Not a ButtonGroup (R380): the controls stay separate. Law `DNA-COMMON-CLUSTER-GROUP-NAMED`, story `LabelledActionRow`.
@@ -16,7 +18,7 @@
 - Added (G7-10): `ItemLeading` position `format: "ordinal" | "hash"`; `hash` draws a muted semibold "#1".
 - Changed (G9c-1): `Section kind="figures"` inside a Pane draws one bordered row (2 x 2 only below 20rem of its own width), the value at the 2xl step. Law `DNA-COMMON-FIGURES-PANE-ROW`.
 - Fixed (U9c-3): the `alternative` button (HeroUI secondary) writes its words in `--default-foreground`, the pair of its `--default` fill; the vendor used `--accent-soft-foreground`, which is the brand rose in a brand-coloured app (pink words on grey). The info Alert is G7-7 (set `--info-soft` and `--info-soft-foreground` in the theme). Law `DNA-COMMON-BUTTON-ALTERNATIVE-INK`.
-- Changed: `DescriptionList layout="columns"` answers its own width (side by side from 20rem) instead of the viewport (30rem), so a phone-wide drawer keeps terms beside values. Law `DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS`.
+- Changed: `DescriptionList layout="columns"` answers its own width (side by side from 16rem) instead of the viewport (30rem), so a phone-wide drawer keeps terms beside values. Law `DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS`.
 - Added: `Stepper kind="bar"`: one thin segment per step, filled up to the current step, the current label under it (horizontal, pressable with `onStepSelect`, loading keeps the box). Law `DNA-COMMON-STEPPER-BAR`, story `StepperBar`.
 - Added: `Pane collapse="drawer" trigger="head"` and `PaneHeader drawerOpener={{ pane, icon, label }}`: the grid owns the drawer's open state and the head draws the icon button that opens it, shown only where the pane's area is not arranged, so a server page needs no state. The head keeps its height at every width.
 
