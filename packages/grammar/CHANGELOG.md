@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.22.0 - 2026-11-05
 
 - Changed (owner-approved, ruling `one-way-to-choose` updated: counts as chips, confirmed by the owner 2026-11-05): a tab's `count` is a chip, neutral (`--default`), the accent soft pair on the selected tab, the warning soft pair when `isAttention` is set (was muted inline text, danger text). The tabs keep their underline. Laws `DNA-COMMON-TABS-COUNT-CHIP`, `-ATTENTION`, story `FilterTabsOverflowLabel` (counts) and `FilterTabsLoading`.
 - Added (U0-G10, approved): `Heading scale="title"` and `PageHeader titleScale="title"`: the middle 24px step (3xl, semibold, tight leading) for a first-run or lobby head and a welcome card title; the standard and display scales are unchanged. Law `DNA-COMMON-HEADING-TITLE-SCALE`, story `TitleScale`.
@@ -10,10 +10,7 @@
 - Changed (item 20a, approved): the `alternative` button is the outlined pill (hairline border, `--default-foreground` words) in every placement in Core, as System.html draws the secondary command; it was the grey `--default` fill. `neutral` is unchanged (outline in decision and item, bare in chrome). Buttons carry `data-grammar-intent`. Law `DNA-COMMON-BUTTON-ALTERNATIVE-OUTLINE` replaces `-ALTERNATIVE-INK`, story `AlternativeButtonInk`.
 - Fixed: a `Select` without `placeholder` no longer shows the vendor's English "Select an item" (the Grammar speaks no language of its own): the trigger shows an empty, sized value; pass `placeholder` in the app's language. Law `DNA-COMMON-SELECT-NO-VENDOR-ENGLISH`, story `SelectWithoutPlaceholder`.
 - Fixed: `Link media` keeps the `width` and `height` of its `media` (a logo of 113 x 40 stays 113 x 40, was drawn at its container's width), contained inside that box. Law `DNA-COMMON-LINK-MEDIA-KEEPS-BOX`, story `LinkMediaKeepsBox`.
-
-## 0.21.39 - 2026-11-05
-
-- Changed: version stamp only, with the Grammar lint family (their runtime copies moved). From this release the canon pins give the family the same-minor range `~0.21.39`: a later patch of the family reaches apps with no other package moving (decision grammar-patch-range).
+- Changed: the canon pins give the family the same-minor range `~0.22.0` (decision grammar-patch-range); a minor, since the batch removes the law DNA-COMMON-BUTTON-ALTERNATIVE-INK and changes the one-way-to-choose contract.
 
 ## 0.21.38 - 2026-11-05
 

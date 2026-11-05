@@ -2,7 +2,7 @@
 
 ## 3.18.4 - 2026-11-05
 
-- Changed: the runtime copy of the canon pins gives the Grammar family its same-minor range (decision grammar-patch-range) and names `@starci/hfs` 5.12.0 and the Grammar family 0.21.39; the runtime copy of R15 reads the range.
+- Changed: the runtime copy of the canon pins gives the Grammar family its same-minor range (decision grammar-patch-range) and names `@starci/hfs` 5.12.0 and the Grammar family 0.22.0; the runtime copy of R15 reads the range.
 
 ## 3.18.3 - 2026-11-05
 
