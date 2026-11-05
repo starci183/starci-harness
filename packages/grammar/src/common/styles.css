@@ -1853,6 +1853,16 @@
     .starci-core-tile[data-grammar-tile-media="false"]:has(> .starci-core-tile-mark) > .starci-core-tile-copy > .starci-core-tile-description { grid-column: 1 / -1; margin-block-start: var(--grammar-inline-gap); }
     .starci-core-tile[data-grammar-tile-media="false"]:has(> .starci-core-tile-mark) > .starci-core-tile-foot { grid-column: 1 / -1; margin-block-start: var(--grammar-inline-gap); }
 
+    /* The byline: a muted small line under the name, beside the mark; the status chips stand under it. */
+    .starci-core-tile-byline { min-width: 0; color: var(--muted); font-size: var(--grammar-text-sm); line-height: var(--grammar-leading-sm); overflow-wrap: anywhere; }
+    .starci-core-tile[data-grammar-tile-media="false"]:has(> .starci-core-tile-mark) > .starci-core-tile-copy > .starci-core-tile-byline { grid-column: 2; grid-row: 2; align-self: start; }
+    .starci-core-tile[data-grammar-tile-media="false"]:has(> .starci-core-tile-mark) > .starci-core-tile-copy > .starci-core-tile-byline ~ .starci-core-tile-badges { grid-row: 3; }
+
+    /* The figure: one plain bold value at the start of the foot, the action and menu at its end, one line. */
+    .starci-core-tile-figure { min-width: 0; overflow: hidden; color: var(--foreground); font-size: var(--grammar-text-md); font-weight: var(--grammar-weight-semibold); line-height: var(--grammar-leading-md); text-overflow: ellipsis; white-space: nowrap; }
+    .starci-core-tile-foot[data-grammar-tile-figure="true"] { flex-wrap: nowrap; justify-content: space-between; }
+    .starci-core-tile-foot[data-grammar-tile-figure="true"] > .starci-core-tile-actions { flex: 0 0 auto; margin-inline-start: auto; }
+
     .starci-core-tile-badges,
     .starci-core-tile-actions {
         display: flex;

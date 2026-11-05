@@ -130,7 +130,7 @@ roles:
     sizes: none
     states: [neutral, pending, PresentationState]
     grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, the label's paint, the ink ground and its inks]
-    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE]
+    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION]
     lint: [starci-grammar/no-raised-surface-in-surface]
 
   - id: button
@@ -1269,6 +1269,21 @@ mustKeep:
       law: "An app-declared tone has all four tokens: on every element stamped data-grammar-tone-custom the four component variables (--grammar-tone, -foreground, -soft, -soft-foreground) resolve to a colour, so a theme that declares a tone without one of its tokens is caught here (and throws in development)."
       measure: { kind: style, select: '[data-grammar-tone-custom="true"]', checks: [{ metric: --grammar-tone, op: set }, { metric: --grammar-tone-foreground, op: set }, { metric: --grammar-tone-soft, op: set }, { metric: --grammar-tone-soft-foreground, op: set }] }
       owner: contract roles.chip
+    - id: DNA-COMMON-TILE-BYLINE
+      role: card
+      law: "A tile's byline stands under its name, never beside or above it."
+      measure: { kind: relation, select: '[data-grammar-tile-byline]', metric: top, op: ">=", tolerance: 1, ref: { within: '[data-grammar-tile="true"]', select: '.starci-core-label', metric: bottom } }
+      owner: contract roles.card
+    - id: DNA-COMMON-TILE-FIGURE-START
+      role: card
+      law: "A tile figure is plain bold text (a price, never a chip): weight 600 or more."
+      measure: { kind: style, select: '[data-grammar-tile-figure-value]:not([data-loading="true"])', checks: [{ metric: font-weight, op: ">=", value: 600 }] }
+      owner: contract roles.card
+    - id: DNA-COMMON-TILE-FIGURE-BEFORE-ACTION
+      role: card
+      law: "The figure ends before the action of its row begins: one line, value then command."
+      measure: { kind: relation, select: '[data-grammar-tile-figure-value]', metric: right, op: "<=", tolerance: 1, ref: { within: '.starci-core-tile-foot', select: '.starci-core-tile-actions', metric: left } }
+      owner: contract roles.card
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.

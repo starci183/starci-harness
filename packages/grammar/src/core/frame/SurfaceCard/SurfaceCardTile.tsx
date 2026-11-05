@@ -56,6 +56,9 @@ export const SurfaceCardTile = ({ data, headingId, headingLevel, isLoading, isDi
         {data.mark === undefined || data.poster !== undefined ? null : <TileMarkView mark={data.mark} isLoading={isLoading} />}
         <div className="starci-core-tile-copy" data-contract="GAP-1" data-grammar-tile-copy-beside-mark={data.mark !== undefined && data.poster === undefined ? "true" : undefined}>
             <Label as={`h${headingLevel}`} id={headingId} isLoading={isLoading}>{data.name}</Label>
+            {data.byline === undefined ? null : (
+                <span className="starci-core-tile-byline" data-grammar-tile-byline="true" data-contract="TONE-2 FONT-2">{isLoading ? <SkeletonPlaceholder>{data.byline}</SkeletonPlaceholder> : data.byline}</span>
+            )}
             {data.badges === undefined ? null : (
                 <span className="starci-core-tile-badges" data-contract="GAP-2">
                     {data.badges.map((badge) => <TileBadge key={badge.label} badge={badge} isLoading={isLoading} />)}
@@ -64,13 +67,15 @@ export const SurfaceCardTile = ({ data, headingId, headingLevel, isLoading, isDi
             {data.description === undefined ? null : (
                 <span className="starci-core-tile-description" data-contract="TONE-2 FONT-2">{isLoading ? <SkeletonPlaceholder>{data.description}</SkeletonPlaceholder> : data.description}</span>
             )}
-            {data.facts === undefined ? null : (
-                <span className="starci-core-tile-description" data-grammar-tile-facts="true" data-contract="TONE-2 FONT-2">{isLoading ? <SkeletonPlaceholder>{data.facts}</SkeletonPlaceholder> : data.facts}</span>
-            )}
+            {data.facts === undefined ? null : (typeof data.facts === "string" ? [data.facts] : data.facts).map((line) => (
+                <span key={line} className="starci-core-tile-description" data-grammar-tile-facts="true" data-contract="TONE-2 FONT-2">{isLoading ? <SkeletonPlaceholder>{line}</SkeletonPlaceholder> : line}</span>
+            ))}
         </div>
         <ButtonPlacementProvider placement="item">
-            <div className="starci-core-tile-foot" data-contract="GAP-2">
-                {data.badge === undefined ? <span /> : <TileBadge badge={data.badge} isLoading={isLoading} />}
+            <div className="starci-core-tile-foot" data-contract="GAP-2" {...(data.figure === undefined ? {} : { "data-grammar-tile-figure": "true" })}>
+                {data.figure !== undefined
+                    ? <span className="starci-core-tile-figure" data-grammar-tile-figure-value="true" data-contract="FONT-2">{isLoading ? <SkeletonPlaceholder>{data.figure}</SkeletonPlaceholder> : data.figure}</span>
+                    : data.badge === undefined ? <span /> : <TileBadge badge={data.badge} isLoading={isLoading} />}
                 <span className="starci-core-tile-actions" data-contract="GAP-2">
                     {data.action === undefined ? null : <TileAction action={data.action} isLoading={isLoading} isDisabled={isDisabled} />}
                     {data.menu === undefined ? null : (

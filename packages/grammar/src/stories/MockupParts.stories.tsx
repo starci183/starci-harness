@@ -423,3 +423,15 @@ export const AppTones: Story = {
         </Matrix>
     ),
 }
+
+/** A listing tile: mark and name with a byline under it, the description, two muted fact lines, a bold plain price at the foot's start and the one action at its end (DNA-COMMON-TILE-BYLINE, -FIGURE-START). */
+export const TileByline: Story = {
+    render: () => (
+        <Matrix maxWidth={360}>
+            <State label="ready / loading" direction="column">
+                <G.SurfaceCard kind="tile" name="Quote sender" byline="By Hoa Xinh Studio, version 1.2" mark={{ icon: PlusGlyph }} description="Writes a quote from the customer's request and sends it." facts={["Needs: Zalo OA", "Rule: Send quote"]} figure="490.000 d" action={{ label: "Add", press: noop }} />
+                <G.SurfaceCard kind="tile" isLoading name="Quote sender" byline="By Hoa Xinh Studio, version 1.2" mark={{ icon: PlusGlyph }} description="Writes a quote from the customer's request and sends it." facts={["Needs: Zalo OA", "Rule: Send quote"]} figure="490.000 d" action={{ label: "Add", press: noop }} />
+            </State>
+        </Matrix>
+    ),
+}

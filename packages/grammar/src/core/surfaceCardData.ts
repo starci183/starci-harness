@@ -214,6 +214,14 @@ type TileIdentity =
     | { readonly mark: TileMark; readonly poster?: undefined }
     | { readonly poster: TilePoster; readonly mark?: TileMark }
 
+/**
+ * One stronger plain value at the START of the action row (a price, a count): bold text, no chip, truncating on one line; the `action`
+ * and the `menu` stay at the end of the same row. A tile with a `figure` has no single `badge` (the foot holds one or the other).
+ */
+type TileFigure =
+    | { readonly figure?: undefined }
+    | { readonly figure: string; readonly badge?: undefined }
+
 type TileBadges =
     | { readonly badge?: BadgeData; readonly badges?: undefined }
     | { readonly badge?: undefined; readonly badges: readonly [BadgeData] | readonly [BadgeData, BadgeData] | readonly [BadgeData, BadgeData, BadgeData] }
@@ -221,10 +229,12 @@ type TileBadges =
 /** The tile owns its identity, media, supporting facts, one visible action and any overflow commands. */
 export type TileData = {
     readonly name: string
+    /** A muted small line under the name, beside the mark (who made it, which version, which category). */
+    readonly byline?: string
     readonly description?: string
-    /** A short factual line, separate from the name and the operational badges. */
-    readonly facts?: string
-} & TileIdentity & TileBadges & (
+    /** Short factual lines, separate from the name and the operational badges: one muted line each (a string is one line). */
+    readonly facts?: string | readonly string[]
+} & TileIdentity & TileBadges & TileFigure & (
     | { readonly wholeAction: WholeCardAction; readonly action?: undefined; readonly menu?: undefined }
     | { readonly action?: ItemAction; readonly menu?: ItemMenu; readonly wholeAction?: undefined }
 )
