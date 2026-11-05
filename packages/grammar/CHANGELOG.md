@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Changed (item 20a, approved): the `alternative` button is the outlined pill (hairline border, `--default-foreground` words) in every placement in Core, as System.html draws the secondary command; it was the grey `--default` fill. `neutral` is unchanged (outline in decision and item, bare in chrome). Buttons carry `data-grammar-intent`. Law `DNA-COMMON-BUTTON-ALTERNATIVE-OUTLINE` replaces `-ALTERNATIVE-INK`, story `AlternativeButtonInk`.
 - Fixed: a `Select` without `placeholder` no longer shows the vendor's English "Select an item" (the Grammar speaks no language of its own): the trigger shows an empty, sized value; pass `placeholder` in the app's language. Law `DNA-COMMON-SELECT-NO-VENDOR-ENGLISH`, story `SelectWithoutPlaceholder`.
 - Fixed: `Link media` keeps the `width` and `height` of its `media` (a logo of 113 x 40 stays 113 x 40, was drawn at its container's width), contained inside that box. Law `DNA-COMMON-LINK-MEDIA-KEEPS-BOX`, story `LinkMediaKeepsBox`.
 

@@ -189,6 +189,7 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
             <HeroLink
                 data-tier="leaf"
                 data-component="Button"
+                data-grammar-intent={props.intent}
                 data-size={size}
                 {...glyphSides}
                 data-element={unavailable ? "span" : "a"}
@@ -217,6 +218,7 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
         <HeroButton
             data-tier="leaf"
             data-component="Button"
+            data-grammar-intent={props.intent}
             data-size={size}
             {...glyphSides}
             data-element="button"

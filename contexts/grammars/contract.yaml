@@ -146,7 +146,7 @@ roles:
     sizes: { steps: [sm, md, lg], default: md, bar: control }
     states: [rest, hover, pressed, focus-visible, disabled, pending, skeleton]
     grammarMayChange: [paint per variant through tokens, corner via radius, press motion]
-    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-LOADING-SAME-BOX, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL, DNA-COMMON-BUTTON-ALTERNATIVE-INK]
+    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-LOADING-SAME-BOX, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL, DNA-COMMON-BUTTON-ALTERNATIVE-OUTLINE]
 
   - id: link
     ui: ui/components/button.md
@@ -1136,11 +1136,6 @@ mustKeep:
       law: "An unselected radio draws a ring of its own (the muted foreground), so it stays visible when the app sets the field border and shadow to transparent (U2-G6)."
       measure: { kind: style, select: '.starci-core-radio:not([data-selected]) [data-grammar-choice-control="radio"]', metric: box-shadow, op: "!=", value: none }
       owner: contract roles.input
-    - id: DNA-COMMON-BUTTON-ALTERNATIVE-INK
-      role: button
-      law: "The alternative button writes its words in the default foreground that pairs with its default fill, never in the brand accent soft foreground (U9c-3)."
-      measure: { kind: style, select: '.starci-core-button.button--secondary', metric: color, op: "=", value: { token: --default-foreground } }
-      owner: contract roles.button
     - id: DNA-COMMON-ROW-ACTION-END
       role: list
       law: "A row with actionPlacement end keeps its commands on the line of its copy, at the end of the row, at any width (G7-7)."
@@ -1234,6 +1229,11 @@ mustKeep:
       law: "A media link keeps the width and the height it is given (a 113 by 40 logo stays 113 by 40), never the width of its container."
       measure: { kind: box, select: '[data-component="Link"][data-grammar-link-media-size="both"]', metric: [width, height], op: "=", value: [113px, 40px] }
       owner: contract roles.link
+    - id: DNA-COMMON-BUTTON-ALTERNATIVE-OUTLINE
+      role: button
+      law: "An alternative button is outlined (a hairline border, no tinted fill) and writes its words in the default foreground, as the design system draws its secondary command; never the brand-coloured words of the vendor secondary variant."
+      measure: { kind: style, select: '[data-component="Button"][data-grammar-intent="alternative"]:not([data-loading="true"])', checks: [{ metric: border-width, op: ">=", value: 1px }, { metric: color, op: "=", value: { token: --default-foreground } }] }
+      owner: contract roles.button
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.

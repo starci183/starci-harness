@@ -36,7 +36,7 @@ export const STARCI_CORE_DNA = Object.freeze({
     }),
     intent: Object.freeze({
         commit: Object.freeze({ decision: "primary", item: "secondary", chrome: "primary" }),
-        alternative: "secondary",
+        alternative: "outline",
         dismiss: "tertiary",
         neutral: Object.freeze({
             button: Object.freeze({ decision: "outline", item: "outline", chrome: "ghost" }),

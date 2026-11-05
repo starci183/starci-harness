@@ -108,7 +108,7 @@ export const FiguresInPaneRow: Story = {
     ),
 }
 
-/** The alternative button writes its words in the default foreground, not the brand accent (DNA-COMMON-BUTTON-ALTERNATIVE-INK). */
+/** The alternative button is outlined, its words in the default foreground, not the brand accent (DNA-COMMON-BUTTON-ALTERNATIVE-OUTLINE). */
 export const AlternativeButtonInk: Story = {
     render: () => (
         <div style={{ "--accent-soft-foreground": "rgb(190 24 93)" } as CSSProperties}>
