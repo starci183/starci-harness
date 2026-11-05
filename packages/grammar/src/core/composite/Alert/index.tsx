@@ -100,6 +100,7 @@ const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
  * `data-grammar-tone`; the vendor status supplies the default glyph, `pending` swaps it for a spinner.
  * The action Button's intent follows the tone (`alertActionIntentFor`, after HeroUI's Alert examples):
  * informative (accent) -> `commit`, negative (danger) -> a confirmed `destructive`, every other tone -> `alternative`.
+ * Below 30rem a `button` action stacks under the text, full width, in that same intent; a dismiss stays beside the text.
  * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
  */
 const AlertInner = (props: AlertProps) => {
@@ -149,6 +150,7 @@ const AlertInner = (props: AlertProps) => {
                         <Button
                             isLoading={isLoading}
                             size="sm"
+                            width="fill-narrow"
                             {...alertActionIntentFor(tone)}
                             onPress={action.onAction}
                             {...(action.icon === undefined ? {} : { startContent: <Icon source={action.icon} usage="leading" /> })}
@@ -178,6 +180,7 @@ const AlertInner = (props: AlertProps) => {
  * `data-grammar-tone`; the vendor status supplies the default glyph, `pending` swaps it for a spinner.
  * The action Button's intent follows the tone (`alertActionIntentFor`, after HeroUI's Alert examples):
  * informative (accent) -> `commit`, negative (danger) -> a confirmed `destructive`, every other tone -> `alternative`.
+ * Below 30rem a `button` action stacks under the text, full width, in that same intent; a dismiss stays beside the text.
  * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
  */
 export const Alert = withRegionLoading(AlertInner)

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added: `ItemAction.isPrimary` (with `intent="commit"`): a row or tile command that is the region's one primary draws as the filled accent button, not the outlined item pill; at most one per region, counted by `DNA-COMMON-ONE-ACCENT-FILL`. Changed: below 30rem an `Alert` button action stacks under the text, full width, in its tone's intent (the dismiss stays beside the text).
 - Fixed: a loading `RadioGroup` and `CheckboxGroup` draw their option labels and descriptions (data) as geometry of their own text; only the group label stays real.
 - Added: `Calendar width="fill"` (the month takes its container's width; tracks share it, day cells stay centred); `ChoiceChips selectionMode="multiple"` with `values`, `defaultValues`, `onValuesChange` (any number of chips, none allowed); `Button width="fill-narrow"` (content width on a wide screen, full width below 30rem).
 - Added: `span="full"` on `Input`, `CopyField`, `OtpInput` and `PressableField` (every other field already took it from the shared field props). Fixed: in a one-column form row, a field that follows a vendor `<template>` (a ready `Select`) no longer gets an extra section gap above it.

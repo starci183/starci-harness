@@ -38,6 +38,11 @@ export type ItemAction = Pick<ButtonProps, "isPending"> & {
     readonly label: string
     /** The command's consequence. `destructive` draws the soft danger pill of the entry step (sign out, remove); the confirming press belongs in a dialog. Default `neutral`: the outlined pill of an item command. */
     readonly intent?: ButtonIntent
+    /**
+     * With `intent="commit"`: this row command is the region's ONE primary (the filled accent button), not the outlined item pill. At most
+     * one per region (`DNA-COMMON-ONE-ACCENT-FILL` counts it with every other filled button); ignored for any other intent.
+     */
+    readonly isPrimary?: boolean
     readonly isDisabled?: boolean
 } & (
     | { readonly href: string; readonly press?: never }

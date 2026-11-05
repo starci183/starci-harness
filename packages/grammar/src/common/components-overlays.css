@@ -583,6 +583,21 @@
         overflow-wrap: anywhere;
     }
 
+    /*
+     * Below 30rem a button action leaves the end of the row: the actions wrapper dissolves, the dismiss stays at the end of the
+     * text row (order 0) and the button takes a row of its own under it, full width (the Button's `fill-narrow`).
+     */
+    @media (max-width: 30rem) {
+        .starci-core-alert-actions:has(> [data-component="Button"]) {
+            display: contents;
+        }
+
+        .starci-core-alert-actions > [data-component="Button"] {
+            order: 1;
+            flex: 1 1 100%;
+        }
+    }
+
     .starci-core-alert-actions {
         display: inline-flex;
         flex: none;

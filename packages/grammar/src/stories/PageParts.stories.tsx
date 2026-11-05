@@ -168,3 +168,48 @@ export const FormGridSpanEveryField: Story = {
         </Matrix>
     ),
 }
+
+const primaryRows: ReadonlyArray<G.ListRowData> = [
+    { id: "p1", title: "Connect Zalo", description: "Needed before the agent can answer", action: { label: "Continue", intent: "commit", isPrimary: true, press: noop } },
+    { id: "p2", title: "Add a knowledge source", description: "Optional", action: { label: "Add", intent: "commit", press: noop } },
+    { id: "p3", title: "Invite a teammate", description: "Optional", action: { label: "Invite", press: noop } },
+]
+
+/** A row command may be the region's one primary (`isPrimary`); the other commit and neutral commands stay the outlined item pill. */
+export const RowPrimaryAction: Story = {
+    render: () => (
+        <Matrix maxWidth={560}>
+            <State label="One row command is the filled primary; the other commit and neutral commands stay outlined" direction="column">
+                <G.Section title="Set up" kind="list" items={primaryRows} empty={empty} />
+            </State>
+            <State label="The same, loading (the action is a skeleton of the same box)" direction="column">
+                <G.Section title="Set up" kind="list" items={primaryRows} empty={empty} isLoading />
+            </State>
+        </Matrix>
+    ),
+}
+
+/** Below 30rem the action stacks under the text, full width, in its tone's intent; the dismiss stays beside the text. */
+export const AlertActionNarrow: Story = {
+    render: () => (
+        <Matrix maxWidth={560}>
+            <State label="Informative with an action and a dismiss (commit; stacks under the text on a phone)" direction="column">
+                <G.Alert title="Finish setting up" description="Connect Zalo so the agent can answer customers." action={{ label: "Continue setup", onAction: noop }} dismissLabel="Dismiss" />
+            </State>
+        </Matrix>
+    ),
+}
+
+/** The other tones' actions below 30rem: negative (confirmed destructive intent) and loading (the same box). One accent fill per view, so they stand apart from the informative one. */
+export const AlertActionNarrowOtherTones: Story = {
+    render: () => (
+        <Matrix maxWidth={560}>
+            <State label="Negative with an action (confirmed destructive intent)" direction="column">
+                <G.Alert tone="negative" title="Could not send" description="Check the connection and try again." action={{ label: "Try again", onAction: noop }} />
+            </State>
+            <State label="Loading (the same box)" direction="column">
+                <G.Alert title="Finish setting up" description="Connect Zalo so the agent can answer customers." action={{ label: "Continue setup", onAction: noop }} dismissLabel="Dismiss" isLoading />
+            </State>
+        </Matrix>
+    ),
+}
