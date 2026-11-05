@@ -31,6 +31,15 @@
         text-decoration-line: none;
     }
 
+    /* A media link keeps the width and height it is given (a logo): the image fills that box, never its container. */
+    .starci-core-link[data-grammar-link-media-size] { max-inline-size: 100%; flex: none; }
+    .starci-core-link[data-grammar-link-media-size] > .starci-core-image { inline-size: 100%; block-size: 100%; }
+    .starci-core-link[data-grammar-link-media-size] > .starci-core-image > .starci-core-image-element { inline-size: 100%; block-size: 100%; object-fit: contain; }
+    .starci-core-link[data-grammar-link-media-size="width"], .starci-core-link[data-grammar-link-media-size="both"] { inline-size: var(--starci-core-link-media-width); }
+    .starci-core-link[data-grammar-link-media-size="height"], .starci-core-link[data-grammar-link-media-size="both"] { block-size: var(--starci-core-link-media-height); }
+    .starci-core-link[data-grammar-link-media-size="width"] > .starci-core-image > .starci-core-image-element { block-size: auto; }
+    .starci-core-link[data-grammar-link-media-size="height"] > .starci-core-image > .starci-core-image-element { inline-size: auto; }
+
     .starci-core-link[data-grammar-link-content="media"] > .starci-core-image[data-grammar-image-plate="none"] {
         border-radius: 0;
         overflow: visible;

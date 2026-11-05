@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { CSSProperties, ReactNode } from "react"
 import * as G from "../common/index.js"
-import { Matrix, PlusGlyph, State, noop } from "./fixtures.js"
+import { Matrix, PlusGlyph, State, noop, placeholderImage } from "./fixtures.js"
 
 /* Parts the second round of mockups needs (U2-G6, U2-G8, G7-7..G7-10, G9c-1, G9c-2, the alternative button, the drawer description list, the bar stepper). */
 
@@ -296,5 +296,30 @@ export const RowTextFirst: Story = {
             <G.Section title="To add" kind="list" items={gapRows} empty={empty} />
             <G.Section title="To add loading" kind="list" items={gapRows} empty={empty} isLoading />
         </div>
+    ),
+}
+
+/** A Select with no placeholder shows no vendor English "Select an item" (DNA-COMMON-SELECT-NO-VENDOR-ENGLISH). */
+export const SelectWithoutPlaceholder: Story = {
+    render: () => (
+        <Matrix maxWidth={360}>
+            <State label="no placeholder, nothing chosen / with the app's words" direction="column">
+                <G.Select label="Agent" options={agentOptions} />
+                <G.Select label="Agent again" placeholder="Choose an agent" options={agentOptions} />
+            </State>
+        </Matrix>
+    ),
+}
+
+/** A media link keeps the width and height it is given: a 113 x 40 logo stays 113 x 40 (DNA-COMMON-LINK-MEDIA-KEEPS-BOX). */
+export const LinkMediaKeepsBox: Story = {
+    render: () => (
+        <Matrix maxWidth={600}>
+            <State label="logo 113 x 40 in a wide bar" direction="column">
+                <div style={{ display: "flex", width: "100%", alignItems: "center", blockSize: "4rem" }}>
+                    <G.Link href="#home" label="Home" media={{ src: placeholderImage("NIVO OS", 340), alt: "", width: 113, height: 40 }} />
+                </div>
+            </State>
+        </Matrix>
     ),
 }

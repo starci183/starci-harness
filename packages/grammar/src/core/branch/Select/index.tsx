@@ -38,6 +38,7 @@ export type ListOption = {
 
 export type SelectProps = NoChildren & FieldControlProps & FieldSizeProps & {
     readonly options: ReadonlyArray<ListOption>
+    /** The words in the trigger while nothing is chosen, in the app's language. Omitted: the trigger shows no words (never the vendor's English "Select an item"). */
     readonly placeholder?: string
     /** `pill`: the trigger is a 40px pill on the field tone (a picker in a page head: "Position: Technician"); `field` (default): the form field. */
     readonly appearance?: "field" | "pill"
@@ -142,7 +143,8 @@ const SelectControl = ({
             variant={variant}
             {...fieldVariantAttributes(variant)}
             {...vendorFieldProps({ ...field, isPending })}
-            {...(placeholder === undefined ? {} : { placeholder })}
+            // The vendor draws its own English "Select an item" when none is given; the Grammar speaks no language of its own, so the default is an empty (but sized) value.
+            placeholder={placeholder ?? "\u00a0"}
             {...selection}
             {...(readOnly ? { isOpen: false } : {})}
             onChange={(key: Key | null) => {

@@ -2,6 +2,7 @@
 
 import { withRegionInert } from "../../regionScope.js"
 import { Link as HeroLink } from "@heroui/react"
+import type { CSSProperties } from "react"
 import type { ReactNode } from "react"
 import { Image, type ImageProps } from "../Image/index.js"
 import type { NoChildren } from "../../tier.js"
@@ -60,6 +61,14 @@ const LinkInner = ({
     onFollow,
 }: LinkProps) => {
     const external = kind === "external"
+    // A media link keeps the box it is given: the image fills the link's width and height instead of its container's.
+    const mediaSize = media === undefined || (media.width === undefined && media.height === undefined) ? undefined : {
+        kind: media.width !== undefined && media.height !== undefined ? "both" : media.width !== undefined ? "width" : "height",
+        style: {
+            ...(media.width === undefined ? {} : { "--starci-core-link-media-width": `${media.width}px` }),
+            ...(media.height === undefined ? {} : { "--starci-core-link-media-height": `${media.height}px` }),
+        } as CSSProperties,
+    }
     const destinationLabel = media === undefined ? undefined : external && externalHint !== undefined ? `${label} ${externalHint}` : label
     return (
         <HeroLink
@@ -71,6 +80,7 @@ const LinkInner = ({
             data-tier="leaf"
             data-grammar-link-kind={kind}
             data-grammar-link-content={media === undefined ? "text" : "media"}
+            {...(mediaSize === undefined ? {} : { "data-grammar-link-media-size": mediaSize.kind, style: mediaSize.style })}
             data-grammar-link-visited={visited}
             data-grammar-current={isCurrent ? "true" : "false"}
             isDisabled={isDisabled}

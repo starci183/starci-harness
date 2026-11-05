@@ -159,7 +159,7 @@ roles:
     sizes: Image owns media dimensions and aspect
     states: [rest, hover, focus-visible, disabled, image loading, image loaded, image error]
     grammarMayChange: [link colour and underline through the existing link treatment]
-    dna: []
+    dna: [DNA-COMMON-LINK-MEDIA-KEEPS-BOX]
 
   - id: color-swatch
     ui: ui/components/color-swatch.md
@@ -268,7 +268,7 @@ roles:
     sizes: { steps: [md], default: md }
     states: [open, selected, focus-visible, invalid, disabled, pending, skeleton]
     grammarMayChange: [trigger and option paint, popover edge, arrangement indicatorSide]
-    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-FIELD-SM]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-FIELD-SM, DNA-COMMON-SELECT-NO-VENDOR-ENGLISH]
 
   - id: copy-field
     ui: ui/components/text-field.md
@@ -1224,6 +1224,16 @@ mustKeep:
       law: "In a narrow pane a row with two or more commands keeps the text column the row width: the commands stand under the copy, never beside it (G7-11)."
       measure: { kind: relation, select: '[data-story-narrow-rows] [data-grammar-action-placement="end"][data-grammar-actions-multi="true"] > .starci-core-list-row-actions', metric: top, op: ">=", tolerance: 1, ref: { within: '[data-component="ListRow"]', select: '.starci-core-list-row-copy', metric: bottom } }
       owner: contract roles.list
+    - id: DNA-COMMON-SELECT-NO-VENDOR-ENGLISH
+      role: select
+      law: "A Select never shows the vendor's English placeholder \"Select an item\": it shows the app's words or none."
+      measure: { kind: text, select: '[data-component="Select"] [data-slot="select-value"]', metric: text, op: matches, value: '^(?!.*Select an item)' }
+      owner: contract roles.select
+    - id: DNA-COMMON-LINK-MEDIA-KEEPS-BOX
+      role: link
+      law: "A media link keeps the width and the height it is given (a 113 by 40 logo stays 113 by 40), never the width of its container."
+      measure: { kind: box, select: '[data-component="Link"][data-grammar-link-media-size="both"]', metric: [width, height], op: "=", value: [113px, 40px] }
+      owner: contract roles.link
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.
