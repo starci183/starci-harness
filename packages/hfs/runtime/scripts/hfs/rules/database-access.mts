@@ -51,6 +51,27 @@ function principalCall(call: Parsed, helpers: Parsed) {
   return ['request.jwt.claims', 'request.jwt.claim.sub'].includes(setting) || helpers.settings.has(setting);
 }
 
+/** A call that reads a declared scope setting, directly or through a helper whose body does. */
+function scopeCall(call: Parsed, helpers: Parsed) {
+  const name = names(call.funcname);
+  if (helpers.scoped.has(name) || helpers.scoped.has(qualify(name))) return true;
+  return ['current_setting', 'pg_catalog.current_setting'].includes(name) && helpers.settings.has(stringValue(call.args?.[0]));
+}
+
+const hasScope = (node: Parsed, helpers: Parsed) => someNode(node, (item: Parsed) => Boolean(item.FuncCall && scopeCall(item.FuncCall, helpers)));
+const hasColumn = (node: Parsed) => someNode(node, (item: Parsed) => Boolean(item.ColumnRef));
+const columnName = (node: Parsed): string | undefined => {
+  const fields = unwrap(node)?.ColumnRef?.fields;
+  return fields?.length ? sval(fields[fields.length - 1]) : undefined;
+};
+
+/** A declared scope principal filters rows only as `<owning column> = <principal>`, either side; the principal side holds no column. */
+function scopeComparison(expr: Parsed, helpers: Parsed) {
+  if (!expr || expr.kind !== 'AEXPR_OP' || operator(expr) !== '=') return false;
+  const sides = [[expr.lexpr, expr.rexpr], [expr.rexpr, expr.lexpr]];
+  return sides.some(([column, principal]) => helpers.columns.has(columnName(column) ?? '') && hasScope(principal, helpers) && !hasColumn(principal));
+}
+
 const hasPrincipal = (node: Parsed, helpers: Parsed) => someNode(node, (item: Parsed) => Boolean(item.FuncCall && principalCall(item.FuncCall, helpers)));
 const literalFalse = (node: Parsed) => unwrap(node)?.A_Const?.boolval?.boolval === false;
 
@@ -65,10 +86,11 @@ function principalPredicate(expression: Parsed, helpers: Parsed) {
   if (bool?.boolop === NOT) return false;
   const expr = node.A_Expr;
   if (expr && JSON.stringify(structural(expr.lexpr)) === JSON.stringify(structural(expr.rexpr))) return false;
+  if (hasScope(node, helpers)) return scopeComparison(expr, helpers);
   return hasPrincipal(node, helpers);
 }
 
-async function principalHelpers(analyses: Parsed, scopeSettings: string[]) {
+async function principalHelpers(analyses: Parsed, scopeSettings: string[], scopeColumns: string[]) {
   const functions = analyses.flatMap(({ facts }: { facts: Parsed }) => facts.functions);
   const bodies: Parsed[] = [];
   await eachInOrder(functions, async (fn: Parsed) => {
@@ -76,9 +98,12 @@ async function principalHelpers(analyses: Parsed, scopeSettings: string[]) {
     if (!body) return;
     try { bodies.push({ name: fn.name, ast: await parseSql(body) }); } catch { /* PL/pgSQL safety is checked separately. */ }
   });
-  const helpers = { functions: new Set<string>(), settings: new Set<string>(scopeSettings) };
+  const helpers = { functions: new Set<string>(), settings: new Set<string>(scopeSettings), scoped: new Set<string>(), columns: new Set<string>(scopeColumns) };
   for (let remaining = bodies.length; remaining > 0; remaining -= 1) {
-    for (const body of bodies) if (hasPrincipal(body.ast, helpers)) helpers.functions.add(body.name);
+    for (const body of bodies) {
+      if (hasPrincipal(body.ast, helpers)) helpers.functions.add(body.name);
+      if (hasScope(body.ast, helpers)) helpers.scoped.add(body.name);
+    }
   }
   return helpers;
 }
@@ -305,7 +330,8 @@ export async function databaseAccessFindings({ analyses, exposed, db = {} }: { a
     for (const grant of facts.grants) applyGrant(grants, grant, file);
   }
   const policies = [...policyMap.values()];
-  const helpers = await principalHelpers(analyses, Array.isArray(declared.scopeSettings) ? declared.scopeSettings.filter((setting: unknown): setting is string => typeof setting === 'string') : []);
+  const strings = (list: unknown): string[] => (Array.isArray(list) ? list.filter((entry: unknown): entry is string => typeof entry === 'string') : []);
+  const helpers = await principalHelpers(analyses, strings(declared.scopeSettings), declared.scopeColumns === undefined ? ['workspace_id'] : strings(declared.scopeColumns));
   return [
     ...policyFindings(policies, appRole, helpers),
     ...roleFindings(analyses, appRole),

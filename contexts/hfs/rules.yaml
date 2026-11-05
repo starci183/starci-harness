@@ -1653,7 +1653,7 @@ rules:
       - {kind: hfs, id: db-app-role}
   - id: R256
     code: DB_POLICY_TAUTOLOGY
-    law: "Exposed database objects keep their access boundaries: no tautological policies, principal-scoped policies for every role but the application role (the principal is auth.uid, auth.jwt, the request JWT claims or a transaction setting the app declares in hfs.json db.scopeSettings), invoker-secured views and revoked execute on exposed definers."
+    law: "Exposed database objects keep their access boundaries: no tautological policies, principal-scoped policies for every role but the application role (the principal is auth.uid, auth.jwt, the request JWT claims or a transaction setting the app declares in hfs.json db.scopeSettings, compared with the owning column of db.scopeColumns), invoker-secured views and revoked execute on exposed definers."
     editions: [lite]
     failureCodes:
       - DB_POLICY_TAUTOLOGY

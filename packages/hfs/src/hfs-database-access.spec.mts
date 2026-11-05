@@ -149,6 +149,13 @@ const policyCases: Case[] = [
   ['declared scope or true bypasses the principal', `${engineScope} ${enginePolicy('workspace_id = public.engine_workspace() or true')}`, true, scoped],
   ['declared scope present does not filter a row', `${engineScope} ${enginePolicy('public.engine_workspace() is not null')}`, true, scoped],
   ['declared scope compared with itself', `${engineScope} ${enginePolicy('public.engine_workspace() = public.engine_workspace()')}`, true, scoped],
+  ['declared scope compared with the owning column on the right', `${engineScope} ${enginePolicy('public.engine_workspace() = workspace_id')}`, false, scoped],
+  ['declared scope may be one conjunct beside other filters', `${engineScope} ${enginePolicy('id is not null and workspace_id = public.engine_workspace()')}`, false, scoped],
+  ['declared scope compared with a column that does not own the row', `${engineScope} ${enginePolicy('id = public.engine_workspace()')}`, true, scoped],
+  ['declared scope compared with another owner column', `${engineScope} ${enginePolicy('tenant_id = public.engine_workspace()')}`, true, scoped],
+  ['declared scope beside a non-null column test', `${engineScope} ${enginePolicy('id is not null and public.engine_workspace() is not null')}`, true, scoped],
+  ['declared scope in a non-equality comparison', `${engineScope} ${enginePolicy('workspace_id <> public.engine_workspace()')}`, true, scoped],
+  ['declared scope column list names the owning column', `${engineScope} ${enginePolicy('tenant_id = public.engine_workspace()')}`, false, { db: { scopeSettings: ['nivo.workspace_id'], scopeColumns: ['tenant_id'] } }],
   ['public read suffix cannot authorize writes', `${table} create policy items_public_read on public.items for insert to anon with check (true);`, true],
 ];
 
@@ -273,6 +280,9 @@ test('the declaration takes db.scopeSettings as dotted custom settings and refus
   const sides = { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core' } };
   const declared = (scopeSettings: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeSettings }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
   assert.deepEqual(declared(['nivo.workspace_id']), []);
+  const columns = (scopeColumns: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeColumns }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
+  assert.deepEqual(columns(['workspace_id']), []);
+  for (const bad of [[], ['Workspace'], 'workspace_id', ['a.b']]) assert.equal(columns(bad).length, 1, JSON.stringify(bad));
   for (const bad of [['workspace_id'], ['request.jwt.claims'], ['Nivo.Workspace'], 'nivo.workspace_id', [''], [1]]) {
     assert.equal(declared(bad).length, 1, JSON.stringify(bad));
   }
