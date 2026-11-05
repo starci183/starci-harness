@@ -13,8 +13,5 @@ export {
 export type { LabelChild, NoChildren } from "../core/tier.js"
 export { assertToneDeclared, customToneProps, isCustomTone, TONE_TOKEN_SUFFIXES, TONE_VARIABLES, type CustomTone } from "./tones.js"
 
-/**
- * The tones an app added to Core's built-in ones. Declared HERE (not re-exported) so an app can merge into it from "@starci/grammar/common":
- * `declare module "@starci/grammar/common" { interface GrammarToneRegistry { info: true } }`. Empty until an app does.
- */
-export interface GrammarToneRegistry {}
+// The tones an app adds (tone-registry.ts): an app merges into it from here, `declare module "@starci/grammar/common" { interface GrammarToneRegistry { info: true } }`.
+export type { GrammarToneRegistry } from "./tone-registry.js"

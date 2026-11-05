@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react"
-import type { GrammarToneRegistry } from "./index.js"
+import type { GrammarToneRegistry } from "./tone-registry.js"
 
 /**
  * App-added tones (owner ruling `grammar-own-style`: Core keeps HeroUI's palette as its built-in tones, an app may ADD its own).
