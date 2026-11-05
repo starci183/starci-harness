@@ -89,10 +89,11 @@
 
     /*
      * The accent is a FILL, and on its tint it is `--accent-soft-foreground` (the pair rule). Where a part paints the
-     * accent as TEXT on the page (a link, the current tab), that
-     * element reads the soft foreground in place of the fill, so each rule reads `--accent` unchanged.
+     * accent as TEXT on the page (the current tab), that element reads the soft foreground in place of the fill, so each
+     * rule reads `--accent` unchanged. A text link is the one exception: it is the exact brand `--accent`, underlined, by the
+     * owner's overrule of P2 (components-navigation.css), so it keeps the fill's value.
      */
-    :is(.starci-core-link, .starci-core-text-action[data-appearance="tab"][data-current="true"]) {
+    .starci-core-text-action[data-appearance="tab"][data-current="true"] {
         --accent: var(--accent-soft-foreground);
     }
 

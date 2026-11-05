@@ -2,6 +2,7 @@
 
 ## 0.22.0 - 2026-11-05
 
+- Fixed: a text `Link` paints the exact `--accent` in Core: the shared rule that rebound `--accent` to `--accent-soft-foreground` on a link no longer names it (it still does on the current tab), so the owner's overrule of P2 holds and the theme proof sees it.
 - Changed (owner-approved, ruling `one-way-to-choose` updated: counts as chips, confirmed by the owner 2026-11-05): a tab's `count` is a chip, neutral (`--default`), the accent soft pair on the selected tab, the warning soft pair when `isAttention` is set (was muted inline text, danger text). The tabs keep their underline. Laws `DNA-COMMON-TABS-COUNT-CHIP`, `-ATTENTION`, story `FilterTabsOverflowLabel` (counts) and `FilterTabsLoading`.
 - Added (U0-G10, approved): `Heading scale="title"` and `PageHeader titleScale="title"`: the middle 24px step (3xl, semibold, tight leading) for a first-run or lobby head and a welcome card title; the standard and display scales are unchanged. Law `DNA-COMMON-HEADING-TITLE-SCALE`, story `TitleScale`.
 - Changed (U0-G9, approved): `Stepper` markers form: the current step is a filled `--accent` circle with the accent foreground number, an upcoming step a filled `--surface-secondary` circle with a muted number and no ring, a complete step unchanged (filled accent), error and paused keep their tone ring on `--surface`. Laws `DNA-COMMON-STEPPER-MARKER-FILLS`, `-UPCOMING`, story `StepperMarkerFills`.
