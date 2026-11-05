@@ -382,7 +382,7 @@ export const TitleScale: Story = {
                 <G.Heading level={2}>Workspace of yours</G.Heading>
                 <G.Heading level={2} scale="title">Welcome to NIVO</G.Heading>
                 <G.Heading level={2} scale="display">Display</G.Heading>
-                <G.PageHeader title="Your workspaces" titleScale="title" description="Pick one to continue." />
+                <G.Page header={{ title: "Your workspaces", titleScale: "title", description: "Pick one to continue." }}><G.Text>Body</G.Text></G.Page>
             </State>
         </Matrix>
     ),
