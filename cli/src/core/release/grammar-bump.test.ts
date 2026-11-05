@@ -1,11 +1,11 @@
 // The patch-or-minor judgement of a Grammar release (decision grammar-patch-range): a CSS fix, a renderer fix, a new optional prop, a story and
 // a new DNA law and a runtime copy of @starci/hfs data are a patch; a lint rule, a removed export or prop and a removed law are a minor's.
 import assert from "node:assert/strict"
-import { execFileSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
+import { captureGitSync } from "../../shared/git.js"
 import { minorReasons } from "./grammar-bump.js"
 import { meetsPin } from "./pin-range.js"
 
@@ -22,7 +22,11 @@ const BASE: Readonly<Record<string, string>> = {
 /** A git repository holding BASE at its first commit and `change` applied on top; the first commit's sha. */
 const repoWith = (change: Readonly<Record<string, string | null>>) => {
     const root = mkdtempSync(join(tmpdir(), "starci-grammar-bump-"))
-    const git = (...args: string[]) => execFileSync("git", ["-c", "user.name=spec", "-c", "user.email=spec@example.invalid", "-c", "commit.gpgsign=false", ...args], { cwd: root, encoding: "utf8" }).trim()
+    const git = (...args: string[]) => {
+        const run = captureGitSync(["-c", "user.name=spec", "-c", "user.email=spec@example.invalid", "-c", "commit.gpgsign=false", ...args], root)
+        assert.equal(run.exitCode, 0, run.stderr)
+        return run.stdout.trim()
+    }
     const write = (files: Readonly<Record<string, string | null>>) => {
         for (const [file, text] of Object.entries(files)) {
             if (text === null) { rmSync(join(root, file)); continue }
