@@ -146,7 +146,7 @@ roles:
     sizes: { steps: [sm, md, lg], default: md, bar: control }
     states: [rest, hover, pressed, focus-visible, disabled, pending, skeleton]
     grammarMayChange: [paint per variant through tokens, corner via radius, press motion]
-    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-LOADING-SAME-BOX, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL, DNA-COMMON-BUTTON-ALTERNATIVE-OUTLINE]
+    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-LOADING-SAME-BOX, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL, DNA-CORE-BUTTON-ALTERNATIVE-OUTLINE]
 
   - id: link
     ui: ui/components/button.md
@@ -1229,11 +1229,6 @@ mustKeep:
       law: "A media link keeps the width and the height it is given (a 113 by 40 logo stays 113 by 40), never the width of its container."
       measure: { kind: box, select: '[data-component="Link"][data-grammar-link-media-size="both"]', metric: [width, height], op: "=", value: [113px, 40px] }
       owner: contract roles.link
-    - id: DNA-COMMON-BUTTON-ALTERNATIVE-OUTLINE
-      role: button
-      law: "An alternative button is outlined (a hairline border, no tinted fill) and writes its words in the default foreground, as the design system draws its secondary command; never the brand-coloured words of the vendor secondary variant."
-      measure: { kind: style, select: '[data-component="Button"][data-grammar-intent="alternative"]:not([data-loading="true"])', checks: [{ metric: border-width, op: ">=", value: 1px }, { metric: color, op: "=", value: { token: --default-foreground } }] }
-      owner: contract roles.button
     - id: DNA-COMMON-LINK-ACCENT-TEXT
       role: link
       law: "A text link is the exact primary brand colour (--accent), underlined. Owner exception, 2026-11-05: the raw accent is below 4.5 contrast as text on several Nivo grounds and the owner accepts it, so this law pins the token and no contrast law judges a link."
@@ -1456,6 +1451,11 @@ mustKeep:
       law: Every button and its skeleton is a pill, its corner at least half its height; the members of a ButtonGroup keep their square inner corners (DNA-COMMON-BUTTONGROUP-INNER-CORNERS).
       measure: { kind: style, select: ':is([data-component="Button"],[data-component="IconButton"]):not([data-slot="button-group"] *)', metric: radius, op: ">=", value: { self: height, times: 0.5 } }
       owner: buttons-pill
+    - id: DNA-CORE-BUTTON-ALTERNATIVE-OUTLINE
+      role: button
+      law: "In Core an alternative button is outlined (a hairline border, no tinted fill) and writes its words in the default foreground, as the design system draws its secondary command; never the brand-coloured words of the vendor secondary variant. Core only: Offset Pop keeps its own look (ruling grammar-own-style)."
+      measure: { kind: style, select: '[data-component="Button"][data-grammar-intent="alternative"]:not([data-loading="true"])', checks: [{ metric: border-width, op: ">=", value: 1px }, { metric: color, op: "=", value: { token: --default-foreground } }] }
+      owner: contract roles.button
     - id: DNA-CORE-ACCENT-TEXT
       role: root
       law: Where the accent is text (a link, the current tab label) it reads the text-safe accent, never the fill accent.
