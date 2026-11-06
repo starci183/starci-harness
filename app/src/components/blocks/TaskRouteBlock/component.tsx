@@ -1,4 +1,4 @@
-import { DescriptionList, SurfaceCard, Timeline } from "@starci/grammar/core"
+import { DescriptionList, Stack, SurfaceCard, Text, Timeline } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 
@@ -45,14 +45,13 @@ export const TaskRouteBlockBase = (props: TaskRouteBlockBaseProps) => {
     return (
         <SlotView slot={props.props.route} placeholder={ROUTE_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(route, isLoading) => (
                 <SurfaceCard
-                    kind="bands"
                     label={labels.title}
                     headingLevel={2}
                     isLoading={isLoading}
                     {...(fact === "" ? {} : { fact })}
-                    bands={[
+                    headers={[
                         {
-                            kind: "body",
+                            kind: "custom",
                             children: (
                                 <Timeline
                                     label={labels.steps}
@@ -61,24 +60,24 @@ export const TaskRouteBlockBase = (props: TaskRouteBlockBaseProps) => {
                                 />
                             ),
                         },
-                        {
-                            kind: "body",
-                            label: labels.chosen,
-                            children: (
-                                <DescriptionList
-                                    layout="stacked"
-                                    isDivided
-                                    isLoading={isLoading}
-                                    items={[
-                                        { id: "model", term: labels.model, description: route.model },
-                                        { id: "effort", term: labels.effort, description: route.effort },
-                                        { id: "by", term: labels.by, description: route.by },
-                                    ]}
-                                />
-                            ),
-                        },
                     ]}
-                />
+                >
+                    <Stack gap="identity">
+                        <Text size="sm" tone="muted" isLoading={isLoading}>
+                            {labels.chosen}
+                        </Text>
+                        <DescriptionList
+                            layout="stacked"
+                            isDivided
+                            isLoading={isLoading}
+                            items={[
+                                { id: "model", term: labels.model, description: route.model },
+                                { id: "effort", term: labels.effort, description: route.effort },
+                                { id: "by", term: labels.by, description: route.by },
+                            ]}
+                        />
+                    </Stack>
+                </SurfaceCard>
             )} />
     )
 }
