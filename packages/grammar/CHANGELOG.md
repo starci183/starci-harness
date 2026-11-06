@@ -7,6 +7,7 @@
 - Fixed: the `switch` header zone now draws INSIDE the card, as its first header row: an optional `title` (muted) at the leading edge, the primary tabs at the trailing edge, the zone's one line under it; the card label stays above on the well. (0.24.0 drew it in the label row, outside the surface.) New `SwitchFields.title`.
 - Fixed: the group rows of a `kind="table"` card (and `DataTable groups`) show `--surface-secondary`: the table's own `surface="none"` cell rule (transparent) out-ranked the group tint; the group cell rule now out-ranks it. The ledger stories measure the computed background against the token.
 - Documented: the two app-overridable tokens in the README "Theming".
+- Fixed: `PaneGrid` dropped, in production, every `Pane` built in a React Server Component (the child's type reaches the client as a lazy client reference, not the `Pane` function, so `isPane` was false and the grid drew empty; development threw the unhelpful "component"). A lazy that resolves to `Pane` is now a pane (a pending one suspends as React reads any lazy), and any child that is not a pane now throws `PANE_GRID_CHILD_NOT_PANE` in production too, never a silent empty grid; for a client reference that is not a `Pane` the message says: a Pane built in a server component, mark the module that builds the PaneGrid children "use client". Stories `PaneGridServerBuiltPane` and `PaneGridServerBuiltPaneRefused`.
 
 ## 0.24.0 - 2026-11-06 - card zones, one line under tabs (OWNER rulings 2026-11-06)
 

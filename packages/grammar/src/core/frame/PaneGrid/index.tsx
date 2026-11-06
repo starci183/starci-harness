@@ -209,12 +209,28 @@ export type PaneGridProps = Omit<ComponentPropsWithoutRef<"section">, "aria-labe
     readonly columns?: PaneResponsive<ReadonlyArray<PaneTrack>>
     /** Row tracks, top to bottom (also per breakpoint); a missing track is `fill`. */
     readonly rows?: PaneResponsive<ReadonlyArray<PaneTrack>>
-    /** `Pane` elements as direct children (`null`, `false` and arrays of Panes are legal; anything else throws in development). */
+    /** `Pane` elements as direct children (`null`, `false` and arrays of Panes are legal; anything else throws, in production too). A `Pane` built in a server component is recognised. */
     readonly children?: ReactNode
 }
 
+const LAZY_TYPE = Symbol.for("react.lazy")
+
+/**
+ * Whether an element type is `Pane`. A `Pane` built in a React Server Component reaches the client as a lazy client reference
+ * (`$$typeof: react.lazy`), not as the `Pane` function: its lazy is read here (a pending one suspends, as React reads any lazy) and
+ * compared with `Pane`, so a server-built pane is a pane.
+ */
+const isPaneType = (type: unknown): boolean => {
+    if (type === Pane) return true
+    if (typeof type !== "object" || type === null || (type as { readonly $$typeof?: symbol }).$$typeof !== LAZY_TYPE) return false
+    const lazy = type as { readonly _init?: (payload: unknown) => unknown; readonly _payload?: unknown }
+    if (typeof lazy._init !== "function") return false
+    const resolved = lazy._init(lazy._payload)
+    return resolved === Pane || (typeof resolved === "object" && resolved !== null && (resolved as { readonly default?: unknown }).default === Pane)
+}
+
 const isPane = (child: ReactNode): child is ReactElement<PaneProps> =>
-    isValidElement(child) && child.type === Pane
+    isValidElement(child) && isPaneType(child.type)
 
 /** A readable name for a child that is not a Pane, for `PANE_GRID_CHILD_NOT_PANE`. */
 const childTypeName = (child: ReactNode): string => {
@@ -222,7 +238,9 @@ const childTypeName = (child: ReactNode): string => {
     const { type } = child
     if (typeof type === "string") return type
     if (typeof type === "function") return type.name === "" ? "component" : type.name
-    return typeof type === "symbol" ? "Fragment" : "component"
+    if (typeof type === "symbol") return "Fragment"
+    // A lazy or a client reference that is not a Pane: the shape of a child built in a server component.
+    return "a client reference that is not a Pane (a Pane built in a server component: mark the module that builds the PaneGrid children \"use client\")"
 }
 
 /** Whether the area is in the first grid column wherever it appears: its drawer then opens from the start side. */
@@ -257,10 +275,9 @@ export const PaneGrid = (props: PaneGridProps) => {
     const flat = Children.toArray(children)
     const parent = usePaneContext()
     useEffect(() => parent?.register(), [parent])
-    if (isDevelopment) {
-        const stray = flat.find((child) => !isPane(child))
-        if (stray !== undefined) throw new Error(`PANE_GRID_CHILD_NOT_PANE: ${childTypeName(stray)}`)
-    }
+    // A child that is not a Pane is refused in production too: dropping it would draw an empty grid with no sign of why.
+    const stray = flat.find((child) => !isPane(child))
+    if (stray !== undefined) throw new Error(`PANE_GRID_CHILD_NOT_PANE: ${childTypeName(stray)}`)
     const panes = flat.filter(isPane)
     const drawers = panes.filter((pane) => pane.props.collapse === "drawer")
     const hasBar = (pane: ReactElement<PaneProps>) => pane.props.trigger === undefined || pane.props.trigger === "bar"

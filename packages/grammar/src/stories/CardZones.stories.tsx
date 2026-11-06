@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { Component, Suspense, createElement, lazy, useState, type ReactNode } from 'react';
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import * as G from '../common/index.js';
 import { Matrix, State, noop } from './fixtures.js';
@@ -960,3 +960,58 @@ export const ContentMax1920: Story = contentMaxStory(1920, false);
 export const ContentMax1920WithAside: Story = contentMaxStory(1920, true);
 export const ContentMax2560: Story = contentMaxStory(2560, false);
 export const ContentMax2560WithAside: Story = contentMaxStory(2560, true);
+
+/* ---------- PaneGrid and a Pane built in a server component ---------- */
+
+/** What a server component's `<Pane>` is on the client: a lazy client reference that resolves to `Pane`, not the `Pane` function. */
+const ServerBuiltPane = lazy(async () => ({ default: G.Pane }));
+/** A lazy client reference that is NOT a Pane. */
+const ServerBuiltOther = lazy(async () => ({ default: () => <div>Not a pane</div> }));
+
+class RefusalBoundary extends Component<{ readonly children: ReactNode }, { readonly message: string | null }> {
+  override state: { readonly message: string | null } = { message: null };
+  static getDerivedStateFromError(error: unknown) { return { message: error instanceof Error ? error.message : String(error) }; }
+  override render() { return this.state.message === null ? this.props.children : <div data-story-refusal="true">{this.state.message}</div>; }
+}
+
+/** A Pane built in a server component reaches PaneGrid as a lazy client reference: it is recognised and drawn, never dropped. */
+export const PaneGridServerBuiltPane: Story = {
+  render: () => (
+    <div style={{ blockSize: 240 }}>
+      <Suspense fallback={<G.Text>Loading</G.Text>}>
+        <G.PaneGrid label="Server built panes" areas={['a b']}>
+          {createElement(ServerBuiltPane, { area: 'a', label: 'First', surface: true, children: <G.PaneSection><G.Text>First pane</G.Text></G.PaneSection> } as never)}
+          {createElement(ServerBuiltPane, { area: 'b', label: 'Second', surface: true, children: <G.PaneSection><G.Text>Second pane</G.Text></G.PaneSection> } as never)}
+        </G.PaneGrid>
+      </Suspense>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      expect(canvasElement.querySelectorAll('[data-grammar-pane-area]').length).toBeGreaterThanOrEqual(2);
+      expect(within(canvasElement).getByText('First pane')).toBeTruthy();
+      expect(within(canvasElement).getByText('Second pane')).toBeTruthy();
+    }, { timeout: 5000 });
+  },
+};
+
+/** A client reference that is not a Pane is refused loudly (in production too), with the message that says what to do. */
+export const PaneGridServerBuiltPaneRefused: Story = {
+  render: () => (
+    <RefusalBoundary>
+      <Suspense fallback={<G.Text>Loading</G.Text>}>
+        <G.PaneGrid label="Refused" areas={['a']}>
+          {createElement(ServerBuiltOther, { area: 'a' } as never)}
+        </G.PaneGrid>
+      </Suspense>
+    </RefusalBoundary>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const refusal = canvasElement.querySelector<HTMLElement>('[data-story-refusal="true"]');
+      if (refusal === null) throw new Error('the grid refuses the child');
+      expect(refusal.textContent).toContain('PANE_GRID_CHILD_NOT_PANE');
+      expect(refusal.textContent).toContain('"use client"');
+    }, { timeout: 5000 });
+  },
+};
