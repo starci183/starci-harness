@@ -12,7 +12,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
   - The shared scale · `contexts/grammars/contract.md#the-shared-scale` · 2 KB — A row of controls reads as one object, so its controls share one height.
   - Intent x placement -> variant · `contexts/grammars/contract.md#intent-x-placement---variant` · 2 KB — The app states what a command does; the composition states where it sits; Common's map turns the pair into a HeroUI variant.
   - Roles · `contexts/grammars/contract.md#roles` · 1 KB — Each heading is one role of contract.yaml `roles`.
-    - Card · `contexts/grammars/contract.md#card` · 3 KB — Card is one subject on its own surface, and a surface never stands inside another (a card, a `Pane surface`, a `Dialog`, `Drawer`, `AlertDialog` or `Popover`): the card has one ...
+    - Card · `contexts/grammars/contract.md#card` · 4 KB — Card is one subject on its own surface, and a surface never stands inside another (a card, a `Pane surface`, a `Dialog`, `Drawer`, `AlertDialog` or `Popover`): the card has one ...
     - Button · `contexts/grammars/contract.md#button` · 1 KB — Button is a command (`onPress`) or a destination (`href`) drawn as a button; the kind decides semantics, the shape only paints.
     - ButtonGroup · `contexts/grammars/contract.md#buttongroup` · 1 KB — An action group is two to five peers of one intent acting on one object (zoom, align).
     - Tabs · `contexts/grammars/contract.md#tabs` · 1 KB — Tabs switch whole panels; each tab owns its panel.

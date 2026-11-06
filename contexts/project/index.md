@@ -105,7 +105,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: FE-DATA-SWR One SWR hook per operation, and it returns the feature's data · FE-DATA-KEY A key carries every identity that changes the answer · FE-DATA-COMMAND A user-started write runs through a domain command hook · FE-STATE-1 Each kind of state has one owner · FE-STORAGE Browser storage goes through `modules/storage`
 - [code/fe/error.md](../code/fe/error.md) · 2 KB — How a front-end failure is represented and where it goes: a read failure becomes a region status (README), a command failure a field error or a toast, a render failure a boundary ...
   - sections: FE-ERROR-2 A failure is kept, typed and never folded into empty data · FE-ERROR-3 Hard stops where silence would be wrong · FE-ERROR-4 Server text never becomes the reason a user reads
-- [code/fe/folder.md](../code/fe/folder.md) · 7 KB — Which directory and which file a piece of front-end code gets.
+- [code/fe/folder.md](../code/fe/folder.md) · 8 KB — Which directory and which file a piece of front-end code gets.
   - sections: FE-FOLDER-1 Every source file sits in its tier folder · FE-FOLDER-2 A unit folder holds `index.tsx`, an optional `component.tsx` and an optional `classNames.ts` · FE-FOLDER-3 `hooks/` holds hooks; everything else is a module · FE-FOLDER-4 Every app has its boundary files · FE-APPS-1 One independent app per audience · FE-PACKAGES-1 A shared package builds to `dist` and exports named symbols · FE-PACKAGES-2 A shared package draws only with the grammar · FE-PACKAGES-3 One version of every dependency, from the declared stack
   - ids: fe.source-root-pinned, source-layout
 - [code/fe/form.md](../code/fe/form.md) · 2 KB — How a form is validated and submitted, and how the outcome of a write reaches the user.
@@ -160,8 +160,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, roles for gaps and levels for insets · Size and intent · One root · Idioms · Playbook shapes
 - [grammars/contract.md](../grammars/contract.md) · 37 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
-- [grammars/contract.yaml](../grammars/contract.yaml) · 113 KB — What every grammar implements.
-  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED and 176 more
+- [grammars/contract.yaml](../grammars/contract.yaml) · 112 KB — What every grammar implements.
+  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED and 173 more
 - [grammars/contributing.md](../grammars/contributing.md) · 14 KB — How a component enters `@starci/grammar`, or a prop enters a component.
   - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Render proof · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 6 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
@@ -181,8 +181,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
 - [hfs/harness.yaml](../hfs/harness.yaml) · 20 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.runtime-layer, images.sources, never.build-output, never.cli-js, never.env and 38 more
-- [hfs/rules.yaml](../hfs/rules.yaml) · 131 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
-  - ids: R01, R02, R03, R04, R05, R06, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113, R12, R13 and 274 more
+- [hfs/rules.yaml](../hfs/rules.yaml) · 132 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
+  - ids: R01, R02, R03, R04, R05, R06, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113, R12, R13 and 275 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 109 KB — The HFS slot manifest: what may exist in an app repository and where.
   - ids: app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore, app.format-config, app.git-meta and 140 more
 - [project/README.md](../project/README.md) · 10 KB — What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read for each kind of task.
@@ -252,11 +252,11 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/quote.md](../ui/components/quote.md) · 3 KB — Contract: Quote.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/segmented-control.md](../ui/components/segmented-control.md) · 2 KB — Contract: SegmentedControl.
+- [ui/components/segmented-control.md](../ui/components/segmented-control.md) · 2 KB — The Grammar has no segmented control: `SegmentedControl` is removed (the pill-in-a-track look is `Tabs appearance="primary"`, a switch of a mode or period of the same data, in a ...
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/select.md](../ui/components/select.md) · 2 KB — Contract: Select.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/tabs.md](../ui/components/tabs.md) · 4 KB — Contract: Tabs.
+- [ui/components/tabs.md](../ui/components/tabs.md) · 5 KB — Contract: Tabs.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/text-field.md](../ui/components/text-field.md) · 4 KB — Contract: Input, CopyField.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
