@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (branch feat/grammar-nivo-canvas, not published; additive, for the Nivo canvas)
+## 0.23.2 - 2026-11-06 (additive, for the Nivo canvas)
 
 - Added: `MessageBubble tone="soft"` on an outgoing bubble: the brand tint (`--accent-soft` with `--accent-soft-foreground`), for an agent speaking on the reader's behalf (owner ruling 2026-11-06: no new token). Story `MessageBubbleTones`.
 - Added: `RelativeTime style="compact"`: the amount and its unit alone ("2 min", "2 phut") for the end of a row's title line (relative mode). Story `CompactRelativeTime`.
