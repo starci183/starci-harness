@@ -51,7 +51,7 @@ An inset steps down one level each time a box sits inside another, and an inner 
 | Level | Box | Inset (owner token) |
 | --- | --- | --- |
 | 0 frame | the page gutter; the overlay as a floating page | gutter 12, 24 from the medium breakpoint (48rem), 32 from wide (70rem), stepped, never fluid (`--grammar-page-inset`), except on `Page chrome="panes"`, where the header takes 12 at every width so the gutter column starts at the pane content edge; a dialog or drawer 12 on every side (`--grammar-overlay-inset`) |
-| 1 surface | a card (dense or holding a form or prose alike), a pane, a face of a bands card | 12 on every side (`--grammar-inset`, `--grammar-card-padding-*`, `--grammar-pane-inset-*`) |
+| 1 surface | a card (dense or holding a form or prose alike), a pane, a zone of a card | 12 on every side (`--grammar-inset`, `--grammar-card-padding-*`, `--grammar-pane-inset-*`) |
 | 2 box in a surface | a notice in a card, a `Quote`, a list option, a table cell's block side, a stat cell (never a card: a surface does not stand in a surface) | 8 (`--grammar-inset-nested`) |
 | 3 control | a button, field, tab, chip, badge | the control's height decides the block padding; inline sm 8, md 12, lg 24, one step less on a glyph's side (`--grammar-control-padding-*`) |
 
@@ -109,7 +109,7 @@ Margin:
   container (a form card, a reading measure), an absolutely placed marker (a badge on an avatar), and a vendor part's
   internal offset kept for parity.
 - **M2 Bleed is an API, never a negative margin**: `PaneSection bleed="inline"` (a horizontal chip row reaching both
-  pane edges, the inset becoming its scroll padding), `SurfaceCard kind="bands"` (faces to the card edge), the
+  pane edges, the inset becoming its scroll padding), `SurfaceCard` `headers` and `footers` (zones to the card edge), the
   artwork band of a painted card.
 
 ### Text edge
@@ -131,7 +131,7 @@ the spacing of that row: a role prop or nothing, never a gap, margin, padding or
 | Page tabs (underline) | labels 24 apart | first label 0, 12 per side | none | `header.tabs` |
 | Sidebar item and rail | items identity, groups section | item 12 by derived 40; collapsed rail 12 | none | `groups` data |
 | `Section` | head, filter and content one section step (24) apart; title to count identity | none: the section adds none | none | `title`, `kind` |
-| `SurfaceCard`, any kind | bands row; label to card row; label to fact inline; title to meta identity; seams between faces 0 | 12 on every side; a face of a bands card the same, so a seam runs full-bleed | none | `kind`, `label`, `fact`, `footer` |
+| `SurfaceCard`, any kind | zones row; label to card row; label to fact inline; title to meta identity; seams between zones 0 | 12 on every side; a zone of a card the same, so a seam runs full-bleed | none | `kind`, `label`, `fact`, `footer` |
 | `kind="list"` rows | rows divided by lines (n-1, seam 0) or by gap, never both | row 8 block, the content inset inline (a 40 row for one line) | none | `items` |
 | `kind="figures"` | cells touching (0) with a line between cells and rows; label to figure to meta identity | cell 8 | none | `items` |
 | `kind="tile"` | mark to name inline; status and action at the bottom row | 12 | none | `name`, `mark`, `badge`, `action` |
@@ -239,10 +239,10 @@ A surface and its foreground always travel as a pair. Prefer the earliest that w
 | --- | --- | --- |
 | SURFACE-1 | none: inherit the parent face | a layout container whose children own their faces; a chat or log scroll region on the background tone |
 | SURFACE-2 | surface face + surface foreground | one bounded object (the card face); grammar-painted |
-| SURFACE-3 | secondary surface + foreground | a neutral recessed band inside a bands card |
+| SURFACE-3 | secondary surface + foreground | a neutral recessed band inside a card zone |
 | SURFACE-4 | accent-soft + a foreground paired with it (its soft accent text on a band; the default foreground and muted on a whole card, `SurfaceCard treatment="soft"`) | a band or a card the product deliberately raises; it still says in words why |
 | SURFACE-5 | success-soft under the neutral foreground | a band whose outcome authority settled; before settlement it stays SURFACE-3 |
-| SURFACE-6 | full accent, no foreground | a decorative slab carrying no copy and no control; inside a card it is the bands card's first face, edge to edge |
+| SURFACE-6 | full accent, no foreground | a decorative slab carrying no copy and no control; inside a card it is a `custom` header zone |
 
 Soft faces are translucent, so contrast is measured on the composed pixels, never on the token.
 

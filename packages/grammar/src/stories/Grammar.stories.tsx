@@ -154,7 +154,7 @@ export const TasksScreen: Story = {
               label="All tasks"
               headingLevel={2}
               fact="4 tasks"
-              footer={<Text tone="muted">Completed tasks stay here until you delete them.</Text>}
+              note={<Text tone="muted">Completed tasks stay here until you delete them.</Text>}
               empty={<EmptyNotice message="No tasks yet." />}
               items={[
                 taskRow('Plan the week', false),

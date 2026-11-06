@@ -1,6 +1,7 @@
 "use client"
 
 import { Link as HeroLink } from "@heroui/react"
+import type { CSSProperties } from "react"
 import { usePaneContext } from "../../paneContext.js"
 import type { Figure } from "../../surfaceCardData.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
@@ -32,7 +33,7 @@ export const FigureCells = ({ items, isLoading, isDisabled = false }: { readonly
             {...(isLoading ? { "aria-busy": true, "data-loading": "true" } : {})}
         >
             {items.map((item) => (
-                <div key={item.id} className="starci-core-description-pair" data-grammar-description-pair="true" data-grammar-figure-destination={item.href === undefined ? undefined : "true"}>
+                <div key={item.id} className="starci-core-description-pair" style={{ "--starci-core-figure-chars": String(item.value).length } as CSSProperties} data-grammar-description-pair="true" data-grammar-figure-destination={item.href === undefined ? undefined : "true"}>
                     <dt className="starci-core-description-term starci-core-description-stat-term">
                         {item.icon === undefined ? null : <IconTile source={item.icon} size="sm" tone="neutral" />}
                         <span>{item.term}</span>

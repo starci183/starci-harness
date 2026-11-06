@@ -309,8 +309,8 @@ export const SurfaceCardList: Story = {
   name: 'SurfaceCard kind list',
   render: () => (
     <Matrix maxWidth={640}>
-      <State label="Rows with states, a fact and a footer" direction="column">
-        <G.SurfaceCard kind="list" label="Checks" fact="4 items" footer={<G.Text tone="muted" size="sm">Updated just now.</G.Text>} items={checkRows} empty={<G.EmptyNotice message="Nothing to check." />} />
+      <State label="Rows with states, a fact and a note" direction="column">
+        <G.SurfaceCard kind="list" label="Checks" fact="4 items" note={<G.Text tone="muted" size="sm">Updated just now.</G.Text>} items={checkRows} empty={<G.EmptyNotice message="Nothing to check." />} />
       </State>
       <State label="Verdict collection (a row reports a direction)" direction="column">
         <G.SurfaceCard
@@ -602,31 +602,32 @@ export const SurfaceCardFigures: Story = {
   ),
 };
 
-/** `kind="bands"`: faces divided by seams the shell draws, then at most one collection, last. */
-export const SurfaceCardBands: Story = {
-  name: 'SurfaceCard kind bands',
+/** Header zones above a list: a custom face and a figures strip, divided by the seams the shell draws. */
+export const SurfaceCardZoneFaces: Story = {
+  name: 'SurfaceCard header zones',
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Body, figures, then a list" direction="column">
         <G.SurfaceCard
-          kind="bands"
+          kind="list"
           label="Workspace"
-          bands={[
-            { kind: 'body', children: <G.Text>Support runs on the Team plan, owned by Alex Morgan.</G.Text> },
+          headers={[
+            { kind: 'custom', children: <G.Text>Support runs on the Team plan, owned by Alex Morgan.</G.Text> },
             { kind: 'figures', items: stripFigures.slice(0, 3) },
-            { kind: 'list', items: checkRows.slice(0, 2), empty: <G.EmptyNotice message="Nothing to check." /> },
           ]}
+          items={checkRows.slice(0, 2)}
+          empty={<G.EmptyNotice message="Nothing to check." />}
         />
       </State>
-      <State label="A media face, then a body face" direction="column">
+      <State label="A custom picture zone, then a body" direction="column">
         <G.SurfaceCard
-          kind="bands"
           label="Launch"
-          bands={[
-            { kind: 'media', artwork: <G.Image src={placeholderImage('Launch', 20)} alt="Launch artwork" aspect="wide" loading="eager" assetSlot="story.bands-media" /> },
-            { kind: 'body', children: <G.Text>The first face is a decorative slab, edge to edge.</G.Text> },
+          headers={[
+            { kind: 'custom', children: <G.Image src={placeholderImage('Launch', 20)} alt="Launch artwork" aspect="wide" loading="eager" assetSlot="story.zone-media" /> },
           ]}
-        />
+        >
+          <G.Text>A custom header zone holds one picture; the body below is padded by the card.</G.Text>
+        </G.SurfaceCard>
       </State>
     </Matrix>
   ),

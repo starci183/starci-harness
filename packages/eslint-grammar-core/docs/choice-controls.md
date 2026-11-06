@@ -6,6 +6,32 @@ The Grammar draws no group of attached buttons. A choice among a few has one com
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline.
 
+## Which component switches what
+
+- `Tabs` switches the views or periods of one block, or filters its list: the primary underline, `kind="filter"` in the block's `filter` (or `toolbar`) header zone of a `SurfaceCard`, one line under the strip.
+- `ChoiceChips` or `RadioGroup` chooses a value of a form.
+- A `Button` holds a command, never a selection state; a `ButtonGroup` holds commands only.
+- Two joined buttons or pills acting as tabs ("This month / Last month") are banned.
+
+## `starci-grammar/no-button-view-switch`
+
+Finding code: `FE_GROUPED_CHOICE_CONTROL` (R380). Two or more adjacent `Button` or `IconButton` elements, or one written in a `.map`, that carry `aria-pressed`, `isSelected` or `isActive` are a view switch drawn as buttons and are a finding; one toggle button on its own is a command with a state and is not. Use `Tabs`.
+
+**Invalid** (`src/components/blocks/Cash/component.tsx`)
+
+```tsx
+<div>
+  <Button aria-pressed={period === "this"} onPress={() => setPeriod("this")}>This month</Button>
+  <Button aria-pressed={period === "last"} onPress={() => setPeriod("last")}>Last month</Button>
+</div>
+```
+
+**Valid**
+
+```tsx
+<SurfaceCard kind="list" label="Cash" headers={[{ kind: "filter", label: "Period", items, selectedKey: period, onSelect: setPeriod }]} items={rows} empty={empty} />
+```
+
 ## `starci-grammar/no-grouped-choice-controls`
 
 A JSX element named `ButtonGroup`, `FilterButtonGroup` or `SegmentedControl` (bare or as a member) in product source is a finding; the message names the replacement for that component.

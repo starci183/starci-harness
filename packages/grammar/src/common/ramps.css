@@ -110,6 +110,12 @@
         --starci-core-rail-standard-min: 16rem;
         --starci-core-rail-wide-min: 20rem;
         --starci-core-tabs-pending-height: var(--starci-core-control-min-size);
+        /* The line under a tab strip (its own, or the host divider it stands on): one stroke; a family may thicken it on its own root. */
+        --starci-core-tabs-line-width: 1px;
+        /* The width of one digit of a figure, as a share of its font size (tabular numerals, semibold), so a cell can be sized from its value. */
+        --starci-core-figure-digit: 0.66;
+        /* The number of characters of a figure value, set by each cell from its value (the cell is sized from it); one until a cell says. */
+        --starci-core-figure-chars: 1;
         --starci-core-rail-compact: 16rem;
         --starci-core-rail-standard: 20rem;
         --starci-core-rail-wide: 24rem;

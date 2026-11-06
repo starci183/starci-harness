@@ -119,14 +119,13 @@ const assertPageHeaderBand = async (canvasElement: HTMLElement, withTabs: boolea
   await waitFor(() => {
     const band = canvasElement.querySelector<HTMLElement>('[data-component="PageHeader"]');
     const body = band?.querySelector<HTMLElement>('.starci-core-page-header-body');
-    const separator = band?.querySelector<HTMLElement>('[data-grammar-page-header-separator] [data-component="Divider"]');
     const content = canvasElement.querySelector<HTMLElement>('[data-grammar-page-body="true"]');
-    if (!band || !body || !separator || !content) throw new Error('PageHeader band, body, separator and content must render');
+    if (!band || !body || !content) throw new Error('PageHeader band, body and content must render');
     const bandBox = band.getBoundingClientRect();
-    const separatorBox = separator.getBoundingClientRect();
-    expect(Math.abs(separatorBox.left - bandBox.left)).toBeLessThanOrEqual(0.5);
-    expect(Math.abs(separatorBox.right - bandBox.right)).toBeLessThanOrEqual(0.5);
-    expect(Math.abs(separatorBox.bottom - bandBox.bottom)).toBeLessThanOrEqual(0.5);
+    // The band's own bottom border is the one separator: full width, on the band's bottom edge, with no Divider drawn beside it.
+    expect(Number.parseFloat(getComputedStyle(band).borderBottomWidth)).toBeGreaterThan(0);
+    expect(band.querySelector('[data-component="Divider"]')).toBeNull();
+    const separatorBox = { bottom: bandBox.bottom };
     const bodyStyle = getComputedStyle(body);
     const contentStyle = getComputedStyle(content);
     expect(Math.abs(body.getBoundingClientRect().left + Number.parseFloat(bodyStyle.paddingLeft) - (content.getBoundingClientRect().left + Number.parseFloat(contentStyle.paddingLeft)))).toBeLessThanOrEqual(0.5);
@@ -888,8 +887,8 @@ const assertPagePanes = async (canvasElement: HTMLElement) => {
   await waitFor(() => {
     const page = canvasElement.querySelector<HTMLElement>('[data-component="Page"][data-grammar-page-chrome="panes"]');
     const grid = page?.querySelector<HTMLElement>('[data-component="PaneGrid"]');
-    const separator = page?.querySelector<HTMLElement>('.starci-core-page-header-separator');
-    if (!page || !grid || !separator) throw new Error('the panes Page, its separator and its grid render');
+    const separator = page?.querySelector<HTMLElement>('[data-component="PageHeader"]');
+    if (!page || !grid || !separator) throw new Error('the panes Page, its header band and its grid render');
     // Attached flush under the tab line, no gap; both content edges; the viewport bottom.
     expect(Math.abs(grid.getBoundingClientRect().top - separator.getBoundingClientRect().bottom)).toBeLessThanOrEqual(1);
     expect(Math.abs(grid.getBoundingClientRect().left - page.getBoundingClientRect().left)).toBeLessThanOrEqual(0.5);

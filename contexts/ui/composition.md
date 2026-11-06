@@ -233,8 +233,8 @@ values of one kind entered by the user are one single-value field per row with i
 command, never a "one per line" textarea.
 
 ### COLLECTION-2 A card is one subject
-A card presents one entity or one summary of one subject. Several kinds of content of that subject are bands of
-the same card (`kind="bands"`), divided by the seams the shell draws, never inner cards and never a `Divider`. Comparing
+A card presents one entity or one summary of one subject. Several kinds of content of that subject are zones of
+the same card (`headers` above the body, `footers` below it), divided by the seams the shell draws, never inner cards and never a `Divider`. Comparing
 a fact across peers is rows, in a list card or a section; recognising and opening a peer is a tile (`kind="tile"`), several
 of which stand in a `Grid kind="cards"`. Equal labelled cards that each repeat a heading are neither. A surface never
 stands inside another surface. See [components/card.md](components/card.md).

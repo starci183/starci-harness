@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.24.0 - 2026-11-06
+
+- Added: `no-button-view-switch` (R380, `FE_GROUPED_CHOICE_CONTROL`): two or more adjacent `Button` or `IconButton` elements, or one in a `.map`, carrying `aria-pressed`, `isSelected` or `isActive` are joined buttons or pills acting as tabs; use `Tabs` in the block's `filter` header zone. `docs/choice-controls.md` says which component switches what.
+- Changed: with `@starci/grammar` 0.24.0 (the family shares a minor). `surface-card-kind` (R355) refuses a `Tabs`, `SearchField` or `Divider` inside a `{ kind: "custom" }` zone of a `SurfaceCard` or `Board` `headers` or `footers` array (message `zone`), and its messages and the `no-raised-surface-in-surface` fix name the typed zones instead of the removed `kind="bands"` and the renamed `footer` (now `note`).
+
 ## 0.23.2 - 2026-11-06
 
 - Changed: the peer range of `@starci/eslint-canon-fe` follows the canon's new minor (`~9.16.0`, eslint-canon-fe 9.16.0); no rule of this package changed. Grammar stays at 0.23.3 (a lint patch never re-releases it).

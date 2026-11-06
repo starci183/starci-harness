@@ -1,5 +1,5 @@
 /**
- * Twin tests for the card laws: R355 (a body card holds no hand list, Divider or second title) and R366 (a labelled
+ * Twin tests for the card laws: R355 (a body card holds no hand list, Divider or second title; a custom zone holds no Tabs, SearchField or Divider) and R366 (a labelled
  * card is not repeated in a card grid).
  *
  *   node --test src/surface-card.spec.ts
@@ -11,7 +11,7 @@ import { noLabelInGrid, recommended, rules, surfaceCardKind } from "./surface-ca
 
 const BLOCK = at("apps/web/src/components/blocks/Runs/component.tsx")
 const SCRIPT = at("scripts/render.tsx")
-const IMPORTS = "import { SurfaceCard, Section, Grid, Divider, SectionHeader, Heading, Text } from \"@starci/grammar/core\"\n"
+const IMPORTS = "import { SurfaceCard, Section, Grid, Divider, SectionHeader, Heading, Text, Tabs, SearchField } from \"@starci/grammar/core\"\n"
 
 test("the law publishes two rules and both are errors", () => {
   assert.deepEqual(Object.keys(rules), ["surface-card-kind", "no-label-in-grid"])
@@ -32,6 +32,8 @@ test("R355: a body card holds no hand list, no Divider, no second title", () => 
       // another source's card
       { filename: BLOCK, code: "import { SurfaceCard } from \"other-kit\"\nexport const A = () => <SurfaceCard><ul><li>x</li></ul></SurfaceCard>" },
       { filename: SCRIPT, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><ul><li>x</li></ul></SurfaceCard>" },
+      // a custom zone holding copy is fine; the typed zones carry the search
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard kind=\"list\" label=\"Run\" items={[]} empty={null} headers={[{ kind: \"custom\", children: <Text>Note</Text> }, { kind: \"search\", label: \"Find\", value: \"\", onChange }]} />" },
     ],
     invalid: [
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><ul><li>x</li></ul></SurfaceCard>", errors: [{ messageId: "list" }] },
@@ -39,6 +41,9 @@ test("R355: a body card holds no hand list, no Divider, no second title", () => 
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><Text>a</Text><Divider /><Text>b</Text></SurfaceCard>", errors: [{ messageId: "divider" }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><SectionHeader title=\"Steps\" /></SurfaceCard>", errors: [{ messageId: "title" }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><Heading level={3}>Steps</Heading></SurfaceCard>", errors: [{ messageId: "title" }] },
+      // a custom zone holds none of the parts the typed zones draw
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard kind=\"list\" label=\"Run\" items={[]} empty={null} headers={[{ kind: \"custom\", children: <Tabs label=\"x\" items={[]} /> }]} />", errors: [{ messageId: "zone" }] },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard kind=\"list\" label=\"Run\" items={[]} empty={null} footers={[{ kind: \"custom\", children: <><Text>a</Text><Divider /></> }]} />", errors: [{ messageId: "zone" }] },
     ],
   })
 })

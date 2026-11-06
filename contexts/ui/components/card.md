@@ -19,7 +19,7 @@ for a kind does not compile). The first row that applies wins.
 | disclosure | one summary that reveals a rarely changed region | `kind="accordion"`, closed by default | judgement |
 | figures | a standalone row of key figures on the page canvas | `kind="figures"` (DISCIPLINE-2): touching cells with lines between cells and rows | type: typed figures; candidate: cells at most `budgets.ribbonCells` |
 | whole | the whole card is one destination or command | `wholeAction`, present only where the card holds no inner control (STATE-5) | type: a nested interactive does not compile |
-| kinds | several kinds of content about one subject | `kind="bands"`: `body`, `figures` and `media` faces, then at most one collection, last; the shell draws the seams, never inner cards or a `Divider` | type; R355; candidate: separators at most `budgets.hairlinesPerCard` |
+| kinds | several kinds of content about one subject | typed `headers` above and `footers` below any kind's body: `filter`, `search`, `toolbar`, `figures`, `custom` and `more`, `paging`, `custom`; the shell pads them and draws the one divider between zones and the body, never inner cards or a `Divider`; a `custom` zone holds no `Tabs`, `SearchField` or `Divider` | type; R355; candidate: separators at most `budgets.hairlinesPerCard` |
 | tile | one of several peers repeated in a grid, each a thing to recognise or open (a provider, a template, a product) | `kind="tile"`: its name inside with its typed mark or media poster, operational badges and one visible action; further commands use its menu, in `Grid kind="cards"` | type: poster image/absence, single/three badges and wholeAction/inner controls are exclusive; a tile has no `label`; R366 |
 | entity | one entity or one summary of one subject, heading its section | `SurfaceCard` of the default `body` kind: label outside | judgement |
 
@@ -27,7 +27,7 @@ Choice `card.choose.label`: where the card's name sits. The kind decides, in bot
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| section | the card heads a section: `body`, `list`, `accordion`, `figures`, `bands` | `label` as an unpainted row above the material, `fact` the count, `labelEnd` the action, `footer` the note | `DNA-COMMON-CARD-LABEL-ABOVE`, `DNA-CORE-CARD-LABEL-OUTSIDE`, `DNA-OFFSET-POP-CARD-LABEL-OUTSIDE`; R354 |
+| section | the card heads a section: `body`, `list`, `accordion`, `figures` | `label` as an unpainted row above the material, `fact` the count, `labelEnd` the action, `note` the muted line under the card | `DNA-COMMON-CARD-LABEL-ABOVE`, `DNA-CORE-CARD-LABEL-OUTSIDE`, `DNA-OFFSET-POP-CARD-LABEL-OUTSIDE`; R354 |
 | tile | the card is one peer in a grid | `name` and `mark` inside, no label, fact, labelEnd or ariaLabel title | type; R366 |
 | docked | the region is docked in a layout | not a card: a `Pane` | R345 to R349 |
 
@@ -58,7 +58,7 @@ stay legal.
 The face is the grammar's, and the card has one depth, raised. A surface never stands inside another surface: a card in a
 card, in `Pane surface`, in a `Dialog`, `Drawer`, `AlertDialog` or `Popover` is refused by a development throw and R340
 (`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`); across files the render graph refuses it too (R356). What sits in a surface is a box at the nested inset (a notice, a `Quote`, a
-stat cell), not a card. A decorative slab belongs to the bands card's first face, edge to edge (SURFACE-6, ruling
+stat cell), not a card. A decorative slab is a `custom` header zone of the card or the artwork of a painted card (SURFACE-6, ruling
 `band-is-first-face`).
 
 ## Size

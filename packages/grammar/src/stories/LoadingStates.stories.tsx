@@ -107,12 +107,14 @@ export const SurfaceCardAccordionStates: Story = {
     ),
 }
 
-export const SurfaceCardBandsStates: Story = {
+export const SurfaceCardZonesStates: Story = {
     render: () => {
         const bands = (list: ReadonlyArray<G.ListRowData>): G.SurfaceCardProps => ({
-            kind: "bands",
+            kind: "list",
             label: "Team",
-            bands: [{ kind: "figures", items: figures }, { kind: "list", items: list, empty: emptyLine }],
+            headers: [{ kind: "figures", items: figures }],
+            items: list,
+            empty: emptyLine,
         })
         return (
             <Matrix maxWidth={720}>

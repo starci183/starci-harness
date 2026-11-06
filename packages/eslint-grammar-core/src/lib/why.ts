@@ -17,6 +17,11 @@ export const why: Record<string, WhyEntry> = {
     en: "A StatusDot or Badge label in `<file>` starts with a lowercase letter.",
     fix: "Start the label with an uppercase letter (`Running`, not `running`); the rule fixes a literal label in place.",
   },
+  "no-button-view-switch": {
+    code: "FE_GROUPED_CHOICE_CONTROL",
+    en: "Buttons carrying `aria-pressed`, `isSelected` or `isActive` stand side by side in `<file>`: joined buttons or pills acting as tabs.",
+    fix: "Switching between views or periods of one block is `Tabs` (the primary underline) in the block's `filter` header zone of its card; choosing a form value is `ChoiceChips` or `RadioGroup`; a `Button` holds a command, never a selection state.",
+  },
   "no-grouped-choice-controls": {
     code: "FE_GROUPED_CHOICE_CONTROL",
     en: "A ButtonGroup, FilterButtonGroup or SegmentedControl in `<file>` draws a group of attached buttons, which the Grammar no longer has.",
@@ -115,7 +120,7 @@ export const why: Record<string, WhyEntry> = {
   "no-raised-surface-in-surface": {
     code: "FE_RAISED_SURFACE_IN_SURFACE",
     en: "A `SurfaceCard` in `<file>` stands inside another SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover: a surface never stands inside a surface.",
-    fix: "Give the content to the host's own body, or use a kind of the outer card (`bands`, `list`, `figures`) for what needs its own faces.",
+    fix: "Give the content to the host's own body, or use a kind of the outer card (`list`, `figures`) or its typed `headers` and `footers` zones for what needs its own faces.",
   },
   "no-shell-bottom-tabs": {
     code: "FE_APP_SHELL_BOTTOM_TABS",
@@ -124,8 +129,8 @@ export const why: Record<string, WhyEntry> = {
   },
   "surface-card-kind": {
     code: "FE_SURFACE_CARD_KIND",
-    en: "A `body` SurfaceCard in `<file>` holds a hand-built list, a Divider, a SectionHeader or Heading as a second title.",
-    fix: "Rows are `kind=\"list\"`, key figures `kind=\"figures\"`, faces divided by seams `kind=\"bands\"`; the card's title is its `label`.",
+    en: "A `body` SurfaceCard in `<file>` holds a hand-built list, a Divider, a SectionHeader or Heading as a second title, or a `custom` zone holds a Tabs, SearchField or Divider.",
+    fix: "Rows are `kind=\"list\"`, key figures `kind=\"figures\"`, bands divided by seams the typed `headers` and `footers` zones (`filter`, `search`, `toolbar`, `figures`, `more`, `paging`); the card's title is its `label`.",
   },
   "status-text-uses-soft-foreground": {
     code: "FE_STYLE_TOKEN_ONLY",

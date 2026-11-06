@@ -66,11 +66,21 @@ export const surfaceOrbitClassName = cn("starci-core-surface-orbit") ?? "starci-
 
 /** Keeps the peer fact at the same visual level as its owning label. */
 export const surfaceFactClassName = cn("starci-core-surface-fact") ?? "starci-core-surface-fact"
-/** Identifies the optional footer region: a small muted note under the card. */
-export const surfaceFooterClassName = cn("starci-core-surface-footer") ?? "starci-core-surface-footer"
+/** Identifies the optional note region: a small muted line under the card. */
+export const surfaceNoteClassName = cn("starci-core-surface-note") ?? "starci-core-surface-note"
 /** Identifies the collection region of a list, shared by verdict and ordinary lists. */
 export const collectionClassName = cn("starci-core-owned-collection") ?? "starci-core-owned-collection"
-/** Identifies one face of a `bands` card. */
-export const surfaceBandClassName = cn("starci-core-surface-band") ?? "starci-core-surface-band"
 /** Identifies a tile's anatomy: mark, name, copy and the foot row. */
 export const tileClassName = cn("starci-core-tile") ?? "starci-core-tile"
+/** One typed zone above or below a card's body (filter, search, toolbar, figures, more, paging, custom). */
+export const surfaceZoneClassName = cn("starci-core-surface-zone") ?? "starci-core-surface-zone"
+/** The row of a toolbar zone: the filter tabs lead, the search trails. */
+export const surfaceZoneRowClassName = cn("starci-core-surface-zone-row") ?? "starci-core-surface-zone-row"
+/** The compact search field of a toolbar zone, drawn from its wide width. */
+export const surfaceZoneSearchWideClassName = cn("starci-core-surface-zone-search-wide") ?? "starci-core-surface-zone-search-wide"
+/** The search button of a toolbar zone, drawn below its wide width. */
+export const surfaceZoneSearchToggleClassName = cn("starci-core-surface-zone-search-toggle") ?? "starci-core-surface-zone-search-toggle"
+/** The search row a toolbar's search button opens (narrow widths only). */
+export const surfaceZoneSearchOpenClassName = cn("starci-core-surface-zone-search-open") ?? "starci-core-surface-zone-search-open"
+/** The body between the header and footer zones of a card. */
+export const surfaceMainClassName = cn("starci-core-surface-main") ?? "starci-core-surface-main"

@@ -6,15 +6,32 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
-import { noGroupedChoiceControls, recommended, rules } from "./choice-controls.ts"
+import { noButtonViewSwitch, noGroupedChoiceControls, recommended, rules } from "./choice-controls.ts"
 
 const BLOCK = at("apps/web/src/components/blocks/Booking/component.tsx")
 const SCRIPT = at("scripts/build.tsx")
 const grouped = (component: string, replacement: string) => [{ messageId: "grouped" as const, data: { component, replacement } }]
 
-test("the law publishes one rule and it is an error", () => {
-  assert.deepEqual(Object.keys(rules), ["no-grouped-choice-controls"])
-  assert.deepEqual(recommended, { "starci-grammar/no-grouped-choice-controls": "error" })
+test("the law publishes two rules and both are errors", () => {
+  assert.deepEqual(Object.keys(rules), ["no-grouped-choice-controls", "no-button-view-switch"])
+  assert.deepEqual(recommended, { "starci-grammar/no-grouped-choice-controls": "error", "starci-grammar/no-button-view-switch": "error" })
+})
+
+test("R380: Buttons carrying a selection state side by side are a view switch", () => {
+  slotTester().run("no-button-view-switch", noButtonViewSwitch, {
+    valid: [
+      // one toggle on its own is a command with a state
+      { filename: BLOCK, code: "export const A = () => <div><Button aria-pressed={on} onPress={t}>Mute</Button><Button onPress={s}>Save</Button></div>" },
+      // buttons with no selection state
+      { filename: BLOCK, code: "export const A = () => <div><Button onPress={a}>Cancel</Button><Button onPress={b}>Save</Button></div>" },
+      { filename: BLOCK, code: "export const A = () => <Tabs label=\"Period\" kind=\"filter\" items={items} />" },
+      { filename: SCRIPT, code: "export const A = () => <div><Button isSelected>a</Button><Button>b</Button></div>" },
+    ],
+    invalid: [
+      { filename: BLOCK, code: "export const A = () => <div><Button aria-pressed={p === \"this\"} onPress={a}>This month</Button><Button aria-pressed={p === \"last\"} onPress={b}>Last month</Button></div>", errors: [{ messageId: "switch" }, { messageId: "switch" }] },
+      { filename: BLOCK, code: "export const A = () => <div>{periods.map((p) => <Button key={p.id} isSelected={p.id === current} onPress={() => set(p.id)}>{p.label}</Button>)}</div>", errors: [{ messageId: "switch" }] },
+    ],
+  })
 })
 
 test("R380: a grouped choice control is red and names its replacement", () => {

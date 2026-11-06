@@ -8,11 +8,12 @@ import { assertPresentationState, treatmentFor, type PresentationState } from ".
 import type {
     AccordionData,
     AccordionRowData,
-    Band,
     CardHead,
-    Collection,
     Figure,
+    FooterZone,
+    HeaderZone,
     ListData,
+    TableData,
     TileData,
     WholeCardAction,
 } from "../../surfaceCardData.js"
@@ -23,15 +24,17 @@ import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import { AccordionRows } from "./AccordionRows.js"
 import { FigureCells, figureItems } from "./FigureCells.js"
 import { ListRows } from "./ListRows.js"
+import { TableRows } from "./TableRows.js"
 import { SurfaceCardTile } from "./SurfaceCardTile.js"
+import { FooterZoneView, HeaderZoneView } from "./Zones.js"
 import {
     getSurfaceCardClassName,
     getSurfaceContentClassName,
     surfaceArtworkClassName,
-    surfaceBandClassName,
     surfaceClassName,
     surfaceFactClassName,
-    surfaceFooterClassName,
+    surfaceMainClassName,
+    surfaceNoteClassName,
     surfaceHighlightClassName,
     surfaceHighlightSweepClassName,
     surfaceLabelClassName,
@@ -43,8 +46,8 @@ import {
 } from "./classNames.js"
 
 export type {
-    AccordionData, AccordionRowData, AvatarData, BadgeData, Band, CardHead, Collection, Figure, ImageData, ItemAction, ItemLeading,
-    ItemMenu, ListData, ListRowData, TileData, TileMark, TilePoster, WholeCardAction,
+    AccordionData, AccordionRowData, AvatarData, BadgeData, CardHead, Collection, Figure, FilterFields, FooterZone, HeaderZone, ImageData, ItemAction, ItemLeading,
+    ItemMenu, ListData, ListRowData, SearchFields, TableColumnData, TableData, TableGroupData, TableRowData, TileData, TileMark, TilePoster, WholeCardAction,
 } from "../../surfaceCardData.js"
 
 /** Every card names itself: a visible `label`, or an `ariaLabel` when the surrounding owner already shows the name. */
@@ -86,8 +89,16 @@ type InkSurfaceCard = {
 
 /** What every card has: a note under it, a skeleton state, a highlight, a presentation state. */
 type Shell = {
-    /** A note under the card: the same small muted line, full width. */
-    readonly footer?: ReactNode
+    /** A note under the card: a small muted line, full width. */
+    readonly note?: ReactNode
+    /**
+     * Typed zones above the body, top to bottom (the first sits right under the label). The shell draws the ONE divider between
+     * neighbouring zones and between a zone and the body; a `Divider` in a zone is refused. A `filter` or `toolbar` zone's divider
+     * IS the line under its tabs. Loading, error and empty draw in the body; the zones keep their geometry while loading.
+     */
+    readonly headers?: readonly HeaderZone[]
+    /** Typed zones below the body, top to bottom, divided from it and from each other by one divider. */
+    readonly footers?: readonly FooterZone[]
     /**
      * The first read has no data yet (knowledge STATE-8): the card keeps its ready geometry, drawn from the content it was
      * given, with the label kept. A refresh that has data is not loading. A card inside a loading region follows the region.
@@ -122,12 +133,8 @@ type FiguresCard = Shell & (Labelled | SelfNamed) & Head & {
 
 type ListCard = Shell & (Labelled | SelfNamed) & Head & ListData
 type AccordionCard = Shell & (Labelled | SelfNamed) & Head & AccordionData
-
-/** Any number of faces, then at most one collection, last. The shell draws the seams; a `Divider` is refused. */
-type BandsCard = Shell & (Labelled | SelfNamed) & Head & {
-    readonly kind: "bands"
-    readonly bands: readonly [...Band[], Band | Collection]
-}
+/** A table Grammar owns: columns, rows or day groups under heading rows, one column header, every line to the card's edges. */
+type TableCard = Shell & (Labelled | SelfNamed) & Head & TableData
 
 /**
  * A tile: a peer you recognise and open (a provider, a connector). It has no `label`, `fact` or `labelEnd`: its name
@@ -141,7 +148,7 @@ type TileCard = Shell & TileData & {
     readonly labelEnd?: undefined
 }
 
-export type SurfaceCardProps = BodyCard | FiguresCard | ListCard | AccordionCard | BandsCard | TileCard
+export type SurfaceCardProps = BodyCard | FiguresCard | ListCard | AccordionCard | TableCard | TileCard
 
 /**
  * The orbit motif: three thin concentric rings with five small nodes, one static SVG. It is drawn in the
@@ -168,26 +175,6 @@ const OrbitMotif = () => (
     </svg>
 )
 
-const BandView = ({ band, isLoading, isDisabled }: { readonly band: Band | Collection; readonly isLoading: boolean; readonly isDisabled: boolean }) => {
-    switch (band.kind) {
-        case "body":
-            return (
-                <div className={surfaceBandClassName} data-grammar-band="body">
-                    {band.label === undefined ? null : <Label as="h4">{band.label}</Label>}
-                    {band.children}
-                </div>
-            )
-        case "figures":
-            return <div className={surfaceBandClassName} data-grammar-band="figures"><FigureCells items={band.items} isLoading={isLoading} isDisabled={isDisabled} /></div>
-        case "media":
-            return <div className={surfaceBandClassName} data-grammar-band="media">{band.artwork}</div>
-        case "list":
-            return <div className={surfaceBandClassName} data-grammar-band="list"><ListRows data={band} isLoading={isLoading} /></div>
-        case "accordion":
-            return <div className={surfaceBandClassName} data-grammar-band="accordion"><AccordionRows data={band} isLoading={isLoading} /></div>
-    }
-}
-
 const kindOf = (props: SurfaceCardProps) => props.kind ?? "body"
 
 const PLACEHOLDER_DISCLOSURES: readonly AccordionRowData[] = [1, 2, 3].map((n) => ({ id: `loading-${n}`, title: "Loading", body: null, isOpen: false }))
@@ -195,7 +182,7 @@ const PLACEHOLDER_DISCLOSURES: readonly AccordionRowData[] = [1, 2, 3].map((n) =
 /**
  * The one card: a bounded object with its own face (COLLECTION-2). What it holds is its `kind`, a discriminated
  * union the compiler checks in every file: a plain `body` (the default), a strip of `figures`, a `list` of rows, an
- * `accordion`, `bands` (faces divided by seams, ending in at most one collection), or a `tile`.
+ * `accordion`, a `table` or a `tile`; any kind may carry typed `headers` and `footers` (zones the shell pads and divides).
  *
  * Where the name sits follows the kind (ruling `card-label-by-kind`): a card that heads a section has a `label`, drawn
  * outside the material as an unpainted row above it; a tile has its `name` and mark or media drawn inside.
@@ -225,7 +212,12 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
     const motif: SurfaceCardMotif = body?.treatment === "ink" ? body.motif ?? "none" : "none"
     const artwork = body?.treatment === "ink" || body?.treatment === "soft" ? body.artwork : undefined
     const wholeAction = isTile ? props.wholeAction : body?.wholeAction
-    const flush = kind !== "body" && kind !== "tile"
+    const headers = props.headers ?? []
+    const footers = props.footers ?? []
+    const isZoned = headers.length > 0 || footers.length > 0
+    // A kind that draws its own faces (list, figures, accordion) touches the card's edge; a zoned card is flush too, its body and zones drawing their own insets.
+    const isFace = kind !== "body" && kind !== "tile"
+    const flush = isFace || isZoned
     const hasNamedHeading = name !== undefined && !isTile && labelled !== undefined
 
     const rootContract = wholeAction === undefined ? undefined : "SURFACE-4"
@@ -258,8 +250,8 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                 return <ListRows data={props} isLoading={isLoading} ariaLabel={accessibleName} />
             case "accordion":
                 return <AccordionRows data={isLoading && props.items.length === 0 ? { ...props, items: PLACEHOLDER_DISCLOSURES } : props} isLoading={isLoading} />
-            case "bands":
-                return props.bands.map((band, index) => <BandView key={`${band.kind}-${index}`} band={band} isLoading={isLoading} isDisabled={disabled} />)
+            case "table":
+                return <TableRows data={props} isLoading={isLoading} ariaLabel={accessibleName} />
             case "tile":
                 return <SurfaceCardTile data={props} headingId={headingId} headingLevel={headingLevel} isLoading={isLoading} isDisabled={disabled} />
             default:
@@ -299,10 +291,23 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             <VerticalScrollRegionPart
                 className={getSurfaceContentClassName(measure, false)}
                 data-contract={flush ? "GAP-0 PADDING-0" : "PADDING-4"}
+                data-grammar-surface-zoned={isZoned ? "true" : undefined}
                 data-grammar-surface-content="true"
                 isScrollable={false}
             >
-                {failure === undefined ? face : <ErrorView error={failure} />}
+                {isZoned ? (
+                    <>
+                        <LoadingScope isLoading={isLoading}>
+                            {headers.map((zone, index) => <HeaderZoneView key={`${zone.kind}-${index}`} zone={zone} isLoading={isLoading} />)}
+                        </LoadingScope>
+                        <div className={surfaceMainClassName} data-grammar-surface-main={isFace ? "face" : "padded"}>
+                            {failure === undefined ? face : <ErrorView error={failure} />}
+                        </div>
+                        <LoadingScope isLoading={isLoading}>
+                            {footers.map((zone, index) => <FooterZoneView key={`${zone.kind}-${index}`} zone={zone} />)}
+                        </LoadingScope>
+                    </>
+                ) : failure === undefined ? face : <ErrorView error={failure} />}
             </VerticalScrollRegionPart>
             {action}
         </Card.Content>
@@ -339,7 +344,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                 </Card.Header>
             )}
             {highlightedSurface}
-            {props.footer === undefined ? null : <div className={surfaceFooterClassName} data-grammar-surface-footer="true">{props.footer}</div>}
+            {props.note === undefined ? null : <div className={surfaceNoteClassName} data-grammar-surface-note="true">{props.note}</div>}
         </Card.Root>
     )
     return <SurfaceNesting host="card">{content}</SurfaceNesting>

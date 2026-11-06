@@ -23,7 +23,10 @@ export type ButtonGroupAction = {
     readonly isPending?: boolean
 }
 
-/** @deprecated The Grammar draws no group of attached buttons (R380). Use separate `Button`s, or a `DropdownMenu` for the overflow. Removed in a later release. */
+/**
+ * @deprecated The Grammar draws no group of attached buttons (R380). Use separate `Button`s, or a `DropdownMenu` for the overflow. Removed in a later release.
+ * A button group holds commands and no selection state (its members have no `isSelected`): switching views or periods is `Tabs`, choosing a form value is `ChoiceChips` or `RadioGroup`.
+ */
 export type ButtonGroupProps = NoChildren & {
     /** Names the group (`role="group"`) for assistive technology. */
     readonly label: string

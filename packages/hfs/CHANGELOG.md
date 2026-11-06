@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.13.7 - 2026-11-06
+
+- A patch: canon pin: grammar 0.24.0 with the lint family 0.24.0 (`@starci/eslint-grammar-core`, `@starci/eslint-grammar-offset-pop`). The runtime data `canon-pins.yaml` the canons read pins the family at 0.24.0; no hfs rule or schema changed.
+
 ## 5.13.6 - 2026-11-06
 
 - A patch: the root workspace packages join the app gates. (1) `app check --gate types` typechecks every root `packages/<pkg>/tsconfig.json` as a program (key: every root package, since a package reads its siblings' dist), as CI's `npm run typecheck` does; before, only be and the fe workspaces were programs. (2) The managed pre-commit hook lints staged `packages/**` files with the managed root `eslint.config.mjs`, blocking exactly as for be and fe (the packages are built first). (3) `app sync` renders one Codecov component per root package (`package-<name>`, over `packages/<name>/src/**`) into codecov.yml, held at the target like the service components. (4) Catalog: R384 `FE_RENDERER_LOGIC` (eslint-canon-fe 9.16.0); the canon pins carry eslint-canon-fe 9.16.0 and eslint-grammar-core 0.23.2. Specs: programs of root packages, the packages step of the hook, the package components of codecov.yml.

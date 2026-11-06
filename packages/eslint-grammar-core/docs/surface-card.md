@@ -2,8 +2,8 @@
 
 Law module: `surface-card.ts`. Catalogue: R355 FE_SURFACE_CARD_KIND, R366 FE_LABEL_IN_GRID.
 
-`SurfaceCard` is one component whose `kind` the compiler checks: `body` (the default), `figures`, `list`, `accordion`,
-`bands` and `tile`. What a kind draws is not drawn by hand around it, and where the name sits follows the kind (ruling
+`SurfaceCard` is one component whose `kind` the compiler checks: `body` (the default), `figures`, `list`, `accordion`
+and `tile`; any kind may carry typed `headers` and `footers` zones. What a kind draws is not drawn by hand around it, and where the name sits follows the kind (ruling
 `card-label-by-kind`): a card that heads a section has a `label` outside the material, a tile names itself inside.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline. It applies to product
@@ -15,6 +15,9 @@ Finding code: `FE_SURFACE_CARD_KIND` (R355). The direct children of a `SurfaceCa
 `kind="body"`) are not a raw `ul`, `ol`, `li` or `dl`, not a `Divider`, and not a `SectionHeader` or `Heading` standing as a
 second title. A `Section` whose only child is one `SurfaceCard` frames one subject twice. Children are read through
 `cond && <x/>`, `cond ? <x/> : <y/>` and `.map`.
+On a `SurfaceCard` or a `Board`, the `children` of a `{ kind: "custom" }` zone written in a `headers` or `footers` array literal hold no
+`Tabs`, `SearchField` or `Divider` (`zone`): filter and search are the typed `filter`, `search` and `toolbar` zones and the card draws
+its own seams. Grammar also refuses them at run time in development.
 
 **Invalid** (`src/components/blocks/Runs/component.tsx`)
 

@@ -885,6 +885,39 @@
         white-space: nowrap;
     }
 
+    /* Amounts and counts: one line, tabular numerals. */
+    .starci-core-data-table :is(.starci-core-data-table-column, .starci-core-data-table-cell)[data-grammar-table-numeric="true"] {
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* A group heading row: one cell across the table, the secondary surface, its label at the start and its fact at the end. */
+    .starci-core-data-table .starci-core-data-table-group-row .starci-core-data-table-group-cell {
+        background: var(--surface-secondary);
+        color: var(--foreground);
+        font-weight: var(--grammar-weight-medium);
+    }
+
+    .starci-core-data-table-group-cell {
+        white-space: normal;
+    }
+
+    .starci-core-data-table-group-line {
+        display: flex;
+        min-width: 0;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-data-table-group-fact {
+        flex: none;
+        color: var(--muted);
+        font-weight: var(--grammar-weight-regular);
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
     .starci-core-data-table-column[data-grammar-table-align="end"],
     .starci-core-data-table-cell[data-grammar-table-align="end"] {
         text-align: end;
@@ -1079,6 +1112,7 @@
      * so the frame and its lines are the ready state's (STATE-8).
      */
     .starci-core-description-list[data-grammar-description-layout="stat-strip"] {
+        --starci-core-figure-size: var(--grammar-text-4xl);
         display: flex;
         flex-flow: row wrap;
         gap: 0;
@@ -1091,7 +1125,8 @@
         --starci-core-strip-line-color: var(--separator);
         display: flex;
         box-sizing: border-box;
-        min-width: 0;
+        /* A cell is never narrower than its value: the figure's digits at the figure's size plus the cell's inset on both sides, so the row wraps (2 x 2, then one column) before a number would break. */
+        min-width: calc(var(--starci-core-figure-size) * var(--starci-core-figure-digit) * var(--starci-core-figure-chars) + 2 * var(--grammar-inset-nested));
         flex: 1 1 100%;
         flex-direction: column;
         align-items: flex-start;
@@ -1135,10 +1170,12 @@
         font-variant-numeric: tabular-nums;
     }
 
+    /* A figure's value is one word: it never breaks inside the number (its unit may wrap under it). */
     .starci-core-description-figure-value {
         display: inline-flex;
         min-width: 0;
         align-items: center;
+        white-space: nowrap;
     }
 
     .starci-core-description-pair[data-grammar-figure-destination="true"] { position: relative; }
@@ -1192,6 +1229,7 @@
      * dividers between cells still stop short of it; the value takes the 2xl step so four cells fit a 380px list pane.
      */
     .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="pane"] {
+        --starci-core-figure-size: var(--grammar-text-2xl);
         border: 1px solid var(--separator);
         border-radius: var(--grammar-radius-md);
     }

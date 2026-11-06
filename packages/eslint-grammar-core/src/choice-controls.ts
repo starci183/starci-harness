@@ -10,6 +10,11 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
  *
  * WHAT IT READS. A JSX element named `ButtonGroup`, `FilterButtonGroup` or `SegmentedControl` in product source, written
  * bare or as a member (`Grammar.ButtonGroup`). The components stay exported and deprecated for one release.
+ *
+ * A second rule holds the same law for loose buttons: two or more adjacent `Button` or `IconButton` elements (or one written in a
+ * `.map`) that carry `aria-pressed`, `isSelected` or `isActive` are joined buttons acting as tabs, a pill toggle ("This month / Last
+ * month"). A switch between views or periods of one block is `Tabs` (the primary underline) in the block's `filter` header zone;
+ * `ChoiceChips` or `RadioGroup` choose a form value; a button holds a command, never a selection state.
  */
 
 /** Each banned component with the replacement its message names. */
@@ -51,9 +56,76 @@ export const noGroupedChoiceControls: Rule.RuleModule = defineRule({
   },
 })
 
+/** The buttons whose pressed or selected state makes a set of them a switch. */
+const BUTTON_COMPONENTS = new Set(["Button", "IconButton"])
+const SELECTION_ATTRIBUTES = new Set(["aria-pressed", "isSelected", "isActive"])
+
+/** Whether an opening element is a Button or IconButton carrying a selection attribute. */
+const isSelectionButton = (opening: TSESTree.JSXOpeningElement): boolean => {
+  const name = elementName(opening)
+  if (name === null || !BUTTON_COMPONENTS.has(name)) return false
+  return opening.attributes.some((attribute) => attribute.type === "JSXAttribute" && attribute.name.type === "JSXIdentifier" && SELECTION_ATTRIBUTES.has(attribute.name.name))
+}
+
+type Candidate = { readonly opening: TSESTree.JSXOpeningElement; readonly inMap: boolean }
+
+/** The selection buttons a child position renders, read through conditionals, `&&` and `.map`. */
+const selectionButtonsOf = (node: TSESTree.Node | null | undefined, inMap = false): Candidate[] => {
+  if (node === null || node === undefined) return []
+  switch (node.type) {
+    case "JSXElement":
+      return isSelectionButton(node.openingElement) ? [{ opening: node.openingElement, inMap }] : []
+    case "JSXFragment":
+      return node.children.flatMap((child) => selectionButtonsOf(child, inMap))
+    case "JSXExpressionContainer":
+      return selectionButtonsOf(node.expression, inMap)
+    case "ConditionalExpression":
+      return [...selectionButtonsOf(node.consequent, inMap), ...selectionButtonsOf(node.alternate, inMap)]
+    case "LogicalExpression":
+      return node.operator === "&&" ? selectionButtonsOf(node.right, inMap) : [...selectionButtonsOf(node.left, inMap), ...selectionButtonsOf(node.right, inMap)]
+    case "CallExpression": {
+      const callee = node.callee
+      const method = callee.type === "MemberExpression" && !callee.computed && callee.property.type === "Identifier" ? callee.property.name : null
+      const callback = node.arguments[0]
+      if (method !== "map" || callback === undefined || (callback.type !== "ArrowFunctionExpression" && callback.type !== "FunctionExpression")) return []
+      if (callback.body.type !== "BlockStatement") return selectionButtonsOf(callback.body, true)
+      return callback.body.body.flatMap((statement) => (statement.type === "ReturnStatement" ? selectionButtonsOf(statement.argument, true) : []))
+    }
+    default:
+      return []
+  }
+}
+
+/** No joined buttons acting as tabs: two or more Buttons carrying a selection state are a view switch. */
+export const noButtonViewSwitch: Rule.RuleModule = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "R380: no row of Buttons carrying aria-pressed, isSelected or isActive as a view switch; a switch between views or periods is Tabs in the block's filter header zone." },
+    schema: [],
+    messages: {
+      switch: "Buttons that carry `{{attribute}}` side by side are a view switch drawn as joined buttons or pills. Switching between views or periods of one block is `Tabs` (the primary underline) in the block's `filter` header zone; choosing a form value is `ChoiceChips` or `RadioGroup`; a `Button` holds a command, never a selection state.",
+    },
+  },
+  create(context) {
+    if (!isProductSource(context)) return {}
+    return {
+      JSXElement(element: TSESTree.JSXElement) {
+        const found = element.children.flatMap((child) => selectionButtonsOf(child))
+        if (found.length < 2 && !found.some(({ inMap }) => inMap)) return
+        for (const { opening } of found) {
+          const attribute = opening.attributes.find((entry) => entry.type === "JSXAttribute" && entry.name.type === "JSXIdentifier" && SELECTION_ATTRIBUTES.has(entry.name.name))
+          const named = attribute !== undefined && attribute.type === "JSXAttribute" && attribute.name.type === "JSXIdentifier" ? attribute.name.name : "aria-pressed"
+          context.report({ node: opening, messageId: "switch", data: { attribute: named } })
+        }
+      },
+    }
+  },
+})
+
 /** The rules this law contributes to the plugin. */
 export const rules: Record<string, Rule.RuleModule> = {
   "no-grouped-choice-controls": noGroupedChoiceControls,
+  "no-button-view-switch": noButtonViewSwitch,
 }
 
 defineFamilyRules(rules, "knowledge/hfs/rules.yaml#R380")

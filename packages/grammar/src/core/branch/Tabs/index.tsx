@@ -15,6 +15,7 @@ import {
     tabsFrameClassName,
 } from "./classNames.js"
 import type { NoChildren } from "../../tier.js"
+import { useRefuseInCustomZone, useTabsLineDefault } from "../../zoneContext.js"
 
 /** One stable peer destination rendered by the Core tab object. */
 export type TabItem = {
@@ -36,6 +37,10 @@ export type TabItem = {
 }
 
 /**
+ * Which component switches what: `Tabs` switch the views or periods of one block, or filter its list (in a card, the `filter` or
+ * `toolbar` header zone); `ChoiceChips` or `RadioGroup` choose a form value; a `Button` holds a command, never a selection state.
+ * Two joined buttons or pills acting as tabs are banned (R380, `no-button-view-switch`).
+ *
  * Business-neutral peer tabs with the shared horizontal frame owning overflow, scroll shadows and the directional
  * controls. Controlled tabs pass `selectedKey` and `onSelect`; link tabs pass an `href` on every item and the selected
  * tab is the one whose `href` matches the current path (the exact path, else the longest `href` the path lies under).
@@ -113,6 +118,10 @@ const useLocationPath = (enabled: boolean): readonly [string | undefined, (path:
 const TabsInner = (props: TabsProps) => {
     const [isClientReady, setIsClientReady] = useState(false)
     const frameRef = useRef<HTMLDivElement>(null)
+    useRefuseInCustomZone("Tabs")
+    // The line owner is the host's, never a prop: a card zone and the page header band wrap their strip in `TabsLineHost` (draws no line of its own, the indicator overlaps the host's divider); a standalone strip draws `--separator` itself.
+    const hostLine = useTabsLineDefault()
+    const line = hostLine
     // A loading region keeps the labels real (static chrome) and draws each count as the geometry of its ready box; the region makes the tabs inert.
     const isLoading = useIsLoading(undefined)
     useEffect(() => setIsClientReady(true), [])
@@ -186,7 +195,7 @@ const TabsInner = (props: TabsProps) => {
     // Filter tabs always fold what does not fit; page (views) tabs fold only when the app names the fold menu (`overflowLabel`), else they scroll.
     const folds = isFilter || props.overflowLabel !== undefined
     const frameContract = inset === "page" ? "PADDING-5" : undefined
-    const frameData = { "data-component": "Tabs", "data-tier": "branch", "data-grammar-tabs": "true", "data-grammar-tabs-inset": inset, "data-grammar-tabs-variant": "primary", "data-grammar-tabs-kind": kind, "data-grammar-tabs-folds": folds ? "true" : "false" } as const
+    const frameData = { "data-component": "Tabs", "data-tier": "branch", "data-grammar-tabs": "true", "data-grammar-tabs-inset": inset, "data-grammar-tabs-variant": "primary", "data-grammar-tabs-kind": kind, "data-grammar-tabs-line": line, "data-grammar-tabs-folds": folds ? "true" : "false" } as const
 
     // `filter`: the tabs that do not fit fold into a "+n" menu. All tabs draw once to be measured (the widths are kept), then
     // the fit is recomputed from those widths whenever the frame resizes; the selected tab is always one of the shown.

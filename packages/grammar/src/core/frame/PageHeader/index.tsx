@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { Tabs, type TabsProps } from "../../branch/Tabs/index.js"
 import { Breadcrumbs, type BreadcrumbItem } from "../../composite/Breadcrumbs/index.js"
-import { Divider } from "../../leaf/Divider/index.js"
+import { TabsLineHost } from "../../zoneContext.js"
 import { PageContainerPart, type PageContainerProps } from "../PageContainer/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 
@@ -56,11 +56,11 @@ const slot = (content: ReactNode, isLoading: boolean, shape: "text" | "block" = 
 
 /**
  * The page header band: the trail, the page heading with its mark, status and summary, the page's commands, and the
- * page tabs, on a surface band across the primary region with a full-width separator at its bottom edge.
+ * page tabs, on a surface band across the primary region with a full-width border at its bottom edge.
  *
  * The band's content sits in a `PageContainer` of the page's measure, so its edges are the content's edges by
- * construction. The separator is the header's own `Divider`, drawn whether or not tabs are present; page tabs sit on
- * it and the selected tab's underline lies over it. Place the header first in the primary region, outside the page's
+ * construction. The band's bottom border is the one line under the page tabs (the strip is hosted: it draws none of its own); the
+ * selected tab's underline lies over it, on the same bottom edge. Place the header first in the primary region, outside the page's
  * `PageContainer`; it is a plain `div`, never `<header>`, because the page banner belongs to the app bar.
  */
 export const PageHeader = ({
@@ -118,12 +118,9 @@ export const PageHeader = ({
             </div>
             {tabs === undefined ? null : (
                 <div className="starci-core-page-header-tabs">
-                    <Tabs {...tabs} inset="none" />
+                    <TabsLineHost><Tabs {...tabs} inset="none" /></TabsLineHost>
                 </div>
             )}
         </PageContainerPart>
-        <div className="starci-core-page-header-separator" data-grammar-page-header-separator="true">
-            <Divider semantics="presentation" />
-        </div>
     </div>
 )

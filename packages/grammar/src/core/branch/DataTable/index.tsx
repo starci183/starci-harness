@@ -18,6 +18,8 @@ export type DataTableColumn<Row extends DataTableRow = DataTableRow> = {
     readonly isRowHeader?: boolean
     readonly allowsSorting?: boolean
     readonly align?: "start" | "end"
+    /** A column of amounts or counts: its cells and heading never wrap, read in tabular numerals and align to the end. */
+    readonly isNumeric?: boolean
     /**
      * Narrow-width mode. A `low` column leaves the header below the table's `collapseBelow` width and its value joins the
      * row as stacked secondary text (its label, then its cell) under the first `high` column's content. Default `high`.
@@ -52,11 +54,25 @@ export type DataTableCellInteraction = {
     readonly onDrop?: DragEventHandler<HTMLDivElement>
 }
 
-export type DataTableProps<Row extends DataTableRow> = NoChildren & {
+/** A run of rows under one group heading row (a day of a ledger): its `label` and an optional end-of-group `fact`. */
+export type DataTableGroup<Row extends DataTableRow = DataTableRow> = {
+    readonly id: string
+    /** The group heading, e.g. the date. */
+    readonly label: string
+    /** One short fact at the end of the heading row, e.g. the end-of-day balance. */
+    readonly fact?: string
+    readonly rows: ReadonlyArray<Row>
+}
+
+/** The rows of a table: one flat list, or groups of rows under heading rows inside the same table. */
+type DataTableRows<Row extends DataTableRow> =
+    | { readonly rows: ReadonlyArray<Row>; readonly groups?: undefined }
+    | { readonly groups: ReadonlyArray<DataTableGroup<Row>>; readonly rows?: undefined }
+
+export type DataTableProps<Row extends DataTableRow> = NoChildren & DataTableRows<Row> & {
     /** Names the table, e.g. "Invoices". */
     readonly label: string
     readonly columns: ReadonlyArray<DataTableColumn<Row>>
-    readonly rows: ReadonlyArray<Row>
     readonly renderCell: (row: Row, columnId: string) => ReactNode
     /** Optional cell actions and native drop events. An actionable cell receives arrow-key focus itself. */
     readonly getCellInteraction?: (row: Row, columnId: string) => DataTableCellInteraction | undefined
@@ -197,7 +213,8 @@ const SelectionCheckbox = ({ label }: { readonly label: string | undefined }) =>
 export const DataTable = <Row extends DataTableRow>({
     label,
     columns,
-    rows,
+    rows: flatRows,
+    groups,
     renderCell,
     getCellInteraction,
     sort,
@@ -217,6 +234,7 @@ export const DataTable = <Row extends DataTableRow>({
     collapseBelow = DEFAULT_COLLAPSE_BELOW,
     surface = "card",
 }: DataTableProps<Row>) => {
+    const rows: ReadonlyArray<Row> = groups === undefined ? flatRows ?? [] : groups.flatMap((group) => group.rows)
     const scrollRef = useRef<HTMLDivElement>(null)
     const [width, setWidth] = useState<number | null>(null)
     useEffect(() => {
@@ -248,6 +266,13 @@ export const DataTable = <Row extends DataTableRow>({
     const skeletonRows = isLoading ? Array.from({ length: rows.length > 0 ? Math.min(12, rows.length) : LOADING_ROWS }, (_, index) => ({ id: `starci-skeleton-${index}` })) : []
     const failed = !isLoading && error !== undefined
     const visibleRows = isLoading || failed ? [] : rows
+    // Rows in order, a group's heading row before its rows (a group with no rows draws no heading).
+    const entries: ReadonlyArray<{ readonly group: DataTableGroup<Row> | undefined; readonly row: Row | undefined }> = isLoading || failed
+        ? []
+        : groups === undefined
+            ? visibleRows.map((row) => ({ group: undefined, row }))
+            : groups.filter((group) => group.rows.length > 0).flatMap((group) => [{ group, row: undefined }, ...group.rows.map((row) => ({ group: undefined, row }))])
+    const columnCount = shown.length + (multiple ? 1 : 0)
     const state = isLoading ? "loading" : failed ? "error" : rows.length === 0 ? "empty" : "ready"
     const scrollStyle = maxBlockSize === undefined ? undefined : { "--starci-core-data-table-max-block-size": maxBlockSize } as CSSProperties
     // RAC filters consumer key handlers out of Cell props. The native scroll owner captures activation before its grid handlers.
@@ -310,7 +335,8 @@ export const DataTable = <Row extends DataTableRow>({
                                 id={column.id}
                                 allowsSorting={column.allowsSorting === true}
                                 className="starci-core-data-table-column"
-                                data-grammar-table-align={column.align ?? "start"}
+                                data-grammar-table-align={column.align ?? (column.isNumeric === true ? "end" : "start")}
+                                {...(column.isNumeric === true ? { "data-grammar-table-numeric": "true" } : {})}
                                 isRowHeader={column.id === rowHeaderId}
                                 textValue={column.label}
                             >
@@ -334,7 +360,16 @@ export const DataTable = <Row extends DataTableRow>({
                                 ))}
                             </HeroTable.Row>
                         ))}
-                        {visibleRows.map((row) => (
+                        {entries.map(({ group, row }) => group !== undefined ? (
+                            <HeroTable.Row key={`group-${group.id}`} id={`group-${group.id}`} textValue={group.label} className="starci-core-data-table-row starci-core-data-table-group-row" data-grammar-table-group="true" data-grammar-selected="false">
+                                <HeroTable.Cell className="starci-core-data-table-cell starci-core-data-table-group-cell" colSpan={columnCount}>
+                                    <div className="starci-core-data-table-group-line">
+                                        <span className="starci-core-data-table-group-label">{group.label}</span>
+                                        {group.fact === undefined ? null : <span className="starci-core-data-table-group-fact" data-grammar-table-numeric="true">{group.fact}</span>}
+                                    </div>
+                                </HeroTable.Cell>
+                            </HeroTable.Row>
+                        ) : row === undefined ? null : (
                             <HeroTable.Row
                                 key={row.id}
                                 id={row.id}
@@ -355,7 +390,8 @@ export const DataTable = <Row extends DataTableRow>({
                                         return <HeroTable.Cell
                                             key={column.id}
                                             className="starci-core-data-table-cell"
-                                            data-grammar-table-align={column.align ?? "start"}
+                                            data-grammar-table-align={column.align ?? (column.isNumeric === true ? "end" : "start")}
+                                            {...(column.isNumeric === true ? { "data-grammar-table-numeric": "true" } : {})}
                                             data-grammar-cell-interaction={interaction === undefined ? "false" : "true"}
                                             data-grammar-row-id={row.id}
                                             data-grammar-column-id={column.id}

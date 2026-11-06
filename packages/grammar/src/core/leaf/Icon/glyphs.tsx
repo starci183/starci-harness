@@ -2,10 +2,10 @@ import type { IconSource, IconSourceProps } from "./index.js"
 
 /**
  * The closed glyph vocabulary Grammar draws itself, for the few marks every product needs and an app with no icon registry cannot
- * supply: `more` (an overflow menu), `send`, `panel-end` (show or hide the pane at the end of a layout), `pencil` (edit) and `close`.
+ * supply: `more` (an overflow menu), `send`, `panel-end` (show or hide the pane at the end of a layout), `pencil` (edit), `close` and `search` (the magnifier, for a search that opens on press).
  * Any other glyph stays app-owned (`Icon` with a `source`).
  */
-export const GLYPH_NAMES = ["more", "send", "panel-end", "pencil", "close"] as const
+export const GLYPH_NAMES = ["more", "send", "panel-end", "pencil", "close", "search"] as const
 
 export type GlyphName = (typeof GLYPH_NAMES)[number]
 
@@ -42,7 +42,14 @@ const Close = (props: IconSourceProps) => (
     </svg>
 )
 
-const SOURCES: Readonly<Record<GlyphName, IconSource>> = { more: More, send: Send, "panel-end": PanelEnd, pencil: Pencil, close: Close }
+const Search = (props: IconSourceProps) => (
+    <svg {...props} fill="none" focusable="false" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.75" />
+        <path d="M16 16l4.5 4.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.75" />
+    </svg>
+)
+
+const SOURCES: Readonly<Record<GlyphName, IconSource>> = { more: More, send: Send, "panel-end": PanelEnd, pencil: Pencil, close: Close, search: Search }
 
 /** The SVG source of a glyph of the vocabulary, for `Icon`. */
 export const glyphSource = (name: GlyphName): IconSource => SOURCES[name]

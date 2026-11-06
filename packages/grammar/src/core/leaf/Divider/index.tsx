@@ -1,4 +1,7 @@
+"use client"
+
 import { Separator } from "@heroui/react"
+import { useRefuseInCustomZone } from "../../zoneContext.js"
 import { Text } from "../Text/index.js"
 import type { NoChildren } from "../../tier.js"
 
@@ -37,6 +40,7 @@ export type DividerProps = NoChildren & (LabelledDivider | UnlabelledDivider)
  * The unlabelled rule is BOUNDARY-1: a hairline on `--separator`, full width of its container.
  */
 export const Divider = (props: DividerProps) => {
+    useRefuseInCustomZone("Divider")
     if (props.label === undefined) {
         const semantics = props.semantics ?? "separator"
         const orientation = props.orientation ?? "horizontal"

@@ -15,6 +15,7 @@ import {
     type FieldSizeProps,
 } from "../Field/index.js"
 import type { NoChildren } from "../../tier.js"
+import { useRefuseInCustomZone } from "../../zoneContext.js"
 
 export type SearchFieldProps = NoChildren & FieldControlProps & FieldSizeProps & {
     readonly id?: string
@@ -56,9 +57,12 @@ export type SearchFieldProps = NoChildren & FieldControlProps & FieldSizeProps &
  * Skeleton parity (knowledge STATE-8): `isLoading` renders the ready anatomy at the same props inside
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
-const SearchFieldInner = ({ isLoading = false, ...props }: SearchFieldProps) => isLoading
-    ? <FieldSkeletonScope component="SearchField"><SearchFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
-    : <SearchFieldControl {...props} />
+const SearchFieldInner = ({ isLoading = false, ...props }: SearchFieldProps) => {
+    useRefuseInCustomZone("SearchField")
+    return isLoading
+        ? <FieldSkeletonScope component="SearchField"><SearchFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
+        : <SearchFieldControl {...props} />
+}
 
 /**
  * A text field whose job is a query: `type="search"`, a clear button, Escape to clear, Enter to

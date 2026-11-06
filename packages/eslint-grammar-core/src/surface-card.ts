@@ -11,7 +11,10 @@ import type { Context, Node } from "./lib/types.ts"
  * R355. A card of the default `body` kind holds copy and controls. It does not hold the things a kind draws for it: a
  * hand-built list (`ul`, `ol`, `li`), a divider, a `SectionHeader` or a `Heading` standing as a second title (the card has a
  * `label`),. Rows are `kind="list"`, key figures
- * `kind="figures"`, faces divided by seams `kind="bands"`.
+ * `kind="figures"`, bands divided by seams are the typed `headers` and `footers` zones.
+ *
+ * R355 (zones). A `custom` zone of a card (`headers` or `footers`) holds no `Tabs`, `SearchField` or `Divider`: filter and search are
+ * the typed `filter`, `search` and `toolbar` zones, and the card draws its own seams.
  *
  * R366. A card with a `label` heads a section; a peer you recognise and open is a `kind="tile"` and names itself inside. A
  * labelled card repeated in a `Grid kind="cards"` (two or more, or one written in a `.map`) is a tile drawn with the wrong
@@ -112,7 +115,42 @@ const HAND_COMPONENTS = new Map<string, string>([
   ["Heading", "title"],
 ])
 
-/** A body card does not hold what a kind draws: hand rows, a divider, a second title. */
+/** The Grammar components a `custom` zone never holds: the typed zones draw them. */
+const ZONE_COMPONENTS = new Set(["Tabs", "SearchField", "Divider"])
+
+/** Every JSX element below a node, whatever holds it (an object property, a fragment, a call). */
+const jsxBelow = (node: unknown, seen = new Set<unknown>()): TSESTree.JSXElement[] => {
+  if (typeof node !== "object" || node === null || seen.has(node)) return []
+  seen.add(node)
+  const found: TSESTree.JSXElement[] = []
+  if ("type" in node && node.type === "JSXElement") found.push(node as TSESTree.JSXElement)
+  for (const [key, value] of Object.entries(node)) {
+    if (key === "parent" || key === "loc" || key === "range") continue
+    if (Array.isArray(value)) for (const item of value) found.push(...jsxBelow(item, seen))
+    else found.push(...jsxBelow(value, seen))
+  }
+  return found
+}
+
+/** The `children` of every `{ kind: "custom" }` object of a `headers` or `footers` array. */
+const customZoneChildren = (opening: TSESTree.JSXOpeningElement): unknown[] => {
+  const zones: unknown[] = []
+  for (const name of ["headers", "footers"]) {
+    const value = attributeOf(opening, name)?.value
+    if (value === null || value === undefined || value.type !== "JSXExpressionContainer" || value.expression.type !== "ArrayExpression") continue
+    for (const zone of value.expression.elements) {
+      if (zone === null || zone.type !== "ObjectExpression") continue
+      const props = zone.properties.filter((property): property is TSESTree.Property => property.type === "Property" && property.key.type === "Identifier")
+      const kind = props.find((property) => property.key.type === "Identifier" && property.key.name === "kind")
+      if (kind === undefined || kind.value.type !== "Literal" || kind.value.value !== "custom") continue
+      const children = props.find((property) => property.key.type === "Identifier" && property.key.name === "children")
+      if (children !== undefined) zones.push(children.value)
+    }
+  }
+  return zones
+}
+
+/** A body card does not hold what a kind draws: hand rows, a divider, a second title; a custom zone holds none of the typed zones' parts. */
 export const surfaceCardKind: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
@@ -120,8 +158,9 @@ export const surfaceCardKind: Rule.RuleModule = defineRule({
     schema: [],
     messages: {
       list: "`<{{element}}>` is a hand-built list in a `body` card. Rows are `<SurfaceCard kind=\"list\" items={...} empty={...} />`, and the card draws every row the same way.",
-      divider: "A `Divider` in a card is refused: the card draws its own seams. Faces divided by a line are `<SurfaceCard kind=\"bands\" bands={[...]} />`.",
-      title: "`<{{element}}>` stands as a second title inside a card. The card has a `label` (and `fact`, `labelEnd`, `footer`); a sub-section of one subject is a band with its own `label` in `kind=\"bands\"`.",
+      divider: "A `Divider` in a card is refused: the card draws its own seams. Bands divided by a line are the typed `headers` and `footers` zones: `<SurfaceCard headers={[{ kind: \"figures\", items }]} />`.",
+      zone: "`<{{element}}>` stands in a `custom` zone of a card. Filter and search are the typed zones (`{ kind: \"filter\" | \"search\" | \"toolbar\" }`) and the card draws its own seams, so a `custom` zone holds no `Tabs`, `SearchField` or `Divider`.",
+      title: "`<{{element}}>` stands as a second title inside a card. The card has a `label` (and `fact`, `labelEnd`, `note`); a sub-section of one subject is a typed header or footer zone.",
     },
   },
   create(context) {
@@ -130,6 +169,14 @@ export const surfaceCardKind: Rule.RuleModule = defineRule({
       JSXElement(element: TSESTree.JSXElement) {
         const opening = element.openingElement
         const component = grammarComponent(context, opening)
+        if (component === "SurfaceCard" || component === "Board") {
+          for (const content of customZoneChildren(opening)) {
+            for (const node of jsxBelow(content)) {
+              const inner = grammarComponent(context, node.openingElement)
+              if (inner !== null && ZONE_COMPONENTS.has(inner)) context.report({ node: node.openingElement, messageId: "zone", data: { element: inner } })
+            }
+          }
+        }
         if (component === "SurfaceCard" && isBodyCard(opening)) {
           for (const { node } of childElements(element)) {
             const child = node.openingElement

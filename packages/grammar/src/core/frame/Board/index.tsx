@@ -6,7 +6,9 @@ import { SurfaceCard } from "../SurfaceCard/index.js"
 import { Heading } from "../../leaf/Heading/index.js"
 import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
 import { LoadingScope, useIsLoading } from "../../regionScope.js"
-import type { ListRowData } from "../../surfaceCardData.js"
+import type { HeaderZone, ListRowData } from "../../surfaceCardData.js"
+import { SurfaceNesting } from "../../surfaceContext.js"
+import { HeaderZoneView } from "../SurfaceCard/Zones.js"
 
 /** One column of a board: a stage that holds items. */
 export type BoardColumn = {
@@ -40,6 +42,13 @@ export type BoardProps = {
     /** Names the board for assistive technology, e.g. "Sales pipeline". */
     readonly label: string
     readonly columns: readonly BoardColumn[]
+    /**
+     * Typed zones (the `SurfaceCard` zones: filter, search, toolbar, figures, custom) drawn in ONE white surface strip above the
+     * columns, on the well. The strip is the board's only surface of its own; the columns keep theirs. Neighbouring zones are divided
+     * by one divider, and a filter or toolbar zone's divider is the line under its tabs. A loading board keeps the zones' geometry;
+     * an error replaces the columns, not the strip.
+     */
+    readonly headers?: readonly HeaderZone[]
     /** Accessible names of the previous and next page controls of the scroller (the app's words). */
     readonly scrollPreviousLabel?: string
     readonly scrollNextLabel?: string
@@ -64,7 +73,7 @@ export type BoardProps = {
  * columns it was given with placeholder rows (three each when it was given none). With `onMove` a card moves between stages
  * by drag or by keyboard, and a card with `onPress` opens by pressing anywhere on it.
  */
-export const Board = ({ label, columns, scrollPreviousLabel, scrollNextLabel, isLoading: ownLoading, error, onMove, moveLabels }: BoardProps) => {
+export const Board = ({ label, columns, headers, scrollPreviousLabel, scrollNextLabel, isLoading: ownLoading, error, onMove, moveLabels }: BoardProps) => {
     const isLoading = useIsLoading(ownLoading)
     const [draggingId, setDraggingId] = useState<string | null>(null)
     const [overColumn, setOverColumn] = useState<string | null>(null)
@@ -80,8 +89,15 @@ export const Board = ({ label, columns, scrollPreviousLabel, scrollNextLabel, is
         root.current?.querySelector<HTMLElement>(`[data-grammar-row-id="${CSS.escape(id)}"] button, [data-grammar-row-id="${CSS.escape(id)}"][tabindex]`)?.focus()
     }, [columns])
 
+    const header = headers === undefined || headers.length === 0 ? null : (
+        <SurfaceNesting host="chrome">
+            <div className="starci-core-board-header" data-grammar-board-header="true" role="group" aria-label={label}>
+                {headers.map((zone, index) => <HeaderZoneView key={`${zone.kind}-${index}`} zone={zone} isLoading={isLoading} />)}
+            </div>
+        </SurfaceNesting>
+    )
     if (!isLoading && error !== undefined) {
-        return <div data-tier="frame" data-component="Board" data-grammar-board-state="error"><ErrorView error={error} /></div>
+        return <div data-tier="frame" data-component="Board" data-grammar-board-state="error">{header}<ErrorView error={error} /></div>
     }
     const shown: readonly BoardColumn[] = isLoading && columns.length === 0
         ? Array.from({ length: LOADING_ROWS }, (_, index) => ({ id: `loading-${index}`, title: " ", items: [], empty: null }))
@@ -129,6 +145,7 @@ export const Board = ({ label, columns, scrollPreviousLabel, scrollNextLabel, is
     return (
         <LoadingScope isLoading={isLoading}>
           <div ref={root} data-tier="frame" data-component="Board" data-grammar-board-state={isLoading ? "loading" : "ready"} {...(draggingId === null ? {} : { "data-grammar-board-dragging": "true" })}>
+            {header}
             <HorizontalScrollRegionPart
                 aria-label={label}
                 carets={false}

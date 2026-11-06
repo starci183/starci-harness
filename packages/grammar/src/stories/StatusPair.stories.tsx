@@ -5,7 +5,7 @@ import { BookGlyph, HomeGlyph, Matrix, State, familyScope, noop } from './fixtur
 /**
  * The owner's status pair rule (ruling `status-soft-pair-on-background`): content on a tone background wears the pair
  * `x-soft` and `x-soft-foreground`; a mark that stands alone wears `x`. These stories draw the places the rule reaches in
- * the grammar's own CSS: the alert dialog's icon tile (on its tint) and the footer note of a list card.
+ * the grammar's own CSS: the alert dialog's icon tile (on its tint) and the note under a list card.
  */
 const meta: Meta = {
   title: 'Status pair',
@@ -44,7 +44,7 @@ export const AlertDialogAffirmative: Story = dialogTone('affirmative');
 export const AlertDialogCautionary: Story = dialogTone('cautionary');
 export const AlertDialogInformative: Story = dialogTone('informative');
 
-/** The footer of a list card: a small muted line under the card, the full width of the list, in light and dark. */
+/** The note under a list card: a small muted line under the card, the full width of the list, in light and dark. */
 export const SurfaceCardFooter: Story = {
   render: (_, { globals }) => (
     <Matrix maxWidth={720}>
@@ -56,7 +56,7 @@ export const SurfaceCardFooter: Story = {
                 kind="list"
                 label="Permissions"
                 fact="3 rules"
-                footer="Locked rules are set by the workspace owner."
+                note="Locked rules are set by the workspace owner."
                 empty={<G.EmptyNotice message="No rules." />}
                 items={[
                   { id: 'read', leading: { icon: BookGlyph }, title: 'Read the knowledge', description: 'Customers and every agent' },
@@ -68,7 +68,7 @@ export const SurfaceCardFooter: Story = {
           </State>
           <State label={`${theme}: a SurfaceCard footer`} direction="column">
             <div style={{ width: 640, maxWidth: '100%' }}>
-              <G.SurfaceCard label="Workspace" fact="2 seats" footer="Seats renew on the first of the month.">
+              <G.SurfaceCard label="Workspace" fact="2 seats" note="Seats renew on the first of the month.">
                 <G.Text>Plan: Team</G.Text>
               </G.SurfaceCard>
             </div>
@@ -79,7 +79,7 @@ export const SurfaceCardFooter: Story = {
                 kind="list"
                 label="Permissions"
                 fact="2 rules"
-                footer={<G.Text tone="muted">Locked rules are set by the workspace owner.</G.Text>}
+                note={<G.Text tone="muted">Locked rules are set by the workspace owner.</G.Text>}
                 empty={<G.EmptyNotice message="No rules." />}
                 items={[
                   { id: 'read', leading: { icon: BookGlyph }, title: 'Read the knowledge', description: 'Customers and every agent' },
@@ -94,22 +94,17 @@ export const SurfaceCardFooter: Story = {
   ),
 };
 
-/** A bands card: the figures strip as one band and a Meter as the band below it, in light and dark. */
+/** A card with a figures header zone and a Meter in its body, in light and dark. */
 export const FiguresStripWithMeter: Story = {
   render: (_, { globals }) => (
     <Matrix maxWidth={720}>
       {(['light', 'dark'] as const).map((theme) => (
         <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-bands-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
-          <State label={`${theme}: bands card, the figures and a Meter`} direction="column">
+          <State label={`${theme}: zoned card, the figures and a Meter`} direction="column">
             <div style={{ width: 672, maxWidth: '100%' }}>
-              <G.SurfaceCard
-                kind="bands"
-                ariaLabel="Usage"
-                bands={[
-                  { kind: 'figures', items: stripItems },
-                  { kind: 'body', children: <G.Meter label="Storage" value={64} valueLabel="6.4 of 10 GB" /> },
-                ]}
-              />
+              <G.SurfaceCard ariaLabel="Usage" headers={[{ kind: 'figures', items: stripItems }]}>
+                <G.Meter label="Storage" value={64} valueLabel="6.4 of 10 GB" />
+              </G.SurfaceCard>
             </div>
           </State>
         </G.GrammarRoot>

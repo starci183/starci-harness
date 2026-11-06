@@ -69,7 +69,7 @@ relationship is a different shape.
 
 | Idiom | When | Composition |
 |---|---|---|
-| Bands | One heading holds several kinds of content | One `SurfaceCard kind="bands"`; full-bleed faces divided by the shell's seams, never inner cards or a `Divider`. Insets follow side contact |
+| Zones | One heading holds several kinds of content | One `SurfaceCard` with typed `headers` and `footers`; full-bleed zones divided by the shell's seams, never inner cards or a `Divider`. Insets follow side contact |
 | Neutral summary band | A card states a measure before its evidence | The first band on the secondary surface; it is a summary, never a verdict. It takes a state colour only for a proven outcome |
 | Bottom action band | A card has one way onward | One action in the last band against the bottom edge; at most one per card |
 | Art is a band | Generated imagery belongs to a surface | Its own full-bleed band, the asset's ratio kept, no inset frame; decorative art is `aria-hidden` |
@@ -95,7 +95,7 @@ from all three is asked, not invented.
 | Shape | Composition |
 |---|---|
 | Single-offer decision page | Explanation in the primary column as bands (summary band, art band, title-and-line rows); the decision card highlighted in the rail of `Grid kind="main-rail"` with the bottom action band; pending as the same tree |
-| Multi-section overview | One bands card per section; a summary band where a section states a measure; a bottom action band where it leads on; one highlighted section (the next step) per page |
+| Multi-section overview | One zoned card per section; a `figures` header where a section states a measure; a `more` footer where it leads on; one highlighted section (the next step) per page |
 | Sign-in | Surface header as title and line; one single-column form per step, one commit each; the way to the other journey last, as a text action |
 | Settings or profile form | `Form` (server refusals in `validationErrors` by field name) around one `Fieldset` per named group; each field carries its own label, description and error, and short fields that pair sit in a `Grid kind="form"` so a row aligns on its controls; a value the product holds is a `CopyField`; a switch applies immediately, a checkbox submits with the form; one commit after the last group |
 | Destructive confirmation | Entry button `intent="destructive"`; `AlertDialog` naming the consequence, dismiss first and focused, confirm last; a reversible action is not confirmed: act, then offer undo in a toast |

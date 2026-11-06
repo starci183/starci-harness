@@ -134,9 +134,17 @@
         color: inherit;
     }
 
-    /* The seam between two bands of a card is the family's outline width, the same line the figures strip draws between its cells. */
-    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-surface-band + .starci-core-surface-band {
+    /* The divider between two zones of a card is the family's outline width, the same line the figures strip draws between its cells. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-surface-zone:has(~ .starci-core-surface-main) {
+        border-block-end-width: var(--offset-pop-outline-width);
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-surface-main ~ .starci-core-surface-zone {
         border-block-start-width: var(--offset-pop-outline-width);
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-surface-zone[data-grammar-zone-line="tabs"] {
+        --starci-core-tabs-line-width: var(--offset-pop-outline-width);
     }
 
     /*

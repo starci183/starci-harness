@@ -8,6 +8,7 @@ import type { IconSource } from "./leaf/Icon/index.js"
 import type { SurfaceHeadingLevel } from "./leaf/Label/index.js"
 import type { LinkProps } from "./leaf/Link/index.js"
 import type { ButtonProps } from "./leaf/Button/index.js"
+import type { TabItem } from "./branch/Tabs/index.js"
 import type { ImageAspect, ImageProps } from "./leaf/Image/index.js"
 
 /** A status mark as data: the words, the tone, and whether it leads with a status dot. */
@@ -181,11 +182,105 @@ export type AccordionData = {
 
 export type Collection = ListData | AccordionData
 
-/** A face of a `bands` card. */
-export type Band =
-    | { readonly kind: "body"; readonly label?: string; readonly children: ReactNode }
+/** The fields of a filter zone: the tabs that narrow the card's own list. */
+export type FilterFields = {
+    /** The accessible name of the tab list. */
+    readonly label: string
+    /** The views, each with its `count`. */
+    readonly items: readonly TabItem[]
+    readonly selectedKey: string
+    readonly onSelect: (key: string) => void
+    /** The accessible name of the fold menu, from the number of folded tabs (for example "3 more filters"). */
+    readonly moreLabel?: (count: number) => string
+    /** The word the fold menu draws (the app's own "More"). */
+    readonly overflowLabel?: string
+}
+
+/** The fields of a search zone: one search field over the card's own list. */
+export type SearchFields = {
+    /** The accessible name of the field (it is not drawn). */
+    readonly label: string
+    readonly value: string
+    readonly onChange: (value: string) => void
+    readonly placeholder?: string
+    /** Accessible name of the clear button. */
+    readonly clearLabel?: string
+}
+
+/**
+ * A band above the card's body. Zones are typed: the shell owns their padding, their geometry while loading and the ONE divider
+ * between neighbouring zones and between a zone and the body (a `Divider` inside a zone is refused). `custom` is the only free
+ * zone: Grammar pads and seams it, and it may not hold `Tabs`, `SearchField` or `Divider` (use the typed zones).
+ */
+export type HeaderZone =
+    | ({ readonly kind: "filter" } & FilterFields)
+    | ({ readonly kind: "search" } & SearchFields)
+    /** The filter tabs at the leading edge and a compact search field at the trailing edge, in one row; narrow: the extra tabs fold into the menu and the search becomes a search button that opens a row. */
+    | { readonly kind: "toolbar"; readonly filter: FilterFields; readonly search: SearchFields }
     | { readonly kind: "figures"; readonly items: readonly Figure[] }
-    | { readonly kind: "media"; readonly artwork: ReactNode }
+    | { readonly kind: "custom"; readonly children: ReactNode }
+
+/** A band below the card's body. */
+export type FooterZone =
+    | { readonly kind: "more"; readonly label: string; readonly press: () => void; readonly href?: never }
+    | { readonly kind: "more"; readonly label: string; readonly href: string; readonly press?: never }
+    | {
+        readonly kind: "paging"
+        readonly page: number
+        readonly pageCount: number
+        readonly onPage: (page: number) => void
+        readonly labels: {
+            /** Names the pager landmark, e.g. "Results pages". */
+            readonly nav: string
+            readonly previous: string
+            readonly next: string
+            /** The accessible name of one page button, e.g. "Page 3". */
+            readonly page: (page: number) => string
+            /** An optional summary, e.g. "21-30 of 94". */
+            readonly summary?: string
+        }
+    }
+    | { readonly kind: "custom"; readonly children: ReactNode }
+
+/** One column of a `table` card. */
+export type TableColumnData = {
+    readonly id: string
+    readonly label: string
+    readonly align?: "start" | "end"
+    /** A column of amounts: its cells never wrap, read in tabular numerals and align to the end. */
+    readonly numeric?: boolean
+    /** Narrow-width mode: a `low` column leaves the header below the card's collapse width and joins the row as a muted line under the first column. Default `high`. */
+    readonly priority?: "high" | "low"
+}
+
+/** One row of a `table` card: its cells by column id. */
+export type TableRowData = {
+    readonly id: string
+    readonly cells: Readonly<Record<string, ReactNode>>
+    /** A destination: the whole row is a link target. */
+    readonly href?: string
+}
+
+/** A run of rows under one group heading row inside the same table (a day of a ledger). */
+export type TableGroupData = {
+    readonly id: string
+    /** The group heading, e.g. the date. */
+    readonly label: string
+    /** One short fact at the end of the heading, e.g. the end-of-day balance. */
+    readonly fact?: string
+    readonly rows: readonly TableRowData[]
+}
+
+/** The body of a `table` card: Grammar owns the table. The rows are one list or groups of rows under heading rows; the column header is drawn once. */
+export type TableData = {
+    readonly kind: "table"
+    readonly columns: readonly TableColumnData[]
+    /** What the card shows when it has no rows. Required: every table answers for its empty state. */
+    readonly empty: ReactNode
+} & (
+    | { readonly rows: readonly TableRowData[]; readonly groups?: undefined }
+    | { readonly groups: readonly TableGroupData[]; readonly rows?: undefined }
+)
 
 export type WholeCardAction =
     | { readonly kind: "link"; readonly href: string; readonly label: string }

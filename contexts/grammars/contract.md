@@ -97,10 +97,11 @@ Each heading is one role of [contract.yaml](contract.yaml) `roles`.
 
 Card is one subject on its own surface, and a surface never stands inside another (a card, a `Pane surface`, a `Dialog`,
 `Drawer`, `AlertDialog` or `Popover`): the card has one depth, raised, and no nested edge exists. Its body is a
-compiler-checked `kind`: `body` (the default, the app's children), `figures`, `list`, `accordion`, `bands` and `tile`. A
-list needs its `items` and an `empty` state, `wholeAction` exists only where the card holds no inner control, and `bands`
-stacks full-bleed faces (any number of `body`, `figures` and `media`, then at most one collection, last) divided by the n-1
-seams the shell draws instead of nesting cards or a `Divider`; `measure` caps a form card's width so the page does not. Highlight is a claim
+compiler-checked `kind`: `body` (the default, the app's children), `figures`, `list`, `accordion` and `tile`. A
+list needs its `items` and an `empty` state, `wholeAction` exists only where the card holds no inner control, and any kind takes
+typed `headers` (`filter`, `search`, `toolbar`, `figures`, `custom`) and `footers` (`more`, `paging`, `custom`) that stack full-bleed
+above and below the body, divided by the one divider the shell draws between neighbours instead of nesting cards or a `Divider`
+(a tab strip in a zone stands on that divider, which is its line); `measure` caps a form card's width so the page does not. Highlight is a claim
 that this card is the next step, so one per view. `treatment` is the face: `surface`, `soft` (the brand's light
 tint, `accentSoft`, under the default foreground) or `ink` (the brand ink, the signature band); `soft` and `ink`
 carry the decorative artwork slot, `ink` also the motif. A painted treatment rebinds the whole surface pair on its
