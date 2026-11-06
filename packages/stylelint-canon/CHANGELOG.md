@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.7.0 - 2026-11-06
+
+- Added: `starci/theme-layer-shape` admits the four app brand tokens of the intent `informative` (`--informative`, `--informative-foreground`, `--informative-soft`, `--informative-soft-foreground`) in `brand.css`. They are the app's own: the app defines their values, the Grammar never does and keeps HeroUI's base CSS (owner ruling: the informative tone stays blue). No other `--informative-*` name is admitted.
+
 ## 2.6.0 - 2026-11-03
 
 - Added: `starci/no-self-reference` (R61, `FE_STYLE_TOKEN_ONLY`): no custom property takes `var(--itself)` as its value, in any stylesheet. A property that names itself is invalid at computed-value time and resolves empty; a rename of a `--starci-core-*` alias onto the token's own name left twenty of them in a brand layer and blanked every brand colour.

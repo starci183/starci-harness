@@ -71,6 +71,14 @@ test("accepts every HeroUI token an app may set, the scrollbar and the informati
   assert.deepEqual(await rule(`:root { ${block} } .dark { ${block} }`), [])
 })
 
+test("accepts the four app brand tokens of the intent informative, and no other informative name", async () => {
+  const block = ["--informative", "--informative-foreground", "--informative-soft", "--informative-soft-foreground"].map((name) => `${name}: var(--info);`).join(" ")
+  assert.deepEqual(await rule(`:root { ${block} } .dark { ${block} }`), [])
+  const foreign = await rule(":root { --informative-hover: #eee; }")
+  assert.equal(foreign.length, 1)
+  assert.match(textAt(foreign, 0), /--informative-hover.*not a token HeroUI or the grammar publishes/)
+})
+
 test("accepts the font tokens the grammar reads", async () => {
   assert.deepEqual(await rule(':root { --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif; --font-mono: ui-monospace, Menlo, monospace; }'), [])
   const foreign = await rule(':root { --font-display: "Inter", serif; }')

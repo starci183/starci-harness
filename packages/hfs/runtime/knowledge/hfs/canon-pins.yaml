@@ -87,7 +87,7 @@ pins:
     source: packages/eslint-grammar-offset-pop/package.json
     why: 'the Offset Pop Grammar component API lint, versioned with @starci/grammar; its shared component contract comes from the StarCi family lint without copying rules.'
   '@starci/stylelint-canon':
-    version: 2.6.0
+    version: 2.7.0
     group: starci
     install: registry
     side: fe

@@ -9,11 +9,14 @@ export { FAMILY_PREFIXES }
 
 const NAMES = new Set([...DECLARED, ...VENDOR])
 
+/** The app brand tokens of the intent `informative`: the app defines their values (the grammar never does, and keeps HeroUI's base CSS), so the theme layer may set them. */
+const APP_BRAND_TOKENS: ReadonlySet<string> = new Set(["--informative", "--informative-foreground", "--informative-soft", "--informative-soft-foreground"])
+
 /** True for a custom property the grammar publishes: a listed name or anything under a family prefix. */
 export const isGrammarToken = (name: string): boolean => NAMES.has(name) || FAMILY_PREFIXES.some((prefix) => name.startsWith(prefix))
 
 /** True for a grammar token or an app token the repository declared to the factory. */
 export const isKnownToken = (name: string, appTokens: readonly string[] = []): boolean => isGrammarToken(name) || appTokens.includes(name)
 
-/** True for a token the app's theme layer may set: HeroUI's whole token list and the grammar's published names, plus the `--info*` family (HeroUI declares `--font-sans` and `--font-mono`, which NAMES holds; any other `--font-*` is the app's own type and stays foreign); never a family-prefixed private token. */
-export const isThemeToken = (name: string): boolean => NAMES.has(name) || /^--info(?:-[\w-]+)?$/.test(name)
+/** True for a token the app's theme layer may set: HeroUI's whole token list and the grammar's published names, plus the `--info*` family and the four app brand tokens of the intent `informative` (HeroUI declares `--font-sans` and `--font-mono`, which NAMES holds; any other `--font-*` is the app's own type and stays foreign); never a family-prefixed private token. */
+export const isThemeToken = (name: string): boolean => NAMES.has(name) || /^--info(?:-[\w-]+)?$/.test(name) || APP_BRAND_TOKENS.has(name)
