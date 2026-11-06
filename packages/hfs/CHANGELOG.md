@@ -3,6 +3,7 @@
 ## 5.13.5 - 2026-11-06
 
 - A patch: a SQL migration has its own read budget. The tree checks refused any file over 1 MiB (`MAX_READ_BYTES`), so a baseline reset, which is one file by design, was reported "not a readable SQL file" and every database rule saw nothing in it: the baseline header, the pgmq queue creates, the scope role and the destructive-ruling proof were reported missing. `readText` now gives `db/migrations/*.sql`, `db/migrations/archive/*.sql` and `db/bootstrap.sql` the explicit budget `MAX_MIGRATION_READ_BYTES` (16 MiB, documented in `rules/read.mts`); every other file keeps 1 MiB. A migration over 16 MiB is still unreadable. Spec: `src/hfs-read-migration-budget.spec.mts`.
+- `DB_APP_ROLE` reads a role created inside an idempotent DO block. A baseline creates `app_be` and `app_engine` as `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'x') THEN CREATE ROLE x ...; END IF; END $$`; the rule read only a top-level CREATE ROLE, so the scope role and app role of such a baseline looked never created. That exact guarded shape (the guard names the created role, no else branch) is now read with the same attribute checks as a top-level statement (LOGIN/NOLOGIN, NOINHERIT, BYPASSRLS and the administrative attributes refused). A DO block that creates or alters a role through a dynamic EXECUTE is refused as unreadable. Specs: a guarded block passes, a guarded block with a forbidden attribute is refused, a dynamic EXECUTE block is refused.
 
 ## 5.13.4 - 2026-11-06
 

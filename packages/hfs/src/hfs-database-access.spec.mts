@@ -272,6 +272,22 @@ for (const edition of ['lite', 'full']) {
     await expectCode(edition, 'DB_APP_ROLE', 'create role app_be login noinherit nobypassrls superuser;', true);
     await expectCode(edition, 'DB_APP_ROLE', 'create role app_be login noinherit nobypassrls nosuperuser;', false);
   });
+  test(`DB_APP_ROLE@${edition}: a CREATE ROLE inside an IF NOT EXISTS guarded DO block is read like a top-level one`, async () => {
+    const guarded = (attributes: string) => `do $$ begin if not exists (select 1 from pg_roles where rolname = 'app_be') then create role app_be ${attributes}; end if; end $$;`;
+    await expectCode(edition, 'DB_APP_ROLE', guarded('login noinherit nobypassrls'), false);
+    await expectCode(edition, 'DB_APP_ROLE', guarded('login noinherit bypassrls'), true);
+    await expectCode(edition, 'DB_APP_ROLE', guarded('nologin noinherit'), true);
+  });
+  test(`DB_APP_ROLE@${edition}: a guarded scope role block is read with the scope role attributes`, async () => {
+    const scoped = { db: { scopeRoles: [{ role: 'app_engine' }] } };
+    const guarded = (attributes: string) => `do $$ begin if not exists (select 1 from pg_roles where rolname = 'app_engine') then create role app_engine ${attributes}; end if; end $$;`;
+    await expectCode(edition, 'DB_APP_ROLE', guarded('nologin noinherit nobypassrls'), false, scoped);
+    await expectCode(edition, 'DB_APP_ROLE', guarded('nologin noinherit bypassrls'), true, scoped);
+  });
+  test(`DB_APP_ROLE@${edition}: an unguarded DO block with a dynamic EXECUTE is refused as unreadable`, async () => {
+    await expectCode(edition, 'DB_APP_ROLE', "do $$ begin execute format('create role %I login noinherit', 'app_be'); end $$;", true);
+    await expectCode(edition, 'DB_APP_ROLE', "do $$ begin if not exists (select 1 from pg_roles where rolname = 'app_be') then execute 'create role app_be login noinherit bypassrls'; end if; end $$;", true);
+  });
   test(`DB_FORCE_RLS_DEFAULT@${edition}: an app-role-owned table without force RLS is refused and with it passes`, async () => {
     await expectCode(edition, 'DB_FORCE_RLS_DEFAULT', owned, true);
     await expectCode(edition, 'DB_FORCE_RLS_DEFAULT', `${owned} alter table public.items force row level security;`, false);

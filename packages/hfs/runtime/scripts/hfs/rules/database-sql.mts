@@ -3,6 +3,7 @@
 import { found } from './read.mjs';
 import { parseSql } from '../sql/pg-parse.mjs';
 import { plpgsqlFindings } from './database-plpgsql.mjs';
+import { dynamicRoleExecute, guardedRoleCreates } from './database-role-blocks.mjs';
 import { transactionControlFindings } from './database-transaction.mjs';
 import { DB_MIGRATION_SHAPE, DB_POLICY_SHAPE, DB_RLS_REQUIRED, DB_STORAGE_POLICY } from './database-constants.mjs';
 import type { Finding, Parsed } from './rule-types.mjs';
@@ -43,6 +44,20 @@ function statementList(stmts: Parsed, lineAt: Parsed) {
     const offset = entry.stmt_location >= 0 ? entry.stmt_location : nodeOffset;
     return { type, node, index, line: lineAt(offset) };
   });
+}
+
+/** Each guarded `IF NOT EXISTS (role) THEN CREATE ROLE` DO block also contributes its CREATE ROLE as a statement at the block's line, so the role rules read it. */
+async function withGuardedRoles(statements: Parsed[]) {
+  const out: Parsed[] = [];
+  for (const statement of statements) {
+    out.push(statement);
+    if (statement.type !== 'DoStmt') continue;
+    const option = (key: string) => (statement.node.args ?? []).find((argument: Parsed) => argument?.DefElem?.defname === key)?.DefElem?.arg;
+    const block = { body: option('as')?.String?.sval, language: option('language')?.String?.sval ?? 'plpgsql' };
+    for (const node of await guardedRoleCreates(block)) out.push({ type: 'CreateRoleStmt', node, line: statement.line });
+    if (await dynamicRoleExecute(block)) out.push({ type: 'DynamicRoleExecute', node: {}, line: statement.line });
+  }
+  return out.map((statement, index) => ({ ...statement, index }));
 }
 
 /** Whether a function SET option pins search_path to literal values rather than FROM CURRENT. */
@@ -492,7 +507,7 @@ export async function sqlAnalysis({ file, text, exposed, forceRls }: { file: str
     const lineNote = line ? `:${line}` : '';
     return { findings: [found(DB_MIGRATION_SHAPE, file, `${file}${lineNote} is not valid PostgreSQL (${String(error?.message ?? error).split('\n')[0]})`, { ...(line ? { line } : {}) })], facts: null };
   }
-  const facts = factsOf(statementList(parsed.stmts, lineAt));
+  const facts = factsOf(await withGuardedRoles(statementList(parsed.stmts, lineAt)));
   return { facts, findings: [
     ...transactionControlFindings(file, text, parsed.stmts, lineAt),
     ...rlsFindings(file, facts, exposed, forceRls),

@@ -235,8 +235,11 @@ function scopeRoleFindings(analyses: Parsed, scopeRoles: Set<string>, appRole: s
   return findings;
 }
 
+const DYNAMIC_ROLE_MESSAGE = 'a DO block creates or alters a role through a dynamic EXECUTE the role rules cannot read; write `IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ...) THEN CREATE ROLE ...; END IF` with the attributes spelled out';
+
 function roleStatementFindings(statement: Parsed, appRole: Parsed) {
   const { type, node } = statement;
+  if (type === 'DynamicRoleExecute') return [note(DB_APP_ROLE, statement, DYNAMIC_ROLE_MESSAGE)];
   if (!['CreateRoleStmt', 'AlterRoleStmt'].includes(type)) return [];
   const role = type === 'CreateRoleStmt' ? node.role : roleName(node.role);
   if (role !== appRole) return [];
