@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.13.4 - 2026-11-06
+
+- A patch: canon pin: grammar 0.23.3. The runtime data `canon-pins.yaml` the canons read pins `@starci/grammar` at 0.23.3 (a Grammar-only edit: the surface radius is `--radius`); no hfs rule or schema changed, so the canons and the lint family (same minor 0.23, decision release-only-what-changed) are not released.
+
 ## 5.13.3 - 2026-11-06
 
 - A patch: canon pin: grammar 0.23.2. The runtime data `canon-pins.yaml` the canons read pins `@starci/grammar` at 0.23.2 (a Grammar-only edit) and `@starci/stylelint-canon` at 2.7.0; no hfs rule or schema changed, so the canons and the Grammar family are not released.

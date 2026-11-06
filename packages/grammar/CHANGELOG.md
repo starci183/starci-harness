@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - surface and radius tokens (OWNER ruling 2026-11-06)
+## 0.23.3 - 2026-11-06 - surface and radius tokens (OWNER ruling 2026-11-06)
 
 - Fixed: `--starci-core-surface-radius` is `--radius` (it was 4/3 of it, 10.67px at Nivo's 0.5rem), so every card, media viewport, toast, flow graph and diagram draws at the one block radius.
 - Fixed: 21 corner radii that mapped to no HeroUI token now use `--radius` (`--grammar-radius-md`): board column, message bubble body (the tail corner is square), sidebar item, icon tiles, text action, schedule item, bar chart fill, code, input reveal, shortcut hint, mention list, flow graph tip, node and lane label; `progress-step` is a pill (full). Left as they are because they mirror the vendor Button radius: the button loading ring and the tooltip trigger (`calc(var(--radius) * 3)`).
