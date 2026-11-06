@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.13.3 - 2026-11-06
+
+- A patch: canon pin: grammar 0.23.2. The runtime data `canon-pins.yaml` the canons read pins `@starci/grammar` at 0.23.2 (a Grammar-only edit); no hfs rule or schema changed, so the canons and the Grammar family are not released.
+
 ## 5.13.2 - 2026-11-05
 
 - Added (owner ruling 2026-11-05, real database isolation; R256 `DB_POLICY_TAUTOLOGY`, BE-PERSISTENCE-19): hfs.json `db.scopeSettings` lists the transaction settings an app sets per request to enter a scoped database role (for example an engine role entered by a SECURITY INVOKER function that sets `nivo.workspace_id`). A policy for any role but the application role now passes when it reads a declared setting with `current_setting`, directly or through a SQL function whose body reads it. An undeclared setting, a literal true, `OR true`, `IS NOT NULL` and a self comparison are still refused. A policy that relies on a declared scope principal must compare it with the owning column (`db.scopeColumns`, default `workspace_id`), `column = principal` on either side; `id = principal`, another column, `<>` and `IS NOT NULL` tests are refused. A declared setting counts only in a policy whose roles are all in `db.scopeRoles` (a list of `{ role, reason }`, required with `scopeSettings`): the same predicate `TO authenticated`, `anon`, an undeclared role or a mixed-role list is refused, and each scope role must be created NOLOGIN NOINHERIT NOBYPASSRLS by a migration and never altered to gain LOGIN or administrative attributes (`DB_APP_ROLE`). The declaration shape accepts only dotted lower-case names and never `request.jwt.*`.
