@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.13.8 - 2026-11-07
+
+- A patch: canon pin: eslint-canon-fe 9.16.1 (`control-height` no longer names the removed `SegmentedControl`). The runtime data `canon-pins.yaml` pins the canon at 9.16.1; no hfs rule or schema changed.
+
 ## 5.13.7 - 2026-11-06
 
 - A patch: canon pin: grammar 0.24.0 with the lint family 0.24.0 (`@starci/eslint-grammar-core`, `@starci/eslint-grammar-offset-pop`). The runtime data `canon-pins.yaml` the canons read pins the family at 0.24.0; no hfs rule or schema changed.

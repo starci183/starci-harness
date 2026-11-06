@@ -1,5 +1,7 @@
 # 4. Vendor anatomy (HeroUI parity) — analysis
 
+> Snapshot of an audit. Names that changed since: `SegmentedControl` was removed in grammar 0.24.0 (a switch of a mode or period is `Tabs appearance="primary"`, in a card's `switch` header zone; a value of a form is `ChoiceChips` or `RadioGroup`), and the Tabs variants follow HeroUI: `secondary` is the underline, `primary` the pill in a track (`Tabs appearance`).
+
 Area: `contexts/vendor/heroui/` (65 files) of the legacy runtime and how the Grammar package and the Grammar DNAs map onto it.
 Legacy root below = `D:\Repositories\starci-academy-backend\.claude` (read only). HeroUI version measured: `@heroui/react` + `@heroui/styles` 3.2.6.
 

@@ -1,5 +1,7 @@
 # 5. FE patterns (the app side of UI knowledge) and the whole-knowledge map
 
+> Snapshot of an audit. Names that changed since: `SegmentedControl` was removed in grammar 0.24.0 (a switch of a mode or period is `Tabs appearance="primary"`, in a card's `switch` header zone; a value of a form is `ChoiceChips` or `RadioGroup`), and the Tabs variants follow HeroUI: `secondary` is the underline, `primary` the pill in a track (`Tabs appearance`).
+
 Scope: how an app consumes a Grammar, what `contexts/code/fe/*` says about UI versus what grammar/ui knowledge says,
 which facts `@starci/eslint-canon-fe` (`packages/eslint/fe`) enforces, the UI parts of `contexts/hfs/*`, and a map of all of
 `contexts/` with a proposed top-level layout for `D:\.claude\knowledge`.
@@ -135,7 +137,7 @@ The new tree has to pick one meaning per word (see 4.4).
   destructive entry→danger-soft, destructive confirm→danger inside an AlertDialog; one commit per render; none in a collection item.
 - **Control height** (`packages/eslint/fe/docs/control-height.md:3`): one 40px default (HeroUI `h-10`) for every standalone control;
   48px only for a landing hero CTA; one size per row. Reasoning lives **only in an eslint doc** (see 4.1).
-- **Component by job** (`CONTEXT.md:52-62`): Tabs vs SegmentedControl vs Select/ComboBox; Tabs `primary` for page areas,
+- **Component by job** (`CONTEXT.md:52-62`): Tabs vs ChoiceChips vs Select/ComboBox; Tabs `primary` for page areas,
   `secondary` inside drawer/card/dialog/rail; SurfaceListCard+ListRow for collections; two Buttons at `gap-2`, way out first.
   This is real UI thinking, but it sits in the runtime bootstrap file, not in `contexts/ui`.
 

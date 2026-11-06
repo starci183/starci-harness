@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.16.1 - 2026-11-07
+
+- A patch: `starci-fe/control-height` no longer names `SegmentedControl` (removed from `@starci/grammar` 0.24.0); the controls it holds to the one 40px height are Button, IconButton, Switch, Input, SearchField, Select, Tabs, Textarea, NumberField and ComboBox. Its docs follow.
+
 ## 9.16.0 - 2026-11-06
 
 - Added: `starci-fe/renderer-presentation-only` (R384, `FE_RENDERER_LOGIC`, RENDERER-PURITY-1) at error: in a client renderer of a root workspace package (`packages/<pkg>/src/client/**/*.tsx`) data computation (arithmetic between two data values, `+=` accumulation), aggregation (`reduce`, a chain of `filter`/`sort`/`flatMap`, `Math.max/min(...spread)`), date math (`Date.now()`/`getTime()` arithmetic, Date setters, date-fns add/sub/diff/compare/round), a relational comparison of two data values and a mutation outside a declared action (a write to a prop or an outer value, an in-place array mutator on data, `fetch`, storage, a beacon) are refused; they belong in a measured `.ts` module the renderer calls. Mapping, display filters, ternaries that pick a view, comparisons and arithmetic with a literal and `handle.run(...)` stay allowed. A front-end package (`fe/packages/*`) is not judged by it.

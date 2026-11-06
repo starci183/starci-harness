@@ -1,5 +1,7 @@
 # 3. UI thinking (contexts/ui): analysis
 
+> Snapshot of an audit. Names that changed since: `SegmentedControl` was removed in grammar 0.24.0 (a switch of a mode or period is `Tabs appearance="primary"`, in a card's `switch` header zone; a value of a form is `ChoiceChips` or `RadioGroup`), and the Tabs variants follow HeroUI: `secondary` is the underline, `primary` the pill in a track (`Tabs appearance`).
+
 Scope: `D:\Repositories\starci-academy-backend\.claude\knowledge\ui\**` (composition, presentation, proof incl.
 calibration, examples, both `index.yaml`) plus the top-level `contexts/index.yaml` branch that points at it. The
 legacy tree was only read, never changed. Where the thinking depends on code (intent resolver, size props, gate
@@ -21,7 +23,7 @@ dated "Owner ruling/decision". Every rule file uses `schema: starci/knowledge-so
 | composition/action.yaml | 5.8 | ACTION-1..3 (14) | One activation, one effect; pending on initiator; anchor vs command | `eslint/fe/ui-rulings.mjs` (case-5) |
 | composition/cta.yaml | 15.1 | CTA-1..6 (33) | Emphasis follows consequence; one primary per command per view; intent → variant; destructive; group order | `eslint/fe/button-intent.mjs` (CTA-6 c4) |
 | composition/accent.yaml | 11.1 | ACCENT-1..6 (30) | Accent budget: 1 dominant per decision, identity tiles stay neutral, 90/10 colour budget, Alert anatomy | prose; `ui-proof-brief` via TASTE-5 |
-| composition/state.yaml | 14.8 | STATE-1..8 (33) | The five kinds of state; carriers; absence; Tabs vs SegmentedControl; loading/failure anatomy. Also a loading-ownership table | `draw-dna.mjs` reads the PresentationState vocabulary |
+| composition/state.yaml | 14.8 | STATE-1..8 (33) | The five kinds of state; carriers; absence; Tabs vs ChoiceChips; loading/failure anatomy. Also a loading-ownership table | `draw-dna.mjs` reads the PresentationState vocabulary |
 | composition/feedback.yaml | 5.5 | FEEDBACK-1..3 (17) | Correct at the nearest owner, recover at the smallest owner, claim only after settlement | – |
 | composition/collection.yaml | 10.9 | COLLECTION-1..3 (18) | A list is a section, never a card; a card is one item; group avatars | `ui-rulings.mjs` (c9) |
 | composition/layout.yaml | 11.0 | LAYOUT-1..4 (26) | Regions, composition owners, scroll axes, out-of-flow regions | – |
@@ -171,7 +173,7 @@ The rules that turn this into decisions:
 - **Disabled, pending and skeleton are three conditions** (CTA-3). Disabled means the work cannot start. Pending
   means this control accepted work: label and box unchanged, a second activation refused, never swapped for
   `isDisabled` (ACTION-2 c4). Skeleton means content never resolved. Pending is never page-wide.
-- **Peer choices are not buttons** (CTA-1 c6, CTA-6 c6). Use `TagGroup` or `SegmentedControl`: the secondary look with
+- **Peer choices are not buttons** (CTA-1 c6, CTA-6 c6). Use `TagGroup` or `ChoiceChips`: the secondary look with
   a 1px border, and the selected one on accent-soft with an accent border. A primary never sits among them.
 
 **Button size.** The knowledge only says that `size` is "bound through the published prop from that interaction
@@ -181,14 +183,14 @@ no size. The only cross-component size rule is `control`, the 40px shared bar-co
 `grammars/starci/family.yaml:63` "control-height-40", `playbook.yaml:188`, and `eslint/fe/control-height.mjs`.
 **There is no sm/md/lg alignment table across Button, Input, Tabs and Chip** (gap §4.6).
 
-### 3.3 Tabs vs SegmentedControl vs TagGroup vs ListBox (the choice decision)
+### 3.3 Tabs vs ChoiceChips vs TagGroup vs ListBox (the choice decision)
 
 | Need | Owner | Rule |
 |---|---|---|
 | Switch whole screens/panels of content | `Tabs` (each tab owns its panel via `panelId`) | STATE-6 c1-c2, c5 |
 | Page-level area switch under the header, once per page, may reflect the URL | `Tabs variant="primary"` (underline bar) | STATE-6 c6 |
 | Panels inside a drawer, card, dialog or rail; never in the URL; the nested one | `Tabs variant="secondary"` (HeroUI pill: soft `--default` track, white selected pill with surface shadow, padded track) | STATE-6 c6-c7 |
-| One value *inside a form* (audience, period, density) | `SegmentedControl` | STATE-6 c5 |
+| One value *inside a form* (audience, period, density) | `ChoiceChips` or `RadioGroup` | STATE-6 c5 |
 | Peer filters/categories (multi or single) | selectable `TagGroup` | CTA-1 c6 |
 | Navigation-like single-select list | `ListBox selectionIndicator="none"` (fill, no check) | COLLECTION-1 c9 |
 
@@ -332,7 +334,7 @@ Take an "Add documents" drawer:
 - **Layout.** A drawer (decision placement) holds the main task first, then a closed `SurfaceAccordionCard` with batch
   options, and the summary says who may read the result (LAYOUT-1 c8).
 - **Choices.** Upload | write | FAQ switches whole panels, so it is `Tabs variant="secondary"` (nested, pill, not in
-  the URL) (STATE-6 c5-c6). Audience inside the form is a `SegmentedControl`.
+  the URL) (STATE-6 c5-c6). Audience inside the form is a `ChoiceChips` or a `RadioGroup`.
 - **Sources.** The Drive picker is a secondary button under the dropzone. Links are a list of `Input`s with a ghost
   "+ add link" (LAYOUT-1 c9, COLLECTION-1 c8). A pasted row is removed with a `danger-soft` IconButton and no confirm
   (CTA-4 c5).
@@ -376,7 +378,7 @@ Take an "Add documents" drawer:
    - RADIUS-4 c1 renders `bg-accent-soft` on a marker and RADIUS-5 c3 on an "icon tile" (`radius.yaml:139,168`).
      RADIUS-7 renders a hero `bg-accent-soft`.
    - ACCENT-2 c1/c5 and ACCENT-6 c2 say identity tiles are neutral.
-   - RADIUS-4 c2 shows "An app-owned segmented control's own segment", which CTA-1 c6 forbids.
+   - RADIUS-4 c2 shows "An app-owned chip group's own segment", which CTA-1 c6 forbids.
 8. **Stale state in the example.**
    - The header says main colour is "Still OPEN" (`example:21`), but `pendingRulings.main-colour.status: ruled`
      (`example:835`).

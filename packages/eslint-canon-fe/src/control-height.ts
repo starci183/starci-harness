@@ -5,7 +5,7 @@ import { importOf } from "./lib/bindings.ts"
 import { defineRule, type AnyContext, type Node, type Recommended, type Rules } from "./lib/rule.ts"
 
 const GRAMMAR_ENTRY = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
-const CONTROLS = new Set(["Button", "IconButton", "Switch", "Input", "SearchField", "Select", "Tabs", "SegmentedControl", "Textarea", "NumberField", "ComboBox"])
+const CONTROLS = new Set(["Button", "IconButton", "Switch", "Input", "SearchField", "Select", "Tabs", "Textarea", "NumberField", "ComboBox"])
 /** A marketing hero call to action on a landing page is the one place the 48px step is allowed. */
 const LANDING_PATH = /[\\/](?:landing|hero|marketing)[\\/]|(?:Landing|Hero)[^\\/]*[\\/]/
 /** The default size and its two spellings: the vendor `md` and Grammar's `control` are the same 40px height. */
