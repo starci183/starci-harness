@@ -47,7 +47,7 @@ starci app check --gate hfs --no-cache
 | `--gate db` | the database rules of `db/` (the `db:lint` script runs `app check --gate db`) | `check/db/` |
 | `--gate secrets` | plaintext secrets, sealed custody, untracked secret files | `check/secrets/` |
 | `--gate wiring` | the boot proof of every app (a lite back end's composition with doubles) | `check/wiring/` |
-| `--gate types` | each workspace's `tsc --noEmit` through the app's TypeScript | `check/types/` |
+| `--gate types` | each workspace's `tsc --noEmit` through the app's TypeScript: the back end, each front-end workspace and each root workspace package (`packages/<pkg>/tsconfig.json`, as CI's `npm run typecheck` runs it) | `check/types/` |
 | `--gate lint` | ESLint per side and stylelint | `lint/` |
 | `--gate test` | the unit specs, their coverage merged into one report and its per-file threshold | `test-coverage/` |
 | `--gate sonar`, `--gate codecov` | the existing combined Sonar and Codecov predictions from the merged coverage, the lint findings and the clones; either selector invokes this family, both together invoke it once | `sonar-baseline/`, `codecov-baseline/` |

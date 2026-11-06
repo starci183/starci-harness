@@ -48,6 +48,9 @@ test('findings compare as new, known and fixed, and the family prints its line',
   assert.equal(familyLine(report), 'db: diff (against the cache), checked 2, reused 9; findings 1 new, 0 known, 0 fixed');
 });
 
-test('tsc programs are the back end and each front-end workspace', () => {
+test('tsc programs are the back end, each front-end workspace and each root workspace package', () => {
   assert.deepEqual(programsOf(['be/tsconfig.json', 'fe/apps/web/tsconfig.json', 'fe/packages/ui/tsconfig.json', 'fe/tsconfig.json', 'fe/apps/web/src/x.ts']).map((p) => p.name), ['be', 'fe/apps/web', 'fe/packages/ui']);
+  const roots = programsOf(['packages/blocks-core/tsconfig.json', 'packages/agent-sdk/tsconfig.json', 'packages/agent-sdk/tsconfig.build.json', 'packages/agent-sdk/src/tsconfig.json', 'be/tsconfig.json']);
+  assert.deepEqual(roots.map((p) => p.name), ['be', 'packages/agent-sdk', 'packages/blocks-core']);
+  assert.deepEqual(roots.find((p) => p.name === 'packages/agent-sdk'), { name: 'packages/agent-sdk', tsconfig: 'packages/agent-sdk/tsconfig.json', reads: ['packages'] });
 });

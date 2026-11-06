@@ -106,12 +106,13 @@ or world lifecycle, and no component built from anything but the grammar's. A wo
 and `src/public/` subpaths of a root module package, [project/README.md](../../project/README.md) PROJECT-3) draws its
 screens with grammar components alone, and the front-end canon and the grammar lint judge those subpaths from the
 app root's managed `eslint.config.mjs` with the rules of the front end, and so is every other `.tsx` file of a root package source (a `src/client/` renderer); a visual two apps share belongs to the grammar.
+A client renderer of a root package (`packages/<pkg>/src/client/**/*.tsx`) holds presentation only: it maps rows to components, chooses what to show and formats. Data computation, aggregation, date math, a comparison of two data values and a mutation outside a declared action live in a measured `.ts` module it calls (BE-TEST-13), since the unit run measures `.ts` only.
 
 Why: a second visual owner beside the grammar is a fork of the design system, and drawing with the grammar's own parts
 adds none.
 
 Enforced by: R91 (`monorepo-tier-belongs-to-its-side`), R63 (machine `package-shape`), the front-end canon and the
-grammar lint over the package view (`starciFePackagesConfig`, the family's `<family>GrammarPackagesConfig`).
+grammar lint over the package view (`starciFePackagesConfig`, the family's `<family>GrammarPackagesConfig`), R384 (`renderer-presentation-only`).
 
 ## FE-PACKAGES-3 One version of every dependency, from the declared stack
 

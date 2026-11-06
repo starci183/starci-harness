@@ -104,6 +104,11 @@ export const why = {
     en: "`<file>` draws a skeleton by hand.",
     fix: "Pass isLoading to the Grammar component and let it draw its loading structure; the block hands it the same-shape placeholder (FE-ERROR-1).",
   },
+  "renderer-presentation-only": {
+    code: "FE_RENDERER_LOGIC",
+    en: "`<file>` is a client renderer of a root package that holds `<what>`.",
+    fix: "Move the data computation, aggregation, date math, domain comparison or mutation into a measured .ts module (rules/ or a hook beside it) that the renderer calls; the renderer maps, chooses what to show and formats, and runs only declared actions.",
+  },
   "directive-first": {
     code: "FE_DIRECTIVE_FIRST",
     en: "`<file>` has a `<what>` directive below another statement.",

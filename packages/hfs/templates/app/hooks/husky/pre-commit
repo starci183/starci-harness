@@ -3,8 +3,9 @@
 # swallowed failure: HFS_BYPASS_MARKER) of the staged files, managed files equal to their render, the lint of the staged files, a prettier
 # check of the staged files. Every step ends the hook when it fails: none can be skipped. Types and the targeted specs belong to the op gate.
 # The lint step follows the branch profile (starci app check --profile, .starcistacks/application-stacks.yaml branches): where lint blocks, eslint
-# of the staged files of each side (the fe packages are built first: the apps import their emitted types, the way the managed lint script does)
-# and stylelint over the staged CSS of fe; where a branch profile reports lint, the lint ratchet (starci app check --ratchet: no staged file
+# of the staged files of each side (the fe packages are built first: the apps import their emitted types, the way the managed lint script does),
+# eslint of the staged files of the root workspace packages through the managed root eslint.config.mjs (the packages are built first: they import each other's
+# emitted types) and stylelint over the staged CSS of fe; where a branch profile reports lint, the lint ratchet (starci app check --ratchet: no staged file
 # gains a lint finding over HEAD, a new one carries none); where it is off, nothing.
 npx --no-install starci app check --staged || exit $?
 npx --no-install starci app sync || exit $?
@@ -15,6 +16,8 @@ if [ "$lint" = blocking ]; then
     xargs -0 -n 50 sh -c 'if [ "$#" -gt 0 ]; then cd be && npx eslint -- "$@"; fi' sh || exit $?
   git diff --cached --name-only --diff-filter=ACMR -z --relative=fe -- '*.ts' '*.tsx' '*.mts' '*.cts' '*.js' '*.jsx' '*.mjs' '*.cjs' |
     xargs -0 -n 50 sh -c 'if [ "$#" -gt 0 ]; then if [ -d fe/packages ]; then npx turbo run build --filter="./fe/packages/*" --output-logs=errors-only || exit $?; fi; cd fe && npx eslint --max-warnings=0 --no-warn-ignored -- "$@"; fi' sh || exit $?
+  git diff --cached --name-only --diff-filter=ACMR -z -- 'packages/*.ts' 'packages/*.tsx' 'packages/*.mts' 'packages/*.cts' 'packages/*.js' 'packages/*.jsx' 'packages/*.mjs' 'packages/*.cjs' |
+    xargs -0 -n 50 sh -c 'if [ "$#" -gt 0 ] && [ -f eslint.config.mjs ]; then npx turbo run build --filter="./packages/*" --output-logs=errors-only || exit $?; npx eslint --max-warnings=0 --no-warn-ignored -- "$@"; fi' sh || exit $?
   git diff --cached --name-only --diff-filter=ACMR -z --relative=fe -- '*.css' |
     xargs -0 -n 50 sh -c 'if [ "$#" -gt 0 ]; then cd fe && npx stylelint "$@"; fi' sh || exit $?
 elif [ "$lint" = report ]; then

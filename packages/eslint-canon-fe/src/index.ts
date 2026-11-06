@@ -29,6 +29,7 @@ import { recommended as landmarkRecommended, rules as landmarkRules } from "./la
 import { recommended as listsRecommended, rules as listsRules } from "./lists.ts"
 import { recommended as loadingRecommended, rules as loadingRules } from "./loading.ts"
 import { recommended as directiveFirstRecommended, rules as directiveFirstRules } from "./directive-first.ts"
+import { recommended as rendererPurityRecommended, rules as rendererPurityRules } from "./renderer-purity.ts"
 import { recommended as explicitSurfaceRecommended, rules as explicitSurfaceRules } from "./explicit-surface.ts"
 import { recommended as skeletonStatesRecommended, rules as skeletonStatesRules } from "./skeleton-states.ts"
 import { recommended as lintEscapeRecommended, rules as lintEscapeRules } from "./lint-escape-hatch.ts"
@@ -94,6 +95,7 @@ const CONTRIBUTIONS: Contribution[] = [
   { law: "lists", rules: listsRules, recommended: listsRecommended },
   { law: "loading", rules: loadingRules, recommended: loadingRecommended },
   { law: "directive-first", rules: directiveFirstRules, recommended: directiveFirstRecommended },
+  { law: "renderer-purity", rules: rendererPurityRules, recommended: rendererPurityRecommended },
   { law: "explicit-surface", rules: explicitSurfaceRules, recommended: explicitSurfaceRecommended },
   { law: "skeleton-states", rules: skeletonStatesRules, recommended: skeletonStatesRecommended },
   { law: "lint-escape-hatch", rules: lintEscapeRules, recommended: lintEscapeRecommended },

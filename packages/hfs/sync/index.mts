@@ -21,7 +21,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { braceVariants } from '../runtime/scripts/lib/glob.mjs';
-import { codecovPaths, coverageComponents, declaredPackageScopes, jestCoverage, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
+import { codecovPaths, coverageComponents, declaredPackageScopes, jestCoverage, packageComponents, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
 import { APP_SCOPE, SIDES, litePresenceOf, loadSlotManifest, resolveAppDeclaration, slotInEdition, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
 import type { AppRepo } from '../runtime/scripts/hfs/slot-app-view.mjs';
 import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
@@ -563,7 +563,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     coverageExclusions: scope === APP_SCOPE ? [...sonarCoverageExclusions(manifest, providers), ...rootPackages.excludes].join(',') : '',
     codecovExclusions: scope === APP_SCOPE ? ([...sonarCoverageExclusions(manifest, providers), ...rootPackages.excludes] as string[]).map(glob => `  - ${JSON.stringify(glob)}`).join('\n') : '',
     codecovPaths: scope === APP_SCOPE ? ([...codecovPaths(manifest, providers), ...moduleDirs.map(dir => `${dir}/src/**`)] as string[]).map(glob => `          - ${JSON.stringify(glob)}`).join('\n') : '',
-    codecovComponents: scope === APP_SCOPE ? componentsYaml(coverageComponents(manifest, { ...source, apps: app.sides.be.apps, providers })) : '',
+    codecovComponents: scope === APP_SCOPE ? componentsYaml([...coverageComponents(manifest, { ...source, apps: app.sides.be.apps, providers }), ...packageComponents(moduleDirs)]) : '',
     codecovTarget: quality.codecov.target,
     dependabotUpdates: dependabotUpdates(quality.dependabot),
     tsconfigPaths: ['be/tsconfig.json', ...fe.apps.map(entry => `fe/apps/${entry.name}/tsconfig.json`), ...(packages ? ['fe/packages/*/tsconfig.json'] : []), ...moduleDirs.map(dir => `${dir}/tsconfig.json`)].join(','),

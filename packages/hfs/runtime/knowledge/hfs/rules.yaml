@@ -6773,3 +6773,26 @@ rules:
       - {path: packages/hfs/src/check-cache-parity.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/check-cache-parity.spec.mjs, editions: [lite, full]}
+  - id: R384
+    code: "FE_RENDERER_LOGIC"
+    law: "A client renderer of a root workspace package (`packages/<pkg>/src/client/**/*.tsx`) holds presentation only: mapping rows to components, choosing what to show, formatting. Data computation (arithmetic between two data values, accumulation, reduce, a chain of filters and sorts, date math), a domain comparison between two data values and a mutation outside a declared action (a write to a prop, an in-place array mutator on data, fetch, storage) live in a measured .ts module the renderer calls; the renderer itself is outside coverage."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_RENDERER_LOGIC"]
+    enforcers:
+      - {kind: eslint-fe, id: renderer-presentation-only}
+    editions: [lite, full]
+    docs: [contexts/code/fe/folder.md]
+    templateNa: "A template has no root workspace package renderer."
+    proves:
+      - {path: packages/eslint-canon-fe/src/renderer-purity.spec.ts, editions: [lite, full], codes: [FE_RENDERER_LOGIC]}
+    exemplifiedBy:
+      - {path: packages/eslint-canon-fe/src/renderer-purity.spec.ts, editions: [lite, full], codes: [FE_RENDERER_LOGIC]}
+    witness:
+      - {path: packages/eslint-canon-fe/src/renderer-purity.spec.ts, editions: [lite, full], codes: [FE_RENDERER_LOGIC]}
+    cases:
+      - id: case-1
+        date: "2026-11-06"
+        source: owner
+        quote: "a renderer holds presentation only; the logic must live in measured .ts"
+        ruling: "The unit run measures .ts only, so logic written inside a client .tsx renderer had no spec, no coverage bar and no story. The renderer maps, chooses what to show and formats; the logic is a measured .ts function it calls."

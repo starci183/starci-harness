@@ -72,3 +72,37 @@ for (const edition of ['full', 'lite']) {
     }
   });
 }
+
+for (const edition of ['full', 'lite']) {
+  test(`${edition} rendered Codecov config holds one component per root package, held at the target like the services`, () => {
+    const hfs = { hfs: 3, kind: 'app', edition, project: 'codecov-packages-proof', sides: {
+      be: { apps: [{ name: 'api', kind: 'api' }], connections: [
+        { name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'api', isolation: 'schema', provider: 'postgres' },
+      ] },
+      fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },
+    } };
+    const source = {
+      files: ['apps/api/src/api.module.ts', 'src/modules/platform/clock/clock.service.ts'],
+      read: () => '',
+      otherPackages: ['plugin-registry', 'agent-sdk', 'blocks-core'],
+    };
+    // reason: the spec feeds renderTargets no Sonar presets and only the source facts the Codecov scope reads (files, read, the root packages).
+    const target = renderTargets(hfs, {} as unknown as Presets, { source: source as unknown as AppSourceFacts }).find(item => item.path === 'codecov.yml');
+    assert.ok(target, 'the managed Codecov configuration is rendered');
+    const config = parseYaml(target.content);
+    const components: { component_id: string; name: string; paths: string[] }[] = config.component_management.individual_components;
+    const packages = components.filter(component => component.component_id.startsWith('package-'));
+    assert.deepEqual(packages.map(component => component.component_id), ['package-agent-sdk', 'package-blocks-core', 'package-plugin-registry']);
+    for (const component of packages) assert.deepEqual(component.paths, [`packages/${component.component_id.slice('package-'.length)}/src/**`]);
+    assert.deepEqual(components.filter(component => !component.component_id.startsWith('package-')).map(component => component.component_id), ['platform'], 'services and platform are untouched');
+    assert.deepEqual(config.component_management.default_rules.statuses.map((rule: Rule) => rule.target), ['100%', '100%'], 'every component, packages included, is held at the target');
+  });
+}
+
+test('an app without root packages renders no package component', () => {
+  const hfs = { hfs: 3, kind: 'app', edition: 'full', project: 'codecov-none-proof', sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }] } } };
+  // reason: as above, only the files/read facts the Codecov scope reads.
+  const source = { files: ['src/modules/platform/clock/clock.service.ts'], read: () => '' };
+  const target = renderTargets(hfs, {} as unknown as Presets, { source: source as unknown as AppSourceFacts }).find(item => item.path === 'codecov.yml');
+  assert.ok(!target?.content.includes('package-'));
+});

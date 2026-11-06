@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.16.0 - 2026-11-06
+
+- Added: `starci-fe/renderer-presentation-only` (R384, `FE_RENDERER_LOGIC`, RENDERER-PURITY-1) at error: in a client renderer of a root workspace package (`packages/<pkg>/src/client/**/*.tsx`) data computation (arithmetic between two data values, `+=` accumulation), aggregation (`reduce`, a chain of `filter`/`sort`/`flatMap`, `Math.max/min(...spread)`), date math (`Date.now()`/`getTime()` arithmetic, Date setters, date-fns add/sub/diff/compare/round), a relational comparison of two data values and a mutation outside a declared action (a write to a prop or an outer value, an in-place array mutator on data, `fetch`, storage, a beacon) are refused; they belong in a measured `.ts` module the renderer calls. Mapping, display filters, ternaries that pick a view, comparisons and arithmetic with a literal and `handle.run(...)` stay allowed. A front-end package (`fe/packages/*`) is not judged by it.
+
 ## 9.15.1 - 2026-11-05
 
 - Fixed (FE-PACKAGES-2): the package config (`starciFePackagesConfig` and `scopeToPackages`, which the Grammar family's `...PackagesConfig` reads) covered only `packages/*/src/workbench/**` and `src/public/**`, and the back-end package config takes no `.tsx`, so a `.tsx` file anywhere else in a root package (a `src/client/` renderer of a block library) matched no config and was never linted. `PACKAGE_SOURCE_FILES` now also lists `packages/*/src/**/*.tsx`: every React file of a package source gets the front-end canon and the Grammar family rules, as the files of `fe/packages` do. The workbench contract stays back end; a plain `.ts` file outside the two subpaths stays the back-end canon's.

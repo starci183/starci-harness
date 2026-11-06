@@ -298,6 +298,12 @@ export function packagesCoverage(folders: readonly string[], declared: (folder: 
   return { folders: sorted, files: sorted.map((folder) => `${folder}/src/**/*.ts`), excludes: sorted.flatMap((folder) => (declared(folder) ?? PACKAGE_UNMEASURED).map((glob) => `${folder}/${glob}`)) };
 }
 
+/** The id of the Codecov component of one root package (`packages/blocks-core` is `package-blocks-core`): no service app or `platform` is ever named so. */
+export const packageComponentId = (folder: string): string => `package-${folder.slice(folder.lastIndexOf('/') + 1)}`;
+
+/** One Codecov component per root package, over everything below its `src/`: the 100 per file bar is read for each package apart, not only for the project and the patch. */
+export const packageComponents = (folders: readonly string[]): CoverageComponent[] => [...new Set(folders)].sort(byCodeUnit).map((folder): CoverageComponent => ({ id: packageComponentId(folder), name: packageComponentId(folder), paths: [`${folder}/src/**`] }));
+
 /** The unmeasured globs of each package that declares a sound slot manifest, read through `read` (app-relative text or null); null for the rest. */
 export function declaredPackageScopes(read: (file: string) => string | null): (folder: string) => readonly string[] | null {
   return (folder) => {

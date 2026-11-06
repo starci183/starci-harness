@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.2 - 2026-11-06
+
+- Changed: the peer range of `@starci/eslint-canon-fe` follows the canon's new minor (`~9.16.0`, eslint-canon-fe 9.16.0); no rule of this package changed. Grammar stays at 0.23.3 (a lint patch never re-releases it).
+
 ## 0.23.1 - 2026-11-05
 
 - Changed: version stamp, with `@starci/grammar` 0.23.1 (the family publishes as one; 0.23.0 of this package never reached npm). The version spec reads the canon-fe peer as its same-minor range.

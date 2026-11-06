@@ -22,13 +22,22 @@ import type { CheckSession, Finding } from './types.mjs';
 
 const asFinding = (found: Finding, code: string, level: string, engine: string): CheckFinding => ({ code, level, engine, path: found.path, line: found.line || undefined, column: found.column || undefined, message: `${found.path}${found.line ? `:${found.line}` : ''}: ${found.message}` });
 
-/** The tsc programs of the app: the back end and each front-end workspace, from the tracked tsconfigs. */
+/** The folder of the app's root workspace packages. */
+const ROOT_PACKAGES = 'packages';
+
+/**
+ * The tsc programs of the app: the back end, each front-end workspace and each root workspace package (`packages/<pkg>/tsconfig.json`), from the tracked
+ * tsconfigs. A root package is typechecked through its own tsconfig, as CI's `npm run typecheck` does (turbo runs each package's `tsc --noEmit`). It reads
+ * the dist of its sibling packages (`exports`), which no tracked path holds, so its key covers every root package: a change in one reruns them all.
+ */
 export function programsOf(tracked: readonly string[]): TypesProgram[] {
   const programs: TypesProgram[] = [];
   for (const file of tracked) {
     if (file === 'be/tsconfig.json') programs.push({ name: 'be', tsconfig: file, reads: ['be'] });
     const match = /^(fe\/(?:apps|packages)\/[^/]+)\/tsconfig\.json$/.exec(file);
     if (match?.[1] !== undefined) programs.push({ name: match[1], tsconfig: file, reads: [match[1]] });
+    const root = /^(packages\/[^/]+)\/tsconfig\.json$/.exec(file);
+    if (root?.[1] !== undefined) programs.push({ name: root[1], tsconfig: file, reads: [ROOT_PACKAGES] });
   }
   return programs.sort((a, b) => (a.name < b.name ? -1 : 1));
 }
@@ -40,7 +49,8 @@ export async function runTypesForApp(session: CheckSession, { repoRoot, tracked,
   const result = await runTypesFamily({
     session, programs, run: createTscRunner({ appRoot: repoRoot, execute }), toolCacheDir: toolCacheDir(repoRoot, env),
     inputsOf: (program) => {
-      const side = program.name.startsWith('be') ? 'be' : 'fe';
+      const rootPackage = program.name.startsWith(`${ROOT_PACKAGES}/`);
+      const side = program.name.startsWith('be') ? 'be' : rootPackage ? program.name : 'fe';
       const prefix = `${program.reads?.[0] ?? side}/`;
       const staged = runGitText(repoRoot, ['ls-files', '-s', '-z', '--', prefix]).stdout.split('\0').filter(Boolean).map((line) => line.replace(/^\d+ ([0-9a-f]+) (\d)\t(.*)$/u, '$3:$1:$2'));
       return { staged, untracked: untrackedProgramInputs(repoRoot, side, trackedSet).filter((file) => file.startsWith(prefix)) };
