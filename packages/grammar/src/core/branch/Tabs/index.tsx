@@ -49,11 +49,12 @@ export type TabsProps = NoChildren & {
      * form field: choosing a value of a form is `ChoiceChips` or `RadioGroup`.
      */
     readonly kind?: "views" | "filter"
-    /** `filter` only: the accessible name of the "+n" menu that holds the folded tabs, e.g. `(count) => \`${count} more filters\``. */
+    /** The accessible name of the menu that holds the folded tabs, e.g. `(count) => \`${count} more filters\``. */
     readonly moreLabel?: (count: number) => string
     /**
-     * `filter` only: the word the fold menu draws instead of "+n" (the app's own, e.g. "More"); the menu stays named by `moreLabel`, which
-     * still says how many tabs it holds, so assistive technology hears the count the word does not show.
+     * The word the fold menu draws instead of "+n" (the app's own, e.g. "More"); the menu stays named by `moreLabel`, which
+     * still says how many tabs it holds, so assistive technology hears the count the word does not show. On `views` tabs, giving it
+     * makes the tabs that do not fit fold into that menu (the selected one stays visible) instead of scrolling.
      */
     readonly overflowLabel?: string
     /** The selected tab. Required for controlled tabs; link tabs derive it from the current path when it is omitted. */
@@ -182,8 +183,10 @@ const TabsInner = (props: TabsProps) => {
     const inset = props.inset ?? "none"
     const kind = props.kind ?? "views"
     const isFilter = kind === "filter"
+    // Filter tabs always fold what does not fit; page (views) tabs fold only when the app names the fold menu (`overflowLabel`), else they scroll.
+    const folds = isFilter || props.overflowLabel !== undefined
     const frameContract = inset === "page" ? "PADDING-5" : undefined
-    const frameData = { "data-component": "Tabs", "data-tier": "branch", "data-grammar-tabs": "true", "data-grammar-tabs-inset": inset, "data-grammar-tabs-variant": "primary", "data-grammar-tabs-kind": kind } as const
+    const frameData = { "data-component": "Tabs", "data-tier": "branch", "data-grammar-tabs": "true", "data-grammar-tabs-inset": inset, "data-grammar-tabs-variant": "primary", "data-grammar-tabs-kind": kind, "data-grammar-tabs-folds": folds ? "true" : "false" } as const
 
     // `filter`: the tabs that do not fit fold into a "+n" menu. All tabs draw once to be measured (the widths are kept), then
     // the fit is recomputed from those widths whenever the frame resizes; the selected tab is always one of the shown.
@@ -191,20 +194,21 @@ const TabsInner = (props: TabsProps) => {
     const [fittedFor, setFittedFor] = useState("")
     const [, setMeasureTick] = useState(0)
     const widths = useRef<ReadonlyArray<number>>([])
-    const fitSignature = isFilter ? props.items.map((item) => `${item.id}|${item.label}|${item.count ?? ""}`).join("\u0000") : ""
-    const renderAll = isFilter && fittedFor !== fitSignature
+    const gap = useRef(0)
+    const fitSignature = folds ? props.items.map((item) => `${item.id}|${item.label}|${item.count ?? ""}`).join("\u0000") : ""
+    const renderAll = folds && fittedFor !== fitSignature
     const selectedIndex = props.items.findIndex((item) => item.id === selectedKey)
     const MORE_WIDTH = 64
     const fit = () => {
         const frame = frameRef.current
         if (frame === null || widths.current.length !== props.items.length) return
-        const shown = visibleOptionIndexes(widths.current, selectedIndex, Math.floor(frame.getBoundingClientRect().width), MORE_WIDTH)
+        const shown = visibleOptionIndexes(widths.current, selectedIndex, Math.floor(frame.getBoundingClientRect().width), MORE_WIDTH, gap.current)
         const next = new Set(props.items.filter((_, index) => !shown.includes(index)).map((item) => item.id))
         setHiddenIds((previous) => previous.size === next.size && [...next].every((id) => previous.has(id)) ? previous : next)
     }
     useLayoutEffect(() => {
         const frame = frameRef.current
-        if (!isFilter || !isClientReady || frame === null || !renderAll) return undefined
+        if (!folds || !isClientReady || frame === null || !renderAll) return undefined
         const tabs = Array.from(frame.querySelectorAll<HTMLElement>("[role='tab']"))
         // The vendor collection mounts its tabs after the first commit: measure only once every tab is there.
         if (tabs.length !== props.items.length) {
@@ -212,21 +216,24 @@ const TabsInner = (props: TabsProps) => {
             observer.observe(frame, { childList: true, subtree: true })
             return () => observer.disconnect()
         }
-        widths.current = tabs.map((tab) => Math.ceil(tab.getBoundingClientRect().width) + 8)
+        // The tabs' own gap (the list's computed column gap) is what separates two of them: measure it, never assume one.
+        const list = tabs[0]?.parentElement
+        gap.current = list == null ? 0 : Number.parseFloat(getComputedStyle(list).columnGap) || 0
+        widths.current = tabs.map((tab) => Math.ceil(tab.getBoundingClientRect().width))
         setFittedFor(fitSignature)
         fit()
         return undefined
     })
-    useLayoutEffect(() => { if (isFilter && !renderAll) fit() }, [selectedIndex, fittedFor])
+    useLayoutEffect(() => { if (folds && !renderAll) fit() }, [selectedIndex, fittedFor])
     useEffect(() => {
         const frame = frameRef.current
-        if (!isFilter || frame === null || typeof ResizeObserver === "undefined") return
+        if (!folds || frame === null || typeof ResizeObserver === "undefined") return
         const observer = new ResizeObserver(() => { if (!renderAll) fit() })
         observer.observe(frame)
         return () => observer.disconnect()
     })
-    const shownItems = !isFilter || renderAll ? props.items : props.items.filter((item) => !hiddenIds.has(item.id))
-    const foldedItems = !isFilter || renderAll ? [] : props.items.filter((item) => hiddenIds.has(item.id))
+    const shownItems = !folds || renderAll ? props.items : props.items.filter((item) => !hiddenIds.has(item.id))
+    const foldedItems = !folds || renderAll ? [] : props.items.filter((item) => hiddenIds.has(item.id))
     const labelOf = (item: TabItem) => item.count === undefined || isLoading ? item.label : `${item.label} ${item.count}`
 
     if (!isClientReady) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} {...frameData} data-grammar-tabs-client="pending" />
@@ -257,7 +264,7 @@ const TabsInner = (props: TabsProps) => {
             className={tabsClassName ?? ""}
             data-contract="FLOW-2"
         >
-            <HeroTabs.List aria-label={props.label} render={({ children, ref, ...listProps }) => isFilter ? (
+            <HeroTabs.List aria-label={props.label} render={({ children, ref, ...listProps }) => folds ? (
                 <div {...listProps} ref={ref} style={listProps.style}>{children}</div>
             ) : (
                 <HorizontalScrollFrame appearance="tabs" hideScrollBar size={64} scrollPreviousLabel={scrollPreviousLabel} scrollNextLabel={scrollNextLabel}>
@@ -272,7 +279,7 @@ const TabsInner = (props: TabsProps) => {
                 <DropdownMenu
                     placement="bottom end"
                     entries={[{ kind: "section", id: "folded-tabs", items: foldedItems.map((item) => ({ id: item.id, label: labelOf(item), onAction: () => select(item.id) })) }]}
-                    trigger={<PlainPressable aria-label={(props.moreLabel ?? ((count: number) => `${count} more filters`))(foldedItems.length)}><span className="starci-core-tabs-more-label">{props.overflowLabel ?? `+${foldedItems.length}`}<svg aria-hidden="true" viewBox="0 0 16 16" className="starci-core-tabs-more-caret"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></span></PlainPressable>}
+                    trigger={<PlainPressable aria-label={(props.moreLabel ?? ((count: number) => isFilter ? `${count} more filters` : `${count} more tabs`))(foldedItems.length)}><span className="starci-core-tabs-more-label">{props.overflowLabel ?? `+${foldedItems.length}`}<svg aria-hidden="true" viewBox="0 0 16 16" className="starci-core-tabs-more-caret"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></span></PlainPressable>}
                 />
             </span>
         )}

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased (branch feat/grammar-nivo-canvas, not published; additive, for the Nivo canvas)
+
+- Added: `MessageBubble tone="soft"` on an outgoing bubble: the brand tint (`--accent-soft` with `--accent-soft-foreground`), for an agent speaking on the reader's behalf (owner ruling 2026-11-06: no new token). Story `MessageBubbleTones`.
+- Added: `RelativeTime style="compact"`: the amount and its unit alone ("2 min", "2 phut") for the end of a row's title line (relative mode). Story `CompactRelativeTime`.
+- Added: a closed glyph vocabulary Grammar draws itself, `GLYPH_NAMES` (`more`, `send`, `panel-end`, `pencil`, `close`): `IconButton glyph` and `Button startGlyph`, for an app with no icon registry; an icon-only button still needs its `label`. Story `Glyphs`.
+- Fixed: `Tabs kind="filter"` measured each tab 8px wide twice and assumed an 8px gap, so three tabs with counts folded into the "+n" menu in a 336px list pane; the fit now uses the measured widths and the list's own column gap. Story `TabsInAPane`.
+- Added: `Tabs` of kind `views` fold the tabs that do not fit into the fold menu when the app gives `overflowLabel` (the selected one stays visible), and the selected page tab is `--accent-soft-foreground` at the semibold weight.
+- Added: `SearchField measure="compact"` (up to 26rem, at the start); `PaneHeader close` (the round close button at the trailing end); `ListBoxItem.meta` (a short fact at the end of the title line) and `ListBoxItem.footer` (marks under the description); `DataTable surface="none"` (hairline rows, no container paint); `ProportionBar` (one track split by share with a legend: `label`, `parts`, `empty`, `isLoading`, `error`); a `Board` column's count is a neutral chip.
+- Not built: a tinted `Board` column surface with white cards (a surface inside a surface: owner to rule), a loading shimmer for `ListBoxItem.meta` and `footer`.
+
 ## 0.23.1 - 2026-11-05
 
 - Changed: `GrammarToneRegistry` lives in `src/common/tone-registry.ts`, a module that imports nothing, and `@starci/grammar/common` re-exports it (an app still augments `"@starci/grammar/common"`), so a component that reads the app's tones no longer reaches the common entry's renderers (FE_GRAMMAR_TIER_DIRECTION).

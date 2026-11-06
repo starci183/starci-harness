@@ -3,6 +3,7 @@
 import { withRegionInert } from "../../regionScope.js"
 import { Button as HeroButton, Link as HeroLink, Spinner as HeroSpinner, buttonVariants, cn, skeletonVariants } from "@heroui/react"
 import { Icon, type IconSource } from "../Icon/index.js"
+import { glyphSource, type GlyphName } from "../Icon/glyphs.js"
 import { useButtonIntentVariant, type ButtonIntent, type ButtonIntentProps } from "../../buttonIntent.js"
 import { DismissGlyph } from "./dismissGlyph.js"
 import type { NoChildren } from "../../tier.js"
@@ -18,10 +19,18 @@ type IconButtonGlyph =
         /** The close glyph is drawn by the grammar; pass `source` only to draw another. */
         readonly intent: "dismiss"
         readonly source?: IconSource
+        readonly glyph?: never
     }
     | {
         readonly intent?: Exclude<ButtonIntent, "dismiss">
         readonly source: IconSource
+        readonly glyph?: never
+    }
+    | {
+        readonly intent?: Exclude<ButtonIntent, "dismiss">
+        /** A glyph of Grammar's own closed vocabulary (`more`, `send`, `panel-end`, `pencil`, `close`), for an app with no icon registry. */
+        readonly glyph: GlyphName
+        readonly source?: never
     }
 
 export type IconButtonProps = NoChildren & {
@@ -74,6 +83,7 @@ const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base(
 /** Circular glyph-only action with a mandatory accessible name (A11Y-2). */
 const IconButtonInner = ({
     source: givenSource,
+    glyph: givenGlyph,
     label,
     intent,
     step,
@@ -92,7 +102,7 @@ const IconButtonInner = ({
     badgeMax = 99,
 }: IconButtonProps) => {
     const variant = useButtonIntentVariant(intent, step, "iconButton") ?? "tertiary"
-    const source = givenSource ?? DismissGlyph
+    const source = givenSource ?? (givenGlyph === undefined ? DismissGlyph : glyphSource(givenGlyph))
     const badgeText = isLoading ? null : iconButtonBadgeText(badge, badgeMax)
     const unavailable = isDisabled || isPending || isLoading
     const glyph = isLoading ? null : isPending ? <HeroSpinner size="sm" color="current" aria-hidden="true" /> : <Icon source={source} usage="leading" />

@@ -34,6 +34,10 @@ export type ListBoxItem = {
     /** Overrides the list's leading slot size for this item. */
     readonly size?: ListBoxSize
     readonly trailing?: ReactNode
+    /** The short fact at the end of the title line (a time, a count): muted, one line, never shrunk. */
+    readonly meta?: ReactNode
+    /** Marks under the description, in one wrapping row (a status `Badge`, a channel `Badge`). */
+    readonly footer?: ReactNode
     readonly isDisabled?: boolean
 }
 
@@ -150,13 +154,18 @@ export const ListBox = ({
         >
             <ButtonPlacementProvider placement="item">
             {item.leading === undefined ? null : <span aria-hidden="true" data-grammar-list-leading="true" data-contract="A11Y-2">{item.leading}</span>}
-            {item.description === undefined ? renderLabel(item) : (
+            {item.description === undefined && item.footer === undefined && item.meta === undefined ? renderLabel(item) : (
                 <div data-grammar-list-copy="true">
-                    {renderLabel(item)}
-                    <HeroDescription
-                        data-grammar-item-description="true"
-                        data-grammar-description-lines={item.descriptionLines ?? descriptionLines}
-                    >{item.description}</HeroDescription>
+                    {item.meta === undefined ? renderLabel(item) : (
+                        <div data-grammar-list-head="true">{renderLabel(item)}<span data-grammar-list-meta="true">{item.meta}</span></div>
+                    )}
+                    {item.description === undefined ? null : (
+                        <HeroDescription
+                            data-grammar-item-description="true"
+                            data-grammar-description-lines={item.descriptionLines ?? descriptionLines}
+                        >{item.description}</HeroDescription>
+                    )}
+                    {item.footer === undefined ? null : <div data-grammar-list-footer="true">{item.footer}</div>}
                 </div>
             )}
             {item.trailing === undefined ? null : <span data-grammar-list-trailing="true">{item.trailing}</span>}

@@ -10,6 +10,13 @@ import type { NoChildren } from "../../tier.js"
 /** `incoming`: someone else wrote it (start side, the surface and its foreground). `outgoing`: the reader's own message (end side, the brand fill `--accent` with `--accent-foreground`). */
 export type MessageBubbleSide = "incoming" | "outgoing"
 
+/**
+ * `brand`: the solid brand fill (`--accent` with `--accent-foreground`), the reader's own words. `soft`: the brand's tint (`--accent-soft`
+ * with `--accent-soft-foreground`), for an agent speaking on the reader's behalf (an AI's reply the reader may approve) so it reads as
+ * a second voice, not as the reader's own. It only changes the face of an `outgoing` bubble.
+ */
+export type MessageBubbleTone = "brand" | "soft"
+
 /** A resolved message. */
 type MessageBubbleMessage = {
     readonly isLoading?: false
@@ -17,6 +24,8 @@ type MessageBubbleMessage = {
     /** The message body. Plain text keeps its line breaks. */
     readonly body: ReactNode
     readonly side?: MessageBubbleSide
+    /** The face of an outgoing bubble; the brand fill when omitted. Never set on an incoming bubble. */
+    readonly tone?: MessageBubbleTone
     /** Who wrote it, shown above the body. Omit on consecutive messages from the same author. */
     readonly author?: ReactNode
     /** An `Avatar` or `IconTile` beside the bubble. Omit (or pass the same width of nothing) on grouped follow-ups. */
@@ -116,7 +125,7 @@ const MessageBubbleInner = (props: MessageBubbleProps) => {
         return <SkeletonBubble side={props.side} hasAvatar={props.hasAvatar === true} />
     }
     if (props.error !== undefined) return <div className="starci-core-message-bubble-thread" data-grammar-message-error="true"><ErrorView error={props.error} /></div>
-    const { body, side = "incoming", author, avatar, meta, status, actions, footer, isHighlight = false, id } = props
+    const { body, side = "incoming", tone = "brand", author, avatar, meta, status, actions, footer, isHighlight = false, id } = props
     const hasHead = author != null || meta != null || status != null
     return (
         <div
@@ -126,6 +135,7 @@ const MessageBubbleInner = (props: MessageBubbleProps) => {
             data-tier="composite"
             data-contract="SURFACE-3 SURFACE-4 RADIUS-6"
             data-grammar-bubble-side={side}
+            data-grammar-bubble-tone={side === "outgoing" ? tone : "brand"}
             data-grammar-bubble-highlight={isHighlight ? "true" : "false"}
             data-grammar-bubble-footer={footer == null ? "false" : "true"}
         >

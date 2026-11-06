@@ -42,6 +42,8 @@ export type SearchFieldProps = NoChildren & FieldControlProps & FieldSizeProps &
     readonly onPaste?: (event: ClipboardEvent<HTMLInputElement>) => void
     /** Focuses the input when it mounts. */
     readonly autoFocus?: boolean
+    /** `fill` (default): the field spans its container. `compact`: it spans up to 26rem and stays at the start, above a list's tabs. */
+    readonly measure?: "fill" | "compact"
 }
 
 /*
@@ -75,6 +77,7 @@ const SearchFieldControl = ({
     onBlur,
     onPaste,
     autoFocus = false,
+    measure = "fill",
     ...field
 }: Omit<SearchFieldProps, "isLoading">) => {
     // A search box is the field tone wherever it stands (page ground or surface), with no border or shadow of its own.
@@ -85,6 +88,7 @@ const SearchFieldControl = ({
             data-component="SearchField"
             data-contract="A11Y-1 FEEDBACK-1 STATE-1"
             className="starci-core-field starci-core-search-field"
+            data-grammar-search-measure={measure}
             fullWidth
             variant={variant}
             {...fieldVariantAttributes(variant)}

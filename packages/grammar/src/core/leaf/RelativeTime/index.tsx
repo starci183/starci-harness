@@ -8,6 +8,8 @@ import type { NoChildren } from "../../tier.js"
 
 export type RelativeTimeMode = "relative" | "countdown"
 export type RelativeTimeFormat = "relative" | "digital"
+/** `long`: "2 minutes ago" (the language's own words for a past or future time). `compact`: the amount and its unit alone, "2 min". */
+export type RelativeTimeStyle = "long" | "compact"
 
 type RelativeTimeBaseProps = {
     /** An RFC 3339 timestamp with an explicit Z or numeric timezone offset, never a local wall time. */
@@ -28,11 +30,14 @@ type RelativeTimeBaseProps = {
 export type RelativeTimeProps = NoChildren & RelativeTimeBaseProps & ({
     readonly mode?: "relative"
     readonly format?: never
+    /** `compact` drops the direction word ("2 min", not "2 minutes ago"): a row's trailing fact. Relative mode only. */
+    readonly style?: RelativeTimeStyle
 } | {
     /** Countdown never overstates the remaining full unit and stops at zero. */
     readonly mode: "countdown"
     /** Digital countdowns show m:ss, or h:mm:ss when at least one hour remains. */
     readonly format?: RelativeTimeFormat
+    readonly style?: never
 })
 
 const UNITS: ReadonlyArray<readonly [Intl.RelativeTimeFormatUnit, number]> = [
@@ -69,6 +74,13 @@ const relativeLabel = (seconds: number, mode: RelativeTimeMode, formatter: Intl.
     return formatter.format(value, unit)
 }
 
+/** The amount and its unit in the largest whole unit, with no direction word: "2 min" however long ago or ahead. */
+const compactLabel = (seconds: number, locale: string) => {
+    const [unit, duration] = UNITS.find(([, length]) => Math.abs(seconds) >= length) ?? ["second", 1]
+    const amount = Math.abs(Math.round(seconds / duration))
+    return new Intl.NumberFormat(locale, { style: "unit", unit, unitDisplay: "short" }).format(amount)
+}
+
 const digitalLabel = (seconds: number) => {
     const absoluteSeconds = Math.abs(Math.trunc(seconds))
     const hours = Math.floor(absoluteSeconds / 3600)
@@ -79,7 +91,7 @@ const digitalLabel = (seconds: number) => {
 }
 
 /** Accessible live time; all leaves subscribe to the same clock and own no interval or wall-clock read. */
-const RelativeTimeInner = ({ dateTime, locale, mode = "relative", format = "relative", expiredLabel, template = "{time}", fallback, id, size = "sm", tone = "muted" }: RelativeTimeProps) => {
+const RelativeTimeInner = ({ dateTime, locale, mode = "relative", format = "relative", expiredLabel, template = "{time}", fallback, id, size = "sm", tone = "muted", style = "long" }: RelativeTimeProps) => {
     const instant = useMemo(() => parseInstant(dateTime), [dateTime])
     useEffect(() => {
         if (instant === null && process.env.NODE_ENV !== "production") {
@@ -92,12 +104,12 @@ const RelativeTimeInner = ({ dateTime, locale, mode = "relative", format = "rela
     if (instant !== null && now !== null) {
         // Round the remaining seconds once, then choose and floor the displayed unit.
         const seconds = mode === "countdown" ? Math.ceil(Math.max(0, instant.value - now) / 1000) : (instant.value - now) / 1000
-        const time = format === "digital" ? digitalLabel(seconds) : relativeLabel(seconds, mode, formatter)
+        const time = format === "digital" ? digitalLabel(seconds) : style === "compact" ? compactLabel(seconds, locale) : relativeLabel(seconds, mode, formatter)
         label = mode === "countdown" && seconds === 0 && expiredLabel !== undefined ? expiredLabel : template.replaceAll("{time}", time)
     }
 
     return (
-        <time id={id} dateTime={instant?.iso} title={instant?.iso} data-tier="leaf" data-component="RelativeTime" data-mode={mode} data-format={format}>
+        <time id={id} dateTime={instant?.iso} title={instant?.iso} data-tier="leaf" data-component="RelativeTime" data-mode={mode} data-format={format} data-style={style}>
             <Text as="span" size={size} tone={tone}>{label}</Text>
         </time>
     )

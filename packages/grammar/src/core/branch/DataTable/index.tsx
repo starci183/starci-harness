@@ -88,6 +88,11 @@ export type DataTableProps<Row extends DataTableRow> = NoChildren & {
     readonly onRowAction?: (id: string) => void
     /** Container inline size in px below which `low` priority columns collapse into the row. Default 640. */
     readonly collapseBelow?: number
+    /**
+     * `card` (default): a heading band and rows in the table's own container. `none`: plain hairline rows under a muted heading with no
+     * container paint, for a table that already stands on a page or inside a card and must not be a surface inside a surface.
+     */
+    readonly surface?: "card" | "none"
 }
 
 /** The vendor row part filters aria-hidden out of its props, so the skeleton rows take it by ref (knowledge STATE-8). */
@@ -210,6 +215,7 @@ export const DataTable = <Row extends DataTableRow>({
     maxBlockSize,
     onRowAction,
     collapseBelow = DEFAULT_COLLAPSE_BELOW,
+    surface = "card",
 }: DataTableProps<Row>) => {
     const scrollRef = useRef<HTMLDivElement>(null)
     const [width, setWidth] = useState<number | null>(null)
@@ -262,6 +268,8 @@ export const DataTable = <Row extends DataTableRow>({
         <HeroTable
             aria-busy={isLoading || undefined}
             className="starci-core-data-table"
+            {...(surface === "none" ? { variant: "secondary" as const } : {})}
+            data-grammar-table-surface={surface}
             data-component="DataTable"
             data-tier="branch"
             data-grammar-table-state={state}

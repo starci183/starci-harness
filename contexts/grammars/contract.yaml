@@ -400,9 +400,9 @@ roles:
 
   - id: data-views
     ui: ui/components/data-views.md
-    renderers: [Board, ScheduleGrid, BarChart]
+    renderers: [Board, ScheduleGrid, BarChart, ProportionBar]
     vendorParity: []                              # no HeroUI part: Common regions built from the card, the table and the scroll region
-    slots: ["Board: label, columns (id, title, count, items as list rows, empty)", "ScheduleGrid: label, columns, rows, items placed by row and column (title, meta, tone, onPress), cellLabels, empty", "BarChart: label, bars (id, label, value, valueLabel), empty", "every view: isLoading, error (message, description, actionLabel, onAction)"]
+    slots: ["Board: label, columns (id, title, count, items as list rows, empty)", "ScheduleGrid: label, columns, rows, items placed by row and column (title, meta, tone, onPress), cellLabels, empty", "BarChart: label, bars (id, label, value, valueLabel), empty", "ProportionBar: label, parts (id, label, value, valueLabel, tone), empty", "every view: isLoading, error (message, description, actionLabel, onAction)"]
     variants:
       tone: { values: [neutral, accent, success, warning, danger], chosenBy: app from the entry's state (ScheduleGrid items) }
     sizes: none

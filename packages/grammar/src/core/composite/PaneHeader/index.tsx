@@ -35,6 +35,11 @@ export type PaneHeaderProps = NoChildren & {
      * server page needs none. `icon` is the button's glyph, `label` its accessible name.
      */
     readonly drawerOpener?: { readonly pane: string; readonly icon: IconSource; readonly label: string }
+    /**
+     * Closes the pane: the round close button (the Grammar's own glyph, so an app with no icon registry can use it) at the trailing end,
+     * after `actions`, for a side pane that opens beside the page and goes away.
+     */
+    readonly close?: { readonly label: string; readonly onPress: () => void }
     /** The subject is unresolved (STATE-8): `title`, `description`, `mark`, `status` and `actions` lay out unseen under a shimmer. */
     readonly isLoading?: boolean
 }
@@ -45,7 +50,7 @@ export type PaneHeaderProps = NoChildren & {
  * share one height. It is the content of a `PaneSection align="center"`; it takes no padding of its own (the section
  * applies the pane inset) and draws no surface or rule (the grid draws the dividers).
  */
-export const PaneHeader = ({ title, headingLevel = 2, description, mark, status, actions, back, drawerOpener, isLoading: ownLoading }: PaneHeaderProps) => {
+export const PaneHeader = ({ title, headingLevel = 2, description, mark, status, actions, back, drawerOpener, close, isLoading: ownLoading }: PaneHeaderProps) => {
     const isLoading = useIsLoading(ownLoading)
     const opener = useContext(PaneOpenerContext)
     const openerPane = drawerOpener?.pane
@@ -87,10 +92,11 @@ export const PaneHeader = ({ title, headingLevel = 2, description, mark, status,
                 </div>
                 {description === undefined ? null : <Text size="xs" tone="muted" isLoading={isLoading}>{description}</Text>}
             </div>
-            {actions === undefined && openerButton === null ? null : (
+            {actions === undefined && openerButton === null && close === undefined ? null : (
                 <span className="starci-core-pane-header-actions" data-contract="GAP-2" aria-hidden={isLoading || undefined}>
                     {actions === undefined ? null : isLoading ? <SkeletonPlaceholder shape="block">{actions}</SkeletonPlaceholder> : actions}
                     {isLoading ? null : openerButton}
+                    {close === undefined || isLoading ? null : <IconButton intent="dismiss" label={close.label} onPress={close.onPress} />}
                 </span>
             )}
         </div>

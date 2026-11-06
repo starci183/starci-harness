@@ -13,6 +13,7 @@ Choice `message-bubble.choose.side`: whose message it is. The first row that app
 | --- | --- | --- | --- |
 | mine | the reader wrote it | `side="outgoing"`: the brand fill (`--accent`) with its foreground (`--accent-foreground`), at the end side | judgement |
 | theirs | anyone else wrote it: a person, an agent, the system | `side="incoming"` (the default): the surface and its foreground, at the start side | judgement |
+| agent for the reader | an agent speaks on the reader's behalf and the reader may approve it (an AI's reply) | `side="outgoing" tone="soft"`: the brand tint (`--accent-soft`) with its foreground (`--accent-soft-foreground`), at the end side; `tone` never changes an incoming bubble (owner ruling 2026-11-06: no new token) | judgement |
 
 Choice `message-bubble.choose.inline`: what a message may hold. Plain words, a link, a mention (`Text isStrong`), code and a muted line
 all inherit the bubble's foreground, so they read on either face; a link keeps its underline. Anything that is not the message's own

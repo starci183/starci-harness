@@ -6,6 +6,8 @@ import { useId, type ReactNode } from "react"
 import { useButtonIntentVariant, type ButtonIntentProps } from "../../buttonIntent.js"
 import { useOverlayContainer } from "../../overlayScope.js"
 import { tooltipContentClassName } from "../../tooltipClassName.js"
+import { Icon } from "../Icon/index.js"
+import { glyphSource, type GlyphName } from "../Icon/glyphs.js"
 
 /**
  * The vendor's own Button variants, one to one (HeroUI v3 `buttonVariants`: primary, secondary, tertiary,
@@ -23,6 +25,8 @@ type ButtonBase = {
     readonly size?: ButtonSize
     /** Decorative or explanatory content before the label. Product icon identity stays with the app. */
     readonly startContent?: ReactNode
+    /** A glyph of Grammar's own closed vocabulary at the start (`send`, `pencil`, `more`, `panel-end`, `close`); `startContent` wins when both are given. */
+    readonly startGlyph?: GlyphName
     /** Directional or explanatory content after the label. */
     readonly endContent?: ReactNode
     readonly isDisabled?: boolean
@@ -160,7 +164,8 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
     const {
         children,
         size = "md",
-        startContent,
+        startContent: givenStart,
+        startGlyph,
         endContent,
         isDisabled = false,
         isLoading = false,
@@ -169,6 +174,7 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
         reasonId,
     } = props
     const variant = useButtonIntentVariant(props.intent, props.step, "button") ?? "secondary"
+    const startContent = givenStart ?? (startGlyph === undefined ? undefined : <Icon source={glyphSource(startGlyph)} usage="leading" />)
     const unavailable = isDisabled || isPending || isLoading
     // The side a glyph stands on takes the control's glyph padding (one step less): the glyph carries its own room.
     const glyphSides = {

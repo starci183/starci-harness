@@ -1439,6 +1439,43 @@
      * gap, a 2px accent underline and weight 500 on the selected tab, a hairline under the row; the tabs that do not fit fold into
      * a "+n" menu at the end.
      */
+    /* A list row's title line carries a short fact at its end, and its marks sit in one wrapping row under the description. */
+    .starci-core-list-box-item [data-grammar-list-head="true"] { display: flex; align-items: baseline; justify-content: space-between; gap: var(--grammar-inline-gap); min-inline-size: 0; }
+    .starci-core-list-box-item [data-grammar-list-meta="true"] { flex: none; color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); font-variant-numeric: tabular-nums; }
+    .starci-core-list-box-item [data-grammar-list-footer="true"] { display: flex; flex-wrap: wrap; align-items: center; gap: var(--grammar-identity-gap); margin-block-start: var(--grammar-identity-gap); }
+
+    /* One track split by share, the legend under it: the dot, the label and the amount. Tones are HeroUI tokens. */
+    .starci-core-proportion-bar { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); }
+    .starci-core-proportion-track { display: flex; block-size: 0.75rem; overflow: hidden; border-radius: var(--grammar-radius-pill); background: var(--default); }
+    .starci-core-proportion-segment { flex: 0 0 var(--starci-core-proportion-share); min-inline-size: 0; background: var(--accent); }
+    .starci-core-proportion-legend { display: flex; flex-wrap: wrap; gap: var(--grammar-inline-gap) var(--grammar-inset); margin: 0; padding: 0; list-style: none; }
+    .starci-core-proportion-item { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); font-size: var(--grammar-text-sm); line-height: var(--grammar-leading-sm); }
+    .starci-core-proportion-dot { flex: none; inline-size: 0.5rem; block-size: 0.5rem; border-radius: var(--grammar-radius-pill); background: var(--accent); }
+    .starci-core-proportion-label { color: var(--muted); }
+    .starci-core-proportion-value { color: var(--foreground); font-weight: var(--grammar-weight-medium); font-variant-numeric: tabular-nums; }
+    :is(.starci-core-proportion-segment, .starci-core-proportion-dot)[data-grammar-tone="success"] { background: var(--success); }
+    :is(.starci-core-proportion-segment, .starci-core-proportion-dot)[data-grammar-tone="warning"] { background: var(--warning); }
+    :is(.starci-core-proportion-segment, .starci-core-proportion-dot)[data-grammar-tone="danger"] { background: var(--danger); }
+    :is(.starci-core-proportion-segment, .starci-core-proportion-dot)[data-grammar-tone="neutral"] { background: var(--muted); }
+    .starci-core-proportion-segment[data-grammar-skeleton="true"] { background: var(--surface-secondary); }
+
+    /* A compact search field spans up to 26rem and stays at the start (a list pane's search above its tabs). */
+    .starci-core-search-field[data-grammar-search-measure="compact"] { max-inline-size: 26rem; }
+
+    /*
+     * Page tabs that fold (the app named the fold menu): the same flex row, measured then fitted, the menu at the end. The selected page
+     * tab is the brand's tint pair (`--accent-soft-foreground`) at the semibold weight, over the accent underline.
+     */
+    .starci-core-tabs-frame[data-grammar-tabs-kind="views"][data-grammar-tabs-folds="true"] { display: flex; align-items: flex-end; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="views"][data-grammar-tabs-folds="true"][data-grammar-tabs-measuring-fit="true"] { overflow: hidden; visibility: hidden; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="views"][data-grammar-tabs-folds="true"] .starci-core-tabs { flex: 1 1 auto; width: auto; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="views"][data-grammar-tabs-folds="true"] .starci-core-tabs .tabs__list,
+    .starci-core-tabs-frame[data-grammar-tabs-kind="views"][data-grammar-tabs-folds="true"] .starci-core-tabs .tabs__list-container { overflow: visible; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="views"] .starci-core-tabs .tabs__tab[aria-selected="true"] {
+        color: var(--accent-soft-foreground);
+        font-weight: var(--grammar-weight-semibold);
+    }
+
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] {
         display: flex;
         align-items: flex-end;
@@ -3248,6 +3285,23 @@
         scroll-snap-align: start;
     }
 
+    /* A column's count is a neutral chip beside its title (the same chip as a tab's count), not bare text. */
+    .starci-core-board-column .starci-core-surface-fact {
+        display: inline-flex;
+        min-width: 1.25rem;
+        box-sizing: border-box;
+        align-items: center;
+        justify-content: center;
+        padding-inline: var(--grammar-inline-gap);
+        border-radius: var(--grammar-radius-pill);
+        background: var(--default);
+        color: var(--default-foreground);
+        font-size: var(--grammar-text-xs);
+        font-variant-numeric: tabular-nums;
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-xs);
+    }
+
     /* The column a dragged card would land in. */
     .starci-core-board-column[data-grammar-drop="true"] { outline: 2px dashed var(--accent); outline-offset: 2px; border-radius: var(--grammar-radius-md); }
     .starci-core-board-announce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -4716,6 +4770,14 @@
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(a, [data-component="Link"]) { text-decoration: underline; }
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body [data-component="Text"][data-tone="muted"] { opacity: var(--grammar-opacity-secondary); }
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--accent-foreground) 16%, transparent); }
+
+    /* The soft face is the brand's tint with its own foreground (owner ruling 2026-11-06: the AI bubble is `--accent-soft`; no new token). */
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="soft"] .starci-core-message-bubble-body {
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
+    }
+
+    .starci-core-message-bubble[data-grammar-bubble-tone="soft"] .starci-core-message-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--accent-soft-foreground) 12%, transparent); }
 
     .starci-core-message-bubble[data-grammar-bubble-highlight="true"] .starci-core-message-bubble-body {
         outline: 2px solid var(--focus);

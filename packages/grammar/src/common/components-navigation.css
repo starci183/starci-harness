@@ -836,6 +836,12 @@
         max-width: 100%;
     }
 
+    /* No container paint: a muted heading row and a hairline under every row (a table already on a surface is never a surface in one). */
+    .starci-core-data-table[data-grammar-table-surface="none"] .table__column { background: transparent; border-radius: 0; font-weight: var(--grammar-weight-medium); }
+    .starci-core-data-table[data-grammar-table-surface="none"] .table__column::after { display: none; }
+    .starci-core-data-table[data-grammar-table-surface="none"] .table__header { background: transparent; border-block-end: 1px solid var(--separator); }
+    .starci-core-data-table[data-grammar-table-surface="none"] .table__row .table__cell { border-block-end: 1px solid var(--separator); background: transparent; }
+
     .starci-core-data-table-scroll {
         max-width: 100%;
         overflow-x: auto;
