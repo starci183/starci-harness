@@ -57,7 +57,9 @@
         --grammar-radius-pill: 999px;
         --grammar-radius-round: 50%;
         --starci-core-control-radius: var(--grammar-radius-md);
-        --starci-core-surface-radius: var(--grammar-radius-md);
+        /* The radius of every card surface (SurfaceCard of every kind, Board and its columns, the block surfaces): HeroUI's own Card radius, 24px at --radius 0.5rem.
+           An app-overridable default: an app's brand CSS may set `--starci-core-surface-radius` on its root; Grammar reads only this token. */
+        --starci-core-surface-radius: min(32px, var(--radius-3xl));
         --starci-core-pill-radius: var(--grammar-radius-pill);
 
         /* STROKES. A hairline, a fine line and the focus ring. HeroUI's `--border-width` stays the border of its own parts. */
@@ -100,7 +102,9 @@
         --starci-core-row-gap-compact: var(--grammar-inline-gap);
         --starci-core-rail-gap-compact: var(--grammar-row-gap);
         --starci-core-workspace-floating-inset: var(--grammar-inset);
-        --starci-core-page-measure: 80rem;
+        /* The widest the content of a page or of a workspace's main column grows: a wide screen never stretches the blocks. Centered, with the existing inline padding. */
+        --grammar-content-max: 80rem;
+        --starci-core-page-measure: var(--grammar-content-max);
         --starci-core-reading-measure: 72ch;
         --starci-core-form-measure: 30rem;
         --starci-core-form-compact-measure: 28rem;

@@ -105,8 +105,12 @@ export const HeaderZoneView = ({ zone, isLoading }: { readonly zone: HeaderZone;
         case "toolbar":
             return <TabsLineHost><ToolbarZone filter={zone.filter} search={zone.search} /></TabsLineHost>
         case "switch":
-            // A card with a label draws its switch in the label row; this is the strip of a card with none, and of a board: trailing, no divider.
-            return <div className={surfaceZoneClassName} data-grammar-zone="switch"><SwitchTabs switchFields={zone} /></div>
+            return (
+                <div className={surfaceZoneClassName} data-grammar-zone="switch">
+                    {zone.title === undefined ? null : <span className="starci-core-surface-zone-title">{zone.title}</span>}
+                    <span className="starci-core-surface-zone-switch"><SwitchTabs switchFields={zone} /></span>
+                </div>
+            )
         case "figures":
             return <div className={surfaceZoneClassName} data-grammar-zone="figures"><FigureCells items={figureItems(zone.items, isLoading)} isLoading={isLoading} /></div>
         case "custom":

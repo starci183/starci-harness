@@ -979,15 +979,28 @@
         padding-inline: var(--grammar-card-padding-inline);
     }
 
-    .starci-core-surface-zone:has(~ .starci-core-surface-main):not([data-grammar-zone="switch"]) {
+    .starci-core-surface-zone:has(~ .starci-core-surface-main) {
         border-block-end: 1px solid var(--separator);
     }
 
-    /* A switch zone is the head's own strip: primary tabs at the trailing edge, no line. */
+    /* A switch zone is the card's first header row, inside the surface: an optional title at the leading edge, the primary tabs at the trailing edge, the zone's one line under it. */
     .starci-core-surface-zone[data-grammar-zone="switch"] {
         display: flex;
-        justify-content: flex-end;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--grammar-inline-gap);
         padding-block: var(--grammar-inline-gap);
+    }
+
+    .starci-core-surface-zone-title {
+        min-width: 0;
+        color: var(--muted);
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
+    }
+
+    .starci-core-surface-zone-switch {
+        margin-inline-start: auto;
     }
 
     .starci-core-surface-main ~ .starci-core-surface-zone {
@@ -1046,13 +1059,13 @@
         container: starci-core-surface / inline-size;
         overflow: clip;
         margin-block-end: var(--grammar-row-gap);
-        border-radius: var(--radius);
+        border-radius: var(--starci-core-surface-radius);
         background: var(--surface);
         box-shadow: var(--surface-shadow);
         color: var(--surface-foreground);
     }
 
-    .starci-core-board-header > .starci-core-surface-zone:not([data-grammar-zone="switch"]):is(:not(:last-child), [data-grammar-zone-line="tabs"]) {
+    .starci-core-board-header > .starci-core-surface-zone:is(:not(:last-child), [data-grammar-zone-line="tabs"]) {
         border-block-end: 1px solid var(--separator);
     }
 
@@ -2591,7 +2604,13 @@
     .starci-core-workspace-shell-layout[data-grammar-workspace-align="start"] { align-items: start; }
     .starci-core-workspace-shell-layout[data-grammar-workspace-align="stretch"] { align-items: stretch; }
     .starci-core-workspace-shell-navigation { grid-area: navigation; }
-    .starci-core-workspace-shell-primary { grid-area: primary; }
+    /* The main column's content never grows past the content maximum, and stays centered in its column (the rail keeps its own). */
+    .starci-core-workspace-shell-primary {
+        grid-area: primary;
+        inline-size: 100%;
+        max-inline-size: var(--grammar-content-max);
+        margin-inline: auto;
+    }
     .starci-core-workspace-shell-rail { grid-area: rail; }
 
     .starci-core-workspace-shell-navigation,
@@ -3418,7 +3437,7 @@
         flex-direction: column;
         gap: var(--grammar-row-gap);
         padding: var(--grammar-inline-gap);
-        border-radius: var(--grammar-radius-md);
+        border-radius: var(--starci-core-surface-radius);
         background: var(--surface-secondary);
     }
     .starci-core-board-column-head { display: flex; align-items: center; gap: var(--grammar-inline-gap); padding-inline: var(--grammar-inline-gap); }
@@ -3441,7 +3460,7 @@
     .starci-core-board-empty { padding: var(--grammar-inline-gap); color: var(--muted); }
 
     /* The column a dragged card would land in. */
-    .starci-core-board-column[data-grammar-drop="true"] { outline: 2px dashed var(--accent); outline-offset: 2px; border-radius: var(--grammar-radius-md); }
+    .starci-core-board-column[data-grammar-drop="true"] { outline: 2px dashed var(--accent); outline-offset: 2px; border-radius: var(--starci-core-surface-radius); }
     .starci-core-board-announce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
     @media (max-width: 47.999rem) {

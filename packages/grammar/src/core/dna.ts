@@ -98,7 +98,7 @@ export const STARCI_CORE_DNA = Object.freeze({
     geometry: Object.freeze({
         pageMeasure: "80rem",
         readingMeasure: "72ch",
-        surfaceRadius: "1rem",
+        surfaceRadius: "min(32px, var(--radius-3xl))",
         controlRadius: "0.75rem",
         pillRadius: "999px",
     }),

@@ -665,6 +665,13 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
   colour of the offset, which reads `--foreground` when unset. `*_TOKEN_NAMES` / `*_TOKEN_DEFAULTS` list the same tokens
   and are deprecated. `scripts/prove-theme.mts` renders a test app that sets HeroUI tokens only and checks that every
   part follows, by computed style in a headless Chromium (`npm run prove-theme` after `npm run build`).
+- **App-overridable Grammar tokens.** Two defaults live in Grammar's base layer (`src/common/ramps.css`), so an app's brand CSS can
+  override them on its root and Grammar's CSS follows; Grammar reads only the token, never a literal value.
+  `--starci-core-surface-radius` is the radius of every card surface (SurfaceCard of every kind, Board and its columns, the block
+  surfaces): HeroUI's own Card radius, `min(32px, var(--radius-3xl))`, 24px at `--radius: 0.5rem`. `--grammar-content-max` (80rem) is
+  the widest the content of a page or a workspace's main column grows; it is centered with the existing inline padding, so a wide
+  screen never stretches the blocks (the page background, the header band and the aside stay full width). An app sets HeroUI's
+  `--radius` and `--field-radius` and leaves these two alone unless its brand needs another card radius or measure.
 - **Spacing.** Every family uses the Common 4px scale (`COMMON_SPACING_SCALE`,
   `COMMON_SPACING_TOKENS`), and Common's `--grammar-*-gap` / `--grammar-page-inset` variables.
 - **Dark.** The mode is the app's: `.dark` (or `data-theme="dark"`) on `html`, as HeroUI reads it. The roots take no

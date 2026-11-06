@@ -647,6 +647,16 @@ const ledgerStory = (width: string | number, isPhone: boolean): Story => ({
       expect(card.querySelectorAll('.starci-core-data-table-header').length).toBe(1);
       expect(card.querySelectorAll('[data-grammar-table-group="true"]').length).toBe(3);
       expect(card.querySelectorAll('[data-grammar-table-row="true"]').length).toBe(6);
+      // The group rows show --surface-secondary (computed, not just declared): one probe paints the token to compare with.
+      const probe = document.createElement('div');
+      probe.style.background = 'var(--surface-secondary)';
+      card.append(probe);
+      const tint = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      expect(tint).not.toBe('rgba(0, 0, 0, 0)');
+      for (const cell of Array.from(card.querySelectorAll<HTMLElement>('[data-grammar-table-group="true"] [role="gridcell"], [data-grammar-table-group="true"] .starci-core-data-table-group-cell'))) {
+        expect(getComputedStyle(cell).backgroundColor).toBe(tint);
+      }
       const narrow = card.querySelector('[data-component="DataTable"]')?.getAttribute('data-grammar-table-narrow');
       expect(narrow).toBe(isPhone ? 'true' : 'false');
       if (isPhone) expect(card.querySelectorAll('[data-grammar-table-secondary="true"]').length).toBe(6);
@@ -743,13 +753,13 @@ const PrimaryAndSecondary = () => {
   const [query, setQuery] = useState('');
   return (
     <Matrix>
-      <State label="A card with a switch in its head, and a toolbar zone below" direction="column">
+      <State label="A card with a switch row inside it (title and pill, one line), then a toolbar zone" direction="column">
         <div data-story-switch="labelled">
           <G.SurfaceCard
             kind="list"
             label="Revenue"
             headers={[
-              { kind: 'switch', label: 'Period', items: PERIODS, selectedKey: period, onSelect: setPeriod },
+              { kind: 'switch', label: 'Period', title: 'Revenue by period', items: PERIODS, selectedKey: period, onSelect: setPeriod },
               { kind: 'toolbar', filter: filterOf(tab, setTab, query), search: searchOf(query, setQuery) },
             ]}
             items={visibleMembers(tab, query)}
@@ -757,7 +767,7 @@ const PrimaryAndSecondary = () => {
           />
         </div>
       </State>
-      <State label="A card with no label: the switch is a trailing strip with no line" direction="column">
+      <State label="A card with no label: the same first header row, the pill at the trailing edge" direction="column">
         <div data-story-switch="unlabelled">
           <G.SurfaceCard
             kind="list"
@@ -783,28 +793,39 @@ const appearanceStory = (width: string | number): Story => ({
   render: () => <div style={{ width }}><PrimaryAndSecondary /></div>,
   play: async ({ canvasElement }) => {
     await waitFor(() => {
-      // The switch zone of a labelled card sits in the label row, at its trailing edge, and draws no zone of its own.
+      // The switch zone is the card's first header row, INSIDE the surface (the label stays above on the well): the pill at the trailing
+      // edge, an optional title at the leading edge, the zone's one line under it.
       const labelled = canvasElement.querySelector<HTMLElement>('[data-story-switch="labelled"]');
       if (labelled === null) throw new Error('the labelled card renders');
-      const row = labelled.querySelector<HTMLElement>('.starci-core-surface-label');
-      const switchFrame = row?.querySelector<HTMLElement>('[data-grammar-tabs="true"][data-grammar-tabs-client="ready"]');
-      if (!row || !switchFrame) throw new Error('the switch stands in the label row');
+      const surface = labelled.querySelector<HTMLElement>('.starci-core-surface');
+      const label = labelled.querySelector<HTMLElement>('.starci-core-surface-label');
+      const zone = zoneOf(labelled, 'switch');
+      const switchFrame = frameIn(zone);
+      if (surface === null || label === null) throw new Error('the card surface and its label render');
+      expect(surface.contains(zone)).toBe(true);
+      expect(surface.contains(label)).toBe(false);
+      expect(box(label).bottom).toBeLessThanOrEqual(box(surface).top + 0.5);
+      expect(zone.previousElementSibling).toBeNull();
       expect(switchFrame.dataset.grammarTabsVariant).toBe('primary');
       expect(switchFrame.dataset.grammarTabsLine).toBe('none');
-      expect(labelled.querySelector('[data-grammar-zone="switch"]')).toBeNull();
-      expect(Math.abs(box(switchFrame).right - box(row).right)).toBeLessThanOrEqual(1);
-      expect(box(switchFrame).left).toBeGreaterThan(box(row.firstElementChild as Element).right);
+      assertSeamAfter(zone);
+      const title = zone.querySelector<HTMLElement>('.starci-core-surface-zone-title');
+      if (title === null) throw new Error('the switch title renders');
+      expect(box(title).left).toBeLessThan(box(switchFrame).left);
+      const padEnd = Number.parseFloat(getComputedStyle(zone).paddingRight);
+      expect(Math.abs(box(switchFrame).right - (box(zone).right - padEnd))).toBeLessThanOrEqual(1);
       // The toolbar below it is secondary, and keeps its one line.
       const toolbar = zoneOf(labelled, 'toolbar');
       const secondary = frameIn(toolbar);
       expect(secondary.dataset.grammarTabsVariant).toBe('secondary');
       assertOneLine(secondary, 'host', toolbar);
-      // A card with no label draws its switch as a trailing strip with no divider.
+      // A card with no label draws the same first header row, the pill at the trailing edge and empty space at the leading edge.
       const unlabelled = canvasElement.querySelector<HTMLElement>('[data-story-switch="unlabelled"]');
       if (unlabelled === null) throw new Error('the unlabelled card renders');
       const strip = zoneOf(unlabelled, 'switch');
-      expect(px(getComputedStyle(strip).borderBottomWidth)).toBe(0);
-      expect(getComputedStyle(strip).justifyContent).toBe('flex-end');
+      assertSeamAfter(strip);
+      expect(strip.querySelector('.starci-core-surface-zone-title')).toBeNull();
+      expect(Math.abs(box(frameIn(strip)).right - (box(strip).right - Number.parseFloat(getComputedStyle(strip).paddingRight)))).toBeLessThanOrEqual(1);
       // Primary alone: a pill in a track, role tab, no count, no line.
       const alone = canvasElement.querySelector<HTMLElement>('[data-story-primary="alone"]');
       const pill = alone === null ? null : frameIn(alone);
@@ -830,3 +851,112 @@ const appearanceStory = (width: string | number): Story => ({
 export const TabsAppearances1920: Story = appearanceStory(WIDE);
 /** Both appearances at 390px. */
 export const TabsAppearances390: Story = appearanceStory(PHONE);
+
+/* ---------- the surface radius token, and the content maximum ---------- */
+
+/** What `min(32px, var(--radius-3xl))` computes to here, from a probe: the card radius HeroUI's own Card draws. */
+const probedRadius = (host: HTMLElement, expression: string): string => {
+  const probe = document.createElement('div');
+  probe.style.borderRadius = expression;
+  host.append(probe);
+  const radius = getComputedStyle(probe).borderTopLeftRadius;
+  probe.remove();
+  return radius;
+};
+
+/**
+ * The card radius is Grammar's default token `--starci-core-surface-radius` (HeroUI's Card radius, `min(32px, var(--radius-3xl))`), and an
+ * app's brand CSS may override it: a scoped wrapper that sets the token proves every card kind and the board columns follow it.
+ */
+export const SurfaceRadiusToken: Story = {
+  render: () => {
+    const cards = (
+      <Matrix maxWidth={560}>
+        <G.SurfaceCard label="Body">
+          <G.Text>A body card.</G.Text>
+        </G.SurfaceCard>
+        <G.SurfaceCard kind="list" label="List" items={MEMBERS.slice(0, 2).map(rowOf)} empty={empty} />
+        <G.SurfaceCard kind="figures" label="Figures" items={figureCells(3)} />
+        <G.Board label="Board" columns={[{ id: 'a', title: 'New', count: 1, items: MEMBERS.slice(0, 1).map(rowOf), empty: <G.Text tone="muted">Nothing.</G.Text> }]} />
+      </Matrix>
+    );
+    return (
+      <Matrix>
+        <div data-story-radius="default">{cards}</div>
+        <div data-story-radius="override" style={{ '--starci-core-surface-radius': '6px' } as React.CSSProperties}>{cards}</div>
+      </Matrix>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const surfacesOf = (name: string) => {
+        const scope = canvasElement.querySelector<HTMLElement>(`[data-story-radius="${name}"]`);
+        if (scope === null) throw new Error(`the ${name} scope renders`);
+        return { scope, surfaces: Array.from(scope.querySelectorAll<HTMLElement>('.starci-core-surface, .starci-core-board-column')) };
+      };
+      const fallback = surfacesOf('default');
+      expect(fallback.surfaces.length).toBeGreaterThanOrEqual(4);
+      const expected = probedRadius(fallback.scope, 'min(32px, var(--radius-3xl))');
+      for (const surface of fallback.surfaces) expect(getComputedStyle(surface).borderTopLeftRadius).toBe(expected);
+      const overridden = surfacesOf('override');
+      for (const surface of overridden.surfaces) expect(getComputedStyle(surface).borderTopLeftRadius).toBe('6px');
+    }, { timeout: 5000 });
+  },
+};
+
+/**
+ * The content maximum: the content of a workspace's main column and of a page never grows past `--grammar-content-max` (80rem) and is
+ * centered in its column, with and without an aside rail; the white header band and the aside stay full width.
+ */
+const contentMaxStory = (width: number, hasRail: boolean): Story => ({
+  render: () => {
+    const content = <div data-story-content="true" style={{ blockSize: 40, background: 'var(--surface-secondary)' }}>Content</div>;
+    return (
+      <div style={{ inlineSize: width }}>
+        {hasRail
+          ? <G.WorkspaceShell navigation={<div>Navigation</div>} navigationLabel="Workspace" primaryLabel="Page" primary={content} rail={<div>Aside</div>} railLabel="Aside" />
+          : <G.WorkspaceShell primaryLabel="Page" primary={content} />}
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const primary = canvasElement.querySelector<HTMLElement>('[data-grammar-workspace-primary="true"]');
+      const content = canvasElement.querySelector<HTMLElement>('[data-story-content="true"]');
+      if (primary === null || content === null) throw new Error('the shell renders');
+      const max = Number.parseFloat(getComputedStyle(primary).fontSize) * 80;
+      const maxPx = probedWidth(primary, 'var(--grammar-content-max)');
+      expect(maxPx).toBeGreaterThan(0);
+      expect(box(content).width).toBeLessThanOrEqual(maxPx + 0.5);
+      expect(Math.abs(maxPx - max)).toBeLessThanOrEqual(1);
+      // Centered in its column: the room between the content and its neighbours (the navigation, the rail, or the shell's edge) is the same on both sides.
+      const shell = canvasElement.querySelector<HTMLElement>('[data-grammar-workspace-shell="true"]');
+      if (shell === null) throw new Error('the shell renders');
+      const navigation = canvasElement.querySelector<HTMLElement>('[data-grammar-workspace-navigation-region="true"]');
+      const rail = canvasElement.querySelector<HTMLElement>('[data-grammar-workspace-rail-region="true"]');
+      const areaStart = navigation === null ? box(shell).left : box(navigation).right;
+      const areaEnd = rail === null ? box(shell).right : box(rail).left;
+      const before = box(content).left - areaStart;
+      const after = areaEnd - box(content).right;
+      expect(Math.abs(before - after)).toBeLessThanOrEqual(Number.parseFloat(getComputedStyle(primary).paddingLeft) + 24 + 1);
+      expect(box(content).width).toBeLessThanOrEqual(areaEnd - areaStart + 0.5);
+      if (hasRail) expect(rail).not.toBeNull();
+    }, { timeout: 5000 });
+  },
+});
+
+const probedWidth = (host: HTMLElement, expression: string): number => {
+  const probe = document.createElement('div');
+  probe.style.inlineSize = expression;
+  probe.style.position = 'absolute';
+  host.append(probe);
+  const width = probe.getBoundingClientRect().width;
+  probe.remove();
+  return width;
+};
+
+/** The content maximum at 1920px and 2560px widths, with and without the aside. */
+export const ContentMax1920: Story = contentMaxStory(1920, false);
+export const ContentMax1920WithAside: Story = contentMaxStory(1920, true);
+export const ContentMax2560: Story = contentMaxStory(2560, false);
+export const ContentMax2560WithAside: Story = contentMaxStory(2560, true);

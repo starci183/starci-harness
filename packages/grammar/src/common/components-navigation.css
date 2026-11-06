@@ -892,7 +892,7 @@
     }
 
     /* A group heading row: one cell across the table, the secondary surface, its label at the start and its fact at the end. */
-    .starci-core-data-table .starci-core-data-table-group-row .starci-core-data-table-group-cell {
+    .starci-core-data-table[data-grammar-table-surface] .table__row.starci-core-data-table-group-row .table__cell.starci-core-data-table-group-cell {
         background: var(--surface-secondary);
         color: var(--foreground);
         font-weight: var(--grammar-weight-medium);

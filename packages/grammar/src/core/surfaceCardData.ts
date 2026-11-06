@@ -211,6 +211,8 @@ export type SearchFields = {
 export type SwitchFields = {
     /** The accessible name of the tab list. */
     readonly label: string
+    /** An optional title at the leading edge of the row (muted); the row is empty there otherwise. */
+    readonly title?: string
     readonly items: PrimaryTabItems
     readonly selectedKey: string
     readonly onSelect: (key: string) => void
@@ -227,7 +229,7 @@ export type HeaderZone =
     /** The filter tabs at the leading edge and a compact search field at the trailing edge, in one row; narrow: the extra tabs fold into the menu and the search becomes a search button that opens a row. */
     | { readonly kind: "toolbar"; readonly filter: FilterFields; readonly search: SearchFields }
     | { readonly kind: "figures"; readonly items: readonly Figure[] }
-    /** Primary tabs (a pill in a track) at the trailing edge of the head, beside the label, taking no line: "This month / Last month", "Day / Week / Month", "List / Board". */
+    /** The card's first header row, inside the surface: primary tabs (a pill in a track) at the trailing edge, an optional title at the leading edge, the one line under it: "This month / Last month", "Day / Week / Month", "List / Board". */
     | ({ readonly kind: "switch" } & SwitchFields)
     | { readonly kind: "custom"; readonly children: ReactNode }
 
