@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased - surface and radius tokens (OWNER ruling 2026-11-06)
+
+- Fixed: `--starci-core-surface-radius` is `--radius` (it was 4/3 of it, 10.67px at Nivo's 0.5rem), so every card, media viewport, toast, flow graph and diagram draws at the one block radius.
+- Fixed: 21 corner radii that mapped to no HeroUI token now use `--radius` (`--grammar-radius-md`): board column, message bubble body (the tail corner is square), sidebar item, icon tiles, text action, schedule item, bar chart fill, code, input reveal, shortcut hint, mention list, flow graph tip, node and lane label; `progress-step` is a pill (full). Left as they are because they mirror the vendor Button radius: the button loading ring and the tooltip trigger (`calc(var(--radius) * 3)`).
+- Added: an `EmptyNotice` on the page itself (not inside a surface, not an error band) is one `--surface` card, never bare text on the tinted page.
+- Not done here (needs a vendor override, listed in AUDIT-SURFACE-RADIUS.md): HeroUI `Alert`, `Card--transparent` and `table-root` radii (24px, 24px, 20px) must be `--radius`; avatars drawn with the rounded shape must be full.
+
 ## 0.23.2 - 2026-11-06 (additive, for the Nivo canvas)
 
 - Added: `MessageBubble tone="soft"` on an outgoing bubble: the brand tint (`--accent-soft` with `--accent-soft-foreground`), for an agent speaking on the reader's behalf (owner ruling 2026-11-06: no new token). Story `MessageBubbleTones`.

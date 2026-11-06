@@ -702,7 +702,7 @@
     .starci-core-pressable-field-shortcut {
         flex-shrink: 0;
         border: 1px solid var(--border);
-        border-radius: var(--grammar-radius-sm);
+        border-radius: var(--grammar-radius-md);
         padding: 0.25rem;
         background: var(--surface-secondary);
         color: var(--muted);
@@ -2696,7 +2696,7 @@
         min-width: 0;
         align-items: center;
         gap: 0.75rem;
-        border-radius: var(--grammar-radius-xl) !important;
+        border-radius: var(--grammar-radius-md) !important;
         color: var(--foreground);
         cursor: pointer;
         outline: none;
@@ -3295,7 +3295,7 @@
         flex-direction: column;
         gap: var(--grammar-row-gap);
         padding: var(--grammar-inline-gap);
-        border-radius: var(--grammar-radius-lg);
+        border-radius: var(--grammar-radius-md);
         background: var(--surface-secondary);
     }
     .starci-core-board-column-head { display: flex; align-items: center; gap: var(--grammar-inline-gap); padding-inline: var(--grammar-inline-gap); }
@@ -3393,7 +3393,7 @@
         margin-block-end: var(--grammar-identity-gap);
         padding: var(--grammar-identity-gap) var(--grammar-inline-gap);
         border: 0;
-        border-radius: var(--grammar-radius-sm);
+        border-radius: var(--grammar-radius-md);
         background: var(--surface-secondary);
         color: var(--foreground);
         text-align: start;
@@ -3483,8 +3483,8 @@
         max-width: 3rem;
         height: var(--starci-core-bar-share);
         min-height: 2px;
-        border-start-start-radius: var(--grammar-radius-sm);
-        border-start-end-radius: var(--grammar-radius-sm);
+        border-start-start-radius: var(--grammar-radius-md);
+        border-start-end-radius: var(--grammar-radius-md);
         background: var(--accent);
     }
 
@@ -3566,6 +3566,12 @@
         gap: var(--grammar-row-gap);
         padding: var(--grammar-inset-open);
         text-align: center;
+    }
+
+    /* An empty notice on the page itself (not inside a surface) is content: one --surface card at the surface radius, never bare text on the tinted page. */
+    .starci-core-empty-notice:not([data-grammar-error-layout]):not(.starci-core-surface .starci-core-empty-notice) {
+        border-radius: var(--starci-core-surface-radius);
+        background: var(--surface);
     }
 
     /* The notice's words: the title (what happened or what is missing) over its one muted supporting line. */
@@ -4029,13 +4035,13 @@
     .starci-core-icon-tile[data-size="sm"] {
         width: 2rem;
         height: 2rem;
-        border-radius: var(--radius-lg, var(--radius));
+        border-radius: var(--grammar-radius-md);
     }
 
     .starci-core-icon-tile[data-size="md"] {
         width: 2.5rem;
         height: 2.5rem;
-        border-radius: var(--grammar-radius-xl);
+        border-radius: var(--grammar-radius-md);
     }
 
     /* A tone pair is painted only when the plate draws its own glyph. */
@@ -4080,7 +4086,7 @@
     .starci-core-progress-step {
         display: block;
         height: 0.25rem;
-        border-radius: var(--grammar-radius-2xs);
+        border-radius: var(--grammar-radius-pill);
         background: var(--default);
         transition: background-color var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
@@ -4152,7 +4158,7 @@
     .starci-core-input-actions .starci-core-input-reveal {
         min-height: 1.75rem;
         padding-inline: var(--grammar-identity-gap);
-        border-radius: var(--grammar-radius-sm);
+        border-radius: var(--grammar-radius-md);
     }
 
     .starci-core-input-actions .starci-core-input-reveal:not(:disabled):hover {
@@ -4421,7 +4427,7 @@
     }
 
     .starci-core-text-action[data-appearance="section"] {
-        border-radius: var(--grammar-radius-xl);
+        border-radius: var(--grammar-radius-md);
         padding: 0.5rem 0.75rem;
         color: var(--foreground);
     }
@@ -4646,7 +4652,7 @@
     /* Code: inline code on a soft plate, the size of the line around it. */
     .starci-core-code {
         padding: 0.125em 0.375em;
-        border-radius: var(--grammar-radius-sm);
+        border-radius: var(--grammar-radius-md);
         background: var(--default);
         color: var(--foreground);
         font-family: var(--font-mono);
@@ -4756,8 +4762,8 @@
         min-width: 0;
         max-width: 100%;
         padding: 0.5rem 0.75rem;
-        border-radius: var(--grammar-radius-lg);
-        border-start-start-radius: var(--grammar-radius-xs);
+        border-radius: var(--grammar-radius-md);
+        border-start-start-radius: 0;
         background: var(--surface);
         color: var(--surface-foreground);
         font-size: var(--grammar-text-md);
@@ -4772,8 +4778,8 @@
      * and a muted Text stay readable on the solid fill; a link keeps its underline so it is not told by colour alone.
      */
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body {
-        border-start-start-radius: var(--grammar-radius-lg);
-        border-start-end-radius: var(--grammar-radius-xs);
+        border-start-start-radius: var(--grammar-radius-md);
+        border-start-end-radius: 0;
         background: var(--accent);
         color: var(--accent-foreground);
     }
@@ -4964,7 +4970,7 @@
         overflow-y: auto;
         list-style: none;
         border: 1px solid var(--border);
-        border-radius: var(--radius-lg, var(--radius));
+        border-radius: var(--grammar-radius-md);
         background: var(--overlay);
         color: var(--overlay-foreground);
         box-shadow: var(--overlay-shadow);

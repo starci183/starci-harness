@@ -57,7 +57,7 @@
         --grammar-radius-pill: 999px;
         --grammar-radius-round: 50%;
         --starci-core-control-radius: var(--grammar-radius-md);
-        --starci-core-surface-radius: var(--grammar-radius-lg);
+        --starci-core-surface-radius: var(--grammar-radius-md);
         --starci-core-pill-radius: var(--grammar-radius-pill);
 
         /* STROKES. A hairline, a fine line and the focus ring. HeroUI's `--border-width` stays the border of its own parts. */
