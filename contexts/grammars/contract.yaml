@@ -208,15 +208,15 @@ roles:
 
   - id: segmented-control
     ui: ui/components/segmented-control.md
-    renderers: [SegmentedControl, ChoiceChips]
+    renderers: [ChoiceChips]
     vendorParity: [toggle-button-group, toggle-button]
-    slots: [options, "ChoiceChips: label, options (value, label, isDisabled), empty, error"]
+    slots: ["ChoiceChips: label, options (value, label, isDisabled), empty, error"]
     variants:
       width: { values: [content, fill], chosenBy: app }
     sizes: { steps: [sm, md], default: md }
     states: [selected, focus-visible, disabled, skeleton]
     grammarMayChange: [selected paint (soft accent with accent border)]
-    dna: [DNA-COMMON-SEGMENTED-RAMP, DNA-COMMON-SEGMENTED-RADIO, DNA-CORE-SEGMENT-SELECTED, DNA-COMMON-CHOICE-CHIPS-WRAP, DNA-COMMON-CHOICE-CHIPS-FILL]
+    dna: [DNA-COMMON-CHOICE-CHIPS-WRAP, DNA-COMMON-CHOICE-CHIPS-FILL]
 
   - id: chip
     ui: ui/components/chip.md
@@ -642,18 +642,6 @@ mustKeep:
       law: Every single-line field box (input, select trigger, combo box, search, number, date and time field, copy field) is as tall as an md control, 40px.
       measure: { kind: box, select: ':is(.starci-core-input-field,.starci-core-select-trigger,.starci-core-combo-box-group,.starci-core-search-field-group,.starci-core-number-field-group,.starci-core-date-group,.starci-core-copy-field-group):not([data-grammar-field-size="sm"] *)', metric: height, op: "=", value: 40px }
       owner: control-height-40
-    - id: DNA-COMMON-SEGMENTED-RAMP
-      role: segmented-control
-      law: A segmented control's segments sit on the ramp, md 40px and sm 32px; its label and description stand outside that box.
-      measure:
-        kind: box
-        metric: height
-        op: "="
-        cases:
-          - { select: '[data-component="SegmentedControl"][data-grammar-segmented-size="md"] [data-grammar-field-control="true"]', value: 40px }
-          - { select: '[data-component="SegmentedControl"][data-grammar-segmented-size="sm"] [data-grammar-field-control="true"]', value: 32px }
-      owner: control-height-40
-      followUp: D-3
     - id: DNA-COMMON-TABS-BAR-MD
       role: tabs
       law: A tab bar, pill or underline, lands on the md height without a size prop.
@@ -675,7 +663,7 @@ mustKeep:
     - id: DNA-COMMON-BAR-ONE-HEIGHT
       role: shell
       law: Every control in a bar has one height, the md height.
-      measure: { kind: uniform, scope: '[data-component="TopBar"]', select: ':is([data-component="Button"],[data-component="IconButton"],[data-component="Avatar"],[data-component="SegmentedControl"],[data-component="Switch"],.starci-core-search-field-group)', metric: height, op: "=", value: 40px }
+      measure: { kind: uniform, scope: '[data-component="TopBar"]', select: ':is([data-component="Button"],[data-component="IconButton"],[data-component="Avatar"],[data-component="Switch"],.starci-core-search-field-group)', metric: height, op: "=", value: 40px }
       owner: control-height-40; contract sizes.control
     - id: DNA-COMMON-BADGE-BELOW-RAMP
       role: chip
@@ -914,11 +902,6 @@ mustKeep:
       law: Arrow keys move focus between tabs.
       measure: { kind: interaction, select: '[data-component="Tabs"] [role="tab"][aria-selected="true"]', act: [focus, press ArrowRight], then: { select: 'document :focus', kind: a11y, metric: role, op: "=", value: tab } }
       owner: vendor/parity.yaml tabs
-    - id: DNA-COMMON-SEGMENTED-RADIO
-      role: segmented-control
-      law: A segmented control is a radio group with exactly one checked segment.
-      measure: { kind: count, scope: '[data-component="SegmentedControl"]', select: '[role="radio"][aria-checked="true"]', op: "=", value: 1 }
-      owner: STATE-6/case-5
     - id: DNA-COMMON-FIELD-BY-LAYER
       role: [input, select, copy-field]
       law: A field on the canvas takes the primary treatment and a field inside a surface the secondary one, never by app choice; a search box is the field tone (secondary) in both places.
@@ -1356,13 +1339,13 @@ mustKeep:
       owner: page-header-band; ui/presentation.md FONT-4
     - id: DNA-COMMON-PAGE-HEADER-SEPARATOR
       role: page
-      law: The band ends in its own separator, which runs the band's full width at its bottom edge, with or without tabs.
-      measure: { kind: relation, select: '[data-grammar-page-header-separator] > [data-component="Divider"]', metric: [left, right, bottom], op: "=", ref: { within: '[data-component="PageHeader"]', select: self, metric: [left, right, bottom] } }
+      law: The band ends in its own bottom border, which runs the band's full width at its bottom edge, with or without tabs; no Divider is drawn beside it.
+      measure: { kind: count, scope: '[data-component="PageHeader"]', select: '[data-component="Divider"]', op: "=", value: 0 }
       owner: page-header-band
     - id: DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR
       role: page
-      law: Page tabs in the header stand on its separator; the selected tab's underline lies over it.
-      measure: { kind: relation, select: '[data-component="PageHeader"] [role="tab"][aria-selected="true"] .tabs__indicator', metric: bottom, op: "=", ref: { within: '[data-component="PageHeader"]', select: '[data-grammar-page-header-separator] > [data-component="Divider"]', metric: bottom } }
+      law: Page tabs in the header stand on its bottom border, which is the one line under them; the selected tab's underline lies over it, its bottom edge on the band's bottom edge.
+      measure: { kind: relation, select: '[data-component="PageHeader"] [role="tab"][aria-selected="true"] .tabs__indicator', metric: bottom, op: "=", ref: { within: '[data-component="PageHeader"]', select: self, metric: bottom } }
       owner: page-header-band; tabs.choose.level:page
 
     # --- page (ruling page-frame)
@@ -1455,11 +1438,11 @@ mustKeep:
   core:
     - id: DNA-CORE-PAGE-HEADER-HAIRLINE
       role: page
-      law: The page header's separator is a 1px hairline in the separator token.
+      law: The page header's bottom border is a 1px hairline in the separator token.
       measure:
         kind: style
-        select: '[data-grammar-page-header-separator] > [data-component="Divider"]'
-        checks: [{ metric: height, op: "=", value: 1px }, { metric: background-color, op: "=", value: { token: --separator } }]
+        select: '[data-component="PageHeader"]'
+        checks: [{ metric: border-bottom-width, op: "=", value: 1px }, { metric: border-bottom-color, op: "=", value: { token: --separator } }]
       owner: page-header-band
     - id: DNA-CORE-EDGE-TOP
       role: card
@@ -1496,11 +1479,6 @@ mustKeep:
       law: Where the accent is text (a link, the current tab label) it reads the text-safe accent, never the fill accent.
       measure: { kind: style, select: '[data-component="Link"]', metric: color, op: "=", value: { token: --link } }
       owner: grammars/core.md
-    - id: DNA-CORE-SEGMENT-SELECTED
-      role: segmented-control
-      law: The selected segment sits on the soft accent.
-      measure: { kind: style, select: '[data-component="SegmentedControl"] [role="radio"][aria-checked="true"]', metric: background-color, op: "=", value: { token: --accent-soft } }
-      owner: CTA-1/case-6
     - id: DNA-CORE-PARITY-STRICT
       role: root
       law: core changes HeroUI through tokens only; every other deviation is a ruled override.
@@ -1513,8 +1491,8 @@ mustKeep:
       law: The page header closes on the ink rule at the outline width, the rule under the TopBar.
       measure:
         kind: style
-        select: '[data-grammar-page-header-separator] > [data-component="Divider"]'
-        checks: [{ metric: height, op: "=", value: { token: --offset-pop-outline-width } }, { metric: background-color, op: "=", value: { token: --foreground } }]
+        select: '[data-component="PageHeader"]'
+        checks: [{ metric: border-bottom-width, op: "=", value: { token: --offset-pop-outline-width } }, { metric: border-bottom-color, op: "=", value: { token: --foreground } }]
       owner: page-header-band; grammars/offset-pop.md
     - id: DNA-OFFSET-POP-STICKER
       role: card

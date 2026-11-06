@@ -56,7 +56,6 @@ calendar days and the stepper and clear glyphs of fields. Proof: A11Y-4, TASTE-1
 | Button, IconButton | `sm`, `md`, `lg` | `md` | the action ladder; an icon button is the same box as a square or circle |
 | Input, text field, search, number, date, time | `md` only | `md` | a field is read and typed into; a smaller field costs legibility, and mobile text must stay at the size that prevents focus zoom |
 | Select, ComboBox trigger | `md` only | `md` | a field: same reason |
-| SegmentedControl | `sm`, `md` | `md` | a control row; `sm` in a dense toolbar |
 | Tabs | none: the bar is `md` | `md` | a tab bar aligns with the controls beside it; region tabs' pill track and page tabs' bar both land on `md` |
 | FilterButtonGroup (filter buttons) | `sm` | `sm` | filter rows are dense: one row of `sm` toggle buttons (32px, the vendor ToggleButton `sm`) |
 | Switch, Checkbox, Radio | the row (label included) is the target | `md` row | the glyph is small, the labelled row is what is pressed |

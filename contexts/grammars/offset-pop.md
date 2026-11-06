@@ -44,7 +44,6 @@ this file says why.
 | Button | Every variant outlined with a small offset and heavy label; press travel; commit is the view's one pink fill with ink text |
 | ButtonGroup | Vendor arrangement; the outline replaces the collapsed borders |
 | Tabs | Underline in pink with the current label in `--accent-soft-foreground` |
-| SegmentedControl | Selected segment filled pink with an ink label and outline |
 | Chip | Badge as palette tint with ink text, the `muted` Badge with a dashed edge; Badge isDot a heavy-weight pill and every dot ringed in ink so it reads on cream; a `FilterButtonGroup` selected option turns pink and lifts |
 | Input | Ink-outlined box on the surface at the control radius; focus is the hard offset shadow (critical when invalid) over a transparent outline that forced colours turn into a Highlight ring |
 | Select | As Input; options as List rows |

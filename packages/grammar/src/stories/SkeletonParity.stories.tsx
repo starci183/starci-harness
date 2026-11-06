@@ -430,11 +430,6 @@ const choiceOptions = [
     { value: "email", label: "Email" },
     { value: "push", label: "Push" },
 ]
-const segmentOptions = [
-    { value: "day", label: "Day" },
-    { value: "week", label: "Week" },
-]
-
 const forms = (): ReadonlyArray<Pair> => [
     {
         id: "input",
@@ -515,11 +510,6 @@ const forms = (): ReadonlyArray<Pair> => [
         id: "radio-group",
         ready: <G.RadioGroup label="Digest" options={choiceOptions} defaultValue="email" />,
         loading: <G.RadioGroup label="Digest" options={choiceOptions} isLoading />,
-    },
-    {
-        id: "segmented-control",
-        ready: <G.SegmentedControl label="Range" options={segmentOptions} defaultValue="day" />,
-        loading: <G.SegmentedControl label="Range" options={segmentOptions} isLoading />,
     },
 ]
 

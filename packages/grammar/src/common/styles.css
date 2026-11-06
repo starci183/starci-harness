@@ -843,6 +843,7 @@
         display: inline-flex;
         flex: none;
         align-items: center;
+        gap: var(--grammar-inline-gap);
         margin-inline-start: auto;
     }
 
@@ -978,8 +979,15 @@
         padding-inline: var(--grammar-card-padding-inline);
     }
 
-    .starci-core-surface-zone:has(~ .starci-core-surface-main) {
+    .starci-core-surface-zone:has(~ .starci-core-surface-main):not([data-grammar-zone="switch"]) {
         border-block-end: 1px solid var(--separator);
+    }
+
+    /* A switch zone is the head's own strip: primary tabs at the trailing edge, no line. */
+    .starci-core-surface-zone[data-grammar-zone="switch"] {
+        display: flex;
+        justify-content: flex-end;
+        padding-block: var(--grammar-inline-gap);
     }
 
     .starci-core-surface-main ~ .starci-core-surface-zone {
@@ -1044,7 +1052,7 @@
         color: var(--surface-foreground);
     }
 
-    .starci-core-board-header > .starci-core-surface-zone:is(:not(:last-child), [data-grammar-zone-line="tabs"]) {
+    .starci-core-board-header > .starci-core-surface-zone:not([data-grammar-zone="switch"]):is(:not(:last-child), [data-grammar-zone-line="tabs"]) {
         border-block-end: 1px solid var(--separator);
     }
 
@@ -1425,20 +1433,36 @@
     }
 
     .starci-core-tabs-frame,
-    .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs .tabs__list,
-    .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs .tabs__list-container {
+    .starci-core-tabs-frame[data-grammar-tabs-variant="secondary"] .starci-core-tabs .tabs__list,
+    .starci-core-tabs-frame[data-grammar-tabs-variant="secondary"] .starci-core-tabs .tabs__list-container {
         margin-bottom: 0;
         padding-bottom: 0;
     }
 
-    .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs .tabs__list,
-    .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs .tabs__list-container {
+    .starci-core-tabs-frame[data-grammar-tabs-variant="secondary"] .starci-core-tabs .tabs__list,
+    .starci-core-tabs-frame[data-grammar-tabs-variant="secondary"] .starci-core-tabs .tabs__list-container {
         border-bottom-width: 0 !important;
     }
 
-    /* The underline geometry belongs to the primary bar; the secondary pill strip keeps HeroUI's own geometry. */
-    .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs .tabs__list {
+    /* The underline geometry belongs to the secondary variant (HeroUI's secondary is the underline); the primary pill-in-a-track keeps HeroUI's own geometry. */
+    .starci-core-tabs-frame[data-grammar-tabs-variant="secondary"] .starci-core-tabs .tabs__list {
         align-items: flex-end;
+    }
+
+    /* The primary appearance (a pill in a track, HeroUI's own geometry) hugs its options: a switch is a few short words, never a full-width bar. */
+    .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] {
+        display: inline-flex;
+        width: auto;
+        max-width: 100%;
+    }
+
+    .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs {
+        width: auto;
+    }
+
+    .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .tabs__list {
+        min-width: 0;
+        width: max-content;
     }
 
     .starci-core-tabs-frame[data-grammar-tabs-inset="page"] {
@@ -1458,7 +1482,7 @@
     }
 
     /* The bar lands on the md control height whatever its labels, so a tab bar aligns with the controls beside it. */
-    .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs .tabs__tab {
+    .starci-core-tabs-frame[data-grammar-tabs-variant="secondary"] .starci-core-tabs .tabs__tab {
         min-height: var(--starci-core-control-min-size);
         padding-inline: var(--starci-core-tab-padding-start, var(--grammar-inset)) var(--grammar-inset) !important;
         padding-block-end: 0 !important;
@@ -1468,7 +1492,7 @@
      * Text edge: the first underline tab's label stands on the content edge it shares with the page title and the
      * card or pane box below; its hit area keeps the end padding, so two labels sit one section step apart.
      */
-    .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs .tabs__tab:first-child {
+    .starci-core-tabs-frame[data-grammar-tabs-variant="secondary"] .starci-core-tabs .tabs__tab:first-child {
         --starci-core-tab-padding-start: 0px;
     }
 
@@ -1487,7 +1511,7 @@
         margin-block-end: calc(-1 * var(--starci-core-tabs-line-width));
     }
 
-    .starci-core-tabs-frame[data-grammar-tabs-variant="primary"] .starci-core-tabs .tabs__indicator {
+    .starci-core-tabs-frame[data-grammar-tabs-variant="secondary"] .starci-core-tabs .tabs__indicator {
         bottom: calc(-1 * var(--starci-core-tabs-line-width)) !important;
         height: 2px !important;
         margin-block-end: 0 !important;

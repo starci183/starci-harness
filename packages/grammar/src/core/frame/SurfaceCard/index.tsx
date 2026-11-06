@@ -26,7 +26,7 @@ import { FigureCells, figureItems } from "./FigureCells.js"
 import { ListRows } from "./ListRows.js"
 import { TableRows } from "./TableRows.js"
 import { SurfaceCardTile } from "./SurfaceCardTile.js"
-import { FooterZoneView, HeaderZoneView } from "./Zones.js"
+import { FooterZoneView, HeaderZoneView, SwitchTabs } from "./Zones.js"
 import {
     getSurfaceCardClassName,
     getSurfaceContentClassName,
@@ -212,7 +212,11 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
     const motif: SurfaceCardMotif = body?.treatment === "ink" ? body.motif ?? "none" : "none"
     const artwork = body?.treatment === "ink" || body?.treatment === "soft" ? body.artwork : undefined
     const wholeAction = isTile ? props.wholeAction : body?.wholeAction
-    const headers = props.headers ?? []
+    const allHeaders = props.headers ?? []
+    // A switch zone sits at the trailing edge of the label row (beside the label); a card with no label draws it as a trailing strip.
+    const switchZone = allHeaders.find((zone) => zone.kind === "switch")
+    const switchInLabel = switchZone !== undefined && labelled !== undefined && !isTile
+    const headers = switchInLabel ? allHeaders.filter((zone) => zone.kind !== "switch") : allHeaders
     const footers = props.footers ?? []
     const isZoned = headers.length > 0 || footers.length > 0
     // A kind that draws its own faces (list, figures, accordion) touches the card's edge; a zoned card is flush too, its body and zones drawing their own insets.
@@ -337,10 +341,15 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             variant="transparent"
         >
             {labelled === undefined || isTile ? null : (
-                <Card.Header className={surfaceLabelClassName} data-contract="GAP-2" data-grammar-surface-label="true" data-grammar-label-end={props.labelEnd === undefined ? "false" : "true"}>
+                <Card.Header className={surfaceLabelClassName} data-contract="GAP-2" data-grammar-surface-label="true" data-grammar-label-end={props.labelEnd === undefined && !switchInLabel ? "false" : "true"}>
                     <Label as={`h${headingLevel}`} id={headingId}>{labelled}</Label>
                     {props.fact === undefined ? null : <span className={surfaceFactClassName} data-contract="TONE-2 FONT-2">{props.fact}</span>}
-                    {props.labelEnd === undefined ? null : <span className="starci-core-surface-label-end"><ButtonPlacementProvider placement="chrome">{props.labelEnd}</ButtonPlacementProvider></span>}
+                    {props.labelEnd === undefined && !switchInLabel ? null : (
+                        <span className="starci-core-surface-label-end">
+                            {switchZone === undefined || switchZone.kind !== "switch" || !switchInLabel ? null : <SwitchTabs switchFields={switchZone} />}
+                            {props.labelEnd === undefined ? null : <ButtonPlacementProvider placement="chrome">{props.labelEnd}</ButtonPlacementProvider>}
+                        </span>
+                    )}
                 </Card.Header>
             )}
             {highlightedSurface}

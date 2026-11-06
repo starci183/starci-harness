@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { Tabs, type TabsProps } from "../../branch/Tabs/index.js"
+import { Tabs, type SecondaryTabsProps } from "../../branch/Tabs/index.js"
 import { Breadcrumbs, type BreadcrumbItem } from "../../composite/Breadcrumbs/index.js"
 import { TabsLineHost } from "../../zoneContext.js"
 import { PageContainerPart, type PageContainerProps } from "../PageContainer/index.js"
@@ -18,7 +18,7 @@ export type PageHeaderBreadcrumbs = {
  * The page's own tabs, drawn on the header's bottom separator: the page tabs of `tabs.choose.level:page`. The header
  * owns their look (the underline) and their inset, so neither is passed.
  */
-export type PageHeaderTabs = Omit<TabsProps, "variant" | "inset">
+export type PageHeaderTabs = Omit<SecondaryTabsProps, "appearance" | "inset">
 
 export type PageHeaderProps = {
     /** The page heading, the document's one `h1` (FONT-4). */

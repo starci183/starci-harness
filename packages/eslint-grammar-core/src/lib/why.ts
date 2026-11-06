@@ -17,6 +17,11 @@ export const why: Record<string, WhyEntry> = {
     en: "A StatusDot or Badge label in `<file>` starts with a lowercase letter.",
     fix: "Start the label with an uppercase letter (`Running`, not `running`); the rule fixes a literal label in place.",
   },
+  "no-primary-tabs-misuse": {
+    code: "FE_GROUPED_CHOICE_CONTROL",
+    en: "Primary `Tabs` (or a `switch` header zone) in `<file>` hold a count, an href, an attention mark, one item or more than four items.",
+    fix: "Primary tabs switch a mode or period of the same data among two to four short, fixed options. Views, filters with counts and destinations are the secondary (underline) `Tabs`.",
+  },
   "no-button-view-switch": {
     code: "FE_GROUPED_CHOICE_CONTROL",
     en: "Buttons carrying `aria-pressed`, `isSelected` or `isActive` stand side by side in `<file>`: joined buttons or pills acting as tabs.",

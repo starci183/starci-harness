@@ -8,7 +8,7 @@ import type { IconSource } from "./leaf/Icon/index.js"
 import type { SurfaceHeadingLevel } from "./leaf/Label/index.js"
 import type { LinkProps } from "./leaf/Link/index.js"
 import type { ButtonProps } from "./leaf/Button/index.js"
-import type { TabItem } from "./branch/Tabs/index.js"
+import type { PrimaryTabItems, TabItem } from "./branch/Tabs/index.js"
 import type { ImageAspect, ImageProps } from "./leaf/Image/index.js"
 
 /** A status mark as data: the words, the tone, and whether it leads with a status dot. */
@@ -207,6 +207,15 @@ export type SearchFields = {
     readonly clearLabel?: string
 }
 
+/** The fields of a switch zone: a mode or period of the block's own data, 2 to 4 short fixed options, no count and no destination. */
+export type SwitchFields = {
+    /** The accessible name of the tab list. */
+    readonly label: string
+    readonly items: PrimaryTabItems
+    readonly selectedKey: string
+    readonly onSelect: (key: string) => void
+}
+
 /**
  * A band above the card's body. Zones are typed: the shell owns their padding, their geometry while loading and the ONE divider
  * between neighbouring zones and between a zone and the body (a `Divider` inside a zone is refused). `custom` is the only free
@@ -218,6 +227,8 @@ export type HeaderZone =
     /** The filter tabs at the leading edge and a compact search field at the trailing edge, in one row; narrow: the extra tabs fold into the menu and the search becomes a search button that opens a row. */
     | { readonly kind: "toolbar"; readonly filter: FilterFields; readonly search: SearchFields }
     | { readonly kind: "figures"; readonly items: readonly Figure[] }
+    /** Primary tabs (a pill in a track) at the trailing edge of the head, beside the label, taking no line: "This month / Last month", "Day / Week / Month", "List / Board". */
+    | ({ readonly kind: "switch" } & SwitchFields)
     | { readonly kind: "custom"; readonly children: ReactNode }
 
 /** A band below the card's body. */

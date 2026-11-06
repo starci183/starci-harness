@@ -14,11 +14,6 @@ const tabItems = [
     { id: "mine", label: "Mine" },
 ]
 
-const segmentOptions = [
-    { value: "day", label: "Day" },
-    { value: "week", label: "Week" },
-]
-
 const planOptions = [
     { id: "starter", label: "Starter" },
     { id: "team", label: "Team" },
@@ -37,7 +32,6 @@ const ControlRow = () => {
             <G.SearchField label="Search" isLabelHidden placeholder="Search" clearLabel="Clear search" />
             <G.Select label="Plan" isLabelHidden options={planOptions} defaultValue="starter" />
             <G.Tabs label="Filter" items={tabItems} selectedKey={tab} onSelect={setTab} panelId={(key) => `control-heights-${key}`} labelVisibility="always" />
-            <G.SegmentedControl label="Range" isLabelHidden options={segmentOptions} defaultValue="day" />
             <G.Switch label="Dark mode" isLabelHidden size="control" thumbIcon={SettingsGlyph} selectedThumbIcon={StarGlyph} />
             <G.AvatarButton name="Alex Morgan" size="control" />
             <G.Button intent="commit" startContent={<SearchGlyph />}>Send</G.Button>
@@ -51,7 +45,7 @@ export const OneRowAllAtForty: Story = {
         <Matrix>
             {(["light", "dark"] as const).map((theme) => (
                 <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme}>
-                    <State label={`${theme}: Button, IconButton, Input, SearchField, Select, Tabs, SegmentedControl, Switch, Avatar, send Button`} direction="column">
+                    <State label={`${theme}: Button, IconButton, Input, SearchField, Select, Tabs, Switch, Avatar, send Button`} direction="column">
                         <ControlRow />
                     </State>
                 </G.GrammarRoot>

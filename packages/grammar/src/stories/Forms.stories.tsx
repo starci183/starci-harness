@@ -29,12 +29,6 @@ const choiceOptions: ReadonlyArray<G.ChoiceOption> = [
   { value: 'sms', label: 'Text message', isDisabled: true },
 ];
 
-const segmentOptions: ReadonlyArray<G.SegmentOption> = [
-  { value: 'day', label: 'Day' },
-  { value: 'week', label: 'Week' },
-  { value: 'month', label: 'Month' },
-];
-
 const formColumn = 420;
 
 export const Input: Story = {
@@ -551,35 +545,6 @@ export const FieldFamilySecondary: Story = {
       <State label="NumberField" direction="column"><G.NumberField label="Seats" defaultValue={4} /></State>
       <State label="DateField" direction="column"><G.DateField label="Due" /></State>
       <State label="TimeField" direction="column"><G.TimeField label="At" /></State>
-    </Matrix>
-  ),
-};
-
-export const SegmentedControl: Story = {
-  render: () => (
-    <Matrix maxWidth={formColumn}>
-      <State label="Loading (isLoading)" direction="column">
-        <G.SegmentedControl label="Range" options={segmentOptions} isLoading />
-      </State>
-      <State label="Selected" direction="column">
-        <G.SegmentedControl label="Range" options={segmentOptions} defaultValue="week" />
-      </State>
-      <State label="Fill width with a disabled option" direction="column">
-        <G.SegmentedControl label="View" width="fill" options={[...segmentOptions, { value: 'year', label: 'Year', isDisabled: true }]} defaultValue="day" />
-      </State>
-      <State label="Sizes: md (default), lg, control" direction="column">
-        <G.SegmentedControl label="Range md" options={segmentOptions} defaultValue="week" />
-        <G.SegmentedControl label="Range lg" options={segmentOptions} defaultValue="week" />
-        <G.SegmentedControl label="Range control" options={segmentOptions} defaultValue="week" />
-      </State>
-      <State label="Control height (2.75rem), label hidden but accessible, beside bar controls">
-        <G.SegmentedControl label="Language" isLabelHidden options={[{ value: 'vi', label: 'VI', accessibleLabel: 'Vietnamese' }, { value: 'en', label: 'EN', accessibleLabel: 'English' }]} defaultValue="vi" />
-        <G.SegmentedControl label="Language" isLabelHidden options={segmentOptions} isLoading />
-        <G.IconButton source={SettingsGlyph} label="Settings" />
-      </State>
-      <State label="Disabled" direction="column">
-        <G.SegmentedControl label="Range" options={segmentOptions} defaultValue="month" isDisabled />
-      </State>
     </Matrix>
   ),
 };

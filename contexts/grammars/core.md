@@ -38,7 +38,6 @@ scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`)
 | Button | Vendor variants through the tokens: commit is the violet fill with white text, alternative the neutral fill with accent text; pill corner; vendor press |
 | ButtonGroup | Vendor arrangement unchanged |
 | Tabs | Underline: accent indicator, current label in `--accent-soft-foreground` |
-| SegmentedControl | Selected segment on `accentSoft` |
 | Chip | Badge, with or without its dot, as the vendor soft chip: tone tint with its soft foreground |
 | Input | Surface-coloured fill, transparent border, control radius; inside a surface the vendor's neutral fill |
 | Select | As Input; selection indicator at the end; option rows as List |

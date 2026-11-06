@@ -3,6 +3,8 @@
 ## 0.24.0 - 2026-11-06
 
 - Added: `no-button-view-switch` (R380, `FE_GROUPED_CHOICE_CONTROL`): two or more adjacent `Button` or `IconButton` elements, or one in a `.map`, carrying `aria-pressed`, `isSelected` or `isActive` are joined buttons or pills acting as tabs; use `Tabs` in the block's `filter` header zone. `docs/choice-controls.md` says which component switches what.
+- Added: `no-primary-tabs-misuse` (R380): `Tabs appearance="primary"` and the `switch` header zone hold two to four fixed options with no `count`, `href` or `isAttention`; a literal that carries one is refused.
+- Changed: the `SegmentedControl` replacement names `Tabs appearance="primary"`; the component is removed from `@starci/grammar` 0.24.0.
 - Changed: with `@starci/grammar` 0.24.0 (the family shares a minor). `surface-card-kind` (R355) refuses a `Tabs`, `SearchField` or `Divider` inside a `{ kind: "custom" }` zone of a `SurfaceCard` or `Board` `headers` or `footers` array (message `zone`), and its messages and the `no-raised-surface-in-surface` fix name the typed zones instead of the removed `kind="bands"` and the renamed `footer` (now `note`).
 
 ## 0.23.2 - 2026-11-06

@@ -99,7 +99,7 @@
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] :is([data-component="Select"], [data-component="ComboBox"], [data-component="SearchField"], [data-component="NumberField"], [data-component="DateField"], [data-component="TimeField"], [data-component="DatePicker"], [data-component="DateRangePicker"], [data-component="Textarea"], [data-component="CopyField"]):is([data-grammar-invalid="true"], [data-invalid="true"]) [data-grammar-field-control="true"],
-    .grammar-common-root[data-grammar-family="offset-pop"] :is([data-component="Slider"], [data-component="SegmentedControl"])[data-grammar-invalid="true"] [data-grammar-field-control="true"],
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Slider"][data-grammar-invalid="true"] [data-grammar-field-control="true"],
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Field"][data-grammar-invalid="true"] [data-grammar-field-control="true"] > :where(input, select, textarea) {
         border-color: var(--danger);
     }
@@ -174,50 +174,6 @@
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-field="true"]:is([data-grammar-invalid="true"], [data-invalid="true"]) [data-grammar-choice-control] {
         border-color: var(--danger);
-    }
-
-    /* --- SegmentedControl: one outlined unit, pink selected segment --- */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-field-control="true"] {
-        overflow: clip;
-        border: var(--offset-pop-outline-width) solid var(--foreground);
-        border-radius: var(--offset-pop-control-radius);
-        background: var(--field-background);
-        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-x) 0 var(--offset-pop-shadow-ink, var(--foreground));
-        transition:
-            transform var(--offset-pop-transition),
-            box-shadow var(--offset-pop-transition);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-option] {
-        border: 0;
-        border-radius: 0;
-        color: var(--foreground);
-        background: transparent;
-        box-shadow: none;
-        font-weight: var(--grammar-weight-extrabold);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-option] + [data-grammar-option] {
-        border-inline-start: var(--offset-pop-outline-width) solid var(--foreground);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-option]:is([data-hovered="true"], :hover):not([data-selected="true"], [data-disabled="true"]) {
-        background: color-mix(in srgb, var(--warning) 32%, transparent);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-option][data-selected="true"] {
-        color: var(--accent-foreground);
-        background: var(--accent);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-option][data-focus-visible="true"] {
-        outline: 2px solid var(--foreground);
-        outline-offset: -0.25rem;
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-field-control="true"]:has([data-grammar-option][data-pressed="true"]) {
-        box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
-        transform: translate(var(--offset-pop-shadow-x), var(--offset-pop-shadow-x));
     }
 
     /* --- ButtonGroup: one shadow for the unit, joined outlines --- */
@@ -415,7 +371,6 @@
             outline: 2px solid Highlight;
         }
 
-        .grammar-common-root[data-grammar-family="offset-pop"] [data-component="SegmentedControl"] [data-grammar-option][data-selected="true"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] [data-grammar-option][data-selected="true"],
         .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-popover] [data-grammar-calendar-cell][data-selected="true"] {
             color: HighlightText;

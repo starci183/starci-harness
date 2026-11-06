@@ -10,8 +10,8 @@ import * as G from "../common/index.js"
  *
  * - Input family (Input, Textarea, NumberField, SearchField) and Select family (Select, ComboBox):
  *   Default, Filled, Disabled, Invalid, Loading.
- * - Choice family (Checkbox, CheckboxGroup, RadioGroup, Switch, SegmentedControl): Default, Checked/Selected, Disabled,
- *   Invalid, Loading (SegmentedControl and Switch have no invalid state of their own and are left out of that row).
+ * - Choice family (Checkbox, CheckboxGroup, RadioGroup, Switch): Default, Checked/Selected, Disabled,
+ *   Invalid, Loading (Switch has no invalid state of its own and is left out of that row).
  * - Field (a custom control): Default, WithHint, Required, Error, Disabled, Loading.
  */
 
@@ -77,10 +77,6 @@ const planOptions = [
 const choiceOptions = [
     { value: "email", label: "Email" },
     { value: "push", label: "Push" },
-]
-const segmentOptions = [
-    { value: "day", label: "Day" },
-    { value: "week", label: "Week" },
 ]
 
 const INPUT_STATES = ["Default", "Filled", "Disabled", "Invalid", "Loading"] as const
@@ -178,7 +174,7 @@ export const SelectFamily: Story = {
 
 const CHOICE_STATES = ["Default", "Checked", "Disabled", "Invalid", "Loading"] as const
 
-/** Checkbox, CheckboxGroup, RadioGroup, Switch and SegmentedControl: Default, Checked/Selected, Disabled, Invalid, Loading. */
+/** Checkbox, CheckboxGroup, RadioGroup and Switch: Default, Checked/Selected, Disabled, Invalid, Loading. */
 export const ChoiceFamily: Story = {
     render: () => (
         <StateTable
@@ -221,15 +217,6 @@ export const ChoiceFamily: Story = {
                         Checked: <G.Switch label="Dark mode" defaultSelected />,
                         Disabled: <G.Switch label="Dark mode" isDisabled />,
                         Loading: <G.Switch label="Dark mode" isLoading />,
-                    },
-                },
-                {
-                    control: "SegmentedControl",
-                    states: {
-                        Default: <G.SegmentedControl label="Range" options={segmentOptions} />,
-                        Checked: <G.SegmentedControl label="Range" options={segmentOptions} defaultValue="week" />,
-                        Disabled: <G.SegmentedControl label="Range" options={segmentOptions} isDisabled />,
-                        Loading: <G.SegmentedControl label="Range" options={segmentOptions} isLoading />,
                     },
                 },
             ]}

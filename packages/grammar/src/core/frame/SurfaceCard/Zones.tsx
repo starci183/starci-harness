@@ -7,7 +7,7 @@ import { Link } from "../../leaf/Link/index.js"
 import { SearchField } from "../../leaf/SearchField/index.js"
 import { TextAction } from "../../leaf/TextAction/index.js"
 import { Pagination } from "../../composite/Pagination/index.js"
-import type { FilterFields, FooterZone, HeaderZone, SearchFields } from "../../surfaceCardData.js"
+import type { FilterFields, FooterZone, HeaderZone, SearchFields, SwitchFields } from "../../surfaceCardData.js"
 import { CustomZoneScope, TabsLineHost } from "../../zoneContext.js"
 import { FigureCells, figureItems } from "./FigureCells.js"
 import {
@@ -80,6 +80,17 @@ const ToolbarZone = ({ filter, search }: { readonly filter: FilterFields; readon
     )
 }
 
+/** The primary tabs of a switch zone: a pill in a track, no line. */
+export const SwitchTabs = ({ switchFields }: { readonly switchFields: SwitchFields }) => (
+    <Tabs
+        appearance="primary"
+        label={switchFields.label}
+        items={switchFields.items}
+        selectedKey={switchFields.selectedKey}
+        onSelect={switchFields.onSelect}
+    />
+)
+
 /** One header zone, drawn by its kind. The shell draws the divider after it (its bottom border); a tab strip's line IS that border. */
 export const HeaderZoneView = ({ zone, isLoading }: { readonly zone: HeaderZone; readonly isLoading: boolean }) => {
     switch (zone.kind) {
@@ -93,6 +104,9 @@ export const HeaderZoneView = ({ zone, isLoading }: { readonly zone: HeaderZone;
             return <div className={surfaceZoneClassName} data-grammar-zone="search"><ZoneSearch search={zone} isCompact={false} /></div>
         case "toolbar":
             return <TabsLineHost><ToolbarZone filter={zone.filter} search={zone.search} /></TabsLineHost>
+        case "switch":
+            // A card with a label draws its switch in the label row; this is the strip of a card with none, and of a board: trailing, no divider.
+            return <div className={surfaceZoneClassName} data-grammar-zone="switch"><SwitchTabs switchFields={zone} /></div>
         case "figures":
             return <div className={surfaceZoneClassName} data-grammar-zone="figures"><FigureCells items={figureItems(zone.items, isLoading)} isLoading={isLoading} /></div>
         case "custom":

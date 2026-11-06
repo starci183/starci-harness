@@ -45,14 +45,33 @@ export type TabItem = {
  * controls. Controlled tabs pass `selectedKey` and `onSelect`; link tabs pass an `href` on every item and the selected
  * tab is the one whose `href` matches the current path (the exact path, else the longest `href` the path lies under).
  */
-export type TabsProps = NoChildren & {
+type TabsCommon = NoChildren & {
     readonly label: string
+    /** The selected tab. Required for controlled tabs; link tabs derive it from the current path when it is omitted. */
+    readonly selectedKey?: string
+    readonly onSelect?: (key: string) => void
     /**
-     * What the tabs do. `views` (default): they switch between views of a page, in the page head. `filter`: they narrow one list
-     * that stays in place, inside the list pane under its search field: the same underline one size smaller (13px, tighter), each
-     * with its `count`; the tabs that do not fit fold into a "+n" menu and the selected one always stays visible. A tablist is not a
-     * form field: choosing a value of a form is `ChoiceChips` or `RadioGroup`.
+     * The panel each tab controls (`aria-controls`): a function from the tab key to the id of its panel, or one id when a single
+     * panel is swapped by every tab (page tabs control the page body). A string crosses a server boundary; a function does not.
      */
+    readonly panelId?: string | ((key: string) => string)
+    /** Keep stable labels visible when icon-only navigation would make peer views ambiguous. A tab with no `leading` icon always shows its label (0.9.11): it has nothing else to show. */
+    readonly labelVisibility?: "responsive" | "always"
+    /** Accessible name of the previous-tabs scroll caret. HeroUI hardcodes English; pass the localized text. Defaults to "Scroll tabs left". */
+    readonly scrollPreviousLabel?: string
+    /** Accessible name of the next-tabs scroll caret. Defaults to "Scroll tabs right". */
+    readonly scrollNextLabel?: string
+}
+
+/**
+ * `secondary` (the default, HeroUI's secondary variant): the underline. `kind="views"` switches between views of a page, in the page
+ * head. `kind="filter"` narrows one list that stays in place, in a card's `filter` or `toolbar` header zone: the same underline one size
+ * smaller (13px, tighter), each with its `count`; the tabs that do not fit fold into a "+n" menu and the selected one always stays visible.
+ * Exactly one line stands under the strip and the selected underline lies on it. A tablist is not a form field: choosing a value of a
+ * form is `ChoiceChips` or `RadioGroup`.
+ */
+export type SecondaryTabsProps = TabsCommon & {
+    readonly appearance?: "secondary"
     readonly kind?: "views" | "filter"
     /** The accessible name of the menu that holds the folded tabs, e.g. `(count) => \`${count} more filters\``. */
     readonly moreLabel?: (count: number) => string
@@ -62,24 +81,40 @@ export type TabsProps = NoChildren & {
      * makes the tabs that do not fit fold into that menu (the selected one stays visible) instead of scrolling.
      */
     readonly overflowLabel?: string
-    /** The selected tab. Required for controlled tabs; link tabs derive it from the current path when it is omitted. */
-    readonly selectedKey?: string
     readonly items: ReadonlyArray<TabItem>
-    readonly onSelect?: (key: string) => void
-    /**
-     * The panel each tab controls (`aria-controls`): a function from the tab key to the id of its panel, or one id when a single
-     * panel is swapped by every tab (page tabs control the page body). A string crosses a server boundary; a function does not.
-     */
-    readonly panelId?: string | ((key: string) => string)
-    /** Keep stable labels visible when icon-only navigation would make peer views ambiguous. A tab with no `leading` icon always shows its label (0.9.11): it has nothing else to show. */
-    readonly labelVisibility?: "responsive" | "always"
     /** Page chrome owns whether the peer strip starts at the shared page inset. */
     readonly inset?: "page" | "none"
-    /** Accessible name of the previous-tabs scroll caret. HeroUI hardcodes English; pass the localized text. Defaults to "Scroll tabs left". */
-    readonly scrollPreviousLabel?: string
-    /** Accessible name of the next-tabs scroll caret. Defaults to "Scroll tabs right". */
-    readonly scrollNextLabel?: string
 }
+
+/** One option of a primary strip: a short label, no count, no destination. */
+export type PrimaryTabItem = Omit<TabItem, "count" | "isAttention" | "href"> & {
+    readonly count?: never
+    readonly isAttention?: never
+    readonly href?: never
+}
+
+/** Two to four options. */
+export type PrimaryTabItems =
+    | readonly [PrimaryTabItem, PrimaryTabItem]
+    | readonly [PrimaryTabItem, PrimaryTabItem, PrimaryTabItem]
+    | readonly [PrimaryTabItem, PrimaryTabItem, PrimaryTabItem, PrimaryTabItem]
+
+/**
+ * `primary` (HeroUI's primary variant): a pill in a track, still `role="tab"`. It switches a mode or period of the same data ("This
+ * month / Last month", "Day / Week / Month", "List / Board") among 2 to 4 short, fixed options, and never navigates: no `count`, no
+ * `href`, no more than four items (refused by the types, and by a development throw for what the types cannot see). It has no
+ * line; in a card it is the `switch` header zone at the head's trailing edge.
+ */
+export type PrimaryTabsProps = TabsCommon & {
+    readonly appearance: "primary"
+    readonly kind?: never
+    readonly moreLabel?: never
+    readonly overflowLabel?: never
+    readonly inset?: never
+    readonly items: PrimaryTabItems
+}
+
+export type TabsProps = SecondaryTabsProps | PrimaryTabsProps
 
 /** A path without its trailing slash, the root kept as `/`. */
 const trimPath = (path: string): string => (path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path)
@@ -116,22 +151,28 @@ const useLocationPath = (enabled: boolean): readonly [string | undefined, (path:
 
 /** Render peer tabs through Core's selected, accessible and responsive treatment. */
 const TabsInner = (props: TabsProps) => {
+    const items: ReadonlyArray<TabItem> = props.items
+    const isPill = props.appearance === "primary"
     const [isClientReady, setIsClientReady] = useState(false)
     const frameRef = useRef<HTMLDivElement>(null)
     useRefuseInCustomZone("Tabs")
     // The line owner is the host's, never a prop: a card zone and the page header band wrap their strip in `TabsLineHost` (draws no line of its own, the indicator overlaps the host's divider); a standalone strip draws `--separator` itself.
     const hostLine = useTabsLineDefault()
-    const line = hostLine
+    const line: string = isPill ? "none" : hostLine
+    // A primary strip is for a mode or a period of the same data: a few short fixed options, never a destination and never counted.
+    if (isPill && process.env.NODE_ENV !== "production" && (items.length < 2 || items.length > 4 || items.some((item) => item.count !== undefined || item.href !== undefined || item.isAttention !== undefined))) {
+        throw new Error("Tabs appearance=\"primary\" holds two to four short, fixed options with no count, no href and no attention mark; views, filters and destinations are the secondary (underline) tabs.")
+    }
     // A loading region keeps the labels real (static chrome) and draws each count as the geometry of its ready box; the region makes the tabs inert.
     const isLoading = useIsLoading(undefined)
     useEffect(() => setIsClientReady(true), [])
-    const isLinkTabs = props.items.some((item) => item.href !== undefined)
+    const isLinkTabs = items.some((item) => item.href !== undefined)
     const [locationPath, setLocationPath] = useLocationPath(isLinkTabs && props.selectedKey === undefined)
     // A path no link tab owns falls back to the first tab, so link tabs stay controlled from their first render.
     const selectedKey = props.selectedKey
-        ?? (isLinkTabs && locationPath !== undefined ? tabKeyFromPath(props.items, locationPath, window.location.href) ?? props.items[0]?.id : undefined)
+        ?? (isLinkTabs && locationPath !== undefined ? tabKeyFromPath(items, locationPath, window.location.href) ?? items[0]?.id : undefined)
     const select = (key: string) => {
-        const href = props.items.find((item) => item.id === key)?.href
+        const href = items.find((item) => item.id === key)?.href
         // A link tab navigates on its own; selecting it ahead of the route change keeps the indicator on the press.
         if (href !== undefined && props.selectedKey === undefined) setLocationPath(new URL(href, window.location.href).pathname)
         props.onSelect?.(key)
@@ -168,11 +209,11 @@ const TabsInner = (props: TabsProps) => {
                 else tab.setAttribute("aria-controls", original)
             })
         }
-    }, [isClientReady, props.items, props.panelId, selectedKey])
+    }, [isClientReady, items, props.panelId, selectedKey])
 
     // The vendor indicator fills its tab and animates width. A label edit resizes the selected tab, so the
     // indicator follows at once: the frame disables that width transition for the commit that changed a label.
-    const labelSignature = props.items.map((item) => `${item.id}|${item.label}`).join(", ")
+    const labelSignature = items.map((item) => `${item.id}|${item.label}`).join(", ")
     const previousSignature = useRef(labelSignature)
     useLayoutEffect(() => {
         const frame = frameRef.current
@@ -193,9 +234,9 @@ const TabsInner = (props: TabsProps) => {
     const kind = props.kind ?? "views"
     const isFilter = kind === "filter"
     // Filter tabs always fold what does not fit; page (views) tabs fold only when the app names the fold menu (`overflowLabel`), else they scroll.
-    const folds = isFilter || props.overflowLabel !== undefined
+    const folds = !isPill && (isFilter || props.overflowLabel !== undefined)
     const frameContract = inset === "page" ? "PADDING-5" : undefined
-    const frameData = { "data-component": "Tabs", "data-tier": "branch", "data-grammar-tabs": "true", "data-grammar-tabs-inset": inset, "data-grammar-tabs-variant": "primary", "data-grammar-tabs-kind": kind, "data-grammar-tabs-line": line, "data-grammar-tabs-folds": folds ? "true" : "false" } as const
+    const frameData = { "data-component": "Tabs", "data-tier": "branch", "data-grammar-tabs": "true", "data-grammar-tabs-inset": inset, "data-grammar-tabs-variant": isPill ? "primary" : "secondary", "data-grammar-tabs-kind": isPill ? "switch" : kind, "data-grammar-tabs-line": line, "data-grammar-tabs-folds": folds ? "true" : "false" } as const
 
     // `filter`: the tabs that do not fit fold into a "+n" menu. All tabs draw once to be measured (the widths are kept), then
     // the fit is recomputed from those widths whenever the frame resizes; the selected tab is always one of the shown.
@@ -204,15 +245,15 @@ const TabsInner = (props: TabsProps) => {
     const [, setMeasureTick] = useState(0)
     const widths = useRef<ReadonlyArray<number>>([])
     const gap = useRef(0)
-    const fitSignature = folds ? props.items.map((item) => `${item.id}|${item.label}|${item.count ?? ""}`).join("\u0000") : ""
+    const fitSignature = folds ? items.map((item) => `${item.id}|${item.label}|${item.count ?? ""}`).join("\u0000") : ""
     const renderAll = folds && fittedFor !== fitSignature
-    const selectedIndex = props.items.findIndex((item) => item.id === selectedKey)
+    const selectedIndex = items.findIndex((item) => item.id === selectedKey)
     const MORE_WIDTH = 64
     const fit = () => {
         const frame = frameRef.current
-        if (frame === null || widths.current.length !== props.items.length) return
+        if (frame === null || widths.current.length !== items.length) return
         const shown = visibleOptionIndexes(widths.current, selectedIndex, Math.floor(frame.getBoundingClientRect().width), MORE_WIDTH, gap.current)
-        const next = new Set(props.items.filter((_, index) => !shown.includes(index)).map((item) => item.id))
+        const next = new Set(items.filter((_, index) => !shown.includes(index)).map((item) => item.id))
         setHiddenIds((previous) => previous.size === next.size && [...next].every((id) => previous.has(id)) ? previous : next)
     }
     useLayoutEffect(() => {
@@ -220,7 +261,7 @@ const TabsInner = (props: TabsProps) => {
         if (!folds || !isClientReady || frame === null || !renderAll) return undefined
         const tabs = Array.from(frame.querySelectorAll<HTMLElement>("[role='tab']"))
         // The vendor collection mounts its tabs after the first commit: measure only once every tab is there.
-        if (tabs.length !== props.items.length) {
+        if (tabs.length !== items.length) {
             const observer = new MutationObserver(() => setMeasureTick((tick) => tick + 1))
             observer.observe(frame, { childList: true, subtree: true })
             return () => observer.disconnect()
@@ -241,8 +282,8 @@ const TabsInner = (props: TabsProps) => {
         observer.observe(frame)
         return () => observer.disconnect()
     })
-    const shownItems = !folds || renderAll ? props.items : props.items.filter((item) => !hiddenIds.has(item.id))
-    const foldedItems = !folds || renderAll ? [] : props.items.filter((item) => hiddenIds.has(item.id))
+    const shownItems = !folds || renderAll ? items : items.filter((item) => !hiddenIds.has(item.id))
+    const foldedItems = !folds || renderAll ? [] : items.filter((item) => hiddenIds.has(item.id))
     const labelOf = (item: TabItem) => item.count === undefined || isLoading ? item.label : `${item.label} ${item.count}`
 
     if (!isClientReady) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} {...frameData} data-grammar-tabs-client="pending" />
@@ -267,13 +308,15 @@ const TabsInner = (props: TabsProps) => {
 
     return <div ref={frameRef} className={tabsFrameClassName} data-contract={frameContract} {...frameData} data-grammar-tabs-client="ready" data-grammar-tab-labels={props.labelVisibility ?? "responsive"} {...(renderAll ? { "data-grammar-tabs-measuring-fit": "true" } : {})}>
         <HeroTabs
-            variant="secondary"
+            variant={isPill ? "primary" : "secondary"}
             {...(selectedKey === undefined ? {} : { selectedKey })}
             onSelectionChange={(key) => select(String(key))}
             className={tabsClassName ?? ""}
             data-contract="FLOW-2"
         >
-            <HeroTabs.List aria-label={props.label} render={({ children, ref, ...listProps }) => folds ? (
+            <HeroTabs.List aria-label={props.label} render={({ children, ref, ...listProps }) => isPill ? (
+                <div className="tabs__list-container" data-grammar-tabs-track="true"><div {...listProps} ref={ref} style={listProps.style}>{children}</div></div>
+            ) : folds ? (
                 <div {...listProps} ref={ref} style={listProps.style}>{children}</div>
             ) : (
                 <HorizontalScrollFrame appearance="tabs" hideScrollBar size={64} scrollPreviousLabel={scrollPreviousLabel} scrollNextLabel={scrollNextLabel}>

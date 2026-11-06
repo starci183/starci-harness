@@ -21,7 +21,7 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 export const REPLACEMENTS: Readonly<Record<string, string>> = {
   ButtonGroup: "separate `Button`s (one commit, the rest alternative or dismiss), or a `DropdownMenu` for the overflow",
   FilterButtonGroup: "`Tabs kind=\"filter\"` (compact underline tabs with a `count` each, under the list's search field) to narrow a list that stays in place",
-  SegmentedControl: "`ChoiceChips` or `RadioGroup` to choose a value of a form, or `Tabs` only to switch a view",
+  SegmentedControl: "`ChoiceChips` or `RadioGroup` to choose a value of a form, or `Tabs appearance=\"primary\"` (a `switch` header zone) to switch a mode or period of one block",
 }
 
 /** The element name of a JSX opening element (`ButtonGroup`, or `Grammar.ButtonGroup` as `ButtonGroup`). */
@@ -122,10 +122,69 @@ export const noButtonViewSwitch: Rule.RuleModule = defineRule({
   },
 })
 
+/** The item keys a primary tab never carries: a count, an attention mark or a destination. */
+const PRIMARY_FORBIDDEN_KEYS = new Set(["count", "href", "isAttention"])
+
+/** The static `items` array of a primary strip, or null when it is not an array literal. */
+const itemsArrayOf = (value: TSESTree.Node | null | undefined): TSESTree.ArrayExpression | null => {
+  if (value === null || value === undefined) return null
+  const expression = value.type === "JSXExpressionContainer" ? value.expression : value
+  return expression.type === "ArrayExpression" ? expression : null
+}
+
+/** Whether an object literal has `kind: "<literal>"`. */
+const hasKind = (object: TSESTree.ObjectExpression, literal: string): boolean =>
+  object.properties.some((property) => property.type === "Property" && property.key.type === "Identifier" && property.key.name === "kind" && property.value.type === "Literal" && property.value.value === literal)
+
+/** Primary tabs (a pill in a track) switch a mode or period: 2 to 4 short fixed options, no count, no destination. */
+export const noPrimaryTabsMisuse: Rule.RuleModule = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "R380: Tabs appearance=\"primary\" (and the switch header zone) hold two to four short, fixed options with no count, no href and no attention mark; views, filters and navigation are the secondary underline tabs." },
+    schema: [],
+    messages: {
+      primary: "Primary tabs (a pill in a track) switch a mode or period of the same data among two to four short, fixed options: {{problem}}. Views, filters with counts and destinations are the secondary (underline) `Tabs`.",
+    },
+  },
+  create(context) {
+    if (!isProductSource(context)) return {}
+    const check = (items: TSESTree.ArrayExpression | null, node: TSESTree.Node) => {
+      if (items === null) return
+      const problems: string[] = []
+      if (items.elements.length > 4) problems.push(`${String(items.elements.length)} items`)
+      if (items.elements.length === 1) problems.push("one item")
+      for (const element of items.elements) {
+        if (element === null || element.type !== "ObjectExpression") continue
+        for (const property of element.properties) {
+          if (property.type === "Property" && property.key.type === "Identifier" && PRIMARY_FORBIDDEN_KEYS.has(property.key.name)) problems.push(`an item with \`${property.key.name}\``)
+        }
+      }
+      if (problems.length > 0) context.report({ node, messageId: "primary", data: { problem: [...new Set(problems)].join(", ") } })
+    }
+    return {
+      JSXOpeningElement(opening) {
+        if (elementName(opening) !== "Tabs") return
+        const appearance = opening.attributes.find((entry) => entry.type === "JSXAttribute" && entry.name.type === "JSXIdentifier" && entry.name.name === "appearance")
+        if (appearance === undefined || appearance.type !== "JSXAttribute" || appearance.value === null) return
+        const value = appearance.value.type === "JSXExpressionContainer" ? appearance.value.expression : appearance.value
+        if (value.type !== "Literal" || value.value !== "primary") return
+        const items = opening.attributes.find((entry) => entry.type === "JSXAttribute" && entry.name.type === "JSXIdentifier" && entry.name.name === "items")
+        check(items !== undefined && items.type === "JSXAttribute" ? itemsArrayOf(items.value) : null, opening)
+      },
+      ObjectExpression(object) {
+        if (!hasKind(object, "switch")) return
+        const items = object.properties.find((property): property is TSESTree.Property => property.type === "Property" && property.key.type === "Identifier" && property.key.name === "items")
+        check(items === undefined ? null : itemsArrayOf(items.value), object)
+      },
+    }
+  },
+})
+
 /** The rules this law contributes to the plugin. */
 export const rules: Record<string, Rule.RuleModule> = {
   "no-grouped-choice-controls": noGroupedChoiceControls,
   "no-button-view-switch": noButtonViewSwitch,
+  "no-primary-tabs-misuse": noPrimaryTabsMisuse,
 }
 
 defineFamilyRules(rules, "knowledge/hfs/rules.yaml#R380")

@@ -731,3 +731,102 @@ const linesStory = (width: string | number): Story => ({
 export const EveryLineIsFlush1920: Story = linesStory(WIDE);
 /** The same walk at 390px. */
 export const EveryLineIsFlush390: Story = linesStory(PHONE);
+
+/* ---------- both appearances: secondary (the underline) and primary (a pill in a track) ---------- */
+
+const PERIODS = [{ id: 'this', label: 'This month' }, { id: 'last', label: 'Last month' }] as const;
+
+const PrimaryAndSecondary = () => {
+  const [period, setPeriod] = useState('this');
+  const [mode, setMode] = useState('list');
+  const [tab, setTab] = useState('all');
+  const [query, setQuery] = useState('');
+  return (
+    <Matrix>
+      <State label="A card with a switch in its head, and a toolbar zone below" direction="column">
+        <div data-story-switch="labelled">
+          <G.SurfaceCard
+            kind="list"
+            label="Revenue"
+            headers={[
+              { kind: 'switch', label: 'Period', items: PERIODS, selectedKey: period, onSelect: setPeriod },
+              { kind: 'toolbar', filter: filterOf(tab, setTab, query), search: searchOf(query, setQuery) },
+            ]}
+            items={visibleMembers(tab, query)}
+            empty={empty}
+          />
+        </div>
+      </State>
+      <State label="A card with no label: the switch is a trailing strip with no line" direction="column">
+        <div data-story-switch="unlabelled">
+          <G.SurfaceCard
+            kind="list"
+            ariaLabel="Members"
+            headers={[{ kind: 'switch', label: 'Layout', items: [{ id: 'list', label: 'List' }, { id: 'board', label: 'Board' }], selectedKey: mode, onSelect: setMode }]}
+            items={MEMBERS.slice(0, 2).map(rowOf)}
+            empty={empty}
+          />
+        </div>
+      </State>
+      <State label="Primary, standalone: three fixed options" direction="column">
+        <div data-story-primary="alone">
+          <G.Tabs appearance="primary" label="Range" items={[{ id: 'day', label: 'Day' }, { id: 'week', label: 'Week' }, { id: 'month', label: 'Month' }]} selectedKey="week" onSelect={noop} />
+        </div>
+      </State>
+      <State label="Secondary, standalone: the underline" direction="column"><OwnStrip /></State>
+    </Matrix>
+  );
+};
+
+/** Secondary (the default, HeroUI's secondary: the underline) keeps the one-line rule; primary (a pill in a track) has no line and no count. */
+const appearanceStory = (width: string | number): Story => ({
+  render: () => <div style={{ width }}><PrimaryAndSecondary /></div>,
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      // The switch zone of a labelled card sits in the label row, at its trailing edge, and draws no zone of its own.
+      const labelled = canvasElement.querySelector<HTMLElement>('[data-story-switch="labelled"]');
+      if (labelled === null) throw new Error('the labelled card renders');
+      const row = labelled.querySelector<HTMLElement>('.starci-core-surface-label');
+      const switchFrame = row?.querySelector<HTMLElement>('[data-grammar-tabs="true"][data-grammar-tabs-client="ready"]');
+      if (!row || !switchFrame) throw new Error('the switch stands in the label row');
+      expect(switchFrame.dataset.grammarTabsVariant).toBe('primary');
+      expect(switchFrame.dataset.grammarTabsLine).toBe('none');
+      expect(labelled.querySelector('[data-grammar-zone="switch"]')).toBeNull();
+      expect(Math.abs(box(switchFrame).right - box(row).right)).toBeLessThanOrEqual(1);
+      expect(box(switchFrame).left).toBeGreaterThan(box(row.firstElementChild as Element).right);
+      // The toolbar below it is secondary, and keeps its one line.
+      const toolbar = zoneOf(labelled, 'toolbar');
+      const secondary = frameIn(toolbar);
+      expect(secondary.dataset.grammarTabsVariant).toBe('secondary');
+      assertOneLine(secondary, 'host', toolbar);
+      // A card with no label draws its switch as a trailing strip with no divider.
+      const unlabelled = canvasElement.querySelector<HTMLElement>('[data-story-switch="unlabelled"]');
+      if (unlabelled === null) throw new Error('the unlabelled card renders');
+      const strip = zoneOf(unlabelled, 'switch');
+      expect(px(getComputedStyle(strip).borderBottomWidth)).toBe(0);
+      expect(getComputedStyle(strip).justifyContent).toBe('flex-end');
+      // Primary alone: a pill in a track, role tab, no count, no line.
+      const alone = canvasElement.querySelector<HTMLElement>('[data-story-primary="alone"]');
+      const pill = alone === null ? null : frameIn(alone);
+      if (alone === null || pill === null) throw new Error('the primary strip renders');
+      expect(pill.dataset.grammarTabsVariant).toBe('primary');
+      expect(px(getComputedStyle(pill).borderBottomWidth)).toBe(0);
+      expect(alone.querySelectorAll('[role="tab"]').length).toBe(3);
+      expect(alone.querySelectorAll('[data-grammar-tab-count]').length).toBe(0);
+      const track = alone.querySelector<HTMLElement>('.tabs__list-container');
+      if (track === null) throw new Error('the pill track renders');
+      expect(getComputedStyle(track).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+      // Secondary standalone: its own line, the indicator on it.
+      const own = canvasElement.querySelector<HTMLElement>('[data-story-own="true"]');
+      if (own === null) throw new Error('the standalone secondary strip renders');
+      expect(frameIn(own).dataset.grammarTabsVariant).toBe('secondary');
+      assertOneLine(frameIn(own), 'own');
+      expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth + 1);
+    }, { timeout: 5000 });
+  },
+});
+
+/** Both appearances at 1920px. */
+export const TabsAppearances1920: Story = appearanceStory(WIDE);
+/** Both appearances at 390px. */
+export const TabsAppearances390: Story = appearanceStory(PHONE);

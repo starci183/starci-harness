@@ -1,7 +1,7 @@
 /*
  * Common form anatomy: the structure every family inherits for the form and input renderers
  * (Field, Textarea, Select, ComboBox, SearchField, NumberField, Checkbox, CheckboxGroup, RadioGroup,
- * Switch, Slider, SegmentedControl, DateField, DatePicker, DateRangePicker, TimeField, FileDropzone,
+ * Switch, Slider, DateField, DatePicker, DateRangePicker, TimeField, FileDropzone,
  * CopyField, Fieldset, Form, FormGrid, ButtonGroup).
  *
  * Only structure, rhythm and the touch floor live here. Paint resolves through the semantic
@@ -146,8 +146,8 @@
         user-select: none;
     }
 
-    /* A control box whose rounded part is inside it (a ComboBox or SegmentedControl group, a Field control slot) takes the field radius. */
-    .starci-core-field-skeleton-scope [data-grammar-field-control="true"]:is(.starci-core-combo-box-group, .starci-core-segmented-control-group, .starci-core-field-control) {
+    /* A control box whose rounded part is inside it (a ComboBox group, a Field control slot) takes the field radius. */
+    .starci-core-field-skeleton-scope [data-grammar-field-control="true"]:is(.starci-core-combo-box-group, .starci-core-field-control) {
         border-radius: var(--field-radius);
     }
 
@@ -553,33 +553,6 @@
 
     .starci-core-slider-output {
         color: var(--muted);
-    }
-
-    /* --- SegmentedControl --- */
-    .starci-core-segmented-control {
-        align-items: flex-start;
-    }
-
-    .starci-core-segmented-control[data-width="fill"] {
-        align-items: stretch;
-    }
-
-    .starci-core-segmented-control-group {
-        max-width: 100%;
-    }
-
-    .starci-core-segmented-control[data-width="fill"] .starci-core-segment {
-        flex: 1 1 0;
-    }
-
-    .starci-core-segment {
-        min-width: 0;
-        white-space: nowrap;
-    }
-
-    /* The vendor steps its md segment down to 2.25rem on a desktop width; the ramp holds md at the control height at every breakpoint (sm stays the vendor's 2rem). */
-    .starci-core-segmented-control[data-grammar-segmented-size="md"] .starci-core-segment {
-        height: var(--starci-core-control-min-size);
     }
 
     /* --- ButtonGroup --- */

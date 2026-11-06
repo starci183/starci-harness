@@ -1,7 +1,6 @@
-# SegmentedControl
+# Choosing one value
 
-Contract: [SegmentedControl](../../grammars/contract.md#segmentedcontrol). Vendor:
-[ToggleButtonGroup](../../vendor/heroui.md#togglebuttongroup).
+The Grammar has no segmented control: `SegmentedControl` is removed (the pill-in-a-track look is `Tabs appearance="primary"`, a switch of a mode or period of the same data, in a card's `switch` header zone). Choosing a value of a form is `ChoiceChips` or `RadioGroup`.
 
 ## Job
 Choose **one value** among two to five short, mutually exclusive options that are all worth seeing at once.
@@ -19,15 +18,14 @@ applies wins.
 | switch | the value is on or off of one setting | `Switch` | judgement |
 | radio | each option needs a sentence of explanation | `RadioGroup` | judgement |
 | chips | six or more short options (times, sizes, days) that all stay visible and wrap onto rows | `ChoiceChips` (a taken option is disabled and keeps its place) | `DNA-COMMON-CHOICE-CHIPS-WRAP` |
-| list | six or more options, or labels too long for one segment | `select.choose.role` | candidate: a `SegmentedControl` holds 2 to 5 segments |
-| segmented | 2 to 5 short, mutually exclusive options, all worth seeing at once | `ChoiceChips` (or `RadioGroup` when each needs a sentence); `SegmentedControl` is deprecated and refused by R380 | judgement |
+| list | six or more options, or labels too long for one chip | `select.choose.role` | judgement |
+| segmented | 2 to 5 short, mutually exclusive options, all worth seeing at once | `ChoiceChips` (or `RadioGroup` when each needs a sentence); joined buttons are refused by R380 | judgement |
 
 ## Variants
 None for the app. The selected segment carries the selection treatment (CTA-1): never a commit among the options.
 
 ## Size
-`md` default, `sm` in a dense toolbar; in a bar it is `control` ([../scale.md](../scale.md)). `width="fill"`
-stretches segments across a narrow form.
+`ChoiceChips` sizes follow [../scale.md](../scale.md).
 
 ## States
 A segment is never deselected by pressing it again. Skeleton keeps the label as text and draws one block of the
