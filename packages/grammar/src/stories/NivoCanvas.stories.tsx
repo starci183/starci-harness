@@ -200,3 +200,19 @@ export const ProportionBarStates: Story = {
     </Matrix>
   ),
 };
+
+const pipeline: ReadonlyArray<G.BoardColumn> = [
+  { id: 'new', title: 'New', count: 2, empty: 'No customers', items: [{ id: 'a', title: 'Hoa Sen Spa', description: 'Asked for a quote' }, { id: 'b', title: 'Nha Moc', description: 'Wants two pots' }] },
+  { id: 'proposal', title: 'Proposal', count: 1, empty: 'No customers', items: [{ id: 'c', title: 'Anh Quang', description: '26,000,000' }] },
+  { id: 'won', title: 'Won', count: 0, empty: 'No customers', items: [] },
+];
+
+/** Each column is the tinted surface (`--surface-secondary`) with its title and a count chip in the head and its items as white cards. */
+export const BoardTintedColumns: Story = {
+  render: () => (
+    <Matrix>
+      <State label="Ready, with an empty column" direction="column"><G.Board label="Sales pipeline" columns={pipeline} /></State>
+      <State label="Loading" direction="column"><G.Board label="Sales pipeline" columns={pipeline.map((column) => ({ ...column, items: [] }))} isLoading /></State>
+    </Matrix>
+  ),
+};

@@ -3285,8 +3285,21 @@
         scroll-snap-align: start;
     }
 
-    /* A column's count is a neutral chip beside its title (the same chip as a tab's count), not bare text. */
-    .starci-core-board-column .starci-core-surface-fact {
+    /*
+     * A column is the tinted surface (`--surface-secondary`, the canvas's #f3eeee) with its title and a white count chip in the head and its
+     * items as white cards under it (owner ruling 2026-11-06: canvas column surface). The cards are the surface; the column is the ground
+     * they stand on, so it is not itself a card.
+     */
+    .starci-core-board-column {
+        display: flex;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+        padding: var(--grammar-inline-gap);
+        border-radius: var(--grammar-radius-lg);
+        background: var(--surface-secondary);
+    }
+    .starci-core-board-column-head { display: flex; align-items: center; gap: var(--grammar-inline-gap); padding-inline: var(--grammar-inline-gap); }
+    .starci-core-board-count {
         display: inline-flex;
         min-width: 1.25rem;
         box-sizing: border-box;
@@ -3294,13 +3307,15 @@
         justify-content: center;
         padding-inline: var(--grammar-inline-gap);
         border-radius: var(--grammar-radius-pill);
-        background: var(--default);
-        color: var(--default-foreground);
+        background: var(--surface);
+        color: var(--muted);
         font-size: var(--grammar-text-xs);
         font-variant-numeric: tabular-nums;
         font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-xs);
     }
+    .starci-core-board-cards { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-row-gap); }
+    .starci-core-board-empty { padding: var(--grammar-inline-gap); color: var(--muted); }
 
     /* The column a dragged card would land in. */
     .starci-core-board-column[data-grammar-drop="true"] { outline: 2px dashed var(--accent); outline-offset: 2px; border-radius: var(--grammar-radius-md); }

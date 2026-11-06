@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react"
 import { HorizontalScrollRegionPart } from "../HorizontalScrollRegion/index.js"
 import { SurfaceCard } from "../SurfaceCard/index.js"
+import { Heading } from "../../leaf/Heading/index.js"
 import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
 import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import type { ListRowData } from "../../surfaceCardData.js"
@@ -56,7 +57,8 @@ export type BoardProps = {
 }
 
 /**
- * Items in stages: peer columns side by side that scroll as one row, each column a card of rows with its title and count
+ * Items in stages: peer columns side by side that scroll as one row, each column a tinted surface (`--surface-secondary`) with its title and
+ * a count chip in its head and its items as white cards (a sales pipeline, a hiring funnel, a task board). (Was: each column a card of rows)
  * (a sales pipeline, a hiring funnel, a task board). Columns share one width from 16rem, and snap into view as the row
  * scrolls, so a phone shows one stage at a time. Each column answers for its own empty state; a loading board draws the
  * columns it was given with placeholder rows (three each when it was given none). With `onMove` a card moves between stages
@@ -144,13 +146,15 @@ export const Board = ({ label, columns, scrollPreviousLabel, scrollNextLabel, is
                             {...(overColumn === column.id ? { "data-grammar-drop": "true" } : {})}
                             {...dropProps(column)}
                         >
-                            <SurfaceCard
-                                kind="list"
-                                label={column.title}
-                                {...(column.count === undefined ? {} : { fact: String(column.count) })}
-                                items={rowsOf(column, index)}
-                                empty={column.empty}
-                            />
+                            <div className="starci-core-board-column-head" data-contract="GAP-2">
+                                <Heading level={3} isLoading={isLoading}>{column.title}</Heading>
+                                {column.count === undefined || isLoading ? null : <span className="starci-core-board-count" data-grammar-board-count="true">{column.count}</span>}
+                            </div>
+                            <div className="starci-core-board-cards" data-contract="GAP-2">
+                                {rowsOf(column, index).length === 0 ? <div className="starci-core-board-empty">{column.empty}</div> : rowsOf(column, index).map((row) => (
+                                    <SurfaceCard key={row.id} kind="list" ariaLabel={row.title} items={[row]} empty={null} />
+                                ))}
+                            </div>
                         </div>
                     ))}
                 </div>
