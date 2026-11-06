@@ -1015,3 +1015,22 @@ export const PaneGridServerBuiltPaneRefused: Story = {
     }, { timeout: 5000 });
   },
 };
+
+/** A real non-Pane child (a plain element) fails loudly too: the error names it, there is no silent empty grid. */
+export const PaneGridStrayChildRefused: Story = {
+  render: () => (
+    <RefusalBoundary>
+      <G.PaneGrid label="Stray" areas={['a']}>
+        <div>Stray child</div>
+      </G.PaneGrid>
+    </RefusalBoundary>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const refusal = canvasElement.querySelector<HTMLElement>('[data-story-refusal="true"]');
+      if (refusal === null) throw new Error('the grid refuses the child');
+      expect(refusal.textContent).toContain('PANE_GRID_CHILD_NOT_PANE: div');
+      expect(canvasElement.querySelector('[data-component="PaneGrid"]')).toBeNull();
+    }, { timeout: 5000 });
+  },
+};
