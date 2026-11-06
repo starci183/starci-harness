@@ -6,6 +6,20 @@ import type { Finding, Parsed } from './rule-types.mjs';
 /** Files above this size are not read by a tree check (a tracked binary or a generated dump is no source of these laws). */
 const MAX_READ_BYTES = 1024 * 1024;
 
+/**
+ * The budget of a SQL migration (`db/migrations/*.sql`, the bootstrap). A migration is source of the database laws and may be large by
+ * design: a baseline reset is ONE file that replaces the whole history, and an app with hundreds of tables reaches megabytes. Reading it
+ * with the generic budget would make every database rule see "nothing" and report the file unreadable (and every queue, role and
+ * header it declares as missing). The explicit budget is 16 MiB, above any baseline the canon allows and far below a generated dump.
+ */
+export const MAX_MIGRATION_READ_BYTES = 16 * 1024 * 1024;
+
+/** True for the SQL files of the schema tree: the active migrations, the archive and the bootstrap. */
+const isMigrationSql = (rel: string): boolean => /^db[/\\](?:migrations[/\\](?:archive[/\\])?[^/\\]+|bootstrap)\.sql$/.test(rel);
+
+/** The read budget of `rel`: the migration budget for the SQL of the schema tree, the generic one for everything else. */
+export const readBudgetOf = (rel: string): number => (isMigrationSql(rel) ? MAX_MIGRATION_READ_BYTES : MAX_READ_BYTES);
+
 /** Who is told which file a rule reads: the result cache records the read set of a cross-file rule through it. */
 type ReadSink = (repoRoot: string, rel: string) => void;
 let sink: ReadSink | null = null;
@@ -17,12 +31,12 @@ export function recordReads<T>(onRead: ReadSink, run: () => T): T {
   try { return run(); } finally { sink = before; }
 }
 
-/** The text of `rel` under `repoRoot`, or null when it is absent, unreadable, over MAX_READ_BYTES or binary. */
+/** The text of `rel` under `repoRoot`, or null when it is absent, unreadable, over its budget (`readBudgetOf`) or binary. */
 export function readText(repoRoot: string, rel: string): string | null {
   sink?.(repoRoot, rel);
   try {
     const target = path.join(repoRoot, rel);
-    if (fs.statSync(target).size > MAX_READ_BYTES) return null;
+    if (fs.statSync(target).size > readBudgetOf(rel)) return null;
     const text = fs.readFileSync(target, 'utf8');
     return text.includes('\0') ? null : text;
   } catch {

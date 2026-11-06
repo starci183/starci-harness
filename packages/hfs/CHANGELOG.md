@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.13.5 - 2026-11-06
+
+- A patch: a SQL migration has its own read budget. The tree checks refused any file over 1 MiB (`MAX_READ_BYTES`), so a baseline reset, which is one file by design, was reported "not a readable SQL file" and every database rule saw nothing in it: the baseline header, the pgmq queue creates, the scope role and the destructive-ruling proof were reported missing. `readText` now gives `db/migrations/*.sql`, `db/migrations/archive/*.sql` and `db/bootstrap.sql` the explicit budget `MAX_MIGRATION_READ_BYTES` (16 MiB, documented in `rules/read.mts`); every other file keeps 1 MiB. A migration over 16 MiB is still unreadable. Spec: `src/hfs-read-migration-budget.spec.mts`.
+
 ## 5.13.4 - 2026-11-06
 
 - A patch: canon pin: grammar 0.23.3. The runtime data `canon-pins.yaml` the canons read pins `@starci/grammar` at 0.23.3 (a Grammar-only edit: the surface radius is `--radius`); no hfs rule or schema changed, so the canons and the lint family (same minor 0.23, decision release-only-what-changed) are not released.
