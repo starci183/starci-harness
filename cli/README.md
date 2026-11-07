@@ -327,8 +327,14 @@ than floor(logical cores / 2) run. RAM short: it waits in a first come, first se
 and it starts when a running command ends or ages; every minute it prints its place, the MB it needs against the room and the running commands
 (`waitLine`). While nothing runs the head starts on the room there is, whatever its need, since no running command will release memory and waiting could not
 help: a test run with the workers that fit (one at least), and a warning line names the shortfall. A row whose process is gone is dropped at the next
-admission (`pidAlive`), so a killed command never holds the queue. A command run under a held command (`STARCI_HEAVY_HELD`) uses its parent's admission and
-never queues, and a CI runner (`CI` set) keeps no queue and no lock: its one job is sized from that runner's own free RAM and cores, and nothing it
+admission (`pidAlive`), so a killed command never holds the queue. A heavy command a running one starts (a `starci check run` inside a command check) is
+admitted on its own: every child inherits `STARCI_HEAVY_PARENTS`, the slot ids it runs under, and an admission leaves those ancestors' rows out of its count,
+its plan and its room (`heavyRoomMb` reads the room the same way), since they wait on it and counting them could hold it forever. `starci app check` holds no
+row at all: it is the orchestrator, and each heavy child of its steps (a tsc program, an ESLint chunk, the jest run, a CI build step, the boot proof, the
+contract compiler, the Sonar scanner) is admitted on its own the moment its step starts it (`hfsNodeRunner` and `hfsCommandRunner` of `core/app/hfs.ts`, which
+also pass a test run's most workers as `workers`, tell the step what it was admitted with, and measure the tree's RAM peak through a preload,
+`harness/peak-rss.ts`); its steps and their dependency graph are `@starci/hfs` `cache/schedule.mts`
+([contexts/project/check-cache.md](../contexts/project/check-cache.md) "Orchestration"). A CI runner (`CI` set) keeps no queue and no lock: its one job is sized from that runner's own free RAM and cores, and nothing it
 reads comes from another machine or run. A command that runs out of memory fails with a line naming the heap cap it hit and the RAM free at its admission
 (`oomNote`), so the cause is never silent. RAM that a process outside the governor takes (a browser, Docker, WSL, a dev server) shows only as lower
 free RAM: nothing is admitted while a command runs and the room is short, and the running commands stay inside their heap caps and
@@ -357,9 +363,8 @@ reads (package.json, package-lock.json, npm-shrinkwrap.json, .npmrc), which also
 due, `wave-infra`), and the next step verifies again, going on once the install is green. Each child runs below normal priority, a node tool under
 its heap cap as `--max-old-space-size`, a uat container under `--memory`, a jest or vitest run with `--maxWorkers` of the room its admission measured
 (`testRunSizing`: floor((room - parent cap) / worker cap), at least one and at most min(cores - 1, `heavy.testWorkers`); each worker is held to its cap by
-`--workerIdleMemoryLimit` and a heap cap a preload gives every fork, and nothing an earlier run left is read), and inherits `STARCI_HEAVY_HELD`, so a
-`starci check run` it starts runs under its admission instead of waiting on
-it. `check heavy-sites` (a CI gate) is red for a spawn site in `cli/src` that runs a heavy command outside the governor.
+`--workerIdleMemoryLimit` and a heap cap a preload gives every fork, and nothing an earlier run left is read; at most the caller's `workers`), and inherits
+`STARCI_HEAVY_PARENTS` with its own slot added. `check heavy-sites` (a CI gate) is red for a spawn site in `cli/src` that runs a heavy command outside the governor.
 `seat start` refuses `SEAT_RAM_LOW` while free memory is under the seat floor, which `workflow step` reports as a wait, and
 records the hold (`seat_holds`: since when, on what memory) until the task launches or the floor admits again.
 `workflow status` names why a node stands still instead of a bare state: a queued task the floor holds ("held: free RAM

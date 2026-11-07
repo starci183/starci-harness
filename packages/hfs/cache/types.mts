@@ -123,10 +123,11 @@ export interface CheckSession {
   readonly progress: ProgressSink;
   /**
    * The journal a family appends what it judges to while it runs (journal.mts): `rec` takes record lines, which `records(folder)` serves next run like committed
-   * ones, `raw` the family's own lines for its `journaled(folder, context)`. Undefined when this run writes no cache (CI, a bypass, a local package): nothing is
+   * ones, `raw` the family's own lines for its `journaled(folder, context)`; `part` names the file of one of several parallel writers of the folder (an ESLint chunk), so no two
+   * writers share a file. Undefined when this run writes no cache (CI, a bypass, a local package): nothing is
    * journaled then and nothing is read back.
    */
-  journal?(folder: string, kind: 'rec' | 'raw', context?: string): JournalSink | undefined;
+  journal?(folder: string, kind: 'rec' | 'raw', context?: string, part?: number): JournalSink | undefined;
   /** The `raw` lines of earlier runs of `folder` journaled under `context` and this run's fingerprint, torn lines dropped; none when journals are off. */
   journaled?(folder: string, context: string): readonly unknown[];
   flush(): FlushResult;

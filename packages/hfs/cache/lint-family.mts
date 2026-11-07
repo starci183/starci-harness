@@ -23,6 +23,9 @@ import type { CacheRecord, CheckSession, FamilyReport, Finding, JsonValue } from
 
 type Ts = typeof TypeScript;
 
+/** The journal an ESLint run of a side streams to: `file` for one child, `part(i)` the file of the i-th of several parallel chunks (`part(0)` is `file`). */
+export interface LintJournal { readonly file: string; part(index: number): string }
+
 /** Record steps of the `lint/<side>` folder. */
 export const LINT_STEPS = Object.freeze({ eslint: 'eslint', stylelint: 'stylelint', imports: 'imports', graph: 'graph', meta: 'meta' });
 /** How many files one ESLint child judges before it appends their results to the journal: a kill loses at most this many (and the batch it was in). */
@@ -112,7 +115,7 @@ export interface LintSideInput {
    * (always with a list) the child appends each batch of results to that journal file as it judges them (`STREAM_BATCH` files at a time), so a run cut short
    * keeps them.
    */
-  eslint: (files: readonly string[] | null, stream?: { readonly file: string }) => Promise<LinterOutcome<EslintResult>>;
+  eslint: (files: readonly string[] | null, stream?: LintJournal) => Promise<LinterOutcome<EslintResult>>;
   /** The side-relative to app-relative rewrite of a message (the launcher applies it to every result it returns); applied to journaled results, which are raw. */
   relativize?: ((message: string) => string) | undefined;
   /** stylelint over `files`, or over the whole glob when null. Absent when the side has no stylesheet judge. */
@@ -509,8 +512,14 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
     const remaining = eslintList.filter((file) => !freshEslint.has(file));
     const sink = session.journal?.(folder, 'raw', context);
     sink?.open();
+    // Each parallel ESLint chunk appends to a file of its own (one writer each); every file carries the same header, so the next run reads them all.
+    const partSink = (index: number): string => {
+      const own = index === 0 ? sink : session.journal?.(folder, 'raw', context, index);
+      own?.open();
+      return own?.file ?? sink?.file ?? '';
+    };
     if (remaining.length > 0) {
-      const run = await input.eslint(whole !== null && resumed === 0 && sink === undefined ? null : remaining, sink === undefined ? undefined : { file: sink.file });
+      const run = await input.eslint(whole !== null && resumed === 0 && sink === undefined ? null : remaining, sink === undefined ? undefined : { file: sink.file, part: (index) => partSink(index) });
       errors.push(...run.errors);
       handedGraph = run.graph;
       for (const result of run.results) freshEslint.set(posix(rootOf(result.filePath)), result);

@@ -45,7 +45,9 @@ reviveMax: 3
 # lower. Otherwise it waits in a first come, first served queue, holding nothing, only the head may start, and it prints its place, its need and
 # the running commands every minute. While nothing runs the head starts on the room there is, whatever its need, with one worker: no running command
 # will release memory, so waiting could not help, and a warning names the shortfall. A process that is gone (a killed command) is dropped from the
-# queue at the next admission. A command a held command starts uses its parent's admission and never queues. A CI runner is one job on its own
+# queue at the next admission. A heavy command a running one starts (its children inherit STARCI_HEAVY_PARENTS) is admitted on its own, and the rows of
+# its ancestors never count against it, so it never waits on them. `starci app check` holds no row: each of its heavy children is admitted on its own,
+# and its steps run in parallel (packages/hfs/cache/schedule.mts). A CI runner is one job on its own
 # machine: its command is sized from that runner's live free RAM and cores, with no queue and no lock. Heavy commands run through starci verbs; a
 # raw `npx eslint` takes no admission and shows only as lower free RAM. Every number below is a measured constant, none is learned.
 # The CPU ceiling governs the harness's own contribution. While the CPU average over cpuWindowSeconds is above maxCpuPercent,
@@ -117,7 +119,9 @@ heavy:
   # coverage records at the default heap). It is clamped to minMb..maxMb, and no earlier run changes it:
   #   parent      = baseMb + perRecordMb x L, the check's own process; it re-executes itself under that heap when node's limit is lower. The
   #                 records are held as their lines and parsed one at a time (streaming), so 3 MB a record MB.
-  #   lint chunk  = `files` per ESLint child.
+  #   lint chunk  = `files` of one ESLint chunk: a side's judged files make ceil(files / lintChunk) chunks, and as many children run at once as the room
+  #                 holds of caps.eslint and the check's CPU lanes have free, at most the chunks, the files split evenly between them (one child
+  #                 builds the side's typed program once, so a side is never split into children that wait for each other); the lint ratchet takes half.
   # A test run's parent and workers are not in the plan: heavy.testRun above and the room at admission size them.
   plan:
     parent: { baseMb: 1024, perRecordMb: 3, minMb: 2048, maxMb: 16384 }

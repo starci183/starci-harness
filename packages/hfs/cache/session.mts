@@ -230,10 +230,11 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
       replaced.set(folder, { records: held, depth: replaceOptions?.depth ?? 2 });
       checkpoint(folder, held);
     },
-    journal(folder, kind, context = ''): JournalSink | undefined {
+    journal(folder, kind, context = '', part = 0): JournalSink | undefined {
       const family = familyOfFolder(folder);
       if (!journalsOn || family === null) return undefined;
-      const name = kind === 'rec' ? `${runId}-inc.jsonl` : `${runId}-raw-${hashText(context).slice(0, 12)}.jsonl`;
+      const writer = part === 0 ? '' : `-p${String(part)}`;
+      const name = kind === 'rec' ? `${runId}-inc${writer}.jsonl` : `${runId}-raw-${hashText(context).slice(0, 12)}${writer}.jsonl`;
       const key = `${folder}\0${name}`;
       let sink = sinks.get(key);
       if (sink === undefined) {

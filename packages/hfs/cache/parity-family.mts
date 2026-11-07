@@ -15,6 +15,7 @@ import path from 'node:path';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { toolCacheDir } from './run-log.mjs';
 import type { CheckFinding } from '../runtime/scripts/hfs/check.mjs';
+import type { HeavyAdmission } from '../runtime/scripts/api/node/run-node.mjs';
 import type { CheckSession, FamilyReport } from './types.mjs';
 
 /** The rendered workflow the families read. */
@@ -30,7 +31,7 @@ export interface ParityStep {
 }
 
 /** A command the families run: the governor's heavy command port when the CLI gives one (`stackIo.heavy`), else a plain child. */
-export type ParityRun = (request: { readonly kind: 'build' | 'install'; readonly label: string; readonly cwd: string; readonly argv: readonly string[]; readonly env: NodeJS.ProcessEnv }) => Promise<{ readonly status: number | null; readonly stdout: string; readonly stderr: string; readonly error?: Error | undefined }>;
+export type ParityRun = (request: { readonly kind: 'build' | 'install'; readonly label: string; readonly cwd: string; readonly argv: readonly string[]; readonly env: NodeJS.ProcessEnv; readonly onAdmit?: ((admitted: HeavyAdmission) => void) | undefined }) => Promise<{ readonly status: number | null; readonly stdout: string; readonly stderr: string; readonly error?: Error | undefined; readonly peakMb?: number | undefined }>;
 
 /** The build job's database step (`npm run db:lint`, and `app db drift` for an app with an entity list): the migrations applied to a scratch database and checked against the entity manifest. */
 export const DATABASE_STEP = 'database migration checks';

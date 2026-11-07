@@ -1,7 +1,7 @@
 // The heavy-command governor, greedy on live RAM: a command sizes itself to the room it finds (free RAM less the reserve and the plan of the commands
 // admitted in the last minute); RAM free starts it at once; RAM short waits first come, first served and starts on release; nothing running starts anyway;
-// two that start together never take the same room; a dead holder is dropped; a child of a held command and a CI runner never queue; the heap caps are
-// passed; a command that runs out of memory names the cause; the wait line names the place, the need and who runs.
+// two that start together never take the same room; a dead holder is dropped; a command a held command starts is admitted on its own, its ancestors left
+// out of its room; a CI runner never queues; a test run plans no more workers than its caller can use; the heap caps are passed; a command that runs out of memory names the cause; the wait line names the place, the need and who runs.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync } from "node:fs"
@@ -10,12 +10,12 @@ import { dirname, join } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import { governorStorePath } from "./ledger.js"
-import { governed, heavySlots, loadHeavyRules, oomNote, testRunSizing, testWorkerArgs, testWorkerCap, waitLine, type Held, type HeavyKind, type HeavyRules } from "./heavy.js"
+import { HEAVY_PARENTS_ENV, governed, heavyRoomMb, heavySlots, loadHeavyRules, oomNote, testRunSizing, testWorkerArgs, testWorkerCap, waitLine, type Held, type HeavyKind, type HeavyRules } from "./heavy.js"
 import { withMachine } from "./machine.js"
 
 const state = mkdtempSync(join(tmpdir(), "starci-governor-"))
 process.env.STARCI_LOCAL_ROOT = state
-delete process.env.STARCI_HEAVY_HELD
+Reflect.deleteProperty(process.env, HEAVY_PARENTS_ENV)
 delete process.env.CI
 
 const opsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "ops")
@@ -175,25 +175,43 @@ void test("a row of a process that is gone is dropped at admission, so nothing w
     assert.equal(heavySlots().length, 0)
 })
 
-void test("a child of a held command uses its parent's admission and never queues", { skip: !wide }, async () => {
+void test("a heavy command a held command starts is admitted on its own, and its ancestors never count against it", { skip: !wide }, async () => {
     const order: string[] = []
     const holder = gate()
     const free = 9 * GB
-    const parent = run(free, "tsc", "parent", order, holder.wait)
+    const parents: Held[] = []
+    const parent = run(free, "tsc", "parent", order, holder.wait, (held) => parents.push(held))
     await pause(300)
-    process.env.STARCI_HEAVY_HELD = "1"
+    const inherited = must(must(parents[0]).options.env?.[HEAVY_PARENTS_ENV])
+    process.env[HEAVY_PARENTS_ENV] = inherited
     try {
         const seen: Held[] = []
-        await run(free, "test", "child", order, undefined, (held) => seen.push(held))
-        assert.deepEqual(order, ["parent", "child"], "the child started while the parent runs")
-        assert.equal(must(seen[0]).roomMb, null)
-        assert.ok(must(seen[0]).test !== undefined, "it is still sized from the RAM free now")
-        assert.equal(heavySlots().length, 1, "the child took no row")
+        await run(free, "test", "child", order, undefined, (held) => {
+            seen.push(held)
+            assert.equal(heavySlots().length, 2, "the child holds a row of its own")
+        })
+        assert.deepEqual(order, ["parent", "child"], "the child started while the parent runs: the parent's row and plan are not in its room")
+        assert.equal(must(seen[0]).roomMb, free - rules.reserveMb)
+        assert.equal(heavyRoomMb({ rules, freeMb: () => free }), free - rules.reserveMb, "the room this process reads leaves its ancestors out")
+        assert.match(must(seen[0]).options.env?.[HEAVY_PARENTS_ENV] ?? "", new RegExp(`^${inherited},[0-9]+-[0-9a-f]+$`, "u"), "its own children inherit both ids")
     } finally {
-        delete process.env.STARCI_HEAVY_HELD
+        Reflect.deleteProperty(process.env, HEAVY_PARENTS_ENV)
         holder.open()
         await parent
     }
+    assert.equal(heavySlots().length, 0)
+})
+
+void test("a test run never plans more workers than its caller can use, and the room reading counts the recent plans", async () => {
+    assert.equal(testRunSizing(rules, 60 * GB, 28, 3).workers, 3)
+    assert.equal(testRunSizing(rules, 0, 28, 3).workers, 1, "one worker is the floor")
+    const seen: Held[] = []
+    await governed({ rules, freeMb: () => 60 * GB }, "test", "capped", state, { workers: 2 }, (held) => {
+        seen.push(held)
+        assert.equal(heavyRoomMb({ rules, freeMb: () => 60 * GB }), 60 * GB - rules.reserveMb - must(held.test).holdMb, "a command admitted just now counts with its plan")
+        return Promise.resolve()
+    })
+    assert.equal(must(seen[0]).test?.workers, 2)
 })
 
 void test("a CI runner keeps no queue and no lock: its command is sized from the runner's own free RAM", { skip: !wide }, async () => {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 6.1.3 - 2026-11-08
+
+- Changed: `app check` runs its families as the steps of one dependency graph (`cache/schedule.mts` `CHECK_GRAPH`): coverage and the baselines after test, the lint ratchet after lint, build after types, lint, test and wiring (its codegen and build:modules rewrite what they read), the Sonar scan after every other step but the ratchet; everything else runs at once. Each step starts the moment the steps it needs ended, whatever their verdict, so a red family stops no other. A step that throws ends the run with its error once the others ended.
+- Changed: each heavy child of a step goes to the governor on its own and takes CPU lanes from the run's one pool of cores - 1; a test run asks for the free lanes as its most workers (`HeavyNodeRequest.workers`) and gives back what its room did not size (`onAdmit`). A step whose work is in-process starts once the running child steps have their children admitted.
+- Changed: a side's ESLint judged files make ceil(files / `plan.lintChunk`) chunks and run as many children at once as the room holds of the eslint cap and the free lanes allow, at most the chunks (`eslintParts`); each child streams to a journal file of its own (`journal(folder, kind, context, part)`). The tsc programs and the lint sides run at once.
+- Added: the steps table of the report and `steps` of `--json`: per step its wall time, the measured RAM peak of its children (`HeavyNodeResult.peakMb`), its parallelism, its family's reused and checked counts and where its results live; the run log records each family's seconds. Every progress line and child label names its family (`app check <family> ...`); a terminal rewrites a running line in place only while one step is open.
+- Removed: `runAppFamilies`, the sequential app pass; the structure, format, db and wiring families are steps of the graph (`cache/run.mts`).
+
 ## 6.1.2 - 2026-11-08
 
 - Changed: the memory plan the CLI hands an app check holds the check's parent heap and the lint chunk, no per-side heaps or workers (the CLI sizes a test run at admission from the live RAM), so the out-of-memory clause names the parent heap, and the died-runner finding names the governor's `testRun` caps.

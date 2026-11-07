@@ -83,7 +83,7 @@ export async function runTestForApp(session: CheckSession, { repoRoot, tracked, 
 export async function runTestShard(repoRoot: string, index: number, total: number, execute?: HeavyNodeRun): Promise<number> {
   const shard = shardArgs(index, total);
   const jestBin = createRequire(path.join(repoRoot, 'be', 'package.json')).resolve('jest/bin/jest');
-  const run = completedNode(await runHeavyNode(execute, { kind: 'test', label: `app check jest shard ${index}/${total}`, args: [jestBin, ...shard.args], cwd: path.join(repoRoot, 'be'), env: { ...process.env, ...shard.env }, maxBuffer: 256 * 1024 * 1024 }), 'jest shard');
+  const run = completedNode(await runHeavyNode(execute, { kind: 'test', label: `app check test jest shard ${index}/${total}`, args: [jestBin, ...shard.args], cwd: path.join(repoRoot, 'be'), env: { ...process.env, ...shard.env }, maxBuffer: 256 * 1024 * 1024 }), 'jest shard');
   process.stdout.write(run.stdout);
   process.stderr.write(run.stderr);
   return run.status ?? 1;

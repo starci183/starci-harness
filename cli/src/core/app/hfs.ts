@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process"
 import { availableParallelism, freemem } from "node:os"
-import { hfsLimitsEnv, loadHeavyRules, oomNote, testWorkerArgs, withHeavySlot } from "../../harness/heavy.js"
+import { heavyRoomMb, hfsLimitsEnv, loadHeavyRules, oomNote, testWorkerArgs, withHeavySlot } from "../../harness/heavy.js"
+import { peakProbe } from "../../harness/peak-rss.js"
 import { appRootOf, formatPlan, MEMORY_PLAN_ENV, MEMORY_REEXEC_ENV, measureScope, needsReexec, planMemory } from "../../harness/memory-plan.js"
 import { captureCommand } from "../../shared/exec.js"
 import type { HeavyNodeRequest, HeavyNodeRun } from "@starci/hfs/runtime/scripts/api/node/run-node.mjs"
@@ -87,24 +88,38 @@ const parsed = (text: string): unknown => {
     }
 }
 
+/** What the CLI reads of a node child request beyond the shape of the installed @starci/hfs: what @starci/hfs releases after 6.1.2 name. */
+type NodeRequest = HeavyNodeRequest & {
+    readonly files?: number | undefined
+    readonly workers?: number | undefined
+    readonly onAdmit?: ((admitted: { readonly workers?: number | undefined; readonly heapMb?: number | undefined }) => void) | undefined
+}
+
 /**
- * The HFS child execution port: admission and worker limits apply to each actual Node tool. A request that names the number of files it judges
- * (`files`, @starci/hfs releases after 5.0.7) has its kind's liveness budget scaled with it (`heavyTimeoutMinutes`). Each runs under its heap cap, a test
- * run with the workers the RAM free at its admission holds (`withHeavySlot`).
+ * The HFS child execution port: admission and worker limits apply to each actual Node tool, each child admitted by the governor on its own (`app check`
+ * itself holds no slot: it orchestrates). A request that names the number of files it judges (`files`) has its kind's liveness budget scaled with it
+ * (`heavyTimeoutMinutes`); one that names `workers` caps a test run's workers at them. Each runs under its heap cap, a test run with the workers the RAM
+ * free at its admission holds (`withHeavySlot`); `onAdmit` is told what it was admitted with, and the answer carries the tree's measured RAM peak (`peakProbe`).
  */
-export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): HeavyNodeRun => async (request: HeavyNodeRequest & { readonly files?: number | undefined }) => {
-    return admit(
+export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): HeavyNodeRun => async (request: NodeRequest) => {
+    const probe = peakProbe()
+    const inherited = request.env === undefined ? process.env.NODE_OPTIONS ?? "" : request.env.NODE_OPTIONS ?? ""
+    let workers: number | undefined
+    const ran = await admit(
         request.kind,
         request.label,
         request.cwd,
         {
             baseEnv: request.env ?? process.env,
-            env: { NODE_OPTIONS: request.env === undefined ? process.env.NODE_OPTIONS ?? "" : request.env.NODE_OPTIONS ?? "" },
+            env: probe.env(inherited),
             captureBytes: request.maxBuffer,
             ...(request.timeoutMs === undefined ? {} : { timeoutMs: request.timeoutMs }),
             ...(request.files === undefined ? {} : { files: request.files }),
+            ...(request.workers === undefined ? {} : { workers: request.workers }),
         },
         async (held) => {
+            workers = held.test?.workers
+            request.onAdmit?.({ workers, heapMb: held.heapMb })
             const argv = [process.execPath, ...request.args]
             const run = await capture(request.kind === "test" && !argv.includes("--runInBand") ? testWorkerArgs(argv, held) : argv, request.cwd, held.options)
             return {
@@ -116,6 +131,8 @@ export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): 
             }
         },
     )
+    const peakMb = probe.peakMb(workers)
+    return peakMb === undefined ? ran : { ...ran, peakMb }
 }
 
 /**
@@ -139,11 +156,14 @@ export const applyMemoryPlan = (appRoot: string, argv: readonly string[], write:
 }
 
 /**
- * The governed runner of the dev verbs' heavy commands (`starci app stack up`: `npm ci`, a compose build or up): one slot of the host-wide
- * semaphore per command, run without a shell, the result handed back as the spawn seam's shape.
+ * The governed runner of the dev verbs' heavy commands (`starci app stack up`: `npm ci`, a compose build or up) and of an app check's CI-parity steps and
+ * Sonar scan: one slot of the host-wide semaphore per command, run without a shell, the result handed back as the spawn seam's shape with the tree's
+ * measured RAM peak; `onAdmit`, when the request names one, is told once it was admitted.
  */
-export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand): HeavyCommandRun => async (request) =>
-    admit(request.kind, request.label, request.cwd, { baseEnv: request.env }, async (held) => {
+export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand): HeavyCommandRun => async (request: Parameters<HeavyCommandRun>[0] & { readonly onAdmit?: ((admitted: { readonly heapMb?: number | undefined }) => void) | undefined }) => {
+    const probe = peakProbe()
+    const ran = await admit(request.kind, request.label, request.cwd, { baseEnv: request.env, env: probe.env(request.env.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? "") }, async (held) => {
+        request.onAdmit?.({ heapMb: held.heapMb })
         const run = await capture(request.argv, request.cwd, held.options)
         return {
             status: run.timedOut ? null : run.exitCode,
@@ -152,6 +172,9 @@ export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand
             ...(run.timedOut ? { error: Object.assign(new Error("child deadline reached"), { code: "ETIMEDOUT" }) } : {}),
         }
     })
+    const peakMb = probe.peakMb()
+    return peakMb === undefined ? ran : { ...ran, peakMb }
+}
 
 /**
  * Runs `starci app <verb>` in @starci/hfs, in-process, in the verb's working directory. In human mode its stdout and stderr
@@ -178,9 +201,10 @@ export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly
     const harness = { version: packageVersion(), ...more }
     const runHeavyNode = hfsNodeRunner()
     const stackIo = { heavy: hfsCommandRunner() }
+    const heavyRoom = (): number => heavyRoomMb()
     const io = context.json
-        ? { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stackIo, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
-        : { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, stackIo, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
+        ? { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, heavyRoom, stackIo, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
+        : { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, heavyRoom, stackIo, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
     if (verb === "check") {
         // The memory plan (memory-plan.ts): a check whose parent heap is below its plan ran again under it, and that run printed everything.
         const rerun = applyMemoryPlan(appRootOf(context.cwd), full, io.stdout)
