@@ -60,8 +60,9 @@ void test("more room never gives fewer workers, and a tsc takes its cap or the r
     const sizes = [roomOf(10 * GB), roomOf(14 * GB), roomOf(22 * GB), roomOf(40 * GB)].map((room) => testRunSizing(rules, room, 28).workers)
     for (let at = 1; at < sizes.length; at += 1) assert.ok(must(sizes[at]) >= must(sizes[at - 1]))
     assert.equal(heapFor(rules, "tsc", 20 * GB), rules.caps.tsc.capMb)
-    assert.equal(heapFor(rules, "tsc", 6 * GB), 6 * GB, "less room than its cap: the room")
-    assert.equal(heapFor(rules, "tsc", 1000), rules.caps.tsc.minMb, "alone on almost no room: its minimum")
+    assert.equal(heapFor(rules, "install", 1500), 1500, "less room than its cap: the room")
+    assert.equal(heapFor(rules, "install", 100), rules.caps.install.minMb, "alone on almost no room: its minimum")
+    assert.equal(heapFor(rules, "eslint", 6 * GB), rules.caps.eslint.capMb, "a typed lint chunk is never given less than its measured peak")
 })
 
 void test("the worker args carry the worker count and the idle memory limit, and the environment the heap caps", () => {

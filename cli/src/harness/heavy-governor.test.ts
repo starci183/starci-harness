@@ -126,14 +126,14 @@ void test("a second task 5 s after the first sees the room less the first's plan
         await first
     })
     const text = await both
-    assert.match(text, /second waits for a heavy-command slot: first in the queue, needs 4096 MB, room 0 MB/u)
+    assert.match(text, /second waits for a heavy-command slot: first in the queue, needs 8192 MB, room 0 MB/u)
     assert.match(text, /first \(pid \d+\) planned 8192 MB, admitted \d+ s ago/u)
 })
 
 void test("first come, first served: a command that fits waits behind one that does not, and both start when the holder releases", { skip: !wide }, async () => {
     const order: string[] = []
     const holder = gate()
-    const free = 14 * GB
+    const free = 18 * GB
     const text = await stderrOf(async () => {
         const first = run(free, "tsc", "A", order, holder.wait)
         await pause(300)
@@ -146,7 +146,7 @@ void test("first come, first served: a command that fits waits behind one that d
         await Promise.all([first, second, third])
     })
     assert.deepEqual(order, ["A", "B", "C"], "served in the order they came")
-    assert.match(text, /C waits for a heavy-command slot: 1 ahead of it, needs 2048 MB/u)
+    assert.match(text, /C waits for a heavy-command slot: 1 ahead of it, needs 4096 MB/u)
     assert.equal(heavySlots().length, 0, "every row is released")
 })
 

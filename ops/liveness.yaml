@@ -84,13 +84,14 @@ heavy:
   managedCpuFloorPercent: 25
   underForeignPressureSlots: 2
   pollSeconds: 2
-  # The cap of one process of each kind, set near what it measures: its `--max-old-space-size` (uat: `--memory`), and minMb, the least room a command of the
-  # kind starts in. A typecheck of a large app's back end outgrows node's default heap (4 GB), so tsc is above it; eslint is the heap of one ESLint child
-  # of an app check, which takes a chunk of files (plan.lintChunk).
+  # The cap of one process of each kind is its measured peak: its `--max-old-space-size` (uat: `--memory`), and minMb is the least room a command of the
+  # kind starts in. A typecheck of a large app's back end outgrows node's default heap (4 GB), and one ESLint child of an app check, which takes a chunk of
+  # files (plan.lintChunk), peaks near 8 GB on a typed back end of about 9,500 files in 600-file chunks; a lower heap turns a green run into an out-of-memory
+  # one, so tsc, eslint and build start only in a room that holds their cap.
   caps:
-    tsc: { capMb: 8192, minMb: 4096 }
-    eslint: { capMb: 2048, minMb: 2048 }
-    build: { capMb: 4096, minMb: 2048 }
+    tsc: { capMb: 8192, minMb: 8192 }
+    eslint: { capMb: 8192, minMb: 8192 }
+    build: { capMb: 4096, minMb: 4096 }
     install: { capMb: 2048, minMb: 1024 }
     uat: { capMb: 4096, minMb: 2048 }
   timeoutMinutes:
