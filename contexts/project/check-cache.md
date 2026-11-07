@@ -29,7 +29,7 @@ Release with `starci app release gate`: every row runs diff-only against the war
 ## The command surface
 
 `starci app check` with no flag is a whole run: every family against the committed cache (diff-only), the CI-parity families
-([CI parity](#ci-parity)), CI's coverage step, and the cache verdict, which is a hard error. It writes what it judged back
+([CI parity](#ci-parity)), CI's coverage step, the Sonar scan against the app's server ([Sonar and Codecov](#sonar-and-codecov)), and the cache verdict, which is a hard error. It writes what it judged back
 into the cache. A branch profile ([lint.md](lint.md) PROJECT-LINT-2) changes no cache rule: a family it reports runs and writes
 its records exactly as a blocking one, and a family it turns off runs nothing and writes nothing.
 
@@ -58,7 +58,7 @@ starci app check --gate sonar --gate codecov
 | `--gate types` | each workspace's `tsc --noEmit` through the app's TypeScript: the back end, each front-end workspace and each root workspace package (`packages/<pkg>/tsconfig.json`, as CI's `npm run typecheck` runs it) | `check/types/` |
 | `--gate lint` | ESLint per side and stylelint | `lint/` |
 | `--gate test` | the unit specs, their coverage merged into one report and its per-file threshold | `test-coverage/` |
-| `--gate sonar`, `--gate codecov` | the existing combined Sonar and Codecov predictions from the merged coverage, the lint findings and the clones; either selector invokes this family, both together invoke it once | `sonar-baseline/`, `codecov-baseline/` |
+| `--gate sonar`, `--gate codecov` | the combined Sonar and Codecov predictions from the merged coverage, the lint findings and the clones; either selector invokes this family, both together invoke it once. The server scan belongs to the whole run alone | `sonar-baseline/`, `codecov-baseline/` |
 | `--gate build`, `--gate audit` | the CI-parity families ([CI parity](#ci-parity)), never cached | none |
 
 The twelve public gate names dispatch to eleven families (`sonar` and `codecov` share one). Selecting `codecov` exposes the combined
@@ -345,12 +345,39 @@ lcov sent to Codecov and Sonar is the merged total, so their server-side numbers
 Their baselines hold reference data only, never a server's result. From them and the merged coverage a run predicts,
 and labels as a prediction: Sonar's new-code coverage and duplication on the lines changed since the base commit, and
 Codecov's patch coverage and project change, the base total computed from the base commit's committed coverage records.
-The servers stay the judges; a prediction never passes or fails a run.
+A prediction never passes or fails a run.
+
+A whole run also scans for real (`cache/sonar-scan-family.mts`): the app's CI sonar job, run against the app's own Sonar
+server, so a scanner crash or a red quality gate is found before the push. Nothing is stated by the harness: the project
+key, sources, exclusions and coverage and lint-report paths are those of the app's `sonar-project.properties`, the server
+and the token's custody those of its stack declaration (`services.sonar`, the same connection `app release gate` uses; the
+token is opened from the app's sealed secrets and reaches the scanner through its environment alone, never an argument or
+a message), and the quality gate is the one the server holds for the project.
+
+- **Order.** The scan runs after every other family and the coverage step are green, as CI's sonar job needs lint and
+  coverage; it first writes `reports/lint.sonar.json` from the run's own linter results, the file the properties import.
+  Under a branch profile that reports sonar its findings are reported, never judged; a profile that turns sonar off skips it.
+- **Target.** The analysis never overwrites the project's own. The edition is read from the server with the token
+  (`api/navigation/global`). A server with branch support receives the scan as the branch `local/<user>`; a server
+  without it (Community, or an edition it does not state) receives it as the derived project `<projectKey>-local`, which the
+  run creates with the main project's visibility and binds to the main project's quality gate when the token may, and
+  otherwise skips with a warning. The main analysis and its new-code baseline are never touched.
+- **Verdict.** The scanner exits non-zero: `CI_PARITY_SONAR_SCAN_FAILED`, with the scanner's last lines. The compute-engine
+  task fails or the project's gate is ERROR: `CI_PARITY_SONAR_GATE_FAILED`, naming each failed condition. Both are errors.
+- **Not run.** An app with no `sonar-project.properties`, or no Sonar service in its declaration, gets an info line. No token
+  (no sealed secret or age key on this host), a server that does not answer, a token without the permission the derived
+  project needs, or a verdict the server does not give in time is the warning `CI_PARITY_SONAR_SKIPPED`; the run is never reported
+  green for the scan, and CI judges it.
+- **Reuse.** A green verdict is kept in the untracked tool cache (`sonar-scan.json`, beside the run log) by the sha256 of
+  the scanned content (every tracked file outside the cache folder, the properties, the coverage and lint reports they
+  name), the target, the scanner version and the digest of the gate's conditions as the server holds them now. An unchanged
+  tree under an unchanged gate is not scanned again; a failure is never kept, and `--fresh` scans again. The verdict is host
+  state, never committed: it depends on a server, which the committed cache must not.
 
 ## CI parity
 
 A whole `starci app check` (the pre-push hook runs it) runs what the app's managed CI runs and no other family does, so a green run is not followed by a
-red CI on it (R383). The `build` and `audit` families read their commands from the app's rendered `.github/workflows/ci.yml`,
+red CI on it (R383, R386): the `build` and `audit` families, CI's coverage step and the Sonar scan ([Sonar and Codecov](#sonar-and-codecov)). The `build` and `audit` families read their commands from the app's rendered `.github/workflows/ci.yml`,
 never restate them, and run each whole on every run that selects them (nothing is cached):
 
 - `audit`: the fast job's production dependency audit (`npm audit --omit=dev --audit-level=high`, or what the quality declaration sets).
@@ -370,7 +397,7 @@ never restate them, and run each whole on every run that selects them (nothing i
   `DB_DRIFT_NEEDS_DATABASE` from the verb, which a whole run reports as the warning `CI_PARITY_DB_SKIPPED` (CI judges the step; a warning never turns a run
   red, and the run never reports the step green).
 
-`--gate build` and `--gate audit` run them alone. A failed step is `CI_PARITY_STEP_FAILED` with the step's last lines.
+`--gate build` and `--gate audit` run the first two alone. A failed step is `CI_PARITY_STEP_FAILED` with the step's last lines.
 
 ## The memory plan
 

@@ -3894,7 +3894,7 @@ rules:
       - {path: packages/eslint/be/sonar-parity-editions.spec.mjs, edition: full}
       - {path: packages/eslint/fe/sonar-parity-editions.spec.mjs, edition: lite}
       - {path: packages/eslint/fe/sonar-parity-editions.spec.mjs, edition: full}
-    law: "Code carries none of the smells SonarCloud measures that a lint rule can decide: no `await` inside a loop (S9382; an endless loop is spared), no `charCodeAt`/`fromCharCode` (S7758), no string that only escapes backslashes (S7780; a Next `matcher` is spared, it is read statically), no nested conditional expression (S3358), no `void` on anything but a call (S3735), no unused import (S1128), no import that is only handed on instead of `export ... from` (S7763), no prop of a component's props type the component never reads (S6767, front end), no `<video>` or `<audio>` without a captions track unless muted (S4084, front end), and, through typescript-eslint with type information, no deprecated API (S1874), no object turned into text (S6551) and no `async` function that never awaits and returns no promise (S7503). No function takes more than seven parameters (S107), except the constructor of an injectable class, whose parameters are its injected dependencies. Every other rule of the Sonar way TypeScript profile with an ESLint equivalent that reports what the server reports on the same source (scripts/lib/sonar-way.mjs: eslint-plugin-sonarjs' Sonar way set and the core and unicorn rules it builds on) is on at error in both canons (S7785, top-level await, runs in the front end only: a back end compiles to CommonJS); a port that disagrees with the server is fixed in the source it reports, never left out. The files a unit or an end-to-end spec names are outside the scan, so outside these rules."
+    law: "Code carries none of the smells SonarCloud measures that a lint rule can decide: no `await` inside a loop (S9382; an endless loop is spared), no `charCodeAt`/`fromCharCode` (S7758), no string that only escapes backslashes (S7780; a Next `matcher` is spared, it is read statically), no nested conditional expression (S3358), no `void` on anything but a call (S3735), no unused import (S1128), no import that is only handed on instead of `export ... from` (S7763), no prop of a component's props type the component never reads (S6767, front end), no `<video>` or `<audio>` without a captions track unless muted (S4084, front end), and, through typescript-eslint with type information, no deprecated API (S1874), no object turned into text (S6551) and no `async` function that never awaits and returns no promise (S7503). No function takes more than seven parameters (S107), except the constructor of an injectable class, whose parameters are its injected dependencies. Every other rule of the Sonar way TypeScript profile with an ESLint equivalent that reports what the server reports on the same source (scripts/lib/sonar-way.mjs: eslint-plugin-sonarjs' Sonar way set and the core and unicorn rules it builds on) is on at error in both canons (S7785, top-level await, runs in the front end only: a back end compiles to CommonJS); a port that disagrees with the server is fixed in the source it reports, never left out. The files a unit or an end-to-end spec names are outside the scan, so outside these rules, except for the line-break rule: no raw U+2028, U+2029 or U+0085 in any file, which the scanner counts as a line break and the language does not (the scan aborts with \"Line n is out of range\"); the finding names the escape to write."
     kinds: [lint, codemod]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["SCAN_SMELL"]
@@ -3917,6 +3917,8 @@ rules:
       - {kind: eslint-fe, id: media-has-caption}
       - {kind: eslint-be, id: max-params}
       - {kind: eslint-fe, id: max-params}
+      - {kind: eslint-be, id: no-line-separator-literal}
+      - {kind: eslint-fe, id: no-line-separator-literal}
   - id: R236
     code: "RT_LOOSENING_STATE"
     editions: [lite, full]
@@ -6481,7 +6483,7 @@ rules:
       - {path: packages/hfs/src/package-slots.spec.mjs, editions: [lite, full]}
   - id: R383
     code: "CI_PARITY_STEP_FAILED"
-    law: "The pre-push gate runs every command of the app's managed CI that needs no database, as CI runs it: `starci app check --fresh` adds the build and audit families, which read their commands from the app's rendered .github/workflows/ci.yml (the fast job's production dependency audit and typecheck script, the build job's `npm run build:be` and each `build fe` step, a next build per front-end app with its own SWC cache root under the app's tool cache), and runs CI's coverage step (`starci app coverage verify`) on the lcov the test family merged from its records; a step that fails is CI_PARITY_STEP_FAILED, so a green push gate is not followed by a red CI on it. The database steps (db:lint, app db drift) need a database and stay CI-only."
+    law: "A whole `starci app check` runs every command of the app's managed CI that no other family runs, as CI runs it, so a green run is not followed by a red CI on one of them: the build and audit families read their commands from the app's rendered .github/workflows/ci.yml (the fast job's production dependency audit and typecheck script, the build job's `npm run build:be`, each `build fe` step, a next build per front-end app with its own SWC cache root under the app's tool cache, and the database migration checks, `db:lint` and `app db drift`, which need Docker or an empty `--db-url-env` database and are reported as the warning CI_PARITY_DB_SKIPPED where the host has neither), and CI's coverage step (`starci app coverage verify`) runs on the lcov the test family merged from its records; a step that fails is CI_PARITY_STEP_FAILED."
     kinds: [check]
     gates: [land, ci]
     failureCodes: ["CI_PARITY_STEP_FAILED"]
@@ -6511,3 +6513,20 @@ rules:
       - {path: packages/eslint-canon-fe/src/renderer-purity.spec.ts, editions: [lite, full], codes: [FE_RENDERER_LOGIC]}
     witness:
       - {path: packages/eslint-canon-fe/src/renderer-purity.spec.ts, editions: [lite, full], codes: [FE_RENDERER_LOGIC]}
+  - id: R386
+    code: "CI_PARITY_SONAR_SCAN_FAILED"
+    law: "A whole `starci app check` runs the app's CI sonar job against the app's own Sonar server: the scanner (`@sonar/scan`) with the app's `sonar-project.properties` (project key, sources, exclusions, coverage and lint-report paths), the server and token custody of its stack declaration (`services.sonar`, the token opened from its sealed secrets), and the quality gate the server holds for the project, read from the server after the analysis. The analysis never overwrites the project's own: a server with branch support receives it as the branch `local/<user>`, a server without (Community) as the derived project `<projectKey>-local`, created with the main project's visibility and bound to the main project's quality gate when the token may. A scanner that fails is CI_PARITY_SONAR_SCAN_FAILED and a red gate or a failed compute-engine task is CI_PARITY_SONAR_GATE_FAILED, both errors; a missing token, an unreachable server, a token without the permission it needs or an unreadable verdict is the warning CI_PARITY_SONAR_SKIPPED, never a green. An app with no `sonar-project.properties` or no Sonar service gets an info line. The scan runs after lint and coverage are green; a green verdict is kept in the untracked tool cache by the scanned content and the gate's conditions, so an unchanged tree is not scanned again (`--fresh` scans again)."
+    kinds: [check]
+    gates: [land, ci]
+    failureCodes: ["CI_PARITY_SONAR_SCAN_FAILED", "CI_PARITY_SONAR_GATE_FAILED", "CI_PARITY_SONAR_SKIPPED"]
+    enforcers:
+      - {kind: hfs, id: ci-sonar-scan, at: packages/hfs/cache/sonar-scan-family.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/check-cache.md#sonar-and-codecov, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/check-cache-sonar-scan.spec.mjs, editions: [lite, full]}
+    exemplifiedBy:
+      - {path: packages/hfs/src/check-cache-sonar-scan.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/check-cache-sonar-scan.spec.mjs, editions: [lite, full]}

@@ -3746,6 +3746,38 @@ CI_PARITY_STEP_FAILED:
   nextStep_vi: "Đọc dòng cuối của bước trong thông báo, sửa đúng lỗi đó (chạy lại lệnh CI được nêu để tái hiện), rồi chạy lại starci app check --fresh."
   owner: op-retry
   kind: check-finding
+CI_PARITY_SONAR_SCAN_FAILED:
+  title: "The Sonar scanner fails locally as the CI sonar job would"
+  title_vi: "Bộ quét Sonar thất bại khi chạy cục bộ như job sonar của CI"
+  meaning_vi: "`starci app check` chạy bộ quét Sonar thật với `sonar-project.properties` của app, trên máy chủ Sonar mà app khai báo, giống job sonar của CI. Bộ quét thoát lỗi hoặc dừng giữa chừng (ví dụ `Line 15 is out of range ... File has 14 lines`), nên job sonar của CI cũng sẽ đỏ."
+  causes_vi:
+    - "Vi phạm R386: tệp nguồn chứa ký tự U+2028, U+2029 hoặc U+0085 thô; bộ quét tách dòng tại các ký tự này còn TypeScript thì không."
+    - "Cấu hình `sonar-project.properties` sai (đường dẫn sources, tsconfig, báo cáo lcov hoặc lint không tồn tại)."
+  nextStep_vi: "Đọc những dòng cuối của bộ quét trong thông báo; thay ký tự thô bằng dạng thoát (`\\u2028`) hoặc xóa nó, hoặc sửa đường dẫn sai, rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
+CI_PARITY_SONAR_GATE_FAILED:
+  title: "The Sonar quality gate of the local analysis is red"
+  title_vi: "Cổng chất lượng Sonar của lần phân tích cục bộ đang đỏ"
+  meaning_vi: "Bộ quét đã tải phân tích lên máy chủ Sonar (nhánh `local/<user>` hoặc dự án `<projectKey>-local`), và cổng chất lượng của dự án trả về ERROR hoặc tác vụ compute-engine thất bại. Thông báo nêu từng điều kiện không đạt với giá trị thực; CI sẽ đỏ đúng điều kiện đó."
+  causes_vi:
+    - "Vi phạm R386: độ phủ, trùng lặp, issue hoặc hotspot trên mã mới vượt ngưỡng của cổng chất lượng mà máy chủ gán cho dự án."
+  nextStep_vi: "Sửa đúng điều kiện được nêu (thêm test, bỏ mã trùng, xử lý issue) rồi chạy lại starci app check; không sửa ngưỡng trên máy chủ để qua cổng."
+  owner: op-retry
+  kind: check-finding
+
+CI_PARITY_SONAR_SKIPPED:
+  title: "The Sonar scan could not run on this host"
+  title_vi: "Không chạy được lần quét Sonar trên máy này"
+  meaning_vi: "`starci app check` không chạy được bộ quét Sonar ở đây: thiếu token trong secret đã niêm phong của app, máy chủ Sonar không trả lời, token không đủ quyền (đọc dự án, tạo dự án `<projectKey>-local`, gán cổng chất lượng) hoặc không đọc được kết quả cổng. Đây là cảnh báo, không bao giờ là kết quả xanh; CI vẫn chạy job sonar."
+  causes_vi:
+    - "Không mở được secret `sonar.enc.yaml` của môi trường (thiếu khóa age) hoặc không có mạng tới máy chủ Sonar."
+    - "Máy chủ không hỗ trợ nhánh (Community) và token không được phép tạo dự án `<projectKey>-local`."
+  nextStep_vi: "Cấp khóa age hoặc mạng cho máy này, hoặc nhờ quản trị Sonar tạo sẵn dự án `<projectKey>-local` gán cùng cổng chất lượng, rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
 HFS_CHECK_CACHE_UNWARMED:
   title: "The pushed check cache is not the one a run on its tree writes"
   title_vi: "Cache kiểm tra được push không phải cache mà một lần chạy trên cây này ghi ra"
@@ -5493,6 +5525,7 @@ SCAN_SMELL:
   causes_vi:
     - "Vi phạm luật R235: một vòng lặp `await` từng bước mà không gọi tên thứ tự"
     - "Import còn sót sau khi mã dùng nó đã bị xóa"
+    - "Vi phạm luật R235: tệp chứa ký tự U+2028, U+2029 hoặc U+0085 thô (thay bằng dạng thoát hoặc xóa), làm bộ quét Sonar dừng với `Line n is out of range`"
     - "Dùng API next-intl `requestLocale` hay `setRequestLocale` đã bị thay bằng `next/root-params`"
   nextStep_vi: "Sửa đúng dòng được chỉ: chạy các bước độc lập bằng `Promise.all`, gọi tên thứ tự bằng `eachInOrder` của `platform/primitives`, bỏ import thừa, viết lại biểu thức lồng thành câu lệnh riêng, đọc locale qua `next/root-params`, trả `Promise.resolve(...)` thay vì `async` không `await`. Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra."
   owner: op-retry

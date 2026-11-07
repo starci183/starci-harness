@@ -1533,7 +1533,7 @@ rules:
       - {kind: hfs, id: lite-secret-custody}
   - id: R235
     code: SCAN_SMELL
-    law: Code carries none of the Sonar way smells a lint rule can decide, each on at error in both canons, outside the files specs name.
+    law: Code carries none of the Sonar way smells a lint rule can decide, each on at error in both canons, outside the files specs name, and no raw U+2028, U+2029 or U+0085 in any file, which the scanner counts as a line break and the language does not (the scan aborts with "Line n is out of range"); the finding names the escape to write.
     failureCodes:
       - SCAN_SMELL
     enforcers:
@@ -1555,6 +1555,8 @@ rules:
       - {kind: eslint-fe, id: media-has-caption}
       - {kind: eslint-be, id: max-params}
       - {kind: eslint-fe, id: max-params}
+      - {kind: eslint-be, id: no-line-separator-literal}
+      - {kind: eslint-fe, id: no-line-separator-literal}
   - id: R243
     code: FE_SERVER_ACTION_FORBIDDEN
     law: "The front end serves no API: no `\"use server\"` directive, and no route handler but the health route."
@@ -2610,7 +2612,7 @@ rules:
       - {kind: hfs, id: package-slots}
   - id: R383
     code: CI_PARITY_STEP_FAILED
-    law: "The pre-push gate runs every command of the app's managed CI that needs no database, as CI runs it: `starci app check --fresh` adds the build and audit families, which read their commands from the app's rendered .github/workflows/ci.yml (the fast job's production dependency audit and typecheck script, the build job's `npm run build:be` and each `build fe` step, a next build per front-end app with its own SWC cache root under the app's tool cache), and runs CI's coverage step (`starci app coverage verify`) on the lcov the test family merged from its records; a step that fails is CI_PARITY_STEP_FAILED, so a green push gate is not followed by a red CI on it. The database steps (db:lint, app db drift) need a database and stay CI-only."
+    law: "A whole `starci app check` runs every command of the app's managed CI that no other family runs, as CI runs it, so a green run is not followed by a red CI on one of them: the build and audit families read their commands from the app's rendered .github/workflows/ci.yml (the fast job's production dependency audit and typecheck script, the build job's `npm run build:be`, each `build fe` step, a next build per front-end app with its own SWC cache root under the app's tool cache, and the database migration checks, `db:lint` and `app db drift`, which need Docker or an empty `--db-url-env` database and are reported as the warning CI_PARITY_DB_SKIPPED where the host has neither), and CI's coverage step (`starci app coverage verify`) runs on the lcov the test family merged from its records; a step that fails is CI_PARITY_STEP_FAILED."
     failureCodes:
       - CI_PARITY_STEP_FAILED
     enforcers:
@@ -2622,6 +2624,15 @@ rules:
       - FE_RENDERER_LOGIC
     enforcers:
       - {kind: eslint-fe, id: renderer-presentation-only}
+  - id: R386
+    code: CI_PARITY_SONAR_SCAN_FAILED
+    law: "A whole `starci app check` runs the app's CI sonar job against the app's own Sonar server: the scanner (`@sonar/scan`) with the app's `sonar-project.properties` (project key, sources, exclusions, coverage and lint-report paths), the server and token custody of its stack declaration (`services.sonar`, the token opened from its sealed secrets), and the quality gate the server holds for the project, read from the server after the analysis. The analysis never overwrites the project's own: a server with branch support receives it as the branch `local/<user>`, a server without (Community) as the derived project `<projectKey>-local`, created with the main project's visibility and bound to the main project's quality gate when the token may. A scanner that fails is CI_PARITY_SONAR_SCAN_FAILED and a red gate or a failed compute-engine task is CI_PARITY_SONAR_GATE_FAILED, both errors; a missing token, an unreachable server, a token without the permission it needs or an unreadable verdict is the warning CI_PARITY_SONAR_SKIPPED, never a green. An app with no `sonar-project.properties` or no Sonar service gets an info line. The scan runs after lint and coverage are green; a green verdict is kept in the untracked tool cache by the scanned content and the gate's conditions, so an unchanged tree is not scanned again (`--fresh` scans again)."
+    failureCodes:
+      - CI_PARITY_SONAR_SCAN_FAILED
+      - CI_PARITY_SONAR_GATE_FAILED
+      - CI_PARITY_SONAR_SKIPPED
+    enforcers:
+      - {kind: hfs, id: ci-sonar-scan}
   - id: R07
     code: HFS_AGENT_DATA_TRACKED
     law: "`.starciwork` holds product records only; agent and session data never lives there."

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.19.3 - 2026-11-07
+
+- Added (R235 `SCAN_SMELL`, `no-line-separator-literal`): a raw U+2028, U+2029 or U+0085 anywhere in a file, specs included, is an error that names the escape to write (` `, ` `, ``) in a string, template or regular expression, or says to delete the character elsewhere. The Sonar scanner splits lines at these characters and TypeScript does not, so its analysis aborts with "Line n is out of range ... File has m lines".
+
 ## 3.19.2 - 2026-11-07
 
 - A patch: peers `@starci/hfs` ~6.0.0. Comments, rule docs and messages cite rules by their ids and carry no ruling history.

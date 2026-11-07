@@ -6,7 +6,7 @@
 //          `npm run build:be` and each `build fe` step (a `next build` per front-end app, its server prerender and route config included).
 // A build runs under the heavy governor (`build` kind, sized by the memory plan) with its own SWC cache root (LOCALAPPDATA and XDG_CACHE_HOME under
 // the app's untracked tool cache): Windows' hardened loader refuses the SWC binary that next build loads from a %LOCALAPPDATA%\swc the user does not
-// own. The database steps (`npm run db:lint`, `app db drift`) need a database and stay CI-only (contexts/project/check-cache.md). Nothing is cached:
+// own. The database step (`npm run db:lint`, `app db drift`) runs when the host has Docker or a `--db-url-env` database and is the warning CI_PARITY_DB_SKIPPED otherwise. Nothing is cached:
 // each runs whole on every run that selects it.
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';

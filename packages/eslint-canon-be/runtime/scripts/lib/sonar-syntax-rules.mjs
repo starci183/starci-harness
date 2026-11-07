@@ -247,6 +247,23 @@ const mediaHasCaption = {
   },
 };
 
+/** The line breaks the scanner counts and the language does not: a raw U+2028 or U+2029 inside a string, template, regular expression or comment is legal source, and U+0085 is no line terminator in it. */
+const SCANNER_LINE_BREAKS = /[\u2028\u2029\u0085]/gu;
+const LINE_BREAK_NAMES = Object.freeze({ '\u2028': ['U+2028', 'LINE SEPARATOR', '\\u2028'], '\u2029': ['U+2029', 'PARAGRAPH SEPARATOR', '\\u2029'], '\u0085': ['U+0085', 'NEXT LINE', '\\u0085'] });
+/** Sonar scanner crash ("Line n is out of range ... File has m lines"): the scanner splits a file at U+2028, U+2029 and U+0085, the language service does not, so their line numbers disagree and the analysis aborts. Applies to every file the scan reads, specs included. */
+const noLineSeparatorLiteral = {
+  meta: { type: 'problem', schema: [], messages: { raw: 'The scanner splits lines at a raw {{ code }} ({{ name }}) and TypeScript does not, so its analysis aborts with "Line n is out of range". Write the escape `{{ escape }}` in a string, template or regular expression, or delete the character anywhere else.' } },
+  create: (context) => ({
+    Program: () => {
+      const { text } = context.sourceCode;
+      for (const found of text.matchAll(SCANNER_LINE_BREAKS)) {
+        const [code, name, escape] = LINE_BREAK_NAMES[found[0]];
+        context.report({ loc: context.sourceCode.getLocFromIndex(found.index), messageId: 'raw', data: { code, name, escape } });
+      }
+    },
+  }),
+};
+
 /** The files the example scans leave out: a unit spec and an end-to-end spec (the regex, and the flat-config globs of the same set). */
 const OUTSIDE_THE_SCAN = /\.(?:e2e-)?spec\.[cm]?[jt]sx?$/;
 export const OUTSIDE_THE_SCAN_FILES = Object.freeze(['**/*.spec.{js,mjs,cjs,ts,mts,cts,jsx,tsx}', '**/*.e2e-spec.{js,mjs,cjs,ts,mts,cts,jsx,tsx}']);
@@ -266,4 +283,5 @@ export const SONAR_SYNTAX_RULES = Object.freeze({
   'no-unused-prop-types': scanned(noUnusedPropTypes),
   'media-has-caption': scanned(mediaHasCaption),
   'max-params': scanned(maxParams),
+  'no-line-separator-literal': noLineSeparatorLiteral,
 });

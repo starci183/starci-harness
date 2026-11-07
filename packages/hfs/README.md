@@ -227,7 +227,9 @@ A committed cache that run changed or a tree holding uncommitted cache files is 
 `HFS_CHECK_CACHE_UNPORTABLE`. `--fresh` is the escape hatch for a broken or suspect cache: it ignores the records, recomputes the selected families (all when none
 is selected) from scratch and writes the refreshed records; never routine. Repeat `--gate <name>` to run those gates alone (a job selector of the managed CI): `hfs`,
 `format`, `db`, `secrets`, `wiring`, `types`, `lint`, `test`, `sonar`, `codecov`, `build` and `audit`. `sonar` and `codecov` dispatch to the same combined prediction family
-and execute it once, so twelve public names retain eleven families. Predictions remain diagnostics; actual Sonar CI/release checks and Codecov CI uploads keep their
+and execute it once, so twelve public names retain eleven families. Predictions remain diagnostics. A whole run also runs the app's CI sonar job against its own Sonar server (`cache/sonar-scan-family.mts`, R386: the app's
+`sonar-project.properties`, the token from its sealed secrets, the quality gate the server holds for the project, as a `local/<user>` branch or the derived project
+`<projectKey>-local`; a scanner failure or red gate is an error, a missing token, server or permission the warning `CI_PARITY_SONAR_SKIPPED`); Codecov uploads keep their
 existing ownership and verdicts. `app check --staged` remains the separate pre-commit guard. Each family prints `<family>: <full|diff> (<reason>), checked n, reused n;
 findings n new, n known, n fixed`. Progress goes to stderr (`--quiet` silences it). A red nightly `cache-verify.yml` (`app check --fresh`) refuses the release gate
 (`HFS_CHECK_CACHE_VERIFY_LOCKED`); `app release gate --full` runs its `app-check` row as `--fresh`.

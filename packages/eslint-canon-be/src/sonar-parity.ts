@@ -12,7 +12,7 @@
 import { SONAR_SYNTAX_RULES } from "../runtime/scripts/lib/sonar-syntax-rules.mjs"
 import type { Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
-const NAMES = ["no-await-in-loop", "prefer-code-point", "prefer-string-raw", "no-nested-conditional", "no-void-operator", "no-unused-import", "prefer-export-from", "max-params"]
+const NAMES = ["no-await-in-loop", "prefer-code-point", "prefer-string-raw", "no-nested-conditional", "no-void-operator", "no-unused-import", "prefer-export-from", "max-params", "no-line-separator-literal"]
 
 /** The rules this law contributes to the plugin. */
 export const rules: Rules = Object.fromEntries(NAMES.flatMap((name): Array<[string, RuleModule]> => {

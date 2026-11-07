@@ -118,7 +118,7 @@ function auditGate(audit: Services): Gate | null {
 }
 
 /** The CI execution copy is job-local; a native owner run opens the selected product credential only when executed. */
-function sonarGate(services: Services, ctx: VerbContext, execute: boolean): Gate {
+export function sonarGate(services: Services, ctx: VerbContext, execute: boolean): Gate {
   const env = ctx.env;
   const configured = services?.sonar;
   let sonar = configured?.provider === 'sonarcloud' ? { ...configured, host: configured.host || 'https://sonarcloud.io' } : configured;

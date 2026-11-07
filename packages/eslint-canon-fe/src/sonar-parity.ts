@@ -19,7 +19,7 @@ const syntaxRule = (name: string): Rule => {
   return rule
 }
 
-const NAMES = ["no-await-in-loop", "prefer-code-point", "prefer-string-raw", "no-nested-conditional", "no-void-operator", "no-unused-import", "prefer-export-from", "no-unused-prop-types", "media-has-caption", "max-params"]
+const NAMES = ["no-await-in-loop", "prefer-code-point", "prefer-string-raw", "no-nested-conditional", "no-void-operator", "no-unused-import", "prefer-export-from", "no-unused-prop-types", "media-has-caption", "max-params", "no-line-separator-literal"]
 
 /** The rules this law contributes to the plugin. */
 export const rules: Rules = Object.fromEntries(NAMES.map((name) => [name, syntaxRule(name)]))

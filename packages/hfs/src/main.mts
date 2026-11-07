@@ -116,6 +116,7 @@ import { createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
 import { DEFAULT_FAMILIES, runAppFamilies } from '../cache/run.mjs';
 import { runParityFamilies, type ParityRun } from '../cache/parity-family.mjs';
+import { LINT_REPORT, SCAN_FAILED, GATE_FAILED, runSonarScan } from '../cache/sonar-scan-family.mjs';
 import { createProgress, silentProgress } from '../cache/progress.mjs';
 import { familyLine } from '../cache/report.mjs';
 import { writeRunLog } from '../cache/run-log.mjs';
@@ -523,7 +524,7 @@ const STAGED_REFUSES = ['--json', '--fix', '--fresh', '--coverage-from', '--shar
 /** The family a finding belongs to, for naming it when a verified run disagrees with the cache. */
 function familyOf(finding: { code?: string | null; engine?: string }): FamilyId {
   const code = finding.code ?? '';
-  if (finding.engine === 'build' || finding.engine === 'audit') return finding.engine;
+  if (finding.engine === 'build' || finding.engine === 'audit' || finding.engine === 'sonar') return finding.engine;
   if (finding.engine === 'eslint' || finding.engine === 'stylelint') return 'lint';
   if (code === 'HFS_FORMAT') return 'format';
   if (/^(DB_|LITE_DB_)/.test(code)) return 'db';
@@ -581,6 +582,20 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     extra.push(...withWhy(parity.findings, readWhy(skillRoot, parity.findings.length > 0 ? ['CI_PARITY_STEP_FAILED'] : [])));
   }
   if (session !== undefined && selected.has('sonar')) lines.push(...(runSonarForApp(session, { repoRoot })?.lines ?? []));
+  // A whole run also runs the app's CI sonar job against the server (cache/sonar-scan-family.mts), when everything before it is green, as CI's sonar job needs lint and coverage.
+  if (whole && session !== undefined && profile.modes.sonar !== 'off') {
+    const red = [...proof.findings, ...extra].some((finding) => finding.level === 'error' && finding.report !== true) || (eslint?.findings ?? []).some((finding) => finding.severity !== 'warning') || (eslint?.errors.length ?? 0) > 0 || style.errors.length > 0 || stylelintFindings(style.results, repoRoot).some((finding) => finding.level === 'error');
+    if (red) lines.push('  sonar scan: not run, the run is already red (CI runs the sonar job after lint and coverage are green)');
+    else {
+      const progress = session.progress.step('sonar', 'Sonar scan against the server', 1);
+      const scan = await runSonarScan({ repoRoot, env: io.env, io: { cwd: repoRoot, stdout: io.stdout, stderr: io.stderr, env: io.env, sops: io.sops, hostIdentity: io.hostIdentity, stackIo: io.stackIo }, run: parityRunner(io), index: session.index, fresh: full?.has('sonar') === true,
+        writeLintReport: () => writeSonarImport({ repoRoot, file: path.join(repoRoot, LINT_REPORT), findings: [...proof.findings, ...extra], raw, side: undefined }) });
+      progress.tick(1, 0, 1);
+      progress.end();
+      lines.push(...scan.lines);
+      extra.push(...withWhy(scan.findings, readWhy(skillRoot, scan.findings.map((finding) => finding.code).filter((code): code is string => code === SCAN_FAILED || code === GATE_FAILED))));
+    }
+  }
   // The lint ratchet of a branch whose profile reports lint: the commits since the base never add lint findings to a file they touch (blocking).
   const ratchetErrors: string[] = [];
   if (selected.has('lint') && modes.lint === 'report' && profile.profile !== null) {

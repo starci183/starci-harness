@@ -162,3 +162,19 @@ test("S107: at most seven parameters; the constructor of an injectable class is 
         ],
     }) })
 })
+
+test("scanner line breaks: a raw U+2028, U+2029 or U+0085 anywhere in a file is refused with the escape to write, specs included", () => {
+  assert.doesNotThrow(() => { tester.run("no-line-separator-literal", ruleNamed(SONAR_SYNTAX_RULES, "no-line-separator-literal"), {
+    valid: [
+      "const separator = '\\u2028'\nconst paragraph = \"\\u2029\"",
+      "// the escape \\u0085 written as text\nexport const a = 1",
+    ],
+    invalid: [
+      { code: "const a = 'x\u2028y'", errors: [{ messageId: "raw", data: { code: "U+2028", name: "LINE SEPARATOR", escape: "\\u2028" }, line: 1, column: 13 }] },
+      { code: "const b = `x\u2029y`", errors: [{ messageId: "raw", data: { code: "U+2029", name: "PARAGRAPH SEPARATOR", escape: "\\u2029" } }] },
+      { code: "// note\u0085here\nexport const c = 1", errors: [{ messageId: "raw", data: { code: "U+0085", name: "NEXT LINE", escape: "\\u0085" } }] },
+      { filename: "src/a.service.spec.ts", code: "/* a\u2028b */ export const d = 1", errors: [{ messageId: "raw" }] },
+      { code: "const e = 'a\u2028b\u2028c'", errors: [{ messageId: "raw" }, { messageId: "raw" }] },
+    ],
+  }) })
+})

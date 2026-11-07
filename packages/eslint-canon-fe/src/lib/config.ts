@@ -129,7 +129,7 @@ export const SLOT_FREE_RULES = Object.freeze([
   "handler-on-prefix", "no-native-form-control", "no-native-img", "image-has-size", "no-second-i18n-stack", "html-lang-from-locale", "no-null-suspense-fallback",
   "no-native-anchor", "no-inline-parameter-type", "no-hand-rolled-polling", "no-copy-in-call", "no-alert", "no-failure-collapse",
   "outcome-kinds-exhaustive", "no-await-in-loop", "prefer-code-point", "prefer-string-raw", "no-nested-conditional", "no-void-operator", "no-unused-import",
-  "prefer-export-from", "no-unused-prop-types", "media-has-caption", "max-params",
+  "prefer-export-from", "no-unused-prop-types", "media-has-caption", "max-params", "no-line-separator-literal",
   "no-list-panel-padding", "no-hand-built-panes", "no-table-in-card", "no-heading-above-card", "no-selectable-tag-group", "no-fill-command-in-header", "no-app-surface-paint", "divider-full-bleed", "control-height", "selection-fill-no-check", "no-grammar-shim",
   "no-swr-default-array", "no-foreign-slot-status", "no-validating-as-loading", "no-placeholder-object", "no-hand-skeleton", "explicit-export-surface", "directive-first", "renderer-presentation-only",
   "button-intent-required", "destructive-confirm-in-dialog", "single-commit-per-render", "no-commit-in-collection-item",
