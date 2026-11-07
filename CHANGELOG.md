@@ -2,6 +2,7 @@
 
 ## 1.1.0-alpha.89 - 2026-11-08
 
+- Changed: `starci app <verb> --json` streams the verb's stderr as it prints it (an app check's progress lines) and keeps the one envelope on stdout; the progress of a `--json` run no longer arrives only at its end.
 - Fixed: a whole `starci app check` no longer crashes on a skipped Sonar scan; the fix is in `@starci/hfs` 6.2.0, which the CLI requires once npm serves it (`cli-follow`).
 - Changed: the heavy-command governor sizes every command greedily to the live RAM. The room is the free RAM now less `heavy.reserveMb` (4096, the one headroom) and what the commands admitted in the last `heavy.plannedSeconds` planned; free RAM already excludes what running commands use, so no estimate, reservation or earlier run is read. A test run takes `clamp(floor((room - parent cap) / worker cap), 1, min(cores - 1, testWorkers))` workers (`testRunSizing`, caps `heavy.testRun`): a free 22 GB on 28 cores gives 10, a free 7 GB gives 1. Any other node tool runs under the smaller of its cap and the room (`heavy.caps`, `heapFor`).
 - Changed: admissions are serialised by the machine store's lock and served first come, first served: a command whose room is under its least need waits, holding nothing, only the head may start, and it prints its place, its need and the running commands every minute (`waitLine`). With nothing running it starts on the room there is. A row of a process that is gone is dropped at the next admission. A command under a held command, and any command on a CI runner (`CI` set), uses the RAM free now with no queue.

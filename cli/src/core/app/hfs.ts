@@ -177,9 +177,9 @@ export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand
 }
 
 /**
- * Runs `starci app <verb>` in @starci/hfs, in-process, in the verb's working directory. In human mode its stdout and stderr
- * stream as it prints them and the CLI adds nothing; under `--json` the CLI passes `--json` to a verb that `printsJson` and
- * carries what it printed. The CLI passes its own version as `harness`: it is the starci-harness an app is judged and scaffolded at,
+ * Runs `starci app <verb>` in @starci/hfs, in-process, in the verb's working directory. Its stderr (an app check's progress) streams
+ * as it prints it in either mode; in human mode its stdout streams too and the CLI adds nothing, and under `--json` the CLI passes
+ * `--json` to a verb that `printsJson` and carries what it printed in the one envelope on stdout. The CLI passes its own version as `harness`: it is the starci-harness an app is judged and scaffolded at,
  * never a pin bundled in @starci/hfs. The exit code is @starci/hfs's (0 clean, 1 findings or red, 2 refusal or usage, 3 an unarmed mutation).
  * `stdin`, when given, replaces the process stdin of a verb that reads one (`app secret set`): what it returns stays in memory
  * and reaches @starci/hfs alone. `extra` adds the role and ticket queue of HfsHarness. The limits of ops/liveness.yaml @starci/hfs reads from its
@@ -203,7 +203,7 @@ export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly
     const stackIo = { heavy: hfsCommandRunner() }
     const heavyRoom = (): number => heavyRoomMb()
     const io = context.json
-        ? { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, heavyRoom, stackIo, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text } }
+        ? { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, heavyRoom, stackIo, stdout: (text: string) => { stdout += text }, stderr: (text: string) => { stderr += text; process.stderr.write(text) } }
         : { cwd: context.cwd, harness, stdin, hostIdentity, runHeavyNode, heavyRoom, stackIo, stdout: (text: string) => { process.stdout.write(text) }, stderr: (text: string) => { process.stderr.write(text) } }
     if (verb === "check") {
         // The memory plan (memory-plan.ts): a check whose parent heap is below its plan ran again under it, and that run printed everything.
