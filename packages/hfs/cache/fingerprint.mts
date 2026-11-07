@@ -18,7 +18,8 @@ const HFS_RUN: readonly FamilyId[] = ['hfs', 'secrets', 'wiring', 'db'];
 
 /**
  * Each family's toolchain as the lockfile resolves it: the installed packages whose version can change that family's results. The types and test families
- * read every installed package (a dependency's type surface or behaviour reaches their results and neither keys its records by the packages it loads).
+ * read every installed package a program or a spec can load (a dependency's type surface or behaviour reaches their results and neither keys its records by
+ * the packages it loads), which is every install but the tools of the other families that nothing they load depends on (`TOOL_ONLY`, `reachablePackages`).
  */
 const LOCK_TOOLCHAIN: Readonly<Record<'lint' | 'format' | 'types' | 'test', RegExp | null>> = {
   lint: /^(?:eslint|eslint-.+|@eslint\/.+|@eslint-community\/.+|typescript|typescript-eslint|@typescript-eslint\/.+|@stylistic\/.+|stylelint|stylelint-.+|postcss|postcss-.+|globals|jiti|@next\/eslint-plugin-next)$/u,
@@ -26,6 +27,15 @@ const LOCK_TOOLCHAIN: Readonly<Record<'lint' | 'format' | 'types' | 'test', RegE
   types: null,
   test: null,
 };
+
+/**
+ * The installed packages that are the tools of another family or of the harness itself: the ESLint and stylelint toolchains and their @starci canons, Prettier and its
+ * configuration, `@starci/hfs` and the CLI. A program (`tsc`) or a spec (Jest) loads one of them only when something it loads depends on it, so the types and test
+ * families leave the ones no manifest and no resolved dependency reaches out of `lock:types` and `lock:test`, and a bump of such a tool re-runs the families that read it
+ * (`pkg:` and `lock:<family>` parts) and no other. `typescript` is no tool of this set: a type check and a transform read it.
+ */
+const TOOL_ONLY = /^(?:starci-harness|@starci\/(?:hfs|eslint-.+|stylelint-canon|prettier-config)|eslint|eslint-.+|@eslint\/.+|@eslint-community\/.+|typescript-eslint|@typescript-eslint\/.+|@stylistic\/.+|stylelint|stylelint-.+|prettier|prettier-plugin-.+|@prettier\/.+)$/u;
+const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'] as const;
 
 /** The @starci packages a family is made of, by name; any other @starci package is a library like any other. */
 const STARCI_FAMILIES: Readonly<Record<string, readonly FamilyId[]>> = {
@@ -86,7 +96,7 @@ export interface FingerprintInput {
   readonly hfsDir?: string | undefined;
 }
 
-type LockEntry = { version?: string; integrity?: string; link?: boolean; resolved?: string };
+type LockEntry = { version?: string; integrity?: string; link?: boolean; resolved?: string; dependencies?: Record<string, string>; peerDependencies?: Record<string, string>; optionalDependencies?: Record<string, string> };
 
 const sorted = (parts: FingerprintPart[]): FingerprintPart[] => [...parts].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
@@ -132,6 +142,44 @@ function manifestShape(file: string): string {
   return hashText(JSON.stringify(shape));
 }
 
+/**
+ * The names of the installed packages a program or a spec can load: the dependencies every tracked manifest declares and what their resolved installs depend on, in the lockfile.
+ * The root manifest is the harness's own: a tool it declares is not a root of its own (the apps declare them there and nothing else loads them), while a tool a workspace
+ * declares is. A manifest that cannot be read, or a lockfile without installs, gives null: nothing is left out.
+ */
+export function reachablePackages(root: string, tracked: readonly string[], entries: Readonly<Record<string, LockEntry>>): Set<string> | null {
+  const byName = new Map<string, string[]>();
+  for (const key of Object.keys(entries)) {
+    const name = lockPackageName(key);
+    if (name !== null) byName.set(name, [...(byName.get(name) ?? []), key]);
+  }
+  if (byName.size === 0) return null;
+  const reached = new Set<string>();
+  const queue: string[] = [];
+  const reach = (name: string): void => { if (!reached.has(name)) { reached.add(name); queue.push(name); } };
+  const declared = (manifest: Record<string, unknown> | undefined): string[] => DEPENDENCY_FIELDS.flatMap((field) => {
+    const value = manifest?.[field];
+    return value !== null && typeof value === 'object' ? Object.keys(value) : [];
+  });
+  for (const file of tracked) {
+    if (path.posix.basename(file) !== 'package.json' || file.startsWith('node_modules/') || file.includes('/node_modules/')) continue;
+    const manifest = readJson(path.join(root, file));
+    if (manifest === undefined) return null;
+    for (const name of declared(manifest)) if (file !== 'package.json' || !TOOL_ONLY.test(name)) reach(name);
+  }
+  const dependenciesOf = (key: string): string[] => {
+    const entry = entries[key];
+    if (entry === undefined) return [];
+    const own = DEPENDENCY_FIELDS.filter((field) => field !== 'devDependencies').flatMap((field) => {
+      const value = entry[field];
+      return value !== null && typeof value === 'object' ? Object.keys(value) : [];
+    });
+    return entry.link === true && typeof entry.resolved === 'string' && entry.resolved !== key ? [...own, ...dependenciesOf(entry.resolved)] : own;
+  };
+  while (queue.length > 0) for (const key of byName.get(queue.pop() as string) ?? []) for (const name of dependenciesOf(key)) reach(name);
+  return reached;
+}
+
 function installedStarci(root: string): string[] {
   try {
     return fs.readdirSync(path.join(root, 'node_modules', '@starci'));
@@ -168,8 +216,9 @@ export function computeFingerprint({ root, tracked, cliVersion, hfsDir = fileURL
     add(`pkg:@starci/${name}`, `${version}\0${entry?.integrity ?? 'local'}`);
   }
   const digests = packageDigests(lock);
+  const reached = reachablePackages(root, tracked, lock);
   for (const [family, toolchain] of Object.entries(LOCK_TOOLCHAIN)) {
-    const lines = [...digests].filter(([name]) => toolchain === null || toolchain.test(name)).map(([name, digest]) => `${name}\0${digest}`);
+    const lines = [...digests].filter(([name]) => (toolchain === null ? reached === null || !TOOL_ONLY.test(name) || reached.has(name) : toolchain.test(name))).map(([name, digest]) => `${name}\0${digest}`);
     add(`lock:${family}`, lines.join('\n'));
   }
   for (const file of tracked) {

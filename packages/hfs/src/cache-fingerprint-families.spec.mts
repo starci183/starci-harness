@@ -123,3 +123,88 @@ test('a changed package dirties the files that import it and, through their surf
   const unknown: ImportGraph = new Map([...after, ['d', { ...node('d'), packages: undefined }]]);
   assert.ok(dirtySetOf(before, unknown, new Set(['@s/lib'])).dirty.has('d'), 'a record that never listed its packages is judged again');
 });
+
+type Install = { version: string; dependencies?: Record<string, string> };
+
+/** An app whose lock holds `installs` (by lock path), whose root manifest declares `rootDeps` and whose `be/package.json` declares `beDeps`. */
+function workspaces(t: { after(fn: () => void): void }, installs: Record<string, Install>, rootDeps: Record<string, string>, beDeps: Record<string, string> = {}): string {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-fingerprint-reach-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const packages = { '': { name: 'demo' }, be: { name: 'be' }, ...Object.fromEntries(Object.entries(installs).map(([key, install]) => [key, { ...install, integrity: `sha512-${install.version}` }])) };
+  fs.writeFileSync(path.join(root, 'package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages }));
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'demo', workspaces: ['be'], devDependencies: rootDeps }));
+  fs.mkdirSync(path.join(root, 'be'));
+  fs.writeFileSync(path.join(root, 'be', 'package.json'), JSON.stringify({ name: 'be', dependencies: beDeps }));
+  return root;
+}
+
+const differing = (after: string, before: string): Map<string, string[]> => {
+  const tracked = ['package.json', 'be/package.json', 'package-lock.json'];
+  const hfsDir = path.join(after, 'node_modules', '@starci', 'hfs');
+  return differencesByFamily(fingerprintDifferences(computeFingerprint({ root: before, tracked, hfsDir }).parts, computeFingerprint({ root: after, tracked, hfsDir }).parts));
+};
+
+const TOOLS = { '@starci/hfs': '6.0.1', 'starci-harness': '1.1.0-alpha.82', eslint: '10.0.0', prettier: '3.6.0', stylelint: '17.0.0', '@starci/eslint-canon-be': '3.19.3' };
+const installsOf = (tools: Record<string, string>, extra: Record<string, Install> = {}): Record<string, Install> => ({
+  ...Object.fromEntries(Object.entries(tools).map(([name, version]) => [`node_modules/${name}`, { version }])),
+  'node_modules/typescript': { version: '5.9.0' },
+  'node_modules/jest': { version: '30.0.0' },
+  ...extra,
+});
+
+test('a bump of the harness packages re-runs the hfs-run families and neither types, test, lint, format nor sonar', (t) => {
+  const base = workspaces(t, installsOf(TOOLS), TOOLS);
+  const bumped = { ...TOOLS, '@starci/hfs': '6.0.2', 'starci-harness': '1.1.0-alpha.83' };
+  const byFamily = differing(workspaces(t, installsOf(bumped), bumped), base);
+  assert.deepEqual([...byFamily.keys()].sort(), ['db', 'hfs', 'secrets', 'wiring']);
+  assert.deepEqual(byFamily.get('hfs'), ['file:package.json']);
+});
+
+test('a tool bump re-runs the families that read the tool and not types or test, unless a program can load it', (t) => {
+  const base = workspaces(t, installsOf(TOOLS), TOOLS);
+  const eslintBump = { ...TOOLS, eslint: '10.1.0' };
+  const eslint = differing(workspaces(t, installsOf(eslintBump), eslintBump), base);
+  assert.deepEqual([...eslint.keys()].sort(), ['db', 'hfs', 'lint', 'secrets', 'sonar', 'wiring'], 'the hfs-run families read the root manifest whole');
+  assert.deepEqual(eslint.get('lint'), ['lock:lint']);
+  assert.equal(eslint.has('types'), false);
+  assert.equal(eslint.has('test'), false);
+  const prettierBump = { ...TOOLS, prettier: '3.7.0' };
+  const prettier = differing(workspaces(t, installsOf(prettierBump), prettierBump), base);
+  assert.deepEqual(prettier.get('format'), ['lock:format']);
+  assert.equal(prettier.has('types'), false);
+  assert.equal(prettier.has('test'), false);
+  assert.equal(prettier.has('lint'), false);
+
+  const declared = workspaces(t, installsOf(TOOLS), TOOLS, { eslint: '10.0.0' });
+  const declaredBump = differing(workspaces(t, installsOf(eslintBump), eslintBump, { eslint: '10.0.0' }), declared);
+  assert.deepEqual(declaredBump.get('types'), ['lock:types'], 'a workspace that declares the tool loads it');
+  assert.deepEqual(declaredBump.get('test'), ['lock:test']);
+
+  const viaLibrary = { 'node_modules/lib': { version: '1.0.0', dependencies: { eslint: '^10.0.0' } } };
+  const reached = workspaces(t, installsOf(TOOLS, viaLibrary), TOOLS, { lib: '1.0.0' });
+  const reachedBump = differing(workspaces(t, installsOf(eslintBump, viaLibrary), eslintBump, { lib: '1.0.0' }), reached);
+  assert.deepEqual(reachedBump.get('types'), ['lock:types'], 'a library a workspace declares reaches the tool through its resolved dependencies');
+  assert.deepEqual(reachedBump.get('test'), ['lock:test']);
+});
+
+test('a bump of a library or of TypeScript still re-runs types and test: only the tools of other families are left out', (t) => {
+  const base = workspaces(t, installsOf(TOOLS, { 'node_modules/lib': { version: '1.0.0' } }), TOOLS, { lib: '1.0.0' });
+  const library = differing(workspaces(t, installsOf(TOOLS, { 'node_modules/lib': { version: '1.1.0' } }), TOOLS, { lib: '1.1.0' }), base);
+  assert.deepEqual(library.get('types'), ['lock:types']);
+  assert.deepEqual(library.get('test'), ['lock:test']);
+  assert.equal(library.has('lint'), false);
+  const typescript = differing(workspaces(t, { ...installsOf(TOOLS, { 'node_modules/lib': { version: '1.0.0' } }), 'node_modules/typescript': { version: '5.9.1' } }, TOOLS, { lib: '1.0.0' }), base);
+  assert.deepEqual(typescript.get('types'), ['lock:types']);
+  assert.deepEqual(typescript.get('test'), ['lock:test']);
+  assert.deepEqual(typescript.get('lint'), ['lock:lint']);
+});
+
+test('a manifest that cannot be read leaves nothing out of the types and test parts', (t) => {
+  const base = workspaces(t, installsOf(TOOLS), TOOLS);
+  const damaged = workspaces(t, installsOf({ ...TOOLS, eslint: '10.1.0' }), TOOLS);
+  fs.writeFileSync(path.join(damaged, 'be', 'package.json'), '{ not json');
+  const damagedBase = workspaces(t, installsOf(TOOLS), TOOLS);
+  fs.writeFileSync(path.join(damagedBase, 'be', 'package.json'), '{ not json');
+  assert.deepEqual(differing(damaged, damagedBase).get('types'), ['lock:types']);
+  assert.equal(differing(damaged, base).has('lint'), true);
+});

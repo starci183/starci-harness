@@ -152,8 +152,9 @@ content index and outside every step's file set.
 A part is anything a step reads that is not an app source, and each part names the families that read it
 (`familiesOfPart`, `packages/hfs/cache/fingerprint.mts`): a part that differs makes only those families full, the diagnosis
 line names the family and the part, and the folders of the other families keep their records. Invalidation is therefore rare
-and per family: a bump of `@starci/hfs` re-runs the hfs-run families and never ESLint, and a bump of a library such as
-`@starci/auth` re-runs nothing by fingerprint. Parts are portable (equal on every host for one commit):
+and per family: a bump of `@starci/hfs` or of the CLI re-runs the hfs-run families (hfs, secrets, wiring, db) and nothing else, a bump of a
+lint package re-runs lint (and sonar), a bump of Prettier re-runs format, and a bump of a library such as `@starci/auth` re-runs types and
+test and no other family. Parts are portable (equal on every host for one commit):
 
 | part | families |
 |---|---|
@@ -161,7 +162,7 @@ and per family: a bump of `@starci/hfs` re-runs the hfs-run families and never E
 | the CLI version, the `@starci/hfs` that runs (slot manifest, failure codes, pins) | hfs, secrets, wiring, db |
 | an installed `@starci/*` package by version and recorded integrity: the canon and Grammar ESLint packages and `stylelint-canon`; `prettier-config`; `tsconfig`; `jest-preset` and `test-world` | lint and sonar; format; types, lint, test and sonar; test and sonar (any other `@starci` package is a library, no part) |
 | `lock:<family>`: the resolved installs of that family's toolchain in `package-lock.json` (ESLint, typescript-eslint, TypeScript, stylelint and their plugins for lint; Prettier for format) | that family, and sonar for lint and test |
-| `lock:types`, `lock:test`: every resolved install | types; test and sonar |
+| `lock:types`, `lock:test`: every resolved install a program or a spec can load (below) | types; test and sonar |
 | `hfs.json` | hfs, secrets, wiring, db, lint, sonar |
 | each `package.json` whole / by shape (dependency versions blanked) | hfs, secrets, wiring, db / lint, types, test, format, sonar |
 | `tsconfig*.json`; `eslint.config.mjs`, `stylelint.config.mjs`; the jest configuration | types, lint, test, sonar; lint, sonar; test, sonar |
@@ -172,8 +173,13 @@ and per family: a bump of `@starci/hfs` re-runs the hfs-run families and never E
 A library's type surface reaches ESLint through the import graph, not the fingerprint: the graph records the installed
 packages each file imports and the side keeps their install digests, so a bump dirties the files that import the package and
 their dependents (ESLint, below). The types and test families key their records by the local files a program or a spec reads,
-never by the installed packages, so they read every resolved install (`lock:types`, `lock:test`) and run full on any
-dependency bump; narrowing them needs their records to name their packages first. The quality profile of the policy is not a
+never by the installed packages, so they read every install a program or a spec can load (`lock:types`, `lock:test`) and run full on a
+bump of any of them. The tools of the other families are not among them: the ESLint and stylelint packages and their `@starci` canons,
+Prettier and its configuration, `@starci/hfs` and `starci-harness` (`TOOL_ONLY` of `packages/hfs/cache/fingerprint.mts`). Such a tool is left
+out of both parts unless something a program or a spec loads reaches it: a workspace manifest declares it (the root manifest's tools are
+the harness's own), or the resolved dependencies of a declared package name it in the lockfile. A manifest that cannot be read leaves nothing
+out. `typescript` is no tool of that set, so its bump re-runs types, test and lint. A bump of a tool that no manifest declares for a workspace
+therefore re-runs the families that read it (the `pkg:` and `lock:<family>` rows above) and keeps the types and test records. The quality profile of the policy is not a
 part (the gate threshold only judges the verdict).
 
 A run whose CLI or any `@starci` package is linked or copied from a local folder (no recorded integrity) has no
