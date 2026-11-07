@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0-alpha.89 - 2026-11-08
+
+- Changed: the heavy-command governor sizes every command greedily to the live RAM. The room is the free RAM now less `heavy.reserveMb` (4096, the one headroom) and what the commands admitted in the last `heavy.plannedSeconds` planned; free RAM already excludes what running commands use, so no estimate, reservation or earlier run is read. A test run takes `clamp(floor((room - parent cap) / worker cap), 1, min(cores - 1, testWorkers))` workers (`testRunSizing`, caps `heavy.testRun`): a free 22 GB on 28 cores gives 7, a free 7 GB gives 1. Any other node tool runs under the smaller of its cap and the room (`heavy.caps`, `heapFor`).
+- Changed: admissions are serialised by the machine store's lock and served first come, first served: a command whose room is under its least need waits, holding nothing, only the head may start, and it prints its place, its need and the running commands every minute (`waitLine`). With nothing running it starts on the room there is. A row of a process that is gone is dropped at the next admission. A command under a held command, and any command on a CI runner (`CI` set), uses the RAM free now with no queue.
+- Changed: a command cannot take more than it planned. Each node tool runs under its heap cap; each test worker is held to `heavy.testRun.workerMb` by `--workerIdleMemoryLimit` and a `--require` preload of the parent that gives every forked worker `--max-old-space-size` at it (`STARCI_WORKER_HEAP_MB`). A command that runs out of memory fails with a line naming the heap cap it hit and the RAM free at its admission (`oomNote`).
+- Changed: `heavy.estimateMb`, `heavy.memoryMb`, `heavy.testWorkerMb`, `heavy.projectSlots`, the test worker's own `reserveMb` and the plan's `testParent`, `testWorker` and `types` constants are replaced by `heavy.caps`, `heavy.testRun` and `heavy.plannedSeconds`; the queue no longer rotates between projects, and the memory plan holds the check's own heap and the lint chunk.
+- Removed: the learned memory factors (`memory-factors.json`, `learnPeak`, `readFactors`, the sampling of a child's peak) and every per-file and per-spec estimate of a heap or a worker count.
+
 ## 1.1.0-alpha.88 - 2026-11-07
 
 - Added: `RELEASE_PEER_RANGE_EXCLUDES_PIN` refuses a plan in which a package to publish, or a package a stack pin names at the version its folder holds, declares a `peerDependencies` range that excludes the version a sibling is pinned at or published at (a canon peering `@starci/hfs` `~6.0.0` against the pinned hfs 6.1.x), because an app cannot `npm ci` the pinned set. `release publish` and `release push` judge it (`cli/src/core/release/peer-range.ts`, spec `peer-range.test.ts`); `WorkspacePackage` carries `peers`.

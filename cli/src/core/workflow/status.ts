@@ -3,7 +3,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { workflowBudgets } from "../../harness/budget.js"
 import { currentGoal } from "../../harness/goal.js"
 import type { NodeView } from "../../harness/graph.js"
-import { clockOf, cpuLoad, heavySlots, heldWhy, loadHeavyRules, runningHeavyKinds, seatHolds, seatHoldWhy, seatRoom } from "../../harness/heavy.js"
+import { clockOf, cpuLoad, heavySlots, heldWhy, loadHeavyRules, runningHeavyRows, seatHolds, seatHoldWhy, seatRoom } from "../../harness/heavy.js"
 import type { HeavyKind } from "../../harness/heavy.js"
 import { openExistingLedger } from "../../harness/ledger.js"
 import { lastEvent } from "../../harness/tasks.js"
@@ -16,7 +16,7 @@ import { nodeTable } from "./engine.js"
 /**
  * Why each live node stands still when the host holds it, instead of a bare state: a queued task whose seat the RAM floor holds
  * ("held: free RAM 2.6 GB below seat floor 6 GB (since 21:02Z)"), a task whose verify waits for a heavy-command slot ("held:
- * heavy-command slot, free RAM 2.6 GB below reserve 8 GB (since 21:02Z)"), and a task awaiting the owner, with the reason its
+ * heavy-command slot, free RAM 2.6 GB below reserve 4 GB (since 21:02Z)"), and a task awaiting the owner, with the reason its
  * verify recorded (a custody key the live suite needs, a verify that never reached a verdict). Other nodes keep their why.
  */
 const heldViews = async (db: DatabaseSync, views: readonly NodeView[]): Promise<NodeView[]> => {
@@ -26,7 +26,7 @@ const heldViews = async (db: DatabaseSync, views: readonly NodeView[]): Promise<
     const holds = seatRoom(rules).ok ? new Map<string, string>() : new Map(seatHolds().map((hold) => [hold.task, seatHoldWhy(hold)]))
     const waiting = heavySlots().filter((slot) => slot.state === "waiting")
     const freeMb = Math.floor(freemem() / 1_048_576)
-    const running = runningHeavyKinds()
+    const running = runningHeavyRows(rules)
     const cpu = waiting.length === 0 ? { cpu: 0, managed: null } : await cpuLoad(rules)
     return views.map((view) => {
         const task = view.task

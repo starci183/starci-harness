@@ -75,7 +75,7 @@ export async function runTestForApp(session: CheckSession, { repoRoot, tracked, 
   const findings: CheckFinding[] = [...judged];
   for (const spec of result.failed) findings.push({ code: 'JEST_SPEC_FAILED', level: 'error', engine: 'jest', path: spec, message: result.changed.includes(spec) ? `${spec}: closure changed during the run (merge or codegen mid-run); run the check again` : `${spec} failed or reported no coverage; run npm test for its output` });
   // The runner's death is one failure of the run, not one per spec it never reached.
-  if (result.died !== undefined) findings.push({ code: 'JEST_RUNNER_DIED', level: 'error', engine: 'jest', path: 'be/', message: `jest died before ${String(result.died.unreported)} of its specs reported (${result.died.line}); ${planClause() || "a heap limit is the heavy governor's memoryMb.test (ops/liveness.yaml)"}, so this is the runner, not those specs` });
+  if (result.died !== undefined) findings.push({ code: 'JEST_RUNNER_DIED', level: 'error', engine: 'jest', path: 'be/', message: `jest died before ${String(result.died.unreported)} of its specs reported (${result.died.line}); ${planClause() || "a heap limit is the heavy governor's testRun caps (ops/liveness.yaml)"}, so this is the runner, not those specs` });
   return { result, findings };
 }
 

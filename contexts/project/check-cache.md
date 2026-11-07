@@ -439,17 +439,23 @@ never restate them, and run each whole on every run that selects them (nothing i
 
 ## The memory plan
 
-Before its families run, `app check` measures the app from its git index and file sizes (per side the unit specs and the sources; the MB of the per-spec
-coverage records and of every cache record) and sizes each heap from that scope with the constants of `ops/liveness.yaml` `heavy.plan`
-(`cli/src/harness/memory-plan.ts`): the check's own parent heap (it re-executes itself under it when node's limit is lower), each side's coverage
-parent, worker heap and worker count, each tsc program's heap and the files one lint ratchet child takes. Admission holds each planned child at its
-planned MB, except that a command admitted while nothing else runs is never held back for memory: no running command will release any, so waiting could not help. It
-runs on the room free RAM leaves (a coverage run on the workers whose planned heaps fit it, its parent heap holding the parent and the first worker, and one worker when not
-even the parent fits), and the run prints a warning naming the shortfall. A child's sampled peak more than 20% over its plan raises that kind's factor for the app's next run
-(`memory-factors.json` in the untracked tool cache of slot `app.tool-cache`, so per checkout and machine, never a file of the app), with a warning, by at most twofold; a peak under 75% of its plan eases a raised factor
-back toward 1, and no worker heap is planned above the room free RAM leaves. An out-of-memory names the plan that was in force. `--explain` prints the plan. The per-spec coverage records are held as their
-lines and parsed one at a time (a lazy record, `cache/jsonl.mts`), and their union folds through the preset's merge one record at a time, so the
-parent holds about three times the records' MB, not the seven times their parsed tree took.
+Before its families run, `app check` measures the cache folder of the app (the MB of every record) and takes the check's own heap and the files one lint ratchet
+child takes from it and the constants of `ops/liveness.yaml` `heavy.plan` (`cli/src/harness/memory-plan.ts`; the check re-executes itself under its heap when
+node's limit is lower). Every heavy command then sizes itself from the live RAM at its admission, never from an earlier run (`withHeavySlot` of
+`cli/src/harness/heavy.ts`; the caps and the one reserve are in `heavy.caps`, `heavy.testRun` and `heavy.reserveMb`, which also hold every number below):
+
+- The room is the free RAM now less the one reserve and what the commands admitted in the last `heavy.plannedSeconds` planned; free RAM already excludes
+  what running commands use.
+- A test run takes `clamp(floor((room - parent cap) / worker cap), 1, min(cores - 1, heavy.testWorkers))` workers: the jest parent is held to its cap,
+  each worker to its cap by `--workerIdleMemoryLimit` and a `--max-old-space-size` a preload of the parent's `NODE_OPTIONS` gives every forked worker.
+  One worker is the floor, and an estimate never lowers a count the room holds.
+- Any other node tool runs under the smaller of its cap and the room, never under its minimum.
+- A command whose room is under its least need waits, first come, first served, and starts when RAM frees; with nothing running it starts anyway with one
+  worker and a warning that names the shortfall. A command that runs out of memory names the heap cap it hit and the RAM free at its admission.
+  ([cli/README.md](../../cli/README.md) "Heavy-command governor"). `--explain` prints the plan and the test run the RAM free now would get.
+
+The per-spec coverage records are held as their lines and parsed one at a time (a lazy record, `cache/jsonl.mts`), and their union folds through the
+preset's merge one record at a time, so the parent holds about three times the records' MB, not the seven times their parsed tree took.
 
 ## The slot, the templates and adoption
 

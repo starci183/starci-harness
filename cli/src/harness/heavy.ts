@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto"
-import { existsSync, readFileSync, statSync } from "node:fs"
-import { availableParallelism, constants, cpus, freemem } from "node:os"
-import { basename, dirname, join, resolve } from "node:path"
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { availableParallelism, constants, cpus, freemem, tmpdir } from "node:os"
+import { basename, join, resolve } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import type { DatabaseSync } from "node:sqlite"
 import { parse } from "yaml"
@@ -20,6 +20,10 @@ export type HeavyKind = "tsc" | "eslint" | "test" | "build" | "install" | "uat"
 
 const HEAVY_KINDS = ["tsc", "eslint", "test", "build", "install", "uat"] as const
 
+/** The kinds whose one process has a cap of its own (`heavy.caps`): a test run is sized at admission from the RAM free then (`testRunSizing`). */
+const FIXED_KINDS = ["tsc", "eslint", "build", "install", "uat"] as const
+type FixedKind = (typeof FIXED_KINDS)[number]
+
 const heavySchema = z.strictObject({
     reserveMb: z.number().int().nonnegative(),
     maxSlots: z.number().int().positive().optional(),
@@ -28,25 +32,20 @@ const heavySchema = z.strictObject({
     cpuStarveMinutes: z.number().positive(),
     managedCpuFloorPercent: z.number().nonnegative().max(100),
     underForeignPressureSlots: z.number().int().positive(),
-    projectSlots: z.number().int().positive(),
     pollSeconds: z.number().positive(),
-    estimateMb: z.strictObject(Object.fromEntries(HEAVY_KINDS.map((kind) => [kind, z.number().int().positive()])) as Record<HeavyKind, z.ZodNumber>),
-    memoryMb: z.strictObject(Object.fromEntries(HEAVY_KINDS.map((kind) => [kind, z.number().int().positive()])) as Record<HeavyKind, z.ZodNumber>),
+    caps: z.strictObject(Object.fromEntries(FIXED_KINDS.map((kind) => [kind, z.strictObject({ capMb: z.number().int().positive(), minMb: z.number().int().positive() })])) as Record<FixedKind, z.ZodObject<{ capMb: z.ZodNumber; minMb: z.ZodNumber }, z.core.$strict>>),
     timeoutMinutes: z.partialRecord(z.enum(HEAVY_KINDS), z.number().positive()),
     timeoutMinutesPer1000Files: z.partialRecord(z.enum(HEAVY_KINDS), z.number().positive()).optional(),
     testWorkers: z.string().regex(/^(?:\d+|\d{1,3}%)$/),
-    testWorkerMb: z.number().int().positive(),
+    testRun: z.strictObject({ parentMb: z.number().int().positive(), workerMb: z.number().int().positive() }),
+    plannedSeconds: z.number().positive(),
     seatFreeMb: z.number().int().positive(),
     starvedTicketMinutes: z.number().positive(),
     bootProofTimeoutSeconds: z.number().int().positive(),
     scannerCpuPercent: z.number().positive(),
     plan: z.strictObject({
         parent: z.strictObject({ baseMb: z.number().positive(), perRecordMb: z.number().positive(), minMb: z.number().int().positive(), maxMb: z.number().int().positive() }),
-        testParent: z.strictObject({ perSpecMb: z.number().positive(), margin: z.number().positive(), minMb: z.number().int().positive(), maxMb: z.number().int().positive() }),
-        testWorker: z.strictObject({ baseMb: z.number().positive(), perSpecMb: z.number().positive(), minMb: z.number().int().positive(), maxMb: z.number().int().positive(), reserveMb: z.number().int().nonnegative() }),
-        types: z.strictObject({ baseMb: z.number().positive(), perFileMb: z.number().positive(), minMb: z.number().int().positive(), maxMb: z.number().int().positive() }),
-        lintChunk: z.strictObject({ files: z.number().int().positive(), min: z.number().int().positive(), max: z.number().int().positive() }),
-        learnAbovePercent: z.number().positive(),
+        lintChunk: z.strictObject({ files: z.number().int().positive() }),
     }).optional(),
 })
 
@@ -68,9 +67,6 @@ export const loadHeavyRules = (dir: string = locateOps()): HeavyRules => {
     }
     const parsed = z.looseObject({ heavy: heavySchema }).safeParse(raw)
     if (!parsed.success) throw new Refusal("OPS_INVALID", `${file} heavy block is invalid: ${z.prettifyError(parsed.error)}`)
-    // Admission holds what a test run's parent may grow to: its heap ceiling, so a coverage run admitted is never one the host cannot hold.
-    const { estimateMb, memoryMb } = parsed.data.heavy
-    if (estimateMb.test !== memoryMb.test) throw new Refusal("OPS_INVALID", `${file} heavy block is invalid: estimateMb.test ${String(estimateMb.test)} differs from memoryMb.test ${String(memoryMb.test)}; admission holds a test run's parent at its heap ceiling`)
     loaded.set(dir, parsed.data.heavy)
     return parsed.data.heavy
 }
@@ -96,10 +92,9 @@ export const HEAVY_HELD_ENV = "STARCI_HEAVY_HELD"
 /**
  * The host's load as admission reads it: free memory, the CPU average over the window, the share of it the governor's own running
  * commands burn (`managedCpuPercent`, read only while the CPU is above its ceiling, null otherwise or when the process table
- * cannot be read), the CPU rule that applied (`cpuRule`, null under the ceiling), the count cap, the memory the running commands
- * are estimated to hold, `roomMb` (free RAM less the reserve and what the running commands hold), and `admitted`, how many heavy
- * commands may run now (the running ones plus how many more of the smallest estimate fit), with why, and `shortMb`, the MB of its own
- * estimate the room lacks while nothing else runs (0 otherwise). `pressure` is true when no
+ * cannot be read), the CPU rule that applied (`cpuRule`, null under the ceiling), the count cap, the memory the recently admitted commands
+ * planned, `roomMb` (free RAM less the reserve and that plan), and `admitted`, how many heavy commands may run now (the running ones plus how many
+ * more of the smallest need fit), with why, and `shortMb`, the MB of its own need the room lacks while nothing else runs (0 otherwise). `pressure` is true when no
  * command beyond the running ones fits now: the host cannot admit the next one.
  */
 export interface HostLoad {
@@ -143,25 +138,31 @@ const cpuRuleOf = (rules: HeavyRules, cpuPercent: number, managed: number | null
     return { slots: 0, rule: `CPU ${window} is above ${String(rules.maxCpuPercent)}% and ${share}: no new heavy command starts until ${starve}, then the oldest fitting one does` }
 }
 
+/** The least room a command of each kind starts in: `heavy.caps` minMb, and for a test run its parent and one worker (`heavy.testRun`). */
+export const needsOf = (rules: HeavyRules): Readonly<Record<HeavyKind, number>> => ({
+    tsc: rules.caps.tsc.minMb,
+    eslint: rules.caps.eslint.minMb,
+    build: rules.caps.build.minMb,
+    install: rules.caps.install.minMb,
+    uat: rules.caps.uat.minMb,
+    test: rules.testRun.parentMb + rules.testRun.workerMb,
+})
+
 /**
  * Dynamic admission from RAM and CPU. A command of `kind` is admitted when the CPU lets one more start (at or under its ceiling;
  * above it, the rule `cpuRuleOf` names from `managedCpu`, the share the governor's own running commands burn), fewer than the
- * cap run, and (free RAM - reserveMb) covers the estimates of the running commands plus its own; while nothing runs, one is
- * admitted whatever its estimate: no running command will release memory, so waiting could not help (an estimate is an estimate, a
- * learned factor can overshoot, and a host under its reserve or a small one still makes progress). `shortMb` is how much of its
- * estimate the room lacks while it is admitted alone; the caller sizes the command to the room and says so. The CPU never lifts a RAM
- * rule. `running` are the kinds running now. Without a kind, `admits` is judged for the smallest estimate (what `host load`
- * reports). `starved` (the queue admitted nothing for cpuStarveMinutes, `starvedQueue`) lets one command start under a hot
- * CPU: high CPU slows the queue, it never stops it.
+ * cap run, and the room covers its least need: room = free RAM now - reserveMb - what the commands admitted in the last `plannedSeconds` planned
+ * (a `running` row carries that plan, and 0 once the command has had that long to grow into the free RAM, which then shows it). While nothing runs,
+ * one is admitted whatever the room: no running command will release memory, so waiting could not help. `shortMb` is how much of its need the room
+ * lacks while it is admitted alone; the caller sizes the command to the room and says so. The CPU never lifts a RAM rule. Without a kind, `admits` is
+ * judged for the smallest need (what `host load` reports). `starved` (the queue admitted nothing for cpuStarveMinutes, `starvedQueue`) lets one
+ * command start under a hot CPU: high CPU slows the queue, it never stops it.
  */
 export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly RunningRow[] = [], kind?: HeavyKind, starved = false, managedCpu: number | null = null, ownMb?: number): HostLoad & { readonly admits: boolean; readonly cpuHolds: boolean } => {
     const cap = slotCap(rules)
-    const estimates: Readonly<Record<string, number>> = rules.estimateMb
-    // A row of a kind this build does not know (an older or newer CLI) is held at the largest estimate.
-    const estimate = (name: string): number => (name in estimates ? (estimates[name] ?? 0) : Math.max(...Object.values(estimates)))
-    // A row the memory plan sized holds its planned MB (memory-plan.ts), any other its kind's estimate.
-    const committedMb = running.reduce((sum, row) => sum + (typeof row === "string" ? estimate(row) : row.mb), 0)
-    const own = ownMb ?? (kind === undefined ? Math.min(...Object.values(rules.estimateMb)) : estimate(kind))
+    const needs: Readonly<Record<string, number>> = needsOf(rules)
+    const committedMb = running.reduce((sum, row) => sum + row.mb, 0)
+    const own = ownMb ?? (kind === undefined ? Math.min(...Object.values(needs)) : (needs[kind] ?? 0))
     const room = freeMb - rules.reserveMb - committedMb
     const hot = cpuPercent > rules.maxCpuPercent
     const cpu = hot ? cpuRuleOf(rules, cpuPercent, managedCpu, running.length, starved) : { slots: Number.MAX_SAFE_INTEGER, rule: null }
@@ -177,9 +178,9 @@ export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number,
     const reasons = [
         ...(cpu.rule === null ? [] : [cpu.rule]),
         ...(full ? [`${String(running.length)} running reach the cap of ${String(cap)} (floor(cores / 2)${maxSlotsSuffix})`] : []),
-        ...(!cpuHolds && !full && !fits ? [`free RAM ${String(freeMb)} MB less the reserve ${String(rules.reserveMb)} MB and the ${String(committedMb)} MB the running commands hold is under the reserve for one more (${String(own)} MB)`] : []),
+        ...(!cpuHolds && !full && !fits ? [`free RAM ${String(freeMb)} MB less the reserve ${String(rules.reserveMb)} MB and the ${String(committedMb)} MB that commands admitted in the last ${String(rules.plannedSeconds)} s planned is under the need of one more (${String(own)} MB)`] : []),
     ]
-    const capacity = `${String(admitted)} of cap ${String(cap)} fit: free ${String(freeMb)} MB - reserve ${String(rules.reserveMb)} MB - running ${String(committedMb)} MB = ${String(room)} MB room`
+    const capacity = `${String(admitted)} of cap ${String(cap)} fit: free ${String(freeMb)} MB - reserve ${String(rules.reserveMb)} MB - planned ${String(committedMb)} MB = ${String(room)} MB room`
     return {
         freeMb,
         cpuPercent,
@@ -219,8 +220,10 @@ const ensureTables = (db: DatabaseSync): void => {
     db.exec(TABLES)
     const columns = db.prepare("PRAGMA table_info(heavy_slots)").all().map((column) => column.name)
     if (!columns.includes("task")) db.exec("ALTER TABLE heavy_slots ADD COLUMN task TEXT")
-    // The MB the memory plan holds for the row (memory-plan.ts); null for a row sized by its kind's estimate.
+    // The MB the command planned to take (its parent and workers, or its heap cap).
     if (!columns.includes("mb")) db.exec("ALTER TABLE heavy_slots ADD COLUMN mb INTEGER")
+    // The epoch ms at which the row was admitted: its plan counts in the room for `heavy.plannedSeconds` after it.
+    if (!columns.includes("admitted_ms")) db.exec("ALTER TABLE heavy_slots ADD COLUMN admitted_ms INTEGER")
 }
 
 /** The heavy_meta row holding the epoch ms of the governor's last admission, what the starvation clock runs from. */
@@ -364,15 +367,18 @@ export const managedCpuPercent = async (rules: HeavyRules): Promise<number | nul
     return managedShare(first, second)
 }
 
-/** A running heavy command as admission counts it: its kind, or its kind and the MB its memory plan holds for it. */
-export type RunningRow = string | { readonly kind: string; readonly mb: number }
+/** A running heavy command as admission counts it: its kind and the MB it planned, which counts for `plannedSeconds` after its admission and is 0 after. */
+export interface RunningRow {
+    readonly kind: string
+    readonly mb: number
+}
 
-/** The heavy commands running now (live processes only), each at its planned MB when the memory plan sized it. */
-const runningRows = (db: DatabaseSync): RunningRow[] =>
-    db.prepare("SELECT kind, mb FROM heavy_slots WHERE state = 'running'").all().map((row) => (typeof row.mb === "number" && row.mb > 0 ? { kind: String(row.kind), mb: row.mb } : String(row.kind)))
-
-/** The kinds of the heavy commands running now (live processes only). */
-const runningKinds = (db: DatabaseSync): string[] => runningRows(db).map((row) => (typeof row === "string" ? row : row.kind))
+/** The heavy commands running now (live processes only), each with the MB it planned while its admission is under `plannedSeconds` old. */
+const runningRows = (db: DatabaseSync, rules: HeavyRules, atMs: number = Date.now()): RunningRow[] =>
+    db.prepare("SELECT kind, mb, admitted_ms FROM heavy_slots WHERE state = 'running'").all().map((row) => ({
+        kind: String(row.kind),
+        mb: typeof row.mb === "number" && typeof row.admitted_ms === "number" && atMs - row.admitted_ms < rules.plannedSeconds * 1000 ? row.mb : 0,
+    }))
 
 /**
  * Whether the queue is starved: commands wait and none was admitted for cpuStarveMinutes, counted from the later of the last
@@ -395,49 +401,12 @@ export const cpuLoad = async (rules: HeavyRules): Promise<{ readonly cpu: number
 export const hostLoad = async (rules: HeavyRules = loadHeavyRules()): Promise<HostLoad> => {
     const { cpu, managed } = await cpuLoad(rules)
     heavySlots()
-    const { running, starved } = withGovernor((db) => ({ running: runningRows(db), starved: starvedQueue(db, rules) }))
+    const { running, starved } = withGovernor((db) => ({ running: runningRows(db, rules), starved: starvedQueue(db, rules) }))
     return admission(rules, Math.floor(freemem() / 1_048_576), cpu, running, undefined, starved, managed)
 }
 
-const repositoryKeys = new Map<string, string>()
-
-/**
- * The repository a heavy command's folder belongs to, for the per-project fairness cap: the folder holding `.git`, or for a
- * linked worktree (a `.git` file naming `<main>/.git/worktrees/<name>`) its main checkout; a folder in no repository is its own.
- */
-export const repositoryKeyOf = (cwd: string): string => {
-    const known = repositoryKeys.get(cwd)
-    if (known !== undefined) return known
-    const walk = (dir: string): string => {
-        const dotGit = join(dir, ".git")
-        if (existsSync(dotGit)) {
-            if (statSync(dotGit).isDirectory()) return dir
-            const gitdir = /^gitdir:\s*(\S.*)$/m.exec(readFileSync(dotGit, "utf8"))?.[1]?.trim().replaceAll("\\", "/")
-            return (gitdir === undefined ? undefined : /^(.*)\/\.git\/worktrees\/[^/]+$/.exec(gitdir)?.[1]) ?? dir
-        }
-        const parent = dirname(dir)
-        return parent === dir ? cwd : walk(parent)
-    }
-    const key = resolve(walk(resolve(cwd))).replaceAll("\\", "/").toLowerCase()
-    repositoryKeys.set(cwd, key)
-    return key
-}
-
-/**
- * The waiting rows in the order the governor serves them: a project with fewer commands running first, then by age (the
- * oldest wait first); a project already running projectSlots commands while another project waits is passed over.
- */
-const servingOrder = (rows: readonly { readonly id: string; readonly kind: string; readonly cwd: string; readonly state: string; readonly at: string }[], rules: HeavyRules): { readonly id: string; readonly kind: string }[] => {
-    const runningBy = new Map<string, number>()
-    for (const row of rows) if (row.state === "running") runningBy.set(repositoryKeyOf(row.cwd), (runningBy.get(repositoryKeyOf(row.cwd)) ?? 0) + 1)
-    const waiting = rows.filter((row) => row.state === "waiting").map((row) => ({ ...row, project: repositoryKeyOf(row.cwd) }))
-    const held = (project: string): number => runningBy.get(project) ?? 0
-    // The cap passes a project over only for another that is under it; when every waiting project is at its cap, none is held back.
-    const open = waiting.some((row) => held(row.project) < rules.projectSlots)
-    return waiting
-        .filter((row) => !open || held(row.project) < rules.projectSlots)
-        .sort((a, b) => held(a.project) - held(b.project) || a.at.localeCompare(b.at) || a.id.localeCompare(b.id))
-}
+/** The waiting rows in the order the governor serves them: first come, first served (the order they joined the queue). */
+const servingOrder = (rows: readonly { readonly id: string; readonly kind: string; readonly state: string }[]): { readonly id: string; readonly kind: string }[] => rows.filter((row) => row.state === "waiting")
 
 /** One row of the semaphore: a heavy command running (its child's pid once spawned) or waiting for a slot. */
 export interface HeavySlot {
@@ -481,35 +450,34 @@ export const heavySlots = (): HeavySlot[] =>
 
 /**
  * One try for a slot, atomically (withMachine runs it under BEGIN IMMEDIATE, so two processes never both take the last room). The
- * row joins the queue (keeping the time it first waited), and the queue is served in `servingOrder`: the first waiting row that
- * admission admits now, against the commands running at this instant and the free RAM read now, is the one that may start; this
- * row turns running only when it is that one. Above the CPU ceiling the rule `cpuRuleOf` names from `cpu.managed` applies: a
+ * row joins the queue (keeping its place), and the queue is first come, first served (`servingOrder`): only the head may start, and
+ * it starts when admission admits it now, against the commands running at this instant and the free RAM read now, and its plan is
+ * written in the same transaction (`planFor`), so the next admission finds it; a row behind a head that waits for RAM waits too. Above the CPU ceiling the rule `cpuRuleOf` names from `cpu.managed` applies: a
  * foreign load leaves underForeignPressureSlots open, the harness's own holds the queue until it is starved (`starvedQueue`) and
  * then admits the first fitting row alone. The load it was judged on, and the holders when it waits.
  */
-const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at"> & { readonly mb?: number | undefined }, rules: HeavyRules, cpu: { readonly cpu: number; readonly managed: number | null }): { readonly load: HostLoad; readonly holders: string[] | null } =>
+const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at"> & { readonly mb: number }, rules: HeavyRules, cpu: { readonly cpu: number; readonly managed: number | null }, freeMb: number, planFor: (roomMb: number) => number): { readonly load: HostLoad; readonly holders: string[] | null; readonly place: number } =>
     withGovernor((db) => {
         ensureTables(db)
         for (const row of db.prepare("SELECT id, pid FROM heavy_slots").all()) if (!pidAlive(Number(row.pid))) db.prepare("DELETE FROM heavy_slots WHERE id = ?").run(String(row.id))
-        db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, task, state, at, mb) VALUES (?, ?, ?, ?, ?, ?, 'waiting', ?, ?) ON CONFLICT (id) DO NOTHING").run(slot.id, slot.pid, slot.kind, slot.label, slot.cwd, slot.task, now(), slot.mb ?? null)
-        const rows = db.prepare("SELECT id, kind, cwd, state, at, mb FROM heavy_slots").all().map((row) => ({ id: String(row.id), kind: String(row.kind), cwd: String(row.cwd), state: String(row.state), at: String(row.at), mb: typeof row.mb === "number" && row.mb > 0 ? row.mb : undefined }))
-        const running = db.prepare("SELECT label, pid FROM heavy_slots WHERE state = 'running'").all()
-        const held = runningRows(db)
-        const freeMb = Math.floor(freemem() / 1_048_576)
+        db.prepare("INSERT INTO heavy_slots (id, pid, kind, label, cwd, task, state, at, mb) VALUES (?, ?, ?, ?, ?, ?, 'waiting', ?, ?) ON CONFLICT (id) DO NOTHING").run(slot.id, slot.pid, slot.kind, slot.label, slot.cwd, slot.task, now(), slot.mb)
+        const rows = db.prepare("SELECT id, kind, cwd, state, at, mb FROM heavy_slots ORDER BY rowid").all().map((row) => ({ id: String(row.id), kind: String(row.kind), cwd: String(row.cwd), state: String(row.state), at: String(row.at), mb: typeof row.mb === "number" && row.mb > 0 ? row.mb : undefined }))
+        const running = db.prepare("SELECT label, pid, mb, admitted_ms FROM heavy_slots WHERE state = 'running'").all()
+        const atMs = Date.now()
+        const held = runningRows(db, rules, atMs)
         const starved = starvedQueue(db, rules)
         const plannedOf = new Map(rows.map((row) => [row.id, row.mb] as const))
         const judge = (id: string, kind: string): ReturnType<typeof admission> => admission(rules, freeMb, cpu.cpu, held, kind as HeavyKind, starved, cpu.managed, plannedOf.get(id))
-        const order = servingOrder(rows, rules)
-        const first = order.find((row) => judge(row.id, row.kind).admits)
+        const order = servingOrder(rows)
         const load = judge(slot.id, slot.kind)
-        if (first?.id !== slot.id) {
+        if (order[0]?.id !== slot.id || !load.admits) {
             const place = order.findIndex((row) => row.id === slot.id)
-            const queued = place < 0 ? "its project runs projectSlots commands while another project waits" : `${String(place)} ahead of it in the queue`
-            return { load: { ...load, reason: `${load.reason}; ${queued}` }, holders: running.map((row) => `${String(row.label)} (pid ${String(row.pid)})`) }
+            const queued = place <= 0 ? "first in the queue" : `${String(place)} ahead of it in the queue`
+            return { load: { ...load, reason: `${load.reason}; ${queued}` }, holders: running.map((row) => `${String(row.label)} (pid ${String(row.pid)}) planned ${String(row.mb)} MB, admitted ${String(Math.round((atMs - Number(row.admitted_ms ?? atMs)) / 1000))} s ago`), place: Math.max(0, place) }
         }
-        db.prepare("UPDATE heavy_slots SET state = 'running' WHERE id = ?").run(slot.id)
+        db.prepare("UPDATE heavy_slots SET state = 'running', admitted_ms = ?, mb = ? WHERE id = ?").run(atMs, planFor(load.roomMb), slot.id)
         db.prepare("INSERT INTO heavy_meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").run(LAST_ADMIT, String(Date.now()))
-        return { load, holders: null }
+        return { load, holders: null, place: 0 }
     })
 
 const setChild = (id: string, pid: number): void => {
@@ -525,87 +493,120 @@ const release = (id: string): void => {
 
 /**
  * The limits @starci/hfs reads from its environment, from their one owner here: the heap of the ESLint child an app check spawns
- * (`memoryMb.eslint`, as STARCI_ESLINT_HEAP_MB) and the budget of the lite boot proof's worker from its spawn (`bootProofTimeoutSeconds`, as
+ * (`caps.eslint`, as STARCI_ESLINT_HEAP_MB) and the budget of the lite boot proof's worker from its spawn (`bootProofTimeoutSeconds`, as
  * STARCI_BOOT_PROOF_TIMEOUT_MS).
  */
 export const hfsLimitsEnv = (rules: HeavyRules = loadHeavyRules()): Readonly<Record<string, string>> => ({
-    STARCI_ESLINT_HEAP_MB: String(rules.memoryMb.eslint),
+    STARCI_ESLINT_HEAP_MB: String(rules.caps.eslint.capMb),
     STARCI_BOOT_PROOF_TIMEOUT_MS: String(rules.bootProofTimeoutSeconds * 1000),
     // The ESLint child's liveness budget (heavyTimeoutMinutes), which the rendered CI's lint job outlasts.
     ...(rules.timeoutMinutes.eslint === undefined ? {} : { STARCI_ESLINT_TIMEOUT_MINUTES: String(rules.timeoutMinutes.eslint) }),
     ...(rules.timeoutMinutesPer1000Files?.eslint === undefined ? {} : { STARCI_ESLINT_MINUTES_PER_1000_FILES: String(rules.timeoutMinutesPer1000Files.eslint) }),
 })
 
-/** The `--max-old-space-size` a node tool of this kind runs under, added to whatever NODE_OPTIONS it inherits. */
-const nodeOptions = (rules: HeavyRules, kind: HeavyKind, env: RunOptions["env"], plannedMb?: number): string => {
-    const inherited = env?.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? ""
-    const kept = inherited.replaceAll(/--max-old-space-size=\d+/g, "").trim()
-    return `${kept} --max-old-space-size=${String(plannedMb ?? rules.memoryMb[kind])}`.trim()
-}
+/** The heap a node tool of `kind` runs under on a room of `roomMb`: its cap, or the room when that is under the cap, and never under the least it starts in. */
+export const heapFor = (rules: HeavyRules, kind: FixedKind, roomMb: number): number => Math.max(rules.caps[kind].minMb, Math.min(rules.caps[kind].capMb, Math.floor(roomMb)))
 
-/**
- * What the memory plan sized for one child (memory-plan.ts): its heap (`memoryMb`, its --max-old-space-size and what admission holds in place of the
- * kind's estimate) and, for a test runner, what each worker is planned to hold (`workerMb`, held by admission for every worker after the first) and the
- * most workers the plan gives it.
- */
-export interface HeavyPlanned {
-    readonly memoryMb?: number | undefined
-    readonly workerMb?: number | undefined
-    readonly workers?: number | undefined
-}
+/** `inherited` NODE_OPTIONS with its `--max-old-space-size` replaced by `mb`. */
+const withHeap = (inherited: string, mb: number): string => `${inherited.replaceAll(/--max-old-space-size=\d+/g, "").trim()} --max-old-space-size=${String(mb)}`.trim()
 
 /**
  * A heavy command's run options with its slot: the memory cap, below-normal OS priority, the pid hook and HEAVY_HELD_ENV for its
- * children, and `roomMb`, the room admission measured for it (null for a command that runs under its parent's slot).
+ * children, `roomMb`, the room admission measured for it (null for a command that runs under its parent's slot), and, for a test run, the
+ * sizing it runs under.
  */
 export interface Held {
     readonly options: RunOptions
     readonly roomMb: number | null
     readonly rules: HeavyRules
-    /** What the memory plan sized for it, when a plan was in force. */
-    readonly planned?: HeavyPlanned | undefined
+    /** A test run's parent, workers and worker caps, sized from the room measured at its admission. */
+    readonly test?: TestRunSizing | undefined
+    /** The heap cap the command's node process runs under (a test run's parent), in MB. */
+    readonly heapMb?: number | undefined
+    /** The RAM free when the command was admitted, in MB. */
+    readonly freeMb?: number | undefined
 }
 
-/** The most workers a test run takes: `heavy.testWorkers`, a count or a percent of the logical cores, at least one. */
+/** The most workers a test run takes: `heavy.testWorkers`, a count or a percent of the logical cores, at least one, and one core stays free for the parent. */
 export const testWorkerCap = (rules: HeavyRules, cores: number = availableParallelism()): number => {
     const percent = /^(\d{1,3})%$/.exec(rules.testWorkers)?.[1]
-    return Math.max(1, percent === undefined ? Number(rules.testWorkers) : Math.floor((cores * Number(percent)) / 100))
+    return Math.max(1, Math.min(cores - 1, percent === undefined ? Number(rules.testWorkers) : Math.floor((cores * Number(percent)) / 100)))
+}
+
+/** What a test run is sized to: the jest parent's cap, the workers, and the cap of each. */
+export interface TestRunSizing {
+    /** The jest parent's heap cap and plan, `heavy.testRun.parentMb`. */
+    readonly parentMb: number
+    readonly workers: number
+    /** Each worker's heap cap and the RSS past which jest recycles it (`--workerIdleMemoryLimit`), `heavy.testRun.workerMb`. */
+    readonly workerMb: number
+    /** What the run plans to take: the parent and every worker. */
+    readonly holdMb: number
 }
 
 /**
- * The workers a test run of the room `roomMb` gets: its own estimate (`estimateMb.test`, the parent's heap ceiling) holds the parent and
- * the first worker, and every further `testWorkerMb` of room one more, clamped to 1..testWorkerCap; a run under its parent's slot (null) takes the cap. So a
- * host with room runs wide, a starved one runs one worker, and the count follows the RAM free at admission, never the slot cap.
+ * The size of a test run from the room now, greedily and with no earlier run read. `roomMb` is the free RAM now less `reserveMb` and what the commands
+ * admitted in the last `plannedSeconds` planned. The jest parent takes `parentMb`; the workers are what the rest of the room holds,
+ * clamp(floor((room - parent) / workerMb), 1, min(cores - 1, `testWorkers`)); each worker takes `workerMb`. One worker is the floor.
  */
-export const testWorkerCount = (rules: HeavyRules, roomMb: number | null, cores: number = availableParallelism()): number => {
-    const cap = testWorkerCap(rules, cores)
-    if (roomMb === null) return cap
-    const extra = Math.floor(Math.max(0, roomMb - rules.estimateMb.test) / rules.testWorkerMb)
-    return Math.min(cap, 1 + extra)
+export const testRunSizing = (rules: HeavyRules, roomMb: number, cores: number = availableParallelism()): TestRunSizing => {
+    const { parentMb, workerMb } = rules.testRun
+    const workers = Math.max(1, Math.min(testWorkerCap(rules, cores), Math.floor((Math.max(0, roomMb) - parentMb) / workerMb)))
+    return { parentMb, workers, workerMb, holdMb: parentMb + workers * workerMb }
 }
 
 /**
- * The workers a planned test run of the room `roomMb` gets: its planned parent heap holds the parent and the first worker, and every
- * further planned worker heap of room one more, clamped to 1..the plan's workers (all of them under a parent's slot, `roomMb` null). The
- * room is the one admission measured at the start, so the count is the most workers that fit; one when not even the parent fits.
+ * The script a test run's parent preloads (`--require`). Jest forks its workers with the parent's environment and flags, so the parent's heap would be
+ * every worker's; this gives each fork the worker cap as its heap instead and drops itself from the fork's NODE_OPTIONS.
  */
-export const plannedWorkerCount = (planned: Pick<HeavyPlanned, "memoryMb" | "workerMb" | "workers">, roomMb: number | null): number => {
-    const most = Math.max(1, planned.workers ?? 1)
-    if (roomMb === null || planned.memoryMb === undefined || planned.workerMb === undefined || planned.workerMb <= 0) return most
-    return Math.min(most, 1 + Math.floor(Math.max(0, roomMb - planned.memoryMb) / planned.workerMb))
+const WORKER_HEAP_FILE = "starci-jest-worker-heap-1.cjs"
+const WORKER_HEAP_SOURCE = `const cp = require("node:child_process")
+const mb = Number(process.env.STARCI_WORKER_HEAP_MB)
+const ours = /--require[= ](?:"[^"]*starci-jest-worker-heap[^"]*"|\\S*starci-jest-worker-heap\\S*)/g
+if (mb > 0) {
+  const fork = cp.fork
+  cp.fork = function (file, ...rest) {
+    const at = rest.findIndex((part) => part !== null && typeof part === "object" && !Array.isArray(part))
+    const given = at < 0 ? {} : rest[at]
+    const env = given.env ?? process.env
+    const kept = (env.NODE_OPTIONS ?? "").replace(/--max-old-space-size=\\d+/g, "").replace(ours, "").trim()
+    const options = { ...given, execArgv: (given.execArgv ?? process.execArgv).filter((flag) => !flag.startsWith("--max-old-space-size")), env: { ...env, NODE_OPTIONS: \`\${kept} --max-old-space-size=\${mb}\`.trim() } }
+    if (at < 0) rest.push(options)
+    else rest[at] = options
+    return fork.call(this, file, ...rest)
+  }
+}
+`
+
+/** Writes the preload once and returns its path, slash-separated so NODE_OPTIONS takes it on any host. */
+const workerHeapPreload = (): string => {
+    const file = join(tmpdir(), WORKER_HEAP_FILE)
+    if (!existsSync(file) || readFileSync(file, "utf8") !== WORKER_HEAP_SOURCE) writeFileSync(file, WORKER_HEAP_SOURCE)
+    return file.replaceAll("\\", "/")
 }
 
 /**
- * The argv of a test runner (jest or vitest, named in the argv) with `--maxWorkers` for the room its slot was admitted with, unless the
- * argv sets it already: the plan's workers that its planned heaps fit in the room (`plannedWorkerCount`), else `testWorkerCount`. An argv
- * that names neither runner is returned as it is.
+ * The environment a test run's parent takes from its sizing: NODE_OPTIONS with the parent's heap and the preload that gives each worker the worker
+ * cap as its heap, and STARCI_WORKER_HEAP_MB for it.
+ */
+export const testRunEnv = (sizing: TestRunSizing, inherited: string, preload: string = workerHeapPreload()): Readonly<Record<string, string>> => ({
+    NODE_OPTIONS: `${withHeap(inherited, sizing.parentMb)} --require=${preload}`,
+    STARCI_WORKER_HEAP_MB: String(sizing.workerMb),
+})
+
+const RUNNER = /^(jest|vitest)(?:\.[cm]?js)?$/
+
+/**
+ * The argv of a test runner (jest or vitest, named in the argv) with `--maxWorkers` of the sizing its slot was admitted with and, for jest,
+ * `--workerIdleMemoryLimit` at the worker cap (a worker that grows past it is recycled), each unless the argv sets it already. An argv that
+ * names neither runner is returned as it is.
  */
 export const testWorkerArgs = (argv: readonly string[], held: Held): readonly string[] => {
-    const runner = argv.some((part) => /^(?:jest|vitest)(?:\.[cm]?js)?$/.test(basename(part)))
-    if (!runner || argv.some((part) => part.startsWith("--maxWorkers"))) return argv
-    const byRoom = testWorkerCount(held.rules, held.roomMb)
-    const workers = held.planned?.workers === undefined ? byRoom : held.planned.workerMb === undefined ? Math.max(1, Math.min(byRoom, held.planned.workers)) : plannedWorkerCount(held.planned, held.roomMb)
-    return [...argv, `--maxWorkers=${String(workers)}`]
+    const runner = argv.map((part) => RUNNER.exec(basename(part))?.[1]).find((name) => name !== undefined)
+    const sizing = held.test
+    if (runner === undefined || sizing === undefined) return argv
+    const sets = (flag: string): boolean => argv.some((part) => part.startsWith(flag))
+    return [...argv, ...(sets("--maxWorkers") ? [] : [`--maxWorkers=${String(sizing.workers)}`]), ...(runner !== "jest" || sets("--workerIdleMemoryLimit") ? [] : [`--workerIdleMemoryLimit=${String(sizing.workerMb)}MB`])]
 }
 
 /** The refusal a heavy command meets in a coordinator's turn (`refuseHeavyWaits`) when the governor does not admit it at once. */
@@ -731,40 +732,87 @@ export const taskQueuedMs = (task: string, worktree: string | null, since: strin
         return unionMs(spans, from)
     })
 
+/** What one governed command is judged on: the heavy rules and the RAM free now. The host's, or a spec's. */
+export interface Governed {
+    readonly rules: HeavyRules
+    readonly freeMb: () => number
+}
+
+const liveHost = (): Governed => ({ rules: loadHeavyRules(), freeMb: () => Math.floor(freemem() / 1_048_576) })
+
+/** How often a waiting command prints its position, so a hook that waits does not look hung. */
+const WAIT_LINE_MS = 60_000
+
+/** Whether this process runs on a CI runner: one job on its own machine, so no other command shares its RAM and no queue is kept. */
+const onCiRunner = (): boolean => process.env.CI === "true" || process.env.CI === "1"
+
 /**
- * Runs one heavy command (tsc, eslint, a test runner, a build, an npm install, a uat container) under a slot of the host-wide
- * semaphore in machine.sqlite; nothing the harness spawns that is heavy runs any other way (the heavy-sites audit in
- * cli/scripts holds it). Admission reads free memory, the CPU average and, above the ceiling, the managed share of it (`cpuLoad`, `admission`); a command with no slot is a waiting row
- * (`starci host load` shows the queue), polls every `heavy.pollSeconds`, and its wait is printed on stderr and recorded as a
- * `heavy-wait` host event. Waiting never fails the command: a coordinator's turn (`refuseHeavyWaits`) is refused HEAVY_DEFERRED
- * at once instead of waiting, and a verify's command (`withHeavyBound`) still in the queue at the verify's bound is refused
- * HOST_HELD, a non-verdict. The child runs below normal priority, a node tool under the kind's
- * `--max-old-space-size`, and inherits HEAVY_HELD_ENV: a process that inherited it already runs under its parent's slot and
- * takes no second one.
+ * The line a waiting command prints: its place in the first come, first served queue, the MB it needs against the room, and who holds what
+ * (each running command's plan and how long ago it was admitted). Waiting holds nothing.
  */
-export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>, planned?: HeavyPlanned): Promise<T> => {
-    const rules = loadHeavyRules()
-    // A planned child runs under its planned heap. Jest's workers inherit their parent's heap flags (jest-worker forks with the parent's execArgv and
-    // environment), so a worker's planned heap sizes the worker count and what admission holds, never a cap of its own.
-    const env = { ...options.env, [HEAVY_HELD_ENV]: "1", NODE_OPTIONS: nodeOptions(rules, kind, options.env, planned?.memoryMb) }
+export const waitLine = (label: string, place: number, needMb: number, load: Pick<HostLoad, "freeMb" | "reserveMb" | "committedMb" | "roomMb" | "reason">, holders: readonly string[]): string =>
+    `starci: ${label} waits for a heavy-command slot: ${place === 0 ? "first in the queue" : `${String(place)} ahead of it`}, needs ${String(needMb)} MB, room ${String(load.roomMb)} MB (free ${String(load.freeMb)} MB - reserve ${String(load.reserveMb)} MB - ${String(load.committedMb)} MB planned by recent admissions); running: ${holders.join("; ") || "none"}; ${load.reason}`
+
+/** The heap-exhaustion signatures of node and jest in a command's output. */
+const HEAP_EXHAUSTED = /heap out of memory|JavaScript heap|ERR_WORKER_OUT_OF_MEMORY|ran out of memory/i
+
+/** The line that names the cause when a command's output shows it ran out of memory: the heap caps it ran under and the RAM free at its admission. Empty otherwise. */
+export const oomNote = (output: string, held: Pick<Held, "heapMb" | "freeMb" | "test">): string =>
+    HEAP_EXHAUSTED.test(output) && held.heapMb !== undefined
+        ? `starci: heap cap ${String(held.heapMb)} MB reached${held.test === undefined ? "" : ` (workers ${String(held.test.workerMb)} MB each)`}; free RAM was ${String(held.freeMb ?? 0)} MB at admission; the caps are in ops/liveness.yaml\n`
+        : ""
+
+/**
+ * Runs one heavy command (tsc, eslint, a test runner, a build, an npm install, a uat container) under a row of the machine-wide queue (`heavy_slots` in
+ * machine.sqlite, taken under the store's lock, so admissions are serialised); nothing the harness spawns that is heavy runs any other way (the
+ * heavy-sites audit holds it). The command sizes itself greedily to the room now, the RAM free less `reserveMb` and the plan of the commands admitted in
+ * the last `plannedSeconds` (`admission`): a test run takes the workers the room holds (`testRunSizing`), any other kind its cap or the room when that is
+ * less (`heapFor`). It starts at once when the room covers its least need (`needsOf`), else waits in a first come, first served queue, holding nothing,
+ * polls every `heavy.pollSeconds` and prints its place, its need and the running commands every minute; with nothing running it starts on the room there
+ * is. A wait is recorded as a `heavy-wait` host event and never fails the command: a coordinator's turn (`refuseHeavyWaits`) is refused HEAVY_DEFERRED at once
+ * instead of waiting, and a verify's command (`withHeavyBound`) still in the queue at the verify's bound is refused HOST_HELD, a non-verdict. The child
+ * runs below normal priority under its heap caps and inherits HEAVY_HELD_ENV: a process that inherited it uses its parent's admission and takes no
+ * second one, so a child of a held command never queues behind it. A CI runner keeps no queue: its one job is sized from that runner's own free RAM.
+ */
+export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>): Promise<T> =>
+    governed(liveHost(), kind, label, cwd, options, work)
+
+/** `withHeavySlot` on the given rules and free-RAM reading. */
+export const governed = async <T>(host: Governed, kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>): Promise<T> => {
+    const { rules } = host
+    // The heaps and workers come from the room its admission measures, so the environment is set after it.
+    const inherited = options.env?.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? ""
+    const env = { ...options.env, [HEAVY_HELD_ENV]: "1" }
     // The kind's own budget (an install sized for a cold npm ci) replaces the caller's; it runs from the child's spawn, which
     // comes after admission, so time in the queue never counts against it.
     const budget = heavyTimeoutMinutes(rules, kind, options.files)
     const timed = budget === undefined ? options : { ...options, timeoutMs: budget * 60_000 }
     const base: RunOptions = { ...timed, env, priority: constants.priority.PRIORITY_BELOW_NORMAL }
-    if (process.env[HEAVY_HELD_ENV] === "1") return work({ options: base, roomMb: null, rules, planned })
+    /** The command sized to `roomMb`: its heap caps in its environment, and what it plans to take. */
+    const sized = (roomMb: number): Pick<Held, "test" | "options" | "heapMb"> & { readonly planMb: number } => {
+        if (kind === "test") {
+            const test = testRunSizing(rules, roomMb)
+            return { test, heapMb: test.parentMb, planMb: test.holdMb, options: { ...base, env: { ...env, ...testRunEnv(test, inherited) } } }
+        }
+        const heapMb = heapFor(rules, kind, roomMb)
+        return { heapMb, planMb: heapMb, options: { ...base, env: { ...env, NODE_OPTIONS: withHeap(inherited, heapMb) } } }
+    }
+    // A command under its parent's admission, or on a CI runner, has no queue of its own: it is sized from the RAM free now less the reserve.
+    if (process.env[HEAVY_HELD_ENV] === "1" || onCiRunner()) {
+        const freeMb = host.freeMb()
+        return work({ roomMb: null, rules, freeMb, ...sized(freeMb - rules.reserveMb) })
+    }
     const owner = heavyOwner()
     const task = process.env[TASK_ENV] ?? null
-    // A test runner holds its parent and its planned workers; any other planned child its heap.
-    const plannedMb = planned?.memoryMb === undefined ? undefined : planned.memoryMb + (planned.workerMb ?? 0) * Math.max(0, (planned.workers ?? 1) - 1)
-    const slot = { id: `${String(owner)}-${randomBytes(8).toString("hex")}`, pid: process.pid, kind, label, cwd, task, mb: plannedMb }
+    const needMb = needsOf(rules)[kind]
+    const slot = { id: `${String(owner)}-${randomBytes(8).toString("hex")}`, pid: process.pid, kind, label, cwd, task, mb: needMb }
     const started = Date.now()
     const holdMs = Number(process.env[HOLD_ENV] ?? Number.NaN)
-    const admit = async (announced: boolean): Promise<{ readonly load: HostLoad; readonly announced: boolean }> => {
-        // Re-judged at every poll from the RAM free now and the commands running now, so admission follows the host as it frees.
-        const tried = tryAcquire(slot, rules, await cpuLoad(rules))
+    const admit = async (lastLineAt: number | null): Promise<{ readonly load: HostLoad; readonly waited: boolean }> => {
+        // Re-judged at every poll from the RAM free now and the commands admitted lately, so admission follows the host as it frees.
+        const tried = tryAcquire(slot, rules, await cpuLoad(rules), host.freeMb(), (roomMb) => sized(roomMb).planMb)
         const { load } = tried
-        if (tried.holders === null) return { load, announced }
+        if (tried.holders === null) return { load, waited: lastLineAt !== null }
         if (waitsRefused) {
             release(slot.id)
             throw new Refusal(HEAVY_DEFERRED, `${label} was not admitted at once (${load.reason}) and a coordinator's turn never waits in the heavy queue; it runs detached or on a later turn`)
@@ -774,22 +822,34 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
             withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs: Date.now() - started, pid: process.pid, owner, task, held: true })))
             throw new Refusal(HOST_HELD, `${label} waited ${String(Math.round((Date.now() - started) / 60_000))} min in the heavy queue, past its verify's bound of ${String(Math.round(holdMs / 60_000))} min (${load.reason}): the host held it, nothing judged the work; no verdict, no try spent, it is verified again once the host has room`, EXIT_HOST_HELD)
         }
-        if (!announced) {
-            process.stderr.write(`starci: ${label} waits for a heavy-command slot (${load.reason}; running: ${tried.holders.join(", ") || "none"})\n`)
-        }
+        const due = lastLineAt === null || Date.now() - lastLineAt >= WAIT_LINE_MS
+        if (due) process.stderr.write(`${waitLine(label, tried.place, needMb, load, tried.holders)}\n`)
         await sleep(rules.pollSeconds * 1000)
-        return admit(true)
+        return admit(due ? Date.now() : lastLineAt)
     }
-    const { load, announced } = await admit(false)
+    let admitted: { readonly load: HostLoad; readonly waited: boolean }
+    try {
+        admitted = await admit(null)
+    } catch (error: unknown) {
+        release(slot.id)
+        throw error
+    }
+    const { load, waited } = admitted
     if (load.shortMb > 0) {
-        process.stderr.write(`starci: warning: ${label} is admitted alone with ${String(Math.max(0, load.roomMb))} MB of room (free ${String(load.freeMb)} MB less the ${String(load.reserveMb)} MB reserve) against its ${String(load.roomMb + load.shortMb)} MB estimate, short by ${String(load.shortMb)} MB; nothing else runs, so waiting would free nothing: it runs on that room (a test run with the workers that fit, at least one) and the estimate may be high\n`)
+        process.stderr.write(`starci: warning: ${label} is admitted alone with ${String(Math.max(0, load.roomMb))} MB of room (free ${String(load.freeMb)} MB less the ${String(load.reserveMb)} MB reserve) against the ${String(load.roomMb + load.shortMb)} MB it needs, short by ${String(load.shortMb)} MB; nothing else runs, so waiting would free nothing: it runs on that room under its heap caps (a test run with the workers that fit, at least one)\n`)
     }
-    if (announced) {
+    if (waited) {
         const waitedMs = Date.now() - started
         withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs, pid: process.pid, owner, task })))
     }
     try {
-        return await work({ options: { ...base, onSpawn: (pid) => { setChild(slot.id, pid); options.onSpawn?.(pid) } }, roomMb: load.roomMb, rules, planned })
+        const onSpawn = (pid: number): void => {
+            setChild(slot.id, pid)
+            options.onSpawn?.(pid)
+        }
+        // The room is the one this admission measured: the RAM free now less the reserve and the plan of the commands admitted lately.
+        const run = sized(load.roomMb)
+        return await work({ options: { ...run.options, onSpawn }, roomMb: load.roomMb, rules, freeMb: load.freeMb, heapMb: run.heapMb, test: run.test })
     } finally {
         release(slot.id)
     }
@@ -816,10 +876,10 @@ export const clockOf = (at: string): string => {
 }
 
 /**
- * Why a heavy command of `kind` is not admitted now, in one short clause ("free RAM 2.6 GB below reserve 8 GB"); undefined when it
+ * Why a heavy command of `kind` is not admitted now, in one short clause ("free RAM 2.6 GB below reserve 4 GB"); undefined when it
  * would be admitted. The full arithmetic is `admission(...).reason`.
  */
-export const heldWhy = (rules: HeavyRules, load: Pick<HostLoad, "freeMb" | "cpuPercent" | "managedCpuPercent">, running: readonly string[], kind: HeavyKind): string | undefined => {
+export const heldWhy = (rules: HeavyRules, load: Pick<HostLoad, "freeMb" | "cpuPercent" | "managedCpuPercent">, running: readonly RunningRow[], kind: HeavyKind): string | undefined => {
     const judged = admission(rules, load.freeMb, load.cpuPercent, running, kind, false, load.managedCpuPercent)
     if (judged.admits) return undefined
     if (judged.cpuHolds) {
@@ -830,14 +890,14 @@ export const heldWhy = (rules: HeavyRules, load: Pick<HostLoad, "freeMb" | "cpuP
     }
     if (running.length >= judged.cap) return `${String(running.length)} running reach the cap of ${String(judged.cap)}`
     if (load.freeMb < rules.reserveMb) return `free RAM ${gb(load.freeMb)} below reserve ${gb(rules.reserveMb)}`
-    return `free RAM ${gb(load.freeMb)} less reserve ${gb(rules.reserveMb)} and ${gb(judged.committedMb)} running leaves no room for ${kind} (${gb(rules.estimateMb[kind])})`
+    return `free RAM ${gb(load.freeMb)} less reserve ${gb(rules.reserveMb)} and ${gb(judged.committedMb)} planned by recent admissions leaves no room for ${kind} (${gb(needsOf(rules)[kind])})`
 }
 
-/** The kinds of the heavy commands running now, from the governor's store (live rows only after `heavySlots`). */
-export const runningHeavyKinds = (): string[] =>
+/** The heavy commands running now, from the governor's store (live rows only after `heavySlots`), each with the MB it planned while its admission is recent. */
+export const runningHeavyRows = (rules: HeavyRules = loadHeavyRules()): RunningRow[] =>
     withGovernor((db) => {
         ensureTables(db)
-        return runningKinds(db)
+        return runningRows(db, rules)
     })
 
 /** A queued task whose worker seat the RAM floor held: since when, last seen, and the memory it was judged on. */

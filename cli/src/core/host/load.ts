@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { gb, heavySlots, heldWhy, hostLoad, loadHeavyRules, runningHeavyKinds, seatHolds, seatHoldWhy, seatRoom, starvation } from "../../harness/heavy.js"
+import { gb, heavySlots, heldWhy, hostLoad, loadHeavyRules, runningHeavyRows, seatHolds, seatHoldWhy, seatRoom, starvation } from "../../harness/heavy.js"
 import type { HeavyKind, HeavyRules, HeavySlot, HostLoad, SeatHold, Starvation } from "../../harness/heavy.js"
 import { memoryHolders } from "../../harness/host-holders.js"
 import type { Holders } from "../../harness/host-holders.js"
@@ -17,7 +17,7 @@ interface LoadRow extends HeavySlot {
     readonly rssMb: number | null
     /** How long a queued command has waited, in seconds; null for a running one. */
     readonly waitedSeconds: number | null
-    /** Why a queued command is not admitted now ("free RAM 2.6 GB below reserve 8 GB"); null for a running one. */
+    /** Why a queued command is not admitted now ("free RAM 2.6 GB below reserve 4 GB"); null for a running one. */
     readonly why: string | null
 }
 
@@ -148,7 +148,7 @@ export const hostLoadVerb = defineVerb({
         const load = await hostLoad(rules)
         const slots = heavySlots()
         const [rss, holders] = await Promise.all([residentMb(slots.flatMap((slot) => (slot.childPid === null ? [] : [slot.childPid]))), memoryHolders(slots)])
-        const running = runningHeavyKinds()
+        const running = runningHeavyRows(rules)
         const nowMs = Date.now()
         const rows = slots.map((slot): LoadRow => {
             const queued = slot.state === "waiting"

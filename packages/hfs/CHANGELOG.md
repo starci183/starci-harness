@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.1.2 - 2026-11-08
+
+- Changed: the memory plan the CLI hands an app check holds the check's parent heap and the lint chunk, no per-side heaps or workers (the CLI sizes a test run at admission from the live RAM), so the out-of-memory clause names the parent heap, and the died-runner finding names the governor's `testRun` caps.
+
 ## 6.1.1 - 2026-11-07
 
 - Fixed: the bundled canon pins name the canons and the Grammar family at the versions whose `@starci/hfs` peer is `~6.1.0` (`eslint-canon-be` 3.19.4, `eslint-canon-fe` 9.16.4, the Grammar family 0.25.1), so an app on hfs 6.1 installs with `npm ci`; `contexts/stack/pins.yaml` agrees.
