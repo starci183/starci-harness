@@ -5800,6 +5800,29 @@ STACKS_UPDATE_POLICY_MISSING:
   owner: op-retry
   kind: check-finding
 
+STACK_DEPLOY_DB_FOREIGN_CHAIN:
+  title: "The stack database carries a migration history the app's chain does not explain"
+  title_vi: "Cơ sở dữ liệu của stack mang lịch sử migration mà chuỗi của ứng dụng không giải thích được"
+  meaning_vi: "Bản xem trước migration của lần triển khai thấy các phiên bản đã ghi trong cơ sở dữ liệu nằm ngoài baseline, các migration tiếp theo và các migration giữ lại của ứng dụng, nên lần triển khai bị từ chối trước khi sao lưu, migrate hay triển khai."
+  causes_vi:
+    - "Ứng dụng đã đặt lại chuỗi migration (hfs.json db.baselineReset) trong khi cơ sở dữ liệu vẫn giữ chuỗi cũ."
+    - "Cơ sở dữ liệu thuộc về một chuỗi migration khác."
+  nextStep_vi: "Khi chủ sở hữu xác nhận cơ sở dữ liệu không còn dữ liệu cần giữ, ứng dụng tự làm rỗng cơ sở dữ liệu bằng thao tác đặt lại của chính nó; lần triển khai sau sẽ chạy first start."
+  owner: owner
+  kind: verb-refusal
+
+STACK_FIRST_START_APP_ROLE:
+  title: "The first start could not give the app role its sealed password"
+  title_vi: "First start không đặt được mật khẩu niêm phong cho vai trò ứng dụng"
+  meaning_vi: "Sau khi migrate, first start đặt mật khẩu cho vai trò ứng dụng từ giá trị niêm phong mà khối database.appPassword chỉ ra; giá trị không mở được, không đúng dạng mật khẩu an toàn, hoặc lệnh psql trong container thất bại. Mật khẩu luôn được che trong thông báo."
+  causes_vi:
+    - "Thành viên niêm phong hoặc khóa được khai báo không có giá trị, hoặc không mở được bằng khóa age."
+    - "Giá trị ngắn hơn 8 ký tự hoặc chứa ký tự ngoài chữ, số, gạch ngang và gạch dưới."
+    - "Các migration chưa tạo vai trò ứng dụng."
+  nextStep_vi: "Niêm phong lại giá trị bằng starci app secret set (dạng mật khẩu được sinh), kiểm tra vai trò hfs.json db.appRole do migration tạo, rồi triển khai lại."
+  owner: owner
+  kind: verb-refusal
+
 STACK_TOOLING_REIMPLEMENTED:
   title: "An app re-implements deploy tooling the canon ships"
   title_vi: "Ứng dụng tự cài lại công cụ triển khai mà canon đã cung cấp"

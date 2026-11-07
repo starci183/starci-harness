@@ -4,7 +4,8 @@
 // Without `execute` a deploy renders locally and prints the plan: NO remote call at all. A rollback cannot undo data effects.
 // An app that declares the `database:` block gets the database phases of db-phases.mts in every deploy: migrate preview, a
 // verified backup only when something is pending, the expand migrations inside the database container before the stack deploy, the contract migrations
-// after accept, and an automatic first start when no release was ever accepted. An app without the block deploys its stack alone.
+// after accept, and an automatic first start on an empty database (no accepted release, or a running database with no migration history and no
+// table in public). An app without the block deploys its stack alone.
 // An urgent deploy (`urgent`) runs the safety floor of urgent-floor.mts first (fresh verified encrypted
 // backup with a test decrypt, rollback target, migrate preview then execute) and refuses with the floor's own code when a step of it fails; its
 // first start (`firstStart`) deploys the stack with only the database running (the `deploy-hold` step), proves the database empty and migrates it inside its own
@@ -28,7 +29,7 @@ import { describeClash, edgeCollisions, reconcileEdgeAliases } from './edge-alia
 import { firstLine, tool } from './context.mjs';
 import type { StackContext } from './context.mjs';
 import { hasPlaceholderDigest, isReleaseId } from './digest.mjs';
-import { contractPhase, declaredDatabase, expandPhase, firstStartHooks, FLOOR_DEPS, unknownDatabaseService } from './db-phases.mjs';
+import { contractPhase, declaredDatabase, expandPhase, firstStartHooks, firstStartReason, FLOOR_DEPS, unknownDatabaseService } from './db-phases.mjs';
 import type { DeployDatabase, PhaseInput } from './db-phases.mjs';
 import { hasSeedEntries, seedPlanLine } from './seeds.mjs';
 import { failure, refusal } from './errors.mjs';
@@ -385,15 +386,18 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
   // The first start of a self-hosted database (urgent-floor.mts): the services that need its schema must not start against an empty one (their
   // healthchecks fail and update_config rolls them back), so the stack is first deployed with only the database running, the schema is
   // bootstrapped and migrated, and then the real stack is deployed.
-  // An app that declares the `database:` block migrates in every deploy (db-phases.mts); with no accepted release the first start is chosen by itself.
+  // An app that declares the `database:` block migrates in every deploy (db-phases.mts); the first start is chosen by itself when no release was
+  // ever accepted or when the running database is empty (firstStartReason).
   const database = options.urgent === true ? null : await declaredDatabase(ctx, config);
   const phase: PhaseInput | null = database ? { ctx, config, database, f: { ...FLOOR_DEPS, ...d.floor }, run, dbUrlEnv: options.dbUrlEnv, backupOut: options.backupOut } : null;
   const unknown = database ? unknownDatabaseService(config, database) : null;
   if (unknown) return { ok: false, refused: unknown, lines: [...lines, 'deploy not started; the services are untouched'], data: { ...data, refused: unknown.code } };
   let first = options.firstStartStep && options.firstStartDb ? { step: options.firstStartStep, service: options.firstStartDb } : null;
   let firstCode: string | null = null;
-  if (phase && !first && phase.database.target === 'stack' && !previous) {
-    const automatic = firstStartHooks(phase);
+  const reason = phase && !first ? await firstStartReason(phase, previous) : null;
+  if (phase && reason) {
+    const automatic = firstStartHooks(phase, reason);
+    lines.push(`db: first start, because ${reason}`);
     first = { service: automatic.service, step: async () => { const outcome = await automatic.step(); firstCode = outcome.code ?? null; return outcome; } };
   }
   if (phase && !first) {
@@ -470,7 +474,7 @@ export async function deployRelease(ctx: StackContext, config: DeployConfig, opt
       const { rendered, releaseId } = await render();
       const post = config.postDeploy.length > 0 ? ` post-deploy tasks (${config.postDeploy.join(', ')}),` : '';
       const database = options.urgent === true ? null : await declaredDatabase(ctx, config);
-      const databasePlan = database ? `; database (${database.target === 'stack' ? `inside the ${database.service} container, no URL held` : 'external, by --db-url-env'}): migrate preview, a verified backup only when a migration is pending, the expand migrations before the deploy, the contract migrations after the accept, and an automatic first start when no release was ever accepted${hasSeedEntries(config.repoRoot, config.env) ? `; ${seedPlanLine(config.repoRoot, config.env)}` : ''}` : '';
+      const databasePlan = database ? `; database (${database.target === 'stack' ? `inside the ${database.service} container, no URL held` : 'external, by --db-url-env'}): migrate preview, a verified backup only when a migration is pending, the expand migrations before the deploy, the contract migrations after the accept, and an automatic first start on an empty database${hasSeedEntries(config.repoRoot, config.env) ? `; ${seedPlanLine(config.repoRoot, config.env)}` : ''}` : '';
       const plan = options.skipPublic
         ? `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} and verified inside the stack (public hosts skipped); it would stay pending until ingress publish and stack accept${databasePlan}`
         : `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} verified, accepted${databasePlan}`;

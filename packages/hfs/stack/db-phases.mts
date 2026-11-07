@@ -9,8 +9,11 @@
 //                                          with the manager's own identity (STACK_DEPLOY_BACKUP_*); nothing pending means no backup and the record says so
 //                             migrate      the EXPAND migrations (everything but `*_contract_*`), inside the database container (STACK_DEPLOY_MIGRATE_FAILED)
 //   after accept              contract     the `*_contract_*` migrations; red leaves the release accepted (STACK_DEPLOY_CONTRACT_FAILED)
-//   no accepted release       first start  hold deploy with only the database running, prove it empty, migrate everything inside the container,
-//                                          then the real deploy; a database that is not empty is refused (STACK_FIRST_START_NOT_EMPTY)
+//   an empty database         first start  chosen when no release was ever accepted or when the running database is empty (no migration
+//                                          history, no table in public): hold deploy with only the database running, prove it empty, migrate
+//                                          everything inside the container, give the app role its sealed password (database.appPassword), then the
+//                                          real deploy; a database that is not empty is refused (STACK_FIRST_START_NOT_EMPTY), and so is one whose
+//                                          history the app's chain does not explain (STACK_DEPLOY_DB_FOREIGN_CHAIN, at the preview)
 // `database.target: stack` (default) reaches the database inside its own container with the credentials that container holds
 // (db/postgres.mts ownContainerTarget), so the deploy never holds a DATABASE_URL. `database.target: external` keeps `--db-url-env`.
 // A refusal before the stack deploy leaves the services untouched. Every collaborator is a FloorDeps member, replaceable by a spec.
@@ -19,12 +22,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { backupRecipients } from '../db/backup-receipt.mjs';
 import { readDeclaration } from '../release/index.mjs';
-import { DEFAULT_DB_URL_ENV, dbTarget, ownContainerTarget, queryRows } from '../db/postgres.mjs';
+import { DB_IDENT, DEFAULT_DB_URL_ENV, OWN_PASSWORD_SHELL, dbTarget, ownContainerTarget, queryRows } from '../db/postgres.mjs';
 import type { DbTarget as PostgresTarget } from '../db/postgres.mjs';
 import { isContractMigration } from '../db/migrate.mjs';
-import type { DatabaseDecl, DatabaseTarget, MigrationPhase } from '../db/migrate.mjs';
+import type { DatabaseDecl, DatabaseTarget, MigrationPhase, SealedRef } from '../db/migrate.mjs';
 import type { DeployConfig } from './config.mjs';
-import { lines as splitLines, tool } from './context.mjs';
+import { firstLine, lines as splitLines, tool } from './context.mjs';
 import type { StackContext } from './context.mjs';
 import { refusal } from './errors.mjs';
 import type { ArchiveFacts, ManagerBackup } from './manager-backup.mjs';
@@ -56,6 +59,10 @@ export interface FloorDeps {
   managerBackup: (ctx: StackContext, config: DeployConfig, args: { run: Runner; container: string; url: string; recipients: string[]; at: string }) => Promise<ManagerBackup>;
   /** The test decrypt of that dump on the manager with its own identity: the parts it lists. */
   managerDecrypt: (ctx: StackContext, args: { run: Runner; archive: string }) => Promise<string[]>;
+  /** One value of the environment's sealed custody, opened in memory and never written, printed or put in an argument list. */
+  sealedValue: (ctx: StackContext, config: DeployConfig, ref: SealedRef) => Promise<unknown>;
+  /** psql inside the container of `target` as the role that container holds, the SQL on stdin (never argv): its exit status and stderr. */
+  containerPsql: (ctx: StackContext, target: PostgresTarget, sql: string) => Promise<{ status: number | null; stderr: string }>;
 }
 
 /** The code or message of a thrown value, for a refusal line. */
@@ -131,20 +138,63 @@ async function defaultEmptiness(ctx: StackContext, target: PostgresTarget): Prom
   return { empty: row?.history === false && row?.public_tables === 0, history: row?.history === true, publicTables: Number(row?.public_tables ?? -1) };
 }
 
+/** psql through the container's own password shell: the role and database of the target's URL, ON_ERROR_STOP, the SQL on stdin. */
+async function defaultContainerPsql(ctx: StackContext, target: PostgresTarget, sql: string): Promise<{ status: number | null; stderr: string }> {
+  const url = new URL(target.url);
+  const [role, database] = [decodeURIComponent(url.username), decodeURIComponent(url.pathname.slice(1))];
+  if (!target.container || !DB_IDENT.test(role) || !DB_IDENT.test(database)) return { status: 1, stderr: 'the database container, role or database is not a plain identifier' };
+  const run = tool(ctx, 'docker', ['exec', '-i', target.container, 'sh', '-c', OWN_PASSWORD_SHELL, 'sh', 'psql', '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-U', role, '-d', database], { input: sql });
+  return { status: run.error ? 1 : run.status, stderr: String(run.stderr ?? '') };
+}
+
 const DEFAULT_FLOOR: FloorDeps = {
   backup: defaultBackup, decrypt: defaultDecrypt, migrate: defaultMigrate, dbContainer: defaultDbContainer, emptiness: defaultEmptiness,
   containerTarget: ownContainerTarget,
   managerBackup: async (ctx, config, args) => (await import('./manager-backup.mjs')).managerBackup(ctx, config, args),
   managerDecrypt: async (ctx, args) => (await import('./manager-backup.mjs')).managerDecrypt(ctx, args),
+  sealedValue: async (ctx, config, ref) => (await import('./sealed.mjs')).openMember(ctx, config, ref.member)[ref.key],
+  containerPsql: defaultContainerPsql,
 };
 export const FLOOR_DEPS: Readonly<FloorDeps> = Object.freeze(DEFAULT_FLOOR);
 
+/** The app role and where its password is sealed: what the first start sets once the migrations created the role. */
+export interface AppRolePassword { role: string; ref: SealedRef }
+
+/** A password the role statement may carry: letters, digits, dash and underscore, at least 8 (the generated password kind). */
+const SAFE_PASSWORD = /^[A-Za-z0-9_-]{8,}$/u;
+
+/** What the operator does with a stack database that must start over: the app empties it with its own reset operation (the harness owns none). */
+export const EMPTY_DATABASE_HINT = 'once the owner confirms it holds no data to keep, the app empties its database itself (its own reset operation), and the next deploy takes the first start';
+
+/**
+ * Gives the app role the migrations created its sealed password, inside the database container: the value is opened in memory, checked against
+ * SAFE_PASSWORD, sent to psql on stdin (never argv, a file or a log line) and replaced by [redacted] in every message. Returns the line to print,
+ * or the refusal code and message.
+ */
+export async function setAppRolePassword(ctx: StackContext, config: DeployConfig, target: PostgresTarget, app: AppRolePassword, f: FloorDeps): Promise<{ ok: true; line: string } | { ok: false; code: string; message: string }> {
+  const where = `${app.ref.member} ${app.ref.key}`;
+  if (!DB_IDENT.test(app.role)) return { ok: false, code: 'STACK_FIRST_START_APP_ROLE', message: `the app role ${app.role} is not a plain identifier` };
+  let password: unknown;
+  try { password = await f.sealedValue(ctx, config, app.ref); } catch (error) {
+    return { ok: false, code: 'STACK_FIRST_START_APP_ROLE', message: `the sealed ${where} cannot be opened (${reasonOf(error)})` };
+  }
+  if (typeof password !== 'string' || !SAFE_PASSWORD.test(password)) return { ok: false, code: 'STACK_FIRST_START_APP_ROLE', message: `the sealed ${where} must be at least 8 characters of letters, digits, dash and underscore (the generated password kind); the owner seals it with starci app secret set` };
+  const secret = password;
+  const redact = (text: string): string => text.replaceAll(secret, '[redacted]');
+  const sql = `DO $do$ BEGIN IF EXISTS (SELECT FROM pg_roles WHERE rolname = '${app.role}') THEN ALTER ROLE "${app.role}" LOGIN PASSWORD '${secret}'; ELSE RAISE EXCEPTION 'role ${app.role} does not exist: the migrations create it'; END IF; END $do$;\n`;
+  let result: { status: number | null; stderr: string };
+  try { result = await f.containerPsql(ctx, target, sql); } catch (error) { result = { status: 1, stderr: messageOf(error) }; }
+  if (result.status !== 0) return { ok: false, code: 'STACK_FIRST_START_APP_ROLE', message: `could not set the password of ${app.role}: ${redact(firstLine(result.stderr))}` };
+  return { ok: true, line: `first start: the app role ${app.role} has its password from the sealed ${where}` };
+}
+
 /**
  * The `first-start` step of a first start's deploy (between the hold deploy and the real one): the database container, the proof it is empty,
- * migrate preview then execute (every migration, contract ones included: no release runs yet) inside it. `targetFor` reaches the container's
- * database; `hint` ends the not-empty message with what the operator does next. Returns { ok, lines, code } where code names the failure.
+ * migrate preview then execute (every migration, contract ones included: no release runs yet) inside it, then the app role's sealed password when
+ * `appRole` is given. `targetFor` reaches the container's database; `hint` ends the not-empty message with what the operator does next. Returns
+ * { ok, lines, code } where code names the failure.
  */
-export async function firstStartStep(ctx: StackContext, config: DeployConfig, input: { service: string; targetFor: (container: string) => PostgresTarget; hint: string }, f: FloorDeps): Promise<FirstStartStepResult> {
+export async function firstStartStep(ctx: StackContext, config: DeployConfig, input: { service: string; targetFor: (container: string) => PostgresTarget; hint: string; appRole?: AppRolePassword | null | undefined }, f: FloorDeps): Promise<FirstStartStepResult> {
   const service = `${config.stack}_${input.service}`;
   const container = await f.dbContainer(ctx, config, { service: input.service, seconds: FIRST_START_WAIT_SECONDS });
   if (!container) return { ok: false, code: 'STACK_FIRST_START_NO_DATABASE', lines: [`first start: no running container of ${service} accepted connections within ${FIRST_START_WAIT_SECONDS}s`] };
@@ -155,7 +205,7 @@ export async function firstStartStep(ctx: StackContext, config: DeployConfig, in
     return { ok: false, code: 'STACK_FIRST_START_NOT_EMPTY', lines: [
       `first start refused: the database of ${service} holds ${found}; ${input.hint}`,
       // A first start that migrated and then rolled back leaves exactly this: a migrated volume and no serving release.
-      `if an earlier first start migrated this volume and then rolled back, and the owner confirms it holds no data, remove that volume (docker volume rm on the server) and run the first start again`,
+      `if an earlier first start migrated this volume and then rolled back: ${EMPTY_DATABASE_HINT}`,
     ] };
   }
   const lines = [`first start: the database of ${service} is empty (no migration history, no table in public): nothing to back up`];
@@ -165,7 +215,11 @@ export async function firstStartStep(ctx: StackContext, config: DeployConfig, in
     lines.push(...(result.lines ?? []).map((line) => `first start: migrate${execute ? '' : ' preview'}: ${line}`));
     if (!result.ok) return { ok: false, code: 'STACK_FIRST_START_MIGRATE_RED', lines: [...lines, `first start: the migration${execute ? '' : ' preview'} is red`] };
   }
-  return { ok: true, lines };
+  if (!input.appRole) return { ok: true, lines };
+  // The role statement runs as the cluster's own role (the container's credentials), whatever role the migrations connected as.
+  const set = await setAppRolePassword(ctx, config, f.containerTarget(ctx, container), input.appRole, f);
+  if (!set.ok) return { ok: false, code: set.code, lines: [...lines, `first start: ${set.message}`] };
+  return { ok: true, lines: [...lines, set.line] };
 }
 
 /* ---- the automatic path of a deploy */
@@ -304,6 +358,8 @@ export async function expandPhase(p: PhaseInput): Promise<PhaseResult> {
   let preview: MigrateResult;
   try { preview = await f.migrate(ctx, { target: reached.migrate, execute: false, phase: 'all' }); } catch (error) { preview = { ok: false, lines: [messageOf(error)] }; }
   lines.push(...(preview.lines ?? []).map((line) => `db: migrate preview: ${line}`));
+  const foreign = Array.isArray(preview.data?.unexpected) ? (preview.data.unexpected as unknown[]).map(String) : [];
+  if (!preview.ok && foreign.length > 0) return stop('db-preview', 'STACK_DEPLOY_DB_FOREIGN_CHAIN', `the database records ${foreign.length} migration version(s) the app's chain does not explain (${foreign.slice(0, 3).join(', ')}${foreign.length > 3 ? ', ...' : ''}): it carries another migration history; nothing was backed up, migrated or deployed; ${EMPTY_DATABASE_HINT}`);
   if (!preview.ok) return stop('db-preview', 'STACK_DEPLOY_MIGRATE_PREVIEW_RED', 'the migration preview is red; nothing was backed up, migrated or deployed');
   steps.push({ step: 'db-preview', ok: true });
   record.pending = pending(preview);
@@ -351,15 +407,46 @@ export async function contractPhase(p: PhaseInput): Promise<{ ok: boolean; lines
   return { ok: true, lines: [...lines, `db: ${versionsOf(applied).length} contract migration(s) applied after the accept`], applied: versionsOf(applied), skipped: false };
 }
 
-/** The first-start hooks of a `stack` database on an environment with no accepted release (the deploy's `deploy-hold` and `first-start` steps). */
-export function firstStartHooks(p: PhaseInput): { step: () => Promise<FirstStartStepResult>; service: string } {
+/** The app role of the app (hfs.json `db.appRole`, default app_be) with the sealed password the `database:` block names, or null when it names none. */
+export function appRoleOf(config: Pick<DeployConfig, 'repoRoot'>, database: DeployDatabase): AppRolePassword | null {
+  if (!database.decl.appPassword) return null;
+  let role = 'app_be';
+  try {
+    const declared = (JSON.parse(fs.readFileSync(path.join(config.repoRoot, 'hfs.json'), 'utf8')) as { db?: { appRole?: unknown } }).db?.appRole;
+    if (typeof declared === 'string') role = declared;
+  } catch {
+    // An app without a readable hfs.json keeps the default role.
+  }
+  return { role, ref: database.decl.appPassword };
+}
+
+/**
+ * Why a deploy of a `stack` database takes the first start, or null when it takes the expand path. The first start is chosen when no release was
+ * ever accepted and when the running database is empty (no migration history, no table in public); the first-start step proves the emptiness
+ * again inside the hold deploy. A database that cannot be
+ * reached is the expand path's to refuse (STACK_DEPLOY_DB_UNAVAILABLE).
+ */
+export async function firstStartReason(p: PhaseInput, previous: string): Promise<string | null> {
+  const { ctx, config, database, f } = p;
+  if (database.target !== 'stack') return null;
+  if (!previous) return 'no release was ever accepted here';
+  const container = await f.dbContainer(ctx, config, { service: database.service, seconds: DB_WAIT_SECONDS });
+  if (!container) return null;
+  const state = await f.emptiness(ctx, f.containerTarget(ctx, container));
+  return state.empty ? `the database of ${config.stack}_${database.service} is empty (no migration history, no table in public)` : null;
+}
+
+/** The first-start hooks of a `stack` database (the deploy's `deploy-hold` and `first-start` steps); `reason` is what firstStartReason found. */
+export function firstStartHooks(p: PhaseInput, reason = 'no release was ever accepted here'): { step: () => Promise<FirstStartStepResult>; service: string; reason: string } {
   const { ctx, config, f, database } = p;
   return {
     service: database.service,
+    reason,
     step: () => firstStartStep(ctx, config, {
       service: database.service,
       targetFor: (container) => f.containerTarget(ctx, container),
-      hint: 'no release was ever accepted here, so a database that already holds data needs the owner: accept or restore its state deliberately, then deploy again',
+      hint: `the first start was chosen because ${reason}, and a database that already holds data needs the owner: restore its state deliberately, or ${EMPTY_DATABASE_HINT}`,
+      appRole: appRoleOf(config, database),
     }, f),
   };
 }

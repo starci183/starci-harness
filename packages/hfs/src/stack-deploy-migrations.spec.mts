@@ -1,7 +1,8 @@
 // The database phases of a deploy (stack/db-phases.mts driven by stack/deploy.mts): for an app that declares the
 // `database:` block, every deploy previews the migrations inside the database container, backs up ONLY when something is pending, applies the expand
-// migrations before the stack deploy, applies the contract migrations after the accept, and chooses the first start by itself when no release was ever
-// accepted. A refusal before the stack deploy leaves the services untouched. Collaborators are doubles; no registry, VPS or database is reached.
+// migrations before the stack deploy, applies the contract migrations after the accept, and chooses the first start by itself on an empty database (no
+// accepted release, or a running database with no history and no table), where it also gives the app role its sealed
+// password. A refusal before the stack deploy leaves the services untouched. Collaborators are doubles; no registry, VPS or database is reached.
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -39,6 +40,12 @@ interface Scenario {
   migrateFails?: boolean;
   contractFails?: boolean;
   notEmpty?: boolean;
+  /** The running database is empty although a release was accepted. */
+  empty?: boolean;
+  /** The preview meets versions the app's chain does not explain. */
+  foreign?: boolean;
+  /** The database block names the app role's sealed password; the sealed value and what psql answers. */
+  appPassword?: { value: unknown; psql?: { status: number; stderr: string } };
   skipPublic?: boolean;
   dbUrlEnv?: string;
   execute?: boolean;
@@ -46,11 +53,12 @@ interface Scenario {
 }
 
 /** An app root declaring the `database:` block, with the recipient file the backup encrypts to. */
-function app(t: TestContext, target: 'stack' | 'external') {
+function app(t: TestContext, target: 'stack' | 'external', appPassword = false) {
   const root = fs.mkdtempSync(path.join(tempRoot(), 'hfs-deploy-db-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, '.starcistacks'));
-  fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), `database:\n  target: ${target}\n  service: db\n`);
+  fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), `database:\n  target: ${target}\n  service: db\n${appPassword ? '  appPassword: {member: postgres, key: APP_BE_DB_PASSWORD}\n' : ''}`);
+  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ project: 'shop', db: { appRole: 'app_be' } }));
   fs.writeFileSync(path.join(root, '.sops.yaml'), `creation_rules:\n  - age: ${RECIPIENT}\n`);
   return root;
 }
@@ -58,12 +66,13 @@ function app(t: TestContext, target: 'stack' | 'external') {
 /** deployRelease over doubles; `order` records every effect in the order it happened. */
 async function run(t: TestContext, scenario: Scenario = {}) {
   const target = scenario.target ?? 'stack';
-  const root = app(t, target);
+  const root = app(t, target, scenario.appPassword !== undefined);
   const out = fs.mkdtempSync(path.join(tempRoot(), 'hfs-deploy-db-out-'));
   t.after(() => fs.rmSync(out, { recursive: true, force: true }));
   const order: string[] = [];
   const state = { expand: [...(scenario.expand ?? [])], contract: [...(scenario.contract ?? [])] };
   const previous = scenario.previous ?? PREVIOUS;
+  const psql: string[] = [];
   const ok = (name: string) => async () => { order.push(name); return { ok: true, lines: [] }; };
   const records = recordsDouble();
   const store = {
@@ -76,10 +85,18 @@ async function run(t: TestContext, scenario: Scenario = {}) {
     dbContainer: async () => { order.push('container'); return scenario.noContainer ? undefined : CONTAINER; },
     // reason: the phases read only url, container and own of the target; the double is not a full connection description.
     containerTarget: () => ({ url: 'postgresql://app@127.0.0.1:5432/app', container: CONTAINER, own: true, env: {}, secrets: [], how: 'double' }) as unknown as PostgresTarget,
-    emptiness: async () => { order.push('empty?'); return scenario.notEmpty ? { empty: false, history: true, publicTables: 2 } : { empty: true, history: false, publicTables: 0 }; },
+    // The deploy's choice asks before the hold deploy, the first-start step after it: the order names them apart.
+    emptiness: async () => {
+      order.push(order.includes('deploy-hold') ? 'empty?' : 'choice:empty?');
+      const empty = scenario.notEmpty ? false : scenario.empty ?? previous === '';
+      return empty ? { empty: true, history: false, publicTables: 0 } : { empty: false, history: true, publicTables: 2 };
+    },
+    sealedValue: async (_ctx: unknown, _config: unknown, ref: { member: string; key: string }) => { order.push(`sealed:${ref.member}:${ref.key}`); return scenario.appPassword?.value; },
+    containerPsql: async (_ctx: unknown, _target: unknown, sql: string) => { order.push('psql'); psql.push(sql); return scenario.appPassword?.psql ?? { status: 0, stderr: '' }; },
     migrate: async (_ctx: unknown, { execute, phase }: { target: Record<string, unknown>; execute: boolean; phase?: string | undefined }) => {
       order.push(`migrate:${phase ?? 'first-start'}:${execute ? 'run' : 'preview'}`);
       const files = phase === 'contract' ? state.contract : phase === 'expand' ? state.expand : [...state.expand, ...state.contract];
+      if (!execute && scenario.foreign && phase === 'all') return { ok: false, lines: ['RED: recorded version 20261026000000 is outside baseline + forward + held-back'], data: { done: false, unexpected: ['20261026000000', '20261027000000'] } };
       if (!execute) return scenario.previewRed && phase === 'all' ? { ok: false, lines: ['RED: unexplained version'] } : { ok: true, lines: [`plan ${files.length}`], data: { done: files.length === 0, pushFiles: files } };
       if (scenario.migrateFails && phase === 'expand') return { ok: false, lines: ['relation exists'] };
       if (scenario.contractFails && phase === 'contract') return { ok: false, lines: ['column in use'] };
@@ -119,13 +136,13 @@ async function run(t: TestContext, scenario: Scenario = {}) {
   const env = { SOPS_AGE_KEY_FILE: identity, DATABASE_URL: 'postgresql://owner:s3cret@db.example:5432/app' };
   // reason: deployRelease reads only spawn, env, now and cwd of the context, repoRoot, stack, project, remote, backup, ingress, tasks and postDeploy of the config, and the seams the doubles replace.
   const ctx = { spawn, env, now: () => Date.now(), cwd: root } as unknown as StackContext;
-  const config = { stack: 'shop', project: 'shop', repoRoot: root, remote: { serverRecipient: null }, backup: null, ingress: null, tasks: {}, postDeploy: [], ...(scenario.services ? { services: new Set(scenario.services) } : {}) } as unknown as DeployConfig;
+  const config = { stack: 'shop', env: 'production', project: 'shop', repoRoot: root, remote: { serverRecipient: null }, backup: null, ingress: null, tasks: {}, postDeploy: [], ...(scenario.services ? { services: new Set(scenario.services) } : {}) } as unknown as DeployConfig;
   const result = await deployRelease(ctx, config, { sourceSha: 'f'.repeat(40), execute: scenario.execute ?? true, out, skipPublic: scenario.skipPublic, dbUrlEnv: scenario.dbUrlEnv }, deps as unknown as Partial<DeployDeps>);
   const steps = ((result.data?.steps ?? []) as { step: string; ok: boolean }[]).map((entry) => entry.step);
-  return { result, order, steps, root, ctx, config, deps, state, records };
+  return { result, order, steps, root, ctx, config, deps, state, records, psql };
 }
 
-const AFTER_STORE = (order: string[]) => order.slice(order.indexOf('store') + 1).filter((name) => !['provision', 'edge', 'converge', 'verify', 'prune', 'container', 'post-deploy', 'fetch'].includes(name));
+const AFTER_STORE = (order: string[]) => order.slice(order.indexOf('store') + 1).filter((name) => !['provision', 'edge', 'converge', 'verify', 'prune', 'container', 'post-deploy', 'fetch', 'choice:empty?'].includes(name));
 
 test('nothing pending: no backup, no migration, and the contract pass after accept is a green preview', async (t) => {
   const { result, order, steps } = await run(t);
@@ -204,12 +221,61 @@ test('no accepted release: the first start is chosen by itself (hold deploy, emp
   assert.equal(result.data!.migrations, undefined, 'the first start has no expand or contract pass: it applied everything on an empty database');
 });
 
-test('STACK_FIRST_START_NOT_EMPTY: no accepted release and a database holding data is refused for the owner', async (t) => {
+test('STACK_FIRST_START_NOT_EMPTY: no accepted release and a database holding data is refused for the owner, with no hand step', async (t) => {
   const { result, order } = await run(t, { previous: '', notEmpty: true });
   assert.equal(result.ok, false);
   assert.equal(result.refused!.code, 'STACK_FIRST_START_NOT_EMPTY');
   assert.ok(!order.some((name) => name.startsWith('migrate')) && !order.includes('backup') && !order.includes('accept'));
   assert.ok(result.lines.some((line) => line.includes('needs the owner')));
+  assert.ok(result.lines.some((line) => line.includes('the app empties its database itself')));
+  assert.ok(!result.lines.some((line) => line.includes('docker volume rm')), 'no hand step');
+});
+
+test('an accepted release and an empty database: the first start is chosen, not the expand path', async (t) => {
+  const { result, order, steps } = await run(t, { empty: true, expand: EXPAND });
+  assert.equal(result.ok, true, result.lines.join('\n'));
+  assert.ok(order.indexOf('choice:empty?') < order.indexOf('deploy-hold'), 'the emptiness is proved before the choice');
+  assert.deepEqual(steps.slice(4, 6), ['deploy-hold', 'first-start']);
+  assert.deepEqual(AFTER_STORE(order), ['deploy-hold', 'empty?', 'migrate:first-start:preview', 'migrate:first-start:run', 'deploy', 'accept']);
+  assert.ok(result.lines.some((line) => line.includes('db: first start, because the database of shop_db is empty')));
+  assert.ok(!order.includes('backup'));
+});
+
+test('STACK_DEPLOY_DB_FOREIGN_CHAIN: an accepted release over a database that carries another migration history is refused, the app empties it itself', async (t) => {
+  const { result, order } = await run(t, { foreign: true });
+  assert.equal(result.ok, false);
+  assert.equal(result.refused!.code, 'STACK_DEPLOY_DB_FOREIGN_CHAIN');
+  assert.match(result.refused!.message, /2 migration version\(s\) the app's chain does not explain \(20261026000000, 20261027000000\)/u);
+  assert.match(result.refused!.message, /the app empties its database itself/u);
+  assert.doesNotMatch(result.refused!.message, /starci app stack/u, 'no harness verb owns the reset');
+  assert.deepEqual(AFTER_STORE(order), ['migrate:all:preview'], 'no backup, no migration, no deploy');
+  assert.ok(result.lines.includes('deploy not started; the services are untouched'));
+});
+
+test('the first start gives the app role its sealed password after the migrations, on psql stdin, never in a line', async (t) => {
+  const secret = 'Sealed-app-pw_0123456789';
+  const { result, order, psql } = await run(t, { previous: '', appPassword: { value: secret } });
+  assert.equal(result.ok, true, result.lines.join('\n'));
+  assert.ok(order.indexOf('migrate:first-start:run') < order.indexOf('psql') && order.indexOf('psql') < order.lastIndexOf('deploy'), order.join(' '));
+  assert.ok(order.includes('sealed:postgres:APP_BE_DB_PASSWORD'), 'the value comes from the sealed member the database block names');
+  assert.equal(psql.length, 1);
+  assert.match(psql[0] as string, /ALTER ROLE "app_be" LOGIN PASSWORD/u);
+  assert.ok((psql[0] as string).includes(secret), 'the statement carries the value on stdin');
+  assert.ok(result.lines.some((line) => line === 'first start: the app role app_be has its password from the sealed postgres APP_BE_DB_PASSWORD'));
+  assert.ok(!JSON.stringify(result).includes(secret), 'the value is in no line and no data');
+});
+
+test('STACK_FIRST_START_APP_ROLE: a failed role statement is redacted, and an unsafe sealed value never reaches psql', async (t) => {
+  const secret = 'Sealed-app-pw_0123456789';
+  const failed = await run(t, { previous: '', appPassword: { value: secret, psql: { status: 1, stderr: `ERROR:  syntax error near "${secret}"\n` } } });
+  assert.equal(failed.result.refused!.code, 'STACK_FIRST_START_APP_ROLE');
+  assert.ok(!JSON.stringify(failed.result).includes(secret), 'the password is redacted from every line');
+  assert.ok(failed.result.lines.some((line) => line.includes('could not set the password of app_be') && line.includes('[redacted]')));
+  assert.ok(!failed.order.includes('accept'));
+  const unsafe = await run(t, { previous: '', appPassword: { value: "x'; drop role postgres; --" } });
+  assert.equal(unsafe.result.refused!.code, 'STACK_FIRST_START_APP_ROLE');
+  assert.ok(!unsafe.order.includes('psql'), 'a value outside the safe password kind is refused before psql');
+  assert.ok(!JSON.stringify(unsafe.result).includes('drop role'));
 });
 
 test('an external database keeps --db-url-env: migrate by the URL, backup where the deploy runs, no container', async (t) => {

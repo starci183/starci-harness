@@ -187,13 +187,19 @@ The migration runs inside the database service's container through the Docker tr
 does (`inContainer`), so the database never listens beyond its stack network and CI never holds a `DATABASE_URL`. An app
 whose database is outside the stack declares `database.target: external` and keeps `--db-url-env` with a sealed URL.
 
-**First start.** When an environment has no accepted release, the deploy proves the database empty and runs the first
-start, reserved to `--urgent --first-start`: the stack is deployed with every service but the database at 0 replicas (a
-global-mode service held off every node), so no app service starts against the empty schema; the database is proved
-empty (no migration history, no table in `public`) and migrated inside its own container (`db/bootstrap.sql` first), then
-the real stack is deployed and converged, with the record, the rollback target, the readiness verify and the automatic
-rollback holding. A database that is not empty with no accepted release is refused
-(`STACK_FIRST_START_NOT_EMPTY`) and needs the owner.
+**First start.** A deploy of a `database.target: stack` database runs the first start when the database is empty: no
+release was ever accepted, or the running database holds no migration history and no table in `public`, whatever release
+was accepted before (`firstStartReason` in `stack/db-phases.mts`). The stack is deployed with every service but the database
+at 0 replicas (a global-mode service held off every node), so no app service starts against the empty schema; the database
+is proved empty again and migrated inside its own container (`db/bootstrap.sql` first); when the `database:` block names
+`appPassword: { member, key }`, the app role (hfs.json `db.appRole`, default `app_be`), which the migrations create without a
+password, gets that sealed value through psql on stdin inside the container, never in argv, a file or a printed line
+(`STACK_FIRST_START_APP_ROLE` when it cannot, the value redacted); then the real stack is deployed and converged, with the
+record, the rollback target, the readiness verify and the automatic rollback holding. A database that is not empty with no
+accepted release is refused (`STACK_FIRST_START_NOT_EMPTY`), and a database whose recorded history the app's migration chain
+does not explain, such as the chain an app replaced by a declared `db.baselineReset`, is refused at the preview
+(`STACK_DEPLOY_DB_FOREIGN_CHAIN`). Emptying a database is the app's own operation, never a harness verb: an app may run
+several databases, and the owner confirms it holds no data to keep; the next deploy then takes the first start.
 
 ## Secrets and access
 
@@ -299,7 +305,7 @@ both write a journal; `stack status` reports drift; rollback target images are p
 contract, generalised from `stack/urgent-floor.mts` (shared steps, renamed codes), `db/postgres.mts` (`inContainer` for any
 migrate), the contract-migration finding in the db rules (`app check --gate db`), `database.target` in the stacks schema.
 Tests: no pending migration means no backup; a red preview refuses before the stack deploy; a contract migration runs only
-after accept; first start chosen automatically with no accepted release and refused on a non-empty database. Done: the
+after accept; first start chosen automatically on an empty database and refused on a non-empty one. Done: the
 nivo-lite stack deploys and migrates in a scratch swarm with the db service internal only.
 
 **WP3. CI evidence and urgent trailers (`cli/`).** Files: `cli/src/core/check/ci.ts` (`requireCiGreen` accepts

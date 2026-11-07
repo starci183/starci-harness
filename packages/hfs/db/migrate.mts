@@ -2,7 +2,8 @@
 // idempotently. The database is the connection URL in the environment variable `--db-url-env` names (default DATABASE_URL); psql
 // applies each migration and records it in the history table in ONE transaction (db/postgres.mts).
 // The optional `database:` block of .starcistacks/application-stacks.yaml names the baseline migration, the optional second baseline (standard),
-// the held-back migrations (applied later by `db post-cutover`), the restamp pairs and the archive directory. The plan, from the history:
+// the held-back migrations (applied later by `db post-cutover`), the restamp pairs and the archive directory, and for a deploy where the database runs
+// (target, service) and the sealed password its first start gives the app role (appPassword). The plan, from the history:
 //   repair    revert each restamped old version still recorded and mark its new version applied
 //   baseline  revert the archived rows, mark the baseline applied (it is NOT run) when the history predates it
 //   forward   apply every other migration in stamp order, EXCEPT the held-back ones
@@ -38,7 +39,11 @@ export interface DatabaseDecl {
   target: DatabaseTarget;
   /** The stack service of a `stack` database. */
   service: string;
+  /** The sealed custody value the first start gives the app role (hfs.json `db.appRole`, default app_be) as its password, or null when none is declared. */
+  appPassword: SealedRef | null;
 }
+/** One value of an environment's sealed custody: the member under `.starcistacks/<env>/secrets` and the key inside it. */
+export interface SealedRef { member: string; key: string }
 /** Where the database of an app runs (see DatabaseDecl.target). */
 export type DatabaseTarget = 'stack' | 'external';
 /** Which migrations a pass applies: all of them, the expand ones a deploy applies before the services update, or the contract ones it applies after accept. */
@@ -79,6 +84,8 @@ const POST_CHECKS: Record<string, Check> = {
   schema: matches(IDENT), functionPrefixes: listOf(matches(IDENT)), functionNames: listOf(matches(IDENT)),
   functions: listOf(matches(SIGNATURE)), minAgeHours: (value) => Number.isFinite(value) && (value as number) >= 0,
 };
+const SEALED_FIELDS = ['key', 'member'];
+const sealedOk: Check = (value) => plain(value) && Object.keys(value as Block).sort().join() === SEALED_FIELDS.join() && matches(/^[a-z][a-z0-9-]*$/u)((value as Block).member) && matches(/^[A-Z][A-Z0-9_]*$/u)((value as Block).key);
 const postOk: Check = (value) => plain(value) && Object.keys(value as Block).every((key) => POST_FIELDS.includes(key) && (POST_CHECKS[key] as Check)((value as Block)[key]));
 
 const CHECKS: Record<string, [Check, string]> = {
@@ -91,9 +98,10 @@ const CHECKS: Record<string, [Check, string]> = {
   postCutover: [postOk, `must use only ${POST_FIELDS.join(', ')} with valid values`],
   target: [(value) => value === 'stack' || value === 'external', 'must be stack (a service of the environment stack) or external'],
   service: [matches(SERVICE), `must match ${SERVICE} (the stack service that runs the database)`],
+  appPassword: [sealedOk, 'must be { member, key }: the sealed member of the environment (lower-case) and the UPPER_CASE key whose value the app role gets'],
 };
 
-const DEFAULTS: Readonly<DatabaseDecl> = Object.freeze({ migrationsDir: MIGRATIONS_DIR, archiveDir: null, baseline: null, standard: null, heldBack: [], restamp: [], postCutover: null, target: 'stack', service: 'db' });
+const DEFAULTS: Readonly<DatabaseDecl> = Object.freeze({ migrationsDir: MIGRATIONS_DIR, archiveDir: null, baseline: null, standard: null, heldBack: [], restamp: [], postCutover: null, target: 'stack', service: 'db', appPassword: null });
 
 /** Judges the `database:` block. Returns { config } or { problems }; every field is optional (`standard` needs `baseline`). */
 function normalizeDatabase(block: unknown): { config: DatabaseDecl; problems?: undefined } | { config?: undefined; problems: string[] } {
@@ -294,7 +302,7 @@ export async function migrateDatabase(ctx: VerbContext, decl: DatabaseDecl, opti
     ...plan.missingFiles.map((version) => `no archived migration file for the restamped version ${version}`),
     ...plan.unexpected.map((version) => `recorded version ${version} is outside baseline + forward + held-back and no restamp or archive row explains it`),
   ];
-  if (red.length > 0) return { ok: false, lines: [...lines, ...red.map((item) => `RED: ${item}`), 'nothing applied.'], data: dataOf(model, plan, remote, { red, executed: false }) };
+  if (red.length > 0) return { ok: false, lines: [...lines, ...red.map((item) => `RED: ${item}`), 'nothing applied.'], data: dataOf(model, plan, remote, { red, unexpected: plan.unexpected, executed: false }) };
   if (options.execute !== true) return { ok: true, lines: [...lines, `dry run: read-only (one history read); the final history would be ${plan.final} version(s). Nothing applied.`], data: dataOf(model, plan, remote, { executed: false }) };
   if (!isLoopback(session.target.url)) requireArmed(ctx);
   const pushed = applyPlan(session, plan);
