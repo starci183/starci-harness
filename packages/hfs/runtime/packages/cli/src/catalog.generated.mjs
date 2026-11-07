@@ -2613,11 +2613,6 @@ export const CATALOG = {
               "name": "restore",
               "type": "boolean",
               "summary": "put the recorded npm pins back and install them; also clears a record of the removed overlay"
-            },
-            {
-              "name": "port",
-              "type": "string",
-              "summary": "the registry's port on 127.0.0.1 (default 4873)"
             }
           ],
           "positional": [
@@ -2647,35 +2642,9 @@ export const CATALOG = {
               "summary": "this package (its folder or name), repeatable, instead of the packages changed since the base of the branch; its build prerequisites are built, not published"
             },
             {
-              "name": "port",
-              "type": "string",
-              "summary": "the port on 127.0.0.1 (default 4873)"
-            },
-            {
               "name": "cwd",
               "type": "string",
               "summary": "the harness checkout to build and publish (default: the checkout of the working directory)"
-            }
-          ],
-          "positional": [],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
-        "registry-up": {
-          "summary": "start or reuse the local npm registry container on 127.0.0.1 (the host service local-registry); dry until --execute",
-          "flags": [
-            {
-              "name": "execute",
-              "type": "boolean",
-              "summary": "start or reuse the container (default: report where it stands)"
-            },
-            {
-              "name": "port",
-              "type": "string",
-              "summary": "the port on 127.0.0.1 (default 4873)"
             }
           ],
           "positional": [],
