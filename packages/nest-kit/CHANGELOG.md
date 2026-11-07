@@ -2,7 +2,7 @@
 
 ## 0.2.0 - 2026-11-04
 
-- Added: `classifyFailure(cause, DomainError)` and `FailureClass`, the class of a flow failure (`transient`, `input`, `config`, `code`; a `failureClass` the error carries wins), moved here from the `platform/queue` template so the job runner and both event consumers share one rule (decision `failure-class-in-nest-kit`). Spec: `src/failure.spec.ts` at 100%.
+- Added: `classifyFailure(cause, DomainError)` and `FailureClass`, the class of a flow failure (`transient`, `input`, `config`, `code`; a `failureClass` the error carries wins), moved here from the `platform/queue` template so the job runner and both event consumers share one rule. Spec: `src/failure.spec.ts` at 100%.
 
 ## 0.1.0 - 2026-11-03
 

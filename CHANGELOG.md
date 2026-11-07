@@ -2,19 +2,19 @@
 
 ## 1.1.0-alpha.76 - 2026-11-05
 
-- Added (release 7c.9b, decision memory-plan): `starci app check` plans its memory from the app it judges (`cli/src/harness/memory-plan.ts`, constants in `ops/liveness.yaml` `heavy.plan`, fitted on Nivo). It measures the scope from the git index and file sizes (specs and sources per side, the MB of the coverage records and of every cache record) and sizes the check's parent heap, re-executing itself under that heap when node's limit is lower. It also sizes each side's coverage parent, worker heap and worker count, each tsc program's heap, the CI build steps' heap and the lint ratchet's chunk. `--explain` prints the plan, and @starci/hfs receives it as `STARCI_MEMORY_PLAN`.
+- Added: `starci app check` plans its memory from the app it judges (`cli/src/harness/memory-plan.ts`, constants in `ops/liveness.yaml` `heavy.plan`, fitted on Nivo). It measures the scope from the git index and file sizes (specs and sources per side, the MB of the coverage records and of every cache record) and sizes the check's parent heap, re-executing itself under that heap when node's limit is lower. It also sizes each side's coverage parent, worker heap and worker count, each tsc program's heap, the CI build steps' heap and the lint ratchet's chunk. `--explain` prints the plan, and @starci/hfs receives it as `STARCI_MEMORY_PLAN`.
 - Changed: admission holds a planned child at its planned MB (a `mb` column on `heavy_slots`) instead of its kind's estimate. A child's sampled peak resident memory more than `learnAbovePercent` (20%) over its plan raises that kind's factor for the app's next run (`.starciwork/memory-factors.json`), with a warning.
 - Fixed: the DNA contract loader accepts a `set` check without a value and a per-metric value list (`metric: [width, height], value: [113px, 40px]`), which the Grammar's laws DNA-COMMON-TONE-CUSTOM-COMPLETE and DNA-COMMON-LINK-MEDIA-KEEPS-BOX use. Since those laws landed, the loader had refused the whole contract.
 - Changed (CI): the harness job runs the CLI's tests, so a red CLI test blocks publishing.
 
 ## 1.1.0-alpha.75 - 2026-11-05
 
-- Added (decision release-only-what-changed): `starci release publish` and `starci release push` skip a raised package whose shipped files differ from the version npm serves only by its CHANGELOG, lockfile and version field (`unchanged` in the plan, `shipsTheSame` in `cli/src/core/release/publish.ts`, test `unchanged.test.ts`), and refuse `RELEASE_DEPENDENCY_UNPUBLISHED` when a raised dependent requires such a skipped sibling at its raised version. The CLI keeps its exact `@starci/hfs` requirement.
+- Added: `starci release publish` and `starci release push` skip a raised package whose shipped files differ from the version npm serves only by its CHANGELOG, lockfile and version field (`unchanged` in the plan, `shipsTheSame` in `cli/src/core/release/publish.ts`, test `unchanged.test.ts`), and refuse `RELEASE_DEPENDENCY_UNPUBLISHED` when a raised dependent requires such a skipped sibling at its raised version. The CLI keeps its exact `@starci/hfs` requirement.
 - Changed: the release tests run git through the shared `captureGitSync`.
 
 ## 1.1.0-alpha.74 - 2026-11-05
 
-- Added (decision grammar-patch-range): `starci release publish` and `starci release push` refuse `RELEASE_GRAMMAR_MINOR_REQUIRED` when `@starci/grammar` is due at a patch of the version npm serves while the diff since that version holds a minor's change (a lint rule of the family, a removed export or readonly prop, a removed DNA law id, a deprecated or forbidden entry), `cli/src/core/release/grammar-bump.ts`. The sibling judgement of the publish plan and `starci check pins` read a same-minor range (`~x.y.z`) as met by any patch of it (`cli/src/core/release/pin-range.ts`). Tests: `grammar-bump.test.ts`.
+- Added: `starci release publish` and `starci release push` refuse `RELEASE_GRAMMAR_MINOR_REQUIRED` when `@starci/grammar` is due at a patch of the version npm serves while the diff since that version holds a minor's change (a lint rule of the family, a removed export or readonly prop, a removed DNA law id, a deprecated or forbidden entry), `cli/src/core/release/grammar-bump.ts`. The sibling judgement of the publish plan and `starci check pins` read a same-minor range (`~x.y.z`) as met by any patch of it (`cli/src/core/release/pin-range.ts`). Tests: `grammar-bump.test.ts`.
 
 ## 1.1.0-alpha.73 - 2026-11-05
 
@@ -26,11 +26,11 @@
 
 ## 1.1.0-alpha.69 - 2026-11-05
 
-- Changed: `policy/loosening.yaml` `branchProfiles.branches` may hold a branch pattern of `@starci/hfs` (`ui/*`: a literal first segment, `*` any characters but `/`, never `release/...`), so a profile covers dev's feature branches; the runtime allows `[dev, ui/*]` (decision `branch-profile-dev`, amended). The CLI hands the list to `@starci/hfs` as before (`STARCI_PROFILE_BRANCHES`), which refuses an entry that names or matches the default branch.
+- Changed: `policy/loosening.yaml` `branchProfiles.branches` may hold a branch pattern of `@starci/hfs` (`ui/*`: a literal first segment, `*` any characters but `/`, never `release/...`), so a profile covers dev's feature branches; the runtime allows `[dev, ui/*]`. The CLI hands the list to `@starci/hfs` as before (`STARCI_PROFILE_BRANCHES`), which refuses an entry that names or matches the default branch.
 
 ## 1.1.0-alpha.68 - 2026-11-05
 
-- Added: `policy/loosening.yaml` `branchProfiles` (decision `branch-profile-dev`: branches `[dev]`, gates `[lint, sonar, codecov]`), validated against a live ruling; an app overlay may narrow it, never widen it. The CLI hands it to `@starci/hfs` (`STARCI_PROFILE_BRANCHES`, `STARCI_PROFILE_GATES`), and `starci explain` says how `app check` picks the branch profile.
+- Added: `policy/loosening.yaml` `branchProfiles` (branches `[dev]`, gates `[lint, sonar, codecov]`), validated against a live ruling; an app overlay may narrow it, never widen it. The CLI hands it to `@starci/hfs` (`STARCI_PROFILE_BRANCHES`, `STARCI_PROFILE_GATES`), and `starci explain` says how `app check` picks the branch profile.
 
 ## 1.1.0-alpha.67 - 2026-11-04
 
@@ -294,7 +294,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Removed
 
-- `starci app lint`. `starci app check` is the one verb for app quality (owner, 2026-11-03) and takes `--side`, `--out` and `--fix`; with them it writes, so it is a local-write verb for the writing roles.
+- `starci app lint`. `starci app check` is the one verb for app quality and takes `--side`, `--out` and `--fix`; with them it writes, so it is a local-write verb for the writing roles.
 
 ### Changed
 
@@ -422,7 +422,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 ### Added
 
 - `release push` (dry run included) in the harness repository runs the plan judgement of CI's publish step against the base CI would use (the head of the last successful CI run on main, else the remote tip): `RELEASE_VERSION_NOT_BUMPED`, `RELEASE_DEPENDENCY_SKEW`, `RELEASE_DEPENDENCY_UNPUBLISHED`, and the contexts anchors (`PUSH_ANCHORS_RED`, as `contexts anchor` with no id). `release publish` and `release push` share `judgePlan` (`core/release/push-gate.ts`). Package specs stay CI's.
-- `policy/quality.yaml` `runtime.compilerLint`: package folders with no ESLint config by ruling (`packages/grammar`) are linted by `tsc --noEmit --noUnusedLocals --noUnusedParameters` over each of their tsconfigs.
+- `policy/quality.yaml` `runtime.compilerLint`: package folders with no ESLint config (`packages/grammar`) are linted by `tsc --noEmit --noUnusedLocals --noUnusedParameters` over each of their tsconfigs.
 - Specs for the tsconfig lookup and the push gate (`tsconfigs.test.ts`, `push-gate.test.ts`).
 
 ### Fixed
@@ -434,7 +434,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 ### Changed
 
 - The CLI requires @starci/hfs@4.16.0, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
-- Knowledge: the spacing doctrine (ruling spacing-roles): one scale 0 4 8 12 24 32 with no 16, gap roles (identity, inline, row, section, region), four inset levels (every container 12, a box in a card 8, a low-density region 24, the page gutter 12 / 24 / 32), the laws P1-P8, G1-G5, R1-R3, M1-M2, the text edge (tabs are the underline bar everywhere) and the per-component table in `ui/presentation.md` Space; `grammars/common.md`, `grammars/contract.md` and `contract.yaml` (spacing tokens, `DNA-COMMON-TABS-BY-LAYER`), `ui/components/tabs.md`, `ui/components/pane-grid.md`, `code/fe/naming.md`, `vendor/wrappers.yaml`. R350 (`FE_SPACING_UTILITY`, `FE_SPACING_OFF_SCALE`) joins the rule catalog; the stack pins name @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.18.0, eslint-canon-fe 9.8.0, stylelint-canon 2.4.0 and hfs 4.16.0, which the CLI follows once npm serves them.
+- Knowledge: the spacing doctrine: one scale 0 4 8 12 24 32 with no 16, gap roles (identity, inline, row, section, region), four inset levels (every container 12, a box in a card 8, a low-density region 24, the page gutter 12 / 24 / 32), the laws P1-P8, G1-G5, R1-R3, M1-M2, the text edge (tabs are the underline bar everywhere) and the per-component table in `ui/presentation.md` Space; `grammars/common.md`, `grammars/contract.md` and `contract.yaml` (spacing tokens, `DNA-COMMON-TABS-BY-LAYER`), `ui/components/tabs.md`, `ui/components/pane-grid.md`, `code/fe/naming.md`, `vendor/wrappers.yaml`. R350 (`FE_SPACING_UTILITY`, `FE_SPACING_OFF_SCALE`) joins the rule catalog; the stack pins name @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.18.0, eslint-canon-fe 9.8.0, stylelint-canon 2.4.0 and hfs 4.16.0, which the CLI follows once npm serves them.
 
 ## [1.1.0-alpha.28] - 2026-10-31
 
@@ -442,7 +442,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 - `starci contexts search "<question>" --also "<phrasing>"` (repeatable): each phrasing is ranked and the rankings are fused by reciprocal rank, each hit counting the phrasings that found it (`phrasings` in `--json`, `found by n/m` in text), so a rule written in other words than the request still surfaces.
 - The search eval (`core/contexts/search-eval.json`) records the rules agents missed: a question carrying `miss` (`on`, `what`, `cause` among `not-looked-up`, `ranked-low`, `not-in-core`, `no-enforcer`, `brief-paraphrase`, and the `fix` anchors) is scored with the rest, and `--eval` is red while a fix anchor is not in the index. Four misses of 2026-10-31 are recorded (a brief that told an app to wait for npm, PaneGrid dropping a wrapper child, a worktree removed through its junctions, a lookup forgotten after a compaction), with two more phrasings of the first.
-- Knowledge: contexts/README.md "Looking a rule up" (several phrasings, the area's scope, `--limit 10` when the answer decides, the section index, open then cite; a brief cites each constraint and tells its reader to look up the same way; the brief check) and "When a rule was missed" (record, name the causes, fix each where it lives); hard rule 7, AGENTS.md, the worker procedure, the Kernel and Supervisor briefs, the starci skill and decision `minimal-core-search` point at them.
+- Knowledge: contexts/README.md "Looking a rule up" (several phrasings, the area's scope, `--limit 10` when the answer decides, the section index, open then cite; a brief cites each constraint and tells its reader to look up the same way; the brief check) and "When a rule was missed" (record, name the causes, fix each where it lives); hard rule 7, AGENTS.md, the worker procedure, the Kernel and Supervisor briefs, the starci skill and the minimal-core search point at them.
 
 ### Changed
 
@@ -458,7 +458,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
-- Knowledge: R334 `BE_PERSISTENCE_NO_RAW_SQL` is one style (ruling no-raw-sql-one-style): lite TypeScript holds no SQL text outside the test world. A table goes through its entity, anything else is a listed database function called through `callDbFunction`, `platform/database/database.client.ts` alone composes the call statement and LISTEN (`advisoryXactLock` and `notify` are `callDbFunction` calls of pg built-ins), and the only other `.query(` is the pass-through of a file listed in `ruleParams.be.sqlPassThrough` (the canon lists the seed runner) or hfs.json `sides.be.sqlPassThrough` with a reason. The test world keeps raw SQL for probes only; plain CRUD and application function calls there go through entities and `callDbFunction`. contexts: persistence.md BE-PERSISTENCE-4, test.md BE-TEST-1, rules R334 and R68, ruling `no-raw-sql-one-style` (narrows `lite-test-sql-owner`), lite.md, slots (`ruleParams.be.sqlPassThrough`, `be.tests.world` allows `<name>.sql.ts`). Packages: `@starci/eslint-canon-be` 3.11.0 (`query`, `template`, `sqlFile`, `sqlTagImport`, `worldCallHelper`, `worldTableWrite`), `@starci/hfs` 4.14.0 (the `sqlPassThrough` key and its shape checks, the skeleton's `database.client.ts`), `@starci/eslint-canon-fe` 9.6.7, `@starci/grammar`, `@starci/eslint-grammar-core` and `@starci/eslint-grammar-offset-pop` 0.16.6 (bundled copies and pins follow). This CLI follows to the new hfs once npm serves it.
+- Knowledge: R334 `BE_PERSISTENCE_NO_RAW_SQL` is one style: lite TypeScript holds no SQL text outside the test world. A table goes through its entity, anything else is a listed database function called through `callDbFunction`, `platform/database/database.client.ts` alone composes the call statement and LISTEN (`advisoryXactLock` and `notify` are `callDbFunction` calls of pg built-ins), and the only other `.query(` is the pass-through of a file listed in `ruleParams.be.sqlPassThrough` (the canon lists the seed runner) or hfs.json `sides.be.sqlPassThrough` with a reason. The test world keeps raw SQL for probes only; plain CRUD and application function calls there go through entities and `callDbFunction`. contexts: persistence.md BE-PERSISTENCE-4, test.md BE-TEST-1, rules R334 and R68, lite.md, slots (`ruleParams.be.sqlPassThrough`, `be.tests.world` allows `<name>.sql.ts`). Packages: `@starci/eslint-canon-be` 3.11.0 (`query`, `template`, `sqlFile`, `sqlTagImport`, `worldCallHelper`, `worldTableWrite`), `@starci/hfs` 4.14.0 (the `sqlPassThrough` key and its shape checks, the skeleton's `database.client.ts`), `@starci/eslint-canon-fe` 9.6.7, `@starci/grammar`, `@starci/eslint-grammar-core` and `@starci/eslint-grammar-offset-pop` 0.16.6 (bundled copies and pins follow). This CLI follows to the new hfs once npm serves it.
 
 ## [1.1.0-alpha.25] - 2026-10-31
 
@@ -469,7 +469,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 ### Added
 
 - Knowledge: contexts/code/be/ai.md BE-AI-1's pool paragraph says how the pool is declared and kept, as @starci/ai-router 0.5.0 builds it: `poolFromEnv` in the custody owner, providers by kind with keys under the canonical `<PREFIX>_API_KEY`, `<PREFIX>_API_KEY_<n>` names and their `_FILE` twins, a key blacklisted for a spent quota or a refused secret in a durable state store, and a 503 with `Retry-After` when a profile has no key left.
-- Knowledge: contexts/code/be/ai.md BE-AI-1, 2, 3 and 6 lock the AI key architecture (ruling be-ai-one-virtual-key): below the ai-router gateway a pool of providers, each with an array of keys, rotated, failed over and blacklisted, the `embed` profile pinned to one model; above it one random virtual key `STARCI_AI_KEY` per app and environment, used by `integrations/ai` and the agent runtime alike, with no admin API and no admin token. R344 `BE_AI_VIRTUAL_KEY` holds it (`@starci/eslint-canon-be` 3.10.0 `ai-virtual-key-name`: `integrations/ai` reads exactly `STARCI_AI_KEY`, the custody owner passes no admin token; the rule catalog of `@starci/hfs` 4.13.2); the pins name the cohort hfs 4.13.2, eslint-canon-be 3.10.0, eslint-canon-fe 9.6.5, @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.5 (the Grammar moves with its lint family, which the grammar-core spec holds) (this CLI follows to the new hfs once npm serves it).
+- Knowledge: contexts/code/be/ai.md BE-AI-1, 2, 3 and 6 lock the AI key architecture: below the ai-router gateway a pool of providers, each with an array of keys, rotated, failed over and blacklisted, the `embed` profile pinned to one model; above it one random virtual key `STARCI_AI_KEY` per app and environment, used by `integrations/ai` and the agent runtime alike, with no admin API and no admin token. R344 `BE_AI_VIRTUAL_KEY` holds it (`@starci/eslint-canon-be` 3.10.0 `ai-virtual-key-name`: `integrations/ai` reads exactly `STARCI_AI_KEY`, the custody owner passes no admin token; the rule catalog of `@starci/hfs` 4.13.2); the pins name the cohort hfs 4.13.2, eslint-canon-be 3.10.0, eslint-canon-fe 9.6.5, @starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.5 (the Grammar moves with its lint family, which the grammar-core spec holds) (this CLI follows to the new hfs once npm serves it).
 
 ### Fixed
 
@@ -479,14 +479,14 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Added
 
-- Knowledge: `list-table.choose.role` gains the `step` row (a few choices or facts inside a first-run step card are a `SurfaceListCard` of `ListRow`, label outside), placed before `entity`, and ruling `step-card-list` records it as the second exception to "a list is never wrapped in a card" beside the rail list.
+- Knowledge: `list-table.choose.role` gains the `step` row (a few choices or facts inside a first-run step card are a `SurfaceListCard` of `ListRow`, label outside), placed before `entity`, as the second exception to "a list is never wrapped in a card" beside the rail list.
 - Knowledge: contexts/project/cicd.md "As built" records the `starci-ssh-gate` forced command, `deploy.notify` and the `--data-acknowledged` guard of a manual rollback, which ship in @starci/hfs 4.13.1 (the pins name it; this CLI follows to it once npm serves it).
 
 ## [1.1.0-alpha.23] - 2026-10-31
 
 ### Added
 
-- `starci app stack deploy --ci-run <id>` checks the CI run evidence of the commit before it deploys (`cli/src/core/check/ci-evidence.ts`, ruling app-cicd-auto-deploy) and forwards `--ci-run` to @starci/hfs once the evidence is accepted; `npm test` in cli/ runs the built specs, which the published package leaves out.
+- `starci app stack deploy --ci-run <id>` checks the CI run evidence of the commit before it deploys (`cli/src/core/check/ci-evidence.ts`) and forwards `--ci-run` to @starci/hfs once the evidence is accepted; `npm test` in cli/ runs the built specs, which the published package leaves out.
 
 ### Changed
 
@@ -508,10 +508,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 ### Changed
 
 - The CLI requires @starci/hfs@4.12.0, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
-- One canonical CLI (owner ruling cli-canonical-2026-10-30, contexts/harness/cli-canonical.md): every effect is dry until `--execute`; `--json`, `--timeout <s>`, `--sha`, `--cwd`, `--reason` and `--status` are the one spelling of their meaning; `check ci` absorbs `release ci-status`, `workflow step --loop` and `workflow amend --goal` absorb run and regoal, `supervisor tick --loop` absorbs watch, `connect telegram bridge` holds the bridge, `route show` replaces route explain, `ticket --kind feedback` absorbs feedback; `check stories` and `check typecheck` are dropped. An old spelling is an unknown verb or flag (CONTRIB-15).
+- One canonical CLI (contexts/harness/cli-canonical.md): every effect is dry until `--execute`; `--json`, `--timeout <s>`, `--sha`, `--cwd`, `--reason` and `--status` are the one spelling of their meaning; `check ci` absorbs `release ci-status`, `workflow step --loop` and `workflow amend --goal` absorb run and regoal, `supervisor tick --loop` absorbs watch, `connect telegram bridge` holds the bridge, `route show` replaces route explain, `ticket --kind feedback` absorbs feedback; `check stories` and `check typecheck` are dropped. An old spelling is an unknown verb or flag (CONTRIB-15).
 - `starci app <verb>` hands its arguments to @starci/hfs as typed, so hfs owns every app flag and its help; `app slot` and `app world` are new verbs, `app explain`, `app hygiene`, `app new` and `app sonar` are gone with their hfs verbs.
 - `explain <term>` takes the term positionally and prints each matching verb's flags.
-- policy/quality.yaml `gate.errorLimit` (default 20, owner ruling gate-threshold-20): the CLI hands it to @starci/hfs as STARCI_GATE_ERROR_LIMIT, the number of error findings under which `app check` and `app lint` stay green when none is a hard blocker (hfs 4.11.22).
+- policy/quality.yaml `gate.errorLimit` (default 20): the CLI hands it to @starci/hfs as STARCI_GATE_ERROR_LIMIT, the number of error findings under which `app check` and `app lint` stay green when none is a hard blocker (hfs 4.11.22).
 - The CLI keeps @starci/hfs 4.11.21 until npm serves 4.11.22; cli-follow then raises it.
 
 ## [1.1.0-alpha.20] - 2026-10-30
@@ -519,7 +519,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 ### Changed
 
 - The CLI requires @starci/hfs@4.11.21, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
-- `app stack deploy --urgent` takes `--reason` and `--remote`: without `--image` and `--source-sha` it is the one-command urgent release (hfs 4.11.21, owner ruling urgent-typecheck-build): release HEAD, build and push its images on this machine, deploy their digests under the floor. The stack verb hands @starci/hfs the caller role the urgent record names.
+- `app stack deploy --urgent` takes `--reason` and `--remote`: without `--image` and `--source-sha` it is the one-command urgent release (hfs 4.11.21): release HEAD, build and push its images on this machine, deploy their digests under the floor. The stack verb hands @starci/hfs the caller role the urgent record names.
 - `app release push --urgent` runs typecheck and the build only; `--lint-baseline` is retired and refused.
 - The CLI keeps @starci/hfs 4.11.20 until npm serves 4.11.21; cli-follow then raises it.
 
@@ -553,10 +553,10 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 ### Added
 
 - `starci app stack deploy --urgent --first-start --db-service <service>`: the first start of a self-hosted database the release
-  starts itself (owner ruling `urgent-first-start`, @starci/hfs 4.11.15): the floor proves the database empty instead of backing it
+  starts itself (@starci/hfs 4.11.15): the floor proves the database empty instead of backing it
   up and migrates it inside its container before converge.
-- `starci app release push --urgent --lint-baseline <tag>`: the lint of an urgent release judged against a release tag's findings
-  (owner ruling `urgent-lint-baseline`): only a finding new since the tag is red.
+- `starci app release push --urgent --lint-baseline <tag>`: the lint of an urgent release judged against a release tag's findings:
+  only a finding new since the tag is red.
 
 ### Changed
 
@@ -564,7 +564,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Removed
 
-- **The stress bench (owner ruling `bench-removed`, 2026-10-29: "xóa bench đi").** `bench/` (scenarios, fixtures, stand-ins,
+- **The stress bench.** `bench/` (scenarios, fixtures, stand-ins,
   README), the verbs `starci bench run` and `starci bench list` (`cli/src/core/bench/`) and the `harness` CI job's bench step
   with the sops and age install it needed are deleted. `feedback close --kind bench` is no longer a closing kind, and the
   environment overrides that existed only for the bench's stand-ins are gone: `STARCI_SECRET_ENV`, `STARCI_TELEGRAM_API`,
@@ -614,7 +614,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 - Every `starci app` verb hands @starci/hfs the harness secret.env's age identity (`runHfs` defaults `hostIdentity` to `hostAgeIdentity`), not `app secret` alone: `app stack`, `app release` and `app db` open sealed members through the same lookup as `app secret` (@starci/hfs `decryptionIdentity`).
 ### Added
 
-- **`project park` and `project unpark` (owner decision `project-park`).** `starci project park [--project <checkout>] [--dry-run]`
+- **`project park` and `project unpark`.** `starci project park [--project <checkout>] [--dry-run]`
   pauses every running, blocked or paused workflow of the project (reason `parked: was <status>`), stops each live Op or
   `[Worker]` seat with its task cancelled as parked (`task-parked`, revive.ts cause `parked`: its work settles KEEP as one
   patch and its key comes back at the same try, outside `reviveMax`), closes each workflow's Kernel terminal (`workflow-parked`;
@@ -656,8 +656,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
-- **An Op's attempt is settled before anything of it goes, and a key keeps at most one patch (owner ruling
-  `op-settle-merge-or-discard`).** Each ended attempt settles once: MERGE (its green verify landed it), DISCARD, REPAIR (its
+- **An Op's attempt is settled before anything of it goes, and a key keeps at most one patch.**
+  Each ended attempt settles once: MERGE (its green verify landed it), DISCARD, REPAIR (its
   Kernel's `settle: repair`, a new field of a command answering a red, question, check-premise or conflict decision; discard
   is the default) or KEEP (a stop the harness caused, custody, a verify the host held, a waiter parked on a shared need). Its
   Op worktree, branch (landed or not) and preserve folders go only after that settle; KEEP and REPAIR store one patch, which
@@ -770,7 +770,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   `harness/secret-env.ts`; `SOPS_AGE_KEY` joins `secretKeys` of policy/security.yaml) as its last age identity source, so adding a
   key to a member no longer fails `identity-not-supplied` when the identity lives there. The `key` and `new-key` operands become one
   `keys` rest operand; `--from-host` names exactly one key.
-  The verb also carries the app secrets standard of @starci/hfs 4.11.5 (ruling `app-secrets-one-standard`): actions
+  The verb also carries the app secrets standard of @starci/hfs 4.11.5: actions
   `recipients`, `migrate`, `split` and `audit`, flags `--from-file`, `--to`, `--add` and `--remove`.
   Bench: `app-secret-identity-from-harness`, `app-secret-provider-members`.
 
@@ -797,7 +797,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   `harness/tasks.ts`: a task or graph node of the ledger carries the hash; `task verify` judges a task's own contract
   without it). starci-next-app's `be-purchase` was refused `CONTRACT_UNFIT` at its verify (24564 tokens against 24000) after
   its worker had done the work. Bench: `admitted-contract-settles-after-context-grows`.
-- **Every seat loads a minimal core and searches the rest** (owner decision `minimal-core-search`). Canon growth had taken
+- **Every seat loads a minimal core and searches the rest**. Canon growth had taken
   the code op's `be`/`fe` base to about 20.7k of its 24000 tokens, so a contract with more than about 3.3k tokens of its own
   context was unfit. The anatomy slices name each rule by id alone (its enforcers stay in anatomy.md's full tree);
   project/README.md, project/lint.md and the shared format and scripts topics leave the code and test op bases for on-demand
@@ -885,7 +885,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
-- **`starci app db` on a self-hosted PostgreSQL** (ruling lite-self-hosted-postgres-passport-minio): the verb takes `new`, `baseline`, `restamp`, `plan`, `migrate`, `post-cutover`, `dump` and `drift` with `--url-env <NAME>` (default `DATABASE_URL`); `reset`, `--linked`, `--local`, `--target-binding`, `--auth`, `--storage` and `--backup` are gone (`cli/src/core/app/db.ts`), and `app add` has no `--no-types` (`cli/src/core/app/add.ts`). It runs with @starci/hfs 4.10.0.
+- **`starci app db` on a self-hosted PostgreSQL**: the verb takes `new`, `baseline`, `restamp`, `plan`, `migrate`, `post-cutover`, `dump` and `drift` with `--url-env <NAME>` (default `DATABASE_URL`); `reset`, `--linked`, `--local`, `--target-binding`, `--auth`, `--storage` and `--backup` are gone (`cli/src/core/app/db.ts`), and `app add` has no `--no-types` (`cli/src/core/app/add.ts`). It runs with @starci/hfs 4.10.0.
 
 ## [1.1.0-alpha.9] - 2026-10-29
 
@@ -961,7 +961,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Added
 
-- **The urgent release** (owner, 2026-10-29: "deploy gấp không cần ci cd gì hết!!!! cái này là tính năng nha"). `starci app release
+- **The urgent release**. `starci app release
   push --urgent --reason "<text>"` ships an app after its fast local checks alone and writes an URGENT record (role, reason, checks,
   commit); `starci app release gate --backfill <tag>` runs the full gate on that commit later, promoting the record to L4 when green
   and opening a blocking `verify` ticket when red (`cli/src/core/app/release.ts` hands @starci/hfs 4.9.10 the caller's role and the
@@ -1038,8 +1038,8 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   (`Starci-Harness: hfs-pattern`), an `hfs-pattern-enabled` event and a resolved shared need `config:hfs.<side>.patterns.<name>`
   whose later declarations on other branches are its relays; no task's diff carries `hfs.json`, so none is judged app-wide for it
   (`cli/src/harness/hfs-patterns.ts`, `cli/src/shared/json-edit.ts`). `contract check` names the patterns a contract needs.
-- **Findings already on the branch fail no task when a config change widens the check** (ticket tk-25adb43e8e76, owner ruling
-  r-b910f07221cf: hfs-webhooks-pattern's one-line hfs.json edit was red on BE_PUBLIC_CONTRACT_FORM, HFS_UNUSED_EXPORT and
+- **Findings already on the branch fail no task when a config change widens the check** (ticket tk-25adb43e8e76:
+  hfs-webhooks-pattern's one-line hfs.json edit was red on BE_PUBLIC_CONTRACT_FORM, HFS_UNUSED_EXPORT and
   route-page-is-one-page findings already at its base). `starci check run`, widened to whole packages by an app-wide configuration
   file, runs the same tier at its base in a clean checkout and judges each red typecheck, lint or canon step by its findings,
   keyed by rule, file and message with line numbers dropped: a step whose findings the base already holds turns green and they are
@@ -1107,7 +1107,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   terminal is closed.
 ### Changed
 
-- **The Supervisor rules what a Kernel leaves undecided** (owner, 2026-10-29). A Kernel decision (a red task, a failed or
+- **The Supervisor rules what a Kernel leaves undecided**. A Kernel decision (a red task, a failed or
   returned one answered without moving it, a question, check-premise or shared-need) still undecided past
   `decisionStallMinutes`, though the Kernel was woken, is no longer a `harness` escalation ticketed for Debug: the tick hands it
   to the Supervisor as a `kernel-undecided` decision carrying the decision in full and the task's evidence, superseded if the
@@ -1125,7 +1125,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
   tick and from the ticket's close or answer: a task the harness ended comes back at the same try, any other returns to its
   reopened Kernel decision (`cli/src/harness/holds.ts`). A hold with no release condition held a dead task for hours.
   Bench: `kernel-hold-released-by-ticket`.
-- **Telegram carries only what needs the owner's decision** (owner, 2026-10-29). ops/telegram.yaml `notices` lists the notice
+- **Telegram carries only what needs the owner's answer**. ops/telegram.yaml `notices` lists the notice
   kinds that go out, `question` alone by default: a question ticket awaiting the owner is sent once as its card, reminded at
   most once per `reminderHours` (24) while it stays open as a reply to the card with its buttons, and an answer is acknowledged
   with one short line. Workflow done, blocked or stopped, owner requests taken up and defect tickets opened or fixed are no
@@ -1575,7 +1575,7 @@ the whole list.
   with no try spent), never replayed forever.
 - **The Sonar block carries the ruled cpd exclusion.** `app sonar` derives the `starci:sonar-scope` block with
   `sonar.cpd.exclusions` beside `sonar.coverage.exclusions`, its entries the `cpd-exclusions` allowances of the design
-  truths of the `@starci/hfs` the CLI runs (ruling message-catalogs-not-duplicate-code), the line the app template renders
+  truths of the `@starci/hfs` the CLI runs, the line the app template renders
   inside the same block; `check loosening` accepts it there and still refuses a cpd exclusion written outside the block or
   edited inside it (bench `security-loosening-sonar-block`).
 

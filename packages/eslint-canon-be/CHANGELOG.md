@@ -6,11 +6,11 @@
 
 ## 3.19.0 - 2026-11-05
 
-- Changed (decision release-only-what-changed): the canon reads the @starci/hfs runtime (slots, rule catalog, canon pins, failure codes, the architecture machine) from the installed hfs at run time, which it peers by `~5.13.0`, and bundles no copy; `runtime/` keeps only the project graph rule, the jsdoc and sonar helpers and the package-scripts template. The stale forks it kept (slots 3.13.0) are gone, so it lints with the manifest hfs ships.
+- Changed: the canon reads the @starci/hfs runtime (slots, rule catalog, canon pins, failure codes, the architecture machine) from the installed hfs at run time, which it peers by `~5.13.0`, and bundles no copy; `runtime/` keeps only the project graph rule, the jsdoc and sonar helpers and the package-scripts template. The stale forks it kept (slots 3.13.0) are gone, so it lints with the manifest hfs ships.
 
 ## 3.18.4 - 2026-11-05
 
-- Changed: the runtime copy of the canon pins gives the Grammar family its same-minor range (decision grammar-patch-range) and names `@starci/hfs` 5.12.0 and the Grammar family 0.22.0; the runtime copy of R15 reads the range.
+- Changed: the runtime copy of the canon pins gives the Grammar family its same-minor range and names `@starci/hfs` 5.12.0 and the Grammar family 0.22.0; the runtime copy of R15 reads the range.
 
 ## 3.18.3 - 2026-11-05
 
@@ -70,7 +70,7 @@
 
 ## 3.16.0 - 2026-11-04
 
-- Changed: `schema-place` (R304) lets any file of a root workspace package (tier `package`: `packages/<name>/`, slots `app.packages` and `app.module-registry`) import `zod`, since its node, block and vocabulary contracts are zod schemas; a door or `dto/` folder there still answers to `class-validator`, a `<name>.schema.ts` there still never shares a file with `class-validator` or a GraphQL type, and `schema-bounded` holds unchanged (ruling package-zod-contracts). Spec: `src/packages-config.spec.ts`.
+- Changed: `schema-place` (R304) lets any file of a root workspace package (tier `package`: `packages/<name>/`, slots `app.packages` and `app.module-registry`) import `zod`, since its node, block and vocabulary contracts are zod schemas; a door or `dto/` folder there still answers to `class-validator`, a `<name>.schema.ts` there still never shares a file with `class-validator` or a GraphQL type, and `schema-bounded` holds unchanged. Spec: `src/packages-config.spec.ts`.
 - Changed: the runtime copies carry the landed-migration db rules, the module shape of `be.integrations.passport` in the package slot manifest and the canon pins of `@starci/hfs` 5.8.0.
 
 ## 3.15.5 - 2026-11-04
@@ -184,7 +184,7 @@
 
 ## 3.11.6 - 2026-11-01
 
-- Changed: the bundled rule catalog states the R61 status law as the owner's pair rule.
+- Changed: the bundled rule catalog states the R61 status law as the status pair rule.
 - Changed: the bundled canon pins name @starci/grammar 0.20.2, eslint-grammar-core and eslint-grammar-offset-pop 0.20.2, eslint-canon-be 3.11.6, eslint-canon-fe 9.8.5, stylelint-canon 2.4.0 and hfs 4.16.5 (RELEASE_VERSION_NOT_BUMPED: the previous versions are on npm). No rule changes.
 
 ## 3.11.5 - 2026-11-01
@@ -220,7 +220,7 @@
 
 ## 3.10.0 - 2026-10-31
 
-- Added: `ai-virtual-key-name` (R344 `BE_AI_VIRTUAL_KEY`): inside `integrations/ai` every `<env>.secret(...)` names exactly `STARCI_AI_KEY`, as a literal: the one virtual key the ai-router gateway mounts and every client uses; the custody owner `integrations/ai-gateway` passes the gateway no `adminToken`, since it exposes no admin API (ruling be-ai-one-virtual-key). Exported: `VIRTUAL_KEY_VARIABLE`.
+- Added: `ai-virtual-key-name` (R344 `BE_AI_VIRTUAL_KEY`): inside `integrations/ai` every `<env>.secret(...)` names exactly `STARCI_AI_KEY`, as a literal: the one virtual key the ai-router gateway mounts and every client uses; the custody owner `integrations/ai-gateway` passes the gateway no `adminToken`, since it exposes no admin API. Exported: `VIRTUAL_KEY_VARIABLE`.
 - Changed: the bundled runtime copies follow @starci/hfs 4.13.2 (R344 in the catalog and on the `be.integrations` slot) and the canon pins name the lint cohort eslint-canon-be 3.10.0, eslint-canon-fe 9.6.5, eslint-grammar-core and eslint-grammar-offset-pop 0.16.5.
 
 ## 3.9.4 - 2026-10-31
@@ -230,9 +230,9 @@
 ## 3.9.3 - 2026-10-31
 
 - Changed: the bundled canon pins name the 0.16.3 cohort (@starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.3, eslint-canon-fe 9.6.3, eslint-canon-be 3.9.3, stylelint-canon 2.3.0, jest-preset 2.6.0, hfs 4.13.0); ChatWorkspace and PaneLayout are removed with no alias; PaneGrid and Pane are the one generic pane grid: grammar names are generic.
-- Added: `entity-extends-base` (R342 `BE_ENTITY_EXTENDS_BASE`, `src/entity-base.ts`, BE-PERSISTENCE-3, ruling entity-base), both editions: an `@Entity` class that declares a database-set `created_at` or `updated_at` itself (`@CreateDateColumn`, `@UpdateDateColumn`, or a `@Column` on those names, or on `createdAt` / `updatedAt`, with `insert: false`, `update: false` or a `default`) and, beside both, the generated uuid `id` is refused; the finding names `UuidAbstractEntity` or `AbstractEntity` of `@modules/platform/database` as the base to extend. A timestamp the application sets (a plain `@Column`) and the base file `platform/database/abstract.entity.ts` are not judged. Spec: `src/entity-base.spec.ts`.
+- Added: `entity-extends-base` (R342 `BE_ENTITY_EXTENDS_BASE`, `src/entity-base.ts`, BE-PERSISTENCE-3), both editions: an `@Entity` class that declares a database-set `created_at` or `updated_at` itself (`@CreateDateColumn`, `@UpdateDateColumn`, or a `@Column` on those names, or on `createdAt` / `updatedAt`, with `insert: false`, `update: false` or a `default`) and, beside both, the generated uuid `id` is refused; the finding names `UuidAbstractEntity` or `AbstractEntity` of `@modules/platform/database` as the base to extend. A timestamp the application sets (a plain `@Column`) and the base file `platform/database/abstract.entity.ts` are not judged. Spec: `src/entity-base.spec.ts`.
 - Changed: the bundled rule catalog adds R342 and the failure codes add `BE_ENTITY_EXTENDS_BASE`.
-- Added: the lint result cache of `starci app check` (ruling app-check-cache): `crossFileInputs`, the files and folders each rule reads beyond the linted file (git-history inputs; third-party-owner walks the integrations only for integration files; an fs-audit spec proves every rule declares what it reads), and the `projectGraph` export the cache keys a file's lint record on.
+- Added: the lint result cache of `starci app check`: `crossFileInputs`, the files and folders each rule reads beyond the linted file (git-history inputs; third-party-owner walks the integrations only for integration files; an fs-audit spec proves every rule declares what it reads), and the `projectGraph` export the cache keys a file's lint record on.
 
 ## 3.9.2 - 2026-10-31
 
@@ -297,7 +297,7 @@
 ## 3.8.11 - 2026-10-29
 
 - Fixed: `source-suffix` (BE_SOURCE_FORM, R89) admits the one file a file slot names by its path, read from the slot manifest: the lite entity registry `src/modules/platform/database/entities.ts` (slot `be.platform.database.entities`) was refused for having no role suffix.
-- Changed: `no-raw-sql` (R334) exempts its two raw SQL owners by side-relative folder (`RAW_SQL_OWNERS`: `src/modules/platform/database/` and `src/tests/world/`) and keeps refusing raw SQL in integration and e2e specs, builders and fixtures; its messages send a spec author to entities on `world.db.<connection>` or a named world helper. `callDbFunction` with a listed function is allowed in specs as in domain code (ruling lite-test-sql-owner).
+- Changed: `no-raw-sql` (R334) exempts its two raw SQL owners by side-relative folder (`RAW_SQL_OWNERS`: `src/modules/platform/database/` and `src/tests/world/`) and keeps refusing raw SQL in integration and e2e specs, builders and fixtures; its messages send a spec author to entities on `world.db.<connection>` or a named world helper. `callDbFunction` with a listed function is allowed in specs as in domain code.
 - Fixed: the edition gate (`pluginForEdition`) reads the rule catalog in full too, so a rule whose catalog entries name only lite is inactive in full: `no-raw-sql` (R334, `editions: [lite]`) no longer fires on a full app, whose SQL law is R36. Full used to return every rule without reading the catalog.
 - Changed: the bundled canon pins name hfs 4.11.12, eslint-canon-be 3.8.11, eslint-canon-fe 9.5.13 and the Grammar family 0.15.24.
 
@@ -336,7 +336,7 @@
 ## 3.8.2 - 2026-10-29
 
 - Added: R336 `BE_EVENT_BUS_LITE_SHAPE` (`src/event-bus-lite.ts`, contexts/code/be/event-bus.md BE-EVENT-BUS-6), lite only: `event-dedupe-key` refuses an event class of `src/modules/events/**` whose payload type has no `dedupeKey` (a literal, `EventPayload`, or an interface or alias of the file that declares it or extends `EventPayload`), and `event-subscription-static` refuses a `subscribe(queue, consumer, options?)` whose queue is not a `*_TOPIC_QUEUE` constant imported from `@modules/platform/event-bus` or whose options are not a literal object. Spec: `src/event-bus-lite.spec.ts`.
-- Changed: the bundled slot manifest 3.13.0 admits `pgmq` in `ruleParams.db.extensions` (the lite event bus, ruling lite-pgmq-bus-bullmq-jobs), retires `ruleParams.db.queueOutbox` and `sides.be.queueOutbox` with the pg_cron half of R258, lists `public.event_bus_send`, `public.event_bus_read`, `public.event_bus_archive`, `public.event_bus_bury`, `public.event_bus_dead_letters` and `public.event_bus_requeue` in place of `public.event_bus_write` in `ruleParams.be.dbFunctions`, and moves slot `app.db.image` to `.starcistacks/images/db/Dockerfile` (ruling lite-db-image-in-stacks, admitted by the lite `app.starcistacks` allows); the bundled rule catalog keeps R258 `DB_PGMQ_DECLARED` as the event-bus law, retires `DB_CRON_OWNED` and adds R336 `BE_EVENT_BUS_LITE_SHAPE`; the bundled canon pins name hfs 4.11.3, eslint-canon-be 3.8.2, eslint-canon-fe 9.5.4 and the Grammar family 0.15.15. Spec `src/lite-event-bus-template.spec.ts` lints the lite pgmq event-bus templates of @starci/hfs with `no-raw-sql` (R334).
+- Changed: the bundled slot manifest 3.13.0 admits `pgmq` in `ruleParams.db.extensions` (the lite event bus), retires `ruleParams.db.queueOutbox` and `sides.be.queueOutbox` with the pg_cron half of R258, lists `public.event_bus_send`, `public.event_bus_read`, `public.event_bus_archive`, `public.event_bus_bury`, `public.event_bus_dead_letters` and `public.event_bus_requeue` in place of `public.event_bus_write` in `ruleParams.be.dbFunctions`, and moves slot `app.db.image` to `.starcistacks/images/db/Dockerfile` (admitted by the lite `app.starcistacks` allows); the bundled rule catalog keeps R258 `DB_PGMQ_DECLARED` as the event-bus law, retires `DB_CRON_OWNED` and adds R336 `BE_EVENT_BUS_LITE_SHAPE`; the bundled canon pins name hfs 4.11.3, eslint-canon-be 3.8.2, eslint-canon-fe 9.5.4 and the Grammar family 0.15.15. Spec `src/lite-event-bus-template.spec.ts` lints the lite pgmq event-bus templates of @starci/hfs with `no-raw-sql` (R334).
 
 ## 3.8.1 - 2026-10-29
 
@@ -347,12 +347,12 @@
 
 ## 3.8.0 - 2026-10-29
 
-- Added: `jobs-scheduler-owner` (R335 `BE_JOBS_SCHEDULER_OWNER`, ruling lite-official-postgres-image): only `platform/jobs/job-tick.service.ts`, its spec and `jobs.module.ts` import `@nestjs/schedule` or `cron`, the `Cron`, `Interval` and `Timeout` decorators are refused everywhere, and a `job-tick.service.ts` must call `advisoryXactLock` and `callDbFunction(..., "job_tick_claim", ...)`. `infra-import-owner` (R90) reads `@nestjs/schedule` and `cron` as owned by `platform/jobs` from the bundled manifest.
+- Added: `jobs-scheduler-owner` (R335 `BE_JOBS_SCHEDULER_OWNER`): only `platform/jobs/job-tick.service.ts`, its spec and `jobs.module.ts` import `@nestjs/schedule` or `cron`, the `Cron`, `Interval` and `Timeout` decorators are refused everywhere, and a `job-tick.service.ts` must call `advisoryXactLock` and `callDbFunction(..., "job_tick_claim", ...)`. `infra-import-owner` (R90) reads `@nestjs/schedule` and `cron` as owned by `platform/jobs` from the bundled manifest.
 - Changed: the bundled slot manifest 3.11.0 adds the managed lite slot `app.db.image` (`db/Dockerfile`), narrows `ruleParams.db.extensions` to what the official postgres image plus pgvector carries (pgcrypto, pg_trgm, vector, uuid-ossp, unaccent, btree_gist; no pgmq, pg_cron, pg_net or supabase_vault) and gives `@nestjs/schedule` and `cron` one owner, `platform/jobs`, in `infraOwners`; the bundled rule catalog adds R335 `BE_JOBS_SCHEDULER_OWNER` and its R250 and R276 laws name the platform/jobs tick and the db image; the bundled canon pins name hfs 4.11.0, eslint-canon-be 3.8.0, eslint-canon-fe 9.5.2 and the Grammar family 0.15.13 and pin `@nestjs/schedule` 6.1.3 (CommonJS on the Nest 11 line) and `cron` 4.4.0.
 
 ## 3.7.1 - 2026-10-29
 
-- Changed: the entity registry (persistence.md BE-PERSISTENCE-3, Debug ruling on lite-persistence-typeorm-entities): the bundled slot manifest 3.10.0 adds the lite slot `be.platform.database.entities`, the entity registry (slot fields `role: entity-registry` and `importedBy`, validated by the manifest shape); the bundled architecture machine reads it (`architecture/entity-registry.mjs`): `tier-direction` (R26 `BE_TIER_DIRECTION`) admits the registry's import of a domain or platform capability's `index.ts` that binds only that capability's `<c>Entities`, and `owner-export-bypass` (R30 `ARCH_OWNER_EXPORT_BYPASS`) admits a direct import of the registry from the files `importedBy` names (`apps/*/src/compose/*.ts`, `apps/*/src/app.module.ts`, `src/tests/world/**`); every other import of either shape stays refused, and full has no registry. `import-owner-entry` (R30) admits the deep path `@modules/platform/database/entities` from the same importers only. Spec: `src/entity-registry.spec.ts`.
+- Changed: the entity registry (persistence.md BE-PERSISTENCE-3): the bundled slot manifest 3.10.0 adds the lite slot `be.platform.database.entities`, the entity registry (slot fields `role: entity-registry` and `importedBy`, validated by the manifest shape); the bundled architecture machine reads it (`architecture/entity-registry.mjs`): `tier-direction` (R26 `BE_TIER_DIRECTION`) admits the registry's import of a domain or platform capability's `index.ts` that binds only that capability's `<c>Entities`, and `owner-export-bypass` (R30 `ARCH_OWNER_EXPORT_BYPASS`) admits a direct import of the registry from the files `importedBy` names (`apps/*/src/compose/*.ts`, `apps/*/src/app.module.ts`, `src/tests/world/**`); every other import of either shape stays refused, and full has no registry. `import-owner-entry` (R30) admits the deep path `@modules/platform/database/entities` from the same importers only. Spec: `src/entity-registry.spec.ts`.
 - Changed: the bundled canon pins name hfs 4.10.1, eslint-canon-be 3.7.1, eslint-canon-fe 9.5.1 and the Grammar family 0.15.12.
 - Changed: the owner-cycle check (R27 `ARCH_OWNER_CYCLE`) counts the entity registry as a unit of its own, not part of `platform/database`, so naming every `<c>Entities` closes no cycle among capabilities while any other platform/database file importing a domain still does (spec in `src/entity-registry.spec.ts`); the bundled rule catalog's R26 and R30 laws name the entity registry.
 
@@ -425,7 +425,7 @@
 
 ## 3.4.57 - 2026-10-27
 
-- Changed: the bundled runtime copy follows the two-grammars ruling: the Grammar catalog declares `core` and `offset-pop` only, and the canon pins follow the harness packages. The spec fixture app selects `core`. No rule changes.
+- Changed: the bundled runtime copy follows the two Grammar families: the Grammar catalog declares `core` and `offset-pop` only, and the canon pins follow the harness packages. The spec fixture app selects `core`. No rule changes.
 
 ## 3.4.56 - 2026-10-27
 
@@ -433,7 +433,7 @@
 
 ## 3.4.55 - 2026-10-26
 
-- Changed: the bundled runtime copies and canon pins move with the alpha.31 cohort (light push gate, owner rulings of 2026-10-26).
+- Changed: the bundled runtime copies and canon pins move with the alpha.31 cohort (light push gate).
 
 ## 3.4.54 - 2026-10-26
 
@@ -501,7 +501,7 @@
 - Changed: the bundled rule catalog and slot manifest name the specs that moved into this package (they drive its rules and fixtures and now pass from its own clean install); 3.4.35 was published with the old spec paths and is superseded.
 
 ## 3.4.35 - 2026-10-23
-- Changed: `BE_AMBIENT_ID` has no exemption for the test world (owner ruling 2026-10-22: a loosening is always red); the world asks the injected `Ids` port like everything else.
+- Changed: `BE_AMBIENT_ID` has no exemption for the test world (a loosening is always red); the world asks the injected `Ids` port like everything else.
 - Changed: the bundled canon pins select @starci/hfs 4.7.28 and @starci/cli 1.7.28.
 
 ## 3.4.34 - 2026-10-23
@@ -516,7 +516,7 @@
 ## 3.4.31 - 2026-10-23
 - Changed: the `spec-no-skip` rule text says nothing skips, the contract layer included: a missing sandbox is a failing test of `sandbox.describe` from `@starci/test-world` 1.2.3.
 - Changed: the bundled canon pins select @starci/hfs 4.7.24 and @starci/cli 1.7.24.
-- Changed: no Sonar way rule is left to the server (owner ruling 2026-10-22, no loosening): S3403 `different-types-comparison`, S3800 `function-return-type`, S3782 `argument-type` and S6582 `@typescript-eslint/prefer-optional-chain` run at error, `unicorn/consistent-function-scoping` runs with its default options (arrow functions included). S7785 (top-level await) is recorded as not applicable to a CommonJS back end (`SONAR_WAY_NOT_APPLICABLE`).
+- Changed: no Sonar way rule is left to the server (no loosening): S3403 `different-types-comparison`, S3800 `function-return-type`, S3782 `argument-type` and S6582 `@typescript-eslint/prefer-optional-chain` run at error, `unicorn/consistent-function-scoping` runs with its default options (arrow functions included). S7785 (top-level await) is recorded as not applicable to a CommonJS back end (`SONAR_WAY_NOT_APPLICABLE`).
 - Added: the `@typescript-eslint/no-unsafe-assignment`, `-member-access`, `-call`, `-return` and `-argument` rules at error.
 
 ## 3.4.30 - 2026-10-22
@@ -607,15 +607,15 @@
 
 ## 3.4.1 - 2026-10-17
 
-- Changed: the bundled runtime copies follow the runtime of 1.0.0-alpha.19 (owner ruling no-runtime-specs, 2026-10-17): the failure codes, the slot manifest (`exampleNa`) and the rule catalog (`specNa`, `exampleNa`) carry the removal of the runtime's own specs; package behavior is unchanged.
-- Fixed (R263 `BE_WEBHOOK_SCOPE`, a18.1 NIVO requests G and J): a third-party OAuth redirect (a GET route with `PublicReason.AuthHandshake` on a path that is not a webhook or events path) is no longer judged as a webhook door (owner ruling `oauth-redirect-not-webhook`); a call on a domain receipt port (no base class, constructor of platform ports only, one of them the Inbox) inside the receipt transaction is the inbox record and not processing (owner ruling `webhook-receipt-port`); an intake that does process the delivery is now reported with its own `intake` finding instead of the signed-metadata text.
+- Changed: the bundled runtime copies follow the runtime of 1.0.0-alpha.19: the failure codes, the slot manifest (`exampleNa`) and the rule catalog (`specNa`, `exampleNa`) carry the removal of the runtime's own specs; package behavior is unchanged.
+- Fixed (R263 `BE_WEBHOOK_SCOPE`, a18.1 NIVO requests G and J): a third-party OAuth redirect (a GET route with `PublicReason.AuthHandshake` on a path that is not a webhook or events path) is no longer judged as a webhook door; a call on a domain receipt port (no base class, constructor of platform ports only, one of them the Inbox) inside the receipt transaction is the inbox record and not processing; an intake that does process the delivery is now reported with its own `intake` finding instead of the signed-metadata text.
 - Known gaps (planned for alpha.19, Nest lifecycle conformance): no enforcer yet for exactly one validation pipe per app, for interceptors limited to logging, timeout and serialization and registered once, or for the absence of authentication middleware. Templates and examples conform today: one `APP_PIPE`, no interceptor, security-headers middleware only.
 - Added: `no-guard-injects-guard` (R41 `BE_DEFAULT_DENY`, a18 lifecycle conformance): a guard class (implements `CanActivate` or named `...Guard`) has no constructor parameter that is another guard (a `...Guard` or `CanActivate` type, `Type<CanActivate>`, or `@Inject(SomeGuard)`); the app registers `RateLimitGuard`, `OriginGuard`, `CredentialGuard` and `AuthGuard` as four global `APP_GUARD`s and `@Credential({ kind })` selects the credential behavior.
-- Added: R278 `BE_REST_DOOR_EVIDENCE` / `BE_REST_ROUTE_UNDECLARED` accept a credential-guarded route (owner ruling `credential-guarded-rest-door`, 2026-10-16): `@Credential({ kind: "<literal>" })` from the domain identity capability on the route or controller, with the capability declaring a `CredentialGuard implements CanActivate`, resolved by TypeScript symbol. A local decorator, another `@UseGuards` guard and a computed kind still fail.
+- Added: R278 `BE_REST_DOOR_EVIDENCE` / `BE_REST_ROUTE_UNDECLARED` accept a credential-guarded route: `@Credential({ kind: "<literal>" })` from the domain identity capability on the route or controller, with the capability declaring a `CredentialGuard implements CanActivate`, resolved by TypeScript symbol. A local decorator, another `@UseGuards` guard and a computed kind still fail.
 - Fixed (R281 `BE_SPEC_FORM_ALL_ROLES`, a18 NIVO request A): `spec-infra-double-from-kit` judges a function subject by the callable subset of the sibling's exports (constants, enums, `export ... from` re-exports and overload signatures no longer disable the check; overloads collapse to the implementation); a value-object subject (an undecorated class whose constructor parameters carry no injection token) may be built with `new` (`spec-no-new-subject`, `spec-builds-with-testing-module`, and `useValue: new Subject(...)` in `spec-infra-double-from-kit`) while a decorated or token-injected class stays mandatory; a member of a kit `mock<T>()` object (`mock<{ open: F }>().open`) counts as a kit double.
 
 ## 3.4.0 - 2026-10-15
-- Added: `module-definition-required` (R295 `BE_MODULE_DEFINITION_MISSING`, owner ruling 2026-10-15 `owner:module-definition-everywhere`): every `<x>.module.ts` of a feature, capability or projection has a sibling `<x>.module-definition.ts` and `<x>.options.ts`, its class extends the `ConfigurableModuleClass` of that definition, and a module of the product is listed in an `imports` array only as `X.register(...)`.
+- Added: `module-definition-required` (R295 `BE_MODULE_DEFINITION_MISSING`): every `<x>.module.ts` of a feature, capability or projection has a sibling `<x>.module-definition.ts` and `<x>.options.ts`, its class extends the `ConfigurableModuleClass` of that definition, and a module of the product is listed in an `imports` array only as `X.register(...)`.
 - Changed: `capability-module-shape` judges the definition of every module: the representative module of a capability keeps `.setExtras({ isGlobal: false }, ...)` and the one `register` override; a sub-module, feature, transport module or cli group builds `.setClassMethodName("register").build()` and overrides nothing. A module definition in a feature is no longer refused.
 
 ## 3.3.1 - 2026-10-15
@@ -628,7 +628,7 @@
 - Changed: the bundled architecture machine carries `HFS_DUPLICATE_CODE` canon-shape exclusions, staged dead-export consumers and the `<app>.env.ts` role.
 
 
-- Added: law `app-composition` (R245 and R246, owner ruling 2026-10-14). `app-options-composition-free` (`BE_APP_OPTIONS_COMPOSITION`) keeps `apps/<app>/src/<app>.options.ts` to env-derived options and port bindings (provider maps such as `{ approvalGate: X }`): an array that lists a `*Module` class, a `X.register(...)`/`forRoot(...)`/`registerQueue(...)` call, a `*SchedulerOf(...)`/`*Queue(...)` entry or a spread of such a list, and an `imports`, `modules`, `schedulers` or `processors` array are refused, pointing to `compose/<area>.ts`. `app-file-budget` (`BE_APP_COMPOSITION_BUDGET`) holds `main.ts` (80), `<app>.options.ts` (200), `compose/<area>.ts` (120) and `app.module.ts` (250) to the `budget` of their app slot; the budget is absolute. The role of an app file is the slot entry it matches (`lib/app-roles.mjs`), never a path list.
+- Added: law `app-composition` (R245 and R246). `app-options-composition-free` (`BE_APP_OPTIONS_COMPOSITION`) keeps `apps/<app>/src/<app>.options.ts` to env-derived options and port bindings (provider maps such as `{ approvalGate: X }`): an array that lists a `*Module` class, a `X.register(...)`/`forRoot(...)`/`registerQueue(...)` call, a `*SchedulerOf(...)`/`*Queue(...)` entry or a spread of such a list, and an `imports`, `modules`, `schedulers` or `processors` array are refused, pointing to `compose/<area>.ts`. `app-file-budget` (`BE_APP_COMPOSITION_BUDGET`) holds `main.ts` (80), `<app>.options.ts` (200), `compose/<area>.ts` (120) and `app.module.ts` (250) to the `budget` of their app slot; the budget is absolute. The role of an app file is the slot entry it matches (`lib/app-roles.mjs`), never a path list.
 - Changed: `is-global-only-in-app` accepts `isGlobal: true` in the composition groups `apps/<app>/src/compose/<area>.ts` (they are part of the app root), and the bundled architecture machine reads an app's root and its groups as one composition (register-once, module-per-transport, the connection and context maps).
 - Changed: carry the runtime mirror of HFS manifest 3.1.0 (rule catalog 3.1.0) and the canon pins of eslint-canon-fe 8.2.17, HFS 4.3.0 and CLI 1.2.16.
 
@@ -642,7 +642,7 @@
 
 ## 3.2.17 - 2026-10-13
 
-- Changed: the bundled canon-pins copy carries `@heroicons/react` 2.2.0 and `@starci/heroicons` 0.3.3 in place of `@phosphor-icons/react` (the heroicons family is the one icon set, owner ruling 2026-10-13) and the pins of eslint-canon-fe 8.2.16, HFS 4.2.15 and CLI 1.2.15. ESLint rule implementations are unchanged.
+- Changed: the bundled canon-pins copy carries `@heroicons/react` 2.2.0 and `@starci/heroicons` 0.3.3 in place of `@phosphor-icons/react` (the heroicons family is the one icon set) and the pins of eslint-canon-fe 8.2.16, HFS 4.2.15 and CLI 1.2.15. ESLint rule implementations are unchanged.
 
 ## 3.2.16 - 2026-10-13
 
@@ -811,7 +811,7 @@
 - Added: the Operations law (R95 `BE_OPERATION_CONTRACT`, `operations.mjs`): `operation-contract-decidable` refuses an `OperationContract` whose input or output is `any`, `unknown`, `Record<string, unknown>`, an unbound generic, a function or a standard-library class, or whose refusal codes are not a closed union of string literals; `operation-route-driven-by-table` requires a route that takes `OperationRequest<Table>` or answers `OperationReply<Table>` to do both, of one table. The canon types are recognised by where they are declared (the platform capability `operations`).
 - Changed: `no-non-ascii-source` (R89) folds each line to NFC before it looks for a Vietnamese letter, so a decomposed spelling is caught like the precomposed one, and it exempts the i18n fixtures slot `be.tests.fixtures.i18n` (`src/tests/fixtures/i18n/`) beside the message-catalog slots; a test title, an identifier and a string in any other spec or fixture are still refused. The detection is `scripts/lib/language.mjs`, shipped in `runtime/`.
 
-- Changed: the messages and header of `tests-no-override` and `tests-infra-only-in-world` (`test-world.mjs`) follow the owner refinement 2026-09-30 of R47: a service of the repository's own stack runs real and is failed on purpose through `world.infra.<service>`, only an external SaaS is a network fake (`world.fake.<provider>`). Detection is unchanged.
+- Changed: the messages and header of `tests-no-override` and `tests-infra-only-in-world` (`test-world.mjs`) follow R47: a service of the repository's own stack runs real and is failed on purpose through `world.infra.<service>`, only an external SaaS is a network fake (`world.fake.<provider>`). Detection is unchanged.
 - Breaking: one configuration, `export default starciBeConfig({ hfs: loadHfs(import.meta.url) })`. The factory is async
   (ESLint awaits it), turns typed linting on for every `.ts/.mts/.cts/.js/.mjs/.cjs` (`parserOptions.projectService`),
   ignores only `dist/`, `coverage/`, `node_modules/`, borrows `@typescript-eslint/{consistent-type-assertions (never),
@@ -907,7 +907,7 @@ Round 3 back-end rules (catalog R78 to R82), each with RuleTester specs and a wh
 
 - New: `user-copy-through-catalog` (R78 `BE_USER_COPY_LITERAL`, new law `user-copy`): a literal exception message, a `subject`/`title`/`body`/`text`/`message` property of a `notify`/`send`/`publish` call, or a `message`/`description`/`title` property of a `transport/` response comes from the per-capability messages catalog through the typed `MessageCatalog` port; a short code-shaped literal (`UPPER_SNAKE`, a bare word) and a template literal are left alone. `no-ambient-clock` (R79 `BE_AMBIENT_CLOCK`, new law `temporal`): `Date.now()`, a bare `new Date()` and `performance.now()` are read only inside `platform/clock`; `new Date(value)` built from a value the caller already holds is exempt. `inbox-dedupe-required` (R80 `BE_INBOX_DEDUPE_MISSING`, new law `idempotency`): a `@Public()` webhook controller and an outbox/queue consumer (`<event>.consumer.ts`) show a reference to an inbox or dedupe port before they act. `no-hand-rolled-retry` (R81 `BE_HAND_ROLLED_RETRY`, in `resilience`): a `for`, `while` or `do...while` loop that both catches an error and calls something shaped like a delay (`sleep`, `delay`, `wait`, `backoff`, `setTimeout`) goes through `platform/retry`; a polling loop with no `catch` is exempt, same as `no-query-in-loop` exempts a polling `while`. `no-external-call-in-transaction` (R82 `BE_TRANSACTION_EXTERNAL_CALL`, in `data-access`): `fetch`, an HTTP client call or any method of a `*Client`/`*Sdk` receiver does not run inside `.transaction(async (tx) => ...)`.
 - Slot manifest (`knowledge/hfs/slots.yaml`, no version bump, additions stamped `since: 1.0.0`): `be.domain.messages` (`src/modules/{domain,integrations}/<capability>/messages/`) and `be.feature.messages` (`src/features/<feature>/messages/`), each an optional per-capability or per-feature vi/en catalog; `be.platform`'s required instances gain `clock` (the injected `Clock` port) and `i18n` (the `MessageCatalog` port); `be.domain` and `be.feature` allow a `messages/` folder.
-- Deferred (owner ruling, no rule): floating promises; core `no-await-in-loop` is not adopted.
+- Deferred (no rule): floating promises; core `no-await-in-loop` is not adopted.
 
 ## 1.5.0 - 2026-09-30
 

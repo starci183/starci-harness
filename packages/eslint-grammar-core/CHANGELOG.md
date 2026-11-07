@@ -17,11 +17,11 @@
 
 ## 0.23.0 - 2026-11-05
 
-- Changed: with `@starci/grammar` 0.23.0; requires `@starci/eslint-canon-fe` `~9.15.0` and peers `@starci/hfs` `~5.13.0`, whose runtime it reads at run time instead of a bundled copy (decision release-only-what-changed); `runtime/` keeps only the knowledge it cites.
+- Changed: with `@starci/grammar` 0.23.0; requires `@starci/eslint-canon-fe` `~9.15.0` and peers `@starci/hfs` `~5.13.0`, whose runtime it reads at run time instead of a bundled copy; `runtime/` keeps only the knowledge it cites.
 
 ## 0.22.0 - 2026-11-05
 
-- Changed: version stamp only, with `@starci/grammar` 0.22.0; requires `@starci/eslint-canon-fe` 9.14.4. The runtime copies carry the same-minor range of the canon pins (decision grammar-patch-range), R15 and the canon pins of `@starci/hfs` 5.12.0.
+- Changed: version stamp only, with `@starci/grammar` 0.22.0; requires `@starci/eslint-canon-fe` 9.14.4. The runtime copies carry the same-minor range of the canon pins, R15 and the canon pins of `@starci/hfs` 5.12.0.
 
 ## 0.21.38 - 2026-11-05
 
@@ -201,8 +201,8 @@
 
 ## 0.20.2 - 2026-11-01
 
-- Changed: `status-text-uses-soft-foreground` follows the owner's pair rule. It refuses a solid tone painted as text on a `bg-<tone>-soft` tint of the same element (message `onTint`: use `text-<tone>-soft-foreground`) and the soft foreground with no `bg-<tone>-soft` behind it on its element or on an enclosing element of the file (message `alone`: use `text-<tone>`). A bare `text-<tone>`, which the rule refused before, is no longer a finding. Constants and `classes` entries are judged for the first finding only.
-- Changed: with `offset-pop` as the selected Grammar the `alone` finding is not reported (its light theme keeps the soft foreground for a bare mark, owner choice "1. Pastel").
+- Changed: `status-text-uses-soft-foreground` follows the status pair rule. It refuses a solid tone painted as text on a `bg-<tone>-soft` tint of the same element (message `onTint`: use `text-<tone>-soft-foreground`) and the soft foreground with no `bg-<tone>-soft` behind it on its element or on an enclosing element of the file (message `alone`: use `text-<tone>`). A bare `text-<tone>`, which the rule refused before, is no longer a finding. Constants and `classes` entries are judged for the first finding only.
+- Changed: with `offset-pop` as the selected Grammar the `alone` finding is not reported (its light theme keeps the soft foreground for a bare mark, the Pastel choice).
 - Changed: the bundled rule catalog carries R351 to R354 and the new R61 law text.
 - Changed: moves with `@starci/grammar` 0.20.2 (the stat strip's dividers) and requires `@starci/eslint-canon-fe` 9.8.5; the bundled canon pins follow; the status rule changes (below).
 
@@ -246,8 +246,8 @@
 ## 0.16.3 - 2026-10-31
 
 - Changed: the peer moves to eslint-canon-fe 9.6.3; the bundled canon pins name the 0.16.3 cohort (@starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.3, eslint-canon-fe 9.6.3, eslint-canon-be 3.9.3, stylelint-canon 2.3.0, jest-preset 2.6.0, hfs 4.13.0); ChatWorkspace and PaneLayout are removed with no alias; PaneGrid and Pane are the one generic pane grid: grammar names are generic. The core playbook names PaneGrid in its layout-frame and container lists.
-- Added: starci-grammar/freestyle-has-reason (R341, FE_FREESTYLE_REASON_MISSING): a `<Freestyle>` region names a non-empty string-literal `reason`. no-raw-structural-element, no-fractional-step, generated-art-in-mascot-or-media-frame and no-inline-svg-outside-brand-mark-leaf do not report the raw elements inside a Freestyle subtree (owner ruling grammar-freestyle-region). Specs: src/freestyle.spec.ts.
-- Added: `crossFileInputs` for the lint result cache of `starci app check` (ruling app-check-cache): the files each grammar rule reads beyond the linted file.
+- Added: starci-grammar/freestyle-has-reason (R341, FE_FREESTYLE_REASON_MISSING): a `<Freestyle>` region names a non-empty string-literal `reason`. no-raw-structural-element, no-fractional-step, generated-art-in-mascot-or-media-frame and no-inline-svg-outside-brand-mark-leaf do not report the raw elements inside a Freestyle subtree. Specs: src/freestyle.spec.ts.
+- Added: `crossFileInputs` for the lint result cache of `starci app check`: the files each grammar rule reads beyond the linted file.
 
 ## 0.16.2 - 2026-10-31
 
@@ -342,7 +342,7 @@
 
 ## 0.15.15 - 2026-10-29
 
-- Changed: the peer moves to the 0.15.15 cohort (eslint-canon-fe 9.5.4); the bundled slot manifest 3.13.0 admits `pgmq` in `ruleParams.db.extensions` (the lite event bus, ruling lite-pgmq-bus-bullmq-jobs), retires `ruleParams.db.queueOutbox` and `sides.be.queueOutbox` with the pg_cron half of R258, lists `public.event_bus_send`, `public.event_bus_read`, `public.event_bus_archive`, `public.event_bus_bury`, `public.event_bus_dead_letters` and `public.event_bus_requeue` in place of `public.event_bus_write` in `ruleParams.be.dbFunctions`, and moves slot `app.db.image` to `.starcistacks/images/db/Dockerfile` (ruling lite-db-image-in-stacks, admitted by the lite `app.starcistacks` allows); the bundled rule catalog keeps R258 `DB_PGMQ_DECLARED` as the event-bus law, retires `DB_CRON_OWNED` and adds R336 `BE_EVENT_BUS_LITE_SHAPE`; the bundled canon pins name hfs 4.11.3, eslint-canon-be 3.8.2, eslint-canon-fe 9.5.4 and the Grammar family 0.15.15. No rule changed.
+- Changed: the peer moves to the 0.15.15 cohort (eslint-canon-fe 9.5.4); the bundled slot manifest 3.13.0 admits `pgmq` in `ruleParams.db.extensions` (the lite event bus), retires `ruleParams.db.queueOutbox` and `sides.be.queueOutbox` with the pg_cron half of R258, lists `public.event_bus_send`, `public.event_bus_read`, `public.event_bus_archive`, `public.event_bus_bury`, `public.event_bus_dead_letters` and `public.event_bus_requeue` in place of `public.event_bus_write` in `ruleParams.be.dbFunctions`, and moves slot `app.db.image` to `.starcistacks/images/db/Dockerfile` (admitted by the lite `app.starcistacks` allows); the bundled rule catalog keeps R258 `DB_PGMQ_DECLARED` as the event-bus law, retires `DB_CRON_OWNED` and adds R336 `BE_EVENT_BUS_LITE_SHAPE`; the bundled canon pins name hfs 4.11.3, eslint-canon-be 3.8.2, eslint-canon-fe 9.5.4 and the Grammar family 0.15.15. No rule changed.
 
 ## 0.15.14 - 2026-10-29
 
@@ -372,14 +372,14 @@
 
 ## 0.15.8 - 2026-10-29
 
-- Changed: `starci-grammar/route-page-is-one-page` (R325) follows the owner ruling `page-frame` as rewritten: a route segment `layout` whose owner (`fe.feature`, kind `layouts`), its pure half or its one root block draws a `Page` whose `header` carries `tabs` is the one `Page` of every route under it. The rule finds the route `page` files that mount a page owner, walks up through the `layout` files of their segments and resolves each layout's owner one level deep. A page owner every route of which is so framed is not judged `missing`; one that draws a `Page` (or a root block that draws one) under such a layout is `twice`, and the message names the layout. A layout whose `Page` carries no `tabs` frames no segment.
+- Changed: `starci-grammar/route-page-is-one-page` (R325): a route segment `layout` whose owner (`fe.feature`, kind `layouts`), its pure half or its one root block draws a `Page` whose `header` carries `tabs` is the one `Page` of every route under it. The rule finds the route `page` files that mount a page owner, walks up through the `layout` files of their segments and resolves each layout's owner one level deep. A page owner every route of which is so framed is not judged `missing`; one that draws a `Page` (or a root block that draws one) under such a layout is `twice`, and the message names the layout. A layout whose `Page` carries no `tabs` frames no segment.
 - Changed: R325 also judges layout owners (`fe.feature`, kind `layouts`): a `Page` they draw has nothing beside it (`sibling`; a `PageHeader` block beside the segment's `Page` belongs in its `header`), no `Page` inside another (`twice`), and no bare `PageHeader` or `PageContainer` (`part`). A layout owner that draws no `Page` is never `missing`.
 - Changed: `@starci/eslint-canon-fe` 9.4.7 is the peer dependency; versioned together with Grammar 0.15.8; the bundled canon pins name the Grammar family 0.15.8 (grammar, eslint-grammar-core, eslint-grammar-offset-pop), eslint-canon-fe 9.4.7 and eslint-canon-be 3.6.6.
 - Spec: `src/page.spec.ts`, `src/page-owners.spec.ts` (layout cases on the project fixture); docs: `docs/page.md`.
 
 ## 0.15.7 - 2026-10-29
 
-- Changed: `starci-grammar/route-page-is-one-page` (R325) follows the owner ruling that a route draws exactly one `Page`, drawn by the page owner, its pure half (`./component`), or the one connected block (`fe.components`, kind `blocks`) the owner renders as its root, read one level deep (the block's connected half and its own pure half). A server page owner whose header needs client data renders that block and passes the page body as its children. An element that draws the `Page` with an element sibling stays `sibling`; a `Page` (or a block that draws one) inside another is the new finding `twice`.
+- Changed: `starci-grammar/route-page-is-one-page` (R325): a route draws exactly one `Page`, drawn by the page owner, its pure half (`./component`), or the one connected block (`fe.components`, kind `blocks`) the owner renders as its root, read one level deep (the block's connected half and its own pure half). A server page owner whose header needs client data renders that block and passes the page body as its children. An element that draws the `Page` with an element sibling stays `sibling`; a `Page` (or a block that draws one) inside another is the new finding `twice`.
 - Changed: R325 does not judge a page owner as `missing` when every route `page` file that imports it lies under the route group `(auth)` with its own `layout`: that layout draws the auth frame, the page frame of its sign-in, sign-up, password and callback pages. A page owner that draws no JSX (it only calls `redirect()` or `notFound()`, or returns null) stays unjudged. Workbench pages get no exemption.
 - Changed: `@starci/eslint-canon-fe` 9.4.6 is the peer dependency; versioned together with Grammar 0.15.7; the bundled canon pins name the Grammar family 0.15.7 (grammar, eslint-grammar-core, eslint-grammar-offset-pop) and eslint-canon-fe 9.4.6.
 - Spec: `src/page.spec.ts`, `src/page-owners.spec.ts` (new, cross-file); docs: `docs/page.md`.
@@ -431,7 +431,7 @@
 
 - Changed: `@starci/eslint-canon-fe` is a peer dependency (9.2.0), installed by the app beside this package, instead of a nested dependency.
 - Changed: the package lives in github.com/starci183/starci-harness under `packages/` and publishes from there; its bundled `runtime/` is committed source, edited in place (no generator, no `prepack`/`pretest` hook).
-- Changed: owner ruling: there are exactly two Grammar families, `core` and `offset-pop`. This package is renamed from
+- Changed: there are exactly two Grammar families, `core` and `offset-pop`. This package is renamed from
   `@starci/eslint-grammar-starci` to `@starci/eslint-grammar-core`, and its factory from `starciGrammarConfig` to
   `coreGrammarConfig`, which loads for `sides.fe.grammar: core`.
 - Removed: the ids `starci` and `starci-core` are not families and have no alias; an app that names them is refused.

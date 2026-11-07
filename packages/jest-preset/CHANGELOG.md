@@ -35,7 +35,7 @@
 
 ## 2.5.0 - 2026-10-29
 
-- Added: `fakeQueryBuilder(answers)` and `queueQueryBuilders(em, answers)` (also at `@starci/jest-preset/query-builder`), the double of `createQueryBuilder(Entity, "alias")` beside `mockEntityManager`: every chained call is recorded and returned to the chain, the terminals resolve the spec's answers. Lite persistence reads through entities and that builder (ruling `lite-persistence-typeorm-entities`), so the double moves here from the apps.
+- Added: `fakeQueryBuilder(answers)` and `queueQueryBuilders(em, answers)` (also at `@starci/jest-preset/query-builder`), the double of `createQueryBuilder(Entity, "alias")` beside `mockEntityManager`: every chained call is recorded and returned to the chain, the terminals resolve the spec's answers. Lite persistence reads through entities and that builder, so the double moves here from the apps.
 
 ## 2.4.1 - 2026-10-28
 
@@ -56,7 +56,7 @@
 - Added: the fake inbox records client operations and sweeps (`clientEntries`, `sweeps`) and the entity-manager and index doubles follow the idempotent client inbox of the alpha.31 cohort; the lite and full example back ends spec against them.
 
 ## 2.3.5 - 2026-10-23
-- Changed: the preset sets no `testTimeout` (the jest default applies; a world spec sets its own), owner ruling 2026-10-22: no loosening.
+- Changed: the preset sets no `testTimeout` (the jest default applies; a world spec sets its own): no loosening.
 - Changed: the type probes assert their compiler diagnostics (file, line, code) from their own rejected fixtures instead of inline ts directives; the generated metadata anchor carries no coverage-exclusion comment; a spec refuses any inline suppression in the package.
 
 ## 2.3.4 - 2026-10-21
@@ -74,11 +74,11 @@
 ## 2.3.0 - 2026-10-16
 
 - Added: a declared lite app (the edition of the `hfs.json` above its `be/`) runs its existing integration and contract specs without a test world: those projects exist only when their spec files do, and neither the world runner nor the world global setup and teardown is attached to a lite run.
-- Changed: a full app without a test world keeps only the unit project (an unfinished full scaffold), as before; the cited ruling is now ruling:R212/case-1 amended by ruling:R212/case-4.
+- Changed: a full app without a test world keeps only the unit project (an unfinished full scaffold), as before, under R212.
 
 ## 2.2.7 - 2026-10-13
 
-- Fixed: the ESM-only runtime dependency `jose` (the Supabase access-token verifier of every lite back end) is compiled to CommonJS by ts-jest instead of being skipped with node_modules, so a lite app's unit run can load its guard (owner ruling 2026-10-12: lite keeps full's unit run).
+- Fixed: the ESM-only runtime dependency `jose` (the Supabase access-token verifier of every lite back end) is compiled to CommonJS by ts-jest instead of being skipped with node_modules, so a lite app's unit run can load its guard (lite keeps full's unit run).
 
 ## 2.2.6 - 2026-10-08
 
@@ -141,7 +141,7 @@
 - Breaking: `starciJestConfig()` takes no options. The repository `jest.config.js` is a managed file, exactly `module.exports = require("@starci/jest-preset").starciJestConfig()`, rendered by `hfs sync` and compared by `hfs check` (HFS_MANAGED_FILE_DRIFT), so `moduleNameMapper`, `roots`, `tsconfig`, `rootDir`, `unit` and `e2e` overrides are gone. `StarciJestOptions` is removed.
 - Added: the three path aliases (`@features/*`, `@modules/*`, `@tests/*`) are part of the preset (`MODULE_NAME_MAPPER`), matching the aliases the managed `tsconfig.json` declares.
 - Added: `coverageProvider: "v8"`, so branch coverage counts real source, not the helpers TypeScript emits.
-- Breaking: four projects, one per test kind (owner test layout 2026-09-30): `unit` (colocated `*.spec.ts`, ignores `src/tests/{world,integration,e2e,contract}/`), `integration` (`src/tests/integration/**/*.integration-spec.ts`), `e2e` (`src/tests/e2e/**/*.e2e-spec.ts`) and `contract` (`src/tests/contract/**/*.contract-spec.ts`). The last three compile against `src/tests/tsconfig.json`, run one worker and share the test world's `globalSetup`/`globalTeardown` (`src/tests/world/global-setup.ts`, `global-teardown.ts`); there is no `setupFilesAfterEnv`. `src/tests/e2e/live/`, `E2E_LIVE` and `test:e2e:live` are gone: a provider sandbox is a contract spec. `typecheck:e2e` is replaced by `typecheck:tests`.
+- Breaking: four projects, one per test kind: `unit` (colocated `*.spec.ts`, ignores `src/tests/{world,integration,e2e,contract}/`), `integration` (`src/tests/integration/**/*.integration-spec.ts`), `e2e` (`src/tests/e2e/**/*.e2e-spec.ts`) and `contract` (`src/tests/contract/**/*.contract-spec.ts`). The last three compile against `src/tests/tsconfig.json`, run one worker and share the test world's `globalSetup`/`globalTeardown` (`src/tests/world/global-setup.ts`, `global-teardown.ts`); there is no `setupFilesAfterEnv`. `src/tests/e2e/live/`, `E2E_LIVE` and `test:e2e:live` are gone: a provider sandbox is a contract spec. `typecheck:e2e` is replaced by `typecheck:tests`.
 - Unchanged: ts-jest with `diagnostics: false` (`isolatedModules` comes from `@starci/tsconfig`), `mock<T>()` and `FakeClock`.
 - Added (unit test standard, lane UT): the shared unit double kit on the package root, `mockEntityManager({ method: [Entity, result] })` (typed against the entity, `query: [sql, rows]`, a list of pairs for several answers, every method a `jest.fn`, any unstubbed method throws an error naming it, `create(Entity, plain)` works unstubbed), `fakeTransaction(em)` (`outcomes`, `commits`, `rollbacks`, `committedWrites`, `rolledBackWrites`), `fakeCache(clock)` (JSON round trip, TTL from the clock, `has`, `ttlOf`, `keys`, typed-key and cache-manager shapes), `fakeLock(clock)` (`acquire`, `release`, `isHeld`, `holderOf`, `fenceOf`), `recordingOutbox()` (`enqueue`, `messages`, `writes`, `entries` with `inTransaction`), `builder<T>(defaults)`, `fakeIds()` and the Outcome matchers `toBeRefused` and `toSucceedWith` (installed in the unit project through `setupFilesAfterEnv`). Sub-path exports `./cache`, `./lock`, `./outbox`, `./builders`, `./entity-manager`, `./ids` and `./matchers` were added next to `./mock` and `./clock`.
 - Breaking: coverage is collected from `src/**/*.service.ts` only (minus `src/tests/**`, `dist`, `coverage`), with a per-file threshold of 100 on lines, branches, functions and statements (`coverageThreshold` glob key `./src/**/*.service.ts`); the managed `test` script runs the unit project with `--coverage`. The previous denominator (`src/**/*.ts` and `apps/**/*.ts`) is gone. The unit project overlays `isolatedModules: false` and `importHelpers: true` on the repository tsconfig (exported as `UNIT_COMPILER_OPTIONS`) so a decorated service can reach 100 (no `design:paramtypes` guard branches, no inlined decorator helpers); repositories list `tslib` in devDependencies.

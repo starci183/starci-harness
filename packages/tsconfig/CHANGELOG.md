@@ -10,15 +10,15 @@
 
 ## 2.0.7 - 2026-10-23
 
-- Changed: `base.json` sets `exactOptionalPropertyTypes`, so every preset (back end, front end, overlays) distinguishes a missing optional property from one that holds `undefined` (owner ruling 2026-10-22, no loosening): `prop?: T` no longer accepts an explicit `undefined`, a type that is passed `undefined` on purpose says `T | undefined` (or declares the field required), and a value that may be absent is spread in only when present. The three example apps, the scaffold skeletons and the runtime packages that extend a preset compile with 0 errors.
+- Changed: `base.json` sets `exactOptionalPropertyTypes`, so every preset (back end, front end, overlays) distinguishes a missing optional property from one that holds `undefined` (no loosening): `prop?: T` no longer accepts an explicit `undefined`, a type that is passed `undefined` on purpose says `T | undefined` (or declares the field required), and a value that may be absent is spread in only when present. The three example apps, the scaffold skeletons and the runtime packages that extend a preset compile with 0 errors.
 
 ## 2.0.6 - 2026-10-22
 
-- Changed: every strictness flag lives in `base.json`, so no preset is looser than another (owner ruling 2026-10-22, no loosening): `noImplicitReturns`, `noUncheckedIndexedAccess`, `noUnusedLocals` and `noUnusedParameters` move down from `be.json` (and `next.json`) and the front end now compiles under them; new in the base: `allowUnusedLabels: false`. `skipLibCheck` stays on, stated once in `base.json` (checking `node_modules` declarations reports errors in third-party typings no repository can fix); no repository config restates it.
+- Changed: every strictness flag lives in `base.json`, so no preset is looser than another (no loosening): `noImplicitReturns`, `noUncheckedIndexedAccess`, `noUnusedLocals` and `noUnusedParameters` move down from `be.json` (and `next.json`) and the front end now compiles under them; new in the base: `allowUnusedLabels: false`. `skipLibCheck` stays on, stated once in `base.json` (checking `node_modules` declarations reports errors in third-party typings no repository can fix); no repository config restates it.
 
 ## 2.0.5 - 2026-10-22
 
-- Fixed: next.json sets `noUnusedLocals` and `noUnusedParameters`, as be.json does: the lint canons leave Sonar S1481 (unused local) to the compiler, which no front end ran (owner ruling 2026-10-22, no loosening). The three example front ends compile with 0 unused-declaration errors.
+- Fixed: next.json sets `noUnusedLocals` and `noUnusedParameters`, as be.json does: the lint canons leave Sonar S1481 (unused local) to the compiler, which no front end ran (no loosening). The three example front ends compile with 0 unused-declaration errors.
 
 ## 2.0.4 - 2026-10-13
 

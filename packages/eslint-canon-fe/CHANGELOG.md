@@ -14,11 +14,11 @@
 
 ## 9.15.0 - 2026-11-05
 
-- Changed (decision release-only-what-changed): the canon reads the @starci/hfs runtime from the installed hfs at run time, which it peers by `~5.13.0`, and bundles no copy; `runtime/` keeps only the project graph rule, the jsdoc, sonar and next helpers and the package-scripts template, and the stale forks (slots 3.13.0) are gone.
+- Changed: the canon reads the @starci/hfs runtime from the installed hfs at run time, which it peers by `~5.13.0`, and bundles no copy; `runtime/` keeps only the project graph rule, the jsdoc, sonar and next helpers and the package-scripts template, and the stale forks (slots 3.13.0) are gone.
 
 ## 9.14.4 - 2026-11-05
 
-- Changed: the runtime copy of the canon pins gives the Grammar family its same-minor range (decision grammar-patch-range) and names `@starci/hfs` 5.12.0 and the Grammar family 0.22.0.
+- Changed: the runtime copy of the canon pins gives the Grammar family its same-minor range and names `@starci/hfs` 5.12.0 and the Grammar family 0.22.0.
 
 ## 9.14.3 - 2026-11-05
 
@@ -249,8 +249,8 @@
 ## 9.6.3 - 2026-10-31
 
 - Changed: the bundled canon pins name the 0.16.3 cohort (@starci/grammar, eslint-grammar-core and eslint-grammar-offset-pop 0.16.3, eslint-canon-fe 9.6.3, eslint-canon-be 3.9.3, stylelint-canon 2.3.0, jest-preset 2.6.0, hfs 4.13.0); ChatWorkspace and PaneLayout are removed with no alias; PaneGrid and Pane are the one generic pane grid: grammar names are generic. The surface-rules spec uses PaneGrid.
-- Added: lib/freestyle (`exemptFreestyle`, `freestyleContext`): no-arbitrary-value, no-app-surface-paint, no-raw-brand-value, no-list-panel-padding, no-inline-class-name and no-native-img do not report the raw elements inside a `<Freestyle>` subtree of the same file; a Grammar component inside it is judged as before (owner ruling grammar-freestyle-region). Specs: src/freestyle.spec.ts.
-- Added: the lint result cache of `starci app check` (ruling app-check-cache): `crossFileInputs`, the files and folders each rule reads beyond the linted file (an fs-audit spec proves every rule declares what it reads), and the `projectGraph` export the cache keys a file's lint record on.
+- Added: lib/freestyle (`exemptFreestyle`, `freestyleContext`): no-arbitrary-value, no-app-surface-paint, no-raw-brand-value, no-list-panel-padding, no-inline-class-name and no-native-img do not report the raw elements inside a `<Freestyle>` subtree of the same file; a Grammar component inside it is judged as before. Specs: src/freestyle.spec.ts.
+- Added: the lint result cache of `starci app check`: `crossFileInputs`, the files and folders each rule reads beyond the linted file (an fs-audit spec proves every rule declares what it reads), and the `projectGraph` export the cache keys a file's lint record on.
 
 ## 9.6.2 - 2026-10-31
 
@@ -343,7 +343,7 @@
 
 ## 9.5.4 - 2026-10-29
 
-- Changed: the bundled slot manifest 3.13.0 admits `pgmq` in `ruleParams.db.extensions` (the lite event bus, ruling lite-pgmq-bus-bullmq-jobs), retires `ruleParams.db.queueOutbox` and `sides.be.queueOutbox` with the pg_cron half of R258, lists `public.event_bus_send`, `public.event_bus_read`, `public.event_bus_archive`, `public.event_bus_bury`, `public.event_bus_dead_letters` and `public.event_bus_requeue` in place of `public.event_bus_write` in `ruleParams.be.dbFunctions`, and moves slot `app.db.image` to `.starcistacks/images/db/Dockerfile` (ruling lite-db-image-in-stacks, admitted by the lite `app.starcistacks` allows); the bundled rule catalog keeps R258 `DB_PGMQ_DECLARED` as the event-bus law, retires `DB_CRON_OWNED` and adds R336 `BE_EVENT_BUS_LITE_SHAPE`; the bundled canon pins name hfs 4.11.3, eslint-canon-be 3.8.2, eslint-canon-fe 9.5.4 and the Grammar family 0.15.15. No front-end rule changed.
+- Changed: the bundled slot manifest 3.13.0 admits `pgmq` in `ruleParams.db.extensions` (the lite event bus), retires `ruleParams.db.queueOutbox` and `sides.be.queueOutbox` with the pg_cron half of R258, lists `public.event_bus_send`, `public.event_bus_read`, `public.event_bus_archive`, `public.event_bus_bury`, `public.event_bus_dead_letters` and `public.event_bus_requeue` in place of `public.event_bus_write` in `ruleParams.be.dbFunctions`, and moves slot `app.db.image` to `.starcistacks/images/db/Dockerfile` (admitted by the lite `app.starcistacks` allows); the bundled rule catalog keeps R258 `DB_PGMQ_DECLARED` as the event-bus law, retires `DB_CRON_OWNED` and adds R336 `BE_EVENT_BUS_LITE_SHAPE`; the bundled canon pins name hfs 4.11.3, eslint-canon-be 3.8.2, eslint-canon-fe 9.5.4 and the Grammar family 0.15.15. No front-end rule changed.
 
 ## 9.5.3 - 2026-10-29
 
@@ -415,12 +415,12 @@
 
 ## 9.3.0 - 2026-10-28
 
-- Changed (breaking for apps): owner ruling fe-shape-not-state. A pure half takes `{ shape?, props, on? }`; `base-props-atom` refuses the retired `state` key with a message naming the rename, and `no-data-status-shape` reads `XShape` unions (and still the old `XState` names, so a status word is caught during the rename).
+- Changed (breaking for apps): a pure half takes `{ shape?, props, on? }`; `base-props-atom` refuses the retired `state` key with a message naming the rename, and `no-data-status-shape` reads `XShape` unions (and still the old `XState` names, so a status word is caught during the rename).
 - Changed: the bundled runtime copies follow the retirement of `@starci/cli`: the bundled canon pins replace the retired `@starci/cli` with `starci-harness` 1.1.0-alpha.1 (`source: cli/package.json`), the one command line a product installs for `starci app`, and follow the harness packages (Grammar family 0.14.0, hfs 4.9.0, canon-fe 9.3.0, canon-be 3.5.0); the runtime finds an app's `starci` bin in its installed `starci-harness`.
 
 ## 9.2.0 - 2026-10-27
 
-- Changed: owner ruling two-grammars: the bundled Grammar catalog declares exactly two families, `core` (`@starci/eslint-grammar-core`, `coreGrammarConfig`) and `offset-pop`; `starci`, `starci-core` and `heritage` are refused. The Grammar entry checks (button intent, control height, surface rules, UI rulings) accept `@starci/grammar/<common|core|offset-pop>`. The bundled canon pins follow the harness packages (Grammar family 0.13.0, hfs 4.8.0, canon-fe 9.2.0, canon-be 3.4.57, stylelint-canon 2.1.0).
+- Changed: the bundled Grammar catalog declares exactly two families, `core` (`@starci/eslint-grammar-core`, `coreGrammarConfig`) and `offset-pop`; `starci`, `starci-core` and `heritage` are refused. The Grammar entry checks (button intent, control height, surface rules, UI rulings) accept `@starci/grammar/<common|core|offset-pop>`. The bundled canon pins follow the harness packages (Grammar family 0.13.0, hfs 4.8.0, canon-fe 9.2.0, canon-be 3.4.57, stylelint-canon 2.1.0).
 - Changed: the doc comment of `lint-escape-hatch.mjs` names the three patterns that own the refused spellings instead of spelling them again. No rule or behaviour changed.
 
 ## 9.1.11 - 2026-10-27
@@ -434,7 +434,7 @@
 ## 9.1.9 - 2026-10-26
 
 - Added: starci-fe/control-height (R320 FE_CONTROL_HEIGHT), selection-fill-no-check and no-grammar-internal-selector.
-- Changed: the bundled runtime copies carry the light push gate and the owner rulings of 2026-10-26.
+- Changed: the bundled runtime copies carry the light push gate.
 
 ## 9.1.8 - 2026-10-26
 
@@ -527,7 +527,7 @@
 ## 8.4.30 - 2026-10-23
 - Changed: the bundled canon pins select @starci/hfs 4.7.24 and @starci/cli 1.7.24.
 - Added: the type-aware rules the back end already borrowed, at error: `@typescript-eslint/no-floating-promises`, `no-misused-promises`, `switch-exhaustiveness-check` and the `no-unsafe-assignment`, `-member-access`, `-call`, `-return`, `-argument` family.
-- Changed: no Sonar way rule is left to the server (owner ruling 2026-10-22, no loosening): S3403, S3800, S3782 and S6582 run at error, `unicorn/consistent-function-scoping` runs with its default options, and S7785 (`unicorn/prefer-top-level-await`) runs in the front end (ESM).
+- Changed: no Sonar way rule is left to the server (no loosening): S3403, S3800, S3782 and S6582 run at error, `unicorn/consistent-function-scoping` runs with its default options, and S7785 (`unicorn/prefer-top-level-await`) runs in the front end (ESM).
 - Added: `starciPlainSourceConfig({ root })` for a TypeScript front-end tree that is no HFS app (a runtime package, the harness UI): typed linting, the inline-directive fence, the React Hooks, type-aware and Sonar way rules and every canon rule that needs no slot view (`SLOT_FREE_RULES`), all at error.
 
 ## 8.4.29 - 2026-10-22
@@ -616,9 +616,9 @@
 
 ## 8.4.1 - 2026-10-17
 
-- Changed: the bundled runtime copies follow the runtime of 1.0.0-alpha.19 (owner ruling no-runtime-specs, 2026-10-17): the failure codes, the slot manifest (`exampleNa`) and the rule catalog (`specNa`, `exampleNa`) carry the removal of the runtime's own specs; package behavior is unchanged.
-- Changed (R287 `FE_CALLBACK_SHAPE`, a18.1 NIVO request F2, owner ruling `auth-callback-pure-helpers`): the auth callback may call pure text helpers of the app's `modules/routes` or `modules/auth` (`requestOrigin`, `safeNextPath`; resolved by TypeScript symbol: synchronous, no await, no I/O global, only owner helpers and `modules/config` readers), use static route tables (`AUTH_ROUTES`), and read the exchange outcome's `success` or `ok` flag. An impure, async or non-text helper, a helper outside those owners and a credential passed to a helper are still refused.
-- Changed (R287 `FE_CALLBACK_SHAPE`, a18.1 NIVO request F, owner ruling `auth-callback-email-link`): the auth callback may await one `verifyOtp({ token_hash, type })` of the auth owner (`auth.verifyOtp` or `verifyOtp` from `modules/auth/server`), built from exactly the query values `token_hash` and `type`, beside the one `exchangeAuthCode(code)`; the token hash never reaches a redirect.
+- Changed: the bundled runtime copies follow the runtime of 1.0.0-alpha.19: the failure codes, the slot manifest (`exampleNa`) and the rule catalog (`specNa`, `exampleNa`) carry the removal of the runtime's own specs; package behavior is unchanged.
+- Changed (R287 `FE_CALLBACK_SHAPE`, a18.1 NIVO request F2): the auth callback may call pure text helpers of the app's `modules/routes` or `modules/auth` (`requestOrigin`, `safeNextPath`; resolved by TypeScript symbol: synchronous, no await, no I/O global, only owner helpers and `modules/config` readers), use static route tables (`AUTH_ROUTES`), and read the exchange outcome's `success` or `ok` flag. An impure, async or non-text helper, a helper outside those owners and a credential passed to a helper are still refused.
+- Changed (R287 `FE_CALLBACK_SHAPE`, a18.1 NIVO request F): the auth callback may await one `verifyOtp({ token_hash, type })` of the auth owner (`auth.verifyOtp` or `verifyOtp` from `modules/auth/server`), built from exactly the query values `token_hash` and `type`, beside the one `exchangeAuthCode(code)`; the token hash never reaches a redirect.
 - Fixed (R55 `FE_CLIENT_BOUNDARY`, a18.1 NIVO request I): the finding on a page or layout owner now says the owner stays a server component that renders the client block or overlay carrying the directive. The rule is unchanged.
 
 ## 8.3.0 - 2026-10-15
@@ -639,11 +639,11 @@
 
 ## 8.2.16 - 2026-10-13
 
-- Changed: the heroicons family is the one application icon set again (owner ruling 2026-10-13): `heroicons-is-the-glyph-vendor` admits exactly `@heroicons/react/24/outline`, `@heroicons/react/16/solid` and the matching `@starci/heroicons` subpaths (read from the fe-stack `icons` concern), and refuses Phosphor and every other glyph catalogue, a package the catalog forbids included; `one-icon-set` (8.2.15) is gone. Only the Icon leaf and the toast module import a glyph. The bundled runtime mirror carries the fe-stack catalog and the canon pins with `@heroicons/react` 2.2.0 and `@starci/heroicons` 0.3.3.
+- Changed: the heroicons family is the one application icon set again: `heroicons-is-the-glyph-vendor` admits exactly `@heroicons/react/24/outline`, `@heroicons/react/16/solid` and the matching `@starci/heroicons` subpaths (read from the fe-stack `icons` concern), and refuses Phosphor and every other glyph catalogue, a package the catalog forbids included; `one-icon-set` (8.2.15) is gone. Only the Icon leaf and the toast module import a glyph. The bundled runtime mirror carries the fe-stack catalog and the canon pins with `@heroicons/react` 2.2.0 and `@starci/heroicons` 0.3.3.
 
 ## 8.2.15 - 2026-10-13
 
-- Changed: carry the runtime mirror of HFS manifest 3.0.0 (one front-end standard for the lite and the full edition, owner ruling 2026-10-13) and the canon pins for Grammar 0.9.14, HFS 4.2.14, jest-preset 2.2.7 and CLI 1.2.14.
+- Changed: carry the runtime mirror of HFS manifest 3.0.0 (one front-end standard for the lite and the full edition) and the canon pins for Grammar 0.9.14, HFS 4.2.14, jest-preset 2.2.7 and CLI 1.2.14.
 - Added: `fe-stack-import` (law `fe-stack`, finding code `FE_STACK_FORBIDDEN`): an import (static, re-export, dynamic, `require`, type-only included) of a package any concern of the fe-stack catalog (`runtime/knowledge/hfs/fe-stack.yaml`) forbids, and `@supabase/*` outside `modules/auth` (slot `fe.modules.auth`), are refused. The catalog is read from the runtime copy; a missing copy stops the lint run with the fix.
 - Changed: the transport law follows the Apollo GraphQL + axios API layer. `fetch` (and `Request`, `EventSource`, `sendBeacon`) is legal in every file of the API layer (`modules/api`, the shared api package), `@apollo/client` only there, `axios` only in its REST calls (`modules/api/rest/`), `socket.io-client` only in `hooks/socketio/` (`fetch-only-in-api-client`, message `placed`); `client-fetch-has-signal` and `no-shared-transport-state` judge the whole layer (the generated `graphql/__generated__/` excepted); `no-hand-typed-wire` admits GraphQL documents in the API layer (one file per operation) and refuses them elsewhere; `one-outcome-union` names `GraphQLResponse` in `modules/api/graphql/types.ts` as the one vocabulary and also reads a `success` discriminant. The `modules/db` outcome home and the server reader role are gone.
 - Changed: `hooks-folder-holds-hooks-only` judges the hooks families `hooks/{swr,rhf,zustand,socketio,effects,reuseables}` by the files their slots name (message `family`); `SwrSideEffects.tsx` and `SocketIoSideEffects.tsx` are legal `.tsx` files of `hooks/`.

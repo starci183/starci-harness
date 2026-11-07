@@ -19,19 +19,19 @@
   - Loading, error and empty draw in the body; the zones keep their geometry while loading (`LoadingScope`). Types `HeaderZone`, `FooterZone`, `FilterFields`, `SearchFields` are exported.
 - Added: `Board headers` takes the same `HeaderZone`s, drawn in one white `--surface` strip above the columns on the well (the strip is the board's only added surface); an error replaces the columns, not the strip.
 - Added: the glyph `search` in `GLYPH_NAMES` (the magnifier, for `IconButton glyph="search"`).
-- Changed (owner rule for ALL tabs, `views` and `filter`): there is exactly ONE line under a tab strip, and the selected underline (2px) lies on it with its bottom edge on the line's bottom edge. A standalone strip owns the line (`--separator` on its bottom edge, the indicator at `-1px`; `data-grammar-tabs-line="own"`). Inside a card `filter` or `toolbar` zone the zone's divider IS the line and the strip draws none (`host`); the page header band's bottom border is the line under its page tabs, the band's separate `Divider` and `data-grammar-page-header-separator` are gone. `Tabs` has no `line` prop: the host decides, and no page and no child of a zone can override it. The strip stands on its line with no padding below, so the fold "More" trigger and the toolbar's search button sit on it. A scrolling strip keeps its indicator whole by one pixel of scroller padding drawn over the line. Offset Pop thickens the line to its outline width (`--starci-core-tabs-line-width`).
+- Changed (ALL tabs, `views` and `filter`): there is exactly ONE line under a tab strip, and the selected underline (2px) lies on it with its bottom edge on the line's bottom edge. A standalone strip owns the line (`--separator` on its bottom edge, the indicator at `-1px`; `data-grammar-tabs-line="own"`). Inside a card `filter` or `toolbar` zone the zone's divider IS the line and the strip draws none (`host`); the page header band's bottom border is the line under its page tabs, the band's separate `Divider` and `data-grammar-page-header-separator` are gone. `Tabs` has no `line` prop: the host decides, and no page and no child of a zone can override it. The strip stands on its line with no padding below, so the fold "More" trigger and the toolbar's search button sit on it. A scrolling strip keeps its indicator whole by one pixel of scroller padding drawn over the line. Offset Pop thickens the line to its outline width (`--starci-core-tabs-line-width`).
 - Changed: Offset Pop draws the divider between zones at its outline width.
 - Added: `SurfaceCard kind="table"` (the cash book): a card whose body is a table Grammar owns, built on `DataTable surface="none"` (one implementation). Props `columns` (`id`, `label`, `align`, `numeric`, `priority`), `rows` (`id`, `cells` by column id, `href`) OR `groups` (`id`, `label` the date, `fact` the end-of-day balance, `rows`), `empty`, the usual `isLoading`, `error`, `headers` and `footers`. The column header is drawn once; each group is a heading row (`--surface-secondary`) inside the same table; numeric cells are `nowrap` in tabular numerals; every line runs to the card's edges. Below the table's collapse width the `low` columns fold under the first column as muted lines and the group rows stay. Types `TableColumnData`, `TableRowData`, `TableGroupData`, `TableData`.
 - Added: `DataTable groups` (`DataTableGroup`: `id`, `label`, `fact`, `rows`; use it instead of `rows`) draws a group heading row (one cell across the table) before each group's rows, and `DataTableColumn.isNumeric` (end-aligned, `nowrap`, tabular numerals).
 - Fixed: a figure value never breaks inside a number. The value is `nowrap` and each cell has a minimum width from its value (its characters at the figure's size, plus the cell inset), so the strip wraps to 2 x 2, then one column, before a number would break ("12.000.000" at 390px). Story `FiguresFullBleed`.
 - Verified (no change needed): zone seams, list row lines, figure cell lines (vertical lines and the 2 x 2 cross), table lines and accordion seams all run flush to the card's edges; stories `EveryLineIsFlush1920` and `EveryLineIsFlush390` walk them.
 - Changed (docs): `Tabs` and `ButtonGroup` document the choice: `Tabs` switch views or periods of one block (in a card, the `filter` or `toolbar` header zone), `ChoiceChips` or `RadioGroup` choose a form value, a `ButtonGroup` holds commands and no selection state (it has none). Joined buttons or pills acting as tabs are banned by the lint rule `no-button-view-switch` (`@starci/eslint-grammar-core` 0.24.0).
-- Added: `Tabs appearance: "secondary" | "primary"` (owner: naming follows HeroUI). `secondary` is the default and is the underline (`kind` views and filter; `data-grammar-tabs-variant` now says `secondary`, it said `primary`); the one-line and flush-underline rules apply to it only. `primary` is HeroUI's primary variant, a pill in a track, still `role="tab"`, for a mode or period of the same data: two to four short fixed options, no `count`, no `href`, no `isAttention` (the types refuse them: `PrimaryTabItem`, `PrimaryTabItems`, `PrimaryTabsProps`; a development throw refuses what the types cannot see), no line (`data-grammar-tabs-line="none"`), hugging its options. Types `SecondaryTabsProps`, `PrimaryTabsProps` are exported; `PageHeader tabs` is secondary only.
+- Added: `Tabs appearance: "secondary" | "primary"` (naming follows HeroUI). `secondary` is the default and is the underline (`kind` views and filter; `data-grammar-tabs-variant` now says `secondary`, it said `primary`); the one-line and flush-underline rules apply to it only. `primary` is HeroUI's primary variant, a pill in a track, still `role="tab"`, for a mode or period of the same data: two to four short fixed options, no `count`, no `href`, no `isAttention` (the types refuse them: `PrimaryTabItem`, `PrimaryTabItems`, `PrimaryTabsProps`; a development throw refuses what the types cannot see), no line (`data-grammar-tabs-line="none"`), hugging its options. Types `SecondaryTabsProps`, `PrimaryTabsProps` are exported; `PageHeader tabs` is secondary only.
 - Added: header zone `{ kind: "switch", label, items, selectedKey, onSelect }` (primary tabs): in a card with a label it stands in the label row at the trailing edge, beside the label (before `labelEnd`); a card with no label and a `Board` draw it as a trailing strip. It takes no line. The home of "This month / Last month", "Day / Week / Month", "List / Board".
 - BREAKING: `SegmentedControl` is deleted with no alias (component, `SegmentOption`, `SegmentedControlProps`, `SegmentedControlSize`, its Common and Offset Pop styles, the `segmented-control` contract role renderer and its DNA rules `DNA-COMMON-SEGMENTED-RAMP`, `DNA-COMMON-SEGMENTED-RADIO`, `DNA-CORE-SEGMENT-SELECTED`). Migrate: a switch of a mode or period is `Tabs appearance="primary"` (the `switch` zone in a card); a value of a form is `ChoiceChips` or `RadioGroup`. The in-package stories are migrated (the Appearance control of the Settings page is a `RadioGroup`).
 - Stories `Surfaces/Card zones` with play tests: a list with a toolbar, filter and search as two zones, figures plus a list, footer `more`, link and paging footers, loading/error/empty zone geometry, the 390px fold (the fold trigger and the search button on the line), the one-line measure for `views` in a page head, a `filter` in a card zone and a standalone strip at 1920px and 390px, and a board header. Stories for `bands` and `footer` are migrated.
 
-## 0.23.3 - 2026-11-06 - surface and radius tokens (OWNER ruling 2026-11-06)
+## 0.23.3 - 2026-11-06 - surface and radius tokens
 
 - Fixed: `--starci-core-surface-radius` is `--radius` (it was 4/3 of it, 10.67px at Nivo's 0.5rem), so every card, media viewport, toast, flow graph and diagram draws at the one block radius.
 - Fixed: 21 corner radii that mapped to no HeroUI token now use `--radius` (`--grammar-radius-md`): board column, message bubble body (the tail corner is square), sidebar item, icon tiles, text action, schedule item, bar chart fill, code, input reveal, shortcut hint, mention list, flow graph tip, node and lane label; `progress-step` is a pill (full). Left as they are because they mirror the vendor Button radius: the button loading ring and the tooltip trigger (`calc(var(--radius) * 3)`).
@@ -40,12 +40,12 @@
 
 ## 0.23.2 - 2026-11-06 (additive, for the Nivo canvas)
 
-- Added: `MessageBubble tone="soft"` on an outgoing bubble: the brand tint (`--accent-soft` with `--accent-soft-foreground`), for an agent speaking on the reader's behalf (owner ruling 2026-11-06: no new token). Story `MessageBubbleTones`.
+- Added: `MessageBubble tone="soft"` on an outgoing bubble: the brand tint (`--accent-soft` with `--accent-soft-foreground`), for an agent speaking on the reader's behalf (no new token). Story `MessageBubbleTones`.
 - Added: `RelativeTime style="compact"`: the amount and its unit alone ("2 min", "2 phut") for the end of a row's title line (relative mode). Story `CompactRelativeTime`.
 - Added: a closed glyph vocabulary Grammar draws itself, `GLYPH_NAMES` (`more`, `send`, `panel-end`, `pencil`, `close`): `IconButton glyph` and `Button startGlyph`, for an app with no icon registry; an icon-only button still needs its `label`. Story `Glyphs`.
 - Fixed: `Tabs kind="filter"` measured each tab 8px wide twice and assumed an 8px gap, so three tabs with counts folded into the "+n" menu in a 336px list pane; the fit now uses the measured widths and the list's own column gap. Story `TabsInAPane`.
 - Added: `Tabs` of kind `views` fold the tabs that do not fit into the fold menu when the app gives `overflowLabel` (the selected one stays visible), and the selected page tab is `--accent-soft-foreground` at the semibold weight.
-- Added: `SearchField measure="compact"` (up to 26rem, at the start); `PaneHeader close` (the round close button at the trailing end); `ListBoxItem.meta` (a short fact at the end of the title line) and `ListBoxItem.footer` (marks under the description); `DataTable surface="none"` (hairline rows, no container paint); `ProportionBar` (one track split by share with a legend: `label`, `parts`, `empty`, `isLoading`, `error`); a `Board` column is the tinted surface (`--surface-secondary`, exactly the canvas's #f3eeee) with its title and a white count chip in the head and its items as white cards (owner ruling 2026-11-06: canvas column surface; each item is its own card, so a column is no longer one card of rows). Story `BoardTintedColumns`.
+- Added: `SearchField measure="compact"` (up to 26rem, at the start); `PaneHeader close` (the round close button at the trailing end); `ListBoxItem.meta` (a short fact at the end of the title line) and `ListBoxItem.footer` (marks under the description); `DataTable surface="none"` (hairline rows, no container paint); `ProportionBar` (one track split by share with a legend: `label`, `parts`, `empty`, `isLoading`, `error`); a `Board` column is the tinted surface (`--surface-secondary`, exactly the canvas's #f3eeee) with its title and a white count chip in the head and its items as white cards (canvas column surface; each item is its own card, so a column is no longer one card of rows). Story `BoardTintedColumns`.
 - Not built: a loading shimmer for `ListBoxItem.meta` and `footer`.
 
 ## 0.23.1 - 2026-11-05
@@ -57,21 +57,21 @@
 - Added (R4-22, batch 12): `BubbleMapNode.caption` (the name inside a bubble) now wraps to two lines and its type scales with the disc until the longest word fits, and `BubbleMapNode.detail` is one small line under it (a count); both sit in a block 70% of the disc wide, inside its inscribed square, and are never cut. `mark` stays at 4 characters. Laws `DNA-COMMON-BUBBLE-TEXT-INSIDE-START`, `-END`, story `BubbleNames`.
 - Added (R4-27, batch 12): `PaneSection rule="start"`: a hairline (`--separator`) on the block-start edge of the band, for a pinned decision bar or footer. Law `DNA-COMMON-PANE-SECTION-RULE`, story `PaneFooterRule`.
 - Added (R3-48 listing tile): `TileData.byline` (a muted small line under the name, beside the mark), `TileData.facts` takes `string | readonly string[]` (one muted line each), `TileData.figure` (one plain bold value at the start of the action row, the action and menu at its end, one line; a tile with a `figure` has no single `badge`). Loading draws the same box. Laws `DNA-COMMON-TILE-BYLINE`, `-FIGURE-START`, `-FIGURE-BEFORE-ACTION`, story `TileByline`.
-- BREAKING (minor, 0.23.0; owner ruling `grammar-own-style`): `info` is no longer a Grammar built-in. Core ships HeroUI's tones only (accent, default, success, warning, danger); an app ADDS tones: it writes `--<tone>`, `--<tone>-foreground`, `--<tone>-soft`, `--<tone>-soft-foreground` in its theme and declares the name once with `declare module "@starci/grammar/common" { interface GrammarToneRegistry { info: true } }`, after which `tone="info"` type-checks on `Badge`, `StatusDot`, `IconTile`, `Progress`, `Alert` and the `FlowGraph` and `BubbleMap` nodes and is painted from the app's tokens by one generic rule per component (`customToneProps`, `data-grammar-tone-custom`). A declared tone whose token is missing throws in development (never in production) and fails `DNA-COMMON-TONE-CUSTOM-COMPLETE`. `informative` stays an intent that is the accent pair unless the app writes the optional `--informative`, `--informative-foreground`, `--informative-soft`, `--informative-soft-foreground`. Removed: `--info` and `--info-foreground` from Core's palette (`core/dna.ts`, `core/theme.css`), every `var(--info...)` in Core and Common CSS, `info` in `BadgeTone`, `ProgressTone`, `FlowGraphTone`; the FlowGraph execute-node default is `accent` (was `info`). New check `npm run check:tones` (in `npm test`) fails a Core or Common rule that reads a tone token outside HeroUI's palette and `--informative*`. Laws `DNA-COMMON-TONE-CUSTOM-COMPLETE`, `DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE` (was `-INFO`), story `AppTones`.
-- Changed (release 7c.9a, decision release-only-what-changed): the Grammar lint family reads the @starci/hfs runtime it peers (~5.13.0) at run time instead of a bundled copy; a later hfs data change releases neither.
+- BREAKING (minor, 0.23.0): `info` is no longer a Grammar built-in. Core ships HeroUI's tones only (accent, default, success, warning, danger); an app ADDS tones: it writes `--<tone>`, `--<tone>-foreground`, `--<tone>-soft`, `--<tone>-soft-foreground` in its theme and declares the name once with `declare module "@starci/grammar/common" { interface GrammarToneRegistry { info: true } }`, after which `tone="info"` type-checks on `Badge`, `StatusDot`, `IconTile`, `Progress`, `Alert` and the `FlowGraph` and `BubbleMap` nodes and is painted from the app's tokens by one generic rule per component (`customToneProps`, `data-grammar-tone-custom`). A declared tone whose token is missing throws in development (never in production) and fails `DNA-COMMON-TONE-CUSTOM-COMPLETE`. `informative` stays an intent that is the accent pair unless the app writes the optional `--informative`, `--informative-foreground`, `--informative-soft`, `--informative-soft-foreground`. Removed: `--info` and `--info-foreground` from Core's palette (`core/dna.ts`, `core/theme.css`), every `var(--info...)` in Core and Common CSS, `info` in `BadgeTone`, `ProgressTone`, `FlowGraphTone`; the FlowGraph execute-node default is `accent` (was `info`). New check `npm run check:tones` (in `npm test`) fails a Core or Common rule that reads a tone token outside HeroUI's palette and `--informative*`. Laws `DNA-COMMON-TONE-CUSTOM-COMPLETE`, `DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE` (was `-INFO`), story `AppTones`.
+- Changed: the Grammar lint family reads the @starci/hfs runtime it peers (~5.13.0) at run time instead of a bundled copy; a later hfs data change releases neither.
 
 ## 0.22.0 - 2026-11-05
 
-- Fixed: a text `Link` paints the exact `--accent` in Core: the shared rule that rebound `--accent` to `--accent-soft-foreground` on a link no longer names it (it still does on the current tab), so the owner's overrule of P2 holds and the theme proof sees it.
-- Changed (owner-approved, ruling `one-way-to-choose` updated: counts as chips, confirmed by the owner 2026-11-05): a tab's `count` is a chip, neutral (`--default`), the accent soft pair on the selected tab, the warning soft pair when `isAttention` is set (was muted inline text, danger text). The tabs keep their underline. Laws `DNA-COMMON-TABS-COUNT-CHIP`, `-ATTENTION`, story `FilterTabsOverflowLabel` (counts) and `FilterTabsLoading`.
+- Fixed: a text `Link` paints the exact `--accent` in Core: the shared rule that rebound `--accent` to `--accent-soft-foreground` on a link no longer names it (it still does on the current tab), so the P2 override holds and the theme proof sees it.
+- Changed (one way to choose: counts are chips): a tab's `count` is a chip, neutral (`--default`), the accent soft pair on the selected tab, the warning soft pair when `isAttention` is set (was muted inline text, danger text). The tabs keep their underline. Laws `DNA-COMMON-TABS-COUNT-CHIP`, `-ATTENTION`, story `FilterTabsOverflowLabel` (counts) and `FilterTabsLoading`.
 - Added (U0-G10, approved): `Heading scale="title"` and `PageHeader titleScale="title"`: the middle 24px step (3xl, semibold, tight leading) for a first-run or lobby head and a welcome card title; the standard and display scales are unchanged. Law `DNA-COMMON-HEADING-TITLE-SCALE`, story `TitleScale`.
 - Changed (U0-G9, approved): `Stepper` markers form: the current step is a filled `--accent` circle with the accent foreground number, an upcoming step a filled `--surface-secondary` circle with a muted number and no ring, a complete step unchanged (filled accent), error and paused keep their tone ring on `--surface`. Laws `DNA-COMMON-STEPPER-MARKER-FILLS`, `-UPCOMING`, story `StepperMarkerFills`.
 - Checked (item 20d, approved): the Grammar draws no vertical centring of `EmptyNotice` (a content-height column with 24px inset, text centred across, as 2-inbox.empty and 2-inbox.noselection draw it); a notice that reads centred in a pane is app CSS (FE-CSS-1 refuses it). Guarded by law `DNA-COMMON-EMPTY-NOTICE-TOP`, story `EmptyNoticeAtTop`.
-- Changed (item 20b, approved; owner overrule 2026-11-05): a text `Link` is the exact primary brand colour, `--accent`, still underlined. Owner exception: the raw accent measures 3.2 to 4.3 as text on several Nivo grounds (page ground, secondary and tertiary surfaces, the dark surfaces), below 4.5; the owner accepts it and no contrast law judges a link. Law `DNA-COMMON-LINK-ACCENT-TEXT` pins `--accent`, story `LinkAccentOnEveryGround`.
+- Changed (item 20b): a text `Link` is the exact primary brand colour, `--accent`, still underlined. The raw accent measures 3.2 to 4.3 as text on several Nivo grounds (page ground, secondary and tertiary surfaces, the dark surfaces), below 4.5, and no contrast law judges a link. Law `DNA-COMMON-LINK-ACCENT-TEXT` pins `--accent`, story `LinkAccentOnEveryGround`.
 - Changed (item 20a, approved): the `alternative` button is the outlined pill (hairline border, `--default-foreground` words) in every placement in Core, as System.html draws the secondary command; it was the grey `--default` fill. `neutral` is unchanged (outline in decision and item, bare in chrome). Buttons carry `data-grammar-intent`. Law `DNA-CORE-BUTTON-ALTERNATIVE-OUTLINE` (Core only) replaces `DNA-COMMON-BUTTON-ALTERNATIVE-INK`, story `AlternativeButtonInk`.
 - Fixed: a `Select` without `placeholder` no longer shows the vendor's English "Select an item" (the Grammar speaks no language of its own): the trigger shows an empty, sized value; pass `placeholder` in the app's language. Law `DNA-COMMON-SELECT-NO-VENDOR-ENGLISH`, story `SelectWithoutPlaceholder`.
 - Fixed: `Link media` keeps the `width` and `height` of its `media` (a logo of 113 x 40 stays 113 x 40, was drawn at its container's width), contained inside that box. Law `DNA-COMMON-LINK-MEDIA-KEEPS-BOX`, story `LinkMediaKeepsBox`.
-- Changed: the canon pins give the family the same-minor range `~0.22.0` (decision grammar-patch-range); a minor, since the batch removes the law DNA-COMMON-BUTTON-ALTERNATIVE-INK and changes the one-way-to-choose contract.
+- Changed: the canon pins give the family the same-minor range `~0.22.0`; a minor, since the batch removes the law DNA-COMMON-BUTTON-ALTERNATIVE-INK and changes the one-way-to-choose contract.
 
 ## 0.21.38 - 2026-11-05
 
@@ -125,9 +125,9 @@
 - Added: `ListRowData.control` (a Select or Switch at the row end), `leading.size` (`md` is 40px) and a tile-shaped loading mark for an icon leading; `Select.prefix`; `TopBar density="compact"` (56px); `PaneHeader back.placement="always"`.
 - Added: `Section.fact` (a muted fact on the title line); `Section kind="list" ariaLabel` (a list with no heading under a pane head); `FileButton` `text`, `description`, `errorMessage` (a labelled pill picker with a note); `TextAction appearance="destructive"` (underlined danger text); `PrimaryRailLayout` is exported. Changed: the breadcrumb separator is a slash at 12px with a strong current page; `SearchField` is always the field tone; the page header keeps its command on the title row on a phone while it fits.
 - Changed: a `neutral` command at the `item` placement (a row or tile action) is the outlined pill (was bare text), in both families; `ItemAction.intent` accepts `destructive` (the soft danger pill of the entry step); a `kind="tile"` card with a mark and no poster draws the mark beside the name with its status chips under it, the description under the pair, the action at the start of the foot and the overflow menu at its end. Loading keeps the box (law `DNA-COMMON-LOADING-SAME-BOX`, story "Loading keeps the box"); `Select`, `ComboBox` and `DropdownMenu` popovers start a fresh loading region.
-- Changed: region loading (ruling `region-loading`). A loading `Section`, `PaneSection`, `SurfaceCard`, `Form` (new `isLoading`), `Dialog` and `Drawer` body (new `isLoading`) is read by every component inside it: controls and data draw the ready box (inert, one `aria-busy` on the region), static chrome (buttons, links, tabs, labels, icon buttons, breadcrumbs, steppers) keeps its words and only goes inert, an explicit `isLoading` overrides one control. New loading support: DateField, TimeField, Slider, DatePicker, DateRangePicker, OtpInput, Rating, PressableField, Link, Tabs, Pagination, Breadcrumbs, Accordion, Disclosure, AvatarButton, AvatarGroup, IdentityLockup, MessageStatus, RelativeTime, ProgressCircle, Image, MediaFrame, Video. A Dialog, Drawer or Popover resets the region. Law `DNA-COMMON-LOADING-REGION-INERT`, contract check `check:loading`, story "Every component, loading". Also: `Pane collapse="drawer" trigger="none"`, `DescriptionList density="compact"`, a row's badges move to the end group with its `meta`.
+- Changed: region loading. A loading `Section`, `PaneSection`, `SurfaceCard`, `Form` (new `isLoading`), `Dialog` and `Drawer` body (new `isLoading`) is read by every component inside it: controls and data draw the ready box (inert, one `aria-busy` on the region), static chrome (buttons, links, tabs, labels, icon buttons, breadcrumbs, steppers) keeps its words and only goes inert, an explicit `isLoading` overrides one control. New loading support: DateField, TimeField, Slider, DatePicker, DateRangePicker, OtpInput, Rating, PressableField, Link, Tabs, Pagination, Breadcrumbs, Accordion, Disclosure, AvatarButton, AvatarGroup, IdentityLockup, MessageStatus, RelativeTime, ProgressCircle, Image, MediaFrame, Video. A Dialog, Drawer or Popover resets the region. Law `DNA-COMMON-LOADING-REGION-INERT`, contract check `check:loading`, story "Every component, loading". Also: `Pane collapse="drawer" trigger="none"`, `DescriptionList density="compact"`, a row's badges move to the end group with its `meta`.
 - Added: `FileDropzone` and `FileButton` take `isLoading` and follow a loading region (the drop target as a Skeleton of the same box, labels real); `ListRowData.meta` (one end fact, `danger` tone for a problem) and `ListRowData.onPress` (the whole row presses); `Board` `onMove` with a keyboard move (Alt + arrows) and an announcement; `ScheduleGrid` `onDrop`, `onCellPress` and per entry `isDraggable`, `isSelected`, `isInvalid` with `why`, `isDashed`; `TabItem.isAttention`. Fixed: a card's `fact` and `labelEnd` sit on the label line (the head row is a row again).
-- Changed: one way to choose among a few (ruling `one-way-to-choose`). `Tabs` takes `kind="filter"` (the underline one size smaller, in the list pane under its search field, with a muted `count` per item, `isAttention` for a danger count, and the tabs that do not fit folded into a "+n" menu with the selected one always visible; `moreLabel` names the menu) and a `count` per item; `ChoiceChips` options take `disabledReason` (a taken time says so on hover and to a screen reader); `Calendar` takes `locale` (month and weekday names, and Monday as the first day for Vietnamese), `firstDayOfWeek`, `unavailableReason` (a full day says so) and `isLoading` (header and cells kept, numbers as geometry). `ButtonGroup`, `FilterButtonGroup` and `SegmentedControl` are deprecated, still exported, and removed in a later release: use separate `Button`s or a `DropdownMenu`, `Tabs kind="filter"`, and `ChoiceChips` or `RadioGroup`. The lint rule `starci-grammar/no-grouped-choice-controls` (R380) refuses new uses. `DNA-COMMON-TABS-BY-LAYER` separates views tabs (underline) from filter tabs (pills). A standalone Calendar's chosen day reads ink in Offset Pop.
+- Changed: one way to choose among a few. `Tabs` takes `kind="filter"` (the underline one size smaller, in the list pane under its search field, with a muted `count` per item, `isAttention` for a danger count, and the tabs that do not fit folded into a "+n" menu with the selected one always visible; `moreLabel` names the menu) and a `count` per item; `ChoiceChips` options take `disabledReason` (a taken time says so on hover and to a screen reader); `Calendar` takes `locale` (month and weekday names, and Monday as the first day for Vietnamese), `firstDayOfWeek`, `unavailableReason` (a full day says so) and `isLoading` (header and cells kept, numbers as geometry). `ButtonGroup`, `FilterButtonGroup` and `SegmentedControl` are deprecated, still exported, and removed in a later release: use separate `Button`s or a `DropdownMenu`, `Tabs kind="filter"`, and `ChoiceChips` or `RadioGroup`. The lint rule `starci-grammar/no-grouped-choice-controls` (R380) refuses new uses. `DNA-COMMON-TABS-BY-LAYER` separates views tabs (underline) from filter tabs (pills). A standalone Calendar's chosen day reads ink in Offset Pop.
 - Changed: `Alert` has one look in Core and Offset Pop, the tone's soft pair: the row is `--<tone>-soft` at full strength, the glyph, title (semibold) and description (regular) are `--<tone>-soft-foreground`, with no shadow and no border; informative maps to accent, affirmative to success, cautionary to warning, negative to danger, and neutral, pending and unavailable to default. The `appearance` prop is a deprecated no-op (both values render this look) and will be removed in the next release; delete it at call sites. The DNA laws `DNA-COMMON-ALERT-SURFACE`, `DNA-CORE-ALERT-RAISED` and `DNA-OFFSET-POP-ALERT-SOFT` are replaced by `DNA-COMMON-ALERT-TONE-PAIR-*`.
 - Added: `ChoiceChips`, one choice among a few short options as pills that wrap (a time, a day), with empty, loading and error. DNA law `DNA-COMMON-CHOICE-CHIPS-WRAP`.
 - Added: `Board` (stages as columns of rows that scroll and snap), `ScheduleGrid` (entries placed by row and column; an agenda below 48rem of its width) and `BarChart` (bars on one scale), each with loading, empty and error drawn in the shape of real content. DNA laws `DNA-COMMON-BOARD-ONE-WIDTH`, `DNA-COMMON-SCHEDULE-HEADINGS`, `DNA-COMMON-BAR-CHART-ONE-SCALE`.
@@ -289,8 +289,8 @@
 
 - Changed: ROWS, LISTS, SECTIONS (grammar audit 2026-11, lane 5). New `Section` (frame): a named `<section>` landmark whose `title` is the heading and the landmark name, with `description`, `count`, `meta`, one `action` that hugs its label at the end of the head row, `headingLevel` 2 to 6 and an `id` anchor; `kind="list"` draws `items` (the fields of a list row, plus `position` for an ordered list and `detail` for custom content) under an optional `filter` row (a `FilterButtonGroup`), with a required `empty` and `loadingRows`. Its head, filter and body stand one section step (24) apart; the head row is inline (8) and the title lines identity (4). Removed, not deprecated: `SectionHeader` (and its `eyebrow`, `composition`, `className`, free `level` 1), `Region` (and `spacing`), `List`, `ListItem`, `LeadingNumber`, `CollectionItem`, `ItemActions`, `ToolbarActions` and the public `Label`; the `.starci-core-section-eyebrow`, `.starci-core-region` and `.starci-core-semantic-list` styles go with them. Codemod `section-frame` (`starci app codemod section-frame`) migrates an app.
 - Changed: `Text` has one stronger weight, `isStrong`, in place of `weight` (`medium` and `semibold` both draw `semibold`). `parentEmphasis`, `size="metric-lead"` and `tone="accent"` are gone; `TextWeight` is no longer exported.
-- Changed: SMALL CUTS (grammar audit 2026-11, lane 7). Removed, not deprecated: `Backdrop` (owner decision 8), `RankArtwork`, `IncludedMark`, `SurfaceCopyGroup`, `ConnectionStatus` and `CloseButton`; the `--grammar-art-*` tokens go with the medals. Codemod `small-renames` (`starci app codemod small-renames`) migrates an app.
-- Changed: `ChatBubble` is `MessageBubble` (owner decision 3; ruling `chat-primary-and-surface` is `message-bubble-primary-and-surface`). `ChatBubbleSkeletons` is `MessageBubble isSkeleton rows={n}`, a single skeleton bubble takes `hasAvatar`, and the props are a union so a skeleton carries no children. `ChatBubbleProps` and `ChatBubbleSide` are `MessageBubbleProps` and `MessageBubbleSide`.
+- Changed: SMALL CUTS (grammar audit 2026-11, lane 7). Removed, not deprecated: `Backdrop`, `RankArtwork`, `IncludedMark`, `SurfaceCopyGroup`, `ConnectionStatus` and `CloseButton`; the `--grammar-art-*` tokens go with the medals. Codemod `small-renames` (`starci app codemod small-renames`) migrates an app.
+- Changed: `ChatBubble` is `MessageBubble`. `ChatBubbleSkeletons` is `MessageBubble isSkeleton rows={n}`, a single skeleton bubble takes `hasAvatar`, and the props are a union so a skeleton carries no children. `ChatBubbleProps` and `ChatBubbleSide` are `MessageBubbleProps` and `MessageBubbleSide`.
 - Changed: `StatusDot` is the dot alone (`aria-label` required, optional `echo`). A status with its words is `Badge isDot`, and `ConnectionStatus` is `Badge isDot isLive` (the dot echoes and the badge is a polite live region). The dot chip class is `starci-core-badge-dot`.
 - Changed: `CloseButton` is `IconButton intent="dismiss"`, which draws the close glyph itself (`source` is optional only for that intent). Dialog, Drawer, Toast and Alert dismiss through it.
 - Changed: `TextAction` has no `href`: a destination in text is `Link`. `EmptyNotice` has no `actionVariant` (its action is a `commit`). `DragItem` takes `tone` (neutral, accent, success, warning, danger) in place of `leadingColor`. `SegmentedControl` sizes are `sm` and `md`. `ButtonGroup` takes `actions` as data (`id`, `label`, `source`, `intent`, `onPress`, `isDisabled`), not children.
@@ -306,7 +306,7 @@
 - Changed: `Heading` carries no Tailwind class (its look is `data-level` and `data-scale` in the stylesheet), `ListBox` marks an unread item by `data-grammar-list-emphasis` instead of an inline weight, `Skeleton` circle is `data-shape`, `RankArtwork` fills read `--grammar-art-*`, `MermaidDiagram` reads its font size from `--grammar-text-md` and keeps no system-colour fallback, `FlowGraph` reads its tones bare and draws its canvas units from the spacing scale (`COMMON_SPACING_PX`).
 - Added: the lint that keeps it so. `eslint.config.mjs` and `stylelint.config.mjs` (rules in `scripts/lint/`) refuse a literal colour, radius, type value, shadow geometry, duration, easing, opacity, literal `var()` fallback, utility class that decides a look and off-scale spacing; `npm test` runs them, so CI judges every change. Dev dependencies: eslint, typescript-eslint, @eslint/js, stylelint, postcss-value-parser.
 
-- Changed: THE APP OWNS THE THEME (grammar audit 2026-11, section 8; owner: "bản thân app phải set được không dựa grammar"). No stylesheet declares a HeroUI token on the grammar root any more, so an app's `--accent`, `--background`, `--scrollbar` and every other HeroUI token, set on `:root`, `.light` and `.dark`, reaches every part in both families. Common reads HeroUI's tokens first, with no private token before them and no literal fallback; `*-soft` pairs and hovers are derived by HeroUI from the app's values (so default tints follow HeroUI's mixes, not Common's old 50/50 ones), and `--info` with its pairs, which HeroUI lacks, falls back to `--accent` at each read.
+- Changed: THE APP OWNS THE THEME (grammar audit 2026-11, section 8). No stylesheet declares a HeroUI token on the grammar root any more, so an app's `--accent`, `--background`, `--scrollbar` and every other HeroUI token, set on `:root`, `.light` and `.dark`, reaches every part in both families. Common reads HeroUI's tokens first, with no private token before them and no literal fallback; `*-soft` pairs and hovers are derived by HeroUI from the app's values (so default tints follow HeroUI's mixes, not Common's old 50/50 ones), and `--info` with its pairs, which HeroUI lacks, falls back to `--accent` at each read.
 - Added: `@starci/grammar/core/theme.css` and `@starci/grammar/offset-pop/theme.css`, each family's default palette as HeroUI tokens on `:root, .light` and `.dark`, in the first layer (`starci-grammar-theme`) and optional: an app with its own theme skips it or writes its values after it. Import it after `@heroui/styles`. The family sheets keep only rules, geometry and motion.
 - Changed: the accent painted as text on the page (link, current tab and bottom-nav destination, section eyebrow) reads `--accent-soft-foreground` through one Common rule, replacing each family's own text-safe accent; `accentText` is gone, the pair rule holds (accent alone is `--accent`, on its tint `--accent-soft-foreground`).
 - Changed: Offset Pop's palette is HeroUI's: ink is `--foreground`, pink `--accent`, yellow `--warning`, mint `--success`, critical `--danger`, blush `--accent-soft`; `--offset-pop-shadow-ink` (the colour of the hard offset) stays, reads `--foreground` when unset, and the surface shadow is `--surface-shadow`. Core's `--shadow-surface` and Offset Pop's are `--surface-shadow`, the token HeroUI's own cards read. Radii derive from `--radius`.
@@ -316,12 +316,12 @@
 
 ## 0.20.2 - 2026-11-01
 
-- Changed: the owner's status pair rule (ruling `status-soft-pair-on-background`): content on a tone background wears `x-soft` and `x-soft-foreground`, a mark that stands alone wears `x`. The alert dialog icon tile drew the tone as text on a 16% tint of itself; it now takes the tone's soft pair (`--starci-core-overlay-soft` and `--starci-core-overlay-soft-foreground`, set per tone beside `--starci-core-overlay-tone`), in every tone and both families.
+- Changed: the status pair rule: content on a tone background wears `x-soft` and `x-soft-foreground`, a mark that stands alone wears `x`. The alert dialog icon tile drew the tone as text on a 16% tint of itself; it now takes the tone's soft pair (`--starci-core-overlay-soft` and `--starci-core-overlay-soft-foreground`, set per tone beside `--starci-core-overlay-tone`), in every tone and both families.
 - Changed: core's light `--success`, `--warning` and `--info` are darker (`oklch(62.8% 0.1941 162.85)`, `oklch(67% 0.159 84.37)`, `oklch(66.8% 0.17 250)`): a bare mark reaches 3:1 on the surface, a solid fill keeps 5.8:1 ink, the soft pairs keep 4.5:1 or more. The step error and paused markers and the lost-connection status are bare x; Offset Pop's light theme keeps the soft foreground for them through `--starci-core-mark-danger` and `--starci-core-mark-warning`, and its dark theme resets them to the tone.
-- Changed: the reader's own `ChatBubble` (`side="outgoing"`) is the brand fill `--accent` with `--accent-foreground` and the other party's is the surface (ruling `chat-primary-and-surface`); a link, a mention, code and a muted Text inside an outgoing bubble inherit its foreground (Offset Pop too).
+- Changed: the reader's own `ChatBubble` (`side="outgoing"`) is the brand fill `--accent` with `--accent-foreground` and the other party's is the surface; a link, a mention, code and a muted Text inside an outgoing bubble inherit its foreground (Offset Pop too).
 - Added: `SurfaceCard` takes a `footer`, the same small muted bottom line as `SurfaceListCard`, so a card whose note was a hand line under it keeps it in the card.
-- Added: `FilterButtonGroup` (ruling `filter-button-group`): peer filter values as one row of `sm` toggle buttons (the vendor ToggleButtonGroup, single selection, optional count), never wrapping: the fit is measured from the real width and the options that do not fit go behind a "+n" button that opens a search list (tone-mark-free match), a chosen hidden option taking the place of the last visible one; selected is the accent soft pair. Removed: `TagGroup` has no selection (`selectionMode`, `selectedIds`, `defaultSelectedIds`, `onSelectionChange`): it holds values the user entered, with remove or reorder.
-- Added: `FlowGraph layout="lanes"` (ruling `flow-graph-lanes`): branch lanes, a column per stage and one row per branch of a condition; one width per node with an optional subline (`description`); `kind` (`trigger`, `condition`, `execute`, `output`) sets the tone through the soft pair; orthogonal edges with rounded corners, an arrowhead and one fork point per node; a branch label on its own edge; sentence-case column headers only over a column that holds a node; the canvas is as tall as the graph and never magnifies it, and a graph wider than a narrow canvas starts at its first column. Exports `lanesLayout`. Stories: Flow graph lanes (Chatbot, 9 nodes; Sales, 24).
+- Added: `FilterButtonGroup`: peer filter values as one row of `sm` toggle buttons (the vendor ToggleButtonGroup, single selection, optional count), never wrapping: the fit is measured from the real width and the options that do not fit go behind a "+n" button that opens a search list (tone-mark-free match), a chosen hidden option taking the place of the last visible one; selected is the accent soft pair. Removed: `TagGroup` has no selection (`selectionMode`, `selectedIds`, `defaultSelectedIds`, `onSelectionChange`): it holds values the user entered, with remove or reorder.
+- Added: `FlowGraph layout="lanes"`: branch lanes, a column per stage and one row per branch of a condition; one width per node with an optional subline (`description`); `kind` (`trigger`, `condition`, `execute`, `output`) sets the tone through the soft pair; orthogonal edges with rounded corners, an arrowhead and one fork point per node; a branch label on its own edge; sentence-case column headers only over a column that holds a node; the canvas is as tall as the graph and never magnifies it, and a graph wider than a narrow canvas starts at its first column. Exports `lanesLayout`. Stories: Flow graph lanes (Chatbot, 9 nodes; Sales, 24).
 - Fixed: inside a `FlowGraph` every theme variable came back as HeroUI's light value whatever the theme of the Grammar root (React Flow's `light` class re-scopes the HeroUI theme), so a node was white on a dark canvas; the graph takes the root's values back.
 - Changed: in Offset Pop the `Divider` between the bands of a joined card is the outline width (2px), as the stat strip's lines are.
 - Added: `--info-soft`, `--info-soft-hover` and `--info-soft-foreground` in Common (the information tone had no soft pair, so a tone read from it fell back to the accent); Offset Pop binds them to its blush accent pair (a mix of its pastel information tone into the ink read 2.5:1 on its own tint). The flow graph's information node and the ink band read them.
@@ -390,28 +390,28 @@
 
 ## 0.16.3 - 2026-10-31
 
-- Removed (breaking): `ChatWorkspace` and `PaneLayout` (with `ChatWorkspaceProps`, `PaneLayoutProps`), with no alias; `PaneGrid` replaces them. The grammar is a generic UI/UX layer, so a name states the layout role, never a product feature (owner rulings grammar-names-are-generic and pane-grid). Their hooks go with them: classes `.starci-core-pane-layout*`, attributes `data-grammar-pane-layout*` and the `paneLayout*` class-name exports; the slot props (`conversation`, `conversationLabel`, `composer`, `header`, `rail*`) have no successor, an app places its own pieces in panes. Story Compositions / PaneGrid.
-- Added: PaneGrid and Pane, the one generic pane grid (owner ruling pane-grid). `PaneGrid` takes `label`, `areas` (`grid-template-areas` rows such as `["a b c", "d d d"]`), `columns` and `rows` (track roles `auto`, `fill`, `fill-2`, `fill-3`, `compact`, `standard`, `wide` from the Rail widths), each also as an object keyed by breakpoint (`base`, `medium` from 48rem, `wide` from 70rem), chosen by CSS container query on the grid's own width. Panes sit flush; one divider, in the shared separator colour and weight, separates neighbours (n-1, never doubled, none on an outer edge) at every breakpoint. `Pane` takes `area`, `surface` (the flat `--surface` ground with no border, radius or shadow; default transparent), `scroll` (its own VerticalScrollRegion, needs `label`), `label`, and `collapse="drawer"` with `collapseLabel`, `openLabel`, `closeLabel`, `isOpen`, `onOpenChange` (a Drawer opened from a trigger above the grid wherever its area is not arranged, below 48rem for a single `areas`). A pane imposes no padding or structure on its children. Types `PaneGridProps`, `PaneProps`, `PaneTrack`, `PaneBreakpoint`, `PaneResponsive`, `PaneByBreakpoint`. Stories Compositions / Renderers: PaneGrid, PaneGridApp, PaneGridResponsive.
-- Added: Freestyle, the one sanctioned escape hatch: a div that fills its host where the app writes its own plain elements and CSS (layout, paint, radius, arbitrary values, absolutely positioned art) because no Grammar component fits. It takes `children`, `className` and a required `reason` (stamped as `data-grammar-freestyle-reason`; `data-component="Freestyle"`, `data-grammar-freestyle`), adds no paint of its own, and is a last resort (owner ruling grammar-freestyle-region). Story Surfaces / Freestyle.
+- Removed (breaking): `ChatWorkspace` and `PaneLayout` (with `ChatWorkspaceProps`, `PaneLayoutProps`), with no alias; `PaneGrid` replaces them. The grammar is a generic UI/UX layer, so a name states the layout role, never a product feature. Their hooks go with them: classes `.starci-core-pane-layout*`, attributes `data-grammar-pane-layout*` and the `paneLayout*` class-name exports; the slot props (`conversation`, `conversationLabel`, `composer`, `header`, `rail*`) have no successor, an app places its own pieces in panes. Story Compositions / PaneGrid.
+- Added: PaneGrid and Pane, the one generic pane grid. `PaneGrid` takes `label`, `areas` (`grid-template-areas` rows such as `["a b c", "d d d"]`), `columns` and `rows` (track roles `auto`, `fill`, `fill-2`, `fill-3`, `compact`, `standard`, `wide` from the Rail widths), each also as an object keyed by breakpoint (`base`, `medium` from 48rem, `wide` from 70rem), chosen by CSS container query on the grid's own width. Panes sit flush; one divider, in the shared separator colour and weight, separates neighbours (n-1, never doubled, none on an outer edge) at every breakpoint. `Pane` takes `area`, `surface` (the flat `--surface` ground with no border, radius or shadow; default transparent), `scroll` (its own VerticalScrollRegion, needs `label`), `label`, and `collapse="drawer"` with `collapseLabel`, `openLabel`, `closeLabel`, `isOpen`, `onOpenChange` (a Drawer opened from a trigger above the grid wherever its area is not arranged, below 48rem for a single `areas`). A pane imposes no padding or structure on its children. Types `PaneGridProps`, `PaneProps`, `PaneTrack`, `PaneBreakpoint`, `PaneResponsive`, `PaneByBreakpoint`. Stories Compositions / Renderers: PaneGrid, PaneGridApp, PaneGridResponsive.
+- Added: Freestyle, the one sanctioned escape hatch: a div that fills its host where the app writes its own plain elements and CSS (layout, paint, radius, arbitrary values, absolutely positioned art) because no Grammar component fits. It takes `children`, `className` and a required `reason` (stamped as `data-grammar-freestyle-reason`; `data-component="Freestyle"`, `data-grammar-freestyle`), adds no paint of its own, and is a last resort. Story Surfaces / Freestyle.
 
 ## 0.16.2 - 2026-10-31
 
-- Changed: a horizontal Stepper is a track: each step is an equal column with its marker centred over its label, and a connector line joins the markers through their centres (the accent after a completed step, the border colour otherwise); below 30rem every step keeps its equal column so the line stays straight (owner ruling stepper-connector).
+- Changed: a horizontal Stepper is a track: each step is an equal column with its marker centred over its label, and a connector line joins the markers through their centres (the accent after a completed step, the border colour otherwise); below 30rem every step keeps its equal column so the line stays straight.
 - Fixed: a SurfaceListCard inside another surface (a SurfaceCard, a wizard step card) drew the top-level face, no outline and a shadow that vanishes on the parent: its depth now comes from the surface context like SurfaceCard's, so a nested list is outlined (BOUNDARY-5, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); `depth` still overrides.
 
 ## 0.16.1 - 2026-10-30
 
-- Added: `accentCorner` on SurfaceCard and MediaFrame (start-start, start-end, end-start or end-end): that one logical corner is drawn at the Common accent radius `--grammar-accent-corner` (2.5rem) while the others keep the family's surface radius (owner ruling accent-corner); the type is exported as `AccentCorner`. Story Surfaces / Accent corner checks both families.
-- Added: Backdrop, the brand's own ground in a split screen (a sign-in brand half): the family's accentSoft tint full-bleed in its host, no border, shadow or card inset, the brand copy as children at the top and an `artwork` slot (a hero Mascot) taking the height left, with `accentCorner` (owner ruling backdrop). Story Surfaces / Backdrop.
-- Fixed: a page-scrolling WorkspaceShell is at least one viewport tall (min-block-size 100dvh), so the canvas under a short page runs to the bottom of the screen instead of ending under the content (owner ruling workspace-shell-fills-viewport). Story App shell layers / Short page fills viewport.
+- Added: `accentCorner` on SurfaceCard and MediaFrame (start-start, start-end, end-start or end-end): that one logical corner is drawn at the Common accent radius `--grammar-accent-corner` (2.5rem) while the others keep the family's surface radius; the type is exported as `AccentCorner`. Story Surfaces / Accent corner checks both families.
+- Added: Backdrop, the brand's own ground in a split screen (a sign-in brand half): the family's accentSoft tint full-bleed in its host, no border, shadow or card inset, the brand copy as children at the top and an `artwork` slot (a hero Mascot) taking the height left, with `accentCorner`. Story Surfaces / Backdrop.
+- Fixed: a page-scrolling WorkspaceShell is at least one viewport tall (min-block-size 100dvh), so the canvas under a short page runs to the bottom of the screen instead of ending under the content. Story App shell layers / Short page fills viewport.
 - Fixed: the StatusDot play expects the sm chip's 8px inline pad (the 2026-10-28 fix) instead of HeroUI's 4px.
 
 ## 0.16.0 - 2026-10-30
 
 - Changed: the build and capture tools (build stamp, clean, CSS copy, plays, reference and SVG shots) are TypeScript, typechecked by tsconfig.scripts.json; no component change.
 - Added: Mascot, one size scale for generated character art: size sm (6rem), md (10rem, default), lg (15rem) or hero (the container's height up to 30rem), always contained on a transparent ground with no plate, decorative when alt is empty, one step down below 48rem, a hero hidden below 64rem unless visibility="always"; it carries the Image provenance props (assetSlot, assetSha256, assetPrompt). Tokens --grammar-mascot-sm, -md, -lg, -hero-max.
-- Added: SurfaceCard treatment soft, the brand's light tint (--accent-soft) with the default foreground, keeping the artwork slot (owner ruling surfacecard-soft-treatment).
-- Added: EmptyNotice artwork (src, alt, loading and the provenance props, assetSlot required), drawn as a Mascot at md; it replaces iconSource for a first-run notice (owner ruling empty-notice-artwork).
+- Added: SurfaceCard treatment soft, the brand's light tint (--accent-soft) with the default foreground, keeping the artwork slot.
+- Added: EmptyNotice artwork (src, alt, loading and the provenance props, assetSlot required), drawn as a Mascot at md; it replaces iconSource for a first-run notice.
 - Fixed: a vertical Stepper inside a coloured SurfaceCard drew upcoming step numbers in their circle's colour (1.04:1 on ink): every coloured treatment re-colours --surface with its text tokens and the step marker reads matching pairs; a play story checks every step number at 4.5:1 for every treatment in light and dark.
 
 ## 0.15.34 - 2026-10-30
@@ -538,26 +538,26 @@
 ## 0.15.5 - 2026-10-28
 
 - Fixed: `Alert appearance="soft"` now applies its tone's soft tint at half strength and removes the surface shadow, as documented by `AlertAppearance` and the 2026-10-11 ruling. The default surface appearance and Alert anatomy are unchanged.
-- Added: `CopyField` (contract role `copy-field`, ruling copy-field), a read-only value with its copy action inside the field at its end, in HeroUI's field anatomy (Label, the InputGroup frame with the value and a Suffix action, description, FieldError) and at the 40px field height, so it sits level with `Input`, `Select` and `NumberField`. Props: `label`, `isLabelHidden`, `value`, `description`, `copyLabel`, `copiedLabel`, `copyErrorLabel` (the app's words; nothing is hard-coded), `onCopy`, `isDisabled`, `isSkeleton`, `variant` (from context when omitted). The value is a read-only textbox named by the label whose text is the whole value; a long value is truncated in the middle (the last eight characters stay) with the whole value in a Tooltip on hover and focus. `masked` with `lastFour` draws eight bullets and the last four characters and no Tooltip; its `onCopy` resolves the clear value (it may be async, a server reveal) and the field writes it to the clipboard through a `ClipboardItem` built in the press, keeping no copy. A plain copy uses the Clipboard API and calls the optional `onCopy(value)` after. A copy swaps the glyph and the action's name to `copiedLabel` for 2s and announces it politely; a refused copy shows `copyErrorLabel` in the field's error slot, describes the action and marks the field invalid. Icons come from `@heroicons/react`. Exported types `CopyFieldProps`, `CopyFieldPlainProps`, `CopyFieldMaskedProps`, `CopyFieldState`.
+- Added: `CopyField` (contract role `copy-field`), a read-only value with its copy action inside the field at its end, in HeroUI's field anatomy (Label, the InputGroup frame with the value and a Suffix action, description, FieldError) and at the 40px field height, so it sits level with `Input`, `Select` and `NumberField`. Props: `label`, `isLabelHidden`, `value`, `description`, `copyLabel`, `copiedLabel`, `copyErrorLabel` (the app's words; nothing is hard-coded), `onCopy`, `isDisabled`, `isSkeleton`, `variant` (from context when omitted). The value is a read-only textbox named by the label whose text is the whole value; a long value is truncated in the middle (the last eight characters stay) with the whole value in a Tooltip on hover and focus. `masked` with `lastFour` draws eight bullets and the last four characters and no Tooltip; its `onCopy` resolves the clear value (it may be async, a server reveal) and the field writes it to the clipboard through a `ClipboardItem` built in the press, keeping no copy. A plain copy uses the Clipboard API and calls the optional `onCopy(value)` after. A copy swaps the glyph and the action's name to `copiedLabel` for 2s and announces it politely; a refused copy shows `copyErrorLabel` in the field's error slot, describes the action and marks the field invalid. Icons come from `@heroicons/react`. Exported types `CopyFieldProps`, `CopyFieldPlainProps`, `CopyFieldMaskedProps`, `CopyFieldState`.
 - Added: `FormGrid` (`columns` 1 or 2, default 2): fields fill rows; each row is a grid of four tracks (label, control, description, error) that every field takes as a subgrid, so the controls of a row stand on one line whatever label, description or error a neighbour carries. Two columns come from a container query on the grid's own width (32rem); below it each row is one column.
-- Fixed (field anatomy, ruling field-anatomy-order): `Input`, `Field` and `FileDropzone` drew the description between the label and the control. Every field now draws HeroUI's order, label, control, description, error; groups (`RadioGroup`, `CheckboxGroup`, `Fieldset`) keep HeroUI's group order. `Input`'s label and description take the Common field classes and hooks (`starci-core-field-label`, `data-grammar-field-label`, `data-grammar-field-description`), so its label paints as every other field's in both grammars.
+- Fixed (field anatomy): `Input`, `Field` and `FileDropzone` drew the description between the label and the control. Every field now draws HeroUI's order, label, control, description, error; groups (`RadioGroup`, `CheckboxGroup`, `Fieldset`) keep HeroUI's group order. `Input`'s label and description take the Common field classes and hooks (`starci-core-field-label`, `data-grammar-field-label`, `data-grammar-field-description`), so its label paints as every other field's in both grammars.
 - Fixed: the `NumberField` group was 36px, the vendor's minimum, so it sat 4px short beside an `Input`; the `SearchField`, `NumberField` and date groups now hold the 40px field floor like `Input` and `Select` (DNA-COMMON-FIELD-MD).
 - Added: stories with plays, run per grammar: `Forms/Copy field` Plain (CopyField height equals the Input's, 40px), Masked (the clear value is never in the document, before or after a copy, and the copy writes what `onCopy` resolved), Long value (truncated in the middle, the tail whole before the action, the whole value in the text and in the focus Tooltip), Copied (state, name and announcement, back after about 2s), Copy failed (error slot, description, announcement), Skeleton (the loading field keeps the ready box), With description (under the control, describing the value); `Forms/Form grid` Control line (2 columns: equal control tops and heights per row, every description under its control), Narrow owner (1 column), Skeleton; `Primitives/Skeleton parity` Forms gains the CopyField pairs.
 - Migrate: an `Input isReadOnly isCopyable` that shows a value the reader only copies becomes a `CopyField`; a secret becomes `CopyField masked` with `lastFour` and an `onCopy` that reveals it. Pairs of fields laid side by side by hand become a `FormGrid`.
 
 ## 0.15.4 - 2026-10-28
 
-- Fixed: a `Button` with `width="fill"` was 36px at desktop width: the size rules excluded the fill form so a wrapped label could grow, which left it to the vendor's `md:h-9`. The fill form now holds its step as a floor (md and control 40px, sm 32px, lg 48px; ruling control-height-40) and only a wrapped label grows it. Story `Primitives/Control heights` FillWidthAtForty measures a sign-in card's submit, sm, lg and a wrapping label.
-- Added: `MermaidDiagram` (contract role `diagram`, ruling mermaid-diagram): `source`, `label`, `height` (`sm` 16rem, `md` 24rem, `lg` 32rem, the least canvas box of every state), `errorTitle`, `sourceLabel`, `isSkeleton`, `className`. Mermaid 11.16.0 is an exact dependency, imported on the first diagram; it renders with `theme: "base"`, `securityLevel: "strict"` and colours resolved from the root's semantic tokens, and re-renders when the root's theme changes. A refused source is an `Alert` and the source as a `FencedCodeBlock` in the same frame. Exported types `MermaidDiagramProps`, `MermaidDiagramHeight`.
+- Fixed: a `Button` with `width="fill"` was 36px at desktop width: the size rules excluded the fill form so a wrapped label could grow, which left it to the vendor's `md:h-9`. The fill form now holds its step as a floor (md and control 40px, sm 32px, lg 48px) and only a wrapped label grows it. Story `Primitives/Control heights` FillWidthAtForty measures a sign-in card's submit, sm, lg and a wrapping label.
+- Added: `MermaidDiagram` (contract role `diagram`): `source`, `label`, `height` (`sm` 16rem, `md` 24rem, `lg` 32rem, the least canvas box of every state), `errorTitle`, `sourceLabel`, `isSkeleton`, `className`. Mermaid 11.16.0 is an exact dependency, imported on the first diagram; it renders with `theme: "base"`, `securityLevel: "strict"` and colours resolved from the root's semantic tokens, and re-renders when the root's theme changes. A refused source is an `Alert` and the source as a `FencedCodeBlock` in the same frame. Exported types `MermaidDiagramProps`, `MermaidDiagramHeight`.
 - Added: `FlowGraph` node `shape` (`stadium` default, `rect`, `round`, `diamond`, `circle`; type `FlowGraphNodeShape`) and edge `label`, drawn on a surface chip at the edge midpoint and repeated as "source → target: label" in a visually hidden edge list.
-- Added: `Page` (contract role `page`, ruling page-frame): `header` (PageHeader's props as data, type `PageHeaderContent`), `children` (the body), `measure` (`reading`, `product`, `full`), `isSkeleton` (passed to the header), `className`. The band runs full width; the body sits in the measure and gutter one region step below it (or below the top without a header), its sections a region step apart, and clips one gutter step past its content box so nothing reaches across the gutter.
+- Added: `Page` (contract role `page`): `header` (PageHeader's props as data, type `PageHeaderContent`), `children` (the body), `measure` (`reading`, `product`, `full`), `isSkeleton` (passed to the header), `className`. The band runs full width; the body sits in the measure and gutter one region step below it (or below the top without a header), its sections a region step apart, and clips one gutter step past its content box so nothing reaches across the gutter.
 - Changed (breaking for pages that relied on a frame's inset): `Page` is the single owner of the page inset. No Grammar layout frame wraps a page in `PageContainer` (`WorkspaceShell`, `PrimaryRailLayout` and `PaneLayout` never did; `NavigationFeatureNav`'s container is its own bar), and `@starci/eslint-grammar-core` 0.15.4 refuses a page owner that draws `PageHeader` or `PageContainer` itself or anything beside its `Page` (R325), and page tabs outside the header (R324). The fixed bottom-nav offset applies to the outermost `Page`.
 - Added: stories with plays: `Compositions/Renderers` Page, PageWithoutHeader, PageSkeleton; `Navigation & Data` FlowGraphFlowchart, MermaidDiagram. The settings and members page recipes and the app shell demo are drawn with `Page`.
 - Migrate: a page owner's `PageHeader` plus `PageContainer` becomes `<Page header={{ ...headerProps }} measure={measure}>{content}</Page>`; page tabs move to `header.tabs`.
 
 ## 0.15.3 - 2026-10-28
 
-- Added: `PageHeader`, the page header band (contract role `page-header`, ruling page-header-band). Slots: `breadcrumbs` (`label`, `items`, `onAction`), `title` (the page's one `h1`; `titleId` names it), `description`, `meta`, `status` (chips beside the heading), `mark` (an identity mark left of the heading), `actions` (at the end of the heading row, wrapping under the heading at phone width) and `tabs` (page tabs, drawn as the underline bar). The band is the surface over the page background; its content sits in a `PageContainer` of the content's `measure`, so header and content edges align, with the region step above and the page inset inline. It ends in its own full-width separator (a presentation `Divider`), drawn with or without tabs; page tabs stand on it and the selected underline lies over it; the content below starts one region step after the band. `isSkeleton` keeps every slot's box (title, description, meta, status, mark and actions as measured placeholders; the trail and the tab labels stay real). Core draws the separator as the 1px `separator` hairline, Offset Pop as the TopBar's ink rule with a heavy heading.
+- Added: `PageHeader`, the page header band (contract role `page-header`). Slots: `breadcrumbs` (`label`, `items`, `onAction`), `title` (the page's one `h1`; `titleId` names it), `description`, `meta`, `status` (chips beside the heading), `mark` (an identity mark left of the heading), `actions` (at the end of the heading row, wrapping under the heading at phone width) and `tabs` (page tabs, drawn as the underline bar). The band is the surface over the page background; its content sits in a `PageContainer` of the content's `measure`, so header and content edges align, with the region step above and the page inset inline. It ends in its own full-width separator (a presentation `Divider`), drawn with or without tabs; page tabs stand on it and the selected underline lies over it; the content below starts one region step after the band. `isSkeleton` keeps every slot's box (title, description, meta, status, mark and actions as measured placeholders; the trail and the tab labels stay real). Core draws the separator as the 1px `separator` hairline, Offset Pop as the TopBar's ink rule with a heavy heading.
 - Added: stories `Compositions/Renderers` PageHeader (no tabs), PageHeader with page tabs and PageHeader at 360px, each with a play asserting the full-width separator at the band's bottom edge, the aligned content edge and the selected underline on the separator; `Primitives/Skeleton parity` Rows gains the PageHeader pairs with and without tabs.
 - Migrate: a page head composed from `Breadcrumbs` and `SectionHeader` becomes one `PageHeader`, first in the primary region and outside the content's `PageContainer`; `@starci/eslint-grammar-core` 0.15.3 refuses the hand-rolled head.
 
@@ -573,7 +573,7 @@
 
 - Changed: versioned together with the Grammar lint families 0.15.0 (a minor: `SurfaceCard placement` moves a labelled Core card's label outside unless it is a `panel`), released with the release C pins.
 
-- Added: `SurfaceCard placement` (`floating` default | `panel`), stamped as `data-grammar-surface-placement`. Each family places a card label per placement (ruling card-label-placement-per-grammar). Core: a floating card's label is an unpainted row above the material (the Common anatomy SurfaceListCard shares); a panel card (a docked panel or full-height region of the layout) carries its title inside, as the card header, inset by the surface inset. Offset Pop keeps both outside. Migrate: a Core labelled card that is a docked panel takes `placement="panel"`; every other labelled Core card now draws its label outside the card.
+- Added: `SurfaceCard placement` (`floating` default | `panel`), stamped as `data-grammar-surface-placement`. Each family places a card label per placement. Core: a floating card's label is an unpainted row above the material (the Common anatomy SurfaceListCard shares); a panel card (a docked panel or full-height region of the layout) carries its title inside, as the card header, inset by the surface inset. Offset Pop keeps both outside. Migrate: a Core labelled card that is a docked panel takes `placement="panel"`; every other labelled Core card now draws its label outside the card.
 - Changed: a horizontal `Divider` placed in a card's content region runs full bleed, card edge to card edge (inset 0), with the card inset above and below it.
 - Changed (skeleton parity): a loading leaf keeps the box of its ready state at the same size and props, in both families. A text skeleton line now takes exactly the line box of its type (`1lh`, the bar centred by its margins; contexts size the bar through `--starci-core-skeleton-line`), so `Skeleton lines={n}` is as tall as n lines of that copy. `Text` and `TextAction` skeletons are the same element (display, size, overflow, pressable floor) with the copy laid out unseen inside a shimmer bar; `Button`, `Badge` keep their start/end content as an unseen measured placeholder; `Icon` takes its usage box; the Offset Pop avatar ring is not drawn around a loading avatar; `SectionHeader`, `DescriptionList` (values now shimmer), `ListBox` and `Timeline` loading rows take the ready rows' line boxes.
 - Changed (skeleton parity, forms): every form control's `isSkeleton` renders its ready anatomy (label, description, control box, options) inside an inert, `aria-busy` scope whose control boxes are painted as a Skeleton, replacing the fixed-height geometry blocks. The description now stays while loading (it is static guidance); nothing is invalid or pending while loading.
@@ -616,7 +616,7 @@
 
 ## 0.12.13 - 2026-10-26
 
-- Changed: owner ruling control-height-40: the control token is 2.5rem and every standalone control renders at 40px; IconButton sm/md/control/lg are 32/40/40/48 on both axes, the Switch control track is 40 with a 32 thumb, the chrome Avatar is 40, and Textarea, PressableField and the Select skeleton follow the token.
+- Changed: the control token is 2.5rem and every standalone control renders at 40px; IconButton sm/md/control/lg are 32/40/40/48 on both axes, the Switch control track is 40 with a 32 thumb, the chrome Avatar is 40, and Textarea, PressableField and the Select skeleton follow the token.
 - Changed: Tabs and HorizontalScrollRegion share one scroll-caret implementation, so a horizontally scrolling row shows carets on the side that can scroll.
 
 ## 0.12.12 - 2026-10-26
@@ -664,7 +664,7 @@
 - Fixed: panel ListBox boxes align with search fields and tabs without negative-margin bleed. HeroUI retains list and item padding, rounding and interactive states inside scrolling panels. Added list and item `size` with centred 32/40/48px leading slots; `labelLeading` stays in the title line.
 - Changed: every avatar without an uploaded `src` uses bundled DiceBear initials from the first and last words of its name. Colours follow `seed`, or the name when no seed is supplied; the local image follows the Avatar shape and retains readable text in either theme. AvatarButton, AvatarGroup cells and overflow counts share the renderer.
 - Added: `kind="person" | "agent"` on Avatar, AvatarButton and AvatarGroup items. Agents keep the same free-text name and initials rule and add a bottom-right HeroUI bot badge with an accessible AI identity; tiny avatars and group grid cells hide the badge.
-- Updated: owner rulings, panel-edge and app-shell knowledge, prop documentation, stories and focused package specifications.
+- Updated: panel-edge and app-shell knowledge, prop documentation, stories and focused package specifications.
 - Added: Button and IconButton declare action intent and destructive step; each family maps intent and composition placement to existing HeroUI variants. CollectionItem and ItemActions supply item placement for custom rows, and ToolbarActions supplies chrome for a custom toolbar; collection rows, chrome and overlay decisions provide it automatically. AlertDialog uses dismiss and destructive confirm intents with safe initial focus unchanged. Stories cover every intent and placement in both themes.
 - Changed: `Switch` `size` is HeroUI's `md | lg` (`control` is gone; the StarCi track and thumb geometry with it). `Skeleton shape="circle"` takes HeroUI's `rounded-full`. Hand-written field errors (SegmentedControl, Field, FileDropzone, Slider, Fieldset) render HeroUI's `FieldError`. `TagGroupItem.isOff` is HeroUI's `surface` Tag variant. `DataTableCellInteraction` loses `isHighlighted` and `tone`; `DragItem` and `FlowGraph` selection are state hooks with no Grammar outline. Copyable and revealable `Input` puts its actions in HeroUI's `InputGroup` suffix so the value never runs under them.
 
@@ -675,7 +675,7 @@
 ## 0.12.1 - 2026-10-26
 
 - Added: `ListBoxItem.labelLeading`, a decorative glyph in the title line, inside HeroUI's `Label` before the text and on its baseline (e.g. a group mark before a group conversation's name). It is `aria-hidden` (A11Y-2) and reuses the leading wrapper, so `label` stays the string name and `textValue`, and no family CSS changes.
-- Fixed: Select triggers use the shared 2.5rem field-height token, matching Input. The examples show the controls together; the vendor wrapper manifest records the owner's field-height override.
+- Fixed: Select triggers use the shared 2.5rem field-height token, matching Input. The examples show the controls together; the vendor wrapper manifest records the field-height override.
 - Fixed: Tooltip and Divider delegate their accessibility and anatomy to HeroUI Tooltip and Separator; stepped Progress uses the HeroUI ProgressBar root and track. Vendor role parity reads a generated index of every public HeroUI component, including expression-valued roles; link actions and assertive toast announcements delegate to their matching HeroUI components.
 - Changed: SurfaceCard always paints a surface, with a shadow on the page background and a border inside another surface. Its depth follows the parent context; the frameless frame and explicit depth prop are removed. Rail and unpainted disclosure containers inherit their parent's field layer.
 - Fixed: WorkspaceShell uses an intrinsic navigation track in fixed viewports, keeps the compact drawer opener at control size and defaults drawer-backed navigation to wide visibility. Its header, TopBar and NavigationFeatureNav supply the nested field layer; app shells without a drawer declare navigation visibility. IconButton badges require an accessible badgeLabel. DropdownMenu keeps the exclusive mark/iconSource leading API and neutral/danger tones.
@@ -741,7 +741,7 @@ Minor, additive: table-cell interactions, native drag-source presentation, contr
 
 ## 0.9.14 - 2026-10-12
 
-Patch (owner review of nivo.vn, FOCUS-1). No API change.
+Patch (review of nivo.vn, FOCUS-1). No API change.
 
 - **One focus ring per field, drawn on the field frame.** A focused `SearchField` could show a doubled ring: the wrapper group and the inner input were both outlined. The inner text input of `SearchField`, `NumberField` and `ComboBox` now never draws an outline or ring shadow of its own, and the ring stays on the frame (the group, via `:focus-within`, so keyboard focus remains visible; a system outline in forced-colors). `ComboBox` moves its ring from the vendor input to its input group, the box Common's single-line anatomy already names. `Input`, `Select` and the date fields already draw exactly one ring (checked in every family) and are unchanged.
 
@@ -755,13 +755,13 @@ Patch (owner review of nivo.vn, FOCUS-1). No API change.
 
 ## 0.9.12 - 2026-10-12
 
-Patch (owner review of nivo.vn, STATE-6 case-7). No API change.
+Patch (review of nivo.vn, STATE-6 case-7). No API change.
 
 - **The secondary pill strip keeps its track padding on every side.** The zero bottom margin and padding the underline bar needs were applied to every tab list, so the selected pill sat on the bottom edge of the track and the strip looked jammed. They are scoped to `variant="primary"` now.
 
 ## 0.9.11 - 2026-10-12
 
-Patch (owner ruling 2026-10-12, STATE-6 case-7). No API change.
+Patch (STATE-6 case-7). No API change.
 
 - **`Tabs variant="secondary"` is HeroUI's own pill tabs.** The 0.9.9 accent-soft re-paint is gone: a soft `--default` track, the selected tab a white `--segment` pill with the surface shadow and foreground text, as HeroUI ships it. The primary underline geometry (indicator height, flex-end alignment, inline and end padding) is now scoped to `variant="primary"`, so it no longer flattens the pill.
 - **A tab with no `leading` icon always shows its label.** Under `labelVisibility="responsive"` a narrow viewport hid every label, which left icon-less tabs empty.
@@ -787,7 +787,7 @@ Published component-feature release: secondary Tabs, danger-soft IconButton and 
 
 ## 0.9.8 - 2026-10-12
 
-Minor, additive (owner feedback from nivo.vn: the fields of one form did not look like one family; a long selected value broke the field height). No new catalog component (still 104).
+Minor, additive (feedback from nivo.vn: the fields of one form did not look like one family; a long selected value broke the field height). No new catalog component (still 104).
 
 - **One single-line field anatomy.** Input, Select, ComboBox, SearchField, NumberField, DateField, TimeField (and the pickers on the date group) share one radius token (`--field-radius`), one minimum height
   (`--starci-core-field-min-height`, default 2.5rem, the height the loading skeletons already promised; the 44px touch floor still wins on coarse pointers), border-box sizing, 0.75rem inline padding and a trigger or chevron
@@ -804,7 +804,7 @@ Minor, additive (owner feedback from nivo.vn: the fields of one form did not loo
 
 ## 0.9.7 - 2026-10-11
 
-Minor, additive (owner ruling 2026-10-11, knowledge STATE-8: the loading view is the page's own component tree, labels real, only unresolved content as inert
+Minor, additive (knowledge STATE-8: the loading view is the page's own component tree, labels real, only unresolved content as inert
 geometry). Closes the gaps an app migrating to it found. Same rules as the 0.9.5 loading views: skeleton geometry is `aria-hidden`, the owning region is
 `aria-busy`, no interactive child is drawn, and reduced motion comes from the existing Skeleton atom. No new catalog component (still 104).
 
@@ -842,7 +842,7 @@ geometry). Closes the gaps an app migrating to it found. Same rules as the 0.9.5
 
 ## 0.9.6 - 2026-10-11
 
-Patch (owner: "a group of buttons should use secondary and a border").
+Patch (a group of buttons uses secondary and a border).
 
 - **Selectable `TagGroup` chips read as secondary buttons with a border** (`selectionMode` `single` or `multiple`). Unselected chips take the
   secondary-button face (`--default`, hover `--default-hover`, default foreground) plus a 1px inset `--border`; selected chips keep
@@ -856,7 +856,7 @@ Patch (owner: "a group of buttons should use secondary and a border").
 
 ## 0.9.5 - 2026-10-11
 
-Minor, additive (owner: the NIVO "Second brain" knowledge map must be drawn from grammar components only).
+Minor, additive (the NIVO "Second brain" knowledge map is drawn from grammar components only).
 
 - **New branch component `FlowGraph`** (Common renderer, 104 in all; exported from `@starci/grammar/common` and `/core`). A node-and-edge
   map drawn with React Flow (`@xyflow/react`) in grammar tokens: pill nodes tinted by `tone` (`neutral`, `accent`, `success`,
@@ -912,7 +912,7 @@ Patch (reported from nivo-lite).
 
 ## 0.9.3 - 2026-10-11
 
-Patch, additive (owner, 2026-10-11, from the live nivo.vn connections drawer).
+Patch, additive (from the live nivo.vn connections drawer).
 
 - **`Progress` step mode.** `steps={{ total, completed }}` (and `valueText`) draws one segment per wizard step at the small
   bar's height (0.25rem), the finished and current steps on the accent, the rest on `--default`; one `role="progressbar"`
@@ -934,7 +934,7 @@ Patch, additive (owner, 2026-10-11, from the live nivo.vn connections drawer).
 
 ## 0.9.2 - 2026-10-11
 
-Patch, additive (owner ruling 2026-10-11: an Alert may take its tone's soft tint; amends ACCENT-5 case-5's "the tone never
+Patch, additive (an Alert may take its tone's soft tint; amends ACCENT-5 case-5's "the tone never
 fills the Alert's background" for this opt-in appearance only).
 
 - **`Alert` `appearance`** `"surface"` (default, unchanged: the HeroUI white row with the surface shadow) or `"soft"`: the
@@ -946,7 +946,7 @@ fills the Alert's background" for this opt-in appearance only).
 ## 0.9.1 - 2026-10-11
 
 Minor, additive (nivo-lite connections: several accounts per provider, read from the UI knowledge - COLLECTION-1/2,
-PADDING-0/4 side contact, BOUNDARY-3, DISCIPLINE-1, ACCENT-2; owner approved publishing @starci packages).
+PADDING-0/4 side contact, BOUNDARY-3, DISCIPLINE-1, ACCENT-2).
 
 - **`ListRow`** (composite, exported from every entry and the registry; 103 renderers): an interactive `<li>` for
   `SurfaceListCard` - `leading` (an `IconTile`, avatar or logo tile), `title`, `badges` (at most two), one muted
@@ -962,7 +962,7 @@ PADDING-0/4 side contact, BOUNDARY-3, DISCIPLINE-1, ACCENT-2; owner approved pub
 
 ## 0.9.0 - 2026-10-11
 
-Minor, additive (owner, 2026-10-11: "add every gap the conformance lanes reported"). Every grammar gap the app-wide
+Minor, additive. Every grammar gap the app-wide
 Grammar-conformance refactor had to leave as app classes now has a Grammar piece. No existing prop, default, class or token
 changed meaning.
 
@@ -1006,7 +1006,7 @@ changed meaning.
 
 ## 0.8.5 - 2026-10-11
 
-Patch (nivo-lite connections; owner: the copy action belongs inside the field).
+Patch (nivo-lite connections; the copy action belongs inside the field).
 
 - **The `Input` copy action moves inside the field.** It is now an in-field action at the field's end, after a secret's reveal
   toggle, like the reveal toggle itself: both live in `.starci-core-input-actions` and the field reserves their measured width
@@ -1021,7 +1021,7 @@ Patch (nivo-lite connections; owner: the copy action belongs inside the field).
 
 ## 0.8.4 - 2026-10-10
 
-Patch, additive (product connections screen; owner approved publishing @starci packages).
+Patch, additive (product connections screen).
 
 - **Copyable and read-only `Input`.** `isCopyable` with `copyLabel` (and `copiedLabel`, `onCopy`) adds a Grammar `Button` after the
   control that copies the current value, controlled or not, masked secrets included without revealing them; when the clipboard is
@@ -1042,7 +1042,7 @@ Minor, additive (lane C0-CANON).
 
 ## 0.8.0 - 2026-10-01
 
-Minor, additive (lane FONT; owner: the brand layer must be able to set the brand typeface).
+Minor, additive (lane FONT; the brand layer must be able to set the brand typeface).
 
 - **Font tokens.** The grammar now reads `--font-sans` (the core family root's `font-family`) and `--font-mono` (the leading-number
   and the code/monospace surfaces), each with a system-font fallback, so an app's brand layer sets its typeface on `:root` (and
@@ -1052,7 +1052,7 @@ Minor, additive (lane FONT; owner: the brand layer must be able to set the brand
 
 ## 0.7.2 - 2026-09-30
 
-Patch, additive (nivo-fe wave, lane F0; owner approved publishing @starci packages).
+Patch, additive (nivo-fe wave, lane F0).
 
 - `Input` gains `kind="tel"`: `type="tel"`, `inputMode="tel"`, `autoComplete="tel"`, so a phone field opens the phone keypad and
   offers the saved number (the expert lead form lost both when it moved to the grammar).
@@ -1061,11 +1061,11 @@ Patch, additive (nivo-fe wave, lane F0; owner approved publishing @starci packag
 
 ## 0.7.1 - 2026-09-30
 
-Test-suite policy only (owner decision 2026-09-30, follow HeroUI): the contrast pairs for a status soft pair (`--<tone>-soft-foreground` on `--<tone>-soft`), the Alert title and a bare status glyph or title on a ground are held to `SOFT_MIN` = 3:1 instead of 4.5:1. Body text, descriptions and interactive text keep 4.5:1. No shipped CSS or API changed.
+Test-suite policy only (follow HeroUI): the contrast pairs for a status soft pair (`--<tone>-soft-foreground` on `--<tone>-soft`), the Alert title and a bare status glyph or title on a ground are held to `SOFT_MIN` = 3:1 instead of 4.5:1. Body text, descriptions and interactive text keep 4.5:1. No shipped CSS or API changed.
 
 ## 0.7.0 - 2026-09-28
 
-Additive (minor), plus one fix (owner, 2026-09-28, StarCi Next `SignInBase#signed-out`). Owner approved the publish.
+Additive (minor), plus one fix (StarCi Next `SignInBase#signed-out`).
 
 - Fix: `SurfaceCard` `measure="form"` / `"formCompact"` now caps the card. The root's `width: 100% !important`
   (`.starci-core-surface-card`) beat the form surface's `min(100%, 30rem)`, so a form card stretched across the whole
@@ -1082,7 +1082,7 @@ Additive (minor), plus one fix (owner, 2026-09-28, StarCi Next `SignInBase#signe
 
 ## 0.6.0 - 2026-09-27
 
-Additive (minor). Owner ruling 2026-09-27 ("add all of it"): every grammar gap the real-component prototype
+Additive (minor): every grammar gap the real-component prototype
 (`ModuleLedgerBase.draw.tsx`, lane draw-real-components) had to work around is now a grammar piece. No existing
 prop, default, class or token changed meaning; one renderer is new; 28 renderers gain root attributes.
 
@@ -1177,7 +1177,7 @@ prop, default, class or token changed meaning; one renderer is new; 28 renderers
 
 ## 0.5.4 - 2026-09-27
 
-Visual change for Alert and SectionHeader; no API change. Owner rulings 2026-09-27 (alert-white-surface; draw with the
+Visual change for Alert and SectionHeader; no API change (alert-white-surface; draw with the
 real grammar components, lane draw-real-components): a drawing now renders the real components in the product CSS, and
 the draw gates measured two places where Grammar painted over HeroUI or off the type scale.
 
@@ -1193,7 +1193,7 @@ the draw gates measured two places where Grammar painted over HeroUI or off the 
 
 ## 0.5.3 - 2026-09-27
 
-Behaviour change for Alert actions, additive for Button and Badge. Owner ruling 2026-09-27: follow HeroUI v3
+Behaviour change for Alert actions, additive for Button and Badge. Grammar follows HeroUI v3
 exactly - its Alert examples put a `primary` Button ("Refresh") in an accent Alert and a `danger` Button
 ("Retry") in a danger Alert, and its Button variants (`@heroui/styles` `button.css`) are primary,
 secondary, tertiary, outline, ghost, danger and danger-soft.
@@ -1208,7 +1208,7 @@ secondary, tertiary, outline, ghost, danger and danger-soft.
   `action` now renders a filled primary or danger Button. Size stays `sm`.
 - Offset Pop: its pink decision accent on alert actions yields to Common's danger fill for a negative
   Alert (the same treatment its negative confirm action already had); other tones keep the pink.
-- `Badge` takes `isDot?: boolean` (owner ruling 2026-09-27: status badges get their dot through the
+- `Badge` takes `isDot?: boolean` (status badges get their dot through the
   grammar, never hand-drawn CSS). True draws HeroUI's Chip dot - `<CircleFill width={6} />` - before the
   label: one 6px solid circle in `currentColor` (the badge's tone foreground), `aria-hidden`, class
   `starci-core-badge-dot` (6px box, `flex: none`, in `src/common/styles.css`), hook
@@ -1234,14 +1234,14 @@ secondary, tertiary, outline, ghost, danger and danger-soft.
 ## 0.5.2 - 2026-09-27
 
 Additive. `Meter` can draw a discrete count ("3 of 3", "2 of 3 capabilities") as equal segments: the
-draw-time grammar proposal `Meter.segments`, accepted by the owner on 2026-09-27.
+draw-time grammar proposal `Meter.segments`.
 
 - `Meter` takes `segments?: MeterSegments`, a closed literal range `2 | 3 | ... | 12` (exported as
   `MeterSegments`). Untyped callers are clamped to 2..12. Without the prop nothing changes.
 - Segmented, the reading is a whole count: `value`, `minValue` and `maxValue` are rounded to integers
   and the value clamped into range; `round((value - min) / (max - min) * segments)` segments fill.
 - The track spans the full width of its container, the same length as a Progress track, at HeroUI's
-  h-1 (0.25rem, 4px; owner ruling 2026-09-27 - the plain meter keeps h-2), laid out as N equal pill
+  h-1 (0.25rem, 4px; the plain meter keeps h-2), laid out as N equal pill
   segments 0.25rem apart. Empty segments wear the track colour, filled
   ones the tone fill (`--starci-core-overlay-tone`: accent for neutral/pending, the tone colour
   otherwise). The continuous `meter-fill` is not rendered in this mode.
@@ -1382,7 +1382,7 @@ is repaired here rather than explained to a consumer.
 
 - The frameless card's body claimed `PADDING-4` (1rem) and rendered 0px on every side, because
   `.starci-core-frameless-surface > .starci-core-surface-content` sets `padding: 0`.
-- The ruling is the family's own canon, not a convenience: `frame="frameless"` means the content
+- The rule is the family's own canon, not a convenience: `frame="frameless"` means the content
   already owns its visible boundaries, so Core must not draw another shell - and the shipped sheet
   drops the inset together with the frame. `PADDING-0` is how this family answers "no inset"
   everywhere else, on this same body under `composition="joined"`, on `SurfaceListCard`'s root and on
