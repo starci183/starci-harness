@@ -226,8 +226,7 @@ version that is neither on npm nor due in the same run, and when `@starci/gramma
 version npm serves holds a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`). The Grammar family takes
 a same-minor range in the canon pins: a Grammar patch publishes the three family packages alone, and a minor raises the
 range in `@starci/hfs` and releases the whole family ([contexts/grammars/contributing.md](contexts/grammars/contributing.md) "Patch or
-minor"). A raised version whose shipped files differ from the version npm serves only by bookkeeping (the CHANGELOG, the lockfile, the version
-field) is skipped, never published (`unchanged` in the plan), so only a package whose content moved gets a version; the canons peer `@starci/hfs`
+minor"). A raised version npm does not serve is published whatever its content, even with an empty diff, because the stack pins name it and an immutable registry needs it; `unchanged` never appears in the plan. A stack pin of a package at a version npm does not serve and this run does not publish refuses `RELEASE_PIN_UNPUBLISHED`. the canons peer `@starci/hfs`
 by a same-minor range and read its runtime at run time, so an hfs change does not release them. A change to a package therefore raises the version in its `package.json` and adds its entry to its CHANGELOG
 (the CLI's is [CHANGELOG.md](CHANGELOG.md)) in the commit that makes it; a package and the sibling version it requires
 move in one commit. The CLI is the one exception, held for the second phase: `cli/package-lock.json` installs its

@@ -6,17 +6,17 @@ import { formatTable } from "../../shared/output.js"
 import { defineVerb } from "../../shared/verb.js"
 import { requireCiGreen } from "../check/ci.js"
 import { NPMJS_FLAGS } from "../deps/local-refs.js"
-import { assertCliPins } from "../check/cli-pins.js"
+import { assertCliPins, STACK_PINS } from "../check/cli-pins.js"
 import { SPEC_FILE } from "../../shared/spec-file.js"
 import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import { inOrder } from "../../harness/sequential.js"
 import { GRAMMAR_PACKAGE, judgeGrammarBump } from "./grammar-bump.js"
 import { meetsPin } from "./pin-range.js"
+import { stackPinVersions, unservedPins } from "./pin-served.js"
 
-/** What publication does with one package. */
-/** What publication does with one package: `unchanged` is a raised version whose content equals the version npm serves (skipped, never published). */
-type Action = "publish" | "published" | "private" | "unchanged"
+/** What publication does with one package: `publish` is a version npm does not serve, whatever its content, `published` one it serves. */
+type Action = "publish" | "published" | "private"
 
 interface PlanRow {
     readonly package: string
@@ -152,7 +152,6 @@ const judgeRequires = async (rows: readonly PlanRow[], packages: readonly Worksp
             const sibling = rows.find((candidate) => candidate.package === name)
             if (sibling === undefined) return
             if (sibling.action === "private") throw new Refusal("RELEASE_DEPENDENCY_UNPUBLISHED", `${row.package}@${row.version} requires ${name}@${spec}, which is private: it is neither on npm nor published by this run`)
-            if (sibling.action === "unchanged" && meetsPin(spec, sibling.version)) throw new Refusal("RELEASE_DEPENDENCY_UNPUBLISHED", `${row.package}@${row.version} requires ${name}@${spec}, but ${sibling.dir} ships what npm already serves, so ${sibling.version} is never published; drop that raise and require the served version (or its same-minor range)`)
             if (row.dir === HELD_DIR) {
                 if (!(await versionOnRegistry(name, spec, root))) {
                     throw new Refusal("RELEASE_DEPENDENCY_SKEW", `${row.package}@${row.version} requires ${name}@${spec}, which npm does not serve; the CLI installs its siblings from npm, so it moves to ${sibling.version} once npm serves it`)
@@ -216,61 +215,19 @@ const planOf = async (packages: readonly WorkspacePackage[], cwd: string): Promi
     Promise.all(
         packages.map(async (pkg): Promise<PlanRow> => {
             const action = await actionOf(pkg, cwd)
-            const row: PlanRow = { package: pkg.name, version: pkg.version, dir: pkg.relativeDir, distTag: distTagOf(pkg.version), action }
-            return action === "publish" && (await sameAsServed(row, cwd)) ? { ...row, action: "unchanged" } : row
+            return { package: pkg.name, version: pkg.version, dir: pkg.relativeDir, distTag: distTagOf(pkg.version), action }
         }),
     )
 
-/** The files a version raise touches without changing what a package ships: its CHANGELOG and lockfile, and package.json once its version fields are set aside. */
-const BOOKKEEPING = new Set(["CHANGELOG.md", "package-lock.json"])
-const withoutVersion = (text: string | undefined): string | undefined => {
-    if (text === undefined) return undefined
-    try {
-        const manifest = JSON.parse(text) as Record<string, unknown>
-        delete manifest.version
-        return JSON.stringify(manifest)
-    } catch {
-        return text
-    }
-}
-
-/**
- * True when a package due at a raised version ships what the version npm serves under its dist-tag ships (CONTRIBUTING.md CONTRIB-20): the
- * shipped files of its folder differ since that version's commit (its gitHead) only by bookkeeping, the CHANGELOG, the lockfile and the version field.
- * Such a raise is skipped, never published: only a package whose content moved gets a version. Unknowable (no served version, no recorded commit) is a change.
- */
-const sameAsServed = async (row: PlanRow, root: string): Promise<boolean> => {
-    if (row.dir === ".") return false
-    const served = await captureNpm(["view", row.package, `dist-tags.${row.distTag}`, ...NPMJS_FLAGS], root)
-    const version = served.stdout.trim()
-    if (served.exitCode !== 0 || version === "" || version === row.version) return false
-    const from = await publishedFrom({ ...row, version }, root)
-    if (from === undefined) return false
-    return shipsTheSame(root, from, row.dir)
-}
-
-/** True when the shipped files of `dir` differ between `from` and HEAD only by bookkeeping (the CHANGELOG, the lockfile, the version field). */
-export const shipsTheSame = async (root: string, from: string, dir: string): Promise<boolean> => {
-    const changed = await shippedChanges(root, from, dir)
-    if (changed === undefined) return false
-    for (const path of changed) {
-        const name = path.slice(dir.length + 1)
-        if (BOOKKEEPING.has(name)) continue
-        if (name !== "package.json") return false
-        const before = (await captureGit(["show", `${from}:${path}`], root)).stdout
-        const after = (await captureGit(["show", `HEAD:${path}`], root)).stdout
-        if (withoutVersion(before) !== withoutVersion(after)) return false
-    }
-    return true
-}
-
 /**
  * The plan judgement of CI's publish step, one function for `release publish` and `release push`: every package's row, the
- * sibling requirements of each due package, and with a base the packages changed since it that are already on npm.
+ * sibling requirements of each due package, the stack pins (each a version npm serves or this run publishes), and with a base the packages changed since it that are already on npm.
  */
 export const judgePlan = async (root: string, packages: readonly WorkspacePackage[], base: string | undefined): Promise<PlanRow[]> => {
     const rows = await planOf(packages, root)
     await judgeRequires(rows, packages, root)
+    const unserved = await unservedPins(rows, stackPinVersions(root), (name, version) => versionOnRegistry(name, version, root))
+    if (unserved.length > 0) throw new Refusal("RELEASE_PIN_UNPUBLISHED", `${STACK_PINS} pins ${unserved.join(", ")}: npm does not serve it and this run does not publish it, so an app cannot install the pinned set; pin the version the package folder holds, or the one npm serves`)
     if (base !== undefined) await judgeBumped(rows, root, base)
     // A Grammar patch reaches apps inside the canon pins' range alone, so a change of a minor's kind refuses a patch bump (contexts/grammars/contributing.md "Patch or minor").
     await judgeGrammarBump(root, rows.find((row) => row.package === GRAMMAR_PACKAGE))
