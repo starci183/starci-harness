@@ -1,4 +1,4 @@
-// secret-dev-init.mjs - `starci app secret init --env <dev env> [--execute]`: creates the dev-only values the environment's `local.custody`
+// secret-dev-init.mts - `starci app secret init --env <dev env> [--execute]`: creates the dev-only values the environment's `local.custody`
 // declares (PROJECT-STACKS-5: sealed only, owner-armed, created once, never replaced). It refuses an environment that is not a docker-compose
 // dev environment (vps and production never get generated values), skips a key its member already holds, and refuses a half-present pair
 // instead of minting a replacement. Values are generated in memory and sealed in one write per member; names are all it prints.

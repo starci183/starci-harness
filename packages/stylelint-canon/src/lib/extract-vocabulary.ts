@@ -31,7 +31,7 @@ export const GRAMMAR_CSS: readonly string[] = [
 export const HEROUI_VARIABLES = "fixtures/heroui/variables.css"
 
 /**
- * The status tones: the HeroUI status vocabulary (owner 2026-09-30). Each one is a solid tone (`--<tone>`, ink
+ * The status tones: the HeroUI status vocabulary. Each one is a solid tone (`--<tone>`, ink
  * `--<tone>-foreground`) and a SOFT PAIR, `--<tone>-soft` (the tint) and `--<tone>-soft-foreground` (the ink a status
  * shown as text, an icon or a dot uses), in light and in dark. HeroUI has the pairs for success, warning and danger;
  * it has none for info, so the vocabulary adds it here: this list is the one extension, and `extractVocabulary`

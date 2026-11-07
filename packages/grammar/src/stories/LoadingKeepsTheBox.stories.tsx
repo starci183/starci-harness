@@ -6,7 +6,7 @@ import { LoadingScope } from "../core/regionScope.js"
 import { Matrix, State } from "./fixtures.js"
 
 /*
- * Loading keeps the box (ruling region-loading, law DNA-COMMON-LOADING-SAME-BOX). Every component here is drawn twice with the same
+ * Loading keeps the box (law DNA-COMMON-LOADING-SAME-BOX). Every component here is drawn twice with the same
  * props: ready, and inside a loading region. The pair is a twin, and the law measures that both have one width and one height.
  */
 

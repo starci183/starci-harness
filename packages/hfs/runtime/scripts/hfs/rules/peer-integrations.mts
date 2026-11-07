@@ -1,4 +1,4 @@
-// peer-integrations.mjs - HFS_PEER_INTEGRATION_MISSING (R111): an app declares the runtime peer a driver integration needs.
+// peer-integrations.mts - HFS_PEER_INTEGRATION_MISSING (R111): an app declares the runtime peer a driver integration needs.
 // The catalog knowledge/hfs/peer-integrations.yaml says "if the app depends on every package of `when` (at the named major,
 // when one is named), it must declare `requires`". npm does not install such a peer for the integration, the type checker and
 // the unit specs never load it, and the api fails only when it boots (@nestjs/apollo on @nestjs/platform-express 11, Express 5,

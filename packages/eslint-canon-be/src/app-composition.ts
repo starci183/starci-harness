@@ -1,7 +1,7 @@
 /**
  * The rules that hold the composition files of a back-end app (catalog R245 `BE_APP_OPTIONS_COMPOSITION`, R265
  * `BE_COMPOSITION_UNTYPED` and R246
- * `BE_APP_COMPOSITION_BUDGET`, owner ruling 2026-10-14). An app's `src/` holds five roles, named by the entries of its `be.app.*` slot (`lib/app-roles.mjs`):
+ * `BE_APP_COMPOSITION_BUDGET`). An app's `src/` holds five roles, named by the entries of its `be.app.*` slot (`lib/app-roles.mjs`):
  * `main.ts`, `app.module.ts`, `<app>.env.ts`, `<app>.options.ts` and the composition groups `compose/<area>.ts`.
  *
  *   - `app-options-composition-free` (`BE_APP_OPTIONS_COMPOSITION`) keeps `<app>.env.ts` to typed, fail-fast environment

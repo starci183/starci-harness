@@ -1,4 +1,4 @@
-// queues-cli-lite.spec.mjs - `cli queues resume [--job <id>]` of a lite app (BE-RESILIENCE-2): rendered once the app has both its cli app
+// queues-cli-lite.spec.mts - `cli queues resume [--job <id>]` of a lite app (BE-RESILIENCE-2): rendered once the app has both its cli app
 // and its jobs platform, whichever `add` comes second, with the cli app's platform group composing the outbox writer and the jobs
 // capability's resume requests; an existing group is never overwritten, and a cli tree the renderer cannot read is refused.
 import { test } from 'node:test';

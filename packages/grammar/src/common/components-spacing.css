@@ -5,7 +5,7 @@
  * `py-2.5` on a table column, a 3px body offset). The Grammar's scale is 0 4 8 12 24 32 (common/spacing.ts), so each
  * part below takes the step its role names. These rules sit in the vendor's own `components` layer: there a compound
  * selector of the Grammar class outranks the vendor's single class by specificity, whichever sheet loads first, so no
- * declaration needs `!important`. The overrides are recorded in contexts/vendor/wrappers.yaml (ruling spacing-roles).
+ * declaration needs `!important`. The overrides are recorded in contexts/vendor/wrappers.yaml.
  */
 @layer components {
     /* Dialog and drawer: one inset on every side; header, body and footer are spaced by the dialog's row gap alone. */

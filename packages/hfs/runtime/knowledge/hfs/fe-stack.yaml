@@ -1,10 +1,10 @@
 schema: starci/fe-stack@1
 purpose: >-
-  The front-end stack of every app, lite and full alike (owner ruling 2026-10-13, R212 case-2 (owner:lite-production-swarm), with the Work boundary amended by ruling:R212/case-4): for each common front-end concern the
+  The front-end stack of every app, lite and full alike (R212): for each common front-end concern the
   ONE canonical library, its HFS home (slot ids of knowledge/hfs/slots.yaml), the pattern id that teaches it
   (knowledge/patterns/fe/*.yaml) and the alternatives a front end never depends on or imports. Versions live in
   knowledge/hfs/canon-pins.yaml only. `tier: core` packages are installed by every scaffold; `opt` packages are added when a feature
-  needs the concern. Source example: starci-lab/starci-academy (origin/main, 2026-10-13); it illustrates, this file decides.
+  needs the concern. Source example: starci-lab/starci-academy (origin/main); it illustrates, this file decides.
 concerns:
   - id: framework
     tier: core
@@ -47,7 +47,7 @@ concerns:
     home: [fe.hooks.swr]
     pattern: FE-DATA-SWR
     forbids: ['@tanstack/react-query', react-query]
-    why: hooks/swr/api/{graphql,rest}/{queries,mutations}/use*Swr.ts wrap one operation each; components call hooks only. The polling-restart middleware (pollingRestart), the key helpers, the viewer-keyed config and the viewer cache are @starci/next-data's (owner next-data-package); an app imports no Middleware or ScopedMutator type of swr and writes none of them.
+    why: hooks/swr/api/{graphql,rest}/{queries,mutations}/use*Swr.ts wrap one operation each; components call hooks only. The polling-restart middleware (pollingRestart), the key helpers, the viewer-keyed config and the viewer cache are @starci/next-data's; an app imports no Middleware or ScopedMutator type of swr and writes none of them.
   - id: toast
     tier: core
     packages: ['@heroui/react']
@@ -90,7 +90,7 @@ concerns:
     pattern: FE-REALTIME
     forbids: ['@microsoft/fetch-event-source', eventsource, event-source-polyfill, eventsource-parser, reconnecting-eventsource, 'sse.js', 'fetch-sse', 'sse-ts']
     why: >-
-      the one server-sent-events client (owner:event-stream-package): the app creates one instance in modules/api/sse/clients/event-stream.ts
+      the one server-sent-events client: the app creates one instance in modules/api/sse/clients/event-stream.ts
       with createEventStream (the bearer token source, one renewal on a 401, backoff, heartbeat timeout), each stream operation
       (sse/<area>/stream-<channel>.ts) follows on it, and the useSubscribe<Channel>Swr hook reads that operation. No app keeps a
       hand-written reader (read-event-stream.ts) and no second SSE library is installed.
@@ -107,7 +107,7 @@ concerns:
     home: [fe.modules.i18n]
     pattern: FE-I18N
     forbids: [i18next, react-i18next, next-i18next, react-intl, '@lingui/react']
-    why: useTranslations for copy and the next-intl formatter for numbers, fixed dates and currency; FE-DATE owns live time display. The routing, the proxy, the navigation, the request config and the locale read of the layout are @starci/next-i18n's (owner next-i18n-package); an app calls no defineRouting, createNavigation, getRequestConfig or createMiddleware.
+    why: useTranslations for copy and the next-intl formatter for numbers, fixed dates and currency; FE-DATE owns live time display. The routing, the proxy, the navigation, the request config and the locale read of the layout are @starci/next-i18n's; an app calls no defineRouting, createNavigation, getRequestConfig or createMiddleware.
   - id: ui
     tier: core
     packages: ['@heroui/react', '@heroui/styles', tailwindcss, '@starci/grammar', react-aria-components]
@@ -122,7 +122,7 @@ concerns:
     pattern: FE-ICON
     forbids: ['@phosphor-icons/react', react-icons, lucide-react, '@iconify/react', '@gravity-ui/icons', '@tabler/icons-react', '@fortawesome/react-fontawesome']
     why: >-
-      one application icon set, the heroicons family (owner ruling 2026-10-13), on the 24/outline and 16/solid cuts. @heroicons/react
+      one application icon set, the heroicons family, on the 24/outline and 16/solid cuts. @heroicons/react
       is the base set and is used first; @starci/heroicons holds only the glyphs heroicons lacks (brand or domain glyphs drawn in
       heroicons style), never duplicates a heroicons glyph, and a missing glyph is added to it.
   - id: avatar-illustration

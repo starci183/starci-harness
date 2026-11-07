@@ -193,7 +193,7 @@
     }
 
     /*
-     * Horizontal track (owner ruling stepper-connector): each step is an equal column with its marker centred over its
+     * Horizontal track: each step is an equal column with its marker centred over its
      * label, and a connector line runs from one marker to the next through the markers' centres, leaving a small gap at
      * each circle. The line before a completed step is the accent, the rest the border colour.
      */
@@ -298,7 +298,7 @@
         color: var(--accent-soft-foreground);
     }
 
-    /* A bare mark wears the tone itself (ruling status-soft-pair-on-background); Offset Pop's light theme sets the --starci-core-mark-* hooks to the soft foreground. */
+    /* A bare mark wears the tone itself; Offset Pop's light theme sets the --starci-core-mark-* hooks to the soft foreground. */
     .starci-core-step[data-grammar-step-state="error"] .starci-core-step-marker {
         border-color: var(--danger);
         color: var(--starci-core-mark-danger, var(--danger));

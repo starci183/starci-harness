@@ -1,6 +1,6 @@
 // proves: HFS_BACKING_UNDECLARED@lite
 // proves: HFS_BACKING_UNUSED@lite
-// ruling:R212/case-10 and owner:lite-vector-is-pgvector: lite admits declared Redis; vector search uses Supabase pgvector.
+// R212: lite admits declared Redis; vector search uses Supabase pgvector.
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

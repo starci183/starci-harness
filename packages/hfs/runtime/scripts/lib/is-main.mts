@@ -1,4 +1,4 @@
-// is-main.mjs - is this module the process entry point (`node file.mjs`, not an import)? Compared by real path.
+// is-main.mts - is this module the process entry point (`node file.mjs`, not an import)? Compared by real path.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

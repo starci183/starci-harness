@@ -1,8 +1,8 @@
-// secret-records.mjs - the contract of the secrets family's records in the committed check cache (contexts/project/check-cache.md, "The secrets
+// secret-records.mts - the contract of the secrets family's records in the committed check cache (contexts/project/check-cache.md, "The secrets
 // records"). The cache is committed, so what the secrets family writes may never be secret material: a record holds codes, paths, positions
 // and hashes. The finding's rule is one of the family's codes, its message is the sha256 prefix of the message the run printed (the identity
-// the new / known / fixed comparison needs), and the record carries no `data`. The cache writer (hfs cache/secret-records.mjs) projects its
-// records to this form; the secret judgement of R06 (scripts/hfs/rules/secrets.mjs, shared by `starci app check` and the commit hook) judges a
+// the new / known / fixed comparison needs), and the record carries no `data`. The cache writer (hfs cache/secret-records.mts) projects its
+// records to this form; the secret judgement of R06 (scripts/hfs/rules/secrets.mts, shared by `starci app check` and the commit hook) judges a
 // staged or tracked file of the folder by `secretRecordFaults`, so the file is accepted by what it holds and never by where it sits.
 import { createHash } from 'node:crypto';
 

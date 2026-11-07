@@ -1,5 +1,5 @@
-// slot-classify.mjs - what slot of one scope (the app root or one side) owns a path: its status, owner unit, tier, folder kind and role.
-// A scope is {manifest, repo, profile, edition, slots, byId, variants, appKind} built once by slots.mjs; every function here reads it.
+// slot-classify.mts - what slot of one scope (the app root or one side) owns a path: its status, owner unit, tier, folder kind and role.
+// A scope is {manifest, repo, profile, edition, slots, byId, variants, appKind} built once by slots.mts; every function here reads it.
 import { globExpression } from '../lib/glob.mjs';
 import { declaredSlotEnabled } from './declaration-slots.mjs';
 import { bestMatch, fillVars, matchVariants, nearestSlot } from './slot-match.mjs';
@@ -8,7 +8,7 @@ import type { Slot, SlotManifest, SlotPresence, SlotTracking } from './manifest-
 import type { RepoView } from './slots.mjs';
 import { cleanSlotPath } from './slot-path.mjs';
 
-/** One scope (the app root or one side) as slots.mjs builds it: the manifest, the declaration view and the slots enabled for the profile and edition. */
+/** One scope (the app root or one side) as slots.mts builds it: the manifest, the declaration view and the slots enabled for the profile and edition. */
 export interface Scope {
   manifest: SlotManifest;
   repo: RepoView;

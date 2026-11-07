@@ -1,4 +1,4 @@
-// tag.mjs — `git tag <args>`: list or create tags (--points-at <rev>, -l <pattern>, -a <name> -m <message>).
+// tag.mts — `git tag <args>`: list or create tags (--points-at <rev>, -l <pattern>, -a <name> -m <message>).
 import { runGit, type GitOptions, type GitResult } from './lib.mjs';
 
 /** The spawn result {status, stdout, stderr, error} of `git tag ...args`; options are runGit's (cwd or dir, config, timeout, maxBuffer, input, encoding, env, git). */

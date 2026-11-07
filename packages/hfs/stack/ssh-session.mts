@@ -1,4 +1,4 @@
-// ssh-session.mjs - one command-owned connection; all processes use ctx.spawn. Windows prefers a Unix socket in private 0700 HOME
+// ssh-session.mts - one command-owned connection; all processes use ctx.spawn. Windows prefers a Unix socket in private 0700 HOME
 // when runtime ssh -V reports OpenSSH >= 6.7 and a local AF_UNIX Docker CLI probe succeeds. Otherwise a fresh ephemeral TCP
 // port is asserted to bind only 127.0.0.1 and never reaches files or logs. Finally and SIGINT/SIGTERM close the tunnel.
 import fs from 'node:fs';

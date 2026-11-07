@@ -1,4 +1,4 @@
-// integration-specs.mjs - BE_INTEGRATION_SPEC_MISSING (R112): every integration of a back end has an integration spec that proves
+// integration-specs.mts - BE_INTEGRATION_SPEC_MISSING (R112): every integration of a back end has an integration spec that proves
 // its client through the test world. An integration is the slot be.integrations: `src/modules/integrations/<provider>/` holding
 // `<provider>.config.ts` (its required config boundary). Its spec is the slot be.tests.integration of the same folder name:
 // `src/tests/integration/<provider>/*.integration-spec.ts`. At least one of those specs, read as a TypeScript syntax tree (never

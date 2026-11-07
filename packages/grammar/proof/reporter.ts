@@ -1,6 +1,6 @@
 import type { FullResult, Reporter, TestCase, TestResult } from '@playwright/test/reporter';
 
-// The proof's verdict in the owner's words: a baseline only detects change, it is not an approved look. A failing picture is
+// The proof's verdict: a baseline only detects change, it is not an approved look. A failing picture is
 // "changed", never "wrong"; a changed approved picture (proof/approved.json) needs a person.
 export default class ChangeReporter implements Reporter {
   private readonly changed: string[] = [];

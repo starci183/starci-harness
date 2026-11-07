@@ -1,5 +1,5 @@
-// seeds.mjs - R375, the seed data of an app (contexts/project/stacks.md PROJECT-STACKS-12). It lives in two levels of `.starcistacks/`, the
-// shared `seeds/` and `<env>/seeds/` of an environment the stack declaration names, each a manifest (`seeds.yaml`, stack-seeds-config.mjs) and
+// seeds.mts - R375, the seed data of an app (contexts/project/stacks.md PROJECT-STACKS-12). It lives in two levels of `.starcistacks/`, the
+// shared `seeds/` and `<env>/seeds/` of an environment the stack declaration names, each a manifest (`seeds.yaml`, stack-seeds-config.mts) and
 // the folders `sql/`, `data/` and `files/`:
 //   HFS_SEEDS_SHAPE       a seed file outside those folders, a level of an undeclared environment, custody (a sealed member, a key) in a level;
 //   HFS_SEED_MANIFEST     a manifest that is missing, does not parse or names a path that is not there, a file no entry covers, an after cycle;

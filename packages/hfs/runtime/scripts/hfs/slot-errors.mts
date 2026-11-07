@@ -1,4 +1,4 @@
-// slot-errors.mjs - the shared refusal type for HFS manifest and declaration loaders.
+// slot-errors.mts - the shared refusal type for HFS manifest and declaration loaders.
 export class HfsSlotsError extends Error {
   code: string;
   details: Record<string, unknown>;

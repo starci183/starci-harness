@@ -1,4 +1,4 @@
-// sonar-quality-gate.mjs - the verdict of the release gate's sonar row after the scanner exits 0. The scanner's exit code says only
+// sonar-quality-gate.mts - the verdict of the release gate's sonar row after the scanner exits 0. The scanner's exit code says only
 // that the report was uploaded; the server computes the analysis afterwards. This reads the task the scanner wrote
 // (`.scannerwork/report-task.txt`), polls `api/ce/task` until the compute-engine task ends, then reads the quality gate of that
 // analysis from `api/qualitygates/project_status` with the same token. OK passes; ERROR is red and names every failed condition;

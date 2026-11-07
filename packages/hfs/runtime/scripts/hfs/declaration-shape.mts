@@ -1,5 +1,5 @@
-// declaration-shape.mjs - the dependency-free hfs.json shape validation used by the HFS slot loader. Semantic checks
-// against a loaded manifest remain in slots.mjs; this module mirrors modules/schemas/hfs-repo.schema.yaml only.
+// declaration-shape.mts - the dependency-free hfs.json shape validation used by the HFS slot loader. Semantic checks
+// against a loaded manifest remain in slots.mts; this module mirrors modules/schemas/hfs-repo.schema.yaml only.
 import type { Parsed } from './manifest-shape.mjs';
 import { isPlainObject } from '../../engine/plain-object.mjs';
 import { APP_KIND, connectionShapeProblems, NAME, PACKAGE_NAME, RUNTIME_KIND, SLOT_ID } from './manifest-shape.mjs';
@@ -12,7 +12,7 @@ import { byCodeUnit } from '../lib/list.mjs';
 /** Shape problems of the optional hfs.json `db` block of a lite app: the environment variable naming its database, its image, forced RLS and its application role. */
 const isStringList = (value: Parsed) => Array.isArray(value) && value.every((entry: Parsed) => typeof entry === 'string' && entry.trim());
 
-/** One owner ruling on a migration's destructive DDL: the exact file, the exact objects, the reason and the date the owner ruled it. */
+/** One db.destructiveRulings entry on a migration's destructive DDL: the exact file, the exact objects, the reason and the date it was accepted. */
 const isDestructiveRuling = (ruling: Parsed): boolean => isPlainObject(ruling)
   && typeof ruling.migration === 'string' && /^db\/migrations\/\d{14}_[a-z0-9_-]+\.sql$/.test(ruling.migration)
   && isStringList(ruling.objects) && ruling.objects.length > 0
@@ -33,9 +33,9 @@ function dbBlockProblems(block: Parsed): string[] {
   if (block.scopeColumns !== undefined && !(isStringList(block.scopeColumns) && block.scopeColumns.length > 0 && block.scopeColumns.every((column: string) => /^[a-z_][a-z0-9_]*$/.test(column)))) bad.push('db.scopeColumns must list the owning column names a scope policy compares (default workspace_id)');
   if (block.scopeRoles !== undefined && !(Array.isArray(block.scopeRoles) && block.scopeRoles.length > 0 && block.scopeRoles.every((entry: Parsed) => isPlainObject(entry) && typeof entry.role === 'string' && /^[a-z][a-z0-9_]*$/.test(entry.role) && typeof entry.reason === 'string' && entry.reason.trim() !== '' && Object.keys(entry).every((key) => key === 'role' || key === 'reason')))) bad.push('db.scopeRoles must be a list of { role, reason } naming the NOLOGIN roles whose policies may read a db.scopeSettings setting');
   if (block.scopeSettings !== undefined && !(Array.isArray(block.scopeRoles) && block.scopeRoles.length > 0)) bad.push('db.scopeSettings needs db.scopeRoles: a declared setting counts only in policies of declared scope roles');
-  if (block.baselineReset !== undefined && !baselineResetOk(block.baselineReset)) bad.push('db.baselineReset must be { baseline (db/migrations/<ts14>_<name>.sql), ruling (an id), date (YYYY-MM-DD), reason } declaring the one baseline that replaces the whole older migration history');
+  if (block.baselineReset !== undefined && !baselineResetOk(block.baselineReset)) bad.push('db.baselineReset must be { baseline (db/migrations/<ts14>_<name>.sql), ruling (the reset id), date (YYYY-MM-DD), reason } declaring the one baseline that replaces the whole older migration history');
   if (block.forceRlsExemptions !== undefined && !Array.isArray(block.forceRlsExemptions)) bad.push('db.forceRlsExemptions must be a list of { table, reason }');
-  if (block.destructiveRulings !== undefined && !(Array.isArray(block.destructiveRulings) && block.destructiveRulings.every(isDestructiveRuling))) bad.push('db.destructiveRulings must be a list of { migration, objects, reason, date } naming one db/migrations file, the objects it destroys, why and the date the owner ruled it (YYYY-MM-DD)');
+  if (block.destructiveRulings !== undefined && !(Array.isArray(block.destructiveRulings) && block.destructiveRulings.every(isDestructiveRuling))) bad.push('db.destructiveRulings must be a list of { migration, objects, reason, date } naming one db/migrations file, the objects it destroys, why and the date it was accepted (YYYY-MM-DD)');
   return bad;
 }
 

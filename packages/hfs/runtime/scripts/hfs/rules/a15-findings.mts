@@ -1,4 +1,4 @@
-// a15-findings.mjs - the one place where the alpha.15 content rules (R247-R280) are wired into `starci app check`.
+// a15-findings.mts - the one place where the alpha.15 content rules (R247-R280) are wired into `starci app check`.
 // Each rule module of a batch exports a synchronous finder `({ repoRoot, files, all, repo, resolver, manifest, isRoot, inScope }) => finding[]`
 // and is wired here by appending ONE import line and ONE entry to FINDERS. Nothing else in this file changes; the file is union-merged.
 // A finder judges its own edition (`repo.edition`): lite and full are both in scope unless the rule says otherwise.
@@ -48,7 +48,7 @@ import type { CheckFinding } from '../check.mjs';
 import { memoKeyed } from '../rule-memo.mjs';
 // finders-import-end
 
-/** The failure codes the finders above emit, so `starci app check` ships their labels (check.mjs adds them to CHECK_CODES). Append-only; the coordinator regenerates it at merge time. */
+/** The failure codes the finders above emit, so `starci app check` ships their labels (check.mts adds them to CHECK_CODES). Append-only; the coordinator regenerates it at merge time. */
 export const A15_CODES = [
   // codes-begin
   'FE_STACK_FAMILY_LINT_MISSING',

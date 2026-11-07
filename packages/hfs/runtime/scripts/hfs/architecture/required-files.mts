@@ -16,7 +16,7 @@ export interface RepositoryTree {
   directories: Set<string>;
 }
 
-/** The slot resolver of one scope the architecture checkers read: the owner type from slots.mjs. */
+/** The slot resolver of one scope the architecture checkers read: the owner type from slots.mts. */
 export type SlotResolver = ScopeResolver;
 
 /** One required target of one slot instance. */
@@ -32,7 +32,7 @@ type Report = (ruleId: string, target: string, slotId: string, root: string, ext
 /**
  * HFS check 5: the files and directories the slot manifest requires (knowledge/hfs/slots.yaml `requires`,
  * `requiredInstances`, `minInstances`, required app kinds) must exist in the repository tree. Everything is read through the
- * resolver of scripts/hfs/slots.mjs; nothing here names a path.
+ * resolver of scripts/hfs/slots.mts; nothing here names a path.
  *
  *   FE_ERROR_BOUNDARY_MISSING    a fe.app.next app lacks global-error, error, not-found or loading under src/app
  *   HFS_REQUIRED_FILE_MISSING    any other required file or directory of any slot (backend app, feature, domain, integrations and

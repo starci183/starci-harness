@@ -1,5 +1,5 @@
-// config.mjs - loads `environments.<env>.deploy` of .starcistacks/application-stacks.yaml for the stack verbs.
-// The block is read and judged by the same module `starci app check` uses (runtime/scripts/hfs/stack-deploy-config.mjs).
+// config.mts - loads `environments.<env>.deploy` of .starcistacks/application-stacks.yaml for the stack verbs.
+// The block is read and judged by the same module `starci app check` uses (runtime/scripts/hfs/stack-deploy-config.mts).
 import fs from 'node:fs';
 import { isSealedName, memberOfName } from '../runtime/scripts/lib/sealed-member.mjs';
 import path from 'node:path';
@@ -41,7 +41,7 @@ export interface IngressRedirect { host: string; to: string; status: number }
 export interface IngressPublish { file: string; supersedes: string[] }
 export interface RehearsalPorts { http: number; https: number }
 export interface IngressTakeover { gateSeconds: number; rehearsalPorts: RehearsalPorts }
-/** The normalised `deploy.ingress` block (stack-ingress-config.mjs). */
+/** The normalised `deploy.ingress` block (stack-ingress-config.mts). */
 export interface IngressConfig {
   name: string;
   image: string | null;
@@ -61,7 +61,7 @@ export interface IngressConfig {
   takeover: IngressTakeover;
 }
 
-/** The normalised `deploy` block of one environment (stack-deploy-config.mjs). */
+/** The normalised `deploy` block of one environment (stack-deploy-config.mts). */
 export interface DeployBlock {
   stack: string;
   remote: DeployRemote;

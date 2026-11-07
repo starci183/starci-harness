@@ -1,9 +1,9 @@
-// explicit-surface-rule.mjs — the factory of the `explicit-export-surface` lint rule, built by both lint canons (HFS R368, HFS_EXPLICIT_EXPORT_SURFACE).
+// explicit-surface-rule.mts — the factory of the `explicit-export-surface` lint rule, built by both lint canons (HFS R368, HFS_EXPLICIT_EXPORT_SURFACE).
 //
 // An exported declaration whose type the isolated declaration emit cannot write without inference is a surface its importers cannot read from the
 // file's signature: the type moves with the body and the files the body reads, so the lint result cache must lint every importer again whenever the
 // file changes. The rule reports each such export where it is written and says what to annotate. It judges nothing itself: the classifier is
-// `declarationSurface` of lib/declaration-surface.mjs, the one the cache reads, so the rule reports exactly what the cache counts as open.
+// `declarationSurface` of lib/declaration-surface.mts, the one the cache reads, so the rule reports exactly what the cache counts as open.
 import type { TypeScript } from '../lib/ts-ast.mjs';
 import { declarationSurface, isEmittableSource } from '../lib/declaration-surface.mjs';
 

@@ -1,5 +1,5 @@
-// param-names.mjs - the one shape of `ruleParams.be.paramNames` of knowledge/hfs/slots.yaml (R85 injected-param-name): a non-empty list of unique
-// entries `{type | typeSuffix, names, nameSuffix?}`. The loader of scripts/hfs/slots.mjs calls it; the schema (modules/schemas/hfs-slots.schema.yaml)
+// param-names.mts - the one shape of `ruleParams.be.paramNames` of knowledge/hfs/slots.yaml (R85 injected-param-name): a non-empty list of unique
+// entries `{type | typeSuffix, names, nameSuffix?}`. The loader of scripts/hfs/slots.mts calls it; the schema (modules/schemas/hfs-slots.schema.yaml)
 // states the same shape.
 import type { Parsed } from './manifest-shape.mjs';
 import { isPlainObject } from '../../engine/plain-object.mjs';

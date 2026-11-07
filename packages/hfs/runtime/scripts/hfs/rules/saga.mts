@@ -1,4 +1,4 @@
-// saga.mjs - the saga pattern of a product that declares `patterns: ["saga"]` in hfs.json (R169 to R173). A saga is a feature of the saga kind
+// saga.mts - the saga pattern of a product that declares `patterns: ["saga"]` in hfs.json (R169 to R173). A saga is a feature of the saga kind
 //   be/src/features/saga/<saga>/
 //     <saga>.saga.service.ts              the orchestrator: the list of its steps and compensations (a service, unit-tested beside it)
 //     <saga>.saga-state.ts                the persisted state of a run, typed with its `status` and its `version` fence

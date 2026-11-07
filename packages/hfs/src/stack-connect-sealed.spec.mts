@@ -1,4 +1,4 @@
-// `starci app stack connect` in CI (ruling app-cicd-auto-deploy): the transport of the deploy is the sealed member vps-ci of the environment, opened with the server
+// `starci app stack connect` in CI: the transport of the deploy is the sealed member vps-ci of the environment, opened with the server
 // identity the job holds. The key, the pinned host keys, the host and the account leave GitHub, and the log of a public repository never names the host.
 import test from 'node:test';
 import type { TestContext } from 'node:test';

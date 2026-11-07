@@ -1,6 +1,6 @@
-// migrate.mjs - `starci app db migrate`: puts a self-hosted database's migration history in the state the app's repository declares,
+// migrate.mts - `starci app db migrate`: puts a self-hosted database's migration history in the state the app's repository declares,
 // idempotently. The database is the connection URL in the environment variable `--db-url-env` names (default DATABASE_URL); psql
-// applies each migration and records it in the history table in ONE transaction (db/postgres.mjs).
+// applies each migration and records it in the history table in ONE transaction (db/postgres.mts).
 // The optional `database:` block of .starcistacks/application-stacks.yaml names the baseline migration, the optional second baseline (standard),
 // the held-back migrations (applied later by `db post-cutover`), the restamp pairs and the archive directory. The plan, from the history:
 //   repair    revert each restamped old version still recorded and mark its new version applied

@@ -1,5 +1,5 @@
 /**
- * The entity-base law (catalog R342 `BE_ENTITY_EXTENDS_BASE`; contexts/code/be/persistence.md BE-PERSISTENCE-3, ruling `entity-base`):
+ * The entity-base law (catalog R342 `BE_ENTITY_EXTENDS_BASE`; contexts/code/be/persistence.md BE-PERSISTENCE-3):
  * columns every table shares are inherited, never repeated. `platform/database/abstract.entity.ts` holds `AbstractEntity`
  * (`created_at`, `updated_at`, which the database sets) and `UuidAbstractEntity` (those plus the generated uuid `id`); an entity
  * whose table has those columns extends the base, imported from `@modules/platform/database`.
@@ -11,7 +11,7 @@
  *     `AbstractEntity` without it.
  *
  * What it leaves alone: a timestamp the application sets (a plain `@Column` with none of those options, such as a `created_at` written
- * from the injected clock) is the "table without them" of the ruling and extends nothing; a class with no `@Entity` (the bases
+ * from the injected clock) makes a table without the shared columns, which extends nothing; a class with no `@Entity` (the bases
  * themselves); and the base file `platform/database/abstract.entity.ts`.
  *
  * Judges both editions: TypeORM entities are the persistence of lite and full alike.
@@ -104,8 +104,8 @@ export const entityExtendsBase: RuleModule = {
         docs: { description: "An @Entity class does not repeat created_at / updated_at (or the generated uuid id beside them); it extends AbstractEntity or UuidAbstractEntity of @modules/platform/database." },
         schema: [],
         messages: {
-            timestamp: `\`{{entity}}\` maps \`{{column}}\` itself. Columns every table shares are inherited, never repeated (BE-PERSISTENCE-3, ruling entity-base): extend \`{{base}}\` imported from \`${DATABASE_MODULE}\` and drop this property. A table whose timestamps the application sets, or that lacks one of them, extends nothing and maps its own with a plain \`@Column\`.`,
-            key: `\`{{entity}}\` maps the generated uuid \`id\` beside \`created_at\` and \`updated_at\` itself. Columns every table shares are inherited, never repeated (BE-PERSISTENCE-3, ruling entity-base): extend \`${UUID_BASE_ENTITY}\` imported from \`${DATABASE_MODULE}\` and drop the three properties.`,
+            timestamp: `\`{{entity}}\` maps \`{{column}}\` itself. Columns every table shares are inherited, never repeated (BE-PERSISTENCE-3): extend \`{{base}}\` imported from \`${DATABASE_MODULE}\` and drop this property. A table whose timestamps the application sets, or that lacks one of them, extends nothing and maps its own with a plain \`@Column\`.`,
+            key: `\`{{entity}}\` maps the generated uuid \`id\` beside \`created_at\` and \`updated_at\` itself. Columns every table shares are inherited, never repeated (BE-PERSISTENCE-3): extend \`${UUID_BASE_ENTITY}\` imported from \`${DATABASE_MODULE}\` and drop the three properties.`,
         },
     },
     create(context) {

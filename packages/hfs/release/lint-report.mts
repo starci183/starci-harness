@@ -1,7 +1,7 @@
-// lint-report.mjs - the external issues report the release gate's sonar row produces before it runs the scanner.
+// lint-report.mts - the external issues report the release gate's sonar row produces before it runs the scanner.
 // The app declares `sonar.externalIssuesReportPaths=reports/lint.sonar.json`; the managed CI makes it with `app check --gate lint --side <side> --out reports/lint.<side>.sonar.json`
 // per lint matrix side and a "merge Sonar lint reports" step. This module does the same locally, through the same process seam as every gate
-// (an argument array through ctx.spawn, never a shell). The merge below is the one in packages/hfs/sync/ci-commands.mjs (sonarMergeSteps): keep them identical.
+// (an argument array through ctx.spawn, never a shell). The merge below is the one in packages/hfs/sync/ci-commands.mts (sonarMergeSteps): keep them identical.
 import fs from 'node:fs';
 import path from 'node:path';
 import { firstLine, tool } from '../stack/context.mjs';

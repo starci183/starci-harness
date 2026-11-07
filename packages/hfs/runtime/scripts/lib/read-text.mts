@@ -1,5 +1,5 @@
-// read-text.mjs — the forgiving text read: a missing or unreadable file is the caller's fallback,
-// never a throw (the JSON twin is ./json.mjs readJsonFile, the YAML twin ./read-yaml.mjs).
+// read-text.mts — the forgiving text read: a missing or unreadable file is the caller's fallback,
+// never a throw (the JSON twin is ./json.mts readJsonFile, the YAML twin ./read-yaml.mjs).
 import fs from 'node:fs';
 import path from 'node:path';
 

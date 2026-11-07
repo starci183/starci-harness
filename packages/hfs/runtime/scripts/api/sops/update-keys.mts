@@ -1,4 +1,4 @@
-// update-keys.mjs — the public SOPS `updatekeys` call: a sealed member is wrapped again to the recipients its .sops.yaml rule
+// update-keys.mts — the public SOPS `updatekeys` call: a sealed member is wrapped again to the recipients its .sops.yaml rule
 // names. Only the member's data key is opened (with the caller's identity); no value is decrypted to stdout or disk.
 import { spawnSync } from 'node:child_process';
 import { sopsIdentityEnv } from '../../../engine/secrets.mjs';

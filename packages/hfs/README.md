@@ -5,7 +5,7 @@ and it is self-contained: `runtime/` carries the slot manifest, the canon pins, 
 catalog slice, the loader and the architecture machine with every file it imports, so it runs where there is no runtime
 checkout. The machine loads `typescript` from the app it checks (never its own copy), so run `npm ci` first.
 
-Every command runs at the app root. A side is judged with its folder as the root it was when products were split in two repositories (the "side view" of `scripts/hfs/slots.mjs`): the root slots (`app.*`) are judged once, the `be.*` slots under `be/` and the `fe.*` slots under `fe/`, and nothing crosses sides except `sides.fe.reads` (the `be.contract.*` slots, the input of the front end's codegen). Every finding path is app-relative (`be/...`, `fe/...`).
+Every command runs at the app root. A side is judged with its folder as the root it was when products were split in two repositories (the "side view" of `scripts/hfs/slots.mts`): the root slots (`app.*`) are judged once, the `be.*` slots under `be/` and the `fe.*` slots under `fe/`, and nothing crosses sides except `sides.fe.reads` (the `be.contract.*` slots, the input of the front end's codegen). Every finding path is app-relative (`be/...`, `fe/...`).
 
 ```sh
 starci app scaffold <name> [--edition full|lite] [--cwd <dir>]
@@ -86,12 +86,12 @@ The lite additions are deliberately narrow:
 - `starci app add cli <group>` creates the optional cli app on first use, including its built-in migration and seed groups, then adds
   the requested group without full-edition specs.
 - `starci app add app <name>` adds another Next app in either edition: the edition's app skeleton plus the shared app core
-  (modules/api, auth, toast, redux, the providers and the hooks), one fe structure for lite and full (owner ruling 2026-10-13).
+  (modules/api, auth, toast, redux, the providers and the hooks), one fe structure for lite and full.
 - An `add` whose target slot is unavailable in lite stops before writing with `<verb> <noun>: full edition only`.
 
 `starci app emit` emits the enabled back-end contract snapshots; a lite app generates no database types.
 
-`starci app db drift` holds a lite app's TypeORM entities to the schema its migrations build (R333, `BE_ENTITY_SCHEMA_DRIFT`; `db/drift.mjs`).
+`starci app db drift` holds a lite app's TypeORM entities to the schema its migrations build (R333, `BE_ENTITY_SCHEMA_DRIFT`; `db/drift.mts`).
 It loads the entity list `be/src/modules/platform/database/entities.ts` with the app's own `typescript`, `typeorm` and `pg` (its `be/tsconfig.json`
 path aliases resolved) and builds TypeORM's metadata through a postgres `DataSource` with `synchronize` false that never connects. It applies
 `db/bootstrap.sql`, when present, and every active `db/migrations/*.sql`, each file in one transaction, to a scratch database: a throwaway
@@ -106,7 +106,7 @@ build job.
 
 `starci app db baseline --squash --db-url-env <NAME> --stamp <ts14> [--drop-extension a,b] [--drop-pgmq-queue q1,job_*] [--seed-tables t1,t2]
 [--image <ref>] [--execute]` retires the whole active chain into one baseline read from a database it is applied to, for a cutover whose
-production starts on an empty database (`runtime/scripts/hfs/db-squash.mjs`). The source must record exactly the active chain in its
+production starts on an empty database (`runtime/scripts/hfs/db-squash.mts`). The source must record exactly the active chain in its
 history, and it is only read. The verb dumps the source with its privileges (`pg_dump --schema-only --no-owner`, no `-x`) and keeps the
 app's schemas: it leaves out the extensions `--drop-extension` names (default `pg_net,pg_cron`; pgmq stays, the lite event bus), the
 pgmq queues `--drop-pgmq-queue` names (a name or a `*` pattern; no match drops nothing), every function or view whose body reaches a
@@ -135,7 +135,7 @@ Emit contracts with matching HFS and CLI versions before codegen; legacy or unsu
 
 The edition is chosen once at scaffold: a lite app stays lite and a full app stays full, and `starci app upgrade` refuses a lite app (`HFS_UPGRADE_EDITION_FIXED`). `starci app check --edition <edition>` accepts only the edition `hfs.json` declares.
 
-A new full app ships its test world (`scaffold/test-world.mjs`): the `@starci/test-world` declaration under `be/src/tests/world/`
+A new full app ships its test world (`scaffold/test-world.mts`): the `@starci/test-world` declaration under `be/src/tests/world/`
 (the dev stack's Postgres per connection, the api apps, the cli app's migration runner as the migrate step), an integration spec of
 readiness over the real database and one e2e spec per api app booted over the migrated database, beside the contract spec of the
 be skeleton, so `test:integration`, `test:e2e` and `test:contract` of the release gate run real specs. On a full app that has no
@@ -153,7 +153,7 @@ The spec skeleton is `Test.createTestingModule({ providers: [Service, { provide:
 
 `starci app check` runs ESLint once per side through the app's installed managed flat config: the backend canon on `be/`, and the universal FE canon plus the explicitly selected Grammar-family package on `fe/`; an app with root workspace packages (`packages/agent-sdk`, `packages/module-<name>`) has a third run from the app root through the managed root `eslint.config.mjs` that `starci app sync` renders, over `packages/<pkg>/src/**` by subpath (the backend canon on everything but `src/workbench/` and `src/public/`, the workbench contract kept; the universal FE canon and the Grammar family on those two, the contract left out). It also reads the app's `hfs.json` and tracked paths (`git ls-files`), checks the work tree (the root rules once, the side rules per side), and runs the whole architecture machine over each side folder. HFS findings carry their why code and Vietnamese text (`modules/kernel/failure-codes.yaml`); ESLint findings retain their rule id and failure code.
 
-Its own checks (`scripts/hfs/check.mjs`, `scripts/hfs/rules/`; the rendered-file checks (`sync/managed.mjs`) and the prettier check (`sync/format.mjs`) live in `sync/` because they read the templates and the repository's own install, and reach `starci app check` as `extraFindings`; the jest / vitest preset the coverage exclusions come from and prettier are read from the repository's `node_modules`, so run `npm ci` first):
+Its own checks (`scripts/hfs/check.mts`, `scripts/hfs/rules/`; the rendered-file checks (`sync/managed.mts`) and the prettier check (`sync/format.mts`) live in `sync/` because they read the templates and the repository's own install, and reach `starci app check` as `extraFindings`; the jest / vitest preset the coverage exclusions come from and prettier are read from the repository's `node_modules`, so run `npm ci` first):
 
 | Code | Level | Meaning |
 |---|---|---|
@@ -165,7 +165,7 @@ Its own checks (`scripts/hfs/check.mjs`, `scripts/hfs/rules/`; the rendered-file
 | `HFS_STARCIWORK_LITE_FORBIDDEN` | error | content outside the lite `app.starciwork` boundary: "lite .starciwork holds only workspace.yaml and brand/ (plus .gitignore)" (R212) |
 | `HFS_SLOT_REQUIRED_MISSING` | error | a file or directory a required slot, app or instance must contain |
 | `HFS_MIN_INSTANCES` | error | fewer instances of a slot than `minInstances` |
-| `HFS_CANON_PIN_DRIFT` | error | a dependency not at the exact version of `knowledge/hfs/canon-pins.yaml`, or `starci-harness` not at the version of the CLI that runs the check (`runtime/scripts/hfs/canon-pins.mjs`) |
+| `HFS_CANON_PIN_DRIFT` | error | a dependency not at the exact version of `knowledge/hfs/canon-pins.yaml`, or `starci-harness` not at the version of the CLI that runs the check (`runtime/scripts/hfs/canon-pins.mts`) |
 | `HFS_SIZE_SOFT_BACKLOG` | info | a source file over `ruleParams.fileLines.soft`; report only, never fails |
 | `HFS_MANAGED_FILE_DRIFT` | error | a managed file that exists but differs from its render (the `managedBy` slots: hooks, workflows, sonar, the back-end `be.tool-config` files, `app.format-config`, the `scripts` block of `app.package-manifest`, compared as parsed JSON) |
 | `HFS_RULE_OFF_WITHOUT_REPLACEMENT` | error | `eslint.config.mjs`, or a front end's `stylelint.config.mjs`, differs from its managed factory render, so a rule could be off, warned or redefined in it |
@@ -202,20 +202,20 @@ Its own checks (`scripts/hfs/check.mjs`, `scripts/hfs/rules/`; the rendered-file
 | `FE_I18N_PLACEMENT` | error | no `next-intl`, no `src/proxy.ts`, a `middleware.ts`, a route file outside `[locale]`, no `vi.json` catalog (R59) |
 | `FE_I18N_CATALOG` | error | a locale catalog lacking a key another locale has (R60) |
 | `FE_I18N_KEYS` | error | a literal key read through `next-intl` that a locale lacks, or a catalog key no source reads (R106; the architecture machine) |
-| `FE_NO_TESTS` | error | a front end holds a `*.spec.*`, `*.test.*` or `*-spec.*` file, an `e2e/`, `__tests__/`, `__mocks__/` or `test-support/` directory, a vitest, Playwright, jest or Cypress file, a test script, or a test dependency in a `package.json`; no exception (R97; `scripts/hfs/rules/fe-no-tests.mjs`) |
-| `HFS_GITIGNORE_BLOCK_DRIFT` | error | the managed `.gitignore` block differs from its render (R04; `sync/managed.mjs`) |
-| `HFS_SONAR_CONFIG` | error | `sonar-project.properties` differs from its render: no `sonar.host.url`, the `sonar.exclusions` of the installed jest preset, the be lcov import with the coverage scope the slot manifest derives as the only coverage scope (R11; `sync/managed.mjs`) |
-| `HFS_FORMAT` | error | a tracked file the repository's own prettier would change (R19; `sync/format.mjs`, run in batches by the format family) |
+| `FE_NO_TESTS` | error | a front end holds a `*.spec.*`, `*.test.*` or `*-spec.*` file, an `e2e/`, `__tests__/`, `__mocks__/` or `test-support/` directory, a vitest, Playwright, jest or Cypress file, a test script, or a test dependency in a `package.json`; no exception (R97; `scripts/hfs/rules/fe-no-tests.mts`) |
+| `HFS_GITIGNORE_BLOCK_DRIFT` | error | the managed `.gitignore` block differs from its render (R04; `sync/managed.mts`) |
+| `HFS_SONAR_CONFIG` | error | `sonar-project.properties` differs from its render: no `sonar.host.url`, the `sonar.exclusions` of the installed jest preset, the be lcov import with the coverage scope the slot manifest derives as the only coverage scope (R11; `sync/managed.mts`) |
+| `HFS_FORMAT` | error | a tracked file the repository's own prettier would change (R19; `sync/format.mts`, run in batches by the format family) |
 | `HFS_FORMAT_TOOL_MISSING` | refusal (exit 2) | prettier is not installed in the repository; the format check is never skipped |
 
-The managed files are judged by `sync/managed.mjs` and `sync/ts-strict.mjs` (the package renders the templates; the runtime copy does not). The list of managed
+The managed files are judged by `sync/managed.mts` and `sync/ts-strict.mts` (the package renders the templates; the runtime copy does not). The list of managed
 files is the `managedBy` slots of `slots.yaml`; `starci app sync --execute` renders them and `starci app check` compares them, so a hand edit and a forgotten `sync` are the same finding.
-`starci app sync --execute` never leaves the app uncompilable (`sync/compile-guard.mjs`): before it writes a managed TypeScript source or deletes a retired one, the side's own TypeScript compiles the app with those writes over the disk, and a managed group (`managedBy`) whose writes add a type error, in its own files or in an app file that imports one, is held whole: `HFS_SYNC_GROUP_HELD` (exit 1) names the group, its files and the errors (the names the render reads that the app does not provide yet, or the names it drops that the app still imports), and the rest of the render is written. The held files stay `HFS_SYNC_DRIFT` until the app provides what the render reads and sync runs again; a side whose TypeScript is not installed is written and named in a notice.
+`starci app sync --execute` never leaves the app uncompilable (`sync/compile-guard.mts`): before it writes a managed TypeScript source or deletes a retired one, the side's own TypeScript compiles the app with those writes over the disk, and a managed group (`managedBy`) whose writes add a type error, in its own files or in an app file that imports one, is held whole: `HFS_SYNC_GROUP_HELD` (exit 1) names the group, its files and the errors (the names the render reads that the app does not provide yet, or the names it drops that the app still imports), and the rest of the render is written. The held files stay `HFS_SYNC_DRIFT` until the app provides what the render reads and sync runs again; a side whose TypeScript is not installed is written and named in a notice.
 Each finding is reported once: the managed ESLint and stylelint factory configs under R17, `tsconfig.json` under R22 when it names a flag, a workflow or hook that lost a canon step under R13 (or R19 for the format step), everything else under R05.
 The root and both sides are rendered by the one mechanism. The root: the `scripts` block of `app.package-manifest` (`dev:be`, `dev:fe`, `build:be`, `build:fe`, `start:<app>`, `lint`, `lint:fix`, `test`, `test:integration`, `test:e2e`, `test:contract`, `test:world`, `codegen`, `contract:emit`, `migrate`, `typecheck`, ...; a be script runs from `be/`, where its tsconfig and jest configuration are), `app.format-config`, `app.hooks`, the CI slots (`app.ci`, `app.ci-e2e`, `app.ci-images`), `app.quality-config` and the managed block of `app.git-meta`. A side: its `be.tool-config` or `fe.tool-config` slot — the side's tsconfig (resolving `@starci/tsconfig` from the root `node_modules`) and its managed ESLint factory config, the back end's build tsconfig, tests tsconfig and jest configuration, the front end's stylelint configuration. `lint` is `starci app check --gate lint`: ESLint over each side with its canon and stylelint over fe; `lint:fix` is the same with `--fix`. The front end has no test script, no test configuration and no e2e or coverage file: it has no tests, and `FE_NO_TESTS` (R97) refuses any spec, e2e file, test tool or test script under `fe/`. `turbo.json` stays the app's own
 (slot `app.task-graph`): it carries the task graph, which no preset can render.
 
-The architecture machine (`scripts/hfs/architecture.mjs` of the runtime, the same code bundled here): tiers and import
+The architecture machine (`scripts/hfs/architecture.mts` of the runtime, the same code bundled here): tiers and import
 direction, owner public API, cycles, module registration and composition, clones, dead exports, required files,
 the source-shape, contract-form and front-end rules, and the repository-tree rules. Each violation and each error is one
 finding under the machine's own rule id (`BE_TIER_DIRECTION`, `HFS_UNUSED_EXPORT`, `ARCH_OWNER_EXPORT_BYPASS`, ...). A
@@ -248,24 +248,24 @@ Exit codes: 0 clean, 1 an error finding, 2 a tool could not run or a refusal (no
 
 `starci app secret` keeps an app's sealed members (the standard is the harness's PROJECT-STACKS-5): one per provider,
 `.starcistacks/<env>/secrets/<provider>.enc.yaml`, sops YAML whose values keep every byte, a legacy dotenv `<member>.enc`
-read until `migrate` moves it (`runtime/scripts/lib/sealed-member.mjs` names both). `set --env <env> <provider> <KEY> [KEY ...]`
-seals every named key in one sops write (`runtime/scripts/hfs/secret.mjs`): on a terminal it prompts `<KEY>: ` for each with
+read until `migrate` moves it (`runtime/scripts/lib/sealed-member.mts` names both). `set --env <env> <provider> <KEY> [KEY ...]`
+seals every named key in one sops write (`runtime/scripts/hfs/secret.mts`): on a terminal it prompts `<KEY>: ` for each with
 masked input (one `*` per character; a paste, backspace, Enter, Ctrl+C to cancel with nothing written), redirected stdin gives
 one key its whole text or several one `KEY=value` line each, `--from-file KEY=path` reads a key byte for byte
-(`secret-prompt.mjs`), and `--generate <bytes>` makes a random value per key. Keys declared by exact service credential
+(`secret-prompt.mts`), and `--generate <bytes>` makes a random value per key. Keys declared by exact service credential
 references stay with that consumer; other keys are declared in the environment's `secrets:` of a compose environment
-(`declareKeys`, `secret-standard.mjs`), while a swarm environment's are named to wire by hand.
+(`declareKeys`, `secret-standard.mts`), while a swarm environment's are named to wire by hand.
 A member is sealed to its environment's rule of the managed `.sops.yaml`; `recipients --env <env> [--add|--remove <age1...|owner>]`
-rewrites that rule (`environmentRecipients`, `secret-init.mjs`), and `init` takes the owner's identity as the app's recipient.
+rewrites that rule (`environmentRecipients`, `secret-init.mts`), and `init` takes the owner's identity as the app's recipient.
 Re-sealing a member whose every key the set replaces needs no age identity; adding a key to one does, and the identity is found
 by itself (`decryptionIdentity`, the one lookup every decrypt of a member uses: secret, stack, release, db): SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, else of the app's git-ignored
 `.claude/secret.env`, else of its main checkout's when the app is a git worktree, else the `hostIdentity` the harness CLI passes
 (its own secret.env), else the sops `keys.txt`; with none, the verb refuses before asking for a value, naming every place it
 looked and the one line that fixes it. `audit [--env <env>]` names every deviation and exits 1; `migrate --env <env> <member> [--to
-<provider>]` and `split --env <env> <member>` repair them, dry runs until `--execute` (`secret-standard.mjs`). `server-key --env <env>` makes
+<provider>]` and `split --env <env> <member>` repair them, dry runs until `--execute` (`secret-standard.mts`). `server-key --env <env>` makes
 the deploy server's own age identity on the server through the deploy's transport and seals the environment to it beside the
 owner key, `--rotate` replaces it, `--backup github` stores it as the SOPS_AGE_KEY of the GitHub Environment `<env>` that
-every CI job bound to `<env>` reads, and `--restore github` writes it back (`stack/server-key.mjs`). No output carries a value
+every CI job bound to `<env>` reads, and `--restore github` writes it back (`stack/server-key.mts`). No output carries a value
 except `get --reveal`.
 
 ## Sonar
@@ -310,14 +310,14 @@ every hotspot reviewed, duplicated lines density, cognitive complexity through t
 open issue, imported or native; that is stricter than the three imports alone and is intended. `starci app check` reports `HFS_SONAR_CONFIG` (R11) when the
 properties file is not its render or the stack declaration names another gate. R20 and R21 have their Sonar enforcers as conditions of that file.
 
-Coverage is the logic of `be/src/modules/**`, from one derivation. `scripts/hfs/coverage-scope.mjs` derives the measured files once from the slot manifest — every `<name>.<role>.ts` of a `ruleParams.be.logicRoles` role inside a slot whose `coverage` is `required` — and `starci app sync` renders it into the three files that state it (R204 `HFS_COVERAGE_SCOPE_DRIFT`): `be/jest.config.js` as `starciJestConfig({ coverage: { roots, roles, excludes } })`, the `sonar.coverage.exclusions` line of `sonar-project.properties` and `codecov.yml`. The managed `test` script is `jest --selectProjects unit --coverage`: it fails below the per-file 100 threshold on the measured files and writes `be/coverage/lcov.info` (the jest preset's lcov reporter). The managed `sonar-project.properties` imports that report (`sonar.javascript.lcov.reportPaths=be/coverage/lcov.info`) with `sonar.coverage.exclusions` set to the complement of the measured files (SonarQube has no coverage inclusions) and no other coverage key, so the feature tier, declaration files, tests and `fe/` are never coverage targets. The managed `codecov.yml` holds the measured roots at 100 on the project and the patch, plus one component per service app and one `platform`, each at 100; the managed CI workflow uploads the lcov with `codecov/codecov-action` after the unit run. The runtime judges the coverage per file: `sonar-local.mjs scan` holds every measured file a slice touched at 100, and `sonar-local.mjs dashboard` fails a project unless every measured file is at 100.
+Coverage is the logic of `be/src/modules/**`, from one derivation. `scripts/hfs/coverage-scope.mts` derives the measured files once from the slot manifest — every `<name>.<role>.ts` of a `ruleParams.be.logicRoles` role inside a slot whose `coverage` is `required` — and `starci app sync` renders it into the three files that state it (R204 `HFS_COVERAGE_SCOPE_DRIFT`): `be/jest.config.js` as `starciJestConfig({ coverage: { roots, roles, excludes } })`, the `sonar.coverage.exclusions` line of `sonar-project.properties` and `codecov.yml`. The managed `test` script is `jest --selectProjects unit --coverage`: it fails below the per-file 100 threshold on the measured files and writes `be/coverage/lcov.info` (the jest preset's lcov reporter). The managed `sonar-project.properties` imports that report (`sonar.javascript.lcov.reportPaths=be/coverage/lcov.info`) with `sonar.coverage.exclusions` set to the complement of the measured files (SonarQube has no coverage inclusions) and no other coverage key, so the feature tier, declaration files, tests and `fe/` are never coverage targets. The managed `codecov.yml` holds the measured roots at 100 on the project and the patch, plus one component per service app and one `platform`, each at 100; the managed CI workflow uploads the lcov with `codecov/codecov-action` after the unit run. The runtime judges the coverage per file: `sonar-local.mjs scan` holds every measured file a slice touched at 100, and `sonar-local.mjs dashboard` fails a project unless every measured file is at 100.
 
 The upload authenticates with GitHub's OIDC token: the managed `ci.yml` job has `permissions: id-token: write` and the `codecov/codecov-action@v5` step has `use_oidc: true`, so there is no repository secret and no step that skips silently when one is missing (rule CI_UPLOAD_NOT_SILENT). The owner activates the repository on Codecov once.
 
 ## Maintaining the bundle
 
-`runtime/` holds the slot loader files, the pins, the import closure of `scripts/hfs/check.mjs` and
-`scripts/hfs/architecture.mjs`, and the catalog slice of every code `starci app check` can emit. It is committed source of
+`runtime/` holds the slot loader files, the pins, the import closure of `scripts/hfs/check.mts` and
+`scripts/hfs/architecture.mts`, and the catalog slice of every code `starci app check` can emit. It is committed source of
 this package, edited in place ([packages/README.md](../README.md) says how the bundled copies move together). Bump
 `version` here and in the pin when the behaviour changes.
 

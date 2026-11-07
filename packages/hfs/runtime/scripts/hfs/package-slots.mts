@@ -1,4 +1,4 @@
-// package-slots.mjs - the slot manifest a root workspace package declares for its own tree (PROJECT-LINT-3, R382): `packages/<name>/slots.yaml`,
+// package-slots.mts - the slot manifest a root workspace package declares for its own tree (PROJECT-LINT-3, R382): `packages/<name>/slots.yaml`,
 //   schema: starci/package-slots@1
 //   closed: true                          # (default) every file below src/ belongs to a slot
 //   slots:
@@ -13,7 +13,7 @@
 // hfs enforces it as it enforces the be and fe slots: an instance lacking a required file, a file an instance does not allow and a file of no slot
 // are findings, and a manifest it cannot read is one too. Coverage follows the slots: every file of a package is measured at 100 per file in the
 // back end's unit run (BE-TEST-13), but its barrels and type files and the slots that opt out with `coverage: { none: <reason> }`, a reason required.
-// A package without a manifest keeps the harness's default scope (PACKAGE_UNMEASURED of coverage-scope.mjs).
+// A package without a manifest keeps the harness's default scope (PACKAGE_UNMEASURED of coverage-scope.mts).
 import { parseYaml } from '../../engine/yaml.mjs';
 import { globExpression } from '../lib/glob.mjs';
 

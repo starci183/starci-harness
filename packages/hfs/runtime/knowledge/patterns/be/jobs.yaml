@@ -19,7 +19,6 @@ provenance:
     - knowledge/hfs/README.md
     - knowledge/hfs/slots.yaml
     - knowledge/hfs/rules.yaml
-    - owner decision 2026-10-02 (fenced jobs with a required fencing token)
     - https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html
   limitations: |-
     Static checks prove who writes the job row, that the token is required in the type and not cast around, that effects carry a
@@ -302,7 +301,7 @@ files:
     role: "Titles fenced-job/<scenario>: ... prove the pattern."
     spec: fenced-job/claim-bumps-token, fenced-job/zombie-fenced-out, fenced-job/redispatch-isolated
     rules: [BE_PATTERN_SPEC_MISSING]
-# Edition lite (R212, owner ruling 2026-10-14): the same ports and rules, a self-hosted Postgres adapter behind them.
+# Edition lite (R212): the same ports and rules, a self-hosted Postgres adapter behind them.
 liteAdapter:
   summary: >-
     Under lite a fenced job is unchanged: the job row with its fencing token, the atomic claim, guarded writes and run keys. The

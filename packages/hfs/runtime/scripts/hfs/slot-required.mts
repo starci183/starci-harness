@@ -1,5 +1,5 @@
-// slot-required.mjs - what a scope (the app root or one side) must contain, without walking it: the files an instance of a slot
-// requires, and the paths and minimum instance counts of every required slot. A scope is the one slots.mjs builds.
+// slot-required.mts - what a scope (the app root or one side) must contain, without walking it: the files an instance of a slot
+// requires, and the paths and minimum instance counts of every required slot. A scope is the one slots.mts builds.
 import path from 'node:path';
 import { braceVariants } from '../lib/glob.mjs';
 import { classifyIn, slotEnabled } from './slot-classify.mjs';

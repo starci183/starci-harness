@@ -1,4 +1,4 @@
-// secret-custody-only.mjs - R277: the only custody a tracked secret may take is a sops envelope at
+// secret-custody-only.mts - R277: the only custody a tracked secret may take is a sops envelope at
 // `.starcistacks/<env>/secrets/**.enc`. Everything else is refused in every edition:
 //   - a tracked plaintext secret file by being (`secrets.env`, a non-dot `*.env` with secret keys, a member of
 //     a `secrets/` directory, deploy-side dotenv) - HFS_SECRET_PLAINTEXT_FILE;

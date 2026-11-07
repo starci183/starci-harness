@@ -1,4 +1,4 @@
-// fe-no-tests.mjs - FE_NO_TESTS (R97): a front-end repository has no tests by standard (owner 2026-09-30). There is no exception: a spec
+// fe-no-tests.mts - FE_NO_TESTS (R97): a front-end repository has no tests by standard. There is no exception: a spec
 // anywhere in a front-end repository is a finding, `scripts/` included.
 //   - a tracked test file: `*.spec.*`, `*.test.*`, `*-spec.*` (also `*.e2e-spec.*`);
 //   - a tracked test directory: `e2e/`, `__tests__/`, `__mocks__/` or `test-support/`;

@@ -1,11 +1,11 @@
-// cli.mjs - `starci app coverage merge --out <lcov> <report-or-dir>...`: the coverage of the sharded unit run (one coverage-final.json per
+// cli.mts - `starci app coverage merge --out <lcov> <report-or-dir>...`: the coverage of the sharded unit run (one coverage-final.json per
 // `STARCI_COVERAGE_SHARD=1 npm test -- --shard=i/N`, downloaded into a directory by the coverage job of the managed CI) merged into the one lcov the
 // coverage proof, the Codecov upload and the Sonar import read. The merge is the app's installed @starci/jest-preset (`@starci/jest-preset/merge`):
 // istanbul-lib-coverage merges the shard maps by source location, and the preset's own lcov reporter writes the result exactly as an unsharded run
 // would. A path is a coverage-final.json or a directory searched for every one below it; no report found refuses (exit 2), never an empty report.
 // `--records <dir>` merges instead the committed per-spec records of the check cache (`.starcistacks/cache/test-coverage`): the union of what every spec covers,
 // which is the total of a full unit run, written as the same lcov.
-// `starci app coverage verify <lcov>`: the coverage proof alone (scripts/hfs/coverage-from.mjs, the judgement `starci app check --coverage-from`
+// `starci app coverage verify <lcov>`: the coverage proof alone (scripts/hfs/coverage-from.mts, the judgement `starci app check --coverage-from`
 // adds to the whole check): every measured logic file is in the merged lcov at 100 per file. The managed CI's coverage job runs it after the merge,
 // so the job re-runs none of the rules the fast and lint jobs already judged. Exit 0 proved, 1 refused (the report lists every finding), 2 bad usage.
 import path from 'node:path';
@@ -18,7 +18,7 @@ import type { MergeSpecRecords } from '../cache/test-family.mjs';
 
 /** The preset's merge: shard coverage maps in, one lcov out. */
 type MergeCoverage = (args: { inputs: string[]; outDir: string }) => { reports: number; files: number };
-/** The coverage proof (runtime/scripts/hfs/coverage-from.mjs). */
+/** The coverage proof (runtime/scripts/hfs/coverage-from.mts). */
 type Prove = (args: { repoRoot: string; coverageFrom: string }) => { ok: boolean };
 
 export const USAGE = 'usage: starci app coverage merge --out <lcov> (<coverage-final.json-or-dir>... | --records <test-coverage-dir>) [--cwd <dir>] | starci app coverage verify <lcov> [--cwd <dir>]';

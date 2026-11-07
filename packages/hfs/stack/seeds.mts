@@ -1,4 +1,4 @@
-// seeds.mjs - the seed step (contexts/project/stacks.md PROJECT-STACKS-12): after the migrations, the entries of the shared level and then of
+// seeds.mts - the seed step (contexts/project/stacks.md PROJECT-STACKS-12): after the migrations, the entries of the shared level and then of
 // the environment's level, each in apply order, on the database the migrations ran on and under the role they ran as. The harness owns
 // the receipts: one row per entry in `public.starci_seed_receipts` of that database, created by this step (never an app migration), holding
 // the entry's content hash, the outcome of its last run and, for a document entry with secret references, the member names and a digest of

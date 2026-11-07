@@ -1,5 +1,5 @@
-// merge-base.mjs — `git merge-base <a> <b>`: the best common ancestor of two commits. Whether one commit is in another
-// is is-ancestor.mjs.
+// merge-base.mts — `git merge-base <a> <b>`: the best common ancestor of two commits. Whether one commit is in another
+// is is-ancestor.mts.
 import { gitRunner, type GitRunnerFn } from './lib.mjs';
 
 /** The best common ancestor of commits `a` and `b` (a sha), or null when they share none or a ref does not resolve. */

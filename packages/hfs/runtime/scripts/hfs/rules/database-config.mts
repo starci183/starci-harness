@@ -1,4 +1,4 @@
-// database-config.mjs - the database content checks of db/ and seeds/ (R259: extensions, custody SQL, destructive migrations, seed data). It starts no
+// database-config.mts - the database content checks of db/ and seeds/ (R259: extensions, custody SQL, destructive migrations, seed data). It starts no
 // database and no Docker process.
 import { found, readText } from './read.mjs';
 import {

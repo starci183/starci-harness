@@ -1,6 +1,6 @@
 /**
  * Resolve a `use*` import that comes from the app's own hooks folders (`hooks/swr`, `hooks/<domain>`, `hooks/zustand/<store>`...) by
- * TypeScript symbol resolution, never by the spelling of the name (R56 `FE_HOOKS_ARE_HOOKS`, owner ruling 2026-10-16 "Theo y tro").
+ * TypeScript symbol resolution, never by the spelling of the name (R56 `FE_HOOKS_ARE_HOOKS`).
  *
  * A composite product hook is built from the hooks beneath it: `hooks/<domain>/use<Name>.ts` composes the `use{Query,Mutate}<X>Swr`
  * wrappers of `hooks/swr`. The import is followed through barrels and re-exports to the declaration, and counts only when that declaration

@@ -1,4 +1,4 @@
-// json-clone.mjs — a deep copy that keeps exactly what survives a JSON text and nothing else: the plain-data
+// json-clone.mts — a deep copy that keeps exactly what survives a JSON text and nothing else: the plain-data
 // copy of a value, detached from every reference, frozen state and class of the original. `structuredClone` keeps
 // what JSON drops (undefined members, Dates, Maps, sparse holes) and refuses what JSON accepts (functions,
 // `toJSON` objects), so it is not a substitute; this walks the value once under the JSON.stringify rules.

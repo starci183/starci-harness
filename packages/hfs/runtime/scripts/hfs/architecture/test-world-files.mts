@@ -52,7 +52,7 @@ type FakeProviders = Map<string, string>;
 
 /**
  * R47 `test-world-files` (BE_TEST_TOPOLOGY). Judgements over the test world, read through slots, the repository's own
- * stack definition (`.starcistacks/<env>`, scripts/lib/stack-services.mjs) and the world's declaration
+ * stack definition (`.starcistacks/<env>`, scripts/lib/stack-services.mts) and the world's declaration
  * (`test-world.config.ts`, read in the shape @starci/test-world defines), never through a path or a name list:
  *
  * 1. Files. `src/tests/world/` is the only test infrastructure location, and it holds only what its slot `allows`
@@ -65,7 +65,7 @@ type FakeProviders = Map<string, string>;
  *    `const world: TestWorldApi = defineTestWorld({ ... })` whose `useTestWorld` and `useSandbox` are exported consts typed from
  *    `TestWorldApi` (a `const` initialized by a `defineTestWorld(<object literal>)` call). A config without it (a default export, or a declaration the machine cannot
  *    read) is refused: the world it declares could not be judged.
- * 3. Fakes against the stack (owner refinement 2026-09-30). Every service the stack declares runs real in the world; a fake
+ * 3. Fakes against the stack. Every service the stack declares runs real in the world; a fake
  *    (a `fakes/<provider>/` folder, or a `fakes` entry of the declaration such as `smtp: smtpFake()`) is a network-edge fake
  *    of an external SaaS the team does not operate. A fake of a stack service (its own name, its image repository or a
  *    well-known alias of the image) is refused, except the one owner-approved exception: a stack service that is stateless

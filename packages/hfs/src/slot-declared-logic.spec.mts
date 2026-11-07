@@ -1,6 +1,6 @@
 // A slot may declare which of its own files carry logic (`logic`): each is measured at 100 per file like a logic-role file
-// (scripts/hfs/coverage-scope.mjs, R204, R273), and its `<file>.spec.ts` beside it is admitted by the slot without being listed
-// (scripts/hfs/allows.mjs). No role name joins ruleParams.be.logicRoles. be.integrations.passport declares its kit file (the verifier
+// (scripts/hfs/coverage-scope.mts, R204, R273), and its `<file>.spec.ts` beside it is admitted by the slot without being listed
+// (scripts/hfs/allows.mts). No role name joins ruleParams.be.logicRoles. be.integrations.passport declares its kit file (the verifier
 // mapping over @starci/auth). The same file also proves the object-storage slot's names are the capability folder's (`object-storage.*`).
 import test from 'node:test';
 import assert from 'node:assert/strict';

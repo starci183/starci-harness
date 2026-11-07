@@ -1,4 +1,4 @@
-// The one-command urgent release (owner ruling urgent-typecheck-build 2026-10-30): `stack deploy --urgent --reason` with no images and no source
+// The one-command urgent release: `stack deploy --urgent --reason` with no images and no source
 // commit releases HEAD (unless it already has a pushed urgent record), builds and pushes its images on this machine, and hands the digests to the
 // urgent deploy; a dry run stops before anything is tagged or built, and a red step stops the chain.
 import test from 'node:test';

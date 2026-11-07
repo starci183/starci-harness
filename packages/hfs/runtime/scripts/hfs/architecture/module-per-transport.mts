@@ -13,7 +13,7 @@ import { trimTrailingSlashes } from '../trailing-slashes.mjs';
  * R45 `module-per-transport` (BE_MODULE_SHAPE, BE-CONVENTION 1.2 and 1.6). A feature has one Nest module for its
  * application (`<f>.module.ts` at the feature root) and exactly one module per transport folder
  * (`transport/<protocol>/<f>-<protocol>.module.ts`). Never one module per operation. Every one of these modules has its own
- * module-definition beside it (owner ruling module-definition-everywhere, R295):
+ * module-definition beside it (R295):
  *
  *   - a `*.module.ts` file below a transport folder other than `<f>-<protocol>.module.ts`, a `*.module-definition.ts` that is
  *     not the sibling of the application module or of the transport module of its own folder, and an `@Module` class (or a

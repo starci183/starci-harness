@@ -1,4 +1,4 @@
-// slot-side-problems.mjs - declaration checks for one app side against the HFS manifest.
+// slot-side-problems.mts - declaration checks for one app side against the HFS manifest.
 import { backingProblems, optionalSlotProblems } from './declaration-slots.mjs';
 import type { Parsed, SlotManifest } from './manifest-shape.mjs';
 

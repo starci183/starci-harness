@@ -1,8 +1,8 @@
 // proves: HFS_BYPASS_MARKER@lite
 // proves: HFS_BYPASS_MARKER@full
-// No bypass lands unnoticed (owner ruling loosening-always-red). One marker table (scripts/lib/bypass-markers.mjs) serves both readers of a tree as it stands:
-//   - the runtime's loosening-state self-check (scripts/lib/loosening-state.mjs, specified by src/loosening-state.spec.mjs);
-//   - the product rule HFS_BYPASS_MARKER (scripts/hfs/rules/bypass-markers.mjs) and `starci app check --staged` (the pre-commit hook), which judge a tree and the index.
+// No bypass lands unnoticed (a loosening is always red). One marker table (scripts/lib/bypass-markers.mts) serves both readers of a tree as it stands:
+//   - the runtime's loosening-state self-check (scripts/lib/loosening-state.mts, specified by src/loosening-state.spec.mts);
+//   - the product rule HFS_BYPASS_MARKER (scripts/hfs/rules/bypass-markers.mts) and `starci app check --staged` (the pre-commit hook), which judge a tree and the index.
 // The forbidden spellings live in fixtures/loosening/, the declared fixture folder of knowledge/hfs/design-truths.yaml.
 import test from 'node:test';
 import type { TestContext } from 'node:test';

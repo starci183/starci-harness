@@ -10,7 +10,7 @@
     /* ---------------------------------------------------------------- shared overlay tone */
     /*
      * A tone x gives three values: x itself (a fill, or a mark that stands alone), and the pair x-soft and x-soft-foreground
-     * for content that sits on a background of the tone (owner ruling status-soft-pair-on-background).
+     * for content that sits on a background of the tone.
      */
     :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog) {
         --starci-core-overlay-tone: var(--muted);
@@ -19,7 +19,7 @@
     }
 
     :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="informative"] {
-        /* informative is an intent that is the accent unless the app writes the optional --informative tokens (owner ruling grammar-own-style). */
+        /* informative is an intent that is the accent unless the app writes the optional --informative tokens. */
         --starci-core-overlay-tone: var(--informative, var(--accent));
         --starci-core-overlay-soft: var(--informative-soft, var(--accent-soft));
         --starci-core-overlay-soft-foreground: var(--informative-soft-foreground, var(--accent-soft-foreground));
@@ -516,7 +516,7 @@
 
     /* ---------------------------------------------------------------- alert banner */
     /*
-     * One look, the tone's soft pair (owner ruling alert-soft-pair): the row is `--<tone>-soft` at full strength and its glyph,
+     * One look, the tone's soft pair: the row is `--<tone>-soft` at full strength and its glyph,
      * title and description are `--<tone>-soft-foreground`; no shadow, no border, the HeroUI row's radius and anatomy. The
      * tone maps informative -> accent, affirmative -> success, cautionary -> warning, negative -> danger, and neutral,
      * pending and unavailable -> default. The row wraps at a narrow width so the action stays inside it.
@@ -868,7 +868,7 @@
     }
 
     /*
-     * Segmented meter (owner ruling 2026-09-27): the track spans the full width of its container,
+     * Segmented meter: the track spans the full width of its container,
      * like a Progress track, at HeroUI's h-1 (0.25rem, 4px) - thinner than the plain meter's h-2 -
      * laid out as equal pill segments 0.25rem apart. The track itself goes transparent so the gaps
      * read as gaps; each empty segment wears the track colour and each filled one the tone fill. The

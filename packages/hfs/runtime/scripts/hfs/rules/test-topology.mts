@@ -1,4 +1,4 @@
-// test-topology.mjs - BE_TEST_TOPOLOGY (R47), the tree half of BE-CONVENTION 1.16: four test kinds by folder, one jest configuration.
+// test-topology.mts - BE_TEST_TOPOLOGY (R47), the tree half of BE-CONVENTION 1.16: four test kinds by folder, one jest configuration.
 //   - a unit spec is `<name>.spec.ts`: a tracked `*.test.*` file is refused;
 //   - there is no `testing/` folder: doubles and builders live in `src/tests/fixtures/`, next to the subject as `*.spec.ts`;
 //   - one `jest.config.js` at the root: a second jest config (`jest.config.<x>.js`, `jest.<x>.config.*`, one per app) and a

@@ -1,5 +1,5 @@
 /**
- * Twin tests for `spec-typed-entity-manager` (R48, unit-test standard 2026-09-30).
+ * Twin tests for `spec-typed-entity-manager` (R48).
  *
  *   node --test src/spec-typed-entity-manager.spec.ts
  */

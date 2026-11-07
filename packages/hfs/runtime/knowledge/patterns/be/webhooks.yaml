@@ -24,8 +24,6 @@ provenance:
     - knowledge/patterns/be/event-bus.yaml
     - knowledge/patterns/be/reactors.yaml
     - knowledge/patterns/be/jobs.yaml
-    - owner decision 2026-10-02 (feature kinds: webhooks, realtime, reactors, saga, jobs, cli; no kind imports another)
-    - owner decision 2026-10-14 (literal provider ACK, one optional GET challenge, durable inbox handoff before reactor/job command dispatch)
   limitations: |-
     Static checks prove the door's shape, that an unconditional verification call is its first statement and that it makes
     one intake call, either after a separate proof or combined with it. They resolve direct command/query-bus and feature-handler receivers in the called

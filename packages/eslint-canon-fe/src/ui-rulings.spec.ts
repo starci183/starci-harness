@@ -24,7 +24,7 @@ const fixture = (code: string, messageId: string) => ({
   errors: [{ messageId }],
 });
 
-test("UI rulings are registered universally at error", () => {
+test("the UI rules are registered universally at error", () => {
   for (const [name, rule] of Object.entries(rules)) {
     assert.equal(published[name], rule);
     assert.equal(recommended[`starci-fe/${name}`], "error");

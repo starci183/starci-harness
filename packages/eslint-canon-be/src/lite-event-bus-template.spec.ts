@@ -1,7 +1,7 @@
 /**
  * The lite event bus templates of @starci/hfs (templates/be/inbox/platform/event-bus) against the lite persistence law (R334
  * `BE_PERSISTENCE_NO_RAW_SQL`): every database call of the pgmq bus goes through `callDbFunction` to a function the canon lists
- * (ruling lite-pgmq-bus-bullmq-jobs), and the retired outbox write is no longer listed.
+ * and no outbox write is listed.
  *
  *   node --test src/lite-event-bus-template.spec.ts
  */

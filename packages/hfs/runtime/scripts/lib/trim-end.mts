@@ -1,4 +1,4 @@
-// trim-end.mjs — a string without the run of characters at its end that `matches` accepts.
+// trim-end.mts — a string without the run of characters at its end that `matches` accepts.
 
 /** `value` with its trailing characters removed while `matches(char)` holds. */
 export const trimEndWhile = (value: string, matches: (char: string) => boolean): string => {

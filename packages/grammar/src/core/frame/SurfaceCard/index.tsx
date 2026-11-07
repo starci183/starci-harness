@@ -121,7 +121,7 @@ type BodyCard = Shell & OptionallyNamed & Head & (PlainSurfaceCard | SoftSurface
     readonly wholeAction?: WholeCardAction
     /** Grammar-owned width contract for ordinary content or compact form cards. */
     readonly measure?: SurfaceCardMeasure
-    /** One logical corner of the painted face drawn at the Common accent radius (ruling accent-corner). */
+    /** One logical corner of the painted face drawn at the Common accent radius. */
     readonly accentCorner?: AccentCorner
 }
 
@@ -184,7 +184,7 @@ const PLACEHOLDER_DISCLOSURES: readonly AccordionRowData[] = [1, 2, 3].map((n) =
  * union the compiler checks in every file: a plain `body` (the default), a strip of `figures`, a `list` of rows, an
  * `accordion`, a `table` or a `tile`; any kind may carry typed `headers` and `footers` (zones the shell pads and divides).
  *
- * Where the name sits follows the kind (ruling `card-label-by-kind`): a card that heads a section has a `label`, drawn
+ * Where the name sits follows the kind: a card that heads a section has a `label`, drawn
  * outside the material as an unpainted row above it; a tile has its `name` and mark or media drawn inside.
  *
  * A card never stands inside another surface (a card, `Pane surface`, a `Dialog`, `Drawer` or `Popover`); development

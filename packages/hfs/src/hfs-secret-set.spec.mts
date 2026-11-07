@@ -52,7 +52,7 @@ const answers = (values: string[], labels: string[]) => async (label: string): P
   return values.shift() as string;
 };
 
-// A runProgram double of the selected-identity contract (as hfs-secret-custody.spec.mjs): it records the age key each
+// A runProgram double of the selected-identity contract (as hfs-secret-custody.spec.mts): it records the age key each
 // decrypt's child env carries; the member it decrypts holds TOKEN.
 const selectedTools = (calls: Array<{ args: string[]; ageKey: string | undefined }>, secretEnv: NonNullable<SecretToolOverrides["secretEnv"]> = () => ({})): SecretToolOverrides => ({
   resolveSops: () => process.execPath,

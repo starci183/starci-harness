@@ -1,4 +1,4 @@
-// config-get.mjs — `git config [--local] --get <key>`: one configuration value of a checkout (empty when unset).
+// config-get.mts — `git config [--local] --get <key>`: one configuration value of a checkout (empty when unset).
 import { gitRunner, type GitRun, type GitRunnerFn } from './lib.mjs';
 
 /**

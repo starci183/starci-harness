@@ -1,4 +1,4 @@
-// The db/ SQL rules L02-L08 (scripts/hfs/rules/database.mjs over scripts/hfs/sql/pg-parse.mjs, the WASM build of
+// The db/ SQL rules L02-L08 (scripts/hfs/rules/database.mts over scripts/hfs/sql/pg-parse.mts, the WASM build of
 // libpg-query): DB_MIGRATION_SHAPE, DB_RLS_REQUIRED, DB_DYNAMIC_DDL, DB_POLICY_SHAPE, DB_DEFINER_SAFE,
 // DB_STORAGE_POLICY, DB_CONFIG_POLICY and DB_TYPES_DRIFT. Fixtures live in tests/fixtures/hfs-db/: clean.sql and
 // tricky.sql must produce no finding (the tricky file exists to prove the AST does not trip on literals, comments,

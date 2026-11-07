@@ -1,19 +1,19 @@
 #!/usr/bin/env node
-// asset-slot.mjs — artwork a drawing owes to interface.asset (owner ruling 2026-09-27: "mascot/illustration comes from
-// interface.asset, never reused ad hoc").
+// asset-slot.mts — artwork a drawing owes to interface.asset: mascot/illustration comes from
+// interface.asset, never reused ad hoc.
 //
 // A drawing that needs artwork (a mascot, an illustration, a hero image) never reuses a file it found: it marks the
 // place data-asset-slot="<id>" on the MediaFrame / Image / img (a placeholder src, or none, is fine) and requests it in
 // asset-request.md beside its render source (or in the ui record directory) - one heading per slot naming its id, the
 // section its purpose, placement, pixel size and format, and the brand master it references. The DNA gate refuses
-// artwork without a slot and a slot without a request (DRAW_ASSET_SLOT_UNDECLARED, scripts/work/draw/draw-dna.mjs), and
+// artwork without a slot and a slot without a request (DRAW_ASSET_SLOT_UNDECLARED, scripts/work/draw/draw-dna.mts), and
 // the draw records each slot in ui.artworkSlots[] (status owed).
 //
 // interface.asset owes every open slot: it generates the artwork under the brand record's imagery.promptRules (and
 // masters), then replaces the placeholder in the render source - src the produced file, data-asset-sha256 its bytes'
 // sha256, data-asset-prompt the prompt.txt it was generated from - and records ui.artworkSlots[].file/sha256/status.
-// The brand masters (brand/assets/**, the unicorn masters) are the LANDING's art and the style reference only (owner
-// ruling 2026-09-27): every product slot is owed a NEW generation - a new pose/composition per surface in the same
+// The brand masters (brand/assets/**, the unicorn masters) are the LANDING's art and the style reference only:
+// every product slot is owed a NEW generation - a new pose/composition per surface in the same
 // brand style - so a master may stand in only as the placeholder. A slot is FILLED only when data-asset-sha256 names
 // the sha256 of the file its src resolves to, those bytes are not byte-identical to any brand master, and its prompt
 // (data-asset-prompt, else <file>.prompt.txt beside it) exists; anything else is OWED. A done ui record with an owed

@@ -1,5 +1,5 @@
 /**
- * Twin tests for `spec-no-skip` (R48, owner test policy 2026-09-30).
+ * Twin tests for `spec-no-skip` (R48).
  *
  *   node --test src/spec-no-skip.spec.ts
  */

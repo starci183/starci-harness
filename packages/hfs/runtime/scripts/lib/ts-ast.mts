@@ -1,9 +1,9 @@
-// ts-ast.mjs — the small reads the hfs checks share over TypeScript's own AST: a node's name or
+// ts-ast.mts — the small reads the hfs checks share over TypeScript's own AST: a node's name or
 // literal text, a node's 1-based position, a named property's initializer text. `ts` is the caller's
-// already-resolved compiler (see package-at.mjs loadTypescript); nothing here resolves a package.
+// already-resolved compiler (see package-at.mts loadTypescript); nothing here resolves a package.
 import type { Expression, Node, SourceFile, VariableDeclaration } from 'typescript';
 
-/** The TypeScript compiler module a caller resolved (see package-at.mjs loadTypescript). */
+/** The TypeScript compiler module a caller resolved (see package-at.mts loadTypescript). */
 export type TypeScript = typeof import('typescript');
 
 /** Whether the single-bit `flag` (a ts.NodeFlags member) is set in `flags`: the bit read as arithmetic, no bitwise operator in the condition. */

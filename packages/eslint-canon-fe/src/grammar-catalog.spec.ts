@@ -1,4 +1,4 @@
-/** The bundled Grammar catalog declares exactly two families, core and offset-pop (owner ruling two-grammars). */
+/** The bundled Grammar catalog declares exactly two families, core and offset-pop. */
 import assert from "node:assert/strict"
 import test from "node:test"
 import { grammarContractFor, grammarLintFor, resolveGrammarFamily } from "@starci/hfs/runtime/scripts/lib/grammar-lint.mjs"

@@ -14,7 +14,7 @@ export type FreestyleProps = {
 }
 
 /**
- * The sanctioned escape hatch (owner ruling grammar-freestyle-region): a region that fills its host where the app writes its
+ * The sanctioned escape hatch: a region that fills its host where the app writes its
  * own plain elements and app CSS (layout, paint, radius, arbitrary values, absolutely positioned art) because no Grammar
  * component fits. The rest of the page still follows the Grammar. It adds no paint of its own and is a last resort.
  */

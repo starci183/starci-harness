@@ -1,4 +1,4 @@
-// The canonical surface of the secret, ci and db verbs (owner ruling cli-canonical-2026-10-30), through `main`: the environment as
+// The canonical surface of the secret, ci and db verbs, through `main`: the environment as
 // --env on every secret action, --db-url-env, --execute on db baseline and restamp, the dry default of `secret recipients`,
 // `ci secret set`, `ci var set` and `ci local`, and the dry run of `db migrate` that carries the plan (exit 0 agree, 1 drift, 2
 // refused). An old spelling is an unknown flag or operand and fails with exit 2. Every value here is a fake.
@@ -55,7 +55,7 @@ test('every secret action but init names its environment with --env; a positiona
     assert.equal(old.code, 2, argv.join(' '));
     assert.match(old.err, /usage: starci app secret/u, argv.join(' '));
   }
-  // init takes --env only for a docker-compose dev environment (secret-dev-init.mjs); an app with no such environment is refused.
+  // init takes --env only for a docker-compose dev environment (secret-dev-init.mts); an app with no such environment is refused.
   const init = await run(['secret', 'init', '--env', 'dev'], { cwd: root, env });
   assert.equal(init.code, 2);
   assert.match(init.err, /secret init --env dev/u);

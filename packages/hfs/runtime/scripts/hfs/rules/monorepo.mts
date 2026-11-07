@@ -1,4 +1,4 @@
-// monorepo.mjs - every product is a monorepo, even a single app: the app root holds one package.json and lockfile whose npm
+// monorepo.mts - every product is a monorepo, even a single app: the app root holds one package.json and lockfile whose npm
 // workspaces are the fe apps and packages (turbo runs their tasks), and the back end is a Nest monorepo of be/apps/<app>.
 //   HFS_MONO_WORKSPACES          the root package.json: `workspaces` exactly fe/apps/* and fe/packages/* (and packages/* once the app tracks a root workspace package, slot app.packages), `packageManager` npm at an
 //                                exact version, turbo a root devDependency (its version is the canon pin); turbo.json is app.task-graph

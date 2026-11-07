@@ -1,5 +1,5 @@
-// lint-canon-entry.spec.mjs - ownCanonEntry resolves the "." export of the app's installed canon with the import conditions of
-// the import() that loads it (lint/run.mjs): a canon publishing only an `import` target resolves on every supported Node, where
+// lint-canon-entry.spec.mts - ownCanonEntry resolves the "." export of the app's installed canon with the import conditions of
+// the import() that loads it (lint/run.mts): a canon publishing only an `import` target resolves on every supported Node, where
 // require.resolve cannot be told the import condition (its registerHooks resolve hook skips require.resolve before Node 24).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

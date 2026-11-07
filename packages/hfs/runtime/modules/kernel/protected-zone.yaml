@@ -16,7 +16,6 @@ zones:
       - scripts/guards/**
       - scripts/lib/hook-limits.mjs
       - modules/kernel/protected-zone.yaml
-      - modules/kernel/command-policy.yaml
       - modules/kernel/hook-input.yaml
       - scripts/hfs/runtime-rules/rights-policy.mjs
   - id: release-and-hooks
@@ -37,7 +36,7 @@ zones:
       - scripts/hfs/runtime-rules/git-triggers.mjs
       - examples/*/.github/workflows/**
   - id: test-policy
-    why: the real tests of the runtime (the package clean-test and the scaffold e2e, owner ruling no-runtime-specs) and the specs.* switches decide how much is tested and when
+    why: the real tests of the runtime (the package clean-test and the scaffold e2e; the runtime has no specs of its own) and the specs.* switches decide how much is tested and when
     paths:
       - scripts/gates/runtime-tests.mjs
       - scripts/gates/scaffold-e2e.mjs

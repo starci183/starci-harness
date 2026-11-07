@@ -1,4 +1,4 @@
-// lite-proof-lane.mjs - R284: declared patterns in lite prove their scenarios in integration specs.
+// lite-proof-lane.mts - R284: declared patterns in lite prove their scenarios in integration specs.
 // Full keeps its existing e2e/integration proof checks. R155 owns BE_PATTERN_SPEC_MISSING in both editions.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

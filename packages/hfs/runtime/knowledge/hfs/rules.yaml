@@ -35,7 +35,7 @@ enforcerKinds:
   hfs: a check of the hfs CLI that reads the repository tree, configuration, contracts or catalogs
   work-validate: "a check of scripts/work/validate/work-validate.mjs over a .starciwork tree; runs only inside the runtime, so no package spec holds it (RUNTIME_ONLY_ENFORCERS in scripts/hfs/rule-catalog.mjs)"
   sonar: a condition of the Sonar quality gate
-  runtime: "a rule module of the runtime check (scripts/hfs/runtime-check.mjs, scripts/hfs/runtime-rules/*) or an emitter whose findings it judges, over the runtime repository; runs only inside the runtime, so no package spec holds it and no example app is judged by it (RUNTIME_ONLY_ENFORCERS in scripts/hfs/rule-catalog.mjs; owner ruling no-runtime-specs: the package clean-test and the scaffold e2e are the runtime's tests)"
+  runtime: "a rule module of the runtime check (scripts/hfs/runtime-check.mjs, scripts/hfs/runtime-rules/*) or an emitter whose findings it judges, over the runtime repository; runs only inside the runtime, so no package spec holds it and no example app is judged by it (RUNTIME_ONLY_ENFORCERS in scripts/hfs/rule-catalog.mjs; the package clean-test and the scaffold e2e are the runtime's tests)"
 rules:
   - id: R01
     code: "HFS_SLOT_UNDECLARED"
@@ -171,7 +171,7 @@ rules:
     code: "HFS_STACKS_SHAPE"
     editions: [lite, full]
     docs: [docs/legacy-tree-rule-coverage.md#r10]
-    law: "`.starcistacks` has the edition-aware standard shape and the host Sonar owner. STACK-DEV keeps every dependency in Docker Linux containers in development (the db service among them); application processes follow their declared development profile. Production runs the app and dependencies, its db service included, on Docker Swarm (owner:dev-docker-prod-swarm). Swarm stacks have digest-pinned images, healthchecks, rollout, rollback and restart policies, versioned external secrets, ingress-only published ports and declared schedulers for replicated jobs. Recurring work is app-owned; host crontab installation is forbidden. Lite declares its db service as backing (backing.db) and runs no other backing-service component."
+    law: "`.starcistacks` has the edition-aware standard shape and the host Sonar owner. STACK-DEV keeps every dependency in Docker Linux containers in development (the db service among them); application processes follow their declared development profile. Production runs the app and dependencies, its db service included, on Docker Swarm. Swarm stacks have digest-pinned images, healthchecks, rollout, rollback and restart policies, versioned external secrets, ingress-only published ports and declared schedulers for replicated jobs. Recurring work is app-owned; host crontab installation is forbidden. Lite declares its db service as backing (backing.db) and runs no other backing-service component."
     kinds: [check, codemod]
     gates: [settle, land, ci]
     failureCodes: ["HFS_STACKS_SHAPE"]
@@ -270,7 +270,7 @@ rules:
       - {path: packages/hfs/src/hfs-package-manager-mixed.spec.mjs, edition: full, codes: [HFS_PACKAGE_MANAGER_MIXED]}
   - id: R15
     code: "HFS_CANON_PIN_DRIFT"
-    law: "Canon packages and frameworks match `canon-pins.yaml`: exactly, or, for the Grammar family and the two canons, an exact version inside their same-minor `range` (decisions grammar-patch-range, release-only-what-changed; @starci/hfs stays exact); a pre-release meets a range only when the range names one."
+    law: "Canon packages and frameworks match `canon-pins.yaml`: exactly, or, for the Grammar family and the two canons, an exact version inside their same-minor `range` (@starci/hfs stays exact); a pre-release meets a range only when the range names one."
     editions: [lite, full]
     docs: [docs/hfs-legacy-tooling.md#canon-package-pins]
     templateNa: "Dependency versions are generated programmatically by pinnedSection and packageManifest in packages/hfs/scaffold/app.mjs rather than rendered from a managed dependency template."
@@ -870,7 +870,6 @@ rules:
       - {kind: eslint-be, id: no-secret-default}
   - id: R45
     code: "BE_MODULE_SHAPE"
-    amendedBy: [R295, owner:module-definition-everywhere]
     law: "`@Global` nowhere and `isGlobal: true` only at app roots; no cross-owner module imports; typed options; one module per transport, each module with its own module definition beside it (R295); every handler and provider registered exactly once."
     editions: [lite, full]
     docs: [docs/microservices.md#r45]
@@ -924,7 +923,7 @@ rules:
     code: "BE_TEST_TOPOLOGY"
     editions: [lite, full]
     docs: [docs/quality-bar.md#r47-test-topology]
-    law: "One jest config, projects `unit`, `integration`, `e2e` and `contract`, live by folder, `diagnostics: false`; unit specs are `<name>.<role>.spec.ts` beside the file they test: required for the roles of `ruleParams.be.unitRoles` (`<name>.service.spec.ts` beside a `<name>.service.ts`, `<name>.cli.spec.ts` beside a cli command `<name>.cli.ts` of `src/features/cli`), optional for any other logic role (`ruleParams.be.logicRoles`) inside a slot whose `coverage` is required and beside a logic file such a slot declares (`logic`: `passport.tokens.spec.ts` beside `passport.tokens.ts`), except that the commit adding a measured logic file stages its `<name>.<role>.spec.ts` beside it (owner 2026-10-20, judged by `starci app check --staged` in the pre-commit hook), and nowhere else but beside a webhook or realtime door that has no service of its own (`<provider>.webhook.spec.ts`, `<channel>.gateway.spec.ts`, `<x>.subscription.spec.ts`) (every unit-tested subject has exactly one; any other `*.spec.ts` outside `be/src/tests/{world,integration,e2e,contract}` is a finding, including specs in apps), and the unit project collects coverage from the logic roles of the measured roots and the logic files their slots declare only (the scope derived from the slot manifest, R204) with a per-file threshold of 100 on lines, branches, functions and statements (`test` runs `--coverage`; `importHelpers` and `tslib`); `be/src/tests/world/` is the ONLY test infrastructure: `global-setup.ts` starts the app's own stack (`.starcistacks/<env>`, named by `stack` in `test-world.config.ts`, the declaration of the test-world library in a named form: `export const { useTestWorld, useSandbox } = defineTestWorld({...})`, or `const world: TestWorldApi = defineTestWorld({...})` with `useTestWorld` and `useSandbox` exported typed from it (a default export is not read): every service it declares runs REAL, behind toxiproxy, images and versions read from the stack at run time, never spelled in test source) or attaches to a warm one that answers, and runs the migrations once over the cli app's connections (the runner of the cli migrate command); `global-teardown.ts` stops only what its setup started; `use-test-world.ts` exports `useTestWorld({ apps } | { modules })` (`world.apps.<name>.api`, `world.db.<connection>`, `world.infra.<service>` with `latency(ms)`, `cut()` and `restore()` on the real service, `world.fake.<provider>`, `world.waitFor`) and `fakes/<provider>/` holds the network-edge fakes (`failNext`, `replayWebhook`, `delay`, payload fixtures) of external SaaS the team does not operate ONLY: a fake of a service the stack declares is refused, except stateless compute that needs special hardware or an external model (GPU inference, a self-hosted embedding model), whose `stacks` entry in `test-world.config.ts` declares `{ fakedBy: <fake>, reason }` with a non-empty `reason` (a stateful service, or one with a persistent volume, is never accepted); it alone owns containers, DataSource, migrations and `process.env`; nothing under `be/src/tests` overrides a provider or DI token; `be/src/tests/integration/<capability>/*.integration-spec.ts` (`{ modules }`, with the real peer apps its client calls beside them as `apps`; real infrastructure, no HTTP door of ours), `be/src/tests/e2e/<area>/*.e2e-spec.ts` (`{ apps }`) and `be/src/tests/contract/<provider>/*.contract-spec.ts` (provider sandboxes, skipped without sandbox config, run only by `test:contract`, never by `test` or `test:e2e`) agree folder with suffix; an integration or e2e spec passes `useTestWorld` one object literal with plain keys (no variable, spread or computed key) and calls it; the contract layer has no skip either: a contract spec writes `sandbox.describe(...)` from the test-world library's `useSandbox(...)`, and when the sandbox config is absent that describe registers one failing test naming the missing keys (the body never runs), and every `fakes/<provider>/` that serves payload fixtures (`payloads/*.json`) has a `contract/<provider>/*.contract-spec.ts` that references those fixtures and asserts `shapeOf(real)` equals `shapeOf(fixture)` (the helper `shapeOf` is named by `ruleParams.be.contractShape` of the slot manifest; fakes the test-world library provides are guarded by the library); no `.test.ts`, `int-spec` or `harness-spec`, no `live/` and no `be/src/tests/e2e/world`."
+    law: "One jest config, projects `unit`, `integration`, `e2e` and `contract`, live by folder, `diagnostics: false`; unit specs are `<name>.<role>.spec.ts` beside the file they test: required for the roles of `ruleParams.be.unitRoles` (`<name>.service.spec.ts` beside a `<name>.service.ts`, `<name>.cli.spec.ts` beside a cli command `<name>.cli.ts` of `src/features/cli`), optional for any other logic role (`ruleParams.be.logicRoles`) inside a slot whose `coverage` is required and beside a logic file such a slot declares (`logic`: `passport.tokens.spec.ts` beside `passport.tokens.ts`), except that the commit adding a measured logic file stages its `<name>.<role>.spec.ts` beside it (judged by `starci app check --staged` in the pre-commit hook), and nowhere else but beside a webhook or realtime door that has no service of its own (`<provider>.webhook.spec.ts`, `<channel>.gateway.spec.ts`, `<x>.subscription.spec.ts`) (every unit-tested subject has exactly one; any other `*.spec.ts` outside `be/src/tests/{world,integration,e2e,contract}` is a finding, including specs in apps), and the unit project collects coverage from the logic roles of the measured roots and the logic files their slots declare only (the scope derived from the slot manifest, R204) with a per-file threshold of 100 on lines, branches, functions and statements (`test` runs `--coverage`; `importHelpers` and `tslib`); `be/src/tests/world/` is the ONLY test infrastructure: `global-setup.ts` starts the app's own stack (`.starcistacks/<env>`, named by `stack` in `test-world.config.ts`, the declaration of the test-world library in a named form: `export const { useTestWorld, useSandbox } = defineTestWorld({...})`, or `const world: TestWorldApi = defineTestWorld({...})` with `useTestWorld` and `useSandbox` exported typed from it (a default export is not read): every service it declares runs REAL, behind toxiproxy, images and versions read from the stack at run time, never spelled in test source) or attaches to a warm one that answers, and runs the migrations once over the cli app's connections (the runner of the cli migrate command); `global-teardown.ts` stops only what its setup started; `use-test-world.ts` exports `useTestWorld({ apps } | { modules })` (`world.apps.<name>.api`, `world.db.<connection>`, `world.infra.<service>` with `latency(ms)`, `cut()` and `restore()` on the real service, `world.fake.<provider>`, `world.waitFor`) and `fakes/<provider>/` holds the network-edge fakes (`failNext`, `replayWebhook`, `delay`, payload fixtures) of external SaaS the team does not operate ONLY: a fake of a service the stack declares is refused, except stateless compute that needs special hardware or an external model (GPU inference, a self-hosted embedding model), whose `stacks` entry in `test-world.config.ts` declares `{ fakedBy: <fake>, reason }` with a non-empty `reason` (a stateful service, or one with a persistent volume, is never accepted); it alone owns containers, DataSource, migrations and `process.env`; nothing under `be/src/tests` overrides a provider or DI token; `be/src/tests/integration/<capability>/*.integration-spec.ts` (`{ modules }`, with the real peer apps its client calls beside them as `apps`; real infrastructure, no HTTP door of ours), `be/src/tests/e2e/<area>/*.e2e-spec.ts` (`{ apps }`) and `be/src/tests/contract/<provider>/*.contract-spec.ts` (provider sandboxes, skipped without sandbox config, run only by `test:contract`, never by `test` or `test:e2e`) agree folder with suffix; an integration or e2e spec passes `useTestWorld` one object literal with plain keys (no variable, spread or computed key) and calls it; the contract layer has no skip either: a contract spec writes `sandbox.describe(...)` from the test-world library's `useSandbox(...)`, and when the sandbox config is absent that describe registers one failing test naming the missing keys (the body never runs), and every `fakes/<provider>/` that serves payload fixtures (`payloads/*.json`) has a `contract/<provider>/*.contract-spec.ts` that references those fixtures and asserts `shapeOf(real)` equals `shapeOf(fixture)` (the helper `shapeOf` is named by `ruleParams.be.contractShape` of the slot manifest; fakes the test-world library provides are guarded by the library); no `.test.ts`, `int-spec` or `harness-spec`, no `live/` and no `be/src/tests/e2e/world`."
     kinds: [check, codemod, lint]
     gates: [land, ci]
     failureCodes: ["BE_TEST_TOPOLOGY", "BE_CONTRACT_UNGUARDED", "BE_UNIT_SPEC_NOT_STAGED"]
@@ -1148,7 +1147,7 @@ rules:
 
   - id: R56
     code: "FE_HOOKS_ARE_HOOKS"
-    law: "`hooks/` hold hooks only: `hooks/swr` (one SWR wrapper per modules/api operation), `hooks/rhf` (forms), `hooks/zustand/<store>`, `hooks/socketio`, `hooks/effects`, `hooks/reuseables` and `hooks/<domain>` with one shared file per domain; a product hook is defined only there and imported through its index. A function in `hooks/` is a hook when it calls a hook: a React, SWR or Redux hook, a `use*` of the app's own `hooks/` folders (a `hooks/swr` wrapper, a sibling domain hook; resolved by TypeScript symbol resolution), or a listed library hook (next-intl, next/navigation, next-themes useTheme, react-hook-form, zustand); a file that exports a non-hook still fails (owner ruling 2026-10-16 \"Theo y tro\")."
+    law: "`hooks/` hold hooks only: `hooks/swr` (one SWR wrapper per modules/api operation), `hooks/rhf` (forms), `hooks/zustand/<store>`, `hooks/socketio`, `hooks/effects`, `hooks/reuseables` and `hooks/<domain>` with one shared file per domain; a product hook is defined only there and imported through its index. A function in `hooks/` is a hook when it calls a hook: a React, SWR or Redux hook, a `use*` of the app's own `hooks/` folders (a `hooks/swr` wrapper, a sibling domain hook; resolved by TypeScript symbol resolution), or a listed library hook (next-intl, next/navigation, next-themes useTheme, react-hook-form, zustand); a file that exports a non-hook still fails."
     kinds: [lint, codemod]
     gates: [settle, land, ci]
     failureCodes: ["FE_HOOKS_ARE_HOOKS", "FE_CUSTOM_HOOK_LOCATION", "FE_BLOCK_PRODUCT_HOOK_DEFINITION", "FE_COMPONENT_DEEP_HOOK_IMPORT"]
@@ -1915,7 +1914,7 @@ rules:
       - {path: packages/eslint/fe/r56-r92-graph-coverage.spec.mjs, editions: [lite, full]}
   - id: R93
     code: "FE_VENDOR_BOUNDARY"
-    law: "Vendor primitives and icons reach components only through their named owner: one declared icon set through its icon owner, one icon size per region chosen from the selected Grammar scale, and every vendor primitive behind a named owner. The Grammar package is imported through its selected public code and style entries and keeps its declared contract. The Grammar owns the visual values and component API that realize these requirements."
+    law: "Vendor primitives and icons reach components only through their named owner, with one declared icon set through its icon owner, one icon size per region chosen from the selected Grammar scale, and every vendor primitive behind a named owner. The Grammar package is imported through its selected public code and style entries and keeps its declared contract. The Grammar owns the visual values and component API that realize these requirements."
     kinds: [lint, codemod]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_VENDOR_BOUNDARY", "ARCH_GRAMMAR_CONTRACT_INVALID", "ARCH_GRAMMAR_EXPORT_BYPASS"]
@@ -2271,7 +2270,7 @@ rules:
       - {path: packages/hfs/src/hfs-peer-integrations-coverage.spec.mjs, editions: [lite, full], codes: [HFS_PEER_INTEGRATION_MISSING]}
   - id: R112
     code: "BE_INTEGRATION_SPEC_MISSING"
-    editionWhy: "ruling:R212/case-3 keeps lite outside the full test world; ruling:lite-production-swarm amends hosting and ruling:lite-contract-specs permits contract specs while preserving that e2e boundary. R284 owns lite's integration proof lane; this rule judges provider module, error-code and outage proofs through the full world."
+    editionWhy: "Lite stays outside the full test world: it has contract specs but no e2e world. R284 owns lite's integration proof lane; this rule judges provider module, error-code and outage proofs through the full world."
     docs: [docs/quality-bar.md#r112]
     templateNa: "Provider-specific module registration, refusal mapping and outage scenarios must be authored for each integration; the app scaffold has no provider-specific integration proof to generate."
     law: "Every integration of a back end (`src/modules/integrations/<provider>/` holding `<provider>.config.ts`) has at least one `src/tests/integration/<provider>/*.integration-spec.ts` that, read as a syntax tree, calls `useTestWorld({ modules })` with a factory registering the integration's own module (`<Provider>Module.register`, imported from the integration folder; an inline array, a local const or an exported const of another file), references the ErrorCode enum the integration exports, and drives an outage through the world (`world.infra.<service>.cut|latency|during|connection`, `world.fake.<name>.failNext`, `world.apps.<peer>.during`, `world.interruptDatabase`); the finding sits on the integration folder."
@@ -2354,7 +2353,7 @@ rules:
     templateNa: "Runtime repository source ownership and layout are not scaffolded by managed application templates."
   - id: R118
     code: "RT_SPEC_PLACEMENT"
-    law: "No runtime tests in .claude (owner ruling no-runtime-specs, 2026-10-17): a spec or test file is allowed only beside its package source as <name>.spec.* (never .test.), under examples/, or as a declared file of the scaffold e2e (slot runtime.e2e); any other tracked spec, tests/** included, is refused."
+    law: "No runtime tests in .claude: a spec or test file is allowed only beside its package source as <name>.spec.* (never .test.), under examples/, or as a declared file of the scaffold e2e (slot runtime.e2e); any other tracked spec, tests/** included, is refused."
     scope: runtime
     kinds: [check]
     gates: [runtime]
@@ -2713,7 +2712,7 @@ rules:
     enforcers:
       - {kind: hfs, id: pattern-spec-missing, at: scripts/hfs/rules/event-bus.mjs, editions: [full]}
       - {kind: hfs, id: lite-proof-lane, at: scripts/hfs/rules/lite-proof-lane.mjs, editions: [lite]}
-    editionWhy: "each enforcer judges the edition it emits for (pattern-spec-missing returns no findings for lite, lite-proof-lane is lite's emitter), so the split adds lite's emitter and drops no finding; ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4) gives lite its integration proof lane while full retains e2e or integration proofs."
+    editionWhy: "each enforcer judges the edition it emits for (pattern-spec-missing returns no findings for lite, lite-proof-lane is lite's emitter), so the split adds lite's emitter and drops no finding; lite has its integration proof lane (R284) while full retains e2e or integration proofs."
     docs: [docs/quality-bar.md#r155]
     templateNa: "Pattern scenarios depend on application behavior and providers; no universal runnable scenario proof is scaffolded."
     proves:
@@ -2929,7 +2928,7 @@ rules:
       - {path: packages/hfs/src/hfs-event-table-contract.spec.mjs, editions: [lite, full], codes: [HFS_EVENT_CONTRACT]}
   - id: R167
     code: "BE_ASYNC_SPEC_MISSING"
-    editionWhy: "ruling:lite-contract-specs preserves the full-only e2e boundary. R284 owns lite's integration proof lane; this rule requires consumed-event scenarios through the full test world."
+    editionWhy: "Lite has contract specs but no e2e world, so these scenarios run only in full. R284 owns lite's integration proof lane; this rule requires consumed-event scenarios through the full test world."
     docs: [docs/microservices.md#r167]
     templateNa: "Consumed-event and compensation scenarios depend on the product's event contracts and effects; the app scaffold has no product-specific asynchronous e2e scenario to generate."
     law: "Every event an app consumes (an entry of its `consumes.ts`) is named by an e2e spec, a file `be/src/tests/e2e/<area>/*.e2e-spec.ts` that boots the apps through `useTestWorld` (it publishes the event, reads the effect back and redelivers it); when the contract of the event declares `compensates: \"<event>\"` it is a saga step, and a spec naming it also names the compensated event, so the spec drives the whole flow: the step, the failure, then the compensated state."
@@ -3040,7 +3039,7 @@ rules:
       - {path: packages/hfs/src/hfs-saga-consumer-dedupe.spec.mjs, editions: [lite, full], codes: [BE_SAGA_CONSUMER_DEDUPE]}
   - id: R173
     code: "BE_SAGA_E2E_MISSING"
-    editionWhy: "ruling:lite-contract-specs preserves the full-only e2e boundary. R284 owns lite's integration proof lane; this rule requires compensation fault scenarios through the full test world."
+    editionWhy: "Lite has contract specs but no e2e world, so these scenarios run only in full. R284 owns lite's integration proof lane; this rule requires compensation fault scenarios through the full test world."
     docs: [docs/microservices.md#r173]
     templateNa: "Compensation events and injected-fault scenarios depend on the product's saga; the app scaffold has no product-specific compensation e2e scenario to generate."
     law: "Every compensation path of a saga has an e2e spec (`be/src/tests/e2e/<area>/*.e2e-spec.ts` through `useTestWorld`) that names the event of the compensation and injects a failure through the world (an outage of an infra service or an app with `during`, `cut` or `latency`, a fake's `failNext`, `interruptDatabase`): the compensation is proven under a fault, not only on the happy flow."
@@ -3251,7 +3250,7 @@ rules:
     witness:
       - {path: packages/eslint/be/webhooks-realtime-coverage.spec.mjs, edition: lite, codes: [BE_REALTIME_SHAPE]}
       - {path: packages/eslint/be/webhooks-realtime-coverage.spec.mjs, edition: full, codes: [BE_REALTIME_SHAPE]}
-    law: "A realtime file is the one door its role names: `<channel>.gateway.ts` holds one `@WebSocketGateway` class with `@SubscribeMessage` handlers, `<x>.subscription.ts` holds one `@Resolver` class with `@Subscription` operations and `<channel>.controller.ts` of the sse slot holds one `@Controller` class whose one route is `@Sse`, and none carries a query, a mutation, a field resolver, a plain REST route or another protocol. Both editions serve all three doors from the api process: SSE (the default door for one-way push), the socket.io gateway (two-way) and the restricted GraphQL subscription (R212 case-2 (owner:lite-production-swarm), with the Work boundary amended by ruling:R212/case-4 and the realtime adapter amended by ruling:R212/case-5 and ruling:R212/case-7, owner:lite-graphql-subscription-door)."
+    law: "A realtime file is the one door its role names: `<channel>.gateway.ts` holds one `@WebSocketGateway` class with `@SubscribeMessage` handlers, `<x>.subscription.ts` holds one `@Resolver` class with `@Subscription` operations and `<channel>.controller.ts` of the sse slot holds one `@Controller` class whose one route is `@Sse`, and none carries a query, a mutation, a field resolver, a plain REST route or another protocol. Both editions serve all three doors from the api process: SSE (the default door for one-way push), the socket.io gateway (two-way) and the restricted GraphQL subscription (R212)."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_REALTIME_SHAPE"]
@@ -3571,7 +3570,7 @@ rules:
       - {path: packages/hfs/templates/app/hooks/husky/pre-commit, editions: [lite, full]}
   - id: R208
     code: "RT_PORT_RESTATED"
-    law: "Every port literal of the runtime is spelled once, by its owner, and every other file references the owner: the harness UI ports live in modules/models/runtimes.yaml statusApp.port/devPort read through ui/ports.mjs, the local SonarQube host in scripts/gates/sonar-local.mjs DEFAULT_HOST. No in-scope file that is not the owner spells an owned literal in a port position (a scheme://host:NNNN or host:NNNN authority, a *port*/PORT assignment, a listen(NNNN) call), and an unowned literal in a port position of two or more runtime source files gets one owning exported constant the rest reference. Specs, tests, node_modules, the generated runtime copies, changelogs, .starciwork and the product stack declarations (.starcistacks, starcistacks-services - a product owns the ports of the services it runs) are out of scope."
+    law: "Every port literal of the runtime is spelled once, by its owner, and every other file references the owner; the harness UI ports live in modules/models/runtimes.yaml statusApp.port/devPort read through ui/ports.mjs, the local SonarQube host in scripts/gates/sonar-local.mjs DEFAULT_HOST. No in-scope file that is not the owner spells an owned literal in a port position (a scheme://host:NNNN or host:NNNN authority, a *port*/PORT assignment, a listen(NNNN) call), and an unowned literal in a port position of two or more runtime source files gets one owning exported constant the rest reference. Specs, tests, node_modules, the generated runtime copies, changelogs, .starciwork and the product stack declarations (.starcistacks, starcistacks-services - a product owns the ports of the services it runs) are out of scope."
     scope: runtime
     kinds: [check]
     gates: [runtime]
@@ -3620,11 +3619,11 @@ rules:
   - id: R212
     editions: [lite, full]
     codeEditions: {HFS_EDITION_FORBIDDEN_PRESENT: [lite], HFS_STARCIWORK_LITE_FORBIDDEN: [lite], HFS_BACKING_UNDECLARED: [lite], HFS_BACKING_UNUSED: [lite]}
-    editionWhy: "R212/case-3, R212/case-4 (owner:lite-production-swarm) and R212/case-10 preserve full Work, limit the lite infrastructure and Work surfaces and admit only declared backing services in lite."
+    editionWhy: "Full keeps the whole Work tree and test world; lite is a minimal production, so its infrastructure and Work surfaces are limited to what that needs and it admits only the backing services it declares."
     docs: [docs/lite-edition.md#edition-validation]
     templateNa: "The hfs.json edition declaration is generated programmatically by packages/hfs/scaffold/app.mjs; no managed declaration template exists. Forbidden paths are rejected rather than scaffolded."
     code: "HFS_EDITION_INVALID"
-    law: "hfs.json names an edition the manifest knows (full, or lite; absent means full). Lite is a minimal production (case-10): the same monorepo, code structure, slots, patterns and back-end unit specs, one stateless instance type that scales horizontally, its own PostgreSQL db service, Passport identity and S3-compatible storage (ruling:lite-self-hosted-postgres-passport-minio), and one minimal instance of each backing service a declared capability needs (hfs.json sides.be.backing: Redis for the queue, with AOF persistence); vector search uses pgvector in the db service (owner:lite-vector-is-pgvector, which excludes Qdrant from lite); a backing service is declared or absent, never on by default. The queue is BullMQ on Redis in both editions, fed by the Postgres outbox; pg_cron ticks enqueue through that outbox; the event bus keeps its lite adapter (pgmq-backed topics or in-process delivery) because full's event bus is Kafka, not Redis; cache and locks are Postgres unless Redis is declared; the api and sidecars run on docker-swarm on a VPS. The realtime pattern serves SSE (the default for one-way push), the same socket.io gateway or the restricted GraphQL subscription inside the be api process (scales horizontally and stateless: the memory hub is for a single replica or tests only, and replicas > 1 use the Redis hub and the sharded @socket.io/redis-adapter when Redis is declared, else the Postgres hub and @socket.io/postgres-adapter; both shared socket adapters force websocket-only connections with no sticky sessions; R212 case-9, which amends the realtime clauses of case-2, case-3 and case-5; the GraphQL subscription door is R212 case-7 and owner:lite-graphql-subscription-door), and both editions share knowledge/hfs/fe-stack.yaml. Lite requires application-stacks.yaml and permits environment metadata, runbooks, infra/swarm and encrypted-secret custody, while refusing infra/compose, infra/k8s, infra/terraform and backing components other than its db service (runtime/{config,env}, seeds and the sealed secrets of its environments are allowed). Contract specs and `test:contract` are allowed (owner 2026-10-14); it has no e2e spec, `test:e2e`, `test:world` or `test:browser` script, e2e workflow, browser journey, Work catalog, shell, features, resources, UAT or br records, test container, toxiproxy, browser-runner or Kafka dependency, client library of an undeclared backing service (HFS_BACKING_UNDECLARED), declared backing service without a consumer (HFS_BACKING_UNUSED), or a supabase/ tree (LITE_DB_MIGRATION). Its .starciwork is optional and admits only .gitignore, workspace.yaml and brand/**; workspace.yaml is optional and carries project identity and repo roles for the Work tools."
+    law: "hfs.json names an edition the manifest knows (full, or lite; absent means full), chosen once at scaffold: no verb moves an app between lite and full, `starci app upgrade` only completes the test world of a full app, and `starci app check --edition` accepts only the edition hfs.json declares. Lite is a minimal production: the same monorepo, code structure, slots, patterns and back-end unit specs, one stateless instance type that scales horizontally, its own PostgreSQL db service, Passport identity and S3-compatible storage, and one minimal instance of each backing service a declared capability needs (hfs.json sides.be.backing: Redis for the queue, with AOF persistence; a declared queue or fenced-job pattern requires it); durable data stays in Postgres; vector search uses pgvector in the db service, never Qdrant, and MongoDB stays out; a backing service is declared or absent, never on by default. The queue is BullMQ on Redis in both editions, fed by the Postgres outbox (pgmq is never a queue transport); a recurring tick of platform/jobs (R335) enqueues through that outbox; the event bus keeps its lite adapter (pgmq-backed topics or in-process delivery) because full's event bus is Kafka, not Redis; cache and locks are Postgres unless Redis is declared; the api and sidecars run on docker-swarm on a VPS. The realtime pattern serves SSE (the default for one-way push), the same socket.io gateway (two-way messages) or the restricted GraphQL subscription (only for a client that already uses GraphQL and needs the typed payload, refetching a snapshot on reconnect) inside the be api process; a door reads and pushes only, builds its topics from the principal, is never public and carries no token in the URL; the pattern scales horizontally and stateless with no sticky sessions, its hub chosen once per app by REALTIME_HUB with no default (the memory hub is for a single replica or tests only, and replicas > 1 use the Redis hub and the sharded @socket.io/redis-adapter when Redis is declared, else the Postgres hub and @socket.io/postgres-adapter; both shared socket adapters force websocket-only connections), and both editions share knowledge/hfs/fe-stack.yaml. Lite requires application-stacks.yaml and permits environment metadata, runbooks, infra/swarm and encrypted-secret custody, while refusing infra/compose, infra/k8s, infra/terraform and backing components other than its db service (runtime/{config,env}, seeds and the sealed secrets of its environments are allowed). Contract specs and `test:contract` are allowed; it has no e2e spec, `test:e2e`, `test:world` or `test:browser` script, e2e workflow, browser journey, Work catalog, shell, features, resources, UAT or br records, test container, toxiproxy, browser-runner or Kafka dependency, client library of an undeclared backing service (HFS_BACKING_UNDECLARED), declared backing service without a consumer (HFS_BACKING_UNUSED), or a supabase/ tree (LITE_DB_MIGRATION). Its .starciwork is optional and admits only .gitignore, workspace.yaml and brand/**; workspace.yaml is optional and carries project identity and repo roles for the Work tools."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["HFS_EDITION_INVALID", "HFS_EDITION_FORBIDDEN_PRESENT", "HFS_STARCIWORK_LITE_FORBIDDEN", "HFS_BACKING_UNDECLARED", "HFS_BACKING_UNUSED"]
@@ -3632,58 +3631,6 @@ rules:
       - {kind: hfs, id: edition, at: scripts/hfs/rules/edition.mjs}
       - {kind: hfs, id: lite-brand-work, at: scripts/hfs/path-findings.mjs}
       - {kind: work-validate, id: lite-brand-work, at: scripts/work/validate/work-boundary-check.mjs}
-    cases:
-      - id: case-1
-        date: "2026-10-12"
-        source: owner
-        quote: "For a lite app the back end is exactly the same too, only deployed more simply; the fe and be of a lite app are exactly the same as a full app, except there is no e2e - unit tests stay; a lite app has no infra, a monorepo + Supabase; fe and be in a monorepo like a full app. (translated from Vietnamese)"
-        ruling: "Lite = the full architecture minus self-hosted infrastructure (replaced by case-10: lite is a minimal production that runs one instance of each declared backing service). The same be/apps (api, cli, optional worker), be/src/{features,modules}, fe/apps and fe/packages, supabase/, .starcistacks and .starciwork; the same CQRS shape and patterns declared in hfs.json the same way. Only adapters and delivery differ, all on Supabase: schema authority in supabase/migrations; the queue pattern on Supabase Queues (pgmq) behind the same platform/queue ports (outbox to queue, processors, retry and backoff by visibility timeout and read_ct, archive on dead letter), no BullMQ or Redis (replaced by case-10: the queue is BullMQ on a declared Redis, as in full); the event-bus pattern on pgmq-backed topics (or in process for a single api) behind the same EventPublisher/EventConsumer ports, no Kafka; realtime on Supabase Realtime (replaced by case-2: the socket.io gateway in the api process); cache and locks on Postgres (advisory locks or an unlogged table); schedules on pg_cron (+ pg_net) or the platform scheduler; storage and auth on Supabase. Back-end unit specs are required exactly as in full (unitRoles, logicRoles, 100 per file, @starci/jest-preset doubles, builders); integration specs are optional and run only on the local Supabase CLI stack (`starci supabase start`, no toxiproxy, no own containers); there is no e2e or contract world and no app.ci-e2e. .starcistacks holds env and secret custody only. The front end and the grammar stay exactly as in full: no tests (R97). The queue transport question was confirmed the same day: Supabase Queues (pgmq) (replaced by case-10: Redis). The upgrade promise of this case is withdrawn by case-6: editions are fixed at scaffold."
-      - id: case-2
-        date: "2026-10-13"
-        source: owner
-        quote: "Lite and full apps are the same code structure; lite only swaps the infrastructure for Supabase, has no self-hosted infrastructure and no e2e, and saga and jobs are built exactly like full. The front end of lite and full follows starci-academy: the browser calls the back end directly through modules/api/graphql (Apollo auth and no-auth clients with the link chain) and axios only for non-GraphQL calls, hooks/swr wraps every operation and components call hooks only, modules/toast reports mutation outcomes. Forbidden: Server Actions, Next route handlers except health/live, front-end data reads from Supabase (Supabase on the front end is auth only) and the rpc + polling command pattern; modules/db goes away. Every back-end feature exposes GraphQL for the front end; heavy work is a mutation that enqueues a job and the front end follows its progress. (translated from Vietnamese)"
-        ruling: "Lite and full share one code structure; the edition changes only the infrastructure (Supabase Postgres, Auth, Storage, pgmq and pg_cron instead of self-hosted services; replaced by case-10: plus one instance of each declared backing service, with the queue on Redis), runs the socket.io gateway inside the be api process (one instance, no Redis adapter; be.feature.realtime.websocket is legal in lite and the Supabase Realtime door is gone) and has no e2e. The front end is one standard for both editions, catalogued in knowledge/hfs/fe-stack.yaml (one canonical library, HFS home and pattern per concern, versions in canon-pins.yaml): Apollo GraphQL in modules/api/graphql with codegen from be/contracts/<app>/schema.graphql, axios in modules/api/rest for uploads, presigned URLs and auth endpoints, SWR hooks in hooks/swr, react-hook-form with zod in hooks/rhf, redux for app-wide state, zustand for local state, socket.io-client in hooks/socketio, modules/toast for mutation outcomes and modules/auth as the only front-end Supabase importer (auth only). The front end serves no API: no Server Action anywhere (FE_SERVER_ACTION_FORBIDDEN) and no route handler beyond health/live and the fe.route.callback slot (FE_ROUTE_HANDLER_FORBIDDEN); a package outside the catalog's choice is FE_STACK_FORBIDDEN. Back-end features expose GraphQL (be.transport.graphql) for the front end and keep REST for webhooks, the public API and OAuth callbacks; heavy work is a mutation that enqueues a fenced job or saga, and the front end polls a status query with SWR refreshInterval or listens on a socket namespace."
-      - id: case-3
-        date: "2026-10-13"
-        source: owner
-        quote: "As the student proposes. (translated from Vietnamese; the owner adopted the proposed HFS standard for front end and back end, lite = full)"
-        ruling: "One HFS tree for both editions: the repository root, be/ (apps, contracts, features, modules, tests) and fe/apps/<app>/src have the same shape in lite and full, and code above the platform/integrations seam is the same. The editions differ only behind that seam: the database and its migration authority (lite supabase/migrations; full TypeORM entities and migrations in be.persistence), the auth provider (lite Supabase Auth through fe.modules.auth and a JWKS-verified back end; full the app's identity provider), object storage (lite Supabase Storage; full S3-compatible storage), queue and jobs (lite pgmq and pg_cron, replaced by case-10: BullMQ on a declared Redis as in full, with pg_cron ticks enqueueing through the outbox; full BullMQ) behind platform/queue, realtime (lite the socket.io gateway in the api process, one instance; full socket.io scaled with a Redis adapter), the event-bus adapter (lite outbox and pgmq; full outbox and Kafka) and hosting; lite has no e2e. Migration baseline at the cutover of an existing app: the live schema is dumped into one baseline migration written to the current standard and marked applied on production without a re-run, the older migrations move to app.supabase.migrations.archive (supabase/migrations/_archive/, never applied and never judged), and new migrations append after the baseline. Assets: static templates, copy and presets are TS constants in the owning domain capability (<x>.templates.ts) and user-editable ones are seed rows; small build-time binaries such as fonts live in be.assets (be/src/assets/<kind>/); large and user media live in object storage and are fetched at runtime; there is no be/resources/."
-
-      - id: case-4
-        date: "2026-10-14"
-        source: owner
-        quote: "In a lite app, .starciwork keeps only the brand records."
-        ruling: "Amended by the owner on 2026-10-14: under lite, .starciwork is optional when the app has no brand records and admits only .gitignore, workspace.yaml and brand/** in the existing brand tooling layout, including drawing records, references and assets. workspace.yaml is optional and keeps the project id and repo roles so Work root detection and render-proof role mapping can tie brand records to the front end. index.yaml, shell/, features/, _resources/, uat and br remain forbidden. Lite readers read workspace.yaml normally and skip the full-edition catalog, shell and feature metadata; lite scaffolding creates .gitignore and workspace.yaml, with brand/ only when present. Full edition is unchanged."
-      - id: case-5
-        date: "2026-10-24"
-        source: owner
-        quote: "Lite may serve SSE, and SSE is the default for one-way push. (alpha.30 BE patterns research, owner decisions 2026-10-24, relayed by the alpha.30 lead)"
-        ruling: "Server-sent events are the third door of the realtime pattern (be.feature.realtime.sse), legal in lite and in full, and the default door for one-way server-to-client push; this amends the lite realtime adapter clause of case-2, which named the socket.io gateway as lite's only push. The socket.io gateway stays for a bidirectional channel, graphql-ws and the GraphQL subscription door stay full-only, and the hub is single-replica (the lite api pins replicas: 1, STACKS_REALTIME_SCALED)."
-      - id: case-6
-        date: "2026-10-24"
-        source: owner
-        quote: "Lite cannot become full. Lite is lite, full is full. (translated from Vietnamese; owner, 2026-10-24, relayed by the alpha.31 coordinator)"
-        ruling: "The edition is chosen once, at scaffold. No verb moves an app between lite and full: `starci app upgrade` refuses a lite app (HFS_UPGRADE_EDITION_FIXED) and only completes the test world of a full app, and `starci app check --edition` accepts only the edition hfs.json declares (HFS_EDITION_INVALID otherwise). A product that wants full is scaffolded as a full app and its product code moves across; the code above the platform and integrations seam is the same in both editions. This supersedes the 'upgrade lite -> full' and 'downgrade is not supported' sentences of case-1 to case-4."
-      - id: case-7
-        date: "2026-10-24"
-        source: owner
-        quote: "GraphQL subscriptions are allowed in lite too, as a restricted door; SSE stays the default for one-way push and WebSocket the choice for two-way. (alpha.31 realtime canon brief, owner decisions 2026-10-24, relayed by the lead)"
-        ruling: "The GraphQL subscription is the third restricted door of the realtime pattern in both editions (slot be.feature.realtime.graphql and its dto slot, no longer full-only; graphql-ws and graphql-subscriptions are owned by platform/realtime in lite as in full). SSE stays the default for one-way push, the socket.io gateway is the door for two-way messages, and the GraphQL subscription is used only when the client already uses GraphQL and needs the typed schema payload, with a snapshot refetch on reconnect because graphql-ws has no replay. Every door rule stays: a door reads and pushes only, topics are built from the principal, a door is never public and no token travels in the URL. The memory hub is non-scale (tests and one replica); the hub is Redis when Redis is declared (lite or full) and Postgres LISTEN/NOTIFY when lite declares no Redis. The lite Redis gate and the R212 clause that refused Redis are retired by case-10 (final owner ruling 2026-10-24: lite is a minimal production with declared Redis; owner:lite-vector-is-pgvector narrows its vector store to Supabase pgvector). This amends the clause of case-5 that kept the subscription door full-only."
-      - id: case-8
-        date: "2026-10-24"
-        source: owner
-        quote: "One S3-style storage port for BOTH editions; business code and the presigned pattern are written once. Lite: the adapter targets Supabase Storage, with no MinIO in lite because Supabase already provides storage. Full: MinIO for local, dev and the test world; S3 or DigitalOcean Spaces in production, where only the endpoint changes and never the code. Lite-app gets the same presigned upload/download case as full-app, so both editions teach one pattern. (alpha.31 storage lane brief, owner decision 2026-10-24, relayed by the alpha.31 coordinator)"
-        ruling: "Object storage is one S3-style port in both editions (ObjectStorage of be.integrations.object-storage, one S3 adapter): lite points it at the Supabase Storage S3 endpoint and runs no MinIO; full uses MinIO locally and in the test world and S3 or Spaces in production, changing only the endpoint and credentials. The presigned case of BE-TRANSPORT-1 is a presigned PUT signed for the exact type and length, followed by a head check that deletes a mismatch, in both editions; the POST policy is not used because Supabase documents none."
-      - id: case-9
-        date: "2026-10-24"
-        source: owner
-        quote: "Lite scales too, but scales stateless; lite is one instance type that scales horizontally and stateless. (translated from Vietnamese; owner, 2026-10-24, relayed by the alpha.31 coordinator)"
-        ruling: "Lite scales horizontally and stateless, as full does: one instance type (the api), every replica serves any request or reconnect, all shared state lives in Postgres/Supabase (and in Redis when the app declares it, holding loseable data only), and there are no sticky sessions. The realtime hub is chosen once per app by REALTIME_HUB with no default: memory (one replica or tests only; STACKS_REALTIME_SCALED refuses it for an api with more than one replica or the global mode), postgres (LISTEN/NOTIFY and the bounded realtime_events table with @socket.io/postgres-adapter) or redis (Streams and Pub/Sub with the sharded @socket.io/redis-adapter); all three are legal in both editions, redis is selected when Redis is declared and postgres when it is not, and the socket transport is websocket-only. This amends the realtime clauses of case-2 and case-3 (which stay as dated) and the single-replica clause of case-5 (the lite api no longer pins replicas: 1)."
-      - id: case-10
-        date: "2026-10-24"
-        source: owner
-        quote: "Lite still has Redis, Qdrant and the like!!! That is, it deploys a minimal production. Lite is one instance that scales horizontally and is stateless! Full's infrastructure is more complex. Lite cannot go up to full!!! Lite is lite, full is full. The queue is Redis!!! (translated from Vietnamese; the owner approved the ruling table with \"ok, fix all of it, that is right\")"
-        ruling: "This case replaces the clauses of case-1, case-2 and case-3 that ban backing services in lite and the clause of case-7 that keeps Redis out of the realtime hub of lite (no BullMQ or Redis, one instance with no Redis adapter, the full architecture minus self-hosted infrastructure, the queue on pgmq). Lite is a minimal production: one instance type (one api, an optional worker) that is stateless and scales horizontally, its own PostgreSQL db service, Passport identity and S3-compatible storage (ruling:lite-self-hosted-postgres-passport-minio), and one minimal instance of each backing service a declared capability needs, deployed compactly on docker-swarm; full is several services each with its own database plus Redis, Kafka/CDC, its own IdP, object storage and observability on a multi-node stack. A backing service is declared or absent: hfs.json sides.be.backing names redis in lite (redis or qdrant in full), nothing is on by default; owner:lite-vector-is-pgvector narrows the lite vector store to Supabase pgvector and refuses Qdrant even when declared, the lite stack renders only declared services (STACKS_LITE_SELFHOSTED_DB), a client library of an undeclared service is refused (HFS_BACKING_UNDECLARED) and a declared service without a consumer is refused (HFS_BACKING_UNUSED). The queue is BullMQ on Redis in both editions behind the same platform/queue ports (outbox in Postgres, relay to BullMQ, processors, retry with exponential backoff, failed jobs kept as the dead letter); pgmq is not a queue transport, a declared queue or fenced-job pattern requires Redis, and a pg_cron tick enqueues through the queue outbox. The lite Redis runs with AOF persistence (appendonly yes) on a named volume because queue jobs must not be lost (STACKS_LITE_REDIS_PERSISTENCE); cache, rate limit and realtime pub/sub may share that instance, which keeps maxmemory-policy noeviction so no queue job is evicted. Durable data and the outbox stay in Postgres. MongoDB stays out of lite. Editions are fixed at scaffold (case-6)."
     proves: [packages/hfs/src/hfs-edition-invalid.spec.mjs, packages/hfs/src/hfs-edition-forbidden-present.spec.mjs, packages/hfs/src/hfs-starciwork-lite-forbidden.spec.mjs, packages/hfs/src/hfs-backing-declared.spec.mjs]
     exemplifiedBy:
       - {path: packages/hfs/src/hfs-edition-invalid.spec.mjs, editions: [lite, full]}
@@ -3700,7 +3647,7 @@ rules:
     editions: [lite, full]
     docs: [docs/architecture.md#r213]
     templateNa: "Full apps keep TypeORM migrations under be/; the managed db/migrations scaffold is lite's."
-    law: "A migration is `db/migrations/<ts14>_<kebab>.sql`; the stamp is a valid UTC instant, active stamps are unique, and a new migration sorts strictly after the committed active migrations in HEAD. Repository history includes the archive: moving an active migration to the archive retires it from ordering, so a replacement baseline may predate archived stamps and later migrations append after the baseline. Wall-clock time, commit time and remote-branch stamps do not set the ordering boundary. A migration already on the base is immutable (a diff or an unarchived removal is a finding); a file that does not parse as PostgreSQL is a shape failure. `starci app db migrate` applies each migration in one transaction with its history row, so a top-level BEGIN, START TRANSACTION, COMMIT, END, ROLLBACK, ABORT, SAVEPOINT, RELEASE or PREPARE TRANSACTION, or a COMMIT or ROLLBACK inside a DO block, is a shape failure named by file:line; a function or procedure body is never judged. A declared one-time baseline reset (hfs.json `db.baselineReset` = `{ baseline, ruling, date, reason }`, the owner ruling for an app that keeps no data worth migrating) makes the one declared baseline file (`-- starci:baseline-reset <ruling>` header) the new base chain while it is not yet on the base branch: the removal of every older active file and of the archive is accepted (R213 immutability, R257 archive immutability); exactly one file may carry the marker, no older active file may stay, and later migrations sort after the baseline. Once the baseline is on the base branch the declaration is spent and every rule applies to it unchanged; without the declaration nothing changes."
+    law: "A migration is `db/migrations/<ts14>_<kebab>.sql`; the stamp is a valid UTC instant, active stamps are unique, and a new migration sorts strictly after the committed active migrations in HEAD. Repository history includes the archive: moving an active migration to the archive retires it from ordering, so a replacement baseline may predate archived stamps and later migrations append after the baseline. Wall-clock time, commit time and remote-branch stamps do not set the ordering boundary. A migration already on the base is immutable (a diff or an unarchived removal is a finding); a file that does not parse as PostgreSQL is a shape failure. `starci app db migrate` applies each migration in one transaction with its history row, so a top-level BEGIN, START TRANSACTION, COMMIT, END, ROLLBACK, ABORT, SAVEPOINT, RELEASE or PREPARE TRANSACTION, or a COMMIT or ROLLBACK inside a DO block, is a shape failure named by file:line; a function or procedure body is never judged. A declared one-time baseline reset (hfs.json `db.baselineReset` = `{ baseline, ruling, date, reason }`, the recorded decision for an app that keeps no data worth migrating) makes the one declared baseline file (`-- starci:baseline-reset <ruling>` header) the new base chain while it is not yet on the base branch: the removal of every older active file and of the archive is accepted (R213 immutability, R257 archive immutability); exactly one file may carry the marker, no older active file may stay, and later migrations sort after the baseline. Once the baseline is on the base branch the declaration is spent and every rule applies to it unchanged; without the declaration nothing changes."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["DB_MIGRATION_SHAPE"]
@@ -3764,7 +3711,7 @@ rules:
   - id: R220
     code: "HFS_LITE_SECRET_CUSTODY"
     editions: [lite]
-    editionWhy: "ruling:lite-self-hosted-postgres-passport-minio gives lite its own database and identity; R220 adds lite's reduced custody tree and the fe/ and db/ literal scan, while R06 governs plaintext secret material in both editions."
+    editionWhy: "Lite runs its own database and identity; R220 adds lite's reduced custody tree and the fe/ and db/ literal scan, while R06 governs plaintext secret material in both editions."
     docs: [docs/host-secrets.md#application-secret-rules]
     law: "A lite app holds no secret material in the tree: root `.env*`, `secrets.env`, `.secrets/` and an `.enc` file outside `.starcistacks/<env>/secrets` are forbidden, and `fe/` and `db/` hold no provider token, JWT or connection string with a password; the one custody is the sealed `.starcistacks/<env>/secrets/<slug>.enc`."
     kinds: [check]
@@ -3807,13 +3754,13 @@ rules:
       - {kind: runtime, id: release-notes, at: scripts/hfs/runtime-rules/release-notes.mjs}
   - id: R223
     code: "RIGHTS_ROLE_DENIED"
-    law: "By the caller's role, the command guard refuses git push, git tag, raw git commit/add/rm/mv, raw git synchronization writes, npm publish, a whole-suite run outside the release cut and unit.verify/e2e.verify, npm ci without the host lock, a release cut, and raw side-effecting tools; modules/kernel/command-policy.yaml is the one rule table read by both the PreToolUse guard and the PATH shim."
+    law: "By the caller's role, the command guard refuses git push, git tag, raw git commit/add/rm/mv, raw git synchronization writes, npm publish, a whole-suite run outside the release cut and unit.verify/e2e.verify, npm ci without the host lock, a release cut, and raw side-effecting tools, from one rule table that the PreToolUse guard and the PATH shim both read."
     scope: runtime
     kinds: [check]
     gates: [land, runtime]
     failureCodes: ["RIGHTS_ROLE_DENIED", "RIGHTS_GIT_PUSH", "RIGHTS_GIT_TAG", "RIGHTS_GIT_COMMIT", "RIGHTS_GIT_SYNC", "RIGHTS_NPM_PUBLISH", "RIGHTS_NPM_CI_UNLOCKED", "RIGHTS_SUITE_RUN", "RIGHTS_RELEASE_CUT", "RIGHTS_RAW_TOOL"]
     enforcers:
-      - {kind: runtime, id: role-rights, at: scripts/hfs/runtime-rules/rights-policy.mjs}
+      - {kind: runtime, id: role-rights, status: planned}
     docs: [contexts/hfs/README.md#rule-notes]
   - id: R224
     code: "RIGHTS_PROTECTED_ZONE"
@@ -3909,7 +3856,7 @@ rules:
       - {kind: runtime, id: roles-contract, at: scripts/checks/check-roles-contract.mjs}
   - id: R233
     code: "RT_EDGE_CASE_REGISTRY"
-    law: "Every edge case met is a declared entry of modules/reconciler/edge-cases.yaml with its family, its real occurrence and a status of covered or open; a covered entry names the rule that handles it and that file exists, a named spec is a package spec or the scaffold e2e that exists (never a runtime test, owner ruling no-runtime-specs), and an open entry says why."
+    law: "Every edge case met is a declared entry of modules/reconciler/edge-cases.yaml with its family, its real occurrence and a status of covered or open; a covered entry names the rule that handles it and that file exists, a named spec is a package spec or the scaffold e2e that exists (never a runtime test), and an open entry says why."
     scope: runtime
     editions: [lite, full]
     docs: [docs/debugging.md#r233-edge-case-evidence]
@@ -3975,7 +3922,7 @@ rules:
     editions: [lite, full]
     docs: [docs/debugging.md#r236]
     templateNa: "The tree of the runtime repository is judged as it stands; product scaffolding is judged by the bypass rule R303 with the same library."
-    law: "A loosening is always red, and the tree is judged as it stands, never by its history (owner:loosening-state-check): the working tree holds no bypass marker, no ignore or exclude entry of a codecov, Sonar, jest, ESLint, stylelint, tsconfig or ignore file that the canon does not derive and knowledge/hfs/design-truths.yaml does not allow, no coverage target or threshold below the canon, no relaxing setting, no disabled ESLint rule, no strictness option turned off, and no allowlist, approval or baseline file the manifest does not list. Every legitimate exception lives in that manifest, each with the cite of its ruling; changing it is an owner decision and the check prints its digest. It never lands and never passes the check; there is no approval route, the owner's included (owner:loosening-always-red), and the fix is to satisfy the check."
+    law: "A loosening is always red, and the tree is judged as it stands, never by its history: the working tree holds no bypass marker, no ignore or exclude entry of a codecov, Sonar, jest, ESLint, stylelint, tsconfig or ignore file that the canon does not derive and knowledge/hfs/design-truths.yaml does not allow, no coverage target or threshold below the canon, no relaxing setting, no disabled ESLint rule, no strictness option turned off, and no allowlist, approval or baseline file the manifest does not list. Every legitimate exception lives in that manifest, each with its reason; only the owner changes it, and the check prints its digest. It never lands and never passes the check; there is no approval route, the owner's included, and the fix is to satisfy the check."
     scope: runtime
     kinds: [check]
     gates: [runtime]
@@ -3999,7 +3946,7 @@ rules:
     law: "A ledger event payload that grows with its input (a file list, a manifest, a digest, a report, a critique, a menu) goes to the blob store through the one path of appendEvent: engine/db/event-compact.mjs eventPayloadRecord keeps a bounded inline view of at most 16 KiB and the whole payload behind events.payload_sha, and readers resolve it through engine/db/event-payload.mjs. No runtime source file other than engine/db/ledger.mjs and engine/db/event-compact.mjs passes a payloadSha to a write, catches the payload-too-large refusal to spill by hand, or inserts into the events table directly. Specs, tests, node_modules, the generated runtime copies and packages are out of scope."
     scope: runtime
     editions: [lite, full]
-    docs: [docs/ledger-db.md#the-storage-convention-owner-ruling-2026-10-09]
+    docs: [cli/README.md]
     templateNa: "These runtime checker inputs are maintained in the runtime repository, not scaffolded in a product app."
     kinds: [check]
     gates: [runtime]
@@ -4008,10 +3955,10 @@ rules:
       - {kind: runtime, id: event-spill, at: scripts/checks/check-event-spill.mjs}
   - id: R239
     code: "RT_STORAGE_UNDECLARED"
-    law: "Content lives as a file in the content-addressed blob store under the runtime state dir (<runtime root>/.runtime/artifacts, engine/db/blob.mjs) and a database row holds only the reference (the sha) plus the small scalars it is queried by (owner ruling 2026-10-09). Always content, whatever its size: a report, a critique or verdict, a prompt or dispatch contract, a read manifest, a list of files, a log or command output, a menu or digest snapshot, an image or render, a diff. What may stay inline: ids, states, timestamps, counts, short codes and one-line reasons up to 256 bytes; any other free text up to 1024 bytes; a payload of any size is class spill (appendEvent and supEvent keep the whole payload behind the sha and a small inline form). Every text column of the product ledger and of machine.sqlite is declared in modules/schemas/storage-convention.yaml with its class (scalar, bounded, reference, spill, migrate), so a new table or column cannot appear without one; a column that holds content inline today is class migrate with its measured size, and the migration to a reference is a proposed runtime step, idempotent and journalled, never a hand rewrite of a live store."
+    law: "Content lives as a file in the content-addressed blob store under the runtime state dir (<runtime root>/.runtime/artifacts, engine/db/blob.mjs) and a database row holds only the reference (the sha) plus the small scalars it is queried by. Always content, whatever its size: a report, a critique or verdict, a prompt or dispatch contract, a read manifest, a list of files, a log or command output, a menu or digest snapshot, an image or render, a diff. What may stay inline: ids, states, timestamps, counts, short codes and one-line reasons up to 256 bytes; any other free text up to 1024 bytes; a payload of any size is class spill (appendEvent and supEvent keep the whole payload behind the sha and a small inline form). Every text column of the product ledger and of machine.sqlite is declared in modules/schemas/storage-convention.yaml with its class (scalar, bounded, reference, spill, migrate), so a new table or column cannot appear without one; a column that holds content inline today is class migrate with its measured size, and the migration to a reference is a proposed runtime step, idempotent and journalled, never a hand rewrite of a live store."
     scope: runtime
     editions: [lite, full]
-    docs: [docs/ledger-db.md#the-storage-convention-owner-ruling-2026-10-09]
+    docs: [cli/README.md]
     templateNa: "These runtime checker inputs are maintained in the runtime repository, not scaffolded in a product app."
     kinds: [check]
     gates: [runtime]
@@ -4058,7 +4005,7 @@ rules:
     code: "FE_SERVER_ACTION_FORBIDDEN"
     editions: [lite, full]
     docs: [docs/code-pattern-enforcement.md#r243]
-    law: "The front end serves no API, in every app and edition (R212 case-2 (owner:lite-production-swarm), with the Work boundary amended by ruling:R212/case-4): no file under `fe/` carries a `\"use server\"` directive (module or function level), and the only route handler is `app/health/live/route.ts`; reads and writes reach the back end through `modules/api` and the SWR hooks, and a webhook, cron, public API or third-party callback is a back-end feature."
+    law: "The front end serves no API, in every app and edition: no file under `fe/` carries a `\"use server\"` directive (module or function level), and the only route handler is `app/health/live/route.ts`; reads and writes reach the back end through `modules/api` and the SWR hooks, and a webhook, cron, public API or third-party callback is a back-end feature."
     kinds: [check, lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_SERVER_ACTION_FORBIDDEN", "FE_ROUTE_HANDLER_FORBIDDEN"]
@@ -4097,7 +4044,6 @@ rules:
       - {path: packages/hfs/src/frontend-boundary-coverage.spec.mjs, editions: [lite, full], codes: [FE_STACK_FORBIDDEN]}
   - id: R245
     code: "BE_APP_OPTIONS_COMPOSITION"
-    amendedBy: R289
     editions: [lite, full]
     docs: [docs/microservices.md#r245]
     proves: [packages/eslint/be/app-composition-coverage.spec.mjs]
@@ -4108,7 +4054,7 @@ rules:
     witness:
       - {path: packages/eslint/be/app-composition-coverage.spec.mjs, edition: lite, codes: [BE_APP_OPTIONS_COMPOSITION]}
       - {path: packages/eslint/be/app-composition-coverage.spec.mjs, edition: full, codes: [BE_APP_OPTIONS_COMPOSITION]}
-    law: "An app's `src/` holds five app roles (owner ruling 2026-10-14): `main.ts` builds `EnvSource` once, parses inline or imports `<app>.env.ts`, builds options and boots; `<app>.env.ts` holds typed, fail-fast environment parsing only, via `EnvSource` and capability parse helpers, with no logic, module composition, business code or feature imports; only `main.ts` and `<app>.env.ts` may read the app's environment; `<app>.options.ts` holds env-derived options plus port bindings (provider maps such as `{ approvalGate: X }`) only, with no parsing; neither the env nor options file holds an array listing `*Module` classes, module or queue registrations (`register`, `forRoot`, `registerQueue`) or scheduler entries, or an `imports`, `modules`, `schedulers` or `processors` list; the env file also refuses standalone module or queue registration calls; `compose/<area>.ts` exports the module list of one area (and the providers of its global ports when it has any), composition only, with no business logic and no environment read; `app.module.ts` imports the groups and spreads them and binds the app-wide guards and filter."
+    law: "An app's `src/` holds five app roles: `main.ts` builds `EnvSource` once, parses inline or imports `<app>.env.ts`, builds options and boots; `<app>.env.ts` holds typed, fail-fast environment parsing only, via `EnvSource` and capability parse helpers, with no logic, module composition, business code or feature imports; only `main.ts` and `<app>.env.ts` may read the app's environment; `<app>.options.ts` holds env-derived options plus port bindings (provider maps such as `{ approvalGate: X }`) only, with no parsing; neither the env nor options file holds an array listing `*Module` classes, module or queue registrations (`register`, `forRoot`, `registerQueue`) or scheduler entries, or an `imports`, `modules`, `schedulers` or `processors` list; the env file also refuses standalone module or queue registration calls; `compose/<area>.ts` exports the module list of one area (and the providers of its global ports when it has any), composition only, with no business logic and no environment read; `app.module.ts` imports the groups and spreads them and binds the app-wide guards and filter."
     kinds: [lint, codemod]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_APP_OPTIONS_COMPOSITION"]
@@ -4134,7 +4080,7 @@ rules:
       - {kind: eslint-be, id: app-file-budget}
   - id: R247
     code: "RT_COVERAGE_MATRIX"
-    law: "Every surface and rule has an existing enforcer, edition-specific spec proof, documentation, template, example and mutation witness in each applicable edition; edition differences cite their owner ruling, Work schemas have full example records, gate claims match their commands, superseded rulings are not cited alone and hard documentation requirements are ledgered."
+    law: "Every surface and rule has an existing enforcer, edition-specific spec proof, documentation, template, example and mutation witness in each applicable edition; edition differences state why they hold (editionWhy), Work schemas have full example records, gate claims match their commands and hard documentation requirements are ledgered."
     scope: runtime
     editions: [lite, full]
     docs: [docs/quality-bar.md#coverage-matrix]
@@ -4204,7 +4150,7 @@ rules:
     editions: [lite, full]
     docs:
       - {path: docs/application-stacks.md#r251-deploy-workflow, editions: [lite, full]}
-    law: "In lite and full apps, deployment jobs declare a protected environment, explicit permissions and concurrency, materialize sealed secrets through SOPS_AGE_KEY or starci app secret materialize, and reference only the age key and transport SSH key/known_hosts secrets; every job that reads secrets.SOPS_AGE_KEY, a deployment job or not, is bound to the GitHub Environment whose members it opens, so it reads that environment's server key and never a repository secret of that name. Deployment jobs never embed a dotenv blob or write a dotenv file. Every remote workflow action uses a 40-hex commit SHA (local actions are allowed and container actions require a full sha256 digest); supply-chain reports each unpinned uses reference at its source line, including disabled jobs and steps; installed tools are checksum or digest verified, or supplied by a pinned action. App workflows start only on release tags [v*], the release candidate branches release/candidate-* (required in ci.yml: starci app release push waits for that run, owner ruling candidate-ci 2026-10-18), workflow_call or workflow_dispatch, and the managed nightly verify of the check cache (cache-verify.yml) on its schedule; ci.yml also runs on main and on pull_request to main (read-only workflow permissions, no environment bound in the file), and other branch pushes are refused. A release deploys through the reusable stack-deploy.yml (ruling app-cicd-auto-deploy): the job of ci.yml that calls it (deploy-<env>, after the verdict job) holds permissions, concurrency and with.environment, the called deploy job binds the GitHub Environment (deployment refs restricted to v* tags) and reads SOPS_AGE_KEY there, and the transport is the sealed member vps-ci opened with that key, so the CI deploy key, the host and the pinned host keys are never GitHub secrets, workflow text or log lines; STARCI_DEPLOY_PAUSED on the environment stops the automatic deploy. The secrets allowlist and the dotenv ban are judged on the deployment jobs, not on the check jobs beside them."
+    law: "In lite and full apps, deployment jobs declare a protected environment, explicit permissions and concurrency, materialize sealed secrets through SOPS_AGE_KEY or starci app secret materialize, and reference only the age key and transport SSH key/known_hosts secrets; every job that reads secrets.SOPS_AGE_KEY, a deployment job or not, is bound to the GitHub Environment whose members it opens, so it reads that environment's server key and never a repository secret of that name. Deployment jobs never embed a dotenv blob or write a dotenv file. Every remote workflow action uses a 40-hex commit SHA (local actions are allowed and container actions require a full sha256 digest); supply-chain reports each unpinned uses reference at its source line, including disabled jobs and steps; installed tools are checksum or digest verified, or supplied by a pinned action. App workflows start only on release tags [v*], the release candidate branches release/candidate-* (required in ci.yml: starci app release push waits for that run), workflow_call or workflow_dispatch, and the managed nightly verify of the check cache (cache-verify.yml) on its schedule; ci.yml also runs on main and on pull_request to main (read-only workflow permissions, no environment bound in the file), and other branch pushes are refused. A release deploys through the reusable stack-deploy.yml: the job of ci.yml that calls it (deploy-<env>, after the verdict job) holds permissions, concurrency and with.environment, the called deploy job binds the GitHub Environment (deployment refs restricted to v* tags) and reads SOPS_AGE_KEY there, and the transport is the sealed member vps-ci opened with that key, so the CI deploy key, the host and the pinned host keys are never GitHub secrets, workflow text or log lines; STARCI_DEPLOY_PAUSED on the environment stops the automatic deploy. The secrets allowlist and the dotenv ban are judged on the deployment jobs, not on the check jobs beside them."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["HFS_DEPLOY_WORKFLOW", "HFS_WORKFLOW_PIN", "HFS_CI_TOOL_INSTALL", "HFS_APP_WORKFLOW_TRIGGER"]
@@ -4261,7 +4207,7 @@ rules:
   - id: R255
     code: "DB_APP_ROLE"
     editions: [lite]
-    editionWhy: "owner:lite-backing-services makes the db service lite's database; application-role and forced-RLS requirements apply to that backing."
+    editionWhy: "The db service is lite's database; application-role and forced-RLS requirements apply to that backing."
     docs: [docs/microservices.md#r255]
     templateNa: "Application roles and table ownership are product-authored db migration content, rather than a scaffolded SQL surface."
     law: "The declared back-end database role (app_be by default) has only the privileges it needs: role declarations refuse superuser and bypassrls, require noinherit and nobypassrls, never grant all schema or table privileges, and leave it with no grant after the last migration on schema auth, on a table or sequence in it, or by default privilege for it (accounts are reached through SECURITY DEFINER doors; a later migration that revokes a grant clears it). Tables owned by that role enable and force row level security by default; a forceRls exemption identifies the table and carries a nonempty reason. This applies to every edition that declares Supabase."
@@ -4279,7 +4225,7 @@ rules:
   - id: R256
     code: "DB_POLICY_TAUTOLOGY"
     editions: [lite]
-    editionWhy: "owner:lite-backing-services makes the db service lite's database; access-policy, view, definer and storage SQL requirements apply to that backing."
+    editionWhy: "The db service is lite's database; access-policy, view, definer and storage SQL requirements apply to that backing."
     docs: [docs/microservices.md#r256]
     templateNa: "Access policies, views, definers and storage policies belong to product-authored db migrations, rather than a scaffolded SQL surface."
     law: "Exposed database objects keep their access boundaries in lite and full. Policies refuse tautological true, is-not-null and self-equality predicates; policies for every role but the application role prove a principal predicate: auth.uid, auth.jwt, the request JWT claims or a transaction setting the app declares in hfs.json db.scopeSettings, read only by policies whose roles are all declared in db.scopeRoles (NOLOGIN NOINHERIT NOBYPASSRLS, created by a migration), compared with the owning column of db.scopeColumns; a scope role is granted only to the application role (read directly or through a SQL function whose body reads it); an undeclared setting, OR true and a self comparison are refused. An exposed view or materialized view uses security_invoker or the migration set ends with access revoked from anon and authenticated. Disabling RLS or moving a table into an exposed schema preserves the R214 RLS obligation. A security definer declaration, including alter function, preserves R215 safety checks and the migration set ends with execute revoked from authenticated when exposed, in addition to R215's public and anon revocation. A storage.objects policy scopes an ownership prefix to the principal unless its bucket id ends _public."
@@ -4301,7 +4247,7 @@ rules:
   - id: R257
     code: "DB_BASELINE_SHAPE"
     editions: [lite]
-    editionWhy: "owner:lite-backing-services makes the db service lite's database; baseline and archive requirements apply to its migration history."
+    editionWhy: "The db service is lite's database; baseline and archive requirements apply to its migration history."
     docs: [docs/microservices.md#r257]
     templateNa: "A baseline is derived from a product's existing migration history and cannot be supplied by a scaffold template."
     law: "An archived migration chain has exactly one active baseline marked -- starci:baseline <archived-last-stamp>, with a later valid stamp or an explicit restamp. Archived files only need the digits-stamp_name.sql shape, whatever the stamp value (they are immutable history and never applied); the baseline and active migrations keep the real-instant stamp check. Archive contents are immutable against repository history; an active migration enters the archive unchanged only in the same diff that adds the replacement baseline. The app db baseline, restamp and plan verbs are read-only unless --apply is explicit."
@@ -4319,10 +4265,10 @@ rules:
   - id: R258
     code: "DB_PGMQ_DECLARED"
     editions: [lite]
-    editionWhy: "ruling:lite-pgmq-bus-bullmq-jobs makes pgmq in the db service the lite event bus while jobs run on BullMQ over the declared Redis; full's bus is Kafka."
+    editionWhy: "pgmq in the db service is the lite event bus while jobs run on BullMQ over the declared Redis; full's bus is Kafka."
     docs: [docs/microservices.md#r258]
     templateNa: "Topic queues and their bindings depend on product-owned consumer groups and are authored in its db migrations."
-    law: "DB_PGMQ_DECLARED: pgmq is the event bus and jobs run on BullMQ (ruling:lite-pgmq-bus-bullmq-jobs), so the active migrations leave no pgmq queue named by a queue constant under modules/queues; a pgmq queue a migration created for one is dropped by a later migration. Every pgmq queue the active migrations leave is an event-bus topic queue named by a literal *_TOPIC_QUEUE constant under platform/event-bus, every such constant has its pgmq queue, a topic binding (pgmq.bind_topic) names a literal pattern and a queue an earlier pgmq.create declared, no queue or binding is created by dynamic SQL or inside a function, and pgmq objects are granted only to the application role while they exist."
+    law: "DB_PGMQ_DECLARED: pgmq is the event bus and jobs run on BullMQ, so the active migrations leave no pgmq queue named by a queue constant under modules/queues; a pgmq queue a migration created for one is dropped by a later migration. Every pgmq queue the active migrations leave is an event-bus topic queue named by a literal *_TOPIC_QUEUE constant under platform/event-bus, every such constant has its pgmq queue, a topic binding (pgmq.bind_topic) names a literal pattern and a queue an earlier pgmq.create declared, no queue or binding is created by dynamic SQL or inside a function, and pgmq objects are granted only to the application role while they exist."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["DB_PGMQ_DECLARED"]
@@ -4337,10 +4283,10 @@ rules:
   - id: R259
     code: "DB_EXTENSION_ALLOWED"
     editions: [lite]
-    editionWhy: "owner:lite-backing-services makes the db service lite's database; database configuration, extension, migration and seed requirements apply to that backing."
+    editionWhy: "The db service is lite's database; database configuration, extension, migration and seed requirements apply to that backing."
     docs: [docs/microservices.md#r259]
     templateNa: "Extension use, contract migrations, vault operations and seed literals are product-authored db content, rather than a scaffolded SQL surface."
-    law: "DB_CONFIG_EXT: extensions belong to the database allowlist, vault writes and migration role passwords are refused, and seed data holds no real email or phone. Destructive DDL belongs only to *_contract_* migrations whose targets are no longer referenced by back-end SQL or entities, and a contract migration that is new since the previous release tag (the newest v* tag HEAD contains) never destroys an object that the back-end sources of that tag still reference: the deploy applies it right after the accept, while that release is the rollback target, so the code change goes in one release and its contract migration in the next. A migration already on the base unchanged is immutable (R213), so its destructive and dynamic DDL is reported as a known item, not a blocker; an owner ruling in hfs.json `db.destructiveRulings` (the exact migration, the exact objects, a reason and the date) accepts those objects outside a contract migration only while the same proof finds them unreferenced, else DB_DESTRUCTIVE_RULING_UNPROVEN. Seeds contain no real email or phone literals."
+    law: "DB_CONFIG_EXT: extensions belong to the database allowlist, vault writes and migration role passwords are refused, and seed data holds no real email or phone. Destructive DDL belongs only to *_contract_* migrations whose targets are no longer referenced by back-end SQL or entities, and a contract migration that is new since the previous release tag (the newest v* tag HEAD contains) never destroys an object that the back-end sources of that tag still reference: the deploy applies it right after the accept, while that release is the rollback target, so the code change goes in one release and its contract migration in the next. A migration already on the base unchanged is immutable (R213), so its destructive and dynamic DDL is reported as a known item, not a blocker; a recorded decision in hfs.json `db.destructiveRulings` (the exact migration, the exact objects, a reason and the date) accepts those objects outside a contract migration only while the same proof finds them unreferenced, else DB_DESTRUCTIVE_RULING_UNPROVEN. Seeds contain no real email or phone literals."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["DB_EXTENSION_ALLOWED", "DB_MIGRATION_DESTRUCTIVE", "DB_DESTRUCTIVE_RULING_UNPROVEN", "HFS_SEED_PII", "DB_VAULT_WRITE"]
@@ -4427,8 +4373,7 @@ rules:
       - {path: packages/hfs/src/be-docker-health.spec.mjs, editions: [lite, full], codes: [HFS_DOCKER_HEALTHCHECK_FAKE]}
   - id: R263
     code: "BE_WEBHOOK_SCOPE"
-    amendedBy: [owner:oauth-redirect-not-webhook, owner:webhook-receipt-port]
-    law: "SignedWebhook public metadata belongs only to a webhook HTTP door or an exact domain verifier declared in its HTTP module's exported webhookVerifiers array. A public controller route containing webhook, callback or events belongs in the webhook door; the one exception is a third-party OAuth redirect (owner:oauth-redirect-not-webhook): a GET route that declares PublicReason.AuthHandshake and whose path is not a webhook or events path, which has no signature to verify and is not a door. A POST, a webhook or events path, and any other reason are still judged. A receipt transaction may call a domain receipt port (owner:webhook-receipt-port): a class with no base class whose constructor takes only platform ports and TypeORM, one of them the platform Inbox or its EntityInbox; a call on any other domain service or on a bus inside the transaction is processing. Domain intake methods identified by a first *Id parameter or DTO property, or raw-body signature input, claim the shared Inbox with the stable delivery key (claim, or claimRow on its EntityInbox with the receipt row and the transaction's own manager) and return early on a duplicate (false from claim, undefined from claimRow) before doing work. The receipt transaction records the inbox delivery and publishes its typed outbox event; process callbacks, domain processing and command dispatch run only after commit in a reactor or job."
+    law: "SignedWebhook public metadata belongs only to a webhook HTTP door or an exact domain verifier declared in its HTTP module's exported webhookVerifiers array. A public controller route containing webhook, callback or events belongs in the webhook door; the one exception is a third-party OAuth redirect: a GET route that declares PublicReason.AuthHandshake and whose path is not a webhook or events path, which has no signature to verify and is not a door. A POST, a webhook or events path, and any other reason are still judged. A receipt transaction may call a domain receipt port: a class with no base class whose constructor takes only platform ports and TypeORM, one of them the platform Inbox or its EntityInbox; a call on any other domain service or on a bus inside the transaction is processing. Domain intake methods identified by a first *Id parameter or DTO property, or raw-body signature input, claim the shared Inbox with the stable delivery key (claim, or claimRow on its EntityInbox with the receipt row and the transaction's own manager) and return early on a duplicate (false from claim, undefined from claimRow) before doing work. The receipt transaction records the inbox delivery and publishes its typed outbox event; process callbacks, domain processing and command dispatch run only after commit in a reactor or job."
     kinds: [lint]
     gates: ["pre-commit","settle","land","ci"]
     failureCodes: ["BE_WEBHOOK_SCOPE", "BE_WEBHOOK_INBOX_KEY"]
@@ -4455,7 +4400,7 @@ rules:
       - {"path":"packages/eslint/be/webhook-handoff-inbox.spec.mjs","edition":"full","codes":["BE_WEBHOOK_INBOX_KEY"]}
   - id: R264
     code: "HFS_FEATURE_LOGIC_ROLE"
-    law: "A non-door role in the feature tier declares data, types and DTO metadata only: a support policy, guard, client, filter, interceptor, projection or contracts file cannot hide a decision, loop, computation or executable call by changing its suffix. Business logic belongs in tested modules; thin feature roles remain governed by R203 and feature module composition keeps its module laws. One exemption (owner ruling 2026-10-16 \"Theo y tro\"): a `registerEnumType(...)` call of `@nestjs/graphql` at module top level of a `<name>.type.ts` file of the GraphQL transport slot (`be.transport.graphql`) declares a schema enum that `starci app emit` loads from that file; the same call in any other role or slot, or nested in a function, is still logic."
+    law: "A non-door role in the feature tier declares data, types and DTO metadata only: a support policy, guard, client, filter, interceptor, projection or contracts file cannot hide a decision, loop, computation or executable call by changing its suffix. Business logic belongs in tested modules; thin feature roles remain governed by R203 and feature module composition keeps its module laws. One exemption: a `registerEnumType(...)` call of `@nestjs/graphql` at module top level of a `<name>.type.ts` file of the GraphQL transport slot (`be.transport.graphql`) declares a schema enum that `starci app emit` loads from that file; the same call in any other role or slot, or nested in a function, is still logic."
     kinds: [lint]
     gates: ["pre-commit","settle","land","ci"]
     failureCodes: ["HFS_FEATURE_LOGIC_ROLE"]
@@ -4639,7 +4584,7 @@ rules:
     enforcers:
       - {kind: hfs, id: boot-proof, at: scripts/hfs/rules/boot-proof.mjs}
     editions: ["lite"]
-    editionWhy: "ruling:R272 requires the lite Nest wiring proof; full retains its existing e2e boot proof and the boot-proof finder skips full."
+    editionWhy: "R272 requires the lite Nest wiring proof; full retains its existing e2e boot proof and the boot-proof finder skips full."
     docs:
       - "docs/quality-bar.md#r272"
     proves:
@@ -4675,15 +4620,15 @@ rules:
       - {path: packages/hfs/src/hfs-coverage-below.spec.mjs, edition: full}
   - id: R274
     code: "RT_RULING_STALE_CITE"
-    law: "Live prose, source comments and spec titles cite current owner rulings using ruling:R212/case-4 or a stable owner id. A superseded or amended ruling needs its live successor in the same paragraph; staleWhen statements outside historical case text and CHANGELOGs are refused, and a bare owner ruling date must match a catalog case or owner ruling."
+    law: "Live prose, source comments, rule data and printed messages state each rule as it holds now and cite a rule only by its rule id; they never cite a decision of the owner by its id, a decision log or the date of a decision (the harness `contexts anatomy` gate, ANATOMY_RULING_HISTORY)."
     scope: runtime
     kinds: [check]
     gates: ["runtime"]
     failureCodes: ["RT_RULING_STALE_CITE"]
     enforcers:
-      - {kind: runtime, id: ruling-cites, at: scripts/checks/check-ruling-cites.mjs}
+      - {kind: runtime, id: ruling-history, status: planned}
     editions: ["lite","full"]
-    templateNa: "Runtime owner-ruling citation metadata has no product scaffold surface; passing and stale authored-source fixtures live in the ruling-cites spec."
+    templateNa: "The rule judges the harness's own prose and data; a product scaffold has none of it."
     docs:
       - "docs/quality-bar.md#r274"
   - id: R275
@@ -4710,14 +4655,14 @@ rules:
       - {path: packages/hfs/src/hfs-stacks-full-fixtures.spec.mjs, edition: full}
   - id: R276
     code: "STACKS_LITE_SELFHOSTED_DB"
-    law: "Lite runs exactly one database, its db component of the image its managed .starcistacks/images/db/Dockerfile builds (the digest-pinned official postgres image plus pgvector, ruling:lite-official-postgres-image) for vector search too, and no other PostgreSQL, MongoDB or Qdrant backing image, even when declared (owner:lite-vector-is-pgvector, ruling:lite-self-hosted-postgres-passport-minio). A Redis image runs only when hfs.json sides.be.backing declares redis (ruling:R212/case-10), as one minimal instance; a declared Redis runs as exactly one stack service, with AOF persistence (`appendonly yes`, `appendfsync everysec` or `always`, never `no`) on a writable named volume so queue jobs survive a restart and with no maxmemory-policy but noeviction so none is evicted. A queue job Redis loses inside the at most one second `everysec` leaves unwritten is not lost work: every job is born from a Postgres outbox row, and the relay marks that row sent only after Redis confirms the job is in its append-only file (WAITAOF) and still holds it, so a job Redis did not persist leaves its row waiting and the relay adds it again (examples/lite-app queue-relay.service.spec.ts and bullmq-queue-transport.client.spec.ts). A sidecar keeps its own SQLite on a named persistent volume declared by its component and mounted in the rendered model, and never uses the app's declared Redis, which serves the back-end app services only; a sidecar requiring another database, that Redis included, is refused. Full retains its declared backing topology."
+    law: "Lite runs exactly one database, its db component of the image its managed .starcistacks/images/db/Dockerfile builds (the digest-pinned official postgres image plus pgvector) for vector search too, and no other PostgreSQL, MongoDB or Qdrant backing image, even when declared. A Redis image runs only when hfs.json sides.be.backing declares redis, as one minimal instance; a declared Redis runs as exactly one stack service, with AOF persistence (`appendonly yes`, `appendfsync everysec` or `always`, never `no`) on a writable named volume so queue jobs survive a restart and with no maxmemory-policy but noeviction so none is evicted. A queue job Redis loses inside the at most one second `everysec` leaves unwritten is not lost work: every job is born from a Postgres outbox row, and the relay marks that row sent only after Redis confirms the job is in its append-only file (WAITAOF) and still holds it, so a job Redis did not persist leaves its row waiting and the relay adds it again (examples/lite-app queue-relay.service.spec.ts and bullmq-queue-transport.client.spec.ts). A sidecar keeps its own SQLite on a named persistent volume declared by its component and mounted in the rendered model, and never uses the app's declared Redis, which serves the back-end app services only; a sidecar requiring another database, that Redis included, is refused. Full retains its declared backing topology."
     kinds: [check]
     gates: ["settle","land","ci"]
     failureCodes: ["STACKS_LITE_SELFHOSTED_DB", "STACKS_SIDECAR_VOLUME_UNDECLARED", "STACKS_SIDECAR_DB_UNSUPPORTED", "STACKS_LITE_REDIS_PERSISTENCE"]
     enforcers:
       - {kind: hfs, id: stacks-lite-backing, at: scripts/hfs/rules/stacks-lite-backing.mjs}
     editions: ["lite"]
-    editionWhy: "ruling:R276 records owner ruling 4, amended by ruling:R212/case-10 and ruling:lite-self-hosted-postgres-passport-minio: lite runs its own Postgres as the db service, uses pgvector for vectors, refuses Qdrant even when declared (owner:lite-vector-is-pgvector), runs a Redis instance only when declared, runs a declared Redis as one service persisted with AOF fsynced at least every second on a named volume and never evicting (the outbox relay re-adds a job Redis did not persist), and permits database-dependent sidecars only with SQLite on declared persistent volumes, never on the app's Redis; full keeps its declared backing topology."
+    editionWhy: "Lite is a minimal production: it runs its own Postgres as the db service, uses pgvector for vectors, refuses Qdrant even when declared, runs a Redis instance only when declared, runs a declared Redis as one service persisted with AOF fsynced at least every second on a named volume and never evicting (the outbox relay re-adds a job Redis did not persist), and permits database-dependent sidecars only with SQLite on declared persistent volumes, never on the app's Redis; full keeps its declared backing topology."
     docs:
       - "docs/application-stacks.md#r276"
     proves: [packages/hfs/src/hfs-stacks-lite-backing.spec.mjs]
@@ -4752,8 +4697,7 @@ rules:
       - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [full], codes: [HFS_SECRET_OUTSIDE_ENC]}
   - id: R278
     code: "BE_REST_DOOR_EVIDENCE"
-    amendedBy: [owner:credential-guarded-rest-door, owner:lite-sse-door]
-    law: "GraphQL is the default door in lite and full. Each REST route carries its own evidence: a probe, auth handshake, signed webhook, actual byte stream, an event stream (a text/event-stream route: an `@Sse` method of `@nestjs/common` inside the be.feature.realtime.sse slot, owner:lite-sse-door; an `@Sse` anywhere else proves nothing), a public versioned operation served from the app's nonempty defineOperations table, or a credential-guarded route (owner:credential-guarded-rest-door): the route or its controller carries @Credential({ kind: \"<literal>\" }) imported from the domain identity capability, which also declares the CredentialGuard class implementing CanActivate (resolved by TypeScript symbol, never by name); a local decorator of the same name, a @UseGuards of any other guard and a computed kind prove nothing. A class-level reference or an unused StreamableFile import proves no route, and a public REST route absent from the operation table is refused."
+    law: "GraphQL is the default door in lite and full. Each REST route carries its own evidence: a probe, auth handshake, signed webhook, actual byte stream, an event stream (a text/event-stream route: an `@Sse` method of `@nestjs/common` inside the be.feature.realtime.sse slot; an `@Sse` anywhere else proves nothing), a public versioned operation served from the app's nonempty defineOperations table, or a credential-guarded route: the route or its controller carries @Credential({ kind: \"<literal>\" }) imported from the domain identity capability, which also declares the CredentialGuard class implementing CanActivate (resolved by TypeScript symbol, never by name); a local decorator of the same name, a @UseGuards of any other guard and a computed kind prove nothing. A class-level reference or an unused StreamableFile import proves no route, and a public REST route absent from the operation table is refused."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_REST_DOOR_EVIDENCE", "BE_REST_ROUTE_UNDECLARED"]
@@ -4880,7 +4824,7 @@ rules:
     enforcers:
       - {kind: hfs, id: lite-proof-lane, at: scripts/hfs/rules/lite-proof-lane.mjs}
     editions: [lite]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite has no e2e world and proves declared patterns in its integration lane; R284 owns only the lite lane code while full retains its existing pattern-proof rules."
+    editionWhy: "Lite has no e2e world and proves declared patterns in its integration lane; R284 owns only the lite lane code while full retains its existing pattern-proof rules."
     docs: [docs/quality-bar.md#r284]
     templateNa: "Integration scenarios depend on the application patterns and providers; no universal runnable scenario lane is scaffolded."
     proves:
@@ -4982,7 +4926,6 @@ rules:
       - {path: packages/hfs/src/hfs-app-env-required.spec.mjs, editions: [lite, full], codes: [BE_APP_ENV_REQUIRED]}
   - id: R290
     code: "BE_PUBLIC_REASON_CLOSED"
-    amendedBy: [owner:credential-guarded-rest-door]
     law: "In lite and full PublicReason has exactly Health, AuthHandshake, SignedWebhook and CatalogRead. An app-defined public reason such as ToolToken or ApiKey is refused; API-key, run-token and tool-token routes authenticate with their own credential guard (@Credential, R278) instead of extending the public vocabulary; an anonymous route without one of the four reasons still fails."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
@@ -5085,7 +5028,7 @@ rules:
       - {path: packages/hfs/src/hfs-stacks-deploy.spec.mjs, editions: [lite, full]}
   - id: R295
     code: "BE_MODULE_DEFINITION_MISSING"
-    law: "Every NestJS module of the product has a module definition (owner ruling 2026-10-15, owner:module-definition-everywhere): capability modules, sub-modules, features, transport modules and cli groups alike. For a module `<x>` the folder holds `<x>.module-definition.ts` (`export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE, ASYNC_OPTIONS_TYPE } = defineConfigurableModule<XOptions>()` of `@starci/nest-kit`, which states the exported types so the file is neither an inferred surface (R368) nor a clone of its neighbour (R21); the representative module of a capability calls `defineCapabilityModule<XOptions>()`, which adds the `isGlobal` extra defaulting to `false`; `starci app codemod module-definition` rewrites a definition written with `ConfigurableModuleBuilder`), `<x>.options.ts` (`export type XOptions`, `Record<string, never>` with a one-line doc when it takes nothing yet) and `<x>.module.ts` (`@Module({...}) export class XModule extends ConfigurableModuleClass {}`, no `register` override except the capability representative's). A module appears in an `imports` array or in an app composition group only as `XModule.register({...})`, never as a bare class. The `AppModule` of an app root and the test world are composition roots and are not judged."
+    law: "Every NestJS module of the product has a module definition: capability modules, sub-modules, features, transport modules and cli groups alike. For a module `<x>` the folder holds `<x>.module-definition.ts` (`export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE, ASYNC_OPTIONS_TYPE } = defineConfigurableModule<XOptions>()` of `@starci/nest-kit`, which states the exported types so the file is neither an inferred surface (R368) nor a clone of its neighbour (R21); the representative module of a capability calls `defineCapabilityModule<XOptions>()`, which adds the `isGlobal` extra defaulting to `false`; `starci app codemod module-definition` rewrites a definition written with `ConfigurableModuleBuilder`), `<x>.options.ts` (`export type XOptions`, `Record<string, never>` with a one-line doc when it takes nothing yet) and `<x>.module.ts` (`@Module({...}) export class XModule extends ConfigurableModuleClass {}`, no `register` override except the capability representative's). A module appears in an `imports` array or in an app composition group only as `XModule.register({...})`, never as a bare class. The `AppModule` of an app root and the test world are composition roots and are not judged."
     kinds: [lint, codemod]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_MODULE_DEFINITION_MISSING"]
@@ -5214,7 +5157,7 @@ rules:
       - {path: packages/hfs/src/fe-build-args.spec.mjs, editions: [lite, full], codes: [FE_PUBLIC_BUILD_ARG_MISSING]}
   - id: R301
     code: "CI_STANDARD"
-    law: "The managed app CI, the example apps (the reference) and the runtime repository's own workflows follow the ONE CI standard of knowledge/hfs/ci-standard.yaml (owner ruling ci-standard, 2026-10-18): the job shape fast/test/build(/sonar) with the unit run and the Codecov upload in test alone, full history with STARCI_BASE_REF written before the lint, NODE_OPTIONS --max-old-space-size=6144 on every heavy step, the Sonar lint per side, optional providers probed before they skip, a timeout on every job and every action pinned to a commit sha; the other items (candidate trigger R221, per-fe-app build env, prettier-stable renders, R299 contexts) are owned by the rules the standard names. Apps get the standard only through starci app sync."
+    law: "The managed app CI, the example apps (the reference) and the runtime repository's own workflows follow the ONE CI standard of knowledge/hfs/ci-standard.yaml: the job shape fast/test/build(/sonar) with the unit run and the Codecov upload in test alone, full history with STARCI_BASE_REF written before the lint, NODE_OPTIONS --max-old-space-size=6144 on every heavy step, the Sonar lint per side, optional providers probed before they skip, a timeout on every job and every action pinned to a commit sha; the other items (candidate trigger R221, per-fe-app build env, prettier-stable renders, R299 contexts) are owned by the rules the standard names. Apps get the standard only through starci app sync."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["CI_STANDARD"]
@@ -5252,7 +5195,7 @@ rules:
       - {path: packages/hfs/src/mcp-tools-snapshot.spec.mjs, editions: [lite, full], codes: [HFS_MCP_TOOLS_SNAPSHOT]}
   - id: R303
     code: "HFS_BYPASS_MARKER"
-    law: "A product repository holds no bypass of a check (owner ruling loosening-always-red): no inline disable of any tool (eslint, stylelint, tslint, prettier, biome), no ts-ignore, ts-expect-error or ts-nocheck directive, no Sonar exclusion comment, no istanbul, c8 or v8 coverage ignore, no skipped, focused or todo test or skip option, and no failure swallowed in a hook, script or workflow (`|| true`, `; true`, `continue-on-error`, `set +e`, `HUSKY=0`, `--no-verify`, `fail_ci_if_error: false`, `--passWithNoTests`, `--coverageThreshold`, `--no-error-on-unmatched-pattern`, a `--max-warnings` budget). A marker is read where it acts: a suppression word opens a comment, a test marker stands in code, a swallowed failure stands in a shell line or in the string a script hands a shell; the same words quoted as data are no bypass. The runtime tree is judged by the same library (R236). A front end has no specs, but its source is still judged for the inline disables. `starci app check` reads the tracked tree and `starci app check --staged` (the managed pre-commit hook) the staged files from the index, so the bypass fails at the commit."
+    law: "A product repository holds no bypass of a check: no inline disable of any tool (eslint, stylelint, tslint, prettier, biome), no ts-ignore, ts-expect-error or ts-nocheck directive, no Sonar exclusion comment, no istanbul, c8 or v8 coverage ignore, no skipped, focused or todo test or skip option, and no failure swallowed in a hook, script or workflow (`|| true`, `; true`, `continue-on-error`, `set +e`, `HUSKY=0`, `--no-verify`, `fail_ci_if_error: false`, `--passWithNoTests`, `--coverageThreshold`, `--no-error-on-unmatched-pattern`, a `--max-warnings` budget). A marker is read where it acts: a suppression word opens a comment, a test marker stands in code, a swallowed failure stands in a shell line or in the string a script hands a shell; the same words quoted as data are no bypass. The runtime tree is judged by the same library (R236). A front end has no specs, but its source is still judged for the inline disables. `starci app check` reads the tracked tree and `starci app check --staged` (the managed pre-commit hook) the staged files from the index, so the bypass fails at the commit."
     kinds: [check]
     gates: [pre-commit, land, ci]
     failureCodes: ["HFS_BYPASS_MARKER"]
@@ -5473,7 +5416,7 @@ rules:
     templateNa: "The app composes its shell from product destinations and identity; full and lite example shells provide the reference."
   - id: R318
     code: "FE_NESTED_VARIANT"
-    law: "Apps compose Grammar with layout-only CSS; paint utilities, arbitrary paint properties and inline style paint belong to Grammar. Grammar context owns all layer-aware field variants, nested Tabs defaults and the content edge of panel lists; apps omit static field variants, do not force primary Tabs inside a painted surface, do not paint raw surfaces, and add no horizontal list-wrapper padding within the nearest painted Grammar surface. BOUNDARY-1 case-5 owns Divider full-bleed composition. Navigation-like single-select lists use fill without checks (COLLECTION-1 case-9); application styles never target Grammar internal classes (ACTION-3 case-5)."
+    law: "Apps compose Grammar with layout-only CSS; paint utilities, arbitrary paint properties and inline style paint belong to Grammar. Grammar context owns all layer-aware field variants, nested Tabs defaults and the content edge of panel lists; apps omit static field variants, do not force primary Tabs inside a painted surface, do not paint raw surfaces, and add no horizontal list-wrapper padding within the nearest painted Grammar surface. Composite member avatars for conversation and group identity are Grammar's (COLLECTION-3), BOUNDARY-1 owns Divider full-bleed composition, navigation-like single-select lists use fill without checks (COLLECTION-1), and application styles never target Grammar internal classes (ACTION-3)."
     kinds: [lint, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_NESTED_VARIANT", "FE_LIST_PANEL_PADDING", "FE_GRAMMAR_LAYOUT_ONLY", "FE_DIVIDER_FULL_BLEED"]
@@ -5498,16 +5441,10 @@ rules:
       - {path: packages/eslint/fe/divider-full-bleed.spec.mjs, editions: [lite, full], codes: [FE_DIVIDER_FULL_BLEED]}
       - {path: packages/eslint/fe/surface-rules.spec.mjs, editions: [lite, full], codes: [FE_LIST_PANEL_PADDING, FE_GRAMMAR_LAYOUT_ONLY]}
       - {path: packages/eslint/fe/ui-rulings.spec.mjs, editions: [lite, full], codes: [FE_NESTED_VARIANT, FE_GRAMMAR_LAYOUT_ONLY]}
-    cases:
-      - id: case-1
-        date: "2026-10-25"
-        source: owner
-        quote: "apps on Grammar write layout-only CSS; every visual element lives in @starci/grammar"
-        ruling: "ANATOMY-2 owns contextual field defaults, PADDING-0 owns panel list alignment, and COLLECTION-3 owns composite member avatars for conversation and group identity. Grammar supplies these capabilities; the FE canon rejects static field variants on either layer, primary Tabs inside painted surfaces, raw app surface paint and stacked horizontal list-wrapper padding inside painted surfaces."
 
   - id: R319
     code: "FE_BUTTON_INTENT"
-    law: "An app Button or IconButton declares an intent and never a variant; Grammar resolves the variant from intent and placement (CTA-6). A destructive confirm lives in a confirmation dialog, a render holds at most one commit, and a collection item holds none."
+    law: "An app Button or IconButton declares an intent (and its step) and never a variant; Grammar resolves the variant from intent, step and the placement it reads from React context (CTA-6). A destructive confirm lives in a confirmation dialog, a render holds at most one commit, and a collection item holds none."
     kinds: [codemod, lint, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_BUTTON_INTENT", "FE_BUTTON_INTENT_REQUIRED", "FE_DESTRUCTIVE_CONFIRM_IN_DIALOG", "FE_SINGLE_COMMIT_PER_RENDER", "FE_NO_COMMIT_IN_COLLECTION_ITEM"]
@@ -5527,16 +5464,10 @@ rules:
     witness:
       - {path: packages/eslint/fe/button-intent.spec.mjs, editions: [lite, full], codes: [FE_BUTTON_INTENT, FE_BUTTON_INTENT_REQUIRED, FE_DESTRUCTIVE_CONFIRM_IN_DIALOG, FE_SINGLE_COMMIT_PER_RENDER, FE_NO_COMMIT_IN_COLLECTION_ITEM]}
     templateNa: "The intent of an action comes from the product decision in the .starciwork specification; a template cannot choose it."
-    cases:
-      - id: case-1
-        date: "2026-10-25"
-        source: owner
-        quote: "Critique this carefully so the button choice is a system and not a feeling, understand? Update .claude."
-        ruling: "The button variant follows the declared intent (owner ruling button-variant-follows-intent): the app passes intent and step, Grammar derives the variant from them and from the placement it reads from React context. The semantics are HeroUI's, so the lint is universal in the FE canon."
 
   - id: R320
     code: "FE_CONTROL_HEIGHT"
-    law: "One 40px control height is the default of every standalone control (CONTROL-HEIGHT-1): an app never picks a larger size than the default outside a landing hero call to action, and controls of one row share one size."
+    law: "One 40px control height is the default of every standalone control (CONTROL-HEIGHT-1): an app omits size, takes sm only for a nested item or a dense toolbar row and lg only for a landing hero call to action, and controls of one row share one size."
     kinds: [lint, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_CONTROL_HEIGHT"]
@@ -5553,12 +5484,7 @@ rules:
     witness:
       - {path: packages/eslint/fe/control-height.spec.mjs, editions: [lite, full], codes: [FE_CONTROL_HEIGHT]}
     templateNa: "The control height is Grammar's own value; a template states no size."
-    cases:
-      - id: case-1
-        date: "2026-10-26"
-        source: owner
-        quote: "The size of the buttons and controls is uneven; the teacher thinks height = 40px (h-10) should be fixed for every button, switch, input, tabs and so on, what do you think? (translated from Vietnamese)"
-        ruling: "One 40px control height is the default of every standalone control (owner ruling control-height-40): Grammar draws it, an app omits size, sm is for a nested item or dense toolbar row, lg only for a landing hero call to action, and controls of one row share one size."
+
   - id: R322
     code: "FE_CHIP_LABEL_CASE"
     law: "The label of a status chip (a StatusDot with text, a Badge) starts with an uppercase letter, so every chip of an app reads in one vocabulary."
@@ -5576,12 +5502,7 @@ rules:
       - {path: packages/eslint/grammar-core/chip-label.spec.mjs, editions: [lite, full], codes: [FE_CHIP_LABEL_CASE]}
     witness:
       - {path: packages/eslint/grammar-core/chip-label.spec.mjs, editions: [lite, full], codes: [FE_CHIP_LABEL_CASE]}
-    cases:
-      - id: case-1
-        date: "2026-10-27"
-        source: owner
-        quote: "A chip label starts uppercase."
-        ruling: "The label of a status chip starts with an uppercase letter (owner ruling chip-label-uppercase); StatusDot capitalises a text label it renders, and the lint refuses a lowercase literal label at its source."
+
   - id: R323
     code: "FE_PAGE_HEADER_HAND_ROLLED"
     law: "A page is headed by the header of Grammar's Page; PageHeader and Breadcrumbs are Page's parts and are not exported, so importing either from the Grammar composes a page head by hand, with no band, no top inset and no separator."
@@ -5599,12 +5520,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/page-header.spec.ts, editions: [lite, full], codes: [FE_PAGE_HEADER_HAND_ROLLED]}
     witness:
       - {path: packages/eslint-grammar-core/src/page-header.spec.ts, editions: [lite, full], codes: [FE_PAGE_HEADER_HAND_ROLLED]}
-    cases:
-      - id: case-1
-        date: "2026-10-28"
-        source: owner
-        quote: "Publish Grammar 0.15.3 with PageHeader now, then move all 18 pages to it before deploying. (translated from Vietnamese)"
-        ruling: "A page is headed by Grammar's Page header (owner ruling page-header-band): a surface band whose content shares the page content's edges and which ends in its own full-width separator, page tabs standing on it; the lint refuses a PageHeader or Breadcrumbs imported by hand, since both are Page's own parts."
+
   - id: R324
     code: "FE_PAGE_TABS_OUTSIDE_HEADER"
     law: "Page tabs are the header's tabs; a Tabs that is the first element of a Page body is a page tab bar drawn outside the band."
@@ -5622,12 +5538,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/page.spec.ts, editions: [lite, full], codes: [FE_PAGE_TABS_OUTSIDE_HEADER]}
     witness:
       - {path: packages/eslint-grammar-core/src/page.spec.ts, editions: [lite, full], codes: [FE_PAGE_TABS_OUTSIDE_HEADER]}
-    cases:
-      - id: case-1
-        date: "2026-10-28"
-        source: owner
-        quote: "ok trò"
-        ruling: "A route page is one Grammar Page (owner ruling page-frame); page tabs are its header's tabs, and the lint refuses a Tabs at the top of the Page body or right after a PageHeader."
+
   - id: R325
     code: "FE_ROUTE_PAGE_OUTSIDE_PAGE"
     law: "A page owner draws one Grammar Page with nothing beside it; a sibling of the Page re-decides the inset and rhythm Page owns, and PageHeader and PageContainer are Page's parts, not exports to import from the Grammar."
@@ -5645,12 +5556,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/page.spec.ts, editions: [lite, full], codes: [FE_ROUTE_PAGE_OUTSIDE_PAGE]}
     witness:
       - {path: packages/eslint-grammar-core/src/page.spec.ts, editions: [lite, full], codes: [FE_ROUTE_PAGE_OUTSIDE_PAGE]}
-    cases:
-      - id: case-1
-        date: "2026-10-28"
-        source: owner
-        quote: "ok trò"
-        ruling: "A route page is one Grammar Page (owner ruling page-frame): the single owner of the page inset and rhythm; the lint refuses a sibling beside the Page and a bare PageHeader or PageContainer in a page owner."
+
   - id: R326
     code: "BE_AI_KEY_CUSTODY"
     law: "An upstream model provider key variable (OPENROUTER_API_KEY, OPENAI_API_KEY and the rest of the canon's one list) is named only inside the ai-router gateway's custody owner integrations/ai-gateway, in a literal, a member or a destructured property; every other file reaches a model through the gateway with a virtual key."
@@ -5668,12 +5574,7 @@ rules:
       - {path: packages/eslint-canon-be/src/ai-gateway.spec.ts, editions: [lite, full], codes: [BE_AI_KEY_CUSTODY]}
     witness:
       - {path: packages/eslint-canon-be/src/ai-gateway.spec.ts, editions: [lite, full], codes: [BE_AI_KEY_CUSTODY]}
-    cases:
-      - id: case-1
-        date: "2026-10-29"
-        source: owner
-        quote: "nhớ làm langchain nhé update .claude lun là call thẳng từ code phải dùng langchain với embeded context"
-        ruling: "A model call made straight from code uses LangChain with retrieved context, through the ai-router gateway (owner ruling be-ai-langchain-gateway): only the gateway's custody owner reads a provider key."
+
   - id: R327
     code: "BE_AI_GATEWAY_CLIENT"
     law: "Code builds only the ChatOpenAI and OpenAIEmbeddings clients of @langchain/openai, each from an inline options object with no spread, its configuration.baseURL read from a <c>.options.ts type and its apiKey the reveal() of a platform/config Secret, so every model call goes through the ai-router gateway with a virtual key."
@@ -5691,12 +5592,7 @@ rules:
       - {path: packages/eslint-canon-be/src/ai-gateway.spec.ts, editions: [lite, full], codes: [BE_AI_GATEWAY_CLIENT]}
     witness:
       - {path: packages/eslint-canon-be/src/ai-gateway.spec.ts, editions: [lite, full], codes: [BE_AI_GATEWAY_CLIENT]}
-    cases:
-      - id: case-1
-        date: "2026-10-29"
-        source: owner
-        quote: "nhớ làm langchain nhé update .claude lun là call thẳng từ code phải dùng langchain với embeded context"
-        ruling: "A model call made straight from code uses LangChain with retrieved context, through the ai-router gateway (owner ruling be-ai-langchain-gateway): the LangChain clients point at the gateway's base URL with its virtual key."
+
   - id: R328
     code: "BE_AUTH_PASSPORT_OWNER"
     law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth (lite) and of @starci/auth-oidc (full, which owns jose for its provider tokens) and are imported by no app file; @starci/auth/server is imported only by integrations/passport and @starci/auth-oidc/server only by integrations/keycloak, each package's one glue. bcrypt and every Supabase client are owned nowhere."
@@ -5716,12 +5612,7 @@ rules:
     witness:
       - {path: packages/eslint-canon-be/src/auth-passport.spec.ts, edition: lite, codes: [BE_AUTH_PASSPORT_OWNER]}
       - {path: packages/eslint-canon-be/src/auth-oidc-package.spec.ts, edition: full, codes: [BE_AUTH_PASSPORT_OWNER]}
-    cases:
-      - id: case-1
-        date: "2026-10-29"
-        source: owner
-        quote: "self host postgresql + auth thì trò tự code gg auth (lite, full dùng keycloak); storage minio trên tayson có r!!!!; auth dùng passport nestjs; cập nhật lại luôn cả .claude nhé cho lite app"
-        ruling: "Lite leaves Supabase: its identity is the app own Passport integration (Google OAuth and email/password) on its self-hosted PostgreSQL; full keeps Keycloak."
+
   - id: R329
     code: "BE_AUTH_JWT_OWN_JWKS"
     law: "A lite back-end principal comes only from the app's own access token, verified by @starci/auth (EdDSA pinned, issuer and audience checked, a local key set that may hold several keys), never from a remote JWKS, a token decoded without its signature check, a jwtVerify call in the app or a body claim."
@@ -5740,12 +5631,7 @@ rules:
       - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/passport.tokens.ts, edition: lite}
     witness:
       - {path: packages/hfs/src/be-auth-jwt-own-jwks.spec.mjs, edition: lite, codes: [BE_AUTH_JWT_OWN_JWKS]}
-    cases:
-      - id: case-1
-        date: "2026-10-29"
-        source: owner
-        quote: "self host postgresql + auth thì trò tự code gg auth (lite, full dùng keycloak); storage minio trên tayson có r!!!!; auth dùng passport nestjs; cập nhật lại luôn cả .claude nhé cho lite app"
-        ruling: "The lite back end verifies its own asymmetric access tokens against its own JWKS; it trusts no remote identity provider."
+
   - id: R330
     code: "BE_AUTH_REFRESH_COOKIE"
     law: "A refresh token travels only in the httpOnly, Secure cookie that @starci/auth sets, rotates (with a reuse grace window and reuse detection) and clears; no app file writes that cookie, and the token never appears as a field of a request or response body."
@@ -5762,12 +5648,7 @@ rules:
       - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/passport.cookie.ts, edition: lite}
     witness:
       - {path: packages/eslint-canon-be/src/auth-passport.spec.ts, edition: lite, codes: [BE_AUTH_REFRESH_COOKIE]}
-    cases:
-      - id: case-1
-        date: "2026-10-29"
-        source: owner
-        quote: "self host postgresql + auth thì trò tự code gg auth (lite, full dùng keycloak); storage minio trên tayson có r!!!!; auth dùng passport nestjs; cập nhật lại luôn cả .claude nhé cho lite app"
-        ruling: "The refresh token of the lite identity rotates and lives only in an httpOnly cookie; the browser holds no credential."
+
   - id: R331
     code: "BE_STORAGE_OWNER"
     law: "The S3 client libraries (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) are the dependencies of @starci/object-storage, the ObjectStorage port over S3-compatible storage (MinIO in lite) with presigned PUT and GET, and are imported by no app file; @starci/object-storage is imported only by integrations/object-storage, its one glue; no module imports minio."
@@ -5784,15 +5665,10 @@ rules:
       - {path: packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/object-storage.module.ts, edition: lite}
     witness:
       - {path: packages/eslint-canon-be/src/object-storage-package.spec.ts, editions: [lite, full], codes: [BE_STORAGE_OWNER]}
-    cases:
-      - id: case-1
-        date: "2026-10-29"
-        source: owner
-        quote: "self host postgresql + auth thì trò tự code gg auth (lite, full dùng keycloak); storage minio trên tayson có r!!!!; auth dùng passport nestjs; cập nhật lại luôn cả .claude nhé cho lite app"
-        ruling: "Lite storage is the MinIO already running on the Tay Son host, reached through the one S3 integration."
+
   - id: R332
     code: "LITE_DB_MIGRATION"
-    law: "A lite app's schema lives only in db/: every schema change is one db/migrations/<ts14>_<kebab>.sql (archive db/migrations/archive/, the managed db/bootstrap.sql), every other SQL file under db/ is refused, and the tree holds no supabase/ folder and no SQL file outside db/ but the sql/ entries of its seed levels (R375)."
+    law: "A lite app's schema lives only in db/: every schema change is one db/migrations/<ts14>_<kebab>.sql (archive db/migrations/archive/, the managed db/bootstrap.sql) applied by starci app db migrate, every other SQL file under db/ is refused, and the tree holds no supabase/ folder and no SQL file outside db/ but the sql/ entries of its seed levels (R375)."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["LITE_DB_MIGRATION"]
@@ -5806,22 +5682,17 @@ rules:
       - {path: packages/hfs/templates/app/skeleton-lite/db/migrations/__timestamp___baseline.sql, edition: lite}
     witness:
       - {path: packages/hfs/src/db-migration-shape.spec.mjs, edition: lite, codes: [LITE_DB_MIGRATION]}
-    cases:
-      - id: case-1
-        date: "2026-10-29"
-        source: owner
-        quote: "self host postgresql + auth thì trò tự code gg auth (lite, full dùng keycloak); storage minio trên tayson có r!!!!; auth dùng passport nestjs; cập nhật lại luôn cả .claude nhé cho lite app"
-        ruling: "The lite database is self-hosted PostgreSQL in the app stack; its migrations live in db/migrations and starci app db migrate applies them."
+
   - id: R333
     code: "BE_ENTITY_SCHEMA_DRIFT"
-    law: "Every TypeORM entity column of an app's entity list (be/src/modules/platform/database/entities.ts) matches the schema its SQL migrations build: `starci app db drift` applies db/bootstrap.sql and every active db/migrations/*.sql to a scratch database (a container of the app's db image, or the empty database --db-url-env names), reads information_schema.columns and pg_catalog, and refuses a missing table, a missing column, a type that differs once both are normalised to PostgreSQL's format_type names (an enum by its type name), and a nullability that differs. A database column no entity maps is fine. A host that cannot provide the scratch database gets no verdict (exit 2, needs a database), never a green. An app that declares `sides.be.engineOwned` also has the partitions, views, CHECK constraints and indexes of those objects compared with the entity manifest the engine generates (`manifest`, app-root relative), both ways: a partition or view with no declaration, and a declaration with no partition or view, are findings; a missing or malformed manifest is no verdict. The engine's base tables are compared as TypeORM EntitySchemas of the entity list."
+    law: "Every TypeORM entity column of an app's entity list (be/src/modules/platform/database/entities.ts) matches the schema its SQL migrations build: `starci app db drift` applies db/bootstrap.sql and every active db/migrations/*.sql to a scratch database (a container of the app's db image, or the empty database --db-url-env names), reads information_schema.columns and pg_catalog, and refuses a missing table, a missing column, a type that differs once both are normalised to PostgreSQL's format_type names (an enum by its type name), and a nullability that differs. CI runs the drift check in its build job and the release gate runs it as its db-drift row. A database column no entity maps is fine. A host that cannot provide the scratch database gets no verdict (exit 2, needs a database), never a green. An app that declares `sides.be.engineOwned` also has the partitions, views, CHECK constraints and indexes of those objects compared with the entity manifest the engine generates (`manifest`, app-root relative), both ways: a partition or view with no declaration, and a declaration with no partition or view, are findings; a missing or malformed manifest is no verdict. The engine's base tables are compared as TypeORM EntitySchemas of the entity list."
     kinds: [check]
     gates: [ci]
     failureCodes: ["BE_ENTITY_SCHEMA_DRIFT"]
     enforcers:
       - {kind: hfs, id: db-drift, at: packages/hfs/db/drift.mjs}
     editions: [lite]
-    editionWhy: "The owner ruling of 2026-10-29 maps lite tables with TypeORM entities while db/migrations/*.sql stays the only DDL and synchronize is false, so only lite entities can drift from a schema they do not create; full entities ship with their own TypeORM migrations."
+    editionWhy: "Lite maps its tables with TypeORM entities while db/migrations/*.sql stays the only DDL and synchronize is false, so only lite entities can drift from a schema they do not create; full entities ship with their own TypeORM migrations."
     docs: [contexts/code/be/persistence.md]
     templateNa: "The entities and the migrations are the product's tables; the check judges whichever an app writes, and a template scaffolds no table."
     proves:
@@ -5831,12 +5702,7 @@ rules:
       - {path: packages/hfs/src/db-drift.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
     witness:
       - {path: packages/hfs/src/db-drift.spec.mjs, edition: lite, codes: [BE_ENTITY_SCHEMA_DRIFT]}
-    cases:
-      - id: case-1
-        date: "2026-10-29"
-        source: owner
-        quote: "lite persistence moves to TypeORM entities while db/migrations/*.sql stays the only DDL and synchronize is false"
-        ruling: "Lite entities only map tables the migrations create, so each entity column is checked against the migrated schema by starci app db drift, which CI runs in the build job and the release gate runs as its db-drift row."
+
   - id: R334
     code: "BE_PERSISTENCE_NO_RAW_SQL"
     law: "Lite TypeScript holds no SQL text, outside the test world. A table is read and written through its TypeORM entity on an EntityManager (domain code the injected one; specs, builders, fixtures and the test world the world's `world.db.<connection>`): find, save, update, delete, upsert, a pessimistic `lock` option, `createQueryBuilder(Entity, \"alias\")` with named parameters; never a table-name builder or a Repository. Every table a migration creates has an entity. Anything else is a database function, called through `callDbFunction` of `platform/database/database.client.ts`, which names only a function that `ruleParams.be.dbFunctions` or hfs.json `sides.be.dbFunctions` lists with a reason: a function of a migration, schema-qualified (`public.job_claim`); an extension function, schema-qualified; a pg built-in of the canon's list, bare (`pg_notify`, called in pg_catalog). `database.client.ts` alone composes SQL text (the call statement and LISTEN), from parts its validator checked; `advisoryXactLock` and `notify` are `callDbFunction` calls of built-ins there. The only other `.query(` outside the world is the pass-through of a file that `ruleParams.be.sqlPassThrough` or hfs.json `sides.be.sqlPassThrough` lists with a reason, whose text is not the app's own (the tracked seed, a customer data-source read, an outside session's setup), with a plain string first argument, never a template or a `+`. The test world `src/tests/world` may hold raw SQL, as `sql`-tagged text with numbered `$n` parameters (and `<name>.sql.ts` files), only for what neither an entity nor a listed function expresses: a privilege or row-level-security probe, catalog, cron or trigger introspection, a pgmq queue table, a lock or failure probe; in the world too plain CRUD on an application table goes through its entity, an application function through `callDbFunction`, and seeded rows come from builders (R98). No `sql` template, `*.sql.ts`, `sql`/`ident` import or other `.query(` exists anywhere else."
@@ -5853,15 +5719,10 @@ rules:
       - {path: packages/eslint-canon-be/src/no-raw-sql.spec.ts, edition: lite, codes: [BE_PERSISTENCE_NO_RAW_SQL]}
     witness:
       - {path: packages/eslint-canon-be/src/no-raw-sql.spec.ts, edition: lite, codes: [BE_PERSISTENCE_NO_RAW_SQL]}
-    cases:
-      - id: case-1
-        date: "2026-10-29"
-        source: owner
-        quote: "big refactor đi … không viết raw sql như thế theo starci-academy-be"
-        ruling: "Lite persistence moves to TypeORM entities on the EntityManager, the shape of full and starci-academy-be (ruling lite-persistence-typeorm-entities)."
+
   - id: R335
     code: "BE_JOBS_SCHEDULER_OWNER"
-    law: "Recurring work is a tick of platform/jobs (ruling lite-official-postgres-image): JOB_TICKS of job-ticks.contracts.ts lists the ticks as data, and only job-tick.service.ts (JobTickService, which registers one CronJob per tick in SchedulerRegistry) and jobs.module.ts (which composes ScheduleModule.forRoot()) import @nestjs/schedule or cron; no file uses the Cron, Interval or Timeout decorator. JobTickService takes advisoryXactLock(tx, \"tick:<name>\") and claims the tick's UTC minute through callDbFunction(tx, \"job_tick_claim\", ...) in the transaction that writes the queue outbox row, so of the replicas that fire a tick exactly one enqueues it once per minute."
+    law: "Recurring work is a tick of platform/jobs, never pg_cron (the db image carries none): JOB_TICKS of job-ticks.contracts.ts lists the ticks as data, and only job-tick.service.ts (JobTickService, which registers one CronJob per tick in SchedulerRegistry) and jobs.module.ts (which composes ScheduleModule.forRoot()) import @nestjs/schedule or cron; no file uses the Cron, Interval or Timeout decorator. JobTickService takes advisoryXactLock(tx, \"tick:<name>\") and claims the tick's UTC minute through callDbFunction(tx, \"job_tick_claim\", ...) in the transaction that writes the queue outbox row, so of the replicas that fire a tick exactly one enqueues it once per minute."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_JOBS_SCHEDULER_OWNER"]
@@ -5877,15 +5738,10 @@ rules:
     witness:
       - {path: packages/eslint-canon-be/src/jobs-scheduler.spec.ts, edition: lite, codes: [BE_JOBS_SCHEDULER_OWNER]}
       - {path: packages/eslint-canon-be/src/jobs-scheduler.spec.ts, edition: full, codes: [BE_JOBS_SCHEDULER_OWNER]}
-    cases:
-      - id: case-1
-        date: "2026-10-29"
-        source: owner
-        quote: "chạy postgresql thuần image chính chủ nhé ko phải supebase"
-        ruling: "The lite db image carries no pg_cron, so recurring work moves to a Nest schedule tick of platform/jobs under an advisory lock and a minute claim (ruling lite-official-postgres-image)."
+
   - id: R336
     code: "BE_EVENT_BUS_LITE_SHAPE"
-    law: "On the lite event bus (pgmq, delivery at least once and unordered), every event payload type declares dedupeKey, the business key a consumer inbox claims as (consumer, dedupeKey), and a reactor subscribes with a *_TOPIC_QUEUE constant imported from platform/event-bus and literal options, so every subscription is static data. The payload type is a literal, EventPayload, or an interface or type alias of the event file that declares dedupeKey or extends EventPayload (ruling lite-pgmq-bus-bullmq-jobs)."
+    law: "On the lite event bus (pgmq, delivery at least once and unordered), every event payload type declares dedupeKey, the business key a consumer inbox claims as (consumer, dedupeKey), and a reactor subscribes with a *_TOPIC_QUEUE constant imported from platform/event-bus and literal options, so every subscription is static data. The payload type is a literal, EventPayload, or an interface or type alias of the event file that declares dedupeKey or extends EventPayload."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_EVENT_BUS_LITE_SHAPE"]
@@ -5938,12 +5794,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/mascot.spec.ts, editions: [lite, full], codes: [FE_GENERATED_ART_OUTSIDE_FRAME]}
     witness:
       - {path: packages/eslint-grammar-core/src/mascot.spec.ts, editions: [lite, full], codes: [FE_GENERATED_ART_OUTSIDE_FRAME]}
-    cases:
-      - id: case-1
-        date: "2026-10-30"
-        source: owner
-        quote: "Generated art renders at one consistent size across screens (relayed by the nivo-lite app)."
-        ruling: "Grammar's Mascot owns the character size scale (sm 96px, md 160px, lg 240px, hero up to its cap), always contained on a transparent ground; generated art under /images/ renders through Mascot or inside MediaFrame, never a bare Image."
+
   - id: R339
     code: "FE_MASCOT_ASSET_SLOT_MISSING"
     law: "Every Grammar Mascot names its assetSlot (a non-empty value), tying the rendered art to the asset workflow's request; an element with a spread attribute is not judged."
@@ -5961,15 +5812,10 @@ rules:
       - {path: packages/eslint-grammar-core/src/mascot.spec.ts, editions: [lite, full], codes: [FE_MASCOT_ASSET_SLOT_MISSING]}
     witness:
       - {path: packages/eslint-grammar-core/src/mascot.spec.ts, editions: [lite, full], codes: [FE_MASCOT_ASSET_SLOT_MISSING]}
-    cases:
-      - id: case-1
-        date: "2026-10-30"
-        source: owner
-        quote: "A Mascot reuses the provenance props of Image and MediaFrame; a Mascot without an assetSlot is a finding (relayed by the nivo-lite app)."
-        ruling: "Mascot takes AssetSlotProps (assetSlot, assetSha256, assetPrompt) and emits them as data-asset-* on its root; the lint requires assetSlot on every Mascot."
+
   - id: R340
     code: "FE_RAISED_SURFACE_IN_SURFACE"
-    law: "A surface never stands inside another surface (owner decision, dialogs and drawers included): a SurfaceCard that a SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover of the same file encloses is refused. The Grammar has one depth, raised."
+    law: "A surface never stands inside another surface (dialogs and drawers included): a SurfaceCard that a SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover of the same file encloses is refused. The Grammar has one depth, raised."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_RAISED_SURFACE_IN_SURFACE"]
@@ -5984,12 +5830,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/surface-depth.spec.ts, editions: [lite, full], codes: [FE_RAISED_SURFACE_IN_SURFACE]}
     witness:
       - {path: packages/eslint-grammar-core/src/surface-depth.spec.ts, editions: [lite, full], codes: [FE_RAISED_SURFACE_IN_SURFACE]}
-    cases:
-      - id: case-1
-        date: "2026-10-31"
-        source: owner
-        quote: "A list inside another surface is outlined (BOUNDARY-5, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE); the list SurfaceCard takes its depth from the surface context (grammar 0.16.2)."
-        ruling: "A list SurfaceCard resolves its depth from the surface context like every SurfaceCard kind; an app that forces depth=\"top\" on a surface nested in another surface raises a surface inside a surface, so the lint refuses it."
+
   - id: R341
     code: "FE_FREESTYLE_REASON_MISSING"
     law: "A Grammar Freestyle region, the one sanctioned place where an app writes its own plain elements and CSS because no Grammar component fits, names its reason: a non-empty string literal saying why. The rules that judge hand-written elements, classes, styles and generated art leave the raw elements of a Freestyle subtree alone; a Grammar component inside it is judged as before. An element with a spread attribute is not judged."
@@ -6007,15 +5848,10 @@ rules:
       - {path: packages/eslint-grammar-core/src/freestyle.spec.ts, editions: [lite, full], codes: [FE_FREESTYLE_REASON_MISSING]}
     witness:
       - {path: packages/eslint-grammar-core/src/freestyle.spec.ts, editions: [lite, full], codes: [FE_FREESTYLE_REASON_MISSING]}
-    cases:
-      - id: case-1
-        date: "2026-10-31"
-        source: owner
-        quote: "cái trang này free style đi trò div và làm bth thôi, thêm 1 component Freestyle hoặc tên gì đó tương đương đi trò, ý là cho custom nhưng vẫm bám grammar trừ bất đắc dĩ ntn"
-        ruling: "The Grammar has one sanctioned escape hatch, Freestyle: a region where the app writes its own plain divs and CSS because no Grammar component fits; it names its reason (the lint requires it), and the rest of the page still follows the Grammar."
+
   - id: R342
     code: "BE_ENTITY_EXTENDS_BASE"
-    law: "An @Entity class does not repeat the columns every table shares: a database-set created_at or updated_at (CreateDateColumn, UpdateDateColumn, or a Column on those names, or on createdAt / updatedAt, with insert false, update false or a default) and, beside both, the generated uuid id are inherited from AbstractEntity or UuidAbstractEntity of @modules/platform/database (BE-PERSISTENCE-3, ruling entity-base). The finding names the base to extend: UuidAbstractEntity with the uuid key, AbstractEntity without it. A table whose timestamps the application sets (a plain Column), or that lacks one of them, extends nothing and maps its own; the base file platform/database/abstract.entity.ts is exempt."
+    law: "An @Entity class does not repeat the columns every table shares: a database-set created_at or updated_at (CreateDateColumn, UpdateDateColumn, or a Column on those names, or on createdAt / updatedAt, with insert false, update false or a default) and, beside both, the generated uuid id are inherited from AbstractEntity or UuidAbstractEntity of @modules/platform/database (BE-PERSISTENCE-3). The finding names the base to extend: UuidAbstractEntity with the uuid key, AbstractEntity without it. A table whose timestamps the application sets (a plain Column), or that lacks one of them, extends nothing and maps its own; the base file platform/database/abstract.entity.ts is exempt."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_ENTITY_EXTENDS_BASE"]
@@ -6030,12 +5866,7 @@ rules:
       - {path: packages/eslint-canon-be/src/entity-base.spec.ts, editions: [lite, full], codes: [BE_ENTITY_EXTENDS_BASE]}
     witness:
       - {path: packages/eslint-canon-be/src/entity-base.spec.ts, editions: [lite, full], codes: [BE_ENTITY_EXTENDS_BASE]}
-    cases:
-      - id: case-1
-        date: "2026-10-31"
-        source: owner
-        quote: "Entities do not repeat the columns every table shares; the owner approved a lint so they never repeat them again (ruling entity-base, 2026-10-31)."
-        ruling: "A table whose migration has created_at, updated_at (set by the database) and the generated uuid id maps them by extending AbstractEntity or UuidAbstractEntity from @modules/platform/database; an entity that declares them itself is a finding. A table without them extends nothing."
+
   - id: R343
     code: "HFS_CHECK_CACHE_FORGED"
     editions: ["lite", "full"]
@@ -6058,12 +5889,7 @@ rules:
       - {path: packages/hfs/src/hfs-check-cache.spec.mjs, editions: [lite, full], codes: [HFS_CHECK_CACHE_FORGED, HFS_CHECK_CACHE_STALE, HFS_CHECK_CACHE_MISSING]}
       - {path: packages/hfs/src/check-cache-freshness.spec.mjs, editions: [lite, full], codes: [HFS_CHECK_CACHE_UNWARMED, HFS_CHECK_CACHE_UNPORTABLE]}
       - {path: packages/hfs/src/release-cache-verify-lock.spec.mjs, editions: [lite, full], codes: [HFS_CHECK_CACHE_VERIFY_LOCKED]}
-    cases:
-      - id: case-1
-        date: "2026-10-31"
-        source: owner
-        quote: "app check cache lại vào file dc không? sau chỉ check diff; chốt starcistacks lưu hết nhé và check diff và triển cho ci và local lun."
-        ruling: "The app commits its check results in .starcistacks/cache/; CI trusts only the cache at the trusted base, a forged record blocks at any count, stale and missing only warn (ruling app-check-cache)."
+
   - id: R344
     code: "BE_AI_VIRTUAL_KEY"
     law: "An app's ai-router gateway has one client key, STARCI_AI_KEY (sk-starci-<app>-<48 hex>, sealed in the ai member, used by the integrations/ai LangChain client and the agent runtime alike), and no admin token: integrations/ai reads exactly that secret name with env.secret, as a literal, and the custody owner integrations/ai-gateway passes the gateway no adminToken."
@@ -6081,12 +5907,7 @@ rules:
       - {path: packages/eslint-canon-be/src/ai-gateway.spec.ts, editions: [lite, full], codes: [BE_AI_VIRTUAL_KEY]}
     witness:
       - {path: packages/eslint-canon-be/src/ai-gateway.spec.ts, editions: [lite, full], codes: [BE_AI_VIRTUAL_KEY]}
-    cases:
-      - id: case-1
-        date: "2026-10-31"
-        source: owner
-        quote: "Xóa ai api key và openclaw ai key chỉnh thành starci ai key là key ảo"
-        ruling: "Per app and environment the ai member holds the upstream provider keys and one random virtual key STARCI_AI_KEY that the gateway mounts and every client uses; the gateway has no admin API (ruling be-ai-one-virtual-key)."
+
   - id: R345
     code: "FE_PANE_GRID_CHILD_NOT_PANE"
     law: "A child of a Grammar PaneGrid is a literal Pane element, written directly or returned by a conditional (`cond ? <Pane/> : null`, `cond && <Pane/>`) or a `.map`; a wrapper component, a raw element, a fragment or a variable is refused, because PaneGrid places each child by the area of a Pane and drops the rest, leaving its cell blank. A Freestyle subtree leaves the raw elements inside it alone."
@@ -6104,12 +5925,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_CHILD_NOT_PANE]}
     witness:
       - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_CHILD_NOT_PANE]}
-    cases:
-      - id: case-1
-        date: "2026-10-31"
-        source: owner
-        quote: "trò thiết kế hệ thống padding đồng nhất cho grammar chứ mỗi nơi 1 padding trò thấy k"
-        ruling: "A Pane owns its content inset and every band in it is a PaneSection; a PaneGrid holds Panes only, so the lint refuses a wrapper component that the grid would drop."
+
   - id: R346
     code: "FE_PANE_CHILD_NOT_SECTION"
     law: "A Grammar Pane holds PaneSection elements or one nested PaneGrid; a raw element, or a Grammar component other than PaneSection, PaneGrid and Freestyle, placed directly in a Pane skips the inset the pane publishes to its bands. A project component is judged in its own file, and a Freestyle subtree leaves its raw elements alone."
@@ -6127,12 +5943,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_CHILD_NOT_SECTION]}
     witness:
       - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_CHILD_NOT_SECTION]}
-    cases:
-      - id: case-1
-        date: "2026-10-31"
-        source: owner
-        quote: "trò thiết kế hệ thống padding đồng nhất cho grammar chứ mỗi nơi 1 padding trò thấy k"
-        ruling: "A Pane owns its content inset and every band in it is a PaneSection whose boxes align to that edge, so the lint refuses a band hand-built in a pane."
+
   - id: R347
     code: "FE_PANE_SECTION_PADDING"
     law: "The outermost element a Grammar PaneSection renders, and the root of a same-file component returned as its child, carries no padding or margin utility (`p-*`, `px-*`, `py-*`, `ps/pe/pt/pb/pl/pr-*`, `m-*`, `mx/my/ms/me/mt/mb/ml/mr-*`, their negative forms, or an arbitrary padding or margin property; zero and auto values place or reset and are not one), because the Pane owns the content inset and the section applies it. A Freestyle subtree leaves its raw elements alone."
@@ -6150,12 +5961,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_SECTION_PADDING]}
     witness:
       - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_SECTION_PADDING]}
-    cases:
-      - id: case-1
-        date: "2026-10-31"
-        source: owner
-        quote: "trò thiết kế hệ thống padding đồng nhất cho grammar chứ mỗi nơi 1 padding trò thấy k"
-        ruling: "One padding system for everything placed in a PaneGrid: the Pane publishes the inset and the PaneSection applies it, so no band adds its own."
+
   - id: R348
     code: "FE_PANE_GRID_FRAME"
     law: "A Grammar PaneGrid is the one child of `Page chrome=\"panes\"`, written there as a PaneGrid element, or stands inside a Pane; a PaneGrid drawn in a SurfaceCard of any kind or a Page of another chrome re-decides the frame and the bottom edge that Page owns, and `Page chrome=\"panes\"` holding anything but one written PaneGrid element (a wrapper element, a component that renders the grid, a fragment, a variable, a condition) throws PAGE_PANES_CHILD_NOT_PANE_GRID at run time. A grid whose frame lives in another file is judged where the frame is, and a Freestyle subtree is not judged."
@@ -6173,12 +5979,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_FRAME]}
     witness:
       - {path: packages/eslint-grammar-core/src/pane.spec.ts, editions: [lite, full], codes: [FE_PANE_GRID_FRAME]}
-    cases:
-      - id: case-1
-        date: "2026-10-31"
-        source: owner
-        quote: "sao trang lan agent có gap 1 khoảng trên vậy??? … phải dính vào chứ"
-        ruling: "A tabbed app page's PaneGrid attaches flush under the tab line, full width and to the bottom, with no card, radius or gap: Page chrome=\"panes\"."
+
   - id: R349
     code: "FE_HAND_BUILT_PANES"
     law: "A multi-pane frame is a Grammar PaneGrid of Panes, which draws the dividers between panes; a vertical Divider used as a column seam (among the plain columns of a flex row, or anywhere inside a SurfaceCard composition=\"joined\") and a joined SurfaceCard that holds a flex row of two or more plain columns are a pane frame drawn by hand and are refused. A short vertical separator between controls and a row whose classes cannot be read in the file are not judged."
@@ -6196,15 +5997,10 @@ rules:
       - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HAND_BUILT_PANES]}
     witness:
       - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HAND_BUILT_PANES]}
-    cases:
-      - id: case-1
-        date: "2026-10-31"
-        source: owner
-        quote: "sao trang lan agent có gap 1 khoảng trên vậy??? … phải dính vào chứ"
-        ruling: "A multi-pane frame is the Grammar's PaneGrid, never columns and a vertical Divider composed by hand inside a card."
+
   - id: R350
     code: "FE_SPACING_UTILITY"
-    law: "Every spacing value is the Grammar's, on its one scale 0 4 8 12 24 32: an app names the relation between the blocks it places through a role prop (Stack and Cluster gap identity, inline, row, section or region; Grid kind cards, form or main-rail; PaneSection; Page) and writes no padding, margin, gap or space utility and no arbitrary spacing value in a class string; a Grammar stylesheet writes no spacing length off the scale and no fluid spacing value."
+    law: "Every spacing value is the Grammar's, on its one scale 0 4 8 12 24 32 (every container holds its content 12 in): an app names the relation between the blocks it places through a role prop (Stack and Cluster gap identity, inline, row, section or region; Grid kind cards, form or main-rail; PaneSection; Page) and writes no padding, margin, gap or space utility and no arbitrary spacing value in a class string; a Grammar stylesheet writes no spacing length off the scale and no fluid spacing value."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_SPACING_UTILITY", "FE_SPACING_OFF_SCALE"]
@@ -6220,15 +6016,10 @@ rules:
       - {path: packages/eslint-canon-fe/src/spacing.spec.ts, editions: [lite, full], codes: [FE_SPACING_UTILITY]}
     witness:
       - {path: packages/eslint-canon-fe/src/spacing.spec.ts, editions: [lite, full], codes: [FE_SPACING_UTILITY]}
-    cases:
-      - id: case-1
-        date: "2026-10-31"
-        source: owner
-        quote: "hay full 3 bỏ 4 đi!!! thầy nghĩ nên v"
-        ruling: "One spacing scale with no 16; every container holds its content 12 in, and an app names relations through role props, never spacing utilities."
+
   - id: R351
     code: "FE_TABLE_IN_CARD"
-    law: "A DataTable is not placed inside a SurfaceCard, on the page or in a pane: plain rows with a few facts are a SurfaceCard kind=list with the label outside and the note in its footer, and a table that belongs to a card is an owner decision named in this rule. The rule reads the JSX of the file: a DataTable enclosed by a SurfaceCard element, or rendered by a component of the same file that a SurfaceCard encloses."
+    law: "A DataTable is not placed inside a SurfaceCard, on the page or in a pane: plain rows with a few facts are a SurfaceCard kind=list with the label outside and the note in its footer, and a table that belongs to a card is an exception named in this rule. The rule reads the JSX of the file: a DataTable enclosed by a SurfaceCard element, or rendered by a component of the same file that a SurfaceCard encloses."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_TABLE_IN_CARD"]
@@ -6243,12 +6034,7 @@ rules:
       - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_TABLE_IN_CARD]}
     witness:
       - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_TABLE_IN_CARD]}
-    cases:
-      - id: case-1
-        date: "2026-11-01"
-        source: owner
-        quote: "quá phức tạp mới nhét bảng vào card"
-        ruling: "Plain rows are a SurfaceCard kind=\"list\" with a bottom note in its footer; a DataTable is not put in a SurfaceCard."
+
   - id: R352
     code: "FE_COMMAND_FILLS_HEADER"
     law: "A page or pane command hugs its label and sits at the end of its header row: a Grammar Button with width=\"fill\" in the actions of a Page header or the labelEnd of a SurfaceCard is refused; width=\"fill\" is for a form submit, an auth panel and a phone action bar, which a file cannot show and the rule does not judge."
@@ -6266,12 +6052,7 @@ rules:
       - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_COMMAND_FILLS_HEADER]}
     witness:
       - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_COMMAND_FILLS_HEADER]}
-    cases:
-      - id: case-1
-        date: "2026-11-01"
-        source: owner
-        quote: "(owner order relayed by the coordinator, 2026-11-01) a page or pane command hugs its label and sits at the end of its header row; Button width=fill is only for a form submit, an auth panel, or a phone action bar"
-        ruling: "A header command is never width fill; fill is for a form submit, an auth panel and a phone action bar."
+
   - id: R353
     code: "FE_TAG_GROUP_SELECTION"
     law: "A TagGroup holds values the user entered, to remove or to order, and has no selection: selectionMode, selectedIds, defaultSelectedIds and onSelectionChange on it are refused. Peer values that filter a collection that stays in place are a FilterButtonGroup (sm toggle buttons on one row, the rest behind a +n search list)."
@@ -6289,12 +6070,7 @@ rules:
       - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_TAG_GROUP_SELECTION]}
     witness:
       - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_TAG_GROUP_SELECTION]}
-    cases:
-      - id: case-1
-        date: "2026-11-01"
-        source: owner
-        quote: "sao cái này không phải cụm button... button size xs kiểu nhóm button"
-        ruling: "A filter over a collection is a FilterButtonGroup of sm toggle buttons; the TagGroup has no selection."
+
   - id: R354
     code: "FE_HEADING_ABOVE_CARD"
     law: "A card has a label by design, so a heading over it is wrong: a Section (not kind=\"list\") whose only child is one SurfaceCard (of any kind), and a card whose ariaLabel is the Section title, are refused; the title moves to the label, the count to fact, the action to labelEnd and the note to footer. Several cards under one Section stay legal."
@@ -6312,12 +6088,7 @@ rules:
       - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HEADING_ABOVE_CARD]}
     witness:
       - {path: packages/eslint-canon-fe/src/surface-rules.spec.ts, editions: [lite, full], codes: [FE_HEADING_ABOVE_CARD]}
-    cases:
-      - id: case-1
-        date: "2026-11-01"
-        source: owner
-        quote: "bản thân card đã có label, vốn là mục đích thiết kế"
-        ruling: "A card carries its own title, count, action and note; a Section around a single card is refused."
+
   - id: R355
     code: "FE_SURFACE_CARD_KIND"
     law: "A SurfaceCard is one component whose kind the compiler checks, and what a kind draws is not drawn by hand around it: a card of the body kind holds no raw ul, ol, li or dl, no Divider, and no Heading standing as a second title, and a Section whose only child is one SurfaceCard frames one subject twice."
@@ -6350,12 +6121,7 @@ rules:
       - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_SURFACE_NESTING]}
     witness:
       - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_SURFACE_NESTING]}
-    cases:
-      - id: case-1
-        date: "2026-11-01"
-        source: owner
-        quote: "Surface in surface is banned totally, dialogs and drawers included."
-        ruling: "The one-file card laws (R340, R348, R351, R354, R366) are closed across files by the render graph; the machine reports the inner element and the chain that led to it."
+
   - id: R357
     code: "FE_TEXT_BLOCK"
     law: "Text holds a run of words: a block component or block element inside it is refused."
@@ -6373,12 +6139,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_BLOCK]}
     witness:
       - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_BLOCK]}
-    cases:
-      - id: case-1
-        date: "2026-11-01"
-        source: owner
-        quote: "A card carries its own label; text is inline."
-        ruling: "Text is inline only, so a layout cannot hide inside a paragraph."
+
   - id: R358
     code: "FE_TEXT_HEADING"
     law: "A strong Text that is the first child of a group and is followed only by blocks is a hand heading: the group takes a Section title, a card label or Heading."
@@ -6396,12 +6157,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_HEADING]}
     witness:
       - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_TEXT_HEADING]}
-    cases:
-      - id: case-1
-        date: "2026-11-01"
-        source: owner
-        quote: "No free heading in apps."
-        ruling: "A heading is a Section title, a card label or Heading, never a strong Text."
+
   - id: R359
     code: "FE_ONE_HIGHLIGHT"
     law: "A render states one highlighted thing: a second isHighlight on a Grammar element in one component render is refused."
@@ -6419,12 +6175,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_ONE_HIGHLIGHT]}
     witness:
       - {path: packages/eslint-grammar-core/src/text-rules.spec.ts, editions: [lite, full], codes: [FE_ONE_HIGHLIGHT]}
-    cases:
-      - id: case-1
-        date: "2026-11-01"
-        source: owner
-        quote: "One accent fill per render."
-        ruling: "When two things are highlighted neither is."
+
   - id: R361
     code: "FE_RENDER_PROP_ACROSS_SERVER"
     law: "A function is not handed from a server file to a client component: React serialises props across that line and a function is not serialisable; pass data, or move the callback into the client branch that owns the interaction."
@@ -6442,12 +6193,7 @@ rules:
       - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
     witness:
       - {path: packages/hfs/src/surface-nesting.spec.mts, editions: [lite, full], codes: [FE_RENDER_PROP_ACROSS_SERVER]}
-    cases:
-      - id: case-1
-        date: "2026-11-01"
-        source: owner
-        quote: "a block takes data"
-        ruling: "A render callback is for a client branch; a block takes data and renders it itself."
+
   - id: R362
     code: "FE_GRAMMAR_TIER_STATE"
     law: "In the Grammar package a leaf and a composite hold no useState, useReducer or effect, and a component's own props and its ReactNode slots stay inside its tier's budget (leaf 8, branch 12, composite 12, frame 10 props; 3 slots). Both run as counting rules: their findings are the tier refactor list."
@@ -6466,12 +6212,7 @@ rules:
       - {path: packages/grammar/scripts/lint/eslint-plugin.mts, editions: [lite, full], codes: [FE_GRAMMAR_TIER_STATE, FE_GRAMMAR_PROP_BUDGET]}
     witness:
       - {path: packages/grammar/scripts/lint/eslint-plugin.mts, editions: [lite, full], codes: [FE_GRAMMAR_TIER_STATE, FE_GRAMMAR_PROP_BUDGET]}
-    cases:
-      - id: case-1
-        date: "2026-11-02"
-        source: owner
-        quote: "The tier binding of the Grammar is a ladder; a leaf draws and a branch behaves."
-        ruling: "State sits in branches; budgets keep a role from growing into two."
+
   - id: R363
     code: "FE_GRAMMAR_LITERAL"
     law: "A Grammar component holds no hardcoded colour, length, utility class or numeric style value (`no-literal-look`); its stylesheets read named roles and ramps."
@@ -6489,12 +6230,7 @@ rules:
       - {path: packages/grammar/scripts/lint/eslint-plugin.mts, editions: [lite, full], codes: [FE_GRAMMAR_LITERAL]}
     witness:
       - {path: packages/grammar/scripts/lint/eslint-plugin.mts, editions: [lite, full], codes: [FE_GRAMMAR_LITERAL]}
-    cases:
-      - id: case-1
-        date: "2026-11-02"
-        source: owner
-        quote: "A component names a role and the stylesheet gives it a value."
-        ruling: "Literals live in the ramps."
+
   - id: R366
     code: "FE_LABEL_IN_GRID"
     law: "A SurfaceCard with a label repeated in a Grid kind=cards is a tile drawn with the wrong anatomy: a peer you recognise and open names itself inside (SurfaceCard kind=tile), and peers compared by a fact are one kind=list card."
@@ -6512,7 +6248,7 @@ rules:
       - {path: packages/eslint-grammar-core/src/surface-card.spec.ts, editions: [lite, full], codes: [FE_LABEL_IN_GRID]}
   - id: R367
     code: "FE_SWR_DEFAULT_ARRAY"
-    law: "A loading state is drawn from the page's own reads: a hook folds a read to [] only while it also returns that read's isLoading, a slot takes its loading and error from the reads it draws and never from another slot, a background refresh (isValidating) never drives a loading flag or a status, a placeholder is not the ready data with its lists emptied, and an app draws no skeleton by hand (`no-hand-skeleton`): the Grammar components draw their loading structure from `isLoading`."
+    law: "A loading state is drawn from the page's own reads: a hook folds a read to [] only while it also returns that read's isLoading, a slot takes its loading and error from the reads it draws and never from another slot, a key change reloads only the region keyed by it, a background refresh (isValidating) keeps the content and never drives a loading flag or a status, a placeholder is not the ready data with its lists emptied, and an app draws no skeleton by hand (`no-hand-skeleton`): the Grammar components draw their loading structure from `isLoading`."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_SWR_DEFAULT_ARRAY", "FE_FOREIGN_SLOT_STATUS", "FE_VALIDATING_AS_LOADING", "FE_PLACEHOLDER_OBJECT", "FE_HAND_SKELETON"]
@@ -6531,12 +6267,7 @@ rules:
       - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT, FE_HAND_SKELETON]}
     witness:
       - {path: packages/eslint-canon-fe/src/skeleton-states.spec.ts, editions: [lite, full], codes: [FE_SWR_DEFAULT_ARRAY, FE_FOREIGN_SLOT_STATUS, FE_VALIDATING_AS_LOADING, FE_PLACEHOLDER_OBJECT, FE_HAND_SKELETON]}
-    cases:
-      - id: case-1
-        date: "2026-11-01"
-        source: owner
-        quote: "The skeleton is the ready structure with its data missing; it is drawn from isLoading alone and from the reads the region shows."
-        ruling: "Several reads feed one frame: loading is any read loading with no data; a key change reloads only the region keyed by it; a refresh keeps the content."
+
   - id: R368
     code: "HFS_EXPLICIT_EXPORT_SURFACE"
     law: "An exported declaration states its type where it is exported: the return type of an exported function, the type of an exported variable and the type of its parameters are written, not inferred from a body or from other files, because the isolated declaration emit must be able to write the file's surface alone. A component that returns only JSX is explicit. Each export that cannot be written is reported at its place with what to annotate, in a front-end and a back-end file alike."
@@ -6559,12 +6290,7 @@ rules:
       - {path: packages/eslint-canon-fe/src/explicit-surface.spec.ts, editions: [lite, full], codes: [HFS_EXPLICIT_EXPORT_SURFACE]}
       - {path: packages/eslint-canon-be/src/explicit-surface.spec.ts, editions: [lite, full], codes: [HFS_EXPLICIT_EXPORT_SURFACE]}
       - {path: packages/hfs/src/explicit-surface.spec.mts, editions: [lite, full], codes: [HFS_EXPLICIT_EXPORT_SURFACE]}
-    cases:
-      - id: case-1
-        date: "2026-11-03"
-        source: owner
-        quote: "enforce it by lint"
-        ruling: "A file whose exported surface is inferred is open in the lint result cache: one body edit lints every importer again. The exported surface is written out, and the rule reports exactly what the cache counts as open."
+
   - id: R369
     code: "FE_DIRECTIVE_FIRST"
     law: "A `use client` or `use server` directive is the first statement of its module, above every import: below another statement it is an expression that does nothing (Prettier writes it as a parenthesised string) and next build refuses the file."
@@ -6582,12 +6308,7 @@ rules:
       - {path: packages/eslint-canon-fe/src/directive-first.spec.ts, editions: [lite, full], codes: [FE_DIRECTIVE_FIRST]}
     witness:
       - {path: packages/eslint-canon-fe/src/directive-first.spec.ts, editions: [lite, full], codes: [FE_DIRECTIVE_FIRST]}
-    cases:
-      - id: case-1
-        date: "2026-11-03"
-        source: owner
-        quote: "no lint caught it"
-        ruling: "A directive below an import broke Nivo's CI build on 2026-11-02; the directive is the first statement of its module and a lint reports it elsewhere."
+
   - id: R372
     code: "STACKS_LOCAL_CONFIG_INVALID"
     law: "In lite and full apps, every docker-compose environment of .starcistacks/application-stacks.yaml declares a coherent `local` block, judged by the same normalizeLocal the dev verbs of `starci app stack` (doctor, prepare, up, status, logs, verify, down) use: closed fields, one loopback port each, compose services that exist in the compose files, an environment-owned database role (never postgres, never the app role), dev-only custody generators and loopback probes; and a lite app declares at least one such dev environment, so `starci app stack up --env dev` has something to run."
@@ -6760,7 +6481,7 @@ rules:
       - {path: packages/hfs/src/package-slots.spec.mjs, editions: [lite, full]}
   - id: R383
     code: "CI_PARITY_STEP_FAILED"
-    law: "The pre-push gate runs every command of the app's managed CI that needs no database, as CI runs it: `starci app check --fresh` adds the build and audit families, which read their commands from the app's rendered .github/workflows/ci.yml (the fast job's production dependency audit and typecheck script, the build job's `npm run build:be` and each `build fe` step, a next build per front-end app with its own SWC cache root under the app's tool cache), and runs CI's coverage step (`starci app coverage verify`) on the lcov the test family merged from its records; a step that fails is CI_PARITY_STEP_FAILED, so a green push gate is not followed by a red CI on it. The database steps (db:lint, app db drift) need a database and stay CI-only (decision ci-parity)."
+    law: "The pre-push gate runs every command of the app's managed CI that needs no database, as CI runs it: `starci app check --fresh` adds the build and audit families, which read their commands from the app's rendered .github/workflows/ci.yml (the fast job's production dependency audit and typecheck script, the build job's `npm run build:be` and each `build fe` step, a next build per front-end app with its own SWC cache root under the app's tool cache), and runs CI's coverage step (`starci app coverage verify`) on the lcov the test family merged from its records; a step that fails is CI_PARITY_STEP_FAILED, so a green push gate is not followed by a red CI on it. The database steps (db:lint, app db drift) need a database and stay CI-only."
     kinds: [check]
     gates: [land, ci]
     failureCodes: ["CI_PARITY_STEP_FAILED"]
@@ -6790,9 +6511,3 @@ rules:
       - {path: packages/eslint-canon-fe/src/renderer-purity.spec.ts, editions: [lite, full], codes: [FE_RENDERER_LOGIC]}
     witness:
       - {path: packages/eslint-canon-fe/src/renderer-purity.spec.ts, editions: [lite, full], codes: [FE_RENDERER_LOGIC]}
-    cases:
-      - id: case-1
-        date: "2026-11-06"
-        source: owner
-        quote: "a renderer holds presentation only; the logic must live in measured .ts"
-        ruling: "The unit run measures .ts only, so logic written inside a client .tsx renderer had no spec, no coverage bar and no story. The renderer maps, chooses what to show and formats; the logic is a measured .ts function it calls."

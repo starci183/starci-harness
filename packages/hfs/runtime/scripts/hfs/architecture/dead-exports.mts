@@ -14,7 +14,7 @@
  * imports (not re-exports) is used, because it is part of that entry's public signature (an operation file
  * `graphql/queries/query-<x>.ts` typing its request and answer with `graphql/queries/types/<x>.ts`). A barrel or any other
  * non-entry file of the owner still does not count. The exported names of an entry are its named exports, `export { a as b }`,
- * `export { x } from`, declarations with `export`, and `default` for `export default`. `export *` is refused by owners.mjs
+ * `export { x } from`, declarations with `export`, and `default` for `export default`. `export *` is refused by owners.mts
  * and contributes no name here.
  *
  * A name is used when a production file outside the owner imports it from the entry (type-only imports count). A

@@ -1,4 +1,4 @@
-// `starci app add app <name>` (scaffold/add-app.mjs) adds one Next workspace from the edition's skeleton and registers it in hfs.json, or
+// `starci app add app <name>` (scaffold/add-app.mts) adds one Next workspace from the edition's skeleton and registers it in hfs.json, or
 // writes nothing. Its Dockerfile is rendered from the app's own tree: it copies be/contracts exactly when the back end holds them (R187).
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';

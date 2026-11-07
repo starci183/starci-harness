@@ -20,7 +20,7 @@ import { checkFunctionSubject, functionSubjectExports, keyOf as literalKey, valu
  * The service under test is the sibling `<name>.service.ts` of every `<name>.service.spec.ts` under src/ or apps/ (a spec is
  * outside the production program, so it is read from disk). A parameter decorated with a custom `Inject<Thing>()` provides
  * the token that decorator's `injector<T>(TOKEN)` names; an undecorated parameter of a class type provides that class (see
- * constructor-deps.mjs). Providers are matched by the exported name of the imported binding (`import { CACHE as C }` is
+ * constructor-deps.mts). Providers are matched by the exported name of the imported binding (`import { CACHE as C }` is
  * CACHE), never by text. A provider is a class, or `{ provide: TOKEN, useValue: double }` and nothing else. A sibling
  * containing only exported functions instead provides its complete real function object and exercises it through module.get;
  * callable named re-exports count, while constants, enums, type-only exports and overload signatures do not. A value-object subject (an

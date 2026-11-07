@@ -1,6 +1,6 @@
-// rule-params-shape.mjs - the shape of `ruleParams` of an app slot manifest (knowledge/hfs/slots.yaml): the parameters both sides
+// rule-params-shape.mts - the shape of `ruleParams` of an app slot manifest (knowledge/hfs/slots.yaml): the parameters both sides
 // share (`common`), the back end's own (`be`) and the front end's overrides (`fe`). Pure: a parsed manifest in, a list of
-// problems out, in the words of modules/schemas/hfs-slots.schema.yaml. scripts/hfs/slots.mjs (loadSlotManifest) is the reader.
+// problems out, in the words of modules/schemas/hfs-slots.schema.yaml. scripts/hfs/slots.mts (loadSlotManifest) is the reader.
 import type { Parsed } from './manifest-shape.mjs';
 import { isPlainObject } from '../../engine/plain-object.mjs';
 import { paramNamesOk } from './param-names.mjs';

@@ -242,7 +242,7 @@ test("a shape union never lists a data status or open/closed", () => {
   })
 })
 
-test("the pure half's input is `shape`: the old `state` key is refused and renamed by the fix", () => {
+test("the pure half's input is `shape`: a `state` key is refused and renamed by the fix", () => {
   assert.doesNotThrow(() => {
     tester.run("base-props-atom-shape", basePropsAtom, {
       valid: [

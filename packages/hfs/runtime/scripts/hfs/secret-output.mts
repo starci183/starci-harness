@@ -1,4 +1,4 @@
-// secret-output.mjs - list and materialize secret names and private KEY files.
+// secret-output.mts - list and materialize secret names and private KEY files.
 import fs from "node:fs";
 import path from "node:path";
 import { byCodeUnit } from "../lib/list.mjs";

@@ -13,7 +13,7 @@ import { engineKind, isEngineCapability } from '../engine-owned.mjs';
 
 /**
  * R86 `sql-owner` (BE_SQL_TABLE_OWNER). Every `sql` tagged template (the tag declared in platform/database) of a
- * `<name>.sql.ts` file in a capability's `persistence/` is read with the tokenizer of sql-tokens.mjs and judged against the
+ * `<name>.sql.ts` file in a capability's `persistence/` is read with the tokenizer of sql-tokens.mts and judged against the
  * schema authority of the whole program:
  *   - it writes (INSERT INTO, UPDATE, DELETE FROM, MERGE INTO, TRUNCATE) only tables the file's own capability declares;
  *   - it reads (FROM, JOIN, USING) only tables of its own CONTEXT (the connection its capability's arrays are registered on): its own

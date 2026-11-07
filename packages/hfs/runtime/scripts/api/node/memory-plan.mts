@@ -1,4 +1,4 @@
-// memory-plan.mjs - the memory plan an app check runs under, as starci-harness hands it (STARCI_MEMORY_PLAN, cli/src/harness/memory-plan.ts): the
+// memory-plan.mts - the memory plan an app check runs under, as starci-harness hands it (STARCI_MEMORY_PLAN, cli/src/harness/memory-plan.ts): the
 // heaps the CLI sized from the app's scope. The CLI applies them to the children it runs; this side reads two parts of it: the files one ESLint
 // child of the lint ratchet takes, and the plan an out-of-memory message names. Without a plan (an older CLI) neither changes.
 

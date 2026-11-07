@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// release-push-gate.mjs - the body of the runtime repository's pre-push hook (scripts/guards/git-hooks.mjs). Git hands the hook one line
-// per ref on stdin: <local ref> <local sha> <remote ref> <remote sha>. Owner ruling push-main-after-scoped-check: the push is light and CI is the critic, so a push of main
+// release-push-gate.mts - the body of the runtime repository's pre-push hook (scripts/guards/git-hooks.mjs). Git hands the hook one line
+// per ref on stdin: <local ref> <local sha> <remote ref> <remote sha>. The push is light and CI is the critic, so a push of main
 // or of a tag passes when the hook runs clean and the secret scan of the pushed range finds nothing:
-//   refs/heads/main   not deleted, a fast-forward of the remote main, and the pushed range passes the secret scan (scripts/guards/push-scan.mjs)
+//   refs/heads/main   not deleted, a fast-forward of the remote main, and the pushed range passes the secret scan (scripts/guards/push-scan.mts)
 //   refs/tags/v*      not deleted and annotated (its message is the release notes); the release definition is judged by `starci release cut`, which makes the tag
 //   any other ref     allowed (a lane branch, refs/backup/*, a tag that is not a release tag)
 // No release record and no L4 row is asked for. A refusal prints `RIGHTS_PUSH_NOT_RELEASE: <ref> is closed: <why>` per ref and exits 1 (the code keeps its name: the hfs rules and the

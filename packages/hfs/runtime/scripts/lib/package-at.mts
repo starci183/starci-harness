@@ -1,4 +1,4 @@
-// scripts/lib/package-at.mjs — a package the runtime does not ship (playwright, esbuild, tailwindcss) comes from the
+// scripts/lib/package-at.mts — a package the runtime does not ship (playwright, esbuild, tailwindcss) comes from the
 // project that owns it: node resolution from that project's directory, walking up its node_modules.
 import fs from 'node:fs';
 import path from 'node:path';

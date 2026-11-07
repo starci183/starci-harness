@@ -1,4 +1,4 @@
-// slot-semantic-problems.mjs - semantic checks for the HFS slot manifest.
+// slot-semantic-problems.mts - semantic checks for the HFS slot manifest.
 import { isPlainObject } from '../../engine/plain-object.mjs';
 import { triggerProblems } from './declaration-slots.mjs';
 import { litePresenceOf, slotInEdition } from './edition-slots.mjs';
@@ -6,7 +6,7 @@ import { manifestKind, RUNTIME_KIND, runtimeSemanticProblems, tierKindProblems }
 import { APP_SCOPE, isSide, PROFILES } from './slot-manifest-shape.mjs';
 import type { Slot, SlotManifest } from './manifest-shape.mjs';
 
-/** The pure helpers of slots.mjs that the semantic checks use (slot-match.mjs and lib/glob.mjs), handed in by the loader. */
+/** The pure helpers of slots.mts that the semantic checks use (slot-match.mts and lib/glob.mts), handed in by the loader. */
 export interface SemanticHelpers {
   varsOf: (text: string) => string[];
   braceVariants: (value: string) => string[];

@@ -1,5 +1,5 @@
-// prepare.mjs - `starci app stack prepare`: its dry run is the read-only check of the Swarm manager (doctorHost), --execute adds the missing external
-// volumes and the ONE-TIME, owner-approved `docker swarm init`. Every docker call runs ON the manager through the ssh runner (remote.mjs), so the
+// prepare.mts - `starci app stack prepare`: its dry run is the read-only check of the Swarm manager (doctorHost), --execute adds the missing external
+// volumes and the ONE-TIME, owner-approved `docker swarm init`. Every docker call runs ON the manager through the ssh runner (remote.mts), so the
 // same code serves CI and the owner's machine. Lines are `ok    text` / `FAIL  text`; a failing check makes the result not ok but all checks run.
 import fs from 'node:fs';
 import type { DeployConfig } from './config.mjs';

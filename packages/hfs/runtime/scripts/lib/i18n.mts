@@ -1,8 +1,8 @@
-// i18n.mjs - the ONE mechanism for text the owner must read in Vietnamese. Runtime source, comments and messages are English;
+// i18n.mts - the ONE mechanism for text the owner must read in Vietnamese. Runtime source, comments and messages are English;
 // a message the owner reads (a Telegram notice, a why line, a progress report) is written once in English at its call site and
 // translated through a DECLARED catalog keyed from that English source: modules/i18n/messages/<area>.yaml, a list of
 // `{en, vi}` entries. Each area belongs to a scope: `runtime` for Node callers or `ui` for the generated browser catalog.
-// The `vi` field is declared in scripts/lib/language.mjs, so it is the only Vietnamese source. There is no per-module
+// The `vi` field is declared in scripts/lib/language.mts, so it is the only Vietnamese source. There is no per-module
 // `TEXT.vi` table and no second catalog mechanism.
 //
 //   const tr = translator(config.language);      // 'vi' translates, anything else returns the English source
@@ -75,7 +75,7 @@ export function translate(en: string, vars: Record<string, unknown> = {}, { lang
   return fill(vi ?? en, vars);
 }
 
-/** The owner's language (config.yaml `language`); `fallback` when there is no readable config (DEFAULT_OWNER_LANGUAGE of engine/config.mjs). */
+/** The owner's language (config.yaml `language`); `fallback` when there is no readable config (DEFAULT_OWNER_LANGUAGE of engine/config.mts). */
 export function ownerLanguage(fallback: string = DEFAULT_OWNER_LANGUAGE): string {
   try { return loadConfig()?.language ?? fallback; } catch { return fallback; }
 }

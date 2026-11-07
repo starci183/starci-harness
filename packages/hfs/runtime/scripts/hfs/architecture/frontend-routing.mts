@@ -15,7 +15,7 @@ export interface RouteContext {
   workspaceOf: (fileName: string) => WorkspaceRecord | null;
 }
 
-/** The finding builder, root matcher and edge reader frontend.mjs hands to the route check. */
+/** The finding builder, root matcher and edge reader frontend.mts hands to the route check. */
 export interface RouteHelpers {
   violation: (config: ArchitectureConfig, sourceFile: SourceFile, node: Node, ruleId: string, message: string, extra: { ts: TypeScriptApi }) => ArchitectureViolation;
   insideAny: (candidates: string[], fileName: string) => boolean;

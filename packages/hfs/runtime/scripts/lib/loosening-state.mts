@@ -1,5 +1,5 @@
-// loosening-state.mjs - the state-based loosening check: does the tree, as it stands, hold a gate weaker than the canon says? (owner decision
-// 2026-10-24, owner ruling loosening-state-check.) The history of the tree is never read: a deleted file, a re-pointed row or reworded text
+// loosening-state.mts - the state-based loosening check: does the tree, as it stands, hold a gate weaker than the canon says? (R236.)
+// The history of the tree is never read: a deleted file, a re-pointed row or reworded text
 // cannot be a loosening, and a loosening that stands cannot be hidden by when it was written. The check is red on
 //   bypass          an inline disable, a type-check escape, a Sonar or coverage ignore, a skipped or focused test, a failure swallowed in a script,
 //                   a hook or a workflow, a warning budget, a pass-with-no-tests flag, a hook skipped (scripts/lib/bypass-markers.mjs);
@@ -13,11 +13,11 @@
 //   budget          a numeric budget of the slot manifests raised, lowered or gone against the manifest's pins; budget-override: an app or example
 //                   config (hfs.json, an ESLint config) that states a budget itself; scope-override: a jest config that narrows what runs;
 //   exception-file  an allowlist, approval, waiver, suppression or baseline file that the manifest does not list, or one with more entries than it allows;
-//   pin             a file the owner pinned (the manifest, the fixtures of this checker, the vendored YAML) whose digest differs from the pin;
+//   pin             a pinned file (the manifest, the fixtures of this checker, the vendored YAML) whose digest differs from its pin;
 //   fixture-misuse  code other than a package spec that imports the fixtures of this checker.
-// Every legitimate exception lives in knowledge/hfs/design-truths.yaml, each with the cite of its owner ruling. The manifest itself is pinned by the
-// digest the latest owner ruling records (pins): a lane that edits it turns the check red until the owner records a ruling. The library is pure: the
-// caller hands the tracked files, a reader, the canon's derivations and the pins.
+// Every legitimate exception lives in knowledge/hfs/design-truths.yaml, each citing the rule it rests on (`cite: {rule: <rule id>}`). The manifest,
+// the fixtures and the vendored copy are pinned by digest in knowledge/hfs/design-truths.pins.yaml: an edit is red until the same commit records its
+// new digest there, so it shows in review. The library is pure: the caller hands the tracked files, a reader, the canon's derivations and the pins.
 import { bypassFileKind, bypassesIn } from './bypass-markers.mjs';
 import { LIST, configKindOf, configRecords, coreOf, exceptionEntries, isAnyDepth, isExceptionFile, maybeTsconfig } from './loosening-config.mjs';
 import type { ConfigKind, ListRecord, NumberRecord, SettingRecord } from './loosening-config.mjs';
@@ -28,6 +28,17 @@ import type { BudgetPin } from './loosening-budgets.mjs';
 import { manifestDigest as truthsDigest } from './grammar-vendor-parity.mjs';
 
 export { truthsDigest };
+
+/** The runtime-relative file of the pins of the manifest, its fixtures and the vendored copy. */
+export const TRUTHS_PINS_FILE = 'knowledge/hfs/design-truths.pins.yaml';
+
+/** The `pins` map of a parsed design-truths.pins.yaml: { runtime-relative path: sha256 }. */
+export const readTruthsPins = (doc: TruthsDocument): Record<string, string> => {
+  const pins: Record<string, string> = {};
+  const raw: unknown = doc?.pins;
+  if (raw !== null && typeof raw === 'object') for (const [file, digest] of Object.entries(raw)) if (typeof digest === 'string') pins[file] = digest;
+  return pins;
+};
 
 // reason: the design-truths manifest is YAML parsed from disk, and every reader below is the validation of its shape.
 type TruthsDocument = any;
@@ -58,7 +69,11 @@ const MANIFEST = 'knowledge/hfs/design-truths.yaml';
 const LISTS = new Set<string>(Object.values(LIST));
 const RELAXING: Readonly<Record<string, string>> = Object.freeze({ require_ci_to_pass: 'false', informational: 'true', passWithNoTests: 'true', requireCi: 'false', if_ci_failed: 'success', status: 'off', 'sonar.qualitygate.wait': 'false', 'yaml-alias': 'true' });
 
-const hasRuling = (cite: TruthsDocument): boolean => cite !== null && typeof cite === 'object' && typeof cite.ruling === 'string' && cite.ruling.length > 0;
+/** A rule id: an hfs rule (R236) or a heading id of the contexts (SHARED-LOOSENING-2). */
+const RULE_ID = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$/;
+const citesRule = (cite: TruthsDocument): boolean => cite !== null && typeof cite === 'object' && typeof cite.rule === 'string' && RULE_ID.test(cite.rule) && /\d/.test(cite.rule);
+/** A cite that names anything but a rule: the one citation form is `cite: {rule: <rule id>}`. */
+const foreignCite = (cite: TruthsDocument): boolean => cite !== null && typeof cite === 'object' && Object.keys(cite).some((key) => key !== 'rule');
 /** The file globs an allowance names: one string or a list of them. */
 function globsOf(value: unknown): string[] {
   const globs: string[] = [];
@@ -85,7 +100,7 @@ function readAllow(truth: TruthsDocument, allow: TruthsDocument, out: TruthsRead
 
 /**
  * The manifest `doc` as the sets the check reads, plus `problems`: the shapes a malformed manifest breaks (a truth, a group, a budget pin or the gate
- * limits without an id, an owner-ruling cite, a sentence or an allowance is a problem, so an exception can never be anonymous or lane-authored).
+ * limits without an id, a cite of the rule it rests on, a sentence or an allowance is a problem, so an exception can never be anonymous).
  */
 export function readTruths(doc: TruthsDocument): TruthsRead {
   const out: TruthsRead = {
@@ -94,14 +109,16 @@ export function readTruths(doc: TruthsDocument): TruthsRead {
     budgets: asArray<BudgetPin & { file?: string; cite?: unknown }>(doc?.budgets),
   };
   if (doc?.schema !== TRUTHS_SCHEMA) out.problems.push(`schema must be ${TRUTHS_SCHEMA}`);
-  if (out.limits && !hasRuling(out.limits.cite)) out.problems.push('gateLimits: an owner-ruling cite is required');
+  const cites = [out.limits?.cite, ...asArray<TruthsDocument>(doc?.outsideTheGates).map((group) => group.cite), ...out.budgets.map((pin) => pin.cite), ...asArray<TruthsDocument>(doc?.truths).map((truth) => truth.cite)];
+  if (cites.some(foreignCite)) out.problems.push('a cite names only the rule an entry rests on: cite: {rule: <rule id>}');
+  if (out.limits && !citesRule(out.limits.cite)) out.problems.push('gateLimits: a cite of the rule it rests on is required');
   for (const group of asArray<TruthsDocument>(doc?.outsideTheGates)) {
-    if (!group.id || !hasRuling(group.cite)) out.problems.push(`outsideTheGates ${group.id ?? '?'}: id and an owner-ruling cite are required`);
+    if (!group.id || !citesRule(group.cite)) out.problems.push(`outsideTheGates ${group.id ?? '?'}: id and a cite of the rule it rests on are required`);
     out.groups.push({ cores: new Set(asArray(group.entries).map((entry) => coreOf(entry))), anyDepth: group.anyDepth === true });
   }
-  for (const pin of out.budgets) if (!pin.file || !hasRuling(pin.cite)) out.problems.push(`budgets ${pin.file ?? '?'}: file and an owner-ruling cite are required`);
+  for (const pin of out.budgets) if (!pin.file || !citesRule(pin.cite)) out.problems.push(`budgets ${pin.file ?? '?'}: file and a cite of the rule it rests on are required`);
   for (const truth of asArray<TruthsDocument>(doc?.truths)) {
-    if (!truth.id || !hasRuling(truth.cite) || !truth.says || asArray(truth.allows).length === 0) out.problems.push(`truth ${truth.id ?? '?'}: id, an owner-ruling cite, says and allows are required`);
+    if (!truth.id || !citesRule(truth.cite) || !truth.says || asArray(truth.allows).length === 0) out.problems.push(`truth ${truth.id ?? '?'}: id, a cite of the rule it rests on, says and allows are required`);
     out.ids.push(truth.id);
     for (const allow of asArray<TruthsDocument>(truth.allows)) readAllow(truth, allow, out);
   }
@@ -214,11 +231,11 @@ function fileFindings(file: string, text: string, truths: TruthsRead, canon: Can
 /** The pinned files whose digest differs from the pin, and the declared fixtures and vendored copies the pins do not cover. */
 function pinFindings(truths: TruthsRead, pins: Readonly<Record<string, string>>, read: (file: string) => string | null | undefined): LooseningFinding[] {
   const declared = [MANIFEST, ...truths.fixtureFiles, ...truths.vendored];
-  const found = declared.filter((file) => !Object.hasOwn(pins, file)).map((file) => finding('pin', file, 1, 'no owner ruling pins this file: record its digest in an owner ruling'));
+  const found = declared.filter((file) => !Object.hasOwn(pins, file)).map((file) => finding('pin', file, 1, 'no pin records this file: record its digest in knowledge/hfs/design-truths.pins.yaml'));
   for (const [file, digest] of Object.entries(pins)) {
     const text = read(file);
     if (typeof text !== 'string') found.push(finding('pin', file, 1, 'a pinned file is missing'));
-    else if (truthsDigest(text) !== digest) found.push(finding('pin', file, 1, `its digest ${truthsDigest(text).slice(0, 12)} is not the one the owner pinned (${String(digest).slice(0, 12)}): only an owner ruling may change it`));
+    else if (truthsDigest(text) !== digest) found.push(finding('pin', file, 1, `its digest ${truthsDigest(text).slice(0, 12)} is not the pinned one (${String(digest).slice(0, 12)}): record the new digest in knowledge/hfs/design-truths.pins.yaml in the commit that changes the file`));
   }
   return found;
 }
@@ -230,7 +247,7 @@ function pinFindings(truths: TruthsRead, pins: Readonly<Record<string, string>>,
  *   truths  the manifest document (readTruths shapes it);
  *   canon   { derive(file, list) -> { by, items } | null }: what the canon derives for a list of a file, allowed only when the manifest names `by`;
  *   lists   false leaves the ignore and exclude lists out (the app gate: an app's rendered files are held to their render by the managed-file drift);
- *   pins    { path: sha256 } the latest owner ruling records; undefined skips the pin check (the app gate).
+ *   pins    { path: sha256 } of knowledge/hfs/design-truths.pins.yaml (readTruthsPins); undefined skips the pin check (the app gate).
  */
 export function stateFindings({ files, read, truths: doc, canon = {}, lists = true, pins }: {
   files: Iterable<string>;

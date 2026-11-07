@@ -139,7 +139,7 @@ export const why: Record<string, WhyEntry> = {
   },
   "status-text-uses-soft-foreground": {
     code: "FE_STYLE_TOKEN_ONLY",
-    en: "`<file>` colours status content against the owner's pair rule (`<what>`): content on a `bg-<tone>-soft` tint paints with the solid tone (e.g. `bg-success-soft text-success`), or a mark with no tint behind it paints with the soft foreground (e.g. `text-success-soft-foreground` alone).",
+    en: "`<file>` colours status content against the status pair rule (`<what>`): content on a `bg-<tone>-soft` tint paints with the solid tone (e.g. `bg-success-soft text-success`), or a mark with no tint behind it paints with the soft foreground (e.g. `text-success-soft-foreground` alone).",
     fix: "Content on a background of the tone takes the pair: `bg-<tone>-soft` with `text-<tone>-soft-foreground`. A mark that stands alone, with no background of the tone, takes the tone itself: `text-<tone>`. A solid fill takes `bg-<tone>` with `text-<tone>-foreground`.",
   },
 }

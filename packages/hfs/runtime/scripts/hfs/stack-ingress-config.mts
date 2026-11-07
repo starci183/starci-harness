@@ -1,8 +1,8 @@
-// stack-ingress-config.mjs - the reader of `environments.<env>.deploy.ingress`: the SHARED host ingress (80/443) of the VPS. The ingress is
+// stack-ingress-config.mts - the reader of `environments.<env>.deploy.ingress`: the SHARED host ingress (80/443) of the VPS. The ingress is
 // its own swarm stack (`name`) owning the attachable overlay and the host-mode ports; the app stack consumes it. External (non-swarm, plain
 // docker compose) tenants are reached over the overlay by a UNIQUE alias, or by a host address (`hostAddress`).
-// Pure given the block and a probe of the app tree. `normalizeDeploy` (stack-deploy-config.mjs) hooks it in as `config.ingress`;
-// `starci app stack ingress plan|attach|takeover` (packages/hfs/stack/ingress.mjs) consumes the normalised result.
+// Pure given the block and a probe of the app tree. `normalizeDeploy` (stack-deploy-config.mts) hooks it in as `config.ingress`;
+// `starci app stack ingress plan|attach|takeover` (packages/hfs/stack/ingress.mts) consumes the normalised result.
 import { closedFields, collector, patternField, treeFile, type Collector, type StackProblem, type TreeProbe } from './stack-config-kit.mjs';
 import { isPlainObject as plain } from '../../engine/plain-object.mjs';
 import { NAME } from './stack-deploy-config.mjs';

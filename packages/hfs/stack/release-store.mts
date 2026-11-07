@@ -1,6 +1,6 @@
-// release-store.mjs - the release record protocol on the manager: /srv/<stack>/releases/<digest16>/{stack.yaml,release.json} behind the
+// release-store.mts - the release record protocol on the manager: /srv/<stack>/releases/<digest16>/{stack.yaml,release.json} behind the
 // stable `current` and `previous` pointers, which move only after verification. A JavaScript object over an injected ssh runner:
-//   ssh(command, { input }) -> { status, stdout, stderr }     runs a shell command on the manager (remote.mjs provides the real one)
+//   ssh(command, { input }) -> { status, stdout, stderr }     runs a shell command on the manager (remote.mts provides the real one)
 // Every remote command is composed ONLY from a validated release id (16 lowercase hex) and a validated base path, so no free text reaches
 // the remote shell. The record holds names and digests, never a secret value. Files travel as text on stdin / stdout.
 import fs from 'node:fs';

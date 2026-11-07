@@ -1,4 +1,4 @@
-// local-doctor.mjs - `starci app stack doctor --env <dev env>` (PROJECT-STACKS-6): the read-only inspection of a dev environment and of the machine
+// local-doctor.mts - `starci app stack doctor --env <dev env>` (PROJECT-STACKS-6): the read-only inspection of a dev environment and of the machine
 // it runs on. The prerequisite table (tools, engine, resources, ports) names the owner-run install step per OS for each missing one; then
 // the custody (which keys are sealed, whether this machine's identity opens the members), the compose render, the volumes and the recorded
 // processes. It changes nothing and never prints a value.

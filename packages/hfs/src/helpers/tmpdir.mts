@@ -1,4 +1,4 @@
-// tmpdir.mjs — a spec's temp dir that removes itself.
+// tmpdir.mts — a spec's temp dir that removes itself.
 //
 //   const dir = mkdtemp(t, 'starci-thing-');
 //   const dir = mkdtemp(t, 'starci-thing-', () => handle.stop());        // stop children before the rm

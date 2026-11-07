@@ -8,7 +8,7 @@ export interface CiScope { env?: string | undefined; dependabot?: boolean | unde
 /** The parsed options of a `starci app ci` command: the scope plus `--repo`, `--value` and `--execute`/`--json`. */
 export interface CiOptions extends CiScope { repo?: string | undefined; value?: string | undefined; execute?: boolean | undefined; json?: boolean | undefined; 'from-custody'?: boolean | undefined }
 
-/** One declared CI secret or variable of a declaration without problems (runtime/scripts/hfs/ci-declaration.mjs readCiDeclaration). */
+/** One declared CI secret or variable of a declaration without problems (runtime/scripts/hfs/ci-declaration.mts readCiDeclaration). */
 export type CiEntry = ValidCiEntry;
 
 /** The CI declaration of the stack manifest, once its problems are refused: the secrets, Dependabot secrets and variables it names. */

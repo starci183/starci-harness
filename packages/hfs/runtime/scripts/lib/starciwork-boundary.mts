@@ -1,4 +1,4 @@
-// starciwork-boundary.mjs — the executable form of the .starciwork boundary (docs/ledger-db.md,
+// starciwork-boundary.mts — the executable form of the .starciwork boundary (docs/ledger-db.md,
 // modules/schemas/work-layout.yaml shape.productPaths). A repository's .starciwork holds product content only:
 // the explicit path list below. Every other path is agent data (reports, checks, captures, draw rounds, UAT runs,
 // logs, caches, ledgers, worktrees), which lives in runtime.sqlite rows and content-addressed blobs outside
@@ -142,7 +142,7 @@ export function agentDataCategory(rel: unknown, { dir = false }: { dir?: boolean
  * agent file is removed by the change that drops it, not by this ignore.
  *
  * The template is read on first use, never at import: a caller that only needs the boundary predicates
- * (cli.mjs reaches this module through check-example-work.mjs) must keep loading on a tree that carries no
+ * (cli.mts reaches this module through check-example-work.mjs) must keep loading on a tree that carries no
  * packages/hfs/templates copy; the read still fails loudly the moment the text itself is asked for.
  */
 let cachedLines: readonly string[] | undefined;

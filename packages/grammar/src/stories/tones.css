@@ -1,5 +1,5 @@
 /*
- * Grammar's own Storybook declares ONE app tone, `info`, the way an app does (ruling grammar-own-style): the four tokens here, the type in
+ * Grammar's own Storybook declares ONE app tone, `info`, the way an app does: the four tokens here, the type in
  * `tones.ts` beside it. Core itself ships no `info`.
  */
 :root,

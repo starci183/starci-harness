@@ -35,7 +35,7 @@ const CODES = new Set(['HFS_DEPLOY_WORKFLOW', 'HFS_WORKFLOW_PIN', 'HFS_CI_TOOL_I
 const compare = (left: string, right: string) => left.localeCompare(right);
 const reference = (name: string) => '${{ secrets.' + name + ' }}';
 const on = { push: { tags: ['v*'] }, workflow_dispatch: {} };
-// The release CI (ci.yml) also runs on the release candidate branches (owner ruling candidate-ci, 2026-10-18).
+// The release CI (ci.yml) also runs on the release candidate branches.
 const ciOn = { push: { tags: ['v*'], branches: ['main', 'release/candidate-*'] }, workflow_dispatch: {} };
 // HFS_WORKFLOW_PIN is reported by the supply-chain enforcer of R251; the other three codes by deploy-workflow.
 const workflowFindings = (context: Context) => [...deployWorkflowFindings(context), ...supplyChainFindings({ ...context, isRoot: true }).filter((finding) => finding.code === 'HFS_WORKFLOW_PIN')];
@@ -298,7 +298,7 @@ test('R251: every managed workflow that opens sealed members is bound to the env
       assert.equal(restore.jobs.restore.environment, '${{ inputs.environment }}');
       assert.equal(restore.jobs.restore.steps.find((step: Doc) => step.name === 'write the identity on the server').env.AGE_IDENTITY, '${{ secrets.SOPS_AGE_KEY }}');
       assert.doesNotMatch(workflows['.github/workflows/stack-key-restore.yml']!, /secrets\[|SOPS_AGE_KEY_/u);
-      // ruling ci-transport-one-home: GitHub keeps only SOPS_AGE_KEY; the restore opens the same sealed transport as the deploy and goes through the ssh gate.
+      // GitHub keeps only SOPS_AGE_KEY; the restore opens the same sealed transport as the deploy and goes through the ssh gate.
       assert.doesNotMatch(workflows['.github/workflows/stack-key-restore.yml']!, /VPS_|secrets\.(?!SOPS_AGE_KEY)/u);
       const restoreSteps: Doc[] = restore.jobs.restore.steps;
       const deploySteps: Doc[] = parseWorkflow(workflows['.github/workflows/stack-deploy.yml']!).jobs.deploy.steps;

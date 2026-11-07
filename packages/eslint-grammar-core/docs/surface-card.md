@@ -3,8 +3,7 @@
 Law module: `surface-card.ts`. Catalogue: R355 FE_SURFACE_CARD_KIND, R366 FE_LABEL_IN_GRID.
 
 `SurfaceCard` is one component whose `kind` the compiler checks: `body` (the default), `figures`, `list`, `accordion`
-and `tile`; any kind may carry typed `headers` and `footers` zones. What a kind draws is not drawn by hand around it, and where the name sits follows the kind (ruling
-`card-label-by-kind`): a card that heads a section has a `label` outside the material, a tile names itself inside.
+and `tile`; any kind may carry typed `headers` and `footers` zones. What a kind draws is not drawn by hand around it, and where the name sits follows the kind: a card that heads a section has a `label` outside the material, a tile names itself inside.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline. It applies to product
 source; a script or a file no slot owns is not judged.

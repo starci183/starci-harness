@@ -1,4 +1,4 @@
-// backup-receipt.mjs - encrypted database backup custody of `starci app db dump`; tool output never enters diagnostics.
+// backup-receipt.mts - encrypted database backup custody of `starci app db dump`; tool output never enters diagnostics.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';

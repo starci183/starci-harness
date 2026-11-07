@@ -1,10 +1,10 @@
-// urgent-release.mjs - the one-command urgent release (owner ruling urgent-typecheck-build, 2026-10-30):
+// urgent-release.mts - the one-command urgent release:
 //   starci app stack deploy --env <env> --urgent --reason "<text>" [--execute]
 // with no --image and no --sha takes HEAD from the laptop to the server in one command, CI not involved:
-//   1. the urgent release of HEAD (release/urgent.mjs: typecheck and the build, tag, one atomic push, the urgent record), skipped when HEAD
+//   1. the urgent release of HEAD (release/urgent.mts: typecheck and the build, tag, one atomic push, the urgent record), skipped when HEAD
 //      already has a pushed urgent record;
-//   2. the images of that tag built and pushed on THIS machine's Docker (stack/build.mjs), which yields their digests;
-//   3. the urgent deploy of those digests (stack/urgent-floor.mjs): backup, migrate preview then execute, deploy, verify, rollback on red.
+//   2. the images of that tag built and pushed on THIS machine's Docker (stack/build.mts), which yields their digests;
+//   3. the urgent deploy of those digests (stack/urgent-floor.mts): backup, migrate preview then execute, deploy, verify, rollback on red.
 // Steps 1 and 2 run before the deploy's Docker transport reaches the server, so nothing is ever built on the server. A dry run prints the
 // urgent release plan and the build plan and stops: the deploy plan needs the digests the build makes.
 import { buildImages } from './build.mjs';
@@ -51,7 +51,7 @@ export const oneCommand = (options: UrgentReleaseOptions): boolean => options.ur
 export async function prepareUrgentRelease(ctx: StackContext, config: DeployConfig, options: UrgentReleaseOptions, deps: UrgentReleaseDeps = {}): Promise<UrgentReleaseResult> {
   const d = { buildImages, loadReleaseConfig, releaseUrgentPush, ...deps };
   const head: string = git(ctx, ['rev-parse', 'HEAD']).stdout;
-  const lines = [`one-command urgent release of ${head.slice(0, 12)} (owner ruling urgent-typecheck-build): urgent release, local build and push, urgent deploy`];
+  const lines = [`one-command urgent release of ${head.slice(0, 12)}: urgent release, local build and push, urgent deploy`];
   const record = readUrgent(releaseDir(ctx), head);
   if (record?.pushed === true) lines.push(`urgent release ${record.tag} of ${head.slice(0, 10)} already pushed: reused`);
   else {

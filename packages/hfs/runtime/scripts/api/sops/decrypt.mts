@@ -1,4 +1,4 @@
-// decrypt.mjs — the public SOPS file-decrypt call.
+// decrypt.mts — the public SOPS file-decrypt call.
 import { runSopsFile, type RunSopsFileOptions, type SopsResult } from './lib.mjs';
 
 /**

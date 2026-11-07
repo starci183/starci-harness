@@ -1,9 +1,9 @@
-// stacks.mjs - HFS_STACKS_SHAPE (R10): standard stack shape, Sonar owner and deployment runtime consistency.
+// stacks.mts - HFS_STACKS_SHAPE (R10): standard stack shape, Sonar owner and deployment runtime consistency.
 //   - every tracked path under the app root's `.starcistacks/` is one the app.starcistacks slot allows (its `allows` list is the shape:
 //     application-stacks.yaml, images/<name>/** (a customised service's image folder) and <env>/{README.md, environment.json, infra/{compose,swarm,k8s,terraform}, runtime/{config,env},
 //     secrets/<slug>.enc.yaml}, and the seed levels seeds/ and <env>/seeds/); a `.enc` outside <env>/secrets/ is never allowed, `runtime/files/`, a root `DESIGN.md`,
 //     `deployment.json` and `k8s/` are not in the list, so they fall out of it;
-//   - the declaration (read by scripts/lib/stack-declaration.mjs, the one reader of it) states a sonar service, a local
+//   - the declaration (read by scripts/lib/stack-declaration.mts, the one reader of it) states a sonar service, a local
 //     Sonar is owned by the host (`stack.owner: host`, root `.claude/ext/sonar`).
 // The lite overlay admits Swarm compute and its own db service. Runtime rules are shared with the stack gates.
 // The declaration's quality/delivery services contract (custody, CI wiring, project keys) stays check-starcistacks's.

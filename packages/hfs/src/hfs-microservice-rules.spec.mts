@@ -1,4 +1,4 @@
-// The microservice policy of `starci app check` (scripts/hfs/rules/services.mjs): R163 HFS_SERVICE_PLACEMENT, R164 HFS_IMAGE_UNPINNED,
+// The microservice policy of `starci app check` (scripts/hfs/rules/services.mts): R163 HFS_SERVICE_PLACEMENT, R164 HFS_IMAGE_UNPINNED,
 // R165 HFS_SERVICE_STACK_DECLARATION, R166 HFS_EVENT_CONTRACT (event classes -> events.json), R167 BE_ASYNC_SPEC_MISSING, plus the event contract emit
 // (packages/hfs/emit). Each rule has a violating and a passing tree; the clean app of tests/helpers/hfs-cli-fixture.mjs is the base.
 // proves: BE_ASYNC_SPEC_MISSING@full

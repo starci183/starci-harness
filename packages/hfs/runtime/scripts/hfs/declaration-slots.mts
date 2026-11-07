@@ -1,7 +1,7 @@
-// declaration-slots.mjs - how an app declaration (hfs.json) switches on the opt-in slots of a side: by name (`optionalSlots`), by app kind
+// declaration-slots.mts - how an app declaration (hfs.json) switches on the opt-in slots of a side: by name (`optionalSlots`), by app kind
 // (a slot with `appKind`) and by declared pattern (a slot with `pattern: <name>` is enabled by `sides.<side>.patterns: [<name>]`, one
 // mechanism for pattern slots). A cross-cutting pattern can instead be owned by the side's canonical proof scenario catalog.
-// slots.mjs asks this file to judge a side's lists and to say whether a slot is enabled for a repository.
+// slots.mts asks this file to judge a side's lists and to say whether a slot is enabled for a repository.
 import type { Parsed, Slot } from './manifest-shape.mjs';
 import type { RepoView } from './slots.mjs';
 import { judgedInEdition } from './edition-slots.mjs';

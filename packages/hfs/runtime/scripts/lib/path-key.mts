@@ -1,4 +1,4 @@
-// path-key.mjs — spelling and comparing paths the way this host's filesystem does.
+// path-key.mts — spelling and comparing paths the way this host's filesystem does.
 import fs from 'node:fs';
 import path from 'node:path';
 

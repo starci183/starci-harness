@@ -1,11 +1,11 @@
-// app-root.mjs - the tree checks of `starci app check` that read the WHOLE app from its root (app-relative paths over every tracked
-// file of both sides): one list of the rule modules of the app root, so scripts/hfs/check.mjs runs them as one step.
-//   HFS_DEP_VERSION_SKEW (R14, deps.mjs), HFS_PEER_INTEGRATION_MISSING (R111, peer-integrations.mjs), the monorepo shape
-//   (HFS_MONO_*, monorepo.mjs), the one cli app (BE_CLI_REQUIRED, cli.mjs), BE_INTEGRATION_SPEC_MISSING (R112,
-//   integration-specs.mjs), FE_GRAPHQL_CONTRACT (R113, fe-contract-documents.mjs), HFS_CI_MISSING_CANON (R13, pipeline.mjs),
-//   BE_TEST_TOPOLOGY (R47, test-topology.mjs), HFS_PROOF_COMMAND_FILE_MISSING (R105, proof-commands.mjs), the app front-end
-//   tree (FE_WIRE_GENERATED, FE_I18N_PLACEMENT, frontend-tree.mjs), HFS_STACKS_SHAPE (R10, stacks.mjs) and the root seed data
-//   (HFS_SEED_*: R375, seeds.mjs).
+// app-root.mts - the tree checks of `starci app check` that read the WHOLE app from its root (app-relative paths over every tracked
+// file of both sides): one list of the rule modules of the app root, so scripts/hfs/check.mts runs them as one step.
+//   HFS_DEP_VERSION_SKEW (R14, deps.mts), HFS_PEER_INTEGRATION_MISSING (R111, peer-integrations.mts), the monorepo shape
+//   (HFS_MONO_*, monorepo.mts), the one cli app (BE_CLI_REQUIRED, cli.mts), BE_INTEGRATION_SPEC_MISSING (R112,
+//   integration-specs.mts), FE_GRAPHQL_CONTRACT (R113, fe-contract-documents.mts), HFS_CI_MISSING_CANON (R13, pipeline.mts),
+//   BE_TEST_TOPOLOGY (R47, test-topology.mts), HFS_PROOF_COMMAND_FILE_MISSING (R105, proof-commands.mts), the app front-end
+//   tree (FE_WIRE_GENERATED, FE_I18N_PLACEMENT, frontend-tree.mts), HFS_STACKS_SHAPE (R10, stacks.mts) and the root seed data
+//   (HFS_SEED_*: R375, seeds.mts).
 import { cliFindings } from './cli.mjs';
 import { contractCompatFindings } from './contract-compat.mjs';
 import { depFindings } from './deps.mjs';

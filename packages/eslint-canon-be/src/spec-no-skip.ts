@@ -1,5 +1,5 @@
 /**
- * The rule that keeps every back-end spec running (catalog R48 `BE_SPEC_QUALITY`, owner test policy 2026-09-30).
+ * The rule that keeps every back-end spec running (catalog R48 `BE_SPEC_QUALITY`).
  *
  * A unit, integration, e2e or contract spec never skips, focuses, marks as todo or picks its own runner: a test that does
  * not run is a claim nobody checks. There is no legitimate skip, the contract layer included: a contract spec writes

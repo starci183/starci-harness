@@ -1,5 +1,5 @@
-// stack-deploy-config.mjs - the ONE reader of `environments.<env>.deploy` in .starcistacks/application-stacks.yaml (R294).
-// `starci app stack ...` (packages/hfs/stack) normalises the block through it and `starci app check` (rules/stacks-deploy.mjs)
+// stack-deploy-config.mts - the ONE reader of `environments.<env>.deploy` in .starcistacks/application-stacks.yaml (R294).
+// `starci app stack ...` (packages/hfs/stack) normalises the block through it and `starci app check` (rules/stacks-deploy.mts)
 // judges the same block through it, so the verbs and the rule can never disagree. Pure given the block and a probe of the app tree.
 import { isPlainObject as plain } from '../../engine/plain-object.mjs';
 import { closedFields, collector, patternField, treeFile, type Collector, type StackProblem, type TreeProbe } from './stack-config-kit.mjs';

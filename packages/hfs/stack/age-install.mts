@@ -1,9 +1,9 @@
-// age-install.mjs - installs `age` (the backup encryptor) on the manager over passwordless sudo: the host's own package manager first
+// age-install.mts - installs `age` (the backup encryptor) on the manager over passwordless sudo: the host's own package manager first
 // (dnf, yum, apk or apt-get, detected, never assumed), then the official static binary with its sha256 verified before anything is installed.
 import { firstLine } from './context.mjs';
 import type { RunResult } from './context.mjs';
 
-/** Runs a shell command on the manager (see remote.mjs). */
+/** Runs a shell command on the manager (see remote.mts). */
 type Run = (command: string) => RunResult;
 /** The progress sink of a verb: notes and failures. */
 interface Report { note(text: string): void; bad(text: string): void }

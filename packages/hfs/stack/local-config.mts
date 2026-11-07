@@ -1,5 +1,5 @@
-// local-config.mjs - loads `environments.<env>.local` of .starcistacks/application-stacks.yaml for the dev verbs of `starci app stack`.
-// The block is read and judged by the module `starci app check` uses (runtime/scripts/hfs/stack-local-config.mjs).
+// local-config.mts - loads `environments.<env>.local` of .starcistacks/application-stacks.yaml for the dev verbs of `starci app stack`.
+// The block is read and judged by the module `starci app check` uses (runtime/scripts/hfs/stack-local-config.mts).
 import fs from 'node:fs';
 import path from 'node:path';
 import { normalizeLocal, LOCAL_CONFIG_CODE } from '../runtime/scripts/hfs/stack-local-config.mjs';

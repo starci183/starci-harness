@@ -1,4 +1,4 @@
-// index.mjs - `starci app release <gate|push>` and the plumbing the release and database verbs share: the context built from the app's IO, strict flag
+// index.mts - `starci app release <gate|push>` and the plumbing the release and database verbs share: the context built from the app's IO, strict flag
 // parsing, the optional `release:` / `database:` blocks of .starcistacks/application-stacks.yaml, text and --json output and the exit-code mapping.
 //   starci app release gate [--execute] [--sha <ref>] [--tag-prefix <prefix>] [--backfill <tag>] [--json]
 //   starci app release push [--execute] [--remote <name>] [--urgent --reason <text>] [--json]
@@ -25,7 +25,7 @@ const IO_KEYS = ['cwd', 'stdout', 'stderr', 'env', 'sops', 'hostIdentity'] as co
 /** What a spawned tool answers (ctx.spawn is never a shell). */
 export interface SpawnResult { status: number | null; stdout: string; stderr: string; error?: Error | undefined }
 
-/** The seams every release and database verb runs through: the stack context contextOf builds (stack/context.mjs stackContext). */
+/** The seams every release and database verb runs through: the stack context contextOf builds (stack/context.mts stackContext). */
 export type VerbContext = StackContext;
 
 /** The app IO a verb receives from the starci CLI (cwd, writers, environment, secret seams, the stack seams of `stackIo`, the CLI `harness`). */

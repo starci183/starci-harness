@@ -1,5 +1,5 @@
 /**
- * The Freestyle region (owner ruling `grammar-freestyle-region`): the one sanctioned escape hatch of the Grammar.
+ * The Freestyle region: the one sanctioned escape hatch of the Grammar.
  *
  * `<Freestyle reason="...">` is a region where the app writes its own plain elements and app CSS (layout, paint, radius,
  * arbitrary values, absolutely positioned art) because no Grammar component fits. The rest of the page still follows the

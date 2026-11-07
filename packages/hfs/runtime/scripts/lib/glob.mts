@@ -1,4 +1,4 @@
-// glob.mjs — the path-glob subset ESLint, SonarQube and the scoped-lint config share: `**` spans directories,
+// glob.mts — the path-glob subset ESLint, SonarQube and the scoped-lint config share: `**` spans directories,
 // `*` and `?` stay inside one segment, `{a,b}` alternates.
 import { posixPath } from './path-key.mjs';
 

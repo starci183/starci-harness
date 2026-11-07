@@ -1,4 +1,4 @@
-// The app secrets standard (ruling app-secrets-one-standard): a member is `<provider>.enc.yaml`, sops YAML whose values keep
+// The app secrets standard (contexts/project/stacks.md PROJECT-STACKS-5): a member is `<provider>.enc.yaml`, sops YAML whose values keep
 // every byte; --from-file reads a key byte for byte; recipients manages one .sops.yaml rule per environment; audit names every
 // deviation; migrate and split move members without printing a value. Every value here is a fake.
 import test from "node:test";

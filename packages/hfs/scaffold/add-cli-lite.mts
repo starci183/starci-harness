@@ -270,7 +270,7 @@ export function ensureLiteCli({ root, manifest, repo }: { root: string, manifest
       read("be/skeleton-lite/src/modules/platform/database/migration-runner.service.ts"),
     ],
     ["be/src/features/cli/migrate/subs/run.cli.ts", MIGRATE_RUN],
-    // ruling:R212/case-1, amended by ruling:R212/case-4: each cli command of a lite back end owes its unit spec, as in full (ruleParams.be.unitRoles).
+    // R212: each cli command of a lite back end owes its unit spec, as in full (ruleParams.be.unitRoles).
     [
       "be/src/features/cli/migrate/migrate.cli.spec.ts",
       read("be/skeleton/src/features/cli/migrate/migrate.cli.spec.ts"),

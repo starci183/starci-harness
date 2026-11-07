@@ -1,4 +1,4 @@
-// retire.mjs - `starci app stack retire --project <compose project>... [--execute]`: stops the containers of the OLD docker compose projects once the swarm
+// retire.mts - `starci app stack retire --project <compose project>... [--execute]`: stops the containers of the OLD docker compose projects once the swarm
 // stack has taken over, WITHOUT removing anything. Each container gets `--restart=no` first (a restart policy or a reboot would otherwise start the old
 // model again beside the new one), then `docker stop`; applications first, data stores last (the reverse of the recovery order). Containers, volumes,
 // images and networks stay, so the old model can be started again for a rollback. The legacy edge container is never touched here (it is kept stopped

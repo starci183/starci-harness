@@ -1,4 +1,4 @@
-// release.requireCi (owner ruling release-require-ci-per-project): an app chooses whether `starci app release push` waits for the candidate CI of
+// release.requireCi: an app chooses whether `starci app release push` waits for the candidate CI of
 // the release sha. The default is false: the push still needs the annotated tag and the green L4 record and still runs `git push --dry-run --atomic`
 // first, then pushes the branch and the tag atomically and says CI was not required. With true the candidate CI path runs as before.
 import test from 'node:test';

@@ -1,4 +1,4 @@
-// local-verify.mjs - `starci app stack verify --env <dev env>` (PROJECT-STACKS-6): after a real start, the environment's declared journeys through its
+// local-verify.mts - `starci app stack verify --env <dev env>` (PROJECT-STACKS-6): after a real start, the environment's declared journeys through its
 // ingress origin: liveness, authenticated or denied requests as the app declares them under `local.verify`. A static render or a passing status
 // is not verification; a stack that is not running fails here, and restart and restore stay swarm-verify concerns. Read-only.
 import type { StackContext } from './context.mjs';

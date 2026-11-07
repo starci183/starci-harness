@@ -1,4 +1,4 @@
-// ssh-gate.mjs - the forced command of the CI SSH key on the manager (`starci-ssh-gate`) and the named operations it admits.
+// ssh-gate.mts - the forced command of the CI SSH key on the manager (`starci-ssh-gate`) and the named operations it admits.
 // The CI key reaches the manager's Docker socket, which is root on that host; its line in authorized_keys is therefore
 //   restrict,command="starci-ssh-gate" ssh-ed25519 AAAA... <comment>
 // and the gate admits exactly two kinds of request:

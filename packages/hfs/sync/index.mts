@@ -10,7 +10,7 @@
 // and are listed in this module: the marked blocks of the root .gitignore and README.md, and .starciwork/.gitignore, which lives inside the
 // .starciwork directory slot. Every file is rendered with the app's hfs.json (both sides and their apps) and, for the Sonar
 // exclusions, the jest preset the app installs for its be side and the one coverage scope derived from the slot manifest
-// (scripts/hfs/coverage-scope.mjs: the be/jest.config.js scope, sonar.coverage.exclusions and the codecov.yml paths, components and exclusions). The default run (a dry run) compares the sha256 of the rendered content with the
+// (scripts/hfs/coverage-scope.mts: the be/jest.config.js scope, sonar.coverage.exclusions and the codecov.yml paths, components and exclusions). The default run (a dry run) compares the sha256 of the rendered content with the
 // file on disk and fails on any drift; `--execute` rewrites the drifted files. `.gitignore` and README.md are shared files: only the marked
 // block is managed and the app's own lines around it are left alone. The root package.json is managed by its `scripts` block
 // only (mode scripts, compared as parsed JSON): the rest of the file (dependencies, the npm workspaces fe/apps/* and fe/packages/*,
@@ -84,7 +84,7 @@ export interface Markers { begin: string; end: string }
 /** A rendered target: its path (app-relative), scope, mode, content and hash, with the parsed scripts of a scripts target. */
 export interface RenderedTarget {
   path: string; scope: string; mode: string; content: string; hash: string; scripts?: Record<string, unknown>; markdown?: boolean | undefined; markers?: Markers;
-  /** The managed group of a slot's file (`managedBy`), which sync writes or holds whole (compile-guard.mjs). */
+  /** The managed group of a slot's file (`managedBy`), which sync writes or holds whole (compile-guard.mts). */
   group?: string;
 }
 /** What comparing a rendered target with the disk answers. */
@@ -209,14 +209,14 @@ function trailingNewline(text: string): string {
 }
 
 /**
- * The base image of a lite app's managed .starcistacks/images/db/Dockerfile (contexts/stack/pins.yaml images postgres, ruling:lite-official-postgres-image): the
+ * The base image of a lite app's managed .starcistacks/images/db/Dockerfile (contexts/stack/pins.yaml images postgres): the
  * Docker Official postgres image by digest, to which the Dockerfile adds PGVECTOR_PACKAGE from PGDG and the PGMQ release.
  */
 export const DB_BASE_IMAGE = 'postgres:17.11@sha256:31ba9c94a03ada9988f2bb493a22a75eef3a185884533e5cdbcd498ea835b08f';
 /** The PGDG package of pgvector at the exact version the db image installs (the one extension the image does not ship). */
 export const PGVECTOR_PACKAGE = 'postgresql-17-pgvector=0.8.7-1.pgdg13+1';
 /**
- * The pgmq release the db image installs for the event bus (ruling:lite-pgmq-bus-bullmq-jobs): its source tarball, verified by sha256
+ * The pgmq release the db image installs for the event bus: its source tarball, verified by sha256
  * when Docker adds it. PGDG does not package pgmq; it is SQL objects only, so the Dockerfile copies its control and script files.
  */
 export const PGMQ = Object.freeze({
@@ -226,7 +226,7 @@ export const PGMQ = Object.freeze({
 });
 /** The local tag the development db container and the drift scratch database run, built from the app's .starcistacks/images/db/Dockerfile. */
 export const dbLocalImage = (project: string): string => `${project}-db:local`;
-/** The digest-pinned image of a lite app's declared Redis, in every environment that runs it (ruling:R212/case-10). */
+/** The digest-pinned image of a lite app's declared Redis, in every environment that runs it (R212). */
 export const REDIS_IMAGE = 'redis:7@sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f';
 
 const redisDevText = (project: string): string => render(readBundled('app/package-scripts/redis-dev.json'), { project, redisImage: REDIS_IMAGE });
@@ -234,7 +234,7 @@ const redisDevText = (project: string): string => render(readBundled('app/packag
 /** The development scripts of a lite app's declared Redis (create once, then start and stop it), as a scripts object. */
 export const redisDevScripts = (project: string): Record<string, string> => JSON.parse(`{${redisDevText(project).trim().replace(/,$/, '')}}`);
 
-/** What the app's sync reads from the jest preset it installs for its be side: the Sonar exclusions ({ sonarExclusions }); both editions install it (a lite back end keeps full's unit run, ruling:R212/case-1, amended by ruling:R212/case-4). */
+/** What the app's sync reads from the jest preset it installs for its be side: the Sonar exclusions ({ sonarExclusions }); both editions install it (a lite back end keeps full's unit run, R212). */
 export async function loadPresets(root: string): Promise<Presets> {
   const name = '@starci/jest-preset';
   const require = createRequire(path.join(root, 'package.json'));
@@ -267,13 +267,13 @@ export function bundledPresets(): Presets {
 
 /** Where the be unit run writes the lcov report (jest `coverageDirectory` coverage under be/, reporter lcov), from the app root. */
 const LCOV_REPORT = 'be/coverage/lcov.info';
-/** The design truths this package ships: the one list of the exceptions the canon allows, each with its owner ruling. */
+/** The design truths this package ships: the one list of the exceptions the canon allows, each with its reason. */
 const DESIGN_TRUTHS = path.join(import.meta.dirname, '..', 'runtime', 'knowledge', 'hfs', 'design-truths.yaml');
 /** Every entry the design truths allow on `list`, in manifest order. */
 const designTruthEntries = (list: string): string[] => [...new Set(readTruths(bundledParseYaml(fs.readFileSync(DESIGN_TRUTHS, 'utf8'))).literal.filter((allow: { list: string }) => allow.list === list).flatMap((allow: { entries: string[] }) => allow.entries))] as string[];
 /**
  * The entries Sonar's copy-paste detection leaves out: every `cpd-exclusions` entry the design truths
- * (knowledge/hfs/design-truths.yaml) allow, today the message catalogs (ruling message-catalogs-not-duplicate-code): a catalog
+ * (knowledge/hfs/design-truths.yaml) allow, today the message catalogs: a catalog
  * holds one block per language with the same keys, which CPD reads as duplicated code. They are still sources: linted, analysed
  * and held to every other rule. The rendered properties carry them inside the generated Sonar block, and `starci check loosening`
  * accepts the block only as this manifest derives it.
@@ -382,7 +382,7 @@ export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
   const watch = (entry: AppEntry): string => `cd be && ts-node-dev --respawn -r tsconfig-paths/register apps/${entry.name}/src/main.ts`;
   const built = (entry: AppEntry): string => `node be/dist/apps/${entry.name}/src/main.js`;
   const workspace = (entry: AppEntry): string => feAppPackageName(app.project, entry.name);
-  // Both editions generate before they run (owner ruling 2026-10-13): the fe's GraphQL wire types, and under lite the database types check.
+  // Both editions generate before they run: the fe's GraphQL wire types, and under lite the database types check.
   const dev = (entry: AppEntry): string => `npm run codegen --silent && turbo run dev --filter=${workspace(entry)}`;
   const images = imageEntries(app, source);
   const imageCommand = ({ side, entry }: ImageEntry): string => `docker build -f ${dockerfilePath(side, entry.name)} -t ${app.project}/${entry.name}:dev .`;
@@ -527,14 +527,14 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     project: app.project,
     appBinary: APP_BINARY,
     appScripts: appScripts(app, source),
-    // A lite app's own database runs in development as one container of the image its .starcistacks/images/db/Dockerfile builds (ruling:lite-db-image-in-stacks).
+    // A lite app's own database runs in development as one container of the image its .starcistacks/images/db/Dockerfile builds.
     dbImage: dbLocalImage(app.project),
     dbBaseImage: DB_BASE_IMAGE,
     pgvectorPackage: PGVECTOR_PACKAGE,
     pgmqVersion: PGMQ.version,
     pgmqSource: PGMQ.source,
     pgmqSha256: PGMQ.sha256,
-    // A lite app's declared Redis (sides.be.backing, ruling:R212/case-10) runs in development as one container of its pinned image.
+    // A lite app's declared Redis (sides.be.backing, R212) runs in development as one container of its pinned image.
     backingScripts: lite && (app.sides.be.backing ?? []).includes('redis') ? redisDevText(app.project) : '',
     // turbo builds every fe app workspace; ^build (turbo.json) builds the packages each app imports first, and caches both.
     buildFe: `${modulesFirst}npm run codegen --silent && turbo run build --filter=./fe/apps/*`,
@@ -545,9 +545,9 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     // The unit run, the back-end build and every CI job that imports a root package find it built (build:modules precedes them); its specs run in the unit run and its shards.
     modulesFirst,
     nodeMajor: String(NODE_MAJOR),
-    // The deploy server's age identity the restore workflow writes (stack/server-key.mjs owns the path).
+    // The deploy server's age identity the restore workflow writes (stack/server-key.mts owns the path).
     serverAgeIdentity: SERVER_AGE_IDENTITY,
-    // The operation `identity-restore` of the ssh gate, as one command for a CI key without the gate (stack/ssh-gate.mjs owns the body), a JSON string so the workflow carries it as one YAML scalar.
+    // The operation `identity-restore` of the ssh gate, as one command for a CI key without the gate (stack/ssh-gate.mts owns the body), a JSON string so the workflow carries it as one YAML scalar.
     identityRestoreInline: JSON.stringify(inlinePrefix('identity-restore')),
     sonarKey: sonarKey ?? app.project,
     sonarHostLine: sonarHostLine(quality.sonar),
@@ -557,7 +557,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     lcovReport: LCOV_REPORT,
     cpdExclusions: SONAR_CPD_EXCLUSIONS.join(','),
     ...ciWorkflowCommands(source, LCOV_REPORT, source.qualityDeclared === false ? undefined : source.quality, { app, packages, rootPackages: moduleDirs.length > 0 }),
-    // The coverage scope is the same in both editions: lite measures exactly what full measures (ruling:R212/case-1, amended by ruling:R212/case-4).
+    // The coverage scope is the same in both editions: lite measures exactly what full measures (R212).
     jestCoverage: scope === 'be' ? jestCoverageSource(jestCoverage(manifest, providers)) : '',
     jestPackages: scope === 'be' ? jestPackagesSource(rootPackages) : '',
     coverageExclusions: scope === APP_SCOPE ? [...sonarCoverageExclusions(manifest, providers), ...rootPackages.excludes].join(',') : '',
@@ -757,14 +757,14 @@ export async function renderRepo(root: string, { presets, parseYaml, notices, ma
   return { hfs, targets: renderTargets(hfs, installed, { sonarKey, manifest, source: settled }) };
 }
 
-/** The folders a lite app's sync retires (ruling lite-self-hosted-postgres-passport-minio): the generated Supabase row types nothing reads any more. */
+/** The folders a lite app's sync retires: the generated Supabase row types nothing reads any more. */
 const LITE_RETIRED_DIRS = Object.freeze(['supabase/types']);
 /** The files a lite app's sync retires, each with the reason the dry run prints. */
 const LITE_RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
-  [RETIRED_DB_DOCKERFILE]: `the db image moved to ${DB_DOCKERFILE} (ruling lite-db-image-in-stacks)`,
+  [RETIRED_DB_DOCKERFILE]: `the db image moved to ${DB_DOCKERFILE}`,
   'be/src/modules/domain/identity/persistence/entities/auth-user.entity.ts': 'the sign-in reaches accounts through the account doors (be/src/modules/domain/identity/persistence/account-doors.port.ts); the application role holds no grant on schema auth',
   'be/src/modules/domain/identity/persistence/entities/auth-identity.entity.ts': 'the sign-in reaches accounts through the account doors (be/src/modules/domain/identity/persistence/account-doors.port.ts); the application role holds no grant on schema auth',
-  '.github/workflows/db-deploy.yml': 'the stack deploy migrates the database (a verified backup, the expand migrations before the services, the contract migrations after the accept; ruling app-cicd-auto-deploy)',
+  '.github/workflows/db-deploy.yml': 'the stack deploy migrates the database (a verified backup, the expand migrations before the services, the contract migrations after the accept)',
 });
 /** Why a retired file goes: a retired file's own reason, else the folder's. */
 const retiredReason = (file: string): string => LITE_RETIRED_FILES[file] ?? 'the lite edition generates no database types';

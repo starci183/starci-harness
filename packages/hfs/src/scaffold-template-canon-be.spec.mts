@@ -1,6 +1,6 @@
-// scaffold-template-canon-be.spec.mjs - the skeleton's platform capabilities, code and specs, the lite sign-in (identity and passport), its
+// scaffold-template-canon-be.spec.mts - the skeleton's platform capabilities, code and specs, the lite sign-in (identity and passport), its
 // specs included, pass the back-end canon they ship with, its borrowed typescript-eslint, stylistic and Sonar way rules included (shippedCanon), and so do the entity base of platform/database and the table entity that extends it, which
-// the first `starci app add table` writes in either edition (persistence.md BE-PERSISTENCE-3, ruling entity-base).
+// the first `starci app add table` writes in either edition (persistence.md BE-PERSISTENCE-3).
 // An app copies a platform capability byte-identical, so a skeleton file the canon refuses is a finding every app inherits
 // and cannot fix. Each edition is scaffolded into a temp folder and every file under its src/modules/platform is linted, typed, with the
 // starci-be rules of @starci/eslint-canon-be (the sibling package's built entry, typed by its declarations: the factory the rendered

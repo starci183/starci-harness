@@ -17,7 +17,7 @@ import { machineKit } from './machine-ast.mjs';
  *
  * and, for every such file and every `page`: no hook call. A hook is an imported `use<Name>` function or any function of
  * hooks/. The page's own mount, redirect and decision rules are the existing FE_ROUTE_ONE_PAGE, FE_ROUTE_DRAWING_DECISION,
- * FE_ROUTE_CLIENT_BOUNDARY and FE_ROUTE_CLIENT_HOOK checks of frontend.mjs and are not judged a second time here.
+ * FE_ROUTE_CLIENT_BOUNDARY and FE_ROUTE_CLIENT_HOOK checks of frontend.mts and are not judged a second time here.
  */
 export const ROUTE_FILES_THIN_RULE_IDS = ['FE_ROUTE_FILES_THIN'];
 

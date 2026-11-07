@@ -2,17 +2,15 @@ schema: starci/canon-pins@1
 purpose: >-
   The exact version of every shared dependency in the StarCi family, including package-owned runtime dependencies. One version per dependency for the whole
   family. The Grammar family and the two canons also carry `range`, a same-minor range (~x.y.z) an app's exact pin must meet instead of `version`, which
-  stays the version a scaffold writes (decisions grammar-patch-range, release-only-what-changed): a patch of one of them then moves no other package.
+  stays the version a scaffold writes: a patch of one of them then moves no other package.
   @starci/hfs stays exact: an app takes it through starci-harness, and the check and the canon lint must read one hfs. The command line itself is not pinned here: an app's starci-harness is the version of the CLI that runs @starci/hfs to
   judge or scaffold it (scripts/hfs/canon-pins.mjs), since that CLI depends on this package exactly. Raising a version is a change to this file first (with the package bump when it is a @starci package),
-  then the repositories' own upgrade lane (each sets the exact version and reinstalls; nothing else installs a @starci package). Read on 2026-09-29 from the packages under
-  .claude/packages and from the installed node_modules of the six product repositories; where they disagreed the
-  newest version installed in more than one repository won, and the runtime's own version won for @starci packages.
-  An app (hfs 4) has ONE package.json for both sides, so a
-  dependency both sides declared at different versions takes one: its pin where it has one, otherwise the higher of the
-  two, pinned here with a why (2026-10-01: every such conflict but graphql was already pinned). The runtime's example apps
-  merged the same way on 2026-10-01: no dependency outside this file was declared at two versions across their sides, so
-  every choice is a pin (each side's older @starci pins and graphql moved to the version here). `side` names the side whose code uses
+  then the repositories' own upgrade lane (each sets the exact version and reinstalls; nothing else installs a @starci package). Where the
+  product repositories disagree on a version, the newest version installed in more than one repository wins, and the runtime's own
+  version wins for @starci packages. An app (hfs 4) has ONE package.json for both sides, so a
+  dependency both sides declare at different versions takes one: its pin where it has one, otherwise the higher of the
+  two, pinned here with a why. The runtime's example apps follow the same rule: no dependency outside this file is declared at two
+  versions across their sides, so every choice is a pin. `side` names the side whose code uses
   the dependency; the app root package.json declares the direct dependencies and tools its sides need. Package-owned
   runtime dependencies are declared by their package, not by the app.
 pins:
@@ -31,14 +29,14 @@ pins:
     install: registry
     side: fe
     source: packages/event-stream/package.json
-    why: 'the one server-sent-events client of every front end (fe-stack event-stream, owner:event-stream-package): the transport client layer (modules/api/sse/clients) creates one instance for the app with the bearer token source and the stream operations follow on it; it carries Last-Event-ID resume, the capped doubling backoff, the heartbeat timeout, the single 401 renewal and the useSWRSubscription adapter, so no app keeps a hand-written reader.'
+    why: 'the one server-sent-events client of every front end (fe-stack event-stream): the transport client layer (modules/api/sse/clients) creates one instance for the app with the bearer token source and the stream operations follow on it; it carries Last-Event-ID resume, the capped doubling backoff, the heartbeat timeout, the single 401 renewal and the useSWRSubscription adapter, so no app keeps a hand-written reader.'
   '@starci/next-data':
     version: 0.1.0
     group: starci
     install: registry
     side: fe
     source: packages/next-data/package.json
-    why: 'the SWR data helpers of every front end (fe-stack data, owner:next-data-package): pollingRestart, the viewer and tenant key helpers, viewerSwrConfig and the viewer cache; each operation hook stays in the app and the package holds no component.'
+    why: 'the SWR data helpers of every front end (fe-stack data): pollingRestart, the viewer and tenant key helpers, viewerSwrConfig and the viewer cache; each operation hook stays in the app and the package holds no component.'
   '@starci/grammar':
     version: 0.24.1
     range: '~0.24.1'
@@ -53,7 +51,7 @@ pins:
     install: registry
     side: fe
     source: packages/next-i18n/package.json
-    why: 'the next-intl stack of every front end (fe-stack i18n, owner:next-i18n-package): defineI18n over the locales of the app, the locale-negotiating proxy, the locale-aware navigation, the request config that loads the catalogs of the app and the locale read of the [locale] layout; the app keeps its message catalogs and writes none of the stack.'
+    why: 'the next-intl stack of every front end (fe-stack i18n): defineI18n over the locales of the app, the locale-negotiating proxy, the locale-aware navigation, the request config that loads the catalogs of the app and the locale read of the [locale] layout; the app keeps its message catalogs and writes none of the stack.'
   '@starci/eslint-canon-be':
     version: 3.19.1
     range: '~3.19.1'
@@ -331,7 +329,7 @@ pins:
     version: 6.3.11
     group: framework
     side: be
-    why: 'the queue transport of both editions behind platform/queue (ruling:R212/case-10); starci app add queue|job declares it in a lite app together with its Redis, and both example apps resolve this version.'
+    why: 'the queue transport of both editions behind platform/queue (R212); starci app add queue|job declares it in a lite app together with its Redis, and both example apps resolve this version.'
   reflect-metadata:
     version: 0.2.2
     group: framework
@@ -398,7 +396,7 @@ pins:
     group: ui
     side: fe
     why: 'the PostCSS plugin tailwindcss 4 runs through; the reference app declares ^4 and resolves 4.3.3.'
-  # --- front-end stack (knowledge/hfs/fe-stack.yaml; owner ruling 2026-10-13: lite = full)
+  # --- front-end stack (knowledge/hfs/fe-stack.yaml; lite = full)
   '@apollo/client':
     version: 4.1.6
     group: framework
@@ -579,12 +577,12 @@ pins:
     version: 13.4.5
     group: framework
     side: be
-    why: 'the GraphQL transport of every back end (be.transport.graphql) that the front end calls; the full-app resolution on 2026-10-13. Stays on 13.x for alpha.18: the npm-audit advisory fixed by 14.0.3 (semver major) is a documented accepted exception, upgrade deferred to alpha.19 (owner ruling graphql-13-advisory-accepted-until-a19, 2026-10-16).'
+    why: 'the GraphQL transport of every back end (be.transport.graphql) that the front end calls; the full-app resolution on 2026-10-13. Stays on 13.x for alpha.18: the npm-audit advisory fixed by 14.0.3 (semver major) is a documented accepted exception, upgrade deferred to alpha.19.'
   '@graphql-tools/utils':
     version: 12.1.0
     group: framework
     side: be
-    why: 'an npm override of every app root (and of the examples that serve GraphQL), never a declared dependency: @nestjs/graphql 13.x pulls @graphql-tools/utils <=12.0.0, which npm audit --audit-level=high reports (GHSA-7mx3-vvmw-hjmv, prototype pollution in mergeDeep). 12.1.0 is a fixed release on the same major and the lowest one every declared range accepts (@graphql-tools/schema and /merge, used at runtime, require ^12.1.0; NIVO v0.2.1 6a1d8e80 overrides 12.0.4, below that range), so the advisory closes without the breaking @nestjs/graphql 14. DROP this pin and the override when @nestjs/graphql 14 is adopted (owner ruling graphql-tools-utils-override, 2026-10-18).'
+    why: 'an npm override of every app root (and of the examples that serve GraphQL), never a declared dependency: @nestjs/graphql 13.x pulls @graphql-tools/utils <=12.0.0, which npm audit --audit-level=high reports (GHSA-7mx3-vvmw-hjmv, prototype pollution in mergeDeep). 12.1.0 is a fixed release on the same major and the lowest one every declared range accepts (@graphql-tools/schema and /merge, used at runtime, require ^12.1.0; NIVO v0.2.1 6a1d8e80 overrides 12.0.4, below that range), so the advisory closes without the breaking @nestjs/graphql 14. DROP this pin and the override when @nestjs/graphql 14 is adopted.'
   'multer':
     version: 2.5.0
     group: framework
@@ -619,7 +617,7 @@ pins:
     version: 11.2.5
     group: framework
     side: be
-    why: 'the socket.io gateway of a realtime back end (lite runs it in the api process, owner ruling 2026-10-13); the @nestjs/core pin line.'
+    why: 'the socket.io gateway of a realtime back end (lite runs it in the api process); the @nestjs/core pin line.'
   '@nestjs/platform-socket.io':
     version: 11.2.5
     group: framework
@@ -660,7 +658,7 @@ pins:
     group: framework
     side: be
     why: 'the Agent of platform/http (its one owner, R90): FetchHttpClient hands fetch a pool that trusts HttpOptions.trustedCa beside the bundled roots (a test world''s per-run fake CA); the 6 line is the undici the Node 22 runtime of the app images bundles, and its Agent also serves the fetch of Node 24; 6.29.0 is the release of 2026-09-25.'
-  # --- lite identity (integrations/passport, ruling lite-self-hosted-postgres-passport-minio)
+  # --- lite identity (integrations/passport)
   '@nestjs/passport':
     version: 11.0.5
     group: framework
@@ -670,7 +668,7 @@ pins:
     version: 6.1.3
     group: framework
     side: be
-    why: 'the tick scheduler of platform/jobs, the one owner that imports it (R335, ruling lite-official-postgres-image); 6.1.3 is CommonJS on the Nest 11 line (12.x is ESM-only and breaks Nest 11 jest under the CommonJS transform of @starci/jest-preset).'
+    why: 'the tick scheduler of platform/jobs, the one owner that imports it (R335); 6.1.3 is CommonJS on the Nest 11 line (12.x is ESM-only and breaks Nest 11 jest under the CommonJS transform of @starci/jest-preset).'
   cron:
     version: 4.4.0
     group: framework

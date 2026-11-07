@@ -296,7 +296,7 @@ const routePaths = (context: Context, decorator: TSESTree.Decorator): string[] =
 }
 
 /**
- * A third-party OAuth redirect into the API (owner ruling 2026-10-17 "Theo y tro": the owner delegated the decision to main):
+ * A third-party OAuth redirect into the API:
  * a GET named `callback` that declares the closed reason `PublicReason.AuthHandshake`. It is a browser redirect with no
  * signature to verify, so it is not a webhook door. A POST, a `webhook` or `events` path, or any other reason is still judged.
  */

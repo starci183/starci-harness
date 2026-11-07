@@ -7,7 +7,7 @@ import { lsFiles } from '../api/git/ls-files.mjs';
 import { loadSlotManifest, readRepoDeclaration } from './slots.mjs';
 import { coverageBelowReport } from './rules/coverage-below.mjs';
 
-// reason: the slot manifest and repo declaration are parsed from disk (slots.mjs), and the lcov report is a loose findings document.
+// reason: the slot manifest and repo declaration are parsed from disk (slots.mts), and the lcov report is a loose findings document.
 type Parsed = any;
 
 export interface CoverageFromOptions {

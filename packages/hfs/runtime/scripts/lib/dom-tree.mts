@@ -1,4 +1,4 @@
-// dom-tree.mjs — walks over the draw checkers' parsed-DOM element shape ({tag, attrs, parent}).
+// dom-tree.mts — walks over the draw checkers' parsed-DOM element shape ({tag, attrs, parent}).
 
 /** The ancestors of `el`, nearest first, stopping below the '#root' sentinel. */
 export interface DomElement { tag: string; attrs: Record<string, string>; parent: DomElement | null }

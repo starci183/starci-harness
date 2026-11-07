@@ -1,4 +1,4 @@
-// ci-custody.mjs - R296-R298: CI declarations, sealed app keys and workflow reads agree by consumer, without decrypting or contacting GitHub.
+// ci-custody.mts - R296-R298: CI declarations, sealed app keys and workflow reads agree by consumer, without decrypting or contacting GitHub.
 import fs from 'node:fs';
 import { list } from '../../lib/list.mjs';
 import { findStackDeclaration, STACK_ROOT } from '../../lib/stack-declaration.mjs';

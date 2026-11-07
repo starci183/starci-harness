@@ -1,4 +1,4 @@
-// feature-files.mjs - R292: a feature stays within ruleParams.featureFiles tracked files, in lite and full.
+// feature-files.mts - R292: a feature stays within ruleParams.featureFiles tracked files, in lite and full.
 import { posixPath } from '../../lib/path-key.mjs';
 import { found } from './read.mjs';
 import type { Parsed, Repo, Resolver } from './rule-types.mjs';

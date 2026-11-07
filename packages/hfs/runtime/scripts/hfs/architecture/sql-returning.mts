@@ -11,7 +11,7 @@ import type { SqlToken } from './sql-token-forms.mjs';
  * R181 `sql-returning` (BE_SQL_RETURNING_SHAPE). TypeORM's `EntityManager.query` returns an UPDATE or DELETE with RETURNING as
  * `[rows, affectedCount]`, not as rows (an INSERT ... RETURNING returns rows), so a caller that reads the result as rows silently reads
  * the wrong thing and no unit spec that stubs the SQL can see it. Every `sql` tagged template (the tag declared in platform/database) of a
- * `<name>.sql.ts` file in a capability's `persistence/` is read with the tokenizer of sql-tokens.mjs, split into statements at top-level
+ * `<name>.sql.ts` file in a capability's `persistence/` is read with the tokenizer of sql-tokens.mts, split into statements at top-level
  * semicolons, and a statement that STARTS with UPDATE or DELETE and carries RETURNING at the top level is refused: write it as
  * `WITH changed AS (UPDATE ... RETURNING ...) SELECT ... FROM changed`, which returns rows. A RETURNING inside a parenthesised CTE is the
  * wrapped form and passes; so does INSERT ... RETURNING and any statement without RETURNING.

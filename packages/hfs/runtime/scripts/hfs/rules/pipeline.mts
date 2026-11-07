@@ -1,10 +1,10 @@
-// pipeline.mjs - HFS_CI_MISSING_CANON (R13): CI runs the pinned lint gate of `starci app check`.
+// pipeline.mts - HFS_CI_MISSING_CANON (R13): CI runs the pinned lint gate of `starci app check`.
 //   .github/workflows/ci.yml   a `run:` step that runs the lint gate: `starci app check --gate lint`,
 //                              `npx starci-harness[@<version>] app check --gate lint`, or `npm run <script>` whose command runs it
 //                              (`npm run lint`, arguments after `--` allowed);
 //                              a version named in the step is the starci-harness pin,
-//                              the version of the CLI that runs the check (canon-pins.mjs; an installed one is pinned by the pin check, R15)
-//   (the push hook is no lint or typecheck step: it checks the release gate, scripts/hfs/runtime-rules/hook-shape.mjs keeps its shape)
+//                              the version of the CLI that runs the check (canon-pins.mts; an installed one is pinned by the pin check, R15)
+//   (the push hook is no lint or typecheck step: it checks the release gate, scripts/hfs/runtime-rules/hook-shape.mts keeps its shape)
 // A missing file is the slot manifest's finding (HFS_SLOT_REQUIRED_MISSING); a file that is present and lacks the step is this rule's.
 // The redirect of `core.hooksPath` away from husky is the architecture machine's (HFS_HOOKS_PATH_REDIRECTED).
 import { found, readJson, readText } from './read.mjs';
@@ -83,7 +83,7 @@ function expanded(command: string, scripts: Parsed) {
 /** Only the bundled example runner with its fixed current-app arguments delegates to the following argv. */
 const exampleCommandOf = (command: string) => command.startsWith(EXAMPLE_RUN_PREFIX) ? command.slice(EXAMPLE_RUN_PREFIX.length) : command;
 
-/** The findings of R13 over the repository at `repoRoot`; `pins` is the canon pin map (canon-pins.mjs). */
+/** The findings of R13 over the repository at `repoRoot`; `pins` is the canon pin map (canon-pins.mts). */
 export function pipelineFindings({ repoRoot, files, pins }: { repoRoot: string; files: string[]; pins: Parsed }) {
   const findings = [];
   const pinned = pins?.[hfsPackage]?.version;

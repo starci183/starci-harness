@@ -1,10 +1,10 @@
-// urgent.mjs - `starci app release push --urgent --reason "<text>"`, the sanctioned urgent path (owner ruling urgent-release, 2026-10-29: an urgent
-// deploy needs no CI). It runs only the fast local checks (typecheck and the build: owner ruling urgent-typecheck-build, 2026-10-30), or
+// urgent.mts - `starci app release push --urgent --reason "<text>"`, the sanctioned urgent path (an urgent
+// deploy needs no CI). It runs only the fast local checks (typecheck and the build), or
 // reuses a green row the gate already recorded for HEAD with the same command and an unchanged log; tags HEAD (annotated) and pushes the default
 // branch and the tag in ONE atomic push through the repository's hook (never --no-verify, `git push --dry-run --atomic` first); then writes the
 // URGENT record <git common dir>/starci-release/<HEAD>.urgent.json naming who (the caller's role), why (the reason), each check with its verdict and the
-// commit. The candidate CI is not waited for. The full gate runs later on the same tag (`release gate --backfill <tag>`, gate.mjs), and the deploy
-// safety floor (backup, migrate preview then execute, readiness, rollback) is never skipped (stack/urgent-floor.mjs).
+// commit. The candidate CI is not waited for. The full gate runs later on the same tag (`release gate --backfill <tag>`, gate.mts), and the deploy
+// safety floor (backup, migrate preview then execute, readiness, rollback) is never skipped (stack/urgent-floor.mts).
 import fs from 'node:fs';
 import path from 'node:path';
 import { firstLine } from '../stack/context.mjs';
@@ -16,8 +16,8 @@ import { assertNames, branchRefs, probe, tagRefs } from './push.mjs';
 import { URGENT_RULING, URGENT_SCHEMA, greenRow, parseUrgentTrailers, recordRow, urgentTrailerBlock, writeUrgent } from './records.mjs';
 
 /**
- * The fast local checks of an urgent release, by gate name, in the order they run: what can break production, the types and the build
- * (owner ruling urgent-typecheck-build, 2026-10-30). App check, lint and the tests wait for the back-fill (`release gate --backfill`).
+ * The fast local checks of an urgent release, by gate name, in the order they run: what can break production, the types and the build.
+ * App check, lint and the tests wait for the back-fill (`release gate --backfill`).
  */
 export const URGENT_CHECKS = Object.freeze(['typecheck', 'build', 'build-be', 'build-fe']);
 const REASON_MAX = 500;

@@ -27,7 +27,7 @@ kernel: {effort: high}
 parallel: {gear: 1}
 # supervisor — the optional chat digest cadence. pollIntervalMs controls
 # scripts/supervisor/poll.mjs when run continuously (its floor is the config
-# validation of engine/config.mjs); null uses scripts/machine/home.mjs
+# validation of engine/config.mts); null uses scripts/machine/home.mjs
 # DEFAULTS, and --interval-ms overrides this key.
 # The reconciler engine owns host runtime cadence and restores seats after reboot.
 # repos: managed product ledger-owner repositories for the reconciler and Supervisor tools,
@@ -130,7 +130,7 @@ asks:
 # reclaimed. STARCI_UAT_MAX_CONCURRENT overrides it for one process tree.
 uat:
   maxConcurrent: 10
-# orca — the owner's Orca app settings the runtime must know (engine/orca-config.mjs orcaSettings). maxWorkerDepth MUST equal
+# orca — the owner's Orca app settings the runtime must know (engine/orca-config.mts orcaSettings). maxWorkerDepth MUST equal
 # the worker depth set in the Orca app: the deepest worker Orca starts under the owner's chat (chat 0, Kernel or
 # Supervisor 1, op or [Worker] 2, draw critic 3). Orca exposes no read of it, so the runtime trusts this value and refuses
 # a deeper launch before worker-start (worker-depth-exceeded). `start --check` with STARCI_ORCA_LIVE=1 measures Orca's
@@ -140,7 +140,7 @@ orca:
 # debugLoop — the debug watcher. Workflow DEBUG is a /loop of the chat that started the workflow (the /starci skill sets it up in
 # Claude Code and Codex; no seat, no background agent, nothing in the runtime schedules it). Each tick runs the read-only
 # `starci debug digest`. interval is the loop cadence (<n>s | <n>m | <n>h, default `10m` = `debugLoop.interval`); worktreeLimit is the
-# per-repository core-watch alert threshold (default `40` = `debugLoop.worktreeLimit`). Both keys are optional (engine/config.mjs DEBUG_LOOP_DEFAULTS).
+# per-repository core-watch alert threshold (default `40` = `debugLoop.worktreeLimit`). Both keys are optional (engine/config.mts DEBUG_LOOP_DEFAULTS).
 debugLoop:
   interval: 10m
   worktreeLimit: 40
@@ -159,8 +159,8 @@ reconciler:
   enabled: true
   profile: operational
   controllers: {}
-# specs.unit / specs.e2e in workflows (the `specs` map near the top; owner 2026-09-28 "speed up development;
-# test later when asked"; scripts/route/spec-deferral.mjs). Each op brief's policy.specsToggle says what it does:
+# specs.unit / specs.e2e in workflows (the `specs` map near the top;
+# scripts/route/spec-deferral.mjs). Each op brief's policy.specsToggle says what it does:
 #   unit: false - backend.implement, interface.implement and code.refactor run no jest/vitest/test:ci/coverage
 #     and demand no changed-line coverage (Sonar still runs: bugs, smells, security gate);
 #     test.author legs are never dispatched; review/handover gates do not count unit tests or coverage.
@@ -171,7 +171,7 @@ reconciler:
 # roots — where this host keeps the archive, the lane worktrees and its temporary files, when the owner moves them off the defaults.
 # All keys are optional absolute directories; env STARCI_ARCHIVE_ROOT / STARCI_LANES_ROOT / STARCI_TEMP_ROOT win over them, and an
 # absent key means <starciLocalRoot>/archive (<runtime root>/.runtime/archive), the per-user profile lanes directory, kept out of the checkout (scripts/machine/home.mjs lanesRoot),
-# and the OS temp directory (engine/temp-root.mjs tempRoot; the processes the runtime starts get it as TEMP/TMP/TMPDIR). No host location lives in
+# and the OS temp directory (engine/temp-root.mts tempRoot; the processes the runtime starts get it as TEMP/TMP/TMPDIR). No host location lives in
 # a tracked file: set the real directories only in the gitignored config.yaml copy, e.g.
 #   roots: {archive: <absolute directory>, lanes: <absolute directory>, temp: <absolute directory>}
 # sonar — the SonarCloud organization the release's Sonar proof of the example apps analyses in (scripts/supervisor/release-sonarcloud.mjs). It is configuration, not a secret,
@@ -188,7 +188,7 @@ sonar: {organization: null}
 #   resources: {minFreeDiskGb: 5, minFreeDiskPct: 1, minFreeRamPct: 10}
 # release - where the full suite of a release is judged (scripts/guards/release-suite-mode.mjs; docs/releasing.md "Where the suite runs"). One key:
 #   suite: local   the shipped default: `starci release cut` also runs the L4 rows on this host (root rows, example apps, Sonar proofs, Linux parity container) before it tags; it never gates a push
-#   suite: ci      the owner's recorded choice (2026-10-09, widened 2026-10-26 by push-main-after-scoped-check): EVERY row is judged by the GitHub workflows (ci, examples, sonar) on each push to main;
-#                  the cut runs none and lists each row as delegated, never green. A red CI opens the next alpha.N.M and never blocks the next push (starci release ci-status).
+#   suite: ci      EVERY row is judged by the GitHub workflows (ci, examples, sonar) on each push to main;
+#                  the cut runs none and lists each row as delegated, never green. A red CI opens the next alpha.N.M and never blocks the next push (starci check ci).
 # "none" is refused: the suite does not vanish, it moves to CI. Set it only in the gitignored config.yaml copy: release: {suite: ci}
 release: {suite: local}

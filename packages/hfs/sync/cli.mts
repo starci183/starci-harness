@@ -1,4 +1,4 @@
-// Entry for the sync-side command behind `starci app sync` (the pre-commit guard behind `starci app check --staged` is sync/hygiene.mjs).
+// Entry for the sync-side command behind `starci app sync` (the pre-commit guard behind `starci app check --staged` is sync/hygiene.mts).
 import { runSync } from './index.mjs';
 
 /** The usage of the command; `starci app` prints it (--cwd is its global flag). */

@@ -423,7 +423,7 @@ to reserve an aspect ratio. The track URL must be same-origin unless the caller 
 `crossOrigin` (`anonymous` or `use-credentials`) and both resource servers support the corresponding
 CORS request; the renderer leaves this unset by default to preserve ordinary media loading.
 The [HTML media and track standard](https://html.spec.whatwg.org/multipage/media.html#the-track-element)
-defines the native loading and caption behaviour (reviewed 2026-10-18).
+defines the native loading and caption behaviour.
 
 `Switch` takes `size="md" | "lg"` (`lg` is the StarCi 4rem by 2.25rem pill with a 1.75rem round thumb) and
 `thumbIcon` / `selectedThumbIcon` for a glyph inside the thumb, so a sun/moon theme switch is

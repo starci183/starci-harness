@@ -1,4 +1,4 @@
-// proof-commands.mjs - HFS_PROOF_COMMAND_FILE_MISSING (R105): a proof command a `.starciwork` record names runs files that exist.
+// proof-commands.mts - HFS_PROOF_COMMAND_FILE_MISSING (R105): a proof command a `.starciwork` record names runs files that exist.
 // A record's `requiresProof.<kind>.command` is "the exact command that satisfies this kind, runnable as written" (work-implementation
 // schema); a command that names a spec, a script or a config the repository does not hold cannot be run as written, and a record that
 // keeps one goes quietly false (a product repo once kept `node --test <repo>/scripts/provision-keycloak.spec.mjs` after the script was deleted).

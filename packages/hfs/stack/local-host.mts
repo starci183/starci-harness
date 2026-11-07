@@ -1,4 +1,4 @@
-// local-host.mjs - the host prerequisites of a dev environment, one row each: what is needed, whether this machine has it, and the exact
+// local-host.mts - the host prerequisites of a dev environment, one row each: what is needed, whether this machine has it, and the exact
 // install step the owner runs when it does not (winget on Windows, brew on macOS, apt on Linux). Read-only: it probes tools through the spawn
 // seam, reads sizes and the app's declared ports, and installs nothing (rules.md rules 5 and 8; the owner runs the printed steps).
 import fs from 'node:fs';

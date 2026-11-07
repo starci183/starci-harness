@@ -1,6 +1,6 @@
 import { parseYaml } from '../../engine/yaml.mjs';
 
-// secret-patterns.mjs — the one list of secret shapes the runtime refuses to carry: the push secret scan
+// secret-patterns.mts — the one list of secret shapes the runtime refuses to carry: the push secret scan
 // (scripts/supervisor/push-mains.mjs scanDiff) refuses an outgoing range that adds one, and the typed-log
 // redaction (scripts/kernel/typed-logs.mjs redactText) blanks the value before a log row is stored.
 // FORBIDDEN_FILES name paths that are secrets by being (an env file, a key file); SECRET_PATTERNS match values.
@@ -14,7 +14,7 @@ export const FORBIDDEN_FILES: ForbiddenFile[] = [
   { name: 'env-file', test: (f) => /(^|\/)\.env(\.[^/]*)?$/i.test(f) && !/\.env\.(example|sample|template)$/i.test(f) },
   { name: 'secrets-dir', test: (f) => /(^|\/)\.secrets\//i.test(f) },
   { name: 'private-key-file', test: (f) => /\.(pem|key|p12|pfx)$/i.test(f) || /(^|\/)id_(rsa|ed25519|ecdsa)$/i.test(f) },
-  // .starcistacks/<stack>/secrets/ commits sops twins only (owner ruling push-scan-test-secrets-encrypted): a plaintext
+  // .starcistacks/<stack>/secrets/ commits sops twins only: a plaintext
   // credential there - a test password included - is git-ignored by the product repo and never pushed.
   { name: 'starcistacks-secret-plaintext', test: (f) => /(^|\/)\.starcistacks\/[^/]+\/secrets\//i.test(f) && !/(\.enc|\.enc\.yaml|\/\.gitkeep|\/KEYS\.md)$/i.test(f) },
   { name: 'credentials-json', test: (f) => /(^|\/)(credentials|service-account|client_secret)[^/]*\.json$/i.test(f) },

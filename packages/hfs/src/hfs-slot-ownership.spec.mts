@@ -8,7 +8,7 @@
 // proves: HFS_FORBIDDEN_PRESENT@full
 // proves: HFS_TRACKED_MUST_BE_IGNORED@lite
 // proves: HFS_TRACKED_MUST_BE_IGNORED@full
-// R01, the slot ownership of every tracked path, as the app check (scripts/hfs/check.mjs, the bundled copy) judges it: it refuses a path no slot owns, a
+// R01, the slot ownership of every tracked path, as the app check (scripts/hfs/check.mts, the bundled copy) judges it: it refuses a path no slot owns, a
 // path two slots own equally, a path of an opt-in slot nobody declared, a tracked path of a forbidden slot and a tracked path of an ignored slot, and
 // accepts the owned path, in lite and in full. The ambiguous path needs a manifest with a gap: the shipped manifest has none (the loader refuses two
 // slots that claim the same pattern text, but not two patterns that differ only in the name of a variable), so that case loads the shipped manifest plus

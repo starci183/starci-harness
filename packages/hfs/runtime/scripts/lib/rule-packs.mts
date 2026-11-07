@@ -1,4 +1,4 @@
-// rule-packs.mjs - an app's rule packs (PROJECT-LINT-3): the packages hfs.json `rulePacks` names, each adding the app's own laws to the harness's
+// rule-packs.mts - an app's rule packs (PROJECT-LINT-3): the packages hfs.json `rulePacks` names, each adding the app's own laws to the harness's
 // gates without a local rule in a tool config. A pack is an installed package that exports `./rule-pack`, an ES module whose default export is
 //   { schema: 'starci/rule-pack@1', name: '<the package name>', rules: [<rule>, ...] }
 // and every rule carries an id (`NIVO-BLOCK-1`), a finding code (`NIVO_BLOCK_INCOMPLETE`), a severity (error or warning), the spec that proves it

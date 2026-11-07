@@ -1,4 +1,4 @@
-// repo-identity.mjs - who a repository is, independent of the folder it is checked out in.
+// repo-identity.mts - who a repository is, independent of the folder it is checked out in.
 // A git worktree (<lanes root>/<lane>/<name>) and the main checkout of the same repository are ONE repository:
 // they carry the same README title, the same stack-declaration project name and the same sibling repositories.
 import fs from 'node:fs';

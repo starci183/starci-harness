@@ -3,7 +3,7 @@ import type { TSESTree } from "@typescript-eslint/types"
 import { isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 /**
- * The Freestyle law (HFS R341 `FE_FREESTYLE_REASON_MISSING`; owner ruling `grammar-freestyle-region`): Freestyle is the one
+ * The Freestyle law (HFS R341 `FE_FREESTYLE_REASON_MISSING`): Freestyle is the one
  * sanctioned escape hatch of the Grammar, a region where the app writes its own plain elements and app CSS because no
  * Grammar component fits. It is a last resort, so it always says why: `reason` is a non-empty string literal such as
  * `"sign-in brand art"`, and the Grammar stamps it on the DOM (`data-grammar-freestyle-reason`).

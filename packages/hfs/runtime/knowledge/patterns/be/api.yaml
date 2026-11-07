@@ -19,9 +19,6 @@ provenance:
     - knowledge/hfs/README.md
     - knowledge/hfs/slots.yaml
     - knowledge/hfs/rules.yaml
-    - owner-locked BE convention 2026-09-30
-    - owner decision 2026-10-02 (features grouped by trigger kind; synchronous inside a context)
-    - owner ruling 2026-10-14 (app composition standard: options, compose/<area>.ts groups, budgets)
     - https://docs.nestjs.com/recipes/cqrs
   limitations: |-
     Static checks prove the shape of a feature, a message, its handler and the dispatch, and that SQL touches only tables its
@@ -252,7 +249,7 @@ rules:
     hfsRules: [R245, R246, R32, R45, R43, R265, R289]
     requirement: |-
       An app's `src/` (slot `be.app.api`, and alike `be.app.worker` and `be.app.cli`) holds five app roles, each within the
-      line budget its slot names (owner ruling 2026-10-14):
+      line budget its slot names:
       - `main.ts` (80 lines) builds `EnvSource` once, imports and calls `read<App>Env` from `<app>.env.ts`, builds the options
         and boots the app.
       - `<app>.env.ts` (150) exports an explicit typed `<App>Env` interface and `read<App>Env(env: EnvSource): <App>Env`

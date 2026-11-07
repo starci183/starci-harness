@@ -1,8 +1,8 @@
-// declaration-surface.mjs — the one classifier of a TypeScript file's exported type surface: the isolated declaration emit
+// declaration-surface.mts — the one classifier of a TypeScript file's exported type surface: the isolated declaration emit
 // (`ts.transpileDeclaration`, TypeScript 5.5 and later, which reads the file alone) and the exports it cannot write without inference.
 //
-// Two readers share it and cannot drift: the ESLint result cache (hfs cache/import-graph.mjs: a file with a problem is `open`, its importers are
-// linted again whenever it changes) and the `explicit-export-surface` rule of both lint canons (scripts/hfs/explicit-surface-rule.mjs, which reports
+// Two readers share it and cannot drift: the ESLint result cache (hfs cache/import-graph.mts: a file with a problem is `open`, its importers are
+// linted again whenever it changes) and the `explicit-export-surface` rule of both lint canons (scripts/hfs/explicit-surface-rule.mts, which reports
 // each problem with what to annotate). A component that returns only JSX has the type the JSX namespace gives it, whatever its body reads, so it
 // is not a problem, and a destructured export of a module-definition helper of @starci/nest-kit has the type that helper's declaration writes. `ts` is the caller's compiler (the app's own install); nothing here resolves a package.
 import type { Diagnostic, Expression, FunctionLikeDeclaration, Node, SourceFile } from 'typescript';

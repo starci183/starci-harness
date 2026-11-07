@@ -15,7 +15,7 @@ import { entitiesOf } from './sql-owner.mjs';
  *     of another context is refused;
  *   - a migration foreign key (`REFERENCES <table>` in a string of a migration file) onto a table whose entity belongs to another context is refused;
  *   - a domain or projection file imports no file of a capability of another context (its entities, services or SQL).
- * A capability's context is the connection its persistence arrays are registered on (context-map.mjs). A file or table with no proven context
+ * A capability's context is the connection its persistence arrays are registered on (context-map.mts). A file or table with no proven context
  * (a platform capability, a capability registered nowhere) is never judged, and the table of a foreign key is looked up through the entities the
  * program declares, never guessed from a name.
  */

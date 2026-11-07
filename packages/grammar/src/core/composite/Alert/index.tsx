@@ -98,7 +98,7 @@ const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
 /**
  * COMPOSITE - `Alert`: an inline, in-flow banner about the region it sits in.
  *
- * Its one look is the tone's soft pair (owner ruling `alert-soft-pair`): the background is `--<tone>-soft` at full strength, the
+ * Its one look is the tone's soft pair: the background is `--<tone>-soft` at full strength, the
  * glyph, title and description are `--<tone>-soft-foreground`, with no shadow and no border. Tones map to the pair
  * as informative -> info (accent where the theme has no info pair), affirmative -> success, cautionary -> warning, negative -> danger, and neutral, pending and
  * unavailable -> default.
@@ -182,7 +182,7 @@ const AlertInner = (props: AlertProps) => {
 /**
  * COMPOSITE - `Alert`: an inline, in-flow banner about the region it sits in.
  *
- * Its one look is the tone's soft pair (owner ruling `alert-soft-pair`): the background is `--<tone>-soft` at full strength, the
+ * Its one look is the tone's soft pair: the background is `--<tone>-soft` at full strength, the
  * glyph, title and description are `--<tone>-soft-foreground`, with no shadow and no border. Tones map to the pair
  * as informative -> info (accent where the theme has no info pair), affirmative -> success, cautionary -> warning, negative -> danger, and neutral, pending and
  * unavailable -> default.

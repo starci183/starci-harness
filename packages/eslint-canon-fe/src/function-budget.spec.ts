@@ -97,7 +97,7 @@ for (const edition of ["lite", "full"]) {
   })
 }
 
-test("fe: the owner-decided cap remains active before C08 adds functionLines to the manifest", () => {
+test("fe: the cap of 80 lines holds when the manifest sets no functionLines", () => {
   assert.doesNotThrow(() => {
   const hfs = fixtureHfs("full")
   delete hfs.ruleParams.functionLines

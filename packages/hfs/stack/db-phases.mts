@@ -1,5 +1,5 @@
-// db-phases.mjs - the database steps a deploy takes from the urgent safety floor (urgent-floor.mjs) into every deploy
-// (docs: contexts/project/cicd.md, Database migrations; owner approval 2026-10-31). One module owns the steps, so the urgent path and the
+// db-phases.mts - the database steps a deploy takes from the urgent safety floor (urgent-floor.mts) into every deploy
+// (docs: contexts/project/cicd.md, Database migrations). One module owns the steps, so the urgent path and the
 // automatic path run the same backup verification, test decrypt, migrate preview and first start, under the same codes:
 //   STACK_DEPLOY_BACKUP_FAILED, STACK_DEPLOY_BACKUP_UNVERIFIED, STACK_DEPLOY_BACKUP_DECRYPT_UNAVAILABLE, STACK_DEPLOY_BACKUP_DECRYPT_FAILED,
 //   STACK_DEPLOY_MIGRATE_PREVIEW_RED, STACK_DEPLOY_MIGRATE_FAILED (urgent: formerly STACK_URGENT_BACKUP_*, _DECRYPT_*, _MIGRATE_*).
@@ -12,7 +12,7 @@
 //   no accepted release       first start  hold deploy with only the database running, prove it empty, migrate everything inside the container,
 //                                          then the real deploy; a database that is not empty is refused (STACK_FIRST_START_NOT_EMPTY)
 // `database.target: stack` (default) reaches the database inside its own container with the credentials that container holds
-// (db/postgres.mjs ownContainerTarget), so the deploy never holds a DATABASE_URL. `database.target: external` keeps `--db-url-env`.
+// (db/postgres.mts ownContainerTarget), so the deploy never holds a DATABASE_URL. `database.target: external` keeps `--db-url-env`.
 // A refusal before the stack deploy leaves the services untouched. Every collaborator is a FloorDeps member, replaceable by a spec.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -30,11 +30,11 @@ import { refusal } from './errors.mjs';
 import type { ArchiveFacts, ManagerBackup } from './manager-backup.mjs';
 import type { ActionResult, Runner } from './remote.mjs';
 
-/** The receipt of a database backup (db/backup-receipt.mjs). */
+/** The receipt of a database backup (db/backup-receipt.mts). */
 export interface BackupReceipt { schemaOnly: boolean; at: string; file: string; bytes: number; sha256: string; parts: string[] }
 /** What a backup hands back: where the receipt is and what it says. */
 export interface BackupData { receiptPath: string; receipt?: BackupReceipt | undefined }
-/** The database a floor step reaches (db/postgres.mjs): `{ urlEnv }`, `{}` or `{ target }`, spread into the migrate options. */
+/** The database a floor step reaches (db/postgres.mts): `{ urlEnv }`, `{}` or `{ target }`, spread into the migrate options. */
 export type DbTarget = Record<string, unknown>;
 /** The verdict of one migrate pass; `data` is migrate's (`done`, `push`, `pushFiles`, `pushed`). */
 export interface MigrateResult { ok: boolean; lines?: string[] | undefined; data?: Record<string, unknown> | undefined }

@@ -37,7 +37,7 @@ for (const edition of ["lite", "full"] as const) {
   })
 }
 
-// Owner ruling 2026-10-16 "Theo y tro": a composite hook that stands on the app's own hooks (a wrapper of hooks/swr, a hook of a
+// A composite hook that stands on the app's own hooks (a wrapper of hooks/swr, a hook of a
 // sibling domain) or on a listed library hook (next-intl...) is a hook; a file that exports a non-hook still fails.
 for (const edition of ["lite", "full"] as const) {
   test(`R56 ${edition} accepts composite hooks over own hooks and library hooks, and still refuses non-hooks`, t => {

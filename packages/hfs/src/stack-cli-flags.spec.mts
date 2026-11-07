@@ -1,4 +1,4 @@
-// `starci app stack <action>` takes only its own flags (stack/cli.mjs FLAGS), names its environment for every action with an effect, and
+// `starci app stack <action>` takes only its own flags (stack/cli.mts FLAGS), names its environment for every action with an effect, and
 // refuses the deploy flag combinations whose flags would otherwise be dropped. Every refusal here comes before the app is read: the folder is empty.
 import test from 'node:test';
 import type { TestContext } from 'node:test';

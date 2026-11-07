@@ -62,8 +62,7 @@ rules:
           A field or choice control sits inside a painted surface: a card, panel, modal, drawer,
           popover or navigation region
         observe: |-
-          Owner ruling 2026-10-25 (owner:surfacecard-always-painted; ruling:R318/case-1): the selected
-          Grammar supplies a nested treatment that separates the control from its owning painted
+          The selected Grammar supplies a nested treatment that separates the control from its owning painted
           surface, and every card surface paints a face. A control placed outside a surface uses the
           treatment for that layer. Unpainted grouping containers pass their parent's context through.
           Applications compose the published surface and control and omit the field variant, allowing

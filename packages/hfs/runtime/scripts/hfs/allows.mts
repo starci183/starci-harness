@@ -26,8 +26,8 @@ export interface AllowsResult {
 
 /**
  * What a slot's `requires`, `allows` and `forbids` entries (knowledge/hfs/slots.yaml) say about a file, read through the
- * resolver of scripts/hfs/slots.mjs. The machine checks that judge "this folder holds only what its slot allows"
- * (feature-shape, fe-slot-allows) and the front-end lint rules (through `hfs.allows(file)` of scripts/hfs/view.mjs) read it here so no check keeps a path list.
+ * resolver of scripts/hfs/slots.mts. The machine checks that judge "this folder holds only what its slot allows"
+ * (feature-shape, fe-slot-allows) and the front-end lint rules (through `hfs.allows(file)` of scripts/hfs/view.mts) read it here so no check keeps a path list.
  *
  * An entry is a name relative to the slot instance root: `<var>` is the instance's bound variable when the slot binds it
  * (`<feature>`, `<capability>`) and one path segment of any text otherwise (`<action>`), `*` and `?` stay inside a segment,

@@ -262,7 +262,7 @@ rules:
       manual:
         - Check the injected fault hits the compensation, not only the step before it.
     relatedExamples: [saga]
-# Edition lite (R212, owner ruling 2026-10-14): the same ports and rules, a self-hosted Postgres adapter behind them.
+# Edition lite (R212): the same ports and rules, a self-hosted Postgres adapter behind them.
 liteAdapter:
   summary: >-
     Under lite a saga is unchanged: the orchestrator service, the versioned state behind the fenced store, steps and their

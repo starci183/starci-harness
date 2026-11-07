@@ -1,4 +1,4 @@
-// command-tokens.mjs — the tokens of the tail of a documented `starci` command (the lexer under doc-commands.mjs).
+// command-tokens.mts — the tokens of the tail of a documented `starci` command (the lexer under doc-commands.mts).
 //
 // A tail is split into shell-like atoms: a run of non-space characters in which <...>, [...], {...}, (...) and quoted parts may hold
 // spaces. [..] and (..) groups are optional text (all their alternatives are named); a (..) group that opens with a plain word is

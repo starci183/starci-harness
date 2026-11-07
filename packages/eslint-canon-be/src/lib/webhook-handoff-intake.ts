@@ -55,7 +55,7 @@ const isBusinessOrigin = (hfs: HfsView, origin: TypeOrigin): boolean => {
 /**
  * A domain receipt port records a delivery and processes nothing: a class with no base class whose constructor takes only platform
  * ports (and TypeORM), at least one of them the platform `Inbox` (or its `EntityInbox` extension). It cannot reach another domain service or the CQRS buses, so a call
- * on it inside the receipt transaction is the inbox record itself (owner ruling 2026-10-17 "Theo y tro": the owner delegated the decision to main).
+ * on it inside the receipt transaction is the inbox record itself.
  */
 const isReceiptPort = (checker: ts.TypeChecker, hfs: HfsView, type: ts.Type): boolean => {
     const declaration = type.getSymbol()?.getDeclarations()?.find(ts.isClassDeclaration)

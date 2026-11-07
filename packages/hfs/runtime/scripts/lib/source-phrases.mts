@@ -1,6 +1,6 @@
-// source-phrases.mjs - the Vietnamese phrase lists runtime source matches against owner or product text are DATA,
+// source-phrases.mts - the Vietnamese phrase lists runtime source matches against owner or product text are DATA,
 // not source: they live in modules/goal/source-phrases.yaml (its leaf keys are declared Vietnamese fields,
-// scripts/lib/language.mjs DECLARED_VIETNAMESE_FIELDS - like the archetypes.yaml phrase lists) so the matchers'
+// scripts/lib/language.mts DECLARED_VIETNAMESE_FIELDS - like the archetypes.yaml phrase lists) so the matchers'
 // source stays English. A list is plain words or regex alternatives, per its comment in the lexicon.
 //
 //   phrasesOf('owed.ownerWord')   -> the list as written (['<owner word>', ...])

@@ -89,9 +89,9 @@ export interface HfsGraph {
 
 /**
  * The file and owner graph the HFS architecture checks share. Every production source file the TypeScript context
- * loaded becomes a node classified by the slot manifest (config.hfs is the resolver of scripts/hfs/slots.mjs);
+ * loaded becomes a node classified by the slot manifest (config.hfs is the resolver of scripts/hfs/slots.mts);
  * every import, re-export and type-only import between two of them becomes an edge. Nothing here judges: the checks
- * in tiers.mjs, reachability.mjs, dead-exports.mjs, required-files.mjs and clones.mjs read it.
+ * in tiers.mts, reachability.mts, dead-exports.mts, required-files.mts and clones.mts read it.
  *
  *   graph.profile            'be' | 'fe'
  *   graph.resolver           the slot resolver (config.hfs)

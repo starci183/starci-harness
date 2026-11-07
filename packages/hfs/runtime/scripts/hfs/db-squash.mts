@@ -191,7 +191,7 @@ export function sourceTarget(scratch: Scratch, connection: SquashConnection, lab
   throw new DbVerbError(`no container of ${scratch.image} reaches ${label}:\n${failures.map((line) => `  ${line}`).join('\n')}`);
 }
 
-/** The runPostgres port of db-baseline-verb.mjs, served by the target's container: the history precondition needs no host psql. */
+/** The runPostgres port of db-baseline-verb.mts, served by the target's container: the history precondition needs no host psql. */
 export function targetRunner(target: Target, commandOf: CommandOf): RunPostgres {
   return (_root, op) => {
     const [tool, args] = commandOf(op, target.url);
@@ -562,7 +562,7 @@ function printReport(stdout: (text: string) => unknown, projection: Projection, 
 }
 
 /**
- * `starci app db baseline --squash`: plan is db-baseline-verb.mjs's baselinePlan, connection the source of --db-url-env, precondition the
+ * `starci app db baseline --squash`: plan is db-baseline-verb.mts's baselinePlan, connection the source of --db-url-env, precondition the
  * history check (the source holds exactly the active chain) run through the given runPostgres port, throwing its refusal, and archive
  * the move of the active chain. Dry run by default; `execute` writes the baseline, the bootstrap section and the seed, then archives.
  */

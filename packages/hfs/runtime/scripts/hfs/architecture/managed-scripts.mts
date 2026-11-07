@@ -1,4 +1,4 @@
-// managed-scripts.mjs - reads the script names from the managed package-script template for one HFS profile and
+// managed-scripts.mts - reads the script names from the managed package-script template for one HFS profile and
 // edition. Templates stay the source of truth; README presentation checks consume only this cached name set.
 import fs from 'node:fs';
 import path from 'node:path';

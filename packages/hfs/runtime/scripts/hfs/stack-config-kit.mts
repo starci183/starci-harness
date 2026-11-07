@@ -1,4 +1,4 @@
-// stack-config-kit.mjs - the small validators the deploy block (stack-deploy-config.mjs) and its ingress block (stack-ingress-config.mjs)
+// stack-config-kit.mts - the small validators the deploy block (stack-deploy-config.mts) and its ingress block (stack-ingress-config.mts)
 // share: a problem collector, closed field lists, pattern checks and the environment-relative file check.
 import path from 'node:path';
 import { isPlainObject as plain } from '../../engine/plain-object.mjs';

@@ -1,4 +1,4 @@
-// local-logs.mjs - `starci app stack logs --env <dev env> --service <name> [--lines N]` (PROJECT-STACKS-6): one named process or compose service,
+// local-logs.mts - `starci app stack logs --env <dev env> --service <name> [--lines N]` (PROJECT-STACKS-6): one named process or compose service,
 // bounded in lines, redacted; never the environment or the credentials.
 import fs from 'node:fs';
 import type { StackContext } from './context.mjs';

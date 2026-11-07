@@ -1,4 +1,4 @@
-// prune.mjs - removes the managed Swarm secrets and configs that none of the kept releases names. A name is never reused and an earlier
+// prune.mts - removes the managed Swarm secrets and configs that none of the kept releases names. A name is never reused and an earlier
 // version is never deleted before convergence, so this runs only after a release was accepted. Docker refuses to remove an object a
 // service still uses; such a refusal is reported and left alone (never forced). Without `execute` it only lists what it would remove.
 import fs from 'node:fs';

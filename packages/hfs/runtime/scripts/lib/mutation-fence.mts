@@ -1,4 +1,4 @@
-// mutation-fence.mjs — ephemeral admission carried through awaited work, never a state store.
+// mutation-fence.mts — ephemeral admission carried through awaited work, never a state store.
 import { AsyncLocalStorage } from 'node:async_hooks';
 /** The boundary a write owner rechecks at: its kind and the details of the effect (the db, the name, the argv). */
 export interface FenceBoundary { kind: string; [detail: string]: unknown }

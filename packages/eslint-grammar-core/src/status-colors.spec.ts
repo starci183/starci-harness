@@ -3,7 +3,7 @@
  *
  *   node --test src/status-colors.spec.ts
  *
- * The rule is the owner's pair rule: content on a `bg-<tone>-soft` tint takes the soft foreground, a mark with no tint behind
+ * The rule is the status pair rule: content on a `bg-<tone>-soft` tint takes the soft foreground, a mark with no tint behind
  * it takes the tone. The violating cases are the shapes the wrong pair hides in: a plain className, a `cn()` call, a conditional,
  * a variant prefix, an opacity suffix, a hoisted constant, a `classes` entry and a tint on an enclosing element. The passing
  * cases are the pair on its tint, the bare tone, the solid fill with its own ink, and every neighbour that shares a prefix.

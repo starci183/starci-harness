@@ -1,4 +1,4 @@
-// work-io.mjs — the file, record and argv helpers the scripts/work tools and the work checks share.
+// work-io.mts — the file, record and argv helpers the scripts/work tools and the work checks share.
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseYaml } from '../../engine/yaml.mjs';

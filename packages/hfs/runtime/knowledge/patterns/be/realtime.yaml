@@ -9,7 +9,7 @@ purpose: |-
   `features/reactors/` receives the domain event and publishes to a topic of the `RealtimeHub` of `platform/realtime` (an app
   with no event bus lets the domain service that commits the change publish with the hub's commit ordering, BE-REALTIME-7); the door only subscribes the
   client to a topic of that hub, scoped to the client's principal. SSE is the default door for one-way server-to-client push
-  (job progress, a status that changes, streamed tokens), in lite and in full (owner decision 2026-10-24): it is plain HTTP
+  (job progress, a status that changes, streamed tokens), in lite and in full: it is plain HTTP
   behind the ingress, reconnects by itself and resumes from `Last-Event-ID`. The socket.io gateway stays for a channel that also
   needs client-to-server messages, and the GraphQL subscription is the restricted door for a typed schema payload on a client that already uses
   GraphQL (BE-REALTIME-6); all three run in both editions.
@@ -24,8 +24,6 @@ provenance:
     - knowledge/hfs/rules.yaml
     - knowledge/patterns/be/transport.yaml
     - knowledge/patterns/be/api-auth.yaml
-    - owner decision 2026-10-02 (feature kinds: webhooks, realtime, reactors, saga, jobs, cli; no kind imports another)
-    - owner decision 2026-10-24 (the lite edition may serve SSE, and SSE is the default door for one-way push; ruling:R212/case-5, amended by owner:lite-graphql-subscription-door and ruling:R212/case-7 for the GraphQL subscription door)
   limitations: |-
     Static checks prove the door's role, that the hub is the only thing injected and that a subscribed topic is built from the
     principal. They do not prove the publisher's membership read, that a non-Postgres publish follows the domain commit,
@@ -289,10 +287,10 @@ rules:
       `RealtimeHub` port, never a different door. The Redis and Postgres hubs, the refusal of a stack with more than one api replica on
       the memory hub (STACKS_REALTIME_SCALED) and the two-replica scenarios are the realtime scale rule BE-REALTIME-7.
 
-      Lite (ruling:R212/case-10, owner:lite-vector-is-pgvector):
+      Lite (R212):
       ONE instance type, one api deployable, scales horizontally and stateless, with no sticky sessions, on its own Postgres plus
-      Redis when a declared capability needs it. Vector search uses pgvector in the db service. The three doors above are served from that api (the GraphQL subscription door is new
-      in lite, ruling:R212/case-7). A lite api with more than one replica uses the Redis hub when Redis is
+      Redis when a declared capability needs it. Vector search uses pgvector in the db service. The three doors above are served from that api (the GraphQL subscription door
+      included). A lite api with more than one replica uses the Redis hub when Redis is
       declared, else the Postgres hub. The example is the SSE `booking-status` channel.
 
       Full: the complete infrastructure, several services with Redis (ioredis, BullMQ), and the api may run several replicas on the Redis hub (BE-REALTIME-7). The three doors and the choice above are the same as lite; no door is full-only. The example is the
@@ -682,7 +680,7 @@ files:
     spec: realtime/subscriber-receives-push, realtime/foreign-topic-is-isolated, realtime/disconnect-releases-subscription
     rules: [BE_PATTERN_SPEC_MISSING]
     optional: true
-# Edition lite (R212, owner ruling 2026-10-14; the SSE door by owner decision 2026-10-24, ruling:R212/case-5; the GraphQL subscription door, ruling:R212/case-7 and owner:lite-graphql-subscription-door): the same ports, doors and rules; it scales horizontally and stateless.
+# Edition lite (R212): the same ports, doors and rules; it scales horizontally and stateless.
 liteAdapter:
   summary: >-
     Under lite the realtime pattern is the full one with its three doors: the SSE controller of be.feature.realtime.sse

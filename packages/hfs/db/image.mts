@@ -1,4 +1,4 @@
-// image.mjs - the one name of a lite app's db image (slot app.db.image, rulings lite-official-postgres-image and lite-db-image-in-stacks):
+// image.mts - the one name of a lite app's db image (slot app.db.image):
 // the managed .starcistacks/images/db/Dockerfile builds it, `deploy.images.db` of .starcistacks/application-stacks.yaml names it as app
 // `db`, and the stack build, the images and stack-deploy workflows, the local db container, the drift scratch database and the squash
 // replay all build that one file. db/ keeps only schema and data (migrations, bootstrap, seed).

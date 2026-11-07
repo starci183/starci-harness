@@ -1,4 +1,4 @@
-// workflow-source.mjs - what the workflow rules (ci-upload.mjs, git-triggers.mjs) share: which tracked files are CI workflows, and a workflow's
+// workflow-source.mts - what the workflow rules (ci-upload.mjs, git-triggers.mts) share: which tracked files are CI workflows, and a workflow's
 // YAML document. A template's `{{placeholder}}` lines are blanked before the text is parsed.
 import { parseYaml } from '../../../engine/yaml.mjs';
 import type { Parsed } from '../rules/rule-types.mjs';

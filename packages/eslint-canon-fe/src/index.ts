@@ -159,7 +159,7 @@ export const rules: Record<string, Rule> = Object.fromEntries(
  *
  * Every FE canon rule is an error. Existing debt is fixed before adoption; lowering architecture
  * to warn teaches every later author that the boundary is optional and is not a supported rollout. The one
- * exception is the closed counting cohort of lib/config.ts (`COUNTING`), an owner-ruled warn for one release.
+ * exception is the closed counting cohort of lib/config.ts (`COUNTING`), a warn for one release.
  */
 export const recommended: Record<string, "error" | "warn"> = Object.fromEntries(
   CONTRIBUTIONS.flatMap((entry) => Object.entries(entry.recommended)),

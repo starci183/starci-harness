@@ -1,4 +1,4 @@
-// R372 and R373 (rules/stacks-local.mjs): a lite app declares a runnable dev environment, the local block is coherent, and the dev runbook names the
+// R372 and R373 (rules/stacks-local.mts): a lite app declares a runnable dev environment, the local block is coherent, and the dev runbook names the
 // harness verb instead of docker commands. Also the least grants a compose service mounts (STACK_GRANT_<NAME>).
 import test from 'node:test';
 import assert from 'node:assert/strict';

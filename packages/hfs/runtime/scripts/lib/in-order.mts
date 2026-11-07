@@ -1,4 +1,4 @@
-// in-order.mjs — asynchronous work done strictly one after another, named by what it does. A sequential `await` in a
+// in-order.mts — asynchronous work done strictly one after another, named by what it does. A sequential `await` in a
 // loop is often the point (ordered ledger writes, one Orca or git call at a time, a rate limit, stop at the first
 // failure or match); these helpers state that intent at the call site so no loop body carries an `await`. Each one
 // starts item n+1 only after item n has settled, lets the first rejection (or a synchronous throw of `fn`) stop the run

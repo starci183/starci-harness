@@ -1,4 +1,4 @@
-// hfs-add-queue-lite.spec.mjs - `starci app add queue|job` in a lite app (ruling:R212/case-10): the queue is full's BullMQ adapter
+// hfs-add-queue-lite.spec.mts - `starci app add queue|job` in a lite app (R212): the queue is full's BullMQ adapter
 // on the declared Redis, so the verb writes full's trees with a Supabase migration in place of the TypeORM schema files, declares
 // redis in sides.be.backing with its bullmq client, and renders the one persisted Redis into every docker-swarm environment of the
 // stack while keeping the owner's comments. The scaffolded app judged after the verb gains only the scenario proofs it owes.

@@ -1,9 +1,9 @@
 // proves: LITE_DB_MIGRATION@lite
-// A lite app synced by @starci/hfs 4.10 holds no Supabase reference in its managed files (ruling lite-self-hosted-postgres-passport-minio):
+// A lite app synced by @starci/hfs 4.10 holds no Supabase reference in its managed files:
 // the db scripts, codegen and CI name the self-hosted database through `starci app db ... --db-url-env DATABASE_URL`, and sync deletes a
 // leftover supabase/types/. The one sanctioned mention is db/bootstrap.sql, which recreates the objects migrations written for a
-// hosted Supabase reference. The db image is the official postgres image of the managed .starcistacks/images/db/Dockerfile (rulings
-// lite-official-postgres-image and lite-db-image-in-stacks), and sync retires a leftover db/Dockerfile.
+// hosted Supabase reference. The db image is the official postgres image of the managed .starcistacks/images/db/Dockerfile,
+// and sync retires a leftover db/Dockerfile.
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -35,7 +35,7 @@ test('the managed .starcistacks/images/db/Dockerfile builds the digest-pinned of
   const dockerfile = String(targetAt('.starcistacks/images/db/Dockerfile').content);
   assert.match(dockerfile, /^FROM postgres:17\.\d+@sha256:[a-f0-9]{64}$/mu);
   assert.match(dockerfile, /apt-get install -y --no-install-recommends postgresql-17-pgvector=\S+/u);
-  // pgmq is the event bus (ruling lite-pgmq-bus-bullmq-jobs): its pinned release source, added only when its sha256 matches.
+  // pgmq is the event bus: its pinned release source, added only when its sha256 matches.
   assert.ok(dockerfile.includes(`ADD --checksum=sha256:${PGMQ.sha256} ${PGMQ.source} /tmp/pgmq.tar.gz`));
   assert.ok(dockerfile.includes(`pgmq.sql "$extension/pgmq--${PGMQ.version}.sql"`));
   assert.equal(/pg_cron|pg_net|shared_preload_libraries/u.test(dockerfile), false, 'pgvector and pgmq are the extensions the image adds');
@@ -51,7 +51,7 @@ test('the managed db scripts, codegen and CI drive the self-hosted database', ()
     assert.ok(scripts.includes(script), script);
   }
   assert.equal(scripts.includes('db:types'), false);
-  // The database deploy workflow is retired: the stack deploy backs up and migrates inside the database container (ruling app-cicd-auto-deploy).
+  // The database deploy workflow is retired: the stack deploy backs up and migrates inside the database container.
   assert.equal(byPath.has('.github/workflows/db-deploy.yml'), false);
   assert.ok(String(targetAt('.github/workflows/stack-deploy.yml').content).includes('starci app stack deploy'));
   assert.equal(String(targetAt('.github/workflows/ci.yml').content).includes('db-types'), false);
@@ -69,7 +69,7 @@ test('sync retires a leftover supabase/types of a lite app, and only of a lite a
   assert.deepEqual(retiredFiles(root, { edition: 'full' }), []);
 });
 
-test('sync retires the db/Dockerfile a lite app kept before the db image moved into the stacks (ruling lite-db-image-in-stacks)', (t: TestContext) => {
+test('sync retires the db/Dockerfile a lite app kept outside the stacks', (t: TestContext) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-lite-retired-image-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'db', 'migrations'), { recursive: true });

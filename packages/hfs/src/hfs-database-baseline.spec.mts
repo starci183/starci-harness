@@ -285,7 +285,7 @@ for (const edition of ['lite', 'full']) {
     const role = 'create role app_be nologin noinherit nosuperuser nobypassrls nocreatedb nocreaterole;';
     const tickSql = "create function public.events_tick() returns void language sql as $$insert into public.queue (queue, payload, created_at) values ('sweep', '{}'::jsonb, now());$$;";
     const initialSql = `${role}\nselect pgmq.create('events');\nselect pgmq.create('events__dead');\ngrant select, insert on pgmq.q_events to app_be;\n${tickSql}\nselect cron.schedule('events-tick', '* * * * *', '${tickCommand}');\n`;
-    // The pgmq queue is an event-bus topic queue with its dead-letter queue (ruling:lite-pgmq-bus-bullmq-jobs); the tick enqueues through the queue outbox.
+    // The pgmq queue is an event-bus topic queue with its dead-letter queue; the tick enqueues through the queue outbox.
     const deadQueues = [{ name: 'events' }, { name: 'events__dead' }];
     const topic = 'be/src/modules/platform/event-bus/event-bus.contracts.ts';
     const queue = 'be/src/modules/queues/sweep/sweep.queue.ts';

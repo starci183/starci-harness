@@ -5,7 +5,7 @@ import type { Node } from "./lib/types.ts"
  * The rule that holds `status-colors.md` (HFS R61 `FE_STYLE_TOKEN_ONLY`, the status-pair rule for class names; no gate
  * judges the colours an app's theme gives the pair).
  *
- * A STATUS TONE x PAINTS IN TWO WAYS (owner ruling `status-soft-pair-on-background`). Content that sits ON A BACKGROUND OF THE
+ * A STATUS TONE x PAINTS IN TWO WAYS. Content that sits ON A BACKGROUND OF THE
  * TONE uses the pair `x-soft` and `x-soft-foreground`, the way a HeroUI flat Chip does. A mark that STANDS ALONE, with no
  * background of the tone behind it, uses `x` itself. A solid fill takes `x-foreground`.
  *
@@ -21,8 +21,8 @@ import type { Node } from "./lib/types.ts"
  *   enclosing element of the same file sets `bg-x-soft`. A mark with no tint behind it takes `text-x`. A constant, an array in
  *   a constant or a `classes` entry is not judged for this finding, since the element that wears it is not in view.
  *
- * OFFSET POP. The family's light-theme tones are pastel fills (1.3 to 1.5:1 as bare text), and the owner chose to keep them
- * ("1. Pastel"): a bare mark wears the soft foreground there. When the selected Grammar is `offset-pop` the ALONE finding is
+ * OFFSET POP. The family's light-theme tones are pastel fills (1.3 to 1.5:1 as bare text), and they stay
+ * pastel: a bare mark wears the soft foreground there. When the selected Grammar is `offset-pop` the ALONE finding is
  * not reported; the ON A TINT finding still is.
  *
  * WHAT IT LEAVES ALONE: a bare solid tone (`text-success` with no `bg-success-soft` on the element), the soft pair on its tint, a
@@ -179,7 +179,7 @@ export const statusTextUsesSoftForeground: Rule.RuleModule = defineRule({
   },
   create(context) {
     // A `classes` entry inside a constant is reached twice (as part of the constant, and as the entry): one finding per string.
-    // Offset Pop's light theme draws a bare mark with the soft foreground (owner choice "1. Pastel"), so the lone soft foreground is not judged there.
+    // Offset Pop's light theme draws a bare mark with the soft foreground, so the lone soft foreground is not judged there.
     const aloneJudged = grammarOf(context.settings) !== "offset-pop"
     const seen = new Set<Node>()
     const fresh = (strings: Iterable<StringNode>): StringNode[] => [...strings].filter(({ node }) => !seen.has(node) && seen.add(node))

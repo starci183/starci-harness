@@ -1,4 +1,4 @@
-// secret-edit.mjs - app secret unset|rename|remove: edit the key set of one sealed member without ever printing a value.
+// secret-edit.mts - app secret unset|rename|remove: edit the key set of one sealed member without ever printing a value.
 // Each verb is a dry run until --execute. The dry run reads only the envelope's public key names and recipients, so it needs no
 // age identity. An executed edit decrypts the member in memory, re-seals it to the SAME recipients in the SAME sops format
 // (the one exception is a binary `data` envelope, which a rename re-seals as a JSON envelope), checks the sealed result and

@@ -1,4 +1,4 @@
-// The dev mail sink of the lite starter (ruling mail-package): the dev compose runs an unmodified upstream Mailpit pinned by digest in
+// The dev mail sink of the lite starter: the dev compose runs an unmodified upstream Mailpit pinned by digest in
 // contexts/stack/pins.yaml, `starci app stack up` starts it and waits for its healthcheck, the api sends to it over a plain channel on
 // loopback only, its web UI is a declared origin, and the dev runbook says how to read the mails.
 import test from 'node:test';

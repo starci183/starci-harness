@@ -143,7 +143,7 @@ function transform(tsconfig: string | Record<string, unknown>): Record<string, [
  * The runtime dependencies of a back end that ship ECMAScript modules only: jest's CommonJS runtime cannot load them, so their
  * files are compiled to CommonJS like the repository's own (ts-jest with `allowJs`) instead of being skipped as node_modules.
  * `jose` is the Supabase access-token verifier of every lite back end (be.integrations.supabase); a lite app keeps full's unit
- * run (ruling:R212/case-1, amended by ruling:R212/case-4), so a spec that imports its guard must load it. `@starci/ai-router`
+ * run (R212), so a spec that imports its guard must load it. `@starci/ai-router`
  * is the AI pool module, `@starci/auth` the sign-in a lite back end composes in its passport integration, `@starci/auth-oidc` the sign-in a full back end composes
  * in its keycloak integration, `@starci/object-storage` the storage module it registers in its AppModule, `@starci/mail` the mailer of its mail integration and `@starci/nest-kit` the module
  * definition of every module, so a spec that builds the AppModule must load them.
@@ -211,7 +211,7 @@ const MODULE_NAME_MAPPER: Readonly<Record<string, string>> = Object.freeze({
   "^@tests/(.*)$": "<rootDir>/src/tests/$1",
 })
 
-/** The test folders under `src/tests/` that a project other than `unit` owns (owner test layout 2026-09-30). */
+/** The test folders under `src/tests/` that a project other than `unit` owns (R47). */
 const TEST_KIND_FOLDERS: readonly string[] = Object.freeze(["world", "integration", "e2e", "contract"])
 const underTests = (folder: string): string => String.raw`[\\/]src[\\/]tests[\\/]` + folder + String.raw`[\\/]`
 

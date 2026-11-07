@@ -10,10 +10,10 @@ import { byCodeUnit } from '../../lib/list.mjs';
 /**
  * R96 `doc-language` (HFS_DOC_NOT_ENGLISH). Every Markdown and YAML document under knowledge/, docs/, src/ and apps/ is English:
  * prose, patterns and examples alike, and a code fence inside Markdown counts because an example is read exactly like the
- * prose around it. Detection is structural on characters (scripts/lib/language.mjs), never a word list.
+ * prose around it. Detection is structural on characters (scripts/lib/language.mts), never a word list.
  *
  * The one exception is data, decided by placement: a YAML file that sits in a slot carrying localized text (a message
- * catalog slot or an i18n fixtures slot, listed in scripts/lib/language.mjs) may hold another language. Markdown is never data, so a README
+ * catalog slot or an i18n fixtures slot, listed in scripts/lib/language.mts) may hold another language. Markdown is never data, so a README
  * inside a catalog slot is judged like any other document. No comment pragma, no path pattern.
  */
 export const DOC_LANGUAGE_RULE_IDS = ['HFS_DOC_NOT_ENGLISH'];

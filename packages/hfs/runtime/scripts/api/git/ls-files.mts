@@ -1,4 +1,4 @@
-// ls-files.mjs — `git ls-files <args>`: the paths the index tracks (--cached), or the untracked / deleted / ignored ones
+// ls-files.mts — `git ls-files <args>`: the paths the index tracks (--cached), or the untracked / deleted / ignored ones
 // the flags ask for (-z keeps any file name intact).
 import { runGit, type GitOptions, type GitResult } from './lib.mjs';
 

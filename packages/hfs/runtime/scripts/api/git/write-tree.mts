@@ -1,4 +1,4 @@
-// write-tree.mjs — `git write-tree <args>`: a tree object written from the index (its sha on stdout).
+// write-tree.mts — `git write-tree <args>`: a tree object written from the index (its sha on stdout).
 import { runGit, type GitOptions, type GitResult } from './lib.mjs';
 
 /** The spawn result {status, stdout, stderr, error} of `git write-tree ...args`; options are runGit's (cwd or dir, config, timeout, maxBuffer, input, encoding, env, git). */

@@ -1,5 +1,5 @@
-// ci-standard.mjs - R301 CI_STANDARD: the one StarCi CI standard (knowledge/hfs/ci-standard.yaml, OWNER RULING ci-standard 2026-10-18: ".claude defines ONE standard CI
-// ruleset, its own CI and the examples follow it, and apps inherit it"). This file checks the items the standard marks `check: ci-standard`:
+// ci-standard.mts - R301 CI_STANDARD: the one StarCi CI standard (knowledge/hfs/ci-standard.yaml: .claude defines ONE standard CI
+// ruleset, its own CI and the examples follow it, and apps inherit it). This file checks the items the standard marks `check: ci-standard`:
 //   job-shape              the managed ci.yml holds exactly the edition's jobs; the unit run is in `test`, the proof and the Codecov upload in `coverage` (the one OIDC job)
 //   full-history-base-ref  every actions/checkout fetches the full history; a job that lints writes STARCI_BASE_REF before it lints
 //   heap-per-step          every heavy step (heap.steps) declares NODE_OPTIONS --max-old-space-size >= heap.minMiB on the step

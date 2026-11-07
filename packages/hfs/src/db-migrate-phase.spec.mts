@@ -1,4 +1,4 @@
-// proves the phases of `db migrate` a deploy drives (db/migrate.mjs, owner approval 2026-10-31): the expand pass applies every migration but the
+// proves the phases of `db migrate` a deploy drives (db/migrate.mts): the expand pass applies every migration but the
 // `*_contract_*` ones before the services update, the contract pass applies only those after the accept, `all` (a first start) applies everything in
 // stamp order, a pass with nothing to do is green with no mutating call, and `database.target` / `database.service` are judged.
 import test from 'node:test';

@@ -81,7 +81,7 @@ const HUSKY_HOOKS_PATH = /^\.husky(?:\/_)?\/?$/u;
 /** The folders of a back end's src/ the slot manifest knows (features, modules, tests, assets): read from the be slot paths, never listed here. */
 const backendSrcChildrenOf = (resolver: Resolver) => new Set<string>(resolver.slots().filter((slot) => slot.profiles.includes('be')).flatMap((slot) => braceVariants(slot.path)).map((variant) => /^src\/([a-z][a-z-]*)\//.exec(variant)?.[1]).filter((name): name is string => Boolean(name)));
 const moduleTiersOf = (resolver: Resolver) => new Set<string>(resolver.slots().filter((slot) => slot.profiles.includes('be')).flatMap((slot) => braceVariants(slot.path)).map((variant) => /^src\/modules\/([a-z][a-z-]*)\//.exec(variant)?.[1]).filter((name): name is string => Boolean(name))); // the folders of src/modules/ the slot manifest knows (domain, platform, integrations, events, queues, projections)
-// Owner test layout 2026-09-30: unit `<name>.spec.ts`, integration, e2e and contract by folder and suffix; int-spec and harness-spec stay banned.
+// The test layout: unit `<name>.spec.ts`, integration, e2e and contract by folder and suffix; int-spec and harness-spec stay banned.
 const UNSUPPORTED_TEST_SUFFIX = /\.(?:int|harness)-spec\.[cm]?[jt]sx?$/u;
 const UNSUPPORTED_TEST_FOLDER = /^src\/tests\/(?:harness|live|e2e\/live)(?:\/|$)/u;
 const JEST_CONFIG_PREFIX = /^jest[.-]/u;
@@ -152,7 +152,7 @@ function ownsGitTopLevel(root: string): boolean {
 
 /**
  * The hooks of the checked root: core.hooksPath stays husky's (HFS_HOOKS_PATH_REDIRECTED), and the folder it names holds
- * installed hooks in this checkout (HFS_HOOKS_NOT_INSTALLED, scripts/lib/git-hooks-dir.mjs). An unset key judges nothing: a CI
+ * installed hooks in this checkout (HFS_HOOKS_NOT_INSTALLED, scripts/lib/git-hooks-dir.mts). An unset key judges nothing: a CI
  * checkout installs without hooks. A directory that is not the top level of its own work tree has no hooks of its own: the
  * check is not applicable there.
  */

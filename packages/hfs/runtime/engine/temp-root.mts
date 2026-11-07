@@ -1,9 +1,9 @@
-// temp-root.mjs — the one owner of where the runtime puts its temporary files.
+// temp-root.mts — the one owner of where the runtime puts its temporary files.
 //
 // Every temp directory or file the runtime creates (spec fixtures, land scratch, gate staging, dispatch prompts, scan work
 // dirs) lives under tempRoot(): env STARCI_TEMP_ROOT (a spec, a one-off run), then the owner config `roots.temp`
 // (config.yaml, gitignored), else the OS temp directory of the process (TEMP / TMP / TMPDIR, then os.tmpdir()). The base tier
-// only resolves; the directory is made by scripts/api/fs/make-temp-dir.mjs, temp-path.mjs and ensure-temp-root.mjs. The
+// only resolves; the directory is made by scripts/api/fs/make-temp-dir.mts, temp-path.mjs and ensure-temp-root.mts. The
 // children the runtime starts get the same directory as TEMP / TMP / TMPDIR (tempChildEnv, applied by withTempEnv in every scripts/api/ spawn wrapper).
 import os from 'node:os';
 import path from 'node:path';
@@ -12,7 +12,7 @@ import type { OwnerConfig } from './config.mjs';
 
 export const TEMP_ROOT_ENV = 'STARCI_TEMP_ROOT';
 
-/** The owner's `roots.temp` (config.yaml, validated by engine/invalid-config.mjs), or null. `config` is the owner config (default: loadConfig(), whose error for an invalid config.yaml propagates: the OS directory never replaces a root the owner set wrongly). */
+/** The owner's `roots.temp` (config.yaml, validated by engine/invalid-config.mts), or null. `config` is the owner config (default: loadConfig(), whose error for an invalid config.yaml propagates: the OS directory never replaces a root the owner set wrongly). */
 const ownerTemp = (config: OwnerConfig | null | undefined): string | null => (config === undefined ? loadConfig() : config)?.roots?.temp ?? null;
 
 /** The operating-system temp directory of `env`: TEMP, TMP, TMPDIR, else os.tmpdir(). */

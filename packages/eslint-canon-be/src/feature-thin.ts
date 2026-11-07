@@ -314,7 +314,7 @@ const isCqrsDataConstructor = (context: Context, node: TSESTree.CallExpression):
 /**
  * `registerEnumType(...)` of `@nestjs/graphql` at module top level of a `<name>.type.ts` file of the GraphQL transport slot
  * (`be.transport.graphql`). It declares a schema enum: `starci app emit` loads only the resolver, scalar and `include` module files, so the
- * registration must sit in a file the resolver imports, and the `.type.ts` is that file (owner ruling 2026-10-16 "Theo y tro", docs/microservices.md#r264).
+ * registration must sit in a file the resolver imports, and the `.type.ts` is that file (docs/microservices.md#r264).
  * The same call in any other role or slot, or nested in a function, stays executable logic.
  */
 const isEnumRegistration = (context: Context, hfs: HfsView, node: TSESTree.CallExpression, role: string): boolean => role === "type"

@@ -1,4 +1,4 @@
-// services.mjs - the microservice policy of a product that runs more than one service (R163 to R167).
+// services.mts - the microservice policy of a product that runs more than one service (R163 to R167).
 // A product keeps every back-end service as a Nest app at `be/apps/<service>/` of the one repository, sharing the `be/src` libraries and
 // the one package.json; the services it does not own stay pinned images in the stack. Five tree checks:
 //   R163 HFS_SERVICE_PLACEMENT      a service root (a Dockerfile, or a package.json other than the app's own and a workspace package's:
@@ -112,7 +112,7 @@ function imagePinFindings({ repoRoot, repo }: { repoRoot: string; repo: Repo }) 
 
 /**
  * The component names that stand for `app`: the app's own name, then every `environments.<env>.deploy.images` key whose `app` is
- * the app (the one tie between component and app the declaration states, read by scripts/hfs/stack-deploy-config.mjs). A product
+ * the app (the one tie between component and app the declaration states, read by scripts/hfs/stack-deploy-config.mts). A product
  * whose deployed service is named after its stack (`shop-api: {app: api}`) keeps that name; renaming it would rename the live
  * service and put the short app alias on a shared network (R294).
  */

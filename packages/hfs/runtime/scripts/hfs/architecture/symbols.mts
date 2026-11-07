@@ -11,7 +11,7 @@
  *                         or import it by its name. A route file (slot fe.route) binding a declaration to a name Next.js
  *                         requires of a route segment (generateMetadata, generateStaticParams, ...) is not a second name: the
  *                         framework fixes that name, so no rename can remove it.
- * Specs and tests are not in the graph. The public entry of an owner is found the way dead-exports.mjs finds it.
+ * Specs and tests are not in the graph. The public entry of an owner is found the way dead-exports.mts finds it.
  */
 import type {
   BindingName, Expression, ExportSpecifier, InterfaceDeclaration, ModifierLike, NamedExports, NamespaceExport, Node, SourceFile,

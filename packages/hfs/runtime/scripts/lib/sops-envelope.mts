@@ -1,7 +1,7 @@
-// sops-envelope.mjs — the pure rules of a test credential (owner ruling push-scan-test-secrets-encrypted, 2026-09-28):
+// sops-envelope.mts — the pure rules of a test credential:
 // where it lives in a product repository's `.starcistacks`, the command that stores it, the sops format of its path, and
 // whether a committed file is a sops envelope with no plaintext value (the push secret scan's test). Reading one is
-// scripts/uat/test-secret.mjs; the sops binary is found by scripts/api/sops/lib.mjs.
+// scripts/uat/test-secret.mjs; the sops binary is found by scripts/api/sops/lib.mts.
 import path from 'node:path';
 import { parseYaml } from '../../engine/yaml.mjs';
 

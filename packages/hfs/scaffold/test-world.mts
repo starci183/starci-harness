@@ -1,4 +1,4 @@
-// test-world.mjs - the test world of a full app: the declaration of @starci/test-world under be/src/tests/world/ and one baseline
+// test-world.mts - the test world of a full app: the declaration of @starci/test-world under be/src/tests/world/ and one baseline
 // real spec per world layer, rendered from templates/be/test-world/ for the api apps and connections hfs.json declares.
 //
 // A full app's release gate runs integration, e2e and contract (the managed test:* scripts), and the jest preset gives those

@@ -1,8 +1,8 @@
-// ratchet.mjs - the lint ratchet (R379 LINT_RATCHET_RAISED) of a branch whose profile runs lint as `report`: a commit there never adds lint findings to the
+// ratchet.mts - the lint ratchet (R379 LINT_RATCHET_RAISED) of a branch whose profile runs lint as `report`: a commit there never adds lint findings to the
 // files it touches. Each touched source file has no more ESLint error findings than at the base, and a new file has none; the findings it already
 // carried stay report-only. Both versions of each touched file are linted in ONE ESLint child per scope, as texts in place of the file (lintText with the
 // file's path: lint/eslint-list.cts), through the side's installed config, so the typed rules judge the base text against the same program. Only the
-// touched files are linted, so the ratchet costs one typed program per side the change touches. A ratchet violation blocks at any count (gate-threshold.mjs).
+// touched files are linted, so the ratchet costs one typed program per side the change touches. A ratchet violation blocks at any count (gate-threshold.mts).
 //   staged   the pre-commit hook (`starci app check --ratchet`): the staged files (index content) against HEAD, the parent of the commit to be
 //   range    the pre-push hook and CI (the lint family of `starci app check` under the profile): the files the commits since the base touched (HEAD content)
 //            against the base, the merge-base of HEAD with STARCI_BASE_REF (CI's pushed range), else with origin/<branch>, else HEAD^
@@ -162,7 +162,7 @@ export async function ratchetFindings({ repoRoot, touched, side, branch, run = r
       result.fromCache += 1;
       return false;
     });
-    // The memory plan's lint chunk when one is in force (memory-plan.mjs), else the fixed bound.
+    // The memory plan's lint chunk when one is in force (memory-plan.mts), else the fixed bound.
     const step = Math.max(1, Math.floor(lintChunkOf(RATCHET_TEXTS_PER_CHILD) / 2));
     for (let start = 0; start < unsettled.length; start += step) {
       const chunk = unsettled.slice(start, start + step);

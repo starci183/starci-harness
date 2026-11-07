@@ -1,4 +1,4 @@
-// task.mjs - `starci app stack task <name>`: runs ONE declared one-off command (deploy.tasks.<name>.command) inside the running task of
+// task.mts - `starci app stack task <name>`: runs ONE declared one-off command (deploy.tasks.<name>.command) inside the running task of
 // deploy.tasks.<name>.service on the manager, through the ssh runner, and relays its stdout. Which command runs is the app's declaration, never a
 // flag: the only argument is the task name. Without --execute a dry-run line says what would run. Output is relayed as the command prints it; this
 // module never reads or prints environment values.

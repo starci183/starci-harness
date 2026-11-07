@@ -12,7 +12,7 @@
 // proves: HFS_SBOM_MISSING@full
 // proves: HFS_WORKFLOW_CONTEXT@lite
 // proves: HFS_WORKFLOW_CONTEXT@full
-// The delivery pipeline `starci app sync` renders (contexts/project/cicd.md, ruling app-cicd-auto-deploy): ci.yml plans, checks, builds the images once, judges the
+// The delivery pipeline `starci app sync` renders (contexts/project/cicd.md): ci.yml plans, checks, builds the images once, judges the
 // verdict and calls the reusable stack-deploy.yml for every environment with deploy.auto; images.yml and stack-deploy.yml are reusable workflows. Every rendered file
 // is judged by the same rules an app is, is prettier-stable and (when the machine has it) accepted by actionlint.
 import test from 'node:test';

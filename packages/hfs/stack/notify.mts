@@ -1,4 +1,4 @@
-// notify.mjs - the post-deploy notification (`deploy.notify`): one webhook message when an attempt ends, off unless the environment declares it.
+// notify.mts - the post-deploy notification (`deploy.notify`): one webhook message when an attempt ends, off unless the environment declares it.
 // The message holds names only: the outcome, the environment, the stack, the commit, the tag, the release id, the attempt id, the CI run URL and the
 // failure code. The webhook URL is a key of a sealed member (https only); it is never printed, journaled or put in an error. A notification that fails
 // (the member cannot be opened, the URL is not https, the endpoint answers an error or does not answer) is one line of the result and never fails the deploy.

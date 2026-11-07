@@ -13,8 +13,8 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { feStackAllowlistFindings } from '../runtime/scripts/hfs/rules/fe-stack.mjs';
 import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 
-// FE_STACK_FORBIDDEN (rules/fe-stack.mjs): a front-end manifest never declares a package knowledge/hfs/fe-stack.yaml lists under a
-// concern's `forbids` (owner ruling 2026-10-13, lite = full). The fe side judges every package.json it holds; the app root's one
+// FE_STACK_FORBIDDEN (rules/fe-stack.mts): a front-end manifest never declares a package knowledge/hfs/fe-stack.yaml lists under a
+// concern's `forbids` (lite = full). The fe side judges every package.json it holds; the app root's one
 // package.json carries both sides, so a library the back end owns (be infraOwners, e.g. graphql-ws, moment) is not a fe finding there.
 const BE = { apps: [{ name: 'core', kind: 'api' }, { name: 'cli', kind: 'cli' }], connections: [{ name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'database' }] };
 const FE: { apps: { name: string; kind: string }[]; [field: string]: unknown } = { apps: [{ name: 'web', kind: 'next' }] };

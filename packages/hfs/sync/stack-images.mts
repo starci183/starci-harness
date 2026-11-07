@@ -3,7 +3,7 @@
 // The workflow builds one image per `deploy.images` entry of .starcistacks/application-stacks.yaml and hands the pinned references to
 // `starci app stack deploy`. Sync renders that list into the workflow, so it reads the declaration here: the union over the declared
 // environments of `environments.<env>.deploy.images` (service -> { app, buildArgs }). Only names and the presence of build arguments are
-// read; the real validation of the block is stack-deploy-config.mjs (`starci app check`, rule R294). Everything this module returns is
+// read; the real validation of the block is stack-deploy-config.mts (`starci app check`, rule R294). Everything this module returns is
 // pure text assembled from names that match the strict patterns below, so no free text reaches the rendered workflow.
 import fs from 'node:fs';
 import path from 'node:path';

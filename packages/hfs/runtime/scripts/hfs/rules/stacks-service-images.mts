@@ -1,4 +1,4 @@
-// stacks-service-images.mjs - R374: a customised service runs from an image the app builds, never from an upstream image with code mounted into it.
+// stacks-service-images.mts - R374: a customised service runs from an image the app builds, never from an upstream image with code mounted into it.
 //   STACKS_CODE_BIND_MOUNT      a stack or compose file bind-mounts code, a script, a plugin or a writable repository path into a service container.
 //                               Allowed: a named volume, a secret or config grant (not volumes), a bind under the data root (`${data}`, `${STACK_DATA_DIR}`) or a least grant (`${STACK_GRANT_<NAME>}`),
 //                               the docker socket read-only, and a read-only plain data file (json, yaml, toml, conf, ini, properties, txt, pem, crt, csv).

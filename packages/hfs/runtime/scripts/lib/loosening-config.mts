@@ -1,6 +1,6 @@
-// loosening-config.mjs - reads the gate configuration files of a tree as the lists and numbers that could relax a gate.
+// loosening-config.mts - reads the gate configuration files of a tree as the lists and numbers that could relax a gate.
 // A config file is one of a fixed set of kinds (codecov, sonar, jest, eslint, stylelint, tsconfig, ignore file, stack declaration, hfs declaration,
-// exception file); for each, this module returns what the file states, as plain records, and judges nothing: scripts/lib/loosening-state.mjs
+// exception file); for each, this module returns what the file states, as plain records, and judges nothing: scripts/lib/loosening-state.mts
 // compares the records with the canon and the design-truths manifest. YAML is parsed (anchors, flow style and quoted keys resolve), a
 // .properties file is read by the Java rules (continuations; =, : or a blank as the separator), a tsconfig is found by its content.
 //   lists      { list, key, item, line }   an entry of an ignore or exclude list; `list` is the class the manifest allows entries by

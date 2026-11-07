@@ -1,5 +1,5 @@
-// claim-file.mjs — an exclusive writer claim on one file: a lock file beside it names the claiming process, so two processes never rewrite the same file at once
-// (the sealed secret writer, scripts/hfs/secret.mjs). The claim of a process that no longer exists is replaced.
+// claim-file.mts — an exclusive writer claim on one file: a lock file beside it names the claiming process, so two processes never rewrite the same file at once
+// (the sealed secret writer, scripts/hfs/secret.mts). The claim of a process that no longer exists is replaced.
 import fs from 'node:fs';
 import path from 'node:path';
 import { pidAlive } from '../../lib/pid-alive.mjs';

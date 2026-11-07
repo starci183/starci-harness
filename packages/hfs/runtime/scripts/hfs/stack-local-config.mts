@@ -1,4 +1,4 @@
-// stack-local-config.mjs - reads and judges `environments.<env>.local`, the declaration of a dev environment (runtime docker-compose) that
+// stack-local-config.mts - reads and judges `environments.<env>.local`, the declaration of a dev environment (runtime docker-compose) that
 // `starci app stack up|down|doctor|prepare|status|logs|verify --env <env>` runs (PROJECT-STACKS-6). It holds names, ports, argv lists and
 // shapes only, never a value: custody keys are references into .starcistacks/<env>/secrets (PROJECT-STACKS-5). The authority for the fields is
 // this module; the same normaliser serves `starci app check` (rule R340) and the verbs, so a block the check passes is a block the verbs run.

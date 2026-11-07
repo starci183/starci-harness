@@ -1,4 +1,4 @@
-// R258: pgmq is the event bus (ruling:lite-pgmq-bus-bullmq-jobs) and jobs run on BullMQ, so the active migrations leave no pgmq queue
+// R258: pgmq is the event bus and jobs run on BullMQ, so the active migrations leave no pgmq queue
 // for a queue constant, and every pgmq queue they leave is an event-bus topic queue named by a literal *_TOPIC_QUEUE constant under
 // platform/event-bus, beside its dead-letter queue `<queue>__dead`. A topic binding names a declared queue and a literal pattern,
 // and pgmq grants reach only the q_ and a_ tables of declared queues, for the application role alone.
@@ -197,7 +197,7 @@ function queueState({ repoRoot, files = [], all = files, repo = {} }: { repoRoot
 function validateQueues(state: Parsed, inScope: (file: string) => boolean) {
   for (const [queue, file] of state.created) {
     if (queue.endsWith(DEAD_SUFFIX) && state.topics.has(queue.slice(0, -DEAD_SUFFIX.length))) continue;
-    if (state.constants.has(queue)) problem(state, DB_PGMQ_DECLARED, file, `pgmq queue ${queue} is the queue constant of ${state.constants.get(queue)}, and jobs run on BullMQ (ruling:lite-pgmq-bus-bullmq-jobs): drop it with pgmq.drop_queue in a later migration`);
+    if (state.constants.has(queue)) problem(state, DB_PGMQ_DECLARED, file, `pgmq queue ${queue} is the queue constant of ${state.constants.get(queue)}, and jobs run on BullMQ: drop it with pgmq.drop_queue in a later migration`);
     else if (!state.topics.has(queue)) problem(state, DB_PGMQ_DECLARED, file, `pgmq queue ${queue} has no event-bus owner: name it in a literal *_TOPIC_QUEUE constant under platform/event-bus, or drop it with pgmq.drop_queue in a later migration`);
   }
   for (const [topic, file] of state.topics) {

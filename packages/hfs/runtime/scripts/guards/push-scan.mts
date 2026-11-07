@@ -1,5 +1,5 @@
-// push-scan.mjs - the secret scan of an outgoing range, shared by the Supervisor's push of the product repositories (push-mains.mjs) and the push gate of the runtime
-// repository (scripts/guards/release-push-gate.mjs, `starci release push`). Findings name the file, line and pattern, never the value. Its imports stay light on purpose: the
+// push-scan.mts - the secret scan of an outgoing range, shared by the Supervisor's push of the product repositories (push-mains.mjs) and the push gate of the runtime
+// repository (scripts/guards/release-push-gate.mts, `starci release push`). Findings name the file, line and pattern, never the value. Its imports stay light on purpose: the
 // runtime push hook is bundled with the hfs package (scripts/hfs/sync-runtime.mjs) and must not drag the supervisor in.
 import path from 'node:path';
 import { safeRemove } from '../api/fs/safe-remove.mjs';
@@ -40,7 +40,7 @@ export function scanDiff({ diff = '', files = [] }: { diff?: string; files?: str
 
 /** scanDiff one line at a time: feed each diff line to `line(raw)`; `findings` accumulates.
  *  A `*.enc` file is held back until its diff ends and passes only when it is a sops-encrypted file with no
- *  plaintext value (scripts/lib/sops-envelope.mjs isSopsEnvelope) - judged on the whole file at the pushed commit
+ *  plaintext value (scripts/lib/sops-envelope.mts isSopsEnvelope) - judged on the whole file at the pushed commit
  *  when `encText(file)` can read it (a --unified=0 diff of an edited sops YAML holds only its changed lines), else
  *  on its added lines. Anything else in a `.enc` file is scanned like any other file, and a `.enc` under
  *  `.starcistacks/` that is not a sops envelope refuses the push by itself (sops-not-envelope). */
@@ -113,7 +113,7 @@ function postImageReader(cwd: string, to: string): EncText {
   };
 }
 
-/** The one fix a refused plaintext test credential gets (owner ruling push-scan-test-secrets-encrypted): the product
+/** The one fix a refused plaintext test credential gets: the product
  *  repository's own .starcistacks + sops convention, or a value generated per run. */
 const TEST_SECRET_HINT = `move it to .starcistacks/<stack>/secrets/test/<name> and encrypt it with the repository's own command (${setCommand('<name>', '<stack>')}; commit only the .enc, read it with testSecret() from scripts/uat/test-secret.mjs) or generate it per run; never a plaintext literal`;
 export const scanHint = (findings: Array<{ pattern: string }> = []): string | null => (findings.some((f) => f.pattern === 'assigned-secret') ? TEST_SECRET_HINT : null);

@@ -1,4 +1,4 @@
-// chunk.mjs - split a long argument list under the command-line limit (Windows allows 32,767 characters) and run the parts with bounded concurrency.
+// chunk.mts - split a long argument list under the command-line limit (Windows allows 32,767 characters) and run the parts with bounded concurrency.
 import { isHostHeld, isNodeExecutionRefusal } from '../runtime/scripts/api/node/run-node.mjs';
 
 /** The command-line characters one argument costs: its length, a separating space and a pair of quotes. */

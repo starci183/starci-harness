@@ -190,7 +190,7 @@ test('release provenance: side scopes, runtime and nested products do not inheri
   assert.deepEqual(check({ repoRoot: nested, files: ['package.json'] }, 'full'), []);
 });
 
-// The images workflow of the delivery pipeline (ruling app-cicd-auto-deploy) is reusable: it pushes the immutable commit tag from any ref, and the release name is a
+// The images workflow of the delivery pipeline is reusable: it pushes the immutable commit tag from any ref, and the release name is a
 // retag of that digest, after a guard that rejects any ref other than refs/tags/v*.
 const RELEASE_GUARD = { name: 'release tag matches package version', if: '${{ inputs.release }}', run: '[[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1\nnode -e "process.exit(0)"' };
 const COMMIT_BUILD = { uses: 'docker/build-push-action@0123456789012345678901234567890123456789', with: { context: '.', tags: '${{ steps.names.outputs.repo }}:sha-${{ github.sha }}', push: '${{ inputs.push && matrix.deployed }}' } };

@@ -5,8 +5,8 @@
 // and `own` lists the files the bundle keeps as its own tracked files, which this tool never writes. Anything in runtime/ that
 // the manifest names in neither list is drift too, so a new bundled file has to be classified on purpose.
 //
-//   node scripts/sync-bundles.mjs            copy every generated path from hfs into each package
-//   node scripts/sync-bundles.mjs --check    write nothing; exit 1 and name every drifting path
+//   node scripts/sync-bundles.mts            copy every generated path from hfs into each package
+//   node scripts/sync-bundles.mts --check    write nothing; exit 1 and name every drifting path
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, sep } from "node:path"

@@ -12,7 +12,7 @@
  *     capability's representative module is reached through its `Inject*()` decorators, never by import. One owner may
  *     import its own modules (a transport module its feature's application module, a representative its sub-modules);
  *     the app composes every owner.
- *   - `capability-module-shape` holds the definition of every module (owner ruling module-definition-everywhere): the representative
+ *   - `capability-module-shape` holds the definition of every module: the representative
  *     `<c>.module-definition.ts` of a capability is `defineCapabilityModule<XOptions>()` of `@starci/nest-kit` (or a typed
  *     `ConfigurableModuleBuilder` with `.setExtras({ isGlobal: false }, ...)` and `.build()`); every other module's definition (a
  *     sub-module, a feature, a transport, a cli group) is `defineConfigurableModule<XOptions>()` (or
@@ -408,7 +408,7 @@ const moduleFileOf = (hfs: HfsView, filename: string): { kind: "module" | "defin
 }
 
 /**
- * The shape of a module's definition (BE-CONVENTION 1.2, owner ruling module-definition-everywhere): the representative
+ * The shape of a module's definition (BE-CONVENTION 1.2): the representative
  * module of a capability builds `new ConfigurableModuleBuilder<XOptions>().setExtras({ isGlobal: false }, ...).build()` and
  * may override only `static register(options: typeof OPTIONS_TYPE): DynamicModule`; every other module (a sub-module, a feature,
  * a transport, a cli group) builds `new ConfigurableModuleBuilder<XOptions>().setClassMethodName("register").build()` and
@@ -484,7 +484,7 @@ const importsArrayOf = (property: TSESTree.Property): TSESTree.ArrayExpression |
 const optionsTypeOf = (name: string): string => `${name.replace(/(?:^|-)(\w)/g, (_: string, letter: string) => letter.toUpperCase())}Options`
 
 /**
- * Every Nest module has a module definition and is registered through it (owner ruling module-definition-everywhere): its
+ * Every Nest module has a module definition and is registered through it: its
  * `<x>.module.ts` has a sibling `<x>.module-definition.ts` and `<x>.options.ts`, its class extends the `ConfigurableModuleClass`
  * of that definition, and a module of the product is listed in an `imports` array only as `X.register(...)`, never as a bare
  * class. The `AppModule` of an app root and the test world are composition roots and are not judged here.

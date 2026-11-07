@@ -1,4 +1,4 @@
-// rename-over.mjs — replacing a file whole through a temp file beside it.
+// rename-over.mts — replacing a file whole through a temp file beside it.
 import fs from 'node:fs';
 import { sleepSync } from '../../lib/sleep-sync.mjs';
 import { FS_BUSY, errorCode } from './lib.mjs';
@@ -12,7 +12,7 @@ export interface RenameOverOptions {
 }
 
 /**
- * Rename `tmp` over `file`. A busy refusal (FS_BUSY of lib.mjs) is retried up to `retries` times, `delayMs(attempt)`
+ * Rename `tmp` over `file`. A busy refusal (FS_BUSY of lib.mts) is retried up to `retries` times, `delayMs(attempt)`
  * apart. When the rename fails for good, `tmp` is removed and the last error is thrown. `rename` is the seam
  * a spec injects (default fs.renameSync).
  */

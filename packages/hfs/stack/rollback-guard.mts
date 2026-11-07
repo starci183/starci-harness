@@ -1,4 +1,4 @@
-// rollback-guard.mjs - the guard of a manual rollback to an older release.
+// rollback-guard.mts - the guard of a manual rollback to an older release.
 // A rollback restores service specs, never data (PROJECT-STACKS-6). A contract migration destroys what the code of the releases before the previous
 // one still uses, so rolling back to such a release after a contract migration ran leaves it on a schema it cannot read. The journal knows both: each
 // attempt that accepted a release carries an `accept` phase, and each attempt that applied contract migrations carries them in `contract`.

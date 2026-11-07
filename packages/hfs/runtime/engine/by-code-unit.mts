@@ -1,4 +1,4 @@
-// by-code-unit.mjs -the comparator of a bare `Array.prototype.sort()`, owned beside the engine files that digest and canonicalize (scripts/lib/list.mjs re-exports it).
+// by-code-unit.mts -the comparator of a bare `Array.prototype.sort()`, owned beside the engine files that digest and canonicalize (scripts/lib/list.mts re-exports it).
 
 /**
  * The comparator of a bare `Array.prototype.sort()`: values compared as strings by UTF-16 code unit. Pass it to `sort` and

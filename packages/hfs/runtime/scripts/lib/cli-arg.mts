@@ -1,4 +1,4 @@
-// cli-arg.mjs — the `--name value` and `--flag` readers of the thin CLI entries (the scripts/api call files run as
+// cli-arg.mts — the `--name value` and `--flag` readers of the thin CLI entries (the scripts/api call files run as
 // commands, scripts/agent/send.mjs). Pure.
 import { textLine } from './escape.mjs';
 

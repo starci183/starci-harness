@@ -1,4 +1,4 @@
-// update-ref.mjs — `git update-ref [-m <message>] <ref> <sha> [<old>]`: point a ref at a commit (a preserved worktree's
+// update-ref.mts — `git update-ref [-m <message>] <ref> <sha> [<old>]`: point a ref at a commit (a preserved worktree's
 // refs/heads/preserved/<name>); with `old`, a compare-and-swap that fails when the ref no longer names `old`.
 import { gitRunner, type GitRun, type GitRunnerFn } from './lib.mjs';
 

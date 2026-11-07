@@ -1,6 +1,6 @@
 import { readTextFile } from '../../lib/read-text.mjs';
 
-// Owner ruling 2026-09-29 (layout 2026-09-30): integration, e2e and contract run MANUALLY only. No hook, default typecheck,
+// Integration, e2e and contract run MANUALLY only. No hook, default typecheck,
 // coverage run or automatic CI trigger may include those trees or run those projects. Linting the e2e files is not running them: ESLint reads them
 // as syntax in the one repository-wide lint run (the factory's e2e block), so no `lint:e2e` command exists to judge.
 const E2E_COMMAND = new RegExp([

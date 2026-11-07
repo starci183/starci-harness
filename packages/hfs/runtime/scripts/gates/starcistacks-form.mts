@@ -1,7 +1,7 @@
-// starcistacks-form.mjs - where a secret may live, per repository kind: the example form and the product form of a Sonar declaration (docs/application-stacks.md, "Where a secret may live").
+// starcistacks-form.mts - where a secret may live, per repository kind: the example form and the product form of a Sonar declaration (docs/application-stacks.md, "Where a secret may live").
 // An example is an app inside the public runtime repository, which holds no secret file: it declares SonarCloud (provider sonarcloud, mode hosted) and names the variables of the runtime's untracked
 // secret.env it reads (runtimeSecrets: the token only; the organization is configuration, config.yaml sonar.organization), with no stack, no host.local and no custody credential. A product keeps its own custody and declares no runtimeSecrets. The refusals are STACKS_EXAMPLE_FORM
-// and STACKS_PRODUCT_FORM (scripts/gates/starcistacks.mjs calls this module for each enabled service).
+// and STACKS_PRODUCT_FORM (scripts/gates/starcistacks.mts calls this module for each enabled service).
 import path from 'node:path';
 
 /** A finding recorder: `add(level, code, where, message)`. */

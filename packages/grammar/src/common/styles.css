@@ -90,8 +90,8 @@
     /*
      * The accent is a FILL, and on its tint it is `--accent-soft-foreground` (the pair rule). Where a part paints the
      * accent as TEXT on the page (the current tab), that element reads the soft foreground in place of the fill, so each
-     * rule reads `--accent` unchanged. A text link is the one exception: it is the exact brand `--accent`, underlined, by the
-     * owner's overrule of P2 (components-navigation.css), so it keeps the fill's value.
+     * rule reads `--accent` unchanged. A text link is the one exception: it is the exact brand `--accent`, underlined
+     * (components-navigation.css), so it keeps the fill's value.
      */
     .starci-core-text-action[data-appearance="tab"][data-current="true"] {
         --accent: var(--accent-soft-foreground);
@@ -397,7 +397,7 @@
      * --starci-core-fill-top and --starci-core-fill-bottom), so the grid reaches the viewport bottom less Grammar bottom chrome.
      */
     .starci-core-page[data-grammar-page-chrome="panes"] {
-        /* The gutter column starts at the pane content edge: the title, the first tab and the pane content share the container inset (ruling spacing-roles). */
+        /* The gutter column starts at the pane content edge: the title, the first tab and the pane content share the container inset. */
         --grammar-page-inset: var(--grammar-inset);
         flex: 1 0 auto;
         gap: 0;
@@ -878,7 +878,7 @@
     [data-grammar-accent-corner="end-end"]:is(.starci-core-surface, .starci-core-media-frame > .starci-core-media-viewport) { border-end-end-radius: var(--grammar-accent-corner); }
 
     /*
-     * Freestyle (ruling grammar-freestyle-region): the app's own region. It fills its host and adds no paint, inset or
+     * Freestyle: the app's own region. It fills its host and adds no paint, inset or
      * radius of its own; what is inside is the app's.
      */
     .starci-core-freestyle {
@@ -1547,7 +1547,7 @@
     }
 
     /*
-     * A tab's count is a chip (owner ruling tabs-counts-as-chips, confirmed 2026-11-05): neutral by default, the accent soft pair on the
+     * A tab's count is a chip: neutral by default, the accent soft pair on the
      * selected tab, the warning soft pair when the view waits for the reader (`isAttention`). The tabs keep their underline.
      */
     .starci-core-tab-count {
@@ -1745,7 +1745,7 @@
         gap: var(--grammar-inline-gap);
     }
 
-    /* owner:item-description-one-line: a row's description is one line with an ellipsis. */
+    /* A row's description is one line with an ellipsis. */
     .starci-core-list-row-description {
         min-width: 0;
         overflow: hidden;
@@ -3429,7 +3429,7 @@
 
     /*
      * A column is the tinted surface (`--surface-secondary`, the canvas's #f3eeee) with its title and a white count chip in the head and its
-     * items as white cards under it (owner ruling 2026-11-06: canvas column surface). The cards are the surface; the column is the ground
+     * items as white cards under it. The cards are the surface; the column is the ground
      * they stand on, so it is not itself a card.
      */
     .starci-core-board-column {
@@ -4034,7 +4034,7 @@
 
     /* --- Icon button: a HeroUI `Button` worn as a circle. --- */
     /*
-     * Owner ruling `control-height-40`: one control height, 2.5rem (40px, HeroUI's own h-10), is the default of every
+     * One control height, 2.5rem (40px, HeroUI's own h-10), is the default of every
      * standalone control. `md` and `control` are the same square circle in both axes (the vendor's md:h-9 desktop step
      * is overridden, and a square needs both axes or it collapses into an oval); `sm` (2rem) is for a control nested in
      * an item or a dense toolbar; `lg` (3rem) is the landing hero step.
@@ -4854,7 +4854,7 @@
     .starci-core-filter-button-toggles { display: flex; flex-wrap: nowrap; gap: 0.5rem; min-width: 0; }
     .starci-core-filter-button { flex: none; gap: 0.5rem; white-space: nowrap; }
     .starci-core-filter-button-count { font-variant-numeric: tabular-nums; opacity: var(--grammar-opacity-secondary); }
-    /* The rest takes the surface; selected is the accent soft pair (ruling status-soft-pair-on-background). */
+    /* The rest takes the surface; selected is the accent soft pair. */
     .starci-core-filter-button:not(.starci-core-filter-button-probe-item) { background: var(--surface); color: var(--surface-foreground); }
     .starci-core-filter-button[data-selected="true"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
     .starci-core-filter-button-probe { position: absolute; inset-block-start: 0; inset-inline-start: 0; display: flex; flex-wrap: nowrap; visibility: hidden; pointer-events: none; block-size: 0; overflow: hidden; }
@@ -4915,7 +4915,7 @@
     }
 
     /*
-     * The reader's own message is the brand fill with its foreground (owner ruling message-bubble-primary-and-surface): the other party's
+     * The reader's own message is the brand fill with its foreground: the other party's
      * message is the surface. Everything inline inherits the bubble's foreground, so a link, a mention (Text tone accent), code
      * and a muted Text stay readable on the solid fill; a link keeps its underline so it is not told by colour alone.
      */
@@ -4934,7 +4934,7 @@
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body [data-component="Text"][data-tone="muted"] { opacity: var(--grammar-opacity-secondary); }
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--accent-foreground) 16%, transparent); }
 
-    /* The soft face is the brand's tint with its own foreground (owner ruling 2026-11-06: the AI bubble is `--accent-soft`; no new token). */
+    /* The soft face is the brand's tint with its own foreground: the AI bubble is `--accent-soft`, with no token of its own. */
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="soft"] .starci-core-message-bubble-body {
         background: var(--accent-soft);
         color: var(--accent-soft-foreground);

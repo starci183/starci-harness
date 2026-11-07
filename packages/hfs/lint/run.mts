@@ -7,7 +7,7 @@
 //      app-relative, whole on every run (no result records), the project graph left to the sides;
 //   2. stylelint judges the fe side's stylesheets (sync STYLE_GLOB) from fe/ with its stylelint.config.mjs.
 // `cachedLinters` is the one entry of `app check`: per side it judges only what the records of `.starcistacks/cache/lint/<side>/` cannot
-// vouch for (cache/lint-family.mjs, contexts/project/check-cache.md), and `eslintRepository` is the launcher it and the cacheless run share.
+// vouch for (cache/lint-family.mts, contexts/project/check-cache.md), and `eslintRepository` is the launcher it and the cacheless run share.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -249,7 +249,7 @@ export function ownCanonEntry({ repoRoot, cwd }: { repoRoot: string; cwd: string
   // supported Node (its registerHooks resolve hook skips require.resolve before Node 24), so "." is matched directly.
   const entry = importEntry(require, packageName);
   // The canon must be the app's own install: resolved inside the app root, or inside the app's node_modules when that folder is a link to the install
-  // (the runtime's examples lint in a sealed copy whose node_modules links the example's own install, scripts/hfs/example-secrets.mjs).
+  // (the runtime's examples lint in a sealed copy whose node_modules links the example's own install, scripts/hfs/example-secrets.mts).
   const ownInstall = [repoRoot, path.join(repoRoot, 'node_modules')].filter((dir) => fs.existsSync(dir)).map((dir) => fs.realpathSync(dir));
   if (!ownInstall.some((root) => inside(root, fs.realpathSync(entry)))) throw new Error('the installed canon is outside the app root');
   return entry;

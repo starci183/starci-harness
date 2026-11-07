@@ -43,7 +43,7 @@ const LIT = -2;
 /** The compiler API's SyntaxKind enum object. */
 type Kinds = TypeScriptApi['SyntaxKind'];
 
-/** The slot resolver of scripts/hfs/slots.mjs. */
+/** The slot resolver of scripts/hfs/slots.mts. */
 type Resolver = ArchitectureConfig['hfs'];
 
 /** The token streams of one file: normalised kind, physical line, in-type flag and exclusion segment per token. */

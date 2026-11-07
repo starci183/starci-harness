@@ -1,4 +1,4 @@
-// escape.mjs — the escapes for text embedded in another syntax: HTML entities for markup (Telegram HTML, report blocks), one-line JSON for logs.
+// escape.mts — the escapes for text embedded in another syntax: HTML entities for markup (Telegram HTML, report blocks), one-line JSON for logs.
 
 /** `s` with &, < and > entity-escaped. */
 export const escapeHtml = (s?: unknown): string => String(s ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');

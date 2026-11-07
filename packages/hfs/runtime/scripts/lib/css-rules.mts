@@ -1,6 +1,6 @@
-// css-rules.mjs - a flat reading of a stylesheet: every style rule with its resolved selector, its `@apply` utilities and its
+// css-rules.mts - a flat reading of a stylesheet: every style rule with its resolved selector, its `@apply` utilities and its
 // declarations, nesting (`&`) and wrapping at-rules (@layer, @media, @supports) resolved. Pure: text in, rules out.
-// The reader of the vendor CSS (scripts/work/ui/vendor-heroui.mjs) and of Grammar's own CSS (scripts/lib/grammar-vendor-parity.mjs).
+// The reader of the vendor CSS (scripts/work/ui/vendor-heroui.mjs) and of Grammar's own CSS (scripts/lib/grammar-vendor-parity.mts).
 
 import { byCodeUnit } from './list.mjs';
 

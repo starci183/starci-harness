@@ -1,4 +1,4 @@
-// deps.mjs - HFS_DEP_VERSION_SKEW (R14): one version per dependency in the workspace.
+// deps.mts - HFS_DEP_VERSION_SKEW (R14): one version per dependency in the workspace.
 //   - the root and every workspace package.json declare a dependency at one spec (a `file:`, `link:` or `workspace:` spec is
 //     a workspace link, not a version);
 //   - a dependency the root `overrides` pins to a version (a string that is not a `$name` reference) is declared at that version everywhere

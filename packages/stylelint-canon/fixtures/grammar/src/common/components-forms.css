@@ -353,13 +353,13 @@
         }
     }
 
-    /* Owner 2026-10-25: Select has the same 2.5rem field height as Input. */
+    /* Select has the same 2.5rem field height as Input. */
     .starci-core-select-trigger {
         min-block-size: var(--starci-core-field-min-height);
     }
 
     /*
-     * ONE FOCUS RING PER FIELD (0.9.14, owner ruling 2026-10-12, FOCUS-1). The ring is drawn once, on the field frame:
+     * ONE FOCUS RING PER FIELD (FOCUS-1). The ring is drawn once, on the field frame:
      * the group of SearchField, NumberField, ComboBox and the date fields, the trigger of Select, the control itself
      * for Input and a native control handed to Field. The inner text input of a grouped field never draws a ring,
      * outline or shadow of its own, whatever the page's global `:focus-visible` rule says, so the wrapper and the input

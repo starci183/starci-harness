@@ -1,4 +1,4 @@
-// ci-key.mjs - `starci app stack ci-key`: the owner-run side of the forced-command gate of the CI SSH key (ssh-gate.mts).
+// ci-key.mts - `starci app stack ci-key`: the owner-run side of the forced-command gate of the CI SSH key (ssh-gate.mts).
 //   --print-gate              prints the text of starci-ssh-gate, to install executable as /usr/local/bin/starci-ssh-gate on the manager
 //   --print-authorized-keys   prints the authorized_keys line of the CI key from its PUBLIC key file (--public-key <file>)
 // Both print only their text, so they pipe straight into the owner's ssh. Nothing here reaches a server, reads a sealed member or touches a private

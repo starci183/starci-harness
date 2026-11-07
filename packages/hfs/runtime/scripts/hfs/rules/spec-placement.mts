@@ -1,4 +1,4 @@
-// spec-placement.mjs - BE_SPEC_PLACEMENT (R102): a back-end spec or test file lives in one of the four test layers and nowhere else.
+// spec-placement.mts - BE_SPEC_PLACEMENT (R102): a back-end spec or test file lives in one of the four test layers and nowhere else.
 //   - a unit spec is `<name>.service.spec.ts` beside its service, in a slot whose `tests` is `unit-beside` (the slot and the lint rule
 //     `unit-test-colocated` judge the name);
 //   - integration, e2e and contract specs are `src/tests/{integration,e2e,contract}/...`, the slots whose `tests` is `e2e`;

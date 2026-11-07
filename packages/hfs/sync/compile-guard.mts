@@ -1,4 +1,4 @@
-// compile-guard.mjs - HFS_SYNC_GROUP_HELD: `starci app sync --execute` never writes a render that leaves the app uncompilable. Before it writes
+// compile-guard.mts - HFS_SYNC_GROUP_HELD: `starci app sync --execute` never writes a render that leaves the app uncompilable. Before it writes
 // a managed TypeScript source (or deletes a retired one), the side's own TypeScript compiles the app with the writes laid over the disk and
 // compares the diagnostics of every file they touch, and of every file that imports one, with the same files on disk. A managed group whose
 // writes add an error (a template that reads a name the app does not provide yet, or drops one the app still imports) is held whole: none

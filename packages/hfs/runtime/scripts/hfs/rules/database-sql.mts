@@ -1,5 +1,5 @@
 // PostgreSQL AST extraction and the migration-local checks DB_RLS_REQUIRED, DB_POLICY_SHAPE and
-// DB_STORAGE_POLICY. PL/pgSQL inspection lives in database-plpgsql.mjs to keep every rule module bounded.
+// DB_STORAGE_POLICY. PL/pgSQL inspection lives in database-plpgsql.mts to keep every rule module bounded.
 import { found } from './read.mjs';
 import { parseSql } from '../sql/pg-parse.mjs';
 import { plpgsqlFindings } from './database-plpgsql.mjs';

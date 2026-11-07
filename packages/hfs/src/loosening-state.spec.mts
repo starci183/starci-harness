@@ -1,5 +1,5 @@
-// A loosening is always red, and the tree is judged as it stands (owner rulings loosening-always-red and loosening-state-check). The state check
-// (scripts/lib/loosening-state.mjs, the runtime's loosening-state self-check) reads files, never history: a deleted file and its spec, a re-pointed
+// A loosening is always red, and the tree is judged as it stands (R236). The state check
+// (scripts/lib/loosening-state.mts, the runtime's loosening-state self-check) reads files, never history: a deleted file and its spec, a re-pointed
 // row, reworded text or a removed obsolete validation are not loosenings because nothing records what was there before. These specs prove the
 // forms it refuses, the look-alikes it leaves alone, the lists it holds to the canon and the manifest, the thresholds, the exception files and the
 // digest of the manifest. The forbidden spellings live in fixtures/loosening/, the declared fixture folder of knowledge/hfs/design-truths.yaml.
@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
-import { stateFindings, readTruths, truthsDigest, inScope, findingLine } from '../runtime/scripts/lib/loosening-state.mjs';
+import { stateFindings, readTruths, readTruthsPins, truthsDigest, inScope, findingLine } from '../runtime/scripts/lib/loosening-state.mjs';
 import { lexSource } from '../runtime/scripts/lib/js-lex.mjs';
 import { FORBIDDEN, LOOKALIKES } from './fixtures/loosening/forms.mjs';
 import { FORBIDDEN_INDEX, LOOKALIKES_INDEX } from './fixtures/bypass-index.mjs';
@@ -76,7 +76,7 @@ test('an ignore that duplicates a broad glob is red unless the manifest lists it
   const tree = { 'codecov.yml': 'ignore:\n  - "be/**"\n  - "be/src/a.ts"\n' };
   const derived = scan(tree, { canon: CANON('coverage-scope', ['be/**']) });
   assert.deepEqual(derived.map((entry) => entry.detail), ['ignore: be/src/a.ts']);
-  const listing = withTruths({ id: 'x', cite: { ruling: 'design-truths-confirmed' }, says: 'x', allows: [{ list: 'coverage-exclusions', file: 'codecov.yml', entries: ['be/src/a.ts'] }] });
+  const listing = withTruths({ id: 'x', cite: { rule: 'R236' }, says: 'x', allows: [{ list: 'coverage-exclusions', file: 'codecov.yml', entries: ['be/src/a.ts'] }] });
   assert.deepEqual(scan(tree, { truths: listing, canon: CANON('coverage-scope', ['be/**']) }), []);
   assert.equal(scan({ 'examples/a/codecov.yml': tree['codecov.yml'] as string }, { truths: listing, canon: CANON('coverage-scope', ['be/**']) }).length, 1, 'the entry holds for the file the manifest names, not for another');
 });
@@ -114,7 +114,7 @@ test('settings: the design truth requireCi false is allowed because the manifest
 test('exception files: one the manifest lists holds only the entries it allows, any other is red', () => {
   assert.deepEqual(scan({ 'modules/kernel/allowlist.yaml': 'export-used: []\nsonar-rules: []\n' }), []);
   assert.deepEqual(scan({ 'modules/kernel/approvals.yaml': 'approvals: []\n' }).map((entry) => entry.kind), ['exception-file']);
-  const listed = withTruths({ id: 'x', cite: { ruling: 'loosening-always-red' }, says: 'x', allows: [{ exceptionFile: 'modules/kernel/approvals.yaml', maxEntries: 1 }] });
+  const listed = withTruths({ id: 'x', cite: { rule: 'R236' }, says: 'x', allows: [{ exceptionFile: 'modules/kernel/approvals.yaml', maxEntries: 1 }] });
   assert.deepEqual(scan({ 'modules/kernel/approvals.yaml': 'approvals:\n  - one\n' }, { truths: listed }), []);
   assert.deepEqual(scan({ 'modules/kernel/approvals.yaml': 'approvals:\n  - one\n  - two\n' }, { truths: listed }).map((entry) => entry.kind), ['exception-file']);
 });
@@ -139,19 +139,24 @@ const pinnedTree = () => Object.fromEntries(PINNED.map((file) => [file, fs.readF
 const pinsOf = (tree: Record<string, string>) => Object.fromEntries(Object.entries(tree).map(([file, text]) => [file, truthsDigest(text)]));
 const pinKinds = (tree: Record<string, string>, pins: Record<string, string>) => stateFindings({ files: Object.keys(tree), read: (file) => tree[file] ?? null, truths: TRUTHS, pins }).filter((entry) => entry.kind === 'pin');
 
-test('pins: the manifest, the fixtures and the vendored copy equal the digests the owner recorded; any difference is red', () => {
+test('pins: design-truths.pins.yaml records the digest of the manifest, every fixture and the vendored copy as they stand', () => {
+  const pins = readTruthsPins(parseYaml(fs.readFileSync(new URL('../runtime/knowledge/hfs/design-truths.pins.yaml', import.meta.url), 'utf8')));
+  assert.deepEqual(pinKinds(pinnedTree(), pins), []);
+});
+
+test('pins: the manifest, the fixtures and the vendored copy equal their recorded digests; any difference is red', () => {
   const tree = pinnedTree();
   const pins = pinsOf(tree);
   assert.deepEqual(pinKinds(tree, pins), []);
   const edited = { ...tree, 'knowledge/hfs/design-truths.yaml': `${tree['knowledge/hfs/design-truths.yaml']}# an extra line\n` };
   assert.deepEqual(pinKinds(edited, pins).map((entry) => entry.file), ['knowledge/hfs/design-truths.yaml']);
-  assert.match(pinKinds(edited, pins)[0]?.detail as string, /only an owner ruling may change it/);
+  assert.match(pinKinds(edited, pins)[0]?.detail as string, /record the new digest in knowledge\/hfs\/design-truths.pins.yaml/);
   const weakened = { ...tree, 'packages/hfs/src/fixtures/loosening/adversarial.mjs': 'export const ADVERSARIAL = [];\nexport const SAFE = [];\n' };
   assert.deepEqual(pinKinds(weakened, pins).map((entry) => entry.file), ['packages/hfs/src/fixtures/loosening/adversarial.mjs']);
   assert.deepEqual(pinKinds({ ...tree, 'engine/yaml.mjs': `${tree['engine/yaml.mjs']}\nexport const injected = 1;\n` }, pins).map((entry) => entry.file), ['engine/yaml.mjs']);
 });
 
-test('pins: a declared file with no pin, a pinned file that is missing, and no ruling at all are red', () => {
+test('pins: a declared file with no pin, a pinned file that is missing, and no pins at all are red', () => {
   const tree = pinnedTree();
   const pins = pinsOf(tree);
   const { 'engine/yaml.mjs': dropped, ...fewer } = pins;
@@ -163,21 +168,25 @@ test('pins: a declared file with no pin, a pinned file that is missing, and no r
   assert.equal(pinKinds(tree, {}).length, PINNED.length, 'with no pins recorded every declared file is unpinned');
 });
 
-test('pins: a manifest that adds an exception turns the check red until the owner pins the new digest', () => {
+test('pins: a manifest that adds an exception turns the check red until the new digest is recorded', () => {
   const tree = pinnedTree();
   const pins = pinsOf(tree);
-  const text = (tree['knowledge/hfs/design-truths.yaml'] as string).replace('  - id: skip-lib-check-skips-third-party-declarations', "  - id: lane-exception\n    cite: {ruling: design-truths-confirmed}\n    says: A lane added this entry on its own say-so.\n    allows:\n      - {list: path-ignores, file: '**', entries: [src/hard]}\n  - id: skip-lib-check-skips-third-party-declarations");
+  const text = (tree['knowledge/hfs/design-truths.yaml'] as string).replace('  - id: skip-lib-check-skips-third-party-declarations', "  - id: lane-exception\n    cite: {rule: R236}\n    says: A lane added this entry on its own say-so.\n    allows:\n      - {list: path-ignores, file: '**', entries: [src/hard]}\n  - id: skip-lib-check-skips-third-party-declarations");
   assert.notEqual(text, tree['knowledge/hfs/design-truths.yaml']);
   const lane = { ...tree, 'knowledge/hfs/design-truths.yaml': text };
   assert.equal(pinKinds(lane, pins).length, 1, 'the edited manifest differs from the pinned digest');
-  assert.deepEqual(pinKinds(lane, { ...pins, 'knowledge/hfs/design-truths.yaml': truthsDigest(text) }), [], 'the owner recorded the new digest');
+  assert.deepEqual(pinKinds(lane, { ...pins, 'knowledge/hfs/design-truths.yaml': truthsDigest(text) }), [], 'the new digest is recorded');
 });
 
-test('citations: a truth, a group, a budget pin or the gate limits cited by a rule or a source alone is a malformed manifest', () => {
+test('citations: a truth, a group, a budget pin or the gate limits that cites anything but a rule, or nothing, is a malformed manifest', () => {
   const bySource = { ...TRUTHS, truths: [{ id: 'x', cite: { source: 'a lane says so' }, says: 'x', allows: [{ setting: 'requireCi', value: false }] }] };
   assert.deepEqual(kinds(scan({}, { truths: bySource })), ['truths']);
-  const group = { ...TRUTHS, outsideTheGates: [{ id: 'g', cite: { rule: 'R204' }, entries: ['x'] }] };
+  const group = { ...TRUTHS, outsideTheGates: [{ id: 'g', cite: { decision: 'design-truths-confirmed' }, entries: ['x'] }] };
   assert.deepEqual(kinds(scan({}, { truths: group })), ['truths']);
+  const ruled = { ...TRUTHS, outsideTheGates: [{ id: 'g', cite: { rule: 'R236' }, entries: ['x'] }] };
+  assert.deepEqual(scan({}, { truths: ruled }), [], 'a group citing a rule is well-formed');
+  const notAnId = { ...TRUTHS, outsideTheGates: [{ id: 'g', cite: { rule: 'design-truths-confirmed' }, entries: ['x'] }] };
+  assert.deepEqual(kinds(scan({}, { truths: notAnId })), ['truths']);
   const limits = { ...TRUTHS, gateLimits: { ...TRUTHS.gateLimits, cite: undefined } };
   assert.deepEqual(kinds(scan({}, { truths: limits })), ['truths']);
 });
@@ -187,7 +196,7 @@ test('allowances are bound to files: an entry listed for one file does not hold 
   assert.deepEqual(kinds(scan({ 'be/tsconfig.json': '{"exclude": ["src/stories/**"]}' })), ['list-extra']);
   assert.deepEqual(scan({ 'be/tsconfig.json': '{"exclude": ["src/tests", "**/*.spec.ts"]}' }), []);
   assert.deepEqual(kinds(scan({ 'be/eslint.config.mjs': 'export default [{ ignores: ["**/*.spec.ts"] }];' })), ['list-extra']);
-  const unbound = withTruths({ id: 'x', cite: { ruling: 'design-truths-confirmed' }, says: 'x', allows: [{ list: 'path-ignores', entries: ['src/hard'] }] });
+  const unbound = withTruths({ id: 'x', cite: { rule: 'R236' }, says: 'x', allows: [{ list: 'path-ignores', entries: ['src/hard'] }] });
   assert.deepEqual(kinds(scan({}, { truths: unbound })), ['truths']);
 });
 

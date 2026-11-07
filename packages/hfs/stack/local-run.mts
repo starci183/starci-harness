@@ -1,4 +1,4 @@
-// local-run.mjs - what the dev verbs share: the compose command line of an environment, governed heavy runs, native process control,
+// local-run.mts - what the dev verbs share: the compose command line of an environment, governed heavy runs, native process control,
 // HTTP probes and the redaction of logs. Nothing here prints a value; every command is an argv list run without a shell.
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';

@@ -20,18 +20,12 @@ const ENFORCER_ID = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const FILE_ENFORCERS = new Set(['machine', 'hfs', 'work-validate', 'sonar', 'runtime']);
 /**
  * The enforcer kinds that run only inside the StarCi runtime repository (`starci runtime check`, `starci work`): no published package carries
- * them, so no package spec can hold them (owner ruling no-runtime-specs: the runtime has no specs of its own; the package clean-test and the
+ * them, so no package spec can hold them (the runtime has no specs of its own; the package clean-test and the
  * scaffold e2e are its tests), and no example app is a product they judge. A rule is runtime-judged when every enforcer it has is of these kinds.
  */
 export const RUNTIME_ONLY_ENFORCERS = Object.freeze(['work-validate', 'runtime']);
-const RULE_KEYS = new Set(['id', 'code', 'law', 'scope', 'kinds', 'gates', 'failureCodes', 'editions', 'codeEditions', 'enforcers', 'cases', 'docs', 'exemplifiedBy', 'proves', 'witness', 'editionWhy', 'amendedBy', 'templateNa']);
-const CASE_KEYS = new Set(['id', 'date', 'source', 'ruling', 'quote', 'supersedes', 'status', 'staleWhen', 'amendedBy']);
-const CASE_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const RULE_KEYS = new Set(['id', 'code', 'law', 'scope', 'kinds', 'gates', 'failureCodes', 'editions', 'codeEditions', 'enforcers', 'docs', 'exemplifiedBy', 'proves', 'witness', 'editionWhy', 'templateNa']);
 const ENFORCER_KEYS = new Set(['kind', 'id', 'status', 'at', 'editions', 'editionWhy']);
-const CASE_ID = /case-[1-9]\d*/;
-const RULING_REFERENCE = new RegExp(String.raw`(?:ruling:)?R\d{2,3}(?:/${CASE_ID.source})?`);
-const OWNER_REFERENCE = /owner:[a-z][a-z0-9]*(?:-[a-z0-9]+)*/;
-const CASE_REFERENCE = new RegExp(`^(?:${CASE_ID.source}|${RULING_REFERENCE.source}|${OWNER_REFERENCE.source})$`);
 const EVIDENCE_KEYS = new Set(['path', 'edition', 'editions']);
 const PROOF_KEYS = new Set([...EVIDENCE_KEYS, 'codes', 'fixtures']);
 const WITNESS_KEYS = new Set(['edition', 'base', 'mutate', 'expect']);
@@ -123,23 +117,6 @@ function witnessProblems(rule: Parsed, label: Parsed, bad: string[]): void {
   value.forEach((item: Parsed, index: number) => witnessEntryProblems(item, `${at}[${index}]`, bad));
 }
 
-function caseReferenceProblems(value: Parsed, label: Parsed, bad: string[]): void {
-  const values = Array.isArray(value) ? value : [value];
-  if (!nonEmptyList(values, label, bad)) return;
-  for (const ref of values) if (typeof ref !== 'string' || !CASE_REFERENCE.test(ref)) bad.push(`${label} must name case-N, R<id>[/case-N], ruling:R<id>[/case-N] or owner:<id>`);
-}
-
-function caseTransitionProblems(item: Parsed, label: Parsed, bad: string[]): void {
-  if (item.status !== undefined && !['live', 'superseded', 'amended'].includes(item.status)) bad.push(`${label}.status must be live, superseded or amended`);
-  for (const key of ['supersedes', 'amendedBy']) if (item[key] !== undefined) caseReferenceProblems(item[key], `${label}.${key}`, bad);
-  if (item.staleWhen !== undefined && nonEmptyList(item.staleWhen, `${label}.staleWhen`, bad)) {
-    for (const pattern of item.staleWhen) {
-      if (typeof pattern !== 'string' || !pattern.trim()) { bad.push(`${label}.staleWhen must contain non-empty regex strings`); continue; }
-      try { new RegExp(pattern, 'i'); } catch { bad.push(`${label}.staleWhen has an invalid regex ${JSON.stringify(pattern)}`); }
-    }
-  }
-}
-
 function vocabularyProblems(catalog: Parsed, key: Parsed, names: Parsed, bad: string[]): void {
   if (!isPlainObject(catalog[key])) { bad.push(`${key} must be a map`); return; }
   if (JSON.stringify(Object.keys(catalog[key])) !== JSON.stringify(names)) bad.push(`${key} must list exactly ${names.join(', ')} in that order`);
@@ -179,24 +156,6 @@ function checkRuleText(rule: Parsed, label: Parsed, bad: string[]) {
   if (typeof rule.law !== 'string' || !rule.law.trim()) bad.push(`${label}.law is missing`);
   if (typeof rule.law === 'string' && rule.law.includes('\n')) bad.push(`${label}.law must be one line`);
   if (rule.scope !== undefined && rule.scope !== 'runtime') bad.push(`${label}.scope is absent or runtime`);
-}
-
-/** The dated owner cases of a rule: each {id case-N, date, source owner, ruling, quote?}, ids unique (an owner ruling recorded where the law lives). */
-function checkRuleCases(rule: Parsed, label: Parsed, bad: string[]) {
-  if (rule.cases === undefined) return;
-  if (!Array.isArray(rule.cases) || !rule.cases.length) { bad.push(`${label}.cases must be a non-empty list`); return; }
-  const ids = new Set();
-  rule.cases.forEach((item: Parsed, index: number) => {
-    const at = `${label}.cases[${index}]`;
-    if (!isPlainObject(item)) { bad.push(`${at} is not a map`); return; }
-    for (const key of Object.keys(item)) if (!CASE_KEYS.has(key)) bad.push(`${at} has unknown key ${key}`);
-    if (typeof item.id !== 'string' || !/^case-[1-9]\d*$/.test(item.id) || ids.has(item.id)) bad.push(`${at}.id must be a unique case-N`);
-    ids.add(item.id);
-    if (typeof item.date !== 'string' || !CASE_DATE.test(item.date)) bad.push(`${at}.date must be YYYY-MM-DD`);
-    if (item.source !== 'owner') bad.push(`${at}.source must be owner`);
-    for (const key of ['ruling', ...(item.quote === undefined ? [] : ['quote'])]) if (typeof item[key] !== 'string' || !item[key].trim()) bad.push(`${at}.${key} must be text`);
-    caseTransitionProblems(item, at, bad);
-  });
 }
 
 function checkRuleGates(rule: Parsed, label: Parsed, gates: Parsed, bad: string[]) {
@@ -271,12 +230,11 @@ function checkRule(rule: Parsed, index: Parsed, catalog: Parsed, codeOwner: Pars
   if (!isPlainObject(rule)) { bad.push(`${at} is not a map`); return; }
   const label = typeof rule.id === 'string' ? rule.id : at;
   for (const key of Object.keys(rule)) {
-    if (!RULE_KEYS.has(key)) bad.push(`${label} has unknown key ${key}`);
+    if (key === 'cases' || key === 'amendedBy') bad.push(`${label}.${key} is removed: the law states the rule as it holds now; its history lives in git`);
+    else if (!RULE_KEYS.has(key)) bad.push(`${label} has unknown key ${key}`);
   }
   checkRuleIdentity(rule, index, catalog, at, label, bad);
   checkRuleText(rule, label, bad);
-  checkRuleCases(rule, label, bad);
-  if (rule.amendedBy !== undefined) caseReferenceProblems(rule.amendedBy, `${label}.amendedBy`, bad);
   optionalText(rule, 'editionWhy', label, bad);
   optionalText(rule, 'templateNa', label, bad);
   for (const key of ['docs', 'exemplifiedBy', 'proves']) evidenceProblems(rule, key, label, bad);
@@ -330,14 +288,12 @@ export interface CatalogRule {
   editions?: string[];
   codeEditions?: Record<string, string[]>;
   enforcers: CatalogEnforcer[];
-  // reason: evidence entries (cases, docs, proofs, witnesses) are parsed YAML read by other tools; validated by this file
-  cases?: Parsed;
+  // reason: evidence entries (docs, proofs, witnesses) are parsed YAML read by other tools; validated by this file
   docs?: Parsed;
   exemplifiedBy?: Parsed;
   proves?: Parsed;
   witness?: Parsed;
   editionWhy?: string;
-  amendedBy?: Parsed;
   templateNa?: string;
 }
 

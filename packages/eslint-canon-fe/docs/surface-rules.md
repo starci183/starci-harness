@@ -59,7 +59,7 @@ const Frame = () => (
 
 ## `starci-fe/no-table-in-card`
 
-Finding code: `FE_TABLE_IN_CARD` (R351). A `DataTable` is not placed in a `SurfaceCard`. Plain rows with a few facts are a `SurfaceCard kind="list"` with the label outside and the note in its `footer`; a table that compares records across many columns sits in its section with no card around it. The rule reads the file: a Grammar `DataTable` enclosed by a Grammar `SurfaceCard` element is a finding, and so is a `DataTable` rendered by a component of the same file (a declaration, a variable's function, a `memo` or `forwardRef` wrapper, followed through other components of the file) that a `SurfaceCard` encloses. A card in another file that renders a table component is judged where the card is written. There is no inline exemption; a table the owner rules complex enough to sit in a card is named in this rule.
+Finding code: `FE_TABLE_IN_CARD` (R351). A `DataTable` is not placed in a `SurfaceCard`. Plain rows with a few facts are a `SurfaceCard kind="list"` with the label outside and the note in its `footer`; a table that compares records across many columns sits in its section with no card around it. The rule reads the file: a Grammar `DataTable` enclosed by a Grammar `SurfaceCard` element is a finding, and so is a `DataTable` rendered by a component of the same file (a declaration, a variable's function, a `memo` or `forwardRef` wrapper, followed through other components of the file) that a `SurfaceCard` encloses. A card in another file that renders a table component is judged where the card is written. There is no inline exemption; a table complex enough to sit in a card is named in this rule.
 
 Invalid:
 
@@ -127,7 +127,7 @@ const Filter = () => <FilterButtonGroup label="Team" options={options} value={te
 
 ## `starci-fe/no-heading-above-card`
 
-Finding code: `FE_HEADING_ABOVE_CARD` (R354). A card has a label by design (ruling `card-carries-its-own-label`), so a heading over it is wrong. A Grammar `Section` (not `kind="list"`) whose only child is one `SurfaceCard` is refused, and so is a card whose `ariaLabel` is the `Section`'s `title`. Several cards under one `Section` stay legal, and a `Section` holding anything else is not judged. The fix moves the title to the card's `label`, the count to `fact`, the action to `labelEnd` and the note to `footer`.
+Finding code: `FE_HEADING_ABOVE_CARD` (R354). A card carries its own label, so a heading over it is wrong. A Grammar `Section` (not `kind="list"`) whose only child is one `SurfaceCard` is refused, and so is a card whose `ariaLabel` is the `Section`'s `title`. Several cards under one `Section` stay legal, and a `Section` holding anything else is not judged. The fix moves the title to the card's `label`, the count to `fact`, the action to `labelEnd` and the note to `footer`.
 
 Invalid:
 

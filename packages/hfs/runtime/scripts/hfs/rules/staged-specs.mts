@@ -1,10 +1,10 @@
-// staged-specs.mjs - BE_UNIT_SPEC_NOT_STAGED (R47): the commit that adds a back-end logic file adds its unit spec beside it. A new
-// file `be/<path>/<name>.<role>.ts` that the coverage scope measures (scripts/hfs/coverage-scope.mjs isMeasured: a role of
+// staged-specs.mts - BE_UNIT_SPEC_NOT_STAGED (R47): the commit that adds a back-end logic file adds its unit spec beside it. A new
+// file `be/<path>/<name>.<role>.ts` that the coverage scope measures (scripts/hfs/coverage-scope.mts isMeasured: a role of
 // ruleParams.be.logicRoles below a measured root, outside its none folders) and that holds executable logic (a function, a method, a
 // constructor, an accessor) needs `<name>.<role>.spec.ts` in the same index. A measured file with nothing to execute (constants and
 // types only, such as an error-kind to HTTP-status table) has nothing a spec could call, and the spec rules refuse a spec of it
 // (spec-infra-double-from-kit); the coverage gate still reaches it through its callers. `starci app check --staged` judges the files the
-// index adds (packages/hfs/sync/hygiene.mjs, run by the managed pre-commit hook), so a coding agent cannot commit the code first and
+// index adds (packages/hfs/sync/hygiene.mts, run by the managed pre-commit hook), so a coding agent cannot commit the code first and
 // its spec afterwards. A file that already exists is the coverage gate's.
 import { isMeasured } from '../coverage-scope.mjs';
 import type { Parsed, Ts } from './rule-types.mjs';

@@ -11,8 +11,8 @@ const RELEASE_DEFAULTS=Object.freeze({suite:'local'});
 
 /**
  * config.yaml `release` - {suite?: local | ci}: who judges the full suite of a release (docs/releasing.md "Where the suite runs"). `local` is the shipped default: `starci release cut` also runs the
- * L4 rows on this host before it tags. `ci` is the owner's recorded choice (2026-10-09, widened 2026-10-26 by push-main-after-scoped-check): the full suite runs on GitHub only, on every push
- * to main; the cut runs no row and the verdict is read with `starci release ci-status`. The push of main needs neither mode: it needs a green scoped check.
+ * L4 rows on this host before it tags. With `ci` the full suite runs on GitHub only, on every push
+ * to main; the cut runs no row and the verdict is read with `starci check ci`. The push of main needs neither mode: it needs a green scoped check.
  * `none` is refused: the suite does not vanish, it moves to CI, and the value says so.
  */
 export function validateRelease(release: unknown): void{

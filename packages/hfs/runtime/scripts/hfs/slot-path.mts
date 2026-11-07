@@ -1,4 +1,4 @@
-// slot-path.mjs - normalize a slot-relative path for resolver comparisons.
+// slot-path.mts - normalize a slot-relative path for resolver comparisons.
 import { posixPath } from '../lib/path-key.mjs';
 
 const SLASH = '/';

@@ -1,4 +1,4 @@
-// starci app upgrade: completes an existing FULL app. It adds the test world (scaffold/test-world.mjs) the app lacks, with the world's
+// starci app upgrade: completes an existing FULL app. It adds the test world (scaffold/test-world.mts) the app lacks, with the world's
 // devDependencies at canon pins, and never rewrites a file the app already has. Editions are fixed at scaffold: a lite app is refused
 // (HFS_UPGRADE_EDITION_FIXED), there is no lite to full migration.
 //

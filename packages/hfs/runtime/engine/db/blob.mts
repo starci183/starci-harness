@@ -1,4 +1,4 @@
-// blob.mjs — the content-addressed blob store (operational evidence and agent output) beside the two SQLite stores:
+// blob.mts — the content-addressed blob store (operational evidence and agent output) beside the two SQLite stores:
 // putBlob/getBlob/statBlob/putJson write and read it; blob bytes are immutable and never removed here.
 //
 // Reading agent output back out of the blob store. A Work record and the
@@ -314,7 +314,7 @@ export function blobReferences(ref: BlobRef, { root = null }: { root?: string | 
 
 /**
  * Remove a staging directory this call made: the files it wrote, then the directories above them, deepest first. It never walks a tree: the link-safe
- * recursive delete is scripts/api/fs/safe-remove.mjs, which the db tier cannot import, and a staging tree holds only what this call created.
+ * recursive delete is scripts/api/fs/safe-remove.mts, which the db tier cannot import, and a staging tree holds only what this call created.
  */
 function dropStaging(staging: string, written: string[]): void {
   const dirs = new Set([staging]);

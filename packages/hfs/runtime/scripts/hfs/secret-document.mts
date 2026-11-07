@@ -1,4 +1,4 @@
-// secret-document.mjs - envelope inspection, plaintext serialization and named-value validation.
+// secret-document.mts - envelope inspection, plaintext serialization and named-value validation.
 import { SecretError } from "./secret-errors.mjs";
 
 const KEY = /^[A-Za-z_]\w*$/u;

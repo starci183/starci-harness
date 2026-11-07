@@ -1,4 +1,4 @@
-// kinds.mjs - the trigger kinds a back end uses are declared, whole and generated only when used (hfs.json sides.be.kinds).
+// kinds.mts - the trigger kinds a back end uses are declared, whole and generated only when used (hfs.json sides.be.kinds).
 //   BE_KIND_DECLARATION   `sides.be.kinds` lists exactly the kinds the features hold: a kind in use that is not declared, a declared kind with no
 //                         feature, a declared kind whose patterns (ruleParams.be.kindPatterns) are not all in `sides.be.patterns`, and a declared
 //                         kind whose platform capabilities (the tier-platform slots that name those patterns) are not tracked are each a finding;

@@ -1,7 +1,7 @@
-// git-pathspec.mjs — the git argv and pathspec machinery of the shared-checkout policy
-// (git-policy.mjs): splitting `git [global options] <sub> <args...>`, reading pathspecs
+// git-pathspec.mts — the git argv and pathspec machinery of the shared-checkout policy
+// (git-policy.mts): splitting `git [global options] <sub> <args...>`, reading pathspecs
 // (including --pathspec-from-file lists) the way git does, and the literal reading of App
-// Router segments (engine/admission.mjs isAppRouterSegment). Pure: argv and text in, parts out.
+// Router segments (engine/admission.mts isAppRouterSegment). Pure: argv and text in, parts out.
 import fs from 'node:fs';
 import path from 'node:path';
 import { isAppRouterSegment } from '../../engine/admission.mjs';
@@ -39,7 +39,7 @@ export function parseGitArgv(argv: Iterable<unknown>, cwd: string = process.cwd(
 const norm = pathKey;
 // git's glob characters. A Next.js App Router segment (`[locale]`, `[...slug]`, `[[...opt]]`, `(.)[id]`)
 // carries `[` but is a literal directory name - the reading owned-path admission gives it
-// (engine/admission.mjs isAppRouterSegment, ownedPathspec). Cutting every pathspec at its first `[`
+// (engine/admission.mts isAppRouterSegment, ownedPathspec). Cutting every pathspec at its first `[`
 // scoped `src/app/[locale]/x` to `src/app/`, outside the grant `src/app/[locale]`, and refused the op's
 // own paths PATH_NOT_OWNED. Git, though, still reads a plain `[...slug]` as a
 // character class (`src/app/[...slug]/page.tsx` also matches a peer's `src/app/l/page.tsx`), so a pathspec

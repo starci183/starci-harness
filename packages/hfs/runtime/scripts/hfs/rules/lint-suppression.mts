@@ -1,4 +1,4 @@
-// lint-suppression.mjs - HFS_LINT_SUPPRESSION_FILE (R104): a repository keeps no lint-suppression file, script or option. A finding is
+// lint-suppression.mts - HFS_LINT_SUPPRESSION_FILE (R104): a repository keeps no lint-suppression file, script or option. A finding is
 // fixed in the code (or the rule is changed in the canon); it is never recorded away in a file that lets it stay.
 //   - a file named `eslint.suppressions*` or `eslint-suppressions*`;
 //   - a package.json script named `lint:suppressions` (or any `<x>:suppressions`), or one that passes `--suppressions-location`,

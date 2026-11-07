@@ -20,8 +20,6 @@ provenance:
     - knowledge/hfs/README.md
     - knowledge/hfs/slots.yaml
     - knowledge/hfs/rules.yaml
-    - owner decision 2026-10-02 (BullMQ queues with a transactional outbox, schedulers replace cron)
-    - ruling:R212/case-10 (2026-10-24; the queue is Redis in both editions, lite declares its Redis)
     - https://docs.bullmq.io/guide/job-schedulers
   limitations: |-
     Static checks prove who enqueues, with which transaction, and that nothing imports BullMQ or Nest scheduling outside the
@@ -264,7 +262,7 @@ files:
     role: "Titles queue/<scenario>: ... prove the pattern."
     spec: queue/enqueue-atomic-with-transaction, queue/relay-job-id-is-outbox-id, queue/scheduler-fires-once
     rules: [BE_PATTERN_SPEC_MISSING]
-# Edition lite (ruling:R212/case-10): the queue is BullMQ on Redis in both editions; only the outbox table's schema authority differs.
+# Edition lite (R212): the queue is BullMQ on Redis in both editions; only the outbox table's schema authority differs.
 liteAdapter:
   summary: >-
     Under lite the queue pattern is full's, adapter included: producers write the outbox in the caller's transaction, the relay
@@ -276,7 +274,7 @@ liteAdapter:
     its append-only file (WAITAOF) and still holds it, so a job Redis loses inside the at most one second fsync window leaves
     its row waiting and is added again; that is why a lite queue does not lose a job. Without a declared Redis there is no queue
     pattern: the work is a direct call inside the request, or a declared replicated-job running a cli command. pgmq
-    is the event bus, not a queue transport (ruling:lite-pgmq-bus-bullmq-jobs). `starci app add queue|job` writes this adapter in a lite app, with the outbox and job
+    is the event bus, not a queue transport. `starci app add queue|job` writes this adapter in a lite app, with the outbox and job
     tables as one db migration, the Redis declaration and the persisted Redis of every docker-swarm environment.
   ports:
     - {port: QueueOutbox (platform/queue), adapter: "the outbox row written through the caller's tx by queue_write, and the relay's queue_waiting and queue_mark_sent, functions of the queue migration in db/migrations called through callDbFunction of platform/database (R334)"}

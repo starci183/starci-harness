@@ -1889,12 +1889,12 @@ DB_MIGRATION_DESTRUCTIVE:
   kind: check-finding
 
 DB_DESTRUCTIVE_RULING_UNPROVEN:
-  title: "An owner ruling on destructive DDL holds only while its exact objects are unreferenced"
-  title_vi: "Ruling cho DDL phá hủy chưa được chứng minh"
-  meaning_vi: "hfs.json db.destructiveRulings chấp nhận đúng các đối tượng của đúng một migration, nhưng một đối tượng vẫn được SQL hay entity của back end (hoặc của bản release trước) tham chiếu, hoặc ruling nêu đối tượng hay migration không tồn tại."
+  title: "An accepted destructive DDL (db.destructiveRulings) holds only while its exact objects are unreferenced"
+  title_vi: "Chấp nhận DDL phá hủy (db.destructiveRulings) chưa được chứng minh"
+  meaning_vi: "hfs.json db.destructiveRulings chấp nhận đúng các đối tượng của đúng một migration, nhưng một đối tượng vẫn được SQL hay entity của back end (hoặc của bản release trước) tham chiếu, hoặc mục chấp nhận nêu đối tượng hay migration không tồn tại."
   causes_vi:
-    - "Vi phạm R259: ruling được ghi trước khi ứng dụng ngừng dùng đối tượng, hoặc ruling đã cũ."
-  nextStep_vi: "Bỏ tham chiếu trong ứng dụng, hoặc sửa ruling cho đúng file và đúng đối tượng mà migration phá hủy."
+    - "Vi phạm R259: mục chấp nhận được ghi trước khi ứng dụng ngừng dùng đối tượng, hoặc mục đó đã cũ."
+  nextStep_vi: "Bỏ tham chiếu trong ứng dụng, hoặc sửa mục chấp nhận cho đúng file và đúng đối tượng mà migration phá hủy."
   owner: op-retry
   kind: check-finding
 
@@ -1911,7 +1911,7 @@ DB_MIGRATION_SHAPE:
 DB_PGMQ_DECLARED:
   title: "A queue constant keeps a pgmq queue, a pgmq queue has no event-bus owner, or a pgmq queue, binding or grant is declared unsafely"
   title_vi: "Hằng hàng đợi còn hàng đợi pgmq, hàng đợi pgmq không có chủ event-bus, hoặc hàng đợi, liên kết topic hay quyền pgmq khai báo sai"
-  meaning_vi: "pgmq là event bus và job chạy trên BullMQ (ruling:lite-pgmq-bus-bullmq-jobs), nhưng các migration đang hoạt động vẫn để lại một hàng đợi pgmq trùng tên một hằng hàng đợi trong modules/queues, hoặc một hàng đợi pgmq không được hằng literal *_TOPIC_QUEUE nào trong platform/event-bus đặt tên (hay một hằng như vậy không có hàng đợi pgmq); hoặc pgmq.create hay pgmq.bind_topic không có tên literal trong migration, liên kết một hàng đợi chưa được tạo, tên hằng không phải literal, hay quyền trên đối tượng pgmq vượt vai trò ứng dụng."
+  meaning_vi: "pgmq là event bus và job chạy trên BullMQ, nhưng các migration đang hoạt động vẫn để lại một hàng đợi pgmq trùng tên một hằng hàng đợi trong modules/queues, hoặc một hàng đợi pgmq không được hằng literal *_TOPIC_QUEUE nào trong platform/event-bus đặt tên (hay một hằng như vậy không có hàng đợi pgmq); hoặc pgmq.create hay pgmq.bind_topic không có tên literal trong migration, liên kết một hàng đợi chưa được tạo, tên hằng không phải literal, hay quyền trên đối tượng pgmq vượt vai trò ứng dụng."
   causes_vi:
     - "Vi phạm R258: một job của app chạy trên pgmq thay vì BullMQ trên Redis."
     - "Một hàng đợi pgmq bị bỏ lại hoặc đổi tên mà không có chủ event-bus, hoặc một liên kết topic trỏ tới hàng đợi chưa tạo."
@@ -3294,7 +3294,7 @@ HFS_BOOT_LOGGER_SILENCED:
 HFS_BACKING_UNDECLARED:
   title: "A lite app uses undeclared Redis or full-only Qdrant instead of Supabase pgvector"
   title_vi: "App lite dùng Redis chưa khai báo hoặc Qdrant chỉ thuộc full thay cho Supabase pgvector"
-  meaning_vi: "package.json có client Redis hoặc hfs.json khai pattern cần Redis (queue, fenced-job) nhưng sides.be.backing chưa khai redis, hoặc app lite dùng client Qdrant. Lite chỉ cho phép khai redis; vector nằm trong Supabase pgvector (owner:lite-vector-is-pgvector). Full giữ Qdrant khi được khai báo."
+  meaning_vi: "package.json có client Redis hoặc hfs.json khai pattern cần Redis (queue, fenced-job) nhưng sides.be.backing chưa khai redis, hoặc app lite dùng client Qdrant. Lite chỉ cho phép khai redis; vector nằm trong Supabase pgvector. Full giữ Qdrant khi được khai báo."
   causes_vi:
     - "Thêm client Redis mà chưa khai redis, hoặc thêm client Qdrant vào lite dù có khai báo"
     - "Khai pattern queue hoặc fenced-job mà chưa khai báo redis"
@@ -3305,7 +3305,7 @@ HFS_BACKING_UNDECLARED:
 HFS_BACKING_UNUSED:
   title: "A lite app declares Redis without a consuming client"
   title_vi: "App lite khai Redis nhưng không có client sử dụng"
-  meaning_vi: "hfs.json sides.be.backing của lite khai redis nhưng package.json không có client Redis, nên stack sẽ chạy dịch vụ không có người dùng. Lite chỉ cho phép khai redis; vector dùng Supabase pgvector (owner:lite-vector-is-pgvector)."
+  meaning_vi: "hfs.json sides.be.backing của lite khai redis nhưng package.json không có client Redis, nên stack sẽ chạy dịch vụ không có người dùng. Lite chỉ cho phép khai redis; vector dùng Supabase pgvector."
   causes_vi:
     - "Năng lực cần dịch vụ đã bị gỡ nhưng khai báo vẫn còn"
     - "Khai báo dịch vụ trước khi thêm thư viện client"
@@ -4517,7 +4517,7 @@ HFS_STACKS_SHAPE:
   meaning_vi: "Cây .starcistacks không khớp slot app.starcistacks, hoặc khai báo và mô hình Docker không nhất quán. Mọi dependency trong dev phải có container Docker Linux; Supabase dùng CLI cục bộ. Trong production, app và dependency dùng Swarm, trừ Supabase là dịch vụ hosted. Chỉ Supabase được khai trong backing; dependency khác phải là component Docker."
   causes_vi:
     - "Vi phạm R10 về cây theo edition, Sonar thuộc host hoặc runtime Swarm."
-    - "Dependency đã chọn thiếu container trong mô hình, khai platform Windows hoặc dùng backing hosted khác Supabase (owner:dev-docker-prod-swarm)."
+    - "Dependency đã chọn thiếu container trong mô hình, khai platform Windows hoặc dùng backing hosted khác Supabase."
   nextStep_vi: "Sửa cây theo slot app.starcistacks và khai dependency dưới components với bằng chứng Docker Linux; giữ Supabase CLI trong dev và hosted trong production. App có thể chạy native trong profile dev đã khai báo; dependency vẫn nằm trong Docker. Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra."
   owner: op-retry
   kind: check-finding
@@ -4788,7 +4788,7 @@ RIGHTS_PUSH_NOT_RELEASE:
 RIGHTS_RAW_TOOL:
   title: "Raw side-effecting tool refused"
   title_vi: "Từ chối công cụ thô có tác động phụ"
-  meaning_vi: "Agent đã gọi trực tiếp một công cụ có tác động phụ trong khi runtime có động từ starci sở hữu thao tác đó; chính sách chỉ cho phép các lệnh chỉ đọc được khai báo một lần trong modules/kernel/command-policy.yaml."
+  meaning_vi: "Agent đã gọi trực tiếp một công cụ có tác động phụ trong khi runtime có động từ starci sở hữu thao tác đó; chính sách chỉ cho phép các lệnh chỉ đọc được khai báo một lần trong bảng quy tắc của command guard."
   causes_vi:
     - "Agent gọi npm run, npm test, npm install, node scripts, docker, supabase, gh, schtasks, shutdown, một test runner hoặc Orca mutation trực tiếp"
     - "Agent gọi một chương trình chưa được khai báo trong bảng chính sách lệnh"
@@ -4810,7 +4810,7 @@ RIGHTS_RELEASE_CUT:
 RIGHTS_ROLE_DENIED:
   title: "Action denied by role rights"
   title_vi: "Quyền theo vai trò từ chối thao tác"
-  meaning_vi: "Command guard đã từ chối một thao tác vì vai trò của caller không sở hữu tác động đó; modules/kernel/command-policy.yaml là bảng chính sách duy nhất mà PreToolUse guard và PATH shim cùng đọc."
+  meaning_vi: "Command guard đã từ chối một thao tác vì vai trò của caller không sở hữu tác động đó; một bảng quy tắc duy nhất được PreToolUse guard và PATH shim cùng đọc."
   causes_vi:
     - "Agent gọi một lệnh ghi hoặc công cụ có tác động phụ ngoài quyền của vai trò"
     - "Agent bỏ qua động từ starci sở hữu thao tác"
@@ -4937,12 +4937,12 @@ RT_COVERAGE_CODE_UNROUTED:
   kind: check-finding
 
 RT_COVERAGE_EDITION_ASYMMETRY:
-  title: "An edition difference has no ruling justification"
-  title_vi: "Khác biệt phiên bản thiếu căn cứ quyết định"
-  meaning_vi: "Luật, ô hoặc bộ kiểm tra khác nhau giữa lite và full nhưng chưa dẫn quyết định của chủ sở hữu."
+  title: "An edition difference has no stated reason"
+  title_vi: "Khác biệt phiên bản thiếu lý do"
+  meaning_vi: "Luật, ô hoặc bộ kiểm tra khác nhau giữa lite và full nhưng chưa ghi lý do (editionWhy)."
   causes_vi:
     - "Danh mục hoặc bằng chứng của chuẩn chưa được cập nhật theo hành vi thực tế"
-  nextStep_vi: "Ghi editionWhy với quyết định có thật giải thích khác biệt."
+  nextStep_vi: "Ghi editionWhy nêu lý do thật của khác biệt."
   owner: runtime-core
   kind: check-finding
 
@@ -5223,7 +5223,7 @@ RT_IDENTIFIER_UNDECLARED:
 RT_LOOSENING_STATE:
   title: "The tree holds a loosened gate"
   title_vi: "Cây mã đang giữ một cổng kiểm bị nới lỏng"
-  meaning_vi: "Cây mã hiện tại có một cách bỏ qua kiểm tra (chú thích tắt luật, bỏ qua kiểu hoặc độ phủ, test bị bỏ qua hoặc chỉ chạy một phần, lỗi bị nuốt trong script hay workflow), một mục ignore hoặc exclude mà canon không sinh ra và bảng design-truths không cho phép, một ngưỡng bị hạ, một công tắc nới lỏng, một luật bị tắt, hoặc một tệp ngoại lệ không có trong bảng. Kiểm tra đọc trạng thái cây, không đọc lịch sử; không có phê duyệt nào cho nới lỏng đi qua, kể cả của chủ (owner ruling loosening-always-red)."
+  meaning_vi: "Cây mã hiện tại có một cách bỏ qua kiểm tra (chú thích tắt luật, bỏ qua kiểu hoặc độ phủ, test bị bỏ qua hoặc chỉ chạy một phần, lỗi bị nuốt trong script hay workflow), một mục ignore hoặc exclude mà canon không sinh ra và bảng design-truths không cho phép, một ngưỡng bị hạ, một công tắc nới lỏng, một luật bị tắt, hoặc một tệp ngoại lệ không có trong bảng. Kiểm tra đọc trạng thái cây, không đọc lịch sử; không có phê duyệt nào cho nới lỏng đi qua, kể cả của chủ."
   causes_vi:
     - "Một lane thêm chú thích tắt luật, bỏ qua test hoặc nuốt lỗi để workflow chạy qua"
     - "Một mục ignore, exclude hoặc ngưỡng độ phủ bị sửa tay thay vì sinh từ canon"
@@ -5387,13 +5387,13 @@ RT_RULE_UNCITED:
   kind: check-finding
 
 RT_RULING_STALE_CITE:
-  title: "A live statement cites a superseded or unknown owner ruling"
-  title_vi: "Nội dung hiện hành dẫn quyết định đã bị thay thế hoặc chưa được ghi nhận"
-  meaning_vi: "Một trích dẫn dẫn quyết định cũ mà không dẫn quyết định thay thế trong cùng đoạn, khớp mẫu staleWhen, hoặc nêu ngày quyết định không có trong danh mục. Nội dung lịch sử của case và CHANGELOG được giữ nguyên."
+  title: "A live statement cites a ruling or a decision date instead of a rule"
+  title_vi: "Nội dung hiện hành dẫn một quyết định hoặc ngày quyết định thay vì một luật"
+  meaning_vi: "Văn bản, chú thích, dữ liệu luật hoặc thông báo in ra dẫn một quyết định của chủ sở hữu, một sổ quyết định hoặc ngày của nó. Mỗi luật được viết như nó đang có hiệu lực và chỉ được dẫn bằng id luật."
   causes_vi:
-    - "Tài liệu hoặc chú thích chưa cập nhật sau khi chủ sở hữu sửa quyết định"
-    - "Trích dẫn thiếu id ổn định hoặc nêu ngày không có case tương ứng"
-  nextStep_vi: "Cập nhật câu theo quyết định hiện hành và dẫn id của quyết định thay thế trong cùng đoạn; kiểm tra ngày và liên kết supersedes trong danh mục."
+    - "Một câu còn ghi lại lịch sử quyết định thay vì luật hiện hành"
+    - "Một trích dẫn dùng id quyết định hoặc ngày thay vì id luật"
+  nextStep_vi: "Viết lại câu thành luật ở thì hiện tại và dẫn id luật (R<n>, CONTRIB-<n> hoặc id tiêu đề trong contexts); lịch sử nằm trong git và CHANGELOG."
   owner: supervisor
   kind: check-finding
 
@@ -5619,7 +5619,7 @@ STACKS_LITE_REDIS_PERSISTENCE:
   title_vi: "Redis đã khai báo của lite không phải một dịch vụ duy nhất có AOF và không evict"
   meaning_vi: "hfs.json sides.be.backing khai báo redis nhưng stack lite không chạy đúng một dịch vụ Redis; hoặc dịch vụ Redis không chạy với --appendonly yes, không mount một named volume ghi được tại /data, hay đặt --maxmemory-policy khác noeviction. Job của hàng đợi nằm trong Redis nên khởi động lại hoặc evict sẽ làm mất chúng."
   causes_vi:
-    - "Vi phạm R276 (ruling:R212/case-10): Redis đã khai báo không được render trong stack, hoặc được render nhiều lần."
+    - "Vi phạm R276 (R212): Redis đã khai báo không được render trong stack, hoặc được render nhiều lần."
     - "Lệnh redis-server thiếu --appendonly yes, hoặc đặt maxmemory-policy evict khóa (allkeys-lru, volatile-ttl...)."
     - "Dịch vụ Redis không mount named volume vào /data, hoặc mount chỉ đọc, hoặc volume không được định nghĩa trong mô hình."
   nextStep_vi: "Render đúng một dịch vụ Redis, chạy redis-server với --appendonly yes, giữ maxmemory-policy noeviction (mặc định; khóa cache đặt TTL) và mount một named volume ghi được tại /data, khai báo volume đó trong mô hình và trong components.redis.volumes."
@@ -5629,7 +5629,7 @@ STACKS_LITE_REDIS_PERSISTENCE:
 STACKS_LITE_SELFHOSTED_DB:
   title: "A lite deployment runs PostgreSQL, MongoDB, Qdrant or undeclared Redis"
   title_vi: "Triển khai lite chạy PostgreSQL, MongoDB, Qdrant hoặc Redis chưa khai báo"
-  meaning_vi: "Tập component hoặc mô hình triển khai của lite chứa image PostgreSQL, MongoDB hoặc Qdrant, dù có khai báo, hoặc chứa Redis chưa khai trong sides.be.backing. Lite dùng Supabase được quản lý và pgvector cho vector; full giữ Qdrant khi được khai báo (owner:lite-vector-is-pgvector)."
+  meaning_vi: "Tập component hoặc mô hình triển khai của lite chứa image PostgreSQL, MongoDB hoặc Qdrant, dù có khai báo, hoặc chứa Redis chưa khai trong sides.be.backing. Lite dùng Supabase được quản lý và pgvector cho vector; full giữ Qdrant khi được khai báo."
   causes_vi:
     - "Vi phạm R276: topology lite thêm máy chủ dữ liệu mà chuẩn dành cho Supabase được quản lý."
     - "Stack lite chạy Qdrant, hoặc chạy Redis khi chưa khai dịch vụ cho năng lực cần nó."

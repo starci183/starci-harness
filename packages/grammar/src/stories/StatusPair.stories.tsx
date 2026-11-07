@@ -3,7 +3,7 @@ import * as G from '../common/index.js';
 import { BookGlyph, HomeGlyph, Matrix, State, familyScope, noop } from './fixtures.js';
 
 /**
- * The owner's status pair rule (ruling `status-soft-pair-on-background`): content on a tone background wears the pair
+ * The status pair rule: content on a tone background wears the pair
  * `x-soft` and `x-soft-foreground`; a mark that stands alone wears `x`. These stories draw the places the rule reaches in
  * the grammar's own CSS: the alert dialog's icon tile (on its tint) and the note under a list card.
  */

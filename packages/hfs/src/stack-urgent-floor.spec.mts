@@ -1,4 +1,4 @@
-// The safety floor of an urgent deploy (stack/urgent-floor.mjs, owner ruling urgent-release 2026-10-29): every step is a refusal with its own
+// The safety floor of an urgent deploy (stack/urgent-floor.mts): every step is a refusal with its own
 // code when it fails, the steps run in their order (backup, verify, test decrypt, rollback target, migrate preview, migrate, deploy), and nothing
 // after a refused step runs.
 import test from 'node:test';
@@ -246,7 +246,7 @@ test('STACK_FIRST_START_USAGE: a first start without --db-service is refused bef
   assert.deepEqual(calls, []);
 });
 
-// The order of a first start inside the deploy (stack/deploy.mjs): the stack is first deployed with only the database running, so no app service
+// The order of a first start inside the deploy (stack/deploy.mts): the stack is first deployed with only the database running, so no app service
 // starts against an empty schema (its healthcheck fails and update_config rolls it back); the first-start step migrates; then the real stack deploys.
 const DIGEST = 'e'.repeat(64);
 const STACK = [

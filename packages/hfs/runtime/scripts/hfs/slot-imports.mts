@@ -1,4 +1,4 @@
-// slot-imports.mjs - whether one file of a scope (the app root or one side) may import another: the tier direction matrix, the
+// slot-imports.mts - whether one file of a scope (the app root or one side) may import another: the tier direction matrix, the
 // owner units, the layer order and the public entry of an owner. Cycles are a graph property of the architecture check, not of one edge.
 import { RUNTIME_KIND } from './manifest-shape.mjs';
 import { classifyIn, ownerIn, tierIn } from './slot-classify.mjs';

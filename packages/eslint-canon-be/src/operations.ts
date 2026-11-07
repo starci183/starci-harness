@@ -463,7 +463,7 @@ const credentialGuardDeclared = (context: Context, decoratorCallee_: Node): bool
 }
 
 /**
- * Credential-guarded route (BE_REST_DOOR_EVIDENCE, owner delegation 2026-10-16): the route, or its controller class, carries
+ * Credential-guarded route (BE_REST_DOOR_EVIDENCE): the route, or its controller class, carries
  * `@Credential({ kind: "<literal>" })` imported from the domain identity capability, and that capability declares a
  * `CredentialGuard implements CanActivate`. A same-named local decorator, a `@UseGuards` of any other guard and a non-literal kind prove nothing.
  */
@@ -480,7 +480,7 @@ const credentialGuardEvidence = (context: Context, method: TSESTree.MethodDefini
 }
 
 /**
- * Event-stream evidence (BE_REST_DOOR_EVIDENCE, owner:lite-sse-door): the route is an `@Sse` method of `@nestjs/common` inside the sse slot of a
+ * Event-stream evidence (BE_REST_DOOR_EVIDENCE): the route is an `@Sse` method of `@nestjs/common` inside the sse slot of a
  * realtime channel. It is structural, not a name list: the same `@Sse` anywhere else, or any other route inside the sse slot, proves nothing.
  */
 const eventStreamEvidence = (context: Context, method: TSESTree.MethodDefinition): boolean =>

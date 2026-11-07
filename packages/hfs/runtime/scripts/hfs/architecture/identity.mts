@@ -1,4 +1,4 @@
-// identity.mjs - the back-end identity machine. Under lite the one token verifier is @starci/auth, composed by be.integrations.passport:
+// identity.mts - the back-end identity machine. Under lite the one token verifier is @starci/auth, composed by be.integrations.passport:
 // no app file calls jose's jwtVerify, decodes a token unverified or reads authorization claims from a request body (R329), and the
 // passport integration imports @starci/auth/server. In both editions every jwtVerify call holds the JWT policy (R260, jwtPolicyProblems).
 import path from 'node:path';

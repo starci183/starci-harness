@@ -1,6 +1,6 @@
 // CI_TRIGGERS_RELEASE_ONLY: runtime workflows and app ci.yml may judge main; release candidates, v* tags and manual dispatch retain their scope. ci.yml also judges pull requests
 // to main (pull_request only: no secret reaches it; pull_request_target and workflow_run stay refused); a reusable workflow (workflow_call) has no trigger of its own. The
-// one schedule is the managed nightly verify of the check cache, cache-verify.yml (ruling release-gate-warm-cache): it reads and judges main, and writes nothing.
+// one schedule is the managed nightly verify of the check cache, cache-verify.yml: it reads and judges main, and writes nothing.
 import { parseWorkflow, workflowFindings } from './workflow-source.mjs';
 import { workflowEventOptions } from '../../lib/workflow-events.mjs';
 import type { Parsed } from '../rules/rule-types.mjs';

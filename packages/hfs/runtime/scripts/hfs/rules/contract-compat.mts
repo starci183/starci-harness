@@ -1,4 +1,4 @@
-// contract-compat.mjs - event contracts evolve only additively (BE_CONTRACT_BREAKING, R177).
+// contract-compat.mts - event contracts evolve only additively (BE_CONTRACT_BREAKING, R177).
 //
 // A service publishes its events in `be/contracts/<service>/events.json` (the vendored snapshot hfs emits from the service's event table).
 // The previous published contract is pinned beside it as `be/contracts/<service>/events.pin.json` (the same format, copied when a contract is

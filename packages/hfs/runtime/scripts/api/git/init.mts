@@ -1,4 +1,4 @@
-// init.mjs — `git -c init.defaultBranch=<branch> init --quiet`: create an empty repository in `cwd` (the install sandbox's app repository).
+// init.mts — `git -c init.defaultBranch=<branch> init --quiet`: create an empty repository in `cwd` (the install sandbox's app repository).
 import { gitRunner, type GitRun, type GitRunnerFn } from './lib.mjs';
 
 /** {ok, stdout, stderr}. `env` replaces the process env (a sandbox's own home); git: the caller's runner or null. */

@@ -1,6 +1,6 @@
 # Control height (CONTROL-HEIGHT-1)
 
-Owner ruling `control-height-40` (2026-10-26). One control height, 40px (HeroUI's own `h-10`), is the default of every standalone Grammar control: Button, IconButton, Input, SearchField, Select, Tabs, Switch, the chrome Avatar, Textarea and the composer send button. Grammar draws it; an app never states it.
+One control height, 40px (HeroUI's own `h-10`), is the default of every standalone Grammar control: Button, IconButton, Input, SearchField, Select, Tabs, Switch, the chrome Avatar, Textarea and the composer send button. Grammar draws it; an app never states it.
 
 | Rule | Finding code | Required behavior |
 | --- | --- | --- |

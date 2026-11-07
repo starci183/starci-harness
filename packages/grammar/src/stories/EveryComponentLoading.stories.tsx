@@ -4,7 +4,7 @@ import * as G from "../common/index.js"
 import { Matrix, State, noop } from "./fixtures.js"
 
 /*
- * Every component, loading (ruling region-loading). The same page is drawn ready and in a loading region (a SurfaceCard that carries
+ * Every component, loading. The same page is drawn ready and in a loading region (a SurfaceCard that carries
  * the flag): nothing here takes `isLoading` of its own. Static chrome keeps its real words and only goes inert ("Cancel", the tab
  * labels, the field labels); data (values, counts, rows, chips, avatars, a button that carries a count) becomes the geometry of the
  * ready box; the region carries the one aria-busy. The two renders have the same boxes, in both families, light and dark.

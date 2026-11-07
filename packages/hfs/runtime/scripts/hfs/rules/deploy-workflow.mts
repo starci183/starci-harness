@@ -84,14 +84,14 @@ function hasAgeIdentity(job: Parsed, doc: Parsed) {
   return steps.some((step: Parsed) => strings(step.with).some((value: Parsed) => reference.test(value)) || (typeof step.run === 'string' && reference.test(executable(step.run))));
 }
 
-/** The release candidate branches (OWNER RULING candidate-ci, 2026-10-18): `starci app release push` waits for the ci.yml run of the release sha there. */
+/** The release candidate branches: `starci app release push` waits for the ci.yml run of the release sha there. */
 const CANDIDATE_BRANCHES = 'release/candidate-*';
 const pushFilterValid = (options: Parsed, ci: Parsed, profiles: readonly string[]) => record(options) && Object.keys(options).length > 0 && Object.keys(options).every((key) => key === 'tags' || key === 'branches')
   && (options.tags === undefined || (Array.isArray(options.tags) && options.tags.length === 1 && options.tags[0] === 'v*'))
   && (options.branches === undefined || (Array.isArray(options.branches) && options.branches.length > 0 && new Set(options.branches).size === options.branches.length && options.branches.every((branch: Parsed) => branch === CANDIDATE_BRANCHES || (ci && (branch === 'main' || profiles.includes(branch))))));
 
 const isCi = (file: string) => /(^|\/)ci\.ya?ml$/.test(file);
-/** The managed nightly verify of the committed check cache, the one app workflow that runs on a schedule (ruling release-gate-warm-cache). */
+/** The managed nightly verify of the committed check cache, the one app workflow that runs on a schedule. */
 export const isCacheVerify = (file: string): boolean => /(^|\/)cache-verify\.ya?ml$/.test(file);
 
 /** A pull request to main in ci.yml: the checks of a change. Read-only workflow permissions, no environment on a job of the file itself (a call of a reusable workflow cannot have one). */

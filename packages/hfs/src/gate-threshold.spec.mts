@@ -1,4 +1,4 @@
-// The app check and lint verdict (owner ruling gate-threshold-20, 2026-10-30): green under 20 error findings with no hard blocker;
+// The app check and lint verdict: green under 20 error findings with no hard blocker;
 // a plaintext secret, a failed boot proof or a broken migration is red at any count.
 import test from 'node:test';
 import assert from 'node:assert/strict';

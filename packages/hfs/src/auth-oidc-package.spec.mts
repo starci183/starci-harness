@@ -65,10 +65,8 @@ test('the front-end stack admits the package client in modules/auth only', () =>
   for (const library of ['jose', 'oidc-client-ts', 'keycloak-js']) assert.ok(concern.forbids.includes(library), library);
 });
 
-test('the ruling names the package and the rule that owns the libraries', () => {
-  const rulings = parseYaml(fs.readFileSync(path.join(REPOSITORY, 'contexts', 'decisions', 'rulings.yaml'), 'utf8'));
-  const ruling = (rulings.rulings as Array<{ id: string; status: string; owner: string }>).find((entry) => entry.id === 'auth-oidc-package');
-  assert.equal(ruling?.status, 'live');
-  assert.match(ruling?.owner ?? '', /packages\/auth-oidc/u);
-  assert.match(ruling?.owner ?? '', /R328/u);
+test('R328, the rule that owns the identity libraries, names the package as the owner of jose', () => {
+  const rules = parseYaml(fs.readFileSync(path.join(import.meta.dirname, '..', 'runtime', 'knowledge', 'hfs', 'rules.yaml'), 'utf8'));
+  const rule = (rules.rules as Array<{ id: string; law: string }>).find((entry) => entry.id === 'R328');
+  assert.match(rule?.law ?? '', /@starci\/auth-oidc \(full, which owns jose/u);
 });

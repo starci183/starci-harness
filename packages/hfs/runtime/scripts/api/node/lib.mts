@@ -1,6 +1,6 @@
-// scripts/api/node/lib.mjs — the runner of the runtime's own scripts as child processes: the node binary that runs this
+// scripts/api/node/lib.mts — the runner of the runtime's own scripts as child processes: the node binary that runs this
 // process (process.execPath), a hidden window, utf8 text. The call files beside it (run-script.mjs, syntax-check.mjs,
-// run-node.mjs, spawn-node.mjs, exec-node.mjs) each name one use; nothing outside scripts/api/node imports this runner.
+// run-node.mts, spawn-node.mjs, exec-node.mjs) each name one use; nothing outside scripts/api/node imports this runner.
 import { assertMutationFence } from '../../lib/mutation-fence.mjs';
 import { execFile, spawn, spawnSync, type ChildProcess, type ExecFileException, type ExecFileOptions, type ExecFileOptionsWithStringEncoding, type SpawnOptions, type SpawnSyncOptions, type SpawnSyncOptionsWithStringEncoding, type SpawnSyncReturns } from 'node:child_process';
 import { withTempEnv } from '../../../engine/temp-root.mjs';

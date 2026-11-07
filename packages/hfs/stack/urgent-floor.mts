@@ -1,16 +1,16 @@
-// urgent-floor.mjs - the safety floor of an urgent deploy (`starci app stack deploy --urgent`, owner ruling urgent-release 2026-10-29). An urgent
+// urgent-floor.mts - the safety floor of an urgent deploy (`starci app stack deploy --urgent`). An urgent
 // release skips CI and the full gate, never this floor; each step that fails is a refusal with its own code, never a warning:
-//   record     the commit carries a pushed URGENT record (release/urgent.mjs)                     STACK_URGENT_NO_RECORD, STACK_URGENT_NOT_PUSHED
+//   record     the commit carries a pushed URGENT record (release/urgent.mts)                     STACK_URGENT_NO_RECORD, STACK_URGENT_NOT_PUSHED
 //   backup     a fresh full database backup, encrypted to the app's age recipients (db dump)       STACK_DEPLOY_BACKUP_FAILED
 //   verified   its receipt names this run, its size, age header and sha256 match the archive        STACK_DEPLOY_BACKUP_UNVERIFIED
 //   decrypt    a test decrypt with the operator's age identity (SOPS_AGE_KEY_FILE) lists every part STACK_DEPLOY_BACKUP_DECRYPT_UNAVAILABLE, STACK_DEPLOY_BACKUP_DECRYPT_FAILED
-//   render     the release renders locally (deploy.mjs inspectRendered)                           its own STACKS_/STACK_DEPLOY_ refusal
+//   render     the release renders locally (deploy.mts inspectRendered)                           its own STACKS_/STACK_DEPLOY_ refusal
 //   rollback   an accepted previous release exists, so a red deploy has somewhere to go back to    STACK_URGENT_NO_ROLLBACK_TARGET
 //   migrate    db migrate previews the plan, then executes it                                     STACK_DEPLOY_MIGRATE_PREVIEW_RED, STACK_DEPLOY_MIGRATE_FAILED
 //   deploy     the release with its readiness verify (deploy.verify); red rolls back by itself    STACK_URGENT_RED_ROLLED_BACK, STACK_URGENT_ROLLBACK_FAILED,
 //                                                                                                 STACK_URGENT_DEPLOY_NOT_STARTED (red before the stack deploy)
 // The public-host checks are never skipped (STACK_URGENT_SKIP_PUBLIC). A rollback cannot undo the migrations: the backup above is their way back.
-// The first start (`--first-start --db-service <service>`, owner ruling 2026-10-29) is the floor of a self-hosted database the release itself
+// The first start (`--first-start --db-service <service>`) is the floor of a self-hosted database the release itself
 // starts: there is nothing to back up and nothing reaches it before the stack runs it, so instead of backup, decrypt and migrate before the deploy
 // the release is first deployed with every service but the database at 0 replicas (a global-mode service is held off every node by an
 // unsatisfiable placement constraint), so no app starts against an empty schema (its healthcheck would fail and update_config would roll it
@@ -20,7 +20,7 @@
 //   STACK_FIRST_START_USAGE (no --db-service), STACK_FIRST_START_NO_DATABASE (no container accepted connections in time),
 //   STACK_FIRST_START_NOT_EMPTY (a history or a public table: use the plain urgent floor), STACK_FIRST_START_MIGRATE_RED (preview or execute red);
 // each rolls the release back to the previous one; the migrations a red first start applied stay in a database no release used before.
-// The backup, decrypt, migrate and first-start steps are shared with the automatic deploy (db-phases.mjs), under the same STACK_DEPLOY_* codes; the
+// The backup, decrypt, migrate and first-start steps are shared with the automatic deploy (db-phases.mts), under the same STACK_DEPLOY_* codes; the
 // urgent path keeps its operator-held --db-url-env and its always-on backup (the floor is never skipped). `deps` are the collaborators (backup,
 // decrypt, migrate), each defaulting to the app's own db verbs; a spec injects stubs.
 import fs from 'node:fs';
@@ -62,10 +62,10 @@ export interface DeployData {
 /** The result of the release's deploy as the floor sees it. */
 export type DeployOutcome = ActionResult<DeployData>;
 
-/** The urgent record of a commit (release/records.mjs). */
+/** The urgent record of a commit (release/records.mts). */
 interface UrgentRecord { tag: string; role: string; reason: string; pushed?: boolean }
 
-/** The steps of a deploy the floor drives, handed over by deploy.mjs. */
+/** The steps of a deploy the floor drives, handed over by deploy.mts. */
 export interface UrgentRun {
   render(): Promise<{ releaseId: string }>;
   openStore(): Promise<{ current(): Promise<string> }>;
@@ -141,7 +141,7 @@ async function guard(ctx: StackContext, config: DeployConfig, options: FloorOpti
 }
 
 /**
- * The `first-start` step of an urgent first start (between the hold deploy and the real one): the shared step (db-phases.mjs) against the database
+ * The `first-start` step of an urgent first start (between the hold deploy and the real one): the shared step (db-phases.mts) against the database
  * the operator's --db-url-env names, reached inside its container. Returns { ok, lines, code } where code names the failure.
  */
 function firstStartStep(ctx: StackContext, config: DeployConfig, options: FloorOptions, f: FloorDeps): Promise<FirstStartStepResult> {

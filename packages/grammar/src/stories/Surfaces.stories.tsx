@@ -17,7 +17,7 @@ export default meta;
 type Story = StoryObj;
 
 /**
- * Where the name sits follows the card's kind (ruling card-label-by-kind): a card that heads a section carries its label
+ * Where the name sits follows the card's kind: a card that heads a section carries its label
  * outside the material, in both families, flush with the card edge; a tile carries its name inside, beside its mark.
  */
 export const SurfaceCardLabelByKind: Story = {
@@ -228,7 +228,7 @@ export const SoftSurfaceCard: Story = {
 };
 
 /**
- * The accent corner (ruling accent-corner): one logical corner of a card's face or a media viewport at the Common
+ * The accent corner: one logical corner of a card's face or a media viewport at the Common
  * accent radius `--grammar-accent-corner`, the others at the family's surface radius.
  */
 export const AccentCorner: Story = {
@@ -265,7 +265,7 @@ export const AccentCorner: Story = {
 };
 
 /**
- * Freestyle (ruling grammar-freestyle-region): the sanctioned escape hatch. It fills its host, adds no paint of its own,
+ * Freestyle: the sanctioned escape hatch. It fills its host, adds no paint of its own,
  * stamps its reason, and the app's own divs and CSS inside it are the app's.
  */
 export const Freestyle: Story = {

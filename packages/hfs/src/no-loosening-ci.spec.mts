@@ -1,4 +1,4 @@
-// Owner ruling 2026-10-22: a loosening is red. The managed CI, the hooks and the package scripts render no escape hatch (continue-on-error, a pass-empty or
+// A loosening is red. The managed CI, the hooks and the package scripts render no escape hatch (continue-on-error, a pass-empty or
 // threshold-less test flag, an upload that tolerates failure, a Sonar step that skips without its token, an `|| true`), Sonar and Codecov are required with no
 // `optional` setting, and the local release gate runs every row the managed CI runs whether or not release.requireCi waits for the candidate CI.
 import test from 'node:test';

@@ -1,5 +1,5 @@
 // proves: HFS_EDITION_FORBIDDEN_PRESENT@lite HFS_EDITION_FORBIDDEN_PRESENT@full
-// The realtime pattern serves the same three doors in both editions (ruling:R212/case-7): the GraphQL subscription door and its dto are
+// The realtime pattern serves the same three doors in both editions (R212): the GraphQL subscription door and its dto are
 // legal in lite as in full, the edition checker accepts them with a graphql-ws dependency, and graphql-ws and graphql-subscriptions stay owned by platform/realtime.
 import test from 'node:test';
 import assert from 'node:assert/strict';

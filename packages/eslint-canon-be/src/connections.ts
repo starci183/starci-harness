@@ -44,7 +44,7 @@ const FUNCTION_LIKE = new Set(["ArrowFunctionExpression", "FunctionExpression", 
 /** Whether a file may build connections: the platform database capability and the cli app. */
 const mayBuildConnections = (hfs: HfsView, file: string) => inDatabaseCapability(hfs, file) || inCli(hfs, file)
 
-/** `new DataSource(` also in the test world (`src/tests/world`), which owns the shared test infrastructure (owner ruling 2026-09-30). */
+/** `new DataSource(` also in the test world (`src/tests/world`), which owns the shared test infrastructure. */
 const mayConstructDataSource = (hfs: HfsView, file: string) => mayBuildConnections(hfs, file) || inTestWorld(hfs, file)
 
 /** The connection whose name a string literal spells, or undefined. */

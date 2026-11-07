@@ -1,5 +1,5 @@
-// bypass-markers.mjs - HFS_BYPASS_MARKER (R303): a product repository holds no bypass of a check. Whatever makes a check pass without
-// satisfying it is refused wherever it is written (owner ruling loosening-always-red: a bypass is always red):
+// bypass-markers.mts - HFS_BYPASS_MARKER (R303): a product repository holds no bypass of a check. Whatever makes a check pass without
+// satisfying it is refused wherever it is written (a bypass is always red):
 //   - an inline disable of any tool (eslint, stylelint, tslint, prettier, biome), a type-check escape (the ts-ignore, ts-expect-error and
 //     ts-nocheck directives), a Sonar exclusion comment, an istanbul / c8 / v8 coverage ignore;
 //   - a skipped, focused or todo test, or a skip option (a front end has no specs, but its source is still judged for the inline disables);
@@ -7,8 +7,8 @@
 //     `fail_ci_if_error: false`, `--passWithNoTests`;
 //   - a gate configuration relaxed: a coverage target or threshold below the canon, a relaxing switch, a disabled ESLint rule, a strictness option
 //     turned off, an exception file the design-truths manifest does not list.
-// The tree is read as it stands, by the library of the runtime's own loosening check (scripts/lib/loosening-state.mjs, knowledge/hfs/design-truths.yaml);
-// `starci app check --staged` (the pre-commit hook) reads the staged bypass markers with the same table (scripts/lib/bypass-markers.mjs). The ignore and
+// The tree is read as it stands, by the library of the runtime's own loosening check (scripts/lib/loosening-state.mts, knowledge/hfs/design-truths.yaml);
+// `starci app check --staged` (the pre-commit hook) reads the staged bypass markers with the same table (scripts/lib/bypass-markers.mts). The ignore and
 // exclude lists of a managed config are the managed-file drift's (HFS_MANAGED_FILE_DRIFT).
 import fs from 'node:fs';
 import { parseYaml } from '../../../engine/yaml.mjs';

@@ -20,7 +20,6 @@ provenance:
     - knowledge/hfs/README.md
     - knowledge/hfs/slots.yaml
     - knowledge/hfs/rules.yaml
-    - owner decision 2026-10-02 (Kafka only, transactional outbox, typed event classes)
     - https://microservices.io/patterns/data/transactional-outbox.html
   limitations: |-
     Static checks prove who may publish, with which transaction, and that a consumer is a named door that forwards the event
@@ -288,8 +287,8 @@ files:
     role: "The consumed event's e2e flow; titles event-bus/<scenario>: ... prove the pattern."
     spec: event-bus/atomic-with-transaction, event-bus/relay-only-after-commit, event-bus/redelivery-then-dead-letter, event-bus/duplicate-delivery-is-a-noop
     rules: [BE_PATTERN_SPEC_MISSING]
-# Edition lite (R212): the same ports and rules, a self-hosted Postgres adapter behind them. ruling:lite-pgmq-bus-bullmq-jobs makes pgmq the
-# lite event bus and keeps jobs on BullMQ (platform/queue).
+# Edition lite (R212): the same ports and rules, a self-hosted Postgres adapter behind them. pgmq is the
+# lite event bus and jobs stay on BullMQ (platform/queue).
 liteAdapter:
   summary: >-
     Under lite the event bus keeps typed events, the vendored contract, publish(event, tx, correlationId) in the domain transaction,

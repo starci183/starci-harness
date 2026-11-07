@@ -1,6 +1,6 @@
 // The deploy block of application-stacks.schema.yaml accepts what the deploy config parser and the secret verbs write:
 // `deploy.remote.serverRecipient` (recorded by `app secret server-key --execute`) and `deploy.secrets.settings` as one
-// `{ member, keys }` or a list of them (stack-deploy-config.mjs secretSettings).
+// `{ member, keys }` or a list of them (stack-deploy-config.mts secretSettings).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

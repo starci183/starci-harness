@@ -1,4 +1,4 @@
-// sleep-sync.mjs — the blocking wait synchronous code (lock polls, retry backoff) uses.
+// sleep-sync.mts — the blocking wait synchronous code (lock polls, retry backoff) uses.
 
 /**
  * Test seam: STARCI_SLEEP_SCALE (a number >= 0, default 1) multiplies every wait. A spec that drives a real

@@ -111,7 +111,7 @@ export const basePropsAtom = defineRule({
       member:
         "`{{key}}` is not part of the pure contract. A pure half takes `shape`, `props` and `on`{{children}}.",
       renamed:
-        "`state` is the retired name of the drawn shape: rename it `shape` (owner ruling fe-shape-not-state).",
+        "The drawn shape is named `shape`, never `state`: rename it `shape`.",
     },
   },
   create(context) {

@@ -1,4 +1,4 @@
-// draw-dna-selector.mjs - the attribute parts of a CSS compound selector, for draw-dna's matching of <style> rules.
+// draw-dna-selector.mts - the attribute parts of a CSS compound selector, for draw-dna's matching of <style> rules.
 
 // An attribute selector after its '[': the name, then (when a value follows) the operator and the value up to the first ']'.
 const ATTRIBUTE_NAME_RX = /[\w:-]+/y;

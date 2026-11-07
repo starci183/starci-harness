@@ -1,4 +1,4 @@
-// secret-standard.mjs - the app secrets standard (ruling app-secrets-one-standard, contexts/project/stacks.md
+// secret-standard.mts - the app secrets standard (contexts/project/stacks.md
 // PROJECT-STACKS-5) judged and repaired: `audit` names every deviation, `migrate` moves a member to `<member>.enc.yaml` sealed
 // to its environment's recipients (or merges it into an existing member), `split` divides a member into one member per provider
 // or per the owner's --group. A member every key of which the stack declares in it is a deliberate group, not a mix. The dry run
@@ -110,11 +110,11 @@ function declaredKeys(spec: EnvironmentSpec | undefined, member: string, keys: s
   return entries.filter((entry) => entry?.key !== undefined && memberOfEntry(entry) === member).map((entry) => entry.key as string);
 }
 
-/** The keys of the one sealed SSH member `deploy.remote.sealed` names (stack/remote.mjs): the deploy transport reads exactly these. */
+/** The keys of the one sealed SSH member `deploy.remote.sealed` names (stack/remote.mts): the deploy transport reads exactly these. */
 export const SSH_GROUP: readonly string[] = Object.freeze(["VPS_HOST", "VPS_USER", "privateKey", "knownHosts"]);
 
 /**
- * The two transport members of an environment (ruling ci-transport-one-home): the operator's member(s) `deploy.remote.sealed` names and
+ * The two transport members of an environment: the operator's member(s) `deploy.remote.sealed` names and
  * the CI member `vps-ci`, two identities by design, neither of which reaches an app container. Only the SSH_GROUP keys may appear in both.
  */
 export function sshTransportMembers(spec: EnvironmentSpec | undefined): Set<string> {

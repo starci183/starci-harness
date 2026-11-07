@@ -386,7 +386,7 @@ test('verify sanitizes an unexpected decrypt failure without printing its messag
   privateAbsent(result, [privateMessage]);
 });
 
-// Ruling ci-transport-one-home: an environment has two SSH transports by design, the operator's member named by deploy.remote.sealed and the CI member
+// An environment has two SSH transports by design, the operator's member named by deploy.remote.sealed and the CI member
 // vps-ci. They never reach an app container, so ENV_DUPLICATE exempts exactly the SSH group keys in exactly those two members of that environment.
 const STACKS_VPS = 'schema: starci/application-stacks@1\nenvironments:\n  production:\n    deploy:\n      remote:\n        sealed: vps\n';
 const TRANSPORT = ['VPS_HOST', 'VPS_USER'];

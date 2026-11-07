@@ -91,7 +91,7 @@ export const LeadingSlotSizes: Story = {
     ),
 }
 
-/** owner:item-description-one-line: the same preview defaults to one line and can opt into two or three. */
+/** A row's description is one line: the same preview defaults to one line and can opt into two or three. */
 export const PreviewLinesAndUnread: Story = {
     render: () => (
         <G.NavLandmark label="Preview line limits" layout="scrolling" style={{ width: "20rem", maxWidth: "100%" }}>

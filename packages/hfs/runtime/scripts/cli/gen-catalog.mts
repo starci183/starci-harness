@@ -1,7 +1,7 @@
-// gen-catalog.mjs - writes packages/cli/src/catalog.generated.mjs, the command table the documentation check judges a `starci ...` text against
-// (scripts/hfs/doc-commands.mjs checkCommand; rules/doc-fresh.mjs HFS_DOC_COMMAND_UNKNOWN), from the one owner of every verb: the registry of
+// gen-catalog.mts - writes packages/cli/src/catalog.generated.mjs, the command table the documentation check judges a `starci ...` text against
+// (scripts/hfs/doc-commands.mts checkCommand; rules/doc-fresh.mts HFS_DOC_COMMAND_UNKNOWN), from the one owner of every verb: the registry of
 // the starci CLI (cli/src/registry.ts ALL_VERBS, built to cli/dist/registry.js). Run it from the harness repository after the CLI is built:
-//   node packages/hfs/runtime/scripts/cli/gen-catalog.mjs [--registry <registry.js>] [--check]
+//   node packages/hfs/runtime/scripts/cli/gen-catalog.mts [--registry <registry.js>] [--check]
 // --check writes nothing and exits 1 when the committed catalog differs from the registry's.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -27,7 +27,7 @@ const GLOBAL = [
 
 const TYPES: Record<string, string> = { boolean: 'boolean', string: 'string', list: 'list' };
 
-/** One registry verb as the catalog entry validate-args.mjs reads: its options, its positional slots in order, its editions. */
+/** One registry verb as the catalog entry validate-args.mts reads: its options, its positional slots in order, its editions. */
 function entryOf(verb: RegistryVerb): CatalogEntry {
   const specs = Object.entries(verb.flags);
   return {

@@ -15,7 +15,7 @@ provenance:
     - knowledge/patterns/fe/index.yaml
     - knowledge/ui/composition/layout.yaml
   limitations: |-
-    The owner will refine these rules. Static checks prove source composition only; keyboard behavior,
+    Static checks prove source composition only; keyboard behavior,
     scrolling, responsive visibility, rendered geometry and menu contents require inspection of the running shell.
 rules:
   - id: FE-APP-SHELL-1
@@ -77,7 +77,7 @@ rules:
           choice clear and names each supported language by its autonym. The theme control exposes its
           current setting accessibly. Notifications expose an unread count and open their own region.
           The account control shows the user's uploaded identity or the selected Grammar's bundled DiceBear
-          initials fallback (owner:avatar-default-dicebear-initials): the first and last words of the name
+          initials fallback: the first and last words of the name
           supply its letters, and the user id seeds its colour, falling back to the name when no id exists.
       - id: case-2
         when: The account control opens its menu

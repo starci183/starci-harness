@@ -1,4 +1,4 @@
-// remote.mjs - how the stack verbs reach the Swarm manager: the ssh runner, remote command quoting, the CI transport setup.
+// remote.mts - how the stack verbs reach the Swarm manager: the ssh runner, remote command quoting, the CI transport setup.
 //   sshRunner(ctx, config, { sshCmd })  -> run(command, { input }) -> { status, stdout, stderr }   (`.cleanup()`, `.notes`, `.argv(command)`:
 //                                          the { command, args, env } a caller spawns itself to stream the remote stdout)
 //   transports, in this order: --ssh-cmd "ssh vps" (no shell) -> the owner-machine session opened from the sealed members

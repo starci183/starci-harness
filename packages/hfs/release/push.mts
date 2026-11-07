@@ -1,9 +1,9 @@
-// push.mjs - `starci app release push`: sends the default branch and the release tag to the remote in ONE atomic push through the repository's own
+// push.mts - `starci app release push`: sends the default branch and the release tag to the remote in ONE atomic push through the repository's own
 // pre-push hook (never --no-verify). The explicit release command requires an annotated release tag on HEAD and the L4 record of the gate for that
 // head and tag. `git push --dry-run --atomic` always runs first (the hook's verdict is the proof) and any failure refuses the push.
 // With --execute the exact sha first goes to its candidate ref refs/heads/release/candidate-<version> and the push waits for the ci.yml run of that sha
-// (candidate-ci.mjs, OWNER RULING candidate-ci 2026-10-18): only a green candidate moves the branch and the tag.
-// That wait runs only for an app that sets release.requireCi: true; the default false (owner ruling release-require-ci-per-project) pushes after the
+// (candidate-ci.mts): only a green candidate moves the branch and the tag.
+// That wait runs only for an app that sets release.requireCi: true; the default false pushes after the
 // local gate and the dry run alone and says so. The tag, the L4 record and the dry run are never skipped.
 import fs from 'node:fs';
 import path from 'node:path';

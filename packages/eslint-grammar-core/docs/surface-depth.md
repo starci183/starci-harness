@@ -3,8 +3,8 @@
 Law module: `surface-depth.ts`. Catalogue: R340 FE_RAISED_SURFACE_IN_SURFACE.
 
 The Grammar draws one depth, raised, and no nested edge: a `SurfaceCard` inside another `SurfaceCard`, inside a
-`Pane surface`, or inside a `Dialog`, `Drawer`, `AlertDialog` or `Popover` is refused (owner decision: surface in surface
-is banned totally, dialogs and drawers included). Development throws the same refusal from the Grammar itself; this rule is
+`Pane surface`, or inside a `Dialog`, `Drawer`, `AlertDialog` or `Popover` is refused: a surface
+never sits in a surface, dialogs and drawers included. Development throws the same refusal from the Grammar itself; this rule is
 its same-file half and R356 closes it across files.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline. It applies to product

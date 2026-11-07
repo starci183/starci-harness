@@ -1,5 +1,5 @@
-// fe-stack.mjs - FE_STACK_FORBIDDEN: a front end depends only on the canonical library of each front-end concern (owner ruling
-// 2026-10-13, lite = full). The catalog knowledge/hfs/fe-stack.yaml lists, per concern, the canonical packages and the alternatives
+// fe-stack.mts - FE_STACK_FORBIDDEN: a front end depends only on the canonical library of each front-end concern
+// (lite = full). The catalog knowledge/hfs/fe-stack.yaml lists, per concern, the canonical packages and the alternatives
 // it `forbids`; a manifest that declares a forbidden package is a finding naming the concern and its canonical packages.
 //   - the fe side: every package.json of the side (the apps' and the packages' manifests), every dependency section;
 //   - the app root: the one package.json carries both sides, so a forbidden package there is a finding unless the back end owns it

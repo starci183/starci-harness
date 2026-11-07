@@ -1,4 +1,4 @@
-// assets.mjs - R282: small build-time binaries belong in be.assets; user media, model weights and datasets do not belong in git.
+// assets.mts - R282: small build-time binaries belong in be.assets; user media, model weights and datasets do not belong in git.
 // The owner assets policy has no numeric cap yet. 512000 bytes follows the existing repo.docs-media budget in slots.yaml;
 // ruleParams.be.assets {bytes (or maxBytes), extensions} supplies a manifest's explicit cap and build-time extension allowlist.
 import fs from 'node:fs';

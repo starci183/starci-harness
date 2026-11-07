@@ -131,8 +131,8 @@ test("FE_TIER_DIRECTION: an import goes only to a tier the slot matrix allows", 
             "apps/web/src/modules/config/index.ts": "export const c = 1\n",
             "apps/web/src/modules/api/index.ts": "export const call = 1\n",
             // a hook reaches the transport and another domain (through its index)
-            // only hooks/swr imports an operation of the transport (slots.yaml fe tier matrix, mayImportSlots; owner decision
-            // 2026-10-14); a domain hook reaches data through the swr wrapper and another domain through its index
+            // only hooks/swr imports an operation of the transport (slots.yaml fe tier matrix,
+            // mayImportSlots); a domain hook reaches data through the swr wrapper and another domain through its index
             "apps/web/src/hooks/swr/index.ts": "import { call } from '../../modules/api'\nexport const useCall = () => call\n",
             "apps/web/src/hooks/shop/index.ts": "import { useCall } from '../swr'\nimport { useCart } from '../cart'\nexport const useShop = [useCall, useCart]\n",
             "apps/web/src/hooks/orders/index.ts": "import { call } from '../../modules/api'\nexport const useOrders = call\n",

@@ -1,4 +1,4 @@
-// An in-container target (db/postgres.mjs inContainer, the first start of stack deploy --urgent): the client tool runs through docker exec in
+// An in-container target (db/postgres.mts inContainer, the first start of stack deploy --urgent): the client tool runs through docker exec in
 // the database's own container against 127.0.0.1, each -f file is copied in first, and the password travels on stdin, never in argv or env.
 import test from 'node:test';
 import assert from 'node:assert/strict';

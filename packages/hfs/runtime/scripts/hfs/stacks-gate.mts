@@ -223,7 +223,7 @@ const checkStackEntry=(entry: fs.Dirent,environmentNames: Set<string>,add: Add,{
   if(!entry.isDirectory()||entry.isSymbolicLink())return;
   if(entry.name==='tmp'){add('STACKS_SCRATCH_IN_CANONICAL',`${STACKS_DIR}/tmp`,'scratch belongs in the OS temp directory, not a tracked .starcistacks/tmp');return;}
   if(entry.name==='k8s')return;
-  if(RESERVED_STACK_FOLDERS.has(entry.name))return; // the check cache, the service image folders and the shared seed level (rules/stacks.mjs): reserved, never an environment
+  if(RESERVED_STACK_FOLDERS.has(entry.name))return; // the check cache, the service image folders and the shared seed level (rules/stacks.mts): reserved, never an environment
   if(lite&&liteCustodyDirectory(path.join(stacksRoot,entry.name)))return;
   if(!environmentNames.has(entry.name))add('STACKS_UNDECLARED_ENVIRONMENT',`${STACKS_DIR}/${entry.name}`,`${entry.name} is not an environment the declaration admits; either the declaration admits it or it is not an environment`);
 };
@@ -274,7 +274,7 @@ const checkSecret=(secret: Parsed,at: string,{envDir,root,tracked,secretNames,ad
   if(!object(secret))return;
   if(secretNames.has(secret.name))add('secret-duplicate',`${at}.name`,'secret names must be unique');else secretNames.add(secret.name);
   const plain=nonempty(secret.where)?resolvedPath(envDir,secret.where):null;
-  // The member of `where` is `<where>.enc.yaml`, or a legacy `<where>.enc` (scripts/lib/sealed-member.mjs); an entry naming `key`
+  // The member of `where` is `<where>.enc.yaml`, or a legacy `<where>.enc` (scripts/lib/sealed-member.mts); an entry naming `key`
   // declares that one key of the member, which its envelope must hold.
   const member=nonempty(secret.where)?[`${secret.where}.enc.yaml`,`${secret.where}.enc`].map(name=>resolvedPath(envDir,name)).find(file=>file&&regular(file,{root:envDir})):null;
   const enc=member??(nonempty(secret.where)?resolvedPath(envDir,`${secret.where}.enc.yaml`):null);

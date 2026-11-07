@@ -1,7 +1,7 @@
-// app-extension-findings.mjs - the two ways an app extends the harness's law (PROJECT-LINT-3), judged by `starci app check` at the app root:
-//   R381 HFS_RULE_PACK_INVALID   the rule packs hfs.json `rulePacks` names (scripts/lib/rule-packs.mjs): a refused pack, a rule that throws or answers
+// app-extension-findings.mts - the two ways an app extends the harness's law (PROJECT-LINT-3), judged by `starci app check` at the app root:
+//   R381 HFS_RULE_PACK_INVALID   the rule packs hfs.json `rulePacks` names (scripts/lib/rule-packs.mts): a refused pack, a rule that throws or answers
 //                                no path; and the findings of every sound machine rule of a pack, under the pack rule's own code and severity
-//   R382 HFS_PACKAGE_SLOT_*      the slot manifest a root workspace package declares for its own tree (scripts/hfs/package-slots.mjs)
+//   R382 HFS_PACKAGE_SLOT_*      the slot manifest a root workspace package declares for its own tree (scripts/hfs/package-slots.mts)
 // A pack only adds: its codes never reuse a code of modules/kernel/failure-codes.yaml, so no pack finding stands in for, or hides, a harness one.
 import { rootPackageFoldersOf } from '../coverage-scope.mjs';
 import { PACKAGE_SLOTS_FILE, packageSlotProblems, readPackageSlots } from '../package-slots.mjs';

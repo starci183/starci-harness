@@ -1,5 +1,5 @@
 // A migration already on the base branch is immutable (R213), so its destructive-DDL (R259) and dynamic-DDL findings are known items while
-// it stays byte-identical there; an owner ruling (hfs.json db.destructiveRulings) accepts the exact objects of one migration only while the
+// it stays byte-identical there; an entry of hfs.json db.destructiveRulings accepts the exact objects of one migration only while the
 // proof a contract migration gets finds them unreferenced. The fixture reproduces the landed identity-sessions migration of a product: five
 // dropped account-door functions and a DO block that drops a constraint by name.
 import test from 'node:test';
@@ -96,12 +96,12 @@ test('a named base is the ref the landed file is compared with', (t) => {
   assert.match(String(withLandedMigrationsKnown([{ ...DYNAMIC, message: undefined }], { repoRoot: root, base: 'trunk' })[0]?.message), /^ \(known: /u);
 });
 
-test('an owner ruling accepts exactly its objects while they are unreferenced, and is unproven otherwise', (t) => {
+test('a db.destructiveRulings entry accepts exactly its objects while they are unreferenced, and is unproven otherwise', (t) => {
   const accepted = app(t, { 'README.md': 'app\n' }, { [NEW]: SESSIONS_SQL, 'hfs.json': ruling(NEW, DOORS.map((door) => `public.${door}`)) });
   assert.deepEqual(destructive(accepted), []);
   const partial = app(t, { 'README.md': 'app\n' }, { [NEW]: SESSIONS_SQL, 'hfs.json': ruling(NEW, ['public.be_auth_open_session', 'public.be_auth_not_dropped']) });
   const partialFindings = destructive(partial);
-  assert.deepEqual(partialFindings.filter((finding) => finding.code === 'DB_MIGRATION_DESTRUCTIVE').length, 4, 'an object the ruling does not name keeps blocking');
+  assert.deepEqual(partialFindings.filter((finding) => finding.code === 'DB_MIGRATION_DESTRUCTIVE').length, 4, 'an object the entry does not name keeps blocking');
   assert.match(String(partialFindings.find((finding) => finding.code === 'DB_DESTRUCTIVE_RULING_UNPROVEN')?.message), /names public\.be_auth_not_dropped .* which the migration does not destroy/u);
   const referenced = app(t, { 'README.md': 'app\n' }, {
     [NEW]: SESSIONS_SQL,
@@ -110,7 +110,7 @@ test('an owner ruling accepts exactly its objects while they are unreferenced, a
   });
   const unproven = destructive(referenced);
   assert.deepEqual(unproven.map((finding) => [finding.code, finding.object]), [['DB_DESTRUCTIVE_RULING_UNPROVEN', 'public.be_auth_close_session']]);
-  assert.match(String(unproven[0]?.message), /still references it; the ruling holds only while its targets are unreferenced/u);
+  assert.match(String(unproven[0]?.message), /still references it; the entry holds only while its targets are unreferenced/u);
   const stale = app(t, { 'README.md': 'app\n' }, { 'hfs.json': ruling('db/migrations/20261112000000_gone.sql', ['public.x']) });
   assert.deepEqual(destructive(stale).map((finding) => [finding.code, finding.path]), [['DB_DESTRUCTIVE_RULING_UNPROVEN', 'hfs.json']]);
   const contract = 'db/migrations/20261111000000_old-doors_contract_drop.sql';
@@ -118,7 +118,7 @@ test('an owner ruling accepts exactly its objects while they are unreferenced, a
   assert.deepEqual(destructive(contracted), [], 'a contract migration is judged as a contract migration');
 });
 
-test('a ruled migration new since the previous release is proven against that release, for its ruled objects only', (t) => {
+test('an accepted migration new since the previous release is proven against that release, for its accepted objects only', (t) => {
   const source = 'be/src/modules/domain/identity/persistence/sessions.sql.ts';
   const root = app(t, { 'README.md': 'app\n', [source]: `export const CLOSE = ${JSON.stringify('select public.be_auth_close_session($1)')};\n` });
   run(root, 'tag', 'v1.0.0');

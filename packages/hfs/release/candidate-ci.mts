@@ -1,11 +1,11 @@
-// candidate-ci.mjs - the candidate CI of `starci app release push` (OWNER RULING candidate-ci, 2026-10-18: "never again have main receive a release whose CI is
-// red, with the owner confirming afterwards"). The push sends the exact release sha to refs/heads/release/candidate-<version> first (the managed ci.yml triggers on
+// candidate-ci.mts - the candidate CI of `starci app release push`: main never receives a release whose CI is
+// red. The push sends the exact release sha to refs/heads/release/candidate-<version> first (the managed ci.yml triggers on
 // release/candidate-*), waits for the ci.yml run of THAT sha, and moves the default branch and the tag only when it is green:
 //   green     the newest non-cancelled run of the sha concluded success and none of its jobs was skipped
-//   red       "candidate CI red" (a run or a job that concluded skipped is red, never a pass: owner ruling 2026-10-22, a skip is a loosening) with the run URL and the failing jobs and steps; nothing reaches the default branch. The candidate ref stays for diagnosis
+//   red       "candidate CI red" (a run or a job that concluded skipped is red, never a pass: a skip is a loosening) with the run URL and the failing jobs and steps; nothing reaches the default branch. The candidate ref stays for diagnosis
 //   timeout   "candidate CI timeout": no run listed within the grace (a queued run is listed), or it did not end within the wait
 //   unknown   candidate CI unknown: GitHub could not be read to the end; a release never proceeds blind
-// There is no override: a red candidate never passes (owner ruling 2026-10-22: a loosening is always red).
+// There is no override: a red candidate never passes (a loosening is always red).
 // Every process goes through ctx.spawn (git, gh); the wait through ctx.sleep and ctx.now.
 import type { SpawnResult, VerbContext } from './index.mjs';
 

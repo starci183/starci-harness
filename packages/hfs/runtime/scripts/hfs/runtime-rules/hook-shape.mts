@@ -1,4 +1,4 @@
-// hook-shape.mjs - RT_HOOK_SHAPE (knowledge/hfs/rules.yaml, gate runtime): the app hook templates keep the gate model.
+// hook-shape.mts - RT_HOOK_SHAPE (knowledge/hfs/rules.yaml, gate runtime): the app hook templates keep the gate model.
 //   pre-commit  L0 only: no typecheck and no test run (`test:` scripts, npm test, jest, vitest, a spec). Types and the targeted specs
 //               belong to the op gate.
 //   pre-push    the bundled push gate owns fast-forward main, annotated tags and the secret scan, then `starci deps check` the

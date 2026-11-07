@@ -1,4 +1,4 @@
-// ast-walks.mjs - AST walks the architecture checkers share (moved out of typescript.mjs, which keeps the program loading and module resolution).
+// ast-walks.mts - AST walks the architecture checkers share (moved out of typescript.mts, which keeps the program loading and module resolution).
 import type {
   Declaration, Decorator, Expression, Identifier, Node, PrivateIdentifier, Program, SourceFile,
   StringLiteralLike, Symbol as TsSymbol, TypeChecker,

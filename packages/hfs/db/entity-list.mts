@@ -1,4 +1,4 @@
-// entity-list.mjs - where an app keeps its TypeORM entity list, read by `starci app db drift` and by the release gate that runs it.
+// entity-list.mts - where an app keeps its TypeORM entity list, read by `starci app db drift` and by the release gate that runs it.
 import fs from 'node:fs';
 import path from 'node:path';
 

@@ -1,6 +1,6 @@
 // starci app add service | spec - the one way a `*.service.ts` and its unit spec come into being.
 //
-// Unit test standard (owner-locked): only `*.service.ts` files are unit-tested, each with exactly one colocated
+// Unit test standard: only `*.service.ts` files are unit-tested, each with exactly one colocated
 // `<name>.service.spec.ts`, built with `Test.createTestingModule({ providers }).compile()` and `moduleRef.get(Service)`,
 // with the providers equal to the constructor dependencies and every double taken from `@starci/jest-preset`. This module
 // writes that spec: it reads the service constructor with the repository's own TypeScript compiler API and PRE-FILLS one
@@ -362,7 +362,7 @@ const writeNew = (repoRoot: string, relative: string, text: string): string => {
 
 /** `starci app add spec be/<file>.service.ts` at the app root: writes the spec skeleton of an existing service; returns the created app-relative paths. */
 export function newSpec({ repoRoot: appRoot, file, ts, manifest = loadSlotManifest() }: { repoRoot: string, file: string, ts?: typeof TypeScript | undefined, manifest?: SlotManifest }): string[] {
-  // A unit spec belongs to both editions (ruling:R212/case-1, amended by ruling:R212/case-4): a lite back end keeps full's unit specs.
+  // A unit spec belongs to both editions (R212): a lite back end keeps full's unit specs.
   const { beRoot: repoRoot } = backEndOf(appRoot, manifest);
   const relative = belowBackEnd(file);
   if (!relative.endsWith('.service.ts')) throw new ScaffoldError('HFS_NEW_NOT_A_SERVICE', `${relative} is not a *.service.ts file: only services have a unit spec`);
@@ -376,7 +376,7 @@ export function newSpec({ repoRoot: appRoot, file, ts, manifest = loadSlotManife
 
 /** `starci app add service be/<dir> <name> [--inject ...]` at the app root: writes the service and its spec skeleton; returns the created app-relative paths. */
 export function newService({ repoRoot: appRoot, dir, name, inject = [], ts, manifest = loadSlotManifest() }: { repoRoot: string, dir: string, name: string, inject?: readonly string[], ts?: typeof TypeScript | undefined, manifest?: SlotManifest }): string[] {
-  // The service and its unit spec belong to both editions (ruling:R212/case-1, amended by ruling:R212/case-4).
+  // The service and its unit spec belong to both editions (R212).
   const { beRoot: repoRoot } = backEndOf(appRoot, manifest);
   if (!SERVICE_NAME.test(name)) throw new ScaffoldError('HFS_NEW_NAME_INVALID', `the service name ${name} must be kebab-case (member-profile), without the .service suffix`);
   const relative = path.posix.join(belowBackEnd(dir), `${name}.service.ts`);

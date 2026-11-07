@@ -2,7 +2,7 @@ import { machineOpenMethods, pragma } from './machine-open.mjs';
 import { openReadOnlyDb } from './ref-value.mjs';
 import type { SqlDb, SqlRow, SqlRunResult } from './sqlite-types.mjs';
 import type { MachineCorruptError, RawConnection, Recovery, ResilientDb } from './machine-connection.mjs';
-// engine/db/machine.mjs — the ONE writer of machine.sqlite (DBTREE.sql Part B, schema 'starci/machine@1', user_version MACHINE_VERSION).
+// engine/db/machine.mts — the ONE writer of machine.sqlite (DBTREE.sql Part B, schema 'starci/machine@1', user_version MACHINE_VERSION).
 //
 // machine.sqlite is the host's single operational store: the ledger registry, the Supervisor (sup_*), the engine
 // reconciler (process_runs, engine_leader, leader_history, schedules, engine_actions, controller_modes, sla_episodes),
@@ -18,7 +18,7 @@ import type { MachineCorruptError, RawConnection, Recovery, ResilientDb } from '
 //              is the reconciler engine LEADER: openMachine({checkpointer:true}) + checkpoint({name, holder, epoch}) on its
 //              60 s timer, a PASSIVE checkpoint fenced on the engine_leader row (a standby or a draining engine never
 //              checkpoints). SQLite 3.50.4 (Node 25.2.1) is in the WAL-reset bug range 3.7.0–3.51.2: two checkpoints close
-//              together while another connection resets the WAL can drop a committed transaction (incident 2026-09-28).
+//              together while another connection resets the WAL can drop a committed transaction.
 //   writes   : BEGIN IMMEDIATE transactions (handle.transaction) or single autocommit statements, busy_timeout 15000.
 //   corrupt  : a transient SQLITE_CORRUPT / SQLITE_NOTADB is retried after reopening the connection (CORRUPT_RETRY_DELAYS_MS):
 //              an autocommit statement alone, a transaction as a whole. A retry that recovers is a machine_logs warn row;
@@ -136,8 +136,7 @@ export const CONTROLLERS = Object.freeze(['job', 'workflow', 'resource', 'host',
 /**
  * Overrides the per-host state base itself (machine.sqlite, projects/, archive/), the one seam starciLocalRoot reads. Debug probes and
  * throwaway repos point this at a temp directory so they never touch the real
- * <runtime root>/.runtime and leak fake ledgers/workflows into it (2026-09-30 incident: probe-*, dbg-ask-*, dbg-env*
- * repos left six fake-worker ledgers in the live store). STARCI_PROJECTS_ROOT (ledger-db.mjs) and
+ * <runtime root>/.runtime and leak fake ledgers/workflows into it. STARCI_PROJECTS_ROOT (ledger-db.mjs) and
  * STARCI_TEST_MACHINE_FILE (TEST_REGISTRY_ENV) are narrower overrides that still win over this one when set.
  */
 export { LOCAL_ROOT_ENV, starciLocalRoot } from '../runtime-root.mjs';
@@ -364,7 +363,7 @@ function makeHandle(openRaw: () => RawConnection, { file, env, now, live, readOn
 // ---------------------------------------------------------------------------------------------------------------------
 /** Store bytes (Buffer | string | file path via {file}) in the blob store and record the blobs row. Returns the sha. */
 function putMachineBlob(m: MachineCore, content: unknown, { mediaType = 'application/octet-stream', pinned = false }: { mediaType?: string; pinned?: boolean } = {}): string {
-  // Every blob is redacted before it is stored (scripts/lib/redact.mjs): text media 'v1', anything else 'binary'.
+  // Every blob is redacted before it is stored (scripts/lib/redact.mts): text media 'v1', anything else 'binary'.
   const raw = Buffer.isBuffer(content) ? content : Buffer.from(typeof content === 'string' ? content : JSON.stringify(content));
   const { bytes, redaction } = redactBytes(raw, mediaType);
   const { sha, size, mediaType: stored } = storeBlob(bytes, { mediaType });

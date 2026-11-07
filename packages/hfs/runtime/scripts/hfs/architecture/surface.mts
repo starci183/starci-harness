@@ -10,7 +10,7 @@ const BE = ['be'];
 const FE = ['fe'];
 const BOTH = ['be', 'fe'];
 
-// `via` names the machine check (the key of its run in index.mjs) when two enforcers share a code; `origin: 'repo'` marks a finding of the
+// `via` names the machine check (the key of its run in index.mts) when two enforcers share a code; `origin: 'repo'` marks a finding of the
 // slot manifest's per-path judgement (hfs-path-findings.mjs) instead of the machine. A finding reaches exactly one rule.
 /** One lint enforcer: the rules.yaml enforcer id, the plugins that run it and the violation codes it owns. */
 export interface LintEnforcer {
@@ -86,7 +86,7 @@ export const LINT_ENFORCERS: readonly LintEnforcer[] = Object.freeze([
   // Package-manifest contract findings stay with app check; only source import bypasses belong to lint.
   enforcer('grammar-entry', FE, ['ARCH_GRAMMAR_EXPORT_BYPASS'], 'Vendor grammar is reached only through its owner entry.'),
   enforcer('i18n-keys', FE, ['FE_I18N_KEYS'], 'Translation keys read by source and keys held by catalogs agree both ways.'),
-  // The per-path judgements of the slot manifest (scripts/hfs/path-findings.mjs), on a tracked TypeScript file.
+  // The per-path judgements of the slot manifest (scripts/hfs/path-findings.mts), on a tracked TypeScript file.
   enforcer('slot-undeclared', BOTH, ['HFS_SLOT_UNDECLARED', 'HFS_SLOT_AMBIGUOUS', 'HFS_SLOT_NOT_ENABLED'], 'A TypeScript file is owned by exactly one slot of the repository.', { origin: 'repo' }),
   enforcer('source-suffix', BE, ['BE_SOURCE_FORM'], 'A source file name is index.ts, main.ts, a migration or <kebab-name>.<suffix>.ts with a suffix of the closed list.', { origin: 'repo' }),
   enforcer('spec-placement', BE, ['BE_SPEC_PLACEMENT'], 'A spec file lives in one of the four test layers and nowhere else.', { origin: 'repo' }),

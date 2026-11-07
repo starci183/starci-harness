@@ -1,4 +1,4 @@
-// jwt-ast.mjs - shared TypeScript-symbol and expression helpers of the identity checks (token verification and the principal).
+// jwt-ast.mts - shared TypeScript-symbol and expression helpers of the identity checks (token verification and the principal).
 // Recognition follows imported declarations and inferred types, never local spelling alone.
 import { unwrapExpression } from '../../lib/ts-analysis.mjs';
 import { accessName as memberName, hasAnyFlag } from '../../lib/ts-ast.mjs';

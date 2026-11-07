@@ -1,4 +1,4 @@
-// event-compact.mjs — the bounded inline view of an event payload, and the one place the event size bound is declared.
+// event-compact.mts — the bounded inline view of an event payload, and the one place the event size bound is declared.
 // A launch admission decision (every candidate with its quota snapshot, the pick record) and an admission refusal grow with the number of
 // candidates, so no event may carry one whole: appendEvent (ledger.mjs) stores the full payload as a blob (events.payload_sha) and keeps this
 // summary inline. Readers that need the whole decision read the blob behind the row's payload_sha.

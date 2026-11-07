@@ -1,4 +1,4 @@
-// read.mjs - what the tree checks of hfs-check.mjs share: one bounded text read and the shape of a finding.
+// read.mts - what the tree checks of hfs-check.mjs share: one bounded text read and the shape of a finding.
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Finding, Parsed } from './rule-types.mjs';

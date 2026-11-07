@@ -335,7 +335,7 @@ const BASE_READS: Readonly<Record<string, string>> = {
     [BY_NOTE_SQL]: sqlRead("SELECT note FROM purchase WHERE note = $1"),
     [BY_CREATED_SQL]: sqlRead("SELECT note FROM purchase WHERE created_at = $1"),
 }
-/** A full entity whose primary key is a column of the entity base it extends (persistence.md BE-PERSISTENCE-3, ruling entity-base). */
+/** A full entity whose primary key is a column of the entity base it extends (persistence.md BE-PERSISTENCE-3). */
 const BASE_ENTITY_FILES = {
     "src/modules/platform/database/index.ts": "export { sql } from './sql';\nexport { UuidAbstractEntity } from './abstract.entity';\n",
     "src/modules/platform/database/abstract.entity.ts": 'import { Column, PrimaryGeneratedColumn } from "typeorm"; export abstract class AbstractEntity { @Column({ name: "created_at", type: "timestamptz", insert: false, update: false }) createdAt!: Date } export abstract class UuidAbstractEntity extends AbstractEntity { @PrimaryGeneratedColumn("uuid", { name: "id" }) id!: string }\n',

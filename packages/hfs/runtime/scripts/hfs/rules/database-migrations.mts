@@ -1,5 +1,5 @@
-// database-migrations.mjs - L02 migration name, UTC ordering and base-branch immutability checks. Git reads go
-// through the runtime API call files, and specs may inject the same small runner contract used by database.mjs.
+// database-migrations.mts - L02 migration name, UTC ordering and base-branch immutability checks. Git reads go
+// through the runtime API call files, and specs may inject the same small runner contract used by database.mts.
 import { lsTree } from '../../api/git/ls-tree.mjs';
 import { mergeBase } from '../../api/git/merge-base.mjs';
 import { show } from '../../api/git/show.mjs';
@@ -543,7 +543,7 @@ function migrationDestructiveObjects(text: string) {
 const CONTRACT_MIGRATION = /_contract_[a-z0-9]+(?:[-_][a-z0-9]+)*\.sql$/;
 
 /**
- * The owner rulings of hfs.json `db.destructiveRulings`, by migration file: the exact objects each may destroy outside a contract migration,
+ * The entries of hfs.json `db.destructiveRulings`, by migration file: the exact objects each may destroy outside a contract migration,
  * held only while the same proof a contract migration gets finds them unreferenced. The declaration shape judges reason and date.
  */
 function destructiveRulings(repoRoot: string): Map<string, ReadonlySet<string>> {
@@ -555,10 +555,10 @@ function destructiveRulings(repoRoot: string): Map<string, ReadonlySet<string>> 
   return rulings;
 }
 
-/** A ruled object is accepted while no be/src source references it; a reference makes the ruling unproven. */
+/** A listed object is accepted while no be/src source references it; a reference makes the entry unproven. */
 function ruledObjectFinding(file: string, object: Parsed, references: Parsed) {
   const reference = references.find(({ scopes }: { scopes: Parsed }) => referencesObject(scopes, object));
-  return reference ? found(DB_DESTRUCTIVE_RULING_UNPROVEN, file, `${file}:${object.line} destroys ${object.name} under hfs.json db.destructiveRulings, but ${reference.file} still references it; the ruling holds only while its targets are unreferenced`,
+  return reference ? found(DB_DESTRUCTIVE_RULING_UNPROVEN, file, `${file}:${object.line} destroys ${object.name} under hfs.json db.destructiveRulings, but ${reference.file} still references it; the entry holds only while its targets are unreferenced`,
     { line: object.line, object: object.name, reference: reference.file }) : null;
 }
 
@@ -574,7 +574,7 @@ function destructiveFileFindings(file: string, text: string, references: Parsed,
     return finding ? [finding] : [];
   });
   for (const name of ruled) {
-    if (!objects.some((object) => object.name === name)) findings.push(found(DB_DESTRUCTIVE_RULING_UNPROVEN, file, `hfs.json db.destructiveRulings names ${name} for ${file}, which the migration does not destroy; a ruling names exactly the objects its migration destroys`, { object: name }));
+    if (!objects.some((object) => object.name === name)) findings.push(found(DB_DESTRUCTIVE_RULING_UNPROVEN, file, `hfs.json db.destructiveRulings names ${name} for ${file}, which the migration does not destroy; an entry names exactly the objects its migration destroys`, { object: name }));
   }
   return findings;
 }
@@ -614,7 +614,7 @@ export async function contractReleaseFindings({ repoRoot, migrations, git }: { r
   return fresh.flatMap((file: string) => {
     const text = readText(repoRoot, file);
     if (text === null) return [];
-    // a ruled migration is judged here for its ruled objects only: its other objects are refused at HEAD already
+    // a listed migration is judged here for its listed objects only: its other objects are refused at HEAD already
     const ruled = CONTRACT_MIGRATION.test(file) ? undefined : rulings.get(file);
     return migrationDestructiveObjects(text).filter((object: Parsed) => ruled === undefined || ruled.has(object.name)).flatMap((object: Parsed) => {
       const reference = references.find(({ scopes }: { scopes: Parsed }) => referencesObject(scopes, object));
@@ -636,7 +636,7 @@ export function destructiveMigrationFindings({ repoRoot, migrations, files }: { 
     return text === null ? [] : destructiveFileFindings(file, text, references, rulings.get(file));
   });
   for (const migration of rulings.keys()) {
-    if (!migrations.includes(migration)) findings.push(found(DB_DESTRUCTIVE_RULING_UNPROVEN, 'hfs.json', `hfs.json db.destructiveRulings names ${migration}, which is no active migration; a ruling names the exact file it covers`, { migration }));
+    if (!migrations.includes(migration)) findings.push(found(DB_DESTRUCTIVE_RULING_UNPROVEN, 'hfs.json', `hfs.json db.destructiveRulings names ${migration}, which is no active migration; an entry names the exact file it covers`, { migration }));
   }
   return findings;
 }

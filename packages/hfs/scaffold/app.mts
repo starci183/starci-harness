@@ -6,7 +6,7 @@
 // declared Next app but the marketing landing, which calls no back end: the shared app core of both editions, modules/api, auth,
 // toast, redux, the providers and the hooks); an fe `apps/<name>/` folder is the skeleton of the declared fe app <name> alone
 // (landing and app differ); `__project__` in a path is the project name (packages/__project__-ui is packages/<name>-ui). The workspace manifests and every tsconfig.json are written from code, never kept as template files (a
-// tsconfig.json under templates/ would be a TypeScript project of this repository); the managed files are the render of `starci app sync` (sync/index.mjs), so a fresh app
+// tsconfig.json under templates/ would be a TypeScript project of this repository); the managed files are the render of `starci app sync` (sync/index.mts), so a fresh app
 // is in sync by construction. The lockfile is never written by hand: once the files are written, npm resolves the real one
 // (`npm install --package-lock-only`, no node_modules, no scripts), so `npm ci` installs the new app as it is. When npm cannot
 // resolve it the scaffold fails (HFS_SCAFFOLD_LOCK_FAILED), names the step and unlinks its own generated entries. Replaced or
@@ -232,9 +232,9 @@ const STARTER_DEPENDENCIES = Object.freeze({
 });
 
 /**
- * Lite keeps the production stack, the canon tools and the back end's unit run (ruling:R212/case-1, amended by ruling:R212/case-4); it runs no test world of
- * its own (no @starci/test-world). Both editions serve GraphQL from the api app (@nestjs/graphql over Apollo, owner ruling
- * 2026-10-13); the fe stack's root tools are added from fe-stack.yaml by packageManifest.
+ * Lite keeps the production stack, the canon tools and the back end's unit run (R212); it runs no test world of
+ * its own (no @starci/test-world). Both editions serve GraphQL from the api app (@nestjs/graphql over Apollo);
+ * the fe stack's root tools are added from fe-stack.yaml by packageManifest.
  */
 const LITE_STARTER_DEPENDENCIES = Object.freeze({
   dependencies: {
@@ -472,7 +472,7 @@ const liteOverlaid = (() => {
 })();
 /**
  * A base be file lite reuses: a source file of the shared shape, and the unit spec beside a reused source file that the lite overlay
- * does not replace (ruling:R212/case-1, amended by ruling:R212/case-4: a lite back end keeps full's unit specs).
+ * does not replace (R212: a lite back end keeps full's unit specs).
  */
 const liteBaseFile = (scope: Scope, rel: string): boolean => {
   if (scope === 'app') return LITE_APP_REUSED.has(rel);
@@ -664,7 +664,7 @@ function scaffoldWrites(root: string, original: fs.Stats) {
  * `{ root, files }` (app-relative paths, sorted). A new path is first made an empty repository with unborn main (`initGit`), so the
  * app always lives in its own Git repository. `presets` are the jest preset's Sonar exclusions; the CLI passes the copy @starci/hfs
  * ships (bundledPresets). `harness` ({ version }) is the CLI that runs the scaffold: the root devDependencies name starci-harness at
- * its version (canon-pins.mjs). Failure removes only scaffold-owned entries, retaining the .git.
+ * its version (canon-pins.mts). Failure removes only scaffold-owned entries, retaining the .git.
  */
 /** Seal declared starter members to a fresh app recipient through the scaffold rollback owner. */
 function initializeScaffoldSecrets(root: string, writes: Pick<ReturnType<typeof scaffoldWrites>, 'write'>): string[] {
@@ -715,7 +715,7 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', re
       { path: `fe/packages/${name}-${pkg}/tsconfig.build.json`, content: jsonText(fePackageBuildTsconfig()) },
     ])),
     ...(['app', 'be', 'fe'] as const).flatMap(scope => skeletonOf(scope, app, { sonarGate: String(sonarGateName(parseYaml(fs.readFileSync(SONAR_GATE_FILE, 'utf8')), app.edition)), timestamp, registryVisibility })),
-    // A full app has a test world (integration, e2e and contract are rows of its release gate); lite has none (ruling:R212/case-3, hosting amended by owner:lite-production-swarm).
+    // A full app has a test world (integration, e2e and contract are rows of its release gate); lite has none (R212).
     ...(app.edition === 'lite' ? [] : testWorldFiles(app)),
   ];
   const writes = scaffoldWrites(root, original);

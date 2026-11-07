@@ -1,4 +1,4 @@
-// provision.mjs - creates the immutable, versioned Swarm secrets and config objects a release names, on the daemon DOCKER_HOST points at.
+// provision.mts - creates the immutable, versioned Swarm secrets and config objects a release names, on the daemon DOCKER_HOST points at.
 // Each secret value is opened in memory and piped to `docker secret create <runtimeName> -` on stdin: it never reaches argv, a file, the
 // output or an error message. A name that exists is left alone (same value, same name); a name is never reused for another value, and
 // an earlier version is never removed here (prune runs only after the release is accepted).

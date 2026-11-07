@@ -1,4 +1,4 @@
-// new.mjs - `starci app db new <kebab-name>`: creates the next migration db/migrations/<ts14>_<kebab-name>.sql (slot app.db.migrations),
+// new.mts - `starci app db new <kebab-name>`: creates the next migration db/migrations/<ts14>_<kebab-name>.sql (slot app.db.migrations),
 // stamped with the current UTC instant and strictly after every committed active migration, so DB_MIGRATION_SHAPE holds from birth.
 import fs from 'node:fs';
 import path from 'node:path';

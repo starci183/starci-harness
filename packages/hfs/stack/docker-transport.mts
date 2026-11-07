@@ -1,4 +1,4 @@
-// docker-transport.mjs - lets the verbs that drive the docker CLI (deploy, converge, verify, rollback, prune) reach the manager from an OPERATOR
+// docker-transport.mts - lets the verbs that drive the docker CLI (deploy, converge, verify, rollback, prune) reach the manager from an OPERATOR
 // machine or CI. The command shares one POSIX control master (including remote scripts) or one Windows Docker socket tunnel. On an operator
 // machine the key lives in the sealed members, so the docker CLI is run with a private HOME that holds the session's ssh config. Only children that did not get
 // an explicit environment are affected (the minimal environment of `docker stack config` stays exactly as the render built it). The key lives in

@@ -1,5 +1,5 @@
-// branch-profile.mjs - the branch profile a run of `starci app check` is under: the branch it judges, chosen automatically, and the profile the stack
-// declaration states for it (`branches` of .starcistacks/application-stacks.yaml, read by scripts/lib/stack-declaration.mjs readBranchProfiles).
+// branch-profile.mts - the branch profile a run of `starci app check` is under: the branch it judges, chosen automatically, and the profile the stack
+// declaration states for it (`branches` of .starcistacks/application-stacks.yaml, read by scripts/lib/stack-declaration.mts readBranchProfiles).
 //   CI         a pull request (GITHUB_BASE_REF) into the default branch runs the full gate; any other pull request is judged as its source branch
 //              (GITHUB_HEAD_REF); a push is judged as its branch (GITHUB_REF refs/heads/<branch>, a tag is no branch)
 //   elsewhere  the checked-out branch (`git rev-parse --abbrev-ref HEAD`; a detached HEAD is no branch)

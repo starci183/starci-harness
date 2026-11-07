@@ -9,7 +9,7 @@ import type { CheckInput } from './hfs-graph.mjs';
  * app component and reports, at the inner element, what stands wrongly inside what once every component is replaced by what it
  * draws and every `children` by what its caller handed it:
  *
- *   card-in-card         a card inside a card (surface in surface is banned totally, owner decision 2026-11-01);
+ *   card-in-card         a card inside a card (surface in surface is banned totally);
  *   card-in-pane         a card inside `Pane surface`;
  *   card-in-overlay      a card inside a Dialog, Drawer, AlertDialog or Popover;
  *   table-in-card        a `DataTable` inside a card (a table stands on the page);

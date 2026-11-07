@@ -1,5 +1,5 @@
 // R213 DB_MIGRATION_SHAPE, transaction control: `starci app db migrate` and the squash replay apply each migration in ONE transaction
-// together with its history row (db/postgres.mjs psqlTransaction, `psql -1`), so a migration never opens, ends or splits a transaction.
+// together with its history row (db/postgres.mts psqlTransaction, `psql -1`), so a migration never opens, ends or splits a transaction.
 // Top-level BEGIN, START TRANSACTION, COMMIT, END, ROLLBACK, ABORT, SAVEPOINT, RELEASE and PREPARE TRANSACTION are findings, and so is a
 // COMMIT or ROLLBACK statement inside a DO block; a function or procedure body (dollar-quoted or not) is never judged.
 import { found } from './read.mjs';

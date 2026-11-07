@@ -1,5 +1,5 @@
 // The database rules of a lite app's db/ tree (design 4.2, L02-L09). SQL migrations are parsed with libpg-query through
-// database-sql.mjs; Git history and generated-type checks are split into bounded sibling modules.
+// database-sql.mts; Git history and generated-type checks are split into bounded sibling modules.
 import { found, readJson, readText } from './read.mjs';
 import { baselineResetOf } from './database-reset.mjs';
 import { contractReleaseFindings, defaultGit, migrationShapeFindings } from './database-migrations.mjs';

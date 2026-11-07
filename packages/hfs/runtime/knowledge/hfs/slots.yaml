@@ -1,10 +1,10 @@
-# HFS slot manifest (owner-approved 2026-09-29, decisions 1-10 in the owner decisions record).
+# HFS slot manifest.
 # The one place that says what may exist in a StarCi product repository and where. A product is ONE app repository
 # (hfs 4, manifest major 3): the app root holds the one package.json, lockfile and node_modules, the hfs.json of kind app,
 # the CI, the hooks and .starciwork (slots of profile `app`); `be/` and `fe/` are its two sides, each laid out as a
 # standalone repository root (slots of profile be or fe, paths relative to the side folder). Every tracked path of every
 # repository must match exactly one slot. Checks, lint factories, the architecture machine, templates and the why
-# catalog READ this file through scripts/hfs/slots.mjs; none of them hardcodes a path.
+# catalog READ this file through scripts/hfs/slots.mts; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
 version: 3.24.0
@@ -19,60 +19,8 @@ versioning:
   major: >-
     change or remove an existing slot, make an optional slot required, promote a rule warn to error, change the
     direction matrix. Needs owner approval and a migration lane per repo. There is no compatibility window: the old
-    MAJOR is refused the day the new one lands (owner ruling: no backward compatibility).
+    MAJOR is refused the day the new one lands.
   pins: knowledge/hfs/canon-pins.yaml carries the exact versions of every @starci/* package and framework this MAJOR supports.
-# 2.1.0 is such a minor: it ADDS the edition mechanism (the `editions` list, the per-slot `editions`, `litePresence`, `lite`
-# overlays and `provider`, and `sides.<side>.reads` of an app-root tree) and the lite slots; an app without `edition` in its
-# hfs.json is edition full and every answer for it is unchanged.
-# 2.2.0 adds the declaration-only fe.modules.types.ambient owner.
-# 3.0.0 is a major (ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4)): lite is the full code structure deployed with Supabase backing services
-# and without e2e, and the front end is one standard for both editions (knowledge/hfs/fe-stack.yaml). The
-# front-end database slots and the Supabase realtime feature slot are removed (Supabase on the front end is auth only, realtime
-# is the socket.io gateway in both editions), fe.route holds pages, layouts and the one health/live route handler, and the slots
-# marked `since: 3.0.0` are added: the Apollo, SWR, RHF, zustand and socket.io hooks, redux, modules/auth, modules/toast, the
-# providers, be.assets and the migration archive.
-# 3.1.0 is a minor (owner ruling 2026-10-14, R245 and R246): every be.app.* slot allows `<app>.env.ts` and the composition groups
-# `compose/<area>.ts` and budgets its app files (`app.module.ts` 250, `<app>.options.ts` 200, `<app>.env.ts` 150,
-# `compose/<area>.ts` 120, `main.ts` 80); `<app>.env.ts` exports interface <App>Env and read<App>Env(env: EnvSource): <App>Env
-# for fail-fast env parsing only, and `<app>.options.ts` holds env-derived options and port bindings only, with no parsing
-# or environment reads (BE_APP_OPTIONS_COMPOSITION). Secrets use EnvSource.secret(): <NAME>_FILE first, plain <NAME> only
-# when the file key is absent; .starcistacks owns custody. Capability <capability>.config.ts roles stay unchanged.
-# 3.3.0 is a minor (alpha.16): it ADDS the optional app.ci-stack-deploy slot, the managed workflow of the starci app stack verbs.
-# 3.9.0 (ruling:lite-self-hosted-postgres-passport-minio, 2026-10-29) is a major for lite and changes no full slot but the S3 owner's
-# folder: lite leaves Supabase. The app.supabase* and be.integrations.supabase slots and fe.route.callback are removed; app.db (db/, its
-# migrations, archive, seed and managed bootstrap), be.integrations.passport and be.integrations.object-storage are added; lite's schemaAuthority is sql.
-# 3.4.0 is a minor (alpha.25): it ADDS the opt-in be.contract.mcp-tools slot, the committed MCP tool-catalog snapshot of an app.
-# 3.5.0 is a minor (alpha.27): it ADDS the opt-in app.browser-config slot, the managed browser/tsconfig.json that type-checks the browser
-# journey (enabled with app.browser by `browser: true`).
-# 3.6.0 is a minor (alpha.30): it ADDS the opt-in be.feature.realtime.sse slot, the server-sent-events door of the realtime kind (owner decision
-# 2026-10-24: lite may serve SSE, and SSE is the default door for one-way push), and lets fe.modules.api hold the SSE stream operations (sse/).
-# 3.7.0 is a minor (alpha.31): it ADDS the optional app.scripts.integration slot (scripts/integration/*.mjs, the product test-support scripts that only the integration harness runs) and the optional fe.transport.stream slot, the fetch reader of server-sent-events streams (the stream half of the
-# transport client layer), and lets fe.hooks.swr hold the SWR subscription hooks (api/sse/subscriptions/useSubscribe<X>Swr.ts, one useSWRSubscription per stream operation).
-# 3.8.0 is a minor (urgent release, 2026-10-29): it ADDS the optional fe.dev-server-generated slot (apps/*/AGENTS.md, which `next dev` rewrites) and the
-# slot field rewrittenBy, so the release gate's clean-tree check passes over an untracked file a declared dev server writes, and over nothing else.
-# 3.10.0 is a minor (2026-10-29): it ADDS the lite be.platform.database.entities slot, the entity registry (slot fields role and importedBy), so the
-# tier matrix and the public-entry rules admit exactly its <c>Entities imports and its deep importers (persistence.md BE-PERSISTENCE-3).
-# 3.11.0 (ruling:lite-official-postgres-image, 2026-10-29) is, like 3.9.0, a change for lite only: it ADDS the managed app.db.image slot
-# (db/Dockerfile, written by `starci app sync --execute`), narrows ruleParams.db.extensions to the extensions that image carries, and gives
-# @nestjs/schedule and cron one owner, platform/jobs (R335).
-# 3.13.0 (rulings lite-pgmq-bus-bullmq-jobs and lite-db-image-in-stacks, 2026-10-29) is a change for lite only: ruleParams.db.extensions
-# admits pgmq, the event bus, ruleParams.db.queueOutbox is retired with the pg_cron half of R258, the lite event-bus functions replace
-# event_bus_write in ruleParams.be.dbFunctions, and app.db.image moves to .starcistacks/images/db/Dockerfile (db/ keeps schema and data).
-# 3.17.0 (ruling auth-oidc-package, 2026-11-03) adds the optional full-edition be.integrations.keycloak, the glue of @starci/auth-oidc (the OIDC client of the
-# identity provider behind the PrincipalVerifier of @starci/auth), and gives @starci/auth-oidc to it in ruleParams.be.infraOwners.
-# 3.17.0 (ruling module-packages, 2026-11-03) adds the optional app.packages and app.module-registry: the workspace packages of the app root (the agent SDK, the module packages, the managed registry).
-# 3.18.0 (ruling seed-levels, 2026-11-03) gives app.starcistacks its two seed levels, the shared .starcistacks/seeds/ and each environment's
-# <env>/seeds/, each a seeds.yaml manifest and the folders sql/, data/ and files/, and retires app.db.seed (its rows are the shared level's
-# sql/ entries); `starci app codemod seeds-layout` moves an older app's seed data into them.
-# 3.20.0 (ruling release-gate-warm-cache, 2026-11-04) adds the required app.ci-cache-verify, the managed nightly verify of the committed check cache.
-# 3.21.0 (ruling customised-service-image) admits .starcistacks/images/<name>/** in app.starcistacks, both editions: the image folder of a service the app customises (PROJECT-STACKS-11), the db image among them.
-# 3.22.0 (2026-11-04) has be.integrations.passport require the capability module every package-backed integration is (passport.module.ts over
-# passport.module-definition.ts, the app's logger handed to @starci/auth) in place of passport.registration.ts; `starci app codemod passport-module` moves an app.
-# 3.23.0 (decision self-recovering-flows, 2026-11-04) lets platform/jobs own the park, resume and awaiting-fix database functions of jobs.sql (job_park, job_resume, job_awaiting_fix).
-# 3.19.0 (ruling root-packages-any-name, 2026-11-03) widens app.packages to any packages/<name>/: the agent SDK, a block library, a module package.
-# 3.15.0 (ruling app-check-cache, 2026-10-31) adds the optional app.starcistacks.cache, the committed check cache of the app (.starcistacks/cache/, both editions).
-# 3.14.0 (ruling app-secrets-one-standard, 2026-10-29) adds the optional app.ci-stack-key-restore, the managed workflow that writes the
-# deploy server's age identity back from its GitHub Environment backup.
 
 # Field meaning, per slot.
 #   id          stable name, never changes meaning inside a major.
@@ -85,7 +33,7 @@ versioning:
 #   tracked     tracked (committed) | ignored (may exist, must be gitignored) | external (must not exist in the tree;
 #               goesTo says where it lives).
 #   rewrittenBy on an ignored file slot: the dev server that writes the file into the working tree while it runs (`next dev`). The
-#               release gate's clean-tree check (release/gate.mjs dirtyPaths) passes over an untracked file such a slot owns, and only it.
+#               release gate's clean-tree check (release/gate.mts dirtyPaths) passes over an untracked file such a slot owns, and only it.
 #   tier        node of the import direction matrix (tiers below); none = takes no part in import checks;
 #               inherit = the tier of the enclosing owner.
 #   owner       true when every directory matching the slot is an owner: the unit cross-owner imports and cycles use.
@@ -97,7 +45,7 @@ versioning:
 #               and no other file declares an Outcome union (one-outcome-union, FE_TRANSPORT_OWNER).
 #   role        on a file slot: the one part it plays that a rule reads. entity-registry = the lite PRIMARY_ENTITIES list
 #               (be.platform.database.entities): the one platform file that imports capability <c>Entities, imported by deep path
-#               only from the files importedBy names (architecture/entity-registry.mjs).
+#               only from the files importedBy names (architecture/entity-registry.mts).
 #   importedBy  on a slot with a role: the side-relative path patterns of the only files that import its file by deep path.
 #   requires    files or directories that must exist inside each instance; <var> is replaced by the bound name,
 #               a leading / means repository root; a trailing / means directory.
@@ -108,7 +56,7 @@ versioning:
 #   tests       unit-beside | e2e | none.
 #   coverage    required | none, on every tracked slot of profile be. A required slot's subtree is measured at 100 per file on every
 #               ruleParams.be.logicRoles file and on every file a slot of it declares in `logic` (lines, branches, functions,
-#               statements); a none slot's subtree is never measured and is excluded from Sonar's coverage. scripts/hfs/coverage-scope.mjs
+#               statements); a none slot's subtree is never measured and is excluded from Sonar's coverage. scripts/hfs/coverage-scope.mts
 #               derives the jest per-file thresholds, Sonar's sonar.coverage.exclusions and the Codecov paths and components from this
 #               field and `logic` and nowhere else (R204). Orthogonal to the lite `editions`: an edition never changes what a slot measures.
 #   logic       on a coverage-required unit-beside directory slot: the files of the slot that carry logic without a logic-role suffix
@@ -137,7 +85,7 @@ versioning:
 #   litePresence  the presence under edition lite (default: presence): a bare value, or {be, fe} for a both-sides slot.
 #               A slot forbidden in lite is external there and must name its goesTo. Only infrastructure is forbidden in lite:
 #               database/broker services, the e2e layer and its workflow, and the browser journey. Lite may have contract specs.
-#   editionWhy  why the slot's presence, shape or adapter differs between lite and full, with the owning ruling citation.
+#   editionWhy  why the slot's presence, shape or adapter differs between lite and full, with the rule id that governs it.
 #   lite        the fields the slot carries under lite only (path, requires, allows, forbids, minInstances,
 #               requiredInstances, why), each shaped as the same field in the slot body; every other field is the edition's.
 #               `why` under lite names the adapter behind the slot's ports (pgmq, Postgres locks, in-process socket.io).
@@ -148,21 +96,21 @@ presenceValues: [required, optional, opt-in, forbidden]
 trackedValues: [tracked, ignored, external]
 testValues: [unit-beside, e2e, none]
 
-# The editions a repository declares in hfs.json `edition` (absent means full). ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite IS
-# the full architecture on its own self-hosted PostgreSQL (ruling:lite-self-hosted-postgres-passport-minio) - the same monorepo, slots, CQRS shape and patterns (queue,
+# The editions a repository declares in hfs.json `edition` (absent means full). R212: lite IS
+# the full architecture on its own self-hosted PostgreSQL - the same monorepo, slots, CQRS shape and patterns (queue,
 # event bus, saga, reactors, projection, realtime, webhooks, fenced job), declared in hfs.json the same way, and the same unit
 # specs (unitRoles, logicRoles, 100 per file, @starci/jest-preset doubles, builders). What differs is ADAPTERS and DELIVERY
-# (ruling:R212/case-10): schema authority in db/migrations, the queue port on BullMQ over the Redis hfs.json
+# (R212): schema authority in db/migrations, the queue port on BullMQ over the Redis hfs.json
 # sides.be.backing declares (as in full, fed by the Postgres outbox), event-bus ports on pgmq topics sent in the publisher's
-# transaction (ruling:lite-pgmq-bus-bullmq-jobs), cache and locks on Postgres or the declared Redis, schedules as platform/jobs ticks enqueueing through the queue
+# transaction, cache and locks on Postgres or the declared Redis, schedules as platform/jobs ticks enqueueing through the queue
 # outbox (R335), storage on S3-compatible MinIO (integrations/object-storage) and auth through integrations/passport. Realtime uses SSE or the socket.io gateway
 # in the api process, which scales horizontally and stateless (memory hub for one replica or tests; the Redis hub and @socket.io/redis-adapter when Redis is declared, else the Postgres hub and @socket.io/postgres-adapter, for N replicas; websocket only, no sticky sessions). Integration and provider sandbox contract specs are optional;
 # declared patterns owe their integration proofs (R284). Lite has no e2e world. Production uses declared docker-swarm under
-# .starcistacks/production/infra/swarm/ (owner ruling 2026-10-14); lite runs its PostgreSQL as the db service of its
+# .starcistacks/production/infra/swarm/; lite runs its PostgreSQL as the db service of its
 # stack and only the backing services sides.be.backing declares. The front end is full's (R97).
 # Lite is this same manifest filtered: a slot whose `editions` lacks lite does not exist for a lite app, `litePresence` replaces
 # presence and a `lite` map replaces the fields it names. The edition is chosen once at scaffold; there is no upgrade
-# or downgrade between lite and full. Lite contracts are allowed (owner decision 2026-10-14).
+# or downgrade between lite and full. Lite contracts are allowed.
 editions: [full, lite]
 
 # The two sides of an app: the folder of each is its profile name (be/, fe/). `reads` lists the only paths of the OTHER side a side
@@ -183,7 +131,7 @@ appKinds:
 # reads this block): an id is dot-separated lowercase kebab segments whose first segment is one of `prefixes`;
 # `<side>.app.<kind>` names a kind of appKinds.<side>; any other deeper id extends a declared slot id (its `parent`)
 # or names `parent` explicitly. The role-suffix vocabulary never shares a word with bannedSuffixes and holds no
-# synonym pair beyond `sameConceptPairs` — the one owner-approved pair (step + saga-step: `.saga-step.ts` stays).
+# synonym pair beyond `sameConceptPairs` — the one admitted pair (step + saga-step: `.saga-step.ts` stays).
 # Every pair in `refusedPairs` may never both be live suffixes.
 # `glossary` (S9-02): the five names for "handles an incoming thing" are five distinct kinds, not synonyms —
 # consumer answers an event, subscription serves realtime, webhook is its own kind, processor runs a job, handler
@@ -195,7 +143,7 @@ naming:
   glossary: {consumer: event, subscription: realtime, webhook: webhook, processor: job, handler: cqrs}
 
 # ---------------------------------------------------------------------------------------------------------
-# Tiers and the dependency direction matrix (owner granularity; type-only imports count; no cycles anywhere)
+# Tiers and the dependency direction matrix (type-only imports count; no cycles anywhere)
 # mayImport lists the tiers a file of that tier may import. Importing inside the same owner is always allowed.
 # mayImportKinds narrows a permitted tier edge to its named from/to folder kinds; other kind pairs remain forbidden.
 # ---------------------------------------------------------------------------------------------------------
@@ -216,7 +164,7 @@ tiers:
     route:        {mayImport: [feature, foundation, modules, transport, package]} # app/** adapters
     feature:      {mayImport: [feature, components, hooks, foundation, modules, package], mayImportKinds: {feature: {from: [pages, layouts], to: [overlays]}}} # pages and layouts compose overlays and blocks; data goes through hooks/swr
     # A component never reaches data: config, routes, i18n and types are foundation; every other module and the api
-    # transport are reached through a hook (owner decision 2026-09-29).
+    # transport are reached through a hook.
     components:   {mayImport: [components, hooks, foundation, package], lowerLayerOnly: true} # blocks, frames, composites, branches, leaves
     # Across domains a hook is imported only through the other domain's public index (hooks/<domain>/index.ts), never deep.
     hooks:        {mayImport: [hooks, foundation, modules, transport, package], mayImportSlots: {transport: {from: [fe.hooks.swr]}}} # only hooks/swr imports an operation
@@ -234,13 +182,13 @@ tiers:
 crossOwner: every import across owners targets the owner's public entry (index.ts or index.tsx); never export *.
 crossApp: apps never import each other; shared code is a packages/<pkg> slot.
 
-# Parameters the lint factories and checks read per profile (through ruleParams(profile) in scripts/hfs/slots.mjs, which
+# Parameters the lint factories and checks read per profile (through ruleParams(profile) in scripts/hfs/slots.mts, which
 # merges common under the profile: a side restates a common key only to override it).
 ruleParams:
   db:
     # R259: btree_gist supplies UUID equality for the booking interval exclusion constraint.
-    # R259: the extensions the db image carries (ruling:lite-official-postgres-image): the official postgres image's contrib set and pgvector
-    # from PGDG; unaccent serves Vietnamese-content search functions; pgmq is the event bus (ruling:lite-pgmq-bus-bullmq-jobs), installed
+    # R259: the extensions the db image carries: the official postgres image's contrib set and pgvector
+    # from PGDG; unaccent serves Vietnamese-content search functions; pgmq is the event bus, installed
     # from its pinned release. No pg_cron, pg_net or supabase_vault.
     extensions: [pgcrypto, pg_trgm, vector, uuid-ossp, unaccent, btree_gist, pgmq]
   common:
@@ -401,7 +349,7 @@ ruleParams:
     # THE list of unit-tested roles of a back end whose spec is REQUIRED (the ONE source every consumer reads: the eslint unit-test rules, hfs
     # spec-placement and the cli spec check, the architecture machine's unit-spec checks and the unit-run gate). A role's subject is
     # `<name>.<role>.ts` (inside `slot` when one is named) and its unit spec `<name>.<spec>.ts` beside it. What the unit run MEASURES is not
-    # listed here: it is `logicRoles` over the slots whose `coverage` is required (scripts/hfs/coverage-scope.mjs). `exempt` lists the rules
+    # listed here: it is `logicRoles` over the slots whose `coverage` is required (scripts/hfs/coverage-scope.mts). `exempt` lists the rules
     # the role is exempt from: a cli command is an action runner, not a thin transport (R149). A lane that adds a spec-required role adds
     # its entry here and nowhere else.
     unitRoles:
@@ -456,19 +404,19 @@ ruleParams:
       api: {topic: api, variable: feature, trigger: api, patterns: [], needs: [service], defaults: {action: "@name"}}
       cli: {topic: cli, variable: group, trigger: cli, patterns: [], needs: [service], wire: {file: src/features/cli/cli.module.ts, import: "./@@group@@/@@group@@.module", symbol: "@@Group@@Module"}}
     bannedSuffixes: [use-case, repository, fixture, factory, store, worker, scheduler, cron, job, listener, dto, util, utils, helper, helpers, rules, types, constants, int-spec, harness-spec, test]
-    # ruling:R212/case-10 (R212 HFS_BACKING_UNDECLARED / HFS_BACKING_UNUSED, R276 STACKS_LITE_SELFHOSTED_DB): THE backing services a back
+    # R212 (HFS_BACKING_UNDECLARED / HFS_BACKING_UNUSED) and R276 (STACKS_LITE_SELFHOSTED_DB): THE backing services a back
     # end may declare in hfs.json sides.be.backing. `clients` are the libraries that consume the service: one of them as a dependency
     # is its consumer, and under lite none of them may be a dependency while the service is undeclared. `patterns` are the declared
     # patterns that need the service. `images` are the image repositories (the last path segment) a stack runs it from.
-    # `editions` limits admission: owner:lite-vector-is-pgvector keeps vector search on pgvector in lite.
+    # `editions` limits admission: vector search stays on pgvector in lite.
     backing:
       redis: {clients: [bullmq, "@nestjs/bullmq", bull, "@nestjs/bull", ioredis, redis, "@keyv/redis", cache-manager-redis-yet, cache-manager-ioredis-yet, "@socket.io/redis-adapter"], patterns: [queue, fenced-job], images: [redis, redis-stack, redis-stack-server]}
       qdrant: {clients: ["@qdrant/js-client-rest", "@qdrant/qdrant-js"], patterns: [], images: [qdrant], editions: [full]}
     # Edition lite (ruleParams(manifest, 'be', 'lite') merges these keys over the base; a map merges one level deep): the schema
     # authority is the SQL migration tree (db/migrations/*.sql, forward-only), so a lite back end holds no TypeORM
     # migration or entity under be/ (R34/R35 read schemaAuthority; be.persistence's lite overlay allows neither). The unit roles,
-    # logic roles and spec doubles are full's (owner ruling 2026-10-12 (owner:lite-production-swarm), with the Work boundary amended by ruling:R212/case-4). infraOwners: full's owners,
-    # bullmq in platform/queue and ioredis/redis in integrations/cache and integrations/redis (ruling:R212/case-10: the queue is
+    # logic roles and spec doubles are full's (R212). infraOwners: full's owners,
+    # bullmq in platform/queue and ioredis/redis in integrations/cache and integrations/redis (R212: the queue is
     # Redis in both editions; a backing library is legal only when hfs.json sides.be.backing declares its service, which
     # HFS_BACKING_UNDECLARED checks), except Kafka, which is owned nowhere (platform/event-bus runs pgmq topics through
     # the shared EntityManager); realtime is the same socket.io gateway as full, run inside the api process, scaled horizontally and stateless (hub redis when
@@ -547,7 +495,7 @@ slots:
   - id: app.package-manifest
     since: 3.1.0
     profiles: [app]
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite manages its database and wiring scripts; full also manages e2e and stack test scripts. Both may run optional contracts."
+    editionWhy: "R212: lite manages its database and wiring scripts; full also manages e2e and stack test scripts. Both may run optional contracts."
     # The one package.json of the app, at the app root: be's dependencies and every tool, and every script; npm workspaces are
     # exactly fe/apps/* and fe/packages/* (HFS_MONO_WORKSPACES), each with its own package.json. be has no package.json of its own.
     path: package.json
@@ -599,7 +547,7 @@ slots:
     tests: none
     managedBy: skeleton
     liteManagedBy: skeleton-lite
-    editionWhy: "Lite renders the same managed file from skeleton-lite because the editions share one code structure while their adapters differ (ruling:R212/case-2, with Work amended by ruling:R212/case-4 and hosting by owner:lite-production-swarm)."
+    editionWhy: "Lite renders the same managed file from skeleton-lite because the editions share one code structure while their adapters differ (R212)."
     rules: [HFS_MANAGED_FILE_DRIFT]
   - id: app.tool-config
     since: 3.1.0
@@ -611,12 +559,12 @@ slots:
     tests: none
     managedBy: skeleton
     liteManagedBy: skeleton-lite
-    editionWhy: "Lite renders the same managed files from skeleton-lite because the editions share one code structure while their adapters differ (ruling:R212/case-2, with Work amended by ruling:R212/case-4 and hosting by owner:lite-production-swarm)."
+    editionWhy: "Lite renders the same managed files from skeleton-lite because the editions share one code structure while their adapters differ (R212)."
     rules: [HFS_MANAGED_FILE_DRIFT]
   - id: app.format-config
     since: 3.1.0
     profiles: [app]
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite additionally ignores the generated database row types when formatting; full has its TypeORM schema authority."
+    editionWhy: "R212: lite additionally ignores the generated database row types when formatting; full has its TypeORM schema authority."
     # The one formatter configuration of the app (prettier walks up from every file of both sides to it): .prettierrc names
     # @starci/prettier-config, .prettierignore is the template.
     path: "{.prettierrc,.prettierignore}"
@@ -679,7 +627,7 @@ slots:
   - id: app.ci
     since: 3.1.0
     profiles: [app]
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite CI proves boot through R272 wiring and checks its database artifacts; full also provides its e2e lane."
+    editionWhy: "R212: lite CI proves boot through R272 wiring and checks its database artifacts; full also provides its e2e lane."
     path: ".github/workflows/ci.yml"
     presence: required
     tracked: tracked
@@ -691,10 +639,10 @@ slots:
   - id: app.ci-e2e
     since: 3.1.0
     profiles: [app]
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite has no e2e world; R272 supplies its wiring proof, while optional contracts run separately."
+    editionWhy: "R212: lite has no e2e world; R272 supplies its wiring proof, while optional contracts run separately."
     path: ".github/workflows/e2e.yml"
     presence: optional     # on: workflow_dispatch only
-    litePresence: forbidden     # ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite has no e2e world; unit specs and R272 wiring run in ci.yml
+    litePresence: forbidden     # R212: lite has no e2e world; unit specs and R272 wiring run in ci.yml
     tracked: tracked
     tier: none
     tests: none
@@ -704,7 +652,7 @@ slots:
   - id: app.ci-images
     since: 3.1.0
     profiles: [app]
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): lite renders its image workflow; full renders images for its separately deployed services."
+    editionWhy: "R212: lite renders its image workflow; full renders images for its separately deployed services."
     # The reusable workflow ci.yml calls: builds every image of the app once per commit beside the checks, pushes the deployed ones to the registry by sha-<sha> with SBOM and provenance. Rendered by starci app sync.
     path: ".github/workflows/images.yml"
     presence: required
@@ -718,11 +666,11 @@ slots:
     profiles: [app]
     exemplifiedBy:
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: full}
-    editionWhy: "ruling:app-cicd-auto-deploy: a lite app migrates in the migrate phase of its stack deploy, so its database deploy workflow is retired (starci app sync --execute removes it); full owns an optional provider-specific workflow."
+    editionWhy: "A lite app migrates in the migrate phase of its stack deploy, so its database deploy workflow is retired (starci app sync --execute removes it); full owns an optional provider-specific workflow."
     # The database deploy workflow: workflow_dispatch only (like app.ci-e2e). A lite app has none: the stack deploy backs up and migrates inside the database container.
     path: ".github/workflows/db-deploy.yml"
     presence: optional
-    litePresence: forbidden     # ruling:app-cicd-auto-deploy: retired in lite; migrations are the deploy's migrate phase
+    litePresence: forbidden     # Retired in lite; migrations are the deploy's migrate phase
     tracked: tracked
     tier: none
     tests: none
@@ -732,7 +680,7 @@ slots:
   - id: app.ci-stack-deploy
     since: 3.3.0
     profiles: [app]
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): both editions deploy their images to a Docker Swarm stack through the same starci stack verbs; the workflow lists the images the app declares."
+    editionWhy: "R212: both editions deploy their images to a Docker Swarm stack through the same starci stack verbs; the workflow lists the images the app declares."
     # The Swarm stack deploy workflow: reusable (ci.yml calls it after the verdict for every environment with deploy.auto) and workflow_dispatch for the owner's manual operations; a thin file that calls `starci app stack`, rendered by starci app sync.
     path: ".github/workflows/stack-deploy.yml"
     presence: optional
@@ -745,7 +693,7 @@ slots:
   - id: app.ci-stack-key-restore
     since: 3.14.0
     profiles: [app]
-    editionWhy: "ruling:app-secrets-one-standard: both editions deploy to a Docker Swarm server whose own age identity the owner backs up as a protected GitHub Environment secret; this workflow writes it back."
+    editionWhy: "Both editions deploy to a Docker Swarm server whose own age identity the owner backs up as a protected GitHub Environment secret; this workflow writes it back."
     # The server identity restore workflow: workflow_dispatch only (like app.ci-stack-deploy); `starci app secret server-key --env <env> --restore github` dispatches it, rendered by starci app sync.
     path: ".github/workflows/stack-key-restore.yml"
     presence: optional
@@ -758,7 +706,7 @@ slots:
   - id: app.ci-cache-verify
     since: 3.20.0
     profiles: [app]
-    editionWhy: "ruling:release-gate-warm-cache: both editions commit a check cache that CI and the release gate trust; this scheduled workflow verifies it every night and its red run locks the release gate."
+    editionWhy: "Both editions commit a check cache that CI and the release gate trust; this scheduled workflow verifies it every night and its red run locks the release gate."
     # The nightly verify of the committed check cache: schedule and workflow_dispatch on the default branch, STARCI_APP_CHECK_CACHE=verify; rendered by starci app sync.
     path: ".github/workflows/cache-verify.yml"
     presence: required
@@ -812,8 +760,8 @@ slots:
   - id: app.browser
     since: 3.1.0
     profiles: [app]
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): browser journeys belong to full; lite proves app boot through R272 wiring."
-    # The browser journey of the product (Playwright, owner ruling: one minimal journey per example app, run manually): the config, its
+    editionWhy: "R212: browser journeys belong to full; lite proves app boot through R272 wiring."
+    # The browser journey of the product (Playwright: one minimal journey per example app, run manually): the config, its
     # journeys and the script that provisions the stack it runs against. It is the product's, never the front end's (FE_NO_TESTS keeps
     # refusing any test or test tooling inside fe/). Declared by `browser: true` in hfs.json; the managed script `test:browser` exists only then.
     path: "browser/"
@@ -828,7 +776,7 @@ slots:
   - id: app.browser-config
     since: 3.5.0
     profiles: [app]
-    editionWhy: "ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4): browser journeys belong to full; lite proves app boot through R272 wiring."
+    editionWhy: "R212: browser journeys belong to full; lite proves app boot through R272 wiring."
     # The program that type-checks the browser journey: Playwright only transpiles the config and the journeys, so without it nothing
     # type-checks them and the op gate finds no tsconfig.json owning a changed journey (GATE_TSC_CONFIG_MISSING). It is managed (rendered
     # by starci app sync from templates/app/browser-config, extending @starci/tsconfig/e2e.json), never authored, and enabled with
@@ -860,14 +808,14 @@ slots:
     tests: none
     managedBy: skeleton
     liteManagedBy: skeleton-lite
-    editionWhy: "Lite renders the same managed file from skeleton-lite because the editions share one code structure while their adapters differ (ruling:R212/case-2, with Work amended by ruling:R212/case-4 and hosting by owner:lite-production-swarm)."
+    editionWhy: "Lite renders the same managed file from skeleton-lite because the editions share one code structure while their adapters differ (R212)."
     rules: [HFS_MANAGED_FILE_DRIFT, HFS_DEPENDABOT_MISSING]
   - id: app.scripts
     since: 3.1.0
     profiles: [app]
     exemplifiedBy:
       - {path: packages/hfs/templates/app/skeleton/scripts/codegen.mjs, edition: full}
-    editionWhy: "Lite manages its database-types codegen script; full owns operational scripts through the generic path (ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4))."
+    editionWhy: "Lite manages its database-types codegen script; full owns operational scripts through the generic path (R212)."
     # The app's operational scripts only (`*.mjs`, `*.cjs`, `*.ps1`, `*.sh`), or nothing: an empty folder is `scripts/.gitkeep`, which
     # `starci app scaffold` writes. A spec or a test (BE_SPEC_PLACEMENT, FE_NO_TESTS), a check or lint source (`check-*`, `eslint-local-rules*`,
     # a local eslint plugin: HFS_REPO_LOCAL_CHECK) and anything that re-implements a canon check is not an operational script and has no place here.
@@ -883,7 +831,7 @@ slots:
   - id: app.scripts.delivery
     since: 3.1.0
     profiles: [app]
-    editionWhy: "Lite splits product delivery tooling from managed codegen; full owns the same files through app.scripts (ruling:R212/case-2 (with the Work boundary amended by ruling:R212/case-4))."
+    editionWhy: "Lite splits product delivery tooling from managed codegen; full owns the same files through app.scripts (R212)."
     editions: [lite]
     # Product-owned environment, secret and build tooling, kept apart from lite's managed codegen script.
     # Full already owns these files through app.scripts; its generic *.mjs pattern must not compete with build-*.mjs.
@@ -954,7 +902,7 @@ slots:
     exemplifiedBy:
       - {path: packages/hfs/templates/app/skeleton/.starciwork/, edition: full}
       - {path: packages/hfs/templates/app/skeleton-lite/.starciwork/, edition: lite}
-    editionWhy: "ruling:R212/case-4: lite optionally keeps .gitignore, workspace.yaml and brand records; full keeps the Work catalog and product summaries."
+    editionWhy: "R212: lite optionally keeps .gitignore, workspace.yaml and brand records; full keeps the Work catalog and product summaries."
     path: ".starciwork/"
     presence: required
     tracked: tracked
@@ -967,7 +915,7 @@ slots:
              "features/<feature>/uat/<name>/{seed,cleanup}.sql", "_resources/{identities,environments,fixtures}/<slug>/resource.yaml",
              "_derived/{index.yaml,frontier.md,critique.yaml,critique.md}"]
     forbids: [evidence/, logs/, reports/, captures/, runs/, "kernel-*/", "*.sqlite*"]
-    # ruling:R212/case-4: lite keeps workspace.yaml for project identity and repo roles, plus brand drawing records,
+    # R212: lite keeps workspace.yaml for project identity and repo roles, plus brand drawing records,
     # references and assets. No brand means no Work tree is needed; workspace.yaml is legal but optional.
     litePresence: optional
     lite:
@@ -977,7 +925,7 @@ slots:
   - id: app.starcistacks
     since: 3.1.0
     profiles: [app]
-    editionWhy: "owner:lite-production-swarm: lite requires declared docker-swarm production with its PostgreSQL as a stack service; owner:dev-docker-prod-swarm keeps dependencies in Docker Linux containers in dev and the app and dependencies on Swarm in prod."
+    editionWhy: "Lite requires declared docker-swarm production with its PostgreSQL as a stack service; both editions keep dependencies in Docker Linux containers in dev and the app and dependencies on Swarm in prod."
     exemplifiedBy:
       - {path: packages/hfs/templates/app/skeleton/.starcistacks/, edition: full}
       - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks/, edition: lite}
@@ -992,7 +940,7 @@ slots:
              "<env>/runtime/{config,env}/**", "<env>/runtime/env/KEYS.md", "<env>/secrets/<slug>.{enc.yaml,enc}", "<env>/secrets/.gitkeep",
              "seeds/seeds.yaml", "seeds/{sql,data,files}/**", "<env>/seeds/seeds.yaml", "<env>/seeds/{sql,data,files}/**"]
     forbids: ["<env>/runtime/files/**", "**/*.enc outside <env>/secrets/", DESIGN.md, deployment.json, "k8s/ at root"]
-    # Owner ruling 2026-10-14: lite declares docker-swarm production, app runtime config, sealed custody and the seed levels.
+    # Lite declares docker-swarm production, app runtime config, sealed custody and the seed levels.
     # The db service supplies the database; schedules are platform/jobs ticks (R335); production has no Compose or host cron.
     lite:
       requires: [application-stacks.yaml]
@@ -1057,8 +1005,8 @@ slots:
     goesTo: ".starcistacks/<env>/secrets/<slug>.enc.yaml (at the app root); decrypted values only in memory or under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE"
     rules: [HFS_PLAINTEXT_SECRET]
 
-  # ----- app root: the database of a lite app (ruling:lite-self-hosted-postgres-passport-minio): a self-hosted PostgreSQL in the app's
-  # stack (the `db` service, built from the managed .starcistacks/images/db/Dockerfile: the official postgres image plus pgvector and pgmq, ruling:lite-db-image-in-stacks), migrated by
+  # ----- app root: the database of a lite app: a self-hosted PostgreSQL in the app's
+  # stack (the `db` service, built from the managed .starcistacks/images/db/Dockerfile: the official postgres image plus pgvector and pgmq), migrated by
   # `starci app db migrate --db-url-env <NAME>`. A full app keeps its TypeORM migrations under be/ and has no such folder.
   - id: app.db
     profiles: [app]
@@ -1102,7 +1050,7 @@ slots:
   - id: app.db.image
     profiles: [app]
     editions: [lite]
-    # The managed image of the db service (templates/app/db-image, rulings lite-official-postgres-image and lite-db-image-in-stacks): FROM
+    # The managed image of the db service (templates/app/db-image): FROM
     # the digest-pinned official postgres image plus postgresql-17-pgvector from PGDG and the sha256-verified pgmq release. It lives with
     # the stacks; the stack's db service, the local db container, the scratch database of `starci app db drift` and the squash replay
     # all build it.
@@ -1116,7 +1064,7 @@ slots:
     rules: [HFS_MANAGED_FILE_DRIFT]
   - id: app.starcistacks.cache
     profiles: [app]
-    # The committed result cache of `starci app check` (ruling app-check-cache, contexts/project/check-cache.md): JSON Lines records keyed by
+    # The committed result cache of `starci app check` (contexts/project/check-cache.md): JSON Lines records keyed by
     # content, one folder per family. App-owned and written only by the CLI; sync never renders, overwrites or judges it. Both editions.
     path: ".starcistacks/cache/"
     presence: optional
@@ -1170,7 +1118,7 @@ slots:
     tracked: tracked
     tier: none
     tests: none
-    # Lite renders the same files (owner ruling 2026-10-12 (owner:lite-production-swarm), with the Work boundary amended by ruling:R212/case-4): the unit run and its coverage are full's.
+    # Lite renders the same files (R212): the unit run and its coverage are full's.
     coverage: none
     managedBy: tool-config
     rules: [HFS_MANAGED_FILE_DRIFT, HFS_TOOL_CONFIG_LOCAL, HFS_TS_STRICT]
@@ -1275,7 +1223,7 @@ slots:
       - packages/hfs/templates/be/image/cli/Dockerfile
       - {path: packages/hfs/templates/be/image/worker/Dockerfile, edition: full}
       - packages/hfs/templates/fe/image/next/Dockerfile
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite may host Next without its own image; back-end images stay required in both editions."
+    editionWhy: "R212: lite may host Next without its own image; back-end images stay required in both editions."
     # One image per app: every declared app has its own Dockerfile (apps/<app>/Dockerfile), built from the APP ROOT (the folder with
     # the one package.json). It is app-owned (starci app scaffold writes it once from templates/<side>/image) and judged by the docker rules.
     # A Dockerfile anywhere else is owned by no slot.
@@ -1427,7 +1375,7 @@ slots:
       - {path: packages/hfs/src/mcp-tools-snapshot.spec.mjs, editions: [lite, full]}
 
   # ----- BE: apps (one slot per app kind; a new kind = a new slot, minor bump) ---------------------------
-  # The files of every app (owner ruling 2026-10-14, R245 and R246, since 3.1.0), each with a line budget (lines excluding
+  # The files of every app (R245 and R246), each with a line budget (lines excluding
   # import declarations, multi-line imports included) that BE_APP_COMPOSITION_BUDGET holds absolutely (not a ratchet):
   #   main.ts            the entry: builds EnvSource once, imports and calls read<App>Env from <app>.env.ts, builds options and boots.
   #   <app>.env.ts       exports interface <App>Env and read<App>Env(env: EnvSource): <App>Env (for example ApiEnv/readApiEnv);
@@ -1478,7 +1426,7 @@ slots:
   - id: be.app.cli
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): `starci app db migrate` owns lite migrations; a lite cli app is optional for declared operator commands."
+    editionWhy: "R212: `starci app db migrate` owns lite migrations; a lite cli app is optional for declared operator commands."
     # The ONE app of every one-off action (migrate, seed, sync, backup, any operator command): be/apps/cli, on nest-commander.
     # main.ts boots with CommandFactory.run (BE_CLI_BOOTSTRAP); app.module.ts composes the platform and the cli feature root
     # (src/features/cli/cli.module.ts); cli.env.ts exports CliEnv and readCliEnv(env: EnvSource): CliEnv, and cli.options.ts carries the env-derived values,
@@ -1500,7 +1448,7 @@ slots:
     rules: [BE_CLI_REQUIRED, BE_CLI_BOOTSTRAP, BE_CLI_OWNER, BE_SCHEMA_AUTHORITY, BE_APP_OPTIONS_COMPOSITION, BE_APP_COMPOSITION_BUDGET, BE_APP_ENV_REQUIRED]
 
   # ----- BE: features ------------------------------------------------------------------------------------
-  # src/features/ is grouped by TRIGGER KIND (owner decision 2026-10-02): features/api/<feature>/ (a request: application/ and
+  # src/features/ is grouped by TRIGGER KIND: features/api/<feature>/ (a request: application/ and
   # transport/<protocol>/, composed by the api apps), features/cli/ (a one-off action: the cli feature root, compiled only into
   # apps/cli). Every kind imports only downward into modules/*; no kind imports another.
   - id: be.feature
@@ -1670,7 +1618,7 @@ slots:
     since: 1.0.0
   - id: be.feature.realtime
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4) and ruling:R212/case-5 (owner decision 2026-10-24): both editions serve server-sent events (the default door for one-way push), the socket.io gateway (two-way) and the restricted GraphQL subscription (ruling:R212/case-7) from the api process (owner:lite-graphql-subscription-door), and scale on the hub of their declared infrastructure (BE-REALTIME-7)."
+    editionWhy: "R212: both editions serve server-sent events (the default door for one-way push), the socket.io gateway (two-way) and the restricted GraphQL subscription from the api process, and scale on the hub of their declared infrastructure (BE-REALTIME-7)."
     path: "src/features/realtime/<channel>/"
     presence: opt-in              # a push channel: reads and pushes only (an SSE controller, a socket gateway or a GraphQL subscription), no domain write
     pattern: realtime             # declaring the pattern (hfs.json sides.be.patterns) enables the kind (knowledge/patterns/be/realtime.yaml)
@@ -1683,7 +1631,7 @@ slots:
     tests: none
     lite:
       why: >-
-        a push channel with the three doors of both editions: server-sent events (be.feature.realtime.sse, the default for one-way push, owner decision 2026-10-24), the socket.io gateway (two-way, owner ruling 2026-10-13) and the restricted GraphQL subscription (ruling:R212/case-7); all run inside the be api process, which scales horizontally and stateless
+        a push channel with the three doors of both editions: server-sent events (be.feature.realtime.sse, the default for one-way push), the socket.io gateway (two-way) and the restricted GraphQL subscription (R212); all run inside the be api process, which scales horizontally and stateless
         on the hub of its declared infrastructure; the front end listens through a useSubscribe<Channel>Swr hook over modules/api/sse, or hooks/socketio (knowledge/patterns/be/realtime.yaml, liteAdapter)
     coverage: none
     rules: [BE_KIND_ISOLATION, BE_FEATURE_IMPORTS_FEATURE, BE_FEATURE_NOT_COMPOSED]
@@ -1693,7 +1641,7 @@ slots:
   - id: be.feature.realtime.graphql
     profiles: [be]
     path: "src/features/realtime/<channel>/transport/graphql/"
-    presence: opt-in              # a GraphQL subscription over graphql-ws, served in both editions (ruling:R212/case-7) and restricted: only when the client already uses GraphQL and needs the typed schema payload (knowledge/patterns/be/realtime.yaml)
+    presence: opt-in              # a GraphQL subscription over graphql-ws, served in both editions (R212) and restricted: only when the client already uses GraphQL and needs the typed schema payload (knowledge/patterns/be/realtime.yaml)
     pattern: realtime
     tracked: tracked
     tier: feature
@@ -1720,7 +1668,7 @@ slots:
   - id: be.feature.realtime.websocket
     profiles: [be]
     path: "src/features/realtime/<channel>/transport/websocket/"
-    presence: opt-in              # a socket.io gateway; lite runs it in the api process (owner ruling 2026-10-13)
+    presence: opt-in              # a socket.io gateway; lite runs it in the api process
     pattern: realtime
     tracked: tracked
     tier: feature
@@ -1735,7 +1683,7 @@ slots:
     since: 3.6.0
     profiles: [be]
     path: "src/features/realtime/<channel>/transport/sse/"
-    presence: opt-in              # a server-sent-events door: one @Sse method, the default door for one-way push (owner decision 2026-10-24), served in both editions
+    presence: opt-in              # a server-sent-events door: one @Sse method, the default door for one-way push, served in both editions
     pattern: realtime
     tracked: tracked
     tier: feature
@@ -1754,7 +1702,7 @@ slots:
     # @Command (<group>/<group>.cli.ts) whose sub-commands are @SubCommand classes extending CommandRunner
     # (<group>/subs/<name>.cli.ts), each with its unit spec beside it (<name>.cli.spec.ts): a command is an action runner, not a
     # thin transport (BE_CLI_COMMAND_SHAPE). `.cli.ts` because `.command.ts` is the CQRS message (HFS delta 3). Every module of
-    # the root has a module definition beside it (ruling:module-definition-everywhere) and no register override: cli.module.ts imports each
+    # the root has a module definition beside it and no register override: cli.module.ts imports each
     # group module as <Group>Module.register({}), a group module provides its commands, and a command takes its inputs from a platform capability (the connections and their opener
     # from platform/database) or from a command-line @Option.
     path: "src/features/cli/"
@@ -1773,8 +1721,8 @@ slots:
 
   - id: be.assets
     profiles: [be]
-    # Small binary assets bundled with the build (fonts a renderer embeds, a watermark): one folder per kind (owner ruling
-    # 2026-10-13, HFS assets policy). Large or user media (music, video, uploads) live in object storage and are fetched at runtime;
+    # Small binary assets bundled with the build (fonts a renderer embeds, a watermark): one folder per kind (HFS assets
+    # policy). Large or user media (music, video, uploads) live in object storage and are fetched at runtime;
     # templates and copy are TS constants in the owning capability (*.templates.ts). There is no be/resources/.
     path: "src/assets/<kind>/"
     presence: optional
@@ -1795,7 +1743,7 @@ slots:
     tier: domain
     owner: true
     requires: [index.ts]
-    # <name>.templates.ts holds the capability's static templates, copy and presets as TS constants (owner ruling 2026-10-13);
+    # <name>.templates.ts holds the capability's static templates, copy and presets as TS constants;
     # user-editable ones are seed rows, large or user media live in object storage.
     allows: ["<capability>.module.ts", "<capability>.module-definition.ts", "<capability>.config.ts", "<capability>.options.ts", errors/, messages/, persistence/, policies/, "*.service.ts", "*.service.spec.ts", "*.contracts.ts", "*.templates.ts", "*.schema.ts", "*.schema.spec.ts", "*.policy.ts", "*.policy.spec.ts"]
     forbids: [testing/, exceptions/, utils/, helpers/, shared/]
@@ -1839,7 +1787,7 @@ slots:
   - id: be.persistence
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): db/migrations own lite tables and both editions map them with TypeORM entities here (ruling:lite-persistence-typeorm-entities); full also keeps its TypeORM migrations here."
+    editionWhy: "R212: db/migrations own lite tables and both editions map them with TypeORM entities here; full also keeps its TypeORM migrations here."
     path: "src/modules/{domain,platform,projections}/<capability>/persistence/"
     # R178: the platform capabilities whose tables exist on EVERY connection that uses them (the event-bus outbox, the inbox of every service, the job table); their arrays may be
     # registered on several declared connections. Any other capability registers its arrays on exactly one (BE_SCHEMA_OWNER).
@@ -1850,7 +1798,7 @@ slots:
     requires: [connection.ts]     # the capability's <c>Entities / <c>Migrations arrays (the owner index re-exports the two arrays by name); no CONNECTION alias: the connection is the one the apps register the arrays on
     allows: ["entities/<table>.entity.ts", "migrations/<epochMs13>-<kebab-name>.ts", "<name>.sql.ts", "<name>.rows.ts", connection.ts]
     forbids: [index.ts, "<name>.repository.ts"]
-    # Lite maps its tables with the same TypeORM entities as full (ruling:lite-persistence-typeorm-entities): each capability's
+    # Lite maps its tables with the same TypeORM entities as full: each capability's
     # persistence/entities/<table>.entity.ts and an entities/index.ts exporting its <c>Entities array, which platform/database
     # lists by name; the schema authority stays db/migrations (ruleParams.be.lite.schemaAuthority), so no be migration and no
     # raw SQL file (R334 BE_PERSISTENCE_NO_RAW_SQL).
@@ -1917,7 +1865,7 @@ slots:
   - id: be.platform.event-bus
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite implements the event ports on pgmq (ruling:lite-pgmq-bus-bullmq-jobs); full uses its Kafka adapter."
+    editionWhy: "R212: lite implements the event ports on pgmq; full uses its Kafka adapter."
     path: "src/modules/platform/event-bus/"
     presence: opt-in
     pattern: event-bus            # the ONE durable event transport: transactional outbox, relay, Kafka, inbox, retry and dead letter (knowledge/patterns/be/event-bus.yaml)
@@ -1926,7 +1874,7 @@ slots:
     owner: true
     lite:
       why: >-
-        the EventBus and EventConsumer ports on pgmq (ruling:lite-pgmq-bus-bullmq-jobs): publish sends the envelope to its
+        the EventBus and EventConsumer ports on pgmq: publish sends the envelope to its
         topic in the publisher's transaction, so no outbox or relay runs; each consumer group reads its own queue bound to the
         event's name with a visibility timeout, archives a handled message, lets a failed one reappear and buries one past its
         maxDeliveries in its __dead queue (BE-EVENT-BUS-6). Jobs stay on BullMQ (platform/queue). No Kafka (knowledge/patterns/be/event-bus.yaml liteAdapter)
@@ -1940,7 +1888,7 @@ slots:
   - id: be.platform.queue
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-10: both editions implement the queue ports with BullMQ on Redis; lite declares its Redis in hfs.json sides.be.backing and keeps the outbox table in a db migration."
+    editionWhy: "R212: both editions implement the queue ports with BullMQ on Redis; lite declares its Redis in hfs.json sides.be.backing and keeps the outbox table in a db migration."
     path: "src/modules/platform/queue/"
     presence: opt-in
     pattern: queue                # the ONE BullMQ owner: the outbox relay into queues (jobId = outbox id) and job schedulers (knowledge/patterns/be/queues.yaml)
@@ -2045,7 +1993,7 @@ slots:
   - id: be.platform.jobs
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite persists fenced claims in db migrations and dispatches through the BullMQ queue on its declared Redis (ruling:R212/case-10); full uses TypeORM schema authority and the same queue adapter."
+    editionWhy: "R212: lite persists fenced claims in db migrations and dispatches through the BullMQ queue on its declared Redis; full uses TypeORM schema authority and the same queue adapter."
     path: "src/modules/platform/jobs/"
     presence: opt-in
     pattern: fenced-job           # the ONE fencing primitive: the job entity, the claim that bumps the token, guarded writes (knowledge/patterns/be/jobs.yaml)
@@ -2060,7 +2008,7 @@ slots:
   - id: be.projections
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite projection tables live in db migrations; full keeps the TypeORM projection entity beside its projection."
+    editionWhy: "R212: lite projection tables live in db migrations; full keeps the TypeORM projection entity beside its projection."
     path: "src/modules/projections/<name>/"
     presence: opt-in
     pattern: projection           # a read model: only its projection writes its table; recompute is idempotent and replayable; readers use get*
@@ -2128,7 +2076,7 @@ slots:
     since: 3.16.0
     profiles: [be]
     editions: [lite]
-    editionWhy: "lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written (owner ruling auth-package); full uses its identity provider."
+    editionWhy: "lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written; full uses its identity provider."
     # The identity capability's sign-in glue over @starci/auth: the entities of the session, attempt, refresh-token and email-token tables, the account doors over auth.users and auth.identities, the stores the package asks for (sessions, accounts, rate counter), the authenticator and the service the doors call, with their specs. `starci app sync` renders them; a hand edit is drift.
     path: "{src/modules/domain/identity/account-directory.service.spec.ts,src/modules/domain/identity/account-directory.service.ts,src/modules/domain/identity/authenticator.service.spec.ts,src/modules/domain/identity/authenticator.service.ts,src/modules/domain/identity/identity-email.log-events.ts,src/modules/domain/identity/identity-email.service.spec.ts,src/modules/domain/identity/identity-email.service.ts,src/modules/domain/identity/identity-sign-in.log-events.ts,src/modules/domain/identity/persistence/account-doors.port.ts,src/modules/domain/identity/persistence/entities/identity-attempt.entity.ts,src/modules/domain/identity/persistence/entities/identity-email-token.entity.ts,src/modules/domain/identity/persistence/entities/identity-refresh-token.entity.ts,src/modules/domain/identity/persistence/entities/identity-session.entity.ts,src/modules/domain/identity/persistence/entities/index.ts,src/modules/domain/identity/rate-counter.service.spec.ts,src/modules/domain/identity/rate-counter.service.ts,src/modules/domain/identity/session-store.service.spec.ts,src/modules/domain/identity/session-store.service.ts,src/modules/domain/identity/sign-in.service.spec.ts,src/modules/domain/identity/sign-in.service.ts,src/tests/fixtures/builders/identity.builder.ts}"
     presence: optional
@@ -2143,7 +2091,7 @@ slots:
     since: 3.16.0
     profiles: [be]
     editions: [lite]
-    editionWhy: "lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written (owner ruling auth-package); full uses its identity provider."
+    editionWhy: "lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written; full uses its identity provider."
     # The auth feature: the REST doors under /auth (login, refresh, session, logout, Google start and callback, jwks) over IdentitySignInService, one command or query and handler per door.
     path: "{src/features/api/auth/application/auth.contracts.ts,src/features/api/auth/application/confirm.command.ts,src/features/api/auth/application/confirm.handler.ts,src/features/api/auth/application/forgot.command.ts,src/features/api/auth/application/forgot.handler.ts,src/features/api/auth/application/get-jwks.handler.ts,src/features/api/auth/application/get-jwks.query.ts,src/features/api/auth/application/google-begin.command.ts,src/features/api/auth/application/google-begin.handler.ts,src/features/api/auth/application/google-complete.command.ts,src/features/api/auth/application/google-complete.handler.ts,src/features/api/auth/application/login.command.ts,src/features/api/auth/application/login.handler.ts,src/features/api/auth/application/logout.command.ts,src/features/api/auth/application/logout.handler.ts,src/features/api/auth/application/refresh.command.ts,src/features/api/auth/application/refresh.handler.ts,src/features/api/auth/application/resend.command.ts,src/features/api/auth/application/resend.handler.ts,src/features/api/auth/application/reset.command.ts,src/features/api/auth/application/reset.handler.ts,src/features/api/auth/application/session.command.ts,src/features/api/auth/application/session.handler.ts,src/features/api/auth/application/signup.command.ts,src/features/api/auth/application/signup.handler.ts,src/features/api/auth/auth.module-definition.ts,src/features/api/auth/auth.module.ts,src/features/api/auth/auth.options.ts,src/features/api/auth/index.ts,src/features/api/auth/transport/http/auth-http.module-definition.ts,src/features/api/auth/transport/http/auth-http.module.ts,src/features/api/auth/transport/http/auth-http.options.ts,src/features/api/auth/transport/http/auth.controller.ts,src/features/api/auth/transport/http/dto/forgot.request.ts,src/features/api/auth/transport/http/dto/google-start.request.ts,src/features/api/auth/transport/http/dto/login.request.ts,src/features/api/auth/transport/http/dto/resend.request.ts,src/features/api/auth/transport/http/dto/reset.request.ts,src/features/api/auth/transport/http/dto/signup.request.ts,src/features/api/auth/transport/http/dto/token.request.ts}"
     presence: optional
@@ -2211,13 +2159,13 @@ slots:
     coverage: required
     since: 3.17.0
 
-  # ----- BE: tests (owner test layout 2026-09-30). Unit specs are <name>.service.spec.ts beside their service and nothing else; everything else
+  # ----- BE: tests. Unit specs are <name>.service.spec.ts beside their service and nothing else; everything else
   # lives under src/tests/, one folder per kind, and the folder and the file suffix always agree (a file whose suffix does
   # not match its folder matches no slot: HFS_SLOT_UNDECLARED).
   - id: be.tests.world
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite integration proofs use the local db service and network fakes; full also boots apps and self-hosted services."
+    editionWhy: "R212: lite integration proofs use the local db service and network fakes; full also boots apps and self-hosted services."
     path: "src/tests/world/"
     presence: optional
     tracked: tracked
@@ -2294,7 +2242,7 @@ slots:
   - id: be.tests.integration
     since: 3.1.0
     profiles: [be]
-    editionWhy: "Lite integration specs use the local db service without containers or toxiproxy (ruling:R212/case-1, amended by ruling:R212/case-2 (owner:lite-production-swarm) and ruling:R212/case-4, with contracts allowed by owner:lite-contract-specs); R284 requires declared-pattern proofs there. Full additionally proves infrastructure outages through its world (R112)."
+    editionWhy: "Lite integration specs use the local db service without containers or toxiproxy (R212); R284 requires declared-pattern proofs there. Full additionally proves infrastructure outages through its world (R112)."
     path: "src/tests/integration/<capability>/*.integration-spec.ts"
     presence: optional
     tracked: tracked
@@ -2310,10 +2258,10 @@ slots:
   - id: be.tests.e2e
     since: 3.1.0
     profiles: [be]
-    editionWhy: "ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): full proves app flows through its e2e world; lite uses the R272 wiring proof and unit/integration specs."
+    editionWhy: "R212: full proves app flows through its e2e world; lite uses the R272 wiring proof and unit/integration specs."
     path: "src/tests/e2e/<area>/*.e2e-spec.ts"
     presence: optional
-    litePresence: forbidden       # ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4): lite has no e2e world
+    litePresence: forbidden       # R212: lite has no e2e world
     tracked: tracked
     tier: e2e
     tests: e2e
@@ -2326,7 +2274,7 @@ slots:
     profiles: [be]
     path: "src/tests/contract/<provider>/*.contract-spec.ts"
     presence: optional
-    litePresence: optional        # owner decision 2026-10-14: lite may run provider sandbox contracts
+    litePresence: optional        # lite may run provider sandbox contracts
     tracked: tracked
     tier: e2e
     tests: e2e
@@ -2375,7 +2323,7 @@ slots:
     presence: required
     tracked: tracked
     tier: route
-    # ruling:R212/case-2 (owner:lite-production-swarm) (with the Work boundary amended by ruling:R212/case-4) (lite = full): routes are thin and the front end serves no API - health/live is the one
+    # R212 (lite = full): routes are thin and the front end serves no API - health/live is the one
     # route handler of this slot, the OAuth callback is a back-end door, and no file holds a Server Action
     # (FE_ROUTE_HANDLER_FORBIDDEN, FE_SERVER_ACTION_FORBIDDEN).
     allows: ["[locale]/**/{page,layout,template,loading,error,not-found,default}.tsx", "[locale]/providers.tsx",
@@ -2439,7 +2387,7 @@ slots:
     rules: [FE_CONNECTED_BLOCK_RENDER_PAIR, FE_I18N_LITERAL, FE_NATIVE_FORM_CONTROL, FE_CLIENT_BOUNDARY]
   - id: fe.components.providers
     profiles: [fe]
-    # The client providers the root layout mounts once (owner ruling 2026-10-13, fe-stack theme/state-global/data): the redux store,
+    # The client providers the root layout mounts once (fe-stack theme/state-global/data): the redux store,
     # the SWR configuration, the theme (next-themes), the HeroUI toast region and the side-effect components (SwrSideEffects,
     # SocketIoSideEffects). A provider wires state, so it sits at the feature tier, above components.
     path: "apps/<app>/src/components/providers/<name>/"
@@ -2602,7 +2550,7 @@ slots:
     presence: optional
     tracked: tracked
     tier: transport
-    # The browser's calls to the back end (owner ruling 2026-10-13, fe-stack graphql/rest/codegen, FE-API-GRAPHQL): the auth and
+    # The browser's calls to the back end (fe-stack graphql/rest/codegen, FE-API-GRAPHQL): the auth and
     # no-auth Apollo clients with their link chain (graphql/clients), one file per operation (graphql/queries/query-<x>.ts,
     # graphql/mutations/mutation-<x>.ts and graphql/subscriptions/subscription-<x>.ts, each with its gql document map and typed request/response in types/), the generated wire types
     # (graphql/__generated__), the axios calls (rest/<area>/*.ts) for uploads, presigned URLs and auth endpoints and the
@@ -2650,7 +2598,7 @@ slots:
     tier: transport
     allows: ["*.ts"]
     tests: none
-    why: "the event-stream client of the one app that calls the back end, the stream half of the transport client layer (FE-REALTIME): event-stream.ts creates the app's one @starci/event-stream instance (createEventStream with the bearer access token source, which opens the stream with fetch, parses the events and reopens it with Last-Event-ID after a capped, doubling wait); a stream operation (sse/<area>/stream-<channel>.ts) follows on it and a useSubscribe hook of hooks/swr reads that operation; no hand-written reader lives here (owner:event-stream-package) and only a stream operation imports this folder (FE_TRANSPORT_OWNER); a repository where several apps stream keeps one instance in each of them"
+    why: "the event-stream client of the one app that calls the back end, the stream half of the transport client layer (FE-REALTIME): event-stream.ts creates the app's one @starci/event-stream instance (createEventStream with the bearer access token source, which opens the stream with fetch, parses the events and reopens it with Last-Event-ID after a capped, doubling wait); a stream operation (sse/<area>/stream-<channel>.ts) follows on it and a useSubscribe hook of hooks/swr reads that operation; no hand-written reader lives here and only a stream operation imports this folder (FE_TRANSPORT_OWNER); a repository where several apps stream keeps one instance in each of them"
     rules: [FE_TRANSPORT_OWNER]
     exemplifiedBy:
       - {path: packages/eslint/fe/r50-transport-owner-coverage.spec.mjs, editions: [lite, full]}
@@ -2739,7 +2687,7 @@ slots:
     profiles: [fe]
     # The identity-provider client (fe-stack auth, FE-AUTH): the session, the access token the Apollo link attaches and the
     # sign-in/sign-out calls. It talks only to the app's own back-end auth doors and holds no credential: the refresh token lives in
-    # the back end's httpOnly cookie and the access token in the memory of the one @starci/auth client (ruling:lite-self-hosted-postgres-passport-minio).
+    # the back end's httpOnly cookie and the access token in the memory of the one @starci/auth client.
     path: "apps/<app>/src/modules/auth/"
     presence: optional
     tracked: tracked
@@ -2753,7 +2701,7 @@ slots:
     since: 3.16.0
     profiles: [fe]
     editions: [lite]
-    editionWhy: "lite signs people in with the package @starci/auth, so its auth client is rendered, not written (owner ruling auth-package); full wires its identity provider."
+    editionWhy: "lite signs people in with the package @starci/auth, so its auth client is rendered, not written; full wires its identity provider."
     # The AuthClient every edition shares, implemented by one @starci/auth/client instance over the app's own back-end auth doors.  email-doors.ts is the lite-only call of the five email doors (sign up, resend, confirm, forgot, reset), kept off the shared AuthClient interface because the full edition identity provider owns its own recovery flows; index.ts is the module entry that exports both.
     path: "apps/web/src/modules/auth/{client.ts,email-doors.ts,index.ts}"
     presence: optional

@@ -1,5 +1,5 @@
-// secrets.mjs - HFS_PLAINTEXT_SECRET (R06): secrets exist only as `.starcistacks/<env>/secrets/<slug>.enc` sops envelopes.
-// It judges the tracked tree with the one list of secret shapes the push scan refuses (scripts/lib/secret-patterns.mjs):
+// secrets.mts - HFS_PLAINTEXT_SECRET (R06): secrets exist only as `.starcistacks/<env>/secrets/<slug>.enc` sops envelopes.
+// It judges the tracked tree with the one list of secret shapes the push scan refuses (scripts/lib/secret-patterns.mts):
 //   - a tracked file that is a secret by being (an env file, a key file, a credentials file, a plaintext member of a
 //     secrets directory), and every path a forbidden `external` slot names HFS_PLAINTEXT_SECRET for (the slot manifest);
 //   - a tracked `.enc` that is not a sops envelope (an encrypted-looking file that holds plaintext);
@@ -31,7 +31,7 @@ export function untrackedSecretFindings({ repoRoot, files, repo }: { repoRoot: s
   return [found(PLAINTEXT_SECRET, 'secrets.env', 'secrets.env is an untracked plaintext secret at the lite app root; seal it with starci app secret set --env <env> into .starcistacks/<env>/secrets/<slug>.enc and remove the plaintext file; read materialized values by *_FILE', { level: 'warning', pattern: 'untracked-secrets-env' })];
 }
 
-/** The findings of a file of the committed secrets cache: it is judged by what it holds (codes, paths, positions and digests, secret-records.mjs), never by the `secrets/` folder it sits in. */
+/** The findings of a file of the committed secrets cache: it is judged by what it holds (codes, paths, positions and digests, secret-records.mts), never by the `secrets/` folder it sits in. */
 function cacheRecordFindings(file: string, text: string) {
   const faults = secretRecordFaults(text);
   if (faults.length === 0) return [];

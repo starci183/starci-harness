@@ -1,4 +1,4 @@
-// refuse.mjs — the refusal Error every verb raises: a message plus a stable `code` (and any extra fields the
+// refuse.mts — the refusal Error every verb raises: a message plus a stable `code` (and any extra fields the
 // caller attaches). `refuse` builds it, `fail` throws it, `need` throws it when a required condition is false.
 
 /** An Error carrying `code` and `extra` fields; callers `throw` it or hand it to a result row. */

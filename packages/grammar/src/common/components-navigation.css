@@ -25,9 +25,8 @@
     }
 
     /*
-     * A text link is the exact primary brand colour, --accent, underlined (System.html draws links in the brand rose). OWNER EXCEPTION (2026-11-05, P2
-     * overruled): the raw accent measures 3.2 to 4.3 as text on the page ground, the secondary and tertiary surfaces and the dark surfaces of the Nivo theme,
-     * below 4.5; the owner knows and accepts it, so no contrast law judges a link. A current link keeps its own look (below).
+     * A text link is the exact primary brand colour, --accent, underlined (System.html draws links in the brand rose). The raw accent measures 3.2 to 4.3 as text on the page ground, the secondary and tertiary surfaces and the dark surfaces of the Nivo theme,
+     * below 4.5, and a link keeps it all the same: no contrast law judges a link. A current link keeps its own look (below).
      */
     .starci-core-link[data-grammar-link-content="text"] { color: var(--accent); }
 
@@ -227,7 +226,7 @@
     }
 
     /*
-     * Horizontal track (owner ruling stepper-connector): each step is an equal column with its marker centred over its
+     * Horizontal track: each step is an equal column with its marker centred over its
      * label, and a connector line runs from one marker to the next through the markers' centres, leaving a small gap at
      * each circle. The line before a completed step is the accent, the rest the border colour.
      */
@@ -333,7 +332,7 @@
         color: var(--accent-foreground);
     }
 
-    /* A bare mark wears the tone itself (ruling status-soft-pair-on-background); Offset Pop's light theme sets the --starci-core-mark-* hooks to the soft foreground. */
+    /* A bare mark wears the tone itself; Offset Pop's light theme sets the --starci-core-mark-* hooks to the soft foreground. */
     .starci-core-step[data-grammar-step-state="error"] .starci-core-step-marker {
         border-color: var(--danger);
         background: var(--surface);

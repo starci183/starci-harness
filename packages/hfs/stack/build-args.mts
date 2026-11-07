@@ -1,4 +1,4 @@
-// build-args.mjs - `starci app stack build-args --app <app>`: the public build values of one image (literal values plus the declared keys
+// build-args.mts - `starci app stack build-args --app <app>`: the public build values of one image (literal values plus the declared keys
 // of a sealed member). They are public by design (the browser receives them), so they are printed as KEY=VALUE; `data` carries key names only.
 // In GitHub Actions each sealed value is masked first and the lines are appended to $GITHUB_OUTPUT as a multi-line `args` output.
 import fs from 'node:fs';

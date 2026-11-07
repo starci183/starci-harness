@@ -1,5 +1,5 @@
 import type { Parsed } from '../rules/rule-types.mjs';
-// pg-parse.mjs - the one SQL parse entry of the hfs database rules (scripts/hfs/rules/database.mjs): the WASM build
+// pg-parse.mts - the one SQL parse entry of the hfs database rules (scripts/hfs/rules/database.mts): the WASM build
 // of libpg-query, the real PostgreSQL parser compiled to WebAssembly (no native build, no postgres server). It is
 // loaded lazily: a check of an app with no db/ tree never pays the module init. parseSql gives the statement
 // tree of a migration (`{version, stmts}`, each stmt `{stmt, stmt_location, stmt_len}` with byte offsets); a

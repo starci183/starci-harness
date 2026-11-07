@@ -48,13 +48,13 @@ function parse(argv: readonly string[]): { command: string; options: CiOptions; 
   return { command, options: options as CiOptions, name: positional[0] as string };
 }
 
-/** Manifest and sealed key reads remain offline; only github.mjs may invoke the GitHub CLI. */
+/** Manifest and sealed key reads remain offline; only github.mts may invoke the GitHub CLI. */
 export async function ciMain(argv: string[], { cwd = process.cwd(), stdout = (s: string): unknown => process.stdout.write(s), stderr = (s: string): unknown => process.stderr.write(s), stdin, env = process.env, tools = {}, hostIdentity, sops, platform = process.platform, inputRedirected }: {
   cwd?: string | undefined; stdout?: ((text: string) => unknown) | undefined; stderr?: ((text: string) => unknown) | undefined; stdin?: StdinSource; env?: NodeJS.ProcessEnv | undefined; tools?: { spawn?: GhSpawn | undefined } | undefined;
   hostIdentity?: AgeHost | null | undefined; sops?: Pick<SecretSops, 'decrypt'> | null | undefined; platform?: NodeJS.Platform | undefined;
   inputRedirected?: (() => boolean) | undefined;
 } = {}): Promise<number> {
-  // `ci local` runs the rendered CI on this machine (local.mjs): no manifest custody and no GitHub.
+  // `ci local` runs the rendered CI on this machine (local.mts): no manifest custody and no GitHub.
   if (argv[0] === 'local') return (await import('./local.mjs')).ciLocalMain(argv.slice(1), { cwd, stdout, stderr, env });
   try {
     const parsed = parse(argv);

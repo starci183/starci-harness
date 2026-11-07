@@ -1,4 +1,4 @@
-// lint-chunk.spec.mjs - the chunk helpers, and the ESLint launch of a long changed list: one launch, the list outside the command line.
+// lint-chunk.spec.mts - the chunk helpers, and the ESLint launch of a long changed list: one launch, the list outside the command line.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

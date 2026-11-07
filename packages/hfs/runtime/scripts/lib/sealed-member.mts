@@ -1,4 +1,4 @@
-// sealed-member.mjs - the file names of an app's sealed members (ruling app-secrets-one-standard): a member is
+// sealed-member.mts - the file names of an app's sealed members (contexts/project/stacks.md PROJECT-STACKS-5): a member is
 // `.starcistacks/<env>/secrets/<member>.enc.yaml`, a sops YAML document of one provider's keys; a legacy member is
 // `<member>.enc`, a sops dotenv document, read until `starci app secret migrate` moves it. Every reader of the secrets
 // folder names, lists and resolves members through this module.

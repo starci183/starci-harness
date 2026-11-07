@@ -1,4 +1,4 @@
-// The database backup made on the manager (stack/manager-backup.mjs): the remote scripts are composed only from validated names and quoted values,
+// The database backup made on the manager (stack/manager-backup.mts): the remote scripts are composed only from validated names and quoted values,
 // no password or URL secret is in them, the dump never leaves a root-private scratch directory, and the receipt is judged against a second reading of
 // the archive. The runner is a double; the shell scripts are syntax-checked with bash where bash exists.
 import test from 'node:test';

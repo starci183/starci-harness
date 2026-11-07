@@ -1,4 +1,4 @@
-// journal.mjs - the record of every deploy attempt on the manager, and the lock that serialises attempts.
+// journal.mts - the record of every deploy attempt on the manager, and the lock that serialises attempts.
 // A deploy (CI, dispatch or the owner's urgent one), a rollback and an accept each run as one ATTEMPT:
 //   1. the journal is opened: /srv/<stack>/deploys/<attempt>.json (the document, rewritten at every phase boundary, so a cancelled job still leaves its
 //      last phase) and one line in the append-only /srv/<stack>/deploys.jsonl; a journal that cannot be written refuses the attempt before anything changed;

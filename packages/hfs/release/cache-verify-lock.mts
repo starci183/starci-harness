@@ -1,4 +1,4 @@
-// cache-verify-lock.mts - the nightly verify lock of the release gate (OWNER RULING release-gate-warm-cache, 2026-11-04). The release gate trusts the
+// cache-verify-lock.mts - the nightly verify lock of the release gate. The release gate trusts the
 // warm committed cache: it runs diff-only at the release commit, whose cache main's CI already verified. A scheduled CI job (the managed
 // cache-verify.yml) runs STARCI_APP_CHECK_CACHE=verify on the default branch every night: diff-only, then full, compared. A red verify run locks
 // releases until a green verify run clears it: the gate reads the newest finished run of that workflow on the default branch.

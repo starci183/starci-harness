@@ -1,6 +1,6 @@
-// slot-app-view.mjs - the resolver of a whole app: a root path is answered by the scope of the app root, a path below a side folder
+// slot-app-view.mts - the resolver of a whole app: a root path is answered by the scope of the app root, a path below a side folder
 // (be/, fe/) by that side's scope with the side prefixed back onto every path and root it returns. Only the declared `reads` cross sides.
-// slots.mjs builds the scopes (`root` and `sides`, each a resolver of one scope) and hands them to appResolver.
+// slots.mts builds the scopes (`root` and `sides`, each a resolver of one scope) and hands them to appResolver.
 import { APP_SCOPE, isSide, PROFILES } from './slot-manifest-shape.mjs';
 import type { Side } from './slot-manifest-shape.mjs';
 import { cleanSlotPath } from './slot-path.mjs';

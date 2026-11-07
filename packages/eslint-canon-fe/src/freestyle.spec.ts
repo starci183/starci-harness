@@ -1,6 +1,6 @@
 /**
- * The Freestyle region (owner ruling grammar-freestyle-region): the rules that judge hand-written elements, class strings and
- * art leave the raw elements of a Freestyle subtree alone, and judge everything else as before.
+ * The Freestyle region: the rules that judge hand-written elements, class strings and
+ * art leave the raw elements of a Freestyle subtree alone, and judge everything else.
  *
  *   node --test src/freestyle.spec.ts
  */

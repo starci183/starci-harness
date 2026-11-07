@@ -1,4 +1,4 @@
-// local-ports.mjs - free-port checks of a dev environment and the name of whatever holds a port that is not free.
+// local-ports.mts - free-port checks of a dev environment and the name of whatever holds a port that is not free.
 import net from 'node:net';
 import { firstLine, lines as splitLines } from './context.mjs';
 import type { StackContext } from './context.mjs';

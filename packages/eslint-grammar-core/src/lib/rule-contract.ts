@@ -16,8 +16,8 @@ export const defineRule = (definition: RuleDefinition): Rule.RuleModule => ({
 })
 
 /**
- * A rule that leaves the raw elements of a Freestyle subtree alone (owner ruling grammar-freestyle-region): a finding about a
- * plain element, or its class or style, inside `<Freestyle>` is dropped; a Grammar component inside it is judged as before.
+ * A rule that leaves the raw elements of a Freestyle subtree alone: a finding about a
+ * plain element, or its class or style, inside `<Freestyle>` is dropped; a Grammar component inside it is judged.
  */
 export const exemptFreestyle = (rule: Rule.RuleModule): Rule.RuleModule => ({
   ...rule,

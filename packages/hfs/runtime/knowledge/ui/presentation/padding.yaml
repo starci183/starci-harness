@@ -50,7 +50,7 @@ rules:
       - id: case-3
         when: A list sits inside a panel or its rows own their own inset
         owner: The list component
-        render: "Owner ruling 2026-10-25 (owner:panel-list-box-edge): the row box aligns with the panel content
+        render: "The row box aligns with the panel content
           edge, like the search field and tabs boxes. Content retains the vendor item inset and rounded
           interaction background inside that box; the list keeps its vendor inset without negative-margin
           bleed. Compose without padding wrappers. The selected Grammar supplies the panel-alignment API;

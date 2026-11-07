@@ -1,4 +1,4 @@
-// git-policy.mjs — which git commands an op worker may run in a checkout it
+// git-policy.mts — which git commands an op worker may run in a checkout it
 // shares with other workflows. Pure: argv in, verdict out; a caller applies it to a
 // shell command before it runs.
 //
@@ -15,7 +15,7 @@
 // names its owned paths explicitly. A wrong commit is undone with `git revert`.
 //
 // The argv/pathspec machinery (parseGitArgv, literalPathspec, pathspecsWithinOwned,
-// --pathspec-from-file handling, literalAppRouterArgv) lives in ./git-pathspec.mjs;
+// --pathspec-from-file handling, literalAppRouterArgv) lives in ./git-pathspec.mts;
 // it is re-exported here so existing importers keep working.
 import { trimTrailingSlashes } from '../lib/path-key.mjs';
 import {

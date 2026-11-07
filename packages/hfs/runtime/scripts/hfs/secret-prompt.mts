@@ -1,4 +1,4 @@
-// secret-prompt.mjs - the values `app secret set` seals: typed at a masked terminal prompt, read as KEY=value lines from
+// secret-prompt.mts - the values `app secret set` seals: typed at a masked terminal prompt, read as KEY=value lines from
 // redirected stdin, or generated. A value stays in memory; the prompt echoes one `*` per character and nothing else.
 import fs from "node:fs";
 import { SecretError } from "./secret-errors.mjs";

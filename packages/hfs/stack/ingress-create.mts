@@ -1,4 +1,4 @@
-// ingress-create.mjs - `starci app stack ingress create`: deploys the SHARED ingress as its own swarm stack with ZERO replicas, so the service exists
+// ingress-create.mts - `starci app stack ingress create`: deploys the SHARED ingress as its own swarm stack with ZERO replicas, so the service exists
 // (rehearse and takeover need it) while nothing binds a port and the live edge is untouched. The stack is rendered from the deploy block:
 // the pinned image, the whole legacy dynamic directory bind-mounted read-only, the persisted certificates volume, the attachable overlay (external),
 // host-mode 80/443 (they bind only when a task starts) and no ACME email. The static arguments are the declared `ingress.args` or, byte for byte, the

@@ -51,7 +51,7 @@ interface FoundView {
  *     `persistence/migrations/` of a domain or platform capability (slot be.persistence), and nowhere else; a file in a
  *     folder named `entities` or `migrations` outside be.persistence is refused too;
  *   - `persistence/connection.ts` declares `<c>Entities` / `<c>Migrations`, the arrays the apps register; a capability has no
- *     `CONNECTION` alias (C0 lead decision 2026-09-30): its connection is the one those arrays are REGISTERED on, in the
+ *     `CONNECTION` alias: its connection is the one those arrays are REGISTERED on, in the
  *     `entities` / `migrations` of a connection literal of `DatabaseModule.register` and of the cli app. The arrays are
  *     registered under exactly one connection across all apps, that connection is declared in hfs.json, and every
  *     `Inject<Conn>EntityManager()` used inside the capability is that same connection;
@@ -64,7 +64,7 @@ interface FoundView {
  * its views, built by generated migrations and reached through the engine's own schemas) need no entity per table, but belong to
  * the declared capability alone: an `@Entity` of any other capability that maps one of them is refused.
  *
- * Lite (persistence.md BE-PERSISTENCE-3, ruling lite-persistence-typeorm-entities) has entities and no be migration: the
+ * Lite (persistence.md BE-PERSISTENCE-3) has entities and no be migration: the
  * capability's `persistence/entities/index.ts` declares `<c>Entities`, its `index.ts` exports that one persistence name, and
  * `platform/database/entities.ts` names it in `PRIMARY_ENTITIES`, the one list the app composition registers; there is a
  * single primary connection, so the per-connection checks do not apply.

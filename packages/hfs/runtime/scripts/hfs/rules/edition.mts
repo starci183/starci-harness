@@ -1,7 +1,7 @@
-// edition.mjs - L01, the edition rule. An hfs.json edition is `full` or `lite` (absent means full); under lite the standard is a
+// edition.mts - L01, the edition rule. An hfs.json edition is `full` or `lite` (absent means full); under lite the standard is a
 // filter plus a few additions over the same manifest, never a second engine. Lite declares Docker Swarm production infrastructure
-// (owner:lite-production-swarm, ruling:R212/case-4): the same slots, patterns and unit specs, provider adapters behind the same
-// ports, optional contract specs, and no e2e world (owner:lite-contract-specs). The slot layer already answers the paths lite
+// (R212): the same slots, patterns and unit specs, provider adapters behind the same
+// ports, optional contract specs, and no e2e world. The slot layer already answers the paths lite
 // removed (slots lite excludes, or whose litePresence is forbidden, come back HFS_FORBIDDEN_PRESENT with their goesTo);
 // this rule reports what no path can state:
 //   - inside a package.json: an e2e, test-world or browser script (`test:e2e`, `test:world`, `test:browser`,
@@ -10,10 +10,10 @@
 //     while full owns them (Kafka: the lite event bus runs pgmq);
 //   - a declaration of what lite does not have: an app kind, pattern or trigger kind every slot of which is forbidden under
 //     lite. The forbidden names are DERIVED from the manifest, so adding or restoring a kind is a manifest edit, not an edit here
-//     (under the 2026-10-13 ruling no pattern, trigger or app kind is gone);
-//   - a backing service that is not declared or not used (ruling:R212/case-10): a client library of a service of
+//     (the manifest forbids no pattern, trigger or app kind under lite);
+//   - a backing service that is not declared or not used (R212): a client library of a service of
 //     ruleParams.be.backing (bullmq for redis) or a declared pattern that needs one (queue) while hfs.json sides.be.backing does
-//     not declare it is HFS_BACKING_UNDECLARED, as is a service the catalog's editions excludes (owner:lite-vector-is-pgvector),
+//     not declare it is HFS_BACKING_UNDECLARED, as is a service the catalog's editions excludes (vector search is pgvector in lite),
 //     and a declared service no dependency of the app consumes is HFS_BACKING_UNUSED.
 // A full app answers []: the rule tests the edition once and a full view forbids none of these names.
 import { found, readJson } from './read.mjs';

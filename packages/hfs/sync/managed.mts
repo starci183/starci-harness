@@ -21,14 +21,14 @@
 //                                 eslint.config.*) are refused by hfs-check through the slot manifest under the same code.
 //   HFS_COVERAGE_SCOPE_DRIFT (R204)
 //                                 a file that states the coverage scope no longer states what the slot manifest derives (the `coverage` field of
-//                                 knowledge/hfs/slots.yaml through scripts/hfs/coverage-scope.mjs): be/jest.config.js, codecov.yml, or the
+//                                 knowledge/hfs/slots.yaml through scripts/hfs/coverage-scope.mts): be/jest.config.js, codecov.yml, or the
 //                                 `sonar.coverage.exclusions` line of sonar-project.properties. The scope is never edited by hand.
 //   HFS_SONAR_CONFIG (R11)        sonar-project.properties differs from its render (the render names no host URL, the source folders as
 //                                 `sonar.tests` too, the jest preset's test patterns as `sonar.test.inclusions` moved out of the sources by
-//                                 `sonar.exclusions` beside the build and dependency folders (sync/index.mjs sonarScope), the be lcov with the logic of be/src/modules as the coverage scope, the ESLint report and the
+//                                 `sonar.exclusions` beside the build and dependency folders (sync/index.mts sonarScope), the be lcov with the logic of be/src/modules as the coverage scope, the ESLint report and the
 //                                 HFS import files Sonar reads), or the stack declaration names a quality gate other than the one
 //                                 gate of knowledge/sonar-gate.yaml (bundled in the runtime copy). One edit is one finding.
-//   HFS_TS_STRICT (R22)           the root tsconfig.json drift (either profile), named by flag (ts-strict.mjs) instead of by hash.
+//   HFS_TS_STRICT (R22)           the root tsconfig.json drift (either profile), named by flag (ts-strict.mts) instead of by hash.
 import fs from 'node:fs';
 import path from 'node:path';
 import { SyncError, checkTargets, renderRepo } from './index.mjs';

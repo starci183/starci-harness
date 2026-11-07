@@ -1,11 +1,11 @@
-// scripts/api/git/lib.mjs — the one place the runtime spawns git (RT_EXTERNAL_OWNER of scripts/hfs/runtime-rules/external-owner.mjs enforces it).
+// scripts/api/git/lib.mts — the one place the runtime spawns git (RT_EXTERNAL_OWNER of scripts/hfs/runtime-rules/external-owner.mjs enforces it).
 //
 // Every caller spelt the same options by hand - encoding:'utf8', windowsHide:true, sometimes a timeout - with two shapes:
 // `git args` in a cwd and `git -C dir args`. gitSpawn keeps the spawnSync(file, args, options) signature so an injected
 // runner or a spec's fake takes the same three arguments; runGit is the `-C` / `-c` convenience; gitRunner folds any
 // caller's runner into {ok, stdout, stderr}. Only the call files beside this one import it: each names one git verb
-// (diff.mjs, ls-files.mjs, worktree-*.mjs, ...), and a caller folds the spawn result it gets back with the pure
-// helpers of scripts/lib/git.mjs (gitResultOf, gitOutputOf).
+// (diff.mts, ls-files.mts, worktree-*.mjs, ...), and a caller folds the spawn result it gets back with the pure
+// helpers of scripts/lib/git.mts (gitResultOf, gitOutputOf).
 import { assertMutationFence } from '../../lib/mutation-fence.mjs';
 import fs from 'node:fs';
 import os from 'node:os';

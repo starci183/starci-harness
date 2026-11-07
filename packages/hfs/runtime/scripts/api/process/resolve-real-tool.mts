@@ -1,4 +1,4 @@
-// resolve-real-tool.mjs - find the host executable behind a StarCi PATH wrapper without ever selecting that wrapper again.
+// resolve-real-tool.mts - find the host executable behind a StarCi PATH wrapper without ever selecting that wrapper again.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

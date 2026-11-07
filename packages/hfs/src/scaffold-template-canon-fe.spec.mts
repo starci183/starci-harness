@@ -1,4 +1,4 @@
-// scaffold-template-canon-fe.spec.mjs - every front-end file `starci app scaffold` writes passes the universal front-end canon.
+// scaffold-template-canon-fe.spec.mts - every front-end file `starci app scaffold` writes passes the universal front-end canon.
 // The fe skeleton is not sync-managed, so a new app keeps whatever the templates render: a template the canon refuses is a
 // defect every new app inherits. Each edition is scaffolded into a temp folder and its fe sources are linted, typed, with the
 // config of @starci/eslint-canon-fe as the rendered fe/eslint.config.mjs builds it (shippedCanon) (the sibling package's source): its starci-fe laws and

@@ -12,7 +12,7 @@
 // proves: HFS_WORK_IN_FE@full
 // proves: HFS_STACKS_IN_SIDE@lite
 // proves: HFS_STACKS_IN_SIDE@full
-// R01, the repository tree layout of the architecture machine (scripts/hfs/architecture/hfs.mjs): the root entries of a side and of the app, the back-end
+// R01, the repository tree layout of the architecture machine (scripts/hfs/architecture/hfs.mts): the root entries of a side and of the app, the back-end
 // src/ and its module tiers, and the trees that belong to the app root alone (.starciwork, .starcistacks), in lite and in full. Each case lets the
 // machine judge a hermetic app and compares the paths it names with the clean tree.
 import test from 'node:test';

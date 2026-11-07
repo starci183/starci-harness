@@ -6,7 +6,7 @@ import { MACHINE_BUSY_TIMEOUT_MS, isBusyError } from './machine-connection.mjs';
 import type { IncidentReporter } from './machine-connection.mjs';
 import type { SqlDb } from './sqlite-types.mjs';
 
-// engine/db/machine-open.mjs — how machine.sqlite is opened: the connection policy of the machine.mjs header, a reference-resolving handle.
+// engine/db/machine-open.mts — how machine.sqlite is opened: the connection policy of the machine.mts header, a reference-resolving handle.
 const require = createRequire(import.meta.url);
 function need(ok: unknown, message: string, code = 'STARCI_MACHINE_DB'): asserts ok { if (!ok) throw Object.assign(new Error(message), { code }); }
 const busyTimeoutOf = (env: NodeJS.ProcessEnv = process.env): number => { const n = Number(env?.STARCI_MACHINE_BUSY_TIMEOUT_MS); return Number.isInteger(n) && n > 0 ? n : MACHINE_BUSY_TIMEOUT_MS; };
@@ -22,7 +22,7 @@ function recordFacts(db: SqlDb): void {
   try { for (const [k, v] of stale) put.run(k, v); } catch (error) { if (!isBusyError(error)) throw error; /* another writer records them */ }
 }
 
-/** What the connection opener is bound to: the schema methods, the retrying opener and the corruption reporter of machine.mjs. */
+/** What the connection opener is bound to: the schema methods, the retrying opener and the corruption reporter of machine.mts. */
 export interface MachineOpenDeps {
   checkSchema(db: SqlDb, file: string): void;
   createSchema(db: SqlDb, context: { file: string; env: NodeJS.ProcessEnv; now: () => number }): void;
@@ -30,7 +30,7 @@ export interface MachineOpenDeps {
   corruptIncident: IncidentReporter;
 }
 
-/** The connection opener bound to the schema methods and the corruption reporter of machine.mjs. */
+/** The connection opener bound to the schema methods and the corruption reporter of machine.mts. */
 export function machineOpenMethods({ checkSchema, createSchema, openWithRetry, corruptIncident }: MachineOpenDeps) {
   function openConnection(file: string, { readOnly = false, env = process.env, now = Date.now, onCorrupt = corruptIncident }: { readOnly?: boolean; env?: NodeJS.ProcessEnv; now?: () => number; onCorrupt?: IncidentReporter } = {}): SqlDb {
     const { DatabaseSync } = require('node:sqlite');

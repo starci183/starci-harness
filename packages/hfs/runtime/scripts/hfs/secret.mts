@@ -1,12 +1,12 @@
-// secret.mjs - app secret init|set|get|unset|rename|remove|materialize|list|verify: sealed custody and private KEY files.
+// secret.mts - app secret init|set|get|unset|rename|remove|materialize|list|verify: sealed custody and private KEY files.
 // Every action but init names its environment with --env <env> (audit: optional); a positional environment is an operand error.
 // SOPS plaintext travels on stdin and stays in memory; normal CLI output contains names and local file paths only.
 // set seals one or more keys in one sops write: typed at a masked prompt on a terminal, KEY=value lines on redirected stdin
-// (the whole stdin for one key), or --generate (scripts/hfs/secret-prompt.mjs).
+// (the whole stdin for one key), or --generate (scripts/hfs/secret-prompt.mts).
 // Every verb runs at the app root or --cwd. Exit 0 done, 2 refusal; --reveal is the only plaintext stdout path.
-// unset, rename and remove edit one sealed member and are dry runs until --execute (scripts/hfs/secret-edit.mjs); so is recipients --add/--remove.
+// unset, rename and remove edit one sealed member and are dry runs until --execute (scripts/hfs/secret-edit.mts); so is recipients --add/--remove.
 // verify decrypts each member in memory and names only keys and violated shapes, never a value (R249).
-// server-key makes the deploy server's own age identity on the server and seals the environment to it (stack/server-key.mjs).
+// server-key makes the deploy server's own age identity on the server and seals the environment to it (stack/server-key.mts).
 import fs from "node:fs";
 import path from "node:path";
 import { randomBytes } from "node:crypto";

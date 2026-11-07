@@ -59,7 +59,7 @@ export interface OwnerConfig {
 }
 
 export const configRoot=skillRoot;
-/** The owner-facing language when config.yaml `language` is absent — the one default every reader shares (scripts/lib/i18n.mjs ownerLanguage). A base-tier value: machine (home.mjs) re-exports it, not the reverse. */
+/** The owner-facing language when config.yaml `language` is absent — the one default every reader shares (scripts/lib/i18n.mts ownerLanguage). A base-tier value: machine (home.mjs) re-exports it, not the reverse. */
 export const DEFAULT_OWNER_LANGUAGE='en';
 // Parsed once per file version (mtime + size) per process; each caller gets its own copy.
 // The one runtimes.yaml loader: it throws on a missing or unparsable file, so no caller ever
@@ -352,7 +352,7 @@ const validateSupervisorBlock=(supervisor: unknown,profile: RuntimeProfile | nul
     throw new Error('Invalid config.yaml: supervisor.mode must be chat or kernel, or null.');
   // The [Supervisor] kernel seat: kernel {agent?, model?, effort?}
   // pins its agent (default: the kernel pin), workers {base?, max?} its adaptive [Worker] cap (0 to 10; the shipped default is 0 fix workers),
-  // landGate {mode?: shared|exclusive, push?: boolean} the land gate (scripts/supervisor/land.mjs); push (default true, owner ruling push-main-after-scoped-check) lets `starci release push` send main to the remote after a green scoped check, false is the owner's lock on the remote.
+  // landGate {mode?: shared|exclusive, push?: boolean} the land gate (scripts/supervisor/land.mjs); push (default true) lets `starci release push` send main to the remote after a green scoped check, false is the owner's lock on the remote.
   const seat=supervisor.kernel,workers=supervisor.workers,gate=supervisor.landGate;
   if(seat!==undefined&&seat!==null)validateAgentSeat(seat,'supervisor.kernel',profile);
   if(!(workers===undefined||workers===null||(plain(workers)&&Object.keys(workers).every(key=>{const n=workers[key];return ['base','max'].includes(key)&&typeof n==='number'&&Number.isInteger(n)&&n>=0&&n<=10;}))))
@@ -385,7 +385,7 @@ const validateEarlyConfigBlocks=(config: unknown): void=>{
 };
 const validateConfigBlocks=(config: unknown,_knownProviders: ReadonlySet<string>,runtimes: Record<string, RuntimePool>,profile: RuntimeProfile): void=>{
   const blocks: Record<string, unknown>=plain(config)?config:{};
-  // specs (owner 2026-09-28): {unit?, e2e?} booleans - each family a boolean; absent = its default (SPEC_DEFAULTS: unit on, e2e off; specsSettings).
+  // specs: {unit?, e2e?} booleans - each family a boolean; absent = its default (SPEC_DEFAULTS: unit on, e2e off; specsSettings).
   const specs=blocks.specs;
   if(specs!==undefined&&specs!==null&&(!plain(specs)||Object.keys(specs).some(key=>!CONFIG_KEY_TREE.specs.includes(key)||typeof specs[key]!=='boolean')))throw new Error(`Invalid config.yaml: specs must be {${SPEC_FAMILIES.map(k=>k+'?: boolean').join(', ')}}, or null.`);
   // reconciler (scripts/reconciler/state.mjs reconcilerConfig): {enabled?: boolean, profile?: operational|observe, controllers?: {<name>: {mode: off|shadow|active}}}, or null.
@@ -462,13 +462,13 @@ export function inspectOwnerConfig(root: string=configRoot): InspectedConfig{
   catch(error){return {file,config:parsed,error:null,invalid:(error as Error).message};}
 }
 /**
- * The owner's spec switches (config.yaml root `specs`, owner 2026-09-28; defaults set 2026-09-29, none needs a config block):
+ * The owner's spec switches (config.yaml root `specs`; the defaults need no config block):
  *   unit    - product unit specs in workflows. Default on: a code-writing op writes/updates the unit specs of the source it
  *             adds or changes and runs only those; the full unit suite is unit.verify's or the approved /starci release flow's. false = the ops'
  *             policy.specsToggle deferral path (scripts/route/spec-deferral.mjs);
  *   e2e     - product e2e in workflows. Default OFF: e2e runs only when the goal or the owner explicitly asks (set true,
  *             or `starci kernel run-deferred-tests`); e2e.verify then runs the FULL e2e suite.
- * An absent, null or unreadable owner file reads as the defaults: unit on, e2e off. The runtime itself has no specs (owner ruling no-runtime-specs), so there is no switch for them.
+ * An absent, null or unreadable owner file reads as the defaults: unit on, e2e off. The runtime itself has no specs, so there is no switch for them.
  */
 const SPEC_FAMILIES=Object.freeze(['unit','e2e'] as const);
 const SEAT_KEYS=Object.freeze(['agent','model','effort']);

@@ -14,15 +14,15 @@ import { registryListImport, registrySlot } from './entity-registry.mjs';
  *      kind (slot field `trigger`: api, webhooks, realtime, saga, reactors, jobs, cli) importing a feature of another is
  *      BE_KIND_ISOLATION, whose fix is the event bus,
  *      an app never imports another app (BE_SERVICE_ISOLATION / FE_APP_ISOLATION), and a component layer imports only the layers after it;
- *      the entity registry naming a capability's `<c>Entities` from its public entry is the one platform-to-domain edge (entity-registry.mjs);
+ *      the entity registry naming a capability's `<c>Entities` from its public entry is the one platform-to-domain edge (entity-registry.mts);
  *   2. owner cycles: a strongly connected component of the owner graph, type-only imports included (ARCH_OWNER_CYCLE), the entity
  *      registry counted as a unit of its own,
  *      reported with the cycle path and the import that closes each hop.
- * Importing inside one owner is always allowed; the public-entry rule stays with owners.mjs (ARCH_OWNER_EXPORT_BYPASS).
+ * Importing inside one owner is always allowed; the public-entry rule stays with owners.mts (ARCH_OWNER_EXPORT_BYPASS).
  */
 export const TIER_RULE_IDS = ['BE_TIER_DIRECTION', 'BE_FEATURE_IMPORTS_FEATURE', 'BE_KIND_ISOLATION', 'BE_SERVICE_ISOLATION', 'FE_TIER_DIRECTION', 'FE_APP_ISOLATION', 'ARCH_OWNER_CYCLE'];
 
-/** The slot resolver of scripts/hfs/slots.mjs. */
+/** The slot resolver of scripts/hfs/slots.mts. */
 type Resolver = ArchitectureConfig['hfs'];
 
 /** What `resolver.importAllowed` answers; the fields beyond `allowed` and `reason` are present for the reasons that name them. */
@@ -224,7 +224,7 @@ function inspectTierEdge(graph: HfsGraph, ts: TypeScriptApi, edge: GraphEdge, ti
 }
 
 /**
- * The cycle unit of a file: its owner unit, except the entity registry (entity-registry.mjs), which is a unit of its own. It sits in
+ * The cycle unit of a file: its owner unit, except the entity registry (entity-registry.mts), which is a unit of its own. It sits in
  * platform/database but is composition-level by role (it imports every capability's `<c>Entities`), so it never closes a cycle
  * among capabilities through the owner it lives in.
  */

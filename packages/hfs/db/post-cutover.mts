@@ -1,4 +1,4 @@
-// post-cutover.mjs - `starci app db post-cutover`: applies the held-back migrations (database.heldBack) that `db migrate` skipped, e.g. the one that
+// post-cutover.mts - `starci app db post-cutover`: applies the held-back migrations (database.heldBack) that `db migrate` skipped, e.g. the one that
 // drops the old engine's tables. After it a rollback to the old app needs a database restore, so it is guarded three ways:
 //   1. a READ-ONLY pg_proc preflight (also in the dry run): every function of the declared families (database.postCutover.functionPrefixes and
 //      functionNames in database.postCutover.schema) that exists on the database must be covered by the DROP FUNCTION statements of the held-back

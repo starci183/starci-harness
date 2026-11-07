@@ -1,4 +1,4 @@
-// root-packages.mjs - the workspace packages of an app ROOT (packages/<name>: the agent SDK, a block library, a module package, the managed packages/modules).
+// root-packages.mts - the workspace packages of an app ROOT (packages/<name>: the agent SDK, a block library, a module package, the managed packages/modules).
 // They lie outside both side folders and belong to no side; both sides import them by package name, through their package entry points
 // (the `exports` of the manifest), so the import graph reads them as first-party packages and the back-end canon never reads them as
 // a third-party library. The app root's one package.json lists them in `workspaces`; the patterns that start with a side folder

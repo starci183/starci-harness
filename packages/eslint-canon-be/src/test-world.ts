@@ -1,5 +1,5 @@
 /**
- * The rules that hold the test layout (catalog R47 `BE_TEST_TOPOLOGY`, owner test layout 2026-09-30).
+ * The rules that hold the test layout (catalog R47 `BE_TEST_TOPOLOGY`).
  *
  * Unit specs sit beside their subject. Everything else lives under `src/tests/`, one folder per kind:
  *   - `world/`        the ONLY test infrastructure (slot `be.tests.world`): `global-setup.ts` starts (or attaches to) the stack

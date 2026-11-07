@@ -1,4 +1,4 @@
-// local-custody.mjs - the dev custody of a dev environment: which keys the environment reads, whether they are sealed, and their host-local
+// local-custody.mts - the dev custody of a dev environment: which keys the environment reads, whether they are sealed, and their host-local
 // files (PROJECT-STACKS-5). Opening a member needs the owner identity; a machine without it is refused with the exact owner step, and a missing
 // value is never answered by minting a replacement (only the owner-armed `starci app secret init --env <env>` creates dev values, once).
 import fs from 'node:fs';

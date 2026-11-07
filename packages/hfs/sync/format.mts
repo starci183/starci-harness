@@ -1,4 +1,4 @@
-// format.mjs - HFS_FORMAT (R19): Prettier is the only formatter, and every tracked file it formats is formatted.
+// format.mts - HFS_FORMAT (R19): Prettier is the only formatter, and every tracked file it formats is formatted.
 // The check is `prettier --check` over the tracked files through the repository's OWN prettier (resolved from the repository,
 // with the repository's prettier config and .prettierignore), so it judges what the repository's pre-commit and CI judge. A
 // repository with no installed prettier is a refusal (HFS_FORMAT_TOOL_MISSING), never a pass. Prettier runs in batches: the files are cut into

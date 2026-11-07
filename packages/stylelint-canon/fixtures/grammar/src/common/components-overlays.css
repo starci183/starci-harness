@@ -10,7 +10,7 @@
     /* ---------------------------------------------------------------- shared overlay tone */
     /*
      * A tone x gives three values: x itself (a fill, or a mark that stands alone), and the pair x-soft and x-soft-foreground
-     * for content that sits on a background of the tone (owner ruling status-soft-pair-on-background).
+     * for content that sits on a background of the tone.
      */
     :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog) {
         --starci-core-overlay-tone: var(--muted);
@@ -515,7 +515,7 @@
 
     /* ---------------------------------------------------------------- alert banner */
     /*
-     * The Alert IS the HeroUI Alert (owner ruling 2026-09-27 alert-white-surface; @heroui/styles alert.css): a white
+     * The Alert IS the HeroUI Alert (@heroui/styles alert.css): a white
      * bg-surface row with shadow-surface, px-4 py-3, radius min(32px, --radius-3xl), gap-4; the indicator a size-4
      * glyph with p-1 and the title text-sm/6 medium, both in the tone's soft-foreground; a muted description. Grammar
      * paints nothing over it (0.5.4: the tone tint, tone border, 12px radius, 20px indicator and overlay-tone indicator
@@ -527,7 +527,7 @@
     }
 
     /*
-     * appearance="soft" (owner ruling 2026-10-11): the tone's soft tint at half strength under the same anatomy, no shadow.
+     * appearance="soft": the tone's soft tint at half strength under the same anatomy, no shadow.
      * The title keeps the tone's soft-foreground, which clears 3:1 on the lighter half tint (COLOR-5 case-1a).
      */
     .starci-core-alert[data-grammar-appearance="soft"] {
@@ -881,7 +881,7 @@
     }
 
     /*
-     * Segmented meter (owner ruling 2026-09-27): the track spans the full width of its container,
+     * Segmented meter: the track spans the full width of its container,
      * like a Progress track, at HeroUI's h-1 (0.25rem, 4px) - thinner than the plain meter's h-2 -
      * laid out as equal pill segments 0.25rem apart. The track itself goes transparent so the gaps
      * read as gaps; each empty segment wears the track colour and each filled one the tone fill. The

@@ -13,7 +13,7 @@ const CLASS_NAMES = at("apps/web/src/components/blocks/OfficeMessenger/className
 test("every rule this law declares is exported under its published name, in the counting cohort", () => {
   for (const [name, rule] of Object.entries(rules)) assert.ok(rule.meta && rule.create, `${name} is not a rule`)
   assert.deepEqual(recommended, { "starci-fe/no-spacing-utility": "warn" })
-  assert.deepEqual(COUNTING["starci-fe/no-spacing-utility"], { rule: "R350", ruling: "spacing-roles" })
+  assert.deepEqual(COUNTING["starci-fe/no-spacing-utility"], { rule: "R350" })
 })
 
 test("a utility is read past its variants and importance, and only the spacing families count", () => {

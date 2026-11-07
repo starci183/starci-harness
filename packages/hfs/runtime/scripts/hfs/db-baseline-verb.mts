@@ -56,7 +56,7 @@ export interface DbMainIo extends DbPorts {
 /** The baseline plan: the active chain, the last valid stamp, the new version and its file. */
 interface BaselinePlan { active: SqlFile[]; last: string; stamp: string; file: string }
 
-/** The queue, grant and cron declarations of the migrations (rules/database-queues.mjs). */
+/** The queue, grant and cron declarations of the migrations (rules/database-queues.mts). */
 interface QueueDeclarations {
   findings: unknown[]; queues: string[]; cron: Array<{ name: string; schedule: string; command: string }>;
   grants?: Array<{ privileges: string[]; tables: string[]; roles: string[]; grantOption?: boolean }>;

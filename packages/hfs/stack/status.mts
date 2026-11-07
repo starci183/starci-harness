@@ -1,4 +1,4 @@
-// status.mjs - what runs against what was accepted: `starci app stack status --env <env>` (read-only) compares the live services of the stack with the
+// status.mts - what runs against what was accepted: `starci app stack status --env <env>` (read-only) compares the live services of the stack with the
 // accepted release and prints the drift per service. A service is drifted when
 //   - Swarm rolled it back by itself (its update state is `rollback_*`): the release still reads as the new one, the service runs the old spec;
 //   - its live image digest is not the digest the release's stack.yaml names, or its task template is not the one observed when the release was accepted
@@ -113,7 +113,7 @@ export interface StatusDeps {
   observedServices: (ctx: StackContext, config: DeployConfig) => ObservedService[];
 }
 
-// reason: a dynamic import by string, resolved on first use so a spec that injects `ssh` never loads remote.mjs
+// reason: a dynamic import by string, resolved on first use so a spec that injects `ssh` never loads remote.mts
 const ownerSsh = async (ctx: StackContext, config: DeployConfig, options: SshOptions): Promise<Runner> => (await import('./remote.mjs')).ownerSshRunner(ctx, config, options);
 
 const DEFAULT_DEPS: StatusDeps = { ssh: ownerSsh, releaseStore: createReleaseStore, observedServices };

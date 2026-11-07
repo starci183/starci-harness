@@ -11,9 +11,9 @@
 //   starci app add reactor payment-status --event payment-settled --from payment --service PaymentStatusService=@modules/domain/order
 //   starci app add queue receipt                          modules/queues/receipt: the typed producer
 //   starci app add projection order-summary --connection order
-//   starci app add block handoff-block --shapes prepared,sent,returned   a front-end unit in the shape-slot pattern (add-fe-unit.mjs)
+//   starci app add block handoff-block --shapes prepared,sent,returned   a front-end unit in the shape-slot pattern (add-fe-unit.mts)
 //   starci app add page handoffs | overlay invite-member --kind modal | layout settings   a route page, overlay or segment layout
-//                                                         (add-fe-page.mjs, add-fe-overlay.mjs, add-fe-layout.mjs)
+//                                                         (add-fe-page.mts, add-fe-overlay.mts, add-fe-layout.mts)
 //
 // Body placeholders: for each variable `v` of the tree (job, step, event, ...) `@@v@@` is its kebab name, `@@V@@` its PascalCase and
 // `@@vCamel@@` its camelCase, `@@vUpper@@` its UPPER_SNAKE and `@@vSnake@@` its snake_case; the option `--service Class=module` gives `@@service@@` (the class) and `@@serviceModule@@`.

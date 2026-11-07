@@ -1,4 +1,4 @@
-// image-scan.mjs - the guard before a PUBLIC image is pushed: layers of a public package are public, so the built image is scanned for secret material
+// image-scan.mts - the guard before a PUBLIC image is pushed: layers of a public package are public, so the built image is scanned for secret material
 // and the push is refused on any hit. Three sources, all read from the local docker daemon (no registry, no credentials):
 //   history      the build instructions (docker history): secret patterns, and build arguments that are not on the public build-args list
 //   environment  the baked ENV: secret patterns, and non-empty values of variables named like a secret

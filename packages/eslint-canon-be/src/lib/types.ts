@@ -2,7 +2,7 @@
  * Type-aware helpers: a rule asks what a node IS (its TypeScript type and where that type is declared), never what it
  * is called. `starciBeConfig` turns typed linting on for every file (`parserOptions.projectService`), so these
  * helpers refuse to run without the program instead of falling back to a name match: a rule that silently degrades to
- * a heuristic is the loophole the owner closed.
+ * a heuristic is a loophole.
  */
 import ts from "typescript"
 import type { ParserServicesWithTypeInformation } from "@typescript-eslint/utils"

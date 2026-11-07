@@ -1,6 +1,6 @@
-// scripts/api/sops/lib.mjs — shared file formats, identity admission and SOPS child capture.
+// scripts/api/sops/lib.mts — shared file formats, identity admission and SOPS child capture.
 // Custody members are committed as `<name>.<fmt>.enc`; sops infers a format from the LAST extension, so `.enc` reads as
-// binary and every read states the format (--input-type). The call files (decrypt.mjs, encrypt.mjs, exec-env.mjs) each
+// binary and every read states the format (--input-type). The call files (decrypt.mts, encrypt.mjs, exec-env.mjs) each
 // name one sops use.
 import fs from 'node:fs';
 import path from 'node:path';

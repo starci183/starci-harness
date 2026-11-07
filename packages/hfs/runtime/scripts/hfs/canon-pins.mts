@@ -1,4 +1,4 @@
-// canon-pins.mjs - the pins an app is judged and scaffolded against. knowledge/hfs/canon-pins.yaml pins every shared dependency
+// canon-pins.mts - the pins an app is judged and scaffolded against. knowledge/hfs/canon-pins.yaml pins every shared dependency
 // but the command line itself: the `starci-harness` row is the version of the CLI that runs this @starci/hfs (it passes its own
 // version to main as `harness`), never a bundled row, since the CLI depends on this package exactly and a bundled pin of the CLI
 // would make each release of one need a release of the other. Run without a CLI (the package's own specs and diagnostics), there

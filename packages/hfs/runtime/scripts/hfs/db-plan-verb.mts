@@ -28,7 +28,7 @@ export type Row = Record<string, unknown>;
 /** How one inventory differs between the repository and the database. */
 export interface Summary { expected: number; remote: number; missing: number; unexpected: number; changed: number }
 
-// Each inventory is one read-only psql query whose rows come back as JSON (db-baseline-verb.mjs runDbPostgres).
+// Each inventory is one read-only psql query whose rows come back as JSON (db-baseline-verb.mts runDbPostgres).
 const PRESENCE_SQL = `select
   pg_catalog.to_regclass('supabase_migrations.schema_migrations') is not null as migrations,
   pg_catalog.to_regclass('cron.job') is not null as cron,

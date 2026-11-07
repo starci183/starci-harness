@@ -1,4 +1,4 @@
-// source-ast.mjs - the syntax-tree reading the runtime rules share (scripts/hfs/runtime-check.mjs): one TypeScript parse
+// source-ast.mts - the syntax-tree reading the runtime rules share (scripts/hfs/runtime-check.mjs): one TypeScript parse
 // per runtime source file, never a text grep. Pure: every function takes a source text and returns facts about it.
 //   parseSource(text, file)       the TypeScript SourceFile (JS script kind for .mjs/.cjs/.js)
 //   moduleRefs(source)            every import/export-from/require()/import() of a string specifier: [{module, line}]

@@ -1,4 +1,4 @@
-// `starci app add queue|job` in a lite app (ruling:R212/case-10): the queue is full's BullMQ adapter on the declared Redis, so lite
+// `starci app add queue|job` in a lite app (R212): the queue is full's BullMQ adapter on the declared Redis, so lite
 // generates full's queue and jobs trees with three differences. The outbox and job tables are a db migration instead of the
 // TypeORM entity, connection and migration; the SQL names the public schema; and the queue options read the Redis password of
 // its sealed secret. The verb also declares redis in hfs.json sides.be.backing with its bullmq client, and renders the one
@@ -63,7 +63,7 @@ const LITE_TEMPLATES: Readonly<Record<string, string>> = Object.freeze({
   'jobs/platform/jobs.index.ts.tpl': 'jobs/platform-lite/jobs.index.ts.tpl',
   'jobs/platform/job-claim.service.ts.tpl': 'jobs/platform-lite/job-claim.service.ts.tpl',
   'jobs/platform/job-claim.service.spec.ts.tpl': 'jobs/platform-lite/job-claim.service.spec.ts.tpl',
-  // The jobs module composes the one tick scheduler (R335, ruling:lite-official-postgres-image): ScheduleModule.forRoot() and JobTickService.
+  // The jobs module composes the one tick scheduler (R335): ScheduleModule.forRoot() and JobTickService.
   'jobs/platform/jobs.module.ts.tpl': 'jobs/platform-lite/jobs.module.ts.tpl',
 });
 

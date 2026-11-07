@@ -20,7 +20,7 @@ export const functionLineBudget = defineRule({
     },
   },
   create(context) {
-    // C08 adds this common parameter to the shipped manifest; keep the owner-decided cap while it lands.
+    // A manifest without `ruleParams.functionLines` gets the cap of 80 lines.
     const max = hfsOf(context).ruleParams.functionLines ?? 80
     if (!Number.isInteger(max) || max < 1) throw new RangeError("ruleParams.functionLines must be a positive integer")
     const source = context.sourceCode || context.getSourceCode()

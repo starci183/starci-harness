@@ -1,4 +1,4 @@
-// js-lex.mjs - reads a JavaScript, TypeScript or stylesheet source as three layers: its code, its comments and its string contents.
+// js-lex.mts - reads a JavaScript, TypeScript or stylesheet source as three layers: its code, its comments and its string contents.
 // A scanner that looks for a spelling in text (a bypass marker, a command in a string) needs to know which layer the spelling is in: a marker
 // quoted inside a string or a template literal is data, a marker at the start of a comment is a directive, a marker in code is a call.
 // One pass, no dependency, no AST: strings (single, double, template with nested `${}`), line and block comments and regular expression

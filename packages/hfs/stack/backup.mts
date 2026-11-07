@@ -1,4 +1,4 @@
-// backup.mjs - `starci app stack backup`: age-encrypted tarballs of the declared volumes, produced ON the manager.
+// backup.mts - `starci app stack backup`: age-encrypted tarballs of the declared volumes, produced ON the manager.
 // Per volume ONE remote command streams `tar` straight through `age` into <name>-<stamp>.tgz.age.partial and renames it to its final name only
 // when the whole pipeline succeeded, so no plaintext file ever exists and a failed dump never leaves a truncated backup that looks valid.
 // The age recipient is the public recipient of the app's .sops.yaml (the custody's own recipient). --swarm-state also archives

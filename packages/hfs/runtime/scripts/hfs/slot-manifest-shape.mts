@@ -1,4 +1,4 @@
-// slot-manifest-shape.mjs - the product slot manifest's schema-shaped validation.
+// slot-manifest-shape.mts - the product slot manifest's schema-shaped validation.
 import type { Parsed } from './manifest-shape.mjs';
 import { isPlainObject } from '../../engine/plain-object.mjs';
 import { byCodeUnit } from '../lib/list.mjs';

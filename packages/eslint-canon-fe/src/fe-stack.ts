@@ -3,7 +3,7 @@
  *
  * ONE LIBRARY PER CONCERN. Every common front-end concern - GraphQL, REST, data hooks, toast, forms, state, realtime, i18n, UI,
  * icons, motion, dates, numbers, storage, charts, markdown, code - has one canonical library, the same for the lite and the full
- * edition (owner ruling 2026-10-13). A second library for a concern is a second set of conventions a reader has to know and a
+ * edition. A second library for a concern is a second set of conventions a reader has to know and a
  * second dependency a release has to keep current, and it always arrives one import at a time. The catalog names, per concern,
  * the alternatives a front end never imports; this rule refuses exactly those, read from the catalog, so the list lives once.
  *

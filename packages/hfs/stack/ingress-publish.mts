@@ -1,4 +1,4 @@
-// ingress-publish.mjs - `starci app stack ingress publish`: puts the app's own routes file (deploy.ingress.routes) into the dynamic directory the
+// ingress-publish.mts - `starci app stack ingress publish`: puts the app's own routes file (deploy.ingress.routes) into the dynamic directory the
 // shared ingress serves, under `publish.file`, and retires the old generic file(s) listed in `publish.supersedes`. The directory is shared with
 // tenants that write their own files: those files are NEVER touched; the only remote writes and removals are `publish.file`, its `.tmp` upload
 // name and the superseded names.
@@ -268,7 +268,7 @@ function retire(ctx: Pick<StackContext, 'now'>, run: Runner, ingress: PublishIng
   return { contents, previous, backups };
 }
 
-/** `ingress publish`: see the top of the file. `kit` carries the shared probe helpers of ingress.mjs. */
+/** `ingress publish`: see the top of the file. `kit` carries the shared probe helpers of ingress.mts. */
 export async function publishIngress(ctx: StackContext, run: Runner, config: DeployConfig, ingress: IngressConfig, execute: boolean, kit: PublishKit): Promise<ActionResult> {
   if (ingress.publish === null) throw refusal('STACK_INGRESS_PUBLISH_UNDECLARED', 'deploy.ingress.publish ({ file, supersedes }) is not declared: nothing to publish');
   if (!declaresPublish(ingress)) throw refusal('STACK_INGRESS_PUBLISH_NO_ROUTES', 'deploy.ingress.routes is not declared: there is no routes file to publish');

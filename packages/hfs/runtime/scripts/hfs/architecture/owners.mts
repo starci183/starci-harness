@@ -94,7 +94,7 @@ function arrangesSchema(config: ArchitectureConfig, from: string, to: string): b
 }
 
 /**
- * The entity registry (slot role entity-registry, entity-registry.mjs) is imported by deep path, and only from the files its slot's
+ * The entity registry (slot role entity-registry, entity-registry.mts) is imported by deep path, and only from the files its slot's
  * `importedBy` names: app composition and the test world. Any other importer goes through the owner's entry, which never exports it.
  */
 function importsRegistry(config: ArchitectureConfig, from: string, to: string): boolean {

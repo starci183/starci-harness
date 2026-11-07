@@ -94,7 +94,7 @@ export const ListOptions = ({ options }: { readonly options: ReadonlyArray<ListO
  * Anatomy and look are HeroUI's own: `Select.Trigger` holding `Select.Value` and `Select.Indicator`, `Select.Popover` holding a
  * `ListBox` of items. The Grammar class names (`starci-core-select`, `-select-trigger`, `-select-indicator`, `-list-popover`,
  * `-list`) are stamps a consumer or family stylesheet selects. Grammar sets the trigger's shared 2.5rem field-height floor to match Input
- * (owner 2026-10-25), and the larger touch-target floor on a coarse pointer.
+ * and the larger touch-target floor on a coarse pointer.
  */
 
 /**

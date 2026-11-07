@@ -5,7 +5,7 @@
         margin-inline: 0;
     }
 
-    /* owner:item-description-one-line: clamp the vendor Description slot, preserving its text and paint. */
+    /* A row's description is one line: clamp the vendor Description slot, preserving its text and paint. */
     .grammar-common-root [data-slot="description"][data-grammar-item-description="true"] {
         display: -webkit-box;
         -webkit-box-orient: vertical;

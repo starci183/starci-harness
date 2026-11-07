@@ -1,4 +1,4 @@
-// Owner ruling 2026-10-22: a message catalog holds one block per language with the same keys, which Sonar's copy-paste detection
+// A message catalog holds one block per language with the same keys, which Sonar's copy-paste detection
 // read as duplicated code (NIVO v0.3.1: new_duplicated_lines_density 35% once prettier formatted the catalogs). The rendered
 // properties leave the catalogs out of CPD only; they stay sources, so lint, analysis and every other rule still hold them.
 import test from 'node:test';

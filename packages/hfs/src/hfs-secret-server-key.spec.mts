@@ -1,4 +1,4 @@
-// `starci app secret server-key` (stack/server-key.mjs) over an injected ssh runner: the server's identity is made on the
+// `starci app secret server-key` (stack/server-key.mts) over an injected ssh runner: the server's identity is made on the
 // server, only `age-keygen -y` output comes back, a second run keeps it, an environment without a deploy remote is refused before
 // any ssh, rotate stages, swaps and retires, and the GitHub backup streams through a pipe into a protected Environment secret
 // without a private byte reaching stdout, stderr or disk. Every key and value here is a fake.

@@ -18,7 +18,6 @@ provenance:
     - knowledge/patterns/be/services.yaml
     - knowledge/patterns/be/persistence.yaml
     - knowledge/patterns/be/event-bus.yaml
-    - owner decision 2026-10-02 (bounded contexts)
   limitations: |-
     Static checks prove the folder shape, the one connection per context, the coupling between contexts and the one-transaction rule. They do
     not prove that a rule is the right business rule; the service specs and the e2e run do.

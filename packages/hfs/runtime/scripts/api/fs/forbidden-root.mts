@@ -1,4 +1,4 @@
-// forbidden-root.mjs — the paths the runtime must never remove whole (safe-remove.mjs safeRemove refuses them before it
+// forbidden-root.mts — the paths the runtime must never remove whole (safe-remove.mts safeRemove refuses them before it
 // deletes anything; scripts/machine/worktree-git.mjs asks it before a worktree removal).
 import fs from 'node:fs';
 import os from 'node:os';
@@ -30,7 +30,7 @@ function strictlyInsideReal(p: string, root: string | null): boolean {
  * scratch trees the runtime removes are temp directories and linked worktrees, whose .git is a file).
  * `checkoutsUnder` names a disposable root (hk-tmp's temp root): a checkout strictly inside it by real path
  * is a spec fixture, not a live repository, and is not refused for its .git. Every other refusal stands.
- * `hold(path)` is the caller's artifact-hold check (scripts/machine/artifact-hold.mjs artifactHoldReason: a tree holding
+ * `hold(path)` is the caller's artifact-hold check (scripts/machine/artifact-hold.mts artifactHoldReason: a tree holding
  * an indexed job artifact, or inside an evidence directory holding one, whatever the workflow's phase), its refusal line
  * or null. It is required: without one every path is refused (fail closed); a caller that removes only a scratch tree
  * it made itself, outside every ledger's repository, says so with `hold: () => null`.

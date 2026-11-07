@@ -1,4 +1,4 @@
-// The mail package (ruling mail-package, R90 BE_INFRA_OWNER): @starci/mail is the only owner of nodemailer, and the pins the package
+// The mail package (R90 BE_INFRA_OWNER): @starci/mail is the only owner of nodemailer, and the pins the package
 // depends on stay the stack's own. The lite starter composes it in integrations/mail alone and imports nodemailer nowhere.
 import test from 'node:test';
 import assert from 'node:assert/strict';

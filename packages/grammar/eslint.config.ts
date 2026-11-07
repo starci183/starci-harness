@@ -26,7 +26,7 @@ export default defineConfig(
             "@typescript-eslint/ban-ts-comment": "error",
             "starci-grammar/no-literal-look": "error",
             "starci-grammar/tier-props": "error",
-            // Counting, not failing: the findings are the tier refactor list of grammar audit Appendix B (34 prop budgets, 25 state hooks at 2026-11-02); each fixed component moves the rule closer to error.
+            // Counting, not failing: the findings are the tier refactor list of grammar audit Appendix B (34 prop budgets, 25 state hooks); each fixed component moves the rule closer to error.
             "starci-grammar/prop-budget": "warn",
             "starci-grammar/tier-state": "warn",
         },

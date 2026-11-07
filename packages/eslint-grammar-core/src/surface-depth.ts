@@ -7,8 +7,8 @@ import type { Context, Node } from "./lib/types.ts"
 /**
  * The surface nesting law (HFS R340 `FE_RAISED_SURFACE_IN_SURFACE`): a surface never stands inside another surface. A
  * `SurfaceCard` inside another `SurfaceCard`, inside a `Pane surface`, or inside a `Dialog`, `Drawer`, `AlertDialog` or
- * `Popover` is refused; the Grammar has one depth, raised, and draws no nested edge (owner decision: surface in surface is
- * banned totally, dialogs and drawers included). The Grammar throws the same refusal in development; this is its
+ * `Popover` is refused; the Grammar has one depth, raised, and draws no nested edge: a surface never
+ * sits in a surface, dialogs and drawers included. The Grammar throws the same refusal in development; this is its
  * same-file half, and R356 closes it across files.
  *
  * WHAT IT READS. A `SurfaceCard` element (or `<ns>.SurfaceCard`) imported from `@starci/grammar` that a `SurfaceCard`,

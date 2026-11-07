@@ -1,4 +1,4 @@
-// yaml-cached.mjs - parse a YAML text once per distinct text in a process.
+// yaml-cached.mts - parse a YAML text once per distinct text in a process.
 //
 // The HFS slot manifest and rule catalog are large documents that one process asks for again at every check, every render and every fixture. Their
 // bytes do not change between those asks, so the parse (the dominant cost of a load) is keyed by the text itself; each caller gets its own copy of the

@@ -1,4 +1,4 @@
-// ingress.mjs - `starci app stack ingress plan|attach|takeover`: the Swarm ingress becomes the SHARED ingress (80/443) of the VPS.
+// ingress.mts - `starci app stack ingress plan|attach|takeover`: the Swarm ingress becomes the SHARED ingress (80/443) of the VPS.
 // The other tenants (plain docker compose systems on the same host) are reached over an attachable overlay network.
 //   plan      read-only. Reads the dynamic route files of the OLD compose edge over ssh and compares their hosts with the declaration
 //             (declared upstreams + the app's own routes file). Any live host the declaration does not cover is a refusal (ok false).
@@ -7,8 +7,8 @@
 //             the new ingress (probe ports) BEFORE anything stops; then the old edge is stopped, the swarm ingress service is forced to
 //             rebind the freed ports and every host is verified on 443. Any failure after the stop triggers the AUTOMATIC FALLBACK
 //             (scale the swarm ingress to 0, start the old edge, re-verify it).
-// Everything remote goes through the ssh runner (remote.mjs) as `docker ...` or `curl ...` strings built only from validated pieces
-// (names, hosts, ports and paths are validated by stack-ingress-config.mjs; every argument is shell-quoted). Route files can carry
+// Everything remote goes through the ssh runner (remote.mts) as `docker ...` or `curl ...` strings built only from validated pieces
+// (names, hosts, ports and paths are validated by stack-ingress-config.mts; every argument is shell-quoted). Route files can carry
 // header values or tokens: they are parsed in memory and ONLY host names and service origins (scheme://host:port) are ever printed.
 import fs from 'node:fs';
 import path from 'node:path';

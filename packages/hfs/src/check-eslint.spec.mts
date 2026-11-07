@@ -106,7 +106,7 @@ test('CLI app check executes both FE packages in one ESLint invocation, retains 
   }, transport(app, runs));
   assert.equal(checks, 1);
   assert.deepEqual(runs.map(run => run.side), ['be', 'fe']);
-  // Two ordinary error findings are under the threshold (owner ruling gate-threshold-20): green, and both stay reported.
+  // Two ordinary error findings are under the threshold: green, and both stay reported.
   assert.equal(checked.exit, 0);
   assert.equal(checked.report.ok, true);
   assert.equal(checked.report.gate.pass, true);

@@ -1,5 +1,5 @@
-// slot-match.mjs - the slot path patterns of the HFS manifest compiled to regular expressions, and the matching of a path against them:
-// the variants that match it, the most specific one, and the nearest slot of an unknown path. Pure; slot-classify.mjs asks it.
+// slot-match.mts - the slot path patterns of the HFS manifest compiled to regular expressions, and the matching of a path against them:
+// the variants that match it, the most specific one, and the nearest slot of an unknown path. Pure; slot-classify.mts asks it.
 import path from 'node:path';
 import { braceVariants } from '../lib/glob.mjs';
 import { captureNames } from '../lib/i18n.mjs';

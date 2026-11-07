@@ -1,5 +1,5 @@
 // GRAMMAR_VENDOR_PARITY: a Grammar wrapper of HeroUI keeps HeroUI's anatomy and defaults (scripts/lib/grammar-vendor-parity.mjs, run by
-// the grammar-vendor-parity self-check). Grammar has no specs of its own (owner ruling), so the proof lives here: the exact DropdownMenu
+// the grammar-vendor-parity self-check). Grammar has no specs of its own, so the proof lives here: the exact DropdownMenu
 // of the commit before b0a5d1f77 (a dot indicator, no separator between sections) is red, and the one at b0a5d1f77 is green.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -161,7 +161,7 @@ test('the manifest is pinned: a missing pin or a different digest is red', () =>
   assert.deepEqual(pinFindings({ file: 'm.yaml', text, pinned: manifestDigest(text) }), []);
   assert.deepEqual(pinFindings({ file: 'm.yaml', text: 'schema: x\r\n', pinned: manifestDigest(text) }), [], 'line endings do not change the digest');
   assert.equal(pinFindings({ file: 'm.yaml', text, pinned: undefined })[0]!.rule, 'pin');
-  assert.match(pinFindings({ file: 'm.yaml', text: `${text}overrides: [a]\n`, pinned: manifestDigest(text) })[0]!.message, /only an owner ruling may add an override/);
+  assert.match(pinFindings({ file: 'm.yaml', text: `${text}overrides: [a]\n`, pinned: manifestDigest(text) })[0]!.message, /an added override or a changed row records the new digest/);
 });
 
 test('the JSX reader finds the tags of the imported aliases with their attributes, nested braces and strings included', () => {

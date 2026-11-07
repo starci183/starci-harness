@@ -1,5 +1,5 @@
 // proves: DB_PGMQ_DECLARED@lite DB_PGMQ_DECLARED@full
-// ruling:lite-pgmq-bus-bullmq-jobs: pgmq is the event bus and jobs run on BullMQ, so a queue constant has no pgmq queue, every pgmq queue left
+// pgmq is the event bus and jobs run on BullMQ, so a queue constant has no pgmq queue, every pgmq queue left
 // is an event-bus topic queue named by a *_TOPIC_QUEUE constant under platform/event-bus, and a topic binding names a literal pattern and a
 // declared queue.
 // queue named by a *_TOPIC_QUEUE constant under platform/event-bus, and a live pg_cron job enqueues only through the queue outbox table.
@@ -59,7 +59,7 @@ function judge(t: TestContext, edition: string, contents: Contents, db?: object,
 }
 
 function expectCode(t: TestContext, edition: string, contents: Contents, code: string, db?: object, be?: object) {
-  // A full app without a db/ tree runs no pgmq and is not judged (ruling lite-self-hosted-postgres-passport-minio).
+  // A full app without a db/ tree runs no pgmq and is not judged.
   if (edition === 'full' && !Object.keys(contents).some((file) => file.startsWith('db/'))) return [];
   const findings = judge(t, edition, contents, db, be);
   assert.ok(findings.some((finding) => finding.code === code), `${code}: ${JSON.stringify(findings)}`);

@@ -38,7 +38,7 @@ const customNames = async (cut: string): Promise<string[]> => {
     return [...text.matchAll(/^export const (\w+Icon)\b/gm)].map((match) => match[1] ?? "")
 }
 
-test("no custom cut duplicates a glyph @heroicons/react already ships (owner ruling 2026-10-13)", async () => {
+test("no custom cut duplicates a glyph @heroicons/react already ships", async () => {
     const require = createRequire(import.meta.url)
     const upstream = new Set(["24/outline", "24/solid", "20/solid", "16/solid"]
         .flatMap((cut) => Object.keys(require(`@heroicons/react/${cut}`) as Record<string, unknown>)))

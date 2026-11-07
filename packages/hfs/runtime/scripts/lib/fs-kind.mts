@@ -1,4 +1,4 @@
-// fs-kind.mjs — the forgiving fs.statSync probes a dozen scripts re-declared by hand.
+// fs-kind.mts — the forgiving fs.statSync probes a dozen scripts re-declared by hand.
 // A missing or unreadable path is false/null, never a throw; the stat syscall decides kind.
 import fs from 'node:fs';
 

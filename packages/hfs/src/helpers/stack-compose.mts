@@ -1,4 +1,4 @@
-// stack-compose.mjs - the Docker stack seam reads every -c file and enforces the legacy loader's version merge rule.
+// stack-compose.mts - the Docker stack seam reads every -c file and enforces the legacy loader's version merge rule.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseYaml } from '../../runtime/engine/yaml.mjs';

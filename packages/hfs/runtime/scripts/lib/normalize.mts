@@ -1,4 +1,4 @@
-// normalize.mjs — text in compare form for matching (phrase hits, repeated questions).
+// normalize.mts — text in compare form for matching (phrase hits, repeated questions).
 
 const SENTENCE_TRAILING_CHAR = /[\s.?!:;,]/;
 

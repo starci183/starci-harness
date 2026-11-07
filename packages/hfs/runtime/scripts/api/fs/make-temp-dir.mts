@@ -1,4 +1,4 @@
-// make-temp-dir.mjs — a fresh temporary directory under the temp root (engine/temp-root.mjs tempRoot).
+// make-temp-dir.mts — a fresh temporary directory under the temp root (engine/temp-root.mts tempRoot).
 import fs from 'node:fs';
 import path from 'node:path';
 import { ensureTempRoot } from './ensure-temp-root.mjs';

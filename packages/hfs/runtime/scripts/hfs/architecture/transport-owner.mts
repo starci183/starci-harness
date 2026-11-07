@@ -9,7 +9,7 @@ import { propertyValue } from './function-spec-providers.mjs';
 /**
  * R50 `transport-owner` (FE_TRANSPORT_OWNER), the machine half of the eslint transport rules. ESLint judges one file at a time by
  * the spelling of a call; the machine judges the repository by what the checker resolves. The browser calls the back end through
- * Apollo GraphQL and axios (owner ruling 2026-10-13, both editions). A repository has exactly ONE transport client folder (the auth
+ * Apollo GraphQL and axios (both editions). A repository has exactly ONE transport client folder (the auth
  * and no-auth Apollo clients with their link chain) and ONE GraphQLResponse union, both named by slot (never by a path spelled here):
  * the api package's (`fe.package.api.client`, `fe.package.api.outcome`) when several apps call the back end, or the app's own
  * (`fe.transport.client`, `fe.transport.outcome`) when exactly one app does. An app calls the back end when it holds a file of the

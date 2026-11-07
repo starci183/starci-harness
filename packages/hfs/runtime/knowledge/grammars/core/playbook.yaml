@@ -211,7 +211,7 @@ shapes:
           AvatarButton size="control" opening the account DropdownMenu. AvatarButton uses uploaded src
           first and otherwise the bundled DiceBear initials style: the first and last words of name
           supply the letters, and userId passed as seed determines colour, falling back to name when
-          seed is absent (owner:avatar-default-dicebear-initials). DropdownMenu preserves HeroUI's
+          seed is absent. DropdownMenu preserves HeroUI's
           anatomy and default selection indicator. The supported language labels use the "Vietnamese"
           and "English" entries in modules/i18n/messages/app-shell.yaml; each language keeps its autonym.
       - id: account-menu
@@ -259,7 +259,7 @@ shapes:
           captions on the same content edge without padding wrappers. A row shows avatar, name,
           trailing time, last message and unread badge; the open row is selected through HeroUI.
           The name and preview each occupy one line with an ellipsis, and the title carries no group
-          glyph (owner:item-description-one-line). Pass emphasis="unread" for unread rows so Grammar
+          glyph. Pass emphasis="unread" for unread rows so Grammar
           strengthens the label and preview; read rows keep the vendor label and muted preview.
           Group identity uses AvatarGroup layout="grid" with the member/count arrangement declared
           by presentation.groupIdentity.
@@ -333,15 +333,15 @@ guidance:
     ownership: FE-RULE-OWNERSHIP
     implements: [COLLECTION-1, LAYOUT-1, SURFACE-1, ACTION-3, CTA-6]
     requirement: |
-      The canonical cases own the rule bodies; this entry only points to them. COLLECTION-1 case-9
-      (owner:selection-fill-no-check): navigation-like single selection uses ListBox
+      The canonical cases own the rule bodies; this entry only points to them. COLLECTION-1 case-9:
+      navigation-like single selection uses ListBox
       selectionIndicator="none", with the selectedKeys and accessibility contract unchanged.
-      LAYOUT-1 case-10 (owner:joined-multi-pane): the selected family realizes one touching pane
-      surface with vertical Dividers. SURFACE-1 case-4 (owner:scroll-region-background-tone):
+      LAYOUT-1 case-10: the selected family realizes one touching pane
+      surface with vertical Dividers. SURFACE-1 case-4:
       VerticalScrollRegion tone="background" under messages and log entries, with the header and
-      composer on the surface. ACTION-3 case-5 (owner:hover-actions-floating-toolbar): MessageBubble's
+      composer on the surface. ACTION-3 case-5: MessageBubble's
       public floating toolbar owns the IconButtons and tooltips beside the text; apps do not target
-      starci-core internals. CTA-6 case-4 (owner:button-variant-follows-intent): ordinary repeated
+      starci-core internals. CTA-6 case-4: ordinary repeated
       item commands are neutral and render ghost.
   - id: nested-controls-and-panel-lists
     ownership: FE-RULE-OWNERSHIP
@@ -496,7 +496,7 @@ presentation:
     requirement: |
       ListBoxItem, DropdownMenuItem, SidebarItem and the ListOption shared by Select and ComboBox
       render descriptions in HeroUI's Description slot. The family DNA's collectionItem.descriptionLines
-      defaults to one line with an ellipsis (owner:item-description-one-line); descriptionLines accepts
+      defaults to one line with an ellipsis; descriptionLines accepts
       1, 2 or 3 for a bounded override through the packaged stylesheet's line clamp. The complete
       description remains available to assistive technology. ListBoxItem emphasis="unread" uses
       collectionItem.unreadWeight for both label and description; omit it for HeroUI's read treatment.
@@ -525,11 +525,11 @@ presentation:
       style, with the first letter of the first word and the first letter of the last word of `name`
       (one word supplies one letter). `seed`, the user or entity id, determines colour when present;
       otherwise `name` does. The image clips to the Avatar shape, circle by default, and keeps text
-      contrast in both themes (owner:avatar-default-dicebear-initials).
+      contrast in both themes.
       Avatar, AvatarButton and each AvatarGroup member accept `kind="person" | "agent"`, default person.
       An agent's name is free text and uses exactly the same initials rule, without role-suffix parsing.
       `kind="agent"` adds a HeroUI Badge at the Avatar's bottom-right edge with a bot glyph, a surface-colour
-      ring and an accessible name containing AI (owner:agent-avatar-initials-bot-badge). The family hides
+      ring and an accessible name containing AI. The family hides
       the badge below 32px, including the 16px to 24px cells in a 2 by 2 grid; the identity's accessible
       name still includes AI. Apps neither declare nor import `@dicebear/*`. Apps supply member identity
       data; the renderer owns the geometry.
@@ -771,7 +771,7 @@ presentation:
             owner: "`SurfaceCard` list kind / `ListBox`"
             render: ListBox resolves inset="panel" in a surface nesting context, or callers select it explicitly. Its
               row boxes align with the panel content edge, like the search field and tabs boxes, without
-              negative-margin bleed (owner:panel-list-box-edge). The list retains HeroUI p-1; items retain
+              negative-margin bleed. The list retains HeroUI p-1; items retain
               px-2 py-1.5, rounded-2xl and mt-1 between items, with the same padding and radius for hover,
               pressed and selected backgrounds. Section captions share the inset content edge. Padding
               wrappers with px-*, ps-* or pe-* stack this inset and fail FE_LIST_PANEL_PADDING in the universal

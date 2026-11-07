@@ -61,12 +61,12 @@ export const BORROWED: Readonly<Record<string, "error">> = Object.freeze({
 const levelOf = (setting: Linter.RuleEntry | undefined): Linter.RuleEntry | undefined => (Array.isArray(setting) ? setting[0] : setting)
 
 /**
- * The counting cohort: a rule the owner ruled to ship at `warn` for one release while a codemod moves apps onto the API
+ * The counting cohort: a rule that ships at `warn` for one release while a codemod moves apps onto the API
  * it asks for, each with the HFS rule id it enforces. `starci app check --gate lint` reports and counts its findings and never fails
  * on them; the next cohort moves the rule to error and deletes its entry. No other rule may be below error.
  */
-export const COUNTING: Readonly<Record<string, { readonly rule: string; readonly ruling: string }>> = Object.freeze({
-  "starci-fe/no-spacing-utility": { rule: "R350", ruling: "spacing-roles" },
+export const COUNTING: Readonly<Record<string, { readonly rule: string }>> = Object.freeze({
+  "starci-fe/no-spacing-utility": { rule: "R350" },
 })
 
 /**

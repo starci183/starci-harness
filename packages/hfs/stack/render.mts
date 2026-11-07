@@ -1,4 +1,4 @@
-// render.mjs - renders a release: the committed stack source plus a generated override (image references, plain environment, the
+// render.mts - renders a release: the committed stack source plus a generated override (image references, plain environment, the
 // `<KEY>_FILE` pointers and the versioned secret grants) resolved by `docker stack config`. Writes `stack.generated.yaml`, `stack.yaml`
 // and `release.json` under the output directory, and nothing at all when a guard refuses. Output carries names and counts only; the
 // docker child gets a minimal environment, never the age identity or DOCKER_HOST. The override mirrors the source's compose version:

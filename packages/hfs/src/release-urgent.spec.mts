@@ -1,5 +1,5 @@
-// The urgent release path (owner ruling urgent-release 2026-10-29), on a real git repository and a bare remote: `release push --urgent` runs the
-// fast local checks (typecheck and the build, owner ruling urgent-typecheck-build 2026-10-30), tags and pushes atomically and writes the URGENT record; `release gate --backfill <tag>` runs the full gate on that commit,
+// The urgent release path, on a real git repository and a bare remote: `release push --urgent` runs the
+// fast local checks (typecheck and the build), tags and pushes atomically and writes the URGENT record; `release gate --backfill <tag>` runs the full gate on that commit,
 // promoting the record to L4 when green and opening a fix ticket when red; a file a declared dev server rewrites never makes the tree dirty.
 import test from 'node:test';
 import type { TestContext } from 'node:test';

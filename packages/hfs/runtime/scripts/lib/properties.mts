@@ -1,4 +1,4 @@
-// properties.mjs — the .properties file reader (key=value lines, # and ! comments).
+// properties.mts — the .properties file reader (key=value lines, # and ! comments).
 import fs from 'node:fs';
 
 /** `file` as {key: value}: blank lines and #/! comments skipped, the first = or : splits. Unreadable file → {}. */

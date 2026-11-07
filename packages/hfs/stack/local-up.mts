@@ -1,4 +1,4 @@
-// local-up.mjs - `starci app stack up --env <dev env> [--execute]`: the one command that brings the whole dev environment up (PROJECT-STACKS-6).
+// local-up.mts - `starci app stack up --env <dev env> [--execute]`: the one command that brings the whole dev environment up (PROJECT-STACKS-6).
 // Order: host prerequisites, dev custody, setup (install, codegen), compose services and their health, the environment's own database role,
 // migrations with a receipt, the seed levels with their receipts, the seed commands, native app processes, readiness, origins. Idempotent: what runs is kept, what changed is converged.
 // A dry run prints the plan. It never generates a replacement secret, never removes a volume and touches only its own compose project.
@@ -82,7 +82,7 @@ async function migrate(ctx: StackContext, local: LocalConfig, custody: Custody, 
 }
 
 /**
- * Applies the seed levels (seeds.mjs, PROJECT-STACKS-12) on the environment's database under its owner role, the role the migrations ran as: the
+ * Applies the seed levels (seeds.mts, PROJECT-STACKS-12) on the environment's database under its owner role, the role the migrations ran as: the
  * receipts in the database keep a rerun from applying anything that did not change. A document entry's app command runs from the app root in
  * the environment the app's api process gets (the first declared process: its env with the ports expanded, its custody files, the app
  * role's database URL; runEnvironment owns that), the documents on its stdin.

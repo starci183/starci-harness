@@ -1,4 +1,4 @@
-// manager-backup.mjs - the database backup of a deploy whose database runs in the stack (database.target: stack): the dump is made ON the
+// manager-backup.mts - the database backup of a deploy whose database runs in the stack (database.target: stack): the dump is made ON the
 // manager from the database container (pg_dumpall roles, pg_dump schema and data, per-table row counts), tarred and encrypted with age to the
 // .sops.yaml recipients plus the server's own, and kept on the manager beside the volume backups (deploy.backup.dir, else /var/backups/<stack>/db).
 // No plaintext leaves a root-private scratch directory that a trap removes, no database URL or password exists on the machine that runs the

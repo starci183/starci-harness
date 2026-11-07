@@ -1,5 +1,5 @@
-// git-hooks-dir.mjs - whether a checkout's hooks folder holds installed hooks: the judgement of the HFS check
-// HFS_HOOKS_NOT_INSTALLED (scripts/hfs/architecture/hfs.mjs). husky's `.husky/_` is generated per checkout: a linked worktree or
+// git-hooks-dir.mts - whether a checkout's hooks folder holds installed hooks: the judgement of the HFS check
+// HFS_HOOKS_NOT_INSTALLED (scripts/hfs/architecture/hfs.mts). husky's `.husky/_` is generated per checkout: a linked worktree or
 // an install whose lifecycle scripts were ignored has none, or only the runtime's own wrapped hooks, so git runs no pre-commit gate.
 import fs from 'node:fs';
 import path from 'node:path';

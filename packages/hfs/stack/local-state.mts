@@ -1,4 +1,4 @@
-// local-state.mjs - where a dev environment keeps what it started: process ids, logs and receipts, under the per-host state base
+// local-state.mts - where a dev environment keeps what it started: process ids, logs and receipts, under the per-host state base
 // (starciLocalRoot: STARCI_LOCAL_ROOT, else a checkout's .runtime or an installed copy's per-user base), never in the app's checkout nor
 // inside an installed package, so `npm ci` and a package copy never delete a running environment's data.
 import fs from 'node:fs';

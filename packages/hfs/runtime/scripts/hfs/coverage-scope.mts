@@ -1,4 +1,4 @@
-// coverage-scope.mjs - THE derivation of what a back end measures (R204 HFS_COVERAGE_SCOPE_DRIFT).
+// coverage-scope.mts - THE derivation of what a back end measures (R204 HFS_COVERAGE_SCOPE_DRIFT).
 //
 // One input: the slot manifest. Every tracked slot of the be profile declares `coverage: required | none`,
 // `ruleParams.be.logicRoles` names the roles that carry logic, and a required slot may declare in `logic` the files of its own that
@@ -256,7 +256,7 @@ function assignRoot({ root, files, services, imports, platformPaths, ownedBy }: 
 
 /**
  * The one test of whether a be-relative file is measured, over a coverage scope: a declared logic file of `files`, or `<name>.<role>.ts`
- * of a logic role below a measured root and inside no none directory of it. isMeasured and R273 (rules/coverage-below.mjs) ask it.
+ * of a logic role below a measured root and inside no none directory of it. isMeasured and R273 (rules/coverage-below.mts) ask it.
  */
 export function measuredBy({ roots, roles, files, excludes }: { roots: string[]; roles: string[]; files: string[]; excludes: string[] }): (file: string) => boolean {
   const declared = files.map((file) => globExpression(file));
@@ -274,7 +274,7 @@ export const isMeasured = (manifest: ScopeManifest, file: string): boolean => me
 
 /**
  * The type modules of a root workspace package: `<name>.types.ts` and `<name>-types.ts` declare types and compile to nothing, so the unit run has no
- * line of theirs to measure. One that holds runtime code is refused by R273 (rules/coverage-below.mjs, typeModuleRuntime).
+ * line of theirs to measure. One that holds runtime code is refused by R273 (rules/coverage-below.mts, typeModuleRuntime).
  */
 export const PACKAGE_TYPE_MODULE = /[.-]types\.ts$/;
 

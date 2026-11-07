@@ -1,4 +1,4 @@
-// ensure-temp-root.mjs — the temp root exists and takes writes before anything is placed in it or a child is started with TEMP/TMP/TMPDIR pointing at it.
+// ensure-temp-root.mts — the temp root exists and takes writes before anything is placed in it or a child is started with TEMP/TMP/TMPDIR pointing at it.
 import fs from 'node:fs';
 import path from 'node:path';
 import { tempRoot, TEMP_ROOT_ENV } from '../../../engine/temp-root.mjs';

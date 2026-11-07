@@ -1,4 +1,4 @@
-// show.mjs — `git show <args>`: an object of a repository - a file at a revision (`<rev>:<path>`), or a commit's
+// show.mts — `git show <args>`: an object of a repository - a file at a revision (`<rev>:<path>`), or a commit's
 // header and message (-s --format=...).
 import { runGit, type GitOptions, type GitResult } from './lib.mjs';
 

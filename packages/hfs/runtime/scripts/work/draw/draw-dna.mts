@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// draw-dna.mjs — owner ruling 2026-09-27: interface.draw composes ONLY the Grammar's DNA components
+// draw-dna.mts — interface.draw composes ONLY the Grammar's DNA components
 // (knowledge/grammars/<family>/DNA.yaml renderers[]: 95 components, each with its anatomy classes and closed prop
 // values). A drawing is a real HTML render, so the render source says what each visible element IS:
 //
@@ -8,7 +8,7 @@
 //                                         the DNA class minus `starci-core-`, or minus the component slug too)
 //   data-grammar-proposal="<name>"        a gap DNA cannot express: the closest DNA composition stands in, and the
 //                                         proposal has an entry in grammar-proposal.md/.yaml (scripts/work/
-//                                         grammar-proposal.mjs) the owner is asked about - never invented inline
+//                                         grammar-proposal.mts) the owner is asked about - never invented inline
 //   data-<prop>="<value>"                 a closed prop value (data-tone, data-variant, data-size ...), judged against
 //                                         the DNA closedValues
 //
@@ -30,7 +30,7 @@
 //                               outside Meter/Progress, a Progress or a hand-made bar/track/segment beside an "n/m"
 //                               ratio, a hand-segmented Meter (segments without the DNA meter-segment anatomy), a Meter with no
 //                               role=meter + aria-valuenow/aria-valuemax (DNA claims A11Y-3).
-//   DRAW_ALERT_ANATOMY          (owner ruling 2026-09-27: the Alert is the REAL HeroUI Alert - @heroui/styles
+//   DRAW_ALERT_ANATOMY          (the Alert is the REAL HeroUI Alert - @heroui/styles
 //                               alert.css: `.alert` bg-surface + shadow-surface, a flex row; `.alert__indicator` a
 //                               size-4 glyph with p-1 in the tone's soft-foreground; `.alert__title` text-sm/6 medium
 //                               in the tone's soft-foreground; `.alert__description` muted; its action the grammar's
@@ -41,15 +41,15 @@
 //                               inside it; its indicator after its title rather than on the left; a hand-made (non-DNA)
 //                               action inside it, a Button variant outside the DNA closedValues, or a DNA variant other
 //                               than its tone's (a primary action on a warning Alert, a danger one on a non-danger Alert).
-//   DRAW_METER_TRACK            (owner ruling 2026-09-27) a Meter track that is not the HeroUI h-2 (8px) track - h-1
+//   DRAW_METER_TRACK            a Meter track that is not the HeroUI h-2 (8px) track - h-1
 //                               (4px) when segmented (DNA `Meter segments`, grammar 0.5.2) - spanning the full width
 //                               of its band: a declared height other than that, a fixed pixel width
 //                               (a stub), and - measured on the capture (draw-render `anatomy`) - a track narrower
 //                               than its band's content box or segments of unequal width / wide gaps.
-//   DRAW_ASSET_SLOT_UNDECLARED  (owner ruling 2026-09-27: artwork comes from interface.asset, never reused ad hoc)
+//   DRAW_ASSET_SLOT_UNDECLARED  (artwork comes from interface.asset, never reused ad hoc)
 //                               raster artwork (Image, MediaFrame, RankArtwork, a bare img) with no
 //                               data-asset-slot="<id>", or a slot the drawing's asset-request.md does not request
-//                               (scripts/work/asset-slot.mjs).
+//                               (scripts/work/asset-slot.mts).
 //
 //   starci work draw-dna <render.html> [--family starci] [--proposals <file>] [--json]
 import fs from 'node:fs';
@@ -102,7 +102,7 @@ const DOT_CLASS = /(?:^|[-_])(dot|status-dot|dot-indicator)(?:$|[-_])/i;
  */
 export const alertActionVariantFor = (tone: unknown): string => tone === 'informative' && 'primary' || tone === 'negative' && 'danger' || 'secondary';
 export const DRAW_ASSET_SLOT_UNDECLARED = 'DRAW_ASSET_SLOT_UNDECLARED';
-/** The attribute a drawing marks an artwork slot with; interface.asset fills it (scripts/work/asset-slot.mjs). */
+/** The attribute a drawing marks an artwork slot with; interface.asset fills it (scripts/work/asset-slot.mts). */
 export const ASSET_SLOT_ATTR = 'data-asset-slot';
 export const COMPONENT_ATTR = 'data-grammar-component';
 export const PART_ATTR = 'data-grammar-part';
@@ -339,7 +339,7 @@ export function toneOf(el: HtmlElement): ToneRead | null {
 }
 
 /**
- * The proposal names the given grammar-proposal files declare COMPLETE (scripts/work/grammar-proposal.mjs: name, gap,
+ * The proposal names the given grammar-proposal files declare COMPLETE (scripts/work/grammar-proposal.mts: name, gap,
  * anatomy, tokens, claims, isolated render): Set of names. An incomplete entry is no entry.
  */
 export function proposalNamesIn(files: string[]): Set<string> {
@@ -452,7 +452,7 @@ function isArtwork(el: HtmlElement): boolean {
  * the drawing's grammar-proposal file(s) declare; `dna` the loaded DNA (loadDna); `assetRequests` the Set of slot ids
  * its asset-request.md requests (null: not judged).
  */
-/** The helpers draw-dna hands the finding rules of draw-dna-findings.mjs. */
+/** The helpers draw-dna hands the finding rules of draw-dna-findings.mts. */
 export type DnaHelpers = typeof DNA_FINDING_HELPERS;
 const DNA_FINDING_HELPERS = {
   ACTION_COMPONENTS, ALERT_INDICATOR_MAX_PX, ASSET_SLOT_ATTR, BAR_CLASS, COMPONENTS_WITH_DOT, CONTAINERS,

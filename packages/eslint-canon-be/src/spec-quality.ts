@@ -114,7 +114,7 @@ export const specNoSourceRead: RuleModule = {
 }
 
 /**
- * R48 (unit-test standard 2026-09-30): a unit spec takes its database double from the kit, `mockEntityManager()` (or
+ * R48: a unit spec takes its database double from the kit, `mockEntityManager()` (or
  * `fakeTransaction()`) imported from `@starci/jest-preset`. It never builds an ad-hoc `EntityManager`, `QueryRunner`,
  * `DataSource` or query builder, never types a `mock<EntityManager>()` and never takes a double from a repository fixture.
  * Refused in a `*.spec.ts`: a call whose result is one of those typeorm types unless the called function is

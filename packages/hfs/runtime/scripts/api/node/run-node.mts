@@ -1,4 +1,4 @@
-// run-node.mjs — `node <args>` with this process's node binary, waited for: a runtime script (or `-e`/`--test`) as a child
+// run-node.mts — `node <args>` with this process's node binary, waited for: a runtime script (or `-e`/`--test`) as a child
 // whose output the caller reads. Returns the spawnSync result {status, stdout, stderr, error, signal} (utf8 text).
 import type { SpawnSyncOptions, SpawnSyncReturns } from 'node:child_process';
 import { nodeSpawn } from './lib.mjs';

@@ -1,4 +1,4 @@
-// local-cli.mjs - the dev actions of `starci app stack` (PROJECT-STACKS-6): doctor, up, down and logs, and prepare, status and verify when the
+// local-cli.mts - the dev actions of `starci app stack` (PROJECT-STACKS-6): doctor, up, down and logs, and prepare, status and verify when the
 // named environment runs docker-compose. Each takes only its own flags; effects (up, down, prepare) are dry runs until --execute.
 //   starci app stack doctor  --env <env>
 //   starci app stack prepare --env <env> [--execute]

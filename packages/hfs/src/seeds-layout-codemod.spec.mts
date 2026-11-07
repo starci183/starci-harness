@@ -1,4 +1,4 @@
-// `starci app codemod seeds-layout` moves an app's seed data into the seed levels of .starcistacks (ruling seed-levels): db/seed.sql to the
+// `starci app codemod seeds-layout` moves an app's seed data into the seed levels of .starcistacks (PROJECT-STACKS-12): db/seed.sql to the
 // shared level's sql/reference.sql, each loose SQL file of <env>/seeds/ to that level's sql/, each declared in its level's seeds.yaml, and
 // every level gets its manifest and a .gitkeep per empty kind folder; a dry run writes nothing, a second run finds nothing to do, and a
 // conflict, a loose seed that is no SQL and a source that names an old seed home are left for a person.

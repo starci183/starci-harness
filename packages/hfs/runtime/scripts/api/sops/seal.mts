@@ -1,5 +1,5 @@
-// seal.mjs - one `sops encrypt` of a plaintext document held in memory: `starci app secret set` (including --generate)
-// (scripts/hfs/secret.mjs). The plaintext travels on the child's stdin and never on its argument list, so it is not visible in a
+// seal.mts - one `sops encrypt` of a plaintext document held in memory: `starci app secret set` (including --generate)
+// (scripts/hfs/secret.mts). The plaintext travels on the child's stdin and never on its argument list, so it is not visible in a
 // process listing; the ciphertext comes back on stdout.
 import { spawnSync } from 'node:child_process';
 import { sopsIdentityEnv } from '../../../engine/secrets.mjs';

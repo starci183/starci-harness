@@ -1,4 +1,4 @@
-// local-prepare.mjs - `starci app stack prepare --env <dev env> [--execute]` (PROJECT-STACKS-6): checks the host, opens the dev custody, runs the
+// local-prepare.mts - `starci app stack prepare --env <dev env> [--execute]` (PROJECT-STACKS-6): checks the host, opens the dev custody, runs the
 // declared setup commands (install, codegen) and builds or pulls the compose images. A dry run reports the table and the plan and changes nothing.
 // It refuses on a missing prerequisite, a held port, a missing sealed value or an identity this machine lacks, and never generates a replacement.
 import fs from 'node:fs';

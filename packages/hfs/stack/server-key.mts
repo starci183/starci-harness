@@ -1,4 +1,4 @@
-// server-key.mjs - `starci app secret server-key --env <env> [--rotate | --backup github | --restore github] [--execute]`: the deploy
+// server-key.mts - `starci app secret server-key --env <env> [--rotate | --backup github | --restore github] [--execute]`: the deploy
 // server's own age identity, made ON the server and never leaving it, and the environment sealed to it (ruling
 // app-secrets-one-standard, contexts/project/stacks.md PROJECT-STACKS-5).
 //   (none)     the server keeps SERVER_AGE_IDENTITY when it exists, else age-keygen makes it there (umask 077, mode 600, owner
@@ -14,7 +14,7 @@
 //              only when its public key is the recorded deploy.remote.serverRecipient.
 // Both GitHub actions warn when the repository itself holds a SOPS_AGE_KEY secret (names only): a job bound to no environment
 // reads it, and the owner key never belongs in GitHub.
-// The server is reached only through the deploy's own transport (remote.mjs withRunner): the same host, user and key source.
+// The server is reached only through the deploy's own transport (remote.mts withRunner): the same host, user and key source.
 // Every effect is a dry run until --execute.
 import path from 'node:path';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
@@ -32,7 +32,7 @@ import { failure, refusal } from './errors.mjs';
 import { shellQuote, withRunner } from './remote.mjs';
 import type { ActionResult, RemoteResult, Runner, RunnerDeps } from './remote.mjs';
 
-/** The gh port of ci/github.mjs that server-key reads and writes through. */
+/** The gh port of ci/github.mts that server-key reads and writes through. */
 export interface GithubPort {
   repository(): string;
   // reason: gh api output, parsed JSON whose shape the callers narrow with the interfaces below
@@ -342,7 +342,7 @@ async function restoreKey(ctx: StackContext, config: DeployConfig, { execute }: 
 
 /**
  * Runs one server-key action. `options`: { execute, rotate, backup, restore };
- * `deps` (specs): { ssh (an injected runner), github (the gh port of ci/github.mjs), ghCommand ({ command, args } the pipe's sink) }.
+ * `deps` (specs): { ssh (an injected runner), github (the gh port of ci/github.mts), ghCommand ({ command, args } the pipe's sink) }.
  */
 export async function serverKey(ctx: StackContext, env: string, options: ServerKeyOptions, deps: ServerKeyDeps = {}): Promise<ActionResult> {
   const config = loadDeployConfig({ repoRoot: ctx.cwd, env });

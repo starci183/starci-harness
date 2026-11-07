@@ -217,7 +217,7 @@ readingSteps:
     title: Compare DNA with actually installed source
     instruction: |
       Confirm named renderers, props and closed values against DNA.yaml and installed exports, and read
-      family.yaml's gaps and owner decisions before promising a capability.
+      family.yaml's gaps before promising a capability.
   - id: resolve-product-composition
     order: 5
     title: Then resolve the remaining product composition

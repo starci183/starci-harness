@@ -1,4 +1,4 @@
-// mcp-tools.mjs - HFS_MCP_TOOLS_SNAPSHOT (R302): the committed MCP tool-catalog snapshot of an app has the canonical shape.
+// mcp-tools.mts - HFS_MCP_TOOLS_SNAPSHOT (R302): the committed MCP tool-catalog snapshot of an app has the canonical shape.
 // An app that serves an MCP server commits the catalog its clients rely on at `contracts/<app>/<contract>.tools.json` (slot
 // be.contract.mcp-tools): `{ contract: "<server>@<major>", server: { name, version }, tools: [{ name, description, inputSchema, ... }] }`,
 // the `tools/list` result of the server at that contract major. The canon emits no MCP catalog, so the check is the shape: the

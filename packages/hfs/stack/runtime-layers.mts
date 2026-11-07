@@ -1,4 +1,4 @@
-// runtime-layers.mjs - the harness runtime layers a dev stack builds on (images/README.md "The OpenClaw runtime layer"; R374 STACKS_IMAGE_BASE_NOT_FORK).
+// runtime-layers.mts - the harness runtime layers a dev stack builds on (images/README.md "The OpenClaw runtime layer"; R374 STACKS_IMAGE_BASE_NOT_FORK).
 // An app image folder `.starcistacks/images/<name>/Dockerfile` is `FROM ghcr.io/starci183/<layer>:<tag>[@sha256:<digest>]`. While the harness has not
 // published that layer (or the host cannot pull it), `starci app stack up` builds it from the recipe this package ships (stack/images/<layer>/,
 // byte-equal to the harness repository's images/<layer>/, which `npm run bundles` copies and a spec compares) and tags it with the reference the

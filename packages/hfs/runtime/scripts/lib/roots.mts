@@ -1,6 +1,6 @@
-// roots.mjs - the one place that names a root of the runtime and says which tree wins when two hold the same record.
+// roots.mts - the one place that names a root of the runtime and says which tree wins when two hold the same record.
 //
-// A component that needs "which directory" asks here, so no component resolves it by itself (the wrong-tree reads of 2026-10-08/09:
+// A component that needs "which directory" asks here, so no component resolves it by itself (the wrong-tree reads it prevents:
 // a brand record read from the product's main checkout, a capture tool looked up only in product dirs, generated files written
 // through a home record, a Kernel start gated by another tree's build). The roots, each with its one resolver:
 //   runtime tree       runtimeTree        the checkout this code runs from (derived from the module location, never from a record)

@@ -1,13 +1,13 @@
 // starci app check --staged: the guard for the two trees an app tracks besides source. A file under the app root's .starciwork must be
 // product content (the .starciwork/.gitignore allowlist admits it, so agent output is refused), and a file under the app root's
 // .starcistacks must not be a plaintext secret (only *.enc is sealed). It is also the secrets guard of the commit: every staged file, in
-// any tree, is read from the index and judged with the one secret judgement of `starci app check` (scripts/hfs/rules/secrets.mjs: a secret by
+// any tree, is read from the index and judged with the one secret judgement of `starci app check` (scripts/hfs/rules/secrets.mts: a secret by
 // being, an .enc that is no sops envelope, a line that matches a secret pattern), so no plaintext secret reaches the history whatever
 // .gitignore says (`git add -f`, a path tracked before a rule tightened). There is no override. It also
 // refuses every bypass marker the index holds (R303: an inline disable, a type-check escape, a skipped test, a failure swallowed in a hook or
-// workflow; scripts/lib/bypass-markers.mjs), so a bypass fails at the commit and not only at the release. At an HFS app root (hfs.json) it also
+// workflow; scripts/lib/bypass-markers.mts), so a bypass fails at the commit and not only at the release. At an HFS app root (hfs.json) it also
 // refuses a back-end logic file the index adds without its unit spec beside it (BE_UNIT_SPEC_NOT_STAGED,
-// scripts/hfs/rules/staged-specs.mjs over the coverage scope; a constants-only file has nothing to test), naming the file. The pre-commit hook judges the staged files;
+// scripts/hfs/rules/staged-specs.mts over the coverage scope; a constants-only file has nothing to test), naming the file. The pre-commit hook judges the staged files;
 // scripts/gates/hfs-sync.mjs judges every tracked file.
 //
 // Run inside a full runtime checkout — the repository under judgment is the checkout — it also reports the
@@ -25,7 +25,7 @@ import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 import { runGit } from '../runtime/scripts/api/git/lib.mjs';
 import { loadTypescript } from '../runtime/scripts/lib/package-at.mjs';
 
-// One git call through the runtime's git owner (scripts/api/git/lib.mjs): stdout, or the failure thrown the way execFileSync threw it (error.status carries the exit code). The caller's own env is passed on unchanged: a hook runs with GIT_INDEX_FILE set, which the staged reads must keep seeing.
+// One git call through the runtime's git owner (scripts/api/git/lib.mts): stdout, or the failure thrown the way execFileSync threw it (error.status carries the exit code). The caller's own env is passed on unchanged: a hook runs with GIT_INDEX_FILE set, which the staged reads must keep seeing.
 const git = (cwd: string, args: string[], options: Record<string, unknown> = {}): any => { // reason: runGit's stdout is text, or a Buffer when options.encoding is 'buffer'
   const run = runGit(args, { cwd, env: process.env, ...options });
   if (run.error) throw run.error;
@@ -40,7 +40,7 @@ const PLAINTEXT_NAME = /(^|\/)(\.env(\..*)?|[^/]*\.(pem|key|identity|age))$/;
 /** The app root's work tree and stack tree, app-relative (`starci app check --staged` runs at the app root). */
 const WORK = '.starciwork/';
 const STACKS = '.starcistacks/';
-/** The committed check cache: written by the CLI, judged by what its files hold (secret-records.mjs through the secret judgement), never by a `secrets/` folder in its path. */
+/** The committed check cache: written by the CLI, judged by what its files hold (secret-records.mts through the secret judgement), never by a `secrets/` folder in its path. */
 const CACHE = '.starcistacks/cache/';
 const GUARDED = (file: string): boolean => file.startsWith(WORK) || file.startsWith(STACKS);
 

@@ -12,7 +12,7 @@ import { machineKit } from './machine-ast.mjs';
  *     that holds registered tables (migrations run only through it, once per connection).
  * Which connection an app composes is read from two typed origins in its own files: the connection passed to the database module registration
  * and the connection literal that lists a capability's `<c>Entities` / `<c>Migrations`. Which context a capability belongs to is the connection
- * its arrays are registered on (context-map.mjs); an import is judged by the owner graph edge and the target's slot tier, never by a path or
+ * its arrays are registered on (context-map.mts); an import is judged by the owner graph edge and the target's slot tier, never by a path or
  * name pattern. A runner app with a registration whose connection name cannot be resolved is not judged for missing connections.
  */
 export const CONTEXT_OWNER_RULE_IDS = ['BE_CONTEXT_OWNER'];

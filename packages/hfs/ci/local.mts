@@ -1,4 +1,4 @@
-// local.mjs - `starci app ci local [--jobs <id,...>] [--parallel <n>] [--execute] [--json]`: predict the CI result while GitHub runs it. Without --execute it prints the plan (each job instance, its steps run or skipped) and runs nothing. It reads the app's
+// local.mts - `starci app ci local [--jobs <id,...>] [--parallel <n>] [--execute] [--json]`: predict the CI result while GitHub runs it. Without --execute it prints the plan (each job instance, its steps run or skipped) and runs nothing. It reads the app's
 // managed .github/workflows/ci.yml (the CI standard's jobs: fast, lint per side, test per shard, coverage, build) and runs the `run:` steps of every job
 // instance on this machine, matrix values substituted, independent instances in parallel and a job after the jobs it `needs`:
 //   - steps GitHub alone can run are skipped and listed: `uses:` actions (checkout, caches, artifacts, Codecov, Sonar), the install (`npm ci`: the local

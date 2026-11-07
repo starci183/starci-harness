@@ -1,6 +1,6 @@
-// gate.mjs - `starci app release gate`: the honest release gate. It runs the app's own gates on a clean HEAD and when all required gates pass it
+// gate.mts - `starci app release gate`: the honest release gate. It runs the app's own gates on a clean HEAD and when all required gates pass it
 // writes the L4 record <git-common-dir>/starci-release/<HEAD sha>.l4.json (head, tag, per-gate log path and sha256) and creates the annotated tag.
-// The canon pre-push hook lets main and v* tags through only for a HEAD with that tag and that record. Nothing is pushed here (see push.mjs).
+// The canon pre-push hook lets main and v* tags through only for a HEAD with that tag and that record. Nothing is pushed here (see push.mts).
 // The gate list comes from the optional `release:` block of .starcistacks/application-stacks.yaml, else from the app's managed package scripts.
 // Commands are argument arrays (never shell strings) run through ctx.spawn; a git tool call always goes through the same seam.
 import { createHash } from 'node:crypto';
@@ -24,7 +24,7 @@ export interface Gate {
   name: string; command: string[]; summary: string | null; env: Record<string, string>;
   provider?: SonarProvider; credentialNames?: string[]; teardownOf?: string;
 }
-// reason: the quality services come from the YAML-parsed stack declaration (ci-declaration.mjs qualityServices); the gate reads only the fields it names
+// reason: the quality services come from the YAML-parsed stack declaration (ci-declaration.mts qualityServices); the gate reads only the fields it names
 type Services = any;
 type SonarProvider = any;
 /** The release block normalised, with the package version: what `release gate` and `release push` run. */
@@ -52,8 +52,8 @@ const SONAR_UNREACHABLE = 'SONAR_UNREACHABLE';
 const FIELDS = new Set(['gates', 'tagPrefix', 'defaultBranch', 'requireCi']);
 /** Release-block keys that no longer exist, each with what replaced it. */
 const REMOVED_FIELDS = new Map([['tagMatchesVersion', 'the release tag is always <tagPrefix><package.json version>; delete the key']]);
-/** The note a release that does not wait for CI carries in its L4 record and its push output (owner ruling release-require-ci-per-project). */
-export const CI_NOT_REQUIRED = 'CI not required by release.requireCi=false (owner ruling release-require-ci-per-project): the local release gate, this L4 record and the annotated tag, is the release proof';
+/** The note a release that does not wait for CI carries in its L4 record and its push output. */
+export const CI_NOT_REQUIRED = 'CI not required by release.requireCi=false: the local release gate, this L4 record and the annotated tag, is the release proof';
 const GATE_FIELDS = new Set(['name', 'command', 'summary', 'env']);
 const GATE_NAME = /^[a-z][a-z0-9-]*$/u;
 const TOKEN = /^[A-Za-z0-9_@%+=:,./\\-]+$/u;
@@ -79,7 +79,7 @@ const SCRIPT_GATES = ['format:check', 'typecheck', 'build:be', 'lint', 'db:lint'
 // A full app has a test world (integration, e2e and contract projects, always present: the managed `test:e2e` script marks it), so those layers are rows of its gate;
 // a lite app's integration project exists only where it has integration specs, so it has no world rows.
 const WORLD_SCRIPTS = ['test:integration', 'test:e2e', 'test:contract'];
-// An app with an entity list (db/entity-list.mjs) checks its entities against the migrated schema: a row of every gate, declared or default.
+// An app with an entity list (db/entity-list.mts) checks its entities against the migrated schema: a row of every gate, declared or default.
 const DB_DRIFT: Gate = { name: 'db-drift', command: ['npx', 'starci', 'app', 'db', 'drift'], summary: null, env: {} };
 
 /** True for a branch or remote name git can take as one argument (no leading dash, only path-like characters). */
@@ -209,7 +209,7 @@ export function normalizeRelease(block: unknown, scripts: Record<string, unknown
   }
   const tagPrefix = raw.tagPrefix ?? 'v';
   const defaultBranch = raw.defaultBranch ?? 'main';
-  // The candidate CI of `release push` is an app's choice and off by default (owner ruling release-require-ci-per-project); the local gate never is.
+  // The candidate CI of `release push` is an app's choice and off by default; the local gate never is.
   const requireCi = raw.requireCi ?? false;
   if (typeof tagPrefix !== 'string' || !PREFIX.test(tagPrefix)) problems.push(`release.tagPrefix: must match ${PREFIX}`);
   if (!refName(defaultBranch)) problems.push(`release.defaultBranch: must match ${REF_NAME}`);
@@ -246,7 +246,7 @@ const versionTagsOnHead = (ctx: VerbContext): string[] => lines(git(ctx, ['tag',
 
 /** The rewrittenBy predicate of the app's slots: true for a path a dev server writes (hfs slots `rewrittenBy`); without a readable hfs.json, for none. */
 function rewrittenByDevServer(root: string): (file: string) => boolean {
-  let hfs: any; // reason: openHfs is the slot machine of the app's hfs.json (runtime/scripts/hfs/slots.mjs)
+  let hfs: any; // reason: openHfs is the slot machine of the app's hfs.json (runtime/scripts/hfs/slots.mts)
   try { hfs = openHfs({ repoRoot: root }); } catch { return () => false; }
   return (file: string) => typeof hfs.slotOf(file)?.rewrittenBy === 'string';
 }
@@ -347,7 +347,7 @@ export async function runAvailableGate(ctx: VerbContext, gate: Gate, options: Ru
 
 /**
  * A scanner that exited 0 only uploaded its report: the row passes when the server's quality gate of that analysis is OK
- * (sonar-quality-gate.mjs). The verdict replaces the row's detail and is appended to its log; the row's time includes the wait.
+ * (sonar-quality-gate.mts). The verdict replaces the row's detail and is appended to its log; the row's time includes the wait.
  */
 async function judgeQualityGate(ctx: VerbContext, gate: Gate, row: GateRow): Promise<GateRow> {
   if (!row.pass) return row;
@@ -524,8 +524,8 @@ export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, optio
   if (config.services?.sonar) config = { ...config, gates: [...config.gates.filter((gate) => gate.name !== 'sonar'), sonarGate(config.services, ctx, options.execute === true)] };
   const credentialNames: string[] = config.gates.find(gate => gate.provider)?.credentialNames ?? ['SONAR_TOKEN', config.services?.sonar?.token].filter(Boolean);
   ctx = Object.create(ctx, {env: {value: withoutCredentials(ctx.env, credentialNames)}}) as VerbContext;
-  // The CI verdict of a release is the candidate run of its own sha, judged by `starci app release push` (candidate-ci.mjs, OWNER RULING candidate-ci 2026-10-18):
-  // the gate no longer refuses over the latest default-branch run.
+  // The CI verdict of a release is the candidate run of its own sha, judged by `starci app release push` (candidate-ci.mts);
+  // the gate never judges the latest default-branch run.
   const facts = inspect(ctx, config, options);
   const common = releaseDir(ctx);
   const urgent = options.backfill === undefined ? null : backfillTarget(ctx, common, options.backfill as string, facts.head);

@@ -1,4 +1,4 @@
-// fe-unit-shape-slot.spec.mjs - `starci app add block|composite|branch|leaf|page|overlay|layout` writes every front-end unit
+// fe-unit-shape-slot.spec.mts - `starci app add block|composite|branch|leaf|page|overlay|layout` writes every front-end unit
 // already in the canon's shape (contexts/code/fe function.md FE-FUNCTION-2..7, README FE-ERROR-1, boundaries.md FE-BOUNDARY-1,
 // contexts/ui composition.md STATE-8, page-header.md, dialog-drawer.md). A block with three shapes and one slot, a composite, a
 // branch, a leaf, a page composing the block, a modal, a drawer holding a form and a segment layout are added to a scaffolded full

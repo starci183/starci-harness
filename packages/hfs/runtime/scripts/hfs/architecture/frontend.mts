@@ -109,7 +109,7 @@ function roleFor(roots: FrontendRoots, fileName: string): { role: string; root: 
 }
 
 // The files Next.js loads only from the source root (the directory holding app/: src/ or the project
-// root) are authored in knowledge/patterns/fe/folder.yaml FE-FOLDER-1 and read by ./framework-pinned.mjs.
+// root) are authored in knowledge/patterns/fe/folder.yaml FE-FOLDER-1 and read by ./framework-pinned.mts.
 export { FRAMEWORK_PINNED_KNOWLEDGE, frameworkPinnedRootFiles } from './framework-pinned.mjs';
 
 /** The source root that directly holds this file when it is a framework-pinned root file, else null. */

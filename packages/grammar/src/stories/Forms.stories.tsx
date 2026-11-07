@@ -445,7 +445,7 @@ export const Select: Story = {
   ),
 };
 
-/** Owner field-height ruling: Select and Input share the same control height. */
+/** Select and Input share the same control height. */
 export const SelectBesideInput: Story = {
   render: () => (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', alignItems: 'start', gap: '1rem', maxWidth: 720 }}>

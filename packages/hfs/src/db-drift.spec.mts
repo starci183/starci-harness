@@ -1,7 +1,7 @@
 // proves: BE_ENTITY_SCHEMA_DRIFT@lite
 // `starci app db drift` without a database: the fixture app's entities go through TypeORM's real metadata (the package's own typeorm and
 // typescript, reached from the fixture's be/), the migrated schema is a stubbed introspection, and the verb's refusal paths run through
-// an injected spawn, so no Docker or database is reached here (src/db-drift-docker.spec.mjs is the one that migrates a real database).
+// an injected spawn, so no Docker or database is reached here (src/db-drift-docker.spec.mts is the one that migrates a real database).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

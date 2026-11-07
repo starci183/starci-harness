@@ -5,7 +5,7 @@ import { repositoryOf } from './stack-services.mjs';
 
 const PINNED_IMAGE = /@sha256:[a-f0-9]{64}$/i;
 const VERSIONED_SECRET = /-v[1-9]\d*$/;
-// R276 (scripts/hfs/rules/stacks-lite-backing.mjs) judges declared Redis and refuses full-only backing services in lite.
+// R276 (scripts/hfs/rules/stacks-lite-backing.mts) judges declared Redis and refuses full-only backing services in lite.
 const BACKING_IMAGE_SQL_AND_CACHE = 'postgres(?:ql)?|postgresql-repmgr|mysql(?:-server)?|mongo(?:db)?|mongodb-community-server';
 const BACKING_IMAGE_BROKERS_AND_OTHERS = '(?:cp-)?kafka(?:-native)?|keycloak|minio|rabbitmq';
 const BACKING_IMAGE = new RegExp(`^(?:${BACKING_IMAGE_SQL_AND_CACHE}|${BACKING_IMAGE_BROKERS_AND_OTHERS})$`, 'i');

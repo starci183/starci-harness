@@ -1,10 +1,10 @@
-// redact.mjs — the ONE redaction module (docs/ledger-db.md). Every blob put of text bytes
+// redact.mts — the ONE redaction module (docs/ledger-db.md). Every blob put of text bytes
 // (report attachments, check stdout/stderr/output, terminal transcripts, CLI sessions) and every log write
 // passes through here first; the harness UI server reuses it. A blob whose bytes went through redactText is
 // stamped blobs.redaction = REDACTION_VERSION; bytes that cannot be filtered (images, video, archives) are
 // stamped 'binary'.
 //
-// It blanks: provider tokens and JWTs (secret-patterns.mjs, the push scan's list), auth headers, URL query
+// It blanks: provider tokens and JWTs (secret-patterns.mts, the push scan's list), auth headers, URL query
 // secrets, URL credentials (scheme://user:pass@host), PEM private-key blocks (the whole block), KEY=value /
 // KEY: value pairs whose key names a secret (FOO_API_KEY=..., password: ...), and the declared secrets of a
 // product repo's .starcistacks (their env-style names as keys, and their values wherever they appear).

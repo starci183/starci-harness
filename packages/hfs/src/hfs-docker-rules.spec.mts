@@ -1,4 +1,4 @@
-// The image rules of an app (scripts/hfs/rules/docker.mjs over scripts/lib/dockerfile.mjs): R187 HFS_DOCKER_BUILD_CONTEXT, R188
+// The image rules of an app (scripts/hfs/rules/docker.mts over scripts/lib/dockerfile.mts): R187 HFS_DOCKER_BUILD_CONTEXT, R188
 // HFS_DOCKER_STAGES, R189 HFS_DOCKER_ENTRY, R190 HFS_DOCKER_BASE_PIN and R191 HFS_DOCKER_SECRETS. The clean app of
 // tests/helpers/hfs-cli-fixture.mjs holds the Dockerfile each declared app's template renders (the passing base); each violating
 // case changes one fact of one Dockerfile.

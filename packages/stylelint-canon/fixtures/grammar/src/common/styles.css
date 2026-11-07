@@ -395,7 +395,7 @@
      * --starci-core-fill-top and --starci-core-fill-bottom), so the grid reaches the viewport bottom less Grammar bottom chrome.
      */
     .starci-core-page[data-grammar-page-chrome="panes"] {
-        /* The gutter column starts at the pane content edge: the title, the first tab and the pane content share the container inset (ruling spacing-roles). */
+        /* The gutter column starts at the pane content edge: the title, the first tab and the pane content share the container inset. */
         --grammar-page-inset: var(--grammar-inset);
         flex: 1 0 auto;
         gap: 0;
@@ -891,7 +891,7 @@
      * a hero Mascot fills it.
      */
     /*
-     * Freestyle (ruling grammar-freestyle-region): the app's own region. It fills its host and adds no paint, inset or
+     * Freestyle: the app's own region. It fills its host and adds no paint, inset or
      * radius of its own; what is inside is the app's.
      */
     .starci-core-freestyle {
@@ -3385,7 +3385,7 @@
 
     /* --- Icon button: a HeroUI `Button` worn as a circle. --- */
     /*
-     * Owner ruling `control-height-40`: one control height, 2.5rem (40px, HeroUI's own h-10), is the default of every
+     * One control height, 2.5rem (40px, HeroUI's own h-10), is the default of every
      * standalone control. `md` and `control` are the same square circle in both axes (the vendor's md:h-9 desktop step
      * is overridden, and a square needs both axes or it collapses into an oval); `sm` (2rem) is for a control nested in
      * an item or a dense toolbar; `lg` (3rem) is the landing hero step.
@@ -4171,7 +4171,7 @@
     .starci-core-filter-button-toggles { display: flex; flex-wrap: nowrap; gap: 0.5rem; min-width: 0; }
     .starci-core-filter-button { flex: none; gap: 0.5rem; white-space: nowrap; }
     .starci-core-filter-button-count { font-variant-numeric: tabular-nums; opacity: var(--grammar-opacity-secondary); }
-    /* The rest takes the surface; selected is the accent soft pair (ruling status-soft-pair-on-background). */
+    /* The rest takes the surface; selected is the accent soft pair. */
     .starci-core-filter-button:not(.starci-core-filter-button-probe-item) { background: var(--surface); color: var(--surface-foreground); }
     .starci-core-filter-button[data-selected="true"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
     .starci-core-filter-button-probe { position: absolute; inset-block-start: 0; inset-inline-start: 0; display: flex; flex-wrap: nowrap; visibility: hidden; pointer-events: none; block-size: 0; overflow: hidden; }
@@ -4232,7 +4232,7 @@
     }
 
     /*
-     * The reader's own message is the brand fill with its foreground (owner ruling chat-primary-and-surface): the other party's
+     * The reader's own message is the brand fill with its foreground: the other party's
      * message is the surface. Everything inline inherits the bubble's foreground, so a link, a mention (Text tone accent), code
      * and a muted Text stay readable on the solid fill; a link keeps its underline so it is not told by colour alone.
      */

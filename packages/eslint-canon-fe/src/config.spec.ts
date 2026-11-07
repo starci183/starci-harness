@@ -117,13 +117,12 @@ test("no rule in either block is off, warn or a numeric level below error, outsi
   }
 })
 
-test("the counting cohort is closed: each entry is a published rule at warn naming its HFS rule and ruling", () => {
+test("the counting cohort is closed: each entry is a published rule at warn naming its HFS rule", () => {
   assert.deepEqual(Object.keys(COUNTING), ["starci-fe/no-spacing-utility"])
   for (const [name, entry] of Object.entries(COUNTING)) {
     assert.ok(name.replace(/^starci-fe\//, "") in rules, `${name} is a published rule`)
     assert.equal(recommended[name], "warn", name)
     assert.match(entry.rule, /^R\d+$/, name)
-    assert.ok(entry.ruling.length > 0, name)
   }
 })
 

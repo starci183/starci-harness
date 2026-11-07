@@ -140,7 +140,7 @@ properties:
       The delivery, quality and platform services this repository's code and CI use - NOT Compose
       services (those are `components`). One entry per service id from the closed catalog below; a
       service the repository does not use is still declared `mode: disabled` when its CI or config
-      mentions it. Owner ruling 2026-09-24: every product states these unambiguously so no Kernel or
+      mentions it. Every product states these unambiguously so no Kernel or
       op misreads them and asks the owner again. Optional in this schema so older declarations
       stay loadable; scripts/gates/starcistacks.mjs requires it for a new repository or a
       new leg (contract change starcistacks-services) and reports its absence as a suspect with a
@@ -642,8 +642,8 @@ $defs:
         items: {$ref: '#/$defs/deployKey'}
       auto:
         description: >-
-          true: every release tag whose CI is green deploys to this environment by itself, in the order the environments are declared (the owner's yes, given once by this setting;
-          ruling app-cicd-auto-deploy). The variable STARCI_DEPLOY_PAUSED=true on the GitHub Environment stops it without a code change. Default false (a manual dispatch deploys).
+          true: every release tag whose CI is green deploys to this environment by itself, in the order the environments are declared (the owner's yes, given once by this setting).
+          The variable STARCI_DEPLOY_PAUSED=true on the GitHub Environment stops it without a code change. Default false (a manual dispatch deploys).
         type: boolean
         default: false
       approval:

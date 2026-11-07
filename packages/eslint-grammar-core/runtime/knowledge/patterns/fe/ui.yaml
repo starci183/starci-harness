@@ -35,33 +35,25 @@ rules:
       One kit keeps one design language and one token source.
     cases:
       - id: case-1
-        date: "2026-10-13"
-        source: owner
         when: A feature needs a visual capability the selected Grammar lacks
         write: Extend and release the owning Grammar before consuming it; keep one visual language in the app.
       - id: case-2
-        date: "2026-10-25"
-        source: owner
         when: A conversation or group identity represents several people
         write: |-
           Show a composite identity based on the actual members, distinguish it from an individual,
           and follow COLLECTION-3 in knowledge/ui/composition/collection.yaml. The selected family
           owns its renderer, cell geometry, overflow treatment and fallback API.
       - id: case-3
-        date: "2026-10-25"
-        source: owner
         when: A person or identity needs an avatar
         write: |-
           Pass the uploaded image when one exists; otherwise the selected Grammar's identity renderer uses
           bundled DiceBear initials from the first and last words of the name, with colour seeded by the
-          user or identity id when present and by the name otherwise (owner:avatar-default-dicebear-initials).
-          Agent names follow the same free-text rule and add the Grammar's bot badge
-          (owner:agent-avatar-initials-bot-badge). Apps neither declare nor import an avatar-generation
+          user or identity id when present and by the name otherwise.
+          Agent names follow the same free-text rule and add the Grammar's bot badge.
+          Apps neither declare nor import an avatar-generation
           library and draw no avatar visuals; the family owns the renderer API (the StarCi recipe is
           groupIdentity in its playbook).
       - id: case-4
-        date: "2026-10-30"
-        source: owner
         when: A screen shows generated character art (a mascot)
         write: |-
           Render it with the selected Grammar's Mascot at a step of its size scale (sm, md, lg, or hero for a split
@@ -69,8 +61,6 @@ rules:
           or illustration is framed by MediaFrame. Generated art under /images/ never renders through a bare Image or
           img (R338, R339).
       - id: case-5
-        date: "2026-10-31"
-        source: owner
         when: A screen places content in a PaneGrid
         write: |-
           Compose a PaneGrid of Pane elements (never a wrapper component), give each Pane PaneSection bands (never a raw

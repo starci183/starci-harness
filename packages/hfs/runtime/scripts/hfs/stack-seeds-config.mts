@@ -1,4 +1,4 @@
-// stack-seeds-config.mjs - reads and judges a seed level's manifest (`seeds.yaml`, schema starci/seeds@1), the declaration of the data an app
+// stack-seeds-config.mts - reads and judges a seed level's manifest (`seeds.yaml`, schema starci/seeds@1), the declaration of the data an app
 // seeds (contexts/project/stacks.md PROJECT-STACKS-12). A level is `.starcistacks/seeds/` (shared, every environment, first) or
 // `.starcistacks/<env>/seeds/` (that environment only); each holds the manifest and the folders `sql/`, `data/` and `files/`. One entry is
 // `{ id, kind, path, target, mode, after?, schema?, reason?, probe? }`: a `sql` entry is idempotent DML the harness runs on the database `target`

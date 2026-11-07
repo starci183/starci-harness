@@ -1,4 +1,4 @@
-// verify.mjs - functional verification after convergence: the declared HTTP journeys (config.verify.http) and the declared checks inside a
+// verify.mts - functional verification after convergence: the declared HTTP journeys (config.verify.http) and the declared checks inside a
 // running task (config.verify.exec). Probes are bounded and read-only; a POST body comes only from the declared config and nothing here
 // mutates business data. HTTP goes through ctx.fetch, docker through ctx.spawn, waits through ctx.sleep and time through ctx.now.
 import fs from 'node:fs';

@@ -1,4 +1,4 @@
-// The object storage package (ruling object-storage-package, R331 BE_STORAGE_OWNER): @starci/object-storage is the only owner of the
+// The object storage package (R331 BE_STORAGE_OWNER): @starci/object-storage is the only owner of the
 // AWS S3 client libraries, the lite starter's integrations/object-storage is its glue, and nothing else of the starter imports
 // either. The pins the package depends on stay the stack's own.
 import test from 'node:test';

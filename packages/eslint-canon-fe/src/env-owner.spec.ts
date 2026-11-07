@@ -1,5 +1,5 @@
 /**
- * Twin tests for the environment-owner rules (HFS R49).
+ * Twin tests for the rules of the environment owner (HFS R49).
  *
  *   node --test src/env-owner.spec.ts
  */

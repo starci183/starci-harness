@@ -1,4 +1,4 @@
-// sealed.mjs - opens the sealed custody members in memory and derives, from names and keyed hashes only, which Swarm secret each
+// sealed.mts - opens the sealed custody members in memory and derives, from names and keyed hashes only, which Swarm secret each
 // service is granted (the shared half of the release tools). No value is ever written to disk, printed or put in an argument list:
 // callers receive `value` and must keep it in memory. Config objects (non-secret files mounted into services) are versioned by content.
 import { createHash, createHmac } from 'node:crypto';
@@ -72,7 +72,7 @@ function secretRuntimeName(stack: string, key: string, value: string, versionKey
 const AGE_HINT = 'add SOPS_AGE_KEY to .claude/secret.env of the app or the harness secret.env of the owner machine (the CI secret in a workflow) and retry';
 
 /**
- * True when the sops seam found an age identity (secret-init.mjs decryptionIdentity, the one lookup every decrypt uses). A seam
+ * True when the sops seam found an age identity (secret-init.mts decryptionIdentity, the one lookup every decrypt uses). A seam
  * that reports no `identity` (a spec double) decides for itself.
  */
 export function hasAgeIdentity(ctx: Pick<StackContext, 'sops'>): boolean {

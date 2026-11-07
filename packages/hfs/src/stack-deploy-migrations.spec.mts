@@ -1,4 +1,4 @@
-// The database phases of a deploy (stack/db-phases.mjs driven by stack/deploy.mjs, owner approval 2026-10-31): for an app that declares the
+// The database phases of a deploy (stack/db-phases.mts driven by stack/deploy.mts): for an app that declares the
 // `database:` block, every deploy previews the migrations inside the database container, backs up ONLY when something is pending, applies the expand
 // migrations before the stack deploy, applies the contract migrations after the accept, and chooses the first start by itself when no release was ever
 // accepted. A refusal before the stack deploy leaves the services untouched. Collaborators are doubles; no registry, VPS or database is reached.

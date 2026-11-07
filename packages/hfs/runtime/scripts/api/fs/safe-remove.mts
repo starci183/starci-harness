@@ -1,4 +1,4 @@
-// safe-remove.mjs — the ONE way the runtime deletes a directory tree.
+// safe-remove.mts — the ONE way the runtime deletes a directory tree.
 //
 // A product repository once lost 674 tracked working-tree files and its node_modules: a
 // recursive delete of a scratch tree followed directory links (Windows junctions) into the live repository.
@@ -15,8 +15,8 @@
 //
 // A worktree's removal composes this with git (scripts/machine/worktree-git.mjs safeRemoveWorktree, the Orca home in
 // scripts/machine/worktree-orca.mjs): every link removed as a link first (remove-links-under.mjs), zero asserted, only then
-// git or Orca. The link test is is-link-like.mjs, the refused roots forbidden-root.mjs. Whether a tree holds an indexed
-// job artifact is the caller's decision (`hold`: scripts/machine/artifact-hold.mjs artifactHoldReason), taken before
+// git or Orca. The link test is is-link-like.mts, the refused roots forbidden-root.mts. Whether a tree holds an indexed
+// job artifact is the caller's decision (`hold`: scripts/machine/artifact-hold.mts artifactHoldReason), taken before
 // anything is deleted.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -58,7 +58,7 @@ const removeFile = (p: string, retries: number) => retrying(() => {
 
 /**
  * Remove `root` and everything under it without ever following a link. Links are unlinked (the link only);
- * plain files and directories are deleted bottom-up. `checkoutsUnder` and `hold` (required) are forbidden-root.mjs forbiddenRoot's. Returns {ok, root, removed: {files, dirs, links},
+ * plain files and directories are deleted bottom-up. `checkoutsUnder` and `hold` (required) are forbidden-root.mts forbiddenRoot's. Returns {ok, root, removed: {files, dirs, links},
  * errors: [{path, code, message}]}; ok is true only when `root` is gone. A missing root is ok.
  */
 export function safeRemove(root: unknown, { retries = 5, checkoutsUnder = null, hold }: { retries?: number; checkoutsUnder?: string | null; hold?: ((path: string) => string | null) | undefined } = {}): SafeRemoveResult {
@@ -72,7 +72,7 @@ export function safeRemove(root: unknown, { retries = 5, checkoutsUnder = null, 
     if (errorCode(error) === 'ENOENT') { out.ok = true; return out; }
     fail(target, error); return out;
   }
-  // CONTAINMENT (the .claude/node_modules wipe, 2026-09-28): nothing is ever deleted whose real path is not
+  // CONTAINMENT: nothing is ever deleted whose real path is not
   // the root itself or strictly under the root's real path. A link is unlinked above (the link only); any other
   // entry that resolves outside the tree is refused, whatever made it look like a plain entry.
   const rootReal = realpathOr(target);

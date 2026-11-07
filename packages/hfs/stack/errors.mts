@@ -1,4 +1,4 @@
-// errors.mjs - the one error type of the stack tooling and its exit codes.
+// errors.mts - the one error type of the stack tooling and its exit codes.
 export const EXIT = Object.freeze({ ok: 0, failed: 1, refused: 2, approval: 3 });
 
 /** A refusal or failure with a stable code; `exit` is the process exit code the CLI maps it to. */

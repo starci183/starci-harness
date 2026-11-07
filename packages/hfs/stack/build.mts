@@ -1,9 +1,9 @@
-// build.mjs - `starci app stack build --env <env> [--push] [--execute]`: builds, from the CURRENT checkout, every image the deploy block declares
-// (docker buildx, linux/amd64, no provenance so the digest is one manifest), passing the public build values of build-args.mjs, and prints
+// build.mts - `starci app stack build --env <env> [--push] [--execute]`: builds, from the CURRENT checkout, every image the deploy block declares
+// (docker buildx, linux/amd64, no provenance so the digest is one manifest), passing the public build values of build-args.mts, and prints
 // `--image <service>=<registry/name@sha256:digest>` lines ready for `stack deploy`. It refuses a dirty tree and a HEAD that carries no release tag
 // (the images must come from the released commit). It never reads registry credentials: pushing uses the operator's own `docker login`.
 // The image name is `<registry host>/<owner>/<project>-<app>:<full sha>`, the owner being the GitHub owner of `origin` (ghcr.io only).
-// With deploy.registry.visibility `public` (the default) every image is scanned for secret material BEFORE it is pushed (image-scan.mjs: the layers of
+// With deploy.registry.visibility `public` (the default) every image is scanned for secret material BEFORE it is pushed (image-scan.mts: the layers of
 // a public package are public), and after the push the real visibility of the package is checked with an ANONYMOUS manifest fetch of the pushed
 // digest; a package that is still private is reported with the one owner step that changes it (GitHub has no API for that) and the run fails.
 import fs from 'node:fs';

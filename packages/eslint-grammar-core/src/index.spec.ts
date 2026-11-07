@@ -86,10 +86,10 @@ test("the lint package is versioned with its Grammar family", () => {
     assert.ok(typeof peers === "object" && peers !== null)
     return field(peers, name)
   }
-  // The family shares a minor, not an exact version: a Grammar patch changes nothing in the lint packages and never re-releases them (decision release-only-what-changed).
+  // The family shares a minor, not an exact version: a Grammar patch changes nothing in the lint packages and never re-releases them.
   const minorOf = (target: object): string => String(field(target, "version")).split(".").slice(0, 2).join(".")
   assert.equal(minorOf(manifest("../package.json")), minorOf(manifest("../../grammar/package.json")))
-  // The canon is peered by its same-minor range (decision release-only-what-changed): a canon patch never re-releases the Grammar.
+  // The canon is peered by its same-minor range: a canon patch never re-releases the Grammar.
   // The range starts at the canon's minor (x.y.0), so a canon patch (9.15.1) stays inside it.
   const canon = String(field(manifest("../../eslint-canon-fe/package.json"), "version")).split(".")
   assert.equal(peerOf("../package.json", "@starci/eslint-canon-fe"), `~${canon[0]}.${canon[1]}.0`)

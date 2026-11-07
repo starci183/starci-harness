@@ -1,4 +1,4 @@
-// secret-init.mjs — initialize the public app rule and an age identity outside Git.
+// secret-init.mts — initialize the public app rule and an age identity outside Git.
 import fs from "node:fs";
 import path from "node:path";
 import { parseYaml, stringifyYaml } from "../../engine/yaml.mjs";
@@ -440,7 +440,7 @@ export function ownerRecipient(
  * recipients a member of the environment is sealed to, or (with --add/--remove) says what the environment's own rule of the
  * app's managed .sops.yaml would become and, only with --execute, rewrites it (one rule per environment, written before the
  * app-wide rule, public keys only). `owner` is the owner identity's recipient (ownerRecipient). A member sealed before keeps
- * its recipients until it is sealed again. `execute` defaults to true for the library callers (stack/server-key.mjs); the verb
+ * its recipients until it is sealed again. `execute` defaults to true for the library callers (stack/server-key.mts); the verb
  * passes the flag, so a dry run is the default there.
  */
 export function environmentRecipients(

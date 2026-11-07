@@ -1,6 +1,6 @@
 // hfs-check.mjs - the HFS app check, behind `starci app check | slot` (packages/hfs) and reusable by any
 // runtime check. It reads three things and nothing else: the app's hfs.json, the slot manifest
-// (knowledge/hfs/slots.yaml through scripts/hfs/slots.mjs) and the pins (canon-pins.mjs: the bundled knowledge/hfs/canon-pins.yaml
+// (knowledge/hfs/slots.yaml through scripts/hfs/slots.mts) and the pins (canon-pins.mts: the bundled knowledge/hfs/canon-pins.yaml
 // and the version of the starci-harness that runs the check). It never
 // writes to the repository it inspects.
 //
@@ -12,43 +12,43 @@
 //   HFS_FORBIDDEN_PRESENT         a tracked path in a forbidden / `external` slot; in the slot be.tool-config-local (.eslintrc*,
 //                                 .eslintignore, a second eslint.config.*, another prettier or jest config) the code is HFS_TOOL_CONFIG_LOCAL instead
 //   HFS_MANAGED_FILE_DRIFT, HFS_TOOL_CONFIG_LOCAL (content), HFS_TS_STRICT
-//                                 the managed files: produced by packages/hfs/sync/managed.mjs, which renders the templates,
+//                                 the managed files: produced by packages/hfs/sync/managed.mts, which renders the templates,
 //                                 and passed in as `extraFindings` (this module does not read the templates)
 //   HFS_SLOT_REQUIRED_MISSING     a file or directory a required slot (or an instance of one) must contain
 //   HFS_MIN_INSTANCES             fewer instances of a slot than minInstances
-//   HFS_PLAINTEXT_SECRET          (R06, rules/secrets.mjs) a plaintext secret file or value in a tracked file; a `.enc` that is no sops envelope
-//   HFS_STACKS_SHAPE              (R10, rules/stacks.mjs) invalid stack shape, Swarm runtime policy, host crontab installation or lite backing duplication
-//   HFS_SEEDS_SHAPE, HFS_SEED_MANIFEST, HFS_SEED_DDL, HFS_SEED_DATA_SCHEMA, HFS_SEED_TEST_DATA, HFS_SEED_SECRET_REF (R375, rules/seeds.mjs) seed
+//   HFS_PLAINTEXT_SECRET          (R06, rules/secrets.mts) a plaintext secret file or value in a tracked file; a `.enc` that is no sops envelope
+//   HFS_STACKS_SHAPE              (R10, rules/stacks.mts) invalid stack shape, Swarm runtime policy, host crontab installation or lite backing duplication
+//   HFS_SEEDS_SHAPE, HFS_SEED_MANIFEST, HFS_SEED_DDL, HFS_SEED_DATA_SCHEMA, HFS_SEED_TEST_DATA, HFS_SEED_SECRET_REF (R375, rules/seeds.mts) seed
 //                                 data outside the seed levels or unlisted, custody, a schema statement, a document off its schema, test data
 //                                 production applies outside its one test account, a secret reference to no sealed seeds-<name> member
-//   HFS_CI_MISSING_CANON          (R13, rules/pipeline.mjs) CI without the pinned `starci app check`, pre-push without typecheck or lint
-//   HFS_DEP_VERSION_SKEW          (R14, rules/deps.mjs) a dependency at two versions in the workspace, or a nested copy in the lockfile
-//   HFS_CONTRACT_SNAPSHOT_DRIFT   (R23, rules/contract.mjs) an uncommitted back-end snapshot, or a front-end copy that differs from it
-//   HFS_MCP_TOOLS_SNAPSHOT        (R302, rules/mcp-tools.mjs) a committed MCP tool catalog that is not the canonical `tools/list` snapshot
-//   BE_TEST_TOPOLOGY              (R47, rules/test-topology.mjs) a `.test` file, a testing/ folder, a second jest configuration
-//   FE_NO_TESTS                   (R97, rules/fe-no-tests.mjs) a front end holds a spec, e2e or test-tool file, a test script or a test dependency; no exception
-//   FE_STACK_FORBIDDEN            (rules/fe-stack.mjs) a front-end manifest (the fe side's, or the app root's minus the back end's own libraries)
+//   HFS_CI_MISSING_CANON          (R13, rules/pipeline.mts) CI without the pinned `starci app check`, pre-push without typecheck or lint
+//   HFS_DEP_VERSION_SKEW          (R14, rules/deps.mts) a dependency at two versions in the workspace, or a nested copy in the lockfile
+//   HFS_CONTRACT_SNAPSHOT_DRIFT   (R23, rules/contract.mts) an uncommitted back-end snapshot, or a front-end copy that differs from it
+//   HFS_MCP_TOOLS_SNAPSHOT        (R302, rules/mcp-tools.mts) a committed MCP tool catalog that is not the canonical `tools/list` snapshot
+//   BE_TEST_TOPOLOGY              (R47, rules/test-topology.mts) a `.test` file, a testing/ folder, a second jest configuration
+//   FE_NO_TESTS                   (R97, rules/fe-no-tests.mts) a front end holds a spec, e2e or test-tool file, a test script or a test dependency; no exception
+//   FE_STACK_FORBIDDEN            (rules/fe-stack.mts) a front-end manifest (the fe side's, or the app root's minus the back end's own libraries)
 //                                 declares a package knowledge/hfs/fe-stack.yaml forbids
-//   HFS_LITE_SECRET_CUSTODY       (R220, rules/lite-secrets.mjs) under edition lite: secret material or a forbidden custody path; the R06 scan itself runs for every edition
-//   HFS_EDITION_FORBIDDEN_PRESENT (R212, rules/edition.mjs) under edition lite: an e2e, contract, test-stack or browser script, or a
+//   HFS_LITE_SECRET_CUSTODY       (R220, rules/lite-secrets.mts) under edition lite: secret material or a forbidden custody path; the R06 scan itself runs for every edition
+//   HFS_EDITION_FORBIDDEN_PRESENT (R212, rules/edition.mts) under edition lite: an e2e, contract, test-stack or browser script, or a
 //                                 dependency of infrastructure lite does not run (test containers, fault proxy, Kafka)
-//   HFS_BACKING_UNDECLARED, HFS_BACKING_UNUSED (R212, rules/edition.mjs) under edition lite: a client library or a pattern of a backing
+//   HFS_BACKING_UNDECLARED, HFS_BACKING_UNUSED (R212, rules/edition.mts) under edition lite: a client library or a pattern of a backing
 //                                 service hfs.json sides.be.backing does not declare or the edition does not admit, or a declared service no dependency consumes
-//   DB_MIGRATION_SHAPE ... LITE_DB_MIGRATION (R213-R215, R332, rules/database.mjs, async: passed in as extraFindings) the db/ migrations, policies, definer functions and buckets; generated types
-//   BE_SPEC_PLACEMENT             (R102, rules/spec-placement.mjs) a spec or test file outside the four test layers, scripts/ and tools/ included
-//   HFS_REPO_LOCAL_CHECK          (R103, rules/repo-local-checks.mjs) a local eslint rule or plugin, a `check-*` script, a relative import in eslint.config
-//   HFS_LINT_SUPPRESSION_FILE     (R104, rules/lint-suppression.mjs) an eslint suppressions file, script or option
-//   HFS_BYPASS_MARKER             (R303, rules/bypass-markers.mjs) an inline disable, type-check escape, skipped test or swallowed failure
-//   HFS_PROOF_COMMAND_FILE_MISSING (R105, rules/proof-commands.mjs) a .starciwork proof command that runs a file the repository does not hold
-//   HFS_PEER_INTEGRATION_MISSING  (R111, rules/peer-integrations.mjs) the app root package.json lacks the runtime peer a driver integration needs
-//   BE_INTEGRATION_SPEC_MISSING   (R112, rules/integration-specs.mjs) an integration with no integration spec that registers its module, maps its refusals and drives an outage
-//   FE_GRAPHQL_CONTRACT           (R113, rules/fe-contract-documents.mjs) a front-end GraphQL document the back end's contract snapshot does not serve
-//   HFS_MONO_* (R143-R146, rules/monorepo.mjs) the monorepo shape; BE_CLI_REQUIRED (R147, rules/cli.mjs) the one cli app
-//   HFS_SERVICE_PLACEMENT, HFS_IMAGE_UNPINNED, HFS_SERVICE_STACK_DECLARATION, HFS_EVENT_CONTRACT, BE_ASYNC_SPEC_MISSING   (R163-R167, rules/services.mjs) the microservice policy of a product with more than one service
-//   BE_EVENT_CLASS_CONTRACT, BE_PATTERN_SPEC_MISSING, BE_KIND_DECLARATION, BE_KIND_EMPTY   (rules/app-root.mjs: event-bus.mjs and kinds.mjs) a typed event class the vendored contract does not list, a declared pattern whose proof scenarios have no test, and the trigger kinds of the features (declared, whole, never empty)
+//   DB_MIGRATION_SHAPE ... LITE_DB_MIGRATION (R213-R215, R332, rules/database.mts, async: passed in as extraFindings) the db/ migrations, policies, definer functions and buckets; generated types
+//   BE_SPEC_PLACEMENT             (R102, rules/spec-placement.mts) a spec or test file outside the four test layers, scripts/ and tools/ included
+//   HFS_REPO_LOCAL_CHECK          (R103, rules/repo-local-checks.mts) a local eslint rule or plugin, a `check-*` script, a relative import in eslint.config
+//   HFS_LINT_SUPPRESSION_FILE     (R104, rules/lint-suppression.mts) an eslint suppressions file, script or option
+//   HFS_BYPASS_MARKER             (R303, rules/bypass-markers.mts) an inline disable, type-check escape, skipped test or swallowed failure
+//   HFS_PROOF_COMMAND_FILE_MISSING (R105, rules/proof-commands.mts) a .starciwork proof command that runs a file the repository does not hold
+//   HFS_PEER_INTEGRATION_MISSING  (R111, rules/peer-integrations.mts) the app root package.json lacks the runtime peer a driver integration needs
+//   BE_INTEGRATION_SPEC_MISSING   (R112, rules/integration-specs.mts) an integration with no integration spec that registers its module, maps its refusals and drives an outage
+//   FE_GRAPHQL_CONTRACT           (R113, rules/fe-contract-documents.mts) a front-end GraphQL document the back end's contract snapshot does not serve
+//   HFS_MONO_* (R143-R146, rules/monorepo.mts) the monorepo shape; BE_CLI_REQUIRED (R147, rules/cli.mts) the one cli app
+//   HFS_SERVICE_PLACEMENT, HFS_IMAGE_UNPINNED, HFS_SERVICE_STACK_DECLARATION, HFS_EVENT_CONTRACT, BE_ASYNC_SPEC_MISSING   (R163-R167, rules/services.mts) the microservice policy of a product with more than one service
+//   BE_EVENT_CLASS_CONTRACT, BE_PATTERN_SPEC_MISSING, BE_KIND_DECLARATION, BE_KIND_EMPTY   (rules/app-root.mts: event-bus.mts and kinds.mts) a typed event class the vendored contract does not list, a declared pattern whose proof scenarios have no test, and the trigger kinds of the features (declared, whole, never empty)
 //   FE_WIRE_GENERATED, FE_I18N_PLACEMENT, FE_I18N_CATALOG   (R52, R59, R60, rules/frontend.mjs) the front-end tree of each app
-//   HFS_GITIGNORE_BLOCK_DRIFT, HFS_SONAR_CONFIG, HFS_COVERAGE_SCOPE_DRIFT   (R04, R11, R204) produced by packages/hfs/sync/managed.mjs, which renders the templates
-//   HFS_FORMAT                    (R19) produced by packages/hfs/sync/format.mjs, which runs the repository's own prettier
+//   HFS_GITIGNORE_BLOCK_DRIFT, HFS_SONAR_CONFIG, HFS_COVERAGE_SCOPE_DRIFT   (R04, R11, R204) produced by packages/hfs/sync/managed.mts, which renders the templates
+//   HFS_FORMAT                    (R19) produced by packages/hfs/sync/format.mts, which runs the repository's own prettier
 //                                 both are passed in as `extraFindings`: this module reads no template and starts no tool
 //   HFS_CANON_PIN_DRIFT           a dependency whose declared version is not the pinned one
 //   BE_SOURCE_FORM                (be) a tracked src/apps .ts file whose name is not index.ts, main.ts, a migration or <kebab>.<suffix>.ts with a suffix of ruleParams.be.suffixes
@@ -58,7 +58,7 @@
 //   HFS_UNTRACKED_ROOT_ENTRY      an entry git neither tracks nor ignores, outside an `ignored` slot (R03)
 // A runtime repository (hfs.json kind runtime, judged with knowledge/hfs/runtime-slots.yaml) gets the per-path slot findings,
 // the required files and minimum instances and the tree findings only; scripts/hfs/runtime-check.mjs adds the runtime rules.
-// checkRepository() is the whole `starci app check`: checkRepo() plus the architecture machine (scripts/hfs/architecture.mjs, one
+// checkRepository() is the whole `starci app check`: checkRepo() plus the architecture machine (scripts/hfs/architecture.mts, one
 // implementation; the published bundle carries a byte copy), its violations and errors reported as findings under their own
 // codes; `fast` limits both to the owners changed since the merge-base. Every finding carries its code and the Vietnamese why text of modules/kernel/failure-codes.yaml. Only `error`
 // findings fail the check.
@@ -319,7 +319,7 @@ function scopeFindings({ repoRoot, root, harness, repo, resolver, files, all = f
 
 /**
  * The check of one app. `repoRoot` is the app root (a side folder is checked as that side alone). `harness` ({ version }) is the CLI
- * that runs the check, whose version is the app's starci-harness pin (canon-pins.mjs). `declaration` overrides hfs.json
+ * that runs the check, whose version is the app's starci-harness pin (canon-pins.mts). `declaration` overrides hfs.json
  * (a dry run over an app that has none); `files` overrides git ls-files (specs), app-relative. `only` (a list of app-relative paths)
  * limits the per-path checks (slot, pin, size) to those paths; the checks of the tree as a whole (required files, minimum instances,
  * empty directories, untracked entries) are not per-path. `tree: false` skips the file-system checks (empty directories, ghosts,

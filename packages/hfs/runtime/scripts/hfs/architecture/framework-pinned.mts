@@ -1,6 +1,6 @@
-// framework-pinned.mjs - the Next.js files that only load from a source root (the directory holding
+// framework-pinned.mts - the Next.js files that only load from a source root (the directory holding
 // app/). Authored once in knowledge/patterns/fe/folder.yaml FE-FOLDER-1 (frameworkPinnedRootFiles), never
-// hard-coded here (a supervisor ruling). Read by the architecture
+// hard-coded here. Read by the architecture
 // check (FE_SOURCE_LAYOUT_INVALID).
 //
 // An unreadable or malformed list is a broken install, not "no pinned files": the reader throws

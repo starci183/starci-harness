@@ -1,4 +1,4 @@
-// post-deploy.mjs - the release tasks of a deploy (deploy.postDeploy): after the stack converged and before verification, each declared task
+// post-deploy.mts - the release tasks of a deploy (deploy.postDeploy): after the stack converged and before verification, each declared task
 // (deploy.tasks.<name>) runs in order inside the running task of its service, through the daemon of this invocation like verify's checks.
 // A post-deploy task is the place for an idempotent write a release owes the data (a catalogue sync, a seed upsert), so verification stays read-only.
 // The first task that exits non-zero, or runs past its timeout, fails the step and the deploy rolls back; a rollback cannot undo what a task wrote.
@@ -29,7 +29,7 @@ function verdictOf(run: RunResult, timeoutSeconds: number): { ok: boolean; detai
 
 /** Runs one declared task; returns { name, ok, detail, outputLines }. */
 function runTask(ctx: StackContext, config: DeployConfig, name: string): TaskOutcome {
-  const declared = config.tasks[name] as TaskEntry; // every postDeploy name is a declared task (stack-deploy-config.mjs)
+  const declared = config.tasks[name] as TaskEntry; // every postDeploy name is a declared task (stack-deploy-config.mts)
   const container = runningContainer(ctx, config, declared.service);
   if (!container) return { name, ok: false, detail: `no running container of ${config.stack}_${declared.service} on the daemon`, outputLines: 0 };
   const run = tool(ctx, 'docker', ['exec', container, ...declared.command], { timeout: declared.timeoutSeconds * 1000, killSignal: 'SIGKILL' });

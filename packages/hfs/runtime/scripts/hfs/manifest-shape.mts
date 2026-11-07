@@ -1,6 +1,6 @@
-// manifest-shape.mjs - the shape rules of an HFS slot manifest that both manifest kinds share, and the whole shape of a
+// manifest-shape.mts - the shape rules of an HFS slot manifest that both manifest kinds share, and the whole shape of a
 // manifest of kind runtime (knowledge/hfs/runtime-slots.yaml): the slot fields, the tier map and ruleParams.runtime.
-// scripts/hfs/slots.mjs (loadSlotManifest) is the only reader; it adds the app kind's own rules
+// scripts/hfs/slots.mts (loadSlotManifest) is the only reader; it adds the app kind's own rules
 // (sides, app kinds) and refuses a manifest whole on any problem (HFS_MANIFEST_INVALID). Pure: every function takes a
 // parsed manifest or slot and returns a list of problems in the words of modules/schemas/hfs-slots.schema.yaml.
 import { isPlainObject } from '../../engine/plain-object.mjs';
@@ -173,7 +173,7 @@ const CONTEXT_ISOLATIONS = Object.freeze(["database", "schema"]);
 const CONTEXT_OWNER_KINDS = Object.freeze(["api", "worker"]);
 /** The database engine a connection runs on. */
 const CONNECTION_PROVIDERS = Object.freeze(["postgres"]);
-/** The editions an app repository may declare in hfs.json (`full` when absent): the filter slots.mjs applies. */
+/** The editions an app repository may declare in hfs.json (`full` when absent): the filter slots.mts applies. */
 export const EDITIONS = Object.freeze(["full", "lite"]);
 /** What decides where schema changes live (ruleParams.<side>.schemaAuthority): TypeORM migrations under persistence/, or the SQL migration tree db/migrations. */
 export const SCHEMA_AUTHORITIES = Object.freeze(["typeorm", "sql"]);
@@ -200,14 +200,14 @@ export const TRACKED = ['tracked', 'ignored', 'external'];
 /** A runtime manifest adds `generated`: tracked, written only by the slot's generatedBy, judged by drift (RT_GENERATED_DRIFT). */
 const RUNTIME_TRACKED = [...TRACKED, 'generated'];
 export const TESTS = ['unit-beside', 'e2e', 'none'];
-/** The coverage mode of a tracked slot of the be profile or of a runtime manifest (scripts/hfs/coverage-scope.mjs and scripts/hfs/runtime-coverage-scope.mjs derive the coverage consumers from it). */
+/** The coverage mode of a tracked slot of the be profile or of a runtime manifest (scripts/hfs/coverage-scope.mts and scripts/hfs/runtime-coverage-scope.mjs derive the coverage consumers from it). */
 export const COVERAGE = ['required', 'none'];
 export const APP_KIND = 'app';
 
 /**
  * The unit-tested roles of a back end whose spec is required (ruleParams.be.unitRoles of the slot manifest): [{ role, spec, slot?, exempt? }].
  * THE one list: every check that asks "is this file unit-tested, and where is its spec" asks it here. What the unit run MEASURES is
- * logicRoles over the coverage-required slots (coverage-scope.mjs), not this list.
+ * logicRoles over the coverage-required slots (coverage-scope.mts), not this list.
  */
 export const unitRolesOf = (manifest: SlotManifest): UnitRole[] => manifest.ruleParams.be.unitRoles;
 
@@ -222,8 +222,8 @@ export const suffixOf = (file: string): string | null => /\.([a-z0-9-]+)\.ts$/.e
 
 /**
  * The files a slot declares as logic (`logic`, names relative to the slot path): a file that carries logic without a logic-role suffix.
- * Each is measured at 100 per file like a logic-role file (scripts/hfs/coverage-scope.mjs), and its `<stem>.spec.ts` beside it is a
- * legitimate unit spec its slot admits (scripts/hfs/allows.mjs, eslint-canon-be unit-test-colocated). No role name is added for it.
+ * Each is measured at 100 per file like a logic-role file (scripts/hfs/coverage-scope.mts), and its `<stem>.spec.ts` beside it is a
+ * legitimate unit spec its slot admits (scripts/hfs/allows.mts, eslint-canon-be unit-test-colocated). No role name is added for it.
  */
 export const declaredLogicOf = (slot: Pick<Slot, 'logic'> | null | undefined): string[] => (Array.isArray(slot?.logic) ? slot.logic : []);
 
@@ -278,7 +278,7 @@ export const manifestKind = (m: Parsed): string => (isPlainObject(m) && m.kind !
 const strList = (v: Parsed) => stringList(v);
 
 const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'rewrittenBy', 'logic', 'managedOnly'];
-/** The roles a file slot may play that a rule reads (`role`): the entity registry of persistence.md BE-PERSISTENCE-3 (architecture/entity-registry.mjs). */
+/** The roles a file slot may play that a rule reads (`role`): the entity registry of persistence.md BE-PERSISTENCE-3 (architecture/entity-registry.mts). */
 const SLOT_ROLES = ['entity-registry'];
 /** The fields a slot's `lite` overlay may hold: the same keys it would carry in the slot body, resolved under edition lite. */
 const LITE_OVERLAY_KEYS = ['path', 'requires', 'allows', 'forbids', 'minInstances', 'requiredInstances', 'why'];

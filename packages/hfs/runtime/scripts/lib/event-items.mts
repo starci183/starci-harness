@@ -1,4 +1,4 @@
-// event-items.mjs - the open items of an owed/resolved event pair, replayed from a workflow ledger (read only).
+// event-items.mts - the open items of an owed/resolved event pair, replayed from a workflow ledger (read only).
 
 import type { SqliteDb } from './sqlite.mjs';
 

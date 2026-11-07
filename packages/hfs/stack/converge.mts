@@ -1,4 +1,4 @@
-// converge.mjs - observes whether a stack deploy has converged: desired versus running replicas, the update state of every service and
+// converge.mts - observes whether a stack deploy has converged: desired versus running replicas, the update state of every service and
 // failed or rejected tasks of the NEW service spec created since the deploy began (`docker stack deploy --detach` returns before any of this is
 // true). The old tasks still restarting while a rolling update replaces them carry the previous spec: their failures are not the deploy's, so a
 // task counts only when its spec equals the service's current task template. The update must also have reached `completed`.

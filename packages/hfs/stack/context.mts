@@ -1,4 +1,4 @@
-// context.mjs - the seams every stack module runs through: spawning tools, sleeping, the clock and the output.
+// context.mts - the seams every stack module runs through: spawning tools, sleeping, the clock and the output.
 // Production uses the real implementations; a spec injects fakes.
 import { spawn, spawnSync } from 'node:child_process';
 import type { ChildProcess, SpawnOptions as NodeSpawnOptions } from 'node:child_process';
@@ -136,7 +136,7 @@ export interface StackIo {
   harness?: { role?: string | undefined } | undefined;
   importer?: ((file: string) => Promise<Record<string, unknown>>) | undefined;
   heavy?: HeavyRun | undefined;
-  /** The seams of the dev verbs a spec replaces (stack/local-run.mjs LocalDeps). */
+  /** The seams of the dev verbs a spec replaces (stack/local-run.mts LocalDeps). */
   localDeps?: import('./local-run.mjs').LocalDeps | undefined;
 }
 
@@ -157,7 +157,7 @@ export interface StackContext {
   readonly sops: Sops;
   /** The governed runner of heavy commands (the harness CLI hands it in); absent, a dev verb runs them directly. */
   readonly heavy?: HeavyRun | undefined;
-  /** The command-owned SSH connection, set by the Docker transport (docker-transport.mjs). */
+  /** The command-owned SSH connection, set by the Docker transport (docker-transport.mts). */
   readonly stackSsh?: SshConnection | undefined;
 }
 

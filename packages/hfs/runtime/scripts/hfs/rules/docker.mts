@@ -1,7 +1,7 @@
-// docker.mjs - every app builds its own image: be/apps/<app>/Dockerfile and fe/apps/<app>/Dockerfile (slot repo.app-image, required per declared
+// docker.mts - every app builds its own image: be/apps/<app>/Dockerfile and fe/apps/<app>/Dockerfile (slot repo.app-image, required per declared
 // app; a Dockerfile anywhere else is owned by no slot) built from the APP ROOT, which holds the one package.json and the managed .dockerignore.
 // The Dockerfile is app-owned (starci app scaffold writes it once from templates/<side>/image) and judged here, structurally, from its parsed
-// instructions (scripts/lib/dockerfile.mjs), never by matching the text:
+// instructions (scripts/lib/dockerfile.mts), never by matching the text:
 //   HFS_DOCKER_BUILD_CONTEXT  the header comment states the app's own build command (`starci docker build <app>` or `docker build -f <side>/apps/<app>/Dockerfile ... .`, the
 //                             context the app root) and no COPY or ADD source leaves the context (`..`, an absolute path); a Next image of a front end
 //                             that reads be/contracts/ copies that folder only when the back end holds it (a COPY of a missing folder fails the build); the

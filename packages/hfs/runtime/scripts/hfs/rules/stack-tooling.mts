@@ -1,4 +1,4 @@
-// stack-tooling.mjs - R293: an app does not re-implement the Swarm deploy tooling the canon ships as `starci app stack <verb>`.
+// stack-tooling.mts - R293: an app does not re-implement the Swarm deploy tooling the canon ships as `starci app stack <verb>`.
 // Deploy sources (tracked files under deploy/ and scripts/, the scripts of package.json, workflows other than the canon's managed
 // stack-deploy.yml) must not call a docker command a verb owns, and deploy/ holds no file named after a verb. A finding names the
 // replacing verb and the file, never a snippet of the source.

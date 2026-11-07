@@ -1,4 +1,4 @@
-// local-status.mjs - `starci app stack status --env <dev env>` (PROJECT-STACKS-6): desired against running. A container that exists is not status:
+// local-status.mts - `starci app stack status --env <dev env>` (PROJECT-STACKS-6): desired against running. A container that exists is not status:
 // each declared service must be running (and healthy where it declares health), each process alive, the migration receipt current and every
 // readiness probe answering. Read-only.
 import type { StackContext } from './context.mjs';

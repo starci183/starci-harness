@@ -1,4 +1,4 @@
-// worktree-exclude.mjs — where a product repository keeps the runtime's own git worktrees (scratch trees made by
+// worktree-exclude.mts — where a product repository keeps the runtime's own git worktrees (scratch trees made by
 // scripts/machine/worktree-git.mjs createScratchWorktree), and the one test every scanner uses to stay out of them.
 //
 // Layout inside a product repository:

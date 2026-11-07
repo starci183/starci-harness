@@ -12,7 +12,7 @@ interface ServerDirective {
 }
 
 /**
- * The front end serves no API (owner ruling 2026-10-13, both editions, every app): it calls the back end through Apollo GraphQL and
+ * The front end serves no API (both editions, every app): it calls the back end through Apollo GraphQL and
  * axios in modules/api and never runs server code of its own.
  *
  *   - FE_SERVER_ACTION_FORBIDDEN: a `"use server"` directive anywhere in a front-end source file, in the file's directive prologue

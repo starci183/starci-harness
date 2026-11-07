@@ -1,4 +1,4 @@
-// app-workflow-findings.mjs - app-root workflow scope shared by deployment and expression-context rules.
+// app-workflow-findings.mts - app-root workflow scope shared by deployment and expression-context rules.
 import { workflowFindings } from '../runtime-rules/workflow-source.mjs';
 import { readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';

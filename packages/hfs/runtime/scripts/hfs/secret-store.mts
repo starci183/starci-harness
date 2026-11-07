@@ -1,4 +1,4 @@
-// secret-store.mjs - sealed secret paths and atomic named-value updates.
+// secret-store.mts - sealed secret paths and atomic named-value updates.
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";

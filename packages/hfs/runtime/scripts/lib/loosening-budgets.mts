@@ -1,4 +1,4 @@
-// loosening-budgets.mjs - the numeric budgets of the canon, pinned in knowledge/hfs/design-truths.yaml (`budgets`), judged on the tree as it stands.
+// loosening-budgets.mts - the numeric budgets of the canon, pinned in knowledge/hfs/design-truths.yaml (`budgets`), judged on the tree as it stands.
 // A budget is a ceiling (a file, a function, a feature may not be bigger) or a floor (a duplicate block is at least this large to count): raising a
 // ceiling or lowering a floor in the slot manifests loosens the gate, and so does a budget that is gone. The pin names the file, the ruleParams node
 // and the numbers, and the per-slot `budget` maps; the check reads each file's YAML and compares.

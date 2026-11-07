@@ -1,5 +1,5 @@
-// draw-dna-anatomy.mjs - the anatomy a capture measured (draw-render record `anatomy`) judged against the HeroUI Alert and
-// Meter anatomy: DRAW_ALERT_ANATOMY and DRAW_METER_TRACK findings. draw-dna.mjs re-exports it.
+// draw-dna-anatomy.mts - the anatomy a capture measured (draw-render record `anatomy`) judged against the HeroUI Alert and
+// Meter anatomy: DRAW_ALERT_ANATOMY and DRAW_METER_TRACK findings. draw-dna.mts re-exports it.
 /** A measured box (CSS px). */
 interface MeasuredBox { width?: unknown; height?: unknown }
 /** One Alert the capture measured. */

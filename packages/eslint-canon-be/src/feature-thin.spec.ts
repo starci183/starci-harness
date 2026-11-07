@@ -125,7 +125,7 @@ export class PriceInput {
                 // R203 remains the sole thin-role judge; no duplicate findings from R264.
                 { filename: HANDLER, code: "export const choose = (ok: boolean) => ok ? 1 : 0" },
                 { filename: DOMAIN_SERVICE, code: "export const choose = (ok: boolean) => ok ? 1 : 0" },
-                // Owner ruling 2026-10-16: a top-level registerEnumType is the schema enum declaration, allowed in a graphql transport `.type.ts`.
+                // A top-level registerEnumType is the schema enum declaration, allowed in a graphql transport `.type.ts`.
                 { filename: GRAPHQL_TYPE, code: `import { registerEnumType } from "@nestjs/graphql"
 export enum Status { open = "open" }
 registerEnumType(Status, { name: "Status" })` },

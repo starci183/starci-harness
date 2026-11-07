@@ -8,7 +8,7 @@ import { isBranchPattern, readBranchProfiles, type BranchProfiles } from '../run
 // reason: the stack declaration and its quality services are YAML parsed from disk; each field is read where the CI text needs it
 type Declaration = any;
 
-/** The app source facts the CI text reads (sync/index.mjs appSource). */
+/** The app source facts the CI text reads (sync/index.mts appSource). */
 interface CiSource { runtimeExample?: boolean; files?: string[]; read?: (file: string) => string; stack?: { imageEnvironments?: Record<string, unknown> } }
 
 // One command vocabulary for managed CI rendering and the runtime coverage gate.
@@ -171,7 +171,7 @@ function frontendBuild(source: CiSource | undefined, app: { sides: { fe: { apps:
   return { env: singleEnv, steps };
 }
 
-/** The per-scope lint reports (one artifact per lint matrix scope) join into the one reports/lint.sonar.json the Sonar import reads, even when one scope wrote none. The local release gate writes the same file with mergeSonarReports (release/lint-report.mjs): keep both identical. */
+/** The per-scope lint reports (one artifact per lint matrix scope) join into the one reports/lint.sonar.json the Sonar import reads, even when one scope wrote none. The local release gate writes the same file with mergeSonarReports (release/lint-report.mts): keep both identical. */
 function sonarMergeSteps(condition: string, scopes: readonly string[]): string[] {
   return [
     '      - name: merge Sonar lint reports',
@@ -193,7 +193,7 @@ const STANDARD = new URL('../runtime/knowledge/hfs/ci-standard.yaml', import.met
 
 /**
  * The command that builds the app's root workspace packages (the agent SDK, the module packages and every other `packages/*` workspace): the managed
- * `build:modules` script, which sync renders exactly when the app has root packages (sync/index.mjs appScripts) and which the managed typecheck, lint,
+ * `build:modules` script, which sync renders exactly when the app has root packages (sync/index.mts appScripts) and which the managed typecheck, lint,
  * test and build scripts already run first. A CI step that runs a check directly (the boot proof, the app check's lint, the Sonar analysis) reads the
  * packages' declared types from their dist, so it runs this first; an app with no root package renders no such step and no prefix.
  */

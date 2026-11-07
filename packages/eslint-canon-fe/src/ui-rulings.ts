@@ -1,4 +1,4 @@
-/** Owner UI rulings: selection uses fill, and applications respect Grammar styling ownership. */
+/** UI rules: selection uses fill, and applications respect Grammar styling ownership. */
 import type { TSESTree } from "@typescript-eslint/utils";
 import { attribute, attributeValue, staticText } from "./lib/ast.ts";
 import { importOf } from "./lib/bindings.ts";
@@ -136,7 +136,7 @@ export const rules = {
   "no-grammar-internal-selector": noGrammarInternalSelector,
 } satisfies Rules;
 
-/** Both owner rulings are universal errors in the frontend canon. */
+/** Both rules are universal errors in the frontend canon. */
 export const recommended: Recommended = Object.fromEntries(
   Object.keys(rules).map((name): [string, "error"] => [`starci-fe/${name}`, "error"]),
 );

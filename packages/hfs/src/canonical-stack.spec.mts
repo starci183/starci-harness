@@ -57,7 +57,7 @@ test('every stack effect names its environment; prepare is one, doctor is a dev 
   const bare = await stack(t, ['prepare']);
   assert.equal(bare.code, 2);
   assert.match(bare.err, /STACK_USAGE: stack prepare has an effect: name its environment with --env <env>/);
-  assert.ok(!(ACTIONS as readonly string[]).includes('doctor')); // widened: 'doctor' is a dev action (stack/local-cli.mjs), not a swarm Action
+  assert.ok(!(ACTIONS as readonly string[]).includes('doctor')); // widened: 'doctor' is a dev action (stack/local-cli.mts), not a swarm Action
   const gone = await stack(t, ['doctor', '--env', 'staging']);
   assert.equal(gone.code, 2);
   assert.match(gone.err, /STACK_LOCAL_NOT_DEV: environment staging runs docker-swarm/);

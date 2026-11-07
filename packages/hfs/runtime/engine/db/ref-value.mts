@@ -1,4 +1,4 @@
-// ref-value.mjs — the one accessor of a column that holds content or a reference to it (the storage convention: content is a file in the blob store under the runtime state
+// ref-value.mts — the one accessor of a column that holds content or a reference to it (the storage convention: content is a file in the blob store under the runtime state
 // dir, a row holds the reference).
 //
 // A column that may hold content holds either the content inline (the legacy shape, every row written before the convention) or a REFERENCE: the JSON stub machine.sqlite already

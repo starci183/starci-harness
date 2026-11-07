@@ -1,6 +1,6 @@
-// records.mjs - the release records of an app, all under <git common dir>/starci-release (gate.mjs releaseDir):
-//   <head>.l4.json        the L4 record: every gate of the release gate passed on a clean HEAD (gate.mjs writes it)
-//   <head>.urgent.json    the URGENT record (owner ruling urgent-release, 2026-10-29): `release push --urgent` tagged and pushed HEAD after the
+// records.mts - the release records of an app, all under <git common dir>/starci-release (gate.mts releaseDir):
+//   <head>.l4.json        the L4 record: every gate of the release gate passed on a clean HEAD (gate.mts writes it)
+//   <head>.urgent.json    the URGENT record: `release push --urgent` tagged and pushed HEAD after the
 //                         fast local checks alone; it names who (role), why (reason), the checks with their verdicts and the commit, and
 //                         carries the back-fill verdict once `release gate --backfill <tag>` has run the full gate on the same commit
 //   <head12>/rows.json    every gate row run on that head (name, command, verdict, log and its sha256), so a later urgent push reuses a green
@@ -10,8 +10,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const URGENT_SCHEMA = 'starci-app-urgent-record/1';
-/** The owner's ruling an urgent record cites: CI and the full gate wait for the back-fill, the safety floor of the deploy never does. */
-export const URGENT_RULING = 'owner ruling urgent-release 2026-10-29: an urgent release ships after the fast local checks; the full gate runs later on the same tag (release gate --backfill) and the deploy safety floor is never skipped';
+/** The rule an urgent record states: CI and the full gate wait for the back-fill, the safety floor of the deploy never does. */
+export const URGENT_RULING = 'an urgent release ships after the fast local checks; the full gate runs later on the same tag (release gate --backfill) and the deploy safety floor is never skipped';
 
 // reason: release records are JSON parsed from disk; each reader checks the fields it uses
 type Json = any;

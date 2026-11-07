@@ -59,7 +59,7 @@ function levelSkeleton(root: string, env: string | null, landed: ReadonlySet<str
 }
 
 /**
- * Migrate an app's seed data into the seed levels of `.starcistacks/` (ruling seed-levels, contexts/project/stacks.md PROJECT-STACKS-12):
+ * Migrate an app's seed data into the seed levels of `.starcistacks/` (contexts/project/stacks.md PROJECT-STACKS-12):
  * `db/seed.sql` moves to the shared level's `sql/reference.sql` and each loose SQL file of `<env>/seeds/` to that level's `sql/`, each
  * declared in its level's `seeds.yaml` (target the primary database, mode upsert); every level gets its manifest and a `.gitkeep` for each
  * kind folder that holds nothing. A target with the same bytes drops the old copy; other bytes, a loose seed that is no SQL and a source that

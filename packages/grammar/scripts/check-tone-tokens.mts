@@ -3,7 +3,7 @@ import { dirname, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 /**
- * Contract check (ruling `grammar-own-style`, app-added tones): no Core or Common rule reads a tone token that is not HeroUI's. A tone x has
+ * Contract check (app-added tones): no Core or Common rule reads a tone token that is not HeroUI's. A tone x has
  * four tokens, `--x`, `--x-foreground`, `--x-soft`, `--x-soft-foreground`; Core and Common may read them for HeroUI's tones only (accent,
  * default, success, warning, danger) and for the one optional app alias `--informative*`. Any other tone name (for instance `--info`) is an
  * app's to declare: it reaches the Grammar only through `customToneProps`, as `--grammar-tone*`. Offset Pop and the other families are free

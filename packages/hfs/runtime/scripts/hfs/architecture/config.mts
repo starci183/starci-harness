@@ -305,7 +305,7 @@ function inferredLayout(root: string, workspaces: string[]): Omit<ArchitectureCo
     features: collect('src/features'),
     components: [...new Set(components)],
     hooks: collect('src/hooks'),
-    // src/redux/ (fe.redux) is a modules-tier owner beside src/modules/ (owner ruling 2026-10-13, fe-stack state-global).
+    // src/redux/ (fe.redux) is a modules-tier owner beside src/modules/ (fe-stack state-global).
     modules: [...collect('src/modules'), ...collect('src/redux')],
     transport: collect('src/modules/api'),
   };

@@ -1,6 +1,6 @@
-// scripts/api/fs/lib.mjs — what the fs call files beside it share: the error codes Windows returns while another
-// process holds a path open, and the verified unlink of one link. The call files (safe-remove.mjs, remove-links-under.mjs,
-// rename-over.mjs, zip-write.mjs, ...) each name one filesystem use.
+// scripts/api/fs/lib.mts — what the fs call files beside it share: the error codes Windows returns while another
+// process holds a path open, and the verified unlink of one link. The call files (safe-remove.mts, remove-links-under.mjs,
+// rename-over.mts, zip-write.mjs, ...) each name one filesystem use.
 import fs from 'node:fs';
 
 /** The `code` of a caught value (a Node system error carries one), or undefined. */

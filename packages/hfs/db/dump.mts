@@ -1,4 +1,4 @@
-// dump.mjs - `starci app db dump`: a full backup of the database --db-url-env names (pg_dumpall roles, pg_dump schema and data),
+// dump.mts - `starci app db dump`: a full backup of the database --db-url-env names (pg_dumpall roles, pg_dump schema and data),
 // encrypted outside Git; every plaintext part is removed even when a tool fails.
 import fs from 'node:fs';
 import path from 'node:path';

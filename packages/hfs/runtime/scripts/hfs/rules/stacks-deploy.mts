@@ -1,5 +1,5 @@
-// stacks-deploy.mjs - R294: `environments.<env>.deploy` in .starcistacks/application-stacks.yaml is coherent.
-// The block is judged by the same `normalizeDeploy` the `starci app stack` verbs use (scripts/hfs/stack-deploy-config.mjs), against a
+// stacks-deploy.mts - R294: `environments.<env>.deploy` in .starcistacks/application-stacks.yaml is coherent.
+// The block is judged by the same `normalizeDeploy` the `starci app stack` verbs use (scripts/hfs/stack-deploy-config.mts), against a
 // probe of the real tree: the files below .starcistacks/<env>/, the services of the first composeFiles entry and the sealed members.
 // One finding per problem; an environment without a deploy block is not a finding.
 import fs from 'node:fs';

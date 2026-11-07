@@ -1,4 +1,4 @@
-// secret-errors.mjs - sanitized public errors shared by app secret operations.
+// secret-errors.mts - sanitized public errors shared by app secret operations.
 
 /** A refusal with a message safe to print; `code` names it when a caller or a spec keys on it. */
 export class SecretError extends Error {

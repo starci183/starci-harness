@@ -1,7 +1,7 @@
-// cli.mjs - `starci app stack <action>` for the Swarm deploy tooling: flags, dry run versus --execute, dispatch, text and --json output.
+// cli.mts - `starci app stack <action>` for the Swarm deploy tooling: flags, dry run versus --execute, dispatch, text and --json output.
 //   starci app stack <action> --env <env> [the action's FLAGS]     (only the READ_ONLY actions default --env to production)
 // Each action takes only its own flags: a flag of another action is a refusal, never ignored.
-// (`starci app world <up|down|status>` is the test world's, dispatched by packages/hfs/src/main.mjs; `stack status` below is the deploy's drift report.)
+// (`starci app world <up|down|status>` is the test world's, dispatched by packages/hfs/src/main.mts; `stack status` below is the deploy's drift report.)
 // Every action module exports one async function (ctx, config, options) -> { ok, lines, data }; a refusal throws StackError.
 import path from 'node:path';
 import { stackContext } from './context.mjs';
@@ -64,7 +64,7 @@ interface OptionInput { flags: Flags; positional: string[]; cwd: string }
 /** One action module's entry point. */
 type Handler = (ctx: StackContext, config: DeployConfig, options: Record<string, unknown>) => Promise<ActionResult>;
 
-/** The actions that drive the docker CLI of the operator machine (pointed at the manager by docker-transport.mjs when the key is sealed). */
+/** The actions that drive the docker CLI of the operator machine (pointed at the manager by docker-transport.mts when the key is sealed). */
 const DOCKER_ACTIONS = new Set(['deploy', 'accept', 'converge', 'verify', 'rollback', 'prune', 'status']);
 
 export const ACTIONS = Object.freeze(['prepare', 'connect', 'disconnect', 'build-args', 'render', 'deploy', 'converge', 'verify', 'rollback', 'prune', 'backup', 'jobs', 'task', 'ingress', 'retire', 'build', 'accept', 'status', 'ci-key'] as const);
@@ -260,7 +260,7 @@ export async function stackMain(argv: string[], io: StackIo = {}): Promise<numbe
     const ran = DOCKER_ACTIONS.has(action) ? await withDockerTransport(toolContext, config, { sshCmd }, call) : await call(toolContext);
     const result = prepared ? { ...ran, lines: [...prepared.lines, ...(ran.lines ?? [])] } : ran;
     print(ctx, action, flags, result);
-    // A floor step of an urgent deploy that failed is a refusal with its own code (urgent-floor.mjs), printed after the lines that led to it.
+    // A floor step of an urgent deploy that failed is a refusal with its own code (urgent-floor.mts), printed after the lines that led to it.
     if (result.refused) {
       ctx.stderr(`starci app stack: ${result.refused.code}: ${result.refused.message}\n`);
       return EXIT.refused;

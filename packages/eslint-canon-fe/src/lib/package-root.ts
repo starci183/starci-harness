@@ -11,7 +11,7 @@ export const PACKAGE_ROOT = fileURLToPath(new URL("../..", import.meta.url))
 
 /**
  * The runtime of the installed @starci/hfs (its peer, a same-minor range): the slot manifest, the architecture machine and its catalogs are read from it
- * at run time, never from a copy bundled here, so an hfs data change releases hfs alone (decision release-only-what-changed).
+ * at run time, never from a copy bundled here, so an hfs data change releases hfs alone.
  */
 export const RUNTIME_ROOT = join(dirname(createRequire(import.meta.url).resolve("@starci/hfs/package.json")), "runtime")
 

@@ -1,4 +1,4 @@
-// gate-threshold.mjs - the verdict of `starci app check` (owner ruling gate-threshold-20, 2026-10-30): green
+// gate-threshold.mts - the verdict of `starci app check`: green
 // while fewer than GATE_ERROR_LIMIT error findings remain and none of them is a hard blocker, so a release is not held back finding
 // by finding (5, 4, 3, ...) by the last few structural nits. A plaintext secret, a failed boot proof, a forged check cache record, a broken migration, a branch
 // profile that lowers what it may not and a commit that raises the lint findings of a file it touches on a report branch (the lint ratchet) block at any count. Every finding is still printed; only the exit code changes. Typecheck, build and the tests are not judged here.
@@ -10,7 +10,7 @@ export function gateErrorLimit(env: NodeJS.ProcessEnv = process.env): number {
   const value = Number(env.STARCI_GATE_ERROR_LIMIT);
   return Number.isInteger(value) && value > 0 ? value : GATE_ERROR_LIMIT;
 }
-export const GATE_THRESHOLD_RULING = 'owner ruling gate-threshold-20 2026-10-30: app check and lint pass under 20 error findings with no plaintext secret, boot proof or migration finding';
+export const GATE_THRESHOLD_RULING = 'app check and lint pass under 20 error findings with no plaintext secret, boot proof or migration finding';
 
 /** The codes that block at any count: plaintext secrets, the boot proof, the forged cache, the migrations, the branch profile and the lint ratchet. */
 export const HARD_BLOCKERS: ReadonlySet<string> = Object.freeze(new Set<string>([
@@ -35,7 +35,7 @@ export function gateVerdict(errors: readonly { code: string | null }[], limit: n
   const pass = hard.length === 0 && count < limit;
   const line = count === 0 ? null
     : hard.length > 0 ? `gate: red, ${hard.join(', ')} block${hard.length === 1 ? 's' : ''} at any count (${count} error finding(s))`
-      : pass ? `gate: green under the threshold, ${count} error finding(s) < ${limit} and no hard blocker (owner ruling gate-threshold-20); they stay listed above`
+      : pass ? `gate: green under the threshold, ${count} error finding(s) < ${limit} and no hard blocker; they stay listed above`
         : `gate: red, ${count} error finding(s), the threshold is fewer than ${limit}`;
   return { pass, count, hard, line };
 }

@@ -119,7 +119,7 @@ orchestration:
   owner: source-host
   defaultOperationTarget: devin-agent
   workspaceRouting: .workspaces/projects/<project>/work.json
-  # Owner ruling: owner gates are the StarCi entry's scope-bound acceptance
+  # Owner gates are the StarCi entry's scope-bound acceptance
   # for goal definition and native workflow startup, plus settle-time evidence verdicts — there is no
   # separate approvals engine or policy file.
   approvalMode: entry-skill-owner-ok

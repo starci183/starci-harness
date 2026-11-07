@@ -1,4 +1,4 @@
-// is-ancestor.mjs — `git merge-base --is-ancestor <a> <b>`: whether commit `a` is in the history of `b`.
+// is-ancestor.mts — `git merge-base --is-ancestor <a> <b>`: whether commit `a` is in the history of `b`.
 import { gitRunner, type GitRunnerFn } from './lib.mjs';
 
 /** True when `a` is an ancestor of (or equal to) `b`; false otherwise, and when a ref does not resolve. git: the caller's runner or null. */

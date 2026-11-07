@@ -1,4 +1,4 @@
-// pin-range.mjs - the one judge of whether a declared version meets a pin (decision grammar-patch-range). A pin is exact (`0.21.38`), or,
+// pin-range.mts - the one judge of whether a declared version meets a pin (decision grammar-patch-range). A pin is exact (`0.21.38`), or,
 // for the Grammar family alone, a same-minor range (`~0.21.38`: at least 0.21.38 and below 0.22.0). A declared version meets an exact pin
 // when it is that version, and a range when it is an exact version of the same major and minor at or above the floor. A pre-release
 // (`0.21.39-beta.1`) never meets a range unless the range itself names a pre-release of that same version (`~0.21.39-beta.0`), the

@@ -147,8 +147,8 @@ function persistAppFiles({ root, name, planned, declaration, declarationFile, pa
 }
 
 /**
- * Adds one Next workspace from the edition's canonical app skeleton and the shared app core (both editions, owner ruling
- * 2026-10-13: lite and full have one fe structure), then registers it in hfs.json. The root workspace glob is added only when an
+ * Adds one Next workspace from the edition's canonical app skeleton and the shared app core (both editions:
+ * lite and full have one fe structure), then registers it in hfs.json. The root workspace glob is added only when an
  * older app manifest does not already carry it.
  */
 export function addApp({ root, name }: { root: string, name: string }): { created: string[], registered: { app: string, workspace: string } } {

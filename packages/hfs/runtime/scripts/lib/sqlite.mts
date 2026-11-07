@@ -1,4 +1,4 @@
-// sqlite.mjs — the small better-sqlite3 probes the ledger and machine stores share. The handle is the
+// sqlite.mts — the small better-sqlite3 probes the ledger and machine stores share. The handle is the
 // caller's; these helpers prepare statements on it and return its own result shapes.
 
 /** A prepared better-sqlite3 statement, as far as these helpers use it. */

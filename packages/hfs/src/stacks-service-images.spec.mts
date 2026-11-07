@@ -1,4 +1,4 @@
-// R374 (rules/stacks-service-images.mjs): a customised service is an image the app builds from .starcistacks/images/<name>/, never an upstream image with code mounted
+// R374 (rules/stacks-service-images.mts): a customised service is an image the app builds from .starcistacks/images/<name>/, never an upstream image with code mounted
 // into it, and dev and production run the same image. Also: the fork list equals the harness's images/sources.json, and a fresh app of each edition raises nothing.
 import test from 'node:test';
 import assert from 'node:assert/strict';

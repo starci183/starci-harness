@@ -1,10 +1,10 @@
-// sonar-gate.mjs - the Sonar quality gate as data plus its pure judgments (knowledge/sonar-gate.yaml).
+// sonar-gate.mts - the Sonar quality gate as data plus its pure judgments (knowledge/sonar-gate.yaml).
 //
 // The thresholds live in that one knowledge file; nothing here restates a number. Three readers use it:
 //   scripts/gates/sonar-local.mjs      judges a slice's changed lines (issues, duplication, hotspots) and the coverage of
 //                                       every service it touched (`judgeCoverage`), judges a project's dashboard
 //                                       (`judgeDashboard`), and makes the server gate `gate.name` carry `serverConditions(gate)`
-//   scripts/gates/starcistacks.mjs  refuses a declaration whose services.sonar.qualityGate is not `gate.name`
+//   scripts/gates/starcistacks.mts  refuses a declaration whose services.sonar.qualityGate is not `gate.name`
 //   scripts/kernel/sonar-settle.mjs     `judgeSummary` reads the sonar.json an op attached and says whether the
 //                                       op may settle done (`enforcedOps`)
 import fs from 'node:fs';
@@ -69,7 +69,7 @@ export function loadSonarGate({ base = root, file = null, cwd = null }: { base?:
   if (gate?.schema !== GATE_SCHEMA) throw new Error(`${file ?? GATE_FILE}: schema must be ${GATE_SCHEMA}`);
   for (const key of ['gate', 'newCode', 'overall', 'enforcedOps'])
     if (gate[key] == null) throw new Error(`${file ?? GATE_FILE}: ${key} is required`);
-  // Coverage is a required policy descriptor of the full block; the lite block carries the same descriptor (owner ruling 2026-10-12).
+  // Coverage is a required policy descriptor of the full block; the lite block carries the same descriptor.
   for (const area of ['newCode', 'overall'] as const) {
     const coverage = gate[area].coverage;
     if (!coverage || typeof coverage.metric !== 'string' || !coverage.metric.trim() || !Number.isFinite(coverage.minPercent) || coverage.minPercent < 0 || coverage.minPercent > 100)
@@ -155,7 +155,7 @@ export function coverageScopeOf(props: Record<string, unknown> = {}): CoverageSc
 
 const SOURCE_FILE = /\.(?:[cm]?[jt]sx?)$/;
 
-/** True for a repository-relative path Sonar measures coverage on under `scope` (coverageScopeOf; Sonar's glob subset, scripts/lib/glob.mjs). */
+/** True for a repository-relative path Sonar measures coverage on under `scope` (coverageScopeOf; Sonar's glob subset, scripts/lib/glob.mts). */
 export function coverageTargetOf(scope: Partial<CoverageScope>): (file: unknown) => boolean {
   const patterns = (globs: string[] | undefined): RegExp[] => (globs ?? []).flatMap<string>(braceVariants).map<RegExp>(globExpression);
   const excluded = patterns([...(scope.exclusions ?? []), ...(scope.excluded ?? [])]);

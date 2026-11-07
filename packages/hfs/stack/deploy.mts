@@ -1,20 +1,20 @@
-// deploy.mjs - the whole release (deployRelease) and the redeploy of a stored release (rollbackRelease).
+// deploy.mts - the whole release (deployRelease) and the redeploy of a stored release (rollbackRelease).
 // deploy: render, provision, store the release record, pre-pull, `docker stack deploy`, converge, post-deploy tasks (deploy.postDeploy, when declared), verify, accept, prune. A failure at or
 // after the stack deploy redeploys the previous accepted release from its STORED bytes; a failure before it leaves the services untouched.
 // Without `execute` a deploy renders locally and prints the plan: NO remote call at all. A rollback cannot undo data effects.
-// An app that declares the `database:` block gets the database phases of db-phases.mjs in every deploy (owner approval 2026-10-31): migrate preview, a
+// An app that declares the `database:` block gets the database phases of db-phases.mts in every deploy: migrate preview, a
 // verified backup only when something is pending, the expand migrations inside the database container before the stack deploy, the contract migrations
-// after accept, and an automatic first start when no release was ever accepted. An app without the block deploys exactly as before.
-// An urgent deploy (`urgent`, owner ruling urgent-release 2026-10-29) runs the safety floor of urgent-floor.mjs first (fresh verified encrypted
+// after accept, and an automatic first start when no release was ever accepted. An app without the block deploys its stack alone.
+// An urgent deploy (`urgent`) runs the safety floor of urgent-floor.mts first (fresh verified encrypted
 // backup with a test decrypt, rollback target, migrate preview then execute) and refuses with the floor's own code when a step of it fails; its
 // first start (`firstStart`) deploys the stack with only the database running (the `deploy-hold` step), proves the database empty and migrates it inside its own
 // container (the `first-start` step), then deploys the real stack and converges.
-// Every execute run is one recorded ATTEMPT (journal.mjs): the deploy lock of the manager (shared with the owner's urgent deploy), the deploy journal written at
+// Every execute run is one recorded ATTEMPT (journal.mts): the deploy lock of the manager (shared with the owner's urgent deploy), the deploy journal written at
 // every phase boundary, the skip when the accepted release already runs this commit, and the live services snapshotted after converge, after a rollback and on accept
-// (status.mjs; `stack status` and `stack verify` judge them). Preflight also pulls the images of the rollback target, so a registry clean-up cannot strand a rollback.
+// (status.mts; `stack status` and `stack verify` judge them). Preflight also pulls the images of the rollback target, so a registry clean-up cannot strand a rollback.
 //
 // `deps` are the collaborators, all factories or functions with the signature of their module, defaulting to lazy dynamic imports so this
-// module never needs render.mjs / provision.mjs / remote.mjs at load time (the specs inject stubs):
+// module never needs render.mts / provision.mts / remote.mts at load time (the specs inject stubs):
 //   renderRelease, provisionRelease, convergeStack, verifyStack, pruneStack     (ctx, config, options) -> { ok, lines, data }
 //   releaseStore  (config, ssh) -> store          ssh  (ctx, config, { sshCmd }) -> runner(command, { input })
 import { createHash } from 'node:crypto';
@@ -50,7 +50,7 @@ import { urgentDeploy } from './urgent-floor.mjs';
 import type { DeployData, DeployOutcome, FirstStartStepResult, FloorDeps } from './urgent-floor.mjs';
 import { verifyStack } from './verify.mjs';
 
-/** What a deploy takes (the CLI's flags, see cli.mjs OPTIONS). */
+/** What a deploy takes (the CLI's flags, see cli.mts OPTIONS). */
 export interface DeployOptions {
   images?: Record<string, string> | undefined;
   sourceSha?: string | undefined;
@@ -92,7 +92,7 @@ export interface DeployDeps {
   convergeStack: (ctx: StackContext, config: DeployConfig, options: { since: string; timeoutSeconds?: number | undefined }) => Promise<ActionResult>;
   reconcileEdge: (ctx: StackContext, config: DeployConfig, file: string) => ActionResult | Promise<ActionResult>;
   postDeployStack: (ctx: StackContext, config: DeployConfig) => Promise<ActionResult>;
-  /** The seed step after convergence (seeds.mjs seedDeployed). */
+  /** The seed step after convergence (seeds.mts seedDeployed). */
   seedRelease: (ctx: StackContext, config: DeployConfig, database: DeployDatabase, f: FloorDeps) => Promise<ActionResult>;
   verifyStack: (ctx: StackContext, config: DeployConfig, options: { retrySeconds?: number | undefined; skipPublic?: boolean; stackFile?: string }) => Promise<ActionResult>;
   pruneStack: (ctx: StackContext, config: DeployConfig, options: { keepFiles: string[]; execute: boolean }) => Promise<ActionResult>;
@@ -382,10 +382,10 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
   const since = isoBefore(ctx, 60);
   const { skipPublic } = options;
   const stackFile = path.join(out, 'stack.yaml');
-  // The first start of a self-hosted database (urgent-floor.mjs): the services that need its schema must not start against an empty one (their
+  // The first start of a self-hosted database (urgent-floor.mts): the services that need its schema must not start against an empty one (their
   // healthchecks fail and update_config rolls them back), so the stack is first deployed with only the database running, the schema is
   // bootstrapped and migrated, and then the real stack is deployed.
-  // An app that declares the `database:` block migrates in every deploy (db-phases.mjs); with no accepted release the first start is chosen by itself.
+  // An app that declares the `database:` block migrates in every deploy (db-phases.mts); with no accepted release the first start is chosen by itself.
   const database = options.urgent === true ? null : await declaredDatabase(ctx, config);
   const phase: PhaseInput | null = database ? { ctx, config, database, f: { ...FLOOR_DEPS, ...d.floor }, run, dbUrlEnv: options.dbUrlEnv, backupOut: options.backupOut } : null;
   const unknown = database ? unknownDatabaseService(config, database) : null;
@@ -450,7 +450,7 @@ const triggerOf = (options: Pick<DeployOptions, 'urgent' | 'ciRun'>): AttemptMet
  * Deploys a release: `options` = { images, sourceSha, execute, out, timeoutSeconds, retrySeconds, skipPublic, sshCmd, urgent, dbUrlEnv, backupOut, ciRun, redeploy }.
  * skipPublic (the first deploy into a shared ingress, whose public routes exist only after `ingress publish`): the verification checks only what runs
  * inside the stack, and the release stays PENDING (stored and deployed, pointer not moved) until `acceptRelease` has verified it in full.
- * With `execute` the run is one recorded attempt under the deploy lock (journal.mjs); the accepted release that already runs this commit ends it green
+ * With `execute` the run is one recorded attempt under the deploy lock (journal.mts); the accepted release that already runs this commit ends it green
  * as `already-current` unless `redeploy` is set.
  * Returns { ok, lines, data: { releaseId, previous, steps: [{ step, ok }], rolledBack, attempt } }.
  */

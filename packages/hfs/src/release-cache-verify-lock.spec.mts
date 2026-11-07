@@ -1,4 +1,4 @@
-// Spec: the release gate trusts the warm committed cache and a red nightly verify locks it (OWNER RULING release-gate-warm-cache, 2026-11-04).
+// Spec: the release gate trusts the warm committed cache and a red nightly verify locks it.
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

@@ -27,7 +27,7 @@ export interface Repo {
   [field: string]: Parsed;
 }
 
-/** The slot resolver of a repository (scripts/hfs/slots.mjs): classification of a path, slot lookup, ownership. */
+/** The slot resolver of a repository (scripts/hfs/slots.mts): classification of a path, slot lookup, ownership. */
 export interface Resolver {
   sides?: Record<string, Resolver>;
   classifyPath(file: string): Parsed;

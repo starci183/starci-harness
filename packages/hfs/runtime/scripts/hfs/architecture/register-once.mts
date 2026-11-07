@@ -9,7 +9,7 @@ import { isTestWorldSlot } from '../test-world-slot.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 
 /**
- * R45 `register-once` (BE_MODULE_SHAPE), the module graph read from the app roots (owner rule of 2026-09-30, the
+ * R45 `register-once` (BE_MODULE_SHAPE), the module graph read from the app roots (the
  * reference's `CodingModule imports DeviceModule` shape). Each capability has one representative module: the only module
  * of the capability an app registers, once, in `apps/<app>/src/app.module.ts` as `X.register({ isGlobal: true, ... })`, or in a
  * composition group `apps/<app>/src/compose/<area>.ts` the root spreads (an app root here means the root and its groups).

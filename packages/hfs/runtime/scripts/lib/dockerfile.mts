@@ -1,4 +1,4 @@
-// dockerfile.mjs - a Dockerfile read by its own grammar (no regular-expression matching of instruction names inside the text):
+// dockerfile.mts - a Dockerfile read by its own grammar (no regular-expression matching of instruction names inside the text):
 // one statement per logical line (a trailing backslash continues it, comment lines inside a continuation are dropped), the
 // instruction keyword is the first word, the stages open at each FROM. Parser directives (`# syntax=`, `# escape=`) and
 // comments are kept apart from the instructions. Here-documents are not part of the subset the canon uses and are read as text.

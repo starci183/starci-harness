@@ -1,4 +1,4 @@
-// json-schema.mjs - a minimal draft-2020-12 JSON schema walker over the keywords the runtime's yaml schemas use.
+// json-schema.mts - a minimal draft-2020-12 JSON schema walker over the keywords the runtime's yaml schemas use.
 import {isPlainObject} from '../../engine/plain-object.mjs';
 
 // reason: a schema document is YAML parsed from disk, and its keyword values are read dynamically by the walker.

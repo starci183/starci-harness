@@ -1,4 +1,4 @@
-// pid-alive.mjs - whether a process id names a live process: the one probe the host locks, the file claim and the machine store share.
+// pid-alive.mts - whether a process id names a live process: the one probe the host locks, the file claim and the machine store share.
 
 /** True while `pid` names a live process (EPERM counts as alive). */
 export const pidAlive = (pid: unknown): boolean => {

@@ -47,7 +47,7 @@ for (const [edition, tester] of [["lite", lite], ["full", full]] as const) {
                 { filename: ENTITY, code: entity(OWNER, " extends UuidAbstractEntity") },
                 { filename: ENTITY, code: entity(`${ID}${OWNER}`, " extends AbstractEntity") },
                 { filename: ENTITY, code: readFileSync(TABLE_TEMPLATE, "utf8").replaceAll("{{table}}", "orders").replaceAll("{{Singular}}", "Order") },
-                // an app-set timestamp is the "table without them" of the ruling
+                // an app-set timestamp makes a table without the shared columns
                 { filename: ENTITY, code: readFileSync(NOTE_ENTITY, "utf8") },
                 { filename: ENTITY, code: entity("    @Column({ name: \"created_at\", type: \"timestamptz\" })\n    createdAt!: Date\n    @Column({ name: \"updated_at\", type: \"timestamptz\" })\n    updatedAt!: Date") },
                 // a bigint key and no updated_at: a table without the shared columns

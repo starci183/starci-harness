@@ -1,14 +1,14 @@
 /**
  * `starci app emit`: writes `contracts/<service>/events.json` for every service that declares typed event classes under
- * `src/modules/events/<service>/` (events.mjs: the async contract, R166), `contracts/<app>/schema.graphql` for every api app of hfs.json that serves GraphQL, and
+ * `src/modules/events/<service>/` (events.mts: the async contract, R166), `contracts/<app>/schema.graphql` for every api app of hfs.json that serves GraphQL, and
  * `contracts/<app>/openapi.json` for every api app whose `apps/<app>/src/operations.ts` exports the typed operation table
- * `OPERATIONS` (operations.mjs: OpenAPI 3.1 derived from zod schema modules, with closed refusal codes proved by the checker).
+ * `OPERATIONS` (operations.mts: OpenAPI 3.1 derived from zod schema modules, with closed refusal codes proved by the checker).
  *
  * The GraphQL snapshot prints the lexicographically sorted schema with class-validator bounds on input fields as
  * `@inputBounds` directives. OpenAPI carries the equivalent JSON Schema property and item constraints. It needs no
  * environment, no database and no network, and never boots the app.
  *
- * What an app serves is decided from its source (`static-graph.mjs`): the module graph is walked from `AppModule` of
+ * What an app serves is decided from its source (`static-graph.mts`): the module graph is walked from `AppModule` of
  * `apps/<app>/src/app.module.ts` through every import (imports of imports, `register`/`forRoot`/`forRootAsync` dynamic modules,
  * `forwardRef`, spreads and both branches of a conditional), and the resolver providers of the modules the GraphQL server reads
  * (all of them, or the `include` whitelist and its imports) are the resolvers of the contract. The schema itself comes from
@@ -16,7 +16,7 @@
  * them. An app whose graph holds no GraphQL server is skipped; an app whose graph cannot be decided is an error.
  *
  * TypeScript, Nest and graphql are the repository's own packages; nothing is added to the managed devDependencies. Every app
- * runs in its own child process (`schema-worker.mjs`) because Nest GraphQL's type metadata is process-global.
+ * runs in its own child process (`schema-worker.mts`) because Nest GraphQL's type metadata is process-global.
  *
  * * artifact, so a redirected `outDir` (the R23 check mode, which emits into a scratch root) does not get them.
  */

@@ -1,4 +1,4 @@
-// live-restore.mjs - docker `live-restore` is incompatible with swarm mode. `prepare` detects it; with --fix-live-restore, --owner-approved and
+// live-restore.mts - docker `live-restore` is incompatible with swarm mode. `prepare` detects it; with --fix-live-restore, --owner-approved and
 // --execute it backs up /etc/docker/daemon.json, sets live-restore false and restarts dockerd through passwordless sudo.
 // A dockerd restart stops every container (a restart policy does not reliably bring them back: on a real host 25 of 25 stayed down), so the fix
 //   1. snapshots every running container first (name, compose project and service, depends_on, image) and the answer of every public host,

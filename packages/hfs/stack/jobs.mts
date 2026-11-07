@@ -1,4 +1,4 @@
-// jobs.mjs - `starci app stack jobs <action>`: runs the app's declared job CLI (deploy.jobs.command + the action) inside the running task of
+// jobs.mts - `starci app stack jobs <action>`: runs the app's declared job CLI (deploy.jobs.command + the action) inside the running task of
 // deploy.jobs.service on the manager, through the ssh runner, and relays its stdout. Job rows hold names and error texts, never payloads: the app
 // CLI decides what is printed, this module only relays it. stats, failed, open and watchdog are read-only; retry and retry-failed are effects
 // that need --execute (without it a dry-run line says what would run).

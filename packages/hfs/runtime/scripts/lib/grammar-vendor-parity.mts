@@ -3,7 +3,7 @@
 // Grammar is a wrapper of HeroUI. The vendor reference (knowledge/vendor/heroui/<dir>.yaml, measured from the installed @heroui packages by
 // scripts/work/ui/vendor-heroui.mjs) states what HeroUI draws; the wrapper manifest (knowledge/vendor/heroui/wrappers.yaml) states what each
 // Grammar file wraps, which parts it hands to its caller (`delegates`) and which vendor slots it restyles on purpose (`overrides`, empty by
-// default, pinned by an owner ruling: scripts/checks/check-grammar-vendor-parity.mjs). This library is pure: the caller hands the parsed
+// default, pinned by digest). This library is pure: the caller hands the parsed
 // reference, the parsed manifest, the Grammar sources and stylesheets.
 //
 // Two layers. The UNIVERSAL layer binds every Grammar built on HeroUI: use the HeroUI component for each role (no hand-rolled menu, list
@@ -339,9 +339,9 @@ export function parityFindings({ references: vendorReferences, manifest, sources
   ];
 }
 
-/** Pin findings: the manifest differs from the digest the latest owner ruling that pins it records. */
+/** Pin findings: the manifest differs from the digest its pin records. */
 export function pinFindings({ file, text, pinned }: { file: string; text: unknown; pinned: string | undefined }): ParityFinding[] {
-  if (pinned === undefined) return [finding('pin', file, 0, 'no owner ruling pins this manifest: an owner ruling records its sha256')];
+  if (pinned === undefined) return [finding('pin', file, 0, 'no pin records this manifest: record its sha256 in its pin file')];
   const digest = manifestDigest(text);
-  return digest === pinned ? [] : [finding('pin', file, 0, `its digest ${digest.slice(0, 12)} is not the one the owner pinned (${String(pinned).slice(0, 12)}): only an owner ruling may add an override or change a row`)];
+  return digest === pinned ? [] : [finding('pin', file, 0, `its digest ${digest.slice(0, 12)} is not the pinned one (${String(pinned).slice(0, 12)}): an added override or a changed row records the new digest in its pin file in the same commit`)];
 }

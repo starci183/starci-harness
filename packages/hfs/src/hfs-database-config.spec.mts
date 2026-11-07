@@ -55,7 +55,7 @@ for (const edition of ['lite', 'full']) {
   test(`${edition}: DB_EXTENSION_ALLOWED rejects an off-list extension and accepts the configured allowlist`, () => {
     has(findings({ [MIGRATION]: 'create extension if not exists hstore with schema extensions;' }, edition), 'DB_EXTENSION_ALLOWED');
     assert.deepEqual(findings({ [MIGRATION]: 'create extension if not exists "uuid-ossp"; create extension vector;' }, edition), []);
-    // the db image adds pgmq, the event bus (ruling:lite-pgmq-bus-bullmq-jobs), and none of Supabase's other extensions
+    // the db image adds pgmq, the event bus, and none of Supabase's other extensions
     assert.deepEqual(findings({ [MIGRATION]: 'create extension if not exists pgmq;' }, edition), []);
     for (const extension of ['pg_cron', 'pg_net', 'supabase_vault']) has(findings({ [MIGRATION]: `create extension ${extension};` }, edition), 'DB_EXTENSION_ALLOWED');
     assert.deepEqual(findings({ [MIGRATION]: 'create extension hstore;' }, edition, { manifest: { ruleParams: { db: { extensions: ['hstore'] } } } }), []);

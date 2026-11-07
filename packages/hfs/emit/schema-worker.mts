@@ -2,7 +2,7 @@
 // Prints the schema the app serves on stdout; exit 3 when the app's module graph has no GraphQL server.
 // Loads the repository's own typescript, @nestjs/*, graphql and (when installed) class-validator (resolved from the repository, never from hfs).
 //
-// Two steps: (1) the module graph of the app root is read from source (static-graph.mjs) and yields the resolver classes the
+// Two steps: (1) the module graph of the app root is read from source (static-graph.mts) and yields the resolver classes the
 // GraphQL server would collect; (2) only those classes are loaded, and Nest's own GraphQLSchemaFactory builds the schema.
 // Step 2 loads code through the repository's own TypeScript; a dependency of a resolver that cannot load here (configuration
 // read at import time, a native addon, an ES-only package; only requires written in the repository's own source) is replaced by a stand-in and reported on stderr, because the

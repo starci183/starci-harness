@@ -1,4 +1,4 @@
-// event-bus.mjs - the tree checks of the declared patterns (hfs.json sides.be.patterns).
+// event-bus.mts - the tree checks of the declared patterns (hfs.json sides.be.patterns).
 //   BE_EVENT_CLASS_CONTRACT   every typed event class `be/src/modules/events/<service>/<event>.event.ts` equals an entry of the vendored
 //                             contract `be/contracts/<service>/events.json` (the same name and version), every entry of a vendored
 //                             contract has its class, and a class file is named after its event (`order.placed` -> `order-placed.event.ts`);
@@ -183,7 +183,7 @@ let memoScenarios;
 /** ruleParams.be.patternScenarios of the slot manifest this runtime ships. */
 const scenariosTable = () => (memoScenarios ??= ruleParams(loadSlotManifest(), 'be').patternScenarios ?? {});
 
-/** Full-edition proof scenarios; lite integration proofs are judged by lite-proof-lane.mjs. */
+/** Full-edition proof scenarios; lite integration proofs are judged by lite-proof-lane.mts. */
 export function patternSpecFindings({ repoRoot, files, repo, scenarios = scenariosTable() }: { repoRoot: string; files: string[]; repo: Repo; scenarios?: Parsed }) {
   if (repo.edition === 'lite') return [];
   const patterns = (repo.sides?.be?.patterns ?? []).filter((name: string) => (scenarios[name] ?? []).length > 0);

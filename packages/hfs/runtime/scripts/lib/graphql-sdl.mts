@@ -1,4 +1,4 @@
-// graphql-sdl.mjs - the GraphQL tokenizer and the schema (SDL) reader of graphql-contract.mjs: tokens, a cursor over them, the
+// graphql-sdl.mts - the GraphQL tokenizer and the schema (SDL) reader of graphql-contract.mts: tokens, a cursor over them, the
 // type, value and directive readers a document shares, and `parseSchema` over the SDL `starci app emit` writes. No dependency:
 // the runtime ships no GraphQL library.
 

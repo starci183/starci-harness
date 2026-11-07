@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// check-starcistacks.mjs - the .starcistacks services contract (owner ruling 2026-09-24: "the stacks make sonar
-// clear ... update .claude and enforce the .starcistacks format").
+// check-starcistacks.mjs - the .starcistacks services contract: the stacks make the delivery and quality services
+// clear, and .claude enforces the .starcistacks format.
 //
 // Every product states the delivery and quality services its code and CI use - Sonar, a
 // container registry, analytics, error tracking - in the `services` block of its stack declaration
@@ -366,7 +366,7 @@ const checkTrackedCustody = ({ repo, root, add }: RootCheck): void => {
     // infra/** is tracked source, but a value file inside it (.env*, *.env, *.key, *.pem, *.tfvars)
     // is plaintext custody (inc-5360513a96b3: infra/compose/.env.generated was trackable).
     const infraValue = parts.length > 3 && parts[2] === 'infra' && isInfrastructureValueFile(base) && !base.endsWith('.enc') && !base.endsWith('.example');
-    // An app's sealed member is `<env>/secrets/<member>.enc.yaml` (ruling app-secrets-one-standard, scripts/lib/sealed-member.mjs);
+    // An app's sealed member is `<env>/secrets/<member>.enc.yaml` (contexts/project/stacks.md PROJECT-STACKS-5, scripts/lib/sealed-member.mts);
     // runtime custody keeps `<name>.<fmt>.enc`.
     const appMember = parts.length === 4 && parts[2] === 'secrets' && base.endsWith('.enc.yaml');
     if ((custodyArea && !base.endsWith('.enc') && !appMember && !['KEYS.md', '.gitkeep'].includes(base)) || infraValue)

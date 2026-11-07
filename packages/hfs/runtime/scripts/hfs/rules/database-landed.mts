@@ -1,7 +1,7 @@
 // database-landed.mts - a migration already on the base branch (byte-identical at the merge-base) is landed: R213 keeps it immutable, so
 // its destructive-DDL (R259) and dynamic-DDL findings can no longer be acted on in that file. They are reported as known items, never as
-// blockers, while the file stays unchanged; a changed landed file is DB_MIGRATION_SHAPE (R213), and a new file is judged in full. An owner
-// ruling (hfs.json db.destructiveRulings, database-migrations.mts) re-proves the objects a landed or new migration destroys.
+// blockers, while the file stays unchanged; a changed landed file is DB_MIGRATION_SHAPE (R213), and a new file is judged in full. An entry
+// of hfs.json db.destructiveRulings (database-migrations.mts) re-proves the objects a landed or new migration destroys.
 import { mergeBase } from '../../api/git/merge-base.mjs';
 import { sameText } from '../../lib/same-text.mjs';
 import { readText } from './read.mjs';

@@ -1,6 +1,6 @@
 // proves: BE_SOURCE_FORM@lite
 // proves: BE_SOURCE_FORM@full
-// R89's repository enforcer (`source-suffix` in scripts/hfs/check.mjs): `starci app check` refuses a back-end file whose role suffix is
+// R89's repository enforcer (`source-suffix` in scripts/hfs/check.mts): `starci app check` refuses a back-end file whose role suffix is
 // outside the slot manifest's closed vocabulary. The lint enforcers of the same rule are proved in packages/eslint-canon-be/be-r89-source-form-coverage.spec.mjs.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

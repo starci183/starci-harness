@@ -1,4 +1,4 @@
-// lite-secrets.mjs - L17 extends the one R06 secret scan for edition lite. It keeps the ordinary
+// lite-secrets.mts - L17 extends the one R06 secret scan for edition lite. It keeps the ordinary
 // HFS_PLAINTEXT_SECRET judgement, then adds the reduced lite custody tree and provider-shaped literals
 // in the trees that hold no secret at all (fe/ and db/). Findings name shapes, never captured values.
 import { Buffer } from 'node:buffer';
@@ -88,7 +88,7 @@ export function liteSecretCustodyFindings({ repoRoot, files, repo }: { repoRoot:
 }
 
 /**
- * Drop-in extension of secretFindings for scripts/hfs/check.mjs. When an L17 finding identifies the same file/line as
+ * Drop-in extension of secretFindings for scripts/hfs/check.mts. When an L17 finding identifies the same file/line as
  * the generic R06 scanner (a complete JWT, for example), the specific lite code wins so one physical issue is emitted once.
  */
 export function liteSecretFindings(input: Parsed) {

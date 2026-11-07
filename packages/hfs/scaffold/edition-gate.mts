@@ -14,7 +14,7 @@ export class EditionRefusal extends Error {
 }
 
 /**
- * The refusal of a pattern noun in a lite app whose topic carries a `liteAdapter` (ruling:R212/case-1, amended by ruling:R212/case-4)
+ * The refusal of a pattern noun in a lite app whose topic carries a `liteAdapter` (R212)
  * and no lite template in this package: lite has the pattern, but generating its full-adapter templates would write adapter paths
  * unavailable in lite. The pattern is written by hand using the topic's declared lite adapter until the package carries a lite template.
  */

@@ -19,7 +19,6 @@ provenance:
     - knowledge/hfs/README.md
     - knowledge/hfs/slots.yaml
     - knowledge/hfs/rules.yaml
-    - owner decision 2026-10-02 (projections replace cross-context joins)
   limitations: |-
     Static checks prove who writes the table, the method vocabulary, that the entity stays inside and that the api never recomputes.
     They do not prove that a recompute is idempotent or that a replay rebuilds the same rows; the test-world scenarios
@@ -176,13 +175,12 @@ files:
     role: "Titles projection/<scenario>: ... prove the pattern."
     spec: projection/recompute-is-idempotent, projection/replay-rebuilds
     rules: [BE_PATTERN_SPEC_MISSING]
-# Edition lite (R212, owner ruling 2026-10-14): the same ports and rules, a self-hosted Postgres adapter behind them.
+# Edition lite (R212): the same ports and rules, a self-hosted Postgres adapter behind them.
 liteAdapter:
   summary: >-
     Under lite a projection is unchanged in behaviour (only it writes its table, recompute is idempotent and replayable, readers
     use get*); its table is a db migration mapped by a projection entity under persistence/entities/ (named in PRIMARY_ENTITIES of
-    platform/database/entities.ts) and read and written through the EntityManager, never raw SQL (R334, ruling
-    lite-persistence-typeorm-entities), and it is kept current by a reactor on the lite event bus or by a job on the queue (BullMQ on
+    platform/database/entities.ts) and read and written through the EntityManager, never raw SQL (R334), and it is kept current by a reactor on the lite event bus or by a job on the queue (BullMQ on
     the declared Redis).
   ports:
     - {port: read model table, adapter: "a db migration plus its entity under persistence/entities/ and the capability's persistence/entities/index.ts list; no <name>.sql.ts or <name>.rows.ts"}

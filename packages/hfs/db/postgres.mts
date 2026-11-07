@@ -1,4 +1,4 @@
-// postgres.mjs - the one door of the `starci app db` verbs to a self-hosted PostgreSQL: psql and pg_dump through ctx.spawn (never a
+// postgres.mts - the one door of the `starci app db` verbs to a self-hosted PostgreSQL: psql and pg_dump through ctx.spawn (never a
 // shell). The database is named by an environment variable holding a postgres connection URL (`--db-url-env <NAME>`, default
 // DATABASE_URL); the password travels only in the child's PGPASSWORD, never in argv, a file, a line or an error. An in-container target
 // (`inContainer`) runs the same tools inside the database's own container through docker exec, the password on stdin.

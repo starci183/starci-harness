@@ -1,10 +1,10 @@
-// starcistacks-ci.mjs - service catalog, CI declarations and quality-service example policy.
+// starcistacks-ci.mts - service catalog, CI declarations and quality-service example policy.
 import { readCiDeclaration, type CiEntry } from '../hfs/ci-declaration.mjs';
 import type { AddFinding, StackServiceEntry } from './starcistacks-form.mjs';
 
 /** A service's reporting hook: records an ambiguity of its declaration. */
 export type Ambiguous = (message: string) => void;
-/** What the service checks read from the check context of starcistacks.mjs. */
+/** What the service checks read from the check context of starcistacks.mts. */
 // reason: the stack declaration is YAML parsed from disk; its shape is checked at run time by schemaErrors, not by the compiler
 export type ParsedDocument = any;
 /** One services.<id> entry of the parsed declaration. */

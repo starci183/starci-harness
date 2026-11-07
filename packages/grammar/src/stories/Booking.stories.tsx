@@ -5,7 +5,7 @@ import * as G from "../common/index.js"
 import { Matrix, State } from "./fixtures.js"
 
 /*
- * Booking date and time (ruling one-way-to-choose): a date is the Calendar, a time is ChoiceChips. The calendar is controlled,
+ * Booking date and time: a date is the Calendar, a time is ChoiceChips. The calendar is controlled,
  * starts the week on Monday through the Vietnamese locale, bounds the range, marks a closed day and a full day (with its reason)
  * as unavailable, and draws as geometry while the open days load. A taken time keeps its place, disabled with its reason.
  * Filter tabs (underline, count, +n fold) narrow a list under its search field. Shown at 390 and 1920 by the render proof.

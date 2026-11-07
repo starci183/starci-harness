@@ -1,0 +1,10 @@
+# The digests of the design-truths manifest, the fixtures of the loosening check and the vendored YAML (scripts/lib/loosening-state.mts
+# readTruthsPins). A pinned file that changes is red until the commit that changes it records its new sha256 here, so every change to the
+# exceptions is a reviewed change of this file; src/loosening-state.spec.mts holds the pins to the files.
+schema: starci/design-truths-pins@1
+pins:
+  knowledge/hfs/design-truths.yaml: 8ab0be4070c20ba4453f0b0e8896b2c4c05ba68b6d93269e1b961742d206a98c
+  packages/hfs/src/fixtures/loosening/forms.mjs: 340c91be921fde8c9e9328cc2fbbee8b21b10caf9813afa5bafa43b5c6d242b2
+  packages/hfs/src/fixtures/loosening/swallows.mjs: 6d7a711037a680a01a522fa4fe41f374ff23868bac5f765eb1c2b591b2000581
+  packages/hfs/src/fixtures/loosening/adversarial.mjs: 1734d9408ef70b8e956c0b56023196da7425a9826c6b459ed84d837ca9a03c04
+  engine/yaml.mjs: 2aa4226288715fc3f4adfdbfbf6e76abc3545f82972a50bb5444d07f7284ae72

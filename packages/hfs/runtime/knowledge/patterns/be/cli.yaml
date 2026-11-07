@@ -21,7 +21,6 @@ provenance:
     - knowledge/hfs/README.md
     - knowledge/hfs/slots.yaml
     - knowledge/hfs/rules.yaml
-    - owner decision 2026-10-02 (one cli app on nest-commander; features grouped by trigger kind)
     - https://docs.nestjs.com/recipes/nest-commander
   limitations: |-
     Static checks prove where a command is declared, how the cli app boots, that every command has its spec beside it and
@@ -87,7 +86,7 @@ rules:
       (slot `be.cli`). The root holds `index.ts` and `cli.module.ts` and one folder per group: `<group>/<group>.cli.ts` (the
       group `@Command` with its `subCommands`), `<group>/<group>.module.ts` and `<group>/subs/<name>.cli.ts` (a `@SubCommand`
       class extending `CommandRunner`), one command per file. Every module of the cli feature root has a module definition
-      and an options file beside it (owner:module-definition-everywhere, R295) and declares only its `@Module({ imports,
+      and an options file beside it (R295) and declares only its `@Module({ imports,
       providers })` metadata, with no `register` override: `CliModule` imports each group module as `<Group>Module.register({})`
       and a group module provides its commands. A command makes its one delegating call on an
       injected runner service of the modules (the migrate and seed runners of `platform/database`) and takes its options

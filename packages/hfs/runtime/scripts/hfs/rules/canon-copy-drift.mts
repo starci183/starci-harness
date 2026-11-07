@@ -1,4 +1,4 @@
-// canon-copy-drift.mjs - HFS_CANON_COPY_DRIFT (R253): a handful of scaffolded files are hash-sensitive canon,
+// canon-copy-drift.mts - HFS_CANON_COPY_DRIFT (R253): a handful of scaffolded files are hash-sensitive canon,
 // not files to edit. The drift judgement is one sha256 against the bytes of the be/skeleton template the file was
 // scaffolded from - the file equals canon, or it has drifted. That template is the one of the @starci/hfs version the app
 // pins (its lockfile's resolution of node_modules/@starci/hfs, else an exact package.json pin), never a newer hfs that

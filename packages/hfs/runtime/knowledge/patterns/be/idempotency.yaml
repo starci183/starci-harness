@@ -19,9 +19,7 @@ provenance:
     - knowledge/hfs/README.md
     - knowledge/hfs/slots.yaml
     - knowledge/hfs/rules.yaml
-    - owner-locked BE convention 2026-09-30
     - knowledge/patterns/be/persistence.yaml
-    - owner decision 2026-10-24 (effectful client commands require marker and lint)
     - https://www.postgresql.org/docs/16/sql-insert.html (read 2026-10-24)
     - https://www.postgresql.org/docs/16/transaction-iso.html (read 2026-10-24)
     - https://raw.githubusercontent.com/typeorm/typeorm/0.3.31/src/driver/postgres/PostgresQueryRunner.ts (read 2026-10-24)

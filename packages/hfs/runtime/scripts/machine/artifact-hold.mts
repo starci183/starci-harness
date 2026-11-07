@@ -1,7 +1,7 @@
-// artifact-hold.mjs — the retention exemption for the typed-log ledger. A registered ledger's runtime.sqlite
+// artifact-hold.mts — the retention exemption for the typed-log ledger. A registered ledger's runtime.sqlite
 // (it holds the typed logs, scripts/kernel/typed-logs.mjs) and a tree holding it are never removed by housekeeping, whatever the
 // workflow's phase (running, finished, archived). Every runtime delete of a tree passes artifactHoldReason as
-// scripts/api/fs/safe-remove.mjs safeRemove's `hold` (a call without one is refused), and every housekeeping unlink asks
+// scripts/api/fs/safe-remove.mts safeRemove's `hold` (a call without one is refused), and every housekeeping unlink asks
 // artifactHoldOf first.
 // Proofs, artifacts and logs are deleted ONLY by the owner-approved workflow purge (scripts/work/purge-workflow.mjs:
 // archive to a verified ZIP, then delete the finished workflow as a unit), never here.

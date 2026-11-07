@@ -1,4 +1,4 @@
-// local-down.mjs - `starci app stack down --env <dev env> [--execute]` (PROJECT-STACKS-6): ends the native processes this environment started and stops
+// local-down.mts - `starci app stack down --env <dev env> [--execute]` (PROJECT-STACKS-6): ends the native processes this environment started and stops
 // its compose project. It never removes a volume or an image, never touches a container of another project, and keeps the sealed values and
 // the host-local custody files. A dry run names what would stop.
 import type { StackContext } from './context.mjs';

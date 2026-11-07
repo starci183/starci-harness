@@ -318,7 +318,7 @@ const GRAPHQL_URL_READER = [
 const withGraphqlUrl = (text: string) =>
   /^export const graphqlUrl\b/m.test(text) ? text : `${text.trimEnd()}\n${GRAPHQL_URL_READER}\n`;
 
-/** The be api feature of a table (owner ruling 2026-10-13, lite = full): get-<singular> and create-<singular> over GraphQL. */
+/** The be api feature of a table (lite = full): get-<singular> and create-<singular> over GraphQL. */
 const apiFeatureFiles = (values: TableValues): FileBody[] => {
   const base = `be/src/features/api/${values.name}`;
   const get = `get-${values.singular}`;
