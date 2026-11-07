@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process"
 import { availableParallelism, freemem } from "node:os"
-import { heavyRoomMb, hfsLimitsEnv, loadHeavyRules, oomNote, testWorkerArgs, withHeavySlot } from "../../harness/heavy.js"
+import { heavyRoomMb, hfsLimitsEnv, loadHeavyRules, testWorkerArgs, withHeavySlot, withOomNote } from "../../harness/heavy.js"
 import { peakProbe } from "../../harness/peak-rss.js"
 import { appRootOf, formatPlan, MEMORY_PLAN_ENV, MEMORY_REEXEC_ENV, measureScope, needsReexec, planMemory } from "../../harness/memory-plan.js"
 import { captureCommand } from "../../shared/exec.js"
@@ -88,7 +88,7 @@ const parsed = (text: string): unknown => {
     }
 }
 
-/** What the CLI reads of a node child request beyond the shape of the installed @starci/hfs: what @starci/hfs releases after 6.1.2 name. */
+/** What the CLI reads of a node child request beyond the shape of the installed @starci/hfs: what @starci/hfs 6.2 names. */
 type NodeRequest = HeavyNodeRequest & {
     readonly files?: number | undefined
     readonly workers?: number | undefined
@@ -121,12 +121,12 @@ export const hfsNodeRunner = (admit = withHeavySlot, capture = captureCommand): 
             workers = held.test?.workers
             request.onAdmit?.({ workers, heapMb: held.heapMb })
             const argv = [process.execPath, ...request.args]
-            const run = await capture(request.kind === "test" && !argv.includes("--runInBand") ? testWorkerArgs(argv, held) : argv, request.cwd, held.options)
+            const run = withOomNote(await capture(request.kind === "test" && !argv.includes("--runInBand") ? testWorkerArgs(argv, held) : argv, request.cwd, held.options), held)
             return {
                 status: run.timedOut ? null : run.exitCode,
                 signal: null,
                 stdout: run.stdout,
-                stderr: run.exitCode === 0 ? run.stderr : `${run.stderr}${oomNote(run.stdout + run.stderr, held)}`,
+                stderr: run.stderr,
                 ...(run.timedOut ? { error: Object.assign(new Error("child deadline reached"), { code: "ETIMEDOUT" }) } : {}),
             }
         },

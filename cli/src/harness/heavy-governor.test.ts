@@ -89,7 +89,7 @@ void test("a test run on 22 GB free takes the workers its caps divide the room i
     const seen: Held[] = []
     await run(22 * GB, "test", "jest-wide", [], undefined, (held) => seen.push(held))
     const held = must(seen[0])
-    const expected = Math.min(7, testWorkerCap(rules))
+    const expected = Math.min(Math.floor((22 * GB - rules.reserveMb - rules.testRun.parentMb) / rules.testRun.workerMb), testWorkerCap(rules))
     assert.equal(held.test?.workers, expected)
     assert.deepEqual(testWorkerArgs(["node", "jest", "--coverage"], held), ["node", "jest", "--coverage", `--maxWorkers=${String(expected)}`, `--workerIdleMemoryLimit=${String(rules.testRun.workerMb)}MB`])
     assert.match(held.options.env?.NODE_OPTIONS ?? "", new RegExp(`--max-old-space-size=${String(rules.testRun.parentMb)} --require=.*starci-jest-worker-heap`, "u"), "the parent's heap is its cap")

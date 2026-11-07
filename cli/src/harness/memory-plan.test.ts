@@ -43,9 +43,9 @@ void test("the plan holds the check's own heap from the cache records, and the l
 void test("nivo-like numbers (22 GB free, 28 cores) give the workers the caps divide the room into", () => {
     const sizing = testRunSizing(rules, roomOf(22 * GB), 28)
     assert.equal(sizing.parentMb, rules.testRun.parentMb)
-    assert.equal(sizing.workers, 7, "floor((22528 - 4096 - 7168) / 1536)")
+    assert.equal(sizing.workers, 10, "floor((22528 - 4096 - 2048) / 1536)")
     assert.equal(sizing.workerMb, rules.testRun.workerMb)
-    assert.equal(sizing.holdMb, sizing.parentMb + 7 * sizing.workerMb)
+    assert.equal(sizing.holdMb, sizing.parentMb + 10 * sizing.workerMb)
     assert.equal(testRunSizing(rules, roomOf(200 * GB), 28).workers, 14, "never above half the cores")
     assert.equal(testRunSizing(rules, roomOf(200 * GB), 2).workers, 1, "one core stays free for the parent")
 })
@@ -68,10 +68,10 @@ void test("more room never gives fewer workers, and a tsc takes its cap or the r
 void test("the worker args carry the worker count and the idle memory limit, and the environment the heap caps", () => {
     const sizing = testRunSizing(rules, roomOf(22 * GB), 28)
     const held: Held = { options: {}, roomMb: roomOf(22 * GB), rules, test: sizing }
-    assert.deepEqual(testWorkerArgs(["node", "jest", "--coverage"], held), ["node", "jest", "--coverage", "--maxWorkers=7", `--workerIdleMemoryLimit=${String(rules.testRun.workerMb)}MB`])
-    assert.deepEqual(testWorkerArgs(["node", "jest.js"], held), ["node", "jest.js", "--maxWorkers=7", `--workerIdleMemoryLimit=${String(rules.testRun.workerMb)}MB`])
+    assert.deepEqual(testWorkerArgs(["node", "jest", "--coverage"], held), ["node", "jest", "--coverage", `--maxWorkers=${String(sizing.workers)}`, `--workerIdleMemoryLimit=${String(rules.testRun.workerMb)}MB`])
+    assert.deepEqual(testWorkerArgs(["node", "jest.js"], held), ["node", "jest.js", `--maxWorkers=${String(sizing.workers)}`, `--workerIdleMemoryLimit=${String(rules.testRun.workerMb)}MB`])
     assert.deepEqual(testWorkerArgs(["jest", "--maxWorkers=2", "--workerIdleMemoryLimit=1GB"], held), ["jest", "--maxWorkers=2", "--workerIdleMemoryLimit=1GB"], "an argv that sets them keeps them")
-    assert.deepEqual(testWorkerArgs(["vitest", "run"], held), ["vitest", "run", "--maxWorkers=7"], "vitest takes the count only")
+    assert.deepEqual(testWorkerArgs(["vitest", "run"], held), ["vitest", "run", `--maxWorkers=${String(sizing.workers)}`], "vitest takes the count only")
     assert.deepEqual(testWorkerArgs(["tsc"], held), ["tsc"])
     const env = testRunEnv(sizing, "--max-old-space-size=2048 --enable-source-maps", "C:/tmp/starci-jest-worker-heap-1.cjs")
     assert.equal(env.NODE_OPTIONS, `--enable-source-maps --max-old-space-size=${String(rules.testRun.parentMb)} --require=C:/tmp/starci-jest-worker-heap-1.cjs`, "the parent's heap is its cap")
@@ -104,7 +104,7 @@ void test("the check re-executes itself only when node's heap is under the plan,
 
 void test("--explain prints the test run the RAM free now would get", () => {
     const lines = formatPlan(must(planMemory(NIVO, rules)), rules, 22 * GB, 28)
-    assert.ok(lines.some((line) => line.includes("a test run on the 22528 MB free now") && line.includes("7 workers at 1536 MB")), lines.join("\n"))
+    assert.ok(lines.some((line) => line.includes("a test run on the 22528 MB free now") && line.includes("10 workers at 1536 MB")), lines.join("\n"))
 })
 
 void test("the scope reads the cache folder's bytes from disk", (t) => {

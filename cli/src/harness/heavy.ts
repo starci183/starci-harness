@@ -767,6 +767,10 @@ export const oomNote = (output: string, held: Pick<Held, "heapMb" | "freeMb" | "
         ? `starci: heap cap ${String(held.heapMb)} MB reached${held.test === undefined ? "" : ` (workers ${String(held.test.workerMb)} MB each)`}; free RAM was ${String(held.freeMb ?? 0)} MB at admission; the caps are in ops/liveness.yaml\n`
         : ""
 
+/** A command's run with the out-of-memory line (`oomNote`) appended to its stderr when it failed; a green run as it is. */
+export const withOomNote = <R extends { readonly exitCode: number | null; readonly stdout: string; readonly stderr: string }>(run: R, held: Pick<Held, "heapMb" | "freeMb" | "test">): R =>
+    run.exitCode === 0 ? run : { ...run, stderr: `${run.stderr}${oomNote(run.stdout + run.stderr, held)}` }
+
 /**
  * Runs one heavy command (tsc, eslint, a test runner, a build, an npm install, a uat container) under a row of the machine-wide queue (`heavy_slots` in
  * machine.sqlite, taken under the store's lock, so admissions are serialised); nothing the harness spawns that is heavy runs any other way (the

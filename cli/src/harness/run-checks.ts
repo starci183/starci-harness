@@ -11,7 +11,7 @@ import { captureGitSync, changedFiles } from "../shared/git.js"
 import { evidenceTail } from "../shared/output.js"
 import { ownChanges } from "./baseline.js"
 import { judgeCites } from "./cite.js"
-import { HOST_HELD, oomNote, testWorkerArgs, withHeavySlot } from "./heavy.js"
+import { HOST_HELD, testWorkerArgs, withHeavySlot, withOomNote } from "./heavy.js"
 import { VERIFY_INFRA, inCleanCheckout } from "./clean-verify.js"
 import { linkInstall } from "./land.js"
 import { changedCoverageScope, runsJest, scopedTests, withCoverageArgs } from "./coverage-scope.js"
@@ -105,11 +105,7 @@ export interface CommandOptions {
  */
 export const heavyCommand = async (argv: readonly string[], cwd: string, options: CommandOptions): Promise<ToolRun> => {
     const { custody, keysOf, ...rest } = options
-    const ran = await withHeavySlot("test", argv.slice(0, 3).join(" "), cwd, custody === undefined ? rest : { ...rest, env: custody.env }, async (held) => {
-        const result = await captureCommand(testWorkerArgs(argv, held), cwd, held.options)
-        const note = result.exitCode === 0 ? "" : oomNote(result.stdout + result.stderr, held)
-        return note === "" ? result : { ...result, stderr: `${result.stderr}${note}` }
-    })
+    const ran = await withHeavySlot("test", argv.slice(0, 3).join(" "), cwd, custody === undefined ? rest : { ...rest, env: custody.env }, async (held) => withOomNote(await captureCommand(testWorkerArgs(argv, held), cwd, held.options), held))
     const run = custody === undefined ? ran : { ...ran, stdout: scrubbed(ran.stdout, custody.values), stderr: scrubbed(ran.stderr, custody.values) }
     if (run.exitCode !== 0 && keysOf !== undefined) await assertKeysHanded(`${run.stdout}
 ${run.stderr}`, keysOf)

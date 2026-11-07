@@ -1,23 +1,19 @@
 # Changelog
 
-## 1.1.0-alpha.90 - 2026-11-08
-
-- Changed: a heavy command a running one starts is admitted on its own: every child inherits `STARCI_HEAVY_PARENTS`, the slot ids it runs under, and an admission leaves those ancestors' rows out of its count, plan and room, so it never waits on them (`harness/heavy.ts`). `starci app check` holds no slot: each heavy child of its steps is admitted on its own.
-- Added: `RunOptions.workers` caps a test run's workers at what its caller can use (`testRunSizing`); `heavyRoomMb` reads the room the next command would get, which `starci app check` sizes its parallel ESLint chunks by (`heavyRoom` of the hfs io).
-- Added: the hfs runners pass a test run's most workers, tell the step what it was admitted with (`onAdmit`), and return the measured RAM peak of the child's process tree (`harness/peak-rss.ts`: a preload writes each node process's peak resident set at exit).
-- Removed: `STARCI_HEAVY_HELD` and the path by which a child of a held command used its parent's admission with no row of its own.
-
 ## 1.1.0-alpha.89 - 2026-11-08
 
-- Changed: the heavy-command governor sizes every command greedily to the live RAM. The room is the free RAM now less `heavy.reserveMb` (4096, the one headroom) and what the commands admitted in the last `heavy.plannedSeconds` planned; free RAM already excludes what running commands use, so no estimate, reservation or earlier run is read. A test run takes `clamp(floor((room - parent cap) / worker cap), 1, min(cores - 1, testWorkers))` workers (`testRunSizing`, caps `heavy.testRun`): a free 22 GB on 28 cores gives 7, a free 7 GB gives 1. Any other node tool runs under the smaller of its cap and the room (`heavy.caps`, `heapFor`).
+- Fixed: a whole `starci app check` no longer crashes on a skipped Sonar scan; the fix is in `@starci/hfs` 6.2.0, which the CLI requires once npm serves it (`cli-follow`).
+- Changed: the heavy-command governor sizes every command greedily to the live RAM. The room is the free RAM now less `heavy.reserveMb` (4096, the one headroom) and what the commands admitted in the last `heavy.plannedSeconds` planned; free RAM already excludes what running commands use, so no estimate, reservation or earlier run is read. A test run takes `clamp(floor((room - parent cap) / worker cap), 1, min(cores - 1, testWorkers))` workers (`testRunSizing`, caps `heavy.testRun`): a free 22 GB on 28 cores gives 10, a free 7 GB gives 1. Any other node tool runs under the smaller of its cap and the room (`heavy.caps`, `heapFor`).
 - Changed: admissions are serialised by the machine store's lock and served first come, first served: a command whose room is under its least need waits, holding nothing, only the head may start, and it prints its place, its need and the running commands every minute (`waitLine`). With nothing running it starts on the room there is. A row of a process that is gone is dropped at the next admission. A command under a held command, and any command on a CI runner (`CI` set), uses the RAM free now with no queue.
 - Changed: a command cannot take more than it planned. Each node tool runs under its heap cap; each test worker is held to `heavy.testRun.workerMb` by `--workerIdleMemoryLimit` and a `--require` preload of the parent that gives every forked worker `--max-old-space-size` at it (`STARCI_WORKER_HEAP_MB`). A command that runs out of memory fails with a line naming the heap cap it hit and the RAM free at its admission (`oomNote`).
 - Changed: `heavy.estimateMb`, `heavy.memoryMb`, `heavy.testWorkerMb`, `heavy.projectSlots`, the test worker's own `reserveMb` and the plan's `testParent`, `testWorker` and `types` constants are replaced by `heavy.caps`, `heavy.testRun` and `heavy.plannedSeconds`; the queue no longer rotates between projects, and the memory plan holds the check's own heap and the lint chunk.
 - Removed: the learned memory factors (`memory-factors.json`, `learnPeak`, `readFactors`, the sampling of a child's peak) and every per-file and per-spec estimate of a heap or a worker count.
-
-## 1.1.0-alpha.89 - 2026-11-08
-
-- Fixed: a whole `starci app check` no longer crashes on a skipped Sonar scan; the fix is in `@starci/hfs` 6.1.2, which the CLI requires once npm serves it (`cli-follow`).
+- Changed: a heavy command a running one starts is admitted on its own: every child inherits `STARCI_HEAVY_PARENTS`, the slot ids it runs under, and an admission leaves those ancestors' rows out of its count, plan and room, so it never waits on them (`harness/heavy.ts`). `starci app check` holds no slot: each heavy child of its steps is admitted on its own.
+- Added: `RunOptions.workers` caps a test run's workers at what its caller can use (`testRunSizing`); `heavyRoomMb` reads the room the next command would get, which `starci app check` sizes its parallel ESLint chunks by (`heavyRoom` of the hfs io).
+- Added: the hfs runners pass a test run's most workers, tell the step what it was admitted with (`onAdmit`), and return the measured RAM peak of the child's process tree (`harness/peak-rss.ts`: a preload writes each node process's peak resident set at exit).
+- Removed: `STARCI_HEAVY_HELD` and the path by which a child of a held command used its parent's admission with no row of its own.
+- Changed: `heavy.testRun.parentMb` is 2048: the jest parent keeps no coverage (`@starci/jest-preset` 2.8 streams each spec's coverage into its record), about 0.4 MB a spec beyond its base.
+- Changed: `withOomNote` (`harness/heavy.ts`) appends the out-of-memory line to a failed run's stderr for both runners of a heavy child (`heavyCommand`, the hfs node port), so each spawn sits on its `withHeavySlot` line and `check heavy-sites` is green.
 
 ## 1.1.0-alpha.88 - 2026-11-07
 

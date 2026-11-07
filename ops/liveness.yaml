@@ -63,8 +63,9 @@ reviveMax: 3
 # sized for a cold npm ci on this host, an eslint's grows with the files it names, timeoutMinutesPer1000Files), else the caller's (a test command's comes from its contract). Each runs below normal OS
 # priority; a node tool under `--max-old-space-size` of its heap cap, a uat container under `--memory` at it, so a command cannot take more than it
 # planned, and each jest worker is held to workerMb by `--workerIdleMemoryLimit` and a heap cap.
-# The jest parent holds every spec's coverage until the run ends: about 7 GB on a Nivo-sized back end, which testRun.parentMb caps; a worker
-# holds about 1.5 GB (testRun.workerMb). A free 22 GB on a 28-core host gives such a run 7 workers; a free 7 GB gives 1.
+# The jest parent keeps no coverage: each spec's coverage becomes its cache record as the run streams and is dropped, so the parent holds about
+# 0.4 MB a spec beyond its base (about 1.3 GB on a Nivo-sized back end), which testRun.parentMb caps; a worker holds about 1.5 GB
+# (testRun.workerMb). A free 22 GB on a 28-core host gives such a run 10 workers; a free 7 GB gives 1.
 # A worker seat launches
 # only while free memory is at least seatFreeMb; otherwise its task stays queued and the hold is recorded (since when, on what
 # memory), so `workflow status` names it. `starci host load` shows the capacity, the CPU rule that applied, each queued
@@ -107,7 +108,7 @@ heavy:
     eslint: 5
   testWorkers: "50%"
   testRun:
-    parentMb: 7168
+    parentMb: 2048
     workerMb: 1536
   plannedSeconds: 60
   seatFreeMb: 6144
