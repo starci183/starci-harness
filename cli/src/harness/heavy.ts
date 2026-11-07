@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto"
 import { existsSync, readFileSync, statSync } from "node:fs"
-import { availableParallelism, constants, cpus, freemem, totalmem } from "node:os"
+import { availableParallelism, constants, cpus, freemem } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import type { DatabaseSync } from "node:sqlite"

@@ -246,8 +246,9 @@ test('a lint journal of another tree is not resumed: an edited file changes the 
   }), /killed/u);
   fs.writeFileSync(path.join(world.root, 'f.ts'), 'export const f = 2\n');
   const edited = createFakeSession({ files: Object.fromEntries(world.files.map((file) => [`be/${file}`, fs.readFileSync(path.join(world.root, file), 'utf8')])), root: world.root });
-  edited.journal = world.session.journal;
-  edited.journaled = world.session.journaled;
+  const { journal, journaled } = world.session;
+  if (journal !== undefined) edited.journal = journal;
+  if (journaled !== undefined) edited.journaled = journaled;
   const asked: (readonly string[] | null)[] = [];
   await lintSide({
     session: edited, side: 'be', sideRoot: world.root, scope: world.files, stylesheets: [], canons: [canon], styleCanon: null, typescript: () => ts, extraKey: '', full: null, write: true,
