@@ -33,7 +33,7 @@ function commit(root: string, message: string): string {
   return git(root, ['rev-parse', 'HEAD']).stdout.trim();
 }
 
-const options = (root: string, tracked: string[], extra: object = {}) => ({ root, tracked, env: {}, progress: silentProgress, fingerprint: PORTABLE, ...extra });
+const options = (root: string, tracked: string[], extra: object = {}) => ({ root, tracked, env: {}, progress: silentProgress, fingerprint: PORTABLE, journalRoot: false as const, ...extra });
 
 test('a tree with no cache runs full, writes the records byte-stably and the next run is diff', (t) => {
   const root = repo({ 'a.ts': 'x\n' });

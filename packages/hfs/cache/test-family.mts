@@ -10,13 +10,15 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { completedNode, runHeavyNode, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { combineHashes, hashFile } from './hash.mjs';
-import { canonicalJson, toLazyRecord } from './jsonl.mjs';
+import { canonicalJson, recordLine, toLazyRecord } from './jsonl.mjs';
 import type { CacheRecord, CheckSession, FamilyReport, JsonValue } from './types.mjs';
 
 /** The folder of the session that holds the records of this family. */
 export const TEST_FOLDER = 'test-coverage';
 /** The step of a unit spec's record. */
 export const SPEC_STEP = 'unit-spec';
+/** How often the spec coverage a running Jest has written is journaled, in ms. */
+export const DRAIN_MS = 10_000;
 /** The Jest projects a warm run never skips: they reach services, data and time a key cannot hold. */
 export const ALWAYS_FULL_PROJECTS = ['integration', 'e2e', 'contract'] as const;
 
@@ -29,6 +31,8 @@ export interface SourceItems {
 
 /** What the reporter of @starci/jest-preset wrote for one spec (`SpecCoverageFile`), with source paths relative to the Jest root. */
 export interface SpecCoverageOutput {
+  /** The name of the file the reporter wrote it to, when the environment tells (what a drain of a running Jest skips the next time). */
+  readonly file?: string;
   readonly spec: string;
   readonly passed: boolean;
   readonly sources: Readonly<Record<string, SourceItems>>;
@@ -52,8 +56,11 @@ export interface JestEnvironment {
   readonly configHash: string;
   /** Runs `specs` (all of them when `specs` is every spec) writing the per-spec coverage into `coverageDir`. */
   run(specs: readonly string[], coverageDir: string): RunOutcome | Promise<RunOutcome>;
-  /** Reads what the reporter wrote into `coverageDir`. */
-  readCoverage(coverageDir: string): readonly SpecCoverageOutput[];
+  /**
+   * Reads what the reporter wrote into `coverageDir`. With `skip` (the names of files already read) it is a drain of a Jest still running: it reads only the
+   * other files and leaves a file the reporter has not finished writing for the next drain.
+   */
+  readCoverage(coverageDir: string, skip?: ReadonlySet<string>): readonly SpecCoverageOutput[];
 }
 
 /** The union of the stored records, written as the lcov and coverage-final.json of the Jest root (`<root>/coverage`). */
@@ -70,6 +77,8 @@ export interface TestFamilyOptions {
   readonly judge: JudgeCoverage;
   /** Where the temporary per-spec coverage goes; defaults to a fresh folder of the OS temp dir. */
   readonly scratch?: string;
+  /** How often the coverage a running Jest wrote is journaled, in ms (DRAIN_MS). */
+  readonly drainMs?: number;
 }
 
 /** The outcome of the family. `ok` is false when a spec failed or the merged total is below the threshold. */
@@ -177,7 +186,33 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
     try {
       fs.rmSync(scratch, { recursive: true, force: true });
       fs.mkdirSync(scratch, { recursive: true });
-      const outcome = await jest.run(toRun, scratch);
+      // A spec's coverage is journaled as the reporter writes it (journal.mts): a Jest killed after most of its specs keeps theirs.
+      const journal = session.journal?.(TEST_FOLDER, 'rec');
+      const drained = new Set<string>();
+      const journaled = new Set<string>();
+      const bySideRelative = new Map(toRun.map((spec) => [posix(path.relative(path.join(session.root, side), path.join(session.root, spec))), spec] as const));
+      const drain = (): void => {
+        if (journal === undefined) return;
+        try {
+          for (const file of jest.readCoverage(scratch, drained)) {
+            if (file.file !== undefined) drained.add(file.file);
+            const spec = bySideRelative.get(file.spec);
+            const key = spec === undefined ? undefined : keys.get(spec);
+            if (spec === undefined || key === undefined || !file.passed || journaled.has(spec)) continue;
+            journaled.add(spec);
+            journal.append([recordLine(toLazyRecord(recordOf(spec, key, file.sources, side)))]);
+          }
+        } catch { /* a drain that cannot read now is tried again; the family reads everything when Jest ends */ }
+      };
+      const timer = journal === undefined ? undefined : setInterval(drain, options.drainMs ?? DRAIN_MS);
+      timer?.unref();
+      let outcome: RunOutcome;
+      try {
+        outcome = await jest.run(toRun, scratch);
+      } finally {
+        if (timer !== undefined) clearInterval(timer);
+      }
+      drain();
       output = outcome.output;
       const reported = new Map(jest.readCoverage(scratch).map((file) => [file.spec, file]));
       const reportOf = (spec: string) => reported.get(posix(path.relative(path.join(session.root, side), path.join(session.root, spec))));
@@ -353,15 +388,22 @@ export async function createJestEnvironment({ appRoot, side, jestFrom, project =
       }
       return { status, output };
     },
-    readCoverage(coverageDir) {
+    readCoverage(coverageDir, skip) {
       // Each file's sources are read again when asked for and never kept here (memory plan, streaming): the files of a full run are the size of the
       // whole coverage, and only the spec and its verdict are needed to sort them.
-      return fs.readdirSync(coverageDir).filter((name) => name.endsWith('.json')).map((name): SpecCoverageOutput => {
+      const out: SpecCoverageOutput[] = [];
+      for (const name of fs.readdirSync(coverageDir).filter((entry) => entry.endsWith('.json') && skip?.has(entry) !== true)) {
         const file = path.join(coverageDir, name);
         const read = (): SpecCoverageOutput => JSON.parse(fs.readFileSync(file, 'utf8')) as SpecCoverageOutput;
-        const { spec, passed } = read();
-        return { spec, passed, get sources() { return read().sources; } };
-      });
+        try {
+          const { spec, passed } = read();
+          out.push({ file: name, spec, passed, get sources() { return read().sources; } });
+        } catch (error) {
+          // A drain meets the file the reporter is still writing; the end-of-run read never skips one.
+          if (skip === undefined) throw error;
+        }
+      }
+      return out;
     },
   };
 }

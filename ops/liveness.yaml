@@ -36,8 +36,8 @@ reviveMax: 3
 # install, a uat container. Each runs under a row of a machine-wide governor in machine.sqlite (cli/src/harness/heavy.ts),
 # admitted dynamically from this host's RAM and CPU and re-judged at every poll: a command of kind K is admitted when
 # (free RAM - reserveMb) covers the estimateMb of every running command plus K's own, and fewer commands run than the cap,
-# floor(logical cores / 2) or maxSlots when set lower; while nothing runs, one is admitted once free RAM covers its own estimate, or
-# half the host's memory when the estimate is more (a small CI runner never frees a whole coverage estimate).
+# floor(logical cores / 2) or maxSlots when set lower; while nothing runs, one is admitted whatever its estimate: no running command will
+# release memory, so waiting could not help (a test run takes the workers its room holds, at least one, and a warning names the shortfall).
 # The CPU ceiling governs the harness's own contribution. While the CPU average over cpuWindowSeconds is above maxCpuPercent,
 # the share the governor's running commands and their process trees burn decides (managed CPU, sampled over the same window):
 # under managedCpuFloorPercent of the host's total CPU the load is foreign, holding the harness back would not lower it, and up

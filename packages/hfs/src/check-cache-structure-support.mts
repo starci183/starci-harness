@@ -81,14 +81,14 @@ export interface RunOptions {
 /** One structure pass over `root` against the committed cache of the work tree; the session is flushed. */
 export async function runPass(root: string, options: RunOptions = {}): Promise<{ pass: PassResult; calls: string[]; hfs: readonly CacheRecord[]; secrets: readonly CacheRecord[] }> {
   const tracked = options.tracked ?? trackedFiles(root);
-  const session = createDiskSession({ root, tracked, env: {}, progress: silentProgress, fingerprint: options.fingerprint ?? PORTABLE });
+  const session = createDiskSession({ root, tracked, env: {}, progress: silentProgress, journalRoot: false, fingerprint: options.fingerprint ?? PORTABLE });
   const { machine, calls } = machineDouble(options.during);
   const emit = async () => ({ status: 0, signal: null, stdout: '', stderr: '' });
   const pass = await runStructurePass(session, { repoRoot: root, tracked, hfs: options.hfs ?? true, secrets: options.secrets ?? false, presets: bundledPresets(), machine, execute: emit, harness: { version: '0.0.0' } });
   const flushed = session.flush();
   if (flushed.warnings.length > 0) throw new Error(flushed.warnings.join('; '));
   // What the run left on disk, read back by a fresh session: a record the flush refused (an edit during the run) is not there.
-  const written = createDiskSession({ root, tracked, env: {}, progress: silentProgress, fingerprint: options.fingerprint ?? PORTABLE });
+  const written = createDiskSession({ root, tracked, env: {}, progress: silentProgress, journalRoot: false, fingerprint: options.fingerprint ?? PORTABLE });
   return { pass, calls, hfs: written.records(HFS_FOLDER), secrets: written.records(SECRETS_FOLDER) };
 }
 

@@ -321,7 +321,9 @@ build, `npm ci` or `npm install`, a contract's setup, a uat container) runs thro
 `harness/heavy.ts`: one slot of a host-wide semaphore (`heavy_slots` in the machine.sqlite of the harness's main checkout,
 or of `STARCI_LOCAL_ROOT` when set: `governorStorePath` of `harness/ledger.ts`, so every worktree of the harness shares
 it) while it runs, admitted dynamically at every poll: free RAM less a reserve must cover the RAM estimate of every running
-command plus its own, and fewer than floor(logical cores / 2) may run. The CPU ceiling governs the harness's own
+command plus its own, and fewer than floor(logical cores / 2) may run. While nothing runs a command is admitted whatever its estimate, since no running command will
+release memory and waiting could not help: it runs on the room free RAM leaves, a test run on the workers whose planned heaps fit it (`plannedWorkerCount`, one at
+least), and a warning line names the shortfall. The CPU ceiling governs the harness's own
 contribution: while the CPU average over a window (samples in `cpu_samples`) is above it, `managedCpuPercent` reads the share
 of the host's CPU the running heavy commands and their process trees burn over the same window (`managedCpuTimes` of
 `harness/host-holders.ts`, the Windows process table's kernel and user time or `/proc` on Linux, readings in
@@ -346,7 +348,7 @@ reads (package.json, package-lock.json, npm-shrinkwrap.json, .npmrc), which also
 (`INSTALL_RED_HARNESS`, every repeat landing on it). No try is spent, a wave fails, returns and revives no task (they stay
 due, `wave-infra`), and the next step verifies again, going on once the install is green. Each child runs below normal priority, a node tool under
 its kind's `--max-old-space-size`, a uat container under `--memory`, a jest or vitest run with `--maxWorkers` scaled to the RAM room its admission
-measured (`testWorkerCount`: one on a starved host, up to `heavy.testWorkers`), and inherits `STARCI_HEAVY_HELD`, so a `starci check run` it starts runs under its slot instead of waiting on
+measured (`testWorkerCount`, or `plannedWorkerCount` for a planned coverage run: one on a starved host, up to `heavy.testWorkers`), and inherits `STARCI_HEAVY_HELD`, so a `starci check run` it starts runs under its slot instead of waiting on
 it. `check heavy-sites` (a CI gate) is red for a spawn site in `cli/src` that runs a heavy command outside the governor.
 `seat start` refuses `SEAT_RAM_LOW` while free memory is under the seat floor, which `workflow step` reports as a wait, and
 records the hold (`seat_holds`: since when, on what memory) until the task launches or the floor admits again.

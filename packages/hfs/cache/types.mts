@@ -90,6 +90,16 @@ export interface FlushResult {
   readonly warnings: readonly string[];
 }
 
+/** The append end of one journal file of a run (journal.mts): created with its header on first use, then appended to line by line. */
+export interface JournalSink {
+  /** The file entries go to; a child process may append its own lines to it after `open`. */
+  readonly file: string;
+  /** Creates the file with its header when it does not exist yet. */
+  open(): void;
+  /** Appends whole lines (no newline in them), flushed to the file before it returns. */
+  append(lines: readonly string[]): void;
+}
+
 /**
  * The cache as one run sees it. A family asks it for its decision and its trusted records, judges, and replaces its records;
  * the session writes them once at the end (`flush`), byte-stable.
@@ -111,5 +121,13 @@ export interface CheckSession {
   unchanged(paths: readonly string[], captured?: Readonly<Record<string, string>>): boolean;
   report(report: FamilyReport): void;
   readonly progress: ProgressSink;
+  /**
+   * The journal a family appends what it judges to while it runs (journal.mts): `rec` takes record lines, which `records(folder)` serves next run like committed
+   * ones, `raw` the family's own lines for its `journaled(folder, context)`. Undefined when this run writes no cache (CI, a bypass, a local package): nothing is
+   * journaled then and nothing is read back.
+   */
+  journal?(folder: string, kind: 'rec' | 'raw', context?: string): JournalSink | undefined;
+  /** The `raw` lines of earlier runs of `folder` journaled under `context` and this run's fingerprint, torn lines dropped; none when journals are off. */
+  journaled?(folder: string, context: string): readonly unknown[];
   flush(): FlushResult;
 }

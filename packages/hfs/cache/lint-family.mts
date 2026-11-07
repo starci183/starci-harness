@@ -25,6 +25,8 @@ type Ts = typeof TypeScript;
 
 /** Record steps of the `lint/<side>` folder. */
 export const LINT_STEPS = Object.freeze({ eslint: 'eslint', stylelint: 'stylelint', imports: 'imports', graph: 'graph', meta: 'meta' });
+/** How many files one ESLint child judges before it appends their results to the journal: a kill loses at most this many (and the batch it was in). */
+export const STREAM_BATCH = 250;
 /** The record path of the side's own record (no file of the tree holds it). */
 export const SIDE_RECORD = '.side';
 
@@ -59,6 +61,18 @@ export interface CanonDeclarations {
 /** The fields of an ESLint result the cache keeps and rebuilds. */
 export interface EslintMessage { ruleId: string | null; message: string; line?: number; column?: number; endLine?: number; severity?: number; [key: string]: unknown }
 export interface EslintResult { filePath: string; messages: EslintMessage[]; [key: string]: unknown }
+/** The ESLint result a journaled line stands for, or undefined when the line is not one (a foreign or damaged line): the child's `{ key, messages }` with each message as ESLint gave it. */
+function journaledResult(line: unknown, sideRoot: string, relativize: ((message: string) => string) | undefined): EslintResult | undefined {
+  if (line === null || typeof line !== 'object') return undefined;
+  const { key, messages } = line as { key?: unknown; messages?: unknown };
+  if (typeof key !== 'string' || !Array.isArray(messages) || key === '') return undefined;
+  if (!messages.every((message: unknown) => message !== null && typeof message === 'object' && typeof (message as { message?: unknown }).message === 'string')) return undefined;
+  return {
+    filePath: path.join(sideRoot, key),
+    messages: (messages as EslintMessage[]).map((message) => ({ ...message, message: relativize === undefined ? message.message : relativize(message.message) })),
+  };
+}
+
 /** The fields of a stylelint result the cache keeps and rebuilds. */
 export interface StylelintWarning { rule: string; text: string; line?: number; column?: number; endLine?: number; severity?: string; [key: string]: unknown }
 export interface StylelintResult { source: string; warnings: StylelintWarning[]; [key: string]: unknown }
@@ -93,8 +107,14 @@ export interface LintSideInput {
   full: string | null;
   /** Whether this run may write the side's records. */
   write: boolean;
-  /** ESLint over `files` (side-relative), or over the whole requested scope when null; results already validated and with app-relative messages. */
-  eslint: (files: readonly string[] | null) => Promise<LinterOutcome<EslintResult>>;
+  /**
+   * ESLint over `files` (side-relative), or over the whole requested scope when null; results already validated and with app-relative messages. With `stream`
+   * (always with a list) the child appends each batch of results to that journal file as it judges them (`STREAM_BATCH` files at a time), so a run cut short
+   * keeps them.
+   */
+  eslint: (files: readonly string[] | null, stream?: { readonly file: string }) => Promise<LinterOutcome<EslintResult>>;
+  /** The side-relative to app-relative rewrite of a message (the launcher applies it to every result it returns); applied to journaled results, which are raw. */
+  relativize?: ((message: string) => string) | undefined;
   /** stylelint over `files`, or over the whole glob when null. Absent when the side has no stylesheet judge. */
   stylelint: ((files: readonly string[] | null) => Promise<LinterOutcome<StylelintResult>>) | null;
 }
@@ -268,6 +288,32 @@ function graphHost(ts: Ts, sideRoot: string, hashOf: (file: string) => string | 
   return { ts, sideRoot, readText, fileExists: remembered(files, isFile), directoryExists: remembered(folders, isDirectory), hashOf };
 }
 
+const DEPENDENCY_SECTIONS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'] as const;
+
+/**
+ * What a lint rule can read of an app's own manifest (the app root's or a side's `package.json`, which the canons name as a cross-file input): the manifest with each
+ * dependency's version range reduced to what a rule can tell apart, a workspace, file or link reference (`workspace:`, `file:`, `link:`), an alias (`npm:<name>`) or
+ * a plain registry range. A canon reads the names, the workspaces and these references from it, never a registry version, so raising a pin (`@starci/hfs`, `starci-harness`,
+ * any library) leaves this digest and every file's cross-file input unchanged, while adding, removing or renaming a dependency, a `workspaces` entry or a reference does
+ * not. Undefined for a text that is not a JSON object (the file's own hash stands then).
+ */
+export function manifestIdentity(text: string): string | undefined {
+  let manifest: unknown;
+  try { manifest = JSON.parse(text); } catch { return undefined; }
+  if (manifest === null || typeof manifest !== 'object' || Array.isArray(manifest)) return undefined;
+  const reduced: Record<string, unknown> = { ...(manifest as Record<string, unknown>) };
+  for (const section of DEPENDENCY_SECTIONS) {
+    const declared = reduced[section];
+    if (declared === null || typeof declared !== 'object' || Array.isArray(declared)) continue;
+    reduced[section] = Object.fromEntries(Object.entries(declared as Record<string, unknown>).map(([name, range]) => {
+      const written = typeof range === 'string' ? range : '';
+      const alias = /^npm:((?:@[^/]+\/)?[^@]+)(?:@|$)/u.exec(written)?.[1];
+      return [name, alias !== undefined ? `npm:${alias}` : /^(?:workspace|file|link):/u.exec(written)?.[0] ?? (typeof range === 'string' ? 'range' : 'other')];
+    }));
+  }
+  return hashText(canonicalJson(reduced));
+}
+
 /** A record's `data` object, or an empty one. */
 const dataOf = (record: CacheRecord): { readonly [key: string]: JsonValue } => (record.data !== null && typeof record.data === 'object' && !Array.isArray(record.data) ? record.data as { [key: string]: JsonValue } : {});
 
@@ -314,7 +360,17 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
   const sidePaths = [...new Set([...trackedHere, ...scope, ...stylesheets])].sort();
   const sideKey = combineHashes(Object.fromEntries(sidePaths.map((file) => [file, hashOf(file) ?? 'absent'])));
   const pathsDigest = hashText(sidePaths.join('\n'));
-  const appHash = (appRelative: string): string | undefined => session.index.hashOf(appRelative) ?? (appRelative.startsWith(prefix) ? hashOf(appRelative.slice(prefix.length)) : hashFile(path.join(session.root, appRelative)));
+  const contentHash = (appRelative: string): string | undefined => session.index.hashOf(appRelative) ?? (appRelative.startsWith(prefix) ? hashOf(appRelative.slice(prefix.length)) : hashFile(path.join(session.root, appRelative)));
+  // The app root's and the side's own manifests stand by their identity (manifestIdentity), so a raised pin is no change of any file's cross-file input.
+  const identities = new Map<string, string | undefined>();
+  const appHash = (appRelative: string): string | undefined => {
+    if (appRelative !== 'package.json' && appRelative !== `${prefix}package.json`) return contentHash(appRelative);
+    if (!identities.has(appRelative)) {
+      const text = readText(path.join(session.root, appRelative));
+      identities.set(appRelative, text === null ? undefined : manifestIdentity(text));
+    }
+    return identities.get(appRelative) ?? contentHash(appRelative);
+  };
   const appPaths = [...new Set([...session.index.paths, ...scope.map((file) => `${prefix}${file}`), ...stylesheets.map((file) => `${prefix}${file}`)])];
 
   // what the cache holds
@@ -433,11 +489,33 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
   const freshEslint = new Map<string, EslintResult>();
   const freshStyle = new Map<string, StylelintResult>();
   const rootOf = (file: string): string => path.relative(sideRoot, file).replace(/\\/g, '/');
+  let resumed = 0;
   if (eslintList.length > 0) {
-    const run = await input.eslint(whole !== null ? null : eslintList);
-    errors.push(...run.errors);
-    handedGraph = run.graph;
-    for (const result of run.results) freshEslint.set(posix(rootOf(result.filePath)), result);
+    // What an interrupted run of this very tree already judged is not judged again: its results were journaled under the digest of every input of the side (the
+    // side key, the cross-file inputs, the installed packages, the base), which is equal exactly when the tree is the same, so each is the result a run gives now.
+    const context = combineHashes({
+      side: sideKey, extra: input.extraKey, paths: pathsDigest, git: input.gitToken ?? '', packages: combineHashes(Object.fromEntries(installed)),
+      cross: combineHashes(Object.fromEntries([...crossEslint].map(([file, digest]) => [file, digest ?? '']))),
+    });
+    const wanted = new Set(eslintList);
+    if (input.full === null) {
+      for (const line of session.journaled?.(folder, context) ?? []) {
+        const result = journaledResult(line, sideRoot, input.relativize);
+        const file = result === undefined ? undefined : posix(rootOf(result.filePath));
+        if (result !== undefined && file !== undefined && wanted.has(file)) freshEslint.set(file, result);
+      }
+      resumed = freshEslint.size;
+    }
+    const remaining = eslintList.filter((file) => !freshEslint.has(file));
+    const sink = session.journal?.(folder, 'raw', context);
+    sink?.open();
+    if (remaining.length > 0) {
+      const run = await input.eslint(whole !== null && resumed === 0 && sink === undefined ? null : remaining, sink === undefined ? undefined : { file: sink.file });
+      errors.push(...run.errors);
+      handedGraph = run.graph;
+      for (const result of run.results) freshEslint.set(posix(rootOf(result.filePath)), result);
+    }
+    if (resumed > 0) reason += `; ${String(resumed)} of them already judged by an interrupted run`;
   }
   if (input.stylelint !== null && styleList.length > 0) {
     const run = await input.stylelint(whole !== null ? null : styleList);

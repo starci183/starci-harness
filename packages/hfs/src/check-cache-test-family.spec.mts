@@ -148,7 +148,7 @@ function writeFiles(root: string, files: Readonly<Record<string, string>>): void
 }
 
 async function runDisk(w: World, root: string, options: { tracked?: readonly string[]; duringRun?: () => void } = {}) {
-  const session = createDiskSession({ root, tracked: options.tracked ?? Object.keys(w.files), env: {}, progress: silentProgress, fingerprint: { parts: [{ name: 'hfs', sha256: 'h1' }], portable: true, localReasons: [] } });
+  const session = createDiskSession({ root, tracked: options.tracked ?? Object.keys(w.files), env: {}, progress: silentProgress, journalRoot: false, fingerprint: { parts: [{ name: 'hfs', sha256: 'h1' }], portable: true, localReasons: [] } });
   const merge = fakeMerge();
   const result = await runTestFamily({ session, jest: fakeJest(w, 'config-1', options.duringRun), side: 'be', merge, judge });
   return { session, result, merge, flush: session.flush() };

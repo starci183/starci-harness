@@ -42,7 +42,7 @@ function commit(root: string): string {
 
 /** A host run that commits the cache of `a.ts`, then a branch from it. */
 async function seeded(root: string, tracked: string[]): Promise<string> {
-  const host = createDiskSession({ root, tracked, env: {}, progress: silentProgress, fingerprint: PORTABLE });
+  const host = createDiskSession({ root, tracked, env: {}, progress: silentProgress, journalRoot: false, fingerprint: PORTABLE });
   await runFormatFamily(host, { files: tracked, prettier });
   host.flush();
   const base = commit(root);

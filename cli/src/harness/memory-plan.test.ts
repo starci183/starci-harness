@@ -8,8 +8,8 @@ import { dirname, join } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import { plannedFor, requestSide } from "../core/app/hfs.js"
-import { admission, loadHeavyRules, type HeavyRules } from "./heavy.js"
-import { formatPlan, learnPeak, MEMORY_REEXEC_ENV, needsReexec, planMemory, readFactors, scopeOf, type Scope } from "./memory-plan.js"
+import { admission, loadHeavyRules, plannedWorkerCount, testWorkerArgs, type Held, type HeavyRules } from "./heavy.js"
+import { formatPlan, learnPeak, MAX_FACTOR, MEMORY_REEXEC_ENV, needsReexec, planMemory, readFactors, scopeOf, type Scope } from "./memory-plan.js"
 
 const opsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "ops")
 const rules: HeavyRules = { ...loadHeavyRules(opsDir), testWorkers: "50%" }
@@ -106,10 +106,55 @@ void test("a coverage run and a tsc program get their side's planned heaps; othe
 
 void test("admission holds a planned running row at its planned MB and a planned newcomer at its own", () => {
     const free = 40 * 1024
-    const byKind = admission(rules, free, 10, ["test"], "tsc", false, null, 64 * 1024)
-    const planned = admission(rules, free, 10, [{ kind: "test", mb: 20 * 1024 }], "tsc", false, null, 64 * 1024, 2048)
+    const byKind = admission(rules, free, 10, ["test"], "tsc", false, null)
+    const planned = admission(rules, free, 10, [{ kind: "test", mb: 20 * 1024 }], "tsc", false, null, 2048)
     assert.equal(byKind.committedMb, rules.estimateMb.test)
     assert.equal(planned.committedMb, 20 * 1024)
     assert.equal(planned.roomMb, free - rules.reserveMb - 20 * 1024)
-    assert.equal(admission(rules, 10 * 1024, 10, [], "tsc", false, null, 64 * 1024, 3000).admits, true, "alone, a planned 3 GB tsc fits 10 GB free")
+    assert.equal(admission(rules, 10 * 1024, 10, [], "tsc", false, null, 3000).admits, true, "alone, a planned 3 GB tsc fits 10 GB free")
+})
+
+void test("nothing running admits a command whose estimate exceeds the room: waiting would free nothing", () => {
+    // The log of the deadlock: free 23522 MB, reserve 8192 MB, a learned worker factor making the coverage run's plan 30208 MB, nothing running.
+    const alone = admission(rules, 23522, 10, [], "test", false, null, 30208)
+    assert.equal(alone.admits, true)
+    assert.equal(alone.roomMb, 23522 - rules.reserveMb)
+    assert.equal(alone.shortMb, 30208 - alone.roomMb, "the shortfall is named so the caller can say it")
+    assert.equal(alone.pressure, false)
+    assert.equal(admission(rules, 40 * 1024, 10, [], "test", false, null, 30208).shortMb, 0, "a command the room holds is short of nothing")
+    assert.equal(admission(rules, 200, 10, [], "tsc", false, null).admits, true, "even a host under its reserve admits the one command that runs")
+    const busy = admission(rules, 23522, 10, [{ kind: "tsc", mb: 4096 }], "test", false, null, 30208)
+    assert.equal(busy.admits, false, "with a command running its memory may free: the newcomer waits")
+    assert.equal(busy.shortMb, 0)
+})
+
+void test("a planned test run gets the most workers its room holds, one when not even the parent fits", () => {
+    const planned = { memoryMb: 14336, workerMb: 3984, workers: 8 }
+    assert.equal(plannedWorkerCount(planned, 15330), 1, "15330 MB holds the 14336 MB parent and 994 MB: no second worker")
+    assert.equal(plannedWorkerCount(planned, 24000), 3, "9664 MB over the parent holds two more")
+    assert.equal(plannedWorkerCount(planned, 200_000), 8, "never more than the plan")
+    assert.equal(plannedWorkerCount(planned, -500), 1)
+    assert.equal(plannedWorkerCount(planned, null), 8, "a run under its parent's slot takes the plan's workers")
+    const held = (roomMb: number | null): Held => ({ options: {}, roomMb, rules, planned })
+    assert.deepEqual(testWorkerArgs(["jest", "--coverage"], held(24000)), ["jest", "--coverage", "--maxWorkers=3"])
+    assert.deepEqual(testWorkerArgs(["jest", "--maxWorkers=2"], held(24000)), ["jest", "--maxWorkers=2"], "an argv that sets it keeps it")
+    assert.deepEqual(testWorkerArgs(["tsc"], held(24000)), ["tsc"])
+})
+
+void test("a learned factor is bounded, eases when the plan overshoots, and never plans a worker above the room", (t) => {
+    const app = mkdtempSync(join(tmpdir(), "starci-memory-factor-"))
+    t.after(() => {
+        rmSync(app, { recursive: true, force: true })
+    })
+    assert.match(learnPeak(app, "test", 2560, 3984, 20, true) ?? "", /factor is now x1.56/u)
+    assert.match(learnPeak(app, "test", 2560, 40_000, 20, true) ?? "", /at most x2/u)
+    assert.equal(readFactors(app).testWorker, MAX_FACTOR, "one wild peak cannot grow a factor past its bound")
+    assert.match(learnPeak(app, "test", 4096, 1500, 20, true) ?? "", /eases to x1.7/u)
+    assert.equal(readFactors(app).testWorker, 1.7)
+    for (let run = 0; run < 12; run += 1) learnPeak(app, "test", 2048, 100, 20, true)
+    assert.equal(readFactors(app).testWorker, 1, "a plan that keeps overshooting returns to the fitted heap")
+    assert.equal(learnPeak(app, "test", 2048, 100, 20, true), null, "nothing left to ease")
+    const huge = planMemory(NIVO, rules, 12 * 1024, 16, { testWorker: 50 })
+    const room = 12 * 1024 - must(rules.plan).testWorker.reserveMb
+    assert.ok(must(must(huge).sides.be).testWorkerMb <= room, "a hand-written factor of 50 plans no worker above the room")
 })

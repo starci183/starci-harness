@@ -2,7 +2,8 @@
 // git index and file sizes alone (per side the unit specs and sources; the MB of the per-spec coverage records and of every cache record), and each
 // heap is sized from that scope with the fitted constants of ops/liveness.yaml heavy.plan, instead of one figure per kind. The plan reaches @starci/hfs
 // through STARCI_MEMORY_PLAN (it puts the planned heap on each child it asks the CLI to run) and the governor holds each running row at its planned MB.
-// What a child really peaked at is learned per app (.starciwork/memory-factors.json): a kind that ran over its plan is planned higher next run.
+// What a child really peaked at is learned per app and per machine (.starciwork/memory-factors.json, untracked): a kind that ran over its plan is planned
+// higher next run, never beyond MAX_FACTOR times its fitted heap, and a kind that ran well under its plan eases back toward the fitted one.
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { availableParallelism, freemem } from "node:os"
 import { dirname, join } from "node:path"
@@ -16,6 +17,11 @@ export const MEMORY_PLAN_ENV = "STARCI_MEMORY_PLAN"
 export const MEMORY_REEXEC_ENV = "STARCI_MEMORY_REEXEC"
 /** The app's learned factors, under its untracked work folder. */
 export const FACTORS_FILE = join(".starciwork", "memory-factors.json")
+/** The most a learned factor multiplies a fitted heap by, however high one run peaked: a factor is a correction, never a new model. */
+export const MAX_FACTOR = 2
+/** A run that peaked under this percent of its plan eases its kind's factor back (to at most this share of it per run). */
+export const EASE_BELOW_PERCENT = 75
+const EASE_STEP = 0.85
 
 /** What one side of the app holds: its unit specs and its TypeScript sources (specs and declarations excluded). */
 export interface SideScope {
@@ -145,7 +151,7 @@ export const readFactors = (appRoot: string): Factors => {
 export const planMemory = (scope: Scope, rules: HeavyRules, freeMb: number = Math.floor(freemem() / MB), cores: number = availableParallelism(), factors: Factors = {}): MemoryPlan | null => {
     const constants = rules.plan
     if (constants === undefined) return null
-    const factor = (kind: PlannedKind): number => Math.max(1, factors[kind] ?? 1)
+    const factor = (kind: PlannedKind): number => clamp(factors[kind] ?? 1, 1, MAX_FACTOR)
     const { parent, testParent, testWorker, types, lintChunk } = constants
     const parentMb = ceil512(clamp((parent.baseMb + parent.perRecordMb * scope.recordMb) * factor("parent"), parent.minMb, parent.maxMb))
     const percent = /^(\d{1,3})%$/u.exec(rules.testWorkers)?.[1]
@@ -153,7 +159,10 @@ export const planMemory = (scope: Scope, rules: HeavyRules, freeMb: number = Mat
     const room = freeMb - testWorker.reserveMb
     const sides: Record<string, SidePlan> = {}
     for (const [side, { specs, sources }] of Object.entries(scope.sides)) {
-        const workerMbAt = (workers: number): number => ceil512(clamp((testWorker.baseMb + (testWorker.perSpecMb * specs) / workers) * factor("testWorker"), testWorker.minMb, testWorker.maxMb))
+        // A worker's heap is never planned above the room free RAM leaves (a worker heap is no cap of its own, only what admission holds), so one worker's
+        // estimate cannot exceed the host's room however high its factor.
+        const ceilingMb = Math.min(testWorker.maxMb, Math.max(testWorker.minMb, room))
+        const workerMbAt = (workers: number): number => Math.min(ceilingMb, ceil512(clamp((testWorker.baseMb + (testWorker.perSpecMb * specs) / workers) * factor("testWorker"), testWorker.minMb, testWorker.maxMb)))
         // The worker heap shrinks as the workers grow: from the cap down, the first count the room holds at its own worker heap.
         let workers = workerCap
         while (workers > 1 && Math.floor(room / workerMbAt(workers)) < workers) workers -= 1
@@ -204,14 +213,20 @@ export const needsReexec = (plan: MemoryPlan, env: NodeJS.ProcessEnv = process.e
 const learnedKind = (kind: string, worker: boolean): PlannedKind | null => (kind === "test" ? (worker ? "testWorker" : "test") : kind === "tsc" ? "tsc" : null)
 
 /**
- * Learns from one child: a peak more than `abovePercent` over its plan raises the kind's factor to peak / planned (never lowering one), written to the
- * app's factors file. Returns the warning to print, or null when the child fit its plan.
+ * Learns from one child, written to the app's factors file. A peak more than `abovePercent` over its plan raises the kind's factor to peak / planned times
+ * the factor in force, at most MAX_FACTOR; a peak under EASE_BELOW_PERCENT of its plan eases a factor above 1 back toward 1. Returns the line to print, or
+ * null when the child fit its plan (or the factor stays).
  */
 export const learnPeak = (appRoot: string, kind: string, plannedMb: number, peakMb: number, abovePercent: number, worker = false): string | null => {
     const learned = learnedKind(kind, worker)
-    if (learned === null || plannedMb <= 0 || peakMb <= plannedMb * (1 + abovePercent / 100)) return null
+    if (learned === null || plannedMb <= 0) return null
     const factors = { ...readFactors(appRoot) } as Record<string, number>
-    const next = Math.max(factors[learned] ?? 1, (factors[learned] ?? 1) * (peakMb / plannedMb))
+    const held = clamp(factors[learned] ?? 1, 1, MAX_FACTOR)
+    const raise = peakMb > plannedMb * (1 + abovePercent / 100)
+    const ease = !raise && held > 1 && peakMb < plannedMb * (EASE_BELOW_PERCENT / 100)
+    if (!raise && !ease) return null
+    const next = raise ? Math.min(MAX_FACTOR, held * (peakMb / plannedMb)) : Math.max(1, held * Math.max(EASE_STEP, peakMb / plannedMb))
+    if (Math.round(next * 100) === Math.round(held * 100)) return null
     factors[learned] = Math.round(next * 100) / 100
     const file = join(appRoot, FACTORS_FILE)
     try {
@@ -220,5 +235,6 @@ export const learnPeak = (appRoot: string, kind: string, plannedMb: number, peak
     } catch {
         return `starci: ${kind} peaked at ${String(Math.round(peakMb))} MB over its planned ${String(plannedMb)} MB; ${FACTORS_FILE} could not be written, so the next run plans the same`
     }
-    return `starci: ${kind} peaked at ${String(Math.round(peakMb))} MB, over its planned ${String(plannedMb)} MB by more than ${String(abovePercent)}%; its factor is now x${factors[learned].toFixed(2)} for this app's next run (${FACTORS_FILE})`
+    if (ease) return `starci: ${kind} peaked at ${String(Math.round(peakMb))} MB, under ${String(EASE_BELOW_PERCENT)}% of its planned ${String(plannedMb)} MB; its factor eases to x${factors[learned].toFixed(2)} for this app's next run (${FACTORS_FILE})`
+    return `starci: ${kind} peaked at ${String(Math.round(peakMb))} MB, over its planned ${String(plannedMb)} MB by more than ${String(abovePercent)}%; its factor is now x${factors[learned].toFixed(2)} for this app's next run, at most x${String(MAX_FACTOR)} (${FACTORS_FILE})`
 }

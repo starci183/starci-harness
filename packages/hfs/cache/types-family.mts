@@ -9,7 +9,7 @@ import { createRequire } from 'node:module';
 import { completedNode, runHeavyNode, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { CACHE_DIR } from './types.mjs';
 import { combineHashes, hashFile } from './hash.mjs';
-import { sortFindings } from './jsonl.mjs';
+import { recordLine, sortFindings } from './jsonl.mjs';
 import type { CacheRecord, CheckSession, FamilyReport, Finding } from './types.mjs';
 
 /** The folder of the session that holds the records of this family. */
@@ -138,6 +138,8 @@ export async function runTypesFamily(options: TypesFamilyOptions): Promise<Types
   const previous = new Map(session.records(TYPES_FOLDER).filter((record) => record.step === TSC_STEP).map((record) => [record.path, record]));
   const progress = session.progress.step('types', 'tsc', programs.length);
   const records: CacheRecord[] = [];
+  // Each program is journaled the moment it is judged (journal.mts): a run killed in the next program keeps this one.
+  const journal = session.journal?.(TYPES_FOLDER, 'rec');
   const ran: string[] = [];
   const reused: string[] = [];
   const incomplete: string[] = [];
@@ -159,7 +161,11 @@ export async function runTypesFamily(options: TypesFamilyOptions): Promise<Types
       ran.push(program.name);
       current = parseTscOutput(outcome.output, session.root, program.tsconfig);
       if (current.length === 0 && outcome.status !== 0) incomplete.push(program.name);
-      else if (programKey(program, session, inputs) === key) records.push({ path: program.name, step: TSC_STEP, hash: key, findings: current });
+      else if (programKey(program, session, inputs) === key) {
+        const record: CacheRecord = { path: program.name, step: TSC_STEP, hash: key, findings: current };
+        records.push(record);
+        journal?.append([recordLine(record)]);
+      }
       else incomplete.push(program.name);
     }
     const had = new Set((before?.findings ?? []).map(identity));

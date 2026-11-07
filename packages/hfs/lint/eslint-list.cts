@@ -20,10 +20,32 @@ const { createRequire } = require('node:module') as typeof import('node:module')
 const { pathToFileURL } = require('node:url') as typeof import('node:url');
 
 interface GraphHandoff { out: string; canons: { name: string; entry: string }[] }
-interface Job { files: string[]; fix: boolean; texts?: { file: string; text: string }[]; graph?: GraphHandoff }
-interface Result { errorCount: number; fatalErrorCount: number }
+interface StreamJob { file: string; batch: number }
+interface Job { files: string[]; fix: boolean; texts?: { file: string; text: string }[]; graph?: GraphHandoff; stream?: StreamJob }
+interface Message { ruleId?: string | null; message: string; line?: number; column?: number; endLine?: number; severity?: number; fatal?: boolean }
+interface Result { errorCount: number; fatalErrorCount: number; filePath?: string; messages?: Message[] }
 interface Eslint { lintFiles(files: string[]): Promise<Result[]>; lintText(code: string, options: { filePath: string }): Promise<Result[]> }
 interface EslintApi { ESLint: { new (options: { cwd: string; fix: boolean }): Eslint; outputFixes(results: Result[]): Promise<void> } }
+
+/**
+ * Lints `files` `stream.batch` at a time with the one ESLint instance (its typed program and project graph are built once), and after each batch appends one line per
+ * file, `{ key, messages }` (key: the file relative to this folder, posix), to the journal file `stream.file`: a run killed part way leaves every finished batch
+ * there, and a line the kill cut short does not parse and is dropped by the reader. The report on stdout is the whole list, as without a stream.
+ */
+async function lintStreamed(eslint: Eslint, files: string[], stream: StreamJob, cwd: string): Promise<Result[]> {
+  const results: Result[] = [];
+  const size = Math.max(1, Math.floor(stream.batch));
+  for (let at = 0; at < files.length; at += size) {
+    const batch = await eslint.lintFiles(files.slice(at, at + size));
+    results.push(...batch);
+    const lines = batch.map((result) => JSON.stringify({
+      key: path.relative(cwd, result.filePath ?? '').split(path.sep).join('/'),
+      messages: (result.messages ?? []).map(({ ruleId, message, line, column, endLine, severity, fatal }) => ({ ruleId, message, line, column, endLine, severity, ...(fatal === true ? { fatal } : {}) })),
+    }));
+    if (lines.length > 0) fs.appendFileSync(stream.file, `${lines.join('\n')}\n`);
+  }
+  return results;
+}
 
 /** Writes the snapshot of the graph each named canon built in this process; a canon that cannot answer is left out. */
 async function handOutGraph(handoff: GraphHandoff, repoRoot: string): Promise<void> {
@@ -43,7 +65,8 @@ async function main(): Promise<number> {
   const { ESLint } = createRequire(path.join(cwd, 'package.json'))('eslint') as EslintApi;
   const eslint = new ESLint({ cwd, fix: job.fix });
   const results: Result[] = [];
-  if (job.texts === undefined) results.push(...await eslint.lintFiles(job.files));
+  if (job.texts === undefined && job.stream !== undefined && !job.fix) results.push(...await lintStreamed(eslint, job.files, job.stream, cwd));
+  else if (job.texts === undefined) results.push(...await eslint.lintFiles(job.files));
   else for (const { file, text } of job.texts) results.push(...await eslint.lintText(text, { filePath: path.resolve(cwd, file) }));
   if (job.fix) await ESLint.outputFixes(results);
   if (job.graph !== undefined) await handOutGraph(job.graph, cwd);

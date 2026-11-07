@@ -1,16 +1,21 @@
 // session.mts - the disk-backed CheckSession of `starci app check`. It decides per family whether a run is full or diff
 // (the rules of contexts/project/check-cache.md "When a run is full"), serves the trusted records of a folder, takes the records a family
-// replaces and writes them once on flush: one JSON Lines file per area, byte-stable, only the files whose bytes changed. In CI it writes
-// nothing and compares the committed cache with what it inherited or computed instead.
+// replaces and writes them once on flush: one JSON Lines file per area, byte-stable, only the files whose bytes changed, each by a temp file and a rename.
+// A host run also journals (journal.mts): a family appends what it judges while it runs, `replace` journals the family's whole record set the moment the
+// family finishes, and the next run serves those entries like records when their fingerprint and content key still match, so a killed run loses only
+// what was not judged yet; flush compacts a folder's journal into the committed files and removes it. In CI it writes nothing and compares the
+// committed cache with what it inherited or computed instead.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createContentIndex } from './content-index.mjs';
-import { computeFingerprint, differencesByFamily, familyOfFolder, fingerprintDifferences, parseFingerprint, serializeFingerprint, type Fingerprint } from './fingerprint.mjs';
-import { hashFile, hashText } from './hash.mjs';
-import { groupByArea, parseRecords, recordLine, serializeRecords } from './jsonl.mjs';
+import { computeFingerprint, differencesByFamily, familiesOfPart, familyOfFolder, fingerprintDifferences, parseFingerprint, serializeFingerprint, type Fingerprint } from './fingerprint.mjs';
+import { combineHashes, hashFile, hashText } from './hash.mjs';
+import { createSink, hasJournal, journaledRaw, journaledRecords, journalFolder, journalFolders, pruneJournal, removeJournal, writeAtomic, writeLinesAtomic } from './journal.mjs';
+import { groupByArea, parseRecords, recordLine, serializeRecords, sortRecords } from './jsonl.mjs';
+import { toolCacheDir } from './run-log.mjs';
 import { SECRETS_FOLDER, safeSecretRecords } from './secret-records.mjs';
 import { readCacheDir, resolveTrust, verifyCommitted, type CacheVerdict, type TrustSource } from './trust.mjs';
-import { CACHE_DIR, type CacheRecord, type CheckSession, type ContentIndex, type FamilyDecision, type FamilyId, type FamilyReport, type FlushResult, type ProgressSink } from './types.mjs';
+import { CACHE_DIR, type CacheRecord, type CheckSession, type ContentIndex, type FamilyDecision, type FamilyId, type FamilyReport, type FlushResult, type JournalSink, type ProgressSink } from './types.mjs';
 
 const FINGERPRINT_FILE = 'fingerprint.jsonl';
 /** The folders whose records are held as their lines and parsed only when read (jsonl.mts lazyRecord): the per-spec coverage of the test family. */
@@ -26,6 +31,8 @@ export interface DiskSessionOptions {
   readonly full?: ReadonlySet<FamilyId> | undefined;
   /** A run that neither reads nor writes the cache (a coverage report judged on its own). */
   readonly bypass?: boolean | undefined;
+  /** The folder of the journals (default: `journal/` of the app's untracked tool cache); false turns journaling off. */
+  readonly journalRoot?: string | false | undefined;
   /** Seams for specs. */
   readonly trust?: TrustSource | undefined;
   readonly fingerprint?: Fingerprint | undefined;
@@ -55,10 +62,12 @@ function writeIfChanged(file: string, text: string, written: string[]): void {
   let current: string | undefined;
   try { current = fs.readFileSync(file, 'utf8'); } catch { current = undefined; }
   if (current === text) return;
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, text);
+  writeAtomic(file, text);
   written.push(file);
 }
+
+/** The temp files an interrupted atomic write left beside the cache's own files. */
+const TEMP_FILE = /.tmp-d+$/u;
 
 function filesUnder(dir: string): string[] {
   const out: string[] = [];
@@ -127,6 +136,78 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
 
   const writes = !forcedFull && fingerprint.portable && trust.kind === 'worktree';
 
+  // ---- the journal (journal.mts): host runs only, since a run that writes no cache has nothing to keep and trusts nothing it did not compute
+  const journalBase = options.journalRoot === false ? undefined : (options.journalRoot ?? path.join(toolCacheDir(root, env), 'journal'));
+  const journalsOn = writes && journalBase !== undefined;
+  const runId = `${Date.now().toString(36).padStart(9, '0')}-${String(process.pid)}`;
+  const journalDir = (folder: string): string => journalFolder(journalBase ?? '', folder);
+  /** The digest of the fingerprint parts `family` reads: a journal entry is read only under the digest it was written under. */
+  const digests = new Map<FamilyId, string>();
+  const digestOf = (family: FamilyId): string => {
+    const known = digests.get(family);
+    if (known !== undefined) return known;
+    const digest = combineHashes(Object.fromEntries(fingerprint.parts.filter((part) => familiesOfPart(part.name).includes(family)).map((part) => [part.name, part.sha256])));
+    digests.set(family, digest);
+    return digest;
+  };
+  const journalWarnings: string[] = [];
+  const sinks = new Map<string, JournalSink>();
+  const isFresh = (family: FamilyId): boolean => options.full?.has(family) === true;
+  /** Whether an earlier run left readable entries for some folder of `family` under this run's fingerprint. */
+  const hasFamilyJournal = (family: FamilyId): boolean => journalsOn && journalFolders(journalBase ?? '').some((folder) => familyOfFolder(folder) === family && hasJournal(journalDir(folder), digestOf(family)));
+  const plans = new Map<FamilyId, { readonly decision: FamilyDecision; readonly rescued: boolean }>();
+  /**
+   * The decision for a family, once per run. A family the fingerprint would run in full (no cache in the tree, a part it reads differs) runs against the
+   * journal instead when an earlier run left entries written under today's parts: they are what a full run computes now, so they are served and the
+   * committed records, computed under the old parts, are not (`rescued`).
+   */
+  const planOf = (family: FamilyId): { readonly decision: FamilyDecision; readonly rescued: boolean } => {
+    const known = plans.get(family);
+    if (known !== undefined) return known;
+    let plan: { readonly decision: FamilyDecision; readonly rescued: boolean };
+    if (isFresh(family)) plan = { decision: { mode: 'full', reason: '--fresh' }, rescued: false };
+    else {
+      const base = global(family);
+      if (base === undefined) plan = { decision: { mode: 'diff', reason: `against ${trust.reason}` }, rescued: false };
+      else if (hasFamilyJournal(family)) plan = { decision: { mode: 'diff', reason: `against the entries an interrupted run of this tree journaled (${base.reason})` }, rescued: true };
+      else plan = { decision: base, rescued: false };
+    }
+    plans.set(family, plan);
+    return plan;
+  };
+  const served = new Map<string, readonly CacheRecord[]>();
+  /** The records of a folder a family reads: the trusted committed ones (none when the family is rescued and its committed records are from other parts) overlaid by the journaled ones, one per key. */
+  const servedRecords = (folder: string): readonly CacheRecord[] => {
+    const hit = served.get(folder);
+    if (hit !== undefined) return hit;
+    const family = familyOfFolder(folder);
+    const committed = family !== null && planOf(family).rescued && folderInvalid(folder) ? [] : (folder === SECRETS_FOLDER ? safeSecretRecords(trustedRecords(folder)) : trustedRecords(folder));
+    let out = committed;
+    if (journalsOn && family !== null && !isFresh(family)) {
+      const entries = journaledRecords(journalDir(folder), digestOf(family), LAZY_FOLDERS.has(folder));
+      if (entries.length > 0) {
+        const byKey = new Map(committed.map((record) => [`${record.path}\0${record.step}`, record] as const));
+        for (const record of entries) byKey.set(`${record.path}\0${record.step}`, record);
+        out = [...byKey.values()];
+      }
+    }
+    served.set(folder, out);
+    return out;
+  };
+  /** A file edited while the run read it gets no record: the records that still match the tree. */
+  const settledRecords = (records: readonly CacheRecord[]): CacheRecord[] => records.filter((record) => index.hashOf(record.path) === undefined || hashFile(path.join(root, record.path)) === index.hashOf(record.path));
+  /** Journals the whole record set of a folder the moment its family has judged it, atomically: a run killed afterwards still has it. */
+  const checkpoint = (folder: string, records: readonly CacheRecord[]): void => {
+    const family = familyOfFolder(folder);
+    if (!journalsOn || family === null) return;
+    try {
+      const lines = sortRecords(settledRecords(records)).map(recordLine);
+      writeLinesAtomic(path.join(journalDir(folder), `${runId}-snap.jsonl`), { journal: 1, kind: 'rec', fp: digestOf(family), ctx: '' }, lines);
+    } catch (error) {
+      journalWarnings.push(`the journal of ${folder} could not be written: ${String((error as Error).message ?? error).split('\n')[0]}`);
+    }
+  };
+
   const session: DiskSession = {
     root,
     index,
@@ -138,15 +219,32 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
       return reports;
     },
     decide(family: FamilyId): FamilyDecision {
-      if (options.full?.has(family) === true) return { mode: 'full', reason: '--fresh' };
-      return global(family) ?? { mode: 'diff', reason: `against ${trust.reason}` };
+      return planOf(family).decision;
     },
     records(folder: string): readonly CacheRecord[] {
-      return replaced.get(folder)?.records ?? (folder === SECRETS_FOLDER ? safeSecretRecords(trustedRecords(folder)) : trustedRecords(folder));
+      return replaced.get(folder)?.records ?? servedRecords(folder);
     },
     replace(folder, records, replaceOptions): void {
       // The secrets family never stores secret material, whoever produced the records (secret-records.mts).
-      replaced.set(folder, { records: folder === SECRETS_FOLDER ? safeSecretRecords(records) : records, depth: replaceOptions?.depth ?? 2 });
+      const held = folder === SECRETS_FOLDER ? safeSecretRecords(records) : records;
+      replaced.set(folder, { records: held, depth: replaceOptions?.depth ?? 2 });
+      checkpoint(folder, held);
+    },
+    journal(folder, kind, context = ''): JournalSink | undefined {
+      const family = familyOfFolder(folder);
+      if (!journalsOn || family === null) return undefined;
+      const name = kind === 'rec' ? `${runId}-inc.jsonl` : `${runId}-raw-${hashText(context).slice(0, 12)}.jsonl`;
+      const key = `${folder}\0${name}`;
+      let sink = sinks.get(key);
+      if (sink === undefined) {
+        sink = createSink(path.join(journalDir(folder), name), { journal: 1, kind, fp: digestOf(family), ctx: context });
+        sinks.set(key, sink);
+      }
+      return sink;
+    },
+    journaled(folder, context): readonly unknown[] {
+      const family = familyOfFolder(folder);
+      return journalsOn && family !== null && !isFresh(family) ? journaledRaw(journalDir(folder), digestOf(family), context) : [];
     },
     unchanged: (paths, captured) => paths.every((file) => {
       const now = hashFile(path.join(root, file));
@@ -161,9 +259,7 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
       const warnings: string[] = [];
       // A file edited while the run read it gets no record.
       const settled = new Map<string, readonly CacheRecord[]>();
-      for (const [folder, { records }] of replaced) {
-        settled.set(folder, records.filter((record) => index.hashOf(record.path) === undefined || hashFile(path.join(root, record.path)) === index.hashOf(record.path)));
-      }
+      for (const [folder, { records }] of replaced) settled.set(folder, settledRecords(records));
       if (trust.kind === 'base') {
         const committed = new Map<string, CacheRecord[]>();
         for (const [file, text] of readCacheDir(root)) {
@@ -180,6 +276,8 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
       if (!writes) return { written, removed, warnings };
       try {
         const base = path.join(root, ...CACHE_DIR.split('/'));
+        // A write a kill interrupted leaves its temp file beside the records; it is no record and no part of the cache.
+        for (const file of filesUnder(base)) if (TEMP_FILE.test(file)) fs.rmSync(file, { force: true });
         const stalePrint = cachedFingerprint.length === 0 || differences.length > 0;
         if (stalePrint) {
           // A part that differs invalidates the folders of the families that read it which this run did not rewrite: they were computed under the old part.
@@ -203,11 +301,23 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
             removed.push(file);
             removeEmptyDirs(path.dirname(file), base);
           }
+          // The folder is committed as the run judged it: its journal is compacted into the files above and is not read again.
+          if (journalsOn) removeJournal(journalDir(folder));
         }
         if (replaced.size > 0 || stalePrint) writeIfChanged(path.join(base, FINGERPRINT_FILE), serializeFingerprint(fingerprint.parts), written);
       } catch (error) {
         warnings.push(`the cache could not be written: ${String((error as Error).message ?? error).split('\n')[0]}`);
       }
+      if (journalsOn) {
+        // What a folder this run did not finish keeps is what the next run resumes from, unless its parts moved on since.
+        for (const folder of journalFolders(journalBase ?? '')) {
+          if (settled.has(folder)) continue;
+          const family = familyOfFolder(folder);
+          if (family === null) removeJournal(journalDir(folder));
+          else pruneJournal(journalDir(folder), digestOf(family));
+        }
+      }
+      warnings.push(...journalWarnings);
       return { written: written.map((file) => path.relative(root, file).split(path.sep).join('/')), removed: removed.map((file) => path.relative(root, file).split(path.sep).join('/')), warnings };
     },
   };

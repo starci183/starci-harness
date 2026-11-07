@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-alpha.85 - 2026-11-07
+
+- Fixed: the heavy-command governor never waits for memory no running command will release. A coverage run whose plan the learned worker factor had grown past the free RAM (a plan of 30 GB on a host with 23.5 GB free less the 8 GB reserve) waited for ever with nothing running. While nothing runs a command is now admitted whatever its estimate, on the room free RAM leaves: a test run takes the workers whose planned heaps fit the room (`plannedWorkerCount`, its parent heap holding the parent and the first worker), one worker when not even the parent fits, and a warning line names the shortfall. A command still waits for memory a running command holds.
+- Changed: a learned memory factor is bounded and decays. It is at most twofold (`MAX_FACTOR`), a run that peaks under 75% of its plan eases a raised factor back toward 1, and no worker heap is planned above the room free RAM leaves. The factors stay in the app's untracked `.starciwork/memory-factors.json`, so they are per checkout and machine.
+
 ## 1.1.0-alpha.76 - 2026-11-05
 
 - Added: `starci app check` plans its memory from the app it judges (`cli/src/harness/memory-plan.ts`, constants in `ops/liveness.yaml` `heavy.plan`, fitted on Nivo). It measures the scope from the git index and file sizes (specs and sources per side, the MB of the coverage records and of every cache record) and sizes the check's parent heap, re-executing itself under that heap when node's limit is lower. It also sizes each side's coverage parent, worker heap and worker count, each tsc program's heap, the CI build steps' heap and the lint ratchet's chunk. `--explain` prints the plan, and @starci/hfs receives it as `STARCI_MEMORY_PLAN`.

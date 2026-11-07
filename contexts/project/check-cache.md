@@ -89,13 +89,15 @@ its files: `[12:04:31 +3m07s 41%] lint fe 312/1840 (17%) reused 1528 checked 312
 overall percentage across the selected families (weighted by each step's file count, a whole-program step counting as
 the files of its side), the step, its files done of its total and its cache hits against the files it judged. On a
 terminal the running line updates in place; anywhere else (CI, a run redirected to a file) only whole lines are written,
-never a carriage return or spinner. `--quiet` suppresses progress and keeps the diagnosis.
+never a carriage return or spinner. `--quiet` suppresses progress and keeps the diagnosis. A family that resumes from what an
+interrupted run journaled ([The journal](#the-journal)) says so in its reason, and counts the results it took from the journal among the ones it judged.
 
 Each run also writes its timings, per family and step (duration, files, reused, checked, full or diff and why), to
 `last-run.json` and appends them to `runs.jsonl` (the last 100 runs) in the untracked tool cache of slot
 `app.tool-cache`, `${STARCI_CACHE_HOME:-%LOCALAPPDATA%/StarCi/cache}/<repo>/app-check/`, where `<repo>` is the app
 folder's name and the first 12 hex digits of the sha256 of its real path. Timings change every run, so they are host
-state and stay out of git; `.starcistacks/cache/` holds results only.
+state and stay out of git; `.starcistacks/cache/` holds results only. The journal of a run in progress lives beside them, in
+`journal/` of the same folder.
 
 ## When a run is full
 
@@ -146,6 +148,30 @@ union-merged `fingerprint.jsonl` holding two digests for one part is a mismatch,
 Hashes are sha256 of the bytes with CRLF normalised to LF for text files (no NUL in the first 8000 bytes, git's own
 test), so a Windows checkout and a Linux CI runner hash one commit alike. The cache folder itself is outside the
 content index and outside every step's file set.
+
+## The journal
+
+A run writes the cache folder when it ends, but it keeps what it has judged as it goes, so a run killed or crashed at any moment loses only what it had
+not judged yet and the next plain run reuses the rest. The journal is host state in the untracked tool cache of slot `app.tool-cache`
+(`<tool cache>/journal/<cache folder>/`, beside the run log), never committed. The code is `packages/hfs/cache/journal.mts` and `session.mts`.
+
+- **What is journaled, and when.** A family's whole record set the moment the family finishes, written as one file by a temp file and a rename. Inside a family: the
+  types family each program as its `tsc` ends; the test family each spec's coverage as the reporter writes it (every 10 seconds); the lint family each file's ESLint
+  result, which the ESLint child itself appends in batches of 250 files to a journal file the family opens for it. A kill therefore loses the batch in progress, and
+  lint at file 6000 of 9549 keeps those 6000 results.
+- **Format.** One file per run, kind and content key, so parallel runs and parallel writers never share a file and nothing is written into another writer's line.
+  A header line carries the digest of the fingerprint parts the family reads (`fp`) and the family's content key (`ctx`); the lines after it are cache record
+  lines or ESLint results. Each append reaches the file before the next batch starts; a line a kill cut short does not parse and is dropped, and the lines before it stand.
+- **Reading.** The next run serves a journaled record like a committed one, and a record is reused only when its hash still matches the tree. A file is read only
+  when its `fp` is the digest of today's parts. A lint result is also read only under today's `ctx`: the digest of the side key, every cross-file input, the
+  installed packages, the base and the paths of the side, so it is equal exactly when the tree is the one the result was judged on. A family the fingerprint would run
+  in full (no cache in the tree, a part it reads differs) runs against the journal instead when an earlier run journaled it under today's parts: those entries are what a
+  full run computes now, so they are served and the committed records, computed under other parts, are not. `--fresh` ignores the journal and writes its own.
+- **Compaction.** When the run ends, `flush` writes the committed files of each folder the run replaced (a temp file and a rename per file, so a kill leaves the old
+  file, and the next flush removes a temp file it finds) and removes that folder's journal. What a folder the run did not finish keeps stays for the next run, and
+  entries written under other parts are removed. What the flush wrote and removed is still what the cache verdict judges.
+- **Trust.** CI writes no journal and reads none: only the cache at the trusted base is trusted there. A run on a host trusts its journal as it trusts its working
+  tree, and a record that reaches the committed cache through it is compared by CI like any other (`HFS_CHECK_CACHE_FORGED`). Proved by `cache-journal.spec.mts`.
 
 ## The fingerprint
 
@@ -312,7 +338,11 @@ that key.
 3. **Rules that read files outside the import graph** (sibling and directory listings, route files, manifests,
    stylesheets). Each lint canon and grammar lint exports `crossFileInputs` beside its config (rule id, kind `content`
    or `exists`, globs relative to the linted file or the side root), proven complete by a spec that runs each rule's
-   fixtures under a file-system recorder and fails on a read neither the declaration nor the import graph covers. A
+   fixtures under a file-system recorder and fails on a read neither the declaration nor the import graph covers. The app root's and the side's own
+   `package.json` stand in a content input by their identity (`manifestIdentity` of `cache/lint-family.mts`): every dependency's version range reduced to a workspace, file
+   or link reference, an alias or a plain registry range, since a canon reads the names, the workspaces and those references of a manifest and never a registry version.
+   A raised pin (`@starci/hfs`, `starci-harness`, a library) therefore dirties no file, while a new, removed or renamed dependency, a `workspaces` entry or a reference
+   dirties every file that reads the manifest. A
    changed path matching a `content` input dirties the files that declare it; an added or removed path dirties its
    `exists` dependants. A canon installed without the declaration makes every change in its side a whole-side lint.
 
@@ -411,8 +441,11 @@ Before its families run, `app check` measures the app from its git index and fil
 coverage records and of every cache record) and sizes each heap from that scope with the constants of `ops/liveness.yaml` `heavy.plan`
 (`cli/src/harness/memory-plan.ts`): the check's own parent heap (it re-executes itself under it when node's limit is lower), each side's coverage
 parent, worker heap and worker count, each tsc program's heap and the files one lint ratchet child takes. Admission holds each planned child at its
-planned MB. A child's sampled peak more than 20% over its plan raises that kind's factor for the app's next run (`.starciwork/memory-factors.json`),
-with a warning, and an out-of-memory names the plan that was in force. `--explain` prints the plan. The per-spec coverage records are held as their
+planned MB, except that a command admitted while nothing else runs is never held back for memory: no running command will release any, so waiting could not help. It
+runs on the room free RAM leaves (a coverage run on the workers whose planned heaps fit it, its parent heap holding the parent and the first worker, and one worker when not
+even the parent fits), and the run prints a warning naming the shortfall. A child's sampled peak more than 20% over its plan raises that kind's factor for the app's next run
+(`.starciwork/memory-factors.json`, untracked and so per checkout and machine), with a warning, by at most twofold; a peak under 75% of its plan eases a raised factor
+back toward 1, and no worker heap is planned above the room free RAM leaves. An out-of-memory names the plan that was in force. `--explain` prints the plan. The per-spec coverage records are held as their
 lines and parsed one at a time (a lazy record, `cache/jsonl.mts`), and their union folds through the preset's merge one record at a time, so the
 parent holds about three times the records' MB, not the seven times their parsed tree took.
 
@@ -455,7 +488,9 @@ or unreadable nightly verify refuses the release gate (`HFS_CHECK_CACHE_VERIFY_L
   side": only the files the run judged and whose hash moved lose their records (every step), the other records are written,
   and the next run finds the edited file without a recorded graph entry, so it and everything that imports it are judged
   again.
-- **A step that throws or a linter that cannot complete** stores nothing of that step.
+- **A step that throws or a linter that cannot complete** stores no record of that step; what a family journaled while it ran stays in its journal for the next run.
+- **A killed run** leaves the committed cache as it was and its journal behind: the next plain run reuses every family it finished and the part of the running one it
+  judged ([The journal](#the-journal)).
 - **Branch switches and merges** are content changes like any edit; a union-merged folder is normalised by the next
   write.
 - **A cache from another hfs or CLI** differs in the hfs and CLI parts, so the records of the hfs-run families are replaced, never read; the other families keep theirs.

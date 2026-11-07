@@ -98,7 +98,8 @@ export const HEAVY_HELD_ENV = "STARCI_HEAVY_HELD"
  * commands burn (`managedCpuPercent`, read only while the CPU is above its ceiling, null otherwise or when the process table
  * cannot be read), the CPU rule that applied (`cpuRule`, null under the ceiling), the count cap, the memory the running commands
  * are estimated to hold, `roomMb` (free RAM less the reserve and what the running commands hold), and `admitted`, how many heavy
- * commands may run now (the running ones plus how many more of the smallest estimate fit), with why. `pressure` is true when no
+ * commands may run now (the running ones plus how many more of the smallest estimate fit), with why, and `shortMb`, the MB of its own
+ * estimate the room lacks while nothing else runs (0 otherwise). `pressure` is true when no
  * command beyond the running ones fits now: the host cannot admit the next one.
  */
 export interface HostLoad {
@@ -110,6 +111,7 @@ export interface HostLoad {
     readonly reserveMb: number
     readonly committedMb: number
     readonly roomMb: number
+    readonly shortMb: number
     readonly running: number
     readonly admitted: number
     readonly pressure: boolean
@@ -145,13 +147,14 @@ const cpuRuleOf = (rules: HeavyRules, cpuPercent: number, managed: number | null
  * Dynamic admission from RAM and CPU. A command of `kind` is admitted when the CPU lets one more start (at or under its ceiling;
  * above it, the rule `cpuRuleOf` names from `managedCpu`, the share the governor's own running commands burn), fewer than the
  * cap run, and (free RAM - reserveMb) covers the estimates of the running commands plus its own; while nothing runs, one is
- * admitted once free RAM covers its own estimate, or half the host's memory (`totalMb`) when its estimate is more than that, so a
- * host under its reserve, and a small host (a two-core CI runner) whose memory never frees a whole estimate, still make progress. The CPU never lifts a RAM
+ * admitted whatever its estimate: no running command will release memory, so waiting could not help (an estimate is an estimate, a
+ * learned factor can overshoot, and a host under its reserve or a small one still makes progress). `shortMb` is how much of its
+ * estimate the room lacks while it is admitted alone; the caller sizes the command to the room and says so. The CPU never lifts a RAM
  * rule. `running` are the kinds running now. Without a kind, `admits` is judged for the smallest estimate (what `host load`
  * reports). `starved` (the queue admitted nothing for cpuStarveMinutes, `starvedQueue`) lets one command start under a hot
  * CPU: high CPU slows the queue, it never stops it.
  */
-export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly RunningRow[] = [], kind?: HeavyKind, starved = false, managedCpu: number | null = null, totalMb: number = Math.floor(totalmem() / 1_048_576), ownMb?: number): HostLoad & { readonly admits: boolean; readonly cpuHolds: boolean } => {
+export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number, running: readonly RunningRow[] = [], kind?: HeavyKind, starved = false, managedCpu: number | null = null, ownMb?: number): HostLoad & { readonly admits: boolean; readonly cpuHolds: boolean } => {
     const cap = slotCap(rules)
     const estimates: Readonly<Record<string, number>> = rules.estimateMb
     // A row of a kind this build does not know (an older or newer CLI) is held at the largest estimate.
@@ -164,18 +167,17 @@ export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number,
     const cpu = hot ? cpuRuleOf(rules, cpuPercent, managedCpu, running.length, starved) : { slots: Number.MAX_SAFE_INTEGER, rule: null }
     const cpuHolds = cpu.slots === 0
     const full = running.length >= cap
-    const alone = Math.min(own, Math.floor(totalMb / 2))
-    const fits = running.length === 0 ? freeMb >= alone : room >= own
+    const alone = running.length === 0
+    const fits = alone || room >= own
     const admits = !cpuHolds && !full && fits
-    const startsOne = freeMb >= alone ? 1 : 0
-    const byRoom = running.length === 0 && room < own ? startsOne : Math.floor(room / own)
+    const byRoom = alone && room < own ? 1 : Math.floor(room / own)
     const fitting = Math.max(0, Math.min(cap - running.length, byRoom))
     const admitted = running.length + Math.min(cpu.slots, fitting)
     const maxSlotsSuffix = rules.maxSlots === undefined ? "" : `, maxSlots ${String(rules.maxSlots)}`
     const reasons = [
         ...(cpu.rule === null ? [] : [cpu.rule]),
         ...(full ? [`${String(running.length)} running reach the cap of ${String(cap)} (floor(cores / 2)${maxSlotsSuffix})`] : []),
-        ...(!cpuHolds && !full && room < own ? [`free RAM ${String(freeMb)} MB less the reserve ${String(rules.reserveMb)} MB and the ${String(committedMb)} MB the running commands hold is under the reserve for one more (${String(own)} MB)`] : []),
+        ...(!cpuHolds && !full && !fits ? [`free RAM ${String(freeMb)} MB less the reserve ${String(rules.reserveMb)} MB and the ${String(committedMb)} MB the running commands hold is under the reserve for one more (${String(own)} MB)`] : []),
     ]
     const capacity = `${String(admitted)} of cap ${String(cap)} fit: free ${String(freeMb)} MB - reserve ${String(rules.reserveMb)} MB - running ${String(committedMb)} MB = ${String(room)} MB room`
     return {
@@ -187,6 +189,7 @@ export const admission = (rules: HeavyRules, freeMb: number, cpuPercent: number,
         reserveMb: rules.reserveMb,
         committedMb,
         roomMb: room,
+        shortMb: alone ? Math.max(0, own - room) : 0,
         running: running.length,
         admitted,
         admits,
@@ -495,7 +498,7 @@ const tryAcquire = (slot: Omit<HeavySlot, "childPid" | "state" | "at"> & { reado
         const freeMb = Math.floor(freemem() / 1_048_576)
         const starved = starvedQueue(db, rules)
         const plannedOf = new Map(rows.map((row) => [row.id, row.mb] as const))
-        const judge = (id: string, kind: string): ReturnType<typeof admission> => admission(rules, freeMb, cpu.cpu, held, kind as HeavyKind, starved, cpu.managed, undefined, plannedOf.get(id))
+        const judge = (id: string, kind: string): ReturnType<typeof admission> => admission(rules, freeMb, cpu.cpu, held, kind as HeavyKind, starved, cpu.managed, plannedOf.get(id))
         const order = servingOrder(rows, rules)
         const first = order.find((row) => judge(row.id, row.kind).admits)
         const load = judge(slot.id, slot.kind)
@@ -582,14 +585,26 @@ export const testWorkerCount = (rules: HeavyRules, roomMb: number | null, cores:
 }
 
 /**
- * The argv of a test runner (jest or vitest, named in the argv) with `--maxWorkers` of `testWorkerCount` for the room its slot
- * was admitted with, unless the argv sets it already. An argv that names neither is returned as it is.
+ * The workers a planned test run of the room `roomMb` gets: its planned parent heap holds the parent and the first worker, and every
+ * further planned worker heap of room one more, clamped to 1..the plan's workers (all of them under a parent's slot, `roomMb` null). The
+ * room is the one admission measured at the start, so the count is the most workers that fit; one when not even the parent fits.
+ */
+export const plannedWorkerCount = (planned: Pick<HeavyPlanned, "memoryMb" | "workerMb" | "workers">, roomMb: number | null): number => {
+    const most = Math.max(1, planned.workers ?? 1)
+    if (roomMb === null || planned.memoryMb === undefined || planned.workerMb === undefined || planned.workerMb <= 0) return most
+    return Math.min(most, 1 + Math.floor(Math.max(0, roomMb - planned.memoryMb) / planned.workerMb))
+}
+
+/**
+ * The argv of a test runner (jest or vitest, named in the argv) with `--maxWorkers` for the room its slot was admitted with, unless the
+ * argv sets it already: the plan's workers that its planned heaps fit in the room (`plannedWorkerCount`), else `testWorkerCount`. An argv
+ * that names neither runner is returned as it is.
  */
 export const testWorkerArgs = (argv: readonly string[], held: Held): readonly string[] => {
     const runner = argv.some((part) => /^(?:jest|vitest)(?:\.[cm]?js)?$/.test(basename(part)))
     if (!runner || argv.some((part) => part.startsWith("--maxWorkers"))) return argv
     const byRoom = testWorkerCount(held.rules, held.roomMb)
-    const workers = held.planned?.workers === undefined ? byRoom : Math.max(1, Math.min(byRoom, held.planned.workers))
+    const workers = held.planned?.workers === undefined ? byRoom : held.planned.workerMb === undefined ? Math.max(1, Math.min(byRoom, held.planned.workers)) : plannedWorkerCount(held.planned, held.roomMb)
     return [...argv, `--maxWorkers=${String(workers)}`]
 }
 
@@ -766,6 +781,9 @@ export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: stri
         return admit(true)
     }
     const { load, announced } = await admit(false)
+    if (load.shortMb > 0) {
+        process.stderr.write(`starci: warning: ${label} is admitted alone with ${String(Math.max(0, load.roomMb))} MB of room (free ${String(load.freeMb)} MB less the ${String(load.reserveMb)} MB reserve) against its ${String(load.roomMb + load.shortMb)} MB estimate, short by ${String(load.shortMb)} MB; nothing else runs, so waiting would free nothing: it runs on that room (a test run with the workers that fit, at least one) and the estimate may be high\n`)
+    }
     if (announced) {
         const waitedMs = Date.now() - started
         withGovernor((db) => db.prepare("INSERT INTO host_events (at, kind, subject, data_json) VALUES (?, 'heavy-wait', ?, ?)").run(now(), label, JSON.stringify({ kind, cwd, waitedMs, pid: process.pid, owner, task })))
