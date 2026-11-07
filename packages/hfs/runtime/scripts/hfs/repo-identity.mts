@@ -60,7 +60,8 @@ export function repositoryName(root: string, { env = process.env }: { env?: Node
   if (repositoryRoot) {
     try {
       const remote = trimTrailingSlashes(git(gitRemote, root, ['get-url', 'origin'], env)).replace(GIT_SUFFIX, '');
-      const name = remote.split(/[/:]/u).pop();
+      // A URL, an scp-style address or a local path, POSIX or Windows (a clone of a folder): the last segment names it.
+      const name = remote.split(/[/\\:]/u).pop();
       if (name) return name;
     } catch { /* No origin remote. */ }
   }
