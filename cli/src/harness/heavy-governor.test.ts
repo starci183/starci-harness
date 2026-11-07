@@ -130,6 +130,15 @@ void test("a second task 5 s after the first sees the room less the first's plan
     assert.match(text, /first \(pid \d+\) planned 8192 MB, admitted \d+ s ago/u)
 })
 
+void test("a command that ended drops its row at once: a test run admitted right after sees the full room, though they share one process", async () => {
+    const free = 30 * GB
+    await run(free, "tsc", "finished-step", [])
+    assert.deepEqual(withMachine((db) => db.prepare("SELECT id FROM heavy_slots").all(), governorStorePath()), [], "the row went with the command, not with its process")
+    const seen: Held[] = []
+    await run(free, "test", "jest-after", [], undefined, (held) => seen.push(held))
+    assert.equal(must(seen[0]).roomMb, free - rules.reserveMb, "no plan of the finished command counts against it")
+})
+
 void test("first come, first served: a command that fits waits behind one that does not, and both start when the holder releases", { skip: !wide }, async () => {
     const order: string[] = []
     const holder = gate()

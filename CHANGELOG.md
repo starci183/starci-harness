@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1.0-alpha.90 - 2026-11-08
+
+- Changed: `starci app check` starts the unit run first: its steps carry a priority and ask the governor in that order (`@starci/hfs` 6.2.1, which the CLI requires once npm serves it, `cli-follow`), so jest is sized on the whole room. Spec `heavy-governor.test.ts`: a finished command's row is gone at once and the next admission sees the full room.
 ## 1.1.0-alpha.89 - 2026-11-08
 
 - Fixed: a whole `starci app check` no longer crashes on a skipped Sonar scan; the fix is in `@starci/hfs` 6.2.0, which the CLI requires once npm serves it (`cli-follow`).

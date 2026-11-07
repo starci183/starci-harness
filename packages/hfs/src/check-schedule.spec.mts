@@ -185,3 +185,54 @@ void test('no step takes more lanes than it can use: a test run gives back what 
   one.give(1);
   assert.equal(await waiting, 1, 'and waits for one when none is free');
 });
+
+void test('the critical path asks the governor first: the unit run is sized on the full room, and the lint and tsc children follow', async () => {
+  const clock = fakeClock();
+  const room = 40_000;
+  const governor = fakeGovernor(clock, room, { test: 30_000, types: 5_000, 'lint be': 5_000, 'lint fe': 5_000 });
+  const lanes = createLanes(27);
+  // Every body asks at once, the low-priority steps listed first: the graph's priorities, not the order of asking, decide who is admitted first.
+  const bodies = new Map<StepId, StepBody>([
+    ['types', child('tsc', 'types')],
+    ['lint', async ({ execute }) => { await Promise.all([child('eslint', 'lint be'), child('eslint', 'lint fe')].map((body) => body({ execute, parity: governor.parity, lanes }))); }],
+    ['test', child('test', 'test')],
+  ]);
+  const runs = await clock.drive(runGraph({ bodies, execute: governor.run, parity: governor.parity, lanes, clock }));
+  assert.equal(governor.ran[0]?.label, 'test', 'the unit run is admitted first');
+  const jest = governor.ran[0] as Ran;
+  assert.equal(jest.workers, Math.floor((room - NEED.test) / WORKER_MB) + 1, 'sized on the whole room, none of it taken by a lint child');
+  assert.equal(stepRow(byId(runs, 'test'), undefined).workers, jest.workers);
+  const lint = governor.ran.filter((entry) => entry.label.startsWith('lint'));
+  assert.equal(lint.length, 2);
+  for (const entry of lint) assert.ok(entry.start >= jest.end, `${entry.label} was admitted after the unit run, on what it left`);
+  assert.ok(CHECK_GRAPH.find((spec) => spec.id === 'test')?.priority as number > (CHECK_GRAPH.find((spec) => spec.id === 'lint')?.priority as number), 'the graph ranks the unit run above lint');
+  assert.ok((CHECK_GRAPH.find((spec) => spec.id === 'lint')?.priority as number) > (CHECK_GRAPH.find((spec) => spec.id === 'types')?.priority as number), 'and lint above tsc');
+  assert.equal(lanes.free(), 27, 'every lane is back once the steps ended');
+});
+
+void test('a lower step stops waiting for a higher one that has not asked within the launch wait, and a higher step that ended frees it at once', async () => {
+  const clock = fakeClock();
+  const governor = fakeGovernor(clock, 40_000, { types: 1_000 });
+  const lanes = createLanes(7);
+  const bodies = new Map<StepId, StepBody>([
+    ['test', async () => { await clock.sleep(10_000); }],
+    ['types', child('tsc', 'types')],
+  ]);
+  await clock.drive(runGraph({ bodies, execute: governor.run, parity: governor.parity, lanes, clock, launchWaitMs: 2_000 }));
+  assert.equal(governor.ran[0]?.start, 2_000, 'tsc asked once the wait on the silent unit run passed');
+  const cached = fakeClock();
+  const second = fakeGovernor(cached, 40_000, { types: 1_000 });
+  await cached.drive(runGraph({ bodies: new Map<StepId, StepBody>([['test', async () => undefined], ['types', child('tsc', 'types')]]), execute: second.run, parity: second.parity, lanes, clock: cached, launchWaitMs: 2_000 }));
+  assert.ok((second.ran[0]?.start ?? 1) < 2_000, 'a unit run that ran no child (all cached) holds nothing up');
+});
+
+void test('a step whose work is wholly reused asks no slot, so the unit run keeps the whole room', async () => {
+  const clock = fakeClock();
+  const room = 40_000;
+  const governor = fakeGovernor(clock, room, { test: 10_000 });
+  const lanes = createLanes(27);
+  const bodies = new Map<StepId, StepBody>([['lint', async () => undefined], ['types', async () => undefined], ['test', child('test', 'test')]]);
+  await clock.drive(runGraph({ bodies, execute: governor.run, parity: governor.parity, lanes, clock }));
+  assert.deepEqual(governor.ran.map((entry) => entry.label), ['test'], 'only the unit run was admitted');
+  assert.equal(governor.ran[0]?.workers, Math.floor((room - NEED.test) / WORKER_MB) + 1);
+});

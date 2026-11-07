@@ -1,5 +1,8 @@
 # Changelog
 
+## 6.2.1 - 2026-11-08
+
+- Changed: `app check` starts its critical path first. Each step of `CHECK_GRAPH` declares a static `priority` (the unit run, then lint, the structure pass, tsc, wiring, the rest); ready steps start highest first, and a child asks the governor, and takes its lanes, only once every ready or running step of a higher priority has had a child admitted, has ended or `LAUNCH_WAIT_MS` passed. The jest run is sized on the whole room, not on what lint and tsc children left, and an inline step waits only for higher-priority child steps. A step wholly reused from the cache asks no slot. Specs: `src/check-schedule.spec.mts`.
 ## 6.2.0 - 2026-11-08
 
 - Fixed: a whole `starci app check` crashed with `Cannot read properties of undefined (reading 'title')` after a Sonar scan that was skipped (no token, server or permission): the catalog explanations were read only for `CI_PARITY_SONAR_SCAN_FAILED` and `CI_PARITY_SONAR_GATE_FAILED`, so the warning `CI_PARITY_SONAR_SKIPPED` reached `withWhy` with none, and the run ended with no run record and no cache flush. The check reads the explanation of every code the scan returns, and `withWhy` throws an internal error naming a code that has no catalog entry loaded. Spec: `src/check-report-why.spec.mts`. A crash in the report writes no cache and no run record; the journal keeps the judged families (`contexts/project/check-cache.md` "The journal").

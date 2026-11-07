@@ -471,9 +471,13 @@ CI build step, the boot proof, the contract compiler, the Sonar scanner) is admi
 workers and gives back at its admission what its room did not size, so the children of all steps together never pass cores - 1 and one step never holds what it
 cannot use. A step starts the moment the steps it needs have ended, whatever their verdict: a red or failed family never stops another, and one run reports every
 finding. A step that throws (a child the host held, `HOST_HELD` or `HEAVY_DEFERRED`, a refused or incomplete execution, a crash) reached no measurement:
-once every other step has ended, the run ends with its error (a hold of the host first), as a run of that step alone would. The ready steps start in graph order, the longest path first (`test`), since the governor serves first come, first served. A
+once every other step has ended, the run ends with its error (a hold of the host first), as a run of that step alone would. Each step of `CHECK_GRAPH` declares a static `priority`, its expected weight on the
+run's critical path: the unit run (`test`) first, then `lint`, the structure pass (`hfs`), `types`, `wiring`, and the rest. Ready steps start highest first, and
+the scheduler lets a child ask the governor, and take its lanes, only once every ready or running step of a higher priority has had a child admitted, has ended
+(a unit run served wholly from the cache ends with no child), or `LAUNCH_WAIT_MS` passed. So the jest run is requested and sized on the whole room, never on
+what a lint or tsc child left, and the other steps take what is left, first come, first served, as the governor serves. A
 step whose work runs in this process (the structure rules, the lint graphs, Prettier, the baselines) holds its one thread while it computes, so it starts only once
-every running child step has its child admitted (or `LAUNCH_WAIT_MS` passed), and the children then run beside it.
+every running child step of a higher priority has its child admitted (or `LAUNCH_WAIT_MS` passed), and the children then run beside it.
 
 Each step writes only its family's own records and journal files ([The journal](#the-journal); the parallel ESLint chunks of a side each their own file), so no
 two steps share a mutable file; the fingerprint is taken once when the session opens, before the graph, and the session is flushed once, after every step ended,
