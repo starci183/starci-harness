@@ -93,6 +93,7 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ### Changed
 
+- The CLI requires @starci/hfs@6.0.0, its pin in contexts/stack/pins.yaml (CONTRIB-20 step 2, by the cli-follow job of ci.yml).
 - One rule book. A policy exception that rests on a rule is `kind: rule` with `cites: <rule id>`, and `branchProfiles` cites its rule the same way; the id is resolved against the rule book (every heading id and yaml `id:` of `contexts/` and `CONTRIBUTING.md`, `cli/src/harness/rule-book.ts`), else `EXCEPTION_RULE_UNKNOWN`. The removed form (`kind: ruling`, `decision:`) is refused `POLICY_INVALID` with the form that replaces it. App migration: an app's `policy/loosening.yaml` writes `kind: rule` and `cites:`.
 - `starci contexts anatomy` keeps no pending list: a rule judged only by planned enforcers is listed, never red (`ANATOMY_PENDING_UNRULED` and `ANATOMY_PENDING_STALE` are gone). The removed Grammar names come from `@starci/hfs` `modules/kernel/removed-vocabulary.yaml` (kind `grammar`), the wrappers digest from `contexts/vendor/pins.yaml`, and a wrapper override gives its reason and cites `rule:` when a rule decides it (`ANATOMY_WRAPPER_RULE_UNKNOWN`).
 - `starci contexts anatomy` refuses `ANATOMY_RULING_HISTORY`: a line of `contexts/`, `policy/` or a package's source, runtime, knowledge or docs that cites an owner ruling, a decision id or its date instead of the rule. The rule-doc gate reads every hand-written page of the contexts, the generated ones aside.
