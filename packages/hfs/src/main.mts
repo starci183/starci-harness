@@ -1,6 +1,6 @@
 // The @starci/hfs implementation behind `starci app`: one repository, `<app>/`, with one package.json, lockfile and node_modules
 // at its root and two sides, be/ and fe/, declared by the one hfs.json of kind app. Every verb runs at the app root.
-//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|build|audit|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--no-cache] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
+//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|build|audit|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
 //                                            every tracked path has a slot; required files exist; nothing forbidden or
 //                                            tracked-that-must-be-ignored; pins match; every managed file equals its render
 //                                            (sync/managed.mjs, the .gitignore block and sonar-project.properties included); no empty or ghost
@@ -12,16 +12,17 @@
 //                                            front-end and back-end source rules), each violation a finding with its why.
 //                                            ESLint executes once per side through the installed managed config; the FE config composes
 //                                            the universal canon and the explicitly selected Grammar-family canon.
-//                                            The results are committed in .starcistacks/cache/ (cache/, contexts/project/check-cache.md): with no selector every
-//                                            local family reuses valid cache records and writes what it judged back; a missing cache, fingerprint change or
-//                                            release selects full automatically. Repeat --gate to select gates; no selector runs every existing family.
-//                                            sonar and codecov select the same combined baseline predictions, not server verdicts. --no-cache recomputes the
-//                                            selected families and writes the refreshed cache; it does not bypass writes.
+//                                            The results are committed in .starcistacks/cache/ (cache/, contexts/project/check-cache.md): a run with no selector
+//                                            runs every family diff-only against the cache (reusing every valid record and recomputing what a change or a moved pin
+//                                            invalidated), the CI-parity families (build, audit) and CI's coverage step, writes what it judged back, and refuses a
+//                                            tree whose committed cache that run changed or that holds uncommitted cache files (HFS_CHECK_CACHE_UNWARMED), a host
+//                                            that cannot write a portable cache (HFS_CHECK_CACHE_UNPORTABLE) or a cache file too large to push: every push carries warm
+//                                            records. A missing cache or a fingerprint change selects full automatically. Repeat --gate to select gates (a selector runs
+//                                            those gates alone, with no parity and no cache verdict); sonar and codecov select the same combined baseline predictions, not
+//                                            server verdicts. --fresh is the escape hatch for a broken or suspect cache: it ignores the records, recomputes the selected
+//                                            families from scratch and writes the refreshed records (commit them, then run plain app check). Never for routine use.
 //                                            Each family prints one diagnosis line (full or diff and why, checked, reused, findings new, known, fixed);
-//                                            progress goes to stderr (--quiet silences it). STARCI_APP_CHECK_CACHE=verify runs diff then full and fails (exit 2)
-//                                            on any difference; =full never reads the cache. --fresh (the managed pre-push hook) also refuses a tree whose
-//                                            committed cache that run changed or that holds uncommitted cache files (HFS_CHECK_CACHE_UNWARMED), or a host
-//                                            that cannot write a portable cache (HFS_CHECK_CACHE_UNPORTABLE): every push carries warm records.
+//                                            progress goes to stderr (--quiet silences it).
 //                                            --coverage-from <lcov> judges a coverage report produced elsewhere (the merge of a sharded unit run) and records nothing.
 //                                            --side be|fe|packages limits the lint gate to one side or to the root packages (a CI matrix runs one per scope). --out <file> writes every finding of the run as ONE
 //                                            Sonar Generic Issue Import document (engine ids starci-hfs, eslint, stylelint). --fix runs ESLint and stylelint with --fix before the
@@ -111,7 +112,7 @@ import { newImages } from '../scaffold/image.mjs';
 import { PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
 import { committedLintCounts, rangeTouched, ratchetBase, ratchetFindings, sessionLintCounts, stagedTouched } from '../lint/ratchet.mjs';
 import { runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
-import { CACHE_ENV, createDiskSession, type DiskSession } from '../cache/session.mjs';
+import { createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
 import { DEFAULT_FAMILIES, runAppFamilies } from '../cache/run.mjs';
 import { runParityFamilies, type ParityRun } from '../cache/parity-family.mjs';
@@ -212,7 +213,7 @@ const PARSED: Record<string, ParsedVerb> = {
     ],
   },
   remove: { run: removeMain, forms: [{ operands: 'module <name>', flags: [] }] },
-  check: { run: checkMain, value: ['--coverage-from', '--shard', '--side', '--out'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--no-cache', '--fix', '--fresh', '--profile', '--ratchet'], edition: true, forms: [{ only: { boolean: ['--json', '--no-cache', '--fix', '--fresh'], list: GATE_FLAGS, value: ['--coverage-from', '--shard', '--side', '--out'] } }, { only: { boolean: ['--staged'] }, edition: false }, { only: { boolean: ['--ratchet'] }, edition: false }, { only: { boolean: ['--profile', '--json'], list: GATE_FLAGS }, edition: false }] },
+  check: { run: checkMain, value: ['--coverage-from', '--shard', '--side', '--out'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--fix', '--fresh', '--profile', '--ratchet'], edition: true, forms: [{ only: { boolean: ['--json', '--fix', '--fresh'], list: GATE_FLAGS, value: ['--coverage-from', '--shard', '--side', '--out'] } }, { only: { boolean: ['--staged'] }, edition: false }, { only: { boolean: ['--ratchet'] }, edition: false }, { only: { boolean: ['--profile', '--json'], list: GATE_FLAGS }, edition: false }] },
   slot: { run: slotMain, boolean: ['--json'], forms: [{ operands: '<path>' }] },
   emit: { run: emitMain, forms: [{}] },
 };
@@ -390,14 +391,13 @@ function selectedFamilies(opts: Opts, fallback: readonly FamilyId[]): Set<Family
   return new Set(given.length > 0 ? given : fallback);
 }
 
-/** How a verb uses the cache: `normal` reads and writes it, `read` reads and writes nothing, `bypass` neither reads nor writes. */
-type CacheUse = 'normal' | 'read' | 'bypass';
+/** How a verb uses the cache: `normal` reads and writes it, `bypass` neither reads nor writes. */
+type CacheUse = 'normal' | 'bypass';
 
 /** Opens the session of a verb over the tracked files of the app: progress on stderr, `--quiet` silent, a terminal rewriting running lines in place. */
 function openSession({ repoRoot, tracked, io, full, use, planned }: { repoRoot: string; tracked: string[]; io: AppIo; full?: Set<FamilyId> | undefined; use: CacheUse; planned: number }): DiskSession {
   const progress = io.quiet === true ? silentProgress : createProgress({ write: (text) => io.stderr(text), tty: io.stderrIsTty === true, planned });
-  const env = use === 'bypass' ? { ...io.env, [CACHE_ENV]: 'full' } : use === 'read' ? { ...io.env, [CACHE_ENV]: io.env[CACHE_ENV] === 'full' ? 'full' : 'verify' } : io.env;
-  return createDiskSession({ root: repoRoot, tracked, env, progress, cliVersion: io.harness?.version, full });
+  return createDiskSession({ root: repoRoot, tracked, env: io.env, progress, cliVersion: io.harness?.version, full, bypass: use === 'bypass' });
 }
 
 /** The app pass of `starci app check`: the families the verb selects, against one cache session, merged into one result. */
@@ -492,7 +492,7 @@ function printCheckProofs(result: Dynamic, out: (text: string) => unknown): void
   if (result.coverage) out(formatCoverageReport(result.coverage));
 }
 
-/** The families only the pre-push gate (`--fresh`) and an explicit `--gate` run: whole CI commands, never cached (cache/parity-family.mts). */
+/** The families only a whole run (no selector) and an explicit `--gate` run: whole CI commands, never cached (cache/parity-family.mts). */
 const PARITY_FAMILIES: readonly FamilyId[] = ['build', 'audit'];
 
 /** The heavy command port of the CLI (`stackIo.heavy`) for the parity families, else a plain child of this process. */
@@ -518,7 +518,7 @@ async function coverageParity(repoRoot: string, lcov: string): Promise<Dynamic[]
 }
 
 /** The flags `check --staged` refuses: it is the pre-commit guard alone, so none of the whole-app pass's options means anything with it. */
-const STAGED_REFUSES = ['--json', '--no-cache', '--fix', '--fresh', '--coverage-from', '--shard', '--side', '--out', ...GATE_FLAGS] as const;
+const STAGED_REFUSES = ['--json', '--fix', '--fresh', '--coverage-from', '--shard', '--side', '--out', ...GATE_FLAGS] as const;
 
 /** The family a finding belongs to, for naming it when a verified run disagrees with the cache. */
 function familyOf(finding: { code?: string | null; engine?: string }): FamilyId {
@@ -542,7 +542,7 @@ async function fixLint({ repoRoot, side, run }: { repoRoot: string; side: string
 }
 
 /** One run of the selected families against the cache, then the coverage proof on top; returns the result, what it took and the raw linter results. */
-async function checkRun({ io, selected: requested, full, use, coverageFrom, side, fix = false, fresh = false }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined; side?: string | undefined; fix?: boolean; fresh?: boolean }): Promise<{ result: Dynamic; seconds: number; raw: LinterRaw }> {
+async function checkRun({ io, selected: requested, full, use, coverageFrom, side, fix = false, whole = false }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined; side?: string | undefined; fix?: boolean; whole?: boolean }): Promise<{ result: Dynamic; seconds: number; raw: LinterRaw }> {
   const { cwd: repoRoot, harness, edition, presets, prettier, checkApp = appPass, runLinter } = io;
   const started = Date.now();
   // The branch profile (branch-profile.mjs): a gate it turns off does not run, a gate it reports runs and records but its findings never count.
@@ -573,8 +573,8 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   if (session !== undefined && selected.has('test')) {
     const tests = await runTestForApp(session, { repoRoot, tracked, execute: io.runHeavyNode });
     extra.push(...tests.findings);
-    // The pre-push gate also runs CI's own coverage step on the merged lcov (`app coverage verify`): the local merge proof (decision ci-parity).
-    if (fresh && tests.result?.lcov !== undefined && tests.findings.length === 0) extra.push(...(await coverageParity(repoRoot, tests.result.lcov)));
+    // A whole run also runs CI's own coverage step on the merged lcov (`app coverage verify`): the local merge proof.
+    if (whole && tests.result?.lcov !== undefined && tests.findings.length === 0) extra.push(...(await coverageParity(repoRoot, tests.result.lcov)));
   }
   if (session !== undefined && (selected.has('build') || selected.has('audit'))) {
     const parity = await runParityFamilies(session, { repoRoot, families: new Set([...selected].filter((family): family is 'build' | 'audit' => family === 'build' || family === 'audit')), env: io.env, run: parityRunner(io) });
@@ -595,8 +595,8 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   }
   const flushed = session?.flush();
   const verdicts = session === undefined ? [] : verdictFindings(session);
-  // the push gate: the committed cache is what this run on the tree writes, or the push is refused
-  if (fresh && session !== undefined && flushed !== undefined) {
+  // The cache verdict of a whole run: the committed cache is what this run on the tree writes, or the run is red (a push would carry stale records).
+  if (whole && session !== undefined && flushed !== undefined) {
     const refusals = freshnessFindings({ root: repoRoot, portable: session.fingerprint.portable, localReasons: session.fingerprint.localReasons, written: flushed.written, removed: flushed.removed });
     verdicts.push(...withWhy(refusals.map((refusal) => ({ code: refusal.code, level: refusal.level, path: refusal.path, message: refusal.message })), readWhy(skillRoot, refusals.map((refusal) => refusal.code))));
   }
@@ -635,22 +635,6 @@ function writeSonarImport({ repoRoot, file, findings, raw, side }: { repoRoot: s
     linterReport('eslint', raw.eslint, { root: repoRoot, sourceRoots, tracked }),
     linterReport('stylelint', raw.stylelint, { root: repoRoot, sourceRoots, tracked }),
   ]));
-}
-
-/** STARCI_APP_CHECK_CACHE=verify: the diff-only run, then the full run, compared finding by finding; any difference names family and file (exit 2). */
-async function verifyCache(io: AppIo, selected: Set<FamilyId>, coverageFrom: string | undefined, side: string | undefined): Promise<number> {
-  const diff = await checkRun({ io, selected, full: undefined, use: 'read', coverageFrom, side });
-  const full = await checkRun({ io, selected, full: new Set(selected), use: 'bypass', coverageFrom, side });
-  const keyed = (result: Dynamic): Map<string, string> => new Map((result.findings as Dynamic[]).map((finding) => [`${finding.code}|${finding.path ?? ''}|${finding.message}`, `${familyOf(finding)}: ${finding.path ?? finding.code}`]));
-  const left = keyed(diff.result);
-  const right = keyed(full.result);
-  const differences = [...left].filter(([key]) => !right.has(key)).map(([, name]) => `diff-only only: ${name}`)
-    .concat([...right].filter(([key]) => !left.has(key)).map(([, name]) => `full only: ${name}`)).sort();
-  io.stdout(`${CACHE_ENV}=verify: diff-only ${diff.seconds.toFixed(1)}s, full ${full.seconds.toFixed(1)}s, ${right.size} finding(s) compared\n`);
-  for (const report of diff.result.families as FamilyReport[]) io.stdout(`  diff-only ${familyLine(report)}\n`);
-  if (differences.length === 0) { io.stdout('  identical\n'); return 0; }
-  for (const difference of differences) io.stdout(`  DIFFERENCE ${difference}\n`);
-  return 2;
 }
 
 /** `--profile`: the branch profile this run is under; with one --gate only that gate's mode (blocking, report or off), the word the managed pre-commit hook reads. */
@@ -707,7 +691,6 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
   const fix = booleanFlag(opts, 'fix') === true;
   const fresh = booleanFlag(opts, 'fresh') === true;
   const explicit = selectedFamilies(opts, []);
-  if (fresh && (explicit.size > 0 || side !== undefined || opts['no-cache'] === true || coverageFrom !== undefined || shard !== undefined || fix)) throw new UsageError('--fresh judges the whole cache of the tree and takes no --gate, --side, --no-cache, --coverage-from, --shard or --fix');
   if (side !== undefined && !['be', 'fe', PACKAGES].includes(side)) throw new UsageError('LINT_SIDE_INVALID: --side is be, fe or packages');
   if (fix && !explicit.has('lint')) throw new UsageError('--fix runs the linters and needs --gate lint');
   if (shard !== undefined) {
@@ -721,16 +704,17 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
     return runTestShard(repoRoot, index, total, io.runHeavyNode);
   }
   // A coverage report judged on its own (the merge job of a sharded run) runs no family; with selectors it comes on top of them.
-  // The pre-push gate (`--fresh`) runs the CI parity families too, so a green push gate is not followed by a red CI build or audit (decision ci-parity).
-  const selected = explicit.size > 0 ? explicit : coverageFrom === undefined ? new Set<FamilyId>(fresh ? [...DEFAULT_FAMILIES, ...PARITY_FAMILIES] : DEFAULT_FAMILIES) : new Set<FamilyId>();
-  const full = opts['no-cache'] === true ? new Set(selected) : undefined;
-  if (io.env[CACHE_ENV] === 'verify') return verifyCache(io, selected, coverageFrom, side);
-  const { result, seconds, raw } = await checkRun({ io, selected, full, use: coverageFrom !== undefined && explicit.size === 0 ? 'bypass' : 'normal', coverageFrom, side, fix, fresh });
+  // A run with no selector is whole: every default family and the CI-parity families (so a green run is not followed by a red CI build or audit), CI's coverage step and the cache verdict.
+  const whole = explicit.size === 0 && side === undefined && coverageFrom === undefined && !fix;
+  const selected = explicit.size > 0 ? explicit : coverageFrom === undefined ? new Set<FamilyId>(whole ? [...DEFAULT_FAMILIES, ...PARITY_FAMILIES] : DEFAULT_FAMILIES) : new Set<FamilyId>();
+  // --fresh: the selected families ignore their records and are recomputed from scratch (and written back).
+  const full = fresh ? new Set(selected) : undefined;
+  const { result, seconds, raw } = await checkRun({ io, selected, full, use: coverageFrom !== undefined && explicit.size === 0 ? 'bypass' : 'normal', coverageFrom, side, fix, whole });
   if (sonarOut !== undefined) writeSonarImport({ repoRoot, file: path.resolve(repoRoot, sonarOut), findings: result.findings, raw, side });
   if (opts.json) out(`${JSON.stringify(result, null, 2)}\n`);
   else { printCheck(result, out); printCheckProofs(result, out); if (result.gate.line) out(`${result.gate.line}\n`); }
   const exit = result.eslint?.errors.length ? 2 : result.ok ? 0 : 1;
-  writeRunLog(repoRoot, { command: `check${[...new Set(listFlag(opts, 'gate') ?? [])].map((gate) => ` --gate ${gate}`).join('')}${side === undefined ? '' : ` --side ${side}`}${fix ? ' --fix' : ''}${opts['no-cache'] === true ? ' --no-cache' : ''}${fresh ? ' --fresh' : ''}${coverageFrom === undefined ? '' : ` --coverage-from ${JSON.stringify(coverageFrom)}`}`, seconds, exit, families: (result.families as FamilyReport[]).map((report) => ({ ...report, seconds: 0 })) }, io.env);
+  writeRunLog(repoRoot, { command: `check${[...new Set(listFlag(opts, 'gate') ?? [])].map((gate) => ` --gate ${gate}`).join('')}${side === undefined ? '' : ` --side ${side}`}${fix ? ' --fix' : ''}${fresh ? ' --fresh' : ''}${coverageFrom === undefined ? '' : ` --coverage-from ${JSON.stringify(coverageFrom)}`}`, seconds, exit, families: (result.families as FamilyReport[]).map((report) => ({ ...report, seconds: 0 })) }, io.env);
   return exit;
 }
 

@@ -1,8 +1,8 @@
 {{header}}
-# The nightly verify of the committed check cache (contexts/project/check-cache.md, "The nightly verify"; ruling release-gate-warm-cache). The release
-# gate and every CI run trust the warm cache; this run proves that trust on the default branch: `STARCI_APP_CHECK_CACHE=verify` judges every family
-# diff-only against the cache main's CI verified, then in full, and compares. Any difference fails the run naming the family and the record, and a
-# failed run locks `starci app release gate` (HFS_CHECK_CACHE_VERIFY_LOCKED) until a green run of this workflow, scheduled or dispatched, clears it.
+# The nightly verify of the committed check cache (contexts/project/check-cache.md, "The nightly verify"). The release gate and every CI run trust the
+# warm cache; this run proves that trust on the default branch: `starci app check --fresh` recomputes every family from scratch and the run fails
+# (HFS_CHECK_CACHE_UNWARMED) when the committed records are not the ones it produced. A failed run locks `starci app release gate`
+# (HFS_CHECK_CACHE_VERIFY_LOCKED) until a green run of this workflow, scheduled or dispatched, clears it.
 name: cache verify
 
 on:
@@ -26,7 +26,6 @@ jobs:
 {{> app/ci-workflows/install-steps.yml}}
 {{ciPackagesBuild}}
       - name: verify the committed cache
-        run: npx --no-install starci app check
+        run: npx --no-install starci app check --fresh
         env:
-          STARCI_APP_CHECK_CACHE: verify
           STARCI_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}

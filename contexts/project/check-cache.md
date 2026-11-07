@@ -1,14 +1,11 @@
 # The committed result cache of an app
 
 Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check`
-and the unit specs judge only what differs from the cache, on a developer host and in CI
-alike. Ruling `app-check-cache` (live, owner-approved 2026-10-31) decided: `HFS_CHECK_CACHE_FORGED` is a hard blocker at
-any count and `HFS_CHECK_CACHE_STALE` and `HFS_CHECK_CACHE_MISSING` only warn in CI. Rulings `warm-cache-push` and
-`release-gate-warm-cache` (2026-11-04, [harness/decisions.md](../harness/decisions.md)) decided that app check and CI run on
-the warm committed cache: every push carries fresh records from a real run, the release gate trusts them, and a nightly verify
-proves the trust. The code is `packages/hfs/cache/`; the slot is `app.starcistacks.cache` (slots 3.15.0). Its one rule is
-that a reused result is always the one a full run would produce now; whenever the cache cannot prove that, the step runs in
-full.
+and the unit specs judge only what differs from the cache, on a developer host and in CI alike. `HFS_CHECK_CACHE_FORGED`
+is a hard blocker at any count; `HFS_CHECK_CACHE_STALE` and `HFS_CHECK_CACHE_MISSING` only warn in CI. Every push carries
+the records of a real run, the release gate trusts them, and a nightly run proves the trust. The code is
+`packages/hfs/cache/`; the slot is `app.starcistacks.cache`. Its one rule is that a reused result is always the one a full
+run would produce now; whenever the cache cannot prove that, the step runs in full.
 
 ## The operating procedure
 
@@ -26,21 +23,29 @@ For a lane, a lead, an app session and CI alike:
    around in the app.
 5. `starci app check --fresh` is the escape hatch for a broken or suspect cache. It ignores the cache, judges everything
    again and rewrites the records. It is not for routine use.
-5. Release with `starci app release gate`: every row runs diff-only against the warm cache. A red nightly verify refuses it
-   (`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a green `cache-verify.yml` run; `--full` is the owner's explicit full gate.
+Release with `starci app release gate`: every row runs diff-only against the warm cache, and a red nightly run refuses it
+(`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a green `cache-verify.yml` run; `--full` runs the `app-check` row as `app check --fresh`.
 
 ## The command surface
 
-`starci app check` with no selector runs every existing family against the committed cache and writes what it judged
-back into it. A branch profile ([lint.md](lint.md) PROJECT-LINT-2) changes no cache rule: a family it reports runs and writes
-its records exactly as a blocking one, and a family it turns off runs nothing and writes nothing. `--gate <name>` selects a gate and may be repeated; `--no-cache` runs selected work fresh and writes
-the refreshed records through the same cache writer. The default and a selected gate reuse valid cache records.
+`starci app check` with no flag is a whole run: every family against the committed cache (diff-only), the CI-parity families
+([CI parity](#ci-parity)), CI's coverage step, and the cache verdict, which is a hard error. It writes what it judged back
+into the cache. A branch profile ([lint.md](lint.md) PROJECT-LINT-2) changes no cache rule: a family it reports runs and writes
+its records exactly as a blocking one, and a family it turns off runs nothing and writes nothing.
+
+`--fresh` is the escape hatch for a broken or suspect cache: the selected families (every family when none is selected)
+ignore their records, are recomputed from scratch, and their records are rewritten through the same writer; the cache verdict
+then says whether the committed records changed. There is no other cache mode and no environment variable.
+
+`--gate <name>` (repeatable) is a job selector for the parallel jobs of the managed CI, where each job judges one family, and for
+the one-family loop a hook runs; a run with a selector judges those gates alone, with no parity families and no cache verdict.
+Agents run plain `app check`.
 
 ```text
 starci app check
+starci app check --fresh
 starci app check --gate hfs
 starci app check --gate sonar --gate codecov
-starci app check --gate hfs --no-cache
 ```
 
 | selector | family (the measured steps) | records |
@@ -54,8 +59,9 @@ starci app check --gate hfs --no-cache
 | `--gate lint` | ESLint per side and stylelint | `lint/` |
 | `--gate test` | the unit specs, their coverage merged into one report and its per-file threshold | `test-coverage/` |
 | `--gate sonar`, `--gate codecov` | the existing combined Sonar and Codecov predictions from the merged coverage, the lint findings and the clones; either selector invokes this family, both together invoke it once | `sonar-baseline/`, `codecov-baseline/` |
+| `--gate build`, `--gate audit` | the CI-parity families ([CI parity](#ci-parity)), never cached | none |
 
-The ten public gate names dispatch to the same nine core families. Selecting `codecov` exposes the combined
+The twelve public gate names dispatch to eleven families (`sonar` and `codecov` share one). Selecting `codecov` exposes the combined
 prediction family through the CLI; it adds no server adapter, new pass condition or separate cache algorithm.
 
 Every family reports its diagnosis on its own line, `<family>: <full|diff> (<reason>), checked <n>, reused <n>;
@@ -63,13 +69,10 @@ findings <new> new, <known> known, <fixed> fixed`, where known findings are thos
 always says what is wrong and whether it is new. A rule that always runs (the managed files, the tree and
 untracked entries, the rules that stat or walk the work tree) still records its findings for that comparison; it never skips work on them. `--json` carries the same per family.
 
-The flags of today reconcile as follows. `--fast` and its `--base` are removed: the default run is diff-only and, unlike `--fast`, its result equals a full run's (clones and dead
-exports included), and CI derives its trusted base itself. `wiring` is the family above. `--coverage-from
-<lcov>` stays: it judges a report produced elsewhere (the merge of a sharded full run in CI) and records nothing.
-`--staged` stays the pre-commit guard alone, outside the cache. `--json` stays.
+`--coverage-from <lcov>` judges a report produced elsewhere (the merge of a sharded unit run in CI) and records nothing.
+`--staged` is the pre-commit guard alone, outside the cache. `--json` prints the one envelope.
 
-`app check` is the one verb for app quality (owner, 2026-11-03); there is no `lint` verb. Three flags carry what the lint
-verb carried. `--side be|fe|packages` limits the lint gate to one side, which reads and writes that side's records, or to the
+`app check` is the one verb for app quality; there is no `lint` verb. Three flags carry the lint work. `--side be|fe|packages` limits the lint gate to one side, which reads and writes that side's records, or to the
 root packages, which have none (the CI lint matrix runs one scope per job: `app check --gate lint --side <side> --out
 reports/lint.<side>.sonar.json`, with `packages` in an app that has root packages). `--out <file>`
 writes the merged Sonar Generic Issue Import document of every finding the run produced (the repository findings of the
@@ -99,19 +102,18 @@ state and stay out of git; `.starcistacks/cache/` holds results only.
 | situation | run |
 |---|---|
 | no cache in the tree (a new app, first adoption) | full, and it writes the cache |
-| `--no-cache` | full for the selected families, ignoring their records; it writes the refreshed records |
 | a fingerprint part a family reads differs from the cache's | full for the families that read it, and it rewrites their records |
-| `starci app release gate --full` or a dispatch of `ci.yml` with the `full` input (the owner's explicit opt-in) | full, never reading the cache |
+| `--fresh` (the escape hatch for a broken or suspect cache; `starci app release gate --full` runs its `app-check` row as `--fresh`) | full for the selected families, ignoring their records; it writes the refreshed records |
 | anything else, on a host or in CI, `starci app release gate` and the CI run a release waits for included | diff-only against the trusted cache (below) |
 
 ### The nightly verify
 
-`STARCI_APP_CHECK_CACHE=verify` runs diff-only and then full and fails with exit 2 on any difference, naming family and
-record. The managed `.github/workflows/cache-verify.yml` (slot `app.ci-cache-verify`) runs it on the default branch every
-night and on dispatch, trusting the cache at the branch tip. Its newest finished run is the lock of the release gate
-(`packages/hfs/release/cache-verify-lock.mts`): green, or none yet, leaves the gate open; red or unreadable refuses it with
-`HFS_CHECK_CACHE_VERIFY_LOCKED`, naming the run, until a green run clears it. A forged record stays a hard blocker at any
-count. Times are printed, never stored.
+The managed `.github/workflows/cache-verify.yml` (slot `app.ci-cache-verify`) runs `starci app check --fresh` on the default
+branch every night and on dispatch: every family is recomputed from scratch, and the run fails (`HFS_CHECK_CACHE_UNWARMED`)
+when the committed records are not the ones it produced, so a cache that lies is found there. Its newest finished run is the
+lock of the release gate (`packages/hfs/release/cache-verify-lock.mts`): green, or none yet, leaves the gate open; red or
+unreadable refuses it with `HFS_CHECK_CACHE_VERIFY_LOCKED`, naming the run, until a green run clears it. A forged record
+stays a hard blocker at any count. Times are printed, never stored.
 
 ## Layout and format
 
@@ -347,20 +349,28 @@ The servers stay the judges; a prediction never passes or fails a run.
 
 ## CI parity
 
-The pre-push gate (`starci app check --fresh`) runs what the app's managed CI runs and no other family does, so a green push gate is not followed by a
-red CI on it (R383, decision `ci-parity`). The `build` and `audit` families read their commands from the app's rendered `.github/workflows/ci.yml`,
+A whole `starci app check` (the pre-push hook runs it) runs what the app's managed CI runs and no other family does, so a green run is not followed by a
+red CI on it (R383). The `build` and `audit` families read their commands from the app's rendered `.github/workflows/ci.yml`,
 never restate them, and run each whole on every run that selects them (nothing is cached):
 
 - `audit`: the fast job's production dependency audit (`npm audit --omit=dev --audit-level=high`, or what the quality declaration sets).
 - `build`: the fast job's `npm run typecheck` (build:modules, codegen and tsc: the types family runs the tsc programs, not the script), the build job's
   `npm run build:be` and each `build fe` step, a `next build` per front-end app with its server prerender and route config. A build runs under the
   heavy governor at the memory plan's largest tsc heap, with its own SWC cache root (`LOCALAPPDATA` and `XDG_CACHE_HOME` under the app's tool cache):
-  Windows' hardened loader refuses the SWC binary next build loads from a `%LOCALAPPDATA%\swc` the user does not own.
-- coverage: after the test family merged its records into `be/coverage/lcov.info` and judged it, the gate runs CI's coverage step on it
+  Windows' hardened loader refuses the SWC binary next build loads from a `%LOCALAPPDATA%\swc` the user does not own. On Windows the build also
+  sets `SWC_NATIVE_BINDING_CACHE` to a short folder per app under the user profile (`<profile>\sw\<8 hex of the repo path>`) unless the caller set
+  one: the addon's lock (`swc\swc-native-<SID>\v1\<128 hex>.lock`) under the tool cache is longer than MAX_PATH (`ERR_SWC_NATIVE_CACHE`, os
+  error 3), and a root outside the profile (a drive-root folder) fails the addon's DACL check.
+- coverage: after the test family merged its records into `be/coverage/lcov.info` and judged it, a whole run runs CI's coverage step on it
   (`starci app coverage verify`), the local proof of the merge.
 
-`--gate build` and `--gate audit` run them alone. A failed step is `CI_PARITY_STEP_FAILED` with the step's last lines. The database steps
-(`npm run db:lint`, `starci app db drift`) need a running database and stay CI-only: the pre-push gate does not run them.
+- database migration checks: the build job's last step (`npm run db:lint`, and `starci app db drift` for an app with an entity list) applies the migrations to a
+  scratch database and checks the entity manifest against them, so a manifest that lacks what a migration creates (`BE_ENTITY_SCHEMA_DRIFT`) is found here
+  and not first by CI. The scratch database is a throwaway container (Docker) or the empty database named by `--db-url-env`; a host with neither gets
+  `DB_DRIFT_NEEDS_DATABASE` from the verb, which a whole run reports as the warning `CI_PARITY_DB_SKIPPED` (CI judges the step; a warning never turns a run
+  red, and the run never reports the step green).
+
+`--gate build` and `--gate audit` run them alone. A failed step is `CI_PARITY_STEP_FAILED` with the step's last lines.
 
 ## The memory plan
 
@@ -382,11 +392,12 @@ parent holds about three times the records' MB, not the seven times their parsed
   `.starcistacks/application-stacks.yaml` refuses as an environment.
 - **Templates.** The managed `.gitignore` block re-includes `!.starcistacks/cache/**` after its `.starcistacks/**` deny;
   `.gitattributes` gains the line above; `.prettierignore` skips the folder. The managed CI workflow fetches the trusted
-  base, runs `app check` (the `lint` job: `--gate lint` per side) diff-only against it and uploads the merged lcov (the
-  unit run is sharded: `--gate test --shard <i>/<n>` per job records nothing, and the merge job judges the merged report with
-  `--coverage-from`); it never passes `--no-cache`, and only a dispatch with its `full` input sets `STARCI_APP_CHECK_CACHE=full`.
-  The managed `cache-verify.yml` is the nightly verify, the managed pre-push hook runs `app check --fresh`, and the release
-  gate runs every row diff-only against the warm cache unless `--full` is given.
+  base and runs its jobs diff-only against it: CI runs the families as parallel jobs, so each job selects its family
+  (`app check --gate format`, the `lint` job `--gate lint` per side), the unit run is sharded (`--gate test --shard <i>/<n>` per
+  job records nothing) and the merge job judges the merged report with `--coverage-from`. The selectors are job selectors of CI and never
+  `--fresh`: one plain run would serialize the families that CI runs in parallel. The managed `cache-verify.yml` runs `app check --fresh`
+  nightly, the managed pre-push hook runs plain `app check`, and the release gate runs every row diff-only against the warm
+  cache unless `--full` is given.
 - **Scaffold.** `app scaffold` writes the templates above and no cache; the app's first check builds it in full.
 - **Adoption.** `app sync --execute` and `app upgrade` bring an existing app the same templates and never create,
   move or delete cache records; its first run after them is full and writes the folder, which the developer commits.

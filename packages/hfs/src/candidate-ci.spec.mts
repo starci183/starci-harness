@@ -178,6 +178,7 @@ for (const edition of ['lite', 'full']) {
     const verify = (targets.find(target => target.path === '.github/workflows/cache-verify.yml') as RenderedTarget).content;
     assert.deepEqual(gitTriggerFindings({ files: ['.github/workflows/cache-verify.yml'], read: () => verify }), []);
     assert.match(gitTriggerFindings({ files: ['.github/workflows/images.yml'], read: () => verify }).map(finding => finding.message).join('\n'), /a schedule only cache-verify\.yml/u);
-    assert.match(verify, /STARCI_APP_CHECK_CACHE: verify/u);
+    assert.match(verify, /starci app check --fresh/u);
+    assert.doesNotMatch(verify, /STARCI_APP_CHECK_CACHE/u);
   });
 }

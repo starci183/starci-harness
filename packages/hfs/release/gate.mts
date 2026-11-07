@@ -66,10 +66,15 @@ const WRAPPED = new Set(['npm', 'npx']);
 // Every row the managed CI runs, so a release that does not wait for its candidate CI (release.requireCi false) still ran them all locally:
 // fast (audit, format, typecheck), lint, test + coverage (the managed `test` script is the per-file 100 threshold), build, the lite database lint, and Sonar.
 /**
- * The cache use of every gate row, the urgent back-fill included (contexts/project/check-cache.md, "The release"): diff-only against the warm committed cache
- * the release commit carries, which main's CI verified and the nightly verify watches; `--full`, the owner's explicit opt-in, never reads it.
+ * The cache use of the release gate (contexts/project/check-cache.md, "The release"): every row runs diff-only against the warm committed cache the
+ * release commit carries, which main's CI verified and the nightly run watches. `--full` (an explicit opt-in) runs the `app-check` row as
+ * `starci app check --fresh`: every family is recomputed from scratch and the records are rewritten, so the rows after it reuse what it just judged.
  */
-export const releaseCacheEnv = (full: boolean): Readonly<Record<string, string>> => Object.freeze({ STARCI_APP_CHECK_CACHE: full ? 'full' : '' });
+export const APP_CHECK_COMMAND: readonly string[] = ['npx', 'starci', 'app', 'check'];
+const isAppCheck = (command: readonly string[]): boolean => command.length === APP_CHECK_COMMAND.length && command.every((word, index) => word === APP_CHECK_COMMAND[index]);
+
+/** The command a gate row runs: under `--full` the plain `app check` row gains `--fresh`, every other row is unchanged. */
+export const rowCommand = (command: readonly string[], full: boolean): readonly string[] => (full && isAppCheck(command) ? [...command, '--fresh'] : command);
 const SCRIPT_GATES = ['format:check', 'typecheck', 'build:be', 'lint', 'db:lint', 'build:fe', 'test'];
 // A full app has a test world (integration, e2e and contract projects, always present: the managed `test:e2e` script marks it), so those layers are rows of its gate;
 // a lite app's integration project exists only where it has integration specs, so it has no world rows.
@@ -91,7 +96,7 @@ const scriptGate = (script: string): Gate => ({
 function defaultGates(scripts: Record<string, unknown> | undefined, audit: Gate | null, entities: boolean): Gate[] {
   const present = SCRIPT_GATES.filter((script) => typeof scripts?.[script] === 'string');
   const world = typeof scripts?.['test:e2e'] === 'string' ? WORLD_SCRIPTS.filter((script) => typeof scripts?.[script] === 'string') : [];
-  return [{ name: 'app-check', command: ['npx', 'starci', 'app', 'check'], summary: null, env: {} }, ...(audit ? [audit] : []), ...present.map(scriptGate), ...world.map(scriptGate), ...(entities ? [DB_DRIFT] : [])];
+  return [{ name: 'app-check', command: [...APP_CHECK_COMMAND], summary: null, env: {} }, ...(audit ? [audit] : []), ...present.map(scriptGate), ...world.map(scriptGate), ...(entities ? [DB_DRIFT] : [])];
 }
 
 /** Shared quality settings retain the release reader's audit validation, disabled mode and legacy string host compatibility. */
@@ -329,7 +334,7 @@ export async function runAvailableGate(ctx: VerbContext, gate: Gate, options: Ru
     if (!gate.provider) return runGate(ctx, gate, options);
     // The scanner imports the app's declared external issues report: produce it first with the app's own lint, as the managed CI does.
     const started = ctx.now();
-    const lint = produceLintReports(ctx, { launch, platform: options.platform, env: { ...withoutCredentials(ctx.env, options.credentialNames), ...releaseCacheEnv(options.full === true) } });
+    const lint = produceLintReports(ctx, { launch, platform: options.platform, env: withoutCredentials(ctx.env, options.credentialNames) });
     if (lint.pass) return judgeQualityGate(ctx, gate, runGate(ctx, gate, { ...options, preface: lint.text }));
     fs.writeFileSync(log, lint.text);
     return { name: gate.name, command: gate.command.join(' '), pass: false, detail: 'lint report failed (see log)', seconds: Math.round((ctx.now() - started) / 1000),
@@ -368,9 +373,9 @@ export const withoutCredentials = (values: Record<string, string | undefined> | 
 export function runGate(ctx: VerbContext, gate: Gate, { dir, platform, credentialNames, preface = '', full = false }: RunOptions): GateRow {
   const log = path.join(dir, `${gate.name}.log`);
   const started = ctx.now();
-  const [command, args] = launch(gate.command, platform);
+  const [command, args] = launch([...rowCommand(gate.command, full)], platform);
   // The native scanner alone consumes Sonar credentials; ordinary gates cannot inherit or reintroduce them.
-  const env = { ...ctx.env, ...(gate.provider ? gate.env : withoutCredentials(gate.env, credentialNames)), ...releaseCacheEnv(full) };
+  const env = { ...ctx.env, ...(gate.provider ? gate.env : withoutCredentials(gate.env, credentialNames)) };
   const run = tool(ctx, command, args, { cwd: ctx.cwd, env });
   const output = `${run.stdout ?? ''}${run.stderr ?? ''}`;
   const text = redactGateText(gate, output);
@@ -534,7 +539,7 @@ export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, optio
   // The gate trusts the warm cache unless the owner asked for the full gate; a red or unreadable nightly verify locks it until a green one.
   const full = options.full === true;
   const lock = full ? null : (options.readLock ?? readVerifyLock)(ctx, config.defaultBranch);
-  plan.push(full ? 'cache          full gate (--full): every row judges in full and never reads the committed cache' : `cache          diff-only against the committed cache; ${lock?.line ?? ''}`);
+  plan.push(full ? 'cache          full gate (--full): the app-check row runs `app check --fresh` (every family recomputed, the records rewritten), the rows after it reuse them' : `cache          diff-only against the committed cache; ${lock?.line ?? ''}`);
   if (lock !== null && lock.state !== 'open') return { ok: false, lines: [...plan, `RED: ${lock.line}`, 'nothing was run.'], data: { ...base, red: [lock.line], executed: false, locked: true } };
   if (options.execute !== true) return { ok: true, lines: [...plan, '', 'dry run: no gate was run, nothing written. preconditions OK.'], data: { ...base, red: [], executed: false } };
   const results = await runAll(ctx, config, { dir, common, head: facts.head, platform: options.platform ?? process.platform, credentialNames, full });

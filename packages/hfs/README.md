@@ -17,7 +17,7 @@ starci app add service <dir> <name> [--inject <binding>...] [--cwd <dir>]
 starci app add spec <file>.service.ts [--cwd <dir>]
 starci app add image [--cwd <dir>]
 starci app sync [--execute] [--cwd <dir>]
-starci app check [--cwd <dir>] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|codecov> ...] [--side be|fe] [--fix] [--out <sonar file>] [--no-cache] [--json] [--coverage-from <lcov>] [--quiet]
+starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|build|audit|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
 starci app check --staged [--cwd <dir>]
 starci app check --ratchet [--cwd <dir>]
 starci app check --profile [--gate <gate>] [--json] [--cwd <dir>]
@@ -221,16 +221,16 @@ the source-shape, contract-form and front-end rules, and the repository-tree rul
 finding under the machine's own rule id (`BE_TIER_DIRECTION`, `HFS_UNUSED_EXPORT`, `ARCH_OWNER_EXPORT_BYPASS`, ...). A
 repository without `typescript` installed fails with `ARCH_TYPESCRIPT_MISSING`; the check never passes because it could not run.
 
-With no selector `starci app check` runs every family diff-only against the committed cache `.starcistacks/cache/` (contexts/project/check-cache.md) and
-writes what it judged back; the result equals a full run's. `--no-cache` runs selected work fresh and writes the refreshed cache records.
-Repeat `--gate <name>` to combine `hfs`, `format`, `db`, `secrets`, `wiring`, `types`, `lint`, `test`, `sonar` and `codecov`.
-The last two names dispatch to the same existing combined prediction family and execute it once, so ten public choices retain nine core families.
-Predictions remain diagnostics; actual Sonar CI/release checks and Codecov CI uploads keep their existing ownership and verdicts.
-`app check --staged` remains the separate pre-commit guard. Each family prints `<family>: <full|diff> (<reason>), checked n, reused n;
-findings n new, n known, n fixed`. Progress goes to stderr (`--quiet` silences it). `STARCI_APP_CHECK_CACHE=verify` runs diff then full and exits 2 on any difference;
-`STARCI_APP_CHECK_CACHE=full` never reads the cache (the owner's full gate, `app release gate --full`); `app check --fresh`, run by the managed
-pre-push hook, refuses a push whose committed cache a real run on its tree changes (`HFS_CHECK_CACHE_UNWARMED`, `HFS_CHECK_CACHE_UNPORTABLE`), and a red
-nightly `cache-verify.yml` refuses the release gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`).
+With no selector `starci app check` is a whole run: every family diff-only against the committed cache `.starcistacks/cache/` (contexts/project/check-cache.md),
+the CI-parity families (`build`, `audit`) and CI's coverage step, then the cache verdict; it writes what it judged back, and the result equals a full run's.
+A committed cache that run changed or a tree holding uncommitted cache files is `HFS_CHECK_CACHE_UNWARMED`, a host that cannot write a portable cache is
+`HFS_CHECK_CACHE_UNPORTABLE`. `--fresh` is the escape hatch for a broken or suspect cache: it ignores the records, recomputes the selected families (all when none
+is selected) from scratch and writes the refreshed records; never routine. Repeat `--gate <name>` to run those gates alone (a job selector of the managed CI): `hfs`,
+`format`, `db`, `secrets`, `wiring`, `types`, `lint`, `test`, `sonar`, `codecov`, `build` and `audit`. `sonar` and `codecov` dispatch to the same combined prediction family
+and execute it once, so twelve public names retain eleven families. Predictions remain diagnostics; actual Sonar CI/release checks and Codecov CI uploads keep their
+existing ownership and verdicts. `app check --staged` remains the separate pre-commit guard. Each family prints `<family>: <full|diff> (<reason>), checked n, reused n;
+findings n new, n known, n fixed`. Progress goes to stderr (`--quiet` silences it). A red nightly `cache-verify.yml` (`app check --fresh`) refuses the release gate
+(`HFS_CHECK_CACHE_VERIFY_LOCKED`); `app release gate --full` runs its `app-check` row as `--fresh`.
 
 Every run is under the branch profile of the branch it judges (`branches` of `.starcistacks/application-stacks.yaml`, the harness's
 contexts/project/lint.md PROJECT-LINT-2): on a profile branch such as `dev` a gate set to `report` runs and records but its findings are marked

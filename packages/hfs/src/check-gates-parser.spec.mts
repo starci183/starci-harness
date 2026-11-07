@@ -38,10 +38,10 @@ test('the public gate choices retain the nine core families a plain check runs, 
   const result = await probe(t, []);
   assert.equal(result.code, 2);
   assert.match(result.err, new RegExp(PROBE));
-  assert.deepEqual(result.calls, [{ selected: [...DEFAULT_FAMILIES], full: null }]);
+  assert.deepEqual(result.calls, [{ selected: [...FAMILIES], full: null }], 'a run with no selector is whole: every family, the CI-parity ones included');
   const lines = USAGE.split('\n').filter((line) => line.startsWith('starci app check '));
   assert.ok(lines.some((line) => line.includes('[--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|build|audit|codecov>]...')));
-  assert.ok(lines.some((line) => line.includes('[--no-cache]')));
+  assert.ok(lines.some((line) => line.includes('[--fresh]')));
   for (const old of [...FAMILIES.map((gate) => `--${gate}`), '--full']) assert.ok(lines.every((line) => !line.includes(`[${old}]`)), old);
 });
 
@@ -50,22 +50,22 @@ test('gate values accept separate and inline forms and deduplicate the existing 
   assert.match(result.err, new RegExp(PROBE));
   assert.deepEqual(result.calls, [{ selected: ['sonar', 'hfs'], full: null }]);
   for (const gate of ['sonar', 'codecov']) {
-    const one = await probe(t, ['--gate', gate, '--no-cache']);
+    const one = await probe(t, ['--gate', gate, '--fresh']);
     assert.deepEqual(one.calls, [{ selected: ['sonar'], full: ['sonar'] }]);
   }
 });
 
-test('--no-cache forces exactly the selected gates without changing the normal cache lifecycle', async (t) => {
-  const selected = await probe(t, ['--gate', 'format', '--gate=format', '--no-cache']);
+test('--fresh recomputes exactly the selected gates (every family when none is selected) and writes the refreshed records', async (t) => {
+  const selected = await probe(t, ['--gate', 'format', '--gate=format', '--fresh']);
   assert.deepEqual(selected.calls, [{ selected: ['format'], full: ['format'] }]);
-  const every = await probe(t, ['--no-cache']);
-  assert.deepEqual(every.calls, [{ selected: [...DEFAULT_FAMILIES], full: [...DEFAULT_FAMILIES] }]);
+  const every = await probe(t, ['--fresh']);
+  assert.deepEqual(every.calls, [{ selected: [...FAMILIES], full: [...FAMILIES] }]);
 });
 
 test('missing, empty, unknown and retired selectors refuse before a check or cache write', async (t) => {
   const invalid = [
     ['--gate'], ['--gate='], ['--gate', '--json'], ['--gate', ''], ['--gate', ' '],
-    ['--gate', 'bogus'], ['--gate=hfs,lint'], ['--no-cache=false'],
+    ['--gate', 'bogus'], ['--gate=hfs,lint'], ['--no-cache'], ['--no-cache=false'], ['--fresh=false'],
     ...[...FAMILIES.map((gate) => `--${gate}`), '--codecov', '--full'].map((flag) => [flag]),
   ];
   for (const argv of invalid) {
@@ -76,8 +76,8 @@ test('missing, empty, unknown and retired selectors refuse before a check or cac
   }
 });
 
-test('staged checks cannot combine gate selection, no-cache or whole-check modifiers', async (t) => {
-  for (const argv of [['--gate', 'hfs'], ['--no-cache'], ['--json'], ['--shard', '1/2'], ['--coverage-from', 'report.lcov']]) {
+test('staged checks cannot combine gate selection, fresh or whole-check modifiers', async (t) => {
+  for (const argv of [['--gate', 'hfs'], ['--fresh'], ['--json'], ['--shard', '1/2'], ['--coverage-from', 'report.lcov']]) {
     const result = await probe(t, ['--staged', ...argv]);
     assert.equal(result.code, 2);
     assert.match(result.err, /pre-commit guard alone/);
@@ -109,7 +109,7 @@ test('a canonical test-only shard dispatches the unchanged full-unit arguments w
   fs.writeFileSync(path.join(root, 'be', 'package.json'), '{}');
   fs.writeFileSync(path.join(bin, '..', 'package.json'), JSON.stringify({ name: 'jest', exports: { './bin/jest': './bin/jest.cjs' } }));
   fs.writeFileSync(path.join(bin, 'jest.cjs'), `require('node:fs').writeFileSync(${JSON.stringify(receipt)}, JSON.stringify({ argv: process.argv.slice(2), shard: process.env.STARCI_COVERAGE_SHARD }));`);
-  for (const extra of [[], ['--no-cache']]) {
+  for (const extra of [[]]) {
     let err = '';
     const code = await main(['check', '--gate', 'test', '--gate=test', '--shard', '1/2', ...extra], { cwd: root, env: {}, runHeavyNode: nativeTestNode, stdout: () => {}, stderr: text => { err += text; } });
     assert.equal(code, 0, err);
@@ -127,19 +127,16 @@ test('a canonical test-only shard dispatches the unchanged full-unit arguments w
 test('coverage-from alone judges no gate while explicit gates remain selected beside it', async (t) => {
   const alone = await probe(t, ['--coverage-from', 'merged.lcov']);
   assert.deepEqual(alone.calls, [{ selected: [], full: null }]);
-  const selected = await probe(t, ['--coverage-from', 'merged.lcov', '--gate', 'format', '--no-cache']);
+  const selected = await probe(t, ['--coverage-from', 'merged.lcov', '--gate', 'format', '--fresh']);
   assert.deepEqual(selected.calls, [{ selected: ['format'], full: ['format'] }]);
 });
 
-test('--fresh (the push gate) judges every family against the cache and takes no selector or modifier', async (t) => {
-  const fresh = await probe(t, ['--fresh']);
-  assert.match(fresh.err, new RegExp(PROBE));
-  assert.deepEqual(fresh.calls, [{ selected: [...FAMILIES], full: null }]);
-  for (const argv of [['--gate', 'hfs'], ['--side', 'be'], ['--no-cache'], ['--coverage-from', 'r.lcov'], ['--fix', '--gate', 'lint']]) {
-    const refused = await probe(t, ['--fresh', ...argv]);
-    assert.equal(refused.code, 2, argv.join(' '));
-    assert.match(refused.err, /--fresh judges the whole cache of the tree/u, argv.join(' '));
-    assert.deepEqual(refused.calls, [], argv.join(' '));
-  }
-  assert.ok(USAGE.split('\n').some((line) => line.startsWith('starci app check ') && line.includes('[--fresh]')));
+test('--fresh is the one escape hatch: it recomputes every family, or the selected ones, and takes a side', async (t) => {
+  const everything = await probe(t, ['--fresh']);
+  assert.deepEqual(everything.calls, [{ selected: [...FAMILIES], full: [...FAMILIES] }]);
+  const scoped = await probe(t, ['--fresh', '--gate', 'hfs', '--side', 'be']);
+  assert.deepEqual(scoped.calls, [{ selected: ['hfs'], full: ['hfs'] }]);
+  const usage = USAGE.split('\n');
+  assert.ok(usage.some((line) => line.startsWith('starci app check ') && line.includes('[--fresh]')));
+  assert.ok(usage.every((line) => !line.includes('--no-cache')), 'no --no-cache anywhere in the usage');
 });

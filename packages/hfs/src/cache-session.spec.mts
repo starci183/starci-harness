@@ -53,17 +53,17 @@ test('a tree with no cache runs full, writes the records byte-stably and the nex
   assert.equal(fs.readFileSync(path.join(root, '.starcistacks/cache/check/format/root.jsonl'), 'utf8'), bytes);
 });
 
-test('--full, a release env and a differing part each force a full run of the families that read it, with their reason', (t) => {
+test('--fresh, a bypass run and a differing part each force a full run of the families that read it, with their reason', (t) => {
   const root = repo({ 'a.ts': 'x\n' });
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const seed = createDiskSession(options(root, ['a.ts']));
   seed.replace('check/format', [rec('a.ts', 'x\n')]);
   seed.flush();
-  assert.equal(createDiskSession(options(root, ['a.ts'], { full: new Set(['format']) })).decide('format').reason, '--full');
+  assert.equal(createDiskSession(options(root, ['a.ts'], { full: new Set(['format']) })).decide('format').reason, '--fresh');
   assert.equal(createDiskSession(options(root, ['a.ts'], { full: new Set(['format']) })).decide('lint').mode, 'diff');
-  const release = createDiskSession(options(root, ['a.ts'], { env: { STARCI_APP_CHECK_CACHE: 'full' } }));
-  assert.equal(release.decide('lint').mode, 'full');
-  assert.equal(release.writes, false);
+  const bypass = createDiskSession({ ...options(root, ['a.ts']), bypass: true });
+  assert.equal(bypass.decide('lint').mode, 'full');
+  assert.equal(bypass.writes, false);
   const changed = createDiskSession(options(root, ['a.ts'], { fingerprint: { ...PORTABLE, parts: [{ name: 'hfs', sha256: 'h2' }] } }));
   assert.match(changed.decide('hfs').reason, /the hfs parts of the fingerprint differ \(hfs\)/);
   assert.equal(changed.decide('lint').mode, 'diff', 'a new @starci/hfs never re-runs ESLint');
@@ -75,7 +75,7 @@ test('--full, a release env and a differing part each force a full run of the fa
   assert.equal(local.writes, false);
 });
 
-test('the full set used by --no-cache writes refreshed records through the existing normal session', (t) => {
+test('the full set used by --fresh writes refreshed records through the existing normal session', (t) => {
   const root = repo({ 'a.ts': 'x\n' });
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const seed = createDiskSession(options(root, ['a.ts']));

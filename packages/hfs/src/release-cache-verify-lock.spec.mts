@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { tempRoot } from '../runtime/engine/temp-root.mjs';
 import { lockOf, readVerifyLock, VERIFY_LOCKED, VERIFY_WORKFLOW, type VerifyRun } from '../release/cache-verify-lock.mjs';
-import { normalizeRelease, releaseCacheEnv, releaseGate } from '../release/gate.mjs';
+import { normalizeRelease, releaseGate, rowCommand } from '../release/gate.mjs';
 import type { VerbContext } from '../release/index.mjs';
 
 const HEAD = 'd'.repeat(40);
@@ -69,13 +69,15 @@ test('a red nightly verify refuses the release gate before any row runs; the ful
   assert.match((locked.lines ?? []).join('\n'), new RegExp(`RED: ${VERIFY_LOCKED}`, 'u'));
   const full = await gate(contextOf(t, { status: 0, stdout: JSON.stringify([run(1, 'failure', '2026-11-02T00:00:00Z')]) }).ctx, { full: true });
   assert.equal(full.ok, true);
-  assert.match((full.lines ?? []).join('\n'), /full gate \(--full\): every row judges in full/u);
+  assert.match((full.lines ?? []).join('\n'), /full gate \(--full\): the app-check row runs `app check --fresh`/u);
   const green = await gate(contextOf(t, { status: 0, stdout: JSON.stringify([run(2, 'success', '2026-11-03T00:00:00Z')]) }).ctx);
   assert.equal(green.ok, true);
   assert.match((green.lines ?? []).join('\n'), /diff-only against the committed cache; cache verify {3}green/u);
 });
 
-test('every gate row reads the warm cache by default, and only the full gate sets the full cache mode', () => {
-  assert.deepEqual(releaseCacheEnv(false), { STARCI_APP_CHECK_CACHE: '' });
-  assert.deepEqual(releaseCacheEnv(true), { STARCI_APP_CHECK_CACHE: 'full' });
+test('every gate row reads the warm cache by default, and only the full gate runs the app-check row as --fresh', () => {
+  const check = ['npx', 'starci', 'app', 'check'];
+  assert.deepEqual(rowCommand(check, false), check);
+  assert.deepEqual(rowCommand(check, true), [...check, '--fresh']);
+  assert.deepEqual(rowCommand(['npm', 'run', 'lint'], true), ['npm', 'run', 'lint'], 'the other rows reuse the records the fresh row just wrote');
 });

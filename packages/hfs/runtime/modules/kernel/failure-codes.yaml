@@ -3739,7 +3739,7 @@ HFS_CHECK_CACHE_MISSING:
 CI_PARITY_STEP_FAILED:
   title: "A step of the app's managed CI fails locally"
   title_vi: "Một bước của CI được quản lý của app thất bại khi chạy cục bộ"
-  meaning_vi: "`starci app check --fresh` (hook pre-push) chạy các bước CI không cần database đúng như CI chạy chúng (đọc từ .github/workflows/ci.yml: npm audit, script typecheck, npm run build:be, next build từng app fe; và `starci app coverage verify` trên lcov họ test đã gộp). Một bước thất bại ở đây sẽ thất bại trên CI, nên lần push bị chặn."
+  meaning_vi: "`starci app check` (hook pre-push) chạy các bước CI không cần database đúng như CI chạy chúng (đọc từ .github/workflows/ci.yml: npm audit, script typecheck, npm run build:be, next build từng app fe; và `starci app coverage verify` trên lcov họ test đã gộp). Một bước thất bại ở đây sẽ thất bại trên CI, nên lần push bị chặn."
   causes_vi:
     - "Vi phạm R383: next build hoặc build:be lỗi (prerender, cấu hình route, import) dù tsc đã xanh."
     - "Vi phạm R383: npm audit thấy lỗ hổng mức high trong dependency production."
@@ -3749,7 +3749,7 @@ CI_PARITY_STEP_FAILED:
 HFS_CHECK_CACHE_UNWARMED:
   title: "The pushed check cache is not the one a run on its tree writes"
   title_vi: "Cache kiểm tra được push không phải cache mà một lần chạy trên cây này ghi ra"
-  meaning_vi: "`starci app check --fresh` (hook pre-push) chạy mọi họ kiểm tra theo diff với cache trong cây và phải ghi hoặc xóa tệp trong `.starcistacks/cache/`, hoặc cây còn tệp cache chưa commit: bản ghi đi kèm lần push không đủ ấm, nên CI sẽ phải kiểm tra lạnh và vượt ngân sách ESLint."
+  meaning_vi: "`starci app check` (hook pre-push) chạy mọi họ kiểm tra theo diff với cache trong cây và phải ghi hoặc xóa tệp trong `.starcistacks/cache/`, hoặc cây còn tệp cache chưa commit: bản ghi đi kèm lần push không đủ ấm, nên CI sẽ phải kiểm tra lạnh và vượt ngân sách ESLint."
   causes_vi:
     - "Sửa mã mà chưa chạy `starci app check` rồi commit cache"
     - "Nâng phiên bản một pin của harness (một phần fingerprint đổi) nhưng chưa chạy lại một lần cho ấm"

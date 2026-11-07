@@ -31,7 +31,7 @@ behaviour bug).
 | status filter | `--status` | `--state` (ticket list) | `--all` widens a list |
 | list of values | repeatable flag, or comma list, both accepted | `--allow` comma-only (contract new) vs list (supervisor dispatch) | one parser rule |
 | app check gate selection | `--gate <name>`, repeatable | one boolean flag per family | no selector selects all existing families; `sonar` and `codecov` map to the same existing prediction family and execute it once |
-| app check cache refresh | `--no-cache` | `--full` | recomputes selected work through the existing full-run path and writes refreshed cache records; default and `--gate` reuse valid cache |
+| app check cache refresh | `--fresh` | `--no-cache`, `--full`, `STARCI_APP_CHECK_CACHE` | the escape hatch for a broken or suspect cache: ignores the records, recomputes the selected families and writes refreshed records; plain `app check` reuses valid records |
 
 One parser behaviour for every hfs verb (today 7 parser families): `--x v` and `--x=v`; booleans accept `=true|false`; a
 value may not start with `--`; a repeated single-value flag is refused; a flag the action does not take is refused (today
@@ -76,7 +76,7 @@ longer drift.
 | remove | `remove module <name>` | reverses `add module`: the module package, its workspace and dependency registrations and its entry in the managed module registry |
 | upgrade | `upgrade [--execute]` | dry by default (today `--plan` is the dry flag and the default applies); FIX unreachable `--edition` refusal |
 | sync | `sync [--execute]` | `--check` = the default dry run (exit 1 on drift), `--write` -> `--execute`; FOLD `app sonar` (one block of one managed file) into it |
-| check | `check [--gate <hfs\|format\|db\|secrets\|wiring\|types\|lint\|test\|sonar\|codecov> ...] [--side be\|fe\|packages] [--fix] [--out <sonar file>] [--no-cache] [--fresh] [--coverage-from <lcov>] [--json]`; `check --staged` is the separate pre-commit guard and `check --fresh` the pre-push one (the warm cache every push carries) | the ONE verb for app quality: gate selection and cache refresh dispatch to the existing core, `--side` limits the lint gate to one side or to the root packages, `--fix` fixes it and `--out` writes the Sonar import of the run; the local finding threshold, combined provider predictions and actual CI/release service gates keep their existing owners |
+| check | `check [--gate <hfs\|format\|db\|secrets\|wiring\|types\|lint\|test\|sonar\|codecov> ...] [--side be\|fe\|packages] [--fix] [--out <sonar file>] [--fresh] [--coverage-from <lcov>] [--json]`; `check --staged` is the separate pre-commit guard; plain `check` is the one run of the pre-push hook and of an agent | the ONE verb for app quality: gate selection and cache refresh dispatch to the existing core, `--side` limits the lint gate to one side or to the root packages, `--fix` fixes it and `--out` writes the Sonar import of the run; the local finding threshold, combined provider predictions and actual CI/release service gates keep their existing owners |
 | slot | `slot <path> [--json]` | RENAME `app explain` (it names the slot that owns a path) |
 | emit | `emit` | drop the parsed-and-ignored `--json` |
 | world | `world up|down|status` | RENAME the test-world `app stack up|down|status` out of `stack`, which is the Swarm deploy tooling; FIX template `"test:stack": "starci app stack"` (no action, fails) -> `"test:world": "starci app world status"` |

@@ -20,21 +20,14 @@ on:
   pull_request:
     branches: ["main"]
   workflow_dispatch:
-    inputs:
-      full:
-        description: The owner's full run, judging every family without the committed check cache (never the default)
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
 
 # The committed check cache (.starcistacks/cache, contexts/project/check-cache.md): a run judges only what differs from the cache at its trusted base
 # (the first parent of a push to main, the merge-base with main of a release candidate or tag, whose cache main's CI verified); the nightly
-# cache-verify.yml proves that trust. Only a dispatch with the `full` input, the owner's explicit opt-in, judges in full without the cache.
+# cache-verify.yml proves that trust.
 env:
-  STARCI_APP_CHECK_CACHE: ${{ github.event_name == 'workflow_dispatch' && inputs.full && 'full' || '' }}
   STARCI_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
 
 # One run per ref. A pull request run is replaced by the next push to it; every other run, a release tag above all, is never cancelled.

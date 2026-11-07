@@ -42,8 +42,7 @@ on the release tag; the tag run is the release run, and the pipeline keys every 
 | push of `release/candidate-<version>` (apps with `release.requireCi: true`) | the release checks, diff-only against the cache at its merge-base with `main` | built and pushed under `sha-<sha>` | none; the candidate verdict is reused by the tag run |
 | push of tag `v<version>` | the release checks, diff-only against the cache at its merge-base with `main` (check-cache.md "Trust"), or reused from a green candidate run of the same sha | built once, pushed with SBOM and provenance | every environment with `deploy.auto: true`, in declared order, after every required job is green |
 | push of tag `v<version>` whose annotation carries `Starci-Urgent:` | the release checks: this run is the back-fill | built and pushed | skipped when the environment's accepted release already has this sha (the urgent deploy did it); otherwise as a normal tag |
-| schedule (nightly) and `workflow_dispatch` of `cache-verify.yml` on `main` | `STARCI_APP_CHECK_CACHE=verify`: diff-only, then full, compared; red locks the release gate | none | none |
-| `workflow_dispatch` of `ci.yml` with the `full` input (the owner's opt-in) | full, never reading the cache | as the ref | as the ref |
+| schedule (nightly) and `workflow_dispatch` of `cache-verify.yml` on `main` | `app check --fresh`: every family recomputed, red when the committed records differ; red locks the release gate | none | none |
 | `workflow_dispatch` of `stack-deploy.yml` | none; it requires a tag whose CI run is green (or an urgent annotation) | reused by digest from that run | `deploy`, `redeploy` or `rollback` of one environment |
 
 `pull_request` is a new trigger for app workflows (R221 and R251 admit only tags, candidate branches, `main` and the
@@ -75,7 +74,7 @@ plan ──► fast ─┐
 
 **Checks.** The jobs stay the CI standard's shape (`fast`, `lint`, `test`, `coverage`, `build`, `sonar`; ci-standard.yaml
 `jobs`). Every run judges `app check` (the `lint` job: `--gate lint` per side) against the trusted base cache, never with
-`--no-cache`, and the test shards run only the specs whose closure changed; under `full` (every tag run, every candidate run)
+a cold run, and the test shards run only the specs whose closure changed; under `full` (every tag run, every candidate run)
 the units are sharded (`--gate test --shard <i>/<n>`) and the coverage job judges the merged report with `--coverage-from`. Sonar and the
 Codecov upload run on every `full` run, so a release is analysed before it ships rather than only on tags after the fact,
 and the quality gate's verdict, never the scanner's exit, is the job's result (PROJECT-STACKS-8). The verdicts follow

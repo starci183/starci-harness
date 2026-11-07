@@ -8,7 +8,9 @@
 // the app's untracked tool cache): Windows' hardened loader refuses the SWC binary that next build loads from a %LOCALAPPDATA%\swc the user does not
 // own. The database steps (`npm run db:lint`, `app db drift`) need a database and stay CI-only (contexts/project/check-cache.md). Nothing is cached:
 // each runs whole on every run that selects it.
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { toolCacheDir } from './run-log.mjs';
@@ -30,11 +32,19 @@ export interface ParityStep {
 /** A command the families run: the governor's heavy command port when the CLI gives one (`stackIo.heavy`), else a plain child. */
 export type ParityRun = (request: { readonly kind: 'build' | 'install'; readonly label: string; readonly cwd: string; readonly argv: readonly string[]; readonly env: NodeJS.ProcessEnv }) => Promise<{ readonly status: number | null; readonly stdout: string; readonly stderr: string; readonly error?: Error | undefined }>;
 
+/** The build job's database step (`npm run db:lint`, and `app db drift` for an app with an entity list): the migrations applied to a scratch database and checked against the entity manifest. */
+export const DATABASE_STEP = 'database migration checks';
+/** The refusal `app db drift` gives a host with no Docker and no `--db-url-env` database: no verdict, never a green. */
+export const NEEDS_DATABASE = 'DB_DRIFT_NEEDS_DATABASE';
+/** A database step this host could not run: a warning, because CI judges it (the step needs a database this host does not have). */
+export const DATABASE_SKIPPED = 'CI_PARITY_DB_SKIPPED';
+
 /** Which family a step of the managed workflow belongs to, by its job and name; null for a step another family or CI alone runs. */
 export function familyOfStep(job: string, name: string): ParityStep['family'] | null {
   if (job === 'fast' && name === 'production dependency audit') return 'audit';
   if (job === 'fast' && name === 'typecheck') return 'build';
   if (job === 'build' && (name === 'build be' || name === 'build fe' || name.startsWith('build fe '))) return 'build';
+  if (job === 'build' && name === DATABASE_STEP) return 'build';
   return null;
 }
 
@@ -70,11 +80,32 @@ export function parityStepsFor(repoRoot: string): ParityStep[] {
   try { return parityStepsOf(fs.readFileSync(path.join(repoRoot, CI_WORKFLOW), 'utf8')); } catch { return []; }
 }
 
-/** The SWC cache root a build owns (LOCALAPPDATA, XDG_CACHE_HOME): under the app's untracked tool cache, never the user's shared one. */
-export function buildCacheEnv(repoRoot: string, env: NodeJS.ProcessEnv): Record<string, string> {
+/**
+ * The short folder Next's SWC native addon keeps its binding cache in (`SWC_NATIVE_BINDING_CACHE`), one per app, under the user profile.
+ * It is short because the addon's lock (`swc\swc-native-<SID>\v1\<128 hex>.lock`) under the tool cache is longer than Windows' MAX_PATH
+ * (ERR_SWC_NATIVE_CACHE, os error 3), and it is under the profile because a root outside it (a drive-root folder) fails the addon's DACL check
+ * (a replacement right granted to the authenticated users). Deterministic per app: the first eight hex of the repo path's sha256.
+ */
+export function swcBindingCacheFor(repoRoot: string, env: NodeJS.ProcessEnv): string {
+  const profile = env['USERPROFILE'] ?? env['HOME'] ?? os.homedir();
+  return path.join(profile, 'sw', createHash('sha256').update(path.resolve(repoRoot)).digest('hex').slice(0, 8));
+}
+
+/**
+ * The cache roots a build owns: the SWC cache root (LOCALAPPDATA, XDG_CACHE_HOME) under the app's untracked tool cache, never the user's shared one,
+ * and on Windows `SWC_NATIVE_BINDING_CACHE` at a short, ACL-safe folder under the user profile (see `swcBindingCacheFor`). A value the caller
+ * already set is kept.
+ */
+export function buildCacheEnv(repoRoot: string, env: NodeJS.ProcessEnv, platform: NodeJS.Platform = process.platform): Record<string, string> {
   const root = path.join(toolCacheDir(repoRoot, env), 'build-cache');
   fs.mkdirSync(root, { recursive: true });
-  return { LOCALAPPDATA: root, XDG_CACHE_HOME: root };
+  const cache: Record<string, string> = { LOCALAPPDATA: root, XDG_CACHE_HOME: root };
+  if (platform === 'win32' && (env['SWC_NATIVE_BINDING_CACHE'] ?? '') === '') {
+    const binding = swcBindingCacheFor(repoRoot, env);
+    fs.mkdirSync(binding, { recursive: true });
+    cache['SWC_NATIVE_BINDING_CACHE'] = binding;
+  }
+  return cache;
 }
 
 /** The shell CI's `run:` lines need (`&&`): cmd on Windows, sh elsewhere. */
@@ -98,6 +129,11 @@ export async function runParityFamilies(session: CheckSession, { repoRoot, famil
     for (const [index, step] of mine.entries()) {
       const stepEnv = { ...env, ...step.env, ...(family === 'build' ? buildCacheEnv(repoRoot, env) : {}) };
       const result = await run({ kind: family === 'build' ? 'build' : 'install', label: `app check ${family} ${step.name}`, cwd: repoRoot, argv: shellArgv(step.run, process.platform, env), env: stepEnv });
+      if (step.name === DATABASE_STEP && result.status === 2 && result.error === undefined && `${result.stdout}${result.stderr}`.includes(NEEDS_DATABASE)) {
+        findings.push({ code: DATABASE_SKIPPED, level: 'warning', engine: family, path: CI_WORKFLOW, message: `${CI_WORKFLOW} ${step.job} / ${step.name} (${step.run}) was not run here: it applies the migrations to a scratch database and needs Docker (or an empty database named by --db-url-env), which this host lacks; CI runs it, and it is the step that finds BE_ENTITY_SCHEMA_DRIFT` });
+        progress.tick(index + 1, 0, index + 1);
+        continue;
+      }
       if (result.status !== 0 || result.error !== undefined) {
         failed += 1;
         const why = result.error === undefined ? `exit ${String(result.status)}` : result.error.message;

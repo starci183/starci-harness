@@ -12,8 +12,6 @@ import { SECRETS_FOLDER, safeSecretRecords } from './secret-records.mjs';
 import { readCacheDir, resolveTrust, verifyCommitted, type CacheVerdict, type TrustSource } from './trust.mjs';
 import { CACHE_DIR, type CacheRecord, type CheckSession, type ContentIndex, type FamilyDecision, type FamilyId, type FamilyReport, type FlushResult, type ProgressSink } from './types.mjs';
 
-/** `STARCI_APP_CHECK_CACHE`: `full` ignores the cache (the owner's full gate sets it), `verify` is read by the caller (runs diff, then full, compares). */
-export const CACHE_ENV = 'STARCI_APP_CHECK_CACHE';
 const FINGERPRINT_FILE = 'fingerprint.jsonl';
 /** The folders whose records are held as their lines and parsed only when read (jsonl.mts lazyRecord): the per-spec coverage of the test family. */
 const LAZY_FOLDERS: ReadonlySet<string> = new Set(['test-coverage']);
@@ -24,8 +22,10 @@ export interface DiskSessionOptions {
   readonly env: NodeJS.ProcessEnv;
   readonly progress: ProgressSink;
   readonly cliVersion?: string | undefined;
-  /** The families `--full` selects. */
+  /** The families `--fresh` recomputes from scratch, ignoring their records (they are written back). */
   readonly full?: ReadonlySet<FamilyId> | undefined;
+  /** A run that neither reads nor writes the cache (a coverage report judged on its own). */
+  readonly bypass?: boolean | undefined;
   /** Seams for specs. */
   readonly trust?: TrustSource | undefined;
   readonly fingerprint?: Fingerprint | undefined;
@@ -37,7 +37,7 @@ export interface DiskSession extends CheckSession {
   readonly fingerprint: Fingerprint;
   readonly trust: TrustSource;
   readonly reports: readonly FamilyReport[];
-  /** Whether this run may write the cache folder (a host run with a portable fingerprint that is not a forced-full release run). */
+  /** Whether this run may write the cache folder (a host run with a portable fingerprint that is not a bypass run). */
   readonly writes: boolean;
   /** In CI after `flush`: the committed cache compared with what the run inherited or computed. */
   verdicts(): readonly CacheVerdict[];
@@ -79,7 +79,7 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
   const index: ContentIndex = createContentIndex(root, tracked);
   const fingerprint = options.fingerprint ?? computeFingerprint({ root, tracked, cliVersion: options.cliVersion, hfsDir: options.hfsDir });
   const trust = options.trust ?? resolveTrust({ root, env });
-  const forcedFull = env[CACHE_ENV] === 'full';
+  const forcedFull = options.bypass === true;
   const reports: FamilyReport[] = [];
   const replaced = new Map<string, { records: readonly CacheRecord[]; depth: number }>();
   const parsed = new Map<string, readonly CacheRecord[]>();
@@ -116,7 +116,7 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
   let verdictList: CacheVerdict[] = [];
 
   const global = (family: FamilyId): FamilyDecision | undefined => {
-    if (forcedFull) return { mode: 'full', reason: `${CACHE_ENV}=full, the full gate never reads the cache` };
+    if (forcedFull) return { mode: 'full', reason: 'a bypass run never reads the cache' };
     if (!fingerprint.portable) return { mode: 'full', reason: `no portable fingerprint, nothing is written (${fingerprint.localReasons[0] ?? 'a local package'})` };
     if (trust.kind === 'none') return { mode: 'full', reason: `no trusted base (${trust.reason})` };
     if (cachedFingerprint.length === 0) return { mode: 'full', reason: trust.kind === 'base' ? 'no cache at the trusted base' : 'no cache in the tree' };
@@ -138,7 +138,7 @@ export function createDiskSession(options: DiskSessionOptions): DiskSession {
       return reports;
     },
     decide(family: FamilyId): FamilyDecision {
-      if (options.full?.has(family) === true) return { mode: 'full', reason: '--full' };
+      if (options.full?.has(family) === true) return { mode: 'full', reason: '--fresh' };
       return global(family) ?? { mode: 'diff', reason: `against ${trust.reason}` };
     },
     records(folder: string): readonly CacheRecord[] {

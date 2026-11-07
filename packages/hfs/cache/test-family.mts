@@ -79,6 +79,8 @@ export interface TestFamilyResult {
   readonly reused: readonly string[];
   /** Specs that failed, did not report, or whose inputs changed: nothing of theirs is stored. A run whose runner died leaves its unreported specs out. */
   readonly failed: readonly string[];
+  /** The part of `failed` whose closure changed on disk during the run (a merge or a codegen mid-run): not a failure of the spec itself. */
+  readonly changed: readonly string[];
   /**
    * The runner's death (runnerDeath): its fatal line (a V8 heap limit) or its exit, when Jest ended before every spec it ran reported. Its specs that
    * never reported are counted in `unreported`, never in `failed`: one runner failure, not one per spec.
@@ -167,6 +169,7 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
   progress.tick(kept.length, kept.length, 0);
   const fresh: CacheRecord[] = [];
   const failed: string[] = [];
+  const changed: string[] = [];
   let output = '';
   let died: TestFamilyResult['died'];
   if (toRun.length > 0) {
@@ -197,6 +200,7 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
     const key = specKey({ spec: record.path, closure: jest.closureOf(record.path), configHash: jest.configHash, hashOf: (file) => hashFile(path.join(session.root, file)) });
     if (key === keys.get(record.path)) return true;
     failed.push(record.path);
+    changed.push(record.path);
     return false;
   });
   const settled = new Set(records.map((record) => record.path));
@@ -228,7 +232,7 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
     fixedFindings: 0,
   };
   session.report(report);
-  return { ok: failed.length === 0 && died === undefined && (threshold?.ok ?? records.length === 0), ran: toRun, reused: reused.map((record) => record.path), failed, died, lcov, threshold, report, output };
+  return { ok: failed.length === 0 && died === undefined && (threshold?.ok ?? records.length === 0), ran: toRun, reused: reused.map((record) => record.path), failed, changed, died, lcov, threshold, report, output };
 }
 
 // ---- the real Jest of an app ------------------------------------------------------------------------------------------------------------------------------

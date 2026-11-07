@@ -145,7 +145,7 @@ test('the shared parser refuses a flag of another verb and a value flag that wou
     [['add', 'spec', 'be/x.service.ts', '--inject', 'A=b'], 'starci app add spec takes no --inject; only add service does'],
     [['add', 'service', 'be/x', 'y', '--form'], 'starci app add service takes no --form'],
     [['check', '--staged', '--json'], 'starci app check --staged is the pre-commit guard alone and takes no --json'],
-    [['check', '--staged', '--no-cache', '--gate', 'hfs'], 'starci app check --staged is the pre-commit guard alone and takes no --no-cache, --gate'],
+    [['check', '--staged', '--fresh', '--gate', 'hfs'], 'starci app check --staged is the pre-commit guard alone and takes no --fresh, --gate'],
     [['check', '--staged', '--edition', 'full'], 'starci app check --staged is the pre-commit guard alone and takes no --edition'],    [['emit', '--edition', 'full'], 'starci app emit takes no --edition'],
     [['check', '--bogus'], 'unknown flag --bogus'],
     [['check', '--fast'], 'unknown flag --fast'],
@@ -200,7 +200,7 @@ test('the usage is generated from the parser tables: every flag every verb parse
   expect('ci local', flagsOfSpec(LOCAL_FLAGS));
   for (const [verb, names] of [['baseline', BASELINE_OPTIONS], ['restamp', RESTAMP_OPTIONS]] as Array<[string, readonly string[]]>) expect(`db ${verb}`, names.map((name: string) => `--${name}`));
   for (const [verb, spec] of Object.entries(db)) expect(`db ${verb}`, flagsOfSpec(spec));
-  expect('check', ['--gate', '--side', '--fix', '--out', '--coverage-from', '--shard', '--json', '--no-cache', '--staged']);
+  expect('check', ['--gate', '--side', '--fix', '--out', '--coverage-from', '--shard', '--json', '--fresh', '--staged']);
   expect('codemod button-intent', flagsOfParser(codemodArguments));
   expect('codemod spacing-roles', flagsOfParser(spacingRolesArguments));
   expect('upgrade', flagsOfParser(upgradeArguments).filter((flag) => !['--repo', '--edition'].includes(flag)));
