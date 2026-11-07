@@ -19,7 +19,7 @@ import type { TaskRow } from "./tasks.js"
 import { getTask, hostHeldAttempt, isTerminal, lastEvent, latestAttempt, recordEvent, resultOf } from "./tasks.js"
 
 /**
- * How an ended attempt of a task is settled (owner decision `op-settle-merge-or-discard`): `merge`, its green verify landed it;
+ * How an ended attempt of a task is settled: `merge`, its green verify landed it;
  * `discard`, nothing of it is kept; `repair`, its Kernel's decision that the next attempt repairs this work, which keeps one
  * patch for that one attempt; `keep`, a stop the harness caused or a waiter parked on a shared need, which keeps one patch for
  * the attempt that continues it.

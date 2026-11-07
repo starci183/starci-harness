@@ -1090,7 +1090,7 @@ slots:
     profiles:
       - app
     editionWhy: both editions deploy to a Docker Swarm server whose own age identity the owner backs up as a protected
-      GitHub Environment secret; this workflow writes it back (ruling app-secrets-one-standard).
+      GitHub Environment secret; this workflow writes it back.
     path: .github/workflows/stack-key-restore.yml
     presence: optional
     tracked: tracked
@@ -1104,7 +1104,7 @@ slots:
     profiles:
       - app
     editionWhy: both editions commit a check cache that CI and the release gate trust; this scheduled workflow verifies it every
-      night and its red run locks the release gate (ruling release-gate-warm-cache).
+      night and its red run locks the release gate.
     path: .github/workflows/cache-verify.yml
     presence: required
     tracked: tracked
@@ -2653,7 +2653,7 @@ slots:
     tier: platform
     owner: true
     lite:
-      why: "the EventBus and EventConsumer ports on pgmq (ruling lite-pgmq-bus-bullmq-jobs): publish
+      why: "the EventBus and EventConsumer ports on pgmq: publish
         sends the envelope to its topic in the publisher's transaction, so no outbox or relay runs; each consumer
         group reads its own queue bound to the event's name with a visibility timeout, archives a handled message,
         lets a failed one reappear and buries one past its maxDeliveries in its __dead queue (BE-EVENT-BUS-6). Jobs stay on BullMQ

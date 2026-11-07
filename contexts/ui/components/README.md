@@ -36,8 +36,7 @@ Choice `<role>.choose.<decision>`: <the question the table answers>
 Rules of the format:
 
 - **Exactly one row applies.** The rows of one table exclude each other; when two could apply, the earlier row
-  wins and the table says so. A condition no row covers is a gap, recorded in
-  [../../decisions/open-ui.md](../../decisions/open-ui.md), not improvised.
+  wins and the table says so. A condition no row covers is a gap the owner closes with a row, not improvised.
 - **Cite the row.** A spec, a draw record or a code review names each choice it made as `<anchor>:<row>`, for
   example `tabs.choose.level:region` or `button.choose.intent:dismiss`. The anchor is stable: a renamed decision
   keeps its anchor, a removed one is never reused.

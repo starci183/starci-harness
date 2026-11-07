@@ -5,7 +5,7 @@ HeroUI's paint and arrangement (`parity: strict`) and expresses itself almost en
 so it is the closest grammar to the vendor and the reference the contract is checked against.
 
 Owners: values `@starci/grammar src/core/dna.ts` (`STARCI_CORE_DNA`, the family's default palette and geometry),
-the default palette as HeroUI tokens `src/core/theme.css` (optional: an app sets its own, ruling `app-owns-theme`), the few
+the default palette as HeroUI tokens `src/core/theme.css` (optional: an app sets its own), the few
 scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`). The laws
 `core` keeps beyond the common ones, with their measurements, are [contract.yaml](contract.yaml) `mustKeep.core`
 (`DNA-CORE-*`); this file says why.
@@ -28,13 +28,13 @@ scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`)
   Surfaces take the larger surface radius. A Button drawn with the control corner is a defect.
 - **Calm motion.** One short duration with a decelerating curve; no meaning rides on motion.
 - **Almost no component CSS.** The palette is HeroUI's tokens in `theme.css`, and the sheet keeps a scoped rule for a
-  card region the family treats on its own. A card keeps the name where its kind puts it (ruling `card-label-by-kind`).
+  card region the family treats on its own. A card keeps the name where its kind puts it.
 
 ## How core fills the contract
 
 | Role | core |
 |---|---|
-| Card | White material; shadow without border (ruling `surfacecard-always-painted`); surface radius; a card that heads a section carries its label outside the material, above it; a tile carries its name inside with its mark (ruling `card-label-by-kind`); seams run full-bleed; `soft` is the `accentSoft` lavender under the default foreground, `ink` the violet accent with white or black text read from its lightness |
+| Card | White material; shadow without border; surface radius; a card that heads a section carries its label outside the material, above it; a tile carries its name inside with its mark; seams run full-bleed; `soft` is the `accentSoft` lavender under the default foreground, `ink` the violet accent with white or black text read from its lightness |
 | Button | Vendor variants through the tokens: commit is the violet fill with white text, alternative the neutral fill with accent text; pill corner; vendor press |
 | ButtonGroup | Vendor arrangement unchanged |
 | Tabs | Underline: accent indicator, current label in `--accent-soft-foreground` |
@@ -45,7 +45,7 @@ scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`)
 | Dialog | Surface material with the soft shadow; vendor backdrop; overlays keep the grammar through the root |
 | Menu | Selection mark at the start (submenu mark at the end), 20px leading glyphs, separators between sections (Common arrangement) |
 | List | Vendor rows; selection as a fill without a check where the list is navigation-like; unread rows at the Common unread weight |
-| Alert | The vendor Alert on its tone's soft pair, flat: x-soft row, x-soft-foreground glyph, title and description (ruling `alert-soft-pair`); toasts keep the vendor surface |
+| Alert | The vendor Alert on its tone's soft pair, flat: x-soft row, x-soft-foreground glyph, title and description; toasts keep the vendor surface |
 | EmptyState | Common's notice on the region's surface; the first-run artwork is Common's `Mascot` at `md` |
 | Avatar | Common initials coloured by seed; members ringed in the surface colour; the agent badge hidden below the `sm` step |
 | Mascot | Common's scale and transparent ground, inherited unchanged |
@@ -63,4 +63,4 @@ and `core` does not bind it (code follow-up C-3).
 ## Lint
 
 `@starci/eslint-grammar-core` (`coreGrammarConfig`). Its rules are Common-API checks every grammar needs; `core`
-has no rule of its own. The contract moves them into `@starci/eslint-grammar-common` (decision D-7).
+has no rule of its own (a package per grammar is open: [questions](../harness/questions.md) 34).

@@ -3,7 +3,7 @@
 An author says what the thing is; the grammar decides how it looks. This file is the front door: one row per situation of a
 screen, each naming the component that is the answer, the spacing role the structure gives it, the one story that draws it,
 and the type, lint or gate that refuses the wrong version. A wrong composition does not compile, and every allowed input
-looks right (ruling `situation-tables`). The Choose tables of [components](components/README.md) and the rules of
+looks right. The Choose tables of [components](components/README.md) and the rules of
 [composition](composition.md) own the finer decisions; this table routes to them and is not cited itself, except the
 [loading](loading.md) page, which has no other owner.
 
@@ -47,7 +47,7 @@ comes from the structure.
 | A long process with stages (read, index, extract, review) | `Stepper` with its stages | row 12 | `navigation-data--stepper` | type: stages are typed data | [list-table](components/list-table.md) `list-table.choose.role:process` |
 | A contradiction between two sources | `Section` whose title is the question, two `Quote`s side by side, the answers as a decision group | row 12 | `surfaces--contradiction` | review; `Quote` is not a surface | [quote](components/quote.md) `quote.choose.host:contradiction` |
 | Needs approval (what, who, why, a named action) | `SurfaceCard` labelled with what, a `DescriptionList` of who and why, a decision group whose commit is named for the act | row 12 | `surfaces--needs-approval` | R319 one commit per view; CTA-5 group order | [action-group](components/action-group.md) `action-group.choose.kind:approval` |
-| Chat | `MessageBubble` in a thread the app keeps: mine `side="outgoing"` on the accent, theirs on the surface | one sender identity 4, a sender change row 12, a day divider section 24 | `compositions-renderers--message-bubble` | type: `side`; ruling `message-bubble-primary-and-surface`; the approved picture | [message-bubble](components/message-bubble.md) `message-bubble.choose.side` |
+| Chat | `MessageBubble` in a thread the app keeps: mine `side="outgoing"` on the accent, theirs on the surface | one sender identity 4, a sender change row 12, a day divider section 24 | `compositions-renderers--message-bubble` | type: `side`; the approved picture | [message-bubble](components/message-bubble.md) `message-bubble.choose.side` |
 | One route | `Page` with its `header` as data | region 32 between header and body | `compositions-renderers--page` | R323 to R325 | [page-header](components/page-header.md) `page-header.choose.head` |
 | A form | `Form` of `Grid kind="form"` fields, one commit | field rows 12 | `forms--form` | R319; `DNA-COMMON-FIELD-ROW-CONTROL-LINE` | [text-field](components/text-field.md) `text-field.choose.columns` |
 | An outcome in the page, or a passing one | `Alert` in the page; `Toast` for a transient confirmation | inline 8 inside | `overlays--alert` | type: tone is a settled fact; FEEDBACK-3 | [toast-alert](components/toast-alert.md) `toast-alert.choose.owner` |

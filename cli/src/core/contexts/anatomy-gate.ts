@@ -5,7 +5,7 @@ import { z } from "zod"
 import { runtimeRoot } from "../../harness/ledger.js"
 import { Refusal } from "../../shared/errors.js"
 import { slotRuleGaps } from "./anatomy-render.js"
-import { grammarSourceDir, judgeRemovedVocabulary, judgeRuleDocs, judgeShippedVocabulary, judgeVendorWrappers } from "./knowledge-gates.js"
+import { grammarSourceDir, judgeRemovedVocabulary, judgeRuleDocs, judgeRulingHistory, judgeShippedVocabulary, judgeVendorWrappers } from "./knowledge-gates.js"
 import type { KnowledgeFinding } from "./knowledge-gates.js"
 
 /** The finding code of each gap. */
@@ -21,6 +21,7 @@ export const GAP_CODES = {
     "wrapper-wraps-drift": "ANATOMY_WRAPPER_WRAPS_DRIFT",
     "wrapper-pin-drift": "ANATOMY_WRAPPER_PIN_DRIFT",
     "wrapper-rule-unknown": "ANATOMY_WRAPPER_RULE_UNKNOWN",
+    "ruling-history": "ANATOMY_RULING_HISTORY",
 } as const
 type GapKind = keyof typeof GAP_CODES
 
@@ -108,7 +109,8 @@ const unresolvedPath = (knowledge: string, cited: string): string | undefined =>
 /**
  * The completeness gate of `contexts anatomy` (its dry run): every slot rule code resolves to a rule, every rule names an enforcer
  * of a declared kind and every path its law cites resolves, every rule is named by a page of the living knowledge, no removed
- * spelling is written as code there, and vendor/wrappers.yaml matches the Grammar source and its pin. A rule whose every
+ * spelling is written as code there, vendor/wrappers.yaml matches the Grammar source and its pin, and no governed file cites
+ * decision history instead of the rule (ANATOMY_RULING_HISTORY). A rule whose every
  * enforcer is `status: planned` is not a gap: it is listed in `planned` until its check ships.
  */
 export const judgeAnatomy = (knowledge: string): GateVerdict => {
@@ -131,7 +133,7 @@ export const judgeAnatomy = (knowledge: string): GateVerdict => {
             if (why !== undefined) red.push(gap("law-path-unresolved", rule.id, `${rule.id}'s law cites ${cited}, which ${why}`))
         }
     }
-    const knowledgeFindings: KnowledgeFinding[] = [...judgeRuleDocs(knowledge), ...judgeRemovedVocabulary(knowledge), ...judgeShippedVocabulary(knowledge), ...judgeVendorWrappers(knowledge, grammarSourceDir())]
+    const knowledgeFindings: KnowledgeFinding[] = [...judgeRuleDocs(knowledge), ...judgeRemovedVocabulary(knowledge), ...judgeShippedVocabulary(knowledge), ...judgeVendorWrappers(knowledge, grammarSourceDir()), ...judgeRulingHistory(join(knowledge, ".."))]
     red.push(...knowledgeFindings.map((finding) => gap(finding.kind, finding.subject, finding.detail)))
     return { red, planned }
 }

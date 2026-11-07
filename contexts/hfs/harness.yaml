@@ -36,22 +36,20 @@ slots:
       - "**/{PLAN,Plan,plan,MASTER,ROADMAP,TODO}*.md"
       - "**/*{-plan,.plan,_plan}.md"
       - "**/plans/"
-    except:
-      - "contexts/decisions/**"
     presence: forbidden
-    holds: a plan, roadmap or master file outside contexts/decisions; a decided plan is a decisions record, each fact in its owner
+    holds: a plan, roadmap or master file; a decided plan is stated as rules, each fact in its owner
     rule: CONTRIB-4 one owner per fact; CONTRIB-15 (STARCI.md, design documents of plans and phases)
   - id: never.grammar-tests
     path:
       - "packages/grammar/**/*.{spec,test}.{ts,tsx,js,jsx,mjs,cjs}"
       - "packages/grammar/**/{jest,vitest,playwright}.config.*"
     except:
-      # the render proof, which an owner ruling keeps in the Grammar (packages.grammar-proof holds it)
+      # the render proof, which the Grammar keeps (packages.grammar-proof holds it)
       - packages/grammar/playwright.config.ts
       - packages/grammar/proof/stories.spec.ts
     presence: forbidden
     holds: a spec, test or test-runner config in the Grammar package, bar the render proof; a Grammar edit is proved by its typecheck and build, its plays and DNA gate are CI's
-    rule: contexts/authority/packages.md; the render-proof ruling in contexts/decisions/rulings.yaml
+    rule: contexts/authority/packages.md; contexts/ui/proof.md
   - id: never.cli-js
     path: "cli/src/**/*.{js,mjs,cjs,jsx}"
     presence: forbidden
@@ -70,7 +68,7 @@ slots:
       - "packages/{cli,*-cli}/"
     presence: forbidden
     holds: a second CLI package; the CLI is one, cli/ (starci-harness)
-    rule: owner ruling, the CLI is one (contexts/decisions/legacy-retirement.md)
+    rule: the CLI is one package, cli/; CONTRIB-4
   - id: never.second-cli-bin
     path: "**/package.json"
     except:
@@ -80,7 +78,7 @@ slots:
     jsonKey: bin
     presence: forbidden
     holds: a package that declares a bin, which makes it a second CLI; only cli/package.json declares one
-    rule: owner ruling, the CLI is one (contexts/decisions/legacy-retirement.md)
+    rule: the CLI is one package, cli/; CONTRIB-4
   - id: never.knowledge-outside-contexts
     path:
       - "docs/"
@@ -91,7 +89,7 @@ slots:
     exceptions:
       - path: docs/knowledge-analysis/
         until: "2026-12-31"
-        owner: legacy retirement (contexts/decisions/legacy-retirement.md)
+        owner: the legacy runtime's retirement
         why: the retirement map relies on the legacy runtime's analysis notes until the M-items land in contexts/ and the legacy runtime is deleted
     holds: knowledge outside contexts/; knowledge an agent loads lives only in contexts/
     rule: CONTRIB-4; contexts/README.md load order
@@ -114,7 +112,7 @@ slots:
       - "packages/{eslint-canon-be,eslint-canon-fe,eslint-grammar-core,eslint-grammar-offset-pop}/runtime/**"
     presence: forbidden
     holds: hand-written JavaScript or hand-written declarations in a package; a package is TypeScript in src/ built to dist/
-    rule: owner ruling, every package is TypeScript source built to JavaScript (contexts/decisions/legacy-retirement.md section 3)
+    rule: every package is TypeScript source built to JavaScript
 
   # --- the repository root
   - id: root.declaration
@@ -162,7 +160,7 @@ slots:
     path: secret.env.example
     presence: required
     holds: the keys of the host's untracked secret.env, each empty with what it is and where to get it
-    rule: policy/security.yaml secretKeys; contexts/harness/decisions.md
+    rule: policy/security.yaml secretKeys
   - id: root.sonar
     path: sonar-project.properties
     presence: optional
@@ -230,8 +228,8 @@ slots:
   - id: contexts.knowledge
     path: "contexts/**/*.{md,yaml,html}"
     presence: optional
-    holds: every piece of knowledge an agent loads (harness, hfs, code, ui, grammars, vendor, stack, project, decisions)
-    rule: CONTRIB-4; knowledge-product-agnostic
+    holds: every piece of knowledge an agent loads (harness, hfs, code, ui, grammars, vendor, stack, project), product-agnostic
+    rule: CONTRIB-4
 
   # --- machine rules: ops/ and policy/
   - id: ops.map
@@ -301,7 +299,7 @@ slots:
       - cli/tsconfig.build.json
       - cli/eslint.config.ts
     holds: the one CLI package (starci-harness), how it is built and linted
-    rule: owner ruling, the CLI is one; CONTRIB-11
+    rule: the CLI is one package, cli/; CONTRIB-11
   - id: cli.entry
     path: "cli/src/{main.ts,registry.ts}"
     presence: required
@@ -359,7 +357,7 @@ slots:
     path: "packages/<name>/{tsconfig.json,tsconfig.*.json,eslint.config.ts,stylelint.config.ts}"
     presence: optional
     holds: a package's typecheck and build configs (tsconfig.build.json emits dist/) and its lint configs
-    rule: contexts/decisions/legacy-retirement.md section 3
+    rule: every package is TypeScript source built to dist/
   - id: packages.source
     path: "packages/<name>/src/"
     presence: required
@@ -368,7 +366,7 @@ slots:
       - path: packages/tsconfig/
         why: the tsconfig package is JSON presets; it has nothing to build
     holds: a package's TypeScript source and its specs beside it, built to dist/ (ignored)
-    rule: owner ruling, every package is TypeScript source built to JavaScript (contexts/decisions/legacy-retirement.md section 3)
+    rule: every package is TypeScript source built to JavaScript
   - id: packages.hfs-source
     path:
       - "packages/hfs/{cache,ci,codemod,coverage,db,emit,lint,release,report,scaffold,scripts,stack,sync,upgrade}/**/*.{mts,cts}"
@@ -376,7 +374,7 @@ slots:
       - packages/hfs/vendor-types.d.mts
     presence: optional
     holds: the TypeScript source of @starci/hfs, one folder per app verb area beside runtime/, compiled in place to .mjs (.cjs from a .cts, a --require preload) at the paths it ships and is imported by (the emitted JavaScript and declarations are ignored); vendor-types.d.mts types the one dependency that ships none
-    rule: owner ruling, every package is TypeScript (alpha.21); hfs keeps its published paths, so its source is not under src/
+    rule: every package is TypeScript; hfs keeps its published paths, so its source is not under src/
   - id: packages.grammar-tools
     path:
       - "packages/grammar/{capture-refs,svg-shot}.mts"
@@ -385,7 +383,7 @@ slots:
       - "packages/grammar/scripts/lint/*.mts"
     presence: optional
     holds: the grammar's build and capture tools (build stamp, clean, CSS copy, plays, reference and SVG shots), TypeScript typechecked by tsconfig.scripts.json
-    rule: owner ruling, every package is TypeScript (alpha.21)
+    rule: every package is TypeScript
   - id: packages.grammar-proof
     path:
       - packages/grammar/playwright.config.ts
@@ -393,7 +391,7 @@ slots:
       - "packages/grammar/proof/baselines/{1920,390}/*.png"
     presence: optional
     holds: the Grammar's render proof (Playwright toHaveScreenshot over the Storybook stories) with its committed baselines and the approved chat pictures; run by hand, never in build, push or publish
-    rule: the render-proof ruling in contexts/decisions/rulings.yaml; contexts/ui/proof.md
+    rule: contexts/ui/proof.md
   - id: packages.tests
     path: "packages/<name>/test/"
     presence: optional

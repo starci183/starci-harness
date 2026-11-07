@@ -55,7 +55,7 @@ its state. Why: a change and its repair need one place to land, even when there 
 ### CODE-REVIEW-2 An abstraction carries a responsibility
 
 A wrapper, interface, base class, module or package exists for a contract, policy, lifecycle or coordination it owns;
-a forwarding layer that adds none is removed. A file count or an older example is no reason for a layer. Why: an empty
+a forwarding layer that adds none is removed. A file count or an older example is no reason for a layer, and a shared package is cut when a second product needs the same code, never ahead of it. Why: an empty
 layer hides the owner it pretends to establish.
 
 ### CODE-REVIEW-3 State names its authority and its lifecycle

@@ -30,8 +30,7 @@ Routes: `#/` overview, `#/w/:project/:workflow`, `#/t/:project/:task`, `#/inbox`
 
 ## Source layout: the shape–slot pattern on Vite
 
-The app follows the front-end canon it enforces on products ([contexts/code/fe](../contexts/code/fe/README.md), decisions
-F-1/F-2 in [open-core.md](../contexts/decisions/open-core.md)). The canon is written for Next.js; on Vite with
+The app follows the front-end canon it enforces on products ([contexts/code/fe](../contexts/code/fe/README.md)). The canon is written for Next.js; on Vite with
 react-router the same tiers map like this:
 
 | Canon (Next)                         | Here (Vite + react-router)                                                                                          |

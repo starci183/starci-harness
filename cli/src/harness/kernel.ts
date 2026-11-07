@@ -111,7 +111,7 @@ const withRecord = <T>(root: string, work: (db: DatabaseSync) => T): T => {
     }
 }
 
-/** The workflow's one worktree as recorded, if any (one workflow = one worktree, owner ruling). */
+/** The workflow's one worktree as recorded, if any (one workflow = one worktree). */
 export const workflowWorktreeOf = (db: DatabaseSync, workflowId: string): string | undefined => {
     const row = db.prepare("SELECT worktree FROM workflows WHERE id = ?").get(workflowId)
     return row?.worktree === null || row?.worktree === undefined ? undefined : String(row.worktree)

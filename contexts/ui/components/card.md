@@ -23,7 +23,7 @@ for a kind does not compile). The first row that applies wins.
 | tile | one of several peers repeated in a grid, each a thing to recognise or open (a provider, a template, a product) | `kind="tile"`: its name inside with its typed mark or media poster, operational badges and one visible action; further commands use its menu, in `Grid kind="cards"` | type: poster image/absence, single/three badges and wholeAction/inner controls are exclusive; a tile has no `label`; R366 |
 | entity | one entity or one summary of one subject, heading its section | `SurfaceCard` of the default `body` kind: label outside | judgement |
 
-Choice `card.choose.label`: where the card's name sits. The kind decides, in both families (ruling `card-label-by-kind`).
+Choice `card.choose.label`: where the card's name sits. The kind decides, in both families.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
@@ -50,16 +50,14 @@ A painted treatment rebinds the surface pair on its ground, so the grammar child
 (`DNA-COMMON-TREATMENT-TEXT-CONTRAST`); the app never paints a card's ground itself (`starci-fe/no-app-surface-paint`).
 
 A card carries its own title, count, action and note: the title is its `label`, the count its `fact`, the action its `labelEnd`
-and the note its `footer`. A `Section` whose only child is one card is a heading over one card and is refused (R354, ruling
-`card-carries-its-own-label`), as is a card whose `ariaLabel` repeats the section's title; several cards under one `Section`
+and the note its `footer`. A `Section` whose only child is one card is a heading over one card and is refused (R354), as is a card whose `ariaLabel` repeats the section's title; several cards under one `Section`
 stay legal.
 
 ## Variants
 The face is the grammar's, and the card has one depth, raised. A surface never stands inside another surface: a card in a
 card, in `Pane surface`, in a `Dialog`, `Drawer`, `AlertDialog` or `Popover` is refused by a development throw and R340
 (`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`); across files the render graph refuses it too (R356). What sits in a surface is a box at the nested inset (a notice, a `Quote`, a
-stat cell), not a card. A decorative slab is a `custom` header zone of the card or the artwork of a painted card (SURFACE-6, ruling
-`band-is-first-face`).
+stat cell), not a card. A decorative slab is a `custom` header zone of the card or the artwork of a painted card (SURFACE-6).
 
 ## Size
 No size. Width follows measure rules; a form card caps itself with the surface's form measure (MEASURE-4).
@@ -70,7 +68,7 @@ tile keep their cells, the label stays real text (STATE-8, the [loading table](l
 fails in place through its `error` slot (message, description, action), beside its `empty` slot.
 
 ## Owner split
-- **Grammar owns:** face, corner (one accent corner through `accentCorner`, ruling accent-corner), elevation, inset, the
+- **Grammar owns:** face, corner (one accent corner through `accentCorner`), elevation, inset, the
   drawing of every kind, bands and seams, highlight, form measure.
 - **Knowledge decides:** which kind, list card vs section, bands vs inner cards, hairline budget.
 - **App author decides:** the subject, its content, the label.

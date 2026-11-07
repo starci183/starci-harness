@@ -71,7 +71,8 @@ Enforced by: `realtime-shape` (R184); ingress settings are review only.
 
 `platform/realtime` binds the `RealtimeHub` port to memory (one process, tests), Postgres (a `realtime_events` table
 with NOTIFY and LISTEN on a session connection, swept by a bounded job) or Redis (a capped stream per topic), selected by
-`parseRealtimeConfig`; more than one api replica uses Postgres or Redis. On a lost listener the shared hubs pause and
+`parseRealtimeConfig`; more than one api replica uses Postgres or Redis, so every replica serves any request or reconnect
+with no sticky session. On a lost listener the shared hubs pause and
 reload each followed topic from its last position, skipping and duplicating nothing.
 
 Why: an in-process hub loses every push published on another replica and every replay a reconnect lands away from.

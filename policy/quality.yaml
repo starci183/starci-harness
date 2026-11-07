@@ -15,7 +15,7 @@ runtime:
   # Package folders that keep no ESLint config. Their lint step is the compiler's, `tsc --noEmit --noUnusedLocals
   # --noUnusedParameters` over every tsconfig*.json the folder holds, never a pass for want of a config
   # (cli/src/core/check/scope.ts compilerLintPackage). A folder that is not listed and has no config is red. None today:
-  # packages/grammar keeps the ESLint and Stylelint configs that refuse a literal (ruling grammar-literal-lint), and its
+  # packages/grammar keeps the ESLint and Stylelint configs that refuse a literal, and its
   # `npm test` runs them in CI (contexts/authority/packages.md "Grammar edits are content only").
   compilerLint: []
 # Where a task's heavy checks run (typecheck, lint and tests: the scoped `starci check` presets and every command check).
@@ -27,8 +27,8 @@ runtime:
 verify:
   tier: wave
 # Actions that refuse CI_NOT_GREEN unless `starci check ci` of their commit is green, or, when the caller passes --urgent,
-# unless the commit carries the pushed URGENT record of `starci app release push --urgent` (owner ruling urgent-release, 2026-10-29,
-# contexts/harness/decisions.md: an urgent deploy needs no CI; its full gate runs later as `app release gate --backfill <tag>`, and
+# unless the commit carries the pushed URGENT record of `starci app release push --urgent` (an urgent deploy needs no CI;
+# its full gate runs later as `app release gate --backfill <tag>`, and
 # the deploy's safety floor is never skipped). release.publish is not listed: on the harness CI's own publish jobs run it once each
 # package's own jobs are green, and Debug's workstation fallback runs when CI cannot (CONTRIBUTING.md CONTRIB-20).
 # A deploy that passes --ci-run <run> (the CI deploy job, contexts/project/cicd.md) is judged by the CLI on that run instead of this list: every job the
@@ -36,7 +36,7 @@ verify:
 requireCi: [release.cut, deploy.prod]
 # `starci app check` is green while fewer than errorLimit error findings remain and none is a hard blocker
 # (a plaintext secret, the boot proof, a migration finding), so a release is not held back finding by finding by the last
-# structural nits; every finding is still printed (owner ruling gate-threshold-20, contexts/harness/decisions.md). The CLI hands
+# structural nits; every finding is still printed. The CLI hands
 # it to @starci/hfs as STARCI_GATE_ERROR_LIMIT; without it hfs uses 20.
 gate:
   errorLimit: 20

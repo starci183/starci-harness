@@ -39,14 +39,12 @@ const WORD_ID = /^[a-z]+(?:-[a-z]+)*$/
 
 /**
  * True when a yaml entry's `id` may stand alone as an anchor: a rule id with a digit or a capital (`R12`,
- * `DNA-CORE-LABEL-OUTSIDE`), a dotted id (`app.readme`), either with `/`-joined parts (`STATE-8/loading-keeps-anatomy`,
- * `R212/case-4`), or a lower-case word id where it names a decision, a ruling of the decisions scope (`two-grammars`). A
- * lower-case word anywhere else (`card`, `button-group`, `impl-fe`) names a record, which two files may both key, and is a
- * record key.
+ * `DNA-CORE-LABEL-OUTSIDE`), or a dotted id (`app.readme`), either with `/`-joined parts (`STATE-8/loading-keeps-anatomy`). A
+ * lower-case word (`card`, `button-group`, `impl-fe`) names a record, which two files may both key, and is a record key.
  */
-export const isAnchorId = (id: string, decision: boolean): boolean => {
+export const isAnchorId = (id: string): boolean => {
     const [head = "", ...rest] = id.split("/")
-    const named = isDottedId(head) || (isRuleId(head) && (decision || !WORD_ID.test(head)))
+    const named = isDottedId(head) || (isRuleId(head) && !WORD_ID.test(head))
     return named && rest.every((part) => CASE_PART.test(part))
 }
 

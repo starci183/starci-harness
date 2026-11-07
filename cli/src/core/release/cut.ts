@@ -42,7 +42,7 @@ export const releaseCutVerb = defineVerb({
         package: { kind: "string", summary: "the package whose version is released (default: the root package, or the only package)" },
         remote: { kind: "string", summary: "the remote (default origin)" },
         execute: { kind: "boolean", summary: "tag and push for real (default: a dry run that runs every judgement and tags nothing)" },
-        urgent: { kind: "boolean", summary: "accept the commit's pushed urgent record (starci app release push --urgent) in place of a green CI, by the owner's ruling of 2026-10-29" },
+        urgent: { kind: "boolean", summary: "accept the commit's pushed urgent record (starci app release push --urgent) in place of a green CI (contexts/project/cicd.md \"The urgent path\")" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)

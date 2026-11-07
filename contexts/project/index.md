@@ -42,7 +42,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: BE-DOMAIN-1 A capability owns its rules, its tables and its transaction · BE-DOMAIN-2 Work that answers now is a direct call; work that runs later is enqueued
 - [code/be/error.md](../code/be/error.md) · 5 KB — How a failure or refusal is declared, thrown or returned, and answered on HTTP and GraphQL.
   - sections: BE-ERROR-1 One base in platform, one error family per capability · BE-ERROR-2 A code is stable text; an error carries no prose · BE-ERROR-3 A refusal is the capability error; an `Outcome` only when a caller branches on it · BE-ERROR-4 Every catch accounts for the error and keeps the cause · BE-ERROR-5 One REST filter and one GraphQL formatter answer every failure
-- [code/be/event-bus.md](../code/be/event-bus.md) · 8 KB — Decides how a fact travels when another context or a background process must react: a typed event class, published by a domain service into the transactional outbox, relayed to ...
+- [code/be/event-bus.md](../code/be/event-bus.md) · 7 KB — Decides how a fact travels when another context or a background process must react: a typed event class, published by a domain service into the transactional outbox, relayed to ...
   - sections: BE-EVENT-BUS-2 An event is a typed class equal to its vendored contract · BE-EVENT-BUS-3 Publish through the bus, in the domain transaction, to the broker only · BE-EVENT-BUS-4 A consumer is a thin door; delivery is at least once with retry and dead letter · BE-EVENT-BUS-5 A declared event bus is proven on the test world · BE-EVENT-BUS-6 Lite fans out on pgmq topics, dedupes on a business key and parks poison per consumer
 - [code/be/folder.md](../code/be/folder.md) · 2 KB — Which directory back-end code lives in.
   - sections: BE-FOLDER-1 Four responsibility roots · BE-FOLDER-2 Features are grouped by trigger kind · BE-FOLDER-4 A capability holds only what it owns, behind one index
@@ -89,7 +89,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: BE-TRANSPORT-1 GraphQL is the default door; a REST route carries its evidence · BE-TRANSPORT-2 A door maps, dispatches one message and maps back · BE-TRANSPORT-3 No response envelope, no JSON tunnel
 - [code/be/typing.md](../code/be/typing.md) · 4 KB — Which type expresses a back-end contract, value or boundary, and which validator reads untrusted data.
   - sections: BE-TYPING-1 Interfaces for shapes, types for unions and aliases · BE-TYPING-2 Each layer has its own contract · BE-TYPING-3 Mutability follows lifecycle · BE-TYPING-4 Stable values are string enums or literal unions · BE-TYPING-5 A DTO is validated; an unknown payload is narrowed by its owner · BE-TYPING-8 A zod schema lives in its owner's `*.schema.ts` and is bounded
-- [code/be/webhooks.md](../code/be/webhooks.md) · 4 KB — How a delivery a provider POSTs is received: one public door that proves the delivery first and hands it to one domain intake, which records it durably; a job processes it after ...
+- [code/be/webhooks.md](../code/be/webhooks.md) · 5 KB — How a delivery a provider POSTs is received (a third-party OAuth redirect, a public GET with the auth-handshake reason off the webhook paths, is not a webhook door): one public ...
   - sections: BE-WEBHOOK-1 A webhook is a kind folder with one door, its module and its spec · BE-WEBHOOK-2 The door verifies first, then makes one intake call · BE-WEBHOOK-3 The intake records the receipt; a job processes it after commit · BE-WEBHOOK-4 Three behaviours are proven against a signing fake
 - [code/fe/README.md](../code/fe/README.md) · 8 KB — How the code of a Next.js front end is written: where a unit lives, what its files are called, how a component function is shaped, where data, text and colour come from, how a ...
   - sections: FE-RULE-OWNERSHIP The placement test puts each requirement and its check with one owner · Data status of a region · Topics · Reading order
@@ -143,46 +143,34 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: SHARED-TEST-1 The back end is tested; the front end has no tests · SHARED-TEST-2 An op tests what it changed and runs only those tests · SHARED-TEST-3 An op writes no test kind its edition forbids
 - [code/shared/typing.md](../code/shared/typing.md) · 6 KB — How strict the compiler is and which spellings tell it something it cannot check.
   - sections: SHARED-TYPING-1 The repository tsconfig extends the canon preset and adds only paths · SHARED-TYPING-2 No type escape; untrusted values are `unknown` and narrowed · SHARED-TYPING-3 Arrays are `Array<T>` or `ReadonlyArray<T>` · SHARED-TYPING-4 The type-aware rules hold on both sides · SHARED-TYPING-5 An exported declaration states its type
-- [decisions/README.md](../decisions/README.md) · 1 KB
-- [decisions/legacy-retirement.md](../decisions/legacy-retirement.md) · 35 KB — The owner ordered three things: every package under `packages/` is TypeScript source built to JavaScript, the legacy runtime at `D:/Repositories/starci-academy-backend/.claude` ...
-  - sections: 1. Context map · 2. Missing context worth moving · 3. Package TypeScript plan · 4. Retirement checklist
-  - ids: In-flight
-- [decisions/open-core.md](../decisions/open-core.md) · 22 KB — Choices made while writing patterns, hfs, stack and rulings.yaml, each with the alternative and the reason, so the owner can overturn one in one place.
-  - sections: Decisions · Contradictions found, with the resolution written · What `policy/` should take (not ported into knowledge) · Shared coding standard (code/shared) · Front-end coding standard (code/fe) · Back-end coding standard (code/be)
-- [decisions/open-grammar.md](../decisions/open-grammar.md) · 15 KB — Decisions taken while writing grammars and vendor, each with the alternative and the reason, so the owner can overturn one in one place.
-  - sections: Decisions · offset-pop, designed on the contract · Code follow-ups named by the grammar files · Gaps: choices an app can make two ways · What the contract cannot express yet
-- [decisions/open-ui.md](../decisions/open-ui.md) · 9 KB — Choices made while writing `contexts/ui`, each awaiting the owner's feedback.
-- [decisions/rulings.yaml](../decisions/rulings.yaml) · 126 KB — The one log of owner rulings that knowledge, the grammar package, the canon lint and the policy exceptions carry.
-  - ids: COLLECTION-1/case-8, CTA-1/case-5, CTA-1/case-6, CTA-1/case-7, CTA-4/case-5, FOCUS-1/case-6, LAYOUT-1/case-8, LAYOUT-1/case-9, R212, R212/case-10, R212/case-4, R212/case-7, R212/case-9, R318/case-1, RESPONSIVE-1/case-6, STATE-6/case-5, STATE-6/case-6, STATE-8/loading-keeps-anatomy, accent-corner, agent-avatar-initials-bot-badge, agent-keyed-schedules, alert-soft-pair, app-check-cache, app-check-cli-selectors and 166 more
 - [grammars/README.md](../grammars/README.md) · 14 KB — A grammar is the visual language an app's UI is drawn in.
   - sections: Three layers · The model: one contract, composed implementations · Files · Who owns what · Theming · Reading order for an author · Where feedback lands · Grammar lint
 - [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, roles for gaps and levels for insets · Size and intent · One root · Idioms · Playbook shapes
-- [grammars/contract.md](../grammars/contract.md) · 37 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
+- [grammars/contract.md](../grammars/contract.md) · 36 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
 - [grammars/contract.yaml](../grammars/contract.yaml) · 112 KB — What every grammar implements.
-  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED and 173 more
+  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED and 171 more
 - [grammars/contributing.md](../grammars/contributing.md) · 14 KB — How a component enters `@starci/grammar`, or a prop enters a component.
   - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Render proof · The look, reviewed by a person
-- [grammars/core.md](../grammars/core.md) · 6 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
+- [grammars/core.md](../grammars/core.md) · 5 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
   - sections: Material and why · How core fills the contract · Departures · Lint
 - [grammars/offset-pop.md](../grammars/offset-pop.md) · 7 KB — `offset-pop` is the playful, mobile-first grammar for consumer and learning apps: a cream canvas, objects drawn like stickers (an ink outline and a hard offset shadow), one pink ...
   - sections: Material and why · How offset-pop fills the contract · Departures · What an app must not add · Lint
 - [harness/axes.md](../harness/axes.md) · 1 KB
-- [harness/cli-canonical.md](../harness/cli-canonical.md) · 13 KB — Owner ruling `cli-canonical-2026-10-30` (decisions.md): the flag dictionary and the command tree below are the target surface of both layers, the harness verbs (`starci <group> ...
-  - sections: One flag dictionary (every verb, both layers) · The command tree
-- [harness/decisions.md](../harness/decisions.md) · 46 KB — The owner's harness decisions, as present-tense rulings, each naming the file that implements it.
-- [harness/questions.md](../harness/questions.md) · 1 KB
+- [harness/host.md](../harness/host.md) · 1 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
+  - sections: Spawning a process · Files and folders
+- [harness/questions.md](../harness/questions.md) · 9 KB
 - [harness/roles.md](../harness/roles.md) · 7 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
 - [harness/rules.md](../harness/rules.md) · 4 KB — These hold for every role and every task.
 - [harness/state.md](../harness/state.md) · 5 KB
   - sections: Where state lives · How a project is found
 - [hfs/README.md](../hfs/README.md) · 14 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
-- [hfs/harness.yaml](../hfs/harness.yaml) · 20 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
+- [hfs/harness.yaml](../hfs/harness.yaml) · 19 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.runtime-layer, images.sources, never.build-output, never.cli-js, never.env and 38 more
-- [hfs/rules.yaml](../hfs/rules.yaml) · 132 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
-  - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113 and 278 more
+- [hfs/rules.yaml](../hfs/rules.yaml) · 131 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
+  - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113 and 275 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 109 KB — The HFS slot manifest: what may exist in an app repository and where.
   - ids: app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore, app.format-config, app.git-meta and 140 more
 - [project/README.md](../project/README.md) · 10 KB — What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read for each kind of task.
@@ -191,13 +179,13 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
 - [project/check-cache.md](../project/check-cache.md) · 41 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
   - sections: The operating procedure · The command surface · Progress and the run log · When a run is full · Layout and format · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · CI parity · The memory plan · The slot, the templates and adoption · The law · Edge cases · As built · Read with
-- [project/cicd.md](../project/cicd.md) · 37 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
-  - sections: What an app has today · Triggers and what runs · The pipeline graph · Database migrations · Secrets and access · Gates · Records · Compared with common practice · Work packages · As built by the work packages (integration, 2026-10-31) · Open decisions · Sources · Read with
+- [project/cicd.md](../project/cicd.md) · 38 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
+  - sections: What an app has today · Triggers and what runs · The pipeline graph · Database migrations · Secrets and access · Gates · Records · Compared with common practice · Work packages · As built by the work packages · Open decisions · Sources · Read with
 - [project/full.md](../project/full.md) · 4 KB — Only the differences of a full app from the shared project model (README.md); everything not named here is the same in both editions.
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work · Read with
 - [project/lint.md](../project/lint.md) · 17 KB — Which machine judges which kind of fact in a project, where it runs, and which standard facts no machine judges yet.
   - sections: Where a check runs · Packages and gates · Facts no machine checks yet · PROJECT-LINT-1 A fact a machine can decide moves to the machine · PROJECT-LINT-2 A branch profile lowers only the polish gates · PROJECT-LINT-3 An app extends the law through rule packs and package slot manifests · Read with
-- [project/lite.md](../project/lite.md) · 11 KB — Only the differences of a lite app from the shared project model (README.md); everything not named here is the same in both editions, including the code structure, the front-end ...
+- [project/lite.md](../project/lite.md) · 10 KB — Only the differences of a lite app from the shared project model (README.md); everything not named here is the same in both editions, including the code structure, the front-end ...
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work and custody · Moving an app off Supabase · Read with
 - [project/stacks.md](../project/stacks.md) · 42 KB — `.starcistacks/` at the app root is the one place an app says how it runs: which environments exist, what each one starts, how traffic enters, where its secrets are sealed, what ...
   - sections: PROJECT-STACKS-1 One root per app · PROJECT-STACKS-2 The manifest declares everything the app runs and reads · PROJECT-STACKS-3 Two kinds of environment, each with its runbook · PROJECT-STACKS-4 One declared ingress publishes, and only in the open it must · PROJECT-STACKS-5 Secrets are sealed, granted least and never regenerated · PROJECT-STACKS-6 Every runbook declares the same operations · PROJECT-STACKS-7 CI holds names; every value stays with its consumer · PROJECT-STACKS-8 Quality services are declared and required · PROJECT-STACKS-9 A remote application API is consumed, not administered · PROJECT-STACKS-10 Local runs · PROJECT-STACKS-11 A customised service is an image the app builds, the same in every environment · PROJECT-STACKS-12 Seed data lives in the seed levels of the stack · Read with
@@ -207,7 +195,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [stack/fe.yaml](../stack/fe.yaml) · 10 KB — The front-end stack of every app, both editions: for each concern the ONE library, its home (slot ids of hfs/slots.yaml), the pattern rule that teaches its use when there is a ...
   - ids: R244, R288, auth, avatar-illustration, charts, code, codegen, data, dates, device-id, diagrams, event-stream, fe-stack-import, flow, forms, framework, framework-support, front-end, grammar-lint, graphql, graphql-subscriptions, i18n, icons, lint and 16 more
 - [stack/pins.yaml](../stack/pins.yaml) · 18 KB — The exact version of every shared dependency: one version per dependency for every app and package, except the command line itself, whose version in an app is the starci-harness ...
-  - ids: CONTRIB-20, R111, R190, grammar-patch-range, release-only-what-changed, same-minor, starci-harness
+  - ids: CONTRIB-20, R111, R190, same-minor, starci-harness
 - [ui/README.md](../ui/README.md) · 6 KB — How an agent decides a user interface on any grammar, so that every app built from the same grammar and the same knowledge comes out the same.
   - sections: The system in one page · Who owns what · Reading order · How the rules work
 - [ui/components/README.md](../ui/components/README.md) · 6 KB — One page per component role: **when and how** to use it.
@@ -220,7 +208,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/card.md](../ui/components/card.md) · 7 KB — Contract: Card.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/chip.md](../ui/components/chip.md) · 5 KB — Contract: Chip.
+- [ui/components/chip.md](../ui/components/chip.md) · 4 KB — Contract: Chip.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/color-swatch.md](../ui/components/color-swatch.md) · 1 KB — Contract: ColorSwatch.
   - sections: Job · Choose · Anatomy and states · Owner split
@@ -264,7 +252,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · States · Owner split · Rules
 - [ui/components/toast-alert.md](../ui/components/toast-alert.md) · 2 KB — Contract: Toast and Alert.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/composition.md](../ui/composition.md) · 26 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...
+- [ui/composition.md](../ui/composition.md) · 27 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...
   - sections: 1. Hierarchy · 2. Action and CTA · 3. Accent · 4. State and feedback · 5. Collection · 6. Layout · 7. Responsive · 8. Taste · 9. Coverage
   - ids: ACCENT-2, ACCENT-3, ACCENT-4, ACCENT-5, ACCENT-6, ACTION-1, COLLECTION-1, COLLECTION-2, COLLECTION-3, COVERAGE-1, CTA-1, CTA-2, CTA-3, CTA-4, CTA-5, CTA-6, DISCIPLINE-1, DISCIPLINE-2, DISCIPLINE-3, FE-APP-SHELL-1..6, FEEDBACK-1, FEEDBACK-2, FEEDBACK-3, HIERARCHY-1 and 20 more
 - [ui/loading.md](../ui/loading.md) · 9 KB — A region is in exactly one of four states, and the Grammar owns how each looks.
@@ -276,7 +264,6 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: AUDIT-1, AUDIT-2, AUDIT-3, AUDIT-4, code-native
 - [ui/proof/README.md](../ui/proof/README.md) · 1 KB — Data the proof lenses read.
 - [ui/proof/thresholds.yaml](../ui/proof/thresholds.yaml) · 5 KB — Every numeric threshold of contexts/ui, as data.
-  - ids: app-owns-theme
 - [ui/scale.md](../ui/scale.md) · 7 KB — One size model for every interactive component, so that a row of mixed controls reads as one object and two apps built on the same grammar size the same thing the same way.
   - sections: Why one ramp · The ramp · Drawn height and target size are two facts · How each component sits on the ramp · What travels with a step · Density
 - [ui/situations.md](../ui/situations.md) · 12 KB — An author says what the thing is; the grammar decides how it looks.

@@ -173,7 +173,7 @@ The new tree has to pick one meaning per word (see 4.4).
 2. **Frontend tests.** `hfs/rules.yaml` R97 `FE_NO_TESTS` and `design-truths.yaml:89-93` (`fe-has-no-specs`) say the front end has
    no tests, with no exception. `patterns/enforcement.yaml` ENF-PROP-P0-1 (line 115) asks for FE skeletons with "paired tests",
    and ENF-PROP-P1-FE (line 141) asks to "require behavioral coverage of both connected mapping and rendering".
-3. **A second visual owner is legal.** Owner ruling: every visual element lives in the Grammar package. Yet slot `fe.package.ui`
+3. **A second visual owner is legal.** The house rule: every visual element lives in the Grammar package. Yet slot `fe.package.ui`
    (`slots.yaml:2500-2514`, `packages/<family>-ui` with composites, branches, leaves) and `hfs/README.md:734` allow a
    product-family UI package. `css.yaml:101-108` tries to square it ("a shared UI package's family.css is a family entry of
    @starci/grammar"), which leaves the package's renderers unowned by the Grammar.
@@ -273,7 +273,7 @@ Readers counted by grep over `engine/ scripts/ packages/hfs/src packages/eslint 
 | `hfs/fe-stack.yaml` | One library per FE concern | 7 (eslint fe-stack, hfs check, draw-source) | code/fe | Machine owner |
 | `hfs/canon-pins.yaml` | Exact versions | 11 | | `why` holds changelog prose |
 | `hfs/design-truths.yaml` | Loosening exceptions, pinned | 7 | | Policy, digest-pinned |
-| `hfs/rulings.yaml` | Owner decisions (40) | 1 (coverage) | | Duplicates `modules/kernel/owner-rulings.yaml` |
+| `hfs/rulings.yaml` | Decisions (40) | 1 (coverage) | | Duplicates `modules/kernel/owner-rulings.yaml` |
 | `hfs/requirements.yaml` (160k), `surfaces.yaml` | Standard coverage ledgers | 1-2 (coverage check) | | Not knowledge: coverage evidence |
 | `hfs/facts.yaml` | Prose-contradiction facts | 1 | | Gate data |
 | `hfs/ci-standard.yaml`, `peer-integrations.yaml` | CI shape, peers | 1-2 each | | Machine data |

@@ -3,8 +3,7 @@
 One size model for every interactive component, so that a row of mixed controls reads as one object and two
 apps built on the same grammar size the same thing the same way. This file decides **which step** and **why**;
 the grammar contract ([../grammars/contract.md](../grammars/contract.md)) names the size tokens and each family
-sets their values. The resolved numbers and the alternatives considered are recorded in
-[../decisions/open-ui.md](../decisions/open-ui.md) (UI-5, UI-6).
+sets their values.
 
 ## Why one ramp
 
@@ -23,7 +22,7 @@ first row that applies wins.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| bar | the control sits in a navbar, top bar or site bar | nothing: the bar composition sets `control`, the `md` height held so identity, search, switches and avatars align (decision D-3) | `DNA-COMMON-BAR-ONE-HEIGHT` |
+| bar | the control sits in a navbar, top bar or site bar | nothing: the bar composition sets `control`, the `md` height held so identity, search, switches and avatars align | `DNA-COMMON-BAR-ONE-HEIGHT` |
 | field-row | the row holds a field (fields have one step) | `md` | `DNA-COMMON-FIELD-MD` |
 | hero | the one conversion call to action of a landing hero | `lg`, once per view | `DNA-COMMON-CONTROL-LG`; candidate: at most one `lg` control per view |
 | nested | the control is nested in a collection item, or sits in a dense toolbar whose every control is `sm` | `sm` | `DNA-COMMON-CONTROL-SM`; candidate: every `sm` control sits in an item or an all-`sm` toolbar |

@@ -33,10 +33,10 @@ two sets of the same level never nest.
 | page | the tabs switch the page's main area under the page header and may reflect the URL; one set per page | page tabs, `header.tabs` of the `Page` (they stand on its band's separator) | `DNA-COMMON-TABS-BY-LAYER`, `DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR`; lint `starci-grammar/page-tabs-in-header`; candidate: at most one page set per page |
 
 ## Variants
-None for the app: placing the tabs is the choice, and the grammar draws every tab bar, page or region, as the
+The role is the choice (`tabs.choose.role`): the grammar draws page, region and filter (`kind="filter"`) tabs as the
 underline, its labels text on the content edge they share with the title above and the box below
-([contract](../../grammars/contract.md#tabs), [presentation](../presentation.md#space) Text edge).
-A filter over a collection is a `FilterButtonGroup`, and `Tabs` takes no `variant` to pass.
+([contract](../../grammars/contract.md#tabs), [presentation](../presentation.md#space) Text edge), and a mode or
+period switch as the pill of `appearance="primary"`. `Tabs` takes no `variant` to pass.
 
 ## Size
 No size prop: the bar lands on `md` ([../scale.md](../scale.md)). A tab without a leading glyph always shows its

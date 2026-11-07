@@ -13,7 +13,8 @@ it touched, then a commit and a hand-off. The heavy rounds belong to the merged 
    chased: you fix every finding of a blocking gate and every `LINT_RATCHET_RAISED`, so a file you touch keeps no more lint
    findings than it had.
 3. Commit (a worker files its result and the harness commits; a package edit commits on its own branch), then hand off:
-   a result, a `pkg handoff`, or the branch named to whoever merges it ([README.md](README.md) "Roles").
+   a result, a `pkg handoff`, or the branch named to whoever merges it ([README.md](README.md) "Roles"). In a checkout
+   another agent shares, commit only your paths, through a temporary index (`GIT_INDEX_FILE`), never the shared index.
 
 The harness's cheap state checks, `check secrets` and `check loosening`, belong here too: they read text and never build.
 

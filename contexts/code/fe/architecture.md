@@ -61,8 +61,9 @@ architecture machine's `ARCH_INTERNAL_IMPORT_OUTSIDE`, which stops the lint run 
 ## FE-ROUTE The front end serves no API
 
 No file carries `"use server"`, and the only route handlers are `app/health/live/route.ts` and the auth callback
-`app/auth/callback/route.ts`, which exchanges the provider code or verifies the email-link token through
-`modules/auth/server` and redirects to a validated path.
+`app/auth/callback/route.ts`, which does exactly one provider code exchange or one email-link verification (the
+query's token hash and type) through `modules/auth/server`, computes and validates its redirect with pure helpers of
+`modules/routes` and `modules/auth`, and does nothing else.
 
 Why: a Server Action or a route handler is a second back end hidden in the front end, outside the API contract and
 back-end authorization; a webhook, cron or public API is a back-end feature.

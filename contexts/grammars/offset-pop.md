@@ -6,9 +6,8 @@ inside its scope (`parity: custom`) and keeps every vendor anatomy, role and beh
 spacing and arrangement: it changes how things look, never where they are or how big.
 
 Owners: values `@starci/grammar src/offset-pop/dna.ts` (`OFFSET_POP_DNA`: the contract shape plus the `offset`
-group), the default palette as HeroUI tokens `src/offset-pop/theme.css` (optional, ruling `app-owns-theme`), bindings `src/offset-pop/styles.css`, component paint `src/offset-pop/components-{forms,overlays,navigation}.css`,
-root `OffsetPopGrammarRoot`. Its decisions are O-1 to O-12 in [open-grammar](../decisions/open-grammar.md);
-where the code still differs, the decision names the follow-up. The laws `offset-pop` keeps beyond the common
+group), the default palette as HeroUI tokens `src/offset-pop/theme.css` (optional), bindings `src/offset-pop/styles.css`, component paint `src/offset-pop/components-{forms,overlays,navigation}.css`,
+root `OffsetPopGrammarRoot`. The laws `offset-pop` keeps beyond the common
 ones, with their measurements, are [contract.yaml](contract.yaml) `mustKeep.offset-pop` (`DNA-OFFSET-POP-*`);
 this file says why.
 
@@ -73,7 +72,7 @@ Everything else is inherited: it does not re-space, resize, re-arrange or add a 
 
 No app border, blur shadow, gradient or second accent on a grammar renderer, and no per-screen palette: the
 outline, the offset and the one pink are the grammar, and an extra layer breaks its dark and forced-colours
-mappings. An app adapts the palette only by setting HeroUI's tokens in its own CSS (ruling `app-owns-theme`).
+mappings. An app adapts the palette only by setting HeroUI's tokens in its own CSS.
 
 ## Lint
 

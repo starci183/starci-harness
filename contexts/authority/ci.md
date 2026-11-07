@@ -3,8 +3,7 @@
 CI is the critic. After a green wave ([wave.md](wave.md)) is pushed to main, CI runs the full suite: unit tests with
 coverage, e2e, build, Sonar, and, on a change to `packages/grammar`, the job `grammar proof`: the theme proof, and the Grammar publishes only when it is green; the render proof runs by hand. It publishes every package version
 not on npm yet as soon as that package's own jobs are green, never waiting for the whole run, so the push that carries a
-bumped version is the act of publishing (decision "Coded is usable; publishing is CI's" in
-[harness/decisions.md](../harness/decisions.md); [CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20 owns the jobs, which
+bumped version is the act of publishing: coded is usable, and publishing is CI's ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20 owns the jobs, which
 checks gate each, the refusals, the fallback and the secret). Which suites each
 profile's CI runs is `ci` of [policy/quality.yaml](../../policy/quality.yaml); the workflow is
 [.github/workflows/ci.yml](../../.github/workflows/ci.yml).

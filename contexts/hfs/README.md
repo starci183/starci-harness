@@ -77,7 +77,7 @@ only shrinks; a gate slot has no exceptions. A new place for a file is a new slo
 ## Editing
 
 A slot or rule changes here first, in its one entry, and the patterns cite it. A changed path, presence, import edge
-or budget is a major change of the manifest and needs an owner ruling ([decisions/rulings.yaml](../decisions/rulings.yaml));
+or budget is a major change of the manifest and needs the owner's yes;
 adding an optional slot or a rule is a minor one.
 
 ## Rule notes

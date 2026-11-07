@@ -3,8 +3,7 @@
 A grammar is the visual language an app's UI is drawn in. It is code first: the `@starci/grammar` package
 publishes the components, their props and anatomy, the tokens and their values. This folder holds what code
 cannot say: the contract every grammar implements, why each grammar looks the way it does, and how to compose
-with it. Two apps built from the same package and the same knowledge must come out the same in structure, and paint is each app's own
-(ruling `app-owns-theme`); a structural choice they could make differently is a gap, listed in [open-grammar](../decisions/open-grammar.md) until an API, a lint rule or
+with it. Two apps built from the same package and the same knowledge must come out the same in structure, and paint is each app's own; a structural choice they could make differently is a gap until an API, a lint rule or
 one rule here removes it.
 
 Read by: an agent drawing or implementing UI, a grammar author, an auditor judging a render. Gates read
@@ -37,11 +36,10 @@ region tabs (`tabs.choose.level`); which intent a command has, commit, alternati
 destructive (`button.choose.intent`); a decision with its way out or a peer `ButtonGroup`
 (`action-group.choose.kind`); which gap a relation takes (`space.choose.gap`); which step a control takes
 (`scale.choose.step`). The grammar then renders the look the choice implies; the app never passes it. A choice
-the tables do not settle is a gap in [decisions/open-grammar](../decisions/open-grammar.md) or
-[open-ui](../decisions/open-ui.md), never an improvisation.
+the tables do not settle is a gap the owner closes with a rule, never an improvisation.
 
 **Layer 3 is taste.** Whether a correct, cited page is also good is the reviewer's verdict on the render
-([ui/proof](../ui/proof.md), ruling `beautiful-by-eye`). A rejection is evidence that a rule is missing: the
+([ui/proof](../ui/proof.md)). A rejection is evidence that a rule is missing: the
 reviewer names the choice row or the law it would add.
 
 **A rule moves down when it becomes measurable.** A choice rule whose outcome can be read off the DOM becomes a
@@ -69,12 +67,12 @@ Common   renderers, anatomy, spacing, size ladder, intent map, root and portal m
 - **A grammar is a scope, not a subclass.** It replaces only `GrammarRoot`, which stamps
   `data-grammar-family="<id>"`, and ships one stylesheet whose rules sit in its layer under that attribute. Its
   types cannot change a Common prop (`owner: @starci/grammar src/common/registry.tsx`). Grammars are siblings;
-  none imports another, and Common imports none (decision D-6 removes today's exception).
+  none imports another, and Common imports none except the family switch of the intent resolver ([questions](../harness/questions.md) 33).
 - **Nothing is a grammar outside its root** ([common](common.md#one-root)).
 - **No default grammar.** The app names its grammar (`hfs.json` `sides.fe.grammar`); unknown fails.
 
 The package stores Common's renderers under `src/core/<tier>/`, where the tier folder (`leaf`, `branch`, `composite`, `frame`) is the tier the renderer
-belongs to and the `data-tier` it stamps; `core` here is storage, not the `core` grammar (decision D-1). A tier imports nothing above itself and only a
+belongs to and the `data-tier` it stamps; `core` here is storage, not the `core` grammar. A tier imports nothing above itself and only a
 frame takes `children` (`tiers.grammar` of [hfs/slots.yaml](../hfs/slots.yaml), the machine check `FE_GRAMMAR_TIER_DIRECTION`, `starci-grammar/tier-props`).
 
 ## Files
@@ -103,7 +101,7 @@ decides product facts and layout. A row whose last column is not "nothing" is a 
 | Colour | the app's HeroUI tokens on `:root`, `.light`, `.dark`; a family's optional `src/<id>/theme.css` is the default | the whole palette, in its own CSS, by HeroUI's names only; the mode is its class on `html` |
 | Radius, shadow, motion | `src/<id>/dna.ts` and `src/<id>/styles.css`, shaped by contract `tokens` and `dna`; type, corner and stroke ramps in `src/common/ramps.css` | nothing |
 | Spacing scale and rhythm | `src/common/spacing.ts` | which relationship a gap expresses ([ui/presentation](../ui/presentation.md)) |
-| Control heights | Common tokens `--grammar-control-height-*`, contract `sizes`, ruling `control-height-40` | `sm` or `lg` by [ui/scale](../ui/scale.md) (gap G-6); `control` never |
+| Control heights | Common tokens `--grammar-control-height-*`, contract `sizes` | `sm` or `lg` by [ui/scale](../ui/scale.md) (gap G-6); `control` never |
 | Hit area and target floor | Common tokens `--grammar-target-*`, contract `sizes.target` | nothing |
 | Corners | contract `tokens.corner` roles, values from the grammar's base radius | the corner role of an app-owned box ([ui/presentation](../ui/presentation.md)) |
 | Button variant | contract `intent`; resolver `src/core/buttonIntent.tsx` | `intent`, and `step` for a destructive command |
@@ -118,7 +116,7 @@ decides product facts and layout. A row whose last column is not "nothing" is a 
 
 ## Theming
 
-An app sets HeroUI's tokens in its own CSS and every part of the grammar follows it (ruling `app-owns-theme`). It writes no grammar-private
+An app sets HeroUI's tokens in its own CSS and every part of the grammar follows it. It writes no grammar-private
 name and may set nothing and take a family's default. Choice `theme.choose.owner`: who sets a value.
 
 | Row | Value | Owner | Where |
@@ -130,7 +128,7 @@ name and may set nothing and take a family's default. Choice `theme.choose.owner
 | type family | `--font-sans`, `--font-mono` | the app | sizes, weights and tracking are Common's ramp (`src/common/ramps.css`) |
 | motion, opacity, scrollbar | `--disabled-opacity`, `--tooltip-delay`, `--skeleton-animation`, `--scrollbar*` | the app, else HeroUI's | honoured by the grammar; durations are a Common token |
 | spacing, control height, target, rhythm | `--grammar-*` | Common | never an app's and never a family's |
-| avatar initials | the seed palette | the grammar | identity art, not a theming violation (ruling `avatar-initial-colours`) |
+| avatar initials | the seed palette | the grammar | identity art, not a theming violation |
 
 No gate judges an app's colours; a family's defaults are proved in the package's own stories (`prove-theme`, [proof](../ui/proof.md#who-holds-each-proof)).
 

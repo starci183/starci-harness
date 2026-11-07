@@ -48,7 +48,7 @@ applies wins. A flex that holds two relations is two Stacks, one inside the othe
 
 An inset steps down one level each time a box sits inside another, and an inner inset is never larger than its parent's.
 
-| Level | Box | Inset (owner token) |
+| Level | Box | Inset (the token that owns it) |
 | --- | --- | --- |
 | 0 frame | the page gutter; the overlay as a floating page | gutter 12, 24 from the medium breakpoint (48rem), 32 from wide (70rem), stepped, never fluid (`--grammar-page-inset`), except on `Page chrome="panes"`, where the header takes 12 at every width so the gutter column starts at the pane content edge; a dialog or drawer 12 on every side (`--grammar-overlay-inset`) |
 | 1 surface | a card (dense or holding a form or prose alike), a pane, a zone of a card | 12 on every side (`--grammar-inset`, `--grammar-card-padding-*`, `--grammar-pane-inset-*`) |
@@ -98,7 +98,7 @@ Gap (row and column chosen apart):
 Padding and gap together:
 
 - **R1 A closed box's content sits 12 apart inside a 12 inset**, and the blocks under a heading stand a section apart; the one
-  named exception is a card or tile grid, whose siblings stand 8 apart under a heading 12 above (ruling `card-grid-gap`).
+  named exception is a card or tile grid, whose siblings stand 8 apart under a heading 12 above.
 - **R2 Touching panes take 0 and a divider; floating cards take the grid step of their kind.** The two never mix.
 - **R3 A divider is full-bleed**; padding sits on the bands beside it, never on an ancestor of the divider. Lint:
   `starci-fe/divider-full-bleed`.
@@ -110,13 +110,13 @@ Margin:
   internal offset kept for parity.
 - **M2 Bleed is an API, never a negative margin**: `PaneSection bleed="inline"` (a horizontal chip row reaching both
   pane edges, the inset becoming its scroll padding), `SurfaceCard` `headers` and `footers` (zones to the card edge), the
-  artwork band of a painted card.
+  artwork band of a painted card (its first face, edge to edge and clipped by the card's radius, never inset).
 
 ### Text edge
 
 The page title, the tab labels and the section headings share one text edge with the card or pane box below them:
-every tab bar is the underline bar, its first label on the content edge; a filter over a collection is a
-`FilterButtonGroup`, never a tab bar. The card's inner text at 12 is the one intentional step.
+every underline tab bar, page, region or filter, has its first label on the content edge; only a mode or period switch
+is a pill (`Tabs appearance="primary"`, [tabs](components/tabs.md) `tabs.choose.role:switch`). The card's inner text at 12 is the one intentional step.
 
 ### The table (the grammar's decision per component)
 
@@ -215,7 +215,7 @@ Type per region (counts: `type.region`, `type.view` in [proof/thresholds.yaml](p
 | TONE-3 | accent | one short span whose emphasis is already decided; never a paragraph, never repeated across peers |
 
 Status is never a tone choice: success, warning, danger and information belong to the owners that carry them. What sits
-behind a mark picks its colour token, by name, in every theme (ruling `status-soft-pair-on-background`).
+behind a mark picks its colour token, by name, in every theme.
 
 Choice `tone.choose.pair`: which token a status tone x paints with. The first row that applies wins.
 
@@ -226,7 +226,7 @@ Choice `tone.choose.pair`: which token a status tone x paints with. The first ro
 | alone | a mark stands alone: no background of the tone behind it (a bare glyph, a count, a title on the page or on a neutral surface) | `x` itself | lint `starci-grammar/status-text-uses-soft-foreground` |
 | accent | the accent painted as text, on the page or on its tint | `--accent` alone; on its tint `--accent-soft-foreground` | judgement |
 
-The app sets the values of `x`, `x-soft` and `x-foreground` in its own CSS (ruling `app-owns-theme`) and no gate judges them;
+The app sets the values of `x`, `x-soft` and `x-foreground` in its own CSS and no gate judges them;
 a family's default tones are proved at `contrast.statusSoft` and `contrast.text` in the package's stories. Offset Pop's light
 theme is the one named exception: its pastel tones are kept and a bare mark there wears the soft foreground.
 

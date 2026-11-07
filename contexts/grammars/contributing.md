@@ -16,7 +16,7 @@ Six laws decide every addition; each names what holds it.
 | 2 A fact in, a look out | a prop states a fact, no prop chooses a look, and a default needs no prop | the prop rules below; types |
 | 3 Data before slots, slots before children | a typed field first, then a named slot, `children` only on a frame | tier table; `NoChildren` and `LabelChild` |
 | 4 Wrong composition fails in order | it does not compile, then does not lint, then does not render | types, the R-numbered rules, a development throw, DNA laws |
-| 5 The app owns its paint, the grammar its structure | neither reaches into the other (ruling `app-owns-theme`) | [theme](#paint), `starci/theme-layer-shape` |
+| 5 The app owns its paint, the grammar its structure | neither reaches into the other | [theme](#paint), `starci/theme-layer-shape` |
 | 6 A claim names its enforcer | CONTRIB-8, and every enforcer runs | [who holds each proof](../ui/proof.md#who-holds-each-proof) |
 
 ## The question to ask first
@@ -40,14 +40,14 @@ two components, or one frame with a typed `kind`. A `layout` whose item type cha
 
 ## Naming
 
-The name says what it does as a UI role, in English, never a product feature (ruling `grammar-names-are-generic`). `PaneGrid`, not a chat
+The name says what it does as a UI role, in English, never a product feature. `PaneGrid`, not a chat
 layout. A prop name states a fact (`isDisabled`, `tone`, `intent`), never a look (`rounded`, `big`, `primary`). Vendor names stay when the vendor has
 one. No two names mean the same, and nothing is aliased: a renamed thing is removed and migrated, and the old spelling goes to `removedVocabulary`.
 
 ## Which tier
 
 The folder is the tier and a check holds it (`data-tier` equals the folder). Pick by what it does, not by size. One ladder serves
-the grammar and apps, with `block` added in apps; a tier imports nothing above it (ruling `grammar-tier-ladder`).
+the grammar and apps, with `block` added in apps; a tier imports nothing above it.
 
 Choice `tier.choose.component`: which tier a component belongs to. The first row that applies wins.
 
@@ -60,8 +60,8 @@ Choice `tier.choose.component`: which tier a component belongs to. The first row
 | block | an app world: it reads data through hooks (apps only) | block | the app's hooks | composites and below, never a block | `{ shape?, props, on? }` | never | `starci-fe/tier-children`; R26 |
 
 A prop type extends `NoChildren` (`{ children?: never }`) or `LabelChild` (`{ children?: string }`) in a tier that takes no
-`children`, so nested JSX fails to compile for every caller. `children` outside a frame, or any new exception, needs an owner
-ruling. Each exception has its reason and its holder; no other exists.
+`children`, so nested JSX fails to compile for every caller. `children` outside a frame, or any new exception, needs the owner's
+yes. Each exception has its reason and its holder; no other exists.
 
 | Exception | Reason | Held by |
 | --- | --- | --- |
@@ -95,7 +95,7 @@ on the render. A one-file lint alone is not enough when the usual caller is a wr
 An app must be able to theme it with HeroUI's tokens alone.
 
 - Read HeroUI tokens first, with no literal fallback and no private token in front.
-- Each Grammar has its own style (ruling `grammar-own-style`): Core takes every colour from HeroUI's palette tokens (accent, default, success, warning, danger, their soft and foreground pairs, and HeroUI's ground and text tokens) and keeps no palette of its own; Offset Pop and the other Grammars may choose their own. A debt of one Grammar never drives a rule of Core. An app adds a tone (Nivo's `info`) with four tokens in its theme and one `GrammarToneRegistry` declaration; no Core rule reads an undeclared tone token (`npm run check:tones`, `DNA-COMMON-TONE-CUSTOM-COMPLETE`).
+- Each Grammar has its own style: Core takes every colour from HeroUI's palette tokens (accent, default, success, warning, danger, their soft and foreground pairs, and HeroUI's ground and text tokens) and keeps no palette of its own; Offset Pop and the other Grammars may choose their own. A debt of one Grammar never drives a rule of Core. An app adds a tone (Nivo's `info`) with four tokens in its theme and one `GrammarToneRegistry` declaration; no Core rule reads an undeclared tone token (`npm run check:tones`, `DNA-COMMON-TONE-CUSTOM-COMPLETE`).
 - Never write a colour, radius, font family, shadow or duration in a component rule or in TS. Size and weight come from the Common type ramp.
 - A tone on its tint uses `x-soft` with `x-soft-foreground`; a mark alone uses `x`.
 - Never add a token an app must set. A new token derives from HeroUI's with a default.
@@ -125,9 +125,8 @@ All of it, in one change.
 | Stories: every shape, loading, empty, error, long text | `packages/grammar/src/stories` |
 | Contract role: tier, slots, variants, states, laws with measures | `contexts/grammars/contract.yaml`, `contract.md` |
 | Lint for each way it can go wrong that a type cannot stop | `eslint-grammar-core` or `eslint-canon-fe`, with a spec, a `why`, a doc page, an R-number in `hfs/rules.yaml` |
-| Vendor entry if it wraps HeroUI | `contexts/vendor/wrappers.yaml`, with a ruling for any override |
+| Vendor entry if it wraps HeroUI | `contexts/vendor/wrappers.yaml`, with the rule it applies or a reason for any override |
 | A Choose row only for what a type cannot decide | `contexts/ui/components/<role>.md` |
-| A ruling when the owner decided something | `contexts/decisions/rulings.yaml` |
 | Version and changelog | `packages/grammar`, CONTRIB-20 |
 | A codemod when it replaces something | `packages/hfs`, `starci app codemod` |
 
@@ -135,7 +134,7 @@ Rewrite what it changes rather than adding beside it (CONTRIB-6). Delete what it
 
 ## Patch or minor
 
-The canon pins give the Grammar family a same-minor range (`~0.21.38`, decision `grammar-patch-range`), so a patch reaches every app
+The canon pins give the Grammar family a same-minor range (`~0.21.38`), so a patch reaches every app
 inside it with no release of `@starci/hfs`, the canons or the CLI: an app takes it by raising its pin and lockfile, and R15 accepts
 it. A minor moves the range, and with it the whole family. Which one a change is follows from what the rest of the family reads:
 
@@ -158,7 +157,7 @@ Lint passing says nothing about looks. Before review:
 1. Render every story in **both families** (Core and Offset Pop), in **light and dark**, at **1920 and 390** wide, device scale factor 2:
    Playwright's `toHaveScreenshot` over the built Storybook (`npm run prove-render` in `packages/grammar`) compares each with its baseline in
    `packages/grammar/proof/baselines`. The baselines are unreviewed: they detect change and approve no look, and the report says "changed",
-   never "wrong". The proof runs by hand and is not part of build, push, lint or publish (owner 2026-11-02); a lane refreshes unreviewed baselines with `npm run prove-render:accept`. Only the pictures in
+   never "wrong". The proof runs by hand and is not part of build, push, lint or publish; a lane refreshes unreviewed baselines with `npm run prove-render:accept`. Only the pictures in
    `proof/approved.json` are approved (the chat renderer, so far); a change to one needs a person (`npm run prove-render:approve`). Baselines are taken in the pinned Playwright image CI runs in (Linux), never on a laptop.
 2. Measure the static laws with `starci dna check --storybook packages/grammar/storybook-static`; add a narrow container (a drawer or a rail) if it answers its container.
 3. With **real content**: the longest translated label, an empty value, a large count. Lorem ipsum hides the failure.
@@ -171,4 +170,4 @@ Every law must be measured, not merely pass: a law with zero matches is not exer
 
 Link the proof report (the `grammar-proof` artifact of CI, or `proof/report`) in the change. A person reads the screens, in the state a reader would see them, and
 accepts or rejects. The owner reviews anything that changes how a component looks. A green check does not stand in for this, and a rejection
-means a rule is missing or wrong (ruling `beautiful-by-eye`): the fix lands in a type, a law or the rule, then the component.
+means a rule is missing or wrong: the fix lands in a type, a law or the rule, then the component.

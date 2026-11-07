@@ -61,13 +61,12 @@ A second copy is a defect even while both agree.
 | how the CLI is built, the verb standard, how the harness inside it works (ledgers, settling, graph, seat launch) | [cli/README.md](cli/README.md), naming the code that implements each |
 | load order | [contexts/README.md](contexts/README.md) |
 | who may edit, commit, merge, push and publish, and which tier of checks each role runs | [contexts/authority/](contexts/authority/README.md) |
-| axes, roles, where state lives and how a project is found, hard rules, the owner's harness decisions, open questions | one file each in [contexts/harness/](contexts/README.md#harness) |
+| axes, roles, where state lives and how a project is found, the host environment, hard rules, open questions | one file each in [contexts/harness/](contexts/README.md#harness) |
 | what the harness is, how it works, how to install it, the verb groups, CI | [README.md](README.md) |
 | how a release is published and the secret it needs | CONTRIB-20 below |
 | what each CLI release changed | [CHANGELOG.md](CHANGELOG.md); a package's, its own `CHANGELOG.md` |
 | how to report a vulnerability; the conduct expected | [SECURITY.md](SECURITY.md); [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
 | how app code is written | [contexts/](contexts/README.md) |
-| a knowledge ruling | [contexts/decisions/rulings.yaml](contexts/decisions/rulings.yaml) |
 
 When you find a copy, keep the owner, make the other site read or cite it, and delete the copy in the same commit. If
 no owner exists yet, create it first. Never answer a duplicate with an allowlist, a baseline or a suppression.
@@ -100,10 +99,14 @@ without becoming truer. Held by review.
 
 ### CONTRIB-7 Feedback hardens
 
-Owner feedback becomes the rule rewritten in its owning file, a check, or a code change. It never becomes a case note
-beside a rule or a "lessons" section. The decision itself is recorded once: a harness decision in
-[contexts/harness/decisions.md](contexts/harness/decisions.md), a knowledge ruling in [contexts/decisions/rulings.yaml](contexts/decisions/rulings.yaml). No design
-document sits beside the owners: plans, phases and history live in git, not in a file.
+Owner feedback and owner decisions become the rule rewritten in its owning file, a check, or a code change. There is
+one rule book, `contexts/` and this file: a decision is written once, as the rule that holds now, and never logged a
+second time, attributed or dated. A rule cites other rules by their ids, never a ruling, a decision log or a date, and a
+CHANGELOG entry says what changed, never which ruling asked for it. A question that awaits the owner is one entry of
+[contexts/harness/questions.md](contexts/harness/questions.md) until it is answered. It never becomes a case note
+beside a rule or a "lessons" section. No design document sits beside the owners: plans, phases and history live in git,
+not in a file. `starci contexts anatomy` refuses a ruling citation in contexts/, policy/ and the packages' source and
+knowledge (ANATOMY_RULING_HISTORY).
 
 ### CONTRIB-8 Claims execute
 
@@ -171,7 +174,7 @@ analysis notes under `docs/knowledge-analysis/` may quote them.
 | the qualification and probation store, admission reason codes | qualification the router derives from member outcomes (`qualification` of `ops/routing.yaml`) |
 | a workflow or task pin (`agent`, `model`, `effort`), a routing bias (`only`, `avoid`, `prefer`), `ROUTE_BIAS_EMPTY` | the router alone picks, from a task's label, `difficulty` and `risk` |
 | one Supervisor per host, a `[Supervisor]` title with no project | one `[Supervisor] <project>` per project (`project_supervisors`); a version-2 host store's `supervisors` table is read only to adopt its workflows |
-| `STARCI.md`, a design document of decisions, plans and phases | each fact in its owner ("One owner per fact"); decisions in contexts/harness/decisions.md |
+| `STARCI.md`, a design document of decisions, plans and phases; a decision log (`decisions.md`, `rulings.yaml`, `open-*.md`), a ruling id or date cited in a rule | each fact in its owner ("One owner per fact"), stated as the rule that holds now; open choices in contexts/harness/questions.md |
 | `starci app lint` (`--changed`, `--workspace`, `--sonar`), the `lint` script of an fe workspace (`starci app lint --workspace .`) | `starci app check --gate lint` with `--side` (be or fe), `--fix` and `--out <file>`: the root `lint` script, the CI lint step and the release gate's Sonar row call it; a workspace has no lint script, and the cache makes the whole-app check of an unchanged tree take seconds |
 
 ## Commit and push
@@ -219,12 +222,12 @@ specs and test folders aside) while its version is already on npm (`RELEASE_VERS
 commit npm recorded for that version), and when a due package requires a sibling (`dependencies`, `peerDependencies`)
 at another version than the sibling's folder holds at that commit (a same-minor range `~x.y.z` is met by any patch of it), or at a
 version that is neither on npm nor due in the same run, and when `@starci/grammar` is due at a patch while its diff since the
-version npm serves holds a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`). The Grammar family is the one family whose canon pin is
-a same-minor range (decision `grammar-patch-range`): a Grammar patch publishes the three family packages alone, and a minor raises the
+version npm serves holds a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`). The Grammar family takes
+a same-minor range in the canon pins: a Grammar patch publishes the three family packages alone, and a minor raises the
 range in `@starci/hfs` and releases the whole family ([contexts/grammars/contributing.md](contexts/grammars/contributing.md) "Patch or
 minor"). A raised version whose shipped files differ from the version npm serves only by bookkeeping (the CHANGELOG, the lockfile, the version
 field) is skipped, never published (`unchanged` in the plan), so only a package whose content moved gets a version; the canons peer `@starci/hfs`
-by a same-minor range and read its runtime at run time, so an hfs change no longer releases them (decision `release-only-what-changed`). A change to a package therefore raises the version in its `package.json` and adds its entry to its CHANGELOG
+by a same-minor range and read its runtime at run time, so an hfs change does not release them. A change to a package therefore raises the version in its `package.json` and adds its entry to its CHANGELOG
 (the CLI's is [CHANGELOG.md](CHANGELOG.md)) in the commit that makes it; a package and the sibling version it requires
 move in one commit. The CLI is the one exception, held for the second phase: `cli/package-lock.json` installs its
 siblings from npm, so its commit requires each at a version npm serves, and it requires every `@starci` package

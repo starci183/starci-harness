@@ -10,7 +10,6 @@ Two different jobs share the pill shape, and a status may shrink to its dot:
 | `Badge` (display chip) | label an outcome authority settled, next to the thing it qualifies; `isDot` adds the status dot before its words, `isLive` makes it the state of a live feed in a polite live region | no |
 | `StatusDot` | state an entity's status as a dot alone, with the words as its name | no |
 | `TagGroup` | values the user entered, to remove or to order (it has no selection) | yes |
-| `FilterButtonGroup` | peer values that filter a collection that stays in place: one row of `sm` toggle buttons, the rest behind a "+n" search list | yes |
 
 ## Choose
 

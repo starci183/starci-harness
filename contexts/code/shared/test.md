@@ -14,8 +14,7 @@ Why: front-end behaviour that matters is drawn by the grammar and judged by its 
 over screens would test the framework and freeze markup.
 
 Enforced by: R97 FE_NO_TESTS, R47 BE_TEST_TOPOLOGY. Open: the `fe` profile of
-[policy/quality.yaml](../../../policy/quality.yaml) still lists `unit` in its CI tier
-([decisions/open-core.md](../../decisions/open-core.md), contradiction "FE tests").
+[policy/quality.yaml](../../../policy/quality.yaml) still lists `unit` in its CI tier, which contradicts R97.
 
 ## SHARED-TEST-2 An op tests what it changed and runs only those tests
 
@@ -52,5 +51,4 @@ a lite app lacks), so a lite op writes no `*.e2e-spec.ts` and adds no e2e script
 Why: the slot of a forbidden kind does not exist in a lite tree, so the spec could never be placed or run.
 
 Enforced by: R212 HFS_EDITION_INVALID (forbidden slots present), R272 BE_APP_BOOT_PROOF_MISSING. Open: R32 and R47
-still require the e2e world ([decisions/open-core.md](../../decisions/open-core.md), contradiction "R32, R47 vs R212,
-R272").
+still require the e2e world, which a lite tree does not have (R212, R272).

@@ -25,7 +25,7 @@ export interface ScopeTarget {
 }
 
 /**
- * The scope decision written before any check runs (owner ruling scope-before-check): `files` are what the checks judge, the
+ * The scope decision written before any check runs: `files` are what the checks judge, the
  * `changed` files of the diff, or, when the diff changes nothing, the tracked files under the `paths` a verify-only task proves.
  */
 export interface Scope {

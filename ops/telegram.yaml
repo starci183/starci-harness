@@ -24,7 +24,7 @@ banner: telegram/ticket-banner.png
 commitUrl: https://github.com/starci183/starci-harness/commit/{sha}
 # How long the "Tắt tiếng 1h" button holds back the defect notices.
 muteMinutes: 60
-# The kinds of notice that go out (owner ruling 2026-10-29: only what needs the owner's decision). `question` is a question
+# The kinds of notice that go out: only what needs the owner's decision. `question` is a question
 # ticket awaiting his answer, sent once as its card, with its reminder; `defect` a defect ticket opened, reopened or closed;
 # `request` an owner request a Supervisor took up; `workflow` a workflow done, blocked or stopped. The kinds left out stay on
 # /tickets, /status, the harness UI and the monitor's report.

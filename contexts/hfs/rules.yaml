@@ -134,7 +134,7 @@ rules:
       - {kind: machine, id: package-manager}
   - id: R15
     code: HFS_CANON_PIN_DRIFT
-    law: "Canon packages and frameworks match their pins (stack/pins.yaml): exactly, or, for the Grammar family and the two canons, an exact version inside their same-minor `range` (decisions grammar-patch-range, release-only-what-changed; @starci/hfs stays exact); a pre-release meets a range only when the range names one."
+    law: "Canon packages and frameworks match their pins (stack/pins.yaml): exactly, or, for the Grammar family and the two canons, an exact version inside their same-minor `range` (@starci/hfs stays exact); a pre-release meets a range only when the range names one."
     failureCodes:
       - HFS_CANON_PIN_DRIFT
     enforcers:
@@ -149,7 +149,7 @@ rules:
       - {kind: hfs, id: tool-config-forbidden}
   - id: R17
     code: HFS_RULE_OFF_WITHOUT_REPLACEMENT
-    law: The lint configurations are the rendered one-liners, so no rule is turned off, warned or redefined in a repository; the one declared exception is the canon's own counting cohort (`COUNTING` of eslint-canon-fe), a rule the owner ruled to ship at warn for one release while a codemod moves apps onto its API, and its entry ends when the count is 0.
+    law: The lint configurations are the rendered one-liners, so no rule is turned off, warned or redefined in a repository; the one declared exception is the canon's own counting cohort (`COUNTING` of eslint-canon-fe), a rule that ships at warn for one release while a codemod moves apps onto its API, and its entry ends when the count is 0.
     failureCodes:
       - HFS_RULE_OFF_WITHOUT_REPLACEMENT
     enforcers:
@@ -1501,7 +1501,7 @@ rules:
       - {kind: hfs, id: lite-brand-work}
   - id: R213
     code: DB_MIGRATION_SHAPE
-    law: "A migration is `db/migrations/<ts14>_<kebab>.sql` with a valid unique stamp sorting after the committed active migrations, parses as PostgreSQL, carries no transaction control (it is applied in one transaction with its history row), and is immutable once on the base. A declared one-time baseline reset (hfs.json `db.baselineReset` = `{ baseline, ruling, date, reason }`, the owner ruling for an app that keeps no data worth migrating) makes the one declared baseline file (`-- starci:baseline-reset <ruling>` header) the new base chain while it is not yet on the base branch: the removal of every older active file and of the archive is accepted (R213 immutability, R257 archive immutability); exactly one file may carry the marker, no older active file may stay, and later migrations sort after the baseline. Once the baseline is on the base branch the declaration is spent and every rule applies to it unchanged; without the declaration nothing changes."
+    law: "A migration is `db/migrations/<ts14>_<kebab>.sql` with a valid unique stamp sorting after the committed active migrations, parses as PostgreSQL, carries no transaction control (it is applied in one transaction with its history row), and is immutable once on the base. A declared one-time baseline reset (hfs.json `db.baselineReset` = `{ baseline, ruling, date, reason }`, declared by an app that keeps no data worth migrating) makes the one declared baseline file (`-- starci:baseline-reset <ruling>` header) the new base chain while it is not yet on the base branch: the removal of every older active file and of the archive is accepted (R213 immutability, R257 archive immutability); exactly one file may carry the marker, no older active file may stay, and later migrations sort after the baseline. Once the baseline is on the base branch the declaration is spent and every rule applies to it unchanged; without the declaration nothing changes."
     failureCodes:
       - DB_MIGRATION_SHAPE
     enforcers:
@@ -1683,7 +1683,7 @@ rules:
       - {kind: hfs, id: db-queue-cron}
   - id: R259
     code: DB_EXTENSION_ALLOWED
-    law: Database extensions follow the allowlist, migrations write no vault secret or role password, and destructive DDL lives only in contract migrations whose targets are unreferenced, also by the previous release's sources. A migration already on the base unchanged is immutable (R213), so its destructive and dynamic DDL is reported as a known item, not a blocker; an owner ruling in hfs.json `db.destructiveRulings` (the exact migration, the exact objects, a reason and the date) accepts those objects outside a contract migration only while the same proof finds them unreferenced, else DB_DESTRUCTIVE_RULING_UNPROVEN.
+    law: Database extensions follow the allowlist, migrations write no vault secret or role password, and destructive DDL lives only in contract migrations whose targets are unreferenced, also by the previous release's sources. A migration already on the base unchanged is immutable (R213), so its destructive and dynamic DDL is reported as a known item, not a blocker; an entry of hfs.json `db.destructiveRulings` (the exact migration, the exact objects, a reason and the date) accepts those objects outside a contract migration only while the same proof finds them unreferenced, else DB_DESTRUCTIVE_RULING_UNPROVEN.
     editions: [lite]
     failureCodes:
       - DB_EXTENSION_ALLOWED
@@ -2304,7 +2304,7 @@ rules:
       - {kind: eslint-grammar-core, id: mascot-asset-slot-required}
   - id: R340
     code: FE_RAISED_SURFACE_IN_SURFACE
-    law: A surface never stands inside another surface (owner decision, dialogs and drawers included); a SurfaceCard that a SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover of the same file encloses is refused. The Grammar has one depth, raised, and draws no nested edge, and throws the same refusal in development. An overlay's trigger is not its content. Across files the whole-program rule closes it (R356).
+    law: A surface never stands inside another surface, dialogs and drawers included; a SurfaceCard that a SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover of the same file encloses is refused. The Grammar has one depth, raised, and draws no nested edge, and throws the same refusal in development. An overlay's trigger is not its content. Across files the whole-program rule closes it (R356).
     failureCodes:
       - FE_RAISED_SURFACE_IN_SURFACE
     enforcers:
@@ -2318,7 +2318,7 @@ rules:
       - {kind: eslint-grammar-core, id: freestyle-has-reason}
   - id: R342
     code: BE_ENTITY_EXTENDS_BASE
-    law: "An @Entity class does not repeat the columns every table shares: a database-set created_at or updated_at (CreateDateColumn, UpdateDateColumn, or a Column on those names with insert false, update false or a default) and, beside both, the generated uuid id are inherited from AbstractEntity or UuidAbstractEntity of @modules/platform/database (BE-PERSISTENCE-3, ruling entity-base). A table whose timestamps the application sets, or that lacks one, extends nothing; the base file platform/database/abstract.entity.ts is exempt."
+    law: "An @Entity class does not repeat the columns every table shares: a database-set created_at or updated_at (CreateDateColumn, UpdateDateColumn, or a Column on those names with insert false, update false or a default) and, beside both, the generated uuid id are inherited from AbstractEntity or UuidAbstractEntity of @modules/platform/database (BE-PERSISTENCE-3). A table whose timestamps the application sets, or that lacks one, extends nothing; the base file platform/database/abstract.entity.ts is exempt."
     failureCodes:
       - BE_ENTITY_EXTENDS_BASE
     enforcers:
@@ -2392,7 +2392,7 @@ rules:
 
   - id: R351
     code: FE_TABLE_IN_CARD
-    law: "A DataTable is not placed inside a SurfaceCard, on the page or in a pane: plain rows with a few facts are a SurfaceCard kind=list with the label outside and the note in its footer, and a table that belongs to a card is an owner decision named in this rule. The rule reads the JSX of the file: a DataTable enclosed by a SurfaceCard element, or rendered by a component of the same file that a SurfaceCard encloses."
+    law: "A DataTable is not placed inside a SurfaceCard, on the page or in a pane: plain rows with a few facts are a SurfaceCard kind=list with the label outside and the note in its footer, and no table belongs to a card. The rule reads the JSX of the file: a DataTable enclosed by a SurfaceCard element, or rendered by a component of the same file that a SurfaceCard encloses."
     failureCodes:
       - FE_TABLE_IN_CARD
     enforcers:
@@ -2408,7 +2408,7 @@ rules:
 
   - id: R353
     code: FE_TAG_GROUP_SELECTION
-    law: "A TagGroup holds values the user entered, to remove or to order, and has no selection: selectionMode, selectedIds, defaultSelectedIds and onSelectionChange on it are refused. Peer values that filter a collection that stays in place are a FilterButtonGroup (sm toggle buttons on one row, the rest behind a +n search list)."
+    law: "A TagGroup holds values the user entered, to remove or to order, and has no selection: selectionMode, selectedIds, defaultSelectedIds and onSelectionChange on it are refused. Peer values that filter a collection that stays in place are Tabs kind=\"filter\"."
     failureCodes:
       - FE_TAG_GROUP_SELECTION
     enforcers:
@@ -2483,7 +2483,7 @@ rules:
       - {kind: grammar-lint, id: no-literal-look}
   - id: R366
     code: FE_LABEL_IN_GRID
-    law: "A card with a label heads a section and draws the label outside its material; a peer you recognise and open names itself inside, beside its mark (ruling card-label-by-kind). A SurfaceCard with a label repeated in a Grid kind=cards (two or more as direct children, or one written in a .map) is refused: it is a tile (SurfaceCard kind=tile with name, mark, description, badge and action), or, when the peers are compared by a fact, one kind=list card."
+    law: "A card with a label heads a section and draws the label outside its material; a peer you recognise and open names itself inside, beside its mark. A SurfaceCard with a label repeated in a Grid kind=cards (two or more as direct children, or one written in a .map) is refused: it is a tile (SurfaceCard kind=tile with name, mark, description, badge and action), or, when the peers are compared by a fact, one kind=list card."
     failureCodes:
       - FE_LABEL_IN_GRID
     enforcers:
@@ -2610,7 +2610,7 @@ rules:
       - {kind: hfs, id: package-slots}
   - id: R383
     code: CI_PARITY_STEP_FAILED
-    law: "The pre-push gate runs every command of the app's managed CI that needs no database, as CI runs it: `starci app check --fresh` adds the build and audit families, which read their commands from the app's rendered .github/workflows/ci.yml (the fast job's production dependency audit and typecheck script, the build job's `npm run build:be` and each `build fe` step, a next build per front-end app with its own SWC cache root under the app's tool cache), and runs CI's coverage step (`starci app coverage verify`) on the lcov the test family merged from its records; a step that fails is CI_PARITY_STEP_FAILED, so a green push gate is not followed by a red CI on it. The database steps (db:lint, app db drift) need a database and stay CI-only (decision ci-parity)."
+    law: "The pre-push gate runs every command of the app's managed CI that needs no database, as CI runs it: `starci app check --fresh` adds the build and audit families, which read their commands from the app's rendered .github/workflows/ci.yml (the fast job's production dependency audit and typecheck script, the build job's `npm run build:be` and each `build fe` step, a next build per front-end app with its own SWC cache root under the app's tool cache), and runs CI's coverage step (`starci app coverage verify`) on the lcov the test family merged from its records; a step that fails is CI_PARITY_STEP_FAILED, so a green push gate is not followed by a red CI on it. The database steps (db:lint, app db drift) need a database and stay CI-only."
     failureCodes:
       - CI_PARITY_STEP_FAILED
     enforcers:

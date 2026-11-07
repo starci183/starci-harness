@@ -3,7 +3,6 @@
 schema: starci/vendor-parity@1
 vendor: heroui
 reference: generated cache vendor/heroui@<pinned version> (README.md)
-ruling: grammar-vendor-parity
 
 # Kept by every grammar, in every mode, for every component.
 always:
@@ -19,7 +18,7 @@ tokens: [semantic variables of ../grammars/contract.yaml tokens]
 
 modes:
   strict:
-    meaning: keeps HeroUI's paint and arrangement; changes tokens only; every other deviation is a ruled override in wrappers.yaml
+    meaning: keeps HeroUI's paint and arrangement; changes tokens only; every other deviation is a declared override in wrappers.yaml
     mayChange: [tokens]
     findings: [slot, style, default, stale]
     grammars: [core]
@@ -29,12 +28,11 @@ modes:
     findings: []
     grammars: [offset-pop]
   common:
-    meaning: Common's wrappers and sheets are judged strict for every grammar; a size or layout deviation shared by all grammars is a ruled override
+    meaning: Common's wrappers and sheets are judged strict for every grammar; a size or layout deviation shared by all grammars is a declared override
     mayChange: [tokens]
     findings: [slot, style, default, stale]
 
 sizeLadder:
-  ruling: control-height-40
   steps: [sm, md, lg]
   heldAtEveryBreakpoint: true          # the vendor's desktop step-down is removed
   owner: "@starci/grammar src/common/styles.css"

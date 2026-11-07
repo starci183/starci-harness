@@ -34,7 +34,7 @@ None of its own.
 - **App author decides:** the region, its elements and CSS, and the reason in a few words.
 
 ## Rules
-Ruling grammar-freestyle-region; lint R341 (`starci-grammar/freestyle-has-reason`). The rules that judge hand-written
+Lint R341 (`starci-grammar/freestyle-has-reason`). The rules that judge hand-written
 elements, classes, styles and generated art (`starci-fe/no-arbitrary-value`, `no-app-surface-paint`,
 `no-raw-brand-value`, `no-list-panel-padding`, `no-inline-class-name`, `no-native-img`,
 `starci-grammar/no-raw-structural-element`, `no-fractional-step`, `generated-art-in-mascot-or-media-frame`,

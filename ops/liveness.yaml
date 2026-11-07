@@ -110,7 +110,7 @@ heavy:
   starvedTicketMinutes: 45
   bootProofTimeoutSeconds: 300
   scannerCpuPercent: 50
-  # The memory plan of `app check` (decision memory-plan, RAM-SIZING; cli/src/harness/memory-plan.ts): before its families run, the check measures
+  # The memory plan of `app check` (RAM-SIZING; cli/src/harness/memory-plan.ts): before its families run, the check measures
   # the app from its git index and file sizes (per side: S unit specs, F sources; C the MB of the per-spec coverage records, L the MB of every
   # cache record) and sizes each heap from it instead of one figure per kind. Fitted on Nivo (1,831 back-end specs on 4 to 7 workers at a
   # 12 GB parent; a back-end tsc of about 7,000 files at 8 GB; a parent that died on 494 MB of coverage records at the default heap):

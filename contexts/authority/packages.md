@@ -37,7 +37,7 @@ the package's `typecheck`, its literal lint and `build` (`npm test` runs exactly
 (`eslint.config.ts`, `stylelint.config.ts`): a component or stylesheet holds no hardcoded colour, radius, type size, shadow,
 motion, opacity or off-scale spacing, and reads a token or a ramp of `src/common/ramps.css`. It adds no spec suite or test helper;
 it runs no Storybook plays and no DNA measurement locally; it bumps and re-pins only `@starci/grammar`. The plays and the DNA gate are
-CI's ([ci.md](ci.md)), and a defect is fixed in the component and recorded as an owner ruling. Apps on the Grammar keep no
+CI's ([ci.md](ci.md)), and a defect is fixed in the component and hardens the rule it broke. Apps on the Grammar keep no
 front-end tests either (`SHARED-TEST-1`).
 
 Other packages keep their specs ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-2): a rule change is written with the

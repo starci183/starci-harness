@@ -32,7 +32,7 @@ covers the band. `loadingRows`, `loadingContent` and `isSkeleton` no longer exis
 
 ## The region carries it
 
-Loading is published by the region and read by every component inside it (ruling `region-loading`). `Section`, `PaneSection`, `SurfaceCard`,
+Loading is published by the region and read by every component inside it. `Section`, `PaneSection`, `SurfaceCard`,
 `Form` and a `Dialog` or `Drawer` body take the first-load flag and tell everything inside; an app never passes `isLoading` to each field or
 button. A component draws the box it has when ready, inert (not focusable) and under the region's one `aria-busy`:
 

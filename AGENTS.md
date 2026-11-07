@@ -7,46 +7,15 @@ This checkout is the runtime root: the `starci` CLI is `node cli/dist/main.js` a
 state lives in `.runtime/` here, never in a product repository. When you delegate or change directory, pass this
 checkout's path and the project root on explicitly.
 
-## Look it up before you act
+## Where the rules are
 
-The tree is too large to hold in context, and a context compaction or a resumed session drops what you read: after one,
-start again here. Before answering, planning, or writing a brief, translate the request into English (keep rule ids and
-names as written) and look it up ([contexts/README.md](contexts/README.md) "Looking a rule up"):
-
-```sh
-node cli/dist/main.js contexts search "<request>" --also "<action>" --also "<artifact or rule id>" --scope <area> --limit 10
-```
-
-Open each hit you rely on and cite its rule id and path. A brief states every "never", "must" or "wait for" with that
-citation, in the rule's words, and tells its reader (a subagent of any host knows only its brief) to look up the same way.
-A rule found missed is recorded in the search eval and hardened where it lives (contexts/README.md "When a rule was
-missed"). This holds for every agent host (Claude Code, Codex, Devin): it is part of the bootstrap every host reads, not a
-feature of one runtime ([contexts/harness/rules.md](contexts/harness/rules.md) rule 7).
-
-Rules that are easy to forget:
-
-- A package change is usable in an app the moment it is coded: `starci deps source --local`; only a deploy waits for npm
-  ([contexts/authority/packages.md](contexts/authority/packages.md) "An app uses the edit before npm serves it", CONTRIB-20).
-- To install a local build like npm instead: `starci deps publish-local --execute` publishes it to a registry on 127.0.0.1 and the app installs from it for one command
-  ([contexts/authority/packages.md](contexts/authority/packages.md) "Or install it like npm"); a lockfile that keeps the local URL is refused.
-- No role removes a harness worktree by hand: `starci worktree gc --execute` unlinks its `node_modules` junctions as links
-  first, while `git worktree remove` or a recursive delete through a junction empties its target
-  ([contexts/authority/README.md](contexts/authority/README.md) "Worktrees").
-- In a shared checkout, commit only your paths through a temporary index (`GIT_INDEX_FILE`), never the shared index.
+- Look a rule up before you act, in English and in several phrasings, and after every context compaction:
+  [contexts/harness/rules.md](contexts/harness/rules.md) rule 7, as [contexts/README.md](contexts/README.md) "Looking a rule up" says.
+- What your role may edit, commit, merge and push: [contexts/authority/README.md](contexts/authority/README.md); a branch:
+  [contexts/authority/branch.md](contexts/authority/branch.md); a package edit and its local build:
+  [contexts/authority/packages.md](contexts/authority/packages.md); removing a worktree: [contexts/authority/README.md](contexts/authority/README.md) "Worktrees".
 - Run plain `starci app check` with no flags, everywhere
   ([contexts/project/check-cache.md](contexts/project/check-cache.md) "The operating procedure").
-- On an app's `dev` branch the check runs under its branch profile (`starci app check --profile` prints it): fix hfs and the
-  safety gates, never chase a report-only lint or Sonar finding, and never add a lint finding to a file you touch (the lint
-  ratchet, `LINT_RATCHET_RAISED`); promoting `dev` to main runs the full gate
-  ([contexts/project/lint.md](contexts/project/lint.md) PROJECT-LINT-2, decision `branch-profile-dev`).
-
-## Environment gotchas
-
-- `ACP_BACKEND=windsurf` leaks into shells spawned from Devin Desktop and makes the `devin` CLI take the Windsurf auth
-  branch, rejecting valid Devin credentials. Before spawning `devin`: `Remove-Item Env:ACP_BACKEND` (PowerShell) or
-  `env -u ACP_BACKEND` (POSIX).
-- On Windows a `.cmd` or `.bat` shim (`npm.cmd`, `npx.cmd`) cannot run without a shell. Run `node.exe` with the tool's
-  script instead; the CLI does this for npm and refuses a `.cmd` with that hint.
-- `robocopy /MIR` follows directory junctions and can delete through them. Always add `/XJ`.
-- PowerShell `Set-Content` and `Add-Content` write the ANSI code page and can corrupt UTF-8 text. Edit files with the
-  editor tools, or pass `-Encoding utf8`.
+- An app's `dev` branch profile: [contexts/project/lint.md](contexts/project/lint.md) PROJECT-LINT-2.
+- The host environment (Windows shims, Devin's `ACP_BACKEND`, `robocopy`, PowerShell encodings):
+  [contexts/harness/host.md](contexts/harness/host.md).

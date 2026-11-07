@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
-import { judgeRemovedVocabulary, judgeRuleDocs, judgeShippedVocabulary, judgeVendorWrappers } from "./knowledge-gates.js"
+import { judgeRemovedVocabulary, judgeRuleDocs, judgeRulingHistory, judgeShippedVocabulary, judgeVendorWrappers } from "./knowledge-gates.js"
 
 const put = (root: string, path: string, content: string): void => {
     mkdirSync(dirname(join(root, path)), { recursive: true })
@@ -86,6 +86,22 @@ void test("vendor wrappers: a stale row, an undeclared file, a wraps drift, an u
         ])
         put(root, "contexts/vendor/pins.yaml", "pins:\n  wrappers.yaml: " + createHash("sha256").update(wrappers).digest("hex") + "\n")
         assert.ok(!judgeVendorWrappers(knowledge, source).some((finding) => finding.kind === "wrapper-pin-drift"))
+    } finally {
+        done()
+    }
+})
+
+
+void test("ruling history: a citation of an owner ruling, a decision id or its date is refused in prose, yaml and comments; code, strings and the Supervisor's vocabulary are not", () => {
+    const { root, done } = sandbox()
+    try {
+        put(root, "contexts/ui/a.md", "A card is raised (owner ruling card-depth, 2026-10-24).\nThe Supervisor rules on it and records the ruling.\nSee R12 and CONTRIB-5.\n")
+        put(root, "policy/b.yaml", "reason: \"the CLI is proven by runs (decision `cli-proven`)\"\n")
+        put(root, "packages/x/src/c.ts", "// the cap holds (ruling:R212/case-3)\nconst ruling: string = \"owner ruling in a string\"\n/* a block\n   (owner 2026-10-14) */\n")
+        put(root, "packages/x/CHANGELOG.md", "- owner ruling x\n")
+        put(root, "packages/x/node_modules/y/README.md", "owner ruling y\n")
+        const found = judgeRulingHistory(root).map((finding) => finding.subject).sort((left, right) => left.localeCompare(right))
+        assert.deepEqual(found, ["contexts/ui/a.md:1", "packages/x/src/c.ts:1", "packages/x/src/c.ts:4", "policy/b.yaml:1"])
     } finally {
         done()
     }

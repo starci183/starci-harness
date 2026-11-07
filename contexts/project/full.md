@@ -3,27 +3,26 @@
 Only the differences of a full app from the shared project model ([README.md](README.md)); everything not named here
 is the same in both editions. How the edition is chosen is PROJECT-1 in [README.md](README.md) (R212 in
 [hfs/rules.yaml](../hfs/rules.yaml)).
-Each line names the owner of the fact; the slot, rule or ruling is the authority, not this page.
+Each line names the owner of the fact; the slot or rule is the authority, not this page.
 
 ## Shape of production
 
 - Several services, each its own Nest app at `be/apps/<service>` with its own image and a `role: service` component
-  in the application stacks, running on the app's own infrastructure. Owners: ruling `R212/case-10` in
-  [decisions/rulings.yaml](../decisions/rulings.yaml); BE-SERVICES-1 to 4 in
+  in the application stacks, running on the app's own infrastructure. Owners: R212 in
+  [hfs/rules.yaml](../hfs/rules.yaml); BE-SERVICES-1 to 4 in
   [code/be/services.md](../code/be/services.md); R163 to R165.
 
 ## Backing services
 
 - The project runs its own Postgres; TypeORM migrations are the schema authority. Owners: slot `be.persistence` in
   [hfs/slots.yaml](../hfs/slots.yaml); [code/be/persistence.md](../code/be/persistence.md) BE-PERSISTENCE-1.
-- Redis and Qdrant are declarable backing services. Owner: `ruleParams.be.backing` in [hfs/slots.yaml](../hfs/slots.yaml);
-  ruling `lite-vector-is-pgvector`.
-- The event bus is Kafka with a transactional outbox. Owners: slot `be.platform.event-bus`; ruling
-  `be-bounded-contexts`; [code/be/event-bus.md](../code/be/event-bus.md).
+- Redis and Qdrant are declarable backing services. Owner: `ruleParams.be.backing` in [hfs/slots.yaml](../hfs/slots.yaml).
+- The event bus is Kafka with a transactional outbox. Owners: slot `be.platform.event-bus`;
+  [code/be/event-bus.md](../code/be/event-bus.md).
 - Identity is the project's own identity provider (Keycloak in the full stack verbs), reached through the package `@starci/auth-oidc`
   composed in `integrations/keycloak` behind the `PrincipalVerifier` interface of the lite edition. Owners:
   [README.md](../../README.md) (verb groups; `starci explain` lists what is built); [code/be/api-auth.md](../code/be/api-auth.md) BE-AUTH-2;
-  slot `be.integrations.keycloak` in [hfs/slots.yaml](../hfs/slots.yaml); ruling `auth-oidc-package`.
+  slot `be.integrations.keycloak` in [hfs/slots.yaml](../hfs/slots.yaml).
 
 ## Patterns
 
@@ -31,7 +30,7 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
   each needs are `ruleParams.be.kindPatterns` and `addKinds` in [hfs/slots.yaml](../hfs/slots.yaml). Whether lite may
   also declare them is open ([lite.md](lite.md)).
 - Contexts meet only through events, projections replace cross-context joins and reactors keep local copies.
-  Owner: ruling `be-bounded-contexts`; [code/be/reactors.md](../code/be/reactors.md),
+  Owners: [code/be/reactors.md](../code/be/reactors.md),
   [code/be/projections.md](../code/be/projections.md), [code/be/saga.md](../code/be/saga.md).
 - Every component image of a multi-service stack is pinned. Owner: R164, BE-SERVICES-2.
 
@@ -59,7 +58,7 @@ Each line names the owner of the fact; the slot, rule or ruling is the authority
 ## Work
 
 - `.starciwork/` keeps the whole Work tree (Business/SRS, Architecture/SDS, `features/`). Owner: slot
-  `app.starciwork`; ruling `R212/case-4`.
+  `app.starciwork`; R212.
 
 ## Read with
 

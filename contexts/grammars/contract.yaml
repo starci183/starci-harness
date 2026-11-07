@@ -1,6 +1,6 @@
 # What every grammar implements. Read by the grammar contract gate, the DNA gate and generators; reasoning is contract.md.
 # Values are the package's: a measure names the value's owner (a token read at gate time, a threshold key, a vendor
-# reference) and writes a literal only where a ruling fixes it (control-height-40). Vendor part names come from
+# reference) and writes a literal only where the contract fixes it (the control heights 32, 40, 48). Vendor part names come from
 # ../vendor/parity.yaml. roles[].dna lists the mustKeep ids of the role; mustKeep (last) owns each law and measure.
 schema: starci/grammar-contract@1
 grammars: [core, offset-pop]          # the implementations; each has contexts/grammars/<id>.md
@@ -33,7 +33,7 @@ registry:
   conformance: every ui rule id is inherited or carries family evidence naming the mechanism
 
 tokens:
-  # HeroUI semantic variables, read by every component and set by the app (ruling app-owns-theme). A grammar declares none
+  # HeroUI semantic variables, read by every component and set by the app. A grammar declares none
   # on its root; its default palette is the optional theme.css of HeroUI tokens, and a role neither sets is HeroUI's own.
   colour: [background, foreground, surface, surface-foreground, surface-secondary, surface-secondary-foreground,
            surface-tertiary, default, default-foreground, muted, border, separator,
@@ -519,7 +519,7 @@ roles:
     ui: ui/components/list-table.md
     renderers: [Section]
     vendorParity: []                              # no HeroUI part: a Common frame
-    slots: ["title (the heading and landmark name; figures may instead require ariaLabel for a headless strip)", headingLevel, "filter (a FilterButtonGroup)", "items (kind list: typed rows; kind figures: shared Figure data)", "children (kind region)", "action (the page command, at the end of the titled head row)", "empty (required for list) and error (ErrorData)"]
+    slots: ["title (the heading and landmark name; figures may instead require ariaLabel for a headless strip)", headingLevel, "filter (Tabs kind=filter)", "items (kind list: typed rows; kind figures: shared Figure data)", "children (kind region)", "action (the page command, at the end of the titled head row)", "empty (required for list) and error (ErrorData)"]
     variants:
       kind: { values: [region, list, figures], chosenBy: app from list-table.choose.role or card.choose.role for contained figures }
     sizes: none
@@ -553,7 +553,7 @@ mustKeep:
     role: "a roles[].id, a list of them, or root"
     law: "the constraint as one present-tense sentence"
     measure: "one measure object (fields below)"
-    owner: "who fixes the law or its value: a ruling id (decisions/rulings.yaml), a decision id (decisions/open-grammar.md), a package path"
+    owner: "who fixes the law or its value: a rule id, a contract role, a contexts section, a package path"
     followUp: "optional: the open decision whose code change makes the law hold; the gate reports the entry red until it lands"
   measureFields:
     kind:
@@ -604,22 +604,22 @@ mustKeep:
     coverage: "an entry with zero matches is not exercised: the gate reports it per id from its fixture and never passes it"
 
   common:
-    # --- size ramp (contract sizes; ruling control-height-40)
+    # --- size ramp (contract sizes)
     - id: DNA-COMMON-CONTROL-MD
       role: button
       law: An md button or icon button, and every bar control, is 40px tall at every breakpoint.
       measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"]):is([data-size="md"],[data-size="control"]):not([data-width="fill"])', metric: height, op: "=", value: 40px }
-      owner: control-height-40
+      owner: ui/scale.md scale.choose.step
     - id: DNA-COMMON-CONTROL-SM
       role: button
       law: An sm button or icon button is one equal increment below md, 32px.
       measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"])[data-size="sm"]:not([data-width="fill"])', metric: height, op: "=", value: 32px }
-      owner: control-height-40; contract sizes.increments
+      owner: ui/scale.md scale.choose.step; contract sizes.increments
     - id: DNA-COMMON-CONTROL-LG
       role: button
       law: An lg button or icon button is one equal increment above md, 48px.
       measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"])[data-size="lg"]:not([data-width="fill"])', metric: height, op: "=", value: 48px }
-      owner: control-height-40; contract sizes.increments
+      owner: ui/scale.md scale.choose.step; contract sizes.increments
     - id: DNA-COMMON-CONTROL-FILL
       role: button
       law: A full-width button holds its step as a floor at every breakpoint, md 40px, sm 32px and lg 48px; only a wrapped label grows it.
@@ -631,7 +631,7 @@ mustKeep:
           - { select: '[data-component="Button"][data-width="fill"]:is([data-size="md"],[data-size="control"])', value: 40px }
           - { select: '[data-component="Button"][data-width="fill"][data-size="sm"]', value: 32px }
           - { select: '[data-component="Button"][data-width="fill"][data-size="lg"]', value: 48px }
-      owner: control-height-40
+      owner: ui/scale.md scale.choose.step
     - id: DNA-COMMON-ICON-BUTTON-SQUARE
       role: button
       law: An icon button is as wide as it is tall at its step.
@@ -641,7 +641,7 @@ mustKeep:
       role: [input, select, copy-field]
       law: Every single-line field box (input, select trigger, combo box, search, number, date and time field, copy field) is as tall as an md control, 40px.
       measure: { kind: box, select: ':is(.starci-core-input-field,.starci-core-select-trigger,.starci-core-combo-box-group,.starci-core-search-field-group,.starci-core-number-field-group,.starci-core-date-group,.starci-core-copy-field-group):not([data-grammar-field-size="sm"] *)', metric: height, op: "=", value: 40px }
-      owner: control-height-40
+      owner: ui/scale.md scale.choose.step
     - id: DNA-COMMON-TABS-BAR-MD
       role: tabs
       law: A tab bar, pill or underline, lands on the md height without a size prop.
@@ -659,12 +659,12 @@ mustKeep:
           - { select: '[data-component="Avatar"][data-grammar-avatar-size="md"]', value: 40px }
           - { select: '[data-component="Avatar"][data-grammar-avatar-size="lg"]', value: 48px }
           - { select: '[data-component="Avatar"][data-grammar-avatar-size="control"]', value: 40px }
-      owner: control-height-40
+      owner: ui/scale.md scale.choose.step
     - id: DNA-COMMON-BAR-ONE-HEIGHT
       role: shell
       law: Every control in a bar has one height, the md height.
       measure: { kind: uniform, scope: '[data-component="TopBar"]', select: ':is([data-component="Button"],[data-component="IconButton"],[data-component="Avatar"],[data-component="Switch"],.starci-core-search-field-group)', metric: height, op: "=", value: 40px }
-      owner: control-height-40; contract sizes.control
+      owner: ui/scale.md scale.choose.step; contract sizes.control
     - id: DNA-COMMON-BADGE-BELOW-RAMP
       role: chip
       law: A Badge and a StatusDot are labels below the control ramp, shorter than an sm control.
@@ -675,7 +675,7 @@ mustKeep:
       law: On a coarse pointer every pressable part has a hit area of at least the coarse floor, without redrawing its box.
       measure: { kind: box, context: { pointer: coarse, viewport: 375x812 }, select: ':is([data-component="Button"],[data-component="IconButton"],[data-component="TextAction"],[role="tab"],[role="option"],[role="radio"],[role="checkbox"],[role="switch"],[role="menuitem"],[role="row"][data-grammar-tag])', metric: hit-area, op: ">=", value: { threshold: target.coarse.min } }
       owner: contract sizes.target; ui/scale.md
-      followUp: D-4
+      followUp: the Common sheet assigns the target tokens and extends every pressable part's hit area to the floor
     - id: DNA-COMMON-TARGET-FINE
       role: button
       law: On a fine pointer every pressable part has a hit area of at least the fine floor.
@@ -717,7 +717,7 @@ mustKeep:
       role: shell
       law: The shell has no bottom tab bar; on a phone the navigation is the drawer.
       measure: { kind: count, context: { viewport: 375x812 }, select: '[data-component="BottomNav"]', op: "=", value: 0 }
-      owner: D-13; lint no-shell-bottom-tabs
+      owner: contract roles.shell; lint no-shell-bottom-tabs
     - id: DNA-COMMON-ONE-SHELL
       role: shell
       law: One shell owns the frame, the bar and the mobile drawer.
@@ -732,16 +732,16 @@ mustKeep:
       role: root
       law: Every wrapper keeps HeroUI's parts, required parts, roles, keyboard, focus, props, closed values and defaults.
       measure: { kind: source, check: "parity:always" }
-      owner: grammar-vendor-parity
+      owner: vendor/parity.yaml
     # --- surfaces and cards
     - id: DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE
       role: card
       law: A surface never stands inside another surface (a card in a card, in Pane surface, in a Dialog, Drawer or Popover); the grammar has one depth, raised.
       measure: { kind: count, select: '[data-grammar-surface-card] [data-grammar-surface-card]', op: "=", value: 0 }
-      owner: surfacecard-always-painted; src/core/surfaceContext.tsx
+      owner: ui/components/card.md; src/core/surfaceContext.tsx
     - id: DNA-COMMON-CARD-LABEL-ABOVE
       role: card
-      law: A card's label row sits above the card's content frame, never beside it; a card that heads a section carries it outside the painted material and a tile carries its name inside, with its mark (ruling card-label-by-kind).
+      law: A card's label row sits above the card's content frame, never beside it; a card that heads a section carries it outside the painted material and a tile carries its name inside, with its mark.
       measure: { kind: relation, select: '[data-component="SurfaceCard"] > [data-grammar-surface-label]', metric: bottom, op: "<=", ref: { within: '[data-component="SurfaceCard"]', select: '[data-grammar-surface-content]', metric: top } }
       owner: contract roles.card
     - id: DNA-COMMON-CARD-LABEL-HEADING
@@ -759,12 +759,12 @@ mustKeep:
       role: card
       law: A horizontal divider runs the full inner width of its surface, inline inset 0px on both sides.
       measure: { kind: relation, select: '[data-component="Divider"][data-grammar-divider="bare"][data-grammar-divider-orientation="horizontal"]', metric: [left, right], op: "=", ref: { within: '[data-grammar-frame="bounded"]', select: self, metric: [inner-left, inner-right] } }
-      owner: divider-full-bleed
+      owner: ui/presentation.md R3
     - id: DNA-COMMON-SOFT-GROUND
       role: card
       law: A soft card's ground is the family's accent-soft tint.
       measure: { kind: style, select: '[data-component="SurfaceCard"] > [data-grammar-surface-treatment="soft"]', metric: background-color, op: "=", value: { token: --accent-soft } }
-      owner: surfacecard-soft-treatment
+      owner: ui/components/card.md card.choose.treatment
     - id: DNA-COMMON-TREATMENT-TEXT-CONTRAST
       role: card
       law: In every SurfaceCard treatment and theme, a step number reads against its own circle and text reads against the card's ground.
@@ -776,13 +776,13 @@ mustKeep:
         cases:
           - { select: '[data-grammar-surface-treatment] [data-component="Stepper"] [data-grammar-step-marker]' }
           - { select: '[data-grammar-surface-treatment] :is([data-component="Text"], [data-grammar-section-header] :is(h2, h3, p))' }
-      owner: surfacecard-soft-treatment; COLOR-5; story Navigation & Data / Stepper on every treatment, Surfaces / Soft surface card
-      followUp: D-17
+      owner: ui/components/card.md card.choose.treatment; COLOR-5; story Navigation & Data / Stepper on every treatment, Surfaces / Soft surface card
+      followUp: "contexts/harness/questions.md: retire the law, or name the colour to move"
     - id: DNA-COMMON-ACCENT-CORNER
       role: card
       law: The corner a SurfaceCard or MediaFrame names in accentCorner is drawn at the Common accent radius.
       measure: { kind: style, select: '[data-grammar-accent-corner="end-end"]', metric: border-end-end-radius, op: "=", value: { token: --grammar-accent-corner } }
-      owner: accent-corner
+      owner: grammars/contract.md (Corners are roles)
     # --- lists
     - id: DNA-COMMON-LIST-SEAMS
       role: list
@@ -793,12 +793,12 @@ mustKeep:
       role: list
       law: Every seam between rows runs the list's full inner width, inline inset 0px.
       measure: { kind: seams, select: '[data-grammar-list="true"]', rows: ':is([data-grammar-row],[data-grammar-list-item],[role="option"])', metric: inset-inline, op: "=", value: 0px }
-      owner: divider-full-bleed
+      owner: ui/presentation.md R3
     - id: DNA-COMMON-ROW-DESCRIPTION-ONE-LINE
       role: list
       law: A static or entity row's description renders one line.
       measure: { kind: text, select: '.starci-core-list-row-description', metric: lines, op: "<=", value: 1 }
-      owner: item-description-one-line
+      owner: ui/components/list-table.md
     - id: DNA-COMMON-OPTION-DESCRIPTION-WRAPS
       role: list
       law: A list box option's description wraps unless the list sets descriptionLines.
@@ -824,17 +824,17 @@ mustKeep:
       role: button
       law: A button skeleton takes the corner of the button it stands for.
       measure: { kind: style, select: '[data-component="Button"][data-loading="true"]', metric: radius, op: "=", value: { vendor: { component: Button, props: { size: $data-size }, metric: radius } } }
-      owner: buttons-pill
+      owner: grammars/core.md
     - id: DNA-COMMON-LOADING-REGION-INERT
       role: button
       law: "Inside a loading region nothing can be focused or pressed: every control draws inert, static chrome keeps its words, data is geometry, and the region carries the one aria-busy."
       measure: { kind: count, scope: '[data-grammar-loading-region="true"]', select: ':is(button, a[href], input, select, textarea, [tabindex="0"]):not([inert], [inert] *, :disabled)', op: "=", value: 0 }
-      owner: region-loading
+      owner: ui/loading.md
     - id: DNA-COMMON-LOADING-SAME-BOX
       role: button
       law: "A component in a loading region has the width and height it has when ready, so nothing moves when the data lands."
       measure: { kind: uniform, scope: '[data-grammar-twin]', select: '[data-grammar-twin-item]', metric: [width, height], op: "=" }
-      owner: region-loading
+      owner: ui/loading.md
     - id: DNA-COMMON-DISABLED-REASON
       role: button
       law: A disabled button's reason is its accessible description and shows in a tooltip on hover and keyboard focus.
@@ -859,7 +859,7 @@ mustKeep:
       role: button-group
       law: Every button of a group has one paint, because a group holds peers of one intent.
       measure: { kind: uniform, scope: '[data-component="ButtonGroup"]', select: '[data-component="Button"]', metric: [background-color, color], op: "=" }
-      owner: CTA-1/case-7
+      owner: CTA-5
     - id: DNA-COMMON-ONE-ACCENT-FILL
       role: button
       law: A view shows at most budgets.commitPerView buttons in the accent fill, the commit; the page behind an open modal does not count.
@@ -875,7 +875,7 @@ mustKeep:
         op: "="
         cases:
           - { select: '[data-component="Tabs"]', value: underline }
-      owner: D-2; spacing-roles
+      owner: contract roles.tabs; ui/presentation.md (Space)
       followUp: C-1
     - id: DNA-COMMON-TABS-FILTER-COMPACT
       role: tabs
@@ -886,7 +886,7 @@ mustKeep:
         metric: height
         op: "="
         value: 32px
-      owner: one-way-to-choose
+      owner: ui/components/tabs.md tabs.choose.role
     - id: DNA-COMMON-TABS-INDICATOR
       role: tabs
       law: A tab bar draws exactly one indicator.
@@ -913,7 +913,7 @@ mustKeep:
           - { select: ':is([data-component="Input"],[data-component="Select"],[data-component="NumberField"],[data-component="Textarea"],[data-component="CopyField"]):not([data-grammar-nesting="surface"] *)', value: primary }
           - { select: '[data-grammar-nesting="surface"] :is([data-component="Input"],[data-component="Select"],[data-component="NumberField"],[data-component="Textarea"],[data-component="CopyField"])', value: secondary }
           - { select: '[data-component="SearchField"]', value: secondary }
-      owner: R318/case-1; UI-10; U6-5 (a search box is the field tone wherever it stands)
+      owner: FE-CSS-1; UI-10; U6-5 (a search box is the field tone wherever it stands)
     - id: DNA-COMMON-FIELD-NAME-IS-LABEL
       role: [input, select]
       law: A field's accessible name is its visible label, never its placeholder.
@@ -928,7 +928,7 @@ mustKeep:
       role: input
       law: A focused single-line field shows exactly one focus ring, on the field frame.
       measure: { kind: interaction, select: ':is([data-component="Input"],[data-component="Select"],[data-component="SearchField"],[data-component="NumberField"],[data-component="ComboBox"])', act: [focus], then: { metric: focus-rings, op: "=", value: 1 } }
-      owner: FOCUS-1/case-6
+      owner: FOCUS-1
     - id: DNA-COMMON-FIELD-ANATOMY-ORDER
       role: [input, select, copy-field]
       law: A field draws HeroUI's order, label, control, description, error; its description is standing guidance under the control, never between the label and the control.
@@ -938,23 +938,23 @@ mustKeep:
         metric: top
         op: ">="
         ref: { within: ':is([data-component="Input"],[data-component="Field"],[data-component="Textarea"],[data-component="SearchField"],[data-component="NumberField"],[data-component="DateField"],[data-component="TimeField"],[data-component="FileDropzone"],[data-component="Select"],[data-component="ComboBox"],[data-component="DatePicker"],[data-component="DateRangePicker"],[data-component="CopyField"])', select: ':is([data-grammar-field-control="true"],[data-grammar-input-control="true"])', metric: bottom }
-      owner: field-anatomy-order; vendor/parity.yaml textfield
+      owner: contract roles.input; vendor/parity.yaml textfield
     - id: DNA-COMMON-FIELD-ROW-CONTROL-LINE
       role: [input, select, copy-field]
       law: The fields of one form Grid row laid out in columns start their control boxes on one line, whatever label, description or error a neighbour carries.
       measure: { kind: uniform, scope: '[data-component="FormGrid"] [data-grammar-form-grid-row]', select: ':is([data-grammar-field-control="true"],[data-grammar-input-control="true"]):not(:is([data-grammar-field-control="true"],[data-grammar-input-control="true"]) *)', metric: top }
-      owner: field-anatomy-order
+      owner: contract roles.input
     # --- copy field
     - id: DNA-COMMON-COPYFIELD-MASKED
       role: copy-field
       law: A masked CopyField never renders its clear value; it shows bullets and at most the last four characters, and opens no full-value tooltip.
       measure: { kind: text, select: '[data-component="CopyField"][data-grammar-copy-masked="true"] [data-grammar-copy-value]', metric: text, op: matches, value: '^•{8}.{0,4}$' }
-      owner: copy-field
+      owner: contract roles.copy-field
     - id: DNA-COMMON-COPYFIELD-TAIL
       role: copy-field
       law: A CopyField value gives up its middle, never its end; the tail stays whole before the copy action.
       measure: { kind: relation, select: '[data-component="CopyField"] [data-grammar-copy-tail]', metric: right, op: "<=", ref: { within: '[data-component="CopyField"]', select: '[data-grammar-copy-action]', metric: left } }
-      owner: copy-field
+      owner: contract roles.copy-field
     # --- chips and status dots
     - id: DNA-COMMON-CHIP-NOT-TARGET
       role: chip
@@ -1045,12 +1045,12 @@ mustKeep:
         kind: style
         select: '[data-component="Alert"][data-grammar-tone="informative"]:not([data-loading="true"])'
         checks: [{ metric: background-color, op: "=", value: { token: --accent-soft } }, { metric: color, op: "=", value: { token: --accent-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
-      owner: alert-soft-pair
+      owner: contract roles.alert
     - id: DNA-COMMON-BADGE-TONE-INFO
       role: chip
       law: "A Badge of the app-declared tone info is filled with the info soft tint of the app's theme (the text colour is the family's: the soft foreground in Core, ink in Offset Pop)."
       measure: { kind: style, select: '[data-component="Badge"][data-tone="info"]:not([data-loading="true"])', metric: background-color, op: "=", value: { token: --info-soft } }
-      owner: alert-soft-pair
+      owner: contract roles.alert
     - id: DNA-COMMON-ALERT-TONE-PAIR-SUCCESS
       role: alert
       law: A affirmative Alert is its tone's soft pair, flat - the row is --success-soft at full strength, the text and glyph --success-soft-foreground, no shadow and no border.
@@ -1058,7 +1058,7 @@ mustKeep:
         kind: style
         select: '[data-component="Alert"][data-grammar-tone="affirmative"]:not([data-loading="true"])'
         checks: [{ metric: background-color, op: "=", value: { token: --success-soft } }, { metric: color, op: "=", value: { token: --success-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
-      owner: alert-soft-pair
+      owner: contract roles.alert
     - id: DNA-COMMON-ALERT-TONE-PAIR-WARNING
       role: alert
       law: A cautionary Alert is its tone's soft pair, flat - the row is --warning-soft at full strength, the text and glyph --warning-soft-foreground, no shadow and no border.
@@ -1066,7 +1066,7 @@ mustKeep:
         kind: style
         select: '[data-component="Alert"][data-grammar-tone="cautionary"]:not([data-loading="true"])'
         checks: [{ metric: background-color, op: "=", value: { token: --warning-soft } }, { metric: color, op: "=", value: { token: --warning-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
-      owner: alert-soft-pair
+      owner: contract roles.alert
     - id: DNA-COMMON-ALERT-TONE-PAIR-DANGER
       role: alert
       law: A negative Alert is its tone's soft pair, flat - the row is --danger-soft at full strength, the text and glyph --danger-soft-foreground, no shadow and no border.
@@ -1074,7 +1074,7 @@ mustKeep:
         kind: style
         select: '[data-component="Alert"][data-grammar-tone="negative"]:not([data-loading="true"])'
         checks: [{ metric: background-color, op: "=", value: { token: --danger-soft } }, { metric: color, op: "=", value: { token: --danger-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
-      owner: alert-soft-pair
+      owner: contract roles.alert
     - id: DNA-COMMON-ALERT-TONE-PAIR-DEFAULT
       role: alert
       law: A neutral Alert is its tone's soft pair, flat - the row is --default-soft at full strength, the text and glyph --default-soft-foreground, no shadow and no border.
@@ -1082,7 +1082,7 @@ mustKeep:
         kind: style
         select: '[data-component="Alert"][data-grammar-tone="neutral"]:not([data-loading="true"])'
         checks: [{ metric: background-color, op: "=", value: { token: --default-soft } }, { metric: color, op: "=", value: { token: --default-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
-      owner: alert-soft-pair
+      owner: contract roles.alert
     - id: DNA-COMMON-EMPTY-ONE-ACTION
       role: empty-state
       law: An empty notice holds at most one action.
@@ -1214,7 +1214,7 @@ mustKeep:
       owner: contract roles.link
     - id: DNA-COMMON-LINK-ACCENT-TEXT
       role: link
-      law: "A text link is the exact primary brand colour (--accent), underlined. Owner exception, 2026-11-05: the raw accent is below 4.5 contrast as text on several Nivo grounds and the owner accepts it, so this law pins the token and no contrast law judges a link."
+      law: "A text link is the exact primary brand colour (--accent), underlined. The raw accent may fall below 4.5 contrast as text on an app's grounds, so this law pins the token and no contrast law judges a link."
       measure: { kind: style, select: '[data-component="Link"][data-grammar-link-content="text"]:not([data-grammar-current="true"]):not([aria-disabled="true"])', checks: [{ metric: color, op: "=", value: { token: --accent } }] }
       owner: contract roles.link
     - id: DNA-COMMON-EMPTY-NOTICE-TOP
@@ -1306,24 +1306,24 @@ mustKeep:
       role: avatar
       law: Every member of an avatar group has one size.
       measure: { kind: uniform, scope: '[data-component="AvatarGroup"]', select: '[data-component="Avatar"]', metric: [width, height], op: "=" }
-      owner: R318/case-1
+      owner: FE-CSS-1
     - id: DNA-COMMON-AVATAR-INITIALS
       role: avatar
       law: An avatar without an image draws the initials of the first and last words of its name.
       measure: { kind: text, select: '[data-component="Avatar"]:not(:has(img[src]))', metric: text, op: "=", value: { fixture: initials } }
-      owner: avatar-default-dicebear-initials
+      owner: ui/components/identity-mark.md
     - id: DNA-COMMON-AGENT-NAMED
       role: avatar
       law: An agent avatar carries the bot badge and an accessible name that says it is an agent.
       measure: { kind: a11y, select: '.starci-core-avatar-agent-anchor [data-component="Avatar"]', metric: name, op: "=", value: { fixture: agentAccessibleName } }
-      owner: agent-avatar-initials-bot-badge
+      owner: ui/components/identity-mark.md
 
-    # --- page header (ruling page-header-band)
+    # --- page header
     - id: DNA-COMMON-PAGE-HEADER-BAND
       role: page
       law: The page header is a band painted with the surface over the page background.
       measure: { kind: style, select: '[data-component="PageHeader"]', metric: background-color, op: "=", value: { token: --surface } }
-      owner: page-header-band
+      owner: ui/components/page-header.md
     - id: DNA-COMMON-PAGE-HEADER-INSET
       role: page
       law: The band's content is inset by the page inset inline and the region step at the top, so its edges are the page content's edges.
@@ -1331,29 +1331,29 @@ mustKeep:
         kind: style
         select: '[data-component="PageHeader"] > [data-component="PageContainer"]'
         checks: [{ metric: padding-inline-start, op: "=", value: { token: --grammar-page-inset } }, { metric: padding-inline-end, op: "=", value: { token: --grammar-page-inset } }, { metric: padding-block-start, op: "=", value: { token: --grammar-region-gap } }]
-      owner: page-header-band
+      owner: ui/components/page-header.md
     - id: DNA-COMMON-PAGE-HEADER-ONE-H1
       role: page
       law: The page header holds exactly one heading, the page's h1.
       measure: { kind: count, scope: '[data-component="PageHeader"]', select: ':is(h1, h2, h3, h4, h5, h6)', op: "=", value: 1 }
-      owner: page-header-band; ui/presentation.md FONT-4
+      owner: ui/components/page-header.md; ui/presentation.md FONT-4
     - id: DNA-COMMON-PAGE-HEADER-SEPARATOR
       role: page
       law: The band ends in its own bottom border, which runs the band's full width at its bottom edge, with or without tabs; no Divider is drawn beside it.
       measure: { kind: count, scope: '[data-component="PageHeader"]', select: '[data-component="Divider"]', op: "=", value: 0 }
-      owner: page-header-band
+      owner: ui/components/page-header.md
     - id: DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR
       role: page
       law: Page tabs in the header stand on its bottom border, which is the one line under them; the selected tab's underline lies over it, its bottom edge on the band's bottom edge.
       measure: { kind: relation, select: '[data-component="PageHeader"] [role="tab"][aria-selected="true"] .tabs__indicator', metric: bottom, op: "=", ref: { within: '[data-component="PageHeader"]', select: self, metric: bottom } }
-      owner: page-header-band; tabs.choose.level:page
+      owner: ui/components/page-header.md; tabs.choose.level:page
 
-    # --- page (ruling page-frame)
+    # --- page
     - id: DNA-COMMON-PAGE-HEADER-FIRST
       role: page
       law: A page's header band is its first child, full width, with no gap above it.
       measure: { kind: relation, select: '[data-component="Page"] > [data-component="PageHeader"]', metric: [left, right, top], op: "=", ref: { within: '[data-component="Page"]', select: self, metric: [left, right, top] } }
-      owner: page-frame
+      owner: ui/components/page-header.md
     - id: DNA-COMMON-PAGE-BODY-EDGES
       role: page
       law: A standard page body is inset by the page inset inline, so its content edges are the header content's edges.
@@ -1361,7 +1361,7 @@ mustKeep:
         kind: style
         select: '[data-component="Page"][data-grammar-page-chrome="standard"] > [data-grammar-page-body]'
         checks: [{ metric: padding-inline-start, op: "=", value: { token: --grammar-page-inset } }, { metric: padding-inline-end, op: "=", value: { token: --grammar-page-inset } }]
-      owner: page-frame
+      owner: ui/components/page-header.md
     - id: DNA-COMMON-PAGE-BODY-GAP
       role: page
       law: The page owns its rhythm, the region step between the band and the body and between the body's sections.
@@ -1371,7 +1371,7 @@ mustKeep:
         metric: row-gap
         op: "="
         value: { token: --grammar-region-gap }
-      owner: page-frame
+      owner: ui/components/page-header.md
     - id: DNA-COMMON-PAGE-BODY-CLIP
       role: page
       law: Nothing in a standard page body reaches across the gutter; the body clips past its content box.
@@ -1379,7 +1379,7 @@ mustKeep:
         kind: style
         select: '[data-component="Page"][data-grammar-page-chrome="standard"] > [data-grammar-page-body]'
         checks: [{ metric: overflow-x, op: "=", value: clip }, { metric: overflow-clip-margin, op: matches, value: content-box }]
-      owner: page-frame
+      owner: ui/components/page-header.md
     - id: DNA-COMMON-PAGE-BLEED-BODY
       role: page
       law: A bleed page is an app surface; it keeps no block padding, and its body no inline gutter and no clip, so the body is the measured fill box and what it holds fills the region.
@@ -1387,7 +1387,7 @@ mustKeep:
         kind: style
         select: '[data-component="Page"][data-grammar-page-chrome="bleed"] > [data-grammar-page-body]'
         checks: [{ metric: padding-inline-start, op: "=", value: 0px }, { metric: padding-inline-end, op: "=", value: 0px }, { metric: overflow-x, op: "=", value: visible }]
-      owner: page-frame
+      owner: ui/components/page-header.md
     - id: DNA-COMMON-PAGE-PANES-FLUSH
       role: page
       law: A panes page attaches its pane grid flush under the header band; the page keeps no row gap and no block padding, and its body no gap.
@@ -1395,9 +1395,9 @@ mustKeep:
         kind: style
         select: '[data-component="Page"][data-grammar-page-chrome="panes"]'
         checks: [{ metric: row-gap, op: "=", value: 0px }, { metric: padding-block-start, op: "=", value: 0px }, { metric: padding-block-end, op: "=", value: 0px }]
-      owner: page-frame
+      owner: ui/components/page-header.md
 
-    # --- diagram (ruling mermaid-diagram)
+    # --- diagram
     - id: DNA-COMMON-DIAGRAM-LOADING-BOX
       role: diagram
       law: A diagram reserves its canvas height in every state, so the loading skeleton and the error take the ready drawing's least box.
@@ -1409,32 +1409,32 @@ mustKeep:
           - { select: '[data-component="MermaidDiagram"][data-grammar-mermaid-height="sm"] > :first-child', value: 256px }
           - { select: '[data-component="MermaidDiagram"][data-grammar-mermaid-height="md"] > :first-child', value: 384px }
           - { select: '[data-component="MermaidDiagram"][data-grammar-mermaid-height="lg"] > :first-child', value: 512px }
-      owner: mermaid-diagram
+      owner: ui/components/diagram.md
     - id: DNA-COMMON-DIAGRAM-NAMED
       role: diagram
       law: A drawn diagram is one image named by its label.
       measure: { kind: a11y, select: '[data-grammar-mermaid-state="ready"] [data-grammar-mermaid-canvas] > [role="img"]', metric: name, op: set }
-      owner: mermaid-diagram
+      owner: ui/components/diagram.md
     - id: DNA-COMMON-DIAGRAM-ERROR-SOURCE
       role: diagram
       law: A source the renderer refuses stays in the diagram's region as code under the error.
       measure: { kind: count, scope: '[data-grammar-mermaid-state="error"]', select: '[data-component="FencedCodeBlock"] code', op: "=", value: 1 }
-      owner: mermaid-diagram
+      owner: ui/components/diagram.md
     - id: DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN
       role: diagram
       law: Every labelled FlowGraph edge is repeated in the graph's screen-reader edge list.
       measure: { kind: count, scope: '[data-component="FlowGraph"]', select: '[data-grammar-flow-edge-fallback] li', op: "=", value: { count: ':is(.react-flow__edge-text, [data-grammar-flow-edge-label])', offset: 0 } }
-      owner: mermaid-diagram
+      owner: ui/components/diagram.md
     - id: DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES
       role: diagram
       law: A lanes branch label is drawn in the edge label layer, above every edge line, never inside an edge's own drawing, where a line drawn after it crosses its words.
       measure: { kind: count, select: '[data-component="FlowGraph"][data-grammar-flow-layout="lanes"] :is(.react-flow__edge-text, [data-grammar-flow-edge-label]:not(.react-flow__edgelabel-renderer *))', op: "=", value: 0 }
-      owner: flow-graph-lanes
+      owner: ui/components/diagram.md workflow
     - id: DNA-COMMON-FLOW-LANE-LABEL-OPAQUE
       role: diagram
       law: A lanes branch label is an opaque chip on the canvas background, so the line it sits on stops at its words.
       measure: { kind: style, select: '[data-component="FlowGraph"][data-grammar-flow-layout="lanes"] [data-grammar-flow-edge-label]', metric: background-color, op: "=", value: { token: --surface } }
-      owner: flow-graph-lanes
+      owner: ui/components/diagram.md workflow
   core:
     - id: DNA-CORE-PAGE-HEADER-HAIRLINE
       role: page
@@ -1443,7 +1443,7 @@ mustKeep:
         kind: style
         select: '[data-component="PageHeader"]'
         checks: [{ metric: border-bottom-width, op: "=", value: 1px }, { metric: border-bottom-color, op: "=", value: { token: --separator } }]
-      owner: page-header-band
+      owner: ui/components/page-header.md
     - id: DNA-CORE-EDGE-TOP
       role: card
       law: A card is raised by its shadow and draws no border.
@@ -1452,10 +1452,10 @@ mustKeep:
         select: '[data-grammar-surface-card] > [data-grammar-frame="bounded"]'
         target: painted-box
         checks: [{ metric: box-shadow, op: "!=", value: none }, { metric: border-width, op: "=", value: 0px }]
-      owner: surfacecard-always-painted
+      owner: ui/components/card.md
     - id: DNA-CORE-CARD-LABEL-OUTSIDE
       role: card
-      law: A card that heads a section carries its label as an unpainted row above the card, outside the material; a tile carries its name inside, beside its mark (ruling card-label-by-kind). Measured on labelled cards; the tile case is measured once the grammar exposes the kind.
+      law: A card that heads a section carries its label as an unpainted row above the card, outside the material; a tile carries its name inside, beside its mark. Measured on labelled cards; the tile case is measured once the grammar exposes the kind.
       measure:
         kind: style
         op: "="
@@ -1468,10 +1468,10 @@ mustKeep:
       role: button
       law: Every button and its skeleton is a pill, its corner at least half its height; the members of a ButtonGroup keep their square inner corners (DNA-COMMON-BUTTONGROUP-INNER-CORNERS).
       measure: { kind: style, select: ':is([data-component="Button"],[data-component="IconButton"]):not([data-slot="button-group"] *)', metric: radius, op: ">=", value: { self: height, times: 0.5 } }
-      owner: buttons-pill
+      owner: grammars/core.md
     - id: DNA-CORE-BUTTON-ALTERNATIVE-OUTLINE
       role: button
-      law: "In Core an alternative button is outlined (a hairline border, no tinted fill) and writes its words in the default foreground, as the design system draws its secondary command; never the brand-coloured words of the vendor secondary variant. Core only: Offset Pop keeps its own look (ruling grammar-own-style)."
+      law: "In Core an alternative button is outlined (a hairline border, no tinted fill) and writes its words in the default foreground, as the design system draws its secondary command; never the brand-coloured words of the vendor secondary variant. Core only: Offset Pop keeps its own look."
       measure: { kind: style, select: '[data-component="Button"][data-grammar-intent="alternative"]:not([data-loading="true"])', checks: [{ metric: border-width, op: ">=", value: 1px }, { metric: color, op: "=", value: { token: --default-foreground } }] }
       owner: contract roles.button
     - id: DNA-CORE-ACCENT-TEXT
@@ -1481,9 +1481,9 @@ mustKeep:
       owner: grammars/core.md
     - id: DNA-CORE-PARITY-STRICT
       role: root
-      law: core changes HeroUI through tokens only; every other deviation is a ruled override.
+      law: core changes HeroUI through tokens only; every other deviation is a declared override in vendor/wrappers.yaml.
       measure: { kind: source, check: "parity:strict" }
-      owner: grammar-vendor-parity; repaint-default-heroui-unless-ruled
+      owner: vendor/parity.yaml; vendor/wrappers.yaml
 
   offset-pop:
     - id: DNA-OFFSET-POP-PAGE-HEADER-INK-RULE
@@ -1493,7 +1493,7 @@ mustKeep:
         kind: style
         select: '[data-component="PageHeader"]'
         checks: [{ metric: border-bottom-width, op: "=", value: { token: --offset-pop-outline-width } }, { metric: border-bottom-color, op: "=", value: { token: --foreground } }]
-      owner: page-header-band; grammars/offset-pop.md
+      owner: ui/components/page-header.md; grammars/offset-pop.md
     - id: DNA-OFFSET-POP-STICKER
       role: card
       law: A card wears the ink outline and an unblurred offset shadow down and to the right.
@@ -1505,7 +1505,7 @@ mustKeep:
       owner: O-1
     - id: DNA-OFFSET-POP-CARD-LABEL-OUTSIDE
       role: card
-      law: A card that heads a section carries its label on the page above the sticker, outside the painted box; a tile carries its name inside (ruling card-label-by-kind).
+      law: A card that heads a section carries its label on the page above the sticker, outside the painted box; a tile carries its name inside.
       measure: { kind: relation, select: '[data-component="SurfaceCard"] > [data-grammar-surface-label]', metric: bottom, op: "<=", ref: { within: '[data-component="SurfaceCard"]', select: '[data-slot="card-content"]', metric: top } }
       owner: grammars/offset-pop.md
       followUp: G-20
@@ -1555,4 +1555,4 @@ mustKeep:
       role: root
       law: offset-pop re-skins paint and arrangement only inside its scope; anatomy, roles and behaviour stay HeroUI's.
       measure: { kind: source, check: "parity:custom" }
-      owner: grammar-vendor-parity
+      owner: vendor/parity.yaml

@@ -9,7 +9,7 @@ These hold for every role and every task. A rule with a gate names it; the other
    `release push` scan for leaks; this repository is public and tracks no secret envelope.
 2. **No loosening.** No inline disable, `ts-ignore`, `NOSONAR`, skipped or focused test, `|| true`, `--no-verify` or
    widened allowlist. Change the code, not the gate. `starci check loosening` reads the tree as it stands and
-   `task verify` the files a candidate changes; an exception lives only in `policy/loosening.yaml`, pinned to the exact lines of a fixture, template or detector file, or of a file a live owner ruling covers,
+   `task verify` the files a candidate changes; an exception lives only in `policy/loosening.yaml`, pinned to the exact lines of a fixture, template or detector file, or of a file a rule of the rule book covers, citing that rule,
    and so does the one exception that lowers a gate: its `branchProfiles`, the polish gates (lint, sonar, codecov) an app's
    branch profile may report or turn off on the branches it names, never main and never a safety gate
    ([contexts/project/lint.md](../project/lint.md) PROJECT-LINT-2).
@@ -29,8 +29,8 @@ These hold for every role and every task. A rule with a gate names it; the other
    says (several phrasings through `starci contexts search --also`, the area's scope and index); open the hit's file and
    cite its rule id and path. A brief's "never", "must" or "wait for" carries that citation, and a subagent's brief tells
    it to look up the same way. A rule found missed is recorded and hardened as "When a rule was missed" says. The step is
-   the agent's own, the same for every runtime (Claude, Codex, Devin): it lives in this file and in
-   [AGENTS.md](../../AGENTS.md), never in one runtime's hooks or settings. Held by review (the brief check of "Looking a
+   the agent's own, the same for every runtime (Claude, Codex, Devin): it lives in this file, which
+   [AGENTS.md](../../AGENTS.md) links for every host, never in one runtime's hooks or settings. Held by review (the brief check of "Looking a
    rule up"); `starci contexts search --eval` measures that every recorded miss is found.
 8. **Machine actions are the harness's.** An agent never installs Playwright or browsers, or runs Docker by hand: a
    `uat` worker writes a short Playwright script and calls `starci uat run`, which runs it in the image pinned in

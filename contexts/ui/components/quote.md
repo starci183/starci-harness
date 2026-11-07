@@ -44,4 +44,4 @@ focus target and no selected state.
 - **App author decides:** the words, the source word and the byline text.
 
 ## Rules
-STATE-8. The name says a role, never a product feature (ruling `grammar-names-are-generic`).
+STATE-8. The name says a role, never a product feature.

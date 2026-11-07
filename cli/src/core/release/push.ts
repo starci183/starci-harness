@@ -43,7 +43,7 @@ const assertNoSecretsAdded = async (root: string, head: string, previous: string
     if (findings.length > 0) throw new Refusal("PUSH_SECRET_FOUND", `the pushed range adds secret material: ${describeFindings(findings)}`)
 }
 
-/** `starci release push`: the light gate of ruling push-main-after-scoped-check: on the branch, clean, fast-forward, no secret; then git push with hooks. */
+/** `starci release push`: the light gate before main is pushed (CONTRIB-18): on the branch, clean, fast-forward, no secret; then git push with hooks. */
 export const releasePushVerb = defineVerb({
     path: ["release", "push"],
     summary: "push main right after a green scoped check (dry until --execute): refuses a dirty tree, a non fast-forward or a secret in the pushed range",

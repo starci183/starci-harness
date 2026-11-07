@@ -91,7 +91,7 @@ settle: repair      # or discard, the default: how the red attempt it answers is
 ## Mail
 
 Mail only wakes; the ledger is the state. `kernel submit` mails the Supervisor for an escalation or handoff, and `kernel
-next` reads your Ops' mail for you. You never ask the owner: an owner decision is an `escalation` of kind `owner` naming its
+next` reads your Ops' mail for you. You never ask the owner: a decision for the owner is an `escalation` of kind `owner` naming its
 `topic` (`scope`, `money`, `credentials`, `legal` or `product`), and, whenever the goal or your plan implies an answer, its
 `default` and `reason` (the goal's words, or the plan's). A `product` choice with a default is decided by the Supervisor on
 that default and comes back as an `escalation-answer`; only the other topics, and a product choice with no default, reach the

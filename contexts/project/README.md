@@ -2,8 +2,8 @@
 
 What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read
 for each kind of task. It is product-agnostic: a product's own requirements, brand and screens are its `.starciwork`
-records, never this folder. How the harness finds a project and where its state lives is [contexts/harness/state.md](../harness/state.md)
-("How a project is found", "Where state lives"); this folder never restates it.
+records, never this folder. It links each fact to its owner and restates none: how the harness finds a project and where its
+state lives is [contexts/harness/state.md](../harness/state.md) ("How a project is found", "Where state lives").
 
 ## PROJECT-1 A project is one app root that holds the Work of every side
 
@@ -54,7 +54,7 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
   and before the checks, so a green never depends on a file only the worker's checkout had.
 - **Op and verify.** The worker brief is the worker procedure of [ops/ops/README.md](../../ops/ops/README.md) followed
   by the label's op file; checks cover only what the task
-  changed, and the full suite is CI's after the push ([contexts/harness/decisions.md](../harness/decisions.md)).
+  changed, and the full suite is CI's after the push.
 - **Settle and state.** Who writes a record's state and what counts as evidence is PROJECT-WORK-5 and PROJECT-WORK-6
   in [work.md](work.md).
 

@@ -226,8 +226,8 @@ Rows of one kind first reuse the surface that owns their region. Inside an exist
 `Section kind="list"` of typed rows, never another card. On the page canvas, a standalone bounded worklist is one
 `SurfaceCard kind="list"` with its label outside; a list that searches, filters or pages, or has no bound, is a
 `Section kind="list"`, with `Tabs kind="filter"` in its filter slot when it narrows. The selected owner carries the
-list's one visible heading and accessible name, its count and page command; no free heading repeats that name
-(rulings `task-list-card`, `section-is-the-heading`). A published container is used where one exists (see
+list's one visible heading and accessible name, its count and page command; no free heading repeats that name.
+A published container is used where one exists (see
 [components/list-table.md](components/list-table.md)); none existing is a grammar gap, never a substitute card. Several
 values of one kind entered by the user are one single-value field per row with its own remove action and an "add another"
 command, never a "one per line" textarea.
@@ -270,7 +270,8 @@ role. Every further region names its task role. A list, detail and info screen i
 `Page chrome="panes"` on a tabbed app page; panes touch, one divider stands between neighbours, and a pane that
 disappears takes its divider with it. Each pane's content is `PaneSection` bands at the pane's content inset. Options that apply to a whole batch
 and rarely change sit closed in one disclosure card below the main task, its summary saying in words who the result
-is for. In a panel offering several sources, each source sits with its own kind.
+is for. In a panel offering several sources, each source sits with its own kind (a cloud picker a secondary button under
+the drop zone, links a list of inputs with an "add" command), with no separate staging step.
 
 ### LAYOUT-2 Every region's owner is a published composition
 Tracks, slots and bounds belong to a published composition (`WorkspaceShell`, `Page`, `Grid kind="main-rail"`, `PaneGrid`); the spec

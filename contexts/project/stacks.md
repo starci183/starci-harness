@@ -52,8 +52,7 @@ Two kinds, named by the project:
   every service declares healthcheck, placement and rollout (R266, R267, R294).
 
 Beside the environments, `images/<name>/` holds the image folder of each service the app customises (PROJECT-STACKS-11),
-in both editions; a lite app's db image is the managed `images/db/Dockerfile` among them (slot `app.db.image`, ruling
-`lite-db-image-in-stacks`). `images/` is no environment and holds no custody.
+in both editions; a lite app's db image is the managed `images/db/Dockerfile` among them (slot `app.db.image`). `images/` is no environment and holds no custody.
 
 Each environment has its own `README.md`, the runbook: the operations of PROJECT-STACKS-6 with the project's real
 commands, the components it binds, its secret custody and its data custody (which volumes are authoritative, which are
@@ -443,5 +442,4 @@ the seed step by `stack-seeds.spec.mts` and `stack-local.spec.mts`.
 
 [lite.md](lite.md), [full.md](full.md); slots `app.starcistacks` and `app.plaintext-env` in
 [hfs/slots.yaml](../hfs/slots.yaml); R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299,
-R301, R372 to R375 in [hfs/rules.yaml](../hfs/rules.yaml); rulings `lite-production-swarm`, `customised-service-image`, `sealed-secret-custody`,
-`single-declared-ingress`, `owner-run-steps` and `seed-levels` in [decisions/rulings.yaml](../decisions/rulings.yaml).
+R301, R372 to R375 in [hfs/rules.yaml](../hfs/rules.yaml).

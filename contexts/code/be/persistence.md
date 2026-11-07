@@ -258,10 +258,10 @@ Enforced by: R214, R255 (hfs checks over the migrations).
 A policy for any role but the trusted application role proves a principal predicate (`auth.uid()`, `auth.jwt()`, the request JWT claims, or a transaction setting the app declares in hfs.json `db.scopeSettings`, read directly with `current_setting` or through a SQL function whose body reads it, as an engine role entered per transaction does), a declared setting counts only in a policy whose roles are all declared scope roles (hfs.json `db.scopeRoles`, each `{ role, reason }`, created NOLOGIN NOINHERIT NOBYPASSRLS by a migration and granted only to the application role; R255 `DB_APP_ROLE`), only as `<owning column> = <setting or its function>` (hfs.json `db.scopeColumns`, default `workspace_id`), and never a constant, `IS NOT NULL`, `OR true`, a self comparison or a setting not declared. An exposed view is
 `security_invoker`; a `SECURITY DEFINER` function pins `search_path` and revokes EXECUTE from public and the browser
 roles. Extensions follow `ruleParams.db.extensions`; migrations write no secret or role password; destructive DDL lives
-only in a `*_contract_*` migration after the code stops using the target, or in the exact objects of one migration that an owner
-ruling in hfs.json `db.destructiveRulings` names, accepted only while the same proof finds them unreferenced. A migration already
+only in a `*_contract_*` migration after the code stops using the target, or in the exact objects of one migration that an
+entry of hfs.json `db.destructiveRulings` names, accepted only while the same proof finds them unreferenced. A migration already
 on the base unchanged is immutable, so its destructive or dynamic DDL is a known item: a fix is a new migration. An archived
-migration chain keeps one baseline and is never edited. The one exception is an owner-ruled one-time reset an app declares in hfs.json
+migration chain keeps one baseline and is never edited. The one exception is a one-time reset an app declares in hfs.json
 `db.baselineReset` (`{ baseline, ruling, date, reason }`): the declared baseline file (header `-- starci:baseline-reset <ruling>`) replaces the whole
 older chain and the archive while it is not yet on the base branch; exactly one file carries the marker, no older file stays, and once it
 is on the base the declaration is spent.

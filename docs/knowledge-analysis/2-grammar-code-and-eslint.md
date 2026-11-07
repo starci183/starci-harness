@@ -163,7 +163,7 @@ a list of primaries is noise); neutral is outline in a decision area, ghost in i
 `danger-soft` at entry and solid `danger` only at the confirm step (inside the AlertDialog). That is why the variant list is the vendor's
 seven (`Button/index.tsx:8-12`, "HeroUI v3 buttonVariants one to one") and why apps get no `variant`.
 
-**Sizes.** `ButtonSize = sm | md | lg | control` (`Button/index.tsx:13`). The owner ruling `control-height-40` makes 40px the one default;
+**Sizes.** `ButtonSize = sm | md | lg | control` (`Button/index.tsx:13`). Common makes 40px the one default;
 `sm` only when every control in the row is nested/dense; `lg` only for a landing hero; `control` is the bar-control height shared by
 every navbar control (`packages/eslint/fe/docs/control-height.md`, `starci/playbook.yaml:189`).
 
@@ -172,8 +172,8 @@ themed because the violet fill is too dark to read on the dark canvas (3.95:1)" 
 reasoning with its own WCAG table and puts ink, not white, on pink because white is 3.40:1 (`src/offset-pop/dna.ts:1-40`).
 
 **Status: solid vs soft pair.** "A STATUS TONE HAS TWO FACES. The SOLID tone is a fill … A status shown as TEXT or as an ICON uses the SOFT
-pair, the way a HeroUI flat Chip does" (`status-colors.mjs:6-10`); knowledge: `tone.yaml:118-122`, `contrast.yaml:65-67` (owner decision
-2026-09-30 lowering the soft pair to 3:1).
+pair, the way a HeroUI flat Chip does" (`status-colors.mjs:6-10`); knowledge: `tone.yaml:118-122`, `contrast.yaml:65-67` (the soft
+pair lowered to 3:1).
 
 **Elevation by depth.** Top surface = shadow without border, nested = border without shadow (`src/core/dna.ts:117-120`); Offset Pop's
 deliberate departure keeps both at top depth as its signature (`offset-pop/conformance.ts` BOUNDARY-6).
@@ -237,8 +237,8 @@ keeps passing" (`common/conformance.ts:4-8`).
    components (`source`, `iconSource`).
 5. **Silent default family.** `ButtonIntentFamilyProvider` falls back to `STARCI_CORE_DNA.intent` for any unknown family
    (`buttonIntent.tsx:29,34`), against `grammars/index.yaml` guidance `catalog-not-default` ("Silent fallback to StarCi would invent product direction").
-6. **Vendor boundary vs house ruling.** `vendor-primitive-has-named-owner` lets app `leaves`/`branches` import `@heroui/react`
-   (`vendor-boundary.mjs:12`); the owner ruling is "apps on a Grammar write layout CSS only; every visual element lives in the grammar package".
+6. **Vendor boundary vs house rule.** `vendor-primitive-has-named-owner` lets app `leaves`/`branches` import `@heroui/react`
+   (`vendor-boundary.mjs:12`); the house rule is "apps on a Grammar write layout CSS only; every visual element lives in the grammar package".
 7. **Universal knowledge names family API.** R313 law "StarCi requires WorkspaceShell viewport=fixed …"; `app-shell.yaml` case-3 names
    `WorkspaceShell viewport="flow"` and `size="control"`; `gap.yaml` names `--grammar-*-gap` and Tailwind classes. FE-RULE-OWNERSHIP Q1 forbids this.
 8. **Wrong citations.** `no-raw-structural-element` cites FE-UI in code, R62 in `rules.yaml` and its doc ("Catalogue: R62");
@@ -309,7 +309,7 @@ all reasoning quoted in section 3, moved into knowledge where it is design think
    out of canon-fe into the Common grammar lint: `button-intent`, `control-height` (then merge it with `navbar-control-size`).
 7. **Merge the heading rules** into one (`no-raw-structural-element` already covers tags; keep the depth message) and drop the dead `leaves/Heading` exemption.
 8. **Drop** `no-decorative-icon-in-metric-cell` (product component); move destructive and create term lists into one i18n phrase catalogue
-   owned by the lint package (not `modules/goal`), English-first per the runtime language ruling.
+   owned by the lint package (not `modules/goal`), English-first per the runtime language rule.
 9. **Binding has one owner: the rule's `meta.docs.knowledge`.** Generate `rules.yaml` `enforcers[]` (or the reverse index an agent reads)
    and the sync file list from rule metadata; fix the three wrong citations; put `code`/`fix` from `why.mjs` into `meta` and delete `why.mjs`.
 10. **Docs are generated** per law from rule meta + cited knowledge text + spec valid/invalid cases; delete the hand-written `docs/*.md`

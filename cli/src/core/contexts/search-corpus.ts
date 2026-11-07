@@ -7,18 +7,17 @@ import type { LinkFragment } from "./anchors-parse.js"
 import { repeatingFiles } from "./index-render.js"
 
 /** The scopes a search can be narrowed to: a folder of contexts/, or `harness` for the harness's own documents and data. */
-export const SEARCH_SCOPES = ["ui", "grammars", "vendor", "code", "hfs", "stack", "decisions", "project", "harness"] as const
+export const SEARCH_SCOPES = ["ui", "grammars", "vendor", "code", "hfs", "stack", "project", "harness"] as const
 /** One search scope. */
 export type SearchScope = (typeof SEARCH_SCOPES)[number]
 
 /** Bumped whenever chunking changes, so an index built by another chunker reads as stale. */
-export const CHUNKER_VERSION = 4
+export const CHUNKER_VERSION = 5
 
 /** One searchable piece of the corpus: a Markdown section or a yaml entry, named by the anchor a worker cites. */
 export interface Chunk {
     /**
-     * The stable anchor id: an explicit anchor (`tabs.choose`), a rule or decision id (`R12`, `DNA-CORE-LABEL-OUTSIDE`,
-     * `two-grammars`), else the fallback `<path>#<heading slug or yaml key>`. Unique over the corpus (`contexts anchor` with no id judges it).
+     * The stable anchor id: an explicit anchor (`tabs.choose`), a rule id (`R12`, `DNA-CORE-LABEL-OUTSIDE`), else the fallback `<path>#<heading slug or yaml key>`. Unique over the corpus (`contexts anchor` with no id judges it).
      */
     readonly anchor: string
     /** The other forms the chunk resolves by: the fallback beside an explicit or rule id, a rule id beside an explicit anchor. */
@@ -216,11 +215,11 @@ const yamlCuts = (lines: readonly string[]): Cut[] => {
     return cuts
 }
 
-/** A yaml cut's anchor: a rule or decision id stands alone (isAnchorId); a record key (`button-group`) or a key is qualified by the file. */
+/** A yaml cut's anchor: a rule id stands alone (isAnchorId); a record key (`button-group`) or a key is qualified by the file. */
 const yamlAnchors = (path: string, cut: Cut): { readonly anchor: string; readonly aliases: readonly string[]; readonly citable: boolean } => {
     if (cut.id === undefined) return { anchor: `${path}#${cut.key}`, aliases: [], citable: false }
     const qualified = `${path}#${cut.key}.${cut.id}`
-    return isAnchorId(cut.id, scopeOf(path) === "decisions") ? { anchor: cut.id, aliases: [qualified], citable: true } : { anchor: qualified, aliases: [], citable: false }
+    return isAnchorId(cut.id) ? { anchor: cut.id, aliases: [qualified], citable: true } : { anchor: qualified, aliases: [], citable: false }
 }
 
 const COMMENT = /^(\s*)#/

@@ -2,7 +2,7 @@
 # One key per number: a composition rule and the proof criterion that measures it share the key.
 # Units: count, pct (of the named area), px (CSS px at the observed root size), ratio (contrast x:1), ms, chars, steps.
 # The contrast keys are a family's duty to its own default theme, read by the DNA laws and the package's stories; no key
-# judges the colours an app sets (ruling app-owns-theme).
+# judges the colours an app sets.
 schema: starci/ui-thresholds@1
 surfaceClasses: [console, form, landing, catalog, reader]
 

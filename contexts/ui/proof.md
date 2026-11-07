@@ -18,7 +18,7 @@ A claim names its enforcer (CONTRIB-8). Four things prove a look, and only the o
 | --- | --- | --- | --- |
 | Type and lint | a wrong composition: illegal children and props, the R-numbered rules of [hfs/rules.yaml](../hfs/rules.yaml) | on every check of an app and of the package | judges how a legal tree looks |
 | `starci dna check --storybook` | the static laws of [contract.yaml](../grammars/contract.yaml) `mustKeep` (`DNA-*`): a box, a style, a relation, a count measured on the rendered DOM of a built Storybook | on demand against `packages/grammar/storybook-static`; CI does not run it yet | judges taste or an app's colours |
-| `npm run prove-theme` | that a foreign set of HeroUI tokens, and nothing else, repaints every part (ruling `app-owns-theme`) | CI job `grammar-proof` | judges a palette |
+| `npm run prove-theme` | that a foreign set of HeroUI tokens, and nothing else, repaints every part | CI job `grammar-proof` | judges a palette |
 | `npm run prove-render` | a picture per story, both families, light and dark, at 1920 and 390, scale 2, against `packages/grammar/proof/baselines` | by hand, never in build, push, lint or publish | approves a look: it reports "changed", and only `proof/approved.json` (the chat renderer) is approved |
 | The owner's eye | every new or changed baseline, and the scored lenses TASTE and UX below | at review | is replaced by a green check |
 
@@ -48,8 +48,8 @@ An id below that no row holds by machine is the owner's eye or a UAT run: it say
 - A scored lens is valid only when the same auditor scored the three calibration anchors
   ([anchor-low](proof/anchor-low.html), [anchor-mid](proof/anchor-mid.html), [anchor-high](proof/anchor-high.html))
   in the same round, each inside its band within `calibration.tolerance`.
-- Canon green does not ship a page; a taste `fix-first` stands. Taste may reject a conforming surface, never
-  license a non-conforming one.
+- Canon green does not ship a page; a taste `fix-first` stands. Taste may reject a conforming surface, and that
+  rejection means a rule is missing or wrong; it never licenses a non-conforming one.
 - A finding records the failing layer (grammar output, family delta, app delta) and the owner; it does not start
   another op. Labels `ship`, `fix-first`, `blocked` are assessments, not release authority.
 - Below-volume data cannot complete a density or count criterion; data creation needs its own authorized op.
@@ -99,7 +99,7 @@ creative preference.
 
 ## Contrast (gating)
 
-The app owns its colours (ruling `app-owns-theme`), so no gate judges the contrast of values an app sets. COLOR-5 is the
+The app owns its colours, so no gate judges the contrast of values an app sets. COLOR-5 is the
 family's duty to its own defaults, measured in the package's stories; COLOR-3 is structure and holds in any theme.
 
 | Id | Criterion | Falsified by |

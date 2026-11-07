@@ -13,10 +13,9 @@ WHEN to use it; a grammar file ([core](core.md), [offset-pop](offset-pop.md)) sa
   are Common's ([common](common.md#one-root)); a grammar inherits them and never re-portals.
 - **Names that describe the UI role.** A component, prop or token name says what it does as a layout or UI role
   (`PaneGrid`, `SurfaceCard`, `Rail`), never a product feature (chat, customer, order, invoice), so any product
-  can reach for it. The grammar is a generic UI/UX layer (ruling `grammar-names-are-generic`).
+  can reach for it. The grammar is a generic UI/UX layer.
 - **The token roles, read from HeroUI and set by the app.** The HeroUI semantic variables are the interface between
-  Common's anatomy and the paint. The structure is the same in every app, the paint is the app's (ruling
-  `app-owns-theme`): an app sets HeroUI's tokens in its own CSS and every part follows, and a grammar declares no token
+  Common's anatomy and the paint. The structure is the same in every app, the paint is the app's: an app sets HeroUI's tokens in its own CSS and every part follows, and a grammar declares no token
   on its root, so no host value loses to the family. A grammar publishes its default palette as an optional `theme.css` of
   HeroUI tokens (`DNA-COMMON-TOKENS-BOUND` reads it with the app's) and writes no private colour name. Spacing and control
   heights are Common's tokens and never a grammar's: a grammar that re-spaced or resized would change layout, and layout
@@ -43,14 +42,14 @@ WHEN to use it; a grammar file ([core](core.md), [offset-pop](offset-pop.md)) sa
 ## The shared scale
 
 A row of controls reads as one object, so its controls share one height. The ramp has the vendor's names and
-three steps in equal increments (reference 32, 40, 48 px), held at every breakpoint (ruling `control-height-40`);
+three steps in equal increments (reference 32, 40, 48 px), held at every breakpoint;
 `control` is not a fourth height but the `md` height held for bar controls, set by the bar composition and never
-by an app (decision D-3). HeroUI steps controls down on desktop and draws fields one step shorter than buttons;
+by an app. HeroUI steps controls down on desktop and draws fields one step shorter than buttons;
 the contract removes both, because mixed rows are exactly where they disagreed
 ([vendor/heroui](../vendor/heroui.md#how-sizes-align)). Fields have one step, `md`. Badges and glyphs keep their
 own smaller scales: they label, they are not pressed. Which step a control takes is the choice
 `scale.choose.step` in [ui/scale](../ui/scale.md); what every step measures is `DNA-COMMON-CONTROL-*`. The
-heights are Common tokens (`--grammar-control-height-*`, decision D-4).
+heights are Common tokens (`--grammar-control-height-*`).
 
 **Drawn height and target are two facts** ([ui/scale](../ui/scale.md#drawn-height-and-target-size-are-two-facts)):
 the box is the ramp, the hit area meets its floor without redrawing the box (`DNA-COMMON-TARGET-COARSE`,
@@ -62,7 +61,7 @@ choice. The grammar publishes the corner roles an app may name (`tiny`, `compact
 `pill`) as `--grammar-radius-*`, each set from its base radius; an app never writes a literal corner, which would
 freeze one grammar's value into every grammar. One corner may stand out: a SurfaceCard or MediaFrame names it in
 `accentCorner` (a logical corner, `start-start` to `end-end`), drawn at the Common accent radius
-`--grammar-accent-corner` while the others keep the family's radius (ruling accent-corner); an app never rounds one
+`--grammar-accent-corner` while the others keep the family's radius; an app never rounds one
 corner itself.
 
 ## Intent x placement -> variant
@@ -87,7 +86,7 @@ nothing; and the danger pair):
   confirms it, dismiss first and focused.
 
 The exact map is Common data: `intent` in the DNA modules, resolved by `src/core/buttonIntent.tsx`, generated
-into the package's `docs/button-intent-props.generated.md` (decision D-6 makes it one Common module).
+into the package's `docs/button-intent-props.generated.md` (one Common module for it is open: [questions](../harness/questions.md) 33).
 
 ## Roles
 
@@ -110,7 +109,7 @@ paints its own circle or ring from the surface token and its text from a foregro
 both move together. A grammar decides the material (fill, edge, radius, the ink and its inks); the slots, the kinds, the
 treatments' grounds and the refusal of nesting are the same everywhere.
 
-Where the name sits follows the card's kind, in every grammar (ruling `card-label-by-kind`). A card that heads a section
+Where the name sits follows the card's kind, in every grammar. A card that heads a section
 carries its label outside the material, an unpainted row above it, because the label names what follows. A tile, one of
 several peers repeated in a grid, carries its name inside, beside its logo or mark, because the tile is the thing named and
 an outside label would float away from it. A docked region is a `Pane`, never a card. No prop moves the name, and a family
@@ -151,9 +150,9 @@ A decision and its way out are not peers, so they are two buttons at the inline 
 ### Tabs
 
 Tabs switch whole panels; each tab owns its panel. HeroUI's `primary` is a segmented pill on a soft track and its
-`secondary` is an underline bar; the contract keeps those names one to one (decision D-2). Every tab bar, page tabs
-and region tabs inside a surface alike, takes the underline, with the first label on the content edge, so Tabs have no
-look to pass. A filter over a collection is a `FilterButtonGroup`, never a tab bar. The bar lands on the `md` height,
+`secondary` is an underline bar; the contract keeps those names one to one. Page tabs, region tabs inside a surface and
+filter tabs over a collection (`kind="filter"`) take the underline, with the first label on the content edge; `primary` is
+only the switch of a mode or period of the same data in a card's `switch` header zone. The bar lands on the `md` height,
 which is why Tabs have no size.
 
 Each item accepts `isDisabled`, forwarded to HeroUI's tab: unavailable tabs retain the vendor's disabled semantics,
@@ -162,17 +161,14 @@ owns the visible panel, including when every item is temporarily disabled.
 
 ### SegmentedControl
 
-A segmented control is one value inside a form or a toolbar (period, audience, density), not navigation. Its
-selected segment takes the soft accent fill, the paint of selection rather than of a command. It
-publishes `sm` and `md`, default `md`.
+The value role is one value inside a form or a toolbar (period, audience, density), not navigation, and its renderer is
+`ChoiceChips` (or a `RadioGroup` when each option needs a sentence). The pill-in-a-track look belongs to `Tabs
+appearance="primary"`, a mode or period switch.
 
 ### FilterButtonGroup
 
-A filter button group is peer values that filter a collection which stays in place: `sm` toggle buttons on one row (a radio
-group to assistive technology), one selected, an optional count per option. It never wraps: the fit is measured from the real
-width, the options that do not fit go behind a "+n" button that opens a search list, and a chosen hidden option takes its place
-in the row, so the selection is always seen. The first option stays. Selected paints the soft accent pair; the rest take the
-surface. It replaces the selectable tag group, which no longer has a selection.
+`FilterButtonGroup` is deprecated and refused in product source (R380): peer values that filter a collection which stays in
+place are `Tabs kind="filter"`.
 
 ### Chip
 
@@ -185,7 +181,7 @@ tinted text, never as a filled button-like shape; its `muted` tone drops the fil
 A `TagGroup` holds values the user entered, to remove or to reorder, and has no selection: its tag is interactive and
 keyboard reachable on the ramp at `sm` (the default: tag rows are dense) or `md` when its row holds `md` controls, and a
 reorderable group moves tags by drag and by Alt+arrow keys and announces each move. Peer values that filter a collection
-are a `FilterButtonGroup`.
+are `Tabs kind="filter"`.
 
 ### Input
 
@@ -401,10 +397,9 @@ draws bars on one scale from zero with the value over each bar and the label und
 technology; it draws no axis, grid or legend.
 
 The Grammar has no group of attached buttons: a choice among a few has one component by meaning. `Tabs` switches a view or, with
-`kind="filter"`, narrows a list that stays in place (the same underline one size smaller, inside the list pane under its search field, a `count` per tab, an attention count in the danger tone, the tabs that do not fit folded into a "+n" menu with the selected one always visible); `ChoiceChips` or `RadioGroup` chooses a value
+`kind="filter"`, narrows a list that stays in place (the same underline one size smaller, inside the list pane under its search field, a `count` per tab drawn as a chip, an attention count on the warning soft pair, the tabs that do not fit folded into a "+n" menu with the selected one always visible); `ChoiceChips` or `RadioGroup` chooses a value
 of a form, since a tablist is not a form field; a date is the `Calendar` and a time `ChoiceChips`; actions are separate `Button`s or a
-`DropdownMenu`. `ButtonGroup`, `FilterButtonGroup` and `SegmentedControl` stay exported and deprecated for one release and R380 refuses
-a new use.
+`DropdownMenu`. `ButtonGroup` and `FilterButtonGroup` are deprecated and R380 refuses them in product source.
 
 The `Calendar` takes a controlled `value`, `minValue` and `maxValue`, `isDateUnavailable` with an `unavailableReason` (a full day says so
 on hover and to a screen reader), a `locale` (and so the week's first day: Monday for Vietnamese) with `firstDayOfWeek` to override,
@@ -413,15 +408,15 @@ disabled with a `disabledReason`.
 
 `ChoiceChips` is one choice among a few short options (a time, a size) as pills that wrap onto as many rows as the width needs,
 so every option stays visible. It behaves as a radio group (one selected, arrows move, a taken option is disabled and keeps its
-place) and answers for its own empty, loading and error states. It is neither a filter (`FilterButtonGroup`, one row with a "+n"
-overflow) nor a segmented control (two to five peers in one row).
+place) and answers for its own empty, loading and error states. It is neither a filter (`Tabs kind="filter"`, one row with a "+n"
+fold) nor a mode switch (`Tabs appearance="primary"`).
 
 ### Freestyle
 
 Freestyle is the one sanctioned escape hatch: a div that fills its host, where the app writes its own plain elements and
 CSS because no Grammar component fits (a sign-in brand art, say). It adds no paint, inset or radius, names its `reason`
 (stamped as `data-grammar-freestyle-reason`), and is a last resort: the rest of the page stays on the grammar, and a
-Grammar component inside it keeps its contract (ruling grammar-freestyle-region).
+Grammar component inside it keeps its contract.
 
 ### Page
 
@@ -441,9 +436,8 @@ itself). `isLoading` passes to the band; the body's blocks own their loading.
 
 ### Section
 
-A titled section is a named region whose title is its heading and its landmark name; no free heading exists (ruling
-`section-is-the-heading`). `kind="list"` holds rows of the same typed items a list card holds, with a `filter` slot for a
-`FilterButtonGroup`; it is the unpainted list owner within an existing surface and the list owner for search, filters or
+A titled section is a named region whose title is its heading and its landmark name; no free heading exists. `kind="list"` holds rows of the same typed items a list card holds, with a `filter` slot for
+`Tabs kind="filter"`; it is the unpainted list owner within an existing surface and the list owner for search, filters or
 paging on the canvas. Its head, filter and content stand one section step (24) apart, and its page command hugs its label at
 the end of the head row. A card heads itself with its `label`, so a section around one card is refused.
 

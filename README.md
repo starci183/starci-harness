@@ -17,8 +17,8 @@ your repositories, dispatches the work to agent seats or to the chat agent in fr
 
 This repository is public: it tracks no secret, and CI reads its tokens from GitHub secrets only.
 
-Agents start at [contexts/README.md](contexts/README.md), the load order; the owner's harness decisions and open questions are in
-[contexts/harness/](contexts/harness/decisions.md), and the rules for changing this repository are in [CONTRIBUTING.md](CONTRIBUTING.md).
+Agents start at [contexts/README.md](contexts/README.md), the load order; the harness roles and open questions are in
+[contexts/harness/roles.md](contexts/harness/roles.md) and [questions.md](contexts/harness/questions.md), and the rules for changing this repository are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Tải về / Download
 

@@ -29,7 +29,7 @@ No prose file exists in the folder. Nothing in `contexts/index.yaml` describes v
 | `contexts/grammars/{starci,offset-pop,heritage}/DNA.yaml` (`vendor`, `arrangement`, `intent` blocks; e.g. starci 160–200) | generated snapshot of `packages/grammar/src/*/dna.ts` | `vendor: {name: heroui, parity: strict|custom}`, arrangement (indicator side, separators, icon size, density), button intent → vendor variant map |
 | `contexts/grammars/common/DNA.yaml:818` | generated token census | `--starci-core-control-min-size`, `assignedBy: family`, fallback 2.5rem, 53 uses |
 | `contexts/grammars/starci/playbook.yaml:185–192`, `family.yaml:147–204` | prose | restates vendor slots (Label/Description), control sizes |
-| `contexts/ui/composition/state.yaml:190–197` (STATE-6 case-6/7) | prose (owner decisions) | tab variant meaning and the "HeroUI's own pill tabs" paint |
+| `contexts/ui/composition/state.yaml:190–197` (STATE-6 case-6/7) | prose (decisions) | tab variant meaning and the "HeroUI's own pill tabs" paint |
 | `contexts/ui/examples/brand-direction.example.yaml` (852 l) | prose example | ~15 restatements of HeroUI values ("Meter h-2 (8px)", "the real HeroUI Alert … bg-surface … shadow-surface") |
 | `contexts/code/fe/toast.yaml:27–31` | prose rule FE-TOAST | "toast.tsx (the HeroUI toast wrapper)", "HeroUI toast region" |
 | `modules/kernel/owner-rulings.yaml:656–712, 895` | rulings | `grammar-vendor-parity`, four successive wrapper pins, `repaint-default-heroui-unless-ruled`, `control-height-40` |
@@ -184,7 +184,7 @@ Cell, Footer, LoadMore …), required Content, Column, Row, Cell, ColumnResizer;
 warning, danger); one paint for all statuses: `bg-surface shadow-surface px-4 py-3 gap-4`, tone only on the indicator glyph and
 title (`*-soft-foreground`). There is no toast reference: HeroUI's Toast is not wrapped. **SC**: Grammar `Toast`
 (`core/composite/Toast/index.tsx`) is its own queue (timeouts, WCAG 2.2.1 persistence, pause on hover/focus) rendering HeroUI
-`Alert` + `Spinner`; ruling ACCENT (2026-09-27) accepts the Alert "as the HeroUI Alert renders it" (`ui/composition/accent.yaml:138`).
+`Alert` + `Spinner`; ACCENT accepts the Alert "as the HeroUI Alert renders it" (`ui/composition/accent.yaml:138`).
 
 **Small members** used by the above: Spinner sm/md/lg/xl = 16/24/32/40; CloseButton h-6 (24); Kbd h-6; Checkbox control
 size-4; Avatar sm/md/lg = 32/40/48; Pagination link sm/md/lg = 32/36/40 (→28/32/36 desktop); ProgressBar/Meter track
@@ -219,7 +219,7 @@ Switch, Avatar, SearchField). StarCi effectively adopts the Avatar ladder for ev
 
 ## 4. Problems
 
-### 4.1 The parity gate is blind exactly where the size ruling acts
+### 4.1 The parity gate is blind exactly where the size rule acts
 `button.yaml:22`: `Root: {"impl":"ButtonRoot", … "classes":[], … "paints":[]}`. The same empty `paints` on ToggleButton,
 Spinner, Separator, Label, Description, CloseButton, ListBox root and 15 more roots (grep of `"paints":[]` on `Root:`). The
 generator finds classes only when they are literal in the component source; Button's come from `tailwind-variants`
@@ -230,7 +230,7 @@ SegmentedControl. "Zero findings are suspicious" applies: the strict layer under
 
 ### 4.2 Contradictions in the control scale
 - SegmentedControl `control` = **2.75 rem (44 px)**, described as "the shared control height (2.75rem, the IconButton and bar
-  control height)" (`core/composite/SegmentedControl/index.tsx:25–26`, `components-forms.css:405,411,157`), while the ruling
+  control height)" (`core/composite/SegmentedControl/index.tsx:25–26`, `components-forms.css:405,411,157`), while the rule
   and IconButton say 40 px. `playbook.yaml:188` says "2.5rem (40px) shared height" and three lines later (`:191`) "held to
   2.75rem" in the same recipe.
 - The "44px TOUCH FLOOR" block (`components-forms.css:545–582`) declares the floor with `var(--starci-core-control-min-size, 2.5rem)`
@@ -243,8 +243,7 @@ SegmentedControl. "Zero findings are suspicious" applies: the strict layer under
   desktop without the Grammar CSS.
 
 ### 4.3 Tabs vocabulary inverted against the vendor
-Grammar `primary` = vendor `secondary` (underline) and vice versa (`Tabs/index.tsx:94–96`), fixed by an owner decision
-(STATE-6). Every other Grammar component passes vendor variant names one-to-one (Button `VARIANTS` table, Input, Select). The
+Grammar `primary` = vendor `secondary` (underline) and vice versa (`Tabs/index.tsx:94–96`), fixed by STATE-6. Every other Grammar component passes vendor variant names one-to-one (Button `VARIANTS` table, Input, Select). The
 wrappers reason "the primary tabs are StarCi's underline look: the vendor tab list is restyled" (`wrappers.yaml:31`) is
 misleading: the vendor already ships the underline look as `secondary`. Parity by name is broken for one family only; agents
 reading the HeroUI docs and the Grammar get opposite meanings.
@@ -291,10 +290,10 @@ glyph" — lines 13, 160, 485, 632), `ui/composition/state.yaml:197` (pill paint
 | shared CSS duplicated per component | **Generate once per CSS file** (`css/<file>.yaml`) and reference it from the component | removes the 239 duplicate rule keys |
 | generator class discovery | **Fix in code**: resolve `tailwind-variants` slot tables (`buttonVariants`, `toggleButtonVariants`, …) so Root paints are measured | closes 4.1; expect new red findings on Button/IconButton/SegmentedControl, to be ruled or reverted |
 | `roles.yaml` | keep, generated, same cache | consumed only by the judge |
-| `wrappers.yaml` | **Keep as the one StarCi vendor-decision file**, but every override must carry a `ruling:` id field (not prose); drop the 11 "listed for the pin" entries or rule them | one owner per deviation |
+| `wrappers.yaml` | **Keep as the one StarCi vendor-decision file**, but every override must carry a `rule:` id or a reason (not a pin note); drop the 11 "listed for the pin" entries or give each its rule | one owner per deviation |
 | sha256 pin history | keep only the live pin; move history to git | 4.4 |
 | DNA `arrangement` + `intent` | **One default in Common DNA**; a family DNA lists only what differs | 4.4; makes "per Grammar" visible |
-| control-height facts | **One token** `--grammar-control-height` assigned in the Common sheet (sm/md/lg = 2/2.5/3 rem); delete fallbacks; SegmentedControl → 2.5 rem or a ruled exception; touch floor its own token (2.75 rem) | 4.2 |
+| control-height facts | **One token** `--grammar-control-height` assigned in the Common sheet (sm/md/lg = 2/2.5/3 rem); delete fallbacks; SegmentedControl → 2.5 rem or a declared exception; touch floor its own token (2.75 rem) | 4.2 |
 | Tabs variant names | **Owner decision needed**: either adopt vendor names (pill = primary) and keep STATE-6 semantics as *placement* (`page` / `region`), or record the inversion as a `default`-kind override | 4.3 |
 | prose restating vendor values | replace values with `see vendor.heroui.<c>` references | 4.5 |
 | `code/fe/toast.yaml` wording | fix to "Grammar Toast (Alert-based)" | 4.6 |
@@ -310,8 +309,8 @@ contexts/vendor/
                             #   the vendor size table (3.3) and what StarCi changed about it; links to HeroUI docs per family
   parity.yaml               # StarCi decisions only: strict/custom meaning, must-keep vs may-change list (anatomy, roles,
                             #   required parts, embeds, a11y = keep; paint, arrangement = per parity), the size ladder
-                            #   decision (32/40/48, one height per row) with its ruling id
-  wrappers.yaml             # moved unchanged in role: file → wraps/delegates/overrides(ruling id), pinned
+                            #   decision (32/40/48, one height per row) with its rule id
+  wrappers.yaml             # moved unchanged in role: file → wraps/delegates/overrides, pinned
 (generated, not committed)  .cache/vendor/heroui@<ver>/{components/*.yaml, css/*.yaml, roles.yaml}
 ```
 
@@ -329,4 +328,4 @@ Component-level UI *thinking* (when to use underline vs pill tabs, when a chip v
 | `packages/eslint/fe/control-height.mjs` | no | ESLint in apps (CONTROL-HEIGHT-1) | — |
 
 Machine rules stay in code (judge, eslint, Grammar CSS); knowledge selects and explains; each vendor fact lives in the generated
-cache, each StarCi deviation in `wrappers.yaml` with one ruling id, each piece of vendor design thinking in `heroui.md`.
+cache, each StarCi deviation in `wrappers.yaml` with its rule id or reason, each piece of vendor design thinking in `heroui.md`.

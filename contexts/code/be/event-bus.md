@@ -29,7 +29,7 @@ nothing publishes to the broker directly. No in-process transport exists; unit s
 The correlation id (BE-LOGGING-4) is validated before SQL, stored in the outbox `correlation_id` column and authoritative in the
 outbound metadata. A delivery whose metadata is absent may derive its root id from a bounded, safe event id only when the envelope
 has the basic shape, and is promoted to explicit metadata before execution, retry or dead letter; present malformed metadata is
-rejected. In lite the broker is pgmq in the db service and there is no outbox or relay (ruling `lite-pgmq-bus-bullmq-jobs`):
+rejected. In lite the broker is pgmq in the db service and there is no outbox or relay:
 `publish` sends the envelope once to the pgmq topic of the event's name with `event_bus_send` on the transaction's connection,
 so the send commits or rolls back with the change, and pgmq copies it into every consumer queue bound to that name (BE-EVENT-BUS-6).
 The application role reaches pgmq only through the security-definer `event_bus_*` functions of the bus migration, listed in
@@ -64,7 +64,7 @@ Why: delivery behaviour is invisible to a linter; a real broker run is the only 
 Enforced by: R155 BE_PATTERN_SPEC_MISSING, R284 BE_LITE_PROOF_LANE_MISSING.
 
 ## BE-EVENT-BUS-6 Lite fans out on pgmq topics, dedupes on a business key and parks poison per consumer
-Lite (ruling `lite-pgmq-bus-bullmq-jobs`):
+Lite:
 
 - Fan-out is pgmq's own topic routing. Each consumer of an event has one queue `<topic>__<consumer>` (the event name with dots
   and dashes as underscores, then the consumer; at most 41 characters so its dead-letter queue fits pgmq's 47), named by a literal

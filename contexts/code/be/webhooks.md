@@ -3,7 +3,8 @@ slots: [be.feature.webhooks, be.feature.webhooks.http, be.feature.webhooks.dto]
 ---
 # Provider webhooks
 
-How a delivery a provider POSTs is received: one public door that proves the delivery first and hands it to one domain
+How a delivery a provider POSTs is received (a third-party OAuth redirect, a public GET with the auth-handshake reason
+off the webhook paths, is not a webhook door): one public door that proves the delivery first and hands it to one domain
 intake, which records it durably; a job processes it after commit (verify, record, job). The inbox claim is
 BE-IDEMPOTENCY-1; the provider's signing scheme, callback setup and live proof come from its `integration` record's
 research (PROJECT-WORK-4 in [project/work.md](../../project/work.md)).
@@ -57,7 +58,9 @@ The domain intake parses the raw body through its owner's guard, then in one tra
 with the provider's stable delivery id and the receipt insert (`inbox.claim(source, id, manager, { insert, payload })`; in
 lite `inbox.claimRow(source, id, manager, { entity, row })` of the `EntityInbox`, which answers the receipt id),
 returns on a duplicate, and enqueues the processing job with the same manager (`outbox.write(manager, QUEUE, { deliveryId },
-{ dedupeKey })`). No processing, provider call or bus dispatch runs in the receipt transaction; the job's service reads
+{ dedupeKey })`). No processing, provider call or bus dispatch runs in the receipt transaction: a call on a domain receipt port (a domain
+class over the platform ports with the platform `Inbox`) there is the inbox record, any other service or bus call is
+processing; the job's service reads
 the committed receipt and does the work.
 
 Why: the receipt and the job commit together, so a crash neither loses nor doubles a delivery, and a slow effect stays

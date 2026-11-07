@@ -155,8 +155,8 @@ distinguishable, the family uses one pink and carries the distinction by geometr
   only inside the AlertDialog that confirms it, dismiss first and focused (`starci/family.yaml:207-213`).
 - **Button sizes** `sm|md|lg|control`: three vendor sizes plus `control`, which is the 2.5rem (40px) shared height of
   bar controls, so every navbar control aligns (`starci/playbook.yaml:185-192`; `control` maps to vendor `md` plus
-  `data-grammar-control-size`, `Button/index.tsx:89,124`). The 40px floor is Common's (owner ruling control-height-40,
-  `starci/family.yaml:63`).
+  `data-grammar-control-size`, `Button/index.tsx:89,124`). The 40px floor is Common's
+  (`starci/family.yaml:63`).
 - **Button shape**: a pill in Core because its corner is `3 × --radius` and Core binds `--radius` to the .75rem
   control radius, so the corner exceeds half of every height; ".75rem ... is the field and tooltip corner, never the
   Button's: a Button drawn with a 12px corner is a defect, and a Button skeleton takes the same pill corner"
@@ -229,7 +229,7 @@ Scattered across `index.yaml`, `<family>/index.yaml`, playbook `readingSteps` an
    `components-{forms,overlays,navigation}.spec.ts` suites as the assertion.
 5. **Dependency direction**: knowledge says "Common never imports a family"; `src/core/buttonIntent.tsx:4-6` (Common
    anatomy) imports `OFFSET_POP_DNA` and `HERITAGE_DNA` and selects by string id.
-6. **Vendor parity**: house ruling "every Grammar follows HeroUI anatomy, only CSS differs"; DNA declares
+6. **Vendor parity**: house rule "every Grammar follows HeroUI anatomy, only CSS differs"; DNA declares
    `parity: "strict"` for Core and `"custom"` for Offset Pop and Heritage with no definition of what `custom` permits.
 7. **Naming**: catalog id `starci`, family id `core`, DNA id `starci-core`, entry `/core`, scope
    `data-grammar-family="core"`, lint `eslint-grammar-starci`, title "StarCi Core"; and the "Common" lint checks live in
@@ -306,7 +306,7 @@ Scattered across `index.yaml`, `<family>/index.yaml`, playbook `readingSteps` an
 | `anatomyObservations` (draw prompt craft, scale drift) | Move to the draw op's knowledge, not grammar. |
 | `@starci/eslint-grammar-starci` naming | Rename to `eslint-grammar-common` (shared API checks) with thin `-starci`/`-offset-pop` family packages; catalog id `core` or `starci` used consistently. |
 | `buttonIntent.tsx` importing family DNAs | Code fix: the family root passes its intent table down; Common imports no family. |
-| `parity: strict/custom` | Define in one place what each value permits under the house ruling, or drop the field. |
+| `parity: strict/custom` | Define in one place what each value permits under the house rule, or drop the field. |
 
 ### Target layout
 

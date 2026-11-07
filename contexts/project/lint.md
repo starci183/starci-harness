@@ -55,7 +55,7 @@ app's (both sides), `lib` and `runtime` carry no canon. A workspace root is neve
 | `@starci/prettier-config` | both | `be`, `fe`, `app` | `canon` checks the wiring; the format check runs in the app's scripts | layout of the source text |
 | `@starci/jest-preset` | be | `be`, `app` | `canon` checks the wiring; the specs run in CI (`unit`, `e2e`) | the unit test kit and its doubles |
 | app CLI `@starci/hfs` (enforcers `hfs`, `machine`) | the app root and both sides | apps | the app's scripts and CI (`starci app check`) | the tree against the slot manifest, `hfs.json`, generated contracts, catalogs, the import graph |
-| gate `sonar-new-code` (enforcer `sonar`) | each repository | `be`, `fe`, `app` | CI | coverage, duplication and issues of new code |
+| gate `sonar-new-code` (enforcer `sonar`) | each repository | `be`, `fe`, `app` | CI | coverage, duplication (message catalogs excluded from duplication only) and issues of new code |
 | gates `unit`, `e2e`, `build` | each repository | per profile | CI | the suites and the build; what a lite app cannot run is [lite.md](lite.md) "What CI runs" |
 
 ## Facts no machine checks yet
@@ -118,7 +118,7 @@ the stricter mode. The branch name alone decides, so a hook and CI agree; an ups
 - **Which profile a run is under.** The branch the run judges chooses it, automatically: in CI a pull request into the default
   branch (`GITHUB_BASE_REF`) runs the full gate, any other pull request is judged as its source branch (`GITHUB_HEAD_REF`) and
   a push as its branch (`GITHUB_REF`); elsewhere the checked-out branch. `starci app check --profile` prints it (`branch profile dev`, or
-  `branch profile ui/* (a pattern covering ui/3)`), with one `--gate` only that gate's mode (`packages/hfs/runtime/scripts/hfs/branch-profile.mjs`). `starci app check`, the managed
+  `branch profile ui/* (a pattern covering ui/3)`), with one `--gate` only that gate's mode (`packages/hfs/runtime/scripts/hfs/branch-profile.mts`). `starci app check`, the managed
   pre-commit and pre-push hooks and the rendered CI all take it: a push to `dev` runs the reduced CI (the lint job reports,
   the Sonar analysis and the Codecov upload of a reported gate run without the quality gate judging), and a pull request into
   `main` runs the full gate. Each gate a profile does not keep blocking prints one notice naming the branch profile.
@@ -126,10 +126,10 @@ the stricter mode. The branch name alone decides, so a hook and CI agree; an ups
   has no more ESLint error findings than at the base (the parent commit for the pre-commit hook, `starci app check
   --ratchet`; for the pre-push hook and CI the merge-base with the pushed range or the remote branch, else `HEAD^`), and a new
   file has none (`LINT_RATCHET_RAISED`, R379, a hard blocker). The range ratchet trusts the lint records first, as every
-  family trusts the warm cache (decision `warm-cache-push`): a touched file that the committed cache at the base and this run's
+  family trusts the warm cache: a touched file that the committed cache at the base and this run's
   lint records both hold, with no rule's count risen, is settled without a child, so a first push of a profile branch, whose
   base is far back, does not lint the whole diff twice. Every other file has both versions linted through the side's installed
-  config, in children of at most `RATCHET_TEXTS_PER_CHILD` texts (`packages/hfs/lint/ratchet.mjs`), so the heap of one child
+  config, in children of at most `RATCHET_TEXTS_PER_CHILD` texts (`packages/hfs/lint/ratchet.mts`), so the heap of one child
   stays bounded; the run prints how many files the records settled and how many were linted. The findings a file already
   carried stay report-only.
 - **How an agent works on a profile branch.** It fixes every finding of a blocking gate, `hfs` and the safety gates above
@@ -144,7 +144,7 @@ An app's own laws (a block library's shape, a spec schema, a naming rule of its 
 they are still machine-held, through two extension points that only add.
 
 - **Rule packs.** `hfs.json` `rulePacks: ["@scope/hfs-rules"]` names installed packages. Each exports `./rule-pack`, a
-  `starci/rule-pack@1` manifest (`packages/hfs/runtime/scripts/lib/rule-packs.mjs`) whose every rule carries an `id` (`NIVO-BLOCK-1`), a
+  `starci/rule-pack@1` manifest (`packages/hfs/runtime/scripts/lib/rule-packs.mts`) whose every rule carries an `id` (`NIVO-BLOCK-1`), a
   finding `code`, a `severity` (`error` or `warning`), the `spec` file of the package that proves it, its `doc` (a file of the package or an
   https link) and exactly one engine: `check`, a machine rule `starci app check` runs over the tracked files, or `eslint`, a rule the canon
   factories (`starciBeConfig`, `starciFeConfig`, `starciBePackagesConfig`) load for the sides it names. Because the factories load them, the
@@ -156,7 +156,7 @@ they are still machine-held, through two extension points that only add.
   lint finding: it follows the lint gate, so a branch profile that reports lint reports it and the lint ratchet (PROJECT-LINT-2) still holds
   it on the files a commit touches. A new pack rolls out with the ratchet: new code is clean from day one, existing findings burn down.
 - **Package slot manifests.** A root workspace package may declare `packages/<name>/slots.yaml` (`starci/package-slots@1`,
-  `packages/hfs/runtime/scripts/hfs/package-slots.mjs`): folder slots with placeholders (`src/blocks/<id>/`), the files each instance
+  `packages/hfs/runtime/scripts/hfs/package-slots.mts`): folder slots with placeholders (`src/blocks/<id>/`), the files each instance
   `requires` and `allows`, glob and file slots, and `closed` (default true: every file below `src/` belongs to a slot). hfs holds the
   package to it as it holds the be and fe sides to theirs (`HFS_PACKAGE_SLOT_MISSING`, `HFS_PACKAGE_SLOT_DISALLOWED`,
   `HFS_PACKAGE_SLOT_UNPLACED`, `HFS_PACKAGE_SLOTS_INVALID`, R382).

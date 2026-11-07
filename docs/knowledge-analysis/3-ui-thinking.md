@@ -424,7 +424,7 @@ Take an "Add documents" drawer:
     TASTE-13 and UX-12.
   - Truncated `componentOwnership` rows (§1).
   - FOCUS-1 `case-6` sits between case-3 and case-4.
-- Product-specific content inside product-agnostic knowledge breaks the house ruling: Nivo, unicorn mascot, `vi`
+- Product-specific content inside product-agnostic knowledge breaks the house rule: Nivo, unicorn mascot, `vi`
   locale, hex `#040d1c`, `draw-bakeoff/r5/...`, "Zalo group-avatar reference" (COLLECTION-3) and "nivo.vn review"
   (FOCUS-1 c6). The StarCi DNA tokens are also baked into the universal presentation layer:
   `--starci-core-surface-radius`, `.starci-core-surface-highlight` (OVERFLOW-1 c2) and `starci-core-` (ACTION-3 c5).
@@ -477,7 +477,7 @@ Take an "Add documents" drawer:
   scripts, and contexts/ui keeps the **why** and the **choice**, citing the owner by ID.
 - Product-agnostic and family-agnostic. Knowledge/ui speaks of roles: surface, control, pill, inline-gap, region-gap,
   intent, placement. StarCi numbers and class names move to `grammars/starci`.
-- Present tense: rulings become the rule. Dates and "corrected the same day" go to git history or a ruling ledger.
+- Present tense: a decision is stated as the rule itself. Dates and "corrected the same day" go to git history.
 
 ### 5.2 Keep (core of the new `contexts/ui`)
 - The three-layer chain and the owner vocabulary (App / component / gap).
@@ -507,7 +507,7 @@ icon-tile. Plus:
 - `contexts/ui/scales.md` gives the cross-component alignment table: one control-size ramp (sm/md/lg/control) mapped
   to height, radius role, icon size, label font rank and gap step, with the contexts (dense toolbar / item row → sm,
   form and card → md, page hero / marketing → lg, bars → control). Values stay in each grammar's DNA; this file holds
-  the roles and the reasoning. This needs owner decisions, because nothing in the legacy tree settles it.
+  the roles and the reasoning. This needs the owner to decide, because nothing in the legacy tree settles it.
 
 ### 5.5 Move into code or data
 - Thresholds in proof prose become structured fields (`threshold: {max: 3, unit: sizes}`) read by

@@ -19,11 +19,11 @@ Re-read them before raising either pin.
 
 The app hosts the gateway in process: `integrations/ai-gateway` registers `AiRouterModule` (the provider pool) and
 `AiRouterGatewayModule` with `listen: true`, so the gateway serves the OpenAI-compatible API on the app's port plus one
-(owner: `@starci/ai-router src/ai-router-gateway.listen.ts`). That owner is the custody of the upstream keys: its
+(owned by `@starci/ai-router src/ai-router-gateway.listen.ts`). That owner is the custody of the upstream keys: its
 `ai-gateway.config.ts` reads them as `Secret` (BE-CONFIG-3, sealed by BE-CONFIG-4) and hands them to the pool through
 `resolve`.
 
-Below the gateway sits a pool, declared once in the custody owner with `poolFromEnv` over its env (owner:
+Below the gateway sits a pool, declared once in the custody owner with `poolFromEnv` over its env (owned by
 `@starci/ai-router docs/design.md`): providers by kind (`anthropic`, `openrouter`, `qwen`, `deepseek`, `openai`,
 `gemini`, `groq`, `openai-compatible`), each with an array of keys under the canonical names (`<PREFIX>_API_KEY`,
 `<PREFIX>_API_KEY_<n>`, their `_FILE` twins), which the router rotates and fails over. The upstream key variables

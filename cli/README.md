@@ -31,16 +31,44 @@ src/
   editions, effect (`read`, `local-write`, `host`, `remote`, `publish`), roles, json schema, typed flags and the
   handler. Help (`starci <verb> --help`) and `starci explain` are generated from it, every flag with its help line; no
   YAML or table restates it.
-- **One flag dictionary** ([contexts/harness/cli-canonical.md](../contexts/harness/cli-canonical.md)). Every effect is
-  dry by default and `--execute` is the one "do it" flag; a generator's dry run exits 1 on drift. `--json`, `--timeout
-  <s>` (seconds), `--sha`, `--cwd`, `--reason` and `--status` are the one spelling of their meaning. `--json` and `--cwd`
-  are the CLI's own: a verb that declares a `cwd` flag receives the folder as typed and runs in the caller's directory,
-  every other verb runs as if started there.
+- **One flag dictionary.** A meaning has one spelling in every verb of both layers, the harness verbs and the app verbs
+  @starci/hfs parses:
+
+  | meaning | flag |
+  |---|---|
+  | do it for real | `--execute`. Every effect is dry by default: a generator's write (`app sync`, `app codemod`, `app upgrade`, `contexts anatomy`) and a remote write (`app ci secret set`, `app ci var set`, `app secret recipients --add/--remove`) included. A generator's dry run reports drift and exits 1 on it, so no verb has a `--check` mode |
+  | machine output | `--json`; `--format` only where a second, non-JSON format exists (the codemod's markdown report) |
+  | seconds to wait | `--timeout <s>`. Every duration is in seconds; `--wait <s>` is only a block-until loop, `--retry <s>` a retry interval |
+  | an exact commit | `--sha <sha>`; `--base <ref>` is a comparison base, `--ref <name>` a ref name |
+  | an environment of `.starcistacks` | `--env <env>`, required by every effect verb |
+  | the variable holding a database URL | `--db-url-env <NAME>` |
+  | the app or checkout folder | `--cwd <dir>`; `--project <name\|key>` is a registered project |
+  | an output path | `--out <path>`; `--backup-out` is a deploy's second output |
+  | a GitHub repository | `--repo <owner/name>` |
+  | a git remote | `--remote <name>` |
+  | a justification | `--reason "<text>"`; `--note` is free content (a task result, a package handoff) |
+  | a status filter | `--status`; `--all` widens a list |
+  | a list of values | a repeatable flag or a comma list, both accepted |
+  | `app check`'s gates | `--gate <name>`, repeatable; with none every family runs ([check-cache.md](../contexts/project/check-cache.md) owns the cache flags) |
+
+  `--json` and `--cwd` are the CLI's own: a verb that declares a `cwd` flag receives the folder as typed and runs in the
+  caller's directory, every other verb runs as if started there.
+- **One parser behaviour.** Every verb of both layers reads `--x v` and `--x=v`, a boolean also as `--x=true|false`; a value
+  never starts with `--`; a repeated single-value flag is refused, and so is a flag the action does not take, never ignored
+  (a read-only action refuses `--execute`); an unknown verb or flag fails with one message and code. A spelling outside the
+  dictionary is unknown (CONTRIB-15), and help is generated from the parser tables, so it cannot drift.
+- **One name, one object.** A verb name appears twice only where the object differs, which its help says once: `release push`
+  (the harness repository) and `app release push` (an app); `check lint` and `app check --gate lint` (`check *` judges the
+  harness repository and its packages, `app check` a product app); `stack backup` (volumes) and `db dump` (the database);
+  `stack prune` (Swarm objects) and `stack retire` (old compose projects); the stop verbs at five granularities (`task
+  cancel`, `seat stop`, `supervisor reject`, `workflow stop`, `project park`); `secret migrate`, `recipients` and `server-key`
+  (three recipient jobs); `doctor`, `host status` and `supervisor status` (three liveness views).
 - **Which verbs a tree sees.** `locateTree` reads the nearest `hfs.json`. A lite or full app sees the verbs of its
   edition (core verbs serve both); the runtime and a folder outside any StarCi tree see every verb.
 - **Output.** With `--json` every verb prints one envelope, `{schema, ok, data}`, or
-  `{schema: "starci/refusal@1", ok: false, code, message}`. Exit 0 is done, 1 is refused or red (nothing moved),
-  2 is bad usage. A refusal is thrown as `Refusal(code, message)`.
+  `{schema: "starci/refusal@1", ok: false, code, message}`. Exit 0 is done, 1 is refused, red or drift (nothing moved),
+  2 is bad usage (an unknown verb or flag included), 3 an effect not armed (a database mutation without its approval). A
+  refusal is thrown as `Refusal(code, message)`.
 - **The app commands.** `core/app/hfs.ts` runs the `starci app` verbs that `@starci/hfs` implements in-process in the
   app's directory. Such a verb is `forward: true` with one `rest` flag: `main.ts` hands it every argument after its path
   as typed, `--help` included, once the CLI's own `--json` and `--cwd` are taken out, and @starci/hfs owns its flags, their
@@ -227,8 +255,8 @@ NUL-separated (`-z`), so a non-ASCII or deep path is never quoted or cut.
 
 ### Settling an attempt
 
-An Op reports, the harness verifies, and each ended attempt is settled once in its status by one of four decisions (owner
-decision `op-settle-merge-or-discard`; `settleDue` and `settleWork` in `harness/prior.ts`, recorded `op-settled`): MERGE,
+An Op reports, the harness verifies, and each ended attempt is settled once in its status by one of four decisions
+(`settleDue` and `settleWork` in `harness/prior.ts`, recorded `op-settled`): MERGE,
 a green verify that landed it; KEEP, a stop the harness owes a continuation (custody's `awaiting_owner`, a cause
 `harnessCause` of `harness/revive.ts` names, a verify the host held, a waiter parked on a shared need); and, for a red the
 task caused, its Kernel's decision, the `settle` of the command answering its red, question, check-premise or conflict
@@ -394,7 +422,7 @@ wave, in Debug's scoped round and before a push alike.
 
 A workflow file (`starci/workflow@1`) is recorded as graph versions (`harness/graph.ts`) built for
 a goal version (`harness/goal.ts`): goal text, acceptance ids and a scope ceiling (path prefixes, max tasks). Goal 1 is
-the file's; `workflow amend --goal` (owner, Supervisor) records goal n+1 from a `starci/goal-change@1` file, based on goal n
+the file's; `workflow amend --goal` (the owner or a Supervisor) records goal n+1 from a `starci/goal-change@1` file, based on goal n
 (`STALE` otherwise) and idempotent by its cmdId. A node's hash is its contract hash and retry round; its dependencies
 enter through early cutoff instead (`harness/reconcile.ts`): each dispatched task records the dependency tasks it ran
 on, and a done task's settled result hash is the git tree of its allowPaths at its settle commit plus its output hash,
@@ -675,7 +703,7 @@ its Kernel given an `escalation-answer` whose ruling is the default, an `escalat
 owner never sees it; it returns the project's oldest `escalation`, `handoff`, `shared-need` or `kernel-undecided` (a decision its Kernel left undecided, below) the Supervisor rules, then the oldest `owner-request` (`supervisor ask` and the Telegram bridge record
 it in the project's mailbox, machine.sqlite `owner_requests`, and mail the Supervisor's Run as `kernel submit` does, `askSupervisor` in
 `harness/owner-ask.ts`), and only then, once each (a `decision-relayed` event), one awaiting an answer from outside: kind
-`owner` with no default it may rule, which the owner rules, or `harness`, which Debug rules (`awaitsOwner` in
+`owner` with no default it may rule, which the owner answers, or `harness`, which Debug answers (`awaitsOwner` in
 `harness/coordinator-commands.ts`); each is filed as its ticket first ("Tickets"). A `next` blocking on its wait renews its caller's lease every `nextPollSeconds`. `supervisor submit <file>` applies `goal`, `goal-change` (goal version n+1), `stop` or `need-owner` ("Shared needs"),
 or a ruling in a Kernel's place, the Kernel's own `workflow-change` or `escalation` answering a `kernel-undecided` decision,
 and its `answers` close decisions and owner requests (each recording the command's cmdId) (the escalating Kernel of another workflow gets an `escalation-answer`); a `stop` ends
@@ -858,7 +886,7 @@ notices in the same round when it filed one (`tickNotices`), as the tick does; t
 the monitor), whose `--task` and `--decision` wait on it and whose `--default` and `--option` are a question's answers. `ticket list [--status] [--kind] [--project]` is Debug's queue, blocking first,
 then by occurrences; `ticket show` reads one; `ticket take` (debug, owner) marks a defect in-progress; `ticket close --fixed-by
 <sha> | --wontfix --reason | --duplicate <id>` (debug, owner) ends it, a duplicate of a live ticket handing over its waiters;
-`ticket answer --answer | --accept-default [--reason]` (owner, and the bridge for a Telegram reply) answers a question. Owner
+`ticket answer --answer | --accept-default [--reason]` (the owner, and the bridge for a Telegram reply) answers a question. Owner
 feedback is the kind `feedback` (`core/ticket/feedback.ts`, every writing role): `ticket open --kind feedback --title "<words>"`
 records the owner's words verbatim with the day given, `ticket close <id> --kind feedback --target-kind <kind> --target <t>`
 closes it only on a target that resolves, and `ticket list --kind feedback --status overdue` exits 1 on an item open past

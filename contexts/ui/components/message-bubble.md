@@ -13,7 +13,7 @@ Choice `message-bubble.choose.side`: whose message it is. The first row that app
 | --- | --- | --- | --- |
 | mine | the reader wrote it | `side="outgoing"`: the brand fill (`--accent`) with its foreground (`--accent-foreground`), at the end side | judgement |
 | theirs | anyone else wrote it: a person, an agent, the system | `side="incoming"` (the default): the surface and its foreground, at the start side | judgement |
-| agent for the reader | an agent speaks on the reader's behalf and the reader may approve it (an AI's reply) | `side="outgoing" tone="soft"`: the brand tint (`--accent-soft`) with its foreground (`--accent-soft-foreground`), at the end side; `tone` never changes an incoming bubble (owner ruling 2026-11-06: no new token) | judgement |
+| agent for the reader | an agent speaks on the reader's behalf and the reader may approve it (an AI's reply) | `side="outgoing" tone="soft"`: the brand tint (`--accent-soft`) with its foreground (`--accent-soft-foreground`), at the end side; `tone` never changes an incoming bubble, and no new token exists for it | judgement |
 
 Choice `message-bubble.choose.inline`: what a message may hold. Plain words, a link, a mention (`Text isStrong`), code and a muted line
 all inherit the bubble's foreground, so they read on either face; a link keeps its underline. Anything that is not the message's own
@@ -37,7 +37,7 @@ It takes no step; the words use the body step and the author line the caption st
 
 ## States
 `isHighlight` draws the focus ring round the bubble (a link jumped here). Loading draws the face with two skeleton lines
-(`isLoading`, STATE-8); a whole loading thread is the thread's own bubbles with `isLoading`. Actions show on hover and focus inside the message.
+(`isLoading`, STATE-8); a whole loading thread is the thread's own bubbles with `isLoading`. Actions show on hover and focus as the grammar's floating toolbar beside the bubble: icon commands named by tooltips that never overlap its text.
 
 ## Owner split
 - **Grammar owns:** the faces, the corner that points at the avatar, the inline colours on each face, the actions toolbar, the skeleton.
@@ -45,4 +45,4 @@ It takes no step; the words use the body step and the author line the caption st
 - **App author decides:** the thread (order, grouping, day dividers, scroll), the words, the author and the time.
 
 ## Rules
-STATE-8. Ruling `message-bubble-primary-and-surface`.
+STATE-8.

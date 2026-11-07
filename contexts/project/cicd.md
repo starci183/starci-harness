@@ -3,13 +3,9 @@
 Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs`
 templates: a release push builds the release's images and pushes them to the registry the app declares, and once every
 required check of that commit is green it deploys them to the app's Docker Swarm environments, verifies the release and
-rolls it back by itself when the verification fails. This is a design awaiting the owner's approval (ruling
-`app-cicd-auto-deploy`, status proposed): nothing below is built yet, and the templates, verbs, rules and slots it names
-change in the work packages at the end. It builds on the committed check cache of [check-cache.md](check-cache.md) and
+rolls it back by itself when the verification fails. This page is the pipeline's design; where the built code differs,
+[As built by the work packages](#as-built-by-the-work-packages) says how, and there the code and the rules are the authority. It builds on the committed check cache of [check-cache.md](check-cache.md) and
 on the Swarm verbs of `starci app stack`, and it changes neither: it adds the order they run in.
-
-Owner, 2026-10-31: "cắm 1 opus nghiên cứu pattern ci cd chuẩn cho .github của từng dự án nhé — push cái build image
-mới push lên registry và tất cả pass, sau đó deploy lun, fail thì rollback trong môi trường dockerswarm."
 
 ## What an app has today
 
@@ -74,11 +70,12 @@ plan ──► fast ─┐
 
 **Checks.** The jobs stay the CI standard's shape (`fast`, `lint`, `test`, `coverage`, `build`, `sonar`; ci-standard.yaml
 `jobs`). Every run judges `app check` (the `lint` job: `--gate lint` per side) against the trusted base cache, never with
-a cold run, and the test shards run only the specs whose closure changed; under `full` (every tag run, every candidate run)
+a cold run, and the test shards run only the specs whose closure changed; under the `plan` job's `full` mode (the release
+checks; which check families then run in full and which diff-only is [check-cache.md](check-cache.md#when-a-run-is-full)'s)
 the units are sharded (`--gate test --shard <i>/<n>`) and the coverage job judges the merged report with `--coverage-from`. Sonar and the
 Codecov upload run on every `full` run, so a release is analysed before it ships rather than only on tags after the fact,
-and the quality gate's verdict, never the scanner's exit, is the job's result (PROJECT-STACKS-8). The verdicts follow
-`gate-threshold-20`: `app check` is green under 20 error findings with no hard blocker; typecheck, build,
+and the quality gate's verdict, never the scanner's exit, is the job's result (PROJECT-STACKS-8). In the verdicts,
+`app check` is green under 20 error findings with no hard blocker; typecheck, build,
 tests, coverage and the Sonar gate are binary.
 
 **Root packages are built before they are read.** An app's root workspace packages (`packages/*`: the agent SDK, the module
@@ -180,7 +177,7 @@ The migration moves into the deploy, before the services update, under three rul
   migration finding, so a hard blocker).
 - **No down migration runs by default.** A rollback restores service specs, never data (PROJECT-STACKS-6). Lite has no
   down migrations; full's `down()` stays an owner-run step. The backup taken before the migration, with its receipt, is the
-  way back for data, and restoring it is a separate owner decision with its loss window.
+  way back for data, and restoring it waits for the owner's yes, given with its loss window.
 - **Backup only when something will change.** The preview runs first; with nothing pending there is no backup and the
   record says so. With something pending, the backup, its verified receipt and its test decrypt are the urgent floor's
   steps (`STACK_URGENT_BACKUP_*` codes become `STACK_DEPLOY_BACKUP_*` for both paths). The archive stays on the manager,
@@ -191,8 +188,11 @@ does (`inContainer`), so the database never listens beyond its stack network and
 whose database is outside the stack declares `database.target: external` and keeps `--db-url-env` with a sealed URL.
 
 **First start.** When an environment has no accepted release, the deploy proves the database empty and runs the first
-start (hold deploy with only the database running, bootstrap and migrate in its container, then the real deploy), today
-reserved to `--urgent --first-start`. A database that is not empty with no accepted release is refused
+start, reserved to `--urgent --first-start`: the stack is deployed with every service but the database at 0 replicas (a
+global-mode service held off every node), so no app service starts against the empty schema; the database is proved
+empty (no migration history, no table in `public`) and migrated inside its own container (`db/bootstrap.sql` first), then
+the real stack is deployed and converged, with the record, the rollback target, the readiness verify and the automatic
+rollback holding. A database that is not empty with no accepted release is refused
 (`STACK_FIRST_START_NOT_EMPTY`) and needs the owner.
 
 ## Secrets and access
@@ -211,7 +211,7 @@ reserved to `--urgent --first-start`. A database that is not empty with no accep
   `authorized_keys` is `restrict` plus a forced command, the managed `starci-ssh-gate`, that admits only
   `docker system dial-stdio` and the release store's fixed scripts. That narrows what a stolen key can run without a
   shell; it does not make Docker access less than root, and the runbook says so. Key creation and rotation stay
-  owner-run steps (`owner-run-steps`).
+  owner-run steps.
 - **Registry.** Pushes use the job's `GITHUB_TOKEN` with `packages: write` on the images job only; the manager pulls
   with `--with-registry-auth`, which forwards the deploy job's short-lived login, so no registry credential lives on the
   server. A private registry other than GHCR is a declared service with its credential as a CI secret of the environment.
@@ -219,7 +219,7 @@ reserved to `--urgent --first-start`. A database that is not empty with no accep
   directory removed on exit, post-deploy and verify output carries names and counts only; the existing R251, R296 to
   R298 checks keep holding.
 - **GitHub Environments.** Each deployed environment restricts its deployment refs to tags `v*`. Required reviewers are
-  not part of the default: the owner asked for the deploy to follow the green pipeline, and on the Free, Pro and Team plans
+  not part of the default: the deploy follows the green pipeline, and on the Free, Pro and Team plans
   a private repository cannot have required reviewers or a wait timer at all ([environments]). An environment variable
   `STARCI_DEPLOY_PAUSED=true` stops automatic deploys of that environment without a code change, and the dispatch still
   works; an app that wants a human gate sets `deploy.approval: reviewers` and the environment's reviewers.
@@ -233,12 +233,23 @@ reserved to `--urgent --first-start`. A database that is not empty with no accep
   the images pushed, and `--ci-run` evidence accepted by the CLI. A hard blocker (plaintext secret, boot proof, migration
   finding, a forged cache record) fails its job at any count.
 - **The urgent path.** `starci app stack deploy --env <env> --urgent --reason "<text>" --execute` from the owner's machine
-  stays as ruled (`urgent-release`): fast local checks, the safety floor, no CI. It becomes auditable on the server side
-  too: the tag annotation carries `Starci-Urgent: <role>` and `Starci-Urgent-Reason: <text>` trailers (written by
-  `release push --urgent`, never by hand), the manager's deploy record carries the same, and the tag's CI run is the
-  back-fill: green leaves the release as it is, red is a red CI the harness fixes, and its deploy job finds the sha already
-  current and does nothing. The manager lock serialises the urgent deploy with any CI deploy.
-- **Owner approval.** Hard rule 5 (deploying waits for the owner's yes) is amended by the ruling: for an environment with
+  is the urgent release, a feature: no CI, only the checks that can break production, and a safety floor that is never
+  skipped. With no `--image` and no `--sha` it releases HEAD, adopting a tag already on it, unless HEAD already has a pushed
+  urgent record: it runs typecheck and the build (the release gates `typecheck`, `build`, `build-be`, `build-fe` the
+  app declares; a green row already recorded for the commit is reused), and only once they pass tags, pushes and writes the
+  URGENT record (the role, the reason, each check's verdict, the commit); a tag pushed by hand carries none, and a record is
+  never written by hand. It builds and pushes the images on the operator's machine before the transport reaches the server
+  and deploys their digests. `app check`, lint and the tests wait for the back-fill. The record satisfies `requireCi` for
+  `deploy.prod` and `release.cut` when the caller passes `--urgent`; the floor still runs and refuses with its own code when
+  a step fails: a fresh encrypted database backup whose receipt is verified and which a test decrypt opens (or, under
+  `--first-start`, the proof that the database is empty), migrate preview then execute, the readiness verify and the
+  automatic rollback. It is auditable on the server side too: the tag annotation carries `Starci-Urgent: <role>` and
+  `Starci-Urgent-Reason: <text>` trailers (written by `release push --urgent`), the manager's deploy record carries the
+  same, and the back-fill runs the full gate on the same commit, as the tag's CI run or `starci app release gate --backfill
+  <tag>`: green promotes the record to a normal L4 with no re-release, red opens a `verify` ticket (a red CI the harness
+  fixes) and changes nothing on production, and the tag run's deploy job finds the sha already current and does nothing.
+  The manager lock serialises the urgent deploy with any CI deploy.
+- **Owner approval.** Deploying waits for the owner's yes (hard rule 5): for an environment with
   `deploy.auto: true`, the owner's yes is given once, by that setting, and each release push that turns green deploys.
 
 ## Records
@@ -309,12 +320,12 @@ supply-chain SBOM check (now on the pushed build), the stacks schema keys `deplo
 prettier stability. Done: `app sync` renders a pipeline that `actionlint` and the CI standard accept for both editions.
 Needs WP1 to WP3 published (the workflows call their flags).
 
-**WP5. Knowledge, rulings and the move of existing apps.** Files: this document made the rule (its sections become ids),
+**WP5. Knowledge and the move of existing apps.** Files: this document made the rule (its sections become ids),
 [stacks.md](stacks.md) PROJECT-STACKS-6 and PROJECT-STACKS-7, [authority/ci.md](../authority/ci.md),
-[harness/rules.md](../harness/rules.md) rule 5, [harness/decisions.md](../harness/decisions.md), the ruling set live. The
+[harness/rules.md](../harness/rules.md) rule 5. The
 migration path, nivo-lite first: bump hfs and the CLI, `app sync --execute` (the new workflows, `db-deploy.yml` and
 `images.yml`'s old form removed); seal the CI deploy key as `vps-ci` and install its `authorized_keys` line with the gate
-(owner-run); set the `production` environment's deployment refs to `v*`; the environment keeps `SOPS_AGE_KEY` and no other
+(an owner-run step); set the `production` environment's deployment refs to `v*`; the environment keeps `SOPS_AGE_KEY` and no other
 name, so `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`, `VPS_HOST` and `VPS_USER` are deleted from it (the sealed `vps-ci` is the only
 transport, including for `stack-key-restore.yml`); release a no-op patch and watch the first automatic deploy. The app-owned
 `authorize-deploy-key.yml` and `cli-deploy.yml` stay. Then the other apps, one per release.
@@ -322,7 +333,7 @@ transport, including for `stack-key-restore.yml`); release a no-op patch and wat
 Integration order: WP1, WP2 and WP3 in parallel; WP4 after they are published; WP5 last, and its knowledge edits can
 start with WP4.
 
-## As built by the work packages (integration, 2026-10-31)
+## As built by the work packages
 
 Where the packages differ from the design above, or add to it, the code and the rules are the authority:
 
@@ -363,7 +374,7 @@ Where the packages differ from the design above, or add to it, the code and the 
 
 | decision | options | recommended |
 |---|---|---|
-| Who approves a production deploy | every green release tag deploys (`deploy.auto: true`) / GitHub required reviewers / staging auto and production by dispatch | auto, as the owner asked, with the pause variable as the brake; reviewers need a public repository or Enterprise |
+| Who approves a production deploy | every green release tag deploys (`deploy.auto: true`) / GitHub required reviewers / staging auto and production by dispatch | auto, with the pause variable as the brake; reviewers need a public repository or Enterprise |
 | Agents push main, so agents deploy | accept it (the green pipeline is the guard) / only the owner's pushes deploy (the `verdict` job checks the pusher) | accept it; the pause variable and the rollback cover the risk, and the urgent path already lets the owner ship alone |
 | The CI SSH key | sealed member `vps-ci` opened with the server key / GitHub Environment secrets as today | sealed: one GitHub secret per environment and the pinned host keys reviewed in git |
 | Pull request CI | add `pull_request` (checks only, no secrets) / keep apps without it | add it, so Dependabot's updates are judged |

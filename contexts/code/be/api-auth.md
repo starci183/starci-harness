@@ -22,7 +22,7 @@ Enforced by: `default-deny-app-guard`, `public-needs-reason`, `public-reason-clo
 ## BE-AUTH-2 Identity verifies the caller; the domain service authorizes the resource
 
 Token verification belongs to `domain/identity` over the provider integration (in lite, `integrations/passport`,
-the glue of the package `@starci/auth`, which verifies the app's own EdDSA access tokens against its own key set, one
+the glue of the package `@starci/auth`, which verifies the app's own EdDSA access tokens against the product's own issuer and key set (no sign-in spans two products), one
 signing key and any number of retired keys published as the JWKS, so a key rotates without signing anybody out; in
 full, `integrations/keycloak`, the glue of the package `@starci/auth-oidc`): the verifier pins the algorithm, checks issuer and
 audience, and builds the principal only after verification. In lite `@starci/auth` alone holds Passport (Google OAuth 2.0 with state and PKCE,

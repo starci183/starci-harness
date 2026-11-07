@@ -77,7 +77,7 @@ mechanism; the rule in its last column owns the code and the proof.
 | who may act on this resource? | default deny and the domain service's resource check | never less: every door and job reaches the same check | BE-AUTH-1, BE-AUTH-2 |
 | does a request outlive its connection? | a durable status the client reads again | the client must learn of a change, which a push with resume carries | BE-JOBS-1; BE-REALTIME-5, FE-REALTIME |
 | who owns client state and its cache? | one owner per kind of state and identity-keyed reads | an optimistic write, which needs its rollback | FE-STATE-1, FE-DATA-KEY, FE-DATA-COMMAND |
-| must history rebuild the state? | current-state tables, with an audit row where one is needed | never here: event sourcing is not a mechanism of this standard, and adopting it is an owner ruling | BE-PERSISTENCE-1 |
+| must history rebuild the state? | current-state tables, with an audit row where one is needed | never here: event sourcing is not a mechanism of this standard | BE-PERSISTENCE-1 |
 | can old and new code run side by side? | migrations as the only schema authority and contracts that only add, expanded before they contract | a backfill is needed, which runs as a fenced job | BE-PERSISTENCE-1, 2, 15; BE-JOBS-2 |
 
 A mechanism that needs a pattern is legal only when `sides.be.patterns` declares it; each topic names its pattern, and the

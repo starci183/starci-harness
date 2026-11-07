@@ -52,7 +52,9 @@ lazily on the first diagram). A source Mermaid refuses is an error in the same r
 source as code, so the reader keeps the text (STATE-8). An empty `FlowGraph` shows its `emptyLabel`.
 
 ## Owner split
-- **Grammar owns:** the frame, the reserved box, the theme handed to Mermaid, the node shapes, the bubble, its fills, ring and tip, the `BubbleMap` rings and fans, the strong edges of the selected path, the edge label paint,
+- **Grammar owns:** the frame, the reserved box, the theme handed to Mermaid, the node shapes, the bubble, its fills, ring and tip (a status never rests on colour alone), the `BubbleMap` rings and fans, the strong edges of the selected path, the edge label paint, the lanes
+  look (one node width, body-size words with an optional subline, orthogonal rounded edges with a muted arrowhead that fork
+  from one point, no line out of a terminal node, a canvas as tall as the graph that never magnifies it),
   the error carrier, the screen-reader text of labelled edges, and loading Mermaid only when a diagram mounts.
 - **Knowledge decides:** which renderer; which shape a node takes; the height step.
 - **App author decides:** the source or the nodes and edges, the label, the error title copy.

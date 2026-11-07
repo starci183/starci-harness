@@ -44,7 +44,8 @@ R92 (`base-import-pair`), R65 (`component-line-budget`), R20 (`file-size-growth`
 
 ## FE-FOLDER-3 `hooks/` holds hooks; everything else is a module
 
-`hooks/` holds one hook per `use*.ts` file in its families (`swr`, `rhf`, `zustand/<store>`, `effects` with its
+`hooks/` holds one hook per `use*.ts` file, a function that calls a hook (React, SWR, Redux, a listed library hook or
+the app's own hook, resolved by symbol), in its families (`swr`, `rhf`, `zustand/<store>`, `effects` with its
 `*SideEffect.tsx`, `reuseables`, `socketio`) and in `hooks/<domain>/` with an `index.ts` and at most one
 `<domain>.shared.ts` for that domain's constants, view types and pure helpers; the transport, session, toast,
 environment, routes, i18n, storage and brand each live in their `modules/<capability>`.

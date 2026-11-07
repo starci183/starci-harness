@@ -61,13 +61,12 @@ Ownership words used across these files, defined once:
   positions. A spec's acceptance assertions cite them; grammar `data-contract` stamps cite them. A closed id is
   never reused.
 - **No two readings.** If an author could still decide two ways under these rules, that is a defect in the
-  knowledge: write the rule that removes the choice, or list it in [../decisions/open-ui.md](../decisions/open-ui.md)
-  as a grammar API change.
+  knowledge: write the rule that removes the choice, or a grammar API change
+  that removes it.
 - **Feedback hardens, never piles up.** An owner correction becomes one of: a stricter general rule in the
   rule it corrects, a grammar API that removes the choice, or a threshold or lint. It is never a case note beside
   the rule. Each rule has one place for that hardening to land: its own table or its threshold key.
-- **Present tense.** A ruling becomes the rule; its id and date live in
-  [../decisions/rulings.yaml](../decisions/rulings.yaml).
+- **Present tense.** A decision is stated as the rule itself, as the tree is; its history lives in git.
 - **Necessary, not sufficient.** Passing every rule does not ship a page; the owner's review still decides. A
   rejected render means a rule is missing or wrong: fix the surface, then fix the rule.
 - **Names are the contract's.** Component, prop, token and role names are the grammar contract's

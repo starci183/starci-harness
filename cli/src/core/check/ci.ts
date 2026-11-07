@@ -105,8 +105,8 @@ const urgentRecordOf = async (root: string, sha: string): Promise<UrgentRecord |
 
 /**
  * The require-ci gate of an action: when policy/quality.yaml lists it in requireCi, the action refuses CI_NOT_GREEN unless CI of `sha` is green,
- * or, when the caller asked for the urgent path (`urgent`), unless the commit carries a pushed urgent record: the owner's ruling of 2026-10-29
- * (contexts/harness/decisions.md) lets that record stand in for CI, whose full gate runs later as the record's back-fill. Returns the reading
+ * or, when the caller asked for the urgent path (`urgent`), unless the commit carries a pushed urgent record, which
+ * stands in for CI (contexts/project/cicd.md "The urgent path"), whose full gate runs later as the record's back-fill. Returns the reading
  * (verdict `urgent` when the record stood in), or undefined when the policy does not make the action wait.
  */
 export const requireCiGreen = async (context: VerbContext, root: string, action: CiGatedAction, sha: string, options: { readonly urgent?: boolean } = {}): Promise<CiReading | undefined> => {

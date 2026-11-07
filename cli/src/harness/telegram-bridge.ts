@@ -48,7 +48,7 @@ const ENDED: Readonly<Record<string, string>> = { done: "is done", blocked: "is 
 /**
  * The key of a workflow's notice: one per workflow, status and reason, so a workflow is noticed once per state it ends in. Its
  * goal and graph versions are no part of it: a Kernel amending a blocked workflow bumps them every minute without changing what
- * the owner would hear (2026-10-29: "lesson-ai is blocked" went out at 2:59, 3:00 and 3:02).
+ * the owner would hear, so the same blocked state is told once.
  */
 export const workflowNoticeKey = (project: Project, workflow: Pick<WorkflowRow, "id" | "status" | "reason">): string =>
     `workflow:${project.key}:${workflow.id}:${workflow.status}:${createHash("sha256").update(workflow.reason ?? "").digest("hex").slice(0, 12)}`

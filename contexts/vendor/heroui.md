@@ -65,7 +65,7 @@ selected tab sits on a full-size indicator segment with the surface shadow that 
 separators fade beside the selection. `secondary` is an underline bar: no track, a bottom border, a thin accent
 indicator, the selected label in the foreground colour. The tab is 32px and the track pads it to a 40px bar, the
 height of an `md` button on touch: tabs align with controls without a size prop. House: names are kept one to one
-and the look comes from context (decision D-2).
+and the look comes from context.
 
 ## Chip
 

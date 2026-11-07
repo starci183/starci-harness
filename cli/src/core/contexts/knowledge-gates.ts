@@ -7,7 +7,7 @@ import { ruleBookIds } from "../../harness/rule-book.js"
 
 /** One finding of a knowledge gate: what is wrong, where. */
 export interface KnowledgeFinding {
-    readonly kind: "rule-no-doc" | "removed-vocabulary-used" | "wrapper-stale" | "wrapper-undeclared" | "wrapper-wraps-drift" | "wrapper-pin-drift" | "wrapper-rule-unknown"
+    readonly kind: "rule-no-doc" | "removed-vocabulary-used" | "wrapper-stale" | "wrapper-undeclared" | "wrapper-wraps-drift" | "wrapper-pin-drift" | "wrapper-rule-unknown" | "ruling-history"
     readonly subject: string
     readonly detail: string
 }
@@ -27,14 +27,15 @@ const walk = (dir: string, accept: (name: string) => boolean, skip: (path: strin
     return into
 }
 
-/** The knowledge that states what is true now; `project/` is generated. */
-const livingKnowledge = (knowledge: string): string[] =>
-    walk(knowledge, (name) => /\.(?:md|yaml)$/.test(name), (path) => /[\\/]project$/.test(path) || path.endsWith("search-eval.json"))
+/** The generated pages: the contexts index, the anatomy and its slices, the section indexes. */
+const GENERATED_PAGE = /^(?:index|anatomy(?:-[a-z]+-[a-z]+)?)\.md$|-sections\.md$/
+
+/** The knowledge that states what is true now: every page but the generated ones. */
+const livingKnowledge = (knowledge: string): string[] => walk(knowledge, (name) => /\.(?:md|yaml)$/.test(name) && !GENERATED_PAGE.test(name))
 
 /**
  * R-doc: every rule of hfs/rules.yaml has a doc, a page of the living knowledge that names it by id. A rule nobody explains is a
- * rule an agent cannot look up (contexts/README.md "Looking a rule up"). hfs/rules.yaml and the generated project/ folder do
- * not count.
+ * rule an agent cannot look up (contexts/README.md "Looking a rule up"). hfs/rules.yaml and the generated pages do not count.
  */
 export const judgeRuleDocs = (knowledge: string): KnowledgeFinding[] => {
     const catalog = object(parse(read(join(knowledge, "hfs", "rules.yaml"))))
@@ -104,6 +105,65 @@ export const judgeShippedVocabulary = (knowledge: string): KnowledgeFinding[] =>
                 if (pattern.test(line)) found.push({ kind: "removed-vocabulary-used", subject: spelling, detail: removedDetail(`${relative(knowledge, path).replaceAll("\\", "/")}:${String(index + 1)}`, spelling) })
             })
         }
+    }
+    return found
+}
+
+/**
+ * The ways a sentence cites the owner's decision history instead of stating the rule: "owner ruling" (or owner-ruling), a
+ * `ruling:` or `` `ruling` `` citation, "ruling <decision-id>", "(owner ruling", "(the owner decision", "(owner 2026-...", and
+ * "decision `<id>`". The Supervisor's runtime vocabulary (it rules an open decision, "the ruling" it records) matches none.
+ */
+const RULING_HISTORY = /owner[- ]rul|\bruling[:`]|\bruling [a-z0-9]+(?:-[a-z0-9]+)+\b|\((?:the )?owner(?:'s)? (?:rul|decision|\d)|\bdecision `[a-z]/i
+
+/** The text of a source file a reader sees as prose: its line and block comments, never its code or string literals. */
+const commentsOf = (source: string): string[] => {
+    const lines = source.split("\n")
+    let block = false
+    return lines.map((line) => {
+        if (block) {
+            const end = line.indexOf("*/")
+            if (end === -1) return line
+            block = false
+            return line.slice(0, end)
+        }
+        const open = line.search(/\/\*|(?<![:"'`\\])\/\//)
+        if (open === -1) return ""
+        if (line.startsWith("/*", open)) {
+            const end = line.indexOf("*/", open + 2)
+            if (end === -1) block = true
+            return end === -1 ? line.slice(open) : line.slice(open, end)
+        }
+        return line.slice(open)
+    })
+}
+
+/** The files the rule book governs: contexts/ and policy/, and the packages' source, runtime, knowledge, docs and READMEs. */
+const governedFiles = (root: string): string[] => {
+    const skipDir = (path: string): boolean => /[\\/](?:node_modules|dist|\.turbo|coverage|storybook-static)$/.test(path)
+    const text = (name: string): boolean => /\.(?:md|ya?ml|ts|tsx|mts|css)$/.test(name) && !name.endsWith(".d.mts") && !name.endsWith(".d.ts") && name !== "CHANGELOG.md"
+    const files: string[] = []
+    for (const dir of ["contexts", "policy"]) if (existsSync(join(root, dir))) walk(join(root, dir), text, skipDir, files)
+    const packages = join(root, "packages")
+    if (existsSync(packages)) for (const entry of readdirSync(packages, { withFileTypes: true })) if (entry.isDirectory()) walk(join(packages, entry.name), text, skipDir, files)
+    return files
+}
+
+/**
+ * ANATOMY_RULING_HISTORY: the rule book states each rule as it holds now and cites rules by their ids (CONTRIBUTING.md CONTRIB-7).
+ * A line of the governed files (the prose of Markdown and yaml, the comments of source) that cites an owner ruling, a decision
+ * id or the date of a decision is a finding. History lives in git and the CHANGELOGs, which are not read.
+ */
+export const judgeRulingHistory = (root: string): KnowledgeFinding[] => {
+    const found: KnowledgeFinding[] = []
+    for (const path of governedFiles(root)) {
+        const raw = read(path)
+        const lines = /\.(?:ts|tsx|mts|css)$/.test(path) ? commentsOf(raw) : raw.split("\n")
+        lines.forEach((line, index) => {
+            if (!RULING_HISTORY.test(line)) return
+            const where = `${relative(root, path).replaceAll("\\", "/")}:${String(index + 1)}`
+            found.push({ kind: "ruling-history", subject: where, detail: `${where} cites decision history instead of the rule: ${line.trim().slice(0, 160)}` })
+        })
     }
     return found
 }

@@ -549,7 +549,7 @@ const decide = (input: RouteInput, facts: Facts, at: string): RoutePick | RouteR
     record.probe = probe === undefined ? null : `${probe.provider} (${probe.circuit.failureKind ?? "?"}, ${String(probe.circuit.failedProbes)} failed probes)`
 
     // 5. Score, exploring by Thompson sampling within its share; 6. balance. A coordinator seat takes its tier's members in
-    // the order routing.yaml lists them (owner ruling 2026-10-28: Claude first, another agent only when the hard filter or quota
+    // the order routing.yaml lists them (Claude first, another agent only when the hard filter or quota
     // took Claude out, its circuit open), so it is neither scored, explored, balanced nor reordered by its lineage: a relaunch
     // after a failed or stalled coordinator launch stays on that order, and the failure reaches it only through the circuit.
     const ordered = input.coordinator === undefined ? scoreStep(stage, input, facts, funded, demoted) : funded

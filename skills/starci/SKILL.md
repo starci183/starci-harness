@@ -92,4 +92,4 @@ Kernel's own call; report it. Never decide for the owner, enter a credential or 
 | Push, cut, publish, read CI | [references/release.md](references/release.md) |
 | A workflow or task is stuck | [references/debug.md](references/debug.md) |
 
-Load order: [contexts/README.md](../../contexts/README.md); decisions, roles and open questions: [contexts/harness/](../../contexts/harness/decisions.md). Gates and profiles: [policy/](../../policy/quality.yaml).
+Load order: [contexts/README.md](../../contexts/README.md); roles and open questions: [contexts/harness/roles.md](../../contexts/harness/roles.md) and [questions.md](../../contexts/harness/questions.md). Gates and profiles: [policy/](../../policy/quality.yaml).
