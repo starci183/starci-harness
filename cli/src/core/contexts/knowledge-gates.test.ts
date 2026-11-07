@@ -92,16 +92,16 @@ void test("vendor wrappers: a stale row, an undeclared file, a wraps drift, an u
 })
 
 
-void test("ruling history: a citation of an owner ruling, a decision id or its date is refused in prose, yaml and comments; code, strings and the Supervisor's vocabulary are not", () => {
+void test("ruling history: a citation of an owner ruling, a decision id or its date is refused in prose, yaml, comments and printed strings; identifiers and the Supervisor's vocabulary are not", () => {
     const { root, done } = sandbox()
     try {
         put(root, "contexts/ui/a.md", "A card is raised (owner ruling card-depth, 2026-10-24).\nThe Supervisor rules on it and records the ruling.\nSee R12 and CONTRIB-5.\n")
         put(root, "policy/b.yaml", "reason: \"the CLI is proven by runs (decision `cli-proven`)\"\n")
-        put(root, "packages/x/src/c.ts", "// the cap holds (ruling:R212/case-3)\nconst ruling: string = \"owner ruling in a string\"\n/* a block\n   (owner 2026-10-14) */\n")
+        put(root, "packages/x/src/c.ts", "// the cap holds (ruling:R212/case-3)\nconst ruling: string = \"see decision grammar-patch-range\"\n/* a block\n   (owner 2026-10-14) */\nconst entry = { ruling: id, rulings: (ruling: string) => ruling }\nthrow new Error(`decision ${id} is the Supervisor's to rule, by decision `handUndecided``)\n")
         put(root, "packages/x/CHANGELOG.md", "- owner ruling x\n")
         put(root, "packages/x/node_modules/y/README.md", "owner ruling y\n")
         const found = judgeRulingHistory(root).map((finding) => finding.subject).sort((left, right) => left.localeCompare(right))
-        assert.deepEqual(found, ["contexts/ui/a.md:1", "packages/x/src/c.ts:1", "packages/x/src/c.ts:4", "policy/b.yaml:1"])
+        assert.deepEqual(found, ["contexts/ui/a.md:1", "packages/x/src/c.ts:1", "packages/x/src/c.ts:2", "packages/x/src/c.ts:4", "policy/b.yaml:1"])
     } finally {
         done()
     }

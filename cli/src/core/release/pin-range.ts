@@ -1,5 +1,5 @@
 /**
- * Whether a version meets a pin, the CLI's copy of @starci/hfs `runtime/scripts/lib/pin-range.mjs` (decision grammar-patch-range): an exact pin
+ * Whether a version meets a pin, the CLI's copy of @starci/hfs `runtime/scripts/lib/pin-range.mts` (contexts/grammars/contributing.md "Patch or minor"): an exact pin
  * meets only itself; a same-minor range `~x.y.z` meets an exact version of that major and minor at or above the floor, and a pre-release only
  * when the range names a pre-release of that same version. The CLI keeps its own copy because it judges its siblings before @starci/hfs ships.
  */

@@ -1,4 +1,4 @@
-// parity-family.mts - the `build` and `audit` families of `starci app check` (decision ci-parity): the commands of the app's own managed CI that no
+// parity-family.mts - the `build` and `audit` families of `starci app check` (R383): the commands of the app's own managed CI that no
 // other family runs locally, run as CI runs them, so a green pre-push gate (`app check --fresh`) is never followed by a red CI on one of them. They are
 // read from the app's rendered `.github/workflows/ci.yml`, never restated here, so the local run follows the workflow sync renders:
 //   audit: the fast job's production dependency audit (`npm audit --omit=dev --audit-level=high`, or the app's quality declaration);

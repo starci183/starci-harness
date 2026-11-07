@@ -1,4 +1,4 @@
-// memory-plan.ts - the memory plan of `starci app check` (RAM-SIZING, decision memory-plan): before the families run, the app is measured from its
+// memory-plan.ts - the memory plan of `starci app check` (RAM-SIZING): before the families run, the app is measured from its
 // git index and file sizes alone (per side the unit specs and sources; the MB of the per-spec coverage records and of every cache record), and each
 // heap is sized from that scope with the fitted constants of ops/liveness.yaml heavy.plan, instead of one figure per kind. The plan reaches @starci/hfs
 // through STARCI_MEMORY_PLAN (it puts the planned heap on each child it asks the CLI to run) and the governor holds each running row at its planned MB.

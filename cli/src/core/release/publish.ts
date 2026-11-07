@@ -235,7 +235,7 @@ const withoutVersion = (text: string | undefined): string | undefined => {
 }
 
 /**
- * True when a package due at a raised version ships what the version npm serves under its dist-tag ships (decision release-only-what-changed): the
+ * True when a package due at a raised version ships what the version npm serves under its dist-tag ships (CONTRIBUTING.md CONTRIB-20): the
  * shipped files of its folder differ since that version's commit (its gitHead) only by bookkeeping, the CHANGELOG, the lockfile and the version field.
  * Such a raise is skipped, never published: only a package whose content moved gets a version. Unknowable (no served version, no recorded commit) is a change.
  */
@@ -272,7 +272,7 @@ export const judgePlan = async (root: string, packages: readonly WorkspacePackag
     const rows = await planOf(packages, root)
     await judgeRequires(rows, packages, root)
     if (base !== undefined) await judgeBumped(rows, root, base)
-    // A Grammar patch reaches apps inside the canon pins' range alone, so a change of a minor's kind refuses a patch bump (decision grammar-patch-range).
+    // A Grammar patch reaches apps inside the canon pins' range alone, so a change of a minor's kind refuses a patch bump (contexts/grammars/contributing.md "Patch or minor").
     await judgeGrammarBump(root, rows.find((row) => row.package === GRAMMAR_PACKAGE))
     return rows
 }

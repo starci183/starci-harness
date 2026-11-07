@@ -38,8 +38,8 @@ pins:
     source: packages/next-data/package.json
     why: 'the SWR data helpers of every front end (fe-stack data): pollingRestart, the viewer and tenant key helpers, viewerSwrConfig and the viewer cache; each operation hook stays in the app and the package holds no component.'
   '@starci/grammar':
-    version: 0.24.2
-    range: '~0.24.2'
+    version: 0.25.0
+    range: '~0.25.0'
     group: starci
     install: registry
     side: fe
@@ -69,16 +69,16 @@ pins:
     source: packages/eslint-canon-fe/package.json
     why: 'the front-end ESLint canon: `loadHfs(import.meta.url)` of fe/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the fe side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; the front end has no tests (FE_NO_TESTS R97 in hfs) and no-vietnamese-in-source (R91) applies.'
   '@starci/eslint-grammar-core':
-    version: 0.24.1
-    range: '~0.24.1'
+    version: 0.25.0
+    range: '~0.25.0'
     group: starci
     install: registry
     side: fe
     source: packages/eslint-grammar-core/package.json
     why: 'the StarCi Grammar component API lint, versioned with @starci/grammar; front ends compose this family package with the universal FE canon.'
   '@starci/eslint-grammar-offset-pop':
-    version: 0.24.1
-    range: '~0.24.1'
+    version: 0.25.0
+    range: '~0.25.0'
     group: starci
     install: registry
     side: fe

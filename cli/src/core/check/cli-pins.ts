@@ -58,7 +58,7 @@ export const cliPinSkews = (root: string): PinSkew[] => {
     const manifest = readParsed(root, CLI_MANIFEST, manifestSchema, JSON.parse)
     const lock = readParsed(root, CLI_LOCK, lockSchema, JSON.parse)
     const skew = (name: string, where: string, found: string): PinSkew[] => {
-        // A ranged pin (the Grammar family, decision grammar-patch-range) is met by any patch inside it; every other pin is exact.
+        // A ranged pin (the Grammar family, contexts/grammars/contributing.md "Patch or minor") is met by any patch inside it; every other pin is exact.
         const expected = pins[name]?.range ?? pins[name]?.version
         return expected !== undefined && meetsPin(expected, found) ? [] : [{ code: CLI_PIN_SKEW, package: name, where, expected, found }]
     }

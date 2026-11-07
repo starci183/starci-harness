@@ -5,7 +5,7 @@ import type { CanonPin, CanonPins } from './canon-pins.mjs';
 import { pinMiss } from '../lib/pin-range.mjs';
 
 const DEP_SECTIONS = ['dependencies', 'devDependencies'];
-// A pin row may carry a same-minor `range` (the Grammar family, decision grammar-patch-range): an exact version inside it meets it.
+// A pin row may carry a same-minor `range` (the Grammar family and the two canons): an exact version inside it meets it.
 const pinnedSpec = (spec: string, pin: CanonPin): string | null => pinMiss(typeof pin.range === 'string' ? pin.range : pin.version, spec);
 
 /** One canon-pin drift finding. */

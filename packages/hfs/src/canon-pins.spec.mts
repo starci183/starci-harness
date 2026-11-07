@@ -13,7 +13,7 @@ import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { pipelineFindings } from '../runtime/scripts/hfs/rules/pipeline.mjs';
 import { meetsPin } from '../runtime/scripts/lib/pin-range.mjs';
 
-/** The packages pinned by a same-minor range (decisions grammar-patch-range, release-only-what-changed): the Grammar family and the two canons. */
+/** The packages pinned by a same-minor range (contexts/grammars/contributing.md "Patch or minor", CONTRIBUTING.md CONTRIB-20): the Grammar family and the two canons. */
 const RANGED = ['@starci/grammar', '@starci/eslint-grammar-core', '@starci/eslint-grammar-offset-pop', '@starci/eslint-canon-be', '@starci/eslint-canon-fe'];
 
 const REPOSITORY = path.resolve(import.meta.dirname, '..', '..', '..');

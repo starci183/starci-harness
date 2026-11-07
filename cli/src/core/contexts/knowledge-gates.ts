@@ -110,11 +110,14 @@ export const judgeShippedVocabulary = (knowledge: string): KnowledgeFinding[] =>
 }
 
 /**
- * The ways a sentence cites the owner's decision history instead of stating the rule: "owner ruling" (or owner-ruling), a
- * `ruling:` or `` `ruling` `` citation, "ruling <decision-id>" or "rulings `<id>`", "(owner ruling", "(the owner decision",
- * "(owner 2026-...", and "decision `<id>`". The Supervisor's runtime vocabulary (it rules an open decision, "the ruling" it records) matches none.
+ * The ways a sentence cites the owner's decision history instead of stating the rule: the owner's ruling named as such, a
+ * decision or ruling followed by its kebab-case id (bare or in backticks), a parenthesis that opens on a ruling or on the owner
+ * with a date, and the yaml key form of a ruling id. The Supervisor's runtime vocabulary (it rules an open decision and records
+ * what it ruled) matches none. PROSE_HISTORY is the part no code spells, so it also reads every line of a source file, its
+ * printed strings included; RULING_HISTORY adds the key form, read in prose and comments only.
  */
-const RULING_HISTORY = /owner[- ]rul|\bruling[:`]|\brulings? `[a-z]|\brulings? [a-z0-9]+(?:-[a-z0-9]+)+\b|\((?:the )?owner(?:'s)? (?:rul|decision|\d)|\bdecisions? `[a-z]/i
+const PROSE_HISTORY = /owner[- ]rulings?\b|\brulings? `[a-z]|\brulings? [a-z0-9]+(?:-[a-z0-9]+)+\b|\((?:the )?owner(?:'s)? (?:rul|decision|\d)|\bdecisions? `[a-z0-9]+-|\bdecisions? [a-z0-9]+(?:-[a-z0-9]+)+\b/i
+const RULING_HISTORY = new RegExp(String.raw`\bruling:|\x60ruling\x60|\(rulings?\b|` + PROSE_HISTORY.source, "i")
 
 /** The text of a source file a reader sees as prose: its line and block comments, never its code or string literals. */
 const commentsOf = (source: string): string[] => {
@@ -138,12 +141,12 @@ const commentsOf = (source: string): string[] => {
     })
 }
 
-/** The files the rule book governs: contexts/ and policy/, and the packages' source, runtime, knowledge, docs and READMEs. */
+/** The files the rule book governs: contexts/, policy/ and the CLI's source, and the packages' source, runtime, knowledge, docs and READMEs. */
 const governedFiles = (root: string): string[] => {
     const skipDir = (path: string): boolean => /[\\/](?:node_modules|dist|\.turbo|coverage|storybook-static)$/.test(path)
-    const text = (name: string): boolean => /\.(?:md|ya?ml|ts|tsx|mts|css)$/.test(name) && !name.endsWith(".d.mts") && !name.endsWith(".d.ts") && name !== "CHANGELOG.md"
+    const text = (name: string): boolean => /\.(?:md|ya?ml|ts|tsx|mts|css)$/.test(name) && !/\.d\.m?ts$|\.test\.ts$/.test(name) && name !== "CHANGELOG.md"
     const files: string[] = []
-    for (const dir of ["contexts", "policy"]) if (existsSync(join(root, dir))) walk(join(root, dir), text, skipDir, files)
+    for (const dir of ["contexts", "policy", join("cli", "src")]) if (existsSync(join(root, dir))) walk(join(root, dir), text, skipDir, files)
     const packages = join(root, "packages")
     if (existsSync(packages)) for (const entry of readdirSync(packages, { withFileTypes: true })) if (entry.isDirectory()) walk(join(packages, entry.name), text, skipDir, files)
     return files
@@ -151,16 +154,18 @@ const governedFiles = (root: string): string[] => {
 
 /**
  * ANATOMY_RULING_HISTORY: the rule book states each rule as it holds now and cites rules by their ids (CONTRIBUTING.md CONTRIB-7).
- * A line of the governed files (the prose of Markdown and yaml, the comments of source) that cites an owner ruling, a decision
- * id or the date of a decision is a finding. History lives in git and the CHANGELOGs, which are not read.
+ * A line of the governed files (the prose of Markdown and yaml, the comments of source, and any source line in the forms no code
+ * spells) that cites a decision of the owner by its id, or the date of a decision, is a finding. History lives in git and the CHANGELOGs,
+ * which are not read.
  */
 export const judgeRulingHistory = (root: string): KnowledgeFinding[] => {
     const found: KnowledgeFinding[] = []
     for (const path of governedFiles(root)) {
         const raw = read(path)
-        const lines = /\.(?:ts|tsx|mts|css)$/.test(path) ? commentsOf(raw) : raw.split("\n")
-        lines.forEach((line, index) => {
-            if (!RULING_HISTORY.test(line)) return
+        const source = /\.(?:ts|tsx|mts|css)$/.test(path)
+        const comments = source ? commentsOf(raw) : []
+        raw.split("\n").forEach((line, index) => {
+            if (source ? !RULING_HISTORY.test(comments[index] ?? "") && !PROSE_HISTORY.test(line) : !RULING_HISTORY.test(line)) return
             const where = `${relative(root, path).replaceAll("\\", "/")}:${String(index + 1)}`
             found.push({ kind: "ruling-history", subject: where, detail: `${where} cites decision history instead of the rule: ${line.trim().slice(0, 160)}` })
         })

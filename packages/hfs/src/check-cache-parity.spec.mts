@@ -1,4 +1,4 @@
-// R383 (decision ci-parity): the pre-push gate runs the commands of the app's managed CI that no other family runs. The build and audit families read
+// R383: the pre-push gate runs the commands of the app's managed CI that no other family runs. The build and audit families read
 // them from the rendered workflow (never restated), leave CI's own expressions and NODE_OPTIONS to CI, give a build its own SWC cache root, and a step
 // that fails locally is CI_PARITY_STEP_FAILED with its last lines.
 import test from 'node:test';

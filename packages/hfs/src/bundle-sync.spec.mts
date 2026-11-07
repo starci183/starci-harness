@@ -8,7 +8,7 @@ import { bundlePackages, classifyRuntime, readManifest, runtimeFiles, syncBundle
 
 const packagesDir = fileURLToPath(new URL('../../', import.meta.url));
 const hfsRuntimeDir = join(packagesDir, 'hfs', 'runtime');
-// Never the real packages: no canon bundles a copy of the hfs runtime any more (decision release-only-what-changed), so the generator is proved on a
+// Never the real packages: no canon bundles a copy of the hfs runtime any more (CONTRIBUTING.md CONTRIB-20), so the generator is proved on a
 // temp package whose manifest lists two copies of hfs runtime files and one file of its own.
 const pkg = 'bundling-fixture';
 const GENERATED = ['knowledge/hfs/canon-pins.yaml', 'knowledge/hfs/rules.yaml'];

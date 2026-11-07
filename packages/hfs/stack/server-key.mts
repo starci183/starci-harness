@@ -1,6 +1,6 @@
 // server-key.mts - `starci app secret server-key --env <env> [--rotate | --backup github | --restore github] [--execute]`: the deploy
-// server's own age identity, made ON the server and never leaving it, and the environment sealed to it (ruling
-// app-secrets-one-standard, contexts/project/stacks.md PROJECT-STACKS-5).
+// server's own age identity, made ON the server and never leaving it, and the environment sealed to it
+// (contexts/project/stacks.md PROJECT-STACKS-5).
 //   (none)     the server keeps SERVER_AGE_IDENTITY when it exists, else age-keygen makes it there (umask 077, mode 600, owner
 //              root); only `age-keygen -y` (the public recipient) comes back. Locally the recipient joins the environment's rule
 //              beside the owner key, is recorded as deploy.remote.serverRecipient, and every member is wrapped again (sops

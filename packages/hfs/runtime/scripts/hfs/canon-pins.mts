@@ -15,7 +15,7 @@ export const HARNESS_PACKAGE = 'starci-harness';
 
 /**
  * One pin row of canon-pins.yaml: `version` is the exact version a scaffold or sync writes; a Grammar family row may add `range`, the same-minor
- * range an app's pin must meet instead (`~0.21.38`, decision grammar-patch-range), so a Grammar patch needs no release of hfs or the canons.
+ * range an app's pin must meet instead (`~0.21.38`, contexts/grammars/contributing.md "Patch or minor"), so a Grammar patch needs no release of hfs or the canons.
  */
 export interface CanonPin { version: string; range?: string; group?: string; install?: string; side?: string; [key: string]: unknown }
 /** The pin map: package name to its pin row. */

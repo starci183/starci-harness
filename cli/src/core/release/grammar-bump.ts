@@ -4,7 +4,7 @@ import { captureGit, isAncestor } from "../../shared/git.js"
 import { NPMJS_FLAGS } from "../deps/local-refs.js"
 
 /**
- * The patch-or-minor judgement of a Grammar release (decision grammar-patch-range, contexts/grammars/contributing.md "Patch or minor"). The
+ * The patch-or-minor judgement of a Grammar release (contexts/grammars/contributing.md "Patch or minor"). The
  * canon pins give the Grammar family a same-minor range, so a patch reaches every app without a release of @starci/hfs, the canons or the
  * CLI; a change the rest of the family reads must therefore come as a minor, which moves the range and with it the whole family. A patch
  * bump is refused when the diff since the version npm serves holds a change of a minor's kind:
@@ -105,5 +105,5 @@ export const judgeGrammarBump = async (root: string, due: { readonly package: st
     if (served === undefined || minorOf(served.version) === undefined || minorOf(served.version) !== minorOf(due.version)) return
     const reasons = await minorReasons(root, served.from)
     if (reasons.length === 0) return
-    throw new Refusal("RELEASE_GRAMMAR_MINOR_REQUIRED", `${GRAMMAR_PACKAGE}@${due.version} is a patch of ${served.version}, but the change since it is a minor's: ${reasons.slice(0, 6).join("; ")}${reasons.length > 6 ? `; and ${String(reasons.length - 6)} more` : ""}. Raise the Grammar family to the next minor, and with it the range of the canon pins and the family it moves (contexts/grammars/contributing.md "Patch or minor", decision grammar-patch-range)`)
+    throw new Refusal("RELEASE_GRAMMAR_MINOR_REQUIRED", `${GRAMMAR_PACKAGE}@${due.version} is a patch of ${served.version}, but the change since it is a minor's: ${reasons.slice(0, 6).join("; ")}${reasons.length > 6 ? `; and ${String(reasons.length - 6)} more` : ""}. Raise the Grammar family to the next minor, and with it the range of the canon pins and the family it moves (contexts/grammars/contributing.md "Patch or minor")`)
 }

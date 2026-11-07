@@ -38,8 +38,7 @@ export const KERNEL_UNDECIDED = "kernel-undecided"
 export type CommandScope = "kernel" | "supervisor"
 
 /**
- * The settle decisions a Kernel names on a command that answers a decision on a task (owner decision
- * `op-settle-merge-or-discard`, harness/prior.ts): `discard`, the default, keeps nothing of the ended attempt; `repair` keeps its
+ * The settle decisions a Kernel names on a command that answers a decision on a task (harness/prior.ts): `discard`, the default, keeps nothing of the ended attempt; `repair` keeps its
  * one patch for exactly one repair attempt of its key. MERGE is the third, and a green verify's alone: it lands the work.
  */
 export const KERNEL_SETTLES = ["discard", "repair"] as const
@@ -61,7 +60,7 @@ export const OWNER_TOPICS = ["scope", "money", "credentials", "legal", "product"
 const OWNER_ONLY: ReadonlySet<(typeof OWNER_TOPICS)[number]> = new Set<(typeof OWNER_TOPICS)[number]>(["scope", "money", "credentials", "legal"])
 
 /**
- * The escalation kinds the Supervisor does not rule: `owner` (the owner's decisions, `OWNER_TOPICS`; the Supervisor asks the owner
+ * The escalation kinds the Supervisor does not rule: `owner` (what only the owner decides, `OWNER_TOPICS`; the Supervisor asks the owner
  * in its terminal), except a `product` one carrying a default, which the Supervisor's driver decides on that default
  * (`defaultRuling`); and `harness` (a harness defect, Debug's to fix; its answer arrives as Debug's `supervisor ask`). The
  * Supervisor relays either ruling (ops/coordinators/supervisor.md).

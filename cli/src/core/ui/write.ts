@@ -116,7 +116,7 @@ const submitOwnerCommand = async (context: VerbContext, repo: string, name: stri
 }
 
 /**
- * `POST /api/inbox/:project/:decision/ruling`: the owner's ruling, relayed as the Supervisor relays one (ops/coordinators/supervisor.md):
+ * `POST /api/inbox/:project/:decision/ruling`: the owner's answer, relayed as the Supervisor relays one (ops/coordinators/supervisor.md):
  * a `goal-change` command of the decision's workflow that keeps its goal, acceptance and scope, carries the chosen option and the
  * note as its note and answers the decision, applied as `rulingCommand` says.
  */
@@ -133,7 +133,7 @@ export const rule = async (context: VerbContext, project: string, decisionId: st
                 if (decision.answeredBy !== null) throw new Refusal("STALE", `decision ${decisionId} was answered already by ${decision.answeredBy}`)
                 if (!awaitsOwner(decision)) throw new Refusal("DECISION_NOT_OWNERS", `decision ${decisionId} is the Supervisor's to rule, not the owner's`)
                 const note = [ruling.option === null ? null : `option ${ruling.option}`, ruling.note.trim() === "" ? null : ruling.note.trim()].filter((part) => part !== null).join(": ")
-                return goalChangeOf(db, decision.workflowId, { prefix: `owner-ruling-${decisionId}`, answers: [decisionId], note: `owner ruling: ${note === "" ? "proceed" : note}` })
+                return goalChangeOf(db, decision.workflowId, { prefix: `owner-answer-${decisionId}`, answers: [decisionId], note: `owner answer: ${note === "" ? "proceed" : note}` })
             },
             undefined,
         )

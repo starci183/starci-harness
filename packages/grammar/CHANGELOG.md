@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.24.2 - 2026-11-07
+## 0.25.0 - 2026-11-07
 
-- A patch: comments, stories and the README cite rules by their ids and carry no ruling history; no component, prop or token changed.
+- A minor with eslint-grammar-core and eslint-grammar-offset-pop: the family moves together because the lint rules of eslint-grammar-core changed text (`contexts/grammars/contributing.md` "Patch or minor"); the canon pins raise the range to `~0.25.0`.
+- Comments, stories and the README cite rules by their ids and carry no ruling history; no component, prop or token changed.
 
 ## 0.24.1 - 2026-11-07 - card radius, content maximum, the switch row inside the card
 

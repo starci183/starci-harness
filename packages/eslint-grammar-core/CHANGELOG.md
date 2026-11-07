@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.24.1 - 2026-11-07
+## 0.25.0 - 2026-11-07
 
-- A patch: peers `@starci/hfs` ~6.0.0. Comments, rule docs, bundled knowledge and messages cite rules by their ids and carry no ruling history.
+- A minor of the Grammar family: rule sources (`freestyle.ts`, `status-colors.ts`, `surface-depth.ts`, `lib/rule-contract.ts`, `lib/why.ts`) changed their text, so the family moves to 0.25.0 (`contexts/grammars/contributing.md` "Patch or minor").
+- Peers `@starci/hfs` ~6.0.0. Comments, rule docs, bundled knowledge and messages cite rules by their ids and carry no ruling history.
 
 ## 0.24.0 - 2026-11-06
 

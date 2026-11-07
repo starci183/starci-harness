@@ -1,6 +1,5 @@
 // `starci app codemod self-recovery`: moves an app's managed jobs, queue and event-bus platform files onto the self-recovering flows
-// (BE-RESILIENCE-2) by a three-way comparison with the template snapshot of the release that rendered them (templates/snapshots/<version>,
-// decision versioned-template-snapshots): a file equal to the snapshot's rendering is rewritten to the current template, a file equal to
+// (BE-RESILIENCE-2) by a three-way comparison with the template snapshot of the release that rendered them (templates/snapshots/<version>): a file equal to the snapshot's rendering is rewritten to the current template, a file equal to
 // the current one is left, and any other file of a changed template is left for a person; nothing is written while one is.
 import fs from 'node:fs';
 import path from 'node:path';
