@@ -146,6 +146,37 @@ test('a failed spec stores no coverage, and the same run writes the same bytes',
   }
 });
 
+test('each spec file records the packages and files its module registry loaded, and the Jest parent holds no spec coverage once the spec file is written', () => {
+  const { root, be } = fixture();
+  try {
+    fs.mkdirSync(path.join(be, 'node_modules', '@demo', 'pad', 'lib'), { recursive: true });
+    fs.writeFileSync(path.join(be, 'node_modules', '@demo', 'pad', 'package.json'), JSON.stringify({ name: '@demo/pad', version: '1.0.0', main: 'lib/index.js' }));
+    fs.writeFileSync(path.join(be, 'node_modules', '@demo', 'pad', 'lib', 'index.js'), 'exports.pad = (text) => ` ${text}`;\n');
+    fs.writeFileSync(path.join(be, 'src/modules/domain/beta/beta.service.spec.ts'), [
+      'import { BetaService } from "./beta.service";',
+      'test("run", () => {',
+      '  const { pad } = require("@demo/pad") as { pad(text: string): string };',
+      '  expect([new BetaService().run(true), new BetaService().run(false), pad("x")]).toEqual(["positive", "off", " x"]);',
+      '});',
+      '',
+    ].join('\n'));
+    // A reporter after the preset's sees what the parent keeps of each result: its coverage would be on it.
+    fs.writeFileSync(path.join(be, 'probe.js'), `module.exports = class { onRunComplete(_contexts, results) { require("node:fs").writeFileSync(${JSON.stringify(path.join(be, 'probe.json'))}, JSON.stringify({ held: results.testResults.filter((result) => result.v8Coverage !== undefined).length, results: results.testResults.length })) } }\n`);
+    fs.appendFileSync(path.join(be, 'jest.config.js'), `if (config.reporters) config.reporters.push(${JSON.stringify(path.join(be, 'probe.js'))})\n`);
+    const dir = path.join(be, 'spec-cov');
+    jest(be, ['--coverageThreshold={}'], { STARCI_SPEC_COVERAGE_DIR: dir });
+    const records = recordsOf(dir);
+    const beta = records[SPECS[1] as string];
+    assert.ok(beta?.loaded?.includes('node_modules/@demo/pad'), JSON.stringify(beta?.loaded));
+    assert.ok(beta?.loaded?.includes('src/modules/domain/alpha/alpha.service.ts'), 'a local module is the file itself');
+    assert.equal(records[SPECS[0] as string]?.loaded?.includes('node_modules/@demo/pad'), false, 'a spec that never required the package does not list it');
+    assert.equal(fs.existsSync(path.join(dir, 'loaded')), false, 'the runtime lists are moved onto the spec files');
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(be, 'probe.json'), 'utf8')), { held: 0, results: 3 });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('the spec coverage run keeps no threshold and instruments nothing it does not load', () => {
   const previous = process.cwd();
   const { root, be } = fixture();
@@ -156,6 +187,7 @@ test('the spec coverage run keeps no threshold and instruments nothing it does n
     assert.equal(config.collectCoverageFrom, undefined);
     assert.equal(config.coverageThreshold, undefined);
     assert.equal(config.reporters?.length, 2);
+    assert.match(String(config.projects[0]?.runtime), /spec-loaded-runtime\.js$/u, 'the unit project records what each spec loads');
   } finally {
     delete process.env.STARCI_SPEC_COVERAGE_DIR;
     process.chdir(previous);

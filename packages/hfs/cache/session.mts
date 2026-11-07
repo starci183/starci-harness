@@ -26,7 +26,6 @@ export interface DiskSessionOptions {
   readonly tracked: readonly string[];
   readonly env: NodeJS.ProcessEnv;
   readonly progress: ProgressSink;
-  readonly cliVersion?: string | undefined;
   /** The families `--fresh` recomputes from scratch, ignoring their records (they are written back). */
   readonly full?: ReadonlySet<FamilyId> | undefined;
   /** A run that neither reads nor writes the cache (a coverage report judged on its own). */
@@ -86,7 +85,7 @@ function filesUnder(dir: string): string[] {
 export function createDiskSession(options: DiskSessionOptions): DiskSession {
   const { root, env, tracked } = options;
   const index: ContentIndex = createContentIndex(root, tracked);
-  const fingerprint = options.fingerprint ?? computeFingerprint({ root, tracked, cliVersion: options.cliVersion, hfsDir: options.hfsDir });
+  const fingerprint = options.fingerprint ?? computeFingerprint({ root, tracked, hfsDir: options.hfsDir });
   const trust = options.trust ?? resolveTrust({ root, env });
   const forcedFull = options.bypass === true;
   const reports: FamilyReport[] = [];

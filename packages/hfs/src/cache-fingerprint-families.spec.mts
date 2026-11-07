@@ -1,5 +1,6 @@
 // The fingerprint of the app check cache is judged per family (check-cache.md, "The fingerprint"): a part invalidates only the families that read it, the
-// lockfile counts per family by the toolchain it resolves, and a library bump reaches ESLint only through the files that import the library.
+// lockfile counts per tool family by the toolchain it resolves and is no part of any other, and a library bump reaches ESLint only through the files that import
+// the library (the records that loaded it carry it themselves: package-closure.mts).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -37,7 +38,8 @@ const families = (root: string, before: string): Map<string, string[]> => {
 test('every part names the families that read it, and nothing else is invalidated by it', () => {
   assert.deepEqual(familiesOfPart('cache-format'), FAMILIES);
   assert.deepEqual(familiesOfPart('hfs'), ['hfs', 'secrets', 'wiring', 'db']);
-  assert.deepEqual(familiesOfPart('cli'), ['hfs', 'secrets', 'wiring', 'db']);
+  assert.deepEqual(familiesOfPart('pkg:@starci/hfs'), ['hfs', 'secrets', 'wiring', 'db']);
+  assert.deepEqual(familiesOfPart('node'), ['test', 'sonar']);
   assert.deepEqual(familiesOfPart('pkg:@starci/auth'), [], 'a library is no toolchain');
   assert.deepEqual(familiesOfPart('pkg:@starci/eslint-canon-be'), ['lint', 'sonar']);
   assert.deepEqual(familiesOfPart('pkg:@starci/prettier-config'), ['format']);
@@ -45,10 +47,8 @@ test('every part names the families that read it, and nothing else is invalidate
   assert.deepEqual(familiesOfPart('lock:lint'), ['lint', 'sonar']);
   assert.deepEqual(familiesOfPart('lock:test'), ['test', 'sonar']);
   assert.deepEqual(familiesOfPart('lock:format'), ['format']);
-  assert.deepEqual(familiesOfPart('lock:types'), ['types']);
   assert.deepEqual(familiesOfPart('lock:unknown'), []);
-  assert.deepEqual(familiesOfPart('shape:fe/package.json'), ['lint', 'types', 'test', 'format', 'sonar']);
-  assert.deepEqual(familiesOfPart('file:fe/package.json'), ['hfs', 'secrets', 'wiring', 'db']);
+  assert.deepEqual(familiesOfPart('shape:fe/package.json'), ['hfs', 'lint', 'types', 'test', 'format', 'sonar']);
   assert.deepEqual(familiesOfPart('file:hfs.json'), ['hfs', 'secrets', 'wiring', 'db', 'lint', 'sonar']);
   assert.deepEqual(familiesOfPart('file:be/tsconfig.build.json'), ['types', 'lint', 'test', 'sonar']);
   assert.deepEqual(familiesOfPart('file:fe/eslint.config.mjs'), ['lint', 'sonar']);
@@ -57,14 +57,15 @@ test('every part names the families that read it, and nothing else is invalidate
   assert.deepEqual(familiesOfPart('file:.prettierrc.json'), ['format']);
   assert.deepEqual(familiesOfPart('file:prettier.config.mjs'), ['format']);
   assert.deepEqual(familiesOfPart('file:.editorconfig'), ['format']);
-  assert.deepEqual(familiesOfPart('file:codecov.yml'), ['hfs', 'secrets', 'wiring', 'db', 'sonar']);
-  assert.deepEqual(familiesOfPart('file:turbo.json'), ['hfs', 'secrets', 'wiring', 'db']);
+  assert.deepEqual(familiesOfPart('file:codecov.yml'), ['sonar']);
+  assert.deepEqual(familiesOfPart('file:sonar-project.properties'), ['sonar']);
   assert.deepEqual(familiesOfPart('unknown-part'), FAMILIES, 'a part no family claims invalidates all of them');
 });
 
 test('a cache folder belongs to the family that writes it', () => {
   assert.equal(familyOfFolder('check/hfs'), 'hfs');
   assert.equal(familyOfFolder('check/secrets'), 'secrets');
+  assert.equal(familyOfFolder('check/build'), 'build');
   assert.equal(familyOfFolder('check/other'), null);
   assert.equal(familyOfFolder('lint/be'), 'lint');
   assert.equal(familyOfFolder('test-coverage'), 'test');
@@ -88,9 +89,7 @@ test('a library bump leaves the lint fingerprint as it was; a toolchain bump mak
   const byLibrary = families(library, base);
   assert.equal(byLibrary.has('lint'), false, 'an @starci/auth bump never cold-starts ESLint');
   assert.equal(byLibrary.has('format'), false);
-  assert.deepEqual(byLibrary.get('types'), ['lock:types']);
-  assert.deepEqual(byLibrary.get('test'), ['lock:test']);
-  assert.deepEqual(byLibrary.get('hfs'), ['file:package.json']);
+  assert.deepEqual([...byLibrary.keys()], [], 'no family: the records that loaded the library carry it in their own key');
   const toolchain = app(t, { 'node_modules/@starci/auth': '0.3.0', 'node_modules/eslint': '10.1.0' }, { name: 'demo', dependencies: { '@starci/auth': '0.3.0' } });
   assert.deepEqual(families(toolchain, base).get('lint'), ['lock:lint']);
   const workspaces = app(t, { 'node_modules/@starci/auth': '0.3.0', 'node_modules/eslint': '10.0.0' }, { name: 'demo', workspaces: ['packages/*'], dependencies: { '@starci/auth': '0.3.0' } });
@@ -156,58 +155,74 @@ test('a bump of the harness packages re-runs the hfs-run families and neither ty
   const base = workspaces(t, installsOf(TOOLS), TOOLS);
   const bumped = { ...TOOLS, '@starci/hfs': '6.0.2', 'starci-harness': '1.1.0-alpha.83' };
   const byFamily = differing(workspaces(t, installsOf(bumped), bumped), base);
-  assert.deepEqual([...byFamily.keys()].sort(), ['db', 'hfs', 'secrets', 'wiring']);
-  assert.deepEqual(byFamily.get('hfs'), ['file:package.json']);
+  assert.deepEqual([...byFamily.keys()], [], 'the installed versions are no part: the hfs that runs is (hfsDir), and a dependency version is no manifest shape');
+  const hfsRun = differencesByFamily(fingerprintDifferences(
+    computeFingerprint({ root: base, tracked: [], hfsDir: hfsAt(t, '6.0.1') }).parts,
+    computeFingerprint({ root: base, tracked: [], hfsDir: hfsAt(t, '6.0.2') }).parts,
+  ));
+  assert.deepEqual([...hfsRun.keys()].sort(), ['db', 'hfs', 'secrets', 'wiring'], 'a new hfs re-runs what hfs computes and no unit spec, program or lint file');
 });
 
-test('a tool bump re-runs the families that read the tool and not types or test, unless a program can load it', (t) => {
+test('a tool bump re-runs the families whose toolchain it is', (t) => {
   const base = workspaces(t, installsOf(TOOLS), TOOLS);
   const eslintBump = { ...TOOLS, eslint: '10.1.0' };
   const eslint = differing(workspaces(t, installsOf(eslintBump), eslintBump), base);
-  assert.deepEqual([...eslint.keys()].sort(), ['db', 'hfs', 'lint', 'secrets', 'sonar', 'wiring'], 'the hfs-run families read the root manifest whole');
+  assert.deepEqual([...eslint.keys()].sort(), ['lint', 'sonar']);
   assert.deepEqual(eslint.get('lint'), ['lock:lint']);
-  assert.equal(eslint.has('types'), false);
-  assert.equal(eslint.has('test'), false);
   const prettierBump = { ...TOOLS, prettier: '3.7.0' };
-  const prettier = differing(workspaces(t, installsOf(prettierBump), prettierBump), base);
-  assert.deepEqual(prettier.get('format'), ['lock:format']);
-  assert.equal(prettier.has('types'), false);
-  assert.equal(prettier.has('test'), false);
-  assert.equal(prettier.has('lint'), false);
-
-  const declared = workspaces(t, installsOf(TOOLS), TOOLS, { eslint: '10.0.0' });
-  const declaredBump = differing(workspaces(t, installsOf(eslintBump), eslintBump, { eslint: '10.0.0' }), declared);
-  assert.deepEqual(declaredBump.get('types'), ['lock:types'], 'a workspace that declares the tool loads it');
-  assert.deepEqual(declaredBump.get('test'), ['lock:test']);
-
-  const viaLibrary = { 'node_modules/lib': { version: '1.0.0', dependencies: { eslint: '^10.0.0' } } };
-  const reached = workspaces(t, installsOf(TOOLS, viaLibrary), TOOLS, { lib: '1.0.0' });
-  const reachedBump = differing(workspaces(t, installsOf(eslintBump, viaLibrary), eslintBump, { lib: '1.0.0' }), reached);
-  assert.deepEqual(reachedBump.get('types'), ['lock:types'], 'a library a workspace declares reaches the tool through its resolved dependencies');
-  assert.deepEqual(reachedBump.get('test'), ['lock:test']);
+  assert.deepEqual([...differing(workspaces(t, installsOf(prettierBump), prettierBump), base).keys()], ['format']);
 });
 
-test('a bump of a library or of TypeScript still re-runs types and test: only the tools of other families are left out', (t) => {
+test('the test runner, its transform and the compiler re-run every spec; a library a spec loads is no part', (t) => {
   const base = workspaces(t, installsOf(TOOLS, { 'node_modules/lib': { version: '1.0.0' } }), TOOLS, { lib: '1.0.0' });
   const library = differing(workspaces(t, installsOf(TOOLS, { 'node_modules/lib': { version: '1.1.0' } }), TOOLS, { lib: '1.1.0' }), base);
-  assert.deepEqual(library.get('types'), ['lock:types']);
-  assert.deepEqual(library.get('test'), ['lock:test']);
-  assert.equal(library.has('lint'), false);
+  assert.deepEqual([...library.keys()], []);
+  const jest = differing(workspaces(t, { ...installsOf(TOOLS, { 'node_modules/lib': { version: '1.0.0' } }), 'node_modules/jest': { version: '30.1.0' } }, TOOLS, { lib: '1.0.0' }), base);
+  assert.deepEqual(jest.get('test'), ['lock:test']);
+  assert.equal(jest.has('types'), false, 'a program reads its compiler through its own record, never through Jest');
   const typescript = differing(workspaces(t, { ...installsOf(TOOLS, { 'node_modules/lib': { version: '1.0.0' } }), 'node_modules/typescript': { version: '5.9.1' } }, TOOLS, { lib: '1.0.0' }), base);
-  assert.deepEqual(typescript.get('types'), ['lock:types']);
-  assert.deepEqual(typescript.get('test'), ['lock:test']);
+  assert.deepEqual(typescript.get('test'), ['lock:test'], 'ts-jest compiles every spec with it');
   assert.deepEqual(typescript.get('lint'), ['lock:lint']);
+  assert.equal(typescript.has('types'), false, 'each program lists the TypeScript lib it read: its own record moves');
 });
 
-test('a manifest that cannot be read leaves nothing out of the types and test parts', (t) => {
-  const base = workspaces(t, installsOf(TOOLS), TOOLS);
-  const damaged = workspaces(t, installsOf({ ...TOOLS, eslint: '10.1.0' }), TOOLS);
-  fs.writeFileSync(path.join(damaged, 'be', 'package.json'), '{ not json');
-  const damagedBase = workspaces(t, installsOf(TOOLS), TOOLS);
-  fs.writeFileSync(path.join(damagedBase, 'be', 'package.json'), '{ not json');
-  assert.deepEqual(differing(damaged, damagedBase).get('types'), ['lock:types']);
-  assert.equal(differing(damaged, base).has('lint'), true);
+test('the Node major is a part of the unit specs alone, and a jest configuration change re-runs every spec', (t) => {
+  const root = workspaces(t, installsOf(TOOLS), TOOLS);
+  const hfsDir = path.join(root, 'node_modules', '@starci', 'hfs');
+  const on = (nodeVersion: string, tracked: string[] = []) => computeFingerprint({ root, tracked, hfsDir, nodeVersion }).parts;
+  assert.deepEqual(differencesByFamily(fingerprintDifferences(on('24.1.0'), on('24.9.0'))).size, 0, 'a minor of Node is no part');
+  assert.deepEqual([...differencesByFamily(fingerprintDifferences(on('24.1.0'), on('26.0.0'))).keys()].sort(), ['sonar', 'test']);
+  fs.writeFileSync(path.join(root, 'be', 'jest.config.js'), 'module.exports = {};\n');
+  const before = on('24.1.0', ['be/jest.config.js']);
+  fs.writeFileSync(path.join(root, 'be', 'jest.config.js'), 'module.exports = { clearMocks: true };\n');
+  assert.deepEqual([...differencesByFamily(fingerprintDifferences(before, on('24.1.0', ['be/jest.config.js']))).keys()].sort(), ['sonar', 'test']);
 });
+
+test('the hfs-run families read the hfs that runs and hfs.json, never the manifests by content', (t) => {
+  const base = workspaces(t, installsOf(TOOLS), TOOLS, { lib: '1.0.0' });
+  const tracked = ['package.json', 'be/package.json', 'hfs.json', 'turbo.json', '.gitignore'];
+  const hfsDir = path.join(base, 'node_modules', '@starci', 'hfs');
+  fs.writeFileSync(path.join(base, 'hfs.json'), JSON.stringify({ edition: 'lite' }));
+  fs.writeFileSync(path.join(base, 'turbo.json'), '{}');
+  fs.writeFileSync(path.join(base, '.gitignore'), 'node_modules\n');
+  const before = computeFingerprint({ root: base, tracked, hfsDir }).parts;
+  fs.writeFileSync(path.join(base, 'turbo.json'), '{"tasks":{}}');
+  fs.writeFileSync(path.join(base, '.gitignore'), 'node_modules\ndist\n');
+  fs.writeFileSync(path.join(base, 'be', 'package.json'), JSON.stringify({ name: 'be', dependencies: { lib: '2.0.0' } }));
+  assert.deepEqual([...differencesByFamily(fingerprintDifferences(before, computeFingerprint({ root: base, tracked, hfsDir }).parts)).keys()], [], 'turbo.json and .gitignore are read by the rules that run every run, a dependency version by no family');
+  fs.writeFileSync(path.join(base, 'hfs.json'), JSON.stringify({ edition: 'full' }));
+  assert.deepEqual([...differencesByFamily(fingerprintDifferences(before, computeFingerprint({ root: base, tracked, hfsDir }).parts)).keys()].sort(), ['db', 'hfs', 'lint', 'secrets', 'sonar', 'wiring'], 'the declaration is read by the rules, the custody and the proof');
+});
+
+/** An installed @starci/hfs at `version` (its folder under a node_modules, so the fingerprint stays portable). */
+function hfsAt(t: { after(fn: () => void): void }, version: string): string {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-fingerprint-hfs-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const dir = path.join(root, 'node_modules', '@starci', 'hfs');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: '@starci/hfs', version }));
+  return dir;
+}
 
 test('a @starci package resolved from a registry on this machine, linked, or without integrity has no portable fingerprint; a published install has', () => {
   const published = { version: '1.0.0', integrity: 'sha512-a', resolved: 'https://registry.npmjs.org/@starci/x/-/x-1.0.0.tgz' };

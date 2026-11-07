@@ -5,6 +5,8 @@
 // The proof worker has its own budget, counted from its spawn: STARCI_BOOT_PROOF_TIMEOUT_MS, which the starci CLI sets from ops/liveness.yaml
 // (heavy.bootProofTimeoutSeconds). A worker that runs out of it reached no verdict: it is retried once, and a second timeout is reported as
 // BOOT_PROOF_TIMEOUT (a warning: the host was too loaded to judge), never as the proof failing (BE_APP_BOOT_PROOF_MISSING).
+// The worker reports what the boot loaded (its CommonJS module cache: the root folder of each installed package, every other file, absolute), which the check
+// cache keys the proof on (cache/wiring-family.mts); a worker that reports no list leaves the run's `loaded` null.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -40,7 +42,11 @@ export interface WiringProof { options?: unknown; overrides?: { token: unknown; 
 /** The repository descriptor (hfs.json) fields this check reads. */
 export interface WiringRepo { edition?: string | undefined; profile?: string | undefined; kind?: string | undefined; sides?: { be?: { apps?: readonly { name: string }[] | undefined } | undefined }; apps?: readonly { name: string }[] | undefined }
 /** The shape of an appWiring run. */
-export interface WiringResult { ok: boolean; status: string; findings: WiringFinding[]; apps: string[] }
+export interface WiringResult {
+  ok: boolean; status: string; findings: WiringFinding[]; apps: string[];
+  /** What every proof worker of the run loaded (absolute paths, sorted), or null when a worker reported no list (it did not run or did not answer). */
+  loaded: string[] | null;
+}
 
 /** One boot-proof finding: a refusal (error) or a timeout (warning). */
 export type WiringFinding = { code: string; level: 'error' | 'warning'; path: string; message: string; reason: string };
@@ -199,10 +205,25 @@ interface FindingInput { repoRoot: string; beRoot: string; prefix: string; app: 
 
 interface WorkerCommand { args: string[]; options: { cwd: string; encoding: 'utf8'; env: NodeJS.ProcessEnv; windowsHide: boolean; timeout: number; maxBuffer: number } }
 
-function* appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, timeout }: FindingInput): Generator<WorkerCommand, WiringFinding | null, WorkerResult> {
+/** What the worker's module cache held: the root folder of each installed package (through its last `node_modules/<name>` or `node_modules/@scope/name`) and every other file, absolute, sorted. */
+export function loadedModules(paths: Iterable<string>): string[] {
+  const out = new Set<string>();
+  for (const file of paths) {
+    if (!path.isAbsolute(file)) continue;
+    const parts = file.split(/[\\/]/u);
+    const at = parts.lastIndexOf('node_modules');
+    out.add(at < 0 ? file : parts.slice(0, at + ((parts[at + 1] ?? '').startsWith('@') ? 3 : 2)).join(path.sep));
+  }
+  return [...out].sort();
+}
+
+/** One app's proof: its finding (null when it booted) and what its worker loaded (null when the worker reported nothing). */
+interface AppProof { finding: WiringFinding | null; loaded: string[] | null }
+
+function* appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, timeout }: FindingInput): Generator<WorkerCommand, AppProof, WorkerResult> {
   const file = `${prefix}${modulePath(app)}`;
   if (!/^[a-z][a-z0-9-]*$/.test(app) || !fs.existsSync(path.join(repoRoot, file)) || (files && !files.includes(file))) {
-    return refusal(file, 'app module is missing');
+    return { finding: refusal(file, 'app module is missing'), loaded: [] };
   }
   const fixture = fixtures[app] ?? wiringFixturePath(app);
   const fixtureExists = fs.existsSync(path.join(beRoot, fixture)) && (!files || files.includes(`${prefix}${fixture}`));
@@ -211,28 +232,31 @@ function* appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, tim
   const options = { cwd: beRoot, encoding: 'utf8' as const, env: {}, windowsHide: true, timeout: budget, maxBuffer: 1024 * 1024 };
   let result = yield { args, options };
   if (isTimeout(result)) result = yield { args, options };
-  if (isTimeout(result)) return timedOut(file, budget);
-  let proof: { ok?: boolean; reason?: string } | undefined;
+  if (isTimeout(result)) return { finding: timedOut(file, budget), loaded: null };
+  let proof: { ok?: boolean; reason?: string; loaded?: unknown } | undefined;
   try { proof = JSON.parse(result?.stdout ?? ''); } catch { /* Output from app source cannot serve as a proof. */ }
-  if (result?.status !== 0 || proof?.ok !== true) return refusal(file, SAFE_REASONS.has(proof?.reason as string) ? (proof?.reason as string) : WORKER_FAILURE);
-  return null;
+  const loaded = Array.isArray(proof?.loaded) && proof.loaded.every((entry) => typeof entry === 'string') ? proof.loaded as string[] : null;
+  if (result?.status !== 0 || proof?.ok !== true) return { finding: refusal(file, SAFE_REASONS.has(proof?.reason as string) ? (proof?.reason as string) : WORKER_FAILURE), loaded };
+  return { finding: null, loaded };
 }
 
 /** Synchronous check seam for the dispatcher and content finder. Paths in findings are relative to repoRoot. */
 export interface AppWiringInput { repoRoot: string; repo?: WiringRepo; files?: string[]; fixtures?: Record<string, string>; timeout?: number; run?: WorkerRun }
 
 function* wiringProgram({ repoRoot, repo = readJson(repoRoot, 'hfs.json'), files, fixtures = {}, timeout = DEFAULT_TIMEOUT }: AppWiringInput): Generator<WorkerCommand, WiringResult, WorkerResult> {
-  if (repo?.edition !== 'lite' || repo?.profile === 'fe' || repo?.kind === 'fe') return { ok: true, status: 'skipped', findings: [], apps: [] };
+  if (repo?.edition !== 'lite' || repo?.profile === 'fe' || repo?.kind === 'fe') return { ok: true, status: 'skipped', findings: [], apps: [], loaded: [] };
   const appRoot = Boolean(repo.sides);
   const beRoot = appRoot ? path.join(repoRoot, 'be') : repoRoot;
   const prefix = appRoot ? 'be/' : '';
   const apps = wiringApps(repo, files, prefix);
   const findings: WiringFinding[] = [];
+  let loaded: Set<string> | null = new Set();
   for (const app of apps) {
-    const finding = yield* appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, timeout });
-    if (finding) findings.push(finding);
+    const proof = yield* appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, timeout });
+    if (proof.finding) findings.push(proof.finding);
+    loaded = loaded === null || proof.loaded === null ? null : new Set([...loaded, ...proof.loaded]);
   }
-  return { ok: findings.length === 0, status: 'checked', apps, findings };
+  return { ok: findings.length === 0, status: 'checked', apps, findings, loaded: loaded === null ? null : [...loaded].sort() };
 }
 
 /** The synchronous finder and its existing worker doubles drive the same proof program as app check. */
@@ -283,7 +307,8 @@ export function appWiringMain(argv: string[], { cwd = invocationDir(), stdout = 
 
 if (isMain(import.meta.url)) {
   if (process.argv[2] === '--worker') {
-    try { await wiringWorker(JSON.parse(process.argv[3] as string)); process.stdout.write(JSON.stringify({ ok: true })); }
-    catch (error) { process.stdout.write(JSON.stringify({ ok: false, reason: failureReason(error) })); }
+    const loaded = (): string[] => loadedModules(Object.keys(createRequire(import.meta.url).cache));
+    try { await wiringWorker(JSON.parse(process.argv[3] as string)); process.stdout.write(JSON.stringify({ ok: true, loaded: loaded() })); }
+    catch (error) { process.stdout.write(JSON.stringify({ ok: false, reason: failureReason(error), loaded: loaded() })); }
   } else process.exitCode = appWiringMain(process.argv.slice(2));
 }

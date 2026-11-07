@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.2 - 2026-11-08
+
+- Changed: released with the Grammar family at 0.25.2 (its lint family peers `@starci/hfs ~6.2.0`); no component changed.
+
 ## 0.25.1 - 2026-11-07
 
 - A patch with eslint-grammar-core and eslint-grammar-offset-pop, which keep one version with it: the `@starci/hfs` peer of the lint packages is `~6.1.0`. No component, prop or token changed; the canon pins' range is `~0.25.1`.

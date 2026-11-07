@@ -59,7 +59,8 @@ starci app check --gate sonar --gate codecov
 | `--gate lint` | ESLint per side and stylelint | `lint/` |
 | `--gate test` | the unit specs, their coverage merged into one report and its per-file threshold | `test-coverage/` |
 | `--gate sonar`, `--gate codecov` | the combined Sonar and Codecov predictions from the merged coverage, the lint findings and the clones; either selector invokes this family, both together invoke it once. The server scan belongs to the whole run alone | `sonar-baseline/`, `codecov-baseline/` |
-| `--gate build`, `--gate audit` | the CI-parity families ([CI parity](#ci-parity)), never cached | none |
+| `--gate build` | the CI-parity build steps ([CI parity](#ci-parity)): typecheck, `build be`, each `build fe`, the database migration checks | `check/build/` |
+| `--gate audit` | the CI-parity dependency audit ([CI parity](#ci-parity)) | none |
 
 The twelve public gate names dispatch to eleven families (`sonar` and `codecov` share one). Selecting `codecov` exposes the combined
 prediction family through the CLI; it adds no server adapter, new pass condition or separate cache algorithm.
@@ -130,9 +131,9 @@ stays an error finding. Times are printed, never stored.
 | folder | holds |
 |---|---|
 | `fingerprint.jsonl` | one line per fingerprint part: name and sha256 |
-| `check/` | the per-file results of `app check` (formatter) and the input-set results of its scoped steps |
+| `check/` | the per-file results of `app check` (formatter) and the input-set results of its scoped steps; `check/build/` the verdicts of the CI-parity build steps |
 | `lint/<side>/` | per source file: content hash, resolved local imports with the type surface digest, ESLint results; the project-graph findings per file; stylelint results |
-| `test-coverage/` | per unit spec: its closure key, and the lines, branches and functions it covers in each source; per source: what is instrumented |
+| `test-coverage/` | per unit spec: its closure key with the packages and files its run loaded, and the lines, branches and functions it covers in each source; per source: what is instrumented |
 | `sonar-baseline/` | reference data only: the new-code base commit, the quality gate's conditions as read from their owner with that owner's digest, the analysis scope settings' digest |
 | `codecov-baseline/` | reference data only: the base commit, the patch and project targets of `codecov.yml` with its digest |
 
@@ -183,43 +184,38 @@ not judged yet and the next plain run reuses the rest. The journal is host state
 
 ## The fingerprint
 
-A part is anything a step reads that is not an app source, and each part names the families that read it
+A part is anything a step reads that is not an app source and that no record keys itself, and each part names the families that read it
 (`familiesOfPart`, `packages/hfs/cache/fingerprint.mts`): a part that differs makes only those families full, the diagnosis
-line names the family and the part, and the folders of the other families keep their records. Invalidation is therefore rare
-and per family: a bump of `@starci/hfs` or of the CLI re-runs the hfs-run families (hfs, secrets, wiring, db) and nothing else, a bump of a
-lint package re-runs lint (and sonar), a bump of Prettier re-runs format, and a bump of a library such as `@starci/auth` re-runs types and
-test and no other family. Parts are portable (equal on every host for one commit):
+line names the family and the part, and the folders of the other families keep their records. A package a result loaded is no part: the
+record carries it in its own key ([Which step reuses what](#which-step-reuses-what)). Invalidation is therefore rare and per family: a bump of
+`@starci/hfs` re-runs the hfs-run families (hfs, secrets, wiring, db) and nothing else, a bump of the CLI re-runs nothing, a bump of a lint package
+re-runs lint (and sonar), a bump of Prettier re-runs format, a bump of Jest, its transform or TypeScript re-runs the unit specs, and a bump of a
+library such as `@starci/auth` re-runs only the results that loaded it. Parts are portable (equal on every host for one commit):
 
 | part | families |
 |---|---|
 | the cache format version | every family |
-| the CLI version, the `@starci/hfs` that runs (slot manifest, failure codes, pins) | hfs, secrets, wiring, db |
+| `hfs`: the `@starci/hfs` that runs (rules, slot manifest, failure codes, pins); `pkg:@starci/hfs`, the installed one | hfs, secrets, wiring, db |
 | an installed `@starci/*` package by version and recorded integrity: the canon and Grammar ESLint packages and `stylelint-canon`; `prettier-config`; `tsconfig`; `jest-preset` and `test-world` | lint and sonar; format; types, lint, test and sonar; test and sonar (any other `@starci` package is a library, no part) |
-| `lock:<family>`: the resolved installs of that family's toolchain in `package-lock.json` (ESLint, typescript-eslint, TypeScript, stylelint and their plugins for lint; Prettier for format) | that family, and sonar for lint and test |
-| `lock:types`, `lock:test`: every resolved install a program or a spec can load (below) | types; test and sonar |
-| `hfs.json` | hfs, secrets, wiring, db, lint, sonar |
-| each `package.json` whole / by shape (dependency versions blanked) | hfs, secrets, wiring, db / lint, types, test, format, sonar |
+| `lock:<family>`: the resolved installs of that family's toolchain in `package-lock.json` (ESLint, typescript-eslint, TypeScript, stylelint and their plugins for lint; Prettier for format; Jest, its runtime and reporters, ts-jest or another transform and TypeScript for test) | that family, and sonar for lint and test |
+| `node`: the Node major the unit specs run on | test, sonar |
+| `hfs.json` | hfs, secrets, wiring, db (the edition and sides their rules, the secret custody and the boot proof judge by), lint, sonar |
+| each `package.json` by shape (dependency versions blanked) | hfs, lint, types, test, format, sonar |
 | `tsconfig*.json`; `eslint.config.mjs`, `stylelint.config.mjs`; the jest configuration | types, lint, test, sonar; lint, sonar; test, sonar |
 | the Prettier configuration files, `.prettierignore`, `.editorconfig` | format |
-| `sonar-project.properties`, `codecov.yml` | hfs, secrets, wiring, db, sonar |
-| `.gitignore`, `.gitattributes`, `turbo.json` | hfs, secrets, wiring, db |
+| `sonar-project.properties`, `codecov.yml` | sonar |
 
 A library's type surface reaches ESLint through the import graph, not the fingerprint: the graph records the installed
 packages each file imports and the side keeps their install digests, so a bump dirties the files that import the package and
-their dependents (ESLint, below). The types and test families key their records by the local files a program or a spec reads,
-never by the installed packages, so they read every install a program or a spec can load (`lock:types`, `lock:test`) and run full on a
-bump of any of them. The tools of the other families are not among them: the ESLint and stylelint packages and their `@starci` canons,
-Prettier and its configuration, `@starci/hfs` and `starci-harness` (`TOOL_ONLY` of `packages/hfs/cache/fingerprint.mts`). Such a tool is left
-out of both parts unless something a program or a spec loads reaches it: a workspace manifest declares it (the root manifest's tools are
-the harness's own), or the resolved dependencies of a declared package name it in the lockfile. A manifest that cannot be read leaves nothing
-out. `typescript` is no tool of that set, so its bump re-runs types, test and lint. A bump of a tool that no manifest declares for a workspace
-therefore re-runs the families that read it (the `pkg:` and `lock:<family>` rows above) and keeps the types and test records. The quality profile of the policy is not a
-part (the verdict only counts error findings).
+their dependents (ESLint, below). The types, test and wiring records and the build verdicts carry the installs they read, so a bump of a package
+re-runs the programs, specs, proofs and builds that read it and keeps every other record. The root files the always-run rules read (`.gitignore`,
+`.gitattributes`, `turbo.json`) are no part: those rules run every run, and a cached step that reads one keys it by its hash. The quality profile of
+the policy is not a part (the verdict only counts error findings).
 
 A run whose CLI or any `@starci` package is linked or copied from a local folder (no recorded integrity) has no
 portable fingerprint: it runs in full, says so, and writes nothing into `.starcistacks/cache/`, so a developer testing a
-local package never commits a cache CI cannot match. The Node version and the platform are not parts: the tools are
-pinned by the lockfile, and a step whose result differs by platform is a defect the CI verification below exposes.
+local package never commits a cache CI cannot match. The platform is not a part: the tools are pinned by the lockfile, and a step whose result
+differs by platform is a defect the CI verification below exposes.
 
 ## Trust
 
@@ -246,28 +242,36 @@ review is caught before it ships.
 
 ## Which step reuses what
 
-The content index diffs the tree against the trusted cache: modified, added, deleted; a rename is a deletion and an
-addition, and deleted paths drop every record they own.
+This table is the one owner of what each step of `app check` reuses, on what key, and where the result is kept. The content index diffs the tree against
+the trusted cache: modified, added, deleted; a rename is a deletion and an addition, and deleted paths drop every record they own. A step's result is reused
+while everything its tool read to produce it is unchanged and judged again when any of it changes; a tool version it does not read never invalidates it.
+Where a record carries its reads (`packages/hfs/cache/package-closure.mts`), they are the installed packages the run loaded, each by the digest of its
+installs in the lockfile, and the app files outside the step's own key, each by its hash. **Where** is the committed `.starcistacks/cache/<folder>`, the
+untracked tool cache of slot `app.tool-cache`, or none.
 
-| step | class | reused when | re-run on |
-|---|---|---|---|
-| tracked files, content index, fingerprint, trust | always | never | every run; they decide the rest |
-| managed files against their render | always | never | every run: cheap, and its inputs are the templates and the managed files |
-| plaintext secrets (R06 and the lite custody L17: `--gate secrets` and `--gate hfs`), bypass markers (R303), soft file size | per file | the path's hash is unchanged, and the hash of the one other file the rule reads (a README's `.starcistacks/application-stacks.yaml`) | changed and added paths |
-| documentation freshness, script hygiene, database configuration, front-end build args | read set | every file the rule read through `readText` / `readJson` is unchanged (each recorded with the hash it had) and the tracked path list outside the cache folder and the TypeScript version are the same | any change to a file it read; a tracked path outside the cache folder added or removed |
-| recurring-work scan of the Swarm release rules (the `pg_cron` and application SQL it parses) | per file | the path's hash, the stacks manifest and the parsers are unchanged | changed and added paths |
-| slot, tree, pin and the remaining content rules of the app pass, root and sides | always | never | every run: they read untracked entries and git state the index does not hold, or stat and list the work tree, which no key holds; the boot proof, the costly part, is lifted out as its own scoped step below |
-| Prettier (`HFS_FORMAT`) | per file | the path's hash is unchanged | changed and added paths |
-| database rules (`DB_*`) | scoped | every `db/` hash and the merge-base the baseline rules compare with are unchanged | any `db/` change or a new merge-base |
-| contract emit | scoped | the be side key is unchanged | any be change |
-| boot proof of a lite back end | scoped | the be side key is unchanged | any be change; a timeout is never stored |
-| architecture machine (check surface), per side | scoped | the side key is unchanged | any change in the side: the whole side |
-| ESLint, per side | per file, closure-scoped | the side key is unchanged, or the file is outside the dirty set | the dirty set (ESLint below) |
-| stylelint | per file | the path's hash is unchanged and no stylesheet was added or removed | changed stylesheets; every one when the stylesheet set changed |
-| unit specs and coverage | per spec, closure-scoped | the spec's closure key is unchanged | specs whose closure holds a changed file (coverage below) |
-| integration, e2e and contract specs | always | never | every run that runs them: they reach services, data and time a key cannot hold |
-| `tsc` per workspace program (`--gate types`) | scoped | the program's key is unchanged | any change the program reads: that program |
-| proofs, the gate verdict, the Sonar and Codecov predictions | always | never | every run |
+| step | class | reused when | re-run on | where |
+|---|---|---|---|---|
+| tracked files, content index, fingerprint, trust | always | never | every run; they decide the rest | `fingerprint.jsonl` (the parts) |
+| managed files against their render | always | never | every run: cheap, and its inputs are the templates and the managed files | none |
+| plaintext secrets (R06 and the lite custody L17: `--gate secrets` and `--gate hfs`), bypass markers (R303), soft file size | per file | the path's hash is unchanged, and the hash of the one other file the rule reads (a README's `.starcistacks/application-stacks.yaml`) | changed and added paths; `hfs.json` or the hfs that runs | `check/hfs/`, the secrets findings in `check/secrets/` |
+| documentation freshness, script hygiene, database configuration, front-end build args | read set | every file the rule read through `readText` / `readJson` is unchanged (each recorded with the hash it had) and the tracked path list outside the cache folder and the TypeScript version are the same | any change to a file it read; a tracked path outside the cache folder added or removed | `check/hfs/` |
+| recurring-work scan of the Swarm release rules (the `pg_cron` and application SQL it parses) | per file | the path's hash, the stacks manifest and the parsers are unchanged | changed and added paths | `check/hfs/` |
+| slot, tree, pin and the remaining content rules of the app pass, root and sides | always | never | every run: they read untracked entries and git state the index does not hold, or stat and list the work tree, which no key holds; the boot proof, the costly part, is lifted out as its own scoped step below | `check/hfs/` (their findings, for new / known / fixed) |
+| Prettier (`HFS_FORMAT`) | per file | the path's hash is unchanged | changed and added paths | `check/format/` |
+| database rules (`DB_*`) | scoped | every `db/` hash and the merge-base the baseline rules compare with are unchanged | any `db/` change or a new merge-base | `check/db/` |
+| contract emit | scoped | the be side key is unchanged | any be change | `check/hfs/` |
+| boot proof of a lite back end | scoped, with reads | the be side key and the reads its proof workers reported (their module cache) are unchanged | any be change; a package the boot loaded; an app file outside be it loaded; a proof whose workers reported no list keys on every install and tracked file; a timeout is never stored | `check/wiring/` |
+| architecture machine (check surface), per side | scoped | the side key is unchanged | any change in the side: the whole side | `check/hfs/` |
+| ESLint, per side | per file, closure-scoped | the side key is unchanged, or the file is outside the dirty set | the dirty set (ESLint below) | `lint/<side>/` |
+| stylelint | per file | the path's hash is unchanged and no stylesheet was added or removed | changed stylesheets; every one when the stylesheet set changed | `lint/fe/` |
+| unit specs and coverage | per spec, closure-scoped, with reads | the spec's closure key and the reads its run recorded are unchanged | specs whose closure holds a changed file, or that loaded a changed package or app file (coverage below); every spec on a runner change (`lock:test`, `node`, the preset, the jest configuration, a tsconfig the transform reads) | `test-coverage/` |
+| integration, e2e and contract specs | always | never | every run that runs them: they reach services, data and time a key cannot hold | none |
+| `tsc` per workspace program (`--gate types`) | scoped, with reads | the program's key and the reads `tsc --listFiles` reported (the TypeScript lib files, the `@types` and every package whose declarations it loaded, the app files outside its folders) are unchanged | any change the program reads: that program | `check/types/`; its `.tsbuildinfo` in the tool cache |
+| CI build steps (typecheck, `build be`, each `build fe`) | per step | the step's command and environment, the Node major, every tracked file of the folders it builds (every tracked file for the typecheck) and of the app root but the lockfile, and the lockfile installs its manifests resolve are unchanged | any of them; a step killed or timed out stores nothing | `check/build/` (the verdict, green or red with its finding; never an artifact) |
+| database migration checks (`npm run db:lint`, `app db drift`) | per step | its command, the db rules' inputs and their baseline at the merge-base, the migration chain, the scratch database image, the entity list's import closure, the engine manifest, the installs the drift check loads (the closure's packages, `typeorm`, `typescript`, `pg`) and the hfs that judges are unchanged | any of them; a host without a database stores nothing | `check/build/` (the verdict) |
+| production dependency audit | always | never | every run that selects it: the registry's advisories change without the tree | none |
+| proofs, the gate verdict, the Sonar and Codecov predictions | always | never | every run | none |
+| Sonar scan against the server | scoped | the scanned content (every tracked file outside the cache folder, the properties, the coverage and lint reports they name), the target, the scanner version and the digest of the gate's conditions as the server holds them now are unchanged | any of them; a failure is never kept | the tool cache (`sonar-scan.json`) |
 
 A side key is the sha256 of everything the side's whole-program steps read: the hash of each tracked path of the side
 (`absent` for one deleted in the work tree), its staged entries (the machine reads the index), and the untracked files
@@ -379,11 +383,15 @@ canon without the export, leaves the CLI to build the graph itself through `proj
 
 `app check --gate test` runs the unit specs through the app's own Jest and writes the merged report the managed CI uploads. A spec's closure key is the sha256 of the spec, every module Jest resolves from it transitively (its resolver
 with the project's `moduleNameMapper`, `jest.mock` targets and setup files), its snapshot file and its project's
-configuration. A warm run runs the specs whose key changed, the way `jest --findRelatedTests` selects them but over the
-whole closure, and keeps the records of the rest. Jest reports each spec file's own coverage map; the run records, per
-spec and source, the covered lines, branches and functions (covered or not, never hit counts, so the bytes are stable),
-and per source what is instrumented. The total is, per source, its instrumented items with the union of what the
-current spec records cover. The per-file threshold is judged on that total by `@starci/hfs` (`--coverage-from` reads
+configuration. Its record adds what its run loaded: `@starci/jest-preset`'s runtime (`spec-loaded-runtime.ts`, the unit project's `runtime` in a check-cache
+run) records every file the spec's module registry read, and the record keeps each installed package among them by its lockfile digest and each app file
+outside the closure by its hash, so a package bump re-runs the specs that loaded it and an hfs or CLI bump re-runs none. A warm run runs the specs whose key
+changed, the way `jest --findRelatedTests` selects them but over the whole closure, and keeps the records of the rest. Jest reports each spec file's own
+coverage; the preset's reporter writes it to the spec's own file the moment the spec ends and takes it off the result, so neither Jest's coverage reporter
+nor the aggregated results hold it and the Jest parent's memory stays flat however many specs run. The run turns each file into the spec's record as it
+appears (every 10 seconds, journaled at once) and removes it, so the record is the one copy; it records, per spec and source, the covered lines, branches and
+functions (covered or not, never hit counts, so the bytes are stable), and per source what is instrumented. The total is, per source, its instrumented items with the union of what the
+current spec records cover, folded one record at a time through the preset's merge. The per-file threshold is judged on that total by `@starci/hfs` (`--coverage-from` reads
 the same report), never by Jest's partial run, whose threshold is switched off. A failed spec is never stored. The
 lcov sent to Codecov and Sonar is the merged total, so their server-side numbers are those of the whole suite.
 
@@ -417,17 +425,15 @@ a message), and the quality gate is the one the server holds for the project.
   (no sealed secret or age key on this host), a server that does not answer, a token without the permission the derived
   project needs, or a verdict the server does not give in time is the warning `CI_PARITY_SONAR_SKIPPED` and its line; the run is never reported
   green for the scan, and CI judges it. A scan that runs prints its start, the project key it scanned, its duration and the gate status.
-- **Reuse.** A green verdict is kept in the untracked tool cache (`sonar-scan.json`, beside the run log) by the sha256 of
-  the scanned content (every tracked file outside the cache folder, the properties, the coverage and lint reports they
-  name), the target, the scanner version and the digest of the gate's conditions as the server holds them now. An unchanged
-  tree under an unchanged gate is not scanned again; a failure is never kept, and `--fresh` scans again. The verdict is host
-  state, never committed: it depends on a server, which the committed cache must not.
+- **Reuse.** A green verdict is kept in the untracked tool cache (`sonar-scan.json`, beside the run log) under the key
+  [Which step reuses what](#which-step-reuses-what) names; `--fresh` scans again. The verdict is host state, never committed: it
+  depends on a server, which the committed cache must not.
 
 ## CI parity
 
 A whole `starci app check` (the pre-push hook runs it) runs what the app's managed CI runs and no other family does, so a green run is not followed by a
 red CI on it (R383, R386): the `build` and `audit` families, CI's coverage step and the Sonar scan ([Sonar and Codecov](#sonar-and-codecov)). The `build` and `audit` families read their commands from the app's rendered `.github/workflows/ci.yml`,
-never restate them, and run each whole on every run that selects them (nothing is cached):
+never restate them; what each reuses is [Which step reuses what](#which-step-reuses-what)'s:
 
 - `audit`: the fast job's production dependency audit (`npm audit --omit=dev --audit-level=high`, or what the quality declaration sets).
 - `build`: the fast job's `npm run typecheck` (build:modules, codegen and tsc: the types family runs the tsc programs, not the script), the build job's
@@ -538,7 +544,7 @@ or unreadable nightly verify refuses the release gate (`HFS_CHECK_CACHE_VERIFY_L
   judged ([The journal](#the-journal)).
 - **Branch switches and merges** are content changes like any edit; a union-merged folder is normalised by the next
   write.
-- **A cache from another hfs or CLI** differs in the hfs and CLI parts, so the records of the hfs-run families are replaced, never read; the other families keep theirs.
+- **A cache from another hfs** differs in the hfs part, so the records of the hfs-run families are replaced, never read; the other families keep theirs. Another CLI changes no part.
 - **A disk error writing the cache** is a warning in the cache line and never changes the exit code.
 
 ## As built

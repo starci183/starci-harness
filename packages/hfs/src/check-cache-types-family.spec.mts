@@ -1,5 +1,6 @@
-// The `--types` family of the app check cache: a program's key is reused while nothing it reads changed, a change re-runs that program alone, the `.tsbuildinfo` lives in the
-// untracked tool cache and never in the app, and a tsc that did not complete stores nothing. The last test runs the real TypeScript.
+// The `--types` family of the app check cache: a program's key is reused while nothing it reads changed, a change re-runs that program alone, a package bump re-runs
+// only the programs whose `tsc` listed the package, the `.tsbuildinfo` lives in the untracked tool cache and never in the app, and a tsc that did not complete stores
+// nothing. The last tests run the real TypeScript.
 import test from 'node:test';
 import { nativeTestNode } from './fixtures/heavy-node.mts';
 import assert from 'node:assert/strict';
@@ -7,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createFakeSession } from '../cache/fake-session.mjs';
-import { TSC_STEP, TYPES_FOLDER, createTscRunner, parseTscOutput, programKey, readsOf, relativise, runTypesFamily, tsBuildInfoPath } from '../cache/types-family.mjs';
+import { TSC_STEP, TYPES_FOLDER, createTscRunner, parseTscOutput, programKey, readsOf, relativise, runTypesFamily, splitListedFiles, tsBuildInfoPath } from '../cache/types-family.mjs';
 import type { TscOutcome, TypesProgram } from '../cache/types-family.mjs';
 import type { CacheRecord } from '../cache/types.mjs';
 
@@ -26,11 +27,11 @@ const files = (): Record<string, string> => ({
 interface Harness { ran: string[]; outcomes: Record<string, TscOutcome>; buildInfos: string[] }
 
 function harness(): Harness {
-  return { ran: [], outcomes: { be: { status: 0, output: '' }, 'fe/apps/web': { status: 0, output: '' } }, buildInfos: [] };
+  return { ran: [], outcomes: { be: { status: 0, output: '', files: [] }, 'fe/apps/web': { status: 0, output: '', files: [] } }, buildInfos: [] };
 }
 
-async function runOnce(h: Harness, tree: Record<string, string>, stored: readonly CacheRecord[], options: { mode?: 'full' | 'diff'; programs?: readonly TypesProgram[]; during?: (session: ReturnType<typeof createFakeSession>) => void } = {}) {
-  const session = createFakeSession({ files: tree, records: { [TYPES_FOLDER]: stored }, mode: options.mode ?? 'diff' });
+async function runOnce(h: Harness, tree: Record<string, string>, stored: readonly CacheRecord[], options: { mode?: 'full' | 'diff'; programs?: readonly TypesProgram[]; root?: string; during?: (session: ReturnType<typeof createFakeSession>) => void } = {}) {
+  const session = createFakeSession({ files: tree, records: { [TYPES_FOLDER]: stored }, mode: options.mode ?? 'diff', ...(options.root === undefined ? {} : { root: options.root }) });
   const result = await runTypesFamily({
     session,
     programs: options.programs ?? [BE, WEB],
@@ -39,7 +40,7 @@ async function runOnce(h: Harness, tree: Record<string, string>, stored: readonl
       h.ran.push(program.name);
       h.buildInfos.push(buildInfo);
       options.during?.(session);
-      return h.outcomes[program.name] ?? { status: 0, output: '' };
+      return h.outcomes[program.name] ?? { status: 0, output: '', files: [] };
     },
   });
   return { session, result, records: [...(session.replaced.get(TYPES_FOLDER) ?? [])] };
@@ -47,7 +48,7 @@ async function runOnce(h: Harness, tree: Record<string, string>, stored: readonl
 
 test('the first run runs every program and records its diagnostics under the program key; an unchanged key reuses them', async () => {
   const h = harness();
-  h.outcomes['be'] = { status: 2, output: ERROR('be/src/a.ts') };
+  h.outcomes['be'] = { status: 2, output: ERROR('be/src/a.ts'), files: [] };
   const first = await runOnce(h, files(), []);
   assert.deepEqual(h.ran, ['be', 'fe/apps/web']);
   assert.deepEqual(first.records.map((record) => [record.path, record.step, record.findings.length]), [['be', TSC_STEP, 1], ['fe/apps/web', TSC_STEP, 0]]);
@@ -87,6 +88,63 @@ test('a change re-runs the program that reads it and no other; a file outside bo
   assert.deepEqual(h.ran, ['be'], 'and a deleted one');
 });
 
+/** An app root holding only a lockfile with `versions` (install path to version). */
+function lockRoot(t: { after(fn: () => void): void }, versions: Record<string, string>): string {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'types-lock-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(root, 'package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: { '': { name: 'demo' }, ...Object.fromEntries(Object.entries(versions).map(([key, version]) => [key, { version, integrity: `sha512-${version}` }])) } }));
+  return root;
+}
+
+test('a package bump re-runs only the programs whose tsc listed the package; TypeScript itself re-runs every program that read its lib', async (t) => {
+  const versions = { 'node_modules/typescript': '5.9.3', 'node_modules/@types/node': '24.0.0', 'node_modules/@nestjs/common': '11.0.0', 'node_modules/react': '19.0.0', 'node_modules/@starci/hfs': '6.1.1' };
+  const listed = (root: string): Record<string, string[]> => ({
+    be: [`${root}/node_modules/typescript/lib/lib.es2022.d.ts`, `${root}/node_modules/@types/node/index.d.ts`, `${root}/node_modules/@nestjs/common/index.d.ts`, `${root}/be/src/a.ts`],
+    'fe/apps/web': [`${root}/node_modules/typescript/lib/lib.dom.d.ts`, `${root}/node_modules/react/index.d.ts`, `${root}/fe/apps/web/src/page.ts`],
+  });
+  const runAt = async (bumped: Record<string, string>, stored: readonly CacheRecord[]) => {
+    const root = lockRoot(t, { ...versions, ...bumped });
+    const h = harness();
+    for (const [name, list] of Object.entries(listed(root))) h.outcomes[name] = { status: 0, output: '', files: list };
+    return { h, run: await runOnce(h, files(), stored, { root }) };
+  };
+  const first = await runAt({}, []);
+  assert.deepEqual(first.run.records.map((record) => (record.data as { reads: { packages: string[] } }).reads.packages), [
+    ['node_modules/@nestjs/common', 'node_modules/@types/node', 'node_modules/typescript'],
+    ['node_modules/react', 'node_modules/typescript'],
+  ], 'each program keeps the installs it listed; its own folder is in its key already');
+  assert.deepEqual((await runAt({ 'node_modules/@starci/hfs': '6.2.0' }, first.run.records)).h.ran, [], 'an hfs bump re-runs no program');
+  assert.deepEqual((await runAt({ 'node_modules/@nestjs/common': '11.1.0' }, first.run.records)).h.ran, ['be'], 'a back-end library re-runs the back end alone');
+  assert.deepEqual((await runAt({ 'node_modules/@types/node': '24.1.0' }, first.run.records)).h.ran, ['be'], 'an @types package re-runs the program that read it');
+  assert.deepEqual((await runAt({ 'node_modules/typescript': '5.9.4' }, first.run.records)).h.ran, ['be', 'fe/apps/web'], 'the compiler re-runs every program');
+});
+
+test('a program keys on an app file it read outside its own folder (a workspace package by its real path)', async (t) => {
+  const root = lockRoot(t, {});
+  const tree = { ...files(), 'fe/packages/ui/src/button.ts': 'export const button = 1;\n' };
+  const write = (text: string): void => {
+    fs.mkdirSync(path.join(root, 'fe', 'packages', 'ui', 'src'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'fe', 'packages', 'ui', 'src', 'button.ts'), text);
+  };
+  write('export const button = 1;\n');
+  const h = harness();
+  h.outcomes['fe/apps/web'] = { status: 0, output: '', files: [`${root}/fe/apps/web/src/page.ts`, `${root}/fe/packages/ui/src/button.ts`] };
+  const first = await runOnce(h, tree, [], { root });
+  assert.deepEqual((first.records[1]?.data as { reads: { files: string[] } }).reads.files, ['fe/packages/ui/src/button.ts']);
+  h.ran = [];
+  write('export const button = 2;\n');
+  await runOnce(h, { ...tree, 'fe/packages/ui/src/button.ts': 'export const button = 2;\n' }, first.records, { root });
+  assert.deepEqual(h.ran, ['fe/apps/web'], 'the package the web app reads re-runs it, and not the back end');
+});
+
+test('tsc --listFiles output splits into the listed absolute paths and the diagnostics', () => {
+  const root = path.resolve(os.tmpdir(), 'some-app');
+  const listedFile = path.join(root, 'node_modules', 'typescript', 'lib', 'lib.d.ts');
+  const split = splitListedFiles([ERROR('be/src/a.ts').trimEnd(), listedFile, `${root}${path.sep}be${path.sep}src${path.sep}a.ts(1,1): error TS1005: ';' expected.`, ''].join('\n'));
+  assert.deepEqual(split.files, [listedFile]);
+  assert.equal(parseTscOutput(split.output, root, 'be/tsconfig.json').length, 2);
+});
+
 test('a program also keys on the staged entries and the untracked files its TypeScript reads', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'types-key-'));
   try {
@@ -119,13 +177,13 @@ test('the .tsbuildinfo goes to the untracked tool cache, one file per program, a
 test('a tsc that did not complete stores nothing, a program whose files changed during the run stores nothing, and --full ignores the records', async () => {
   const h = harness();
   const first = await runOnce(h, files(), []);
-  h.outcomes['be'] = { status: 1, output: 'Segmentation fault\n' };
+  h.outcomes['be'] = { status: 1, output: 'Segmentation fault\n', files: [] };
   const crashed = await runOnce(h, { ...files(), 'be/src/a.ts': 'export const a = 3;\n' }, first.records);
   assert.deepEqual(crashed.result.incomplete, ['be']);
   assert.deepEqual(crashed.records.map((record) => record.path), ['fe/apps/web']);
   assert.equal(crashed.result.ok, false);
 
-  h.outcomes['be'] = { status: 0, output: '' };
+  h.outcomes['be'] = { status: 0, output: '', files: [] };
   const edited = await runOnce(h, { ...files(), 'be/src/a.ts': 'export const a = 4;\n' }, [], { during: (session) => session.setFile('be/src/a.ts', 'export const a = 5;\n') });
   assert.deepEqual(edited.records.map((record) => record.path), ['fe/apps/web'], 'the edit during the run touched be only: be stores nothing, the other program is unaffected');
   assert.deepEqual(edited.result.incomplete, ['be']);
@@ -138,9 +196,9 @@ test('a tsc that did not complete stores nothing, a program whose files changed 
 
 test('fixed findings are counted against the records, new ones against none', async () => {
   const h = harness();
-  h.outcomes['be'] = { status: 2, output: ERROR('be/src/a.ts') };
+  h.outcomes['be'] = { status: 2, output: ERROR('be/src/a.ts'), files: [] };
   const first = await runOnce(h, files(), []);
-  h.outcomes['be'] = { status: 0, output: '' };
+  h.outcomes['be'] = { status: 0, output: '', files: [] };
   const fixed = await runOnce(h, { ...files(), 'be/src/a.ts': 'export const a = 7;\n' }, first.records);
   assert.equal(fixed.session.reports[0]?.fixedFindings, 1);
   assert.equal(fixed.session.reports[0]?.newFindings, 0);
@@ -191,6 +249,7 @@ test('with the real TypeScript: a clean program, an error, a reuse and a fix', {
     assert.equal(runs, 2);
     assert.equal(fixed.result.ok, true);
     assert.equal(fixed.records[0]?.findings.length, 0);
+    assert.ok((fixed.records[0]?.data as { reads: { files: string[] } }).reads.files.length === 0, 'the program read nothing of the app outside be/');
   } finally {
     fs.rmSync(app, { recursive: true, force: true });
     fs.rmSync(toolCache, { recursive: true, force: true });

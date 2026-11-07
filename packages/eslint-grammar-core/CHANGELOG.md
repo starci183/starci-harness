@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.2 - 2026-11-08
+
+- Fixed: the `@starci/hfs` peer is `~6.2.0`, the range of the hfs the canon pins name, so an app on hfs 6.2 installs with `npm ci`.
+
 ## 0.25.1 - 2026-11-07
 
 - A patch of the Grammar family, metadata only: the `@starci/hfs` peer is `~6.1.0` (it was `~6.0.0`), the range of the hfs the canon pins name, so an app on hfs 6.1 installs with `npm ci`.

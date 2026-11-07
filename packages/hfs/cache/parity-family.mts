@@ -6,20 +6,38 @@
 //          `npm run build:be` and each `build fe` step (a `next build` per front-end app, its server prerender and route config included).
 // A build runs under the heavy governor (`build` kind, sized by the memory plan) with its own SWC cache root (LOCALAPPDATA and XDG_CACHE_HOME under
 // the app's untracked tool cache): Windows' hardened loader refuses the SWC binary that next build loads from a %LOCALAPPDATA%\swc the user does not
-// own. The database step (`npm run db:lint`, `app db drift`) runs when the host has Docker or a `--db-url-env` database and is the warning CI_PARITY_DB_SKIPPED otherwise. Nothing is cached:
-// each runs whole on every run that selects it.
+// own. The database step (`npm run db:lint`, `app db drift`) runs when the host has Docker or a `--db-url-env` database and is the warning CI_PARITY_DB_SKIPPED otherwise.
+// A build step's verdict (green, or red with its finding) is a record of `check/build`, never an artifact, keyed on what the step builds from (`buildStepKey`):
+// its command and environment, the Node major, the tracked files of what it builds and the root's, and the lockfile installs its manifests resolve. The
+// database step's is keyed on the migration chain, the scratch image, the entity list's import closure and the packages it loads, the engine manifest, the
+// db rules' baseline at the merge-base and the @starci/hfs that judges (`databaseStepKey`). An unchanged key reuses the verdict; a step killed, timed out or
+// without a database stores none. The audit asks the registry's advisories, which change without the tree: it runs whole on every run that selects it.
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
+import { loadTypescript } from '../runtime/scripts/lib/package-at.mjs';
+import { ENTITY_LIST } from '../db/entity-list.mjs';
+import { DB_IMAGE_CONTEXT } from '../db/image.mjs';
+import { inCacheDir } from './content-index.mjs';
+import { baseInputs, dbMergeBase, isDbInput } from './db-family.mjs';
+import { combineHashes } from './hash.mjs';
+import { compilerOptionsOf, resolveReferences } from './import-graph.mjs';
+import { canonicalJson } from './jsonl.mjs';
+import { lockClosure, lockClosureOf, readsContext } from './package-closure.mjs';
+import { RecordSet } from './records.mjs';
 import { toolCacheDir } from './run-log.mjs';
 import type { CheckFinding } from '../runtime/scripts/hfs/check.mjs';
 import type { HeavyAdmission } from '../runtime/scripts/api/node/run-node.mjs';
-import type { CheckSession, FamilyReport } from './types.mjs';
+import type { CacheRecord, CheckSession, FamilyReport, JsonValue } from './types.mjs';
 
 /** The rendered workflow the families read. */
 export const CI_WORKFLOW = '.github/workflows/ci.yml';
+/** The folder of the build family's verdicts, and the step of one. */
+export const BUILD_FOLDER = 'check/build';
+export const BUILD_STEP = 'ci-step';
 
 /** One CI step the parity families run: its family, its job and step names, its command and the plain environment it sets. */
 export interface ParityStep {
@@ -116,7 +134,100 @@ export function shellArgv(command: string, platform: NodeJS.Platform = process.p
 
 const tailOf = (text: string): string => text.split('\n').map((line) => line.trim()).filter(Boolean).slice(-5).join(' | ').slice(0, 600);
 
-/** Runs the steps of `families` and reports each family; a failed step is CI_PARITY_STEP_FAILED with its last lines. */
+/** The version of the @starci/hfs that runs: the db rules and `app db drift` it judges with. */
+const HFS_VERSION = String((JSON.parse(fs.readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')) as { version?: unknown }).version ?? 'unknown');
+
+/** What a step key is made of: the digest and the tracked files it holds (the ones a run must leave unedited for its verdict to be stored). */
+export interface StepKey {
+  readonly key: string;
+  readonly inputs: readonly string[];
+}
+
+/** The key of one step from its command, its tracked files, the installs it resolves and its other parts. */
+function keyOf(step: ParityStep, session: CheckSession, files: readonly string[], installs: readonly string[], extra: Readonly<Record<string, string>>): StepKey {
+  const context = readsContext(session.root, (file) => session.index.hashOf(file));
+  const parts: Record<string, string> = { ...extra, '#run': step.run, '#env': canonicalJson(step.env) };
+  for (const file of files) parts[`file:${file}`] = session.index.hashOf(file) ?? 'absent';
+  for (const install of installs) parts[`package:${install}`] = context.packageDigest(install);
+  return { key: combineHashes(parts), inputs: files };
+}
+
+/** The folders a build step builds from: `build be` the back end, a `build fe` step the front end, the typecheck every workspace; each with the root packages. */
+function buildScope(step: ParityStep): readonly string[] | null {
+  if (step.name === 'build be') return ['be/', 'packages/'];
+  if (step.name === 'build fe' || step.name.startsWith('build fe ')) return ['fe/', 'packages/'];
+  return null;
+}
+
+/**
+ * The key of a build step (the typecheck, `build be`, a `build fe`): its command and environment, the Node major, every tracked file of the folders it builds
+ * (every tracked file for the typecheck) and of the app root but the lockfile, and the installs the lockfile resolves for the manifests among them. A package
+ * bump the build does not resolve leaves the key; a source, config or argument change moves it.
+ */
+export function buildStepKey(session: CheckSession, step: ParityStep, nodeVersion: string = process.versions.node): StepKey {
+  const scope = buildScope(step);
+  const files = session.index.paths.filter((file) => !inCacheDir(file) && file !== 'package-lock.json' && (scope === null || !file.includes('/') || scope.some((prefix) => file.startsWith(prefix))));
+  const manifests = files.filter((file) => path.posix.basename(file) === 'package.json' && !file.includes('node_modules/'));
+  return keyOf(step, session, files, lockClosure(session.root, manifests), { '#node': nodeVersion.split('.')[0] ?? nodeVersion });
+}
+
+/** The back-end files the entity list reaches through its imports (side-relative resolution, app-relative paths) and the packages they import; every back-end file when the compiler is missing. */
+function entityClosure(session: CheckSession): { files: string[]; packages: string[] } {
+  const root = session.root;
+  if (session.index.hashOf(ENTITY_LIST) === undefined) return { files: [], packages: [] };
+  const beRoot = path.join(root, 'be');
+  const ts = loadTypescript(beRoot, root);
+  if (ts === null) return { files: session.index.paths.filter((file) => file.startsWith('be/')), packages: [] };
+  const readText = (file: string): string | null => { try { return fs.readFileSync(file, 'utf8'); } catch { return null; } };
+  const fileExists = (file: string): boolean => fs.existsSync(file) && fs.statSync(file).isFile();
+  const host = { ts, sideRoot: beRoot, readText, fileExists, hashOf: () => null };
+  const options = compilerOptionsOf(ts, beRoot, readText, fileExists);
+  const seen = new Set<string>();
+  const packages = new Set<string>();
+  const queue = [ENTITY_LIST.slice('be/'.length)];
+  while (queue.length > 0) {
+    const file = queue.pop() as string;
+    if (seen.has(file)) continue;
+    seen.add(file);
+    const text = readText(path.join(beRoot, file));
+    if (text === null) continue;
+    const found = resolveReferences(host, options, file, text);
+    for (const name of found.packages) packages.add(name);
+    for (const next of found.imports) if (!seen.has(next)) queue.push(next);
+  }
+  return { files: [...seen].map((file) => `be/${file}`).sort(), packages: [...packages].sort() };
+}
+
+/** The engine manifest hfs.json `sides.be.engineOwned.manifest` names, app-relative, when it names one. */
+function engineManifest(session: CheckSession): string[] {
+  try {
+    const manifest = (JSON.parse(fs.readFileSync(path.join(session.root, 'hfs.json'), 'utf8')) as { sides?: { be?: { engineOwned?: { manifest?: unknown } } } }).sides?.be?.engineOwned?.manifest;
+    return typeof manifest === 'string' ? [manifest] : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The key of the database step (`npm run db:lint`, `app db drift`): its command and environment, the db rules' inputs (hfs.json, `db/` and its migration chain,
+ * `supabase/`, every `.sql`) and their baseline at the merge-base, the scratch database image, the entity list's import closure and the engine manifest, the
+ * installs the drift check loads (the closure's packages, typeorm, typescript, pg) and the @starci/hfs that judges.
+ */
+export function databaseStepKey(session: CheckSession, step: ParityStep, base: string = dbMergeBase(session.root)): StepKey {
+  const entities = entityClosure(session);
+  const manifest = engineManifest(session);
+  const files = [...new Set([...session.index.paths.filter((file) => !inCacheDir(file) && (isDbInput(file) || file.startsWith(`${DB_IMAGE_CONTEXT}/`) || file === 'be/tsconfig.json' || manifest.includes(file))), ...entities.files])].sort();
+  const installs = lockClosureOf(session.root, [...entities.packages, 'typeorm', 'typescript', 'pg']);
+  return keyOf(step, session, files, installs, { '#hfs': HFS_VERSION, '#base-inputs': baseInputs(session.root, base) });
+}
+
+/** A verdict worth keeping: the step ran to its own exit (no spawn error, no signal or kill status), green or red. */
+const settled = (result: { readonly status: number | null; readonly error?: Error | undefined }): boolean => result.error === undefined && result.status !== null && result.status >= 0 && result.status < 128;
+
+/**
+ * Runs the steps of `families` and reports each family; a failed step is CI_PARITY_STEP_FAILED with its last lines. A build step whose key matches its record
+ * takes the recorded verdict; one that ran to its own exit records it, with the finding's message short of the output's last lines (they vary by run).
+ */
 export async function runParityFamilies(session: CheckSession, { repoRoot, families, env, run, steps = parityStepsFor(repoRoot) }: {
   repoRoot: string; families: ReadonlySet<ParityStep['family']>; env: NodeJS.ProcessEnv; run: ParityRun; steps?: readonly ParityStep[];
 }): Promise<{ findings: CheckFinding[]; reports: FamilyReport[] }> {
@@ -126,24 +237,51 @@ export async function runParityFamilies(session: CheckSession, { repoRoot, famil
     if (!families.has(family)) continue;
     const mine = steps.filter((step) => step.family === family);
     const progress = session.progress.step(family, family === 'audit' ? 'dependency audit' : 'CI build steps', mine.length);
+    const decision = family === 'build' ? session.decide('build') : undefined;
+    const records = new RecordSet(family === 'build' ? session.records(BUILD_FOLDER) : []);
+    const kept = new Set<string>();
     let failed = 0;
+    let reused = 0;
     for (const [index, step] of mine.entries()) {
+      const where = `${step.job}/${step.name}`;
+      const key = family === 'build' ? (step.name === DATABASE_STEP ? databaseStepKey(session, step) : buildStepKey(session, step)) : undefined;
+      kept.add(where);
+      const held = key !== undefined && decision?.mode === 'diff' ? records.matching(where, BUILD_STEP, key.key) : undefined;
+      if (held !== undefined) {
+        reused += 1;
+        failed += held.findings.length > 0 ? 1 : 0;
+        findings.push(...held.findings.map((finding) => ({ code: finding.rule, level: 'error', engine: family, path: CI_WORKFLOW, message: `${finding.message} (the verdict recorded for this tree)` })));
+        progress.tick(index + 1, reused, index + 1 - reused);
+        continue;
+      }
       const stepEnv = { ...env, ...step.env, ...(family === 'build' ? buildCacheEnv(repoRoot, env) : {}) };
       const result = await run({ kind: family === 'build' ? 'build' : 'install', label: `app check ${family} ${step.name}`, cwd: repoRoot, argv: shellArgv(step.run, process.platform, env), env: stepEnv });
       if (step.name === DATABASE_STEP && result.status === 2 && result.error === undefined && `${result.stdout}${result.stderr}`.includes(NEEDS_DATABASE)) {
         findings.push({ code: DATABASE_SKIPPED, level: 'warning', engine: family, path: CI_WORKFLOW, message: `${CI_WORKFLOW} ${step.job} / ${step.name} (${step.run}) was not run here: it applies the migrations to a scratch database and needs Docker (or an empty database named by --db-url-env), which this host lacks; CI runs it, and it is the step that finds BE_ENTITY_SCHEMA_DRIFT` });
-        progress.tick(index + 1, 0, index + 1);
+        progress.tick(index + 1, reused, index + 1 - reused);
         continue;
       }
-      if (result.status !== 0 || result.error !== undefined) {
+      const verdict = `${CI_WORKFLOW} ${step.job} / ${step.name} (${step.run}) failed locally as it would in CI`;
+      const red = result.status !== 0 || result.error !== undefined;
+      if (red) {
         failed += 1;
         const why = result.error === undefined ? `exit ${String(result.status)}` : result.error.message;
-        findings.push({ code: 'CI_PARITY_STEP_FAILED', level: 'error', engine: family, path: CI_WORKFLOW, message: `${CI_WORKFLOW} ${step.job} / ${step.name} (${step.run}) failed locally as it would in CI (${why}): ${tailOf(`${result.stdout}\n${result.stderr}`)}` });
+        findings.push({ code: 'CI_PARITY_STEP_FAILED', level: 'error', engine: family, path: CI_WORKFLOW, message: `${verdict} (${why}): ${tailOf(`${result.stdout}\n${result.stderr}`)}` });
       }
-      progress.tick(index + 1, 0, index + 1);
+      if (key !== undefined && settled(result) && session.unchanged(key.inputs)) {
+        const recorded: CacheRecord = { path: where, step: BUILD_STEP, hash: key.key, findings: red ? [{ path: CI_WORKFLOW, line: 0, column: 0, rule: 'CI_PARITY_STEP_FAILED', message: `${verdict} (exit ${String(result.status)})` }] : [], data: { verdict: red ? 'red' : 'green' } as JsonValue };
+        records.put(recorded);
+      }
+      progress.tick(index + 1, reused, index + 1 - reused);
     }
     progress.end();
-    const report: FamilyReport = { family, mode: 'full', reason: mine.length === 0 ? `${CI_WORKFLOW} has no ${family} step` : `${String(mine.length)} step(s) of ${CI_WORKFLOW}, never cached`, checked: mine.length, reused: 0, newFindings: failed, knownFindings: 0, fixedFindings: 0 };
+    if (family === 'build') {
+      // A step the workflow no longer holds drops its verdict; a step without a database this run keeps the verdict a run with one recorded.
+      records.retain(BUILD_STEP, kept);
+      session.replace(BUILD_FOLDER, records.toArray().filter((record) => record.step === BUILD_STEP));
+    }
+    const reason = mine.length === 0 ? `${CI_WORKFLOW} has no ${family} step` : family === 'build' ? `${String(mine.length)} step(s) of ${CI_WORKFLOW}, ${decision?.reason ?? ''}` : `${String(mine.length)} step(s) of ${CI_WORKFLOW}, never cached`;
+    const report: FamilyReport = { family, mode: decision?.mode ?? 'full', reason, checked: mine.length - reused, reused, newFindings: failed, knownFindings: 0, fixedFindings: 0 };
     session.report(report);
     reports.push(report);
   }
