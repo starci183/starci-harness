@@ -11,7 +11,7 @@ import { trackedFiles } from '../runtime/scripts/hfs/check.mjs';
 import { inCacheDir } from './content-index.mjs';
 import { lockEntries } from './fingerprint.mjs';
 import { keyWithReads, readsContext, readsJson, readsOfData, readsOfPaths, sessionReadsContext, type ToolReads } from './package-closure.mjs';
-import { RecordSet } from './records.mjs';
+import { RecordSet, hostData, portableData } from './records.mjs';
 import { makeReport } from './report.mjs';
 import { sideKey } from './side-key.mjs';
 import type { CheckSession, FamilyReport, Finding, JsonValue } from './types.mjs';
@@ -58,14 +58,14 @@ export async function runWiringFamily(session: CheckSession, { repoRoot, edition
   let wiring: WiringResult;
   let reused = false;
   if (decision.mode === 'diff' && held !== undefined && heldReads !== null && heldResult !== undefined && held.hash === keyWithReads(key.key, heldReads, context)) {
-    wiring = heldResult as unknown as WiringResult;
+    wiring = hostData(heldResult, session.root, path.sep) as unknown as WiringResult;
     reused = true;
   } else {
     wiring = await prove();
     const reads = proofReads(session, wiring, side);
     const unchanged = session.unchanged(key.inputs, key.hashes) && keyWithReads(key.key, reads, readsContext(session.root, () => undefined)) === keyWithReads(key.key, reads, context);
     if (unchanged && !wiring.findings.some((finding) => finding.code === BOOT_PROOF_TIMEOUT)) {
-      records.put({ path: 'be', step: STEP, hash: keyWithReads(key.key, reads, context), findings: wiring.findings.map(compact), data: { reads: readsJson(reads), result: JSON.parse(JSON.stringify(wiring)) as JsonValue } });
+      records.put({ path: 'be', step: STEP, hash: keyWithReads(key.key, reads, context), findings: wiring.findings.map(compact), data: { reads: readsJson(reads), result: portableData(JSON.parse(JSON.stringify(wiring)) as JsonValue, session.root) } });
     }
   }
   step.tick(key.inputs.length, reused ? key.inputs.length : 0, reused ? 0 : key.inputs.length);
