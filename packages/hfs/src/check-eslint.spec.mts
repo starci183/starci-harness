@@ -15,7 +15,7 @@ interface Run { side: string; args: string[] }
 /** The fields of the CLI's JSON report this spec reads. */
 interface Report {
   ok: boolean;
-  gate: { pass: boolean };
+  gate: { pass: boolean; count: number; line: string | null };
   counts: { error: number; warning?: number; info?: number };
   counting?: Record<string, number>;
   findings: { code: string; rule?: string; severity?: string; level?: string }[];
