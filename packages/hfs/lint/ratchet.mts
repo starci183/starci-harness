@@ -2,7 +2,7 @@
 // files it touches. Each touched source file has no more ESLint error findings than at the base, and a new file has none; the findings it already
 // carried stay report-only. Both versions of each touched file are linted in ONE ESLint child per scope, as texts in place of the file (lintText with the
 // file's path: lint/eslint-list.cts), through the side's installed config, so the typed rules judge the base text against the same program. Only the
-// touched files are linted, so the ratchet costs one typed program per side the change touches. A ratchet violation blocks at any count (gate-threshold.mts).
+// touched files are linted, so the ratchet costs one typed program per side the change touches. A ratchet violation is an error finding, so it turns the gate red (gate-verdict.mts).
 //   staged   the pre-commit hook (`starci app check --ratchet`): the staged files (index content) against HEAD, the parent of the commit to be
 //   range    the pre-push hook and CI (the lint family of `starci app check` under the profile): the files the commits since the base touched (HEAD content)
 //            against the base, the merge-base of HEAD with STARCI_BASE_REF (CI's pushed range), else with origin/<branch>, else HEAD^

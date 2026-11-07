@@ -14,7 +14,7 @@ import { silentProgress } from '../cache/progress.mjs';
 import { resolveTrust, FORGED, STALE, MISSING } from '../cache/trust.mjs';
 import { runFormatFamily } from '../cache/format-family.mjs';
 import { git } from '../cache/git.mjs';
-import { gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
+import { gateVerdict } from '../runtime/scripts/hfs/gate-verdict.mjs';
 import type { Prettier } from '../sync/format.mjs';
 
 /** A prettier double: a text with `;;` is unformatted. */
@@ -60,7 +60,7 @@ async function ciRun(root: string, tracked: string[]) {
 }
 
 for (const edition of ['lite', 'full']) {
-  test(`HFS_CHECK_CACHE_FORGED@${edition} violating: a record that matches the tree with its findings deleted by hand is a hard blocker`, async (t) => {
+  test(`HFS_CHECK_CACHE_FORGED@${edition} violating: a record that matches the tree with its findings deleted by hand is an error finding`, async (t) => {
     const root = app();
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     await seeded(root, ['a.ts']);
@@ -71,7 +71,7 @@ for (const edition of ['lite', 'full']) {
     commit(root);
     const verdicts = await ciRun(root, ['a.ts']);
     assert.deepEqual(verdicts.map((verdict) => verdict.code), [FORGED]);
-    assert.equal(gateVerdict([{ code: FORGED }, ...Array.from({ length: 0 }, () => ({ code: 'X' }))]).pass, false, 'a single forged record blocks at any count');
+    assert.equal(gateVerdict([{ code: FORGED }]).pass, false, 'a single forged record turns the gate red');
   });
 
   test(`HFS_CHECK_CACHE_FORGED@${edition} passing: the honest committed cache gives no verdict`, async (t) => {

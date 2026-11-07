@@ -12,7 +12,7 @@ import { mkdtemp } from './helpers/tmpdir.mjs';
 import { contractReleaseFindings, defaultGit, destructiveMigrationFindings } from '../runtime/scripts/hfs/rules/database-migrations.mjs';
 import { LANDED_KNOWN_CODES, landedBase, withLandedMigrationsKnown } from '../runtime/scripts/hfs/rules/database-landed.mjs';
 import { declarationShapeProblems } from '../runtime/scripts/hfs/declaration-shape.mjs';
-import { gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
+import { gateVerdict } from '../runtime/scripts/hfs/gate-verdict.mjs';
 import type { Finding } from '../runtime/scripts/hfs/rules/rule-types.mjs';
 
 const LANDED = 'db/migrations/20261110101300_identity-sessions-package.sql';

@@ -2,7 +2,7 @@
 
 Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check`
 and the unit specs judge only what differs from the cache, on a developer host and in CI alike. `HFS_CHECK_CACHE_FORGED`
-is a hard blocker at any count; `HFS_CHECK_CACHE_STALE` and `HFS_CHECK_CACHE_MISSING` only warn in CI. Every push carries
+is an error finding; `HFS_CHECK_CACHE_STALE` and `HFS_CHECK_CACHE_MISSING` only warn in CI. Every push carries
 the records of a real run, the release gate trusts them, and a nightly run proves the trust. The code is
 `packages/hfs/cache/`; the slot is `app.starcistacks.cache`. Its one rule is that a reused result is always the one a full
 run would produce now; whenever the cache cannot prove that, the step runs in full.
@@ -115,7 +115,7 @@ branch every night and on dispatch: every family is recomputed from scratch, and
 when the committed records are not the ones it produced, so a cache that lies is found there. Its newest finished run is the
 lock of the release gate (`packages/hfs/release/cache-verify-lock.mts`): green, or none yet, leaves the gate open; red or
 unreadable refuses it with `HFS_CHECK_CACHE_VERIFY_LOCKED`, naming the run, until a green run clears it. A forged record
-stays a hard blocker at any count. Times are printed, never stored.
+stays an error finding. Times are printed, never stored.
 
 ## Layout and format
 
@@ -206,7 +206,7 @@ out of both parts unless something a program or a spec loads reaches it: a works
 the harness's own), or the resolved dependencies of a declared package name it in the lockfile. A manifest that cannot be read leaves nothing
 out. `typescript` is no tool of that set, so its bump re-runs types, test and lint. A bump of a tool that no manifest declares for a workspace
 therefore re-runs the families that read it (the `pkg:` and `lock:<family>` rows above) and keeps the types and test records. The quality profile of the policy is not a
-part (the gate threshold only judges the verdict).
+part (the verdict only counts error findings).
 
 A run whose CLI or any `@starci` package is linked or copied from a local folder (no recorded integrity) has no
 portable fingerprint: it runs in full, says so, and writes nothing into `.starcistacks/cache/`, so a developer testing a
@@ -226,7 +226,7 @@ findings were deleted by hand, so where the cache is trusted from depends on who
   or a release tag (whose commit main's CI already verified), and the branch tip for a scheduled or dispatched run on the
   default branch (the nightly verify), read with `git show <base>:<path>` (the managed workflow fetches it). The change's own edits to the cache are never trusted: CI judges everything the base cache does not
   cover, then compares the change's committed cache with what it inherited or computed. A record whose key matches the
-  tree and whose findings differ is `HFS_CHECK_CACHE_FORGED`, a hard blocker at any count, whether the record was edited
+  tree and whose findings differ is `HFS_CHECK_CACHE_FORGED`, an error finding, whether the record was edited
   by hand or a step is not deterministic across hosts. A key the change touched with no current record is
   `HFS_CHECK_CACHE_STALE`. No trusted base (any other event, an unreadable base) is a full run.
 
@@ -472,10 +472,10 @@ parent holds about three times the records' MB, not the seven times their parsed
 
 `R343`, enforcer `hfs` (R340 to R342 are taken by the grammar and entity-base lint rules): an app's committed check cache is trusted in CI only as it stands at the trusted base;
 a record whose key matches the tree and whose findings differ from the inherited or computed result is
-`HFS_CHECK_CACHE_FORGED` (a hard blocker), a touched key without a current record is `HFS_CHECK_CACHE_STALE`, and a
+`HFS_CHECK_CACHE_FORGED` (an error finding), a touched key without a current record is `HFS_CHECK_CACHE_STALE`, and a
 missing cache is `HFS_CHECK_CACHE_MISSING`. Why: CI trusts a committed artifact only where review and CI already
 judged it, so a hand edit can cost time but never pass a file. Enforcement:
-forged fails at any count; stale and missing warn in CI (report-only, the run is full or wider and still correct); a push
+forged fails the run; stale and missing warn in CI (report-only, the run is full or wider and still correct); a push
 whose cache a real run on its tree changes is refused at the pre-push hook (`HFS_CHECK_CACHE_UNWARMED`,
 `HFS_CHECK_CACHE_UNPORTABLE`, `packages/hfs/cache/freshness.mts`), so CI never goes cold and past its ESLint budget; and a red
 or unreadable nightly verify refuses the release gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`).
@@ -508,4 +508,4 @@ or unreadable nightly verify refuses the release gate (`HFS_CHECK_CACHE_VERIFY_L
 
 [lint.md](lint.md) (which machine judges what and where it runs), [stacks.md](stacks.md) (the `.starcistacks/` shape),
 the `app check` usage of `@starci/hfs`, and [policy/quality.yaml](../../policy/quality.yaml)
-for the gate threshold the verdict applies.
+for the profiles the verdict runs under.

@@ -75,7 +75,7 @@ checks; which check families then run in full and which diff-only is [check-cach
 the units are sharded (`--gate test --shard <i>/<n>`) and the coverage job judges the merged report with `--coverage-from`. Sonar and the
 Codecov upload run on every `full` run, so a release is analysed before it ships rather than only on tags after the fact,
 and the quality gate's verdict, never the scanner's exit, is the job's result (PROJECT-STACKS-8). In the verdicts,
-`app check` is green under 20 error findings with no hard blocker; typecheck, build,
+`app check` is green only with zero error findings; typecheck, build,
 tests, coverage and the Sonar gate are binary.
 
 **Root packages are built before they are read.** An app's root workspace packages (`packages/*`: the agent SDK, the module
@@ -174,7 +174,7 @@ The migration moves into the deploy, before the services update, under three rul
   migrations after the code stops using the target (BE-PERSISTENCE-19); the deploy applies them in the `contract` phase,
   after accept, and only when the previous accepted release's code no longer uses the target, which `app check --gate db`
   proves by refusing a contract migration that lands in the same release as the code change it depends on (a new
-  migration finding, so a hard blocker).
+  migration finding, so an error finding).
 - **No down migration runs by default.** A rollback restores service specs, never data (PROJECT-STACKS-6). Lite has no
   down migrations; full's `down()` stays an owner-run step. The backup taken before the migration, with its receipt, is the
   way back for data, and restoring it waits for the owner's yes, given with its loss window.
@@ -236,8 +236,8 @@ several databases, and the owner confirms it holds no data to keep; the next dep
   request needs the `verdict` check. Tags `v*`: creation only by the same, never moved or deleted. The canon pre-push hook
   stays the local guard; the rules are the server's.
 - **Required to deploy.** The `verdict` job: every required check job green for the sha (or the reused candidate run),
-  the images pushed, and `--ci-run` evidence accepted by the CLI. A hard blocker (plaintext secret, boot proof, migration
-  finding, a forged cache record) fails its job at any count.
+  the images pushed, and `--ci-run` evidence accepted by the CLI. Any error finding (plaintext secret, boot proof, migration
+  finding, a forged cache record) fails its job.
 - **The urgent path.** `starci app stack deploy --env <env> --urgent --reason "<text>" --execute` from the owner's machine
   is the urgent release, a feature: no CI, only the checks that can break production, and a safety floor that is never
   skipped. With no `--image` and no `--sha` it releases HEAD, adopting a tag already on it, unless HEAD already has a pushed
@@ -384,7 +384,7 @@ Where the packages differ from the design above, or add to it, the code and the 
 | Agents push main, so agents deploy | accept it (the green pipeline is the guard) / only the owner's pushes deploy (the `verdict` job checks the pusher) | accept it; the pause variable and the rollback cover the risk, and the urgent path already lets the owner ship alone |
 | The CI SSH key | sealed member `vps-ci` opened with the server key / GitHub Environment secrets as today | sealed: one GitHub secret per environment and the pinned host keys reviewed in git |
 | Pull request CI | add `pull_request` (checks only, no secrets) / keep apps without it | add it, so Dependabot's updates are judged |
-| Contract migrations | after accept, in the same deploy / held for a dispatch by the owner | after accept, with the same-release finding as a hard blocker |
+| Contract migrations | after accept, in the same deploy / held for a dispatch by the owner | after accept, with the same-release finding as an error finding |
 | Sonar on every release run | every full run / tags only as today | every full run, so the gate judges before the deploy |
 | Image cache | GitHub Actions cache per image / registry cache | Actions cache by default, registry cache per app when the 10 GB limit evicts |
 | Multi-architecture images | `linux/amd64` only unless declared / always amd64 and arm64 | amd64 unless an environment declares another node |
@@ -401,5 +401,4 @@ Where the packages differ from the design above, or add to it, the code and the 
 
 [check-cache.md](check-cache.md) (which run is diff-only and which full, and the trusted base), [stacks.md](stacks.md)
 (environments, custody, the operations and their safety rules), [authority/ci.md](../authority/ci.md), the `app stack`
-and `app release` usage of `@starci/hfs`, and [policy/quality.yaml](../../policy/quality.yaml) (`requireCi`, the gate
-threshold).
+and `app release` usage of `@starci/hfs`, and [policy/quality.yaml](../../policy/quality.yaml) (`requireCi`).

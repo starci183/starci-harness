@@ -143,7 +143,7 @@ export interface VerifyInput {
 
 /**
  * Compares the change's committed cache with what this run inherited or computed. A committed record whose key matches the tree and
- * whose findings differ from the computed one is FORGED (a hard blocker, whether it was edited by hand or a step is not deterministic
+ * whose findings differ from the computed one is FORGED (an error finding, whether it was edited by hand or a step is not deterministic
  * across hosts). A key the change touched (its record differs from the trusted one, or the trusted cache has none) that the committed
  * cache does not cover with a current record is STALE. A change that commits no cache at all while the run has computed one is MISSING.
  */

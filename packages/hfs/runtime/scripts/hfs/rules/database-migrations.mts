@@ -590,7 +590,7 @@ const RELEASE_TAG_GLOB = 'v*';
  * with git: each contract migration that is new since the previous release tag (absent there) is read for the objects it destroys, and the
  * be/src sources AS THEY WERE AT THE PREVIOUS RELEASE TAG must not reference them (the sources at HEAD are judged by destructiveMigrationFindings).
  * The first release, a repository without a release tag, or an unreadable git history has no previous release and no finding. It reports
- * DB_MIGRATION_DESTRUCTIVE (R259), a hard blocker: ship the code change in one release and its contract migration in the next.
+ * DB_MIGRATION_DESTRUCTIVE (R259), an error finding: ship the code change in one release and its contract migration in the next.
  */
 export async function contractReleaseFindings({ repoRoot, migrations, git }: { repoRoot: string; migrations: Parsed; git: Parsed }) {
   const rulings = destructiveRulings(repoRoot);

@@ -59,7 +59,7 @@ const profileSchema = z.object({
 /** One profile of quality.yaml: its canon stacks and the gates of each tier. */
 export type Profile = z.infer<typeof profileSchema>
 
-const qualitySchema = z.object({
+const qualitySchema = z.strictObject({
     schema: z.literal("starci/quality-policy@1"),
     runtime: z.object({ stepTimeoutSeconds: z.number().int().positive().max(3600), compositionRules: z.array(z.string().min(1)),
         /** Package folders with no ESLint config, linted by the compiler's unused checks over each of their tsconfigs (core/check/scope.ts compilerLintPackage). */
@@ -68,11 +68,13 @@ const qualitySchema = z.object({
     /** Where a workflow task's heavy checks run: `task` in its own verify, `wave` in the workflow's wave verify (harness/wave.ts). */
     verify: z.object({ tier: z.enum(["task", "wave"]) }),
     requireCi: z.array(z.enum(CI_GATED_ACTIONS)),
-    /** `starci app check` passes under `errorLimit` error findings with no hard blocker. */
-    gate: z.object({ errorLimit: z.number().int().positive().max(1000) }).default({ errorLimit: 20 }),
     defaults: z.object({ none: z.string().min(1), app: z.string().min(1), runtime: z.string().min(1) }),
     profiles: z.record(z.string().min(1), profileSchema),
     ci: z.partialRecord(ciGates, z.record(z.string(), z.unknown())).optional(),
+}, {
+    error: (issue) => issue.code === "unrecognized_keys"
+        ? `quality.yaml has no ${issue.keys.map((key) => `\`${key}\``).join(", ")}${issue.keys.includes("gate") ? ": `starci app check` is green only with zero error findings, so there is no gate.errorLimit to set" : ""}`
+        : undefined,
 })
 
 /** quality.yaml: the tiers, the profiles and the actions that wait for CI. */

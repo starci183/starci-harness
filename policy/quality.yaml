@@ -34,12 +34,6 @@ verify:
 # A deploy that passes --ci-run <run> (the CI deploy job, contexts/project/cicd.md) is judged by the CLI on that run instead of this list: every job the
 # CI standard requires (@starci/hfs knowledge/hfs/ci-standard.yaml, not the workflow file) must have concluded success for the exact --sha, for any environment.
 requireCi: [release.cut, deploy.prod]
-# `starci app check` is green while fewer than errorLimit error findings remain and none is a hard blocker
-# (a plaintext secret, the boot proof, a migration finding), so a release is not held back finding by finding by the last
-# structural nits; every finding is still printed. The CLI hands
-# it to @starci/hfs as STARCI_GATE_ERROR_LIMIT; without it hfs uses 20.
-gate:
-  errorLimit: 20
 # The profile of a project whose hfs.json names none: no hfs.json, an app (lite or full), the runtime itself.
 defaults:
   none: lib

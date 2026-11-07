@@ -36,7 +36,7 @@
 //                                            reports, the lint ratchet (lint/ratchet.mts) refuses the commits since the base that add lint findings to a file they touch.
 //                                            --profile prints the profile (with one --gate, only that gate's mode: the word the pre-commit hook reads);
 //                                            --ratchet is the pre-commit lint ratchet over the staged files against HEAD. Both take no other flag.
-//                                            Exit 1 at 20 error findings or a hard blocker (gate-threshold.mts). The root checks run once and
+//                                            Exit 1 with any error finding that is not report-only (gate-verdict.mts). The root checks run once and
 //                                            the side checks and the machine once per side, the side folder as their root; every path is app-relative.
 //   starci app scaffold <name> [--cwd <dir>]  a new app <dir>/<name>/ (<dir> is the global --cwd): the root (hfs.json, package.json, managed files, .starciwork) and the
 //                                            be/ and fe/ skeletons (scaffold/app.mts). Accepts an empty unborn main Git root.
@@ -95,7 +95,7 @@ import { secretMain } from '../runtime/scripts/hfs/secret.mjs';
 import { dbBaselineMain } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { dbRestampMain } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
 import { formatCoverageReport } from '../runtime/scripts/hfs/coverage-from.mjs';
-import { gateVerdict } from '../runtime/scripts/hfs/gate-threshold.mjs';
+import { gateVerdict } from '../runtime/scripts/hfs/gate-verdict.mjs';
 import { activeProfile, familyModes, profileLabel, profileNotices, type ActiveProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
 import { PROFILE_GATES } from '../runtime/scripts/lib/stack-declaration.mjs';
 import { HFS_DECLARATION_FILE, HfsSlotsError, SIDES, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
@@ -620,7 +620,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   const linterFindings = [...(eslint?.findings ?? []).map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: finding.severity === 'warning' ? 'warning' : 'error' })), ...stylelintFindings(style.results, repoRoot)];
   // A finding of a family the profile reports is marked `report`: listed and recorded, never part of the verdict.
   const findings = [...proof.findings, ...extra, ...verdicts, ...linterFindings].map((finding) => (modes[familyOf(finding)] === 'report' ? { ...finding, report: true } : finding));
-  // Green under the threshold (gate-threshold.mts): every finding is still listed, only the verdict changes.
+  // Green only with no error finding outside a report profile (gate-verdict.mts); every finding is still listed.
   const verdict = gateVerdict(findings.filter(finding => finding.level === 'error' && finding.report !== true));
   const toolErrors = [...(eslint?.errors ?? []), ...style.errors, ...ratchetErrors];
   const counts = { ...proof.counts, error: findings.filter(finding => finding.level === 'error').length, warning: findings.filter(finding => finding.level === 'warning').length };

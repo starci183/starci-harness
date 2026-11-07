@@ -288,7 +288,7 @@ test('the ratchet: touching a dirty file without adding findings passes, adding 
   const ratchet = (pushed.report.findings as Doc[]).filter((finding) => finding.code === 'LINT_RATCHET_RAISED');
   assert.deepEqual(ratchet.map((finding) => finding.path), ['be/src/clean.ts']);
   assert.equal(ratchet[0].report, undefined, 'a ratchet finding is never report-only');
-  assert.equal(pushed.report.gate.hard.includes('LINT_RATCHET_RAISED'), true, 'it blocks at any count');
+  assert.equal(pushed.report.gate.pass, false, 'the ratchet finding turns the gate red');
   assert.equal((await check(app, ['--gate', 'lint', '--side', 'fe', '--json'])).exit, 0, 'a side the commits did not touch has nothing to ratchet');
   // the same commit judged on main (full gate): no ratchet, the plain lint verdict
   const main = await check(app, ['--gate', 'lint', '--json'], { env: { GITHUB_REF: 'refs/heads/main' } });

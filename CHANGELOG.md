@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.87 - 2026-11-07
+
+- Changed: `starci app check` is green only with zero error findings, so `gate.errorLimit` is removed from policy/quality.yaml, its schema field is gone and the CLI no longer hands `STARCI_GATE_ERROR_LIMIT` to `@starci/hfs`. quality.yaml is now a strict schema: a `gate` key (or any other unknown key) is refused `POLICY_INVALID`, and for `gate` the message says there is no error limit to set. Spec: `src/harness/policy-gate.test.ts`. The hfs requirement follows the pin once npm serves `@starci/hfs` 6.0.6 (`cli-follow`).
+
 ## 1.1.0-alpha.86 - 2026-11-07
 
 - Removed: the package overlay. `starci deps source` (`--local`, `--npm`, `--sync`), the packages it copied into an app's `node_modules`, its record `deps-local.json`, `reapplyLocal` at seat start, task verify and the install a check gives its checkout, the heal of the record by `worktree gc`, the copy of a whole install cache entry for a repository in local mode, and the push gate's `DEPS_LOCAL_AHEAD` (it compared local copies with the published tarball) are gone. A project whose state folder still records an overlay is refused `DEPS_OVERLAY_REMOVED` by `deps install-local`, `deps check` and the install a check gives its checkout, with one message naming the registry flow.

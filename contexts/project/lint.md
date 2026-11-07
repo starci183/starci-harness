@@ -31,8 +31,8 @@ and the laws with their enforcers are [hfs/rules.yaml](../hfs/rules.yaml).
   composer answers for them itself (`cli/src/core/check/composition.ts`). The tail of every red step's output, secrets redacted, is kept as the task's
   evidence and `starci task status <task>` prints it.
 - **CI tier**: after the push, on main. Nobody waits for it unless `requireCi` lists the action.
-- **The app's own scripts**: hooks and CI steps the app wires (format check, stylelint, `starci app check`, green at < 20
-  error findings (`gate.errorLimit` of [policy/quality.yaml](../../policy/quality.yaml)) and no hard blocker), each under the
+- **The app's own scripts**: hooks and CI steps the app wires (format check, stylelint, `starci app check`, green only with zero
+  error findings that the branch profile does not report), each under the
   branch profile of the branch it judges (PROJECT-LINT-2). The harness does not call them; they run in the app's CI.
 
 A profile picks the tiers' gates and its canon stacks. `be` and `fe` are a side repository's, `app` a one-repository
@@ -125,7 +125,7 @@ the stricter mode. The branch name alone decides, so a hook and CI agree; an ups
 - **The lint ratchet.** Where lint reports, a commit never adds lint findings to a file it touches: each touched source file
   has no more ESLint error findings than at the base (the parent commit for the pre-commit hook, `starci app check
   --ratchet`; for the pre-push hook and CI the merge-base with the pushed range or the remote branch, else `HEAD^`), and a new
-  file has none (`LINT_RATCHET_RAISED`, R379, a hard blocker). The range ratchet trusts the lint records first, as every
+  file has none (`LINT_RATCHET_RAISED`, R379, an error finding). The range ratchet trusts the lint records first, as every
   family trusts the warm cache: a touched file that the committed cache at the base and this run's
   lint records both hold, with no rule's count risen, is settled without a child, so a first push of a profile branch, whose
   base is far back, does not lint the whole diff twice. Every other file has both versions linted through the side's installed

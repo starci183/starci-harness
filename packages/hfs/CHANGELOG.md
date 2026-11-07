@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.0.6 - 2026-11-07
+
+- Changed: `starci app check` (and `--gate lint`) is green only with zero error findings. The threshold is gone: a run with fewer than 20 error findings no longer exits 0, and no code is a "hard blocker" any more, since every error blocks. The verdict is one rule over the error findings that the branch profile does not report (`gateVerdict` in `runtime/scripts/hfs/gate-verdict.mts`, formerly `gate-threshold.mts`): `gate: red, N error finding(s)` or green with no line. `GATE_ERROR_LIMIT`, `gateErrorLimit`, `STARCI_GATE_ERROR_LIMIT`, `GATE_THRESHOLD_RULING`, `HARD_BLOCKERS` and the `hard` field of the report's `gate` are removed. Specs: `src/gate-verdict.spec.mts`, `src/check-eslint.spec.mts`.
+
 ## 6.0.5 - 2026-11-07
 
 - A patch: the check cache treats a `@starci` package whose lockfile `resolved` names a registry on this machine (a `starci deps install-local` install) as having no portable fingerprint, so a run under a local install writes no cache and the push gate's `HFS_CHECK_CACHE_UNPORTABLE` names `starci deps install-local --restore` as the remedy (`localReasonOf` in `cache/fingerprint.mts`, specs `cache-fingerprint-families.spec.mts`, `check-cache-freshness.spec.mts`). The generated verb catalog follows the CLI's registry (`deps source` gone, `deps install-local` added).

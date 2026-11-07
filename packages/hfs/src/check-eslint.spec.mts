@@ -106,10 +106,11 @@ test('CLI app check executes both FE packages in one ESLint invocation, retains 
   }, transport(app, runs));
   assert.equal(checks, 1);
   assert.deepEqual(runs.map(run => run.side), ['be', 'fe']);
-  // Two ordinary error findings are under the threshold: green, and both stay reported.
-  assert.equal(checked.exit, 0);
-  assert.equal(checked.report.ok, true);
-  assert.equal(checked.report.gate.pass, true);
+  // Two error findings make the gate red, and both stay reported.
+  assert.equal(checked.exit, 1);
+  assert.equal(checked.report.ok, false);
+  assert.equal(checked.report.gate.pass, false);
+  assert.equal(checked.report.gate.line, 'gate: red, 2 error finding(s)');
   assert.equal(checked.report.counts.error, 2);
   assert.deepEqual(checked.report.findings.map(finding => finding.code), ['HFS_MANAGED_FILE_DRIFT', familyCode]);
   assert.equal(checked.report.findings[1]!.rule, 'starci-grammar/app-shell-frame');
@@ -122,7 +123,8 @@ test('app check --gate lint --side fe runs the shared ESLint execution of that s
   const checked = await invoke(['check', '--gate', 'lint', '--side', 'fe'], app, ({ repoRoot }) => { checks++; return cleanCheck(repoRoot); }, transport(app, runs));
   assert.equal(checks, 1);
   assert.deepEqual(runs.map(run => run.side), ['fe']);
-  assert.equal(checked.exit, 0, 'one ordinary finding is under the threshold');
+  assert.equal(checked.exit, 1, 'one error finding makes the gate red');
+  assert.equal(checked.report.gate.pass, false);
   assert.deepEqual(checked.report.findings.map(finding => finding.code), [familyCode]);
   assert.deepEqual(checked.report.eslint.sides, { fe: { files: 2 } });
 });
@@ -161,7 +163,7 @@ test('app check --out writes the merged Sonar import of every finding the run pr
   const app = fixture(context);
   const target = path.join(app.root, 'reports', 'lint.fe.sonar.json');
   const checked = await invoke(['check', '--gate', 'lint', '--side', 'fe', '--out', 'reports/lint.fe.sonar.json'], app, ({ repoRoot }) => cleanCheck(repoRoot, [{ code: 'HFS_MANAGED_FILE_DRIFT', level: 'error', path: 'fe/package.json', message: 'Managed output differs.' }]), transport(app, []));
-  assert.equal(checked.exit, 0);
+  assert.equal(checked.exit, 1, 'the findings it writes are errors, so the gate is red');
   const document = JSON.parse(fs.readFileSync(target, 'utf8')) as { rules: { id: string; engineId: string }[]; issues: { ruleId: string; primaryLocation: { filePath: string } }[] };
   assert.deepEqual(document.rules.map(rule => [rule.engineId, rule.id]).sort(), [['eslint', 'starci-grammar/app-shell-frame'], ['starci-hfs', 'HFS_MANAGED_FILE_DRIFT']]);
   assert.ok(document.issues.some(issue => issue.ruleId === 'starci-grammar/app-shell-frame' && issue.primaryLocation.filePath === 'fe/src/family.tsx'));
@@ -202,13 +204,13 @@ test('a counting-cohort warning is reported and counted per rule and never enter
     const run = await base(spec);
     return { results: (run.results ?? []).map((result: { filePath: string; messages: unknown[] }) => ({ ...result, messages: [...result.messages, ...Array.from({ length: 25 }, () => warning)] })) };
   };
-  const checked = await invoke(['check', '--gate', 'lint', '--side', 'fe'], app, ({ repoRoot }) => cleanCheck(repoRoot), counting);
-  assert.equal(checked.exit, 0, '50 warnings sit above the error threshold and still leave the gate green');
+  const checked = await invoke(['check', '--gate', 'lint', '--side', 'be'], app, ({ repoRoot }) => cleanCheck(repoRoot), counting);
+  assert.equal(checked.exit, 0, 'warnings never enter the verdict, however many there are');
   assert.equal(checked.report.gate.pass, true);
-  assert.deepEqual(checked.report.counts, { error: 1, warning: 50, info: 0 });
-  assert.deepEqual(checked.report.counting, { 'starci-fe/no-spacing-utility': 50 });
-  assert.equal(checked.report.findings.filter(finding => finding.severity === 'warning').length, 50);
-  assert.equal(checked.report.findings.filter(finding => finding.severity === 'warning' && finding.level === 'warning').length, 50, 'a counting-cohort finding is a warning, never an error');
+  assert.deepEqual(checked.report.counts, { error: 0, warning: 25, info: 0 });
+  assert.deepEqual(checked.report.counting, { 'starci-fe/no-spacing-utility': 25 });
+  assert.equal(checked.report.findings.filter(finding => finding.severity === 'warning').length, 25);
+  assert.equal(checked.report.findings.filter(finding => finding.severity === 'warning' && finding.level === 'warning').length, 25, 'a counting-cohort finding is a warning, never an error');
 });
 
 
