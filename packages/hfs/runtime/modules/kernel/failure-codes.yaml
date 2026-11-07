@@ -3794,8 +3794,8 @@ HFS_CHECK_CACHE_UNPORTABLE:
   title_vi: "Máy này không ghi được cache kiểm tra mà CI tin được"
   meaning_vi: "Fingerprint của lần chạy không di động: một gói `@starci/*` hoặc CLI được link hay chép từ thư mục cục bộ (không có integrity ghi lại), nên cache không được ghi và lần push không mang bản ghi ấm."
   causes_vi:
-    - "Đang dùng `starci deps source --local` hoặc một bản link của gói harness"
-  nextStep_vi: "Chạy `starci deps source --npm`, rồi `starci app check`, commit `.starcistacks/cache/` và push."
+    - "Đang dùng một gói harness cài từ registry cục bộ (`starci deps install-local`) hoặc một bản link của gói"
+  nextStep_vi: "Chạy `starci deps install-local --restore`, rồi `starci app check`, commit `.starcistacks/cache/` và push."
   owner: op-retry
   kind: check-finding
 

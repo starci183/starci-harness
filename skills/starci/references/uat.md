@@ -71,9 +71,8 @@ starci uat run <run-folder>/walk.mjs --forward 3000,3001 --out <run-folder>
   `ops/uat.yaml`); at the deadline the container is killed and removed.
 - `--json` reports the image, the forwards, the files the run wrote, the exit code, the duration and the tail of
   stdout and stderr. Exit 0 is green, 1 is red or refused, 2 is bad usage.
-- Before the container starts, the checkout the verb runs in gets what a wave gives the checkout it judges: each install
-  it holds takes the project's local `@starci` package sources when the project is in local package mode (`starci deps
-  source --local`), so the walk serves the packages the wave judged, never the registry pins; then every workspace package
+- Before the container starts, the checkout the verb runs in gets what a wave gives the checkout it judges: its install,
+  the packages its lockfile names; then every workspace package
   its app imports is built or restored from the build cache, the preparation `check run` makes before its typecheck (each
   under the heavy governor). Serve the app from that checkout; an install or a package that cannot be given refuses
   `UAT_APP_SETUP_FAILED`.

@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto"
 import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
-import { readRecord, reapplyLocal } from "../core/deps/packages.js"
+import { refuseRecordedOverlay } from "../core/deps/overlay-refusal.js"
 import { captureNpm, npmVersion, pidAlive } from "../shared/exec.js"
 import type { RunOptions, ToolRun } from "../shared/exec.js"
 import { evidenceTail } from "../shared/output.js"
@@ -141,38 +141,34 @@ const linkDir = (target: string, path: string): void => {
 }
 
 /**
- * Builds the checkout's node_modules from a cache entry. Linked: a real node_modules folder whose every package (or scope member)
- * is a link into the cache, the links npm made to the checkout's own folders re-made to this checkout, and the marker. Copied
- * (`materialize`, for a repository in local package mode, whose copies are written over installed packages): the whole tree.
+ * Builds the checkout's node_modules from a cache entry: a real node_modules folder whose every package (or scope member)
+ * is a link into the cache, the links npm made to the checkout's own folders re-made to this checkout, and the marker.
  */
-const fromCache = (dir: string, entry: string, materialize: boolean): void => {
+const fromCache = (dir: string, entry: string): void => {
     const modules = join(dir, "node_modules")
     const cached = join(entry, "node_modules")
-    if (materialize) cpSync(cached, modules, { recursive: true, verbatimSymlinks: true })
-    else {
-        mkdirSync(modules, { recursive: true })
-        writeFileSync(join(modules, LINKED_MARKER), `${entry}\n`)
-        for (const name of entriesOf(cached)) {
-            const from = join(cached, name)
-            if (lstatSync(from).isDirectory()) linkDir(from, join(modules, name))
-            else cpSync(from, join(modules, name), { verbatimSymlinks: true })
-        }
+    mkdirSync(modules, { recursive: true })
+    writeFileSync(join(modules, LINKED_MARKER), `${entry}\n`)
+    for (const name of entriesOf(cached)) {
+        const from = join(cached, name)
+        if (lstatSync(from).isDirectory()) linkDir(from, join(modules, name))
+        else cpSync(from, join(modules, name), { verbatimSymlinks: true })
     }
     const links = JSON.parse(readFileSync(join(entry, LINKS_FILE), "utf8")) as OwnLink[]
     for (const link of links) linkDir(resolve(dir, link.target), join(modules, link.path))
 }
 
 /**
- * The install of a clean checkout's lockfile folder `dir`, shared through the cache keyed by installKey: a hit links (or copies)
+ * The install of a clean checkout's lockfile folder `dir`, shared through the cache keyed by installKey: a hit links
  * the cached node_modules into the checkout without running npm; a miss runs `npm ci` under a heavy-command slot and caches its
  * result for the next checkout. A cache entry that cannot be read falls back to `npm ci`.
  */
-export const cachedInstall = async (dir: string, options: RunOptions, materialize: boolean): Promise<CachedInstall> => {
+export const cachedInstall = async (dir: string, options: RunOptions): Promise<CachedInstall> => {
     const key = installKey(dir)
     const entry = installCachePath(key)
     // A checkout that already holds a node_modules (a tracked one) can take nothing from the cache: npm ci runs over it.
     if (existsSync(join(dir, "node_modules"))) return freshInstall(dir, entry, key, options)
-    return singleFill(dir, entry, key, options, materialize, Date.now() + FILL_WAIT_MS, false)
+    return singleFill(dir, entry, key, options, Date.now() + FILL_WAIT_MS, false)
 }
 
 /** How long a checkout waits for another process's `npm ci` of the same key before it runs its own. */
@@ -221,13 +217,13 @@ const takeFill = (lock: string): boolean => {
  * key's fill lock runs `npm ci` and caches it, and every other one waits for that entry and links it, so concurrent checkouts of
  * one lockfile never install side by side. A waiter whose filler died takes the lock over; one that waited FILL_WAIT_MS runs its own.
  */
-const singleFill = async (dir: string, entry: string, key: string, options: RunOptions, materialize: boolean, deadline: number, waited: boolean): Promise<CachedInstall> => {
-    if (existsSync(join(entry, LINKS_FILE))) return fromEntry(dir, entry, key, options, materialize, waited)
+const singleFill = async (dir: string, entry: string, key: string, options: RunOptions, deadline: number, waited: boolean): Promise<CachedInstall> => {
+    if (existsSync(join(entry, LINKS_FILE))) return fromEntry(dir, entry, key, options, waited)
     const lock = fillLockOf(entry)
     if (takeFill(lock)) {
         try {
             // Filled between the look above and the lock: linked, not installed again.
-            if (existsSync(join(entry, LINKS_FILE))) return await fromEntry(dir, entry, key, options, materialize, waited)
+            if (existsSync(join(entry, LINKS_FILE))) return await fromEntry(dir, entry, key, options, waited)
             return await freshInstall(dir, entry, key, options)
         } finally {
             rmSync(lock, { force: true })
@@ -238,15 +234,15 @@ const singleFill = async (dir: string, entry: string, key: string, options: RunO
         return { ...run, note: `another process held the install of ${key} past ${String(FILL_WAIT_MS / 60_000)} minutes; ${run.note}` }
     }
     await sleep(FILL_POLL_MS)
-    return singleFill(dir, entry, key, options, materialize, deadline, true)
+    return singleFill(dir, entry, key, options, deadline, true)
 }
 
-/** Links (or copies) a cache entry into the checkout; an entry that cannot be used falls back to `npm ci`. */
-const fromEntry = async (dir: string, entry: string, key: string, options: RunOptions, materialize: boolean, waited: boolean): Promise<CachedInstall> => {
+/** Links a cache entry into the checkout; an entry that cannot be used falls back to `npm ci`. */
+const fromEntry = async (dir: string, entry: string, key: string, options: RunOptions, waited: boolean): Promise<CachedInstall> => {
     try {
-        fromCache(dir, entry, materialize)
+        fromCache(dir, entry)
         const after = waited ? ", after waiting for another process's install of it" : ""
-        return { run: null, key, reused: true, note: `node_modules ${materialize ? "copied" : "linked"} from the install cache ${key}${after} (no npm ci)` }
+        return { run: null, key, reused: true, note: `node_modules linked from the install cache ${key}${after} (no npm ci)` }
     } catch (error: unknown) {
         unlinkInstallLinks(dir)
         rmSync(join(dir, "node_modules"), { recursive: true, force: true })
@@ -269,7 +265,7 @@ const freshInstall = async (dir: string, entry: string, key: string, options: Ru
 /** Whether a folder holds an install already made in it: npm's own record of it, or the marker of one linked from the cache. */
 export const isInstalled = (dir: string): boolean => existsSync(join(dir, "node_modules", ".package-lock.json")) || existsSync(join(dir, "node_modules", LINKED_MARKER))
 
-/** What giving one lockfile folder its install did: green or red, npm's exit (0 when npm did not run), and where node_modules and its local copies came from. */
+/** What giving one lockfile folder its install did: green or red, npm's exit (0 when npm did not run), and where node_modules came from. */
 export interface CheckoutInstall {
     readonly status: "green" | "red"
     readonly exitCode: number
@@ -278,27 +274,19 @@ export interface CheckoutInstall {
 
 /**
  * Gives a lockfile folder `dir` of a checkout the install every judged or served copy of the app runs against, a wave's clean
- * checkout and a walk's checkout alike: an install the folder does not hold yet comes from the cache (cachedInstall; copied, not
- * linked, when the repository of `source` is in local package mode, `starci deps source --local`), and in local package mode the
- * repository's local copies are applied over whichever install the folder holds (reapplyLocal), so the checkout runs the `@starci`
- * packages its work tree runs, never the registry pins. Undefined when the folder holds an install and the repository is in npm
- * mode: there is nothing to give it.
+ * checkout and a walk's checkout alike: an install the folder does not hold yet comes from the cache (cachedInstall), so the checkout
+ * runs the `@starci` packages its lockfile names. A project that still records the removed package overlay is refused
+ * DEPS_OVERLAY_REMOVED (`source` is the repository whose record is read). Undefined when the folder already holds an install: there is
+ * nothing to give it.
  */
 export const installCheckout = async (dir: string, source: string, options: RunOptions): Promise<CheckoutInstall | undefined> => {
-    const local = (readRecord(source)?.packages.length ?? 0) > 0
-    let installed: CheckoutInstall | undefined
-    if (!isInstalled(dir)) {
-        const cached = await cachedInstall(dir, options, local)
-        const exitCode = cached.run?.exitCode ?? 0
-        const tail = cached.run === null ? "" : `\n${evidenceTail(cached.run.stdout, cached.run.stderr)}`
-        installed = { status: exitCode === 0 ? "green" : "red", exitCode, detail: `${cached.note}${tail}` }
-        if (installed.status === "red") return installed
-    }
-    if (!local) return installed
-    const reapplied = await reapplyLocal(source, dir)
-    if (reapplied === undefined) return installed
-    const lines = [installed?.detail ?? "node_modules already installed", "local package sources (starci deps source):", reapplied.detail]
-    return { status: reapplied.status, exitCode: installed?.exitCode ?? 0, detail: lines.join("\n") }
+    refuseRecordedOverlay(source)
+    if (isInstalled(dir)) return undefined
+    const cached = await cachedInstall(dir, options)
+    const exitCode = cached.run?.exitCode ?? 0
+    const tail = cached.run === null ? "" : `
+${evidenceTail(cached.run.stdout, cached.run.stderr)}`
+    return { status: exitCode === 0 ? "green" : "red", exitCode, detail: `${cached.note}${tail}` }
 }
 
 /**
@@ -311,7 +299,7 @@ export const linkCachedInstall = (dir: string): boolean => {
     const entry = installCachePath(installKey(dir))
     if (!existsSync(join(entry, LINKS_FILE))) return false
     try {
-        fromCache(dir, entry, false)
+        fromCache(dir, entry)
         return true
     } catch {
         unlinkInstallLinks(dir)
@@ -386,9 +374,9 @@ export interface Reinstalled extends CachedInstall {
  * checkout was given (`expected`, folders relative to it: an earlier reinstall stopped half-way), has that node_modules removed
  * (link only when it is a link to the target's install; a real one has its package links unlinked first) and is installed anew
  * through `cachedInstall` under the key of its own inputs: from the cache when that key is cached, else by `npm ci` under a
- * heavy-command slot, one fill per key. The caller reapplies local package sources afterwards.
+ * heavy-command slot, one fill per key.
  */
-export const reinstallStale = async (checkout: string, expected: readonly string[], options: RunOptions, materialize: boolean): Promise<Reinstalled[]> => {
+export const reinstallStale = async (checkout: string, expected: readonly string[], options: RunOptions): Promise<Reinstalled[]> => {
     const owed = new Set(expected)
     const stale = lockfileFolders(checkout).filter((folder) => {
         const modules = folder === "." ? "node_modules" : `${folder}/node_modules`
@@ -405,7 +393,7 @@ export const reinstallStale = async (checkout: string, expected: readonly string
             for (const name of entriesOf(modules)) unlinkFolder(join(modules, name))
             rmSync(modules, { recursive: true, force: true })
         }
-        done.push({ folder, ...(await cachedInstall(dir, options, materialize)) })
+        done.push({ folder, ...(await cachedInstall(dir, options)) })
     })
     return done
 }

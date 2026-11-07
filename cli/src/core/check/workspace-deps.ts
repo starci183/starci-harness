@@ -223,8 +223,7 @@ export const buildWorkspaceDependencies = async (root: string, given: readonly W
 
 /**
  * Prepares the checkout a walk serves the app from as a wave prepares the checkout it judges: each lockfile folder that holds an
- * install is given what a wave's install gives it (harness/install-cache.ts installCheckout: in local package mode the
- * repository's local `@starci` copies, the very packages the wave ran against, never the registry pins), then every
+ * install is given what a wave's install gives it (harness/install-cache.ts installCheckout), then every
  * in-repository workspace dependency any package of the checkout imports is restored or built (buildWorkspaceDependencies), so
  * the app the walk opens resolves what the wave resolved instead of answering 5xx for a missing module or export. Its steps; a
  * red one names the folder or package, and a red install builds nothing after it.

@@ -32,7 +32,7 @@ export const RUNTIME_STATE_DIR = '.runtime';
  * An installed or locally sourced copy keeps none (see installedStateBase).
  */
 export const runtimeStateDir = (root: string = skillRoot): string => path.join(root, RUNTIME_STATE_DIR);
-/** True when `root` is a copy an install or `starci deps source --local` placed below a node_modules folder, not a checkout. */
+/** True when `root` is a copy an install placed below a node_modules folder, not a checkout. */
 export const installedRoot = (root: string = skillRoot): boolean => path.resolve(root).split(/[\\/]/).includes('node_modules');
 /**
  * The per-user state base of an installed copy: LOCALAPPDATA (Windows), else XDG_STATE_HOME, else ~/.local/state, then

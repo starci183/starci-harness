@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import ts from 'typescript';
-import { computeFingerprint, differencesByFamily, familiesOfPart, familyOfFolder, fingerprintDifferences, lockPackageName, packageDigests } from '../cache/fingerprint.mjs';
+import { computeFingerprint, differencesByFamily, familiesOfPart, familyOfFolder, fingerprintDifferences, localReasonOf, lockPackageName, packageDigests } from '../cache/fingerprint.mjs';
 import { dirtySetOf, packageOf, resolveReferences, type ImportGraph, type ImportNode } from '../cache/import-graph.mjs';
 import { FAMILIES } from '../cache/types.mjs';
 
@@ -207,4 +207,13 @@ test('a manifest that cannot be read leaves nothing out of the types and test pa
   fs.writeFileSync(path.join(damagedBase, 'be', 'package.json'), '{ not json');
   assert.deepEqual(differing(damaged, damagedBase).get('types'), ['lock:types']);
   assert.equal(differing(damaged, base).has('lint'), true);
+});
+
+test('a @starci package resolved from a registry on this machine, linked, or without integrity has no portable fingerprint; a published install has', () => {
+  const published = { version: '1.0.0', integrity: 'sha512-a', resolved: 'https://registry.npmjs.org/@starci/x/-/x-1.0.0.tgz' };
+  assert.equal(localReasonOf('x', published, false), null);
+  assert.match(localReasonOf('x', { ...published, resolved: 'http://127.0.0.1:4873/@starci/x/-/x-1.0.1-local.1.tgz' }, false) ?? '', /installed from a registry on this machine \(starci deps install-local\)/u);
+  assert.match(localReasonOf('x', { ...published, resolved: 'http://localhost:4873/x.tgz' }, false) ?? '', /registry on this machine/u);
+  assert.match(localReasonOf('x', published, true) ?? '', /linked or copied from a local folder/u);
+  assert.match(localReasonOf('x', { version: '1.0.0' }, false) ?? '', /no recorded integrity/u);
 });

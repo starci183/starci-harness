@@ -6,7 +6,7 @@ fixes that package, never a shim in the app. The edit is a tier 1 branch ([branc
 1. `starci pkg branch <topic>` cuts `pkg/<app>-<topic>` into a worktree under the harness's `.claude/worktrees/`.
 2. Edit and commit there. Bump only the package you changed, with its CHANGELOG entry, in the commit that changes it; a
    package that requires it moves only when it needs the new API.
-3. Build the changed package, the one build a branch takes, and link it into the app (below).
+3. Publish the changed package to the local registry, the one build a branch takes, and install it in the app (below).
 4. `starci pkg handoff` (`--urgent` when a deploy waits on it: Debug lands it on main first).
 
 The edit's proof is the package's own gates where the edit is: `starci pkg test <package>` runs its typecheck, lint and
@@ -18,17 +18,35 @@ Debug alone merges a package edit branch and pushes harness main; once its hande
 green ([ci.md](ci.md)). Nobody asks Debug to publish: a change already on harness main is published by CI and is no handoff at all. Only the edited package is bumped and re-pinned: the app that consumes it pins the new version,
 and no other package or app moves.
 
-## An app uses the edit before npm serves it
+## The local registry: an urgent package change is used at once
 
-A package change is usable in the app the moment it is coded, long before it reaches npm: `starci deps source --local --cwd
-<worktree>/packages`, as `pkg branch` prints it, links the built package into the app ([cli/README.md](../../cli/README.md)
-"Package sources"), and the app's checks, verifies and walks run on that local build. Nothing waits for npm but a deploy:
-an app that deploys pins the version once npm serves it (`starci deps check` says so), and CI publishes it as soon as main
-is green ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20).
+An app uses an unreleased package edit (`@starci/hfs`, the CLI, a canon, the Grammar) at once, through one route: the npm
+registry on 127.0.0.1:4873, installed like npm. There is no other way: nothing is linked or copied into an app's
+`node_modules`, so every checkout, verify and walk runs the package its lockfile names. The registry is the compose host service
+`local-registry` of [ops/host.yaml](../../ops/host.yaml) (compose file and config in [ops/host/registry/](../../ops/host/registry/),
+storage in `local-registry/storage` of the shared state base): `starci host up local-registry` starts it, `starci host status`
+reports it, `starci host down local-registry` stops it, and `deps publish-local --execute` runs that same `host up` when it does
+not answer. A registry that answers is left as it is ([cli/README.md](../../cli/README.md) "A local registry").
 
-### Or install it like npm
+The flow, in order:
 
-When the app should install the edit instead of receiving a copy, `starci deps publish-local --execute` (`--cwd <worktree>`) builds the packages and publishes the versions npm lacks to the registry on 127.0.0.1:4873. That registry is the compose host service `local-registry` of [ops/host.yaml](../../ops/host.yaml) (compose file and config in [ops/host/registry/](../../ops/host/registry/), storage in `local-registry/storage` of the shared state base): `starci host up local-registry` starts it, `starci host status` reports it, `starci host down local-registry` stops it, and `deps publish-local --execute` runs that same `host up` when it does not answer. A registry that answers is left as it is, and there is no other way to run it. An app in `deps source --local` mode first runs `deps source --npm` to clear its recorded overlay, then runs `npm install @starci/<package>@<version> --@starci:registry=http://127.0.0.1:4873/ --replace-registry-host=never` with the pin raised ([cli/README.md](../../cli/README.md) "A local registry"). It is no publication ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20): the lockfile it writes is restored before a commit, and `DEPS_LOCAL_REGISTRY_COMMITTED` refuses a push that keeps it.
+1. In the package edit's worktree, `starci deps publish-local --execute --cwd <worktree>` builds the packages the branch changed
+   (or the ones `--package` names) and publishes each under a version of its own, the next of its `-local` series (`1.2.3` as
+   `1.2.4-local.<n>`). The version in git never changes; a registry version is immutable, so each publish takes a new number.
+2. In the app, `starci deps install-local <package>... --execute` installs the latest local version of each named package like npm:
+   every requirement of it in the app's manifests is raised to that version (an `overrides` entry for a package only another
+   package requires, hfs through `starci-harness`), `@starci` resolves from the registry and nothing else does, and
+   `.starciwork/install-local.json` records the pins it replaced.
+3. The app verifies the change with plain `starci app check`.
+4. Before a commit, `starci deps install-local --restore` puts the recorded npm pins back and installs them from npm.
+   GitHub CI cannot reach 127.0.0.1, so a lockfile or `.npmrc` that names the registry is refused
+   `DEPS_LOCAL_REGISTRY_COMMITTED`, and a pin only the registry holds is refused `DEPS_PIN_UNPUBLISHED`, by `starci deps check`.
+5. CI publishes the release to npm ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20); it never gates the app's verification. The
+   app pins the version npm serves once it does.
+
+It is no publication: nothing in the registry reaches npm. A project whose state folder still records a package overlay
+(`deps-local.json`) is refused `DEPS_OVERLAY_REMOVED` by `deps install-local`, `deps check` and the install a check gives its
+checkout; `starci deps install-local --restore` clears that record and runs `npm ci`.
 
 ## Grammar edits are content only
 

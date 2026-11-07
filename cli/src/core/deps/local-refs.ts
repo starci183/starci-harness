@@ -7,7 +7,7 @@ import { inOrder } from "../../harness/sequential.js"
 export const NPMJS_REGISTRY = "https://registry.npmjs.org/"
 
 /**
- * The npm flags that pin a question to the public registry. `starci deps publish-local` lets a developer point `@starci:registry`
+ * The npm flags that pin a question to the public registry. `starci deps install-local` points `@starci:registry`
  * at a registry on this machine through the environment or a user-level npmrc; a gate asking "can CI install this?" must never be
  * answered by that registry, so every such `npm view` and `npm pack` carries these (command-line flags beat both).
  */
@@ -85,7 +85,7 @@ export const localReferences = (file: string, text: string): LocalReference[] =>
 
 /**
  * Refuses DEPS_LOCAL_REGISTRY_COMMITTED when a lockfile or `.npmrc` committed at `revision` names a registry on this machine
- * (`starci deps publish-local` installs write such a `resolved` into package-lock.json): CI and production cannot reach it, so
+ * (`starci deps install-local` writes such a `resolved` into package-lock.json): CI and production cannot reach it, so
  * the app would stop installing. It judges every repository, an app or the harness alike.
  */
 export const judgeLocalRegistry = async (root: string, revision: string): Promise<void> => {
@@ -96,5 +96,5 @@ export const judgeLocalRegistry = async (root: string, revision: string): Promis
     if (found.length === 0) return
     const listed = found.slice(0, 5).map((one) => `${one.file}:${String(one.line)} ${registryAddress(one.url)}`).join("; ")
     const more = found.length > 5 ? ` and ${String(found.length - 5)} more` : ""
-    throw new Refusal("DEPS_LOCAL_REGISTRY_COMMITTED", `committed files point npm at this machine: ${listed}${more}. CI cannot install from it. Restore the lockfile (git checkout -- package-lock.json, or starci deps source --npm), pin a version npm serves, and commit that`)
+    throw new Refusal("DEPS_LOCAL_REGISTRY_COMMITTED", `committed files point npm at this machine: ${listed}${more}. CI cannot install from it. Run starci deps install-local --restore to put the npm pins back, then commit that`)
 }

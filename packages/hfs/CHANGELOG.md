@@ -1,5 +1,8 @@
 # Changelog
 
+## 6.0.5 - 2026-11-07
+
+- A patch: the check cache treats a `@starci` package whose lockfile `resolved` names a registry on this machine (a `starci deps install-local` install) as having no portable fingerprint, so a run under a local install writes no cache and the push gate's `HFS_CHECK_CACHE_UNPORTABLE` names `starci deps install-local --restore` as the remedy (`localReasonOf` in `cache/fingerprint.mts`, specs `cache-fingerprint-families.spec.mts`, `check-cache-freshness.spec.mts`). The generated verb catalog follows the CLI's registry (`deps source` gone, `deps install-local` added).
 ## 6.0.4 - 2026-11-07
 
 - Changed: a deploy of a `database.target: stack` database takes the first start whenever the database is empty, not only when no release was ever accepted: with an accepted release it reaches the running database first and, when it holds no migration history and no table in `public`, runs the hold deploy, the emptiness proof, the migrations and the real deploy (`firstStartReason` in `stack/db-phases.mts`; the deploy prints why it chose it). A database that cannot be reached still takes the expand path, which refuses it.

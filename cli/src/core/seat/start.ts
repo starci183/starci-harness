@@ -51,7 +51,6 @@ import type { TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { getWorkflow } from "../../harness/workflow.js"
 import { asRefusal, EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { reapplyLocal } from "../deps/packages.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 
@@ -499,16 +498,12 @@ const kernelOf = async (db: DatabaseSync, task: TaskRow, binary: OrcaBinary, opt
     return launchableKernel(getWorkflow(db, workflowId))
 }
 
-/** Refreshes the install of the Op worktree and gives the worker's checkout the repository's local package copies. */
-const syncCheckout = async (db: DatabaseSync, root: string, claim: { readonly task: { readonly id: string } }, folder: string, opPath: string | undefined): Promise<void> => {
+/** Refreshes the install of the Op worktree. */
+const syncCheckout = async (db: DatabaseSync, root: string, claim: { readonly task: { readonly id: string } }, opPath: string | undefined): Promise<void> => {
     const made = opPath === undefined ? undefined : opWorktreeOf(db, claim.task.id)
     if (made !== undefined) await refreshOpInstall(root, claim.task.id, made).catch((error: unknown) => {
         recordEvent(db, "op-install-refresh-deferred", claim.task.id, { error: asRefusal(error).message, code: asRefusal(error).code })
     })
-    // A repository in local package mode gives the worker's checkout the same local @starci copies as its work tree; a
-    // failed copy is recorded and the launch goes on, since the worker can still run `starci deps source --sync`.
-    const synced = await reapplyLocal(root, folder)
-    if (synced !== undefined) recordEvent(db, synced.status === "green" ? "deps-local-synced" : "deps-local-sync-failed", claim.task.id, { detail: synced.detail })
 }
 
 /** Refuses a launch while free RAM is under the seat floor, recording the hold; an admitting floor ends every hold. */
@@ -578,7 +573,7 @@ export const startSeat = async (given: SeatStartOptions): Promise<VerbResult<Sea
         await beginWork(root, worktreeFolder(options.worktree, cwd, root), claim.task)
         // The prior work may carry a lockfile the install the Op was given does not satisfy: its own install replaces it first. One
         // that cannot run now (the heavy queue in a coordinator's turn) is recorded; the worker's dry replay installs it.
-        await syncCheckout(db, root, claim, worktreeFolder(options.worktree, cwd, root), opPath)
+        await syncCheckout(db, root, claim, opPath)
         const files = writeBrief(claim.task, ops, root)
         const launched = await launch(db, binary, claim.seat, claim.record, claim.record.run, root, cwd)
         return await settleLaunch({ root, db, binary, cwd, task: claim.task, seat: claim.seat, files, resumed: false, kernel }, launched)

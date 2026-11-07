@@ -41,7 +41,7 @@ test('a host that cannot write a portable cache refuses the push and names the r
   const root = repo(t);
   const [unportable] = freshnessFindings({ root, ...portable, portable: false, localReasons: ['@starci/hfs runs from a local folder (hfs)'] });
   assert.equal(unportable?.code, UNPORTABLE);
-  assert.match(unportable?.message ?? '', /@starci\/hfs runs from a local folder \(hfs\).*starci deps source --npm/u);
+  assert.match(unportable?.message ?? '', /@starci\/hfs runs from a local folder \(hfs\).*starci deps install-local --restore/u);
   assert.match(freshnessFindings({ root, ...portable, portable: false, localReasons: [] })[0]?.message ?? '', /\(a local package\)/u);
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-cache-fresh-nogit-'));
   t.after(() => fs.rmSync(outside, { recursive: true, force: true }));

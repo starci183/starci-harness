@@ -3,7 +3,7 @@
 // never ESLint, and a bump of a library no toolchain is made of re-runs nothing by fingerprint (the lint family's import graph re-judges the files that import
 // it). Parts are portable (equal on every host for one commit): the cache format, the CLI and @starci/hfs that run, every installed @starci package by version
 // and recorded integrity, each family's toolchain as the lockfile resolved it, and the configuration files by normalised content. A run whose CLI or any
-// @starci package is linked or copied from a local folder has no portable fingerprint.
+// @starci package is linked or copied from a local folder, or resolved from a registry on this machine, has no portable fingerprint.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -121,6 +121,24 @@ export function lockPackageName(key: string): string | null {
   return at < 0 ? null : key.slice(at + 'node_modules/'.length);
 }
 
+/** Whether a lockfile `resolved` URL names this machine: a registry CI and production cannot reach. */
+function resolvedOnThisMachine(resolved: string | undefined): boolean {
+  if (resolved === undefined) return false;
+  try {
+    const host = new URL(resolved).hostname.replace(/^\[|\]$/gu, '');
+    return host === 'localhost' || host.endsWith('.localhost') || host === '::1' || /^127(?:\.\d{1,3}){3}$/u.test(host);
+  } catch {
+    return false;
+  }
+}
+
+/** Why an installed `@starci` package has no portable fingerprint (linked, copied, or resolved from a registry on this machine), or null when it is a published install. */
+export function localReasonOf(name: string, entry: LockEntry | undefined, linked: boolean): string | null {
+  if (resolvedOnThisMachine(entry?.resolved)) return `@starci/${name} is installed from a registry on this machine (starci deps install-local)`;
+  if (linked || entry?.integrity === undefined) return `@starci/${name} is linked or copied from a local folder (no recorded integrity)`;
+  return null;
+}
+
 /** One digest per installed package name: every install of it, by path, version and integrity. */
 export function packageDigests(entries: Readonly<Record<string, LockEntry>>): Map<string, string> {
   const installs = new Map<string, string[]>();
@@ -212,7 +230,8 @@ export function computeFingerprint({ root, tracked, cliVersion, hfsDir = fileURL
     const entry = lock[`node_modules/@starci/${name}`];
     let linked = entry?.link === true;
     try { linked = linked || fs.lstatSync(dir).isSymbolicLink(); } catch { /* absent: not installed */ }
-    if (linked || entry?.integrity === undefined) localReasons.push(`@starci/${name} is linked or copied from a local folder (no recorded integrity)`);
+    const reason = localReasonOf(name, entry, linked);
+    if (reason !== null) localReasons.push(reason);
     add(`pkg:@starci/${name}`, `${version}\0${entry?.integrity ?? 'local'}`);
   }
   const digests = packageDigests(lock);

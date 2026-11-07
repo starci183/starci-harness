@@ -5,7 +5,7 @@ import { judgePush } from "./push-gate.js"
 /** `starci deps check`: the push gate of the app's `@starci` dependencies (`judgePush`), the body of the app's pre-push hook. */
 export const depsCheckVerb = defineVerb({
     path: ["deps", "check"],
-    summary: "refuse a push whose committed @starci pins npm cannot install (DEPS_PIN_UNPUBLISHED) or whose local package copies hold code no published version does (DEPS_LOCAL_AHEAD)",
+    summary: "refuse a push whose committed @starci pins npm cannot install (DEPS_PIN_UNPUBLISHED), a lockfile that names the local registry (DEPS_LOCAL_REGISTRY_COMMITTED) or a project that still records the removed package overlay (DEPS_OVERLAY_REMOVED)",
     editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
@@ -18,7 +18,6 @@ export const depsCheckVerb = defineVerb({
         const judged = await judgePush(root, flags.sha ?? "HEAD")
         const message = [
             ...judged.pins.map((pin) => `published ${pin.name}@${pin.spec} (${pin.file} ${pin.field})`),
-            ...judged.local.map((copy) => `local     ${copy.name} ${copy.version} in ${copy.dir}: equal to the published tarball`),
             ...judged.notes,
             judged.app ? "verdict: green" : "verdict: green (nothing judged)",
         ]

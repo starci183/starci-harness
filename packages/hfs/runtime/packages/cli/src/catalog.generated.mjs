@@ -278,7 +278,7 @@ export const CATALOG = {
             {
               "name": "urgent",
               "type": "boolean",
-              "summary": "accept the commit's pushed urgent record (starci app release push --urgent) in place of a green CI, by the owner's ruling of 2026-10-29"
+              "summary": "accept the commit's pushed urgent record (starci app release push --urgent) in place of a green CI (contexts/project/cicd.md \"The urgent path\")"
             }
           ],
           "positional": [],
@@ -298,8 +298,8 @@ export const CATALOG = {
             },
             {
               "name": "package",
-              "type": "string",
-              "summary": "only this package (its folder or name)"
+              "type": "list",
+              "summary": "only these packages (a folder or name; repeat for several, published as one batch)"
             },
             {
               "name": "base",
@@ -315,7 +315,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "affected": {
-          "summary": "the CI nodes a diff affects: each package with its build order (sibling requires, file: dependencies, relative reads), the harness and app jobs; no base is every node",
+          "summary": "the CI nodes a diff affects: each package with its build order (sibling requires and file: dependencies first, then relative reads that close no cycle), the harness and app jobs; no base is every node",
           "flags": [
             {
               "name": "base",
@@ -658,8 +658,24 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
+        "remove": {
+          "summary": "remove one module package (`module <name>`), its registrations and its entry in the module registry",
+          "flags": [],
+          "positional": [
+            {
+              "name": "args",
+              "required": false,
+              "variadic": true
+            }
+          ],
+          "editions": [
+            "lite",
+            "full"
+          ],
+          "json": "flag"
+        },
         "check": {
-          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture; --staged is the pre-commit guard",
+          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture; --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet",
           "flags": [],
           "positional": [
             {
@@ -740,22 +756,6 @@ export const CATALOG = {
         },
         "emit": {
           "summary": "emit back-end GraphQL, operation and event contract snapshots",
-          "flags": [],
-          "positional": [
-            {
-              "name": "args",
-              "required": false,
-              "variadic": true
-            }
-          ],
-          "editions": [
-            "lite",
-            "full"
-          ],
-          "json": "flag"
-        },
-        "lint": {
-          "summary": "lint both app sides and report repository, ESLint and stylelint findings together (--fix writes)",
           "flags": [],
           "positional": [
             {
@@ -1583,7 +1583,7 @@ export const CATALOG = {
     "worktree": {
       "verbs": {
         "gc": {
-          "summary": "remove the harness's worktrees whose owner ended (Op, workflow, worker, landed package edit) and orphans, preserving their uncommitted work first (dry until --execute: it only lists)",
+          "summary": "collect ended worktrees or exclusively selected --path checkouts; preserve Git work and refs, quarantine proven project remnants whole, and block selected live, primary, caller or foreign folders (dry until --execute)",
           "flags": [
             {
               "name": "execute",
@@ -1594,6 +1594,11 @@ export const CATALOG = {
               "name": "now",
               "type": "boolean",
               "summary": "retry a folder left busy now instead of after its backoff, and take a folder git no longer lists however recently it changed"
+            },
+            {
+              "name": "path",
+              "type": "list",
+              "summary": "exclusively select reviewed linked worktrees or canonical direct-child remnants of this project's state worktrees (repeatable); preserve Git work or quarantine all remnant bytes, blocking live holders"
             }
           ],
           "positional": [],
@@ -1608,7 +1613,7 @@ export const CATALOG = {
     "uat": {
       "verbs": {
         "run": {
-          "summary": "run a Playwright ESM script in the pinned Playwright image (ops/uat.yaml), after giving the checkout what a wave gives the checkout it judges, its install with the project's local @starci package sources (starci deps source --local) and the workspace dependencies its app imports (UAT_APP_SETUP_FAILED when one cannot be given): host ports forwarded on 127.0.0.1, named variables and -- arguments handed to it, its evidence folder at /evidence; exit 0 is green. The harness keeps a receipt of the run (script digest, image, container, exit, times, every evidence file by digest in its store), the only source a uat-flow check reads observations from, and the pages the walk opened; a walk whose every page answered 5xx refuses UAT_APP_UNSERVED, an environment failure",
+          "summary": "run a Playwright ESM script in the pinned Playwright image (ops/uat.yaml), after giving the checkout what a wave gives the checkout it judges, its install and the workspace dependencies its app imports (UAT_APP_SETUP_FAILED when one cannot be given): host ports forwarded on 127.0.0.1, named variables and -- arguments handed to it, its evidence folder at /evidence; exit 0 is green. The harness keeps a receipt of the run (script digest, image, container, exit, times, every evidence file by digest in its store), the only source a uat-flow check reads observations from, and the pages the walk opened; a walk whose every page answered 5xx refuses UAT_APP_UNSERVED, an environment failure",
           "flags": [
             {
               "name": "forward",
@@ -1690,7 +1695,7 @@ export const CATALOG = {
             {
               "name": "execute",
               "type": "boolean",
-              "summary": "rewrite anatomy.md's generated block, the slices, the contexts index and the section indexes (default: a dry run that exits 1 when one differs from the generator, or a slot rule code, a rule or its enforcers leave a gap no owner ruling holds pending)"
+              "summary": "rewrite anatomy.md's generated block, the slices, the contexts index and the section indexes (default: a dry run that exits 1 when one differs from the generator, or a slot rule code or a rule leaves a gap)"
             },
             {
               "name": "slice",
@@ -1740,7 +1745,12 @@ export const CATALOG = {
             {
               "name": "scope",
               "type": "string",
-              "summary": "comma-separated scopes to search: ui, grammars, vendor, code, hfs, stack, decisions, project, harness"
+              "summary": "comma-separated scopes to search: ui, grammars, vendor, code, hfs, stack, project, harness"
+            },
+            {
+              "name": "also",
+              "type": "list",
+              "summary": "another phrasing of the question (repeat: the action, the artifact or rule id): each is ranked and all are fused, each hit counting the phrasings that found it"
             },
             {
               "name": "limit",
@@ -2370,6 +2380,22 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
+        "down": {
+          "summary": "stop the named host services of ops/host.yaml (and what requires them) that declare a stop; data and volumes are never removed",
+          "flags": [],
+          "positional": [
+            {
+              "name": "ids",
+              "required": false,
+              "variadic": true
+            }
+          ],
+          "editions": [
+            "lite",
+            "full"
+          ],
+          "json": "flag"
+        },
         "install": {
           "summary": "register the schedules of the host services (Windows: a hidden StarCi scheduled task running a launcher under the state base)",
           "flags": [
@@ -2510,7 +2536,7 @@ export const CATALOG = {
     "dna": {
       "verbs": {
         "check": {
-          "summary": "measure rendered UI (a url with --routes, a built Storybook, a static folder or html file) against the Grammar's DNA laws; red per law id with element path and measured vs expected",
+          "summary": "measure rendered UI (a built Storybook, a url with --routes, a static folder or html file) against the static DNA laws of the Grammar contract in both families, light and dark, at 1920 and 390; red per law id with element path and measured vs wanted",
           "flags": [
             {
               "name": "storybook",
@@ -2521,11 +2547,6 @@ export const CATALOG = {
               "name": "url",
               "type": "string",
               "summary": "the base url of a running app"
-            },
-            {
-              "name": "serve",
-              "type": "string",
-              "summary": "a static folder served on loopback for the check"
             },
             {
               "name": "routes",
@@ -2543,6 +2564,11 @@ export const CATALOG = {
               "summary": "the grammar contract (default contexts/grammars/contract.yaml of the harness)"
             },
             {
+              "name": "widths",
+              "type": "string",
+              "summary": "comma-separated widths in px (default 1920,390)"
+            },
+            {
               "name": "browser",
               "type": "string",
               "summary": "the Chromium binary (default STARCI_BROWSER, else the installed Chrome, Edge or Chromium)"
@@ -2551,6 +2577,11 @@ export const CATALOG = {
               "name": "timeout",
               "type": "string",
               "summary": "seconds a page may take to render its Grammar root (default 8)"
+            },
+            {
+              "name": "out",
+              "type": "string",
+              "summary": "a file to write the whole report to as json"
             }
           ],
           "positional": [
@@ -2570,38 +2601,81 @@ export const CATALOG = {
     },
     "deps": {
       "verbs": {
-        "source": {
-          "summary": "print, or switch, where the app's @starci packages come from: npm (committed pins, what CI installs) or a local package folder (built and copied into node_modules only)",
+        "install-local": {
+          "summary": "install the local registry's latest version of the named @starci packages into the app like npm and record the pins they replace (dry until --execute); --restore puts the npm pins back before a commit",
           "flags": [
             {
-              "name": "local",
+              "name": "execute",
               "type": "boolean",
-              "summary": "build each package in its folder and copy it over the app's installed copies; the committed pins stay npm versions"
+              "summary": "change the pins and install (default: print the plan only)"
             },
             {
-              "name": "npm",
+              "name": "restore",
               "type": "boolean",
-              "summary": "restore pure npm resolution: npm ci, and clear the local record"
+              "summary": "put the recorded npm pins back and install them; also clears a record of the removed overlay"
+            },
+            {
+              "name": "port",
+              "type": "string",
+              "summary": "the registry's port on 127.0.0.1 (default 4873)"
+            }
+          ],
+          "positional": [
+            {
+              "name": "packages",
+              "required": false,
+              "variadic": true
+            }
+          ],
+          "editions": [
+            "lite",
+            "full"
+          ],
+          "json": "flag"
+        },
+        "publish-local": {
+          "summary": "build the packages changed here (or --package) and publish each to a registry on this machine (127.0.0.1 only) under its own -local version, for starci deps install-local; dry until --execute",
+          "flags": [
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "start or reuse the registry container, build and publish (default: print the plan only)"
             },
             {
               "name": "package",
               "type": "list",
-              "summary": "with --local, the package to take locally (grammar or @starci/grammar), repeatable; default every pinned @starci package the folder holds"
+              "summary": "this package (its folder or name), repeatable, instead of the packages changed since the base of the branch; its build prerequisites are built, not published"
+            },
+            {
+              "name": "port",
+              "type": "string",
+              "summary": "the port on 127.0.0.1 (default 4873)"
             },
             {
               "name": "cwd",
               "type": "string",
-              "summary": "with --local, the folder holding the @starci package folders (default packages/ of this harness)"
+              "summary": "the harness checkout to build and publish (default: the checkout of the working directory)"
+            }
+          ],
+          "positional": [],
+          "editions": [
+            "lite",
+            "full"
+          ],
+          "json": "flag"
+        },
+        "registry-up": {
+          "summary": "start or reuse the local npm registry container on 127.0.0.1 (the host service local-registry); dry until --execute",
+          "flags": [
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "start or reuse the container (default: report where it stands)"
             },
             {
-              "name": "prebuilt",
-              "type": "boolean",
-              "summary": "with --local, copy each package's dist as it stands instead of building it first"
-            },
-            {
-              "name": "sync",
-              "type": "boolean",
-              "summary": "re-apply the repository's recorded local packages here as they stand (after an npm ci, or in another worktree of the repository)"
+              "name": "port",
+              "type": "string",
+              "summary": "the port on 127.0.0.1 (default 4873)"
             }
           ],
           "positional": [],
@@ -2612,7 +2686,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "check": {
-          "summary": "refuse a push whose committed @starci pins npm cannot install (DEPS_PIN_UNPUBLISHED) or whose local package copies hold code no published version does (DEPS_LOCAL_AHEAD)",
+          "summary": "refuse a push whose committed @starci pins npm cannot install (DEPS_PIN_UNPUBLISHED), a lockfile that names the local registry (DEPS_LOCAL_REGISTRY_COMMITTED) or a project that still records the removed package overlay (DEPS_OVERLAY_REMOVED)",
           "flags": [
             {
               "name": "sha",

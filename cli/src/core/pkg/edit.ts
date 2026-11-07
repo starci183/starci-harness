@@ -10,7 +10,7 @@ import { callerRole } from "../../shared/role.js"
  * A package edit: an app session, or a worker its Kernel or Supervisor assigns, may fix or extend a `@starci` package while
  * its app runs on local sources. It edits on its own harness branch `pkg/<app>-<topic>`, in a worktree under the harness's
  * `.claude/worktrees/` (never the harness main checkout), cut from harness `main` (`starci pkg branch`); the app takes the
- * packages from there (`starci deps source --local --cwd <worktree>/packages`); and the editor records the branch for
+ * packages from there through the local registry (`starci deps publish-local --execute --cwd <worktree>`, then `starci deps install-local`); and the editor records the branch for
  * Debug (`starci pkg handoff`), who alone merges it to main, pushes and publishes. A push of a `pkg/` branch is refused
  * PKG_EDIT_PUSH_REFUSED for every role but debug and owner, by `release push` and `release publish` and by the harness
  * repository's pre-push hook that `pkg branch` installs (`installPushGuard`).

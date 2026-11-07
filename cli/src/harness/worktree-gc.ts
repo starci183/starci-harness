@@ -2,7 +2,6 @@ import { existsSync, readdirSync, realpathSync, statSync } from "node:fs"
 import { join, relative, resolve, sep } from "node:path"
 import { captureGit, git, gitCommonDir, isAncestor, mainCheckout, samePath } from "../shared/git.js"
 import { Refusal } from "../shared/errors.js"
-import { describeHealed, healRecord } from "../core/deps/packages.js"
 import { pruneVerifyWorktrees } from "./clean-verify.js"
 import { opWorktreeOf, removeOpWorktree, removeTracked } from "./land.js"
 import { openExistingLedger, openMachine, projectDir } from "./ledger.js"
@@ -506,7 +505,7 @@ export const worktreeGc = async (root: string, dryRun: boolean, now = false, sel
     })
     const explicit = (selection.paths?.length ?? 0) > 0
     const judged = explicit ? await selectedPaths(root, listed, scoped.flat(), selection) : scoped.flat()
-    // Explicit selection has no incidental sweep, prior pruning, or local-record writes outside those paths.
+    // Explicit selection has no incidental sweep or prior pruning outside those paths.
     const verify = dryRun || explicit ? [] : (await pruneVerifyWorktrees(root, true)).map((path): GcEntry => ({ path, kind: "orphan", owner: null, due: true, reason: "a clean-verify checkout whose verifier is gone", preserved: null, removed: true, detail: "pruned" }))
     const retired = explicit ? [] : await retiredLeftovers(root, dryRun)
     if (dryRun) return [...judged.map(reported), ...retired]
@@ -516,9 +515,5 @@ export const worktreeGc = async (root: string, dryRun: boolean, now = false, sel
     const done = await inOrder(judged, async (collected): Promise<GcEntry> => {
         return removeCollected(root, collected, { explicit, now, selection })
     })
-    // Heal this repository's local record; other projects heal their own records when they next resolve package sources.
-    const healed = done.some((entry) => entry.kind === "package" && entry.removed) ? healRecord(root).healed : []
-    const note = healed.map(describeHealed).join("; ")
-    const noted = note === "" ? done : done.map((entry) => (entry.kind === "package" && entry.removed ? { ...entry, detail: `${entry.detail}; local package records healed: ${note}` } : entry))
-    return [...noted, ...verify, ...retired]
+    return [...done, ...verify, ...retired]
 }

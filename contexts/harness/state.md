@@ -6,8 +6,7 @@
   package) in `.runtime/`, git-ignored: `machine.sqlite` for the
   host (the ledger registry, provider health, every project's Supervisor and the package edits handed to Debug) and
   `projects/<ledger_id>/` for each repository's `runtime.sqlite`, coordinator briefs, contracts, outputs, preserved work,
-  the prior-work store (`prior/<sha256>.patch`) and, while the repository takes `@starci` packages from a local folder,
-  `deps-local.json` (`starci deps source --local`), and the worktrees the harness makes for the project's workflows, Ops
+  the prior-work store (`prior/<sha256>.patch`) and the worktrees the harness makes for the project's workflows, Ops
   and workers (`worktrees/`). Package edit branches live in worktrees under the harness checkout's `.claude/worktrees/`
   (`starci pkg branch`), never in its main checkout. Every one of them is removed when its owner's work ends
   ([contexts/authority/README.md](../authority/README.md) "Worktrees").
@@ -16,9 +15,9 @@
 - **App stack state** (`@starci/hfs`: a dev environment's processes, logs, receipts and bind-mounted data under
   `stack/<project>/<env>/`, its `machine.sqlite` and blob store) lives under the same kind of base, owned by `starciLocalRoot`
   in `packages/hfs/runtime/engine/runtime-root.mts`: `STARCI_LOCAL_ROOT`, else a checkout's `.runtime/`, else, for a copy an
-  install or `starci deps source --local` placed below a `node_modules` folder, the per-user base `installedStateBase`
+  install placed below a `node_modules` folder, the per-user base `installedStateBase`
   (`%LOCALAPPDATA%`, else `$XDG_STATE_HOME`, else `~/.local/state`, then `starci-harness/state`). Never inside a package, so
-  `npm ci` and a package copy never delete a running stack's data. The first `starci app` verb of a copy that still keeps
+  `npm ci` never deletes a running stack's data. The first `starci app` verb of a copy that still keeps
   `.runtime/` inside itself moves it there (an entry the base already holds is kept under `legacy-<stamp>/`), and refuses
   `HFS_STATE_LEGACY_HELD` while a running stack holds it (`starci app stack down` first).
   `cli/src/harness/ledger.ts` owns every one of these paths; [cli/README.md](../../cli/README.md) "The harness inside the

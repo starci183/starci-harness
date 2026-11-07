@@ -1,5 +1,5 @@
-// The per-host state base of @starci/hfs: a checkout keeps it in <runtime root>/.runtime, an installed or locally sourced copy below a
-// node_modules folder keeps it outside every package (installedStateBase), so `npm ci` and `starci deps source --local` never delete a
+// The per-host state base of @starci/hfs: a checkout keeps it in <runtime root>/.runtime, an installed copy below a
+// node_modules folder keeps it outside every package (installedStateBase), so `npm ci` never deletes a
 // running stack's data; the state an installed copy kept inside itself moves out once, and refuses while a running stack holds it.
 import test from 'node:test';
 import assert from 'node:assert/strict';

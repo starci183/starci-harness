@@ -12,8 +12,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [authority/branch.md](../authority/branch.md) · 2 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs
 - [authority/ci.md](../authority/ci.md) · 1 KB — CI is the critic.
-- [authority/packages.md](../authority/packages.md) · 4 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
-  - sections: An app uses the edit before npm serves it · Grammar edits are content only
+- [authority/packages.md](../authority/packages.md) · 5 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
+  - sections: The local registry: an urgent package change is used at once · Grammar edits are content only
 - [authority/wave.md](../authority/wave.md) · 2 KB — A wave is one scoped round on a merged tree.
   - sections: The scope decision comes first · Reuse and repair
 - [code/README.md](../code/README.md) · 7 KB — How app code is written: shared holds the rules both sides follow, be (NestJS) and fe (Next.js) the rules of one side.
@@ -195,7 +195,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [stack/fe.yaml](../stack/fe.yaml) · 10 KB — The front-end stack of every app, both editions: for each concern the ONE library, its home (slot ids of hfs/slots.yaml), the pattern rule that teaches its use when there is a ...
   - ids: R244, R288, auth, avatar-illustration, charts, code, codegen, data, dates, device-id, diagrams, event-stream, fe-stack-import, flow, forms, framework, framework-support, front-end, grammar-lint, graphql, graphql-subscriptions, i18n, icons, lint and 16 more
 - [stack/pins.yaml](../stack/pins.yaml) · 18 KB — The exact version of every shared dependency: one version per dependency for every app and package, except the command line itself, whose version in an app is the starci-harness ...
-  - ids: CONTRIB-20, R111, R190, same-minor, starci-harness
+  - ids: CONTRIB-20, R111, R190, install-local, same-minor, starci-harness
 - [ui/README.md](../ui/README.md) · 6 KB — How an agent decides a user interface on any grammar, so that every app built from the same grammar and the same knowledge comes out the same.
   - sections: The system in one page · Who owns what · Reading order · How the rules work
 - [ui/components/README.md](../ui/components/README.md) · 6 KB — One page per component role: **when and how** to use it.

@@ -204,8 +204,9 @@ block the next push.
 
 ### CONTRIB-20 Publishing is CI's
 
-Apps consume the harness packages from this checkout (`starci deps source --local`), so a change is usable the moment it
-is coded; reaching npm is a separate step CI takes alone. Every push to main whose plan affects a package or the CLI
+An unreleased harness package change is usable the moment it is coded through the local registry (`starci deps publish-local`,
+then `starci deps install-local` in the app; [contexts/authority/packages.md](contexts/authority/packages.md)); reaching npm is a
+separate step CI takes alone. Every push to main whose plan affects a package or the CLI
 runs the two publish jobs of [.github/workflows/ci.yml](.github/workflows/ci.yml), which never wait for the `ci` job:
 `starci release publish --base <the plan's base>` judges the plan (its dry run), then with `--execute` publishes in two phases every package under
 `packages/` and then the CLI (`starci-harness`, from `cli/`) whose version is not on npm yet, a dependency before its

@@ -10,7 +10,7 @@ import { Refusal } from "../../shared/errors.js"
  * on 127.0.0.1 only, with no login, that stores what was published locally in a bind-mounted folder of the shared state base
  * and passes every other request through to registry.npmjs.org. It is the host service `local-registry` of ops/host.yaml
  * (compose file and config in ops/host/registry/), the only way it runs. It is not a publication: nothing in it reaches npm, CI or
- * an app's committed files, and it never serves a version npm already serves (Verdaccio refuses to publish over one).
+ * an app's committed files, and what it holds is published under local versions of its own (`./local-version.ts`).
  */
 export const CONTAINER = "starci-local-registry"
 export const HOST_SERVICE = "local-registry"
@@ -24,12 +24,12 @@ export const registryUrl = (port: number): string => `http://${LOOPBACK}:${Strin
 export const registryFolder = (): string => join(sharedStateBase(), "local-registry")
 
 /**
- * The npmrc of an app's install: only `@starci` resolves from the registry (every other package still comes from npm, so the
+ * The npmrc lines of an app's install: only `@starci` resolves from the registry (every other package still comes from npm, so the
  * lockfile gains no other local URL), and a `resolved` already locked to npmjs stays there (`replace-registry-host=never`).
  */
 export const installNpmrc = (port: number): string => [`@starci:registry=${registryUrl(port)}`, "replace-registry-host=never", ""].join("\n")
 
-/** The npmrc of this CLI's own publish, view and unpublish calls: the registry for everything, and the placeholder token npm wants before it publishes (the registry takes anyone). */
+/** The npmrc of this CLI's own publish and view calls: the registry for everything, and the placeholder token npm wants before it publishes (the registry takes anyone). */
 export const publishNpmrc = (port: number): string => [installNpmrc(port).trimEnd(), `registry=${registryUrl(port)}`, `//${LOOPBACK}:${String(port)}/:_authToken=local-registry`, ""].join("\n")
 
 /** The npm flags that point one app command at the registry for `@starci` only (no file, no environment). */
@@ -78,13 +78,11 @@ export const ensureRegistry = async (cwd: string, io: RegistryIo = realIo): Prom
     throw new Refusal("LOCAL_REGISTRY_NOT_READY", `${registryUrl(PORT)} does not answer after host up ${HOST_SERVICE}${evidence === "" ? "" : `: ${evidence}`}; see docker logs ${CONTAINER}`)
 }
 
-/** Writes the two npmrc files beside the config and returns their paths: `NPM_CONFIG_USERCONFIG=<install>` points one app command at the registry. */
-export const writeNpmrcs = (port: number): { readonly install: string; readonly publish: string } => {
+/** Writes the npmrc of this CLI's own publish calls beside the config and returns its path (`--userconfig <file>`). */
+export const writePublishNpmrc = (port: number): string => {
     const folder = registryFolder()
     mkdirSync(folder, { recursive: true })
-    const install = join(folder, "install.npmrc")
     const publish = join(folder, "publish.npmrc")
-    writeFileSync(install, installNpmrc(port))
     writeFileSync(publish, publishNpmrc(port))
-    return { install, publish }
+    return publish
 }

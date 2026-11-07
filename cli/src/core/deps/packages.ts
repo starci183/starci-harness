@@ -1,32 +1,22 @@
-import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
-import { dirname, join, posix, relative, sep } from "node:path"
+import { existsSync, lstatSync, readFileSync, statSync } from "node:fs"
+import { join, posix } from "node:path"
 import { z } from "zod"
-import { depsLocalPath, existingDepsLocalPath, mainCheckoutOf, openExistingLedger, runtimeRoot } from "../../harness/ledger.js"
-import { readMachine } from "../../harness/machine.js"
-import { recordEvent } from "../../harness/tasks.js"
 import { inOrder } from "../../harness/sequential.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
 import type { RunOptions } from "../../shared/exec.js"
-import { HOST_HELD, withHeavySlot } from "../../harness/heavy.js"
+import { withHeavySlot } from "../../harness/heavy.js"
 import { git, nulPaths } from "../../shared/git.js"
 
 /**
  * How an app takes its `@starci` packages. The committed `package.json` files and `package-lock.json` always name npm
- * versions, which is what CI and production install. Local mode (`starci deps source --local`) is a local-only overlay for
- * npm, the one package manager StarCi apps use: it builds the package in its folder, asks npm which files it would publish
- * (`npm pack --dry-run`) and copies exactly those over every installed copy of the package in the app's `node_modules`
- * (the root and each workspace), with a marker file naming the folder. It never runs `npm install <folder>`, which would
- * rewrite the manifest or trip an `overrides` pin and leave the workspaces that require the npm version on a nested npm
- * copy, and it never links: a link resolves the package's peers (react) from its own folder, a second React, which is
- * why the harness's own packages install siblings with `install-links=true`. The record of which packages are local lives
- * in the project's state folder (`depsLocalPath`), so a clean-verify checkout of the same repository applies the same
- * copies after its `npm ci`. `npm ci` restores pure npm resolution and wipes every copy with its marker.
+ * versions, which is what CI and production install. An unreleased package edit reaches an app one way, through the npm
+ * registry on this machine (`./local-registry.ts`): `starci deps publish-local` builds the package and publishes it there under
+ * a version of its own, and `starci deps install-local` installs that version into the app like npm and records the pins it
+ * replaced, which `starci deps install-local --restore` puts back before a commit. Nothing is linked or copied into an
+ * app's `node_modules`.
  */
 export const SCOPE = "@starci/"
-
-/** The file a local copy carries in its installed folder, naming where it came from; npm mode has none. */
-export const LOCAL_MARKER = ".starci-local.json"
 
 const DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies", "overrides"] as const
 
@@ -59,7 +49,8 @@ export const parseManifest = (text: string, where: string): Manifest => {
     return parsed.data
 }
 
-const readManifest = (file: string): Manifest => parseManifest(readFileSync(file, "utf8"), file)
+/** A package.json file read as a manifest. */
+export const readManifest = (file: string): Manifest => parseManifest(readFileSync(file, "utf8"), file)
 
 /** One `@starci` requirement a package.json makes: the package, its spec, the file and the field. */
 export interface Pin {
@@ -69,7 +60,8 @@ export interface Pin {
     readonly field: string
 }
 
-const pinsOf = (manifest: Manifest, file: string): Pin[] =>
+/** The `@starci` requirements of one manifest, in its dependency fields. */
+export const pinsOf = (manifest: Manifest, file: string): Pin[] =>
     DEPENDENCY_FIELDS.flatMap((field) =>
         Object.entries(manifest[field] ?? {})
             .filter((entry): entry is [string, string] => entry[0].startsWith(SCOPE) && typeof entry[1] === "string")
@@ -99,7 +91,7 @@ export const committedPins = async (root: string, revision: string): Promise<Pin
     return shown.flat()
 }
 
-/** A package folder of the harness (or of `--cwd`): its npm name, folder, version and whether it builds. */
+/** A package folder of the harness: its npm name, folder, version and whether it builds. */
 export interface LocalPackage {
     readonly name: string
     readonly folder: string
@@ -107,81 +99,19 @@ export interface LocalPackage {
     readonly builds: boolean
 }
 
-/**
- * Where the `@starci` package sources live by default: `packages/` of the main checkout of the harness this CLI runs from, never
- * of one of its worktrees (a package edit worktree ends when Debug lands it; `--cwd` names one on purpose).
- */
-export const defaultPackagesRoot = (): string => join(mainCheckoutOf(runtimeRoot()), "packages")
-
-/** The `@starci` packages under `from`, by npm name; DEPS_FROM_MISSING when the folder does not exist. */
-export const localPackages = (from: string): Map<string, LocalPackage> => {
-    if (!existsSync(from)) throw new Refusal("DEPS_FROM_MISSING", `${from} does not exist; pass --cwd <folder holding the @starci package folders>`)
-    const found = new Map<string, LocalPackage>()
-    for (const entry of readdirSync(from, { withFileTypes: true })) {
-        const file = join(from, entry.name, "package.json")
-        if (!entry.isDirectory() || !existsSync(file)) continue
-        const manifest = readManifest(file)
-        if (manifest.name?.startsWith(SCOPE) !== true || manifest.version === undefined) continue
-        found.set(manifest.name, { name: manifest.name, folder: join(from, entry.name), version: manifest.version, builds: manifest.scripts?.build !== undefined })
-    }
-    return found
-}
-
-/** The name a `--package` value means: `grammar` and `@starci/grammar` are the same package. */
+/** The name a package argument means: `grammar` and `@starci/grammar` are the same package. */
 export const packageName = (value: string): string => (value.startsWith(SCOPE) ? value : `${SCOPE}${value}`)
 
-/** Refuses an app whose package manager is not npm: the local overlay is written for npm's `node_modules` and `npm ci`. */
+/** Refuses an app whose package manager is not npm: the local registry flow is written for npm's lockfile and `node_modules`. */
 export const assertNpm = (root: string): void => {
     if (existsSync(join(root, "package-lock.json"))) return
     const other = ["pnpm-lock.yaml", "yarn.lock", "bun.lockb"].find((file) => existsSync(join(root, file)))
-    if (other !== undefined) throw new Refusal("DEPS_MANAGER_UNSUPPORTED", `${other} found: the local package source is built for npm apps (package-lock.json); StarCi apps use npm workspaces`)
+    if (other !== undefined) throw new Refusal("DEPS_MANAGER_UNSUPPORTED", `${other} found: the local registry flow is built for npm apps (package-lock.json); StarCi apps use npm workspaces`)
     throw new Refusal("DEPS_NO_LOCKFILE", `${root} has no package-lock.json; run it at the app root`)
 }
 
-const markSchema = z.object({ schema: z.literal("starci/deps-local-copy@1"), name: z.string(), version: z.string(), folder: z.string(), copiedAt: z.string() })
-
-/** What the marker of a local copy says. */
-export type LocalMark = z.infer<typeof markSchema>
-
-/** One installed copy of a `@starci` package in the app: its folder (repository path), version, and the marker when it is local. */
-export interface Install {
-    readonly name: string
-    readonly dir: string
-    readonly version: string | undefined
-    readonly local: LocalMark | undefined
-}
-
-const slashed = (path: string): string => path.split(sep).join("/")
-
-const readMark = (dir: string): LocalMark | undefined => {
-    const file = join(dir, LOCAL_MARKER)
-    if (!existsSync(file)) return undefined
-    const parsed = markSchema.safeParse(JSON.parse(readFileSync(file, "utf8")))
-    return parsed.success ? parsed.data : undefined
-}
-
-/** The folders a package is (or would be) installed in: `node_modules` of the root and of each workspace holding a manifest. */
-const installDirs = (root: string, manifests: readonly string[], name: string): string[] =>
-    [...new Set(["", ...manifests.map((file) => posix.dirname(file)).filter((dir) => dir !== ".")])].map((base) => join(root, base, "node_modules", ...name.split("/")))
-
-/** The `@starci` packages installed at the app root, pinned or brought in by another package. */
-export const installedNames = (root: string): string[] => {
-    const scope = join(root, "node_modules", ...SCOPE.slice(0, -1).split("/"))
-    return existsSync(scope) ? readdirSync(scope, { withFileTypes: true }).filter((entry) => entry.isDirectory() || entry.isSymbolicLink()).map((entry) => `${SCOPE}${entry.name}`) : []
-}
-
-/** Every installed copy of the named packages, at the root and in each workspace's own node_modules. */
-export const installsOf = (root: string, manifests: readonly string[], names: readonly string[]): Install[] =>
-    names.flatMap((name) =>
-        installDirs(root, manifests, name)
-            .filter((dir) => existsSync(dir))
-            .map((dir) => {
-                const file = join(dir, "package.json")
-                return { name, dir: slashed(relative(root, dir)), version: existsSync(file) ? readManifest(file).version : undefined, local: readMark(dir) }
-            }),
-    )
-
-const tail = (stdout: string, stderr: string): string => [stdout, stderr].join("\n").trim().split("\n").slice(-15).join("\n")
+/** The last lines of an npm run's output, for a refusal. */
+export const tail = (stdout: string, stderr: string): string => [stdout, stderr].join("\n").trim().split("\n").slice(-15).join("\n")
 
 // A package folder's install is stale when npm's record of it is missing or older than the lockfile it was made from.
 const installStale = (folder: string): boolean => {
@@ -214,282 +144,9 @@ export const buildPackage = async (pkg: LocalPackage): Promise<void> => {
     if (build.exitCode !== 0) throw new Refusal("DEPS_BUILD_FAILED", `npm run build in ${pkg.folder} failed:\n${tail(build.stdout, build.stderr)}`)
 }
 
-const packSchema = z.array(z.object({ files: z.array(z.object({ path: z.string() })) })).min(1)
-
-/** The files npm would publish from a package folder, as it stands (no lifecycle script runs). */
-const packFiles = async (folder: string): Promise<string[]> => {
-    const run = await captureNpm(["pack", "--dry-run", "--json", "--ignore-scripts"], folder)
-    let raw: unknown
-    try {
-        raw = JSON.parse(run.stdout)
-    } catch {
-        raw = undefined
-    }
-    const parsed = packSchema.safeParse(raw)
-    if (run.exitCode !== 0 || !parsed.success) throw new Refusal("DEPS_PACK_FAILED", `npm pack --dry-run in ${folder} failed:\n${tail(run.stdout, run.stderr)}`)
-    return parsed.data[0]?.files.map((file) => file.path) ?? []
-}
-
-/** Whether `dependency` resolves from `dir` the way Node walks up node_modules, without leaving `root`. */
-const resolvable = (dependency: string, dir: string, root: string): boolean => {
-    let at = dir
-    for (;;) {
-        if (existsSync(join(at, "node_modules", ...dependency.split("/"), "package.json"))) return true
-        if (relative(root, at) === "") return false
-        const parent = dirname(at)
-        if (parent === at) return false
-        at = parent
-    }
-}
-
-/**
- * Installs, without saving (`npm install --no-save`: neither package.json nor package-lock.json is written), the
- * dependencies the local packages declare that the app has not installed, at the spec each package asks for; a newer
- * local Grammar may need a library its published version did not. It runs before the copies, since npm's reify puts every
- * `@starci` package back to its locked version. Refuses DEPS_INSTALL_LINKED before mutating a linked install; returns the specs it installed.
- */
-export const installMissing = async (root: string, packages: readonly LocalPackage[]): Promise<string[]> => {
-    const specs = new Map<string, string>()
-    for (const pkg of packages) {
-        for (const [dependency, spec] of Object.entries(readManifest(join(pkg.folder, "package.json")).dependencies ?? {})) {
-            if (typeof spec !== "string" || dependency.startsWith(SCOPE) || resolvable(dependency, join(root, "node_modules"), root)) continue
-            specs.set(dependency, `${dependency}@${spec}`)
-        }
-    }
-    const wanted = [...specs.values()].sort((left, right) => left.localeCompare(right))
-    if (wanted.length === 0) return []
+/** An npm run in the app root under the heavy governor, refusing DEPS_INSTALL_FAILED with its output when npm fails;. */
+export const appNpm = async (root: string, args: readonly string[], label: string): Promise<void> => {
     unlinkedInstallOptions(root)
-    const run = await withHeavySlot("install", "npm install --no-save", root, {}, (held) => captureNpm(["install", "--no-save", "--no-audit", "--no-fund", ...wanted], root, unlinkedInstallOptions(root, held.options)))
-    if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", `npm install --no-save ${wanted.join(" ")} in ${root} failed:\n${tail(run.stdout, run.stderr)}`)
-    return wanted
+    const run = await withHeavySlot("install", label, root, {}, (held) => captureNpm(args, root, unlinkedInstallOptions(root, held.options)))
+    if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", `${label} in ${root} failed:\n${tail(run.stdout, run.stderr)}`)
 }
-
-/** What one package's local copy did: where it came from, where it went, how many files, and what to look at. */
-export interface Copied {
-    readonly name: string
-    readonly folder: string
-    readonly version: string
-    readonly targets: readonly string[]
-    readonly files: number
-    readonly warnings: readonly string[]
-}
-
-/** The host state a copy of `@starci/hfs` kept inside itself before it moved to its per-user base: a package copy carries it over. */
-const KEPT_STATE = [join("runtime", ".runtime"), join("runtime", ".runtime.adopting")]
-
-const HELD_CODES = new Set(["EPERM", "EBUSY", "EACCES"])
-
-/** True when a rename failed because a running process holds a file of the folder (Windows locks an open file's folder). */
-const isHeld = (error: unknown): boolean => error instanceof Error && HELD_CODES.has((error as NodeJS.ErrnoException).code ?? "")
-
-const heldRefusal = (target: string, name: string): Refusal =>
-    new Refusal("DEPS_TARGET_HELD", `${target} is in use by a running process, so ${name} was not copied and the installed copy is unchanged; stop what holds it (starci app stack down --env <env>, a dev server, an editor) and run again`)
-
-/** Writes the package's publishable files and its marker into a staging folder beside `target`, which `swapIn` puts in place. */
-const stage = (pkg: LocalPackage, files: readonly string[], target: string): string => {
-    const staging = `${target}.starci-staging`
-    rmSync(staging, { recursive: true, force: true })
-    for (const file of files) {
-        mkdirSync(dirname(join(staging, file)), { recursive: true })
-        copyFileSync(join(pkg.folder, file), join(staging, file))
-    }
-    const mark: LocalMark = { schema: "starci/deps-local-copy@1", name: pkg.name, version: pkg.version, folder: slashed(pkg.folder), copiedAt: new Date().toISOString() }
-    writeFileSync(join(staging, LOCAL_MARKER), `${JSON.stringify(mark, null, 2)}\n`)
-    return staging
-}
-
-/**
- * Puts a staged copy in place of `target` by renames only, so a failure never leaves a half-deleted package: the host state the old
- * copy kept inside itself moves into the staged one first, then the old copy moves aside whole and the staged one takes its name.
- * A rename a running process's open file refuses (EPERM, EBUSY) removes the staging folder, moves any state back and refuses
- * DEPS_TARGET_HELD with the old copy as it was.
- */
-const swapIn = (staging: string, target: string, name: string): void => {
-    const aside = `${target}.starci-old`
-    rmSync(aside, { recursive: true, force: true })
-    const moved: string[] = []
-    try {
-        for (const state of KEPT_STATE.filter((entry) => existsSync(join(target, entry)))) {
-            mkdirSync(dirname(join(staging, state)), { recursive: true })
-            renameSync(join(target, state), join(staging, state))
-            moved.push(state)
-        }
-        if (existsSync(target)) renameSync(target, aside)
-    } catch (error: unknown) {
-        for (const state of moved) renameSync(join(staging, state), join(target, state))
-        rmSync(staging, { recursive: true, force: true })
-        if (isHeld(error)) throw heldRefusal(target, name)
-        throw error
-    }
-    renameSync(staging, target)
-    rmSync(aside, { recursive: true, force: true })
-}
-
-/**
- * Copies a package folder's publishable files over every installed copy of it in the app (the root's when none is
- * installed), each with its marker, staged beside the copy and swapped in by rename (`swapIn`). A copy that is a link (a
- * junction or symlink someone made) is refused DEPS_TARGET_LINKED rather than followed: removing through a link would delete
- * the folder it points at.
- */
-export const copyLocal = async (root: string, manifests: readonly string[], pkg: LocalPackage): Promise<Copied> => {
-    const files = await packFiles(pkg.folder)
-    const installed = installDirs(root, manifests, pkg.name).filter((dir) => existsSync(dir))
-    const targets = installed.length > 0 ? installed : [join(root, "node_modules", ...pkg.name.split("/"))]
-    for (const target of targets) {
-        if (lstatSync(target, { throwIfNoEntry: false })?.isSymbolicLink() === true) {
-            throw new Refusal("DEPS_TARGET_LINKED", `${target} is a link; remove it (or run starci deps source --npm) before copying ${pkg.name} over it`)
-        }
-    }
-    for (const target of targets) swapIn(stage(pkg, files, target), target, pkg.name)
-    const manifest = readManifest(join(pkg.folder, "package.json"))
-    const missing = Object.keys(manifest.dependencies ?? {}).filter((dependency) => !targets.every((target) => resolvable(dependency, target, root)))
-    const warnings = missing.map((dependency) => `${pkg.name} ${pkg.version} depends on ${dependency}, which the app has not installed; publish the package and raise the pin, or install ${dependency} in the app`)
-    return { name: pkg.name, folder: slashed(pkg.folder), version: pkg.version, targets: targets.map((target) => slashed(relative(root, target))), files: files.length, warnings }
-}
-
-const recordSchema = z.object({
-    schema: z.literal("starci/deps-local@1"),
-    packages: z.array(z.object({ name: z.string(), folder: z.string() })),
-})
-
-/** The local package-source record of a repository: the packages its installs copy from a folder. */
-export type LocalRecord = z.infer<typeof recordSchema>
-
-/** The repository's local record, or undefined in npm mode (no record, or the host registry does not know the repository). */
-export const readRecord = (root: string): LocalRecord | undefined => {
-    const file = existingDepsLocalPath(root)
-    if (file === undefined || !existsSync(file)) return undefined
-    const parsed = recordSchema.safeParse(JSON.parse(readFileSync(file, "utf8")))
-    if (!parsed.success) throw new Refusal("DEPS_RECORD_UNREADABLE", `${file} is not a starci/deps-local@1 record; run starci deps source --npm to clear it`)
-    return parsed.data
-}
-
-/** Writes the repository's local record (merged by the caller). */
-export const writeRecord = (root: string, packages: LocalRecord["packages"]): string => {
-    const file = depsLocalPath(root)
-    const record: LocalRecord = { schema: "starci/deps-local@1", packages: [...packages].sort((left, right) => left.name.localeCompare(right.name)) }
-    writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`)
-    return file
-}
-
-/** Removes the repository's local record: the repository is back in npm mode. */
-export const clearRecord = (root: string): void => {
-    const file = existingDepsLocalPath(root)
-    if (file !== undefined) rmSync(file, { force: true })
-}
-
-/** A failed copy as a line: a refusal with its code (DEPS_TARGET_HELD names the remedy), any other error by its message. */
-const failureText = (error: unknown): string => {
-    if (error instanceof Refusal) return `${error.code}: ${error.message}`
-    return error instanceof Error ? error.message : String(error)
-}
-
-/** What re-applying a repository's local sources to another of its checkouts did; undefined when the repository is in npm mode. */
-export interface Reapplied {
-    readonly status: "green" | "red"
-    readonly detail: string
-}
-
-/**
- * Applies the repository's recorded local sources (`source` is any checkout of it) to `checkout`, another checkout of it
- * or the same one: a workflow worktree before an Op launches into it (`seat start`), a clean-verify checkout after its
- * `npm ci`, or a work tree after its own `npm ci` (`deps source --sync`). It runs `npm ci` first when the checkout has no
- * node_modules, installs the dependencies the local packages add (`installMissing`), then copies each recorded folder as
- * it stands, without building, so every checkout runs against the same unpublished package.
- */
-export const reapplyLocal = async (source: string, checkout: string): Promise<Reapplied | undefined> => {
-    const { packages, healed } = healRecord(source)
-    if (packages.length === 0) return undefined
-    try {
-        if (!existsSync(join(checkout, "node_modules"))) {
-            const run = await withHeavySlot("install", "npm ci", checkout, {}, (held) => captureNpm(["ci", "--no-audit", "--no-fund"], checkout, held.options))
-            if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", `npm ci in ${checkout} failed:\n${tail(run.stdout, run.stderr)}`)
-        }
-        const added = await installMissing(checkout, packages)
-        const manifests = await manifestFiles(checkout)
-        const copied = await inOrder(packages, (pkg) => copyLocal(checkout, manifests, pkg))
-        const lines = copied.map((one) => {
-            const warningsText = one.warnings.map((warning) => `\n  warning: ${warning}`).join("")
-            return `${one.name} ${one.version} from ${one.folder} into ${one.targets.join(", ")}${warningsText}`
-        })
-        return { status: "green", detail: [...healed.map((one) => `warning: ${describeHealed(one)}`), ...(added.length === 0 ? [] : [`installed without saving: ${added.join(", ")}`]), ...lines].join("\n") }
-    } catch (error: unknown) {
-        // An install the host held in the heavy queue judged nothing: the verify reaches no verdict, never a red copy.
-        if (error instanceof Refusal && error.code === HOST_HELD) throw error
-        return { status: "red", detail: [...healed.map((one) => `warning: ${describeHealed(one)}`), `the repository is in local package mode (starci deps source) but its copy failed: ${failureText(error)}`].join("\n") }
-    }
-}
-
-/** One record entry whose folder no longer held its package: where it pointed, and the harness folder it now names (null: dropped, npm). */
-export interface Healed {
-    readonly name: string
-    readonly from: string
-    readonly to: string | null
-}
-
-/** The warning line of one healed entry. */
-export const describeHealed = (one: Healed): string =>
-    one.to === null
-        ? `${one.from} no longer holds ${one.name} and the harness's packages/ has no folder for it: dropped from the local record, it resolves from npm`
-        : `${one.from} no longer holds ${one.name}: the local record now names the harness's own ${one.to}`
-
-/** The package a record entry's folder holds, or undefined when the folder is gone or holds another package. */
-const packageAt = (entry: LocalRecord["packages"][number]): LocalPackage | undefined => (existsSync(entry.folder) ? localPackages(dirname(entry.folder)).get(entry.name) : undefined)
-
-/**
- * The repository's local record with every entry resolved to its package, healed first: an entry whose folder no longer holds
- * its package (a package edit worktree Debug landed and `worktree gc` removed, a folder deleted by hand) is repointed to the
- * harness's own `packages/` folder of the same name (`defaultPackagesRoot`), or dropped so the package resolves from npm when
- * the harness has none; the record is rewritten (cleared once empty) and a `deps-local-healed` event names each change in the
- * project's ledger. A vanished folder therefore never fails an install, a sync or a launch. Empty in npm mode.
- */
-export const healRecord = (root: string): { readonly packages: readonly LocalPackage[]; readonly healed: readonly Healed[] } => {
-    const record = readRecord(root)
-    if (record === undefined) return { packages: [], healed: [] }
-    const harness = existsSync(defaultPackagesRoot()) ? localPackages(defaultPackagesRoot()) : new Map<string, LocalPackage>()
-    const healed: Healed[] = []
-    const packages = record.packages.flatMap((entry): LocalPackage[] => {
-        const held = packageAt(entry)
-        if (held !== undefined) return [held]
-        const own = harness.get(entry.name)
-        healed.push({ name: entry.name, from: entry.folder, to: own === undefined ? null : slashed(own.folder) })
-        return own === undefined ? [] : [own]
-    })
-    if (healed.length === 0) return { packages, healed }
-    if (packages.length === 0) clearRecord(root)
-    else writeRecord(root, packages.map((pkg) => ({ name: pkg.name, folder: slashed(pkg.folder) })))
-    const db = openExistingLedger(root)
-    if (db !== undefined) {
-        try {
-            recordEvent(db, "deps-local-healed", null, { healed })
-        } finally {
-            db.close()
-        }
-    }
-    return { packages, healed }
-}
-
-/** What healing one repository's local record did, for a caller that heals every project of the host. */
-export interface HealedRecord {
-    readonly repo: string
-    readonly healed: readonly Healed[]
-}
-
-/**
- * Heals the local record of every project the host registry lists (`healRecord`); a project whose repository is gone or whose
- * record is unreadable is skipped. Repository-scoped collection heals only its own record; source resolution heals each caller.
- */
-export const healRecords = (): HealedRecord[] =>
-    readMachine((db) => db.prepare("SELECT repo_root FROM ledgers").all(), [])
-        .map((row) => String(row.repo_root))
-        .filter((repo) => existsSync(join(repo, ".git")))
-        .flatMap((repo): HealedRecord[] => {
-            try {
-                const { healed } = healRecord(repo)
-                return healed.length === 0 ? [] : [{ repo, healed }]
-            } catch (error: unknown) {
-                // An unreadable record is refused where it is used (deps source, a sync); it never stops another project heal.
-                if (error instanceof Refusal) return []
-                throw error
-            }
-        })

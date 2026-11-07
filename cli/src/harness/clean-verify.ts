@@ -224,8 +224,7 @@ const buildCandidate = async (input: CleanVerifyInput): Promise<Built> => {
  * The install where the candidate carries a lockfile (the contract's cwd first, then the root); undefined when there is none or
  * it has nothing to give. It is installCheckout (harness/install-cache.ts), the one install a walk's checkout is given too: the
  * shared install cache keyed by the candidate's own install inputs (its lockfile and every manifest it installs), Node and npm, so
- * a changed lockfile is never served the base's install, and in local package mode (`starci deps source --local`) the same local
- * copies the work tree runs against.
+ * a changed lockfile is never served the base's install.
  */
 const install = async (place: CheckPlace): Promise<CheckOutcome | undefined> => {
     const dir = [place.cwd, place.root].find((candidate) => existsSync(join(candidate, "package-lock.json")) || existsSync(join(candidate, "npm-shrinkwrap.json")))
@@ -243,7 +242,7 @@ export const INSTALL_RED_HARNESS = "INSTALL_RED_HARNESS"
 /**
  * Refuses with VERIFY_INFRA when a preparing step failed on the harness, not on the work: the install or a setup command ran
  * out of its budget (exit 124), or the install is red while none of the files the work changed (`changed`) is one an install
- * reads, so the red comes from what the harness brought to the checkout (its install cache, a local package record). The latter
+ * reads, so the red comes from what the harness brought to the checkout (its install cache). The latter
  * opens one harness-defect ticket, deduped by INSTALL_RED_HARNESS, for the project of `repo`. The caller reaches no verdict: a
  * task verify returns the task to reported with no try spent, a wave fails, returns and revives no task, and the next step
  * verifies again, green once the cause is cleared.

@@ -67,8 +67,8 @@ Before you send a brief, a plan or an answer, check it:
 
 - every "never", "must", "only" or "wait for" names a rule id and path you opened in this session;
 - the lookup ran in English, in at least two phrasings, and no hit contradicts what you wrote;
-- a package-edit brief names the consuming app checkout and the immediate build and consumption command from
-  [authority/packages.md](authority/packages.md), including its local-registry route when the app installs the edit;
+- a package-edit brief names the consuming app checkout and the immediate publish and install commands of the
+  local registry (`deps publish-local`, `deps install-local`) from [authority/packages.md](authority/packages.md);
 - every constraint names its enforcer (a hard rule's gate, an `R<n>` lint rule of [hfs/rules.yaml](hfs/rules.yaml), a CLI
   refusal) or is held by review, and this check is that review.
 

@@ -104,7 +104,7 @@ import { uiVerb } from "./core/ui/serve.js"
 import { dnaCheckVerb } from "./core/dna/check.js"
 import { depsCheckVerb } from "./core/deps/check.js"
 import { depsPublishLocalVerb } from "./core/deps/publish-local.js"
-import { depsSourceVerb } from "./core/deps/source.js"
+import { depsInstallLocalVerb } from "./core/deps/install-local.js"
 import { pkgBranchVerb } from "./core/pkg/branch.js"
 import { pkgHandoffVerb } from "./core/pkg/handoff.js"
 import { pkgTestVerb } from "./core/pkg/test.js"
@@ -225,7 +225,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     configSetVerb,
     uiVerb,
     dnaCheckVerb,
-    depsSourceVerb,
+    depsInstallLocalVerb,
     depsPublishLocalVerb,
     depsCheckVerb,
     pkgBranchVerb,

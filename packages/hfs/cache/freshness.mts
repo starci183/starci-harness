@@ -75,7 +75,7 @@ export function freshnessFindings(input: FreshnessInput): FreshnessFinding[] {
   if (!input.portable) {
     return [{
       code: UNPORTABLE, level: 'error', path: CACHE_DIR,
-      message: `this host cannot write a cache CI can trust (${input.localReasons[0] ?? 'a local package'}); run \`starci deps source --npm\`, then \`starci app check\`, commit ${CACHE_DIR} and push`,
+      message: `this host cannot write a cache CI can trust (${input.localReasons[0] ?? 'a local package'}); run \`starci deps install-local --restore\`, then \`starci app check\`, commit ${CACHE_DIR} and push`,
     }];
   }
   const changed = [...new Set([...input.written, ...input.removed, ...(input.uncommitted ?? uncommittedCacheFiles(input.root))])].sort();

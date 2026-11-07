@@ -1,5 +1,4 @@
 import { existsSync } from "node:fs"
-import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureGit, git, refExists } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb, WRITERS } from "../../shared/verb.js"
@@ -12,7 +11,7 @@ interface BranchData {
     readonly base: string
     readonly created: boolean
     readonly guard: string
-    readonly link: string
+    readonly publish: string
 }
 
 /** `starci pkg branch <topic>`: cuts the package edit branch `pkg/<app>-<topic>` from harness main into its own worktree (see ./edit.ts). */
@@ -44,11 +43,11 @@ export const pkgBranchVerb = defineVerb({
         await git(harness, ["config", `branch.${branch}.${APP_KEY}`, app])
         const guard = await installPushGuard(harness)
         const base = (await git(worktree, ["merge-base", "HEAD", "main"])).trim()
-        const link = `starci deps source --local --cwd ${join(worktree, "packages").replaceAll("\\", "/")}`
-        const data: BranchData = { branch, worktree: worktree.replaceAll("\\", "/"), harness: harness.replaceAll("\\", "/"), base, created, guard: guard.replaceAll("\\", "/"), link }
+        const publish = `starci deps publish-local --execute --cwd ${worktree.replaceAll("\\", "/")}`
+        const data: BranchData = { branch, worktree: worktree.replaceAll("\\", "/"), harness: harness.replaceAll("\\", "/"), base, created, guard: guard.replaceAll("\\", "/"), publish }
         const message = [
             `${created ? "created" : "reusing"} ${branch} in ${data.worktree} (from main ${base.slice(0, 9)})`,
-            `edit and commit there, run each changed package's own gates (npm run build, npm test in its folder), then link it into this app: ${link}`,
+            `edit and commit there, run each changed package's own gates (npm run build, npm test in its folder), then publish it to the local registry (${publish}) and install it here (starci deps install-local <package> --execute)`,
             "when it is done: starci pkg handoff (add --urgent when a deploy waits on it); pushing this branch is refused for every role but debug and owner",
         ]
         return { data, message: message.join("\n") }

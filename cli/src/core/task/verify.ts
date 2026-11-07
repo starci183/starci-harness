@@ -24,7 +24,6 @@ import type { SeatClosing } from "../../harness/seats.js"
 import { assertSettleLockHeld, blockWork, settle, settleLockHolder, settleMessage, thisVerifier, verifyLockKey, withSettleLock, workLine } from "../../harness/settle.js"
 import { LAND_CONFLICT, LAND_CONFLICT_EVENT, LandConflict, landLockKey, landTargetOf, opWorktreeOf, refreshOpInstall, removeOpWorktree } from "../../harness/land.js"
 import { HOST_HELD, withHeavyBound } from "../../harness/heavy.js"
-import { reapplyLocal } from "../deps/packages.js"
 import type { LandTarget, OpWorktree, WorktreeRemoval } from "../../harness/land.js"
 import type { Settlement, Verifier, WorkWrite } from "../../harness/settle.js"
 import { clearIntent, getTask, isAdmitted, lastEvent, latestAttempt, markIntent, recordEvent, recordSettleCommit, resultOf, setStatus, setVerdict, taskCheckout, VERIFY_HOST_HELD } from "../../harness/tasks.js"
@@ -132,21 +131,16 @@ const resultSource = (db: DatabaseSync, root: string, task: TaskRow, attempt: At
 }
 
 /**
- * The install of the task's Op worktree made to match its own lockfile before its checks run (harness/land.ts refreshOpInstall),
- * with the local package sources reapplied over a new install in local package mode: one `install` outcome per folder installed
- * anew, none when every install still holds.
+ * The install of the task's Op worktree made to match its own lockfile before its checks run (harness/land.ts refreshOpInstall):
+ * one `install` outcome per folder installed anew, none when every install still holds.
  */
 const opInstall = async (root: string, taskId: string, made: OpWorktree): Promise<CheckOutcome[]> => {
     const reinstalled = await refreshOpInstall(root, taskId, made)
-    if (reinstalled.length === 0) return []
-    const outcomes = reinstalled.map((one): CheckOutcome => {
+    return reinstalled.map((one): CheckOutcome => {
         const exitCode = one.run?.exitCode ?? 0
         const tail = one.run === null ? "" : `\n${evidenceTail(one.run.stdout, one.run.stderr)}`
         return { name: "install", kind: "install", status: exitCode === 0 ? "green" : "red", exitCode, detail: `${one.folder}: ${one.note}${tail}` }
     })
-    if (outcomes.some((outcome) => outcome.status === "red")) return outcomes
-    const reapplied = await reapplyLocal(made.target, made.path)
-    return reapplied === undefined ? outcomes : [...outcomes, { name: "deps-local", kind: "install", status: reapplied.status, exitCode: null, detail: reapplied.detail }]
 }
 
 /**
