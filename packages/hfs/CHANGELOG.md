@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.1.1 - 2026-11-07
+
+- Fixed: the bundled canon pins name the canons and the Grammar family at the versions whose `@starci/hfs` peer is `~6.1.0` (`eslint-canon-be` 3.19.4, `eslint-canon-fe` 9.16.4, the Grammar family 0.25.1), so an app on hfs 6.1 installs with `npm ci`; `contexts/stack/pins.yaml` agrees.
+
 ## 6.1.0 - 2026-11-07
 
 - Added (R388): an app keeps exactly two long-lived branches, `main` and `dev` (`contexts/project/branches.md` PROJECT-BRANCH-1). The managed `.husky/pre-push` hook (`slots.yaml` 3.25.0: run `app sync --execute` to render it) now hands the bundled push gate the remote it pushes to and refuses a push of `main` whose commit is not reachable from `dev`, the local one and the remote-tracking one or the dev pushed with it (`BRANCH_MAIN_NOT_ON_DEV`; a missing dev refuses too, except the first push of `main` into an empty remote), a push of `main` that is not the checked-out `HEAD` (`BRANCH_MAIN_NOT_CHECKED_OUT`: the hook's check judges the checked-out tree), and a push of `dev` that deletes it or does not contain `main`, local, remote-tracking or pushed with it (`BRANCH_DEV_NOT_ON_MAIN`). A push of `main` or a `v*` tag runs the plain `app check` with `STARCI_JUDGED_BRANCH=main`, judged as `main` (the full gate, `judgedBranch` of `branch-profile.mts`) whatever branch is checked out, so the branch profile of `dev` never applies to it. The managed `ci.yml` plan step refuses a push of `main` whose commit is not on `origin/dev`.

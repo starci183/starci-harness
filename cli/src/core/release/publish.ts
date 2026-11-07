@@ -13,6 +13,7 @@ import type { WorkspacePackage } from "../../shared/workspace.js"
 import { inOrder } from "../../harness/sequential.js"
 import { GRAMMAR_PACKAGE, judgeGrammarBump } from "./grammar-bump.js"
 import { meetsPin } from "./pin-range.js"
+import { peerSkews } from "./peer-range.js"
 import { stackPinVersions, unservedPins } from "./pin-served.js"
 
 /** What publication does with one package: `publish` is a version npm does not serve, whatever its content, `published` one it serves. */
@@ -221,12 +222,15 @@ const planOf = async (packages: readonly WorkspacePackage[], cwd: string): Promi
 
 /**
  * The plan judgement of CI's publish step, one function for `release publish` and `release push`: every package's row, the
- * sibling requirements of each due package, the stack pins (each a version npm serves or this run publishes), and with a base the packages changed since it that are already on npm.
+ * sibling requirements of each due package, the stack pins (each a version npm serves or this run publishes, and no peer range that excludes a pinned or published sibling), and with a base the packages changed since it that are already on npm.
  */
 export const judgePlan = async (root: string, packages: readonly WorkspacePackage[], base: string | undefined): Promise<PlanRow[]> => {
     const rows = await planOf(packages, root)
     await judgeRequires(rows, packages, root)
-    const unserved = await unservedPins(rows, stackPinVersions(root), (name, version) => versionOnRegistry(name, version, root))
+    const pins = stackPinVersions(root)
+    const unserved = await unservedPins(rows, pins, (name, version) => versionOnRegistry(name, version, root))
+    const skewed = peerSkews(rows, packages, pins)
+    if (skewed.length > 0) throw new Refusal("RELEASE_PEER_RANGE_EXCLUDES_PIN", `a peer range excludes the version an app installs: ${skewed.join("; ")}; raise the peer range in the commit that raises the pin, or the pin to a version the peer admits`)
     if (unserved.length > 0) throw new Refusal("RELEASE_PIN_UNPUBLISHED", `${STACK_PINS} pins ${unserved.join(", ")}: npm does not serve it and this run does not publish it, so an app cannot install the pinned set; pin the version the package folder holds, or the one npm serves`)
     if (base !== undefined) await judgeBumped(rows, root, base)
     // A Grammar patch reaches apps inside the canon pins' range alone, so a change of a minor's kind refuses a patch bump (contexts/grammars/contributing.md "Patch or minor").

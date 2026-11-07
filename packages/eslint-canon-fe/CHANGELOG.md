@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.16.4 - 2026-11-07
+
+- Fixed: the `@starci/hfs` peer is `~6.1.0` (it was `~6.0.0`), the range of the hfs the canon pins name, so an app on hfs 6.1 installs with `npm ci`.
+
 ## 9.16.3 - 2026-11-07
 
 - Added (R235 `SCAN_SMELL`, `no-line-separator-literal`, slot-free): a raw U+2028, U+2029 or U+0085 anywhere in a file, specs included, is an error that names the escape to write (` `, ` `, ``) in a string, template or regular expression, or says to delete the character elsewhere. The Sonar scanner splits lines at these characters and TypeScript does not, so its analysis aborts with "Line n is out of range ... File has m lines".

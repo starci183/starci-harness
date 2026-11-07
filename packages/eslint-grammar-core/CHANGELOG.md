@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.1 - 2026-11-07
+
+- A patch of the Grammar family, metadata only: the `@starci/hfs` peer is `~6.1.0` (it was `~6.0.0`), the range of the hfs the canon pins name, so an app on hfs 6.1 installs with `npm ci`.
+
 ## 0.25.0 - 2026-11-07
 
 - A minor of the Grammar family: rule sources (`freestyle.ts`, `status-colors.ts`, `surface-depth.ts`, `lib/rule-contract.ts`, `lib/why.ts`) changed their text, so the family moves to 0.25.0 (`contexts/grammars/contributing.md` "Patch or minor").

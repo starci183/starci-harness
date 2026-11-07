@@ -12,6 +12,8 @@ export interface WorkspacePackage {
     readonly scripts: Readonly<Record<string, string>>
     /** The packages it requires once installed, name to spec: its `dependencies` and `peerDependencies`. */
     readonly requires: Readonly<Record<string, string>>
+    /** The packages it needs the consumer to install, name to range: its `peerDependencies`. */
+    readonly peers: Readonly<Record<string, string>>
     /** The folders its `file:` dependencies (of any kind) name, repository-relative: siblings built before it is installed. */
     readonly fileDependencies: readonly string[]
     /** The name of every package it depends on, of any kind (`dependencies`, `devDependencies`, `peerDependencies`, `optionalDependencies`). */
@@ -99,6 +101,7 @@ const readPackage = (root: string, dir: string): WorkspacePackage | undefined =>
         version: parsed.version,
         private: parsed.private === true,
         scripts: stringRecord(parsed.scripts),
+        peers: stringRecord(parsed.peerDependencies),
         requires: { ...stringRecord(parsed.peerDependencies), ...stringRecord(parsed.dependencies) },
         fileDependencies: [...new Set(
             DEPENDENCY_FIELDS

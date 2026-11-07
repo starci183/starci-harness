@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.1 - 2026-11-07
+
+- A patch with eslint-grammar-core and eslint-grammar-offset-pop, which keep one version with it: the `@starci/hfs` peer of the lint packages is `~6.1.0`. No component, prop or token changed; the canon pins' range is `~0.25.1`.
+
 ## 0.25.0 - 2026-11-07
 
 - A minor with eslint-grammar-core and eslint-grammar-offset-pop: the family moves together because the lint rules of eslint-grammar-core changed text (`contexts/grammars/contributing.md` "Patch or minor"); the canon pins raise the range to `~0.25.0`.

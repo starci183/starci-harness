@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.88 - 2026-11-07
+
+- Added: `RELEASE_PEER_RANGE_EXCLUDES_PIN` refuses a plan in which a package to publish, or a package a stack pin names at the version its folder holds, declares a `peerDependencies` range that excludes the version a sibling is pinned at or published at (a canon peering `@starci/hfs` `~6.0.0` against the pinned hfs 6.1.x), because an app cannot `npm ci` the pinned set. `release publish` and `release push` judge it (`cli/src/core/release/peer-range.ts`, spec `peer-range.test.ts`); `WorkspacePackage` carries `peers`.
+
 ## 1.1.0-alpha.87 - 2026-11-07
 
 - Changed: `starci app check` is green only with zero error findings, so `gate.errorLimit` is removed from policy/quality.yaml, its schema field is gone and the CLI no longer hands `STARCI_GATE_ERROR_LIMIT` to `@starci/hfs`. quality.yaml is now a strict schema: a `gate` key (or any other unknown key) is refused `POLICY_INVALID`, and for `gate` the message says there is no error limit to set. Spec: `src/harness/policy-gate.test.ts`. The hfs requirement follows the pin once npm serves `@starci/hfs` 6.1.0 (`cli-follow`).

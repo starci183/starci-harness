@@ -193,7 +193,7 @@ Commit with hooks, in small commits whose message says what the change does.
 Main is pushed right after a green wave round ([contexts/authority/wave.md](contexts/authority/wave.md)) with
 `starci release push --execute` (dry without it; it refuses a dirty tree, a non fast-forward and a secret in the pushed range). In this repository it also
 runs the light gates CI refuses on, locally and in the dry run: the plan judgement of CI's publish step against the base CI would use
-(`RELEASE_VERSION_NOT_BUMPED`, `RELEASE_DEPENDENCY_SKEW`, `RELEASE_DEPENDENCY_UNPUBLISHED`) and the contexts anchors
+(`RELEASE_VERSION_NOT_BUMPED`, `RELEASE_DEPENDENCY_SKEW`, `RELEASE_DEPENDENCY_UNPUBLISHED`, `RELEASE_PEER_RANGE_EXCLUDES_PIN`) and the contexts anchors
 (`PUSH_ANCHORS_RED`: `contexts anchor` with no id) (`cli/src/core/release/push-gate.ts`). The specs of a package stay CI's. CI judges
 everything else.
 
@@ -226,8 +226,10 @@ version that is neither on npm nor due in the same run, and when `@starci/gramma
 version npm serves holds a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`). The Grammar family takes
 a same-minor range in the canon pins: a Grammar patch publishes the three family packages alone, and a minor raises the
 range in `@starci/hfs` and releases the whole family ([contexts/grammars/contributing.md](contexts/grammars/contributing.md) "Patch or
-minor"). A raised version npm does not serve is published whatever its content, even with an empty diff, because the stack pins name it and an immutable registry needs it; `unchanged` never appears in the plan. A stack pin of a package at a version npm does not serve and this run does not publish refuses `RELEASE_PIN_UNPUBLISHED`. the canons peer `@starci/hfs`
-by a same-minor range and read its runtime at run time, so an hfs change does not release them. A change to a package therefore raises the version in its `package.json` and adds its entry to its CHANGELOG
+minor"). A raised version npm does not serve is published whatever its content, even with an empty diff, because the stack pins name it and an immutable registry needs it; `unchanged` never appears in the plan. A stack pin of a package at a version npm does not serve and this run does not publish refuses `RELEASE_PIN_UNPUBLISHED`. A package the plan publishes, or one a stack pin names at the version its folder holds, whose
+`peerDependencies` range excludes the version a sibling is pinned at (or published at) refuses `RELEASE_PEER_RANGE_EXCLUDES_PIN` (`cli/src/core/release/peer-range.ts`): an
+app installs the pinned set, and an excluded peer fails `npm ci` with ERESOLVE. The canons peer `@starci/hfs` by a same-minor range and read its runtime at run time, so an hfs patch does not release them and
+an hfs minor moves their peer range in the commit that raises the pin. A change to a package therefore raises the version in its `package.json` and adds its entry to its CHANGELOG
 (the CLI's is [CHANGELOG.md](CHANGELOG.md)) in the commit that makes it; a package and the sibling version it requires
 move in one commit. The CLI is the one exception, held for the second phase: `cli/package-lock.json` installs its
 siblings from npm, so its commit requires each at a version npm serves, and it requires every `@starci` package
