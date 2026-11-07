@@ -3,10 +3,10 @@
 //   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|build|audit|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
 //                                            every tracked path has a slot; required files exist; nothing forbidden or
 //                                            tracked-that-must-be-ignored; pins match; every managed file equals its render
-//                                            (sync/managed.mjs, the .gitignore block and sonar-project.properties included); no empty or ghost
+//                                            (sync/managed.mts, the .gitignore block and sonar-project.properties included); no empty or ghost
 //                                            directory, no untracked entry outside an ignored slot; plaintext secrets, the .starcistacks shape, CI
 //                                            and pre-push canon steps, dependency version skew, the contract snapshot and the test, wire and i18n
-//                                            trees; prettier over every tracked file through the repository's own install (sync/format.mjs; a repository
+//                                            trees; prettier over every tracked file through the repository's own install (sync/format.mts; a repository
 //                                            without prettier is a refusal); soft-size backlog (report only); then the whole
 //                                            architecture machine (tiers, owners, clones, dead exports, module registration, the
 //                                            front-end and back-end source rules), each violation a finding with its why.
@@ -27,31 +27,31 @@
 //                                            --side be|fe|packages limits the lint gate to one side or to the root packages (a CI matrix runs one per scope). --out <file> writes every finding of the run as ONE
 //                                            Sonar Generic Issue Import document (engine ids starci-hfs, eslint, stylelint). --fix runs ESLint and stylelint with --fix before the
 //                                            check and is refused unless --gate lint is selected.
-//                                            --staged: the pre-commit guard alone (sync/hygiene.mjs: staged .starciwork and .starcistacks paths, the secrets
+//                                            --staged: the pre-commit guard alone (sync/hygiene.mts: staged .starciwork and .starcistacks paths, the secrets
 //                                            guard and the bypass guard over every staged file read from the index, a new back-end logic file staged
 //                                            without its unit spec); it takes no other flag.
-//                                            Every run is under the branch profile of the branch it judges (runtime/scripts/hfs/branch-profile.mjs, `branches` of
+//                                            Every run is under the branch profile of the branch it judges (runtime/scripts/hfs/branch-profile.mts, `branches` of
 //                                            .starcistacks/application-stacks.yaml; contexts/project/lint.md PROJECT-LINT-2): a gate the profile reports runs and records,
 //                                            its findings marked `report` and outside the verdict; an off gate does not run; each prints one notice. Where lint
-//                                            reports, the lint ratchet (lint/ratchet.mjs) refuses the commits since the base that add lint findings to a file they touch.
+//                                            reports, the lint ratchet (lint/ratchet.mts) refuses the commits since the base that add lint findings to a file they touch.
 //                                            --profile prints the profile (with one --gate, only that gate's mode: the word the pre-commit hook reads);
 //                                            --ratchet is the pre-commit lint ratchet over the staged files against HEAD. Both take no other flag.
-//                                            Exit 1 at 20 error findings or a hard blocker (gate-threshold.mjs). The root checks run once and
+//                                            Exit 1 at 20 error findings or a hard blocker (gate-threshold.mts). The root checks run once and
 //                                            the side checks and the machine once per side, the side folder as their root; every path is app-relative.
 //   starci app scaffold <name> [--cwd <dir>]  a new app <dir>/<name>/ (<dir> is the global --cwd): the root (hfs.json, package.json, managed files, .starciwork) and the
-//                                            be/ and fe/ skeletons (scaffold/app.mjs). Accepts an empty unborn main Git root.
+//                                            be/ and fe/ skeletons (scaffold/app.mts). Accepts an empty unborn main Git root.
 //   starci app slot <path> [--cwd <dir>] [--json]   which slot owns the path, its tier, allowed imports, required tests.
-//   starci app emit [--cwd <dir>]      write be/contracts/<app>/schema.graphql of every api app that serves GraphQL (emit/contracts.mjs):
+//   starci app emit [--cwd <dir>]      write be/contracts/<app>/schema.graphql of every api app that serves GraphQL (emit/contracts.mts):
 //                                            printSchema(lexicographicSortSchema) of the resolvers the app root composes; no env, no database, no network.
 //   starci app sync [--execute] [--cwd <dir>]  the managed files of the root (scripts, husky, CI, .gitignore block, sonar, prettier) and
-//                                            of each side (tsconfig, eslint, jest, stylelint); sync/cli.mjs. Dry run unless --execute: it reports drift and exits 1 on it.
-//   starci app coverage merge --out <lcov> <lcov-or-dir>...  the lcov reports of the sharded unit run merged into one (coverage/cli.mjs; the managed CI coverage job)
+//                                            of each side (tsconfig, eslint, jest, stylelint); sync/cli.mts. Dry run unless --execute: it reports drift and exits 1 on it.
+//   starci app coverage merge --out <lcov> <lcov-or-dir>...  the lcov reports of the sharded unit run merged into one (coverage/cli.mts; the managed CI coverage job)
 //   starci app add service <dir> <name> [--inject <Decorator>=<module>:<Type> | <Class>=<module>]... [--cwd <dir>]
-//                                            a back-end `<name>.service.ts` and its `<name>.service.spec.ts` skeleton (scaffold/service.mjs; <dir> is
+//                                            a back-end `<name>.service.ts` and its `<name>.service.spec.ts` skeleton (scaffold/service.mts; <dir> is
 //                                            relative to be/): the spec is built
 //                                            with Test.createTestingModule, one provider per constructor dependency (kit doubles from @starci/jest-preset),
-//                                            one placeholder it per public method. Never overwrites a file. Both editions: a lite back end keeps full's unit specs (ruling:R212/case-1 (owner:lite-production-swarm), amended by ruling:R212/case-4).
-//   starci app add image [--cwd <dir>]                  the Dockerfile of every declared app that has none, from the image canon (scaffold/image.mjs); never overwrites
+//                                            one placeholder it per public method. Never overwrites a file. Both editions: a lite back end keeps full's unit specs (R212).
+//   starci app add image [--cwd <dir>]                  the Dockerfile of every declared app that has none, from the image canon (scaffold/image.mts); never overwrites
 //   starci app add spec <file>.service.ts [--cwd <dir>]  the spec skeleton of an existing service, read from its constructor with the repository's TypeScript
 //                                            (service, spec and image take only what is written here: an option another noun takes is refused, as --inject is on every other noun)
 //   starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json]   the full edition's local test world (the installed @starci/test-world cli)
@@ -71,11 +71,11 @@
 //   starci app add <api|webhook|realtime|saga|job|reactor|queue|projection> <name> [--event <event> --from <service> --service <Class>=<module>] [--owner <service> --failed <event> --done <event>] [--connection <name>] [--cwd <dir>]
 //                                            exactly that kind's file tree, generated FROM the files: tree of its pattern topic (knowledge/patterns/be) with the
 //                                            one template body of each entry (templates/be/patterns), plus the platform capabilities it needs when they are missing;
-//                                            it registers the patterns and the trigger kind in hfs.json (sides.be.patterns, sides.be.kinds). Never overwrites a file (scaffold/add.mjs). In a lite app a noun whose slots lite does not have refuses: `add <noun>: full edition only`.
+//                                            it registers the patterns and the trigger kind in hfs.json (sides.be.patterns, sides.be.kinds). Never overwrites a file (scaffold/add.mts). In a lite app a noun whose slots lite does not have refuses: `add <noun>: full edition only`.
 //   starci app add <block|frame|composite|branch|leaf> <name> [--shapes a,b,c] [--read <read>] [--app <fe app>] [--cwd <dir>]
 //   starci app add <page|layout> <route> [--blocks a,b] [--tabs a,b (page)] | overlay <name> --kind modal|drawer [--form]   a route page, segment layout
-//                                            or overlay owner (scaffold/add-fe-page.mjs, add-fe-layout.mjs, add-fe-overlay.mjs).
-//                                            one front-end unit in the shape-slot pattern from templates/fe/units (scaffold/add-fe-unit.mjs); the
+//                                            or overlay owner (scaffold/add-fe-page.mts, add-fe-layout.mts, add-fe-overlay.mts).
+//                                            one front-end unit in the shape-slot pattern from templates/fe/units (scaffold/add-fe-unit.mts); the
 //                                            first block writes the app's one copy of the status owners. Never overwrites a unit.
 // The flags of every verb are those of USAGE below, generated from the parser tables that refuse every other flag.
 // Every finding names a why code and carries its Vietnamese text. check and slot read the app, never write to it. Exit codes:
@@ -545,7 +545,7 @@ async function fixLint({ repoRoot, side, run }: { repoRoot: string; side: string
 async function checkRun({ io, selected: requested, full, use, coverageFrom, side, fix = false, whole = false }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined; side?: string | undefined; fix?: boolean; whole?: boolean }): Promise<{ result: Dynamic; seconds: number; raw: LinterRaw }> {
   const { cwd: repoRoot, harness, edition, presets, prettier, checkApp = appPass, runLinter } = io;
   const started = Date.now();
-  // The branch profile (branch-profile.mjs): a gate it turns off does not run, a gate it reports runs and records but its findings never count.
+  // The branch profile (branch-profile.mts): a gate it turns off does not run, a gate it reports runs and records but its findings never count.
   const profile = activeProfile(repoRoot, io.env);
   const modes = familyModes(profile);
   const selected = new Set([...requested].filter((family) => modes[family] !== 'off'));
@@ -605,7 +605,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   const linterFindings = [...(eslint?.findings ?? []).map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: finding.severity === 'warning' ? 'warning' : 'error' })), ...stylelintFindings(style.results, repoRoot)];
   // A finding of a family the profile reports is marked `report`: listed and recorded, never part of the verdict.
   const findings = [...proof.findings, ...extra, ...verdicts, ...linterFindings].map((finding) => (modes[familyOf(finding)] === 'report' ? { ...finding, report: true } : finding));
-  // Green under the threshold (gate-threshold.mjs): every finding is still listed, only the verdict changes.
+  // Green under the threshold (gate-threshold.mts): every finding is still listed, only the verdict changes.
   const verdict = gateVerdict(findings.filter(finding => finding.level === 'error' && finding.report !== true));
   const toolErrors = [...(eslint?.errors ?? []), ...style.errors, ...ratchetErrors];
   const counts = { ...proof.counts, error: findings.filter(finding => finding.level === 'error').length, warning: findings.filter(finding => finding.level === 'warning').length };

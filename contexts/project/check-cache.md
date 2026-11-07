@@ -408,7 +408,7 @@ parent holds about three times the records' MB, not the seven times their parsed
 a record whose key matches the tree and whose findings differ from the inherited or computed result is
 `HFS_CHECK_CACHE_FORGED` (a hard blocker), a touched key without a current record is `HFS_CHECK_CACHE_STALE`, and a
 missing cache is `HFS_CHECK_CACHE_MISSING`. Why: CI trusts a committed artifact only where review and CI already
-judged it, so a hand edit can cost time but never pass a file. Enforcement (owner decisions):
+judged it, so a hand edit can cost time but never pass a file. Enforcement:
 forged fails at any count; stale and missing warn in CI (report-only, the run is full or wider and still correct); a push
 whose cache a real run on its tree changes is refused at the pre-push hook (`HFS_CHECK_CACHE_UNWARMED`,
 `HFS_CHECK_CACHE_UNPORTABLE`, `packages/hfs/cache/freshness.mts`), so CI never goes cold and past its ESLint budget; and a red
