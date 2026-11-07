@@ -14,6 +14,7 @@
 - Removed: `STARCI_HEAVY_HELD` and the path by which a child of a held command used its parent's admission with no row of its own.
 - Changed: `heavy.testRun.parentMb` is 2048: the jest parent keeps no coverage (`@starci/jest-preset` 2.8 streams each spec's coverage into its record), about 0.4 MB a spec beyond its base.
 - Changed: `withOomNote` (`harness/heavy.ts`) appends the out-of-memory line to a failed run's stderr for both runners of a heavy child (`heavyCommand`, the hfs node port), so each spawn sits on its `withHeavySlot` line and `check heavy-sites` is green.
+- Fixed: `deps publish-local` reads the `npm pack --json` report after what a package's lifecycle scripts print (the Grammar's build stamp line), so a package whose `prepack` writes to stdout publishes (`packedFilename`, spec `publish-local.test.ts`).
 
 ## 1.1.0-alpha.88 - 2026-11-07
 

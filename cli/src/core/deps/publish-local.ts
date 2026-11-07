@@ -90,20 +90,33 @@ export const localManifest = (text: string, version: string, siblings: ReadonlyM
 
 const packSchema = z.array(z.object({ filename: z.string() })).min(1)
 
+/**
+ * The tarball name `npm pack --json` reports. Its stdout carries what the package's lifecycle scripts print (a `prepack` build) before the JSON,
+ * so the report is read from the last line that opens the JSON array; undefined when there is none.
+ */
+export const packedFilename = (stdout: string): string | undefined => {
+    const lines = stdout.split(/\r?\n/u)
+    for (let at = lines.length - 1; at >= 0; at -= 1) {
+        if (lines[at] !== "[") continue
+        let raw: unknown
+        try {
+            raw = JSON.parse(lines.slice(at).join("\n"))
+        } catch {
+            continue
+        }
+        const parsed = packSchema.safeParse(raw)
+        if (parsed.success) return parsed.data[0]?.filename
+    }
+    return undefined
+}
+
 /** Packs the package folder as `npm pack` does (its lifecycle scripts run there), publishes the tarball with its manifest rewritten in memory, and returns nothing: the folder keeps the version in git. */
 const publishOne = async (given: { readonly pkg: WorkspacePackage; readonly row: Row; readonly siblings: ReadonlyMap<string, string>; readonly port: number; readonly npmrc: string }): Promise<void> => {
     const { pkg, row, siblings, port, npmrc } = given
     const scratch = mkdtempSync(join(tmpdir(), "starci-publish-local-"))
     try {
         const packed = await withHeavySlot("build", `npm pack ${row.package}`, pkg.dir, {}, (held) => captureNpm(["pack", "--pack-destination", scratch, "--json"], pkg.dir, held.options))
-        let raw: unknown
-        try {
-            raw = JSON.parse(packed.stdout)
-        } catch {
-            raw = undefined
-        }
-        const parsed = packSchema.safeParse(raw)
-        const filename = parsed.success ? parsed.data[0]?.filename : undefined
+        const filename = packedFilename(packed.stdout)
         if (packed.exitCode !== 0 || filename === undefined) throw stepFailed(`npm pack of ${row.package}`, packed)
         const archive = join(scratch, filename.replaceAll("/", "-").replace(/^@/, ""))
         const local = join(scratch, `${row.localVersion}.tgz`)
