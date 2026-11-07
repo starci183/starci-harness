@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.2 - 2026-11-08
+
+- Changed: released with the Grammar family at 0.25.2; it requires `@starci/eslint-grammar-core` 0.25.2.
+
 ## 0.25.1 - 2026-11-07
 
 - A patch of the Grammar family with grammar 0.25.1: it requires `@starci/eslint-grammar-core` 0.25.1.

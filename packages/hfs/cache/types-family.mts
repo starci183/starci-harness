@@ -1,7 +1,9 @@
 // types-family.mts - the `--types` family of the app check cache (contexts/project/check-cache.md, "Which step reuses what"): each workspace's `tsc --noEmit` through the
 // app's own TypeScript, one program at a time. A program's key is the sha256 of everything the program reads: the hash of each tracked path it covers (`absent` for one the
-// work tree lost), the entries staged for it and the untracked files its TypeScript reads (generated code). An unchanged key reuses the program's recorded diagnostics; a
-// changed one runs that program's `tsc` in full. TypeScript's `.tsbuildinfo` speeds that run but is host state, not a result: it lives in the untracked tool cache and is
+// work tree lost), the entries staged for it and the untracked files its TypeScript reads (generated code); its record adds every other file `tsc` listed it read
+// (`--listFiles`): each installed package by its lockfile digest (the TypeScript lib files, the `@types` and every package whose declarations the program loads) and
+// each app file outside those folders by its hash (package-closure.mts), so a package bump re-runs the programs that read the package and no other. An unchanged
+// key reuses the program's recorded diagnostics; a changed one runs that program's `tsc` in full. TypeScript's `.tsbuildinfo` speeds that run but is host state, not a result: it lives in the untracked tool cache and is
 // never written into the app, so never committed.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,6 +12,7 @@ import { completedNode, runHeavyNode, type HeavyNodeRun } from '../runtime/scrip
 import { CACHE_DIR } from './types.mjs';
 import { combineHashes, hashFile } from './hash.mjs';
 import { recordLine, sortFindings } from './jsonl.mjs';
+import { keyWithReads, readsContext, readsJson, readsOfData, readsOfPaths, sessionReadsContext } from './package-closure.mjs';
 import type { CacheRecord, CheckSession, FamilyReport, Finding } from './types.mjs';
 
 /** The folder of the session that holds the records of this family. */
@@ -38,8 +41,10 @@ export interface ProgramInputs {
 /** What one `tsc` run came to. */
 export interface TscOutcome {
   readonly status: number;
-  /** tsc's output, `--pretty false`. */
+  /** tsc's output, `--pretty false`, without the files it listed. */
   readonly output: string;
+  /** The absolute paths of every file the program read (`--listFiles`). */
+  readonly files: readonly string[];
 }
 
 export interface TypesFamilyOptions {
@@ -147,12 +152,15 @@ export async function runTypesFamily(options: TypesFamilyOptions): Promise<Types
   let known = 0;
   let added = 0;
   let fixed = 0;
+  const context = sessionReadsContext(session);
+  const onDisk = readsContext(session.root, () => undefined);
   for (const program of programs) {
     const inputs = options.inputsOf?.(program) ?? {};
     const key = programKey(program, session, inputs);
     const before = previous.get(program.name);
+    const held = before === undefined ? null : readsOfData(before.data);
     let current: readonly Finding[];
-    if (decision.mode === 'diff' && before !== undefined && before.hash === key) {
+    if (decision.mode === 'diff' && before !== undefined && held !== null && before.hash === keyWithReads(key, held, context)) {
       current = before.findings;
       records.push(before);
       reused.push(program.name);
@@ -160,9 +168,10 @@ export async function runTypesFamily(options: TypesFamilyOptions): Promise<Types
       const outcome = await run(program, tsBuildInfoPath(toolCacheDir, session.root, program));
       ran.push(program.name);
       current = parseTscOutput(outcome.output, session.root, program.tsconfig);
+      const reads = readsOfPaths(session.root, outcome.files, (file) => file === program.tsconfig || readsOf(program).some((prefix) => within(file, prefix)));
       if (current.length === 0 && outcome.status !== 0) incomplete.push(program.name);
-      else if (programKey(program, session, inputs) === key) {
-        const record: CacheRecord = { path: program.name, step: TSC_STEP, hash: key, findings: current };
+      else if (programKey(program, session, inputs) === key && keyWithReads(key, reads, onDisk) === keyWithReads(key, reads, context)) {
+        const record: CacheRecord = { path: program.name, step: TSC_STEP, hash: keyWithReads(key, reads, context), findings: current, data: { reads: readsJson(reads) } };
         records.push(record);
         journal?.append([recordLine(record)]);
       }
@@ -182,9 +191,20 @@ export async function runTypesFamily(options: TypesFamilyOptions): Promise<Types
   return { ok: findings.length === 0 && incomplete.length === 0, ran, reused, incomplete, findings: sortFindings(findings), report };
 }
 
+/** The output of `tsc --listFiles --pretty false` split into the files it listed (absolute paths, one a line) and the rest, the diagnostics. */
+export function splitListedFiles(output: string): { output: string; files: string[] } {
+  const files: string[] = [];
+  const rest: string[] = [];
+  for (const line of output.split(/\r?\n/u)) {
+    if (path.isAbsolute(line) && !DIAGNOSTIC.test(line)) files.push(line);
+    else rest.push(line);
+  }
+  return { output: rest.join('\n'), files };
+}
+
 /**
  * The real `tsc` of an app: the program's own TypeScript (resolved from its folder, so the version the lockfile pins), `--noEmit` with an incremental build info in the
- * tool cache, run from the app root so paths in the output are app-relative.
+ * tool cache and `--listFiles`, run from the app root so paths in the diagnostics are app-relative.
  */
 export function createTscRunner({ appRoot, typescriptFrom, execute }: { appRoot: string; typescriptFrom?: string; execute?: HeavyNodeRun | undefined }): TypesFamilyOptions['run'] {
   return async (program, buildInfo) => {
@@ -192,9 +212,9 @@ export function createTscRunner({ appRoot, typescriptFrom, execute }: { appRoot:
     const tsc = path.join(path.dirname(createRequire(typescriptFrom ?? path.join(folder, 'package.json')).resolve('typescript/package.json')), 'bin', 'tsc');
     fs.mkdirSync(path.dirname(buildInfo), { recursive: true });
     const result = completedNode(await runHeavyNode(execute, {
-      kind: 'tsc', label: `app check tsc ${program.name}`, args: [tsc, '-p', posix(path.relative(appRoot, path.resolve(appRoot, program.tsconfig))), '--noEmit', '--incremental', '--tsBuildInfoFile', buildInfo, '--pretty', 'false'],
+      kind: 'tsc', label: `app check tsc ${program.name}`, args: [tsc, '-p', posix(path.relative(appRoot, path.resolve(appRoot, program.tsconfig))), '--noEmit', '--incremental', '--tsBuildInfoFile', buildInfo, '--pretty', 'false', '--listFiles'],
       cwd: appRoot, maxBuffer: 256 * 1024 * 1024,
     }), 'tsc');
-    return { status: result.status ?? 1, output: `${result.stdout}${result.stderr}` };
+    return { status: result.status ?? 1, ...splitListedFiles(`${result.stdout}${result.stderr}`) };
   };
 }

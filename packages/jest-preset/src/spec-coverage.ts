@@ -41,6 +41,11 @@ export interface SpecCoverageFile {
   readonly passed: boolean
   /** Per measured source (path relative to the project root, posix), sorted by path. */
   readonly sources: Readonly<Record<string, SourceCoverage>>
+  /**
+   * What the spec's module registry read while it ran (spec-loaded-runtime.ts), reduced by `loadedOf` and relative to the project root, posix: the cache keys the
+   * record on the packages among them. Null when the runtime wrote nothing for the spec (it did not run).
+   */
+  readonly loaded: readonly string[] | null
 }
 
 const rangeOf = (loc: IstanbulRange): Range => [loc.start.line, loc.start.column, loc.end.line, loc.end.column]
@@ -105,6 +110,24 @@ export function mergeSpecCoverage({ records, outDir, projectRoot, recordRoot = p
   const context = libReport.createContext({ dir: outDir, coverageMap: map })
   new StarciLcovReport({ file: "lcov.info", projectRoot }).execute(context)
   return { files: map.files().length }
+}
+
+/** The folder of the coverage dir the spec runtime writes each spec's loaded files into, under the spec's file name; the reporter moves them onto the spec's file. */
+export const LOADED_FOLDER = "loaded"
+
+/**
+ * The files a spec loaded, reduced: a file under `node_modules` stands for the root folder of its installed package (the path through its last
+ * `node_modules/<name>` or `node_modules/@scope/name`), any other file for itself; each relative to `root`, posix, sorted and unique.
+ */
+export function loadedOf(files: Iterable<string>, root: string): string[] {
+  const out = new Set<string>()
+  for (const file of files) {
+    const parts = path.resolve(file).split(/[\\/]/u)
+    const at = parts.lastIndexOf("node_modules")
+    const kept = at < 0 ? parts : parts.slice(0, at + ((parts[at + 1] ?? "").startsWith("@") ? 3 : 2))
+    out.add(path.relative(root, kept.join(path.sep)).split(path.sep).join("/"))
+  }
+  return [...out].sort()
 }
 
 /** The file the reporter writes for the spec at `spec` (project-relative, posix). */

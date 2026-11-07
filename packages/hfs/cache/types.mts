@@ -2,7 +2,7 @@
 // the cache speaks these types; nothing here reads the disk or the network.
 
 /** The format of the records on disk; a cache of another version is replaced, never read. */
-export const CACHE_FORMAT_VERSION = 1;
+export const CACHE_FORMAT_VERSION = 2;
 /** Where the committed cache lives, app-relative and posix. */
 export const CACHE_DIR = '.starcistacks/cache';
 

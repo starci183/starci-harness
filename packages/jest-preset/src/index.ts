@@ -371,9 +371,11 @@ function starciJestConfig(options: StarciJestOptions): StarciJestConfig {
   // writes istanbul JSON: the coverage job merges the shards by source location (merge.ts) and the coverage proof enforces 100 per file on the merged report. The
   // all-files instrumentation of collectCoverageFrom is off there: it instruments an unloaded file with another transform (other functions and branches).
   // The check cache's unit run (STARCI_SPEC_COVERAGE_DIR=<folder>, `starci app check --test`) is a partial run too: it runs the specs whose key changed, writes the coverage of
-  // each spec file on its own (spec-coverage-reporter.ts) and leaves the threshold to the merged total of every spec's record.
+  // each spec file on its own (spec-coverage-reporter.ts) with the files it loaded (spec-loaded-runtime.ts) and leaves the threshold to the merged total of every spec's record.
   const specCoverageDir = process.env.STARCI_SPEC_COVERAGE_DIR
   const shard = process.env.STARCI_COVERAGE_SHARD === "1" || Boolean(specCoverageDir)
+  // The same run records what each unit spec loaded (spec-loaded-runtime.ts), which the cache keys the spec's record on.
+  const unitRuntime = specCoverageDir ? { runtime: require.resolve("./spec-loaded-runtime.js") } : {}
   return {
     coverageProvider: "v8",
     ...(specCoverageDir ? { reporters: ["default", [require.resolve("./spec-coverage-reporter.js"), { dir: specCoverageDir, include: collectCoverageFrom(coverage, packages) }]] satisfies StarciJestConfig["reporters"] } : {}),
@@ -391,6 +393,7 @@ function starciJestConfig(options: StarciJestOptions): StarciJestConfig {
         transform: unitTransform(),
         displayName: "unit",
         clearMocks: true,
+        ...unitRuntime,
         // The Outcome matchers (`toBeRefused`, `toSucceedWith`) exist in the unit project only.
         setupFilesAfterEnv: [require.resolve("./matchers.js")],
         testMatch: ["**/*.spec.ts"],
@@ -407,6 +410,7 @@ function starciJestConfig(options: StarciJestOptions): StarciJestConfig {
         transform: unitTransform(packagesCompilerOptions(root)),
         displayName: "unit",
         clearMocks: true,
+        ...unitRuntime,
         setupFilesAfterEnv: [require.resolve("./matchers.js")],
         testMatch: ["**/*.spec.ts"],
         testPathIgnorePatterns: ["/node_modules/", "/dist/"],

@@ -402,7 +402,7 @@ type CacheUse = 'normal' | 'bypass';
 /** Opens the session of a verb over the tracked files of the app: progress on stderr, `--quiet` silent, a terminal rewriting running lines in place. */
 function openSession({ repoRoot, tracked, io, full, use, planned }: { repoRoot: string; tracked: string[]; io: AppIo; full?: Set<FamilyId> | undefined; use: CacheUse; planned: number }): DiskSession {
   const progress = io.quiet === true ? silentProgress : createProgress({ write: (text) => io.stderr(text), tty: io.stderrIsTty === true, planned });
-  return createDiskSession({ root: repoRoot, tracked, env: io.env, progress, cliVersion: io.harness?.version, full, bypass: use === 'bypass' });
+  return createDiskSession({ root: repoRoot, tracked, env: io.env, progress, full, bypass: use === 'bypass' });
 }
 
 /** The app pass of `starci app check`: the families the verb selects, against one cache session, merged into one result. */
@@ -497,7 +497,7 @@ function printCheckProofs(result: Dynamic, out: (text: string) => unknown): void
   if (result.coverage) out(formatCoverageReport(result.coverage));
 }
 
-/** The families only a whole run (no selector) and an explicit `--gate` run: whole CI commands, never cached (cache/parity-family.mts). */
+/** The families only a whole run (no selector) and an explicit `--gate` run: the CI commands no other family runs (cache/parity-family.mts). */
 const PARITY_FAMILIES: readonly FamilyId[] = ['build', 'audit'];
 
 /** The heavy command port of the CLI (`stackIo.heavy`) for the parity families, else a plain child of this process. */

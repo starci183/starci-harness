@@ -1,6 +1,8 @@
 // spec-coverage-reporter.ts - the Jest reporter that writes the coverage of each spec file on its own (see spec-coverage.ts). starciJestConfig adds it
 // (`reporters: ["default", [require.resolve("./spec-coverage-reporter.js"), { dir, include }]]`) when STARCI_SPEC_COVERAGE_DIR names the folder. Jest runs custom
-// reporters before its coverage reporter, so the spec's v8 coverage is still on the test result when it arrives. A failed spec writes `passed: false` and no source.
+// reporters before its coverage reporter, so the spec's v8 coverage is still on the test result when it arrives: the reporter takes it off the result, so
+// neither Jest's coverage reporter nor the aggregated results hold any spec's coverage, and the parent's memory stays flat however many specs run. It writes
+// the spec's file with the files the spec loaded (spec-loaded-runtime.ts). A failed spec writes `passed: false` and no source.
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -8,7 +10,7 @@ import { createRequire } from "node:module"
 import type { Config } from "@jest/types"
 import type { TestResult } from "@jest/test-result"
 import type { Test } from "@jest/reporters"
-import { sourceCoverageOf, specCoverageFileName } from "./spec-coverage.ts"
+import { LOADED_FOLDER, sourceCoverageOf, specCoverageFileName } from "./spec-coverage.ts"
 import type { SourceCoverage, SpecCoverageFile } from "./spec-coverage.ts"
 
 const fromJest = createRequire(require.resolve("jest"))
@@ -52,19 +54,23 @@ class SpecCoverageReporter {
   }
 
   onTestResult(test: Test, result: TestResult): void {
-    this.pending.push(this.write(test.context.config.rootDir, posix(path.relative(this.jestRoot, test.path)), result))
+    const coverage = result.v8Coverage
+    delete result.v8Coverage
+    this.pending.push(this.write(test.context.config.rootDir, posix(path.relative(this.jestRoot, test.path)), result, coverage))
   }
 
   async onRunComplete(): Promise<void> {
     await Promise.all(this.pending)
+    // Every list was moved onto its spec's file: the folder holds nothing left to read (a spec that never reported leaves its list, and the folder, behind).
+    try { fs.rmdirSync(path.join(this.options.dir, LOADED_FOLDER)) } catch { /* not empty, or never created */ }
   }
 
-  private async write(root: string, spec: string, result: TestResult): Promise<void> {
+  private async write(root: string, spec: string, result: TestResult, coverage: TestResult["v8Coverage"]): Promise<void> {
     const passed = isPassed(result)
     const sources: Record<string, SourceCoverage> = {}
-    if (passed && result.v8Coverage) {
-      const merged = mergeProcessCovs([{ result: result.v8Coverage.map((entry) => entry.result) }])
-      const transforms = new Map(result.v8Coverage.flatMap((entry) => (entry.codeTransformResult ? [[entry.result.url, entry.codeTransformResult] as const] : [])))
+    if (passed && coverage) {
+      const merged = mergeProcessCovs([{ result: coverage.map((entry) => entry.result) }])
+      const transforms = new Map(coverage.flatMap((entry) => (entry.codeTransformResult ? [[entry.result.url, entry.codeTransformResult] as const] : [])))
       for (const script of merged.result) {
         if (this.relativeSource(root, script.url) === undefined) continue
         const transform = transforms.get(script.url)
@@ -80,8 +86,21 @@ class SpecCoverageReporter {
         }
       }
     }
-    const record: SpecCoverageFile = { spec, passed, sources: Object.fromEntries(Object.entries(sources).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) }
+    const record: SpecCoverageFile = { spec, passed, sources: Object.fromEntries(Object.entries(sources).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))), loaded: this.loaded(spec) }
     fs.writeFileSync(path.join(this.options.dir, specCoverageFileName(spec)), JSON.stringify(record))
+  }
+
+  /** The files the spec loaded, as its runtime wrote them before its result left the worker; the runtime's file is removed once read. Null when it wrote none. */
+  private loaded(spec: string): string[] | null {
+    const file = path.join(this.options.dir, LOADED_FOLDER, specCoverageFileName(spec))
+    let loaded: string[]
+    try {
+      loaded = JSON.parse(fs.readFileSync(file, "utf8")) as string[]
+    } catch {
+      return null
+    }
+    fs.rmSync(file, { force: true })
+    return loaded
   }
 
   /** The jest-root-relative posix path of a source (a path or file URL) measured in the project rooted at `root`, undefined when it is not measured. */

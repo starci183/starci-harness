@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.8.0 - 2026-11-08
+
+- Added: with `STARCI_SPEC_COVERAGE_DIR` the unit projects run under `spec-loaded-runtime.js`, Jest's runtime recording every file a spec's module registry reads; the reporter writes them (`loaded`, each installed package as its folder) on the spec's file, and the check cache keys the spec on the packages among them.
+- Changed: the spec-coverage reporter takes each spec's v8 coverage off its test result once the spec's file is written, so neither Jest's coverage reporter nor the aggregated results hold any spec's coverage and the parent's memory stays flat as the spec count grows; the coverage numbers and the merged lcov are unchanged. Specs: `test/spec-coverage.spec.ts`.
+
 ## 2.7.2 - 2026-11-07
 
 - A patch: comments cite R212 and carry no ruling history; no behaviour changed.

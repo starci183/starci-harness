@@ -1,9 +1,12 @@
 // test-family.mts - the `--test` family of the app check cache (contexts/project/check-cache.md, "Unit coverage"). Each unit spec has a closure key: the sha256 of
 // the spec, every module Jest's own resolver reaches from it (with the project's moduleNameMapper, jest.mock targets and setup files), its snapshot file and its
-// project's configuration. A warm run runs only the specs whose key changed and keeps the records of the rest. The coverage of each spec is stored per source as
-// covered or not covered items (never hit counts), a failed spec stores nothing, and the per-file threshold is judged on the merged total of every record, never on
-// the partial run Jest itself saw. The lcov written is that merged total, the one Codecov and Sonar read. Integration, e2e and contract specs are not this family's:
-// they always run in full (ALWAYS_FULL_PROJECTS).
+// project's configuration, and its record adds what the spec's run loaded (the preset's runtime records it): each installed package by its lockfile digest and
+// each app file outside the closure by its hash (package-closure.mts). A warm run runs only the specs whose key changed and keeps the records of the rest, so a
+// package bump re-runs the specs that loaded the package and no other. The coverage of each spec is stored per source as covered or not covered items (never hit
+// counts), a failed spec stores nothing, and the per-file threshold is judged on the merged total of every record, never on the partial run Jest itself saw. Each
+// spec's coverage file is turned into its record once, while Jest still runs (journaled at once), and removed: the record is the one copy. The lcov written is the
+// merged total, folded one record at a time, the one Codecov and Sonar read. Integration, e2e and contract specs are not this family's: they always run in full
+// (ALWAYS_FULL_PROJECTS).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -11,13 +14,14 @@ import { createRequire } from 'node:module';
 import { completedNode, runHeavyNode, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { combineHashes, hashFile } from './hash.mjs';
 import { canonicalJson, recordLine, toLazyRecord } from './jsonl.mjs';
+import { keyWithReads, readsContext, readsJson, readsOfData, readsOfPaths, sessionReadsContext, type ToolReads } from './package-closure.mjs';
 import type { CacheRecord, CheckSession, FamilyReport, JsonValue } from './types.mjs';
 
 /** The folder of the session that holds the records of this family. */
 export const TEST_FOLDER = 'test-coverage';
 /** The step of a unit spec's record. */
 export const SPEC_STEP = 'unit-spec';
-/** How often the spec coverage a running Jest has written is journaled, in ms. */
+/** How often the spec coverage a running Jest has written is turned into records (and journaled), in ms. */
 export const DRAIN_MS = 10_000;
 /** The Jest projects a warm run never skips: they reach services, data and time a key cannot hold. */
 export const ALWAYS_FULL_PROJECTS = ['integration', 'e2e', 'contract'] as const;
@@ -36,6 +40,8 @@ export interface SpecCoverageOutput {
   readonly spec: string;
   readonly passed: boolean;
   readonly sources: Readonly<Record<string, SourceItems>>;
+  /** What the spec's run loaded (paths relative to the Jest root: each installed package's root folder, every other file), or null when nothing was recorded. */
+  readonly loaded: readonly string[] | null;
 }
 
 /** What a Jest run of some specs came to. */
@@ -58,7 +64,7 @@ export interface JestEnvironment {
   run(specs: readonly string[], coverageDir: string): RunOutcome | Promise<RunOutcome>;
   /**
    * Reads what the reporter wrote into `coverageDir`. With `skip` (the names of files already read) it is a drain of a Jest still running: it reads only the
-   * other files and leaves a file the reporter has not finished writing for the next drain.
+   * other files and leaves a file the reporter has not finished writing for the next drain. The family removes each file it has turned into a record.
    */
   readCoverage(coverageDir: string, skip?: ReadonlySet<string>): readonly SpecCoverageOutput[];
 }
@@ -77,7 +83,7 @@ export interface TestFamilyOptions {
   readonly judge: JudgeCoverage;
   /** Where the temporary per-spec coverage goes; defaults to a fresh folder of the OS temp dir. */
   readonly scratch?: string;
-  /** How often the coverage a running Jest wrote is journaled, in ms (DRAIN_MS). */
+  /** How often the coverage a running Jest wrote is turned into records, in ms (DRAIN_MS). */
   readonly drainMs?: number;
 }
 
@@ -134,11 +140,11 @@ export function sourcesOf(record: CacheRecord): Record<string, SourceItems> {
   return out;
 }
 
-function recordOf(spec: string, key: string, sources: Readonly<Record<string, SourceItems>>, side: string): CacheRecord {
+function recordOf(spec: string, key: string, sources: Readonly<Record<string, SourceItems>>, side: string, reads: ToolReads): CacheRecord {
   const prefixed: Record<string, SourceItems> = {};
   // A source is relative to the Jest root; a root package's (`../packages/<name>/...`) is outside it, so the joined path is normalised to the app root.
   for (const [source, items] of Object.entries(sources)) prefixed[side === '' || side === '.' ? source : path.posix.normalize(`${side}/${source}`)] = items;
-  return { path: spec, step: SPEC_STEP, hash: key, findings: [], data: { sources: prefixed as unknown as JsonValue } };
+  return { path: spec, step: SPEC_STEP, hash: key, findings: [], data: { reads: readsJson(reads), sources: prefixed as unknown as JsonValue } };
 }
 
 /** The line a V8 heap exhaustion prints (`FATAL ERROR: Reached heap limit ...`, `JavaScript heap out of memory`, the last Mark-Compact). */
@@ -165,14 +171,23 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
   const { session, jest, side, merge, judge } = options;
   const decision = session.decide('test');
   const hashOf = (file: string): string | undefined => session.index.hashOf(file) ?? hashFile(path.join(session.root, file));
+  const context = sessionReadsContext(session);
   const keys = new Map(jest.specs.map((spec) => [spec, specKey({ spec, closure: jest.closureOf(spec), configHash: jest.configHash, hashOf })]));
   const stored = new Map(session.records(TEST_FOLDER).filter((record) => record.step === SPEC_STEP).map((record) => [record.path, record]));
+  /** The reads of each spec's record: a kept record's from its data (parsed once), a fresh one's from its run. */
+  const readsBySpec = new Map<string, ToolReads>();
   const reusable = (spec: string): CacheRecord | undefined => {
     const record = stored.get(spec);
-    return decision.mode === 'diff' && record !== undefined && record.hash === keys.get(spec) ? record : undefined;
+    const local = keys.get(spec);
+    if (decision.mode !== 'diff' || record === undefined || local === undefined) return undefined;
+    const reads = readsOfData(record.data);
+    if (reads === null || record.hash !== keyWithReads(local, reads, context)) return undefined;
+    readsBySpec.set(spec, reads);
+    return record;
   };
-  const toRun = jest.specs.filter((spec) => reusable(spec) === undefined);
   const kept = jest.specs.flatMap((spec) => reusable(spec) ?? []);
+  const keptPaths = new Set(kept.map((record) => record.path));
+  const toRun = jest.specs.filter((spec) => !keptPaths.has(spec));
 
   const progress = session.progress.step('test', 'unit specs', jest.specs.length);
   progress.tick(kept.length, kept.length, 0);
@@ -186,54 +201,63 @@ export async function runTestFamily(options: TestFamilyOptions): Promise<TestFam
     try {
       fs.rmSync(scratch, { recursive: true, force: true });
       fs.mkdirSync(scratch, { recursive: true });
-      // A spec's coverage is journaled as the reporter writes it (journal.mts): a Jest killed after most of its specs keeps theirs.
+      // Each spec's coverage file becomes its record as soon as it is read, is journaled at once (journal.mts: a Jest killed after most of its specs keeps theirs)
+      // and is removed, so the record is its one copy.
       const journal = session.journal?.(TEST_FOLDER, 'rec');
       const drained = new Set<string>();
-      const journaled = new Set<string>();
+      const outcomes = new Map<string, CacheRecord | null>();
       const bySideRelative = new Map(toRun.map((spec) => [posix(path.relative(path.join(session.root, side), path.join(session.root, spec))), spec] as const));
-      const drain = (): void => {
-        if (journal === undefined) return;
-        try {
-          for (const file of jest.readCoverage(scratch, drained)) {
-            if (file.file !== undefined) drained.add(file.file);
-            const spec = bySideRelative.get(file.spec);
-            const key = spec === undefined ? undefined : keys.get(spec);
-            if (spec === undefined || key === undefined || !file.passed || journaled.has(spec)) continue;
-            journaled.add(spec);
-            journal.append([recordLine(toLazyRecord(recordOf(spec, key, file.sources, side)))]);
+      const collect = (skip: ReadonlySet<string> | undefined): void => {
+        for (const file of jest.readCoverage(scratch, skip)) {
+          if (file.file !== undefined) drained.add(file.file);
+          const spec = bySideRelative.get(file.spec);
+          const local = spec === undefined ? undefined : keys.get(spec);
+          if (spec !== undefined && local !== undefined && !outcomes.has(spec)) {
+            const covered = new Set([spec, snapshotOf(spec), ...jest.closureOf(spec)]);
+            const reads = file.passed && file.loaded !== null ? readsOfPaths(session.root, file.loaded.map((entry) => path.resolve(session.root, side, entry)), (entry) => covered.has(entry)) : null;
+            if (reads === null) outcomes.set(spec, null);
+            else {
+              // Held as its line from here on (memory plan, streaming): a full run of a large app holds every spec's coverage until the cache is written.
+              const record = toLazyRecord(recordOf(spec, keyWithReads(local, reads, context), file.sources, side, reads));
+              readsBySpec.set(spec, reads);
+              outcomes.set(spec, record);
+              journal?.append([recordLine(record)]);
+            }
           }
-        } catch { /* a drain that cannot read now is tried again; the family reads everything when Jest ends */ }
+          if (file.file !== undefined) fs.rmSync(path.join(scratch, file.file), { force: true });
+        }
       };
-      const timer = journal === undefined ? undefined : setInterval(drain, options.drainMs ?? DRAIN_MS);
-      timer?.unref();
+      const drain = (): void => {
+        try { collect(drained); } catch { /* a drain that cannot read now is tried again; the family reads everything when Jest ends */ }
+      };
+      const timer = setInterval(drain, options.drainMs ?? DRAIN_MS);
+      timer.unref();
       let outcome: RunOutcome;
       try {
         outcome = await jest.run(toRun, scratch);
       } finally {
-        if (timer !== undefined) clearInterval(timer);
+        clearInterval(timer);
       }
-      drain();
+      collect(undefined);
       output = outcome.output;
-      const reported = new Map(jest.readCoverage(scratch).map((file) => [file.spec, file]));
-      const reportOf = (spec: string) => reported.get(posix(path.relative(path.join(session.root, side), path.join(session.root, spec))));
-      const silent = toRun.filter((spec) => reportOf(spec) === undefined);
+      const silent = toRun.filter((spec) => !outcomes.has(spec));
       const line = runnerDeath(outcome, silent.length);
       if (line !== undefined) died = { line, unreported: silent.length };
       for (const spec of toRun) {
-        const file = reportOf(spec);
-        const key = keys.get(spec);
-        // Held as its line from here on (memory plan, streaming): a full run of a large app holds every spec's coverage until the cache is written.
-        if (file?.passed === true && key !== undefined) fresh.push(toLazyRecord(recordOf(spec, key, file.sources, side)));
-        else if (file !== undefined || died === undefined) failed.push(spec);
+        const record = outcomes.get(spec);
+        if (record !== undefined && record !== null) fresh.push(record);
+        else if (record === null || died === undefined) failed.push(spec);
       }
     } finally {
       if (options.scratch === undefined) fs.rmSync(scratch, { recursive: true, force: true });
     }
   }
   // Recheck every candidate against disk, including a reused spec whose inputs another running spec could change.
+  const onDisk = readsContext(session.root, () => undefined);
   const records = [...kept, ...fresh].filter((record) => {
-    const key = specKey({ spec: record.path, closure: jest.closureOf(record.path), configHash: jest.configHash, hashOf: (file) => hashFile(path.join(session.root, file)) });
-    if (key === keys.get(record.path)) return true;
+    const local = specKey({ spec: record.path, closure: jest.closureOf(record.path), configHash: jest.configHash, hashOf: (file) => hashFile(path.join(session.root, file)) });
+    const reads = readsBySpec.get(record.path);
+    if (local === keys.get(record.path) && reads !== undefined && keyWithReads(local, reads, onDisk) === record.hash) return true;
     failed.push(record.path);
     changed.push(record.path);
     return false;
@@ -390,18 +414,22 @@ export async function createJestEnvironment({ appRoot, side, jestFrom, project =
     },
     readCoverage(coverageDir, skip) {
       // Each file's sources are read again when asked for and never kept here (memory plan, streaming): the files of a full run are the size of the
-      // whole coverage, and only the spec and its verdict are needed to sort them.
+      // whole coverage, and only the spec, its verdict and what it loaded are needed to sort them.
       const out: SpecCoverageOutput[] = [];
       for (const name of fs.readdirSync(coverageDir).filter((entry) => entry.endsWith('.json') && skip?.has(entry) !== true)) {
         const file = path.join(coverageDir, name);
         const read = (): SpecCoverageOutput => JSON.parse(fs.readFileSync(file, 'utf8')) as SpecCoverageOutput;
+        let head: SpecCoverageOutput;
         try {
-          const { spec, passed } = read();
-          out.push({ file: name, spec, passed, get sources() { return read().sources; } });
+          head = read();
         } catch (error) {
           // A drain meets the file the reporter is still writing; the end-of-run read never skips one.
           if (skip === undefined) throw error;
+          continue;
         }
+        if ((head as { loaded?: unknown }).loaded === undefined) throw new Error('the installed @starci/jest-preset records no loaded files for a spec; install the preset the canon pins name (npm ci)');
+        const { spec, passed, loaded } = head;
+        out.push({ file: name, spec, passed, loaded, get sources() { return read().sources; } });
       }
       return out;
     },

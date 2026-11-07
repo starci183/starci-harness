@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.2.0 - 2026-11-08
+
+- Changed: the check cache keys every reused result on what its tool read. A unit spec's record carries the installed packages its run loaded (recorded by `@starci/jest-preset` 2.8's runtime) and the app files outside its closure, so a package bump re-runs only the specs that loaded it and an hfs or CLI bump re-runs none; `lock:test` is the test runner's toolchain (Jest, its transform, TypeScript) and `node` (the Node major) is a part of the unit specs. A `tsc` program's record carries the installs and files `tsc --listFiles` reported, in place of `lock:types`. The boot proof keys on the back-end side and the packages its workers loaded. The hfs, secrets, wiring and db families read the hfs that runs, `hfs.json` and the manifests' shape; no family reads the CLI version, a manifest's dependency versions, `.gitignore`, `.gitattributes` or `turbo.json`, and `sonar-project.properties` and `codecov.yml` are sonar's alone. Cache format 2: the first run after the upgrade is full.
+- Added: the CI-parity build steps keep their verdict (green, or red with its finding) in `.starcistacks/cache/check/build/`, keyed on the step's command and environment, the Node major, the files it builds and the lockfile installs its manifests resolve; the database migration checks on the migration chain, the scratch image, the entity list's import closure and its packages, the engine manifest, the db rules' baseline and the hfs version. A killed, timed-out or database-less step stores no verdict.
+- Changed: the unit run turns each spec's coverage file into its record while Jest runs and removes it, so the record is the one copy. Specs: `check-cache-test-family.spec.mts`, `check-cache-types-family.spec.mts`, `cache-fingerprint-families.spec.mts`, `check-cache-precise-keys.spec.mts`.
+
 ## 6.1.1 - 2026-11-07
 
 - Fixed: the bundled canon pins name the canons and the Grammar family at the versions whose `@starci/hfs` peer is `~6.1.0` (`eslint-canon-be` 3.19.4, `eslint-canon-fe` 9.16.4, the Grammar family 0.25.1), so an app on hfs 6.1 installs with `npm ci`; `contexts/stack/pins.yaml` agrees.

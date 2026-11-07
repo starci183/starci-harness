@@ -1,5 +1,6 @@
-// The `--test` family of the app check cache: a spec re-runs when its closure changes and only then, the merged total equals a full run's, a failed spec is never
-// stored, the per-file threshold is judged on the merged total, and the closure key comes from Jest's own resolver (the e2e test at the end runs a real Jest).
+// The `--test` family of the app check cache: a spec re-runs when its closure or a package it loaded changes and only then, the merged total equals a full run's, a
+// failed spec is never stored, the per-file threshold is judged on the merged total, each spec's coverage file becomes its record and is removed, and the closure key
+// comes from Jest's own resolver (the e2e tests at the end run a real Jest with the preset's runtime).
 import test from 'node:test';
 import { nativeTestNode } from './fixtures/heavy-node.mts';
 import type { HeavyNodeRequest } from '../runtime/scripts/api/node/run-node.mjs';
@@ -17,7 +18,7 @@ import { hashText } from '../cache/hash.mjs';
 import { serializeRecords, parseRecords } from '../cache/jsonl.mjs';
 import { ALWAYS_FULL_PROJECTS, TEST_FOLDER, SPEC_STEP, createJestEnvironment, installedSpecMerge, runTestFamily, runnerDeath, shardArgs, snapshotOf, sourcesOf, specKey } from '../cache/test-family.mjs';
 import type { JestEnvironment, JudgeCoverage, MergeSpecRecords, SourceItems, SpecCoverageOutput, TestFamilyResult } from '../cache/test-family.mjs';
-import type { CacheRecord } from '../cache/types.mjs';
+import type { CacheRecord, JsonValue } from '../cache/types.mjs';
 
 /** A source of `lines` statements; `covered` of them covered by the spec that reports it. */
 const source = (lines: number, covered: readonly number[]): SourceItems => ({
@@ -33,6 +34,10 @@ interface World {
   /** spec -> what the spec covers (source relative to the Jest root -> covered lines of `lines`); a spec in `failing` fails. */
   covers: Record<string, Record<string, { lines: number; covered: number[] }>>;
   failing: Set<string>;
+  /** spec -> what its run loaded, relative to the Jest root (an installed package's folder, a file); none when absent. */
+  loads?: Record<string, string[]>;
+  /** The app's lockfile installs: install path -> version. */
+  lock?: Record<string, string>;
   /** The runner dies (a V8 heap limit) after this many specs reported. */
   diesAfter?: number;
   ran: string[][];
@@ -74,14 +79,14 @@ function fakeJest(w: World, configHash = 'config-1', onRun: () => void = () => u
         const rel = spec.replace(/^be\//u, '');
         const passed = !w.failing.has(spec);
         const sources = passed ? Object.fromEntries(Object.entries(w.covers[spec] ?? {}).map(([name, { lines, covered }]) => [name, source(lines, covered)])) : {};
-        fs.writeFileSync(path.join(dir, `${hashText(rel).slice(0, 12)}.json`), JSON.stringify({ spec: rel, passed, sources }));
+        fs.writeFileSync(path.join(dir, `${hashText(rel).slice(0, 12)}.json`), JSON.stringify({ spec: rel, passed, sources, loaded: w.loads?.[spec] ?? [] }));
       }
       const lines = reporting.map((spec) => (w.failing.has(spec) ? `FAIL ${spec}` : `PASS ${spec}`)).join('\n');
       if (w.diesAfter !== undefined) return { status: 134, output: `${lines}\n<--- Last few GCs --->\n[1234:0x1] 912345 ms: Mark-Compact 4090.1 (4129.5) -> 4087.9 (4131.0) MB\nFATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory\n` };
       return { status: reporting.some((spec) => w.failing.has(spec)) ? 1 : 0, output: lines };
     },
     readCoverage(dir) {
-      return fs.readdirSync(dir).map((name) => JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as SpecCoverageOutput);
+      return fs.readdirSync(dir).map((name) => ({ ...(JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as SpecCoverageOutput), file: name }));
     },
   };
 }
@@ -122,11 +127,12 @@ const judge: JudgeCoverage & { seen: string[] } = Object.assign((lcov: string) =
   return { ok: findings.length === 0, findings };
 }, { seen: [] as string[] });
 
-interface Run { session: ReturnType<typeof createFakeSession>; result: TestFamilyResult; merge: ReturnType<typeof fakeMerge> }
+interface Run { session: ReturnType<typeof createFakeSession>; result: TestFamilyResult; merge: ReturnType<typeof fakeMerge>; scratch: string }
 
 async function runOnce(w: World, stored: readonly CacheRecord[], options: { mode?: 'full' | 'diff'; configHash?: string; root?: string } = {}): Promise<Run> {
   const root = options.root ?? fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-test-'));
   writeFiles(root, w.files);
+  writeLock(root, w.lock ?? {});
   const session = createFakeSession({ files: w.files, records: { [TEST_FOLDER]: stored }, mode: options.mode ?? 'diff' });
   const merge = fakeMerge();
   const jest = fakeJest(w, options.configHash, () => w.duringRun?.({ ...session, setFile: (file, text) => {
@@ -134,8 +140,14 @@ async function runOnce(w: World, stored: readonly CacheRecord[], options: { mode
     if (text === undefined) fs.rmSync(path.join(root, file), { force: true });
     else writeFiles(root, { [file]: text });
   } }));
-  const result = await runTestFamily({ session: { ...session, root }, jest, side: 'be', merge, judge, scratch: fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-scratch-')) });
-  return { session, result, merge };
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'check-cache-scratch-'));
+  const result = await runTestFamily({ session: { ...session, root }, jest, side: 'be', merge, judge, scratch });
+  return { session, result, merge, scratch };
+}
+
+/** The app's `package-lock.json` with `versions` (install path -> version). */
+function writeLock(root: string, versions: Readonly<Record<string, string>>): void {
+  fs.writeFileSync(path.join(root, 'package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: { '': { name: 'demo' }, ...Object.fromEntries(Object.entries(versions).map(([key, version]) => [key, { version, integrity: `sha512-${version}` }])) } }));
 }
 
 const stored = (run: Run): CacheRecord[] => [...(run.session.replaced.get(TEST_FOLDER) ?? [])];
@@ -394,6 +406,52 @@ test('--full runs every spec and ignores the records; a deleted spec drops its r
   const shrunk = await runOnce(w, stored(full));
   assert.deepEqual(stored(shrunk).map((record) => record.path), ['be/src/a.service.spec.ts']);
   assert.deepEqual(w.ran, []);
+});
+
+test('a spec record keys on the packages its run loaded: an hfs bump keeps every record, a package bump re-runs only the specs that loaded it', async () => {
+  const w = world();
+  w.lock = { 'node_modules/@nestjs/common': '11.0.0', 'node_modules/typeorm': '0.3.27', 'node_modules/@starci/hfs': '6.1.1', 'node_modules/@starci/grammar': '0.25.1', 'be/node_modules/zod': '4.0.0' };
+  w.loads = {
+    'be/src/a.service.spec.ts': ['../node_modules/@nestjs/common', 'src/a.service.ts'],
+    'be/src/b.service.spec.ts': ['../node_modules/@nestjs/common', '../node_modules/typeorm', 'node_modules/zod', 'src/b.service.ts', 'src/a.service.ts'],
+  };
+  const first = await runOnce(w, []);
+  assert.deepEqual(stored(first).map((record) => (record.data as { reads: { packages: string[]; files: string[] } }).reads), [
+    { packages: ['node_modules/@nestjs/common'], files: [] },
+    { packages: ['be/node_modules/zod', 'node_modules/@nestjs/common', 'node_modules/typeorm'], files: [] },
+  ], 'each spec carries the installs it loaded; the files of its closure are in its key already');
+  const rerun = async (bump: Record<string, string>): Promise<string[][]> => {
+    w.ran = [];
+    await runOnce({ ...w, lock: { ...w.lock, ...bump } }, stored(first));
+    return w.ran;
+  };
+  assert.deepEqual(await rerun({ 'node_modules/@starci/hfs': '6.2.0' }), [], 'an hfs bump re-runs no spec');
+  assert.deepEqual(await rerun({ 'node_modules/@starci/grammar': '0.26.0' }), [], 'a Grammar bump re-runs no spec that does not load it');
+  assert.deepEqual(await rerun({ 'node_modules/typeorm': '0.3.28' }), [['be/src/b.service.spec.ts']], 'a package bump re-runs the specs that loaded it');
+  assert.deepEqual(await rerun({ 'be/node_modules/zod': '4.1.0' }), [['be/src/b.service.spec.ts']], 'a nested install counts by its own path');
+  assert.deepEqual(await rerun({ 'node_modules/@nestjs/common': '11.1.0' }), [['be/src/a.service.spec.ts', 'be/src/b.service.spec.ts']]);
+});
+
+test('an app file a spec loaded outside its closure is in its key, and the coverage files are the records\' one copy', async () => {
+  const w = world();
+  w.files['be/src/data.json'] = '{"a":1}\n';
+  w.loads = { 'be/src/a.service.spec.ts': ['src/data.json'] };
+  const first = await runOnce(w, []);
+  assert.deepEqual(fs.readdirSync(first.scratch), [], 'every coverage file was turned into its record and removed');
+  assert.deepEqual((stored(first)[0]?.data as { reads: { files: string[] } }).reads.files, ['be/src/data.json']);
+  w.ran = [];
+  w.files['be/src/data.json'] = '{"a":2}\n';
+  await runOnce(w, stored(first));
+  assert.deepEqual(w.ran, [['be/src/a.service.spec.ts']]);
+});
+
+test('a record that carries no reads is run again', async () => {
+  const w = world();
+  const first = await runOnce(w, []);
+  w.ran = [];
+  const bare = stored(first).map((record) => ({ ...record, data: { sources: (record.data as { sources: JsonValue }).sources } }));
+  await runOnce(w, bare);
+  assert.deepEqual(w.ran, [['be/src/a.service.spec.ts', 'be/src/b.service.spec.ts']]);
 });
 
 test('the integration, e2e and contract projects are never the cache\'s, and a shard records nothing', async () => {

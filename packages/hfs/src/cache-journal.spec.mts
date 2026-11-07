@@ -271,7 +271,7 @@ test('a Jest killed after some specs reported keeps their coverage: the next run
       ran.push([...specs]);
       fs.mkdirSync(dir, { recursive: true });
       for (const spec of specs) {
-        fs.writeFileSync(path.join(dir, `${hashText(spec).slice(0, 8)}.json`), JSON.stringify({ spec: spec.replace(/^be\//u, ''), passed: true, sources: { 'src/x.ts': items } }));
+        fs.writeFileSync(path.join(dir, `${hashText(spec).slice(0, 8)}.json`), JSON.stringify({ spec: spec.replace(/^be\//u, ''), passed: true, sources: { 'src/x.ts': items }, loaded: [] }));
         if (dying) {
           await new Promise((resolve) => setTimeout(resolve, 150));
           throw new Error('killed after the first spec');

@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.16.5 - 2026-11-08
+
+- Fixed: the `@starci/hfs` peer is `~6.2.0`, the range of the hfs the canon pins name, so an app on hfs 6.2 installs with `npm ci`.
+
 ## 9.16.4 - 2026-11-07
 
 - Fixed: the `@starci/hfs` peer is `~6.1.0` (it was `~6.0.0`), the range of the hfs the canon pins name, so an app on hfs 6.1 installs with `npm ci`.
