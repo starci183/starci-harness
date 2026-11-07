@@ -17,10 +17,11 @@ test('fast-forward main needs no annotated tag or release record, including a fi
   }
 });
 
-test('the pushed main commit is judged even when it is not checkout HEAD', t => {
+test('the pushed main commit is the commit the check judges: a commit that is not checkout HEAD is refused', t => {
   const repo = fixture(t);
   const result = push(repo, [ref('refs/heads/main', repo.older)]);
-  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /BRANCH_MAIN_NOT_CHECKED_OUT/);
 });
 
 test('main deletion, rewind, divergent history and an unavailable remote tip refuse the push', t => {
@@ -41,6 +42,7 @@ test('a dirty secret range and an unreadable range fail closed without printing 
   fs.writeFileSync(path.join(repo.root, '.env'), 'fixture only\n');
   git(repo.root, 'add', '.env');
   git(repo.root, 'commit', '-qm', 'forbidden file');
+  git(repo.root, 'branch', '-f', 'dev');
   const head = git(repo.root, 'rev-parse', 'HEAD');
   const result = push(repo, [ref('refs/heads/main', head, repo.head)]);
   assert.equal(result.status, 1);

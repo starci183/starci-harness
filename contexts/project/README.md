@@ -103,6 +103,7 @@ project-graph rules judge the side folders and not the packages.
 | [index.md](index.md) | generated: every file of `contexts/` with its size, first sentence, sections and ids, which a Kernel reads instead of the whole tree |
 | [lint.md](lint.md) | each canon package and gate: where it applies and what kind of fact it enforces; the facts no machine checks yet |
 | [check-cache.md](check-cache.md) | the committed result cache in `.starcistacks/cache/` (proposed): when a run is full or incremental on a host and in CI, the fingerprint, trust, which step reuses what |
+| [branches.md](branches.md) | the two long-lived branches of an app, `main` and `dev`, and how the pre-push hook holds them (PROJECT-BRANCH-1) |
 | [cicd.md](cicd.md) | the delivery pipeline every app's `.github/` gets (proposed): triggers, checks, one attested image build, the automatic Swarm deploy with migrations, verification and rollback, records, gates |
 | [stacks.md](stacks.md) | how an app runs: the `.starcistacks/` shape against project values, the dev and vps environments, ingress, sealed custody, the operations with their safety rules, local-run rules |
 | [work.md](work.md) | the `.starciwork` record families, their state, who writes what, UAT flows and evidence |

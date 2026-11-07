@@ -31,6 +31,7 @@ export function repository(t: Pick<TestContext, 'after'>, hookText: string, { de
   fs.writeFileSync(path.join(root, 'a.txt'), 'second');
   git(root, 'commit', '-qam', 'second');
   const head = git(root, 'rev-parse', 'HEAD');
+  git(root, 'branch', 'dev');
   const pkg = path.join(root, 'node_modules', '@starci', 'hfs');
   fs.mkdirSync(pkg, { recursive: true });
   fs.writeFileSync(path.join(pkg, 'package.json'), JSON.stringify({ type: 'module', exports: { './runtime/scripts/guards/release-push-gate.mjs': './gate.mjs' } }));
@@ -40,7 +41,7 @@ export function repository(t: Pick<TestContext, 'after'>, hookText: string, { de
   fs.mkdirSync(harness, { recursive: true });
   fs.writeFileSync(path.join(harness, 'main.js'), [
     "const verb = process.argv.slice(2).join(' ');",
-    `if (verb === 'app check') { if (${freshExit} !== 0) console.error('HFS_CHECK_CACHE_UNWARMED: stand-in'); process.exit(${freshExit}); }`,
+    `if (verb === 'app check') { console.log('app check judged branch: ' + (process.env.STARCI_JUDGED_BRANCH || '(the checkout)')); if (${freshExit} !== 0) console.error('HFS_CHECK_CACHE_UNWARMED: stand-in'); process.exit(${freshExit}); }`,
     "if (verb !== 'deps check') process.exit(2);",
     `if (${depsExit} !== 0) console.error('DEPS_PIN_UNPUBLISHED: stand-in');`,
     `process.exit(${depsExit});`,

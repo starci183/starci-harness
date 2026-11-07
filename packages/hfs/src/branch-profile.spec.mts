@@ -296,6 +296,50 @@ test('the ratchet: touching a dirty file without adding findings passes, adding 
   assert.equal((await check(app, ['--ratchet'], { env: { GITHUB_REF: 'refs/heads/main' } })).stdout, 'lint is blocking on branch main: the lint ratchet applies only where a branch profile reports lint\n');
 });
 
+/** One lint finding per line that holds `BAD`, on that line (the finding of `counting` always sits on line 1). */
+const byLine: LinterRunner = async ({ cwd, pkg, list, texts }) => {
+  if (pkg !== 'eslint') return { results: [] };
+  const messages = (text: string) => text.split('\n').flatMap((line, index) => (line.includes('BAD') ? [{ ruleId: 'fixture/no-bad', severity: 2, message: `BAD on line ${String(index + 1)}`, line: index + 1, column: 1 }] : []));
+  if (texts !== undefined) return { results: texts.map(({ file, text }) => ({ filePath: path.join(cwd, file), messages: messages(text) })) };
+  const files = list ?? fs.readdirSync(path.join(cwd, 'src')).map((name) => `src/${name}`);
+  return { results: files.map((file) => ({ filePath: path.join(cwd, file), messages: messages(fs.readFileSync(path.join(cwd, file), 'utf8')) })) };
+};
+
+test('on dev a lint finding on a line changed since main blocks and an old one on an untouched line reports; on main the same code is the plain full gate', async (t) => {
+  const app = scratchApp(t, 'dev');
+  app.git('branch', 'main');
+  const dirty = path.join(app.root, 'be', 'src', 'dirty.ts');
+  // an old finding stays on lines 1 and 2; the commit adds a clean line 3: nothing new, so the old findings report
+  fs.writeFileSync(dirty, ['export const a = "BAD";', 'export const b = "BAD";', 'export const c = 1;', ''].join('\n'));
+  app.git('commit', '-qam', 'a clean line beside the old findings');
+  const old = await check(app, ['--gate', 'lint', '--json'], { run: byLine });
+  assert.equal(old.exit, 0, old.stdout);
+  const oldFindings = (old.report.findings as Doc[]).filter((finding) => finding.engine === 'eslint');
+  assert.deepEqual(oldFindings.map((finding) => finding.line), [1, 2]);
+  assert.ok(oldFindings.every((finding) => finding.report === true), 'an old finding on an untouched line reports');
+  assert.equal((old.report.findings as Doc[]).some((finding) => finding.code === 'LINT_NEW_CODE_FINDING'), false);
+  // a new finding on the added line 4 blocks, the old ones on lines 1 and 2 still report
+  fs.writeFileSync(dirty, ['export const a = "BAD";', 'export const b = "BAD";', 'export const c = 1;', 'export const d = "BAD";', ''].join('\n'));
+  app.git('commit', '-qam', 'a new finding');
+  const fresh = await check(app, ['--gate', 'lint', '--json'], { run: byLine });
+  assert.equal(fresh.exit, 1, 'one new-code finding blocks, far under the error limit');
+  const blocking = (fresh.report.findings as Doc[]).filter((finding) => finding.code === 'LINT_NEW_CODE_FINDING');
+  assert.deepEqual(blocking.map((finding) => [finding.path, finding.line, finding.report]), [['be/src/dirty.ts', 4, undefined]]);
+  assert.match(blocking[0].message, /fixture\/no-bad: BAD on line 4 \(a line this branch changed since the merge-base with main: on dev lint reports only the old findings, new code blocks\)/u);
+  assert.equal(fresh.report.gate.pass, false, 'a new-code finding is a plain error: the verdict is red');
+  const stillOld = (fresh.report.findings as Doc[]).filter((finding) => finding.engine === 'eslint');
+  assert.deepEqual(stillOld.map((finding) => [finding.line, finding.report]), [[1, true], [2, true]], 'the new finding left the report-only list');
+  // a line the branch edits is changed even when the finding was there before
+  fs.writeFileSync(dirty, ['export const a = "BAD"; // edited', 'export const b = "BAD";', 'export const c = 1;', 'export const d = 2;', ''].join('\n'));
+  app.git('commit', '-qam', 'an old finding edited');
+  const edited = await check(app, ['--gate', 'lint', '--json'], { run: byLine });
+  assert.deepEqual((edited.report.findings as Doc[]).filter((finding) => finding.code === 'LINT_NEW_CODE_FINDING').map((finding) => finding.line), [1]);
+  // main: the full gate, no profile, so no new-code classification (every finding is a plain lint finding there)
+  const main = await check(app, ['--gate', 'lint', '--json'], { env: { GITHUB_REF: 'refs/heads/main' }, run: byLine });
+  assert.equal((main.report.findings as Doc[]).some((finding) => finding.code === 'LINT_NEW_CODE_FINDING'), false);
+  assert.equal(main.report.branchProfile.profile, null);
+});
+
 test('ESLint lints a text as the file it stands for through a typed config (lintText with filePath): the ratchet base is judged by the same program', async (t) => {
   const root = mkdtemp(t, 'starci-ratchet-eslint-');
   const own = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/u, '$1'));

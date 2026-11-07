@@ -9,7 +9,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Load order · Two layers of context · Harness · Authority · The boundary model: four owners, one app · Three layers decide an interface · Map · Reading order by task · Feedback hardens · House rules for editing contexts
 - [authority/README.md](../authority/README.md) · 9 KB — Who may edit, commit, merge to main, push and publish, and which checks each role runs.
   - sections: Three tiers of checks · Roles · Worktrees · Not enforced yet
-- [authority/branch.md](../authority/branch.md) · 2 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
+- [authority/branch.md](../authority/branch.md) · 3 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs
 - [authority/ci.md](../authority/ci.md) · 1 KB — CI is the critic.
 - [authority/packages.md](../authority/packages.md) · 5 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
@@ -165,15 +165,15 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [harness/rules.md](../harness/rules.md) · 4 KB — These hold for every role and every task.
 - [harness/state.md](../harness/state.md) · 5 KB
   - sections: Where state lives · How a project is found
-- [hfs/README.md](../hfs/README.md) · 14 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
+- [hfs/README.md](../hfs/README.md) · 15 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
 - [hfs/harness.yaml](../hfs/harness.yaml) · 19 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.runtime-layer, images.sources, never.build-output, never.cli-js, never.env and 38 more
-- [hfs/rules.yaml](../hfs/rules.yaml) · 133 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
-  - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113 and 276 more
+- [hfs/rules.yaml](../hfs/rules.yaml) · 135 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
+  - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113 and 278 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 109 KB — The HFS slot manifest: what may exist in an app repository and where.
   - ids: app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore, app.format-config, app.git-meta and 140 more
-- [project/README.md](../project/README.md) · 10 KB — What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read for each kind of task.
+- [project/README.md](../project/README.md) · 11 KB — What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read for each kind of task.
   - sections: PROJECT-1 A project is one app root that holds the Work of every side · PROJECT-2 Work travels from a record to a settled commit · PROJECT-3 A product's agent modules are workspace packages · Where to read for a task · Files
 - [project/anatomy.md](../project/anatomy.md) · 83 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
@@ -183,7 +183,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: What an app has today · Triggers and what runs · The pipeline graph · Database migrations · Secrets and access · Gates · Records · Compared with common practice · Work packages · As built by the work packages · Open decisions · Sources · Read with
 - [project/full.md](../project/full.md) · 4 KB — Only the differences of a full app from the shared project model (README.md); everything not named here is the same in both editions.
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work · Read with
-- [project/lint.md](../project/lint.md) · 17 KB — Which machine judges which kind of fact in a project, where it runs, and which standard facts no machine judges yet.
+- [project/lint.md](../project/lint.md) · 18 KB — Which machine judges which kind of fact in a project, where it runs, and which standard facts no machine judges yet.
   - sections: Where a check runs · Packages and gates · Facts no machine checks yet · PROJECT-LINT-1 A fact a machine can decide moves to the machine · PROJECT-LINT-2 A branch profile lowers only the polish gates · PROJECT-LINT-3 An app extends the law through rule packs and package slot manifests · Read with
 - [project/lite.md](../project/lite.md) · 10 KB — Only the differences of a lite app from the shared project model (README.md); everything not named here is the same in both editions, including the code structure, the front-end ...
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work and custody · Moving an app off Supabase · Read with

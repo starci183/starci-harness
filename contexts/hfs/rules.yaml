@@ -2633,6 +2633,25 @@ rules:
       - CI_PARITY_SONAR_SKIPPED
     enforcers:
       - {kind: hfs, id: ci-sonar-scan}
+  - id: R387
+    code: LINT_NEW_CODE_FINDING
+    law: "On a branch whose profile reports lint or sonar, a profile lowers old debt only and never new code: an ESLint error finding on a line the branch changed since its merge-base with main (the diff the Sonar new-code prediction reads) is a blocking LINT_NEW_CODE_FINDING at any count while a finding on an untouched line stays report-only, and the predicted new-code coverage of the changed lines below the minimum `newCode.coverage.minPercent` of the Sonar gate main enforces is a blocking COVERAGE_NEW_CODE_BELOW; the Sonar server's quality gate and the Codecov upload stay report-only, the lint ratchet (R379) stays, and main always runs the full gate."
+    failureCodes:
+      - LINT_NEW_CODE_FINDING
+      - COVERAGE_NEW_CODE_BELOW
+    enforcers:
+      - {kind: hfs, id: new-code}
+  - id: R388
+    code: BRANCH_MAIN_NOT_ON_DEV
+    law: "An app repository has exactly two long-lived branches, main and dev: main is released on git, moves only by a release (the annotated v* tag through `release push`) and only by fast-forward to a commit on dev; dev is the working branch, forked from main and always at or ahead of it, so main is always an ancestor of dev and the two never diverge; lane and feature branches fork from dev and merge back into it, and nobody commits on main directly. The managed pre-push hook refuses a push of main whose commit is not reachable from dev, locally and on the remote (BRANCH_MAIN_NOT_ON_DEV), or is not the checked-out HEAD the hook's check judges (BRANCH_MAIN_NOT_CHECKED_OUT), and a push of dev that deletes it or does not contain main (BRANCH_DEV_NOT_ON_MAIN); a push of main or a release tag runs the full app check whatever branch is checked out, and a whole app check warns HFS_DEV_BRANCH_MISSING when the repository has no dev. The harness repository is no app and has neither."
+    failureCodes:
+      - BRANCH_MAIN_NOT_ON_DEV
+      - BRANCH_DEV_NOT_ON_MAIN
+      - BRANCH_MAIN_NOT_CHECKED_OUT
+      - HFS_DEV_BRANCH_MISSING
+    enforcers:
+      - {kind: hfs, id: app-branches}
+      - {kind: hfs, id: dev-branch}
   - id: R07
     code: HFS_AGENT_DATA_TRACKED
     law: "`.starciwork` holds product records only; agent and session data never lives there."

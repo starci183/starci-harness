@@ -1,12 +1,16 @@
 {{header}}
-# Push gate: fast-forward main with a clean secret scan, annotated v* tags, and bounded ref input.
-# The bundled gate owns the policy; backups and lane refs use the same policy as the runtime. Then the harness refuses a
+# Push gate: fast-forward main on dev with a clean secret scan, annotated v* tags, a dev that contains main, and bounded ref input
+# (contexts/project/branches.md PROJECT-BRANCH-1). The bundled gate owns the policy; backups and lane refs use the same policy as the runtime. Then the harness refuses a
 # committed @starci pin npm cannot install, or a local package copy ahead of npm (starci deps check). Last, every push carries the warm check
 # cache a real run on its tree writes, so CI re-checks only the diff: plain `app check`, no flags, the one command an agent and CI run in every
-# situation. The check runs under the branch profile of the
-# pushed branch (.starcistacks/application-stacks.yaml branches): a gate it reports runs and records but never counts, and where lint reports the lint
-# ratchet still refuses a pushed commit that adds a lint finding to a file it touches.
+# situation. A push of main or of a release tag is judged as main (STARCI_JUDGED_BRANCH), whatever branch is checked out: it runs the full gate. Any other push runs under the branch profile of the
+# pushed branch (.starcistacks/application-stacks.yaml branches): a gate it reports runs and records but never counts, the lint of a line the branch changed since main
+# and the predicted coverage of the changed lines still block, and where lint reports the lint ratchet still refuses a pushed commit that adds a lint finding to a file it touches.
 set -e
-node --input-type=module -e "import { main } from '@starci/hfs/runtime/scripts/guards/release-push-gate.mjs'; process.exit(await main());"
+refs=$(cat)
+printf '%s\n' "$refs" | STARCI_PUSH_REMOTE="$1" node --input-type=module -e "import { main } from '@starci/hfs/runtime/scripts/guards/release-push-gate.mjs'; process.exit(await main());"
+case "$refs" in
+  *" refs/heads/main "*|*" refs/tags/v"*) STARCI_JUDGED_BRANCH=main; export STARCI_JUDGED_BRANCH ;;
+esac
 node node_modules/starci-harness/dist/main.js deps check
 node node_modules/starci-harness/dist/main.js app check

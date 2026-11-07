@@ -110,8 +110,10 @@ import { removeModule } from '../scaffold/add-module.mjs';
 import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { newImages } from '../scaffold/image.mjs';
 import { PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
+import { devBranchFinding } from '../runtime/scripts/hfs/dev-branch.mjs';
+import { COVERAGE_NEW_CODE, LINT_NEW_CODE, newCodeCoverageFindings, newCodeLintFinding, onChangedLine } from '../cache/new-code.mjs';
 import { committedLintCounts, rangeTouched, ratchetBase, ratchetFindings, sessionLintCounts, stagedTouched } from '../lint/ratchet.mjs';
-import { runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
+import { newCodeSince, runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
 import { createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
 import { DEFAULT_FAMILIES, runAppFamilies } from '../cache/run.mjs';
@@ -552,6 +554,10 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   const profile = activeProfile(repoRoot, io.env);
   const modes = familyModes(profile);
   const selected = new Set([...requested].filter((family) => modes[family] !== 'off'));
+  // New code is never loosened (cache/new-code.mts): where a profile reports lint or sonar, the lines changed since the merge-base with main are judged as main judges them.
+  const profiled = profile.profile !== null && (modes.lint === 'report' || modes.sonar === 'report');
+  const since = profiled ? newCodeSince(repoRoot) : undefined;
+  const branchName = profile.branch ?? profile.profile ?? 'this branch';
   if (fix) await fixLint({ repoRoot, side, run: runLinter });
   const tracked = io.checkApp === undefined ? trackedFiles(repoRoot) : [];
   const session = io.checkApp === undefined ? openSession({ repoRoot, tracked, io, full, use, planned: tracked.length * Math.max(1, selected.size) }) : undefined;
@@ -583,14 +589,20 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     const parity = await runParityFamilies(session, { repoRoot, families: new Set([...selected].filter((family): family is 'build' | 'audit' => family === 'build' || family === 'audit')), env: io.env, run: parityRunner(io) });
     extra.push(...withWhy(parity.findings, readWhy(skillRoot, parity.findings.length > 0 ? ['CI_PARITY_STEP_FAILED'] : [])));
   }
-  if (session !== undefined && selected.has('sonar')) lines.push(...(runSonarForApp(session, { repoRoot })?.lines ?? []));
+  if (session !== undefined && selected.has('sonar')) {
+    const quality = runSonarForApp(session, { repoRoot, ...(since === undefined ? {} : { since }) });
+    lines.push(...(quality?.lines ?? []));
+    if (quality !== null && profile.profile !== null && modes.sonar === 'report') extra.push(...withWhy(newCodeCoverageFindings(quality.predictions, branchName) as Dynamic[], readWhy(skillRoot, [COVERAGE_NEW_CODE])));
+  }
   // A whole run also runs the app's CI sonar job against the server (cache/sonar-scan-family.mts), when everything before it is green, as CI's sonar job needs lint and coverage.
   // Whenever it does not run, the run says why in one line.
   if (!whole) lines.push('  sonar scan: not run, only a run with no selector, flag or --gate (a whole run) runs it');
   else if (session === undefined) lines.push('  sonar scan: not run, this run keeps no check cache session');
   else if (profile.modes.sonar === 'off') lines.push(`  sonar scan: not run, the branch profile ${profile.profile ?? profile.branch ?? 'in force'} turns the sonar gate off`);
   else {
-    const red = [...proof.findings, ...extra].some((finding) => finding.level === 'error' && finding.report !== true) || (eslint?.findings ?? []).some((finding) => finding.severity !== 'warning') || (eslint?.errors.length ?? 0) > 0 || style.errors.length > 0 || stylelintFindings(style.results, repoRoot).some((finding) => finding.level === 'error');
+    // A finding of a family the profile reports (old lint debt on dev) never makes the run red: the scan runs and reports; new-code findings still do.
+    const blocks = (finding: { level?: string; code?: string | null; engine?: string }): boolean => finding.level === 'error' && modes[familyOf(finding)] !== 'report';
+    const red = [...proof.findings, ...extra].some((finding) => blocks(finding)) || (eslint?.findings ?? []).some((finding) => finding.severity !== 'warning' && (modes.lint !== 'report' || onChangedLine({ ...finding, level: 'error' }, since?.changed))) || (eslint?.errors.length ?? 0) > 0 || style.errors.length > 0 || stylelintFindings(style.results, repoRoot).some((finding) => finding.level === 'error' && modes.lint !== 'report');
     if (red) lines.push('  sonar scan: not run, other families are red (CI runs the sonar job after lint and coverage are green)');
     else {
       const progress = session.progress.step('sonar', 'Sonar scan against the server', 1);
@@ -614,6 +626,9 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     extra.push(...withWhy(ratchet.findings, readWhy(skillRoot, ratchet.findings.length > 0 ? ['LINT_RATCHET_RAISED'] : [])));
     ratchetErrors.push(...ratchet.errors);
   }
+  // An app keeps main and dev (PROJECT-BRANCH-1): a whole run warns when it has no dev branch.
+  const noDev = whole && session !== undefined ? devBranchFinding(repoRoot) : null;
+  if (noDev !== null) extra.push(...withWhy([noDev] as Dynamic[], readWhy(skillRoot, [noDev.code])));
   const flushed = session?.flush();
   const verdicts = session === undefined ? [] : verdictFindings(session);
   // The cache verdict of a whole run: the committed cache is what this run on the tree writes, or the run is red (a push would carry stale records).
@@ -623,7 +638,11 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   }
   const reports: FamilyReport[] = session === undefined ? [...(checked.families ?? [])] : [...session.reports];
   // A rule of the canon's counting cohort is a warning: listed and counted, never part of the verdict.
-  const linterFindings = [...(eslint?.findings ?? []).map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: finding.severity === 'warning' ? 'warning' : 'error' })), ...stylelintFindings(style.results, repoRoot)];
+  const lintedFindings = [...(eslint?.findings ?? []).map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: finding.severity === 'warning' ? 'warning' : 'error' })), ...stylelintFindings(style.results, repoRoot)];
+  // Where lint reports, a finding on a line this branch changed is new code: it becomes a blocking LINT_NEW_CODE_FINDING in place of its report-only listing.
+  const newCode = since !== undefined && modes.lint === 'report' ? lintedFindings.filter((finding) => onChangedLine(finding, since.changed)) : [];
+  const linterFindings = newCode.length === 0 ? lintedFindings : lintedFindings.filter((finding) => !newCode.includes(finding));
+  if (newCode.length > 0) extra.push(...withWhy(newCode.map((finding) => newCodeLintFinding(finding as typeof finding & { path: string }, branchName)) as Dynamic[], readWhy(skillRoot, [LINT_NEW_CODE])));
   // A finding of a family the profile reports is marked `report`: listed and recorded, never part of the verdict.
   const findings = [...proof.findings, ...extra, ...verdicts, ...linterFindings].map((finding) => (modes[familyOf(finding)] === 'report' ? { ...finding, report: true } : finding));
   // Green only with no error finding outside a report profile (gate-verdict.mts); every finding is still listed.

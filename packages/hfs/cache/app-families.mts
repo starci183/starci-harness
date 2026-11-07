@@ -17,7 +17,7 @@ import { toolCacheDir } from './run-log.mjs';
 import { untrackedProgramInputs } from './side-key.mjs';
 import { createJestEnvironment, installedSpecMerge, runTestFamily, shardArgs, type TestFamilyResult } from './test-family.mjs';
 import { createTscRunner, runTypesFamily, type TypesFamilyResult, type TypesProgram } from './types-family.mjs';
-import { changedLinesFromDiff, gitRunner, lineCoverageOf, recordsAtCommit, runQualityFamily, type QualityFamilyResult } from './quality-baselines.mjs';
+import { changedLinesFromDiff, gitRunner, lineCoverageOf, recordsAtCommit, runQualityFamily, type ChangedLines, type QualityFamilyResult } from './quality-baselines.mjs';
 import type { CheckSession, Finding } from './types.mjs';
 
 const asFinding = (found: Finding, code: string, level: string, engine: string): CheckFinding => ({ code, level, engine, path: found.path, line: found.line || undefined, column: found.column || undefined, message: `${found.path}${found.line ? `:${found.line}` : ''}: ${found.message}` });
@@ -96,19 +96,24 @@ export function baseContent(git: (args: readonly string[]) => string | undefined
   return hashText(listed.split(/\r?\n/u).filter((line) => { const file = line.split('\t')[1]; return file !== undefined && !file.startsWith('.starcistacks/cache/'); }).join('\n'));
 }
 
-/** `--sonar`: the Sonar and Codecov baselines and the predictions from the merged coverage records; they never pass or fail a run. */
-export function runSonarForApp(session: CheckSession, { repoRoot }: { repoRoot: string }): QualityFamilyResult | null {
+/** The commit new code is measured from: the merge-base of HEAD with main (`origin/main`, else `main`), else HEAD itself, and the lines the work tree changed since it. */
+export function newCodeSince(repoRoot: string): { base: string; changed: ChangedLines; git: (args: readonly string[]) => string | undefined } {
+  const git = gitRunner(repoRoot);
+  const base = ['origin/main', 'main'].map((ref) => git(['merge-base', 'HEAD', ref])?.trim()).find((sha) => sha !== undefined && sha !== '') ?? git(['rev-parse', 'HEAD'])?.trim() ?? 'none';
+  return { base, changed: changedLinesFromDiff(git(['diff', '-U0', '--no-color', base]) ?? ''), git };
+}
+
+/** `--sonar`: the Sonar and Codecov baselines and the predictions from the merged coverage records; they never pass or fail a run (a branch profile judges the new-code coverage prediction itself, cache/new-code.mts). */
+export function runSonarForApp(session: CheckSession, { repoRoot, since = newCodeSince(repoRoot) }: { repoRoot: string; since?: ReturnType<typeof newCodeSince> }): QualityFamilyResult | null {
   const read = (file: string): string | undefined => { try { return fs.readFileSync(path.join(repoRoot, file), 'utf8'); } catch { return undefined; } };
   const properties = read('sonar-project.properties');
   const codecov = read('codecov.yml');
   if (properties === undefined || codecov === undefined) return null;
   const gateYaml = fs.readFileSync(path.join(skillRoot, 'knowledge', 'sonar-gate.yaml'), 'utf8');
-  const git = gitRunner(repoRoot);
-  const base = ['origin/main', 'main'].map((ref) => git(['merge-base', 'HEAD', ref])?.trim()).find((sha) => sha !== undefined && sha !== '') ?? git(['rev-parse', 'HEAD'])?.trim() ?? 'none';
-  const diff = git(['diff', '-U0', '--no-color', base]) ?? '';
+  const { base, changed, git } = since;
   const baseRecords = recordsAtCommit(base, git);
   return runQualityFamily({
     session, sources: { baseCommit: base, baseContent: baseContent(git, base), sonarGateYaml: gateYaml, sonarProperties: properties, codecovYaml: codecov },
-    changed: changedLinesFromDiff(diff), clones: [], baseCoverage: baseRecords.length > 0 ? lineCoverageOf(baseRecords) : undefined,
+    changed, clones: [], baseCoverage: baseRecords.length > 0 ? lineCoverageOf(baseRecords) : undefined,
   });
 }

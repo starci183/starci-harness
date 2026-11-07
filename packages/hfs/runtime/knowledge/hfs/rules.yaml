@@ -3774,7 +3774,7 @@ rules:
     docs: [contexts/hfs/README.md#rule-notes]
   - id: R225
     code: "RT_HOOK_SHAPE"
-    law: "The app hook templates keep the gate model: pre-commit is L0 only (no typecheck or test run); pre-push invokes the bundled scripts/guards/release-push-gate.mjs policy for fast-forward main, a clean outgoing secret scan and annotated v* tags, then the harness's `starci deps check` (every committed @starci pin installable from npm, no local package copy ahead of npm). It runs no build, test, typecheck or lint."
+    law: "The app hook templates keep the gate model: pre-commit is L0 only (no typecheck or test run); pre-push invokes the bundled scripts/guards/release-push-gate.mjs policy for fast-forward main on dev, a clean outgoing secret scan, annotated v* tags and a dev that contains main (R388), then the harness's `starci deps check` (every committed @starci pin installable from npm, no local package copy ahead of npm). It runs no build, test, typecheck or lint."
     scope: runtime
     kinds: [check]
     gates: [land, runtime]
@@ -6530,3 +6530,36 @@ rules:
       - {path: packages/hfs/src/check-cache-sonar-scan.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/check-cache-sonar-scan.spec.mjs, editions: [lite, full]}
+  - id: R387
+    code: "LINT_NEW_CODE_FINDING"
+    law: "On a branch whose profile reports lint or sonar, a profile lowers old debt only and never new code: an ESLint error finding on a line the branch changed since its merge-base with main (the diff the Sonar new-code prediction reads) is a blocking LINT_NEW_CODE_FINDING at any count while a finding on an untouched line stays report-only, and the predicted new-code coverage of the changed lines below the minimum `newCode.coverage.minPercent` of the Sonar gate main enforces is a blocking COVERAGE_NEW_CODE_BELOW; the Sonar server's quality gate and the Codecov upload stay report-only, the lint ratchet (R379) stays, and main always runs the full gate."
+    kinds: [check]
+    gates: [pre-push, settle, land, ci]
+    failureCodes: ["LINT_NEW_CODE_FINDING", "COVERAGE_NEW_CODE_BELOW"]
+    enforcers:
+      - {kind: hfs, id: new-code, at: cache/new-code.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/lint.md#project-lint-2-a-branch-profile-lowers-only-the-polish-gates, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/new-code.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/branch-profile.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/new-code.spec.mjs, editions: [lite, full]}
+  - id: R388
+    code: "BRANCH_MAIN_NOT_ON_DEV"
+    law: "An app repository has exactly two long-lived branches, main and dev: main is released on git, moves only by a release (the annotated v* tag through `release push`) and only by fast-forward to a commit on dev; dev is the working branch, forked from main and always at or ahead of it, so main is always an ancestor of dev and the two never diverge; lane and feature branches fork from dev and merge back into it, and nobody commits on main directly. The managed pre-push hook refuses a push of main whose commit is not reachable from dev, locally and on the remote (BRANCH_MAIN_NOT_ON_DEV), or is not the checked-out HEAD the hook's check judges (BRANCH_MAIN_NOT_CHECKED_OUT), and a push of dev that deletes it or does not contain main (BRANCH_DEV_NOT_ON_MAIN); a push of main or a release tag runs the full app check whatever branch is checked out, and a whole app check warns HFS_DEV_BRANCH_MISSING when the repository has no dev. The harness repository is no app and has neither."
+    kinds: [check]
+    gates: [pre-push, land, ci]
+    failureCodes: ["BRANCH_MAIN_NOT_ON_DEV", "BRANCH_DEV_NOT_ON_MAIN", "BRANCH_MAIN_NOT_CHECKED_OUT", "HFS_DEV_BRANCH_MISSING"]
+    enforcers:
+      - {kind: hfs, id: app-branches, at: runtime/scripts/guards/release-push-gate.mjs}
+      - {kind: hfs, id: dev-branch, at: runtime/scripts/hfs/dev-branch.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/branches.md#project-branch-1-an-app-has-exactly-two-long-lived-branches-main-and-dev, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/pre-push-branches.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/dev-branch.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/pre-push-branches.spec.mjs, editions: [lite, full]}

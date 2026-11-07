@@ -10,8 +10,9 @@ it touched, then a commit and a hand-off. The heavy rounds belong to the merged 
 2. At most a typecheck or a lint of exactly the files you touched, and only when they are TypeScript or a linted file.
    The cheapest command that covers them wins; with nothing to type or lint, run nothing. On an app branch with a branch
    profile ([project/lint.md](../project/lint.md) PROJECT-LINT-2) a finding the check marks report-only is read and never
-   chased: you fix every finding of a blocking gate and every `LINT_RATCHET_RAISED`, so a file you touch keeps no more lint
-   findings than it had.
+   chased: you fix every finding of a blocking gate, every `LINT_RATCHET_RAISED`, every `LINT_NEW_CODE_FINDING` and every
+   `COVERAGE_NEW_CODE_BELOW`, so a file you touch keeps no more lint findings than it had and the lines you changed are clean and
+   covered. An app branch forks from `dev` and merges back into it, never into `main` ([project/branches.md](../project/branches.md) PROJECT-BRANCH-1).
 3. Commit (a worker files its result and the harness commits; a package edit commits on its own branch), then hand off:
    a result, a `pkg handoff`, or the branch named to whoever merges it ([README.md](README.md) "Roles"). In a checkout
    another agent shares, commit only your paths, through a temporary index (`GIT_INDEX_FILE`), never the shared index.

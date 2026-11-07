@@ -94,7 +94,7 @@ only; it never keeps a second wording of what the rule flags, and a gate never c
 
 ## PROJECT-LINT-2 A branch profile lowers only the polish gates
 
-An app's product branch is `dev`, and its `.starcistacks/application-stacks.yaml` may give it a branch profile: per gate
+An app's product branch is `dev` ([branches.md](branches.md) PROJECT-BRANCH-1), and its `.starcistacks/application-stacks.yaml` may give it a branch profile: per gate
 `blocking`, `report` (the gate runs, diff-only against the warm cache as always, prints its findings and writes its records,
 but its findings never count toward the verdict) or `off` (not run). A gate the profile leaves out blocks.
 
@@ -117,7 +117,7 @@ the stricter mode. The branch name alone decides, so a hook and CI agree; an ups
   blocker, and lowers nothing.
 - **Which profile a run is under.** The branch the run judges chooses it, automatically: in CI a pull request into the default
   branch (`GITHUB_BASE_REF`) runs the full gate, any other pull request is judged as its source branch (`GITHUB_HEAD_REF`) and
-  a push as its branch (`GITHUB_REF`); elsewhere the checked-out branch. `starci app check --profile` prints it (`branch profile dev`, or
+  a push as its branch (`GITHUB_REF`); the managed pre-push hook names `main` itself (`STARCI_JUDGED_BRANCH`) for a push of `main` or a release tag; elsewhere the checked-out branch. `starci app check --profile` prints it (`branch profile dev`, or
   `branch profile ui/* (a pattern covering ui/3)`), with one `--gate` only that gate's mode (`packages/hfs/runtime/scripts/hfs/branch-profile.mts`). `starci app check`, the managed
   pre-commit and pre-push hooks and the rendered CI all take it: a push to `dev` runs the reduced CI (the lint job reports,
   the Sonar analysis and the Codecov upload of a reported gate run without the quality gate judging), and a pull request into
@@ -132,11 +132,24 @@ the stricter mode. The branch name alone decides, so a hook and CI agree; an ups
   config, in children of at most `RATCHET_TEXTS_PER_CHILD` texts (`packages/hfs/lint/ratchet.mts`), so the heap of one child
   stays bounded; the run prints how many files the records settled and how many were linted. The findings a file already
   carried stay report-only.
+- **New code is never loosened.** A profile lowers old debt only. Where a profile reports lint or sonar, the lines this branch changed
+  since its merge-base with `main` (the `git diff -U0` of the merge-base with `origin/main`, else `main`, to the work tree, the diff the
+  Sonar new-code prediction reads: `newCodeSince` in `packages/hfs/cache/app-families.mts`) are judged as `main` judges them
+  (`packages/hfs/cache/new-code.mts`, R387, both plain errors the profile never marks report-only):
+  - **Lint.** An ESLint error finding on a changed line is blocking `LINT_NEW_CODE_FINDING`, listed in place of its report-only
+    entry; a finding on an untouched line stays report-only. The lint ratchet above stays.
+  - **Coverage.** The predicted new-code coverage of the changed lines (`check-cache.md` "Sonar and Codecov", computed from the unit-spec
+    records of this run) below the minimum `newCode.coverage.minPercent` of the Sonar gate `main` enforces
+    (`packages/hfs/runtime/knowledge/sonar-gate.yaml`) is blocking `COVERAGE_NEW_CODE_BELOW`; a change with no coverable line is
+    not judged. The Sonar server's quality gate and the Codecov upload stay report-only, since they depend on servers.
+  - **Local Sonar scan.** A whole `app check` runs the real scan on a profile branch as a report: findings of a family the profile
+    reports never skip it, and its verdict never counts there.
 - **How an agent works on a profile branch.** It fixes every finding of a blocking gate, `hfs` and the safety gates above
-  all, and every `LINT_RATCHET_RAISED`; it reads the findings a run marks report-only and never chases them, so a touched
+  all, every `LINT_RATCHET_RAISED`, every `LINT_NEW_CODE_FINDING` and every `COVERAGE_NEW_CODE_BELOW` (the lines it changed are clean and covered); it reads the findings a run marks report-only and never chases them, so a touched
   file is left with no more lint findings than it had, never cleaned on the side.
-- **Promotion.** Moving `dev` to `main` is a named step, a pull request (or merge) into `main`, which runs the full gate:
-  every report-only finding counts again there, so whoever promotes fixes what the full gate refuses first.
+- **Promotion.** Moving `dev` to `main` is the release of [branches.md](branches.md) PROJECT-BRANCH-1: the full gate runs on it (a
+  push of `main` or of a release tag is judged as `main` whatever branch is checked out, `STARCI_JUDGED_BRANCH` of the managed pre-push
+  hook), and every report-only finding counts again there, so whoever promotes fixes what the full gate refuses first.
 
 ## PROJECT-LINT-3 An app extends the law through rule packs and package slot manifests
 

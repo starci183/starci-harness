@@ -26,14 +26,15 @@ build per commit, the database step, a lock shared with the owner's urgent deplo
 ## Triggers and what runs
 
 Every push to an app's `main` already carries a release tag: the canon pre-push hook lets `main` and `v*` through only
-for a HEAD with its annotated tag and its L4 record, and `release push` sends both in one atomic push. So "on push" means
+for a commit on `dev` that is the checked-out HEAD, with its annotated tag, judged as `main` by the full gate
+([branches.md](branches.md) PROJECT-BRANCH-1), and `release push` sends both in one atomic push. So "on push" means
 on the release tag; the tag run is the release run, and the pipeline keys every decision on the commit sha.
 
 | event | checks | images | deploy |
 |---|---|---|---|
 | `pull_request` to `main` (Dependabot, an owner branch) | diff-only against the merge-base cache | built, not pushed (proves the Dockerfiles) | never |
 | push of `main` whose sha a `v*` tag points at | skipped: the `plan` job sees the tag and defers to the tag run | none | none |
-| push of `main` with no tag (only when the hook was bypassed) | diff-only against the first parent | none | none |
+| push of `main` with no tag (only when the hook was bypassed) | the plan refuses a commit that is not on `origin/dev` (PROJECT-BRANCH-1); then diff-only against the first parent, the full gate | none | none |
 | push of a branch with a branch profile (`dev`, [lint.md](lint.md) PROJECT-LINT-2) | the checks under the profile: a reported lint lists its findings and fails only on `LINT_RATCHET_RAISED`; a reported Sonar analysis and Codecov upload run, and no quality gate judges them | none | none |
 | push of `release/candidate-<version>` (apps with `release.requireCi: true`) | the release checks, diff-only against the cache at its merge-base with `main` | built and pushed under `sha-<sha>` | none; the candidate verdict is reused by the tag run |
 | push of tag `v<version>` | the release checks, diff-only against the cache at its merge-base with `main` (check-cache.md "Trust"), or reused from a green candidate run of the same sha | built once, pushed with SBOM and provenance | every environment with `deploy.auto: true`, in declared order, after every required job is green |

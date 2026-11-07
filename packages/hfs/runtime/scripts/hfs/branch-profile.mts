@@ -2,6 +2,7 @@
 // declaration states for it (`branches` of .starcistacks/application-stacks.yaml, read by scripts/lib/stack-declaration.mts readBranchProfiles).
 //   CI         a pull request (GITHUB_BASE_REF) into the default branch runs the full gate; any other pull request is judged as its source branch
 //              (GITHUB_HEAD_REF); a push is judged as its branch (GITHUB_REF refs/heads/<branch>, a tag is no branch)
+//   hook       STARCI_JUDGED_BRANCH, which the managed pre-push hook sets to `main` for a push of main or a release tag: that push is judged as main, whatever branch is checked out
 //   elsewhere  the checked-out branch (`git rev-parse --abbrev-ref HEAD`; a detached HEAD is no branch)
 // A branch takes its own entry, else every pattern entry that matches it (`ui/*` for ui/3), merged to the stricter mode per gate (profileFor).
 // The default branch is the declaration's (ci.github.defaultBranch, else main), or CI's STARCI_DEFAULT_BRANCH when it is set. No branch, the default branch, a branch with no profile and a declaration with any HFS_BRANCH_PROFILE_INVALID problem run the full gate: every gate blocks.
@@ -19,6 +20,8 @@ const set = (value: string | undefined): string | null => (value !== undefined &
 
 /** The branch a run judges and how it was chosen: a pull request into `defaultBranch` is judged as the default branch. */
 export function judgedBranch(repoRoot: string, env: NodeJS.ProcessEnv, defaultBranch: string): { branch: string | null; source: string } {
+  const pushed = set(env.STARCI_JUDGED_BRANCH);
+  if (pushed !== null) return { branch: pushed, source: 'the branch the push moves (STARCI_JUDGED_BRANCH, set by the managed pre-push hook)' };
   const base = set(env.GITHUB_BASE_REF);
   if (base !== null) {
     if (base === defaultBranch) return { branch: defaultBranch, source: `a pull request into ${defaultBranch} (GITHUB_BASE_REF)` };

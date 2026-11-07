@@ -7,7 +7,7 @@ name: ci
 #                 and uploads, never judged); a pull request into main always runs the full gate
 #   pull_request  the checks and the image builds of a change to main, with no secret and no environment (a Dependabot or fork run has none anyway);
 #                 and no run of this workflow executes a pull request's code with a token that can write
-#   main          judged only when no release tag points at the pushed commit (the release push sends main and its tag together; the tag run is the release run)
+#   main          a push is refused unless its commit is on origin/dev (the pre-push hook's rule, held again here for a push that bypassed the hook); judged only when no release tag points at the pushed commit (the release push sends main and its tag together; the tag run is the release run)
 #   candidate     release/candidate-<version>: the run of a release the tag run then reuses
 #   tag v*        the release run: plan, checks and images in parallel, the verdict, then the deploy of every environment with deploy.auto
 on:
@@ -82,6 +82,9 @@ jobs:
             else
               images=false push=false full=false note="main without a release tag: checks only"
             fi
+          fi
+          if [[ "$EVENT" == push && "$REF_TYPE" == branch && "$GITHUB_REF_NAME" == main ]]; then
+            git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/dev || { echo "::error::main moves only to a commit on dev (contexts/project/branches.md PROJECT-BRANCH-1)"; exit 1; }
           fi{{planBranchProfiles}}
           { echo "checks=$checks"; echo "images=$images"; echo "push=$push"; echo "full=$full"; echo "release=$release"; echo "ci_run=$ci_run"; echo "sonar=$sonar"; echo "codecov=$codecov"; } >> "$GITHUB_OUTPUT"
           echo "plan: $note" >> "$GITHUB_STEP_SUMMARY"

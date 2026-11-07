@@ -4576,6 +4576,69 @@ LINT_RATCHET_RAISED:
   owner: op-retry
   kind: check-finding
 
+LINT_NEW_CODE_FINDING:
+  title: "A line changed since main carries an ESLint error on a branch that reports lint"
+  title_vi: "Một dòng đã đổi so với main có lỗi ESLint trên nhánh đặt lint ở chế độ report"
+  meaning_vi: "Trên nhánh có branch profile đặt lint là report (dev), lỗi lint cũ trên dòng không đổi chỉ được báo, nhưng một lỗi ESLint nằm trên dòng đã thêm hoặc sửa so với merge-base với main là code mới và luôn chặn, ở mọi số lượng."
+  causes_vi:
+    - "Vi phạm R387: thêm hoặc sửa một dòng khiến ESLint báo lỗi."
+  nextStep_vi: "Sửa lỗi lint trên các dòng đã đổi (lỗi trên dòng không đổi có thể để lại), rồi commit hoặc push lại."
+  owner: op-retry
+  kind: check-finding
+
+COVERAGE_NEW_CODE_BELOW:
+  title: "The predicted new-code coverage of the changed lines is below the minimum main's gate holds"
+  title_vi: "Độ phủ code mới dự đoán của các dòng đã đổi thấp hơn mức tối thiểu cổng của main đòi hỏi"
+  meaning_vi: "Trên nhánh có branch profile đặt sonar là report (dev), cổng chất lượng của server Sonar và Codecov chỉ báo, nhưng độ phủ code mới dự đoán từ bản ghi unit-spec của lần chạy này trên các dòng đã đổi so với merge-base với main không được thấp hơn mức newCode.coverage.minPercent của cổng Sonar mà main áp dụng. Vi phạm luôn chặn."
+  causes_vi:
+    - "Vi phạm R387: thêm hoặc sửa dòng code mà không có unit spec phủ chúng."
+  nextStep_vi: "Viết hoặc mở rộng unit spec để phủ các dòng đã đổi (số dòng và phần trăm nằm trong thông báo), rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
+BRANCH_MAIN_NOT_ON_DEV:
+  title: "main moves only to a commit on dev"
+  title_vi: "main chỉ được dời tới một commit nằm trên dev"
+  meaning_vi: "Hook pre-push của app đã chặn lần đẩy main: không có nhánh dev, hoặc commit đẩy không nằm trên dev ở máy và trên remote. main là nhánh phát hành: chỉ đi tới một commit đã có trên dev, bằng fast-forward qua starci release push."
+  causes_vi:
+    - "Vi phạm R388: commit trực tiếp trên main."
+    - "dev chưa được đẩy, hoặc dev trên remote chưa chứa commit sắp phát hành."
+    - "App chưa có nhánh dev."
+  nextStep_vi: "Đưa công việc vào dev và đẩy dev trước, rồi fast-forward main tới dev (git merge --ff-only dev) và chạy starci release push. App chưa có dev thì tạo từ main và đẩy lên."
+  owner: supervisor
+  kind: verb-refusal
+
+BRANCH_DEV_NOT_ON_MAIN:
+  title: "dev always contains main"
+  title_vi: "dev luôn chứa main"
+  meaning_vi: "Hook pre-push của app đã chặn lần đẩy dev: dev bị xóa, hoặc dev đẩy lên không chứa main (ở máy, trên remote hoặc main đẩy cùng). dev luôn bằng hoặc đi trước main; hai nhánh không bao giờ rẽ."
+  causes_vi:
+    - "Vi phạm R388: dev tụt sau main hoặc rẽ khỏi main."
+    - "Thao tác xóa dev."
+  nextStep_vi: "Merge main vào dev (hoặc fast-forward dev tới main) rồi đẩy lại dev; không xóa dev."
+  owner: supervisor
+  kind: verb-refusal
+
+BRANCH_MAIN_NOT_CHECKED_OUT:
+  title: "A push of main carries the checked-out commit"
+  title_vi: "Lần đẩy main phải mang commit đang checkout"
+  meaning_vi: "Hook pre-push của app đã chặn lần đẩy main vì commit đẩy không phải HEAD đang checkout: starci app check của hook chạy trên cây đang checkout với cổng đầy đủ của main, nên chỉ commit đó mới được đẩy."
+  causes_vi:
+    - "Vi phạm R388: đẩy một commit khác HEAD tới main (ví dụ git push origin <sha>:main)."
+  nextStep_vi: "Checkout commit cần phát hành (main sau khi fast-forward tới dev) rồi chạy starci release push."
+  owner: supervisor
+  kind: verb-refusal
+
+HFS_DEV_BRANCH_MISSING:
+  title: "An app repository has no dev branch"
+  title_vi: "Repository của app không có nhánh dev"
+  meaning_vi: "Một app giữ đúng hai nhánh dài hạn là main và dev: dev tách từ main và luôn bằng hoặc đi trước main, main chỉ dời tới một commit đã có trên dev. starci app check đầy đủ cảnh báo khi repository không có nhánh dev, ở máy hoặc là origin/dev."
+  causes_vi:
+    - "App chưa từng tạo nhánh dev (vi phạm R388)."
+  nextStep_vi: "Tạo dev từ main (git branch dev main) và đẩy lên origin; công việc mới tách từ dev và merge lại vào dev."
+  owner: supervisor
+  kind: check-finding
+
 HFS_STARCIWORK_LITE_FORBIDDEN:
   title: "lite .starciwork holds only workspace.yaml and brand/"
   title_vi: "Work của lite"

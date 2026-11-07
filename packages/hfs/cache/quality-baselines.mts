@@ -214,6 +214,8 @@ export interface Prediction {
   readonly basis: string;
   /** What the server holds the metric to, from the baseline. */
   readonly target: string;
+  /** The minimum percent the metric must reach, for the metric a branch profile judges locally (the Sonar new-code coverage); absent for the others. */
+  readonly minPercent?: number;
 }
 
 const percent = (part: number, whole: number): number | undefined => (whole === 0 ? undefined : Math.round((part / whole) * 10000) / 100);
@@ -251,7 +253,7 @@ function total(coverage: LineCoverage, measured: ((path: string) => boolean) | u
 export function predict(inputs: QualityInputs): Prediction[] {
   const patch = changedCoverage(inputs);
   const out: Prediction[] = [
-    { label: PREDICTION, provider: 'sonar', metric: 'new-code coverage', value: percent(patch.covered, patch.coverable), basis: `${patch.covered} of ${patch.coverable} coverable changed lines`, target: `>= ${inputs.gate.coverageMinPercent}%` },
+    { label: PREDICTION, provider: 'sonar', metric: 'new-code coverage', value: percent(patch.covered, patch.coverable), basis: `${patch.covered} of ${patch.coverable} coverable changed lines`, target: `>= ${inputs.gate.coverageMinPercent}%`, minPercent: inputs.gate.coverageMinPercent },
   ];
   let newLines = 0;
   let duplicated = 0;
