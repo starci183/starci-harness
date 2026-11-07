@@ -147,34 +147,36 @@ export async function runTypesFamily(options: TypesFamilyOptions): Promise<Types
   let known = 0;
   let added = 0;
   let fixed = 0;
-  for (const program of programs) {
+  let finished = 0;
+  // Every program whose key changed runs at once, each tsc a child the governor admits on its own; the answers are folded in program order.
+  const judged = await Promise.all(programs.map(async (program) => {
     const inputs = options.inputsOf?.(program) ?? {};
     const key = programKey(program, session, inputs);
     const before = previous.get(program.name);
-    let current: readonly Finding[];
-    if (decision.mode === 'diff' && before !== undefined && before.hash === key) {
-      current = before.findings;
-      records.push(before);
-      reused.push(program.name);
-    } else {
-      const outcome = await run(program, tsBuildInfoPath(toolCacheDir, session.root, program));
-      ran.push(program.name);
-      current = parseTscOutput(outcome.output, session.root, program.tsconfig);
-      if (current.length === 0 && outcome.status !== 0) incomplete.push(program.name);
-      else if (programKey(program, session, inputs) === key) {
-        const record: CacheRecord = { path: program.name, step: TSC_STEP, hash: key, findings: current };
-        records.push(record);
-        journal?.append([recordLine(record)]);
-      }
-      else incomplete.push(program.name);
+    if (decision.mode === 'diff' && before !== undefined && before.hash === key) return { program, before, current: before.findings, record: before as CacheRecord | undefined, state: 'reused' as const };
+    const outcome = await run(program, tsBuildInfoPath(toolCacheDir, session.root, program));
+    const current = parseTscOutput(outcome.output, session.root, program.tsconfig);
+    let record: CacheRecord | undefined;
+    if (!(current.length === 0 && outcome.status !== 0) && programKey(program, session, inputs) === key) {
+      record = { path: program.name, step: TSC_STEP, hash: key, findings: current };
+      journal?.append([recordLine(record)]);
     }
+    finished += 1;
+    progress.tick(finished, 0, finished);
+    return { program, before, current, record, state: record === undefined ? 'incomplete' as const : 'ran' as const };
+  }));
+  for (const { program, before, current, record, state } of judged) {
+    if (state === 'reused') reused.push(program.name);
+    else ran.push(program.name);
+    if (state === 'incomplete') incomplete.push(program.name);
+    if (record !== undefined) records.push(record);
     const had = new Set((before?.findings ?? []).map(identity));
     const now = new Set(current.map(identity));
     for (const finding of current) if (had.has(identity(finding))) known += 1; else added += 1;
     for (const id of had) if (!now.has(id)) fixed += 1;
     findings.push(...current);
-    progress.tick(reused.length + ran.length, reused.length, ran.length);
   }
+  progress.tick(programs.length, reused.length, ran.length);
   progress.end();
   session.replace(TYPES_FOLDER, records);
   const report: FamilyReport = { family: 'types', mode: decision.mode, reason: decision.reason, checked: ran.length, reused: reused.length, newFindings: added, knownFindings: known, fixedFindings: fixed };
@@ -192,7 +194,7 @@ export function createTscRunner({ appRoot, typescriptFrom, execute }: { appRoot:
     const tsc = path.join(path.dirname(createRequire(typescriptFrom ?? path.join(folder, 'package.json')).resolve('typescript/package.json')), 'bin', 'tsc');
     fs.mkdirSync(path.dirname(buildInfo), { recursive: true });
     const result = completedNode(await runHeavyNode(execute, {
-      kind: 'tsc', label: `app check tsc ${program.name}`, args: [tsc, '-p', posix(path.relative(appRoot, path.resolve(appRoot, program.tsconfig))), '--noEmit', '--incremental', '--tsBuildInfoFile', buildInfo, '--pretty', 'false'],
+      kind: 'tsc', label: `app check types tsc ${program.name}`, args: [tsc, '-p', posix(path.relative(appRoot, path.resolve(appRoot, program.tsconfig))), '--noEmit', '--incremental', '--tsBuildInfoFile', buildInfo, '--pretty', 'false'],
       cwd: appRoot, maxBuffer: 256 * 1024 * 1024,
     }), 'tsc');
     return { status: result.status ?? 1, output: `${result.stdout}${result.stderr}` };

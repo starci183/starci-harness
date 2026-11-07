@@ -81,6 +81,7 @@
 // Every finding names a why code and carries its Vietnamese text. check and slot read the app, never write to it. Exit codes:
 // 0 clean, 1 error findings, 2 a refusal or bad usage.
 import fs from 'node:fs';
+import { availableParallelism } from 'node:os';
 import { isHostHeld, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -109,17 +110,18 @@ import { addKind } from '../scaffold/add.mjs';
 import { removeModule } from '../scaffold/add-module.mjs';
 import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { newImages } from '../scaffold/image.mjs';
-import { PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
+import { ESLINT_HEAP_ENV, PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
 import { devBranchFinding } from '../runtime/scripts/hfs/dev-branch.mjs';
 import { COVERAGE_NEW_CODE, LINT_NEW_CODE, newCodeCoverageFindings, newCodeLintFinding, onChangedLine } from '../cache/new-code.mjs';
 import { committedLintCounts, rangeTouched, ratchetBase, ratchetFindings, sessionLintCounts, stagedTouched } from '../lint/ratchet.mjs';
 import { newCodeSince, runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
 import { createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
-import { DEFAULT_FAMILIES, runAppFamilies } from '../cache/run.mjs';
+import { DEFAULT_FAMILIES, mergeAppPass, runDbStep, runFormatStep, runStructureStep, runWiringStep, type AppPassParts, type AppRunInput } from '../cache/run.mjs';
+import { CHECK_GRAPH, createLanes, formatStepRows, runGraph, stepRow, type StepBody, type StepId } from '../cache/schedule.mjs';
 import { runParityFamilies, type ParityRun } from '../cache/parity-family.mjs';
 import { LINT_REPORT, runSonarScan } from '../cache/sonar-scan-family.mjs';
-import { createProgress, silentProgress } from '../cache/progress.mjs';
+import { createProgress, elapsedText, silentProgress } from '../cache/progress.mjs';
 import { familyLine } from '../cache/report.mjs';
 import { writeRunLog } from '../cache/run-log.mjs';
 import { FAMILIES, type FamilyId, type FamilyReport } from '../cache/types.mjs';
@@ -174,6 +176,8 @@ interface AppIo {
   hostIdentity?: AgeHost | null | undefined; sops?: SecretSops | null | undefined; tools?: ({ spawn?: GhSpawn | undefined } & SecretToolOverrides) | undefined; platform?: NodeJS.Platform | undefined; stackIo?: Record<string, unknown> | undefined; runLinter?: LinterRunner | undefined;
   checkApp?: ((args: Dynamic) => Dynamic) | undefined;
   runHeavyNode?: HeavyNodeRun | undefined;
+  /** The room the CLI's governor would give the next heavy child now, MB (free RAM less the reserve and what recent admissions planned); a step sizes its parallel children by it. */
+  heavyRoom?: (() => number) | undefined;
   /** The runtime root whose host state main moves out of an installed copy before a verb (adoptLegacyState); this package's by default. */
   stateRoot?: string | undefined;
   /** --quiet: no progress on stderr (the diagnosis stays). */
@@ -323,6 +327,8 @@ function printCheckOverview(result: Dynamic, out: (text: string) => unknown): vo
 `);
   for (const report of (result.families ?? []) as FamilyReport[]) out(`  ${familyLine(report)}
 `);
+  for (const line of formatStepRows(result.steps ?? [], elapsedText)) out(`${line}
+`);
   for (const warning of (result.cacheWarnings ?? []) as string[]) out(`  cache: ${warning}
 `);
   for (const notice of (result.branchProfile?.notices ?? []) as string[]) out(`  ${notice}
@@ -403,19 +409,6 @@ type CacheUse = 'normal' | 'bypass';
 function openSession({ repoRoot, tracked, io, full, use, planned }: { repoRoot: string; tracked: string[]; io: AppIo; full?: Set<FamilyId> | undefined; use: CacheUse; planned: number }): DiskSession {
   const progress = io.quiet === true ? silentProgress : createProgress({ write: (text) => io.stderr(text), tty: io.stderrIsTty === true, planned });
   return createDiskSession({ root: repoRoot, tracked, env: io.env, progress, cliVersion: io.harness?.version, full, bypass: use === 'bypass' });
-}
-
-/** The app pass of `starci app check`: the families the verb selects, against one cache session, merged into one result. */
-async function appPass({ repoRoot, harness, presets, prettier, io, selected, full, use = 'normal', session: given }: {
-  repoRoot: string; harness?: AppIo['harness']; presets?: Presets | undefined; prettier?: Prettier | undefined; io: AppIo;
-  selected: Set<FamilyId>; full?: Set<FamilyId> | undefined; use?: CacheUse; session?: DiskSession | undefined;
-}): Promise<Dynamic> {
-  const tracked = trackedFiles(repoRoot);
-  const session = given ?? openSession({ repoRoot, tracked, io, full, use, planned: tracked.length * Math.max(1, selected.size) });
-  const result = await runAppFamilies({ repoRoot, tracked, session, selected, harness, presets, prettier, edition: undefined, execute: io.runHeavyNode });
-  if (given !== undefined) return result;
-  const flushed = session.flush();
-  return { ...result, findings: [...result.findings, ...verdictFindings(session)], cacheWarnings: flushed.warnings };
 }
 
 /** The verdicts of the CI comparison (forged, stale, missing) as findings with their why. */
@@ -546,9 +539,23 @@ async function fixLint({ repoRoot, side, run }: { repoRoot: string; side: string
   if (side === undefined || side === 'fe') await (run ?? nativeLinter)({ cwd: path.join(repoRoot, 'fe'), pkg: 'stylelint', bin: 'stylelint', args: [STYLE_GLOB, '--formatter', 'json', '--fix'] });
 }
 
-/** One run of the selected families against the cache, then the coverage proof on top; returns the result, what it took and the raw linter results. */
+/** The linter transport of a step: the seam a spec gives, else the app's own linters through the step's governed node runner. */
+const linterOf = (io: AppIo, execute: HeavyNodeRun | undefined): LinterRunner => io.runLinter ?? ((spec) => nativeLinter(spec, execute));
+
+/** The family whose report a step's reused and checked counts are, for the steps table; none for a step that reads the results of others. */
+const FAMILY_OF_STEP: Partial<Record<StepId, FamilyId>> = { test: 'test', types: 'types', lint: 'lint', wiring: 'wiring', hfs: 'hfs', format: 'format', db: 'db', audit: 'audit', build: 'build', sonar: 'sonar' };
+
+/** The refusals of a host that held a step's child: the run they end has no verdict, so they end it before any other failure. */
+const NO_VERDICT = new Set(['HOST_HELD', 'HEAVY_DEFERRED']);
+
+/**
+ * One run of the selected families against the cache, then the coverage proof on top; returns the result, what it took and the raw linter results.
+ * The families are the steps of the check graph (cache/schedule.mts): each starts once the steps it needs have ended, the others run at once, each heavy
+ * child admitted by the CLI's governor on its own. A red family never stops another; a step that throws ends the run with its error once the others
+ * have ended. The session's fingerprint was taken when it opened and its flush runs once, after every step.
+ */
 async function checkRun({ io, selected: requested, full, use, coverageFrom, side, fix = false, whole = false }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined; side?: string | undefined; fix?: boolean; whole?: boolean }): Promise<{ result: Dynamic; seconds: number; raw: LinterRaw }> {
-  const { cwd: repoRoot, harness, edition, presets, prettier, checkApp = appPass, runLinter } = io;
+  const { cwd: repoRoot, harness, edition, presets, prettier } = io;
   const started = Date.now();
   // The branch profile (branch-profile.mts): a gate it turns off does not run, a gate it reports runs and records but its findings never count.
   const profile = activeProfile(repoRoot, io.env);
@@ -558,74 +565,121 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   const profiled = profile.profile !== null && (modes.lint === 'report' || modes.sonar === 'report');
   const since = profiled ? newCodeSince(repoRoot) : undefined;
   const branchName = profile.branch ?? profile.profile ?? 'this branch';
-  if (fix) await fixLint({ repoRoot, side, run: runLinter });
+  if (fix) await fixLint({ repoRoot, side, run: linterOf(io, io.runHeavyNode) });
+  await checkEdition({ repoRoot, edition, normal: () => undefined });
   const tracked = io.checkApp === undefined ? trackedFiles(repoRoot) : [];
   const session = io.checkApp === undefined ? openSession({ repoRoot, tracked, io, full, use, planned: tracked.length * Math.max(1, selected.size) }) : undefined;
-  const checked = await checkEdition({ repoRoot, edition, normal: () => checkApp({ repoRoot, harness, presets, prettier, io, selected, full, use, session }), presets, prettier });
-  const proof = withCheckProofs(checked, { repoRoot, edition, wiring: false, coverageFrom });
-  const extra: Dynamic[] = [];
-  const lines: string[] = [];
   const raw: LinterRaw = { eslint: [], stylelint: [] };
   let eslint: CachedLinters['eslint'] | null = null;
   let style: { results: Dynamic[]; errors: string[] } = { results: [], errors: [] };
+  // What each step found, folded in graph order after every step ended, whatever order they ended in.
+  const found = new Map<StepId, Dynamic[]>();
+  const said = new Map<StepId, string[]>();
+  const ratchetErrors: string[] = [];
+  const parts: AppPassParts = {};
+  let seamResult: Dynamic;
+  let tests: Awaited<ReturnType<typeof runTestForApp>> | undefined;
+  const bodies = new Map<StepId, StepBody>();
+  const appInput = (session_: DiskSession, execute: HeavyNodeRun | undefined): AppRunInput => ({ repoRoot, tracked, session: session_, selected, harness, presets, prettier, edition: undefined, execute });
+  if (io.checkApp !== undefined) {
+    const seam = io.checkApp;
+    bodies.set('hfs', async () => { seamResult = await seam({ repoRoot, harness, presets, prettier, io, selected, full, use, session: undefined }); });
+  } else if (session !== undefined) {
+    if (selected.has('hfs') || selected.has('secrets')) bodies.set('hfs', (step) => runStructureStep(appInput(session, step.execute), parts));
+    if (selected.has('format')) bodies.set('format', (step) => runFormatStep(appInput(session, step.execute), parts));
+    if (selected.has('db')) bodies.set('db', (step) => runDbStep(appInput(session, step.execute), parts));
+    if (selected.has('wiring')) bodies.set('wiring', (step) => runWiringStep(appInput(session, step.execute), parts));
+  }
+  let proved: Dynamic;
+  /** The app pass merged with the coverage proof on top, once its steps have ended. */
+  const proof = (): Dynamic => {
+    proved ??= withCheckProofs(seamResult ?? mergeAppPass({ repoRoot, tracked, edition: undefined }, parts, session?.reports ?? []), { repoRoot, edition, wiring: false, coverageFrom });
+    return proved;
+  };
   if (selected.has('lint')) {
-    if (session !== undefined) {
-      const app = readRepoDeclaration(loadSlotManifest(), repoRoot);
-      const linted = await cachedLinters({ repoRoot, app, side, run: runLinter, session });
-      eslint = linted.eslint;
-      style = linted.stylelint;
-    } else eslint = await eslintRepository({ repoRoot, opts: side === undefined ? {} : { side }, changed: null, existing: [], run: runLinter });
-    raw.eslint = eslint.raw;
-    raw.stylelint = style.results;
+    bodies.set('lint', async (step) => {
+      const run = linterOf(io, step.execute);
+      if (session !== undefined) {
+        const app = readRepoDeclaration(loadSlotManifest(), repoRoot);
+        // An ESLint child takes the eslint cap of ops/liveness.yaml, which the CLI hands over as the child's heap: a side runs as many chunks at once as the
+        // room holds of them and the lanes have free.
+        const cap = Number(io.env[ESLINT_HEAP_ENV]);
+        const parallel = (chunks: number): number => Math.min(chunks, Math.max(1, step.lanes.free()), io.heavyRoom === undefined || !(cap > 0) ? 1 : Math.max(1, Math.floor(io.heavyRoom() / cap)));
+        const linted = await cachedLinters({ repoRoot, app, side, run, session, parallel });
+        eslint = linted.eslint;
+        style = linted.stylelint;
+      } else eslint = await eslintRepository({ repoRoot, opts: side === undefined ? {} : { side }, changed: null, existing: [], run });
+      raw.eslint = eslint.raw;
+      raw.stylelint = style.results;
+    });
   }
-  if (session !== undefined && selected.has('types')) extra.push(...(await runTypesForApp(session, { repoRoot, tracked, env: io.env, execute: io.runHeavyNode })).findings);
+  if (session !== undefined && selected.has('types')) bodies.set('types', async (step) => { found.set('types', (await runTypesForApp(session, { repoRoot, tracked, env: io.env, execute: step.execute })).findings); });
   if (session !== undefined && selected.has('test')) {
-    const tests = await runTestForApp(session, { repoRoot, tracked, execute: io.runHeavyNode });
-    extra.push(...tests.findings);
+    bodies.set('test', async (step) => {
+      tests = await runTestForApp(session, { repoRoot, tracked, execute: step.execute });
+      found.set('test', tests.findings);
+    });
     // A whole run also runs CI's own coverage step on the merged lcov (`app coverage verify`): the local merge proof.
-    if (whole && tests.result?.lcov !== undefined && tests.findings.length === 0) extra.push(...(await coverageParity(repoRoot, tests.result.lcov)));
+    if (whole) bodies.set('coverage', async () => { if (tests?.result?.lcov !== undefined && tests.findings.length === 0) found.set('coverage', await coverageParity(repoRoot, tests.result.lcov)); });
   }
-  if (session !== undefined && (selected.has('build') || selected.has('audit'))) {
-    const parity = await runParityFamilies(session, { repoRoot, families: new Set([...selected].filter((family): family is 'build' | 'audit' => family === 'build' || family === 'audit')), env: io.env, run: parityRunner(io) });
-    extra.push(...withWhy(parity.findings, readWhy(skillRoot, parity.findings.length > 0 ? ['CI_PARITY_STEP_FAILED'] : [])));
+  for (const family of ['audit', 'build'] as const) {
+    if (session === undefined || !selected.has(family)) continue;
+    bodies.set(family, async (step) => {
+      const parity = await runParityFamilies(session, { repoRoot, families: new Set([family]), env: io.env, run: step.parity });
+      found.set(family, withWhy(parity.findings, readWhy(skillRoot, parity.findings.length > 0 ? ['CI_PARITY_STEP_FAILED'] : [])));
+    });
   }
   if (session !== undefined && selected.has('sonar')) {
-    const quality = runSonarForApp(session, { repoRoot, ...(since === undefined ? {} : { since }) });
-    lines.push(...(quality?.lines ?? []));
-    if (quality !== null && profile.profile !== null && modes.sonar === 'report') extra.push(...withWhy(newCodeCoverageFindings(quality.predictions, branchName) as Dynamic[], readWhy(skillRoot, [COVERAGE_NEW_CODE])));
+    bodies.set('sonar', async () => {
+      const quality = runSonarForApp(session, { repoRoot, ...(since === undefined ? {} : { since }) });
+      said.set('sonar', [...(quality?.lines ?? [])]);
+      if (quality !== null && profile.profile !== null && modes.sonar === 'report') found.set('sonar', withWhy(newCodeCoverageFindings(quality.predictions, branchName) as Dynamic[], readWhy(skillRoot, [COVERAGE_NEW_CODE])));
+    });
   }
+  /** What the steps before the scan found, in graph order: what the Sonar scan uploads and what holds it back. */
+  const scanned = (): Dynamic[] => [...proof().findings, ...SCAN_INPUTS.flatMap((id) => found.get(id) ?? [])];
   // A whole run also runs the app's CI sonar job against the server (cache/sonar-scan-family.mts), when everything before it is green, as CI's sonar job needs lint and coverage.
   // Whenever it does not run, the run says why in one line.
-  if (!whole) lines.push('  sonar scan: not run, only a run with no selector, flag or --gate (a whole run) runs it');
-  else if (session === undefined) lines.push('  sonar scan: not run, this run keeps no check cache session');
-  else if (profile.modes.sonar === 'off') lines.push(`  sonar scan: not run, the branch profile ${profile.profile ?? profile.branch ?? 'in force'} turns the sonar gate off`);
+  if (!whole) said.set('sonar-scan', ['  sonar scan: not run, only a run with no selector, flag or --gate (a whole run) runs it']);
+  else if (session === undefined) said.set('sonar-scan', ['  sonar scan: not run, this run keeps no check cache session']);
+  else if (profile.modes.sonar === 'off') said.set('sonar-scan', [`  sonar scan: not run, the branch profile ${profile.profile ?? profile.branch ?? 'in force'} turns the sonar gate off`]);
   else {
-    // A finding of a family the profile reports (old lint debt on dev) never makes the run red: the scan runs and reports; new-code findings still do.
-    const blocks = (finding: { level?: string; code?: string | null; engine?: string }): boolean => finding.level === 'error' && modes[familyOf(finding)] !== 'report';
-    const red = [...proof.findings, ...extra].some((finding) => blocks(finding)) || (eslint?.findings ?? []).some((finding) => finding.severity !== 'warning' && (modes.lint !== 'report' || onChangedLine({ ...finding, level: 'error' }, since?.changed))) || (eslint?.errors.length ?? 0) > 0 || style.errors.length > 0 || stylelintFindings(style.results, repoRoot).some((finding) => finding.level === 'error' && modes.lint !== 'report');
-    if (red) lines.push('  sonar scan: not run, other families are red (CI runs the sonar job after lint and coverage are green)');
-    else {
+    bodies.set('sonar-scan', async (step) => {
+      // A finding of a family the profile reports (old lint debt on dev) never makes the run red: the scan runs and reports; new-code findings still do.
+      const blocks = (finding: { level?: string; code?: string | null; engine?: string }): boolean => finding.level === 'error' && modes[familyOf(finding)] !== 'report';
+      const red = scanned().some((finding) => blocks(finding)) || (eslint?.findings ?? []).some((finding) => finding.severity !== 'warning' && (modes.lint !== 'report' || onChangedLine({ ...finding, level: 'error' }, since?.changed))) || (eslint?.errors.length ?? 0) > 0 || style.errors.length > 0 || stylelintFindings(style.results, repoRoot).some((finding) => finding.level === 'error' && modes.lint !== 'report');
+      if (red) { said.set('sonar-scan', ['  sonar scan: not run, other families are red (CI runs the sonar job after lint and coverage are green)']); return; }
       const progress = session.progress.step('sonar', 'Sonar scan against the server', 1);
-      const scan = await runSonarScan({ repoRoot, env: io.env, io: { cwd: repoRoot, stdout: io.stdout, stderr: io.stderr, env: io.env, sops: io.sops, hostIdentity: io.hostIdentity, stackIo: io.stackIo }, run: parityRunner(io), index: session.index, fresh: full?.has('sonar') === true,
-        writeLintReport: () => writeSonarImport({ repoRoot, file: path.join(repoRoot, LINT_REPORT), findings: [...proof.findings, ...extra], raw, side: undefined }) });
+      const scan = await runSonarScan({ repoRoot, env: io.env, io: { cwd: repoRoot, stdout: io.stdout, stderr: io.stderr, env: io.env, sops: io.sops, hostIdentity: io.hostIdentity, stackIo: io.stackIo }, run: step.parity, index: session.index, fresh: full?.has('sonar') === true,
+        writeLintReport: () => writeSonarImport({ repoRoot, file: path.join(repoRoot, LINT_REPORT), findings: scanned(), raw, side: undefined }) });
       progress.tick(1, 0, 1);
       progress.end();
-      lines.push(...scan.lines);
-      extra.push(...withWhy(scan.findings, readWhy(skillRoot, [...new Set(scan.findings.map((finding) => finding.code))])));
-    }
+      said.set('sonar-scan', [...scan.lines]);
+      found.set('sonar-scan', withWhy(scan.findings, readWhy(skillRoot, [...new Set(scan.findings.map((finding) => finding.code))])));
+    });
   }
   // The lint ratchet of a branch whose profile reports lint: the commits since the base never add lint findings to a file they touch (blocking).
-  const ratchetErrors: string[] = [];
   if (selected.has('lint') && modes.lint === 'report' && profile.profile !== null) {
-    const { base, source: baseSource } = ratchetBase(repoRoot, io.env, profile.branch);
-    // The committed cache at the base and this run's lint records settle every touched file whose findings rose by no rule (warm-cache-push trusts
-    // them as every family does); only the rest is linted, in bounded chunks.
-    const ratchet = await ratchetFindings({ repoRoot, touched: rangeTouched(repoRoot, base), side, branch: profile.branch ?? profile.profile, run: runLinter,
-      base: committedLintCounts(repoRoot, base), now: session === undefined ? undefined : sessionLintCounts((folder) => session.records(folder)) });
-    lines.push(`  lint ratchet: ${String(ratchet.compared)} touched file(s) against ${baseSource}; ${String(ratchet.fromCache)} settled by the lint records, ${String(ratchet.linted)} linted`);
-    extra.push(...withWhy(ratchet.findings, readWhy(skillRoot, ratchet.findings.length > 0 ? ['LINT_RATCHET_RAISED'] : [])));
-    ratchetErrors.push(...ratchet.errors);
+    bodies.set('ratchet', async (step) => {
+      const { base, source: baseSource } = ratchetBase(repoRoot, io.env, profile.branch);
+      // The committed cache at the base and this run's lint records settle every touched file whose findings rose by no rule (warm-cache-push trusts
+      // them as every family does); only the rest is linted, in bounded chunks.
+      const ratchet = await ratchetFindings({ repoRoot, touched: rangeTouched(repoRoot, base), side, branch: branchName, run: linterOf(io, step.execute),
+        base: committedLintCounts(repoRoot, base), now: session === undefined ? undefined : sessionLintCounts((folder) => session.records(folder)) });
+      said.set('ratchet', [`  lint ratchet: ${String(ratchet.compared)} touched file(s) against ${baseSource}; ${String(ratchet.fromCache)} settled by the lint records, ${String(ratchet.linted)} linted`]);
+      found.set('ratchet', withWhy(ratchet.findings, readWhy(skillRoot, ratchet.findings.length > 0 ? ['LINT_RATCHET_RAISED'] : [])));
+      ratchetErrors.push(...ratchet.errors);
+    });
   }
+  const runs = await runGraph({ bodies, execute: io.runHeavyNode, parity: parityRunner(io), lanes: createLanes(availableParallelism() - 1) });
+  // A step that threw (a child the host held, a refused or incomplete execution, a crash) reached no measurement: once every other step has ended, the run
+  // ends with the error of the first that threw (a hold of the host before any other), as a run of that step alone would.
+  const failed = runs.filter((run) => run.status === 'failed').sort((a, b) => a.order - b.order);
+  const ending = failed.find((run) => NO_VERDICT.has(String((run.error as { code?: unknown } | undefined)?.code))) ?? failed[0];
+  if (ending !== undefined) throw ending.error;
+  const linted = eslint as CachedLinters['eslint'] | null;
+  const extra: Dynamic[] = CHECK_GRAPH.flatMap((spec) => found.get(spec.id) ?? []);
+  const lines: string[] = ['sonar', 'sonar-scan', 'ratchet'].flatMap((id) => said.get(id as StepId) ?? []);
   // An app keeps main and dev (PROJECT-BRANCH-1): a whole run warns when it has no dev branch.
   const noDev = whole && session !== undefined ? devBranchFinding(repoRoot) : null;
   if (noDev !== null) extra.push(...withWhy([noDev] as Dynamic[], readWhy(skillRoot, [noDev.code])));
@@ -636,27 +690,38 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     const refusals = freshnessFindings({ root: repoRoot, portable: session.fingerprint.portable, localReasons: session.fingerprint.localReasons, written: flushed.written, removed: flushed.removed });
     verdicts.push(...withWhy(refusals.map((refusal) => ({ code: refusal.code, level: refusal.level, path: refusal.path, message: refusal.message })), readWhy(skillRoot, refusals.map((refusal) => refusal.code))));
   }
-  const reports: FamilyReport[] = session === undefined ? [...(checked.families ?? [])] : [...session.reports];
+  const checked = proof();
+  // The families report as their steps end; they are listed in family order.
+  const reports: FamilyReport[] = session === undefined ? [...(checked.families ?? [])] : [...session.reports].sort((a, b) => FAMILIES.indexOf(a.family) - FAMILIES.indexOf(b.family));
+  const countsOf = (id: StepId): { reused: number; checked: number } | undefined => {
+    const families = id === 'hfs' ? ['hfs', 'secrets'] : FAMILY_OF_STEP[id] === undefined ? [] : [FAMILY_OF_STEP[id]];
+    const mine = reports.filter((report) => families.includes(report.family));
+    return mine.length === 0 ? undefined : { reused: mine.reduce((sum, report) => sum + report.reused, 0), checked: mine.reduce((sum, report) => sum + report.checked, 0) };
+  };
+  const steps = runs.map((run) => stepRow(run, countsOf(run.id)));
   // A rule of the canon's counting cohort is a warning: listed and counted, never part of the verdict.
-  const lintedFindings = [...(eslint?.findings ?? []).map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: finding.severity === 'warning' ? 'warning' : 'error' })), ...stylelintFindings(style.results, repoRoot)];
+  const lintedFindings = [...(linted?.findings ?? []).map(finding => ({ ...finding, code: finding.code ?? finding.rule, level: finding.severity === 'warning' ? 'warning' : 'error' })), ...stylelintFindings(style.results, repoRoot)];
   // Where lint reports, a finding on a line this branch changed is new code: it becomes a blocking LINT_NEW_CODE_FINDING in place of its report-only listing.
   const newCode = since !== undefined && modes.lint === 'report' ? lintedFindings.filter((finding) => onChangedLine(finding, since.changed)) : [];
   const linterFindings = newCode.length === 0 ? lintedFindings : lintedFindings.filter((finding) => !newCode.includes(finding));
   if (newCode.length > 0) extra.push(...withWhy(newCode.map((finding) => newCodeLintFinding(finding as typeof finding & { path: string }, branchName)) as Dynamic[], readWhy(skillRoot, [LINT_NEW_CODE])));
   // A finding of a family the profile reports is marked `report`: listed and recorded, never part of the verdict.
-  const findings = [...proof.findings, ...extra, ...verdicts, ...linterFindings].map((finding) => (modes[familyOf(finding)] === 'report' ? { ...finding, report: true } : finding));
+  const findings = [...checked.findings, ...extra, ...verdicts, ...linterFindings].map((finding) => (modes[familyOf(finding)] === 'report' ? { ...finding, report: true } : finding));
   // Green only with no error finding outside a report profile (gate-verdict.mts); every finding is still listed.
   const verdict = gateVerdict(findings.filter(finding => finding.level === 'error' && finding.report !== true));
-  const toolErrors = [...(eslint?.errors ?? []), ...style.errors, ...ratchetErrors];
-  const counts = { ...proof.counts, error: findings.filter(finding => finding.level === 'error').length, warning: findings.filter(finding => finding.level === 'warning').length };
+  const toolErrors = [...(linted?.errors ?? []), ...style.errors, ...ratchetErrors];
+  const counts = { ...checked.counts, error: findings.filter(finding => finding.level === 'error').length, warning: findings.filter(finding => finding.level === 'warning').length };
   const reported = findings.filter(finding => finding.report === true && finding.level === 'error').length;
   if (reported > 0) Object.assign(counts, { reported });
   const counting: Record<string, number> = {};
   for (const finding of linterFindings) if (finding.level === 'warning') counting[finding.rule] = (counting[finding.rule] ?? 0) + 1;
   const branchProfile = { branch: profile.branch, source: profile.source, profile: profile.profile, modes: profile.modes, notices: profileNotices(profile).filter((notice) => [...requested].some((family) => notice.startsWith(`${family}:`) || (family === 'sonar' && notice.startsWith('codecov:')))) };
-  const result = { ...proof, findings, families: reports, predictions: lines, counting, branchProfile, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(eslint ? { eslint: { ...eslint.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
+  const result = { ...checked, findings, families: reports, steps, predictions: lines, counting, branchProfile, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(linted ? { eslint: { ...linted.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
   return { result, seconds: (Date.now() - started) / 1000, raw };
 }
+
+/** The steps whose findings the Sonar scan uploads with the app pass and that hold it back when red: every step before it but the lint ratchet. */
+const SCAN_INPUTS: readonly StepId[] = CHECK_GRAPH.filter((spec) => spec.id !== 'sonar-scan' && spec.id !== 'ratchet').map((spec) => spec.id);
 
 /** `--out`: every finding the run produced as ONE Sonar Generic Issue Import document (the check findings under starci-hfs, then eslint and stylelint), placed on the `sonar.sources` roots of the side. */
 function writeSonarImport({ repoRoot, file, findings, raw, side }: { repoRoot: string; file: string; findings: readonly Dynamic[]; raw: LinterRaw; side: string | undefined }): void {
@@ -703,7 +768,7 @@ async function stagedRatchet(io: AppIo): Promise<number> {
     io.stdout(`lint is ${profile.modes.lint} on ${profile.branch === null ? 'this checkout' : `branch ${profile.branch}`}: the lint ratchet applies only where a branch profile reports lint\n`);
     return 0;
   }
-  const ratchet = await ratchetFindings({ repoRoot: io.cwd, touched: stagedTouched(io.cwd), branch: profile.branch ?? profile.profile, run: io.runLinter });
+  const ratchet = await ratchetFindings({ repoRoot: io.cwd, touched: stagedTouched(io.cwd), branch: profile.branch ?? profile.profile, run: linterOf(io, io.runHeavyNode) });
   for (const error of ratchet.errors) io.stdout(`lint ratchet tool error: ${error}\n`);
   for (const finding of ratchet.findings) io.stdout(`[ERROR] LINT_RATCHET_RAISED ${finding.message}\n`);
   io.stdout(`lint ratchet on branch ${profile.branch ?? profile.profile} (${profileLabel(profile)}): ${String(ratchet.compared)} staged file(s) compared with HEAD, ${String(ratchet.findings.length)} raised\n`);
@@ -754,7 +819,7 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
   if (opts.json) out(`${JSON.stringify(result, null, 2)}\n`);
   else { printCheck(result, out); printCheckProofs(result, out); if (result.gate.line) out(`${result.gate.line}\n`); }
   const exit = result.eslint?.errors.length ? 2 : result.ok ? 0 : 1;
-  writeRunLog(repoRoot, { command: `check${[...new Set(listFlag(opts, 'gate') ?? [])].map((gate) => ` --gate ${gate}`).join('')}${side === undefined ? '' : ` --side ${side}`}${fix ? ' --fix' : ''}${fresh ? ' --fresh' : ''}${coverageFrom === undefined ? '' : ` --coverage-from ${JSON.stringify(coverageFrom)}`}`, seconds, exit, families: (result.families as FamilyReport[]).map((report) => ({ ...report, seconds: 0 })) }, io.env);
+  writeRunLog(repoRoot, { command: `check${[...new Set(listFlag(opts, 'gate') ?? [])].map((gate) => ` --gate ${gate}`).join('')}${side === undefined ? '' : ` --side ${side}`}${fix ? ' --fix' : ''}${fresh ? ' --fresh' : ''}${coverageFrom === undefined ? '' : ` --coverage-from ${JSON.stringify(coverageFrom)}`}`, seconds, exit, families: (result.families as FamilyReport[]).map((report) => ({ ...report, seconds: (result.steps as Dynamic[] | undefined)?.find((row) => row.step === report.family || (row.step === 'hfs' && report.family === 'secrets'))?.seconds ?? 0 })) }, io.env);
   return exit;
 }
 
@@ -890,7 +955,7 @@ function errorMessage(error: unknown): string {
  */
 export async function main(argv: string[], {
   cwd: baseCwd = process.cwd(), harness, stdout = (s: string): unknown => process.stdout.write(s), stderr = (s: string): unknown => process.stderr.write(s), presets, prettier, lock, run, stackMain,
-  env = process.env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, runHeavyNode, checkApp, stderrIsTty = process.stderr.isTTY === true, stateRoot = skillRoot,
+  env = process.env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runLinter, runHeavyNode, heavyRoom, checkApp, stderrIsTty = process.stderr.isTTY === true, stateRoot = skillRoot,
 }: MainOptions = {}): Promise<number> {
   try {
     const global = globalOptions(argv, path.resolve(baseCwd));
@@ -902,7 +967,7 @@ export async function main(argv: string[], {
     const { edition, argv: rest } = editionOption(verb as string, given);
     const adopted = adoptLegacyState(env, stateRoot);
     if (adopted) stderr(adoptionNotice(adopted));
-    return await dispatchMain(verb as string, rest, { cwd: global.cwd, harness, edition, quiet: global.quiet, stderrIsTty, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runHeavyNode, runLinter: runLinter ?? ((spec) => nativeLinter(spec, runHeavyNode)), checkApp });
+    return await dispatchMain(verb as string, rest, { cwd: global.cwd, harness, edition, quiet: global.quiet, stderrIsTty, stdout: out, stderr, presets, prettier, lock, run, stackMain, env, stdin, prompt, hostIdentity, sops, tools, platform, stackIo, runHeavyNode, heavyRoom, runLinter, checkApp });
   } catch (error) {
     stderr(errorMessage(error));
     if (isHostHeld(error)) return 75;

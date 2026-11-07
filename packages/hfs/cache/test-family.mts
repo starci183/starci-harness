@@ -349,7 +349,7 @@ export async function createJestEnvironment({ appRoot, side, jestFrom, project =
   const relative = (file: string): string => posix(path.relative(appRoot, file));
   const setupClosures = new Map(projects.map((entry) => [entry, closureFrom([...(entry.config.setupFiles ?? []), ...(entry.config.setupFilesAfterEnv ?? [])], entry).map(relative)]));
 
-  const listed = completedNode(await runHeavyNode(execute, { kind: 'test', label: `app check jest ${project} discovery`, args: [jestBin, '--selectProjects', project, '--listTests'], cwd: root, maxBuffer: 64 * 1024 * 1024 }), 'jest discovery');
+  const listed = completedNode(await runHeavyNode(execute, { kind: 'test', label: `app check test jest ${project} discovery`, workers: 1, args: [jestBin, '--selectProjects', project, '--listTests'], cwd: root, maxBuffer: 64 * 1024 * 1024 }), 'jest discovery');
   if (listed.status !== 0) throw new Error(`jest --listTests failed under ${side}: ${(listed.stderr || listed.stdout).split('\n')[0]}`);
   const specs = listed.stdout.split(/\r?\n/u).map((line) => line.trim()).filter((line) => path.isAbsolute(line)).map((line) => relative(path.resolve(line))).sort();
   const closures = new Map<string, readonly string[]>();
@@ -382,7 +382,7 @@ export async function createJestEnvironment({ appRoot, side, jestFrom, project =
       let output = '';
       for (const chunk of chunks) {
         const args = chunk.length > 0 ? [...base, '--runTestsByPath', ...chunk] : base;
-        const result = completedNode(await runHeavyNode(execute, { kind: 'test', label: `app check jest ${project} coverage`, args, cwd: root, env: { ...process.env, STARCI_SPEC_COVERAGE_DIR: coverageDir }, maxBuffer: 256 * 1024 * 1024 }), 'jest coverage');
+        const result = completedNode(await runHeavyNode(execute, { kind: 'test', label: `app check test jest ${project} coverage`, args, cwd: root, env: { ...process.env, STARCI_SPEC_COVERAGE_DIR: coverageDir }, maxBuffer: 256 * 1024 * 1024 }), 'jest coverage');
         status = status || (result.status ?? 1);
         output += `${result.stdout}${result.stderr}`;
       }

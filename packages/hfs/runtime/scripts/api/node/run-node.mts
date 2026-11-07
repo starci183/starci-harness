@@ -20,7 +20,17 @@ export interface HeavyNodeRequest {
    * (ops/liveness.yaml heavy.timeoutMinutesPer1000Files): a larger side legitimately runs longer, and the budget still ends a hung child.
    */
   readonly files?: number | undefined;
+  /** The most workers a test run may take (the CPU lanes its step holds, cache/schedule.mts); the governor's room may give fewer. */
+  readonly workers?: number | undefined;
+  /** Told once the governor admitted the child, with the workers a test run was sized to (the step gives back the lanes it did not get). */
+  readonly onAdmit?: ((admitted: HeavyAdmission) => void) | undefined;
   readonly maxBuffer: number;
+}
+
+/** What the governor admitted a child with: a test run's workers and the heap cap of its node process, in MB. */
+export interface HeavyAdmission {
+  readonly workers?: number | undefined;
+  readonly heapMb?: number | undefined;
 }
 
 /** Normal red exits are measurements; an interrupted child is not one. */
@@ -30,6 +40,8 @@ export interface HeavyNodeResult {
   readonly stdout: string;
   readonly stderr: string;
   readonly error?: NodeJS.ErrnoException | undefined;
+  /** The RAM the child's process tree peaked at, measured by the CLI (its processes' own peak resident sets), in MB; absent when unmeasured. */
+  readonly peakMb?: number | undefined;
 }
 
 /** The CLI admits and captures each actual child, never the composite app command. */

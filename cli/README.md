@@ -316,12 +316,30 @@ plain unlink (`unlinkInstallLinks`), never a recursive delete through it.
 
 Every heavy command the harness spawns (tsc, eslint, a command check, a workspace or package
 build, `npm ci` or `npm install`, a contract's setup, a uat container) runs through `withHeavySlot` of
-`harness/heavy.ts`: one slot of a host-wide semaphore (`heavy_slots` in the machine.sqlite of the harness's main checkout,
+`harness/heavy.ts`: a row of a machine-wide queue (`heavy_slots` in the machine.sqlite of the harness's main checkout,
 or of `STARCI_LOCAL_ROOT` when set: `governorStorePath` of `harness/ledger.ts`, so every worktree of the harness shares
-it) while it runs, admitted dynamically at every poll: free RAM less a reserve must cover the RAM estimate of every running
-command plus its own, and fewer than floor(logical cores / 2) may run. While nothing runs a command is admitted whatever its estimate, since no running command will
-release memory and waiting could not help: it runs on the room free RAM leaves, a test run on the workers whose planned heaps fit it (`plannedWorkerCount`, one at
-least), and a warning line names the shortfall. The CPU ceiling governs the harness's own
+it), whose admissions the store's lock serialises. A command sizes itself greedily to the room it finds when it starts: the free RAM now, which already
+excludes what running commands use, less `heavy.reserveMb` (the one headroom of the machine) and what the commands admitted in the last `heavy.plannedSeconds`
+planned (they have not grown into the free RAM yet, so two commands that start together never take the same room; after that long a command counts as the
+free RAM shows it). A test run takes the workers its room holds (`testRunSizing`), any other node tool runs under the smaller of its cap and the room
+(`heapFor`), and `heavy.caps` and `heavy.testRun` hold the numbers. RAM free: it starts at once, when the room covers its least need (`needsOf`) and fewer
+than floor(logical cores / 2) run. RAM short: it waits in a first come, first served queue (`servingOrder`), holding nothing, only the head may start,
+and it starts when a running command ends or ages; every minute it prints its place, the MB it needs against the room and the running commands
+(`waitLine`). While nothing runs the head starts on the room there is, whatever its need, since no running command will release memory and waiting could not
+help: a test run with the workers that fit (one at least), and a warning line names the shortfall. A row whose process is gone is dropped at the next
+admission (`pidAlive`), so a killed command never holds the queue. A heavy command a running one starts (a `starci check run` inside a command check) is
+admitted on its own: every child inherits `STARCI_HEAVY_PARENTS`, the slot ids it runs under, and an admission leaves those ancestors' rows out of its count,
+its plan and its room (`heavyRoomMb` reads the room the same way), since they wait on it and counting them could hold it forever. `starci app check` holds no
+row at all: it is the orchestrator, and each heavy child of its steps (a tsc program, an ESLint chunk, the jest run, a CI build step, the boot proof, the
+contract compiler, the Sonar scanner) is admitted on its own the moment its step starts it (`hfsNodeRunner` and `hfsCommandRunner` of `core/app/hfs.ts`, which
+also pass a test run's most workers as `workers`, tell the step what it was admitted with, and measure the tree's RAM peak through a preload,
+`harness/peak-rss.ts`); its steps and their dependency graph are `@starci/hfs` `cache/schedule.mts`
+([contexts/project/check-cache.md](../contexts/project/check-cache.md) "Orchestration"). A CI runner (`CI` set) keeps no queue and no lock: its one job is sized from that runner's own free RAM and cores, and nothing it
+reads comes from another machine or run. A command that runs out of memory fails with a line naming the heap cap it hit and the RAM free at its admission
+(`oomNote`), so the cause is never silent. RAM that a process outside the governor takes (a browser, Docker, WSL, a dev server) shows only as lower
+free RAM: nothing is admitted while a command runs and the room is short, and the running commands stay inside their heap caps and
+`--workerIdleMemoryLimit`. Heavy commands therefore run through starci verbs (`starci app check`, `starci check run`, `starci task verify`): a raw `npx eslint`,
+`tsc` or `jest` takes no admission and only lowers the free RAM the next admission reads. The CPU ceiling governs the harness's own
 contribution: while the CPU average over a window (samples in `cpu_samples`) is above it, `managedCpuPercent` reads the share
 of the host's CPU the running heavy commands and their process trees burn over the same window (`managedCpuTimes` of
 `harness/host-holders.ts`, the Windows process table's kernel and user time or `/proc` on Linux, readings in
@@ -329,11 +347,9 @@ of the host's CPU the running heavy commands and their process trees burn over t
 holding the harness back would not lower it, so up to `underForeignPressureSlots` commands run under it (`cpuRuleOf`). At or
 above the floor, or with the table unreadable, none starts until the queue admitted nothing for `cpuStarveMinutes`
 (`last-admit-ms` in `heavy_meta`): then its first command RAM admits starts anyway, one at a time, so a hot CPU slows the
-queue and never stops it. The CPU never lifts a RAM rule. The queue is served by age, a project (the repository of a command's folder, `repositoryKeyOf`) with fewer commands
-running first, and a project running `projectSlots` commands is passed over while another project's command waits under
-its own cap (`servingOrder`). The reserve, estimates, per-kind timeouts, memory caps and seat floor are
+queue and never stops it. The CPU never lifts a RAM rule. The reserve, shares, per-kind timeouts and seat floor are
 the `heavy` block of [ops/liveness.yaml](../ops/liveness.yaml). A command's timeout starts at its admission, never in the
-queue. A command not admitted waits in the queue, says so on stderr and records a `heavy-wait` host event; waiting never
+queue. A command not admitted waits in the queue, prints its place on stderr and records a `heavy-wait` host event; waiting never
 fails it: a coordinator's turn is refused `HEAVY_DEFERRED` at once instead of waiting, and a command of `task verify` (or a
 process it started) still in the queue at the verify's timeout, its contract budget (`withHeavyBound`), is refused
 `HOST_HELD` (exit 75): a host-held verify reached no verdict and records `verify-host-held` on the task's attempt, whichever
@@ -345,14 +361,15 @@ harness-held (`hostHeldAttempt` of `harness/tasks.ts`): its retry spends no try 
 reads (package.json, package-lock.json, npm-shrinkwrap.json, .npmrc), which also opens one harness-defect ticket
 (`INSTALL_RED_HARNESS`, every repeat landing on it). No try is spent, a wave fails, returns and revives no task (they stay
 due, `wave-infra`), and the next step verifies again, going on once the install is green. Each child runs below normal priority, a node tool under
-its kind's `--max-old-space-size`, a uat container under `--memory`, a jest or vitest run with `--maxWorkers` scaled to the RAM room its admission
-measured (`testWorkerCount`, or `plannedWorkerCount` for a planned coverage run: one on a starved host, up to `heavy.testWorkers`), and inherits `STARCI_HEAVY_HELD`, so a `starci check run` it starts runs under its slot instead of waiting on
-it. `check heavy-sites` (a CI gate) is red for a spawn site in `cli/src` that runs a heavy command outside the governor.
+its heap cap as `--max-old-space-size`, a uat container under `--memory`, a jest or vitest run with `--maxWorkers` of the room its admission measured
+(`testRunSizing`: floor((room - parent cap) / worker cap), at least one and at most min(cores - 1, `heavy.testWorkers`); each worker is held to its cap by
+`--workerIdleMemoryLimit` and a heap cap a preload gives every fork, and nothing an earlier run left is read; at most the caller's `workers`), and inherits
+`STARCI_HEAVY_PARENTS` with its own slot added. `check heavy-sites` (a CI gate) is red for a spawn site in `cli/src` that runs a heavy command outside the governor.
 `seat start` refuses `SEAT_RAM_LOW` while free memory is under the seat floor, which `workflow step` reports as a wait, and
 records the hold (`seat_holds`: since when, on what memory) until the task launches or the floor admits again.
 `workflow status` names why a node stands still instead of a bare state: a queued task the floor holds ("held: free RAM
 2.6 GB below seat floor 6 GB (since 21:02Z)"), a verify waiting for a heavy slot ("held: heavy-command slot for test, free
-RAM 2.6 GB below reserve 8 GB (since …)"), a task awaiting the owner with the reason its verify recorded.
+RAM 2.6 GB below reserve 4 GB (since …)"), a task awaiting the owner with the reason its verify recorded.
 `host load` prints the load with the CPU rule that applied ("CPU 94% is foreign (managed 3%, under
 heavy.managedCpuFloorPercent 25%): 2 slots under foreign pressure, 0 in use"), the slots in use with each child's pid and RSS, the queue with how long each command waited
 and why, the seat holds, and who holds the memory (`harness/host-holders.ts`): the top processes by working set, managed

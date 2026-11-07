@@ -198,9 +198,9 @@ export const runContainer = async (spec: UatRunSpec, cwd: string): Promise<UatRu
         "starci.uat=1",
         "--shm-size",
         spec.shmSize,
-        // The container's memory cap is the uat kind's of the heavy-command rules (ops/liveness.yaml heavy.memoryMb).
+        // The container's memory cap is the uat kind's of the heavy-command rules (ops/liveness.yaml heavy.caps).
         "--memory",
-        `${String(loadHeavyRules().memoryMb.uat)}m`,
+        `${String(loadHeavyRules().caps.uat.capMb)}m`,
         ...host,
         ...user,
         "--mount",

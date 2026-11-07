@@ -252,7 +252,7 @@ export async function appWiringAsync(input: Omit<AppWiringInput, 'run'> & { exec
   let step = program.next();
   while (!step.done) {
     const { args, options } = step.value;
-    const result = await runHeavyNode(input.execute, { kind: 'test', label: 'app check wiring boot proof', args, cwd: options.cwd, env: options.env, timeoutMs: options.timeout, maxBuffer: options.maxBuffer });
+    const result = await runHeavyNode(input.execute, { kind: 'test', label: 'app check wiring boot proof', workers: 1, args, cwd: options.cwd, env: options.env, timeoutMs: options.timeout, maxBuffer: options.maxBuffer });
     step = program.next(result);
   }
   return step.value;

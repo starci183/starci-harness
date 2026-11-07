@@ -1,9 +1,10 @@
 // progress.mts - the run's progress on stderr (never stdout, which keeps the diagnosis). A step prints a line when it starts and when it
 // ends, and a running step one every 10 seconds of work or 10 percent of its files:
 //   [12:04:31 +3m07s 41%] lint fe 312/1840 (17%) reused 1528 checked 312
-// The clock, the time since the run began, the percentage across the run (each step weighted by its file count), the step, its files
-// done of its total and the cache hits against the files it judged. On a terminal a running line updates in place; anywhere else
-// (CI, a redirected run) only whole lines are written, never a carriage return or a spinner. `--quiet` is the silent sink.
+// The clock, the time since the run began, the percentage across the run (each step weighted by its file count), the family and its step, its
+// files done of its total and the cache hits against the files it judged. Steps run in parallel (schedule.mts), so every line names its family.
+// On a terminal a running line updates in place while it is the only open step; with several open, and anywhere else (CI, a redirected
+// run), only whole lines are written, never a carriage return or a spinner. `--quiet` is the silent sink.
 import type { FamilyId, ProgressSink, StepProgress } from './types.mjs';
 
 export interface ProgressOptions {
@@ -51,12 +52,13 @@ export function createProgress(options: ProgressOptions): ProgressSink {
   let registered = 0;
   let finished = 0;
   let open = false;
+  let steps = 0;
   const prefix = (done: number): string => {
     const total = Math.max(options.planned ?? 0, registered);
     return `[${clock(now())} +${elapsedText(now() - started)} ${percent(finished + done, total)}%]`;
   };
   const emit = (text: string, running: boolean): void => {
-    if (options.tty === true && running) {
+    if (options.tty === true && running && steps <= 1) {
       options.write(`\r${text}`);
       open = true;
       return;
@@ -67,6 +69,7 @@ export function createProgress(options: ProgressOptions): ProgressSink {
   return {
     step(family: FamilyId, name: string, total: number): StepProgress {
       registered += total;
+      steps += 1;
       let done = 0;
       const stepStart = now();
       let lastAt = stepStart;
@@ -84,6 +87,7 @@ export function createProgress(options: ProgressOptions): ProgressSink {
         },
         end(): void {
           finished += total;
+          steps -= 1;
           emit(`${prefix(0)} ${family} ${name} done, ${total} files in ${elapsedText(now() - stepStart)}`, false);
         },
       };

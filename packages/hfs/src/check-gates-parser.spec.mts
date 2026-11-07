@@ -37,7 +37,8 @@ test('the public gate choices retain the nine core families a plain check runs, 
   assert.deepEqual(DEFAULT_FAMILIES, FAMILIES.filter((family) => family !== 'build' && family !== 'audit'));
   const result = await probe(t, []);
   assert.equal(result.code, 2);
-  assert.match(result.err, new RegExp(PROBE));
+  // A whole run starts lint beside the app pass (cache/schedule.mts), and this fixture declares no app, so the run ends with whichever refusal came first.
+  assert.match(result.err, new RegExp(`${PROBE}|HFS_DECLARATION_INVALID`));
   assert.deepEqual(result.calls, [{ selected: [...FAMILIES], full: null }], 'a run with no selector is whole: every family, the CI-parity ones included');
   const lines = USAGE.split('\n').filter((line) => line.startsWith('starci app check '));
   assert.ok(lines.some((line) => line.includes('[--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|build|audit|codecov>]...')));

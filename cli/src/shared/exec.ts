@@ -33,6 +33,8 @@ export interface RunOptions {
     readonly timeoutMs?: number
     /** How many source files the command judges: the heavy-command budget of a kind that scales with its work (harness/heavy.ts `heavyTimeoutMinutes`) grows with it. */
     readonly files?: number
+    /** The most workers a test run may take (what the caller can use); the heavy governor's room may give fewer (harness/heavy.ts `testRunSizing`). */
+    readonly workers?: number
     readonly env?: Readonly<Record<string, string>>
     /** The whole environment instead of this process's: a host service must not inherit the agent session that started it. */
     readonly baseEnv?: NodeJS.ProcessEnv
