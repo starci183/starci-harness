@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.1.2 - 2026-11-08
+
+- Fixed: a whole `starci app check` crashed with `Cannot read properties of undefined (reading 'title')` after a Sonar scan that was skipped (no token, server or permission): the catalog explanations were read only for `CI_PARITY_SONAR_SCAN_FAILED` and `CI_PARITY_SONAR_GATE_FAILED`, so the warning `CI_PARITY_SONAR_SKIPPED` reached `withWhy` with none, and the run ended with no run record and no cache flush. The check reads the explanation of every code the scan returns, and `withWhy` throws an internal error naming a code that has no catalog entry loaded. Spec: `src/check-report-why.spec.mts`. A crash in the report writes no cache and no run record; the journal keeps the judged families (`contexts/project/check-cache.md` "The journal").
+
 ## 6.1.1 - 2026-11-07
 
 - Fixed: the bundled canon pins name the canons and the Grammar family at the versions whose `@starci/hfs` peer is `~6.1.0` (`eslint-canon-be` 3.19.4, `eslint-canon-fe` 9.16.4, the Grammar family 0.25.1), so an app on hfs 6.1 installs with `npm ci`; `contexts/stack/pins.yaml` agrees.

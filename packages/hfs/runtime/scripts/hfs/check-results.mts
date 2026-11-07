@@ -1,5 +1,6 @@
 // Common result shaping for the slot check and its optional proof reports.
 import { loadRuleCatalog } from './slots.mjs';
+import { HfsSlotsError } from './slot-errors.mjs';
 
 /** Attach the localized catalog explanation to every finding. */
 /** A check finding: a rule code and level, with whatever fields the rule adds. */
@@ -10,7 +11,11 @@ export interface Why { title: string; titleVi: string; whyVi: string; nextStepVi
 export interface Summary { error: number; warning: number; info: number; byCode: Record<string, { level: string; count: number }> }
 
 export function withWhy(findings: Finding[], why: Record<string, Why>): Finding[] {
-  return findings.map((f) => ({ ...f, title: why[f.code]!.title, titleVi: why[f.code]!.titleVi, whyVi: why[f.code]!.whyVi, nextStepVi: why[f.code]!.nextStepVi }));
+  return findings.map((f) => {
+    const entry = why[f.code];
+    if (entry === undefined) throw new HfsSlotsError('HFS_MANIFEST_INVALID', `internal error: finding code ${f.code} has no failure-code catalog entry loaded (readWhy was not asked for it)`, { code: f.code });
+    return { ...f, title: entry.title, titleVi: entry.titleVi, whyVi: entry.whyVi, nextStepVi: entry.nextStepVi };
+  });
 }
 
 /** Count findings by severity and code without dropping report-only results. */

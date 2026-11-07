@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.89 - 2026-11-08
+
+- Fixed: a whole `starci app check` no longer crashes on a skipped Sonar scan; the fix is in `@starci/hfs` 6.1.2, which the CLI requires once npm serves it (`cli-follow`).
+
 ## 1.1.0-alpha.88 - 2026-11-07
 
 - Added: `RELEASE_PEER_RANGE_EXCLUDES_PIN` refuses a plan in which a package to publish, or a package a stack pin names at the version its folder holds, declares a `peerDependencies` range that excludes the version a sibling is pinned at or published at (a canon peering `@starci/hfs` `~6.0.0` against the pinned hfs 6.1.x), because an app cannot `npm ci` the pinned set. `release publish` and `release push` judge it (`cli/src/core/release/peer-range.ts`, spec `peer-range.test.ts`); `WorkspacePackage` carries `peers`.
