@@ -171,12 +171,16 @@ export function buildStepKey(session: CheckSession, step: ParityStep, nodeVersio
   return keyOf(step, session, files, lockClosure(session.root, manifests), { '#node': nodeVersion.split('.')[0] ?? nodeVersion });
 }
 
-/** The back-end files the entity list reaches through its imports (side-relative resolution, app-relative paths) and the packages they import; every back-end file when the compiler is missing. */
+/**
+ * The back-end files the entity list reaches through its imports (side-relative resolution, app-relative paths) and the packages they import. The imports are
+ * resolved with the app's TypeScript, else the one beside this package (resolution reads the tsconfig and the tree, not the compiler's version), so the key is
+ * the same on every host; every back-end file when no compiler resolves at all.
+ */
 function entityClosure(session: CheckSession): { files: string[]; packages: string[] } {
   const root = session.root;
   if (session.index.hashOf(ENTITY_LIST) === undefined) return { files: [], packages: [] };
   const beRoot = path.join(root, 'be');
-  const ts = loadTypescript(beRoot, root);
+  const ts = loadTypescript(beRoot, root, path.dirname(fileURLToPath(import.meta.url)));
   if (ts === null) return { files: session.index.paths.filter((file) => file.startsWith('be/')), packages: [] };
   const readText = (file: string): string | null => { try { return fs.readFileSync(file, 'utf8'); } catch { return null; } };
   const fileExists = (file: string): boolean => fs.existsSync(file) && fs.statSync(file).isFile();
