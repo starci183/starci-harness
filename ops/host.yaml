@@ -1,9 +1,9 @@
 # The services a host runs for the harness, read by cli/src/harness/host.ts (`starci host status|up|install|uninstall`).
 # An argv runs without a shell. Tokens: {starci} is this CLI (node and its main.js), {node} this Node, {orca} the Orca CLI
-# (STARCI_ORCA_BIN honoured), {state} the state base, {runtime} the runtime root, {env:NAME} an environment variable.
+# (STARCI_ORCA_BIN honoured), {state} the state base, {shared-state} the state base shared by every checkout of this machine (the main checkout's `.runtime`, or STARCI_LOCAL_ROOT), {runtime} the runtime root, {env:NAME} an environment variable.
 # A check is up when it exits 0 and, with `json`, when the value at `path` of its json output equals `equals`.
 # `install` registers a service to run by itself (kind schedule: a scheduled task named StarCi ...), or nothing (kind none).
-# A check is an `argv` or an `http` URL (the declared status, default 200). `start` may add `env` and `secrets` (secret-loader keys, never argv);
+# A check is an `argv` or an `http` URL (the declared status, default 200). `start` may add `env` (its values expand the tokens) and `secrets` (secret-loader keys, never argv);
 # `stop` is what `host down` runs (a stop, never a removal); `waitSeconds` on a service overrides the file's for that service.
 schema: starci/host@1
 # How long `host up` waits for a started service's check to turn up, and how long one check may run.
@@ -153,13 +153,15 @@ services:
       kind: none
     requires: [sonar, sonar-bootstrap]
   - id: local-registry
-    summary: the npm registry on 127.0.0.1:4873 that `deps publish-local` publishes to (container starci-local-registry, Verdaccio; config and storage under the state base)
+    summary: the npm registry on 127.0.0.1:4873 that `deps publish-local` publishes to (container starci-local-registry, Verdaccio; its config in ops/host/registry/, its storage in local-registry/ of the shared state base)
     platform: any
     check:
       http:
         url: http://127.0.0.1:4873/-/ping
     start:
-      argv: ["{starci}", deps, registry-up, --execute]
+      argv: [docker, compose, --project-directory, "{runtime}/ops/host/registry", -f, "{runtime}/ops/host/registry/compose.yaml", up, -d, --no-recreate, local-registry]
+      env:
+        STARCI_REGISTRY_STORAGE: "{shared-state}/local-registry/storage"
     stop:
       argv: [docker, stop, starci-local-registry]
     install:

@@ -182,6 +182,9 @@ export const mainCheckoutOf = (root: string): string => {
     return main !== undefined && existsSync(join(main, "cli")) ? main : root
 }
 
+/** The state base every checkout of this machine shares: STARCI_LOCAL_ROOT, else the main checkout's `.runtime` (a worktree's CLI reaches the same one). */
+export const sharedStateBase = (): string => ((process.env[LOCAL_ROOT_ENV] ?? "") === "" ? join(mainCheckoutOf(runtimeRoot()), ".runtime") : stateBase())
+
 /**
  * The store of the host's heavy-command governor (harness/heavy.ts): `STARCI_LOCAL_ROOT`'s machine.sqlite when it is set, else
  * the machine.sqlite of the harness's main checkout, so a CLI run from any worktree of the harness takes the same slots.

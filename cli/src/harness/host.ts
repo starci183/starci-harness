@@ -6,7 +6,7 @@ import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { captureTool, headline, runTool, startDetached, ToolNotStarted } from "../shared/exec.js"
-import { hostLauncherPath, runtimeRoot, stateBase } from "./ledger.js"
+import { hostLauncherPath, runtimeRoot, sharedStateBase, stateBase } from "./ledger.js"
 import { orcaBinarySync } from "./orca/client.js"
 import { locateOps } from "./ops.js"
 import { lookupSecret, secretHome } from "./secret-env.js"
@@ -128,7 +128,7 @@ export const loadHost = (dir: string = locateOps()): HostConfig => {
     return parsed.data
 }
 
-const TOKEN = /\{(starci|node|orca|state|runtime|env:[A-Za-z_]\w*)\}/g
+const TOKEN = /\{(starci|node|orca|state|shared-state|runtime|env:[A-Za-z_]\w*)\}/g
 
 const mainScript = (): string => join(dirname(fileURLToPath(import.meta.url)), "..", "main.js")
 
@@ -137,6 +137,7 @@ const expandToken = (token: string): string =>
         if (name === "node") return process.execPath
         if (name === "orca") return orcaBinarySync()?.path ?? "orca"
         if (name === "state") return stateBase()
+        if (name === "shared-state") return sharedStateBase()
         if (name === "runtime") return runtimeRoot()
         if (name === "starci") throw new Refusal("OPS_INVALID", `{starci} must be a whole argv token, not part of ${token}`)
         const variable = name.slice("env:".length)
@@ -477,7 +478,7 @@ export const serviceEnv = (): NodeJS.ProcessEnv => Object.fromEntries(Object.ent
 
 /** The environment a started service gets: the session-free one, the service's plain `env`, and each of its `secrets` from the secret loader (HOST_SECRET_MISSING names a key that is unset, never a value). */
 export const startEnv = (start: NonNullable<HostService["start"]>): Record<string, string> => {
-    const env: Record<string, string> = { ...start.env }
+    const env: Record<string, string> = Object.fromEntries(Object.entries(start.env ?? {}).map(([key, value]) => [key, expandToken(value)]))
     for (const key of start.secrets ?? []) {
         const secret = lookupSecret(key)
         if (secret === undefined) throw new Refusal("HOST_SECRET_MISSING", `${key} is not set: ${secretHome(key)}`)

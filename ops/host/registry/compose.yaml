@@ -1,0 +1,24 @@
+# The local npm registry of this host: the Verdaccio that `starci deps publish-local --execute` publishes to and an app installs an
+# urgent package change from (contexts/authority/packages.md "The local registry"). Owned by ops/host.yaml (service local-registry);
+# `starci host up local-registry` runs it, `host down local-registry` stops it, never `down -v`.
+#
+# The container is `starci-local-registry`, published on 127.0.0.1:4873 only (nothing beyond this machine reaches it), with the
+# config of this folder mounted read-only and its storage bind-mounted from ${STARCI_REGISTRY_STORAGE}, which ops/host.yaml sets to
+# `local-registry/storage` of the shared state base (`.runtime/` of the main checkout; STARCI_LOCAL_ROOT moves it). A container of
+# that name and storage that compose did not create is removed by the owner once (`docker rm -f starci-local-registry`); the
+# storage is a bind mount, so it stays, and `host up` then creates the container over it.
+# ${STARCI_HOST_PROJECT} exists so the CLI can be proved on a scratch project without touching the live container.
+#
+# The image is pinned by digest (the tag stays for the reader). A digest change is a deliberate edit, not a pull.
+name: ${STARCI_HOST_PROJECT:-starci}
+
+services:
+  local-registry:
+    image: verdaccio/verdaccio:5.33.0@sha256:9d622d256378c6e7ae09f384774ee2f0f8ac67a66c066db55921a0b7218abc4c
+    container_name: ${STARCI_HOST_PROJECT:-starci}-local-registry
+    ports:
+      - "127.0.0.1:4873:4873"
+    volumes:
+      - ./config.yaml:/verdaccio/conf/config.yaml:ro
+      - ${STARCI_REGISTRY_STORAGE:?set by ops/host.yaml, the storage folder of the registry}:/verdaccio/storage
+    restart: unless-stopped

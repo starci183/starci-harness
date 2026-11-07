@@ -94,6 +94,18 @@ All notable changes to the `starci-harness` CLI are listed here. The format foll
 
 ## [Unreleased]
 
+## [1.1.0-alpha.86] - 2026-11-07
+
+### Changed
+
+- The local npm registry is a compose host service like Sonar: `ops/host/registry/compose.yaml` (Verdaccio pinned by digest, container `starci-local-registry`, published on 127.0.0.1:4873 only, `restart: unless-stopped`, its config in `ops/host/registry/config.yaml`, its storage bind-mounted from `local-registry/storage` of the shared state base), started by `host up local-registry` with `docker compose up -d --no-recreate` and stopped by `host down local-registry`. `ops/host.yaml` start `env` values expand the tokens, and a new `{shared-state}` token is the state base every checkout shares (the main checkout's `.runtime`, or `STARCI_LOCAL_ROOT`). A container of that name that compose did not create is removed once by the owner (`docker rm -f starci-local-registry`); its storage stays.
+- `deps publish-local --execute` starts the registry through that host service (`ensureRegistry` runs `host up local-registry` when the ping does not answer and runs no docker itself), and its port is fixed at 4873: the `--port` flag is gone. `registryState` in its data is `up` or `down`. Specs hold the state, an idempotent start and the refusal `LOCAL_REGISTRY_NOT_READY` with the ping and the host start replaced (`RegistryIo`, `local-registry.test.ts`), and the compose file and the service entry (`host.test.ts`).
+- `contexts/authority/packages.md` "Or install it like npm" names the registry as the compose host service and its commands.
+
+### Removed
+
+- `starci deps registry-up` and the `docker run` start path of the CLI code, with `LOCAL_REGISTRY_EXPOSED` and `LOCAL_REGISTRY_PORT` (the compose file publishes on 127.0.0.1 and the port is fixed): `host up local-registry` is the one start.
+
 ## [1.1.0-alpha.85] - 2026-11-07
 
 ### Changed

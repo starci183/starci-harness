@@ -2,7 +2,8 @@
 // environment through the secret loader and a missing key is refused by name, `host down` stops dependents first, and the
 // compose stack carries no secret value and pins every image by digest. Values here are fixtures; no real secret.env is read.
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { createServer } from "node:http"
 import type { AddressInfo } from "node:net"
 import { dirname, join } from "node:path"
@@ -83,9 +84,32 @@ void test("host down stops dependents before what they require", () => {
 })
 
 void test("the compose stack stores no secret value and pins every image by digest", () => {
-    for (const file of ["compose.yaml", "cloudflared.yaml"]) {
-        const text = readFileSync(join(opsDir, "host", "sonar", file), "utf8")
+    for (const file of ["sonar/compose.yaml", "sonar/cloudflared.yaml", "registry/compose.yaml"]) {
+        const text = readFileSync(join(opsDir, "host", file), "utf8")
         for (const image of text.matchAll(/^\s+image:\s*(\S+)/gm)) assert.match(image[1] ?? "", /@sha256:[0-9a-f]{64}$/, `${file}: ${image[1] ?? ""}`)
         for (const secret of text.matchAll(/^\s+(?:POSTGRES_PASSWORD|SONAR_JDBC_PASSWORD|SONARQUBE_ADMIN_PASSWORD|TUNNEL_TOKEN):\s*(\S+)/gm)) assert.match(secret[1] ?? "", /^\$\{[A-Z_]+:\?/, `${file}: a secret is not read from the environment`)
     }
+})
+
+void test("the local registry is a compose host service like Sonar: ping check on 4873, compose up --no-recreate, docker stop, behind docker", () => {
+    const config = loadHost(opsDir)
+    const registry = serviceOf(config, "local-registry")
+    assert.equal(registry.check?.http?.url, "http://127.0.0.1:4873/-/ping")
+    assert.deepEqual(registry.start?.argv, ["docker", "compose", "--project-directory", "{runtime}/ops/host/registry", "-f", "{runtime}/ops/host/registry/compose.yaml", "up", "-d", "--no-recreate", "local-registry"])
+    assert.deepEqual(registry.start.env, { STARCI_REGISTRY_STORAGE: "{shared-state}/local-registry/storage" })
+    assert.deepEqual(registry.stop?.argv, ["docker", "stop", "starci-local-registry"])
+    assert.deepEqual(registry.requires, ["docker"])
+    assert.deepEqual(inRequiresOrder(config, [registry]).map((service) => service.id), ["docker", "local-registry"])
+    assert.ok(existsSync(join(opsDir, "host", "registry", "compose.yaml")))
+})
+
+void test("a start env value expands the state tokens: {shared-state} is STARCI_LOCAL_ROOT when it is set", (t) => {
+    const saved = process.env.STARCI_LOCAL_ROOT
+    t.after(() => {
+        if (saved === undefined) delete process.env.STARCI_LOCAL_ROOT
+        else process.env.STARCI_LOCAL_ROOT = saved
+    })
+    const root = join(tmpdir(), "shared-state-fixture")
+    process.env.STARCI_LOCAL_ROOT = root
+    assert.deepEqual(startEnv({ argv: ["x"], detach: false, env: { FOLDER: "{shared-state}/local-registry/storage" } }), { FOLDER: `${root}/local-registry/storage` })
 })

@@ -1,7 +1,7 @@
 import { resolve } from "node:path"
 import { inOrder } from "../../harness/sequential.js"
 import { withHeavySlot } from "../../harness/heavy.js"
-import { Refusal, UsageError } from "../../shared/errors.js"
+import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
 import { repositoryRoot, trackedChanges } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
@@ -12,7 +12,7 @@ import type { WorkspacePackage } from "../../shared/workspace.js"
 import { affectedBy } from "../release/affected.js"
 import { distTagOf, judgePlan } from "../release/publish.js"
 import { isHarnessCheckout } from "../release/push-gate.js"
-import { DEFAULT_PORT, ensureRegistry, installFlags, registryAnswers, registryFlags, registryStatus, registryUrl, writeNpmrcs } from "./local-registry.js"
+import { ensureRegistry, installFlags, PORT, registryFlags, registryState, registryUrl, writeNpmrcs } from "./local-registry.js"
 import { buildPackage } from "./packages.js"
 
 /** What the local registry does with one package: publish it, find it there already, find npm serving it, or replace it (`--force`). */
@@ -29,7 +29,7 @@ interface Row {
 interface PublishLocalData {
     readonly mode: "plan" | "publish"
     readonly registry: string
-    readonly registryState: "absent" | "stopped" | "running"
+    readonly registryState: "up" | "down"
     readonly rows: readonly Row[]
     readonly published: readonly string[]
     readonly installNpmrc: string | undefined
@@ -106,12 +106,10 @@ export const depsPublishLocalVerb = defineVerb({
         execute: { kind: "boolean", summary: "start or reuse the registry container, build and publish (default: print the plan only)" },
         package: { kind: "list", summary: "only this package (its folder or name), repeatable; its build prerequisites are built, not published" },
         force: { kind: "boolean", summary: "replace a version in the local registry; existing app locks and npm caches retain the old tarball (prefer a new version)" },
-        port: { kind: "string", summary: `the port on 127.0.0.1 (default ${String(DEFAULT_PORT)})` },
         cwd: { kind: "string", summary: "the harness checkout to build and publish (default: the checkout of the working directory)" },
     },
     run: async (context, flags) => {
-        const port = flags.port === undefined ? DEFAULT_PORT : Number(flags.port)
-        if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new UsageError("--port is a number from 1024 to 65535")
+        const port = PORT
         const root = await repositoryRoot(resolve(flags.cwd ?? context.cwd))
         if (!isHarnessCheckout(root)) throw new Refusal("PUBLISH_LOCAL_NOT_HARNESS", `${root} is not a harness checkout (cli/, contexts/ and packages/); pass --cwd <harness checkout>`)
         const all = listPackages(root)
@@ -120,9 +118,9 @@ export const depsPublishLocalVerb = defineVerb({
         // The release plan's own judgement against npm (never the local registry): a sibling requirement that skews, and a package whose shipped files changed under a version npm has.
         const npm = await judgePlan(root, all, "")
         // A stopped registry can already hold these versions; plan only once its storage is readable for an executed run.
-        if (flags.execute) await ensureRegistry(port, root)
-        const state = await registryStatus(port, root)
-        const live = state === "running" && (await registryAnswers(port))
+        if (flags.execute) await ensureRegistry(root)
+        const state = await registryState()
+        const live = state === "up"
         const warnings: string[] = []
         const rows = await inOrder(chosen, async (pkg): Promise<Row> => {
             const base = { package: pkg.name, version: pkg.version, dir: pkg.relativeDir, distTag: distTagOf(pkg.version) }
@@ -142,7 +140,7 @@ export const depsPublishLocalVerb = defineVerb({
         if (flags.execute) {
             installNpmrc = await publishDue(context, port, { root, all, order, due, published })
         }
-        const shownRegistry = flags.execute ? "running" : state
+        const shownRegistry = flags.execute ? "up" : state
         const data: PublishLocalData = { mode: flags.execute ? "publish" : "plan", registry: registryUrl(port), registryState: shownRegistry, rows, published, installNpmrc, warnings }
         const table = formatTable([["PACKAGE", "VERSION", "TAG", "ACTION"], ...rows.map((row) => [row.package, row.version, row.distTag, row.action])])
         const summary = flags.execute ? `published ${String(published.length)} package(s) to ${registryUrl(port)}` : `${String(due.length)} to publish to ${registryUrl(port)} (registry ${state}; plan only, add --execute)`

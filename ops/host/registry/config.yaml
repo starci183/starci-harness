@@ -1,0 +1,19 @@
+# The Verdaccio config of the local npm registry (ops/host.yaml service local-registry), mounted read-only by compose.yaml.
+# Anonymous read and publish (the port is published on 127.0.0.1 only), no new users, npmjs as the uplink for everything.
+storage: /verdaccio/storage
+listen: 0.0.0.0:4873
+auth:
+  htpasswd:
+    file: /verdaccio/storage/htpasswd
+    max_users: -1
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+packages:
+  "**":
+    access: $all
+    publish: $all
+    unpublish: $all
+    proxy: npmjs
+max_body_size: 200mb
+log: { type: stdout, format: pretty, level: warn }
