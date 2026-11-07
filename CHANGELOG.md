@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0-alpha.91 - 2026-11-08
+
+- Added: `starci app check --env local|prod` is forwarded to `@starci/hfs` 6.2.2, which the CLI requires once npm serves it (`cli-follow`); the managed hook, CI and release gate templates run `--env prod`.
+- Changed: `deps publish-local` and `release publish` pack each package in its folder and stamp `starciSource` (the digest of its tracked source files; `gitHead` too for the release) into the tarball's manifest (`core/deps/pack-stamped.ts`), so the local-registry build and the npm build of one commit carry one digest and the check cache keys on it. `release publish` publishes the stamped tarball.
+- Fixed: `deps install-local` kept its record in `.starciwork/install-local.json`, which a lite app refuses (`HFS_STARCIWORK_LITE_FORBIDDEN`); the record is `install-local.json` in the untracked tool cache of the checkout (slot `app.tool-cache`).
+- Fixed: `deps install-local` looked up `@starci/<name>` for every package and missed the unscoped `starci-harness`; a package name resolves by the real names of the harness (the `@starci` scope and the CLI's own manifest name), and the app's `starci-harness` requirement is raised like any other.
+
 ## 1.1.0-alpha.90 - 2026-11-08
 
 - Changed: `starci app check` starts the unit run first: its steps carry a priority and ask the governor in that order (`@starci/hfs` 6.2.1, which the CLI requires once npm serves it, `cli-follow`), so jest is sized on the whole room. Spec `heavy-governor.test.ts`: a finished command's row is gone at once and the next admission sees the full room.

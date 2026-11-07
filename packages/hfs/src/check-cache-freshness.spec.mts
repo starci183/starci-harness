@@ -1,4 +1,4 @@
-// Spec: every push carries the warm cache a real run on its tree writes (`starci app check --fresh`, the managed pre-push hook; check-cache.md).
+// Spec: every push carries the warm cache a real run on its tree writes (`starci app check --env prod`, the managed pre-push hook; check-cache.md).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

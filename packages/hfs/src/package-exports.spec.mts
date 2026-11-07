@@ -20,6 +20,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SPECIFIERS: [string, string][] = [
   ['@starci/hfs', 'src/main.mjs'],
   ['@starci/hfs/form-bounds', 'emit/form-bounds.mjs'],
+  ['@starci/hfs/tool-cache', 'cache/run-log.mjs'],
   ['@starci/hfs/runtime/scripts/hfs/slots.mjs', 'runtime/scripts/hfs/slots.mjs'],
   ['@starci/hfs/runtime/scripts/hfs/secret-store.mjs', 'runtime/scripts/hfs/secret-store.mjs'],
   ['@starci/hfs/runtime/scripts/hfs/secret-document.mjs', 'runtime/scripts/hfs/secret-document.mjs'],

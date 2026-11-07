@@ -5,7 +5,7 @@
 // the database step) takes the lockfile closure of the manifests it builds from.
 import fs from 'node:fs';
 import path from 'node:path';
-import { lockEntries, lockPackageName, packageDigests } from './fingerprint.mjs';
+import { lockEntries, lockPackageName, packageDigests, sourceOf } from './fingerprint.mjs';
 import { combineHashes, hashFile } from './hash.mjs';
 import type { CheckSession, JsonValue } from './types.mjs';
 
@@ -64,10 +64,12 @@ export interface ReadsContext {
 
 /** The reads context of the app at `root`: the lockfile it holds now, and the content index (then the work tree) for files. */
 export function readsContext(root: string, hashOf: (file: string) => string | undefined): ReadsContext {
-  const digests = packageDigests(lockEntries(root));
+  const digests = packageDigests(lockEntries(root), root);
   const onDisk = (install: string): string => {
     try {
-      return `unlocked:${String((JSON.parse(fs.readFileSync(path.join(root, install, 'package.json'), 'utf8')) as { version?: unknown }).version ?? 'none')}`;
+      const manifest = JSON.parse(fs.readFileSync(path.join(root, install, 'package.json'), 'utf8')) as Record<string, unknown>;
+      const source = sourceOf(manifest);
+      return source === undefined ? `unlocked:${String(manifest['version'] ?? 'none')}` : `source:${source}`;
     } catch {
       return 'absent';
     }

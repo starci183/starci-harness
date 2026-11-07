@@ -9,17 +9,17 @@ import { git, push, ref, repository, ZERO } from './helpers/pre-push-fixture.mjs
 const HOOK = fs.readFileSync(new URL('../templates/app/hooks/husky/pre-push', import.meta.url), 'utf8').split('\n').slice(1).join('\n');
 const fixture = (t: TestContext) => repository(t, HOOK);
 
-test('fast-forward main needs no annotated tag or release record, including a first push', t => {
+test('fast-forward main needs no annotated tag or release record, including the first push of main and dev together', t => {
   const repo = fixture(t);
-  for (const base of [ZERO, repo.older]) {
-    const result = push(repo, [ref('refs/heads/main', repo.head, base)]);
-    assert.equal(result.status, 0, result.stderr);
-  }
+  const first = push(repo, [ref('refs/heads/main', repo.head, ZERO), ref('refs/heads/dev', repo.head, ZERO)]);
+  assert.equal(first.status, 0, first.stderr);
+  const next = push(repo, [ref('refs/heads/main', repo.head, repo.older)]);
+  assert.equal(next.status, 0, next.stderr);
 });
 
 test('the pushed main commit is the commit the check judges: a commit that is not checkout HEAD is refused', t => {
   const repo = fixture(t);
-  const result = push(repo, [ref('refs/heads/main', repo.older)]);
+  const result = push(repo, [ref('refs/heads/main', repo.older), ref('refs/heads/dev', repo.older)]);
   assert.equal(result.status, 1);
   assert.match(result.stderr, /BRANCH_MAIN_NOT_CHECKED_OUT/);
 });

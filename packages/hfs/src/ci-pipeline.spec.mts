@@ -102,7 +102,7 @@ for (const edition of ['lite', 'full']) {
     const gate = ci.jobs.sonar.steps.find((step: Doc) => String(step.uses).startsWith('SonarSource/sonarqube-quality-gate-action@'));
     assert.equal(gate.if, "${{ !cancelled() && needs.plan.outputs.full == 'true' }}");
     assert.deepEqual(ci.on.push.branches, ['main', 'release/candidate-*'], 'no branch profile: main and the candidates');
-    assert.equal(ci.jobs.fast.steps.find((step: Doc) => step.name === 'format').run, 'npx --no-install starci app check --gate format');
+    assert.equal(ci.jobs.fast.steps.find((step: Doc) => step.name === 'format').run, 'npx --no-install starci app check --gate format --env prod');
   });
 
   test(`${edition}: the plan job decides full, defer and reuse from the event, the ref and the green candidate run`, () => {

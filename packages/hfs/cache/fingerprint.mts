@@ -3,8 +3,10 @@
 // re-runs the hfs-run checks and never ESLint or a unit spec, and a bump of a library is no part at all (the records that loaded it carry it in their own key,
 // package-closure.mts, and the lint family's import graph re-judges the files that import it). Parts are portable (equal on every host for one commit): the cache
 // format, the @starci/hfs that runs, every installed @starci package by version and recorded integrity, each tool family's toolchain as the lockfile resolved it,
-// the Node major the unit specs run on, and the configuration files by normalised content. A run whose CLI or any @starci package is linked or copied from a
-// local folder, or resolved from a registry on this machine, has no portable fingerprint.
+// the Node major the unit specs run on, and the configuration files by normalised content. A harness or tool package (every @starci package, starci-harness) is
+// keyed by its source digest (`starciSource` of its package.json, stamped when it is packed) when it carries one, so the local-registry build and the npm build of
+// one source yield the same keys; one without a digest is keyed by version and integrity. A run whose CLI or any @starci package is linked or copied from a local
+// folder, or resolved from a registry on this machine without a source digest, has no portable fingerprint.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -84,6 +86,17 @@ export interface Fingerprint {
   readonly parts: readonly FingerprintPart[];
   readonly portable: boolean;
   readonly localReasons: readonly string[];
+  /** Whether every reason is a local-registry install (the one cause `--env local` reports instead of refusing). */
+  readonly localRegistry?: boolean;
+}
+
+/** The manifest field that carries the source digest of a packed harness or tool package: the digest of its tracked source files, equal for the local-registry and the npm build of one source. */
+export const SOURCE_FIELD = 'starciSource';
+
+/** The source digest a package manifest carries, or undefined (a build packed before the field existed, a checkout folder). */
+export function sourceOf(manifest: Record<string, unknown> | undefined): string | undefined {
+  const digest = manifest?.[SOURCE_FIELD];
+  return typeof digest === 'string' && digest !== '' ? digest : undefined;
 }
 
 export interface FingerprintInput {
@@ -132,20 +145,25 @@ function resolvedOnThisMachine(resolved: string | undefined): boolean {
 }
 
 /** Why an installed `@starci` package has no portable fingerprint (linked, copied, or resolved from a registry on this machine), or null when it is a published install. */
-export function localReasonOf(name: string, entry: LockEntry | undefined, linked: boolean): string | null {
-  if (resolvedOnThisMachine(entry?.resolved)) return `@starci/${name} is installed from a registry on this machine (starci deps install-local)`;
+export function localReasonOf(name: string, entry: LockEntry | undefined, linked: boolean, source?: string): string | null {
+  if (source !== undefined && !linked) return null;
+  if (resolvedOnThisMachine(entry?.resolved)) return `@starci/${name} is installed from a registry on this machine and carries no source digest (starci deps install-local)`;
   if (linked || entry?.integrity === undefined) return `@starci/${name} is linked or copied from a local folder (no recorded integrity)`;
   return null;
 }
 
-/** One digest per installed package name: every install of it, by path, version and integrity. */
-export function packageDigests(entries: Readonly<Record<string, LockEntry>>): Map<string, string> {
+/**
+ * One digest per installed package name: every install of it, by path and by what identifies its content: the source digest its installed manifest carries
+ * (read from `root` when given), else its version and integrity.
+ */
+export function packageDigests(entries: Readonly<Record<string, LockEntry>>, root?: string): Map<string, string> {
   const installs = new Map<string, string[]>();
   for (const key of Object.keys(entries).sort()) {
     const name = lockPackageName(key);
     if (name === null) continue;
     const entry = entries[key] as LockEntry;
-    installs.set(name, [...(installs.get(name) ?? []), `${key}\0${entry.version ?? ''}\0${entry.integrity ?? entry.resolved ?? ''}`]);
+    const source = root === undefined ? undefined : sourceOf(readJson(path.join(root, ...key.split('/'), 'package.json')));
+    installs.set(name, [...(installs.get(name) ?? []), source === undefined ? `${key}\0${entry.version ?? ''}\0${entry.integrity ?? entry.resolved ?? ''}` : `${key}\0source:${source}`]);
   }
   return new Map([...installs].map(([name, lines]) => [name, hashText(lines.join('\n'))]));
 }
@@ -178,24 +196,27 @@ function installedUnderNodeModules(dir: string): boolean {
 export function computeFingerprint({ root, tracked, hfsDir = fileURLToPath(new URL('..', import.meta.url)), nodeVersion = process.versions.node }: FingerprintInput): Fingerprint {
   const parts: FingerprintPart[] = [];
   const localReasons: string[] = [];
+  let registryOnly = true;
   const add = (name: string, value: string): void => void parts.push({ name, sha256: hashText(value) });
   add('cache-format', String(CACHE_FORMAT_VERSION));
   add('node', nodeVersion.split('.')[0] ?? nodeVersion);
-  const hfsVersion = String(readJson(path.join(hfsDir, 'package.json'))?.['version'] ?? 'unknown');
-  add('hfs', hfsVersion);
-  if (!installedUnderNodeModules(hfsDir)) localReasons.push(`@starci/hfs runs from a local folder (${path.basename(path.resolve(hfsDir))})`);
+  const hfsManifest = readJson(path.join(hfsDir, 'package.json'));
+  add('hfs', sourceOf(hfsManifest) ?? String(hfsManifest?.['version'] ?? 'unknown'));
+  if (!installedUnderNodeModules(hfsDir)) { localReasons.push(`@starci/hfs runs from a local folder (${path.basename(path.resolve(hfsDir))})`); registryOnly = false; }
   const lock = lockEntries(root);
   for (const name of installedStarci(root).sort()) {
     const dir = path.join(root, 'node_modules', '@starci', name);
-    const version = String(readJson(path.join(dir, 'package.json'))?.['version'] ?? 'unknown');
+    const manifest = readJson(path.join(dir, 'package.json'));
+    const version = String(manifest?.['version'] ?? 'unknown');
+    const source = sourceOf(manifest);
     const entry = lock[`node_modules/@starci/${name}`];
     let linked = entry?.link === true;
     try { linked = linked || fs.lstatSync(dir).isSymbolicLink(); } catch { /* absent: not installed */ }
-    const reason = localReasonOf(name, entry, linked);
-    if (reason !== null) localReasons.push(reason);
-    add(`pkg:@starci/${name}`, `${version}\0${entry?.integrity ?? 'local'}`);
+    const reason = localReasonOf(name, entry, linked, source);
+    if (reason !== null) { localReasons.push(reason); registryOnly &&= resolvedOnThisMachine(entry?.resolved) && !linked; }
+    add(`pkg:@starci/${name}`, source === undefined ? `${version}\0${entry?.integrity ?? 'local'}` : `source:${source}`);
   }
-  const digests = packageDigests(lock);
+  const digests = packageDigests(lock, root);
   for (const [family, toolchain] of Object.entries(LOCK_TOOLCHAIN)) {
     const lines = [...digests].filter(([name]) => toolchain.test(name)).map(([name, digest]) => `${name}\0${digest}`);
     add(`lock:${family}`, lines.join('\n'));
@@ -207,7 +228,7 @@ export function computeFingerprint({ root, tracked, hfsDir = fileURLToPath(new U
     if (base === 'package.json') parts.push({ name: `shape:${file}`, sha256: manifestShape(absolute) });
     else parts.push({ name: `file:${file}`, sha256: hashFile(absolute) ?? 'absent' });
   }
-  return { parts: sorted(parts), portable: localReasons.length === 0, localReasons };
+  return { parts: sorted(parts), portable: localReasons.length === 0, localReasons, localRegistry: localReasons.length > 0 && registryOnly };
 }
 
 /** `fingerprint.jsonl`: one line per part. */

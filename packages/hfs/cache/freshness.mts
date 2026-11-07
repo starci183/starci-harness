@@ -1,5 +1,5 @@
 // freshness.mts - the push gate of the committed check cache (contexts/project/check-cache.md, "Every push carries a warm cache"). CI re-checks only what the
-// committed cache does not cover, so a push whose cache records are missing or stale sends CI cold and past its ESLint budget. `starci app check --fresh` (the
+// committed cache does not cover, so a push whose cache records are missing or stale sends CI cold and past its ESLint budget. `starci app check --env prod` (the
 // managed pre-push hook) runs every family diff-only against the cache in the tree and refuses the push when that run had to write or remove a cache file, or
 // when the tree holds cache files git does not have committed: the records the push carries are then not the ones a real run on its tree produces.
 import fs from 'node:fs';
@@ -10,7 +10,7 @@ import { CACHE_DIR } from './types.mjs';
 
 /** A push whose committed cache a real run on its tree changes (records missing, stale or never committed). */
 export const UNWARMED = 'HFS_CHECK_CACHE_UNWARMED';
-/** A push from a host that cannot write a portable cache (a linked or locally copied @starci package). */
+/** A push from a host that cannot write a portable cache (a linked or locally copied @starci package, or a local-registry build packed without a source digest). */
 export const UNPORTABLE = 'HFS_CHECK_CACHE_UNPORTABLE';
 
 /** A push that carries a cache file a git host refuses or times out on (GitHub refuses a file over 100 MB, GH001). */
@@ -40,6 +40,8 @@ export interface FreshnessFinding {
   readonly level: 'error';
   readonly path: string;
   readonly message: string;
+  /** Set when a local-registry install alone causes the finding: the cause `--env local` lists as report-only (failure-codes.yaml `localOnly`). */
+  readonly local?: true;
 }
 
 export interface FreshnessInput {
@@ -47,6 +49,8 @@ export interface FreshnessInput {
   /** Whether the run had a portable fingerprint, and why not. */
   readonly portable: boolean;
   readonly localReasons: readonly string[];
+  /** Whether every reason is a local-registry install (the fingerprint's `localRegistry`). */
+  readonly localRegistry?: boolean | undefined;
   /** What the run's flush wrote and removed in the cache folder (app-relative). */
   readonly written: readonly string[];
   readonly removed: readonly string[];
@@ -75,7 +79,8 @@ export function freshnessFindings(input: FreshnessInput): FreshnessFinding[] {
   if (!input.portable) {
     return [{
       code: UNPORTABLE, level: 'error', path: CACHE_DIR,
-      message: `this host cannot write a cache CI can trust (${input.localReasons[0] ?? 'a local package'}); run \`starci deps install-local --restore\`, then \`starci app check\`, commit ${CACHE_DIR} and push`,
+      message: `this host cannot write a cache CI can trust (${input.localReasons[0] ?? 'a local package'}); run \`starci deps install-local --restore\`, then \`starci app check --env prod\`, commit ${CACHE_DIR} and push`,
+      ...(input.localRegistry === true ? { local: true as const } : {}),
     }];
   }
   const changed = [...new Set([...input.written, ...input.removed, ...(input.uncommitted ?? uncommittedCacheFiles(input.root))])].sort();

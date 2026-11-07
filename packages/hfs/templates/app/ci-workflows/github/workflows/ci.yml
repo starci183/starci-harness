@@ -99,7 +99,7 @@ jobs:
       - name: production dependency audit
         run: {{auditCommand}}
       - name: format
-        run: npx --no-install starci app check --gate format
+        run: npx --no-install starci app check --gate format --env prod
       - name: typecheck
         run: npm run typecheck
         env:

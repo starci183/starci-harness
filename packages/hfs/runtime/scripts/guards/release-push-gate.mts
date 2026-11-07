@@ -57,7 +57,9 @@ function mainBranchRefusal(cwd: string, { remoteRef, localSha, remoteSha }: Push
     ? [['dev', commitOf(cwd, DEV_REF)], [`${context.remote}/dev`, commitOf(cwd, `refs/remotes/${context.remote}/dev`)]]
     : [['the dev pushed with it', ZERO.test(pushedDev) ? null : pushedDev], ['dev', commitOf(cwd, DEV_REF)]];
   const present = tips.filter((tip): tip is readonly [string, string] => tip[1] !== null);
-  if (present.length === 0 && !ZERO.test(remoteSha)) return refuse(remoteRef, 'there is no dev branch: main moves only to a commit on dev (create dev from main and push it first)', MAIN_NOT_ON_DEV);
+  if (ZERO.test(remoteSha)) {
+    if (pushedDev === undefined || ZERO.test(pushedDev) || pushedDev !== localSha) return refuse(remoteRef, 'the first push into an empty remote pushes main and dev together, both at the same commit (git push origin main dev); main alone is refused', MAIN_NOT_ON_DEV);
+  } else if (present.length === 0) return refuse(remoteRef, 'there is no dev branch: main moves only to a commit on dev (create dev from main and push it first)', MAIN_NOT_ON_DEV);
   const off = present.filter(([, tip]) => !isAncestor(cwd, localSha, tip)).map(([name]) => name);
   if (off.length > 0) return refuse(remoteRef, `the commit is not on ${off.join(' and ')}: main moves only to a commit on dev, locally and on the remote (merge the work into dev and push dev first, then fast-forward main to dev)`, MAIN_NOT_ON_DEV);
   if (commitOf(cwd, 'HEAD') !== localSha) return refuse(remoteRef, 'it is not the checked-out commit: the app check of this hook judges the checked-out tree under the full gate, so check out the commit you push', MAIN_NOT_CHECKED_OUT);

@@ -384,7 +384,7 @@ export async function lintSide(input: LintSideInput): Promise<LintSideOutcome> {
   const meta = ofStep(LINT_STEPS.meta).find((record) => record.path === SIDE_RECORD);
   const metaData = meta === undefined ? {} : dataOf(meta);
   // the installed packages the side imports, by install digest: a bump re-lints the files that import the package, not the side
-  const installed = packageDigests(lockEntries(session.root));
+  const installed = packageDigests(lockEntries(session.root), session.root);
   const recordedPackages = metaData['packages'] !== null && typeof metaData['packages'] === 'object' && !Array.isArray(metaData['packages']) ? (metaData['packages'] as Record<string, JsonValue>) : null;
   const changedPackages = new Set(recordedPackages === null ? [] : Object.keys(recordedPackages).filter((name) => recordedPackages[name] !== (installed.get(name) ?? 'absent')));
   const previousFindings = new Set([...ofStep(LINT_STEPS.eslint), ...ofStep(LINT_STEPS.stylelint)].flatMap((record) => record.findings.map(keyOf)));

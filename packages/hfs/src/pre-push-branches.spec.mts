@@ -64,7 +64,22 @@ test('BRANCH_MAIN_NOT_ON_DEV: a main commit that dev, local or on origin, does n
   const none = push(repo, [ref('refs/heads/main', ahead, repo.head)]);
   assert.equal(none.status, 1);
   assert.match(none.stderr, /BRANCH_MAIN_NOT_ON_DEV.*there is no dev branch/);
-  assert.equal(push(repo, [ref('refs/heads/main', ahead)]).status, 0, 'the first push of main has no dev yet');
+  const alone = push(repo, [ref('refs/heads/main', ahead)]);
+  assert.equal(alone.status, 1, 'main alone into an empty remote is refused');
+  assert.match(alone.stderr, /BRANCH_MAIN_NOT_ON_DEV.*first push into an empty remote pushes main and dev together/);
+});
+
+test('the one bootstrap path: the first push into an empty remote pushes main and dev together, both at the same commit', t => {
+  const repo = fixture(t);
+  const together = push(repo, [ref('refs/heads/main', repo.head), ref('refs/heads/dev', repo.head)]);
+  assert.equal(together.status, 0, together.stderr);
+  const ahead = commit(repo.root, 'dev is one ahead');
+  git(repo.root, 'branch', '-f', 'dev', ahead);
+  const apart = push(repo, [ref('refs/heads/main', ahead), ref('refs/heads/dev', repo.older)]);
+  assert.equal(apart.status, 1, 'main and dev at different commits are refused');
+  const differ = push(repo, [ref('refs/heads/main', repo.head), ref('refs/heads/dev', ahead)]);
+  assert.equal(differ.status, 1, 'the first push of main needs dev at the same commit as main');
+  assert.match(differ.stderr, /BRANCH_MAIN_NOT_ON_DEV/);
 });
 
 test('main and dev pushed together: the dev being pushed is the dev main must be on', t => {

@@ -7,6 +7,7 @@ import { captureNpm } from "../../shared/exec.js"
 import type { RunOptions } from "../../shared/exec.js"
 import { withHeavySlot } from "../../harness/heavy.js"
 import { git, nulPaths } from "../../shared/git.js"
+import { cliPackageName } from "../version.js"
 
 /**
  * How an app takes its `@starci` packages. The committed `package.json` files and `package-lock.json` always name npm
@@ -52,7 +53,10 @@ export const parseManifest = (text: string, where: string): Manifest => {
 /** A package.json file read as a manifest. */
 export const readManifest = (file: string): Manifest => parseManifest(readFileSync(file, "utf8"), file)
 
-/** One `@starci` requirement a package.json makes: the package, its spec, the file and the field. */
+/** Whether a package name is a package of the harness: one of the `@starci` scope, or the CLI (`starci-harness`, named by its own manifest). */
+export const isHarnessPackage = (name: string): boolean => name.startsWith(SCOPE) || name === cliPackageName()
+
+/** One harness requirement (a `@starci` package or the CLI) a package.json makes: the package, its spec, the file and the field. */
 export interface Pin {
     readonly name: string
     readonly spec: string
@@ -60,11 +64,11 @@ export interface Pin {
     readonly field: string
 }
 
-/** The `@starci` requirements of one manifest, in its dependency fields. */
+/** The harness requirements of one manifest, in its dependency fields. */
 export const pinsOf = (manifest: Manifest, file: string): Pin[] =>
     DEPENDENCY_FIELDS.flatMap((field) =>
         Object.entries(manifest[field] ?? {})
-            .filter((entry): entry is [string, string] => entry[0].startsWith(SCOPE) && typeof entry[1] === "string")
+            .filter((entry): entry is [string, string] => isHarnessPackage(entry[0]) && typeof entry[1] === "string")
             .map(([name, spec]) => ({ name, spec, file, field })),
     )
 
@@ -99,8 +103,8 @@ export interface LocalPackage {
     readonly builds: boolean
 }
 
-/** The name a package argument means: `grammar` and `@starci/grammar` are the same package. */
-export const packageName = (value: string): string => (value.startsWith(SCOPE) ? value : `${SCOPE}${value}`)
+/** The name a package argument means: `grammar` and `@starci/grammar` are the same package; a name that is already a harness package's real name (`starci-harness`) stays as it is. */
+export const packageName = (value: string): string => (isHarnessPackage(value) ? value : `${SCOPE}${value}`)
 
 /** Refuses an app whose package manager is not npm: the local registry flow is written for npm's lockfile and `node_modules`. */
 export const assertNpm = (root: string): void => {

@@ -2,8 +2,8 @@
 # Push gate: fast-forward main on dev with a clean secret scan, annotated v* tags, a dev that contains main, and bounded ref input
 # (contexts/project/branches.md PROJECT-BRANCH-1). The bundled gate owns the policy; backups and lane refs use the same policy as the runtime. Then the harness refuses a
 # committed @starci pin npm cannot install, or a local package copy ahead of npm (starci deps check). Last, every push carries the warm check
-# cache a real run on its tree writes, so CI re-checks only the diff: plain `app check`, no flags, the one command an agent and CI run in every
-# situation. A push of main or of a release tag is judged as main (STARCI_JUDGED_BRANCH), whatever branch is checked out: it runs the full gate. Any other push runs under the branch profile of the
+# cache a real run on its tree writes, so CI re-checks only the diff: `app check --env prod`: the verdict a push needs, where every finding blocks, the cache is portable and warm and the pins are the ones npm serves (a developer's own
+# runs default to `--env local`). A push of main or of a release tag is judged as main (STARCI_JUDGED_BRANCH), whatever branch is checked out: it runs the full gate. Any other push runs under the branch profile of the
 # pushed branch (.starcistacks/application-stacks.yaml branches): a gate it reports runs and records but never counts, the lint of a line the branch changed since main
 # and the predicted coverage of the changed lines still block, and where lint reports the lint ratchet still refuses a pushed commit that adds a lint finding to a file it touches.
 set -e
@@ -13,4 +13,4 @@ case "$refs" in
   *" refs/heads/main "*|*" refs/tags/v"*) STARCI_JUDGED_BRANCH=main; export STARCI_JUDGED_BRANCH ;;
 esac
 node node_modules/starci-harness/dist/main.js deps check
-node node_modules/starci-harness/dist/main.js app check
+node node_modules/starci-harness/dist/main.js app check --env prod

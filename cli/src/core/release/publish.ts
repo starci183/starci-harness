@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
 import { captureGit, currentBranch, isAncestor, refExists, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
@@ -6,6 +9,7 @@ import { formatTable } from "../../shared/output.js"
 import { defineVerb } from "../../shared/verb.js"
 import { requireCiGreen } from "../check/ci.js"
 import { NPMJS_FLAGS } from "../deps/local-refs.js"
+import { packStamped } from "../deps/pack-stamped.js"
 import { assertCliPins, STACK_PINS } from "../check/cli-pins.js"
 import { SPEC_FILE } from "../../shared/spec-file.js"
 import { listPackages } from "../../shared/workspace.js"
@@ -58,12 +62,23 @@ const settledOnRegistry = async (pkg: WorkspacePackage, root: string, deadline: 
     return settledOnRegistry(pkg, root, deadline)
 }
 
-/** Runs `npm publish` for one row; the failure line when npm refuses it. Reading it back is the batch's (settleBatch). */
-const publishRow = async (pkg: WorkspacePackage, row: PlanRow): Promise<string | undefined> => {
+/**
+ * Packs one row in its folder (its lifecycle scripts run there), stamps the source digest of the commit into the tarball's manifest (`packStamped`: the key the check cache
+ * reads, equal for this build and the local-registry build of one source) and runs `npm publish` on it; the failure line when npm refuses it. Reading it back is the batch's (settleBatch).
+ */
+const publishRow = async (pkg: WorkspacePackage, row: PlanRow, root: string): Promise<string | undefined> => {
     // Provenance needs a CI identity (GitHub Actions OIDC): CI's publish job signs every tarball, Debug's fallback from a workstation goes without it.
     const provenance = process.env.GITHUB_ACTIONS === "true" ? ["--provenance"] : ["--provenance=false"]
-    const run = await captureNpm(["publish", "--tag", row.distTag, ...provenance, ...NPMJS_FLAGS], pkg.dir)
-    return run.exitCode === 0 ? undefined : `${row.package}@${row.version}: ${(run.stderr || run.stdout).split("\n").slice(-3).join(" ")}`
+    const scratch = mkdtempSync(join(tmpdir(), "starci-publish-"))
+    try {
+        const tarball = await packStamped({ pkg, root, scratch, name: `stamped-${row.version}.tgz`, gitHead: await resolveSha(root, "HEAD") })
+        const run = await captureNpm(["publish", tarball, "--tag", row.distTag, ...provenance, ...NPMJS_FLAGS], scratch)
+        return run.exitCode === 0 ? undefined : `${row.package}@${row.version}: ${(run.stderr || run.stdout).split("\n").slice(-3).join(" ")}`
+    } catch (error: unknown) {
+        return `${row.package}@${row.version}: ${error instanceof Error ? error.message.split("\n").slice(-3).join(" ") : "packing failed"}`
+    } finally {
+        rmSync(scratch, { recursive: true, force: true })
+    }
 }
 
 interface BatchOutcome {
@@ -83,7 +98,7 @@ const settleBatch = async (rows: readonly PlanRow[], packages: readonly Workspac
     await inOrder(rows, async (row) => {
         const pkg = packages.find((candidate) => candidate.name === row.package)
         if (pkg === undefined) return
-        const refusal = await publishRow(pkg, row)
+        const refusal = await publishRow(pkg, row, root)
         if (refusal === undefined) sent.push({ row, pkg })
         else failed.push(refusal)
     })

@@ -14,7 +14,7 @@ checkout's path and the project root on explicitly.
 - What your role may edit, commit, merge and push: [contexts/authority/README.md](contexts/authority/README.md); a branch:
   [contexts/authority/branch.md](contexts/authority/branch.md); a package edit and its local build:
   [contexts/authority/packages.md](contexts/authority/packages.md); removing a worktree: [contexts/authority/README.md](contexts/authority/README.md) "Worktrees".
-- Run plain `starci app check` with no flags, everywhere
+- Run `starci app check` (`--env local`, the default) while you work; the pre-push hook, CI and the release gate run `--env prod`
   ([contexts/project/check-cache.md](contexts/project/check-cache.md) "The operating procedure").
 - An app's branches, `main` and `dev`: [contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-1; the `dev` branch profile: [contexts/project/lint.md](contexts/project/lint.md) PROJECT-LINT-2.
 - The host environment (Windows shims, Devin's `ACP_BACKEND`, `robocopy`, PowerShell encodings):

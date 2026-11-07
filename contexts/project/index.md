@@ -12,7 +12,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [authority/branch.md](../authority/branch.md) · 2 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs
 - [authority/ci.md](../authority/ci.md) · 1 KB — CI is the critic.
-- [authority/packages.md](../authority/packages.md) · 5 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
+- [authority/packages.md](../authority/packages.md) · 6 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
   - sections: The local registry: an urgent package change is used at once · Grammar edits are content only
 - [authority/wave.md](../authority/wave.md) · 2 KB — A wave is one scoped round on a merged tree.
   - sections: The scope decision comes first · Reuse and repair
@@ -177,9 +177,9 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: PROJECT-1 A project is one app root that holds the Work of every side · PROJECT-2 Work travels from a record to a settled commit · PROJECT-3 A product's agent modules are workspace packages · Where to read for a task · Files
 - [project/anatomy.md](../project/anatomy.md) · 83 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
-- [project/branches.md](../project/branches.md) · 2 KB — An app repository (never the harness repository itself) has two long-lived branches and one way between them.
+- [project/branches.md](../project/branches.md) · 3 KB — An app repository (never the harness repository itself) has two long-lived branches and one way between them.
   - sections: PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev`
-- [project/check-cache.md](../project/check-cache.md) · 59 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
+- [project/check-cache.md](../project/check-cache.md) · 62 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
   - sections: The operating procedure · The command surface · Progress and the run log · When a run is full · Layout and format · The journal · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · CI parity · Orchestration · The memory plan · The slot, the templates and adoption · The law · Edge cases · As built · Read with
 - [project/cicd.md](../project/cicd.md) · 39 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
   - sections: What an app has today · Triggers and what runs · The pipeline graph · Database migrations · Secrets and access · Gates · Records · Compared with common practice · Work packages · As built by the work packages · Open decisions · Sources · Read with

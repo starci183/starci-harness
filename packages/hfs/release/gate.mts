@@ -68,12 +68,12 @@ const WRAPPED = new Set(['npm', 'npx']);
 /**
  * The cache use of the release gate (contexts/project/check-cache.md, "The release"): every row runs diff-only against the warm committed cache the
  * release commit carries, which main's CI verified and the nightly run watches. `--full` (an explicit opt-in) runs the `app-check` row as
- * `starci app check --fresh`: every family is recomputed from scratch and the records are rewritten, so the rows after it reuse what it just judged.
+ * `starci app check --env prod --fresh`: every family is recomputed from scratch and the records are rewritten, so the rows after it reuse what it just judged.
  */
-export const APP_CHECK_COMMAND: readonly string[] = ['npx', 'starci', 'app', 'check'];
+export const APP_CHECK_COMMAND: readonly string[] = ['npx', 'starci', 'app', 'check', '--env', 'prod'];
 const isAppCheck = (command: readonly string[]): boolean => command.length === APP_CHECK_COMMAND.length && command.every((word, index) => word === APP_CHECK_COMMAND[index]);
 
-/** The command a gate row runs: under `--full` the plain `app check` row gains `--fresh`, every other row is unchanged. */
+/** The command a gate row runs: under `--full` the `app check --env prod` row gains `--fresh`, every other row is unchanged. */
 export const rowCommand = (command: readonly string[], full: boolean): readonly string[] => (full && isAppCheck(command) ? [...command, '--fresh'] : command);
 const SCRIPT_GATES = ['format:check', 'typecheck', 'build:be', 'lint', 'db:lint', 'build:fe', 'test'];
 // A full app has a test world (integration, e2e and contract projects, always present: the managed `test:e2e` script marks it), so those layers are rows of its gate;
@@ -539,7 +539,7 @@ export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, optio
   // The gate trusts the warm cache unless the owner asked for the full gate; a red or unreadable nightly verify locks it until a green one.
   const full = options.full === true;
   const lock = full ? null : (options.readLock ?? readVerifyLock)(ctx, config.defaultBranch);
-  plan.push(full ? 'cache          full gate (--full): the app-check row runs `app check --fresh` (every family recomputed, the records rewritten), the rows after it reuse them' : `cache          diff-only against the committed cache; ${lock?.line ?? ''}`);
+  plan.push(full ? 'cache          full gate (--full): the app-check row runs `app check --env prod --fresh` (every family recomputed, the records rewritten), the rows after it reuse them' : `cache          diff-only against the committed cache; ${lock?.line ?? ''}`);
   if (lock !== null && lock.state !== 'open') return { ok: false, lines: [...plan, `RED: ${lock.line}`, 'nothing was run.'], data: { ...base, red: [lock.line], executed: false, locked: true } };
   if (options.execute !== true) return { ok: true, lines: [...plan, '', 'dry run: no gate was run, nothing written. preconditions OK.'], data: { ...base, red: [], executed: false } };
   const results = await runAll(ctx, config, { dir, common, head: facts.head, platform: options.platform ?? process.platform, credentialNames, full });

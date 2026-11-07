@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { toolCacheDir } from "@starci/hfs/tool-cache"
 import { dirname, join } from "node:path"
 import { z } from "zod"
 import { Refusal, UsageError } from "../../shared/errors.js"
@@ -11,8 +12,8 @@ import { installFlags, PORT, registryAnswers, registryFlags, registryUrl } from 
 import { clearOverlayRecord, refuseRecordedOverlay } from "./overlay-refusal.js"
 import { appNpm, assertNpm, packageName, readManifest, workingPins } from "./packages.js"
 
-/** Where an app's install of local packages is recorded: untracked, per checkout, since the pins it changed are this checkout's files. */
-export const INSTALL_RECORD = join(".starciwork", "install-local.json")
+/** The file an app's install of local packages is recorded in: the untracked tool cache of this checkout (slot `app.tool-cache`, beside the check journal), since the pins it changed are this checkout's files and a lite app holds no `.starciwork`. */
+export const installRecordFile = (root: string): string => join(toolCacheDir(root), "install-local.json")
 
 const recordSchema = z.object({
     schema: z.literal("starci/deps-install-local@1"),
@@ -98,11 +99,9 @@ export const withPin = (text: string, field: string, name: string, spec: string 
     return `${written}${/\r?\n$/.test(bare) ? eol : ""}`
 }
 
-const recordFile = (root: string): string => join(root, INSTALL_RECORD)
-
 /** The checkout's install record, or undefined when nothing is installed locally. */
 export const readInstallRecord = (root: string): InstallRecord | undefined => {
-    const file = recordFile(root)
+    const file = installRecordFile(root)
     if (!existsSync(file)) return undefined
     let raw: unknown
     try {
@@ -115,8 +114,9 @@ export const readInstallRecord = (root: string): InstallRecord | undefined => {
     return parsed.data
 }
 
-const writeInstallRecord = (root: string, record: InstallRecord): void => {
-    const file = recordFile(root)
+/** Writes the checkout's install record into the tool cache. */
+export const writeInstallRecord = (root: string, record: InstallRecord): void => {
+    const file = installRecordFile(root)
     mkdirSync(dirname(file), { recursive: true })
     writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`)
 }
@@ -188,8 +188,8 @@ const install = async (root: string, requested: readonly Requested[], port: numb
     const kept = (before?.packages ?? []).filter((entry) => !plan.packages.some((one) => one.name === entry.name))
     writeInstallRecord(root, { schema: "starci/deps-install-local@1", registry: registryUrl(port), packages: [...kept, ...plan.packages].toSorted((left, right) => left.name.localeCompare(right.name)) })
     return {
-        data: { mode: "install", registry: registryUrl(port), installed: versions, restored: [], overlayCleared: false, record: INSTALL_RECORD },
-        message: [`installed ${lines.join(", ")} from ${registryUrl(port)}; the pins and package-lock.json name them, and ${INSTALL_RECORD} records what they replaced`, RESTORE_STEP].join("\n"),
+        data: { mode: "install", registry: registryUrl(port), installed: versions, restored: [], overlayCleared: false, record: installRecordFile(root) },
+        message: [`installed ${lines.join(", ")} from ${registryUrl(port)}; the pins and package-lock.json name them, and ${installRecordFile(root)} records what they replaced`, RESTORE_STEP].join("\n"),
     }
 }
 
@@ -242,9 +242,9 @@ const restore = async (root: string): Promise<{ readonly data: InstallLocalData;
     }
     const left = lockfileReferences(root)
     if (left.length > 0) throw new Refusal("INSTALL_LOCAL_RESTORE_INCOMPLETE", `${left.slice(0, 3).join(", ")} still names a registry on this machine after the pins were put back (${reverted.skipped.join("; ") || "no pin was skipped"}); fix those pins to npm versions and run the restore again`)
-    rmSync(recordFile(root), { force: true })
+    rmSync(installRecordFile(root), { force: true })
     restored.push(...record.packages.map((one) => one.name))
-    lines.push(`restored ${restored.join(", ")} to the pins ${INSTALL_RECORD} recorded; package-lock.json names npm again`, ...(overlayCleared ? ["cleared the record of the removed overlay"] : []), ...reverted.skipped.map((one) => `warning: ${one}`))
+    lines.push(`restored ${restored.join(", ")} to the pins ${installRecordFile(root)} recorded; package-lock.json names npm again`, ...(overlayCleared ? ["cleared the record of the removed overlay"] : []), ...reverted.skipped.map((one) => `warning: ${one}`))
     return { data: { mode: "restore", registry: "", installed: [], restored, overlayCleared, record: undefined }, message: lines.join("\n") }
 }
 
@@ -252,7 +252,7 @@ const restore = async (root: string): Promise<{ readonly data: InstallLocalData;
  * `starci deps install-local <package>[@version]...`: the app side of the local registry. For each named package it takes the local
  * version `deps publish-local` published last (or the one named), sets every requirement of the package in the app's manifests to it
  * (an `overrides` entry for a package nothing requires), runs `npm install` with `@starci` resolving from the registry on this machine
- * and every resolved host kept (`--replace-registry-host=never`), and records the replaced pins in `.starciwork/install-local.json`.
+ * and every resolved host kept (`--replace-registry-host=never`), and records the replaced pins in the untracked tool cache (`install-local.json` beside the check journal).
  * `--restore` puts those pins back and lets npm install the served versions, so no file naming the machine is committed
  * (`DEPS_LOCAL_REGISTRY_COMMITTED`). An install is dry until `--execute`; the restore acts at once.
  */
@@ -264,7 +264,7 @@ export const depsInstallLocalVerb = defineVerb({
     roles: WRITERS,
     schema: "starci/deps-install-local@1",
     flags: {
-        packages: { kind: "rest", summary: "the packages (grammar or @starci/grammar), each with an optional @<version> naming a local version; default the latest local version" },
+        packages: { kind: "rest", summary: "the packages (grammar or @starci/grammar; starci-harness for the CLI), each with an optional @<version> naming a local version; default the latest local version" },
         execute: { kind: "boolean", summary: "change the pins and install (default: print the plan only)" },
         restore: { kind: "boolean", summary: "put the recorded npm pins back and install them; also clears a record of the removed overlay" },
     },

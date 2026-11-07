@@ -180,7 +180,7 @@ test('all stdin-reading guard children bound oversized input without waiting for
 });
 
 
-test('a complete main ref list reaches the bundled secret scanner without release evidence, and then the branch checks (no checked-out commit here)', t => {
+test('a complete main ref list reaches the bundled secret scanner without release evidence, and then the branch checks (main alone into an empty remote is refused)', t => {
   const { root } = fixture(t);
   const head = 'a'.repeat(40);
   const calls: { cwd: string; from: string; to: string }[] = [];
@@ -189,7 +189,7 @@ test('a complete main ref list reaches the bundled secret scanner without releas
     return { ok: true, findings: [] };
   } });
   assert.equal(result.length, 1);
-  assert.match(result[0] ?? '', /^BRANCH_MAIN_NOT_CHECKED_OUT/);
+  assert.match(result[0] ?? '', /^BRANCH_MAIN_NOT_ON_DEV.*pushes main and dev together/);
   assert.equal(calls.length, 1);
   assert.equal(calls[0]!.cwd, root);
   assert.equal(calls[0]!.to, head);

@@ -2,7 +2,7 @@
 // Built with the CLI, run by `npm test`.
 import assert from "node:assert/strict"
 import test from "node:test"
-import { packedFilename } from "./publish-local.js"
+import { packedFilename } from "./pack-stamped.js"
 
 const report = JSON.stringify([{ id: "@starci/grammar@0.25.2", filename: "starci-grammar-0.25.2.tgz", files: [{ path: "dist/index.js" }] }], null, 2)
 

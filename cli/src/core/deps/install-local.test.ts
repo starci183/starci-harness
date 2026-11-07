@@ -1,13 +1,14 @@
 // The app side of the local registry: the argument forms, the pin edits an install and its restore make, and the refusal of the removed overlay.
 // Real files in a scratch folder with the state base pointed at a temp folder; built with the CLI, run by `npm test`.
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 import { projectDir } from "../../harness/ledger.js"
 import { captureGitSync } from "../../shared/git.js"
-import { parseRequested, withPin } from "./install-local.js"
+import { installRecordFile, parseRequested, readInstallRecord, withPin, writeInstallRecord } from "./install-local.js"
+import { isHarnessPackage, packageName, pinsOf, parseManifest } from "./packages.js"
 import { clearOverlayRecord, refuseRecordedOverlay } from "./overlay-refusal.js"
 
 void test("a package argument is a name, scoped or not, with an optional local version", () => {
@@ -61,4 +62,39 @@ void test("a project that still records the removed overlay is refused with one 
     assert.equal(clearOverlayRecord(root), true)
     refuseRecordedOverlay(root)
     assert.equal(clearOverlayRecord(root), false)
+})
+
+void test("the CLI's own unscoped name resolves: the packages of the harness are the @starci scope and starci-harness", () => {
+    assert.equal(packageName("starci-harness"), "starci-harness")
+    assert.equal(packageName("hfs"), "@starci/hfs")
+    assert.equal(isHarnessPackage("starci-harness"), true)
+    assert.equal(isHarnessPackage("@starci/hfs"), true)
+    assert.equal(isHarnessPackage("starci-harness-extra"), false)
+    assert.equal(isHarnessPackage("react"), false)
+    assert.deepEqual(parseRequested("starci-harness"), { name: "starci-harness", version: undefined })
+    assert.deepEqual(parseRequested("starci-harness@1.1.0-alpha.90.local.2"), { name: "starci-harness", version: "1.1.0-alpha.90.local.2" })
+    const manifest = parseManifest('{"devDependencies":{"starci-harness":"1.1.0-alpha.90","@starci/hfs":"6.2.1","react":"19.0.0"}}', "package.json")
+    assert.deepEqual(
+        pinsOf(manifest, "package.json").map((pin) => pin.name),
+        ["starci-harness", "@starci/hfs"],
+    )
+})
+
+void test("the install record lands in the untracked tool cache, never in .starciwork, and reads back", (t) => {
+    const root = scratch(t)
+    const cache = join(root, "..", "tool-cache")
+    const before = process.env.STARCI_CACHE_HOME
+    process.env.STARCI_CACHE_HOME = cache
+    t.after(() => {
+        if (before === undefined) delete process.env.STARCI_CACHE_HOME
+        else process.env.STARCI_CACHE_HOME = before
+    })
+    const file = installRecordFile(root)
+    assert.ok(file.startsWith(cache), `${file} is under the tool cache ${cache}`)
+    assert.ok(!file.includes(".starciwork"))
+    assert.equal(readInstallRecord(root), undefined)
+    const record = { schema: "starci/deps-install-local@1" as const, registry: "http://127.0.0.1:4873", packages: [{ name: "starci-harness", version: "1.1.0-alpha.90.local.1", pins: [{ file: "package.json", field: "devDependencies", spec: "1.1.0-alpha.90" }] }] }
+    writeInstallRecord(root, record)
+    assert.deepEqual(readInstallRecord(root), record)
+    assert.equal(existsSync(join(root, ".starciwork")), false)
 })

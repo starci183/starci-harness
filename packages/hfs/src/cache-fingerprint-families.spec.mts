@@ -227,8 +227,10 @@ function hfsAt(t: { after(fn: () => void): void }, version: string): string {
 test('a @starci package resolved from a registry on this machine, linked, or without integrity has no portable fingerprint; a published install has', () => {
   const published = { version: '1.0.0', integrity: 'sha512-a', resolved: 'https://registry.npmjs.org/@starci/x/-/x-1.0.0.tgz' };
   assert.equal(localReasonOf('x', published, false), null);
-  assert.match(localReasonOf('x', { ...published, resolved: 'http://127.0.0.1:4873/@starci/x/-/x-1.0.1-local.1.tgz' }, false) ?? '', /installed from a registry on this machine \(starci deps install-local\)/u);
+  assert.match(localReasonOf('x', { ...published, resolved: 'http://127.0.0.1:4873/@starci/x/-/x-1.0.1-local.1.tgz' }, false) ?? '', /installed from a registry on this machine and carries no source digest \(starci deps install-local\)/u);
   assert.match(localReasonOf('x', { ...published, resolved: 'http://localhost:4873/x.tgz' }, false) ?? '', /registry on this machine/u);
   assert.match(localReasonOf('x', published, true) ?? '', /linked or copied from a local folder/u);
   assert.match(localReasonOf('x', { version: '1.0.0' }, false) ?? '', /no recorded integrity/u);
+  assert.equal(localReasonOf('x', { ...published, resolved: 'http://127.0.0.1:4873/@starci/x/-/x-1.0.1-local.1.tgz' }, false, 'f'.repeat(64)), null, 'a build that carries a source digest is portable from any registry');
+  assert.match(localReasonOf('x', published, true, 'f'.repeat(64)) ?? '', /linked or copied from a local folder/u, 'a linked folder is judged by its files, whatever its manifest says');
 });

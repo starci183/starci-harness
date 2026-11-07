@@ -13,6 +13,13 @@ export const packageVersion = (): string => {
     return "unknown"
 }
 
+/** The npm name of this CLI package (cli/package.json `name`): the one unscoped package of the harness. */
+export const cliPackageName = (): string => {
+    const parsed: unknown = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"))
+    if (typeof parsed === "object" && parsed !== null && "name" in parsed && typeof parsed.name === "string") return parsed.name
+    return "starci-harness"
+}
+
 /** `starci version`: the CLI package version and the Node it runs on. */
 export const versionVerb = defineVerb<VersionData, Record<string, never>>({
     path: ["version"],

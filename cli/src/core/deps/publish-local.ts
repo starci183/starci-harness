@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { z } from "zod"
@@ -17,7 +17,7 @@ import { isHarnessCheckout } from "../release/push-gate.js"
 import { ensureRegistry, PORT, registryFlags, registryState, registryUrl, writePublishNpmrc } from "./local-registry.js"
 import { localVersionOf, nextLocalNumber } from "./local-version.js"
 import { buildPackage, parseManifest, tail } from "./packages.js"
-import { withManifest } from "./tarball.js"
+import { packStamped } from "./pack-stamped.js"
 
 interface Row {
     readonly package: string
@@ -88,39 +88,12 @@ export const localManifest = (text: string, version: string, siblings: ReadonlyM
     return `${JSON.stringify(edited, null, 2)}\n`
 }
 
-const packSchema = z.array(z.object({ filename: z.string() })).min(1)
-
-/**
- * The tarball name `npm pack --json` reports. Its stdout carries what the package's lifecycle scripts print (a `prepack` build) before the JSON,
- * so the report is read from the last line that opens the JSON array; undefined when there is none.
- */
-export const packedFilename = (stdout: string): string | undefined => {
-    const lines = stdout.split(/\r?\n/u)
-    for (let at = lines.length - 1; at >= 0; at -= 1) {
-        if (lines[at] !== "[") continue
-        let raw: unknown
-        try {
-            raw = JSON.parse(lines.slice(at).join("\n"))
-        } catch {
-            continue
-        }
-        const parsed = packSchema.safeParse(raw)
-        if (parsed.success) return parsed.data[0]?.filename
-    }
-    return undefined
-}
-
-/** Packs the package folder as `npm pack` does (its lifecycle scripts run there), publishes the tarball with its manifest rewritten in memory, and returns nothing: the folder keeps the version in git. */
-const publishOne = async (given: { readonly pkg: WorkspacePackage; readonly row: Row; readonly siblings: ReadonlyMap<string, string>; readonly port: number; readonly npmrc: string }): Promise<void> => {
-    const { pkg, row, siblings, port, npmrc } = given
+/** Packs the package folder with its source digest stamped and its manifest rewritten in memory (the version in git never changes), and publishes the tarball to the local registry. */
+const publishOne = async (given: { readonly pkg: WorkspacePackage; readonly root: string; readonly row: Row; readonly siblings: ReadonlyMap<string, string>; readonly port: number; readonly npmrc: string }): Promise<void> => {
+    const { pkg, root, row, siblings, port, npmrc } = given
     const scratch = mkdtempSync(join(tmpdir(), "starci-publish-local-"))
     try {
-        const packed = await withHeavySlot("build", `npm pack ${row.package}`, pkg.dir, {}, (held) => captureNpm(["pack", "--pack-destination", scratch, "--json"], pkg.dir, held.options))
-        const filename = packedFilename(packed.stdout)
-        if (packed.exitCode !== 0 || filename === undefined) throw stepFailed(`npm pack of ${row.package}`, packed)
-        const archive = join(scratch, filename.replaceAll("/", "-").replace(/^@/, ""))
-        const local = join(scratch, `${row.localVersion}.tgz`)
-        writeFileSync(local, withManifest(readFileSync(archive), (text) => localManifest(text, row.localVersion, siblings)))
+        const local = await packStamped({ pkg, root, scratch, name: `${row.localVersion}.tgz`, edit: (text) => localManifest(text, row.localVersion, siblings) })
         const published = await withHeavySlot("build", `npm publish ${row.package}`, pkg.dir, {}, (held) => captureNpm(["publish", local, "--tag", LOCAL_TAG, "--provenance=false", "--userconfig", npmrc, ...registryFlags(port)], scratch, held.options))
         if (published.exitCode !== 0) throw stepFailed(`npm publish of ${row.package}@${row.localVersion} to ${registryUrl(port)}`, published)
         const view = await captureNpm(["view", `${row.package}@${row.localVersion}`, "version", ...registryFlags(port)], scratch)
@@ -147,7 +120,7 @@ const publishDue = async (context: VerbContext, port: number, given: { readonly 
             const row = rows.find((one) => one.dir === dir)
             if (row === undefined) return
             context.progress(`publishing ${row.package}@${row.localVersion} to ${registryUrl(port)}`)
-            await publishOne({ pkg, row, siblings, port, npmrc })
+            await publishOne({ pkg, root, row, siblings, port, npmrc })
             published.push(`${row.package}@${row.localVersion}`)
         },
     )

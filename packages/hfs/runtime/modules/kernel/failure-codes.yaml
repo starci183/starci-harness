@@ -3341,9 +3341,11 @@ HFS_CANON_PIN_DRIFT:
     - "Phiên bản viết dạng khoảng (^, ~) thay vì phiên bản chính xác"
     - "Một workspace giữ phiên bản cũ của cùng phụ thuộc"
     - "Một gói @starci khai báo dạng file: hoặc khoảng phiên bản thay vì phiên bản chính xác trên registry"
+    - "Một bản dựng cục bộ (`<phiên bản>-local.<n>`) cài bằng `starci deps install-local`: chỉ `--env prod` chặn, `--env local` chỉ liệt kê"
   nextStep_vi: "Đặt phụ thuộc về đúng phiên bản chính xác ghi trong knowledge/hfs/canon-pins.yaml rồi cài lại từ npm registry. Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra; không cần ai can thiệp thêm."
   owner: op-retry
   kind: check-finding
+  localOnly: true
 
 HFS_CI_MISSING_CANON:
   title: "CI runs the pinned `starci app check --gate lint`; pre-push runs typecheck and lint"
@@ -3794,10 +3796,11 @@ HFS_CHECK_CACHE_UNPORTABLE:
   title_vi: "Máy này không ghi được cache kiểm tra mà CI tin được"
   meaning_vi: "Fingerprint của lần chạy không di động: một gói `@starci/*` hoặc CLI được link hay chép từ thư mục cục bộ (không có integrity ghi lại), nên cache không được ghi và lần push không mang bản ghi ấm."
   causes_vi:
-    - "Đang dùng một gói harness cài từ registry cục bộ (`starci deps install-local`) hoặc một bản link của gói"
-  nextStep_vi: "Chạy `starci deps install-local --restore`, rồi `starci app check`, commit `.starcistacks/cache/` và push."
+    - "Đang dùng một gói harness cài từ registry cục bộ (`starci deps install-local`) mà bản dựng chưa mang `starciSource` (dấu nguồn), hoặc một bản link của gói"
+  nextStep_vi: "Chạy `starci deps install-local --restore`, rồi `starci app check --env prod`, commit `.starcistacks/cache/` và push."
   owner: op-retry
   kind: check-finding
+  localOnly: true
 
 HFS_CHECK_CACHE_FILE_TOO_LARGE:
   title: "A committed check cache file is too large to push"
@@ -4632,7 +4635,7 @@ BRANCH_MAIN_NOT_CHECKED_OUT:
 HFS_DEV_BRANCH_MISSING:
   title: "An app repository has no dev branch"
   title_vi: "Repository của app không có nhánh dev"
-  meaning_vi: "Một app giữ đúng hai nhánh dài hạn là main và dev: dev tách từ main và luôn bằng hoặc đi trước main, main chỉ dời tới một commit đã có trên dev. starci app check đầy đủ cảnh báo khi repository không có nhánh dev, ở máy hoặc là origin/dev."
+  meaning_vi: "Một app giữ đúng hai nhánh dài hạn là main và dev: dev tách từ main và luôn bằng hoặc đi trước main, main chỉ dời tới một commit đã có trên dev. starci app check đầy đủ báo lỗi (đỏ ở cả --env local và --env prod) khi repository không có nhánh dev, ở máy hoặc là origin/dev."
   causes_vi:
     - "App chưa từng tạo nhánh dev (vi phạm R388)."
   nextStep_vi: "Tạo dev từ main (git branch dev main) và đẩy lên origin; công việc mới tách từ dev và merge lại vào dev."

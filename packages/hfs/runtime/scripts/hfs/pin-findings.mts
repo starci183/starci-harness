@@ -6,10 +6,12 @@ import { pinMiss } from '../lib/pin-range.mjs';
 
 const DEP_SECTIONS = ['dependencies', 'devDependencies'];
 // A pin row may carry a same-minor `range` (the Grammar family and the two canons): an exact version inside it meets it.
+/** A spec naming a build of the local registry (`<version>-local.<n>`, cli/src/core/deps/local-version.ts): a pin only the restore can meet. */
+const LOCAL_BUILD = /[-.]local\.\d+$/u;
 const pinnedSpec = (spec: string, pin: CanonPin): string | null => pinMiss(typeof pin.range === 'string' ? pin.range : pin.version, spec);
 
 /** One canon-pin drift finding. */
-export interface PinFinding { code: 'HFS_CANON_PIN_DRIFT'; level: 'error'; path: string; dependency: string; section: string; pinned: string; declared: string; message: string }
+export interface PinFinding { code: 'HFS_CANON_PIN_DRIFT'; level: 'error'; path: string; dependency: string; section: string; pinned: string; declared: string; message: string; local?: true }
 
 function pinFileFindings(repoRoot: string, file: string, profile: string, pins: CanonPins): PinFinding[] {
   const findings: PinFinding[] = [];
@@ -22,7 +24,7 @@ function pinFileFindings(repoRoot: string, file: string, profile: string, pins: 
       const spec = pkg[section]?.[name];
       if (spec === undefined) continue;
       const drift = pinnedSpec(spec, pin);
-      if (drift) findings.push({ code: 'HFS_CANON_PIN_DRIFT', level: 'error', path: file, dependency: name, section, pinned: typeof pin.range === 'string' ? pin.range : pin.version, declared: spec, message: `${name} in ${file} ${section}: ${drift}` });
+      if (drift) findings.push({ code: 'HFS_CANON_PIN_DRIFT', level: 'error', path: file, dependency: name, section, pinned: typeof pin.range === 'string' ? pin.range : pin.version, declared: spec, message: `${name} in ${file} ${section}: ${drift}`, ...(LOCAL_BUILD.test(spec) ? { local: true as const } : {}) });
     }
   }
   return findings;

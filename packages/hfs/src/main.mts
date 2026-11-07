@@ -1,6 +1,6 @@
 // The @starci/hfs implementation behind `starci app`: one repository, `<app>/`, with one package.json, lockfile and node_modules
 // at its root and two sides, be/ and fe/, declared by the one hfs.json of kind app. Every verb runs at the app root.
-//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|build|audit|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
+//   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|build|audit|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--env local|prod] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
 //                                            every tracked path has a slot; required files exist; nothing forbidden or
 //                                            tracked-that-must-be-ignored; pins match; every managed file equals its render
 //                                            (sync/managed.mts, the .gitignore block and sonar-project.properties included); no empty or ghost
@@ -20,7 +20,9 @@
 //                                            records. A missing cache or a fingerprint change selects full automatically. Repeat --gate to select gates (a selector runs
 //                                            those gates alone, with no parity and no cache verdict); sonar and codecov select the same combined baseline predictions, not
 //                                            server verdicts. --fresh is the escape hatch for a broken or suspect cache: it ignores the records, recomputes the selected
-//                                            families from scratch and writes the refreshed records (commit them, then run plain app check). Never for routine use.
+//                                            families from scratch and writes the refreshed records (commit them, then run app check again). Never for routine use.
+//                                            --env local|prod (default local) says what the run is judged fit for: both judge the same code checks; local lists the findings only a
+//                                            local-registry loop causes (failure-codes.yaml `localOnly`) as report-only, prod (the hook, CI, the release gate) blocks on them.
 //                                            Each family prints one diagnosis line (full or diff and why, checked, reused, findings new, known, fixed);
 //                                            progress goes to stderr (--quiet silences it).
 //                                            --coverage-from <lcov> judges a coverage report produced elsewhere (the merge of a sharded unit run) and records nothing.
@@ -117,6 +119,7 @@ import { committedLintCounts, rangeTouched, ratchetBase, ratchetFindings, sessio
 import { newCodeSince, runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
 import { createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
+import { CHECK_ENVS, checkEnvOf, judgedForEnv, localOnlyCodes, localReported, localVerdictLine, type CheckEnv } from '../runtime/scripts/hfs/check-env.mjs';
 import { DEFAULT_FAMILIES, mergeAppPass, runDbStep, runFormatStep, runStructureStep, runWiringStep, type AppPassParts, type AppRunInput } from '../cache/run.mjs';
 import { CHECK_GRAPH, createLanes, formatStepRows, runGraph, stepRow, type StepBody, type StepId } from '../cache/schedule.mjs';
 import { runParityFamilies, type ParityRun } from '../cache/parity-family.mjs';
@@ -220,7 +223,7 @@ const PARSED: Record<string, ParsedVerb> = {
     ],
   },
   remove: { run: removeMain, forms: [{ operands: 'module <name>', flags: [] }] },
-  check: { run: checkMain, value: ['--coverage-from', '--shard', '--side', '--out'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--fix', '--fresh', '--profile', '--ratchet'], edition: true, forms: [{ only: { boolean: ['--json', '--fix', '--fresh'], list: GATE_FLAGS, value: ['--coverage-from', '--shard', '--side', '--out'] } }, { only: { boolean: ['--staged'] }, edition: false }, { only: { boolean: ['--ratchet'] }, edition: false }, { only: { boolean: ['--profile', '--json'], list: GATE_FLAGS }, edition: false }] },
+  check: { run: checkMain, value: ['--coverage-from', '--shard', '--side', '--out', '--env'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--fix', '--fresh', '--profile', '--ratchet'], edition: true, forms: [{ only: { boolean: ['--json', '--fix', '--fresh'], list: GATE_FLAGS, value: ['--coverage-from', '--shard', '--side', '--out', '--env'] } }, { only: { boolean: ['--staged'] }, edition: false }, { only: { boolean: ['--ratchet'] }, edition: false }, { only: { boolean: ['--profile', '--json'], list: GATE_FLAGS }, edition: false }] },
   slot: { run: slotMain, boolean: ['--json'], forms: [{ operands: '<path>' }] },
   emit: { run: emitMain, forms: [{}] },
 };
@@ -232,7 +235,7 @@ const PARSED_FLAGS = new Set([...Object.values(PARSED).flatMap(flagsOf), '--edit
 /** The placeholder of a value flag in the usage; any other prints as <name>. */
 const PLACEHOLDERS: Record<string, string> = {
   '--gate': `<${CHECK_GATES.join('|')}>`,
-  '--registry-visibility': 'public|private', '--side': 'be|fe|packages', '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
+  '--registry-visibility': 'public|private', '--side': 'be|fe|packages', '--env': CHECK_ENVS.join('|'), '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
   '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
   '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--image': '<service>=<ref>', '--sha': '<sha>',
   '--previous': '<release>', '--release': '<release>', '--out': '<path>', '--since': '<ISO>', '--timeout': '<seconds>', '--retry': '<seconds>',
@@ -350,7 +353,7 @@ function printCheckOverview(result: Dynamic, out: (text: string) => unknown): vo
 
 function printFindingGroup(code: string, list: Dynamic[], out: (text: string) => unknown): void {
   const first = list[0] as Dynamic;
-  const label = `${String(first.level).toUpperCase()}${first.report === true ? ', REPORT ONLY' : ''}`;
+  const label = `${String(first.level).toUpperCase()}${first.local === true && first.report === true ? ', LOCAL, REPORT ONLY' : first.report === true ? ', REPORT ONLY' : ''}`;
   if (first.engine) out(`\n[${label}] ${code} x${list.length}\n`);
   else out(`\n[${label}] ${code} x${list.length}: ${first.titleVi}\n  ${first.whyVi}\n  -> ${first.nextStepVi}\n`);
   for (const finding of list.slice(0, PER_CODE_LIMIT)) out(`  - ${finding.message}\n`);
@@ -363,7 +366,7 @@ function printCheck(result: Dynamic, out: (text: string) => unknown): void {
   const byCode = new Map<string, Dynamic[]>();
   for (const f of result.findings) byCode.set(f.code, [...(byCode.get(f.code) ?? []), f]);
   for (const [code, list] of byCode) printFindingGroup(code, list, out);
-  out(`\n${counts.error} error finding${counts.error === 1 ? '' : 's'}${counts.reported ? ` (${counts.reported} of them report only, outside the verdict on branch ${result.branchProfile?.profile})` : ''}, ${counts.warning} warning${counts.warning === 1 ? '' : 's'}, ${counts.info} report-only\n`);
+  out(`\n${counts.error} error finding${counts.error === 1 ? '' : 's'}${counts.reported ? ` (${counts.reported} of them report only, outside the verdict on branch ${result.branchProfile?.profile})` : ''}${counts.local ? ` (${counts.local} of them local, report only until the restore)` : ''}, ${counts.warning} warning${counts.warning === 1 ? '' : 's'}, ${counts.info} report-only\n`);
   const counting = Object.entries((result.counting ?? {}) as Record<string, number>).sort(([a], [b]) => a.localeCompare(b));
   if (counting.length) out(`counting (warn, not in the verdict): ${counting.map(([rule, count]) => `${rule} ${count}`).join(', ')}\n`);
 }
@@ -516,7 +519,7 @@ async function coverageParity(repoRoot: string, lcov: string): Promise<Dynamic[]
 }
 
 /** The flags `check --staged` refuses: it is the pre-commit guard alone, so none of the whole-app pass's options means anything with it. */
-const STAGED_REFUSES = ['--json', '--fix', '--fresh', '--coverage-from', '--shard', '--side', '--out', ...GATE_FLAGS] as const;
+const STAGED_REFUSES = ['--json', '--fix', '--fresh', '--coverage-from', '--shard', '--side', '--out', '--env', ...GATE_FLAGS] as const;
 
 /** The family a finding belongs to, for naming it when a verified run disagrees with the cache. */
 function familyOf(finding: { code?: string | null; engine?: string }): FamilyId {
@@ -554,7 +557,7 @@ const NO_VERDICT = new Set(['HOST_HELD', 'HEAVY_DEFERRED']);
  * child admitted by the CLI's governor on its own. A red family never stops another; a step that throws ends the run with its error once the others
  * have ended. The session's fingerprint was taken when it opened and its flush runs once, after every step.
  */
-async function checkRun({ io, selected: requested, full, use, coverageFrom, side, fix = false, whole = false }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined; side?: string | undefined; fix?: boolean; whole?: boolean }): Promise<{ result: Dynamic; seconds: number; raw: LinterRaw }> {
+async function checkRun({ io, selected: requested, full, use, coverageFrom, side, fix = false, whole = false, env = 'local' }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined; side?: string | undefined; fix?: boolean; whole?: boolean; env?: CheckEnv }): Promise<{ result: Dynamic; seconds: number; raw: LinterRaw }> {
   const { cwd: repoRoot, harness, edition, presets, prettier } = io;
   const started = Date.now();
   // The branch profile (branch-profile.mts): a gate it turns off does not run, a gate it reports runs and records but its findings never count.
@@ -687,8 +690,8 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   const verdicts = session === undefined ? [] : verdictFindings(session);
   // The cache verdict of a whole run: the committed cache is what this run on the tree writes, or the run is red (a push would carry stale records).
   if (whole && session !== undefined && flushed !== undefined) {
-    const refusals = freshnessFindings({ root: repoRoot, portable: session.fingerprint.portable, localReasons: session.fingerprint.localReasons, written: flushed.written, removed: flushed.removed });
-    verdicts.push(...withWhy(refusals.map((refusal) => ({ code: refusal.code, level: refusal.level, path: refusal.path, message: refusal.message })), readWhy(skillRoot, refusals.map((refusal) => refusal.code))));
+    const refusals = freshnessFindings({ root: repoRoot, portable: session.fingerprint.portable, localReasons: session.fingerprint.localReasons, localRegistry: session.fingerprint.localRegistry, written: flushed.written, removed: flushed.removed });
+    verdicts.push(...withWhy(refusals.map((refusal) => ({ code: refusal.code, level: refusal.level, path: refusal.path, message: refusal.message, ...(refusal.local === true ? { local: true } : {}) })), readWhy(skillRoot, refusals.map((refusal) => refusal.code))));
   }
   const checked = proof();
   // The families report as their steps end; they are listed in family order.
@@ -706,13 +709,19 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   const linterFindings = newCode.length === 0 ? lintedFindings : lintedFindings.filter((finding) => !newCode.includes(finding));
   if (newCode.length > 0) extra.push(...withWhy(newCode.map((finding) => newCodeLintFinding(finding as typeof finding & { path: string }, branchName)) as Dynamic[], readWhy(skillRoot, [LINT_NEW_CODE])));
   // A finding of a family the profile reports is marked `report`: listed and recorded, never part of the verdict.
-  const findings = [...checked.findings, ...extra, ...verdicts, ...linterFindings].map((finding) => (modes[familyOf(finding)] === 'report' ? { ...finding, report: true } : finding));
+  const branchJudged = [...checked.findings, ...extra, ...verdicts, ...linterFindings].map((finding) => (modes[familyOf(finding)] === 'report' ? { ...finding, report: true } : finding));
+  // `--env local` lists the findings only a local-registry loop causes as report-only (check-env.mts); `--env prod` judges them as every other finding.
+  const localCodes = localOnlyCodes();
+  const findings = judgedForEnv(branchJudged, env, localCodes);
+  const localListed = env === 'local' ? localReported(findings, localCodes) : [];
   // Green only with no error finding outside a report profile (gate-verdict.mts); every finding is still listed.
-  const verdict = gateVerdict(findings.filter(finding => finding.level === 'error' && finding.report !== true));
+  const judged = gateVerdict(findings.filter(finding => finding.level === 'error' && finding.report !== true));
+  const verdict = judged.pass ? { ...judged, line: localVerdictLine(localListed) } : judged;
   const toolErrors = [...(linted?.errors ?? []), ...style.errors, ...ratchetErrors];
   const counts = { ...checked.counts, error: findings.filter(finding => finding.level === 'error').length, warning: findings.filter(finding => finding.level === 'warning').length };
-  const reported = findings.filter(finding => finding.report === true && finding.level === 'error').length;
+  const reported = findings.filter(finding => finding.report === true && finding.level === 'error' && !localListed.includes(finding)).length;
   if (reported > 0) Object.assign(counts, { reported });
+  if (localListed.length > 0) Object.assign(counts, { local: localListed.length });
   const counting: Record<string, number> = {};
   for (const finding of linterFindings) if (finding.level === 'warning') counting[finding.rule] = (counting[finding.rule] ?? 0) + 1;
   const branchProfile = { branch: profile.branch, source: profile.source, profile: profile.profile, modes: profile.modes, notices: profileNotices(profile).filter((notice) => [...requested].some((family) => notice.startsWith(`${family}:`) || (family === 'sonar' && notice.startsWith('codecov:')))) };
@@ -795,6 +804,8 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
   const sonarOut = valueFlag(opts, 'out');
   const fix = booleanFlag(opts, 'fix') === true;
   const fresh = booleanFlag(opts, 'fresh') === true;
+  const env = checkEnvOf(valueFlag(opts, 'env'));
+  if (env === undefined) throw new UsageError(`--env accepts ${CHECK_ENVS.join('|')}; got ${JSON.stringify(valueFlag(opts, 'env'))}`);
   const explicit = selectedFamilies(opts, []);
   if (side !== undefined && !['be', 'fe', PACKAGES].includes(side)) throw new UsageError('LINT_SIDE_INVALID: --side is be, fe or packages');
   if (fix && !explicit.has('lint')) throw new UsageError('--fix runs the linters and needs --gate lint');
@@ -814,7 +825,7 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
   const selected = explicit.size > 0 ? explicit : coverageFrom === undefined ? new Set<FamilyId>(whole ? [...DEFAULT_FAMILIES, ...PARITY_FAMILIES] : DEFAULT_FAMILIES) : new Set<FamilyId>();
   // --fresh: the selected families ignore their records and are recomputed from scratch (and written back).
   const full = fresh ? new Set(selected) : undefined;
-  const { result, seconds, raw } = await checkRun({ io, selected, full, use: coverageFrom !== undefined && explicit.size === 0 ? 'bypass' : 'normal', coverageFrom, side, fix, whole });
+  const { result, seconds, raw } = await checkRun({ io, selected, full, use: coverageFrom !== undefined && explicit.size === 0 ? 'bypass' : 'normal', coverageFrom, side, fix, whole, env });
   if (sonarOut !== undefined) writeSonarImport({ repoRoot, file: path.resolve(repoRoot, sonarOut), findings: result.findings, raw, side });
   if (opts.json) out(`${JSON.stringify(result, null, 2)}\n`);
   else { printCheck(result, out); printCheckProofs(result, out); if (result.gate.line) out(`${result.gate.line}\n`); }

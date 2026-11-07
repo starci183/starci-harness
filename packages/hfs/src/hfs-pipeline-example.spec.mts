@@ -27,7 +27,7 @@ for (const edition of ['lite', 'full']) {
       PREFIX + 'npm run unit',
       PREFIX + 'echo npm run lint',
       'echo ' + PREFIX + 'npm run lint',
-      PREFIX + 'starci app check --gate format',
+      PREFIX + 'starci app check --gate format --env prod',
       PREFIX + 'npx starci-harness@0.0.1 app check --gate lint',
       PREFIX.replace('example-secrets.mjs', 'other-runner.mjs') + 'npm run lint',
       PREFIX.replace('--run . --', '--run other-app --') + 'npm run lint',

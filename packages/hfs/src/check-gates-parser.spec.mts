@@ -141,3 +141,17 @@ test('--fresh is the one escape hatch: it recomputes every family, or the select
   assert.ok(usage.some((line) => line.startsWith('starci app check ') && line.includes('[--fresh]')));
   assert.ok(usage.every((line) => !line.includes('--no-cache')), 'no --no-cache anywhere in the usage');
 });
+
+test('--env names what the run is judged fit for: local (the default) or prod, both reach the same check; anything else, and --env with a staged check, is refused', async (t) => {
+  for (const argv of [[], ['--env', 'local'], ['--env=prod'], ['--env', 'prod', '--gate', 'format']]) {
+    const result = await probe(t, argv);
+    assert.match(result.err, new RegExp(`${PROBE}|HFS_DECLARATION_INVALID`), argv.join(' '));
+    assert.equal(result.calls.length, 1, argv.join(' '));
+  }
+  for (const argv of [['--env'], ['--env', ''], ['--env', 'staging'], ['--env', 'prod', '--env', 'local'], ['--staged', '--env', 'prod'], ['--profile', '--env', 'prod']]) {
+    const result = await probe(t, argv);
+    assert.equal(result.code, 2, argv.join(' '));
+    assert.deepEqual(result.calls, [], argv.join(' '));
+  }
+  assert.ok(USAGE.split('\n').some((line) => line.startsWith('starci app check ') && line.includes('[--env local|prod]')));
+});

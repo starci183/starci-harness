@@ -1,6 +1,6 @@
 {
   "name": "@starci/hfs",
-  "version": "6.2.1",
+  "version": "6.2.2",
   "description": "The StarCi app command implementation for scaffolding, linting, checking and synchronizing one product repository.",
   "type": "module",
   "license": "MIT",
@@ -19,6 +19,10 @@
     ".": {
       "types": "./src/main.d.mts",
       "default": "./src/main.mjs"
+    },
+    "./tool-cache": {
+      "types": "./cache/run-log.d.mts",
+      "default": "./cache/run-log.mjs"
     },
     "./form-bounds": {
       "types": "./emit/form-bounds.d.mts",

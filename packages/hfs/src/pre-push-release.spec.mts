@@ -23,7 +23,7 @@ for (const edition of ['lite', 'full']) {
     const repo = repository(t, target.content);
     git(repo.root, 'tag', '-a', 'v1.2.3', '-m', 'notes');
     const tag = git(repo.root, 'rev-parse', 'refs/tags/v1.2.3');
-    assert.equal(push(repo, [ref('refs/heads/main', repo.head), ref('refs/tags/v1.2.3', tag)]).status, 0);
+    assert.equal(push(repo, [ref('refs/heads/main', repo.head), ref('refs/heads/dev', repo.head), ref('refs/tags/v1.2.3', tag)]).status, 0);
     for (const row of [ref('refs/tags/v1.2.4', repo.head), ref('refs/heads/main', ZERO, repo.head)]) {
       const result = push(repo, [ref('refs/backup/lane', repo.head), row]);
       assert.equal(result.status, 1);

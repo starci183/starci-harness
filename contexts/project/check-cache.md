@@ -11,24 +11,36 @@ run would produce now; whenever the cache cannot prove that, the step runs in fu
 
 For a lane, a lead, an app session and CI alike:
 
-1. Always run plain `starci app check`, with no flags, in every situation: a fix loop, before a commit, before a push, and in CI.
-   The run itself decides what to judge:
+1. Run `starci app check` in a fix loop and before a commit: `--env local`, the default, is the run of a developer machine. The
+   run itself decides what to judge:
    - It reuses every valid cache record.
    - It reruns only what a change invalidated: a code change, or a moved pin such as hfs or a lint package. Run `npm ci` first,
      so the install matches the pins.
    - It runs everything when there is no cache, the same run GitHub CI does.
+
+   The two environments judge the same code: hfs, format, db, wiring, lint, types, tests, coverage, build and audit are identical and
+   blocking in both, and a lint, type or test error is red in both. They differ only in the findings about whether the run is fit to
+   commit, push or release, which a developer iterating on locally built harness packages (`starci deps install-local`) cannot satisfy
+   until `starci deps install-local --restore`. Those are the codes marked `localOnly: true` in `modules/kernel/failure-codes.yaml`, the one
+   list (`packages/hfs/runtime/scripts/hfs/check-env.mts`), and only the instance a local-registry build alone causes:
+   `HFS_CANON_PIN_DRIFT` of a pin naming a `<version>-local.<n>` build, and `HFS_CHECK_CACHE_UNPORTABLE` of a local-registry install whose
+   package carries no source digest ([The fingerprint](#the-fingerprint)). `--env local` lists them marked `LOCAL, REPORT ONLY`, never red, writes no
+   cache for an unportable install, and ends `gate: green for local (not pushable)` when only they remain. `--env prod` blocks them like every
+   other finding: the cache is portable and warm and every pin is served by npm.
 2. Commit the cache as the run left it, with the code it judged. Never edit a record by hand (`HFS_CHECK_CACHE_FORGED`).
-3. Push, and let CI judge. When CI fails, pull the failure and fix it. Don't repeat local full runs before a push.
+3. The managed pre-push hook, the managed CI (`ci.yml`, `cache-verify.yml`) and `starci app release gate` run `--env prod`. Push, and let
+   CI judge. When CI fails, pull the failure and fix it. Don't repeat local full runs before a push.
 4. A bug in `app check` itself (a false finding, wrong env, a path the gate breaks) is fixed in the harness, never worked
    around in the app.
 5. `starci app check --fresh` is the escape hatch for a broken or suspect cache. It ignores the cache, judges everything
    again and rewrites the records. It is not for routine use.
+
 Release with `starci app release gate`: every row runs diff-only against the warm cache, and a red nightly run refuses it
-(`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a green `cache-verify.yml` run; `--full` runs the `app-check` row as `app check --fresh`.
+(`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a green `cache-verify.yml` run; the `app-check` row is `app check --env prod`, and `--full` runs it as `app check --env prod --fresh`.
 
 ## The command surface
 
-`starci app check` with no flag is a whole run: every family against the committed cache (diff-only), the CI-parity families
+`starci app check` with no selector, `--side`, `--fix` or `--coverage-from` is a whole run: every family against the committed cache (diff-only), the CI-parity families
 ([CI parity](#ci-parity)), CI's coverage step, the Sonar scan against the app's server ([Sonar and Codecov](#sonar-and-codecov)), and the cache verdict, which is a hard error. It writes what it judged back
 into the cache. A branch profile ([lint.md](lint.md) PROJECT-LINT-2) changes no cache rule: a family it reports runs and writes
 its records exactly as a blocking one, and a family it turns off runs nothing and writes nothing.
@@ -37,12 +49,16 @@ its records exactly as a blocking one, and a family it turns off runs nothing an
 ignore their records, are recomputed from scratch, and their records are rewritten through the same writer; the cache verdict
 then says whether the committed records changed. There is no other cache mode and no environment variable.
 
+`--env local|prod` (default `local`) says what the run is judged fit for ([The operating procedure](#the-operating-procedure)): it softens no code check and
+changes no cache rule; it only decides whether the findings a local-registry loop alone causes are listed as report-only or block.
+
 `--gate <name>` (repeatable) is a job selector for the parallel jobs of the managed CI, where each job judges one family, and for
 the one-family loop a hook runs; a run with a selector judges those gates alone, with no parity families and no cache verdict.
-Agents run plain `app check`.
+Agents run `app check` with no selector; the hook and CI pass `--env prod`.
 
 ```text
 starci app check
+starci app check --env prod
 starci app check --fresh
 starci app check --gate hfs
 starci app check --gate sonar --gate codecov
@@ -117,7 +133,7 @@ state and stay out of git; `.starcistacks/cache/` holds results only. The journa
 
 ### The nightly verify
 
-The managed `.github/workflows/cache-verify.yml` (slot `app.ci-cache-verify`) runs `starci app check --fresh` on the default
+The managed `.github/workflows/cache-verify.yml` (slot `app.ci-cache-verify`) runs `starci app check --env prod --fresh` on the default
 branch every night and on dispatch: every family is recomputed from scratch, and the run fails (`HFS_CHECK_CACHE_UNWARMED`)
 when the committed records are not the ones it produced, so a cache that lies is found there. Its newest finished run is the
 lock of the release gate (`packages/hfs/release/cache-verify-lock.mts`): green, or none yet, leaves the gate open; red or
@@ -196,7 +212,7 @@ library such as `@starci/auth` re-runs only the results that loaded it. Parts ar
 |---|---|
 | the cache format version | every family |
 | `hfs`: the `@starci/hfs` that runs (rules, slot manifest, failure codes, pins); `pkg:@starci/hfs`, the installed one | hfs, secrets, wiring, db |
-| an installed `@starci/*` package by version and recorded integrity: the canon and Grammar ESLint packages and `stylelint-canon`; `prettier-config`; `tsconfig`; `jest-preset` and `test-world` | lint and sonar; format; types, lint, test and sonar; test and sonar (any other `@starci` package is a library, no part) |
+| an installed `@starci/*` package by its source digest (else by version and recorded integrity, below): the canon and Grammar ESLint packages and `stylelint-canon`; `prettier-config`; `tsconfig`; `jest-preset` and `test-world` | lint and sonar; format; types, lint, test and sonar; test and sonar (any other `@starci` package is a library, no part) |
 | `lock:<family>`: the resolved installs of that family's toolchain in `package-lock.json` (ESLint, typescript-eslint, TypeScript, stylelint and their plugins for lint; Prettier for format; Jest, its runtime and reporters, ts-jest or another transform and TypeScript for test) | that family, and sonar for lint and test |
 | `node`: the Node major the unit specs run on | test, sonar |
 | `hfs.json` | hfs, secrets, wiring, db (the edition and sides their rules, the secret custody and the boot proof judge by), lint, sonar |
@@ -212,9 +228,20 @@ re-runs the programs, specs, proofs and builds that read it and keeps every othe
 `.gitattributes`, `turbo.json`) are no part: those rules run every run, and a cached step that reads one keys it by its hash. The quality profile of
 the policy is not a part (the verdict only counts error findings).
 
-A run whose CLI or any `@starci` package is linked or copied from a local folder (no recorded integrity) has no
-portable fingerprint: it runs in full, says so, and writes nothing into `.starcistacks/cache/`, so a developer testing a
-local package never commits a cache CI cannot match. The platform is not a part: the tools are pinned by the lockfile, and a step whose result
+A harness or tool package is keyed by its source, never by the version string or integrity of one build. When a `@starci` package or
+`starci-harness` is packed (`release publish` in CI and `deps publish-local` alike, `packStamped`), its manifest gets `starciSource`: the sha256 of the
+tracked files of its folder, by path and content, with a changed work-tree file named by its bytes so a dirty build never claims a commit's digest
+(`packages/hfs/cache/fingerprint.mts` `SOURCE_FIELD`; `cli/src/core/deps/pack-stamped.ts`). The `hfs` and `pkg:@starci/*` parts, the install digest
+of every package a record's reads name (`package-closure.mts`) and the lint import graph's install digests use that digest when the installed manifest
+carries one. The `-local.<n>` build of a source and the npm build of the same commit therefore yield identical parts and identical keys, so a run on
+the local build writes records that stay valid after `starci deps install-local --restore`, and CI, which trusts the committed cache at its base
+([Trust](#trust)), reruns nothing for them; a different source yields different keys.
+
+A package without the digest (a build packed before the field existed) is keyed by version and recorded integrity. A run whose CLI or any `@starci`
+package is linked or copied from a local folder (no recorded integrity), or is installed from a registry on this machine and carries no
+source digest, has no portable fingerprint: it runs in full, says so, and writes nothing into `.starcistacks/cache/`, so a developer testing a
+package never commits a cache CI cannot match. `--env local` lists that cache finding only for the registry install
+(`HFS_CHECK_CACHE_UNPORTABLE`, `localOnly`); a linked or copied folder blocks in both environments. The platform is not a part: the tools are pinned by the lockfile, and a step whose result
 differs by platform is a defect the CI verification below exposes.
 
 ## Trust
@@ -224,7 +251,8 @@ differs from its record is judged for real. That alone does not stop a forged re
 findings were deleted by hand, so where the cache is trusted from depends on who runs:
 
 - **On a host** the cache in the working tree is trusted. A local run is the developer's own view; it updates the
-  folder and the developer commits it with the change.
+  folder and the developer commits it with the change. A run on a local-registry build that carries a source digest writes a cache of the same
+  keys the npm build of that source has, so the commit carries it as it is; one without the digest writes none.
 - **In CI** the cache is trusted only as it stands at the trusted base: the merge-base with the default branch for a pull
   request, the first parent for a push to the default branch, the merge-base with the default branch for a release candidate
   or a release tag (whose commit main's CI already verified), and the branch tip for a scheduled or dispatched run on the
@@ -516,9 +544,9 @@ preset's merge one record at a time, so the parent holds about three times the r
   base and runs its jobs diff-only against it: CI runs the families as parallel jobs, so each job selects its family
   (`app check --gate format`, the `lint` job `--gate lint` per side), the unit run is sharded (`--gate test --shard <i>/<n>` per
   job records nothing) and the merge job judges the merged report with `--coverage-from`. The selectors are job selectors of CI and never
-  `--fresh`: one plain run would serialize the families that CI runs in parallel. The managed `cache-verify.yml` runs `app check --fresh`
-  nightly, the managed pre-push hook runs plain `app check`, and the release gate runs every row diff-only against the warm
-  cache unless `--full` is given.
+  `--fresh`: one plain run would serialize the families that CI runs in parallel. Every `app check` of the managed workflows and of the hook
+  carries `--env prod`: `cache-verify.yml` runs `app check --env prod --fresh` nightly, the managed pre-push hook runs `app check --env prod`, and
+  the release gate runs every row diff-only against the warm cache unless `--full` is given.
 - **Scaffold.** `app scaffold` writes the templates above and no cache; the app's first check builds it in full.
 - **Adoption.** `app sync --execute` and `app upgrade` bring an existing app the same templates and never create,
   move or delete cache records; its first run after them is full and writes the folder, which the developer commits.
