@@ -12,17 +12,20 @@ full.
 
 ## The operating procedure
 
-For a lane, a lead and an app session alike:
+For a lane, a lead, an app session and CI alike:
 
-1. Warm once per base: run `starci app check` after a harness pin bump (a fingerprint part changed) or on a new
-   checkout whose cache is cold, and commit `.starcistacks/cache/` with the change. Only the families the bump reads run
-   full; the diagnosis line names the family and the part.
-2. In a fix loop, check only the diff: `starci app check --gate <gate>` or `--side <side>`, and `app check --staged` before a
-   commit. Never `--no-cache` in a loop or in CI.
-3. Commit the cache as the run left it, with the code it judged. Never edit a record by hand (`HFS_CHECK_CACHE_FORGED`).
-4. Push: the pre-push hook runs `starci app check --fresh`, which refuses a cache that run had to change
-   (`HFS_CHECK_CACHE_UNWARMED`) or a host that cannot write a portable one (`HFS_CHECK_CACHE_UNPORTABLE`); commit what it
-   wrote and push again. A push without warm records never reaches CI.
+1. Always run plain `starci app check`, with no flags, in every situation: a fix loop, before a commit, before a push, and in CI.
+   The run itself decides what to judge:
+   - It reuses every valid cache record.
+   - It reruns only what a change invalidated: a code change, or a moved pin such as hfs or a lint package. Run `npm ci` first,
+     so the install matches the pins.
+   - It runs everything when there is no cache, the same run GitHub CI does.
+2. Commit the cache as the run left it, with the code it judged. Never edit a record by hand (`HFS_CHECK_CACHE_FORGED`).
+3. Push, and let CI judge. When CI fails, pull the failure and fix it. Don't repeat local full runs before a push.
+4. A bug in `app check` itself (a false finding, wrong env, a path the gate breaks) is fixed in the harness, never worked
+   around in the app.
+5. `starci app check --fresh` is the escape hatch for a broken or suspect cache. It ignores the cache, judges everything
+   again and rewrites the records. It is not for routine use.
 5. Release with `starci app release gate`: every row runs diff-only against the warm cache. A red nightly verify refuses it
    (`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a green `cache-verify.yml` run; `--full` is the owner's explicit full gate.
 
