@@ -400,10 +400,12 @@ a message), and the quality gate is the one the server holds for the project.
   otherwise skips with a warning. The main analysis and its new-code baseline are never touched.
 - **Verdict.** The scanner exits non-zero: `CI_PARITY_SONAR_SCAN_FAILED`, with the scanner's last lines. The compute-engine
   task fails or the project's gate is ERROR: `CI_PARITY_SONAR_GATE_FAILED`, naming each failed condition. Both are errors.
-- **Not run.** An app with no `sonar-project.properties`, or no Sonar service in its declaration, gets an info line. No token
+- **Not run.** Whenever the scan does not run, the report carries one `sonar scan:` line saying why: the run selects families
+  (only a run with no selector runs the scan), the branch profile turns sonar off, another family is red, the app has no
+  `sonar-project.properties` or no Sonar service in its declaration (these are report lines, never findings). No token
   (no sealed secret or age key on this host), a server that does not answer, a token without the permission the derived
-  project needs, or a verdict the server does not give in time is the warning `CI_PARITY_SONAR_SKIPPED`; the run is never reported
-  green for the scan, and CI judges it.
+  project needs, or a verdict the server does not give in time is the warning `CI_PARITY_SONAR_SKIPPED` and its line; the run is never reported
+  green for the scan, and CI judges it. A scan that runs prints its start, the project key it scanned, its duration and the gate status.
 - **Reuse.** A green verdict is kept in the untracked tool cache (`sonar-scan.json`, beside the run log) by the sha256 of
   the scanned content (every tracked file outside the cache folder, the properties, the coverage and lint reports they
   name), the target, the scanner version and the digest of the gate's conditions as the server holds them now. An unchanged
@@ -444,7 +446,7 @@ parent, worker heap and worker count, each tsc program's heap and the files one 
 planned MB, except that a command admitted while nothing else runs is never held back for memory: no running command will release any, so waiting could not help. It
 runs on the room free RAM leaves (a coverage run on the workers whose planned heaps fit it, its parent heap holding the parent and the first worker, and one worker when not
 even the parent fits), and the run prints a warning naming the shortfall. A child's sampled peak more than 20% over its plan raises that kind's factor for the app's next run
-(`.starciwork/memory-factors.json`, untracked and so per checkout and machine), with a warning, by at most twofold; a peak under 75% of its plan eases a raised factor
+(`memory-factors.json` in the untracked tool cache of slot `app.tool-cache`, so per checkout and machine, never a file of the app), with a warning, by at most twofold; a peak under 75% of its plan eases a raised factor
 back toward 1, and no worker heap is planned above the room free RAM leaves. An out-of-memory names the plan that was in force. `--explain` prints the plan. The per-spec coverage records are held as their
 lines and parsed one at a time (a lazy record, `cache/jsonl.mts`), and their union folds through the preset's merge one record at a time, so the
 parent holds about three times the records' MB, not the seven times their parsed tree took.

@@ -325,6 +325,8 @@ function printCheckOverview(result: Dynamic, out: (text: string) => unknown): vo
 `);
   for (const notice of (result.branchProfile?.notices ?? []) as string[]) out(`  ${notice}
 `);
+  for (const line of (result.predictions ?? []) as string[]) out(`  ${line.trim()}
+`);
   out(`  architecture machine: ${machineDescription(result.machine)}
 `);
   if (result.contracts) out(`  contract snapshots: ${contractDescription(result.contracts)}
@@ -583,9 +585,13 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   }
   if (session !== undefined && selected.has('sonar')) lines.push(...(runSonarForApp(session, { repoRoot })?.lines ?? []));
   // A whole run also runs the app's CI sonar job against the server (cache/sonar-scan-family.mts), when everything before it is green, as CI's sonar job needs lint and coverage.
-  if (whole && session !== undefined && profile.modes.sonar !== 'off') {
+  // Whenever it does not run, the run says why in one line.
+  if (!whole) lines.push('  sonar scan: not run, only a run with no selector, flag or --gate (a whole run) runs it');
+  else if (session === undefined) lines.push('  sonar scan: not run, this run keeps no check cache session');
+  else if (profile.modes.sonar === 'off') lines.push(`  sonar scan: not run, the branch profile ${profile.profile ?? profile.branch ?? 'in force'} turns the sonar gate off`);
+  else {
     const red = [...proof.findings, ...extra].some((finding) => finding.level === 'error' && finding.report !== true) || (eslint?.findings ?? []).some((finding) => finding.severity !== 'warning') || (eslint?.errors.length ?? 0) > 0 || style.errors.length > 0 || stylelintFindings(style.results, repoRoot).some((finding) => finding.level === 'error');
-    if (red) lines.push('  sonar scan: not run, the run is already red (CI runs the sonar job after lint and coverage are green)');
+    if (red) lines.push('  sonar scan: not run, other families are red (CI runs the sonar job after lint and coverage are green)');
     else {
       const progress = session.progress.step('sonar', 'Sonar scan against the server', 1);
       const scan = await runSonarScan({ repoRoot, env: io.env, io: { cwd: repoRoot, stdout: io.stdout, stderr: io.stderr, env: io.env, sops: io.sops, hostIdentity: io.hostIdentity, stackIo: io.stackIo }, run: parityRunner(io), index: session.index, fresh: full?.has('sonar') === true,

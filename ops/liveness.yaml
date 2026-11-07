@@ -121,7 +121,7 @@ heavy:
   #   types       = baseMb + perFileMb x F (one tsc program of a side).
   #   lint chunk  = files per ESLint child: `files` until a run measured a peak per file, then the budget over it, clamped to min..max.
   # Each is clamped to minMb..maxMb. A child whose sampled peak resident memory ran over its plan by more than learnAbovePercent raises that
-  # kind's factor for the app's next run (.starciwork/memory-factors.json), with a warning; the factor never falls below 1.
+  # kind's factor for the app's next run (memory-factors.json in the app's untracked tool cache), with a warning; the factor never falls below 1.
   plan:
     parent: { baseMb: 1024, perRecordMb: 3, minMb: 2048, maxMb: 16384 }
     testParent: { perSpecMb: 6.7, margin: 1.15, minMb: 4096, maxMb: 16384 }

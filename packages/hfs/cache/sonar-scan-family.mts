@@ -146,7 +146,8 @@ function keepVerdict(repoRoot: string, env: NodeJS.ProcessEnv, verdict: Verdict)
 }
 
 /**
- * The Sonar scan of the app: not run (an info line) when the app has no `sonar-project.properties` or declares no Sonar; skipped with a warning when the
+ * The Sonar scan of the app: every outcome is a line of the run (`lines`); a scan that runs prints its start, its duration, the project key it used and the gate
+ * status. Not run (an info line) when the app has no `sonar-project.properties` or declares no Sonar; skipped with a warning when the
  * token, the server or the permission it needs is missing; otherwise the scanner runs against the local target, the server's quality gate of that analysis is
  * read, and a scanner failure or a red gate is an error. A green verdict is reused while the scanned content is the same.
  */
@@ -184,20 +185,23 @@ export async function runSonarScan(input: SonarScanInput): Promise<SonarScanResu
   const kept = input.fresh || key === null ? null : keptVerdict(repoRoot, env);
   if (key !== null && kept?.key === key) return note(`reused, the scanned content and the quality gate are those of the last green scan (${kept.detail})`);
   const where = target.branch === null ? `project ${target.key}` : `branch ${target.branch} of ${target.key}`;
+  const began = Date.now();
+  const startLine = `  sonar scan: started against ${where} (project key ${target.key})`;
+  const took = (): string => `${((Date.now() - began) / 1000).toFixed(1)}s`;
   const command = [...gate.command.filter((word) => !word.startsWith('-Dsonar.projectKey=')), `-Dsonar.projectKey=${target.key}`, ...(target.branch === null ? [] : [`-Dsonar.branch.name=${target.branch}`])];
   fs.rmSync(path.join(repoRoot, '.scannerwork', 'report-task.txt'), { force: true });
   const [program, args] = launch(command, input.platform ?? process.platform);
   const ran = await input.run({ kind: 'build', label: 'app check sonar scan', cwd: repoRoot, argv: [program, ...args], env: { ...env, ...gate.env } });
   if (ran.status !== 0 || ran.error !== undefined) {
     const why = ran.error === undefined ? `exit ${String(ran.status)}` : ran.error.message;
-    return { findings: [{ code: SCAN_FAILED, level: 'error', engine: 'sonar', path: PROPERTIES, message: `the Sonar scanner failed locally as the CI sonar job would (${redact(why)}) against ${where}: ${redact(tailOf(`${ran.stdout}\n${ran.stderr}`))}` }], lines: [`  sonar scan: scanner failed against ${where}`] };
+    return { findings: [{ code: SCAN_FAILED, level: 'error', engine: 'sonar', path: PROPERTIES, message: `the Sonar scanner failed locally as the CI sonar job would (${redact(why)}) against ${where}: ${redact(tailOf(`${ran.stdout}\n${ran.stderr}`))}` }], lines: [startLine, `  sonar scan: scanner failed against ${where} after ${took()} (project key ${target.key})`] };
   }
   const verdict = await sonarQualityGate(ctx, { cwd: repoRoot, host, token });
   const detail = redact(verdict.detail);
   if (verdict.pass) {
     if (key !== null) keepVerdict(repoRoot, env, { key, detail });
-    return note(`quality gate OK against ${where}`);
+    return { findings: [], lines: [startLine, `  sonar scan: quality gate OK against ${where} in ${took()} (project key ${target.key})`] };
   }
-  if (/^RELEASE_SONAR_GATE_(UNREADABLE|TIMEOUT)/u.test(detail)) return { findings: [skipped(detail)], lines: [`  sonar scan: no verdict readable from ${where} (warning)`] };
-  return { findings: [{ code: GATE_FAILED, level: 'error', engine: 'sonar', path: PROPERTIES, message: `the Sonar quality gate of ${where} is red: ${detail}` }], lines: [`  sonar scan: quality gate ERROR against ${where}`] };
+  if (/^RELEASE_SONAR_GATE_(UNREADABLE|TIMEOUT)/u.test(detail)) return { findings: [skipped(detail)], lines: [startLine, `  sonar scan: no verdict readable from ${where} after ${took()} (project key ${target.key}) (warning)`] };
+  return { findings: [{ code: GATE_FAILED, level: 'error', engine: 'sonar', path: PROPERTIES, message: `the Sonar quality gate of ${where} is red: ${detail}` }], lines: [startLine, `  sonar scan: quality gate ERROR against ${where} in ${took()} (project key ${target.key})`] };
 }

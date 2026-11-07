@@ -2,14 +2,17 @@
 // against free RAM, a factor learned after an over-peak run, the parent's re-execution rule, the side a child judges, and admission holding a
 // planned row at its planned MB.
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import { plannedFor, requestSide } from "../core/app/hfs.js"
 import { admission, loadHeavyRules, plannedWorkerCount, testWorkerArgs, type Held, type HeavyRules } from "./heavy.js"
-import { formatPlan, learnPeak, MAX_FACTOR, MEMORY_REEXEC_ENV, needsReexec, planMemory, readFactors, scopeOf, type Scope } from "./memory-plan.js"
+import { factorsPath, formatPlan, learnPeak, MAX_FACTOR, MEMORY_REEXEC_ENV, needsReexec, planMemory, readFactors, scopeOf, type Scope } from "./memory-plan.js"
+
+// The learned factors live in the tool cache; the specs keep it in a scratch folder of their own.
+process.env.STARCI_CACHE_HOME = mkdtempSync(join(tmpdir(), "starci-memory-cache-"))
 
 const opsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "ops")
 const rules: HeavyRules = { ...loadHeavyRules(opsDir), testWorkers: "50%" }
@@ -64,6 +67,10 @@ void test("a child that peaks more than 20% over its plan raises its kind's fact
     const warning = learnPeak(app, "tsc", 8192, 12288, 20)
     assert.match(warning ?? "", /tsc peaked at 12288 MB, over its planned 8192 MB/u)
     assert.equal(readFactors(app).tsc, 1.5)
+    assert.ok(factorsPath(app).startsWith(process.env.STARCI_CACHE_HOME ?? ""), "the factors are written in the tool cache")
+    assert.ok(existsSync(factorsPath(app)))
+    assert.equal(existsSync(join(app, ".starciwork")), false, "the governor writes nothing into the app's .starciwork")
+    assert.deepEqual(readdirSync(app), [], "a learned factor leaves no file in the app")
     assert.equal(learnPeak(app, "eslint", 100, 1000, 20), null, "a kind the plan does not size learns nothing")
     const planned = planMemory({ sides: { be: { specs: 0, sources: 4000 } }, coverageMb: 0, recordMb: 0, largestMb: 0 }, rules, 32 * 1024, 8, readFactors(app))
     assert.equal(must(must(planned).sides.be).typesMb, Math.ceil(((1536 + 0.95 * 4000) * 1.5) / 512) * 512)

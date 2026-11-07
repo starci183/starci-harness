@@ -3,6 +3,7 @@
 ## 1.1.0-alpha.87 - 2026-11-07
 
 - Changed: `starci app check` is green only with zero error findings, so `gate.errorLimit` is removed from policy/quality.yaml, its schema field is gone and the CLI no longer hands `STARCI_GATE_ERROR_LIMIT` to `@starci/hfs`. quality.yaml is now a strict schema: a `gate` key (or any other unknown key) is refused `POLICY_INVALID`, and for `gate` the message says there is no error limit to set. Spec: `src/harness/policy-gate.test.ts`. The hfs requirement follows the pin once npm serves `@starci/hfs` 6.0.6 (`cli-follow`).
+- Fixed: the learned memory factors are host state in the app's untracked tool cache (`memory-factors.json` in `${STARCI_CACHE_HOME:-%LOCALAPPDATA%/StarCi/cache}/<repo>/app-check/`, `factorsPath` in `src/harness/memory-plan.ts`), no longer `.starciwork/memory-factors.json` in the app. A plain `starci app check` in a lite app writes nothing into its `.starciwork`, so the same run's hfs structure family no longer reports `HFS_STARCIWORK_LITE_FORBIDDEN`. Spec: `src/harness/memory-plan.test.ts`.
 
 ## 1.1.0-alpha.86 - 2026-11-07
 

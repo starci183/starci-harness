@@ -3,6 +3,7 @@
 ## 6.0.6 - 2026-11-07
 
 - Changed: `starci app check` (and `--gate lint`) is green only with zero error findings. The threshold is gone: a run with fewer than 20 error findings no longer exits 0, and no code is a "hard blocker" any more, since every error blocks. The verdict is one rule over the error findings that the branch profile does not report (`gateVerdict` in `runtime/scripts/hfs/gate-verdict.mts`, formerly `gate-threshold.mts`): `gate: red, N error finding(s)` or green with no line. `GATE_ERROR_LIMIT`, `gateErrorLimit`, `STARCI_GATE_ERROR_LIMIT`, `GATE_THRESHOLD_RULING`, `HARD_BLOCKERS` and the `hard` field of the report's `gate` are removed. Specs: `src/gate-verdict.spec.mts`, `src/check-eslint.spec.mts`.
+- Fixed: a run that does not run the Sonar scan prints one `sonar scan:` line saying why (the run selects families, the branch profile turns sonar off, another family is red, no token or server, no properties or Sonar service). The check's `predictions` lines, which carried the scan's lines, were never printed in the text report; `printCheckOverview` prints them. A scan that runs prints its start, the project key it scanned, its duration and the gate status. Specs: `src/check-eslint.spec.mts`, `src/check-cache-sonar-scan.spec.mts`.
 
 ## 6.0.5 - 2026-11-07
 

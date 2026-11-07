@@ -2,11 +2,12 @@
 // git index and file sizes alone (per side the unit specs and sources; the MB of the per-spec coverage records and of every cache record), and each
 // heap is sized from that scope with the fitted constants of ops/liveness.yaml heavy.plan, instead of one figure per kind. The plan reaches @starci/hfs
 // through STARCI_MEMORY_PLAN (it puts the planned heap on each child it asks the CLI to run) and the governor holds each running row at its planned MB.
-// What a child really peaked at is learned per app and per machine (.starciwork/memory-factors.json, untracked): a kind that ran over its plan is planned
+// What a child really peaked at is learned per app and per machine (memory-factors.json in the app's untracked tool cache, never in the app): a kind that ran over its plan is planned
 // higher next run, never beyond MAX_FACTOR times its fitted heap, and a kind that ran well under its plan eases back toward the fitted one.
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
-import { availableParallelism, freemem } from "node:os"
-import { dirname, join } from "node:path"
+import { createHash } from "node:crypto"
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs"
+import { availableParallelism, freemem, homedir } from "node:os"
+import { basename, dirname, join, resolve } from "node:path"
 import { getHeapStatistics } from "node:v8"
 import { captureGitSync } from "../shared/git.js"
 import type { HeavyRules } from "./heavy.js"
@@ -15,8 +16,24 @@ import type { HeavyRules } from "./heavy.js"
 export const MEMORY_PLAN_ENV = "STARCI_MEMORY_PLAN"
 /** Set on the re-executed check, so it never re-executes again. */
 export const MEMORY_REEXEC_ENV = "STARCI_MEMORY_REEXEC"
-/** The app's learned factors, under its untracked work folder. */
-export const FACTORS_FILE = join(".starciwork", "memory-factors.json")
+/** The learned factors' file name, in the app's untracked tool cache. */
+export const FACTORS_FILE = "memory-factors.json"
+
+/**
+ * The learned factors' file of the app at `appRoot`: `memory-factors.json` in its untracked tool cache of slot `app.tool-cache`,
+ * `${STARCI_CACHE_HOME:-%LOCALAPPDATA%/StarCi/cache}/<repo>/app-check/` (the folder `@starci/hfs` writes the run log to, `toolCacheDir` of its
+ * `cache/run-log.mts`), so the factors are host state of this checkout and never a file in the app.
+ */
+export const factorsPath = (appRoot: string, env: NodeJS.ProcessEnv = process.env): string => {
+    const home = env.STARCI_CACHE_HOME ?? (process.platform === "win32" ? join(env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"), "StarCi", "cache") : join(env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "starci"))
+    let real = resolve(appRoot)
+    try {
+        real = realpathSync(real)
+    } catch {
+        // the given path names the app
+    }
+    return join(home, `${basename(real)}-${createHash("sha256").update(real).digest("hex").slice(0, 12)}`, "app-check", FACTORS_FILE)
+}
 /** The most a learned factor multiplies a fitted heap by, however high one run peaked: a factor is a correction, never a new model. */
 export const MAX_FACTOR = 2
 /** A run that peaked under this percent of its plan eases its kind's factor back (to at most this share of it per run). */
@@ -135,7 +152,7 @@ export const measureScope = (appRoot: string): Scope | null => {
 /** The learned factors of the app at `appRoot`; none when it has learned nothing. */
 export const readFactors = (appRoot: string): Factors => {
     try {
-        const parsed = JSON.parse(readFileSync(join(appRoot, FACTORS_FILE), "utf8")) as Record<string, unknown>
+        const parsed = JSON.parse(readFileSync(factorsPath(appRoot), "utf8")) as Record<string, unknown>
         const out: Record<string, number> = {}
         for (const [kind, value] of Object.entries(parsed)) if (typeof value === "number" && Number.isFinite(value) && value > 0) out[kind] = value
         return out
@@ -199,7 +216,7 @@ export const formatPlan = (plan: MemoryPlan): string[] => {
         ...Object.entries(plan.sides).flatMap(([side, sized]) => sized === undefined ? [] : `memory plan: ${side} test parent ${String(sized.testParentMb)} MB, ${String(sized.workers)} workers at ${String(sized.testWorkerMb)} MB, tsc ${String(sized.typesMb)} MB`),
     ]
     const learned = Object.entries(plan.factors).filter(([, value]) => value > 1)
-    if (learned.length > 0) lines.push(`memory plan: learned factors ${learned.map(([kind, value]) => `${kind} x${value.toFixed(2)}`).join(", ")} (${FACTORS_FILE})`)
+    if (learned.length > 0) lines.push(`memory plan: learned factors ${learned.map(([kind, value]) => `${kind} x${value.toFixed(2)}`).join(", ")} (${FACTORS_FILE} in the app's tool cache)`)
     return lines
 }
 
@@ -228,13 +245,13 @@ export const learnPeak = (appRoot: string, kind: string, plannedMb: number, peak
     const next = raise ? Math.min(MAX_FACTOR, held * (peakMb / plannedMb)) : Math.max(1, held * Math.max(EASE_STEP, peakMb / plannedMb))
     if (Math.round(next * 100) === Math.round(held * 100)) return null
     factors[learned] = Math.round(next * 100) / 100
-    const file = join(appRoot, FACTORS_FILE)
+    const file = factorsPath(appRoot)
     try {
         if (!existsSync(dirname(file))) mkdirSync(dirname(file), { recursive: true })
         writeFileSync(file, `${JSON.stringify(factors, null, 2)}\n`)
     } catch {
-        return `starci: ${kind} peaked at ${String(Math.round(peakMb))} MB over its planned ${String(plannedMb)} MB; ${FACTORS_FILE} could not be written, so the next run plans the same`
+        return `starci: ${kind} peaked at ${String(Math.round(peakMb))} MB over its planned ${String(plannedMb)} MB; ${factorsPath(appRoot)} could not be written, so the next run plans the same`
     }
-    if (ease) return `starci: ${kind} peaked at ${String(Math.round(peakMb))} MB, under ${String(EASE_BELOW_PERCENT)}% of its planned ${String(plannedMb)} MB; its factor eases to x${factors[learned].toFixed(2)} for this app's next run (${FACTORS_FILE})`
-    return `starci: ${kind} peaked at ${String(Math.round(peakMb))} MB, over its planned ${String(plannedMb)} MB by more than ${String(abovePercent)}%; its factor is now x${factors[learned].toFixed(2)} for this app's next run, at most x${String(MAX_FACTOR)} (${FACTORS_FILE})`
+    if (ease) return `starci: ${kind} peaked at ${String(Math.round(peakMb))} MB, under ${String(EASE_BELOW_PERCENT)}% of its planned ${String(plannedMb)} MB; its factor eases to x${factors[learned].toFixed(2)} for this app's next run (${factorsPath(appRoot)})`
+    return `starci: ${kind} peaked at ${String(Math.round(peakMb))} MB, over its planned ${String(plannedMb)} MB by more than ${String(abovePercent)}%; its factor is now x${factors[learned].toFixed(2)} for this app's next run, at most x${String(MAX_FACTOR)} (${factorsPath(appRoot)})`
 }

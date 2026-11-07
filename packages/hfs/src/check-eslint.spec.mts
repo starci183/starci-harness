@@ -236,3 +236,19 @@ for (const code of ['HOST_HELD', 'CLI_TOOL_INCOMPLETE', 'HFS_NODE_GOVERNOR_MISSI
     assert.equal(stdout, '', 'a refused execution is not a completed JSON gate report');
   });
 }
+
+test('a run that does not run the Sonar scan prints one line saying why, in the text report and in the JSON predictions', async context => {
+  const app = fixture(context);
+  const run = async (argv: string[]) => {
+    let stdout = '';
+    await main(argv, { cwd: app.root, checkApp: ({ repoRoot }) => cleanCheck(repoRoot), runLinter: transport(app, []), stdout: (text) => { stdout += text; }, stderr: () => undefined });
+    return stdout;
+  };
+  const selected = await run(['check', '--gate', 'lint']);
+  assert.equal(selected.split('\n').filter((line) => line.includes('sonar scan:')).length, 1);
+  assert.match(selected, /^ {2}sonar scan: not run, only a run with no selector, flag or --gate \(a whole run\) runs it$/m);
+  const whole = await run(['check']);
+  assert.match(whole, /^ {2}sonar scan: not run, this run keeps no check cache session$/m);
+  const json = JSON.parse(await run(['check', '--gate', 'lint', '--json'])) as { predictions: string[] };
+  assert.equal(json.predictions.length, 1);
+});

@@ -124,6 +124,7 @@ test('a token that cannot be opened, or a server that does not answer, is a warn
   const seen: Scanned[] = [];
   const noToken = await scan(t, root, { log: [] }, scanner(root, seen), { sealed: false }).result;
   assert.deepEqual(noToken.findings.map((finding) => [finding.code, finding.level]), [[SCAN_SKIPPED, 'warning']]);
+  assert.deepEqual(noToken.lines, ['  sonar scan: skipped, no token or host (warning)'], 'a skip is one line of the run');
   const down = await scan(t, root, { log: [], down: true }, scanner(root, seen)).result;
   assert.deepEqual(down.findings.map((finding) => [finding.code, finding.level]), [[SCAN_SKIPPED, 'warning']]);
   assert.match(down.findings[0]?.message ?? '', /did not report UP/u);
@@ -138,6 +139,8 @@ test('a server without branch support gets the derived project, bound to the mai
   const { result, lintWrites } = scan(t, root, state, scanner(root, seen));
   const done = await result;
   assert.deepEqual(done.findings, []);
+  assert.match(done.lines.join('\n'), /sonar scan: started against project product:key-local \(project key product:key-local\)/u);
+  assert.match(done.lines.join('\n'), /sonar scan: quality gate OK against project product:key-local in \d+\.\ds \(project key product:key-local\)/u);
   assert.equal(lintWrites.count, 1);
   assert.ok(state.log.some((call) => call.startsWith('POST /api/projects/create?project=product%3Akey-local')), 'the derived project is created');
   assert.ok(state.log.some((call) => call.startsWith('POST /api/qualitygates/select?gateName=starci-quality&projectKey=product%3Akey-local')), 'bound to the main project\'s gate');
