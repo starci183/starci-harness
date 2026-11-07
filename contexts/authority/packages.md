@@ -31,21 +31,30 @@ not answer. A registry that answers is left as it is ([cli/README.md](../../cli/
 The flow, in order:
 
 1. In the package edit's worktree, `starci deps publish-local --execute --cwd <worktree>` builds the packages the branch changed
-   (or the ones `--package` names) and publishes each under a version of its own, the next of its `-local` series (`1.2.3` as
-   `1.2.4-local.<n>`). The version in git never changes; a registry version is immutable, so each publish takes a new number.
-2. In the app, `starci deps install-local <package>... --execute` installs the latest local version of each named package like npm:
+   (or the ones `--package` names) and publishes each under the version committed in git (`1.2.3` stays `1.2.3`), so the pins, the
+   peer ranges (a canon's `~6.2.0` of `@starci/hfs`) and the check-cache keys are the ones npm's build has. Two contents never share a
+   version: a version npm does not serve is published, one npm serves is published only when npm's copy carries the same `starciSource`
+   digest, and any other is refused `PUBLISH_LOCAL_VERSION_TAKEN` (raise the version with its CHANGELOG entry, as every package edit
+   does). A rebuild of the same version replaces the registry's copy (an unpublish, then the publish).
+2. In the app, `starci deps install-local <package>... --execute` installs the version each named package was last published under, like npm:
    every requirement of it in the app's manifests is raised to that version (an `overrides` entry for a package only another
-   package requires, hfs through `starci-harness`; the CLI is named `starci-harness`), `@starci` resolves from the registry and nothing else does, and
-   `install-local.json` in the untracked tool cache of the app (slot `app.tool-cache`) records the pins it replaced.
+   package requires, hfs through `starci-harness`; the CLI is named `starci-harness`), the package's lock entries are dropped so npm
+   resolves them again, and the command names the registry for `@starci` (and for `starci-harness`, the one unscoped package, an explicit
+   `--registry`) alone, never as npm's default and never in an `.npmrc`. `install-local.json` in the untracked tool cache of the app
+   (slot `app.tool-cache`) records the pins it replaced.
 3. The app verifies the change with `starci app check` (`--env local`, the default). Each published build carries a source digest, so the
-   check cache a run on it writes holds the keys of the npm build of the same source and survives step 4; the pins naming a local build are
-   listed `LOCAL, REPORT ONLY` and the run ends `green for local (not pushable)` ([check-cache.md](../project/check-cache.md) "The operating procedure").
-   The pre-push hook, CI and the release gate run `--env prod`, which blocks on them.
-4. Before a commit, `starci deps install-local --restore` puts the recorded npm pins back and installs them from npm.
-   GitHub CI cannot reach 127.0.0.1, so a lockfile or `.npmrc` that names the registry is refused
-   `DEPS_LOCAL_REGISTRY_COMMITTED`, and a pin only the registry holds is refused `DEPS_PIN_UNPUBLISHED`, by `starci deps check`.
+   check cache a run on it writes holds the keys of the npm build of the same source and survives step 4; the pins whose lock entry
+   resolved from the registry are listed `LOCAL, REPORT ONLY` and the run ends `green for local (not pushable)`
+   ([check-cache.md](../project/check-cache.md) "The operating procedure"). The pre-push hook, CI and the release gate run `--env prod`,
+   which blocks on them.
+4. Before a commit, `starci deps install-local --restore` puts the recorded npm pins back, drops every lock entry resolved on this
+   machine and reinstalls from npmjs with the registry named on the command, so the lockfile's `resolved` and `integrity` are npm's (a
+   version the local build shared included). GitHub CI cannot reach 127.0.0.1 and installs npm's tarballs, so `starci deps check` refuses a
+   lockfile or `.npmrc` that names the registry (`DEPS_LOCAL_REGISTRY_COMMITTED`), a lockfile that holds a `@starci` package or
+   `starci-harness` at a version npm serves with another integrity (`DEPS_LOCK_INTEGRITY`), and a pin only the registry holds
+   (`DEPS_PIN_UNPUBLISHED`).
 5. CI publishes the release to npm ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20); it never gates the app's verification. The
-   app pins the version npm serves once it does.
+   app pins the version npm serves, which is the version it already pinned for the local build.
 
 It is no publication: nothing in the registry reaches npm. A project whose state folder still records a package overlay
 (`deps-local.json`) is refused `DEPS_OVERLAY_REMOVED` by `deps install-local`, `deps check` and the install a check gives its

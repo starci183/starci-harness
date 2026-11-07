@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.2.4 - 2026-11-08
+
+- Changed: `HFS_CANON_PIN_DRIFT` is report-only in `app check --env local` for a pin whose exact version the app's lockfile resolved from a registry on this machine (`starci deps install-local`), not for a spec that spells `-local.<n>`: `deps publish-local` publishes the version committed in git, so a local build has no distinguishing version. A range pin, or the same version resolved from npm, is a real drift.
+- Changed: the verb catalog (`runtime/packages/cli/src/catalog.generated.mjs`) carries the texts of `deps publish-local`, `deps install-local` and `deps check` of CLI 1.1.0-alpha.93.
+
 ## 6.2.3 - 2026-11-08
 
 - Fixed: the Sonar scan of `starci app check` on a server without branch support (Community) no longer reads the main project first. A derived project `<key>-local` the token can analyse (`api/qualitygates/project_status` answers 200, which a project analysis token may read) is scanned as it is, with no read of the main project and no gate binding; only a missing derived project is created, which needs the token to read the main project and to create projects and select a gate, and without that the scan is skipped naming the remedy (create `<key>-local` and bind it to the gate, or give the token Create Projects). The gate digest of the scan key falls back to the gate's name when the token cannot read its conditions, and to no reuse when it reads neither: the scan still runs. The verdict of the derived project's gate is read with the scan's own token. Specs: `src/check-cache-sonar-scan.spec.mts`.

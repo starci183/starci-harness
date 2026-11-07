@@ -27,6 +27,12 @@ const hostOf = (url: string): string | undefined => {
     }
 }
 
+/** Whether a URL names a registry on this machine (a lockfile's `resolved`, an `.npmrc` registry). */
+export const namesThisMachine = (url: string): boolean => {
+    const host = hostOf(url.replace(/^\/\//, "http://"))
+    return host !== undefined && isLoopbackHost(host)
+}
+
 /** One committed file that points npm at this machine. */
 export interface LocalReference {
     readonly file: string
@@ -34,7 +40,8 @@ export interface LocalReference {
     readonly url: string
 }
 
-const LOCKFILE = /^(?:package-lock|npm-shrinkwrap)\.json$/
+/** The name of an npm lockfile. */
+export const LOCKFILE = /^(?:package-lock|npm-shrinkwrap)\.json$/
 const RESOLVED = /"resolved"\s*:\s*("(?:[^"\\]|\\.)*")/g
 const NPMRC_KEY = /^\s*(?:@[\w.-]+:)?registry\s*=\s*/i
 const NPMRC_VALUE = /^(?:("(?:[^"\\]|\\.)*")|'([^']*)'|([^;\s#]+))/
@@ -78,10 +85,13 @@ export const localReferences = (file: string, text: string): LocalReference[] =>
     if (LOCKFILE.test(base)) candidates = resolvedCandidates(text)
     else if (base === ".npmrc") candidates = text.split("\n").map((raw, index) => ({ url: npmrcRegistry(raw), line: index + 1 }))
     return candidates.flatMap(({ url, line }): LocalReference[] => {
-        const host = url === undefined ? undefined : hostOf(url.replace(/^\/\//, "http://"))
-        return url !== undefined && host !== undefined && isLoopbackHost(host) ? [{ file, line, url }] : []
+        return url !== undefined && namesThisMachine(url) ? [{ file, line, url }] : []
     })
 }
+
+/** The files committed at `revision` (outside `node_modules`) whose base name `wanted` accepts, as repository paths. */
+export const committedFiles = async (root: string, revision: string, wanted: (base: string) => boolean): Promise<string[]> =>
+    nulPaths(await git(root, ["ls-tree", "-r", "-z", "--name-only", revision])).filter((file) => !file.split("/").includes("node_modules") && wanted(posix.basename(file)))
 
 /**
  * Refuses DEPS_LOCAL_REGISTRY_COMMITTED when a lockfile or `.npmrc` committed at `revision` names a registry on this machine
@@ -89,9 +99,7 @@ export const localReferences = (file: string, text: string): LocalReference[] =>
  * the app would stop installing. It judges every repository, an app or the harness alike.
  */
 export const judgeLocalRegistry = async (root: string, revision: string): Promise<void> => {
-    const files = nulPaths(await git(root, ["ls-tree", "-r", "-z", "--name-only", revision])).filter(
-        (file) => !file.split("/").includes("node_modules") && (LOCKFILE.test(posix.basename(file)) || posix.basename(file) === ".npmrc"),
-    )
+    const files = await committedFiles(root, revision, (base) => LOCKFILE.test(base) || base === ".npmrc")
     const found = (await inOrder(files, async (file) => localReferences(file, await git(root, ["show", `${revision}:${file}`])))).flat()
     if (found.length === 0) return
     const listed = found.slice(0, 5).map((one) => `${one.file}:${String(one.line)} ${registryAddress(one.url)}`).join("; ")

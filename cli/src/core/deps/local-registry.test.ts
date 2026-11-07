@@ -68,6 +68,7 @@ void test("an app install reaches only @starci, the CLI's own calls reach everyt
     assert.ok(!installNpmrc(4873).includes("\nregistry="))
     assert.match(publishNpmrc(4873), /^registry=http:\/\/127\.0\.0\.1:4873\/$/m)
     assert.deepEqual(installFlags(4873), ["--@starci:registry=http://127.0.0.1:4873/", "--replace-registry-host=never"])
+    assert.ok(!installFlags(4873, ["@starci/hfs"]).some((flag) => flag.startsWith("--registry=")), "an install of @starci packages never names the registry for everything")
     assert.deepEqual(registryFlags(4873).slice(0, 1), ["--registry=http://127.0.0.1:4873/"])
 })
 

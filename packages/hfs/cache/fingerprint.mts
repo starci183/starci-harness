@@ -134,7 +134,7 @@ export function lockPackageName(key: string): string | null {
 }
 
 /** Whether a lockfile `resolved` URL names this machine: a registry CI and production cannot reach. */
-function resolvedOnThisMachine(resolved: string | undefined): boolean {
+export function resolvedOnThisMachine(resolved: string | undefined): boolean {
   if (resolved === undefined) return false;
   try {
     const host = new URL(resolved).hostname.replace(/^\[|\]$/gu, '');

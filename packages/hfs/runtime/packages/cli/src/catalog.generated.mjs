@@ -675,7 +675,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "check": {
-          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture; --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet",
+          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture; --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; --env local|prod (default local) judges the same code checks in both and only decides whether the findings a local-registry loop alone causes (a pin the lockfile resolved from the local registry, a cache written from a build with no source digest) are report-only (local) or block (prod: the pre-push hook, CI, the release gate); every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet",
           "flags": [],
           "positional": [
             {
@@ -2602,7 +2602,7 @@ export const CATALOG = {
     "deps": {
       "verbs": {
         "install-local": {
-          "summary": "install the local registry's latest version of the named @starci packages into the app like npm and record the pins they replace (dry until --execute); --restore puts the npm pins back before a commit",
+          "summary": "install the version the local registry's last publish-local gave each named @starci package into the app like npm and record the pins they replace (dry until --execute); --restore puts the npm pins back and reinstalls from npmjs before a commit",
           "flags": [
             {
               "name": "execute",
@@ -2612,7 +2612,7 @@ export const CATALOG = {
             {
               "name": "restore",
               "type": "boolean",
-              "summary": "put the recorded npm pins back and install them; also clears a record of the removed overlay"
+              "summary": "put the recorded npm pins back and install them from npmjs, dropping every lock entry resolved on this machine; also clears a record of the removed overlay"
             }
           ],
           "positional": [
@@ -2629,7 +2629,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "publish-local": {
-          "summary": "build the packages changed here (or --package) and publish each to a registry on this machine (127.0.0.1 only) under its own -local version, for starci deps install-local; dry until --execute",
+          "summary": "build the packages changed here (or --package) and publish each to a registry on this machine (127.0.0.1 only) under the version committed in git (refused when npm serves that version with other content), for starci deps install-local; dry until --execute",
           "flags": [
             {
               "name": "execute",
@@ -2655,7 +2655,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "check": {
-          "summary": "refuse a push whose committed @starci pins npm cannot install (DEPS_PIN_UNPUBLISHED), a lockfile that names the local registry (DEPS_LOCAL_REGISTRY_COMMITTED) or a project that still records the removed package overlay (DEPS_OVERLAY_REMOVED)",
+          "summary": "refuse a push whose committed @starci pins npm cannot install (DEPS_PIN_UNPUBLISHED), a lockfile that names the local registry (DEPS_LOCAL_REGISTRY_COMMITTED), a lockfile whose harness package integrity is not the one npm serves for that version (DEPS_LOCK_INTEGRITY) or a project that still records the removed package overlay (DEPS_OVERLAY_REMOVED)",
           "flags": [
             {
               "name": "sha",

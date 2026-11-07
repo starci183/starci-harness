@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0-alpha.93 - 2026-11-08
+
+- Changed: `deps publish-local` publishes each package under the version committed in git (`@starci/hfs` 6.2.3 stays 6.2.3), never a `-local` one, so the pins, a canon's `~6.2.0` peer and the check cache keys are the ones the npm build has and an install needs no `--legacy-peer-deps`. A version npm does not serve is published, one npm serves only when npm's `starciSource` equals this source's, and any other is refused `PUBLISH_LOCAL_VERSION_TAKEN` (in the plan and on the source as built); a rebuild of a version replaces the registry's copy (unpublish, then publish). The row schema is `starci/deps-publish-local@3`.
+- Changed: `deps install-local` installs the version the last publish gave a package (its `local` dist-tag, or `@<version>`), drops that package's lock entries so npm resolves it again, and names the registry per command: `--@starci:registry` always and, for `starci-harness` (which npm routes only by `--registry`), `--registry` too; it is never npm's default and never written to an `.npmrc`. A package that did not resolve from the registry refuses `INSTALL_LOCAL_NOT_RESOLVED`; the removed `INSTALL_LOCAL_NOT_LOCAL` no longer applies.
+- Fixed: `deps install-local --restore` ended in ETARGET (the lockfile kept the local build) and, for a version the local build shared with npm, kept the local tarball's integrity. It puts the recorded pins back, drops every lock entry resolved on this machine, installs from npmjs with the registry named on the command, and refuses `INSTALL_LOCAL_RESTORE_INCOMPLETE` while the lockfile names the registry or holds a harness package whose integrity is not npm's.
+- Added: `DEPS_LOCK_INTEGRITY`, run by the push gate (`deps check`, `release push`, `release cut`, `app release`) beside `DEPS_LOCAL_REGISTRY_COMMITTED`: a committed lockfile that holds a `@starci` package or `starci-harness` at a version npm serves with another integrity.
+- Removed: `core/deps/local-version.ts` (the `-local.<n>` series) and `localManifest`. The catalog of `@starci/hfs` 6.2.4 carries the new verb texts.
+
 ## 1.1.0-alpha.92 - 2026-11-08
 
 - Fixed: the local Sonar scan of `starci app check` runs against a derived project the token can analyse without reading the main project; the fix is in `@starci/hfs` 6.2.3, which the CLI requires once npm serves it (`cli-follow`).
