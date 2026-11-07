@@ -118,7 +118,7 @@ import { createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
 import { DEFAULT_FAMILIES, runAppFamilies } from '../cache/run.mjs';
 import { runParityFamilies, type ParityRun } from '../cache/parity-family.mjs';
-import { LINT_REPORT, SCAN_FAILED, GATE_FAILED, runSonarScan } from '../cache/sonar-scan-family.mjs';
+import { LINT_REPORT, runSonarScan } from '../cache/sonar-scan-family.mjs';
 import { createProgress, silentProgress } from '../cache/progress.mjs';
 import { familyLine } from '../cache/report.mjs';
 import { writeRunLog } from '../cache/run-log.mjs';
@@ -611,7 +611,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
       progress.tick(1, 0, 1);
       progress.end();
       lines.push(...scan.lines);
-      extra.push(...withWhy(scan.findings, readWhy(skillRoot, scan.findings.map((finding) => finding.code).filter((code): code is string => code === SCAN_FAILED || code === GATE_FAILED))));
+      extra.push(...withWhy(scan.findings, readWhy(skillRoot, [...new Set(scan.findings.map((finding) => finding.code))])));
     }
   }
   // The lint ratchet of a branch whose profile reports lint: the commits since the base never add lint findings to a file they touch (blocking).

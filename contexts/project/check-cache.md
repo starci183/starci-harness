@@ -170,6 +170,7 @@ not judged yet and the next plain run reuses the rest. The journal is host state
 - **Compaction.** When the run ends, `flush` writes the committed files of each folder the run replaced (a temp file and a rename per file, so a kill leaves the old
   file, and the next flush removes a temp file it finds) and removes that folder's journal. What a folder the run did not finish keeps stays for the next run, and
   entries written under other parts are removed. What the flush wrote and removed is still what the cache verdict judges.
+- **A crash in the report.** A run that throws after its families finished writes no committed cache and no run record: both describe a run that completed, and a cache flushed from a crashed report would be a verdict nobody judged. What the families judged stays in the journal, so the next plain run serves it and loses no work. A finding code with no failure-code catalog entry is an internal error naming the code (`withWhy`), never a TypeError.
 - **Trust.** CI writes no journal and reads none: only the cache at the trusted base is trusted there. A run on a host trusts its journal as it trusts its working
   tree, and a record that reaches the committed cache through it is compared by CI like any other (`HFS_CHECK_CACHE_FORGED`). Proved by `cache-journal.spec.mts`.
 
