@@ -299,7 +299,7 @@ untracked tool cache of slot `app.tool-cache`, or none.
 | database migration checks (`npm run db:lint`, `app db drift`) | per step | its command, the db rules' inputs and their baseline at the merge-base, the migration chain, the scratch database image, the entity list's import closure, the engine manifest, the installs the drift check loads (the closure's packages, `typeorm`, `typescript`, `pg`) and the hfs that judges are unchanged | any of them; a host without a database stores nothing | `check/build/` (the verdict) |
 | production dependency audit | always | never | every run that selects it: the registry's advisories change without the tree | none |
 | proofs, the gate verdict, the Sonar and Codecov predictions | always | never | every run | none |
-| Sonar scan against the server | scoped | the scanned content (every tracked file outside the cache folder, the properties, the coverage and lint reports they name), the target, the scanner version and the digest of the gate's conditions as the server holds them now are unchanged | any of them; a failure is never kept | the tool cache (`sonar-scan.json`) |
+| Sonar scan against the server | scoped | the scanned content (every tracked file outside the cache folder, the properties, the coverage and lint reports they name), the target, the scanner version and the digest of the gate as the server holds it now (its conditions, else its name when the token cannot read them; a gate neither is readable for is never kept) are unchanged | any of them; a failure is never kept | the tool cache (`sonar-scan.json`) |
 
 A side key is the sha256 of everything the side's whole-program steps read: the hash of each tracked path of the side
 (`absent` for one deleted in the work tree), its staged entries (the machine reads the index), and the untracked files
@@ -442,9 +442,11 @@ a message), and the quality gate is the one the server holds for the project.
   Under a branch profile that reports sonar its findings are reported, never judged; a profile that turns sonar off skips it.
 - **Target.** The analysis never overwrites the project's own. The edition is read from the server with the token
   (`api/navigation/global`). A server with branch support receives the scan as the branch `local/<user>`; a server
-  without it (Community, or an edition it does not state) receives it as the derived project `<projectKey>-local`, which the
-  run creates with the main project's visibility and binds to the main project's quality gate when the token may, and
-  otherwise skips with a warning. The main analysis and its new-code baseline are never touched.
+  without it (Community, or an edition it does not state) receives it as the derived project `<projectKey>-local`. A derived
+  project the token can analyse (`api/qualitygates/project_status` answers 200, which a project analysis token may read) is scanned
+  as it is, and the main project is not read at all; only a missing one is created, with the main project's visibility and bound to
+  the main project's quality gate when the token may, and otherwise skipped with a warning that says to create it and bind it to the
+  gate or to give the token Create Projects. The main analysis and its new-code baseline are never touched.
 - **Verdict.** The scanner exits non-zero: `CI_PARITY_SONAR_SCAN_FAILED`, with the scanner's last lines. The compute-engine
   task fails or the project's gate is ERROR: `CI_PARITY_SONAR_GATE_FAILED`, naming each failed condition. Both are errors.
 - **Not run.** Whenever the scan does not run, the report carries one `sonar scan:` line saying why: the run selects families

@@ -54,7 +54,7 @@ const app = (t: TestContext, { properties = 'sonar.projectKey=product:key\nsonar
 
 const index: ContentIndex = { paths: ['be/a.ts', '.starcistacks/cache/fingerprint.jsonl'], hashOf: (file) => `hash-${file}` };
 
-interface Server { edition?: string; projects?: Set<string>; createStatus?: number; selectStatus?: number; gate?: 'OK' | 'ERROR'; down?: boolean; log: string[] }
+interface Server { edition?: string; projects?: Set<string>; mainForbidden?: boolean; gateUnreadable?: boolean; createStatus?: number; selectStatus?: number; gate?: 'OK' | 'ERROR'; down?: boolean; log: string[] }
 /** A SonarQube server: status, edition, projects with their gate binding, the compute-engine task and the quality gate verdict. */
 const server = (state: Server) => async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
   const url = new URL(String(input));
@@ -67,14 +67,15 @@ const server = (state: Server) => async (input: string | URL | Request, init?: R
     case '/api/navigation/global': return reply(200, state.edition === undefined ? {} : { edition: state.edition });
     case '/api/components/show': {
       const key = url.searchParams.get('component') ?? '';
+      if (state.mainForbidden === true) return reply(403, { errors: [] });
       return state.projects?.has(key) === true ? reply(200, { component: { key, name: 'Product', visibility: 'private' } }) : reply(404, { errors: [] });
     }
     case '/api/projects/create': if (state.createStatus !== undefined && state.createStatus !== 200) return reply(state.createStatus); state.projects?.add(url.searchParams.get('project') ?? ''); return reply(200, {});
-    case '/api/qualitygates/get_by_project': return reply(200, { qualityGate: { name: url.searchParams.get('project') === 'product:key' ? 'starci-quality' : 'Sonar way' } });
+    case '/api/qualitygates/get_by_project': if (state.gateUnreadable === true) return reply(403); return reply(200, { qualityGate: { name: url.searchParams.get('project') === 'product:key' ? 'starci-quality' : 'Sonar way' } });
     case '/api/qualitygates/select': return reply(state.selectStatus ?? 204);
     case '/api/qualitygates/show': return reply(200, { conditions: [{ metric: 'new_coverage', op: 'LT', error: '80' }] });
     case '/api/ce/task': return reply(200, { task: { status: 'SUCCESS', analysisId: 'AN-1' } });
-    case '/api/qualitygates/project_status': return reply(200, { projectStatus: { status: state.gate ?? 'OK', conditions: state.gate === 'ERROR' ? [{ metricKey: 'new_coverage', status: 'ERROR', comparator: 'LT', errorThreshold: '80', actualValue: '12' }] : [] } });
+    case '/api/qualitygates/project_status': if (url.searchParams.has('projectKey') && state.projects?.has(url.searchParams.get('projectKey') ?? '') !== true && url.searchParams.get('projectKey') !== 'product:key') return reply(state.mainForbidden === true ? 403 : 404); return reply(200, { projectStatus: { status: state.gate ?? 'OK', conditions: state.gate === 'ERROR' ? [{ metricKey: 'new_coverage', status: 'ERROR', comparator: 'LT', errorThreshold: '80', actualValue: '12' }] : [] } });
     default: return reply(404);
   }
 };
@@ -150,6 +151,43 @@ test('a server without branch support gets the derived project, bound to the mai
   assert.doesNotMatch(argv, /sonar\.branch\.name/u);
   assert.equal(seen[0]?.env['SONAR_TOKEN'], TOKEN, 'the token reaches the scanner through its environment alone');
   assert.doesNotMatch(argv, new RegExp(TOKEN, 'u'));
+});
+
+test('a derived project the token can analyse is scanned as it is: the main project is never read, created or bound', async (t) => {
+  const root = app(t);
+  const seen: Scanned[] = [];
+  const state: Server = { edition: 'community', projects: new Set(['product:key-local']), mainForbidden: true, gateUnreadable: true, log: [] };
+  const done = await scan(t, root, state, scanner(root, seen)).result;
+  assert.deepEqual(done.findings, []);
+  assert.equal(seen.length, 1, 'the scanner ran');
+  assert.match(done.lines.join('\n'), /quality gate OK against project product:key-local/u);
+  assert.ok(state.log.every((call) => !/component=product%3Akey(&|$)/u.test(call) && !call.includes('/api/projects/create') && !call.includes('/api/qualitygates/select') && !/project=product%3Akey$/u.test(call)), `the main project is not touched: ${state.log.join(', ')}`);
+});
+
+test('a derived project whose gate conditions the token reads keeps its verdict by the gate state', async (t) => {
+  const root = app(t);
+  const seen: Scanned[] = [];
+  const state: Server = { edition: 'community', projects: new Set(['product:key-local']), mainForbidden: true, log: [] };
+  await scan(t, root, state, scanner(root, seen)).result;
+  const again = await scan(t, root, state, scanner(root, seen)).result;
+  assert.equal(seen.length, 1, 'the second run reuses the verdict');
+  assert.match(again.lines.join('\n'), /reused/u);
+});
+
+test('a derived project that is missing, with a token that cannot read the main project, is a clear skip', async (t) => {
+  const root = app(t);
+  const seen: Scanned[] = [];
+  const done = await scan(t, root, { edition: 'community', projects: new Set(), mainForbidden: true, log: [] }, scanner(root, seen)).result;
+  assert.deepEqual(done.findings.map((finding) => [finding.code, finding.level]), [[SCAN_SKIPPED, 'warning']]);
+  assert.match(done.findings[0]?.message ?? '', /create product:key-local and bind it to the quality gate, or give the token Create Projects/u);
+  assert.equal(seen.length, 0);
+});
+
+test('a red gate of a derived project the token can analyse is red', async (t) => {
+  const root = app(t);
+  const done = await scan(t, root, { edition: 'community', projects: new Set(['product:key-local']), mainForbidden: true, gate: 'ERROR', log: [] }, scanner(root, [])).result;
+  assert.deepEqual(done.findings.map((finding) => [finding.code, finding.level]), [[GATE_FAILED, 'error']]);
+  assert.match(done.findings[0]?.message ?? '', /project product:key-local is red/u);
 });
 
 test('a server with branch support gets a local branch of the project itself', async (t) => {

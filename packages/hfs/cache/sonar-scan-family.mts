@@ -3,8 +3,8 @@
 // `sonar-project.properties` (the file the CI job reads), the server and the token's custody from its stack declaration (the release gate's connection, `sonarGate`),
 // the quality gate from the server (the one the project is bound to). Nothing is stated here.
 // The scan never touches the project's own analysis: a server with branch support receives it as the branch `local/<user>`; a server without (Community) receives it
-// as the derived project `<projectKey>-local`, created with the main project's visibility and bound to the main project's quality gate when the token may, else the
-// step is skipped with a warning. The verdict of a green scan is kept in the untracked tool cache keyed by the scanned content, so an unchanged tree is not scanned again.
+// as the derived project `<projectKey>-local`, scanned as it is when the token can analyse it (the main project is not read), else created with the main project's
+// visibility and bound to the main project's quality gate when the token may, else the step is skipped with a warning. The verdict of a green scan is kept in the untracked tool cache keyed by the scanned content, so an unchanged tree is not scanned again.
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -104,36 +104,39 @@ async function editionOf(fetcher: typeof fetch, host: string, token: string): Pr
 }
 
 /**
- * Makes the derived project exist with the main project's visibility and bound to the main project's quality gate, or says why it cannot (the token may
- * not read the main project, create projects or select a gate): the caller skips the scan with that reason. A project that exists is kept as it is,
- * only its gate binding is made equal.
+ * Makes the derived project available to the token, or says why it is not (the caller skips the scan with that reason). A derived project the token can
+ * analyse (`api/qualitygates/project_status` answers 200, which a project analysis token may read) is scanned as it is: the main project is not read at all,
+ * and its quality gate binding is the owner's. Only a derived project that is missing is created, with the main project's visibility and bound to the main
+ * project's quality gate, which needs the token to read the main project and to create projects and select a gate.
  */
 async function ensureLocalProject(fetcher: typeof fetch, host: string, token: string, mainKey: string, localKey: string): Promise<string | null> {
+  const here = await api(fetcher, host, token, `api/qualitygates/project_status?projectKey=${q(localKey)}`);
+  if (here.status === 200) return null;
+  const create = `create ${localKey} and bind it to the quality gate, or give the token Create Projects`;
   const main = await api(fetcher, host, token, `api/components/show?component=${q(mainKey)}`);
-  if (main.status !== 200) return `the token cannot read project ${mainKey} (HTTP ${String(main.status)})`;
-  const here = await api(fetcher, host, token, `api/components/show?component=${q(localKey)}`);
-  if (here.status === 404) {
-    const name = `${String(main.body?.component?.name ?? mainKey)} (local)`;
-    const visibility = main.body?.component?.visibility === 'public' ? 'public' : 'private';
-    const made = await api(fetcher, host, token, `api/projects/create?project=${q(localKey)}&name=${q(name)}&visibility=${visibility}`, 'POST');
-    if (made.status !== 200) return `the token may not create project ${localKey} (HTTP ${String(made.status)})`;
-  } else if (here.status !== 200) return `the token cannot read project ${localKey} (HTTP ${String(here.status)})`;
+  if (main.status !== 200) return `${localKey} is not readable by the token (HTTP ${String(here.status)}) and the token cannot read project ${mainKey} to create it (HTTP ${String(main.status)}); ${create}`;
+  const name = `${String(main.body?.component?.name ?? mainKey)} (local)`;
+  const visibility = main.body?.component?.visibility === 'public' ? 'public' : 'private';
+  const made = await api(fetcher, host, token, `api/projects/create?project=${q(localKey)}&name=${q(name)}&visibility=${visibility}`, 'POST');
+  if (made.status !== 200) return `the token may not create project ${localKey} (HTTP ${String(made.status)}); ${create}`;
   const wanted = await api(fetcher, host, token, `api/qualitygates/get_by_project?project=${q(mainKey)}`);
   const gate = wanted.body?.qualityGate?.name;
-  if (wanted.status !== 200 || typeof gate !== 'string') return `the quality gate of ${mainKey} is not readable (HTTP ${String(wanted.status)})`;
-  const have = await api(fetcher, host, token, `api/qualitygates/get_by_project?project=${q(localKey)}`);
-  if (have.status === 200 && have.body?.qualityGate?.name === gate) return null;
+  if (wanted.status !== 200 || typeof gate !== 'string') return `the quality gate of ${mainKey} is not readable (HTTP ${String(wanted.status)}); bind ${localKey} to it`;
   const bound = await api(fetcher, host, token, `api/qualitygates/select?gateName=${q(gate)}&projectKey=${q(localKey)}`, 'POST');
-  return bound.status === 204 || bound.status === 200 ? null : `the token may not bind ${localKey} to the quality gate ${gate} (HTTP ${String(bound.status)})`;
+  return bound.status === 204 || bound.status === 200 ? null : `the token may not bind ${localKey} to the quality gate ${gate} (HTTP ${String(bound.status)}); bind it to the gate`;
 }
 
-/** The digest of the project's quality gate conditions as the server holds them now; null when they cannot be read. */
+/**
+ * The digest of the project's quality gate as the server holds it now: the gate's conditions when the token reads them, else the gate's name (a project
+ * analysis token reads the name of its own project's gate, not the gate's conditions); null when neither is readable, and the scan then runs and its verdict
+ * is not kept.
+ */
 async function gateDigestOf(fetcher: typeof fetch, host: string, token: string, projectKey: string): Promise<string | null> {
   const bound = await api(fetcher, host, token, `api/qualitygates/get_by_project?project=${q(projectKey)}`);
   const name = bound.body?.qualityGate?.name;
   if (bound.status !== 200 || typeof name !== 'string') return null;
   const shown = await api(fetcher, host, token, `api/qualitygates/show?name=${q(name)}`);
-  return shown.status === 200 ? sha256(JSON.stringify([name, shown.body?.conditions ?? null])) : null;
+  return sha256(JSON.stringify([name, shown.status === 200 ? (shown.body?.conditions ?? null) : null]));
 }
 
 interface Verdict { readonly key: string; readonly detail: string }

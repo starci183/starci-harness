@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.92 - 2026-11-08
+
+- Fixed: the local Sonar scan of `starci app check` runs against a derived project the token can analyse without reading the main project; the fix is in `@starci/hfs` 6.2.3, which the CLI requires once npm serves it (`cli-follow`).
+
 ## 1.1.0-alpha.91 - 2026-11-08
 
 - Added: `starci app check --env local|prod` is forwarded to `@starci/hfs` 6.2.2, which the CLI requires once npm serves it (`cli-follow`); the managed hook, CI and release gate templates run `--env prod`.
