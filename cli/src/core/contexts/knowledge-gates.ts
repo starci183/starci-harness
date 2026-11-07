@@ -3,10 +3,11 @@ import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join, relative } from "node:path"
 import { parse } from "yaml"
 import { runtimeRoot } from "../../harness/ledger.js"
+import { ruleBookIds } from "../../harness/rule-book.js"
 
 /** One finding of a knowledge gate: what is wrong, where. */
 export interface KnowledgeFinding {
-    readonly kind: "rule-no-doc" | "removed-vocabulary-used" | "wrapper-stale" | "wrapper-undeclared" | "wrapper-wraps-drift" | "wrapper-pin-drift" | "wrapper-ruling-unknown"
+    readonly kind: "rule-no-doc" | "removed-vocabulary-used" | "wrapper-stale" | "wrapper-undeclared" | "wrapper-wraps-drift" | "wrapper-pin-drift" | "wrapper-rule-unknown"
     readonly subject: string
     readonly detail: string
 }
@@ -26,14 +27,14 @@ const walk = (dir: string, accept: (name: string) => boolean, skip: (path: strin
     return into
 }
 
-/** The knowledge that states what is true now. Decisions are history (they say what was removed, and why) and `project/` is generated. */
+/** The knowledge that states what is true now; `project/` is generated. */
 const livingKnowledge = (knowledge: string): string[] =>
-    walk(knowledge, (name) => /\.(?:md|yaml)$/.test(name), (path) => /[\\/](?:decisions|project)$/.test(path) || path.endsWith("search-eval.json"))
+    walk(knowledge, (name) => /\.(?:md|yaml)$/.test(name), (path) => /[\\/]project$/.test(path) || path.endsWith("search-eval.json"))
 
 /**
  * R-doc: every rule of hfs/rules.yaml has a doc, a page of the living knowledge that names it by id. A rule nobody explains is a
- * rule an agent cannot look up (contexts/README.md "Looking a rule up"). hfs/rules.yaml, decisions and the generated project/
- * folder do not count.
+ * rule an agent cannot look up (contexts/README.md "Looking a rule up"). hfs/rules.yaml and the generated project/ folder do
+ * not count.
  */
 export const judgeRuleDocs = (knowledge: string): KnowledgeFinding[] => {
     const catalog = object(parse(read(join(knowledge, "hfs", "rules.yaml"))))
@@ -48,21 +49,36 @@ const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/
 
 const code = (token: string): RegExp => new RegExp("(?:`" + escapeRegExp(token) + "`|<" + escapeRegExp(token) + "[ >/])")
 
+/** The removed spellings: packages/hfs/runtime/modules/kernel/removed-vocabulary.yaml, the one list of names the runtime refuses. */
+const REMOVED_VOCABULARY = ["packages", "hfs", "runtime", "modules", "kernel", "removed-vocabulary.yaml"] as const
+
+/** The `grammar` entries of the removed vocabulary that are one identifier; `shipped` when the runtime may not write them either. */
+const removedGrammarNames = (knowledge: string): { readonly name: string; readonly shipped: boolean }[] => {
+    const file = join(knowledge, "..", ...REMOVED_VOCABULARY)
+    if (!existsSync(file)) return []
+    return list(object(parse(read(file))).removed)
+        .map(object)
+        .filter((entry) => entry.kind === "grammar")
+        .map((entry) => ({ name: text(entry.name), shipped: entry.shipped === true }))
+        .filter((entry) => /^[A-Za-z][\w.@/-]*$/.test(entry.name) && /[A-Z]/.test(entry.name))
+}
+
+const removedDetail = (where: string, spelling: string): string => `${where} writes the removed ${spelling}; modules/kernel/removed-vocabulary.yaml of @starci/hfs names what replaces it`
+
 /**
- * rulings.yaml `removedVocabulary`: a spelling it lists is not written, as code (in backticks or as a JSX tag), in the living
- * knowledge. Only a spelling that is one identifier can be matched without reading prose; a phrase ("StatusDot with text",
- * "Text weight") names a form, not a token, and is left to the codemods and lints that refuse it in code.
+ * The removed Grammar names (kind `grammar` of the removed vocabulary): a spelling it lists is not written, as code (in backticks
+ * or as a JSX tag), in the living knowledge. Only a spelling that is one identifier can be matched without reading prose; a
+ * phrase ("StatusDot with text", "Text weight") names a form, not a token, and is left to the codemods and lints that refuse it in code.
  */
 export const judgeRemovedVocabulary = (knowledge: string): KnowledgeFinding[] => {
-    const rulings = object(parse(read(join(knowledge, "decisions", "rulings.yaml"))))
-    const spellings = list(rulings.removedVocabulary).map((entry) => text(object(entry).spelling)).filter((spelling) => /^[A-Za-z][\w.@/-]*$/.test(spelling) && /[A-Z]/.test(spelling))
+    const spellings = removedGrammarNames(knowledge).map((entry) => entry.name)
     const found: KnowledgeFinding[] = []
     for (const path of livingKnowledge(knowledge)) {
         const lines = read(path).split("\n")
         for (const spelling of spellings) {
             const pattern = code(spelling)
             lines.forEach((line, index) => {
-                if (pattern.test(line)) found.push({ kind: "removed-vocabulary-used", subject: spelling, detail: `${relative(knowledge, path).replaceAll("\\", "/")}:${String(index + 1)} writes the removed ${spelling}; rulings.yaml removedVocabulary names what replaces it` })
+                if (pattern.test(line)) found.push({ kind: "removed-vocabulary-used", subject: spelling, detail: removedDetail(`${relative(knowledge, path).replaceAll("\\", "/")}:${String(index + 1)}`, spelling) })
             })
         }
     }
@@ -70,22 +86,22 @@ export const judgeRemovedVocabulary = (knowledge: string): KnowledgeFinding[] =>
 }
 
 /**
- * The spellings of that list marked `shipped: true` against what the harness ships: `packages/hfs/runtime` (the playbooks, the rule catalog, the failure codes and the
- * draw scripts the eslint packages bundle). It is data an agent loads, so a spelling is a finding wherever it stands as a whole
- * word, not only in code marks; a removal is told by rulings.yaml and by the codemods, which sit outside the runtime.
+ * The removed Grammar names marked `shipped: true` against what the harness ships: `packages/hfs/runtime` (the playbooks, the rule catalog, the failure codes and the
+ * draw scripts the eslint packages bundle), the removed vocabulary itself aside. It is data an agent loads, so a spelling is a
+ * finding wherever it stands as a whole word, not only in code marks.
  */
 export const judgeShippedVocabulary = (knowledge: string): KnowledgeFinding[] => {
     const runtime = join(knowledge, "..", "packages", "hfs", "runtime")
     if (!existsSync(runtime)) return []
-    const rulings = object(parse(read(join(knowledge, "decisions", "rulings.yaml"))))
-    const spellings = list(rulings.removedVocabulary).map(object).filter((entry) => entry.shipped === true).map((entry) => text(entry.spelling)).filter((spelling) => /^[A-Za-z][\w.@/-]*$/.test(spelling) && /[A-Z]/.test(spelling))
+    const spellings = removedGrammarNames(knowledge).filter((entry) => entry.shipped).map((entry) => entry.name)
+    const removedList = join(knowledge, "..", ...REMOVED_VOCABULARY)
     const found: KnowledgeFinding[] = []
-    for (const path of walk(runtime, (name) => /\.(?:md|yaml|json|mts|ts)$/.test(name))) {
+    for (const path of walk(runtime, (name) => /\.(?:md|yaml|json|mts|ts)$/.test(name), (path) => path === removedList)) {
         const lines = read(path).split("\n")
         for (const spelling of spellings) {
             const pattern = new RegExp(String.raw`(?<![\w.-])` + escapeRegExp(spelling) + String.raw`(?![\w-])`)
             lines.forEach((line, index) => {
-                if (pattern.test(line)) found.push({ kind: "removed-vocabulary-used", subject: spelling, detail: `${relative(knowledge, path).replaceAll("\\", "/")}:${String(index + 1)} writes the removed ${spelling}; rulings.yaml removedVocabulary names what replaces it` })
+                if (pattern.test(line)) found.push({ kind: "removed-vocabulary-used", subject: spelling, detail: removedDetail(`${relative(knowledge, path).replaceAll("\\", "/")}:${String(index + 1)}`, spelling) })
             })
         }
     }
@@ -109,16 +125,19 @@ const heroNames = (source: string): Set<string> => {
     return names
 }
 
-/** Adds a finding for each override of a wrapper row that cites a ruling rulings.yaml does not hold. */
-const judgeOverrides = (row: Record<string, unknown>, rowFile: string, rulings: readonly Record<string, unknown>[], found: KnowledgeFinding[]): void => {
+/** Adds a finding for each override of a wrapper row that gives no reason, or cites a rule the rule book does not hold. */
+const judgeOverrides = (row: Record<string, unknown>, rowFile: string, rules: ReadonlySet<string>, found: KnowledgeFinding[]): void => {
     for (const override of list(row.overrides).map(object)) {
-        const ruling = text(override.ruling)
-        if (!rulings.some((entry) => text(entry.id) === ruling)) found.push({ kind: "wrapper-ruling-unknown", subject: rowFile, detail: `an override of ${rowFile} cites ruling ${ruling}, which rulings.yaml does not hold` })
+        const target = text(override.target)
+        if ("ruling" in override) found.push({ kind: "wrapper-rule-unknown", subject: rowFile, detail: `the ${target} override of ${rowFile} writes the removed ruling: key; it gives its reason and cites the rule it applies with rule: <rule id>` })
+        if (text(override.reason).trim() === "") found.push({ kind: "wrapper-rule-unknown", subject: rowFile, detail: `the ${target} override of ${rowFile} gives no reason` })
+        const rule = text(override.rule)
+        if (rule !== "" && !rules.has(rule)) found.push({ kind: "wrapper-rule-unknown", subject: rowFile, detail: `the ${target} override of ${rowFile} cites rule ${rule}, which no file of contexts/ or CONTRIBUTING.md holds` })
     }
 }
 
 /** Judges each row of vendor/wrappers.yaml against the HeroUI components its Grammar file imports; the files the rows name. */
-const judgeWrapperRows = (rows: readonly Record<string, unknown>[], imported: ReadonlyMap<string, Set<string>>, grammarSource: string, rulings: readonly Record<string, unknown>[], found: KnowledgeFinding[]): Set<string> => {
+const judgeWrapperRows = (rows: readonly Record<string, unknown>[], imported: ReadonlyMap<string, Set<string>>, grammarSource: string, rules: ReadonlySet<string>, found: KnowledgeFinding[]): Set<string> => {
     const declared = new Set<string>()
     for (const row of rows) {
         const rowFile = text(row.file)
@@ -136,7 +155,7 @@ const judgeWrapperRows = (rows: readonly Record<string, unknown>[], imported: Re
         if (missing.length > 0 || extra.length > 0) {
             found.push({ kind: "wrapper-wraps-drift", subject: rowFile, detail: `${rowFile} wraps ${[...actual].sort((left, right) => left.localeCompare(right)).join(", ")}; the row says ${[...wraps].sort((left, right) => left.localeCompare(right)).join(", ")}` })
         }
-        judgeOverrides(row, rowFile, rulings, found)
+        judgeOverrides(row, rowFile, rules, found)
     }
     return declared
 }
@@ -145,8 +164,8 @@ const judgeWrapperRows = (rows: readonly Record<string, unknown>[], imported: Re
  * vendor/wrappers.yaml against the Grammar source it describes (the part of the parity gate that needs no vendor cache):
  *   - every row's file exists and still imports a HeroUI component (else the row is stale; a row with `wraps: []` is a role override on a file that wraps nothing and stands while the file exists);
  *   - every Grammar file that imports a HeroUI component has a row, and the row's `wraps` is the set it imports;
- *   - every override names a ruling of rulings.yaml;
- *   - the sha256 of wrappers.yaml equals the digest the latest ruling that pins it records.
+ *   - every override gives its reason, and a rule it cites is a rule id of contexts/ or CONTRIBUTING.md;
+ *   - the sha256 of wrappers.yaml equals the digest vendor/pins.yaml records.
  * What it does not read: the vendor reference cache the role, anatomy, slot, style and default findings need
  * (packages/hfs scripts/lib/grammar-vendor-parity.mts `parityFindings`), which a run of the vendor reader produces.
  */
@@ -155,24 +174,20 @@ export const judgeVendorWrappers = (knowledge: string, grammarSource: string): K
     if (!existsSync(file) || !existsSync(grammarSource)) return []
     const raw = read(file)
     const rows = list(object(parse(raw)).wrappers).map(object)
-    const rulings = list(object(parse(read(join(knowledge, "decisions", "rulings.yaml")))).rulings).map(object)
     const found: KnowledgeFinding[] = []
     const imported = new Map<string, Set<string>>()
     for (const path of walk(grammarSource, (name) => /\.tsx?$/.test(name) && !/\.(?:stories|spec)\./.test(name))) {
         const names = heroNames(read(path))
         if (names.size > 0) imported.set(relative(grammarSource, path).replaceAll("\\", "/"), names)
     }
-    const declared = judgeWrapperRows(rows, imported, grammarSource, rulings, found)
+    const declared = judgeWrapperRows(rows, imported, grammarSource, ruleBookIds(join(knowledge, "..")), found)
     for (const [path, names] of imported) {
         if (!declared.has(path)) found.push({ kind: "wrapper-undeclared", subject: path, detail: `${path} imports ${[...names].sort((left, right) => left.localeCompare(right)).join(", ")} from @heroui/react and has no row in vendor/wrappers.yaml` })
     }
-    const pins = rulings.flatMap((ruling) => {
-        const pinned = object(ruling.pins)["contexts/vendor/wrappers.yaml"]
-        return typeof pinned === "string" ? [{ id: text(ruling.id), digest: pinned }] : []
-    })
-    const live = pins.at(-1)
-    if (live === undefined) found.push({ kind: "wrapper-pin-drift", subject: "contexts/vendor/wrappers.yaml", detail: "no ruling of rulings.yaml pins the digest of vendor/wrappers.yaml" })
-    else if (live.digest !== sha256(raw)) found.push({ kind: "wrapper-pin-drift", subject: "contexts/vendor/wrappers.yaml", detail: `vendor/wrappers.yaml hashes to ${sha256(raw)}; ruling ${live.id} pins ${live.digest}: record the new digest in the ruling that owns the change` })
+    const pinsFile = join(knowledge, "vendor", "pins.yaml")
+    const pinned = existsSync(pinsFile) ? object(object(parse(read(pinsFile))).pins)["wrappers.yaml"] : undefined
+    if (typeof pinned !== "string") found.push({ kind: "wrapper-pin-drift", subject: "contexts/vendor/wrappers.yaml", detail: "vendor/pins.yaml records no digest of wrappers.yaml" })
+    else if (pinned !== sha256(raw)) found.push({ kind: "wrapper-pin-drift", subject: "contexts/vendor/wrappers.yaml", detail: `vendor/wrappers.yaml hashes to ${sha256(raw)}; vendor/pins.yaml records ${pinned}: record the new digest there in the commit that changes the file` })
     return found
 }
 

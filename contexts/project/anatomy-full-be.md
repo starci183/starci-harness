@@ -20,11 +20,11 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
 - `{.npmrc,.npmignore}` — **app.tool-config-optional** optional
 - `eslint.config.mjs` — **app.packages-lint** optional · R05
 - `{sonar-project.properties,codecov.yml}` — **app.quality-config** required · R11, R05
-- `.husky/{pre-commit,pre-push}` — **app.hooks** required · R05, HFS_CI_E2E_AUTOMATIC (no rule)
+- `.husky/{pre-commit,pre-push}` — **app.hooks** required · R12, R05
 - `.github/`
   - `workflows/`
-    - `ci.yml` — **app.ci** required · R13, R05, HFS_CI_E2E_AUTOMATIC (no rule)
-    - `e2e.yml` — **app.ci-e2e** optional · R05, HFS_CI_E2E_AUTOMATIC (no rule)
+    - `ci.yml` — **app.ci** required · R12, R13, R05
+    - `e2e.yml` — **app.ci-e2e** optional · R12, R05
     - `images.yml` — **app.ci-images** required · R05
     - `db-deploy.yml` — **app.ci-db** optional · R05
     - `stack-deploy.yml` — **app.ci-stack-deploy** optional · R05
@@ -39,14 +39,14 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
 - `browser/` — **app.browser** opt-in
   - `tsconfig.json` — **app.browser-config** opt-in · R05
 - `scripts/`
-  - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R102, R103, HFS_SCRIPT_ONE_OFF (no rule)
-  - `integration/*.mjs` — **app.scripts.integration** optional · R06, R102, R103, HFS_SCRIPT_ONE_OFF (no rule)
+  - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R385, R102, R103
+  - `integration/*.mjs` — **app.scripts.integration** optional · R06, R385, R102, R103
 - `packages/`
   - `<name>/` — **app.packages** optional · R25
   - `modules/` — **app.module-registry** optional · R05
 - `{be,fe}/` — **app.sides** required
-- `.starciwork/` — **app.starciwork** required · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)
-- `.starcistacks/` — **app.starcistacks** required · R10, R01, R06, R375, R259, HFS_IDENTITY_CUSTODY (no rule)
+- `.starciwork/` — **app.starciwork** required · R07, R09
+- `.starcistacks/` — **app.starcistacks** required · R10, R01, R06, R09, R375, R259
   - `cache/` — **app.starcistacks.cache** optional
 - `.sops.yaml` — **app.sops** required
 
@@ -128,7 +128,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app
       - `builders/*.builder.ts` — **be.tests.fixtures.builders** optional · [be/test](../code/be/test.md) · R89
       - `i18n/` — **be.tests.fixtures.i18n** optional · [be/test](../code/be/test.md)
     - `integration/<capability>/*.integration-spec.ts` — **be.tests.integration** optional · [be/test](../code/be/test.md) · R47, R112
-    - `e2e/<area>/*.e2e-spec.ts` — **be.tests.e2e** optional · [be/test](../code/be/test.md) · R47, HFS_CI_E2E_AUTOMATIC (no rule), BE_E2E_FLOW (no rule)
+    - `e2e/<area>/*.e2e-spec.ts` — **be.tests.e2e** optional · [be/test](../code/be/test.md) · R12, R47, R48
     - `contract/<provider>/*.contract-spec.ts` — **be.tests.contract** optional · [be/test](../code/be/test.md) · R47
 
 Git-ignored: `repo.build-output`, `repo.generated`.

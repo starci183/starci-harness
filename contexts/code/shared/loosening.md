@@ -36,10 +36,10 @@ When a canon rule, the grammar or the harness refuses correct code, the fix is a
 own task. A coding op reports it (`blocked`, naming the package, the rule and the finding) and never adds a local rule,
 an override, a shim or an exception to make its checks green. The only exception mechanism is an entry of the
 repository's `policy/loosening.yaml`, pinned to the exact lines of a fixture, template or detector file, or of a file a
-live owner ruling covers (its header says the form), which an owner decision adds.
+rule of the rule book covers, citing that rule's id (its header says the form), which the owner adds.
 
 Why: a local workaround forks the standard silently, and the next app repeats the same fight.
 
 Enforced by: R16 HFS_TOOL_CONFIG_LOCAL, R17 HFS_RULE_OFF_WITHOUT_REPLACEMENT, R103 HFS_REPO_LOCAL_CHECK; the
 `loosening` gate reports a pinned line that matches no finding (`EXCEPTION_STALE`) and refuses an exception on any other
-file (`EXCEPTION_KIND_REFUSED`) or one citing no live ruling (`EXCEPTION_RULING_UNKNOWN`).
+file (`EXCEPTION_KIND_REFUSED`) or one citing an id the rule book does not hold (`EXCEPTION_RULE_UNKNOWN`).

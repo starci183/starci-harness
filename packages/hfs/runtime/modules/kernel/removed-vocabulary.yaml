@@ -2,11 +2,13 @@
 # the config and routing-bias refusals take their names and replacements from it, and the `removed-vocabulary` self-check
 # refuses any of these spellings in text an agent or the owner reads, outside this file, CHANGELOG.md and a block marked
 # `[removed-list]` (CONTRIBUTING.md, "Removing or renaming a spelling").
-# Fields: id; kind (config-key | bias-field | verb | flag | code | vocabulary | file; a file is named by its base name); name (the removed spelling); use (the
-# replacement, worded to finish the sentence "<name> is removed (<use>)"); since (the release that removed it);
-# match (optional regular expression the scan uses instead of the literal name); scan (false when the name is too common
-# a word to scan for).
-kinds: [config-key, bias-field, verb, flag, code, vocabulary, file]
+# Fields: id; kind (config-key | bias-field | verb | flag | code | vocabulary | file | grammar; a file is named by its base
+# name; a grammar entry is a Grammar name the contexts no longer use, its `as` saying what it named); name (the removed
+# spelling); use (the replacement, worded to finish the sentence "<name> is removed (<use>)"); since (the release that
+# removed it, optional); match (optional regular expression the scan uses instead of the literal name); scan (false when
+# the name is too common a word to scan for). The harness's `contexts anatomy` refuses a grammar name written as code in
+# contexts/, and one marked `shipped: true` anywhere in this package's runtime/.
+kinds: [config-key, bias-field, verb, flag, code, vocabulary, file, grammar]
 removed:
   - id: fe-landmark-branch-inventory
     kind: vocabulary
@@ -456,3 +458,242 @@ removed:
     use: 'the runtime cut has no candidate step; the ci, examples and sonar workflows judge each push to main (suite.ci.workflows)'
     since: 1.0.0-alpha.31.1
     match: 'candidate\.blocking\b'
+  - id: grammar-backdrop
+    kind: grammar
+    name: Backdrop
+    as: grammar component
+    use: "a soft SurfaceCard, or Freestyle for a tinted brand ground"
+    scan: false
+  - id: grammar-statusdot-with-text
+    kind: grammar
+    name: StatusDot with text
+    as: grammar component form
+    use: "Badge isDot"
+    scan: false
+  - id: grammar-connectionstatus
+    kind: grammar
+    name: ConnectionStatus
+    as: grammar component
+    use: "Badge isDot isLive"
+    scan: false
+  - id: grammar-closebutton
+    kind: grammar
+    name: CloseButton
+    as: grammar component
+    use: "IconButton intent=\"dismiss\""
+    scan: false
+  - id: grammar-surfacecopygroup
+    kind: grammar
+    name: SurfaceCopyGroup
+    as: grammar component
+    use: "Stack gap=\"identity\""
+    scan: false
+  - id: grammar-includedmark
+    kind: grammar
+    name: IncludedMark
+    as: grammar component
+    use: "Icon"
+    scan: false
+  - id: grammar-rankartwork
+    kind: grammar
+    name: RankArtwork
+    as: grammar component
+    use: "the app's own assets"
+    scan: false
+  - id: grammar-textaction-href
+    kind: grammar
+    name: TextAction href
+    as: grammar prop
+    use: "Link"
+    scan: false
+  - id: grammar-chatbubble
+    kind: grammar
+    name: ChatBubble
+    as: grammar component
+    use: "MessageBubble"
+    scan: false
+  - id: grammar-chatbubbleskeletons
+    kind: grammar
+    name: ChatBubbleSkeletons
+    as: grammar component
+    use: "the thread's own MessageBubbles with isLoading"
+    scan: false
+  - id: grammar-sectionheader
+    kind: grammar
+    name: SectionHeader
+    as: grammar component
+    use: "Section, whose title is the heading"
+    shipped: true
+    scan: false
+  - id: grammar-region
+    kind: grammar
+    name: Region
+    as: grammar component
+    use: "Section"
+    scan: false
+  - id: grammar-list
+    kind: grammar
+    name: List
+    as: grammar component
+    use: "Section kind=\"list\" for a long list, a list card for a short one"
+    scan: false
+  - id: grammar-listitem
+    kind: grammar
+    name: ListItem
+    as: grammar component
+    use: "an item of Section kind=\"list\""
+    scan: false
+  - id: grammar-leadingnumber
+    kind: grammar
+    name: LeadingNumber
+    as: grammar component
+    use: "the position field of a Section row"
+    scan: false
+  - id: grammar-collectionitem
+    kind: grammar
+    name: CollectionItem
+    as: grammar component
+    use: "nothing, item placement comes from the structure"
+    scan: false
+  - id: grammar-itemactions
+    kind: grammar
+    name: ItemActions
+    as: grammar component
+    use: "nothing, item placement comes from the structure"
+    scan: false
+  - id: grammar-toolbaractions
+    kind: grammar
+    name: ToolbarActions
+    as: grammar component
+    use: "nothing, chrome placement comes from the structure"
+    scan: false
+  - id: grammar-label
+    kind: grammar
+    name: Label
+    as: grammar component
+    use: "the label of a card or a field, or the title of a Section"
+    scan: false
+  - id: grammar-text-weight
+    kind: grammar
+    name: Text weight
+    as: grammar prop
+    use: "Text isStrong"
+    scan: false
+  - id: grammar-text-size-metric-lead
+    kind: grammar
+    name: Text size metric-lead
+    as: grammar prop value
+    use: "a figure of DescriptionList layout stat-strip"
+    scan: false
+  - id: grammar-text-tone-accent
+    kind: grammar
+    name: Text tone accent
+    as: grammar prop value
+    use: "Text isStrong for a mention, Link for a destination"
+    scan: false
+  - id: grammar-text-parentemphasis
+    kind: grammar
+    name: Text parentEmphasis
+    as: grammar prop
+    use: "nothing"
+    scan: false
+  - id: grammar-chatworkspace
+    kind: grammar
+    name: ChatWorkspace
+    as: grammar composition
+    use: "PaneGrid"
+    scan: false
+  - id: grammar-panelayout
+    kind: grammar
+    name: PaneLayout
+    as: grammar composition
+    use: "PaneGrid"
+    scan: false
+  - id: grammar-surfacelistcard
+    kind: grammar
+    name: SurfaceListCard
+    as: grammar component
+    use: "SurfaceCard kind=\"list\""
+    shipped: true
+    scan: false
+  - id: grammar-surfaceaccordioncard
+    kind: grammar
+    name: SurfaceAccordionCard
+    as: grammar component
+    use: "SurfaceCard kind=\"accordion\""
+    shipped: true
+    scan: false
+  - id: grammar-staticstaterow
+    kind: grammar
+    name: StaticStateRow
+    as: grammar component
+    use: "an item of SurfaceCard kind=\"list\" with its state field"
+    scan: false
+  - id: grammar-formgrid
+    kind: grammar
+    name: FormGrid
+    as: grammar component
+    use: "Grid kind=\"form\""
+    scan: false
+  - id: grammar-primaryraillayout
+    kind: grammar
+    name: PrimaryRailLayout
+    as: grammar component
+    use: "Grid kind=\"main-rail\""
+    scan: false
+  - id: grammar-subnav
+    kind: grammar
+    name: Subnav
+    as: grammar component
+    use: "TopBar menu"
+    scan: false
+  - id: grammar-bottomnav
+    kind: grammar
+    name: BottomNav
+    as: grammar component
+    use: "the drawer (no bottom tab bar)"
+    scan: false
+  - id: grammar-navigationfeaturenav
+    kind: grammar
+    name: NavigationFeatureNav
+    as: grammar component
+    use: "TopBar subnavigation"
+    scan: false
+  - id: grammar-starci
+    kind: grammar
+    name: starci
+    as: grammar family id
+    use: "core"
+    scan: false
+  - id: grammar-starci-core
+    kind: grammar
+    name: starci-core
+    use: "core"
+    scan: false
+  - id: grammar-heritage
+    kind: grammar
+    name: heritage
+    as: grammar family
+    use: "nothing (dropped)"
+    scan: false
+  - id: grammar-starci-eslint-grammar-starci
+    kind: grammar
+    name: "@starci/eslint-grammar-starci"
+    use: "@starci/eslint-grammar-core"
+    scan: false
+  - id: grammar-fe-package-ui
+    kind: grammar
+    name: fe.package.ui
+    as: slot (a product UI package)
+    use: "the grammar package; shared front-end packages hold no visuals"
+    scan: false
+  - id: grammar-dataviz-grammar
+    kind: grammar
+    name: dataviz grammar
+    use: "the selected grammar's tokens"
+    scan: false
+  - id: grammar-control-height-1
+    kind: grammar
+    name: CONTROL-HEIGHT-1
+    use: "R320, the control height rule"
+    scan: false

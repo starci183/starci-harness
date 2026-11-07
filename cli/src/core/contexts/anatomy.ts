@@ -5,7 +5,7 @@ import { Refusal, UsageError } from "../../shared/errors.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 import { judgeAnatomy } from "./anatomy-gate.js"
-import type { Gap, GateVerdict } from "./anatomy-gate.js"
+import type { Gap, GateVerdict, PlannedRule } from "./anatomy-gate.js"
 import { BEGIN_PREFIX, END_MARKER, SLICE_EDITIONS, SLICE_SIDES, renderAnatomy, renderSlice, sliceFile, spliceAnatomy } from "./anatomy-render.js"
 import { INDEX_FILE, renderIndex } from "./index-render.js"
 import { SECTIONED_DOCS } from "./sectioned-docs.js"
@@ -25,21 +25,20 @@ interface AnatomyData {
     readonly dangling: readonly string[]
     readonly firstDifference: number | null
     readonly files: readonly GeneratedFile[]
-    /** The completeness gaps that make the dry run red: a slot rule code with no rule, a rule with no or only planned enforcers. */
+    /** The completeness gaps that make the dry run red: a slot rule code with no rule, a rule with no enforcer, a knowledge finding. */
     readonly gaps: readonly Gap[]
-    /** The gaps a dated pending entry and its live owner ruling hold open. */
-    readonly pending: readonly Gap[]
+    /** The rules judged only by planned enforcers: listed, never red. */
+    readonly planned: readonly PlannedRule[]
 }
 
 /** The knowledge folder: `<runtime root>/contexts`. */
 export const knowledgeDir = (): string => join(runtimeRoot(), "contexts")
 
-/** The gate's lines: one per red gap, then one naming the pending gaps and their rulings. */
+/** The gate's lines: one per red gap, then one naming the rules judged only by planned enforcers. */
 const gateNote = (gate: GateVerdict): string => {
     const red = gate.red.map((item) => `${item.code}: ${item.detail}`)
-    const rulings = [...new Set(gate.pending.map((item) => item.pending?.ruling ?? ""))].join(", ")
-    const pending = gate.pending.length === 0 ? [] : [`pending by owner ruling ${rulings}: ${gate.pending.map((item) => item.subject).join(", ")}`]
-    return [...red, ...pending].map((line) => `\n${line}`).join("")
+    const planned = gate.planned.length === 0 ? [] : [`planned enforcers only: ${gate.planned.map((rule) => `${rule.id} (${rule.enforcers.join(", ")})`).join("; ")}`]
+    return [...red, ...planned].map((line) => `\n${line}`).join("")
 }
 
 const lf = (text: string): string => text.replaceAll("\r\n", "\n")
@@ -86,7 +85,7 @@ const checkAnatomy = (file: string, difference: number | null, whole: ReturnType
     const files = whole.map((target) => settleWhole(target, false))
     const drifted = files.filter((item) => item.verdict === "drift")
     const note = gateNote(gate)
-    const data = (verdict: AnatomyData["verdict"]): AnatomyData => ({ file, mode: "check", verdict, dangling, firstDifference: difference, files, gaps: gate.red, pending: gate.pending })
+    const data = (verdict: AnatomyData["verdict"]): AnatomyData => ({ file, mode: "check", verdict, dangling, firstDifference: difference, files, gaps: gate.red, planned: gate.planned })
     if (difference !== null || drifted.length > 0) {
         const lines = [
             ...(difference === null ? [] : [`drift: ${file} differs from the generator at line ${String(difference)} of the generated block`]),
@@ -105,8 +104,7 @@ const checkAnatomy = (file: string, difference: number | null, whole: ReturnType
  * the whole anatomy), the contexts index (`project/index.md`, every file of the tree, which a Kernel opens instead of the
  * whole tree) and the section indexes of SECTIONED_DOCS (index-render.ts: each large document a seat loads by its index). Its
  * dry run (the default) exits 1 when any of them differs from the generator, or when a slot names a rule code no rule carries
- * or a rule names no enforcer or only planned ones (anatomy-gate.ts), unless a dated pending entry citing a live owner ruling
- * holds that gap; `--execute` rewrites them; `--slice` prints one slice. Runtime only (no edition): an app tree never sees it.
+ * or a rule names no enforcer (anatomy-gate.ts), and lists the rules judged only by planned enforcers; `--execute` rewrites them; `--slice` prints one slice. Runtime only (no edition): an app tree never sees it.
  */
 export const contextsAnatomyVerb = defineVerb({
     path: ["contexts", "anatomy"],
@@ -116,7 +114,7 @@ export const contextsAnatomyVerb = defineVerb({
     roles: WRITERS,
     schema: "starci/contexts-anatomy@1",
     flags: {
-        execute: { kind: "boolean", summary: "rewrite anatomy.md's generated block, the slices, the contexts index and the section indexes (default: a dry run that exits 1 when one differs from the generator, or a slot rule code, a rule or its enforcers leave a gap no owner ruling holds pending)" },
+        execute: { kind: "boolean", summary: "rewrite anatomy.md's generated block, the slices, the contexts index and the section indexes (default: a dry run that exits 1 when one differs from the generator, or a slot rule code or a rule leaves a gap)" },
         slice: { kind: "boolean", summary: "print the slice of one edition and side (the app root plus that side), as a task reads it" },
         side: { kind: "string", summary: "the side of --slice: be or fe" },
         edition: { kind: "string", summary: "the edition of --slice: lite or full" },
@@ -129,12 +127,12 @@ export const contextsAnatomyVerb = defineVerb({
             if (flags.execute) throw new Refusal("FLAGS_EXCLUSIVE", "--slice prints one slice; --execute writes every slice")
             if (flags.side === undefined || flags.edition === undefined) throw new UsageError("--slice needs --side <be|fe> and --edition <lite|full>")
             const text = renderSlice(knowledge, flags.edition, flags.side)
-            return Promise.resolve({ data: { file: join(knowledge, "project", sliceFile(flags.edition, flags.side)), mode: "print", verdict: "printed", dangling: [], firstDifference: null, files: [], gaps: [], pending: [] } satisfies AnatomyData, message: text })
+            return Promise.resolve({ data: { file: join(knowledge, "project", sliceFile(flags.edition, flags.side)), mode: "print", verdict: "printed", dangling: [], firstDifference: null, files: [], gaps: [], planned: [] } satisfies AnatomyData, message: text })
         }
         const { block, dangling } = renderAnatomy(knowledge)
         const gate = judgeAnatomy(knowledge)
         const note = gateNote(gate)
-        const judged = { gaps: gate.red, pending: gate.pending }
+        const judged = { gaps: gate.red, planned: gate.planned }
         if (!existsSync(file)) throw new Refusal("ANATOMY_NOT_FOUND", `${file} does not exist`)
         const text = lf(readFileSync(file, "utf8"))
         if (flags.execute) {

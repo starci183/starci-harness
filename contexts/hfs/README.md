@@ -90,6 +90,7 @@ note says what the rule protects and what to do when it fires. A rule that guard
 |---|---|---|
 | R07 | `.starciwork` stays product records | Move agent or session data out of `.starciwork`; it holds product records only. |
 | R09 | identity custody | Point an identity's secret at `secrets/identity-<slug>.enc`; UAT chooses an identity by role. |
+| R385 | `scripts/` stays standing tooling | Delete the one-off codemod or fix script; only tooling the app keeps running is committed. |
 | R223 | roles do not act as each other | The command guard refuses `git push`, `git tag` and raw git writes by role; use the verb that owns the step. |
 | R224 | the protected zone | Edit the zone declared in `modules/kernel/protected-zone.yaml` only by the owner path. |
 | R225 | the hook model | Keep pre-commit L0 only (no typecheck or test run) and let pre-push call the bundled push policy. |

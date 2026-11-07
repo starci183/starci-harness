@@ -5,6 +5,7 @@ import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { runtimeRoot } from "./ledger.js"
+import { ruleBookIds } from "./rule-book.js"
 
 /** The runtime gates the CLI implements: `starci check run` runs those a profile selects, in this order of cost. */
 export const RUNTIME_GATES = ["secrets", "loosening", "canon", "typecheck", "lint"] as const
@@ -61,13 +62,13 @@ export type Profile = z.infer<typeof profileSchema>
 const qualitySchema = z.object({
     schema: z.literal("starci/quality-policy@1"),
     runtime: z.object({ stepTimeoutSeconds: z.number().int().positive().max(3600), compositionRules: z.array(z.string().min(1)),
-        /** Package folders with no ESLint config by owner ruling, linted by the compiler's unused checks over each of their tsconfigs (core/check/scope.ts compilerLintPackage). */
+        /** Package folders with no ESLint config, linted by the compiler's unused checks over each of their tsconfigs (core/check/scope.ts compilerLintPackage). */
         compilerLint: z.array(z.string().min(1)).default([]),
     }),
     /** Where a workflow task's heavy checks run: `task` in its own verify, `wave` in the workflow's wave verify (harness/wave.ts). */
     verify: z.object({ tier: z.enum(["task", "wave"]) }),
     requireCi: z.array(z.enum(CI_GATED_ACTIONS)),
-    /** `starci app check` passes under `errorLimit` error findings with no hard blocker (owner ruling gate-threshold-20). */
+    /** `starci app check` passes under `errorLimit` error findings with no hard blocker. */
     gate: z.object({ errorLimit: z.number().int().positive().max(1000) }).default({ errorLimit: 20 }),
     defaults: z.object({ none: z.string().min(1), app: z.string().min(1), runtime: z.string().min(1) }),
     profiles: z.record(z.string().min(1), profileSchema),
@@ -94,7 +95,7 @@ const literalPath = z
 const reason = z.string().trim().min(10, "an exception carries its reason")
 
 /** What a file must be for an exception to name it; `exceptionKindProblem` holds the test of each. */
-export const EXCEPTION_KINDS = ["fixture", "template", "detector", "ruling"] as const
+export const EXCEPTION_KINDS = ["fixture", "template", "detector", "rule"] as const
 
 /** One exception kind. */
 export type ExceptionKind = (typeof EXCEPTION_KINDS)[number]
@@ -105,8 +106,20 @@ const match = z
     .transform((value) => (typeof value === "string" ? [value] : value))
     .refine((entries) => new Set(entries).size === entries.length, "an exception lists each match once")
 
-// A `ruling` exception names the id of the owner ruling it rests on (contexts/decisions/rulings.yaml); no other kind names one.
-const exceptionFields = { path: literalPath, kind: z.enum(EXCEPTION_KINDS), decision: z.string().trim().min(1).optional(), match, reason }
+const REMOVED_CITATION = "`kind: ruling` and `decision:` are removed: an exception resting on a rule is `kind: rule` with `cites: <rule id>` (a rule of contexts/ or CONTRIBUTING.md)"
+
+// A rule id of the rule book (rule-book.ts); `refuseUnqualified` resolves it.
+const cites = z.string().trim().min(1)
+
+// A `rule` exception cites the rule it rests on; no other kind cites one.
+const exceptionFields = {
+    path: literalPath,
+    kind: z.enum(EXCEPTION_KINDS, { error: (issue) => (issue.input === "ruling" ? REMOVED_CITATION : `an exception's kind is one of ${EXCEPTION_KINDS.join(", ")}`) }),
+    cites: cites.optional(),
+    decision: z.never({ error: REMOVED_CITATION }).optional(),
+    match,
+    reason,
+}
 
 const looseningException = z.object({ ...exceptionFields, marker: z.enum(LOOSENING_MARKERS) })
 
@@ -125,15 +138,16 @@ const branchName = z.string()
 const unique = (entries: readonly string[]): boolean => new Set(entries).size === entries.length
 
 // The owner-approved exception an app's branch profile is (`branches` of its .starcistacks/application-stacks.yaml): the branches that may carry one and
-// the polish gates they may lower, resting on a live ruling; `starci app` hands both to @starci/hfs, which refuses any other branch or gate.
+// the polish gates they may lower, citing the rule it rests on; `starci app` hands both to @starci/hfs, which refuses any other branch or gate.
 const branchProfiles = z.object({
-    decision: z.string().trim().min(1),
+    cites,
+    decision: z.never({ error: "`decision:` is removed: branchProfiles cites its rule with `cites: <rule id>`" }).optional(),
     branches: z.array(branchName).refine(unique, "each branch once"),
     gates: z.array(z.enum(POLISH_GATES)).refine(unique, "each gate once"),
     reason,
 })
 
-/** What an app's branch profile may lower: the branches and the polish gates, and the ruling the exception rests on. */
+/** What an app's branch profile may lower: the branches and the polish gates, and the rule the exception rests on. */
 export type BranchProfilePolicy = z.infer<typeof branchProfiles>
 
 const looseningSchema = z.object({
@@ -185,19 +199,19 @@ const REGEX_LITERAL = /(?:^|[=(,:[!&|?{};]\s*)\/(?![/*])(?:\\.|[^/\\\n])+\/[dgim
 /** True when `text` holds a string literal, or a regular-expression literal opened where an expression starts. */
 const holdsPatternLiteral = (text: string): boolean => STRING_LITERAL.test(text) || REGEX_LITERAL.test(text)
 
-type KindView = Pick<LooseningException, "path" | "kind" | "match" | "decision">
+type KindView = Pick<LooseningException, "path" | "kind" | "match" | "cites">
 
 /**
  * Why an exception may not name its file, or undefined when it may. A `fixture` is a file of a `fixtures/` or `__fixtures__/`
  * folder, or a spec (`*.spec.*`, `*.test.*`); a `template` is a file of a `templates/` folder; a `detector` is a scanner or
  * rule implementation of a runtime that ships detectors (a file under a `runtime/` folder and, below it, a `rules/`,
  * `guards/` or `lib/` folder) whose every `match` holds a string or regular-expression literal, the pattern it detects; a
- * `ruling` is any file, and names in `decision` the owner ruling it rests on (`refuseUnqualified` resolves the id). Only a
- * `ruling` names a decision.
+ * `rule` is any file, and names in `cites` the rule of the rule book it rests on (`refuseUnqualified` resolves the id). Only a
+ * `rule` exception cites a rule.
  */
 export const exceptionKindProblem = (exception: KindView): string | undefined => {
-    if (exception.kind === "ruling") return exception.decision === undefined ? "a ruling exception names its decision (an id of contexts/decisions/rulings.yaml)" : undefined
-    if (exception.decision !== undefined) return "only a ruling exception names a decision"
+    if (exception.kind === "rule") return exception.cites === undefined ? "a rule exception cites its rule (`cites: <rule id>`)" : undefined
+    if (exception.cites !== undefined) return "only a rule exception cites a rule"
     const dirs = exception.path.split("/").slice(0, -1)
     const name = exception.path.slice(exception.path.lastIndexOf("/") + 1)
     if (exception.kind === "fixture") {
@@ -212,20 +226,9 @@ export const exceptionKindProblem = (exception: KindView): string | undefined =>
     return bare === undefined ? undefined : `a detector's match holds the string or regular-expression literal it detects; ${JSON.stringify(bare)} holds none`
 }
 
-const rulingsSchema = z.object({
-    rulings: z.array(z.object({ id: z.string().min(1), status: z.enum(["live", "proposed"]), absorbs: z.array(z.string().min(1)).optional() })),
-})
-
-/** The ids a `ruling` exception may cite: every live ruling of contexts/decisions/rulings.yaml and the ids it absorbs. */
-const liveRulingIds = (): ReadonlySet<string> => {
-    const file = join(runtimeRoot(), "contexts", "decisions", "rulings.yaml")
-    const { rulings } = readYaml(file, rulingsSchema)
-    return new Set(rulings.filter((ruling) => ruling.status === "live").flatMap((ruling) => [ruling.id, ...(ruling.absorbs ?? [])]))
-}
-
 /**
  * Refuses EXCEPTION_KIND_REFUSED when an exception of `file` names a file its kind does not qualify, and
- * EXCEPTION_RULING_UNKNOWN when a ruling exception cites no live ruling.
+ * EXCEPTION_RULE_UNKNOWN when a rule exception cites an id the rule book does not hold.
  */
 const refuseUnqualified = (file: string, exceptions: readonly KindView[] | undefined): void => {
     const declared = exceptions ?? []
@@ -233,20 +236,20 @@ const refuseUnqualified = (file: string, exceptions: readonly KindView[] | undef
         const problem = exceptionKindProblem(exception)
         return problem === undefined ? [] : [`${exception.path} (${exception.kind}): ${problem}`]
     })
-    if (problems.length > 0) throw new Refusal("EXCEPTION_KIND_REFUSED", `${file}: only a fixture, template, detector or ruling exception is taken; ${problems.join("; ")}`)
-    const cited = declared.flatMap((exception) => (exception.decision === undefined ? [] : [exception]))
+    if (problems.length > 0) throw new Refusal("EXCEPTION_KIND_REFUSED", `${file}: only a fixture, template, detector or rule exception is taken; ${problems.join("; ")}`)
+    const cited = declared.flatMap((exception) => (exception.cites === undefined ? [] : [{ path: exception.path, cites: exception.cites }]))
     if (cited.length === 0) return
-    const live = liveRulingIds()
-    const unknown = cited.filter((exception) => exception.decision !== undefined && !live.has(exception.decision))
+    const known = ruleBookIds(runtimeRoot())
+    const unknown = cited.filter((exception) => !known.has(exception.cites))
     if (unknown.length > 0) {
-        const named = unknown.map((exception) => `${exception.path} cites ${String(exception.decision)}`).join("; ")
-        throw new Refusal("EXCEPTION_RULING_UNKNOWN", `${file}: a ruling exception cites a live id of contexts/decisions/rulings.yaml; ${named}`)
+        const named = unknown.map((exception) => `${exception.path} cites ${exception.cites}`).join("; ")
+        throw new Refusal("EXCEPTION_RULE_UNKNOWN", `${file}: a rule exception cites a rule id of contexts/ or CONTRIBUTING.md; ${named}`)
     }
 }
 
-/** EXCEPTION_RULING_UNKNOWN when the branch profile exception cites no live ruling. */
-const refuseUnruled = (file: string, profiles: BranchProfilePolicy): void => {
-    if (!liveRulingIds().has(profiles.decision)) throw new Refusal("EXCEPTION_RULING_UNKNOWN", `${file}: branchProfiles cites ${profiles.decision}, which is no live id of contexts/decisions/rulings.yaml`)
+/** EXCEPTION_RULE_UNKNOWN when the branch profile exception cites an id the rule book does not hold. */
+const refuseUncited = (file: string, profiles: BranchProfilePolicy): void => {
+    if (!ruleBookIds(runtimeRoot()).has(profiles.cites)) throw new Refusal("EXCEPTION_RULE_UNKNOWN", `${file}: branchProfiles cites ${profiles.cites}, which is no rule id of contexts/ or CONTRIBUTING.md`)
 }
 
 /** The runtime's policy files with a project's overlay applied. */
@@ -333,7 +336,7 @@ export const loadPolicy = (repositoryRoot?: string, dir: string = locatePolicy()
     let security = readYaml(join(dir, "security.yaml"), securitySchema)
     refuseUnqualified(join(dir, "loosening.yaml"), loosening.exceptions)
     refuseUnqualified(join(dir, "security.yaml"), security.exceptions)
-    refuseUnruled(join(dir, "loosening.yaml"), loosening.branchProfiles)
+    refuseUncited(join(dir, "loosening.yaml"), loosening.branchProfiles)
     checkCrossReferences(dir, quality, canon, security)
     // The runtime's exceptions name the runtime repository's own files; any other repository starts with none.
     if (repositoryRoot !== undefined && !sameDir(join(repositoryRoot, "policy"), dir)) {

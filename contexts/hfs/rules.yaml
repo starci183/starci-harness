@@ -1,7 +1,8 @@
 # The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and
 # the enforcers that judge it. The law states what must hold; the reason lives in the pattern that cites the rule
 # (contexts/code/<side>/*.md), the value in its owner (hfs/slots.yaml ruleParams or budgets, stack/pins.yaml,
-# the grammar package), and every dated owner decision in decisions/rulings.yaml.
+# the grammar package). An enforcer marked `status: planned` is owed: `starci contexts anatomy` lists the rules judged only
+# by planned enforcers, and the status is removed the day the check ships.
 schema: starci/hfs-rules@4
 enforcerKinds:
   eslint-be: a rule of @starci/eslint-canon-be (id without the plugin prefix)
@@ -2488,10 +2489,6 @@ rules:
     enforcers:
       - {kind: eslint-grammar-core, id: no-label-in-grid}
 
-# Owner section. The gaps `starci contexts anatomy` (its dry run) takes as pending instead of red: a slot rule code no rule carries
-# (slot-rule-unknown), a rule with no enforcer (rule-no-enforcer) or only planned ones (rule-enforcer-planned). Each entry is
-# dated and cites the live owner ruling of decisions/rulings.yaml whose `covers` lists its subject; an entry without one is
-# red (ANATOMY_PENDING_UNRULED) and one that holds no open gap is red (ANATOMY_PENDING_STALE), so this list only shrinks.
   - id: R367
     code: FE_SWR_DEFAULT_ARRAY
     law: "A loading state is drawn from the page's own reads: a read folded to [] also returns its isLoading, a slot never takes another slot's loading or error, a background refresh never drives a loading flag, a placeholder is not the ready data emptied, and an app draws no skeleton by hand: the Grammar components draw their loading structure from `isLoading`."
@@ -2625,11 +2622,24 @@ rules:
       - FE_RENDERER_LOGIC
     enforcers:
       - {kind: eslint-fe, id: renderer-presentation-only}
-pending:
-  - {gap: slot-rule-unknown, subject: BE_E2E_FLOW, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
-  - {gap: slot-rule-unknown, subject: FE_DATA_FRESHNESS, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
-  - {gap: slot-rule-unknown, subject: FE_SIZE_BUDGET, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
-  - {gap: slot-rule-unknown, subject: HFS_AGENT_DATA_TRACKED, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
-  - {gap: slot-rule-unknown, subject: HFS_CI_E2E_AUTOMATIC, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
-  - {gap: slot-rule-unknown, subject: HFS_IDENTITY_CUSTODY, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
-  - {gap: slot-rule-unknown, subject: HFS_SCRIPT_ONE_OFF, since: '2026-10-27', ruling: rules-pending-enforcers-2026-10-27}
+  - id: R07
+    code: HFS_AGENT_DATA_TRACKED
+    law: "`.starciwork` holds product records only; agent and session data never lives there."
+    failureCodes:
+      - HFS_AGENT_DATA_TRACKED
+    enforcers:
+      - {kind: hfs, id: agent-data-tracked, status: planned}
+  - id: R09
+    code: HFS_IDENTITY_CUSTODY
+    law: "An identity points its secret at `secrets/identity-<slug>.enc`, and UAT chooses an identity by role."
+    failureCodes:
+      - HFS_IDENTITY_CUSTODY
+    enforcers:
+      - {kind: hfs, id: identity-custody, status: planned}
+  - id: R385
+    code: HFS_SCRIPT_ONE_OFF
+    law: "`scripts/` holds the app's standing tooling; a one-off codemod or fix script is agent output and is never committed."
+    failureCodes:
+      - HFS_SCRIPT_ONE_OFF
+    enforcers:
+      - {kind: hfs, id: script-one-off, status: planned}

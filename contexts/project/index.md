@@ -182,12 +182,12 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [hfs/harness.yaml](../hfs/harness.yaml) · 20 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.runtime-layer, images.sources, never.build-output, never.cli-js, never.env and 38 more
 - [hfs/rules.yaml](../hfs/rules.yaml) · 132 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
-  - ids: R01, R02, R03, R04, R05, R06, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113, R12, R13 and 275 more
+  - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113 and 278 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 109 KB — The HFS slot manifest: what may exist in an app repository and where.
   - ids: app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore, app.format-config, app.git-meta and 140 more
 - [project/README.md](../project/README.md) · 10 KB — What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read for each kind of task.
   - sections: PROJECT-1 A project is one app root that holds the Work of every side · PROJECT-2 Work travels from a record to a settled commit · PROJECT-3 A product's agent modules are workspace packages · Where to read for a task · Files
-- [project/anatomy.md](../project/anatomy.md) · 82 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
+- [project/anatomy.md](../project/anatomy.md) · 83 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
 - [project/check-cache.md](../project/check-cache.md) · 41 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
   - sections: The operating procedure · The command surface · Progress and the run log · When a run is full · Layout and format · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · CI parity · The memory plan · The slot, the templates and adoption · The law · Edge cases · As built · Read with
@@ -287,5 +287,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Button · ColorSwatch · ButtonGroup · ToggleButtonGroup · Tabs · Chip · Input · Select · Card · Modal · Dropdown · Table · Alert · Avatar · Small members · How sizes align
 - [vendor/parity.yaml](../vendor/parity.yaml) · 9 KB — What a grammar must keep of HeroUI and what it may change.
   - ids: accordion, alert, alert-dialog, avatar, avatar-group, badge, breadcrumbs, button, button-group, calendar, card, checkbox, chip, close-button, color-swatch, combo-box, date-field, date-picker, date-range-picker, disclosure, drawer, dropdown, fieldset, form and 34 more
-- [vendor/wrappers.yaml](../vendor/wrappers.yaml) · 13 KB — Every Grammar source file that imports HeroUI (paths under @starci/grammar src/).
-  - ids: data-slot, repaint-default-heroui-unless-ruled, sha256
+- [vendor/pins.yaml](../vendor/pins.yaml) · 1 KB — The digests the parity gate compares against: a pinned file that changes is red until its new sha256 is recorded here, in the commit that changes it, so the change shows in review.
+  - ids: knowledge-gates.ts, sha256
+- [vendor/wrappers.yaml](../vendor/wrappers.yaml) · 12 KB — Every Grammar source file that imports HeroUI (paths under @starci/grammar src/).
+  - ids: data-slot, sha256

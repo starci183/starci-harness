@@ -3,9 +3,10 @@
 # untracked, never ignored files), not a diff.
 # Exceptions live only in a repository's own policy/loosening.yaml, never inline: each names one file, one marker, its
 # kind, the exact text of each line it covers (`match`, the line trimmed; a list for several lines) and the reason. A
-# fixture, template or detector file takes one, and so does any file a live owner ruling covers, as a `ruling` exception
-# naming its id in `decision` (`exceptionKindProblem` in cli/src/harness/policy.ts holds the test of each kind; any other
-# file is refused EXCEPTION_KIND_REFUSED, an id that is no live ruling EXCEPTION_RULING_UNKNOWN). Any other line of the
+# fixture, template or detector file takes one, and so does any file a rule of the rule book (contexts/, CONTRIBUTING.md)
+# covers, as a `rule` exception naming that rule's id in `cites` (`exceptionKindProblem` in cli/src/harness/policy.ts holds
+# the test of each kind; any other file is refused EXCEPTION_KIND_REFUSED, an id the rule book does not hold
+# EXCEPTION_RULE_UNKNOWN). Any other line of the
 # file stays a finding, and a `match` that covers no finding is EXCEPTION_STALE, so the list cannot accrete.
 # A project's policy/loosening.yaml may ban more markers and declare its exceptions; it can never unban.
 schema: starci/loosening-policy@1
@@ -24,13 +25,13 @@ banned:
   - tls-unverified
 scan:
   maxFileBytes: 1048576
-# An app's branch profile (`branches` of its .starcistacks/application-stacks.yaml) is the one owner-approved exception that lowers a gate: a
+# An app's branch profile (`branches` of its .starcistacks/application-stacks.yaml) is the one exception that lowers a gate: a
 # branch named here may run the polish gates named here as report or off, never main and never a safety gate (@starci/hfs refuses anything else,
 # HFS_BRANCH_PROFILE_INVALID). An entry may be a pattern (`ui/*`: a literal first segment, `*` any characters but `/`) that covers the feature branches
 # merging into dev; a pattern never matches the default branch and never starts with release/. `starci app` hands both lists to @starci/hfs; a
 # project's overlay may narrow them, never widen them.
 branchProfiles:
-  decision: branch-profile-dev
+  cites: PROJECT-LINT-2
   branches: [dev, ui/*]
   gates: [lint, sonar, codecov]
   reason: "the flow-F product branch of an app, and the ui/* feature branches that merge into it, take product and UI work under the full safety gate while lint and Sonar only report (with the lint ratchet blocking on the files a commit touches); main keeps the full gate and promoting dev to main runs it"
@@ -39,10 +40,10 @@ branchProfiles:
 exceptions:
   - path: sonar-project.properties
     marker: gate-widening
-    kind: ruling
-    decision: cli-proven-by-bench
+    kind: rule
+    cites: CONTRIB-1
     match: "sonar.coverage.exclusions=cli/src/**"
-    reason: "the CLI is proven by runs of the built CLI, not unit coverage (the stress bench is removed, ruling bench-removed), so cli/src is excluded from coverage only; issues and duplication still analyse it"
+    reason: "the CLI is proven by runs of the built CLI, not unit coverage, so cli/src is excluded from coverage only; issues and duplication still analyse it"
   - path: packages/hfs/runtime/scripts/guards/git-policy.mts
     marker: no-verify
     kind: detector

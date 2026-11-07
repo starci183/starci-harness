@@ -1008,7 +1008,7 @@ slots:
     tests: none
     managedBy: hooks
     rules:
-      - HFS_CI_E2E_AUTOMATIC
+      - HFS_E2E_IN_AUTOMATIC_GATE
       - HFS_MANAGED_FILE_DRIFT
   - id: app.ci
     profiles:
@@ -1023,7 +1023,7 @@ slots:
     managedBy: ci-workflows
     liteManagedBy: ci-workflows-lite
     rules:
-      - HFS_CI_E2E_AUTOMATIC
+      - HFS_E2E_IN_AUTOMATIC_GATE
       - HFS_CI_MISSING_CANON
       - HFS_MANAGED_FILE_DRIFT
   - id: app.ci-e2e
@@ -1040,7 +1040,7 @@ slots:
       .github/workflows/ci.yml; contract specs use test:contract"
     managedBy: ci-workflows
     rules:
-      - HFS_CI_E2E_AUTOMATIC
+      - HFS_E2E_IN_AUTOMATIC_GATE
       - HFS_MANAGED_FILE_DRIFT
   - id: app.ci-images
     profiles:
@@ -3254,9 +3254,9 @@ slots:
     why: flow e2e through useTestWorld({ apps }); external services are the world's network fakes; run
       by test:e2e
     rules:
-      - HFS_CI_E2E_AUTOMATIC
+      - HFS_E2E_IN_AUTOMATIC_GATE
       - BE_TEST_TOPOLOGY
-      - BE_E2E_FLOW
+      - BE_SPEC_QUALITY
   - id: be.tests.contract
     profiles:
       - be
@@ -3413,7 +3413,7 @@ slots:
       dataHooks: 6
       useState: 6
     rules:
-      - FE_SIZE_BUDGET
+      - FE_SIZE_AND_STATE_BUDGET
       - FE_OWNER_REACHABLE
       - FE_I18N_LITERAL
   - id: fe.components
@@ -3493,7 +3493,7 @@ slots:
       useState: 6
     rules:
       - FE_HOOKS_ARE_HOOKS
-      - FE_DATA_FRESHNESS
+      - FE_TRANSPORT_OWNER
   - id: fe.hooks.swr
     profiles:
       - fe
@@ -3528,7 +3528,7 @@ slots:
       barrel: 400
     rules:
       - FE_HOOKS_ARE_HOOKS
-      - FE_DATA_FRESHNESS
+      - FE_TRANSPORT_OWNER
   - id: fe.hooks.rhf
     profiles:
       - fe

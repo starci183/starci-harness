@@ -72,7 +72,7 @@ export const exceptSecrets = (root: string, hits: readonly SecretHit[], policy: 
         policy.security.exceptions,
     )
     const bare = ({ file, line, pattern }: SecretHit): SecretFinding => ({ file, line, pattern })
-    return { findings: open.map(bare), excepted: excepted.map((hit): ExceptedSecret => ({ ...bare(hit), kind: hit.kind, decision: hit.decision, reason: hit.reason })), stale: stale.map(({ path, rule, kind, index }) => ({ path, rule, kind, index })) }
+    return { findings: open.map(bare), excepted: excepted.map((hit): ExceptedSecret => ({ ...bare(hit), kind: hit.kind, cites: hit.cites, reason: hit.reason })), stale: stale.map(({ path, rule, kind, index }) => ({ path, rule, kind, index })) }
 }
 
 /** Reads each present file under the scan's bound and adds its hits to `raw`; a neverRead file is judged by its name alone. */

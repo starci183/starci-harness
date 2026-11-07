@@ -8,14 +8,10 @@ import { slotRuleGaps } from "./anatomy-render.js"
 import { grammarSourceDir, judgeRemovedVocabulary, judgeRuleDocs, judgeShippedVocabulary, judgeVendorWrappers } from "./knowledge-gates.js"
 import type { KnowledgeFinding } from "./knowledge-gates.js"
 
-/** The gaps an owner ruling may hold open: a slot naming a rule code no rule carries, a rule with no enforcer, a rule whose enforcers are all planned. */
-export const PENDABLE_GAPS = ["slot-rule-unknown", "rule-no-enforcer", "rule-enforcer-planned"] as const
-
-/** The finding code of each gap, and of the two ways a pending entry itself is wrong. */
+/** The finding code of each gap. */
 export const GAP_CODES = {
     "slot-rule-unknown": "ANATOMY_SLOT_RULE_UNKNOWN",
     "rule-no-enforcer": "ANATOMY_RULE_NO_ENFORCER",
-    "rule-enforcer-planned": "ANATOMY_RULE_ENFORCER_PLANNED",
     "enforcer-kind-unknown": "ANATOMY_ENFORCER_KIND_UNKNOWN",
     "law-path-unresolved": "ANATOMY_LAW_PATH_UNRESOLVED",
     "rule-no-doc": "ANATOMY_RULE_NO_DOC",
@@ -24,34 +20,30 @@ export const GAP_CODES = {
     "wrapper-undeclared": "ANATOMY_WRAPPER_UNDECLARED",
     "wrapper-wraps-drift": "ANATOMY_WRAPPER_WRAPS_DRIFT",
     "wrapper-pin-drift": "ANATOMY_WRAPPER_PIN_DRIFT",
-    "wrapper-ruling-unknown": "ANATOMY_WRAPPER_RULING_UNKNOWN",
-    "pending-unruled": "ANATOMY_PENDING_UNRULED",
-    "pending-stale": "ANATOMY_PENDING_STALE",
+    "wrapper-rule-unknown": "ANATOMY_WRAPPER_RULE_UNKNOWN",
 } as const
 type GapKind = keyof typeof GAP_CODES
 
-/** One gap between a slot, a rule and its enforcers; `pending` names the dated owner ruling that holds it open. */
+/** One gap between a slot, a rule and its enforcers. */
 export interface Gap {
     readonly code: (typeof GAP_CODES)[GapKind]
     readonly kind: GapKind
     readonly subject: string
     readonly detail: string
-    readonly pending?: { readonly since: string; readonly ruling: string }
 }
 
-/** The gate's answer: the gaps that make its dry run red, and the gaps a live owner ruling holds pending. */
+/** A rule judged only by enforcers still owed (`status: planned`): listed, never red, until its check ships. */
+export interface PlannedRule {
+    readonly id: string
+    readonly code: string
+    readonly enforcers: readonly string[]
+}
+
+/** The gate's answer: the gaps that make its dry run red, and the rules judged only by planned enforcers. */
 export interface GateVerdict {
     readonly red: readonly Gap[]
-    readonly pending: readonly Gap[]
+    readonly planned: readonly PlannedRule[]
 }
-
-const pendingSchema = z.strictObject({
-    gap: z.enum(PENDABLE_GAPS),
-    subject: z.string().min(1),
-    since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "since is a YYYY-MM-DD date"),
-    ruling: z.string().min(1),
-})
-type Pending = z.infer<typeof pendingSchema>
 
 const catalogSchema = z.object({
     enforcerKinds: z.record(z.string(), z.string()),
@@ -63,11 +55,6 @@ const catalogSchema = z.object({
             enforcers: z.array(z.object({ kind: z.string(), id: z.string(), status: z.literal("planned").optional() })).optional(),
         }),
     ),
-    pending: z.array(pendingSchema).optional(),
-})
-
-const rulingsSchema = z.object({
-    rulings: z.array(z.object({ id: z.string(), status: z.string(), covers: z.array(z.string()).optional() })),
 })
 
 const readParsed = <T>(file: string, schema: z.ZodType<T>): T => {
@@ -83,13 +70,7 @@ const readParsed = <T>(file: string, schema: z.ZodType<T>): T => {
     return result.data
 }
 
-const gap = (kind: GapKind, subject: string, detail: string, pending?: Pending): Gap => ({
-    code: GAP_CODES[kind],
-    kind,
-    subject,
-    detail,
-    ...(pending === undefined ? {} : { pending: { since: pending.since, ruling: pending.ruling } }),
-})
+const gap = (kind: GapKind, subject: string, detail: string): Gap => ({ code: GAP_CODES[kind], kind, subject, detail })
 
 // A path a law cites: under contexts/, packages/, policy/ or ops/ of the harness, with an optional `#anchor`.
 const LAW_PATH = /\b((?:contexts|packages|policy|ops)\/[\w./-]*[\w/])(#[\w-]+)?/g
@@ -124,60 +105,33 @@ const unresolvedPath = (knowledge: string, cited: string): string | undefined =>
     return headings.some((heading) => slug(heading) === anchor) ? undefined : `has no heading #${anchor}`
 }
 
-/** The pendable gaps of the catalog and the slots, before any pending entry is applied. */
-const openGaps = (knowledge: string, catalog: z.infer<typeof catalogSchema>): { readonly pendable: readonly Gap[]; readonly hard: readonly Gap[] } => {
-    const pendable: Gap[] = []
-    const hard: Gap[] = []
-    for (const [code, slots] of slotRuleGaps(knowledge)) {
-        const named = slots.length === 1 ? `slot ${slots.join("")} names` : `slots ${slots.join(", ")} name`
-        pendable.push(gap("slot-rule-unknown", code, `${named} ${code}, which no rule of hfs/rules.yaml carries as its code or a failure code`))
-    }
-    for (const rule of catalog.rules) {
-        const enforcers = rule.enforcers ?? []
-        if (enforcers.length === 0) pendable.push(gap("rule-no-enforcer", rule.id, `${rule.id} (${rule.code}) names no enforcer`))
-        else if (enforcers.every((enforcer) => enforcer.status === "planned")) {
-            pendable.push(gap("rule-enforcer-planned", rule.id, `${rule.id} (${rule.code}) is judged only by planned enforcers: ${enforcers.map((enforcer) => enforcer.kind + " " + enforcer.id).join(", ")}`))
-        }
-        for (const enforcer of enforcers.filter((item) => !(item.kind in catalog.enforcerKinds))) {
-            hard.push(gap("enforcer-kind-unknown", rule.id, `${rule.id} names enforcer ${enforcer.id} of kind ${enforcer.kind}, which enforcerKinds does not declare`))
-        }
-        for (const cited of lawPaths(rule.law ?? "")) {
-            const why = unresolvedPath(knowledge, cited)
-            if (why !== undefined) hard.push(gap("law-path-unresolved", rule.id, `${rule.id}'s law cites ${cited}, which ${why}`))
-        }
-    }
-    return { pendable, hard }
-}
-
 /**
- * The completeness gate of `contexts anatomy` (its dry run): every slot rule code resolves to a rule, every rule names an enforcer,
- * and not only planned ones, of a declared kind, and every path its law cites resolves, every rule is named by a page of the living knowledge, no removed spelling of rulings.yaml is written as code there, and vendor/wrappers.yaml matches the Grammar source and its pin (never pendable). A gap stays pending (not red) only while a dated entry of rules.yaml's `pending` list holds it
- * and the live owner ruling that entry cites (contexts/decisions/rulings.yaml) lists it in `covers`; an entry with no such
- * ruling is ANATOMY_PENDING_UNRULED and one that holds no gap is ANATOMY_PENDING_STALE, so the list only shrinks.
+ * The completeness gate of `contexts anatomy` (its dry run): every slot rule code resolves to a rule, every rule names an enforcer
+ * of a declared kind and every path its law cites resolves, every rule is named by a page of the living knowledge, no removed
+ * spelling is written as code there, and vendor/wrappers.yaml matches the Grammar source and its pin. A rule whose every
+ * enforcer is `status: planned` is not a gap: it is listed in `planned` until its check ships.
  */
 export const judgeAnatomy = (knowledge: string): GateVerdict => {
     const catalog = readParsed(join(knowledge, "hfs", "rules.yaml"), catalogSchema)
-    const rulingsFile = join(knowledge, "decisions", "rulings.yaml")
-    const declared = catalog.pending ?? []
-    const rulings = declared.length === 0 ? [] : readParsed(rulingsFile, rulingsSchema).rulings
-    const covered = (entry: Pending): boolean => rulings.some((ruling) => ruling.id === entry.ruling && ruling.status === "live" && (ruling.covers ?? []).includes(entry.subject))
-    const { pendable, hard } = openGaps(knowledge, catalog)
-    const knowledgeFindings: KnowledgeFinding[] = [...judgeRuleDocs(knowledge), ...judgeRemovedVocabulary(knowledge), ...judgeShippedVocabulary(knowledge), ...judgeVendorWrappers(knowledge, grammarSourceDir())]
-    const red: Gap[] = [...hard, ...knowledgeFindings.map((finding) => gap(finding.kind, finding.subject, finding.detail))]
-    const pending: Gap[] = []
-    const used = new Set<Pending>()
-    for (const found of pendable) {
-        const entry = declared.find((item) => item.gap === found.kind && item.subject === found.subject)
-        if (entry === undefined) {
-            red.push(found)
-            continue
+    const red: Gap[] = []
+    const planned: PlannedRule[] = []
+    for (const [code, slots] of slotRuleGaps(knowledge)) {
+        const named = slots.length === 1 ? `slot ${slots.join("")} names` : `slots ${slots.join(", ")} name`
+        red.push(gap("slot-rule-unknown", code, `${named} ${code}, which no rule of hfs/rules.yaml carries as its code or a failure code`))
+    }
+    for (const rule of catalog.rules) {
+        const enforcers = rule.enforcers ?? []
+        if (enforcers.length === 0) red.push(gap("rule-no-enforcer", rule.id, `${rule.id} (${rule.code}) names no enforcer`))
+        else if (enforcers.every((enforcer) => enforcer.status === "planned")) planned.push({ id: rule.id, code: rule.code, enforcers: enforcers.map((enforcer) => `${enforcer.kind} ${enforcer.id}`) })
+        for (const enforcer of enforcers.filter((item) => !(item.kind in catalog.enforcerKinds))) {
+            red.push(gap("enforcer-kind-unknown", rule.id, `${rule.id} names enforcer ${enforcer.id} of kind ${enforcer.kind}, which enforcerKinds does not declare`))
         }
-        used.add(entry)
-        if (covered(entry)) pending.push({ ...found, pending: { since: entry.since, ruling: entry.ruling } })
-        else red.push(gap("pending-unruled", found.subject, `${found.detail}; its pending entry cites ${entry.ruling}, which is no live ruling of ${rulingsFile} listing ${found.subject} in covers`, entry))
+        for (const cited of lawPaths(rule.law ?? "")) {
+            const why = unresolvedPath(knowledge, cited)
+            if (why !== undefined) red.push(gap("law-path-unresolved", rule.id, `${rule.id}'s law cites ${cited}, which ${why}`))
+        }
     }
-    for (const entry of declared.filter((item) => !used.has(item))) {
-        red.push(gap("pending-stale", entry.subject, `the pending ${entry.gap} entry for ${entry.subject} holds no open gap: remove it from hfs/rules.yaml`, entry))
-    }
-    return { red, pending }
+    const knowledgeFindings: KnowledgeFinding[] = [...judgeRuleDocs(knowledge), ...judgeRemovedVocabulary(knowledge), ...judgeShippedVocabulary(knowledge), ...judgeVendorWrappers(knowledge, grammarSourceDir())]
+    red.push(...knowledgeFindings.map((finding) => gap(finding.kind, finding.subject, finding.detail)))
+    return { red, planned }
 }

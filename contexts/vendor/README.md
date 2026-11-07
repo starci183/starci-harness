@@ -8,7 +8,8 @@ about keeping it.
 |---|---|---|
 | [heroui.md](heroui.md) | reasoning: what each component family ships and why its variants and sizes exist | an agent writing or reviewing a Grammar wrapper, or asking what a vendor variant means |
 | [parity.yaml](parity.yaml) | data: the two parity modes and, per vendor component, what a grammar must keep vs may change | the parity gate; the [grammar contract](../grammars/contract.yaml) cites its ids |
-| [wrappers.yaml](wrappers.yaml) | data: each Grammar file that imports HeroUI, what it wraps and delegates, and each override with its ruling | the parity gate; an author adding an override |
+| [wrappers.yaml](wrappers.yaml) | data: each Grammar file that imports HeroUI, what it wraps and delegates, and each override with its reason and the rule it applies | the parity gate; an author adding an override |
+| [pins.yaml](pins.yaml) | data: the sha256 of wrappers.yaml | the parity gate |
 
 Read [heroui.md](heroui.md) first, then [parity.yaml](parity.yaml); open [wrappers.yaml](wrappers.yaml) only
 when a wrapper changes. When to use a component is [ui/components](../ui/README.md); what it is in every
@@ -29,7 +30,7 @@ committed to knowledge. The contract between the generator and its readers:
   stale cache.
 - **Completeness**: class discovery resolves `tailwind-variants` slot tables (`buttonVariants` and its siblings),
   so a part whose classes come from a variant table is measured. A part measured with no paint is a generator
-  defect, not a pass: zero findings on the most-used component is suspicious (decision D-15).
+  defect, not a pass: zero findings on the most-used component is suspicious.
 - **Coverage**: the reference covers every vendor component, wrapped or not, so "may a grammar use X" is answerable.
 
 The parity judge reads the cache, [parity.yaml](parity.yaml), [wrappers.yaml](wrappers.yaml) and each grammar's
@@ -39,6 +40,6 @@ and `stale` (an override with no matching deviation).
 
 ## Pin
 
-[wrappers.yaml](wrappers.yaml) is pinned by sha256 in the latest ruling that records its digest
-([decisions/rulings.yaml](../decisions/rulings.yaml)); an added or changed override is red until the owner records
-a ruling with the new digest. Only the live pin is kept; earlier digests are git history.
+[wrappers.yaml](wrappers.yaml) is pinned by its sha256 in [pins.yaml](pins.yaml); an added or changed override is red
+(`ANATOMY_WRAPPER_PIN_DRIFT`) until the commit that makes it records the new digest there, so every override change is a
+reviewed change of the pin. Only the live pin is kept; earlier digests are git history.

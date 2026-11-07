@@ -20,10 +20,10 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
 - `{.npmrc,.npmignore}` — **app.tool-config-optional** optional
 - `eslint.config.mjs` — **app.packages-lint** optional · R05
 - `{sonar-project.properties,codecov.yml}` — **app.quality-config** required · R11, R05
-- `.husky/{pre-commit,pre-push}` — **app.hooks** required · R05, HFS_CI_E2E_AUTOMATIC (no rule)
+- `.husky/{pre-commit,pre-push}` — **app.hooks** required · R12, R05
 - `.github/`
   - `workflows/`
-    - `ci.yml` — **app.ci** required · R13, R05, HFS_CI_E2E_AUTOMATIC (no rule)
+    - `ci.yml` — **app.ci** required · R12, R13, R05
     - `images.yml` — **app.ci-images** required · R05
     - `stack-deploy.yml` — **app.ci-stack-deploy** optional · R05
     - `stack-key-restore.yml` — **app.ci-stack-key-restore** optional · R05
@@ -35,15 +35,15 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
 - `.dockerignore` — **app.dockerignore** required · R05
 - `deploy/` — **app.deploy** optional · R06
 - `scripts/`
-  - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R102, R103, HFS_SCRIPT_ONE_OFF (no rule)
-  - `{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}` — **app.scripts.delivery** optional · R06, R102, R103, HFS_SCRIPT_ONE_OFF (no rule)
-  - `integration/*.mjs` — **app.scripts.integration** optional · R06, R102, R103, HFS_SCRIPT_ONE_OFF (no rule)
+  - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R385, R102, R103
+  - `{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}` — **app.scripts.delivery** optional · R06, R385, R102, R103
+  - `integration/*.mjs` — **app.scripts.integration** optional · R06, R385, R102, R103
 - `packages/`
   - `<name>/` — **app.packages** optional · R25
   - `modules/` — **app.module-registry** optional · R05
 - `{be,fe}/` — **app.sides** required
-- `.starciwork/` — **app.starciwork** optional · HFS_AGENT_DATA_TRACKED (no rule), HFS_IDENTITY_CUSTODY (no rule)
-- `.starcistacks/` — **app.starcistacks** required · R10, R01, R06, R375, R259, HFS_IDENTITY_CUSTODY (no rule)
+- `.starciwork/` — **app.starciwork** optional · R07, R09
+- `.starcistacks/` — **app.starcistacks** required · R10, R01, R06, R09, R375, R259
   - `images/db/Dockerfile` — **app.db.image** required · R05
   - `cache/` — **app.starcistacks.cache** optional
 - `.sops.yaml` — **app.sops** required
@@ -78,13 +78,13 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-
     - `src/`
       - `app/` — **fe.route** required · [fe/architecture](../code/fe/architecture.md), [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/function](../code/fe/function.md) · R54, R55, R57, R243
       - `{proxy.ts,instrumentation.ts,instrumentation-client.ts,sentry.server.config.ts,sentry.edge.config.ts}` — **fe.source-root-pinned** optional · [fe/architecture](../code/fe/architecture.md) · R54
-      - `features/{pages,layouts,overlays}/<name>/` — **fe.feature** required · [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/folder](../code/fe/folder.md), [fe/function](../code/fe/function.md), [fe/ui](../code/fe/ui.md) · R57, R58, FE_SIZE_BUDGET (no rule)
+      - `features/{pages,layouts,overlays}/<name>/` — **fe.feature** required · [fe/boundaries](../code/fe/boundaries.md), [fe/error](../code/fe/error.md), [fe/folder](../code/fe/folder.md), [fe/function](../code/fe/function.md), [fe/ui](../code/fe/ui.md) · R65, R57, R58
       - `components/`
         - `{blocks,frames,composites,branches,leaves}/<name>/` — **fe.components** optional · [fe/boundaries](../code/fe/boundaries.md), [fe/folder](../code/fe/folder.md), [fe/function](../code/fe/function.md), [fe/ui](../code/fe/ui.md) · R92, R58, R62, R55
         - `providers/<name>/` — **fe.components.providers** optional · [fe/data](../code/fe/data.md), [fe/form](../code/fe/form.md), [fe/realtime](../code/fe/realtime.md) · R55
       - `hooks/`
-        - `<domain>/` — **fe.hooks** optional · [fe/boundaries](../code/fe/boundaries.md), [fe/folder](../code/fe/folder.md) · R56, FE_DATA_FRESHNESS (no rule)
-        - `swr/` — **fe.hooks.swr** optional · [fe/data](../code/fe/data.md), [fe/realtime](../code/fe/realtime.md) · R56, FE_DATA_FRESHNESS (no rule)
+        - `<domain>/` — **fe.hooks** optional · [fe/boundaries](../code/fe/boundaries.md), [fe/folder](../code/fe/folder.md) · R56, R50
+        - `swr/` — **fe.hooks.swr** optional · [fe/data](../code/fe/data.md), [fe/realtime](../code/fe/realtime.md) · R56, R50
         - `rhf/` — **fe.hooks.rhf** optional · [fe/form](../code/fe/form.md) · R56
         - `zustand/<store>/` — **fe.hooks.zustand** optional · [fe/data](../code/fe/data.md) · R56
         - `socketio/` — **fe.hooks.socketio** optional · [fe/realtime](../code/fe/realtime.md) · R56

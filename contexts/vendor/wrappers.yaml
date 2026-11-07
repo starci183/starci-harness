@@ -3,9 +3,10 @@
 #   delegates  parts of a wrapped component the file does not draw; the caller or a sibling supplies them
 #   overrides  deliberate deviations: kind slot (CSS targets a vendor class or data-slot), style (CSS restyles a paint
 #              family of a vendor part), default (a prop replaces a vendor default) or role (a declared role deviation).
-#              Each names its ruling in ../decisions/rulings.yaml; `status: proposed` stays red until the ruling is recorded.
-#              A repaint without a ruling reverts to the HeroUI default (ruling repaint-default-heroui-unless-ruled).
-# Pinned by sha256 (README.md#pin).
+#              Each gives its reason, and cites the rule it applies (`rule: <rule id>`) when a rule of contexts/ decides it.
+#              A repaint with no reason here reverts to the HeroUI default; `status: proposed` marks an override that awaits
+#              the owner (../harness/questions.md).
+# Pinned by sha256 in pins.yaml (README.md#pin).
 schema: starci/vendor-wrappers@1
 wrappers:
   - { file: core/branch/OtpInput/index.tsx, wraps: [InputOTP, Label] }
@@ -15,52 +16,52 @@ wrappers:
   - { file: core/branch/ComboBox/index.tsx, wraps: [ComboBox, Input, ListBox, Spinner] }
   - { file: core/branch/DataTable/index.tsx, wraps: [Checkbox, Table], delegates: { Table: [ColumnResizer] },
       overrides: [
-        { kind: style, target: "Table.Column:padding", ruling: spacing-roles, reason: "a header cell takes the container inset inline and the nested step in the block axis, on the spacing scale" },
-        { kind: style, target: "Table.Cell:padding", ruling: spacing-roles, reason: "a cell takes the container inset inline and the nested step in the block axis, a 40px row" } ] }
+        { kind: style, target: "Table.Column:padding", reason: "a header cell takes the container inset inline and the nested step in the block axis, on the spacing scale" },
+        { kind: style, target: "Table.Cell:padding", reason: "a cell takes the container inset inline and the nested step in the block axis, a 40px row" } ] }
   - { file: core/branch/DatePicker/index.tsx, wraps: [Calendar, DateField, DatePicker, RangeCalendar] }
   - { file: core/branch/DateRangePicker/index.tsx, wraps: [DateField, DateRangePicker] }
   - { file: core/frame/Dialog/index.tsx, wraps: [Modal], delegates: { Modal: [CloseTrigger, Trigger] },
       overrides: [
-        { kind: style, target: "Modal.Container:padding", ruling: spacing-roles, reason: "the backdrop holds the page gutter; the container adds no off-scale inset of its own" },
-        { kind: style, target: "Modal.Dialog:padding", ruling: spacing-roles, reason: "an overlay holds its content at the container inset on every side" },
-        { kind: style, target: "Modal.Body:padding", ruling: spacing-roles, reason: "the body keeps the identity step as focus clearance instead of an off-scale 3px offset" },
-        { kind: style, target: "Modal.Footer:padding", ruling: spacing-roles, reason: "header, body and footer are spaced by the dialog row gap alone" } ] }
+        { kind: style, target: "Modal.Container:padding", reason: "the backdrop holds the page gutter; the container adds no off-scale inset of its own" },
+        { kind: style, target: "Modal.Dialog:padding", reason: "an overlay holds its content at the container inset on every side" },
+        { kind: style, target: "Modal.Body:padding", reason: "the body keeps the identity step as focus clearance instead of an off-scale 3px offset" },
+        { kind: style, target: "Modal.Footer:padding", reason: "header, body and footer are spaced by the dialog row gap alone" } ] }
   - { file: core/branch/Disclosure/index.tsx, wraps: [Disclosure] }
   - { file: core/frame/Drawer/index.tsx, wraps: [Drawer], delegates: { Drawer: [CloseTrigger, Trigger] },
       overrides: [
-        { kind: style, target: "Drawer.Dialog:padding", ruling: spacing-roles, reason: "an overlay holds its content at the container inset on every side" },
-        { kind: style, target: "Drawer.Body:padding", ruling: spacing-roles, reason: "the body keeps the identity step as focus clearance instead of an off-scale 3px offset" } ] }
+        { kind: style, target: "Drawer.Dialog:padding", reason: "an overlay holds its content at the container inset on every side" },
+        { kind: style, target: "Drawer.Body:padding", reason: "the body keeps the identity step as focus clearance instead of an off-scale 3px offset" } ] }
   - { file: core/branch/DropdownMenu/index.tsx, wraps: [Description, Dropdown, Header, Kbd, Label, Separator], delegates: { Dropdown: [Trigger] } }
   - { file: core/branch/ListBox/index.tsx, wraps: [Description, Header, Label, ListBox, Separator],
       overrides: [
-        { kind: style, target: "ListBox.Item:padding", ruling: spacing-roles, reason: "an option is a box inside a surface: the nested step on every side, a 40px one-line row" },
-        { kind: style, target: "ListBox.Item:gap", ruling: spacing-roles, reason: "the avatar or glyph stands a row step from the text" } ] }
+        { kind: style, target: "ListBox.Item:padding", reason: "an option is a box inside a surface: the nested step on every side, a 40px one-line row" },
+        { kind: style, target: "ListBox.Item:gap", reason: "the avatar or glyph stands a row step from the text" } ] }
   - { file: core/PopoverPart.tsx, wraps: [Popover], delegates: { Popover: [Trigger] } }
   - { file: core/branch/Select/index.tsx, wraps: [Description, Label, ListBox, Select, Spinner],
       overrides: [
-        { kind: style, target: "Select.Trigger:block-size", ruling: control-height-40, reason: "a single-line field is as tall as an md control" } ] }
+        { kind: style, target: "Select.Trigger:block-size", rule: R320, reason: "a single-line field is as tall as an md control" } ] }
   - { file: core/frame/SurfaceCard/AccordionRows.tsx, wraps: [Accordion] }
   - { file: core/frame/SurfaceCard/FigureCells.tsx, wraps: [Link] }
   - { file: core/frame/SurfaceCard/index.tsx, wraps: [Card],
       overrides: [
-        { kind: style, target: "Card.Root:shadow", ruling: surfacecard-always-painted, reason: "a card is raised by its shadow on the page; a surface never stands inside another, so there is no nested edge" } ] }
+        { kind: style, target: "Card.Root:shadow", reason: "a card is raised by its shadow on the page; a surface never stands inside another, so there is no nested edge" } ] }
   - { file: core/branch/Tabs/index.tsx, wraps: [Tabs],
       overrides: [
-        { kind: style, target: "Tabs.Tab:padding", ruling: spacing-roles, reason: "an underline tab takes the row step per side and the first label stands on the content edge" } ] }
+        { kind: style, target: "Tabs.Tab:padding", reason: "an underline tab takes the row step per side and the first label stands on the content edge" } ] }
   - { file: core/branch/Tooltip/index.tsx, wraps: [Tooltip], delegates: { Tooltip: [Trigger] } }
   - { file: core/composite/Toast/index.tsx, wraps: [Alert, Spinner],
       overrides: [
-        { kind: style, target: "Alert.Root:padding", ruling: spacing-roles, reason: "a toast holds its content at the container inset, its close side one step less" },
-        { kind: style, target: "Alert.Root:gap", ruling: spacing-roles, reason: "glyph and copy are an inline pair" } ] }
+        { kind: style, target: "Alert.Root:padding", reason: "a toast holds its content at the container inset, its close side one step less" },
+        { kind: style, target: "Alert.Root:gap", reason: "glyph and copy are an inline pair" } ] }
   - { file: core/composite/Alert/index.tsx, wraps: [Alert, Spinner],
       overrides: [
-        { kind: style, target: "Alert.Root:padding", ruling: spacing-roles, reason: "an alert holds its content at the container inset, the nested step inside a card" },
-        { kind: style, target: "Alert.Root:gap", ruling: spacing-roles, reason: "glyph and copy are an inline pair" } ] }
+        { kind: style, target: "Alert.Root:padding", reason: "an alert holds its content at the container inset, the nested step inside a card" },
+        { kind: style, target: "Alert.Root:gap", reason: "glyph and copy are an inline pair" } ] }
   - { file: core/composite/AvatarGroup/index.tsx, wraps: [Avatar, AvatarGroup],
       overrides: [
-        { kind: style, target: "Avatar.Root:block-size", ruling: R318/case-1, reason: "a group identity is one composite at one size, so each grid cell is filled by its member" },
-        { kind: style, target: "Avatar.Root:radius", ruling: R318/case-1, reason: "the group identity is round and its member cells are square crops" },
-        { kind: style, target: "AvatarGroup.Count:block-size", ruling: control-height-40, reason: "the overflow count of a control-size group is drawn at the control height" } ] }
+        { kind: style, target: "Avatar.Root:block-size", reason: "a group identity is one composite at one size, so each grid cell is filled by its member" },
+        { kind: style, target: "Avatar.Root:radius", reason: "the group identity is round and its member cells are square crops" },
+        { kind: style, target: "AvatarGroup.Count:block-size", rule: R320, reason: "the overflow count of a control-size group is drawn at the control height" } ] }
   - { file: core/composite/Breadcrumbs/index.tsx, wraps: [Breadcrumbs] }
   - { file: core/composite/ButtonGroup/index.tsx, wraps: [ButtonGroup] }
   - { file: core/composite/CheckboxGroup/index.tsx, wraps: [Checkbox, CheckboxGroup], delegates: { Checkbox: [Content] } }
@@ -68,8 +69,8 @@ wrappers:
   - { file: core/frame/Form/index.tsx, wraps: [Form] }
   - { file: core/composite/Pagination/index.tsx, wraps: [Pagination],
       overrides: [
-        { kind: style, target: "Pagination.Link:background", ruling: grammar-menu-drawer-live-time, reason: "the current page paints its exclusive mark" },
-        { kind: style, target: "Pagination.Link:color", ruling: grammar-menu-drawer-live-time, reason: "the current page paints its exclusive mark" } ] }
+        { kind: style, target: "Pagination.Link:background", reason: "the current page paints its exclusive mark" },
+        { kind: style, target: "Pagination.Link:color", reason: "the current page paints its exclusive mark" } ] }
   - { file: core/composite/RadioGroup/index.tsx, wraps: [Radio, RadioGroup] }
   - { file: core/composite/FilterButtonGroup/index.tsx, wraps: [ToggleButton, ToggleButtonGroup] }
   - { file: core/composite/ChoiceChips/index.tsx, wraps: [ToggleButton, ToggleButtonGroup, Tooltip] }
@@ -77,27 +78,27 @@ wrappers:
   - { file: core/composite/TagGroup/index.tsx, wraps: [Tag, TagGroup] }
   - { file: core/frame/VerticalScrollRegion/index.tsx, wraps: [ScrollShadow],
       overrides: [
-        { kind: slot, target: ".scroll-shadow--vertical", ruling: grammar-scroll-region-fills-parent, status: proposed, reason: "a contained scroll region fills its parent's block size, so the parent owns the height cap and one owner scrolls each axis" } ] }
+        { kind: slot, target: ".scroll-shadow--vertical", status: proposed, reason: "a contained scroll region fills its parent's block size, so the parent owns the height cap and one owner scrolls each axis" } ] }
   - { file: core/frame/PaneGrid/index.tsx, wraps: [Drawer] }
   - { file: core/composite/Sidebar/index.tsx, wraps: [Description, Header, Label, ListBox, Separator],
       overrides: [
-        { kind: style, target: "ListBox.Item:background", ruling: grammar-menu-drawer-live-time, reason: "the current navigation item paints its exclusive mark" } ] }
+        { kind: style, target: "ListBox.Item:background", reason: "the current navigation item paints its exclusive mark" } ] }
   - { file: core/composite/TopBar/index.tsx, wraps: [Button] }
   - { file: core/leaf/Avatar/index.tsx, wraps: [Avatar, Badge],
       overrides: [
-        { kind: style, target: "Avatar.Fallback:font", ruling: avatar-default-dicebear-initials, reason: "initials stay readable in a group cell, so the fallback text scales with the cell" },
-        { kind: style, target: "Avatar.Root:background", ruling: grammar-menu-drawer-live-time, reason: "an avatar in the current navigation item takes the item's exclusive mark" } ] }
+        { kind: style, target: "Avatar.Fallback:font", reason: "initials stay readable in a group cell, so the fallback text scales with the cell" },
+        { kind: style, target: "Avatar.Root:background", reason: "an avatar in the current navigation item takes the item's exclusive mark" } ] }
   - { file: core/leaf/Badge/index.tsx, wraps: [Chip] }
   - { file: core/leaf/Button/index.tsx, wraps: [Button, Link, Spinner, Tooltip],
       overrides: [
-        { kind: style, target: "Link.Root:block-size", ruling: control-height-40, reason: "a link drawn as a button is held at the control height at every breakpoint" },
-        { kind: style, target: "Button.Root:padding", ruling: spacing-roles, reason: "inline padding follows the size step (sm 8, md 12, lg 24), one step less on a glyph side" },
-        { kind: style, target: "Link.Root:padding", ruling: spacing-roles, reason: "a link drawn as a button takes the same inline padding as the button of its step" } ] }
+        { kind: style, target: "Link.Root:block-size", rule: R320, reason: "a link drawn as a button is held at the control height at every breakpoint" },
+        { kind: style, target: "Button.Root:padding", reason: "inline padding follows the size step (sm 8, md 12, lg 24), one step less on a glyph side" },
+        { kind: style, target: "Link.Root:padding", reason: "a link drawn as a button takes the same inline padding as the button of its step" } ] }
   - { file: core/leaf/Checkbox/index.tsx, wraps: [Checkbox] }
   - { file: core/leaf/ColorSwatch/index.tsx, wraps: [ColorSwatch],
       overrides: [
-        { kind: default, target: "ColorSwatch:size", ruling: grammar-vendor-parity, reason: "a literal color preview occupies the vendor sm content mark beside its name" },
-        { kind: default, target: "ColorSwatch:shape", ruling: grammar-vendor-parity, reason: "literal color content uses the vendor square swatch consistently" } ] }
+        { kind: default, target: "ColorSwatch:size", reason: "a literal color preview occupies the vendor sm content mark beside its name" },
+        { kind: default, target: "ColorSwatch:shape", reason: "literal color content uses the vendor square swatch consistently" } ] }
   - { file: core/leaf/DateField/index.tsx, wraps: [DateField] }
   - { file: core/leaf/Divider/index.tsx, wraps: [Separator] }
   - { file: core/leaf/Field/index.tsx, wraps: [Description, FieldError, Label] }
@@ -108,32 +109,32 @@ wrappers:
   - { file: core/leaf/StatusDot/index.tsx, wraps: [Tooltip] }
   - { file: core/branch/Input/index.tsx, wraps: [ErrorMessage, Input, InputGroup, Label, TextField], delegates: { InputGroup: [TextArea] },
       overrides: [
-        { kind: style, target: "InputGroup.Input:block-size", ruling: control-height-40, reason: "a single-line field is as tall as an md control" } ] }
+        { kind: style, target: "InputGroup.Input:block-size", rule: R320, reason: "a single-line field is as tall as an md control" } ] }
   - { file: core/leaf/Kbd/index.tsx, wraps: [Kbd] }
   - { file: core/leaf/Link/index.tsx, wraps: [Link],
       overrides: [
-        { kind: style, target: "Link.Root:color", ruling: grammar-menu-drawer-live-time, reason: "the current navigation link paints its exclusive mark" } ] }
+        { kind: style, target: "Link.Root:color", reason: "the current navigation link paints its exclusive mark" } ] }
   - { file: core/leaf/Meter/index.tsx, wraps: [Label, Meter],
       overrides: [
-        { kind: style, target: "Meter.Track:block-size", ruling: meter-segments-h1, reason: "the segmented meter sits on a thin full-width track" },
-        { kind: style, target: "Meter.Track:background", ruling: meter-segments-h1, reason: "the segmented track is transparent so its equal segments read as separate" },
-        { kind: style, target: "Meter.Track:radius", ruling: meter-segments-h1, reason: "the segments are equal pills and take the track radius" } ] }
+        { kind: style, target: "Meter.Track:block-size", reason: "the segmented meter sits on a thin full-width track" },
+        { kind: style, target: "Meter.Track:background", reason: "the segmented track is transparent so its equal segments read as separate" },
+        { kind: style, target: "Meter.Track:radius", reason: "the segments are equal pills and take the track radius" } ] }
   - { file: core/leaf/NumberField/index.tsx, wraps: [NumberField] }
   - { file: core/PlainPressable.tsx, wraps: [Button] }
   - { file: core/leaf/Progress/index.tsx, wraps: [ProgressBar] }
   - { file: core/leaf/ProgressCircle/index.tsx, wraps: [ProgressCircle] }
   - { file: core/branch/Rating/index.tsx, wraps: [],
       overrides: [
-        { kind: role, target: "core/branch/Rating/index.tsx:radiogroup", ruling: grammar-rating-radiogroup, status: proposed, reason: "HeroUI ships no rating; the stars are one radio group, the platform pattern for one value from a closed set" } ] }
+        { kind: role, target: "core/branch/Rating/index.tsx:radiogroup", status: proposed, reason: "HeroUI ships no rating; the stars are one radio group, the platform pattern for one value from a closed set" } ] }
   - { file: core/leaf/SearchField/index.tsx, wraps: [SearchField, Spinner] }
   - { file: core/leaf/Skeleton/index.tsx, wraps: [Skeleton] }
   - { file: core/leaf/Slider/index.tsx, wraps: [Slider] }
   - { file: core/leaf/Spinner/index.tsx, wraps: [Spinner] }
   - { file: core/leaf/Switch/index.tsx, wraps: [Switch],
       overrides: [
-        { kind: slot, target: "description", ruling: control-height-40, reason: "the control-size switch track is wider than the vendor's, so the description indents past it to stay aligned with the label" },
-        { kind: style, target: "Switch.Control:block-size", ruling: control-height-40, reason: "the control-size switch track is drawn at the control height" },
-        { kind: style, target: "Switch.Thumb:block-size", ruling: control-height-40, reason: "the control-size switch thumb fills that track" } ] }
+        { kind: slot, target: "description", rule: R320, reason: "the control-size switch track is wider than the vendor's, so the description indents past it to stay aligned with the label" },
+        { kind: style, target: "Switch.Control:block-size", rule: R320, reason: "the control-size switch track is drawn at the control height" },
+        { kind: style, target: "Switch.Thumb:block-size", rule: R320, reason: "the control-size switch thumb fills that track" } ] }
   - { file: core/leaf/TextAction/index.tsx, wraps: [Spinner] }
   - { file: core/branch/Textarea/index.tsx, wraps: [TextArea, TextField] }
   - { file: core/leaf/TimeField/index.tsx, wraps: [TimeField] }
