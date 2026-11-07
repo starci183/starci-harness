@@ -63,8 +63,6 @@
       "toSignIn": "Quay lại đăng nhập",
       "toResend": "Gửi lại thư xác nhận",
       "toForgot": "Yêu cầu liên kết đặt lại mới",
-      "toSignup": "Tạo tài khoản",
-      "toForgotPassword": "Quên mật khẩu?",
       "signup": {
         "title": "Tạo tài khoản",
         "description": "Chọn mật khẩu ít nhất 8 ký tự. Chúng tôi gửi email một liên kết để xác nhận địa chỉ của bạn.",

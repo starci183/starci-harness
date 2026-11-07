@@ -1,5 +1,10 @@
 import type { DynamicModule, Provider } from "@nestjs/common"
-import { OWN_TOKEN_VERIFIER, PASSPORT_AUTHENTICATOR, PASSPORT_OPTIONS, PassportModule } from "@modules/integrations/passport"
+import {
+    OWN_TOKEN_VERIFIER,
+    PASSPORT_AUTHENTICATOR,
+    PASSPORT_OPTIONS,
+    PassportModule,
+} from "@modules/integrations/passport"
 import type { VerifyAccessToken } from "@modules/integrations/passport"
 import { MailModule } from "@modules/integrations/mail"
 import { ObjectStorageModule } from "@modules/integrations/object-storage"

@@ -7,6 +7,9 @@ import { i18n } from "./routing"
  * negotiated (a route the proxy does not negotiate reads the cookie, then the default); `next/root-params` can only be imported
  * inside the app directory, so no route reader is passed.
  */
-const requestConfig: I18nRequestConfig = createRequestConfig(i18n, { app: "web", loadMessages: (locale) => import(`./messages/${locale}.json`) })
+const requestConfig: I18nRequestConfig = createRequestConfig(i18n, {
+    app: "web",
+    loadMessages: (locale) => import(`./messages/${locale}.json`),
+})
 
 export default requestConfig

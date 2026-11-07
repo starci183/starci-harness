@@ -2,7 +2,13 @@ import { SetMetadata, applyDecorators, createParamDecorator } from "@nestjs/comm
 import type { ExecutionContext } from "@nestjs/common"
 import { injector } from "@modules/platform/composition"
 import type { DoorDecorator, TypedParameterDecorator } from "@modules/platform/composition"
-import type { AuthDoors, AuthPasswords, AuthSessions, SignInBudget, VerifyAccessToken } from "@modules/integrations/passport"
+import type {
+    AuthDoors,
+    AuthPasswords,
+    AuthSessions,
+    SignInBudget,
+    VerifyAccessToken,
+} from "@modules/integrations/passport"
 import { ServerToServer, requestOf } from "@modules/platform/http-security"
 import type { Principal } from "@modules/platform/cqrs"
 import type { CredentialAuthenticator, CredentialMetadata } from "./credential.contracts"
@@ -23,13 +29,16 @@ export const IDENTITY_SIGN_IN_BUDGET: unique symbol = Symbol("domain.identity.si
 export const InjectAuthDoors = (): TypedParameterDecorator<AuthDoors> => injector<AuthDoors>(IDENTITY_AUTH_DOORS)
 
 /** Injects the rotating sessions. Parameter type: AuthSessions. */
-export const InjectAuthSessions = (): TypedParameterDecorator<AuthSessions> => injector<AuthSessions>(IDENTITY_AUTH_SESSIONS)
+export const InjectAuthSessions = (): TypedParameterDecorator<AuthSessions> =>
+    injector<AuthSessions>(IDENTITY_AUTH_SESSIONS)
 
 /** Injects the password hasher. Parameter type: AuthPasswords. */
-export const InjectAuthPasswords = (): TypedParameterDecorator<AuthPasswords> => injector<AuthPasswords>(IDENTITY_AUTH_PASSWORDS)
+export const InjectAuthPasswords = (): TypedParameterDecorator<AuthPasswords> =>
+    injector<AuthPasswords>(IDENTITY_AUTH_PASSWORDS)
 
 /** Injects the sign-in budget. Parameter type: SignInBudget. */
-export const InjectSignInBudget = (): TypedParameterDecorator<SignInBudget> => injector<SignInBudget>(IDENTITY_SIGN_IN_BUDGET)
+export const InjectSignInBudget = (): TypedParameterDecorator<SignInBudget> =>
+    injector<SignInBudget>(IDENTITY_SIGN_IN_BUDGET)
 
 /** Token of the access-token verifier the composition root hands to identity. */
 export const ACCESS_TOKEN_VERIFIER: unique symbol = Symbol("domain.identity.access-token-verifier")
@@ -68,8 +77,10 @@ export const Credential = (metadata: CredentialMetadata): DoorDecorator =>
     applyDecorators(SetMetadata(CREDENTIAL_KEY, metadata), ServerToServer())
 
 /** The authenticated caller established by the default-deny guard. */
-export const CurrentPrincipal: ReturnType<typeof createParamDecorator> = createParamDecorator((_data: unknown, context: ExecutionContext): Principal => {
-    const principal = requestOf(context).principal
-    if (!principal) throw new IdentityError({ code: IdentityErrorCode.Unauthenticated })
-    return principal
-})
+export const CurrentPrincipal: ReturnType<typeof createParamDecorator> = createParamDecorator(
+    (_data: unknown, context: ExecutionContext): Principal => {
+        const principal = requestOf(context).principal
+        if (!principal) throw new IdentityError({ code: IdentityErrorCode.Unauthenticated })
+        return principal
+    },
+)

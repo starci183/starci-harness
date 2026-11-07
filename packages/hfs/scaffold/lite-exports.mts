@@ -221,17 +221,29 @@ export const filesBelow = (folder: string): string[] => {
   return files
 }
 
+/** The widest line the app's Prettier keeps on one line (`printWidth` of @starci/prettier-config, its owner). */
+const PRINT_WIDTH = 120
+
+/** One barrel export as the app's Prettier prints it: on one line when it fits, else one name a line with a trailing comma. */
+function exportStatement(kind: string, names: readonly string[], source: string): string {
+  const line = `${kind} { ${names.join(", ")} } from "${source}"`
+  return line.length <= PRINT_WIDTH ? line : `${kind} {\n${names.map((name) => `    ${name},`).join("\n")}\n} from "${source}"`
+}
+
+/** The export statement of `source` in a barrel, on one line or broken over several as Prettier breaks it. */
+const exportOf = (kind: string, source: string): RegExp => new RegExp(`^${kind} \\{\\s*([^}]*?)\\s*\\} from "${escape(source)}"$`, "m")
+
 function addExport(text: string, registration: Registration): string {
   const kind = registration.type === true ? "export type" : "export"
-  const line = new RegExp(`^${kind} \\{ ([^}]*) \\} from "${escape(registration.source)}"$`, "m")
+  const line = exportOf(kind, registration.source)
   const found = line.exec(text)
   if (found) {
-    const names = [...new Set([...found[1]!.split(",").map((name) => name.trim()), ...registration.names])].sort(byCodeUnit)
-    return text.replace(line, `${kind} { ${names.join(", ")} } from "${registration.source}"`)
+    const names = [...new Set([...found[1]!.split(",").map((name) => name.trim()).filter(Boolean), ...registration.names])].sort(byCodeUnit)
+    return text.replace(line, exportStatement(kind, names, registration.source))
   }
-  const added = `${kind} { ${registration.names.join(", ")} } from "${registration.source}"`
+  const added = exportStatement(kind, registration.names, registration.source)
   if (registration.beforeSource) {
-    const before = new RegExp(`^export(?: type)? \\{ [^}]* \\} from "${escape(registration.beforeSource)}"$`, "m")
+    const before = exportOf("export(?: type)?", registration.beforeSource)
     if (before.test(text)) return text.replace(before, `${added}\n$&`)
   }
   return `${text.replace(/\n+$/, "")}\n${added}\n`

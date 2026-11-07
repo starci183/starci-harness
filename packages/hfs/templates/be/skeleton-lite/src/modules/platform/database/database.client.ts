@@ -60,7 +60,8 @@ const functionTarget = (name: string): DbFunctionTarget => {
         return { schema: functionPart(BUILTIN_SCHEMA, name), name: functionPart(name, name) }
     }
     const [schema, fn] = parts
-    if (parts.length !== 2 || schema === undefined || fn === undefined || schema === BUILTIN_SCHEMA) throw rejected(name)
+    if (parts.length !== 2 || schema === undefined || fn === undefined || schema === BUILTIN_SCHEMA)
+        throw rejected(name)
     return { schema: functionPart(schema, name), name: functionPart(fn, name) }
 }
 
@@ -76,7 +77,11 @@ const parameterList = (count: number): DbParameterList => {
  * numbered parameters. The name is schema-qualified (`public.job_claim`) or a bare built-in of the canon's list, each part
  * is checked and double-quoted, and the arguments are values, never text of the statement (R334, R68).
  */
-export const callDbFunction = <T>(manager: EntityManager, name: string, args: ReadonlyArray<unknown>): Promise<ReadonlyArray<T>> => {
+export const callDbFunction = <T>(
+    manager: EntityManager,
+    name: string,
+    args: ReadonlyArray<unknown>,
+): Promise<ReadonlyArray<T>> => {
     const target = functionTarget(name)
     const parameters = parameterList(args.length)
     return manager.query<Array<T>>(`SELECT * FROM "${target.schema}"."${target.name}"(${parameters})`, [...args])

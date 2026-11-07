@@ -6,17 +6,16 @@ const DEFAULT_PORT = 587
 const CONFIRM_TTL_SECONDS = 86_400
 const RESET_TTL_SECONDS = 3_600
 
-const readSecurity = (env: EnvSource): MailSecurity => {
-    const value = env.optional("MAIL_SECURITY") ?? "starttls"
-    if (value !== "tls" && value !== "starttls" && value !== "none") throw new Error("MAIL_SECURITY must be tls, starttls or none")
-    return value
-}
+const SECURITIES: ReadonlyArray<MailSecurity> = ["tls", "starttls", "none"]
+const LANGUAGES: ReadonlyArray<MailLanguage> = ["vi", "en"]
 
-const readLanguage = (env: EnvSource): MailLanguage => {
-    const value = env.optional("MAIL_DEFAULT_LANGUAGE") ?? "en"
-    if (value !== "vi" && value !== "en") throw new Error("MAIL_DEFAULT_LANGUAGE must be vi or en")
-    return value
-}
+/** The transport security, STARTTLS when the deployment names none; any other value refuses the boot with the config error of the key. */
+const readSecurity = (env: EnvSource): MailSecurity =>
+    env.has("MAIL_SECURITY") ? env.enum("MAIL_SECURITY", SECURITIES) : "starttls"
+
+/** The language of a mail whose recipient named none, English when the deployment names none. */
+const readLanguage = (env: EnvSource): MailLanguage =>
+    env.has("MAIL_DEFAULT_LANGUAGE") ? env.enum("MAIL_DEFAULT_LANGUAGE", LANGUAGES) : "en"
 
 /** Reads the mail configuration with no credential or server defaults; the login is optional and its password reads `<KEY>_FILE` first. */
 export const parseMailConfig = (env: EnvSource): MailOptions => ({

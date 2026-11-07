@@ -34,10 +34,24 @@ export const EmailDoorFormBase = (props: EmailDoorFormBaseProps) => (
         {props.props.doneMessage === undefined ? (
             <Form label={props.props.title} isPending={props.props.pending} onSubmit={props.on.submit}>
                 <Text>{props.props.description}</Text>
-                {props.props.nameLabel === undefined ? null : <Input id="email-door-name" name="name" label={props.props.nameLabel} kind="text" />}
-                {props.props.emailLabel === undefined ? null : <Input id="email-door-email" name="email" label={props.props.emailLabel} kind="email" isRequired />}
-                {props.props.passwordLabel === undefined ? null : <Input id="email-door-password" name="password" label={props.props.passwordLabel} kind="password" isRequired />}
-                {props.props.errorMessage === undefined ? null : <Text live="assertive">{props.props.errorMessage}</Text>}
+                {props.props.nameLabel === undefined ? null : (
+                    <Input id="email-door-name" name="name" label={props.props.nameLabel} kind="text" />
+                )}
+                {props.props.emailLabel === undefined ? null : (
+                    <Input id="email-door-email" name="email" label={props.props.emailLabel} kind="email" isRequired />
+                )}
+                {props.props.passwordLabel === undefined ? null : (
+                    <Input
+                        id="email-door-password"
+                        name="password"
+                        label={props.props.passwordLabel}
+                        kind="password"
+                        isRequired
+                    />
+                )}
+                {props.props.errorMessage === undefined ? null : (
+                    <Text live="assertive">{props.props.errorMessage}</Text>
+                )}
                 <Button type="submit" intent="commit" isPending={props.props.pending}>
                     {props.props.submitLabel}
                 </Button>

@@ -3,8 +3,7 @@ import type { MessageBundle } from "@modules/platform/i18n"
 /** Display text of the identity codes, Vietnamese and English. */
 export const IDENTITY_MESSAGES: MessageBundle = {
     vi: {
-        "errors.IDENTITY_UNAUTHENTICATED":
-            "Bạn cần đăng nhập để thực hiện thao tác này.",
+        "errors.IDENTITY_UNAUTHENTICATED": "Bạn cần đăng nhập để thực hiện thao tác này.",
         "errors.IDENTITY_REFRESH_INVALID": "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.",
         "errors.IDENTITY_REFRESH_REUSED": "Phiên đăng nhập đã kết thúc vì bị dùng lại. Hãy đăng nhập lại.",
         "errors.IDENTITY_ACCOUNT_DISABLED": "Tài khoản này đã bị khóa.",

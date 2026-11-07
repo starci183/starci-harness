@@ -26,7 +26,14 @@ export class PassportModule extends ConfigurableModuleClass {
             isGlobal: isGlobal ?? false,
             authenticator,
             inject: [PASSPORT_SESSION_STORE, PASSPORT_ACCOUNTS, PASSPORT_RATE_COUNTER, CLOCK, IDS, LOGGER],
-            useFactory: (sessions: SessionStore, accounts: AccountDirectory, rate: RateCounter, clock: Clock, ids: Ids, logger: Logger) => ({
+            useFactory: (
+                sessions: SessionStore,
+                accounts: AccountDirectory,
+                rate: RateCounter,
+                clock: Clock,
+                ids: Ids,
+                logger: Logger,
+            ) => ({
                 ...options,
                 sessions,
                 accounts,

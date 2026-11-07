@@ -43,7 +43,7 @@ function rosterKeys(repoRoot: string, member: { env: string; slug: string }): st
   if (!fs.existsSync(file)) return [];
   const keys: string[] = [];
   for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/u)) {
-    const key = /^|s*`|\s*`([A-Z][A-Z0-9_]*)`\s*\|/u.exec(line)?.[1];
+    const key = /^\|\s*`([A-Z][A-Z0-9_]*)`\s*\|/u.exec(line)?.[1];
     if (!key) continue;
     const locations = [...line.matchAll(/(?:secrets\/|\/run\/secrets\/)([a-z0-9][a-z0-9-]*)(?:\.enc(?:\.yaml)?)?/gu)];
     if (locations.some((match) => match[1] === member.slug)) keys.push(key);

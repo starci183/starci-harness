@@ -40,9 +40,13 @@ describe("callDbFunction", () => {
 
     it("calls a bare pg built-in of the canon's list in pg_catalog", async () => {
         const client = await setup()
-        const manager = mockEntityManager({ query: ['SELECT * FROM "pg_catalog"."to_regproc"($1)', [{ to_regproc: null }]] })
+        const manager = mockEntityManager({
+            query: ['SELECT * FROM "pg_catalog"."to_regproc"($1)', [{ to_regproc: null }]],
+        })
 
-        const rows = await client.callDbFunction<{ to_regproc: string | null }>(manager, "to_regproc", ["public.job_claim"])
+        const rows = await client.callDbFunction<{ to_regproc: string | null }>(manager, "to_regproc", [
+            "public.job_claim",
+        ])
 
         expect(rows).toEqual([{ to_regproc: null }])
     })
@@ -85,8 +89,13 @@ describe("advisoryXactLock", () => {
 
         await expect(client.advisoryXactLock(manager, "jobs:mail")).resolves.toBeUndefined()
 
-        expect(manager.query).toHaveBeenNthCalledWith(1, 'SELECT * FROM "pg_catalog"."hashtextextended"($1, $2)', ["jobs:mail", 0])
-        expect(manager.query).toHaveBeenNthCalledWith(2, 'SELECT * FROM "pg_catalog"."pg_advisory_xact_lock"($1)', ["42"])
+        expect(manager.query).toHaveBeenNthCalledWith(1, 'SELECT * FROM "pg_catalog"."hashtextextended"($1, $2)', [
+            "jobs:mail",
+            0,
+        ])
+        expect(manager.query).toHaveBeenNthCalledWith(2, 'SELECT * FROM "pg_catalog"."pg_advisory_xact_lock"($1)', [
+            "42",
+        ])
     })
 
     it.each([
@@ -97,7 +106,9 @@ describe("advisoryXactLock", () => {
         const client = await setup()
         const manager = mockEntityManager({ query: ['SELECT * FROM "pg_catalog"."hashtextextended"($1, $2)', rows] })
 
-        await expect(client.advisoryXactLock(manager, "jobs:mail")).rejects.toMatchObject({ code: DatabaseErrorCode.ReturningRowRejected })
+        await expect(client.advisoryXactLock(manager, "jobs:mail")).rejects.toMatchObject({
+            code: DatabaseErrorCode.ReturningRowRejected,
+        })
 
         expect(manager.query).toHaveBeenCalledTimes(1)
     })
@@ -110,6 +121,9 @@ describe("notify", () => {
 
         await expect(client.notify(manager, "jobs", '{"id":"job-1"}')).resolves.toBeUndefined()
 
-        expect(manager.query).toHaveBeenCalledWith('SELECT * FROM "pg_catalog"."pg_notify"($1, $2)', ["jobs", '{"id":"job-1"}'])
+        expect(manager.query).toHaveBeenCalledWith('SELECT * FROM "pg_catalog"."pg_notify"($1, $2)', [
+            "jobs",
+            '{"id":"job-1"}',
+        ])
     })
 })
