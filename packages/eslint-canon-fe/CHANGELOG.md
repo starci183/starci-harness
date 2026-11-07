@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.16.2 - 2026-11-07
+
+- A patch: peers `@starci/hfs` ~6.0.0. Comments, rule docs and messages cite rules by their ids and carry no ruling history; the counting cohort entries carry no ruling field.
+
 ## 9.16.1 - 2026-11-07
 
 - A patch: `starci-fe/control-height` no longer names `SegmentedControl` (removed from `@starci/grammar` 0.24.0); the controls it holds to the one 40px height are Button, IconButton, Switch, Input, SearchField, Select, Tabs, Textarea, NumberField and ComboBox. Its docs follow.

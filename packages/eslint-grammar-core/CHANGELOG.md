@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.24.1 - 2026-11-07
+
+- A patch: peers `@starci/hfs` ~6.0.0. Comments, rule docs, bundled knowledge and messages cite rules by their ids and carry no ruling history.
+
 ## 0.24.0 - 2026-11-06
 
 - Added: `no-button-view-switch` (R380, `FE_GROUPED_CHOICE_CONTROL`): two or more adjacent `Button` or `IconButton` elements, or one in a `.map`, carrying `aria-pressed`, `isSelected` or `isActive` are joined buttons or pills acting as tabs; use `Tabs` in the block's `filter` header zone. `docs/choice-controls.md` says which component switches what.

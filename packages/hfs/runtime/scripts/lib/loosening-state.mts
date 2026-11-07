@@ -71,9 +71,8 @@ const RELAXING: Readonly<Record<string, string>> = Object.freeze({ require_ci_to
 
 /** A rule id: an hfs rule (R236) or a heading id of the contexts (SHARED-LOOSENING-2). */
 const RULE_ID = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$/;
-const citesRule = (cite: TruthsDocument): boolean => cite !== null && typeof cite === 'object' && typeof cite.rule === 'string' && RULE_ID.test(cite.rule) && /\d/.test(cite.rule);
-/** A cite that names anything but a rule: the one citation form is `cite: {rule: <rule id>}`. */
-const foreignCite = (cite: TruthsDocument): boolean => cite !== null && typeof cite === 'object' && Object.keys(cite).some((key) => key !== 'rule');
+/** True for the one citation form, `cite: {rule: <rule id>}`, and nothing beside the rule. */
+const citesRule = (cite: TruthsDocument): boolean => cite !== null && typeof cite === 'object' && Object.keys(cite).length === 1 && typeof cite.rule === 'string' && RULE_ID.test(cite.rule) && /\d/.test(cite.rule);
 /** The file globs an allowance names: one string or a list of them. */
 function globsOf(value: unknown): string[] {
   const globs: string[] = [];
@@ -100,7 +99,7 @@ function readAllow(truth: TruthsDocument, allow: TruthsDocument, out: TruthsRead
 
 /**
  * The manifest `doc` as the sets the check reads, plus `problems`: the shapes a malformed manifest breaks (a truth, a group, a budget pin or the gate
- * limits without an id, a cite of the rule it rests on, a sentence or an allowance is a problem, so an exception can never be anonymous).
+ * limits without an id, a cite of the one rule it rests on (cite: {rule: <rule id>}), a sentence or an allowance is a problem, so an exception can never be anonymous).
  */
 export function readTruths(doc: TruthsDocument): TruthsRead {
   const out: TruthsRead = {
@@ -109,16 +108,14 @@ export function readTruths(doc: TruthsDocument): TruthsRead {
     budgets: asArray<BudgetPin & { file?: string; cite?: unknown }>(doc?.budgets),
   };
   if (doc?.schema !== TRUTHS_SCHEMA) out.problems.push(`schema must be ${TRUTHS_SCHEMA}`);
-  const cites = [out.limits?.cite, ...asArray<TruthsDocument>(doc?.outsideTheGates).map((group) => group.cite), ...out.budgets.map((pin) => pin.cite), ...asArray<TruthsDocument>(doc?.truths).map((truth) => truth.cite)];
-  if (cites.some(foreignCite)) out.problems.push('a cite names only the rule an entry rests on: cite: {rule: <rule id>}');
-  if (out.limits && !citesRule(out.limits.cite)) out.problems.push('gateLimits: a cite of the rule it rests on is required');
+  if (out.limits && !citesRule(out.limits.cite)) out.problems.push('gateLimits: a cite of the one rule it rests on (cite: {rule: <rule id>}) is required');
   for (const group of asArray<TruthsDocument>(doc?.outsideTheGates)) {
-    if (!group.id || !citesRule(group.cite)) out.problems.push(`outsideTheGates ${group.id ?? '?'}: id and a cite of the rule it rests on are required`);
+    if (!group.id || !citesRule(group.cite)) out.problems.push(`outsideTheGates ${group.id ?? '?'}: id and a cite of the one rule it rests on (cite: {rule: <rule id>}) are required`);
     out.groups.push({ cores: new Set(asArray(group.entries).map((entry) => coreOf(entry))), anyDepth: group.anyDepth === true });
   }
-  for (const pin of out.budgets) if (!pin.file || !citesRule(pin.cite)) out.problems.push(`budgets ${pin.file ?? '?'}: file and a cite of the rule it rests on are required`);
+  for (const pin of out.budgets) if (!pin.file || !citesRule(pin.cite)) out.problems.push(`budgets ${pin.file ?? '?'}: file and a cite of the one rule it rests on (cite: {rule: <rule id>}) are required`);
   for (const truth of asArray<TruthsDocument>(doc?.truths)) {
-    if (!truth.id || !citesRule(truth.cite) || !truth.says || asArray(truth.allows).length === 0) out.problems.push(`truth ${truth.id ?? '?'}: id, a cite of the rule it rests on, says and allows are required`);
+    if (!truth.id || !citesRule(truth.cite) || !truth.says || asArray(truth.allows).length === 0) out.problems.push(`truth ${truth.id ?? '?'}: id, a cite of the one rule it rests on (cite: {rule: <rule id>}), says and allows are required`);
     out.ids.push(truth.id);
     for (const allow of asArray<TruthsDocument>(truth.allows)) readAllow(truth, allow, out);
   }

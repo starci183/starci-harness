@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.5 - 2026-11-07
+
+- A patch: the CHANGELOG carries no ruling attribution; nothing it ships changed.
+
 ## 1.3.4
 
 - Added: the `TestWorldApi` type, the world API of a declaration whose apps are not named in its type, so a config exports `useTestWorld` and `useSandbox` with explicit types (R368).

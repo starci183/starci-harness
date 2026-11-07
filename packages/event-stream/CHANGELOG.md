@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 - 2026-11-07
+
+- A patch: the CHANGELOG carries no ruling attribution; nothing it ships changed.
+
 ## 0.1.0 - 2026-10-26
 
 - Added: the package: a framework-agnostic Server-Sent Events client for browsers and Node 18+, with no runtime dependency.

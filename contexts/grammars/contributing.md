@@ -42,7 +42,7 @@ two components, or one frame with a typed `kind`. A `layout` whose item type cha
 
 The name says what it does as a UI role, in English, never a product feature. `PaneGrid`, not a chat
 layout. A prop name states a fact (`isDisabled`, `tone`, `intent`), never a look (`rounded`, `big`, `primary`). Vendor names stay when the vendor has
-one. No two names mean the same, and nothing is aliased: a renamed thing is removed and migrated, and the old spelling goes to `removedVocabulary`.
+one. No two names mean the same, and nothing is aliased: a renamed thing is removed and migrated, and the old spelling goes to the removed vocabulary (`@starci/hfs` `runtime/modules/kernel/removed-vocabulary.yaml`, kind `grammar`).
 
 ## Which tier
 

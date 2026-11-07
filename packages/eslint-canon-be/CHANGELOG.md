@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.19.2 - 2026-11-07
+
+- A patch: peers `@starci/hfs` ~6.0.0. Comments, rule docs and messages cite rules by their ids and carry no ruling history.
+
 ## 3.19.1 - 2026-11-05
 
 - Added (HR-CORE-BE-3, R34 `BE_SCHEMA_AUTHORITY`, `no-runtime-schema`): a root-package file hfs.json `sides.be.ddlRenderers` lists (`{ path, reason }`, app-root relative, a `*` only in the file name; the hfs runtime merges it into `ruleParams.ddlRenderers`) may hold DDL text, so the renderer `cli entities plan --write` uses to write NEW migration files is no longer flagged. It may only build and return the text: in that file a database client import (typeorm, pg, ...) is refused (`rendererClient`) and so is a `.query/.execute/.exec/.raw/.unsafe` call (`rendererExecutes`); DDL text in any other file, including the rest of the same package and every file of the be side, is still refused; and a file that is neither the cli nor a root package and imports (or re-exports) a symbol the renderer declares, directly or through a package barrel, is refused (`rendererImported`; type-only imports are not). Needs @starci/hfs 5.13.2.

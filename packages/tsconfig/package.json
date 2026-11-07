@@ -1,6 +1,6 @@
 {
   "name": "@starci/tsconfig",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "The StarCi TypeScript configs: base, be (back end), build (back-end emit overlay), next (front-end app), e2e, and package-esm/package-cjs (a package built from src/ to dist/). Strict, including noImplicitAny.",
   "license": "MIT",
   "author": "starci183",

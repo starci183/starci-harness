@@ -111,10 +111,10 @@ export const judgeShippedVocabulary = (knowledge: string): KnowledgeFinding[] =>
 
 /**
  * The ways a sentence cites the owner's decision history instead of stating the rule: "owner ruling" (or owner-ruling), a
- * `ruling:` or `` `ruling` `` citation, "ruling <decision-id>", "(owner ruling", "(the owner decision", "(owner 2026-...", and
- * "decision `<id>`". The Supervisor's runtime vocabulary (it rules an open decision, "the ruling" it records) matches none.
+ * `ruling:` or `` `ruling` `` citation, "ruling <decision-id>" or "rulings `<id>`", "(owner ruling", "(the owner decision",
+ * "(owner 2026-...", and "decision `<id>`". The Supervisor's runtime vocabulary (it rules an open decision, "the ruling" it records) matches none.
  */
-const RULING_HISTORY = /owner[- ]rul|\bruling[:`]|\bruling [a-z0-9]+(?:-[a-z0-9]+)+\b|\((?:the )?owner(?:'s)? (?:rul|decision|\d)|\bdecision `[a-z]/i
+const RULING_HISTORY = /owner[- ]rul|\bruling[:`]|\brulings? `[a-z]|\brulings? [a-z0-9]+(?:-[a-z0-9]+)+\b|\((?:the )?owner(?:'s)? (?:rul|decision|\d)|\bdecisions? `[a-z]/i
 
 /** The text of a source file a reader sees as prose: its line and block comments, never its code or string literals. */
 const commentsOf = (source: string): string[] => {

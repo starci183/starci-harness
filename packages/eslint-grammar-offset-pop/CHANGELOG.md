@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.24.1 - 2026-11-07
+
+- A patch: the Grammar family moves together with grammar 0.24.2 and eslint-grammar-core 0.24.1; nothing it ships changed.
+
 ## 0.24.0 - 2026-11-06
 
 - Changed: version stamp, with `@starci/grammar` 0.24.0 and `@starci/eslint-grammar-core` 0.24.0 (the family shares a minor).

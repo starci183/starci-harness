@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.6 - 2026-11-07
+
+- A patch: a spec title states its rule without ruling history; nothing it ships changed.
+
 ## 0.3.5 - 2026-10-30
 
 - Changed: the package spec is TypeScript (src/package-boundary.spec.ts, run by Node's type stripping); no glyph change.

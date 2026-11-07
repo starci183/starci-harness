@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.24.1 - 2026-11-07 - card radius, content maximum, the switch row inside the card (OWNER rulings 2026-11-07)
+## 0.24.2 - 2026-11-07
+
+- A patch: comments, stories and the README cite rules by their ids and carry no ruling history; no component, prop or token changed.
+
+## 0.24.1 - 2026-11-07 - card radius, content maximum, the switch row inside the card
 
 - Changed (reverses the 0.23.3 surface radius): the card radius is HeroUI's own Card radius, `--starci-core-surface-radius: min(32px, var(--radius-3xl))` (24px at `--radius: 0.5rem`; it was `--radius`), declared in Grammar's base layer (`ramps.css`) as an app-overridable default: an app's brand CSS may set it on its root, and Grammar reads only the token, never a literal. It is the radius of every SurfaceCard kind, the Board columns and the Board header strip, the highlight and the page-level EmptyNotice card. Inner pieces keep `--radius` or lower, fields `--field-radius`, chips and avatars full. Core's DNA default (`STARCI_CORE_DNA.geometry.surfaceRadius`) follows. Offset Pop keeps its own `--offset-pop-surface-radius`. Story `SurfaceRadiusToken` overrides the token in a scoped wrapper and measures every card kind and the board column following it.
 - Added: `--grammar-content-max` (80rem, a ramp): the content of a page (`--starci-core-page-measure` now reads it) and the primary column of `WorkspaceShell` take `max-inline-size: var(--grammar-content-max)` and `margin-inline: auto`, with their existing inline padding; the page background, the header band and the aside rail stay full width, and a phone is unchanged (the maximum only bites on a wide screen). Stories `ContentMax1920`, `ContentMax1920WithAside`, `ContentMax2560`, `ContentMax2560WithAside` measure that the content is no wider than the maximum and centered in its column.
@@ -9,7 +13,7 @@
 - Documented: the two app-overridable tokens in the README "Theming".
 - Fixed: `PaneGrid` dropped, in production, every `Pane` built in a React Server Component (the child's type reaches the client as a lazy client reference, not the `Pane` function, so `isPane` was false and the grid drew empty; development threw the unhelpful "component"). A lazy that resolves to `Pane` is now a pane (a pending one suspends as React reads any lazy), and any child that is not a pane now throws `PANE_GRID_CHILD_NOT_PANE` in production too, never a silent empty grid; for a client reference that is not a `Pane` the message says: a Pane built in a server component, mark the module that builds the PaneGrid children "use client". Stories `PaneGridServerBuiltPane` and `PaneGridServerBuiltPaneRefused`.
 
-## 0.24.0 - 2026-11-06 - card zones, one line under tabs (OWNER rulings 2026-11-06)
+## 0.24.0 - 2026-11-06 - card zones, one line under tabs
 
 - BREAKING (minor, 0.24.0): `SurfaceCard kind="bands"` is removed with no alias, and so are `SurfaceCardProps` `bands`, the `Band` type and the band class `starci-core-surface-band`. Express it as typed `headers` plus a body: a `figures` header zone over a list or a body; a `{ kind: "custom" }` header zone for free copy or a picture (the old `media` band, which drew edge to edge, is a padded custom zone). Migrate: `kind="bands" bands={[figures, list]}` becomes `kind="list" headers={[{ kind: "figures", items }]} items empty`.
 - BREAKING: `SurfaceCard footer` (the muted note UNDER the card) is renamed `note`, with no alias; the hook `starci-core-surface-footer` is `starci-core-surface-note`. `footers` is the new zone prop below the body.

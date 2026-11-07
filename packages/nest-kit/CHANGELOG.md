@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 - 2026-11-07
+
+- A patch: the README states its rules without ruling history; no behaviour changed.
+
 ## 0.2.0 - 2026-11-04
 
 - Added: `classifyFailure(cause, DomainError)` and `FailureClass`, the class of a flow failure (`transient`, `input`, `config`, `code`; a `failureClass` the error carries wins), moved here from the `platform/queue` template so the job runner and both event consumers share one rule. Spec: `src/failure.spec.ts` at 100%.

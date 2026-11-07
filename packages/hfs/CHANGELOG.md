@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.0.0 - 2026-11-07
+
+- A major: one rule book. The rule catalog (`knowledge/hfs/rules.yaml`) has no `cases` and no `amendedBy`: each rule's one-line law states the rule as it holds now, and `rule-catalog.mts` refuses either key by name. The design truths cite the rule each entry rests on (`cite: {rule: <rule id>}`; any other cite is a malformed manifest), and the digests of the manifest, the loosening fixtures and the vendored YAML live in `knowledge/hfs/design-truths.pins.yaml` (`readTruthsPins`, held to the files by `src/loosening-state.spec.mts`). R274 states the one-rule-book law; `modules/kernel/command-policy.yaml`, which no code read, is deleted. `modules/kernel/removed-vocabulary.yaml` gains kind `grammar`, the Grammar names the harness contexts no longer use. Comments, knowledge, failure-code texts and printed messages cite rules by their ids and carry no ruling history; stale `.mjs` citations name their `.mts` sources. App migration: an app's own `policy/loosening.yaml` exception or branch profile that cited a ruling (`kind: ruling`, `decision: <id>`) cites a rule instead (`kind: rule`, `cites: <rule id>`); the harness CLI refuses the old form.
+
 ## 5.13.10 - 2026-11-07
 
 - Changed (breaking for CLI callers, no alias): plain `starci app check`, with no flag, is the one run everywhere: every family diff-only against the cache, the CI-parity families (`build`, `audit`), CI's coverage step and the cache verdict (`HFS_CHECK_CACHE_UNWARMED`, `HFS_CHECK_CACHE_UNPORTABLE`, `HFS_CHECK_CACHE_FILE_TOO_LARGE`), which stays a hard error. A run with a selector (`--gate`, `--side`, `--coverage-from`, `--fix`) judges those gates alone. The managed pre-push hook runs plain `app check`; the managed CI and nightly templates follow.

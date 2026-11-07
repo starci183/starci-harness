@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.7.1 - 2026-11-07
+
+- A patch: comments carry no ruling history; no rule changed.
+
 ## 2.7.0 - 2026-11-06
 
 - Added: `starci/theme-layer-shape` admits the four app brand tokens of the intent `informative` (`--informative`, `--informative-foreground`, `--informative-soft`, `--informative-soft-foreground`) in `brand.css`. They are the app's own: the app defines their values, the Grammar never does and keeps HeroUI's base CSS (the informative tone stays blue). No other `--informative-*` name is admitted.
