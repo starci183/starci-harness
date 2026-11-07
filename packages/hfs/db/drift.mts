@@ -162,13 +162,13 @@ join pg_catalog.pg_type t on t.oid = a.atttypid
 left join pg_catalog.pg_type e on e.oid = t.typelem and t.typcategory = 'A'
 where c.table_schema not in ('pg_catalog', 'information_schema')`;
 
-/** The partitions, views, CHECK constraints and non-inherited indexes of schema public, for the engine-owned comparison. */
+/** The partitions, views, CHECK constraints local to their table (a partition inherits its parent's CHECKs: conislocal is false there) and non-inherited indexes of schema public, for the engine-owned comparison. */
 export const CATALOG_SQL = {
   partitions: `select c.relname as "name", p.relname as "parent" from pg_catalog.pg_inherits i join pg_catalog.pg_class c on c.oid = i.inhrelid
     join pg_catalog.pg_class p on p.oid = i.inhparent join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r', 'p')`,
   views: `select c.relname as "name" from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('v', 'm')`,
   checks: `select cl.relname as "relation", con.conname as "name" from pg_catalog.pg_constraint con join pg_catalog.pg_class cl on cl.oid = con.conrelid
-    join pg_catalog.pg_namespace n on n.oid = cl.relnamespace where n.nspname = 'public' and con.contype = 'c' and con.conparentid = 0`,
+    join pg_catalog.pg_namespace n on n.oid = cl.relnamespace where n.nspname = 'public' and con.contype = 'c' and con.conislocal`,
   indexes: `select t.relname as "relation", i.relname as "name" from pg_catalog.pg_index x join pg_catalog.pg_class i on i.oid = x.indexrelid join pg_catalog.pg_class t on t.oid = x.indrelid
     join pg_catalog.pg_namespace n on n.oid = t.relnamespace left join pg_catalog.pg_inherits h on h.inhrelid = i.oid where n.nspname = 'public' and not x.indisprimary and h.inhrelid is null`,
 };

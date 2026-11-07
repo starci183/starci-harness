@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.13.9 - 2026-11-07
+
+- A patch: `app db drift` no longer reports the CHECK constraints a list partition inherits from its partitioned parent. The catalog query for CHECKs filtered on `conparentid = 0`, which does not exclude an inherited CHECK, so `records_data_check`, `records_entity_check` and `records_version_check` of the parent `records` were reported as `BE_ENTITY_SCHEMA_DRIFT` on every `records_<entity>` partition (`check-undeclared`). The query now reads only CHECKs local to their table (`pg_constraint.conislocal`), as the index query already skips inherited indexes; a CHECK added on the partition itself and missing from the manifest is still reported. Spec: `src/db-drift-docker.spec.mts` migrates a partitioned parent with two CHECKs and a partition with one local CHECK in a real postgres.
+
 ## 5.13.8 - 2026-11-07
 
 - A patch: canon pins: grammar 0.24.1 (card radius token, content maximum, the switch row inside the card; the lint family stays at 0.24.0, same minor) and eslint-canon-fe 9.16.1 (`control-height` no longer names the removed `SegmentedControl`). The runtime data `canon-pins.yaml` pins them; no hfs rule or schema changed.
