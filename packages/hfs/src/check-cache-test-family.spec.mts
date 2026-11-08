@@ -598,7 +598,7 @@ test('with a real Jest: the specs of a root package are discovered, keyed by the
     assert.deepEqual(first.result.failed, []);
     const records = first.replaced.get(TEST_FOLDER) ?? [];
     assert.deepEqual(Object.keys(sourcesOf(records.find((record) => record.path === own) as CacheRecord)), ['packages/sdk/src/pick.ts']);
-    assert.match(fs.readFileSync(first.result.lcov as string, 'utf8'), /^SF:\.\.[\\/]packages[\\/]sdk[\\/]src[\\/]pick\.ts$/mu, 'the merged lcov names the package file from the jest root');
+    assert.match(fs.readFileSync(first.result.lcov as string, 'utf8'), /^SF:packages\/sdk\/src\/pick\.ts$/mu, 'the merged lcov names the package file from the repository root, with forward slashes and no leading ..');
     fs.appendFileSync(path.join(app, 'packages/sdk/src/pick.ts'), '// touched\n');
     const touched = await run(records);
     assert.deepEqual(touched.result.ran, [own], 'a change to the package re-runs its spec alone');

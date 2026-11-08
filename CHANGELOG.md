@@ -3,6 +3,7 @@
 ## 1.1.0-alpha.94 - 2026-11-08
 
 - Fixed: `starci app check` on a host with no Docker and no `--db-url-env` database reports the warning `CI_PARITY_DB_SKIPPED` instead of crashing with `HFS_MANIFEST_INVALID`; the fix is in `@starci/hfs` 6.2.5, which the CLI requires once npm serves it (`cli-follow`).
+- Changed: the CLI requires `@starci/hfs` 6.2.5, whose canon pins are `@starci/eslint-canon-fe` 9.16.6, `@starci/eslint-canon-be` 3.19.6 and `@starci/jest-preset` 2.8.1: `starci app check` lint now finds what the Sonar way profile finds (run `starci app check --fix` once after the upgrade), and the merged lcov is read by Sonar for root workspace packages. `FE_CONNECTED_BLOCK_RENDER_PAIR` and `FE_WORLD_OWNER_RENDER_BOUNDARY` accept children nested in the pure component.
 
 ## 1.1.0-alpha.92 - 2026-11-08
 
