@@ -1,6 +1,7 @@
 import { TestWorldErrorCode, worldError } from "../errors"
 import type { FetchLike } from "./health"
 import type { ProxyToxics } from "./contracts"
+import { isRecord } from "@starci/common"
 
 /** One proxy as toxiproxy lists it. */
 export interface ProxyInfo {
@@ -18,8 +19,6 @@ export interface CreateProxyRequest {
     /** `<container>:<port>` on the stack network. */
     readonly upstream: string
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null
 
 /** A client of the toxiproxy REST API (`fetch`); it only ever touches the named proxy, never the global `/reset`, so runs stay isolated. */
 export class ToxiproxyClient {

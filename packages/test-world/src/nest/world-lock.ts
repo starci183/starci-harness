@@ -19,6 +19,7 @@ import { TestWorldErrorCode, worldError } from "../errors"
 import { processAlive } from "../stack/registry"
 import type { IsAlive } from "../stack/registry"
 import { pause as realPause } from "./poll"
+import { isPlainRecord } from "@starci/common"
 
 /** What a test of the library substitutes. */
 export interface WorldLockOptions {
@@ -42,18 +43,16 @@ interface Holder {
     readonly pid: number
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value)
-
 const readHolder = (file: string): Holder | null => {
     try {
         const parsed: unknown = JSON.parse(readFileSync(file, "utf8"))
-        return isRecord(parsed) && typeof parsed.owner === "string" && typeof parsed.pid === "number" ? { owner: parsed.owner, pid: parsed.pid } : null
+        return isPlainRecord(parsed) && typeof parsed.owner === "string" && typeof parsed.pid === "number" ? { owner: parsed.owner, pid: parsed.pid } : null
     } catch {
         return null
     }
 }
 
-const isCode = (cause: unknown, code: string): boolean => isRecord(cause) && cause.code === code
+const isCode = (cause: unknown, code: string): boolean => isPlainRecord(cause) && cause.code === code
 
 /** One world's view of the run's outage lock; `owner` tells this world's holds from every other world's. */
 export class WorldLock {

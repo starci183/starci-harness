@@ -4,10 +4,9 @@ import { TestWorldErrorCode, worldError } from "../../errors"
 import type { RunKeycloak } from "../contracts"
 import { baseUrl, randomSecret } from "./definition"
 import type { ServiceDefinition, ServiceTarget } from "./definition"
+import { isPlainRecord } from "@starci/common"
 
 const ADMIN_USER = "admin"
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value)
 
 /** The note key under which the usernames seeded by the realm import are kept for `reset`. */
 export const seedNoteKey = (realm: string): string => `keycloak-seed:${realm}`
@@ -44,16 +43,16 @@ export const namespacedId = (kebab: string, id: string): string => {
 const withoutIdOf = (value: Readonly<Record<string, unknown>>): Record<string, unknown> => Object.fromEntries(Object.entries(value).filter(([key]) => key !== "id"))
 
 /** `value` without its own `id` when it is an object, else itself. */
-const withoutId = (value: unknown): unknown => (isRecord(value) ? withoutIdOf(value) : value)
+const withoutId = (value: unknown): unknown => (isPlainRecord(value) ? withoutIdOf(value) : value)
 
 /** Groups and their sub-groups without ids. */
 const groupsWithoutIds = (groups: unknown): unknown =>
-    Array.isArray(groups) ? groups.map((group) => (isRecord(group) ? { ...(withoutId(group) as Record<string, unknown>), ...(Array.isArray(group.subGroups) ? { subGroups: groupsWithoutIds(group.subGroups) } : {}) } : group)) : groups
+    Array.isArray(groups) ? groups.map((group) => (isPlainRecord(group) ? { ...(withoutId(group) as Record<string, unknown>), ...(Array.isArray(group.subGroups) ? { subGroups: groupsWithoutIds(group.subGroups) } : {}) } : group)) : groups
 
 /** Roles (`{ realm: [...], client: { <clientId>: [...] } }`) without ids. */
 const rolesWithoutIds = (roles: unknown): unknown => {
-    if (!isRecord(roles)) return roles
-    const client = isRecord(roles.client)
+    if (!isPlainRecord(roles)) return roles
+    const client = isPlainRecord(roles.client)
         ? Object.fromEntries(Object.entries(roles.client).map(([name, list]) => [name, Array.isArray(list) ? list.map(withoutId) : list]))
         : roles.client
     return { ...roles, ...(Array.isArray(roles.realm) ? { realm: roles.realm.map(withoutId) } : {}), ...(roles.client === undefined ? {} : { client }) }
@@ -61,11 +60,11 @@ const rolesWithoutIds = (roles: unknown): unknown => {
 
 /** Components (`{ <provider type>: [...] }`) and their sub-components without ids. */
 const componentsWithoutIds = (components: unknown): unknown =>
-    isRecord(components)
+    isPlainRecord(components)
         ? Object.fromEntries(
               Object.entries(components).map(([type, list]) => [
                   type,
-                  Array.isArray(list) ? list.map((entry) => (isRecord(entry) ? { ...(withoutId(entry) as Record<string, unknown>), ...(entry.subComponents === undefined ? {} : { subComponents: componentsWithoutIds(entry.subComponents) }) } : entry)) : list,
+                  Array.isArray(list) ? list.map((entry) => (isPlainRecord(entry) ? { ...(withoutId(entry) as Record<string, unknown>), ...(entry.subComponents === undefined ? {} : { subComponents: componentsWithoutIds(entry.subComponents) }) } : entry)) : list,
               ]),
           )
         : components
@@ -80,24 +79,24 @@ const isConfidential = (client: Record<string, unknown>): boolean => client.publ
  */
 export const prepareRealm = (json: string, kebab: string, file: string, secret: () => string = randomSecret): RealmFile & { readonly stored: string } => {
     const parsed: unknown = JSON.parse(json)
-    if (!isRecord(parsed) || typeof parsed.realm !== "string" || parsed.realm === "") {
+    if (!isPlainRecord(parsed) || typeof parsed.realm !== "string" || parsed.realm === "") {
         throw worldError(TestWorldErrorCode.ConfigInvalid, `the keycloak realm file ${file} has no "realm" name`)
     }
     const stored = `${kebab}-${parsed.realm}`
     const rest = withoutIdOf(parsed)
-    const clients = Array.isArray(parsed.clients) ? parsed.clients.filter(isRecord) : []
+    const clients = Array.isArray(parsed.clients) ? parsed.clients.filter(isPlainRecord) : []
     const passwordClient = clients.find((client) => client.directAccessGrantsEnabled === true && typeof client.clientId === "string")
-    const users = Array.isArray(parsed.users) ? parsed.users.filter(isRecord) : []
+    const users = Array.isArray(parsed.users) ? parsed.users.filter(isPlainRecord) : []
     const clientSecrets: Record<string, string> = {}
     const preparedClients = (Array.isArray(parsed.clients) ? parsed.clients : []).map((client: unknown) => {
-        if (!isRecord(client) || typeof client.clientId !== "string" || !isConfidential(client)) return withoutId(client)
+        if (!isPlainRecord(client) || typeof client.clientId !== "string" || !isConfidential(client)) return withoutId(client)
         const generated = secret()
         clientSecrets[client.clientId] = generated
         return { ...(withoutId(client) as Record<string, unknown>), secret: generated }
     })
     const userIds: Record<string, string> = {}
     const preparedUsers = (Array.isArray(parsed.users) ? parsed.users : []).map((user: unknown) => {
-        if (!isRecord(user) || typeof user.id !== "string") return user
+        if (!isPlainRecord(user) || typeof user.id !== "string") return user
         userIds[user.id] = namespacedId(kebab, user.id)
         return { ...user, id: userIds[user.id] }
     })
@@ -127,7 +126,7 @@ const adminToken = async (target: ServiceTarget, user: string, password: string)
         signal: AbortSignal.timeout(15_000),
     })
     const body: unknown = await response.json().catch(() => null)
-    if (!response.ok || !isRecord(body) || typeof body.access_token !== "string") {
+    if (!response.ok || !isPlainRecord(body) || typeof body.access_token !== "string") {
         throw worldError(TestWorldErrorCode.InfrastructureFailed, `keycloak admin token answered ${response.status}`)
     }
     return body.access_token
@@ -207,7 +206,7 @@ export const keycloakService: ServiceDefinition<RunKeycloak> = {
         const listed = await admin(target, token, "GET", `/realms/${realm}/users?max=10000`)
         if (listed.status !== 200 || !Array.isArray(listed.json)) throw worldError(TestWorldErrorCode.InfrastructureFailed, `keycloak list users answered ${listed.status}`)
         for (const user of listed.json) {
-            if (!isRecord(user) || typeof user.id !== "string" || typeof user.username !== "string") continue
+            if (!isPlainRecord(user) || typeof user.id !== "string" || typeof user.username !== "string") continue
             if (seeded.has(user.username.toLowerCase())) continue
             const removed = await admin(target, token, "DELETE", `/realms/${realm}/users/${encodeURIComponent(user.id)}`)
             if (removed.status !== 204 && removed.status !== 404) throw worldError(TestWorldErrorCode.InfrastructureFailed, `keycloak delete user ${user.username} answered ${removed.status}`)
