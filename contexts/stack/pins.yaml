@@ -125,6 +125,7 @@ pins:
   '@nestjs/websockets': {version: 11.2.5, group: framework, side: be, why: "the socket.io gateway; the @nestjs/core line"}
   '@nestjs/platform-socket.io': {version: 11.2.5, group: framework, side: be, why: "the socket.io platform; the @nestjs/core line"}
   socket.io: {version: 4.8.3, group: framework, side: be, why: "the exact version @nestjs/platform-socket.io depends on, so one copy exists"}
+  yaml: {version: 2.9.1, group: framework, side: be, why: "the YAML and front-matter parser of a back end's content importers (a content repository the app pulls); the version the harness packages already resolve, so one copy exists"}
   '@socket.io/postgres-adapter': {version: 0.5.0, group: framework, side: be, why: "the realtime adapter of replicas without Redis; platform/realtime only"}
   '@socket.io/redis-adapter': {version: 8.3.0, group: framework, side: be, why: "the sharded realtime adapter on a declared Redis; platform/realtime only"}
   ioredis: {version: 5.11.1, group: framework, side: be, why: "the one Redis client; held on 5.x because typeorm's peer range excludes 6"}

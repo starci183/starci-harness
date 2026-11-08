@@ -1,6 +1,7 @@
 # Changelog
 
-## 1.1.0-alpha.100 - 2026-11-09
+## 1.1.0-alpha.100 - Added: `yaml` 2.9.1 in contexts/stack/pins.yaml (framework, back end): the YAML and front-matter parser of a back end's content importers, the version the harness packages already resolve.
+- 2026-11-09
 
 - Changed: this alpha carries alpha.99 and the next batch together (alpha.99 never reached npm: its CI was red on a committed `.cli-build.log`, the `packages/<name>/scripts/*.ts` build files and a lint error in a CLI test). The CLI's own `@starci/hfs` dependency stays at what npm serves (6.2.10); cli-follow moves it to 6.3.1 once npm serves it. `.cli-build.log` is no longer tracked, `packages/<name>/scripts/*.ts` belong to the `packages.build-config` slot, and the `hfs-command-runner` test doubles are typed without assertions.
 - Changed: `@starci/hfs` 6.3.1 (with the 6.3.0 it carries: the sharded cache verify and the same-sha lock clearing, the single judgement of the release gate, `@starci/common`; and in 6.3.1 `starci app codemod common-base` deletes the specs of the re-exports it writes and re-exports only imported names, `HFS_EMPTY_DIR` skips git-ignored directories, `STACKS_PORT_PUBLISHED` accepts a host-mode ingress on 80/443 with a placement or global deploy), `@starci/common` 1.0.1 (CommonJS and ESM over one class identity, `params` and `cause` accept `undefined`, `ErrorParams` a named interface), `@starci/eslint-canon-be` 3.20.1 and the Grammar family 0.27.0 (card inset 16, `EmptyNotice actionIntent`; 0.26.0 never reached npm).
