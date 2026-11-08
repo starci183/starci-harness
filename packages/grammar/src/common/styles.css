@@ -959,6 +959,15 @@
     }
 
     /*
+     * A details card: its term/value rows touch the card's edge like list rows. Each pair carries the card's inline padding and the row
+     * block rhythm, and the seam between two pairs runs the card's full width.
+     */
+    .starci-core-surface[data-grammar-surface-kind="details"] .starci-core-description-pair {
+        padding-block: var(--grammar-row-gap);
+        padding-inline: var(--grammar-card-padding-inline);
+    }
+
+    /*
      * Zones: typed bands above and below a card's body. The card is flush; the shell draws the ONE divider between neighbouring zones and
      * between a zone and the body (a header zone's bottom border, a footer zone's top border), never a Divider. The body's own inset is
      * the card padding for a body or tile card; a list, figures or accordion body touches the edge.
@@ -2616,6 +2625,13 @@
         inline-size: 100%;
         max-inline-size: var(--grammar-content-max);
         margin-inline: auto;
+    }
+    /*
+     * A Page owns the measure (Page: "layout frames never wrap a page in a measure of their own"): a primary that holds a Page is not
+     * capped, so the page's white header band runs the column's full width while the band's content and the body keep the page measure.
+     */
+    .starci-core-workspace-shell-primary:has(> .starci-core-page) {
+        max-inline-size: none;
     }
     .starci-core-workspace-shell-rail { grid-area: rail; }
 

@@ -22,8 +22,8 @@ export type SwitchProps = NoChildren & FieldControlProps & {
     readonly defaultSelected?: boolean
     readonly onSelectedChange?: (isSelected: boolean) => void
     /**
-     * `md` (default) and `lg` are HeroUI's own Switch sizes, track and thumb included. `control` is the one StarCi size: the HeroUI `lg` switch
-     * scaled to the shared control height (2.5rem, 40px, the IconButton and bar control height), so a theme switch lines up with the buttons beside it.
+     * `control` (default) is the one StarCi size: a 40px track (2.5rem, the IconButton and bar control height) with a round thumb that may carry a
+     * glyph, so a switch lines up with the buttons beside it. `md` and `lg` are HeroUI's own smaller sizes, kept for a dense table cell.
      * With `isLabelHidden` the label stays the accessible name and draws nothing, for a switch that carries only an aria label.
      */
     readonly size?: SwitchSize
@@ -55,7 +55,7 @@ const SwitchInner = ({ isLoading = false, ...props }: SwitchProps) => isLoading
     ? <FieldSkeletonScope component="Switch"><SwitchControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <SwitchControl {...props} />
 
-const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, size = "md", thumbIcon, selectedThumbIcon, ...field }: Omit<SwitchProps, "isLoading">) => (
+const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, size = "control", thumbIcon, selectedThumbIcon, ...field }: Omit<SwitchProps, "isLoading">) => (
     <HeroSwitch
         data-tier="leaf"
         data-component="Switch"

@@ -11,6 +11,13 @@
   Story `Frames/EntryFrame/Centred`.
 - Added: `SurfaceCard emphasis="accent"` on the plain surface: the one card a set of peers recommends (the popular plan of a
   pricing grid) keeps its ground and depth and takes an accent ring inside its edge; the reason stays in words (a badge).
+- Added: `SurfaceCard kind="details"`: term/value rows (a real `<dl>`, DescriptionList) that touch the card's edge like list rows,
+  each inset by the card padding and divided by a full-width seam (the order of a purchase, a record's summary). Before, a
+  DescriptionList in a body card drew its seams inside the card padding.
+- Changed: `Switch` defaults to `size="control"`: a 40px track with a round thumb that may carry a glyph, so a switch matches the
+  control height of the buttons beside it. `md` and `lg` (HeroUI's own sizes) stay for a dense cell.
+- Fixed: a `WorkspaceShell` primary that holds a `Page` is no longer capped at `--grammar-content-max`: the Page owns the measure,
+  so its white header band runs the column's full width (it ended at 80rem on a wide window) while its content keeps the measure.
 
 ## 0.25.2 - 2026-11-08
 
