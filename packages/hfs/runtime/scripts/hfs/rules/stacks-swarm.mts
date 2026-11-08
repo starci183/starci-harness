@@ -86,17 +86,26 @@ function environmentSecretIssues(id: string, service: Parsed, spec: Parsed, mode
   }
 }
 
-function allowedPort(entry: Parsed) {
-  if (plain(entry)) return [undefined, 'ingress'].includes(entry.mode) && [80, 443].includes(Number(entry.published));
+// Ingress mode goes through the routing mesh, which rewrites the client source IP; only the ingress, whose per-IP limits need the real
+// client address behind its single proxy hop, may publish in host mode.
+function allowedPort(entry: Parsed, ingress: boolean) {
+  if (plain(entry)) return [undefined, 'ingress', ...(ingress ? ['host'] : [])].includes(entry.mode) && [80, 443].includes(Number(entry.published));
   if (typeof entry !== 'string') return false;
   const parts = String(entry).split('/')[0]!.split(':');
   return parts.length > 1 && [80, 443].includes(Number(parts.at(-2)));
 }
 
+function hostModePort(entry: Parsed) {
+  return plain(entry) && entry.mode === 'host';
+}
+
 function publishedPortIssues(id: string, service: Parsed, spec: Parsed, add: Parsed) {
   if (service.ports === undefined || (Array.isArray(service.ports) && !service.ports.length)) return;
-  if (id !== spec.ingress?.component || !Array.isArray(service.ports) || !service.ports.every(allowedPort))
-    add('STACKS_PORT_PUBLISHED', `services.${id}.ports`, 'Only the declared ingress may publish ports, using ingress mode and published ports 80 or 443');
+  const ingress = id === spec.ingress?.component;
+  if (!ingress || !Array.isArray(service.ports) || !service.ports.every((entry: Parsed) => allowedPort(entry, ingress)))
+    add('STACKS_PORT_PUBLISHED', `services.${id}.ports`, 'Only the declared ingress may publish ports, using ingress mode (or host mode, for the real client IP) and published ports 80 or 443');
+  else if (service.ports.some(hostModePort) && service.deploy?.mode !== 'global' && !list(service.deploy?.placement?.constraints).some(present))
+    add('STACKS_PORT_PUBLISHED', `services.${id}.deploy.placement`, 'An ingress publishing in host mode listens on every node it runs on, so it must be global mode or pinned by a placement constraint');
 }
 
 function hostOf(value: Parsed) {

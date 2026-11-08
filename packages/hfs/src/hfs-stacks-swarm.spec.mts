@@ -149,10 +149,25 @@ for (const edition of ['lite', 'full']) {
     const value = fixture(t, edition);
     value.model.services.ingress.ports = ['80:8080/tcp', '443:443/tcp'];
     assert.deepEqual(issuesFor(value, 'STACKS_PORT_PUBLISHED'), []);
-    for (const ports of [[{ published: 443, target: 443, mode: 'host' }], ['8080:80'], ['443']]) {
+    for (const ports of [['8080:80'], ['443'], [{ published: 8080, target: 80, mode: 'host' }]]) {
       value.model.services.ingress.ports = ports;
       assert.ok(issuesFor(value, 'STACKS_PORT_PUBLISHED').length > 0);
     }
+  });
+
+  test(`STACKS_PORT_PUBLISHED@${edition}: the ingress may publish 80/443 in host mode, once pinned or global, and no other service may`, t => {
+    const value = fixture(t, edition), ingress = value.model.services.ingress;
+    ingress.ports = [{ published: 80, target: 80, mode: 'host' }, { published: 443, target: 443, mode: 'host' }];
+    ingress.deploy = { ...ingress.deploy, placement: { constraints: ['node.labels.ingress == true'] } };
+    assert.deepEqual(issuesFor(value, 'STACKS_PORT_PUBLISHED'), []);
+    ingress.deploy = { ...ingress.deploy, mode: 'global', placement: undefined };
+    assert.deepEqual(issuesFor(value, 'STACKS_PORT_PUBLISHED'), []);
+    ingress.deploy = { ...ingress.deploy, mode: 'replicated', placement: undefined };
+    assert.ok(issuesFor(value, 'STACKS_PORT_PUBLISHED').length > 0, 'host mode without global mode or a placement constraint');
+    ingress.ports = [{ published: 443, target: 443, mode: 'ingress' }];
+    assert.deepEqual(issuesFor(value, 'STACKS_PORT_PUBLISHED'), []);
+    value.model.services.api.ports = [{ published: 443, target: 3000, mode: 'host' }];
+    assert.ok(issuesFor(value, 'STACKS_PORT_PUBLISHED').length > 0, 'a non-ingress service in host mode');
   });
 
   test(`STACKS_DNS_UNDECLARED@${edition}: each rendered route needs its own owner and receipt`, t => {
