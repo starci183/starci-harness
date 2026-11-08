@@ -4,6 +4,9 @@
 // its sealed secret. The verb also declares redis in hfs.json sides.be.backing with its bullmq client, and renders the one
 // declared Redis into every docker-swarm environment of the stack: the stateful component, its backup and restore record, the
 // sealed redis-password member and its grants, the AOF service on a named volume and an internal network, and the images lock.
+// A full app gets the same persisted Redis through planFullQueue, which runs the stack renderer below with `sealed: false`: full's
+// queue config reads QUEUE_REDIS_HOST and QUEUE_REDIS_PORT and no password, so the full Redis has no sealed member and no grants; it
+// reaches the api and worker services over the internal backing network only, and the dev environment runs it from its compose file.
 import { nextMigrationStamp } from './migration-stamp.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -102,6 +105,8 @@ export const selectLiteQueueEntries = (topic: string, entries: TreeEntry[]): Tre
 
 const MIGRATION = /^(\d{14})_[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.sql$/;
 const REDIS_PURPOSE = 'The declared Redis of the queue (hfs.json sides.be.backing) - one instance with AOF persistence (appendonly yes) on the named volume redis-data, on the internal backing network only, reached by the api and worker services as redis:6379 with the password of its sealed secret.';
+const REDIS_PURPOSE_UNSEALED = 'The declared Redis of the queue (hfs.json sides.be.backing) - one instance with AOF persistence (appendonly yes) and no eviction (maxmemory-policy noeviction) on the named volume redis-data, on the internal backing network only, reached by the api and worker services as redis:6379.';
+const purposeOf = (sealed: boolean) => (sealed ? REDIS_PURPOSE : REDIS_PURPOSE_UNSEALED);
 const MEMBER = 'redis-password';
 const quoted = (value: unknown) => JSON.stringify(value);
 const read = (file: string) => fs.readFileSync(file, 'utf8');
@@ -181,27 +186,60 @@ function withClients(pkg: { dependencies?: Record<string, string> }, clients: re
 
 /**
  * `add queue|job` in a full app: hfs.json declares redis in sides.be.backing and the package.json gains the queue's clients at their
- * canon pins, so the generated platform/queue compiles; the full stack's Redis is the app's own (its environments declare it).
+ * canon pins, so the generated platform/queue compiles; the stack declares the one Redis the queue needs, persisted (AOF on a named
+ * volume, no eviction), as lite does but without a password (full's queue config reads QUEUE_REDIS_HOST and QUEUE_REDIS_PORT alone).
+ * A stack that already declares a redis component is the owner's and is left as it is.
  */
-export function planFullQueue({ repoRoot, repo, noun }: { repoRoot: string, repo: LiteRepo, noun: string }): { apply(): string[] } | null {
+export function planFullQueue({ repoRoot, repo, noun, planned }: { repoRoot: string, repo: LiteRepo, noun: string, planned: ReadonlyArray<{ absolute: string, body: string }> }): { apply(): string[] } | null {
   if (repo.edition === 'lite' || !['queue', 'job'].includes(noun)) return null;
+  requirePlatform(repoRoot, noun, planned);
   const packageFile = path.join(repoRoot, 'package.json');
-  const patches = [backingPatch(repoRoot), { file: packageFile, text: packageJsonText(withClients(JSON.parse(read(packageFile)), QUEUE_CLIENTS)) }]
+  const stack = stackFiles(repoRoot, { project: repo.project, consumers: queueServicesOf(repo), sealed: false });
+  const patches = [backingPatch(repoRoot), { file: packageFile, text: packageJsonText(withClients(JSON.parse(read(packageFile)), QUEUE_CLIENTS)) }, ...stack.patches]
     .filter((patch) => patch.text !== read(patch.file));
+  const clashes = stack.created.filter((entry) => fs.existsSync(path.join(repoRoot, ...entry.relative.split('/')))).map((entry) => entry.relative);
+  if (clashes.length) throw new ScaffoldError('HFS_ADD_EXISTS', `add ${noun} would overwrite ${clashes.join(', ')}`);
   return {
     apply() {
+      for (const entry of stack.created) {
+        const target = path.join(repoRoot, ...entry.relative.split('/'));
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, entry.text);
+      }
       for (const patch of patches) fs.writeFileSync(patch.file, patch.text);
-      return patches.map((patch) => path.relative(repoRoot, patch.file).split(path.sep).join('/'));
+      return [...stack.created.map((entry) => entry.relative), ...patches.map((patch) => path.relative(repoRoot, patch.file).split(path.sep).join('/'))];
     },
   };
 }
 
-const redisComponent = `redis:
+const PLATFORM_IMPORT = /from "@modules\/platform\/([a-z][a-z0-9-]*)"/g;
+const PLATFORM_DIR = 'be/src/modules/platform';
+const LOGGING_CORRELATION = Object.freeze({ files: ['correlation.policy.ts', 'correlation.port.ts'], symbols: ['CORRELATION_RUNNER', 'InjectCorrelationRunner'] });
+
+/**
+ * A full app's queue and jobs trees import the platform capabilities the canon skeleton carries (platform/ids, the logging
+ * correlation runner, ...). The verb writes none of them into an app that predates them, and a barrel patched to export
+ * files that are not there breaks the build, so it refuses before it writes anything, naming each missing piece.
+ */
+function requirePlatform(repoRoot: string, noun: string, planned: ReadonlyArray<{ absolute: string, body: string }>): void {
+  const platform = path.join(repoRoot, ...PLATFORM_DIR.split('/'));
+  const generated = new Set(planned.map((file) => path.relative(platform, file.absolute).split(path.sep)[0]));
+  const imported = new Set(planned.flatMap((file) => [...file.body.matchAll(PLATFORM_IMPORT)].map((match) => match[1]!)));
+  const missing = [...imported].filter((name) => !generated.has(name) && !fs.existsSync(path.join(platform, name, 'index.ts'))).map((name) => `${PLATFORM_DIR}/${name}`);
+  const logging = path.join(platform, 'logging');
+  const decorators = fs.existsSync(path.join(logging, 'logging.decorators.ts')) ? read(path.join(logging, 'logging.decorators.ts')) : '';
+  const absent = [...LOGGING_CORRELATION.files.filter((file) => !fs.existsSync(path.join(logging, file))).map((file) => `${PLATFORM_DIR}/logging/${file}`),
+    ...LOGGING_CORRELATION.symbols.filter((symbol) => !new RegExp(String.raw`\bexport (?:const|function) ${symbol}\b`).test(decorators)).map((symbol) => `${symbol} in ${PLATFORM_DIR}/logging/logging.decorators.ts`)];
+  if (!missing.length && !absent.length) return;
+  throw new ScaffoldError('HFS_ADD_PLATFORM_MISSING', `add ${noun} needs platform capabilities this app lacks: ${[...missing, ...absent].join(', ')}; the canon skeleton carries them under templates/be/skeleton/src/modules/platform of @starci/hfs - copy them in and register their modules in the composition (IdsModule.register({ isGlobal: true })), then run the verb again. Nothing was written`);
+}
+
+const redisComponent = (sealed: boolean) => `redis:
   role: stateful
   image: ${REDIS_IMAGE}
   compose: infra/swarm/stack.yaml
   volumes: [redis-data]
-  purpose: ${quoted(REDIS_PURPOSE)}
+  purpose: ${quoted(purposeOf(sealed))}
   required: true
 `;
 
@@ -212,26 +250,39 @@ const QUEUE_APP_KINDS = Object.freeze(['api', 'worker']);
 const queueServicesOf = (repo: LiteRepo): string[] => (repo.sides?.be?.apps ?? []).filter((app) => QUEUE_APP_KINDS.includes(app.kind)).map((app) => app.name);
 
 /** The application-stacks.yaml additions of one docker-swarm environment, applied to its text and to its document. */
-function declareEnvironment(edit: YamlBlockEdit, name: string, environment: YamlNode, { project, consumers }: { project: string, consumers: readonly string[] }): { recovery: string, runtimeName: string } {
+function declareEnvironment(edit: YamlBlockEdit, name: string, environment: YamlNode, { project, consumers, sealed }: { project: string, consumers: readonly string[], sealed: boolean }): { recovery: string, runtimeName: string } {
   const model = edit.value.environments[name];
   edit.append(['environments', name, 'components'], 'redis: {replicas: 1, port: 6379}\n');
   model.components.redis = { replicas: 1, port: 6379 };
   const [backup] = environment.backup ?? [];
   const recovery = `.starcistacks/${name}/infra/swarm/recovery/redis.yaml`;
   const entry = { component: 'redis', target: 'Owner-provisioned encrypted off-host storage for the Redis volume (its AOF and RDB files)', retention: backup?.retention ?? 'Thirty daily snapshots', owner: backup?.owner ?? 'Product operator', restoreProof: recovery };
-  edit.append(['environments', name, 'backup'], `- component: redis\n  target: ${quoted(entry.target)}\n  retention: ${quoted(entry.retention)}\n  owner: ${quoted(entry.owner)}\n  restoreProof: ${entry.restoreProof}\n`);
-  model.backup.push(entry);
-  const [secret] = environment.secrets ?? [];
+  const backupText = `- component: redis\n  target: ${quoted(entry.target)}\n  retention: ${quoted(entry.retention)}\n  owner: ${quoted(entry.owner)}\n  restoreProof: ${entry.restoreProof}\n`;
+  if (Array.isArray(model.backup)) {
+    edit.append(['environments', name, 'backup'], backupText);
+    model.backup.push(entry);
+  } else {
+    edit.append(['environments', name], `backup:\n${backupText.replace(/\n$/, '').split('\n').map((line) => `  ${line}`).join('\n')}\n`);
+    model.backup = [entry];
+  }
   const runtimeName = `${project}-${name}-${MEMBER}-v1`;
-  const member = { name: MEMBER, runtimeName, version: 1, where: `secrets/${MEMBER}`, recipientPolicy: secret?.recipientPolicy ?? "This app's own age recipient configured in .sops.yaml", keyCustody: secret?.keyCustody ?? "SOPS_AGE_KEY in the host's untracked .claude/secret.env" };
-  edit.append(['environments', name, 'secrets'], `- name: ${MEMBER}\n  runtimeName: ${quoted(runtimeName)}\n  version: 1\n  where: secrets/${MEMBER}\n  recipientPolicy: ${quoted(member.recipientPolicy)}\n  keyCustody: ${quoted(member.keyCustody)}\n`);
-  model.secrets.push(member);
   const deploy = environment.deploy;
   if (Array.isArray(deploy?.volumes)) {
     edit.append(['environments', name, 'deploy', 'volumes'], `- ${quoted(`${project}-${name}-redis-data`)}\n`);
     model.deploy.volumes.push(`${project}-${name}-redis-data`);
   }
-  const grants = deploy?.secrets?.grants;
+  if (sealed) declareSealedMember(edit, name, environment, { consumers, runtimeName });
+  return { recovery, runtimeName };
+}
+
+/** The sealed redis-password member of one environment and the grants that hand it to the redis service and every service that runs the queue. */
+function declareSealedMember(edit: YamlBlockEdit, name: string, environment: YamlNode, { consumers, runtimeName }: { consumers: readonly string[], runtimeName: string }): void {
+  const model = edit.value.environments[name];
+  const [secret] = environment.secrets ?? [];
+  const member = { name: MEMBER, runtimeName, version: 1, where: `secrets/${MEMBER}`, recipientPolicy: secret?.recipientPolicy ?? "This app's own age recipient configured in .sops.yaml", keyCustody: secret?.keyCustody ?? "SOPS_AGE_KEY in the host's untracked .claude/secret.env" };
+  edit.append(['environments', name, 'secrets'], `- name: ${MEMBER}\n  runtimeName: ${quoted(runtimeName)}\n  version: 1\n  where: secrets/${MEMBER}\n  recipientPolicy: ${quoted(member.recipientPolicy)}\n  keyCustody: ${quoted(member.keyCustody)}\n`);
+  model.secrets.push(member);
+  const grants = environment.deploy?.secrets?.grants;
   if (Array.isArray(grants)) {
     for (const service of [...consumers, 'redis']) {
       const at = grants.findIndex((grant) => grant?.service === service);
@@ -244,7 +295,6 @@ function declareEnvironment(edit: YamlBlockEdit, name: string, environment: Yaml
       }
     }
   }
-  return { recovery, runtimeName };
 }
 
 /** The services of one Swarm model that run the queue; a model with none of them cannot reach the Redis it would gain. */
@@ -257,6 +307,9 @@ function queueServicesIn(file: string, relative: string, consumers: readonly str
 
 const QUEUE_ENVIRONMENT = Object.freeze({ QUEUE_REDIS_HOST: 'redis', QUEUE_REDIS_PORT: '6379', QUEUE_REDIS_PASSWORD_FILE: `/run/secrets/${MEMBER}` });
 const QUEUE_ENVIRONMENT_TEXT = `QUEUE_REDIS_HOST: redis\nQUEUE_REDIS_PORT: "6379"\nQUEUE_REDIS_PASSWORD_FILE: /run/secrets/${MEMBER}\n`;
+/** A full app's queue config reads the Redis address alone (queue.config.ts), so its services get no password file and no secret. */
+const QUEUE_ENVIRONMENT_UNSEALED = Object.freeze({ QUEUE_REDIS_HOST: 'redis', QUEUE_REDIS_PORT: '6379' });
+const QUEUE_ENVIRONMENT_UNSEALED_TEXT = 'QUEUE_REDIS_HOST: redis\nQUEUE_REDIS_PORT: "6379"\n';
 const SECRET_TEXT = `- source: ${MEMBER}\n  target: ${MEMBER}\n`;
 
 /** Adds `block` under the service's `key`, or opens the key with it when the service has none. */
@@ -271,26 +324,30 @@ function appendToService(edit: YamlBlockEdit, service: string, key: string, bloc
 }
 
 /** One service that runs the queue reaches the Redis: its address and password file, the secret and the internal network. */
-function wireQueueService(edit: YamlBlockEdit, service: string): void {
-  appendToService(edit, service, 'environment', QUEUE_ENVIRONMENT_TEXT, (environment: YamlNode) => Object.assign(environment ?? {}, QUEUE_ENVIRONMENT));
-  appendToService(edit, service, 'secrets', SECRET_TEXT, (secrets: YamlNode) => [...(secrets ?? []), { source: MEMBER, target: MEMBER }]);
+function wireQueueService(edit: YamlBlockEdit, service: string, sealed: boolean): void {
+  appendToService(edit, service, 'environment', sealed ? QUEUE_ENVIRONMENT_TEXT : QUEUE_ENVIRONMENT_UNSEALED_TEXT,
+    (environment: YamlNode) => Object.assign(environment ?? {}, sealed ? QUEUE_ENVIRONMENT : QUEUE_ENVIRONMENT_UNSEALED));
+  if (sealed) appendToService(edit, service, 'secrets', SECRET_TEXT, (secrets: YamlNode) => [...(secrets ?? []), { source: MEMBER, target: MEMBER }]);
+  if (edit.value.services[service].networks?.includes('backing')) return; // a full stack's backing network already carries its database
   edit.extendFlow(['services', service, 'networks'], 'backing');
   edit.value.services[service].networks.push('backing');
 }
 
 /** The Swarm model additions: every service that runs the queue reaches the Redis on an internal network with the shared secret, the Redis persists AOF. */
-function stackPatch(file: string, relative: string, { name, project, runtimeName, consumers }: { name: string, project: string, runtimeName: string, consumers: readonly string[] }): FilePatch {
+function stackPatch(file: string, relative: string, { name, project, runtimeName, consumers, sealed }: { name: string, project: string, runtimeName: string, consumers: readonly string[], sealed: boolean }): FilePatch {
   const edit = new YamlBlockEdit(read(file), relative);
   const model = edit.value;
-  for (const service of consumers) wireQueueService(edit, service);
+  for (const service of consumers) wireQueueService(edit, service, sealed);
   const constraints = model.services[consumers[0]!].deploy?.placement?.constraints ?? [];
   const redis = {
     image: REDIS_IMAGE,
-    command: ['sh', '-c', `exec redis-server --appendonly yes --appendfsync everysec --requirepass "$$(cat /run/secrets/${MEMBER})"`],
-    secrets: [{ source: MEMBER, target: MEMBER }],
+    command: sealed
+      ? ['sh', '-c', `exec redis-server --appendonly yes --appendfsync everysec --requirepass "$$(cat /run/secrets/${MEMBER})"`]
+      : ['redis-server', '--appendonly', 'yes', '--appendfsync', 'everysec', '--maxmemory-policy', 'noeviction'],
+    ...(sealed ? { secrets: [{ source: MEMBER, target: MEMBER }] } : {}),
     volumes: ['redis-data:/data'],
     networks: ['backing'],
-    healthcheck: { test: ['CMD-SHELL', `REDISCLI_AUTH="$$(cat /run/secrets/${MEMBER})" redis-cli ping | grep -q PONG`], interval: '30s', timeout: '5s', start_period: '10s', retries: 3 },
+    healthcheck: { test: sealed ? ['CMD-SHELL', `REDISCLI_AUTH="$$(cat /run/secrets/${MEMBER})" redis-cli ping | grep -q PONG`] : ['CMD', 'redis-cli', 'ping'], interval: '30s', timeout: '5s', start_period: '10s', retries: 3 },
     deploy: {
       replicas: 1,
       placement: { constraints },
@@ -303,9 +360,7 @@ function stackPatch(file: string, relative: string, { name, project, runtimeName
     'redis:',
     `  image: ${REDIS_IMAGE}`,
     `  command: ${JSON.stringify(redis.command)}`,
-    '  secrets:',
-    `    - source: ${MEMBER}`,
-    `      target: ${MEMBER}`,
+    ...(sealed ? ['  secrets:', `    - source: ${MEMBER}`, `      target: ${MEMBER}`] : []),
     '  volumes:',
     '    - redis-data:/data',
     '  networks: [backing]',
@@ -325,10 +380,14 @@ function stackPatch(file: string, relative: string, { name, project, runtimeName
     '',
   ].join('\n'));
   model.services.redis = redis;
-  edit.append(['networks'], 'backing:\n  driver: overlay\n  internal: true\n');
-  model.networks.backing = { driver: 'overlay', internal: true };
-  edit.append(['secrets'], `${MEMBER}:\n  external: true\n  name: ${quoted(runtimeName)}\n`);
-  model.secrets[MEMBER] = { external: true, name: runtimeName };
+  if (model.networks?.backing === undefined) {
+    edit.append(['networks'], 'backing:\n  driver: overlay\n  internal: true\n');
+    model.networks.backing = { driver: 'overlay', internal: true };
+  }
+  if (sealed) {
+    edit.append(['secrets'], `${MEMBER}:\n  external: true\n  name: ${quoted(runtimeName)}\n`);
+    model.secrets[MEMBER] = { external: true, name: runtimeName };
+  }
   edit.append(['volumes'], `redis-data:\n  external: true\n  name: ${quoted(`${project}-${name}-redis-data`)}\n`);
   model.volumes['redis-data'] = { external: true, name: `${project}-${name}-redis-data` };
   return { file, text: edit.text() };
@@ -354,68 +413,125 @@ const KEY_ROWS = [
   '| `QUEUE_REDIS_PASSWORD` | API queue transport and the redis service (`requirepass`); reads `QUEUE_REDIS_PASSWORD_FILE` at `/run/secrets/redis-password`; holds no trailing newline |',
 ];
 
-/** The key roster gains the queue keys after the last row of its first table. */
-function keysPatch(file: string): FilePatch | null {
-  const lines = read(file).replace(/\r\n/g, '\n').split('\n');
+/** The rows of a full app: its queue config reads the Redis address alone (the Redis has no password). */
+const KEY_ROWS_UNSEALED = [
+  '| `QUEUE_REDIS_HOST` | API queue transport: the declared Redis (the service `redis` on the internal backing network of a Swarm environment, the loopback compose service of dev) |',
+  '| `QUEUE_REDIS_PORT` | API queue transport: the port of the declared Redis |',
+];
+
+/** The key roster gains the queue keys after the last row of its first table; a roster that lists them already is left alone. */
+function keysPatch(file: string, sealed: boolean): FilePatch | null {
+  const text = read(file);
+  if (text.includes('`QUEUE_REDIS_HOST`')) return null;
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
   const first = lines.findIndex((line) => line.startsWith('|'));
   if (first < 0) return null;
   let last = first;
   while (lines[last + 1]?.startsWith('|')) last += 1;
-  lines.splice(last + 1, 0, ...KEY_ROWS);
+  lines.splice(last + 1, 0, ...(sealed ? KEY_ROWS : KEY_ROWS_UNSEALED));
   return { file, text: lines.join('\n') };
 }
 
 const DEV_REDIS_PORT = 56379;
 
-/** The redis service a dev compose file gains: loopback only, append-only, on the host port the environment declares. */
-const devRedisService = `  redis:
-    image: ${REDIS_IMAGE}
-    command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "127.0.0.1:\${STACK_PORT_REDIS}:6379"
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-    restart: unless-stopped
+/** The redis service a dev compose file gains: loopback only, append-only with no eviction, on the host port the environment declares. */
+const devRedisService = `redis:
+  image: ${REDIS_IMAGE}
+  command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction"]
+  ports:
+    - "127.0.0.1:\${STACK_PORT_REDIS}:6379"
+  volumes:
+    - redis-data:/data
+  healthcheck:
+    test: ["CMD", "redis-cli", "ping"]
+    interval: 5s
+    timeout: 3s
+    retries: 20
+  restart: unless-stopped
 `;
+
+/** The document form of devRedisService, for the edit that checks the compose file still parses to what it was plus this service. */
+const devRedisValue = {
+  image: REDIS_IMAGE,
+  command: ['redis-server', '--appendonly', 'yes', '--appendfsync', 'everysec', '--maxmemory-policy', 'noeviction'],
+  ports: ['127.0.0.1:${STACK_PORT_REDIS}:6379'],
+  volumes: ['redis-data:/data'],
+  healthcheck: { test: ['CMD', 'redis-cli', 'ping'], interval: '5s', timeout: '3s', retries: 20 },
+  restart: 'unless-stopped',
+};
+
+/**
+ * The dev compose file with the redis service at the end of its services and the named volume redis-data; the owner's comments and other
+ * keys stay. A queue service the compose file runs itself (`inCompose`) reaches the Redis by its service name, on the networks it is on.
+ */
+function devComposePatch(file: string, relative: string, inCompose: readonly string[]): FilePatch {
+  const edit = new YamlBlockEdit(read(file), relative);
+  const networks: string[] | undefined = inCompose.length ? edit.value.services[inCompose[0]!].networks : undefined;
+  const joined = Array.isArray(networks) && networks.length ? { text: `  networks: [${networks.join(', ')}]\n`, networks: [...networks] } : null;
+  edit.append(['services'], `${devRedisService}${joined?.text ?? ''}`);
+  edit.value.services.redis = { ...devRedisValue, ...(joined ? { networks: joined.networks } : {}) };
+  for (const service of inCompose) {
+    appendToService(edit, service, 'environment', QUEUE_ENVIRONMENT_UNSEALED_TEXT, (environment: YamlNode) => Object.assign(environment ?? {}, QUEUE_ENVIRONMENT_UNSEALED));
+  }
+  if (edit.value.volumes === undefined) {
+    edit.lines.push('volumes:', '  redis-data: {}');
+    edit.value.volumes = { 'redis-data': {} };
+  } else {
+    edit.append(['volumes'], 'redis-data: {}\n');
+    edit.value.volumes['redis-data'] = {};
+  }
+  return { file, text: `${edit.text().replace(/\n*$/, '')}\n` };
+}
 
 /**
  * A docker-compose dev environment (runtime docker-compose, a `local` block) runs the declared Redis from its compose file, on its own loopback
  * port, and the queue processes reach it there: the compose service, the port, the service entry and the api and worker processes' queue settings.
  */
-function devQueuePatches(repoRoot: string, manifest: YamlNode, edit: YamlBlockEdit, consumers: readonly string[]): FilePatch[] {
+function devQueuePatches(repoRoot: string, manifest: YamlNode, edit: YamlBlockEdit, { consumers, sealed }: { consumers: readonly string[], sealed: boolean }): FilePatch[] {
   const patches: FilePatch[] = [];
   const dev = Object.entries<YamlNode>(manifest?.environments ?? {}).filter(([, environment]) => environment?.runtime === 'docker-compose' && environment.local);
   for (const [name, environment] of dev) {
     const composeRelative = `.starcistacks/${name}/${environment.composeFiles?.[0] ?? 'infra/compose/compose.yaml'}`;
     const composeFile = path.join(repoRoot, ...composeRelative.split('/'));
-    const compose = read(composeFile).replace(/\r\n/g, '\n');
-    if (/^ {2}redis:/m.test(compose)) continue;
+    if (/^ {2}redis:/m.test(read(composeFile).replace(/\r\n/g, '\n'))) continue;
     const base = ['environments', name] as const;
     const value = edit.value.environments[name];
     edit.append([...base, 'components'], `redis: {port: ${DEV_REDIS_PORT}}\n`);
     value.components.redis = { port: DEV_REDIS_PORT };
     edit.append([...base, 'local', 'ports'], `redis: ${DEV_REDIS_PORT}\n`);
     value.local.ports.redis = DEV_REDIS_PORT;
-    edit.append([...base, 'local', 'services'], '- {name: redis, wait: healthy}\n');
-    value.local.services.push({ name: 'redis', wait: 'healthy' });
+    // A queue service the compose file runs waits for the Redis, so the Redis comes first in the dependency order of the services.
+    const inCompose = sealed ? [] : consumers.filter((consumer) => parseYaml(read(composeFile))?.services?.[consumer] !== undefined);
+    if (inCompose.length) {
+      edit.prepend([...base, 'local', 'services'], '- {name: redis, wait: healthy}\n');
+      value.local.services.unshift({ name: 'redis', wait: 'healthy' });
+    } else {
+      edit.append([...base, 'local', 'services'], '- {name: redis, wait: healthy}\n');
+      value.local.services.push({ name: 'redis', wait: 'healthy' });
+    }
     for (const run of value.local.processes ?? []) {
       if (!consumers.includes(run.name)) continue;
-      edit.append([...base, 'local', 'processes', { item: 'name', is: run.name }, 'env'], 'QUEUE_ENABLED: "true"\nQUEUE_REDIS_HOST: 127.0.0.1\nQUEUE_REDIS_PORT: "${port.redis}"\n');
-      Object.assign(run.env, { QUEUE_ENABLED: 'true', QUEUE_REDIS_HOST: '127.0.0.1', QUEUE_REDIS_PORT: '${port.redis}' });
+      const entries = { ...(sealed ? { QUEUE_ENABLED: 'true' } : {}), QUEUE_REDIS_HOST: '127.0.0.1', QUEUE_REDIS_PORT: '${port.redis}' };
+      const text = Object.entries(entries).map(([key, entry]) => `${key}: ${entry === '127.0.0.1' ? entry : JSON.stringify(entry)}\n`).join('');
+      const target = [...base, 'local', 'processes', { item: 'name', is: run.name }] as const;
+      if (run.env === undefined) {
+        edit.append(target, `env:\n${text.replace(/\n$/, '').split('\n').map((line) => `  ${line}`).join('\n')}\n`);
+        run.env = entries;
+      } else {
+        edit.append([...target, 'env'], text);
+        Object.assign(run.env, entries);
+      }
     }
-    const head = compose.includes('\nvolumes:\n') ? compose.replace('\nvolumes:\n', `\n${devRedisService}volumes:\n`) : `${compose.replace(/\n*$/, '\n')}${devRedisService}volumes:\n`;
-    patches.push({ file: composeFile, text: `${head.replace(/\n*$/, '\n')}  redis-data: {}\n` });
+    patches.push(devComposePatch(composeFile, composeRelative, inCompose));
+    const keys = path.join(repoRoot, '.starcistacks', name, 'runtime', 'env', 'KEYS.md');
+    const roster = sealed || !fs.existsSync(keys) ? null : keysPatch(keys, false);
+    if (roster) patches.push(roster);
   }
   return patches;
 }
 
 /** Every stack file the declared Redis adds to or changes, planned before anything is written. */
-function stackFiles(repoRoot: string, { project, consumers }: { project: string, consumers: readonly string[] }): { patches: FilePatch[], created: GeneratedFile[], environments: string[] } {
+function stackFiles(repoRoot: string, { project, consumers, sealed }: { project: string, consumers: readonly string[], sealed: boolean }): { patches: FilePatch[], created: GeneratedFile[], environments: string[] } {
   const manifestRelative = '.starcistacks/application-stacks.yaml';
   const manifestFile = path.join(repoRoot, ...manifestRelative.split('/'));
   if (!fs.existsSync(manifestFile)) return { patches: [], created: [], environments: [] };
@@ -423,23 +539,23 @@ function stackFiles(repoRoot: string, { project, consumers }: { project: string,
   if (manifest?.components?.redis) return { patches: [], created: [], environments: [] };
   const swarm = Object.entries<YamlNode>(manifest?.environments ?? {}).filter(([, environment]) => environment?.runtime === 'docker-swarm');
   const edit = new YamlBlockEdit(read(manifestFile), manifestRelative);
-  edit.append(['components'], redisComponent);
-  edit.value.components.redis = { role: 'stateful', image: REDIS_IMAGE, compose: 'infra/swarm/stack.yaml', volumes: ['redis-data'], purpose: REDIS_PURPOSE, required: true };
+  edit.append(['components'], redisComponent(sealed));
+  edit.value.components.redis = { role: 'stateful', image: REDIS_IMAGE, compose: 'infra/swarm/stack.yaml', volumes: ['redis-data'], purpose: purposeOf(sealed), required: true };
   const patches: Array<FilePatch | null> = [];
   const created: GeneratedFile[] = [];
   for (const [name, environment] of swarm) {
     const compose = `.starcistacks/${name}/${environment.composeFiles?.[0] ?? 'infra/swarm/stack.yaml'}`;
     const composeFile = path.join(repoRoot, ...compose.split('/'));
     const services = queueServicesIn(composeFile, compose, consumers);
-    const { recovery, runtimeName } = declareEnvironment(edit, name, environment, { project, consumers: services });
-    patches.push(stackPatch(composeFile, compose, { name, project, runtimeName, consumers: services }));
+    const { recovery, runtimeName } = declareEnvironment(edit, name, environment, { project, consumers: services, sealed });
+    patches.push(stackPatch(composeFile, compose, { name, project, runtimeName, consumers: services, sealed }));
     const lock = environment.release?.imagesLock;
     if (lock && fs.existsSync(path.join(repoRoot, ...lock.split('/')))) patches.push(imagesLockPatch(path.join(repoRoot, ...lock.split('/')), lock));
     const keys = path.join(repoRoot, '.starcistacks', name, 'runtime', 'env', 'KEYS.md');
-    if (fs.existsSync(keys)) patches.push(keysPatch(keys));
+    if (fs.existsSync(keys)) patches.push(keysPatch(keys, sealed));
     if (!fs.existsSync(path.join(repoRoot, ...recovery.split('/')))) created.push({ relative: recovery, text: recoveryRecord });
   }
-  patches.push(...devQueuePatches(repoRoot, manifest, edit, consumers));
+  patches.push(...devQueuePatches(repoRoot, manifest, edit, { consumers, sealed }));
   patches.unshift({ file: manifestFile, text: edit.text() });
   return { patches: patches.filter((patch): patch is FilePatch => patch !== null), created, environments: swarm.map(([name]) => name) };
 }
@@ -454,7 +570,7 @@ export function planLiteQueue({ repoRoot, repo, noun, patterns, now }: { repoRoo
   const migrations = migrationFiles({ repoRoot, beRoot, patterns, now });
   const database = skeletonFiles(repoRoot);
   const declaration = declarationPatches(repoRoot, repo.project, patterns);
-  const stack = stackFiles(repoRoot, { project: repo.project, consumers: queueServicesOf(repo) });
+  const stack = stackFiles(repoRoot, { project: repo.project, consumers: queueServicesOf(repo), sealed: true });
   const created = [...migrations, ...tickFiles({ beRoot, patterns }), ...database.created, ...stack.created];
   const patches = [...database.patches, ...declaration, ...stack.patches];
   const clashes = created.filter((entry) => fs.existsSync(path.join(repoRoot, ...entry.relative.split('/')))).map((entry) => entry.relative);

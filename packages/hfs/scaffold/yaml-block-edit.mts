@@ -123,6 +123,16 @@ export class YamlBlockEdit {
     return this;
   }
 
+  /** Inserts `block` (YAML lines at indent 0) as the first children of the mapping or sequence at `path`. */
+  prepend(path: readonly YamlStep[], block: string): this {
+    const at = locate(this.lines, path, this.file);
+    const { body } = at;
+    const indent = body.to > body.from && body.childIndent !== null ? body.childIndent : at.indent + 2;
+    const first = this.lines.findIndex((line, index) => index >= body.from && index < body.to && significant(line));
+    this.lines.splice(first < 0 ? body.to : first, 0, ...indented(block, indent));
+    return this;
+  }
+
   /** Adds `value` to the flow sequence (`key: [a, b]`) at `path`. */
   extendFlow(path: readonly YamlStep[], value: string): this {
     const at = locate(this.lines, path, this.file);

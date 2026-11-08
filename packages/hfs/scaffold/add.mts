@@ -142,7 +142,7 @@ function writeKind({ repoRoot, noun, name, now, manifest, repo, spec: declared, 
   const spec: KindSpec = declared;
   if (noun === 'api' || noun === 'webhook') preflightFeatureComposition({ repoRoot, repo, noun, name });
   const liteQueue = planLiteQueue({ repoRoot, repo, noun, patterns, now });
-  const fullQueue = planFullQueue({ repoRoot, repo, noun });
+  const fullQueue = planFullQueue({ repoRoot, repo, noun, planned });
   const bootstrapCreated = noun === 'cli' && repo.edition === 'lite' ? ensureLiteCli({ root: repoRoot, manifest, repo }) : [];
   for (const file of planned) {
     fs.mkdirSync(path.dirname(file.absolute), { recursive: true });
