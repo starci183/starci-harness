@@ -27,7 +27,7 @@ const reasonOf = (cause: unknown): string => (cause instanceof Error ? cause.mes
  * job: this worker stops with no further effect and the delivery is acknowledged. A transient failure with attempts left marks the job
  * failed and is rethrown, so BullMQ retries it with backoff; any other failure, or a transient one on the last attempt, parks the job
  * as `failed_awaiting_fix` with its one alert and acknowledges the delivery, so no failure ends as a silent dead letter
- * (BE-RESILIENCE-2). A resumed delivery (`<jobKey>-r<n>`) claims the same row, which keeps its recorded steps.
+ * (BE-RESILIENCE-2). A resumed delivery (`<jobKey>:r<n>`) claims the same row, which keeps its recorded steps.
  */
 export class JobRunnerService implements JobProcessorRegistry {
     constructor(

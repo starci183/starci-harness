@@ -10,7 +10,7 @@ Starting a job is queues.md; which process runs it background.md. A lite app dec
 ## BE-JOBS-1 `platform/jobs` alone writes the job row, claiming it atomically
 
 `platform/jobs` owns the job table (a migration of the app; in lite under `db/migrations/`), its `jobs.sql.ts`
-and `JobClaims`. `claim` is one atomic upsert keyed by the delivery (the outbox id, without the `-r<n>` a resume adds) that bumps and
+and `JobClaims`. `claim` is one atomic upsert keyed by the delivery (the outbox id, without the `:r<n>` a resume adds) that bumps and
 returns `fencingToken`; a finished job or a live claim answers `null`. The runner claims each delivery, calls the processor and
 settles with a guarded `complete`, a `fail` the queue retries, or a `park` (BE-RESILIENCE-2). Nothing else writes the row.
 
@@ -102,7 +102,7 @@ whether its one alert is due (`alerted_at`). `ParkedJobResumerService` resumes a
 `resume({ jobId })` one job for the owner's "resume now" (a sweep delivery carrying `{ jobId }` asks for it: `ParkedJobResumeRequestsService`,
 registered alone by `JobsModule.register({ requestsOnly: true, connection })`, writes it through the outbox, and the lite cli's
 `cli queues resume [--job <id>]`, rendered once the app has its cli app and its jobs platform, calls it); each resume counts `resume_count` and hands the job back as
-`<jobKey>-r<resume_count>`. An app rendered before the park moves onto it with `starci app codemod self-recovery`: against the
+`<jobKey>:r<resume_count>`: the `:` is the outbox's, whose check `job_outbox_dedupe_key_check` refuses a dedupe key with none. `jobKeyOf` strips the one last `:r<digits>` (a job key may hold `:` itself but never ends in `:r<digits>`). An app rendered before the park moves onto it with `starci app codemod self-recovery`: against the
 template snapshot of that release (`templates/snapshots/<version>` of `@starci/hfs`) it rewrites each untouched platform file to the
 current template, adds the new ones and, in lite, the `jobs-failed-awaiting-fix` db migration (full adds `JobsFailedAwaitingFix` as
 a file of the tree), and leaves a file the app edited for a person, writing nothing while one is.

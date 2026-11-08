@@ -92,7 +92,7 @@ export interface ResumedJob {
     readonly jobId: string
     /** The queue the job runs on. */
     readonly kind: string
-    /** The delivery id of this resume: `<jobKey>-r<resumeCount>`. */
+    /** The delivery id of this resume: `<jobKey>:r<resumeCount>`. */
     readonly deliveryId: string
     /** The payload the producer wrote. */
     readonly payload: object
@@ -138,14 +138,17 @@ export interface ParkedFlowAlert {
     readonly action: "resume"
 }
 
-/** The suffix of the delivery id of a resumed job: `<jobKey>-r<n>`. */
-const RESUMED_DELIVERY = /-r\d+$/u
+/**
+ * The suffix of the delivery id of a resumed job: `<jobKey>:r<n>`. The outbox check `job_outbox_dedupe_key_check` asks every dedupe key
+ * for a `:`, so the suffix carries one. It is parsed from the end, once: a job key may hold `:` itself, but must not end in `:r<digits>`.
+ */
+const RESUMED_DELIVERY = /:r\d+$/u
 
-/** The job key a delivery claims: the delivery id, without the suffix a resume added. */
+/** The job key a delivery claims: the delivery id, without the one suffix (the last `:r<digits>`) a resume added. */
 export const jobKeyOf = (deliveryId: string): string => deliveryId.replace(RESUMED_DELIVERY, "")
 
 /** The delivery id of the `resumeCount`th resume of a job. */
-export const resumedDeliveryId = (jobKey: string, resumeCount: number): string => `${jobKey}-r${String(resumeCount)}`
+export const resumedDeliveryId = (jobKey: string, resumeCount: number): string => `${jobKey}:r${String(resumeCount)}`
 
 /** The idempotency key of an external effect: only `JobClaims.runKey` makes one. */
 export type RunKey = string & {
