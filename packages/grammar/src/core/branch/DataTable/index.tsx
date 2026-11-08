@@ -14,6 +14,11 @@ const FIT_COLUMNS = 4
 export type DataTableColumn<Row extends DataTableRow = DataTableRow> = {
     readonly id: string
     readonly label: string
+    /**
+     * The heading stays for assistive technology but is not drawn: an action or menu column whose meaning is plain from its
+     * cells (a row's main button, its ⋯ menu). Default false.
+     */
+    readonly isLabelHidden?: boolean
     /** The column that names each row for assistive technology. Defaults to the first column. */
     readonly isRowHeader?: boolean
     readonly allowsSorting?: boolean
@@ -342,7 +347,7 @@ export const DataTable = <Row extends DataTableRow>({
                             >
                                 {({ sortDirection }: { readonly sortDirection: "ascending" | "descending" | undefined }) => column.allowsSorting === true
                                     ? <HeroTable.SortableColumnHeader className="starci-core-data-table-sort" {...(sortDirection === undefined ? {} : { sortDirection })}>{column.label}</HeroTable.SortableColumnHeader>
-                                    : column.label}
+                                    : column.isLabelHidden === true ? <span className="starci-core-visually-hidden">{column.label}</span> : column.label}
                             </HeroTable.Column>
                         ))}
                     </HeroTable.Header>

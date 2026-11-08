@@ -16,6 +16,8 @@ export type DrawerProps = OverlayOpenState & {
     /** Visible heading; the drawer dialog's accessible name. */
     readonly title: string
     readonly description?: ReactNode
+    /** A mark before the title (the avatar or logo of what the drawer is about), aligned with the title block. */
+    readonly leading?: ReactNode
     readonly children?: ReactNode
     /** The body is still loading: every component in it draws as the geometry of its ready box, inert, with real labels. */
     readonly isLoading?: boolean
@@ -51,6 +53,7 @@ export type DrawerProps = OverlayOpenState & {
 export const Drawer = ({
     title,
     description,
+    leading,
     children,
     isLoading = false,
     footer,
@@ -92,6 +95,7 @@ export const Drawer = ({
                         <LoadingScope isLoading={false}><SurfaceNesting host="overlay">
                             {hasHandle ? <HeroDrawer.Handle data-grammar-drawer-handle="true" className="starci-core-drawer-handle" /> : null}
                             <HeroDrawer.Header className="starci-core-overlay-header">
+                                {leading === undefined ? null : <span className="starci-core-overlay-leading" data-grammar-overlay-leading="true">{leading}</span>}
                                 <div className="starci-core-overlay-heading-group">
                                     <HeroDrawer.Heading className="starci-core-overlay-title">{title}</HeroDrawer.Heading>
                                     {description === undefined ? null : (
