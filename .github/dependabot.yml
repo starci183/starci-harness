@@ -23,6 +23,7 @@ updates:
       - /packages/ai-router
       - /packages/auth
       - /packages/auth-oidc
+      - /packages/common
       - /packages/event-stream
       - /packages/grammar
       - /packages/heroicons
