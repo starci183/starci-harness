@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added: `src/managed-templates-canon.spec.mts` renders the whole managed set `app sync` writes (`renderRepo`, a lite and a full app), lints every back-end and front-end TypeScript target with the real built `@starci/eslint-canon-be` / `-fe` with `fix: true`, and asserts the autofix changes no render and nothing remains to report. Run against the templates before the canon migration (`03d1d0e0^`) it names exactly the 17 files an app saw drift on (the five `domain/identity` services and the twelve `features/api/auth/application` handlers); the templates and generators of 6.2.6 / 6.2.7 already render the canon's output, so no template changed.
+- Fixed (finding): an app whose `starci app sync` reports drift on files `app check --gate lint --fix` just merged was synced by a CLI whose installed `@starci/hfs` (`cli/node_modules`, 6.2.3) predates the canon migration of the templates, not by 6.2.6 or 6.2.7 (the npm tarballs of both carry the migrated templates byte for byte). Reinstall the CLI's dependencies (`npm ci` in `cli/`) so the sync renders the pinned hfs.
+
 ## 6.2.7 - 2026-11-08
 
 - Fixed: the canon pins move to `@starci/eslint-canon-fe` 9.16.7 and `@starci/eslint-canon-be` 3.19.7, whose test-scope Sonar way block no longer uses a negated `ignores` selector that `canonScope` refuses (every app lint ended in `unsupported canon ignores selectors`).
