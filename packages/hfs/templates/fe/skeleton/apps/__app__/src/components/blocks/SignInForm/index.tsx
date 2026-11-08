@@ -1,8 +1,7 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { useSession, useSignIn } from "@/hooks/auth"
-import type { SignInFailure } from "@/hooks/auth"
+import { useSession, useSignIn, type SignInFailure } from "@/hooks/auth"
 import { SignInFormBase } from "./component"
 
 /** The fields of the submitted form, or undefined when one is missing. */

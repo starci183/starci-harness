@@ -1,8 +1,7 @@
 import { QueryHandler } from "@nestjs/cqrs"
 import { {{Name}}Service } from "@modules/domain/{{name}}"
 import { ICQRSHandler } from "@modules/platform/cqrs"
-import { InjectLogger } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
+import { InjectLogger, type Logger } from "@modules/platform/logging"
 import type { Get{{Singular}}Result } from "./get-{{singular}}.contracts"
 import { Get{{Singular}}Query } from "./get-{{singular}}.query"
 

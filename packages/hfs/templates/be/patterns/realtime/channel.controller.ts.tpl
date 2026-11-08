@@ -1,11 +1,9 @@
-import { Controller, Headers, Sse } from "@nestjs/common"
-import type { MessageEvent } from "@nestjs/common"
+import { Controller, Headers, Sse, type MessageEvent } from "@nestjs/common"
 import type { Observable } from "rxjs"
 import { @@service@@ } from "@@serviceModule@@"
 import { CurrentPrincipal } from "@modules/domain/identity"
 import type { Principal } from "@modules/platform/cqrs"
-import { InjectRealtimeHub } from "@modules/platform/realtime"
-import type { RealtimeHub } from "@modules/platform/realtime"
+import { InjectRealtimeHub, type RealtimeHub } from "@modules/platform/realtime"
 
 @Controller("@@channel@@")
 /** The push-only @@channel@@ door: the default guards authenticate the stream, and it writes nothing. */

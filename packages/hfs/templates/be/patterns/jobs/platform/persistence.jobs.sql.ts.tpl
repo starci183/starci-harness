@@ -1,5 +1,4 @@
-import { sql } from "@modules/platform/database"
-import type { SqlText } from "@modules/platform/database"
+import { sql, type SqlText } from "@modules/platform/database"
 
 /**
  * Claims a delivery in one statement ($1 kind, $2 job key, $3 worker, $4 lease end, $5 payload, $6 instant). A new key inserts the row

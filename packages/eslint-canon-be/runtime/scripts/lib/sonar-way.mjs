@@ -34,12 +34,33 @@ export const SONAR_WAY_NOT_APPLICABLE = Object.freeze({
 
 /**
  * The Sonar way rules SonarSource implements on an ESLint rule outside eslint-plugin-sonarjs: `{ sonar, rule, options? }`. The canon syntax
- * rules carry S107 (`max-params`, which spares the constructor of an injectable class as the server does) and S4084 (`media-has-caption`,
- * front end); S6582 is typescript-eslint's `prefer-optional-chain`, which needs the type information the canons' typed block provides.
+ * rules (sonar-syntax-rules.mjs) carry S107 (`max-params`, which spares the constructor of an injectable class as the server does), S3863
+ * (`no-duplicate-import`: a value and a type from one module are one import, and `--fix` merges them), S4084 (`media-has-caption`), S6478
+ * (`no-nested-component`), S6748 (`no-children-prop`), S6749 (`no-useless-fragment`), S6754 (`use-state-destructured`) and S6819
+ * (`prefer-tag-over-role`), the last five front end; S6582 is typescript-eslint's `prefer-optional-chain`, which needs the type information
+ * the canons' typed block provides, and so do S6606 and S4123. S7718 keeps `cause` as a catch parameter's name beside `error` (and `error_`
+ * where `error` is already declared): the scan accepts it, and the back end's wrapped failures are named so.
  */
 export const SONAR_WAY_EXTRA = Object.freeze([
-  { sonar: 'S3863', rule: 'no-duplicate-imports', options: [{ allowSeparateTypeImports: true }] },
   { sonar: 'S6582', rule: '@typescript-eslint/prefer-optional-chain' },
+  { sonar: 'S6606', rule: '@typescript-eslint/prefer-nullish-coalescing' },
+  { sonar: 'S4123', rule: '@typescript-eslint/await-thenable' },
+  { sonar: 'S1186', rule: '@typescript-eslint/no-empty-function' },
+  { sonar: 'S6671', rule: 'prefer-promise-reject-errors', options: [{ allowEmptyReject: false }] },
+  { sonar: 'S6325', rule: 'prefer-regex-literals' },
+  { sonar: 'S878', rule: 'no-sequences', options: [{ allowInParentheses: false }] },
+  { sonar: 'S6535', rule: 'no-useless-escape' },
+  { sonar: 'S6661', rule: 'prefer-object-spread' },
+  { sonar: 'S7718', rule: 'unicorn/catch-error-name', options: [{ name: 'error', ignore: [/^cause$/u] }] },
+  { sonar: 'S7727', rule: 'unicorn/no-array-callback-reference' },
+  { sonar: 'S7737', rule: 'unicorn/no-object-as-default-parameter' },
+  { sonar: 'S7739', rule: 'unicorn/no-thenable' },
+  { sonar: 'S7746', rule: 'unicorn/no-useless-promise-resolve-reject' },
+  { sonar: 'S7753', rule: 'unicorn/prefer-array-index-of' },
+  { sonar: 'S7755', rule: 'unicorn/prefer-at' },
+  { sonar: 'S7766', rule: 'unicorn/prefer-math-min-max' },
+  { sonar: 'S7781', rule: 'unicorn/prefer-string-replace-all' },
+  { sonar: 'S7787', rule: 'unicorn/require-module-specifiers' },
   { sonar: 'S4138', rule: 'unicorn/no-for-loop' },
   { sonar: 'S7721', rule: 'unicorn/consistent-function-scoping' },
   { sonar: 'S7732', rule: 'unicorn/no-instanceof-builtins' },
@@ -55,6 +76,36 @@ export const SONAR_WAY_EXTRA = Object.freeze([
   { sonar: 'S7778', rule: 'unicorn/prefer-single-call' },
   { sonar: 'S7784', rule: 'unicorn/prefer-structured-clone' },
 ]);
+
+/**
+ * The sonarjs rules whose Sonar scope is Tests (a `scope = 'Tests'` in the rule's generated meta, asserted in sonar-way.spec.ts): the scan
+ * runs them over the files `sonar.tests` names and not over the product source, so the canons run them over the specs and nowhere else
+ * is added. S9073 is outside sonarjs' own recommended set and inside the profile.
+ */
+export const SONAR_WAY_TEST_RULES = Object.freeze([
+  'no-skipped-tests', 'no-empty-test-file', 'assertions-in-tests', 'no-fixed-wait-in-tests', 'no-incomplete-assertions', 'inverted-assertion-arguments',
+  'no-incompatible-assertion-types', 'no-same-argument-assert', 'prefer-specific-assertions', 'no-trivial-assertions', 'test-check-exception',
+  'stable-tests', 'parameterized-tests', 'no-code-after-done', 'disabled-timeout', 'chai-determinate-assertion', 'no-exclusive-tests',
+  'no-duplicate-test-title', 'async-test-assertions', 'no-empty-test-title', 'hooks-before-test-cases', 'no-forced-browser-interaction',
+  'assertions-in-test-cases', 'synchronous-suite-callback', 'no-debug-commands-in-ui-tests', 'no-interpolation-in-inline-snapshots',
+  'explicit-test-skip', 'no-empty-parameterized-test-dataset', 'testing-library-query-assertion', 'synchronous-exception-assertions',
+  'composite-assertions', 'no-duplicate-parameterized-test-case', 'testing-library-prefer-query-by-disappearance', 'prefer-cypress-should',
+  'vitest-mock-at-module-scope', 'no-networkidle-wait',
+]);
+
+/**
+ * The flat-config rule levels of the test-scoped Sonar way rules, for the spec files the product source block leaves out.
+ *
+ * @param {object} sonarjs - The eslint-plugin-sonarjs plugin.
+ */
+export function sonarWayTestRules(sonarjs) {
+  const rules = {};
+  for (const name of SONAR_WAY_TEST_RULES) {
+    const declared = sonarjs.configs.recommended.rules[`sonarjs/${name}`];
+    rules[`sonarjs/${name}`] = ['error', ...(Array.isArray(declared) ? declared.slice(1) : [])];
+  }
+  return rules;
+}
 
 /** The ESM-only Sonar way rules: S7785 prefers top-level await (see SONAR_WAY_NOT_APPLICABLE). */
 const SONAR_WAY_ESM = Object.freeze([{ sonar: 'S7785', rule: 'unicorn/prefer-top-level-await' }]);

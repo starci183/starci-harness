@@ -3,8 +3,7 @@ import { CommandHandler } from "@nestjs/cqrs"
 import { IdentitySignInService } from "@modules/domain/identity"
 import type { AccessGrant } from "@modules/integrations/passport"
 import { ICQRSHandler } from "@modules/platform/cqrs"
-import { InjectLogger } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
+import { InjectLogger, type Logger } from "@modules/platform/logging"
 import { SessionCommand } from "./session.command"
 
 @CommandHandler(SessionCommand)

@@ -1,5 +1,4 @@
-import { DomainError } from "@modules/platform/errors"
-import type { ErrorKind } from "@modules/platform/errors"
+import { DomainError, type ErrorKind } from "@modules/platform/errors"
 
 /** Stable client-operation refusals shared by transports and durable inbox adapters. */
 export enum IdempotencyErrorCode {

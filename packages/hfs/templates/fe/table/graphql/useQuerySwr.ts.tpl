@@ -1,5 +1,4 @@
-import useSWR from "swr"
-import type { SWRResponse } from "swr"
+import useSWR, { type SWRResponse } from "swr"
 import type { GraphQLResponse } from "@/modules/api"
 import { query{{Singular}} } from "@/modules/api/graphql/queries/query-{{singular}}"
 import type { Query{{Singular}}Data } from "@/modules/api/graphql/queries/types/{{singular}}"

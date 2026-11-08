@@ -25,8 +25,9 @@ Enforced by: R30 BE_PUBLIC_SURFACE (`import-owner-entry`, `no-folder-reexport`, 
 
 ## SHARED-IMPORTS-2 Type-only bindings use `import type`
 
-A binding used only as a type is imported with `import type` (or `export type` when re-exported). Import order and
-grouping are the author's; Prettier lays the lines out (SHARED-FORMAT-1).
+A binding used only as a type is imported with `import type` (or `export type` when re-exported). A module is imported
+once: a value and a type from the same module are one `import { value, type Type } from "x"`, and `--fix` merges them.
+Import order and grouping are the author's; Prettier lays the lines out (SHARED-FORMAT-1).
 
 Why: a type import disappears from the emitted code, so it can never create a runtime cycle or load a module for its
 types alone.
@@ -36,7 +37,7 @@ import type { EntityManager } from "typeorm"
 import type { AdjustmentRow } from "./persistence/adjustments.rows"
 ```
 
-Enforced by: review only.
+Enforced by: R235 SCAN_SMELL (`no-duplicate-import` in both canons); the `import type` form is review only.
 
 ## SHARED-IMPORTS-3 Every export has a consumer; every import is used
 

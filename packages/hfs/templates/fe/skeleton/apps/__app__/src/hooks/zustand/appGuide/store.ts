@@ -1,7 +1,6 @@
 "use client"
 
-import { create } from "zustand"
-import type { StoreApi, UseBoundStore } from "zustand"
+import { create, type StoreApi, type UseBoundStore } from "zustand"
 
 /** The home guide's local UI state; it carries no session or server data. */
 type AppGuideState = {

@@ -19,7 +19,7 @@ export const createErrorLink = (report?: ErrorReporter): ErrorLink =>
     new ErrorLink(({ error, operation }) => {
         if (report === undefined) return
         if (CombinedGraphQLErrors.is(error)) {
-            report(`[graphql] ${operation.operationName}: ${error.errors.map(codeOf).join(", ")}`)
+            report(`[graphql] ${operation.operationName}: ${error.errors.map((entry) => codeOf(entry)).join(", ")}`)
             return
         }
         if (CombinedProtocolErrors.is(error)) {

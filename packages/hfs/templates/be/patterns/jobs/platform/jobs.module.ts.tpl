@@ -1,5 +1,4 @@
-import { Module } from "@nestjs/common"
-import type { DynamicModule } from "@nestjs/common"
+import { Module, type DynamicModule } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
 import { FLOW_ALERTS, JOB_CLAIMS, JOB_PROCESSOR_REGISTRY, JOBS_MANAGERS } from "./jobs.decorators"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./jobs.module-definition"

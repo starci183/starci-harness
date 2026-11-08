@@ -3,8 +3,7 @@
 import { useTranslations } from "next-intl"
 import { useCallback, useMemo } from "react"
 import type { GraphQLResponse } from "@/modules/api"
-import { runGraphQLWithToast } from "./api"
-import type { RunWithToastOptions, ToastMessages } from "./api"
+import { runGraphQLWithToast, type RunWithToastOptions, type ToastMessages } from "./api"
 
 /** The toast labels of the reader's locale (catalog namespace `app.toast`). */
 const useToastMessages = (): ToastMessages => {

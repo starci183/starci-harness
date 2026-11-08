@@ -1,9 +1,7 @@
 import { Injectable } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
-import { InjectClock } from "@modules/platform/clock"
-import type { Clock } from "@modules/platform/clock"
-import { InjectLogger } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
+import { InjectClock, type Clock } from "@modules/platform/clock"
+import { InjectLogger, type Logger } from "@modules/platform/logging"
 import { OutboxRelayPolicy } from "@modules/platform/outbox"
 import { isRecord } from "@modules/platform/primitives"
 import { InjectEventBusOptions, InjectEventRelayManagers, InjectEventTransport } from "./event-bus.decorators"
@@ -47,7 +45,7 @@ export class EventRelayService extends OutboxRelayPolicy<OutboxRow> {
     }
 
     protected deliver(rows: ReadonlyArray<OutboxRow>): Promise<void> {
-        return this.transport.send(rows.map(messageOf))
+        return this.transport.send(rows.map((row) => messageOf(row)))
     }
 
     protected async mark(tx: EntityManager, rows: ReadonlyArray<OutboxRow>): Promise<void> {

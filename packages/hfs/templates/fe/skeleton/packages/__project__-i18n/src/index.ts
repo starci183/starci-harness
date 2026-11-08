@@ -1,14 +1,10 @@
 import "server-only"
-import { createReadLocaleSegment } from "@starci/next-i18n/layout"
-import type { ReadLocaleSegment } from "@starci/next-i18n/layout"
-import { createI18nNavigation } from "@starci/next-i18n/navigation"
-import type { I18nNavigation } from "@starci/next-i18n/navigation"
-import { createRequestConfig } from "@starci/next-i18n/request"
-import type { I18nRequestConfig } from "@starci/next-i18n/request"
+import { createReadLocaleSegment, type ReadLocaleSegment } from "@starci/next-i18n/layout"
+import { createI18nNavigation, type I18nNavigation } from "@starci/next-i18n/navigation"
+import { createRequestConfig, type I18nRequestConfig } from "@starci/next-i18n/request"
 import type { LoadCatalog } from "@starci/next-i18n"
 import { locale as routeLocale } from "next/root-params"
-import { i18n } from "./routing"
-import type { ProductI18n } from "./routing"
+import { i18n, type ProductI18n } from "./routing"
 
 /** The locales the product serves, as the catalog loader of an app receives them. */
 type ProductLocale = ProductI18n["locales"][number]

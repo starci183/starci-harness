@@ -1,8 +1,7 @@
 "use client"
 
 import { useDebugValue } from "react"
-import { useAppSelector } from "@/redux"
-import type { SessionState } from "@/redux"
+import { useAppSelector, type SessionState } from "@/redux"
 
 /** The reader's session as the app shares it (redux, kept by the auth session effect): unknown, signed in or signed out. */
 export const useSession = (): SessionState => {

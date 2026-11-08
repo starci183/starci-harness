@@ -1,14 +1,15 @@
 import { Injectable } from "@nestjs/common"
-import { classifyFailure } from "@starci/nest-kit"
-import type { FailureClass } from "@starci/nest-kit"
+import { classifyFailure, type FailureClass } from "@starci/nest-kit"
 import { DomainError } from "@modules/platform/errors"
-import { InjectLogger } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
-import { ATTEMPTS, InjectQueueWorkerRegistry } from "@modules/platform/queue"
-import type { QueueDelivery, QueueWorkerRegistry } from "@modules/platform/queue"
+import { InjectLogger, type Logger } from "@modules/platform/logging"
+import {
+    ATTEMPTS,
+    InjectQueueWorkerRegistry,
+    type QueueDelivery,
+    type QueueWorkerRegistry,
+} from "@modules/platform/queue"
 import { JobsError, JobsErrorCode } from "./errors/jobs.error"
-import { jobKeyOf } from "./jobs.contracts"
-import type { ClaimedJob } from "./jobs.contracts"
+import { jobKeyOf, type ClaimedJob } from "./jobs.contracts"
 import { InjectFlowAlerts, InjectJobClaims, InjectJobsOptions } from "./jobs.decorators"
 import { JobsLogEvent } from "./jobs.log-events"
 import type { JobsOptions } from "./jobs.options"

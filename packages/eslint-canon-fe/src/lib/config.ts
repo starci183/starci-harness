@@ -13,7 +13,7 @@
 import tsParser from "@typescript-eslint/parser"
 import type { ESLint, Linter } from "eslint"
 import { OUTSIDE_THE_SCAN_FILES } from "#runtime/scripts/lib/sonar-syntax-rules.mjs"
-import { sonarWayRules } from "#runtime/scripts/lib/sonar-way.mjs"
+import { sonarWayRules, sonarWayTestRules } from "#runtime/scripts/lib/sonar-way.mjs"
 import { eslintPlugin } from "./eslint-boundary.ts"
 import { isHfsView } from "./hfs.ts"
 import type { Rules } from "./rule.ts"
@@ -29,6 +29,9 @@ export interface SonarPlugins {
   readonly sonarjs: ESLint.Plugin
   readonly unicorn: ESLint.Plugin
 }
+
+/** Everything but the specs, as the ignores of a block that judges the specs alone (a later negation re-includes, and the package scoping appends its own ignores after it). */
+export const EXCEPT_SPECS: readonly string[] = Object.freeze(["**/*", ...OUTSIDE_THE_SCAN_FILES.map((spec) => `!${spec}`)])
 
 /** A disable directive is a weakening of lint, and one that suppresses nothing is dead weight. */
 export const linterOptions: Readonly<{ noInlineConfig: true; reportUnusedDisableDirectives: "error" }> = Object.freeze({ noInlineConfig: true, reportUnusedDisableDirectives: "error" })
@@ -114,6 +117,8 @@ export const buildFeConfig = ({ hfs, plugin, source, reactHooks, tsPlugin, sonar
     },
     // Sonar way: what the scan raises is refused while the code is written; a spec is outside the scan, so outside this block.
     { files: [...SOURCE_FILES], ignores: [...OUTSIDE_THE_SCAN_FILES], plugins: { sonarjs: sonar.sonarjs, unicorn: sonar.unicorn }, rules: sonarWayRules(sonar.sonarjs, "fe").rules },
+    // Sonar way, test scope: the scan reads the specs with the rules of the tests (sonar.tests), so the specs of the source are judged by those and by no other.
+    { files: [...SOURCE_FILES], ignores: [...EXCEPT_SPECS], plugins: { sonarjs: sonar.sonarjs }, rules: sonarWayTestRules(sonar.sonarjs) },
   ]
 }
 
@@ -130,6 +135,7 @@ export const SLOT_FREE_RULES = Object.freeze([
   "no-native-anchor", "no-inline-parameter-type", "no-hand-rolled-polling", "no-copy-in-call", "no-alert", "no-failure-collapse",
   "outcome-kinds-exhaustive", "no-await-in-loop", "prefer-code-point", "prefer-string-raw", "no-nested-conditional", "no-void-operator", "no-unused-import",
   "prefer-export-from", "no-unused-prop-types", "media-has-caption", "max-params", "no-line-separator-literal",
+  "no-bidirectional-character", "no-duplicate-import", "no-useless-fragment", "no-nested-component", "no-children-prop", "use-state-destructured", "prefer-tag-over-role",
   "no-list-panel-padding", "no-hand-built-panes", "no-table-in-card", "no-heading-above-card", "no-selectable-tag-group", "no-fill-command-in-header", "no-app-surface-paint", "divider-full-bleed", "control-height", "selection-fill-no-check", "no-grammar-shim",
   "no-swr-default-array", "no-foreign-slot-status", "no-validating-as-loading", "no-placeholder-object", "no-hand-skeleton", "explicit-export-surface", "directive-first", "renderer-presentation-only",
   "button-intent-required", "destructive-confirm-in-dialog", "single-commit-per-render", "no-commit-in-collection-item",
@@ -180,6 +186,7 @@ export const buildPlainSourceConfig = ({ root, plugin, hooks, reactHooks, tsPlug
       rules: { ...canonRules, ...hooks, ...BORROWED },
     },
     { files: [...PLAIN_SOURCE_FILES], ignores: [...OUTSIDE_THE_SCAN_FILES], plugins: { sonarjs: sonar.sonarjs, unicorn: sonar.unicorn }, rules: sonarWayRules(sonar.sonarjs, "fe").rules },
+    { files: [...PLAIN_SOURCE_FILES], ignores: [...EXCEPT_SPECS], plugins: { sonarjs: sonar.sonarjs }, rules: sonarWayTestRules(sonar.sonarjs) },
   ]
 }
 

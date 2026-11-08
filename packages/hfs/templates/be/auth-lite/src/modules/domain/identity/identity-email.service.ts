@@ -1,18 +1,25 @@
 // Managed by starci app sync (slot be.identity.sign-in); do not edit: run "npx starci app sync --execute".
 import { Injectable } from "@nestjs/common"
-import { IsNull, MoreThan } from "typeorm"
-import type { EntityManager } from "typeorm"
-import { AuthError, digestOf, isAcceptablePassword, normalizeEmail } from "@modules/integrations/passport"
-import type { AuthPasswords, SignInBudget } from "@modules/integrations/passport"
-import { InjectMailSettings, InjectMailer } from "@modules/integrations/mail"
-import type { MailLanguage, MailOptions, Mailer } from "@modules/integrations/mail"
-import { InjectClock } from "@modules/platform/clock"
-import type { Clock } from "@modules/platform/clock"
+import { IsNull, MoreThan, type EntityManager } from "typeorm"
+import {
+    AuthError,
+    digestOf,
+    isAcceptablePassword,
+    normalizeEmail,
+    type AuthPasswords,
+    type SignInBudget,
+} from "@modules/integrations/passport"
+import {
+    InjectMailSettings,
+    InjectMailer,
+    type MailLanguage,
+    type MailOptions,
+    type Mailer,
+} from "@modules/integrations/mail"
+import { InjectClock, type Clock } from "@modules/platform/clock"
 import { InjectPrimaryEntityManager } from "@modules/platform/database"
-import { InjectIds } from "@modules/platform/ids"
-import type { Ids } from "@modules/platform/ids"
-import { InjectLogger } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
+import { InjectIds, type Ids } from "@modules/platform/ids"
+import { InjectLogger, type Logger } from "@modules/platform/logging"
 import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
 import { InjectAuthPasswords, InjectSignInBudget } from "./identity.decorators"
 import { IdentityEmailLogEvent } from "./identity-email.log-events"

@@ -1,5 +1,4 @@
-import { Module } from "@nestjs/common"
-import type { OnModuleDestroy, OnModuleInit } from "@nestjs/common"
+import { Module, type OnModuleDestroy, type OnModuleInit } from "@nestjs/common"
 import type { @@Channel@@Frame } from "@@serviceModule@@"
 import type { VerifyAccessToken } from "@modules/integrations/passport"
 import { injector } from "@modules/platform/composition"

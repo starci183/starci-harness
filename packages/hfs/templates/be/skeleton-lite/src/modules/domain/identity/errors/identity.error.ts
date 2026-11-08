@@ -1,5 +1,4 @@
-import { DomainError } from "@modules/platform/errors"
-import type { ErrorKind } from "@modules/platform/errors"
+import { DomainError, type ErrorKind } from "@modules/platform/errors"
 
 /** Codes of the identity capability: the sign-in refusals travel under these wire codes, the same on both sides of the doors. */
 export enum IdentityErrorCode {

@@ -1,10 +1,8 @@
 // Managed by starci app sync (slot be.identity.sign-in); do not edit: run "npx starci app sync --execute".
 import { Injectable } from "@nestjs/common"
-import { LessThanOrEqual, MoreThan } from "typeorm"
-import type { EntityManager } from "typeorm"
+import { LessThanOrEqual, MoreThan, type EntityManager } from "typeorm"
 import type { RateCounter } from "@modules/integrations/passport"
-import { InjectClock } from "@modules/platform/clock"
-import type { Clock } from "@modules/platform/clock"
+import { InjectClock, type Clock } from "@modules/platform/clock"
 import { InjectPrimaryEntityManager, returnedRows, rowShape } from "@modules/platform/database"
 import { IdentityAttemptEntity } from "./persistence/entities"
 

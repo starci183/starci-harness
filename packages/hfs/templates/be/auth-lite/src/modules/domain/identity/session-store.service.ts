@@ -1,7 +1,6 @@
 // Managed by starci app sync (slot be.identity.sign-in); do not edit: run "npx starci app sync --execute".
 import { Injectable } from "@nestjs/common"
-import { LessThan, Not } from "typeorm"
-import type { EntityManager } from "typeorm"
+import { LessThan, Not, type EntityManager } from "typeorm"
 import type { NewSession, RefreshTokenRecord, SessionStore, SessionTransaction } from "@modules/integrations/passport"
 import { InjectPrimaryEntityManager } from "@modules/platform/database"
 import { IdentityRefreshTokenEntity, IdentitySessionEntity } from "./persistence/entities"

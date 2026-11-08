@@ -1,5 +1,4 @@
-import { useState } from "react"
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import { Button } from "@starci/grammar/common"
 
 /** The resolved labels of the toggle and the slot it shows; the branch owns only whether it is open, and takes no children. */

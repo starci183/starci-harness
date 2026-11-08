@@ -1,5 +1,4 @@
-import { Module } from "@nestjs/common"
-import type { DynamicModule } from "@nestjs/common"
+import { Module, type DynamicModule } from "@nestjs/common"
 import { EVENT_BUS, EVENT_CONSUMER_REGISTRY } from "./event-bus.decorators"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./event-bus.module-definition"
 import { EventBusService } from "./event-bus.service"

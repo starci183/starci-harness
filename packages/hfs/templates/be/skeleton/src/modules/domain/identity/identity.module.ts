@@ -1,5 +1,4 @@
-import { Module } from "@nestjs/common"
-import type { DynamicModule, Provider } from "@nestjs/common"
+import { Module, type DynamicModule, type Provider } from "@nestjs/common"
 import { AuthGuard } from "./auth.guard"
 import { CredentialGuard } from "./credential.guard"
 import { IdentityError, IdentityErrorCode } from "./errors/identity.error"

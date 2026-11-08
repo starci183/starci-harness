@@ -1,5 +1,4 @@
-import { Module } from "@nestjs/common"
-import type { DynamicModule } from "@nestjs/common"
+import { Module, type DynamicModule } from "@nestjs/common"
 import { TypeOrmModule, getDataSourceToken } from "@nestjs/typeorm"
 import type { DataSource } from "typeorm"
 import { DatabaseProbeService } from "./database-probe.service"

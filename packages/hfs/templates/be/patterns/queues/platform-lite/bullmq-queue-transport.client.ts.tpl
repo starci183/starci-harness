@@ -1,13 +1,15 @@
 import { Injectable } from "@nestjs/common"
 import { eachInOrder, isRecord } from "@modules/platform/primitives"
-import { InjectLogger, isCorrelationId } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
-import { InjectIds } from "@modules/platform/ids"
-import type { Ids } from "@modules/platform/ids"
+import { InjectLogger, isCorrelationId, type Logger } from "@modules/platform/logging"
+import { InjectIds, type Ids } from "@modules/platform/ids"
 import { QueueError, QueueErrorCode } from "./errors/queue.error"
 import { InjectQueueFactory, InjectQueueOptions } from "./queue.decorators"
-import { BULLMQ_JOB_SCHEMA } from "./queue.contracts"
-import type { QueueDelivery, QueueHandler, QueueSchedulerDefinition } from "./queue.contracts"
+import {
+    BULLMQ_JOB_SCHEMA,
+    type QueueDelivery,
+    type QueueHandler,
+    type QueueSchedulerDefinition,
+} from "./queue.contracts"
 import { QueueLogEvent } from "./queue.log-events"
 import type { QueueOptions } from "./queue.options"
 import { ATTEMPTS, BACKOFF_MS, KEEP_COMPLETED_SECONDS, jobNameOf } from "./queue.policy"

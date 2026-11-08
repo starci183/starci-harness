@@ -1,5 +1,4 @@
-import { GraphQLError } from "graphql"
-import type { ASTVisitor, ValidationContext } from "graphql"
+import { GraphQLError, type ASTVisitor, type ValidationContext } from "graphql"
 
 /** A validation rule that refuses an operation whose selection sets nest deeper than `maxDepth` (each fragment counts on its own). */
 export const depthLimitRule =

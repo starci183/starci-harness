@@ -1,6 +1,5 @@
 import { useSWRConfig } from "swr"
-import useSWRMutation from "swr/mutation"
-import type { SWRMutationResponse } from "swr/mutation"
+import useSWRMutation, { type SWRMutationResponse } from "swr/mutation"
 import type { GraphQLResponse } from "@/modules/api"
 import { mutateCreate{{Singular}} } from "@/modules/api/graphql/mutations/mutation-create-{{singular}}"
 import type { MutateCreate{{Singular}}Data } from "@/modules/api/graphql/mutations/types/create-{{singular}}"

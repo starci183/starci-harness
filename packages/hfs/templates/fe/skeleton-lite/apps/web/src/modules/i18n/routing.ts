@@ -1,5 +1,4 @@
-import { defineI18n } from "@starci/next-i18n"
-import type { I18n } from "@starci/next-i18n"
+import { defineI18n, type I18n } from "@starci/next-i18n"
 
 const LOCALES = ["vi", "en"] as const
 

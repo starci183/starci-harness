@@ -30,14 +30,15 @@ export function addFeLayout({ repoRoot, segment, options = {} }: { repoRoot: str
     if (fs.existsSync(path.join(repoRoot, ...relative.split('/')))) throw new ScaffoldError('HFS_ADD_EXISTS', `${relative} already exists; starci app add never overwrites a unit`);
   }
   const blocks = blocksOf(repoRoot, appBase, options.blocks);
-  const parts = blockParts(blocks, '                ');
+  // one block needs no fragment around it (S6749); two or more do
+  const parts = blockParts(blocks, blocks.length === 1 ? '            ' : '                ');
   const vars = {
     Name, segment: segments.join('/'),
     blockImports: parts.imports,
     railDoc: blocks.length === 0 ? 'leaves its rail empty until a block fills it' : `fills its rail with ${blocks.join(', ')}`,
     frame: blocks.length === 0
       ? '<Grid kind="main-rail" primary={props.content} />'
-      : ['(', '    <Grid', '        kind="main-rail"', '        primary={props.content}', '        rail={', '            <>', parts.jsx, '            </>', '        }', '    />', ')'].join('\n'),
+      : ['(', '    <Grid', '        kind="main-rail"', '        primary={props.content}', '        rail={', ...(blocks.length === 1 ? [parts.jsx] : ['            <>', parts.jsx, '            </>']), '        }', '    />', ')'].join('\n'),
   };
   const created: string[] = [];
   writeNew(created, repoRoot, route, fill('layout/route-layout.tsx.tpl', vars));

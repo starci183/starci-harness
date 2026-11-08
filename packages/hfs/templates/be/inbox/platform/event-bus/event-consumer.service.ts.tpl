@@ -1,14 +1,16 @@
-import { Injectable } from "@nestjs/common"
-import type { OnApplicationBootstrap, OnApplicationShutdown } from "@nestjs/common"
+import { Injectable, type OnApplicationBootstrap, type OnApplicationShutdown } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
 import { classifyFailure } from "@starci/nest-kit"
 import { DomainError } from "@modules/platform/errors"
-import { InjectLogger, isCorrelationId } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
+import { InjectLogger, isCorrelationId, type Logger } from "@modules/platform/logging"
 import { callDbFunction, InjectPrimaryEntityManager } from "@modules/platform/database"
 import { InjectEventBusOptions } from "./event-bus.decorators"
-import { DEFAULT_MAX_DELIVERIES } from "./event-bus.contracts"
-import type { BaseEvent, EventMessage, EventSubscriptionOptions } from "./event-bus.contracts"
+import {
+    DEFAULT_MAX_DELIVERIES,
+    type BaseEvent,
+    type EventMessage,
+    type EventSubscriptionOptions,
+} from "./event-bus.contracts"
 import { EventBusLogEvent } from "./event-bus.log-events"
 import type { EventBusOptions } from "./event-bus.options"
 import type { EventConsumer, EventConsumerRegistry } from "./event-bus.port"

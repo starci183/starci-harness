@@ -142,3 +142,157 @@ test("scanner line breaks: a raw U+2028, U+2029 or U+0085 anywhere in a file is 
     ],
   }) })
 })
+
+test("S3358: a conditional is nested in a branch, a test, an argument, a template or a cast; an array, object, function or JSX expression starts a new reading", () => {
+  assert.doesNotThrow(() => tester.run("no-nested-conditional", rule("no-nested-conditional"), {
+    valid: [
+      "const a = x ? () => (y ? 1 : 2) : 3",
+      "const b = x ? { c: y ? 1 : 2 } : 3",
+      "const c = x ? [y ? 1 : 2] : 3",
+      "const d = x ? <div>{y ? 1 : 2}</div> : null",
+      { filename: "src/a.spec.tsx", code: "const e = x ? 1 : y ? 2 : 3" },
+    ],
+    invalid: [
+      { code: "const a = x ? foo(y ? 1 : 2) : 3", errors: [{ messageId: "nested" }] },
+      { code: "const b = x ? `${y ? 1 : 2}` : 3", errors: [{ messageId: "nested" }] },
+      { code: "const c = (x ? p : q) ? 2 : 3", errors: [{ messageId: "nested" }] },
+      { code: "const d = x ? (y ? 1 : 2) as number : 3", errors: [{ messageId: "nested" }] },
+      { code: "const e = x ? 1 : y ? 2 : z ? 3 : 4", errors: [{ messageId: "nested" }, { messageId: "nested" }] },
+    ],
+  }))
+})
+
+test("S7780: a String.raw template with no backslash is a plain template", () => {
+  assert.doesNotThrow(() => tester.run("prefer-string-raw", rule("prefer-string-raw"), {
+    valid: ["const a = String.raw`a\\b`", "const b = `plain ${x}`"],
+    invalid: [
+      { code: "const a = String.raw`plain ${x} text`", output: "const a = `plain ${x} text`", errors: [{ messageId: "needless" }] },
+      { code: "const b = String.raw`one`", output: "const b = `one`", errors: [{ messageId: "needless" }] },
+    ],
+  }))
+})
+
+test("S3863: one module is imported once, and --fix merges a value import and a type import", () => {
+  assert.doesNotThrow(() => tester.run("no-duplicate-import", rule("no-duplicate-import"), {
+    valid: [
+      "import { a } from 'x'\nimport { b } from 'y'",
+      "import { a, type B } from 'x'",
+      "import 'x'\nimport { a } from 'x'",
+      "import { a } from 'x' with { type: 'json' }\nimport { b } from 'x'",
+      { filename: "src/a.spec.ts", code: "import { a } from 'x'\nimport type { B } from 'x'" },
+    ],
+    invalid: [
+      {
+        code: "import { gql } from '@apollo/client'\nimport type { TypedDocumentNode } from '@apollo/client'\nexport const q = gql``\n",
+        output: "import { gql, type TypedDocumentNode } from '@apollo/client'\nexport const q = gql``\n",
+        errors: [{ messageId: "duplicate" }],
+      },
+      { code: "import type { A } from 'x'\nimport type { B } from 'x'\nexport type C = A | B", output: "import type { A, B } from 'x'\nexport type C = A | B", errors: [{ messageId: "duplicate" }] },
+      { code: "import a from 'x'\nimport { b } from 'x'\nimport type { C } from 'x'\nexport default [a, b] as C[]", output: "import a, { b, type C } from 'x'\nexport default [a, b] as C[]", errors: [{ messageId: "duplicate" }, { messageId: "duplicate" }] },
+      { code: "import { a } from 'x';\nimport { b as c } from 'x';\nexport const d = a + c", output: "import { a, b as c } from 'x';\nexport const d = a + c", errors: [{ messageId: "duplicate" }] },
+      // a namespace import cannot be merged: reported, left for the author
+      { code: "import * as x from 'x'\nimport { a } from 'x'\nexport const b = [x, a]", errors: [{ messageId: "duplicate" }] },
+      // a type-only default import cannot be written inline
+      { code: "import type D from 'x'\nimport { a } from 'x'\nexport const b = [a] as D[]", errors: [{ messageId: "duplicate" }] },
+    ],
+  }))
+})
+
+test("S6749: a fragment around nothing or one child is removed; a keyed or multi-child fragment stays", () => {
+  assert.doesNotThrow(() => tester.run("no-useless-fragment", rule("no-useless-fragment"), {
+    valid: [
+      "const a = () => <><b /><c /></>",
+      "const b = () => <Fragment key={1}><a /></Fragment>",
+      "const c = () => <>text</>",
+      "const d = () => <><a />text</>",
+      { filename: "src/a.spec.tsx", code: "const e = () => <><a /></>" },
+    ],
+    invalid: [
+      { code: "const a = () => <><b /></>", output: "const a = () => <b />", errors: [{ messageId: "single" }] },
+      { code: "const a = () => <div><><b /></></div>", output: "const a = () => <div><b /></div>", errors: [{ messageId: "single" }] },
+      { code: "const a = () => <React.Fragment><b /></React.Fragment>", output: "const a = () => <b />", errors: [{ messageId: "single" }] },
+      { code: "const a = () => <>{value}</>", errors: [{ messageId: "single" }] },
+      { code: "const a = () => <div><>text</></div>", errors: [{ messageId: "single" }] },
+      { code: "const a = () => <></>", errors: [{ messageId: "empty" }] },
+    ],
+  }))
+})
+
+test("S6478: a component declared inside a component is a new type on every render", () => {
+  assert.doesNotThrow(() => tester.run("no-nested-component", rule("no-nested-component"), {
+    valid: [
+      "const Row = () => <tr />\nconst Table = () => <table><Row /></table>",
+      "const Table = () => { const renderRow = () => <tr />; return <table>{renderRow()}</table> }",
+      "const Table = () => { const Helper = () => 1; return <table>{Helper()}</table> }",
+      "const withAuth = (C) => function Wrapped(props) { return <C {...props} /> }",
+      { filename: "src/a.spec.tsx", code: "const Table = () => { const Row = () => <tr />; return <table><Row /></table> }" },
+    ],
+    invalid: [
+      { code: "const Table = () => { const Row = () => <tr />; return <table><Row /></table> }", errors: [{ messageId: "nested", data: { name: "Row", outer: "Table" } }] },
+      { code: "function Table() { function Row() { return <tr /> } return <table><Row /></table> }", errors: [{ messageId: "nested", data: { name: "Row", outer: "Table" } }] },
+      { code: "const Table = memo(() => { const Row = forwardRef(() => <tr />); return <table><Row /></table> })", errors: [{ messageId: "nested" }] },
+    ],
+  }))
+})
+
+test("S6748: children are nested between the tags, and a slot passed to a pure component has a name of its own", () => {
+  assert.doesNotThrow(() => tester.run("no-children-prop", rule("no-children-prop"), {
+    valid: [
+      "const a = () => <Card>body</Card>",
+      "const b = () => <Card content={<p />} />",
+      "const c = () => createElement(Card, { content: 1 })",
+    ],
+    invalid: [
+      { code: "const a = () => <Card children={<p />} />", errors: [{ messageId: "children" }] },
+      { code: "const b = () => createElement(Card, { children: 1 })", errors: [{ messageId: "children" }] },
+      { code: "const c = () => React.createElement(Card, { 'children': 1 })", errors: [{ messageId: "children" }] },
+    ],
+  }))
+  const message = rule("no-children-prop").meta?.messages?.["children"]
+  assert.match(message ?? "", /FE_CONNECTED_BLOCK_RENDER_PAIR/)
+  assert.match(message ?? "", /another name/)
+})
+
+test("S6754: useState is destructured into a value and a setter named after it", () => {
+  assert.doesNotThrow(() => tester.run("use-state-destructured", rule("use-state-destructured"), {
+    valid: ["const [open, setOpen] = useState(false)", "const [value, setValue] = React.useState(0)", "const stored = useStore()"],
+    invalid: [
+      { code: "const state = useState(0)", errors: [{ messageId: "pair" }] },
+      { code: "const [open] = useState(false)", errors: [{ messageId: "pair" }] },
+      { code: "const [open, toggle] = useState(false)", errors: [{ messageId: "symmetric", data: { value: "open", Value: "Open" } }] },
+    ],
+  }))
+})
+
+test("S6819: a host element carries its ARIA role as the native element", () => {
+  assert.doesNotThrow(() => tester.run("prefer-tag-over-role", rule("prefer-tag-over-role"), {
+    valid: [
+      "const a = () => <output>saved</output>",
+      'const b = () => <ul role="list" />',
+      'const c = () => <div role="presentation" />',
+      'const d = () => <svg role="img" />',
+      'const e = () => <Banner role="status" />',
+      "const f = () => <div role={kind} />",
+    ],
+    invalid: [
+      { code: 'const a = () => <div role="status">saved</div>', errors: [{ messageId: "tag", data: { tag: "output", role: "status", name: "div" } }] },
+      { code: 'const b = () => <div role="button" />', errors: [{ messageId: "tag", data: { tag: "button", role: "button", name: "div" } }] },
+      { code: 'const c = () => <span role={"navigation"} />', errors: [{ messageId: "tag", data: { tag: "nav", role: "navigation", name: "span" } }] },
+    ],
+  }))
+})
+
+test("text:S6389: a bidirectional control character is refused anywhere with its escape", () => {
+  const controls = [0x202a, 0x202e, 0x2066, 0x2069].map((code) => String.fromCodePoint(code))
+  assert.doesNotThrow(() => tester.run("no-bidirectional-character", rule("no-bidirectional-character"), {
+    valid: ["const a = '\\u202E'", "// the escape \\u2066 written as text\nexport const b = 1"],
+    invalid: [
+      ...controls.map((control) => ({ code: `const a = 'x${control}y'`, errors: [{ messageId: "raw" }] })),
+      { filename: "src/a.service.spec.ts", code: `/* ${String.fromCodePoint(0x202e)} */ export const d = 1`, errors: [{ messageId: "raw" }] },
+    ],
+  }))
+})
+
+test("S3863: a merged import longer than the print width is laid out one specifier a line", () => {
+  assert.doesNotThrow(() => tester.run("no-duplicate-import", rule("no-duplicate-import"), { valid: [], invalid: [{ code: "import { SpecifierNumber1Long, SpecifierNumber2Long, SpecifierNumber3Long, SpecifierNumber4Long, SpecifierNumber5Long, SpecifierNumber6Long } from \"@modules/platform/logging\"\nimport type { SpecifierNumber7Long, SpecifierNumber8Long, SpecifierNumber9Long, SpecifierNumber10Long, SpecifierNumber11Long, SpecifierNumber12Long } from \"@modules/platform/logging\"\nexport const a = 1\n", output: "import {\n    SpecifierNumber1Long,\n    SpecifierNumber2Long,\n    SpecifierNumber3Long,\n    SpecifierNumber4Long,\n    SpecifierNumber5Long,\n    SpecifierNumber6Long,\n    type SpecifierNumber7Long,\n    type SpecifierNumber8Long,\n    type SpecifierNumber9Long,\n    type SpecifierNumber10Long,\n    type SpecifierNumber11Long,\n    type SpecifierNumber12Long,\n} from \"@modules/platform/logging\"\nexport const a = 1\n", errors: [{ messageId: "duplicate" }] }] }))
+})

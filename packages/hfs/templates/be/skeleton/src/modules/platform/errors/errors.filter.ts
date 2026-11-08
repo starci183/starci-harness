@@ -1,8 +1,6 @@
-import { Catch } from "@nestjs/common"
-import type { ArgumentsHost, ExceptionFilter } from "@nestjs/common"
+import { Catch, type ArgumentsHost, type ExceptionFilter } from "@nestjs/common"
 import type { Request, Response } from "express"
-import { InjectRequestLocale } from "@modules/platform/i18n"
-import type { RequestLocale } from "@modules/platform/i18n"
+import { InjectRequestLocale, type RequestLocale } from "@modules/platform/i18n"
 import { InjectErrorsService } from "./errors.decorators"
 import type { ErrorsService } from "./errors.service"
 

@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common"
-import { InjectLogger } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
+import { InjectLogger, type Logger } from "@modules/platform/logging"
 import type { ParkedFlowAlert } from "./jobs.contracts"
 import { JobsLogEvent } from "./jobs.log-events"
 import type { FlowAlerts } from "./jobs.port"

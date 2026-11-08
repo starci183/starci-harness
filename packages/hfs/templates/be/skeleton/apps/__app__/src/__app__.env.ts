@@ -1,5 +1,4 @@
-import type { EnvSource } from "@modules/platform/config"
-import { parseServerConfig } from "@modules/platform/config"
+import { type EnvSource, parseServerConfig } from "@modules/platform/config"
 import { parsePrimaryDatabaseConfig } from "@modules/platform/database"
 import { parseHttpConfig } from "@modules/platform/http"
 import { parseHttpSecurityConfig } from "@modules/platform/http-security"

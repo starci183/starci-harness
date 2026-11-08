@@ -1,9 +1,7 @@
 import { Injectable } from "@nestjs/common"
-import { InjectLogger, LoggingLogEvent } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
-import { InjectConnectionSource, InjectDatabaseOptions } from "./database.port"
+import { InjectLogger, LoggingLogEvent, type Logger } from "@modules/platform/logging"
+import { InjectConnectionSource, InjectDatabaseOptions, type ConnectionOpener } from "./database.port"
 import type { DatabaseOptions } from "./database.options"
-import type { ConnectionOpener } from "./database.port"
 import { migrateConnections } from "./migrate-connections.client"
 
 @Injectable()

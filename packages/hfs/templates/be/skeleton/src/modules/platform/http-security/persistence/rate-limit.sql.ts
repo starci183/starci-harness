@@ -1,5 +1,4 @@
-import { sql } from "@modules/platform/database"
-import type { SqlText } from "@modules/platform/database"
+import { sql, type SqlText } from "@modules/platform/database"
 
 /**
  * Counts one hit in the caller's window and answers the hits of that window: a missing or expired window opens afresh at one

@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
-import { InjectClock } from "@modules/platform/clock"
-import type { Clock } from "@modules/platform/clock"
+import { InjectClock, type Clock } from "@modules/platform/clock"
 import { isCorrelationId } from "@modules/platform/logging"
 import { EventBusError, EventBusErrorCode } from "./errors/event-bus.error"
 import type { BaseEvent, EventClass, EventDeadLetter, EventEnvelope } from "./event-bus.contracts"

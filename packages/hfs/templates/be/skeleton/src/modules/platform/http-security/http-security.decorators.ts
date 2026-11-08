@@ -1,6 +1,5 @@
 import { SetMetadata } from "@nestjs/common"
-import { injector } from "@modules/platform/composition"
-import type { DoorDecorator, TypedParameterDecorator } from "@modules/platform/composition"
+import { injector, type DoorDecorator, type TypedParameterDecorator } from "@modules/platform/composition"
 import type { HttpSecurityOptions } from "./http-security.options"
 import type { WebhookSignatureService } from "./webhook-signature.service"
 

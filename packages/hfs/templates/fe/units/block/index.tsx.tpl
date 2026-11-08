@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl"
 import { mapSlot, slotOfSwr, useSlotLabels } from "@/hooks/slot"
 import { useQuery{{Read}}Swr } from "@/hooks/swr"
 import { {{componentImports}} } from "./component"
-{{componentTypeImport}}
+
 /** Input of {{Name}}: the id of the value it reads. */
 type {{Name}}Props = {
     readonly id: string

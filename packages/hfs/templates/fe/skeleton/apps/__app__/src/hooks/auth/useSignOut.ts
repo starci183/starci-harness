@@ -1,8 +1,7 @@
 "use client"
 
 import { useTransition } from "react"
-import { authClient } from "@/modules/auth"
-import type { AuthFailure } from "@/modules/auth"
+import { authClient, type AuthFailure } from "@/modules/auth"
 import { useGraphQLWithToast } from "@/modules/toast"
 
 /** The app's one outcome of an auth call, so modules/toast reports it like any other write. */

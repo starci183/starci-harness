@@ -9,15 +9,13 @@ import type { WorldWiring } from "@starci/test-world"
 import { ClockModule } from "@modules/platform/clock"
 import { EnvSource } from "@modules/platform/config"
 import { DatabaseModule, MigrationRunnerService } from "@modules/platform/database"
-import { parseHttpSecurityConfig } from "@modules/platform/http-security"
-import type { HttpSecurityOptions } from "@modules/platform/http-security"
+import { parseHttpSecurityConfig, type HttpSecurityOptions } from "@modules/platform/http-security"
 import { IdsModule } from "@modules/platform/ids"
 import { LoggingModule } from "@modules/platform/logging"
 import { RetryModule } from "@modules/platform/retry"
 import { AppModule as CliApp } from "../../../apps/cli/src/app.module"
 import { readCliEnv } from "../../../apps/cli/src/cli.env"
-import { createCliAppOptions } from "../../../apps/cli/src/cli.options"
-import type { CliAppOptions } from "../../../apps/cli/src/cli.options"
+import { createCliAppOptions, type CliAppOptions } from "../../../apps/cli/src/cli.options"
 {{appEnvImports}}
 
 /** The wiring of the world: its api apps and its database connections. */

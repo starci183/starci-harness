@@ -1,5 +1,4 @@
-import { Module } from "@nestjs/common"
-import type { DynamicModule } from "@nestjs/common"
+import { Module, type DynamicModule } from "@nestjs/common"
 import { TIMER } from "./retry.decorators"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./retry.module-definition"
 import { SystemTimerService } from "./system-timer.service"

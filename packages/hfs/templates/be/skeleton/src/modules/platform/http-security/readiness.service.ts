@@ -1,8 +1,6 @@
 import { Injectable } from "@nestjs/common"
-import { InjectDatabaseProbe } from "@modules/platform/database"
-import type { DatabaseProbeService } from "@modules/platform/database"
-import { InjectTimer } from "@modules/platform/retry"
-import type { Timer } from "@modules/platform/retry"
+import { InjectDatabaseProbe, type DatabaseProbeService } from "@modules/platform/database"
+import { InjectTimer, type Timer } from "@modules/platform/retry"
 import { HttpSecurityError, HttpSecurityErrorCode } from "./errors/http-security.error"
 import type { ReadinessReport } from "./readiness.contracts"
 
@@ -27,12 +25,19 @@ export class ReadinessService {
                 this.database.probe(),
                 new Promise<never>((_resolve, reject) => {
                     cancel = this.timer.schedule(
-                        () => reject(new Error("Required database readiness timed out")),
+                        () =>
+                            reject(
+                                new HttpSecurityError({
+                                    code: HttpSecurityErrorCode.RequiredDependencyUnavailable,
+                                    cause: new Error("Required database readiness timed out"),
+                                }),
+                            ),
                         READINESS_TIMEOUT_MS,
                     )
                 }),
             ])
         } catch (cause) {
+            if (cause instanceof HttpSecurityError) throw cause
             throw new HttpSecurityError({ code: HttpSecurityErrorCode.RequiredDependencyUnavailable, cause })
         } finally {
             cancel()

@@ -1,7 +1,5 @@
-import { MailModule as PackageMailModule } from "@starci/mail"
-import type { MailOptions as PackageMailOptions } from "@starci/mail"
-import { Module } from "@nestjs/common"
-import type { DynamicModule } from "@nestjs/common"
+import { MailModule as PackageMailModule, type MailOptions as PackageMailOptions } from "@starci/mail"
+import { Module, type DynamicModule } from "@nestjs/common"
 import { MAIL_SETTINGS } from "./mail.decorators"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./mail.module-definition"
 

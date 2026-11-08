@@ -1,5 +1,4 @@
-import { BaseEvent } from "@modules/platform/event-bus"
-import type { ParsedEvent } from "@modules/platform/event-bus"
+import { BaseEvent, type ParsedEvent } from "@modules/platform/event-bus"
 
 /** A durable receipt reference; processing reads the provider payload after the intake commits. */
 export interface @@Provider@@DeliveryRecordedPayload {

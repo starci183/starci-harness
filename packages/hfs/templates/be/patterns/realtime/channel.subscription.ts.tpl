@@ -1,10 +1,8 @@
 import { Args, Resolver, Subscription } from "@nestjs/graphql"
 import { CurrentPrincipal, Roles } from "@modules/domain/identity"
-import { @@service@@ } from "@@serviceModule@@"
-import type { @@Channel@@Frame } from "@@serviceModule@@"
+import { @@service@@, type @@Channel@@Frame } from "@@serviceModule@@"
 import type { Principal } from "@modules/platform/cqrs"
-import { InjectRealtimeHub } from "@modules/platform/realtime"
-import type { RealtimeHub } from "@modules/platform/realtime"
+import { InjectRealtimeHub, type RealtimeHub } from "@modules/platform/realtime"
 import { @@Channel@@ChangedType } from "./dto/@@channel@@-changed.type"
 import { @@Channel@@Input } from "./dto/@@channel@@.input"
 

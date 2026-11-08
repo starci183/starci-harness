@@ -1,6 +1,5 @@
 import type { EntityManager } from "typeorm"
-import { injector } from "@modules/platform/composition"
-import type { TypedParameterDecorator } from "@modules/platform/composition"
+import { injector, type TypedParameterDecorator } from "@modules/platform/composition"
 import type { JobsOptions } from "./jobs.options"
 import type { FlowAlerts, JobClaims, JobProcessorRegistry } from "./jobs.port"
 

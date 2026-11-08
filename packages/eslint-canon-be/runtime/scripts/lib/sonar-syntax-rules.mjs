@@ -74,23 +74,47 @@ const KEEPS_ITS_ESCAPES = new Set(['ImportDeclaration', 'ExportAllDeclaration', 
 const isMatcherValue = (node) => (node.parent?.type === 'Property' && node.parent.value === node && node.parent.key?.name === 'matcher')
   || (node.parent?.type === 'ArrayExpression' && isMatcherValue(node.parent));
 
-/** S7780: a string whose only escapes are backslashes reads better as `String.raw`. */
+/** Whether the tag is `String.raw`. */
+const isStringRaw = (tag) => tag.type === 'MemberExpression' && !tag.computed && tag.object.type === 'Identifier' && tag.object.name === 'String' && tag.property.type === 'Identifier' && tag.property.name === 'raw';
+
+/** S7780: a string whose only escapes are backslashes reads better as `String.raw`; a `String.raw` template with no backslash in it needs no tag. */
 const preferStringRaw = {
-  meta: { type: 'suggestion', schema: [], messages: { raw: 'S7780: write this string with `String.raw` so its backslashes are not escaped.' } },
+  meta: {
+    type: 'suggestion',
+    fixable: 'code',
+    schema: [],
+    messages: {
+      raw: 'S7780: write this string with `String.raw` so its backslashes are not escaped.',
+      needless: 'S7780: this `String.raw` template holds no backslash; write a plain template literal.',
+    },
+  },
   create: (context) => ({
     Literal: (node) => {
       if (KEEPS_ITS_ESCAPES.has(node.parent?.type) || node.parent?.type === 'ExpressionStatement' || isMatcherValue(node)) return;
       if (onlyBackslashEscapes(node)) context.report({ node, messageId: 'raw' });
     },
+    TaggedTemplateExpression: (node) => {
+      if (!isStringRaw(node.tag) || node.quasi.quasis.some((quasi) => quasi.value.raw.includes('\\'))) return;
+      context.report({ node, messageId: 'needless', fix: (fixer) => fixer.removeRange([node.tag.range[0], node.quasi.range[0]]) });
+    },
   }),
 };
 
-/** S3358: a conditional expression inside another conditional expression is read inside out; name the inner one. */
+/** What starts a new reading context between two conditional expressions: the inner one is then a value of its own, not a branch of the outer. */
+const BREAKS_NESTING = new Set(['ArrayExpression', 'ObjectExpression', 'FunctionExpression', 'ArrowFunctionExpression', 'JSXExpressionContainer']);
+
+/** S3358: a conditional expression anywhere inside another one (a branch, a test, a call argument, a template, a cast), up to an array, object, function or JSX expression, is read inside out; name the inner one. */
 const noNestedConditional = {
   meta: { type: 'suggestion', schema: [], messages: { nested: 'S3358: extract this nested conditional expression into its own statement or a named function.' } },
   create: (context) => ({
     ConditionalExpression: (node) => {
-      if (node.parent?.type === 'ConditionalExpression') context.report({ node, messageId: 'nested' });
+      for (let parent = node.parent; parent; parent = parent.parent) {
+        if (parent.type === 'ConditionalExpression') {
+          context.report({ node, messageId: 'nested' });
+          return;
+        }
+        if (BREAKS_NESTING.has(parent.type)) return;
+      }
     },
   }),
 };
@@ -264,6 +288,233 @@ const noLineSeparatorLiteral = {
   }),
 };
 
+/** The line width of @starci/prettier-config: a merged import longer than this is laid out one specifier a line. */
+const PRINT_WIDTH = 120;
+const TRAILING_BLANK = /[ \t]*\r?\n?/y;
+
+/** S3863: one module is imported once; a value and a type from the same module are one `import { value, type Type }`. */
+const noDuplicateImport = {
+  meta: { type: 'suggestion', fixable: 'code', schema: [], messages: { duplicate: 'S3863: \'{{ source }}\' is imported more than once. Merge the imports into one: `import { value, type Type } from \'{{ source }}\'`.' } },
+  create: (context) => {
+    const { sourceCode } = context;
+    const groups = new Map();
+    /** The specifier list of one merged import, or null when the group cannot be merged without changing what it binds. */
+    const mergedText = (group) => {
+      const defaults = group.filter((declaration) => declaration.specifiers.some((specifier) => specifier.type === 'ImportDefaultSpecifier'));
+      const mergeable = group.every((declaration) => (declaration.attributes?.length ?? 0) === 0 && declaration.specifiers.every((specifier) => specifier.type !== 'ImportNamespaceSpecifier'))
+        && defaults.length <= 1 && defaults.every((declaration) => declaration.importKind !== 'type');
+      if (!mergeable) return null;
+      const allType = group.every((declaration) => declaration.importKind === 'type');
+      const names = new Set();
+      for (const declaration of group) {
+        for (const specifier of declaration.specifiers) {
+          if (specifier.type !== 'ImportSpecifier') continue;
+          const text = sourceCode.getText(specifier);
+          names.add(declaration.importKind === 'type' && !allType && specifier.importKind !== 'type' ? `type ${text}` : text);
+        }
+      }
+      const head = defaults[0]?.specifiers.find((specifier) => specifier.type === 'ImportDefaultSpecifier');
+      const parts = [head ? sourceCode.getText(head) : null, names.size > 0 ? `{ ${[...names].join(', ')} }` : null].filter(Boolean);
+      const semicolon = sourceCode.getText(group[0]).endsWith(';') ? ';' : '';
+      const kind = allType ? 'type ' : '';
+      const tail = ` from ${sourceCode.getText(group[0].source)}${semicolon}`;
+      const single = `import ${kind}${parts.join(', ')}${tail}`;
+      if (single.length <= PRINT_WIDTH || names.size === 0) return single;
+      // as Prettier lays out an import that does not fit one line: one specifier a line, a trailing comma
+      const lines = [...names].map((name) => `    ${name},`).join('\n');
+      return `import ${kind}${head ? `${sourceCode.getText(head)}, ` : ''}{\n${lines}\n}${tail}`;
+    };
+    const removal = (declaration) => {
+      TRAILING_BLANK.lastIndex = declaration.range[1];
+      const tail = TRAILING_BLANK.exec(sourceCode.text);
+      return [declaration.range[0], declaration.range[1] + (tail ? tail[0].length : 0)];
+    };
+    return {
+      ImportDeclaration: (node) => {
+        if (node.specifiers.length === 0) return;
+        const key = `${String(node.source.value)}\u0000${(node.attributes ?? []).map((attribute) => sourceCode.getText(attribute)).join(',')}`;
+        groups.set(key, [...(groups.get(key) ?? []), node]);
+      },
+      'Program:exit': () => {
+        for (const group of groups.values()) {
+          if (group.length < 2) continue;
+          const merged = mergedText(group);
+          group.slice(1).forEach((declaration, index) => {
+            const fix = index === 0 && merged !== null
+              ? (fixer) => [fixer.replaceText(group[0], merged), ...group.slice(1).map((later) => fixer.removeRange(removal(later)))]
+              : undefined;
+            context.report({ node: declaration, messageId: 'duplicate', data: { source: String(declaration.source.value) }, fix });
+          });
+        }
+      },
+    };
+  },
+};
+
+/** The first non-whitespace-only children of a fragment or element: JSX trims a text of blanks that holds a line break. */
+const significantChildren = (children) => children.filter((child) => !(child.type === 'JSXText' && /^\s*$/u.test(child.value) && /[\r\n]/u.test(child.value)) && !(child.type === 'JSXExpressionContainer' && child.expression.type === 'JSXEmptyExpression'));
+
+/** Whether the opening element is a fragment: `<>` (a JSXFragment) is handled apart, this is `<Fragment>` or `<React.Fragment>`. */
+const isFragmentElement = (opening) => (opening.name.type === 'JSXIdentifier' && opening.name.name === 'Fragment')
+  || (opening.name.type === 'JSXMemberExpression' && opening.name.property.name === 'Fragment' && opening.name.object.type === 'JSXIdentifier');
+
+/** S6749: a fragment that wraps nothing or one child is removed; the child stands for it. */
+const noUselessFragment = {
+  meta: {
+    type: 'suggestion',
+    fixable: 'code',
+    schema: [],
+    messages: {
+      empty: 'S6749: remove this empty fragment.',
+      single: 'S6749: this fragment wraps one child; remove the fragment and keep the child.',
+    },
+  },
+  create: (context) => {
+    const { sourceCode } = context;
+    const check = (node, children) => {
+      const parentIsJsx = node.parent?.type === 'JSXElement' || node.parent?.type === 'JSXFragment';
+      const kept = significantChildren(children);
+      if (kept.length === 0) {
+        context.report({ node, messageId: 'empty' });
+        return;
+      }
+      if (kept.length !== 1) return;
+      const [only] = kept;
+      if (only.type === 'JSXText' && !parentIsJsx) return;
+      const fix = only.type === 'JSXElement' || only.type === 'JSXFragment' ? (fixer) => fixer.replaceText(node, sourceCode.getText(only)) : undefined;
+      context.report({ node, messageId: 'single', fix });
+    };
+    return {
+      JSXFragment: (node) => check(node, node.children),
+      JSXElement: (node) => {
+        if (isFragmentElement(node.openingElement) && node.openingElement.attributes.length === 0) check(node, node.children);
+      },
+    };
+  },
+};
+
+const isUppercaseName = (name) => typeof name === 'string' && /^[A-Z]/u.test(name);
+
+/** The name a function is bound to: its own id, or the variable that holds it directly or through `memo(...)` / `forwardRef(...)`. */
+function functionName(node) {
+  if (node.id?.name) return node.id.name;
+  let holder = node.parent;
+  while (holder?.type === 'CallExpression') holder = holder.parent;
+  return holder?.type === 'VariableDeclarator' && holder.id.type === 'Identifier' ? holder.id.name : null;
+}
+
+/** S6478: a component declared inside another component is a new type on every render and remounts its subtree; declare it at module level. */
+const noNestedComponent = {
+  meta: { type: 'problem', schema: [], messages: { nested: 'S6478: the component `{{ name }}` is declared inside the component `{{ outer }}`, so it is a new component on every render and its state is lost. Move it to module level and pass what it reads as props.' } },
+  create: (context) => {
+    const frames = [];
+    const enter = (node) => frames.push({ node, name: functionName(node), jsx: false, nested: [] });
+    const markJsx = () => frames.forEach((frame) => { frame.jsx = true; });
+    const exit = () => {
+      const frame = frames.pop();
+      if (isUppercaseName(frame.name) && frame.jsx) {
+        const outer = [...frames].reverse().find((candidate) => isUppercaseName(candidate.name));
+        outer?.nested.push(frame);
+      }
+      if (frame.jsx) for (const inner of frame.nested) context.report({ node: inner.node.id ?? inner.node.parent ?? inner.node, messageId: 'nested', data: { name: inner.name, outer: frame.name } });
+    };
+    return { FunctionDeclaration: enter, FunctionExpression: enter, ArrowFunctionExpression: enter, 'FunctionDeclaration:exit': exit, 'FunctionExpression:exit': exit, 'ArrowFunctionExpression:exit': exit, JSXElement: markJsx, JSXFragment: markJsx };
+  },
+};
+
+/** S6748: children go between the tags. Where they cannot (a connected block that renders a pure component), the slot has a name of its own. */
+const noChildrenProp = {
+  meta: {
+    type: 'problem',
+    schema: [],
+    messages: {
+      children: 'S6748: do not pass `children` as a prop; nest the content between the tags. In a connected block (`blocks/*/index.tsx`, FE_CONNECTED_BLOCK_RENDER_PAIR, FE_WORLD_OWNER_RENDER_BOUNDARY) nesting is not available: pass the slot under a prop of another name (`content`, `footer`, ...) to the pure component.',
+    },
+  },
+  create: (context) => ({
+    JSXAttribute: (node) => {
+      if (node.name.type === 'JSXIdentifier' && node.name.name === 'children') context.report({ node, messageId: 'children' });
+    },
+    CallExpression: (node) => {
+      const callee = node.callee;
+      const creates = (callee.type === 'Identifier' && callee.name === 'createElement') || (callee.type === 'MemberExpression' && !callee.computed && callee.property.type === 'Identifier' && callee.property.name === 'createElement');
+      const props = node.arguments[1];
+      if (!creates || props?.type !== 'ObjectExpression') return;
+      for (const property of props.properties) {
+        if (property.type === 'Property' && !property.computed && (property.key.name === 'children' || property.key.value === 'children')) context.report({ node: property, messageId: 'children' });
+      }
+    },
+  }),
+};
+
+/** S6754: `useState` is destructured into a value and its setter, named after each other. */
+const useStateDestructured = {
+  meta: {
+    type: 'suggestion',
+    schema: [],
+    messages: {
+      pair: 'S6754: destructure the `useState` result into a value and its setter: `const [value, setValue] = useState(...)`.',
+      symmetric: 'S6754: name the setter after the value: `[{{ value }}, set{{ Value }}]`.',
+    },
+  },
+  create: (context) => ({
+    CallExpression: (node) => {
+      const callee = node.callee;
+      const isUseState = (callee.type === 'Identifier' && callee.name === 'useState') || (callee.type === 'MemberExpression' && !callee.computed && callee.property.type === 'Identifier' && callee.property.name === 'useState');
+      if (!isUseState || node.parent?.type !== 'VariableDeclarator' || node.parent.init !== node) return;
+      const id = node.parent.id;
+      if (id.type !== 'ArrayPattern' || id.elements.length !== 2) {
+        context.report({ node: id, messageId: 'pair' });
+        return;
+      }
+      const [value, setter] = id.elements;
+      if (value?.type !== 'Identifier' || setter?.type !== 'Identifier') return;
+      const Value = value.name.charAt(0).toUpperCase() + value.name.slice(1);
+      if (setter.name !== `set${Value}`) context.report({ node: setter, messageId: 'symmetric', data: { value: value.name, Value } });
+    },
+  }),
+};
+
+/** The native element each ARIA role stands for: a host element with the role and another tag is written as the native one (S6819). A role with no native element, or an ambiguous one (`img` on an `svg`, `group`), is not listed. */
+const NATIVE_FOR_ROLE = Object.freeze({
+  status: ['output'], navigation: ['nav'], main: ['main'], article: ['article'], complementary: ['aside'], contentinfo: ['footer'], banner: ['header'],
+  form: ['form'], button: ['button'], dialog: ['dialog'], figure: ['figure'], heading: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'], link: ['a'],
+  list: ['ul', 'ol', 'menu'], listitem: ['li'], progressbar: ['progress'], region: ['section'], separator: ['hr'], table: ['table'], row: ['tr'], cell: ['td'],
+  columnheader: ['th'], rowheader: ['th'], checkbox: ['input'], radio: ['input'], slider: ['input'], spinbutton: ['input'], searchbox: ['input'],
+  textbox: ['input', 'textarea'], option: ['option'], combobox: ['select', 'input'], term: ['dt'], definition: ['dd'],
+});
+
+/** S6819: a native element carries its role; a host element given a `role` that another native element has is that element. */
+const preferTagOverRole = {
+  meta: { type: 'suggestion', schema: [], messages: { tag: 'S6819: use the native <{{ tag }}> element instead of role="{{ role }}" on <{{ name }}>.' } },
+  create: (context) => ({
+    JSXOpeningElement: (node) => {
+      if (node.name.type !== 'JSXIdentifier' || !/^[a-z]/u.test(node.name.name)) return;
+      const attribute = attributeOf(node, 'role');
+      const literal = attribute?.value?.type === 'JSXExpressionContainer' ? attribute.value.expression : attribute?.value;
+      const role = literal?.type === 'Literal' ? literal.value : undefined;
+      const tags = typeof role === 'string' ? NATIVE_FOR_ROLE[role.trim().split(/\s+/u)[0]] : undefined;
+      if (tags === undefined || tags.includes(node.name.name)) return;
+      context.report({ node: attribute, messageId: 'tag', data: { tag: tags[0], role: role.trim(), name: node.name.name } });
+    },
+  }),
+};
+
+/** The bidirectional control characters of text:S6389: they reorder the text a reader sees against the text the compiler reads. */
+const BIDI_CONTROLS = /[‪-‮⁦-⁩]/gu;
+/** text:S6389 (Trojan Source): a raw embedding, override, isolate or pop control character anywhere in a file, specs included, is refused. */
+const noBidirectionalCharacter = {
+  meta: { type: 'problem', schema: [], messages: { raw: 'A bidirectional control character ({{ code }}) reorders how this line reads. Write the escape `\\u{{{ hex }}}` inside a string, template or regular expression, or delete the character anywhere else.' } },
+  create: (context) => ({
+    Program: () => {
+      for (const found of context.sourceCode.text.matchAll(BIDI_CONTROLS)) {
+        const hex = found[0].codePointAt(0).toString(16).toUpperCase();
+        context.report({ loc: context.sourceCode.getLocFromIndex(found.index), messageId: 'raw', data: { code: `U+${hex}`, hex } });
+      }
+    },
+  }),
+};
+
 /** The files the example scans leave out: a unit spec and an end-to-end spec (the regex, and the flat-config globs of the same set). */
 const OUTSIDE_THE_SCAN = /\.(?:e2e-)?spec\.[cm]?[jt]sx?$/;
 export const OUTSIDE_THE_SCAN_FILES = Object.freeze(['**/*.spec.{js,mjs,cjs,ts,mts,cts,jsx,tsx}', '**/*.e2e-spec.{js,mjs,cjs,ts,mts,cts,jsx,tsx}']);
@@ -271,7 +522,7 @@ export const OUTSIDE_THE_SCAN_FILES = Object.freeze(['**/*.spec.{js,mjs,cjs,ts,m
 /** The rule judging only the files the scan judges. */
 const scanned = (rule) => ({ ...rule, create: (context) => (OUTSIDE_THE_SCAN.test(context.filename) ? {} : rule.create(context)) });
 
-/** The rules both canons publish, by published name. */
+/** The rules both canons publish, by published name (the React ones, from `no-useless-fragment` to `prefer-tag-over-role`, only the front end names). */
 export const SONAR_SYNTAX_RULES = Object.freeze({
   'no-await-in-loop': scanned(noAwaitInLoop),
   'prefer-code-point': scanned(preferCodePoint),
@@ -284,4 +535,11 @@ export const SONAR_SYNTAX_RULES = Object.freeze({
   'media-has-caption': scanned(mediaHasCaption),
   'max-params': scanned(maxParams),
   'no-line-separator-literal': noLineSeparatorLiteral,
+  'no-bidirectional-character': noBidirectionalCharacter,
+  'no-duplicate-import': scanned(noDuplicateImport),
+  'no-useless-fragment': scanned(noUselessFragment),
+  'no-nested-component': scanned(noNestedComponent),
+  'no-children-prop': scanned(noChildrenProp),
+  'use-state-destructured': scanned(useStateDestructured),
+  'prefer-tag-over-role': scanned(preferTagOverRole),
 });

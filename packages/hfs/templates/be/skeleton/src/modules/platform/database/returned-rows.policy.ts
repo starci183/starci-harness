@@ -56,6 +56,6 @@ export const rowShape =
 export const returnedRows = <Row>(raw: unknown, isRow: RowGuard<Row>): Array<Row> => {
     if (!Array.isArray(raw)) throw new DatabaseError({ code: DatabaseErrorCode.ReturningRowRejected })
     const rows: ReadonlyArray<unknown> = raw
-    if (!rows.every(isRow)) throw new DatabaseError({ code: DatabaseErrorCode.ReturningRowRejected })
+    if (!rows.every((row) => isRow(row))) throw new DatabaseError({ code: DatabaseErrorCode.ReturningRowRejected })
     return [...rows]
 }

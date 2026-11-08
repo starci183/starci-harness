@@ -1,5 +1,4 @@
-import { sql } from "@modules/platform/database"
-import type { SqlText } from "@modules/platform/database"
+import { sql, type SqlText } from "@modules/platform/database"
 
 /** Writes one job in the outbox ($1 queue, $2 payload, $3 instant, $4 correlation id). */
 export const INSERT_QUEUE_ROW: SqlText = sql`INSERT INTO queue_outbox (queue, payload, created_at, correlation_id)

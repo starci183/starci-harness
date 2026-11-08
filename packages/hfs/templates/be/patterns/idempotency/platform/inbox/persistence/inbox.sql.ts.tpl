@@ -1,5 +1,4 @@
-import { sql } from "@modules/platform/database"
-import type { SqlText } from "@modules/platform/database"
+import { sql, type SqlText } from "@modules/platform/database"
 
 /** Claims the event ($1 source, $2 event id, $3 instant); answers one row when this call won and none when it was claimed before. */
 export const CLAIM_EVENT: SqlText = sql`INSERT INTO inbox_claims (source, event_id, claimed_at) VALUES ($1, $2, $3)

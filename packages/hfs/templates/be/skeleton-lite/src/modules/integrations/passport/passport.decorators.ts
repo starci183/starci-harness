@@ -1,6 +1,5 @@
 import { AUTH_DOORS_SERVICE, AUTH_PASSWORDS, AUTH_SESSIONS, AUTH_SIGN_IN_BUDGET } from "@starci/auth/server"
-import { injector } from "@modules/platform/composition"
-import type { TypedParameterDecorator } from "@modules/platform/composition"
+import { injector, type TypedParameterDecorator } from "@modules/platform/composition"
 import type { PassportOptions, VerifyAccessToken } from "./passport.options"
 
 /** Token of the passport options. */

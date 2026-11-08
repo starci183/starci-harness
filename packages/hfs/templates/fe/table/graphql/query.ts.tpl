@@ -1,5 +1,4 @@
-import { gql } from "@apollo/client"
-import type { TypedDocumentNode } from "@apollo/client"
+import { gql, type TypedDocumentNode } from "@apollo/client"
 import type { {{Singular}}Query, {{Singular}}QueryVariables } from "../__generated__/graphql"
 import { createAuthApolloClient, graphqlResponseOf } from "../clients"
 import type { GraphQLResponse, OperationParams } from "../types"

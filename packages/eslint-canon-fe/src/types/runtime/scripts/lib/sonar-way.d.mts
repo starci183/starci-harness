@@ -11,3 +11,9 @@ export declare function sonarWayRules(
   sonarjs: unknown,
   side?: "be" | "fe",
 ): { readonly rules: Record<string, ["error", ...unknown[]]>; readonly mapped: SonarWayRow[] }
+
+/** The sonarjs rules whose Sonar scope is Tests. */
+export declare const SONAR_WAY_TEST_RULES: readonly string[]
+
+/** The levels of the test-scoped Sonar way rules, for the specs of the product source. */
+export declare function sonarWayTestRules(sonarjs: unknown): Record<string, ["error", ...unknown[]]>

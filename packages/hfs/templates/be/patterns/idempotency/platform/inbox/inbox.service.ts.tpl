@@ -1,7 +1,6 @@
 import { BATCH_ROWS } from "@modules/platform/database"
 import { Injectable } from "@nestjs/common"
-import { InjectClock } from "@modules/platform/clock"
-import type { Clock } from "@modules/platform/clock"
+import { InjectClock, type Clock } from "@modules/platform/clock"
 import type { EntityManager } from "typeorm"
 import { InjectClaimManagers } from "./inbox.decorators"
 import { IdempotencyError, IdempotencyErrorCode } from "@modules/platform/idempotency"

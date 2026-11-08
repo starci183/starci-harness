@@ -2,10 +2,8 @@ import { Injectable } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
 import { InjectPrimaryEntityManager } from "@modules/platform/database"
 import { @@Provider@@DeliveryRecordedEvent } from "@modules/events/@@provider@@"
-import { InjectEventBus } from "@modules/platform/event-bus"
-import type { EventBus } from "@modules/platform/event-bus"
-import { InjectEntityInbox } from "@modules/platform/inbox"
-import type { EntityInbox, InboxEntityReceipt } from "@modules/platform/inbox"
+import { InjectEventBus, type EventBus } from "@modules/platform/event-bus"
+import { InjectEntityInbox, type EntityInbox, type InboxEntityReceipt } from "@modules/platform/inbox"
 import { @@Provider@@InboxEntity } from "./persistence/entities/@@provider@@-inbox.entity"
 
 interface @@Provider@@Delivery {

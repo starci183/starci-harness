@@ -1,5 +1,4 @@
-import { injector } from "@modules/platform/composition"
-import type { TypedParameterDecorator } from "@modules/platform/composition"
+import { injector, type TypedParameterDecorator } from "@modules/platform/composition"
 import type { EntityInbox, Inbox } from "./inbox.port"
 
 /** Token of the shared, transaction-owned inbox claims; its provider is an EntityInbox too. */

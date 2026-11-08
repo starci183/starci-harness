@@ -1,5 +1,4 @@
-import { sql } from "@modules/platform/database"
-import type { SqlText } from "@modules/platform/database"
+import { sql, type SqlText } from "@modules/platform/database"
 
 /** Writes one event in the outbox ($1 event id, $2 event name, $3 topic, $4 key, $5 envelope, $6 instant, $7 correlation id). */
 export const INSERT_OUTBOX_ROW: SqlText = sql`INSERT INTO event_outbox (event_id, event_name, topic, message_key, envelope, created_at, correlation_id)

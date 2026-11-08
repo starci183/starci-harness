@@ -1,5 +1,4 @@
-import { createRequestConfig } from "@starci/next-i18n/request"
-import type { I18nRequestConfig } from "@starci/next-i18n/request"
+import { createRequestConfig, type I18nRequestConfig } from "@starci/next-i18n/request"
 import { i18n } from "./routing"
 
 /**

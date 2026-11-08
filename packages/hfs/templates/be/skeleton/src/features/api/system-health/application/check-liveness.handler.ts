@@ -1,9 +1,7 @@
 import { QueryHandler } from "@nestjs/cqrs"
-import { LivenessService } from "@modules/domain/liveness"
-import type { LivenessReport } from "@modules/domain/liveness"
+import { LivenessService, type LivenessReport } from "@modules/domain/liveness"
 import { ICQRSHandler } from "@modules/platform/cqrs"
-import { InjectLogger } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
+import { InjectLogger, type Logger } from "@modules/platform/logging"
 import { CheckLivenessQuery } from "./check-liveness.query"
 
 @QueryHandler(CheckLivenessQuery)

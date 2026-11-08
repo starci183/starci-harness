@@ -115,6 +115,17 @@ test("a thrown value's type derives from DomainError", () => {
             { filename: SERVICE, code: "declare const p: Promise<void>\np.catch((error) => { throw error })" },
             // a union of domain errors
             { filename: SERVICE, code: `${THROW_HEAD}class Other extends DomainError<PlanErrorCode> {}\nfunction f(x: boolean) { throw x ? new PlanError({ code: PlanErrorCode.X }) : new Other({ code: PlanErrorCode.X }) }` },
+            // the closed list of framework control-flow signals, which BullMQ reads with instanceof and so cannot be domain errors
+            { filename: SERVICE, code: 'import { UnrecoverableError } from "bullmq"\nfunction f() { throw new UnrecoverableError("gone") }' },
+            { filename: SERVICE, code: 'import { DelayedError } from "bullmq"\nfunction f() { throw new DelayedError() }' },
+            { filename: SERVICE, code: 'import { WaitingChildrenError } from "bullmq"\nfunction f() { throw new WaitingChildrenError() }' },
+            // the option replaces the list
+            { filename: SERVICE, options: [{ controlFlowSignals: [{ name: "RateLimitError", module: "bullmq" }] }], code: 'import { RateLimitError } from "bullmq"\nfunction f() { throw new RateLimitError() }' },
+            // a rejection is judged as a throw: only a DomainError rejects
+            { filename: SERVICE, code: `${THROW_HEAD}function f() { return Promise.reject(new PlanError({ code: PlanErrorCode.X })) }` },
+            { filename: SERVICE, code: `${THROW_HEAD}const g = new Promise<void>((_, reject) => { reject(new PlanError({ code: PlanErrorCode.X })) })` },
+            { filename: SERVICE, code: "declare const p: Promise<void>\np.catch((error) => Promise.reject(error))" },
+            { filename: SERVICE, code: 'declare function reject(value: unknown): void\nreject("x")' },
         ],
         invalid: [
             { filename: SERVICE, code: 'function f() { throw new Error("x") }', errors: [{ messageId: "bareError" }] },
@@ -126,6 +137,20 @@ test("a thrown value's type derives from DomainError", () => {
             },
             { filename: SERVICE, code: 'function f() { throw "boom" }', errors: [{ messageId: "notDomainError" }] },
             { filename: SERVICE, code: "function f() { throw { code: 1 } }", errors: [{ messageId: "notDomainError" }] },
+            { filename: SERVICE, code: 'function f() { return Promise.reject(new Error("x")) }', errors: [{ messageId: "rejectNotDomainError" }] },
+            { filename: SERVICE, code: 'function f() { return Promise.reject("x") }', errors: [{ messageId: "rejectNotDomainError" }] },
+            { filename: SERVICE, code: "function f() { return Promise.reject() }", errors: [{ messageId: "rejectNotDomainError" }] },
+            { filename: SERVICE, code: "declare const rest: unknown[]\nfunction f() { return Promise.reject(...rest) }", errors: [{ messageId: "rejectNotDomainError" }] },
+            { filename: SERVICE, code: "declare const e: unknown\nfunction f() { return Promise.reject(e) }", errors: [{ messageId: "rejectNotDomainError" }] },
+            { filename: SERVICE, code: 'const g = new Promise<void>((_, reject) => { reject(new Error("x")) })', errors: [{ messageId: "rejectNotDomainError" }] },
+            { filename: SERVICE, code: 'const g = new Promise<void>((resolve, fail) => { fail("x") })', errors: [{ messageId: "rejectNotDomainError" }] },
+            // a signal off the list, and a listed one under the other list
+            { filename: SERVICE, code: 'import { RateLimitError } from "bullmq"\nfunction f() { throw new RateLimitError() }', errors: [{ messageId: "bareError" }] },
+            { filename: SERVICE, options: [{ controlFlowSignals: [{ name: "RateLimitError", module: "bullmq" }] }], code: 'import { UnrecoverableError } from "bullmq"\nfunction f() { throw new UnrecoverableError("x") }', errors: [{ messageId: "bareError" }] },
+            // a signal is thrown, never rejected, and a helper that rejects its parameter is the dodge of both rules
+            { filename: SERVICE, code: 'import { UnrecoverableError } from "bullmq"\nasync function f() { return Promise.reject(new UnrecoverableError("x")) }', errors: [{ messageId: "rejectNotDomainError" }] },
+            { filename: SERVICE, code: "function rejectionOf(reason: unknown): Promise<never> { return Promise.reject(reason) }", errors: [{ messageId: "rejectNotDomainError" }] },
+            { filename: SERVICE, code: "const rejectionOf = (reason: unknown): Promise<never> => Promise.reject(reason)", errors: [{ messageId: "rejectNotDomainError" }] },
             // a thrown local value not caught here
             { filename: SERVICE, code: "declare const e: unknown\nfunction f() { throw e }", errors: [{ messageId: "notDomainError" }] },
             // a spec is not exempt
