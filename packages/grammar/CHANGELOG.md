@@ -9,6 +9,8 @@
   still reaches the card edge, and the text lines up with the body. A stat strip cell in a card takes 16 on every side
   (8 in a pane), a table in a card puts its outer columns on 16, and a card zone's first filter tab label stands on 16.
   Panes, overlays, bands and the page gutter keep 12. Only the card is wider, so no app changes.
+- Added: `EmptyNotice actionIntent` (`commit` default, or `neutral`): an empty notice in a secondary place (a rail, a side card)
+  takes the outlined button, so it never adds a second primary beside the page header's. Story `Data views/Empty notice action intent`.
 - Fixed: a tile foot with no figure and no badge no longer renders an empty first item, so its action stands on the card's
   inline edge instead of one inline gap (8) in.
 

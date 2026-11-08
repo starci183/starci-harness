@@ -34,6 +34,16 @@ export const BoardStates: Story = {
     ),
 }
 
+/* The empty notice's action weight: the region's one primary by default, or outlined in a secondary place (a rail, a side card). */
+export const EmptyNoticeActionIntent: Story = {
+    render: () => (
+        <Matrix>
+            <State label="commit (default): the region's one primary" direction="column"><G.EmptyNotice message="No documents yet" description="Add a document so the agent can read it." actionLabel="Add document" onAction={noop} /></State>
+            <State label="neutral: a rail on a page whose primary is in its header" direction="column"><G.EmptyNotice message="No documents from Google Drive yet" description="Turn on Drive and pick a folder for NIVO to read." actionLabel="Turn on Drive" actionIntent="neutral" onAction={noop} /></State>
+        </Matrix>
+    ),
+}
+
 const days: ReadonlyArray<G.ScheduleColumn> = [
     { id: "mon", label: "Mon", description: "2/11" },
     { id: "tue", label: "Tue", description: "3/11" },
