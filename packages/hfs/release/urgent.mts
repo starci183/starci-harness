@@ -41,7 +41,7 @@ function urgentGates(config: ReleaseConfig): UrgentCheck[] {
 }
 
 /** Runs (or reuses) each check in order and stops at the first red one. Returns the rows of the record. */
-function runChecks(ctx: VerbContext, checks: readonly UrgentCheck[], { common, head, dir, platform }: { common: string; head: string; dir: string; platform: string }): GateRow[] {
+async function runChecks(ctx: VerbContext, checks: readonly UrgentCheck[], { common, head, dir, platform }: { common: string; head: string; dir: string; platform: string }): Promise<GateRow[]> {
   fs.mkdirSync(dir, { recursive: true });
   const rows: GateRow[] = [];
   for (const check of checks) {
@@ -55,7 +55,7 @@ function runChecks(ctx: VerbContext, checks: readonly UrgentCheck[], { common, h
       rows.push({ ...reused, reused: true, ...(check.note ? { note: check.note } : {}) });
       continue;
     }
-    const row = runGate(ctx, check.gate, { dir, platform, credentialNames: [] });
+    const row = await runGate(ctx, check.gate, { dir, platform, credentialNames: [] });
     recordRow(common, head, row);
     rows.push({ ...row, reused: false, ...(check.note ? { note: check.note } : {}) });
     if (!row.pass) break;
@@ -113,7 +113,7 @@ export async function releaseUrgentPush(ctx: VerbContext, config: ReleaseConfig,
   out.push(`plan           git tag -a ${chosen.tag}${chosen.state === 'on-head' ? ' (already on HEAD)' : ''}, then git push --atomic ${remote} ${refs.join(' ') || '(nothing)'}; no candidate CI`);
   if (red.length > 0) return { ok: false, lines: [...out, ...red.map((item) => `RED: ${item}`), 'nothing run, nothing pushed.'], data: { ...data, red } };
   if (options.execute !== true) return { ok: true, lines: [...out, 'dry run: no check run, nothing tagged or pushed. ready; re-run with --execute.'], data };
-  const rows = runChecks(ctx, checks, { common, head, dir, platform: options.platform ?? process.platform });
+  const rows = await runChecks(ctx, checks, { common, head, dir, platform: options.platform ?? process.platform });
   data.checks = rows;
   out.push(...rows.map(checkLine));
   const failed = rows.find((row) => !row.pass);

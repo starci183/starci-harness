@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.99 - 2026-11-08
+
+- Changed: the CLI requires `@starci/hfs` 6.2.12 once npm serves it (cli-follow). In it `starci app release gate` reuses the verdict of its `app-check` row for the rows that command already judges (typecheck, build, lint, test and coverage, audit, format, db lint and drift) and runs no child for them, and a row that still runs a heavy command goes through the governor. `hfsCommandRunner` takes the `test` kind: the command runs under the jest parent's heap, the worker heap preload and the workers the room holds, an `npm run <script>` getting `--maxWorkers` and `--workerIdleMemoryLimit` after `--` (`sizedTestArgv`), and an out-of-memory exit names the heap cap it hit (`withOomNote`) as it already does for the node tools. Docs: `contexts/project/check-cache.md` "Release with starci app release gate", `cli/README.md` "Heavy-command governor". Spec: `core/app/hfs-command-runner.test.ts`.
+
 ## 1.1.0-alpha.98 - 2026-11-08
 
 - Changed: the CLI requires `@starci/hfs` 6.2.10 once npm serves it (cli-follow). In it, FE_WORLD_OWNER_RENDER_BOUNDARY and FE_CONNECTED_BLOCK_RENDER_PAIR accept a pure component that returns a ReactNode prop as is (`(props) => (props.active ? props.candidate : null)`), the form the canon's `no-useless-fragment` (Sonar S6749) leaves once the wrapping fragment goes; a module constant, a hook value or a call result still fails.

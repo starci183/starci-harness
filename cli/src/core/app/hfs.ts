@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process"
+import { basename } from "node:path"
 import { availableParallelism, freemem } from "node:os"
-import { heavyRoomMb, hfsLimitsEnv, loadHeavyRules, testWorkerArgs, withHeavySlot, withOomNote } from "../../harness/heavy.js"
+import { heavyRoomMb, hfsLimitsEnv, loadHeavyRules, testWorkerArgs, withHeavySlot, withOomNote, type Held } from "../../harness/heavy.js"
 import { peakProbe } from "../../harness/peak-rss.js"
 import { appRootOf, formatPlan, MEMORY_PLAN_ENV, MEMORY_REEXEC_ENV, measureScope, needsReexec, planMemory } from "../../harness/memory-plan.js"
 import { captureCommand } from "../../shared/exec.js"
@@ -156,15 +157,30 @@ export const applyMemoryPlan = (appRoot: string, argv: readonly string[], write:
 }
 
 /**
- * The governed runner of the dev verbs' heavy commands (`starci app stack up`: `npm ci`, a compose build or up) and of an app check's CI-parity steps and
- * Sonar scan: one slot of the host-wide semaphore per command, run without a shell, the result handed back as the spawn seam's shape with the tree's
+ * The argv of a governed test command with the workers its slot was sized to: a jest or vitest named in it gets `--maxWorkers` and, for jest, `--workerIdleMemoryLimit`
+ * (`testWorkerArgs`); an `npm run <script>` (a release gate's `test:integration`, wrapped in `cmd.exe /c` on Windows) has them handed to its script after `--`,
+ * each unless the argv sets it already. Any other argv is returned as it is: its NODE_OPTIONS still carry the parent's heap and the worker heap preload.
+ */
+export const sizedTestArgv = (argv: readonly string[], held: Held): readonly string[] => {
+    const named = testWorkerArgs(argv, held)
+    const sizing = held.test
+    const script = argv.findIndex((part, at) => /^npm(?:\.cmd)?$/.test(basename(part)) && argv[at + 1] === "run")
+    if (named !== argv || sizing === undefined || script < 0) return named
+    const sets = (flag: string): boolean => argv.slice(script).some((part) => part.startsWith(flag))
+    const flags = [...(sets("--maxWorkers") ? [] : [`--maxWorkers=${String(sizing.workers)}`]), ...(sets("--workerIdleMemoryLimit") ? [] : [`--workerIdleMemoryLimit=${String(sizing.workerMb)}MB`])]
+    return flags.length === 0 ? argv : [...argv, ...(argv.slice(script).includes("--") ? [] : ["--"]), ...flags]
+}
+
+/**
+ * The governed runner of the dev verbs' heavy commands (`starci app stack up`: `npm ci`, a compose build or up), of an app check's CI-parity steps and
+ * Sonar scan and of the rows `starci app release gate` still runs itself (a `test` kind is sized, `sizedTestArgv`): one slot of the host-wide semaphore per command, run without a shell, the result handed back as the spawn seam's shape with the tree's
  * measured RAM peak; `onAdmit`, when the request names one, is told once it was admitted.
  */
 export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand): HeavyCommandRun => async (request: Parameters<HeavyCommandRun>[0] & { readonly onAdmit?: ((admitted: { readonly heapMb?: number | undefined }) => void) | undefined }) => {
     const probe = peakProbe()
     const ran = await admit(request.kind, request.label, request.cwd, { baseEnv: request.env, env: probe.env(request.env.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? "") }, async (held) => {
         request.onAdmit?.({ heapMb: held.heapMb })
-        const run = await capture(request.argv, request.cwd, held.options)
+        const run = withOomNote(await capture(request.kind === "test" ? sizedTestArgv(request.argv, held) : request.argv, request.cwd, held.options), held)
         return {
             status: run.timedOut ? null : run.exitCode,
             stdout: run.stdout,

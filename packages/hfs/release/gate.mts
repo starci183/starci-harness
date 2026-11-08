@@ -3,6 +3,7 @@
 // The canon pre-push hook lets main and v* tags through only for a HEAD with that tag and that record. Nothing is pushed here (see push.mts).
 // The gate list comes from the optional `release:` block of .starcistacks/application-stacks.yaml, else from the app's managed package scripts.
 // Commands are argument arrays (never shell strings) run through ctx.spawn; a git tool call always goes through the same seam.
+// A row `app check` already judges takes the verdict of the green `app-check` row of the run (coveredBy); a row that still runs a heavy command goes through the governor (ctx.heavy).
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,6 +18,7 @@ import { produceLintReports } from './lint-report.mjs';
 import { URGENT_RULING, l4Path, readUrgent, recordRow, writeUrgent } from './records.mjs';
 import { sonarQualityGate } from './sonar-quality-gate.mjs';
 import type { SpawnResult, VerbContext, VerbResult } from './index.mjs';
+import type { HeavyRequest } from '../stack/context.mjs';
 import { readVerifyLock, type VerifyLock } from './cache-verify-lock.mjs';
 
 /** One gate of the release: a name, an argument array (never a shell string), an optional jest summary and extra environment. */
@@ -36,6 +38,8 @@ export interface GateRow {
   name: string; command: string | null; pass: boolean; detail: string; log: string | null; logSha256: string | null;
   seconds?: number; summary?: unknown; env?: string[]; // absent on the row of a check that had nothing to run
   reused?: boolean; note?: string;
+  /** A row that ran nothing and took the verdict of another row of the same gate run: which row, on which sha, and the log that verdict stands on. */
+  reusedFrom?: { gate: string; head: string; command: string | null; log: string | null; logSha256: string | null };
 }
 /** What a git call answers. */
 export interface GitResult { code: number | null; stdout: string; stderr: string }
@@ -69,6 +73,7 @@ const WRAPPED = new Set(['npm', 'npx']);
  * The cache use of the release gate (contexts/project/check-cache.md, "The release"): every row runs diff-only against the warm committed cache the
  * release commit carries, which main's CI verified and the nightly run watches. `--full` (an explicit opt-in) runs the `app-check` row as
  * `starci app check --env prod --fresh`: every family is recomputed from scratch and the records are rewritten, so the rows after it reuse what it just judged.
+ * The reuse is real (`coveredBy`): a row `app check` already judges runs no child and takes the verdict of the `app-check` row of the same run, on the same sha.
  */
 export const APP_CHECK_COMMAND: readonly string[] = ['npx', 'starci', 'app', 'check', '--env', 'prod'];
 const isAppCheck = (command: readonly string[]): boolean => command.length === APP_CHECK_COMMAND.length && command.every((word, index) => word === APP_CHECK_COMMAND[index]);
@@ -80,7 +85,51 @@ const SCRIPT_GATES = ['format:check', 'typecheck', 'build:be', 'lint', 'db:lint'
 // a lite app's integration project exists only where it has integration specs, so it has no world rows.
 const WORLD_SCRIPTS = ['test:integration', 'test:e2e', 'test:contract'];
 // An app with an entity list (db/entity-list.mts) checks its entities against the migrated schema: a row of every gate, declared or default.
-const DB_DRIFT: Gate = { name: 'db-drift', command: ['npx', 'starci', 'app', 'db', 'drift'], summary: null, env: {} };
+const DB_DRIFT_COMMAND: readonly string[] = ['npx', 'starci', 'app', 'db', 'drift'];
+const DB_DRIFT: Gate = { name: 'db-drift', command: [...DB_DRIFT_COMMAND], summary: null, env: {} };
+
+/**
+ * The rows `starci app check` (whole run, `--env prod`) already judges, by gate name: the script or command the row runs by default and the family of `app check`
+ * that judges it (contexts/project/check-cache.md "The command surface", "CI parity"). A row of this table whose command is the default one runs nothing when
+ * the `app-check` row of the same run passed: it takes that row's verdict. A row an app declares with another command under one of these names still runs.
+ * Not here, so always real rows: Sonar on the main project key (`app check` scans the derived `<key>-local`), the world layers (`test:integration`, `test:e2e`,
+ * `test:contract`) and every row an app declares of its own.
+ */
+const COVERED: ReadonlyMap<string, { script?: string; command?: readonly string[]; family: string; needsDatabase?: boolean }> = new Map([
+  ['format-check', { script: 'format:check', family: 'format (Prettier over every tracked file)' }],
+  ['typecheck', { script: 'typecheck', family: 'types and build (the CI typecheck script and the tsc programs)' }],
+  ['build-be', { script: 'build:be', family: 'build (build:be)' }],
+  ['build-fe', { script: 'build:fe', family: 'build (each build fe)' }],
+  ['lint', { script: 'lint', family: 'lint (ESLint per side and stylelint)' }],
+  ['db-lint', { script: 'db:lint', family: 'db (the database rules)' }],
+  ['test', { script: 'test', family: 'test (the unit specs, the merged coverage and its per-file threshold)' }],
+  ['audit', { family: 'audit (the production dependency audit)' }],
+  ['db-drift', { command: DB_DRIFT_COMMAND, family: 'build (the database migration checks and the entity drift)', needsDatabase: true }],
+]);
+/** The warning `app check` prints when its host had no database for the migration step: the drift row was not judged then. */
+const DATABASE_SKIPPED = 'CI_PARITY_DB_SKIPPED';
+
+const sameCommand = (left: readonly string[], right: readonly string[]): boolean => left.length === right.length && left.every((word, index) => word === right[index]);
+
+/** What `app check` judges for this row, or null when the row is not one it covers (another name, or another command under a covered name). */
+export function coveredBy(gate: Gate): { family: string; needsDatabase: boolean } | null {
+  const covered = COVERED.get(gate.name);
+  if (!covered || gate.teardownOf || gate.provider) return null;
+  const same = covered.script ? sameCommand(gate.command, ['npm', 'run', covered.script])
+    : covered.command ? sameCommand(gate.command, covered.command)
+      : gate.command[0] === 'npm' && gate.command[1] === 'audit';
+  return same ? { family: covered.family, needsDatabase: covered.needsDatabase === true } : null;
+}
+
+/** The kind of heavy slot a row's command asks the governor for, or null for a row that is no heavy child: `starci` verbs govern their own steps, `npm audit` is a registry call. */
+export function heavyKindOf(gate: Gate): HeavyRequest['kind'] | null {
+  const [first, second, third] = gate.command;
+  if (first === 'starci' || (first === 'npx' && second === 'starci')) return null;
+  if (first === 'npm' && second === 'audit') return null;
+  if (first === 'npm' && second === 'run' && /^test(?::|$)/u.test(third ?? '')) return 'test';
+  if (gate.command.some((word) => /^(?:jest|vitest)(?:\.[cm]?js)?$/u.test(path.basename(word)))) return 'test';
+  return 'build';
+}
 
 /** True for a branch or remote name git can take as one argument (no leading dash, only path-like characters). */
 export const refName = (value: unknown): value is string => typeof value === 'string' && REF_NAME.test(value);
@@ -335,7 +384,7 @@ export async function runAvailableGate(ctx: VerbContext, gate: Gate, options: Ru
     // The scanner imports the app's declared external issues report: produce it first with the app's own lint, as the managed CI does.
     const started = ctx.now();
     const lint = produceLintReports(ctx, { launch, platform: options.platform, env: withoutCredentials(ctx.env, options.credentialNames) });
-    if (lint.pass) return judgeQualityGate(ctx, gate, runGate(ctx, gate, { ...options, preface: lint.text }));
+    if (lint.pass) return judgeQualityGate(ctx, gate, await runGate(ctx, gate, { ...options, preface: lint.text }));
     fs.writeFileSync(log, lint.text);
     return { name: gate.name, command: gate.command.join(' '), pass: false, detail: 'lint report failed (see log)', seconds: Math.round((ctx.now() - started) / 1000),
       summary: null, log: path.resolve(log), logSha256: sha256(log), env: Object.keys(gate.env) };
@@ -370,13 +419,24 @@ export const withoutCredentials = (values: Record<string, string | undefined> | 
   return Object.fromEntries(Object.entries(values ?? {}).filter(([key]) => !selected.has(key.toUpperCase())));
 };
 
-export function runGate(ctx: VerbContext, gate: Gate, { dir, platform, credentialNames, preface = '', full = false }: RunOptions): GateRow {
+/**
+ * Runs a row's command. A heavy command (`heavyKindOf`) goes through the governor the CLI hands in (`ctx.heavy`: a slot of the host-wide semaphore, the heap
+ * caps of its kind in NODE_OPTIONS and, for a test run, the workers and worker heap its room holds); an orchestrator (`starci` verbs govern their own steps)
+ * and a registry call run as plain children. Without a governor (@starci/hfs run on its own, a spec) every row is a plain child.
+ */
+async function execute(ctx: VerbContext, gate: Gate, argv: { command: string; args: string[] }, env: NodeJS.ProcessEnv): Promise<SpawnResult> {
+  const kind = ctx.heavy ? heavyKindOf(gate) : null;
+  if (kind === null || !ctx.heavy) return tool(ctx, argv.command, argv.args, { cwd: ctx.cwd, env });
+  return ctx.heavy({ kind, label: `release gate ${gate.name}`, cwd: ctx.cwd, argv: [argv.command, ...argv.args], env });
+}
+
+export async function runGate(ctx: VerbContext, gate: Gate, { dir, platform, credentialNames, preface = '', full = false }: RunOptions): Promise<GateRow> {
   const log = path.join(dir, `${gate.name}.log`);
   const started = ctx.now();
   const [command, args] = launch([...rowCommand(gate.command, full)], platform);
   // The native scanner alone consumes Sonar credentials; ordinary gates cannot inherit or reintroduce them.
   const env = { ...ctx.env, ...(gate.provider ? gate.env : withoutCredentials(gate.env, credentialNames)) };
-  const run = tool(ctx, command, args, { cwd: ctx.cwd, env });
+  const run = await execute(ctx, gate, { command, args }, env);
   const output = `${run.stdout ?? ''}${run.stderr ?? ''}`;
   const text = redactGateText(gate, output);
   fs.writeFileSync(log, preface + text);
@@ -434,12 +494,23 @@ export function inspect(ctx: VerbContext, config: ReleaseConfig, options: { sour
   return { head, chosen, red, out };
 }
 
+/** What the plan says a row does: reuses the `app-check` verdict, or runs (and how). */
+function dispositionOf(gate: Gate, appCheck: Gate | undefined): string {
+  const covered = appCheck && appCheck !== gate ? coveredBy(gate) : null;
+  if (covered) return `reuses the ${appCheck?.name} verdict, runs no command: ${covered.family}${covered.needsDatabase ? `; runs governed instead when ${appCheck?.name} had no database (${DATABASE_SKIPPED})` : ''}`;
+  if (appCheck === gate) return 'runs: app check governs each of its own steps';
+  const kind = heavyKindOf(gate);
+  if (kind === null) return 'runs as a plain child: it is no heavy command';
+  return `runs, governed (heavy slot, kind ${kind}: heap caps${kind === 'test' ? ', worker sizing' : ''})`;
+}
+
 function planLines(config: ReleaseConfig, facts: Facts, dir: string, recordPath: string): string[] {
   const out = [`L4 record      ${recordPath}`, `logs           ${dir}`, '', 'gates (every gate must pass, in this order):'];
+  const appCheck = config.gates.find((gate) => isAppCheck(gate.command));
   for (const gate of config.gates) {
     const summary = gate.summary ? ` (summary: ${gate.summary})` : '';
     const teardown = gate.teardownOf ? ` (teardown of ${gate.teardownOf}: runs whenever it ran)` : '';
-    out.push(`  ${gate.name.padEnd(17)} ${gate.command.join(' ')}${summary}${teardown}`);
+    out.push(`  ${gate.name.padEnd(17)} ${gate.command.join(' ')}${summary}${teardown}  [${dispositionOf(gate, appCheck)}]`);
   }
   out.push(`then: write ${path.basename(recordPath)} and \`git tag -a ${facts.chosen.tag}\` on ${facts.head.slice(0, 10)}; push it with \`starci app release push\`.`);
   return out;
@@ -465,6 +536,22 @@ function writeRecord(ctx: VerbContext, { head, tag, results, recordPath, require
 }
 
 /**
+ * The row a covered gate takes from the green `app-check` row before it in the same run (same sha: the run is one clean HEAD, `assertUnmoved` judges it
+ * stays): it runs nothing and carries that row's log, so the L4 record says which verdict it stands on. Null when the gate is no covered row, no
+ * `app-check` row came green before it, or (the drift row) `app check` had no database to judge it on, and the gate then runs.
+ * The row is not entered in the head's rows (`recordRow`): that file keeps rows that ran their own command, which an urgent push may reuse.
+ */
+function reuseRow(gate: Gate, results: readonly GateRow[], head: string): GateRow | null {
+  const covered = coveredBy(gate);
+  const source = results.find((row) => row.pass && row.reusedFrom === undefined && row.command !== null && row.command === APP_CHECK_COMMAND.join(' ') && row.log !== null);
+  if (!covered || !source || source.log === null) return null;
+  if (covered.needsDatabase && fs.readFileSync(source.log, 'utf8').includes(DATABASE_SKIPPED)) return null;
+  const detail = `reused from ${source.name} (${covered.family}), no command run`;
+  return { name: gate.name, command: gate.command.join(' '), pass: true, detail, seconds: 0, summary: null, log: source.log, logSha256: source.logSha256, env: [],
+    reused: true, note: `judged by the ${source.name} row of this run on ${head.slice(0, 12)}: ${covered.family}`, reusedFrom: { gate: source.name, head, command: source.command, log: source.log, logSha256: source.logSha256 } };
+}
+
+/**
  * Gates run sequentially because each failure prevents subsequent commands and record creation. A teardown row (`teardownOf`) is the exception: it runs
  * whenever the row it tears down ran, red or green, so a red row never leaves a started service behind; its own verdict counts like any row's.
  */
@@ -473,6 +560,8 @@ async function runAll(ctx: VerbContext, config: ReleaseConfig, options: RunOptio
   return config.gates.reduce<Promise<GateRow[]>>(async (pending, gate) => {
     const results = await pending;
     if (results.some((result) => !result.pass) && !(gate.teardownOf && results.some((result) => result.name === gate.teardownOf))) return results;
+    const reused = reuseRow(gate, results, options.head);
+    if (reused) return [...results, reused];
     const result = await runAvailableGate(ctx, gate, options);
     recordRow(options.common, options.head, result);
     return [...results, result];
@@ -482,6 +571,9 @@ async function runAll(ctx: VerbContext, config: ReleaseConfig, options: RunOptio
 export function summaryOf(result: GateRow): string {
   return `${result.pass ? 'PASS' : 'FAIL'} ${result.name} (${result.detail}, ${result.seconds}s) log ${result.log}`;
 }
+
+/** A line of the gate's report: a reused row says so and names the record it stands on. */
+const reportLine = (result: GateRow): string => (result.reusedFrom ? `REUSED ${result.name} (${result.detail}) log ${result.reusedFrom.log}` : summaryOf(result));
 
 /**
  * The urgent release a back-fill judges: `tag` must name HEAD (the back-fill runs on the very commit that shipped, never a re-release) and HEAD must
@@ -533,17 +625,19 @@ export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, optio
   const dir = path.join(common, facts.head.slice(0, 12));
   const plan = [...facts.out, ...planLines(config, facts, dir, recordPath)];
   if (urgent) plan.push(`back-fill      urgent release ${urgent.tag} (${URGENT_RULING}): green promotes it to this L4 record with no new tag and no push; red opens a fix ticket and changes nothing on prod`);
-  const base = { head: facts.head, tag: facts.chosen.tag, record: recordPath, gates: config.gates.map((gate) => gate.name), ...(urgent ? { backfill: urgent.tag } : {}) };
+  const appCheckRow = config.gates.find((gate) => isAppCheck(gate.command));
+  const base = { head: facts.head, tag: facts.chosen.tag, record: recordPath, gates: config.gates.map((gate) => gate.name),
+    reuses: appCheckRow ? config.gates.filter((gate) => gate !== appCheckRow && coveredBy(gate)).map((gate) => gate.name) : [], ...(urgent ? { backfill: urgent.tag } : {}) };
   if (urgent?.backfill?.state === 'promoted') return { ok: true, lines: [...plan, `back-fill already promoted ${urgent.tag} to ${urgent.backfill.l4}. Nothing to do.`], data: { ...base, red: [], executed: false, promoted: true } };
   if (facts.red.length > 0) return { ok: false, lines: [...plan, ...facts.red.map((item) => `RED: ${item}`), 'nothing was run.'], data: { ...base, red: facts.red, executed: false } };
   // The gate trusts the warm cache unless the owner asked for the full gate; a red or unreadable nightly verify locks it until a green one.
   const full = options.full === true;
   const lock = full ? null : (options.readLock ?? readVerifyLock)(ctx, config.defaultBranch);
-  plan.push(full ? 'cache          full gate (--full): the app-check row runs `app check --env prod --fresh` (every family recomputed, the records rewritten), the rows after it reuse them' : `cache          diff-only against the committed cache; ${lock?.line ?? ''}`);
+  plan.push(full ? 'cache          full gate (--full): the app-check row runs `app check --env prod --fresh` (every family recomputed, the records rewritten); the rows it covers reuse that verdict, as they do without --full' : `cache          diff-only against the committed cache; ${lock?.line ?? ''}`);
   if (lock !== null && lock.state !== 'open') return { ok: false, lines: [...plan, `RED: ${lock.line}`, 'nothing was run.'], data: { ...base, red: [lock.line], executed: false, locked: true } };
   if (options.execute !== true) return { ok: true, lines: [...plan, '', 'dry run: no gate was run, nothing written. preconditions OK.'], data: { ...base, red: [], executed: false } };
   const results = await runAll(ctx, config, { dir, common, head: facts.head, platform: options.platform ?? process.platform, credentialNames, full });
-  const report = results.map(summaryOf);
+  const report = results.map(reportLine);
   const failed = results.filter((result) => !result.pass);
   if (failed.length > 0 && urgent) {
     const { said, ticket } = backfillRed(ctx, { common, urgent, failed, openTicket: options.openTicket });

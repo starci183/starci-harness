@@ -232,7 +232,10 @@ and execute it once, so twelve public names retain eleven families. Predictions 
 `<projectKey>-local`; a scanner failure or red gate is an error, a missing token, server or permission the warning `CI_PARITY_SONAR_SKIPPED`); Codecov uploads keep their
 existing ownership and verdicts. `app check --staged` remains the separate pre-commit guard. Each family prints `<family>: <full|diff> (<reason>), checked n, reused n;
 findings n new, n known, n fixed`. Progress goes to stderr (`--quiet` silences it). A red nightly `cache-verify.yml` (`app check --fresh`) refuses the release gate
-(`HFS_CHECK_CACHE_VERIFY_LOCKED`); `app release gate --full` runs its `app-check` row as `--fresh`.
+(`HFS_CHECK_CACHE_VERIFY_LOCKED`); `app release gate --full` runs its `app-check` row as `--fresh`. The release gate judges once, in its `app-check` row: the rows that command covers (`audit`, `format-check`, `typecheck`,
+`build-be`, `build-fe`, `lint`, `db-lint`, `test`, `db-drift` under their default commands) run nothing and take its verdict for the same sha (the L4 record entry has `reused` and `reusedFrom`; `db-drift` runs when
+`app check` had no database, `CI_PARITY_DB_SKIPPED`), a red `app-check` row stops the gate, and what is left (the world layers, an app's own rows, Sonar on the main project, the record and the tag) runs, a heavy command
+through the governor the CLI hands in (`stackIo.heavy`, kind `test` or `build`) and never as a raw child. Contract: [contexts/project/check-cache.md](../../contexts/project/check-cache.md) "The operating procedure".
 
 Every run is under the branch profile of the branch it judges (`branches` of `.starcistacks/application-stacks.yaml`, the harness's
 contexts/project/lint.md PROJECT-LINT-2): on a profile branch such as `dev` a gate set to `report` runs and records but its findings are marked

@@ -4,7 +4,7 @@ declare module "@starci/hfs" {
     import type { HeavyNodeRun } from "@starci/hfs/runtime/scripts/api/node/run-node.mjs"
 
     /** One heavy command of a dev verb: the governor admits it, it runs without a shell, and its outcome comes back as the spawn seam's result. */
-    export type HeavyCommandRun = (request: { readonly kind: "install" | "build"; readonly label: string; readonly cwd: string; readonly argv: readonly string[]; readonly env: NodeJS.ProcessEnv }) => Promise<{ readonly status: number | null; readonly stdout: string; readonly stderr: string; readonly error?: Error }>
+    export type HeavyCommandRun = (request: { readonly kind: "install" | "build" | "test"; readonly label: string; readonly cwd: string; readonly argv: readonly string[]; readonly env: NodeJS.ProcessEnv }) => Promise<{ readonly status: number | null; readonly stdout: string; readonly stderr: string; readonly error?: Error }>
 
     /** What `main` reads, writes to and where it runs; the rest of its seams are test doubles the CLI never passes. */
     interface HfsIo {
