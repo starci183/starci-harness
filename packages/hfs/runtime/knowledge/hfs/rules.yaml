@@ -5606,7 +5606,7 @@ rules:
 
   - id: R328
     code: "BE_AUTH_PASSPORT_OWNER"
-    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth (lite) and of @starci/auth-oidc (full, which owns jose for its provider tokens) and are imported by no app file; @starci/auth/server is imported only by integrations/passport and @starci/auth-oidc/server only by integrations/keycloak, each package's one glue. bcrypt and every Supabase client are owned nowhere."
+    law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth (lite) and of @starci/auth-oidc (full, which owns jose for its provider tokens) and are imported by no app file; @starci/auth/server is imported only by integrations/passport and @starci/auth-oidc/server only by integrations/keycloak (sign-in) and integrations/github-oidc (CI attestation of GitHub Actions OIDC tokens), each package's glue; no app file imports jose, the verification of a GitHub token reuses the package's OidcDiscovery, OidcKeys and OidcTokenVerifier. bcrypt and every Supabase client are owned nowhere."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_AUTH_PASSPORT_OWNER"]

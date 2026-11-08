@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.3.2 - 2026-11-09
+
+- Changed (R328): `@starci/auth-oidc` and `@starci/auth-oidc/testing` have two owners, `integrations/keycloak` (sign-in) and `integrations/github-oidc` (CI attestation: a GitHub Actions OIDC token verified against the issuer `https://token.actions.githubusercontent.com` with the package's generic `OidcDiscovery`, `OidcKeys` and `OidcTokenVerifier`). `jose` stays owned by no app file. Owner-approved request Q-PJ-1 (starci-next). The `ruleParams.be.infraOwners` table and the law of R328 say so.
+- Added: slot `be.integrations.github-oidc` (`src/modules/integrations/github-oidc/`, optional, edition full only, the five files and rules of `be.integrations.keycloak`; full only because the package is the full edition's and lite installs `@starci/auth`). The slot manifest is 3.26.0 (a slot added).
+- Changed: the canon pins follow (`@starci/hfs` 6.3.2, `@starci/eslint-canon-be` 3.20.2); the docs `api-auth.md` BE-AUTH-2, `infra.md`, `full.md` and the package READMEs name both owners.
+- Specs: `src/auth-oidc-package.spec.mts` (both owners in the table, the new slot, the R328 law names both integrations).
+
 ## 6.3.1 - 2026-11-08
 
 - Changed: R350 states the card inset: 16 is the card's own inset alone, the value of `--grammar-inset-card` (Grammar 0.27.0), never a gap; the canon pin of `@starci/stylelint-canon` is 2.8.0, which accepts it there and nowhere else.

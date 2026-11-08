@@ -42,8 +42,10 @@ bearer) and maps the realm and client roles; a provider that cannot be asked is 
 outage signs nobody out. It also runs the authorization code flow (S256 PKCE, state, nonce, one code exchange, ID token
 verification, RP-initiated logout) for an app that opens its own opaque session. `jose` is its dependency alone, the app parses the
 registration (no default address or credential; the client secret through the config loader's `Secret`) and reaches the provider
-through its bounded `platform/http` client passed to the package as the `OidcHttp` port, and the package is imported nowhere but
-`integrations/keycloak`.
+through its bounded `platform/http` client passed to the package as the `OidcHttp` port. The package's server entry is reached only
+through `integrations/keycloak` (sign-in) and `integrations/github-oidc` (CI attestation: a GitHub Actions OIDC token, verified
+against the issuer `https://token.actions.githubusercontent.com` with the package's generic `OidcDiscovery`, `OidcKeys` and
+`OidcTokenVerifier`: pinned algorithm, issuer, audience, `exp`, `nbf`); `jose` is imported by no app file.
 
 Why: authentication is a capability with its own state and errors, and authorization kept in the service holds for
 every entry point.

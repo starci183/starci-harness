@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.25.0
+version: 3.26.0
 presenceValues:
   - required
   - optional
@@ -303,8 +303,10 @@ ruleParams:
         - integrations/passport
       "@starci/auth-oidc":
         - integrations/keycloak
+        - integrations/github-oidc
       "@starci/auth-oidc/testing":
         - integrations/keycloak
+        - integrations/github-oidc
       bcrypt: []
       cache-manager:
         - integrations/cache
@@ -3116,6 +3118,41 @@ slots:
       - BE_INTEGRATION_SPEC_MISSING
     coverage: required
     since: 3.17.0
+  - id: be.integrations.github-oidc
+    profiles:
+      - be
+    editions:
+      - full
+    editionWhy: full attests CI runs by the GitHub Actions OIDC token with @starci/auth-oidc, composed here (the package is full-only; lite installs @starci/auth and has no OIDC verifier).
+    path: src/modules/integrations/github-oidc/
+    presence: optional
+    tracked: tracked
+    tier: integrations
+    owner: true
+    requires:
+      - index.ts
+      - github-oidc.config.ts
+      - github-oidc.options.ts
+      - github-oidc.decorators.ts
+      - github-oidc.registration.ts
+    allows:
+      - index.ts
+      - github-oidc.config.ts
+      - github-oidc.options.ts
+      - github-oidc.decorators.ts
+      - github-oidc.registration.ts
+      - errors/
+      - messages/
+    tests: unit-beside
+    rules:
+      - BE_TIER_DIRECTION
+      - BE_ERROR_HOME
+      - BE_SECRET_DEFAULT
+      - BE_INFRA_OWNER
+      - BE_AUTH_PASSPORT_OWNER
+      - BE_INTEGRATION_SPEC_MISSING
+    coverage: required
+    since: 3.26.0
   - id: be.tests.world
     profiles:
       - be

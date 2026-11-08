@@ -121,6 +121,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app
         - `model/` — **be.integrations.model** opt-in · [be/ai](../code/be/ai.md) · R26, R90, R112
       - `object-storage/` — **be.integrations.object-storage** optional · R26, R38, R44, R90, R331
       - `keycloak/` — **be.integrations.keycloak** optional · R26, R38, R44, R90, R328, R112
+      - `github-oidc/` — **be.integrations.github-oidc** optional · R26, R38, R44, R90, R328, R112
   - `tests/`
     - `world/` — **be.tests.world** optional · [be/test](../code/be/test.md) · R47, R100
       - `kit/` — **be.tests.world.kit** optional · [be/test](../code/be/test.md)
