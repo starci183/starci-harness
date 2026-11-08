@@ -1,3 +1,4 @@
+import { isPlainRecord } from "@starci/common"
 import { readFile } from "node:fs/promises"
 import { dirname, extname, resolve } from "node:path"
 import { parse as parseYaml } from "yaml"
@@ -136,10 +137,6 @@ function configError(message: string): AiRouterError {
     return new AiRouterError({ errorClass: "config", message })
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
 function check(value: unknown, schema: Schema, where: string): void {
     if (schema === "string") {
         if (typeof value !== "string") throw configError(`${where} must be a string`)
@@ -177,7 +174,7 @@ function check(value: unknown, schema: Schema, where: string): void {
         })
         return
     }
-    if (!isRecord(value)) throw configError(`${where} must be a mapping`)
+    if (!isPlainRecord(value)) throw configError(`${where} must be a mapping`)
     if ("map" in schema) {
         for (const [name, item] of Object.entries(value)) check(item, schema.map, `${where}.${name}`)
         return
@@ -226,10 +223,10 @@ export function parseGatewayConfig(raw: unknown, base: string = process.cwd(), e
     const file = raw as Record<string, unknown> & { providers: Record<string, unknown>[]; gateway?: Record<string, unknown> }
     const providers = file.providers.map((provider, index) => {
         const where = `config.providers[${String(index)}]`
-        for (const name of Object.keys(isRecord(provider.headers) ? provider.headers : {})) {
+        for (const name of Object.keys(isPlainRecord(provider.headers) ? provider.headers : {})) {
             if (SECRET_HEADER.test(name)) throw configError(`${where}.headers.${name} would carry a secret in the config file; give keys under keys[] by reference`)
         }
-        const listed = Array.isArray(provider.keys) ? provider.keys.filter(isRecord) : []
+        const listed = Array.isArray(provider.keys) ? provider.keys.filter(isPlainRecord) : []
         const prefix = typeof provider.keysFromEnv === "string" ? provider.keysFromEnv : undefined
         if (prefix === undefined && listed.length === 0) throw configError(`${where} needs keys or keysFromEnv`)
         const fromEnv = prefix === undefined ? [] : keysFromEnv(prefix, String(provider.id), env)
@@ -269,7 +266,7 @@ export function parseGatewayConfig(raw: unknown, base: string = process.cwd(), e
             port,
             host: (gateway.host as string | undefined) ?? "127.0.0.1",
             maxBodyBytes,
-            adminToken: isRecord(gateway.adminToken) ? secretRef(gateway.adminToken, "config.gateway.adminToken", base) : null,
+            adminToken: isPlainRecord(gateway.adminToken) ? secretRef(gateway.adminToken, "config.gateway.adminToken", base) : null,
             keyStore: store.type === "sqlite" ? { type: "sqlite", path: store.path === ":memory:" ? ":memory:" : resolve(base, store.path ?? "") } : { type: "memory" },
         },
     }
@@ -277,7 +274,7 @@ export function parseGatewayConfig(raw: unknown, base: string = process.cwd(), e
 
 /** A store setting with its path resolved from the config file's folder; memory when absent. */
 function storeOf(value: unknown, where: string, base: string): StateStoreConfig {
-    if (!isRecord(value) || value.type !== "sqlite") return { type: "memory" }
+    if (!isPlainRecord(value) || value.type !== "sqlite") return { type: "memory" }
     if (typeof value.path !== "string") throw configError(`${where}.path is required for a sqlite store`)
     return { type: "sqlite", path: value.path === ":memory:" ? ":memory:" : resolve(base, value.path) }
 }

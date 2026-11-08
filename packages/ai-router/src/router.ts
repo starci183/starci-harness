@@ -1,3 +1,4 @@
+import { isPlainRecord } from "@starci/common"
 import { AttemptError } from "./attempt.ts"
 import { classifyFailure } from "./classify.ts"
 import { buildCatalog, resolvePolicy, resolveSettings, validateConfig } from "./config.ts"
@@ -180,10 +181,6 @@ function hasToken(chunk: ChatCompletionChunk): boolean {
     )
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
 function statusOf(error: AttemptError): { status?: number } {
     return error.status === undefined ? {} : { status: error.status }
 }
@@ -192,8 +189,8 @@ function statusOf(error: AttemptError): { status?: number } {
 function failureOf(lane: Lane, status: number | undefined, body: unknown, info: RateLimitInfo | null, fallback: string): AttemptError {
     const classified = classifyFailure(presetOf(lane.provider).kind, status, body)
     const root: unknown = Array.isArray(body) ? body[0] : body
-    const error = isRecord(root) && isRecord(root.error) ? root.error : root
-    const detail = isRecord(error) && typeof error.message === "string" ? error.message : typeof body === "string" && body !== "" ? body : fallback
+    const error = isPlainRecord(root) && isPlainRecord(root.error) ? root.error : root
+    const detail = isPlainRecord(error) && typeof error.message === "string" ? error.message : typeof body === "string" && body !== "" ? body : fallback
     const message = status === undefined ? detail : `HTTP ${String(status)}: ${detail}`
     return new AttemptError(classified.errorClass, message, {
         ...(status === undefined ? {} : { status }),
@@ -444,9 +441,9 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
                     } catch (error) {
                         throw scope.cause === null ? new AttemptError("transient", "the provider answered a body that is not JSON") : scope.classify(error)
                     }
-                    if (!isRecord(json) && !Array.isArray(json)) throw new AttemptError("transient", "the provider answered a body that is not an object")
+                    if (!isPlainRecord(json) && !Array.isArray(json)) throw new AttemptError("transient", "the provider answered a body that is not an object")
                     // An error inside a 200 body (OpenRouter does this) is classified like an error status.
-                    if (!isRecord(json) || (json.error !== undefined && json.error !== null)) throw failureOf(pick.lane, undefined, json, null, "the provider answered an error")
+                    if (!isPlainRecord(json) || (json.error !== undefined && json.error !== null)) throw failureOf(pick.lane, undefined, json, null, "the provider answered an error")
                     const parsed = parse(json, pick.lane)
                     const latencyMs = Date.now() - started
                     const routing = await succeed(call, pick, readRateLimit(response.headers, Date.now()), latencyMs, parsed.usage, { request: body, response: json })

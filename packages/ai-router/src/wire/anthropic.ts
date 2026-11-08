@@ -1,6 +1,6 @@
+import { isPlainRecord } from "@starci/common"
 import { AttemptError } from "../attempt.ts"
 import type { ProviderConfig } from "../types.ts"
-import { isRecord } from "./wire.ts"
 import type { Wire, WireEvent } from "./wire.ts"
 
 /**
@@ -30,12 +30,12 @@ function refuse(message: string): AttemptError {
 function textOf(content: unknown): string {
     if (typeof content === "string") return content
     if (!Array.isArray(content)) return ""
-    return content.map((part: unknown) => (isRecord(part) && typeof part.text === "string" ? part.text : "")).join("")
+    return content.map((part: unknown) => (isPlainRecord(part) && typeof part.text === "string" ? part.text : "")).join("")
 }
 
 /** An OpenAI `image_url` part as an Anthropic image block: a data URL becomes base64, anything else a URL source. */
 function imageBlock(part: Record<string, unknown>): Block {
-    const image = isRecord(part.image_url) ? part.image_url.url : part.image_url
+    const image = isPlainRecord(part.image_url) ? part.image_url.url : part.image_url
     if (typeof image !== "string") throw refuse("an image_url part has no url")
     const data = /^data:([^;,]+);base64,(.*)$/s.exec(image)
     if (data !== null) return { type: "image", source: { type: "base64", media_type: data[1], data: data[2] } }
@@ -49,7 +49,7 @@ function blocks(content: unknown): Block[] {
     if (!Array.isArray(content)) throw refuse("message content must be a string or a list of parts")
     const out: Block[] = []
     for (const part of content) {
-        if (!isRecord(part)) continue
+        if (!isPlainRecord(part)) continue
         if (part.type === "text") {
             if (typeof part.text === "string" && part.text !== "") out.push({ type: "text", text: part.text })
         } else if (part.type === "image_url") out.push(imageBlock(part))
@@ -59,7 +59,7 @@ function blocks(content: unknown): Block[] {
 }
 
 function toolUse(call: unknown): Block {
-    if (!isRecord(call) || !isRecord(call.function) || typeof call.id !== "string" || typeof call.function.name !== "string") throw refuse("a tool call needs an id and a function name")
+    if (!isPlainRecord(call) || !isPlainRecord(call.function) || typeof call.id !== "string" || typeof call.function.name !== "string") throw refuse("a tool call needs an id and a function name")
     const raw = call.function.arguments
     let input: unknown = {}
     if (typeof raw === "string" && raw.trim() !== "") {
@@ -69,7 +69,7 @@ function toolUse(call: unknown): Block {
             throw refuse(`the arguments of tool call ${call.id} are not JSON`)
         }
     }
-    if (!isRecord(input)) throw refuse(`the arguments of tool call ${call.id} must be a JSON object`)
+    if (!isPlainRecord(input)) throw refuse(`the arguments of tool call ${call.id} must be a JSON object`)
     return { type: "tool_use", id: call.id, name: call.function.name, input }
 }
 
@@ -86,7 +86,7 @@ function conversation(messages: unknown): { system: string[]; turns: AnthropicMe
         else turns.push({ role, content })
     }
     for (const message of messages) {
-        if (!isRecord(message)) throw refuse("every message must be an object")
+        if (!isPlainRecord(message)) throw refuse("every message must be an object")
         const role = message.role
         if (role === "system" || role === "developer") {
             const text = textOf(message.content)
@@ -106,12 +106,12 @@ function conversation(messages: unknown): { system: string[]; turns: AnthropicMe
 function tools(list: unknown): unknown[] | undefined {
     if (!Array.isArray(list) || list.length === 0) return undefined
     return list.map((tool: unknown) => {
-        if (!isRecord(tool) || tool.type !== "function" || !isRecord(tool.function)) return tool
+        if (!isPlainRecord(tool) || tool.type !== "function" || !isPlainRecord(tool.function)) return tool
         const fn = tool.function
         return {
             name: fn.name,
             ...(typeof fn.description === "string" ? { description: fn.description } : {}),
-            input_schema: isRecord(fn.parameters) ? fn.parameters : { type: "object", properties: {} },
+            input_schema: isPlainRecord(fn.parameters) ? fn.parameters : { type: "object", properties: {} },
             ...(fn.strict === true ? { strict: true } : {}),
         }
     })
@@ -122,7 +122,7 @@ function toolChoice(choice: unknown, parallel: unknown): Record<string, unknown>
     if (choice === "auto") out = { type: "auto" }
     else if (choice === "none") out = { type: "none" }
     else if (choice === "required") out = { type: "any" }
-    else if (isRecord(choice) && isRecord(choice.function) && typeof choice.function.name === "string") out = { type: "tool", name: choice.function.name }
+    else if (isPlainRecord(choice) && isPlainRecord(choice.function) && typeof choice.function.name === "string") out = { type: "tool", name: choice.function.name }
     if (parallel === false) out = { ...(out ?? { type: "auto" }), disable_parallel_tool_use: true }
     return out
 }
@@ -133,9 +133,9 @@ export function toAnthropicRequest(body: Record<string, unknown>, model: string,
     const { system, turns } = conversation(body.messages)
     const format = body.response_format
     let outputConfig: unknown = body.output_config
-    if (isRecord(format) && format.type === "json_object") system.push("Answer with one JSON object and nothing else.")
-    if (isRecord(format) && format.type === "json_schema" && isRecord(format.json_schema) && isRecord(format.json_schema.schema)) {
-        outputConfig = { ...(isRecord(outputConfig) ? outputConfig : {}), format: { type: "json_schema", schema: format.json_schema.schema } }
+    if (isPlainRecord(format) && format.type === "json_object") system.push("Answer with one JSON object and nothing else.")
+    if (isPlainRecord(format) && format.type === "json_schema" && isPlainRecord(format.json_schema) && isPlainRecord(format.json_schema.schema)) {
+        outputConfig = { ...(isPlainRecord(outputConfig) ? outputConfig : {}), format: { type: "json_schema", schema: format.json_schema.schema } }
     }
     const maxTokens = [body.max_completion_tokens, body.max_tokens].find((value) => typeof value === "number") ?? provider.defaultMaxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS
     const stop = typeof body.stop === "string" ? [body.stop] : Array.isArray(body.stop) ? body.stop : undefined
@@ -178,7 +178,7 @@ function count(value: unknown): number {
 
 /** Anthropic usage as OpenAI usage: the prompt counts the cache reads and writes, which Anthropic lists apart. */
 export function usageOf(usage: unknown, outputOverride?: number): Record<string, unknown> | undefined {
-    if (!isRecord(usage)) return undefined
+    if (!isPlainRecord(usage)) return undefined
     const cached = count(usage.cache_read_input_tokens)
     const prompt = count(usage.input_tokens) + count(usage.cache_creation_input_tokens) + cached
     const completion = outputOverride ?? count(usage.output_tokens)
@@ -187,7 +187,7 @@ export function usageOf(usage: unknown, outputOverride?: number): Record<string,
 
 /** An Anthropic message as an OpenAI `chat.completion`. */
 export function fromAnthropicMessage(json: Record<string, unknown>): Record<string, unknown> {
-    const content = Array.isArray(json.content) ? json.content.filter(isRecord) : []
+    const content = Array.isArray(json.content) ? json.content.filter(isPlainRecord) : []
     const text = content
         .filter((block) => block.type === "text" && typeof block.text === "string")
         .map((block) => String(block.text))
@@ -235,19 +235,19 @@ export const anthropicWire: Wire = {
                 yield { kind: "malformed" }
                 continue
             }
-            if (!isRecord(data)) continue
+            if (!isPlainRecord(data)) continue
             switch (data.type) {
                 case "message_start": {
-                    const message = isRecord(data.message) ? data.message : {}
+                    const message = isPlainRecord(data.message) ? data.message : {}
                     if (typeof message.id === "string") id = message.id
                     if (typeof message.model === "string") model = message.model
                     inputUsage = message.usage
-                    if (isRecord(message.usage)) output = count(message.usage.output_tokens)
+                    if (isPlainRecord(message.usage)) output = count(message.usage.output_tokens)
                     yield chunk({ role: "assistant", content: "" })
                     break
                 }
                 case "content_block_start": {
-                    const block = isRecord(data.content_block) ? data.content_block : {}
+                    const block = isPlainRecord(data.content_block) ? data.content_block : {}
                     const index = count(data.index)
                     if (block.type === "tool_use") {
                         const call = toolIndex.size
@@ -257,7 +257,7 @@ export const anthropicWire: Wire = {
                     break
                 }
                 case "content_block_delta": {
-                    const delta = isRecord(data.delta) ? data.delta : {}
+                    const delta = isPlainRecord(data.delta) ? data.delta : {}
                     if (delta.type === "text_delta" && typeof delta.text === "string") yield chunk({ content: delta.text })
                     else if (delta.type === "input_json_delta" && typeof delta.partial_json === "string") {
                         const call = toolIndex.get(count(data.index))
@@ -266,9 +266,9 @@ export const anthropicWire: Wire = {
                     break
                 }
                 case "message_delta": {
-                    const delta = isRecord(data.delta) ? data.delta : {}
+                    const delta = isPlainRecord(data.delta) ? data.delta : {}
                     // message_delta's usage is cumulative: the last one is the total.
-                    if (isRecord(data.usage) && typeof data.usage.output_tokens === "number") output = data.usage.output_tokens
+                    if (isPlainRecord(data.usage) && typeof data.usage.output_tokens === "number") output = data.usage.output_tokens
                     yield chunk({}, finishReason(delta.stop_reason))
                     break
                 }

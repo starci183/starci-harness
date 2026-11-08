@@ -1,3 +1,4 @@
+import { isPlainRecord } from "@starci/common"
 import type { FetchLike, ProviderKind, Usage } from "./types.ts"
 
 /** How a scripted stream behaves. */
@@ -164,10 +165,6 @@ export const PROVIDER_ERRORS = Object.freeze({
 interface Script {
     readonly match: FakeMatch
     readonly replies: FakeReply[]
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 function wait(ms: number, signal: AbortSignal | null | undefined): Promise<void> {
@@ -375,7 +372,7 @@ export function createFakeProvider(): FakeProvider {
             const url = new URL(input)
             const headers = headerRecord(init)
             const parsed: unknown = typeof init.body === "string" ? JSON.parse(init.body) : {}
-            const body = isRecord(parsed) ? parsed : {}
+            const body = isPlainRecord(parsed) ? parsed : {}
             const call: FakeCall = {
                 url: input,
                 path: url.pathname,
