@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.28.0 - 2026-11-09 - the owner laws: proximity, surface in surface, the Field rule, type roles, links and buttons, tabs
+## 0.29.0 - 2026-11-09 - the single-child card; zone text at sm
 
 - Changed: the single-child-card law (owner, 2026-11-09). A table, list or chart standing alone IS the surface, never a card
   around it. A standalone `DataTable` (`surface="card"`, the default) draws ONE frame: a 1px separator edge, the card
@@ -12,6 +12,8 @@
   `Navigation & Data/Lone table in section`.
 - Changed: a card or board zone speaks at sm 13: every `Text` in a header or footer zone (a selection bar's count, a
   filter caption, a toolbar note, a hint) takes the sm step, whatever size it names; a figures zone keeps its steps.
+
+## 0.28.0 - 2026-11-09 - the owner laws: proximity, surface in surface, the Field rule, type roles, links and buttons, tabs
 
 - Added: `MessageBubble actionsPlacement="floating" | "inline"` (default `floating`): `inline` draws the actions as a bare
   hover and focus-within toolbar in the message row, on the reading end of the bubble, with no border, fill or shadow.

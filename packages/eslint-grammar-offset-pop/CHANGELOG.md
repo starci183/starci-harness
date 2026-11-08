@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.29.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.29.0; requires `@starci/eslint-grammar-core` 0.29.0, which adds `single-child-card`; no rule of this package changed.
+
 ## 0.28.0 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.28.0; requires `@starci/eslint-grammar-core` 0.28.0, which adds `gap-proximity`, `field-label`, `surface-in-surface`, `page-breadcrumbs`, `button-arrow`, `table-cell-type`, `same-line-size`, `row-title-link`, `tabs-switch-zone` and `tabs-depth`; no rule of this package changed.

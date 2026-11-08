@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.29.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.29.0 (its standalone DataTable and zone text defaults changed); the messages of `surface-card-kind` and `surface-in-surface` that named a bare list card now point at `Section kind="list"`.
+- Added: `single-child-card` (`FE_SINGLE_CHILD_CARD`, SINGLE-CHILD-CARD): a Grammar `SurfaceCard` with no zones (`headers`, `footers`, `labelEnd`) whose only body child is a `DataTable`, a list (`ListBox`, `ItemList`, `DisclosureList`, `Timeline`, `Section kind="list"`) or a chart (`BarChart`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`), or that is `kind="table"` or `kind="list"`, is refused; the title is a `Section` head and one line under it is `Section caption`. `docs/single-child-card.md`.
+
 ## 0.28.0 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.28.0; peers `@starci/hfs ~6.5.0`. The new rules below are errors, with no escape.
@@ -13,7 +18,6 @@
 - Added: `gap-proximity` (`FE_GAP_PROXIMITY`, GAP-PROXIMITY): a Grammar layout element (Stack, Cluster, PaneSection, Section, Grid, Form, Fieldset) nested directly in another (through fragments, `cond && x`, `cond ? x : null` and `.map`) stands at least one gap step closer (identity 4 < inline 8 < row 12 < section 24 < region 32). A SurfaceCard, Drawer and Dialog reset it; a field stack inside a Form or Fieldset and `Grid kind="main-rail"` are exempt. `docs/gap-proximity.md`.
 - Added: `field-label` (`FE_FIELD_LABEL`, FIELD-LABEL): a `Text`, `Label`, `label` or `span` standing right before a Grammar form control that has no `label` prop is a hand-made label; use the control's `label` prop. `docs/field-label.md`.
 - Added: `surface-in-surface` (`FE_SURFACE_IN_SURFACE`, SURFACE-IN-SURFACE): a hand-made row list (Stack, ul, ol or div whose rows are divided by `Divider`) inside a SurfaceCard, Drawer, Dialog, PaneSection or main-rail rail is refused; use `Section kind="list"` or `SurfaceCard kind="list"`. `docs/surface-in-surface.md`.
-- Added: `single-child-card` (`FE_SINGLE_CHILD_CARD`, SINGLE-CHILD-CARD): a Grammar `SurfaceCard` with no zones (`headers`, `footers`, `labelEnd`) whose only body child is a `DataTable`, a list (`ListBox`, `ItemList`, `DisclosureList`, `Timeline`, `Section kind="list"`) or a chart (`BarChart`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`), or that is `kind="table"` or `kind="list"`, is refused; the title is a `Section` head and one line under it is `Section caption`. `docs/single-child-card.md`.
 - Added: `page-breadcrumbs` (`FE_PAGE_BREADCRUMBS`, PAGE-BREADCRUMBS): the `header` object of a console `Page` (page owner, layout owner or app block, not a boundary or `(auth)` page) states `breadcrumbs`, or `breadcrumbs: "root"` for the root page. `docs/page-breadcrumbs.md`.
 
 ## 0.27.2 - 2026-11-09
