@@ -75,7 +75,7 @@ export const SurfaceCardTile = ({ data, headingId, headingLevel, isLoading, isDi
             <div className="starci-core-tile-foot" data-contract="GAP-2" {...(data.figure === undefined ? {} : { "data-grammar-tile-figure": "true" })}>
                 {data.figure !== undefined
                     ? <span className="starci-core-tile-figure" data-grammar-tile-figure-value="true" data-contract="FONT-2">{isLoading ? <SkeletonPlaceholder>{data.figure}</SkeletonPlaceholder> : data.figure}</span>
-                    : data.badge === undefined ? <span /> : <TileBadge badge={data.badge} isLoading={isLoading} />}
+                    : data.badge === undefined ? null : <TileBadge badge={data.badge} isLoading={isLoading} />}
                 <span className="starci-core-tile-actions" data-contract="GAP-2">
                     {data.action === undefined ? null : <TileAction action={data.action} isLoading={isLoading} isDisabled={isDisabled} />}
                     {data.menu === undefined ? null : (
