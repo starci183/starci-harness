@@ -56,7 +56,16 @@ type SectionStatus = {
     readonly error?: ErrorData
 }
 
-export type SectionProps = SectionStatus & ((SectionHeadProps & (RegionSection | ListSection)) | HeadlessList | FiguresSection)
+/** The one line under the body. */
+type SectionCaption = {
+    /**
+     * One muted sm line under the section's body: what a lone table, list or chart shows, its source or its period. The table, list
+     * or chart is the surface and the section is its head and caption (the single-child-card law), never a card around it.
+     */
+    readonly caption?: string
+}
+
+export type SectionProps = SectionStatus & SectionCaption & ((SectionHeadProps & (RegionSection | ListSection)) | HeadlessList | FiguresSection)
 
 const listRows = (props: ListSection, isLoading: boolean) => {
     if (isLoading && props.items.length === 0) {
@@ -135,6 +144,7 @@ export const Section = (props: SectionProps) => {
                 isLoading={isLoading}
             />}
             {body}
+            {props.caption === undefined || failed ? null : <p className="starci-core-section-caption" data-contract="TONE-2 FONT-2">{props.caption}</p>}
         </section>
     )
 }

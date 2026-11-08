@@ -100,3 +100,13 @@ rules:
         assert: |-
           The page tabs (`Page header.tabs`) and one region set are the two layers; a third nested set is refused.
           Every tab is one size, so only the count of layers is judged.
+  - id: SINGLE-CHILD-CARD
+    title: A table, list or chart standing alone is the surface
+    governs: A SurfaceCard whose only content is a table, a list or a chart.
+    cases:
+      - id: case-1
+        when: A card has no zones (headers, footers, head actions) and holds one DataTable, list (ListBox, ItemList, DisclosureList, Timeline, Section kind="list") or chart (BarChart, ProportionBar, BubbleMap, FlowGraph, MermaidDiagram), or is kind="table" or kind="list"
+        assert: |-
+          The Grammar draws a standalone DataTable and every Section kind="list" as ONE frame (border, card radius), so the
+          card is a second frame. The title sits above as a Section head and one caption sits below (Section caption, muted sm).
+          A card groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions).

@@ -254,6 +254,15 @@
     }
 
     /* The section count (0.6.0): "(n)" in the title's line, muted and at the regular weight. */
+    /* The one caption under a section's body (a lone table, list or chart): muted sm, a row step below it like every Section child. */
+    .starci-core-section-caption {
+        margin: 0;
+        color: var(--muted);
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
+        overflow-wrap: anywhere;
+    }
+
     .starci-core-section-count {
         color: var(--muted);
         font-weight: var(--grammar-weight-regular);
@@ -1032,6 +1041,16 @@
         padding-inline: var(--grammar-card-padding-inline);
     }
 
+    /*
+     * A zone or bar speaks at sm (FONT-7, owner 2026-11-09): its labels and counts (a selection bar "20 / 72 selected", a filter
+     * caption, a toolbar note) and its hints (muted, the app's `tone`) are 13, whatever size a `Text` in it names; a figures zone keeps
+     * its figures' own steps.
+     */
+    .starci-core-surface-zone:not([data-grammar-zone="figures"]) .starci-core-text:not([data-size="figure"]) {
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
+    }
+
     .starci-core-surface-zone {
         box-sizing: border-box;
         min-width: 0;
@@ -1793,11 +1812,17 @@
      * container's edge. The rows keep the row rhythm on their block sides and the container inset (12) inline. It is automatic:
      * a list that IS the card (`SurfaceCard kind="list"`) touches the card edge instead. Lint `surface-in-surface` refuses
      * the hand-made form (blocks divided by `Divider`).
+     *
+     * THE SINGLE-CHILD-CARD LAW (owner, 2026-11-09) extends it to the page: a lone list on the page ground IS the surface, the same
+     * one frame on the surface ground, titled by its Section head with one `caption` under it, never wrapped in a SurfaceCard (lint
+     * `single-child-card`). So every Section list draws the frame, wherever it stands.
      */
-    :is(.starci-core-surface-content, .starci-core-overlay-body, .starci-core-pane-section, .starci-core-rail, .starci-core-rail-region, .starci-core-workspace-shell-rail) .starci-core-section-list {
+    .starci-core-section-list {
         --starci-core-row-inset: var(--grammar-row-gap) var(--grammar-inset);
         border: 1px solid var(--separator);
         border-radius: var(--starci-core-surface-radius);
+        background: var(--surface);
+        color: var(--surface-foreground);
         overflow: clip;
     }
 

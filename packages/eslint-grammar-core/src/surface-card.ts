@@ -157,7 +157,7 @@ export const surfaceCardKind: Rule.RuleModule = defineRule({
     docs: { description: "R355: a SurfaceCard of the body kind holds no hand list, no Divider and no SectionHeader or Heading." },
     schema: [],
     messages: {
-      list: "`<{{element}}>` is a hand-built list in a `body` card. Rows are `<SurfaceCard kind=\"list\" items={...} empty={...} />`, and the card draws every row the same way.",
+      list: "`<{{element}}>` is a hand-built list in a `body` card. Rows are `<Section kind=\"list\" items={...} empty={...} />` (with zones: `<SurfaceCard kind=\"list\" headers={...}>`), which draws every row the same way.",
       divider: "A `Divider` in a card is refused: the card draws its own seams. Bands divided by a line are the typed `headers` and `footers` zones: `<SurfaceCard headers={[{ kind: \"figures\", items }]} />`.",
       zone: "`<{{element}}>` stands in a `custom` zone of a card. Filter and search are the typed zones (`{ kind: \"filter\" | \"search\" | \"toolbar\" }`) and the card draws its own seams, so a `custom` zone holds no `Tabs`, `SearchField` or `Divider`.",
       title: "`<{{element}}>` stands as a second title inside a card. The card has a `label` (and `fact`, `labelEnd`, `note`); a sub-section of one subject is a typed header or footer zone.",
