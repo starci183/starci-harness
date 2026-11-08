@@ -25,8 +25,9 @@ A page, layout, overlay or block is split: the connected `X(props: XProps)` in `
 branch; blocks receive data. A layout receives the router's `children`. A connected block and its Base receive
 `children` only when they are the one-level root that owns the route's Page under
 [page-header.choose.head:page](../../ui/components/page-header.md): a mounted page or segment layout composes that
-sole connected root, the connected half passes `children` to its own Base, and that Base returns the selected
-Grammar's Page and draws the content in its body. A segment's Page carries its link tabs. Ordinary blocks receive
+sole connected root, the connected half nests its `children` between the tags of its own Base (`<XBase props={...}>{props.children}</XBase>`,
+the one child, the `children` of its parameter; the attribute `children={props.children}` is not written, since Sonar S6748
+and `react/no-children-prop` refuse it), and that Base returns the selected Grammar's Page and draws the content in its body. A segment's Page carries its link tabs. Ordinary blocks receive
 neither children nor rendered trees through named props or shape records. A frame receives children by its tier;
 a leaf receives only text as children. Every pure half calls no hook of the world. Only its sibling `index.tsx`
 imports `component.tsx`, which never re-exports `XBase`, so only `X` leaves the folder.

@@ -3,6 +3,7 @@
 ## 6.2.5 - 2026-11-08
 
 - Fixed: a whole `starci app check --env prod` crashed with `HFS_MANIFEST_INVALID: internal error: finding code CI_PARITY_DB_SKIPPED has no failure-code catalog entry loaded` on a host with no Docker and no `--db-url-env` database: the warning of the skipped database migration checks had no entry in `runtime/modules/kernel/failure-codes.yaml`. The entry is added beside `CI_PARITY_SONAR_SKIPPED`, and the spec `src/check-report-why.spec.mts` now fails when any `CI_PARITY_*` code the parity family exports or emits has no catalog entry.
+- Changed: `FE_CONNECTED_BLOCK_RENDER_PAIR` and `FE_WORLD_OWNER_RENDER_BOUNDARY` accept the forwarded children nested between the tags of a resolved pure component (`<XBase props={...}>{props.children}</XBase>`, or the destructured `{children}`) as a render path, beside the attribute form `children={props.children}`. The one child must be `children` of a parameter of the connected component; any other element or expression between the tags still fails. FE-FUNCTION-2 writes the nested form, which Sonar S6748 and `react/no-children-prop` accept. Specs: `src/fe-forwarded-children-render-pair.spec.mts`.
 
 ## 6.2.3 - 2026-11-08
 
