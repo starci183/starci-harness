@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.105 - 2026-11-09
+
+- Changed: the Grammar family 0.31.0, the release freeze of the nivo screens: Sparkline, BarChart `valueAxis` and `highlightLast`, Figure `trend`, the row chevron, MessageCard, Spotlight, AvatarButton `size="floating"`; the final type scale (14 for all UI text, 12 for small names, no 13; tabs 14 at 40 high, selected 500), pinned by `check:type`; SuggestionChips is withdrawn and one suggestion pattern stays, a Cluster of neutral sm Buttons (lint `suggestion-buttons` replaces `suggestion-chips`).
+
 ## 1.1.0-alpha.104 - 2026-11-09
 
 - Changed: the Grammar family 0.30.0 (0.29.0 never reached npm; this carries it): `SuggestionChips` (a pill toolbar of suggestions with arrow-key navigation; lint `suggestion-chips` refuses a row of neutral sm Buttons that send their own label), every Core Button size takes the pill radius; and from 0.29.0 a lone table, list or chart gets no card wrapper (lint `single-child-card`, `FE_SINGLE_CHILD_CARD`; DataTable draws one frame standalone, Section `kind="list"` draws the same frame, Section `caption`), and every card and board zone text is 13px.
