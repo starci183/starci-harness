@@ -42,6 +42,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
   - 5. Collection · `contexts/ui/composition.md#5-collection` · 1 KB
     - COLLECTION-1 The host surface and list scope pick its owner · `COLLECTION-1` · 1 KB — Rows of one kind first reuse the surface that owns their region.
     - COLLECTION-2 A card is one subject · `COLLECTION-2` · 1 KB — A card presents one entity or one summary of one subject.
+    - COLLECTION-4 A single-child card is no card · `COLLECTION-4` · 1 KB — A card (`SurfaceCard`) groups two or more heterogeneous parts (figures, a list, actions), or it carries zones (`headers`/`footers`: tabs, search, filters, paging) or head actions ...
     - COLLECTION-3 A group identity shows its members · `COLLECTION-3` · 1 KB — A group or conversation identity is one composite of its members' identities, distinguishable from one person's, with a count when members overflow; the composite carries the ...
   - 6. Layout · `contexts/ui/composition.md#6-layout` · 2 KB — Choice `grid.choose.content`: which track owner carries the content.
     - LAYOUT-1 Which regions exist · `LAYOUT-1` · 1 KB — One task with no support is one region.

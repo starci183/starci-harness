@@ -22,7 +22,7 @@ A Grammar `Stack`, or a `ul`, `ol` or `div`, whose rendered children include a G
 
 ```tsx
 <Drawer title="Runs"><Section kind="list" items={runs} /></Drawer>
-<SurfaceCard label="Runs" kind="list" items={runs} empty={null} />
+<SurfaceCard label="Runs" kind="list" headers={[{ kind: "filter", /* ... */ }]} items={runs} empty={null} />
 ```
 
 Rule ownership: [FE-RULE-OWNERSHIP](../../../contexts/code/fe/README.md#the-placement-test-fe-rule-ownership).

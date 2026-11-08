@@ -853,6 +853,26 @@
     .starci-core-data-table[data-grammar-table-surface="none"] .table__header { background: transparent; border-block-end: 1px solid var(--separator); }
     .starci-core-data-table[data-grammar-table-surface="none"] .table__row .table__cell { border-block-end: 1px solid var(--separator); background: transparent; }
 
+    /*
+     * THE SINGLE-CHILD-CARD LAW (owner, 2026-11-09). A table standing alone is the surface: ONE frame, a 1px separator edge, the card
+     * radius and the surface ground, clipped, with the heading row inside it (muted, a hairline under it) and a hairline between rows.
+     * Both surfaces draw on the vendor's `secondary` variant, so no grey band (the primary root's fill and padding) and no inner white
+     * rounded body stand between the edge and the rows. Lint `single-child-card` refuses a SurfaceCard around a lone table.
+     */
+    .starci-core-data-table[data-grammar-table-surface="card"] {
+        border: 1px solid var(--separator);
+        border-radius: var(--starci-core-surface-radius);
+        background: var(--surface);
+        color: var(--surface-foreground);
+        overflow: clip;
+    }
+
+    .starci-core-data-table[data-grammar-table-surface="card"] .table__column { background: transparent; border-radius: 0 !important; }
+    .starci-core-data-table[data-grammar-table-surface="card"] .table__column::after { display: none; }
+    .starci-core-data-table[data-grammar-table-surface="card"] .table__header { background: transparent; border-block-end: 1px solid var(--separator); }
+    .starci-core-data-table[data-grammar-table-surface="card"] .table__row .table__cell { border-block-end: 1px solid var(--separator); background: transparent; }
+    .starci-core-data-table[data-grammar-table-surface="card"] .table__body .table__row:last-child .table__cell { border-block-end: 0; }
+
     .starci-core-data-table-scroll {
         max-width: 100%;
         overflow-x: auto;

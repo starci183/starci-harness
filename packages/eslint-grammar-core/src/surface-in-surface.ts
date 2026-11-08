@@ -63,7 +63,7 @@ export const surfaceInSurface: Rule.RuleModule = defineRule({
     schema: [],
     messages: {
       handMade:
-        "This `{{element}}` is a hand-made row list inside {{host}}: its rows are divided by `Divider` elements, so it has no edge, no card radius and no clip. Use `<Section kind=\"list\">` for rows inside a surface (the Grammar draws them as a nested surface), or `<SurfaceCard kind=\"list\">` when the list is the card.",
+        "This `{{element}}` is a hand-made row list inside {{host}}: its rows are divided by `Divider` elements, so it has no edge, no card radius and no clip. Use `<Section kind=\"list\">` for rows inside a surface (the Grammar draws them as a nested surface), or a `Section kind=\"list\"` with its own frame when the list stands alone (a card around a lone list is refused by `single-child-card`).",
     },
   },
   create(context) {

@@ -627,6 +627,12 @@ slides one step toward the reading end on hover and focus and is mirrored right 
 Both glyphs stand one inline step (8) from the label. An arrow typed in a label or passed through `endContent` is refused
 (lint `button-arrow`). `EmptyNotice actionEndArrow` and `ItemAction.endArrow` give the Grammar-drawn actions the arrow.
 
+**The single-child-card law.** A card groups two or more different parts (figures, a list, actions) or carries zones
+(tabs, search, head actions). A table, list or chart standing alone is the surface: a `Section` titles it (`title`) and one
+muted line goes under it (`Section caption`). A standalone `DataTable` draws one frame (edge, card radius, its header row
+inside); a `Section kind="list"` draws the same frame. Lint `single-child-card` refuses the card around a lone one. Text
+in a card zone (a selection count, a filter caption, a hint) is sm 13.
+
 **The surface-in-surface law.** A list of rows inside a surface (a card body, a drawer or dialog, a pane band, a rail or
 aside) that is not that surface's own full-bleed body is a nested surface: a 1px separator edge, the card radius,
 clipped, so the row seams stay inside it. `Section kind="list"` does it automatically; a list that is the card is

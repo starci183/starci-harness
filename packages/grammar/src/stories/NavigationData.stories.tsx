@@ -213,6 +213,15 @@ const lessonColumns: ReadonlyArray<G.DataTableColumn> = [
 ];
 const lessonCell = (row: Lesson, columnId: string) => (columnId === 'title' ? row.title : columnId === 'level' ? row.level : row.minutes);
 
+/** The single-child-card law: a lone table is the surface (one frame), titled by its Section head with one caption under it. */
+export const LoneTableInSection: Story = {
+  render: () => (
+    <G.Section title="Lessons" caption="Minutes are the median of the last 30 days.">
+      <G.DataTable label="Lessons" columns={lessonColumns} rows={lessons} renderCell={lessonCell} emptyContent="No lessons yet." />
+    </G.Section>
+  ),
+};
+
 const SortableTable = () => {
   const [sort, setSort] = useState<G.DataTableSort>({ columnId: 'title', direction: 'ascending' });
   const sorted = [...lessons].sort((a, b) => {

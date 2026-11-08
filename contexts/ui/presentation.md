@@ -224,6 +224,8 @@ weights):
   | row secondary text, descriptions | sm 13 muted | `<Text size="sm" tone="muted">`, a card head `description` |
   | table header, meta, chips | xs 12 muted | the table's own header, meta lines, `Badge` |
   | every tab (page, region, filter) | sm 13 | `Tabs` ([tabs](components/tabs.md) Size) |
+  | zone and bar labels and their counts (a selection bar "20 / 72 selected", a filter caption, a toolbar note); a zone hint is also muted | sm 13 | any `Text` in a card or board header or footer zone: the zone sets sm, whatever size the `Text` names |
+  | the one caption under a lone table, list or chart | sm 13 muted | `Section caption` ([composition](composition.md) COLLECTION-4) |
 
 - **FONT-8 One line, one size.** Words that stand side by side on one line share one size: the size of the line's role (md
   for a primary line, sm for a secondary or meta line). A chip or `Badge` beside the words is below the ramp and exempt. Lint:
