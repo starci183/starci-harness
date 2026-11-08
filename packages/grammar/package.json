@@ -56,6 +56,7 @@
     "build": "node scripts/clean.mts && tsc -p tsconfig.build.json && node scripts/copy-css.mts && node scripts/build-stamp.mts",
     "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.stories.json && tsc -p tsconfig.scripts.json",
     "prove-theme": "node scripts/prove-theme.mts",
+    "audit:gap": "node scripts/audit-gap.mts",
     "check:loading": "node scripts/check-region-loading.mts",
     "check:client": "node scripts/check-client-boundary.mts",
     "check:tones": "node scripts/check-tone-tokens.mts",
