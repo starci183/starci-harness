@@ -24,11 +24,12 @@ test('the manifest gives @starci/mail to integrations/mail and nodemailer to nob
   assert.deepEqual(owners.nodemailer, []);
 });
 
-test('the package depends on nodemailer at exactly the version the stack pins, and the stack pins the package at its own version', () => {
+test('the package depends on nodemailer and on @starci/common at exactly the versions the stack pins, and the stack pins the package at its own version', () => {
   const manifestOf = readJson(path.join(REPOSITORY, 'packages', 'mail', 'package.json'));
   const stack = parseYaml(fs.readFileSync(path.join(REPOSITORY, 'contexts', 'stack', 'pins.yaml'), 'utf8')).pins;
   assert.equal(manifestOf.dependencies.nodemailer, stack.nodemailer.version);
-  assert.deepEqual(Object.keys(manifestOf.dependencies), ['nodemailer']);
+  assert.deepEqual(Object.keys(manifestOf.dependencies), ['@starci/common', 'nodemailer']);
+  assert.equal(manifestOf.dependencies['@starci/common'], stack['@starci/common'].version);
   assert.equal(stack['@starci/mail'].version, manifestOf.version);
 });
 
