@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0 - 2026-11-08
+
+- Changed: `ObjectStorageError` extends `DomainError` of `@starci/common` (now a dependency): `isDomainError` recognises it, `params` is `{}`; its name, codes, `kind`, `context`, `cause` and message (the code) are unchanged. `ObjectStorageErrorKind` is a subset of `ErrorKind`.
+
 ## 0.1.0 - 2026-11-03
 
 Object storage for a StarCi back end in one package, lifted from the three apps that each wrote it (the lite starter's presign client, the production lite app's storage integration, the older S3 modules) and generalised: no product names, every setting a typed option, no environment read.

@@ -1,3 +1,6 @@
+import { DomainError } from "@starci/common"
+import type { ErrorKind } from "@starci/common"
+
 /** The wire codes of object storage; the app maps each to its own error family (BE-ERROR) at the glue. */
 export const OBJECT_STORAGE_ERROR_CODES = {
     /** The bucket has no object at the requested key. */
@@ -22,7 +25,7 @@ export const OBJECT_STORAGE_ERROR_CODES = {
 export type ObjectStorageErrorCode = (typeof OBJECT_STORAGE_ERROR_CODES)[keyof typeof OBJECT_STORAGE_ERROR_CODES]
 
 /** How a code travels, in the vocabulary of the harness back end's `ErrorKind`. */
-export type ObjectStorageErrorKind = "invalid" | "not-found" | "unavailable"
+export type ObjectStorageErrorKind = Extract<ErrorKind, "invalid" | "not-found" | "unavailable">
 
 /** The kind each code travels as: a missing object is not-found, an unreachable store unavailable, everything else invalid. */
 export const OBJECT_STORAGE_ERROR_KINDS: Readonly<Record<ObjectStorageErrorCode, ObjectStorageErrorKind>> = {
@@ -36,17 +39,14 @@ export const OBJECT_STORAGE_ERROR_KINDS: Readonly<Record<ObjectStorageErrorCode,
     OBJECT_STORAGE_CONTENT_TYPE_NOT_ALLOWED: "invalid",
 }
 
-/** The one error class of object storage: a wire code, the kind it travels as, the context for a log and the cause. */
-export class ObjectStorageError extends Error {
-    readonly code: ObjectStorageErrorCode
+/** The one error class of object storage, a `DomainError` of `@starci/common`: a wire code, the kind it travels as, the context for a log and the cause. */
+export class ObjectStorageError extends DomainError<ObjectStorageErrorCode> {
     readonly kind: ObjectStorageErrorKind
     /** Non-secret context (the bucket, the key, the limit); never a credential. */
     readonly context: Readonly<Record<string, unknown>>
 
     constructor(code: ObjectStorageErrorCode, options: { readonly cause?: unknown; readonly context?: Readonly<Record<string, unknown>> } = {}) {
-        super(code, options.cause === undefined ? undefined : { cause: options.cause })
-        this.name = "ObjectStorageError"
-        this.code = code
+        super(options.cause === undefined ? { code } : { code, cause: options.cause })
         this.kind = OBJECT_STORAGE_ERROR_KINDS[code]
         this.context = options.context ?? {}
     }

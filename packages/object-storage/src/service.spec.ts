@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
+import { isDomainError } from "@starci/common"
 import { OBJECT_STORAGE_ERROR_CODES, OBJECT_STORAGE_ERROR_KINDS, ObjectStorageError } from "./errors.ts"
 import { admitsContentType, expiryOf, isValidBucketName, isValidObjectKey, prefixOf, publicAddressOf } from "./policy.ts"
 import { FAKE_STORAGE_ORIGIN, FakeStorageClock, createMemoryObjectStorage } from "./testing/index.ts"
@@ -198,5 +199,19 @@ describe("the in-memory browser", () => {
         assert.equal((await storage.head("media", "bin"))?.size, 3)
         storage.onModuleDestroy()
         assert.equal(storage.store.destroyed, true)
+    })
+})
+
+describe("ObjectStorageError", () => {
+    it("is a DomainError of @starci/common whose message is its code and whose params are empty", () => {
+        const cause = new Error("socket")
+        const error = new ObjectStorageError("OBJECT_STORAGE_UNAVAILABLE", { cause, context: { bucket: "b" } })
+        assert.ok(isDomainError(error))
+        assert.equal(error.name, "ObjectStorageError")
+        assert.equal(error.message, "OBJECT_STORAGE_UNAVAILABLE")
+        assert.equal(error.kind, "unavailable")
+        assert.equal(error.cause, cause)
+        assert.deepEqual(error.params, {})
+        assert.equal(new ObjectStorageError("OBJECT_STORAGE_NOT_FOUND").cause, undefined)
     })
 })
