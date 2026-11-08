@@ -12,6 +12,10 @@ The concepts every StarCi app and every `@starci` package share, in one package 
 | `isRecord`, `isPlainRecord` | guards that narrow `unknown` to a non-null object (`isPlainRecord` also refuses an array) | ten packages and the skeleton each wrote the same one-line guard, in two behaviours |
 | `eachInOrder` | runs an async step over a list one item at a time and stops at the first failure | the skeleton's sequential runner (no `await` in a loop); every app has it |
 
+## CommonJS and ESM
+
+The package loads both ways: `exports["."]` has `import` (`dist/esm`) and `require` (`dist/cjs`) conditions, each with its own types, so a CommonJS project on `node16` and an ESM project on `nodenext` both compile. The two entries are one module: `dist/esm/index.js` only re-exports `dist/cjs/index.js`, so `DomainError` is a single class (the usual dual-package hazard, two copies of a class and a failing `instanceof`, cannot arise). `src/dual.spec.ts` holds it: a CommonJS consumer and an ESM consumer compile and each recognises the other's error.
+
 A capability error is an empty subclass:
 
 ```ts

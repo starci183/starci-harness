@@ -3,15 +3,17 @@ export type ErrorKind =
     "invalid" | "unauthenticated" | "forbidden" | "not-found" | "conflict" | "rate-limited" | "unavailable" | "internal"
 
 /** Values that fill the named placeholders of an error text and travel next to the code; never prose. */
-export type ErrorParams = Readonly<Record<string, string | number>>
+export interface ErrorParams {
+    readonly [name: string]: string | number
+}
 
 /** What a coded error is built from: its code, optional text parameters and the failure that caused it. */
 export interface DomainErrorInit<C extends string> {
     /** The stable code, `<CAPABILITY>_<WHAT>`. */
     readonly code: C
-    /** Values for the placeholders of the display text. */
-    readonly params?: ErrorParams
-    /** The failure that caused this one, kept for the log. */
+    /** Values for the placeholders of the display text; `undefined` is the same as absent, as under `exactOptionalPropertyTypes` a caller may pass `params: maybe`. */
+    readonly params?: ErrorParams | undefined
+    /** The failure that caused this one, kept for the log; `undefined` is the same as absent. */
     readonly cause?: unknown
 }
 

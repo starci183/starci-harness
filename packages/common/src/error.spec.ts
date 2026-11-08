@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { DomainError, isDomainError } from "./index.ts"
-import type { DomainErrorInit, ErrorKind } from "./index.ts"
+import type { DomainErrorInit, ErrorKind, ErrorParams } from "./index.ts"
 
 type OrdersCode = "ORDERS_NOT_SHIPPABLE" | "ORDERS_MISSING"
 
@@ -59,4 +59,19 @@ test("isDomainError narrows any subclass and refuses everything else", () => {
 test("the kinds are the closed set a transport maps", () => {
     const kinds: readonly ErrorKind[] = ["invalid", "unauthenticated", "forbidden", "not-found", "conflict", "rate-limited", "unavailable", "internal"]
     assert.equal(new Set(kinds).size, 8)
+})
+
+test("params and cause may be passed as undefined under exactOptionalPropertyTypes, and mean absent", () => {
+    const maybeParams = ((): ErrorParams | undefined => undefined)()
+    const maybeCause = ((): unknown => undefined)()
+    const error = new OrdersError({ code: "ORDERS_MISSING", params: maybeParams, cause: maybeCause })
+    assert.deepEqual(error.params, {})
+    assert.equal(error.cause, undefined)
+    assert.equal(Object.hasOwn(error, "cause"), false)
+})
+
+test("ErrorParams is a named interface any string-or-number record satisfies", () => {
+    const text = (params: ErrorParams): string => Object.entries(params).map(([name, value]) => `${name}=${String(value)}`).join(",")
+    assert.equal(text({ id: "o-1", count: 2 }), "id=o-1,count=2")
+    assert.equal(text(new OrdersError({ code: "ORDERS_MISSING", params: { id: "o-1" } }).params), "id=o-1")
 })

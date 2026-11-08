@@ -20,5 +20,5 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["src", "eslint.config.ts"]
+  "include": ["src", "scripts", "eslint.config.ts"]
 }
