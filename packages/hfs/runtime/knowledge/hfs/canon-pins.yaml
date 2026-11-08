@@ -16,6 +16,13 @@ purpose: >-
 pins:
   # --- @starci packages. Every @starci package is a PUBLISHED npm package (install: registry): a product repository
   # installs the exact pinned version from the npm registry in the root and every workspace package.json, never `file:`.
+  '@starci/common':
+    version: 1.0.0
+    group: starci
+    install: registry
+    side: both
+    source: packages/common/package.json
+    why: 'the shared concepts of every app and package, with no runtime dependency: the coded error base DomainError (code, params, cause) with its guard and ErrorKind, Outcome with ok, refused and unwrapOutcome, the object guards isRecord and isPlainRecord and eachInOrder; the skeleton platform/errors and platform/primitives re-export them, every @starci package derives its error from DomainError, and the canon recognises a coded error by its declaration here (R38).'
   '@starci/heroicons':
     version: 0.3.6
     group: starci
@@ -24,7 +31,7 @@ pins:
     source: packages/heroicons/package.json
     why: 'StarCi custom Heroicons-compatible cuts; eslint-grammar-core (icon.mjs) admits @starci/heroicons/24/outline and /16/solid as icon sources, so an app that uses them gets this exact version.'
   '@starci/event-stream':
-    version: 0.1.1
+    version: 0.2.0
     group: starci
     install: registry
     side: fe
@@ -38,8 +45,8 @@ pins:
     source: packages/next-data/package.json
     why: 'the SWR data helpers of every front end (fe-stack data): pollingRestart, the viewer and tenant key helpers, viewerSwrConfig and the viewer cache; each operation hook stays in the app and the package holds no component.'
   '@starci/grammar':
-    version: 0.25.2
-    range: '~0.25.2'
+    version: 0.25.3
+    range: '~0.25.3'
     group: starci
     install: registry
     side: fe
@@ -53,32 +60,32 @@ pins:
     source: packages/next-i18n/package.json
     why: 'the next-intl stack of every front end (fe-stack i18n): defineI18n over the locales of the app, the locale-negotiating proxy, the locale-aware navigation, the request config that loads the catalogs of the app and the locale read of the [locale] layout; the app keeps its message catalogs and writes none of the stack.'
   '@starci/eslint-canon-be':
-    version: 3.19.7
-    range: '~3.19.7'
+    version: 3.20.0
+    range: '~3.20.0'
     group: starci
     install: registry
     side: be
     source: packages/eslint-canon-be/package.json
     why: 'the back-end ESLint canon: `loadHfs(import.meta.url)` of be/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the be side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; `starciBeConfig({ hfs: loadHfs(import.meta.url) })` is the typed factory and the BE-CONVENTION laws are its rules.'
   '@starci/eslint-canon-fe':
-    version: 9.16.7
-    range: '~9.16.7'
+    version: 9.16.8
+    range: '~9.16.8'
     group: starci
     install: registry
     side: fe
     source: packages/eslint-canon-fe/package.json
     why: 'the front-end ESLint canon: `loadHfs(import.meta.url)` of fe/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the fe side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; the front end has no tests (FE_NO_TESTS R97 in hfs) and no-vietnamese-in-source (R91) applies.'
   '@starci/eslint-grammar-core':
-    version: 0.25.2
-    range: '~0.25.2'
+    version: 0.25.3
+    range: '~0.25.3'
     group: starci
     install: registry
     side: fe
     source: packages/eslint-grammar-core/package.json
     why: 'the StarCi Grammar component API lint, versioned with @starci/grammar; front ends compose this family package with the universal FE canon.'
   '@starci/eslint-grammar-offset-pop':
-    version: 0.25.2
-    range: '~0.25.2'
+    version: 0.25.3
+    range: '~0.25.3'
     group: starci
     install: registry
     side: fe
@@ -104,63 +111,63 @@ pins:
     side: both
     source: packages/prettier-config/package.json
   '@starci/jest-preset':
-    version: 2.8.1
+    version: 2.9.0
     group: starci
     install: registry
     side: be
     source: packages/jest-preset/package.json
     why: 'the Jest preset of a back end: the world runner runs up to min(--maxWorkers, slots) world files at once, each in its own process bound to one data slot of the test world (STARCI_TEST_WORLD_SLOT), and reads test-world state protocol 2 only: it pairs exactly with @starci/test-world, and any other state file is JEST_PRESET_WORLD_PAIR_MISMATCH. The unit run writes the lcov Sonar and Codecov import (services only); the integration, e2e and contract projects run every spec file in a worker process of its own (world-runner.cjs), so a process-global framework registry (@nestjs/graphql type metadata) never leaks between e2e files; it ships the unit kit (mockEntityManager, fakeTransaction, fakeQueryBuilder, queueQueryBuilders, fakeIds, FakeClock, Outcome matchers) and the recordingOutbox claim side.'
   '@starci/test-world':
-    version: 1.3.5
+    version: 1.4.0
     group: starci
     install: registry
     side: be
     source: packages/test-world/package.json
     why: 'the shared e2e library of every back end (R47, R48), a devDependency of every back end: the warm stack behind toxiproxy, the network-edge fakes, the Nest boot, the typed useTestWorld handle, useSandbox for contract specs and the outage lock. A fake declared https (defineHttpFake) serves TLS with the run''s ephemeral in-memory fake CA and publishes its PEM as w.fake.<name>.ca for the app''s own client to trust; verification is never turned off. Kafka is real own infra (the one digest-pinned apache/kafka KRaft image, a broker listener and proxy per slot, slot-prefixed topics, consumer groups and client ids) and Postgres is schema-per-context (a schema and a login role per context in a shared database). Each worker has its own data slot (<ns>_w<k>) with its own databases, Keycloak realm, leased Redis DB, bucket/collection/topic prefixes, fakes host, toxiproxy proxies and outage lock; a run provisions min(jest workers, workers cap, default 2) slots, and state file protocol 2 pairs exactly with @starci/jest-preset (TEST_WORLD_PAIR_MISMATCH otherwise). A modules world boots real peer apps beside its modules, world.apps.<name>.during(fn) is the outage of a peer app, w.keycloak.clientSecret(client) answers the run-generated secret of a confidential realm client, world.keycloak.events/sessions read the realm user events and live sessions, world.infra.postgresql.connection(name) takes one database connection down while the others serve, and world.resolve and scope.resolve take any Nest token. Every path a declaration names (`stack`, seeds, the realm, Dockerfiles) resolves from the app root (the directory of hfs.json); the globalSetup registers the path aliases as TypeScript resolves them. Its CLI main is exported at ./cli for starci app stack.'
   '@starci/ai-router':
-    version: 0.5.0
+    version: 0.6.0
     group: starci
     install: registry
     side: be
     source: packages/ai-router/package.json
     why: 'the AI pool router of a back end: a NestJS module that routes OpenAI-compatible chat, stream and embeddings calls across keys, models and providers, with @starci/ai-router/testing for its specs; @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/nest-kit':
-    version: 0.2.1
+    version: 0.2.2
     group: starci
     install: registry
     side: be
     source: packages/nest-kit/package.json
     why: 'the module definition of every back-end module: defineConfigurableModule and defineCapabilityModule return the module base class, the options token and the options types with their types stated, so a <x>.module-definition.ts is one call that the lint on stated export types (R368) and the duplicate-code check (R21) both accept; @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/auth':
-    version: 0.4.0
+    version: 0.5.0
     group: starci
     install: registry
     side: both
     source: packages/auth/package.json
     why: 'the lite sign-in: the NestJS module (EdDSA access tokens with a multi-key JWKS, passwords, Google OAuth with state and PKCE, rotating refresh sessions, the sign-in budget, the refresh cookie), the front-end client and its React bindings, the door contracts and test doubles; the one importer of the identity libraries, reached by a back end only through integrations/passport; @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/auth-oidc':
-    version: 0.1.3
+    version: 0.2.0
     group: starci
     install: registry
     side: both
     source: packages/auth-oidc/package.json
     why: 'the full sign-in: the OIDC client of the identity provider (Keycloak) behind the PrincipalVerifier of @starci/auth, so guards do not change between editions: the NestJS module (issuer discovery, the JWKS with caching and rotation, algorithm-pinned token checks, role mapping, the authorization code flow with PKCE and nonce), the front-end client (PKCE redirect, one shared refresh, tokens in memory) and the fake issuer for tests; the one importer of jose in a full app, reached by a back end only through integrations/keycloak; @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/object-storage':
-    version: 0.1.0
+    version: 0.2.0
     group: starci
     install: registry
     side: be
     source: packages/object-storage/package.json
     why: 'object storage of a back end: a NestJS module and the ObjectStorage port over S3-compatible storage (presigned PUT and GET that sign the content type and size, head, get, put, list, delete, bucket setup, size and content-type limits, coded errors), with @starci/object-storage/testing for its specs; the only importer of @aws-sdk/client-s3 and @aws-sdk/s3-request-presigner (R331).'
   '@starci/mail':
-    version: 0.1.0
+    version: 0.2.0
     group: starci
     install: registry
     side: be
     source: packages/mail/package.json
     why: 'outgoing mail of a back end: a NestJS module and the Mailer port over SMTP (connect, greeting, socket and total timeouts, STARTTLS required by default, recipient, message and attachment checks, a shared SMTP target policy, coded errors, typed escaping render helpers returning { subject, text, html }), with @starci/mail/testing for its specs; the only importer of nodemailer (R90).'
   '@starci/hfs':
-    version: 6.2.9
+    version: 6.3.0
     group: starci
     install: registry
     side: both

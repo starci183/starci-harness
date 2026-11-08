@@ -1,4 +1,4 @@
-export type { DomainErrorInit, ErrorKind, ErrorParams } from "./errors.contracts"
+export type { ErrorKind } from "./errors.contracts"
 export { DomainError } from "./domain.error"
 export { ErrorsFilter } from "./errors.filter"
 export { ErrorsModule } from "./errors.module"

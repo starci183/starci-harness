@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.3.0 - 2026-11-08
+
+- Added: `@starci/common` (1.0.0) joins the canon pins (side both) and the starter dependencies of the full and lite back ends. The skeleton re-exports it: `platform/errors` (`domain.error.ts`, `errors.contracts.ts`) re-exports `DomainError`, `isDomainError`, `DomainErrorInit`, `ErrorKind` and `ErrorParams`, and `platform/primitives` re-exports `Outcome`, `ok`, `refused`, `unwrapOutcome`, `isRecord` and `eachInOrder`, so `@modules/platform/errors` and `@modules/platform/primitives` imports stay as they are.
+- Added: `starci app codemod common-base` rewrites an app's own `DomainError`, `ErrorKind`, `ErrorParams`, `DomainErrorInit`, `Outcome`, `isRecord` and `eachInOrder` files of `platform/errors` and `platform/primitives` into re-exports of `@starci/common`, adds the dependency, and lists a root package that still declares `starci.errorBase`. Spec: `src/common-base-codemod.spec.mts`.
+- Changed: a root package's `starci.errorBase` key is no declaration any more: `readPackageContract` stops the lint on it, and the package's errors extend `DomainError` of `@starci/common`.
+- Changed: the pins follow the packages that moved to the shared error base (`@starci/auth` 0.5.0, `auth-oidc` 0.2.0, `ai-router` 0.6.0, `mail` 0.2.0, `object-storage` 0.2.0, `event-stream` 0.2.0, `test-world` 1.4.0, `nest-kit` 0.2.2, `jest-preset` 2.9.0) and the canons (`eslint-canon-be` 3.20.0, `eslint-canon-fe` 9.16.8, the Grammar family 0.25.3).
+
 ## 6.2.9 - 2026-11-08
 
 - Changed: `starci app check` runs its steps one after another, one heavy step at a time, in the priority order of `CHECK_GRAPH` (the unit run, lint, the structure pass, tsc, wiring, then the rest as their needs allow), and each step sizes its children on the RAM and cores free when it starts. The dependency graph run in parallel (admission in priority order, CPU lanes held per step, the launch wait of `LAUNCH_WAIT_MS`) is gone from `cache/schedule.mts`: a unit run that started beside lint, hfs, tsc and wiring held one lane and ran `--maxWorkers=1` on 1932 specs with 38 GB free, and it now takes `clamp(floor((room - parent) / worker), 1, min(cores - 1, testWorkers))` workers from the room at its own start and holds no lane. The journal and the cache are unchanged (a fully reused step costs about no time).

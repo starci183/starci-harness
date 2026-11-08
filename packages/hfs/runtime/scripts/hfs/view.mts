@@ -41,11 +41,10 @@ export interface PackageDeclaredType {
 
 /**
  * What a root workspace package declares in the `starci` key of its own `package.json`, since it cannot import the app's
- * `platform/errors` or its `GraphQLResponse<T>`: `errorBase` is the class its errors derive from, `outcome` its one result union, each
- * `{ name, file }` with `file` relative to the package folder.
+ * `GraphQLResponse<T>`: `outcome` is its one result union, `{ name, file }` with `file` relative to the package folder. Its errors
+ * derive from `DomainError` of `@starci/common`, which needs no declaration.
  */
 export interface PackageContract {
-  readonly errorBase?: PackageDeclaredType;
   readonly outcome?: PackageDeclaredType;
 }
 
@@ -115,7 +114,7 @@ export const openHfsView = ({ runtimeRoot, repoRoot }: { runtimeRoot: string; re
  */
 export const declaredHfsView = ({ runtimeRoot, declaration, repoRoot, side }: { runtimeRoot: string; declaration: Parsed; repoRoot: string; side: string }): HfsView => hfsView(openHfs({ root: runtimeRoot, declaration, side }), repoRoot);
 
-const CONTRACT_KEYS = ['errorBase', 'outcome'] as const;
+const CONTRACT_KEYS = ['outcome'] as const;
 
 /**
  * The contract of the package at `packageDir` (app-root relative, `packages/<pkg>`), read from the `starci` key of its manifest. A
@@ -123,14 +122,15 @@ const CONTRACT_KEYS = ['errorBase', 'outcome'] as const;
  *
  * @param {string} repoRoot - The absolute app root.
  * @param {string} packageDir - The package folder, relative to the app root.
- * @returns {object} The declared error base and outcome union, each with its file relative to the app root.
+ * @returns {object} The declared outcome union, with its file relative to the app root.
  */
 export const readPackageContract = (repoRoot: string, packageDir: string): PackageContract => {
   const manifestPath = path.join(repoRoot, packageDir, 'package.json');
   const manifest = (fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : null) as { starci?: unknown } | null;
   const declared = manifest?.starci;
   if (declared === undefined) return {};
-  if (typeof declared !== 'object' || declared === null) throw new Error(`${packageDir}/package.json: "starci" is an object ({ errorBase, outcome })`);
+  if (typeof declared !== 'object' || declared === null) throw new Error(`${packageDir}/package.json: "starci" is an object ({ outcome })`);
+  if ('errorBase' in declared) throw new Error(`${packageDir}/package.json: "starci.errorBase" is gone: derive the package errors from DomainError of @starci/common and delete the key`);
   const contract: Record<string, PackageDeclaredType> = {};
   for (const key of CONTRACT_KEYS) {
     const entry: unknown = (declared as Record<string, unknown>)[key];
