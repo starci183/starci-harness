@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.30.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.30.0 (Button sm takes the pill radius; SuggestionChips).
+- Added: `suggestion-chips` (`FE_SUGGESTION_CHIPS`, SUGGESTION-CHIPS): two or more Grammar `Button`s that are siblings in a Cluster, Stack or div (or one in a `.map`), each `size="sm"` with no intent or a neutral/alternative one and an `onPress` that sends its own label, are refused; use `SuggestionChips`. `docs/suggestion-chips.md`.
+
 ## 0.29.0 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.29.0 (its standalone DataTable and zone text defaults changed); the messages of `surface-card-kind` and `surface-in-surface` that named a bare list card now point at `Section kind="list"`.

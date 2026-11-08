@@ -210,8 +210,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/card.md](../ui/components/card.md) · 8 KB — Contract: Card.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/chip.md](../ui/components/chip.md) · 4 KB — Contract: Chip.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+- [ui/components/chip.md](../ui/components/chip.md) · 6 KB — Contract: Chip.
+  - sections: Job · Choose · SuggestionChips · Variants · Size · States · Owner split · Rules
 - [ui/components/color-swatch.md](../ui/components/color-swatch.md) · 1 KB — Contract: ColorSwatch.
   - sections: Job · Choose · Anatomy and states · Owner split
 - [ui/components/data-views.md](../ui/components/data-views.md) · 2 KB — Contract: data-views.

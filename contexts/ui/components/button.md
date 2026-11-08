@@ -19,6 +19,7 @@ Choice `button.choose.role`: which element carries the action. The first row tha
 | text-action | the command reads as part of a sentence or a list of links | `TextAction` | judgement |
 | icon | not the view's commit, the glyph is universally understood, and it sits in a toolbar, a row's actions or chrome | `IconButton` with an accessible `label` and its tooltip | candidate: every `IconButton` has a non-empty name and a tooltip |
 | file | the command hands the product a file (an attachment in a composer, an upload in a toolbar or a row), as one action among others | `FileButton` with an accessible `label`, the size of an `IconButton`; a drop area is `FileDropzone` (`text-field.choose.role:file`) | judgement |
+| suggest | a row of neutral `sm` Buttons whose press sends their own label (quick replies, suggested questions) | `SuggestionChips` ([chip](chip.md) `chip.choose.role:suggest`), not a Button row | lint `starci-grammar/suggestion-chips` |
 | text | any other command or destination, and always the view's commit | `Button` with a visible text label | candidate: every accent-filled button has visible text |
 
 Choice `button.choose.intent`: which intent the spec's facts give (the facts are CTA-6). The first row that
@@ -71,6 +72,8 @@ None for the app: the grammar resolves the variant from `button.choose.intent` a
 context ([contract](../../grammars/contract.md#intent-x-placement---variant)).
 
 ## Size
+Every size takes the same pill radius (`--grammar-radius-pill`), `sm` included: a small Button is a pill like `md`, never a 12px rounded box. A row of neutral `sm` Buttons whose press sends their own label is `SuggestionChips`, and the lint `suggestion-chips` refuses it.
+
 The step is `scale.choose.step` ([../scale.md](../scale.md#the-ramp)); size is never emphasis, and `width="fill"`
 changes width only: the step stays the box's floor and a wrapped label alone grows it (`DNA-COMMON-CONTROL-FILL`).
 
@@ -88,7 +91,7 @@ disabled commit never stands in for an empty state (CTA-5).
   Nothing visual.
 
 ## Rules
-CTA-6..5, ACTION-1..3, ACCENT-6. Lint: `starci-grammar/button-arrow`, `starci-grammar/row-title-link`,
+CTA-6..5, ACTION-1..3, ACCENT-6. Lint: `starci-grammar/button-arrow`, `starci-grammar/suggestion-chips`, `starci-grammar/row-title-link`,
 `starci-fe/button-intent-required`,
 `single-commit-per-render`, `no-commit-in-collection-item`, `destructive-confirm-in-dialog`, `control-height`.
 Proof: TASTE-5, TASTE-11, UX-4, UX-10, A11Y-2.

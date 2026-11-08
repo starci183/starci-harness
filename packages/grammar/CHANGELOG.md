@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.30.0 - 2026-11-09 - SuggestionChips; one Button radius
+
+- Changed (values): one Button radius in Core: every size, sm included, is a pill (`--starci-core-pill-radius`, HeroUI's
+  full radius). Before, the vendor corner followed the app's `--radius`, so `Button size="sm"` drew about 12px while md read
+  as a pill. A row of neutral sm Buttons whose press sends their own label is `SuggestionChips` (lint `suggestion-chips`).
+- Added: `SuggestionChips` (composite, `@starci/grammar/common`): quick replies and suggested questions as pill chips (28px, new ramp step `--grammar-chip-height`; sm medium text; neutral fill with a separator edge; optional start `glyph` or `iconSource`; hover, pressed, focus-ring and disabled states), wrapping with 8 between them. Props `label` (required, the toolbar's accessible name), `isLabelHidden` (default true), `items` (`{ id, label, glyph?, iconSource?, isDisabled? }`), `onSelect(id)`, `isLoading` (pill geometry), `isDisabled`. A `role="toolbar"`: one tab stop, arrow keys move between chips. Stories `Navigation & Data/Suggestion chips`.
+
 ## 0.29.0 - 2026-11-09 - the single-child card; zone text at sm
 
 - Changed: the single-child-card law (owner, 2026-11-09). A table, list or chart standing alone IS the surface, never a card
