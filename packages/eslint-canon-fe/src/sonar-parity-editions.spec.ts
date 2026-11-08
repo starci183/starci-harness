@@ -29,7 +29,7 @@ for (const edition of ['lite', 'full']) {
       invalid: [{ code: 'const point = text.charCodeAt(0)', errors: [{ messageId: 'codePoint' }] }],
     });
     tester.run('prefer-string-raw', ruleOf('prefer-string-raw'), {
-      valid: ['const pattern = String.raw`plain pattern`'],
+      valid: ["const pattern = \"no escapes\""],
       invalid: [{ code: String.raw`const pattern = "a\\dir\\file"`, errors: [{ messageId: 'raw' }] }],
     });
     tester.run('no-nested-conditional', ruleOf('no-nested-conditional'), {

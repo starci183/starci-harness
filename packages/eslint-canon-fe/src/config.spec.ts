@@ -84,7 +84,7 @@ const [ignores, ...single] = config
 const source = blockOf(single, 0)
 
 test("the factory returns an ignore block, a typed source block and the Sonar way block, all from the HFS profile", () => {
-  assert.equal(config.length, 3)
+  assert.equal(config.length, 4)
   assert.deepEqual(filesOf(config[2]), filesOf(source), "the Sonar way block lints the same source")
   assert.ok(present(present(ignores, "the ignore block").ignores, "the ignores").includes("**/__generated__/**"))
   assert.deepEqual(filesOf(source), ["apps/*/src/**/*.{ts,tsx}", "packages/*/src/**/*.{ts,tsx}"])
@@ -236,7 +236,7 @@ test("a floating promise, an async handler passed where a void is expected and a
 const plain = starciPlainSourceConfig({ root: ROOT })
 
 test("the plain-source config is typed, fenced and at error: no rule is off, warn or overridable", () => {
-  assert.equal(plain.length, 3)
+  assert.equal(plain.length, 4)
   assert.deepEqual(filesOf(plain[1]), [...PLAIN_SOURCE_FILES])
   assert.equal(parserOptionsOf(plain[1])["tsconfigRootDir"], ROOT)
   assert.equal(parserOptionsOf(plain[1])["projectService"], true)
@@ -251,7 +251,7 @@ test("the plain-source config is typed, fenced and at error: no rule is off, war
 
 test("the typed-source config is the plain one without the canon's own rules: types, hooks and Sonar way, all at error", () => {
   const typed = starciTypedSourceConfig({ root: ROOT })
-  assert.equal(typed.length, 3)
+  assert.equal(typed.length, 4)
   assert.deepEqual(Object.keys(rulesOf(typed[1])).filter((name) => name.startsWith("starci-fe/")), [])
   for (const name of TYPE_AWARE) assert.equal(rulesOf(typed[1])[name], "error", name)
   assert.equal(rulesOf(typed[1])["react-hooks/exhaustive-deps"], "error")
@@ -391,11 +391,21 @@ test("the Sonar way block lints the source outside the specs with the pinned son
   assert.ok(present(sonar.ignores, "the ignores of the Sonar block").some((glob) => glob.includes(".spec.")), "a spec is outside the scan")
   assert.ok(pluginsOf(sonar)["sonarjs"]?.rules && pluginsOf(sonar)["unicorn"]?.rules)
   assert.deepEqual(sonarRules["sonarjs/cognitive-complexity"], ["error", 15])
-  for (const name of ["sonarjs/no-nested-template-literals", "no-duplicate-imports", "unicorn/prefer-set-has"]) assert.ok(name in sonarRules, `${name} is mapped`)
+  for (const name of ["sonarjs/no-nested-template-literals", "unicorn/prefer-set-has", "unicorn/no-thenable", "unicorn/no-useless-promise-resolve-reject", "prefer-promise-reject-errors", "@typescript-eslint/prefer-nullish-coalescing"]) assert.ok(name in sonarRules, `${name} is mapped`)
   for (const name of ["sonarjs/different-types-comparison", "sonarjs/function-return-type", "sonarjs/argument-type", "@typescript-eslint/prefer-optional-chain", "unicorn/prefer-top-level-await"]) {
     assert.equal(firstOf(sonarRules[name]), "error", `${name} is not left to the server`)
   }
   assert.deepEqual(sonarRules["unicorn/consistent-function-scoping"], ["error"], "arrow functions are judged too")
+  assert.ok(!("no-duplicate-imports" in sonarRules), "S3863 is the canon rule no-duplicate-import, which spares no separate type import")
+  assert.equal(rulesOf(source)["starci-fe/no-duplicate-import"], "error")
   assert.equal(rulesOf(source)["starci-fe/max-params"], "error")
   assert.equal(rulesOf(source)["starci-fe/media-has-caption"], "error")
+})
+
+test("the test-scoped Sonar way rules lint the specs and the product source block leaves them out", () => {
+  const tests = blockOf(config, 3)
+  const testRules = rulesOf(tests)
+  assert.ok(present(tests.ignores, "the ignores of the test block").some((glob) => glob === "!**/*.spec.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"), "the specs are re-included")
+  assert.ok(pluginsOf(tests)["sonarjs"]?.rules)
+  for (const name of ["sonarjs/prefer-specific-assertions", "sonarjs/no-duplicate-test-title", "sonarjs/composite-assertions"]) assert.equal(firstOf(testRules[name]), "error", name)
 })

@@ -15,7 +15,10 @@
  *     `errors/<capability>.error.ts` of its own owner, and a class that derives from the built-in `Error` some other way
  *     (`AbstractException`, a framework `HttpException` subclass, a bare `extends Error`) is refused.
  *   - `throw-domain-error` refuses a `throw` whose type does not derive from `DomainError` (`throw new Error`, the Nest
- *     `HttpException` family, a thrown string or object), and a domain owner that throws a platform error outward.
+ *     `HttpException` family, a thrown string or object), and a domain owner that throws a platform error outward. A rejection is
+ *     a throw: `Promise.reject(value)` and the `reject(value)` of a `new Promise((resolve, reject) => ...)` executor are judged
+ *     the same way, so the one form that also satisfies Sonar S7746 (`throw` in an async function) and S6671 (an Error rejects)
+ *     is `throw new <C>Error(...)`.
  *
  * The error base of a file is `DomainError` of `platform/errors`; a root workspace package, which cannot import an app owner, declares
  * its own base in its manifest (`starci.errorBase`: `{ name, file }`), and both rules read that class, in that file, as its `DomainError`:
@@ -305,17 +308,75 @@ const isCaughtValue = (context: Context, identifier: TSESTree.Identifier): boole
     return false
 }
 
-/** Every thrown value is a `DomainError` of the owner that throws it. */
+/** The call is `Promise.reject(...)`. */
+const isPromiseReject = (call: TSESTree.CallExpression): boolean => {
+    const callee = call.callee
+    return callee.type === "MemberExpression" && !callee.computed && callee.object.type === "Identifier" && callee.object.name === "Promise" && callee.property.type === "Identifier" && callee.property.name === "reject"
+}
+
+/** The call is the `reject` parameter (the second one) of the executor of `new Promise(...)`. */
+const isExecutorReject = (context: Context, call: TSESTree.CallExpression): boolean => {
+    if (call.callee.type !== "Identifier") return false
+    const name = call.callee.name
+    for (let scope: TSESLint.Scope.Scope | null = context.sourceCode.getScope(call); scope; scope = scope.upper) {
+        const variable = scope.set.get(name)
+        if (!variable) continue
+        return variable.defs.some((definition) => {
+            if (definition.type !== "Parameter") return false
+            const fn = definition.node
+            const owner = fn.parent
+            return (
+                (fn.type === "ArrowFunctionExpression" || fn.type === "FunctionExpression") &&
+                owner?.type === "NewExpression" &&
+                owner.callee.type === "Identifier" &&
+                owner.callee.name === "Promise" &&
+                owner.arguments[0] === fn &&
+                fn.params[1] === definition.name
+            )
+        })
+    }
+    return false
+}
+
+/** A framework signal a throw may carry beside a domain error: the class `name`, exported by the package `module`. */
+interface ControlFlowSignal {
+    readonly name: string
+    readonly module: string
+}
+
+/**
+ * The closed list of framework control-flow signals: BullMQ reads them with `instanceof` to fail a job without a retry, to delay it or to wait
+ * for its children, so they cannot derive from `DomainError`. BullMQ is owned by `platform/queue` (the infra-owner rule), which is where they are thrown.
+ * The rule option `controlFlowSignals` replaces this list; an app has no other way to extend it.
+ */
+export const CONTROL_FLOW_SIGNALS: readonly ControlFlowSignal[] = Object.freeze([
+    { name: "UnrecoverableError", module: "bullmq" },
+    { name: "DelayedError", module: "bullmq" },
+    { name: "WaitingChildrenError", module: "bullmq" },
+])
+
+/** The `controlFlowSignals` option of the rule, when the config gives one. */
+const readSignals = (option: unknown): readonly ControlFlowSignal[] | undefined => {
+    if (typeof option !== "object" || option === null || !("controlFlowSignals" in option) || !Array.isArray(option.controlFlowSignals)) return undefined
+    return option.controlFlowSignals.filter((entry): entry is ControlFlowSignal => typeof entry?.name === "string" && typeof entry?.module === "string")
+}
+
+/** Every thrown value is a `DomainError` of the owner that throws it, or one of the framework control-flow signals. */
 export const throwDomainError: RuleModule = {
     meta: {
         type: "problem",
-        docs: { description: "A thrown value's type derives from `DomainError`; a domain owner never throws a platform error outward." },
-        schema: [],
+        docs: { description: "A thrown value's type derives from `DomainError` (or is a listed framework control-flow signal); a domain owner never throws a platform error outward." },
+        schema: [{
+            type: "object",
+            properties: { controlFlowSignals: { type: "array", items: { type: "object", properties: { name: { type: "string" }, module: { type: "string" } }, required: ["name", "module"], additionalProperties: false } } },
+            additionalProperties: false,
+        }],
         messages: {
             bareError: "`throw new Error(...)` carries a sentence and no code, so nothing downstream can group or map it. Throw the `<C>Error` of the owning capability with one of its codes.",
             framework: "`throw new {{name}}(...)` carries an HTTP status and no identity. Throw the `<C>Error` of the owning capability; the one filter of `platform/errors` maps its code to a status.",
             notDomainError: "This `throw` does not throw a `DomainError`. Throw the `<C>Error` of the owning capability with one of its codes, or return an `Outcome` and let the transport unwrap it; a root workspace package throws the error base its `package.json` declares (`starci.errorBase`).",
             platformThrown: "A domain owner throws `{{name}}`, an error of a platform owner. Translate it into the error of this capability so platform details do not cross the boundary.",
+            rejectNotDomainError: "This rejection does not carry a `DomainError`. In an `async` function or a promise callback write `throw new <C>Error(...)` with one of the capability's codes (`return Promise.reject(value)` is Sonar S7746, and a value that is no `DomainError` breaks this rule); in a `new Promise` executor reject with the `<C>Error` of the owning capability.",
         },
     },
     create(context) {
@@ -323,33 +384,44 @@ export const throwDomainError: RuleModule = {
         const filename = normalizePath(context.filename)
         const { checker } = typed(context)
         const isHttpException = (type: ts.Type): boolean => derives(checker, type, (name, file: string) => name === "HttpException" && /\/node_modules\/@nestjs\/common\//.test(file))
-        return {
-            ThrowStatement(node) {
-                const thrown = node.argument
-                if (!thrown) return
-                if (thrown.type === "Identifier" && isCaughtValue(context, thrown)) return
-                const type = typeOf(context, thrown)
-                const parts = partsOf(type)
-                const foreign = parts.find((part) => !derivesFromErrorBase(context, part))
-                if (parts.length === 0 || foreign) {
-                    if (foreign && isHttpException(foreign)) {
-                        context.report({ node: thrown, messageId: "framework", data: { name: foreign.getSymbol()?.name ?? "HttpException" } })
-                    } else if (foreign && derivesFromBuiltinError(context, foreign)) {
-                        context.report({ node: thrown, messageId: "bareError" })
-                    } else {
-                        context.report({ node: thrown, messageId: "notDomainError" })
-                    }
+        const signals = readSignals(context.options[0]) ?? CONTROL_FLOW_SIGNALS
+        const isSignal = (type: ts.Type): boolean => derives(checker, type, (name, file: string) => signals.some((signal) => signal.name === name && file.includes(`/node_modules/${signal.module}/`)))
+        /** Judges the value a statement throws or a call rejects with; a rejection that is no domain error has its own message. */
+        const judge = (thrown: TSESTree.Node, rejection: boolean): void => {
+            if (thrown.type === "Identifier" && isCaughtValue(context, thrown)) return
+            const type = typeOf(context, thrown)
+            const parts = partsOf(type)
+            const foreign = parts.find((part) => !derivesFromErrorBase(context, part) && (rejection || !isSignal(part)))
+            if (parts.length === 0 || foreign) {
+                if (rejection) context.report({ node: thrown, messageId: "rejectNotDomainError" })
+                else if (foreign && isHttpException(foreign)) {
+                    context.report({ node: thrown, messageId: "framework", data: { name: foreign.getSymbol()?.name ?? "HttpException" } })
+                } else if (foreign && derivesFromBuiltinError(context, foreign)) {
+                    context.report({ node: thrown, messageId: "bareError" })
+                } else {
+                    context.report({ node: thrown, messageId: "notDomainError" })
+                }
+                return
+            }
+            if (hfs.tierOf(filename) !== "domain") return
+            for (const part of parts) {
+                const declarations = part.getSymbol()?.declarations ?? []
+                const platform = declarations.find((declaration) => hfs.tierOf(String(declaration.getSourceFile().fileName).replace(/\\/g, "/")) === "platform")
+                if (platform) {
+                    context.report({ node: thrown, messageId: "platformThrown", data: { name: part.getSymbol()?.name } })
                     return
                 }
-                if (hfs.tierOf(filename) !== "domain") return
-                for (const part of parts) {
-                    const declarations = part.getSymbol()?.declarations ?? []
-                    const platform = declarations.find((declaration) => hfs.tierOf(String(declaration.getSourceFile().fileName).replace(/\\/g, "/")) === "platform")
-                    if (platform) {
-                        context.report({ node: thrown, messageId: "platformThrown", data: { name: part.getSymbol()?.name } })
-                        return
-                    }
-                }
+            }
+        }
+        return {
+            ThrowStatement(node) {
+                if (node.argument) judge(node.argument, false)
+            },
+            CallExpression(node) {
+                if (!isPromiseReject(node) && !isExecutorReject(context, node)) return
+                const reason = node.arguments[0]
+                if (reason === undefined || reason.type === "SpreadElement") context.report({ node, messageId: "rejectNotDomainError" })
+                else judge(reason, true)
             },
         }
     },

@@ -42,6 +42,10 @@ declare module "*/runtime/scripts/lib/sonar-way.mjs" {
     export const SONAR_WAY_EXTRA: readonly SonarWayRow[]
     /** Sonar way rules with no ESLint form for a side's module format, by side then Sonar key. */
     export const SONAR_WAY_NOT_APPLICABLE: Readonly<Record<"be" | "fe", Readonly<Record<string, string>>>>
+    /** The sonarjs rules whose Sonar scope is Tests. */
+    export const SONAR_WAY_TEST_RULES: readonly string[]
+    /** The levels of the test-scoped Sonar way rules, for the specs of the product source. */
+    export function sonarWayTestRules(sonarjs: object): Record<string, TSESLint.SharedConfig.RuleEntry>
     /** The Sonar way rule levels for a side, and every `{ sonar, rule }` row they map. */
     export function sonarWayRules(
         sonarjs: object,

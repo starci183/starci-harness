@@ -18,7 +18,7 @@
  */
 import tsParser from "@typescript-eslint/parser"
 import { OUTSIDE_THE_SCAN_FILES } from "../../runtime/scripts/lib/sonar-syntax-rules.mjs"
-import { sonarWayRules } from "../../runtime/scripts/lib/sonar-way.mjs"
+import { sonarWayRules, sonarWayTestRules } from "../../runtime/scripts/lib/sonar-way.mjs"
 import type { TSESLint } from "@typescript-eslint/utils"
 import type { HfsView } from "./hfs.ts"
 import type { Recommended, RuleEntry, Rules } from "./rule.ts"
@@ -63,6 +63,9 @@ export const BORROWED: Recommended = Object.freeze<Recommended>({
     "@typescript-eslint/no-unsafe-argument": "error",
     "no-console": "error",
 })
+
+/** Everything but the specs, as the ignores of a block that judges the specs alone (a later negation re-includes, and the package config appends its own ignores after it). */
+export const EXCEPT_SPECS: readonly string[] = Object.freeze(["**/*", ...OUTSIDE_THE_SCAN_FILES.map((spec) => `!${spec}`)])
 
 const levelOf = (setting: RuleEntry): TSESLint.SharedConfig.RuleLevel => (Array.isArray(setting) ? setting[0] : setting)
 
@@ -109,6 +112,8 @@ export const buildBeConfig = async ({ hfs, plugin, recommended }: {
         },
         // Sonar way: what the scan raises is refused while the code is written; a spec is outside the scan, so outside this block.
         { files: [...SOURCE_FILES], ignores: [...OUTSIDE_THE_SCAN_FILES], plugins: { sonarjs, unicorn }, rules: sonarWayRules(sonarjs, "be").rules },
+        // Sonar way, test scope: the scan reads the specs with the rules of the tests (sonar.tests), so the specs of the source are judged by those and by no other.
+        { files: [...SOURCE_FILES], ignores: [...EXCEPT_SPECS], plugins: { sonarjs }, rules: sonarWayTestRules(sonarjs) },
     ]
 }
 

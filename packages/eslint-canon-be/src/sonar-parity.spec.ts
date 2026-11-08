@@ -91,11 +91,12 @@ test("S7780: a string that only escapes backslashes is written with String.raw",
 
 test("S3358: a conditional expression is not nested in another", () => {
   assert.doesNotThrow(() => { tester.run("no-nested-conditional", rule("no-nested-conditional"), {
-    valid: ["const a = x ? 1 : 2", "const b = x ? (y ? 1 : 2) === 1 : 0", "const c = f(x ? 1 : 2, y ? 3 : 4)"],
+    valid: ["const a = x ? 1 : 2", "const c = f(x ? 1 : 2, y ? 3 : 4)"],
     invalid: [
       { code: "const a = x ? 1 : y ? 2 : 3", errors: [{ messageId: "nested" }] },
       { code: "const b = x ? (y ? 1 : 2) : 3", errors: [{ messageId: "nested" }] },
       { code: "const c = (x ? 1 : 2) ? 3 : 4", errors: [{ messageId: "nested" }] },
+      { code: "const d = x ? (y ? 1 : 2) === 1 : 0", errors: [{ messageId: "nested" }] },
     ],
   }) })
 })
@@ -175,6 +176,62 @@ test("scanner line breaks: a raw U+2028, U+2029 or U+0085 anywhere in a file is 
       { code: "// note\u0085here\nexport const c = 1", errors: [{ messageId: "raw", data: { code: "U+0085", name: "NEXT LINE", escape: "\\u0085" } }] },
       { filename: "src/a.service.spec.ts", code: "/* a\u2028b */ export const d = 1", errors: [{ messageId: "raw" }] },
       { code: "const e = 'a\u2028b\u2028c'", errors: [{ messageId: "raw" }, { messageId: "raw" }] },
+    ],
+  }) })
+})
+
+test("the back end publishes the import and character rules and none of the React ones", () => {
+  for (const name of ["no-duplicate-import", "no-bidirectional-character"]) assert.ok(name in rules, `${name} is published`)
+  for (const name of ["no-useless-fragment", "no-nested-component", "no-children-prop", "use-state-destructured", "prefer-tag-over-role"]) assert.ok(!(name in rules), `${name} is a front-end rule`)
+})
+
+test("S3358: a conditional is nested in a branch, a test, an argument, a template or a cast; an array, object or function starts a new reading", () => {
+  assert.doesNotThrow(() => { tester.run("no-nested-conditional", rule("no-nested-conditional"), {
+    valid: ["const a = x ? () => (y ? 1 : 2) : 3", "const b = x ? { c: y ? 1 : 2 } : 3", "const c = x ? [y ? 1 : 2] : 3", { filename: "src/a.spec.ts", code: "const e = x ? 1 : y ? 2 : 3" }],
+    invalid: [
+      { code: "const a = x ? foo(y ? 1 : 2) : 3", errors: [{ messageId: "nested" }] },
+      { code: "const b = x ? `${y ? 1 : 2}` : 3", errors: [{ messageId: "nested" }] },
+      { code: "const c = (x ? p : q) ? 2 : 3", errors: [{ messageId: "nested" }] },
+      { code: "const d = x ? (y ? 1 : 2) as number : 3", errors: [{ messageId: "nested" }] },
+      { code: "const e = x ? 1 : y ? 2 : 3", errors: [{ messageId: "nested" }] },
+    ],
+  }) })
+})
+
+test("S7780: a String.raw template with no backslash is a plain template", () => {
+  assert.doesNotThrow(() => { tester.run("prefer-string-raw", rule("prefer-string-raw"), {
+    valid: ["const a = String.raw`a\\b`", "const b = `plain ${x}`"],
+    invalid: [{ code: "const a = String.raw`plain ${x} text`", output: "const a = `plain ${x} text`", errors: [{ messageId: "needless" }] }],
+  }) })
+})
+
+test("S3863: one module is imported once, and --fix merges a value import and a type import", () => {
+  assert.doesNotThrow(() => { tester.run("no-duplicate-import", rule("no-duplicate-import"), {
+    valid: [
+      "import { a } from 'x'\nimport { b } from 'y'",
+      "import { a, type B } from 'x'",
+      "import 'x'\nimport { a } from 'x'",
+      { filename: "src/a.spec.ts", code: "import { a } from 'x'\nimport type { B } from 'x'" },
+    ],
+    invalid: [
+      {
+        code: "import { Logger } from '@modules/platform/logging'\nimport type { LogFields } from '@modules/platform/logging'\nexport const a = [Logger] as LogFields[]\n",
+        output: "import { Logger, type LogFields } from '@modules/platform/logging'\nexport const a = [Logger] as LogFields[]\n",
+        errors: [{ messageId: "duplicate" }],
+      },
+      { code: "import type { A } from 'x'\nimport type { B } from 'x'\nexport type C = A | B", output: "import type { A, B } from 'x'\nexport type C = A | B", errors: [{ messageId: "duplicate" }] },
+      { code: "import * as x from 'x'\nimport { a } from 'x'\nexport const b = [x, a]", errors: [{ messageId: "duplicate" }] },
+    ],
+  }) })
+})
+
+test("text:S6389: a bidirectional control character is refused anywhere with its escape", () => {
+  const controls = [0x202a, 0x202e, 0x2066, 0x2069].map((code) => String.fromCodePoint(code))
+  assert.doesNotThrow(() => { tester.run("no-bidirectional-character", rule("no-bidirectional-character"), {
+    valid: ["const a = '\\u202E'", "// the escape \\u2066 written as text\nexport const b = 1"],
+    invalid: [
+      ...controls.map((control) => ({ code: `const a = 'x${control}y'`, errors: [{ messageId: "raw" }] })),
+      { filename: "src/a.service.spec.ts", code: `/* ${String.fromCodePoint(0x202e)} */ export const d = 1`, errors: [{ messageId: "raw" }] },
     ],
   }) })
 })
