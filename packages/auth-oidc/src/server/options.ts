@@ -6,18 +6,24 @@ import { systemClock } from "./primitives.ts"
 
 /** One outbound request of the provider protocol. */
 export interface OidcHttpRequest {
-    readonly method: "GET" | "POST"
+    readonly method: "GET" | "POST" | "PUT"
     readonly url: string
     /** The deadline of this request, in milliseconds. */
     readonly timeoutMs: number
     /** A form-encoded body (`application/x-www-form-urlencoded`) for a POST. */
     readonly form?: Readonly<Record<string, string>>
+    /** A JSON body (`application/json`) for a POST or a PUT; use either `body` or `form`, not both. The provider's admin API takes JSON. */
+    readonly body?: unknown
+    /** Extra request headers (`authorization` of the admin API). */
+    readonly headers?: Readonly<Record<string, string>>
 }
 
 /** The answer to an outbound request: the status and the parsed JSON body (`undefined` when the body is not JSON). */
 export interface OidcHttpResponse {
     readonly status: number
     readonly body: unknown
+    /** The `Location` header of the answer, when it has one and the port reads it (a created user's address); optional, nothing depends on it. */
+    readonly location?: string | undefined
 }
 
 /**
@@ -170,11 +176,18 @@ export const fetchHttp: OidcHttp = {
             method: request.method,
             redirect: "manual",
             signal: AbortSignal.timeout(request.timeoutMs),
-            headers: request.form === undefined ? { accept: "application/json" } : { accept: "application/json", "content-type": "application/x-www-form-urlencoded" },
+            headers: {
+                accept: "application/json",
+                ...(request.form === undefined ? {} : { "content-type": "application/x-www-form-urlencoded" }),
+                ...(request.body === undefined ? {} : { "content-type": "application/json" }),
+                ...request.headers,
+            },
             ...(request.form === undefined ? {} : { body: new URLSearchParams(request.form).toString() }),
+            ...(request.body === undefined ? {} : { body: JSON.stringify(request.body) }),
         })
         const body: unknown = await response.json().catch(() => undefined)
-        return { status: response.status, body }
+        const location = response.headers.get("location")
+        return { status: response.status, body, ...(location === null ? {} : { location }) }
     },
 }
 

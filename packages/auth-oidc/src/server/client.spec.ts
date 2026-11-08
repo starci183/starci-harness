@@ -58,6 +58,13 @@ describe("OidcClient authorization", () => {
         })
     })
 
+    it("sends the identity provider hint as kc_idp_hint", async () => {
+        const { client } = await setup()
+        const url = new URL(await client.authorization({ state: "s", nonce: "n", challenge: "c", idpHint: "google" }))
+        assert.equal(url.searchParams.get("kc_idp_hint"), "google")
+        assert.equal(new URL(await client.authorization({ state: "s", nonce: "n", challenge: "c" })).searchParams.has("kc_idp_hint"), false)
+    })
+
     it("sends the prompt and the scope the caller asks for", async () => {
         const { client } = await setup({ client: { clientId: "test-client", callbackUri: CALLBACK, postLogoutUri: "https://app.example.test/out", scope: "openid email" } })
         const url = new URL(await client.authorization({ state: "s", nonce: "n", challenge: "c", prompt: "none" }))
@@ -84,8 +91,36 @@ describe("OidcClient exchange", () => {
             email: "b@example.test",
             sessionId: "sid-7",
             expiresAt: new Date(world.clock.now().getTime() + 300_000),
+            refreshToken: identity.refreshToken,
+            refreshExpiresAt: new Date(world.clock.now().getTime() + 1_800_000),
         })
+        assert.ok(identity.refreshToken)
         assert.equal(JSON.stringify(identity).includes("eyJ"), false)
+    })
+
+    it("answers no refresh token when the provider issues none that can be dated", async () => {
+        const world = await setup()
+        const bare = createOidc(
+            world.issuer.options({
+                callbackUri: CALLBACK,
+                http: {
+                    request: async (request) => {
+                        const answer = await world.issuer.http.request(request)
+                        if (!request.url.endsWith("/token") || typeof answer.body !== "object" || answer.body === null) return answer
+                        return { status: answer.status, body: { ...answer.body, refresh_token: "opaque", refresh_expires_in: 0 } }
+                    },
+                },
+            }),
+        )
+        assert.ok(bare.client)
+        const verifier = randomReference()
+        const nonce = randomReference()
+        const address = await bare.client.authorization({ state: "s", nonce, challenge: pkceChallenge(verifier) })
+        const back = new URL(world.issuer.authorize(address, { sub: "user-3" }))
+        const identity = await bare.client.exchange({ code: back.searchParams.get("code") ?? "", nonce, verifier })
+        assert.equal(identity.subject, "user-3")
+        assert.equal("refreshToken" in identity, false)
+        assert.equal("refreshExpiresAt" in identity, false)
     })
 
     it("refuses a replayed code, a wrong PKCE verifier and a code of another transaction", async () => {

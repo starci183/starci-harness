@@ -1,11 +1,14 @@
 import { ConfigurableModuleBuilder, Module } from "@nestjs/common"
 import type { ConfigurableModuleHost, DynamicModule, Provider } from "@nestjs/common"
+import type { OidcAdminClient } from "./admin.ts"
+import type { OidcBroker } from "./broker.ts"
 import type { OidcClient } from "./client.ts"
 import type { OidcDiscovery } from "./discovery.ts"
+import type { OidcTokenClient } from "./grants.ts"
 import type { OidcKeys } from "./jwks.ts"
 import { createOidc } from "./oidc.ts"
 import type { Oidc } from "./oidc.ts"
-import { OIDC_CLIENT, OIDC_DISCOVERY, OIDC_KEYS, OIDC_PRINCIPAL_VERIFIER, OIDC_REGISTRATION, OIDC_TOKEN_VERIFIER } from "./oidc.tokens.ts"
+import { OIDC_ADMIN_CLIENT, OIDC_BROKER, OIDC_CLIENT, OIDC_DISCOVERY, OIDC_KEYS, OIDC_PRINCIPAL_VERIFIER, OIDC_REGISTRATION, OIDC_TOKEN_CLIENT, OIDC_TOKEN_VERIFIER } from "./oidc.tokens.ts"
 import type { OidcOptions } from "./options.ts"
 import type { OidcTokenVerifier } from "./tokens.ts"
 import type { OidcPrincipalVerifier } from "./verifier.ts"
@@ -45,10 +48,13 @@ const providers: Provider[] = [
     { provide: OIDC_KEYS, inject: [OIDC_REGISTRATION], useFactory: (oidc: Oidc): OidcKeys => oidc.keys },
     { provide: OIDC_TOKEN_VERIFIER, inject: [OIDC_REGISTRATION], useFactory: (oidc: Oidc): OidcTokenVerifier => oidc.tokens },
     { provide: OIDC_CLIENT, inject: [OIDC_REGISTRATION], useFactory: (oidc: Oidc): OidcClient | null => oidc.client },
+    { provide: OIDC_TOKEN_CLIENT, inject: [OIDC_REGISTRATION], useFactory: (oidc: Oidc): OidcTokenClient => oidc.tokenClient },
+    { provide: OIDC_ADMIN_CLIENT, inject: [OIDC_REGISTRATION], useFactory: (oidc: Oidc): OidcAdminClient => oidc.admin },
+    { provide: OIDC_BROKER, inject: [OIDC_REGISTRATION], useFactory: (oidc: Oidc): OidcBroker => oidc.broker },
     { provide: OIDC_PRINCIPAL_VERIFIER, inject: [OIDC_REGISTRATION], useFactory: (oidc: Oidc): OidcPrincipalVerifier => oidc.verifier },
 ]
 
-const EXPORTED = [OIDC_DISCOVERY, OIDC_KEYS, OIDC_TOKEN_VERIFIER, OIDC_CLIENT, OIDC_PRINCIPAL_VERIFIER]
+const EXPORTED = [OIDC_DISCOVERY, OIDC_KEYS, OIDC_TOKEN_VERIFIER, OIDC_CLIENT, OIDC_TOKEN_CLIENT, OIDC_ADMIN_CLIENT, OIDC_BROKER, OIDC_PRINCIPAL_VERIFIER]
 
 const withProviders = (base: DynamicModule): DynamicModule => ({
     ...base,
@@ -58,7 +64,8 @@ const withProviders = (base: DynamicModule): DynamicModule => ({
 
 /**
  * The OIDC client of a full app as one Nest capability: the discovery document, the provider's signing keys, the token verifier, the
- * `PrincipalVerifier` guards inject and, when the registration declares a client, the authorization code flow. Registered once at the api
+ * `PrincipalVerifier` guards inject and, when the registration declares a client, the authorization code flow, the server-side grants, the
+ * admin API of its service account and the `OidcBroker` facade that joins them. Registered once at the api
  * root; the app parses its settings (the package reads no environment) and passes them as typed options. A registration whose options do
  * not meet the contract fails the boot with a `ConfigurationInvalid` error.
  */

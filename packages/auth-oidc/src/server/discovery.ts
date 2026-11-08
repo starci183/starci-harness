@@ -12,6 +12,8 @@ export interface OidcMetadata {
     readonly jwksUri: string
     /** Absent when the provider offers no RP-initiated logout. */
     readonly endSessionEndpoint: string | undefined
+    /** The RFC 7009 token revocation endpoint; absent when the provider advertises none. */
+    readonly revocationEndpoint: string | undefined
 }
 
 const DISCOVERY_PATH = "/.well-known/openid-configuration"
@@ -40,6 +42,7 @@ export const readMetadata = (value: unknown, options: ResolvedOidcOptions): Oidc
         tokenEndpoint: endpointOf(value.token_endpoint, options),
         jwksUri: endpointOf(value.jwks_uri, options),
         endSessionEndpoint: value.end_session_endpoint === undefined ? undefined : endpointOf(value.end_session_endpoint, options),
+        revocationEndpoint: value.revocation_endpoint === undefined ? undefined : endpointOf(value.revocation_endpoint, options),
     }
 }
 

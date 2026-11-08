@@ -83,7 +83,31 @@ export interface FakeOidcIssuerOptions {
     readonly accessTtlSeconds?: number | undefined
     /** Serves the issuer over a real HTTP socket on 127.0.0.1, for a browser or a process that cannot use the in-memory port. */
     readonly listen?: boolean | undefined
+    /** How long a refresh token lives, in seconds (1800); answered as `refresh_expires_in`. */
+    readonly refreshTtlSeconds?: number | undefined
+    /** The aliases of the identity providers the realm brokers; an authorization address with another `kc_idp_hint` is refused. Any alias is admitted when absent. */
+    readonly identityProviders?: readonly string[] | undefined
+    /** Whether the discovery document advertises a `revocation_endpoint` (true); false makes a client fall back to the end-session endpoint. */
+    readonly revocation?: boolean | undefined
+    /** The shortest password the realm's policy admits (8); a shorter one is refused as Keycloak refuses it. */
+    readonly minPasswordLength?: number | undefined
 }
+
+/** An account of the fake realm, for the password grant and the admin API. */
+export interface FakeUser {
+    /** The account id: the `sub` of its tokens (generated when absent). */
+    readonly id?: string | undefined
+    readonly username: string
+    readonly email?: string | undefined
+    readonly name?: string | undefined
+    /** The realm roles its tokens carry. */
+    readonly roles?: readonly string[] | undefined
+    /** False makes the password grant refuse the account (true). */
+    readonly enabled?: boolean | undefined
+}
+
+/** A seeded account as the issuer holds it: its id is set. */
+export type FakeSeededUser = FakeUser & { readonly id: string }
 
 /** What a failure injection does to the next requests. */
 export type FakeFailure = { readonly status: number } | "network"
@@ -102,9 +126,25 @@ interface PendingCode {
     used: boolean
 }
 
+interface HeldUser {
+    readonly user: FakeSeededUser
+    password: string
+}
+
+/** What one request carries beyond its method and path, as the issuer's endpoints read it. */
+interface Inbound {
+    readonly method: string
+    readonly path: string
+    readonly query: URLSearchParams
+    readonly params: Readonly<Record<string, string>>
+    readonly body: unknown
+    readonly authorization: string | undefined
+}
+
 interface HandledResponse {
     readonly status: number
     readonly body: unknown
+    readonly location?: string
 }
 
 /** A recorded request, for a spec to count what the code under test asked. */
@@ -118,6 +158,7 @@ const KEYCLOAK_PATHS = {
     token: "/protocol/openid-connect/token",
     certs: "/protocol/openid-connect/certs",
     logout: "/protocol/openid-connect/logout",
+    revoke: "/protocol/openid-connect/revoke",
 } as const
 
 const DISCOVERY = "/.well-known/openid-configuration"
@@ -132,6 +173,8 @@ const generateKey = async (algorithm: "RS256" | "ES256"): Promise<RingKey> => {
     const kid = await calculateJwkThumbprint(exported)
     return { kid, privateKey: pair.privateKey, jwk: { ...exported, kid, alg: algorithm, use: "sig" } }
 }
+
+const isObject = (value: unknown): value is Readonly<Record<string, unknown>> => typeof value === "object" && value !== null && !Array.isArray(value)
 
 const form = (value: string): Readonly<Record<string, string>> => Object.fromEntries(new URLSearchParams(value))
 
@@ -158,6 +201,13 @@ export class FakeOidcIssuer {
     readonly #ring: RingKey[] = []
     readonly #codes = new Map<string, PendingCode>()
     readonly #refreshTokens = new Map<string, { readonly claims: FakeTokenClaims; used: boolean }>()
+    readonly #refreshTtl: number
+    readonly #providers: readonly string[] | undefined
+    readonly #revocation: boolean
+    readonly #minPassword: number
+    readonly #users = new Map<string, HeldUser>()
+    readonly #adminTokens = new Map<string, number>()
+    readonly #hints: string[] = []
     readonly #failures: FakeFailure[] = []
     readonly #requests: FakeRequest[] = []
     #issuer: string
@@ -173,6 +223,10 @@ export class FakeOidcIssuer {
         this.#secret = options.clientSecret
         this.#clock = options.clock ?? { now: () => new Date() }
         this.#accessTtl = options.accessTtlSeconds ?? 300
+        this.#refreshTtl = options.refreshTtlSeconds ?? 1800
+        this.#providers = options.identityProviders
+        this.#revocation = options.revocation ?? true
+        this.#minPassword = options.minPasswordLength ?? 8
         this.#issuer = issuer
     }
 
@@ -223,6 +277,34 @@ export class FakeOidcIssuer {
         return this.#requests
     }
 
+    /** The `kc_idp_hint` of every authorization address `authorize` has played, oldest first (an address without a hint adds nothing). */
+    get idpHints(): readonly string[] {
+        return this.#hints
+    }
+
+    /** Adds an account the password grant admits (by username or email) and the admin API lists. Answers it with its id. */
+    seedUser(user: FakeUser & { readonly password: string }): FakeSeededUser {
+        const { password, ...rest } = user
+        const seeded: FakeSeededUser = { ...rest, id: user.id ?? randomUUID() }
+        this.#users.set(seeded.id, { user: seeded, password })
+        return seeded
+    }
+
+    /** The account with this id, username or email (case-insensitive), as the issuer holds it now; undefined when there is none. */
+    findUser(identifier: string): FakeSeededUser | undefined {
+        return this.#lookup(identifier)?.user
+    }
+
+    /** True when the account's current password is this one. */
+    passwordMatches(identifier: string, password: string): boolean {
+        return this.#lookup(identifier)?.password === password
+    }
+
+    /** How many refresh tokens the issuer holds that can still be used. */
+    get liveRefreshTokens(): number {
+        return [...this.#refreshTokens.values()].filter((held) => !held.used).length
+    }
+
     /** How many requests asked this path (`/protocol/openid-connect/certs`, `/.well-known/openid-configuration`). */
     count(path: string): number {
         return this.#requests.filter((request) => request.path === path).length
@@ -260,6 +342,7 @@ export class FakeOidcIssuer {
             token_endpoint: `${base}/token`,
             jwks_uri: `${base}/certs`,
             end_session_endpoint: `${base}/logout`,
+            ...(this.#revocation ? { revocation_endpoint: `${base}/revoke` } : {}),
             id_token_signing_alg_values_supported: [this.#algorithm],
             response_types_supported: ["code"],
             code_challenge_methods_supported: ["S256"],
@@ -304,6 +387,11 @@ export class FakeOidcIssuer {
         const state = query.get("state")
         if (redirectUri === null || state === null || query.get("client_id") !== this.clientId || query.get("code_challenge_method") !== "S256") {
             throw new Error("fake OIDC issuer: the authorization request is not a registered S256 code flow")
+        }
+        const hint = query.get("kc_idp_hint")
+        if (hint !== null) {
+            if (this.#providers !== undefined && !this.#providers.includes(hint)) throw new Error("fake OIDC issuer: the realm brokers no identity provider with this alias")
+            this.#hints.push(hint)
         }
         const code = randomUUID()
         this.#codes.set(code, { claims, nonce: query.get("nonce") ?? "", challenge: query.get("code_challenge") ?? "", redirectUri, used: false })
@@ -391,21 +479,94 @@ export class FakeOidcIssuer {
         const failure = this.#failures.shift()
         if (failure === "network") throw new Error("fake OIDC issuer: connection reset")
         if (failure !== undefined) return { status: failure.status, body: { error: "server_error" } }
-        return this.#handle(request.method, path, request.form ?? {})
+        return this.#handle({ method: request.method, path, query: url.searchParams, params: request.form ?? {}, body: request.body, authorization: request.headers?.authorization })
     }
 
-    async #handle(method: string, path: string, params: Readonly<Record<string, string>>): Promise<HandledResponse> {
+    async #handle(inbound: Inbound): Promise<HandledResponse> {
+        const { method, path, params } = inbound
         if (method === "GET" && path === DISCOVERY) return { status: 200, body: this.metadata() }
         if (method === "GET" && path === KEYCLOAK_PATHS.certs) return { status: 200, body: this.jwks() }
         if (method === "GET" && path === KEYCLOAK_PATHS.logout) return { status: 200, body: {} }
         if (method === "POST" && path === KEYCLOAK_PATHS.token) return this.#token(params)
+        if (method === "POST" && (path === KEYCLOAK_PATHS.revoke || path === KEYCLOAK_PATHS.logout)) return this.#revoke(params, path === KEYCLOAK_PATHS.logout)
+        if (path.startsWith(this.#adminBase())) return this.#admin(inbound)
         return { status: 404, body: { error: "not_found" } }
+    }
+
+    #adminBase(): string {
+        return `/admin/realms/${this.#realm}`
+    }
+
+    #lookup(identifier: string): HeldUser | undefined {
+        const wanted = identifier.toLowerCase()
+        return this.#users.get(identifier) ?? [...this.#users.values()].find(({ user }) => user.username.toLowerCase() === wanted || user.email?.toLowerCase() === wanted)
+    }
+
+    #claimsOf(user: FakeSeededUser): FakeTokenClaims {
+        return { sub: user.id, username: user.username, email: user.email, name: user.name, roles: user.roles }
+    }
+
+    #policy(password: unknown): HandledResponse | undefined {
+        if (typeof password === "string" && password.length >= this.#minPassword) return undefined
+        return { status: 400, body: { error: "invalid_password", error_description: `Invalid password: minimum length ${String(this.#minPassword)}.` } }
+    }
+
+    #revoke(params: Readonly<Record<string, string>>, endSession: boolean): HandledResponse {
+        if (params.client_id !== this.clientId || (this.#secret !== undefined && params.client_secret !== this.#secret)) return { status: 401, body: { error: "invalid_client" } }
+        const token = (endSession ? params.refresh_token : params.token) ?? ""
+        const known = this.#refreshTokens.delete(token)
+        // RFC 7009 answers 200 for a token it does not know; the end-session endpoint answers invalid_grant for one it cannot end.
+        if (!endSession) return { status: 200, body: {} }
+        return known ? { status: 204, body: undefined } : { status: 400, body: { error: "invalid_grant" } }
+    }
+
+    #admin(inbound: Inbound): HandledResponse {
+        const bearer = inbound.authorization?.startsWith("Bearer ") === true ? inbound.authorization.slice("Bearer ".length) : ""
+        const until = this.#adminTokens.get(bearer)
+        if (until === undefined || until <= this.#clock.now().getTime()) return { status: 401, body: { error: "HTTP 401 Unauthorized" } }
+        const rest = inbound.path.slice(this.#adminBase().length)
+        const body = isObject(inbound.body) ? inbound.body : {}
+        if (rest === "/users" && inbound.method === "POST") return this.#createUser(body)
+        if (rest === "/users" && inbound.method === "GET") return this.#listUsers(inbound.query)
+        const match = /^\/users\/([^/]+)\/(reset-password|logout)$/u.exec(rest)
+        if (match === null || (match[2] === "reset-password") !== (inbound.method === "PUT")) return { status: 404, body: { error: "not_found" } }
+        const held = this.#users.get(decodeURIComponent(match[1] ?? ""))
+        if (held === undefined) return { status: 404, body: { error: "User not found" } }
+        if (match[2] === "logout") {
+            for (const [token, refresh] of this.#refreshTokens) if ((refresh.claims.sub ?? "user-1") === held.user.id) this.#refreshTokens.delete(token)
+            return { status: 204, body: undefined }
+        }
+        const refused = this.#policy(body.value)
+        if (refused !== undefined) return refused
+        held.password = String(body.value)
+        return { status: 204, body: undefined }
+    }
+
+    #createUser(body: Readonly<Record<string, unknown>>): HandledResponse {
+        const credential = Array.isArray(body.credentials) ? (body.credentials[0] as unknown) : undefined
+        if (typeof body.username !== "string" || typeof body.email !== "string" || !isObject(credential)) return { status: 400, body: { error: "invalid_request" } }
+        if (this.#lookup(body.username) !== undefined || this.#lookup(body.email) !== undefined) return { status: 409, body: { errorMessage: "User exists with same username or email" } }
+        const refused = this.#policy(credential.value)
+        if (refused !== undefined) return refused
+        const user = this.seedUser({ username: body.username, email: body.email, password: String(credential.value) })
+        return { status: 201, body: undefined, location: `${new URL(this.#issuer).origin}${this.#adminBase()}/users/${user.id}` }
+    }
+
+    #listUsers(query: URLSearchParams): HandledResponse {
+        const email = query.get("email")
+        const username = query.get("username")
+        const found = [...this.#users.values()]
+            .map(({ user }) => user)
+            .filter((user) => (email === null || user.email?.toLowerCase() === email.toLowerCase()) && (username === null || user.username.toLowerCase() === username.toLowerCase()))
+        return { status: 200, body: found.map((user) => ({ id: user.id, username: user.username, email: user.email, enabled: user.enabled ?? true })) }
     }
 
     async #token(params: Readonly<Record<string, string>>): Promise<HandledResponse> {
         if (params.client_id !== this.clientId || (this.#secret !== undefined && params.client_secret !== this.#secret)) return { status: 401, body: { error: "invalid_client" } }
         if (params.grant_type === "authorization_code") return this.#exchangeCode(params)
         if (params.grant_type === "refresh_token") return this.#refresh(params.refresh_token)
+        if (params.grant_type === "password") return this.#password(params)
+        if (params.grant_type === "client_credentials") return this.#serviceAccount()
         return { status: 400, body: { error: "unsupported_grant_type" } }
     }
 
@@ -417,6 +578,21 @@ export class FakeOidcIssuer {
         }
         pending.used = true
         return { status: 200, body: await this.#grant(pending.claims, pending.nonce) }
+    }
+
+    async #password(params: Readonly<Record<string, string>>): Promise<HandledResponse> {
+        const held = this.#lookup(params.username ?? "")
+        if (held === undefined || params.password === undefined || held.password !== params.password) return { status: 401, body: { error: "invalid_grant", error_description: "Invalid user credentials" } }
+        if (held.user.enabled === false) return { status: 400, body: { error: "invalid_grant", error_description: "Account disabled" } }
+        return { status: 200, body: await this.#grant(this.#claimsOf(held.user), undefined) }
+    }
+
+    async #serviceAccount(): Promise<HandledResponse> {
+        if (this.#secret === undefined) return { status: 400, body: { error: "unauthorized_client" } }
+        const name = `service-account-${this.clientId}`
+        const token = await this.mintAccessToken({ sub: name, username: name })
+        this.#adminTokens.set(token, this.#clock.now().getTime() + this.#accessTtl * SECOND_MS)
+        return { status: 200, body: { token_type: "Bearer", access_token: token, expires_in: this.#accessTtl } }
     }
 
     async #refresh(token: string | undefined): Promise<HandledResponse> {
@@ -435,6 +611,7 @@ export class FakeOidcIssuer {
             id_token: await this.mintIdToken(claims, nonce, this.#idOverrides),
             refresh_token: refreshToken,
             expires_in: this.#accessTtl,
+            refresh_expires_in: this.#refreshTtl,
         }
     }
 
@@ -451,20 +628,26 @@ export class FakeOidcIssuer {
     }
 
     async #respond(request: IncomingMessage, response: ServerResponse): Promise<void> {
-        const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type", "access-control-allow-methods": "GET, POST, OPTIONS" }
+        const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization", "access-control-allow-methods": "GET, POST, PUT, OPTIONS" }
         if (request.method === "OPTIONS") {
             response.writeHead(204, cors).end()
             return
         }
-        const text = request.method === "POST" ? await readBody(request) : ""
+        const method = request.method === "POST" || request.method === "PUT" ? request.method : "GET"
+        const text = method === "GET" ? "" : await readBody(request)
+        const json = request.headers["content-type"]?.startsWith("application/json") === true
+        const authorization = request.headers.authorization
         try {
             const answer = await this.#serve({
-                method: request.method === "POST" ? "POST" : "GET",
+                method,
                 url: `${this.#issuer.slice(0, this.#issuer.indexOf("/realms/"))}${request.url ?? "/"}`,
                 timeoutMs: 1000,
-                ...(text === "" ? {} : { form: form(text) }),
+                ...(authorization === undefined ? {} : { headers: { authorization } }),
+                ...(text === "" ? {} : json ? { body: JSON.parse(text) as unknown } : { form: form(text) }),
             })
-            response.writeHead(answer.status, { ...cors, "content-type": "application/json" }).end(JSON.stringify(answer.body))
+            response
+                .writeHead(answer.status, { ...cors, "content-type": "application/json", ...(answer.location === undefined ? {} : { location: answer.location }) })
+                .end(answer.body === undefined ? undefined : JSON.stringify(answer.body))
         } catch {
             response.destroy()
         }
