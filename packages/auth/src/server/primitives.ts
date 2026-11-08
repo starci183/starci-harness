@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto"
+import { isPlainRecord } from "@starci/common"
 import { PASSWORD_BOUNDS } from "../contracts/index.ts"
 
 /** A value read out of a secret holder (the app's `Secret` class has this shape). */
@@ -21,10 +22,6 @@ export interface SignedState {
     readonly p?: string
 }
 
-/** A record: a non-null object that is not an array. */
-export const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
-    typeof value === "object" && value !== null && !Array.isArray(value)
-
 const SAME_SITE_PATH = /^\/(?![/\\])/u
 const LINE_BREAK = /[\r\n]/u
 
@@ -35,7 +32,7 @@ export const sameSitePath = (value: unknown, fallback: string): string =>
 const encode = (buffer: Buffer): string => buffer.toString("base64url")
 
 const isSignedState = (value: unknown): value is SignedState =>
-    isRecord(value) &&
+    isPlainRecord(value) &&
     typeof value.w === "string" &&
     typeof value.u === "string" &&
     typeof value.r === "string" &&

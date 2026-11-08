@@ -4,7 +4,8 @@ import { AuthError } from "./errors.ts"
 import type { HttpExchange } from "./http.ts"
 import type { AuthOptions } from "./options.ts"
 import type { AuthSubject } from "./ports.ts"
-import { isRecord, sameSitePath } from "./primitives.ts"
+import { isPlainRecord } from "@starci/common"
+import { sameSitePath } from "./primitives.ts"
 
 /** The result of the Google callback leg. */
 export interface GoogleCompletion {
@@ -15,7 +16,7 @@ export interface GoogleCompletion {
 }
 
 const isSubject = (value: unknown): value is AuthSubject =>
-    isRecord(value) && typeof value.userId === "string" && typeof value.email === "string"
+    isPlainRecord(value) && typeof value.userId === "string" && typeof value.email === "string"
 
 type Settled = (error: unknown, user?: unknown, info?: unknown) => void
 type StrategyHandler = (req: HttpExchange["req"], res: HttpExchange["res"], next: (error?: unknown) => void) => void
@@ -75,7 +76,7 @@ export class AuthFlows {
                     reject(new AuthError(AUTH_ERROR_CODES.GoogleStateInvalid))
                     return
                 }
-                const state = isRecord(info) && isRecord(info.state) ? info.state.next : undefined
+                const state = isPlainRecord(info) && isPlainRecord(info.state) ? info.state.next : undefined
                 resolve({ subject: user, next: sameSitePath(state, "/") })
             }
             handlerOf(passport.authenticate("google", { session: false }, settled))(exchange.req, exchange.res, reject)
