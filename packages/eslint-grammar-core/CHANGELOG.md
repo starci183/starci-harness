@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.28.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.28.0; peers `@starci/hfs ~6.5.0`. The new rules below are errors, with no escape.
+
+- Added: `button-arrow` (`FE_BUTTON_ARROW`, BUTTON-ARROW): a `Button` that leads somewhere takes `endArrow`; an arrow typed in its label (`→ ← ➜ ➔ ⟶ › »`, `->`), an arrow or end-chevron icon passed as `endContent`, and `endArrow` with `startGlyph`/`startContent` are refused. `docs/button-arrow.md`.
+- Added: `table-cell-type` (`FE_TABLE_CELL_TYPE`, TABLE-CELL-TYPE): no `Text size="figure"`, `Heading`, `Label` or `h1`-`h6` in a DataTable `renderCell` (or column `editor`) or in the `title`/`description` of a ListRow data object. `docs/table-cell-type.md`.
+- Added: `same-line-size` (`FE_SAME_LINE_SIZE`, SAME-LINE-SIZE): the `Text` children of one `Cluster` (or of a `Text` holding runs) share one `size` (absent is `md`); Badge, StatusDot, Chip and TagGroup are exempt, a non-literal size is skipped. `docs/same-line-size.md`.
+- Added: `row-title-link` (`FE_ROW_TITLE_LINK`, ROW-TITLE-LINK): a `Link` as the title of a ListRow data object that has `onPress`, `onAction`, `href`, `onFollow` or `chevron`, or as the row-header cell of a DataTable whose rows open (`onRowAction` or row `href`), is refused: the row is the one pressable. `docs/row-title-link.md`.
+- Added: `tabs-switch-zone` (`FE_TABS_SWITCH_ZONE`, TABS-SWITCH-ZONE): a pill (`Tabs appearance="primary"`) written in JSX is refused; it is drawn only as the `switch` header zone of a card. `no-primary-tabs-misuse` keeps the item checks.
+- Added: `tabs-depth` (`FE_TABS_DEPTH`, TABS-DEPTH): at most two underline `Tabs` layers (the `Page header.tabs` and one region set, nested through the panel a `selectedKey` guards). Every tab is one size, so only the count is judged. `docs/tabs.md` says what each reads.
+- Added: `gap-proximity` (`FE_GAP_PROXIMITY`, GAP-PROXIMITY): a Grammar layout element (Stack, Cluster, PaneSection, Section, Grid, Form, Fieldset) nested directly in another (through fragments, `cond && x`, `cond ? x : null` and `.map`) stands at least one gap step closer (identity 4 < inline 8 < row 12 < section 24 < region 32). A SurfaceCard, Drawer and Dialog reset it; a field stack inside a Form or Fieldset and `Grid kind="main-rail"` are exempt. `docs/gap-proximity.md`.
+- Added: `field-label` (`FE_FIELD_LABEL`, FIELD-LABEL): a `Text`, `Label`, `label` or `span` standing right before a Grammar form control that has no `label` prop is a hand-made label; use the control's `label` prop. `docs/field-label.md`.
+- Added: `surface-in-surface` (`FE_SURFACE_IN_SURFACE`, SURFACE-IN-SURFACE): a hand-made row list (Stack, ul, ol or div whose rows are divided by `Divider`) inside a SurfaceCard, Drawer, Dialog, PaneSection or main-rail rail is refused; use `Section kind="list"` or `SurfaceCard kind="list"`. `docs/surface-in-surface.md`.
+- Added: `page-breadcrumbs` (`FE_PAGE_BREADCRUMBS`, PAGE-BREADCRUMBS): the `header` object of a console `Page` (page owner, layout owner or app block, not a boundary or `(auth)` page) states `breadcrumbs`, or `breadcrumbs: "root"` for the root page. `docs/page-breadcrumbs.md`.
+
 ## 0.27.2 - 2026-11-09
 
 - Changed: peers `@starci/hfs ~6.5.0`; no lint rule changed.

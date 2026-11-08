@@ -5,9 +5,15 @@ import { Link as HeroLink } from "@heroui/react"
 import type { CSSProperties } from "react"
 import type { ReactNode } from "react"
 import { Image, type ImageProps } from "../Image/index.js"
+import { ExternalGlyph } from "../Icon/glyphs.js"
 import type { NoChildren } from "../../tier.js"
 
 export type LinkKind = "internal" | "external"
+/**
+ * The type size of a text link. `inherit` (default): an inline link takes the size and leading of the Text, the head or the cell
+ * around it, so a link never changes the line it sits in. `sm` / `md` name a step for a link that stands alone (a directory).
+ */
+export type LinkSize = "inherit" | "sm" | "md"
 
 type TextLinkContent = {
     readonly children: string
@@ -32,8 +38,10 @@ export type LinkProps = (TextLinkContent | MediaLinkContent) & {
     readonly visited?: "distinct" | "uniform"
     /** App-owned assistive text appended to an external link, e.g. that it opens a new tab. */
     readonly externalHint?: string
-    /** App-owned glyph after an external label; decorative only. */
+    /** The glyph after an external label; decorative only. Default: Grammar's `external` glyph (a box with an arrow out). */
     readonly externalIcon?: ReactNode
+    /** Default `inherit`: the size of the text around the link. */
+    readonly size?: LinkSize
     readonly isDisabled?: boolean
     /** Runs alongside navigation. It cannot cancel the destination. */
     readonly onFollow?: () => void
@@ -57,6 +65,7 @@ const LinkInner = ({
     visited = "distinct",
     externalHint,
     externalIcon,
+    size = "inherit",
     isDisabled = false,
     onFollow,
 }: LinkProps) => {
@@ -80,6 +89,7 @@ const LinkInner = ({
             data-tier="leaf"
             data-grammar-link-kind={kind}
             data-grammar-link-content={media === undefined ? "text" : "media"}
+            data-grammar-link-size={size}
             {...(mediaSize === undefined ? {} : { "data-grammar-link-media-size": mediaSize.kind, style: mediaSize.style })}
             data-grammar-link-visited={visited}
             data-grammar-current={isCurrent ? "true" : "false"}
@@ -89,7 +99,7 @@ const LinkInner = ({
             {...(onFollow === undefined ? {} : { onPress: () => onFollow() })}
         >
             {media === undefined ? children : <Image {...media} />}
-            {external && externalIcon !== undefined ? <span aria-hidden="true" className="starci-core-link-external-icon" data-contract="A11Y-2" data-grammar-link-external-icon="true">{externalIcon}</span> : null}
+            {external && media === undefined ? <span aria-hidden="true" className="starci-core-link-external-icon" data-contract="A11Y-2" data-grammar-link-external-icon="true">{externalIcon ?? <ExternalGlyph aria-hidden focusable="false" />}</span> : null}
             {external && externalHint !== undefined ? <span className="starci-core-nav-visually-hidden">{` ${externalHint}`}</span> : null}
         </HeroLink>
     )

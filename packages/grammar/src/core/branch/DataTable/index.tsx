@@ -14,6 +14,11 @@ const FIT_COLUMNS = 4
 export type DataTableColumn<Row extends DataTableRow = DataTableRow> = {
     readonly id: string
     readonly label: string
+    /**
+     * The heading stays for assistive technology but is not drawn: an action or menu column whose meaning is plain from its
+     * cells (a row's main button, its ⋯ menu). Default false.
+     */
+    readonly isLabelHidden?: boolean
     /** The column that names each row for assistive technology. Defaults to the first column. */
     readonly isRowHeader?: boolean
     readonly allowsSorting?: boolean
@@ -100,7 +105,12 @@ export type DataTableProps<Row extends DataTableRow> = NoChildren & DataTableRow
     readonly stickyHeader?: boolean
     /** Bounds the body so the table owns vertical scroll, e.g. "24rem". */
     readonly maxBlockSize?: string
-    /** Runs when a row is activated (click, Enter), alongside a row `href` when both are given. */
+    /**
+     * Makes every row pressable (opens a drawer, a detail): called with the row's `id` on a click, or Enter / Space on the focused row
+     * (React Aria's row action, so the row is a focus stop with the table's focus ring). The pressable row takes the pointer cursor and
+     * the hover fill; buttons, links and editors inside a row keep their own press. Runs alongside a row `href` when both are given.
+     * The row's title stays plain text: do not render it as a Link.
+     */
     readonly onRowAction?: (id: string) => void
     /** Container inline size in px below which `low` priority columns collapse into the row. Default 640. */
     readonly collapseBelow?: number
@@ -342,7 +352,7 @@ export const DataTable = <Row extends DataTableRow>({
                             >
                                 {({ sortDirection }: { readonly sortDirection: "ascending" | "descending" | undefined }) => column.allowsSorting === true
                                     ? <HeroTable.SortableColumnHeader className="starci-core-data-table-sort" {...(sortDirection === undefined ? {} : { sortDirection })}>{column.label}</HeroTable.SortableColumnHeader>
-                                    : column.label}
+                                    : column.isLabelHidden === true ? <span className="starci-core-visually-hidden">{column.label}</span> : column.label}
                             </HeroTable.Column>
                         ))}
                     </HeroTable.Header>
@@ -378,6 +388,7 @@ export const DataTable = <Row extends DataTableRow>({
                                 data-grammar-table-row="true"
                                 {...(row.href === undefined ? {} : { href: row.href })}
                                 data-grammar-table-row-link={row.href === undefined ? "false" : "true"}
+                                data-grammar-table-row-pressable={row.href !== undefined || onRowAction !== undefined ? "true" : "false"}
                                 data-grammar-selected={selectionMode !== "none" && isRowSelected(row.id) ? "true" : "false"}
                             >
                                 {multiple ? (
@@ -395,6 +406,7 @@ export const DataTable = <Row extends DataTableRow>({
                                             data-grammar-cell-interaction={interaction === undefined ? "false" : "true"}
                                             data-grammar-row-id={row.id}
                                             data-grammar-column-id={column.id}
+                                            {...(column.id === rowHeaderId ? { "data-grammar-table-row-header": "true" } : {})}
                                             {...(interaction?.onAction === undefined ? {} : {
                                                 focusMode: "cell" as const,
                                                 onClick: (event: MouseEvent<HTMLTableCellElement>) => {

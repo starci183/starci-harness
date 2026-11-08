@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { AppShellDemo } from './AppShellDemo.js';
@@ -1030,5 +1030,37 @@ export const GridWeekSummary: Story = {
         <G.Grid kind="week-summary" label="Narrow capacity summary">{summaryDays()}</G.Grid>
       </div>
     </G.Page>
+  ),
+};
+
+const copyReply = (
+  <>
+    <G.Tooltip content="Copy" trigger={<G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} />} />
+    <G.Tooltip content="Reply" trigger={<G.IconButton intent="neutral" source={BellGlyph} label="Reply" onPress={noop} />} />
+  </>
+);
+
+/** `actionsPlacement="inline"`: the actions are a bare toolbar in the message row, on the reading end of the bubble; hover or tab into a message to show them. */
+export const MessageBubbleInlineActions: Story = {
+  render: () => (
+    <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '40rem' }}>
+      <G.MessageBubble author="Linh" meta="09:12" avatar={<G.Avatar name="Linh" size="sm" />} actionsPlacement="inline" actions={copyReply} body={'Can the order for table 4 move to 19:30?'} />
+      <G.MessageBubble side="outgoing" meta="09:13" actionsPlacement="inline" actions={copyReply} body={'Yes, moved. The kitchen has the new time.'} />
+      <G.MessageBubble author="Linh" meta="09:14" actionsPlacement="floating" actions={copyReply} body={'The floating default, for comparison.'} />
+    </div>
+  ),
+};
+
+/** `measure="wide"`: a bubble reaches 70% of its row (the default `standard` stops at 40rem or 85%). A long body shows the reach. */
+export const MessageBubbleMeasure: Story = {
+  render: () => (
+    <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '64rem' }}>
+      {(['standard', 'wide'] as const).map((measure) => (
+        <Fragment key={measure}>
+          <G.MessageBubble measure={measure} author="Linh" meta={measure} avatar={<G.Avatar name="Linh" size="sm" />} actionsPlacement="inline" actions={copyReply} body={'The booking for table 4 moves to 19:30 and the kitchen needs the new time before the first order goes in, so please confirm with the floor lead and tell the guests the table is ready from 19:25.'} />
+          <G.MessageBubble measure={measure} side="outgoing" meta={measure} body={'Confirmed with the floor lead, the guests are told. The kitchen has the 19:30 time and the first order goes in at 19:35 once everyone is seated at the table.'} />
+        </Fragment>
+      ))}
+    </div>
   ),
 };

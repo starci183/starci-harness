@@ -39,8 +39,8 @@ const TileBadge = ({ badge, isLoading }: { readonly badge: BadgeData; readonly i
 
 const TileAction = ({ action, isLoading, isDisabled }: { readonly action: ItemAction; readonly isLoading: boolean; readonly isDisabled: boolean }) => (
     action.href === undefined
-        ? <Button size="sm" intent={action.intent ?? "neutral"} isDisabled={isDisabled || action.isDisabled === true} isPending={action.isPending === true} isLoading={isLoading} onPress={action.press}>{action.label}</Button>
-        : <Button size="sm" intent={action.intent ?? "neutral"} isDisabled={isDisabled || action.isDisabled === true} isPending={action.isPending === true} isLoading={isLoading} href={action.href}>{action.label}</Button>
+        ? <Button size="sm" intent={action.intent ?? "neutral"} {...(action.endArrow === true ? { endArrow: true as const } : {})} isDisabled={isDisabled || action.isDisabled === true} isPending={action.isPending === true} isLoading={isLoading} onPress={action.press}>{action.label}</Button>
+        : <Button size="sm" intent={action.intent ?? "neutral"} {...(action.endArrow === true ? { endArrow: true as const } : {})} isDisabled={isDisabled || action.isDisabled === true} isPending={action.isPending === true} isLoading={isLoading} href={action.href}>{action.label}</Button>
 )
 
 /** The one tile face, shared by compact identities and media peers; the card shell owns its surface and busy region. */

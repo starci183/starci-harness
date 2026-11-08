@@ -80,3 +80,37 @@ export const HeadDrawerOpener: Story = {
         </div>
     ),
 }
+
+const roomMembers: ReadonlyArray<G.AvatarGroupItem> = [
+    { id: "mina", name: "Mina Nguyen" },
+    { id: "alex", name: "Alex Tran" },
+    { id: "kim", name: "Kim Le" },
+    { id: "robin", name: "Robin Park" },
+    { id: "sam", name: "Sam Lee" },
+]
+
+/** A group room's head: `mark` takes a round `AvatarGroup layout="grid"` (the size of one Avatar, so the head keeps its height); 2, 3, 4 and 5+ members. */
+export const GroupRoomHead: Story = {
+    render: () => (
+        <Matrix>
+            {[2, 3, 4, 5].map((count) => (
+                <State key={count} label={`${count} members`} direction="column">
+                    <G.PaneHeader
+                        title="Design team"
+                        description={`${count} members`}
+                        mark={<G.AvatarGroup label={`Design team, ${count} members`} layout="grid" items={roomMembers.slice(0, count)} overflowLabel={(hidden) => `${hidden} more members`} />}
+                        actions={actions}
+                    />
+                </State>
+            ))}
+            <State label="Loading (same box)" direction="column">
+                <G.PaneHeader
+                    title="Design team"
+                    description="5 members"
+                    mark={<G.AvatarGroup label="Design team, 5 members" layout="grid" items={roomMembers} overflowLabel={(hidden) => `${hidden} more members`} />}
+                    isLoading
+                />
+            </State>
+        </Matrix>
+    ),
+}

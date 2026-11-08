@@ -84,6 +84,12 @@ export type SecondaryTabsProps = TabsCommon & {
     readonly items: ReadonlyArray<TabItem>
     /** Page chrome owns whether the peer strip starts at the shared page inset. */
     readonly inset?: "page" | "none"
+    /**
+     * A command at the strip's end (a `Button size="sm"`, a menu trigger): it stands inside the strip frame after the tab list and the
+     * fold menu, vertically centred in the strip's height like a tab, so the strip's line (its own, or the host's) runs under it to the
+     * column's end. An app never puts a Cluster beside the strip for this. Secondary tabs only.
+     */
+    readonly end?: ReactNode
 }
 
 /** One option of a primary strip: a short label, no count, no destination. */
@@ -111,6 +117,7 @@ export type PrimaryTabsProps = TabsCommon & {
     readonly moreLabel?: never
     readonly overflowLabel?: never
     readonly inset?: never
+    readonly end?: never
     readonly items: PrimaryTabItems
 }
 
@@ -155,6 +162,7 @@ const TabsInner = (props: TabsProps) => {
     const isPill = props.appearance === "primary"
     const [isClientReady, setIsClientReady] = useState(false)
     const frameRef = useRef<HTMLDivElement>(null)
+    const endRef = useRef<HTMLDivElement>(null)
     useRefuseInCustomZone("Tabs")
     // The line owner is the host's, never a prop: a card zone and the page header band wrap their strip in `TabsLineHost` (draws no line of its own, the indicator overlaps the host's divider); a standalone strip draws `--separator` itself.
     const hostLine = useTabsLineDefault()
@@ -236,7 +244,8 @@ const TabsInner = (props: TabsProps) => {
     // Filter tabs always fold what does not fit; page (views) tabs fold only when the app names the fold menu (`overflowLabel`), else they scroll.
     const folds = !isPill && (isFilter || props.overflowLabel !== undefined)
     const frameContract = inset === "page" ? "PADDING-5" : undefined
-    const frameData = { "data-component": "Tabs", "data-tier": "branch", "data-grammar-tabs": "true", "data-grammar-tabs-inset": inset, "data-grammar-tabs-variant": isPill ? "primary" : "secondary", "data-grammar-tabs-kind": isPill ? "switch" : kind, "data-grammar-tabs-line": line, "data-grammar-tabs-folds": folds ? "true" : "false" } as const
+    const hasEnd = !isPill && props.end !== undefined && props.end !== null && props.end !== false
+    const frameData = { ...(hasEnd ? { "data-grammar-tabs-has-end": "true" } : {}), "data-component": "Tabs", "data-tier": "branch", "data-grammar-tabs": "true", "data-grammar-tabs-inset": inset, "data-grammar-tabs-variant": isPill ? "primary" : "secondary", "data-grammar-tabs-kind": isPill ? "switch" : kind, "data-grammar-tabs-line": line, "data-grammar-tabs-folds": folds ? "true" : "false" } as const
 
     // `filter`: the tabs that do not fit fold into a "+n" menu. All tabs draw once to be measured (the widths are kept), then
     // the fit is recomputed from those widths whenever the frame resizes; the selected tab is always one of the shown.
@@ -252,7 +261,7 @@ const TabsInner = (props: TabsProps) => {
     const fit = () => {
         const frame = frameRef.current
         if (frame === null || widths.current.length !== items.length) return
-        const shown = visibleOptionIndexes(widths.current, selectedIndex, Math.floor(frame.getBoundingClientRect().width), MORE_WIDTH, gap.current)
+        const shown = visibleOptionIndexes(widths.current, selectedIndex, Math.floor(frame.getBoundingClientRect().width - (endRef.current?.getBoundingClientRect().width ?? 0)), MORE_WIDTH, gap.current)
         const next = new Set(items.filter((_, index) => !shown.includes(index)).map((item) => item.id))
         setHiddenIds((previous) => previous.size === next.size && [...next].every((id) => previous.has(id)) ? previous : next)
     }
@@ -280,6 +289,7 @@ const TabsInner = (props: TabsProps) => {
         if (!folds || frame === null || typeof ResizeObserver === "undefined") return
         const observer = new ResizeObserver(() => { if (!renderAll) fit() })
         observer.observe(frame)
+        if (endRef.current !== null) observer.observe(endRef.current)
         return () => observer.disconnect()
     })
     const shownItems = !folds || renderAll ? items : items.filter((item) => !hiddenIds.has(item.id))
@@ -335,6 +345,7 @@ const TabsInner = (props: TabsProps) => {
                 />
             </span>
         )}
+        {hasEnd ? <div ref={endRef} className="starci-core-tabs-end" data-grammar-tabs-end="true">{props.end}</div> : null}
     </div>
 }
 

@@ -22,6 +22,15 @@
         --grammar-section-gap: 1.5rem;
         --grammar-region-gap: 2rem;
         /*
+         * THE PROXIMITY LAW (owner, 2026-11-09): inside any container, its children stand at least ONE step closer than
+         * the container stands to its siblings, so what belongs together reads together. Each container default below
+         * records how it holds the law. Two exemptions: the region step (32) is the ceiling, so the shell frames that
+         * separate regions (WorkspaceShell layout and primary, Page, Page body) all take it; and a box with its own edge
+         * (a card's surface, a board column's ground) groups its content by the edge, so its inner gap is compared with
+         * its own children, not with its siblings. The lint rule `@starci/grammar-core/gap-proximity` holds it in JSX and
+         * `node scripts/audit-gap.mts` measures it in a rendered page.
+         */
+        /*
          * Insets, by the level of the box. Every container (card, pane, overlay, notice, band) holds its content 12 in
          * on every side, so a closed box has equal block sides; a box inside a card takes the nested step (8); a large
          * empty or waiting region takes the open step (24). Extra separation belongs to the parent's gap.
@@ -168,12 +177,16 @@
         width: 100%;
     }
 
-    /* A section is blocks under one heading: its head, its filter and its body stand one section step apart (GAP-4). */
+    /*
+     * A section is blocks under one heading: its head, its filter and its body stand one row step apart (GAP-3). Proximity: a
+     * section stands a region step (32) from its siblings in the page body, so its own children take the row step (12), and
+     * a container inside it takes the inline step (8) or less. Was the section step (24) before 0.27.
+     */
     .starci-core-section {
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-section-gap);
+        gap: var(--grammar-row-gap);
         margin: 0;
         padding: 0;
     }
@@ -201,10 +214,9 @@
         margin: 0;
         max-width: 100%;
         color: var(--foreground);
-        /* The type scale (knowledge/ui/presentation/font.yaml): the page title is FONT-4 (20/28), a section title
-           FONT-3 (16/24); both 600 - the public weights are 400/500/600. */
-        font-size: var(--grammar-text-2xl);
-        font-weight: var(--grammar-weight-semibold);
+        /* The type roles (0.27): the page title is xl 18 / 500 (was 20 / 600), a section title lg 16 / 500 (was 600). */
+        font-size: var(--grammar-text-xl);
+        font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-xl);
         overflow-wrap: anywhere;
         text-wrap: balance;
@@ -218,15 +230,18 @@
     .starci-core-section-description,
     .starci-core-media-caption {
         color: var(--muted);
-        font-size: var(--grammar-text-md);
+        font-size: var(--grammar-text-sm);
         line-height: var(--grammar-leading-normal);
         overflow-wrap: anywhere;
     }
 
+    /* The head command: a Link in it (size `inherit`) reads at the body step, the size of the head's own text line. */
     .starci-core-section-action {
         display: flex;
         flex: none;
         align-items: center;
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
     }
 
     /* The filter row of a list section: the peers that narrow the list sit side by side (GAP-2). */
@@ -280,6 +295,19 @@
 
     .starci-core-page-header[data-grammar-page-header-tabs="true"] .starci-core-page-header-body {
         padding-block-end: 0;
+    }
+
+    /*
+     * Sub tabs (the second tab row): the page tabs stand in their own full-width band whose bottom border is their line, and the sub tabs
+     * stand under it on the header's border. The body keeps the row step above the page tabs (the gap that stood between its last row and
+     * the strip); both rows are hosted strips, so each indicator overlaps the line it stands on.
+     */
+    .starci-core-page-header[data-grammar-page-header-subtabs="true"] .starci-core-page-header-body {
+        padding-block-end: var(--grammar-row-gap);
+    }
+
+    .starci-core-page-header-tabrow {
+        border-block-end: var(--starci-core-tabs-line-width) solid var(--separator);
     }
 
     /* The copy keeps a readable basis: the page's one command stays on the title row at phone width while it fits, and wraps under the heading only when the heading would be crushed. */
@@ -338,7 +366,7 @@
     .starci-core-page-header-description {
         min-width: 0;
         color: var(--muted);
-        font-size: var(--grammar-text-md);
+        font-size: var(--grammar-text-sm);
         line-height: var(--grammar-leading-normal);
         overflow-wrap: anywhere;
     }
@@ -816,6 +844,11 @@
         }
     }
 
+    /*
+     * The card root holds its outside label, the surface and the note. Proximity: cards stand a row step apart in a Section
+     * (12), so the label sits one inline step (8) above its surface (was 12 before 0.27); in a cards Grid (peers 8 apart) it
+     * takes the identity step (4), so a label never reads as its neighbour's.
+     */
     .starci-core-surface-card {
         container-name: starci-core-surface;
         container-type: inline-size;
@@ -823,7 +856,11 @@
         min-width: 0;
         width: 100%;
         flex-direction: column;
-        gap: var(--grammar-row-gap);
+        gap: var(--starci-core-surface-card-gap, var(--grammar-inline-gap));
+    }
+
+    .starci-core-grid[data-grammar-grid-kind="cards"] > .starci-core-surface-card {
+        --starci-core-surface-card-gap: var(--grammar-identity-gap);
     }
 
     .starci-core-surface-label {
@@ -858,9 +895,10 @@
         margin: 0;
         /* A label names what follows it: full foreground, never the muted tone a vendor body passes down (TONE). */
         color: var(--foreground);
-        font-size: var(--grammar-text-md);
-        font-weight: var(--grammar-weight-semibold);
-        line-height: var(--grammar-leading-md);
+        /* A card title: lg 16 / 500 (the type roles, 0.27; was md 14 / 600). */
+        font-size: var(--grammar-text-lg);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-lg);
     }
 
     .starci-core-label[data-grammar-label-depth="nested"] {
@@ -978,6 +1016,9 @@
     }
 
     /*
+     * Proximity: zones are divided by seams (one line, gap 0), and each zone spaces its own parts by the inline step at most,
+     * so a zone's parts are always closer than the zones are; nothing changed in 0.27.
+     *
      * Zones: typed bands above and below a card's body. The card is flush; the shell draws the ONE divider between neighbouring zones and
      * between a zone and the body (a header zone's bottom border, a footer zone's top border), never a Divider. The body's own inset is
      * the card padding for a body or tile card; a list, figures or accordion body touches the edge.
@@ -1068,6 +1109,47 @@
     .starci-core-surface-zone-search-toggle,
     .starci-core-surface-zone-search-open {
         display: none;
+    }
+
+    /* A search zone with filters: the search grows, each select keeps its natural width and never wraps its words; narrow, the selects wrap below the search. */
+    .starci-core-surface-zone-search-row {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-surface-zone-search-grow {
+        min-width: min(100%, 12rem);
+        flex: 1 1 12rem;
+    }
+
+    .starci-core-surface-zone-select {
+        min-width: 0;
+        max-width: 100%;
+        flex: none;
+        inline-size: max-content;
+    }
+
+    .starci-core-surface-zone-select .starci-core-select-trigger,
+    .starci-core-surface-zone-select .select__value {
+        white-space: nowrap;
+    }
+
+    /* A card title's description: one muted small line under the label, 4 under it. */
+    .starci-core-surface-label[data-grammar-label-described="true"] {
+        flex-wrap: wrap;
+        row-gap: var(--grammar-identity-gap);
+    }
+
+    .starci-core-surface-description {
+        flex: 1 0 100%;
+        min-width: 0;
+        margin: 0;
+        color: var(--muted);
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
     }
 
     /*
@@ -1513,10 +1595,16 @@
         white-space: nowrap;
     }
 
+    /*
+     * Every tab is one size, sm 13 (owner, 2026-11-09): page, region and filter tabs and the pill switch alike. `!important`: the
+     * vendor tab rules are unlayered and set their own size; consumers import this sheet on either side of them.
+     */
     .starci-core-tabs .tabs__tab {
         position: relative;
         width: auto !important;
         flex: 0 0 auto !important;
+        font-size: var(--grammar-text-sm) !important;
+        line-height: var(--grammar-leading-sm) !important;
     }
 
     /* The bar lands on the md control height whatever its labels, so a tab bar aligns with the controls beside it. */
@@ -1665,6 +1753,21 @@
     .starci-core-tabs-more-label { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); }
     .starci-core-tabs-more-caret { inline-size: 1em; block-size: 1em; }
 
+    /*
+     * The `end` slot: a command at the strip's end, inside the frame, so the strip's line (its own border, or the host's under the frame)
+     * spans the full column under it. The frame becomes a flex row (tabs grow, the end hugs), the end stretches to the strip's height and
+     * centres its command there, like a tab: a command at the sm control height stands on the line with no padding below it.
+     */
+    .starci-core-tabs-frame[data-grammar-tabs-has-end="true"] { display: flex; align-items: flex-end; }
+    .starci-core-tabs-frame[data-grammar-tabs-has-end="true"] .starci-core-tabs { flex: 1 1 auto; width: auto; }
+    .starci-core-tabs-end {
+        display: flex;
+        flex: none;
+        align-items: center;
+        align-self: stretch;
+        padding-inline-start: var(--grammar-inline-gap);
+    }
+
     .starci-core-tabs-frame[data-grammar-tab-labels="always"] .starci-core-tab-label {
         display: inline;
     }
@@ -1681,6 +1784,21 @@
 
     .starci-core-static-row + .starci-core-static-row {
         border-top: 1px solid var(--separator);
+    }
+
+    /*
+     * THE SURFACE-IN-SURFACE LAW (owner, 2026-11-09). Rows divided by lines that stand inside a surface without being its own
+     * full-bleed body (a `Section kind="list"` in a card body, a drawer or dialog, a pane band, a rail or aside) are a nested
+     * surface: a 1px separator edge, the card radius, clipped, so every row seam stays inside it and none runs past the
+     * container's edge. The rows keep the row rhythm on their block sides and the container inset (12) inline. It is automatic:
+     * a list that IS the card (`SurfaceCard kind="list"`) touches the card edge instead. Lint `surface-in-surface` refuses
+     * the hand-made form (blocks divided by `Divider`).
+     */
+    :is(.starci-core-surface-content, .starci-core-overlay-body, .starci-core-pane-section, .starci-core-rail, .starci-core-rail-region, .starci-core-workspace-shell-rail) .starci-core-section-list {
+        --starci-core-row-inset: var(--grammar-row-gap) var(--grammar-inset);
+        border: 1px solid var(--separator);
+        border-radius: var(--starci-core-surface-radius);
+        overflow: clip;
     }
 
     /*
@@ -1718,9 +1836,12 @@
         gap: var(--grammar-inline-gap);
     }
 
+    /* The row primary: md 14 / 500; its description sm 13 muted; its meta xs 12 muted (the type roles, 0.27). */
     .starci-core-list-row-name {
         min-width: 0;
-        font-weight: var(--grammar-weight-semibold);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-md);
         overflow-wrap: anywhere;
     }
 
@@ -1777,8 +1898,8 @@
         min-width: 0;
         overflow: hidden;
         color: var(--muted);
-        font-size: var(--grammar-text-md);
-        line-height: var(--grammar-leading-md);
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
         text-overflow: ellipsis;
         white-space: nowrap;
     }
@@ -1790,8 +1911,8 @@
         max-inline-size: 10rem;
         overflow: hidden;
         color: var(--muted);
-        font-size: var(--grammar-text-md);
-        line-height: var(--grammar-leading-md);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
         text-overflow: ellipsis;
         white-space: nowrap;
     }
@@ -3004,7 +3125,11 @@
         --starci-core-pane-inset-block-end: 0px;
     }
 
-    /* The sections of a pane stack with the row gap between them (gap owns sibling distance). */
+    /*
+     * The sections of a pane stack with the row gap between them (gap owns sibling distance). Proximity: a band stands 12 from
+     * the next band, so a band's own children default to the inline step (8; `PaneSection gap`, was `row` before 0.27). A band
+     * alone in its pane (a head band, a lone scroll band) has no sibling, so `gap="row"` or `"section"` stays open to it.
+     */
     .starci-core-pane-stack {
         display: flex;
         min-height: 0;
@@ -3019,7 +3144,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap);
+        gap: var(--grammar-inline-gap);
         padding-inline: var(--starci-core-pane-inset-inline);
     }
 
@@ -3031,7 +3156,7 @@
         padding-block-end: var(--starci-core-pane-inset-block-end);
     }
 
-    .starci-core-pane-section[data-grammar-pane-section-gap="inline"] { gap: var(--grammar-inline-gap); }
+    .starci-core-pane-section[data-grammar-pane-section-gap="row"] { gap: var(--grammar-row-gap); }
     .starci-core-pane-section[data-grammar-pane-section-gap="section"] { gap: var(--grammar-section-gap); }
 
     /* rule="start": a hairline across the block-start edge of the band (R4-27, a pinned decision bar). */
@@ -3123,15 +3248,16 @@
     .starci-core-pane-section[data-grammar-pane-section-scroll-align="end"] > .starci-core-pane-section-content { justify-content: flex-end; }
     .starci-core-pane-section[data-grammar-pane-section-scroll-align="center"] > .starci-core-pane-section-content { justify-content: center; }
 
+    /* The scroll band's content takes the band's gap: inline by default (proximity, as the band above). */
     .starci-core-pane-section-content {
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap);
+        gap: var(--grammar-inline-gap);
         padding-inline: var(--starci-core-pane-inset-inline);
     }
 
-    .starci-core-pane-section[data-grammar-pane-section-gap="inline"] > .starci-core-pane-section-content { gap: var(--grammar-inline-gap); }
+    .starci-core-pane-section[data-grammar-pane-section-gap="row"] > .starci-core-pane-section-content { gap: var(--grammar-row-gap); }
     .starci-core-pane-section[data-grammar-pane-section-gap="section"] > .starci-core-pane-section-content { gap: var(--grammar-section-gap); }
 
     .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-section-content {
@@ -3404,7 +3530,8 @@
         width: 100% !important;
         min-width: 0;
         flex-direction: column !important;
-        gap: var(--grammar-row-gap) !important;
+        /* The proximity default of the card root (see above): inline, identity in a cards Grid. */
+        gap: var(--starci-core-surface-card-gap, var(--grammar-inline-gap)) !important;
         padding: 0 !important;
     }
 
@@ -3499,7 +3626,9 @@
         font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-xs);
     }
-    .starci-core-board-cards { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-row-gap); }
+    /* Proximity: the column spaces its head and its cards by 12, so the cards, peers inside it, stand 8 apart (12 before 0.27).
+       The columns stand 12 apart too: the column's tinted ground is its edge, so it groups its content by that. */
+    .starci-core-board-cards { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); }
     .starci-core-board-empty { padding: var(--grammar-inline-gap); color: var(--muted); }
 
     /* The column a dragged card would land in. */
@@ -3688,7 +3817,8 @@
     .starci-core-bar-chart-label { color: var(--muted); }
 
     /* --- ChoiceChips: one choice among a few short options, wrapping onto as many rows as the width needs --- */
-    .starci-core-choice-chips { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-identity-gap); }
+    /* The label -> chips step (inline 8) is THE FIELD RULE's (components-forms.css): the root keeps no gap. */
+    .starci-core-choice-chips { display: flex; min-width: 0; flex-direction: column; }
     .starci-core-choice-chips-row { display: flex; min-width: 0; flex-wrap: wrap; justify-content: flex-start; gap: var(--grammar-inline-gap); }
     .starci-core-choice-chip { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .starci-core-choice-chip { background: var(--surface-secondary); color: var(--foreground); }
@@ -3822,8 +3952,13 @@
      *
      * The app names a gap role (`identity`, `inline`, `row`, `section`, `region`); each resolves to its root token, so
      * an app writes no spacing value. A cluster's wrapped line is the same set, so its two axes take one role. Peer cards
-     * of one collection stand a section step apart on both axes: wider than the card's own inset (12), so each card
-     * reads as its own unit, never as one box.
+     * of one collection stand an inline step apart on both axes; each card's own edge makes it its own unit.
+     *
+     * Proximity: Stack and Cluster take no default, `gap` is required, so the app names the relation and the lint rule
+     * `gap-proximity` refuses a Stack or Cluster whose role is not below its parent's. Grid kinds own their gaps: cards and
+     * week 8, week-summary 8 (was 24 before 0.27: the day summaries are peer cards inside a Section's 12, like a cards
+     * grid), sections, pair and featured 24 (independent regions in the page body's 32, each child a Section of 12),
+     * main-rail 32 (the ceiling).
      */
     .starci-core-stack {
         display: flex;
@@ -3869,11 +4004,8 @@
     .starci-core-cluster[data-grammar-justify="center"] { justify-content: center; }
     .starci-core-cluster[data-grammar-justify="between"] { justify-content: space-between; }
 
-    /* A heading over a grid of cards sits 12 above it, further than the siblings are from each other. */
-    .starci-core-section:has(> .starci-core-grid[data-grammar-grid-kind="cards"]) {
-        gap: var(--grammar-row-gap);
-    }
-
+    /* A heading over a grid of cards sits 12 above it, further than the cards are from each other: every Section's own
+       gap since 0.27, so no override is left here. */
     .starci-core-grid[data-grammar-grid-kind="cards"] {
         /* Tiles are siblings: 8 between them, closer than the 12 the heading above holds. */
         --starci-core-grid-gap: var(--grammar-inline-gap);
@@ -3947,10 +4079,6 @@
     }
 
     .starci-core-grid-week-days > * { min-inline-size: 0; }
-
-    .starci-core-grid-week[data-grammar-grid-kind="week-summary"] > .starci-core-grid-week-days {
-        gap: var(--grammar-section-gap);
-    }
 
     @container grammar-week (min-width: 40rem) {
         .starci-core-grid-week[data-grammar-grid-kind="week-summary"] > .starci-core-grid-week-days {
@@ -4310,7 +4438,8 @@
     .starci-core-input {
         display: grid !important;
         min-width: 0;
-        gap: 0.5rem !important;
+        /* No gap of its own: THE FIELD RULE (components-forms.css) places label -> control 8 and control -> help 4. */
+        gap: 0 !important;
     }
 
     .starci-core-input[data-grammar-readonly="true"] .starci-core-input-field {
@@ -4447,11 +4576,19 @@
     }
 
     /* --- Text: one resolved line of copy, drawn from the attributes it already emits. --- */
+    /*
+     * THE TYPE ROLES (owner, 2026-11-09): one role, one size; one line, one size. Page title xl 18 / 500; card or section
+     * title lg 16 / 500; row or table primary md 14 / 500; body and table cells md 14 / 400; row secondary and
+     * descriptions sm 13 muted; table header, meta and chips xs 12 muted; every tab sm 13. Text `md` is the body (14; it
+     * was 16 before 0.27), `sm` the secondary (13; was 14), `xs` the meta (12); `isStrong` is the medium weight (500; was
+     * 600). Lint `table-cell-type` and `same-line-size` hold the roles in composition; `scripts/check-type-roles.mts` pins
+     * the rules below to their tokens.
+     */
     .starci-core-text {
         color: var(--foreground);
-        font-size: var(--grammar-text-lg);
+        font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);
-        line-height: var(--grammar-leading-lg);
+        line-height: var(--grammar-leading-md);
     }
 
     .starci-core-text[data-size="xs"] {
@@ -4460,8 +4597,8 @@
     }
 
     .starci-core-text[data-size="sm"] {
-        font-size: var(--grammar-text-md);
-        line-height: var(--grammar-leading-md);
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-sm);
     }
 
     /* FONT-5: the leading value of a region (a price, a total), the size of a figures cell's value; one word, tabular figures. */
@@ -4477,7 +4614,7 @@
         color: var(--muted);
     }
 
-    .starci-core-text[data-strong="true"] { font-weight: var(--grammar-weight-semibold); }
+    .starci-core-text[data-strong="true"] { font-weight: var(--grammar-weight-medium); }
 
     .starci-core-text[data-start-content="true"] {
         display: inline-flex;
@@ -4931,13 +5068,14 @@
         position: relative;
         display: flex;
         min-width: 0;
-        max-width: min(40rem, 85%);
+        max-width: var(--grammar-bubble-measure-standard);
         flex-direction: column;
         align-items: flex-start;
         gap: 0.25rem;
     }
 
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-stack { align-items: flex-end; }
+    .starci-core-message-bubble[data-grammar-bubble-measure="wide"] .starci-core-message-bubble-stack { max-width: var(--grammar-bubble-measure-wide); }
 
     .starci-core-message-bubble-head {
         display: flex;
@@ -5003,7 +5141,8 @@
      * A footer (an approval card, an attachment) takes the stack's full width; the stack of a message with a footer has a
      * definite width, so percentage widths inside the footer resolve instead of collapsing in a shrink-to-fit loop.
      */
-    .starci-core-message-bubble[data-grammar-bubble-footer="true"] .starci-core-message-bubble-stack { width: min(40rem, 85%); }
+    .starci-core-message-bubble[data-grammar-bubble-footer="true"] .starci-core-message-bubble-stack { width: var(--grammar-bubble-measure-standard); }
+    .starci-core-message-bubble[data-grammar-bubble-footer="true"][data-grammar-bubble-measure="wide"] .starci-core-message-bubble-stack { width: var(--grammar-bubble-measure-wide); }
     .starci-core-message-bubble-footer { align-self: stretch; width: 100%; min-width: 0; max-width: 100%; }
 
     .starci-core-message-status {
@@ -5096,6 +5235,24 @@
 
     @media (prefers-reduced-motion: reduce) {
         .starci-core-message-bubble-actions { transition: none; }
+    }
+
+    /*
+     * Inline actions: the toolbar is a flex child of the message row, after the stack, so on the start-side bubble it stands at
+     * the end and on the row-reversed outgoing bubble at the start. It keeps its width in the row (no layout jump), is bare
+     * (no border, fill or shadow), is hidden until hover or focus inside the message, and stays reachable by keyboard:
+     * focus-within shows it and it never takes pointer-events:none away from focus. Touch shows it always.
+     */
+    .starci-core-message-bubble[data-grammar-bubble-actions-placement="inline"] > .starci-core-message-bubble-actions {
+        position: static;
+        flex: none;
+        align-self: center;
+        padding: 0;
+        border: 0;
+        background: none;
+        box-shadow: none;
+        transform: none;
+        pointer-events: auto;
     }
 
     /* Loading bubble (knowledge STATE-8): the face on its side with two Skeleton lines; a thread alternates sides. */

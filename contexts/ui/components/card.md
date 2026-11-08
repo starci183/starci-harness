@@ -19,7 +19,7 @@ for a kind does not compile). The first row that applies wins.
 | disclosure | one summary that reveals a rarely changed region | `kind="accordion"`, closed by default | judgement |
 | figures | a standalone row of key figures on the page canvas | `kind="figures"` (DISCIPLINE-2): touching cells with lines between cells and rows | type: typed figures; candidate: cells at most `budgets.ribbonCells` |
 | whole | the whole card is one destination or command | `wholeAction`, present only where the card holds no inner control (STATE-5) | type: a nested interactive does not compile |
-| kinds | several kinds of content about one subject | typed `headers` above and `footers` below any kind's body: `filter`, `search`, `toolbar`, `figures`, `custom` and `more`, `paging`, `custom`; the shell pads them and draws the one divider between zones and the body, never inner cards or a `Divider`; a `custom` zone holds no `Tabs`, `SearchField` or `Divider` | type; R355; candidate: separators at most `budgets.hairlinesPerCard` |
+| kinds | several kinds of content about one subject | typed `headers` above and `footers` below any kind's body: `filter`, `search` (with trailing `filters` selects in its row), `toolbar`, `switch` (the pill, `tabs.choose.role:switch`), `figures`, `custom` and `more`, `paging`, `custom`; a one-line `description` of the head sits under the label; the shell pads them and draws the one divider between zones and the body, never inner cards or a `Divider`; a `custom` zone holds no `Tabs`, `SearchField` or `Divider` | type; R355; candidate: separators at most `budgets.hairlinesPerCard` |
 | tile | one of several peers repeated in a grid, each a thing to recognise or open (a provider, a template, a product) | `kind="tile"`: its name inside with its typed mark or media poster, operational badges and one visible action; further commands use its menu, in `Grid kind="cards"` | type: poster image/absence, single/three badges and wholeAction/inner controls are exclusive; a tile has no `label`; R366 |
 | entity | one entity or one summary of one subject, heading its section | `SurfaceCard` of the default `body` kind: label outside | judgement |
 
@@ -60,7 +60,8 @@ card, in `Pane surface`, in a `Dialog`, `Drawer`, `AlertDialog` or `Popover` is 
 stat cell), not a card. A decorative slab is a `custom` header zone of the card or the artwork of a painted card (SURFACE-6).
 
 ## Size
-No size. Width follows measure rules; a form card caps itself with the surface's form measure (MEASURE-4).
+No size. The card holds its content 16 in (`--grammar-inset-card`), its label stands 8 above the surface (4 in a cards
+`Grid`) and its head `description` 4 under the label ([../presentation.md](../presentation.md#space) G6). Width follows measure rules; a form card caps itself with the surface's form measure (MEASURE-4).
 
 ## States
 `isLoading` renders the same card from its own fields: a list draws the rows it was given, or three, from the same row, figures and a
@@ -76,4 +77,6 @@ fails in place through its `error` slot (message, description, action), beside i
 ## Rules
 COLLECTION-1, COLLECTION-2, DISCIPLINE-1 (`budgets.hairlinesPerCard`), BOUNDARY-1..4, SURFACE-2..6. Lint:
 `starci-fe/no-app-surface-paint`, `divider-full-bleed`, `starci-grammar/no-raised-surface-in-surface` (R340),
-`surface-card-kind` (R355), `no-label-in-grid` (R366), `starci-fe/no-heading-above-card` (R354). Proof: TASTE-7.
+`surface-card-kind` (R355), `no-label-in-grid` (R366), `starci-fe/no-heading-above-card` (R354),
+`starci-grammar/surface-in-surface` (a list of rows inside the card body is a nested surface, BOUNDARY-7),
+`starci-grammar/gap-proximity`. Proof: TASTE-7.

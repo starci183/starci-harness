@@ -143,6 +143,16 @@
         margin-inline-start: auto;
     }
 
+    /* A leading mark (avatar, logo) sits before the title block; the title block then takes the room up to the close button. */
+    .starci-core-overlay-leading {
+        display: inline-flex;
+        flex: none;
+    }
+
+    .starci-core-overlay-leading + .starci-core-overlay-heading-group {
+        flex: 1 1 auto;
+    }
+
     .starci-core-overlay-heading-group {
         display: flex;
         min-width: 0;

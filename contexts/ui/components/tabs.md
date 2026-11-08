@@ -13,8 +13,8 @@ Choice `tabs.choose.role`: what the peer choice changes. Four roles switch or ch
 | --- | --- | --- | --- |
 | panels | the choice swaps whole panels of content | `Tabs`, then `tabs.choose.level` | `DNA-COMMON-TABS-OWN-PANEL` |
 | value | the choice sets one value of a form or toolbar (audience, period, density, environment); nothing is swapped out. A tablist is not a form field | `ChoiceChips` or `RadioGroup` (`segmented-control.choose.role`) | judgement |
-| switch | the choice switches a mode or period of the same data in one block ("This month / Last month", "Day / Week / Month", "List / Board"): two to four short, fixed options, no count, no destination | `Tabs appearance="primary"` (HeroUI's primary variant, a pill in a track): the `switch` header zone of a card, at the head's trailing edge, beside the label, taking no line; never joined buttons (R380) | judgement |
-| filter | the choice narrows a collection that stays in place | `Tabs kind="filter"`: underline tabs one size smaller than the page tabs (13px, tighter gap, a 2px accent underline and weight 500 on the selected tab, a hairline under the row), each with its `count` drawn as a chip (neutral; the accent soft pair on the selected tab; the warning soft pair on a tab marked `isAttention`); the tabs that do not fit fold into a "+n" menu and the selected one always stays visible | `DNA-COMMON-TABS-FILTER-COMPACT` |
+| switch | the choice switches a mode or period of the same data in one block ("This month / Last month", "Day / Week / Month", "List / Board"): two to four short, fixed options, no count, no destination | `Tabs appearance="primary"` (HeroUI's primary variant, a pill in a track): only the `switch` header zone of a `SurfaceCard`, the first header row inside the card, taking no line; never written as JSX in a page body, a pane or a drawer, never joined buttons (R380) | lint `starci-grammar/tabs-switch-zone` (a `<Tabs appearance="primary">` anywhere in JSX), `starci-fe/no-primary-tabs-misuse` (R380: items beyond two to four, a `count`, an `href` or `isAttention`) |
+| filter | the choice narrows a collection that stays in place | `Tabs kind="filter"`: underline tabs of the same size as every other tab (sm 13, a tighter gap, a 2px accent underline and weight 500 on the selected tab, a hairline under the row), each with its `count` drawn as a chip (neutral; the accent soft pair on the selected tab; the warning soft pair on a tab marked `isAttention`); the tabs that do not fit fold into a "+n" menu and the selected one always stays visible | `DNA-COMMON-TABS-FILTER-COMPACT` |
 | nav-item | the choice picks one item of a navigation-like list | `ListBox` selecting by fill with no check (`list-table.choose.role:pick`) | lint `selection-fill-no-check` |
 
 Choice `tabs.choose.placement`: where a tab bar stands. The first row that applies wins.
@@ -25,11 +25,12 @@ Choice `tabs.choose.placement`: where a tab bar stands. The first row that appli
 | page | the tabs switch views of the page | the page head: `Page header.tabs` | lint `starci-grammar/page-tabs-in-header` |
 
 Choice `tabs.choose.level`: page tabs or region tabs. A set nested inside another set's panel is region tabs;
-two sets of the same level never nest.
+two sets of the same level never nest, and a page stacks at most two underline layers (`TABS-DEPTH`): the page tabs and one
+region set.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| region | the tabs switch a panel inside a drawer, dialog, card or rail; never reflected in the URL | region tabs, placed inside that surface | `DNA-COMMON-TABS-BY-LAYER` |
+| region | the tabs switch a panel inside a drawer, dialog, card or rail, or the views of one page tab; never reflected in the URL | region tabs, placed inside that surface; for the views of one page tab, `Page header.subTabs` (the second row of the header band, under the page tabs, valid only with `tabs`, on its own full-width separator and the first label on the content edge), or a set in the page tab's panel, which draws its own separator | `DNA-COMMON-TABS-BY-LAYER`; lint `starci-grammar/tabs-depth` (a third underline layer in one file) |
 | page | the tabs switch the page's main area under the page header and may reflect the URL; one set per page | page tabs, `header.tabs` of the `Page` (they stand on its band's separator) | `DNA-COMMON-TABS-BY-LAYER`, `DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR`; lint `starci-grammar/page-tabs-in-header`; candidate: at most one page set per page |
 
 ## Variants
@@ -39,8 +40,15 @@ underline, its labels text on the content edge they share with the title above a
 period switch as the pill of `appearance="primary"`. `Tabs` takes no `variant` to pass.
 
 ## Size
-No size prop: the bar lands on `md` ([../scale.md](../scale.md)). A tab without a leading glyph always shows its
-label, at every width. Overflowing tabs scroll with edge carets (OVERFLOW-4).
+No size prop: the bar lands on `md` ([../scale.md](../scale.md)). Every tab label is one size, sm 13 / 500 on the selected
+tab, whatever the layer: page tabs, region tabs, `subTabs`, filter tabs and the pill alike (FONT-7 in
+[../presentation.md](../presentation.md#type)). A set is never drawn one size smaller than the set above it; the layer is
+told by position and by the separator, not by type size, so a second row never reads as a footnote of the first. A tab
+without a leading glyph always shows its label, at every width. Overflowing tabs scroll with edge carets (OVERFLOW-4).
+
+A command that belongs at the end of a strip (an "Add region" button) is the strip's `end` slot, inside the strip frame
+after the tabs and centred in its height, so the strip's line (its own, or the page band's) spans the full column under it;
+a `Cluster` placed beside the strip for this is refused by review, because it cuts the line.
 
 ## States
 Selected is a persistent value with a non-colour cue (indicator geometry); hover and focus never carry it
@@ -60,4 +68,5 @@ controlled selection and its panel.
   `selectedKey` or `onSelect`; other tabs are controlled by `selectedKey` and `onSelect`.
 
 ## Rules
-STATE-6, CTA-1, ACCENT-3, HIERARCHY-3. Proof: FOCUS-2 (arrow traversal), COLOR-3, UX-7 (tab survives reload).
+STATE-6, CTA-1, ACCENT-3, HIERARCHY-3. Lint: `starci-grammar/tabs-switch-zone`, `starci-grammar/tabs-depth`,
+`starci-fe/no-primary-tabs-misuse`, `starci-grammar/page-tabs-in-header`. Proof: FOCUS-2 (arrow traversal), COLOR-3, UX-7 (tab survives reload).

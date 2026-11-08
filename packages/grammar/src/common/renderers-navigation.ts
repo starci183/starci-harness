@@ -12,6 +12,7 @@ import { MermaidDiagram } from "../core/frame/MermaidDiagram/index.js"
 import { AvatarButton } from "../core/leaf/AvatarButton/index.js"
 import { AvatarGroup } from "../core/composite/AvatarGroup/index.js"
 import { IdentityLockup } from "../core/composite/IdentityLockup/index.js"
+import { LogoStack } from "../core/composite/LogoStack/index.js"
 import { DescriptionList } from "../core/composite/DescriptionList/index.js"
 import { Pagination } from "../core/composite/Pagination/index.js"
 import { Stepper } from "../core/composite/Stepper/index.js"
@@ -38,6 +39,8 @@ export { ListBox, type ListBoxItem, type ListBoxSection, type ListBoxProps, type
 export type { ItemDescriptionLines } from "../core/collectionItem.js"
 export { AvatarButton, type AvatarButtonProps } from "../core/leaf/AvatarButton/index.js"
 export { IdentityLockup, type IdentityLockupProps } from "../core/composite/IdentityLockup/index.js"
+export { LogoStack, type LogoStackItem, type LogoStackProps } from "../core/composite/LogoStack/index.js"
+export { PlainPressable, type PlainPressableProps, type PlainPressableShape } from "../core/PlainPressable.js"
 export { AvatarGroup, type AvatarGroupItem, type AvatarGroupProps } from "../core/composite/AvatarGroup/index.js"
 export type { BreadcrumbItem } from "../core/composite/Breadcrumbs/index.js"
 export { DescriptionList, type DescriptionListItem, type DescriptionListLayout, type DescriptionListProps } from "../core/composite/DescriptionList/index.js"
@@ -57,5 +60,5 @@ export { Video, type VideoCaptionsTrack, type VideoProps } from "../core/leaf/Vi
 /** Every navigation-group renderer, spread into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_NAVIGATION_COMPONENTS = Object.freeze({
     Accordion, Avatar, AvatarButton, AvatarGroup, Calendar, ColorSwatch, DataTable, DescriptionList,
-    BubbleMap, Disclosure, DragItem, FlowGraph, Footer, IdentityLockup, Image, Link, ListBox, MermaidDiagram, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
+    BubbleMap, Disclosure, DragItem, FlowGraph, Footer, IdentityLockup, Image, Link, ListBox, LogoStack, MermaidDiagram, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
 } as const)

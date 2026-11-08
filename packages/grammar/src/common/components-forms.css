@@ -21,18 +21,70 @@
      * adjacent and a row of fields keeps its controls on one line (FormGrid). Groups (RadioGroup, CheckboxGroup,
      * Fieldset) keep HeroUI's group order: legend or label, description, then the options or fields.
      */
+    /*
+     * THE FIELD RULE (owner, 2026-11-09). One spacing contract for every control (Input, Select, NumberField, Textarea,
+     * ComboBox, DatePicker, DateField, TimeField, SearchField, CopyField, CheckboxGroup, RadioGroup, ChoiceChips, Switch,
+     * Checkbox, Slider):
+     *   label -> control            = inline 8   (the label: md 14 / medium 500)
+     *   control -> help/error/count = identity 4 (a group's guidance stands between its label and options: 8 on each side)
+     *   field -> field              = section 24, set by the stack that holds the fields (Form, FormGrid rows and columns,
+     *                                 Fieldset fields), never by a field: a field has no outer margin.
+     * Fieldset: the legend is the group's label (legend -> fields 8), fields 24 apart, and the actions stand a section
+     * step (24) below whatever ends the group (the last field, or the group's error).
+     * A field root keeps `gap: 0`; the label (and a group's description, the Slider header, the legend) carries the 8 as
+     * its end margin, and the help/error parts after the control carry the 4 as their start margin, so an absent part adds
+     * no space and a screen-reader-only label adds none. HeroUI's own label/description/error spacing (flex gaps of 4,
+     * `mt-4` on a group's options, `px-1` on an error, `space-y-4` on a fieldset group, `pt-1` on its actions) is
+     * overridden below with `!important`: the vendor rules are unlayered or in a layer that may rank after this one,
+     * depending on the consumer's import order. Lint `field-label` refuses a hand-made Text label beside a control: the
+     * label is the control's own `label` prop, which draws it on this rule.
+     */
     .starci-core-field {
         display: flex !important;
         min-width: 0;
         flex-direction: column;
         align-items: stretch;
-        gap: var(--starci-core-field-gap) !important;
+    }
+
+    /* The roots of a labelled control: no flex gap (HeroUI sets 4 on `.select`, `.textfield`, `.checkbox`); the parts below place the steps. */
+    :is(.starci-core-field, .starci-core-input, .starci-core-select, .starci-core-choice-chips) {
+        gap: 0 !important;
+    }
+
+    /* label -> control: inline 8. A screen-reader-only label is out of flow and adds nothing. */
+    :is(.starci-core-field, .starci-core-input, .starci-core-select, .starci-core-choice-chips) > :is([data-grammar-field-label], .starci-core-slider-header):not(.starci-core-form-label--screen-reader) {
+        margin-block-end: var(--grammar-inline-gap);
+    }
+
+    /* control -> help, error, counter: identity 4. */
+    :is(.starci-core-field, .starci-core-input, .starci-core-select, .starci-core-choice-chips) > :is([data-grammar-field-control="true"], [data-grammar-input-control="true"], .starci-core-textarea-anchor) ~ :is([data-grammar-field-description], [data-grammar-field-error], .starci-core-field-error, [data-slot="field-error"], [data-slot="error-message"], .starci-core-field-meta) {
+        margin-block-start: var(--grammar-identity-gap);
+    }
+
+    /* A group (RadioGroup, CheckboxGroup) states its guidance between the label and the options: 8 above (the label's step) and 8 below. */
+    .starci-core-choice-group > [data-grammar-field-description] {
+        margin-block-end: var(--grammar-inline-gap);
+    }
+
+    /* The vendor puts `mt-4` on every option of a checkbox or radio group: the options stand on their own gap and the first one on the label's step. */
+    .starci-core-choice-group-options > .starci-core-choice {
+        margin-block-start: 0 !important;
+    }
+
+    /* The error text starts on the label's edge: the vendor's `px-1` indents it 4px. */
+    .starci-core-field-error {
+        padding: 0 !important;
+    }
+
+    /* A choice's description or error stands under its row: identity 4 (the vendor gap is 4 as well; stated here so it is the token). */
+    .starci-core-choice {
+        gap: var(--grammar-identity-gap) !important;
     }
 
     .starci-core-field-label {
         color: var(--foreground);
         font-size: var(--grammar-text-md);
-        font-weight: var(--grammar-weight-semibold);
+        font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-tight);
         overflow-wrap: anywhere;
     }
@@ -66,7 +118,7 @@
         min-width: 0;
         align-items: baseline;
         justify-content: space-between;
-        gap: 0.5rem;
+        gap: var(--grammar-inline-gap);
     }
 
     .starci-core-field-count {
@@ -289,15 +341,17 @@
      * FormGrid: rows of fields that align on the control line. Each row is a grid of four tracks (label, control,
      * description, error); each field (or the field a skeleton scope wraps) spans them as a subgrid and places its own
      * parts by role, so a description, an error or a two-line label in one field never moves its neighbour's control.
-     * The field's inner gap becomes a margin on the part after the label, so an absent description or error adds no
-     * space. Below the container width one row is one column and its fields stack a section gap apart.
+     * The label carries the inline 8 to the control (THE FIELD RULE above) and the description and error carry the
+     * identity 4 as start margins, so an absent description or error adds no space. Rows stand a section step (24)
+     * apart, columns a section step apart, and below the container width one row is one column and its fields stack a
+     * section step apart: the grid, not the field, sets field -> field.
      */
     .starci-core-form-grid {
         display: flex;
         inline-size: 100%;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap);
+        gap: var(--grammar-section-gap);
         container-type: inline-size;
     }
 
@@ -306,7 +360,7 @@
         min-width: 0;
         grid-template-columns: minmax(0, 1fr);
         grid-auto-rows: auto;
-        gap: 0 var(--grammar-row-gap);
+        gap: 0 var(--grammar-section-gap);
         align-items: start;
     }
 
@@ -322,7 +376,7 @@
 
     /* A later field stacks a section gap below the one before it; a vendor `<template>` or hidden node before the first field is not a field. */
     :is(.starci-core-form-grid-row > :is([data-component], .starci-core-field-skeleton-scope) ~ [data-component], .starci-core-form-grid-row > :is([data-component], .starci-core-field-skeleton-scope) ~ .starci-core-field-skeleton-scope > [data-component]) {
-        margin-block-start: var(--grammar-row-gap);
+        margin-block-start: var(--grammar-section-gap);
     }
 
     :is(.starci-core-form-grid-row > [data-component], .starci-core-form-grid-row > .starci-core-field-skeleton-scope > [data-component]) > :is([data-slot="label"], [data-grammar-field-label]) {
@@ -331,17 +385,17 @@
 
     :is(.starci-core-form-grid-row > [data-component], .starci-core-form-grid-row > .starci-core-field-skeleton-scope > [data-component]) > :is([data-grammar-field-control="true"], [data-grammar-input-control="true"]) {
         grid-row: 2;
-        margin-block-start: var(--starci-core-field-gap);
+        margin-block-start: 0;
     }
 
     :is(.starci-core-form-grid-row > [data-component], .starci-core-form-grid-row > .starci-core-field-skeleton-scope > [data-component]) > [data-grammar-field-description] {
         grid-row: 3;
-        margin-block-start: var(--starci-core-field-gap);
+        margin-block-start: var(--grammar-identity-gap);
     }
 
     :is(.starci-core-form-grid-row > [data-component], .starci-core-form-grid-row > .starci-core-field-skeleton-scope > [data-component]) > :is(.starci-core-field-error, [data-slot="error-message"], [data-slot="field-error"]) {
         grid-row: 4;
-        margin-block-start: var(--starci-core-field-gap);
+        margin-block-start: var(--grammar-identity-gap);
     }
 
     @container (min-width: 32rem) {
@@ -434,7 +488,8 @@
         display: inline-flex;
         min-width: 0;
         align-items: center;
-        gap: 0.5rem;
+        /* !important: the vendor radio and checkbox content rows set their own gap (12). The control -> label step is the inline 8. */
+        gap: var(--grammar-inline-gap) !important;
     }
 
     .starci-core-choice-control {
@@ -499,6 +554,12 @@
         --grammar-switch-thumb: calc(var(--grammar-switch-height) - 0.5rem);
     }
 
+    /* A switch is a capsule on every theme: the track and the thumb are pills, whatever radius the app sets for its controls. */
+    [data-component="Switch"] [data-grammar-switch-track],
+    [data-component="Switch"] [data-grammar-switch-thumb] {
+        border-radius: var(--grammar-radius-pill) !important;
+    }
+
     [data-component="Switch"][data-grammar-switch-size="control"] [data-grammar-switch-track] {
         inline-size: var(--grammar-switch-width) !important;
         block-size: var(--grammar-switch-height) !important;
@@ -507,6 +568,9 @@
     [data-component="Switch"][data-grammar-switch-size="control"] [data-grammar-switch-thumb] {
         inline-size: var(--grammar-switch-thumb) !important;
         block-size: var(--grammar-switch-thumb) !important;
+        flex-shrink: 0;
+        /* Off: one identity step in from the start edge; on: the same step in from the end edge. The vendor margin is computed for its own size. */
+        margin-inline-start: var(--grammar-identity-gap) !important;
         align-items: center;
         justify-content: center;
     }
@@ -523,8 +587,13 @@
 
     [data-component="Switch"] [data-grammar-switch-thumb] {
         background: var(--surface) !important;
-        box-shadow: var(--surface-shadow);
+        /* No ring: the light thumb on the default or accent track is its own contrast; a surface shadow drew an edge around it. */
+        box-shadow: none !important;
         color: var(--muted);
+    }
+
+    [data-component="Switch"][data-grammar-switch-size="control"][data-selected="true"] [data-grammar-switch-thumb] {
+        margin-inline-start: calc(var(--grammar-switch-width) - var(--grammar-switch-thumb) - var(--grammar-identity-gap)) !important;
     }
 
     [data-component="Switch"][data-selected="true"] [data-grammar-switch-thumb] {
@@ -568,7 +637,7 @@
         min-width: 0;
         align-items: baseline;
         justify-content: space-between;
-        gap: 0.5rem;
+        gap: var(--grammar-inline-gap);
     }
 
     .starci-core-slider-output {
@@ -588,12 +657,20 @@
         flex: 1 1 0;
     }
 
-    /* --- Fieldset and Form --- */
+    /*
+     * --- Fieldset and Form ---
+     * THE FIELD RULE for a group: the legend is the group's label, so legend -> fields is the inline 8 (with the group's
+     * description, if any, between them: 8 above and 8 below, as a RadioGroup's). The fields stand a section step (24) apart.
+     * The actions are the group's own commands, not a field: they stand a section step (24) below whatever ends the group
+     * (the last field, or the group's error), so a button row never reads as the help text of the last field. The Form
+     * stacks its children, fields and actions alike, a section step apart.
+     */
     .starci-core-fieldset {
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap);
+        /* !important: the vendor fieldset sets its own gap (24); the parts below place every step. */
+        gap: 0 !important;
         margin: 0;
         border: 0;
         padding: 0;
@@ -602,8 +679,12 @@
     .starci-core-fieldset-legend {
         float: left;
         width: 100%;
-        margin: 0;
+        margin: 0 0 var(--grammar-inline-gap);
         padding: 0;
+    }
+
+    .starci-core-fieldset > [data-grammar-field-description] {
+        margin: 0 0 var(--grammar-inline-gap);
     }
 
     .starci-core-fieldset-legend + * {
@@ -614,7 +695,16 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap);
+        gap: var(--grammar-section-gap);
+    }
+
+    /* !important: the vendor fieldset group spaces its children with `space-y-4` margins (16) on top of the section gap. */
+    .starci-core-fieldset-fields > * {
+        margin-block: 0 !important;
+    }
+
+    .starci-core-fieldset-fields ~ .starci-core-field-error {
+        margin-block-start: var(--grammar-identity-gap);
     }
 
     .starci-core-fieldset-actions {
@@ -623,13 +713,16 @@
         flex-wrap: wrap;
         justify-content: flex-end;
         gap: var(--grammar-inline-gap);
+        margin-block-start: var(--grammar-section-gap);
+        /* !important: the vendor actions row carries `pt-1` (4); the section step above is the only space. */
+        padding: 0 !important;
     }
 
     .starci-core-form {
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap);
+        gap: var(--grammar-section-gap);
     }
 
     /* --- FileDropzone: a native file input stretched over the drop target --- */
@@ -786,5 +879,22 @@
         .starci-core-file-dropzone-target {
             transition: none;
         }
+    }
+
+    /* The arrow of a button that leads somewhere slides one step toward the reading end while the button is hovered or focused. */
+    .starci-core-button-arrow {
+        display: inline-flex;
+        transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing);
+    }
+
+    .starci-core-button:is(:hover, :focus-visible):not([data-element="span"]) .starci-core-button-arrow {
+        transform: translateX(var(--grammar-identity-gap));
+    }
+
+    [dir="rtl"] .starci-core-button-arrow { scale: -1 1; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-button-arrow { transition: none; }
+        .starci-core-button:is(:hover, :focus-visible) .starci-core-button-arrow { transform: none; }
     }
 }

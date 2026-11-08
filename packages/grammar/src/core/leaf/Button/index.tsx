@@ -23,11 +23,7 @@ type ButtonBase = {
     /** The visible action label. It remains present while the action is pending. */
     readonly children: string
     readonly size?: ButtonSize
-    /** Decorative or explanatory content before the label. Product icon identity stays with the app. */
-    readonly startContent?: ReactNode
-    /** A glyph of Grammar's own closed vocabulary at the start (`send`, `pencil`, `more`, `panel-end`, `close`); `startContent` wins when both are given. */
-    readonly startGlyph?: GlyphName
-    /** Directional or explanatory content after the label. */
+    /** Explanatory content after the label (a count, a shortcut). Never an arrow: an arrow is `endArrow` (lint `button-arrow`). */
     readonly endContent?: ReactNode
     readonly isDisabled?: boolean
     /**
@@ -56,6 +52,33 @@ type ButtonBase = {
      */
     readonly width?: ButtonWidth
 }
+
+/**
+ * THE BUTTON-ICON RULE (owner, 2026-11-09). A Button either DOES something, and may show what at its start (`startGlyph`, or the
+ * app's own `startContent`), or LEADS somewhere, and ends with Grammar's arrow (`endArrow`), never both: the types refuse the pair.
+ * Both glyphs take the same inline gap (8) and the control's glyph padding on their side.
+ */
+type ButtonDoes = {
+    /** Decorative or explanatory content before the label: what the action does. Product icon identity stays with the app. */
+    readonly startContent?: ReactNode
+    /** A glyph of Grammar's own closed vocabulary at the start (`plus`, `upload`, `send`, `pencil`, ...); `startContent` wins when both are given. */
+    readonly startGlyph?: GlyphName
+    readonly endArrow?: false
+}
+
+type ButtonLeads = {
+    /**
+     * The label leads somewhere (a page, a tab, a next step): Grammar draws its arrow after the label, and the arrow slides toward the
+     * reading end while the button is hovered or focused (still under reduced motion), mirrored right to left. `endContent` wins when
+     * both are given. A leading Button has no start glyph.
+     */
+    readonly endArrow: true
+    readonly startContent?: never
+    readonly startGlyph?: never
+}
+
+/** What a Button shows beside its label: the glyph of what it does at the start, or the arrow of where it goes at the end. */
+export type ButtonIcons = ButtonDoes | ButtonLeads
 
 /**
  * A real browser destination wearing the button appearance. It renders an anchor, so the platform
@@ -97,7 +120,7 @@ type CommandButton = {
  * The button-shaped action. The element is decided by which of `href` or `onPress` is present, and
  * the type forbids both, so a destination cannot be written as a button by choosing the wrong leaf.
  */
-export type ButtonProps = ButtonBase & ButtonIntentProps & (DestinationButton | CommandButton)
+export type ButtonProps = ButtonBase & ButtonIcons & ButtonIntentProps & (DestinationButton | CommandButton)
 
 const VARIANTS = {
     primary: "primary",
@@ -166,7 +189,8 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
         size = "md",
         startContent: givenStart,
         startGlyph,
-        endContent,
+        endContent: givenEnd,
+        endArrow = false,
         isDisabled = false,
         isLoading = false,
         isPending = false,
@@ -175,6 +199,7 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
     } = props
     const variant = useButtonIntentVariant(props.intent, props.step, "button") ?? "secondary"
     const startContent = givenStart ?? (startGlyph === undefined ? undefined : <Icon source={glyphSource(startGlyph)} usage="leading" />)
+    const endContent = givenEnd ?? (endArrow ? <span className="starci-core-button-arrow" data-grammar-button-arrow="true"><Icon source={glyphSource("arrow-end")} usage="leading" /></span> : undefined)
     const unavailable = isDisabled || isPending || isLoading
     // The side a glyph stands on takes the control's glyph padding (one step less): the glyph carries its own room.
     const glyphSides = {

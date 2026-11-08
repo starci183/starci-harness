@@ -1,6 +1,6 @@
 {
   "name": "@starci/grammar",
-  "version": "0.27.0",
+  "version": "0.28.0",
   "description": "Reusable StarCi React components, compositions, and packaged visual DNA.",
   "keywords": [
     "starci",
@@ -56,10 +56,12 @@
     "build": "node scripts/clean.mts && tsc -p tsconfig.build.json && node scripts/copy-css.mts && node scripts/build-stamp.mts",
     "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.stories.json && tsc -p tsconfig.scripts.json",
     "prove-theme": "node scripts/prove-theme.mts",
+    "audit:gap": "node scripts/audit-gap.mts",
     "check:loading": "node scripts/check-region-loading.mts",
     "check:client": "node scripts/check-client-boundary.mts",
     "check:tones": "node scripts/check-tone-tokens.mts",
-    "test": "npm run typecheck && npm run check:loading && npm run check:client && npm run check:tones && npm run lint && npm run build",
+    "check:type": "node scripts/check-type-roles.mts",
+    "test": "npm run typecheck && npm run check:loading && npm run check:client && npm run check:tones && npm run check:type && npm run lint && npm run build",
     "pack:check": "npm run build && npm pack --dry-run",
     "prepack": "npm run typecheck && npm run build",
     "storybook": "storybook dev -p 6006",

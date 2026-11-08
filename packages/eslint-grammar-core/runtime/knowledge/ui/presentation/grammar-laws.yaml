@@ -1,0 +1,102 @@
+schema: starci/knowledge-source@1
+id: ui.presentation.grammar-laws
+title: Grammar presentation laws (owner, 2026-11-09)
+appliesTo: [ui, frontend]
+family: presentation
+purpose: |-
+  The spacing, surface, field, typography, link and button laws the owner approved on 2026-11-09. The core Grammar
+  owns the values; these rules say what an app composition may not do against them.
+provenance:
+  reviewedAt: 2026-11-09
+  sources:
+    - knowledge/patterns/fe/ui.yaml
+  limitations: |-
+    Static checks read JSX composition only; the rendered gaps are measured by the Grammar's audit-gap script.
+rules:
+  - id: GAP-PROXIMITY
+    title: Children stand closer than their container's siblings
+    governs: The gap role of a Grammar layout element nested in another.
+    cases:
+      - id: case-1
+        when: A Grammar layout element (Stack, Cluster, PaneSection, Section, Grid, Form) sits directly inside another
+        assert: |-
+          The child's gap role is at least one step below its parent's (identity 4 < inline 8 < row 12 < section 24 <
+          region 32). A field stack (fields 24 apart) inside a Form or a Drawer body is the Field rule's own rhythm.
+  - id: SURFACE-IN-SURFACE
+    title: A list of rows inside a surface is a nested surface
+    governs: Row lists placed inside a card body, a drawer, a dialog or a pane band.
+    cases:
+      - id: case-1
+        when: Rows divided by lines stand inside a surface without being that surface's own full-bleed body
+        assert: |-
+          The Grammar list draws them in a nested surface: a 1px separator border, the card radius, clipped.
+          A hand-made row list (blocks divided by Divider) is the bare form and is refused.
+  - id: FIELD-LABEL
+    title: A control is labelled by its own label prop
+    governs: The label of every form control.
+    cases:
+      - id: case-1
+        when: A form control is composed
+        assert: |-
+          The label is the control's `label` prop: label to control 8, control to help 4, field to field 24. A Text
+          placed beside the control as its label is refused.
+  - id: PAGE-BREADCRUMBS
+    title: Every console page states its trail
+    governs: The header of an app console page.
+    cases:
+      - id: case-1
+        when: An app console page draws a Page header
+        assert: |-
+          The header carries `breadcrumbs`, or `breadcrumbs="root"` for the root page of its console.
+  - id: BUTTON-ARROW
+    title: A leads-somewhere button ends with endArrow
+    governs: Arrows on Buttons.
+    cases:
+      - id: case-1
+        when: A Button leads somewhere
+        assert: |-
+          It takes `endArrow`; an arrow typed in its label or passed as end content is refused. A Button that does
+          something takes `startGlyph`; never both.
+  - id: TABLE-CELL-TYPE
+    title: Table and row cells take the row type sizes
+    governs: Text inside a DataTable cell or a ListRow.
+    cases:
+      - id: case-1
+        when: Text is drawn in a DataTable cell or a ListRow
+        assert: |-
+          The primary is md 14 / 500, the secondary sm 13 muted; a heading-size Text is refused.
+  - id: SAME-LINE-SIZE
+    title: One line, one size
+    governs: Text siblings of one inline line.
+    cases:
+      - id: case-1
+        when: Texts stand side by side in one Cluster
+        assert: |-
+          They share one size; a Badge or a chip is exempt.
+  - id: ROW-TITLE-LINK
+    title: A row title is never a link when the row opens
+    governs: The primary of a ListRow or a DataTable row.
+    cases:
+      - id: case-1
+        when: A row has an action, an href or a chevron
+        assert: |-
+          Its title is plain text; the row is the one pressable.
+  - id: TABS-SWITCH-ZONE
+    title: The pill is the switch zone of a card
+    governs: Tabs appearance="primary".
+    cases:
+      - id: case-1
+        when: A mode or period of one block's data is switched among two to four short options
+        assert: |-
+          It is the card's `switch` header zone (`headers={[{ kind: "switch", label, items, selectedKey, onSelect }]}`),
+          with no count and no href. A pill written in JSX in a page body, under the page tabs, in a pane or in a drawer
+          is refused: views of a page are page tabs, views or filters inside a region are underline `Tabs`.
+  - id: TABS-DEPTH
+    title: A page stacks two underline layers at most
+    governs: Underline Tabs nested through the panels they select.
+    cases:
+      - id: case-1
+        when: An underline Tabs stands in the panel of another, or in the body of a Page whose header carries tabs
+        assert: |-
+          The page tabs (`Page header.tabs`) and one region set are the two layers; a third nested set is refused.
+          Every tab is one size, so only the count of layers is judged.

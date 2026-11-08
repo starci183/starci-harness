@@ -32,7 +32,7 @@ export type PlainPressableProps = {
  * workspace lockup, or an avatar, that opens a menu or goes somewhere. Name it with `aria-label` when the content has no text.
  * Contract: A11Y-2 (a named control), FOCUS-1 (a visible ring), MOTION-2 (reduced motion removes the zoom, never the control).
  */
-/** Not part of the public API: an internal of IdentityLockup and AvatarButton, outside the tier ladder. */
+/** Exported from `@starci/grammar/common` (outside the tier ladder, not a registry component) so an app can wrap its own content as a DropdownMenu or Popover trigger; IdentityLockup, AvatarButton and LogoStack use it too. */
 export const PlainPressable = ({ children, "aria-label": ariaLabel, onPress, isDisabled = false, shape = "rounded", size, className }: PlainPressableProps) => (
     <HeroButton
         data-component="PlainPressable"

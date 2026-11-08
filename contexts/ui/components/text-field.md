@@ -36,6 +36,7 @@ None for the app: the treatment follows the layer, canvas or inside a surface, r
 (`DNA-COMMON-FIELD-BY-LAYER`; the prop types have no `variant`).
 
 ## Size
+The parts of every field stand on the Field rule (label 8, help 4, field to field 24, [field](field.md) FIELD-1..4).
 `md` only ([../scale.md](../scale.md)); a `CopyField` is as tall as every field (`DNA-COMMON-FIELD-MD`). A row that
 holds a field is an `md` row. Fields inside a narrow owner stay one column (RESPONSIVE-1).
 
@@ -53,4 +54,5 @@ politely) and failed (the field's error). Known field types declare autofill and
   reveal behind a masked `onCopy`.
 
 ## Rules
-FEEDBACK-1, COLLECTION-1, RESPONSIVE-1, ANATOMY-2. Lint: `starci-fe/no-native-form-control`. Proof: A11Y-1, UX-3, UX-8, FOCUS-1.
+FEEDBACK-1, COLLECTION-1, RESPONSIVE-1, ANATOMY-2, FIELD-1..4. Lint: `starci-fe/no-native-form-control`,
+`starci-grammar/field-label`. Proof: A11Y-1, UX-3, UX-8, FOCUS-1.

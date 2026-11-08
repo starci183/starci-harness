@@ -42,6 +42,12 @@
         padding-inline: var(--grammar-control-padding-inline-lg);
     }
 
+    /* A glyph and the label are companions in one control: one inline step apart, on every size and vendor version. */
+    .starci-core-button {
+        /* !important: the vendor button rules are unlayered and set their own gap; consumers import this sheet on either side of them. */
+        gap: var(--grammar-inline-gap) !important;
+    }
+
     .starci-core-button[data-size="sm"][data-grammar-button-start="glyph"] {
         padding-inline-start: var(--grammar-control-padding-glyph-sm);
     }

@@ -28,6 +28,7 @@ export const TableRows = ({ data, isLoading, ariaLabel }: {
         isLoading,
         emptyContent: data.empty,
         surface: "none" as const,
+        ...(data.onRowAction === undefined ? {} : { onRowAction: data.onRowAction }),
     }
     return data.groups === undefined
         ? <DataTable<Row> {...shared} rows={data.rows} />

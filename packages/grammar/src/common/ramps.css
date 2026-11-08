@@ -147,5 +147,10 @@
         --starci-flow-height: 24rem;
         --starci-flow-zoom: 1;
         --avatar-size: var(--starci-core-control-min-size);
+        /* A connection logo in a LogoStack: the 20px icon step (size-5, Icon `leading`). */
+        --grammar-logo-stack-size: 1.25rem;
+        /* How far a MessageBubble reaches across its row: `standard` (the default) is a reading measure capped at 40rem, `wide` a share of the column for a chat stack. */
+        --grammar-bubble-measure-standard: min(40rem, 85%);
+        --grammar-bubble-measure-wide: 70%;
     }
 }

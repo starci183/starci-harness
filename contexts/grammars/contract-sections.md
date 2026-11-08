@@ -9,22 +9,22 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
 
 - The grammar contract · `contexts/grammars/contract.md#the-grammar-contract` · 1 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - What a grammar provides · `contexts/grammars/contract.md#what-a-grammar-provides` · 3 KB
-  - The shared scale · `contexts/grammars/contract.md#the-shared-scale` · 2 KB — A row of controls reads as one object, so its controls share one height.
+  - The shared scale · `contexts/grammars/contract.md#the-shared-scale` · 3 KB — A row of controls reads as one object, so its controls share one height.
   - Intent x placement -> variant · `contexts/grammars/contract.md#intent-x-placement---variant` · 2 KB — The app states what a command does; the composition states where it sits; Common's map turns the pair into a HeroUI variant.
   - Roles · `contexts/grammars/contract.md#roles` · 1 KB — Each heading is one role of contract.yaml `roles`.
     - Card · `contexts/grammars/contract.md#card` · 4 KB — Card is one subject on its own surface, and a surface never stands inside another (a card, a `Pane surface`, a `Dialog`, `Drawer`, `AlertDialog` or `Popover`): the card has one ...
-    - Button · `contexts/grammars/contract.md#button` · 1 KB — Button is a command (`onPress`) or a destination (`href`) drawn as a button; the kind decides semantics, the shape only paints.
+    - Button · `contexts/grammars/contract.md#button` · 2 KB — Button is a command (`onPress`) or a destination (`href`) drawn as a button; the kind decides semantics, the shape only paints.
     - ButtonGroup · `contexts/grammars/contract.md#buttongroup` · 1 KB — An action group is two to five peers of one intent acting on one object (zoom, align).
     - Tabs · `contexts/grammars/contract.md#tabs` · 1 KB — Tabs switch whole panels; each tab owns its panel.
     - SegmentedControl · `contexts/grammars/contract.md#segmentedcontrol` · 1 KB — The value role is one value inside a form or a toolbar (period, audience, density), not navigation, and its renderer is `ChoiceChips` (or a `RadioGroup` when each option needs a ...
     - FilterButtonGroup · `contexts/grammars/contract.md#filterbuttongroup` · 1 KB — `FilterButtonGroup` is deprecated and refused in product source (R380): peer values that filter a collection which stays in place are `Tabs kind="filter"`.
     - Chip · `contexts/grammars/contract.md#chip` · 1 KB — A chip is a label, not a target, on two axes: tone (which settled fact) and emphasis.
-    - Input · `contexts/grammars/contract.md#input` · 1 KB — A field is a label, a control, a description and an error slot, drawn in that order, HeroUI's: the label is the accessible name and sits on the control, the description is ...
+    - Input · `contexts/grammars/contract.md#input` · 2 KB — A field is a label, a control, a description and an error slot, drawn in that order, HeroUI's: the label is the accessible name and sits on the control, the description is ...
     - CopyField · `contexts/grammars/contract.md#copyfield` · 1 KB — A copy field is a read-only value the reader takes away: a field whose control is the value and, at its end inside the frame, the copy action, at the height and in the anatomy of ...
     - Select · `contexts/grammars/contract.md#select` · 1 KB — A select is a field whose control opens a list in a popover.
     - Dialog · `contexts/grammars/contract.md#dialog` · 1 KB — A dialog, an alert dialog, a drawer, a popover or a tooltip.
     - Menu · `contexts/grammars/contract.md#menu` · 1 KB — A menu is a list of commands behind a trigger.
-    - List · `contexts/grammars/contract.md#list` · 1 KB — A list is rows of peers: a `ListBox` when picking is the task, `SurfaceCard kind="list"` when a standalone bounded list reports on the page canvas, `Section kind="list"` when an ...
+    - List · `contexts/grammars/contract.md#list` · 2 KB — A list is rows of peers: a `ListBox` when picking is the task, `SurfaceCard kind="list"` when a standalone bounded list reports on the page canvas, `Section kind="list"` when an ...
     - Link · `contexts/grammars/contract.md#link` · 1 KB — `Link` is a native destination carried by text or one image.
     - Grid · `contexts/grammars/contract.md#grid` · 2 KB — `Grid` names a track layout by the content it carries: peer `cards`, aligned `form` fields, `main-rail`, independent working `sections`, a reading `pair`, one `featured` focus ...
     - EntryFrame · `contexts/grammars/contract.md#entryframe` · 1 KB — `EntryFrame` owns one full-height entry task.

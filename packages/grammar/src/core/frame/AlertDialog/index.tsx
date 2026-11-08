@@ -29,6 +29,10 @@ export type AlertDialogProps = OverlayOpenState & {
     readonly onCancel?: () => void
     /** App-owned pending state for a confirm whose work is tracked elsewhere. */
     readonly isConfirmPending?: boolean
+    /**
+     * The confirm stays disabled until a gate in the body is met (typing the name of what is deleted). Cancel always works.
+     */
+    readonly isConfirmDisabled?: boolean
     /** A Common `Button` (any React Aria pressable) that opens the confirmation. */
     readonly trigger?: ReactNode
     /** Escape cancels by default; disable only when cancelling would itself be unsafe. */
@@ -67,6 +71,7 @@ export const AlertDialog = ({
     onConfirm,
     onCancel,
     isConfirmPending = false,
+    isConfirmDisabled = false,
     trigger,
     isKeyboardDismissDisabled = false,
     ...openState
@@ -145,8 +150,8 @@ export const AlertDialog = ({
                                     </SafeAction>
                                     <span data-grammar-overlay-action="confirm" data-grammar-tone={tone} data-contract="CTA-4 ACTION-2 FEEDBACK-3">
                                         {tone === "negative"
-                                            ? <Button intent="destructive" step="confirm" isPending={pending} onPress={confirm}>{confirmLabel}</Button>
-                                            : <Button intent="commit" isPending={pending} onPress={confirm}>{confirmLabel}</Button>}
+                                            ? <Button intent="destructive" step="confirm" isPending={pending} isDisabled={isConfirmDisabled} onPress={confirm}>{confirmLabel}</Button>
+                                            : <Button intent="commit" isPending={pending} isDisabled={isConfirmDisabled} onPress={confirm}>{confirmLabel}</Button>}
                                     </span>
                                 </HeroAlertDialog.Footer>
                             </SurfaceNesting>

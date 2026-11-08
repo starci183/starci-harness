@@ -4,10 +4,11 @@ import { useId, useState } from "react"
 import { Tabs } from "../../branch/Tabs/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import { Link } from "../../leaf/Link/index.js"
+import { Select } from "../../branch/Select/index.js"
 import { SearchField } from "../../leaf/SearchField/index.js"
 import { TextAction } from "../../leaf/TextAction/index.js"
 import { Pagination } from "../../composite/Pagination/index.js"
-import type { FilterFields, FooterZone, HeaderZone, SearchFields, SwitchFields } from "../../surfaceCardData.js"
+import type { FilterFields, FooterZone, HeaderZone, SearchFields, SearchZoneFields, SelectZoneField, SwitchFields } from "../../surfaceCardData.js"
 import { CustomZoneScope, TabsLineHost } from "../../zoneContext.js"
 import { FigureCells, figureItems } from "./FigureCells.js"
 import {
@@ -44,6 +45,32 @@ const ZoneSearch = ({ search, isCompact, autoFocus = false }: { readonly search:
         {...(search.clearLabel === undefined ? {} : { clearLabel: search.clearLabel })}
         {...(autoFocus ? { autoFocus: true } : {})}
     />
+)
+
+/** One trailing filter of a search zone: a small `Select` whose label is its accessible name, at its natural width. */
+const ZoneSelect = ({ field }: { readonly field: SelectZoneField }) => (
+    <div className="starci-core-surface-zone-select" data-grammar-zone-select="true">
+        <Select
+            label={field.label}
+            isLabelHidden
+            size="sm"
+            options={field.options}
+            value={field.value}
+            onValueChange={field.onChange}
+            {...(field.placeholder === undefined ? {} : { placeholder: field.placeholder })}
+            {...(field.prefix === undefined ? {} : { prefix: field.prefix })}
+        />
+    </div>
+)
+
+/** The search zone: the search grows, each filter keeps its natural width; narrow, the filters wrap below the search. */
+const SearchZone = ({ search }: { readonly search: SearchZoneFields }) => (
+    <div className={surfaceZoneClassName} data-grammar-zone="search" data-grammar-zone-filters={search.filters === undefined || search.filters.length === 0 ? undefined : "true"}>
+        <div className="starci-core-surface-zone-search-row">
+            <div className="starci-core-surface-zone-search-grow"><ZoneSearch search={search} isCompact={false} /></div>
+            {(search.filters ?? []).map((field, index) => <ZoneSelect key={`${field.label}-${index}`} field={field} />)}
+        </div>
+    </div>
 )
 
 /** The toolbar zone: filter tabs at the leading edge, a compact search at the trailing edge; narrow, the search is a button that opens a row. */
@@ -101,7 +128,7 @@ export const HeaderZoneView = ({ zone, isLoading }: { readonly zone: HeaderZone;
                 </TabsLineHost>
             )
         case "search":
-            return <div className={surfaceZoneClassName} data-grammar-zone="search"><ZoneSearch search={zone} isCompact={false} /></div>
+            return <SearchZone search={zone} />
         case "toolbar":
             return <TabsLineHost><ToolbarZone filter={zone.filter} search={zone.search} /></TabsLineHost>
         case "switch":

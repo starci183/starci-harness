@@ -28,13 +28,14 @@ Choice `page-header.choose.slot`: which slot carries a fact about the page. Each
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| trail | the page has ancestors the reader can go back to | `breadcrumbs`; the last item is this page | judgement |
+| trail | every page of an app console | `breadcrumbs` (the last item is this page), or `breadcrumbs: "root"` on the console's root page, which has no trail by design and draws nothing | lint `starci-grammar/page-breadcrumbs` |
 | identity | the page is one subject with an identity mark (a provider, a person, an agent) | `mark`: a decorative `Avatar`, `IconTile` or provider mark | judgement |
 | status | an outcome authority settled about the subject (connected, test mode) | `status`: `Badge` or `StatusDot` chips beside the heading (`chip.choose.role`) | `DNA-COMMON-BADGE-BELOW-RAMP` |
 | summary | short neutral facts that identify the subject (provider, account, count) | `meta`, one line | judgement |
 | explanation | a sentence saying what the page is for | `description`, one line | judgement |
 | command | a command on the whole page | `actions`: `Button`s by intent (`button.choose.intent`), the decision placement | candidate: at most one commit (CTA-1) |
 | views | the page's main area switches between views | `header.tabs` (`tabs.choose.level:page`), never a `Tabs` first in the body | lint `starci-grammar/page-tabs-in-header`; `DNA-COMMON-PAGE-HEADER-TABS-ON-SEPARATOR` |
+| sub-views | one page tab has views of its own | `header.subTabs` (valid only with `tabs`): the second and last underline row inside the band, on its own full-width separator, the first label on the content edge | lint `starci-grammar/tabs-depth`; type: `subTabs` needs `tabs` |
 
 ## Variants
 `Page`'s `chrome` is the app's, by `page-header.choose.head`: `standard` (the default), `bleed` for an app surface or
@@ -64,4 +65,5 @@ and the tab labels stay real (STATE-8); the body's blocks own their own loading.
 
 ## Rules
 HIERARCHY-3, FONT-4, CTA-1, CTA-6, STATE-6, STATE-8, BOUNDARY-1. Lint: `starci-grammar/no-hand-rolled-page-header`
-(R323), `starci-grammar/page-tabs-in-header` (R324), `starci-grammar/route-page-is-one-page` (R325).
+(R323), `starci-grammar/page-tabs-in-header` (R324), `starci-grammar/route-page-is-one-page` (R325),
+`starci-grammar/page-breadcrumbs`, `starci-grammar/tabs-depth`.

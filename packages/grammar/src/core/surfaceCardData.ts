@@ -9,6 +9,7 @@ import type { SurfaceHeadingLevel } from "./leaf/Label/index.js"
 import type { LinkProps } from "./leaf/Link/index.js"
 import type { ButtonProps } from "./leaf/Button/index.js"
 import type { PrimaryTabItems, TabItem } from "./branch/Tabs/index.js"
+import type { ListOption } from "./branch/Select/index.js"
 import type { ImageAspect, ImageProps } from "./leaf/Image/index.js"
 
 /** A status mark as data: the words, the tone, and whether it leads with a status dot. */
@@ -45,6 +46,8 @@ export type ItemAction = Pick<ButtonProps, "isPending"> & {
      */
     readonly isPrimary?: boolean
     readonly isDisabled?: boolean
+    /** The command leads somewhere (opens a page, the next step): the button ends with Grammar's arrow (`Button endArrow`). */
+    readonly endArrow?: boolean
 } & (
     | { readonly href: string; readonly press?: never }
     | { readonly press: () => void; readonly href?: never }
@@ -158,6 +161,8 @@ export type AccordionRowData = {
 export type CardHead = {
     readonly label?: string
     readonly ariaLabel?: string
+    /** One muted small line under the label, the title's own words (what the card holds, for whom). It stands 4 under the label. */
+    readonly description?: string
     /** The count or one short fact beside the label. */
     readonly fact?: string
     /** The one action at the end of the label row. It takes the fact's place. */
@@ -207,6 +212,29 @@ export type SearchFields = {
     readonly clearLabel?: string
 }
 
+/**
+ * One trailing filter of a search zone: a `Select` that narrows the same list the search does ("Status", "Owner"). Its label is its
+ * accessible name and is not drawn; a muted `prefix` inside the trigger says it in words ("Status:"). The trigger keeps its natural
+ * width and its words never wrap; the search takes the rest of the row.
+ */
+export type SelectZoneField = {
+    /** The accessible name of the select (it is not drawn). */
+    readonly label: string
+    readonly options: readonly ListOption[]
+    readonly value: string | null
+    readonly onChange: (value: string | null) => void
+    /** Words in the trigger while nothing is chosen. */
+    readonly placeholder?: string
+    /** Muted words before the value inside the trigger ("Status:"). */
+    readonly prefix?: string
+}
+
+/** The fields of a search zone with its filters: the search grows, each filter keeps its natural width; narrow, the filters wrap below the search. */
+export type SearchZoneFields = SearchFields & {
+    /** Selects at the trailing edge of the same row, narrowing the same list. */
+    readonly filters?: readonly SelectZoneField[]
+}
+
 /** The fields of a switch zone: a mode or period of the block's own data, 2 to 4 short fixed options, no count and no destination. */
 export type SwitchFields = {
     /** The accessible name of the tab list. */
@@ -225,7 +253,7 @@ export type SwitchFields = {
  */
 export type HeaderZone =
     | ({ readonly kind: "filter" } & FilterFields)
-    | ({ readonly kind: "search" } & SearchFields)
+    | ({ readonly kind: "search" } & SearchZoneFields)
     /** The filter tabs at the leading edge and a compact search field at the trailing edge, in one row; narrow: the extra tabs fold into the menu and the search becomes a search button that opens a row. */
     | { readonly kind: "toolbar"; readonly filter: FilterFields; readonly search: SearchFields }
     | { readonly kind: "figures"; readonly items: readonly Figure[] }
@@ -290,6 +318,8 @@ export type TableData = {
     readonly columns: readonly TableColumnData[]
     /** What the card shows when it has no rows. Required: every table answers for its empty state. */
     readonly empty: ReactNode
+    /** The whole row is pressable (opens a drawer): called with the row's `id` on a click, Enter or Space on the focused row. Commands inside a row stay their own. */
+    readonly onRowAction?: (id: string) => void
 } & (
     | { readonly rows: readonly TableRowData[]; readonly groups?: undefined }
     | { readonly groups: readonly TableGroupData[]; readonly rows?: undefined }

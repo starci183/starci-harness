@@ -47,9 +47,10 @@ const RowAction = ({ action }: { readonly action: ItemAction }) => {
     const intent = action.intent === "destructive"
         ? { intent: "destructive" as const, step: "entry" as const }
         : { intent: action.intent ?? "neutral" }
+    const arrow = action.endArrow === true ? { endArrow: true as const } : {}
     const button = action.href === undefined
-        ? <Button size="sm" {...intent} isDisabled={action.isDisabled === true} isPending={action.isPending === true} onPress={action.press}>{action.label}</Button>
-        : <Button size="sm" {...intent} isDisabled={action.isDisabled === true} isPending={action.isPending === true} href={action.href}>{action.label}</Button>
+        ? <Button size="sm" {...intent} {...arrow} isDisabled={action.isDisabled === true} isPending={action.isPending === true} onPress={action.press}>{action.label}</Button>
+        : <Button size="sm" {...intent} {...arrow} isDisabled={action.isDisabled === true} isPending={action.isPending === true} href={action.href}>{action.label}</Button>
     // The region's one primary stands in the decision placement (the filled step), not the item one (the outlined pill).
     return action.isPrimary === true && action.intent === "commit"
         ? <ButtonPlacementProvider placement="decision">{button}</ButtonPlacementProvider>

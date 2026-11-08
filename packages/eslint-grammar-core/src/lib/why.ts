@@ -17,6 +17,16 @@ export const why: Record<string, WhyEntry> = {
     en: "A StatusDot or Badge label in `<file>` starts with a lowercase letter.",
     fix: "Start the label with an uppercase letter (`Running`, not `running`); the rule fixes a literal label in place.",
   },
+  "tabs-switch-zone": {
+    code: "FE_TABS_SWITCH_ZONE",
+    en: "A pill (`Tabs appearance=\"primary\"`) is written in JSX in `<file>`, outside the `switch` header zone of a card.",
+    fix: "A mode or period switch of one block is the card's zone: `headers={[{ kind: \"switch\", label, items, selectedKey, onSelect }]}` with two to four short options. Views of a page are page tabs (`Page header.tabs`); views or filters inside a region are underline `Tabs`.",
+  },
+  "tabs-depth": {
+    code: "FE_TABS_DEPTH",
+    en: "Underline `Tabs` in `<file>` stack past two layers.",
+    fix: "A page has the page tabs (`Page header.tabs`) and at most one region set in a tab's panel. Fold a third level into a `switch` zone, a filter zone of a card, a list, or a drawer.",
+  },
   "no-primary-tabs-misuse": {
     code: "FE_GROUPED_CHOICE_CONTROL",
     en: "Primary `Tabs` (or a `switch` header zone) in `<file>` hold a count, an href, an attention mark, one item or more than four items.",
@@ -31,6 +41,16 @@ export const why: Record<string, WhyEntry> = {
     code: "FE_GROUPED_CHOICE_CONTROL",
     en: "A ButtonGroup, FilterButtonGroup or SegmentedControl in `<file>` draws a group of attached buttons, which the Grammar no longer has.",
     fix: "Use the component of the meaning: Tabs (kind filter for a list) to switch a view or filter, ChoiceChips or RadioGroup to choose a form value, separate Buttons or a DropdownMenu for actions.",
+  },
+  "field-label": {
+    code: "FE_FIELD_LABEL",
+    en: "A Text, Label, label or span in `<file>` stands right before a Grammar form control that has no `label` prop: a hand-made field label.",
+    fix: "Give the control its `label` prop. The Field contract spaces label to control 8 and control to help 4; field to field 24 is set by the Form or the field stack.",
+  },
+  "gap-proximity": {
+    code: "FE_GAP_PROXIMITY",
+    en: "A Grammar layout element in `<file>` (Stack, Cluster, PaneSection, Section, Grid, Form, Fieldset) stands directly inside another whose gap role is not wider: the child's gap is not at least one step closer than its container's.",
+    fix: "Step the child down one role (region -> section -> row -> inline -> identity), or step the parent up. Section is always row and Grid and Form fix their own role: do not nest them where the parent is as close. A field stack of controls inside a Form or Fieldset is exempt.",
   },
   "generated-art-in-mascot-or-media-frame": {
     code: "FE_GENERATED_ART_OUTSIDE_FRAME",
@@ -66,6 +86,11 @@ export const why: Record<string, WhyEntry> = {
     code: "FE_PAGE_HEADER_HAND_ROLLED",
     en: "A page head in `<file>` imports PageHeader or Breadcrumbs from the Grammar, so the head is composed by hand.",
     fix: "Pass the head to Page `header` (title, breadcrumbs and the slots it needs: description, meta, status, mark, actions, tabs).",
+  },
+  "page-breadcrumbs": {
+    code: "FE_PAGE_BREADCRUMBS",
+    en: "The `Page` header of a console page in `<file>` states no `breadcrumbs`.",
+    fix: "Add `breadcrumbs: { label, items }` to the header, or `breadcrumbs: \"root\"` on the root page of the console (it draws no trail).",
   },
   "page-tabs-in-header": {
     code: "FE_PAGE_TABS_OUTSIDE_HEADER",
@@ -132,6 +157,11 @@ export const why: Record<string, WhyEntry> = {
     en: "Bottom tab navigation replaces the required mobile sidebar drawer.",
     fix: "Use WorkspaceShell navigationDrawer and Sidebar presentation=\"drawer\".",
   },
+  "surface-in-surface": {
+    code: "FE_SURFACE_IN_SURFACE",
+    en: "A hand-made row list (a Stack, ul, ol or div whose rows are divided by `Divider`) in `<file>` stands inside a SurfaceCard, Drawer, Dialog, PaneSection or main-rail rail.",
+    fix: "Use `<Section kind=\"list\">` for rows inside a surface (the Grammar draws them as a nested surface with a border, the card radius and a clip), or `<SurfaceCard kind=\"list\">` when the list is the card.",
+  },
   "surface-card-kind": {
     code: "FE_SURFACE_CARD_KIND",
     en: "A `body` SurfaceCard in `<file>` holds a hand-built list, a Divider, a SectionHeader or Heading as a second title, or a `custom` zone holds a Tabs, SearchField or Divider.",
@@ -141,5 +171,25 @@ export const why: Record<string, WhyEntry> = {
     code: "FE_STYLE_TOKEN_ONLY",
     en: "`<file>` colours status content against the status pair rule (`<what>`): content on a `bg-<tone>-soft` tint paints with the solid tone (e.g. `bg-success-soft text-success`), or a mark with no tint behind it paints with the soft foreground (e.g. `text-success-soft-foreground` alone).",
     fix: "Content on a background of the tone takes the pair: `bg-<tone>-soft` with `text-<tone>-soft-foreground`. A mark that stands alone, with no background of the tone, takes the tone itself: `text-<tone>`. A solid fill takes `bg-<tone>` with `text-<tone>-foreground`.",
+  },
+  "button-arrow": {
+    code: "FE_BUTTON_ARROW",
+    en: "A Button in `<file>` types an arrow in its label, passes an arrow icon as `endContent`, or sets `endArrow` together with `startGlyph` or `startContent`.",
+    fix: "A Button that leads somewhere takes `endArrow` (the Grammar arrow slides on hover and is mirrored in RTL); one that does something takes `startGlyph`; never both.",
+  },
+  "table-cell-type": {
+    code: "FE_TABLE_CELL_TYPE",
+    en: "A DataTable cell or ListRow title/description in `<file>` draws a heading-size Text (`size=\"figure\"`), a Heading, a Label or an h1-h6.",
+    fix: "The primary of a row or cell is md 14 / 500 (`<Text isStrong>`), the secondary sm 13 muted (`<Text size=\"sm\" tone=\"muted\">`).",
+  },
+  "same-line-size": {
+    code: "FE_SAME_LINE_SIZE",
+    en: "The Text children of one Cluster line in `<file>` have different sizes.",
+    fix: "One line, one size: give every Text of the line the size of the line's role (md primary, sm secondary). A Badge or chip may stay as it is.",
+  },
+  "row-title-link": {
+    code: "FE_ROW_TITLE_LINK",
+    en: "A Link is the title of a row in `<file>` that already opens (onPress, onAction, href, chevron, or a DataTable with onRowAction or row hrefs).",
+    fix: "The row is the one pressable: write the title as plain text (`<Text isStrong>`) and keep the destination on the row.",
   },
 }

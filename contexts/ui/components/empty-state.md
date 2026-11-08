@@ -26,7 +26,9 @@ first-run row only, the `artwork`; the props refuse both at once, and a failed, 
 carries art (DISCIPLINE-3).
 
 ## Size
-Its action takes `md`; a large glyph is allowed as the standalone mark ([../scale.md](../scale.md)). The artwork
+Its action takes `md`; an action that leads somewhere (a page, a setup step) takes `actionEndArrow`, one that does
+something stays plain (`button.choose.glyph`); in a secondary place (a rail, a side card) `actionIntent="neutral"` keeps it
+from adding a second primary beside the page header's; a large glyph is allowed as the standalone mark ([../scale.md](../scale.md)). The artwork
 takes the mascot's `md` step (`mascot.choose.size:support`), set by the grammar, never by the app.
 
 ## States

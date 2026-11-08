@@ -17,6 +17,14 @@
     }
 
     /* ---------- Link ---------- */
+    /*
+     * A text link inherits the size of the text around it (`size="inherit"`, the default since 0.27), so an inline link never changes
+     * its line; `sm` and `md` name a step for a link that stands alone. `!important`: the vendor link sets its own size, unlayered.
+     */
+    .starci-core-link[data-grammar-link-size="inherit"] { font-size: inherit !important; line-height: inherit !important; }
+    .starci-core-link[data-grammar-link-size="sm"] { font-size: var(--grammar-text-sm) !important; line-height: var(--grammar-leading-sm) !important; }
+    .starci-core-link[data-grammar-link-size="md"] { font-size: var(--grammar-text-md) !important; line-height: var(--grammar-leading-md) !important; }
+
     .starci-core-link {
         text-decoration-line: underline;
         text-decoration-thickness: 1px;
@@ -533,11 +541,15 @@
     }
 
     /* ---------- Footer ---------- */
+    /*
+     * Proximity (0.27): footer > main > directory > group step down region 32, section 24, row 12, inline 8. Before, the footer
+     * stood its main and legal rows 24 apart while the main spaced brand and directory 32 and the directory its groups 24.
+     */
     .starci-core-footer {
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-section-gap);
+        gap: var(--grammar-region-gap);
         padding-block: var(--grammar-section-gap) calc(var(--grammar-inset) + env(safe-area-inset-bottom, 0px));
         padding-inline: var(--grammar-page-inset);
         border-block-start: 1px solid var(--separator);
@@ -548,7 +560,7 @@
         display: grid;
         min-width: 0;
         grid-template-columns: minmax(0, 1fr);
-        gap: var(--grammar-region-gap);
+        gap: var(--grammar-section-gap);
     }
 
     @media (min-width: 48rem) {
@@ -569,7 +581,7 @@
         display: grid;
         min-width: 0;
         grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-        gap: var(--grammar-section-gap);
+        gap: var(--grammar-row-gap);
     }
 
     .starci-core-footer-group {
@@ -884,6 +896,27 @@
         white-space: nowrap;
     }
 
+    /*
+     * The type roles of a table (0.27): the header xs 12 / 500 muted, a cell md 14 / 400, the row-header cell (the row primary)
+     * md 14 / 500. A Text in a cell takes the same steps (`Text isStrong` 14 / 500, `Text size="sm" tone="muted"` 13).
+     */
+    .starci-core-data-table .starci-core-data-table-column {
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-xs);
+    }
+
+    .starci-core-data-table .starci-core-data-table-cell {
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-md);
+    }
+
+    .starci-core-data-table .starci-core-data-table-cell[data-grammar-table-row-header="true"] {
+        font-weight: var(--grammar-weight-medium);
+    }
+
     /* Amounts and counts: one line, tabular numerals. */
     .starci-core-data-table :is(.starci-core-data-table-column, .starci-core-data-table-cell)[data-grammar-table-numeric="true"] {
         white-space: nowrap;
@@ -948,8 +981,15 @@
     }
 
     /* A whole-row link target reads as one pressable row. */
-    .starci-core-data-table-row[data-grammar-table-row-link="true"] {
+    .starci-core-data-table-row:is([data-grammar-table-row-link="true"], [data-grammar-table-row-pressable="true"]) {
         cursor: pointer;
+    }
+
+    /* A pressable row takes the hover fill a pressable list row has (the secondary surface), over the cells' own paint. */
+    @media (hover: hover) {
+        .starci-core-data-table .starci-core-data-table-row[data-grammar-table-row-pressable="true"]:hover .table__cell {
+            background: var(--surface-secondary);
+        }
     }
 
     /* An editor cell hosts a field; the field keeps its own control height and fills the column, never wider. */
@@ -985,7 +1025,8 @@
         gap: var(--grammar-identity-gap);
         margin-block-start: 0.25rem;
         color: var(--muted);
-        font-size: var(--grammar-text-relative);
+        font-size: var(--grammar-text-sm);
+        font-weight: var(--grammar-weight-regular);
         white-space: normal;
     }
 
