@@ -258,13 +258,13 @@ function ciJobSettings(declaration: Declaration, source: CiSource | undefined, s
 }
 
 /**
- * The shards of the cache verify (cache-verify.yml), as the `args` of its matrix: one `starci app check --fresh` job per family the committed cache holds records of
+ * The shards of the cache verify (cache-verify.yml), as the block list of the `args` of its matrix (the lines Prettier keeps for a list this long): one `starci app check --fresh` job per family the committed cache holds records of
  * (the families `app check` caches; the audit and the Sonar scan keep no record), the lint family once per side of the lint matrix of ci.yml. Each job recomputes its
  * family from scratch and fails when the committed records are not the ones it produced.
  */
 export function verifyShards(scopes: readonly string[]): string {
   const gates = ['hfs', 'secrets', 'format', 'db', 'wiring', 'types', 'test', 'build'];
-  return `[${[...gates.map((gate) => `--gate ${gate}`), ...scopes.map((side) => `--gate lint --side ${side}`)].map((args) => JSON.stringify(args)).join(', ')}]`;
+  return [...gates.map((gate) => `--gate ${gate}`), ...scopes.map((side) => `--gate lint --side ${side}`)].map((args) => `          - ${JSON.stringify(args)}`).join(String.fromCharCode(10));
 }
 
 /** An omitted quality declaration preserves hosted Sonar, required OIDC Codecov, and the high production dependency audit. */

@@ -21,6 +21,7 @@ const lockedOk = (root: string): LockResult => {
 };
 
 const GATES = ['hfs', 'secrets', 'format', 'db', 'wiring', 'types', 'test', 'build'];
+const listed = (block: string | undefined): string[] => (block ?? '').split(String.fromCharCode(10)).map((line) => JSON.parse(line.replace(/^ +- /u, '')) as string);
 const shardsOf = (sides: readonly string[]): string[] => [...GATES.map((gate) => `--gate ${gate}`), ...sides.map((side) => `--gate lint --side ${side}`)];
 
 function newApp(t: TestContext, edition: 'lite' | 'full'): string {
@@ -37,10 +38,10 @@ const renderOf = (root: string): { text: string; ci: string } => {
 type Job = { 'timeout-minutes'?: number; needs?: string[] | string; strategy?: { 'fail-fast'?: boolean; matrix?: { args?: string[] } }; steps?: { name?: string; run?: string; if?: string }[]; if?: string };
 
 test('the shards are the cached families once each and the lint family once per side of the lint matrix', () => {
-  assert.deepEqual(JSON.parse(verifyShards(['be', 'fe'])), shardsOf(['be', 'fe']));
-  assert.deepEqual(JSON.parse(verifyShards(['be', 'fe', 'packages'])), shardsOf(['be', 'fe', 'packages']));
-  assert.deepEqual(JSON.parse(ciWorkflowCommands({ files: [] }, 'be/coverage/lcov.info', undefined, { packages: true, rootPackages: true }).ciVerifyShards ?? '[]'), shardsOf(['be', 'fe', 'packages']));
-  assert.deepEqual(JSON.parse(ciWorkflowCommands({ files: [] }, 'be/coverage/lcov.info').ciVerifyShards ?? '[]'), shardsOf(['be', 'fe']));
+  assert.deepEqual(listed(verifyShards(['be', 'fe'])), shardsOf(['be', 'fe']));
+  assert.deepEqual(listed(verifyShards(['be', 'fe', 'packages'])), shardsOf(['be', 'fe', 'packages']));
+  assert.deepEqual(listed(ciWorkflowCommands({ files: [] }, 'be/coverage/lcov.info', undefined, { packages: true, rootPackages: true }).ciVerifyShards), shardsOf(['be', 'fe', 'packages']));
+  assert.deepEqual(listed(ciWorkflowCommands({ files: [] }, 'be/coverage/lcov.info').ciVerifyShards), shardsOf(['be', 'fe']));
   assert.ok(!JSON.stringify(shardsOf([])).includes('audit') && !JSON.stringify(shardsOf([])).includes('sonar'), 'the audit and the Sonar scan keep no record');
 });
 

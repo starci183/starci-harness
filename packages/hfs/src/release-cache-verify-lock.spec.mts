@@ -114,6 +114,6 @@ test('the gate asks gh for the runs of the release sha too, and a green one on d
   assert.ok(asked.some((args) => args.includes('--commit') && args.includes(HEAD)), 'gh was asked for the runs of the release sha');
   assert.ok(asked.some((args) => args.includes('--branch') && args.includes('main')), 'and for those of the default branch');
   assert.equal(readVerifyLock(probed, 'main', HEAD).state, 'open');
-  const unreadableSha = { ...ctx, spawn: (command: string, args: string[]) => (args.includes('--commit') ? { status: 1, stdout: '' } : { status: 0, stdout: JSON.stringify([run(1, 'failure', '2026-11-06T02:00:00Z')]) }) } as unknown as VerbContext;
+  const unreadableSha = { ...ctx, spawn: (_command: string, args: string[]) => (args.includes('--commit') ? { status: 1, stdout: '' } : { status: 0, stdout: JSON.stringify([run(1, 'failure', '2026-11-06T02:00:00Z')]) }) } as unknown as VerbContext;
   assert.equal(readVerifyLock(unreadableSha, 'main', HEAD).state, 'locked', 'runs of the sha that cannot be read leave the main verdict standing');
 });

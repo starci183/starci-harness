@@ -29,7 +29,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        args: {{ciVerifyShards}}
+        args:
+{{ciVerifyShards}}
     steps:
 {{> app/ci-workflows/install-steps.yml}}
 {{ciPackagesBuild}}
