@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.31.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.31.0 (the final type scale).
+- Changed: `same-line-size` treats `sm` and `md` (and an absent size) as the same 14 step; only 14 vs 12 (`xs`) vs display (`figure`) on one line are findings. `table-cell-type` allows only 14 (`md`, `sm`, absent) and 12 (`xs`) Text in a DataTable cell or ListRow; `lg`, `xl`, `figure`, Heading, Label and h1-h6 stay refused. Messages, docs and `why.ts` no longer name 13 or 16.
+
 ## 0.30.0 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.30.0 (Button sm takes the pill radius).

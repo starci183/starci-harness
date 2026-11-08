@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.31.0 - 2026-11-09 - the final type scale; chat parts; spotlight
+
+- Changed (values): THE FINAL TYPE SCALE (owner, 2026-11-09; it replaces the 0.28 type roles). 14 for all UI text: body,
+  labels, section and card titles (16 before), row titles, tabs (13 before), buttons, links (the Section action too), inputs,
+  descriptions, captions, hints, zone text (13 before) and the figure labels and meta. 12 only for small names (meta lines,
+  badges, chips, counts, timestamps, breadcrumb separators). No 13 anywhere: `--grammar-text-sm` and `Text size="sm"` are 14
+  (`sm` stays as a name and equals `md`). Hierarchy by weight and tone only: titles semibold (page, section and card
+  titles, Heading levels 1-3; the card or section `h3` label was 16 / 500, now 14 / 600), row and selected names 500,
+  secondary text muted. Display sizes: the page title 18 and a big figure value 20 (`Text size="figure"` and the figures
+  value, 30 before); `titleScale="title"`, `Heading scale="title" | "display"` and Markdown headings keep their display
+  scale. Every tab is 14 and 40 high (filter tabs were 32) with one selected weight, 500 over the underline (page tabs
+  were 600). A DataTable header is 14 / 500 muted (12 before). `TextAction size="md"` is 14 (16 before). `check:type`
+  pins it: no 0.8125rem, `--grammar-text-sm` at 14, every tab rule at 14.
+- Changed (default): a `Tabs` strip that ends a `PaneSection` (its last child; not the pill switch) is hosted by the band: the band's
+  bottom edge is the one full-width `--separator` line (through the pane inset), the strip's own short line is not drawn, no padding
+  stands under it, and the pane drawn next to a band that ends its pane loses its block-start border, so the line is never doubled.
+  CSS on the band (`:has`), no new prop.
+- Changed (default): the head band of a chat or list pane (a `PaneSection as="header"`, or one holding a `PaneHeader`, standing above a
+  `scroll` band) ends in one full-width `--separator` line, its block-end padding equal to its block-start inset.
+- Added: `MessageCard` (composite): an agent's rich message as data, `{ author?, avatar?, title, chip?, body? | details?: DescriptionListItem[],
+  actions?: { id, label, kind?: "primary" | "neutral" | "open", onPress? | href? }[], meta?, measure?, id? }`. Order: title and chip, body or a
+  compact key/value list, the actions row (primary first, an `open` action with the end arrow last), the meta line at xs muted. It renders
+  `MessageBubble content="card"`, so it is capped at the bubble measure (`standard`, or `wide` 70%) with the avatar at the start.
+  `MessageBubble content="text" | "card"` (default `text`): the body is a structured card on the surface card face. Stories
+  `Navigation & Data/Chat parts/MessageCards`, `PaneTabsLine`, `ChatPaneHeadLine`, `EmptyNoticeInThread`.
+- Changed (default): an `EmptyNotice` inside a thread (a `PaneSection scroll role="log"` band, or a content stack holding `MessageBubble`s)
+  draws no card surface: no fill, border, radius or shadow. Detected by context in CSS, no prop.
+- Added: `Spotlight` (`@starci/grammar/common`, outside the registry): `<Spotlight isActive onEnd shape isBlock>{target}</Spotlight>`,
+  the Grammar "look here" in place of outline utilities in an app. An accent ring plus a soft `--accent-soft` pulse for the new ramp
+  step `--grammar-spotlight-duration` (3s), then no ring and `onEnd`; reduced motion keeps a static ring for the same time. It takes no
+  layout space; `shape` is `rounded | pill | circle`. Story `Navigation & Data/Spotlight/SpotlightStates`.
+- Added: `AvatarButton size="floating"` (56px, new ramp step `--grammar-avatar-floating-size`, overlay shadow) and `status={{ tone, label }}`:
+  a StatusDot badge at the top end corner on a surface ring, its `label` the button's accessible description. Story
+  `Navigation & Data/Spotlight/AvatarButtonFloating`.
+
 ## 0.30.0 - 2026-11-09 - one Button radius; Sparkline, BarChart value axis, figure trend, row chevron
 
 - Changed (values): one Button radius in Core: every size, sm included, is a pill (`--starci-core-pill-radius`, HeroUI's
