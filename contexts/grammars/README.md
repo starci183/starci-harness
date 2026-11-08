@@ -100,7 +100,9 @@ decides product facts and layout. A row whose last column is not "nothing" is a 
 | Anatomy, roles, keyboard, focus | HeroUI through Common's wrappers; [vendor/parity.yaml](../vendor/parity.yaml) | nothing |
 | Colour | the app's HeroUI tokens on `:root`, `.light`, `.dark`; a family's optional `src/<id>/theme.css` is the default | the whole palette, in its own CSS, by HeroUI's names only; the mode is its class on `html` |
 | Radius, shadow, motion | `src/<id>/dna.ts` and `src/<id>/styles.css`, shaped by contract `tokens` and `dna`; type, corner and stroke ramps in `src/common/ramps.css` | nothing |
-| Spacing scale and rhythm | `src/common/spacing.ts` | which relationship a gap expresses ([ui/presentation](../ui/presentation.md)) |
+| Spacing scale and rhythm | `src/common/spacing.ts`; the defaults of every composition hold the proximity law (children closer than the container's siblings) | which relationship a gap expresses ([ui/presentation](../ui/presentation.md) G6), under lint `gap-proximity` |
+| Field rhythm (label 8, help 4, field to field 24) | the form CSS of Common, `Form`, `Grid kind="form"`, `Fieldset` | nothing: the `label` prop, never a hand-made label (lint `field-label`) |
+| A list of rows inside a surface | `Section kind="list"` draws the nested surface | `Section kind="list"`, never blocks divided by `Divider` (lint `surface-in-surface`) |
 | Control heights | Common tokens `--grammar-control-height-*`, contract `sizes` | `sm` or `lg` by [ui/scale](../ui/scale.md) (gap G-6); `control` never |
 | Hit area and target floor | Common tokens `--grammar-target-*`, contract `sizes.target` | nothing |
 | Corners | contract `tokens.corner` roles, values from the grammar's base radius | the corner role of an app-owned box ([ui/presentation](../ui/presentation.md)) |
@@ -110,7 +112,7 @@ decides product facts and layout. A row whose last column is not "nothing" is a 
 | Surface nesting | none: a surface never stands inside another, refused by the types, lint and a development throw | nothing |
 | Root, overlay portal, toast region | `GrammarRoot`, `src/core/overlayScope.tsx`, `Toaster` | mount one root and one `Toaster` (placement: gap G-11) |
 | Glyph set and sizes | Grammar `Icon`, DNA arrangement; grammar lint | which meaning to show (gap G-16) |
-| Type ranks | `Text` and `Heading` props | the rank by job ([ui/presentation](../ui/presentation.md)); weight (gap G-12) |
+| Type roles | `Text` and `Heading` sizes and weights (`md` 14, `sm` 13, `xs` 12, `isStrong` 500; page title 18, card title 16), one size per role | the rank by job ([ui/presentation](../ui/presentation.md) FONT-7), one size per line (lint `same-line-size`), no heading in a cell (lint `table-cell-type`); weight is never the app's |
 | Composition for a business shape | [common](common.md#playbook-shapes) | product facts, copy and region order from the spec |
 | Checks on app code | `@starci/eslint-grammar-<id>` (Grammar API) and `@starci/eslint-canon-fe` (universal) | nothing |
 

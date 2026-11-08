@@ -19,6 +19,13 @@ Choice `text.choose.role`: what a run of words is. The first row that applies wi
 Choice `text.choose.content`: what may stand inside a `Text`. Words, `Badge`, `Icon`, a link or a strong span. A block (a `Stack`,
 a card, a table, a list row, a plain `div` or `ul`) is a layout, and a layout is closed before the next one opens (R357).
 
+## Size
+One role, one size ([../presentation.md](../presentation.md#type) FONT-7): `md` 14 for body and table cells, `sm` 13 muted for
+a secondary line or a description, `xs` 12 muted for meta, and `isStrong` is weight 500 (a row's or a table's primary text is
+`<Text isStrong>`). Words that stand on one line share one size (FONT-8, lint `starci-grammar/same-line-size`), and a table cell
+or a list row takes the row type, never a heading size (FONT-9, lint `starci-grammar/table-cell-type`). A `Link` inside the
+words inherits their size.
+
 ## States
 Loading draws the words as a skeleton bar of the same step.
 
@@ -28,6 +35,6 @@ Loading draws the words as a skeleton bar of the same step.
 - **App author decides:** the words.
 
 ## Rules
-R357 (`starci-grammar/text-inline-only`: a block inside `Text`), R358 (`starci-grammar/no-text-heading`: a strong `Text` that
+FONT-7..9. Lint: `starci-grammar/same-line-size`, `starci-grammar/table-cell-type`. R357 (`starci-grammar/text-inline-only`: a block inside `Text`), R358 (`starci-grammar/no-text-heading`: a strong `Text` that
 only titles the blocks after it). A heading is the group's own title, so the outline, the level and the spacing come from the
 component that owns them.

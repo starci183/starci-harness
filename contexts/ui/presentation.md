@@ -24,25 +24,26 @@ the app knows whether they belong together, and the grammar resolves the name to
 
 ### The scale
 
-One closed scale, and no value outside it: **0 · 4 · 8 · 12 · 24 · 32** (px at 16px to the rem; owner:
-`@starci/grammar src/common/spacing.ts`, the root tokens of `src/common/styles.css`). There is no 16: a container holds
-its content one row step in, and separation beyond that belongs to the parent's gap, never to a larger inset. A
-measured 6 (a meter gap), 3 (a body offset), 20 or a fluid `clamp()` is a second, private scale and is refused. A
-1px or 2px line is a stroke, not a step.
+One closed scale, and no value outside it: **0 · 4 · 8 · 12 · 16 · 24 · 32** (px at 16px to the rem; owner:
+`@starci/grammar src/common/spacing.ts`, the root tokens of `src/common/styles.css`). The 16 is the card's inset and
+nothing else (`--grammar-inset-card`): it is never a gap, so no `GapRole` names it, and separation beyond the inset
+belongs to the parent's gap, never to a larger inset. A measured 6 (a meter gap), 3 (a body offset), 20 or a fluid
+`clamp()` is a second, private scale and is refused. A 1px or 2px line is a stroke, not a step.
 
 | Step | Role as a gap (`GapRole`) | Token | Rule id |
 | --- | --- | --- | --- |
 | 0 | seam: a separator or joined faces already divide the two | none | GAP-0 |
 | 4 | identity: two lines read as one cluster (title and qualifier, label and field and help, value and unit) | `--grammar-identity-gap` | GAP-1 |
 | 8 | inline: companions inside one unit (glyph and label, chips of one set, a decision and its way out) | `--grammar-inline-gap` | GAP-2 |
-| 12 | row: peers of one row or group, each read on its own (fields of a form, bands of a pane or card, rows of a rail) | `--grammar-row-gap` | GAP-3 |
-| 24 | section: blocks under one heading (the groups of a rail, the blocks under one heading that are not a card grid) | `--grammar-section-gap` | GAP-4 |
+| 12 | row: peers of one row or group, each read on its own (bands of a card, rows of a rail, the head, filter and body of one `Section`) | `--grammar-row-gap` | GAP-3 |
+| 24 | section: independent blocks of one region, each with its own heading or edge (the groups of a rail, the sections of a `Grid kind="sections"`, a field stack in a form) | `--grammar-section-gap` | GAP-4 |
 | 32 | region: page regions with their own heading (summary above history, main and rail, header and body) | `--grammar-region-gap` | GAP-5 |
 
 GAP-6 (a named major transition) takes the region step: the scale holds nothing above it.
 
 Choice `space.choose.gap`: the relation between two siblings picks the role; the first row of the table above that
-applies wins. A flex that holds two relations is two Stacks, one inside the other.
+applies wins, and the proximity law below caps it by the container. A flex that holds two relations is two Stacks, one
+inside the other.
 
 ### Four inset levels
 
@@ -51,12 +52,13 @@ An inset steps down one level each time a box sits inside another, and an inner 
 | Level | Box | Inset (the token that owns it) |
 | --- | --- | --- |
 | 0 frame | the page gutter; the overlay as a floating page | gutter 12, 24 from the medium breakpoint (48rem), 32 from wide (70rem), stepped, never fluid (`--grammar-page-inset`), except on `Page chrome="panes"`, where the header takes 12 at every width so the gutter column starts at the pane content edge; a dialog or drawer 12 on every side (`--grammar-overlay-inset`) |
-| 1 surface | a card (dense or holding a form or prose alike), a pane, a zone of a card | 12 on every side (`--grammar-inset`, `--grammar-card-padding-*`, `--grammar-pane-inset-*`) |
-| 2 box in a surface | a notice in a card, a `Quote`, a list option, a table cell's block side, a stat cell (never a card: a surface does not stand in a surface) | 8 (`--grammar-inset-nested`) |
+| 1 surface | a card (dense or holding a form or prose alike) and a zone of a card; a pane | a card and its zones 16 on every side (`--grammar-inset-card`, `--grammar-card-padding-*`; rows a card divides by lines keep the row step on the block sides and 16 inline); a pane 12 (`--grammar-inset`, `--grammar-pane-inset-*`) |
+| 2 box in a surface | a notice in a card, a `Quote`, a list option, a table cell's block side, a stat cell, the bordered list of a `Section kind="list"` (BOUNDARY-7) (never a card: a surface does not stand in a surface) | 8 (`--grammar-inset-nested`) |
 | 3 control | a button, field, tab, chip, badge | the control's height decides the block padding; inline sm 8, md 12, lg 24, one step less on a glyph's side (`--grammar-control-padding-*`) |
 
-The one named exception above its parent's level is a low-density region, an empty state or a drop target, which
-takes 24 on every side (`--grammar-inset-open`, PADDING-6).
+The named exceptions above a parent's level are the card's 16 (the one use of that step: a card stands in a page
+gutter of 12 on a phone) and a low-density region, an empty state or a drop target, which takes 24 on every side
+(`--grammar-inset-open`, PADDING-6).
 
 ### Laws
 
@@ -69,11 +71,12 @@ Padding (inline and block chosen apart):
 - **P2 Inline belongs to the container, block to the item.** Every box in one container starts at the same content
   edge (a search field, the first tab label, the selected row, a meter, a chip); the text inside a box keeps the box's
   own padding. Block padding is the density of each band. Lint: `starci-fe/no-list-panel-padding`.
-- **P3 Nesting steps down.** 32/24/12 → 12 → 8: an inner inset is smaller than its parent's, or the inner box reads as a
-  surface inside a surface. The card's inner text at 12 is the one intentional step between the shared edge and the content.
+- **P3 Nesting steps down.** 32/24/12 → 16 or 12 → 8: an inner inset is smaller than its parent's, or the inner box reads as a
+  surface inside a surface. The card's 16 is the one intentional step between the shared edge and the content, and the
+  card-inset step is used for nothing else.
 - **P4 Closed boxes are symmetric.** A closed box has equal block sides, and its inline and block insets never differ
   by two steps; extra separation belongs to the parent's gap, never to one side of the box. Reading comfort comes from
-  measure (MEASURE-4), not from a larger inset, so a card holding a form or prose keeps 12.
+  measure (MEASURE-4), not from a larger inset, so a card holding a form or prose keeps its 16.
 - **P5 Controls are measured by height.** Block padding is derived from the size step (32 / 40 / 48), never chosen;
   inline padding follows the step, one step less on the side a leading or trailing glyph stands on.
 - **P6 Optical anatomy stays inside components.** A large figure or heading keeps its own leading; a one-line row is
@@ -89,16 +92,32 @@ Gap (row and column chosen apart):
   (`DNA-COMMON-RHYTHM-MONOTONIC`; proof TASTE-4).
 - **G3 One relation per axis.** A wrapping chip or filter set takes inline on both axes (a wrapped line is the same
   set); a toolbar takes inline inside a group and section between groups; a card or tile grid takes inline on both axes and sits a row step under its heading; a
-  two-column form takes row on both axes; main and rail take region on both axes when they stack.
-- **G4 Heading to content.** Title and its supporting line: identity. A section header and its content: row. A page
+  two-column form takes the section step on both axes (the Field rule, FIELD-3); main and rail take region on both axes when they stack.
+- **G4 Heading to content.** Title and its supporting line: identity. A section header and its content: row (G6). A page
   header and its body: region, or 0 when the body is a pane grid (`Page chrome="panes"`).
 - **G5 Rows and messages.** Rows divided by lines: seam. A pill list: identity, so two hover fills never touch. Chat
   bubbles of one sender: identity; a sender change: row; a day divider: section.
+- **G6 The proximity law.** Inside any container, its children stand at least one step closer than the container stands to
+  its siblings: the gap roles rise strictly (identity 4, inline 8, row 12, section 24, region 32), so a nested layout takes a role
+  below its parent's, and a reader never sees a group whose inside is as loose as its outside. The grammar's defaults already
+  hold it: a `Section` spaces its head, filter and body by the row step (12, GAP-3) because the page body stands its
+  sections a region step (32) apart; a `PaneSection` defaults to `gap="inline"` (8) because bands stand 12 apart (a band alone
+  in its pane may take `row` or `section`); a `SurfaceCard` label stands 8 above its surface (4 in a cards `Grid`); `Grid`
+  kinds `cards`, `week` and `week-summary` 8, `sections`, `pair`, `featured` 24, `main-rail` 32; a `Board` column's cards 8; the
+  `Footer` 32 (main and legal), 24 (brand and directory), 12 (groups), 8 (links). The author's `Stack`/`Cluster` `gap` follows
+  the same ladder. Three exemptions: the region step is the ceiling (nothing above 32 exists to be compared); a box with its
+  own edge (a card surface, a board column's ground, an overlay) groups by that edge, so the comparison starts again inside it;
+  and a field stack (`Stack gap="section"` of controls, 24) directly in a `Form` or `Fieldset` is the Field rule's rhythm
+  ([field](components/field.md) FIELD-3), not a layout gap. Measure: lint `starci-grammar/gap-proximity` (the literal
+  roles of nested Grammar layout elements in a file), and the DOM audit `node packages/grammar/scripts/audit-gap.mts <url>...
+  [--storage-state file] [--json out]` (every container in a rendered page whose gap is not below its spacing ancestor's;
+  it is not yet a step of `app check`).
 
 Padding and gap together:
 
-- **R1 A closed box's content sits 12 apart inside a 12 inset**, and the blocks under a heading stand a section apart; the one
-  named exception is a card or tile grid, whose siblings stand 8 apart under a heading 12 above.
+- **R1 A closed box's content sits 12 apart inside its inset**, and the blocks under a heading stand a row step apart (G6:
+  children closer than the container's siblings); a card or tile grid is closer still, its siblings 8 apart under a heading
+  12 above.
 - **R2 Touching panes take 0 and a divider; floating cards take the grid step of their kind.** The two never mix.
 - **R3 A divider is full-bleed**; padding sits on the bands beside it, never on an ancestor of the divider. Lint:
   `starci-fe/divider-full-bleed`.
@@ -116,7 +135,7 @@ Margin:
 
 The page title, the tab labels and the section headings share one text edge with the card or pane box below them:
 every underline tab bar, page, region or filter, has its first label on the content edge; only a mode or period switch
-is a pill (`Tabs appearance="primary"`, [tabs](components/tabs.md) `tabs.choose.role:switch`). The card's inner text at 12 is the one intentional step.
+is a pill (`Tabs appearance="primary"`, [tabs](components/tabs.md) `tabs.choose.role:switch`). The card's inner text at 16 is the one intentional step.
 
 ### The table (the grammar's decision per component)
 
@@ -128,16 +147,19 @@ the spacing of that row: a role prop or nothing, never a gap, margin, padding or
 | --- | --- | --- | --- | --- |
 | Page body | main and rail region; header to body region (0 under `chrome="panes"`) | gutter 12 / 24 / 32 | none | `Page` `chrome`, `Grid kind="main-rail"` |
 | Page header | title to description identity, copy to tabs row | gutter, 12 under `chrome="panes"`; top section, bottom 0 over tabs | none | `header` data |
-| Page tabs (underline) | labels 24 apart | first label 0, 12 per side | none | `header.tabs` |
+| Page tabs (underline) | labels 24 apart; a second row (`header.subTabs`) on its own separator | first label 0, 12 per side | none | `header.tabs`, `header.subTabs` |
 | Sidebar item and rail | items identity, groups section | item 12 by derived 40; collapsed rail 12 | none | `groups` data |
-| `Section` | head, filter and content one section step (24) apart; title to count identity | none: the section adds none | none | `title`, `kind` |
-| `SurfaceCard`, any kind | zones row; label to card row; label to fact inline; title to meta identity; seams between zones 0 | 12 on every side; a zone of a card the same, so a seam runs full-bleed | none | `kind`, `label`, `fact`, `footer` |
+| `Section` | head, filter and content one row step (12) apart (G6); title to count identity; the action slot's text at `md` | none: the section adds none | none | `title`, `kind` |
+| `SurfaceCard`, any kind | zones row; label 8 above the surface (4 in a cards `Grid`); label to fact inline; label to head `description` identity; title to meta identity; seams between zones 0 | 16 on every side; a zone of a card the same, so a seam runs full-bleed | none | `kind`, `label`, `description`, `fact`, `footer` |
 | `kind="list"` rows | rows divided by lines (n-1, seam 0) or by gap, never both | row 8 block, the content inset inline (a 40 row for one line) | none | `items` |
 | `kind="figures"` | cells touching (0) with a line between cells and rows; label to figure to meta identity | cell 8 | none | `items` |
 | `kind="tile"` | mark to name inline; status and action at the bottom row | 12 | none | `name`, `mark`, `badge`, `action` |
-| Card or tile grid (`Grid kind="cards"`) | inline (8) on both axes; the title to the grid row (12), because siblings sit closer than their heading | none | none | `kind` |
-| Pane (`PaneGrid`) | 0 and a divider; sections row | 12 on every side | none | `areas`, `columns`, `rows` |
-| Dialog, Drawer | header, body and footer row; footer actions inline | 12 | none | `title`, `body`, `footer` |
+| Card or tile grid (`Grid kind="cards"`), `week`, `week-summary` | inline (8) on both axes; the title to the grid row (12), because siblings sit closer than their heading | none | none | `kind` |
+| `Grid kind="sections"`, `pair`, `featured` | section (24) on both axes | none | none | `kind` |
+| Pane (`PaneGrid`) | 0 and a divider; the bands of a `PaneSection` inline (8) by default, 12 apart as bands (`gap` `row` or `section` only for a band alone in its pane) | 12 on every side | none | `areas`, `columns`, `rows` |
+| Dialog, Drawer | header, body and footer row; footer actions inline; a field stack in the body section (24, the Field rule) | 12 | none | `title`, `body`, `footer` |
+| `Footer` | main and legal region (32), brand and directory section (24), groups row (12), links inline (8) | none | none | `Footer` data |
+| `Board` | a column's cards inline (8) | the column's ground | none | `columns` |
 | Box in a surface (a notice, a `Quote`, a stat cell) | identity | 8 | none | the component |
 | `ListBox` option | avatar to text row; title to description identity | 8 (h 40) | none | `items` |
 | Table | seam | cells 12 inline, 8 block (h 40) | none | `columns`, `rows` |
@@ -146,7 +168,7 @@ the spacing of that row: a role prop or nothing, never a gap, margin, padding or
 | `MessageBubble` | avatar to bubble inline; one sender identity, a sender change row, a day divider section (G5) | 12 inline, 8 block | none | the thread's order |
 | `Meter` | label to value inline; header to bar identity | 0 | none | `value` |
 | `Button` sm / md / lg | glyph to label inline | 8 / 12 / 24, glyph side 4 / 8 / 12 (h 32 / 40 / 48) | none | `size` at most |
-| Field | label to field to help identity | 12 (h 40) | none | `label`, `description` |
+| Field (every control) | label to control inline (8); control to help, error or counter identity (4); field to field section (24), set by the `Form` or field stack, never by a field; `Fieldset` legend to fields 8, fields to actions 24 | 12 (h 40) | none | `label`, `description` ([field](components/field.md)) |
 | `Chip`, `Tag` | inline in a set; inline when it wraps | vendor 8, derived block | none | the set |
 | `Badge` | dot to text identity | vendor 8, block 0 | none | `children` |
 | A wrapping set | one role on both axes (G3) | none | none | `Cluster gap` |
@@ -170,7 +192,7 @@ reading measure stays). `MARGIN-0..6` are the same steps used as a named placeme
 | --- | --- |
 | grammar | every number: the role tokens, the insets of every component, the divider-facing sides, the bleed API, the row and bubble rhythm, and the `data-contract` stamps (`PADDING-*`, `GAP-*`) on each part |
 | app | structure and relation names: `<Stack gap="region \| section \| row \| inline \| identity">`, `<Cluster gap>` (a wrapping set, one role on both axes), `<Grid kind="cards \| form \| main-rail">`, `PaneGrid`/`PaneSection`, `Page chrome`; measure and columns through props; no spacing class |
-| lint | `starci-fe/no-spacing-utility` (app class strings, R350), `starci-grammar/spacing-scale` (grammar stylesheets, the package's `npm test`), `starci/spacing-scale` (app stylesheets, R350), `no-pane-section-padding`, `no-list-panel-padding`, `divider-full-bleed`; proof TASTE-4 measures the rhythm on the live page |
+| lint | `starci-fe/no-spacing-utility` (app class strings, R350), `starci-grammar/spacing-scale` (grammar stylesheets, the package's `npm test`), `starci/spacing-scale` (app stylesheets, R350), `no-pane-section-padding`, `no-list-panel-padding`, `divider-full-bleed`, `starci-grammar/gap-proximity` (G6), `starci-grammar/surface-in-surface` (BOUNDARY-7), `starci-grammar/field-label` (FIELD-1), `starci-grammar/same-line-size` (FONT-8), `starci-grammar/table-cell-type` (FONT-9); proof TASTE-4 measures the rhythm on the live page, and `packages/grammar/scripts/audit-gap.mts` measures G6 in the DOM |
 
 An app moves onto role props with `starci app codemod spacing-roles` (dry run by default, a report of every rewrite
 and of every utility left for a person).
@@ -182,13 +204,33 @@ weights):
 
 | Id | Rank | Carrier |
 | --- | --- | --- |
-| FONT-1 | lowest supporting: brief metadata | `Text` smallest size (always muted) |
-| FONT-2 | supporting reading: a full supporting line | `Text` small size |
-| FONT-3 | ordinary reading | `Text` default size |
-| FONT-4 | page heading: one per document | `Heading` level 1 |
+| FONT-1 | lowest supporting: brief metadata | `Text size="xs"` 12 (always muted) |
+| FONT-2 | supporting reading: a full supporting line | `Text size="sm"` 13 |
+| FONT-3 | ordinary reading | `Text` default `md` 14 |
+| FONT-4 | page heading: one per document | `Heading` level 1, xl 18 |
 | FONT-5 | leading value: the principal figure of a region | the value of a `kind="figures"` item, text semantics |
 | FONT-6 | display: a landing introduction | `Heading` display treatment, outline unchanged |
 
+- **FONT-7 One role, one size.** Each role below has one size and one weight everywhere it appears, so two apps and two
+  screens draw the same role the same way. `Text` `md` is 14, `sm` 13, `xs` 12, and `isStrong` is weight 500 (a label,
+  a title and a name are medium, never bold); the heading sizes are the grammar's.
+
+  | Role | Size and weight | Carrier |
+  | --- | --- | --- |
+  | page title | xl 18 / 500 | `Page` `header.title`, `Heading` level 1 |
+  | card or section title | lg 16 / 500 | a card `label`, a `Section` `title` |
+  | row or table primary text, a field label | md 14 / 500 | `<Text isStrong>`, a control's `label` |
+  | body, table cells, the section action's text | md 14 / 400 | `Text` |
+  | row secondary text, descriptions | sm 13 muted | `<Text size="sm" tone="muted">`, a card head `description` |
+  | table header, meta, chips | xs 12 muted | the table's own header, meta lines, `Badge` |
+  | every tab (page, region, filter) | sm 13 | `Tabs` ([tabs](components/tabs.md) Size) |
+
+- **FONT-8 One line, one size.** Words that stand side by side on one line share one size: the size of the line's role (md
+  for a primary line, sm for a secondary or meta line). A chip or `Badge` beside the words is below the ramp and exempt. Lint:
+  `starci-grammar/same-line-size` (no mixed `Text` sizes among the direct children of one `Cluster`).
+- **FONT-9 A table cell and a list row are read in a column of equals.** Their text takes the row roles above (primary md
+  14 / 500, secondary sm 13 muted); a heading-size `Text` or a `Heading` there is a heading drawn in a list. Lint:
+  `starci-grammar/table-cell-type` (a `DataTable` cell and a `ListRow` title or description).
 - A heading's level is its document position and sets its size together, so tag and size never drift; levels stop
   at four, because a fifth means the page nested deeper than a reader holds. Lint:
   `starci-grammar/no-raw-structural-element`, `starci-grammar/no-text-heading` (R358).
@@ -199,10 +241,10 @@ Type per region (counts: `type.region`, `type.view` in [proof/thresholds.yaml](p
 
 | Region | Ranks it uses |
 | --- | --- |
-| page header | page heading, one supporting line, one lowest-rank summary line |
+| page header | page heading (xl 18 / 500), one supporting line, one lowest-rank summary line |
 | section header | section heading (level 2), optional supporting line |
-| card | title (level 3), body (ordinary or supporting), meta (lowest) |
-| list row | title (ordinary or supporting, semibold when unread), one description line (supporting, muted), meta |
+| card | title (level 3, lg 16 / 500), body (ordinary or supporting), meta (lowest) |
+| list row | title (md 14 / 500, the contract's unread weight when unread), one description line (sm 13, muted), meta (xs 12) |
 | stat cell | leading value, label (supporting, muted), unit lighter than the value |
 | landing hero | display heading, ordinary-reading lead line |
 
@@ -261,7 +303,8 @@ grammar's treatment, resolved from context; the app never passes a field variant
 | BOUNDARY-3 | one parent declaration for a uniform set | no row can miss or add a line |
 | BOUNDARY-4 | inline-axis seams | exist only at the width where the columns exist |
 | BOUNDARY-5 | an outline | belongs to a grammar object (media frame, code block, a quote's ground) |
-| BOUNDARY-6 | elevation | a card is raised and has one depth; a surface never stands inside another, so no nested edge exists |
+| BOUNDARY-6 | elevation | a card is raised and has one depth; a surface never stands inside another, so no raised nested edge exists |
+| BOUNDARY-7 | a list of rows inside a surface | a nested surface, not a stack of dividers: the rows of a card body, a Drawer or Dialog body, a `PaneSection` or a rail sit in a 1px `separator` border at the card radius, clipped, rows divided by lines (n-1); `Section kind="list"` draws it by itself, and a hand-made list (blocks divided by `Divider`) is refused. Lint: `starci-grammar/surface-in-surface` |
 
 Elevation is the family's (contract: the card's edge).
 

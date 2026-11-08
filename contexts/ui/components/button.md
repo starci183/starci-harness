@@ -47,6 +47,25 @@ Choice `button.choose.width`: content, fill or fill-narrow.
 | fill-narrow | the button is a primary submit that hugs its label on a desktop form and fills the width on a phone (a booking card, a public form) | `width="fill-narrow"` (content width above 30rem, `fill` below) | judgement |
 | content | every other place, and always a page or pane command: it hugs its label and sits at the end of its header row (R352 refuses `width="fill"` in `Page` `header.actions` and in `labelEnd`) | omit `width` | judgement |
 
+Choice `button.choose.glyph`: what a button's glyph says. The first row that applies wins.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| leads | the press goes somewhere: a page, a tab, a next step | `endArrow`: the grammar's arrow ends the label, slides toward the reading end on hover and focus and mirrors right to left. Never a typed arrow in the label, never an arrow icon through `endContent` | lint `starci-grammar/button-arrow` |
+| does | the press does something (add, upload, send, download) | `startGlyph` naming the action (`plus`, `upload`, `send`, ...) | judgement |
+| both | the button would carry both an arrow and a glyph | neither pair is written: `endArrow` and `startGlyph` exclude each other; the start says what the action is, the end says where it goes, and one button says one | type: the pair does not compile; lint `starci-grammar/button-arrow` (message `both`) |
+| plain | neither is true | no glyph | judgement |
+
+The same words apply to an `EmptyNotice` action (`actionEndArrow`) and to a row or tile `ItemAction` (`endArrow`).
+
+Choice `button.choose.link`: how a destination written inside text looks. The first row that applies wins.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| row-title | the row or its chevron already opens the destination | no link: the row is the one pressable and its title is plain text (a second target on the same row is a second tab stop for the same place) | lint `starci-grammar/row-title-link` |
+| inline | a destination inside a sentence or a description | `Link`, which inherits the size of the text around it (`size` defaults to `inherit`) and wears the exact primary colour | judgement |
+| external | the destination leaves the product | `Link` with its external `href`: the grammar adds the trailing external glyph | judgement |
+
 ## Variants
 None for the app: the grammar resolves the variant from `button.choose.intent` and the placement it reads from
 context ([contract](../../grammars/contract.md#intent-x-placement---variant)).
@@ -69,6 +88,7 @@ disabled commit never stands in for an empty state (CTA-5).
   Nothing visual.
 
 ## Rules
-CTA-6..5, ACTION-1..3, ACCENT-6. Lint: `starci-fe/button-intent-required`,
+CTA-6..5, ACTION-1..3, ACCENT-6. Lint: `starci-grammar/button-arrow`, `starci-grammar/row-title-link`,
+`starci-fe/button-intent-required`,
 `single-commit-per-render`, `no-commit-in-collection-item`, `destructive-confirm-in-dialog`, `control-height`.
 Proof: TASTE-5, TASTE-11, UX-4, UX-10, A11Y-2.

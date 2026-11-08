@@ -260,7 +260,8 @@ Choice `grid.choose.content`: which track owner carries the content.
 | form | neighbouring fields share aligned control rows | `Grid kind="form"` | `text-field.choose.columns` |
 | main-rail | one task has subordinate support beside it | `Grid kind="main-rail"` | one primary and one rail |
 
-These kinds name content relations. An independent working region is not one portion of a reading pair, and a
+Each kind's gap holds the proximity law ([presentation](presentation.md#space) G6): `cards`, `week` and `week-summary` inline (8),
+`sections`, `pair`, `featured` and `form` section (24), `main-rail` region (32). These kinds name content relations. An independent working region is not one portion of a reading pair, and a
 featured focus is not a primary task with an asymmetric rail. Their types own the slots and their styles own every
 threshold and gap; an author does not choose a kind for a desired width or breakpoint.
 

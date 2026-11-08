@@ -12,17 +12,17 @@ Choice `list-table.choose.role`: which collection carries the rows. The first ro
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| contained | an existing surface owns the list's region | unpainted `Section kind="list"` of typed `items`, with its required `empty` state; its title is the list's one heading and accessible name | R340/R356 forbid another surface; `Section` adds no surface |
+| contained | an existing surface owns the list's region | unpainted `Section kind="list"` of typed `items`, with its required `empty` state; its title is the list's one heading and accessible name. It draws itself as a nested surface (1px separator border, card radius, clipped), so a hand-made list of blocks divided by `Divider` is never written | R340/R356 forbid another card; lint `starci-grammar/surface-in-surface` |
 | task | a standalone bounded set on the page canvas, worked through or scanned as one group, with no search, filter or paging | `SurfaceCard kind="list"`, label outside, `empty` required (`card.choose.role:task-list`) | type: a list needs `items` and `empty` |
 | entity | entities with a name, one description line, a few facts and actions, in a list that searches, filters, pages or has no bound | `Section kind="list"` with `items`, `Tabs kind="filter"` in its `filter` slot when the list narrows | `DNA-COMMON-ROW-DESCRIPTION-ONE-LINE` |
 | timeline | events in time order | `Timeline`; an entry that needs the reader (a failed step, a pending approval) takes `isAttention` | judgement |
 | process | the stages of one process the reader follows (read, index, extract, review) | `Stepper` with its stages; the current stage is marked and a failed stage takes the error state | type: stages are typed data |
-| table | records compared across many columns, sorted or bulk-selected | `DataTable`, never in a card, a muted note below; a row that opens its record takes `href`, a value edited in place takes the column `editor`, a column that may fold on a narrow table is `low` priority | R351 |
+| table | records compared across many columns, sorted or bulk-selected | `DataTable`, never in a card, a muted note below; a row that opens its record takes `href`, or `onRowAction` when it opens a drawer (the whole row is the one pressable, with keyboard), a value edited in place takes the column `editor`, a column that may fold on a narrow table is `low` priority; the row title is plain text, never a `Link`, and cells take the row type (md 14 / 500 primary, sm 13 muted secondary) | R351; lint `starci-grammar/row-title-link`, `starci-grammar/table-cell-type` |
 | pick | picking one item is the task (a list inside a panel) | `ListBox`; a navigation-like list selects by fill with no check | lint `selection-fill-no-check` |
 
 A list's host surface is decided before its scope (COLLECTION-1). `contained` reuses that existing surface with an
 unpainted section; `task` owns a standalone card with its label outside; `entity` is a section whose head, filter and
-rows stand one section step apart. The selected owner supplies the list's one heading and accessible name. A
+rows stand one row step (12) apart. The selected owner supplies the list's one heading and accessible name. A
 `DataTable` is never placed in a `SurfaceCard` (R351); a table enters a card only when the data is truly complex, and the
 owner names that case in the rule. Standalone bounded rows use a list card with the note in `footer`. Title, count, filters
 and the page command belong to the card's label or the section's head. A row that leads to its record supplies a native
@@ -53,5 +53,6 @@ resolved row anatomy; empty and failed states are the region's [empty-state](emp
 - **App author decides:** items, keys, copy, sort and filter facts.
 
 ## Rules
-COLLECTION-1..3, BOUNDARY-2..3, OVERFLOW-4, LAYOUT-3. Lint: `starci-fe/selection-fill-no-check`,
+COLLECTION-1..3, BOUNDARY-2..3, BOUNDARY-7, FONT-9, OVERFLOW-4, LAYOUT-3. Lint: `starci-grammar/surface-in-surface`,
+`starci-grammar/row-title-link`, `starci-grammar/table-cell-type`, `starci-fe/selection-fill-no-check`,
 `no-list-panel-padding`, `list-item-has-key`, `no-commit-in-collection-item`. Proof: TASTE-3, TASTE-10, UX-5.

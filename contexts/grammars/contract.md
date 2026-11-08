@@ -64,6 +64,13 @@ freeze one grammar's value into every grammar. One corner may stand out: a Surfa
 `--grammar-accent-corner` while the others keep the family's radius; an app never rounds one
 corner itself.
 
+**Space and type are closed scales too.** Spacing is the roles identity 4, inline 8, row 12, section 24 and region 32, plus
+the card's own inset 16 (never a gap); a container's children stand at least one step closer than the container stands to
+its siblings (the proximity law, [ui/presentation](../ui/presentation.md#space) G6), which every grammar's defaults hold.
+Type is one size and one weight per role: `Text` `md` 14, `sm` 13, `xs` 12, `isStrong` weight 500; page title 18, card and
+section title 16, and every tab label sm 13 ([ui/presentation](../ui/presentation.md#type) FONT-7). Sizes and weights are
+Common tokens (`--grammar-text-*`); a grammar may repaint a face but not move a role to another size.
+
 ## Intent x placement -> variant
 
 The app states what a command does; the composition states where it sits; Common's map turns the pair into a
@@ -98,9 +105,9 @@ Card is one subject on its own surface, and a surface never stands inside anothe
 `Drawer`, `AlertDialog` or `Popover`): the card has one depth, raised, and no nested edge exists. Its body is a
 compiler-checked `kind`: `body` (the default, the app's children), `figures`, `list`, `accordion` and `tile`. A
 list needs its `items` and an `empty` state, `wholeAction` exists only where the card holds no inner control, and any kind takes
-typed `headers` (`filter`, `search`, `toolbar`, `figures`, `custom`) and `footers` (`more`, `paging`, `custom`) that stack full-bleed
+typed `headers` (`filter`, `search` with trailing `filters` selects, `toolbar`, `switch`, `figures`, `custom`) and `footers` (`more`, `paging`, `custom`) that stack full-bleed
 above and below the body, divided by the one divider the shell draws between neighbours instead of nesting cards or a `Divider`
-(a tab strip in a zone stands on that divider, which is its line); `measure` caps a form card's width so the page does not. Highlight is a claim
+(a tab strip in a zone stands on that divider, which is its line); the head takes an optional `description`, one muted sm line 4 below the label; the card holds its content 16 in and its label 8 above the surface (4 in a cards grid); `kind="table"` takes `onRowAction`, the whole row one pressable (as `DataTable` does); `measure` caps a form card's width so the page does not. Highlight is a claim
 that this card is the next step, so one per view. `treatment` is the face: `surface`, `soft` (the brand's light
 tint, `accentSoft`, under the default foreground) or `ink` (the brand ink, the signature band); `soft` and `ink`
 carry the decorative artwork slot, `ink` also the motif. A painted treatment rebinds the whole surface pair on its
@@ -138,6 +145,13 @@ motion; it keeps the variant names, so the emphasis ladder means the same in eve
 `IconButton.isPending` keeps its accessible name and box while drawing the native spinner, setting busy state and
 refusing duplicate activation. `isLoading` remains unresolved content, not an action's progress.
 
+A button's glyph says one thing. `endArrow` marks a button that leads somewhere (a page, a tab, a next step): the grammar's
+`arrow-end` glyph ends the label, slides one step toward the reading end on hover and focus (still under reduced motion) and
+mirrors right to left. `startGlyph` (a named glyph, among them `plus` and `upload`) marks one that does something. A button
+never takes both, which the types refuse, and a typed arrow in the label or an arrow passed through `endContent` is refused
+by lint `button-arrow`. `EmptyNotice` `actionEndArrow` and `ItemAction.endArrow` carry the same on a notice's action and a
+row or tile's action.
+
 ### ButtonGroup
 
 An action group is two to five peers of one intent acting on one object (zoom, align). The vendor joins them:
@@ -152,8 +166,11 @@ A decision and its way out are not peers, so they are two buttons at the inline 
 Tabs switch whole panels; each tab owns its panel. HeroUI's `primary` is a segmented pill on a soft track and its
 `secondary` is an underline bar; the contract keeps those names one to one. Page tabs, region tabs inside a surface and
 filter tabs over a collection (`kind="filter"`) take the underline, with the first label on the content edge; `primary` is
-only the switch of a mode or period of the same data in a card's `switch` header zone. The bar lands on the `md` height,
-which is why Tabs have no size.
+only the switch of a mode or period of the same data in a card's `switch` header zone, two to four options. Every label is
+one size, sm 13, in every layer and in the pill. A page stacks at most two underline layers: the page tabs and one region
+set, which `Page header.subTabs` draws as the second row of the header band on its own full-width separator (a region set
+inside a page tab's panel draws its own separator). `end` puts a command at the strip's end, inside the strip frame, so the
+strip's line spans the column under it. The bar lands on the `md` height, which is why Tabs have no size.
 
 Each item accepts `isDisabled`, forwarded to HeroUI's tab: unavailable tabs retain the vendor's disabled semantics,
 are skipped by keyboard traversal and cannot select or navigate their `href`. The controlled `selectedKey` still
@@ -194,6 +211,13 @@ controls stand on one line whatever their neighbours carry, and its columns come
 explain. Its look comes from context: `primary` on the canvas, `secondary` inside a surface, so a field never
 vanishes into its surface; the app omits `variant`. A field has one step, `md`, so a field and its submit align and
 mobile text stays at the size that prevents focus zoom.
+
+The field rule spaces every control alike, whatever it is (Input, Select, NumberField, Textarea, ComboBox, the date and time
+fields, Search, CopyField, Checkbox and Radio groups, ChoiceChips, Switch, Slider): the label (md 14 / 500) stands 8 above the
+control, the help, error or counter 4 below it, and fields stand 24 apart, set by the `Form`, the form `Grid` and the
+`Fieldset`, never by a field; a `Fieldset` legend stands 8 above its fields and its actions 24 below them
+([ui/components/field](../ui/components/field.md) FIELD-1..4). A hand-made label beside a control is refused by lint
+`field-label`.
 
 ### CopyField
 
@@ -236,12 +260,18 @@ with `href` is one link to its record; a column with `editor` hosts its field in
 fold into the first column as stacked secondary text on a narrow table. The leading slot follows the ramp, so a
 row's identity mark matches the controls beside it. A `ListRowData` title remains text; `href` turns that title into a
 native `Link`, whose `onFollow` reports navigation to its owning region. Without `href`, `onFollow` is unrepresentable.
-The title link and any row command or menu are separate targets, never nested. Loading shows the same rows at rest and
+The title link and any row command or menu are separate targets, never nested. A row that opens something (`onPress`,
+`onAction`, `href`, `chevron`, or `onRowAction` on a table) is itself the one pressable and its title is plain text, never a
+`Link` (lint `row-title-link`); a table's pressable row takes the pointer cursor and the secondary hover fill, and its row
+commands stay separate presses. A list in a surface is a nested surface ([ui/presentation](../ui/presentation.md#boundary)
+BOUNDARY-7; lint `surface-in-surface`). Loading shows the same rows at rest and
 removes the title link.
 
 ### Link
 
-`Link` is a native destination carried by text or one image. Its text form takes string `children`; its media form
+`Link` is a native destination carried by text or one image. An inline text link takes the size of the text around it
+(`size` defaults to `inherit`) and the exact primary colour; an external destination ends with the grammar's external
+glyph by default. Its text form takes string `children`; its media form
 takes `media` as the existing `ImageProps` data and a required accessible destination `label`, with no children.
 The compiler rejects mixing the forms. Image owns aspect, fit, dimensions, provenance, load state and fallback;
 In a media destination, `plate="none"` preserves a cut-out mark's transparent, unclipped shape. Navigation, disabled state, external-tab safety,
@@ -255,13 +285,13 @@ working `sections`, a reading `pair`, one `featured` focus with symmetric suppor
 `leading` and `trailing`; `featured` requires `leading`, `featured` and `trailing`. Both slot forms reject children,
 arbitrary column counts and look props. Their DOM and focus order remains the supplied reading order. A pair's
 portions are equal; a featured focus stays between symmetric support tracks. These roles use the section gap and
-keep one reading column when constrained; independent sections follow the wide workspace viewport, while a pair
+keep one reading column when constrained (a `main-rail` takes the region gap); independent sections follow the wide workspace viewport, while a pair
 and featured layout answer their own container. Choose by the content relation, never the desired breakpoint.
 
 Week kinds take a region `label` and seven consecutive day regions in
 reading order, including empty days; the development check refuses another count. The shared week renderer owns its
 container queries. A week is an agenda in a narrow container and seven tracks at the medium width, at the inline gap.
-A week summary wraps through one, four and seven tracks, at the section gap. The exact thresholds belong to
+A week summary wraps through one, four and seven tracks, at the inline gap, like a cards grid. The exact thresholds belong to
 `packages/grammar/src/common/styles.css`; an app takes no breakpoint, gap or arbitrary column count. Existing day
 content, empty states and actions remain inside their day regions. `Calendar` remains the date-selection control.
 
@@ -337,7 +367,10 @@ as every other mascot.
 
 An avatar is an identity mark on the ramp (`sm`, `md`, `lg`, and `control` in a bar), so it matches the controls
 beside it. Without an image it draws generated initials coloured by a stable seed; an agent carries a badge and an
-accessible name that says so; a group is one composite at one size.
+accessible name that says so; a group is one composite at one size. `LogoStack` shows which provider connections something
+uses: round 20px logos with no plate, at most three then a "+N" pill, an optional muted `xs` caption, static or one plain
+pressable (or a `DropdownMenu` trigger through `isTrigger`); the exported `PlainPressable` lets an app wrap its own content
+the same way.
 
 ### Mascot
 
@@ -388,7 +421,7 @@ notice. An empty region reads the same way, its message as the title and its des
 ### Data views
 
 Three data views answer situations no other component does, each in the four states of a region. A `Board` is peer
-columns of rows (stages) that scroll as one row and snap, one stage at a time on a phone; each column is a card of rows with
+columns of rows (stages) that scroll as one row and snap, one stage at a time on a phone; each column is a card of rows, 8 apart, with
 its title and count, answers for its own empty state, and a loading board keeps its titles and draws its rows as geometry. A
 `ScheduleGrid` places entries by row and column (a week by hour, people by day, a month by week) in a real table with a
 caption, column headings and a heading per row; below 48rem of its own width it reads as an agenda in which each entry names
@@ -397,7 +430,7 @@ draws bars on one scale from zero with the value over each bar and the label und
 technology; it draws no axis, grid or legend.
 
 The Grammar has no group of attached buttons: a choice among a few has one component by meaning. `Tabs` switches a view or, with
-`kind="filter"`, narrows a list that stays in place (the same underline one size smaller, inside the list pane under its search field, a `count` per tab drawn as a chip, an attention count on the warning soft pair, the tabs that do not fit folded into a "+n" menu with the selected one always visible); `ChoiceChips` or `RadioGroup` chooses a value
+`kind="filter"`, narrows a list that stays in place (the same underline at the same size, inside the list pane under its search field, a `count` per tab drawn as a chip, an attention count on the warning soft pair, the tabs that do not fit folded into a "+n" menu with the selected one always visible); `ChoiceChips` or `RadioGroup` chooses a value
 of a form, since a tablist is not a form field; a date is the `Calendar` and a time `ChoiceChips`; actions are separate `Button`s or a
 `DropdownMenu`. `ButtonGroup` and `FilterButtonGroup` are deprecated and R380 refuses them in product source.
 
@@ -432,14 +465,17 @@ starts its body one region step down. A bleed page is an app surface: no gutter,
 the region, under the band or the trail alone. A panes page (`chrome="panes"`) is a tabbed app page whose body is one pane grid:
 the band (with or without tabs) or the trail, then the grid attached to the band's separator with no gap, block padding, radius
 or card, reaching both content edges and the viewport bottom less the grammar's bottom chrome (the page measures the fill box
-itself). `isLoading` passes to the band; the body's blocks own their loading.
+itself). `isLoading` passes to the band; the body's blocks own their loading. Every console page states its trail: `header.breadcrumbs`,
+or `breadcrumbs: "root"` for the console's root page, which draws nothing (lint `page-breadcrumbs`). `header.subTabs` is the
+second row of region tabs, see Tabs.
 
 ### Section
 
 A titled section is a named region whose title is its heading and its landmark name; no free heading exists. `kind="list"` holds rows of the same typed items a list card holds, with a `filter` slot for
 `Tabs kind="filter"`; it is the unpainted list owner within an existing surface and the list owner for search, filters or
-paging on the canvas. Its head, filter and content stand one section step (24) apart, and its page command hugs its label at
-the end of the head row. A card heads itself with its `label`, so a section around one card is refused.
+paging on the canvas. Its head, filter and content stand one row step (12) apart, because the page body stands its sections a region step apart and
+a container's children stand closer than its siblings, and its page command hugs its label at the end of the head row, its
+text at `md`. A card heads itself with its `label`, so a section around one card is refused.
 
 `kind="figures"` is the unpainted key-figure strip inside an existing surface. It reuses the exact FigureCells renderer
 and typed `Figure` data of `SurfaceCard kind="figures"`, including neutral values, dividers, responsive wrapping and

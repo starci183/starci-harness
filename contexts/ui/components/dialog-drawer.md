@@ -24,7 +24,9 @@ The backdrop and the size are the contract's; the app picks a size only by conte
 take their nested treatment from the overlay's surface.
 
 ## Size
-Width by content: a form-sized dialog for one task; a drawer for the panel task. Fields inside stay one column.
+Width by content: a form-sized dialog for one task; a drawer for the panel task. Fields inside stay one column, 24 apart
+(FIELD-3, [field](field.md)); a list of rows in the body is a nested surface (BOUNDARY-7), written as `Section kind="list"`
+(lint `starci-grammar/surface-in-surface`).
 
 ## States
 Focus enters, stays inside, returns to the opener on close; Escape and an explicit close path exist (FOCUS-3).
@@ -38,5 +40,6 @@ when the body holds a form: the form carries an `id` and the footer's commit is 
 - **App author decides:** the trigger, title, body content, the actions' facts, open state when coordinated.
 
 ## Rules
-CTA-1, CTA-4, CTA-5, LAYOUT-1, RESPONSIVE-1. Lint: `starci-fe/destructive-confirm-in-dialog`. Proof: FOCUS-3,
+CTA-1, CTA-4, CTA-5, LAYOUT-1, RESPONSIVE-1, FIELD-3, BOUNDARY-7. Lint: `starci-fe/destructive-confirm-in-dialog`,
+`starci-grammar/surface-in-surface`. Proof: FOCUS-3,
 UX-2, UX-6.
