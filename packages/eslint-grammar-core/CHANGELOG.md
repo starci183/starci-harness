@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.28.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.28.0; peers `@starci/hfs ~6.5.0`. The new rules below are errors, with no escape.
 
 - Added: `button-arrow` (`FE_BUTTON_ARROW`, BUTTON-ARROW): a `Button` that leads somewhere takes `endArrow`; an arrow typed in its label (`→ ← ➜ ➔ ⟶ › »`, `->`), an arrow or end-chevron icon passed as `endContent`, and `endArrow` with `startGlyph`/`startContent` are refused. `docs/button-arrow.md`.
 - Added: `table-cell-type` (`FE_TABLE_CELL_TYPE`, TABLE-CELL-TYPE): no `Text size="figure"`, `Heading`, `Label` or `h1`-`h6` in a DataTable `renderCell` (or column `editor`) or in the `title`/`description` of a ListRow data object. `docs/table-cell-type.md`.

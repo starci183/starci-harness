@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.27.0 - 2026-11-09 - entry, pricing and step marks (0.26.0 never reached npm; this release carries it)
+## 0.28.0 - 2026-11-09 - the owner laws: proximity, surface in surface, the Field rule, type roles, links and buttons, tabs
 
 - Added: `MessageBubble actionsPlacement="floating" | "inline"` (default `floating`): `inline` draws the actions as a bare
   hover and focus-within toolbar in the message row, on the reading end of the bubble, with no border, fill or shadow.
@@ -64,6 +64,8 @@
   by design; it draws nothing. Lint `page-breadcrumbs` asks every console page for a trail or `"root"`.
 - Added: `scripts/audit-gap.mts` (`npm run audit:gap -- <url>...`): a Playwright audit of the proximity law in a
   rendered page, each container whose gap is not below its spacing ancestor's, with selectors and values.
+
+## 0.27.0 - 2026-11-09 - entry, pricing and step marks (0.26.0 never reached npm; this release carries it)
 
 - Changed (values): a card holds its content 16 in, not 12. The spacing scale gains 16 as the card's own step
   (`--grammar-inset-card`, `COMMON_SPACING_SCALE[4]`); `--grammar-card-padding-inline`/`-block` read it, so a body card, a
