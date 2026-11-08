@@ -18,6 +18,10 @@
   control height of the buttons beside it. `md` and `lg` (HeroUI's own sizes) stay for a dense cell.
 - Fixed: a `WorkspaceShell` primary that holds a `Page` is no longer capped at `--grammar-content-max`: the Page owns the measure,
   so its white header band runs the column's full width (it ended at 80rem on a wide window) while its content keeps the measure.
+- Fixed: a `WorkspaceShell` with no navigation whose page has a header band drops the region gap under its bar, so the band sits
+  right under the bar instead of leaving a strip of page ground between two white bars.
+- Changed: `Switch` states: off, the track takes the default fill with a fine edge; in both states the thumb is the light surface
+  raised by the surface shadow; on, a thumb glyph takes the accent.
 
 ## 0.25.2 - 2026-11-08
 

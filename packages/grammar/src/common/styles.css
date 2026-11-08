@@ -2492,6 +2492,14 @@
         margin-block-end: var(--grammar-region-gap);
     }
 
+    /*
+     * A page whose header is a band sits right under the shell bar: the band is the page's top edge, so the region gap above it would
+     * only leave a strip of page ground between two white bars. Without a navigation region the primary is the first row.
+     */
+    .starci-core-workspace-shell:has(> .starci-core-workspace-shell-layout[data-grammar-workspace-navigation="absent"] > .starci-core-workspace-shell-primary > .starci-core-page[data-grammar-page-header="true"]) > .starci-core-workspace-shell-header {
+        margin-block-end: 0;
+    }
+
     .starci-core-workspace-shell-compact-header,
     .starci-core-workspace-shell-compact-navigation {
         display: none;

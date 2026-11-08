@@ -512,6 +512,26 @@
     }
 
     /*
+     * The off state reads as a control, not a hole: the track takes the default fill with a hairline edge, and the thumb is the light
+     * surface raised by the surface shadow (both states), so the round thumb stands out at rest. On, the track is the accent and a thumb
+     * glyph takes the accent. Keyed on the component's stamps; `!important` for the same reason as the size rules above.
+     */
+    [data-component="Switch"]:not([data-selected="true"]) [data-grammar-switch-track] {
+        background: var(--default) !important;
+        box-shadow: inset 0 0 0 var(--grammar-stroke-fine) var(--border);
+    }
+
+    [data-component="Switch"] [data-grammar-switch-thumb] {
+        background: var(--surface) !important;
+        box-shadow: var(--surface-shadow);
+        color: var(--muted);
+    }
+
+    [data-component="Switch"][data-selected="true"] [data-grammar-switch-thumb] {
+        color: var(--accent);
+    }
+
+    /*
      * The thumb glyph box is the canon icon size: 20px (size-5, `Icon` `leading`) on `lg` and `control`, 16px (`chip`) on `md`. The glyph fills its box, centred in the thumb.
      */
     .starci-core-switch-icon {
