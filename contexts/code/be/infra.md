@@ -21,7 +21,7 @@ MinIO in lite) is imported only by `integrations/object-storage`, which keeps th
 module, while the key layout of an object belongs to the domain that stores it; `minio` is imported nowhere; the SMTP client `nodemailer` is a dependency of `@starci/mail` alone and no app file imports it, and the package (the Mailer port with timeouts, required STARTTLS, coded errors and typed render helpers) is imported only by `integrations/mail`, which parses the settings and registers the module while the words and the layout of each mail belong to the domain that sends it; in lite the identity
 libraries are the dependencies of `@starci/auth` and no app file imports them, and that package is imported only by
 `integrations/passport`; in full `jose` is a dependency of `@starci/auth-oidc`, no JWT or OIDC library (`jose`, `jsonwebtoken`,
-`jwks-rsa`, `jwt-decode`, `openid-client`) is imported by an app file, and that package is imported only by `integrations/keycloak` (sign-in) and `integrations/github-oidc` (CI attestation of GitHub Actions OIDC tokens)
+`jwks-rsa`, `jwt-decode`, `openid-client`) is imported by an app file, and that package is imported only by `integrations/keycloak`
 ([api-auth.md](api-auth.md) BE-AUTH-2). `@nestjs/config`,
 `dotenv` and `@nestjs/event-emitter` are imported nowhere; `@nestjs/schedule` and `cron` only by the tick scheduler of
 `platform/jobs` ([jobs.md](jobs.md) BE-JOBS-6). In lite a backing library is legal only

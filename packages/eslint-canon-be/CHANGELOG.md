@@ -2,8 +2,7 @@
 
 ## 3.20.2 - 2026-11-09
 
-- Changed: `infra-import-owner` follows the bundled slot manifest 3.26.0: `@starci/auth-oidc` and `@starci/auth-oidc/testing` are owned by `integrations/keycloak` and `integrations/github-oidc` (CI attestation of GitHub Actions OIDC tokens); another integration is still refused and `jose` stays owned by no app file.
-- Specs: `src/auth-oidc-package.spec.ts` (github-oidc may import the package and its testing entry; another integration may not; jose is refused everywhere).
+- Changed: peers `@starci/hfs ~6.4.0`; no lint rule changed.
 
 ## 3.20.1 - 2026-11-09
 

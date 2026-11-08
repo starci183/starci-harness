@@ -9,7 +9,7 @@ The sign-in of a full StarCi app: the OIDC client of its identity provider (Keyc
 | `@starci/auth-oidc/contracts` | algorithms, wire codes, claim names, the principal and the outcome shapes both sides read |
 | `@starci/auth-oidc/testing` | `FakeOidcIssuer`: discovery, JWKS, token minting, the token endpoint (code, refresh, password and client credentials grants), revocation, the admin users endpoints, `kc_idp_hint` and failure injection, in memory or on a socket, so an app tests without Keycloak |
 
-An app reaches the package only through `integrations/keycloak` (sign-in) and `integrations/github-oidc` (CI attestation of GitHub Actions OIDC tokens) (back end) and `modules/auth/client.ts` (front end); the lint refuses `jose` and every other JWT library in an app.
+An app reaches the package only through `integrations/keycloak` (back end) and `modules/auth/client.ts` (front end); the lint refuses `jose` and every other JWT library in an app.
 
 ## Back end
 
