@@ -25,7 +25,7 @@ function repository(base: string, folder: string, origin?: string): string {
 
 test('the origin remote names a clone, not the folder it is cloned into', (t) => {
   const base = mkdtemp(t, 'starci-repo-identity-');
-  for (const origin of ['https://github.com/acme/starci-next.git', 'git@github.com:acme/starci-next.git', 'https://github.com/acme/starci-next/']) {
+  for (const origin of ['https://github.com/acme/starci-next.git', 'git@github.com:acme/starci-next.git', 'https://github.com/acme/starci-next/', 'C:\\work\\repos\\starci-next', '/srv/repos/starci-next.git']) {
     const dir = repository(base, `clone-${fs.readdirSync(base).length}`, origin);
     assert.equal(repositoryName(dir), 'starci-next', origin);
   }

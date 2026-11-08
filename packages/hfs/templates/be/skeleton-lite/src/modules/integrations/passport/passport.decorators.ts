@@ -16,7 +16,8 @@ export const PASSPORT_RATE_COUNTER: unique symbol = Symbol("integrations.passpor
 export const PASSPORT_AUTHENTICATOR: unique symbol = Symbol("integrations.passport.authenticator")
 
 /** Injects the passport options. Parameter type: PassportOptions. */
-export const InjectPassportOptions = (): TypedParameterDecorator<PassportOptions> => injector<PassportOptions>(PASSPORT_OPTIONS)
+export const InjectPassportOptions = (): TypedParameterDecorator<PassportOptions> =>
+    injector<PassportOptions>(PASSPORT_OPTIONS)
 
 /** Injects the own-token verifier. Parameter type: VerifyAccessToken. */
 export const InjectOwnTokenVerifier = (): TypedParameterDecorator<VerifyAccessToken> =>
@@ -30,4 +31,3 @@ export const PASSPORT_SESSIONS: typeof AUTH_SESSIONS = AUTH_SESSIONS
 export const PASSPORT_PASSWORDS: typeof AUTH_PASSWORDS = AUTH_PASSWORDS
 /** Token of the failures-only sign-in budget. */
 export const PASSPORT_SIGN_IN_BUDGET: typeof AUTH_SIGN_IN_BUDGET = AUTH_SIGN_IN_BUDGET
-

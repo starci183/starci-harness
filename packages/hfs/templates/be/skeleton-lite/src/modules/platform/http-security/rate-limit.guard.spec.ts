@@ -136,7 +136,13 @@ describe("RateLimitGuard", () => {
         await guard.canActivate(contextOf("127.0.0.1"))
 
         const assignment: unknown = counting?.callsOf("set")[0]?.[0]
-        const increment: unknown = typeof assignment === "object" && assignment !== null && "hits" in assignment && typeof assignment.hits === "function" ? Reflect.apply(assignment.hits, undefined, []) : undefined
+        const increment: unknown =
+            typeof assignment === "object" &&
+            assignment !== null &&
+            "hits" in assignment &&
+            typeof assignment.hits === "function"
+                ? Reflect.apply(assignment.hits, undefined, [])
+                : undefined
         expect(increment).toBe("hits + 1")
     })
 

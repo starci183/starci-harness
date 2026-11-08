@@ -15,7 +15,7 @@ import { summarize } from '../runtime/scripts/hfs/check-results.mjs';
 import { managedFindings } from '../sync/managed.mjs';
 import type { Presets } from '../sync/index.mjs';
 import { withRuleMemo } from '../runtime/scripts/hfs/rule-memo.mjs';
-import { RecordSet, scopedStep } from './records.mjs';
+import { RecordSet, hostData, portableData, scopedStep } from './records.mjs';
 import { FILE_RULES_STEP, RULE_STEP_PREFIX, UNIT_STEP_PREFIX, createStructureMemo } from './structure-memo.mjs';
 import { makeReport } from './report.mjs';
 import { SECRETS_FOLDER, SECRET_CODES, safeSecretFinding, safeSecretRecords } from './secret-records.mjs';
@@ -104,11 +104,11 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
     const key = keys.get(side);
     if (key === undefined || call.fast === true || call.paths !== undefined) return baseMachine(call);
     const held = reuse ? records.matching(side, 'machine', key.key) : undefined;
-    if (held?.data !== undefined) { reasons[side] = true; reused += 1; return held.data as unknown as MachineReport; }
+    if (held?.data !== undefined) { reasons[side] = true; reused += 1; return hostData(held.data, session.root, path.sep) as unknown as MachineReport; }
     const report = baseMachine(call);
     checked += 1;
     if (session.unchanged(key.inputs, key.hashes)) {
-      records.put({ path: side, step: 'machine', hash: key.key, findings: [...report.violations, ...report.errors].map((item) => ({ path: item.path ?? side, line: item.line ?? 0, column: item.column ?? 0, rule: item.ruleId, message: item.message })), data: JSON.parse(JSON.stringify(report)) as JsonValue });
+      records.put({ path: side, step: 'machine', hash: key.key, findings: [...report.violations, ...report.errors].map((item) => ({ path: item.path ?? side, line: item.line ?? 0, column: item.column ?? 0, rule: item.ruleId, message: item.message })), data: portableData(JSON.parse(JSON.stringify(report)) as JsonValue, session.root) });
     }
     return report;
   };
@@ -119,12 +119,12 @@ export async function runStructurePass(session: CheckSession, input: PassInput):
       const key = keys.get(side);
       if (key === undefined) return compute();
       const held = reuse ? records.matching(side, 'unused-symbol', key.key) : undefined;
-      if (held?.data !== undefined) { reused += 1; return held.data as unknown as ReturnType<typeof compute>; }
+      if (held?.data !== undefined) { reused += 1; return hostData(held.data, session.root, path.sep) as unknown as ReturnType<typeof compute>; }
       const found = compute();
       checked += 1;
       if (session.unchanged(key.inputs, key.hashes)) {
         const list = found as unknown as CheckFinding[];
-        records.put({ path: side, step: 'unused-symbol', hash: key.key, findings: list.map(compact), data: JSON.parse(JSON.stringify(found)) as JsonValue });
+        records.put({ path: side, step: 'unused-symbol', hash: key.key, findings: list.map(compact), data: portableData(JSON.parse(JSON.stringify(found)) as JsonValue, session.root) });
       }
       return found;
     },

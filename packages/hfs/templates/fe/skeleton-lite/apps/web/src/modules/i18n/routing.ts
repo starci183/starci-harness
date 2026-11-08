@@ -13,4 +13,8 @@ export const DEFAULT_LOCALE: WebI18n["defaultLocale"] = "vi"
  * only when the locale is not the default, and a fixed time zone so the server and the hydrated client format the same instant the
  * same way. The stack that reads it is `@starci/next-i18n`'s (FE-I18N-1).
  */
-export const i18n: WebI18n = defineI18n({ locales: LOCALES, defaultLocale: DEFAULT_LOCALE, timeZone: "Asia/Ho_Chi_Minh" })
+export const i18n: WebI18n = defineI18n({
+    locales: LOCALES,
+    defaultLocale: DEFAULT_LOCALE,
+    timeZone: "Asia/Ho_Chi_Minh",
+})

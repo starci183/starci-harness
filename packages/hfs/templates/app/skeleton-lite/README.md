@@ -15,7 +15,7 @@ TypeScript everywhere, NestJS in `be/`, Next.js with next-intl in `fe/`, Postgre
 - `db/`: forward-only SQL migrations and generated database types.
 - `be/`: the API, shared platform capabilities, verified identity admission, and the passport and storage integrations.
 - `fe/`: the web app; it holds no credential, signs in through `fe/apps/web/src/modules/auth` and reaches data through `fe/apps/web/src/modules/api`.
-- `.starcistacks/`: value-free environment metadata, encrypted-secret custody and the seed levels (`seeds/` for every environment, `<env>/seeds/` for one, each a `seeds.yaml` manifest of `sql/`, `data/` and `files/`).
+- `.starcistacks/`: value-free environment metadata, encrypted-secret custody and the seed levels (`.starcistacks/seeds/` for every environment, `.starcistacks/<env>/seeds/` for one, each a seeds.yaml manifest of its sql, data and files folders).
 - `.starciwork/`: `.gitignore`, `.starciwork/workspace.yaml` project metadata and repo roles, and optional brand drawing records, references, and assets.
 
 ## Status badges
@@ -46,7 +46,7 @@ The public runtime template tracks only sealed member names. Scaffolding creates
 
 ## Database changes
 
-Create a forward-only migration with `npm run db:new -- <kebab-name>` (it lands in `db/migrations`), keep each table's RLS policies and grants beside the table, apply it with `npm run db:push`, and run `npm run contract:emit` to refresh `db/types/database.types.ts`. `starci app add table <name> --fe` adds the table with its GraphQL feature on the API and its operations and SWR hooks in the web app; `npm run codegen:graphql` regenerates the web app's wire types from `be/contracts/<app>/schema.graphql`.
+Create a forward-only migration with `npm run db:new -- <kebab-name>` (it lands in `db/migrations`), keep each table's RLS policies and grants beside the table, apply it with `npm run db:push`, and run `npm run contract:emit` to refresh the generated database types. `starci app add table <name> --fe` adds the table with its GraphQL feature on the API and its operations and SWR hooks in the web app; `npm run codegen:graphql` regenerates the web app's wire types from `be/contracts/<app>/schema.graphql`.
 
 ## Work
 

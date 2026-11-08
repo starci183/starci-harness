@@ -11,7 +11,9 @@ const FAR_FUTURE = 32_503_680_000_000
 const LONG_AGO = 0
 
 const build = async () => {
-    const moduleRef = await Test.createTestingModule({ providers: [{ provide: KIT, useValue: { passportKit } }] }).compile()
+    const moduleRef = await Test.createTestingModule({
+        providers: [{ provide: KIT, useValue: { passportKit } }],
+    }).compile()
     return moduleRef.get<{ passportKit: typeof passportKit }>(KIT).passportKit
 }
 
@@ -34,7 +36,8 @@ describe("PassportErrorCode", () => {
         const wire = Object.values(AUTH_ERROR_CODES).filter((code) => code.startsWith("PASSPORT_"))
 
         expect(Object.values(PassportErrorCode).sort()).toEqual(wire.sort())
-        for (const code of Object.values(PassportErrorCode)) expect(PASSPORT_ERROR_KINDS[code]).toBe(AUTH_ERROR_KINDS[code])
+        for (const code of Object.values(PassportErrorCode))
+            expect(PASSPORT_ERROR_KINDS[code]).toBe(AUTH_ERROR_KINDS[code])
     })
 })
 
@@ -42,9 +45,15 @@ describe("passportKit", () => {
     it("verifies a token its own signer issued and builds the principal from it", async () => {
         const create = await build()
         const kit = create(optionsFor([{ privateKey: generateTestKeyPair().privateKey, keyId: "k1" }]))
-        const { token } = await kit.tokens.sign({ sub: "user-1", email: "a@example.test", sessionId: "s-1" }, new Date(FAR_FUTURE))
+        const { token } = await kit.tokens.sign(
+            { sub: "user-1", email: "a@example.test", sessionId: "s-1" },
+            new Date(FAR_FUTURE),
+        )
 
-        expect(await kit.verify(token)).toEqual({ kind: "ok", value: { id: "user-1", role: "authenticated", sessionId: "s-1", email: "a@example.test" } })
+        expect(await kit.verify(token)).toEqual({
+            kind: "ok",
+            value: { id: "user-1", role: "authenticated", sessionId: "s-1", email: "a@example.test" },
+        })
         expect((await kit.tokens.jwks()).keys).toHaveLength(1)
     })
 
@@ -65,7 +74,12 @@ describe("passportKit", () => {
         const retired = generateTestKeyPair()
         const before = create(optionsFor([{ privateKey: retired.privateKey, keyId: "old" }]))
         const { token } = await before.tokens.sign({ sub: "user-1", sessionId: "s-1" }, new Date(FAR_FUTURE))
-        const after = create(optionsFor([{ privateKey: generateTestKeyPair().privateKey, keyId: "new" }, { publicKey: retired.publicKey, keyId: "old" }]))
+        const after = create(
+            optionsFor([
+                { privateKey: generateTestKeyPair().privateKey, keyId: "new" },
+                { publicKey: retired.publicKey, keyId: "old" },
+            ]),
+        )
 
         expect((await after.verify(token)).kind).toBe("ok")
         expect((await after.tokens.jwks()).keys.map((key) => key["kid"])).toEqual(["new", "old"])

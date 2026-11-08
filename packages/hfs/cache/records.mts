@@ -76,3 +76,35 @@ export async function scopedStep<T extends JsonValue>(
   if ((step.store?.(value) ?? true) && session.unchanged(step.inputs, step.captured)) records.put({ path: step.path, step: step.step, hash: step.key, findings: step.compact(value), data: value });
   return { value, reused: false };
 }
+
+/** The placeholder a record's data holds for the app root, so a record names no path of the host it was written on. */
+export const APP_ROOT_TOKEN = '<app>';
+
+/** Maps every string of a JSON value through `map`. */
+const mapStrings = (value: JsonValue, map: (text: string) => string): JsonValue => {
+  if (typeof value === 'string') return map(value);
+  if (Array.isArray(value)) return value.map((item) => mapStrings(item, map));
+  if (value !== null && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, mapStrings(item, map)]));
+  return value;
+};
+
+/** The spellings of a folder a tool may print: as given, with forward slashes, and each with a trailing separator. */
+const spellings = (root: string): string[] => [...new Set([root, root.split('\\').join('/')])].filter((form) => form !== '').sort((a, b) => b.length - a.length);
+
+/**
+ * A tool's result made portable for a committed record: every path under `root` it names (a resolved module, a loaded file, the folder it judged)
+ * starts with APP_ROOT_TOKEN and uses forward slashes, so one commit writes the same bytes in every checkout and on CI (check-cache.md "Layout and
+ * format": no absolute paths). `hostData` turns it back into this checkout's paths when the record is served.
+ */
+export function portableData(value: JsonValue, root: string): JsonValue {
+  const forms = spellings(root);
+  return mapStrings(value, (text) => {
+    const form = forms.find((candidate) => text === candidate || text.startsWith(`${candidate}/`) || text.startsWith(`${candidate}\\`));
+    return form === undefined ? text : `${APP_ROOT_TOKEN}${text.slice(form.length).split('\\').join('/')}`;
+  });
+}
+
+/** A record's portable data with APP_ROOT_TOKEN read as `root` again, in the separator this host's paths take. */
+export function hostData(value: JsonValue, root: string, sep: string): JsonValue {
+  return mapStrings(value, (text) => (text === APP_ROOT_TOKEN || text.startsWith(`${APP_ROOT_TOKEN}/`) ? `${root}${text.slice(APP_ROOT_TOKEN.length).split('/').join(sep)}` : text));
+}

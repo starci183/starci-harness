@@ -17,7 +17,13 @@ export const AppHomePage = async (): Promise<ReactElement> => {
     return (
         <>
             <AppHomePageBase
-                props={{ title: t("title"), signupLabel: t("signup"), signupHref: APP_ROUTES.signup, forgotLabel: t("forgot"), forgotHref: APP_ROUTES.forgot }}
+                props={{
+                    title: t("title"),
+                    signupLabel: t("signup"),
+                    signupHref: APP_ROUTES.signup,
+                    forgotLabel: t("forgot"),
+                    forgotHref: APP_ROUTES.forgot,
+                }}
             />
             <AppGuideOverlay />
         </>

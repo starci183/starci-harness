@@ -63,8 +63,6 @@
       "toSignIn": "Back to sign in",
       "toResend": "Send the confirmation again",
       "toForgot": "Request a new reset link",
-      "toSignup": "Create an account",
-      "toForgotPassword": "Forgot your password?",
       "signup": {
         "title": "Create an account",
         "description": "Choose a password of at least 8 characters. We email a link to confirm your address.",

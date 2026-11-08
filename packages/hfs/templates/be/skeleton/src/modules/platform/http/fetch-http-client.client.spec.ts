@@ -246,7 +246,12 @@ describe("FetchHttpClient trusted certificate authority", () => {
         response.text.mockResolvedValue("{}")
         const send = jest.spyOn(global, "fetch").mockResolvedValue(response)
 
-        await client.request({ correlationId: "request-1", method: "GET", url: "https://service.test/orders", timeoutMs: 2500 })
+        await client.request({
+            correlationId: "request-1",
+            method: "GET",
+            url: "https://service.test/orders",
+            timeoutMs: 2500,
+        })
 
         expect(send.mock.calls[0]?.[1]).not.toHaveProperty("dispatcher")
         await expect(client.onModuleDestroy()).resolves.toBeUndefined()
@@ -258,8 +263,18 @@ describe("FetchHttpClient trusted certificate authority", () => {
         response.text.mockResolvedValue("{}")
         const send = jest.spyOn(global, "fetch").mockResolvedValue(response)
 
-        await client.request({ correlationId: "request-1", method: "GET", url: "https://idp.test/jwks", timeoutMs: 2500 })
-        await client.request({ correlationId: "request-2", method: "GET", url: "https://service.test/orders", timeoutMs: 2500 })
+        await client.request({
+            correlationId: "request-1",
+            method: "GET",
+            url: "https://idp.test/jwks",
+            timeoutMs: 2500,
+        })
+        await client.request({
+            correlationId: "request-2",
+            method: "GET",
+            url: "https://service.test/orders",
+            timeoutMs: 2500,
+        })
 
         const pool = send.mock.calls[0]?.[1]?.dispatcher
         expect(pool).toBeInstanceOf(Agent)

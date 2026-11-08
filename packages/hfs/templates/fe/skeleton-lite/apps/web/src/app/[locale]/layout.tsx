@@ -13,7 +13,8 @@ type LayoutProps = {
 }
 
 /** The localized document title of this route segment. */
-export const generateMetadata = async (props: LayoutProps): Promise<Metadata> => appLayoutMetadata((await props.params).locale)
+export const generateMetadata = async (props: LayoutProps): Promise<Metadata> =>
+    appLayoutMetadata((await props.params).locale)
 
 /** The locale segment's document, providers and app chrome; an unknown locale is a 404. */
 const Layout = async (props: LayoutProps): Promise<ReactElement> => {

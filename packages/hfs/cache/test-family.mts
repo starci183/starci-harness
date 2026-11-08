@@ -312,12 +312,15 @@ interface RuntimeLike { createContext(config: ProjectConfigLike, options: Record
 interface DependencyResolverLike { resolve(file: string, options?: unknown): string[] }
 interface ReadConfigsResult { readonly configs: readonly ProjectConfigLike[] }
 
-/** The digest of a project config with host paths turned into `<root>` and the keys that differ per host dropped. */
-export function projectConfigHash(config: ProjectConfigLike): string {
-  const root = config.rootDir;
-  const variants = [root, root.split(path.sep).join('/')].filter((value, index, all) => value !== '' && all.indexOf(value) === index);
+/**
+ * The digest of a project config with host paths turned into `<root>` (the Jest root) and `<app>` (the app root, where the install the preset,
+ * transform and setup files resolve into sits), and the keys that differ per host dropped: one commit hashes alike in every checkout and on CI.
+ */
+export function projectConfigHash(config: ProjectConfigLike, appRoot: string = path.dirname(config.rootDir)): string {
+  const forms = (folder: string): string[] => [folder, folder.split(path.sep).join('/')].filter((value, index, all) => value !== '' && all.indexOf(value) === index);
+  const variants: Array<[string, string]> = [...forms(config.rootDir).map((form): [string, string] => [form, '<root>']), ...forms(path.resolve(appRoot)).map((form): [string, string] => [form, '<app>'])];
   const strip = (value: unknown): unknown => {
-    if (typeof value === 'string') return variants.reduce((text, variant) => text.split(variant).join('<root>'), value).split('\\').join('/');
+    if (typeof value === 'string') return variants.reduce((text, [variant, name]) => text.split(variant).join(name), value).split('\\').join('/');
     if (Array.isArray(value)) return value.map(strip);
     if (typeof value === 'object' && value !== null) return Object.fromEntries(Object.entries(value).filter(([key]) => !['cacheDirectory', 'id', 'cwd'].includes(key)).map(([key, item]) => [key, strip(item)]));
     return value;
@@ -380,7 +383,7 @@ export async function createJestEnvironment({ appRoot, side, jestFrom, project =
 
   return {
     specs,
-    configHash: projects.length === 1 ? projectConfigHash((projects[0] as (typeof projects)[number]).config) : combineHashes(Object.fromEntries(projects.map((entry, index) => [String(index), projectConfigHash(entry.config)]))),
+    configHash: projects.length === 1 ? projectConfigHash((projects[0] as (typeof projects)[number]).config, appRoot) : combineHashes(Object.fromEntries(projects.map((entry, index) => [String(index), projectConfigHash(entry.config, appRoot)]))),
     closureOf(spec) {
       const cached = closures.get(spec);
       if (cached !== undefined) return cached;

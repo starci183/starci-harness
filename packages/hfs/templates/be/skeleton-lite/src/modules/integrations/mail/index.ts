@@ -1,5 +1,5 @@
-export { MAILER, MailError, escapeHtml, html, renderTransactional } from "@starci/mail"
-export type { Mailer, MailMessage, RenderedMail, SentMail } from "@starci/mail"
+export { MAILER, renderTransactional } from "@starci/mail"
+export type { Mailer, RenderedMail } from "@starci/mail"
 export { parseMailConfig } from "./mail.config"
 export { InjectMailSettings, InjectMailer, MAIL_SETTINGS } from "./mail.decorators"
 export { MailModule } from "./mail.module"

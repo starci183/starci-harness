@@ -22,7 +22,10 @@ const useToastMessages = (): ToastMessages => {
 }
 
 /** A localized runGraphQLWithToast: every GraphQL write reports its outcome through it. */
-export const useGraphQLWithToast = (): (<T>(action: () => Promise<GraphQLResponse<T>>, options?: RunWithToastOptions) => Promise<GraphQLResponse<T>>) => {
+export const useGraphQLWithToast = (): (<T>(
+    action: () => Promise<GraphQLResponse<T>>,
+    options?: RunWithToastOptions,
+) => Promise<GraphQLResponse<T>>) => {
     const messages = useToastMessages()
     return useCallback(
         <T>(action: () => Promise<GraphQLResponse<T>>, options?: RunWithToastOptions) =>
