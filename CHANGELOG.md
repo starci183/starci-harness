@@ -2,7 +2,7 @@
 
 ## 1.1.0-alpha.104 - 2026-11-09
 
-- Changed: the Grammar family 0.29.0: a lone table, list or chart gets no card wrapper (lint `single-child-card`, `FE_SINGLE_CHILD_CARD`; DataTable draws one frame standalone, Section `kind="list"` draws the same frame, Section `caption`), and every card and board zone text is 13px.
+- Changed: the Grammar family 0.30.0 (0.29.0 never reached npm; this carries it): `SuggestionChips` (a pill toolbar of suggestions with arrow-key navigation; lint `suggestion-chips` refuses a row of neutral sm Buttons that send their own label), every Core Button size takes the pill radius; and from 0.29.0 a lone table, list or chart gets no card wrapper (lint `single-child-card`, `FE_SINGLE_CHILD_CARD`; DataTable draws one frame standalone, Section `kind="list"` draws the same frame, Section `caption`), and every card and board zone text is 13px.
 - Fixed: `@starci/hfs` 6.5.2: a resumed parked job is delivered under `<jobKey>:r<n>` (the outbox dedupe-key check needs a `:`), so `parked_jobs_sweep` resumes no longer dead-letter; `starci app codemod self-recovery` rewrites the old `-r<n>` form in an app rendered by hfs 6.5.0 or 6.5.1. No data migration. See `packages/hfs/CHANGELOG.md`.
 
 ## 1.1.0-alpha.103 - 2026-11-09
