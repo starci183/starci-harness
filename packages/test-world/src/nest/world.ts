@@ -31,6 +31,8 @@ import { createTestHttp } from "./http-client"
 import { cutConnection, databaseOf, restoreConnections } from "./database-outage"
 import { createWriteFault } from "./database-write-fault"
 import { createKeycloakAdmin } from "./keycloak"
+import { createWorldMail } from "./mail"
+import type { WorldMail } from "./mail"
 import { pollUntil } from "./poll"
 import { freePorts } from "./ports"
 import { redisSize } from "./redis-probe"
@@ -336,6 +338,10 @@ export class World {
                 await this.beginOutage(service)
                 await toxics.latency(ms, jitterMs)
             }
+            const stall = async (): Promise<void> => {
+                await this.beginOutage(service)
+                await toxics.stall()
+            }
             const cut = async (): Promise<void> => {
                 await this.beginOutage(service)
                 await toxics.cut()
@@ -346,6 +352,7 @@ export class World {
             }
             const base: InfraHandle = {
                 latency,
+                stall,
                 cut,
                 restore,
                 during: async <T>(during: () => Promise<T>): Promise<T> => {
@@ -433,6 +440,9 @@ export class World {
             get kafka() {
                 return handle("kafka", infra.kafka?.proxy, infra.kafka?.directPort)
             },
+            get mail() {
+                return handle("mail", infra.mail?.proxy, infra.mail?.directPort)
+            },
             get keycloak(): KeycloakInfraHandle {
                 const run = infra.keycloak
                 return handle("keycloak", run?.proxy, run?.directPort, () => ({
@@ -452,6 +462,13 @@ export class World {
         const { keycloak } = this.booted().context.infra
         if (keycloak === undefined) throw notDeclared("stacks.keycloak")
         return createKeycloakAdmin(keycloak)
+    }
+
+    /** The real mail sink of the declared `stacks.mail`: the reader of what the apps sent and the refusals the sink makes. */
+    get mail(): WorldMail {
+        const { mail } = this.booted().context.infra
+        if (mail === undefined) throw notDeclared("stacks.mail")
+        return createWorldMail(`http://127.0.0.1:${mail.apiPort}`, (label, probe, options) => pollUntil(label, probe, options.timeoutMs ?? DEFAULT_WAIT_MS, options.intervalMs ?? DEFAULT_POLL_MS))
     }
 
     /** The run-isolated buckets of the declared MinIO. */
@@ -650,7 +667,7 @@ export class World {
 
     private async restoreInfra(context: RunContext): Promise<void> {
         const { infra } = context
-        const proxies = [infra.postgresql, infra.redis, infra.minio, infra.qdrant, infra.kafka, infra.keycloak].flatMap((entry) => (entry === undefined ? [] : [entry.proxy]))
+        const proxies = [infra.postgresql, infra.redis, infra.minio, infra.qdrant, infra.kafka, infra.keycloak, infra.mail].flatMap((entry) => (entry === undefined ? [] : [entry.proxy]))
         await Promise.all(proxies.map((proxy) => createProxyToxics(infra.toxiproxyApi, proxy).restore().catch(() => undefined)))
         // A connection this world took down and a failed spec never restored lets its apps in again.
         if (infra.postgresql !== undefined && this.downConnections.size > 0) {

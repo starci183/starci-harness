@@ -7,7 +7,7 @@ import type { FakeDefinition } from "../fakes/framework/contracts"
 import type { WorldWiring } from "./wiring"
 
 /** The infrastructure services the shared stack runs; the keys of `stacks`. */
-export const INFRA_SERVICES = ["postgresql", "redis", "minio", "qdrant", "kafka", "keycloak"] as const
+export const INFRA_SERVICES = ["postgresql", "redis", "minio", "qdrant", "kafka", "keycloak", "mail"] as const
 
 /** One infrastructure service of the shared stack. */
 export type InfraName = (typeof INFRA_SERVICES)[number]
@@ -79,6 +79,12 @@ export interface KafkaStack extends PlainStack {
     readonly topics?: ReadonlyArray<string>
 }
 
+/**
+ * The `stacks` entry of the mail sink: the stack definition's mailpit (compose service `mail`), one container per data slot so a
+ * slot's messages and chaos never reach another. It is stateful, so it always runs real and is never faked.
+ */
+export type MailStack = PlainStack
+
 /** The `stacks` block. Known services take their spec; any name may instead be faked with a declared reason. */
 export interface StacksDeclaration {
     readonly postgresql?: PostgresStack | FakedService
@@ -87,6 +93,7 @@ export interface StacksDeclaration {
     readonly minio?: MinioStack | FakedService
     readonly qdrant?: PlainStack | FakedService
     readonly kafka?: KafkaStack | FakedService
+    readonly mail?: MailStack
     readonly [service: string]: unknown
 }
 

@@ -72,6 +72,15 @@ describe("toxiproxy", () => {
         })
     })
 
+    it("stall drops what the service says on the downstream and keeps the link open, until restore removes it", async () => {
+        await withApi(async (apiUrl, seen) => {
+            const toxics = proxyToxics(new ToxiproxyClient(apiUrl), "run1-mail")
+            await toxics.stall()
+            assert.deepEqual(shape(seen), ["POST /proxies/run1-mail/toxics"])
+            assert.deepEqual(seen[0]?.body, { name: "stall_downstream", type: "timeout", stream: "downstream", toxicity: 1, attributes: { timeout: 0 } })
+        })
+    })
+
     it("cut arms reset_peer both ways then disables; restore removes only this proxy's toxics and enables", async () => {
         await withApi(async (apiUrl, seen) => {
             const toxics = proxyToxics(new ToxiproxyClient(apiUrl), "run1-postgresql")

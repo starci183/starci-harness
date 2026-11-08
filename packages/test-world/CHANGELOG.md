@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0 - 2026-11-08
+
+- Added: `mail`, a stack service: `stacks: { mail: {} }` runs the stack definition's mailpit (the compose service `mail`, or any service on the `axllent/mailpit` image) as the real mail sink, with chaos enabled. It is one container per data slot, named from its image and the slot's namespace, started by the slot's attach and removed by its detach (a dead run's by the next attach's reclaim), because mailpit keeps its messages and chaos per server and a shared container would let one slot's refusal or reset reach another repository. SMTP is the toxiproxy-fronted endpoint; the HTTP API is published beside it and read directly, so an outage on SMTP does not blind the reader. `starci app world up` leaves it to the slot's attach. `mail` joins `INFRA_SERVICES`; it is stateful, so `stacks.mail: { fakedBy }` is `TEST_WORLD_CONFIG_INVALID`, as the hfs rule `BE_TEST_TOPOLOGY` never accepts a fake of a stack mail service.
+- Added: `w.mail.{host,port,url,apiUrl}` on the wiring (the SMTP host and port the app sends to; `apiUrl` is the sink's API base).
+- Added: `world.mail`, the reader of the sink: `messages(to?)`, `read(id)`, `waitFor(to, { subject?, timeoutMs?, intervalMs? })` (the newest match, whole: `subject`, `text`, `html`, addresses, attachments) and `clear()`; every spec file starts with an empty sink and no refusal.
+- Added: failure injection through mailpit's chaos: `world.mail.refuse("sender" | "recipient" | "authentication", { status = 550, probability = 100 })` answers `MAIL FROM`, `RCPT TO` or `AUTH` with an SMTP code from 400 to 599 until `world.mail.acceptAll()`. Chaos has no delay and no connection-level trigger; those are the toxiproxy outages below.
+- Added: `stall()` on every `world.infra.<svc>` handle (and `ProxyToxics`): the service keeps accepting connections and nothing it says reaches the client until `restore()`, so the client's own timeout fires (a `timeout` toxic of 0 on the downstream); it takes the outage lock like `latency` and `cut`. `world.infra.mail` carries the SMTP side's `stall()`, `cut()` and `latency(ms)`.
+- Added: the types `MailStack`, `WiredMail`, `WorldMail`, `MailMessage`, `MailSummary`, `MailAddress`, `MailAttachment`, `MailRefusal`, `MailRefusalPoint`, `MailRefuseOptions` and `MailWaitOptions`. Specs: `src/stack/mail-api.spec.ts`, `src/nest/mail.spec.ts`, and the mail cases of `src/stack/services/services.spec.ts`, `src/stack/index.spec.ts`, `src/stack/toxiproxy.spec.ts`, `src/config/stack-file.spec.ts`, `src/config/validate.spec.ts`, `src/nest/wiring.spec.ts` and `src/nest/world.spec.ts`; README.
+- Unchanged: the state file protocol (2), so `@starci/jest-preset` 2.8.0 stays the pair.
+
 ## 1.3.5 - 2026-11-07
 
 - A patch: the CHANGELOG carries no ruling attribution; nothing it ships changed.

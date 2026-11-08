@@ -93,6 +93,7 @@ const KIND_PATTERN: Readonly<Record<InfraName, string>> = {
     qdrant: "qdrant",
     kafka: "kafka",
     keycloak: "keycloak",
+    mail: "mailpit|mail",
 }
 
 /** The image repository's last path segment: `quay.io/keycloak/keycloak:26.0` gives `keycloak`. */

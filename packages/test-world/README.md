@@ -13,12 +13,12 @@ be/src/tests/world/
 
 ## Hard rule
 
-Nothing in a spec reads or writes `process.env`, starts a container, imports `DataSource`, testcontainers or a migration, or uses skips or sleeps. The library is the only place allowed to do infrastructure. Everything in our own stack runs REAL (postgres, redis, minio, qdrant, kafka, Keycloak with its realm, k3d); only external SaaS is faked, at the network edge. Stateless compute that needs special hardware (vLLM, self-hosted embedding) may be faked by protocol with a declared `fakedBy` and `reason`.
+Nothing in a spec reads or writes `process.env`, starts a container, imports `DataSource`, testcontainers or a migration, or uses skips or sleeps. The library is the only place allowed to do infrastructure. Everything in our own stack runs REAL (postgres, redis, minio, qdrant, kafka, Keycloak with its realm, the mailpit mail sink, k3d); only external SaaS is faked, at the network edge. Stateless compute that needs special hardware (vLLM, self-hosted embedding) may be faked by protocol with a declared `fakedBy` and `reason`.
 
 ## The declaration
 
 ```ts
-import { openaiCompatibleFake, sepayFake, smtpFake } from "@starci/test-world/fakes"
+import { openaiCompatibleFake, sepayFake } from "@starci/test-world/fakes"
 import { defineTestWorld } from "@starci/test-world"
 import type { TestWorldApi } from "@starci/test-world"
 
@@ -31,11 +31,12 @@ const world: TestWorldApi = defineTestWorld({
         minio: { buckets: ["uploads"] },
         qdrant: {},
         kafka: { topics: ["events"] },
+        mail: {},                                          // the stack's mailpit (compose service `mail`): the real mail sink, one container per data slot
         vllm: { fakedBy: "llm", reason: "needs a GPU" },   // selection only: no container, the protocol fake answers
     },
     k3d: { enable: true, images: { api: "Dockerfile" } },  // own images: built by content hash (src-<hash>), reused when the tag exists
     services: { billing: {} },                             // sibling services (our images from other repos), image pinned by the stack definition
-    fakes: { smtp: smtpFake(), sepay: sepayFake(), llm: openaiCompatibleFake() },
+    fakes: { sepay: sepayFake(), llm: openaiCompatibleFake() },   // no smtp fake: the stack runs the mail sink real
     apps: {
         todo: { module: TodoApp, operations: TODO_OPERATIONS, options: (w) => ({ port: w.apps.todo.port, database: { name: "primary", url: new Secret(w.db.primary.url) }, /* every URL comes from w */ }) },
         worker: { module: WorkerApp, listen: false, options: (w) => ({ /* ... */ }) },
@@ -51,7 +52,7 @@ export const useTestWorld: TestWorldApi["useTestWorld"] = world.useTestWorld
 export const useSandbox: TestWorldApi["useSandbox"] = world.useSandbox
 ```
 
-`w` (the wiring) carries every URL of the run, built before any app boots: `w.apps.<name>.{url,port}` (ports are reserved first, so apps that call each other know each other), `w.db.<conn>.{url,host,port,user,password,database,schema}`, `w.redis`, `w.minio`, `w.qdrant`, `w.kafka.{brokers,topic(name),group(name),clientId(name)}` (every topic, consumer group and client id of an app under test comes from here, so it is the slot's), `w.keycloak.{baseUrl,realm,issuer,tokenUrl,jwksUrl,clientId,clientSecret(client)}` (every confidential client of the realm file gets a secret generated per run; the file never carries one), `w.fake.<name>.{url,port,values,endpoints,ca}`, `w.services`, `w.cluster`, `w.directory(name)`, `w.secret(label)`. A service the declaration does not run throws `TEST_WORLD_NOT_DECLARED` when read.
+`w` (the wiring) carries every URL of the run, built before any app boots: `w.apps.<name>.{url,port}` (ports are reserved first, so apps that call each other know each other), `w.db.<conn>.{url,host,port,user,password,database,schema}`, `w.redis`, `w.minio`, `w.qdrant`, `w.kafka.{brokers,topic(name),group(name),clientId(name)}` (every topic, consumer group and client id of an app under test comes from here, so it is the slot's), `w.keycloak.{baseUrl,realm,issuer,tokenUrl,jwksUrl,clientId,clientSecret(client)}` (every confidential client of the realm file gets a secret generated per run; the file never carries one), `w.mail.{host,port,url,apiUrl}` (SMTP host and port the app sends to, through toxiproxy; `url` is `smtp://host:port`; `apiUrl` is the sink's HTTP API base, published directly), `w.fake.<name>.{url,port,values,endpoints,ca}`, `w.services`, `w.cluster`, `w.directory(name)`, `w.secret(label)`. A service the declaration does not run throws `TEST_WORLD_NOT_DECLARED` when read.
 
 ## The spec-facing API (frozen)
 
@@ -69,8 +70,9 @@ const world = useTestWorld({ apps: ["todo", "worker"] })   // or { todo: true },
 | `world.apps.<name>.api` | `graphql(op, vars?, lang?)`, `read/mutate`, `get/post/put/delete` (Buffer body = raw bytes), `as(token)` / `bearing(token)`, `signIn`, `baseUrl`. `op` is a key of the app's `operations` registry or a document string. Refusals resolve as data (`errorCode`). |
 | `world.db.<connection>` | the shared TypeORM `EntityManager` of the connection. |
 | `world.fake.<name>` | `failNext({status,timeout,badSignature,truncateStream,times,match})`, `requests()`, `reset()` plus each fake's own methods (`mails()`, `settle()`, `replayWebhook()`, `delayWebhook()`, ...). |
-| `world.infra.<svc>` | `latency(ms)`, `cut()`, `restore()`, `during(fn)` through toxiproxy; `redis.size()`; `keycloak.rotateClientSecret(client)` (new secret on the real realm, so an app holding the old one is stale); `postgresql.connection(name).cut()/restore()/during(fn)` takes one connection's database down while the others serve. |
+| `world.infra.<svc>` | `latency(ms)`, `stall()`, `cut()`, `restore()`, `during(fn)` through toxiproxy (`stall()`: the service keeps accepting connections and says nothing, so the client's own timeout fires); `redis.size()`; `keycloak.rotateClientSecret(client)` (new secret on the real realm, so an app holding the old one is stale); `postgresql.connection(name).cut()/restore()/during(fn)` takes one connection's database down while the others serve. |
 | `world.keycloak` | `person(email, password)`, `token(email, password)` on the real realm; `events(personId)` (the user events the realm stored: LOGIN, LOGOUT, ...; the realm import enables events) and `sessions(personId)` (live sessions and the clients holding their tokens), read through the admin API. |
+| `world.mail` | the real mail sink (`stacks.mail`): `messages(to?)` lists what the apps sent (oldest first; `to` matches To, Cc or Bcc), `read(id)` and `waitFor(to, { subject?, timeoutMs?, intervalMs? })` answer a whole message (`subject`, `text`, `html`, `from`, `to`, `cc`, `bcc`, `attachments`; `waitFor` the newest match), `clear()`, and the failure injection: `refuse("sender" \| "recipient" \| "authentication", { status = 550, probability = 100 })` makes the sink answer `MAIL FROM`, `RCPT TO` or `AUTH` with that SMTP code until `acceptAll()`. A silent server (a timeout) is `world.infra.mail.stall()`, a refused connection `world.infra.mail.cut()`, a slow one `world.infra.mail.latency(ms)`; the sink's chaos has no delay or connection-level trigger. |
 | `world.buckets.<name>` | run-isolated MinIO/S3 bucket declared in `stacks.minio.buckets`: `{ endpoint, region, bucket, accessKeyId, secretAccessKey, forcePathStyle }`; stored name is `<namespace>-<name>`. |
 | `world.cluster` | `pods(ns?)`, `namespaces()`, `createNamespace`, `deleteNamespace`, `apply`, `waitForPods` (this repository's namespaces only). |
 | `world.services.<name>.api`, `world.http(url)` | REST clients. |
@@ -88,7 +90,7 @@ GraphQL subscriptions: `world.apps.<name>.api.as(token).subscribe(operation, { v
 
 `starci app world up|down|status` (the managed `npm run test:world` brings it up). The globalSetup attaches to the stack or starts it. Containers are keyed by image (`starci-ts-<service>-<hash of image>`): two repositories on the same Postgres image share one container, another version gets its own. Machine state lives in `~/.starci/test-stack` (registry with leases, cross-process lock).
 
-Per-repository and per-slot isolation is enforced by the library from the namespace `<package>_<6 hex of the checkout path>_w<slot>`: Postgres databases `<ns>_<connection>` (or, for contexts that start as schemas of one database, `<ns>_<database>` with a schema and a login role `<ns>_<connection>` per context), a Keycloak realm `<ns>-<realm>`, a Redis DB index leased per namespace, MinIO buckets `<ns>-<name>`, Qdrant collection prefixes, Kafka topic, consumer-group and client-id prefixes `<ns>.` and a Kafka broker listener per slot, k3d namespaces `<ns>-<name>`, toxiproxy proxies per run. Two repositories (or two checkouts of one) run e2e concurrently; two runs of the same checkout collide with `TEST_WORLD_NAMESPACE_BUSY`. Kafka is the ONE pinned image `apache/kafka:4.2.2@sha256:1213eb39...` (KRaft, no ZooKeeper; Redpanda, cp-kafka and undigested tags are refused) and always runs real; the broker has 8 slot listeners, each advertising its own toxiproxy port, so a slot's Kafka traffic flows only through its own proxy (8 concurrent slots machine-wide).
+Per-repository and per-slot isolation is enforced by the library from the namespace `<package>_<6 hex of the checkout path>_w<slot>`: Postgres databases `<ns>_<connection>` (or, for contexts that start as schemas of one database, `<ns>_<database>` with a schema and a login role `<ns>_<connection>` per context), a Keycloak realm `<ns>-<realm>`, a Redis DB index leased per namespace, MinIO buckets `<ns>-<name>`, Qdrant collection prefixes, a mail sink container per slot, Kafka topic, consumer-group and client-id prefixes `<ns>.` and a Kafka broker listener per slot, k3d namespaces `<ns>-<name>`, toxiproxy proxies per run. Two repositories (or two checkouts of one) run e2e concurrently; two runs of the same checkout collide with `TEST_WORLD_NAMESPACE_BUSY`. Kafka is the ONE pinned image `apache/kafka:4.2.2@sha256:1213eb39...` (KRaft, no ZooKeeper; Redpanda, cp-kafka and undigested tags are refused) and always runs real; the broker has 8 slot listeners, each advertising its own toxiproxy port, so a slot's Kafka traffic flows only through its own proxy (8 concurrent slots machine-wide).
 
 k3d: one cluster per k3s image plus a local registry with pull-through mirrors for vendor images; own images are built by content hash (Dockerfile + lockfile + COPY'd sources), reused when the tag exists, and garbage-collected keeping the last 3 `src-*` tags.
 
@@ -110,9 +112,28 @@ tests other files are running, and their next tests wait for the outage to end; 
 outage spec gives its own shared hold up while it waits, so two outage specs never deadlock. A spec cannot forget the lock: the
 outage API takes it. Only the world that injected an outage restores proxies at its stop. A holder whose process died is broken.
 
+## The mail sink
+
+`stacks: { mail: {} }` runs the stack definition's mailpit (the compose service named `mail`, or any service on the `axllent/mailpit` image; the image and its digest come from the stack, never from the declaration) as the real mail sink: the app sends with its own SMTP client to `w.mail.host`/`w.mail.port`, and the spec reads what arrived with `world.mail`. The sink is stateful, so it is never declared faked (`stacks.mail: { fakedBy }` is `TEST_WORLD_CONFIG_INVALID`) and the hfs rule `BE_TEST_TOPOLOGY` refuses a fake of it (`fakes: { smtp: smtpFake() }` beside a stack `mail` service); `smtpFake()` remains for an app whose stack declares no mail service.
+
+Mailpit keeps its messages and its chaos settings per server, so the sink is one container per data slot (`starci-ts-mail-<hash of image and namespace>`, started by the slot's attach, removed by its detach or by the reclaim of a dead run): a slot's messages, refusals and outages never reach another slot or repository. SMTP (1025) is the toxiproxy-fronted endpoint; the HTTP API (8025) is published directly and is what `world.mail` reads, so an outage on SMTP does not blind the reader. Every spec file starts with an empty sink and no refusal. The container accepts any `AUTH` credentials over the plain channel and has chaos enabled.
+
+```ts
+const world = useTestWorld({ apps: ["api"] })
+// the app sent a confirmation mail
+const confirmation = await world.mail.waitFor("ann@example.com", { subject: "Confirm your email" })
+expect(confirmation.text).toContain("https://app.test/confirm")
+// the sink refuses the recipient (a permanent 550), then everything again
+await world.mail.refuse("recipient")                 // or refuse("sender", { status: 452 }), refuse("authentication")
+await world.mail.acceptAll()
+// the sink says nothing: the app's SMTP timeout fires
+await world.infra.mail.stall()
+await world.infra.mail.restore()
+```
+
 ## Fakes
 
-`@starci/test-world/fakes`: `defineHttpFake` (recording, failure injection, control channel), `smtpFake`, `openaiCompatibleFake` (streaming, embeddings), `vnpayFake`, `momoFake`, `payosFake`, `sepayFake` with the providers' real signature schemes and payload fixtures. Repo-specific fakes are built with `defineHttpFake` in `src/tests/world/fakes/`.
+`@starci/test-world/fakes`: `defineHttpFake` (recording, failure injection, control channel), `smtpFake` (for an app whose stack has no mail service), `openaiCompatibleFake` (streaming, embeddings), `vnpayFake`, `momoFake`, `payosFake`, `sepayFake` with the providers' real signature schemes and payload fixtures. Repo-specific fakes are built with `defineHttpFake` in `src/tests/world/fakes/`.
 
 A provider whose contract requires TLS (an OIDC issuer: discovery and JWKS over `https`) declares `defineHttpFake({ https: true, routes })`. The fake then listens on `https://127.0.0.1:<port>` with a server certificate signed by the run's ephemeral fake CA (made in memory per run over `node:crypto`, ECDSA P-256, valid for `127.0.0.1`, `::1`, `localhost` and `host.docker.internal`; no file, no dependency), and publishes that CA's PEM as `w.fake.<name>.ca`. The app trusts it through its own HTTP client: the `FetchHttpClient` of the `@starci/hfs` skeleton's `platform/http` takes `HttpOptions.trustedCa`, a PEM it trusts beside Node's bundled roots (`HttpModule.register({ isGlobal: true, ...options.http })`), and `parseHttpConfig` reads it from `HTTP_TRUSTED_CA` of the app's environment, so the declaration passes the CA in the environment it builds the app's options from, beside the integration's own URL key:
 

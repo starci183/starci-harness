@@ -4,6 +4,7 @@
 
 - Fixed: an integration spec now counts as a consumer of its own integration in a per-provider slot (`be.integrations.<provider>`, such as keycloak or mail), not only in `be.integrations` with a `<provider>` binding. R112 (the spec references the error enum) and `HFS_UNUSED_EXPORT` no longer contradict each other. Specs: `src/hfs-unused-symbol.spec.mts`.
 - Changed: the `undici` pin is 6.29.1 (6.29.0 carries GHSA-2m5v-pch6-74hx and four denial-of-service advisories that fail `npm audit --omit=dev --audit-level=high`), and the canon pin of `@starci/auth-oidc` is 0.2.0.
+- Changed: the canon pin of `@starci/test-world` is 1.4.0 (the stack mail sink, `stacks: { mail: {} }`), still paired with `@starci/jest-preset` 2.8.1.
 
 ## 6.2.10 - 2026-11-08
 

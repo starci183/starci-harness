@@ -26,6 +26,8 @@ export interface ServiceTarget {
     readonly host: string
     /** The container's published host port. */
     readonly port: number
+    /** The host ports of the container ports a definition publishes besides its own (`extraPorts`), by container port. */
+    readonly extraPorts?: Readonly<Record<number, number>>
     /** The generated secrets of the container; empty when the target is rebuilt from a run (the run carries what it needs). */
     readonly secrets: Secrets
     readonly net: ServiceNet
@@ -77,8 +79,16 @@ export interface DeprovisionInput {
 /** One infrastructure service: how to start it, when it is ready, and what a namespace owns in it. */
 export interface ServiceDefinition<TRun extends ProxiedEndpoint> {
     readonly name: InfraName
-    /** The container port the service listens on. */
+    /** The container port the service listens on; the one toxiproxy carries. */
     readonly port: number
+    /** Container ports published besides `port` and read directly, never through toxiproxy (an HTTP API beside a wire protocol). */
+    readonly extraPorts?: ReadonlyArray<number>
+    /**
+     * Whose container it is: `shared` (default) is one warm container per image for every repository; `namespace` is one
+     * container per data slot, started by its attach and removed by its detach, for a service whose state or failure injection
+     * is global to the server and so cannot be shared without one slot reaching another.
+     */
+    readonly scope?: "shared" | "namespace"
     /** The generated secrets of a new container of this service. */
     newSecrets(): Record<string, string>
     /** The default container spec for an image. */

@@ -50,6 +50,10 @@ export const validateDeclaration = (config: TestWorldConfig, root: string): Read
             problems.push("stacks.kafka: kafka is our own event bus and always runs real (Apache Kafka in KRaft mode); only third parties are faked at the network edge")
             continue
         }
+        if (key === "mail") {
+            problems.push("stacks.mail: the mail sink holds the messages an app sent and always runs real (the stack definition's mailpit); only a third party's mail host is faked at the network edge")
+            continue
+        }
         const { fakedBy, reason } = entry
         if (!isNonEmptyString(fakedBy)) problems.push(`stacks.${key}.fakedBy: must name an entry of \`fakes\``)
         else if (!fakeNames.includes(fakedBy)) {

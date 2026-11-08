@@ -3,6 +3,7 @@ import type { ProxiedEndpoint } from "../contracts"
 import type { ServiceDefinition } from "./definition"
 import { kafkaService } from "./kafka"
 import { keycloakService } from "./keycloak"
+import { mailService } from "./mail"
 import { minioService } from "./minio"
 import { postgresService } from "./postgresql"
 import { qdrantService } from "./qdrant"
@@ -21,4 +22,5 @@ export const SERVICE_DEFINITIONS: Readonly<Record<InfraName, AnyServiceDefinitio
     qdrant: erase(qdrantService),
     kafka: erase(kafkaService),
     keycloak: erase(keycloakService),
+    mail: erase(mailService),
 }

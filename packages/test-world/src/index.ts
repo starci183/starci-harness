@@ -20,6 +20,7 @@ export type {
     KafkaStack,
     KeycloakStack,
     MigrateDeclaration,
+    MailStack,
     MigrateEntry,
     MinioStack,
     ModulesDeclaration,
@@ -43,6 +44,7 @@ export type {
     WiredFake,
     WiredKafka,
     WiredKeycloak,
+    WiredMail,
     WiredMinio,
     WiredQdrant,
     WiredRedis,
@@ -50,6 +52,8 @@ export type {
     WorldWiring,
 } from "./config/wiring"
 export type { KeycloakEvent, KeycloakSession } from "./nest/keycloak"
+export type { MailRefuseOptions, MailWaitOptions, WorldMail } from "./nest/mail"
+export type { MailAddress, MailAttachment, MailMessage, MailRefusal, MailRefusalPoint, MailSummary } from "./stack/mail-api"
 export type { ModuleRegistration, SandboxAnswer, SandboxBrowserAnswer, SandboxBrowserRequest, SandboxHandle, SandboxRequest, SandboxSpec } from "./nest/sandbox"
 export { TestWorldError, TestWorldErrorCode } from "./errors"
 export type { TestWorldErrorCodeValue } from "./errors"

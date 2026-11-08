@@ -144,6 +144,16 @@ export interface RunKafka extends ProxiedEndpoint {
     readonly topics: Readonly<Record<string, string>>
 }
 
+/**
+ * The provisioned mail sink (mailpit) of a data slot. The endpoint itself is the SMTP port behind the slot's toxiproxy proxy;
+ * the HTTP API is published on its own port and is read directly (never through toxiproxy), so an outage injected on SMTP
+ * cannot blind the reader of the world.
+ */
+export interface RunMail extends ProxiedEndpoint {
+    /** The container's published HTTP API port, bypassing toxiproxy. */
+    readonly apiPort: number
+}
+
 /** The provisioned Keycloak realm of a run. */
 export interface RunKeycloak extends ProxiedEndpoint {
     /** The realm imported for the repository (`<namespace.kebab>-<realm>`). */
@@ -186,6 +196,7 @@ export interface RunInfra {
     readonly qdrant?: RunQdrant
     readonly kafka?: RunKafka
     readonly keycloak?: RunKeycloak
+    readonly mail?: RunMail
     readonly cluster?: RunCluster
 }
 
@@ -216,7 +227,7 @@ export interface StackStatus {
 
 /** The behaviors the rest of the library needs from layer (a). Implemented by `stack/index.ts`. */
 export interface StackApi {
-    /** Starts every missing shared container the images name (idempotent, serialised across processes by a lock), waits until healthy, and answers the status. The CLI `up`. */
+    /** Starts every missing shared container the images name (idempotent, serialised across processes by a lock), waits until healthy, and answers the status. A service of a data slot's own (mail) is started by that slot's attach, never here. The CLI `up`. */
     up(services: ReadonlyArray<StackImageRequest>, k3d?: K3dRequest & { readonly root: string }): Promise<StackStatus>
     /** Stops and removes the shared containers that no live lease uses; with `force`, all of them. The CLI `down`. */
     down(options?: { readonly force?: boolean }): Promise<StackStatus>
@@ -234,6 +245,8 @@ export interface StackApi {
 export interface ProxyToxics {
     /** Adds `ms` of latency (with optional jitter) to both directions until `restore`. */
     latency(ms: number, jitterMs?: number): Promise<void>
+    /** Makes the service silent: it keeps accepting connections but nothing it says reaches the client until `restore`, so the client's own timeout fires. */
+    stall(): Promise<void>
     /** Cuts the service off: the proxy stops accepting and drops live connections until `restore`. */
     cut(): Promise<void>
     /** Removes every toxic and re-enables the proxy. */

@@ -94,6 +94,18 @@ export interface WiredKeycloak {
     clientSecret(client: string): string
 }
 
+/** The mail sink of the run (the stack definition's mailpit, one per data slot). */
+export interface WiredMail {
+    /** The SMTP host the app sends to (through toxiproxy). */
+    readonly host: string
+    /** The SMTP port the app sends to (through toxiproxy). */
+    readonly port: number
+    /** `smtp://host:port`. */
+    readonly url: string
+    /** The base URL of the sink's HTTP API (`http://host:port`), published directly: it is the reader of the world, not a door of the app. */
+    readonly apiUrl: string
+}
+
 /** A fake at the network edge as the app is pointed at it. */
 export interface WiredFake {
     /** The base URL of an HTTP fake (`https://` for a fake declared `https`; empty for an SMTP fake). */
@@ -151,6 +163,7 @@ export interface WorldWiring<TApp extends string = string, TDb extends string = 
     readonly qdrant: WiredQdrant
     readonly kafka: WiredKafka
     readonly keycloak: WiredKeycloak
+    readonly mail: WiredMail
     /** The fakes by their `fakes` key. */
     readonly fake: Readonly<Record<TFake, WiredFake>>
     /** The sibling services by name. */

@@ -91,6 +91,13 @@ describe("resolveInfraImages", () => {
             { service: "keycloak", image: "quay.io/keycloak/keycloak:26.0" },
         ])
     })
+    test("mail is the compose service named mail or the mailpit image, whatever the other services are", () => {
+        const mailpit = "axllent/mailpit:v1.31.6@sha256:" + "a".repeat(64)
+        assert.deepEqual(resolveInfraImages({ mail: {} }, definitionOf({ db: "pgvector/pgvector:pg16", mail: mailpit })), [{ service: "mail", image: mailpit }])
+        assert.deepEqual(resolveInfraImages({ mail: {} }, definitionOf({ sink: mailpit })), [{ service: "mail", image: mailpit }])
+        assert.throws(() => resolveInfraImages({ mail: {} }, definitionOf({ db: "pgvector/pgvector:pg16" })), /stacks\.mail is declared but the stack definition/)
+        assert.deepEqual(selectedInfraServices({ redis: {}, mail: {} }), ["redis", "mail"])
+    })
     test("matches by compose service name when the image is a custom build", () => {
         const images = resolveInfraImages({ keycloak: { realm: "r.json" } }, definitionOf({ keycloak: "nivo/keycloak-dev:local" }))
         assert.deepEqual(images, [{ service: "keycloak", image: "nivo/keycloak-dev:local" }])

@@ -153,6 +153,15 @@ test("redis is leased its own db index and minio and qdrant carry their prefixes
     assert.equal(wiring.qdrant.collection("docs"), "shop_a1b2c3_docs")
 })
 
+test("mail is wired as the proxied SMTP endpoint and the directly published API, on the host the caller names", () => {
+    const wiring = buildWiring(context({ mail: { host: "127.0.0.1", port: 30105, apiPort: 55105, directPort: 55005, proxy: "ab12-mail", image: "axllent/mailpit:v1", container: "starci-ts-mail-x" } }))
+    assert.deepEqual({ ...wiring.mail }, { host: "127.0.0.1", port: 30105, url: "smtp://127.0.0.1:30105", apiUrl: "http://127.0.0.1:55105" })
+    const inContainer = buildWiring(context({ mail: { host: "127.0.0.1", port: 30105, apiPort: 55105, directPort: 55005, proxy: "ab12-mail", image: "i", container: "c" } }), { host: "host.docker.internal" })
+    assert.equal(inContainer.mail.url, "smtp://host.docker.internal:30105")
+    assert.equal(inContainer.mail.apiUrl, "http://host.docker.internal:55105")
+    assert.throws(() => buildWiring(context()).mail, /TEST_WORLD_NOT_DECLARED.*mail is not declared/)
+})
+
 test("secrets are stable per label within a run and differ across labels and seeds", () => {
     const wiring = buildWiring(context())
     assert.equal(wiring.secret("signing"), wiring.secret("signing"))
