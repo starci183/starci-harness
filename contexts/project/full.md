@@ -19,8 +19,10 @@ Each line names the owner of the fact; the slot or rule is the authority, not th
 - Redis and Qdrant are declarable backing services. Owner: `ruleParams.be.backing` in [hfs/slots.yaml](../hfs/slots.yaml).
 - The event bus is Kafka with a transactional outbox. Owners: slot `be.platform.event-bus`;
   [code/be/event-bus.md](../code/be/event-bus.md).
-- Identity is the project's own identity provider (Keycloak in the full stack verbs), reached through the package `@starci/auth-oidc`
-  composed in `integrations/keycloak` behind the `PrincipalVerifier` interface of the lite edition. Owners:
+- Identity is the project's own identity provider (Keycloak in the full stack verbs), reached through the entry `@starci/auth/oidc` of
+  the one sign-in package, composed in `integrations/keycloak` behind the `PrincipalVerifier` interface of the lite edition; the same
+  integration composes the issuer presets it needs, the GitHub Actions OIDC token of a CI attestation among them. The retired
+  `@starci/auth-oidc` is refused (`starci app codemod auth-merge`). Owners:
   [README.md](../../README.md) (verb groups; `starci explain` lists what is built); [code/be/api-auth.md](../code/be/api-auth.md) BE-AUTH-2;
   slot `be.integrations.keycloak` in [hfs/slots.yaml](../hfs/slots.yaml).
 

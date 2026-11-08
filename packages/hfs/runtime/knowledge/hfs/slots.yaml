@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mts; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.25.0
+version: 3.26.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -223,18 +223,21 @@ ruleParams:
       passport: []
       passport-google-oauth20: []
       passport-local: []
+      passport-oauth2: []
       "@nestjs/jwt": []
       jose: []
       bcryptjs: []
-      jsonwebtoken: []                                   # no other JWT or OIDC client library in a back end: the tokens of an identity provider are verified by @starci/auth-oidc (R328)
+      jsonwebtoken: []                                   # no other JWT or OIDC client library in a back end: the tokens of an identity provider or issuer are verified by @starci/auth/oidc (R328)
       jwks-rsa: []
       jwt-decode: []
       passport-jwt: []
       openid-client: []
-      "@starci/auth": [integrations/passport]            # the lite sign-in package: its server entry is reached only through integrations/passport (R328)
-      "@starci/auth/testing": [integrations/passport]   # its test doubles, for the glue's specs
-      "@starci/auth-oidc": [integrations/keycloak]       # the full sign-in package (jose is its dependency, imported by no app file): its server entry is reached only through integrations/keycloak (R328)
-      "@starci/auth-oidc/testing": [integrations/keycloak]   # its fake issuer, for the glue's specs
+      "@starci/auth": [integrations/passport]            # the sign-in package of both editions (jose and passport are its dependencies, imported by no app file); its root and lite entries are reached only through integrations/passport (R328)
+      "@starci/auth/server": [integrations/passport]     # lite: the sign-in module and its providers
+      "@starci/auth/oidc": [integrations/keycloak]       # full: the OIDC client and the issuer presets, the GitHub Actions CI attestation included, reached only through integrations/keycloak
+      "@starci/auth/contracts": [integrations/passport, integrations/keycloak]   # the door and OIDC contracts, for each edition's glue
+      "@starci/auth/testing": [integrations/passport, integrations/keycloak]     # the test doubles and the fake issuer, for each glue's specs
+      "@starci/auth-oidc": []                            # retired into @starci/auth/oidc: no app file imports it (starci app codemod auth-merge)
       bcrypt: []
       cache-manager: [integrations/cache, integrations/redis]
       "@nestjs/cache-manager": [integrations/cache, integrations/redis]     # the CACHE_MANAGER token: caching goes through the cache capability
@@ -2143,8 +2146,9 @@ slots:
   - id: be.integrations.keycloak
     profiles: [be]
     editions: [full]
-    # The glue of @starci/auth-oidc, the OIDC client of the full edition's identity provider (Keycloak): discovery, the provider's JWKS,
-    # algorithm-pinned token checks and the authorization code flow with PKCE and nonce behind the PrincipalVerifier of @starci/auth.
+    # The glue of @starci/auth/oidc, the OIDC client of the full edition's identity provider (Keycloak): discovery, the provider's JWKS,
+    # algorithm-pinned token checks and the authorization code flow with PKCE and nonce behind the PrincipalVerifier of @starci/auth, and the
+    # issuer presets it composes (the GitHub Actions OIDC token of the CI attestation, githubActionsIssuer); there is no other identity integration.
     # This folder parses the typed options, hands the package the app's bounded HTTP client and clock, and names the injectors;
     # no app file imports jose, and no other module imports the package (ruleParams.be.infraOwners).
     path: "src/modules/integrations/keycloak/"
@@ -2153,7 +2157,7 @@ slots:
     tier: integrations
     owner: true
     requires: [index.ts, keycloak.config.ts, keycloak.options.ts, keycloak.decorators.ts, keycloak.registration.ts]
-    allows: [index.ts, keycloak.config.ts, keycloak.options.ts, keycloak.decorators.ts, keycloak.registration.ts, errors/, messages/]
+    allows: [index.ts, keycloak.config.ts, keycloak.options.ts, keycloak.decorators.ts, keycloak.registration.ts, keycloak.attestation.ts, errors/, messages/]   # keycloak.attestation.ts: the CI attestation port over githubActionsIssuer
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_AUTH_PASSPORT_OWNER, BE_INTEGRATION_SPEC_MISSING]
     coverage: required

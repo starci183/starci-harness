@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.25.0
+version: 3.26.0
 presenceValues:
   - required
   - optional
@@ -289,6 +289,7 @@ ruleParams:
       passport: []
       passport-google-oauth20: []
       passport-local: []
+      passport-oauth2: []
       "@nestjs/jwt": []
       jose: []
       bcryptjs: []
@@ -299,12 +300,17 @@ ruleParams:
       openid-client: []
       "@starci/auth":
         - integrations/passport
+      "@starci/auth/server":
+        - integrations/passport
+      "@starci/auth/oidc":
+        - integrations/keycloak
+      "@starci/auth/contracts":
+        - integrations/passport
+        - integrations/keycloak
       "@starci/auth/testing":
         - integrations/passport
-      "@starci/auth-oidc":
         - integrations/keycloak
-      "@starci/auth-oidc/testing":
-        - integrations/keycloak
+      "@starci/auth-oidc": []
       bcrypt: []
       cache-manager:
         - integrations/cache
@@ -3086,7 +3092,7 @@ slots:
       - be
     editions:
       - full
-    editionWhy: full signs people in through the project's identity provider (Keycloak) with @starci/auth-oidc, composed here; lite issues its own identity in integrations/passport.
+    editionWhy: full signs people in through the project's identity provider (Keycloak) with @starci/auth/oidc, composed here with the issuer presets it needs (the GitHub Actions CI attestation); lite issues its own identity in integrations/passport.
     path: src/modules/integrations/keycloak/
     presence: optional
     tracked: tracked
@@ -3104,6 +3110,7 @@ slots:
       - keycloak.options.ts
       - keycloak.decorators.ts
       - keycloak.registration.ts
+      - keycloak.attestation.ts
       - errors/
       - messages/
     tests: unit-beside

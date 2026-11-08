@@ -24,26 +24,30 @@ Enforced by: `default-deny-app-guard`, `public-needs-reason`, `public-reason-clo
 Token verification belongs to `domain/identity` over the provider integration (in lite, `integrations/passport`,
 the glue of the package `@starci/auth`, which verifies the app's own EdDSA access tokens against the product's own issuer and key set (no sign-in spans two products), one
 signing key and any number of retired keys published as the JWKS, so a key rotates without signing anybody out; in
-full, `integrations/keycloak`, the glue of the package `@starci/auth-oidc`): the verifier pins the algorithm, checks issuer and
-audience, and builds the principal only after verification. In lite `@starci/auth` alone holds Passport (Google OAuth 2.0 with state and PKCE,
-email and password with bcrypt) and `jose`, signs the access tokens, serves their public JWKS, counts only sign-in
+full, `integrations/keycloak`, the glue of its `@starci/auth/oidc` entry): the verifier pins the algorithm, checks issuer and
+audience, and builds the principal only after verification. `@starci/auth` is the one sign-in package of both editions and every
+provider and issuer lives in it. In lite it alone holds Passport (the sign-in providers, Google OAuth 2.0 and GitHub, each with state and PKCE in a
+signed cookie of its own, `providers: [google(...), github(...)]`; email and password with bcrypt) and `jose`, signs the access tokens, serves their public JWKS, counts only sign-in
 failures against the limit and rotates the refresh token, which lives only in an httpOnly, Secure cookie the package sets;
 a spent refresh token presented again inside a short grace window is a racing tab and is answered with an access token
 and no rotation, an older replay ends the session. The app parses the settings, implements the stores over its own tables
 (the session tables are the package's managed migration) and imports the package nowhere but `integrations/passport`. The lite starter renders that glue, so a new app signs in without hand-written auth code: the entities of the session, attempt and email-token tables, the three stores, the account directory and the authenticator over the account doors (the SECURITY DEFINER `public.be_auth_*` functions of the baseline migration, called through the managed `persistence/account-doors.port.ts`; the application role holds no grant on schema `auth`), `IdentitySignInService` (with `endOthers`, which signs the caller out of every other device), `IdentityEmailService` (sign up, confirm the mailbox, resend, forgot and reset: a random single-use token that expires and is stored only as its digest in `identity_email_tokens`, every request counted against the address's `SignInBudget`, the mail sent through `@starci/mail` by `integrations/mail`, its words in `messages/identity-mail.messages.ts`) and the `/auth` doors (login, signup, confirm, resend, forgot, reset, refresh, session, logout, Google start and callback, jwks) are managed files (slots `be.identity.sign-in`, `be.feature.auth`) and an edit is `HFS_MANAGED_FILE_DRIFT`. A tenant header or argument (`@WorkspaceId()`) is a selector, never proof: the domain service
 proves membership or ownership before it reads or writes, so jobs and other doors cannot bypass it.
 
-In full the package `@starci/auth-oidc` is the OIDC client of the project's identity provider (Keycloak), behind the same
-`PrincipalVerifier` interface as `@starci/auth`, so `AuthGuard`, `@Public` and `@Credential` do not change between editions.
+In full its entry `@starci/auth/oidc` is the OIDC client of the project's identity provider (Keycloak), behind the same
+`PrincipalVerifier` interface as the lite verifier, so `AuthGuard`, `@Public` and `@Credential` do not change between editions.
 It discovers the exact issuer (the endpoints are trusted only on the issuer's origin over https), fetches the provider's JWKS
 (cached, refreshed at most once per cooldown when a token names an unknown `kid`, kept through a provider outage), pins the
 algorithms (`RS256`) before any key is looked up, checks issuer, audience, expiry and token type (an ID or refresh token is not a
 bearer) and maps the realm and client roles; a provider that cannot be asked is an `unavailable` error, never a refusal, so an
 outage signs nobody out. It also runs the authorization code flow (S256 PKCE, state, nonce, one code exchange, ID token
-verification, RP-initiated logout) for an app that opens its own opaque session. `jose` is its dependency alone, the app parses the
+verification, RP-initiated logout) for an app that opens its own opaque session, and holds the issuer presets (`keycloakIssuer`, `googleIssuer` for Google ID tokens,
+`githubActionsIssuer` for the GitHub Actions OIDC token a CI run attests with: a required audience, the repository by name and `sub`, optionally
+its id, workflow files and refs), which `integrations/keycloak` composes; there is no other identity integration. `jose` is its dependency alone, the app parses the
 registration (no default address or credential; the client secret through the config loader's `Secret`) and reaches the provider
-through its bounded `platform/http` client passed to the package as the `OidcHttp` port, and the package is imported nowhere but
-`integrations/keycloak`.
+through its bounded `platform/http` client passed to the package as the `OidcHttp` port, and the entry is imported nowhere but
+`integrations/keycloak`. The retired `@starci/auth-oidc` (a re-export of these entries) is imported by no app file; `starci app codemod
+auth-merge` moves an app off it (R328).
 
 Why: authentication is a capability with its own state and errors, and authorization kept in the service holds for
 every entry point.

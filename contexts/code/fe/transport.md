@@ -73,7 +73,7 @@ auth -> api), and an auth-change subscription. In lite it is one `@starci/auth/c
 over the app's own back-end auth doors (`/auth/...`: login, signup, refresh, logout, password reset, resend verification):
 the email doors (sign up, confirm, resend, forgot, reset) are called through `modules/auth/email-doors.ts`, a lite-only call kept off the shared `AuthClient` interface because the full edition's identity provider owns its own recovery flows; the links of the confirmation and reset mails open the app pages `/auth/confirm?token=` and `/auth/reset?token=` (the default locale is unprefixed), and confirming is a button press so a mail scanner opening the link spends nothing; the access token lives in the client's memory, overlapping callers share one refresh, and only a 401 or 403 from a
 refresh signs the reader out (a 429, a server error or a lost connection is retried and keeps the session); the refresh
-token never reaches script. In full, a front end whose browser holds the tokens uses one `@starci/auth-oidc/client` instance in the same file (PKCE redirect to the
+token never reaches script. In full, a front end whose browser holds the tokens uses one `@starci/auth/client/oidc` instance in the same file (PKCE redirect to the
 identity provider, the callback, one shared refresh, the tokens in memory only, signed out only when the provider ends the session); a
 front end whose back end holds an opaque session cookie keeps one door client in `modules/auth` and no token. Every other REST call stays in `modules/api/rest`.
 

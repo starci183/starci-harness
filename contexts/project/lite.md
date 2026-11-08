@@ -38,7 +38,8 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
   world: entities, or a listed function through `callDbFunction`; the world keeps raw SQL for probes only.
   Owners: `ruleParams.be.lite.schemaAuthority` and slot `be.persistence`; R213 to R215, R255 to R259, R332, R334;
   [code/be/persistence.md](../code/be/persistence.md).
-- Identity is the app's own, shipped as the package `@starci/auth`: Google OAuth and email and password through Passport, its
+- Identity is the app's own, shipped as the package `@starci/auth` (its `./server` entry): Google OAuth (and any further sign-in provider
+  the module lists, GitHub among them) and email and password through Passport, its
   own EdDSA access tokens verified against its own JWKS, a rotating httpOnly refresh cookie, and a front end that holds no
   credential. Owners: the package `packages/auth`, slots `be.integrations.passport`, `be.identity.sign-in`, `be.feature.auth` and `fe.modules.auth.client`. Owners: R328 to
   R330; [code/be/api-auth.md](../code/be/api-auth.md); [code/fe/transport.md](../code/fe/transport.md) FE-AUTH.

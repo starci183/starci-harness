@@ -1,6 +1,6 @@
 {
   "name": "@starci/eslint-canon-be",
-  "version": "3.20.2",
+  "version": "3.20.3",
   "description": "The StarCi back-end lint canon: every rule its laws publish, gathered as one flat-config plugin.",
   "type": "module",
   "license": "MIT",
@@ -40,7 +40,7 @@
     "node": ">=22.13.0"
   },
   "peerDependencies": {
-    "@starci/hfs": "~6.4.0",
+    "@starci/hfs": "~6.5.0",
     "eslint": ">=9",
     "typescript": ">=5.9"
   },

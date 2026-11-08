@@ -426,6 +426,11 @@ removed:
     use: 'DropdownMenuItem.tone uses neutral or danger; destructive commands use danger'
     since: 1.0.0-alpha.31
     match: 'DropdownMenuItem(?:Tone|\.tone)[^\r\n]*["'']negative["'']'
+  - id: package-auth-oidc
+    kind: vocabulary
+    name: "@starci/auth-oidc"
+    use: '@starci/auth/oidc, @starci/auth/client/oidc and @starci/auth/testing of the one sign-in package; `starci app codemod auth-merge --execute` moves an app, and R328 refuses an import of the retired package in code'
+    scan: false
 
   - id: code-release-receipt-missing
     kind: code

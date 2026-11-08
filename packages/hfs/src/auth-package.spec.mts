@@ -11,7 +11,7 @@ import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 import { canonPins } from '../runtime/scripts/hfs/canon-pins.mjs';
 import type { LockResult } from '../scaffold/app.mjs';
 import { bundledPresets } from '../sync/index.mjs';
-import { scaffoldApp } from '../scaffold/app.mjs';
+import { coreFeStackPackages, scaffoldApp } from '../scaffold/app.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
 import { renderRepo, writeTargets } from '../sync/index.mjs';
@@ -22,7 +22,7 @@ const REPOSITORY = path.resolve(import.meta.dirname, '..', '..', '..');
 const AUTH_SQL = path.join(REPOSITORY, 'packages', 'auth', 'migrations', 'identity-sessions.sql');
 const DOORS_SQL = path.join(REPOSITORY, 'packages', 'hfs', 'templates', 'app', 'auth-doors.sql.partial');
 const ACCOUNT_DOORS = ['be_auth_user_by_email', 'be_auth_user_by_id', 'be_auth_user_by_google', 'be_auth_create_user', 'be_auth_link_google', 'be_auth_touch_user', 'be_auth_confirm_user', 'be_auth_set_password'];
-const IDENTITY_LIBRARIES = ['@nestjs/passport', 'passport', 'passport-google-oauth20', 'passport-local', '@nestjs/jwt', 'jose', 'bcryptjs'];
+const IDENTITY_LIBRARIES = ['@nestjs/passport', 'passport', 'passport-google-oauth20', 'passport-local', 'passport-oauth2', '@nestjs/jwt', 'jose', 'bcryptjs'];
 
 const lockedOk = (root: string): LockResult => {
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');
@@ -85,11 +85,22 @@ test('a lite starter\'s passport integration is the glue the slot lists and its 
   assert.ok(fs.readFileSync(path.join(auth, 'email-doors.ts'), 'utf8').startsWith('// Managed by starci app sync (slot fe.modules.auth.client)'));
 });
 
-test('the identity libraries are owned by no app file and @starci/auth by integrations/passport alone', () => {
+test('the identity libraries are owned by no app file, and each entry of @starci/auth by its edition\'s glue', () => {
   const owners = loadSlotManifest().ruleParams.be.infraOwners;
   for (const library of IDENTITY_LIBRARIES) assert.deepEqual(owners[library], [], library);
   assert.deepEqual(owners['@starci/auth'], ['integrations/passport']);
-  assert.deepEqual(owners['@starci/auth/testing'], ['integrations/passport']);
+  assert.deepEqual(owners['@starci/auth/server'], ['integrations/passport']);
+  assert.deepEqual(owners['@starci/auth/oidc'], ['integrations/keycloak']);
+  assert.deepEqual(owners['@starci/auth/contracts'], ['integrations/passport', 'integrations/keycloak']);
+  assert.deepEqual(owners['@starci/auth/testing'], ['integrations/passport', 'integrations/keycloak']);
+  assert.deepEqual(owners['@starci/auth-oidc'], [], 'the retired package is owned nowhere');
+});
+
+test('the front-end stack installs @starci/auth in every edition and forbids the retired @starci/auth-oidc, so a full starter takes @starci/auth', () => {
+  const { app } = coreFeStackPackages();
+  assert.ok(app.includes('@starci/auth'));
+  assert.equal(app.includes('@starci/auth-oidc'), false);
+  assert.equal(canonPins()['@starci/auth-oidc'], undefined, 'the canon pins no longer name the retired package');
 });
 
 test('the pin of @starci/auth names the folder and the version of the package', () => {
