@@ -31,11 +31,11 @@ export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE, ASYN
 
 ## The class of a flow failure
 
-`classifyFailure(cause, DomainError)` names what a failure means for a flow (BE-RESILIENCE-2): `transient` (a dropped or refused connection, a timeout, a lock or serialisation conflict) is retried with backoff; `input` (an error of the app's `DomainError` family), `config` (a domain code naming a configuration or connection) and `code` (anything else) park the flow, since a retry cannot help until the cause is fixed. An error that carries a `failureClass` names its own. The job runner of `platform/jobs`, the lite pgmq consumer and the full event runner all call it, so the rule has one home and no app capability exports a copy.
+`classifyFailure(cause, DomainError)` names what a failure means for a flow (BE-RESILIENCE-2): `transient` (a dropped or refused connection, a timeout, a lock or serialisation conflict) is retried with backoff; `input` (a `DomainError` of `@starci/common`, the base of every app and package error), `config` (a domain code naming a configuration or connection) and `code` (anything else) park the flow, since a retry cannot help until the cause is fixed. An error that carries a `failureClass` names its own. The job runner of `platform/jobs`, the lite pgmq consumer and the full event runner all call it, so the rule has one home and no app capability exports a copy.
 
 ```ts
 import { classifyFailure } from "@starci/nest-kit"
-import { DomainError } from "@modules/platform/errors"
+import { DomainError } from "@starci/common"
 
 const parked = classifyFailure(cause, DomainError) !== "transient"
 ```

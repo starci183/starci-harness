@@ -4,7 +4,7 @@
  */
 export type FailureClass = "transient" | "input" | "code" | "config"
 
-/** The base class of the app's own error family (`DomainError` of `platform/errors`), whose errors carry a stable `code`. */
+/** The base class of the coded error family, `DomainError` of `@starci/common` (which an app's `platform/errors` re-exports), whose errors carry a stable `code`. */
 export type DomainErrorBase = abstract new (...args: never[]) => Error
 
 /** The system and driver codes of a failure that a later attempt can outlive: a dropped or refused connection, a timeout, a lock or serialisation conflict. */

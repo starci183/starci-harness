@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2 - 2026-11-08
+
+- Changed: the documentation names `DomainError` of `@starci/common` as the base `classifyFailure` takes; the signature and behaviour are unchanged.
+
 ## 0.2.1 - 2026-11-07
 
 - A patch: the README states its rules without ruling history; no behaviour changed.
