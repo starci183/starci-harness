@@ -35,7 +35,7 @@ The package reads no environment. The app parses its settings (BE-CONFIG-2) and 
 | the token type | an ID token or a refresh token presented as a bearer is refused (`typ` must be `Bearer`) |
 | the roles | `realm_access.roles`, `resource_access.<client>.roles` of the mapped clients and the mapped flat claims; a claim of the wrong shape or past 128 roles refuses the token |
 
-`verify` answers `{ kind: "ok", value: OidcPrincipal }` or `{ kind: "refused", code: "PASSPORT_ACCESS_TOKEN_INVALID", detail: { reason } }` (the code `@starci/auth` refuses with; the reason is for the log). A provider that cannot be asked and has nothing cached throws an `OidcError` of kind `unavailable`, which the app maps to a 503, never a 401: an identity-provider outage does not sign anyone out.
+`verify` answers `{ kind: "ok", value: OidcPrincipal }` or `{ kind: "refused", code: "PASSPORT_ACCESS_TOKEN_INVALID", detail: { reason } }` (the code `@starci/auth` refuses with; the reason is for the log). A provider that cannot be asked and has nothing cached throws an `OidcError` (a `DomainError` of `@starci/common`) of kind `unavailable`, which the app maps to a 503, never a 401: an identity-provider outage does not sign anyone out.
 
 Endpoints a discovery document advertises are trusted only on the issuer's origin, over https, without credentials; `http:` is admitted only with `allowInsecureHttp` (a developer machine or a test double).
 

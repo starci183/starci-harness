@@ -12,6 +12,9 @@ Keycloak behind the back end: the sign-in, the sign-up and the federated sign-in
 - Added: error codes `OIDC_CREDENTIALS_REJECTED`, `OIDC_EMAIL_REGISTERED`, `OIDC_PASSWORD_INVALID`, `OIDC_SOCIAL_REJECTED`, whose `OidcError.kind` is `credentials-rejected`, `email-registered`, `password-invalid` and `social-rejected` (`OidcErrorKind` grows by these four; `unavailable` is the existing kind of an outage, a 5xx or a 429).
 - Added: `OidcHttpRequest` takes `PUT`, a JSON `body` and `headers`; `OidcHttpResponse` may carry `location`; `OidcMetadata.revocationEndpoint`. A port that ignores the new fields still serves every call that existed.
 - Added: `FakeOidcIssuer` answers the password grant (`seedUser`, `findUser`, `passwordMatches`), `client_credentials`, the revocation endpoint, the end-session POST, the admin users endpoints (create, search, reset password, logout), `refresh_expires_in` and `kc_idp_hint` (`idpHints`, the `identityProviders` option), with the options `refreshTtlSeconds`, `revocation` and `minPasswordLength` and the existing failure injection.
+- Changed: `OidcError` extends `DomainError<OidcErrorCode>` of `@starci/common` (new dependency); its name, codes, constructor, `kind`, `params` and `cause` are unchanged, and `params` is typed as the `ErrorParams` of the base (string or number values).
+- Changed: requires `@starci/auth` 0.5.0.
+- Changed: `isRecord` is `isPlainRecord` of `@starci/common` under its old name (the same non-array object guard).
 
 ## 0.1.3 - 2026-11-04
 

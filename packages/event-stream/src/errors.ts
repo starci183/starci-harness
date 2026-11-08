@@ -1,3 +1,4 @@
+import { DomainError } from "@starci/common"
 import type { RequestConfig } from "./types.js"
 
 /** The machine-readable reason of an {@link EventStreamError}, shaped after axios's error codes. */
@@ -35,20 +36,18 @@ export interface EventStreamErrorInit {
   readonly retryable?: boolean
 }
 
-/** The one error type of the library: `status`, `code`, `config` and `response` as on an axios error. */
-export class EventStreamError extends Error {
+/** The one error type of the library, a `DomainError` of `@starci/common` with its own message: `status`, `code`, `config` and `response` as on an axios error. */
+export class EventStreamError extends DomainError<EventStreamErrorCodeValue> {
   /** Marks the error for {@link isEventStreamError} across realms and package copies. */
   readonly isEventStreamError = true
-  readonly code: EventStreamErrorCodeValue
   readonly status: number | undefined
   readonly config: RequestConfig | undefined
   readonly response: Response | undefined
   readonly retryable: boolean
 
   constructor(message: string, code: EventStreamErrorCodeValue, init: EventStreamErrorInit = {}) {
-    super(message, init.cause === undefined ? undefined : { cause: init.cause })
-    this.name = "EventStreamError"
-    this.code = code
+    super(init.cause === undefined ? { code } : { code, cause: init.cause })
+    this.message = message
     this.status = init.status
     this.config = init.config
     this.response = init.response

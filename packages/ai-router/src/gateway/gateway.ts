@@ -1,3 +1,4 @@
+import { isPlainRecord } from "@starci/common"
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto"
 import { createServer } from "node:http"
 import type { IncomingMessage, Server, ServerResponse } from "node:http"
@@ -69,10 +70,6 @@ class GatewayError extends Error {
 
 const DEFAULT_MAX_BODY = 4 * 1024 * 1024
 const MINUTE = 60_000
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value)
-}
 
 function errorBody(error: GatewayError): { error: { message: string; type: string; param: null; code: string } } {
     return { error: { message: error.message, type: error.type, param: null, code: error.code } }
@@ -323,7 +320,7 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
         const started = clock()
         try {
             const body = await readBody(request, maxBody)
-            if (!isRecord(body)) throw new GatewayError(400, "invalid_request", "the request body must be a JSON object")
+            if (!isPlainRecord(body)) throw new GatewayError(400, "invalid_request", "the request body must be a JSON object")
             if (operation === "chat" && !Array.isArray(body.messages)) throw new GatewayError(400, "invalid_request", "messages is required")
             if (operation === "embeddings" && typeof body.input !== "string" && !Array.isArray(body.input)) throw new GatewayError(400, "invalid_request", "input is required")
             const resolved = target(key, body.model, operation)
@@ -372,7 +369,7 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
         const headers = { "x-request-id": requestId }
         const controller = controllerFor(response)
         // Usage is always asked of the provider, for the key's accounting; the client gets the usage chunk only if it asked.
-        const asked = isRecord(body.stream_options) ? body.stream_options : {}
+        const asked = isPlainRecord(body.stream_options) ? body.stream_options : {}
         const wantsUsage = asked.include_usage === true
         const call = { ...callBody(body, routed), stream_options: { ...asked, include_usage: true } } as unknown as ChatCompletionRequest
         const slot: Captured = {}
@@ -489,7 +486,7 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
                 }
                 if (method === "PATCH") {
                     const patch = await readBody(request, maxBody)
-                    if (!isRecord(patch)) throw new GatewayError(400, "invalid_key_spec", "the update must be a JSON object")
+                    if (!isPlainRecord(patch)) throw new GatewayError(400, "invalid_key_spec", "the update must be a JSON object")
                     send(response, 200, await admin.update(id, patch))
                     return
                 }

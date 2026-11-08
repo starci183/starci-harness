@@ -5,6 +5,7 @@ import { realPause } from "./health"
 import type { Pause } from "./health"
 import type { Namespace, RunInfra, StackLease } from "./contracts"
 import { KAFKA_SLOT_LISTENERS, PROXY_PORT_FIRST, PROXY_PORT_LAST } from "./naming"
+import { isPlainRecord } from "@starci/common"
 
 /**
  * A lease as the registry stores it: the public {@link StackLease}, the shared containers the run uses (what `down` keeps),
@@ -83,8 +84,6 @@ const emptyData = (): RegistryData => ({ version: 1, secrets: {}, leases: [], re
 const REDIS_DB_COUNT = 16
 const ORPHAN_LOCK_MS = 5000
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value)
-
 /** The machine-wide state of the stack: a JSON file under a cross-process, mkdir-based lock. */
 export class Registry {
     private readonly dir: string
@@ -148,7 +147,7 @@ export class Registry {
         let ownerPid: number | null = null
         try {
             const owner: unknown = JSON.parse(readFileSync(join(lockDir, "owner"), "utf8"))
-            if (isRecord(owner) && typeof owner.pid === "number") ownerPid = owner.pid
+            if (isPlainRecord(owner) && typeof owner.pid === "number") ownerPid = owner.pid
         } catch {
             // owner not written yet, or unreadable
         }
@@ -174,16 +173,16 @@ export class Registry {
     private load(): RegistryData {
         try {
             const parsed: unknown = JSON.parse(readFileSync(join(this.dir, "registry.json"), "utf8"))
-            if (!isRecord(parsed)) return emptyData()
+            if (!isPlainRecord(parsed)) return emptyData()
             const base = emptyData()
             return {
                 version: 1,
-                secrets: isRecord(parsed.secrets) ? (parsed.secrets as RegistryData["secrets"]) : base.secrets,
+                secrets: isPlainRecord(parsed.secrets) ? (parsed.secrets as RegistryData["secrets"]) : base.secrets,
                 leases: Array.isArray(parsed.leases) ? (parsed.leases as Array<RegistryLease>) : base.leases,
-                redisDbs: isRecord(parsed.redisDbs) ? (parsed.redisDbs as RegistryData["redisDbs"]) : base.redisDbs,
-                kafkaListeners: isRecord(parsed.kafkaListeners) ? (parsed.kafkaListeners as RegistryData["kafkaListeners"]) : base.kafkaListeners,
-                proxyPorts: isRecord(parsed.proxyPorts) ? (parsed.proxyPorts as RegistryData["proxyPorts"]) : base.proxyPorts,
-                notes: isRecord(parsed.notes) ? (parsed.notes as RegistryData["notes"]) : base.notes,
+                redisDbs: isPlainRecord(parsed.redisDbs) ? (parsed.redisDbs as RegistryData["redisDbs"]) : base.redisDbs,
+                kafkaListeners: isPlainRecord(parsed.kafkaListeners) ? (parsed.kafkaListeners as RegistryData["kafkaListeners"]) : base.kafkaListeners,
+                proxyPorts: isPlainRecord(parsed.proxyPorts) ? (parsed.proxyPorts as RegistryData["proxyPorts"]) : base.proxyPorts,
+                notes: isPlainRecord(parsed.notes) ? (parsed.notes as RegistryData["notes"]) : base.notes,
             }
         } catch {
             return emptyData()

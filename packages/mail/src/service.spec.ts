@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import { MAIL_ERROR_CODES, MAIL_ERROR_KINDS, MailError, isValidMailbox } from "./index.ts"
 import type { MailMessage } from "./index.ts"
+import { isDomainError } from "@starci/common"
 import { resolveMailOptions } from "./options.ts"
 import { createMemoryMailer, testMailOptions } from "./testing/index.ts"
 
@@ -167,5 +168,19 @@ describe("attachments", () => {
         }
         await mailer.send({ to: "a@x.test", message: { ...message, attachments: [{ filename: "p.PNG", content: new Uint8Array(2), contentType: "Image/PNG; name=p" }] } })
         assert.equal(mailer.outbox.length, 1)
+    })
+})
+
+describe("MailError", () => {
+    it("is a DomainError of @starci/common whose message is its code and whose params are empty", () => {
+        const cause = new Error("socket")
+        const error = new MailError("MAIL_CONNECT", { cause, detail: "refused", context: { host: "smtp.test" } })
+        assert.ok(isDomainError(error))
+        assert.equal(error.name, "MailError")
+        assert.equal(error.message, "MAIL_CONNECT")
+        assert.equal(error.kind, "unavailable")
+        assert.equal(error.cause, cause)
+        assert.deepEqual(error.params, {})
+        assert.equal(new MailError("MAIL_AUTH").cause, undefined)
     })
 })

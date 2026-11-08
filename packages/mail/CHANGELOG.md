@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0 - 2026-11-08
+
+- Changed: `MailError` extends `DomainError` of `@starci/common` (now a dependency): `isDomainError` recognises it, `params` is `{}`; its name, codes, `kind`, `detail`, `context`, `cause` and message (the code) are unchanged. `MailErrorKind` is a subset of `ErrorKind`.
+
 ## 0.1.0 - 2026-11-03
 
 Outgoing mail for a StarCi back end in one package, lifted from the mail integrations of the apps that each wrote one (Nivo's `integrations/mail`, the academy's mailer, the older Nest mailer modules) and generalised: no product names, every setting a typed option, no environment read, no template engine.

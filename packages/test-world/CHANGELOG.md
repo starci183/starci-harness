@@ -9,6 +9,9 @@
 - Added: `stall()` on every `world.infra.<svc>` handle (and `ProxyToxics`): the service keeps accepting connections and nothing it says reaches the client until `restore()`, so the client's own timeout fires (a `timeout` toxic of 0 on the downstream); it takes the outage lock like `latency` and `cut`. `world.infra.mail` carries the SMTP side's `stall()`, `cut()` and `latency(ms)`.
 - Added: the types `MailStack`, `WiredMail`, `WorldMail`, `MailMessage`, `MailSummary`, `MailAddress`, `MailAttachment`, `MailRefusal`, `MailRefusalPoint`, `MailRefuseOptions` and `MailWaitOptions`. Specs: `src/stack/mail-api.spec.ts`, `src/nest/mail.spec.ts`, and the mail cases of `src/stack/services/services.spec.ts`, `src/stack/index.spec.ts`, `src/stack/toxiproxy.spec.ts`, `src/config/stack-file.spec.ts`, `src/config/validate.spec.ts`, `src/nest/wiring.spec.ts` and `src/nest/world.spec.ts`; README.
 - Unchanged: the state file protocol (2), so `@starci/jest-preset` 2.8.0 stays the pair.
+- Changed: `TestWorldError` extends `DomainError` of `@starci/common` (now a dependency): `isDomainError` recognises it; its name, codes, `params`, `cause` and message (`<code>: <detail>`) are unchanged. The `params` values are strings or numbers (`ErrorParams`), so the fake-control failure leaves `status` out when no answer arrived instead of carrying `null`.
+- Changed: five local object guards (`isRecord` of the subscription, world lock, registry, Keycloak and toxiproxy modules) are `isPlainRecord` / `isRecord` of `@starci/common` with the same behaviour.
+- Changed: the package compiles with `module: nodenext`, since it now requires an ES module (`@starci/common`); Node 22.13 or later loads it with `require`.
 
 ## 1.3.5 - 2026-11-07
 

@@ -28,6 +28,7 @@ const LINKED: Readonly<Record<string, string>> = {
   'test-world': '../../test-world/dist',
   auth: '../../auth/dist',
   'object-storage': '../../object-storage/dist',
+  common: '../../common/dist',
   'nest-kit': '../../nest-kit/dist',
   mail: '../../mail/dist',
 };

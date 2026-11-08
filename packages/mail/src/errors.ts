@@ -1,3 +1,6 @@
+import { DomainError } from "@starci/common"
+import type { ErrorKind } from "@starci/common"
+
 /** The wire codes of mail; the app maps each to its own error family (BE-ERROR) at the glue. */
 export const MAIL_ERROR_CODES = {
     /** The mail server refused the login. */
@@ -30,7 +33,7 @@ export const MAIL_ERROR_CODES = {
 export type MailErrorCode = (typeof MAIL_ERROR_CODES)[keyof typeof MAIL_ERROR_CODES]
 
 /** How a code travels, in the vocabulary of the harness back end's `ErrorKind`. */
-export type MailErrorKind = "invalid" | "rate-limited" | "unavailable"
+export type MailErrorKind = Extract<ErrorKind, "invalid" | "rate-limited" | "unavailable">
 
 /** The kind each code travels as: a refused login, sender, recipient or message is invalid, a spent limit rate-limited, an unreachable server unavailable. */
 export const MAIL_ERROR_KINDS: Readonly<Record<MailErrorCode, MailErrorKind>> = {
@@ -48,9 +51,8 @@ export const MAIL_ERROR_KINDS: Readonly<Record<MailErrorCode, MailErrorKind>> = 
     MAIL_MESSAGE_INVALID: "invalid",
 }
 
-/** The one error class of mail: a wire code, the kind it travels as, the server's own words and non-secret context. */
-export class MailError extends Error {
-    readonly code: MailErrorCode
+/** The one error class of mail, a `DomainError` of `@starci/common`: a wire code, the kind it travels as, the server's own words and non-secret context. */
+export class MailError extends DomainError<MailErrorCode> {
     readonly kind: MailErrorKind
     /** What the server answered, trimmed to one line (empty when there was no answer); never a credential. */
     readonly detail: string
@@ -61,9 +63,7 @@ export class MailError extends Error {
         code: MailErrorCode,
         options: { readonly cause?: unknown; readonly detail?: string; readonly context?: Readonly<Record<string, unknown>> } = {},
     ) {
-        super(code, options.cause === undefined ? undefined : { cause: options.cause })
-        this.name = "MailError"
-        this.code = code
+        super(options.cause === undefined ? { code } : { code, cause: options.cause })
         this.kind = MAIL_ERROR_KINDS[code]
         this.detail = options.detail ?? ""
         this.context = options.context ?? {}

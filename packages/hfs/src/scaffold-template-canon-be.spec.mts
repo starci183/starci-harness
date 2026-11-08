@@ -28,6 +28,7 @@ const KIT = path.resolve(HFS, '..', 'jest-preset');
 const AUTH = path.resolve(HFS, '..', 'auth');
 const MAIL = path.resolve(HFS, '..', 'mail');
 const NEST_KIT = path.resolve(HFS, '..', 'nest-kit');
+const COMMON = path.resolve(HFS, '..', 'common');
 /** Where the types a skeleton file imports are installed: this package's dev dependencies and the kit's (jest's globals). */
 const INSTALLS = [path.join(HFS, 'node_modules'), path.join(KIT, 'node_modules'), path.join(AUTH, 'node_modules'), path.join(MAIL, 'node_modules'), path.join(NEST_KIT, 'node_modules')];
 
@@ -71,6 +72,11 @@ const installKit = (root: string) => {
 /** The module-definition kit, built, where every back end installs it (each `<x>.module-definition.ts` is one call of it). */
 const installNestKit = (root: string) => {
   for (const part of ['package.json', 'dist']) fs.cpSync(path.join(NEST_KIT, part), path.join(root, 'node_modules', '@starci', 'nest-kit', part), { recursive: true });
+};
+
+/** The shared concepts package, built, where every back end installs it: the canon recognises `DomainError` by this declaration, so it sits in `node_modules`, never behind a path mapping. */
+const installCommon = (root: string) => {
+  for (const part of ['package.json', 'dist']) fs.cpSync(path.join(COMMON, part), path.join(root, 'node_modules', '@starci', 'common', part), { recursive: true });
 };
 
 /** The sign-in package, built, where a lite app installs it (its dependencies resolve from the package's own installs). */
@@ -117,6 +123,7 @@ for (const edition of ['full', 'lite']) {
     gitAdd(installTypeScript(root));
     installKit(root);
     installNestKit(root);
+    installCommon(root);
     if (edition === 'lite') { installAuth(root); installMail(root); }
     const be = path.join(root, 'be');
     const project = lintProject(be);

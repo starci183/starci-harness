@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
+import { isDomainError } from "@starci/common"
 import { EventStreamError, EventStreamErrorCode, isEventStreamError } from "./errors.js"
 
 describe("EventStreamError", () => {
@@ -14,6 +15,8 @@ describe("EventStreamError", () => {
     assert.equal(error.retryable, false)
     assert.equal(error.cause, undefined)
     assert.ok(error instanceof Error)
+    assert.ok(isDomainError(error))
+    assert.deepEqual(error.params, {})
     assert.deepEqual(error.toJSON(), { name: "EventStreamError", message: "nope", code: "ERR_BAD_REQUEST", status: 404, retryable: false, config })
   })
 

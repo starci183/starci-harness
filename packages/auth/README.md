@@ -12,6 +12,8 @@ The sign-in of a lite StarCi app: one package, four entries.
 
 An app reaches the package only through `integrations/passport` (back end) and `modules/auth/client.ts` (front end); the lint refuses `passport*`, `jose`, `bcryptjs` and `@nestjs/jwt` in an app.
 
+The server throws one error class, `AuthError`: a `DomainError` of `@starci/common` whose `code` is a wire code, with the `kind` it travels as and a non-secret `context`.
+
 ## Back end
 
 ```ts

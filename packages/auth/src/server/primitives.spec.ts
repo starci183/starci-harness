@@ -6,7 +6,6 @@ import {
     cookieValue,
     isAcceptablePassword,
     isPresentablePassword,
-    isRecord,
     normalizeEmail,
     revealed,
     sameSitePath,
@@ -69,8 +68,6 @@ describe("text helpers", () => {
         assert.equal(sameValue("abc", "abcd"), false)
         assert.equal(cookieValue("a=1;  b = 2 ; =3; c", "b"), "2")
         assert.equal(cookieValue("a=1", "z"), "")
-        assert.equal(isRecord([]), false)
-        assert.equal(isRecord({}), true)
         assert.equal(revealed("x"), "x")
         assert.equal(revealed({ reveal: () => "y" }), "y")
     })

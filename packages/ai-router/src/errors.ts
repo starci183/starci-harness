@@ -1,3 +1,4 @@
+import { DomainError } from "@starci/common"
 import { classifyFailure } from "./classify.ts"
 import type { ErrorClass } from "./types.ts"
 
@@ -33,8 +34,27 @@ export function isRetryable(errorClass: ErrorClass): boolean {
     return RETRYABLE.has(errorClass)
 }
 
-/** The one error the router throws. `errorClass` says why; `attempts` lists every failed attempt of the call. */
-export class AiRouterError extends Error {
+/** The stable code of each error class: what an `AiRouterError` carries as its `code`. */
+export const AI_ROUTER_ERROR_CODES: Readonly<Record<ErrorClass, `AI_ROUTER_${Uppercase<ErrorClass>}`>> = {
+    rate_limit: "AI_ROUTER_RATE_LIMIT",
+    quota: "AI_ROUTER_QUOTA",
+    auth: "AI_ROUTER_AUTH",
+    transient: "AI_ROUTER_TRANSIENT",
+    timeout: "AI_ROUTER_TIMEOUT",
+    network: "AI_ROUTER_NETWORK",
+    stream: "AI_ROUTER_STREAM",
+    invalid_request: "AI_ROUTER_INVALID_REQUEST",
+    cancelled: "AI_ROUTER_CANCELLED",
+    deadline: "AI_ROUTER_DEADLINE",
+    no_candidate: "AI_ROUTER_NO_CANDIDATE",
+    config: "AI_ROUTER_CONFIG",
+}
+
+/** A code of `AiRouterError`: `AI_ROUTER_` and its error class in upper case. */
+export type AiRouterErrorCode = (typeof AI_ROUTER_ERROR_CODES)[ErrorClass]
+
+/** The one error the router throws, a `DomainError` of `@starci/common` coded by its class. `errorClass` says why; `attempts` lists every failed attempt of the call; `message` is the sentence, never the code. */
+export class AiRouterError extends DomainError<AiRouterErrorCode> {
     readonly errorClass: ErrorClass
     readonly retryable: boolean
     readonly status: number | undefined
@@ -48,7 +68,8 @@ export class AiRouterError extends Error {
 
     /** Builds the error from its fields. */
     constructor(init: AiRouterErrorInit) {
-        super(init.message)
+        super({ code: AI_ROUTER_ERROR_CODES[init.errorClass] })
+        this.message = init.message
         this.name = "AiRouterError"
         this.errorClass = init.errorClass
         this.retryable = isRetryable(init.errorClass)

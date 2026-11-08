@@ -60,8 +60,10 @@ test("a DomainError subclass is declared only in errors/<capability>.error.ts of
             { filename: at("src/features/api/checkout/errors/checkout.error.ts"), code: `${ERR_HEAD.replace("PlanErrorCode", "CheckoutErrorCode")}export class CheckoutError extends DomainError<CheckoutErrorCode> {}` },
             // the test world is a composition root with one error class at its root
             { filename: at("src/tests/world/test-world.error.ts"), code: `${ERR_HEAD}export class TestWorldError extends DomainError<PlanErrorCode> {}` },
-            // the declaration of DomainError itself
-            { filename: at("src/modules/platform/errors/domain-error.ts"), code: "export abstract class DomainError<C extends string> extends Error { readonly code!: C }" },
+            // the base is @starci/common's, wherever the subclass imports it from
+            { filename: at("src/modules/domain/plan/errors/plan.error.ts"), code: `import { DomainError } from "@starci/common"
+enum PlanErrorCode { X = "PLAN_X" }
+export class PlanError extends DomainError<PlanErrorCode> {}` },
             // a spec-local sample subclass of the base is a test double, not an error family
             { filename: at("src/modules/platform/primitives/outcome.mapper.spec.ts"), code: `${ERR_HEAD}class SampleError extends DomainError<PlanErrorCode> {}
 export {}` },
@@ -90,6 +92,8 @@ export { SampleError }`, errors: [{ messageId: "place" }] },
                 code: `${ERR_HEAD}export class OtherError extends DomainError<PlanErrorCode> {}`,
                 errors: [{ messageId: "place" }],
             },
+            // a class named DomainError that @starci/common does not declare is a bare Error subclass, even in platform/errors
+            { filename: at("src/modules/platform/errors/domain-error.ts"), code: "export abstract class DomainError<C extends string> extends Error { readonly code!: C }", errors: [{ messageId: "mustExtendDomainError" }] },
             // a lookalike name that does not derive from DomainError but from Error
             { filename: at("src/modules/domain/plan/errors/plan.error.ts"), code: "export class PlanFailure extends Error {}", errors: [{ messageId: "mustExtendDomainError" }] },
             { filename: SERVICE, code: "class AbstractException extends Error {}\nclass PlanException extends AbstractException {}", errors: [{ messageId: "mustExtendDomainError" }, { messageId: "mustExtendDomainError" }] },
@@ -121,6 +125,9 @@ test("a thrown value's type derives from DomainError", () => {
             { filename: SERVICE, code: 'import { WaitingChildrenError } from "bullmq"\nfunction f() { throw new WaitingChildrenError() }' },
             // the option replaces the list
             { filename: SERVICE, options: [{ controlFlowSignals: [{ name: "RateLimitError", module: "bullmq" }] }], code: 'import { RateLimitError } from "bullmq"\nfunction f() { throw new RateLimitError() }' },
+            // an error of a @starci package derives from the same base, so it passes wherever it is thrown or rejected
+            { filename: SERVICE, code: 'import { AuthError } from "@starci/auth"\nfunction f(error: AuthError) { throw error }' },
+            { filename: SERVICE, code: 'import { TestWorldError } from "@starci/test-world"\nfunction f(error: TestWorldError) { return Promise.reject(error) }' },
             // a rejection is judged as a throw: only a DomainError rejects
             { filename: SERVICE, code: `${THROW_HEAD}function f() { return Promise.reject(new PlanError({ code: PlanErrorCode.X })) }` },
             { filename: SERVICE, code: `${THROW_HEAD}const g = new Promise<void>((_, reject) => { reject(new PlanError({ code: PlanErrorCode.X })) })` },
@@ -136,6 +143,8 @@ test("a thrown value's type derives from DomainError", () => {
                 errors: [{ messageId: "framework" }],
             },
             { filename: SERVICE, code: 'function f() { throw "boom" }', errors: [{ messageId: "notDomainError" }] },
+            // an Error that merely has a code and a params field is not the shared base
+            { filename: SERVICE, code: "class Lookalike extends Error { readonly code = 'X'; readonly params = {} }\nfunction f() { throw new Lookalike() }", errors: [{ messageId: "bareError" }] },
             { filename: SERVICE, code: "function f() { throw { code: 1 } }", errors: [{ messageId: "notDomainError" }] },
             { filename: SERVICE, code: 'function f() { return Promise.reject(new Error("x")) }', errors: [{ messageId: "rejectNotDomainError" }] },
             { filename: SERVICE, code: 'function f() { return Promise.reject("x") }', errors: [{ messageId: "rejectNotDomainError" }] },

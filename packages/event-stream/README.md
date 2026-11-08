@@ -121,7 +121,7 @@ A stream that ends, breaks or goes silent is reopened with `Last-Event-ID` after
 
 ## Errors
 
-Every failure is an `EventStreamError`, shaped like an axios error:
+Every failure is an `EventStreamError` (a `DomainError` of `@starci/common`), shaped like an axios error:
 
 ```ts
 import { isEventStreamError } from "@starci/event-stream"

@@ -79,8 +79,9 @@ scope, on its own: a side whose linter does not complete is a tool error of that
 limits the gate to them and the managed CI lints them in a job of the lint matrix beside `be` and `fe`. The scope applies the back-end canon over `packages/<pkg>/src/**` but the front-end subpaths, the front-end canon and the Grammar lint over
 `src/workbench/**` (outside `src/workbench/contract/`, which is React-free and stays back end) and `src/public/**`, each with the rules of
 its side over the package view of the app root. A package cannot import the app's owners, so the vocabulary those rules ask of a side
-it declares for itself in the `starci` key of its manifest: `errorBase`, the class its errors derive from (BE-ERROR-1), and `outcome`, its one
-result union (FE-ERROR-2), each `{ "name", "file" }` with the file under its `src/` (`readPackageContract` of the package view). The
+it declares for itself in the `starci` key of its manifest: `outcome`, its one result union (FE-ERROR-2), `{ "name", "file" }` with the file
+under its `src/` (`readPackageContract` of the package view). Its errors derive from `DomainError` of `@starci/common` (BE-ERROR-1), which
+needs no declaration; a manifest that still declares `errorBase` stops the lint. The
 project-graph rules judge the side folders and not the packages.
 
 ## Where to read for a task

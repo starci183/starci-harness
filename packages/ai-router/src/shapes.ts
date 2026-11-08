@@ -1,3 +1,4 @@
+import { isPlainRecord } from "@starci/common"
 import type { ChatChoice, ChatCompletionBody, ChatCompletionChunk, EmbeddingData, EmbeddingsBody, ToolCall, ToolCallDelta, Usage } from "./types.ts"
 
 /**
@@ -7,10 +8,6 @@ import type { ChatChoice, ChatCompletionBody, ChatCompletionChunk, EmbeddingData
  */
 
 const ASSISTANT = "assistant"
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value)
-}
 
 function text(value: unknown, fallback = ""): string {
     return typeof value === "string" ? value : fallback
@@ -22,18 +19,18 @@ function number(value: unknown, fallback = 0): number {
 
 /** The usage of an answer, when it reports prompt tokens. */
 export function readUsage(value: unknown): Usage | undefined {
-    if (!isRecord(value) || typeof value.prompt_tokens !== "number") return undefined
+    if (!isPlainRecord(value) || typeof value.prompt_tokens !== "number") return undefined
     const completion = typeof value.completion_tokens === "number" ? { completion_tokens: value.completion_tokens } : {}
     return { ...value, prompt_tokens: value.prompt_tokens, ...completion, total_tokens: number(value.total_tokens, value.prompt_tokens + number(value.completion_tokens)) }
 }
 
 function toolCall(value: unknown): ToolCall | undefined {
-    if (!isRecord(value) || !isRecord(value.function) || typeof value.id !== "string" || typeof value.function.name !== "string") return undefined
+    if (!isPlainRecord(value) || !isPlainRecord(value.function) || typeof value.id !== "string" || typeof value.function.name !== "string") return undefined
     return { id: value.id, type: "function", function: { name: value.function.name, arguments: text(value.function.arguments, "{}") } }
 }
 
 function choice(value: unknown, at: number): ChatChoice | undefined {
-    if (!isRecord(value) || !isRecord(value.message)) return undefined
+    if (!isPlainRecord(value) || !isPlainRecord(value.message)) return undefined
     const message = value.message
     const calls = Array.isArray(message.tool_calls) ? message.tool_calls.map(toolCall).filter((call): call is ToolCall => call !== undefined) : []
     return {
@@ -61,8 +58,8 @@ export function readCompletion(json: Record<string, unknown>): ChatCompletionBod
 }
 
 function toolDelta(value: unknown, at: number): ToolCallDelta | undefined {
-    if (!isRecord(value)) return undefined
-    const fn = isRecord(value.function) ? value.function : undefined
+    if (!isPlainRecord(value)) return undefined
+    const fn = isPlainRecord(value.function) ? value.function : undefined
     return {
         index: number(value.index, at),
         ...(typeof value.id === "string" ? { id: value.id } : {}),
@@ -78,8 +75,8 @@ export function readChunk(json: Record<string, unknown>): ChatCompletionChunk | 
     if (!Array.isArray(json.choices)) return undefined
     const choices: ChatCompletionChunk["choices"][number][] = []
     for (const [at, entry] of json.choices.entries()) {
-        if (!isRecord(entry)) return undefined
-        const delta = isRecord(entry.delta) ? entry.delta : {}
+        if (!isPlainRecord(entry)) return undefined
+        const delta = isPlainRecord(entry.delta) ? entry.delta : {}
         const calls = Array.isArray(delta.tool_calls) ? delta.tool_calls.map(toolDelta).filter((call): call is ToolCallDelta => call !== undefined) : undefined
         const { role, content } = delta
         const rest = Object.fromEntries(Object.entries(delta).filter(([field]) => field !== "role" && field !== "content" && field !== "tool_calls"))
@@ -116,7 +113,7 @@ export function readEmbeddings(json: Record<string, unknown>): EmbeddingsBody | 
     if (!Array.isArray(json.data)) return undefined
     const data: EmbeddingData[] = []
     for (const [at, entry] of json.data.entries()) {
-        if (!isRecord(entry)) return undefined
+        if (!isPlainRecord(entry)) return undefined
         const vector = entry.embedding
         const numbers = Array.isArray(vector) ? vector.filter((value): value is number => typeof value === "number") : undefined
         if (typeof vector !== "string" && (numbers === undefined || !Array.isArray(vector) || numbers.length !== vector.length)) return undefined

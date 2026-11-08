@@ -1,3 +1,4 @@
+import { isPlainRecord } from "@starci/common"
 import type { SseEvent } from "../sse.ts"
 import type { ProviderConfig } from "../types.ts"
 
@@ -32,11 +33,6 @@ export interface Wire {
     chunks(events: AsyncIterable<SseEvent>): AsyncGenerator<WireEvent, void, undefined>
 }
 
-/** True for a plain object. */
-export function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
 /** The OpenAI chat-completions and embeddings API with a bearer key, which every OpenAI-compatible provider speaks. */
 export const openAiWire: Wire = {
     secretHeaders: ["authorization"],
@@ -54,7 +50,7 @@ export const openAiWire: Wire = {
                 yield { kind: "malformed" }
                 continue
             }
-            if (!isRecord(json)) continue
+            if (!isPlainRecord(json)) continue
             // OpenRouter streams an error mid-stream as a chunk with a top-level error (and finish_reason "error").
             if (json.error !== undefined && json.error !== null) {
                 yield { kind: "error", body: json }

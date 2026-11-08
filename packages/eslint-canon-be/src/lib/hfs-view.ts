@@ -139,8 +139,7 @@ export interface HfsPackageDeclaredType {
     readonly file: string
 }
 
-/** The error base and the outcome union a root package declares for itself, since it cannot import the app's `platform/errors` or `GraphQLResponse<T>`. */
+/** The outcome union a root package declares for itself, since it cannot import the app's `GraphQLResponse<T>`. */
 export interface HfsPackageContract {
-    readonly errorBase?: HfsPackageDeclaredType
     readonly outcome?: HfsPackageDeclaredType
 }

@@ -1,3 +1,4 @@
+import { isPlainRecord } from "@starci/common"
 import type { QuotaWindow } from "./providers.ts"
 import type { ErrorClass, ProviderKind } from "./types.ts"
 
@@ -23,10 +24,6 @@ export interface Classified {
     readonly window?: QuotaWindow
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
 function text(value: unknown): string {
     if (typeof value === "string") return value
     if (typeof value === "number") return String(value)
@@ -41,10 +38,10 @@ function text(value: unknown): string {
  */
 export function readProviderError(body: unknown, status: number | undefined): ProviderErrorInfo {
     const root: unknown = Array.isArray(body) ? body[0] : body
-    const error = isRecord(root) ? (isRecord(root.error) ? root.error : typeof root.code === "string" ? root : undefined) : undefined
+    const error = isPlainRecord(root) ? (isPlainRecord(root.error) ? root.error : typeof root.code === "string" ? root : undefined) : undefined
     if (error === undefined) return { status, type: "", code: "", detail: "", message: typeof body === "string" ? body : "" }
-    const details = isRecord(error.details) ? error.details : {}
-    const metadata = isRecord(error.metadata) ? error.metadata : {}
+    const details = isPlainRecord(error.details) ? error.details : {}
+    const metadata = isPlainRecord(error.metadata) ? error.metadata : {}
     const numeric = typeof error.code === "number" ? error.code : undefined
     return {
         status: status ?? numeric,

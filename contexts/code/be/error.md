@@ -6,17 +6,18 @@ slots: [be.feature.application, be.domain, be.errors]
 How a failure or refusal is declared, thrown or returned, and answered on HTTP and GraphQL. Logging a failure is
 logging.md; its display text messages.md.
 
-## BE-ERROR-1 One base in platform, one error family per capability
+## BE-ERROR-1 One shared base, one error family per capability
 
-`platform/errors` owns `DomainError<C>`, the closed `ErrorKind` set (`invalid`, `unauthenticated`, `forbidden`,
-`not-found`, `conflict`, `rate-limited`, `unavailable`, `internal`), its status table, the REST filter and the GraphQL
-formatter. Each capability (domain, platform or integration) owns `errors/<capability>.error.ts` with exactly one code
+`@starci/common` owns `DomainError<C>` (`code`, `params`, `cause`) and the closed `ErrorKind` set (`invalid`, `unauthenticated`,
+`forbidden`, `not-found`, `conflict`, `rate-limited`, `unavailable`, `internal`); `platform/errors` re-exports both (`domain.error.ts`,
+`errors.contracts.ts`) and owns the status table, the REST filter and the GraphQL formatter. Each capability (domain, platform or integration) owns `errors/<capability>.error.ts` with exactly one code
 enum `<Capability>ErrorCode`, one exhaustive `<CAPABILITY>_ERROR_KINDS: Record<Code, ErrorKind>` and one empty class
 `<Capability>Error extends DomainError<<Capability>ErrorCode>`. The index exports the table, which the app composes into
 `ErrorsModule.register({ kinds })`. No per-case class, no `exceptions/` folder, no status on an error. A root workspace package
 ([PROJECT-3](../../project/README.md#project-3-a-products-agent-modules-are-workspace-packages)) cannot import `platform/errors`, so it
-declares its own base in its `package.json` (`"starci": { "errorBase": { "name": "<Pkg>Error", "file": "src/<path>.ts" } }`): that class,
-in that file, is its `DomainError`, every error it throws derives from it, and a package without the declaration may throw nothing of its own.
+imports `DomainError` from `@starci/common` and every error it throws derives from it, as does the error of every `@starci` package
+(`AuthError`, `MailError`, `TestWorldError`): the lint recognises a coded error by where the class is declared, never by its name. An app rendered
+with its own `DomainError` moves onto the package with `starci app codemod common-base`.
 
 Why: a code enum with a `Record` table makes the compiler prove every code has a kind, and the policy stays with the
 capability that decides it.
@@ -37,7 +38,7 @@ export const ORDERS_ERROR_KINDS: Record<OrdersErrorCode, ErrorKind> = {
 export class OrdersError extends DomainError<OrdersErrorCode> {}
 ```
 
-Enforced by: `error-home`, `error-family-shape`, `error-code-unique` (R38).
+Enforced by: `error-home`, `error-family-shape`, `error-code-unique`, `throw-domain-error` (R38).
 
 ## BE-ERROR-2 A code is stable text; an error carries no prose
 
@@ -52,7 +53,7 @@ Enforced by: `error-code-unique`, `user-copy-through-catalog`, `no-secret-in-err
 ## BE-ERROR-3 A refusal is the capability error; an `Outcome` only when a caller branches on it
 
 A service refuses by throwing its capability error (`throw new OrdersError({ code: OrdersErrorCode.NotShippable })`).
-It returns `Outcome<V, C>` of `platform/primitives` instead only when a caller in the modules must decide on the
+It returns `Outcome<V, C>` of `platform/primitives` (re-exported from `@starci/common`) instead only when a caller in the modules must decide on the
 refusal; the door then throws it with `unwrapOutcome(outcome, <C>Error)`. "Absent" is a `null` result typed by a named
 alias (`type OptionalOrder = OrderRow | null`), not an error, when absence is a normal answer. Never `throw new Error`,
 a framework HTTP exception, or a platform error thrown out of a domain.

@@ -1,3 +1,4 @@
+import { isPlainRecord } from "@starci/common"
 import type { DisabledReason, MaybePromise } from "./types.ts"
 
 /**
@@ -72,10 +73,6 @@ export const EMPTY_RECORD: HealthRecord = Object.freeze({
     spendMonthCost: 0,
 })
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
 function num(value: unknown, fallback: number): number {
     return typeof value === "number" && Number.isFinite(value) ? value : fallback
 }
@@ -101,7 +98,7 @@ function reason(value: unknown): DisabledReason | null {
  * value that is not a record at all reads as undefined. Durable adapters parse their JSON through it.
  */
 export function toHealthRecord(value: unknown): HealthRecord | undefined {
-    if (!isRecord(value)) return undefined
+    if (!isPlainRecord(value)) return undefined
     return {
         breaker: value.breaker === "open" ? "open" : "closed",
         failures: num(value.failures, 0),

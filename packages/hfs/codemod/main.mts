@@ -10,6 +10,7 @@ import { migrateSpacingRoles, spacingRolesMarkdown } from './spacing-roles.mjs';
 import { migrateSurfaceCardKinds, surfaceCardKindsMarkdown } from './surface-card-kinds.mjs';
 import { explicitSurfaceMarkdown, migrateExplicitSurface } from './explicit-surface.mjs';
 import { directiveFirstMarkdown, migrateDirectiveFirst } from './directive-first.mjs';
+import { commonBaseMarkdown, migrateCommonBase } from './common-base.mjs';
 import { migrateModuleDefinition, moduleDefinitionMarkdown } from './module-definition.mjs';
 import { migratePassportModule, passportModuleMarkdown } from './passport-module.mjs';
 import { migrateSelfRecovery, selfRecoveryMarkdown } from './self-recovery.mjs';
@@ -21,7 +22,7 @@ import { migrateThemeTokens, themeTokensMarkdown } from './theme-tokens.mjs';
 import { migrateTierBinding, tierBindingMarkdown } from './tier-binding.mjs';
 
 /** The codemods `starci app codemod` runs, by name. */
-export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding', 'loading-states', 'explicit-surface', 'directive-first', 'secrets-cache', 'module-definition', 'sops-rules', 'quality-binding', 'account-doors', 'seeds-layout', 'passport-module', 'self-recovery']);
+export const CODEMODS = Object.freeze(['button-intent', 'spacing-roles', 'theme-tokens', 'small-renames', 'page-navigation', 'section-frame', 'surface-card-kinds', 'tier-binding', 'loading-states', 'explicit-surface', 'directive-first', 'secrets-cache', 'module-definition', 'sops-rules', 'quality-binding', 'account-doors', 'seeds-layout', 'passport-module', 'self-recovery', 'common-base']);
 
 /** The arguments of every report-style `starci app codemod`: --execute, --json, --format and --out; any other is refused. */
 export function spacingRolesArguments(argv: readonly string[]): { write: boolean; format: 'json' | 'markdown'; out?: string } {
@@ -47,6 +48,10 @@ export function spacingRolesArguments(argv: readonly string[]): { write: boolean
 
 /** One of the report-style codemods run at an app root: its report object and the Markdown of it. */
 function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'button-intent' | 'explicit-surface' | 'account-doors' | 'module-definition' | 'passport-module' | 'self-recovery'>, root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
+  if (name === 'common-base') {
+    const report = migrateCommonBase({ root, write });
+    return { report, markdown: commonBaseMarkdown(report) };
+  }
   if (name === 'seeds-layout') {
     const report = migrateSeedsLayout({ root, write });
     return { report, markdown: seedsLayoutMarkdown(report) };

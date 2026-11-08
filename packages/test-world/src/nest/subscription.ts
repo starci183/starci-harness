@@ -9,6 +9,7 @@
  */
 import { TestWorldErrorCode, worldError } from "../errors"
 import type { GraphqlErrorObserved } from "./api"
+import { isPlainRecord } from "@starci/common"
 
 /** The sub-protocol of graphql-ws. */
 export const GRAPHQL_WS_PROTOCOL = "graphql-transport-ws"
@@ -51,8 +52,6 @@ interface Message {
     readonly id?: string
     readonly payload?: unknown
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value)
 
 /** Opens one subscription; rejects when the server refuses the connection (closes it, or never acknowledges it). */
 export const openSubscription = <TData>(spec: SubscribeSpec): Promise<GraphqlSubscription<TData>> =>
@@ -125,7 +124,7 @@ export const openSubscription = <TData>(spec: SubscribeSpec): Promise<GraphqlSub
                 clearTimeout(handshake)
                 send({ type: "subscribe", id, payload: { query: spec.query, variables: spec.variables ?? {} } })
                 resolve(subscription)
-            } else if (message.id === id && message.type === "next" && isRecord(message.payload)) {
+            } else if (message.id === id && message.type === "next" && isPlainRecord(message.payload)) {
                 const payloadErrors = message.payload["errors"]
                 if (Array.isArray(payloadErrors)) errors.push(...(payloadErrors as ReadonlyArray<GraphqlErrorObserved>))
                 if (message.payload["data"] !== undefined && message.payload["data"] !== null) frames.push(message.payload["data"] as TData)

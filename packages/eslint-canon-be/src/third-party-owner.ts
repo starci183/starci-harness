@@ -25,7 +25,7 @@ const PURE = new Set([
 const FRAMEWORK = new Set([
     "@nestjs/common", "@nestjs/core", "@nestjs/cqrs", "@nestjs/graphql", "@nestjs/apollo", "@nestjs/platform-express",
     "@nestjs/typeorm", "@nestjs/swagger", "@nestjs/mapped-types", "@nestjs/throttler", "@apollo/server",
-    "@as-integrations/express5", "express", "nest-commander", "typeorm", "@starci/nest-kit",
+    "@as-integrations/express5", "express", "nest-commander", "typeorm", "@starci/nest-kit", "@starci/common",
 ])
 const TEST_LIBRARIES = new Set(["@nestjs/testing", "@starci/jest-preset", "@starci/test-world", "@jest/globals", "jest", "jest-mock"])
 /** The app dependency declarations (name -> package). */
