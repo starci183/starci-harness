@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.94 - 2026-11-08
+
+- Fixed: `starci app check` on a host with no Docker and no `--db-url-env` database reports the warning `CI_PARITY_DB_SKIPPED` instead of crashing with `HFS_MANIFEST_INVALID`; the fix is in `@starci/hfs` 6.2.5, which the CLI requires once npm serves it (`cli-follow`).
+
 ## 1.1.0-alpha.92 - 2026-11-08
 
 - Fixed: the local Sonar scan of `starci app check` runs against a derived project the token can analyse without reading the main project; the fix is in `@starci/hfs` 6.2.3, which the CLI requires once npm serves it (`cli-follow`).
