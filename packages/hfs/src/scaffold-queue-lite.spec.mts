@@ -76,6 +76,14 @@ test('add queue in full retains the BullMQ adapter and TypeORM schema', (t) => {
   const root = fixture(t, 'full');
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ name: 'demo', private: true, dependencies: { ioredis: '5.0.0' } }, null, 2)}\n`);
   fs.mkdirSync(path.join(root, 'be', 'src', 'modules', 'platform', 'logging'), { recursive: true });
+  // The capabilities the queue tree imports (the canon skeleton carries them) are present, or the verb refuses before writing.
+  const platform = path.join(root, 'be', 'src', 'modules', 'platform');
+  for (const capability of ['primitives', 'composition', 'config', 'errors', 'i18n', 'ids', 'clock', 'database']) {
+    fs.mkdirSync(path.join(platform, capability), { recursive: true });
+    fs.writeFileSync(path.join(platform, capability, 'index.ts'), 'export {}\n');
+  }
+  for (const file of ['correlation.policy.ts', 'correlation.port.ts']) fs.writeFileSync(path.join(platform, 'logging', file), 'export {}\n');
+  fs.writeFileSync(path.join(platform, 'logging', 'logging.decorators.ts'), 'export const LOGGER = 1\nexport const InjectLogger = 1\nexport const CORRELATION_RUNNER = 1\nexport const InjectCorrelationRunner = 1\n');
   fs.writeFileSync(path.join(root, 'be', 'src', 'modules', 'platform', 'logging', 'index.ts'), 'export { InjectLogger, LOGGER } from "./logging.decorators"\n');
   const result = addKind({ repoRoot: root, noun: 'queue', name: 'send-receipt', now: () => Date.UTC(2026, 9, 24) });
   assert.ok(result.created.includes('be/src/modules/platform/queue/bullmq-queue-transport.client.ts'));
