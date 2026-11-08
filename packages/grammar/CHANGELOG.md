@@ -11,6 +11,8 @@
   Panes, overlays, bands and the page gutter keep 12. Only the card is wider, so no app changes.
 - Added: `EmptyNotice actionIntent` (`commit` default, or `neutral`): an empty notice in a secondary place (a rail, a side card)
   takes the outlined button, so it never adds a second primary beside the page header's. Story `Data views/Empty notice action intent`.
+- Added: `AlertDialog isConfirmDisabled`: the confirm stays disabled until a gate in the body is met (type the name of what is
+  deleted), so a destructive confirm with a typed gate keeps the alert dialog's warning mark and dismiss rules.
 - Fixed: a tile foot with no figure and no badge no longer renders an empty first item, so its action stands on the card's
   inline edge instead of one inline gap (8) in.
 
