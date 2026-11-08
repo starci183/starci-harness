@@ -24,16 +24,16 @@ Finding code: `FE_TABS_SWITCH_ZONE`. A `<Tabs appearance="primary">` written in 
 
 ## `starci-grammar/tabs-depth`
 
-Finding code: `FE_TABS_DEPTH`. Two checks over the underline `Tabs` of one file.
+Finding code: `FE_TABS_DEPTH`. Over the underline `Tabs` of one file. Every tab is one size, so only the layer count is judged.
 
 - `depth`: a page stacks at most two underline layers, the page tabs and one region set. A `Tabs` is in the panel of another when it stands inside a conditional, `&&` or `switch` case whose test reads the other's `selectedKey`; it is in the page's panel when it stands in the children of a `Page` whose `header` object carries `tabs`. A `Tabs` that is the third layer is the finding. A `Drawer`, `Dialog`, `Modal`, `Popover` or `Sheet` starts its own surface and ends the climb.
-- `region`: the second layer is the region set, drawn as `kind="filter"` (13px, tighter gap, its own separator line, since the host draws none). A second layer left at the default `views` look takes the page tabs' size. A dynamic `kind` is not judged.
 
 **Invalid**
 
 ```tsx
 <Page header={{ title, tabs }}>
-  <Tabs label="Views" items={views} selectedKey={view} onSelect={setView} />
+  <Tabs label="Status" items={statuses} selectedKey={status} onSelect={setStatus} />
+  {status === "open" && <Tabs label="Inbox" items={inbox} selectedKey={inboxView} onSelect={setInboxView} />}
 </Page>
 ```
 
@@ -41,8 +41,8 @@ Finding code: `FE_TABS_DEPTH`. Two checks over the underline `Tabs` of one file.
 
 ```tsx
 <Page header={{ title, tabs }}>
-  <Tabs kind="filter" label="Views" items={views} selectedKey={view} onSelect={setView} />
+  <Tabs label="Status" items={statuses} selectedKey={status} onSelect={setStatus} />
 </Page>
 ```
 
-The rule reads one file. A set whose page tabs are drawn by another file (a layout, or a frame component) is not judged against them.
+The rule reads one file. A set whose page tabs are drawn by another file (a layout, or a frame component such as a renderer package) is not judged against them: that link is runtime composition, not an import the rule can follow.

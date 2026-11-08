@@ -90,7 +90,7 @@ rules:
         assert: |-
           It is the card's `switch` header zone (`headers={[{ kind: "switch", label, items, selectedKey, onSelect }]}`),
           with no count and no href. A pill written in JSX in a page body, under the page tabs, in a pane or in a drawer
-          is refused: views of a page are page tabs, views or filters inside a region are underline `Tabs kind="filter"`.
+          is refused: views of a page are page tabs, views or filters inside a region are underline `Tabs`.
   - id: TABS-DEPTH
     title: A page stacks two underline layers at most
     governs: Underline Tabs nested through the panels they select.
@@ -98,6 +98,5 @@ rules:
       - id: case-1
         when: An underline Tabs stands in the panel of another, or in the body of a Page whose header carries tabs
         assert: |-
-          The page tabs (`Page header.tabs`) and one region set are the two layers; a third nested set is refused. The
-          region set is `kind="filter"` (13px, tighter, its own separator line); the default views look is the page
-          tabs' size and is refused as a second layer.
+          The page tabs (`Page header.tabs`) and one region set are the two layers; a third nested set is refused.
+          Every tab is one size, so only the count of layers is judged.

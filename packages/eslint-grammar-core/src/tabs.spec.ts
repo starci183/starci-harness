@@ -35,41 +35,36 @@ test("tabs-switch-zone: the pill is the switch header zone, never JSX", () => {
   })
 })
 
-test("tabs-depth: page tabs and one region set, the region set as kind=filter", () => {
+test("tabs-depth: page tabs and one region set, never a third layer", () => {
   slotTester().run("tabs-depth", tabsDepth, {
     valid: [
-      // page tabs (header) + one region set drawn as the 13px filter look
+      // page tabs (header) + one region set
+      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x", tabs }}><Tabs label="Status" ${ITEMS} selectedKey={status} onSelect={setStatus} /></Page>` },
+      // the size of a layer is not judged: kind="filter" and the default are both fine
       { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x", tabs }}><Tabs kind="filter" label="Status" ${ITEMS} selectedKey={status} onSelect={setStatus} /></Page>` },
       // a lone set with no page tabs
       { filename: BLOCK, code: `export const A = () => <Tabs label="Views" ${ITEMS} selectedKey={view} onSelect={setView} />` },
-      // a page without header tabs: one set nested in another's panel is the second layer
-      { filename: BLOCK, code: `export const A = () => <div><Tabs label="Views" ${ITEMS} selectedKey={view} />{view === "a" && <Tabs kind="filter" label="Sub" ${ITEMS} selectedKey={sub} />}</div>` },
+      // no page tabs: one set nested in another's panel is the second layer
+      { filename: BLOCK, code: `export const A = () => <div><Tabs label="Views" ${ITEMS} selectedKey={view} />{view === "a" && <Tabs label="Sub" ${ITEMS} selectedKey={sub} />}</div>` },
       // a drawer starts its own surface: its set is the first layer of the drawer
       { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x", tabs }}><Drawer><Tabs label="Mode" ${ITEMS} selectedKey="a" /></Drawer></Page>` },
-      // the page tabs are the header's object, not a Tabs element; two sibling region sets are each layer two
-      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x", tabs }}><Tabs kind="filter" label="a" ${ITEMS} selectedKey={s1} /><Tabs kind="filter" label="b" ${ITEMS} selectedKey={s2} /></Page>` },
+      // two sibling region sets are each layer two
+      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x", tabs }}><Tabs label="a" ${ITEMS} selectedKey={s1} /><Tabs label="b" ${ITEMS} selectedKey={s2} /></Page>` },
       // a Page header without tabs stacks no layer
       { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x" }}><Tabs label="Views" ${ITEMS} selectedKey={view} /></Page>` },
-      // a dynamic kind is not judged
-      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x", tabs }}><Tabs kind={kind} label="a" ${ITEMS} selectedKey={s1} /></Page>` },
-      { filename: SCRIPT, code: `export const A = () => <Page header={{ title: "x", tabs }}><Tabs label="a" ${ITEMS} /></Page>` },
+      { filename: SCRIPT, code: `export const A = () => <Page header={{ title: "x", tabs }}><Tabs label="a" ${ITEMS} selectedKey={v} />{v === "a" && <Tabs label="b" ${ITEMS} selectedKey={w} />}</Page>` },
     ],
     invalid: [
-      // the live case: views drawn at the page-tab size under the page tabs
-      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x", tabs }}><Tabs label="Views" ${ITEMS} selectedKey={view} /></Page>`, errors: [{ messageId: "region" }] },
-      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x", tabs }}><Tabs kind="views" label="Views" ${ITEMS} selectedKey={view} /></Page>`, errors: [{ messageId: "region" }] },
-      // a region set nested in another set's panel, with no page tabs, is drawn as the filter look
-      { filename: BLOCK, code: `export const A = () => <div><Tabs label="Views" ${ITEMS} selectedKey={view} />{view === "a" ? <Tabs label="Sub" ${ITEMS} selectedKey={sub} /> : null}</div>`, errors: [{ messageId: "region" }] },
-      // a third layer: page tabs, a set, and a set in that set's panel
+      // the live case: a third layer "Tin nhan / Da ghim" in the panel of a region set inside a Page with header.tabs
       {
         filename: BLOCK,
-        code: `export const A = () => <Page header={{ title: "x", tabs }}><Tabs kind="filter" label="a" ${ITEMS} selectedKey={view} />{view === "a" && <Tabs kind="filter" label="b" ${ITEMS} selectedKey={sub} />}</Page>`,
+        code: `export const A = () => <Page header={{ title: "Agent", tabs }}><Tabs label="Workbench" items={[{ id: "today", label: "Hôm nay" }, { id: "inbox", label: "Hộp thư" }]} selectedKey={view} onSelect={setView} />{view === "inbox" && <Tabs label="Inbox" items={[{ id: "messages", label: "Tin nhắn" }, { id: "pinned", label: "Đã ghim" }]} selectedKey={inbox} onSelect={setInbox} />}</Page>`,
         errors: [{ messageId: "depth" }],
       },
       // a third layer without page tabs: three sets, each in the panel of the one before
       {
         filename: BLOCK,
-        code: `export const A = () => <div><Tabs kind="filter" label="a" ${ITEMS} selectedKey={one} />{one === "a" && <div><Tabs kind="filter" label="b" ${ITEMS} selectedKey={two} />{two === "a" && <Tabs kind="filter" label="c" ${ITEMS} selectedKey={three} />}</div>}</div>`,
+        code: `export const A = () => <div><Tabs label="a" ${ITEMS} selectedKey={one} />{one === "a" && <div><Tabs label="b" ${ITEMS} selectedKey={two} />{two === "a" && <Tabs label="c" ${ITEMS} selectedKey={three} />}</div>}</div>`,
         errors: [{ messageId: "depth" }],
       },
     ],

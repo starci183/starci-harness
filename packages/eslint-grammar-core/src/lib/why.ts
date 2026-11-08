@@ -20,12 +20,12 @@ export const why: Record<string, WhyEntry> = {
   "tabs-switch-zone": {
     code: "FE_TABS_SWITCH_ZONE",
     en: "A pill (`Tabs appearance=\"primary\"`) is written in JSX in `<file>`, outside the `switch` header zone of a card.",
-    fix: "A mode or period switch of one block is the card's zone: `headers={[{ kind: \"switch\", label, items, selectedKey, onSelect }]}` with two to four short options. Views of a page are page tabs (`Page header.tabs`); views or filters inside a region are underline `Tabs kind=\"filter\"`.",
+    fix: "A mode or period switch of one block is the card's zone: `headers={[{ kind: \"switch\", label, items, selectedKey, onSelect }]}` with two to four short options. Views of a page are page tabs (`Page header.tabs`); views or filters inside a region are underline `Tabs`.",
   },
   "tabs-depth": {
     code: "FE_TABS_DEPTH",
-    en: "Underline `Tabs` in `<file>` stack past two layers, or the second layer is drawn at the page-tab size.",
-    fix: "A page has the page tabs (`Page header.tabs`) and at most one region set in a tab's panel, drawn as `Tabs kind=\"filter\"` (13px, its own separator). Fold a third level into a `switch` zone, a filter zone of a card, a list, or a drawer.",
+    en: "Underline `Tabs` in `<file>` stack past two layers.",
+    fix: "A page has the page tabs (`Page header.tabs`) and at most one region set in a tab's panel. Fold a third level into a `switch` zone, a filter zone of a card, a list, or a drawer.",
   },
   "no-primary-tabs-misuse": {
     code: "FE_GROUPED_CHOICE_CONTROL",

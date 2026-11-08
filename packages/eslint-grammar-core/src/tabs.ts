@@ -14,8 +14,7 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
  * `tabs-depth`. A page stacks at most two underline layers: the page tabs (`Page header.tabs`) and one region set. A `Tabs`
  * is nested in another when it stands in the panel the other selects: inside a conditional or `&&` whose test reads the
  * other's `selectedKey`, or, for page tabs, in the children of a `Page` whose `header` carries `tabs`. A drawer, dialog,
- * modal, popover or sheet starts its own surface and ends the climb. The second layer is the region set drawn as
- * `kind="filter"` (13px, tighter, its own separator line); the default `views` look is the page tabs' size.
+ * modal, popover or sheet starts its own surface and ends the climb. Every tab is one size, so a layer's size is not judged; only the count is.
  */
 
 /** The element name of a JSX opening element (`Tabs`, or `Grammar.Tabs` as `Tabs`). */
@@ -50,7 +49,7 @@ export const tabsSwitchZone: Rule.RuleModule = defineRule({
     },
     schema: [],
     messages: {
-      pill: "A pill (`Tabs appearance=\"primary\"`) switches a mode or period of one block and is drawn only as the `switch` header zone of its card: `headers={[{ kind: \"switch\", label, items, selectedKey, onSelect }]}`, two to four short options with no count and no href. Written here it stands loose in the page. Views of a page are page tabs (`Page header.tabs`); views or filters inside a region are underline `Tabs kind=\"filter\"`.",
+      pill: "A pill (`Tabs appearance=\"primary\"`) switches a mode or period of one block and is drawn only as the `switch` header zone of its card: `headers={[{ kind: \"switch\", label, items, selectedKey, onSelect }]}`, two to four short options with no count and no href. Written here it stands loose in the page. Views of a page are page tabs (`Page header.tabs`); views or filters inside a region are underline `Tabs`.",
     },
   },
   create(context) {
@@ -86,18 +85,17 @@ const pageHasHeaderTabs = (page: TSESTree.JSXElement): boolean => {
   return value?.type === "ObjectExpression" && value.properties.some((property) => property.type === "Property" && property.key.type === "Identifier" && property.key.name === "tabs")
 }
 
-/** At most two underline layers, the second one drawn as the region look. */
+/** At most two underline layers. */
 export const tabsDepth: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
     docs: {
-      description: "A page stacks at most two underline Tabs layers (page tabs and one region set), and the second layer is kind=\"filter\" (13px, its own separator).",
+      description: "A page stacks at most two underline Tabs layers (page tabs and one region set).",
       url: "knowledge/ui/presentation/grammar-laws.yaml#TABS-DEPTH",
     },
     schema: [],
     messages: {
-      depth: "This underline `Tabs` is layer {{layers}} ({{chain}}). A page stacks at most two underline layers: the page tabs (`Page header.tabs`) and one region set inside a tab's panel. Fold the third level into a `switch` zone, a filter zone of a card, a list, or a drawer.",
-      region: "This underline `Tabs` is the second layer ({{chain}}), a region set: draw it as `kind=\"filter\"` (13px, tighter, with its own separator line). Without it the set takes the page tabs' size and reads as a third tier of navigation.",
+      depth: "This underline `Tabs` is layer {{layers}} ({{chain}}). A page stacks at most two underline layers: the page tabs (`Page header.tabs`) and one region set inside a tab's panel. Fold the third level into a `switch` zone, a filter zone of a card, a list, or a drawer.",
     },
   },
   create(context) {
@@ -134,10 +132,7 @@ export const tabsDepth: Rule.RuleModule = defineRule({
           const layers = owners.size + 1 + (pageTabs ? 1 : 0)
           if (layers < 2) continue
           const chain = `${pageTabs ? "page tabs, " : ""}${owners.size > 0 ? `${String(owners.size)} enclosing set${owners.size > 1 ? "s" : ""}, ` : ""}this set`
-          if (layers > 2) context.report({ node: current.opening, messageId: "depth", data: { layers: String(layers), chain } })
-          else if (literalOf(attributeOf(current.opening, "kind")) !== "filter" && !(attributeOf(current.opening, "kind") !== undefined && literalOf(attributeOf(current.opening, "kind")) === null)) {
-            context.report({ node: current.opening, messageId: "region", data: { chain } })
-          }
+          if (layers > 2) context.report({ node: current.opening, messageId: "depth", data: { layers: String(layers), chain } })
         }
       },
     }
