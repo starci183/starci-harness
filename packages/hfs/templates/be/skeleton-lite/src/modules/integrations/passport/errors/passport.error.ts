@@ -1,5 +1,4 @@
-import { DomainError } from "@modules/platform/errors"
-import type { ErrorKind } from "@modules/platform/errors"
+import { DomainError, type ErrorKind } from "@modules/platform/errors"
 
 /** Codes of the passport integration: the wire codes @starci/auth names for the token, key and Google legs (the kit spec holds the parity). */
 export enum PassportErrorCode {

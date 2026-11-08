@@ -1,6 +1,5 @@
 import type { EntityManager } from "typeorm"
-import { injector } from "@modules/platform/composition"
-import type { TypedParameterDecorator } from "@modules/platform/composition"
+import { injector, type TypedParameterDecorator } from "@modules/platform/composition"
 import type { QueueOptions } from "./queue.options"
 import type { QueueOutbox, QueueRedelivery, QueueWorkerRegistry } from "./queue.port"
 import type { QueueFactory, QueueTransport } from "./queue-transport.port"

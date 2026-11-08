@@ -1,8 +1,7 @@
 import { CommandHandler } from "@nestjs/cqrs"
 import { @@service@@ } from "@@serviceModule@@"
 import { ICQRSHandler } from "@modules/platform/cqrs"
-import { InjectLogger } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
+import { InjectLogger, type Logger } from "@modules/platform/logging"
 import { Undo@@Saga@@Command } from "./undo-@@saga@@.command"
 
 @CommandHandler(Undo@@Saga@@Command)

@@ -1,5 +1,4 @@
-import { injector } from "@modules/platform/composition"
-import type { TypedParameterDecorator } from "@modules/platform/composition"
+import { injector, type TypedParameterDecorator } from "@modules/platform/composition"
 import { ReadinessService } from "./readiness.service"
 
 /** Injects the bounded required-dependency probe. Parameter type: ReadinessService. */

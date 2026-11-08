@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common"
 import type { EntityManager, ObjectLiteral } from "typeorm"
-import { InjectClock } from "@modules/platform/clock"
-import type { Clock } from "@modules/platform/clock"
+import { InjectClock, type Clock } from "@modules/platform/clock"
 import { BATCH_ROWS, DatabaseError, DatabaseErrorCode, callDbFunction, returnedRows, rowShape } from "@modules/platform/database"
 import type {
     ClientOperation,

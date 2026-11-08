@@ -2,8 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { sendEmailDoor } from "@/modules/auth"
-import { failureOf } from "./emailAuth.shared"
-import type { EmailDoorFailure } from "./emailAuth.shared"
+import { failureOf, type EmailDoorFailure } from "./emailAuth.shared"
 
 export type { EmailDoorFailure } from "./emailAuth.shared"
 

@@ -1,21 +1,21 @@
 // Managed by starci app sync (slot be.identity.sign-in); do not edit: run "npx starci app sync --execute".
 import { Injectable } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
-import { PassportError, PassportErrorCode, isPresentablePassword, normalizeEmail } from "@modules/integrations/passport"
-import type {
-    AuthAuthenticator,
-    AuthPasswords,
-    AuthSubject,
-    GoogleProfile,
-    SignInBudget,
+import {
+    PassportError,
+    PassportErrorCode,
+    isPresentablePassword,
+    normalizeEmail,
+    type AuthAuthenticator,
+    type AuthPasswords,
+    type AuthSubject,
+    type GoogleProfile,
+    type SignInBudget,
 } from "@modules/integrations/passport"
-import { InjectClock } from "@modules/platform/clock"
-import type { Clock } from "@modules/platform/clock"
+import { InjectClock, type Clock } from "@modules/platform/clock"
 import { InjectPrimaryEntityManager } from "@modules/platform/database"
-import { InjectIds } from "@modules/platform/ids"
-import type { Ids } from "@modules/platform/ids"
-import { InjectLogger } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
+import { InjectIds, type Ids } from "@modules/platform/ids"
+import { InjectLogger, type Logger } from "@modules/platform/logging"
 import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
 import { InjectAuthPasswords, InjectSignInBudget } from "./identity.decorators"
 import { IdentitySignInLogEvent } from "./identity-sign-in.log-events"

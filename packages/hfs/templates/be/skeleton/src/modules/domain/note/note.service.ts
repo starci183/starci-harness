@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
-import { InjectClock } from "@modules/platform/clock"
-import type { Clock } from "@modules/platform/clock"
+import { InjectClock, type Clock } from "@modules/platform/clock"
 import { InjectPrimaryEntityManager, LIST_ROWS_MAX, returnedRows } from "@modules/platform/database"
 import type { CreateNoteParams, Note } from "./note.contracts"
 import { NoteError, NoteErrorCode } from "./errors/note.error"

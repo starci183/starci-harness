@@ -1,14 +1,11 @@
-import { SetMetadata, applyDecorators, createParamDecorator } from "@nestjs/common"
-import type { ExecutionContext } from "@nestjs/common"
-import { injector } from "@modules/platform/composition"
-import type { DoorDecorator, TypedParameterDecorator } from "@modules/platform/composition"
+import { SetMetadata, applyDecorators, createParamDecorator, type ExecutionContext } from "@nestjs/common"
+import { injector, type DoorDecorator, type TypedParameterDecorator } from "@modules/platform/composition"
 import type { AuthDoors, AuthPasswords, AuthSessions, SignInBudget, VerifyAccessToken } from "@modules/integrations/passport"
 import { ServerToServer, requestOf } from "@modules/platform/http-security"
 import type { Principal } from "@modules/platform/cqrs"
 import type { CredentialAuthenticator, CredentialMetadata } from "./credential.contracts"
 import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
-import { PublicReason } from "./identity.contracts"
-import type { PublicMetadata } from "./identity.contracts"
+import { PublicReason, type PublicMetadata } from "./identity.contracts"
 
 /** Token of the sign-in doors of the package, provided by the identity module from the passport integration. */
 export const IDENTITY_AUTH_DOORS: unique symbol = Symbol("domain.identity.auth-doors")

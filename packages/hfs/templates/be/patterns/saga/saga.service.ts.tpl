@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common"
 import { @@sagaUpper@@_SAGA } from "@@serviceModule@@"
-import { InjectSagaService } from "@modules/platform/saga"
-import type { SagaService, SagaTransition } from "@modules/platform/saga"
+import { InjectSagaService, type SagaService, type SagaTransition } from "@modules/platform/saga"
 import type { Find@@Saga@@SagaResult } from "./@@saga@@.saga-state"
 import { @@Step@@Compensation } from "./compensations/@@step@@.compensation"
 import { @@Step@@Step } from "./steps/@@step@@.saga-step"

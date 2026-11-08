@@ -1,5 +1,4 @@
-import { injector } from "@modules/platform/composition"
-import type { TypedParameterDecorator } from "@modules/platform/composition"
+import { injector, type TypedParameterDecorator } from "@modules/platform/composition"
 import { MODULE_OPTIONS_TOKEN } from "./event-bus.module-definition"
 import type { EventBusOptions } from "./event-bus.options"
 import type { EventBus, EventConsumerRegistry } from "./event-bus.port"

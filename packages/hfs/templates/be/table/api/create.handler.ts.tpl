@@ -1,8 +1,7 @@
 import { CommandHandler } from "@nestjs/cqrs"
 import { {{Name}}Service } from "@modules/domain/{{name}}"
 import { ICQRSHandler } from "@modules/platform/cqrs"
-import { InjectLogger } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
+import { InjectLogger, type Logger } from "@modules/platform/logging"
 import { Create{{Singular}}Command } from "./create-{{singular}}.command"
 import type { Create{{Singular}}Result } from "./create-{{singular}}.contracts"
 

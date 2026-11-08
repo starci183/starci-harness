@@ -1,5 +1,4 @@
-import { injector } from "@modules/platform/composition"
-import type { TypedParameterDecorator } from "@modules/platform/composition"
+import { injector, type TypedParameterDecorator } from "@modules/platform/composition"
 import type { DatabaseConnectionOptions, DatabaseOptions } from "./database.options"
 import type { SqlText } from "./database.sql"
 import type { SeedFile } from "./seed-connections.client"

@@ -292,3 +292,7 @@ test("text:S6389: a bidirectional control character is refused anywhere with its
     ],
   }))
 })
+
+test("S3863: a merged import longer than the print width is laid out one specifier a line", () => {
+  assert.doesNotThrow(() => tester.run("no-duplicate-import", rule("no-duplicate-import"), { valid: [], invalid: [{ code: "import { SpecifierNumber1Long, SpecifierNumber2Long, SpecifierNumber3Long, SpecifierNumber4Long, SpecifierNumber5Long, SpecifierNumber6Long } from \"@modules/platform/logging\"\nimport type { SpecifierNumber7Long, SpecifierNumber8Long, SpecifierNumber9Long, SpecifierNumber10Long, SpecifierNumber11Long, SpecifierNumber12Long } from \"@modules/platform/logging\"\nexport const a = 1\n", output: "import {\n    SpecifierNumber1Long,\n    SpecifierNumber2Long,\n    SpecifierNumber3Long,\n    SpecifierNumber4Long,\n    SpecifierNumber5Long,\n    SpecifierNumber6Long,\n    type SpecifierNumber7Long,\n    type SpecifierNumber8Long,\n    type SpecifierNumber9Long,\n    type SpecifierNumber10Long,\n    type SpecifierNumber11Long,\n    type SpecifierNumber12Long,\n} from \"@modules/platform/logging\"\nexport const a = 1\n", errors: [{ messageId: "duplicate" }] }] }))
+})

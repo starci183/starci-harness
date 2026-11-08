@@ -1,5 +1,4 @@
-import { createProxy } from "@starci/next-i18n/proxy"
-import type { LocaleProxy } from "@starci/next-i18n/proxy"
+import { createProxy, type LocaleProxy } from "@starci/next-i18n/proxy"
 import { i18n } from "@/modules/i18n"
 
 /**

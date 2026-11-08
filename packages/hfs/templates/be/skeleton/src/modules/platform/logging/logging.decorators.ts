@@ -1,6 +1,5 @@
 import type { Writable } from "node:stream"
-import { injector } from "@modules/platform/composition"
-import type { TypedParameterDecorator } from "@modules/platform/composition"
+import { injector, type TypedParameterDecorator } from "@modules/platform/composition"
 import type { Logger } from "./logging.port"
 import type { CorrelationIds, CorrelationRunner } from "./correlation.port"
 

@@ -2,8 +2,7 @@
 import { CommandHandler } from "@nestjs/cqrs"
 import { IdentityEmailService } from "@modules/domain/identity"
 import { ICQRSHandler } from "@modules/platform/cqrs"
-import { InjectLogger } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
+import { InjectLogger, type Logger } from "@modules/platform/logging"
 import { ConfirmCommand } from "./confirm.command"
 
 @CommandHandler(ConfirmCommand)

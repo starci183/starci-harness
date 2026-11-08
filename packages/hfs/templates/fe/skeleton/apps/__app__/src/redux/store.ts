@@ -1,7 +1,5 @@
-import { configureStore } from "@reduxjs/toolkit"
-import type { EnhancedStore } from "@reduxjs/toolkit"
-import { sessionReducer } from "./slices/session"
-import type { SessionState } from "./slices/session"
+import { configureStore, type EnhancedStore } from "@reduxjs/toolkit"
+import { sessionReducer, type SessionState } from "./slices/session"
 
 /** The state of the store, for useAppSelector: one slice per key of the root reducer. */
 export interface RootState {

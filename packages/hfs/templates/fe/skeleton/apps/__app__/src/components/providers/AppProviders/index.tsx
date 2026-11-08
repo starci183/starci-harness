@@ -1,8 +1,7 @@
 "use client"
 
 import { ToastProvider } from "@heroui/react"
-import { viewerCacheKey, viewerSwrConfig } from "@starci/next-data"
-import type { ViewerId } from "@starci/next-data"
+import { viewerCacheKey, viewerSwrConfig, type ViewerId } from "@starci/next-data"
 import { ThemeProvider } from "next-themes"
 import type { ReactNode } from "react"
 import { SWRConfig, useSWRConfig } from "swr"

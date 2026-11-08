@@ -1,5 +1,4 @@
-import { Module } from "@nestjs/common"
-import type { DynamicModule } from "@nestjs/common"
+import { Module, type DynamicModule } from "@nestjs/common"
 import { LivenessService } from "./liveness.service"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./liveness.module-definition"
 

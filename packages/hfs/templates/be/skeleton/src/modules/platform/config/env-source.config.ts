@@ -50,7 +50,8 @@ export class EnvSource {
 
     /** The declared value of an optional key, or undefined. */
     optional(key: string): string | undefined {
-        return this.values[key] || undefined
+        const value = this.values[key]
+        return value === "" ? undefined : value
     }
 
     /**

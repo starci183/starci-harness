@@ -1,7 +1,5 @@
-import { MAILER } from "@starci/mail"
-import type { Mailer } from "@starci/mail"
-import { injector } from "@modules/platform/composition"
-import type { TypedParameterDecorator } from "@modules/platform/composition"
+import { MAILER, type Mailer } from "@starci/mail"
+import { injector, type TypedParameterDecorator } from "@modules/platform/composition"
 import type { MailOptions } from "./mail.options"
 
 /** Token of the app's mail settings (the brand, the default language, the link lifetimes). */

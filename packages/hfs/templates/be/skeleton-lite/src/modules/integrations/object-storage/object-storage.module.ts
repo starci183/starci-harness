@@ -1,9 +1,9 @@
-import { ObjectStorageModule as StorageModule } from "@starci/object-storage"
-import type { ObjectStorageOptions as StorageSettings } from "@starci/object-storage"
-import { Module } from "@nestjs/common"
-import type { DynamicModule } from "@nestjs/common"
-import { CLOCK } from "@modules/platform/clock"
-import type { Clock } from "@modules/platform/clock"
+import {
+    ObjectStorageModule as StorageModule,
+    type ObjectStorageOptions as StorageSettings,
+} from "@starci/object-storage"
+import { Module, type DynamicModule } from "@nestjs/common"
+import { CLOCK, type Clock } from "@modules/platform/clock"
 import { OBJECT_STORAGE_BUCKET } from "./object-storage.decorators"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./object-storage.module-definition"
 

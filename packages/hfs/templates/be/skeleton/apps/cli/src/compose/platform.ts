@@ -1,8 +1,11 @@
 import type { DynamicModule } from "@nestjs/common"
 import { noteEntities, noteMigrations } from "@modules/domain/note"
 import { ClockModule } from "@modules/platform/clock"
-import { DatabaseModule } from "@modules/platform/database"
-import type { DatabaseConnectionConfig, DatabaseConnectionOptions } from "@modules/platform/database"
+import {
+    DatabaseModule,
+    type DatabaseConnectionConfig,
+    type DatabaseConnectionOptions,
+} from "@modules/platform/database"
 import { IdsModule } from "@modules/platform/ids"
 import { HttpModule } from "@modules/platform/http"
 import { httpSecurityEntities, httpSecurityMigrations } from "@modules/platform/http-security"

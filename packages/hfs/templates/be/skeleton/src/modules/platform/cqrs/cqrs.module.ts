@@ -1,5 +1,4 @@
-import { Module } from "@nestjs/common"
-import type { DynamicModule } from "@nestjs/common"
+import { Module, type DynamicModule } from "@nestjs/common"
 import { CqrsModule as NestCqrsModule } from "@nestjs/cqrs"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./cqrs.module-definition"
 

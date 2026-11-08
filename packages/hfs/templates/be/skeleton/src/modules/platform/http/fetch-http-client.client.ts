@@ -1,6 +1,5 @@
 import { rootCertificates } from "node:tls"
-import { Injectable } from "@nestjs/common"
-import type { OnModuleDestroy } from "@nestjs/common"
+import { Injectable, type OnModuleDestroy } from "@nestjs/common"
 import { Agent } from "undici"
 import { isRecord } from "@modules/platform/primitives"
 import { HttpError, HttpErrorCode } from "./errors/http.error"

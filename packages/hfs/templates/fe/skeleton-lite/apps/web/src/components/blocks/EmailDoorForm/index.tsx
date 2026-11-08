@@ -1,11 +1,9 @@
 "use client"
 
 import { useLocale, useTranslations } from "next-intl"
-import { useEmailDoor } from "@/hooks/emailAuth"
-import type { EmailDoorFailure } from "@/hooks/emailAuth"
+import { useEmailDoor, type EmailDoorFailure } from "@/hooks/emailAuth"
 import { APP_ROUTES } from "@/modules/routes"
-import { EmailDoorFormBase } from "./component"
-import type { EmailDoorLink } from "./component"
+import { EmailDoorFormBase, type EmailDoorLink } from "./component"
 
 /** The doors the block draws; the confirmation is a button, so the mailbox is confirmed by a person and not by a mail scanner opening the link. */
 type FormDoor = "signup" | "resend" | "forgot" | "reset" | "confirm"

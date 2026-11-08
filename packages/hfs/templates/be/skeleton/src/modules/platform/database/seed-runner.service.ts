@@ -1,9 +1,13 @@
 import { Injectable } from "@nestjs/common"
-import { InjectLogger, LoggingLogEvent } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
-import { InjectConnectionSource, InjectDatabaseOptions, InjectReadSeedFiles } from "./database.port"
+import { InjectLogger, LoggingLogEvent, type Logger } from "@modules/platform/logging"
+import {
+    InjectConnectionSource,
+    InjectDatabaseOptions,
+    InjectReadSeedFiles,
+    type ConnectionOpener,
+    type SeedFileReader,
+} from "./database.port"
 import type { DatabaseOptions } from "./database.options"
-import type { ConnectionOpener, SeedFileReader } from "./database.port"
 import { DEFAULT_SEED_ENV, seedConnections, seedDirectoryOf } from "./seed-connections.client"
 
 @Injectable()

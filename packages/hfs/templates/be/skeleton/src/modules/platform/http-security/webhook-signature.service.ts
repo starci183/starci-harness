@@ -1,7 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { Injectable } from "@nestjs/common"
-import { InjectClock } from "@modules/platform/clock"
-import type { Clock } from "@modules/platform/clock"
+import { InjectClock, type Clock } from "@modules/platform/clock"
 import { HttpSecurityError, HttpSecurityErrorCode } from "./errors/http-security.error"
 import { InjectHttpSecurityOptions } from "./http-security.decorators"
 import type { HttpSecurityOptions } from "./http-security.options"

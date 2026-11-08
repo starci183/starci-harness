@@ -1,6 +1,5 @@
 import type { EntityManager } from "typeorm"
-import { injector } from "@modules/platform/composition"
-import type { TypedParameterDecorator } from "@modules/platform/composition"
+import { injector, type TypedParameterDecorator } from "@modules/platform/composition"
 import type { EventBusOptions } from "./event-bus.options"
 import type { EventBus, EventConsumerRegistry } from "./event-bus.port"
 import type { EventTransport, KafkaFactory } from "./event-transport.port"

@@ -1,9 +1,7 @@
-import { ok, refused } from "@modules/platform/primitives"
-import type { Outcome } from "@modules/platform/primitives"
+import { ok, refused, type Outcome } from "@modules/platform/primitives"
 import type { CredentialMetadata, CredentialPrincipal } from "./credential.contracts"
 import { IdentityErrorCode } from "./errors/identity.error"
-import type { PublicMetadata } from "./identity.contracts"
-import { PublicReason } from "./identity.contracts"
+import { type PublicMetadata, PublicReason } from "./identity.contracts"
 
 /** What a credential-marked door requires and what `CredentialGuard` established for it. */
 export interface CredentialAdmission {

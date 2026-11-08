@@ -288,6 +288,8 @@ const noLineSeparatorLiteral = {
   }),
 };
 
+/** The line width of @starci/prettier-config: a merged import longer than this is laid out one specifier a line. */
+const PRINT_WIDTH = 120;
 const TRAILING_BLANK = /[ \t]*\r?\n?/y;
 
 /** S3863: one module is imported once; a value and a type from the same module are one `import { value, type Type }`. */
@@ -314,7 +316,13 @@ const noDuplicateImport = {
       const head = defaults[0]?.specifiers.find((specifier) => specifier.type === 'ImportDefaultSpecifier');
       const parts = [head ? sourceCode.getText(head) : null, names.size > 0 ? `{ ${[...names].join(', ')} }` : null].filter(Boolean);
       const semicolon = sourceCode.getText(group[0]).endsWith(';') ? ';' : '';
-      return `import ${allType ? 'type ' : ''}${parts.join(', ')} from ${sourceCode.getText(group[0].source)}${semicolon}`;
+      const kind = allType ? 'type ' : '';
+      const tail = ` from ${sourceCode.getText(group[0].source)}${semicolon}`;
+      const single = `import ${kind}${parts.join(', ')}${tail}`;
+      if (single.length <= PRINT_WIDTH || names.size === 0) return single;
+      // as Prettier lays out an import that does not fit one line: one specifier a line, a trailing comma
+      const lines = [...names].map((name) => `    ${name},`).join('\n');
+      return `import ${kind}${head ? `${sourceCode.getText(head)}, ` : ''}{\n${lines}\n}${tail}`;
     };
     const removal = (declaration) => {
       TRAILING_BLANK.lastIndex = declaration.range[1];

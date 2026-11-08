@@ -4,8 +4,7 @@
  * run through the cli app and boots the api apps in process.
  */
 import { applyCorrelation } from "@modules/platform/logging"
-import { defineTestWorld } from "@starci/test-world"
-import type { TestWorldApi } from "@starci/test-world"
+import { defineTestWorld, type TestWorldApi } from "@starci/test-world"
 {{appModuleImports}}
 import { {{optionsImports}} } from "./test-apps.options"
 

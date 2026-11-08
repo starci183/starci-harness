@@ -1,10 +1,13 @@
-import { Body, Controller, Headers, HttpCode, HttpStatus, Post, Req } from "@nestjs/common"
-import type { RawBodyRequest } from "@nestjs/common"
+import { Body, Controller, Headers, HttpCode, HttpStatus, Post, Req, type RawBodyRequest } from "@nestjs/common"
 import type { Request } from "express"
 import { Public, PublicReason } from "@modules/domain/identity"
 import { @@Provider@@InboxService } from "@modules/domain/@@provider@@-inbox"
-import { InjectWebhookSignature, RateLimit, RateTier } from "@modules/platform/http-security"
-import type { WebhookSignatureService } from "@modules/platform/http-security"
+import {
+    InjectWebhookSignature,
+    RateLimit,
+    RateTier,
+    type WebhookSignatureService,
+} from "@modules/platform/http-security"
 import type { CorrelationRequest } from "@modules/platform/logging"
 import { @@Event@@Request } from "./dto/@@event@@.request"
 

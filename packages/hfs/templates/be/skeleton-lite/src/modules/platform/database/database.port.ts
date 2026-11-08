@@ -1,6 +1,5 @@
 import { getDataSourceToken } from "@nestjs/typeorm"
-import { injector } from "@modules/platform/composition"
-import type { TypedParameterDecorator } from "@modules/platform/composition"
+import { injector, type TypedParameterDecorator } from "@modules/platform/composition"
 import type { DatabaseOptions } from "./database.options"
 import { PRIMARY_CONNECTION } from "./primary.connection"
 

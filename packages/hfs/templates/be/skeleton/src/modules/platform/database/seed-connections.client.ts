@@ -1,8 +1,7 @@
 import { readFile, readdir } from "node:fs/promises"
 import { join } from "node:path"
 import { eachInOrder } from "@modules/platform/primitives"
-import { seedText } from "./database.sql"
-import type { SqlText } from "./database.sql"
+import { seedText, type SqlText } from "./database.sql"
 import type { DatabaseConnectionOptions } from "./database.options"
 import type { ConnectionOpener } from "./database.port"
 

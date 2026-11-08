@@ -1,5 +1,4 @@
-import { Module } from "@nestjs/common"
-import type { DynamicModule } from "@nestjs/common"
+import { Module, type DynamicModule } from "@nestjs/common"
 import { BundleMessageCatalog } from "./bundle-message-catalog.service"
 import { MESSAGE_CATALOG, REQUEST_LOCALE } from "./i18n.decorators"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./i18n.module-definition"

@@ -1,9 +1,7 @@
 import { WebSocketGateway, WebSocketServer } from "@nestjs/websockets"
-import { @@service@@ } from "@@serviceModule@@"
-import type { @@Channel@@Frame } from "@@serviceModule@@"
+import { @@service@@, type @@Channel@@Frame } from "@@serviceModule@@"
 import type { Principal } from "@modules/platform/cqrs"
-import { InjectRealtimeHub } from "@modules/platform/realtime"
-import type { RealtimeHub } from "@modules/platform/realtime"
+import { InjectRealtimeHub, type RealtimeHub } from "@modules/platform/realtime"
 import type { @@Channel@@Namespace } from "./@@channel@@-websocket.module"
 
 @WebSocketGateway({ namespace: "/@@channel@@", transports: ["websocket"] })

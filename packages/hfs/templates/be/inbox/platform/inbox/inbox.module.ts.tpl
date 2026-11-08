@@ -1,5 +1,4 @@
-import { Module } from "@nestjs/common"
-import type { DynamicModule } from "@nestjs/common"
+import { Module, type DynamicModule } from "@nestjs/common"
 import { INBOX } from "./inbox.decorators"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./inbox.module-definition"
 import { PostgresInbox } from "./inbox.service"

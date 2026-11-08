@@ -2,8 +2,7 @@ import type { Metadata } from "next"
 import type { ReactElement } from "react"
 import { getTranslations } from "next-intl/server"
 import { APP_ROUTES } from "@/modules/routes"
-import { {{Name}}Base } from "./component"
-import type { {{Name}}BaseProps } from "./component"
+import { {{Name}}Base, type {{Name}}BaseProps } from "./component"
 
 /** The document title of {{Name}}, from the catalog of the requested locale. */
 export const {{nameCamel}}Metadata = async (): Promise<Metadata> => {

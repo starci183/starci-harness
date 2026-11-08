@@ -1,5 +1,4 @@
-import { renderTransactional } from "@modules/integrations/mail"
-import type { MailLanguage, RenderedMail } from "@modules/integrations/mail"
+import { renderTransactional, type MailLanguage, type RenderedMail } from "@modules/integrations/mail"
 
 /** What a confirmation or reset mail is drawn from. */
 export interface LinkMailInput {

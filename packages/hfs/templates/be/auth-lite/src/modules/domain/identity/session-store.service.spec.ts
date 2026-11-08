@@ -5,6 +5,7 @@ import { LessThan, Not } from "typeorm"
 import { fakeTransaction, mockEntityManager } from "@starci/jest-preset"
 import type { MockEntityManager } from "@starci/jest-preset"
 import { PRIMARY_ENTITY_MANAGER } from "@modules/platform/database"
+import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
 import { IdentityRefreshTokenEntity, IdentitySessionEntity } from "./persistence/entities"
 import { IdentitySessionStoreService } from "./session-store.service"
 
@@ -113,7 +114,12 @@ describe("IdentitySessionStoreService.transaction (a rotation)", () => {
     it("rolls the transaction back when the work throws", async () => {
         const { subject, transaction } = await build()
 
-        await expect(subject.transaction(() => Promise.reject(new Error("disk full")))).rejects.toThrow("disk full")
+        const failure = new IdentityError({ code: IdentityErrorCode.Unauthenticated })
+        await expect(
+            subject.transaction(() => {
+                throw failure
+            }),
+        ).rejects.toBe(failure)
 
         expect(transaction.rollbacks).toBe(1)
     })

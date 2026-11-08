@@ -1,5 +1,4 @@
-import { Module } from "@nestjs/common"
-import type { DynamicModule } from "@nestjs/common"
+import { Module, type DynamicModule } from "@nestjs/common"
 import { ERRORS_SERVICE } from "./errors.decorators"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./errors.module-definition"
 import { ErrorsService } from "./errors.service"

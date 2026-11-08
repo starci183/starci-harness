@@ -22,7 +22,7 @@ export class BundleMessageCatalog implements MessageCatalog {
     get(key: string, params: MessageParams, locale: Locale): string {
         const text = this.texts[locale].get(key)
         if (text === undefined) return key
-        return text.replace(PLACEHOLDER, (placeholder, name: string) => {
+        return text.replaceAll(PLACEHOLDER, (placeholder, name: string) => {
             const value = params[name]
             return value === undefined ? placeholder : String(value)
         })

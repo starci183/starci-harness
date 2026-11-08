@@ -1,5 +1,4 @@
-import { InjectLogger } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
+import { InjectLogger, type Logger } from "@modules/platform/logging"
 import { CqrsLogEvent } from "./cqrs.log-events"
 
 /**

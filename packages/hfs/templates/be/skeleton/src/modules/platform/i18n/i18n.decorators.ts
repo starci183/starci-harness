@@ -1,5 +1,4 @@
-import { injector } from "@modules/platform/composition"
-import type { TypedParameterDecorator } from "@modules/platform/composition"
+import { injector, type TypedParameterDecorator } from "@modules/platform/composition"
 import type { I18nOptions } from "./i18n.options"
 import type { MessageCatalog, RequestLocale } from "./i18n.port"
 

@@ -1,5 +1,4 @@
-import { Module } from "@nestjs/common"
-import type { DynamicModule } from "@nestjs/common"
+import { Module, type DynamicModule } from "@nestjs/common"
 import { platformModules } from "./compose/platform"
 import { cliModules } from "./compose/cli"
 import type { CliAppOptions } from "./cli.options"

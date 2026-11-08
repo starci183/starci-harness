@@ -1,5 +1,4 @@
-import { Injectable } from "@nestjs/common"
-import type { CanActivate, ExecutionContext } from "@nestjs/common"
+import { Injectable, type CanActivate, type ExecutionContext } from "@nestjs/common"
 import type { Reflector } from "@nestjs/core"
 import { InjectReflector } from "@modules/platform/composition"
 import { requestOf } from "@modules/platform/http-security"

@@ -1,25 +1,26 @@
 import { Injectable } from "@nestjs/common"
 import type { EntityManager } from "typeorm"
-import { InjectClock } from "@modules/platform/clock"
-import type { Clock } from "@modules/platform/clock"
+import { InjectClock, type Clock } from "@modules/platform/clock"
 import { JobsError, JobsErrorCode } from "./errors/jobs.error"
 import { callDbFunction } from "@modules/platform/database"
 import type { FailureClass } from "@starci/nest-kit"
-import { isEffectKey, isRunKey, resumedDeliveryId } from "./jobs.contracts"
-import type {
-    AdvanceWrite,
-    ClaimedJob,
-    ClaimParams,
-    ClaimResult,
-    EffectKey,
-    FailWrite,
-    GuardedWrite,
-    ParkedJob,
-    ParkResult,
-    ParkWrite,
-    ResumedJob,
-    ResumeFilter,
-    RunKey,
+import {
+    isEffectKey,
+    isRunKey,
+    resumedDeliveryId,
+    type AdvanceWrite,
+    type ClaimedJob,
+    type ClaimParams,
+    type ClaimResult,
+    type EffectKey,
+    type FailWrite,
+    type GuardedWrite,
+    type ParkedJob,
+    type ParkResult,
+    type ParkWrite,
+    type ResumedJob,
+    type ResumeFilter,
+    type RunKey,
 } from "./jobs.contracts"
 import { InjectJobsManagers } from "./jobs.decorators"
 import type { JobClaims } from "./jobs.port"
@@ -166,13 +167,13 @@ export class JobClaimService implements JobClaims {
             "sweep" in filter,
             this.clock.now(),
         ])
-        return rows.map(resumedOf)
+        return rows.map((row) => resumedOf(row))
     }
 
     /** The parked jobs, oldest first. */
     async awaitingFix(): Promise<ReadonlyArray<ParkedJob>> {
         const rows = await callDbFunction<ParkedRecord>(this.writer(), "public.job_awaiting_fix", [])
-        return rows.map(parkedOf)
+        return rows.map((row) => parkedOf(row))
     }
 
     /** The idempotency key of one step of this claim: it includes the token, so a zombie's repeat is a different key than the live worker's. */

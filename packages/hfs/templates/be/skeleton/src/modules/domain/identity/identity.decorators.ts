@@ -1,10 +1,8 @@
 import { SetMetadata, applyDecorators } from "@nestjs/common"
-import { injector } from "@modules/platform/composition"
-import type { DoorDecorator, TypedParameterDecorator } from "@modules/platform/composition"
+import { injector, type DoorDecorator, type TypedParameterDecorator } from "@modules/platform/composition"
 import { ServerToServer } from "@modules/platform/http-security"
 import type { CredentialAuthenticator, CredentialMetadata } from "./credential.contracts"
-import { PublicReason } from "./identity.contracts"
-import type { PublicMetadata } from "./identity.contracts"
+import { PublicReason, type PublicMetadata } from "./identity.contracts"
 
 /** Metadata key of `@Public`. */
 export const PUBLIC_KEY = "domain.identity.public"
