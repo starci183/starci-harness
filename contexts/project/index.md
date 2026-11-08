@@ -110,7 +110,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: fe.source-root-pinned, source-layout
 - [code/fe/form.md](../code/fe/form.md) · 2 KB — How a form is validated and submitted, and how the outcome of a write reaches the user.
   - sections: FE-FORM One form hook per form, with translated messages and contract bounds · FE-TOAST Every user-started write reports through `modules/toast`
-- [code/fe/function.md](../code/fe/function.md) · 12 KB — What a component, route or page owner takes and returns.
+- [code/fe/function.md](../code/fe/function.md) · 13 KB — What a component, route or page owner takes and returns.
   - sections: FE-FUNCTION-1 A component takes one `props` parameter of a named type · FE-FUNCTION-2 A split unit is `X` over `XBase({ shape?, props, on? })`, drawn on three axes · FE-FUNCTION-3 The connected half resolves everything and renders its twin · FE-FUNCTION-4 A lower tier takes narrow resolved fields · FE-FUNCTION-5 The route file adapts; the page owner holds the metadata · FE-FUNCTION-6 A function stays within its budget and free of measured smells · FE-FUNCTION-7 Every shape member is enumerated, drawn and storied · The pattern at work: a handoff block
 - [code/fe/i18n.md](../code/fe/i18n.md) · 5 KB — Where readable text lives, how the locale is chosen and how a value is formatted.
   - sections: FE-I18N-1 next-intl is written once, in `@starci/next-i18n` · FE-I18N-2 No display text in source · FE-I18N-3 Every locale has the same keys, and every key is read · FE-I18N-4 Navigation is locale-aware and every path comes from `modules/routes` · FE-I18N-5 Each kind of value has one formatting owner
@@ -131,7 +131,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: SHARED-COMMENT-1 Every export carries a docblock that states responsibility · SHARED-COMMENT-2 A line comment sits above its statement and says why · SHARED-COMMENT-3 Source text is English, with no emoji
 - [code/shared/format.md](../code/shared/format.md) · 2 KB — How source text is laid out.
   - sections: SHARED-FORMAT-1 Prettier is the only formatter · SHARED-FORMAT-2 Line endings and editor settings are managed files
-- [code/shared/imports.md](../code/shared/imports.md) · 2 KB — Through which path a file imports and what it exports.
+- [code/shared/imports.md](../code/shared/imports.md) · 3 KB — Through which path a file imports and what it exports.
   - sections: SHARED-IMPORTS-1 Across owners through the owner's entry; inside one owner, relative · SHARED-IMPORTS-2 Type-only bindings use `import type` · SHARED-IMPORTS-3 Every export has a consumer; every import is used
 - [code/shared/loosening.md](../code/shared/loosening.md) · 3 KB — What makes a check pass without the code satisfying it.
   - sections: SHARED-LOOSENING-1 No inline suppression, escape marker or swallowed failure · SHARED-LOOSENING-2 A wrong rule is changed in its owner, never around it
@@ -169,7 +169,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
 - [hfs/harness.yaml](../hfs/harness.yaml) · 19 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.runtime-layer, images.sources, never.build-output, never.cli-js, never.env and 38 more
-- [hfs/rules.yaml](../hfs/rules.yaml) · 135 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
+- [hfs/rules.yaml](../hfs/rules.yaml) · 136 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
   - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113 and 278 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 109 KB — The HFS slot manifest: what may exist in an app repository and where.
   - ids: app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore, app.format-config, app.git-meta and 140 more

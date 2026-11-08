@@ -6,8 +6,11 @@ import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
 /** A call that spawns a process through the CLI's runner (shared/exec.ts). */
 const SPAWN = /\b(?:captureNpm|runNpm|captureCommand|captureTool|runTool|captureToolSync)\(/
 
-/** npm calls that read or publish metadata and build nothing: light, so they take no slot. */
-const LIGHT_NPM = /\b(?:captureNpm|runNpm)\(\s*\[\s*"(?:view|pack|publish|--version)"/
+/**
+ * npm calls that read, publish or withdraw metadata and build nothing: light, so they take no slot. `unpublish` withdraws a version
+ * from a registry; `install --package-lock-only` resolves the lockfile and writes no node_modules, runs no script and compiles nothing.
+ */
+const LIGHT_NPM = /\b(?:captureNpm|runNpm)\(\s*\[\s*"(?:view|pack|publish|unpublish|--version)"|\b(?:captureNpm|runNpm)\(\s*\[\s*"install",\s*"--package-lock-only"/
 
 /** A tool spawn that is heavy whatever runs it: a compiler, a linter, a test runner, a bundler, a browser run or a container build or run (docker, or the client uat.ts dockerBin names). */
 const HEAVY_TOOL = /\b(?:tsc|eslint|jest|vitest|playwright|next|webpack)\b|(?:"docker"|dockerBin\(\)),\s*(?:\["(?:build|run)"|args\b)/

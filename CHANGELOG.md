@@ -3,6 +3,7 @@
 ## 1.1.0-alpha.96 - 2026-11-08
 
 - Fixed: the lint of every app ended in `ESLint tool error: eslint source scope is unavailable ... unsupported canon ignores selectors`, because the canons' new test-scope Sonar way block used a negated `ignores` selector that the lint scope refuses. `@starci/eslint-canon-fe` 9.16.7 and `@starci/eslint-canon-be` 3.19.7 select the specs with a positive selector, and `@starci/hfs` 6.2.7 pins them and holds a spec that runs `canonScope` over the built config of both canons.
+- Fixed: the harness CI gates of the previous release: `starci check heavy-sites` counts `npm unpublish` and `npm install --package-lock-only` as light npm calls (they withdraw or resolve metadata and build nothing), and the generated `contexts/project/index.md` is regenerated (`starci contexts anatomy --execute`).
 
 ## 1.1.0-alpha.95 - 2026-11-08
 
