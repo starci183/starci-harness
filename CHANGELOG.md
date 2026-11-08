@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.106 - 2026-11-09
+
+- Changed: the Grammar family 0.32.0 (with `@starci/hfs` 6.5.4, whose canon pins name it): every SurfaceCard on the page ground has a border and the card shadow, a standalone DataTable sits in its own card with the native HeroUI look (the 0.29 flat frame is reverted), the list frame and a framed EmptyNotice share the edge; Messenger bubble grouping (`groupPosition`); chat reactions (`ReactionBar`, `ReactionPill`, the burst; `reactions`, `onReact`, `onReply`, `onShare`); the composer band gap and a keyboard-only ListBox focus ring.
+
 ## 1.1.0-alpha.105 - 2026-11-09
 
 - Changed: the Grammar family 0.31.0: Sparkline, BarChart `valueAxis` and `highlightLast`, Figure `trend`, the row chevron, MessageCard, Spotlight, AvatarButton `size="floating"`; the final type scale (14 for all UI text, 12 for small names, no 13; tabs 14 at 40 high, selected 500), pinned by `check:type`; SuggestionChips is withdrawn and one suggestion pattern stays, a Cluster of neutral sm Buttons (lint `suggestion-buttons` replaces `suggestion-chips`).

@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.5.4 - 2026-11-09
+
+- Changed: the canon pins name the Grammar family 0.32.0.
+
 ## 6.5.3 - 2026-11-09
 
 - Changed: the canon pins name the Grammar family 0.31.0 (`@starci/grammar`, `@starci/eslint-grammar-core`, `@starci/eslint-grammar-offset-pop`).
