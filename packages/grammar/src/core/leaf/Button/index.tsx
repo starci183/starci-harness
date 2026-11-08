@@ -29,6 +29,12 @@ type ButtonBase = {
     readonly startGlyph?: GlyphName
     /** Directional or explanatory content after the label. */
     readonly endContent?: ReactNode
+    /**
+     * The label leads somewhere (a page, a tab, a next step): Grammar draws its arrow after the label, and the arrow slides toward the
+     * reading end while the button is hovered or focused (still under reduced motion). An icon of what the action is goes at the start;
+     * the arrow of where it goes is always at the end. `endContent` wins when both are given.
+     */
+    readonly endArrow?: boolean
     readonly isDisabled?: boolean
     /**
      * Why the action is unavailable. A disabled Button shows these words in a Tooltip on hover and keyboard focus
@@ -166,7 +172,8 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
         size = "md",
         startContent: givenStart,
         startGlyph,
-        endContent,
+        endContent: givenEnd,
+        endArrow = false,
         isDisabled = false,
         isLoading = false,
         isPending = false,
@@ -175,6 +182,7 @@ const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
     } = props
     const variant = useButtonIntentVariant(props.intent, props.step, "button") ?? "secondary"
     const startContent = givenStart ?? (startGlyph === undefined ? undefined : <Icon source={glyphSource(startGlyph)} usage="leading" />)
+    const endContent = givenEnd ?? (endArrow ? <span className="starci-core-button-arrow" data-grammar-button-arrow="true"><Icon source={glyphSource("arrow-end")} usage="leading" /></span> : undefined)
     const unavailable = isDisabled || isPending || isLoading
     // The side a glyph stands on takes the control's glyph padding (one step less): the glyph carries its own room.
     const glyphSides = {

@@ -793,4 +793,21 @@
             transition: none;
         }
     }
+
+    /* The arrow of a button that leads somewhere slides one step toward the reading end while the button is hovered or focused. */
+    .starci-core-button-arrow {
+        display: inline-flex;
+        transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing);
+    }
+
+    .starci-core-button:is(:hover, :focus-visible):not([data-element="span"]) .starci-core-button-arrow {
+        transform: translateX(var(--grammar-identity-gap));
+    }
+
+    [dir="rtl"] .starci-core-button-arrow { scale: -1 1; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-button-arrow { transition: none; }
+        .starci-core-button:is(:hover, :focus-visible) .starci-core-button-arrow { transform: none; }
+    }
 }
