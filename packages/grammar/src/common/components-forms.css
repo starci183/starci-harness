@@ -513,6 +513,9 @@
     [data-component="Switch"][data-grammar-switch-size="control"] [data-grammar-switch-thumb] {
         inline-size: var(--grammar-switch-thumb) !important;
         block-size: var(--grammar-switch-thumb) !important;
+        flex-shrink: 0;
+        /* Off: one identity step in from the start edge; on: the same step in from the end edge. The vendor margin is computed for its own size. */
+        margin-inline-start: var(--grammar-identity-gap) !important;
         align-items: center;
         justify-content: center;
     }
@@ -529,8 +532,13 @@
 
     [data-component="Switch"] [data-grammar-switch-thumb] {
         background: var(--surface) !important;
-        box-shadow: var(--surface-shadow);
+        /* No ring: the light thumb on the default or accent track is its own contrast; a surface shadow drew an edge around it. */
+        box-shadow: none !important;
         color: var(--muted);
+    }
+
+    [data-component="Switch"][data-grammar-switch-size="control"][data-selected="true"] [data-grammar-switch-thumb] {
+        margin-inline-start: calc(var(--grammar-switch-width) - var(--grammar-switch-thumb) - var(--grammar-identity-gap)) !important;
     }
 
     [data-component="Switch"][data-selected="true"] [data-grammar-switch-thumb] {

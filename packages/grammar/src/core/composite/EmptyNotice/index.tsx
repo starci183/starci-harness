@@ -3,6 +3,7 @@ import type { ButtonIntent } from "../../buttonIntent.js"
 import { Button } from "../../leaf/Button/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
+import { glyphSource } from "../../leaf/Icon/glyphs.js"
 import { Mascot, type MascotProps } from "../../leaf/Mascot/index.js"
 import { Text } from "../../leaf/Text/index.js"
 import { ErrorView } from "../../loadingState.js"
@@ -20,7 +21,7 @@ export type EmptyNoticeArtwork = Pick<MascotProps, "src" | "alt" | "loading" | "
 /** The notice's one mark: a glyph for an ordinary empty or failed region, or the first-run artwork, never both. */
 type EmptyNoticeMark =
     | {
-        /** Optional app-owned glyph for the empty condition. */
+        /** The app's glyph for the empty condition; without one the notice wears Grammar's `empty` tray, so a notice is never bare words. */
         readonly iconSource?: IconSource
         readonly artwork?: undefined
     }
@@ -68,11 +69,11 @@ export const EmptyNotice = ({
         data-tier="composite"
         data-component="EmptyNotice"
         data-contract="GAP-3 PADDING-4"
-        data-grammar-empty-mark={artwork !== undefined ? "artwork" : iconSource !== undefined ? "glyph" : "none"}
+        data-grammar-empty-mark={artwork === undefined ? "glyph" : "artwork"}
         className="starci-core-empty-notice"
     >
         {artwork === undefined ? null : <Mascot size="md" {...artwork} />}
-        {iconSource === undefined ? null : <IconTile source={iconSource} tone="neutral" size="md" />}
+        {artwork === undefined ? <IconTile source={iconSource ?? glyphSource("empty")} tone="neutral" size="md" /> : null}
         <div className="starci-core-notice-copy" data-contract="GAP-1">
             <Text size="sm" isStrong>{message}</Text>
             {description === undefined ? null : <Text size="sm" tone="muted">{description}</Text>}

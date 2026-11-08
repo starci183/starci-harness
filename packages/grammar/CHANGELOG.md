@@ -18,6 +18,10 @@
 - Added: `Button endArrow`: a label that leads somewhere ends with Grammar's `arrow-end` glyph, which slides one step toward the reading
   end on hover and focus (still under reduced motion, mirrored right to left). An icon of what the action is stays at the start.
 - Fixed: a Button's glyph and label stand one inline step (8px) apart on every size.
+- Changed: an `EmptyNotice` always wears a mark: without an `iconSource` (and no artwork) it shows Grammar's new `empty` tray glyph, so an
+  empty region never reads as bare words.
+- Fixed: the Switch thumb has no ring (its surface shadow drew an edge); the control-size Switch thumb sits one identity step in from each edge in both states (the vendor margin was computed for
+  its own size, so the on thumb touched the end edge); the Button gap wins over the vendor's unlayered rule.
 - Fixed: a Switch is a capsule on every theme: its track and thumb take the pill radius, so an app radius never squares them.
 - Fixed: a tile foot with no figure and no badge no longer renders an empty first item, so its action stands on the card's
   inline edge instead of one inline gap (8) in.

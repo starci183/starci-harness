@@ -2,10 +2,10 @@ import type { IconSource, IconSourceProps } from "./index.js"
 
 /**
  * The closed glyph vocabulary Grammar draws itself, for the few marks every product needs and an app with no icon registry cannot
- * supply: `arrow-end` (go on: the mark that follows a label that leads somewhere), `more` (an overflow menu), `send`, `panel-end` (show or hide the pane at the end of a layout), `pencil` (edit), `close` and `search` (the magnifier, for a search that opens on press).
+ * supply: `empty` (an empty tray: nothing here yet), `arrow-end` (go on: the mark that follows a label that leads somewhere), `more` (an overflow menu), `send`, `panel-end` (show or hide the pane at the end of a layout), `pencil` (edit), `close` and `search` (the magnifier, for a search that opens on press).
  * Any other glyph stays app-owned (`Icon` with a `source`).
  */
-export const GLYPH_NAMES = ["more", "send", "panel-end", "pencil", "close", "search", "arrow-end"] as const
+export const GLYPH_NAMES = ["more", "send", "panel-end", "pencil", "close", "search", "arrow-end", "empty"] as const
 
 export type GlyphName = (typeof GLYPH_NAMES)[number]
 
@@ -57,7 +57,15 @@ const ArrowEnd = (props: IconSourceProps) => (
     </svg>
 )
 
-const SOURCES: Readonly<Record<GlyphName, IconSource>> = { more: More, send: Send, "panel-end": PanelEnd, pencil: Pencil, close: Close, search: Search, "arrow-end": ArrowEnd }
+/** An empty tray: the default mark of a region with nothing in it yet. */
+const Empty = (props: IconSourceProps) => (
+    <svg {...props} fill="none" focusable="false" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 13l2.5-7h11L20 13" />
+        <path d="M4 13v5h16v-5h-5l-1 2h-4l-1-2z" />
+    </svg>
+)
+
+const SOURCES: Readonly<Record<GlyphName, IconSource>> = { more: More, send: Send, "panel-end": PanelEnd, pencil: Pencil, close: Close, search: Search, "arrow-end": ArrowEnd, empty: Empty }
 
 /** The SVG source of a glyph of the vocabulary, for `Icon`. */
 export const glyphSource = (name: GlyphName): IconSource => SOURCES[name]
