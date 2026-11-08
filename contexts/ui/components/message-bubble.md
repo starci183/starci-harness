@@ -29,11 +29,23 @@ Choice `message-status.choose.fact`: which authority-owned message fact the foot
 Both forms occupy the existing footer slot. The Bubble gains no receipt props, and ordinary Text does not pick a
 paint to imitate the semantic owner. Read people retain their names and localized overflow copy.
 
+Choice `message-bubble.choose.content`: what the bubble body is. The first row that applies wins.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| text | the message is words | `MessageBubble content="text"` (the default) | judgement |
+| card | an agent's rich message: a title with a chip, then a body or a key/value list, then actions | `MessageCard` (renders `MessageBubble content="card"`): title and `chip`, then `body` or a compact `details` list, then the actions row (the primary first, an `open` action with `endArrow` last), then a meta line (12 muted); capped at the bubble measure (`standard`, or `wide` 70%) with the avatar at the start, never full width | story `Navigation & Data/Chat parts/MessageCards`; `check:type` |
+
+Chat surroundings (Grammar 0.31.0): an `EmptyNotice` inside a thread (a `PaneSection scroll role="log"` band, or a stack holding
+`MessageBubble`s) draws no card surface (no fill, border, radius or shadow; detected by context, no prop), and the head band of a
+chat or list pane (a `PaneSection as="header"` above a `scroll` band) ends in one full-width separator, its block-end padding
+equal to its block-start inset. Stories `EmptyNoticeInThread`, `ChatPaneHeadLine`.
+
 ## Variants
 None. `side` is whose message it is, not a style.
 
 ## Size
-It takes no step; the words use the body step and the author line the caption step ([../scale.md](../scale.md)).
+It takes no step; the words use the body step (14) and the author line and meta the small-name step (12) ([../scale.md](../scale.md), FONT-7).
 
 ## States
 `isHighlight` draws the focus ring round the bubble (a link jumped here). Loading draws the face with two skeleton lines

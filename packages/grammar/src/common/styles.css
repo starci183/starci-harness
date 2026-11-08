@@ -214,17 +214,17 @@
         margin: 0;
         max-width: 100%;
         color: var(--foreground);
-        /* The type roles (0.27): the page title is xl 18 / 500 (was 20 / 600), a section title lg 16 / 500 (was 600). */
+        /* The final type scale: the page title is the display size xl 18, a section title 14; both semibold. */
         font-size: var(--grammar-text-xl);
-        font-weight: var(--grammar-weight-medium);
+        font-weight: var(--grammar-weight-semibold);
         line-height: var(--grammar-leading-xl);
         overflow-wrap: anywhere;
         text-wrap: balance;
     }
 
     :is(h2, h3, h4, h5, h6).starci-core-section-title {
-        font-size: var(--grammar-text-lg);
-        line-height: var(--grammar-leading-lg);
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
     }
 
     .starci-core-section-description,
@@ -904,10 +904,10 @@
         margin: 0;
         /* A label names what follows it: full foreground, never the muted tone a vendor body passes down (TONE). */
         color: var(--foreground);
-        /* A card title: lg 16 / 500 (the type roles, 0.27; was md 14 / 600). */
-        font-size: var(--grammar-text-lg);
-        font-weight: var(--grammar-weight-medium);
-        line-height: var(--grammar-leading-lg);
+        /* A card or section title: 14 / 600 (the final type scale; 16 / 500 in 0.28). */
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-md);
     }
 
     .starci-core-label[data-grammar-label-depth="nested"] {
@@ -1740,7 +1740,7 @@
     .starci-core-tabs-frame[data-grammar-tabs-kind="views"][data-grammar-tabs-folds="true"] .starci-core-tabs .tabs__list-container { overflow: visible; }
     .starci-core-tabs-frame[data-grammar-tabs-kind="views"] .starci-core-tabs .tabs__tab[aria-selected="true"] {
         color: var(--accent-soft-foreground);
-        font-weight: var(--grammar-weight-semibold);
+        font-weight: var(--grammar-weight-medium);
     }
 
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] {
@@ -1752,8 +1752,9 @@
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs { flex: 1 1 auto; width: auto; }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__list,
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__list-container { gap: var(--grammar-identity-gap); overflow: visible; }
+    /* Every tab is one size and one height: 14, 40 high (the control step), the selected one 500 over its underline. */
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab {
-        min-height: 2rem;
+        min-height: var(--starci-core-control-min-size);
         padding-inline: var(--grammar-inline-gap) !important;
         font-size: var(--grammar-text-sm);
         line-height: var(--grammar-leading-sm);
@@ -1766,7 +1767,7 @@
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__indicator { top: auto !important; background: var(--accent); }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tab-content { gap: var(--grammar-identity-gap); }
 
-    .starci-core-tabs-more { display: inline-flex; flex: none; align-items: stretch; min-height: 2rem; padding-inline: var(--grammar-inline-gap); color: var(--muted); font-size: var(--grammar-text-sm); }
+    .starci-core-tabs-more { display: inline-flex; flex: none; align-items: stretch; min-height: var(--starci-core-control-min-size); padding-inline: var(--grammar-inline-gap); color: var(--muted); font-size: var(--grammar-text-sm); }
     /* The fold trigger fills the strip's height, so its box stands on the line like a tab: no padding of its own below it. */
     .starci-core-tabs-more > button, .starci-core-tabs-more > [role="button"] { display: inline-flex; align-items: center; }
     .starci-core-tabs-more-label { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); }
@@ -3198,6 +3199,35 @@
     /* rule="start": a hairline across the block-start edge of the band (R4-27, a pinned decision bar). */
     .starci-core-pane-section[data-grammar-pane-section-rule="start"] { border-block-start: 1px solid var(--separator); }
 
+    /*
+     * A tab strip that ends a band: the band hosts the line (the same host mode as a card zone or the page header band). The band's
+     * bottom edge is the ONE full-width --separator (the band is the pane's full width, the inset is its padding), the strip's own short
+     * line is not drawn, nothing pads under the strip, and the selected indicator lies on the band's edge. When that band is the last of its
+     * pane, the pane drawn next to it loses its block-start border so the line is never doubled.
+     */
+    .starci-core-pane-section:has(> .starci-core-tabs-frame:last-child:not([data-grammar-tabs-variant="primary"])),
+    .starci-core-pane-stack > .starci-core-pane-section:last-child:has(> .starci-core-tabs-frame:last-child:not([data-grammar-tabs-variant="primary"])) {
+        padding-block-end: 0;
+        border-block-end: var(--starci-core-tabs-line-width) solid var(--separator);
+    }
+
+    .starci-core-pane-section > .starci-core-tabs-frame[data-grammar-tabs-line="own"]:last-child:not([data-grammar-tabs-variant="primary"]) {
+        border-block-end: 0;
+    }
+
+    .starci-core-pane:has(> .starci-core-pane-stack > .starci-core-pane-section:last-child > .starci-core-tabs-frame:last-child:not([data-grammar-tabs-variant="primary"])) + .starci-core-pane {
+        --starci-core-pane-b: 0px;
+    }
+
+    /*
+     * A head band (a PaneSection as="header", or one holding a PaneHeader) that stands above a scroll band (a chat thread, a list) ends in
+     * one full-width --separator line; its block-end padding equals its block-start inset so the title is centred between the pane edge and the line.
+     */
+    .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):has(+ .starci-core-pane-section[data-grammar-pane-section-scroll="true"]) {
+        padding-block-end: var(--starci-core-pane-inset-block-start);
+        border-block-end: 1px solid var(--separator);
+    }
+
     .starci-core-pane-section[data-grammar-pane-section-grow="true"] {
         min-height: 0;
         flex: 1 1 0%;
@@ -4021,6 +4051,16 @@
         background: var(--surface);
     }
 
+    /* Inside a thread (a chat scroll band, a stack of messages) the notice is words on the thread's own ground: no card surface. */
+    .starci-core-pane-section[data-grammar-pane-section-thread="true"] .starci-core-empty-notice:not([data-grammar-error-layout]),
+    .starci-core-pane-section-content:has(.starci-core-message-bubble) .starci-core-empty-notice:not([data-grammar-error-layout]),
+    .starci-core-message-bubble-thread .starci-core-empty-notice:not([data-grammar-error-layout]) {
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
     /* The notice's words: the title (what happened or what is missing) over its one muted supporting line. */
     .starci-core-notice-copy {
         display: flex;
@@ -4664,21 +4704,22 @@
      * declaration that a later family layer can still own.
      */
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="1"] {
-        font-size: var(--grammar-text-2xl) !important;
+        /* The final type scale: level 1 is the page title display size (18), levels 2 and 3 the 14 titles, all semibold. */
+        font-size: var(--grammar-text-xl) !important;
         font-weight: var(--grammar-weight-semibold) !important;
         letter-spacing: var(--grammar-tracking-tight) !important;
         line-height: var(--grammar-leading-xl) !important;
     }
 
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="2"] {
-        font-size: var(--grammar-text-lg) !important;
+        font-size: var(--grammar-text-md) !important;
         font-weight: var(--grammar-weight-semibold) !important;
-        line-height: var(--grammar-leading-lg) !important;
+        line-height: var(--grammar-leading-md) !important;
     }
 
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="3"] {
         font-size: var(--grammar-text-md) !important;
-        font-weight: var(--grammar-weight-medium) !important;
+        font-weight: var(--grammar-weight-semibold) !important;
         line-height: var(--grammar-leading-md) !important;
     }
 
@@ -4709,12 +4750,13 @@
 
     /* --- Text: one resolved line of copy, drawn from the attributes it already emits. --- */
     /*
-     * THE TYPE ROLES (owner, 2026-11-09): one role, one size; one line, one size. Page title xl 18 / 500; card or section
-     * title lg 16 / 500; row or table primary md 14 / 500; body and table cells md 14 / 400; row secondary and
-     * descriptions sm 13 muted; table header, meta and chips xs 12 muted; every tab sm 13. Text `md` is the body (14; it
-     * was 16 before 0.27), `sm` the secondary (13; was 14), `xs` the meta (12); `isStrong` is the medium weight (500; was
-     * 600). Lint `table-cell-type` and `same-line-size` hold the roles in composition; `scripts/check-type-roles.mts` pins
-     * the rules below to their tokens.
+     * THE FINAL TYPE SCALE (owner, 2026-11-09; it replaces the type roles of 0.28). 14 for ALL UI text: body, labels,
+     * section and card titles, row titles, tabs, buttons, links, inputs, descriptions, captions, hints, zone text and the
+     * figure labels and meta. 12 only for small names: meta lines, badges, chips, counts, timestamps, breadcrumb
+     * separators. No 13 anywhere (`sm` is 14 now, kept as a name). Hierarchy comes only from weight and tone: titles
+     * semibold (600), row and selected names medium (500), secondary text muted. Two display sizes stay: the page title
+     * (18) and a big figure value (20). Lint `table-cell-type` and `same-line-size` allow only 14 and 12;
+     * `scripts/check-type-roles.mts` pins the rules below to their tokens.
      */
     .starci-core-text {
         color: var(--foreground);
@@ -4734,10 +4776,11 @@
     }
 
     /* FONT-5: the leading value of a region (a price, a total), the size of a figures cell's value; one word, tabular figures. */
+    /* The big figure value: the display size 20 (it was 30), semibold, tabular. */
     .starci-core-text[data-size="figure"] {
-        font-size: var(--grammar-text-4xl);
+        font-size: var(--grammar-text-2xl);
         font-weight: var(--grammar-weight-semibold);
-        line-height: var(--grammar-leading-2xl);
+        line-height: var(--grammar-leading-xl);
         letter-spacing: var(--grammar-tracking-snug);
         font-variant-numeric: tabular-nums;
     }
@@ -4838,7 +4881,7 @@
 
     .starci-core-text-action[data-size="xs"] { font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
     .starci-core-text-action[data-size="sm"] { font-size: var(--grammar-text-md); line-height: var(--grammar-leading-md); }
-    .starci-core-text-action[data-size="md"] { font-size: var(--grammar-text-lg); line-height: var(--grammar-leading-lg); }
+    .starci-core-text-action[data-size="md"] { font-size: var(--grammar-text-md); line-height: var(--grammar-leading-md); }
 
     .starci-core-text-action[data-appearance="inline"] {
         color: var(--foreground);
@@ -5208,6 +5251,22 @@
 
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-stack { align-items: flex-end; }
     .starci-core-message-bubble[data-grammar-bubble-measure="wide"] .starci-core-message-bubble-stack { max-width: var(--grammar-bubble-measure-wide); }
+
+    /* content="card": the body is a structured card on the surface face; the stack keeps the bubble measure, so a card is never full width. */
+    .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-stack { width: var(--grammar-bubble-measure-standard); }
+    .starci-core-message-bubble[data-grammar-bubble-content="card"][data-grammar-bubble-measure="wide"] .starci-core-message-bubble-stack { width: var(--grammar-bubble-measure-wide); }
+    .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
+        align-self: stretch;
+        padding: var(--grammar-inset-card);
+        border-start-start-radius: var(--grammar-radius-md);
+        border: 1px solid var(--border);
+        white-space: normal;
+    }
+
+    .starci-core-message-card { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: var(--grammar-inline-gap); }
+    .starci-core-message-card-head { display: flex; min-width: 0; max-width: 100%; flex-wrap: wrap; align-items: center; gap: var(--grammar-inline-gap); }
+    .starci-core-message-card-body { min-width: 0; max-width: 100%; }
+    .starci-core-message-card > [data-component="DescriptionList"] { align-self: stretch; }
 
     .starci-core-message-bubble-head {
         display: flex;

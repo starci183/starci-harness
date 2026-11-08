@@ -184,13 +184,13 @@ export const why: Record<string, WhyEntry> = {
   },
   "table-cell-type": {
     code: "FE_TABLE_CELL_TYPE",
-    en: "A DataTable cell or ListRow title/description in `<file>` draws a heading-size Text (`size=\"figure\"`), a Heading, a Label or an h1-h6.",
-    fix: "The primary of a row or cell is md 14 / 500 (`<Text isStrong>`), the secondary sm 13 muted (`<Text size=\"sm\" tone=\"muted\">`).",
+    en: "A DataTable cell or ListRow title/description in `<file>` draws a Text above 14 (`size=\"lg\"`, `\"xl\"`, `\"figure\"`), a Heading, a Label or an h1-h6.",
+    fix: "The primary of a row or cell is 14 / 500 (`<Text isStrong>`), the secondary the same 14 muted (`<Text tone=\"muted\">`), and a small name (meta, count, timestamp) is 12 (`<Text size=\"xs\" tone=\"muted\">`).",
   },
   "same-line-size": {
     code: "FE_SAME_LINE_SIZE",
     en: "The Text children of one Cluster line in `<file>` have different sizes.",
-    fix: "One line, one size: give every Text of the line the size of the line's role (md primary, sm secondary). A Badge or chip may stay as it is.",
+    fix: "One line, one size: give every Text of the line the same step: 14 (md, sm), 12 (xs) or display (figure); sm and md are the same 14. A Badge or chip may stay as it is.",
   },
   "row-title-link": {
     code: "FE_ROW_TITLE_LINK",

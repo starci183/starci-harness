@@ -24,6 +24,9 @@ test("FE_TABLE_CELL_TYPE: a heading-size Text in a cell or a row is red", () => 
       { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={(row) => <Text size=\"sm\" tone=\"muted\">{row.name}</Text>} />" },
       // a figure outside a cell is a figure (a KPI)
       { filename: BLOCK, code: IMPORT + "export const A = () => <Text size=\"figure\">12</Text>" },
+      // 14 (md, sm, absent) and 12 (xs) are the cell sizes
+      { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={(row) => <Text size=\"xs\" tone=\"muted\">{row.name}</Text>} />" },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={(row) => <Text size=\"md\">{row.name}</Text>} />" },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Heading level={2}>Runs</Heading>" },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Section kind=\"list\" items={rows.map((r) => ({ id: r.id, title: r.name, description: r.note }))} />" },
       { filename: BLOCK, code: IMPORT + "export const A = () => <SurfaceCard collection={{ kind: \"list\", items: [{ id: \"a\", title: <Text isStrong>A</Text>, description: <Text size=\"sm\" tone=\"muted\">b</Text> }], empty: null }} />" },
@@ -37,6 +40,7 @@ test("FE_TABLE_CELL_TYPE: a heading-size Text in a cell or a row is red", () => 
     ],
     invalid: [
       { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={(row) => <Text size=\"figure\">{row.name}</Text>} />", errors: [{ messageId: "heading" }] },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={(row) => <Text size=\"lg\">{row.name}</Text>} />", errors: [{ messageId: "heading" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={(row) => <Heading level={3}>{row.name}</Heading>} />", errors: [{ messageId: "heading" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={(row, id) => id === \"name\" ? <h3>{row.name}</h3> : <Label>{row.x}</Label>} />", errors: [{ messageId: "heading" }, { messageId: "heading" }] },
       { filename: BLOCK, code: IMPORT + "const cell = (row) => <Text size=\"figure\">{row.name}</Text>\nexport const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={cell} />", errors: [{ messageId: "heading" }] },

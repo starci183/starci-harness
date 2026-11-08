@@ -724,6 +724,95 @@
         }
     }
 
+    /*
+     * --- Spotlight: "look here" ---
+     * The frame hugs its target (inline-block, or block with isBlock) and draws an accent ring outside it as an outline, with a
+     * soft accent pulse as a box-shadow, so it takes no layout space. It runs for the spotlight duration and the component then
+     * sets it off. Reduced motion keeps the ring for the same time through a no-op animation that only carries the end event.
+     */
+    [data-component="Spotlight"] {
+        display: inline-block;
+        max-inline-size: 100%;
+        vertical-align: top;
+        border-radius: var(--grammar-radius-md);
+    }
+
+    [data-component="Spotlight"][data-grammar-spotlight-block="true"] {
+        display: block;
+    }
+
+    [data-component="Spotlight"][data-grammar-spotlight-shape="pill"] {
+        border-radius: var(--grammar-radius-pill);
+    }
+
+    [data-component="Spotlight"][data-grammar-spotlight-shape="circle"] {
+        border-radius: var(--grammar-radius-round);
+    }
+
+    [data-component="Spotlight"][data-grammar-spotlight="true"] {
+        outline: var(--grammar-ring-width) solid var(--accent);
+        outline-offset: var(--grammar-ring-width);
+        animation: starci-core-spotlight-pulse var(--grammar-spotlight-duration) var(--grammar-loop-pulse-easing) 1;
+    }
+
+    @keyframes starci-core-spotlight-pulse {
+        0%,
+        50%,
+        100% {
+            box-shadow: 0 0 0 0 var(--accent-soft);
+        }
+
+        25%,
+        75% {
+            box-shadow: 0 0 0 calc(var(--grammar-ring-width) * 4) var(--accent-soft);
+        }
+    }
+
+    @keyframes starci-core-spotlight-hold {
+        from,
+        to {
+            outline-color: var(--accent);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        [data-component="Spotlight"][data-grammar-spotlight="true"] {
+            animation: starci-core-spotlight-hold var(--grammar-spotlight-duration) var(--grammar-loop-easing) 1;
+        }
+    }
+
+    /* --- AvatarButton size="floating": the 56px launcher with an optional status badge at the top end corner --- */
+    .starci-core-avatar-button-floating {
+        position: relative;
+        display: inline-flex;
+        flex: none;
+    }
+
+    .starci-core-avatar-button-floating [data-component="Avatar"],
+    .starci-core-avatar-button-floating .starci-core-avatar-agent-anchor {
+        --avatar-size: var(--grammar-avatar-floating-size);
+        inline-size: var(--grammar-avatar-floating-size);
+        block-size: var(--grammar-avatar-floating-size);
+    }
+
+    .starci-core-avatar-button-floating [data-component="PlainPressable"] {
+        box-shadow: var(--overlay-shadow) !important;
+    }
+
+    .starci-core-avatar-button-status {
+        position: absolute;
+        inset-block-start: 0.25rem;
+        inset-inline-end: 0.25rem;
+        --starci-core-status-dot-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--grammar-ring-width);
+        border-radius: var(--grammar-radius-pill);
+        background: var(--surface);
+        pointer-events: none;
+    }
+
     /* --- IdentityLockup: a mark beside two text lines, inside a PlainPressable --- */
     .starci-core-identity-lockup {
         display: inline-flex;
@@ -917,14 +1006,14 @@
     }
 
     /*
-     * The type roles of a table (0.27): the header xs 12 / 500 muted, a cell md 14 / 400, the row-header cell (the row primary)
-     * md 14 / 500. A Text in a cell takes the same steps (`Text isStrong` 14 / 500, `Text size="sm" tone="muted"` 13).
+     * The type of a table (the final scale): the header 14 / 500 muted, a cell 14 / 400, the row-header cell (the row primary)
+     * 14 / 500. A Text in a cell takes the same steps (`Text isStrong` 14 / 500, `Text size="sm" tone="muted"` 13).
      */
     .starci-core-data-table .starci-core-data-table-column {
         color: var(--muted);
-        font-size: var(--grammar-text-xs);
+        font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-medium);
-        line-height: var(--grammar-leading-xs);
+        line-height: var(--grammar-leading-md);
     }
 
     .starci-core-data-table .starci-core-data-table-cell {
@@ -1172,7 +1261,7 @@
      * so the frame and its lines are the ready state's (STATE-8).
      */
     .starci-core-description-list[data-grammar-description-layout="stat-strip"] {
-        --starci-core-figure-size: var(--grammar-text-4xl);
+        --starci-core-figure-size: var(--grammar-text-2xl);
         display: flex;
         flex-flow: row wrap;
         gap: 0;
@@ -1225,7 +1314,7 @@
         gap: 0.5rem;
         margin: 0;
         color: var(--foreground);
-        font-size: var(--grammar-text-4xl);
+        font-size: var(--grammar-text-2xl);
         font-weight: var(--grammar-weight-semibold);
         line-height: var(--grammar-leading-2xl);
         font-variant-numeric: tabular-nums;
@@ -1787,7 +1876,7 @@
     .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-timeline-time > .starci-core-skeleton-group { inline-size: 25%; }
     .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-timeline-description > .starci-core-skeleton-group { inline-size: 80%; }
     .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-skeleton-group { gap: 0; }
-    .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-skeleton { --starci-core-skeleton-line: 0.8125rem; }
+    .starci-core-timeline-item[data-grammar-skeleton="true"] .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
 
     .starci-core-timeline-copy {
         display: flex;

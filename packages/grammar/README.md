@@ -434,6 +434,15 @@ button fill) named by `label`, and its logos are decorative. `isLoading` (or a l
 no text), `onPress`, `isDisabled`, `shape` (`"rounded"` default, or `"circle"` for the focus ring) and `size="control"`. Wrap your own
 content to use it as a `DropdownMenu` or `Popover` trigger: `trigger={<PlainPressable aria-label="Workspace">…</PlainPressable>}`.
 
+`Spotlight` is exported from `@starci/grammar/common` (outside the registry): `<Spotlight isActive onEnd shape isBlock>{target}</Spotlight>`
+rings its target for "look here": an accent ring (`--grammar-ring-width`, offset by the same step) with a soft `--accent-soft` pulse
+for `--grammar-spotlight-duration` (3s), then it settles (no ring) and calls `onEnd`; set `isActive` true again to point again.
+`prefers-reduced-motion: reduce` keeps the static ring for the same time with no pulse. The ring is an outline and a box-shadow, so it
+takes no layout space. The frame is an inline-block hugging the target (a block with `isBlock`); `shape` is `"rounded"` (default),
+`"pill"` or `"circle"`, matching the target. Do not draw it with outline utilities in the app.
+`AvatarButton size="floating"` is the 56px launcher for a floating assistant (elevated shadow); `status={{ tone, label }}` draws a
+StatusDot badge on a surface ring at the top end corner (mirrored in RTL), and `label` is the button's accessible description.
+
 `DataTable.getCellInteraction(row, columnId)` optionally supplies `onAction`, `onDragOver`,
 `onDragLeave` and `onDrop`. Cells remain semantic
 table cells under the existing arrow-key navigation. An actionable cell takes focus itself,
@@ -558,6 +567,12 @@ message, always shown on touch, and unchanged under reduced motion. `MessageBubb
 (ramps `--grammar-bubble-measure-standard` and `--grammar-bubble-measure-wide`). `CalendarDay` is the passive date heading of a calendar region: a vendor date-only value, full localized
 label and authoritative `isToday`; it owns native time/current-date semantics without selecting a date.
 
+`MessageCard` is an agent's rich message as data: `title` with an optional `chip`, then `body` or `details` (a compact `DescriptionList`), then
+`actions` (the `primary` first, an `open` action ending in the arrow last), then a muted xs `meta` line. It renders
+`MessageBubble content="card"` and is capped at the bubble measure (`measure="wide"` for the 70% step) with the `avatar` at the start. A `Tabs`
+strip that ends a `PaneSection` stands on the band's one full-width separator; a pane head band above a scroll band ends in one separator; an
+`EmptyNotice` inside a thread (a `PaneSection scroll role="log"`) draws no card surface.
+
 The header of a `Page` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
 heading, a `mark` before it, `actions` at the end of its row (wrapping under it on a phone) and page `tabs`. It is a
 surface band whose content sits in the page container of the content's `measure`, so both share their edges, and it ends
@@ -631,13 +646,14 @@ divides by lines (static, list, accordion) keep the row step (12) on their block
 a stat strip cell in a card takes 16 on every side. `--grammar-overlay-inset` reads `--grammar-inset`. Vendor parts take their step in `src/common/components-spacing.css`. Tabs are the underline
 bar everywhere, the first label on the content edge.
 
-**The type roles** (owner, 2026-11-09). One role, one size; one line, one size: page title xl 18 / 500; card or section
-title lg 16 / 500; row or table primary md 14 / 500; body and table cells md 14 / 400 (`Text`, default `md`); row secondary
-and descriptions sm 13 muted (`Text size="sm" tone="muted"`); table header, meta and chips xs 12 muted; every tab sm 13.
-`Text isStrong` is 500. A `Link` inherits the size of the text around it (`size="inherit"`, default) in the exact primary
-colour; an external link ends with the `external` glyph. A row title is never a link when the row opens (lint
-`row-title-link`). `npm run check:type` pins the rules to their tokens; lint `table-cell-type` and `same-line-size` hold
-the roles in composition.
+**The type scale** (owner, 2026-11-09, final). 14 for all UI text (body, labels, section and card titles, row titles, tabs,
+buttons, links, inputs, descriptions, captions, hints, zone text, figure labels and meta); 12 only for small names (meta
+lines, badges, chips, counts, timestamps, breadcrumb separators); no 13 (`Text size="sm"` equals `md`). Hierarchy comes only
+from weight and tone: titles semibold, row and selected names medium (`Text isStrong`), secondary text muted. Two display
+sizes: the page title 18 and a big figure value 20 (`Text size="figure"`). Every tab is 14 and 40 high, the selected one
+500 over its underline. A `Link` inherits the size around it in the exact primary colour; an external link ends with the
+`external` glyph; a row title is never a link when the row opens (lint `row-title-link`). `npm run check:type` pins the
+scale; lint `table-cell-type` and `same-line-size` allow only 14 and 12.
 
 **The button-icon rule.** A Button that does something shows what at its start (`startGlyph`, e.g. `plus`, `upload`,
 `send`, `pencil`, or the app's `startContent`); a Button that leads somewhere ends with Grammar's arrow (`endArrow`), which

@@ -15,6 +15,7 @@ Choice `identity-mark.choose.role`: which mark anchors the name.
 | group | a group or conversation | the grammar's group composite of member identities (COLLECTION-3) | `DNA-COMMON-AVATAR-GROUP-ONE-SIZE` |
 | connections | the provider connections an agent or a workspace uses | `LogoStack`: round 20px logos with no plate, at most 3 then "+N", an optional muted xs `caption`; static, or one plain pressable (`onPress`, or `isTrigger` as a `DropdownMenu` trigger); an app's own content as a trigger is the exported `PlainPressable` | judgement |
 | person | a person or an agent | `Avatar`: uploaded image, else the grammar's generated initials; an agent adds the bot badge | `DNA-COMMON-AVATAR-INITIALS`, `DNA-COMMON-AGENT-NAMED` |
+| floating | the reader's own identity as a floating entry point (an account or assistant launcher over the page) | `AvatarButton size="floating"` (56px, overlay shadow) with `status={{ tone, label }}`: a StatusDot at the top end on a surface ring, its `label` the button's accessible description | story `Navigation & Data/Spotlight/AvatarButtonFloating` |
 | kind | a feature, product area or entity kind | `IconTile` with a reviewed semantic glyph | candidate: an `IconTile` is painted neutral |
 
 ## Variants

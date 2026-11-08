@@ -23,6 +23,9 @@ test("FE_SAME_LINE_SIZE: Texts of one Cluster with different sizes are red", () 
       { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text isStrong>A</Text><Text>B</Text></Cluster>" },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text size=\"md\">A</Text><Text>B</Text></Cluster>" },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text size=\"sm\">A</Text><Text size=\"sm\" tone=\"muted\">B</Text></Cluster>" },
+      // sm is the same 14 step as md
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text>A</Text><Text size=\"sm\" tone=\"muted\">B</Text></Cluster>" },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text size=\"sm\">A</Text><Text size=\"md\">B</Text></Cluster>" },
       // a Badge, a StatusDot and a Chip are exempt
       { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text>A</Text><Badge>New</Badge><StatusDot>Live</StatusDot><Chip>x</Chip><Text>B</Text></Cluster>" },
       // a size that is not a literal is skipped
@@ -35,10 +38,10 @@ test("FE_SAME_LINE_SIZE: Texts of one Cluster with different sizes are red", () 
       { filename: SCRIPT, code: IMPORT + "export const A = () => <Cluster><Text>A</Text><Text size=\"sm\">B</Text></Cluster>" },
     ],
     invalid: [
-      { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text>A</Text><Text size=\"sm\">B</Text></Cluster>", errors: [{ messageId: "mixed" }] },
-      { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text size=\"figure\">12</Text><Text size=\"sm\" tone=\"muted\">runs</Text></Cluster>", errors: [{ messageId: "mixed" }] },
-      { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text size=\"sm\">A</Text><Badge>New</Badge><Text size=\"xs\">B</Text><Text>C</Text></Cluster>", errors: [{ messageId: "mixed" }, { messageId: "mixed" }] },
-      { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text>A</Text>{show && <Text size=\"sm\">B</Text>}</Cluster>", errors: [{ messageId: "mixed" }] },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text>A</Text><Text size=\"xs\">B</Text></Cluster>", errors: [{ messageId: "mixed" }] },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text size=\"figure\">12</Text><Text size=\"xs\" tone=\"muted\">runs</Text></Cluster>", errors: [{ messageId: "mixed" }] },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text size=\"sm\">A</Text><Badge>New</Badge><Text size=\"xs\">B</Text><Text size=\"figure\">C</Text></Cluster>", errors: [{ messageId: "mixed" }, { messageId: "mixed" }] },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Cluster><Text>A</Text>{show && <Text size=\"xs\">B</Text>}</Cluster>", errors: [{ messageId: "mixed" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Text>Total <Text size=\"figure\">12</Text></Text>", errors: [{ messageId: "mixed" }] },
     ],
   })

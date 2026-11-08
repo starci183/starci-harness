@@ -135,7 +135,7 @@ Margin:
 
 The page title, the tab labels and the section headings share one text edge with the card or pane box below them:
 every underline tab bar, page, region or filter, has its first label on the content edge; only a mode or period switch
-is a pill (`Tabs appearance="primary"`, [tabs](components/tabs.md) `tabs.choose.role:switch`). The card's inner text at 16 is the one intentional step.
+is a pill (`Tabs appearance="primary"`, [tabs](components/tabs.md) `tabs.choose.role:switch`). The card's inner inset at 16 is the one intentional step.
 
 ### The table (the grammar's decision per component)
 
@@ -204,35 +204,49 @@ weights):
 
 | Id | Rank | Carrier |
 | --- | --- | --- |
-| FONT-1 | lowest supporting: brief metadata | `Text size="xs"` 12 (always muted) |
-| FONT-2 | supporting reading: a full supporting line | `Text size="sm"` 13 |
+| FONT-1 | lowest supporting: small names (meta, badges, chips, counts, timestamps) | `Text size="xs"` 12 (always muted) |
+| FONT-2 | supporting reading: a full supporting line | `Text size="sm"` 14 muted (`sm` is kept as a name and equals `md`; there is no 13) |
 | FONT-3 | ordinary reading | `Text` default `md` 14 |
-| FONT-4 | page heading: one per document | `Heading` level 1, xl 18 |
-| FONT-5 | leading value: the principal figure of a region | the value of a `kind="figures"` item, text semantics |
-| FONT-6 | display: a landing introduction | `Heading` display treatment, outline unchanged |
+| FONT-4 | page heading: one per document | `Heading` level 1, xl 18 (a display size) |
+| FONT-5 | leading value: the principal figure of a region | the value of a `kind="figures"` item, `Text size="figure"` 20 (a display size; was 30) |
+| FONT-6 | display: a landing introduction | `Heading scale="display"`, outline unchanged (an opt-in display size, as before) |
 
-- **FONT-7 One role, one size.** Each role below has one size and one weight everywhere it appears, so two apps and two
-  screens draw the same role the same way. `Text` `md` is 14, `sm` 13, `xs` 12, and `isStrong` is weight 500 (a label,
-  a title and a name are medium, never bold); the heading sizes are the grammar's.
+- **FONT-7 The final type scale (owner, 2026-11-09).** One role, one size, one weight everywhere it appears. It overrides every
+  earlier size for these roles. Measure: `check:type` (`packages/grammar/scripts/check-type-roles.mts`).
+  - **14px for ALL UI text**: body, labels, section and card titles (were 16), row titles, tabs (were 13), buttons, links
+    (including `Section.action`), inputs, descriptions, captions, hints, zone text (was 13), and the figure labels and meta of
+    `figures` cells.
+  - **12px only for small names**: meta lines, badges, chips, counts, timestamps, breadcrumb separators.
+  - **No 13 anywhere.** `Text size="sm"` and `--grammar-text-sm` are 14; `sm` stays as a name and equals `md`.
+  - **Hierarchy only from weight and tone**: titles are semibold 600 (page, section and card titles, `Heading` levels 1 to 3);
+    row and selected names are medium 500 (`Text isStrong`, list row names, the table row header, the selected tab); secondary
+    text is muted.
+  - **Display sizes are flagged as such**: the page title 18 (xl) and a big figure value 20 (`Text size="figure"`, figures
+    cells). Two opt-in display headings stay as they were: `PageHeader titleScale="title"` / `Heading scale="title"` (24) and
+    `Heading scale="display"`; Markdown article headings keep their prose scale.
 
   | Role | Size and weight | Carrier |
   | --- | --- | --- |
-  | page title | xl 18 / 500 | `Page` `header.title`, `Heading` level 1 |
-  | card or section title | lg 16 / 500 | a card `label`, a `Section` `title` |
-  | row or table primary text, a field label | md 14 / 500 | `<Text isStrong>`, a control's `label` |
-  | body, table cells, the section action's text | md 14 / 400 | `Text` |
-  | row secondary text, descriptions | sm 13 muted | `<Text size="sm" tone="muted">`, a card head `description` |
-  | table header, meta, chips | xs 12 muted | the table's own header, meta lines, `Badge` |
-  | every tab (page, region, filter) | sm 13 | `Tabs` ([tabs](components/tabs.md) Size) |
-  | zone and bar labels and their counts (a selection bar "20 / 72 selected", a filter caption, a toolbar note); a zone hint is also muted | sm 13 | any `Text` in a card or board header or footer zone: the zone sets sm, whatever size the `Text` names |
-  | the one caption under a lone table, list or chart | sm 13 muted | `Section caption` ([composition](composition.md) COLLECTION-4) |
+  | page title (display) | xl 18 / 600 | `Page` `header.title`, `Heading` level 1 |
+  | card or section title | md 14 / 600 | a card `label`, a `Section` `title`, `Heading` levels 2 and 3 |
+  | row or table primary text, a field label, a selected name | md 14 / 500 | `<Text isStrong>`, a control's `label`, a list row name |
+  | body, table cells, buttons, links, inputs, the section action's text | md 14 / 400 | `Text`, `Button`, `Link` |
+  | row secondary text, descriptions, captions, hints | md 14 muted | `<Text tone="muted">` (or `size="sm"`, the same step), a card head `description` |
+  | big figure value (display) | figure 20 | `Text size="figure"`, the value of a figures cell |
+  | meta, badges, chips, counts, timestamps | xs 12 muted | meta lines, `Badge`, `Chip` |
+  | every tab (page, region, filter) | md 14 / 400, the selected one 500 plus the underline; 40 high | `Tabs` ([tabs](components/tabs.md) Size) |
+  | zone and bar labels and their counts (a selection bar "20 / 72 selected", a filter caption, a toolbar note) and a zone hint | md 14 (a hint muted) | any `Text` in a card or board header or footer zone: the zone sets 14, whatever size the `Text` names |
+  | the one caption under a lone table, list or chart | md 14 muted | `Section caption` ([composition](composition.md) COLLECTION-4) |
+  | table header | md 14 / 500 muted | the table's own header |
 
-- **FONT-8 One line, one size.** Words that stand side by side on one line share one size: the size of the line's role (md
-  for a primary line, sm for a secondary or meta line). A chip or `Badge` beside the words is below the ramp and exempt. Lint:
-  `starci-grammar/same-line-size` (no mixed `Text` sizes among the direct children of one `Cluster`).
-- **FONT-9 A table cell and a list row are read in a column of equals.** Their text takes the row roles above (primary md
-  14 / 500, secondary sm 13 muted); a heading-size `Text` or a `Heading` there is a heading drawn in a list. Lint:
-  `starci-grammar/table-cell-type` (a `DataTable` cell and a `ListRow` title or description).
+- **FONT-8 One line, one size.** Words that stand side by side on one line share one size step: 14 (`md`, and `sm`, which is
+  the same step), 12 (`xs`) or a display size (`figure`). A chip or `Badge` beside the words is below the ramp and exempt.
+  Lint: `starci-grammar/same-line-size` (no mixed `Text` steps among the direct children of one `Cluster`; `sm` next to `md`
+  is valid, `xs` next to `md` is a finding). Measure: `check:type`.
+- **FONT-9 A table cell and a list row are read in a column of equals.** Their text is 14 only (primary 14 / 500, secondary 14
+  muted) and 12 for a small name; a larger `Text` (`figure`), a `Heading` or an `h1`-`h6` there is a heading drawn
+  in a list. The `DataTable` header is 14 / 500 muted, cells 14 / 400, the row header 14 / 500. Lint:
+  `starci-grammar/table-cell-type` (a `DataTable` cell and a `ListRow` title or description). Measure: `check:type`.
 - A heading's level is its document position and sets its size together, so tag and size never drift; levels stop
   at four, because a fifth means the page nested deeper than a reader holds. Lint:
   `starci-grammar/no-raw-structural-element`, `starci-grammar/no-text-heading` (R358).
@@ -245,8 +259,8 @@ Type per region (counts: `type.region`, `type.view` in [proof/thresholds.yaml](p
 | --- | --- |
 | page header | page heading (xl 18 / 500), one supporting line, one lowest-rank summary line |
 | section header | section heading (level 2), optional supporting line |
-| card | title (level 3, lg 16 / 500), body (ordinary or supporting), meta (lowest) |
-| list row | title (md 14 / 500, the contract's unread weight when unread), one description line (sm 13, muted), meta (xs 12) |
+| card | title (level 3, 14 / 600), body (ordinary or supporting, 14), meta (lowest, 12) |
+| list row | title (md 14 / 500, the contract's unread weight when unread), one description line (14, muted), meta (xs 12) |
 | stat cell | leading value, label (supporting, muted), unit lighter than the value |
 | landing hero | display heading, ordinary-reading lead line |
 

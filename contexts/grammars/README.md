@@ -112,7 +112,7 @@ decides product facts and layout. A row whose last column is not "nothing" is a 
 | Surface nesting | none: a surface never stands inside another, refused by the types, lint and a development throw | nothing |
 | Root, overlay portal, toast region | `GrammarRoot`, `src/core/overlayScope.tsx`, `Toaster` | mount one root and one `Toaster` (placement: gap G-11) |
 | Glyph set and sizes | Grammar `Icon`, DNA arrangement; grammar lint | which meaning to show (gap G-16) |
-| Type roles | `Text` and `Heading` sizes and weights (`md` 14, `sm` 13, `xs` 12, `isStrong` 500; page title 18, card title 16), one size per role | the rank by job ([ui/presentation](../ui/presentation.md) FONT-7), one size per line (lint `same-line-size`), no heading in a cell (lint `table-cell-type`); weight is never the app's |
+| Type roles | `Text` and `Heading` sizes and weights (`md` and `sm` 14, `xs` 12, `isStrong` 500, titles 600; page title 18 and figure value 20 as display sizes; card title 14), one size per role | the rank by job ([ui/presentation](../ui/presentation.md) FONT-7), one size per line (lint `same-line-size`), no heading in a cell (lint `table-cell-type`); weight is never the app's |
 | Composition for a business shape | [common](common.md#playbook-shapes) | product facts, copy and region order from the spec |
 | Checks on app code | `@starci/eslint-grammar-<id>` (Grammar API) and `@starci/eslint-canon-fe` (universal) | nothing |
 
