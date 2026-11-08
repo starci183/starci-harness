@@ -1,16 +1,14 @@
+import { DomainError } from "@starci/common"
 import { AUTH_ERROR_KINDS } from "../contracts/index.ts"
 import type { AuthErrorCode, AuthErrorKind } from "../contracts/index.ts"
 
 /** The one error class of sign-in: a wire code, the kind it travels as and optional context for the log. */
-export class AuthError extends Error {
-    readonly code: AuthErrorCode
+export class AuthError extends DomainError<AuthErrorCode> {
     readonly kind: AuthErrorKind
     readonly context: Readonly<Record<string, unknown>>
 
     constructor(code: AuthErrorCode, options: { readonly cause?: unknown; readonly context?: Readonly<Record<string, unknown>> } = {}) {
-        super(code, options.cause === undefined ? undefined : { cause: options.cause })
-        this.name = "AuthError"
-        this.code = code
+        super(options.cause === undefined ? { code } : { code, cause: options.cause })
         this.kind = AUTH_ERROR_KINDS[code]
         this.context = options.context ?? {}
     }

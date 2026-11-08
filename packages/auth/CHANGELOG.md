@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0 - 2026-11-08
+
+- Changed: `AuthError` extends `DomainError<AuthErrorCode>` of `@starci/common` (new dependency); its name, codes, constructor, `kind`, `context` and `cause` are unchanged, and it gains `params` (always empty).
+
 ## 0.4.0 - 2026-11-04
 
 - Added: `RefreshCookieOptions.domains`: the refresh cookie's `Domain` follows the request host (its `Host` header without the port). A host equal to a listed domain, or ending in `.` and one, takes the longest that fits; any other host takes `domain`, else stays host-only, so one api signs in on localhost (host-only) and on a tunnel origin (its parent domain).
