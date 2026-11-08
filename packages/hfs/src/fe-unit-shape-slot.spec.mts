@@ -287,7 +287,8 @@ test('a page is one Page with its own loading and error views, an overlay is a D
   const modal = read('src', 'features', 'overlays', 'InviteMemberOverlay', 'component.tsx');
   assert.match(modal, /<Dialog[\s\S]*footer=\{\(close\) => \([\s\S]*intent="dismiss" onPress=\{close\}[\s\S]*intent="commit"/, 'the way out first, the commit last');
   const drawer = read('src', 'features', 'overlays', 'EditDetailsOverlay', 'component.tsx');
-  assert.match(drawer, /<Drawer[\s\S]*placement="right"[\s\S]*footer=\{\(close\) => \([\s\S]*intent="dismiss" onPress=\{close\}[\s\S]*type="submit" form="edit-details-overlay-form" intent="commit"[\s\S]*<Form id="edit-details-overlay-form"[\s\S]*<Grid kind="form" columns=\{1\}>/, 'the footer carries the way out, then the submit naming the form');
+  assert.match(drawer, /<Drawer[\s\S]*placement="right"[\s\S]*footer=\{\(close\) => \([\s\S]*intent="dismiss" onPress=\{close\}[\s\S]*type="submit" form="edit-details-overlay-form" intent="commit"[\s\S]*<Form id="edit-details-overlay-form"[\s\S]*<Input id="edit-details-overlay-name"/, 'the footer carries the way out, then the submit naming the form');
+  assert.doesNotMatch(drawer, /<Grid kind="form"/, 'the Form spaces its own fields; a form Grid inside it is refused by gap-proximity');
   assert.doesNotMatch(drawer.slice(drawer.indexOf('<Form ')), /<Button/, 'no decision inside the form');
   assert.match(read('src', 'features', 'overlays', 'EditDetailsOverlay', 'index.tsx'), /^"use client"[\s\S]*useState\(false\)/);
   assert.match(read('src', 'app', '[locale]', 'settings', 'layout.tsx'), /<SettingsLayout content=\{props\.children\} \/>/);
