@@ -151,7 +151,7 @@ pins:
     install: registry
     side: both
     source: packages/auth-oidc/package.json
-    why: 'the full sign-in: the OIDC client of the identity provider (Keycloak) behind the PrincipalVerifier of @starci/auth, so guards do not change between editions: the NestJS module (issuer discovery, the JWKS with caching and rotation, algorithm-pinned token checks, role mapping, the authorization code flow with PKCE and nonce), the front-end client (PKCE redirect, one shared refresh, tokens in memory) and the fake issuer for tests; the one importer of jose in a full app, reached by a back end only through integrations/keycloak (sign-in) and integrations/github-oidc (CI attestation); @starci/jest-preset compiles it as an ESM-only dependency.'
+
   '@starci/object-storage':
     version: 0.2.0
     group: starci
