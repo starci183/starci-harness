@@ -107,3 +107,41 @@ export const EmptyNoticeInThread: Story = {
         </div>
     ),
 }
+
+/** Messenger grouping (0.32.0): a lone bubble is fully rounded; in a run the touching corners square to 4; the avatar sits beside the last bubble; outgoing mirrors on the end side. */
+export const BubbleGrouping: Story = {
+    render: () => (
+        <div style={{ display: "grid", gap: "0.25rem", maxWidth: "40rem" }}>
+            <G.MessageBubble groupPosition="single" body="A lone bubble: fully rounded." avatar={<G.Avatar name="Linh" size="sm" />} />
+            <div style={{ display: "grid", gap: "0.125rem", marginBlockStart: "0.75rem" }}>
+                <G.MessageBubble groupPosition="first" author="Linh" meta="09:12" body="First of a run." avatar={<G.Avatar name="Linh" size="sm" />} />
+                <G.MessageBubble groupPosition="middle" body="Middle: both start corners squared." avatar={<G.Avatar name="Linh" size="sm" />} />
+                <G.MessageBubble groupPosition="last" body="Last: the avatar sits beside it." avatar={<G.Avatar name="Linh" size="sm" />} />
+            </div>
+            <div style={{ display: "grid", gap: "0.125rem", marginBlockStart: "0.75rem" }}>
+                <G.MessageBubble side="outgoing" groupPosition="first" body="Outgoing first." />
+                <G.MessageBubble side="outgoing" groupPosition="middle" body="Outgoing middle." />
+                <G.MessageBubble side="outgoing" groupPosition="last" body="Outgoing last." />
+            </div>
+        </div>
+    ),
+}
+
+const ReactionsDemo = () => {
+    const [reactions, setReactions] = useState<ReadonlyArray<G.MessageReaction>>([{ emoji: "❤️", count: 3, mine: 1 }, { emoji: "👍", count: 2, mine: false }])
+    const react = (emoji: string) => setReactions((current) => {
+        const found = current.find((reaction) => reaction.emoji === emoji)
+        if (found === undefined) return [...current, { emoji, count: 1, mine: 1 }]
+        return current.map((reaction) => reaction.emoji === emoji ? { ...reaction, count: reaction.count + 1, mine: (typeof reaction.mine === "number" ? reaction.mine : reaction.mine ? 1 : 0) + 1 } : reaction)
+    })
+    return (
+        <div style={{ display: "grid", gap: "2.5rem", maxWidth: "40rem", paddingBlock: "3rem" }}>
+            <G.MessageBubble author="Linh" avatar={<G.Avatar name="Linh" size="sm" />} body="Hover (or long-press) for the toolbar; press the pill to add one more." reactions={reactions} onReact={react} onReply={noop} onShare={noop} />
+            <G.MessageBubble side="outgoing" body="Outgoing: the pill sits on the start corner." reactions={reactions} onReact={react} onReply={noop} />
+            <G.MessageCard author="Agent" avatar={<G.Avatar name="Agent" size="sm" />} title="Đơn hàng #1042" body="The same lifted card with the same pill." reactions={reactions} onReact={react} onShare={noop} />
+        </div>
+    )
+}
+
+/** ReactionBar (hover or long-press: six emoji, reply, share; arrow keys), ReactionPill (up to three emoji and the total; pressing adds the viewer's top reaction) and the burst. */
+export const Reactions: Story = { render: () => <ReactionsDemo /> }

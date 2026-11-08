@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.32.0 - 2026-11-09 - every surface on the page ground is a card; Messenger bubbles; reactions
+
+- Changed (default): THE CARD LAW (owner, 2026-11-09). `SurfaceCard` of every kind (and the form panels) draws a 1px `--separator`
+  border at the card radius with the card shadow (`--surface-shadow`); the standalone `DataTable` card, the `Section kind="list"`
+  frame and a framed `EmptyNotice` on the page ground draw the same edge and now the same shadow. A surface nested in a card,
+  pane, drawer, dialog or popover keeps the border and drops the shadow, so nothing is doubled. CSS only, no prop. Offset Pop keeps its
+  ink outline. `check:type` pins the border, the shadow and the nested rule.
+- Changed (default): a standalone DataTable sits in a card and keeps HeroUI's native look: the whole table is wrapped in
+  `.starci-core-data-table-card` (white, card radius, 1px separator border, card shadow) and the table is HeroUI's `primary` variant
+  inside it (the grey wrapper with the header row, the rows on a white rounded body). This reverts the 0.29 flat single frame. `surface="none"`
+  (full-bleed in a `SurfaceCard`) is unchanged; a card wrapper nested in a surface drops its shadow. The `single-child-card` lint and docs
+  now say the lone table is drawn as its own card.
+- Added: `MessageBubble groupPosition: "single" | "first" | "middle" | "last"` (also on `MessageCard`): Messenger grouping. A lone bubble is
+  fully rounded (18); where two bubbles of one sender touch the corner is squared (4): first squares the bottom corner on the sender's side,
+  middle both, last the top. Logical corners, so RTL mirrors. The avatar sits beside the last bubble (bottom-aligned), earlier bubbles keep an
+  avatar-width spacer, and the author line shows on single and first only. Outgoing bubbles mirror it on the end side and keep the brand fill.
+- Changed (default): an incoming bubble and a MessageCard are lifted like a card (1px separator border and the card shadow).
+- Added: reactions (the app persists): `MessageBubble` and `MessageCard` take `reactions: { emoji, count, mine: boolean | number }[]`, `onReact(emoji)`,
+  `onReply()`, `onShare()` and `reactionLabels` (Vietnamese by default). The hover or long-press toolbar (`role="toolbar"`, labelled, arrow keys,
+  Home and End; the six emoji, reply, share; a hovered emoji scales up), the pill on the bubble's bottom corner (end corner of an incoming
+  bubble, start corner of an outgoing one; up to three emoji and the total; pressing it adds one more of the viewer's top reaction, so a person
+  may tap many times; accessible name such as "❤️ 5, bạn đã thả 2") and the burst (a floating emoji, about 1s, transform and opacity only, none
+  under `prefers-reduced-motion`, several taps spawn several). Stories `BubbleGrouping`, `Reactions`; `check:type` pins the corners and the parts.
+- Changed (default): the composer band (a `PaneSection as="footer"` or `rule="start"`) puts the row gap (12) between its divider and the first row
+  and between its rows.
+- Fixed: a ListBox row shows no focus ring after a mouse press (selection is the fill alone); the ring shows on keyboard focus only.
+- Fixed: the head band separator (0.31.0) now applies when the scroll band is any later sibling of the head, not only the next one
+  (a team chat head followed by other bands).
+
 ## 0.31.0 - 2026-11-09 - the final type scale; chat parts; spotlight
 
 - Changed (values): THE FINAL TYPE SCALE (owner, 2026-11-09; it replaces the 0.28 type roles). 14 for all UI text: body,

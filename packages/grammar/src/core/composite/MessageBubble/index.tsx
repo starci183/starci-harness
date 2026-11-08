@@ -2,10 +2,20 @@
 
 import { ErrorView, type ErrorData } from "../../loadingState.js"
 import { withRegionLoading } from "../../regionScope.js"
-import type { ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import type { NoChildren } from "../../tier.js"
+import { DEFAULT_REACTION_LABELS, ReactionBar, ReactionPill, topReaction, useReactionBursts, type MessageReaction, type MessageReactionLabels } from "./Reactions.js"
+
+export type { MessageReaction, MessageReactionLabels } from "./Reactions.js"
+
+/**
+ * Where a message stands in a run from one sender (Messenger grouping; the app computes it from the sender and the time gap). `single` (default): a lone
+ * bubble, fully rounded. `first`, `middle`, `last`: the corners where two bubbles of the run touch are squared (4), the rest stay 18; the avatar sits
+ * beside the `last` bubble and the earlier ones keep an avatar-width spacer. Outgoing bubbles mirror it on the end side.
+ */
+export type MessageBubbleGroupPosition = "single" | "first" | "middle" | "last"
 
 /** `incoming`: someone else wrote it (start side, the surface and its foreground). `outgoing`: the reader's own message (end side, the brand fill `--accent` with `--accent-foreground`). */
 export type MessageBubbleSide = "incoming" | "outgoing"
@@ -63,6 +73,18 @@ type MessageBubbleMessage = {
     readonly isHighlight?: boolean
     /** Anchor for links that jump to this message. */
     readonly id?: string
+    /** The bubble's place in a run from one sender; `single` when omitted. */
+    readonly groupPosition?: MessageBubbleGroupPosition
+    /** The emoji on this message. A pill overlaps the bubble's bottom corner (the end corner of an incoming one, the start corner of an outgoing one) with up to three emoji and the total. */
+    readonly reactions?: ReadonlyArray<MessageReaction>
+    /** The viewer picked an emoji in the hover toolbar, or pressed the pill (which sends the viewer's top reaction, so the count may grow by taps). The app persists. */
+    readonly onReact?: (emoji: string) => void
+    /** The toolbar's reply button; omitted, no reply button. */
+    readonly onReply?: () => void
+    /** The toolbar's share (forward) button; omitted, no share button. */
+    readonly onShare?: () => void
+    /** The words of the toolbar and the pill; Vietnamese when omitted. */
+    readonly reactionLabels?: MessageReactionLabels
     readonly hasAvatar?: never
 }
 
@@ -122,6 +144,76 @@ const SkeletonBubble = ({ side, hasAvatar, lines = 2 }: { readonly side: Message
     </div>
 )
 
+/** One resolved message (the part that holds state: the long press, the reaction bursts). */
+const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
+    const { body, side = "incoming", tone = "brand", author, avatar, meta, status, actions, actionsPlacement = "floating", measure = "standard", content = "text", footer, isHighlight = false, id, groupPosition = "single", reactions, onReact, onReply, onShare, reactionLabels = DEFAULT_REACTION_LABELS } = props
+    const actionsToolbar = actions == null ? null : <div className="starci-core-message-bubble-actions" data-grammar-bubble-actions="toolbar"><ButtonPlacementProvider placement="chrome">{actions}</ButtonPlacementProvider></div>
+    const hasHead = (author != null || meta != null || status != null) && (groupPosition === "single" || groupPosition === "first")
+    const hasReactions = reactions !== undefined && reactions.some((reaction) => reaction.count > 0)
+    const hasToolbar = onReact !== undefined || onReply !== undefined || onShare !== undefined
+    const { layer, burst } = useReactionBursts()
+    const [isPicking, setIsPicking] = useState(false)
+    const press = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+    const root = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        if (!isPicking) return undefined
+        const close = (event: Event) => { if (!(event.target instanceof Node) || root.current?.contains(event.target) !== true) setIsPicking(false) }
+        document.addEventListener("pointerdown", close)
+        return () => document.removeEventListener("pointerdown", close)
+    }, [isPicking])
+    useEffect(() => () => { clearTimeout(press.current) }, [])
+    const react = (emoji: string) => { burst(emoji); onReact?.(emoji); setIsPicking(false) }
+    const cancelPress = () => { clearTimeout(press.current) }
+    const avatarVisible = groupPosition === "single" || groupPosition === "last"
+    return (
+        <div
+            ref={root}
+            {...(id === undefined ? {} : { id })}
+            className="starci-core-message-bubble"
+            data-component="MessageBubble"
+            data-tier="composite"
+            data-contract="SURFACE-3 SURFACE-4 RADIUS-6"
+            data-grammar-bubble-side={side}
+            data-grammar-bubble-tone={side === "outgoing" ? tone : "brand"}
+            data-grammar-bubble-highlight={isHighlight ? "true" : "false"}
+            data-grammar-bubble-footer={footer == null ? "false" : "true"}
+            data-grammar-bubble-measure={measure}
+            data-grammar-bubble-content={content === "card" ? "card" : undefined}
+            data-grammar-bubble-actions-placement={actions == null ? undefined : actionsPlacement}
+            data-grammar-bubble-group={groupPosition}
+            data-grammar-bubble-reactions={hasReactions ? "true" : undefined}
+            data-grammar-bubble-toolbar={hasToolbar ? "true" : undefined}
+            data-grammar-bubble-picking={isPicking ? "true" : undefined}
+            data-grammar-bubble-avatar={avatar == null ? undefined : "true"}
+            onKeyDown={(event) => { if (event.key === "Escape") setIsPicking(false) }}
+        >
+            {avatar == null ? null : <div className="starci-core-message-bubble-avatar" {...(avatarVisible ? {} : { "aria-hidden": true, "data-grammar-avatar-spacer": "true" })}>{avatar}</div>}
+            <div className="starci-core-message-bubble-stack">
+                {hasHead ? (
+                    <div className="starci-core-message-bubble-head">
+                        {author == null ? null : <span className="starci-core-message-bubble-author">{author}</span>}
+                        {status}
+                        {meta == null ? null : <span className="starci-core-message-bubble-meta">{meta}</span>}
+                    </div>
+                ) : null}
+                {hasToolbar ? <ReactionBar labels={reactionLabels} onReact={onReact === undefined ? undefined : react} onReply={onReply} onShare={onShare} /> : null}
+                <div
+                    className="starci-core-message-bubble-body"
+                    onPointerDown={hasToolbar ? (event) => { if (event.pointerType === "mouse") return; cancelPress(); press.current = setTimeout(() => setIsPicking(true), 450) } : undefined}
+                    onPointerUp={hasToolbar ? cancelPress : undefined}
+                    onPointerCancel={hasToolbar ? cancelPress : undefined}
+                    onPointerMove={hasToolbar ? cancelPress : undefined}
+                >{body}</div>
+                {hasReactions ? <ReactionPill reactions={reactions} labels={reactionLabels} onPress={() => { const emoji = topReaction(reactions); if (emoji !== undefined) react(emoji) }} /> : null}
+                {layer}
+                {footer == null ? null : <div className="starci-core-message-bubble-footer">{footer}</div>}
+                {actions == null || actionsPlacement === "inline" ? null : actionsToolbar}
+            </div>
+            {actions == null || actionsPlacement !== "inline" ? null : actionsToolbar}
+        </div>
+    )
+}
+
 /**
  * One message of a conversation. The app owns the thread (order, grouping, day dividers with `Divider label`, scroll with
  * `VerticalScrollRegion`); this owns the anatomy of a single message: avatar column, author line, the bubble face and its
@@ -143,40 +235,7 @@ const MessageBubbleInner = (props: MessageBubbleProps) => {
         return <SkeletonBubble side={props.side} hasAvatar={props.hasAvatar === true} />
     }
     if (props.error !== undefined) return <div className="starci-core-message-bubble-thread" data-grammar-message-error="true"><ErrorView error={props.error} /></div>
-    const { body, side = "incoming", tone = "brand", author, avatar, meta, status, actions, actionsPlacement = "floating", measure = "standard", content = "text", footer, isHighlight = false, id } = props
-    const actionsToolbar = actions == null ? null : <div className="starci-core-message-bubble-actions" data-grammar-bubble-actions="toolbar"><ButtonPlacementProvider placement="chrome">{actions}</ButtonPlacementProvider></div>
-    const hasHead = author != null || meta != null || status != null
-    return (
-        <div
-            {...(id === undefined ? {} : { id })}
-            className="starci-core-message-bubble"
-            data-component="MessageBubble"
-            data-tier="composite"
-            data-contract="SURFACE-3 SURFACE-4 RADIUS-6"
-            data-grammar-bubble-side={side}
-            data-grammar-bubble-tone={side === "outgoing" ? tone : "brand"}
-            data-grammar-bubble-highlight={isHighlight ? "true" : "false"}
-            data-grammar-bubble-footer={footer == null ? "false" : "true"}
-            data-grammar-bubble-measure={measure}
-            data-grammar-bubble-content={content === "card" ? "card" : undefined}
-            data-grammar-bubble-actions-placement={actions == null ? undefined : actionsPlacement}
-        >
-            {avatar == null ? null : <div className="starci-core-message-bubble-avatar">{avatar}</div>}
-            <div className="starci-core-message-bubble-stack">
-                {hasHead ? (
-                    <div className="starci-core-message-bubble-head">
-                        {author == null ? null : <span className="starci-core-message-bubble-author">{author}</span>}
-                        {status}
-                        {meta == null ? null : <span className="starci-core-message-bubble-meta">{meta}</span>}
-                    </div>
-                ) : null}
-                <div className="starci-core-message-bubble-body">{body}</div>
-                {footer == null ? null : <div className="starci-core-message-bubble-footer">{footer}</div>}
-                {actions == null || actionsPlacement === "inline" ? null : actionsToolbar}
-            </div>
-            {actions == null || actionsPlacement !== "inline" ? null : actionsToolbar}
-        </div>
-    )
+    return <ResolvedMessageBubble {...props} />
 }
 
 /**

@@ -244,9 +244,9 @@ A card (`SurfaceCard`) groups two or more heterogeneous parts (figures, a list, 
 search, filters, paging) or head actions (`labelEnd`). A table, a list or a chart standing alone IS the surface: its title sits above it as
 a section head (`Section title`) and one caption sits below it (`Section caption`, muted 14). A lone `DataTable`, list, chart or
 `Section kind="list"` is never wrapped in a card, and `SurfaceCard kind="table"|"list"` carries zones. A standalone `DataTable` (`surface="card"`,
-the default) draws one frame: a 1px separator border, the card radius, the surface ground, clipped, the header row inside it, with no inner
-grey band and no inner white body; inside a `SurfaceCard` the table goes full-bleed with no frame of its own (`surface="none"`, as
-`kind="table"` does). Every `Section kind="list"` draws the same one frame wherever it stands (BOUNDARY-7). Measure: lint
+the default) sits in its own card (white, the card radius, a 1px separator border and the card shadow) and keeps HeroUI's native look inside it
+(the grey wrapper with the header row, the rows on a white rounded body; 0.32.0 reverts the 0.29 flat frame); inside a `SurfaceCard` the table goes full-bleed with no frame of its own (`surface="none"`, as
+`kind="table"` does). Every `Section kind="list"` draws the same card edge (a shadow only on the page ground) wherever it stands (BOUNDARY-7). Measure: lint
 `single-child-card` in `@starci/eslint-grammar-core` (error). See [components/card.md](components/card.md) and
 [components/list-table.md](components/list-table.md).
 

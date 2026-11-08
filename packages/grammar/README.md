@@ -664,8 +664,7 @@ suggestion pattern (lint `suggestion-buttons`). An arrow typed in a label or pas
 
 **The single-child-card law.** A card groups two or more different parts (figures, a list, actions) or carries zones
 (tabs, search, head actions). A table, list or chart standing alone is the surface: a `Section` titles it (`title`) and one
-muted line goes under it (`Section caption`). A standalone `DataTable` draws one frame (edge, card radius, its header row
-inside); a `Section kind="list"` draws the same frame. Lint `single-child-card` refuses the card around a lone one. Text
+muted line goes under it (`Section caption`). A standalone `DataTable` sits in its own card (edge, card radius, card shadow; HeroUI's native look inside); a `Section kind="list"` draws the same card edge. Lint `single-child-card` refuses the card around a lone one. Text
 in a card zone (a selection count, a filter caption, a hint) is sm 13.
 
 **The surface-in-surface law.** A list of rows inside a surface (a card body, a drawer or dialog, a pane band, a rail or

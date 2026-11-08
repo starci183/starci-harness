@@ -5,7 +5,7 @@ import { Button } from "../../leaf/Button/index.js"
 import { Text } from "../../leaf/Text/index.js"
 import { Cluster } from "../../frame/Cluster/index.js"
 import { DescriptionList, type DescriptionListItem } from "../DescriptionList/index.js"
-import { MessageBubble, type MessageBubbleMeasure } from "../MessageBubble/index.js"
+import { MessageBubble, type MessageBubbleGroupPosition, type MessageBubbleMeasure, type MessageReaction, type MessageReactionLabels } from "../MessageBubble/index.js"
 import type { NoChildren } from "../../tier.js"
 
 /**
@@ -40,6 +40,14 @@ export type MessageCardProps = NoChildren & MessageCardBody & {
     /** The card's widest reach; `standard` (40rem or 85%) when omitted, `wide` (70%) for a chat stack that uses it. */
     readonly measure?: MessageBubbleMeasure
     readonly id?: string
+    /** As `MessageBubble groupPosition`. */
+    readonly groupPosition?: MessageBubbleGroupPosition
+    /** As `MessageBubble reactions`, `onReact`, `onReply`, `onShare` and `reactionLabels`: the same lifted card, pill and toolbar. */
+    readonly reactions?: ReadonlyArray<MessageReaction>
+    readonly onReact?: (emoji: string) => void
+    readonly onReply?: () => void
+    readonly onShare?: () => void
+    readonly reactionLabels?: MessageReactionLabels
 }
 
 const ORDER = { primary: 0, neutral: 1, open: 2 } as const
@@ -56,7 +64,7 @@ const ActionButton = ({ action }: { readonly action: MessageCardAction }) => {
  * nested key/value list through `details`), then the actions row (primary first, an `open` action with the arrow last), then the
  * meta line at xs. The card is capped at the bubble's measure with the avatar at the start, so an app needs no CSS of its own.
  */
-export const MessageCard = ({ author, avatar, title, chip, body, details, actions, meta, measure, id }: MessageCardProps) => {
+export const MessageCard = ({ author, avatar, title, chip, body, details, actions, meta, measure, id, groupPosition, reactions, onReact, onReply, onShare, reactionLabels }: MessageCardProps) => {
     const ordered = actions === undefined ? [] : [...actions].sort((a, b) => ORDER[a.kind ?? "neutral"] - ORDER[b.kind ?? "neutral"])
     return (
         <MessageBubble
@@ -65,6 +73,12 @@ export const MessageCard = ({ author, avatar, title, chip, body, details, action
             {...(author === undefined ? {} : { author })}
             {...(avatar === undefined ? {} : { avatar })}
             {...(measure === undefined ? {} : { measure })}
+            {...(groupPosition === undefined ? {} : { groupPosition })}
+            {...(reactions === undefined ? {} : { reactions })}
+            {...(onReact === undefined ? {} : { onReact })}
+            {...(onReply === undefined ? {} : { onReply })}
+            {...(onShare === undefined ? {} : { onShare })}
+            {...(reactionLabels === undefined ? {} : { reactionLabels })}
             body={
                 <div className="starci-core-message-card" data-component="MessageCard" data-tier="composite" data-contract="GAP-2 PADDING-4">
                     <div className="starci-core-message-card-head">

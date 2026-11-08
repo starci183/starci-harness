@@ -997,8 +997,25 @@
         --starci-core-row-inset: var(--grammar-row-gap) var(--grammar-card-padding-inline);
         /* Stat strip cells in a card are boxes of their own: the card padding on every side. */
         --starci-core-strip-cell-inset: var(--grammar-card-padding-block) var(--grammar-card-padding-inline);
-        border: 0;
+        /* 0.32.0: a card on the page ground is the white surface at the card radius with a 1px separator edge AND the card shadow. */
+        border: 1px solid var(--separator);
         box-shadow: var(--surface-shadow);
+    }
+
+    /*
+     * THE CARD LAW (owner, 2026-11-09): every surface on the page ground is a card: surface ground, the card radius, a 1px
+     * `--separator` edge and the card shadow (`--surface-shadow`). SurfaceCard and its form panels draw it above; the standalone
+     * list frame, the standalone DataTable and a framed EmptyNotice take the shadow here (their edge and radius are theirs).
+     * A surface nested inside a card, a pane, a drawer, a dialog or a popover keeps the edge and loses the shadow: never two
+     * depths, never a doubled edge (no wrapper border is added; the nested surface's own is the only one).
+     */
+    .starci-core-section-list,
+    .starci-core-empty-notice:not([data-grammar-error-layout]):not(.starci-core-surface .starci-core-empty-notice) {
+        box-shadow: var(--surface-shadow);
+    }
+
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) :is(.starci-core-surface, .starci-core-section-list, .starci-core-data-table-card, .starci-core-empty-notice) {
+        box-shadow: none;
     }
 
     .starci-core-surface-content {
@@ -3200,6 +3217,15 @@
     .starci-core-pane-section[data-grammar-pane-section-rule="start"] { border-block-start: 1px solid var(--separator); }
 
     /*
+     * The composer band (a pinned footer or a band with a start rule: the suggestions row, then the input row): the row gap (12) stands
+     * between the divider and the first row and between the rows, so nothing is glued to the line.
+     */
+    .starci-core-pane-section:is(footer, [data-grammar-pane-section-rule="start"]) {
+        padding-block-start: var(--grammar-row-gap);
+        gap: var(--grammar-row-gap);
+    }
+
+    /*
      * A tab strip that ends a band: the band hosts the line (the same host mode as a card zone or the page header band). The band's
      * bottom edge is the ONE full-width --separator (the band is the pane's full width, the inset is its padding), the strip's own short
      * line is not drawn, nothing pads under the strip, and the selected indicator lies on the band's edge. When that band is the last of its
@@ -3223,7 +3249,7 @@
      * A head band (a PaneSection as="header", or one holding a PaneHeader) that stands above a scroll band (a chat thread, a list) ends in
      * one full-width --separator line; its block-end padding equals its block-start inset so the title is centred between the pane edge and the line.
      */
-    .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):has(+ .starci-core-pane-section[data-grammar-pane-section-scroll="true"]) {
+    .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):has(~ .starci-core-pane-section[data-grammar-pane-section-scroll="true"]) {
         padding-block-end: var(--starci-core-pane-inset-block-start);
         border-block-end: 1px solid var(--separator);
     }
@@ -4047,6 +4073,7 @@
 
     /* An empty notice on the page itself (not inside a surface) is content: one --surface card at the surface radius, never bare text on the tinted page. */
     .starci-core-empty-notice:not([data-grammar-error-layout]):not(.starci-core-surface .starci-core-empty-notice) {
+        border: 1px solid var(--separator);
         border-radius: var(--starci-core-surface-radius);
         background: var(--surface);
     }
@@ -5258,8 +5285,6 @@
     .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
         align-self: stretch;
         padding: var(--grammar-inset-card);
-        border-start-start-radius: var(--grammar-radius-md);
-        border: 1px solid var(--border);
         white-space: normal;
     }
 
@@ -5286,7 +5311,6 @@
         max-width: 100%;
         padding: 0.5rem 0.75rem;
         border-radius: var(--grammar-radius-md);
-        border-start-start-radius: 0;
         background: var(--surface);
         color: var(--surface-foreground);
         font-size: var(--grammar-text-md);
@@ -5301,8 +5325,6 @@
      * and a muted Text stay readable on the solid fill; a link keeps its underline so it is not told by colour alone.
      */
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body {
-        border-start-start-radius: var(--grammar-radius-md);
-        border-start-end-radius: 0;
         background: var(--accent);
         color: var(--accent-foreground);
     }
@@ -5326,6 +5348,139 @@
     .starci-core-message-bubble[data-grammar-bubble-highlight="true"] .starci-core-message-bubble-body {
         outline: 2px solid var(--focus);
         outline-offset: 2px;
+    }
+
+    /*
+     * THE BUBBLE SHAPE (Messenger grouping, owner 2026-11-09). A lone bubble is fully rounded (18). Where two bubbles of one sender touch the
+     * corner is squared (4): the first of a run squares its bottom corner on the sender's side, a middle one both, the last its top. The sender's
+     * side is the start for an incoming bubble and the end for an outgoing one; logical corners, so RTL mirrors. The avatar sits beside the last
+     * bubble of the run, bottom-aligned; the earlier bubbles keep an avatar-width spacer. An incoming bubble (and a MessageCard) is lifted like
+     * a card: a 1px separator border and the card shadow.
+     */
+    .starci-core-message-bubble {
+        --grammar-bubble-radius: 1.125rem;
+        --grammar-bubble-tail: 0.25rem;
+    }
+
+    .starci-core-message-bubble[data-grammar-bubble-avatar="true"] { align-items: flex-end; }
+    .starci-core-message-bubble[data-grammar-bubble-avatar="true"][data-grammar-bubble-reactions="true"] > .starci-core-message-bubble-avatar { margin-block-end: 0.75rem; }
+    .starci-core-message-bubble-avatar[data-grammar-avatar-spacer="true"] { visibility: hidden; pointer-events: none; }
+
+    .starci-core-message-bubble .starci-core-message-bubble-body { border-radius: var(--grammar-bubble-radius); }
+
+    .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body,
+    .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
+        border: 1px solid var(--separator);
+        background: var(--surface);
+        box-shadow: var(--surface-shadow);
+    }
+
+    .starci-core-message-bubble[data-grammar-bubble-side="incoming"]:is([data-grammar-bubble-group="first"], [data-grammar-bubble-group="middle"]) .starci-core-message-bubble-body { border-end-start-radius: var(--grammar-bubble-tail); }
+    .starci-core-message-bubble[data-grammar-bubble-side="incoming"]:is([data-grammar-bubble-group="middle"], [data-grammar-bubble-group="last"]) .starci-core-message-bubble-body { border-start-start-radius: var(--grammar-bubble-tail); }
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"]:is([data-grammar-bubble-group="first"], [data-grammar-bubble-group="middle"]) .starci-core-message-bubble-body { border-end-end-radius: var(--grammar-bubble-tail); }
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"]:is([data-grammar-bubble-group="middle"], [data-grammar-bubble-group="last"]) .starci-core-message-bubble-body { border-start-end-radius: var(--grammar-bubble-tail); }
+
+    /* --- Reactions: the hover toolbar, the pill on the bubble's bottom corner and the burst. --- */
+    .starci-core-message-bubble[data-grammar-bubble-reactions="true"] > .starci-core-message-bubble-stack { margin-block-end: 0.75rem; }
+
+    .starci-core-reaction-bar {
+        position: absolute;
+        z-index: 2;
+        inset-block-start: -2.75rem;
+        display: flex;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+        padding: var(--grammar-identity-gap);
+        border: 1px solid var(--separator);
+        border-radius: var(--grammar-radius-pill);
+        background: var(--surface);
+        box-shadow: var(--surface-shadow);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity var(--starci-core-motion-duration) var(--starci-core-motion-easing), visibility var(--starci-core-motion-duration) var(--starci-core-motion-easing);
+    }
+
+    .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-reaction-bar { inset-inline-start: 0; }
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-reaction-bar { inset-inline-end: 0; }
+    /* The bridge between the bubble and its toolbar, so the hover is not lost crossing the gap. */
+    .starci-core-reaction-bar::after { content: ""; position: absolute; inset-inline: 0; inset-block-start: 100%; block-size: 0.75rem; }
+
+    .starci-core-message-bubble:hover .starci-core-reaction-bar,
+    .starci-core-message-bubble:focus-within .starci-core-reaction-bar,
+    .starci-core-message-bubble[data-grammar-bubble-picking="true"] .starci-core-reaction-bar {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .starci-core-reaction-bar-emoji,
+    .starci-core-reaction-bar-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        inline-size: 2rem;
+        block-size: 2rem;
+        padding: 0;
+        border: 0;
+        border-radius: var(--grammar-radius-pill);
+        background: transparent;
+        color: var(--muted);
+        font-size: var(--grammar-text-2xl);
+        line-height: var(--grammar-leading-none);
+        cursor: pointer;
+    }
+
+    .starci-core-reaction-bar-emoji { transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing); }
+    .starci-core-reaction-bar-emoji:hover,
+    .starci-core-reaction-bar-emoji:focus-visible { transform: scale(1.35); }
+    .starci-core-reaction-bar-action:hover { background: var(--default); color: var(--foreground); }
+    .starci-core-reaction-bar :is(button):focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+    .starci-core-reaction-pill {
+        position: absolute;
+        z-index: 1;
+        inset-block-end: -0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        block-size: 1.5rem;
+        padding-inline: 0.5rem;
+        border: 1px solid var(--separator);
+        border-radius: var(--grammar-radius-pill);
+        background: var(--surface);
+        box-shadow: var(--surface-shadow);
+        color: var(--foreground);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+        font-variant-numeric: tabular-nums;
+        cursor: pointer;
+    }
+
+    .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-reaction-pill { inset-inline-end: 0.5rem; }
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-reaction-pill { inset-inline-start: 0.5rem; }
+    .starci-core-reaction-pill[data-grammar-reaction-mine="true"] { border-color: var(--accent); }
+    .starci-core-reaction-pill:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+    .starci-core-reaction-pill-emoji { display: inline-flex; }
+
+    .starci-core-reaction-burst-layer { position: absolute; inset: 0; z-index: 3; overflow: visible; pointer-events: none; }
+    .starci-core-reaction-burst {
+        position: absolute;
+        inset-block-end: -0.5rem;
+        inset-inline-end: 1rem;
+        font-size: var(--grammar-text-3xl);
+        line-height: var(--grammar-leading-none);
+        will-change: transform, opacity;
+        animation: starci-core-reaction-rise var(--grammar-loop-burst) var(--grammar-loop-echo-easing) forwards;
+    }
+
+    @keyframes starci-core-reaction-rise {
+        from { opacity: 1; transform: translate(0, 0) scale(0.6) rotate(0deg); }
+        to { opacity: 0; transform: translate(var(--starci-reaction-drift), var(--grammar-reaction-rise)) scale(1.1) rotate(var(--starci-reaction-turn)); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-reaction-burst-layer { display: none; }
+        .starci-core-reaction-bar, .starci-core-reaction-bar-emoji { transition: none; }
+        .starci-core-reaction-bar-emoji:hover, .starci-core-reaction-bar-emoji:focus-visible { transform: none; }
     }
 
     /*

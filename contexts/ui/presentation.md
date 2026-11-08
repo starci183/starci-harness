@@ -319,7 +319,7 @@ grammar's treatment, resolved from context; the app never passes a field variant
 | BOUNDARY-3 | one parent declaration for a uniform set | no row can miss or add a line |
 | BOUNDARY-4 | inline-axis seams | exist only at the width where the columns exist |
 | BOUNDARY-5 | an outline | belongs to a grammar object (media frame, code block, a quote's ground) |
-| BOUNDARY-6 | elevation | a card is raised and has one depth; a surface never stands inside another, so no raised nested edge exists |
+| BOUNDARY-6 | elevation | a card on the page ground is raised (the card shadow) and wears a 1px `separator` border at the card radius; a surface nested in a card keeps the border and drops the shadow, so there is one depth and no doubled edge |
 | BOUNDARY-7 | a list of rows inside a surface | a nested surface, not a stack of dividers: the rows of a card body, a Drawer or Dialog body, a `PaneSection` or a rail sit in a 1px `separator` border at the card radius, clipped, rows divided by lines (n-1); `Section kind="list"` draws it by itself, and a hand-made list (blocks divided by `Divider`) is refused. Lint: `starci-grammar/surface-in-surface` |
 
 Elevation is the family's (contract: the card's edge).

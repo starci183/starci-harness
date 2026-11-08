@@ -41,6 +41,16 @@ Chat surroundings (Grammar 0.31.0): an `EmptyNotice` inside a thread (a `PaneSec
 chat or list pane (a `PaneSection as="header"` above a `scroll` band) ends in one full-width separator, its block-end padding
 equal to its block-start inset. Stories `EmptyNoticeInThread`, `ChatPaneHeadLine`.
 
+Grouping and reactions (Grammar 0.32.0). `groupPosition` (`single` default, `first`, `middle`, `last`; the app computes it from the sender
+and the time gap) shapes the bubble like Messenger: a lone bubble is rounded 18, only the corners where two bubbles of one sender touch are 4
+(first: bottom on the sender's side; middle: both; last: top), logical corners so RTL mirrors; the avatar sits beside the last bubble and the
+earlier ones keep a spacer; the author line shows on single and first. An incoming bubble and a `MessageCard` are lifted (1px `separator` border
+plus the card shadow); an outgoing bubble keeps the brand fill. Reactions are presentation only: `reactions` (`{ emoji, count, mine }`), `onReact`,
+`onReply`, `onShare`. The hover or long-press toolbar is a labelled `toolbar` with arrow keys (six emoji, reply, share); the pill on the bottom
+corner shows up to three emoji and the total and adds the viewer's top reaction on press; each tap bursts floating emoji (none under reduced
+motion). The composer band (a `PaneSection as="footer"` or `rule="start"`) keeps the row gap between its divider and its rows. Stories
+`BubbleGrouping`, `Reactions`.
+
 ## Variants
 None. `side` is whose message it is, not a style.
 

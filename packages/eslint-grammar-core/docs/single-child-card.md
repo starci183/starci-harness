@@ -2,7 +2,7 @@
 
 Law module: `single-child-card.ts`. Knowledge: `knowledge/ui/presentation/grammar-laws.yaml#SINGLE-CHILD-CARD`. Finding code: `FE_SINGLE_CHILD_CARD`.
 
-A card (`SurfaceCard`) groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions). A table, list or chart standing alone IS the surface: its title sits above it as a `Section` head and one line sits under it as `Section caption` (muted, sm). The Grammar draws a standalone `DataTable` (`surface="card"`) and every `Section kind="list"` as one frame (border, card radius), so a card around either is a second frame.
+A card (`SurfaceCard`) groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions). A table, list or chart standing alone IS the surface: its title sits above it as a `Section` head and one line sits under it as `Section caption` (muted, sm). The Grammar draws a standalone `DataTable` (`surface="card"`) and every `Section kind="list"` as its own card (border, card radius, card shadow; the table keeps HeroUI's native look inside), so a card around either is a second card.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline.
 

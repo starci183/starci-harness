@@ -115,10 +115,10 @@ export type DataTableProps<Row extends DataTableRow> = NoChildren & DataTableRow
     /** Container inline size in px below which `low` priority columns collapse into the row. Default 640. */
     readonly collapseBelow?: number
     /**
-     * `card` (default): the table standing alone IS the surface: ONE frame (a 1px separator edge, the card radius, the surface ground,
-     * clipped) with its heading row inside it; no grey band and no inner rounded body (the single-child-card law: never wrap a lone
-     * table in a SurfaceCard; title it with a Section head and put one `caption` under it). `none`: plain hairline rows under a muted
-     * heading with no container paint, for a table inside a card (full bleed) that must not be a surface inside a surface.
+     * `card` (default): the table standing alone sits in ONE card (white, the card radius, a 1px separator edge and the card shadow) and keeps
+     * HeroUI's native look inside it: the grey wrapper with the heading row on it and the rows on a white rounded body (the single-child-card
+     * law: never wrap a lone table in a SurfaceCard; title it with a Section head and put one `caption` under it). `none`: plain hairline
+     * rows under a muted heading with no container paint, for a table inside a card (full bleed) that must not be a surface inside a surface.
      */
     readonly surface?: "card" | "none"
 }
@@ -301,11 +301,11 @@ export const DataTable = <Row extends DataTableRow>({
         event.stopPropagation()
         if (!event.repeat) action()
     }
-    return (
+    const table = (
         <HeroTable
             aria-busy={isLoading || undefined}
             className="starci-core-data-table"
-            variant="secondary"
+            variant={surface === "card" ? "primary" : "secondary"}
             data-grammar-table-surface={surface}
             data-component="DataTable"
             data-tier="branch"
@@ -440,4 +440,7 @@ export const DataTable = <Row extends DataTableRow>({
             </HeroTable.ScrollContainer>
         </HeroTable>
     )
+    // A table standing alone sits in ONE card (white, card radius, 1px separator edge, card shadow) and keeps HeroUI's native look inside it
+    // (the grey wrapper with the header row, the rows on a white rounded body). Nested in a surface the card drops its shadow (CSS).
+    return surface === "card" ? <div className="starci-core-data-table-card" data-grammar-table-card="true">{table}</div> : table
 }
