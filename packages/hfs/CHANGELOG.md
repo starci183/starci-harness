@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.3.1 - 2026-11-08
+
+- Changed: `STACKS_PORT_PUBLISHED` accepts `mode: host` for the declared ingress service (the component named by `ingress.component`) on published ports 80 and 443, besides `mode: ingress`. Ingress mode goes through the Swarm routing mesh, which rewrites the client source IP, so every client reaches the app as one address and a per-IP rate limit becomes one site-wide bucket; host mode keeps the real client IP behind the single proxy hop. Every other service keeps the old rule: it publishes nothing. A host-mode ingress listens on every node it runs on, so the same code is raised unless the ingress is `deploy.mode: global` or carries a `deploy.placement.constraints` entry.
+- Specs: `src/hfs-stacks-swarm.spec.mts` (the ingress in host mode on 80/443 passes with a constraint or in global mode, fails replicated and unpinned; the ingress-mode case still passes; a non-ingress service in host mode fails). Docs: `contexts/project/stacks.md` "PROJECT-STACKS-4", R266 in the rule book.
+
 ## 6.3.0 - 2026-11-08
 
 - Changed: the managed `cache-verify.yml` (slot `app.ci-cache-verify`) is sharded like `ci.yml`: a matrix with one job per family the cache holds records of (`hfs`, `secrets`, `format`, `db`, `wiring`, `types`, `test`, `build`) and the `lint` family once per side, each `starci app check --env prod --fresh --gate <family>`, then asserts the cache folder is unchanged; a `verdict` job is green only when every shard is. Each job's timeout is `timeoutVerify` (the largest of the lint, test and build timeouts), so a nivo-sized app no longer runs one whole fresh check against 180 minutes. The workflow no longer skips a dispatch off the default branch: `workflow_dispatch` runs for the head of any branch, and the concurrency is per ref.

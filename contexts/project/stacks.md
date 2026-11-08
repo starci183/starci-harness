@@ -77,7 +77,11 @@ service sits on internal networks. The checker keys on the component's role and 
 image, so any digest-pinned supported reverse proxy serves.
 
 - dev: the ingress publishes on loopback only, `127.0.0.1:<port>:<port>`, never `0.0.0.0` and never a bare port.
-- vps: the ingress publishes 80 and 443 only. DNS is an owner-run prerequisite with its receipt; the ingress obtains
+- vps: the ingress publishes 80 and 443 only, in ingress mode or in host mode. Ingress mode goes through the Swarm routing mesh,
+  which rewrites the client source IP, so every client reaches the app as one address and a per-IP rate limit becomes one site-wide
+  bucket; host mode keeps the real client IP for per-IP limits behind the single proxy hop. Host mode publishes on every node the
+  ingress runs on, so a host-mode ingress is global mode or pinned by a placement constraint (`STACKS_PORT_PUBLISHED`); no other
+  service publishes in host mode. DNS is an owner-run prerequisite with its receipt; the ingress obtains
   and persists its certificate, and exposes a route only after the upstream is ready.
 - Web and api on different hosts (R337): the web server forwards the browser's Cookie header to the api, and the
   skeleton's passport sets its refresh cookie host-only unless `AUTH_COOKIE_DOMAIN` is set. A lite environment whose
