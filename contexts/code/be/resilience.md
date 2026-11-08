@@ -42,6 +42,7 @@ first, and processing it is an idempotent replay of the stored row. `platform/jo
   a resume; `inbox.claim(JOB_EFFECT_SOURCE, key, tx)` in the transaction of the effect) and a resumed job finds it claimed, a saga
   transition keeps its version fence.
 - A compensation is a step like any other and follows the same rules.
+- A step that only informs is a side step (BE-SAGA-5): its failure is recorded and alerted and the run goes on, never parked. A run a customer waits on tells the customer when it parks (BE-SAGA-6) and resumes on a short ladder of its own (BE-SAGA-7).
 - The parked row is the durable failure, so the broker's failed copy is a cache: BullMQ's `removeOnFail` keeps it bounded as an object
   literal naming `age` or `count` (`removeOnFail: { age: <seconds> }`, which keeps Redis bounded under `noeviction`) or keeps it
   (`false`); `true` or a bare count deletes a failed job at once and is refused.

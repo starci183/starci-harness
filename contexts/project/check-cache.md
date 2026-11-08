@@ -63,6 +63,7 @@ then says whether the committed records changed. There is no other cache mode an
 
 `--env local|prod` (default `local`) says what the run is judged fit for ([The operating procedure](#the-operating-procedure)): it softens no code check and
 changes no cache rule; it only decides whether the findings a local-registry loop alone causes are listed as report-only or block.
+A run in `--env local` that selects the `hfs` gate also reads the live dev stack (`pending-migrations` and `dead-letter-repeat`, [PROJECT-STACKS-10](stacks.md)); `--env prod` never does, and neither check is cached.
 
 `--gate <name>` (repeatable) is a job selector for the parallel jobs of the managed CI, where each job judges one family, and for
 the one-family loop a hook runs; a run with a selector judges those gates alone, with no parity families and no cache verdict.

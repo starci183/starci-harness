@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.103 - 2026-11-09
+
+- Changed: `starci app check --env local` judges the running dev stack too: `pending-migrations` (`STACK_PENDING_MIGRATIONS`, error) names the migration files the dev database has not applied and the command that applies them, and `dead-letter-repeat` (`STACK_DEAD_LETTER_REPEAT`, error) names a queue or job that dead-lettered more than once in the last 24 hours of the api log (`@starci/hfs` 6.5.1, R393 and R394). New saga rules BE-SAGA-5 (a side step does not block the run), BE-SAGA-6 (a customer whose run parked gets one honest holding line) and BE-SAGA-7 (an interactive run resumes on a short ladder), with the owed enforcers R390 to R392 (`contexts/code/be/saga.md`).
+
 ## 1.1.0-alpha.102 - Changed: one auth package for both editions: `@starci/auth` 0.6.0 carries the lite sign-in with pluggable providers (`server/providers`: Google, GitHub; a provider is one file) and the full OIDC tree (`@starci/auth/oidc`, issuer presets keycloak, google and github-actions for CI attestation); `@starci/auth-oidc` 0.3.0 is a deprecated re-export and the canon refuses it; `starci app codemod auth-merge [--execute]` moves a full app (R328: `@starci/auth/server` to integrations/passport, `@starci/auth/oidc` to integrations/keycloak).
 - 2026-11-09
 

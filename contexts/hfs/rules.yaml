@@ -2690,3 +2690,38 @@ rules:
       - STACKS_BASE_PORT_UNDECLARED
     enforcers:
       - {kind: hfs, id: stacks-local}
+  - id: R390
+    code: BE_SAGA_SIDE_STEP_BLOCKING
+    law: "A saga or graph step that only informs (an owner notice, a report, analytics, an echo into team chat) is declared non-blocking: its failure is recorded and alerted once and the run continues to its next step, and no step that answers the customer is ordered after a side step, so a failed notice never parks the run that serves the customer."
+    failureCodes:
+      - BE_SAGA_SIDE_STEP_BLOCKING
+    enforcers:
+      - {kind: hfs, id: saga-side-step, status: planned}
+  - id: R391
+    code: BE_SAGA_CUSTOMER_HOLDING_LINE
+    law: "A run triggered by a customer message that parks or dead-letters before the customer received a reply sends the customer one holding line, in the run's locale, through the same outbound channel as the reply and claimed idempotently under the run id, so a customer is never left silent and a resume or a second park never sends it twice."
+    failureCodes:
+      - BE_SAGA_CUSTOMER_HOLDING_LINE
+    enforcers:
+      - {kind: hfs, id: saga-holding-line, status: planned}
+  - id: R392
+    code: BE_SAGA_INTERACTIVE_RESUME_LADDER
+    law: "A parked run whose trigger is a customer message resumes on a short bounded ladder declared beside the run (about 1, 5 and 30 minutes, then it stays parked with its alert) and on the first boot of a new build, instead of waiting for the 15-minute sweep and its 30-minute floor; a batch run keeps the plain sweep."
+    failureCodes:
+      - BE_SAGA_INTERACTIVE_RESUME_LADDER
+    enforcers:
+      - {kind: hfs, id: saga-resume-ladder, status: planned}
+  - id: R393
+    code: STACK_PENDING_MIGRATIONS
+    law: "`starci app check --env local` compares the migration files of the repository with the history the running dev database recorded (supabase_migrations.schema_migrations) and fails on every file the database has not applied, naming the files and `starci app stack up --env <env> --execute`; a stack that is not running is not judged, and `--env prod` does not ask (check id `pending-migrations`)."
+    failureCodes:
+      - STACK_PENDING_MIGRATIONS
+    enforcers:
+      - {kind: hfs, id: pending-migrations}
+  - id: R394
+    code: STACK_DEAD_LETTER_REPEAT
+    law: "`starci app check --env local` reads the last 24 hours of the api log of the dev environment and fails on every queue or job that dead-lettered more than once, naming the queue, the job and the last error message; a missing log is not judged, and `--env prod` does not ask (check id `dead-letter-repeat`)."
+    failureCodes:
+      - STACK_DEAD_LETTER_REPEAT
+    enforcers:
+      - {kind: hfs, id: dead-letter-repeat}

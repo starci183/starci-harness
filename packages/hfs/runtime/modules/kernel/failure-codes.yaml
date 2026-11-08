@@ -4653,6 +4653,28 @@ HFS_DEV_BRANCH_MISSING:
   owner: supervisor
   kind: check-finding
 
+STACK_PENDING_MIGRATIONS:
+  title: "The dev database has not applied migration files the repository holds"
+  title_vi: "Database dev chưa áp dụng migration có trong repository"
+  meaning_vi: "starci app check --env local so sánh các file migration của repository (db/migrations, hoặc thư mục database.migrationsDir trong .starcistacks) với lịch sử đã áp dụng của database dev đang chạy (supabase_migrations.schema_migrations) và báo lỗi cho mỗi file chưa áp dụng. Code cần cột hoặc ràng buộc của migration đó sẽ lỗi lúc chạy (ví dụ vi phạm check constraint) dù mọi kiểm tra tĩnh đều xanh. Stack chưa chạy thì không có gì để so sánh và không báo lỗi."
+  causes_vi:
+    - "Migration mới được merge hoặc kéo về nhưng chưa chạy lại starci app stack up."
+    - "Một migration được thêm vào nhánh khác rồi chuyển sang nhánh này sau khi database dev đã được migrate."
+  nextStep_vi: "Chạy starci app stack up --env dev --execute (nó gọi starci app db migrate trên database dev và ghi biên nhận), rồi chạy lại starci app check."
+  owner: supervisor
+  kind: check-finding
+
+STACK_DEAD_LETTER_REPEAT:
+  title: "A queue or job dead-lettered more than once in the last 24 hours"
+  title_vi: "Một queue hoặc job bị dead-letter nhiều lần trong 24 giờ qua"
+  meaning_vi: "starci app check --env local đọc 24 giờ gần nhất của api.log của môi trường dev (state/stack/<app>/<env>/logs/api.log) và báo lỗi cho mỗi queue/job có hơn một dòng dead-letter (queue.delivery.dead-lettered hoặc event-bus.delivery.dead), kèm tên queue, job và thông điệp lỗi gần nhất. Một job cứ dead-letter lặp lại là lỗi mà không lần thử lại nào tự sửa được và không ai nhìn thấy nếu không đọc log."
+  causes_vi:
+    - "Job định kỳ (tick) ghi một dòng vi phạm ràng buộc, ví dụ khóa dedupe sai định dạng, nên lần chạy nào cũng chết."
+    - "Migration chưa áp dụng làm một câu lệnh của job luôn lỗi (xem STACK_PENDING_MIGRATIONS)."
+  nextStep_vi: "Đọc thông điệp lỗi trong finding, sửa nguyên nhân (mã hoặc migration), rồi resume hoặc requeue job (BE-RESILIENCE-2). Kiểm tra lại bằng starci app check sau khi log không còn dòng dead-letter mới."
+  owner: supervisor
+  kind: check-finding
+
 HFS_STARCIWORK_LITE_FORBIDDEN:
   title: "lite .starciwork holds only workspace.yaml and brand/"
   title_vi: "Work của lite"

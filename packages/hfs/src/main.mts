@@ -119,6 +119,8 @@ import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { newImages } from '../scaffold/image.mjs';
 import { ESLINT_HEAP_ENV, PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
 import { devBranchFinding } from '../runtime/scripts/hfs/dev-branch.mjs';
+import { liveStateFindings } from '../stack/local-live-checks.mjs';
+import { stackContext } from '../stack/context.mjs';
 import { COVERAGE_NEW_CODE, LINT_NEW_CODE, newCodeCoverageFindings, newCodeLintFinding, onChangedLine } from '../cache/new-code.mjs';
 import { committedLintCounts, rangeTouched, ratchetBase, ratchetFindings, sessionLintCounts, stagedTouched } from '../lint/ratchet.mjs';
 import { newCodeSince, runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
@@ -698,6 +700,12 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   // An app keeps main and dev (PROJECT-BRANCH-1): a whole run warns when it has no dev branch.
   const noDev = whole && session !== undefined ? devBranchFinding(repoRoot) : null;
   if (noDev !== null) extra.push(...withWhy([noDev] as Dynamic[], readWhy(skillRoot, [noDev.code])));
+  // `--env local` also judges the LIVE dev environment (PROJECT-STACKS-11): the migration files its database has not applied and the queues that keep dead-lettering. Never cached; not asked of `--env prod`.
+  if (env === 'local' && selected.has('hfs') && session !== undefined) {
+    const live = await liveStateFindings({ ctx: stackContext({ ...(io.stackIo ?? {}), cwd: repoRoot, env: io.env }), repoRoot });
+    extra.push(...withWhy(live.findings as Dynamic[], readWhy(skillRoot, [...new Set(live.findings.map((finding) => finding.code))])));
+    lines.push(...live.lines);
+  }
   const flushed = session?.flush();
   const verdicts = session === undefined ? [] : verdictFindings(session);
   // The cache verdict of a whole run: the committed cache is what this run on the tree writes, or the run is red (a push would carry stale records).
