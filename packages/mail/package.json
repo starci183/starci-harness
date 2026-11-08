@@ -1,6 +1,6 @@
 {
   "name": "@starci/mail",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Outgoing mail for a StarCi back end in one package: a NestJS module and a Mailer port over SMTP (nodemailer) with connect, greeting, socket and total timeouts, TLS required by default, address and message checks, coded errors, typed escaping render helpers returning { subject, text, html }, no environment read, and an in-memory outbox with the same checks.",
   "keywords": [
     "mail",
@@ -56,6 +56,7 @@
     "prepublishOnly": "npm test && npm run build"
   },
   "dependencies": {
+    "@starci/common": "1.0.0",
     "nodemailer": "10.1.7"
   },
   "peerDependencies": {
@@ -79,6 +80,7 @@
     "@nestjs/common": "11.2.5",
     "@nestjs/core": "11.2.5",
     "@nestjs/testing": "11.2.5",
+    "@starci/common": "file:../common",
     "@types/node": "22.20.4",
     "@types/nodemailer": "8.0.2",
     "eslint": "10.13.0",
