@@ -1,3 +1,5 @@
 export { DomainError, isDomainError } from "./error.ts"
 export type { DomainErrorInit, ErrorKind, ErrorParams } from "./error.ts"
+export { ok, refused, unwrapOutcome } from "./outcome.ts"
+export type { Outcome, OutcomeErrorClass, OutcomeOk, OutcomeRefused } from "./outcome.ts"
 export { isPlainRecord, isRecord } from "./record.ts"
