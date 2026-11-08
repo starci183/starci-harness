@@ -22,6 +22,15 @@
         --grammar-section-gap: 1.5rem;
         --grammar-region-gap: 2rem;
         /*
+         * THE PROXIMITY LAW (owner, 2026-11-09): inside any container, its children stand at least ONE step closer than
+         * the container stands to its siblings, so what belongs together reads together. Each container default below
+         * records how it holds the law. Two exemptions: the region step (32) is the ceiling, so the shell frames that
+         * separate regions (WorkspaceShell layout and primary, Page, Page body) all take it; and a box with its own edge
+         * (a card's surface, a board column's ground) groups its content by the edge, so its inner gap is compared with
+         * its own children, not with its siblings. The lint rule `@starci/grammar-core/gap-proximity` holds it in JSX and
+         * `node scripts/audit-gap.mts` measures it in a rendered page.
+         */
+        /*
          * Insets, by the level of the box. Every container (card, pane, overlay, notice, band) holds its content 12 in
          * on every side, so a closed box has equal block sides; a box inside a card takes the nested step (8); a large
          * empty or waiting region takes the open step (24). Extra separation belongs to the parent's gap.
@@ -168,12 +177,16 @@
         width: 100%;
     }
 
-    /* A section is blocks under one heading: its head, its filter and its body stand one section step apart (GAP-4). */
+    /*
+     * A section is blocks under one heading: its head, its filter and its body stand one row step apart (GAP-3). Proximity: a
+     * section stands a region step (32) from its siblings in the page body, so its own children take the row step (12), and
+     * a container inside it takes the inline step (8) or less. Was the section step (24) before 0.27.
+     */
     .starci-core-section {
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-section-gap);
+        gap: var(--grammar-row-gap);
         margin: 0;
         padding: 0;
     }
@@ -816,6 +829,11 @@
         }
     }
 
+    /*
+     * The card root holds its outside label, the surface and the note. Proximity: cards stand a row step apart in a Section
+     * (12), so the label sits one inline step (8) above its surface (was 12 before 0.27); in a cards Grid (peers 8 apart) it
+     * takes the identity step (4), so a label never reads as its neighbour's.
+     */
     .starci-core-surface-card {
         container-name: starci-core-surface;
         container-type: inline-size;
@@ -823,7 +841,11 @@
         min-width: 0;
         width: 100%;
         flex-direction: column;
-        gap: var(--grammar-row-gap);
+        gap: var(--starci-core-surface-card-gap, var(--grammar-inline-gap));
+    }
+
+    .starci-core-grid[data-grammar-grid-kind="cards"] > .starci-core-surface-card {
+        --starci-core-surface-card-gap: var(--grammar-identity-gap);
     }
 
     .starci-core-surface-label {
@@ -978,6 +1000,9 @@
     }
 
     /*
+     * Proximity: zones are divided by seams (one line, gap 0), and each zone spaces its own parts by the inline step at most,
+     * so a zone's parts are always closer than the zones are; nothing changed in 0.27.
+     *
      * Zones: typed bands above and below a card's body. The card is flush; the shell draws the ONE divider between neighbouring zones and
      * between a zone and the body (a header zone's bottom border, a footer zone's top border), never a Divider. The body's own inset is
      * the card padding for a body or tile card; a list, figures or accordion body touches the edge.
@@ -3004,7 +3029,11 @@
         --starci-core-pane-inset-block-end: 0px;
     }
 
-    /* The sections of a pane stack with the row gap between them (gap owns sibling distance). */
+    /*
+     * The sections of a pane stack with the row gap between them (gap owns sibling distance). Proximity: a band stands 12 from
+     * the next band, so a band's own children default to the inline step (8; `PaneSection gap`, was `row` before 0.27). A band
+     * alone in its pane (a head band, a lone scroll band) has no sibling, so `gap="row"` or `"section"` stays open to it.
+     */
     .starci-core-pane-stack {
         display: flex;
         min-height: 0;
@@ -3019,7 +3048,7 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap);
+        gap: var(--grammar-inline-gap);
         padding-inline: var(--starci-core-pane-inset-inline);
     }
 
@@ -3031,7 +3060,7 @@
         padding-block-end: var(--starci-core-pane-inset-block-end);
     }
 
-    .starci-core-pane-section[data-grammar-pane-section-gap="inline"] { gap: var(--grammar-inline-gap); }
+    .starci-core-pane-section[data-grammar-pane-section-gap="row"] { gap: var(--grammar-row-gap); }
     .starci-core-pane-section[data-grammar-pane-section-gap="section"] { gap: var(--grammar-section-gap); }
 
     /* rule="start": a hairline across the block-start edge of the band (R4-27, a pinned decision bar). */
@@ -3123,15 +3152,16 @@
     .starci-core-pane-section[data-grammar-pane-section-scroll-align="end"] > .starci-core-pane-section-content { justify-content: flex-end; }
     .starci-core-pane-section[data-grammar-pane-section-scroll-align="center"] > .starci-core-pane-section-content { justify-content: center; }
 
+    /* The scroll band's content takes the band's gap: inline by default (proximity, as the band above). */
     .starci-core-pane-section-content {
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-row-gap);
+        gap: var(--grammar-inline-gap);
         padding-inline: var(--starci-core-pane-inset-inline);
     }
 
-    .starci-core-pane-section[data-grammar-pane-section-gap="inline"] > .starci-core-pane-section-content { gap: var(--grammar-inline-gap); }
+    .starci-core-pane-section[data-grammar-pane-section-gap="row"] > .starci-core-pane-section-content { gap: var(--grammar-row-gap); }
     .starci-core-pane-section[data-grammar-pane-section-gap="section"] > .starci-core-pane-section-content { gap: var(--grammar-section-gap); }
 
     .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-section-content {
@@ -3404,7 +3434,8 @@
         width: 100% !important;
         min-width: 0;
         flex-direction: column !important;
-        gap: var(--grammar-row-gap) !important;
+        /* The proximity default of the card root (see above): inline, identity in a cards Grid. */
+        gap: var(--starci-core-surface-card-gap, var(--grammar-inline-gap)) !important;
         padding: 0 !important;
     }
 
@@ -3499,7 +3530,9 @@
         font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-xs);
     }
-    .starci-core-board-cards { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-row-gap); }
+    /* Proximity: the column spaces its head and its cards by 12, so the cards, peers inside it, stand 8 apart (12 before 0.27).
+       The columns stand 12 apart too: the column's tinted ground is its edge, so it groups its content by that. */
+    .starci-core-board-cards { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); }
     .starci-core-board-empty { padding: var(--grammar-inline-gap); color: var(--muted); }
 
     /* The column a dragged card would land in. */
@@ -3822,8 +3855,13 @@
      *
      * The app names a gap role (`identity`, `inline`, `row`, `section`, `region`); each resolves to its root token, so
      * an app writes no spacing value. A cluster's wrapped line is the same set, so its two axes take one role. Peer cards
-     * of one collection stand a section step apart on both axes: wider than the card's own inset (12), so each card
-     * reads as its own unit, never as one box.
+     * of one collection stand an inline step apart on both axes; each card's own edge makes it its own unit.
+     *
+     * Proximity: Stack and Cluster take no default, `gap` is required, so the app names the relation and the lint rule
+     * `gap-proximity` refuses a Stack or Cluster whose role is not below its parent's. Grid kinds own their gaps: cards and
+     * week 8, week-summary 8 (was 24 before 0.27: the day summaries are peer cards inside a Section's 12, like a cards
+     * grid), sections, pair and featured 24 (independent regions in the page body's 32, each child a Section of 12),
+     * main-rail 32 (the ceiling).
      */
     .starci-core-stack {
         display: flex;
@@ -3869,11 +3907,8 @@
     .starci-core-cluster[data-grammar-justify="center"] { justify-content: center; }
     .starci-core-cluster[data-grammar-justify="between"] { justify-content: space-between; }
 
-    /* A heading over a grid of cards sits 12 above it, further than the siblings are from each other. */
-    .starci-core-section:has(> .starci-core-grid[data-grammar-grid-kind="cards"]) {
-        gap: var(--grammar-row-gap);
-    }
-
+    /* A heading over a grid of cards sits 12 above it, further than the cards are from each other: every Section's own
+       gap since 0.27, so no override is left here. */
     .starci-core-grid[data-grammar-grid-kind="cards"] {
         /* Tiles are siblings: 8 between them, closer than the 12 the heading above holds. */
         --starci-core-grid-gap: var(--grammar-inline-gap);
@@ -3947,10 +3982,6 @@
     }
 
     .starci-core-grid-week-days > * { min-inline-size: 0; }
-
-    .starci-core-grid-week[data-grammar-grid-kind="week-summary"] > .starci-core-grid-week-days {
-        gap: var(--grammar-section-gap);
-    }
 
     @container grammar-week (min-width: 40rem) {
         .starci-core-grid-week[data-grammar-grid-kind="week-summary"] > .starci-core-grid-week-days {

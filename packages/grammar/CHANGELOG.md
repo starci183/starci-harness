@@ -2,6 +2,20 @@
 
 ## 0.27.0 - 2026-11-09 - entry, pricing and step marks (0.26.0 never reached npm; this release carries it)
 
+- Changed (values): the proximity law (owner, 2026-11-09): inside any container its children stand at least one step
+  closer than the container stands to its siblings. `Section` spaces its head, filter and body by the row step (12, was
+  24; contract GAP-3), so a Section in the page body (32) holds its blocks at 12. `PaneSection gap` defaults to `inline`
+  (8, was `row`): bands stand 12 apart, their children 8; `gap="row"` and `"section"` stay for a band alone in its pane.
+  The `SurfaceCard` root puts its label 8 above the surface (was 12), 4 in a cards Grid. `Grid kind="week-summary"`
+  spaces its day cards 8 (was 24), like a cards grid; the cards and week grids now claim GAP-2. A Board column's cards
+  stand 8 apart (was 12). The Footer steps down 32 / 24 / 12 / 8 (main and legal, brand and directory, groups, links;
+  was 24 / 32 / 24 / 8). Stack and Cluster keep a required `gap`; zones (seam-divided) and the region Grids (24 in the
+  page body's 32) already held the law. Each decision is recorded beside its rule in `common/styles.css`.
+- Added: `PageHeader breadcrumbs="root"` (through `Page header`): the root page of a console states that it has no trail
+  by design; it draws nothing. Lint `page-breadcrumbs` asks every console page for a trail or `"root"`.
+- Added: `scripts/audit-gap.mts` (`npm run audit:gap -- <url>...`): a Playwright audit of the proximity law in a
+  rendered page, each container whose gap is not below its spacing ancestor's, with selectors and values.
+
 - Changed (values): a card holds its content 16 in, not 12. The spacing scale gains 16 as the card's own step
   (`--grammar-inset-card`, `COMMON_SPACING_SCALE[4]`); `--grammar-card-padding-inline`/`-block` read it, so a body card, a
   tile and a zone sit 16 from the card edge. Rows a card divides by lines (static, list, accordion) take

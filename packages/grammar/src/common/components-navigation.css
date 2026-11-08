@@ -533,11 +533,15 @@
     }
 
     /* ---------- Footer ---------- */
+    /*
+     * Proximity (0.27): footer > main > directory > group step down region 32, section 24, row 12, inline 8. Before, the footer
+     * stood its main and legal rows 24 apart while the main spaced brand and directory 32 and the directory its groups 24.
+     */
     .starci-core-footer {
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: var(--grammar-section-gap);
+        gap: var(--grammar-region-gap);
         padding-block: var(--grammar-section-gap) calc(var(--grammar-inset) + env(safe-area-inset-bottom, 0px));
         padding-inline: var(--grammar-page-inset);
         border-block-start: 1px solid var(--separator);
@@ -548,7 +552,7 @@
         display: grid;
         min-width: 0;
         grid-template-columns: minmax(0, 1fr);
-        gap: var(--grammar-region-gap);
+        gap: var(--grammar-section-gap);
     }
 
     @media (min-width: 48rem) {
@@ -569,7 +573,7 @@
         display: grid;
         min-width: 0;
         grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-        gap: var(--grammar-section-gap);
+        gap: var(--grammar-row-gap);
     }
 
     .starci-core-footer-group {

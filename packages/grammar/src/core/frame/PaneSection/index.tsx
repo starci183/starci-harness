@@ -27,7 +27,10 @@ export type PaneSectionProps = {
     readonly align?: "start" | "center"
     /** `inline`: the one horizontal scroller in it reaches both pane edges and takes the inset as scroll padding. */
     readonly bleed?: "inline"
-    /** Gap between its own children. Default `row`. */
+    /**
+     * Gap between its own children. Default `inline` (`row` before 0.27): the bands of a pane stand a row step apart, so a band's
+     * children stand one step closer (the proximity law). `row` and `section` are for a band alone in its pane.
+     */
     readonly gap?: "inline" | "row" | "section"
     readonly as?: "div" | "header" | "footer"
     /** `start`: a hairline on the block-start edge, for a pinned decision bar or footer that the content above must not run into. */
@@ -48,7 +51,7 @@ export type PaneSectionProps = {
  * full-bleed scroll owner and the inset sits on its content, so the scrollbar stays on the pane edge. A section outside
  * a Pane throws `PANE_SECTION_OUTSIDE_PANE`.
  */
-export const PaneSection = ({ children: content, grow = false, scroll, align = "start", bleed, gap = "row", as = "div", rule, isLoading: ownLoading, error }: PaneSectionProps) => {
+export const PaneSection = ({ children: content, grow = false, scroll, align = "start", bleed, gap = "inline", as = "div", rule, isLoading: ownLoading, error }: PaneSectionProps) => {
     const pane = usePaneContext()
     const isLoading = useIsLoading(ownLoading)
     const children = !isLoading && error !== undefined ? <ErrorView error={error} /> : <LoadingScope isLoading={isLoading}>{content}</LoadingScope>
@@ -65,7 +68,7 @@ export const PaneSection = ({ children: content, grow = false, scroll, align = "
         "aria-busy": isLoading ? true : undefined,
         "data-grammar-loading-region": isLoading ? "true" : undefined,
     }
-    const contract = "PADDING-4 GAP-3"
+    const contract = gap === "row" ? "PADDING-4 GAP-3" : gap === "section" ? "PADDING-4 GAP-4" : "PADDING-4 GAP-2"
     if (scroll === undefined) {
         return createElement(as, { ...shared, className: "starci-core-pane-section", "data-contract": contract }, children)
     }

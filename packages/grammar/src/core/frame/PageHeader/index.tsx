@@ -27,7 +27,11 @@ export type PageHeaderProps = {
     readonly titleId?: string
     /** `title` draws the page title at the middle 24px step (a lobby or first-run head); the default is the standard page title. */
     readonly titleScale?: "standard" | "title"
-    readonly breadcrumbs?: PageHeaderBreadcrumbs
+    /**
+     * The trail above the heading, or `"root"`: the page is the root of its console (a module's home, the dashboard), so it has no
+     * trail by design. An app console page states one of the two (lint `page-breadcrumbs`); `"root"` draws nothing.
+     */
+    readonly breadcrumbs?: PageHeaderBreadcrumbs | "root"
     /** The one supporting line under the heading (FONT-2, muted). */
     readonly description?: ReactNode
     /** A short summary line of facts about the page's subject (FONT-1, muted), e.g. "SePay · Vietcombank · ****6789". */
@@ -84,10 +88,11 @@ export const PageHeader = ({
         data-contract={isLoading ? "MARGIN-5 STATE-8" : "MARGIN-5"}
         data-grammar-page-header="true"
         data-grammar-page-header-tabs={tabs === undefined ? "false" : "true"}
+        {...(breadcrumbs === "root" ? { "data-grammar-page-root": "true" } : {})}
         {...(isLoading ? { "data-grammar-skeleton": "true", "data-loading": "true", "aria-busy": true } : {})}
     >
         <PageContainerPart className="starci-core-page-header-body" data-contract="GAP-3 PADDING-5" measure={measure}>
-            {breadcrumbs === undefined ? null : (
+            {breadcrumbs === undefined || breadcrumbs === "root" ? null : (
                 <Breadcrumbs
                     label={breadcrumbs.label}
                     items={breadcrumbs.items}

@@ -564,6 +564,28 @@ divides by lines (static, list, accordion) keep the row step (12) on their block
 a stat strip cell in a card takes 16 on every side. `--grammar-overlay-inset` reads `--grammar-inset`. Vendor parts take their step in `src/common/components-spacing.css`. Tabs are the underline
 bar everywhere, the first label on the content edge.
 
+**The proximity law** (owner, 2026-11-09). Inside any container, its children stand at least one step closer than the
+container stands to its siblings: identity 4 < inline 8 < row 12 < section 24 < region 32. The defaults hold it:
+
+| Container | Its siblings | Its own children |
+| --- | --- | --- |
+| `Page` body | - | sections a region step apart (32, the ceiling) |
+| `Section` | 32 in the page body | head, filter and body a row step apart (12; 24 before 0.27) |
+| `Grid kind="sections" \| "pair" \| "featured"` | 32 in the page body | regions 24 apart |
+| `Grid kind="cards"`, `"week"`, `"week-summary"` | 12 in a Section | peer cards 8 apart (`week-summary` was 24) |
+| `SurfaceCard` root | 12 in a Section, 8 in a cards Grid | its label 8 above the surface (12 before), 4 in a cards Grid |
+| `SurfaceCard` zones | divided by seams | parts 8 apart at most (unchanged) |
+| `PaneSection` (and its scroll content) | bands 12 apart in the pane | children 8 apart by default (`gap` default `inline`; `row` before) |
+| `Board` column | 12 apart (the tinted ground is its edge) | head and cards 12, cards 8 apart (12 before) |
+| `Footer` | - | main and legal 32, brand and directory 24, groups 12, links 8 (24, 32, 24, 8 before) |
+| `Stack`, `Cluster` | - | the required `gap` the app names; lint `gap-proximity` refuses a role not below its parent's |
+
+Two exemptions: the region step is the ceiling, so the shell frames that separate regions all take it; and a box with
+its own edge (a card's surface, a board column's ground) groups its content by that edge, so its inner gap is compared
+with its own children only. A field stack (fields 24 apart, the Field rule) inside a `Form` is the Field rule's rhythm.
+`node scripts/audit-gap.mts <url>...` measures the law in a rendered page (`--storage-state`, `--json`, exit 1 on a
+violation); it is not wired into `app check`.
+
 An app writes no spacing value; it names the relation of the blocks it places:
 
 - `Stack` (`gap`: `identity` | `inline` | `row` | `section` | `region`, required; `align`; `measure`: `full` |

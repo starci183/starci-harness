@@ -17,7 +17,7 @@ export type SectionRow = ListRowData
 
 type RegionSection = {
     readonly kind?: "region"
-    /** What the section holds, set one section step apart under its head. */
+    /** What the section holds, set one row step apart under its head (proximity: a container in it takes the inline step or less). */
     readonly children: ReactNode
 }
 
@@ -89,7 +89,8 @@ const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; read
 /**
  * A named part of a page: a real `<section>` landmark with no surface, border or padding, headed by its own title.
  * The title is the heading and the landmark's name, so there is no free heading to place and no label to repeat.
- * Its head, its filter and its body are blocks under one heading: one section step apart (GAP-4).
+ * Its head, its filter and its body are blocks under one heading: one row step apart (GAP-3; the section step before 0.27),
+ * one step closer than the region step a section keeps from its siblings (the proximity law).
  *
  * `kind="region"` (the default) holds `children`. `kind="list"` owns rows inside an existing surface, or a standalone
  * list that searches, filters or pages: typed `items`, an optional `filter` and a required `empty` state. Its title owns
@@ -120,7 +121,7 @@ export const Section = (props: SectionProps) => {
             data-tier="frame"
             data-grammar-section-kind={props.kind ?? "region"}
             data-grammar-skeleton={isLoading ? "true" : undefined}
-            data-contract="GAP-4 MARGIN-0 PADDING-0"
+            data-contract="GAP-3 MARGIN-0 PADDING-0"
         >
             {title === undefined ? null : <SectionHead
                 headingId={headingId}

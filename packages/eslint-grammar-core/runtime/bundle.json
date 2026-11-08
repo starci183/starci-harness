@@ -4,6 +4,7 @@
     "knowledge/patterns/fe/index.yaml",
     "knowledge/patterns/fe/ui.yaml",
     "knowledge/ui/composition/app-shell.yaml",
+    "knowledge/ui/presentation/grammar-laws.yaml",
     "knowledge/ui/proof/anatomy-source.yaml",
     "modules/goal/source-phrases.yaml"
   ]

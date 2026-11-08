@@ -27,7 +27,7 @@ type GridMainRailProps = Omit<PrimaryRailLayoutProps, "className"> & {
 }
 
 type GridWeekProps = {
-    /** A dated event agenda, or one summary per day; the kind owns its responsive tracks and spacing. */
+    /** A dated event agenda, or one summary per day; the kind owns its responsive tracks and spacing (both the inline gap). */
     readonly kind: "week" | "week-summary"
     readonly label: string
     /** Seven consecutive days in reading order, including the days with no entries. */
@@ -82,7 +82,7 @@ const WeekGrid = ({ kind, label, children }: GridWeekProps) => {
             data-component="Grid"
             data-tier="frame"
             data-grammar-grid-kind={kind}
-            data-contract="GAP-4 RESPONSIVE-1"
+            data-contract="GAP-2 RESPONSIVE-1"
         >
             <div className="starci-core-grid-week-days">{children}</div>
         </div>
@@ -110,7 +110,7 @@ export const Grid = (props: GridProps) => {
             data-tier="frame"
             data-grammar-grid-kind="cards"
             data-grammar-grid-columns={props.columns === undefined ? "fit" : String(props.columns)}
-            data-contract="GAP-4 RESPONSIVE-1"
+            data-contract="GAP-2 RESPONSIVE-1"
         >
             {props.children}
         </div>
