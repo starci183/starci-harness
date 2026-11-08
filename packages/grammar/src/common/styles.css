@@ -1113,6 +1113,12 @@
         color: var(--surface-foreground);
     }
 
+    /* Emphasis: the card its peers recommend keeps its ground and depth and takes an accent ring inside its edge. */
+    .starci-core-surface[data-grammar-surface-emphasis="accent"] {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+    }
+
     /*
      * Soft: the brand's light tint as ground (`--accent-soft`, the family's `accentSoft`, the tint both the accent as
      * text and `muted` stay legible on) under the default foreground. It is not a slab: it may carry copy and controls,
@@ -4419,6 +4425,15 @@
     .starci-core-text[data-size="sm"] {
         font-size: var(--grammar-text-md);
         line-height: var(--grammar-leading-md);
+    }
+
+    /* FONT-5: the leading value of a region (a price, a total), the size of a figures cell's value; one word, tabular figures. */
+    .starci-core-text[data-size="figure"] {
+        font-size: var(--grammar-text-4xl);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-2xl);
+        letter-spacing: var(--grammar-tracking-snug);
+        font-variant-numeric: tabular-nums;
     }
 
     .starci-core-text[data-tone="muted"] {

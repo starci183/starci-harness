@@ -485,6 +485,12 @@ regions, `kind="pair"` requires equal `leading` and `trailing` portions of one r
 requires `leading`, `featured` and `trailing` slots for a focus with symmetric support. These kinds take no column,
 gap, width or breakpoint props; content relation chooses the kind.
 
+`EntryFrame layout="centred"` drops the context pane: the identity and tools share one bar, the form sits alone in the middle of
+the page and the footer closes it; `artwork` and `intro` belong to the default `split` layout only.
+
+`Text size="figure"` is the leading value of a region (FONT-5), such as a plan's price; `Stepper completeMarker="check"` marks a
+complete step with a check; `SurfaceCard emphasis="accent"` rings the one card its peers recommend, with the reason in a badge.
+
 `Section kind="figures"` is the unpainted counterpart of a figures card inside an existing pane or surface. It uses
 the same `Figure` data and renderer; supply `title` when it owns a heading or `ariaLabel` when an existing parent owns
 that heading. The headless form has no head controls. Media tiles use `TilePoster` (image or localized absence),

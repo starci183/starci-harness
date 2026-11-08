@@ -4,6 +4,8 @@ import { withRegionInert } from "../../regionScope.js"
 import type { ReactNode } from "react"
 import { moveFocusBetweenPeers } from "../../navigationKeys.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
+import { Icon } from "../../leaf/Icon/index.js"
+import { CheckIcon } from "@heroicons/react/16/solid"
 import { StepperBar } from "./StepperBar.js"
 import type { NoChildren } from "../../tier.js"
 
@@ -46,6 +48,11 @@ type MarkerStepperProps = StepperBaseProps & {
     readonly size?: StepperSize
     /** App-owned marker; defaults to the 1-based step number. */
     readonly renderMarker?: (step: StepperStep, index: number, state: StepperStepState) => ReactNode
+    /**
+     * What a complete step's marker shows without `renderMarker`: its number (`number`, the default) or a check (`check`), the
+     * mark of a finished first-run step. Declarative, so a server component can choose it.
+     */
+    readonly completeMarker?: "number" | "check"
 }
 
 /**
@@ -58,6 +65,7 @@ type BarStepperProps = StepperBaseProps & {
     readonly orientation?: "horizontal"
     readonly size?: never
     readonly renderMarker?: never
+    readonly completeMarker?: never
 }
 
 export type StepperProps = MarkerStepperProps | BarStepperProps
@@ -83,6 +91,19 @@ const StepperInner = (props: StepperProps) => {
     return <StepperMarkers {...props} />
 }
 
+/** The marker of one step: the app's own, a check on a complete step when asked, else the 1-based number. */
+const markerOf = (
+    step: StepperStep,
+    index: number,
+    state: StepperStepState,
+    renderMarker: MarkerStepperProps["renderMarker"],
+    completeMarker: "number" | "check",
+): ReactNode => {
+    if (renderMarker !== undefined) return renderMarker(step, index, state)
+    if (completeMarker === "check" && state === "complete") return <Icon source={CheckIcon} usage="chip" />
+    return index + 1
+}
+
 const StepperMarkers = ({
     label,
     steps,
@@ -92,6 +113,7 @@ const StepperMarkers = ({
     onStepSelect,
     stateLabel,
     renderMarker,
+    completeMarker = "number",
     isLoading = false,
 }: MarkerStepperProps) => isLoading ? (
     <nav
@@ -138,7 +160,7 @@ const StepperMarkers = ({
                 const announcement = stateLabel?.(state)
                 const content = <>
                     <span aria-hidden="true" className="starci-core-step-marker" data-contract="A11Y-2" data-grammar-step-marker="true">
-                        {renderMarker === undefined ? index + 1 : renderMarker(step, index, state)}
+                        {markerOf(step, index, state, renderMarker, completeMarker)}
                     </span>
                     <span className="starci-core-step-copy">
                         <span className="starci-core-step-label" data-grammar-step-label="true">{step.label}</span>

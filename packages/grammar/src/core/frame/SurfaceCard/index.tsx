@@ -62,6 +62,11 @@ type PlainSurfaceCard = {
     readonly treatment?: "surface"
     readonly artwork?: undefined
     readonly motif?: undefined
+    /**
+     * `accent`: the one card a set of peers recommends (the popular plan of a pricing grid), drawn with an accent ring on the
+     * same ground; the reason stays in words beside it (a badge). Absent: no ring.
+     */
+    readonly emphasis?: "accent"
 }
 
 /**
@@ -209,6 +214,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
     const headingLevel = props.headingLevel ?? DEFAULT_SURFACE_HEADING_LEVEL
     const measure: SurfaceCardMeasure = body?.measure ?? "content"
     const treatment: SurfaceCardTreatment = body?.treatment ?? "surface"
+    const emphasis = body !== undefined && (body.treatment === undefined || body.treatment === "surface") ? body.emphasis : undefined
     const motif: SurfaceCardMotif = body?.treatment === "ink" ? body.motif ?? "none" : "none"
     const artwork = body?.treatment === "ink" || body?.treatment === "soft" ? body.artwork : undefined
     const wholeAction = isTile ? props.wholeAction : body?.wholeAction
@@ -275,6 +281,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             data-grammar-state={state}
             data-grammar-treatment={stateTreatment.tone}
             data-grammar-surface-treatment={treatment}
+            data-grammar-surface-emphasis={emphasis}
             data-grammar-surface-artwork={artwork !== undefined ? "art" : motif !== "none" ? "motif" : "none"}
         >
             {artwork !== undefined || motif !== "none" ? (
@@ -331,6 +338,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             data-grammar-surface-card="true"
             data-grammar-nesting="surface"
             data-grammar-surface-treatment={treatment}
+            data-grammar-surface-emphasis={emphasis}
             data-component="SurfaceCard"
             data-tier="frame"
             render={(cardProps) => <section {...cardProps} />}

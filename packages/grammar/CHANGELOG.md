@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased - entry, pricing and step marks
+
+- Added: `Text size="figure"`, the leading value of a region (FONT-5): a price, a total, a count read first, at the figures cell's
+  size and weight with tabular figures. Story `Surfaces/Pricing cards`.
+- Added: `Stepper completeMarker="check"` (markers kind): a complete step shows a check instead of its number, chosen by a
+  declarative prop so a server component can set it (`renderMarker` is a function and cannot cross that boundary).
+- Added: `EntryFrame layout="centred"`: no context pane, the identity and tools share one bar, the form sits alone in the middle
+  of the page with the footer below; `artwork` and `intro` are refused in this layout by the types. `split` stays the default.
+  Story `Frames/EntryFrame/Centred`.
+- Added: `SurfaceCard emphasis="accent"` on the plain surface: the one card a set of peers recommends (the popular plan of a
+  pricing grid) keeps its ground and depth and takes an accent ring inside its edge; the reason stays in words (a badge).
+
 ## 0.25.2 - 2026-11-08
 
 - Changed: released with the Grammar family at 0.25.2 (its lint family peers `@starci/hfs ~6.2.0`); no component changed.

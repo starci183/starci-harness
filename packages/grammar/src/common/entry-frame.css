@@ -64,9 +64,25 @@
         max-inline-size: var(--grammar-entry-form-measure);
     }
 
+    /* Centred: one column at every width; the identity leads the bar the tools close. */
+    .starci-core-entry-bar {
+        display: flex;
+        min-inline-size: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--grammar-row-gap);
+    }
+
+    .starci-core-entry-bar-identity,
+    .starci-core-entry-bar-tools {
+        display: flex;
+        min-inline-size: 0;
+        align-items: center;
+    }
+
     @media (min-width: 64rem) {
-        .starci-core-entry-frame { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .starci-core-entry-context { display: flex; }
+        .starci-core-entry-frame[data-grammar-entry-layout="split"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .starci-core-entry-frame[data-grammar-entry-layout="split"] .starci-core-entry-context { display: flex; }
         .starci-core-entry-identity { display: none; }
         .starci-core-entry-task { padding: var(--grammar-region-gap); }
     }
