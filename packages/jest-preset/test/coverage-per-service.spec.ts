@@ -168,16 +168,19 @@ test('custom LCOV preserves stock records and only suffixes function names with 
   assert.equal(result.status, 0, result.stdout + result.stderr);
   const stock = lcovRecords(fs.readFileSync(path.join(app, 'coverage/stock/lcov.info'), 'utf8'));
   const custom = lcovRecords(fs.readFileSync(path.join(app, 'coverage/custom/lcov.info'), 'utf8'));
+  // The one deliberate difference: the custom report names a source the way Sonar resolves it (test/lcov-paths.spec.ts), forward slashes and no climbing segment.
+  const sonarSource = (row: string): string => row.startsWith('SF:') ? row.split(String.fromCharCode(92)).join('/').replace(/^SF:(?:\.\.\/)+/, 'SF:') : row;
   assert.equal(stock.size, 2, 'both application files are reported');
-  assert.deepEqual([...custom.keys()].sort(), [...stock.keys()].sort(), 'SF lists match');
+  assert.deepEqual([...custom.keys()].sort(), [...stock.keys()].map(sonarSource).sort(), 'SF lists match');
   for (const records of [stock, custom]) {
     assert.ok([...records.keys()].every(file => !file.includes('unit-metadata.generated.js')), 'the generated anchor is absent');
   }
   const metrics = /^(SF|DA|BRDA|BRF|BRH|LF|LH|FNF|FNH):/;
-  for (const [file, rows] of stock) {
+  for (const [stockFile, rows] of stock) {
+    const file = sonarSource(stockFile);
     const actual = custom.get(file);
     assert.ok(actual, file);
-    assert.deepEqual(actual.filter(row => metrics.test(row)), rows.filter(row => metrics.test(row)), file);
+    assert.deepEqual(actual.filter(row => metrics.test(row)), rows.filter(row => metrics.test(row)).map(sonarSource), file);
     assert.ok(functionRows(actual).every(row => /#\d+$/.test(row)), 'every custom function has an id suffix');
     assert.deepEqual(functionRows(actual, true), functionRows(rows), 'FN/FNDA match as multisets after stripping ids');
   }
@@ -189,5 +192,5 @@ test('custom LCOV preserves stock records and only suffixes function names with 
   assert.ok(uniqueFile, 'the unique-name file is reported');
   const stockFunctions = (stock.get(uniqueFile) ?? []).filter(row => row.startsWith('FN:')).sort();
   assert.equal(stockFunctions.length, 1, 'the unique-name file has one function');
-  assert.deepEqual(functionRows(custom.get(uniqueFile) ?? [], true).filter(row => row.startsWith('FN:')), stockFunctions, 'unique FN rows equal stock exactly');
+  assert.deepEqual(functionRows(custom.get(sonarSource(uniqueFile)) ?? [], true).filter(row => row.startsWith('FN:')), stockFunctions, 'unique FN rows equal stock exactly');
 });

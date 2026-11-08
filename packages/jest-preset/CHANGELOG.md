@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.8.1 - 2026-11-08
+
+- Fixed: the lcov names each source with forward slashes and without the leading `..` segments of a root package seen from `be/` (`packages/blocks-core/src/x.ts`; it was a backslash path starting `..` on Windows and `../packages/...` on Linux). SonarJS sanitizes an lcov path and finds the file by its tail; a path that climbs out of the base sanitizes to nothing, so every root package file read uncovered in Sonar while the lcov said 100 (the back end files, `src/...`, resolved). The unit run, the shard merge and the per-spec union write through the one report. Specs: `test/lcov-paths.spec.ts`.
+
 ## 2.8.0 - 2026-11-08
 
 - Added: with `STARCI_SPEC_COVERAGE_DIR` the unit projects run under `spec-loaded-runtime.js`, Jest's runtime recording every file a spec's module registry reads; the reporter writes them (`loaded`, each installed package as its folder) on the spec's file, and the check cache keys the spec on the packages among them.
