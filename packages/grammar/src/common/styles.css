@@ -1653,6 +1653,8 @@
     }
 
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { --starci-core-tab-padding-start: var(--grammar-inline-gap); }
+    /* In a card zone the first filter label stands on the card's inline edge (16), like the rows and the table below it. */
+    .starci-core-surface-zone .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { padding-inline-start: 0 !important; }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab[aria-selected="true"] { font-weight: var(--grammar-weight-medium); }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__indicator { top: auto !important; background: var(--accent); }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tab-content { gap: var(--grammar-identity-gap); }
