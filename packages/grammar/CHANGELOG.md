@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.30.0 - 2026-11-09 - SuggestionChips; one Button radius
+
+- Changed (values): one Button radius in Core: every size, sm included, is a pill (`--starci-core-pill-radius`, HeroUI's
+  full radius). Before, the vendor corner followed the app's `--radius`, so `Button size="sm"` drew about 12px while md read
+  as a pill. A row of neutral sm Buttons whose press sends their own label is `SuggestionChips` (lint `suggestion-chips`).
+- Added: `SuggestionChips` (composite, `@starci/grammar/common`): quick replies and suggested questions as pill chips (28px, new ramp step `--grammar-chip-height`; sm medium text; neutral fill with a separator edge; optional start `glyph` or `iconSource`; hover, pressed, focus-ring and disabled states), wrapping with 8 between them. Props `label` (required, the toolbar's accessible name), `isLabelHidden` (default true), `items` (`{ id, label, glyph?, iconSource?, isDisabled? }`), `onSelect(id)`, `isLoading` (pill geometry), `isDisabled`. A `role="toolbar"`: one tab stop, arrow keys move between chips. Stories `Navigation & Data/Suggestion chips`.
+
+## 0.29.0 - 2026-11-09 - the single-child card; zone text at sm
+
+- Changed: the single-child-card law (owner, 2026-11-09). A table, list or chart standing alone IS the surface, never a card
+  around it. A standalone `DataTable` (`surface="card"`, the default) draws ONE frame: a 1px separator edge, the card
+  radius, the surface ground, clipped, its heading row inside it (muted, a hairline under it); before, it drew the vendor's
+  grey band with an inner white rounded body, three layers inside a card. Inside a card it stays full bleed
+  (`surface="none"`). Every `Section kind="list"` draws the same one frame wherever it stands (on the page ground too).
+  Lint `single-child-card` refuses a SurfaceCard around a lone table, list or chart without zones.
+- Added: `Section caption`: one muted sm line under the section's body (a lone table's period or source). Story
+  `Navigation & Data/Lone table in section`.
+- Changed: a card or board zone speaks at sm 13: every `Text` in a header or footer zone (a selection bar's count, a
+  filter caption, a toolbar note, a hint) takes the sm step, whatever size it names; a figures zone keeps its steps.
+
 ## 0.28.0 - 2026-11-09 - the owner laws: proximity, surface in surface, the Field rule, type roles, links and buttons, tabs
 
 - Added: `MessageBubble actionsPlacement="floating" | "inline"` (default `floating`): `inline` draws the actions as a bare

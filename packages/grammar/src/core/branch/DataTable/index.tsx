@@ -115,8 +115,10 @@ export type DataTableProps<Row extends DataTableRow> = NoChildren & DataTableRow
     /** Container inline size in px below which `low` priority columns collapse into the row. Default 640. */
     readonly collapseBelow?: number
     /**
-     * `card` (default): a heading band and rows in the table's own container. `none`: plain hairline rows under a muted heading with no
-     * container paint, for a table that already stands on a page or inside a card and must not be a surface inside a surface.
+     * `card` (default): the table standing alone IS the surface: ONE frame (a 1px separator edge, the card radius, the surface ground,
+     * clipped) with its heading row inside it; no grey band and no inner rounded body (the single-child-card law: never wrap a lone
+     * table in a SurfaceCard; title it with a Section head and put one `caption` under it). `none`: plain hairline rows under a muted
+     * heading with no container paint, for a table inside a card (full bleed) that must not be a surface inside a surface.
      */
     readonly surface?: "card" | "none"
 }
@@ -303,7 +305,7 @@ export const DataTable = <Row extends DataTableRow>({
         <HeroTable
             aria-busy={isLoading || undefined}
             className="starci-core-data-table"
-            {...(surface === "none" ? { variant: "secondary" as const } : {})}
+            variant="secondary"
             data-grammar-table-surface={surface}
             data-component="DataTable"
             data-tier="branch"

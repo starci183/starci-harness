@@ -160,7 +160,12 @@ export const why: Record<string, WhyEntry> = {
   "surface-in-surface": {
     code: "FE_SURFACE_IN_SURFACE",
     en: "A hand-made row list (a Stack, ul, ol or div whose rows are divided by `Divider`) in `<file>` stands inside a SurfaceCard, Drawer, Dialog, PaneSection or main-rail rail.",
-    fix: "Use `<Section kind=\"list\">` for rows inside a surface (the Grammar draws them as a nested surface with a border, the card radius and a clip), or `<SurfaceCard kind=\"list\">` when the list is the card.",
+    fix: "Use `<Section kind=\"list\">` for rows inside a surface (the Grammar draws them as a nested surface with a border, the card radius and a clip), or a `Section kind=\"list\"` standing alone (it draws its own frame; a card around a lone list is refused by `single-child-card`).",
+  },
+  "single-child-card": {
+    code: "FE_SINGLE_CHILD_CARD",
+    en: "A `SurfaceCard` in `<file>` has no zones and holds one table, list or chart (a `DataTable`, `ListBox`, `ItemList`, `DisclosureList`, `Timeline`, `Section kind=\"list\"`, `BarChart`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`, or is `kind=\"table\"` or `kind=\"list\"`): a second frame around the one the Grammar already draws.",
+    fix: "Drop the card: put the title in a `Section` head (`title`) and one line under it in `Section caption`. A card groups two or more different parts, or carries zones (`headers`, `footers`) or head actions (`labelEnd`).",
   },
   "surface-card-kind": {
     code: "FE_SURFACE_CARD_KIND",
@@ -191,5 +196,10 @@ export const why: Record<string, WhyEntry> = {
     code: "FE_ROW_TITLE_LINK",
     en: "A Link is the title of a row in `<file>` that already opens (onPress, onAction, href, chevron, or a DataTable with onRowAction or row hrefs).",
     fix: "The row is the one pressable: write the title as plain text (`<Text isStrong>`) and keep the destination on the row.",
+  },
+  "suggestion-chips": {
+    code: "FE_SUGGESTION_CHIPS",
+    en: "Two or more neutral `size=\"sm\"` Buttons in `<file>` sit in one row (or one in a `.map`) and each press sends its own label.",
+    fix: "Quick replies and suggested questions are `SuggestionChips` (pill chips in a labelled toolbar): `<SuggestionChips label items={[{ id, label }]} onSelect={(id) => ...} />`.",
   },
 }

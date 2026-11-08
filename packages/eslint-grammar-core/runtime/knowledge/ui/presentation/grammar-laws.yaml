@@ -57,6 +57,15 @@ rules:
         assert: |-
           It takes `endArrow`; an arrow typed in its label or passed as end content is refused. A Button that does
           something takes `startGlyph`; never both.
+  - id: SUGGESTION-CHIPS
+    title: Quick replies and suggested questions are SuggestionChips
+    governs: A row of Buttons that suggest something to say or ask.
+    cases:
+      - id: case-1
+        when: A row of neutral sm Buttons each send their own label
+        assert: |-
+          It is `SuggestionChips` (pill chips, a labelled toolbar), not a Button row; a form value is ChoiceChips and a
+          label is a Badge or a TagGroup.
   - id: TABLE-CELL-TYPE
     title: Table and row cells take the row type sizes
     governs: Text inside a DataTable cell or a ListRow.
@@ -100,3 +109,13 @@ rules:
         assert: |-
           The page tabs (`Page header.tabs`) and one region set are the two layers; a third nested set is refused.
           Every tab is one size, so only the count of layers is judged.
+  - id: SINGLE-CHILD-CARD
+    title: A table, list or chart standing alone is the surface
+    governs: A SurfaceCard whose only content is a table, a list or a chart.
+    cases:
+      - id: case-1
+        when: A card has no zones (headers, footers, head actions) and holds one DataTable, list (ListBox, ItemList, DisclosureList, Timeline, Section kind="list") or chart (BarChart, ProportionBar, BubbleMap, FlowGraph, MermaidDiagram), or is kind="table" or kind="list"
+        assert: |-
+          The Grammar draws a standalone DataTable and every Section kind="list" as ONE frame (border, card radius), so the
+          card is a second frame. The title sits above as a Section head and one caption sits below (Section caption, muted sm).
+          A card groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions).

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-alpha.104 - 2026-11-09
+
+- Changed: the Grammar family 0.30.0 (0.29.0 never reached npm; this carries it): `SuggestionChips` (a pill toolbar of suggestions with arrow-key navigation; lint `suggestion-chips` refuses a row of neutral sm Buttons that send their own label), every Core Button size takes the pill radius; and from 0.29.0 a lone table, list or chart gets no card wrapper (lint `single-child-card`, `FE_SINGLE_CHILD_CARD`; DataTable draws one frame standalone, Section `kind="list"` draws the same frame, Section `caption`), and every card and board zone text is 13px.
+- Fixed: `@starci/hfs` 6.5.2: a resumed parked job is delivered under `<jobKey>:r<n>` (the outbox dedupe-key check needs a `:`), so `parked_jobs_sweep` resumes no longer dead-letter; `starci app codemod self-recovery` rewrites the old `-r<n>` form in an app rendered by hfs 6.5.0 or 6.5.1. No data migration. See `packages/hfs/CHANGELOG.md`.
+
 ## 1.1.0-alpha.103 - 2026-11-09
 
 - Changed: the Grammar family 0.28.0 (`@starci/grammar`, `@starci/eslint-grammar-core`, `@starci/eslint-grammar-offset-pop`): ten new Grammar lint laws (gap-proximity, field-label, surface-in-surface, page-breadcrumbs, button-arrow, table-cell-type, same-line-size, row-title-link, tabs-switch-zone, tabs-depth), PageHeader `breadcrumbs="root"` and `subTabs`, the Tabs `end` slot, SurfaceCard `description` and search-zone filters, LogoStack, the Field contract (8/4/24) and the smaller type scale (Text md 14, sm 13, page title 18/500, tabs 13). Also: the alpha.102 content never reached npm (a Linux-only R84 spec failed); this alpha carries it, with hfs 6.5.1.

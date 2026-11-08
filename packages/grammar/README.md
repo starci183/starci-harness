@@ -401,8 +401,17 @@ A loading view keeps the titles, headings and labels it was given and draws the 
 <BarChart label="Engagement per day" bars={perDay} empty={<EmptyNotice message="No data yet" />} />
 ```
 
-**Navigation & Data (17).** Accordion, AvatarGroup, Calendar, DataTable,
-BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, LogoStack, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
+**Navigation & Data (18).** Accordion, AvatarGroup, Calendar, DataTable,
+BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, LogoStack, MermaidDiagram, MessageStatus, Pagination, Stepper, SuggestionChips, Tabs, TagGroup, Timeline.
+
+`SuggestionChips` are quick replies and suggested questions (the assistant drawer, a composer's suggestions, the shortcuts of an
+empty state): pills 28px high (`--grammar-chip-height`), sm medium text, a neutral fill with a separator edge, an optional start
+`glyph` (Grammar's vocabulary) or `iconSource`, wrapping with 8 between them. Each is a real button; a press calls `onSelect(id)`
+and sends the chip's own label. The group is a `role="toolbar"` named by the required `label` (hidden by default, drawn as a muted
+xs line with `isLabelHidden={false}`): one tab stop, arrow keys move between chips. Use them instead of a row of `Button`s when the
+words of the chip are what is sent; a command whose label differs from its effect stays a `Button`, and a choice that stays
+selected is `ChoiceChips` (lint `FE_SUGGESTION_CHIPS` flags a row of neutral small Buttons that send their own label).
+`<SuggestionChips label="Suggested questions" items={questions.map((q) => ({ id: q.id, label: q.text }))} onSelect={(id) => ask(id)} />`
 
 `DataTable` `onRowAction(id)` (and `SurfaceCard kind="table"` `onRowAction`) makes every row pressable, to open a drawer: a click or
 Enter / Space on the focused row (React Aria's row action, so the row is a focus stop with the table's focus ring), the pointer cursor
@@ -624,8 +633,15 @@ the roles in composition.
 **The button-icon rule.** A Button that does something shows what at its start (`startGlyph`, e.g. `plus`, `upload`,
 `send`, `pencil`, or the app's `startContent`); a Button that leads somewhere ends with Grammar's arrow (`endArrow`), which
 slides one step toward the reading end on hover and focus and is mirrored right to left. Never both: the types refuse it.
-Both glyphs stand one inline step (8) from the label. An arrow typed in a label or passed through `endContent` is refused
+Both glyphs stand one inline step (8) from the label. In Core every Button size, sm included, is a pill (one radius). A row of neutral sm Buttons whose press sends
+their own label is `SuggestionChips` (lint `suggestion-chips`). An arrow typed in a label or passed through `endContent` is refused
 (lint `button-arrow`). `EmptyNotice actionEndArrow` and `ItemAction.endArrow` give the Grammar-drawn actions the arrow.
+
+**The single-child-card law.** A card groups two or more different parts (figures, a list, actions) or carries zones
+(tabs, search, head actions). A table, list or chart standing alone is the surface: a `Section` titles it (`title`) and one
+muted line goes under it (`Section caption`). A standalone `DataTable` draws one frame (edge, card radius, its header row
+inside); a `Section kind="list"` draws the same frame. Lint `single-child-card` refuses the card around a lone one. Text
+in a card zone (a selection count, a filter caption, a hint) is sm 13.
 
 **The surface-in-surface law.** A list of rows inside a surface (a card body, a drawer or dialog, a pane band, a rail or
 aside) that is not that surface's own full-bleed body is a nested surface: a 1px separator edge, the card radius,

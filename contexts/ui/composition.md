@@ -237,7 +237,18 @@ A card presents one entity or one summary of one subject. Several kinds of conte
 the same card (`headers` above the body, `footers` below it), divided by the seams the shell draws, never inner cards and never a `Divider`. Comparing
 a fact across peers is rows, in a list card or a section; recognising and opening a peer is a tile (`kind="tile"`), several
 of which stand in a `Grid kind="cards"`. Equal labelled cards that each repeat a heading are neither. A surface never
-stands inside another surface. See [components/card.md](components/card.md).
+stands inside another surface; a card of one lone table, list or chart is no card (COLLECTION-4). See [components/card.md](components/card.md).
+
+### COLLECTION-4 A single-child card is no card
+A card (`SurfaceCard`) groups two or more heterogeneous parts (figures, a list, actions), or it carries zones (`headers`/`footers`: tabs,
+search, filters, paging) or head actions (`labelEnd`). A table, a list or a chart standing alone IS the surface: its title sits above it as
+a section head (`Section title`) and one caption sits below it (`Section caption`, muted sm 13). A lone `DataTable`, list, chart or
+`Section kind="list"` is never wrapped in a card, and `SurfaceCard kind="table"|"list"` carries zones. A standalone `DataTable` (`surface="card"`,
+the default) draws one frame: a 1px separator border, the card radius, the surface ground, clipped, the header row inside it, with no inner
+grey band and no inner white body; inside a `SurfaceCard` the table goes full-bleed with no frame of its own (`surface="none"`, as
+`kind="table"` does). Every `Section kind="list"` draws the same one frame wherever it stands (BOUNDARY-7). Measure: lint
+`single-child-card` in `@starci/eslint-grammar-core` (error). See [components/card.md](components/card.md) and
+[components/list-table.md](components/list-table.md).
 
 ### COLLECTION-3 A group identity shows its members
 A group or conversation identity is one composite of its members' identities, distinguishable from one person's,

@@ -28,6 +28,8 @@ const PINS: readonly { readonly selector: string; readonly holds: readonly strin
     { selector: ".starci-core-data-table .starci-core-data-table-cell", holds: ["font-size: var(--grammar-text-md)", "font-weight: var(--grammar-weight-regular)"] },
     { selector: '.starci-core-data-table .starci-core-data-table-cell[data-grammar-table-row-header="true"]', holds: ["font-weight: var(--grammar-weight-medium)"] },
     { selector: '.starci-core-link[data-grammar-link-size="inherit"]', holds: ["font-size: inherit !important"] },
+    { selector: '.starci-core-surface-zone:not([data-grammar-zone="figures"]) .starci-core-text:not([data-size="figure"])', holds: ["font-size: var(--grammar-text-sm)"] },
+    { selector: ".starci-core-section-caption", holds: ["font-size: var(--grammar-text-sm)"] },
 ]
 
 /** The bodies of every rule whose selector list is exactly `selector`. */

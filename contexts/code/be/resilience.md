@@ -36,7 +36,7 @@ first, and processing it is an idempotent replay of the stored row. `platform/jo
   and offers "resume now"; until it does, the alert is a log line.
 - A parked job resumes on its own: at boot when the build changed (`ParkedJobResumerService`), on the scheduled sweep (`parked-jobs:sweep`,
   every 15 minutes), and on demand (`ParkedJobResumerService.resume({ jobId })`; from a process with no Redis, `cli queues resume [--job <id>]`
-  writes the request on the sweep queue through the outbox, `ParkedJobResumeRequestsService`). It goes back to its queue under `<jobKey>-r<n>` and claims
+  writes the request on the sweep queue through the outbox, `ParkedJobResumeRequestsService`). It goes back to its queue under `<jobKey>:r<n>` and claims
   its own row again, so its recorded steps (`claims.advance`) and the outputs they stored are kept, and a pivot never repeats: a
   remote effect is claimed in the inbox under its effect key (`JobClaims.effectKey(job, step)`, `<jobId>:<step>`, the same after
   a resume; `inbox.claim(JOB_EFFECT_SOURCE, key, tx)` in the transaction of the effect) and a resumed job finds it claimed, a saga

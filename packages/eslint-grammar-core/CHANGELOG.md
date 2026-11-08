@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.30.0 (Button sm takes the pill radius; SuggestionChips).
+- Added: `suggestion-chips` (`FE_SUGGESTION_CHIPS`, SUGGESTION-CHIPS): two or more Grammar `Button`s that are siblings in a Cluster, Stack or div (or one in a `.map`), each `size="sm"` with no intent or a neutral/alternative one and an `onPress` that sends its own label, are refused; use `SuggestionChips`. `docs/suggestion-chips.md`.
+
+## 0.29.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.29.0 (its standalone DataTable and zone text defaults changed); the messages of `surface-card-kind` and `surface-in-surface` that named a bare list card now point at `Section kind="list"`.
+- Added: `single-child-card` (`FE_SINGLE_CHILD_CARD`, SINGLE-CHILD-CARD): a Grammar `SurfaceCard` with no zones (`headers`, `footers`, `labelEnd`) whose only body child is a `DataTable`, a list (`ListBox`, `ItemList`, `DisclosureList`, `Timeline`, `Section kind="list"`) or a chart (`BarChart`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`), or that is `kind="table"` or `kind="list"`, is refused; the title is a `Section` head and one line under it is `Section caption`. `docs/single-child-card.md`.
+
 ## 0.28.0 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.28.0; peers `@starci/hfs ~6.5.0`. The new rules below are errors, with no escape.

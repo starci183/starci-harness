@@ -208,10 +208,10 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/calendar-day.md](../ui/components/calendar-day.md) · 1 KB — Name one date's region without selecting a date.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/card.md](../ui/components/card.md) · 7 KB — Contract: Card.
+- [ui/components/card.md](../ui/components/card.md) · 8 KB — Contract: Card.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/chip.md](../ui/components/chip.md) · 4 KB — Contract: Chip.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+- [ui/components/chip.md](../ui/components/chip.md) · 6 KB — Contract: Chip.
+  - sections: Job · Choose · SuggestionChips · Variants · Size · States · Owner split · Rules
 - [ui/components/color-swatch.md](../ui/components/color-swatch.md) · 1 KB — Contract: ColorSwatch.
   - sections: Job · Choose · Anatomy and states · Owner split
 - [ui/components/data-views.md](../ui/components/data-views.md) · 2 KB — Contract: data-views.
@@ -230,7 +230,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 2 KB — Contract: Avatar and IconTile.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/list-table.md](../ui/components/list-table.md) · 5 KB — Contract: List and Table.
+- [ui/components/list-table.md](../ui/components/list-table.md) · 6 KB — Contract: List and Table.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/mascot.md](../ui/components/mascot.md) · 3 KB — Contract: Mascot.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
@@ -256,12 +256,12 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Size · States · Owner split · Rules
 - [ui/components/toast-alert.md](../ui/components/toast-alert.md) · 2 KB — Contract: Toast and Alert.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/composition.md](../ui/composition.md) · 27 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...
+- [ui/composition.md](../ui/composition.md) · 28 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...
   - sections: 1. Hierarchy · 2. Action and CTA · 3. Accent · 4. State and feedback · 5. Collection · 6. Layout · 7. Responsive · 8. Taste · 9. Coverage
-  - ids: ACCENT-2, ACCENT-3, ACCENT-4, ACCENT-5, ACCENT-6, ACTION-1, COLLECTION-1, COLLECTION-2, COLLECTION-3, COVERAGE-1, CTA-1, CTA-2, CTA-3, CTA-4, CTA-5, CTA-6, DISCIPLINE-1, DISCIPLINE-2, DISCIPLINE-3, FE-APP-SHELL-1..6, FEEDBACK-1, FEEDBACK-2, FEEDBACK-3, HIERARCHY-1 and 20 more
+  - ids: ACCENT-2, ACCENT-3, ACCENT-4, ACCENT-5, ACCENT-6, ACTION-1, COLLECTION-1, COLLECTION-2, COLLECTION-3, COLLECTION-4, COVERAGE-1, CTA-1, CTA-2, CTA-3, CTA-4, CTA-5, CTA-6, DISCIPLINE-1, DISCIPLINE-2, DISCIPLINE-3, FE-APP-SHELL-1..6, FEEDBACK-1, FEEDBACK-2, FEEDBACK-3 and 22 more
 - [ui/loading.md](../ui/loading.md) · 9 KB — A region is in exactly one of four states, and the Grammar owns how each looks.
   - sections: The four states · What the Grammar takes · The region carries it · Choose · Rules
-- [ui/presentation.md](../ui/presentation.md) · 30 KB — Presentation resolves values on boundaries the **app** owns, after composition chose the tree and the components.
+- [ui/presentation.md](../ui/presentation.md) · 31 KB — Presentation resolves values on boundaries the **app** owns, after composition chose the tree and the components.
   - sections: Space · Type · Paint · Room · Relations at a glance
 - [ui/proof.md](../ui/proof.md) · 18 KB — Proof exists only after render.
   - sections: Who holds each proof · Lenses and verdicts · Accessibility (gating) · Contrast (gating) · Focus (gating) · Motion (gating) · Render truth (gating) · Taste (scored) · UX (scored) · Anatomy source and brand (provenance)

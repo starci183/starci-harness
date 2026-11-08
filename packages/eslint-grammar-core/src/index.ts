@@ -23,7 +23,9 @@ import { rules as sameLineSizeRules } from "./same-line-size.ts"
 import { rules as statusColorsRules } from "./status-colors.ts"
 import { rules as surfaceCardRules } from "./surface-card.ts"
 import { rules as surfaceDepthRules } from "./surface-depth.ts"
+import { rules as singleChildCardRules } from "./single-child-card.ts"
 import { rules as surfaceInSurfaceRules } from "./surface-in-surface.ts"
+import { rules as suggestionChipsRules } from "./suggestion-chips.ts"
 import { rules as tabsRules } from "./tabs.ts"
 import { rules as tableCellTypeRules } from "./table-cell-type.ts"
 import { rules as textRules } from "./text-rules.ts"
@@ -62,9 +64,11 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "pane", rules: paneRules },
   { law: "row-title-link", rules: rowTitleLinkRules },
   { law: "same-line-size", rules: sameLineSizeRules },
+  { law: "single-child-card", rules: singleChildCardRules },
   { law: "status-colors", rules: statusColorsRules },
   { law: "surface-card", rules: surfaceCardRules },
   { law: "surface-depth", rules: surfaceDepthRules },
+  { law: "suggestion-chips", rules: suggestionChipsRules },
   { law: "surface-in-surface", rules: surfaceInSurfaceRules },
   { law: "tabs", rules: tabsRules },
   { law: "table-cell-type", rules: tableCellTypeRules },

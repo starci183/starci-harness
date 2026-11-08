@@ -30,6 +30,16 @@ interface SnapshotManifest { schema: string; version: string; templates: string[
 /** One managed file of the families: where it sits in the app and the template (templates-relative) that renders it. */
 interface Placement { app: string; template: string; capability: string }
 
+/**
+ * The resumed-delivery form the jobs platform rendered in hfs 6.5.0 and 6.5.1 (`<jobKey>-r<n>`), which the outbox check `job_outbox_dedupe_key_check`
+ * refuses (no `:`): the current text of a managed file in that form, so an app rendered then is rewritten to `<jobKey>:r<n>` like a snapshot rendering.
+ */
+export const withLegacyResumeForm = (text: string): string => text
+  .replaceAll('`<jobKey>:r<', '`<jobKey>-r<')
+  .replaceAll('`<job_key>:r<', '`<job_key>-r<')
+  .replaceAll('/:r\\d+$/u', '/-r\\d+$/u')
+  .replaceAll('`${jobKey}:r${', '`${jobKey}-r${');
+
 const lf = (text: string): string => text.replace(/\r\n/g, '\n');
 const readSnapshot = (): SnapshotManifest => JSON.parse(fs.readFileSync(path.join(SNAPSHOT_DIR, 'manifest.json'), 'utf8')) as SnapshotManifest;
 const capabilityOf = (app: string): string => /^be\/src\/modules\/platform\/([^/]+)\//u.exec(app)?.[1] ?? '';
@@ -87,7 +97,8 @@ export async function migrateSelfRecovery({ root, write = false, prettier, now =
     const wanted = await layout(placement.app, current);
     if (text === wanted || text === current) continue;
     const before = lf(fs.readFileSync(path.join(SNAPSHOT_DIR, placement.template), 'utf8'));
-    if (text === before || text === await layout(placement.app, before)) {
+    const legacy = withLegacyResumeForm(current);
+    if (text === before || text === await layout(placement.app, before) || (legacy !== current && (text === legacy || text === await layout(placement.app, legacy)))) {
       writes.set(placement.app, wanted);
       report.changes.push({ file: placement.app, action: 'rewrite' });
     } else {

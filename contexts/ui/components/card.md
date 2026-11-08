@@ -16,6 +16,7 @@ for a kind does not compile). The first row that applies wins.
 | contained-figures | key figures already belong to a pane or another surfaced region | unpainted `Section kind="figures"` with shared `Figure` data; retain an existing parent heading with `ariaLabel`, or use `title` when the strip owns its heading | type: titled/headless forms exclude each other; one shared FigureCells renderer; R340/R356 forbid another surface |
 | task-list | standalone rows on the page canvas, worked through or scanned as one bounded group with no search, filter or paging | `SurfaceCard kind="list"`: label outside, `items`, a required `empty`, a `footer` for the note | type: a list needs `items` and `empty`; R355 |
 | collection | rows that search, filter or page, or have no bound | not a card: `Section kind="list"` (`list-table.choose.role:entity`) | R355 refuses a `Section` around one card |
+| single-child | the body would be one lone `DataTable`, list, chart or `Section kind="list"`, with no zones and no head actions | not a card: the part is the surface, its title a `Section title` above and one `Section caption` below (COLLECTION-4) | lint `single-child-card` (error) |
 | disclosure | one summary that reveals a rarely changed region | `kind="accordion"`, closed by default | judgement |
 | figures | a standalone row of key figures on the page canvas | `kind="figures"` (DISCIPLINE-2): touching cells with lines between cells and rows | type: typed figures; candidate: cells at most `budgets.ribbonCells` |
 | whole | the whole card is one destination or command | `wholeAction`, present only where the card holds no inner control (STATE-5) | type: a nested interactive does not compile |
@@ -75,8 +76,8 @@ fails in place through its `error` slot (message, description, action), beside i
 - **App author decides:** the subject, its content, the label.
 
 ## Rules
-COLLECTION-1, COLLECTION-2, DISCIPLINE-1 (`budgets.hairlinesPerCard`), BOUNDARY-1..4, SURFACE-2..6. Lint:
+COLLECTION-1, COLLECTION-2, COLLECTION-4, DISCIPLINE-1 (`budgets.hairlinesPerCard`), BOUNDARY-1..4, SURFACE-2..6. Lint:
 `starci-fe/no-app-surface-paint`, `divider-full-bleed`, `starci-grammar/no-raised-surface-in-surface` (R340),
-`surface-card-kind` (R355), `no-label-in-grid` (R366), `starci-fe/no-heading-above-card` (R354),
+`surface-card-kind` (R355), `single-child-card` (COLLECTION-4: a card whose only body child is a table, list or chart, with no `headers`/`footers`/`labelEnd`; also `kind="table"|"list"` with no zones), `no-label-in-grid` (R366), `starci-fe/no-heading-above-card` (R354),
 `starci-grammar/surface-in-surface` (a list of rows inside the card body is a nested surface, BOUNDARY-7),
 `starci-grammar/gap-proximity`. Proof: TASTE-7.
