@@ -409,8 +409,11 @@ function nextAppTsconfig() {
   };
 }
 
-/** The names a skeleton file may fill: {{project}}, {{app}}, {{appPascal}} (the side's app), {{sonarGate}} and {{registryVisibility}} (the image visibility written once into deploy.registry). */
-const SKELETON_VARIABLES = Object.freeze(['project', 'app', 'appPascal', 'sonarGate', 'registryVisibility']);
+/** The names a skeleton file may fill: {{project}}, {{app}}, {{appPascal}} (the side's app), {{sonarGate}}, {{registryVisibility}} (the image visibility written once into deploy.registry), and {{basePort}} and {{apiPort}} (the project base port of the dev environment and the api port above it, PROJECT-STACKS-10). */
+const SKELETON_VARIABLES = Object.freeze(['project', 'app', 'appPascal', 'sonarGate', 'registryVisibility', 'basePort', 'apiPort']);
+
+/** The base port a new app declares in local.basePort: 3000, 3100 ... 4900 without the reserved 3900 range, picked by the project name, so two new apps rarely start on the same range (the doctor reports an overlap). */
+export const scaffoldBasePort = (project: string): number => 3000 + 100 * ((slot: number) => (slot >= 9 ? slot + 1 : slot))([...project].reduce((hash, char) => (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0, 7) % 19);
 
 /**
  * A skeleton file with its variables filled. Only the skeleton names are variables: every other `{{name}}` is source the app keeps
@@ -714,7 +717,7 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', re
       { path: `fe/packages/${name}-${pkg}/tsconfig.json`, content: jsonText(fePackageTsconfig()) },
       { path: `fe/packages/${name}-${pkg}/tsconfig.build.json`, content: jsonText(fePackageBuildTsconfig()) },
     ])),
-    ...(['app', 'be', 'fe'] as const).flatMap(scope => skeletonOf(scope, app, { sonarGate: String(sonarGateName(parseYaml(fs.readFileSync(SONAR_GATE_FILE, 'utf8')), app.edition)), timestamp, registryVisibility })),
+    ...(['app', 'be', 'fe'] as const).flatMap(scope => skeletonOf(scope, app, { basePort: String(scaffoldBasePort(name)), apiPort: String(scaffoldBasePort(name) + 1), sonarGate: String(sonarGateName(parseYaml(fs.readFileSync(SONAR_GATE_FILE, 'utf8')), app.edition)), timestamp, registryVisibility })),
     // A full app has a test world (integration, e2e and contract are rows of its release gate); lite has none (R212).
     ...(app.edition === 'lite' ? [] : testWorldFiles(app)),
   ];

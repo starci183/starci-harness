@@ -12,8 +12,8 @@ const REPOSITORY = path.resolve(import.meta.dirname, '..', '..', '..');
 const STACKS = path.join(import.meta.dirname, '..', 'templates', 'app', 'skeleton-lite', '.starcistacks');
 const read = (...parts: string[]): string => fs.readFileSync(path.join(STACKS, ...parts), 'utf8');
 const pins = parseYaml(fs.readFileSync(path.join(REPOSITORY, 'contexts', 'stack', 'pins.yaml'), 'utf8')).images;
-// The template carries the project placeholder; the parsers see a project name.
-const render = (text: string): string => text.replaceAll('{{project}}', 'demo');
+// The template carries the project and base port placeholders; the parsers see a project name and a base port.
+const render = (text: string): string => text.replaceAll('{{project}}', 'demo').replaceAll('{{basePort}}', '3000').replaceAll('{{apiPort}}', '3001');
 const compose = parseYaml(render(read('dev', 'infra', 'compose', 'compose.yaml')));
 const stacks = parseYaml(render(read('application-stacks.yaml')));
 const local = normalizeLocal(stacks.environments.dev.local, { project: 'demo', env: 'dev' });

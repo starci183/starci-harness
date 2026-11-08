@@ -12,7 +12,7 @@
 # (`at`) that emits one of the rule's codes. scripts/checks/check-hfs-rules.mjs holds all of this to the packages, the
 # scripts and modules/kernel/failure-codes.yaml.
 #
-# Every rule is an error. There is no baseline, allowlist or suppression file for a product. The runtime gate
+# Every rule is an error, except the warning-level codes a law names (R389 STACKS_BASE_PORT_UNDECLARED). There is no baseline, allowlist or suppression file for a product. The runtime gate
 # (the StarCi runtime repository judged by knowledge/hfs/runtime-slots.yaml) has exactly one, the shrink-only sections of
 # modules/kernel/allowlist.yaml, held by RT_ALLOWLIST_SPRAWL. Codes are quoted: the failure-code
 # scanner reads this file as an emitter of every code it names.
@@ -6572,3 +6572,20 @@ rules:
       - {path: packages/hfs/src/dev-branch.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/pre-push-branches.spec.mjs, editions: [lite, full]}
+  - id: R389
+    code: "STACKS_BASE_PORT_ROLE"
+    law: "The native process ports of a dev environment derive from its project base port, so two apps on one machine never collide: with `local.basePort` declared in .starcistacks/application-stacks.yaml, the primary front end (the first process named web, app, console, fe or frontend) listens on base, the api (api, core, be, backend) on base+1, the AI gateway (gateway, ai-gateway, ai-router) on base+2, and every further native process on base+3 up to base+99 (base+2 up to base+99 when no gateway runs); compose service ports are exempt. An environment with native processes on ports and no `basePort` reports STACKS_BASE_PORT_UNDECLARED as a warning, never an error; `starci app stack doctor --env <env>` also reports a row when another app registered on the machine declares an overlapping base..base+99."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["STACKS_BASE_PORT_ROLE", "STACKS_BASE_PORT_UNDECLARED"]
+    enforcers:
+      - {kind: hfs, id: stacks-local, at: runtime/scripts/hfs/rules/stacks-local.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-10-local-runs, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/stack-base-port.spec.mjs, editions: [lite, full]}
+    exemplifiedBy:
+      - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks, edition: lite}
+    witness:
+      - {path: packages/hfs/src/stack-base-port.spec.mjs, editions: [lite, full]}

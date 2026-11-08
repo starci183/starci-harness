@@ -2682,3 +2682,11 @@ rules:
       - HFS_SCRIPT_ONE_OFF
     enforcers:
       - {kind: hfs, id: script-one-off, status: planned}
+  - id: R389
+    code: STACKS_BASE_PORT_ROLE
+    law: "The native process ports of a dev environment derive from its project base port: with `local.basePort` declared, the primary front end listens on base, the api on base+1, the AI gateway on base+2 and every further native process from base+3 (from base+2 when no gateway runs) up to base+99; compose service ports are exempt. An environment with native processes on ports and no `basePort` is reported as a warning, not an error."
+    failureCodes:
+      - STACKS_BASE_PORT_ROLE
+      - STACKS_BASE_PORT_UNDECLARED
+    enforcers:
+      - {kind: hfs, id: stacks-local}

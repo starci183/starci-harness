@@ -5663,6 +5663,27 @@ STACKS_RUNBOOK_DOCKER_COMMAND:
   owner: op-retry
   kind: check-finding
 
+STACKS_BASE_PORT_ROLE:
+  title: "A native process port departs from the role table of the project base port"
+  title_vi: "Cổng của tiến trình native lệch khỏi bảng vai trò của cổng gốc dự án"
+  meaning_vi: "environments.<env>.local khai báo basePort nhưng cổng của một tiến trình native không đúng bảng vai trò: front end chính = basePort, api = basePort + 1, AI gateway = basePort + 2, các tiến trình native còn lại từ basePort + 3 (basePort + 2 khi không có gateway) đến basePort + 99. Cổng của dịch vụ compose không bị kiểm."
+  causes_vi:
+    - "Vi phạm R389: cổng được đặt tay thay vì suy ra từ cổng gốc, nên hai ứng dụng trên một máy có thể trùng cổng."
+    - "Tên tiến trình không thuộc đúng vai trò (web, app, console là front end; api, core là api; gateway là AI gateway), nên bị xếp vào nhóm còn lại."
+  nextStep_vi: "Đặt lại cổng trong environments.<env>.local.ports theo đúng bảng vai trò của basePort (PROJECT-STACKS-10), cập nhật các nơi dùng ${port.<tên>}, rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
+STACKS_BASE_PORT_UNDECLARED:
+  title: "A dev environment with native processes declares no project base port"
+  title_vi: "Môi trường dev có tiến trình native nhưng chưa khai báo cổng gốc dự án"
+  meaning_vi: "environments.<env>.local có tiến trình native dùng cổng nhưng không có basePort, nên cổng dev của ứng dụng không suy ra từ một cổng gốc và có thể trùng ứng dụng khác trên cùng máy. Đây là cảnh báo, không phải lỗi."
+  causes_vi:
+    - "Ứng dụng có trước quy ước cổng gốc (R389) và vẫn liệt kê cổng bằng tay."
+  nextStep_vi: "Khai báo environments.<env>.local.basePort (một số nguyên, dự án sở hữu basePort đến basePort + 99) và xếp các cổng tiến trình theo bảng vai trò trong PROJECT-STACKS-10; starci app stack doctor --env <env> báo khi dải cổng trùng ứng dụng khác trên máy."
+  owner: op-retry
+  kind: check-finding
+
 STACKS_DEPLOY_CONFIG_INVALID:
   title: "A deploy block of application-stacks.yaml is not coherent"
   title_vi: "Khối deploy trong application-stacks.yaml không nhất quán"

@@ -42,6 +42,8 @@ export interface CustodyGenerator extends CustodyRef { kind: string; bytes: numb
 /** The normalised `local` block of one environment. */
 export interface LocalBlock {
   project: string;
+  /** The project base port (`local.basePort`): the native process ports follow its role table (stack-base-port.mts); null when the app declares none. */
+  basePort: number | null;
   ports: Record<string, number>;
   services: LocalService[];
   database: LocalDatabase | null;
@@ -60,7 +62,7 @@ export interface LocalBlock {
   resources: { diskGb: number; ramMb: number };
 }
 
-const TOP = ['project', 'ports', 'services', 'database', 'composeEnv', 'grants', 'dirs', 'custody', 'setup', 'seed', 'processes', 'ready', 'verify', 'origins', 'resources'];
+const TOP = ['project', 'basePort', 'ports', 'services', 'database', 'composeEnv', 'grants', 'dirs', 'custody', 'setup', 'seed', 'processes', 'ready', 'verify', 'origins', 'resources'];
 const COMMAND = ['name', 'argv', 'cwd', 'heavy', 'skipIfExists', 'env', 'files'];
 const SEED = [...COMMAND, 'after'];
 const PROCESS = [...COMMAND, 'port', 'health'];
@@ -154,6 +156,13 @@ function portsOf(c: Collector, value: unknown): Record<string, number> {
     ports[name] = port as number;
   }
   return ports;
+}
+
+/** The base port: a whole port with base .. base + 99 inside 1024 .. 65535 (the range a project owns, stack-base-port.mts). */
+function basePortOf(c: Collector, value: unknown): number | null {
+  if (value === undefined) return null;
+  if (!Number.isInteger(value) || (value as number) < 1024 || (value as number) + 99 > 65535) { c.problem('basePort', 'must be a whole port from 1024 to 65436: the project owns basePort .. basePort + 99'); return null; }
+  return value as number;
 }
 
 function servicesOf(c: Collector, value: unknown, ports: Record<string, number>): LocalService[] {
@@ -254,7 +263,7 @@ export function normalizeLocal(raw: unknown, { project, env }: { project: string
   const role = `${project}_${env}`.toLowerCase().replaceAll(/[^a-z0-9]+/gu, '_').replace(/^[^a-z]+/u, 'a');
   const names = new Set<string>();
   const block: LocalBlock = {
-    project: compose, ports, services,
+    project: compose, basePort: basePortOf(c, entry.basePort), ports, services,
     database: databaseOf(c, entry.database, ports, services, role),
     composeEnv: listOf(c, 'composeEnv', entry.composeEnv, (item, index) => {
       const at = `composeEnv[${index}]`;
