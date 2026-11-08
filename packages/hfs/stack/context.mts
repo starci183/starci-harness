@@ -57,8 +57,8 @@ export interface PipeResult {
   stderr: string;
 }
 
-/** One heavy command the dev verbs run (`npm ci`, a compose build or up): admitted by the harness's heavy-command governor when it hands one in. */
-export interface HeavyRequest { kind: 'install' | 'build'; label: string; cwd: string; argv: string[]; env: NodeJS.ProcessEnv }
+/** One heavy command the dev verbs and the release gate run (`npm ci`, a compose build or up, a release row's npm script or scanner): admitted by the harness's heavy-command governor when it hands one in; a `test` kind is sized with the workers and worker heap its room holds. */
+export interface HeavyRequest { kind: 'install' | 'build' | 'test'; label: string; cwd: string; argv: string[]; env: NodeJS.ProcessEnv }
 /** The governed runner: waits for a slot of the host-wide semaphore, runs the argv without a shell and returns its result. */
 export type HeavyRun = (request: HeavyRequest) => Promise<RunResult>;
 

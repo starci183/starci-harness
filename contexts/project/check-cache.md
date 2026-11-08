@@ -35,8 +35,19 @@ For a lane, a lead, an app session and CI alike:
 5. `starci app check --fresh` is the escape hatch for a broken or suspect cache. It ignores the cache, judges everything
    again and rewrites the records. It is not for routine use.
 
-Release with `starci app release gate`: every row runs diff-only against the warm cache, and a red nightly run refuses it
-(`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a green `cache-verify.yml` run; the `app-check` row is `app check --env prod`, and `--full` runs it as `app check --env prod --fresh`.
+Release with `starci app release gate`: the `app-check` row is `app check --env prod`, diff-only against the warm cache (`--full` runs it as `app check --env prod --fresh`), and a red
+nightly run refuses the gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a green `cache-verify.yml` run. The gate judges the work once, in that row:
+
+- **Reused rows.** A row `app check` already judges runs no command when the `app-check` row of the same run is green: `audit`, `format-check`, `typecheck`, `build-be`, `build-fe`, `lint`,
+  `db-lint`, `test` (the unit specs, their merged coverage and its per-file threshold) and `db-drift`. The row carries that verdict for the same sha: its report line is
+  `REUSED <row> (reused from app-check ...)`, and its L4 record entry holds `reused: true` and `reusedFrom` (the gate, the head, the `app-check` command, its log and the log's sha256). A row is reused
+  only under its default command (`npm run <script>`, `npm audit`, `npx starci app db drift`); a row an app declares under the same name with another command runs. The drift row is also
+  judged by `app check` only on a host with a database, so when the `app-check` log carries `CI_PARITY_DB_SKIPPED` it runs. A red `app-check` row stops the gate before any other row; `--full` changes only how that row runs.
+- **Real rows.** What `app check` does not judge stays a row: the world layers (`test-integration`, `test-e2e`, `test-contract`), every row an app declares of its own, and Sonar on the main project key
+  (`app check` scans the derived `<projectKey>-local`; [Sonar and Codecov](#sonar-and-codecov)), then the L4 record and the annotated tag.
+- **Governed rows.** A real row that runs a heavy command (an npm script, a test runner, the Sonar scanner) is admitted by the heavy-command governor, never started as a raw child: a slot of the host-wide
+  semaphore, the heap cap of its kind in `NODE_OPTIONS`, and for a test row the workers and worker heap its room holds (`--maxWorkers`, `--workerIdleMemoryLimit`, [The memory plan](#the-memory-plan)).
+  `starci` verbs (the `app-check` and drift rows govern their own steps) and `npm audit` are no heavy children and run plain. The printed plan states, for each row, whether it reuses the `app-check` verdict or runs, and how.
 
 ## The command surface
 
@@ -128,7 +139,7 @@ state and stay out of git; `.starcistacks/cache/` holds results only. The journa
 |---|---|
 | no cache in the tree (a new app, first adoption) | full, and it writes the cache |
 | a fingerprint part a family reads differs from the cache's | full for the families that read it, and it rewrites their records |
-| `--fresh` (the escape hatch for a broken or suspect cache; `starci app release gate --full` runs its `app-check` row as `--fresh`) | full for the selected families, ignoring their records; it writes the refreshed records |
+| `--fresh` (the escape hatch for a broken or suspect cache; `starci app release gate --full` runs its `app-check` row as `--fresh`, and the rows it covers still reuse that verdict) | full for the selected families, ignoring their records; it writes the refreshed records |
 | anything else, on a host or in CI, `starci app release gate` and the CI run a release waits for included | diff-only against the trusted cache (below) |
 
 ### The nightly verify
@@ -547,7 +558,7 @@ preset's merge one record at a time, so the parent holds about three times the r
   job records nothing) and the merge job judges the merged report with `--coverage-from`. The selectors are job selectors of CI and never
   `--fresh`: one plain run would serialize the families that CI runs in parallel. Every `app check` of the managed workflows and of the hook
   carries `--env prod`: `cache-verify.yml` runs `app check --env prod --fresh` nightly, the managed pre-push hook runs `app check --env prod`, and
-  the release gate runs every row diff-only against the warm cache unless `--full` is given.
+  the release gate runs its `app-check` row diff-only against the warm cache unless `--full` is given, and the rows `app check` covers reuse that row's verdict ([The operating procedure](#the-operating-procedure)).
 - **Scaffold.** `app scaffold` writes the templates above and no cache; the app's first check builds it in full.
 - **Adoption.** `app sync --execute` and `app upgrade` bring an existing app the same templates and never create,
   move or delete cache records; its first run after them is full and writes the folder, which the developer commits.
