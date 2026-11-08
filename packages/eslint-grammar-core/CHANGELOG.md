@@ -1,9 +1,15 @@
 # Changelog
 
+## 0.31.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.31.0 (the final type scale).
+- Changed: `same-line-size` treats `sm` and `md` (and an absent size) as the same 14 step; only 14 vs 12 (`xs`) vs display (`figure`) on one line are findings. `table-cell-type` allows only 14 (`md`, `sm`, absent) and 12 (`xs`) Text in a DataTable cell or ListRow; `lg`, `xl`, `figure`, Heading, Label and h1-h6 stay refused. Messages, docs and `why.ts` no longer name 13 or 16.
+
 ## 0.30.0 - 2026-11-09
 
-- Changed: released with the Grammar family at 0.30.0 (Button sm takes the pill radius; SuggestionChips).
-- Added: `suggestion-chips` (`FE_SUGGESTION_CHIPS`, SUGGESTION-CHIPS): two or more Grammar `Button`s that are siblings in a Cluster, Stack or div (or one in a `.map`), each `size="sm"` with no intent or a neutral/alternative one and an `onPress` that sends its own label, are refused; use `SuggestionChips`. `docs/suggestion-chips.md`.
+- Changed: released with the Grammar family at 0.30.0 (Button sm takes the pill radius).
+- Added: `suggestion-buttons` (`FE_SUGGESTION_BUTTONS`, SUGGESTION-BUTTONS): suggestions and quick replies have one pattern, a `Cluster gap="inline"` of neutral `Button size="sm"` (a pill); a row of Grammar `Link`s with an inline handler that passes its own label (`href` absent or `"#"`), a `ChoiceChips` whose `onValueChange` sends the value instead of keeping it, and a HeroUI `Chip` whose `onPress` passes its own label are refused. `docs/suggestion-buttons.md`.
+- Note: `suggestion-chips` was withdrawn before release with SuggestionChips.
 
 ## 0.29.0 - 2026-11-09
 

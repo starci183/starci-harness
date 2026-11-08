@@ -1,16 +1,16 @@
-# Chip, Badge, StatusDot, TagGroup and SuggestionChips
+# Chip, Badge, StatusDot, TagGroup
 
 Contract: [Chip](../../grammars/contract.md#chip). Vendor: [Chip, Badge, Tag](../../vendor/heroui.md#chip).
 
 ## Job
-Three different jobs share the pill shape, and a status may shrink to its dot:
+Different jobs share the pill shape, and a status may shrink to its dot:
 
 | Role | Job | Interactive |
 | --- | --- | --- |
 | `Badge` (display chip) | label an outcome authority settled, next to the thing it qualifies; `isDot` adds the status dot before its words, `isLive` makes it the state of a live feed in a polite live region | no |
 | `StatusDot` | state an entity's status as a dot alone, with the words as its name | no |
 | `TagGroup` | values the user entered, to remove or to order (it has no selection) | yes |
-| `SuggestionChips` | things to say or ask in one press: quick replies, suggested questions, empty-state shortcuts; a press sends the chip (`onSelect(id)`) and picks no value | yes |
+| (none) | things to say or ask in one press are never a chip: they are neutral `sm` Buttons ([button](button.md) `button.choose.role:suggest`) | no |
 
 ## Choose
 
@@ -20,7 +20,7 @@ Choice `chip.choose.role`: what carries the label or the pick. The first row tha
 | --- | --- | --- | --- |
 | value | one value is chosen in a form | not a chip: `ChoiceChips` or `RadioGroup` (`segmented-control.choose.role`) | judgement |
 | filter | peer values filter a collection that stays in place | `Tabs kind="filter"`: compact underline tabs under the list pane's search field, one selected, a `count` per tab when the app has it (R353 refuses a selection on `TagGroup`; `FilterButtonGroup` is deprecated, R380) | judgement |
-| suggest | the user is offered a few things to say or ask next (quick replies in a chat, suggested questions in the assistant drawer, shortcuts in an empty state) | `SuggestionChips` with a `label` and `items`; not `ChoiceChips` (a form value that stays chosen), not `TagGroup` or `Badge` (labels), not a row of `Button`s | lint `starci-grammar/suggestion-chips` |
+| suggest | the user is offered a few things to say or ask next (quick replies in a chat, suggested questions in the assistant drawer, shortcuts in an empty state) | never a chip: a `Cluster gap="inline"` (with a `label`) of neutral `Button size="sm"` ([button](button.md) `button.choose.role:suggest`); `ChoiceChips`, `TagGroup`, `Badge`, a HeroUI `Chip` and a row of `Link`s are never suggestions | lint `starci-grammar/suggestion-buttons` |
 | entered | values the user entered, to remove or order | `TagGroup` tags with their remove action, and `onReorder` when order matters | `DNA-COMMON-TAG-REMOVE`, `DNA-COMMON-TAG-REORDER-KEYS` |
 | dot | a status with no room or need for words beside it (a row marker, presence, a live process) | `StatusDot`, named by `aria-label`; never a `Badge` without text | `DNA-COMMON-DOT-NAMED` |
 | state | an entity's operational state that authority reports (active, failed, pending review) | `Badge` in that state's tone, with `isDot` when the state has a dot | candidate: toned labels per entity at most `budgets.badgesPerEntity` |
@@ -41,11 +41,6 @@ Choice `chip.choose.connection`: the state of a live feed. It is the feed's own,
 | receiving | events arrive | `Badge isDot isLive tone="success"` | judgement |
 | dropped, retrying | the link broke and a retry runs | `Badge isDot isLive tone="warning"`; hide figures that are no longer true (a time remaining) | judgement |
 | down | no retry runs | `Badge isDot tone="danger"` (no `isLive`: nothing is arriving) with the action that restores it beside it | judgement |
-
-## SuggestionChips
-A pill (radius full), 28px high, label in `sm` 13, with an optional start glyph or icon (`glyph`, `iconSource`). The chips sit in one wrapping row. A suggestion is an action, not a value: a press calls `onSelect(id)` and nothing stays selected, so it differs from `ChoiceChips` (the value of a form) and from `TagGroup` and `Badge` (labels that do nothing on press). A row of neutral `sm` `Button`s whose press sends their own label is this component drawn by hand.
-
-Accessibility: the group is a toolbar named by its `label` (always required, even when not shown), and each chip is a button, so a screen reader hears the group and then each suggestion; `isDisabled` disables the group or one chip, `isLoading` shows the chips as a skeleton while suggestions load.
 
 ## Variants
 Tone and emphasis are two axes in the contract. Tone comes from the authority-reported state (ACCENT-5): neutral
@@ -69,5 +64,5 @@ alone shows its name in a tooltip on hover and focus; its echo stops under reduc
   accessible name, the filter items.
 
 ## Rules
-SUGGESTION-CHIPS (`knowledge/ui/presentation/grammar-laws.yaml`), ACCENT-2, ACCENT-5, DISCIPLINE-1 (`budgets.badgesPerEntity`), HIERARCHY-4, CTA-1. Proof: TASTE-5, TRUTH-1,
+SUGGESTION-BUTTONS (`knowledge/ui/presentation/grammar-laws.yaml`), ACCENT-2, ACCENT-5, DISCIPLINE-1 (`budgets.badgesPerEntity`), HIERARCHY-4, CTA-1. Proof: TASTE-5, TRUTH-1,
 COLOR-5.

@@ -6,7 +6,7 @@ import { attributeOf, elementOf, grammarBindings, literalAttribute } from "./lib
 
 /**
  * The same line size law (`FE_SAME_LINE_SIZE`): one line, one size. The `Text` children that stand side by side on one line,
- * the direct children of one `Cluster` (and of a `Text` that holds `Text` runs, whose own size starts the line), share one `size`; an absent `size` is `md`.
+ * the direct children of one `Cluster` (and of a `Text` that holds `Text` runs, whose own size starts the line), share one `size`; an absent `size` is `md`, and `sm` is the same 14 step as `md` (the final type scale), so only 14 vs 12 (`xs`) vs display (`figure`) mixes are findings.
  *
  * WHAT IT READS. The direct `Text` children of a `Cluster` or a `Text`, through fragments, `cond && <Text />` and ternaries. A
  * `Text` whose `size` is not a literal (a variable, a spread) is skipped. A `Badge`, `StatusDot`, `Chip` or `TagGroup` is not a
@@ -16,11 +16,12 @@ import { attributeOf, elementOf, grammarBindings, literalAttribute } from "./lib
 /** The line containers: a Cluster lays its children on one line, a Text holds runs. */
 const LINES: ReadonlySet<string> = new Set(["Cluster", "Text"])
 
-/** The size a Text states: its literal `size`, `md` when it has none, null when it cannot be read. */
+/** The size step a Text states: its literal `size` (`sm` folds into `md`, both 14), `md` when it has none, null when it cannot be read. */
 const sizeOf = (opening: TSESTree.JSXOpeningElement): string | null => {
   if (opening.attributes.some((entry) => entry.type === "JSXSpreadAttribute")) return null
   if (attributeOf(opening, "size") === null) return "md"
-  return literalAttribute(opening, "size")
+  const size = literalAttribute(opening, "size")
+  return size === "sm" ? "md" : size
 }
 
 export const sameLineSize: Rule.RuleModule = defineRule({
@@ -30,7 +31,7 @@ export const sameLineSize: Rule.RuleModule = defineRule({
     schema: [],
     messages: {
       mixed:
-        "This Text is `{{size}}` and its line's first Text is `{{first}}`. One line, one size: pick the size of the line's role (md for a primary, sm for a secondary or a meta line) and give every Text of the line that size. A Badge or a chip may stay as it is.",
+        "This Text is `{{size}}` and its line's first Text is `{{first}}`. One line, one size: sizes are 14 (md, sm), 12 (xs, for a small name such as a meta line, count or timestamp) and display (figure): give every Text of the line the same step. A Badge or a chip may stay as it is.",
     },
   },
   create(context) {

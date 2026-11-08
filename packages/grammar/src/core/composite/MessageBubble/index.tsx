@@ -52,6 +52,11 @@ type MessageBubbleMessage = {
     readonly actionsPlacement?: MessageBubbleActionsPlacement
     /** The bubble's widest reach; `standard` when omitted. */
     readonly measure?: MessageBubbleMeasure
+    /**
+     * `text` (default): the body is words in the bubble face. `card`: the body is a structured card (what `MessageCard` renders): the face
+     * is the surface card, its own padding and line breaks, capped at the same measure as a text bubble with the avatar at the start.
+     */
+    readonly content?: "text" | "card"
     /** Content under the body that is not part of the message text: an attachment, an approval card, a reaction row. */
     readonly footer?: ReactNode
     /** Draws the focus ring around the bubble, e.g. when a link jumps to this message. */
@@ -138,7 +143,7 @@ const MessageBubbleInner = (props: MessageBubbleProps) => {
         return <SkeletonBubble side={props.side} hasAvatar={props.hasAvatar === true} />
     }
     if (props.error !== undefined) return <div className="starci-core-message-bubble-thread" data-grammar-message-error="true"><ErrorView error={props.error} /></div>
-    const { body, side = "incoming", tone = "brand", author, avatar, meta, status, actions, actionsPlacement = "floating", measure = "standard", footer, isHighlight = false, id } = props
+    const { body, side = "incoming", tone = "brand", author, avatar, meta, status, actions, actionsPlacement = "floating", measure = "standard", content = "text", footer, isHighlight = false, id } = props
     const actionsToolbar = actions == null ? null : <div className="starci-core-message-bubble-actions" data-grammar-bubble-actions="toolbar"><ButtonPlacementProvider placement="chrome">{actions}</ButtonPlacementProvider></div>
     const hasHead = author != null || meta != null || status != null
     return (
@@ -153,6 +158,7 @@ const MessageBubbleInner = (props: MessageBubbleProps) => {
             data-grammar-bubble-highlight={isHighlight ? "true" : "false"}
             data-grammar-bubble-footer={footer == null ? "false" : "true"}
             data-grammar-bubble-measure={measure}
+            data-grammar-bubble-content={content === "card" ? "card" : undefined}
             data-grammar-bubble-actions-placement={actions == null ? undefined : actionsPlacement}
         >
             {avatar == null ? null : <div className="starci-core-message-bubble-avatar">{avatar}</div>}

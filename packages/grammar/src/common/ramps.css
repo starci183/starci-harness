@@ -10,7 +10,8 @@
         /* TYPE. Sizes in rem, named by step; the leading beside a size is the rem step of the same name or a ratio. */
         --grammar-text-2xs: 0.6875rem;
         --grammar-text-xs: 0.75rem;
-        --grammar-text-sm: 0.8125rem;
+        /* THE FINAL TYPE SCALE (owner, 2026-11-09): no 13 anywhere. `sm` is retired into the UI step (14) and kept as a name. */
+        --grammar-text-sm: 0.875rem;
         --grammar-text-md: 0.875rem;
         --grammar-text-lg: 1rem;
         --grammar-text-xl: 1.125rem;
@@ -21,7 +22,7 @@
         /* Inline code and counts follow the size of the text around them. */
         --grammar-text-relative: 0.875em;
         --grammar-leading-xs: 1rem;
-        --grammar-leading-sm: 1.125rem;
+        --grammar-leading-sm: 1.25rem;
         --grammar-leading-md: 1.25rem;
         --grammar-leading-lg: 1.5rem;
         --grammar-leading-xl: 1.75rem;
@@ -84,6 +85,8 @@
         --grammar-loop-spin-fast: 0.8s;
         --grammar-loop-pulse: 1.6s;
         --grammar-loop-orbit: 3s;
+        /* How long a Spotlight rings its target before it settles. */
+        --grammar-spotlight-duration: 3s;
         --grammar-loop-easing: linear;
         --grammar-loop-pulse-easing: ease-in-out;
         --grammar-loop-echo-easing: ease-out;
@@ -93,8 +96,6 @@
 
         /* GEOMETRY of the parts: sizes, measures and layers that have no HeroUI token. Spacing is in styles.css. */
         --starci-core-control-min-size: 2.5rem;
-        /* A suggestion chip (quick reply, suggested question): HeroUI Chip scale, a pill 28px high. */
-        --grammar-chip-height: 1.75rem;
         /* A public page (booking, a job): a main column and one rail in about 66rem, narrower than the product page. */
         --starci-core-narrow-measure: 66.5rem;
         --starci-core-field-min-height: var(--starci-core-control-min-size);
@@ -148,7 +149,12 @@
         --starci-flow-diameter: 3rem;
         --starci-flow-height: 24rem;
         --starci-flow-zoom: 1;
+        /* A Sparkline: the inline trend line, 96 x 32. */
+        --grammar-sparkline-width: 6rem;
+        --grammar-sparkline-height: 2rem;
         --avatar-size: var(--starci-core-control-min-size);
+        /* The floating launcher: an AvatarButton size="floating", 56px. */
+        --grammar-avatar-floating-size: 3.5rem;
         /* A connection logo in a LogoStack: the 20px icon step (size-5, Icon `leading`). */
         --grammar-logo-stack-size: 1.25rem;
         /* How far a MessageBubble reaches across its row: `standard` (the default) is a reading measure capped at 40rem, `wide` a share of the column for a chat stack. */

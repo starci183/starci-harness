@@ -20,10 +20,12 @@ Choice `text.choose.content`: what may stand inside a `Text`. Words, `Badge`, `I
 a card, a table, a list row, a plain `div` or `ul`) is a layout, and a layout is closed before the next one opens (R357).
 
 ## Size
-One role, one size ([../presentation.md](../presentation.md#type) FONT-7): `md` 14 for body and table cells, `sm` 13 muted for
-a secondary line or a description, `xs` 12 muted for meta, and `isStrong` is weight 500 (a row's or a table's primary text is
-`<Text isStrong>`). Words that stand on one line share one size (FONT-8, lint `starci-grammar/same-line-size`), and a table cell
-or a list row takes the row type, never a heading size (FONT-9, lint `starci-grammar/table-cell-type`). A `Link` inside the
+One role, one size ([../presentation.md](../presentation.md#type) FONT-7): `md` 14 for all UI text (body, table cells, buttons, links, inputs, captions, hints), `sm` is
+kept as a name and equals `md` (there is no 13), `xs` 12 muted only for small names (meta, badges, counts, timestamps), and
+`isStrong` is weight 500 (a row's or a table's primary text is `<Text isStrong>`); hierarchy comes from weight and tone, not
+size. `size="figure"` is the display size 20 of a big figure value. Measure: `check:type`
+(`packages/grammar/scripts/check-type-roles.mts`). Words that stand on one line share one size step, and `sm` next to `md` is the same step (FONT-8, lint `starci-grammar/same-line-size`), and a table cell
+or a list row takes the row type, never a size above 14 (FONT-9, lint `starci-grammar/table-cell-type`). A `Link` inside the
 words inherits their size.
 
 ## States

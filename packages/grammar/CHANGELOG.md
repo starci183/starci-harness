@@ -1,11 +1,64 @@
 # Changelog
 
-## 0.30.0 - 2026-11-09 - SuggestionChips; one Button radius
+## 0.31.0 - 2026-11-09 - the final type scale; chat parts; spotlight
+
+- Changed (values): THE FINAL TYPE SCALE (owner, 2026-11-09; it replaces the 0.28 type roles). 14 for all UI text: body,
+  labels, section and card titles (16 before), row titles, tabs (13 before), buttons, links (the Section action too), inputs,
+  descriptions, captions, hints, zone text (13 before) and the figure labels and meta. 12 only for small names (meta lines,
+  badges, chips, counts, timestamps, breadcrumb separators). No 13 anywhere: `--grammar-text-sm` and `Text size="sm"` are 14
+  (`sm` stays as a name and equals `md`). Hierarchy by weight and tone only: titles semibold (page, section and card
+  titles, Heading levels 1-3; the card or section `h3` label was 16 / 500, now 14 / 600), row and selected names 500,
+  secondary text muted. Display sizes: the page title 18 and a big figure value 20 (`Text size="figure"` and the figures
+  value, 30 before); `titleScale="title"`, `Heading scale="title" | "display"` and Markdown headings keep their display
+  scale. Every tab is 14 and 40 high (filter tabs were 32) with one selected weight, 500 over the underline (page tabs
+  were 600). A DataTable header is 14 / 500 muted (12 before). `TextAction size="md"` is 14 (16 before). `check:type`
+  pins it: no 0.8125rem, `--grammar-text-sm` at 14, every tab rule at 14.
+- Changed (default): a `Tabs` strip that ends a `PaneSection` (its last child; not the pill switch) is hosted by the band: the band's
+  bottom edge is the one full-width `--separator` line (through the pane inset), the strip's own short line is not drawn, no padding
+  stands under it, and the pane drawn next to a band that ends its pane loses its block-start border, so the line is never doubled.
+  CSS on the band (`:has`), no new prop.
+- Changed (default): the head band of a chat or list pane (a `PaneSection as="header"`, or one holding a `PaneHeader`, standing above a
+  `scroll` band) ends in one full-width `--separator` line, its block-end padding equal to its block-start inset.
+- Added: `MessageCard` (composite): an agent's rich message as data, `{ author?, avatar?, title, chip?, body? | details?: DescriptionListItem[],
+  actions?: { id, label, kind?: "primary" | "neutral" | "open", onPress? | href? }[], meta?, measure?, id? }`. Order: title and chip, body or a
+  compact key/value list, the actions row (primary first, an `open` action with the end arrow last), the meta line at xs muted. It renders
+  `MessageBubble content="card"`, so it is capped at the bubble measure (`standard`, or `wide` 70%) with the avatar at the start.
+  `MessageBubble content="text" | "card"` (default `text`): the body is a structured card on the surface card face. Stories
+  `Navigation & Data/Chat parts/MessageCards`, `PaneTabsLine`, `ChatPaneHeadLine`, `EmptyNoticeInThread`.
+- Changed (default): an `EmptyNotice` inside a thread (a `PaneSection scroll role="log"` band, or a content stack holding `MessageBubble`s)
+  draws no card surface: no fill, border, radius or shadow. Detected by context in CSS, no prop.
+- Added: `Spotlight` (`@starci/grammar/common`, outside the registry): `<Spotlight isActive onEnd shape isBlock>{target}</Spotlight>`,
+  the Grammar "look here" in place of outline utilities in an app. An accent ring plus a soft `--accent-soft` pulse for the new ramp
+  step `--grammar-spotlight-duration` (3s), then no ring and `onEnd`; reduced motion keeps a static ring for the same time. It takes no
+  layout space; `shape` is `rounded | pill | circle`. Story `Navigation & Data/Spotlight/SpotlightStates`.
+- Added: `AvatarButton size="floating"` (56px, new ramp step `--grammar-avatar-floating-size`, overlay shadow) and `status={{ tone, label }}`:
+  a StatusDot badge at the top end corner on a surface ring, its `label` the button's accessible description. Story
+  `Navigation & Data/Spotlight/AvatarButtonFloating`.
+
+## 0.30.0 - 2026-11-09 - one Button radius; Sparkline, BarChart value axis, figure trend, row chevron
 
 - Changed (values): one Button radius in Core: every size, sm included, is a pill (`--starci-core-pill-radius`, HeroUI's
   full radius). Before, the vendor corner followed the app's `--radius`, so `Button size="sm"` drew about 12px while md read
-  as a pill. A row of neutral sm Buttons whose press sends their own label is `SuggestionChips` (lint `suggestion-chips`).
-- Added: `SuggestionChips` (composite, `@starci/grammar/common`): quick replies and suggested questions as pill chips (28px, new ramp step `--grammar-chip-height`; sm medium text; neutral fill with a separator edge; optional start `glyph` or `iconSource`; hover, pressed, focus-ring and disabled states), wrapping with 8 between them. Props `label` (required, the toolbar's accessible name), `isLabelHidden` (default true), `items` (`{ id, label, glyph?, iconSource?, isDisabled? }`), `onSelect(id)`, `isLoading` (pill geometry), `isDisabled`. A `role="toolbar"`: one tab stop, arrow keys move between chips. Stories `Navigation & Data/Suggestion chips`.
+  as a pill. A row of neutral sm Buttons is the one suggestion pattern (below).
+- Withdrawn before release: `SuggestionChips` (and its ramp step `--grammar-chip-height`). The owner keeps ONE suggestion
+  pattern: a quick reply, a suggested question or an empty state's shortcut is a `Cluster` of neutral `Button size="sm"`,
+  a pill like every Button. Lint `suggestion-buttons` refuses a Chip, ChoiceChips, TagGroup or Link row used that way.
+- Added: `Sparkline` (composite, `@starci/grammar/common`): a tiny inline line chart, 96 x 32 (new ramp steps `--grammar-sparkline-width`
+  and `--grammar-sparkline-height`), one accent stroke (the fine stroke step), a soft fill under it, no axis. Props `label` (required;
+  the line is `role="img"` with this name), `values` (oldest first; fewer than two draw a flat muted baseline), `isLoading` (a
+  skeleton of the same box). Story `Navigation & Data/Data views/SparklineStates`.
+- Added: `BarChart valueAxis={{ format }}`: three ticks (the largest value, its half and 0, through `format`) at the start of the
+  plot with light separator grid lines behind the bars; decorative (the list of values stays the accessible content). And
+  `BarChart highlightLast`: the last bar in the accent, the others in `--accent-soft`. Both default off, as before.
+- Added: `Figure.trend` (`up | down | flat`), `trendSense` (`higher-is-better` default | `lower-is-better`) and `trendLabel`: the
+  meta line starts with a decorative triangle (up/down) or dash (flat) in the success or danger colour, the text stays muted, and
+  the direction is also said in words (visually hidden, default "Up", "Down", "No change"; `trendLabel` replaces them).
+- Added: `Figure.trendLine` (`readonly number[]`) and `trendLineLabel`: a Sparkline under the figure's value and meta, at the
+  start of the cell.
+- Added: glyph `chevron-end` in `GLYPH_NAMES` (mirrored in RTL).
+- Changed (default): a pressable row (`ListRow` / `Section kind="list"` / `SurfaceCard kind="list"` with `onPress` or `href`) now
+  ends in a muted `chevron-end`, decorative, after its fact and badges. A row with its own `action`, `menu` or `control`, and a
+  row that is not pressable, draw none. Loading rows keep the chevron's space. Story `Surfaces/PressableRowChevron`.
 
 ## 0.29.0 - 2026-11-09 - the single-child card; zone text at sm
 

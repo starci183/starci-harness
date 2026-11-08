@@ -333,6 +333,24 @@ export const SurfaceCardList: Story = {
   ),
 };
 
+/** A pressable row (`onPress` or `href`) ends in a muted chevron; a row with its own command, menu or control, or a plain row, draws none. */
+export const PressableRowChevron: Story = {
+  render: () => (
+    <Matrix maxWidth={640}>
+      <State label="onPress, href, with a fact, with a command (no chevron), plain (no chevron); loading keeps the space" direction="column">
+        <G.Section kind="list" title="Courses" empty={<G.EmptyNotice message="Nothing here." />} items={[
+          { id: 'press', title: 'Open the course', description: 'Pressing the row opens it', onPress: noop },
+          { id: 'fact', title: 'With a fact', meta: { text: '8 min ago' }, badges: [{ label: 'New' }], onPress: noop },
+          { id: 'href', title: 'A link row', href: '#course' },
+          { id: 'action', title: 'Has its own command', onPress: noop, action: { label: 'Resume', press: noop } },
+          { id: 'plain', title: 'Not pressable' },
+        ]} />
+        <G.Section kind="list" title="Loading" isLoading empty={<G.EmptyNotice message="Nothing here." />} items={[{ id: 'a', title: 'Open the course', description: 'Pressing the row opens it', onPress: noop }]} />
+      </State>
+    </Matrix>
+  ),
+};
+
 /** The row anatomy: leading mark, title with badges, one line, one visible command, a menu, a detail region. */
 export const SurfaceCardListRow: Story = {
   name: 'SurfaceCard list row',

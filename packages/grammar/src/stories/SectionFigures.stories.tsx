@@ -37,3 +37,20 @@ export const States: Story = {
     </Matrix>
   ),
 };
+
+const trendFigures: readonly G.Figure[] = [
+  { id: 'revenue', term: 'Revenue', value: '48.2M', meta: '12% vs last month', trend: 'up', trendLine: [12, 14, 13, 18, 17, 22, 21, 27, 25, 31] },
+  { id: 'churn', term: 'Churn', value: '3.1', unit: '%', meta: '0.4 pt vs last month', trend: 'up', trendSense: 'lower-is-better', trendLine: [2, 2.4, 2.2, 2.9, 3.1] },
+  { id: 'cost', term: 'Cost per lead', value: '92k', meta: '8% vs last month', trend: 'down', trendSense: 'lower-is-better' },
+  { id: 'orders', term: 'Orders', value: 310, meta: 'Same as last month', trend: 'flat' },
+];
+
+/** `Figure.trend` marks the meta line (decorative triangle in the tone, direction also in words); `trendLine` draws a Sparkline under the cell. */
+export const TrendAndSparkline: Story = {
+  render: () => (
+    <Matrix maxWidth={960}>
+      <State label="Up (success), up but lower is better (danger), down but lower is better (success), flat; two cells carry a trend line" direction="column"><G.Section kind="figures" title="Overview" items={trendFigures} /></State>
+      <State label="Loading keeps the cells, the meta and the line's box" direction="column"><G.Section kind="figures" title="Overview" items={trendFigures} isLoading /></State>
+    </Matrix>
+  ),
+};

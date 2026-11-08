@@ -11,6 +11,8 @@ export type PlainPressableProps = {
     readonly children: ReactNode
     /** The accessible name. Needed when the content carries no text of its own (an avatar, a logo). */
     readonly "aria-label"?: string
+    /** The id of an element that describes the control (AvatarButton's status badge). */
+    readonly "aria-describedby"?: string
     /** Runs on a press: pointer, Enter or Space. */
     readonly onPress?: () => void
     readonly isDisabled?: boolean
@@ -33,7 +35,7 @@ export type PlainPressableProps = {
  * Contract: A11Y-2 (a named control), FOCUS-1 (a visible ring), MOTION-2 (reduced motion removes the zoom, never the control).
  */
 /** Exported from `@starci/grammar/common` (outside the tier ladder, not a registry component) so an app can wrap its own content as a DropdownMenu or Popover trigger; IdentityLockup, AvatarButton and LogoStack use it too. */
-export const PlainPressable = ({ children, "aria-label": ariaLabel, onPress, isDisabled = false, shape = "rounded", size, className }: PlainPressableProps) => (
+export const PlainPressable = ({ children, "aria-label": ariaLabel, "aria-describedby": describedBy, onPress, isDisabled = false, shape = "rounded", size, className }: PlainPressableProps) => (
     <HeroButton
         data-component="PlainPressable"
         data-contract="A11Y-2 FOCUS-1 MOTION-2"
@@ -43,6 +45,7 @@ export const PlainPressable = ({ children, "aria-label": ariaLabel, onPress, isD
         type="button"
         isDisabled={isDisabled}
         {...(ariaLabel === undefined ? {} : { "aria-label": ariaLabel })}
+        {...(describedBy === undefined ? {} : { "aria-describedby": describedBy })}
         {...(onPress === undefined ? {} : { onPress })}
     >
         {children}

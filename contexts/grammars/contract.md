@@ -67,8 +67,9 @@ corner itself.
 **Space and type are closed scales too.** Spacing is the roles identity 4, inline 8, row 12, section 24 and region 32, plus
 the card's own inset 16 (never a gap); a container's children stand at least one step closer than the container stands to
 its siblings (the proximity law, [ui/presentation](../ui/presentation.md#space) G6), which every grammar's defaults hold.
-Type is one size and one weight per role: `Text` `md` 14, `sm` 13, `xs` 12, `isStrong` weight 500; page title 18, card and
-section title 16, and every tab label sm 13 ([ui/presentation](../ui/presentation.md#type) FONT-7). Sizes and weights are
+Type is one size and one weight per role, on the final scale: 14 for all UI text (`Text` `md`, and `sm`, the same step), 12 for
+small names (`xs`), `isStrong` weight 500, titles 600; display sizes flagged: page title 18 and a big figure value 20; card and
+section title 14, and every tab label 14 ([ui/presentation](../ui/presentation.md#type) FONT-7). Sizes and weights are
 Common tokens (`--grammar-text-*`); a grammar may repaint a face but not move a role to another size.
 
 ## Intent x placement -> variant
@@ -167,7 +168,7 @@ Tabs switch whole panels; each tab owns its panel. HeroUI's `primary` is a segme
 `secondary` is an underline bar; the contract keeps those names one to one. Page tabs, region tabs inside a surface and
 filter tabs over a collection (`kind="filter"`) take the underline, with the first label on the content edge; `primary` is
 only the switch of a mode or period of the same data in a card's `switch` header zone, two to four options. Every label is
-one size, sm 13, in every layer and in the pill. A page stacks at most two underline layers: the page tabs and one region
+one size, 14 (the selected one 500 plus the underline, 40 high), in every layer and in the pill. A page stacks at most two underline layers: the page tabs and one region
 set, which `Page header.subTabs` draws as the second row of the header band on its own full-width separator (a region set
 inside a page tab's panel draws its own separator). `end` puts a command at the strip's end, inside the strip frame, so the
 strip's line spans the column under it. The bar lands on the `md` height, which is why Tabs have no size.
