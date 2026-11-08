@@ -43,11 +43,12 @@ export function programsOf(tracked: readonly string[]): TypesProgram[] {
 }
 
 /** `--types`: `tsc --noEmit` per workspace program through the app's TypeScript, reused by program key. */
-export async function runTypesForApp(session: CheckSession, { repoRoot, tracked, env, execute }: { repoRoot: string; tracked: readonly string[]; env: NodeJS.ProcessEnv; execute?: HeavyNodeRun | undefined }): Promise<{ result: TypesFamilyResult; findings: CheckFinding[] }> {
+export async function runTypesForApp(session: CheckSession, { repoRoot, tracked, env, execute, concurrency }: { repoRoot: string; tracked: readonly string[]; env: NodeJS.ProcessEnv; execute?: HeavyNodeRun | undefined; concurrency?: ((programs: number) => number) | undefined }): Promise<{ result: TypesFamilyResult; findings: CheckFinding[] }> {
   const programs = programsOf(tracked);
   const trackedSet = new Set(tracked);
   const result = await runTypesFamily({
     session, programs, run: createTscRunner({ appRoot: repoRoot, execute }), toolCacheDir: toolCacheDir(repoRoot, env),
+    ...(concurrency === undefined ? {} : { concurrency }),
     inputsOf: (program) => {
       const rootPackage = program.name.startsWith(`${ROOT_PACKAGES}/`);
       const side = program.name.startsWith('be') ? 'be' : rootPackage ? program.name : 'fe';

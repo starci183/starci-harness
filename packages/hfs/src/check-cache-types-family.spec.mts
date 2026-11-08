@@ -271,3 +271,30 @@ test('the native compiler requests its own tsc slot and rejects partial diagnost
     assert.equal(session.replaced.has(TYPES_FOLDER), false);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('the programs run together as far as the concurrency given at the start allows, never more, and every program is judged once', async () => {
+  const programs: TypesProgram[] = ['a', 'b', 'c', 'd', 'e'].map((name) => ({ name: `fe/apps/${name}`, tsconfig: `fe/apps/${name}/tsconfig.json` }));
+  const tree = Object.fromEntries(programs.map((program) => [program.tsconfig, '{}\n']));
+  const asked: number[] = [];
+  let active = 0;
+  let most = 0;
+  const ran: string[] = [];
+  const result = await runTypesFamily({
+    session: createFakeSession({ files: tree, records: { [TYPES_FOLDER]: [] }, mode: 'diff' }),
+    programs,
+    toolCacheDir: path.join(os.tmpdir(), 'starci-cache-test', 'app-check'),
+    concurrency: (count) => { asked.push(count); return 2; },
+    run: async (program) => {
+      active += 1;
+      most = Math.max(most, active);
+      ran.push(program.name);
+      await new Promise<void>((resolve) => { setTimeout(resolve, 5); });
+      active -= 1;
+      return { status: 0, output: '', files: [] };
+    },
+  });
+  assert.deepEqual(asked, [5], 'asked once, with the programs of the run');
+  assert.equal(most, 2, 'two tsc programs at once');
+  assert.deepEqual([...ran].sort(), programs.map((program) => program.name).sort());
+  assert.equal(result.ran.length, 5);
+});

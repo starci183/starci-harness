@@ -498,11 +498,12 @@ const release = (id: string): void => {
 
 /**
  * The limits @starci/hfs reads from its environment, from their one owner here: the heap of the ESLint child an app check spawns
- * (`caps.eslint`, as STARCI_ESLINT_HEAP_MB) and the budget of the lite boot proof's worker from its spawn (`bootProofTimeoutSeconds`, as
+ * (`caps.eslint`, as STARCI_ESLINT_HEAP_MB), the heap of the tsc child (`caps.tsc`, as STARCI_TSC_HEAP_MB) and the budget of the lite boot proof's worker from its spawn (`bootProofTimeoutSeconds`, as
  * STARCI_BOOT_PROOF_TIMEOUT_MS).
  */
 export const hfsLimitsEnv = (rules: HeavyRules = loadHeavyRules()): Readonly<Record<string, string>> => ({
     STARCI_ESLINT_HEAP_MB: String(rules.caps.eslint.capMb),
+    STARCI_TSC_HEAP_MB: String(rules.caps.tsc.capMb),
     STARCI_BOOT_PROOF_TIMEOUT_MS: String(rules.bootProofTimeoutSeconds * 1000),
     // The ESLint child's liveness budget (heavyTimeoutMinutes), which the rendered CI's lint job outlasts.
     ...(rules.timeoutMinutes.eslint === undefined ? {} : { STARCI_ESLINT_TIMEOUT_MINUTES: String(rules.timeoutMinutes.eslint) }),
@@ -552,7 +553,7 @@ export interface TestRunSizing {
  * The size of a test run from the room now, greedily and with no earlier run read. `roomMb` is the free RAM now less `reserveMb` and what the commands
  * admitted in the last `plannedSeconds` planned. The jest parent takes `parentMb`; the workers are what the rest of the room holds,
  * clamp(floor((room - parent) / workerMb), 1, min(cores - 1, `testWorkers`, `maxWorkers`)); each worker takes `workerMb`. One worker is the floor.
- * `maxWorkers` is what the caller can use (the CPU lanes an app check step holds), so a run never plans workers it would leave idle.
+ * `maxWorkers` is a cap its caller names for a run that can use no more (the jest discovery asks for one); an app check test step names none, so it takes what the room at its start holds.
  */
 export const testRunSizing = (rules: HeavyRules, roomMb: number, cores: number = availableParallelism(), maxWorkers: number = Number.MAX_SAFE_INTEGER): TestRunSizing => {
     const { parentMb, workerMb } = rules.testRun
@@ -781,7 +782,7 @@ export const withOomNote = <R extends { readonly exitCode: number | null; readon
  * is. A wait is recorded as a `heavy-wait` host event and never fails the command: a coordinator's turn (`refuseHeavyWaits`) is refused HEAVY_DEFERRED at once
  * instead of waiting, and a verify's command (`withHeavyBound`) still in the queue at the verify's bound is refused HOST_HELD, a non-verdict. The child
  * runs below normal priority under its heap caps and inherits HEAVY_PARENTS_ENV with this slot added: a heavy command it starts is admitted on its own,
- * and its ancestors' rows never count against it, so it never waits on them. `options.workers` caps a test run's workers at what the caller can use. A CI
+ * and its ancestors' rows never count against it, so it never waits on them. `options.workers` caps a test run's workers when its caller names a cap. A CI
  * runner keeps no queue: its one job is sized from that runner's own free RAM.
  */
 export const withHeavySlot = async <T>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>): Promise<T> =>

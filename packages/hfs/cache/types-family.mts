@@ -47,6 +47,9 @@ export interface TscOutcome {
   readonly files: readonly string[];
 }
 
+/** The heap cap of one `tsc` child, MB, which the CLI hands over from the governor's `caps.tsc` (`hfsLimitsEnv`): the room at the start of the types step holds floor(room / cap) of them together. */
+export const TSC_HEAP_ENV = 'STARCI_TSC_HEAP_MB';
+
 export interface TypesFamilyOptions {
   readonly session: CheckSession;
   readonly programs: readonly TypesProgram[];
@@ -55,6 +58,8 @@ export interface TypesFamilyOptions {
   /** The untracked tool cache of slot `app.tool-cache` (`<STARCI_CACHE_HOME>/<repo>/app-check`). */
   readonly toolCacheDir: string;
   readonly inputsOf?: (program: TypesProgram) => ProgramInputs;
+  /** How many programs run `tsc` together, asked once when the family starts, from the room then (given the programs to run); absent, every program at once. */
+  readonly concurrency?: (programs: number) => number;
 }
 
 export interface TypesFamilyResult {
@@ -133,6 +138,20 @@ export function parseTscOutput(output: string, appRoot: string, fallbackPath: st
 
 const identity = (finding: Finding): string => `${finding.path}\0${finding.rule}\0${finding.message}`;
 
+/** A gate that lets `size` tasks run at once and the rest wait their turn, in order. */
+function limiter(size: number): <T>(task: () => Promise<T> | T) => Promise<T> {
+  let active = 0;
+  const waiting: (() => void)[] = [];
+  return async (task) => {
+    if (active < size) active += 1;
+    else await new Promise<void>((resolve) => { waiting.push(resolve); });
+    try { return await task(); } finally {
+      const next = waiting.shift();
+      if (next === undefined) active -= 1; else next();
+    }
+  };
+}
+
 /**
  * Runs the type check of every program against the cache. A program whose key is unchanged takes its recorded diagnostics; a changed one runs in full (all of them
  * under `--full`). A run that produced no diagnostics and failed (tsc itself could not complete) stores nothing, and so does a program whose files changed while it ran.
@@ -155,14 +174,16 @@ export async function runTypesFamily(options: TypesFamilyOptions): Promise<Types
   let finished = 0;
   const context = sessionReadsContext(session);
   const onDisk = readsContext(session.root, () => undefined);
-  // Every program whose key changed runs at once, each tsc a child the governor admits on its own; the answers are folded in program order.
+  // Every program whose key changed runs, as many together as `concurrency` gives at this start, each tsc a child the governor admits on its own; the answers are folded in program order.
+  const together = Math.max(1, Math.floor(options.concurrency?.(programs.length) ?? programs.length));
+  const gate = limiter(together);
   const judged = await Promise.all(programs.map(async (program) => {
     const inputs = options.inputsOf?.(program) ?? {};
     const key = programKey(program, session, inputs);
     const before = previous.get(program.name);
     const held = before === undefined ? null : readsOfData(before.data);
     if (decision.mode === 'diff' && before !== undefined && held !== null && before.hash === keyWithReads(key, held, context)) return { program, before, current: before.findings, record: before as CacheRecord | undefined, state: 'reused' as const };
-    const outcome = await run(program, tsBuildInfoPath(toolCacheDir, session.root, program));
+    const outcome = await gate(() => run(program, tsBuildInfoPath(toolCacheDir, session.root, program)));
     const current = parseTscOutput(outcome.output, session.root, program.tsconfig);
     const reads = readsOfPaths(session.root, outcome.files, (file) => file === program.tsconfig || readsOf(program).some((prefix) => within(file, prefix)));
     let record: CacheRecord | undefined;

@@ -332,8 +332,8 @@ admitted on its own: every child inherits `STARCI_HEAVY_PARENTS`, the slot ids i
 its plan and its room (`heavyRoomMb` reads the room the same way), since they wait on it and counting them could hold it forever. `starci app check` holds no
 row at all: it is the orchestrator, and each heavy child of its steps (a tsc program, an ESLint chunk, the jest run, a CI build step, the boot proof, the
 contract compiler, the Sonar scanner) is admitted on its own the moment its step starts it (`hfsNodeRunner` and `hfsCommandRunner` of `core/app/hfs.ts`, which
-also pass a test run's most workers as `workers`, tell the step what it was admitted with, and measure the tree's RAM peak through a preload,
-`harness/peak-rss.ts`); its steps and their dependency graph are `@starci/hfs` `cache/schedule.mts`
+also pass the `workers` a request names as a cap on a test run (the jest discovery asks for one; the test step names none, so its run takes what the room holds at its start), tell the step what it was admitted with, and measure the tree's RAM peak through a preload,
+`harness/peak-rss.ts`); its steps, run one after another in priority order so each is sized on the RAM free at its own start, are `@starci/hfs` `cache/schedule.mts`
 ([contexts/project/check-cache.md](../contexts/project/check-cache.md) "Orchestration"). A CI runner (`CI` set) keeps no queue and no lock: its one job is sized from that runner's own free RAM and cores, and nothing it
 reads comes from another machine or run. A command that runs out of memory fails with a line naming the heap cap it hit and the RAM free at its admission
 (`oomNote`), so the cause is never silent. RAM that a process outside the governor takes (a browser, Docker, WSL, a dev server) shows only as lower

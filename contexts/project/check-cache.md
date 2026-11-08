@@ -105,8 +105,8 @@ prints a line when it starts and when it ends, and a running step prints one eve
 its files: `[12:04:31 +3m07s 41%] lint fe 312/1840 (17%) reused 1528 checked 312`, the clock and elapsed time, the
 overall percentage across the selected families (weighted by each step's file count, a whole-program step counting as
 the files of its side), the family and its step, its files done of its total and its cache hits against the files it judged.
-Steps run in parallel ([Orchestration](#orchestration)), so every line names its family, and so does every line the governor
-prints for a child (its label is `app check <family> ...`). On a terminal the running line updates in place while one step is
+Every line names its family, and so does every line the governor
+prints for a child (its label is `app check <family> ...`); the steps run one after another ([Orchestration](#orchestration)). On a terminal the running line updates in place while one step is
 open; with several open, and anywhere else (CI, a run redirected to a file), only whole lines are written, never a carriage
 return or spinner. `--quiet` suppresses progress and keeps the diagnosis. A family that resumes from what an
 interrupted run journaled ([The journal](#the-journal)) says so in its reason, and counts the results it took from the journal among the ones it judged.
@@ -387,8 +387,8 @@ that key.
    `exists` dependants. A canon installed without the declaration makes every change in its side a whole-side lint.
 
 The dirty set of a side is linted by as many ESLint children as run at once, never more ([Orchestration](#orchestration)): the files make
-ceil(files / `heavy.plan.lintChunk`) chunks, and the side runs as many children together as the room holds of the eslint cap and the run's CPU
-lanes have free, at most the chunks, the files split evenly between them (`eslintParts` of `lint/run.mts`). Every child builds the side's whole
+ceil(files / `heavy.plan.lintChunk`) chunks, and the side runs as many children together as the room at the start of the lint step holds of the eslint cap and the run's CPU
+lanes (all free, the step being alone) allow, at most the chunks, the files split evenly between them (`eslintParts` of `lint/run.mts`). Every child builds the side's whole
 TypeScript program, so a side is never split into children that would wait for each other; on a room for one, the side is one child however long
 the list. The files go to each child through a job file, not the command line (a diff of hundreds of long paths outgrows the Windows command line),
 where a small runner (`lint/eslint-list.cts`) lints them once with the ESLint API of the side's own install and prints the results as the CLI's
@@ -487,31 +487,29 @@ never restate them; what each reuses is [Which step reuses what](#which-step-reu
 ## Orchestration
 
 `app check` is a set of steps, one per family plus the parts that read the results of others, run by the scheduler of `packages/hfs/cache/schedule.mts`, which
-declares their dependency graph once (`CHECK_GRAPH`). Everything the graph does not order is independent and runs at the same time:
+declares them once (`CHECK_GRAPH`: what each step needs and its priority). **The steps run one after another, never two at once.** The next step is the one of the highest
+priority among those whose needs have ended, so the sequence is: the unit run (`test`), `lint`, the structure pass (`hfs`), `types`, `wiring`, then the rest as their needs
+allow:
 
-- `coverage` (CI's coverage step) and `sonar` (the baselines) read the coverage the `test` family merged, so they start after `test`;
-- the lint ratchet reads the lint records of the run, so it starts after `lint`;
+- `coverage` (CI's coverage step) and `sonar` (the baselines) read the coverage the `test` family merged, so they come after `test`;
+- the lint ratchet reads the lint records of the run, so it comes after `lint`;
 - `build` runs CI's typecheck script (build:modules, then codegen, then tsc), `build:be` and each `build fe` in CI's order: its codegen and build:modules rewrite
-  the generated code and the root packages' dist that `types`, `lint`, `test` and `wiring` read, so it starts after those four;
-- the Sonar scan uploads the findings and the lint report of every other step but the ratchet and runs only when they are green, so it starts after them.
+  the generated code and the root packages' dist that `types`, `lint`, `test` and `wiring` read, so it comes after those four;
+- the Sonar scan uploads the findings and the lint report of every other step but the ratchet and runs only when they are green, so it comes last.
 
 `app check` itself holds no heavy-command slot: it is the orchestrator. Every heavy child a step starts (each tsc program, each ESLint chunk, the jest run, each
-CI build step, the boot proof, the contract compiler, the Sonar scanner) is admitted by the governor on its own, at the moment it starts, from the live RAM
-([The memory plan](#the-memory-plan)). The run also holds cores - 1 CPU lanes: a single-process child takes one, and a test run takes the free ones as its most
-workers and gives back at its admission what its room did not size, so the children of all steps together never pass cores - 1 and one step never holds what it
-cannot use. A step starts the moment the steps it needs have ended, whatever their verdict: a red or failed family never stops another, and one run reports every
-finding. A step that throws (a child the host held, `HOST_HELD` or `HEAVY_DEFERRED`, a refused or incomplete execution, a crash) reached no measurement:
-once every other step has ended, the run ends with its error (a hold of the host first), as a run of that step alone would. Each step of `CHECK_GRAPH` declares a static `priority`, its expected weight on the
-run's critical path: the unit run (`test`) first, then `lint`, the structure pass (`hfs`), `types`, `wiring`, and the rest. Ready steps start highest first, and
-the scheduler lets a child ask the governor, and take its lanes, only once every ready or running step of a higher priority has had a child admitted, has ended
-(a unit run served wholly from the cache ends with no child), or `LAUNCH_WAIT_MS` passed. So the jest run is requested and sized on the whole room, never on
-what a lint or tsc child left, and the other steps take what is left, first come, first served, as the governor serves. A
-step whose work runs in this process (the structure rules, the lint graphs, Prettier, the baselines) holds its one thread while it computes, so it starts only once
-every running child step of a higher priority has its child admitted (or `LAUNCH_WAIT_MS` passed), and the children then run beside it.
+CI build step, the boot proof, the contract compiler, the Sonar scanner) is admitted by the governor on its own, at the moment its step starts it, from the RAM free
+then ([The memory plan](#the-memory-plan)). Because a step starts only when the one before it has ended, it finds the whole room the host has at that moment and sizes
+itself on all of it: the jest run takes the workers the room and the cores hold, with no share of a lane pool; the ESLint chunks of a side and the tsc programs of the
+types step run together as many as the room holds of their caps and the run's cores - 1 CPU lanes allow (a single-process child holds one lane for its run), at most the
+chunks or programs to run; the build and the other steps likewise. A step that reuses all its work from the cache ends with no child and costs about no time. A step
+starts when the one before it has ended, whatever its verdict: a red or failed family never stops another, and one run reports every finding. A step that throws (a
+child the host held, `HOST_HELD` or `HEAVY_DEFERRED`, a refused or incomplete execution, a crash) reached no measurement: once every other step has ended, the run ends
+with its error (a hold of the host first), as a run of that step alone would.
 
-Each step writes only its family's own records and journal files ([The journal](#the-journal); the parallel ESLint chunks of a side each their own file), so no
-two steps share a mutable file; the fingerprint is taken once when the session opens, before the graph, and the session is flushed once, after every step ended,
-followed by the cache verdict. Findings, report lines and family reports are folded in graph and family order, whatever order the steps ended in.
+Each step writes only its family's own records and journal files ([The journal](#the-journal); the parallel ESLint chunks of a side each their own file); the
+fingerprint is taken once when the session opens, before the steps, and the session is flushed once, after every step ended, followed by the cache verdict. Findings,
+report lines and family reports are folded in graph and family order.
 
 ## The memory plan
 
@@ -522,11 +520,12 @@ node's limit is lower). Every heavy command then sizes itself from the live RAM 
 
 - The room is the free RAM now less the one reserve and what the commands admitted in the last `heavy.plannedSeconds` planned; free RAM already excludes
   what running commands use.
-- A test run takes `clamp(floor((room - parent cap) / worker cap), 1, min(cores - 1, heavy.testWorkers, the lanes it holds))` workers: the jest parent is held to its cap,
+- A test run takes `clamp(floor((room - parent cap) / worker cap), 1, min(cores - 1, heavy.testWorkers))` workers from the room at its admission, the start of the test step, whatever steps ran before it and with no cap per step: the jest parent is held to its cap,
   each worker to its cap by `--workerIdleMemoryLimit` and a `--max-old-space-size` a preload of the parent's `NODE_OPTIONS` gives every forked worker.
   One worker is the floor, and an estimate never lowers a count the room holds.
 - Any other node tool runs under the smaller of its cap and the room, never under its minimum. A side of the lint family runs as many ESLint chunks at once as
-  floor(room / eslint cap) and the free lanes allow, at most its chunks ([ESLint](#eslint)).
+  floor(room / eslint cap) and the free lanes allow, at most its chunks ([ESLint](#eslint)); the programs of the types step run together as
+  floor(room / tsc cap) and the free lanes allow, at most the programs to run, the room read when the step starts (the CLI hands the caps over as `STARCI_ESLINT_HEAP_MB` and `STARCI_TSC_HEAP_MB`).
 - A command whose room is under its least need waits, first come, first served, and starts when RAM frees; with nothing running it starts anyway with one
   worker and a warning that names the shortfall. A command that runs out of memory names the heap cap it hit and the RAM free at its admission.
   ([cli/README.md](../../cli/README.md) "Heavy-command governor"). `--explain` prints the plan and the test run the RAM free now would get.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-alpha.97 - 2026-11-08
+
+- Changed: `starci app check` runs its steps one after another and sizes each on the RAM and cores free when it starts (`@starci/hfs` 6.2.9): the unit run no longer shares a lane pool with lint, hfs, tsc and wiring, so it takes the workers its room holds (`testRunSizing`) instead of `--maxWorkers=1`. `maxWorkers` and `options.workers` of the governor remain a cap a caller names (the jest discovery asks for one worker); the app check test step names none.
+- Added: `hfsLimitsEnv` hands the tsc heap cap to `@starci/hfs` as `STARCI_TSC_HEAP_MB`, with the ESLint one, so the types step sizes its programs by the room. The docs of the sequential run are `contexts/project/check-cache.md` "Orchestration" and "The memory plan", `cli/README.md` "Heavy-command governor" and `ops/liveness.yaml` `heavy`. The pin of `@starci/hfs` in `contexts/stack/pins.yaml` and `canon-pins.yaml` is 6.2.9; the CLI's own dependency on it follows once npm serves 6.2.9 (cli-follow).
+
 ## 1.1.0-alpha.96 - 2026-11-08
 
 - Fixed: the lint of every app ended in `ESLint tool error: eslint source scope is unavailable ... unsupported canon ignores selectors`, because the canons' new test-scope Sonar way block used a negated `ignores` selector that the lint scope refuses. `@starci/eslint-canon-fe` 9.16.7 and `@starci/eslint-canon-be` 3.19.7 select the specs with a positive selector, and `@starci/hfs` 6.2.7 pins them and holds a spec that runs `canonScope` over the built config of both canons.

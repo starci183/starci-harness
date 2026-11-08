@@ -117,6 +117,7 @@ import { devBranchFinding } from '../runtime/scripts/hfs/dev-branch.mjs';
 import { COVERAGE_NEW_CODE, LINT_NEW_CODE, newCodeCoverageFindings, newCodeLintFinding, onChangedLine } from '../cache/new-code.mjs';
 import { committedLintCounts, rangeTouched, ratchetBase, ratchetFindings, sessionLintCounts, stagedTouched } from '../lint/ratchet.mjs';
 import { newCodeSince, runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
+import { TSC_HEAP_ENV } from '../cache/types-family.mjs';
 import { createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
 import { CHECK_ENVS, checkEnvOf, judgedForEnv, localOnlyCodes, localReported, localVerdictLine, type CheckEnv } from '../runtime/scripts/hfs/check-env.mjs';
@@ -553,8 +554,8 @@ const NO_VERDICT = new Set(['HOST_HELD', 'HEAVY_DEFERRED']);
 
 /**
  * One run of the selected families against the cache, then the coverage proof on top; returns the result, what it took and the raw linter results.
- * The families are the steps of the check graph (cache/schedule.mts): each starts once the steps it needs have ended, the others run at once, each heavy
- * child admitted by the CLI's governor on its own. A red family never stops another; a step that throws ends the run with its error once the others
+ * The families are the steps of the check graph (cache/schedule.mts): they run one after another in priority order, each once the steps it needs have ended, each heavy
+ * child admitted by the CLI's governor when its step starts it, sized on the RAM free then. A red family never stops another; a step that throws ends the run with its error once the others
  * have ended. The session's fingerprint was taken when it opened and its flush runs once, after every step.
  */
 async function checkRun({ io, selected: requested, full, use, coverageFrom, side, fix = false, whole = false, env = 'local' }: { io: AppIo; selected: Set<FamilyId>; full: Set<FamilyId> | undefined; use: CacheUse; coverageFrom: string | undefined; side?: string | undefined; fix?: boolean; whole?: boolean; env?: CheckEnv }): Promise<{ result: Dynamic; seconds: number; raw: LinterRaw }> {
@@ -605,7 +606,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
       if (session !== undefined) {
         const app = readRepoDeclaration(loadSlotManifest(), repoRoot);
         // An ESLint child takes the eslint cap of ops/liveness.yaml, which the CLI hands over as the child's heap: a side runs as many chunks at once as the
-        // room holds of them and the lanes have free.
+        // room at the lint step's start holds of them and the lanes have free (the step runs alone, so every lane is free).
         const cap = Number(io.env[ESLINT_HEAP_ENV]);
         const parallel = (chunks: number): number => Math.min(chunks, Math.max(1, step.lanes.free()), io.heavyRoom === undefined || !(cap > 0) ? 1 : Math.max(1, Math.floor(io.heavyRoom() / cap)));
         const linted = await cachedLinters({ repoRoot, app, side, run, session, parallel });
@@ -616,7 +617,12 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
       raw.stylelint = style.results;
     });
   }
-  if (session !== undefined && selected.has('types')) bodies.set('types', async (step) => { found.set('types', (await runTypesForApp(session, { repoRoot, tracked, env: io.env, execute: step.execute })).findings); });
+  if (session !== undefined && selected.has('types')) bodies.set('types', async (step) => {
+    // The programs run together as far as the room at this step's start holds the tsc cap and the lanes are free (the step runs alone, so it sizes itself on the whole room).
+    const cap = Number(io.env[TSC_HEAP_ENV]);
+    const concurrency = (programs: number): number => Math.min(programs, Math.max(1, step.lanes.free()), io.heavyRoom === undefined || !(cap > 0) ? programs : Math.max(1, Math.floor(io.heavyRoom() / cap)));
+    found.set('types', (await runTypesForApp(session, { repoRoot, tracked, env: io.env, execute: step.execute, concurrency })).findings);
+  });
   if (session !== undefined && selected.has('test')) {
     bodies.set('test', async (step) => {
       tests = await runTestForApp(session, { repoRoot, tracked, execute: step.execute });

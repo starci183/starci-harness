@@ -7,7 +7,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
-import { admission, heapFor, loadHeavyRules, needsOf, testRunEnv, testRunSizing, testWorkerArgs, type Held, type HeavyRules } from "./heavy.js"
+import { admission, heapFor, hfsLimitsEnv, loadHeavyRules, needsOf, testRunEnv, testRunSizing, testWorkerArgs, testWorkerCap, type Held, type HeavyRules } from "./heavy.js"
 import { formatPlan, MEMORY_REEXEC_ENV, measureScope, needsReexec, planMemory, type Scope } from "./memory-plan.js"
 
 const opsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "ops")
@@ -38,6 +38,18 @@ void test("the plan holds the check's own heap from the cache records, and the l
     assert.equal(must(planMemory({ coverageMb: 0.5, recordMb: 1, largestMb: 0.2 }, rules)).parentMb, 2048, "the floor")
     assert.equal(must(planMemory({ coverageMb: 9000, recordMb: 9000, largestMb: 31 }, rules)).parentMb, 16384, "the ceiling")
     assert.equal(planMemory(NIVO, { ...rules, plan: undefined }), null, "an ops file without a plan block plans nothing")
+})
+
+void test("an app check test step takes the workers the RAM free at its start holds, whatever ran before it and with no lane cap", () => {
+    // 38 GB free on 12 cores, as the host that ran jest on one worker: the sizing reads the room and the cores alone.
+    const room = roomOf(38 * GB)
+    const sizing = testRunSizing(rules, room, 12)
+    const expected = Math.max(1, Math.min(testWorkerCap(rules, 12), Math.floor((room - rules.testRun.parentMb) / rules.testRun.workerMb)))
+    assert.equal(sizing.workers, expected)
+    assert.ok(sizing.workers > 1, "more than one worker")
+    assert.equal(sizing.workers, testRunSizing(rules, room, 12, Number.MAX_SAFE_INTEGER).workers, "no cap is the same as the room's own count")
+    assert.equal(testRunSizing(rules, room, 12, 1).workers, 1, "a caller that names a cap (the jest discovery) keeps it")
+    assert.equal(hfsLimitsEnv(rules).STARCI_TSC_HEAP_MB, String(rules.caps.tsc.capMb), "the tsc heap cap reaches the app check, which sizes its tsc programs by it")
 })
 
 void test("nivo-like numbers (22 GB free, 28 cores) give the workers the caps divide the room into", () => {

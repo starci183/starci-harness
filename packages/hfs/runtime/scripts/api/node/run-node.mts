@@ -20,9 +20,9 @@ export interface HeavyNodeRequest {
    * (ops/liveness.yaml heavy.timeoutMinutesPer1000Files): a larger side legitimately runs longer, and the budget still ends a hung child.
    */
   readonly files?: number | undefined;
-  /** The most workers a test run may take (the CPU lanes its step holds, cache/schedule.mts); the governor's room may give fewer. */
+  /** The most workers a test run may take, when its caller caps it (the jest discovery asks for one); without it the run takes what the room at its admission holds. */
   readonly workers?: number | undefined;
-  /** Told once the governor admitted the child, with the workers a test run was sized to (the step gives back the lanes it did not get). */
+  /** Told once the governor admitted the child, with the workers a test run was sized to. */
   readonly onAdmit?: ((admitted: HeavyAdmission) => void) | undefined;
   readonly maxBuffer: number;
 }

@@ -1,5 +1,6 @@
-// The orchestration of `app check` (cache/schedule.mts) on a fake governor and a fake clock: independent steps overlap in time, the declared order
-// holds, a side's ESLint chunks run at once up to the room, a red step cancels no other, and no step takes more CPU lanes than it can use.
+// The orchestration of `app check` (cache/schedule.mts) on a fake governor and a fake clock: the steps run one after another in priority order and never overlap, each step
+// sizes its children on the RAM free at its own start (the unit run holds no lane and takes more than one worker when the room holds them), a side's ESLint chunks run at once
+// up to the room, and a red step cancels no other.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CHECK_GRAPH, createLanes, peakOf, runGraph, stepRow, type Clock, type StepBody, type StepId, type StepRun } from '../cache/schedule.mjs';
@@ -7,8 +8,10 @@ import { eslintParts } from '../lint/run.mjs';
 import type { HeavyNodeRequest, HeavyNodeResult, HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import type { ParityRun } from '../cache/parity-family.mjs';
 
+type FakeClock = Clock & { sleep(ms: number): Promise<void>; drive<T>(work: Promise<T>): Promise<T> };
+
 /** A clock whose time moves only when every task waits: the driver jumps to the next timer. */
-function fakeClock(): Clock & { drive<T>(work: Promise<T>): Promise<T> } {
+function fakeClock(): FakeClock {
   let now = 0;
   const timers: { at: number; resolve: () => void }[] = [];
   const settle = (): Promise<void> => new Promise((resolve) => { setImmediate(resolve); });
@@ -39,10 +42,10 @@ const WORKER_MB = 1500;
 interface Ran { readonly label: string; readonly start: number; end: number; readonly workers: number | undefined }
 
 /**
- * A governor over `roomMb` of RAM: first come, first served; the head starts when the room less what runs covers its need, or when nothing runs; a test
- * run takes the workers the rest of its room holds, at most what it asked for. Each child runs `durations[label]` of fake time.
+ * A governor over `roomMb` of RAM on `cores` cores: first come, first served; the head starts when the room less what runs covers its need, or when nothing runs; a test
+ * run takes the workers the rest of its room holds, at most the cores less one and what its caller capped. Each child runs `durations[label]` of fake time.
  */
-function fakeGovernor(clock: Clock, roomMb: number, durations: Readonly<Record<string, number>>): { run: HeavyNodeRun; parity: ParityRun; ran: Ran[] } {
+function fakeGovernor(clock: FakeClock, roomMb: number, durations: Readonly<Record<string, number>>, cores = 28): { run: HeavyNodeRun; parity: ParityRun; ran: Ran[] } {
   const ran: Ran[] = [];
   const queue: { need: number; go: () => void }[] = [];
   let used = 0;
@@ -61,7 +64,7 @@ function fakeGovernor(clock: Clock, roomMb: number, durations: Readonly<Record<s
     const base = NEED[kind];
     await admitted(base);
     const free = roomMb - used;
-    const sized = kind === 'test' ? Math.max(1, Math.min(workers ?? 1, Math.floor(free / WORKER_MB) + 1)) : undefined;
+    const sized = kind === 'test' ? Math.max(1, Math.min(workers ?? cores - 1, Math.floor(free / WORKER_MB) + 1)) : undefined;
     const extra = sized === undefined ? 0 : (sized - 1) * WORKER_MB;
     used += extra;
     onAdmit?.({ ...(sized === undefined ? {} : { workers: sized }) });
@@ -87,7 +90,7 @@ const child = (kind: HeavyNodeRequest['kind'], label: string): StepBody => async
 
 const byId = (runs: readonly StepRun[], id: StepId): StepRun => runs.find((run) => run.id === id) as StepRun;
 
-void test('independent steps overlap in time, and the declared order holds', async () => {
+void test('the steps run one after another in priority order, none overlaps another, and each starts only after the steps it needs', async () => {
   const clock = fakeClock();
   const governor = fakeGovernor(clock, 40_000, { test: 60_000, types: 5_000, lint: 20_000, wiring: 3_000, build: 4_000, 'sonar-scan': 2_000 });
   const bodies = new Map<StepId, StepBody>([
@@ -96,31 +99,25 @@ void test('independent steps overlap in time, and the declared order holds', asy
     ['sonar-scan', async ({ parity }) => { await parity({ kind: 'build', label: 'sonar-scan', cwd: '.', argv: [], env: {} }); }],
     ['coverage', async () => undefined], ['hfs', async () => undefined],
   ]);
-  const runs = await clock.drive(runGraph({ bodies, execute: governor.run, parity: governor.parity, lanes: createLanes(27), clock, launchWaitMs: 1_000 }));
-  const test_ = byId(runs, 'test');
-  for (const id of ['types', 'lint', 'wiring'] as const) assert.ok(byId(runs, id).startedAt < test_.endedAt, `${id} ran while the unit run ran`);
-  assert.ok(byId(runs, 'lint').startedAt < byId(runs, 'types').endedAt, 'lint and types overlap');
-  const build = byId(runs, 'build');
-  for (const id of ['types', 'lint', 'test', 'wiring'] as const) assert.ok(build.startedAt >= byId(runs, id).endedAt, `build starts after ${id}, whose inputs its codegen rewrites`);
-  assert.ok(byId(runs, 'coverage').startedAt >= test_.endedAt, 'coverage reads the merged coverage: after test');
-  const scan = byId(runs, 'sonar-scan');
-  for (const run of runs) if (run.id !== 'sonar-scan') assert.ok(scan.startedAt >= run.endedAt, `the scan starts after ${run.id}`);
+  const runs = await clock.drive(runGraph({ bodies, execute: governor.run, parity: governor.parity, lanes: createLanes(27), clock }));
+  const sequence = [...runs].sort((a, b) => a.order - b.order);
+  assert.equal(sequence.map((run) => run.id).join(' '), 'test lint hfs types wiring build coverage sonar-scan', 'the priority order of the graph, each step after the steps it needs');
+  for (let at = 1; at < sequence.length; at += 1) {
+    const step = sequence[at] as StepRun;
+    const before = sequence[at - 1] as StepRun;
+    assert.ok(step.startedAt >= before.endedAt, `${step.id} starts after ${before.id} ended`);
+  }
   assert.equal(runs.map((run) => run.id).join(' '), CHECK_GRAPH.filter((spec) => bodies.has(spec.id)).map((spec) => spec.id).join(' '), 'the runs come back in graph order');
-  const wall = Math.max(...runs.map((run) => run.endedAt));
-  assert.ok(wall < 60_000 + 5_000 + 20_000 + 3_000 + 4_000 + 2_000, 'the run is shorter than its steps one after another');
+  assert.equal(Math.max(...runs.map((run) => run.endedAt)), 60_000 + 5_000 + 20_000 + 3_000 + 4_000 + 2_000, 'the run lasts the sum of its steps');
+  for (const [at, entry] of governor.ran.entries()) for (const other of governor.ran.slice(at + 1)) assert.ok(other.start >= entry.end, `${other.label} was admitted after ${entry.label} ended: no two heavy steps overlap`);
 });
 
-void test("an inline step waits until the child steps beside it have their children admitted, so they run while it holds the thread", async () => {
+void test('a step never starts before the one before it ended, even when the room would hold both', async () => {
   const clock = fakeClock();
-  const governor = fakeGovernor(clock, 40_000, { test: 10_000 });
-  const order: string[] = [];
-  const bodies = new Map<StepId, StepBody>([
-    ['test', async (step) => { await clock.sleep(500); order.push('test asks'); await child('test', 'test')(step); }],
-    ['hfs', async () => { order.push('hfs starts'); }],
-  ]);
-  await clock.drive(runGraph({ bodies, execute: governor.run, parity: governor.parity, lanes: createLanes(7), clock, launchWaitMs: 60_000 }));
-  assert.deepEqual(order, ['test asks', 'hfs starts']);
-  assert.ok(governor.ran[0] !== undefined && governor.ran[0].start <= clock.now());
+  const governor = fakeGovernor(clock, 200_000, { test: 10_000, lint: 4_000 });
+  const bodies = new Map<StepId, StepBody>([['test', child('test', 'test')], ['lint', child('eslint', 'lint')]]);
+  await clock.drive(runGraph({ bodies, execute: governor.run, parity: governor.parity, lanes: createLanes(27), clock }));
+  assert.deepEqual(governor.ran.map((entry) => [entry.label, entry.start, entry.end]), [['test', 0, 10_000], ['lint', 10_000, 14_000]]);
 });
 
 void test("a side's ESLint chunks run at once up to the room the governor holds, never more than its chunks", async () => {
@@ -162,23 +159,35 @@ void test('a red or failing step cancels no other: every step ends, and its depe
   assert.equal(built, true, 'build, after the failed step, still ran');
 });
 
-void test('no step takes more lanes than it can use: a test run gives back what the room did not size, and the lanes cap every child', async () => {
-  const clock = fakeClock();
-  // Room for the parent and three workers: the run asks with every free lane and gets three.
-  const governor = fakeGovernor(clock, NEED.test + 2 * WORKER_MB + 100, { test: 10_000, 'tsc a': 1_000 });
-  const lanes = createLanes(9);
+void test('the unit run is sized on the RAM free at its own start and holds no lane: 38 GB and 12 cores give it more than one worker after other steps ran', async () => {
+  const room = 38_000;
+  const lanes = createLanes(11);
   const seen: number[] = [];
+  const clock = fakeClock();
+  const governor = fakeGovernor(clock, room, { lint: 2_000, types: 2_000, test: 10_000 }, 12);
   const bodies = new Map<StepId, StepBody>([
-    ['test', async ({ execute }) => {
-      await (execute as HeavyNodeRun)({ kind: 'test', label: 'test', args: [], cwd: '.', maxBuffer: 1, onAdmit: () => { seen.push(lanes.free()); } });
-    }],
-    ['types', async ({ execute }) => { await clock.sleep(100); seen.push(lanes.free()); await (execute as HeavyNodeRun)({ kind: 'tsc', label: 'tsc a', args: [], cwd: '.', maxBuffer: 1 }); }],
+    ['lint', child('eslint', 'lint')],
+    ['types', child('tsc', 'types')],
+    ['test', async ({ execute }) => { await (execute as HeavyNodeRun)({ kind: 'test', label: 'test', args: [], cwd: '.', maxBuffer: 1, onAdmit: () => { seen.push(lanes.free()); } }); }],
   ]);
-  const runs = await clock.drive(runGraph({ bodies, execute: governor.run, parity: governor.parity, lanes, clock }));
-  assert.equal(governor.ran.find((entry) => entry.label === 'test')?.workers, 3, 'the room sized three workers of the nine lanes asked');
-  assert.equal(seen[0], 9 - 3, 'the six lanes the run could not use went back at its admission');
-  assert.equal(stepRow(byId(runs, 'test'), { reused: 1, checked: 2 }).workers, 3);
-  assert.equal(lanes.free(), 9, 'every lane is back once the steps ended');
+  // A graph where the unit run comes after lint and tsc: it is sized on its own start, whatever ran before it.
+  const graph = CHECK_GRAPH.map((spec) => (spec.id === 'test' ? { ...spec, priority: 1 } : spec));
+  const runs = await clock.drive(runGraph({ bodies, graph, execute: governor.run, parity: governor.parity, lanes, clock }));
+  assert.deepEqual([...runs].sort((a, b) => a.order - b.order).map((run) => run.id), ['lint', 'types', 'test'], 'the unit run came after the other steps');
+  const jest = governor.ran.find((entry) => entry.label === 'test') as Ran;
+  assert.equal(jest.workers, Math.min(11, Math.floor((room - NEED.test) / WORKER_MB) + 1), 'the workers are what the room holds, up to the cores less one');
+  assert.ok((jest.workers ?? 0) > 1, 'more than one worker');
+  assert.deepEqual(seen, [11], 'the unit run holds no lane: every lane is free at its admission');
+  assert.equal(stepRow(byId(runs, 'test'), { reused: 1, checked: 2 }).workers, jest.workers);
+  assert.equal(lanes.free(), 11, 'every lane is back once the steps ended');
+});
+
+void test('a child that names its workers keeps that cap (the jest discovery), and the lanes cap the single-process children', async () => {
+  const clock = fakeClock();
+  const governor = fakeGovernor(clock, 40_000, {});
+  const bodies = new Map<StepId, StepBody>([['test', async ({ execute }) => { await (execute as HeavyNodeRun)({ kind: 'test', label: 'discovery', args: [], cwd: '.', maxBuffer: 1, workers: 1 }); }]]);
+  await clock.drive(runGraph({ bodies, execute: governor.run, parity: governor.parity, lanes: createLanes(9), clock }));
+  assert.equal(governor.ran[0]?.workers, 1);
   const one = createLanes(2);
   assert.equal(await one.take(5), 2, 'a child takes at most the free lanes');
   const waiting = one.take(1);
@@ -186,12 +195,12 @@ void test('no step takes more lanes than it can use: a test run gives back what 
   assert.equal(await waiting, 1, 'and waits for one when none is free');
 });
 
-void test('the critical path asks the governor first: the unit run is sized on the full room, and the lint and tsc children follow', async () => {
+void test('the unit run is the first step and is sized on the whole room, the lint and tsc children follow on what it left', async () => {
   const clock = fakeClock();
   const room = 40_000;
   const governor = fakeGovernor(clock, room, { test: 30_000, types: 5_000, 'lint be': 5_000, 'lint fe': 5_000 });
   const lanes = createLanes(27);
-  // Every body asks at once, the low-priority steps listed first: the graph's priorities, not the order of asking, decide who is admitted first.
+  // The low-priority steps are listed first: the graph's priorities, not the order of the bodies, decide the sequence.
   const bodies = new Map<StepId, StepBody>([
     ['types', child('tsc', 'types')],
     ['lint', async ({ execute }) => { await Promise.all([child('eslint', 'lint be'), child('eslint', 'lint fe')].map((body) => body({ execute, parity: governor.parity, lanes }))); }],
@@ -210,29 +219,13 @@ void test('the critical path asks the governor first: the unit run is sized on t
   assert.equal(lanes.free(), 27, 'every lane is back once the steps ended');
 });
 
-void test('a lower step stops waiting for a higher one that has not asked within the launch wait, and a higher step that ended frees it at once', async () => {
-  const clock = fakeClock();
-  const governor = fakeGovernor(clock, 40_000, { types: 1_000 });
-  const lanes = createLanes(7);
-  const bodies = new Map<StepId, StepBody>([
-    ['test', async () => { await clock.sleep(10_000); }],
-    ['types', child('tsc', 'types')],
-  ]);
-  await clock.drive(runGraph({ bodies, execute: governor.run, parity: governor.parity, lanes, clock, launchWaitMs: 2_000 }));
-  assert.equal(governor.ran[0]?.start, 2_000, 'tsc asked once the wait on the silent unit run passed');
-  const cached = fakeClock();
-  const second = fakeGovernor(cached, 40_000, { types: 1_000 });
-  await cached.drive(runGraph({ bodies: new Map<StepId, StepBody>([['test', async () => undefined], ['types', child('tsc', 'types')]]), execute: second.run, parity: second.parity, lanes, clock: cached, launchWaitMs: 2_000 }));
-  assert.ok((second.ran[0]?.start ?? 1) < 2_000, 'a unit run that ran no child (all cached) holds nothing up');
-});
-
-void test('a step whose work is wholly reused asks no slot, so the unit run keeps the whole room', async () => {
+void test('a step whose work is wholly reused asks no slot and costs no time, so the unit run keeps the whole room', async () => {
   const clock = fakeClock();
   const room = 40_000;
   const governor = fakeGovernor(clock, room, { test: 10_000 });
-  const lanes = createLanes(27);
   const bodies = new Map<StepId, StepBody>([['lint', async () => undefined], ['types', async () => undefined], ['test', child('test', 'test')]]);
-  await clock.drive(runGraph({ bodies, execute: governor.run, parity: governor.parity, lanes, clock }));
+  const runs = await clock.drive(runGraph({ bodies, execute: governor.run, parity: governor.parity, lanes: createLanes(27), clock }));
   assert.deepEqual(governor.ran.map((entry) => entry.label), ['test'], 'only the unit run was admitted');
   assert.equal(governor.ran[0]?.workers, Math.floor((room - NEED.test) / WORKER_MB) + 1);
+  for (const id of ['lint', 'types'] as const) assert.equal(byId(runs, id).endedAt - byId(runs, id).startedAt, 0, `${id}, wholly reused, took no time`);
 });

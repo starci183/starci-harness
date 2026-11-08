@@ -2,7 +2,7 @@
 // ends, and a running step one every 10 seconds of work or 10 percent of its files:
 //   [12:04:31 +3m07s 41%] lint fe 312/1840 (17%) reused 1528 checked 312
 // The clock, the time since the run began, the percentage across the run (each step weighted by its file count), the family and its step, its
-// files done of its total and the cache hits against the files it judged. Steps run in parallel (schedule.mts), so every line names its family.
+// files done of its total and the cache hits against the files it judged. Steps run one after another (schedule.mts); every line names its family.
 // On a terminal a running line updates in place while it is the only open step; with several open, and anywhere else (CI, a redirected
 // run), only whole lines are written, never a carriage return or a spinner. `--quiet` is the silent sink.
 import type { FamilyId, ProgressSink, StepProgress } from './types.mjs';
