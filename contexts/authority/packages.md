@@ -14,7 +14,7 @@ specs in `packages/<name>` of the package edit worktree. The editor runs none of
 worker's contract carries it as its `package-specs` check, which the harness runs when the worker is accepted.
 
 Debug alone merges a package edit branch and pushes harness main; once its handed-off head is on main, the worktree goes
-(the collector of [README.md](README.md) "Worktrees"); CI publishes the bumped version as soon as main is
+(the collector of [README.md](README.md) "Worktrees"); CI publishes the bumped version (publish.yml, after the ci run of the push completes; a newer push cancels an older ci run, never a publication) as soon as main is
 green ([ci.md](ci.md)). Nobody asks Debug to publish: a change already on harness main is published by CI and is no handoff at all. Only the edited package is bumped and re-pinned: the app that consumes it pins the new version,
 and no other package or app moves.
 

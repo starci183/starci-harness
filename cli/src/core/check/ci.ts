@@ -12,15 +12,20 @@ import { editionOf, ghReader, requireCiRun, requiredJobsOf } from "./ci-evidence
 import type { CiRunEvidence, GithubReader, RequiredJobs } from "./ci-evidence.js"
 
 /** One GitHub Actions run of a commit, as `gh run list` reports it. */
-interface WorkflowRun {
+export interface WorkflowRun {
     readonly name: string
     readonly status: string
     readonly conclusion: string
     readonly url: string
     readonly databaseId: number
+    /** The run's title: publish.yml names its runs `publish <sha>` (its `run-name`), the only link from a publish run to the commit it publishes. */
+    readonly displayTitle?: string
 }
 
-/** The CI verdict of one commit (green, red, pending, none, or unreadable when GitHub could not be asked), its runs and its text. */
+/**
+ * The CI verdict of one commit (green, red, pending, cancelled, none, or unreadable when GitHub could not be asked), its runs and its text.
+ * The runs are those of the commit (`ci`, and any other workflow it started) and the `publish` runs that publish it (`publishRunsOf`).
+ */
 export interface CiReading {
     readonly sha: string
     readonly verdict: string
@@ -40,7 +45,8 @@ const isRun = (value: unknown): value is WorkflowRun =>
     "url" in value &&
     typeof value.url === "string" &&
     "databaseId" in value &&
-    typeof value.databaseId === "number"
+    typeof value.databaseId === "number" &&
+    (!("displayTitle" in value) || typeof value.displayTitle === "string")
 
 // Inside Actions the run asking the question is itself a run of the commit; it would keep the verdict pending forever.
 const ownRunId = (): number | undefined => {
@@ -48,24 +54,57 @@ const ownRunId = (): number | undefined => {
     return Number.isInteger(id) && id > 0 ? id : undefined
 }
 
-const parseRuns = (stdout: string): WorkflowRun[] => {
+/** The runs of a `gh run list --json` answer, the run asking the question left out. */
+export const parseRuns = (stdout: string): WorkflowRun[] => {
     const parsed: unknown = JSON.parse(stdout === "" ? "[]" : stdout)
     if (!Array.isArray(parsed)) throw new Refusal("CI_STATUS_UNREADABLE", "gh run list did not return a json array")
     const own = ownRunId()
     return parsed.filter(isRun).filter((run) => run.databaseId !== own)
 }
 
-const verdictOf = (runs: readonly WorkflowRun[]): string => {
+/**
+ * The runs of publish.yml that publish `sha`. That workflow starts on `workflow_run` of `ci`, and GitHub gives such a run the head of
+ * the default branch, not the commit the triggering run tested, so `gh run list --commit <sha>` never lists it; its `run-name` carries
+ * the sha instead (`publish <sha>`), and this reads it from there.
+ */
+export const publishRunsOf = (runs: readonly WorkflowRun[], sha: string): WorkflowRun[] => runs.filter((run) => run.displayTitle?.split(" ").includes(sha) === true)
+
+/**
+ * The verdict of the runs of one commit. `pending` while any run is not completed; `red` when any concluded in anything but success,
+ * skipped or cancelled (a failed `ci` and a failed `publish` alike); `cancelled` when the only blemish is a cancelled run (a `ci`
+ * superseded by a newer push to main, or a `publish` replaced in its queue by a newer one): such a commit was never tested or published
+ * whole, so it is never green, and it is no failure to fix either: judge the newer commit.
+ */
+export const verdictOf = (runs: readonly WorkflowRun[]): string => {
     if (runs.length === 0) return "none"
     if (runs.some((run) => run.status !== "completed")) return "pending"
-    return runs.every((run) => run.conclusion === "success" || run.conclusion === "skipped") ? "green" : "red"
+    if (runs.some((run) => run.conclusion !== "success" && run.conclusion !== "skipped" && run.conclusion !== "cancelled")) return "red"
+    return runs.some((run) => run.conclusion === "cancelled") ? "cancelled" : "green"
+}
+
+/** How `gh` is asked: tests hand recorded answers. */
+export type GhRunner = (args: readonly string[], cwd: string) => Promise<{ readonly stdout: string }>
+
+const ghRunner: GhRunner = (args, cwd) => runTool("gh", args, cwd)
+
+const RUN_FIELDS = "name,status,conclusion,url,databaseId,displayTitle"
+
+/** The publish runs of `sha`: the newest runs of publish.yml, filtered. A repository without that workflow (an app) has none. */
+const readPublishRuns = async (gh: GhRunner, cwd: string, sha: string): Promise<WorkflowRun[]> => {
+    try {
+        const listed = await gh(["run", "list", "--workflow", "publish.yml", "--json", RUN_FIELDS, "--limit", "50"], cwd)
+        return publishRunsOf(parseRuns(listed.stdout), sha)
+    } catch (error: unknown) {
+        if (/could not find any workflows|HTTP 404/u.test(asRefusal(error).message)) return []
+        throw error
+    }
 }
 
 /** Reads the GitHub Actions verdict of `sha` (`gh run list`); a verdict that cannot be read is `unreadable`, never green. */
-const readCi = async (cwd: string, sha: string): Promise<CiReading> => {
+export const readCi = async (cwd: string, sha: string, gh: GhRunner = ghRunner): Promise<CiReading> => {
     try {
-        const listed = await runTool("gh", ["run", "list", "--commit", sha, "--json", "name,status,conclusion,url,databaseId", "--limit", "50"], cwd)
-        const runs = parseRuns(listed.stdout)
+        const listed = await gh(["run", "list", "--commit", sha, "--json", RUN_FIELDS, "--limit", "50"], cwd)
+        const runs = [...parseRuns(listed.stdout), ...(await readPublishRuns(gh, cwd, sha))]
         const verdict = verdictOf(runs)
         const table = formatTable(runs.map((run) => [run.name, run.status, run.conclusion === "" ? "-" : run.conclusion]))
         const runsSuffix = runs.length === 0 ? "" : `\n${table}`
@@ -138,12 +177,13 @@ export const requireCiRunGreen = async (root: string, sha: string, ciRun: string
     requireCiRun(deps.read ?? ghReader(root), sha, ciRun, deps.standard ?? requiredJobsOf(editionOf(root)))
 
 /**
- * `starci check ci`: the GitHub Actions verdict of one pushed commit (green, red, pending, none or unreadable) with its runs, the
- * critic after a light push; it exits 0 only when that verdict is green, so a contract waits on it for CI (preset ci-green).
+ * `starci check ci`: the GitHub Actions verdict of one pushed commit (green, red, pending, cancelled, none or unreadable) with its
+ * runs (the `ci` runs and the `publish` runs that publish it), the critic after a light push; it exits 0 only when that verdict is
+ * green, so a contract waits on it for CI (preset ci-green).
  */
 export const checkCiVerb = defineVerb({
     path: ["check", "ci"],
-    summary: "read the GitHub Actions verdict of a commit (green, red, pending, none or unreadable) and its runs; exit 0 only on green",
+    summary: "read the GitHub Actions verdict of a commit (green, red, pending, cancelled, none or unreadable) and its runs, publish runs included; exit 0 only on green",
     editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,

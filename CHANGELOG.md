@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0-alpha.105 - 2026-11-09
+
+- Changed: CI cancels a superseded run on main too (owner, 2026-11-09: a push cancels the old one). `ci.yml` only tests now (`cancel-in-progress: true` on every ref) and keeps each package's `npm pack` tarball, packed once after its specs; the publication moved to the new `publish.yml`, which starts when a `ci` run of a push to main completes (succeeded or failed, never cancelled), is never cancelled itself (group `publish-main`), publishes nothing for a commit that is no longer main's tip, publishes the tested tarballs four at a time and reads them back together. Its runs are named `publish <sha>`.
+- Changed: `starci check ci` counts the `publish` runs of a commit: a failed publish is `red` for that sha, a running one `pending`, and a cancelled run (a superseded `ci`, a replaced queued `publish`) is the new verdict `cancelled`, never `green`. `release push` and CI's plan keep measuring from the last `ci` run whose conclusion is success, so a cancelled run never counts.
+- Added: `release publish --tarballs <dir>` publishes the `npm pack` tarballs a CI job packed (stamped with the source digest and `gitHead`, not rebuilt), `--execute` accepts the one cli-follow commit above main's tip before it is pushed, and `release affected` plans nothing for a cli-follow commit whose CLI version npm serves.
+- Changed: the CLI follows its siblings inside the publish run: after the packages reach npm it raises its requirements to the pins, builds and tests against the registry copies, publishes, then pushes the follow commit, so no second `ci` cycle precedes the CLI's publication. `.github/scripts/cli-follow.mts` writes the changelog entry in the current format. `setup-node` caches key on every package lockfile.
+
 ## 1.1.0-alpha.104 - 2026-11-09
 
 - Changed: the Grammar family 0.30.0 (0.29.0 never reached npm; this carries it): `SuggestionChips` (a pill toolbar of suggestions with arrow-key navigation; lint `suggestion-chips` refuses a row of neutral sm Buttons that send their own label), every Core Button size takes the pill radius; and from 0.29.0 a lone table, list or chart gets no card wrapper (lint `single-child-card`, `FE_SINGLE_CHILD_CARD`; DataTable draws one frame standalone, Section `kind="list"` draws the same frame, Section `caption`), and every card and board zone text is 13px.

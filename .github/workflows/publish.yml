@@ -1,0 +1,257 @@
+name: publish
+
+# The one publishing path (CONTRIBUTING.md CONTRIB-20), split out of ci.yml so that ci can be cancelled by a newer push without
+# ever cutting a publication short. It starts when a `ci` run of a push to main completes and publishes the versions that run
+# tested, writing to npm and, through cli-follow, to main; no other workflow does. Its runs are never cancelled: they queue one at a
+# time (group publish-main), and a commit that is no longer main's tip when its turn comes publishes nothing, because the run of
+# the newer commit publishes every version not yet on npm, its own and the older ones.
+#
+# GitHub files a workflow_run run under the head of the default branch, not under the commit it publishes, so the run is named after
+# that commit (`starci check ci` finds a commit's publish runs by this name, cli/src/core/check/ci.ts `publishRunsOf`). A failed
+# run is red for that commit.
+run-name: publish ${{ github.event.workflow_run.head_sha }}
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # A package publishes once its own ci jobs are green, however the rest of the run ended (a red Sonar or app job never holds a
+  # package, a red gate or package job holds what it gates; .github/scripts/publish-gate.mts), so the run is taken when ci
+  # succeeded or failed, never when it was cancelled by a newer push. One job, not one per phase: a job-level concurrency group
+  # is taken only by a job that runs, so a run for a pull request, a manual run or a cancelled ci never queues here, and the
+  # CLI's phase cannot be overtaken by the next run's packages phase.
+  publish:
+    if: >-
+      github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.head_repository.full_name == github.repository
+      && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: publish-main
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      # The ci run's jobs and its plan artifact are read from it.
+      actions: read
+      # npm provenance signs each tarball with this workflow's OIDC identity.
+      id-token: write
+    env:
+      CI_RUN_ID: ${{ github.event.workflow_run.id }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      # Decided when this run's turn comes, not when it was queued: a newer push may have made the commit stale meanwhile. An older
+      # commit published after a newer one would move the dist-tag (`alpha`) back to an older version.
+      - name: Is this commit still main's tip, and did the ci run plan
+        id: gate
+        run: |
+          set -euo pipefail
+          tip=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [ "$tip" != "$HEAD_SHA" ]; then
+            echo "::notice::$HEAD_SHA is no longer main's tip ($tip): the run of the newer commit publishes every version not yet on npm"
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          jobs="$RUNNER_TEMP/jobs.json"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$CI_RUN_ID/jobs?filter=latest&per_page=100" \
+            --jq '.jobs[] | {name, conclusion}' > "$jobs"
+          planned=$(jq -r 'select(.name == "plan") | .conclusion' "$jobs")
+          echo "plan job: ${planned:-missing}"
+          echo "go=$([ "$planned" = success ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: The plan of the ci run
+        if: steps.gate.outputs.go == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: ci-plan
+          path: ${{ runner.temp }}/ci-plan
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      # Only a run whose plan affects a package or the CLI publishes anything.
+      - name: Does the plan affect a package or the CLI
+        id: plan
+        run: |
+          set -euo pipefail
+          file="$RUNNER_TEMP/ci-plan/ci-plan.json"
+          if [ "${{ steps.gate.outputs.go }}" != true ]; then echo "go=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          {
+            echo "go=$(jq -r '.packages or .harness' "$file")"
+            echo "base=$(jq -r '.base // ""' "$file")"
+            echo "matrix=$(jq -c '.matrix' "$file")"
+          } >> "$GITHUB_OUTPUT"
+      # Full history: the plan diffs each affected package from the commit npm recorded for its published version, and the
+      # publish reads that this commit is on origin/main.
+      # The bot token (when the owner has added it) is the checkout's credential, so that the cli-follow commit at the end can be
+      # pushed to main (a push made with GITHUB_TOKEN starts no workflow run).
+      - uses: actions/checkout@v4
+        if: steps.plan.outputs.go == 'true'
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          token: ${{ secrets.HARNESS_BOT_TOKEN || github.token }}
+      - uses: actions/setup-node@v4
+        if: steps.plan.outputs.go == 'true'
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            cli/package-lock.json
+            packages/*/package-lock.json
+            app/package-lock.json
+      - name: Install the CLI on this commit's packages
+        if: steps.plan.outputs.go == 'true'
+        uses: ./.github/actions/cli-install
+      - name: Build the CLI
+        if: steps.plan.outputs.go == 'true'
+        working-directory: cli
+        run: npm run build
+      # The tarballs the `package` jobs of the ci run packed after their tests: what is published is what was tested, never rebuilt.
+      - name: The tested tarballs of the ci run
+        if: steps.plan.outputs.go == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tarball-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/tarballs
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      # Refused before anything reaches npm: RELEASE_VERSION_NOT_BUMPED names a package changed since the plan's base whose
+      # version is already on npm, RELEASE_DEPENDENCY_SKEW and RELEASE_DEPENDENCY_UNPUBLISHED a due package against its siblings
+      # (the CLI requires a sibling npm serves; the CLI phase judges it at its stack pins). A due package then
+      # publishes only when every `gate (repo)` job of the ci run is green and the `package` job of each folder of its build order
+      # (itself and the siblings it needs) that the run tested is green; any other due package is held, and named.
+      - name: Judge the plan and the jobs of the ci run
+        if: steps.plan.outputs.go == 'true'
+        id: due
+        env:
+          BASE: ${{ steps.plan.outputs.base }}
+          MATRIX: ${{ steps.plan.outputs.matrix }}
+          TARBALLS: ${{ runner.temp }}/tarballs
+        run: |
+          set -euo pipefail
+          plan="$RUNNER_TEMP/publish-plan.json"
+          every="$RUNNER_TEMP/every-package.json"
+          node cli/dist/main.js release publish --base "$BASE" --json > "$plan" || { cat "$plan"; exit 1; }
+          node cli/dist/main.js release affected --json > "$every"
+          PLAN="$plan" EVERY="$every" JOBS="$RUNNER_TEMP/jobs.json" node .github/scripts/publish-gate.mts
+      # Only a due package no `package` job packed (its folder unchanged since a green base) is built here: `npm publish` packs it
+      # through its prepack build, which needs its devDependencies and the siblings it installs. A tested tarball needs none of this.
+      - name: Install and build the publishable packages that have no tested tarball
+        if: steps.plan.outputs.go == 'true' && steps.due.outputs.build != ''
+        env:
+          BUILD: ${{ steps.due.outputs.build }}
+        run: for dir in $BUILD; do (cd "$dir" && npm ci --no-audit --no-fund && npm run build --if-present); done
+      # The token reaches npm alone: a user config naming the variable, set only for this step, never echoed. One call for
+      # the due packages, taken in the judged order (a dependency before its dependent) and published four at a time (npm accepts a
+      # package before its dependency is readable), then read back together.
+      - name: Publish each publishable package not on npm
+        if: steps.plan.outputs.go == 'true' && steps.due.outputs.publish != ''
+        env:
+          BASE: ${{ steps.plan.outputs.base }}
+          PUBLISH: ${{ steps.due.outputs.publish }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/publish.npmrc"
+          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
+          # One batch: every package gets its `npm publish` in order, then all are read back at once, so the registry's delay is
+          # paid once. One transient refusal (a Sigstore 409) holds back only that package; the step fails naming each, and a
+          # rerun publishes what is left.
+          args=()
+          for dir in $PUBLISH; do args+=(--package "$dir"); done
+          node cli/dist/main.js release publish --execute --base "$BASE" --tarballs "$RUNNER_TEMP/tarballs" "${args[@]}"
+      # Phase 2: the CLI (starci-harness), in this run, right after its siblings reached npm, once the harness job and every gate of
+      # the ci run are green (Sonar and the app job never gate a publish). The CLI requires its siblings at versions npm serves, so
+      # a CLI trailing its stack pins is moved onto them here (.github/scripts/cli-follow.mts: requirements and lockfile raised, the
+      # prerelease bumped when its version is on npm, the changelog entry), committed, built against the registry copies, tested,
+      # published from that commit, and only then pushed to main. The ci run of the pushed commit finds the CLI version on npm and
+      # nothing else changed (`release affected`), so it neither tests nor publishes again. Without HARNESS_BOT_TOKEN the commit
+      # cannot be pushed, so nothing is moved and the CLI waits for the owner to add the secret or move it by hand.
+      - name: Move the CLI onto the pins npm serves
+        if: steps.plan.outputs.go == 'true' && steps.due.outputs.cli == 'true'
+        id: follow
+        env:
+          HAS_BOT_TOKEN: ${{ secrets.HARNESS_BOT_TOKEN != '' }}
+        run: |
+          set -euo pipefail
+          # check pins exits 1 when the CLI trails its pins, the case this step moves; any other failure stops the job.
+          status=0
+          node cli/dist/main.js check pins --json > "$RUNNER_TEMP/pins.json" || status=$?
+          if [ "$status" -gt 1 ]; then exit "$status"; fi
+          if [ "$status" -eq 0 ]; then echo "followed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$HAS_BOT_TOKEN" != true ]; then
+            echo "::warning::the CLI trails its pins but HARNESS_BOT_TOKEN is not set, so cli-follow cannot push its commit; add the secret (contents write on this repository) or move the CLI by hand"
+            echo "followed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          SKEWS="$RUNNER_TEMP/pins.json" node .github/scripts/cli-follow.mts
+          if ! grep -q '^changed=true$' "$GITHUB_OUTPUT"; then echo "followed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          git config user.name "starci-harness-bot"
+          git config user.email "starci-harness-bot@users.noreply.github.com"
+          git add cli/package.json cli/package-lock.json CHANGELOG.md
+          git commit -m "$(grep '^message=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2-)"
+          # The install above replaced the commit's packed siblings by the registry copies the lockfile names: build and test the CLI on those.
+          (cd cli && npm run build && node --test --test-concurrency=2 "dist/**/*.test.js")
+          echo "followed=true" >> "$GITHUB_OUTPUT"
+      - name: Judge the plan and the held siblings of the CLI
+        if: steps.plan.outputs.go == 'true' && steps.due.outputs.cli == 'true'
+        id: cli
+        env:
+          BASE: ${{ steps.plan.outputs.base }}
+          HELD: ${{ steps.due.outputs.held }}
+        run: |
+          set -euo pipefail
+          plan="$RUNNER_TEMP/publish-plan.json"
+          # A CLI whose @starci requirements still trail their stack pins waits (a pin npm does not serve yet, or no bot token).
+          if ! node cli/dist/main.js check pins > "$RUNNER_TEMP/pins.txt"; then
+            cat "$RUNNER_TEMP/pins.txt"
+            echo "::notice::the CLI trails its stack pins; it publishes once npm serves them and cli-follow can move it"
+            echo "due=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if grep -q "verdict: pending" "$RUNNER_TEMP/pins.txt"; then
+            cat "$RUNNER_TEMP/pins.txt"
+            echo "due=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          node cli/dist/main.js release publish --base "$BASE" --package cli --json > "$plan" || { cat "$plan"; exit 1; }
+          PLAN="$plan" node -e '
+            const fs = require("fs")
+            const row = JSON.parse(fs.readFileSync(process.env.PLAN, "utf8")).data.rows.find((candidate) => candidate.dir === "cli")
+            console.log(`${row.package}@${row.version}: ${row.action}`)
+            const cli = JSON.parse(fs.readFileSync("cli/package.json", "utf8"))
+            const requires = new Set(Object.keys({ ...cli.dependencies, ...cli.peerDependencies }))
+            const held = (process.env.HELD ?? "").split(" ").filter((dir) => dir !== "")
+              .filter((dir) => requires.has(JSON.parse(fs.readFileSync(`${dir}/package.json`, "utf8")).name))
+            if (row.action === "publish" && held.length > 0) {
+              console.log(`::error::${row.package}@${row.version} requires ${held.join(", ")}, held by the packages phase; it publishes once they do`)
+              process.exit(1)
+            }
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `due=${row.action === "publish"}\n`)
+          '
+      - name: Publish the CLI
+        if: steps.plan.outputs.go == 'true' && steps.cli.outputs.due == 'true'
+        env:
+          BASE: ${{ steps.plan.outputs.base }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/publish.npmrc"
+          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
+          node cli/dist/main.js release publish --execute --base "$BASE" --package cli
+      # The commit is on main only after the CLI it holds is on npm. If main moved meanwhile it is rebased onto the new tip (it
+      # touches the CLI's manifest, lockfile and the changelog alone), and a conflict fails the run for the owner to resolve.
+      - name: Push the cli-follow commit
+        if: steps.plan.outputs.go == 'true' && steps.follow.outputs.followed == 'true'
+        run: |
+          set -euo pipefail
+          if git push origin HEAD:main; then exit 0; fi
+          git fetch origin main
+          git rebase origin/main || { git rebase --abort; echo "::error::main moved and the cli-follow commit does not rebase onto it; move the CLI onto its pins by hand"; exit 1; }
+          git push origin HEAD:main
