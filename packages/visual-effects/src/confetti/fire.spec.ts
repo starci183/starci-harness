@@ -118,11 +118,11 @@ describe("fireConfetti", () => {
     })
 
     it("fires the caller's own bursts in the theme's colours", () => {
-        const { host, calls, tick } = stage({ css: ":root { --accent: #e11d48; --success: #16a34a; }" })
+        const { host, calls, tick } = stage({ css: ":root { --accent: #e11d48; --warning: #f59e0b; }" })
         fireConfetti({ bursts: [{ origin: { x: 0.5, y: 0.5 }, angle: 90, spread: 30, count: 30, velocity: 600 }] }, host)
         tick(0)
         assert.ok(calls.fills.length > 0)
-        assert.ok(calls.fills.every((fill) => fill === "#e11d48" || fill === "#16a34a"))
+        assert.ok(calls.fills.every((fill) => fill === "#e11d48" || fill === "#f59e0b"))
     })
 
     it("draws nothing for a reader who asked for reduced motion, unless told to ignore it", async () => {

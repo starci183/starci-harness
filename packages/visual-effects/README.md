@@ -1,6 +1,6 @@
 # @starci/visual-effects
 
-The visual effects of a StarCi front end. Each effect is one system played on a shared overlay: a canvas fixed over the page that takes no pointer, is hidden from assistive technology and is removed when the effect ends. Effects take their colours from the app's Grammar theme tokens (`--accent`, `--accent-soft`, `--success`, `--warning`, `--accent-soft-foreground`), so every app plays its own brand, and they draw nothing for a reader who asked the system for reduced motion. They own no layout and no component: the screen around them is the Grammar's.
+The visual effects of a StarCi front end. Each effect is one system played on a shared overlay: a canvas fixed over the page that takes no pointer, is hidden from assistive technology and is removed when the effect ends. Effects take their colours from the app's Grammar theme tokens (`--accent`, `--accent-soft`, `--accent-soft-foreground`, `--warning`), so every app plays its own brand, and they draw nothing for a reader who asked the system for reduced motion. They own no layout and no component: the screen around them is the Grammar's.
 
 | export | what it is for |
 |---|---|

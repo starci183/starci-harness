@@ -1,11 +1,11 @@
 /**
- * The Grammar tokens an effect takes its colours from, so every app plays its own brand: the accent, its soft pair, and the
- * status hues. A token the app leaves unset is skipped.
+ * The Grammar tokens an effect takes its colours from, so every app plays its own brand: the accent, its soft pair and the
+ * warm warning hue (a celebration reads in the brand, never in the success green). A token the app leaves unset is skipped.
  */
-export const THEME_TOKENS: readonly string[] = ["--accent", "--accent-soft", "--success", "--warning", "--accent-soft-foreground"]
+export const THEME_TOKENS: readonly string[] = ["--accent", "--accent-soft", "--accent-soft-foreground", "--warning"]
 
 /** Used only when the page sets none of THEME_TOKENS (a page outside any Grammar root). */
-export const FALLBACK_COLORS: readonly string[] = ["#e11d48", "#fb7185", "#f59e0b", "#22c55e", "#3b82f6"]
+export const FALLBACK_COLORS: readonly string[] = ["#e11d48", "#fb7185", "#ffe3e3", "#f59e0b", "#fbbf24"]
 
 /** The colours of the page's Grammar theme, in token order, falling back to FALLBACK_COLORS when none is set. */
 export const themeColors = (read: (name: string) => string): readonly string[] => {

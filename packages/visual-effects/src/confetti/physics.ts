@@ -38,11 +38,11 @@ export interface Piece {
 }
 
 /** Downward pull in pixels per second squared. */
-export const GRAVITY = 1400
+export const GRAVITY = 1100
 /** The share of speed a piece keeps per second against the air (paper slows fast, then flutters down). */
-export const DRAG_PER_SECOND = 0.12
+export const DRAG_PER_SECOND = 0.3
 /** The fall speed paper settles at, in pixels per second. */
-export const TERMINAL_FALL = 260
+export const TERMINAL_FALL = 240
 /** The part of its life over which a piece fades out. */
 export const FADE_SHARE = 0.25
 
