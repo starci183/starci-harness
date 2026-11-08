@@ -12,6 +12,7 @@ import { rules as freestyleRules } from "./freestyle.ts"
 import { rules as gapProximityRules } from "./gap-proximity.ts"
 import { rules as grammarBoundaryRules } from "./grammar-boundary.ts"
 import { rules as iconRules } from "./icon.ts"
+import { rules as layoutTwoAxisRules } from "./layout-two-axis.ts"
 import { rules as mascotRules } from "./mascot.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
 import { rules as pageRules } from "./page.ts"
@@ -56,6 +57,7 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "gap-proximity", rules: gapProximityRules },
   { law: "grammar-boundary", rules: grammarBoundaryRules },
   { law: "icon", rules: iconRules },
+  { law: "layout-two-axis", rules: layoutTwoAxisRules },
   { law: "mascot", rules: mascotRules },
   { law: "menu-entries", rules: menuEntriesRules },
   { law: "page", rules: pageRules },

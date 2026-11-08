@@ -38,8 +38,9 @@
         --grammar-inset: 0.75rem;
         --grammar-inset-nested: 0.5rem;
         --grammar-inset-open: 1.5rem;
-        /* The page gutter steps by breakpoint (12, 24 from 48rem, 32 from 70rem), never fluid. */
+        /* The page gutter steps by breakpoint (12 on a phone, 24 from 48rem, 32 from 80rem), never fluid; so does the gap between a report page's cards (12, then 24). The owner asked for 16 on a phone; the spacing scale (0 4 8 12 24 32) has no 16, so the phone keeps 12 until the scale gains the step. */
         --grammar-page-inset: 0.75rem;
+        --grammar-card-gap: 0.75rem;
         /*
          * Card box padding, one place per axis: SurfaceCard and SurfaceListCard content. A card holds its content one
          * step wider than the container inset (16, not 12), so its body clears the card radius and every card kind puts
@@ -82,10 +83,12 @@
     @media (min-width: 48rem) {
         .grammar-common-root {
             --grammar-page-inset: 1.5rem;
+            --grammar-card-gap: 1.5rem;
         }
     }
 
-    @media (min-width: 70rem) {
+    /* Desktop from 1280: the page inset is 32 here, 24 on a tablet (768 to 1279) and 12 on a phone (see the scale note above). */
+    @media (min-width: 80rem) {
         .grammar-common-root {
             --grammar-page-inset: 2rem;
         }

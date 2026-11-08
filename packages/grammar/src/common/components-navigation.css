@@ -1300,7 +1300,19 @@
         gap: 0.5rem;
         font-weight: var(--grammar-weight-regular);
         line-height: var(--grammar-leading-md);
-        overflow-wrap: anywhere;
+        color: var(--muted);
+        font-size: var(--grammar-text-md);
+        /* The label breaks between words and keeps one or two lines; a word breaks only when it alone is wider than the cell. */
+        overflow-wrap: break-word;
+    }
+
+    .starci-core-description-stat-term > span {
+        min-width: 0;
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
     }
 
     .starci-core-description-figure {
@@ -1354,8 +1366,8 @@
         min-width: 0;
         margin: 0;
         color: var(--muted);
-        font-size: var(--grammar-text-md);
-        line-height: var(--grammar-leading-md);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
         overflow-wrap: anywhere;
     }
 
@@ -1375,6 +1387,26 @@
 
     @container starci-core-description-strip (min-width: 40rem) {
         .starci-core-description-list[data-grammar-description-layout="stat-strip"] .starci-core-description-pair {
+            flex-basis: 0;
+        }
+    }
+
+    /*
+     * FIVE CELLS (the figures ribbon, responsive law). Answering the strip's own width, in a card or a pane alike: below 30rem (a phone) two
+     * columns, the odd last cell spanning its row (2 + 2 + 1); from 30rem to 52rem (a tablet) three columns, 3 + 2 (two balanced rows, the
+     * second row's two cells share it; 2 + 2 + 1 would make three rows and a lone cell); from 52rem (a desktop) one row. Cells divide by the
+     * edge lines above: a vertical line between the cells of a row, a horizontal one between rows, none doubled and none on the outer edge.
+     */
+    .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figure-count="5"][data-grammar-figures-placement] .starci-core-description-pair { flex-basis: 50%; }
+
+    @container starci-core-description-strip (min-width: 30rem) {
+        .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figure-count="5"][data-grammar-figures-placement] .starci-core-description-pair {
+            flex-basis: calc(100% / 3);
+        }
+    }
+
+    @container starci-core-description-strip (min-width: 52rem) {
+        .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figure-count="5"][data-grammar-figures-placement] .starci-core-description-pair {
             flex-basis: 0;
         }
     }

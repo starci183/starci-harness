@@ -51,6 +51,14 @@ if (/0\.8125rem/.test(all + ramps)) problems.push("a 13px size (0.8125rem) is ba
 for (const match of all.matchAll(/\.starci-core-tabs[^{]*\.tabs__tab[^{]*\{[^}]*font-size:\s*var\(--grammar-text-([a-z0-9]+)\)/g)) {
     if (match[1] !== "sm" && match[1] !== "md") problems.push(`a tab rule sets --grammar-text-${match[1]}; every tab is 14`)
 }
+/* THE RESPONSIVE LAW: the page inset steps 12 on a phone (the scale has no 16), 24 from 48rem and 32 from 80rem. */
+if (!/--grammar-page-inset:\s*0.75rem;/.test(all)) problems.push("styles.css: the phone page inset must be 0.75rem (12)")
+if (!/@media \(min-width: 48rem\) \{\s*\.grammar-common-root \{\s*--grammar-page-inset: 1\.5rem;/.test(all)) problems.push("styles.css: the tablet page inset must be 1.5rem (24) from 48rem")
+if (!/@media \(min-width: 80rem\) \{\s*\.grammar-common-root \{\s*--grammar-page-inset: 2rem;/.test(all)) problems.push("styles.css: the desktop page inset must be 2rem (32) from 80rem")
+/* THE FIGURES RIBBON (five cells): 2 columns on a phone, 3 from 30rem, one row from 52rem of the strip's own width; the label clamps to two lines. */
+for (const needle of ['[data-grammar-figure-count="5"][data-grammar-figures-placement] .starci-core-description-pair { flex-basis: 50%; }', "@container starci-core-description-strip (min-width: 30rem)", "flex-basis: calc(100% / 3)", "@container starci-core-description-strip (min-width: 52rem)", "-webkit-line-clamp: 2"]) {
+    if (!all.includes(needle)) problems.push(`components-navigation.css: the five-figure ribbon lost \`${needle}\``)
+}
 for (const pin of PINS) {
     const bodies = bodiesOf(pin.selector)
     if (bodies.length === 0) {

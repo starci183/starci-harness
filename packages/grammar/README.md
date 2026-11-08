@@ -666,6 +666,17 @@ Both glyphs stand one inline step (8) from the label. In Core every Button size,
 suggestion pattern (lint `suggestion-buttons`). An arrow typed in a label or passed through `endContent` is refused
 (lint `button-arrow`). `EmptyNotice actionEndArrow` and `ItemAction.endArrow` give the Grammar-drawn actions the arrow.
 
+**The layout law (report or workspace).** A page is one of two frames, declared by `Page chrome` (no extra prop). A REPORT page
+(`chrome="standard"`) is the pink well with card surfaces stacked in one vertical column, 24 apart; cards stand side by side only
+as siblings of one role and height (figure cells, short equal cards), never a card beside a column of cards (lint
+`layout-two-axis`). A WORKSPACE page (`chrome="panes"`, or `bleed` for a full-height chat or editor) is a grid of panes split by
+dividers, used when the page has a persistent selection or navigation column; its side panes are white surfaces at full height,
+never cards, and the main pane may hold a pink well that follows the report law. One page, one frame type. `Page layout="report" | "workspace"` declares it (a mismatch with `chrome` throws). **The responsive law:** Grammar owns
+the breakpoints (desktop from 1280, tablet 768 to 1279, phone below 768); the page inset is 32 / 24 / 12 and the card gap 24 / 12 (the owner asked for 16 on a phone; the spacing scale has no 16 yet) and the
+content at most 1280 wide, type stays 14 / 12. A report keeps its figures ribbon in one row on a desktop, 3 columns on a tablet (five cells are 3 + 2) and 2 columns on a phone (an odd last cell spans its row: 2 + 2 + 1), and stacks equal cards below 1280; a
+workspace shows the aside as a Drawer on a tablet and one pane at a time on a phone. A FlowGraph is not shown on a phone: the app passes
+the step list there instead.
+
 **The single-child-card law.** A card groups two or more different parts (figures, a list, actions) or carries zones
 (tabs, search, head actions). A table, list or chart standing alone is the surface: a `Section` titles it (`title`) and one
 muted line goes under it (`Section caption`). A standalone `DataTable` sits in its own card (edge, card radius, card shadow; HeroUI's native look inside); a `Section kind="list"` draws the same card edge. Lint `single-child-card` refuses the card around a lone one. Text

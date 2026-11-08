@@ -11,6 +11,23 @@
   icon-only form is the `IconButton`).
 - Changed: the stories and the app-guide template no longer give a neutral or alternative Button a start icon.
 - Lint: `eslint-grammar-core` 0.32.1 adds `button-icon-primary-only` (`FE_BUTTON_ICON_PRIMARY_ONLY`, error).
+- Added: `Page layout: "report" | "workspace"` (the frame type; derived from `chrome` when omitted, `PAGE_LAYOUT_CHROME_MISMATCH` when it
+  disagrees), `data-grammar-page-layout`, and the story `Compositions/Page layouts`.
+- Changed (default): THE RESPONSIVE LAW (owner, 2026-11-09). The page inset steps 32 / 24 / 16 at the 1280 / 768 breakpoints (the desktop
+  step moved from 1120 to 1280; the phone step stays 12 because the spacing scale 0 4 8 12 24 32 has no 16: the owner asked for 16, a scale step to add);
+  `--grammar-card-gap` is 24, 12 on a phone (same reason). The tiers of every page piece
+  (figures, equal cards, DataTable, tabs, workspace aside and panes, sidebar, pinned action, FlowGraph) are in `contexts/ui/composition.md`
+  RESPONSIVE-5; `check:type` pins the insets.
+- Changed (default): the figures ribbon of five cells (`SurfaceCard kind="figures"`, a figures zone, in a card or a pane) answers its own
+  width: two columns below 30rem with an odd last cell across its row (2 + 2 + 1), three columns from 30rem (3 + 2, two balanced rows),
+  one row from 52rem. The cell keeps its label (14 muted, at most two lines, wrapping between words), value (20) and meta (now 12).
+  Lines stay the edge lines of the grid (vertical between a row's cells, horizontal between rows, none doubled). Story `FiguresRibbonFive`
+  (390 / 700 / 1000); `check:type` pins the rules.
+- Documented: THE LAYOUT LAW (owner, 2026-11-09). A page is a report (`Page chrome="standard"`: the pink well, cards stacked in one vertical
+  column 24 apart, side by side only for sibling cards of one role and height) or a workspace (`chrome="panes"` / `"bleed"`: panes split
+  by dividers, side panes white surfaces at full height, never cards, a pink well allowed in the main pane). `Page chrome` is the
+  declaration, so no new prop; one frame type per page. Lint `layout-two-axis` (`eslint-grammar-core` 0.32.1) refuses a card beside a
+  column of cards and unequal cards in a row.
 
 ## 0.32.1 - 2026-11-09
 

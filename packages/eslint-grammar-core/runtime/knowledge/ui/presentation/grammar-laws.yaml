@@ -63,6 +63,20 @@ rules:
           Only the primary Button (`intent="commit"`, the CTA) does. A neutral, alternative, dismiss or destructive Button, a
           suggestion pill and a row action are text only. The arrow (`endArrow`) is not an icon under this rule, so any intent
           may lead somewhere; `IconButton` is unaffected.
+  - id: LAYOUT-TWO-AXIS
+    title: A report page stacks its cards in one direction
+    governs: Card surfaces placed side by side.
+    cases:
+      - id: case-1
+        when: Card surfaces stand in the pink well of a report page
+        assert: |-
+          They stack in one vertical column, 24 apart. Side by side is allowed only for sibling cards of the same role and height
+          (figure cells, short equal cards). A card beside a column of cards, or cards of different kinds in one row, is refused.
+      - id: case-2
+        when: The page has a persistent selection or navigation column, or a full-height chat or editor
+        assert: |-
+          It is a workspace page, `Page chrome="panes"`: a grid of panes split by dividers, side panes white surfaces at full
+          height, never cards. The main pane may hold a pink well that follows case-1.
   - id: SUGGESTION-BUTTONS
     title: Suggestions and quick replies are a Cluster of neutral sm Buttons
     governs: Anything that suggests something to say or ask.

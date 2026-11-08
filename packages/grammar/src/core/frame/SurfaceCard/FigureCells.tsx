@@ -41,6 +41,7 @@ export const FigureCells = ({ items, isLoading, isDisabled = false }: { readonly
             data-grammar-description-layout="stat-strip"
             data-grammar-description-divided="true"
             data-grammar-figures-placement={placement}
+            data-grammar-figure-count={items.length}
             {...(isLoading ? { "aria-busy": true, "data-loading": "true" } : {})}
         >
             {items.map((item) => (

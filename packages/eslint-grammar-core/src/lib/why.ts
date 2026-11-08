@@ -187,6 +187,11 @@ export const why: Record<string, WhyEntry> = {
     en: "A Button in `<file>` sets `startGlyph` or `startContent` but is not the primary (`intent=\"commit\"`): it has another intent, none, or one computed.",
     fix: "Only the primary Button (the CTA) carries a leading icon. Remove the icon from a neutral, alternative, dismiss or destructive Button, a suggestion pill or a row action; a Button that leads somewhere keeps `endArrow`.",
   },
+  "layout-two-axis": {
+    code: "FE_LAYOUT_TWO_AXIS",
+    en: "A Grid or Cluster in `<file>` puts a SurfaceCard beside a Stack of SurfaceCards, or two SurfaceCards of different kinds side by side.",
+    fix: "A report page stacks its cards in one vertical column (24 apart); side by side is only for sibling cards of one role and height. A page with a persistent selection column or a full-height chat or editor is a workspace: `Page chrome=\"panes\"`, whose side panes are white surfaces, never cards.",
+  },
   "table-cell-type": {
     code: "FE_TABLE_CELL_TYPE",
     en: "A DataTable cell or ListRow title/description in `<file>` draws a Text above 14 (`size=\"lg\"`, `\"xl\"`, `\"figure\"`), a Heading, a Label or an h1-h6.",

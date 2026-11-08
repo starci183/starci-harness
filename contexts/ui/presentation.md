@@ -360,6 +360,11 @@ Prefer **fluid, then fitted, then capped; never fixed.**
 
 Every region that can receive long content carries a zero minimum width so it can shrink.
 
+### Page tiers
+Three viewport tiers, owned by Grammar and never written by an app ([composition](composition.md#responsive-5-the-page-tiers)): desktop from
+1280 (page inset 32), tablet 768 to 1279 (24), phone below 768 (16). The gap between a report page's cards is 24, 16 on a phone (12 until the scale gains a 16 step); the
+content is at most 1280 wide; the type stays 14 and 12 at every tier.
+
 ### Overflow
 One owner per axis; two nested scrollers on one axis trap the reader.
 

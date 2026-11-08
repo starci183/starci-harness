@@ -256,12 +256,12 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Size · States · Owner split · Rules
 - [ui/components/toast-alert.md](../ui/components/toast-alert.md) · 2 KB — Contract: Toast and Alert.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/composition.md](../ui/composition.md) · 28 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...
+- [ui/composition.md](../ui/composition.md) · 31 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...
   - sections: 1. Hierarchy · 2. Action and CTA · 3. Accent · 4. State and feedback · 5. Collection · 6. Layout · 7. Responsive · 8. Taste · 9. Coverage
-  - ids: ACCENT-2, ACCENT-3, ACCENT-4, ACCENT-5, ACCENT-6, ACTION-1, COLLECTION-1, COLLECTION-2, COLLECTION-3, COLLECTION-4, COVERAGE-1, CTA-1, CTA-2, CTA-3, CTA-4, CTA-5, CTA-6, DISCIPLINE-1, DISCIPLINE-2, DISCIPLINE-3, FE-APP-SHELL-1..6, FEEDBACK-1, FEEDBACK-2, FEEDBACK-3 and 22 more
+  - ids: ACCENT-2, ACCENT-3, ACCENT-4, ACCENT-5, ACCENT-6, ACTION-1, COLLECTION-1, COLLECTION-2, COLLECTION-3, COLLECTION-4, COVERAGE-1, CTA-1, CTA-2, CTA-3, CTA-4, CTA-5, CTA-6, DISCIPLINE-1, DISCIPLINE-2, DISCIPLINE-3, FE-APP-SHELL-1..6, FEEDBACK-1, FEEDBACK-2, FEEDBACK-3 and 24 more
 - [ui/loading.md](../ui/loading.md) · 9 KB — A region is in exactly one of four states, and the Grammar owns how each looks.
   - sections: The four states · What the Grammar takes · The region carries it · Choose · Rules
-- [ui/presentation.md](../ui/presentation.md) · 32 KB — Presentation resolves values on boundaries the **app** owns, after composition chose the tree and the components.
+- [ui/presentation.md](../ui/presentation.md) · 33 KB — Presentation resolves values on boundaries the **app** owns, after composition chose the tree and the components.
   - sections: Space · Type · Paint · Room · Relations at a glance
 - [ui/proof.md](../ui/proof.md) · 18 KB — Proof exists only after render.
   - sections: Who holds each proof · Lenses and verdicts · Accessibility (gating) · Contrast (gating) · Focus (gating) · Motion (gating) · Render truth (gating) · Taste (scored) · UX (scored) · Anatomy source and brand (provenance)
