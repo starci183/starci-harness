@@ -139,7 +139,7 @@ pins:
     source: packages/auth/package.json
     why: 'the lite sign-in: the NestJS module (EdDSA access tokens with a multi-key JWKS, passwords, Google OAuth with state and PKCE, rotating refresh sessions, the sign-in budget, the refresh cookie), the front-end client and its React bindings, the door contracts and test doubles; the one importer of the identity libraries, reached by a back end only through integrations/passport; @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/auth-oidc':
-    version: 0.1.3
+    version: 0.2.0
     group: starci
     install: registry
     side: both
@@ -160,7 +160,7 @@ pins:
     source: packages/mail/package.json
     why: 'outgoing mail of a back end: a NestJS module and the Mailer port over SMTP (connect, greeting, socket and total timeouts, STARTTLS required by default, recipient, message and attachment checks, a shared SMTP target policy, coded errors, typed escaping render helpers returning { subject, text, html }), with @starci/mail/testing for its specs; the only importer of nodemailer (R90).'
   '@starci/hfs':
-    version: 6.2.10
+    version: 6.2.11
     group: starci
     install: registry
     side: both
@@ -654,10 +654,10 @@ pins:
     side: be
     why: 'the Express 5 integration @nestjs/apollo loads at boot (R111 nestjs-apollo-express5, knowledge/hfs/peer-integrations.yaml); every api app that serves GraphQL installs it; the latest registry version on 2026-10-13.'
   undici:
-    version: 6.29.0
+    version: 6.29.1
     group: framework
     side: be
-    why: 'the Agent of platform/http (its one owner, R90): FetchHttpClient hands fetch a pool that trusts HttpOptions.trustedCa beside the bundled roots (a test world''s per-run fake CA); the 6 line is the undici the Node 22 runtime of the app images bundles, and its Agent also serves the fetch of Node 24; 6.29.0 is the release of 2026-09-25.'
+    why: 'the Agent of platform/http (its one owner, R90): FetchHttpClient hands fetch a pool that trusts HttpOptions.trustedCa beside the bundled roots (a test world''s per-run fake CA); the 6 line is the undici the Node 22 runtime of the app images bundles, and its Agent also serves the fetch of Node 24; 6.29.1 is the patch of 2026-11-08 that closes GHSA-2m5v-pch6-74hx and four denial-of-service advisories of 6.29.0.'
   # --- lite identity (integrations/passport)
   '@nestjs/passport':
     version: 11.0.5

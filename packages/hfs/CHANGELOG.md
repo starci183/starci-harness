@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.2.11 - 2026-11-08
+
+- Fixed: an integration spec now counts as a consumer of its own integration in a per-provider slot (`be.integrations.<provider>`, such as keycloak or mail), not only in `be.integrations` with a `<provider>` binding. R112 (the spec references the error enum) and `HFS_UNUSED_EXPORT` no longer contradict each other. Specs: `src/hfs-unused-symbol.spec.mts`.
+- Changed: the `undici` pin is 6.29.1 (6.29.0 carries GHSA-2m5v-pch6-74hx and four denial-of-service advisories that fail `npm audit --omit=dev --audit-level=high`), and the canon pin of `@starci/auth-oidc` is 0.2.0.
+
 ## 6.2.10 - 2026-11-08
 
 - Fixed: a pure component that hands a ReactNode prop on as it is (`(props: P): ReactNode => (props.active ? props.candidate : null)`) is a render target for `FE_WORLD_OWNER_RENDER_BOUNDARY` and `FE_CONNECTED_BLOCK_RENDER_PAIR`. The detector required the pure half to return JSX, which contradicted the canon's `starci-fe/no-useless-fragment` (the fragment that wrapped the prop is now forbidden). A function counts when every return is JSX, null/undefined/false or a read of its own first parameter (a prop, a destructured prop, or a conditional/logical of these), at least one is such a read, and it still uses no world and captures no outer function; a module constant, a hook value or a call result still fails.

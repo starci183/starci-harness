@@ -458,3 +458,41 @@ const t = useTranslations("roles"); export const label = (role: string) => t(ROL
     assert.deepEqual(namesOf(fixture(t, contents), edition), ['other.roleOwner']);
   });
 }
+
+/** Findings of a keycloak-style integration whose only consumer is its integration spec; `slot` is the slot id of the integration folder. */
+function integrationSpecFindings(t: TestContext, slot: string, bindings: Record<string, string> | undefined, specFolder = 'keycloak'): string[] {
+  const root = 'src/modules/integrations/keycloak';
+  const entry = `${root}/index.ts`;
+  const specFile = `src/tests/integration/${specFolder}/keycloak.integration-spec.ts`;
+  const context = fixture(t, {
+    [entry]: 'export enum KeycloakErrorCode { Down = "KEYCLOAK_DOWN" } export const UNUSED = 1;',
+    [specFile]: 'import { KeycloakErrorCode } from "../../../modules/integrations/keycloak"; run(KeycloakErrorCode.Down);',
+  });
+  const owner = { root, tier: 'integrations', slot, bindings };
+  const entrySource = ts.createSourceFile(path.join(context.repoRoot, entry), fs.readFileSync(path.join(context.repoRoot, entry), 'utf8'), ts.ScriptTarget.Latest, true);
+  const graph = {
+    files: new Map([[entry, { sourceFile: entrySource, ...owner, owner }]]),
+    ownerRoots: new Map([['owner', owner]]),
+    edges: [],
+    unit: (file: string) => file === entry ? 'owner' : null,
+    abs: (file: string) => path.relative(context.repoRoot, file).split(path.sep).join('/'),
+    resolver: {
+      classifyPath: (file: string) => file === specFile ? { slot: 'be.tests.integration', status: 'ok', bindings: { capability: specFolder } } : { slot: null },
+      ruleParams: () => ({}), slot: () => ({ tier: 'integrations' }),
+      ownerOf: (file: string) => file === entry ? owner : null,
+    },
+  };
+  // reason: the dead-export check reads only these members of the type context, the graph and the architecture config; the fixture builds that minimum by hand.
+  const input = { context: { ts }, graph, config: { root: context.repoRoot, apps: [] } } as unknown as Parameters<typeof checkDeadExports>[0];
+  return checkDeadExports(input).violations.filter(finding => finding.ruleId === 'HFS_UNUSED_EXPORT').map(finding => finding.name as string).sort((a, b) => a.localeCompare(b));
+}
+
+test('HFS_UNUSED_EXPORT: an integration spec consumes the exports of its provider in the per-provider slot and in be.integrations with the provider binding', t => {
+  assert.deepEqual(integrationSpecFindings(t, 'be.integrations.keycloak', undefined), ['UNUSED']);
+  assert.deepEqual(integrationSpecFindings(t, 'be.integrations', { provider: 'keycloak' }), ['UNUSED']);
+});
+
+test('HFS_UNUSED_EXPORT: an integration spec of another provider consumes nothing of the integration', t => {
+  assert.deepEqual(integrationSpecFindings(t, 'be.integrations.keycloak', undefined, 'mail'), ['KeycloakErrorCode', 'UNUSED']);
+  assert.deepEqual(integrationSpecFindings(t, 'be.integrations.mail', undefined), ['KeycloakErrorCode', 'UNUSED']);
+});
