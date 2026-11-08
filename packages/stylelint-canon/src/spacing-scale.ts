@@ -1,6 +1,8 @@
 /**
  * `starci/spacing-scale` (HFS R350 `FE_SPACING_OFF_SCALE`): a padding, margin, gap or scroll inset takes a step of
- * the Grammar's spacing scale, 0 4 8 12 24 32 (`@starci/grammar` `src/common/spacing.ts`), and never a fluid value.
+ * the Grammar's spacing scale, 0 4 8 12 24 32 (`@starci/grammar` `src/common/spacing.ts`), and never a fluid value. Its one
+ * further step, 16, is the card's own inset and is written once, as the value of the Grammar token `--grammar-inset-card`:
+ * there it passes, anywhere else (a padding, a gap, another token) it stays off the scale.
  *
  * The scale is the one source of every distance: a 6px meter gap or a 3px body offset is a second, private scale,
  * and `clamp(1rem, 3vw, 2rem)` is a value no breakpoint owns. A length is judged in `rem` (0.25, 0.5, 0.75, 1.5, 2) or
@@ -13,6 +15,9 @@ import { makeRule } from "./lib/make-rule.ts"
 
 /** The scale in rem (at 16px to the rem), the zero step included. */
 export const SPACING_SCALE_REM: readonly number[] = [0, 0.25, 0.5, 0.75, 1.5, 2]
+/** The card inset step (16 at 16px to the rem), allowed only as the value of its own Grammar token. */
+const CARD_INSET_PROPERTY = "--grammar-inset-card"
+const CARD_INSET_REM = 1
 /** Lines, not steps: a hairline seam or a stroke width. */
 const STROKES_PX: readonly number[] = [1, 2]
 
@@ -21,8 +26,9 @@ const SPACING_PROPERTY = /^(?:padding|margin|scroll-padding|scroll-margin)(?:-[a
 const SPACING_TOKEN = /^--[\w-]*(?:gap|inset|padding|gutter)[\w-]*$/
 const VIEWPORT = new Set(["vw", "vh", "vi", "vb", "vmin", "vmax", "svw", "svh", "lvw", "lvh", "dvw", "dvh"])
 
-const onScale = (amount: number, unit: string): boolean => {
+const onScale = (amount: number, unit: string, prop: string): boolean => {
   const size = Math.abs(amount)
+  if (prop === CARD_INSET_PROPERTY && amount === (unit === "px" ? CARD_INSET_REM * 16 : CARD_INSET_REM)) return true
   if (unit === "px") return STROKES_PX.includes(size) || SPACING_SCALE_REM.some((step) => Math.abs(step * 16 - size) < 0.001)
   return SPACING_SCALE_REM.some((step) => Math.abs(step - size) < 0.0005)
 }
@@ -52,7 +58,7 @@ export const spacingScale = makeRule(
         const unit = parsed.unit.toLowerCase()
         const amount = Number.parseFloat(parsed.number)
         if (VIEWPORT.has(unit)) report(decl, "fluid", [decl.prop, node.value], { word: node.value })
-        else if ((unit === "px" || unit === "rem") && !onScale(amount, unit)) report(decl, "off", [decl.prop, node.value], { word: node.value })
+        else if ((unit === "px" || unit === "rem") && !onScale(amount, unit, decl.prop)) report(decl, "off", [decl.prop, node.value], { word: node.value })
       })
     })
   },

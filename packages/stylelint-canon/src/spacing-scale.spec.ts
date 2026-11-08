@@ -16,7 +16,14 @@ test("accepts every step of the scale, in rem or px, either sign, in a fallback 
   assert.deepEqual(await rule("margin: -1px; gap: 1px; padding: 2px; padding-block: 0;"), [])
 })
 
-test("refuses a length between the steps, and the removed 16 step, wherever it is written", async () => {
+test("accepts 16 as the value of the card inset token alone", async () => {
+  assert.deepEqual(await rule("--grammar-inset-card: 1rem;"), [])
+  assert.deepEqual(await rule("--grammar-inset-card: 16px;"), [])
+  assert.equal((await rule("--grammar-inset-card: 1.25rem;")).length, 1)
+  assert.equal((await rule("--grammar-card-padding-inline: 1rem;")).length, 1)
+})
+
+test("refuses a length between the steps, and 16 outside the card inset token, wherever it is written", async () => {
   const meter = await rule("gap: 0.375rem;")
   assert.equal(meter.length, 1)
   assert.match(textAt(meter, 0), /gap: 0\.375rem.*not a step of the spacing scale/)

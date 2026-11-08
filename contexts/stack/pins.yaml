@@ -25,7 +25,7 @@ pins:
   '@starci/eslint-canon-fe': {version: 9.16.8, range: '~9.16.8', group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
   '@starci/eslint-grammar-core': {version: 0.27.0, range: '~0.27.0', group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits; versioned with the grammar"}
   '@starci/eslint-grammar-offset-pop': {version: 0.27.0, range: '~0.27.0', group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
-  '@starci/stylelint-canon': {version: 2.7.1, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
+  '@starci/stylelint-canon': {version: 2.8.0, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
   '@starci/tsconfig': {version: 2.1.1, group: starci, side: both, install: registry}
   '@starci/prettier-config': {version: 1.1.0, group: starci, side: both, install: registry}
   '@starci/jest-preset': {version: 2.9.0, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}

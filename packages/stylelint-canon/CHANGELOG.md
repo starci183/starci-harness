@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.8.0 - 2026-11-09
+
+- Changed: `starci/spacing-scale` accepts 16 (`1rem`, `16px`) as the value of the Grammar token `--grammar-inset-card` alone, the card's own inset of the Grammar 0.27.0 scale (0 4 8 12 16 24 32, where 16 is never a gap); 16 anywhere else, a padding, a gap or another token, stays off the scale. Spec: `src/spacing-scale.spec.ts`.
+
 ## 2.7.1 - 2026-11-07
 
 - A patch: comments carry no ruling history; no rule changed.
