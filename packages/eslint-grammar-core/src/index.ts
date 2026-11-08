@@ -6,17 +6,22 @@ import { rules as appShellRules } from "./app-shell.ts"
 import { rules as chipLabelRules } from "./chip-label.ts"
 import { rules as choiceControlsRules } from "./choice-controls.ts"
 import { rules as drawingRules } from "./drawing.ts"
+import { rules as fieldLabelRules } from "./field-label.ts"
 import { rules as freestyleRules } from "./freestyle.ts"
+import { rules as gapProximityRules } from "./gap-proximity.ts"
 import { rules as grammarBoundaryRules } from "./grammar-boundary.ts"
 import { rules as iconRules } from "./icon.ts"
 import { rules as mascotRules } from "./mascot.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
 import { rules as pageRules } from "./page.ts"
+import { rules as pageBreadcrumbsRules } from "./page-breadcrumbs.ts"
 import { rules as pageHeaderRules } from "./page-header.ts"
 import { rules as paneRules } from "./pane.ts"
 import { rules as statusColorsRules } from "./status-colors.ts"
 import { rules as surfaceCardRules } from "./surface-card.ts"
 import { rules as surfaceDepthRules } from "./surface-depth.ts"
+import { rules as surfaceInSurfaceRules } from "./surface-in-surface.ts"
+import { rules as tabsRules } from "./tabs.ts"
 import { rules as textRules } from "./text-rules.ts"
 import { rules as tokensRules } from "./tokens.ts"
 import { rules as vendorRules } from "./vendor-boundary.ts"
@@ -39,17 +44,22 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "chip-label", rules: chipLabelRules },
   { law: "choice-controls", rules: choiceControlsRules },
   { law: "drawing", rules: drawingRules },
+  { law: "field-label", rules: fieldLabelRules },
   { law: "freestyle", rules: freestyleRules },
+  { law: "gap-proximity", rules: gapProximityRules },
   { law: "grammar-boundary", rules: grammarBoundaryRules },
   { law: "icon", rules: iconRules },
   { law: "mascot", rules: mascotRules },
   { law: "menu-entries", rules: menuEntriesRules },
   { law: "page", rules: pageRules },
+  { law: "page-breadcrumbs", rules: pageBreadcrumbsRules },
   { law: "page-header", rules: pageHeaderRules },
   { law: "pane", rules: paneRules },
   { law: "status-colors", rules: statusColorsRules },
   { law: "surface-card", rules: surfaceCardRules },
   { law: "surface-depth", rules: surfaceDepthRules },
+  { law: "surface-in-surface", rules: surfaceInSurfaceRules },
+  { law: "tabs", rules: tabsRules },
   { law: "text-rules", rules: textRules },
   { law: "tokens", rules: tokensRules },
   { law: "vendor-boundary", rules: vendorRules },
