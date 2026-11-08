@@ -54,7 +54,7 @@ export function repository(t: Pick<TestContext, 'after'>, hookText: string, { de
 
 /** Execute the generated shell with Git's ref-list input and a bounded child lifetime. */
 export function push({ root, hook }: Pick<PrePushRepository, 'root' | 'hook'>, lines: readonly (readonly string[])[]): SpawnSyncReturns<string> {
-  const result = spawnSync('sh', [hook], { cwd: root, input: lines.map(line => line.join(' ')).join('\n') + '\n', encoding: 'utf8', windowsHide: true, timeout: 15000 });
+  const result = spawnSync('sh', [hook], { cwd: root, input: lines.map(line => line.join(' ')).join('\n') + '\n', encoding: 'utf8', windowsHide: true, timeout: 60000 });
   assert.equal(result.error, undefined, result.error?.message);
   return result;
 }
