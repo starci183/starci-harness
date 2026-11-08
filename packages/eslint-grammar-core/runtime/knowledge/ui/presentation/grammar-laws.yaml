@@ -57,15 +57,15 @@ rules:
         assert: |-
           It takes `endArrow`; an arrow typed in its label or passed as end content is refused. A Button that does
           something takes `startGlyph`; never both.
-  - id: SUGGESTION-CHIPS
-    title: Quick replies and suggested questions are SuggestionChips
-    governs: A row of Buttons that suggest something to say or ask.
+  - id: SUGGESTION-BUTTONS
+    title: Suggestions and quick replies are a Cluster of neutral sm Buttons
+    governs: Anything that suggests something to say or ask.
     cases:
       - id: case-1
-        when: A row of neutral sm Buttons each send their own label
+        when: A suggestion, quick reply or empty-state shortcut is drawn
         assert: |-
-          It is `SuggestionChips` (pill chips, a labelled toolbar), not a Button row; a form value is ChoiceChips and a
-          label is a Badge or a TagGroup.
+          It is a `Cluster gap="inline"` (with `label`) of neutral `Button size="sm"`, which every Button size draws as a
+          pill; a Link row, ChoiceChips, TagGroup, Badge or Chip is never a suggestion.
   - id: TABLE-CELL-TYPE
     title: Table and row cells take the row type sizes
     governs: Text inside a DataTable cell or a ListRow.
@@ -73,7 +73,7 @@ rules:
       - id: case-1
         when: Text is drawn in a DataTable cell or a ListRow
         assert: |-
-          The primary is md 14 / 500, the secondary sm 13 muted; a heading-size Text is refused.
+          All text is 14 (the primary 14 / 500, the secondary 14 muted; sm equals md); only a small name (meta, count, timestamp) is 12 (xs). A larger Text, a Heading or a Label is refused.
   - id: SAME-LINE-SIZE
     title: One line, one size
     governs: Text siblings of one inline line.
@@ -81,7 +81,7 @@ rules:
       - id: case-1
         when: Texts stand side by side in one Cluster
         assert: |-
-          They share one size; a Badge or a chip is exempt.
+          They share one size step (14: md and sm are the same; 12: xs; display: figure); a Badge or a chip is exempt.
   - id: ROW-TITLE-LINK
     title: A row title is never a link when the row opens
     governs: The primary of a ListRow or a DataTable row.

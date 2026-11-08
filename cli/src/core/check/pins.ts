@@ -7,7 +7,7 @@ import type { PinSkew } from "./cli-pins.js"
 
 /**
  * Whether a skew only waits on npm: its pin names the version this repository's package folder holds, and npm answers that
- * version with a 404, so the publication of this commit (`publish-packages`) is what brings it. The CLI cannot require a version
+ * version with a 404, so the publication of this commit (publish.yml) is what brings it. The CLI cannot require a version
  * npm does not serve, so between the two phases of a release its requirement trails the pin by design; `release publish` still
  * holds the CLI on the skew (assertCliPins). A registry that cannot be asked is not a 404: the skew stays red.
  */
@@ -40,7 +40,7 @@ export const checkPinsVerb = defineVerb({
         const pending = skews.filter((_, index) => waiting[index])
         const verdict = pending.length === skews.length ? "pending" : "red"
         const lines = verdict === "pending"
-            ? [...describeSkews(skews).map((line) => `pending: ${line}`), `each pinned version is this commit's own package, not on npm yet: publish-packages brings it, then raise the CLI requirement and lockfile to the pin (npm install in cli/)`]
+            ? [...describeSkews(skews).map((line) => `pending: ${line}`), `each pinned version is this commit's own package, not on npm yet: the publish run (publish.yml) brings it, then raise the CLI requirement and lockfile to the pin (npm install in cli/)`]
             : describeSkews(skews.filter((_, index) => !waiting[index]))
         return { data: { skews, pending, verdict }, message: [...lines, `verdict: ${verdict}`].join("\n"), exitCode: verdict === "red" ? 1 : 0 }
     },

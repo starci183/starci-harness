@@ -11,7 +11,7 @@ import { judgePlan } from "./publish.js"
 export const isHarnessCheckout = (root: string): boolean => existsSync(join(root, "cli", "package.json")) && existsSync(join(root, "contexts", "README.md")) && existsSync(join(root, "packages"))
 
 /**
- * The base CI's plan measures this push from (the `base` step of ci.yml): the head of the last successful CI run on main when
+ * The base CI's plan measures this push from (the `base` step of ci.yml, which publish.yml reads back from the run): the head of the last successful CI run on main (`status=success` is a conclusion, so a run cancelled by a newer push never counts) when
  * this history holds it, else (GitHub cannot be asked, or the run is off this history) the remote tip being pushed over (a
  * narrower range than CI's, never a wider one), and with no remote tip nothing, so every package is judged.
  */
@@ -28,7 +28,7 @@ export const ciBase = async (root: string, head: string, previous: string | null
 
 /**
  * What `release push` judges in the harness repository before it pushes, the light gates CI refuses a push on: the publish
- * plan of ci.yml's `publish-packages` step against the base CI would use (RELEASE_VERSION_NOT_BUMPED, RELEASE_DEPENDENCY_SKEW,
+ * plan of publish.yml's judge step against the base CI would use (RELEASE_VERSION_NOT_BUMPED, RELEASE_DEPENDENCY_SKEW,
  * RELEASE_DEPENDENCY_UNPUBLISHED) and the contexts anchors (no duplicate, no dangling link: PUSH_ANCHORS_RED).
  */
 export const judgeHarnessPush = async (root: string, head: string, previous: string | null): Promise<string> => {

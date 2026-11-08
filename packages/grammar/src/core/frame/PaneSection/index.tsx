@@ -78,6 +78,7 @@ export const PaneSection = ({ children: content, grow = false, scroll, align = "
             aria-label={scroll.label}
             className="starci-core-pane-section"
             data-grammar-pane-section-scroll="true"
+            {...(scroll.role === "log" ? { "data-grammar-pane-section-thread": "true" } : {})}
             {...(scroll.align === undefined || scroll.align === "start" ? {} : { "data-grammar-pane-section-scroll-align": scroll.align })}
             isScrollable
             {...(scroll.role === undefined ? {} : { role: scroll.role })}

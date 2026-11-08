@@ -242,7 +242,7 @@ stands inside another surface; a card of one lone table, list or chart is no car
 ### COLLECTION-4 A single-child card is no card
 A card (`SurfaceCard`) groups two or more heterogeneous parts (figures, a list, actions), or it carries zones (`headers`/`footers`: tabs,
 search, filters, paging) or head actions (`labelEnd`). A table, a list or a chart standing alone IS the surface: its title sits above it as
-a section head (`Section title`) and one caption sits below it (`Section caption`, muted sm 13). A lone `DataTable`, list, chart or
+a section head (`Section title`) and one caption sits below it (`Section caption`, muted 14). A lone `DataTable`, list, chart or
 `Section kind="list"` is never wrapped in a card, and `SurfaceCard kind="table"|"list"` carries zones. A standalone `DataTable` (`surface="card"`,
 the default) draws one frame: a 1px separator border, the card radius, the surface ground, clipped, the header row inside it, with no inner
 grey band and no inner white body; inside a `SurfaceCard` the table goes full-bleed with no frame of its own (`surface="none"`, as

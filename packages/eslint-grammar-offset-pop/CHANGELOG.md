@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.31.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.31.0 (the final type scale); requires `@starci/eslint-grammar-core` 0.31.0; no rule of this package changed.
+
 ## 0.30.0 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.30.0; requires `@starci/eslint-grammar-core` 0.30.0, which adds `suggestion-chips`; no rule of this package changed.

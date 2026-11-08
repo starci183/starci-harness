@@ -85,6 +85,31 @@ export const BarChartStates: Story = {
     ),
 }
 
+export const BarChartAxisAndHighlight: Story = {
+    render: () => (
+        <Matrix maxWidth={520}>
+            <State label="Value axis (max, half, 0) with light grid lines" direction="column"><G.BarChart label="Engagement per day" bars={bars} empty={emptyLine} valueAxis={{ format: (value) => `${Math.round(value)} k` }} /></State>
+            <State label="highlightLast (the latest bar in the accent, the others soft)" direction="column"><G.BarChart label="Engagement per day" bars={bars} empty={emptyLine} highlightLast /></State>
+            <State label="Both" direction="column"><G.BarChart label="Engagement per day" bars={bars} empty={emptyLine} valueAxis={{ format: (value) => `${Math.round(value)} k` }} highlightLast /></State>
+            <State label="Axis, loading (labels kept)" direction="column"><G.BarChart label="Engagement per day" bars={bars.map((bar) => ({ ...bar, value: 0 }))} empty={emptyLine} valueAxis={{ format: String }} highlightLast isLoading /></State>
+        </Matrix>
+    ),
+}
+
+const trendValues: readonly number[] = [12, 14, 13, 18, 17, 22, 21, 27, 25, 31]
+
+export const SparklineStates: Story = {
+    render: () => (
+        <Matrix maxWidth={360}>
+            <State label="Ready"><G.Sparkline label="Revenue, last 10 weeks" values={trendValues} /></State>
+            <State label="Falling"><G.Sparkline label="Churn, last 10 weeks" values={[...trendValues].reverse()} /></State>
+            <State label="Flat series"><G.Sparkline label="Steady" values={[5, 5, 5, 5]} /></State>
+            <State label="No series (a flat baseline)"><G.Sparkline label="No data yet" values={[]} /></State>
+            <State label="Loading (same box)"><G.Sparkline label="Revenue, last 10 weeks" values={trendValues} isLoading /></State>
+        </Matrix>
+    ),
+}
+
 const slots: ReadonlyArray<G.ChoiceChip> = ["09:00", "09:30", "10:30", "14:00", "15:30", "16:00", "17:30", "18:00", "18:30", "19:00", "19:30"].map((time) => ({ value: time, label: time, isDisabled: time === "10:30" }))
 
 export const ChoiceChipsStates: Story = {

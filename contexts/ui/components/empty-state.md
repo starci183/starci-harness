@@ -20,6 +20,7 @@ applies wins.
 | empty | a collection has no items | `EmptyNotice` in the collection's place: title, one line, the action that ends the emptiness | `DNA-COMMON-EMPTY-ONE-ACTION` |
 
 ## Variants
+Inside a chat thread (a `PaneSection scroll role="log"` band or a stack of `MessageBubble`s) an `EmptyNotice` draws no card surface: no fill, border, radius or shadow, detected by context ([message-bubble](message-bubble.md)).
 While the region is empty, its notice owns the region's command as the view's commit and the header omits it
 (CTA-1). A notice that only explains is a dead end (UX-6). Its one mark is a glyph (`iconSource`) or, on the
 first-run row only, the `artwork`; the props refuse both at once, and a failed, filtered or drawing notice never

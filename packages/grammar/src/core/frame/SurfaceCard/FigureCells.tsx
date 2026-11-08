@@ -5,7 +5,18 @@ import type { CSSProperties } from "react"
 import { usePaneContext } from "../../paneContext.js"
 import type { Figure } from "../../surfaceCardData.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
+import { Sparkline } from "../../composite/Sparkline/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
+
+const TREND_WORDS = { up: "Up", down: "Down", flat: "No change" } as const
+const TREND_MARKS = { up: "▲", down: "▼", flat: "–" } as const
+
+/** Whether the change is good (success), bad (danger) or neutral, from its direction and which way is good. */
+const trendTone = (item: Figure): "success" | "danger" | "neutral" => {
+    if (item.trend === undefined || item.trend === "flat") return "neutral"
+    const good = (item.trendSense ?? "higher-is-better") === "higher-is-better" ? "up" : "down"
+    return item.trend === good ? "success" : "danger"
+}
 
 const PLACEHOLDER_FIGURES: readonly Figure[] = [1, 2, 3].map((n) => ({ id: `loading-${n}`, term: " ", value: "0000" }))
 
@@ -52,7 +63,20 @@ export const FigureCells = ({ items, isLoading, isDisabled = false }: { readonly
                         )}
                     </dd>
                     {item.meta === undefined ? null : (
-                        <dd className="starci-core-description-meta" data-contract="FONT-2">{isLoading ? pending(item.meta) : item.meta}</dd>
+                        <dd className="starci-core-description-meta" data-contract="FONT-2">
+                            {item.trend === undefined || isLoading ? null : (
+                                <>
+                                    <span className="starci-core-description-trend" data-grammar-trend={item.trend} data-grammar-trend-tone={trendTone(item)} aria-hidden="true">{TREND_MARKS[item.trend]}</span>
+                                    <span className="starci-core-visually-hidden">{item.trendLabel ?? TREND_WORDS[item.trend]}{". "}</span>
+                                </>
+                            )}
+                            {isLoading ? pending(item.meta) : item.meta}
+                        </dd>
+                    )}
+                    {item.trendLine === undefined ? null : (
+                        <dd className="starci-core-description-trend-line">
+                            <Sparkline label={item.trendLineLabel ?? item.term} values={item.trendLine} isLoading={isLoading} />
+                        </dd>
                     )}
                 </div>
             ))}

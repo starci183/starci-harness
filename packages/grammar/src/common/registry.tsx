@@ -1,7 +1,7 @@
 "use client"
 
 import {
-    Badge, Button, CalendarDay, Code, MessageBubble, MessageStatus, PaneGrid, Pane, PaneSection, PaneHeader, PageIntro, Inset, DisclosureList, PrimaryRailLayout, Board, ScheduleGrid, BarChart, ProportionBar, ChoiceChips, SuggestionChips, Divider, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
+    Badge, Button, CalendarDay, Code, MessageBubble, MessageCard, MessageStatus, PaneGrid, Pane, PaneSection, PaneHeader, PageIntro, Inset, DisclosureList, PrimaryRailLayout, Board, ScheduleGrid, BarChart, Sparkline, ProportionBar, ChoiceChips, Divider, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
     EntryFrame, Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
     MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
@@ -24,7 +24,7 @@ type ExtensionWithoutCommonCollisions<Common extends GrammarRendererRegistry, Ex
     Extensions & { readonly [Name in Extract<keyof Extensions, keyof Common>]: never }
 
 export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
-    Badge, Button, CalendarDay, Code, MessageBubble, MessageStatus, PaneGrid, Pane, PaneSection, PaneHeader, PageIntro, Inset, DisclosureList, PrimaryRailLayout, Board, ScheduleGrid, BarChart, ProportionBar, ChoiceChips, SuggestionChips, Divider, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
+    Badge, Button, CalendarDay, Code, MessageBubble, MessageCard, MessageStatus, PaneGrid, Pane, PaneSection, PaneHeader, PageIntro, Inset, DisclosureList, PrimaryRailLayout, Board, ScheduleGrid, BarChart, Sparkline, ProportionBar, ChoiceChips, Divider, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
     EntryFrame, Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
     MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,

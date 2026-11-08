@@ -184,22 +184,22 @@ export const why: Record<string, WhyEntry> = {
   },
   "table-cell-type": {
     code: "FE_TABLE_CELL_TYPE",
-    en: "A DataTable cell or ListRow title/description in `<file>` draws a heading-size Text (`size=\"figure\"`), a Heading, a Label or an h1-h6.",
-    fix: "The primary of a row or cell is md 14 / 500 (`<Text isStrong>`), the secondary sm 13 muted (`<Text size=\"sm\" tone=\"muted\">`).",
+    en: "A DataTable cell or ListRow title/description in `<file>` draws a Text above 14 (`size=\"lg\"`, `\"xl\"`, `\"figure\"`), a Heading, a Label or an h1-h6.",
+    fix: "The primary of a row or cell is 14 / 500 (`<Text isStrong>`), the secondary the same 14 muted (`<Text tone=\"muted\">`), and a small name (meta, count, timestamp) is 12 (`<Text size=\"xs\" tone=\"muted\">`).",
   },
   "same-line-size": {
     code: "FE_SAME_LINE_SIZE",
     en: "The Text children of one Cluster line in `<file>` have different sizes.",
-    fix: "One line, one size: give every Text of the line the size of the line's role (md primary, sm secondary). A Badge or chip may stay as it is.",
+    fix: "One line, one size: give every Text of the line the same step: 14 (md, sm), 12 (xs) or display (figure); sm and md are the same 14. A Badge or chip may stay as it is.",
   },
   "row-title-link": {
     code: "FE_ROW_TITLE_LINK",
     en: "A Link is the title of a row in `<file>` that already opens (onPress, onAction, href, chevron, or a DataTable with onRowAction or row hrefs).",
     fix: "The row is the one pressable: write the title as plain text (`<Text isStrong>`) and keep the destination on the row.",
   },
-  "suggestion-chips": {
-    code: "FE_SUGGESTION_CHIPS",
-    en: "Two or more neutral `size=\"sm\"` Buttons in `<file>` sit in one row (or one in a `.map`) and each press sends its own label.",
-    fix: "Quick replies and suggested questions are `SuggestionChips` (pill chips in a labelled toolbar): `<SuggestionChips label items={[{ id, label }]} onSelect={(id) => ...} />`.",
+  "suggestion-buttons": {
+    code: "FE_SUGGESTION_BUTTONS",
+    en: "A Link row, a ChoiceChips or a Chip in `<file>` runs an action or sends its own label as a suggestion.",
+    fix: "Suggestions and quick replies are one pattern: a `Cluster gap=\"inline\"` (with `label`) of neutral `Button size=\"sm\"` (a pill).",
   },
 }

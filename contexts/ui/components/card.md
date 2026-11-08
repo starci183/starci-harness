@@ -61,6 +61,8 @@ card, in `Pane surface`, in a `Dialog`, `Drawer`, `AlertDialog` or `Popover` is 
 stat cell), not a card. A decorative slab is a `custom` header zone of the card or the artwork of a painted card (SURFACE-6).
 
 ## Size
+A card's `label` is 14 / 600 and its head `description` 14 muted (the final type scale, FONT-7); a `figures` cell's value is the display size 20 and its label and meta are 14. A `figures` item may carry `trend` (`up | down | flat`, with `trendSense` and `trendLabel`: a decorative triangle or dash in the success or danger colour before the muted meta text, the direction also said in words) and `trendLine` (a `Sparkline` under the value, at the start of the cell). Measure: `check:type` (`packages/grammar/scripts/check-type-roles.mts`).
+
 No size. The card holds its content 16 in (`--grammar-inset-card`), its label stands 8 above the surface (4 in a cards
 `Grid`) and its head `description` 4 under the label ([../presentation.md](../presentation.md#space) G6). Width follows measure rules; a form card caps itself with the surface's form measure (MEASURE-4).
 

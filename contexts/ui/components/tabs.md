@@ -14,7 +14,7 @@ Choice `tabs.choose.role`: what the peer choice changes. Four roles switch or ch
 | panels | the choice swaps whole panels of content | `Tabs`, then `tabs.choose.level` | `DNA-COMMON-TABS-OWN-PANEL` |
 | value | the choice sets one value of a form or toolbar (audience, period, density, environment); nothing is swapped out. A tablist is not a form field | `ChoiceChips` or `RadioGroup` (`segmented-control.choose.role`) | judgement |
 | switch | the choice switches a mode or period of the same data in one block ("This month / Last month", "Day / Week / Month", "List / Board"): two to four short, fixed options, no count, no destination | `Tabs appearance="primary"` (HeroUI's primary variant, a pill in a track): only the `switch` header zone of a `SurfaceCard`, the first header row inside the card, taking no line; never written as JSX in a page body, a pane or a drawer, never joined buttons (R380) | lint `starci-grammar/tabs-switch-zone` (a `<Tabs appearance="primary">` anywhere in JSX), `starci-fe/no-primary-tabs-misuse` (R380: items beyond two to four, a `count`, an `href` or `isAttention`) |
-| filter | the choice narrows a collection that stays in place | `Tabs kind="filter"`: underline tabs of the same size as every other tab (sm 13, a tighter gap, a 2px accent underline and weight 500 on the selected tab, a hairline under the row), each with its `count` drawn as a chip (neutral; the accent soft pair on the selected tab; the warning soft pair on a tab marked `isAttention`); the tabs that do not fit fold into a "+n" menu and the selected one always stays visible | `DNA-COMMON-TABS-FILTER-COMPACT` |
+| filter | the choice narrows a collection that stays in place | `Tabs kind="filter"`: underline tabs of the same size as every other tab (14, 40 high, a tighter gap, a 2px accent underline and weight 500 on the selected tab, a hairline under the row), each with its `count` drawn as a chip (neutral; the accent soft pair on the selected tab; the warning soft pair on a tab marked `isAttention`); the tabs that do not fit fold into a "+n" menu and the selected one always stays visible | `DNA-COMMON-TABS-FILTER-COMPACT`; `check:type` |
 | nav-item | the choice picks one item of a navigation-like list | `ListBox` selecting by fill with no check (`list-table.choose.role:pick`) | lint `selection-fill-no-check` |
 
 Choice `tabs.choose.placement`: where a tab bar stands. The first row that applies wins.
@@ -40,10 +40,12 @@ underline, its labels text on the content edge they share with the title above a
 period switch as the pill of `appearance="primary"`. `Tabs` takes no `variant` to pass.
 
 ## Size
-No size prop: the bar lands on `md` ([../scale.md](../scale.md)). Every tab label is one size, sm 13 / 500 on the selected
-tab, whatever the layer: page tabs, region tabs, `subTabs`, filter tabs and the pill alike (FONT-7 in
-[../presentation.md](../presentation.md#type)). A set is never drawn one size smaller than the set above it; the layer is
-told by position and by the separator, not by type size, so a second row never reads as a footnote of the first. A tab
+No size prop: the bar lands on `md` ([../scale.md](../scale.md)). Every tab is 14 and 40 high (the control step), with one
+selected weight, 500, plus the underline, whatever the layer: page tabs, region tabs, `subTabs`, filter tabs and the pill alike (FONT-7 in
+[../presentation.md](../presentation.md#type); measure `check:type`, `packages/grammar/scripts/check-type-roles.mts`). A set is never drawn one size smaller than the set above it; the layer is
+told by position and by the separator, not by type size, so a second row never reads as a footnote of the first. The pane line rule: region tabs inside a pane (a `Tabs` strip that ends a `PaneSection`) sit on ONE full-width separator, the
+band's bottom edge through the pane inset; the strip draws no short line of its own, no padding stands under it, and the
+neighbouring pane loses its block-start border, so there is no second border 12px lower. A tab
 without a leading glyph always shows its label, at every width. Overflowing tabs scroll with edge carets (OVERFLOW-4).
 
 A command that belongs at the end of a strip (an "Add region" button) is the strip's `end` slot, inside the strip frame

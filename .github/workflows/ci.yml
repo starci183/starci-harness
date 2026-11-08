@@ -10,13 +10,12 @@ on:
 permissions:
   contents: read
 
-# On a pull request only the newest run matters: a push cancels the run still going for its older commit. A run
-# on main is never cut short, since its publish jobs publish one package after another: a newer push waits as the one
-# pending run (an even newer push replaces it), then publishes whatever is still due, so a package late in the
-# publication order reaches npm even while main moves faster than one run lasts.
+# Only the newest run matters, on a pull request and on main alike: a push cancels the run still going for its older commit, and
+# the newer run tests the whole tree. Nothing here writes to npm or to main, so a cancelled run leaves nothing half done: the
+# publication is publish.yml's, which starts when this workflow completes and is never cancelled (CONTRIBUTING.md CONTRIB-20).
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: true
 
 jobs:
   # What this run checks. A pull request is measured from its base, a push to main from the last main commit whose ci run
@@ -43,7 +42,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: cli/package-lock.json
+          cache-dependency-path: |
+            cli/package-lock.json
+            packages/*/package-lock.json
+            app/package-lock.json
       - name: The base this run is measured from
         id: base
         env:
@@ -89,7 +91,16 @@ jobs:
               `grammar=${data.matrix.include.some((entry) => entry.package === "packages/grammar")}`,
             ]
             require("fs").appendFileSync(process.env.GITHUB_OUTPUT, lines.join("\n") + "\n")
+            // What publish.yml reads back from this run: the base it was measured from and the packages it tested.
+            const plan = { base: process.env.BASE, matrix: data.matrix, packages: data.packages.length > 0, harness: data.harness }
+            require("fs").writeFileSync("ci-plan.json", JSON.stringify(plan))
           '
+      - name: Hand the plan to publish.yml
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-plan
+          path: ci-plan.json
+          retention-days: 14
 
   # The always-on light gates, one job each, over the whole tree. A `repo` gate judges every package and gates the packages
   # publish; a `harness` gate judges the CLI and the trees it reads and gates only the CLI publish.
@@ -124,7 +135,7 @@ jobs:
           - gate: contexts search index (cli/dist/contexts-search.json matches the tree)
             scope: harness
             run: contexts search
-    # publish-packages reads the `repo` gates by this name's prefix.
+    # publish.yml reads the `repo` gates by this name's prefix.
     name: gate (${{ matrix.scope }}) ${{ matrix.gate }}
     steps:
       - uses: actions/checkout@v4
@@ -132,7 +143,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: cli/package-lock.json
+          cache-dependency-path: |
+            cli/package-lock.json
+            packages/*/package-lock.json
+            app/package-lock.json
       - name: Install the CLI on this commit's packages
         uses: ./.github/actions/cli-install
       - name: Build the CLI
@@ -154,13 +168,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
-    # publish-packages reads each leg by this name.
+    # publish.yml reads each leg by this name.
     name: package (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            cli/package-lock.json
+            packages/*/package-lock.json
+            app/package-lock.json
       - name: Install and build ${{ matrix.package }} after the siblings it needs
         env:
           BUILD: ${{ matrix.build }}
@@ -181,9 +200,31 @@ jobs:
         if: matrix.package == 'packages/hfs'
         working-directory: ${{ matrix.package }}
         run: npm run bundles:check
+      # The tested bits are the bits that publish: the package is packed here, once, after its specs and checks, and publish.yml
+      # publishes this tarball as it is (stamped with the commit, never rebuilt). A private package is never published.
+      - name: Pack ${{ matrix.package }}
+        id: pack
+        working-directory: ${{ matrix.package }}
+        run: |
+          set -euo pipefail
+          if [ "$(node -p 'Boolean(require("./package.json").private)')" = true ]; then exit 0; fi
+          packs="$RUNNER_TEMP/tarballs"
+          mkdir -p "$packs"
+          npm pack --pack-destination "$packs" > /dev/null
+          file=$(ls "$packs")
+          echo "name=${file%.tgz}" >> "$GITHUB_OUTPUT"
+      # Named by package, version and commit (the tarball's own name is package-version).
+      - name: Keep the tarball for publish.yml
+        if: steps.pack.outputs.name != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: tarball-${{ steps.pack.outputs.name }}-${{ github.sha }}
+          path: ${{ runner.temp }}/tarballs/${{ steps.pack.outputs.name }}.tgz
+          retention-days: 14
+          if-no-files-found: error
 
   # The Grammar's theme proof, on a change to packages/grammar: a foreign set of HeroUI tokens repaints every part.
-  # publish-packages holds the Grammar while this job is not green. The render proof is not part of CI; it runs by hand
+  # publish.yml holds the Grammar while this job is not green. The render proof is not part of CI; it runs by hand
   # (npm run prove-render in the pinned Playwright image, contexts/grammars/contributing.md "Render proof").
   grammar-proof:
     name: grammar proof
@@ -219,7 +260,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: cli/package-lock.json
+          cache-dependency-path: |
+            cli/package-lock.json
+            packages/*/package-lock.json
+            app/package-lock.json
       - name: Install the CLI on this commit's packages
         uses: ./.github/actions/cli-install
       - name: Typecheck the CLI
@@ -233,7 +277,7 @@ jobs:
       - name: Build the CLI
         working-directory: cli
         run: npm run build
-      # The CLI's own tests (node --test over the built tests): a red one blocks publish-cli and publish-packages, which need this job.
+      # The CLI's own tests (node --test over the built tests): a red one keeps publish.yml from publishing the CLI.
       - name: Test the CLI
         working-directory: cli
         run: node --test --test-concurrency=2 "dist/**/*.test.js"
@@ -249,6 +293,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            cli/package-lock.json
+            packages/*/package-lock.json
+            app/package-lock.json
       - name: Install and build the packages the app needs
         env:
           BUILD: ${{ needs.plan.outputs.app-build }}
@@ -294,220 +343,3 @@ jobs:
             for (const [job, run] of Object.entries(needs)) console.log(`${job}: ${run.result}`)
             if (bad.length > 0) { console.log(`not green: ${bad.map(([job]) => job).join(", ")}`); process.exit(1) }
           '
-
-  # The one publishing path (CONTRIBUTING.md CONTRIB-20), on a push to main whose plan affects a package or the CLI, in two
-  # jobs that never wait for `ci`: publish-packages publishes each package as soon as its own jobs are green, publish-cli the
-  # CLI after it once the harness jobs are green. Each runs `starci release publish` (cli/src/core/release/publish.ts), which
-  # judges the plan before anything reaches npm and reads every version back. With provenance; a version already on npm is
-  # skipped, so a re-run publishes only what is still missing; runs of one job queue, never overlap.
-  publish-packages:
-    needs: [plan, gates, package, grammar-proof]
-    if: >-
-      !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.plan.result == 'success'
-      && (needs.plan.outputs.packages == 'true' || needs.plan.outputs.harness == 'true')
-    runs-on: ubuntu-latest
-    concurrency:
-      group: npm-publish-packages
-      cancel-in-progress: false
-    permissions:
-      contents: read
-      # The check step reads this run's job conclusions.
-      actions: read
-      # npm provenance signs each tarball with this workflow's OIDC identity.
-      id-token: write
-    outputs:
-      held: ${{ steps.due.outputs.held }}
-    steps:
-      # Full history: the plan diffs each affected package from the commit npm recorded for its published version, and the
-      # publish reads that this commit is on origin/main.
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: cli/package-lock.json
-      - name: Install the CLI on this commit's packages
-        uses: ./.github/actions/cli-install
-      - name: Build the CLI
-        working-directory: cli
-        run: npm run build
-      # Refused before anything reaches npm: RELEASE_VERSION_NOT_BUMPED names a package changed since the plan's base whose
-      # version is already on npm, RELEASE_DEPENDENCY_SKEW and RELEASE_DEPENDENCY_UNPUBLISHED a due package against its siblings
-      # (the CLI requires a sibling npm serves; publish-cli judges it at its stack pins). A due package then
-      # publishes only when every `gate (repo)` job is green and the `package` job of each folder of its build order (itself
-      # and the siblings it needs) that this run tested is green; any other due package is held, and named.
-      - name: Judge the plan and this run's jobs
-        id: due
-        env:
-          BASE: ${{ needs.plan.outputs.base }}
-          MATRIX: ${{ needs.plan.outputs.matrix }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          plan="$RUNNER_TEMP/publish-plan.json"
-          every="$RUNNER_TEMP/every-package.json"
-          jobs="$RUNNER_TEMP/jobs.json"
-          node cli/dist/main.js release publish --base "$BASE" --json > "$plan" || { cat "$plan"; exit 1; }
-          node cli/dist/main.js release affected --json > "$every"
-          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?filter=latest&per_page=100" \
-            --jq '.jobs[] | {name, conclusion}' > "$jobs"
-          PLAN="$plan" EVERY="$every" JOBS="$jobs" node .github/scripts/publish-gate.mts
-      # npm publish packs each package through its prepack build, which needs its devDependencies and the siblings it installs.
-      - name: Install and build the publishable packages after the siblings they need
-        if: steps.due.outputs.build != ''
-        env:
-          BUILD: ${{ steps.due.outputs.build }}
-        run: for dir in $BUILD; do (cd "$dir" && npm ci --no-audit --no-fund && npm run build --if-present); done
-      # The token reaches npm alone: a user config naming the variable, set only for this step, never echoed. One call for
-      # the due packages, published in the judged order (a dependency before its dependent) and read back together.
-      - name: Publish each publishable package not on npm
-        if: steps.due.outputs.publish != ''
-        env:
-          BASE: ${{ needs.plan.outputs.base }}
-          PUBLISH: ${{ steps.due.outputs.publish }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          set -euo pipefail
-          export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/publish.npmrc"
-          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
-          # One batch: every package gets its `npm publish` in order, then all are read back at once, so the registry's delay is
-          # paid once. One transient refusal (a Sigstore 409) holds back only that package; the step fails naming each, and a
-          # rerun publishes what is left.
-          args=()
-          for dir in $PUBLISH; do args+=(--package "$dir"); done
-          node cli/dist/main.js release publish --execute --base "$BASE" "${args[@]}"
-
-  # Phase 2: the CLI (starci-harness), after publish-packages, once the harness job and every gate are green (Sonar and the app
-  # job never gate a publish). It publishes as committed, its @starci requirements and lockfile at their stack pins
-  # (CLI_PIN_SKEW otherwise, also the `check pins` gate); a due sibling it requires that publish-packages held refuses it here.
-  publish-cli:
-    needs: [plan, gates, harness, publish-packages]
-    if: >-
-      !cancelled() && needs.publish-packages.result == 'success' && needs.gates.result == 'success'
-      && (needs.harness.result == 'success' || needs.harness.result == 'skipped')
-    runs-on: ubuntu-latest
-    concurrency:
-      group: npm-publish-cli
-      cancel-in-progress: false
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: cli/package-lock.json
-      - name: Install the CLI on this commit's packages
-        uses: ./.github/actions/cli-install
-      - name: Build the CLI
-        working-directory: cli
-        run: npm run build
-      - name: Judge the plan and the held siblings
-        id: due
-        env:
-          BASE: ${{ needs.plan.outputs.base }}
-          HELD: ${{ needs.publish-packages.outputs.held }}
-        run: |
-          set -euo pipefail
-          plan="$RUNNER_TEMP/publish-plan.json"
-          # A CLI whose @starci requirements trail their stack pins waits: cli-follow raises them once npm serves the pins, and the
-          # run of that commit publishes it.
-          if ! node cli/dist/main.js check pins > "$RUNNER_TEMP/pins.txt"; then
-            cat "$RUNNER_TEMP/pins.txt"
-            echo "::notice::the CLI trails its stack pins; cli-follow moves it onto them and the run of that commit publishes it"
-            echo "due=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if grep -q "verdict: pending" "$RUNNER_TEMP/pins.txt"; then
-            cat "$RUNNER_TEMP/pins.txt"
-            echo "due=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          node cli/dist/main.js release publish --base "$BASE" --package cli --json > "$plan" || { cat "$plan"; exit 1; }
-          PLAN="$plan" node -e '
-            const fs = require("fs")
-            const row = JSON.parse(fs.readFileSync(process.env.PLAN, "utf8")).data.rows.find((candidate) => candidate.dir === "cli")
-            console.log(`${row.package}@${row.version}: ${row.action}`)
-            const cli = JSON.parse(fs.readFileSync("cli/package.json", "utf8"))
-            const requires = new Set(Object.keys({ ...cli.dependencies, ...cli.peerDependencies }))
-            const held = (process.env.HELD ?? "").split(" ").filter((dir) => dir !== "")
-              .filter((dir) => requires.has(JSON.parse(fs.readFileSync(`${dir}/package.json`, "utf8")).name))
-            if (row.action === "publish" && held.length > 0) {
-              console.log(`::error::${row.package}@${row.version} requires ${held.join(", ")}, held by publish-packages; it publishes once they do`)
-              process.exit(1)
-            }
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `due=${row.action === "publish"}\n`)
-          '
-      - name: Publish the CLI
-        if: steps.due.outputs.due == 'true'
-        env:
-          BASE: ${{ needs.plan.outputs.base }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          set -euo pipefail
-          export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/publish.npmrc"
-          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
-          node cli/dist/main.js release publish --execute --base "$BASE" --package cli
-
-  # The CLI follows its siblings by itself (.github/scripts/cli-follow.mts): once publish-packages put the pinned versions on npm,
-  # this job raises the CLI's requirement and lockfile to the stack pins, bumps its prerelease when that version is on npm, records
-  # it in CHANGELOG.md and pushes the commit to main. It pushes with HARNESS_BOT_TOKEN (a fine-grained token with contents: write on
-  # this repository), because a push made with GITHUB_TOKEN starts no workflow run; the run of that commit publishes the CLI. With
-  # nothing to follow it changes nothing, so its own commit's run ends here.
-  cli-follow:
-    needs: [plan, publish-packages]
-    if: >-
-      !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.publish-packages.result == 'success'
-    runs-on: ubuntu-latest
-    concurrency:
-      group: cli-follow
-      cancel-in-progress: false
-    permissions:
-      contents: read
-    env:
-      # Without the secret the job only reports what it would move: the owner adds HARNESS_BOT_TOKEN once.
-      HAS_BOT_TOKEN: ${{ secrets.HARNESS_BOT_TOKEN != '' }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-          token: ${{ secrets.HARNESS_BOT_TOKEN || github.token }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: cli/package-lock.json
-      - name: Install the CLI on this commit's packages
-        uses: ./.github/actions/cli-install
-      - name: Build the CLI
-        working-directory: cli
-        run: npm run build
-      - name: Move the CLI onto the pins npm serves
-        id: follow
-        run: |
-          set -euo pipefail
-          # check pins exits 1 when the CLI trails its pins, the case this job moves; any other failure stops the job.
-          status=0
-          node cli/dist/main.js check pins --json > "$RUNNER_TEMP/pins.json" || status=$?
-          if [ "$status" -gt 1 ]; then exit "$status"; fi
-          SKEWS="$RUNNER_TEMP/pins.json" node .github/scripts/cli-follow.mts
-      - name: Report a missing bot token
-        if: steps.follow.outputs.changed == 'true' && env.HAS_BOT_TOKEN != 'true'
-        run: echo "::warning::the CLI trails its pins but HARNESS_BOT_TOKEN is not set, so cli-follow cannot push its commit; add the secret (contents write on this repository) or move the CLI by hand"
-      - name: Commit and push
-        if: steps.follow.outputs.changed == 'true' && env.HAS_BOT_TOKEN == 'true'
-        env:
-          MESSAGE: ${{ steps.follow.outputs.message }}
-        run: |
-          set -euo pipefail
-          git config user.name "starci-harness-bot"
-          git config user.email "starci-harness-bot@users.noreply.github.com"
-          git add cli/package.json cli/package-lock.json CHANGELOG.md
-          git commit -m "$MESSAGE"
-          git push origin HEAD:main
