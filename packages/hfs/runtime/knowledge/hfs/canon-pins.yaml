@@ -61,7 +61,7 @@ pins:
     why: 'the next-intl stack of every front end (fe-stack i18n): defineI18n over the locales of the app, the locale-negotiating proxy, the locale-aware navigation, the request config that loads the catalogs of the app and the locale read of the [locale] layout; the app keeps its message catalogs and writes none of the stack.'
   '@starci/eslint-canon-be':
     version: 3.20.1
-    range: '~3.20.0'
+    range: '~3.20.1'
     group: starci
     install: registry
     side: be
