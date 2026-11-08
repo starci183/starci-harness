@@ -45,6 +45,7 @@ export { ScheduleGrid, type ScheduleColumn, type ScheduleRow, type ScheduleItem,
 export { BarChart, type BarChartBar, type BarChartProps } from "../core/composite/BarChart/index.js"
 export { ProportionBar, type ProportionBarPart, type ProportionBarProps, type ProportionBarTone } from "../core/composite/ProportionBar/index.js"
 export { ChoiceChips, type ChoiceChip, type ChoiceChipsProps } from "../core/composite/ChoiceChips/index.js"
+export { SuggestionChips, type SuggestionChip, type SuggestionChipsProps } from "../core/composite/SuggestionChips/index.js"
 export { Board, type BoardColumn, type BoardMove, type BoardMoveLabels, type BoardProps } from "../core/frame/Board/index.js"
 export { PageIntro, type PageIntroLine, type PageIntroProps } from "../core/composite/PageIntro/index.js"
 export { PaneHeader, type PaneHeaderProps } from "../core/composite/PaneHeader/index.js"

@@ -13,3 +13,42 @@
         background: var(--default);
     }
 }
+
+/* SuggestionChips: pills of HeroUI's Chip look, one real button each, wrapping with the inline gap between them. */
+@layer starci-grammar-common {
+    .starci-core-suggestion-chips { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-identity-gap); }
+    .starci-core-suggestion-chips-label { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
+    .starci-core-suggestion-chips-row { display: flex; min-width: 0; flex-wrap: wrap; justify-content: flex-start; gap: var(--grammar-inline-gap); }
+
+    .starci-core-suggestion-chip {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+        box-sizing: border-box;
+        max-inline-size: 100%;
+        block-size: var(--grammar-chip-height);
+        padding-block: 0;
+        padding-inline: var(--grammar-control-padding-inline-md);
+        border: var(--grammar-hairline) solid var(--separator);
+        border-radius: var(--grammar-radius-pill);
+        background: var(--surface-secondary);
+        color: var(--default-foreground);
+        font-size: var(--grammar-text-sm);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-sm);
+        white-space: nowrap;
+        cursor: pointer;
+        -webkit-appearance: none;
+        appearance: none;
+        transition: background-color var(--starci-core-motion-duration) var(--starci-core-motion-easing);
+    }
+
+    .starci-core-suggestion-chip[data-grammar-glyph="true"] { padding-inline-start: var(--grammar-control-padding-glyph-md); }
+    .starci-core-suggestion-chip-label { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; }
+    .starci-core-suggestion-chip[data-hovered="true"] { background: var(--default); }
+    .starci-core-suggestion-chip[data-pressed="true"] { background: var(--default-hover); }
+    .starci-core-suggestion-chip[data-focus-visible="true"] { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: var(--grammar-ring-width); }
+    .starci-core-suggestion-chip[data-disabled="true"] { opacity: var(--disabled-opacity); cursor: default; }
+    .starci-core-suggestion-chips-row[data-grammar-suggestion-loading="true"] .starci-core-suggestion-chip { cursor: default; border-color: transparent; }
+}

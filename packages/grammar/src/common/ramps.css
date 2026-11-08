@@ -93,6 +93,8 @@
 
         /* GEOMETRY of the parts: sizes, measures and layers that have no HeroUI token. Spacing is in styles.css. */
         --starci-core-control-min-size: 2.5rem;
+        /* A suggestion chip (quick reply, suggested question): HeroUI Chip scale, a pill 28px high. */
+        --grammar-chip-height: 1.75rem;
         /* A public page (booking, a job): a main column and one rail in about 66rem, narrower than the product page. */
         --starci-core-narrow-measure: 66.5rem;
         --starci-core-field-min-height: var(--starci-core-control-min-size);

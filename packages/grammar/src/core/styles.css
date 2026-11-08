@@ -18,4 +18,13 @@
         color: var(--foreground);
         font-family: var(--font-sans);
     }
+
+    /*
+     * ONE BUTTON RADIUS (owner, 2026-11-09): every Button size, sm included, is a pill (`--starci-core-pill-radius`, the
+     * Grammar's map of HeroUI's full radius). The vendor's own corner is a step derived from the app's `--radius`, which drew
+     * an sm Button about 12px while md read as a pill. `!important`: the vendor button rule is unlayered.
+     */
+    .grammar-common-root[data-grammar-family="core"] .starci-core-button {
+        border-radius: var(--starci-core-pill-radius) !important;
+    }
 }
