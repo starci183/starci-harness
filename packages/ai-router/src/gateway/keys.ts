@@ -1,3 +1,4 @@
+import { DomainError } from "@starci/common"
 import { createHash, randomBytes } from "node:crypto"
 import type { MaybePromise, RouterCatalog } from "../types.ts"
 
@@ -177,14 +178,12 @@ export class MemoryKeyStore implements KeyStore {
 }
 
 /** Why an admin operation was refused: an unknown id, an invalid spec, a change to a revoked key, or a change to a mounted key. */
-export class KeyAdminError extends Error {
-    readonly code: "not_found" | "invalid" | "revoked" | "mounted"
-
+export class KeyAdminError extends DomainError<"not_found" | "invalid" | "revoked" | "mounted"> {
     /** Builds the error. */
     constructor(code: KeyAdminError["code"], message: string) {
-        super(message)
+        super({ code })
+        this.message = message
         this.name = "KeyAdminError"
-        this.code = code
     }
 }
 
@@ -192,16 +191,15 @@ export class KeyAdminError extends Error {
  * Why the gateway refused to start over its mounted keys: an invalid key, a label given twice, or a secret or id a
  * stored key already holds. It names the label and the key id, never the secret.
  */
-export class MountedKeyError extends Error {
-    readonly code: "invalid" | "duplicate_label" | "collision"
+export class MountedKeyError extends DomainError<"invalid" | "duplicate_label" | "collision"> {
     /** The label of the mounted key refused. */
     readonly label: string
 
     /** Builds the error. */
     constructor(code: MountedKeyError["code"], label: string, message: string) {
-        super(message)
+        super({ code })
+        this.message = message
         this.name = "MountedKeyError"
-        this.code = code
         this.label = label
     }
 }

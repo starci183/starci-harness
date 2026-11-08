@@ -1,5 +1,5 @@
-export { AiRouterError } from "../errors.ts"
-export type { AttemptFailure } from "../errors.ts"
+export { AI_ROUTER_ERROR_CODES, AiRouterError } from "../errors.ts"
+export type { AiRouterErrorCode, AttemptFailure } from "../errors.ts"
 export { createRouter } from "../router.ts"
 export { classifyFailure, readProviderError } from "../classify.ts"
 export type { Classified, ProviderErrorInfo } from "../classify.ts"

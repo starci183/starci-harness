@@ -477,9 +477,10 @@ the options the same way (`AiRouterModuleOptions<"strict">`) to keep the two in 
 `x-request-id` and `idempotency-key` on every attempt of the call, so a provider that deduplicates sees one request.
 `headers` adds headers to this call; it can never replace `authorization`.
 
-Every failure is an `AiRouterError` with `errorClass`, `retryable`, `status`, `provider`, `key` (alias), `model`,
+Every failure is an `AiRouterError`, a `DomainError` of `@starci/common` whose `code` is `AI_ROUTER_` and its class in upper case
+(`AI_ROUTER_QUOTA`; the table is `AI_ROUTER_ERROR_CODES`) and whose `message` is the sentence. It carries `errorClass`, `retryable`, `status`, `provider`, `key` (alias), `model`,
 `requestId`, `attempts` (every failed attempt: where and why), `afterFirstToken` and `retryAt` (when a 429 said to
-come back).
+come back). `KeyAdminError` and `MountedKeyError` are `DomainError`s too, coded by the values listed for the gateway keys below.
 
 On application shutdown (`app.close()`, or a signal after `enableShutdownHooks()`), the service aborts every call still
 in flight through it (a stream ends with `cancelled`), rejects later calls as `cancelled`, and releases the `on`
