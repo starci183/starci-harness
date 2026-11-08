@@ -331,6 +331,10 @@ class WorldAnalysis {
   callIsWorld(call: CallExpression, checker: TypeChecker, sourceFile: SourceFile, seen?: Set<TsSymbol>): boolean { return this.calleeIsWorld(call.expression, checker, sourceFile, seen); }
 
   functionUsesWorld(fn: WorldFunction, checker: TypeChecker, seen: Set<TsSymbol> = new Set()): boolean {
+    // A function declared outside the checked graph (the source of a workspace package reached through a tsconfig path alias) is
+    // another unit's code: that package is judged by its own lint, and no checker of this context holds the file. It is outside
+    // this app's world, so the walk does not descend into it.
+    if (!this.sourceSet.has(path.resolve(fn.getSourceFile().fileName))) return false;
     const cached = this.functionWorldCache.get(fn);
     if (cached !== undefined) return cached;
     this.functionWorldCache.set(fn, false);

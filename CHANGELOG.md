@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.107 - 2026-11-09
+
+- Fixed: `@starci/hfs` 6.5.5: the front-end world analysis no longer crashes the fe ESLint (`duplicate-code`, `duplicate-symbol`, `alias-reexport` and the other rules built on it) of an app whose code calls a workspace package's source through a tsconfig path alias; a function outside the checked graph is outside the app's world and is skipped. `@starci/eslint-canon-fe` is unchanged: it takes hfs as a peer (`~6.5.0`) and bundles none of this runtime.
+
 ## 1.1.0-alpha.106 - 2026-11-09
 
 - Changed: the Grammar family 0.32.0 (with `@starci/hfs` 6.5.4, whose canon pins name it): every SurfaceCard on the page ground has a border and the card shadow, a standalone DataTable sits in its own card with the native HeroUI look (the 0.29 flat frame is reverted), the list frame and a framed EmptyNotice share the edge; Messenger bubble grouping (`groupPosition`); chat reactions (`ReactionBar`, `ReactionPill`, the burst; `reactions`, `onReact`, `onReply`, `onShare`); the composer band gap and a keyboard-only ListBox focus ring.
