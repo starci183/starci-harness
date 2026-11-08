@@ -22,6 +22,8 @@
   right under the bar instead of leaving a strip of page ground between two white bars.
 - Changed: `Switch` states: off, the track takes the default fill with a fine edge; in both states the thumb is the light surface
   raised by the surface shadow; on, a thumb glyph takes the accent.
+- Added: `Drawer width="wide"` (32rem) for a guided task whose steps are labelled across the top (a connection wizard); `standard`
+  (24rem) stays the default.
 
 ## 0.25.2 - 2026-11-08
 
