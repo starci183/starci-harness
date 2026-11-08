@@ -3,13 +3,16 @@ import type { DynamicModule, InjectionToken, Provider } from "@nestjs/common"
 import { AuthDoors } from "./doors.ts"
 import { RefreshCookie } from "./cookie.ts"
 import { AuthFlows } from "./flows.ts"
-import { GoogleStateClient } from "./google-state.ts"
 import type { AuthOptions } from "./options.ts"
 import { AuthPasswords } from "./passwords.ts"
 import type { AuthAuthenticator } from "./ports.ts"
+import { GOOGLE_PROVIDER_ID, GoogleStateClient } from "./providers/google.ts"
+import type { Strategy } from "passport"
+import { buildProviders, providersOf } from "./providers/registry.ts"
+import type { ProviderEntry } from "./providers/registry.ts"
 import { randomIds, systemClock } from "./runtime.ts"
 import { AuthSessions } from "./sessions.ts"
-import { PassportGoogleStrategy, PassportLocalStrategy } from "./strategies.ts"
+import { PassportLocalStrategy } from "./strategies.ts"
 import { AuthTokens } from "./tokens.ts"
 import { AuthPrincipalVerifier } from "./verifier.ts"
 import { SignInBudget } from "./budget.ts"
@@ -22,6 +25,7 @@ import {
     AUTH_LOCAL_STRATEGY,
     AUTH_PASSWORDS,
     AUTH_PRINCIPAL_VERIFIER,
+    AUTH_PROVIDERS,
     AUTH_REFRESH_COOKIE,
     AUTH_SESSIONS,
     AUTH_SIGN_IN_BUDGET,
@@ -83,10 +87,23 @@ const providers = (authenticator: InjectionToken | undefined): Provider[] => [
         useFactory: (authenticator: AuthAuthenticator): PassportLocalStrategy => new PassportLocalStrategy(authenticator),
     },
     {
+        provide: AUTH_PROVIDERS,
+        inject: [MODULE_OPTIONS_TOKEN, AUTH_AUTHENTICATOR, AUTH_TOKENS, AUTH_GOOGLE_STATE],
+        useFactory: (options: AuthOptions, authenticator: AuthAuthenticator, tokens: AuthTokens, googleState: GoogleStateClient): ReadonlyMap<string, ProviderEntry> =>
+            buildProviders({
+                providers: providersOf(options),
+                authenticator,
+                tokens,
+                clock: options.clock ?? systemClock,
+                ids: options.ids ?? randomIds,
+                returnOrigin: options.returnOrigin,
+                googleState,
+            }),
+    },
+    {
         provide: AUTH_GOOGLE_STRATEGY,
-        inject: [MODULE_OPTIONS_TOKEN, AUTH_AUTHENTICATOR, AUTH_GOOGLE_STATE],
-        useFactory: (options: AuthOptions, authenticator: AuthAuthenticator, state: GoogleStateClient): PassportGoogleStrategy | null =>
-            options.google === null ? null : new PassportGoogleStrategy(options.google, authenticator, state),
+        inject: [AUTH_PROVIDERS],
+        useFactory: (entries: ReadonlyMap<string, ProviderEntry>): Strategy | null => entries.get(GOOGLE_PROVIDER_ID)?.strategy ?? null,
     },
     {
         provide: AUTH_DOORS_SERVICE,
@@ -112,7 +129,7 @@ const withProviders = (base: DynamicModule, authenticator: InjectionToken | unde
 
 /**
  * The sign-in of a lite app as one Nest capability: the token signer and verifier, the passwords, the sign-in budget, the
- * rotating sessions, the refresh cookie, the passport flows (local and Google with state and PKCE) and the doors that run them.
+ * rotating sessions, the refresh cookie, the passport flows (local, and each sign-in provider with state and PKCE) and the doors that run them.
  * Registered once at the api root; the app implements the stores (`SessionStore`, `AccountDirectory`, `RateCounter`) and the
  * `AuthAuthenticator` over its own tables.
  */

@@ -96,11 +96,11 @@ concerns:
       hand-written reader (read-event-stream.ts) and no second SSE library is installed.
   - id: auth
     tier: core
-    packages: ['@starci/auth', '@starci/auth-oidc']
+    packages: ['@starci/auth']
     home: [fe.modules.auth]
     pattern: FE-AUTH
-    forbids: ['@supabase/supabase-js', '@supabase/ssr', '@supabase/auth-js', jose, jwt-decode, next-auth, '@auth/core', keycloak-js, oidc-client-ts]
-    why: modules/auth is the session issuer's client (one @starci/auth client instance over the app's own back-end auth doors, the access token in its memory; full - the app's IdP client); it yields the session and the access token for the Apollo link and never reads data.
+    forbids: ['@supabase/supabase-js', '@supabase/ssr', '@supabase/auth-js', '@starci/auth-oidc', jose, jwt-decode, next-auth, '@auth/core', keycloak-js, oidc-client-ts]
+    why: modules/auth is the session issuer's client (one @starci/auth client instance over the app's own back-end auth doors, the access token in its memory; full - the app's IdP client, @starci/auth/client/oidc; the retired @starci/auth-oidc is forbidden); it yields the session and the access token for the Apollo link and never reads data.
   - id: i18n
     tier: core
     packages: [next-intl, '@starci/next-i18n']

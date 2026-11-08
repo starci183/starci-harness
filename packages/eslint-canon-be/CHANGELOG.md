@@ -6,6 +6,9 @@
 - Changed: `socket.io-client` is a test library (realtime integration specs); a source file importing it still reports.
 - Changed: peers `@starci/hfs ~6.5.0`.
 - Specs: `src/infra-owner.spec.ts` (the gateway, its spec and `platform/realtime` import `@nestjs/websockets`; a feature service, `platform/foo`, a domain file and another transport fail) and `src/third-party-owner.spec.ts` (a spec uses `socket.io-client`, a source file fails).
+- Changed: peers `@starci/hfs ~6.5.0`, whose R328 owner rows `infra-import-owner` reads: one sign-in package for both editions, `@starci/auth` (`/server` for `integrations/passport`, `/oidc` for `integrations/keycloak`, `/contracts` and `/testing` for either), and the retired `@starci/auth-oidc` refused in every file (`nowhere`). No rule's code changed.
+- Specs: `src/auth-full-owner.spec.ts` (was `auth-oidc-package.spec.ts`): integrations/keycloak may import `@starci/auth/oidc` and the GitHub Actions issuer preset, integrations/passport `@starci/auth` and `@starci/auth/server` but not `/oidc`, keycloak not `/server`; any other integration or module is refused every entry (static, re-export and dynamic imports); `jose` and `passport-oauth2` are refused everywhere; `@starci/auth-oidc` and each of its entries are refused in every file, the old glue included.
+
 
 ## 3.20.2 - 2026-11-09
 

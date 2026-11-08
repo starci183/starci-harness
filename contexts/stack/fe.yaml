@@ -91,11 +91,11 @@ concerns:
     why: the one server-sent-events client; no hand-written stream reader.
   - id: auth
     tier: core
-    packages: ['@starci/auth', '@starci/auth-oidc']
+    packages: ['@starci/auth']
     home: [fe.modules.auth]
     pattern: FE-AUTH
-    forbids: ['@supabase/supabase-js', '@supabase/ssr', '@supabase/auth-js', jose, jwt-decode, next-auth, '@auth/core', keycloak-js, oidc-client-ts]
-    why: the session issuer's client of the app (lite - one @starci/auth client over the app's own back-end auth doors; full - one @starci/auth-oidc client, or the app's own door client when its back end holds the session); identity only, never data.
+    forbids: ['@supabase/supabase-js', '@supabase/ssr', '@supabase/auth-js', '@starci/auth-oidc', jose, jwt-decode, next-auth, '@auth/core', keycloak-js, oidc-client-ts]
+    why: the session issuer's client of the app (lite - one @starci/auth client over the app's own back-end auth doors; full - one @starci/auth/client/oidc client, or the app's own door client when its back end holds the session; the retired @starci/auth-oidc is forbidden); identity only, never data.
   - id: i18n
     tier: core
     packages: [next-intl, '@starci/next-i18n']

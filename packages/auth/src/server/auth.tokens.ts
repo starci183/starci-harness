@@ -18,6 +18,8 @@ export const AUTH_FLOWS: unique symbol = Symbol.for("@starci/auth/flows")
 export const AUTH_LOCAL_STRATEGY: unique symbol = Symbol.for("@starci/auth/local-strategy")
 /** Token of the Google passport strategy, or null when the deployment has no Google client. */
 export const AUTH_GOOGLE_STRATEGY: unique symbol = Symbol.for("@starci/auth/google-strategy")
+/** Token of the registered sign-in providers: each one's definition, state store and passport strategy, by provider id. */
+export const AUTH_PROVIDERS: unique symbol = Symbol.for("@starci/auth/providers")
 /** Token of `AuthDoors`, what a controller calls. */
 export const AUTH_DOORS_SERVICE: unique symbol = Symbol.for("@starci/auth/doors")
 /** Token of the `PrincipalVerifier` the identity domain injects. */

@@ -2,6 +2,10 @@ import { generateKeyPairSync, randomUUID } from "node:crypto"
 import type { AuthOptions, SigningKeyOptions } from "../server/options.ts"
 import type { AccountDirectory, AccountStanding, AuthClock, AuthIds, NewSession, RateCounter, RefreshTokenRecord, SessionStore, SessionTransaction } from "../server/ports.ts"
 
+/** The fake OIDC issuer of the full edition (Keycloak-shaped discovery, JWKS, token and admin endpoints), for the specs of an `integrations/keycloak` glue. */
+export { FakeOidcIssuer } from "./oidc.ts"
+export type { FakeFailure, FakeOidcIssuerOptions, FakeRequest, FakeSeededUser, FakeTokenClaims, FakeUser, MintOverrides } from "./oidc.ts"
+
 /** A generated Ed25519 key pair as the PEM texts the options take. */
 export interface TestKeyPair {
     readonly privateKey: string

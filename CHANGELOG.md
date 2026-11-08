@@ -1,6 +1,7 @@
 # Changelog
 
-## 1.1.0-alpha.102 - 2026-11-09
+## 1.1.0-alpha.102 - Changed: one auth package for both editions: `@starci/auth` 0.6.0 carries the lite sign-in with pluggable providers (`server/providers`: Google, GitHub; a provider is one file) and the full OIDC tree (`@starci/auth/oidc`, issuer presets keycloak, google and github-actions for CI attestation); `@starci/auth-oidc` 0.3.0 is a deprecated re-export and the canon refuses it; `starci app codemod auth-merge [--execute]` moves a full app (R328: `@starci/auth/server` to integrations/passport, `@starci/auth/oidc` to integrations/keycloak).
+- 2026-11-09
 
 - Changed: the CLI requires `@starci/hfs` 6.5.0 once npm serves it (cli-follow). In it: the new noun `starci app add connection <name> --owner <app> [--isolation database|schema] [--env-prefix <PREFIX>]` (a full app gains a second database connection: hfs.json, the platform/database files, the rosters, the dev database and the production secret) with `local.databases` for the dev stack; `starci app add webhook` and the new `starci app add inbox` lay down the full-app inbox (`platform/inbox`, `platform/idempotency`) so a webhook intake can claim its delivery key (R263); the infra owner table's `slot:<slot id>` owner, which gives `@nestjs/websockets` to the `<channel>.gateway.ts` door and `platform/realtime`; `@starci/eslint-canon-be` 3.21.0 (`socket.io-client` is a test library), `@starci/eslint-canon-fe` 9.16.10 and the Grammar lint family 0.27.2 peer `@starci/hfs ~6.5.0`; `socket.io-client` is pinned for both sides.
 

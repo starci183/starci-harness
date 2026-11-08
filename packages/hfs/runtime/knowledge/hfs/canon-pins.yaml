@@ -139,18 +139,12 @@ pins:
     source: packages/nest-kit/package.json
     why: 'the module definition of every back-end module: defineConfigurableModule and defineCapabilityModule return the module base class, the options token and the options types with their types stated, so a <x>.module-definition.ts is one call that the lint on stated export types (R368) and the duplicate-code check (R21) both accept; @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/auth':
-    version: 0.5.0
+    version: 0.6.0
     group: starci
     install: registry
     side: both
     source: packages/auth/package.json
-    why: 'the lite sign-in: the NestJS module (EdDSA access tokens with a multi-key JWKS, passwords, Google OAuth with state and PKCE, rotating refresh sessions, the sign-in budget, the refresh cookie), the front-end client and its React bindings, the door contracts and test doubles; the one importer of the identity libraries, reached by a back end only through integrations/passport; @starci/jest-preset compiles it as an ESM-only dependency.'
-  '@starci/auth-oidc':
-    version: 0.2.0
-    group: starci
-    install: registry
-    side: both
-    source: packages/auth-oidc/package.json
+    why: 'the sign-in of both editions: the lite NestJS module (EdDSA access tokens with a multi-key JWKS, passwords, pluggable sign-in providers with state and PKCE: Google, GitHub; rotating refresh sessions, the sign-in budget, the refresh cookie) at ./server, the full OIDC client of the identity provider (discovery, JWKS, verifier, Keycloak broker and admin) with the issuer presets (Keycloak, Google ID tokens, GitHub Actions OIDC) at ./oidc, the front-end clients and React bindings, the door contracts and test doubles with the fake issuer; the one importer of the identity libraries, reached by a back end only through integrations/passport (lite) and integrations/keycloak (full); @starci/jest-preset compiles it as an ESM-only dependency. It replaces the retired @starci/auth-oidc (starci app codemod auth-merge).'
 
   '@starci/object-storage':
     version: 0.2.0
@@ -696,6 +690,11 @@ pins:
     group: framework
     side: be
     why: the email and password strategy of integrations/passport.
+  passport-oauth2:
+    version: 1.8.0
+    group: framework
+    side: be
+    why: the OAuth 2.0 strategy under passport-google-oauth20, and the GitHub sign-in provider of @starci/auth.
   bcryptjs:
     version: 3.0.3
     group: framework
@@ -711,11 +710,16 @@ pins:
     group: framework
     side: be
     why: types of passport-local.
+  '@types/passport-oauth2':
+    version: 1.8.0
+    group: framework
+    side: be
+    why: types of passport-oauth2.
   jose:
     version: 6.2.12
     group: framework
     side: be
-    why: signs the app's own access tokens and verifies them against its own key set inside @starci/auth, and verifies the identity provider's tokens against its JWKS inside @starci/auth-oidc; no app file imports it.
+    why: signs the app's own access tokens and verifies them against its own key set inside @starci/auth, and verifies an identity provider's or issuer's tokens against its JWKS inside @starci/auth/oidc; no app file imports it.
   class-transformer:
     version: 0.5.1
     group: framework

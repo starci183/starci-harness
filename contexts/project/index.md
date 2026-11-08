@@ -52,7 +52,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: BE-IDEMPOTENCY-1 The receiving service claims the delivery before it acts · BE-IDEMPOTENCY-2 The inbox is one table, owned by platform · BE-IDEMPOTENCY-3 An effectful client command marked `Effectful()` replays its committed outcome
 - [code/be/imports.md](../code/be/imports.md) · 1 KB — The back-end specifics of imports.
   - sections: BE-IMPORTS-1 One flat index per owner, within its budget, consumed in production · BE-IMPORTS-7 Jest resolves the same aliases
-- [code/be/infra.md](../code/be/infra.md) · 6 KB — Which capability may touch a raw library: exactly one owner per library, reached by everyone else through its port.
+- [code/be/infra.md](../code/be/infra.md) · 7 KB — Which capability may touch a raw library: exactly one owner per library, reached by everyone else through its port.
   - sections: BE-INFRA-1 One owner per raw library · BE-INFRA-2 Outbound HTTP goes through the HttpClient port with a required timeout · BE-INFRA-3 An integration is one folder that only it may call · BE-INFRA-4 A cache key is declared by the owner that caches
 - [code/be/injection.md](../code/be/injection.md) · 4 KB — How a dependency reaches a class: infrastructure through a zero-argument `Inject<Thing>()` injector over a `unique symbol` token, a domain service by its class.
   - sections: BE-INJECTION-1 Infrastructure arrives through an injector; a domain service by class · BE-INJECTION-2 An injector is one shape in its owner's decorators file · BE-INJECTION-3 A port has one injector name per capability · BE-INJECTION-4 No locator, forward reference or property injection
@@ -169,9 +169,9 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
 - [hfs/harness.yaml](../hfs/harness.yaml) · 19 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.runtime-layer, images.sources, never.build-output, never.cli-js, never.env and 38 more
-- [hfs/rules.yaml](../hfs/rules.yaml) · 136 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
+- [hfs/rules.yaml](../hfs/rules.yaml) · 137 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
   - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113 and 279 more
-- [hfs/slots.yaml](../hfs/slots.yaml) · 109 KB — The HFS slot manifest: what may exist in an app repository and where.
+- [hfs/slots.yaml](../hfs/slots.yaml) · 110 KB — The HFS slot manifest: what may exist in an app repository and where.
   - ids: app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore, app.format-config, app.git-meta and 140 more
 - [project/README.md](../project/README.md) · 11 KB — What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read for each kind of task.
   - sections: PROJECT-1 A project is one app root that holds the Work of every side · PROJECT-2 Work travels from a record to a settled commit · PROJECT-3 A product's agent modules are workspace packages · Where to read for a task · Files
@@ -196,7 +196,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [stack/README.md](../stack/README.md) · 1 KB — The libraries and versions every app uses.
 - [stack/fe.yaml](../stack/fe.yaml) · 11 KB — The front-end stack of every app, both editions: for each concern the ONE library, its home (slot ids of hfs/slots.yaml), the pattern rule that teaches its use when there is a ...
   - ids: R244, R288, auth, avatar-illustration, charts, code, codegen, data, dates, device-id, diagrams, event-stream, fe-stack-import, flow, forms, framework, framework-support, front-end, grammar-lint, graphql, graphql-subscriptions, i18n, icons, lint and 17 more
-- [stack/pins.yaml](../stack/pins.yaml) · 18 KB — The exact version of every shared dependency: one version per dependency for every app and package, except the command line itself, whose version in an app is the starci-harness ...
+- [stack/pins.yaml](../stack/pins.yaml) · 19 KB — The exact version of every shared dependency: one version per dependency for every app and package, except the command line itself, whose version in an app is the starci-harness ...
   - ids: CONTRIB-20, R111, R190, install-local, same-minor, starci-harness
 - [ui/README.md](../ui/README.md) · 6 KB — How an agent decides a user interface on any grammar, so that every app built from the same grammar and the same knowledge comes out the same.
   - sections: The system in one page · Who owns what · Reading order · How the rules work

@@ -1,16 +1,11 @@
 {
   "name": "@starci/auth-oidc",
-  "version": "0.2.0",
-  "description": "The OIDC client of a StarCi full app (Keycloak) behind the same PrincipalVerifier interface as @starci/auth: a NestJS module (issuer discovery, JWKS with caching and rotation, algorithm-pinned token checks, role mapping, the authorization code flow with PKCE and nonce), a front-end client (PKCE redirect, callback, one shared refresh, in memory token) and a fake OIDC issuer for tests.",
+  "version": "0.3.0",
+  "description": "Deprecated: @starci/auth-oidc is retired and merged into @starci/auth. This final version only re-exports @starci/auth/oidc (server), @starci/auth/client/oidc (client), the OIDC contract and @starci/auth/testing (the fake issuer), so a full app keeps building; run `starci app codemod auth-merge --execute` to import @starci/auth directly.",
   "keywords": [
     "auth",
     "oidc",
-    "openid-connect",
-    "keycloak",
-    "jwks",
-    "pkce",
-    "jwt",
-    "nestjs"
+    "deprecated"
   ],
   "license": "MIT",
   "author": "starci183",
@@ -66,25 +61,7 @@
     "prepublishOnly": "npm test && npm run build"
   },
   "dependencies": {
-    "@starci/auth": "0.5.0",
-    "@starci/common": "1.0.1",
-    "jose": "6.2.12"
-  },
-  "peerDependencies": {
-    "@nestjs/common": "^11.0.0",
-    "@nestjs/core": "^11.0.0",
-    "reflect-metadata": "^0.1.12 || ^0.2.0"
-  },
-  "peerDependenciesMeta": {
-    "@nestjs/common": {
-      "optional": true
-    },
-    "@nestjs/core": {
-      "optional": true
-    },
-    "reflect-metadata": {
-      "optional": true
-    }
+    "@starci/auth": "0.6.0"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
