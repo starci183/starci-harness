@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.20.1 - 2026-11-09
+
+- Fixed: the package's own build no longer logs TS2307 for `@starci/hfs/runtime/scripts/hfs/rule-catalog.mjs`: the path-mapped runtime types (`src/types/runtime`) gain `scripts/hfs/rule-catalog.d.mts` (`loadRuleCatalog`, the part of `RuleCatalog` the edition gate reads), and `checkTiers` there takes the TypeScript API as its second argument, as the machine does (the typecheck of the specs failed on it).
+- Specs: `src/be-r89-source-form-coverage.spec.ts` (a method taking the named interface `ErrorParams` passes `BE_PUBLIC_CONTRACT_FORM`).
+
 ## 3.20.0 - 2026-11-08
 
 - Changed: `throw-domain-error`, `error-home` and `error-family-shape` recognise a coded error by the declaration of `DomainError` (and `ErrorKind`) in `@starci/common`, found through the type checker, so the family of an app (through the re-export of `platform/errors`), of a root workspace package and of every `@starci` package passes one test. A class named `DomainError` declared anywhere else is a bare `Error` subclass.

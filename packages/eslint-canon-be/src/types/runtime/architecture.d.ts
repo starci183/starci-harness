@@ -32,7 +32,7 @@ declare module "*/runtime/scripts/hfs/architecture/hfs-graph.mjs" {
 
 declare module "*/runtime/scripts/hfs/architecture/tiers.mjs" {
     /** The tier-direction check of the owner graph. */
-    export function checkTiers(graph: object): { readonly violations: readonly { readonly ruleId: string; readonly message?: string }[] }
+    export function checkTiers(graph: object, ts: object): { readonly violations: readonly { readonly ruleId: string; readonly message?: string }[] }
 }
 
 declare module "*/runtime/scripts/hfs/architecture/feature-shape.mjs" {

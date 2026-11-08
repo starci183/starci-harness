@@ -127,6 +127,17 @@ for (const edition of ['lite', 'full'] as const) {
     });
   });
 
+  test(`R89 ${edition} accepts a method taking the named interface ErrorParams of @starci/common`, (t) => {
+    const named = 'src/modules/platform/errors/errors.service.ts';
+    const params = { 'src/modules/platform/errors/errors.contracts.ts': 'export interface ErrorParams { readonly [name: string]: string | number }' };
+    const fixture = projectFixture({ edition, files: { ...files, ...params, [named]: 'import type { ErrorParams } from "./errors.contracts"; export class ErrorsService { text(code: string, params: ErrorParams, locale: string): string { return `${code}${Object.keys(params).length}${locale}`; } }' } });
+    t.after(fixture.cleanup);
+    fixture.tester.run('public-contract-form', ruleNamed(graphRules, 'public-contract-form'), {
+      valid: [{ filename: fixture.at(named), code: 'import type { ErrorParams } from "./errors.contracts"; export class ErrorsService { text(code: string, params: ErrorParams, locale: string): string { return `${code}${Object.keys(params).length}${locale}`; } }' }],
+      invalid: [],
+    });
+  });
+
   test(`R89 ${edition} accepts a typed topic policy and rejects an undeclared topic suffix`, (t) => {
     const fixture = projectFixture({ edition, files });
     t.after(fixture.cleanup);
