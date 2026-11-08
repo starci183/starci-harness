@@ -182,7 +182,46 @@ export class WorldRenderAnalysis {
     return functions.length > 0 && functions.every(fn => this.world.sourceSet.has(path.resolve(fn.getSourceFile().fileName))
       && (this.world.insideAny(this.world.roots.components, fn.getSourceFile().fileName) || this.world.insideAny(this.world.roots.features, fn.getSourceFile().fileName))
       && (!expectedFile || path.resolve(fn.getSourceFile().fileName) === expectedFile)
-      && this.functionHasRender(fn, checker) && !this.world.functionUsesWorld(fn, checker) && !this.capturesOuterFunction(fn, checker));
+      && (this.functionHasRender(fn, checker) || this.functionPassesRenderProps(fn, checker))
+      && !this.world.functionUsesWorld(fn, checker) && !this.capturesOuterFunction(fn, checker));
+  }
+
+  /**
+   * A pure component that hands a ReactNode prop on as it is (`props.active ? props.candidate : null`): every return is JSX,
+   * null/undefined or a value read from the first parameter, and at least one return is such a read. The canon forbids the
+   * fragment that would wrap it, so it cannot also be required to return JSX. A call result, a module value or a hook value fails.
+   */
+  functionPassesRenderProps(fn: FunctionLikeDeclaration, checker: TypeChecker): boolean {
+    const returned = this.helpers.returnedExpressions(this.world.ts, fn);
+    const kinds = returned.flatMap(expression => this.passthroughKinds(expression, fn, checker));
+    return returned.length > 0 && !kinds.includes('other') && kinds.includes('prop');
+  }
+
+  passthroughKinds(input: Expression, fn: FunctionLikeDeclaration, checker: TypeChecker): ('prop' | 'plain' | 'other')[] {
+    const ts = this.world.ts;
+    const expression = unwrapExpression(ts, input);
+    if (ts.isConditionalExpression(expression)) {
+      return [...this.passthroughKinds(expression.whenTrue, fn, checker), ...this.passthroughKinds(expression.whenFalse, fn, checker)];
+    }
+    if (ts.isBinaryExpression(expression) && ([ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken,
+      ts.SyntaxKind.QuestionQuestionToken] as SyntaxKind[]).includes(expression.operatorToken.kind)) {
+      return [...this.passthroughKinds(expression.left, fn, checker), ...this.passthroughKinds(expression.right, fn, checker)];
+    }
+    if (expression.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(expression) && expression.text === 'undefined')
+      || expression.kind === ts.SyntaxKind.FalseKeyword) return ['plain'];
+    if (this.expressionHasRender(expression, checker)) return ['plain'];
+    return [this.readsFirstParameter(expression, fn, checker) ? 'prop' : 'other'];
+  }
+
+  /** `props.x`, `props.a.b` or a destructured parameter name: an identifier chain rooted in the first parameter. */
+  readsFirstParameter(expression: Expression, fn: FunctionLikeDeclaration, checker: TypeChecker): boolean {
+    const ts = this.world.ts;
+    let root: Expression = expression;
+    while (ts.isPropertyAccessExpression(root) || ts.isElementAccessExpression(root)) root = unwrapExpression(ts, root.expression);
+    const first = fn.parameters[0];
+    if (!ts.isIdentifier(root) || !first) return false;
+    return (checker.getSymbolAtLocation(root)?.getDeclarations?.() ?? [])
+      .some(declaration => declaration.pos >= first.pos && declaration.end <= first.end);
   }
 
   expressionSuppliesRender(expression: Expression, checker: TypeChecker): boolean {

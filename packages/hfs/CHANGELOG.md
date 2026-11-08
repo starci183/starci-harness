@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.2.10 - 2026-11-08
+
+- Fixed: a pure component that hands a ReactNode prop on as it is (`(props: P): ReactNode => (props.active ? props.candidate : null)`) is a render target for `FE_WORLD_OWNER_RENDER_BOUNDARY` and `FE_CONNECTED_BLOCK_RENDER_PAIR`. The detector required the pure half to return JSX, which contradicted the canon's `starci-fe/no-useless-fragment` (the fragment that wrapped the prop is now forbidden). A function counts when every return is JSX, null/undefined/false or a read of its own first parameter (a prop, a destructured prop, or a conditional/logical of these), at least one is such a read, and it still uses no world and captures no outer function; a module constant, a hook value or a call result still fails.
+- Specs: `src/fe-render-target-passthrough.spec.mts` (lite and full).
+
 ## 6.2.9 - 2026-11-08
 
 - Changed: `starci app check` runs its steps one after another, one heavy step at a time, in the priority order of `CHECK_GRAPH` (the unit run, lint, the structure pass, tsc, wiring, then the rest as their needs allow), and each step sizes its children on the RAM and cores free when it starts. The dependency graph run in parallel (admission in priority order, CPU lanes held per step, the launch wait of `LAUNCH_WAIT_MS`) is gone from `cache/schedule.mts`: a unit run that started beside lint, hfs, tsc and wiring held one lane and ran `--maxWorkers=1` on 1932 specs with 38 GB free, and it now takes `clamp(floor((room - parent) / worker), 1, min(cores - 1, testWorkers))` workers from the room at its own start and holds no lane. The journal and the cache are unchanged (a fully reused step costs about no time).
