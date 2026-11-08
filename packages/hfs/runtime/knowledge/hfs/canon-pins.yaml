@@ -60,8 +60,8 @@ pins:
     source: packages/next-i18n/package.json
     why: 'the next-intl stack of every front end (fe-stack i18n): defineI18n over the locales of the app, the locale-negotiating proxy, the locale-aware navigation, the request config that loads the catalogs of the app and the locale read of the [locale] layout; the app keeps its message catalogs and writes none of the stack.'
   '@starci/eslint-canon-be':
-    version: 3.20.1
-    range: '~3.20.1'
+    version: 3.20.2
+    range: '~3.20.2'
     group: starci
     install: registry
     side: be
@@ -151,7 +151,7 @@ pins:
     install: registry
     side: both
     source: packages/auth-oidc/package.json
-    why: 'the full sign-in: the OIDC client of the identity provider (Keycloak) behind the PrincipalVerifier of @starci/auth, so guards do not change between editions: the NestJS module (issuer discovery, the JWKS with caching and rotation, algorithm-pinned token checks, role mapping, the authorization code flow with PKCE and nonce), the front-end client (PKCE redirect, one shared refresh, tokens in memory) and the fake issuer for tests; the one importer of jose in a full app, reached by a back end only through integrations/keycloak; @starci/jest-preset compiles it as an ESM-only dependency.'
+    why: 'the full sign-in: the OIDC client of the identity provider (Keycloak) behind the PrincipalVerifier of @starci/auth, so guards do not change between editions: the NestJS module (issuer discovery, the JWKS with caching and rotation, algorithm-pinned token checks, role mapping, the authorization code flow with PKCE and nonce), the front-end client (PKCE redirect, one shared refresh, tokens in memory) and the fake issuer for tests; the one importer of jose in a full app, reached by a back end only through integrations/keycloak (sign-in) and integrations/github-oidc (CI attestation); @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/object-storage':
     version: 0.2.0
     group: starci

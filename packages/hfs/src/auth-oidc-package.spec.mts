@@ -36,11 +36,11 @@ test('the package is one package with the four subpaths and nothing else', () =>
   assert.deepEqual(exported, ['./client', './contracts', './package.json', './server', './testing']);
 });
 
-test('jose and every other JWT or OIDC client library belong to no app file, and the package to integrations/keycloak alone', () => {
+test('jose and every other JWT or OIDC client library belong to no app file, and the package to integrations/keycloak and integrations/github-oidc alone', () => {
   const owners = loadSlotManifest().ruleParams.be.infraOwners;
   for (const library of ['jose', 'jsonwebtoken', 'jwks-rsa', 'jwt-decode', 'passport-jwt', 'openid-client']) assert.deepEqual(owners[library], [], library);
-  assert.deepEqual(owners['@starci/auth-oidc'], ['integrations/keycloak']);
-  assert.deepEqual(owners['@starci/auth-oidc/testing'], ['integrations/keycloak']);
+  assert.deepEqual(owners['@starci/auth-oidc'], ['integrations/keycloak', 'integrations/github-oidc']);
+  assert.deepEqual(owners['@starci/auth-oidc/testing'], ['integrations/keycloak', 'integrations/github-oidc']);
   assert.deepEqual(owners['@starci/auth'], ['integrations/passport'], 'the lite package keeps its own glue');
 });
 
@@ -56,6 +56,19 @@ test('the glue folder is a slot of the full edition: optional, a short list of f
   assert.ok((slot.allows ?? []).includes('errors/'));
 });
 
+test('the CI attestation glue is a slot of the full edition beside keycloak, with the same shape', () => {
+  const slots = loadSlotManifest().slots;
+  const slot = slots.find((entry) => entry.id === 'be.integrations.github-oidc');
+  const keycloak = slots.find((entry) => entry.id === 'be.integrations.keycloak');
+  assert.ok(slot && keycloak);
+  assert.deepEqual(slot.editions, ['full']);
+  assert.equal(slot.presence, 'optional');
+  assert.equal(slot.path, 'src/modules/integrations/github-oidc/');
+  assert.deepEqual(slot.rules, keycloak.rules);
+  assert.deepEqual(slot.requires, ['index.ts', 'github-oidc.config.ts', 'github-oidc.options.ts', 'github-oidc.decorators.ts', 'github-oidc.registration.ts']);
+  for (const required of slot.requires ?? []) assert.ok((slot.allows ?? []).includes(required), `${required} is required and admitted`);
+});
+
 test('the front-end stack admits the package client in modules/auth only', () => {
   const stack = parseYaml(fs.readFileSync(path.join(import.meta.dirname, '..', 'runtime', 'knowledge', 'hfs', 'fe-stack.yaml'), 'utf8'));
   const concern = (stack.concerns as Array<{ id: string; packages: string[]; home: string[]; forbids: string[] }>).find((entry) => entry.id === 'auth');
@@ -69,4 +82,5 @@ test('R328, the rule that owns the identity libraries, names the package as the 
   const rules = parseYaml(fs.readFileSync(path.join(import.meta.dirname, '..', 'runtime', 'knowledge', 'hfs', 'rules.yaml'), 'utf8'));
   const rule = (rules.rules as Array<{ id: string; law: string }>).find((entry) => entry.id === 'R328');
   assert.match(rule?.law ?? '', /@starci\/auth-oidc \(full, which owns jose/u);
+  assert.match(rule?.law ?? '', /integrations\/keycloak \(sign-in\) and integrations\/github-oidc \(CI attestation/u);
 });

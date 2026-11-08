@@ -22,7 +22,9 @@ Each line names the owner of the fact; the slot or rule is the authority, not th
 - Identity is the project's own identity provider (Keycloak in the full stack verbs), reached through the package `@starci/auth-oidc`
   composed in `integrations/keycloak` behind the `PrincipalVerifier` interface of the lite edition. Owners:
   [README.md](../../README.md) (verb groups; `starci explain` lists what is built); [code/be/api-auth.md](../code/be/api-auth.md) BE-AUTH-2;
-  slot `be.integrations.keycloak` in [hfs/slots.yaml](../hfs/slots.yaml).
+  slots `be.integrations.keycloak` and `be.integrations.github-oidc` in [hfs/slots.yaml](../hfs/slots.yaml).
+- CI runs are attested by a GitHub Actions OIDC token (issuer `https://token.actions.githubusercontent.com`), verified in
+  `integrations/github-oidc`, the second owner of `@starci/auth-oidc`, with the package's generic discovery, key cache and token verifier.
 
 ## Patterns
 
