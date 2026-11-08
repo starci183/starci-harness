@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.30.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.30.0; requires `@starci/eslint-grammar-core` 0.30.0, which adds `suggestion-chips`; no rule of this package changed.
+
 ## 0.29.0 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.29.0; requires `@starci/eslint-grammar-core` 0.29.0, which adds `single-child-card`; no rule of this package changed.
