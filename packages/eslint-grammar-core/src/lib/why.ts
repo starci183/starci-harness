@@ -172,4 +172,24 @@ export const why: Record<string, WhyEntry> = {
     en: "`<file>` colours status content against the status pair rule (`<what>`): content on a `bg-<tone>-soft` tint paints with the solid tone (e.g. `bg-success-soft text-success`), or a mark with no tint behind it paints with the soft foreground (e.g. `text-success-soft-foreground` alone).",
     fix: "Content on a background of the tone takes the pair: `bg-<tone>-soft` with `text-<tone>-soft-foreground`. A mark that stands alone, with no background of the tone, takes the tone itself: `text-<tone>`. A solid fill takes `bg-<tone>` with `text-<tone>-foreground`.",
   },
+  "button-arrow": {
+    code: "FE_BUTTON_ARROW",
+    en: "A Button in `<file>` types an arrow in its label, passes an arrow icon as `endContent`, or sets `endArrow` together with `startGlyph` or `startContent`.",
+    fix: "A Button that leads somewhere takes `endArrow` (the Grammar arrow slides on hover and is mirrored in RTL); one that does something takes `startGlyph`; never both.",
+  },
+  "table-cell-type": {
+    code: "FE_TABLE_CELL_TYPE",
+    en: "A DataTable cell or ListRow title/description in `<file>` draws a heading-size Text (`size=\"figure\"`), a Heading, a Label or an h1-h6.",
+    fix: "The primary of a row or cell is md 14 / 500 (`<Text isStrong>`), the secondary sm 13 muted (`<Text size=\"sm\" tone=\"muted\">`).",
+  },
+  "same-line-size": {
+    code: "FE_SAME_LINE_SIZE",
+    en: "The Text children of one Cluster line in `<file>` have different sizes.",
+    fix: "One line, one size: give every Text of the line the size of the line's role (md primary, sm secondary). A Badge or chip may stay as it is.",
+  },
+  "row-title-link": {
+    code: "FE_ROW_TITLE_LINK",
+    en: "A Link is the title of a row in `<file>` that already opens (onPress, onAction, href, chevron, or a DataTable with onRowAction or row hrefs).",
+    fix: "The row is the one pressable: write the title as plain text (`<Text isStrong>`) and keep the destination on the row.",
+  },
 }
