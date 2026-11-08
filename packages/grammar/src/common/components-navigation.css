@@ -1098,7 +1098,7 @@
 
     /*
      * Stat strip: 2-4 key figures as one flush grid of touching cells (gap 0), the way a PaneGrid's panes touch. Each
-     * cell is a box in a card, so it takes the nested inset (--grammar-inset-nested, 8) on every side, and the cells are
+     * cell is a box of its own, so in a card it takes the card padding (16) on every side (in a pane the nested step, 8), and the cells are
      * divided by lines, not by gaps. The strip is its own container: all cells in one row from 40rem of its own width,
      * 2 x 2 (flex-basis 50%) from 18rem, one column below; a last odd cell grows across its row. Divided, each cell
      * draws its own start and top edges outside its box (three box-shadows: start, top and the corner pixel), and the
@@ -1125,12 +1125,13 @@
         display: flex;
         box-sizing: border-box;
         /* A cell is never narrower than its value: the figure's digits at the figure's size plus the cell's inset on both sides, so the row wraps (2 x 2, then one column) before a number would break. */
-        min-width: calc(var(--starci-core-figure-size) * var(--starci-core-figure-digit) * var(--starci-core-figure-chars) + 2 * var(--grammar-inset-nested));
+        min-width: calc(var(--starci-core-figure-size) * var(--starci-core-figure-digit) * var(--starci-core-figure-chars) + 2 * var(--grammar-card-padding-inline));
         flex: 1 1 100%;
         flex-direction: column;
         align-items: flex-start;
         gap: 0.25rem;
-        padding: var(--grammar-inset-nested);
+        /* A card sets the cell inset to its own padding; elsewhere (a pane) a cell keeps the nested step. */
+        padding: var(--starci-core-strip-cell-inset, var(--grammar-inset-nested));
     }
 
     .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-description-divided="true"] .starci-core-description-pair {

@@ -553,14 +553,15 @@ box keeps the vendor's own padding. In a Pane, `ListBox` resolves `inset="panel"
 padding so the row box and the selected pill start at the edge, and a `Tabs variant="secondary"` track drops its inline
 padding so the first pill does.
 
-**Spacing.** One scale, 0 4 8 12 24 32 (`COMMON_SPACING_SCALE`), and every value is a root token named by its role:
+**Spacing.** One scale, 0 4 8 12 16 24 32 (`COMMON_SPACING_SCALE`), and every value is a root token named by its role:
 gaps `--grammar-identity-gap` (4), `--grammar-inline-gap` (8), `--grammar-row-gap` (12), `--grammar-section-gap` (24)
-and `--grammar-region-gap` (32) (`COMMON_GAP_ROLES`); insets `--grammar-inset` (12, every container: card, pane,
-overlay, band), `--grammar-inset-nested` (8, a box inside a card) and `--grammar-inset-open` (24, an empty state or a
+and `--grammar-region-gap` (32) (`COMMON_GAP_ROLES`); insets `--grammar-inset` (12, every container: pane,
+overlay, band), `--grammar-inset-card` (16, a card's own padding; the one place 16 is used), `--grammar-inset-nested` (8, a box inside a card) and `--grammar-inset-open` (24, an empty state or a
 drop target); the page gutter `--grammar-page-inset` (12, 24 from 48rem, 32 from 70rem); and the control inline
 padding `--grammar-control-padding-inline-{sm,md,lg}` (8, 12, 24) with `--grammar-control-padding-glyph-*` one step
-less on a glyph's side. `--grammar-card-padding-inline`, `--grammar-card-padding-block` and `--grammar-overlay-inset`
-read `--grammar-inset`. Vendor parts take their step in `src/common/components-spacing.css`. Tabs are the underline
+less on a glyph's side. `--grammar-card-padding-inline` and `--grammar-card-padding-block` read `--grammar-inset-card`; rows a card
+divides by lines (static, list, accordion) keep the row step (12) on their block sides and the card's 16 inline, and
+a stat strip cell in a card takes 16 on every side. `--grammar-overlay-inset` reads `--grammar-inset`. Vendor parts take their step in `src/common/components-spacing.css`. Tabs are the underline
 bar everywhere, the first label on the content edge.
 
 An app writes no spacing value; it names the relation of the blocks it places:

@@ -2,7 +2,7 @@
  * THE RAMPS. The one place a type size, a corner, a stroke, a duration, an opacity or a part's geometry has a number.
  * Every component rule reads one of these by name and holds no literal (`scripts/lint/stylelint-plugin.mts`,
  * `starci-grammar/no-literal`); a family overrides a ramp step on its own root, never inside a component rule.
- * Spacing is not here: it is the scale 0 4 8 12 24 32 in `styles.css`. Colour is not here either: the app sets
+ * Spacing is not here: it is the scale 0 4 8 12 16 24 32 in `styles.css`. Colour is not here either: the app sets
  * HeroUI's tokens and every rule reads them.
  */
 @layer starci-grammar-common {

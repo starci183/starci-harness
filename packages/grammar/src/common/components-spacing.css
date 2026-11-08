@@ -2,7 +2,7 @@
  * VENDOR PART SPACING ON THE SCALE.
  *
  * HeroUI's parts carry their own padding and gap (`p-6` on a dialog, `px-4` on a button, `py-1.5` on a list option,
- * `py-2.5` on a table column, a 3px body offset). The Grammar's scale is 0 4 8 12 24 32 (common/spacing.ts), so each
+ * `py-2.5` on a table column, a 3px body offset). The Grammar's scale is 0 4 8 12 16 24 32 (common/spacing.ts), so each
  * part below takes the step its role names. These rules sit in the vendor's own `components` layer: there a compound
  * selector of the Grammar class outranks the vendor's single class by specificity, whichever sheet loads first, so no
  * declaration needs `!important`. The overrides are recorded in contexts/vendor/wrappers.yaml.

@@ -1,12 +1,14 @@
 /**
- * The one spacing scale of every visual family: 0 4 8 12 24 32 (px at a 16px rem). There is no other spacing value,
- * and no 16: a container holds its content one row step in, and separation beyond it is the parent's gap.
+ * The one spacing scale of every visual family: 0 4 8 12 16 24 32 (px at a 16px rem). There is no other spacing value.
+ * A container holds its content one row step in (12); 16 is the card's own inset alone (`--grammar-inset-card`), so a
+ * card's body clears its radius. It is never a gap: separation beyond an inset is the parent's gap.
  */
 export const COMMON_SPACING_SCALE = Object.freeze({
     0: "0",
     1: "0.25rem",
     2: "0.5rem",
     3: "0.75rem",
+    4: "1rem",
     6: "1.5rem",
     8: "2rem",
 } as const)
@@ -17,6 +19,7 @@ export const COMMON_SPACING_PX = Object.freeze({
     1: 4,
     2: 8,
     3: 12,
+    4: 16,
     6: 24,
     8: 32,
 } as const)
@@ -52,6 +55,7 @@ export const COMMON_SPACING_TOKENS = Object.freeze({
     inset: "--grammar-inset",
     insetNested: "--grammar-inset-nested",
     insetOpen: "--grammar-inset-open",
+    insetCard: "--grammar-inset-card",
     pageInset: "--grammar-page-inset",
     cardPaddingInline: "--grammar-card-padding-inline",
     cardPaddingBlock: "--grammar-card-padding-block",
