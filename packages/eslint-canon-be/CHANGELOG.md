@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.20.0 - 2026-11-08
+
+- Changed: `throw-domain-error`, `error-home` and `error-family-shape` recognise a coded error by the declaration of `DomainError` (and `ErrorKind`) in `@starci/common`, found through the type checker, so the family of an app (through the re-export of `platform/errors`), of a root workspace package and of every `@starci` package passes one test. A class named `DomainError` declared anywhere else is a bare `Error` subclass.
+- Removed: the `starci.errorBase` declaration of a root package; its errors extend `DomainError` of `@starci/common` (`@starci/common` is a framework package for the third-party owner rule). The closed list of framework control-flow signals (BullMQ) stays.
+- Changed: peers `@starci/hfs ~6.3.0`.
+- Specs: `src/error-handling.spec.ts`, `src/packages-config.spec.ts` (an app family, a package error of `@starci/auth` and `@starci/test-world`, a `@starci/common` subclass and a root package family pass; a plain `Error`, a lookalike class, the `Promise.reject` forms and the wrapper dodge fail).
+
 ## 3.19.7 - 2026-11-08
 
 - Fixed: the test-scope Sonar way block selects the specs with a positive selector (`files: ['**/*.{spec,e2e-spec}.{ts,mts,cts,js,mjs,cjs}']`, exported as `SPEC_FILES`) instead of `ignores: ['**/*', '!**/*.spec...']`. The harness lint scope (`canonScope` of `@starci/hfs`) refuses a negated selector, so every app's `starci app check --gate lint` ended in `ESLint tool error: eslint source scope is unavailable ... unsupported canon ignores selectors` and linted nothing. The block selects the same files as before and carries the name `starci-be/sonar-way-tests`, by which the packages config narrows it to the specs of the package subpaths.

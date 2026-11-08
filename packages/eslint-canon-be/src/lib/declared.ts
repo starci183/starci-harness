@@ -5,11 +5,10 @@
  */
 import ts from "typescript"
 import { hfsOf } from "./hfs.ts"
-import { normalizePath } from "./path.ts"
 import { typeOrigins, typed } from "./types.ts"
 import type { TSESTree } from "@typescript-eslint/utils"
 import type { Context, Node } from "./rule.ts"
-import type { HfsPackageDeclaredType, HfsView } from "./hfs.ts"
+import type { HfsView } from "./hfs.ts"
 import type { TypeOrigin } from "./types.ts"
 
 /** The last segment of an owner root (`src/modules/platform/errors` gives `errors`), or null when there is no owner. */
@@ -133,19 +132,22 @@ export const derivesFromBuiltinError = (context: Context, type: ts.Type | null |
     })
 }
 
-/** The error base a root package declares for the linted file (`starci.errorBase` of its manifest), or null outside a package or without one. */
-export const packageErrorBaseOf = (hfs: HfsView, filename: string): HfsPackageDeclaredType | null => hfs.packageContract?.(filename)?.errorBase ?? null
+/** The package directory of `@starci/common` in an installed tree: where `DomainError` and `ErrorKind` are declared. */
+const COMMON_PACKAGE_DIR = "/node_modules/@starci/common/"
+
+/** True when `file` belongs to the installed `@starci/common`. */
+export const isCommonFile = (file: string): boolean => file.includes(COMMON_PACKAGE_DIR)
+
+/** True when the node's type is `name`, declared by `@starci/common` (an app's `platform/errors` re-exports it, and the type checker follows the re-export to the declaration). */
+export const isCommonType = (context: Context, node: Node, name: string): boolean => originsOf(context, node).some((origin) => origin.name === name && isCommonFile(origin.file))
 
 /**
- * True when the type is (or extends) the error base of the linted file: `DomainError` as declared by the repository's `platform/errors`
- * owner, or, in a root workspace package (which cannot import `platform/errors`), the error base its manifest declares, in its declared file.
+ * True when the type is (or extends) `DomainError` as `@starci/common` declares it, so the error family of an app, of a root workspace package
+ * and of every `@starci` package passes through one test: where the class is declared, never what it is called or where it is imported from.
  */
 export const derivesFromErrorBase = (context: Context, type: ts.Type | null | undefined): boolean => {
-    const hfs = hfsOf(context)
     const { checker } = typed(context)
-    const own = packageErrorBaseOf(hfs, normalizePath(context.filename))
-    return derives(checker, type, (name, file: string) =>
-        (name === "DomainError" && isOwnedBy(hfs, file, "platform", "errors")) || (own !== null && name === own.name && hfs.relative(file) === own.file))
+    return derives(checker, type, (name, file: string) => name === "DomainError" && isCommonFile(file))
 }
 
 /**

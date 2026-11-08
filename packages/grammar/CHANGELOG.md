@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.3 - 2026-11-08
+
+- Changed: released with the Grammar family at 0.25.3 (its lint family peers `@starci/hfs ~6.3.0`); no component changed.
+
 ## 0.25.2 - 2026-11-08
 
 - Changed: released with the Grammar family at 0.25.2 (its lint family peers `@starci/hfs ~6.2.0`); no component changed.

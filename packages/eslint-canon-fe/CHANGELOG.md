@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.16.8 - 2026-11-08
+
+- Changed: peers `@starci/hfs ~6.3.0`; the package contract of a root package declares its `outcome` only (the `errorBase` key is gone).
+
 ## 9.16.7 - 2026-11-08
 
 - Fixed: the test-scope Sonar way block (the app config and the plain-source config) selects the specs with positive selectors (`SPEC_FILES`, `apps/*/src/**/*.{spec,e2e-spec}.{ts,tsx}` and the package twin) instead of `ignores: ['**/*', '!**/*.spec...']`. The harness lint scope (`canonScope` of `@starci/hfs`) refuses a negated selector, so every app's `starci app check --gate lint` ended in `ESLint tool error: eslint source scope is unavailable ... unsupported canon ignores selectors` and linted nothing. The block selects the same files as before and carries the name `starci-fe/sonar-way-tests`, by which `scopeToPackages` narrows it to the specs of the package subpaths.

@@ -25,7 +25,7 @@ import { lineCount } from "../runtime/scripts/lib/line-count.mjs"
 import ts from "typescript"
 import { APP_ENV_ROLE, APP_OPTIONS_ROLE, appRoleOf } from "./lib/app-roles.ts"
 import { hfsOf } from "./lib/hfs.ts"
-import { isOwnedBy } from "./lib/declared.ts"
+import { isCommonFile, isOwnedBy } from "./lib/declared.ts"
 import { keyName, staticText } from "./lib/ast.ts"
 import { isDeclarationFile, normalizePath } from "./lib/path.ts"
 import { childNode, moduleOf, originsOfType, packageOfExport, resolvedSymbol as resolveAlias, typed } from "./lib/types.ts"
@@ -216,11 +216,11 @@ const compositionTypes = (checker: ts.TypeChecker) => {
     /** Whether a type is declared under the app's `platform/<area>` capability folder. */
     const declaredIn = (symbol: ts.Symbol | undefined, area: string): boolean =>
         symbol?.getDeclarations()?.some((declaration) => normalizePath(declaration.getSourceFile().fileName).includes(`/modules/platform/${area}/`)) ?? false
-    /** A message bundle of `platform/i18n`, or a table of error kinds: every value (property or index) is `platform/errors`' ErrorKind. */
+    /** A message bundle of `platform/i18n`, or a table of error kinds: every value (property or index) is the `ErrorKind` of `@starci/common`, which `platform/errors` re-exports. */
     const catalogEntry = (type: ts.Type): boolean => {
         if (declaredIn(type.getSymbol(), "i18n") && type.getSymbol()?.name === "MessageBundle") return true
         if (!(type.flags & ts.TypeFlags.Object)) return false
-        const kind = (value: ts.Type | null): boolean => value?.aliasSymbol?.name === "ErrorKind" && declaredIn(value.aliasSymbol, "errors")
+        const kind = (value: ts.Type | null): boolean => value?.aliasSymbol?.name === "ErrorKind" && (value.aliasSymbol.getDeclarations()?.some((declaration) => isCommonFile(normalizePath(declaration.getSourceFile().fileName))) ?? false)
         const values = [...type.getProperties().map((property) => propertyType(type, property.name)), ...checker.getIndexInfosOfType(type).map((index) => index.type)]
         return values.length > 0 && values.every(kind)
     }
