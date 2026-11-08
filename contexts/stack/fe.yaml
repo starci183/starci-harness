@@ -117,6 +117,13 @@ concerns:
     pattern: FE-ICON
     forbids: ['@phosphor-icons/react', react-icons, lucide-react, '@iconify/react', '@gravity-ui/icons', '@tabler/icons-react', '@fortawesome/react-fontawesome']
     why: one glyph set; @heroicons/react is the base, @starci/heroicons only the glyphs it lacks.
+  - id: visual-effects
+    tier: opt
+    packages: ['@starci/visual-effects']
+    home: [fe.components]
+    pattern: FE-UI-1
+    forbids: [canvas-confetti, react-confetti, js-confetti, party-js, tsparticles, '@tsparticles/react', react-rewards]
+    why: one effect library over the Grammar theme (confetti first), on an overlay of its own, skipped for reduced motion; no app draws its own.
   - id: avatar-illustration
     tier: opt
     packages: ['@starci/grammar']

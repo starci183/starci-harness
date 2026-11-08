@@ -13,6 +13,7 @@ pins:
   '@starci/heroicons': {version: 0.3.6, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
   '@starci/event-stream': {version: 0.2.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
   '@starci/next-data': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the SWR middleware pollingRestart, the viewer and tenant key helpers and the viewer cache of a front end; each operation's hook stays in the app"}
+  '@starci/visual-effects': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the visual effects of a front end over the Grammar theme, confetti first, on an overlay canvas of their own and skipped for reduced motion"}
   '@starci/object-storage': {version: 0.2.0, group: starci, side: be, install: registry, why: "object storage of a back end: the ObjectStorage port over S3-compatible storage; the only importer of the AWS S3 client libraries"}
   '@starci/nest-kit': {version: 0.2.2, group: starci, side: be, install: registry, why: "the module definition of every back-end module: defineConfigurableModule and defineCapabilityModule, one typed call per <x>.module-definition.ts"}
   '@starci/auth': {version: 0.5.0, group: starci, side: both, install: registry, why: "the lite sign-in: server module, front-end client, contracts and test doubles; the only importer of the identity libraries"}

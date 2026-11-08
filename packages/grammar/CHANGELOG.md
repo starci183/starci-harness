@@ -23,8 +23,7 @@
   raised by the surface shadow; on, a thumb glyph takes the accent.
 - Added: `Drawer width="wide"` (32rem) for a guided task whose steps are labelled across the top (a connection wizard); `standard`
   (24rem) stays the default.
-- Changed: released with the Grammar family at 0.25.3 (its lint family peers `@starci/hfs ~6.3.0`); no component changed.
-
+- Changed: released with the Grammar family at 0.26.0 (its lint family peers `@starci/hfs ~6.3.0`).
 
 ## 0.25.2 - 2026-11-08
 
