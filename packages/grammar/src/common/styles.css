@@ -5291,6 +5291,7 @@
     .starci-core-message-card { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: var(--grammar-inline-gap); }
     .starci-core-message-card-head { display: flex; min-width: 0; max-width: 100%; flex-wrap: wrap; align-items: center; gap: var(--grammar-inline-gap); }
     .starci-core-message-card-body { min-width: 0; max-width: 100%; }
+    .starci-core-message-card-actions { display: flex; min-width: 0; max-width: 100%; flex-flow: row wrap; align-items: center; gap: var(--grammar-inline-gap); }
     .starci-core-message-card > [data-component="DescriptionList"] { align-self: stretch; }
 
     .starci-core-message-bubble-head {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.32.1 - 2026-11-09
+
+- Fixed: MessageCard (a composite) no longer imports the Cluster frame, which the tier law refuses (FE_GRAMMAR_TIER_DIRECTION); its actions stand in its own wrapping row (`starci-core-message-card-actions`, a labelled group at the inline gap).
+
 ## 0.32.0 - 2026-11-09 - every surface on the page ground is a card; Messenger bubbles; reactions
 
 - Changed (default): THE CARD LAW (owner, 2026-11-09). `SurfaceCard` of every kind (and the form panels) draws a 1px `--separator`

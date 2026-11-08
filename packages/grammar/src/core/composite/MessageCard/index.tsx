@@ -3,7 +3,6 @@
 import type { ReactNode } from "react"
 import { Button } from "../../leaf/Button/index.js"
 import { Text } from "../../leaf/Text/index.js"
-import { Cluster } from "../../frame/Cluster/index.js"
 import { DescriptionList, type DescriptionListItem } from "../DescriptionList/index.js"
 import { MessageBubble, type MessageBubbleGroupPosition, type MessageBubbleMeasure, type MessageReaction, type MessageReactionLabels } from "../MessageBubble/index.js"
 import type { NoChildren } from "../../tier.js"
@@ -88,9 +87,9 @@ export const MessageCard = ({ author, avatar, title, chip, body, details, action
                     {body == null ? null : <div className="starci-core-message-card-body">{body}</div>}
                     {details === undefined ? null : <DescriptionList items={details} density="compact" layout="columns" />}
                     {ordered.length === 0 ? null : (
-                        <Cluster gap="inline" label={title}>
+                        <div className="starci-core-message-card-actions" role="group" aria-label={title}>
                             {ordered.map((action) => <ActionButton key={action.id} action={action} />)}
-                        </Cluster>
+                        </div>
                     )}
                     {meta === undefined ? null : <Text size="xs" tone="muted">{meta}</Text>}
                 </div>
