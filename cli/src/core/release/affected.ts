@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join } from "node:path"
+import { captureNpm } from "../../shared/exec.js"
 import { captureGit, repositoryRoot, resolveSha } from "../../shared/git.js"
+import { NPMJS_FLAGS } from "../deps/local-refs.js"
 import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
 import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
@@ -144,6 +146,40 @@ export interface Affected {
     readonly summary: readonly string[]
 }
 
+/** The files a cli-follow commit changes (publish.yml): the CLI's manifest and lockfile, and the changelog entry of the move. */
+export const FOLLOW_FILES =new Set(["cli/package.json", "cli/package-lock.json", "CHANGELOG.md"])
+/** The manifest fields a cli-follow commit moves: the CLI's version and its @starci requirements. */
+const FOLLOW_FIELDS = ["version", "dependencies", "peerDependencies"]
+
+/** Whether two CLI manifests differ in nothing but the fields a cli-follow commit moves. */
+export const sameBesidesFollow = (before: unknown, after: unknown): boolean => {
+    if (typeof before !== "object" || before === null || typeof after !== "object" || after === null) return false
+    const rest = (manifest: object): string => JSON.stringify(Object.entries(manifest).filter(([key]) => !FOLLOW_FIELDS.includes(key)))
+    return rest(before) === rest(after)
+}
+
+/**
+ * Whether a diff is a cli-follow commit whose work is already done: it changes only the CLI's manifest (in the version and requirements),
+ * its lockfile and the changelog, and the CLI version it holds is on npm. publish.yml tested, built and published that tree before it
+ * pushed the commit, so its ci run has nothing left to test or publish and the plan affects no node.
+ */
+const isDoneFollow = async (root: string, base: string, head: string, changed: readonly string[]): Promise<boolean> => {
+    if (changed.length === 0 || !changed.every((file) => FOLLOW_FILES.has(file))) return false
+    if (changed.includes("cli/package.json")) {
+        const [before, after] = await Promise.all([captureGit(["show", `${base}:cli/package.json`], root), captureGit(["show", `${head}:cli/package.json`], root)])
+        if (before.exitCode !== 0 || after.exitCode !== 0) return false
+        try {
+            if (!sameBesidesFollow(JSON.parse(before.stdout), JSON.parse(after.stdout))) return false
+        } catch {
+            return false
+        }
+    }
+    const manifest: unknown = JSON.parse((await captureGit(["show", `${head}:cli/package.json`], root)).stdout)
+    if (typeof manifest !== "object" || manifest === null || !("name" in manifest) || !("version" in manifest)) return false
+    const view = await captureNpm(["view", `${String(manifest.name)}@${String(manifest.version)}`, "version", ...NPMJS_FLAGS], root)
+    return view.exitCode === 0 && view.stdout.trim() === String(manifest.version)
+}
+
 const changedBetween = async (root: string, base: string, head: string): Promise<string[] | null> => {
     const diff = await captureGit(["diff", "--name-only", "--no-renames", "-z", base, head], root)
     return diff.exitCode === 0 ? diff.stdout.split("\0").filter((path) => path !== "") : null
@@ -196,7 +232,8 @@ export const affectedBy = async (cwd: string, baseFlag: string | undefined, head
         .map((pkg) => ({ pkg, ...textsOf(pkg.dir) }))
     const needs = new Map(nodes.map((node) => [node.pkg.relativeDir, needsOf(node, nodes)]))
     const full = changed === null || changed.some((file) => FULL_TREES.some((tree) => file.startsWith(tree)))
-    const hit = hitSet(nodes, needs, full, full ? [] : changed)
+    const done = !full && base !== null && (await isDoneFollow(root, base, head, changed))
+    const hit = hitSet(nodes, needs, full, full || done ? [] : changed)
     const packageOnly = (dirs: ReadonlySet<string>): Set<string> => new Set([...dirs].filter((need) => need.startsWith("packages/")))
     const packageNeeds = new Map([...needs].map(([dir, needed]) => [dir, { hard: packageOnly(needed.hard), built: packageOnly(needed.built), soft: packageOnly(needed.soft) }]))
     const edges = buildEdges(packageNeeds)
@@ -207,7 +244,7 @@ export const affectedBy = async (cwd: string, baseFlag: string | undefined, head
     const harness = hit.has("cli")
     const app = hit.has("app")
     const summary = [
-        `base ${base ?? "-"} head ${head}${full ? " (full)" : ""}: ${String((changed ?? []).length)} file(s) changed`,
+        `base ${base ?? "-"} head ${head}${full ? " (full)" : ""}${done ? " (a cli-follow commit already tested and published: nothing to run)" : ""}: ${String((changed ?? []).length)} file(s) changed`,
         `packages: ${packages.map((pkg) => pkg.dir).join(", ") || "-"}; harness: ${harness ? "yes" : "no"}; app: ${app ? "yes" : "no"}`,
     ]
     return {

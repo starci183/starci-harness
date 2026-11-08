@@ -610,6 +610,21 @@ debug and owner (`PKG_EDIT_PUSH_REFUSED`). A package build or install in an app 
 `DEPS_INSTALL_LINKED` before npm changes a `node_modules` junction or symlink (`core/deps/packages.ts`):
 materialize a private install, or unlink the link itself and install that checkout's lockfile, preserving its shared target.
 
+#### CI verdict and publication
+
+`check ci` (`core/check/ci.ts`) reads a commit's verdict from `gh run list --commit <sha>` and from the runs of `publish.yml` named `publish <sha>`
+(GitHub files a `workflow_run` run under main's head, not under the commit it publishes, so only that name links it; `publishRunsOf`). The
+verdict is `pending` while any of those runs is not completed, `red` when any concluded in anything but success, skipped or cancelled (a failed `ci`
+and a failed `publish` alike), `cancelled` when the only blemish is a cancelled run (a `ci` superseded by a newer push, a `publish` replaced in its
+queue), `green` otherwise, `none` without a run and `unreadable` when GitHub cannot be asked; only `green` exits 0, so `requireCi` actions never act on
+a commit that was cancelled, still publishing or failed to publish. `release push` and CI's plan measure from the head of the last `ci` run on main
+whose conclusion is `success` (`ciBase`, the `base` step of ci.yml): a cancelled run never counts, so the next run diffs from the last tested commit and
+`release publish` plans every version not yet on npm, however many runs were cancelled between. `release publish --tarballs <dir>` publishes
+the `npm pack` tarballs a CI job packed after its tests (`name-version.tgz`, stamped with the commit's source digest and `gitHead`, never rebuilt;
+a package without one is packed in place), up to four `npm publish` at a time (`pooled`), and reads them back together; `--execute` accepts a
+commit on the remote main or the one cli-follow commit directly above its tip (`onMainOrFollowsIt`). `release affected` plans nothing for a diff that is a cli-follow
+commit whose CLI version npm serves (`isDoneFollow`).
+
 #### A local registry
 
 `deps publish-local` publishes a package edit to an npm registry on this machine and `deps install-local` installs it into an app like npm, with no worktree of the package and no copy (`core/deps/publish-local.ts`, `install-local.ts`, `local-registry.ts`, `lock-integrity.ts`). The registry is a Verdaccio container `starci-local-registry` declared as the compose service of [ops/host/registry/compose.yaml](../ops/host/registry/compose.yaml) (image pinned by digest, published on 127.0.0.1:4873 only, its config in `ops/host/registry/config.yaml`), with no login, its storage in `local-registry/storage` of the shared state base (the main checkout's `.runtime`; `STARCI_LOCAL_ROOT` moves it), and npmjs as the uplink, so every package not published locally resolves as usual. The port is fixed. It runs only as the host service `local-registry` of ops/host.yaml: `host up local-registry` starts it, `host status` reports it, `host down local-registry` stops it (its storage stays), and an executed `deps publish-local` calls that same `host up` (`ensureRegistry`) when the registry does not answer, so a registry that answers is left as it is.

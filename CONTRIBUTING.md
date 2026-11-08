@@ -207,19 +207,26 @@ block the next push.
 
 An unreleased harness package change is usable the moment it is coded through the local registry (`starci deps publish-local`,
 then `starci deps install-local` in the app; [contexts/authority/packages.md](contexts/authority/packages.md)); reaching npm is a
-separate step CI takes alone. Every push to main whose plan affects a package or the CLI
-runs the two publish jobs of [.github/workflows/ci.yml](.github/workflows/ci.yml), which never wait for the `ci` job:
-`starci release publish --base <the plan's base>` judges the plan (its dry run), then with `--execute` publishes in two phases every package under
+separate step CI takes alone. CI is two workflows. [.github/workflows/ci.yml](.github/workflows/ci.yml) only tests and never writes to npm
+or to main, so a newer push cancels the `ci` run still going for an older commit (on main as on a pull request) and the newer run tests the
+whole tree: its `plan` measures from the last main commit whose `ci` run succeeded, and a cancelled run is not a success. Each `package` job
+packs its package once, after its specs, and keeps the tarball as the artifact `tarball-<name>-<version>-<sha>`.
+[.github/workflows/publish.yml](.github/workflows/publish.yml) starts when a `ci` run of a push to main completes (succeeded or failed,
+never cancelled), reads that run's jobs, plan and tarballs, and publishes; it checks out the run's commit, is never cancelled and queues one
+run at a time (group `publish-main`; a queued run is replaced by a newer queued one). It publishes nothing when its commit is no longer main's
+tip when its turn comes (an older commit published after a newer one would move the `alpha` dist-tag back; the run of the newer commit publishes
+every version not yet on npm, the older ones included). Its run is named `publish <sha>` and is red for that sha when it fails: `starci check ci`
+counts it ([cli/README.md](cli/README.md) "CI verdict and publication"). `starci release publish --base <the plan's base>` judges the plan (its dry run), then with `--execute` publishes in two phases every package under
 `packages/` and then the CLI (`starci-harness`, from `cli/`) whose version is not on npm yet, a dependency before its
 dependent, skipping a private one and a version already on npm, with npm provenance, under the dist-tag a prerelease version names
-(`1.0.0-alpha.1` goes to `alpha`, a plain version to `latest`). Each phase waits only for its own jobs. A package
-(`publish-packages`) publishes once the repo-wide gates (`gate (repo)`: secrets, loosening, shape) are green and so is the
+(`1.0.0-alpha.1` goes to `alpha`, a plain version to `latest`). The packages are published from the tarballs the `package` jobs packed after
+their specs (`--tarballs`: the tested bits, stamped with the commit, never rebuilt; a due package no job packed, its folder unchanged since a green base,
+is built and packed in the run), four `npm publish` at a time, and read back together. A package publishes once the repo-wide gates (`gate (repo)`: secrets, loosening, shape) are green and so is the
 `package` job of every folder of its build order the plan tested, itself and the siblings it needs, and, for the Grammar and
-a package that builds it, the `grammar proof` job (the theme proof; the render proof is not part of CI and runs by hand); a due package any of them failed is held and named, and so is each dependent of it ([.github/scripts/publish-gate.mjs](.github/scripts/publish-gate.mjs)).
-The CLI (`publish-cli`) publishes after it, once the harness job and every gate are green. Sonar and
-the app job never hold a package; Sonar and the app job never hold the CLI. A run on main is never cancelled by a newer push, which waits for it, so
-a publication is never cut short; runs of one phase queue and never overlap, and a re-run publishes only what is still
-missing. The plan is refused, before anything reaches npm, when a package changed since the base (its
+a package that builds it, the `grammar proof` job (the theme proof; the render proof is not part of CI and runs by hand); a due package any of them failed is held and named, and so is each dependent of it ([.github/scripts/publish-gate.mts](.github/scripts/publish-gate.mts)).
+The CLI follows in the same run, once the harness job and every gate are green. Sonar and
+the app job never hold a package or the CLI. A `publish` run is never cancelled, so a publication is never cut short, and a
+re-run (of the failed jobs) publishes only what is still missing. The plan is refused, before anything reaches npm, when a package changed since the base (its
 specs and test folders aside) while its version is already on npm (`RELEASE_VERSION_NOT_BUMPED`, measured from the
 commit npm recorded for that version), and when a due package requires a sibling (`dependencies`, `peerDependencies`)
 at another version than the sibling's folder holds at that commit (a same-minor range `~x.y.z` is met by any patch of it), or at a
@@ -239,13 +246,16 @@ refused `CLI_PIN_SKEW` by the `check pins` gate on every push and by `release pu
 of a package the CLI requires is therefore raised together with the CLI's requirement and lockfile, in the same commit when npm
 already serves the new version, else in the next one once the first phase published it. In between, `check pins` is
 `pending` (exit 0), not red, while every skew pins this commit's own package version that npm answers with a 404; a skew to a
-version npm already serves, or a registry that cannot be asked, stays red, and `publish-cli` skips a CLI that trails its pins.
-The follow-up commit is CI's own: the `cli-follow` job ([.github/scripts/cli-follow.mjs](.github/scripts/cli-follow.mjs)), once
-`publish-packages` succeeded and npm serves every skewed pin, raises the CLI's requirement and lockfile to the pins, bumps its
-prerelease when that version is on npm, records it in [CHANGELOG.md](CHANGELOG.md) and pushes to main with the repository secret
-`HARNESS_BOT_TOKEN` (a fine-grained token, contents: write on this repository; a push with `GITHUB_TOKEN` starts no run), and the
-run of that commit publishes the CLI. Every CI job installs the CLI with the siblings of the commit packed over the registry copies
-([.github/actions/cli-install](.github/actions/cli-install/action.yml)), and `publish-cli` publishes it as committed,
+version npm already serves, or a registry that cannot be asked, stays red, and the publish run skips a CLI that trails its pins.
+The follow-up commit is CI's own and is made inside the publish run: the `cli-follow` step ([.github/scripts/cli-follow.mts](.github/scripts/cli-follow.mts)), once
+the packages are on npm and npm serves every skewed pin, raises the CLI's requirement and lockfile to the pins, bumps its
+prerelease when that version is on npm and records it in [CHANGELOG.md](CHANGELOG.md); the run commits that, builds the CLI against the registry
+copies, runs its tests, publishes the CLI from that commit (`release publish` accepts the one cli-follow commit directly above main's tip, nothing
+else, though it is not pushed yet) and only then pushes the commit to main with the repository secret
+`HARNESS_BOT_TOKEN` (a fine-grained token, contents: write on this repository; a push with `GITHUB_TOKEN` starts no run; without it the CLI
+waits). The `ci` run of that commit finds nothing due: when a diff changes only the CLI's version and requirements, its lockfile and the changelog,
+and the CLI version it holds is on npm, `release affected` plans no package and no harness job. Every CI job installs the CLI with the siblings of the commit packed over the registry copies
+([.github/actions/cli-install](.github/actions/cli-install/action.yml)), and the publish run publishes the CLI as committed,
 refusing while a sibling it requires is held. `starci release publish --execute` from a
 workstation is Debug's fallback when CI cannot publish, with the owner's approval.
 

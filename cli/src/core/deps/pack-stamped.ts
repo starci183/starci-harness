@@ -84,9 +84,20 @@ export const packStamped = async (given: { readonly pkg: WorkspacePackage; reado
     const packed = await withHeavySlot("build", `npm pack ${pkg.name}`, pkg.dir, {}, (held) => captureNpm(["pack", "--pack-destination", scratch, "--json"], pkg.dir, held.options))
     const filename = packedFilename(packed.stdout)
     if (packed.exitCode !== 0 || filename === undefined) throw new Refusal("PUBLISH_LOCAL_FAILED", `npm pack of ${pkg.name} failed:\n${tail(packed.stdout, packed.stderr)}`)
+    return stampArchive({ pkg, root, archive: join(scratch, filename.replaceAll("/", "-").replace(/^@/, "")), scratch, name, edit, gitHead })
+}
+
+/** The file name `npm pack` gives a package's tarball: `@starci/hfs` at 6.5.2 is `starci-hfs-6.5.2.tgz`. */
+export const tarballName = (name: string, version: string): string => `${name.replace(/^@/u, "").replaceAll("/", "-")}-${version}.tgz`
+
+/**
+ * Writes into `scratch` a copy of the packed tarball `archive` whose manifest carries the source digest of `root` (and `gitHead`), as `packStamped` does for a
+ * tarball it packed itself. CI packs each package once, after its tests (the `package` job of ci.yml), and publishes those tested bits through this.
+ */
+export const stampArchive = async (given: { readonly pkg: WorkspacePackage; readonly root: string; readonly archive: string; readonly scratch: string; readonly name: string; readonly edit?: ((text: string) => string) | undefined; readonly gitHead?: string | undefined }): Promise<string> => {
+    const { pkg, root, archive, scratch, name, edit = (text: string) => text, gitHead } = given
     const digest = await sourceDigest(root, pkg.relativeDir)
     const stamped = join(scratch, name)
-    const archive = readFileSync(join(scratch, filename.replaceAll("/", "-").replace(/^@/, "")))
-    writeFileSync(stamped, withManifest(archive, (text) => withSource(edit(text), digest, gitHead)))
+    writeFileSync(stamped, withManifest(readFileSync(archive), (text) => withSource(edit(text), digest, gitHead)))
     return stamped
 }

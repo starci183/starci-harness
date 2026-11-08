@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
@@ -9,12 +9,13 @@ import { formatTable } from "../../shared/output.js"
 import { defineVerb } from "../../shared/verb.js"
 import { requireCiGreen } from "../check/ci.js"
 import { NPMJS_FLAGS } from "../deps/local-refs.js"
-import { packStamped } from "../deps/pack-stamped.js"
+import { packStamped, stampArchive, tarballName } from "../deps/pack-stamped.js"
 import { assertCliPins, STACK_PINS } from "../check/cli-pins.js"
 import { SPEC_FILE } from "../../shared/spec-file.js"
 import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import { inOrder } from "../../harness/sequential.js"
+import { FOLLOW_FILES } from "./affected.js"
 import { GRAMMAR_PACKAGE, judgeGrammarBump } from "./grammar-bump.js"
 import { meetsPin } from "./pin-range.js"
 import { peerSkews } from "./peer-range.js"
@@ -66,12 +67,16 @@ const settledOnRegistry = async (pkg: WorkspacePackage, root: string, deadline: 
  * Packs one row in its folder (its lifecycle scripts run there), stamps the source digest of the commit into the tarball's manifest (`packStamped`: the key the check cache
  * reads, equal for this build and the local-registry build of one source) and runs `npm publish` on it; the failure line when npm refuses it. Reading it back is the batch's (settleBatch).
  */
-const publishRow = async (pkg: WorkspacePackage, row: PlanRow, root: string): Promise<string | undefined> => {
+const publishRow = async (pkg: WorkspacePackage, row: PlanRow, root: string, tarballs: string | undefined): Promise<string | undefined> => {
     // Provenance needs a CI identity (GitHub Actions OIDC): CI's publish job signs every tarball, Debug's fallback from a workstation goes without it.
     const provenance = process.env.GITHUB_ACTIONS === "true" ? ["--provenance"] : ["--provenance=false"]
     const scratch = mkdtempSync(join(tmpdir(), "starci-publish-"))
     try {
-        const tarball = await packStamped({ pkg, root, scratch, name: `stamped-${row.version}.tgz`, gitHead: await resolveSha(root, "HEAD") })
+        const gitHead = await resolveSha(root, "HEAD")
+        const name = `stamped-${row.version}.tgz`
+        const prebuilt = tarballs === undefined ? undefined : join(tarballs, tarballName(row.package, row.version))
+        // A tarball CI packed after the package's tests is published as it is (stamped, not rebuilt); a package no test job packed is packed here.
+        const tarball = prebuilt !== undefined && existsSync(prebuilt) ? await stampArchive({ pkg, root, archive: prebuilt, scratch, name, gitHead }) : await packStamped({ pkg, root, scratch, name, gitHead })
         const run = await captureNpm(["publish", tarball, "--tag", row.distTag, ...provenance, ...NPMJS_FLAGS], scratch)
         return run.exitCode === 0 ? undefined : `${row.package}@${row.version}: ${(run.stderr || run.stdout).split("\n").slice(-3).join(" ")}`
     } catch (error: unknown) {
@@ -81,6 +86,22 @@ const publishRow = async (pkg: WorkspacePackage, row: PlanRow, root: string): Pr
     }
 }
 
+/** How many `npm publish` run at once: npm accepts a package before its dependency is readable, so independent tarballs go up together. */
+export const PUBLISH_CONCURRENCY = 4
+
+/** Runs `work` on every item, at most `limit` at once, in the order the items are given (a worker takes the next one when it is free). */
+export const pooled = async <T>(items: readonly T[], limit: number, work: (item: T) => Promise<void>): Promise<void> => {
+    let next = 0
+    const worker = async (): Promise<void> => {
+        while (next < items.length) {
+            const item = items[next]
+            next += 1
+            if (item !== undefined) await work(item)
+        }
+    }
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+}
+
 interface BatchOutcome {
     readonly published: readonly string[]
     readonly failed: readonly string[]
@@ -88,17 +109,17 @@ interface BatchOutcome {
 }
 
 /**
- * Publishes a batch, then reads it back. Each row gets its own `npm publish` in order (a dependency before its dependent;
+ * Publishes a batch, then reads it back. Each row gets its own `npm publish`, up to PUBLISH_CONCURRENCY at once, taken in order (a dependency before its dependent;
  * npm does not need the dependency readable to accept the dependent), and one refusal holds back only that row. Then every
  * published row is polled at once against one shared deadline, so the registry's delay is paid once per batch, not once per package.
  */
-const settleBatch = async (rows: readonly PlanRow[], packages: readonly WorkspacePackage[], root: string): Promise<BatchOutcome> => {
+const settleBatch = async (rows: readonly PlanRow[], packages: readonly WorkspacePackage[], root: string, tarballs: string | undefined): Promise<BatchOutcome> => {
     const failed: string[] = []
     const sent: { readonly row: PlanRow; readonly pkg: WorkspacePackage }[] = []
-    await inOrder(rows, async (row) => {
+    await pooled(rows, PUBLISH_CONCURRENCY, async (row) => {
         const pkg = packages.find((candidate) => candidate.name === row.package)
         if (pkg === undefined) return
-        const refusal = await publishRow(pkg, row, root)
+        const refusal = await publishRow(pkg, row, root, tarballs)
         if (refusal === undefined) sent.push({ row, pkg })
         else failed.push(refusal)
     })
@@ -119,13 +140,13 @@ const HELD_DIR = "cli"
  * from npm). Every row gets its attempt; the refusal afterwards names each one npm refused or never served, and a rerun
  * publishes what is left.
  */
-const publishDue = async (due: readonly PlanRow[], packages: readonly WorkspacePackage[], root: string, published: string[]): Promise<void> => {
-    const siblings = await settleBatch(due.filter((row) => row.dir !== HELD_DIR), packages, root)
+const publishDue = async (due: readonly PlanRow[], packages: readonly WorkspacePackage[], root: string, published: string[], tarballs: string | undefined): Promise<void> => {
+    const siblings = await settleBatch(due.filter((row) => row.dir !== HELD_DIR), packages, root, tarballs)
     published.push(...siblings.published)
     const held = due.filter((row) => row.dir === HELD_DIR)
     const blocked = siblings.failed.length > 0 || siblings.unconfirmed.length > 0
     if (held.length > 0 && !blocked) assertCliPins(root)
-    const cli = held.length > 0 && !blocked ? await settleBatch(held, packages, root) : { published: [], failed: [], unconfirmed: [] }
+    const cli = held.length > 0 && !blocked ? await settleBatch(held, packages, root, undefined) : { published: [], failed: [], unconfirmed: [] }
     published.push(...cli.published)
     const failed = [...siblings.failed, ...cli.failed]
     const unconfirmed = [...siblings.unconfirmed, ...cli.unconfirmed]
@@ -254,10 +275,25 @@ export const judgePlan = async (root: string, packages: readonly WorkspacePackag
 }
 
 /**
+ * Whether `head` is a commit on the remote main, or the one cli-follow commit directly on its tip: publish.yml commits the CLI's move onto
+ * the pins (its manifest, lockfile and changelog, nothing else), publishes the CLI from that commit and only then pushes it, so that its
+ * own ci run finds the version already on npm.
+ */
+export const onMainOrFollowsIt = async (root: string, head: string): Promise<boolean> => {
+    if (await isAncestor(root, head, "origin/main")) return true
+    const tip = await resolveSha(root, "origin/main")
+    const parent = await captureGit(["rev-parse", `${head}^`], root)
+    if (parent.exitCode !== 0 || parent.stdout.trim() !== tip) return false
+    const files = await captureGit(["diff", "--name-only", "--no-renames", "-z", tip, head], root)
+    const changed = files.stdout.split("\0").filter((file) => file !== "")
+    return files.exitCode === 0 && changed.length > 0 && changed.every((file) => FOLLOW_FILES.has(file))
+}
+
+/**
  * `starci release publish`: plans which package versions are missing from npm and judges the plan (each due package requires its
  * siblings at their versions here, published or due; with `--base`, no package changed since it is on npm at its old version); with
  * --execute it publishes them, a dependency before its dependent, from a clean commit on the remote main and reads each back. CI's
- * publish jobs run it on every push to main; from a workstation it is Debug's fallback.
+ * publish workflow (publish.yml) runs it for every ci run of a push to main; from a workstation it is Debug's fallback.
  */
 export const releasePublishVerb = defineVerb({
     path: ["release", "publish"],
@@ -270,6 +306,7 @@ export const releasePublishVerb = defineVerb({
         execute: { kind: "boolean", summary: "perform the plan (default: a dry run that prints it only)" },
         package: { kind: "list", summary: "only these packages (a folder or name; repeat for several, published as one batch)" },
         base: { kind: "string", summary: "refuse RELEASE_VERSION_NOT_BUMPED for a package changed since this commit (empty: any package) whose version is on npm" },
+        tarballs: { kind: "string", summary: "a folder of `npm pack` tarballs (name-version.tgz) to publish as they are, stamped, instead of packing the package again; a package without one is packed here" },
     },
     run: async (context, flags) => {
         const root = await repositoryRoot(context.cwd)
@@ -282,7 +319,7 @@ export const releasePublishVerb = defineVerb({
         const everyRow = await judgePlan(root, all, flags.base)
         const rows = everyRow.filter((row) => packages.some((pkg) => pkg.name === row.package))
         const due = publicationOrder(rows.filter((row) => row.action === "publish"), all)
-        // The CLI's own phase (CI's publish-cli plans it alone): a due CLI is judged at its stack pins before it is planned.
+        // The CLI's own phase (CI's publish run plans it alone): a due CLI is judged at its stack pins before it is planned.
         if (packages.every((pkg) => pkg.relativeDir === HELD_DIR) && due.length > 0) assertCliPins(root)
         const published: string[] = []
         if (flags.execute && due.length > 0) {
@@ -290,11 +327,11 @@ export const releasePublishVerb = defineVerb({
             if (dirty.length > 0) throw new Refusal("PUBLISH_DIRTY_TREE", "publish from a clean tree: the archive must equal the commit")
             await captureGit(["fetch", "--quiet", "origin", "main"], root)
             const head = await resolveSha(root, "HEAD")
-            if (!(await refExists(root, "origin/main")) || !(await isAncestor(root, head, "origin/main"))) {
+            if (!(await refExists(root, "origin/main")) || !(await onMainOrFollowsIt(root, head))) {
                 throw new Refusal("PUBLISH_NOT_ON_REMOTE_MAIN", "push the commit first (starci release push --execute); a published version must come from a commit on main")
             }
             await requireCiGreen(context, root, "release.publish", head)
-            await publishDue(due, all, root, published)
+            await publishDue(due, all, root, published, flags.tarballs)
         }
         const data: PublishData = { mode: flags.execute ? "publish" : "plan", rows, published }
         const table = formatTable([["PACKAGE", "VERSION", "TAG", "ACTION"], ...rows.map((row) => [row.package, row.version, row.distTag, row.action])])
