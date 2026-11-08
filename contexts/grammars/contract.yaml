@@ -1446,12 +1446,12 @@ mustKeep:
       owner: ui/components/page-header.md
     - id: DNA-CORE-EDGE-TOP
       role: card
-      law: A card is raised by its shadow and draws no border.
+      law: A card on the page ground is the white surface at the card radius with a 1px separator border and the card shadow; a surface nested in a card keeps the border and drops the shadow.
       measure:
         kind: style
         select: '[data-grammar-surface-card] > [data-grammar-frame="bounded"]'
         target: painted-box
-        checks: [{ metric: box-shadow, op: "!=", value: none }, { metric: border-width, op: "=", value: 0px }]
+        checks: [{ metric: box-shadow, op: "!=", value: none }, { metric: border-width, op: "=", value: 1px }, { metric: border-color, op: "=", value: { token: --separator } }]
       owner: ui/components/card.md
     - id: DNA-CORE-CARD-LABEL-OUTSIDE
       role: card

@@ -97,8 +97,7 @@ reads alike. House: the indicator and the option check sit at the end.
 
 Root, Header, Title, Description, Content, Footer. The variant is a surface level (`default`, `secondary`,
 `tertiary`, `transparent`), not an emphasis; padding, a small gap and the surface shadow; the corner is capped so
-large radii do not balloon. No size. House: the card has one depth, raised by its shadow on the page, because a surface never
-stands inside another, and a zoned card divides by the seams its shell draws.
+large radii do not balloon. No size. House: the card has one depth, raised by its shadow on the page with a 1px separator border (0.32.0), and a surface nested in a card keeps the border and drops the shadow, and a zoned card divides by the seams its shell draws.
 
 ## Modal
 

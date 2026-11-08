@@ -55,7 +55,7 @@ and the note its `footer`. A `Section` whose only child is one card is a heading
 stay legal.
 
 ## Variants
-The face is the grammar's, and the card has one depth, raised. A surface never stands inside another surface: a card in a
+The face is the grammar's, and the card has one depth, raised. EVERY surface on the page ground is a card (0.32.0, owner 2026-11-09): the surface ground, the card radius, a 1px `--separator` border AND the card shadow, for `SurfaceCard` of every kind, form panels, the standalone `DataTable` (its own card wrapper, HeroUI's native grey-wrapper look kept inside), the `Section kind="list"` frame and a framed `EmptyNotice`. A surface nested in a card, pane, drawer, dialog or popover keeps the border and drops the shadow (the border is never doubled). Captions and titles stay outside the card. `check:type` pins it. A surface never stands inside another surface: a card in a
 card, in `Pane surface`, in a `Dialog`, `Drawer`, `AlertDialog` or `Popover` is refused by a development throw and R340
 (`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`); across files the render graph refuses it too (R356). What sits in a surface is a box at the nested inset (a notice, a `Quote`, a
 stat cell), not a card. A decorative slab is a `custom` header zone of the card or the artwork of a painted card (SURFACE-6).

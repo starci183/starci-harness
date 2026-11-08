@@ -44,7 +44,7 @@ wrappers:
   - { file: core/frame/SurfaceCard/FigureCells.tsx, wraps: [Link] }
   - { file: core/frame/SurfaceCard/index.tsx, wraps: [Card],
       overrides: [
-        { kind: style, target: "Card.Root:shadow", reason: "a card is raised by its shadow on the page; a surface never stands inside another, so there is no nested edge" } ] }
+        { kind: style, target: "Card.Root:shadow", reason: "a card is raised by its shadow on the page and wears a 1px separator border; a surface nested in a card keeps the border and drops the shadow" } ] }
   - { file: core/branch/Tabs/index.tsx, wraps: [Tabs],
       overrides: [
         { kind: style, target: "Tabs.Tab:padding", reason: "an underline tab takes the row step per side and the first label stands on the content edge" } ] }

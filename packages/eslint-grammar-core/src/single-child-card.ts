@@ -8,8 +8,8 @@ import type { Context } from "./lib/types.ts"
  * The lone surface law (owner, 2026-11-09, SINGLE-CHILD-CARD): a card groups two or more different parts (figures + list +
  * actions) or carries zones (tabs, search, head actions). A table, a list or a chart standing alone IS the surface: the
  * title sits above it as a `Section` head and one line sits under it as `Section caption` (muted, sm). The Grammar draws a
- * standalone `DataTable` (`surface="card"`) and every `Section kind="list"` as ONE frame (border, card radius), so a
- * `SurfaceCard` around either is a second frame around the first.
+ * standalone `DataTable` (`surface="card"`) and every `Section kind="list"` as its own card (border, card radius, card shadow), so a
+ * `SurfaceCard` around either is a second card around the first.
  *
  * WHAT IT READS. A Grammar `SurfaceCard` (imported from `@starci/grammar`) with no zones: no `headers` or `footers` prop (an
  * empty array literal counts as none) and no `labelEnd` (head actions). Its body is read through fragments, `cond && <x/>`,

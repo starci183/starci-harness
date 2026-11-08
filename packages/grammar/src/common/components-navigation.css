@@ -943,24 +943,21 @@
     .starci-core-data-table[data-grammar-table-surface="none"] .table__row .table__cell { border-block-end: 1px solid var(--separator); background: transparent; }
 
     /*
-     * THE SINGLE-CHILD-CARD LAW (owner, 2026-11-09). A table standing alone is the surface: ONE frame, a 1px separator edge, the card
-     * radius and the surface ground, clipped, with the heading row inside it (muted, a hairline under it) and a hairline between rows.
-     * Both surfaces draw on the vendor's `secondary` variant, so no grey band (the primary root's fill and padding) and no inner white
-     * rounded body stand between the edge and the rows. Lint `single-child-card` refuses a SurfaceCard around a lone table.
+     * THE SINGLE-CHILD-CARD LAW (owner, 2026-11-09; refined 0.32.0). A table standing alone sits in ONE card: the wrapper below is white
+     * (`--surface`), at the card radius, with a 1px separator edge and the card shadow, clipped. Inside it the table keeps HeroUI's native
+     * primary look (the grey wrapper with the heading row on it, the rows on a white rounded body); this reverts the 0.29 flat frame.
+     * Lint `single-child-card` refuses a SurfaceCard around a lone table: the table is drawn as its own card.
      */
-    .starci-core-data-table[data-grammar-table-surface="card"] {
+    .starci-core-data-table-card {
+        min-width: 0;
+        max-width: 100%;
         border: 1px solid var(--separator);
         border-radius: var(--starci-core-surface-radius);
         background: var(--surface);
         color: var(--surface-foreground);
+        box-shadow: var(--surface-shadow);
         overflow: clip;
     }
-
-    .starci-core-data-table[data-grammar-table-surface="card"] .table__column { background: transparent; border-radius: 0 !important; }
-    .starci-core-data-table[data-grammar-table-surface="card"] .table__column::after { display: none; }
-    .starci-core-data-table[data-grammar-table-surface="card"] .table__header { background: transparent; border-block-end: 1px solid var(--separator); }
-    .starci-core-data-table[data-grammar-table-surface="card"] .table__row .table__cell { border-block-end: 1px solid var(--separator); background: transparent; }
-    .starci-core-data-table[data-grammar-table-surface="card"] .table__body .table__row:last-child .table__cell { border-block-end: 0; }
 
     .starci-core-data-table-scroll {
         max-width: 100%;
@@ -1430,6 +1427,12 @@
      */
     .starci-core-list-box-item:is([aria-selected="true"], [data-selected="true"]) {
         background: var(--default);
+    }
+
+    /* Selection is the fill alone: a press with the mouse leaves no ring (the vendor focus ring shows on keyboard focus only). */
+    .starci-core-list-box-item:not(:focus-visible):not([data-focus-visible="true"]) {
+        outline: none !important;
+        box-shadow: none !important;
     }
 
     [data-grammar-list-leading],

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.32.0 - 2026-11-09
+
+- Versioned with Grammar 0.32.0 (every surface on the page ground is a card); no rule changes.
+
 ## 0.31.0 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.31.0 (the final type scale).

@@ -71,6 +71,11 @@
 
         /* The distance an overlay rises or a part slides in from. */
         --grammar-motion-travel: 0.5rem;
+        /* The reaction burst: one rise of 4.5rem over a second, the drift and turn each emoji overrides. */
+        --grammar-reaction-rise: -4.5rem;
+        --grammar-loop-burst: 1s;
+        --starci-reaction-drift: 0px;
+        --starci-reaction-turn: 0deg;
 
         /* OPACITY. A disabled part is HeroUI's `--disabled-opacity`; these are the other three steps a part uses. */
         --grammar-opacity-hover: 0.7;
