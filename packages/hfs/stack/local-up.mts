@@ -35,8 +35,14 @@ export function migrationsDigest(repoRoot: string): string {
 
 /** Creates the environment's own login role and database if absent and sets its password (psql in the db container, SQL on stdin, never argv). */
 async function provisionDatabase(ctx: StackContext, local: LocalConfig, custody: Custody): Promise<string> {
-  const database = local.database;
-  if (!database) return 'database: none declared';
+  if (!local.database) return 'database: none declared';
+  const lines = [await provisionOne(ctx, local, custody, local.database)];
+  for (const database of local.databases) lines.push(await provisionOne(ctx, local, custody, database));
+  return lines.join('; ');
+}
+
+/** Creates one database and its own login role (the `database` block's, or a connection's of `databases`). */
+async function provisionOne(ctx: StackContext, local: LocalConfig, custody: Custody, database: NonNullable<LocalConfig['database']>): Promise<string> {
   const password = custody.values.get(database.password.key) ?? '';
   if (!SAFE_PASSWORD.test(password)) throw refusal('STACK_LOCAL_DB_PASSWORD', `${database.password.key} must be at least 8 characters of letters, digits, dash and underscore (the generated password kind is); the owner replaces it with secret unset and secret init`);
   const sql = [
@@ -46,7 +52,7 @@ async function provisionDatabase(ctx: StackContext, local: LocalConfig, custody:
   ].join('\n');
   const result = await compose(ctx, local, ['exec', '-T', database.service, 'psql', '-v', 'ON_ERROR_STOP=1', '-U', database.adminUser, '-d', 'postgres'], { values: composeValues(local, custody), input: sql });
   if (result.status !== 0) throw failure('STACK_LOCAL_DB_ROLE', `could not provision the role ${database.role}: ${(result.stderr.trim().split(/\r?\n/u)[0] ?? '').replaceAll(password, '[redacted]')}`);
-  return `database: role ${database.role} and database ${database.name} ready on port ${local.ports[database.port]}`;
+  return `database: role ${database.role} and database ${database.name} ready on port ${local.ports[database.port]}${'connection' in database ? ` (connection ${String((database as { connection: string }).connection)})` : ''}`;
 }
 
 /** Gives the app role the migrations created its own password for this environment (cluster roles are never shared: the db container is this environment's alone). */
@@ -142,7 +148,7 @@ function plan(local: LocalConfig, missing: string[]): string[] {
     ...local.setup.map((run) => `plan setup ${run.name}: ${run.argv.join(' ')}`),
     ...layerPlan(local),
     `plan services: ${local.services.map((service) => `${service.name} (wait ${service.wait})`).join(', ')}`,
-    ...(local.database ? [`plan database: own role ${local.database.role}, database ${local.database.name}, then starci app db migrate`, `plan seed levels: .starcistacks/seeds, then .starcistacks/${local.env}/seeds, each entry once per content hash (receipts in ${SEED_RECEIPTS})`] : []),
+    ...(local.database ? [`plan database: own role ${local.database.role}, database ${local.database.name}, then starci app db migrate`, ...local.databases.map((database) => `plan database (connection ${database.connection}): own role ${database.role}, database ${database.name}`), `plan seed levels: .starcistacks/seeds, then .starcistacks/${local.env}/seeds, each entry once per content hash (receipts in ${SEED_RECEIPTS})`] : []),
     ...local.seed.map((run) => `plan seed ${run.name}: ${run.argv.join(' ')}`),
     ...local.processes.map((run) => `plan process ${run.name}: ${run.argv.join(' ')}`),
     ...local.ready.map((row) => `plan ready ${row.name}: ${row.url}`),

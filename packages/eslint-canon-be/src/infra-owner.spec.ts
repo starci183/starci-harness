@@ -37,6 +37,9 @@ const SPEC = at("src/modules/domain/order/order.service.spec.ts")
 const FEATURE = at("src/features/api/plan/application/place-order.handler.ts")
 const INTEGRATION = at("src/modules/integrations/payos/payos.client.ts")
 const E2E = at("src/tests/world/use-test-world.ts")
+const GATEWAY = at("src/features/realtime/orders/transport/websocket/orders.gateway.ts")
+const GATEWAY_SPEC = at("src/features/realtime/orders/transport/websocket/orders.gateway.spec.ts")
+const FOO = at("src/modules/platform/foo/foo.service.ts")
 
 test("every rule this law declares is exported under its published name", () => {
     for (const [name, rule] of Object.entries(rules)) assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)
@@ -88,6 +91,10 @@ test("infra-import-owner: each raw library is used only by its owner", () => {
                 { filename: DOMAIN, code: `export const h = (client: { fetch(): number }) => client.fetch()` },
                 // platform/realtime owns the socket.io engines of the scale pattern: the adapters, the pg LISTEN connection and ioredis
                 { filename: REALTIME, code: `import { createAdapter } from "@socket.io/postgres-adapter"\nimport { createShardedAdapter } from "@socket.io/redis-adapter"\nimport { Client, Pool } from "pg"\nimport Redis from "ioredis"\nexport { createAdapter, createShardedAdapter, Client, Pool, Redis }` },
+                // the socket decorators: the gateway door of the websocket transport (and its spec) and platform/realtime
+                { filename: GATEWAY, code: `import { SubscribeMessage, WebSocketGateway } from "@nestjs/websockets"\nexport { SubscribeMessage, WebSocketGateway }` },
+                { filename: GATEWAY_SPEC, code: `import { WebSocketGateway } from "@nestjs/websockets"\nexport { WebSocketGateway }` },
+                { filename: REALTIME, code: `import { WebSocketGateway } from "@nestjs/websockets"\nexport { WebSocketGateway }` },
                 // libraries that are not in the table
                 { filename: DOMAIN, code: `import { Module } from "@nestjs/common"\nimport { Cron } from "node-cron-lookalike"\nexport { Module, Cron }` },
             ],
@@ -119,6 +126,11 @@ test("infra-import-owner: each raw library is used only by its owner", () => {
                 { filename: FEATURE, code: `import { createShardedAdapter } from "@socket.io/redis-adapter"\nexport { createShardedAdapter }`, errors: [{ messageId: "foreign" }] },
                 { filename: DOMAIN, code: `import { Client } from "pg"\nexport { Client }`, errors: [{ messageId: "foreign" }] },
                 { filename: QUEUE, code: `import Redis from "ioredis"\nexport { Redis }`, errors: [{ messageId: "foreign" }] },
+                // @nestjs/websockets is written by the gateway door and platform/realtime only
+                { filename: FEATURE, code: `import { WebSocketGateway } from "@nestjs/websockets"\nexport { WebSocketGateway }`, errors: [{ messageId: "foreign" }] },
+                { filename: FOO, code: `import { WebSocketGateway } from "@nestjs/websockets"\nexport { WebSocketGateway }`, errors: [{ messageId: "foreign" }] },
+                { filename: DOMAIN, code: `export { WebSocketGateway } from "@nestjs/websockets"`, errors: [{ messageId: "foreign" }] },
+                { filename: at("src/features/realtime/orders/transport/sse/orders.controller.ts"), code: `import { WebSocketGateway } from "@nestjs/websockets"\nexport { WebSocketGateway }`, errors: [{ messageId: "foreign" }] },
                 // another owner's library is not yours: http may not open a cache, cache may not queue
                 { filename: HTTP, code: `import Redis from "ioredis"\nexport { Redis }`, errors: [{ messageId: "foreign" }] },
                 { filename: CACHE, code: `import { Worker } from "bullmq"\nexport { Worker }`, errors: [{ messageId: "foreign" }] },

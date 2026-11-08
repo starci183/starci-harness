@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.102 - 2026-11-09
+
+- Changed: the CLI requires `@starci/hfs` 6.5.0 once npm serves it (cli-follow). In it: the new noun `starci app add connection <name> --owner <app> [--isolation database|schema] [--env-prefix <PREFIX>]` (a full app gains a second database connection: hfs.json, the platform/database files, the rosters, the dev database and the production secret) with `local.databases` for the dev stack; `starci app add webhook` and the new `starci app add inbox` lay down the full-app inbox (`platform/inbox`, `platform/idempotency`) so a webhook intake can claim its delivery key (R263); the infra owner table's `slot:<slot id>` owner, which gives `@nestjs/websockets` to the `<channel>.gateway.ts` door and `platform/realtime`; `@starci/eslint-canon-be` 3.21.0 (`socket.io-client` is a test library), `@starci/eslint-canon-fe` 9.16.10 and the Grammar lint family 0.27.2 peer `@starci/hfs ~6.5.0`; `socket.io-client` is pinned for both sides.
+
 ## 1.1.0-alpha.101 - 2026-11-09
 
 - Changed: the CLI requires `@starci/hfs` 6.4.0 once npm serves it (cli-follow). In it: `local.basePort` and R389, the role table of the native dev ports (front end base, api base+1, AI gateway base+2, the rest above, within base..base+99), with the doctor rows for the role table, an overlap with another app on the machine and the reserved 3900..3999 UI preview range; `starci app add queue|job` in a full app renders the one persisted Redis (manifest component, swarm and dev compose services, `QUEUE_REDIS_HOST`/`QUEUE_REDIS_PORT`, keys, images lock) and refuses `HFS_ADD_PLATFORM_MISSING` before writing when the platform capabilities its tree imports are missing; `@starci/eslint-canon-be` 3.20.2, `@starci/eslint-canon-fe` 9.16.9 and the Grammar lint family 0.27.1 peer `@starci/hfs ~6.4.0`.

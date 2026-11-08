@@ -79,12 +79,30 @@ test('add image, add service and add spec run the generators and refuse what a n
     [['add', 'image', '--inject', 'A=b'], 'starci app add image takes no --inject; only add service does'],
     [['add', 'spec', 'be/x.service.ts', '--event', 'e'], 'starci app add spec takes no --event'],
     [['add', 'service', 'be/x', 'y', '--shapes', 'a'], 'starci app add service takes no --shapes'],
-    [['add', 'image', 'extra'], 'starci app add takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts` or `image`'],
+    [['add', 'image', 'extra'], 'starci app add takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts`, `image` or `inbox`'],
   ] as [string[], string][]) {
     const result = await run(argv, { cwd: root });
     assert.equal(result.code, 2, argv.join(' '));
     assert.ok(result.err.startsWith(`starci app: ${message}\n`), `${argv.join(' ')}: ${result.err.split('\n')[0]}`);
   }
+});
+
+test('add inbox lays down the full inbox with no operand, writes nothing the second time and refuses an operand', async (t) => {
+  const root = await scaffolded(t);
+  const first = await run(['add', 'inbox'], { cwd: root });
+  assert.equal(first.code, 0, first.err);
+  assert.match(first.out, /^created be\/src\/modules\/platform\/idempotency\/index\.ts\n/);
+  assert.match(first.out, /created be\/src\/modules\/platform\/inbox\/inbox\.port\.ts\n/);
+  assert.match(first.out, /created be\/apps\/core\/src\/compose\/platform\.ts\n/);
+  assert.match(fs.readFileSync(path.join(root, 'be/apps/core/src/compose/webhooks.ts'), 'utf8'), /InboxModule\.register\(\{ isGlobal: true, connection: PRIMARY_ENTITY_MANAGER \}\)/);
+  const second = await run(['add', 'inbox'], { cwd: root });
+  assert.deepEqual([second.code, second.out, second.err], [0, '', ''], 'a no-op when the inbox is there');
+  const named = await run(['add', 'inbox', 'acme'], { cwd: root });
+  assert.equal(named.code, 2);
+  assert.ok(named.err.startsWith('starci app: starci app add takes '), named.err);
+  const flagged = await run(['add', 'inbox', '--event', 'x'], { cwd: root });
+  assert.equal(flagged.code, 2);
+  assert.ok(flagged.err.startsWith('starci app: starci app add inbox takes no --event'), flagged.err);
 });
 
 test('check --staged is the pre-commit guard alone', async (t) => {

@@ -7,6 +7,8 @@ import { ScaffoldError } from './service.mjs';
 export interface ModuleImport {
   readonly importLine: string;
   readonly entry: string;
+  /** Import lines of further symbols the entry's arguments use (an entry such as `InboxModule.register({ connection: PRIMARY_ENTITY_MANAGER })`). */
+  readonly extraImports?: readonly string[];
 }
 
 /** Where a compose group lives and which verb reads it. */
@@ -69,11 +71,12 @@ export function planComposeGroup(input: ComposeGroupInput & { entries: readonly 
   const { relative, file, exists, marker, body, text: original } = readComposeGroup(input);
   let text = original;
   let compactBody = compositionCode(body).replace(/\s+/g, '');
-  for (const { importLine, entry } of input.entries) {
-    const lines = text.split('\n');
-    if (!lines.some(line => line.replace(/;\s*$/, '') === importLine)) {
+  for (const { importLine, entry, extraImports = [] } of input.entries) {
+    for (const wanted of [importLine, ...extraImports]) {
+      const lines = text.split('\n');
+      if (lines.some(line => line.replace(/;\s*$/, '') === wanted)) continue;
       const lastImport = lines.reduce((last, line, index) => line.startsWith('import ') ? index : last, -1);
-      lines.splice(lastImport + 1, 0, importLine);
+      lines.splice(lastImport + 1, 0, wanted);
       text = lines.join('\n');
     }
     const compactEntry = entry.replace(/\s+/g, '');

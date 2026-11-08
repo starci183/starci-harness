@@ -174,6 +174,9 @@ connection `platform/database` holds `<conn>.connection.ts` (`<CONN>_CONNECTION`
 (`parse<Conn>DatabaseConfig`, reading only `<ENVPREFIX>_*` keys) and `<conn>.decorators.ts`
 (`Inject<Conn>EntityManager` over `<CONN>_ENTITY_MANAGER`); `DatabaseModule.register({ isGlobal: true, connections })`
 opens them at the app root. No other file declares a connection or calls the framework's injectors.
+`starci app add connection <name> --owner <app> [--isolation database|schema] [--env-prefix <PREFIX>]` declares one: the
+`hfs.json` entry, those three files and their exports, the `<PREFIX>_URL` key of every roster, the dev database and the
+production secret `<prefix>-url`; the owner app then reads the config and passes the connection to its `DatabaseModule`.
 
 Why: a second pool onto the same database, or an injector named after a feature, splits transactions and hides which
 database a service queries.

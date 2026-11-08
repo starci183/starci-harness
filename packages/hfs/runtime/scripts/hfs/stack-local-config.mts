@@ -36,6 +36,11 @@ export interface LocalDatabase {
   service: string; port: string; name: string; role: string; urlEnv: string; urlAs: 'env' | 'file'; adminUser: string;
   password: CustodyRef; adminPassword: CustodyRef; appRole: string | null; appPassword: CustodyRef | null;
 }
+/** One more database of the environment: the database of one hfs.json connection, in the compose service the `database` block names. */
+export interface LocalConnectionDatabase extends LocalDatabase {
+  /** The hfs.json connection this database serves (its URL reaches only the runs that list `urlEnv` in `files`). */
+  connection: string;
+}
 /** One dev-only value the owner-armed `secret init` creates once. */
 export interface CustodyGenerator extends CustodyRef { kind: string; bytes: number; publicKey: string | null }
 
@@ -47,6 +52,8 @@ export interface LocalBlock {
   ports: Record<string, number>;
   services: LocalService[];
   database: LocalDatabase | null;
+  /** The databases of the other connections (`local.databases`), provisioned beside `database` on its service. */
+  databases: LocalConnectionDatabase[];
   composeEnv: Array<CustodyRef & { name: string }>;
   /** Least grants: the keys one compose service may read, mounted from `STACK_GRANT_<NAME>` (a directory holding only those keys). */
   grants: Array<{ name: string; keys: string[] }>;
@@ -62,7 +69,7 @@ export interface LocalBlock {
   resources: { diskGb: number; ramMb: number };
 }
 
-const TOP = ['project', 'basePort', 'ports', 'services', 'database', 'composeEnv', 'grants', 'dirs', 'custody', 'setup', 'seed', 'processes', 'ready', 'verify', 'origins', 'resources'];
+const TOP = ['project', 'basePort', 'ports', 'services', 'database', 'databases', 'composeEnv', 'grants', 'dirs', 'custody', 'setup', 'seed', 'processes', 'ready', 'verify', 'origins', 'resources'];
 const COMMAND = ['name', 'argv', 'cwd', 'heavy', 'skipIfExists', 'env', 'files'];
 const SEED = [...COMMAND, 'after'];
 const PROCESS = [...COMMAND, 'port', 'health'];
@@ -209,6 +216,50 @@ function databaseOf(c: Collector, value: unknown, ports: Record<string, number>,
   };
 }
 
+/**
+ * The `databases` list: one entry per further hfs.json connection, `{connection, urlEnv, password, name?, role?, urlAs?}`. The service, port,
+ * administrator and its password are the `database` block's (a list entry may restate them); the role and database default to the
+ * environment role suffixed with the connection (`<project>_<env>_<connection>`), and every role, database, URL key and password key is its own.
+ */
+function connectionDatabasesOf(c: Collector, value: unknown, base: LocalDatabase | null, ports: Record<string, number>, services: LocalService[], role: string): LocalConnectionDatabase[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) { c.problem('databases', 'must be a list of {connection, urlEnv, password} entries'); return []; }
+  if (value.length > 0 && base === null) c.problem('databases', 'needs the `database` block: it names the service, port and administrator the further databases share');
+  const seen = new Set<string>();
+  const out: LocalConnectionDatabase[] = [];
+  value.forEach((item, index) => {
+    const at = `databases[${index}]`;
+    if (base === null || !closedFields(c, at, item, ['connection', 'service', 'port', 'name', 'role', 'urlEnv', 'urlAs', 'adminUser', 'password', 'adminPassword'], 'local')) return;
+    const entry = item as Record<string, unknown>;
+    patternField(c, `${at}.connection`, entry.connection, NAME);
+    const connection = String(entry.connection);
+    const own = entry.role === undefined ? `${role}_${connection.replaceAll('-', '_')}` : String(entry.role);
+    patternField(c, `${at}.role`, own, SQL_NAME);
+    const name = entry.name === undefined ? own : String(entry.name);
+    patternField(c, `${at}.name`, name, SQL_NAME);
+    patternField(c, `${at}.urlEnv`, entry.urlEnv, KEY);
+    const service = entry.service === undefined ? base.service : String(entry.service);
+    const port = entry.port === undefined ? base.port : String(entry.port);
+    if (!services.some((candidate) => candidate.name === service)) c.problem(`${at}.service`, 'must be one of the started services');
+    if (!Object.hasOwn(ports, port)) c.problem(`${at}.port`, 'must name a declared port');
+    const urlAs = String(entry.urlAs ?? 'file');
+    if (!['env', 'file'].includes(urlAs)) c.problem(`${at}.urlAs`, 'must be env (the URL in the process environment) or file (<KEY>_FILE, preferred)');
+    const adminUser = entry.adminUser === undefined ? base.adminUser : String(entry.adminUser);
+    patternField(c, `${at}.adminUser`, adminUser, SQL_NAME);
+    if (own === adminUser || own === 'postgres') c.problem(`${at}.role`, 'must be a role of this connection alone, never the superuser');
+    if (own === base.role || name === base.name) c.problem(`${at}`, 'must have its own role and database: the `database` block already owns that one');
+    if (seen.has(connection) || seen.has(`role:${own}`) || seen.has(`db:${name}`) || seen.has(`url:${String(entry.urlEnv)}`)) c.problem(at, 'repeats a connection, role, database or URL key of an earlier entry');
+    seen.add(connection); seen.add(`role:${own}`); seen.add(`db:${name}`); seen.add(`url:${String(entry.urlEnv)}`);
+    if (String(entry.urlEnv) === base.urlEnv) c.problem(`${at}.urlEnv`, 'must differ from the URL key of the `database` block');
+    out.push({
+      connection, service, port, name, role: own, urlEnv: String(entry.urlEnv), urlAs: urlAs as 'env' | 'file', adminUser, appRole: null, appPassword: null,
+      password: ref(c, `${at}.password`, entry.password),
+      adminPassword: entry.adminPassword === undefined ? base.adminPassword : ref(c, `${at}.adminPassword`, entry.adminPassword),
+    });
+  });
+  return out;
+}
+
 function custodyOf(c: Collector, value: unknown): CustodyGenerator[] {
   if (value === undefined) return [];
   if (!Array.isArray(value)) { c.problem('custody', 'must be a list of generated dev values'); return []; }
@@ -262,9 +313,11 @@ export function normalizeLocal(raw: unknown, { project, env }: { project: string
   const services = servicesOf(c, entry.services, ports);
   const role = `${project}_${env}`.toLowerCase().replaceAll(/[^a-z0-9]+/gu, '_').replace(/^[^a-z]+/u, 'a');
   const names = new Set<string>();
+  const database = databaseOf(c, entry.database, ports, services, role);
   const block: LocalBlock = {
     project: compose, basePort: basePortOf(c, entry.basePort), ports, services,
-    database: databaseOf(c, entry.database, ports, services, role),
+    database,
+    databases: connectionDatabasesOf(c, entry.databases, database, ports, services, role),
     composeEnv: listOf(c, 'composeEnv', entry.composeEnv, (item, index) => {
       const at = `composeEnv[${index}]`;
       if (!closedFields(c, at, item, ['name', 'member', 'key'], 'local')) return { name: '', member: '', key: '' };

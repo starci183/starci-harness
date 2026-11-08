@@ -265,6 +265,7 @@ ruleParams:
       dotenv: []
       "@nestjs/event-emitter": []
       "@nestjs/platform-socket.io": [platform/realtime]
+      "@nestjs/websockets": [platform/realtime, "slot:be.feature.realtime.websocket"]   # the socket decorators: the gateway door of the websocket transport and the hub capability
       socket.io: [platform/realtime]
       graphql-subscriptions: [platform/realtime]
       graphql-ws: [platform/realtime]

@@ -11,6 +11,8 @@
 //   starci app add reactor payment-status --event payment-settled --from payment --service PaymentStatusService=@modules/domain/order
 //   starci app add queue receipt                          modules/queues/receipt: the typed producer
 //   starci app add projection order-summary --connection order
+//   starci app add connection relay --owner relay [--isolation database|schema] [--env-prefix RELAY_DB]   one more database connection (add-connection.mts)
+//   starci app add inbox                                  a full app's delivery inbox (platform/inbox, platform/idempotency, their catalogs and InboxModule); `add webhook` lays the same down
 //   starci app add block handoff-block --shapes prepared,sent,returned   a front-end unit in the shape-slot pattern (add-fe-unit.mts)
 //   starci app add page handoffs | overlay invite-member --kind modal | layout settings   a route page, overlay or segment layout
 //                                                         (add-fe-page.mts, add-fe-overlay.mts, add-fe-layout.mts)
@@ -23,6 +25,7 @@ import { ScaffoldError, pascalOf } from './service.mjs';
 import { addTable, graphqlPlatformFiles } from './add-table.mjs';
 import { addModuleImport, compositionCode, readComposeGroup, writeComposeGroup } from './add-compose.mjs';
 import { addApp } from './add-app.mjs';
+import { addConnection } from './add-connection.mjs';
 import { addModule } from './add-module.mjs';
 import { FE_UNIT_LAYERS, addFeUnit } from './add-fe-unit.mjs';
 import { addFePage } from './add-fe-page.mjs';
@@ -31,6 +34,10 @@ import { addFeLayout } from './add-fe-layout.mjs';
 import { ensureLiteCli } from './add-cli-lite.mjs';
 import { ensureLiteQueuesCli } from './queues-cli-lite.mjs';
 import { addLiteWebhookInbox } from './add-inbox-lite.mjs';
+import { planFullInbox } from './add-inbox-full.mjs';
+import type { FullInboxPlan } from './add-inbox-full.mjs';
+import { EditionRefusal } from './edition-gate.mjs';
+import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { planFullQueue, planLiteQueue } from './add-queue-lite.mjs';
 import { addBuiltinLiteCli, fillKnownForms, formsOf, planKind, readAddContext } from './add-plan.mjs';
 import type { AddKindSpec } from './add-plan.mjs';
@@ -44,6 +51,8 @@ import { registerLiteDomainService, registerLiteExports } from './lite-exports.m
 export interface AddOptions {
   readonly fe?: boolean | undefined;
   readonly app?: string | undefined;
+  readonly isolation?: string | undefined;
+  readonly envPrefix?: string | undefined;
   readonly shapes?: string | readonly string[] | false | undefined;
   readonly read?: string | undefined;
   readonly kind?: string | undefined;
@@ -57,6 +66,10 @@ export interface AddOptions {
 export interface AddResult {
   created: string[];
   registered: { patterns: string[]; kinds: string[] };
+  /** Files an existing app root already had that the noun rewrote (app-root relative), when it reports them apart. */
+  updated?: string[];
+  /** What the owner still does after the noun (an owner step the verb cannot take). */
+  notes?: string[];
 }
 
 /** The declared app, as far as the composition wiring reads it. */
@@ -69,6 +82,7 @@ interface RepoLike {
 interface ComposeEntry {
   importLine: string;
   entry: string;
+  extraImports?: string[];
 }
 
 /** A skeleton registration that moves into an area group. */
@@ -99,8 +113,13 @@ const FE_OWNERS: Readonly<Record<string, (input: { repoRoot: string, name: strin
  * @returns {{ created: Array<string>, registered: { patterns: Array<string>, kinds: Array<string> } }} The files written (app-root relative) and what hfs.json gained.
  */
 export function addKind({ repoRoot, noun, name, options = {}, now = Date.now }: { repoRoot: string, noun: string, name: string, options?: AddOptions, now?: () => number }): AddResult {
+  if (noun === 'inbox') return { created: addInbox(repoRoot), registered: { patterns: [], kinds: [] } };
   if (noun === 'table') {
     const result = addTable({ root: repoRoot, name, fe: options.fe === true, now });
+    return { ...result, registered: { patterns: [], kinds: [] } };
+  }
+  if (noun === 'connection') {
+    const result = addConnection({ root: repoRoot, name, options: { owner: options.owner as string | undefined, isolation: options.isolation, envPrefix: options.envPrefix } });
     return { ...result, registered: { patterns: [], kinds: [] } };
   }
   if (noun === 'app') {
@@ -141,6 +160,7 @@ type KindSpec = AddKindSpec & { readonly wire?: { readonly file: string, readonl
 function writeKind({ repoRoot, noun, name, now, manifest, repo, spec: declared, declarationFile, values, forms, beRoot, patterns, planned }: AddContext): AddResult {
   const spec: KindSpec = declared;
   if (noun === 'api' || noun === 'webhook') preflightFeatureComposition({ repoRoot, repo, noun, name });
+  const fullInbox = noun === 'webhook' ? planFullInbox({ repoRoot, repo }) : null;
   const liteQueue = planLiteQueue({ repoRoot, repo, noun, patterns, now });
   const fullQueue = planFullQueue({ repoRoot, repo, noun, planned });
   const bootstrapCreated = noun === 'cli' && repo.edition === 'lite' ? ensureLiteCli({ root: repoRoot, manifest, repo }) : [];
@@ -148,15 +168,34 @@ function writeKind({ repoRoot, noun, name, now, manifest, repo, spec: declared, 
     fs.mkdirSync(path.dirname(file.absolute), { recursive: true });
     fs.writeFileSync(file.absolute, file.body);
   }
+  const fullInboxCreated = fullInbox ? fullInbox.apply() : [];
   registerFeatureExports({ repoRoot, repo, noun, values, patterns });
   if (spec.wire) wire({ beRoot, wire: spec.wire, forms, noun, name });
   const inboxCreated = addLiteWebhookInbox({ root: repoRoot, repo, noun, provider: name, values, now });
   const queueBacking = [...(liteQueue ? liteQueue.apply() : []), ...(fullQueue ? fullQueue.apply() : [])];
   const queuesCli = liteQueue && noun === 'job' ? ensureLiteQueuesCli(repoRoot) : [];
-  const platformCreated = noun === 'api' || noun === 'webhook' ? wireFeature({ repoRoot, repo, noun, name }) : [];
+  const platformCreated = noun === 'api' || noun === 'webhook' ? wireFeature({ repoRoot, repo, noun, name, inbox: fullInbox?.compose === true }) : [];
   const graphqlDoor = noun === 'api' ? ensureGraphqlPeers(repoRoot) : [];
   const registered = register({ declarationFile, spec: { patterns, trigger: spec.trigger, optionalSlots: noun === 'api' ? [GRAPHQL_CONTRACT_SLOT] : [] } });
-  return { created: [...bootstrapCreated, ...planned.map((file) => path.relative(repoRoot, file.absolute).replaceAll('\\', '/')), ...platformCreated, ...inboxCreated, ...queueBacking, ...queuesCli, ...graphqlDoor], registered };
+  return { created: [...bootstrapCreated, ...planned.map((file) => path.relative(repoRoot, file.absolute).replaceAll('\\', '/')), ...fullInboxCreated, ...platformCreated, ...inboxCreated, ...queueBacking, ...queuesCli, ...graphqlDoor], registered };
+}
+
+/**
+ * `starci app add inbox` (no operand): the delivery inbox of a full app - platform/inbox and platform/idempotency, their catalogs in
+ * each app's compose/platform.ts and InboxModule in the webhooks group of the api app - for an app that has its webhooks already
+ * (`add webhook` lays the same down for a new one). Planned whole before anything is written; a no-op, writing nothing, when the
+ * capability is there and composed. A lite app gets its inbox from `add webhook`.
+ */
+function addInbox(repoRoot: string): string[] {
+  const declarationFile = path.join(repoRoot, 'hfs.json');
+  if (!fs.existsSync(declarationFile)) throw new ScaffoldError('HFS_ADD_NOT_AN_APP', 'starci app add runs at the app root (the folder of hfs.json)');
+  const repo: AddContext['repo'] = readRepoDeclaration(loadSlotManifest(), repoRoot);
+  if (!repo.sides?.be) throw new ScaffoldError('HFS_ADD_NO_BACK_END', 'this app has no back-end side');
+  if (repo.edition === 'lite') throw new EditionRefusal('add inbox', 'add inbox: full edition only; a lite app gets its provider inbox from `starci app add webhook`');
+  preflightFeatureComposition({ repoRoot, repo, noun: 'inbox', name: '' });
+  const plan: FullInboxPlan = planFullInbox({ repoRoot, repo })!; // a full app always has a plan
+  if (plan.empty) return [];
+  return [...plan.apply(), ...(plan.compose ? wireFeature({ repoRoot, repo, noun: 'inbox', name: '', inbox: true }) : [])];
 }
 
 /** The slot of the emitted GraphQL snapshot (contracts/<app>/schema.graphql), which an app serving a GraphQL api feature opts into. */
@@ -248,15 +287,25 @@ function ensureGraphqlPlatform(repoRoot: string): string[] {
 }
 
 /** The typed area members of one transport, including lite transactional handoff capabilities. */
-function transportComposition(noun: string, name: string, edition: string | undefined): ComposeEntry[] {
+function transportComposition(noun: string, name: string, edition: string | undefined, inbox: boolean): ComposeEntry[] {
   const entries: ComposeEntry[] = [];
   if (noun === 'api') {
     entries.push({ importLine: 'import { GraphqlModule } from "@modules/platform/graphql"', entry: 'GraphqlModule.register({ isGlobal: true })' });
     const symbol = `${pascalOf(name)}GraphqlModule`;
     entries.push({ importLine: `import { ${symbol} } from "@features/api/${name}"`, entry: symbol });
   } else {
-    const symbol = `${pascalOf(name)}HttpModule`;
-    entries.push({ importLine: `import { ${symbol} } from "@features/webhooks/${name}"`, entry: symbol });
+    if (noun === 'webhook') {
+      const symbol = `${pascalOf(name)}HttpModule`;
+      entries.push({ importLine: `import { ${symbol} } from "@features/webhooks/${name}"`, entry: symbol });
+    }
+    // A full app's delivery inbox (add-inbox-full.mts) is registered once, over the primary connection that holds its claims table.
+    if (inbox) {
+      entries.push({
+        importLine: 'import { InboxModule } from "@modules/platform/inbox"',
+        entry: 'InboxModule.register({ isGlobal: true, connection: PRIMARY_ENTITY_MANAGER })',
+        extraImports: ['import { PRIMARY_ENTITY_MANAGER } from "@modules/platform/database"'],
+      });
+    }
     if (edition === 'lite') {
       const inbox = `${pascalOf(name)}InboxModule`;
       const importLine = `import { ${inbox} } from "@modules/domain/${name}-inbox"`;
@@ -275,7 +324,7 @@ function transportComposition(noun: string, name: string, edition: string | unde
  * Compose each generated transport in its declared API owner through an explicitly typed area group. The root only spreads
  * the group; it never acquires a second feature list. Lite's inbox capability belongs to its webhook group as well.
  */
-function wireFeature({ repoRoot, repo, noun, name }: { repoRoot: string, repo: RepoLike, noun: string, name: string }): string[] {
+function wireFeature({ repoRoot, repo, noun, name, inbox = false }: { repoRoot: string, repo: RepoLike, noun: string, name: string, inbox?: boolean }): string[] {
   const { app, relative, file, lines } = featureCompositionRoot({ repoRoot, repo, noun });
   const created: string[] = [];
   const area = noun === 'api' ? 'api' : 'webhooks';
@@ -288,7 +337,7 @@ function wireFeature({ repoRoot, repo, noun, name }: { repoRoot: string, repo: R
   }
   const entries = groups.get(area)!; // set above
   if (noun === 'api') created.push(...ensureGraphqlPlatform(repoRoot));
-  entries.push(...transportComposition(noun, name, repo.edition));
+  entries.push(...transportComposition(noun, name, repo.edition, inbox));
   for (const [group, members] of groups) {
     const symbol = `${group}Modules`;
     const argument = group === 'domain' && repo.edition === 'lite' ? 'verifyAccessToken' : '';

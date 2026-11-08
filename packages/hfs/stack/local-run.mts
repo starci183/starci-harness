@@ -92,7 +92,28 @@ export function runEnvironment(ctx: StackContext, local: LocalConfig, run: Local
       env[`${local.database.urlEnv}_FILE`] = file;
     }
   }
+  // A further database reaches only the runs that list its URL key in `files` (the owner of the connection).
+  if (custody && role) {
+    for (const database of local.databases) {
+      if (!run.files.includes(database.urlEnv)) continue;
+      const other = connectionUrl(local, custody, database);
+      if (other === null) continue;
+      if (database.urlAs === 'env') env[database.urlEnv] = other;
+      else {
+        const file = path.join(custody.directory, database.urlEnv);
+        fs.writeFileSync(file, other, { mode: 0o600 });
+        env[`${database.urlEnv}_FILE`] = file;
+      }
+    }
+  }
   return env;
+}
+
+/** The loopback connection string of a further database's own role, built in memory from custody (the password key is its own). */
+export function connectionUrl(local: LocalConfig, custody: Custody, database: LocalConfig['databases'][number]): string | null {
+  const password = custody.values.get(database.password.key);
+  if (!password) return null;
+  return `postgresql://${database.role}:${encodeURIComponent(password)}@127.0.0.1:${local.ports[database.port]}/${database.name}`;
 }
 
 /** The loopback connection string of the environment's own database role, built in memory from custody. */
