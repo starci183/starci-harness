@@ -37,6 +37,7 @@ updates:
       - /packages/stylelint-canon
       - /packages/test-world
       - /packages/tsconfig
+      - /packages/visual-effects
     schedule:
       interval: weekly
     groups:

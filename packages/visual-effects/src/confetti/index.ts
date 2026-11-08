@@ -1,0 +1,6 @@
+export { confettiSystem, fireConfetti } from "./fire.ts"
+export type { ConfettiOptions } from "./fire.ts"
+export { PRESETS } from "./presets.ts"
+export type { ConfettiPreset } from "./presets.ts"
+export { advance, isVisible, launch, opacityOf } from "./physics.ts"
+export type { ConfettiBurst, Piece, PieceShape } from "./physics.ts"
