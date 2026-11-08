@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.16.7 - 2026-11-08
+
+- Fixed: the test-scope Sonar way block (the app config and the plain-source config) selects the specs with positive selectors (`SPEC_FILES`, `apps/*/src/**/*.{spec,e2e-spec}.{ts,tsx}` and the package twin) instead of `ignores: ['**/*', '!**/*.spec...']`. The harness lint scope (`canonScope` of `@starci/hfs`) refuses a negated selector, so every app's `starci app check --gate lint` ended in `ESLint tool error: eslint source scope is unavailable ... unsupported canon ignores selectors` and linted nothing. The block selects the same files as before and carries the name `starci-fe/sonar-way-tests`, by which `scopeToPackages` narrows it to the specs of the package subpaths.
+
 ## 9.16.6 - 2026-11-08
 
 - Added (R235 `SCAN_SMELL`, the first Sonar way scan of a real app against local lint): the lint now reports what the server reported. `starci-fe/no-duplicate-import` (S3863, fixable) replaces the core `no-duplicate-imports` that spared a separate type import: a value and a type from one module are one `import { value, type Type }`, and `--fix` merges them. `starci-fe/no-nested-conditional` (S3358) now follows the server: a conditional inside a branch, a test, a call argument, a template or a cast is nested, and only an array, object, function or JSX expression starts a new reading. `starci-fe/prefer-string-raw` (S7780) also refuses a `String.raw` template that holds no backslash (fixable). `starci-fe/no-bidirectional-character` (text:S6389) refuses a raw bidirectional control character in any file. Front end: `no-useless-fragment` (S6749, fixable when the one child is an element), `no-nested-component` (S6478), `no-children-prop` (S6748; its message says a connected block passes the slot under another prop name to the pure component, FE_CONNECTED_BLOCK_RENDER_PAIR and FE_WORLD_OWNER_RENDER_BOUNDARY), `use-state-destructured` (S6754), `prefer-tag-over-role` (S6819).

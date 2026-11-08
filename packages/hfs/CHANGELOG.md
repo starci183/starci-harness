@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.2.7 - 2026-11-08
+
+- Fixed: the canon pins move to `@starci/eslint-canon-fe` 9.16.7 and `@starci/eslint-canon-be` 3.19.7, whose test-scope Sonar way block no longer uses a negated `ignores` selector that `canonScope` refuses (every app lint ended in `unsupported canon ignores selectors`).
+- Added: `src/lint-canon-scope.spec.mts` loads the built flat config of both canons, as an app's `be`, `fe` and `packages` configs compose it, and runs `canonScope` over it: it must not throw, and a source file and a spec file must both be in scope.
+
 ## 6.2.6 - 2026-11-08
 
 - Changed: `HFS_CANON_PIN_DRIFT` is report-only in `app check --env local` for a pin whose exact version the app's lockfile resolved from a registry on this machine (`starci deps install-local`), not for a spec that spells `-local.<n>`: `deps publish-local` publishes the version committed in git, so a local build has no distinguishing version. A range pin, or the same version resolved from npm, is a real drift.

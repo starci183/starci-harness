@@ -64,8 +64,10 @@ export const BORROWED: Recommended = Object.freeze<Recommended>({
     "no-console": "error",
 })
 
-/** Everything but the specs, as the ignores of a block that judges the specs alone (a later negation re-includes, and the package config appends its own ignores after it). */
-export const EXCEPT_SPECS: readonly string[] = Object.freeze(["**/*", ...OUTSIDE_THE_SCAN_FILES.map((spec) => `!${spec}`)])
+/** The specs of the source, as the positive `files` of the block that judges the specs alone (no negated selector: the lint scope of the harness proves a scope from plain globs only). */
+export const SPEC_FILES: readonly string[] = Object.freeze(["**/*.{spec,e2e-spec}.{ts,mts,cts,js,mjs,cjs}"])
+/** The name of the test-scope Sonar way block, which the package config narrows to the specs of the package subpaths. */
+export const TEST_SCOPE_BLOCK = "starci-be/sonar-way-tests"
 
 const levelOf = (setting: RuleEntry): TSESLint.SharedConfig.RuleLevel => (Array.isArray(setting) ? setting[0] : setting)
 
@@ -113,12 +115,14 @@ export const buildBeConfig = async ({ hfs, plugin, recommended }: {
         // Sonar way: what the scan raises is refused while the code is written; a spec is outside the scan, so outside this block.
         { files: [...SOURCE_FILES], ignores: [...OUTSIDE_THE_SCAN_FILES], plugins: { sonarjs, unicorn }, rules: sonarWayRules(sonarjs, "be").rules },
         // Sonar way, test scope: the scan reads the specs with the rules of the tests (sonar.tests), so the specs of the source are judged by those and by no other.
-        { files: [...SOURCE_FILES], ignores: [...EXCEPT_SPECS], plugins: { sonarjs }, rules: sonarWayTestRules(sonarjs) },
+        { name: TEST_SCOPE_BLOCK, files: [...SPEC_FILES], plugins: { sonarjs }, rules: sonarWayTestRules(sonarjs) },
     ]
 }
 
 /** The back-end subpaths of a root workspace package: everything under `src/` but the front-end subpaths `workbench/` and `public/`; the workbench contract (`workbench/contract/`) is React-free and stays back end. */
 export const PACKAGE_SOURCE_FILES = Object.freeze(["packages/*/src/**/*.{ts,mts,cts,js,mjs,cjs}"])
+const PACKAGE_SPEC_FILES = Object.freeze(["packages/*/src/**/*.{spec,e2e-spec}.{ts,mts,cts,js,mjs,cjs}"])
+const PACKAGE_CONTRACT_SPEC_FILES = Object.freeze(["packages/*/src/workbench/contract/**/*.{spec,e2e-spec}.{ts,mts,cts,js,mjs,cjs}"])
 const PACKAGE_FRONT_END = Object.freeze(["packages/*/src/workbench/**", "packages/*/src/public/**"])
 const PACKAGE_CONTRACT_FILES = Object.freeze(["packages/*/src/workbench/contract/**/*.{ts,mts,cts,js,mjs,cjs}"])
 /** What a package folder never lints: build output, coverage output and installed packages. */
@@ -137,9 +141,12 @@ export const buildBePackagesConfig = async (input: Parameters<typeof buildBeConf
     const [, ...blocks] = await buildBeConfig(input)
     return [
         { ignores: [...PACKAGE_IGNORED] },
-        ...blocks.flatMap((block) => [
-            { ...block, files: [...PACKAGE_SOURCE_FILES], ignores: [...(block.ignores ?? []), ...PACKAGE_FRONT_END] },
-            { ...block, files: [...PACKAGE_CONTRACT_FILES] },
-        ]),
+        ...blocks.flatMap((block) => {
+            const tests = block.name === TEST_SCOPE_BLOCK
+            return [
+                { ...block, files: [...(tests ? PACKAGE_SPEC_FILES : PACKAGE_SOURCE_FILES)], ignores: [...(block.ignores ?? []), ...PACKAGE_FRONT_END] },
+                { ...block, files: [...(tests ? PACKAGE_CONTRACT_SPEC_FILES : PACKAGE_CONTRACT_FILES)] },
+            ]
+        }),
     ]
 }

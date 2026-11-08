@@ -15,7 +15,7 @@ import tsPlugin from "@typescript-eslint/eslint-plugin"
 import sonarjs from "eslint-plugin-sonarjs"
 import unicorn from "eslint-plugin-unicorn"
 import { starciBeConfig } from "./index.ts"
-import { SOURCE_FILES } from "./lib/config.ts"
+import { SOURCE_FILES, SPEC_FILES } from "./lib/config.ts"
 import { OUTSIDE_THE_SCAN_FILES, SONAR_SYNTAX_RULES } from "../runtime/scripts/lib/sonar-syntax-rules.mjs"
 import { SONAR_WAY_EXTRA, SONAR_WAY_NOT_APPLICABLE, SONAR_WAY_TEST_RULES, sonarWayRules } from "../runtime/scripts/lib/sonar-way.mjs"
 import { fixtureHfs } from "../fixtures/typed/tester.ts"
@@ -114,8 +114,9 @@ test("source the server passes is clean to the Sonar way rules: an injected cons
 test("the specs are judged by the test-scoped Sonar way rules and by no other Sonar block", async () => {
     const block = (await starciBeConfig({ hfs: fixtureHfs() }))[3]
     assert.ok(block, "the config has a test-scope Sonar way block")
-    assert.deepEqual(block.files, [...SOURCE_FILES])
-    assert.ok(block.ignores?.includes("**/*") && block.ignores.includes("!**/*.spec.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"), "only the specs remain")
+    assert.deepEqual(block.files, [...SPEC_FILES])
+    assert.equal(block.ignores, undefined, "the block selects the specs by a positive selector and ignores nothing")
+    assert.ok([...(block.files ?? [])].every((glob) => typeof glob === "string" && !glob.startsWith("!")), "no negated selector")
     assert.ok(block.plugins?.["sonarjs"]?.rules)
     const names = Object.keys(block.rules ?? {})
     assert.deepEqual(names, SONAR_WAY_TEST_RULES.map((name) => `sonarjs/${name}`))

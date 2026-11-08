@@ -11,7 +11,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { Linter } from "eslint"
 import { starciFePackagesConfig, recommended } from "./index.ts"
-import { PACKAGE_IGNORED, PACKAGE_SOURCE_FILES } from "./lib/config.ts"
+import { PACKAGE_IGNORED, PACKAGE_SOURCE_FILES, PACKAGE_SPEC_FILES, TEST_SCOPE_BLOCK } from "./lib/config.ts"
 import { packagesHfsFromDeclaration } from "./lib/hfs.ts"
 
 const TSCONFIG = JSON.stringify({
@@ -47,7 +47,7 @@ test("the config narrows the files to the front-end subpaths of the packages and
     const scoped = config.slice(1)
     assert.ok(scoped.length >= 2, "the rule block and the Sonar way block")
     for (const block of scoped) {
-      assert.deepEqual(block.files, [...PACKAGE_SOURCE_FILES])
+      assert.deepEqual(block.files, [...(block.name === TEST_SCOPE_BLOCK ? PACKAGE_SPEC_FILES : PACKAGE_SOURCE_FILES)])
       assert.ok((block.ignores ?? []).includes("packages/*/src/workbench/contract/**"))
     }
     assert.deepEqual(PACKAGE_SOURCE_FILES, ["packages/*/src/workbench/**/*.{ts,tsx}", "packages/*/src/public/**/*.{ts,tsx}", "packages/*/src/**/*.tsx"])

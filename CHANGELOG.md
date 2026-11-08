@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.96 - 2026-11-08
+
+- Fixed: the lint of every app ended in `ESLint tool error: eslint source scope is unavailable ... unsupported canon ignores selectors`, because the canons' new test-scope Sonar way block used a negated `ignores` selector that the lint scope refuses. `@starci/eslint-canon-fe` 9.16.7 and `@starci/eslint-canon-be` 3.19.7 select the specs with a positive selector, and `@starci/hfs` 6.2.7 pins them and holds a spec that runs `canonScope` over the built config of both canons.
+
 ## 1.1.0-alpha.95 - 2026-11-08
 
 - Changed: `deps publish-local` publishes each package under the version committed in git (`@starci/hfs` 6.2.3 stays 6.2.3), never a `-local` one, so the pins, a canon's `~6.2.0` peer and the check cache keys are the ones the npm build has and an install needs no `--legacy-peer-deps`. A version npm does not serve is published, one npm serves only when npm's `starciSource` equals this source's, and any other is refused `PUBLISH_LOCAL_VERSION_TAKEN` (in the plan and on the source as built); a rebuild of a version replaces the registry's copy (unpublish, then publish). The row schema is `starci/deps-publish-local@3`.

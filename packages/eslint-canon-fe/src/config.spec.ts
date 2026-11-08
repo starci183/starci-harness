@@ -22,7 +22,7 @@ import plugin, {
   starciTypedSourceConfig,
   why,
 } from "./index.ts"
-import { BORROWED, COUNTING, PLAIN_SOURCE_FILES, SLOT_FREE_RULES } from "./lib/config.ts"
+import { BORROWED, COUNTING, PLAIN_SOURCE_FILES, SLOT_FREE_RULES, SPEC_FILES } from "./lib/config.ts"
 import { eslintPlugin } from "./lib/eslint-boundary.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { PACKAGE_ROOT, RUNTIME_ROOT } from "./lib/package-root.ts"
@@ -405,7 +405,9 @@ test("the Sonar way block lints the source outside the specs with the pinned son
 test("the test-scoped Sonar way rules lint the specs and the product source block leaves them out", () => {
   const tests = blockOf(config, 3)
   const testRules = rulesOf(tests)
-  assert.ok(present(tests.ignores, "the ignores of the test block").some((glob) => glob === "!**/*.spec.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"), "the specs are re-included")
+  assert.equal(tests.ignores, undefined, "the test block ignores nothing")
+  assert.deepEqual(present(tests.files, "the files of the test block"), [...SPEC_FILES], "the specs of the source are selected by positive globs")
+  assert.ok(present(tests.files, "the files of the test block").every((glob) => typeof glob === "string" && !glob.startsWith("!")), "no negated selector")
   assert.ok(pluginsOf(tests)["sonarjs"]?.rules)
   for (const name of ["sonarjs/prefer-specific-assertions", "sonarjs/no-duplicate-test-title", "sonarjs/composite-assertions"]) assert.equal(firstOf(testRules[name]), "error", name)
 })

@@ -30,14 +30,16 @@ export interface SonarPlugins {
   readonly unicorn: ESLint.Plugin
 }
 
-/** Everything but the specs, as the ignores of a block that judges the specs alone (a later negation re-includes, and the package scoping appends its own ignores after it). */
-export const EXCEPT_SPECS: readonly string[] = Object.freeze(["**/*", ...OUTSIDE_THE_SCAN_FILES.map((spec) => `!${spec}`)])
+/** The name of the test-scope Sonar way block, which the package scoping narrows to the specs of the package subpaths. */
+export const TEST_SCOPE_BLOCK = "starci-fe/sonar-way-tests"
 
 /** A disable directive is a weakening of lint, and one that suppresses nothing is dead weight. */
 export const linterOptions: Readonly<{ noInlineConfig: true; reportUnusedDisableDirectives: "error" }> = Object.freeze({ noInlineConfig: true, reportUnusedDisableDirectives: "error" })
 
 /** The product source of a front end: every app's `src/` and every workspace package's `src/` (slots fe.* and repo.packages). */
 export const SOURCE_FILES = Object.freeze(["apps/*/src/**/*.{ts,tsx}", "packages/*/src/**/*.{ts,tsx}"])
+/** The specs of that source, the positive `files` of the block that judges the specs alone (no negated selector: the lint scope of the harness proves a scope from plain globs only). */
+export const SPEC_FILES = Object.freeze(["apps/*/src/**/*.{spec,e2e-spec}.{ts,tsx}", "packages/*/src/**/*.{spec,e2e-spec}.{ts,tsx}"])
 
 /** Build output, installed packages, generated wire types and the harness's report directory are never linted. */
 export const IGNORED = Object.freeze(["**/node_modules/**", "**/.next/**", "**/dist/**", "**/coverage/**", "**/__generated__/**", ".starci/**"])
@@ -118,7 +120,7 @@ export const buildFeConfig = ({ hfs, plugin, source, reactHooks, tsPlugin, sonar
     // Sonar way: what the scan raises is refused while the code is written; a spec is outside the scan, so outside this block.
     { files: [...SOURCE_FILES], ignores: [...OUTSIDE_THE_SCAN_FILES], plugins: { sonarjs: sonar.sonarjs, unicorn: sonar.unicorn }, rules: sonarWayRules(sonar.sonarjs, "fe").rules },
     // Sonar way, test scope: the scan reads the specs with the rules of the tests (sonar.tests), so the specs of the source are judged by those and by no other.
-    { files: [...SOURCE_FILES], ignores: [...EXCEPT_SPECS], plugins: { sonarjs: sonar.sonarjs }, rules: sonarWayTestRules(sonar.sonarjs) },
+    { name: TEST_SCOPE_BLOCK, files: [...SPEC_FILES], plugins: { sonarjs: sonar.sonarjs }, rules: sonarWayTestRules(sonar.sonarjs) },
   ]
 }
 
@@ -143,6 +145,7 @@ export const SLOT_FREE_RULES = Object.freeze([
 
 /** The source of a plain front-end tree: its `src/`. */
 export const PLAIN_SOURCE_FILES = Object.freeze(["src/**/*.{ts,tsx}"])
+const PLAIN_SPEC_FILES = Object.freeze(["src/**/*.{spec,e2e-spec}.{ts,tsx}"])
 
 /**
  * The flat config of a TypeScript front-end tree that is no HFS app: the same fences as an app (typed linting, no inline directive, every rule at
@@ -186,12 +189,13 @@ export const buildPlainSourceConfig = ({ root, plugin, hooks, reactHooks, tsPlug
       rules: { ...canonRules, ...hooks, ...BORROWED },
     },
     { files: [...PLAIN_SOURCE_FILES], ignores: [...OUTSIDE_THE_SCAN_FILES], plugins: { sonarjs: sonar.sonarjs, unicorn: sonar.unicorn }, rules: sonarWayRules(sonar.sonarjs, "fe").rules },
-    { files: [...PLAIN_SOURCE_FILES], ignores: [...EXCEPT_SPECS], plugins: { sonarjs: sonar.sonarjs }, rules: sonarWayTestRules(sonar.sonarjs) },
+    { name: TEST_SCOPE_BLOCK, files: [...PLAIN_SPEC_FILES], plugins: { sonarjs: sonar.sonarjs }, rules: sonarWayTestRules(sonar.sonarjs) },
   ]
 }
 
 /** The front-end files of a root workspace package: its workbench (drawn with Grammar) and its public face, and every `.tsx` file of the package source wherever it sits (a `src/client/` renderer is drawn too: FE-PACKAGES-2); the React-free workbench contract stays back end. */
 export const PACKAGE_SOURCE_FILES = Object.freeze(["packages/*/src/workbench/**/*.{ts,tsx}", "packages/*/src/public/**/*.{ts,tsx}", "packages/*/src/**/*.tsx"])
+export const PACKAGE_SPEC_FILES = Object.freeze(["packages/*/src/workbench/**/*.{spec,e2e-spec}.{ts,tsx}", "packages/*/src/public/**/*.{spec,e2e-spec}.{ts,tsx}", "packages/*/src/**/*.{spec,e2e-spec}.tsx"])
 const PACKAGE_CONTRACT = Object.freeze(["packages/*/src/workbench/contract/**"])
 /** What a package folder never lints: installed packages, build output, generated wire types. */
 export const PACKAGE_IGNORED = Object.freeze(["**/node_modules/**", "**/.next/**", "**/dist/**", "**/coverage/**", "**/__generated__/**"])
@@ -207,5 +211,5 @@ export const PACKAGE_IGNORED = Object.freeze(["**/node_modules/**", "**/.next/**
 export const scopeToPackages = (config: readonly Linter.Config[]): Linter.Config[] =>
   config.map((block) => {
     if (block.files === undefined) return { ...block, ignores: [...PACKAGE_IGNORED] }
-    return { ...block, files: [...PACKAGE_SOURCE_FILES], ignores: [...(block.ignores ?? []), ...PACKAGE_CONTRACT] }
+    return { ...block, files: [...(block.name === TEST_SCOPE_BLOCK ? PACKAGE_SPEC_FILES : PACKAGE_SOURCE_FILES)], ignores: [...(block.ignores ?? []), ...PACKAGE_CONTRACT] }
   })
