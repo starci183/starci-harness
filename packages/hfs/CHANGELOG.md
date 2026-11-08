@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.2.5 - 2026-11-08
+
+- Fixed: a whole `starci app check --env prod` crashed with `HFS_MANIFEST_INVALID: internal error: finding code CI_PARITY_DB_SKIPPED has no failure-code catalog entry loaded` on a host with no Docker and no `--db-url-env` database: the warning of the skipped database migration checks had no entry in `runtime/modules/kernel/failure-codes.yaml`. The entry is added beside `CI_PARITY_SONAR_SKIPPED`, and the spec `src/check-report-why.spec.mts` now fails when any `CI_PARITY_*` code the parity family exports or emits has no catalog entry.
+
 ## 6.2.3 - 2026-11-08
 
 - Fixed: the Sonar scan of `starci app check` on a server without branch support (Community) no longer reads the main project first. A derived project `<key>-local` the token can analyse (`api/qualitygates/project_status` answers 200, which a project analysis token may read) is scanned as it is, with no read of the main project and no gate binding; only a missing derived project is created, which needs the token to read the main project and to create projects and select a gate, and without that the scan is skipped naming the remedy (create `<key>-local` and bind it to the gate, or give the token Create Projects). The gate digest of the scan key falls back to the gate's name when the token cannot read its conditions, and to no reuse when it reads neither: the scan still runs. The verdict of the derived project's gate is read with the scan's own token. Specs: `src/check-cache-sonar-scan.spec.mts`.

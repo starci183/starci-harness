@@ -3769,6 +3769,17 @@ CI_PARITY_SONAR_GATE_FAILED:
   owner: op-retry
   kind: check-finding
 
+CI_PARITY_DB_SKIPPED:
+  title: "The database migration checks of the CI parity family could not run on this host"
+  title_vi: "Không chạy được các bước kiểm tra migration database của họ CI parity trên máy này"
+  meaning_vi: "`starci app check` không chạy được các bước kiểm tra migration database của họ build parity (`npm run db:lint`, `starci app db drift`) vì máy này không có Docker và không có database trống nào được nêu bằng `--db-url-env`. Đây là cảnh báo, không bao giờ là kết quả xanh; CI vẫn chạy bước này và chính nó phát hiện BE_ENTITY_SCHEMA_DRIFT."
+  causes_vi:
+    - "Vi phạm R383: máy không cài Docker hoặc Docker không chạy, nên không dựng được database tạm để áp migration."
+    - "Không truyền `--db-url-env` trỏ tới một database trống."
+  nextStep_vi: "Bật Docker (hoặc truyền `--db-url-env` tới một database trống) rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
 CI_PARITY_SONAR_SKIPPED:
   title: "The Sonar scan could not run on this host"
   title_vi: "Không chạy được lần quét Sonar trên máy này"
