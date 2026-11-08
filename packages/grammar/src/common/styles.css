@@ -13,7 +13,7 @@
 @layer starci-grammar-common {
     .grammar-common-root {
         /*
-         * THE SPACING SCALE IS 0 4 8 12 24 32 (common/spacing.ts), and every value below names one step by its role.
+         * THE SPACING SCALE IS 0 4 8 12 16 24 32 (common/spacing.ts), and every value below names one step by its role.
          * Gaps, by the relation between siblings: identity 4 < inline 8 < row 12 < section 24 < region 32.
          */
         --grammar-identity-gap: 0.25rem;
@@ -31,9 +31,15 @@
         --grammar-inset-open: 1.5rem;
         /* The page gutter steps by breakpoint (12, 24 from 48rem, 32 from 70rem), never fluid. */
         --grammar-page-inset: 0.75rem;
-        /* Card box padding, one place per axis: SurfaceCard and SurfaceListCard content. */
-        --grammar-card-padding-inline: var(--grammar-inset);
-        --grammar-card-padding-block: var(--grammar-inset);
+        /*
+         * Card box padding, one place per axis: SurfaceCard and SurfaceListCard content. A card holds its content one
+         * step wider than the container inset (16, not 12), so its body clears the card radius and every card kind puts
+         * its content on one inline edge. A row or band the card divides by lines keeps the row rhythm (12) on its block
+         * sides and the card's 16 inline, so rows stay equal in height and their text lines up with the body.
+         */
+        --grammar-inset-card: 1rem;
+        --grammar-card-padding-inline: var(--grammar-inset-card);
+        --grammar-card-padding-block: var(--grammar-inset-card);
         /* Dialog and drawer: header, body and footer share this inset on every side. */
         --grammar-overlay-inset: var(--grammar-inset);
         /*
@@ -940,6 +946,10 @@
 
     /* A card is raised. A surface never stands inside another surface, so there is one depth and no nested edge. */
     .starci-core-surface {
+        /* Rows the card divides (static, list, accordion): row rhythm on the block sides, the card's inline padding. */
+        --starci-core-row-inset: var(--grammar-row-gap) var(--grammar-card-padding-inline);
+        /* Stat strip cells in a card are boxes of their own: the card padding on every side. */
+        --starci-core-strip-cell-inset: var(--grammar-card-padding-block) var(--grammar-card-padding-inline);
         border: 0;
         box-shadow: var(--surface-shadow);
     }
@@ -1643,6 +1653,8 @@
     }
 
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { --starci-core-tab-padding-start: var(--grammar-inline-gap); }
+    /* In a card zone the first filter label stands on the card's inline edge (16), like the rows and the table below it. */
+    .starci-core-surface-zone .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { padding-inline-start: 0 !important; }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab[aria-selected="true"] { font-weight: var(--grammar-weight-medium); }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__indicator { top: auto !important; background: var(--accent); }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tab-content { gap: var(--grammar-identity-gap); }
@@ -2422,7 +2434,8 @@
     }
 
     @container starci-core-surface (max-width: 28rem) {
-        .starci-core-surface-label {
+        /* A narrow card stacks its label row, except when the end holds one status badge ("Live"): it stays beside the label. */
+        .starci-core-surface-label:not(:has(> .starci-core-surface-label-end > [data-component="Badge"]:only-child)) {
             align-items: flex-start;
             flex-direction: column;
         }

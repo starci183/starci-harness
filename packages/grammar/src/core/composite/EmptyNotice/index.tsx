@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import type { ButtonIntent } from "../../buttonIntent.js"
 import { Button } from "../../leaf/Button/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
@@ -33,6 +34,11 @@ export type EmptyNoticeProps = NoChildren & EmptyNoticeMark & {
     readonly message: string
     readonly description?: string
     readonly actionLabel?: string
+    /**
+     * The action's weight. `commit` (default) is the region's one primary; `neutral` is the outlined button, for an empty
+     * notice in a secondary place (a rail, a side card) on a page whose primary already stands in its header.
+     */
+    readonly actionIntent?: Extract<ButtonIntent, "commit" | "neutral">
     readonly actionStartContent?: ReactNode
     readonly isActionPending?: boolean
     readonly onAction?: () => void
@@ -50,6 +56,7 @@ export const EmptyNotice = ({
     iconSource,
     artwork,
     actionLabel,
+    actionIntent = "commit",
     actionStartContent,
     isActionPending = false,
     onAction,
@@ -72,7 +79,7 @@ export const EmptyNotice = ({
         </div>
         {actionLabel === undefined ? null : (
             <Button
-                intent="commit"
+                intent={actionIntent}
                 size="sm"
                 startContent={actionStartContent}
                 isPending={isActionPending}

@@ -426,7 +426,7 @@ test('a spec record keys on the packages its run loaded: an hfs bump keeps every
     return w.ran;
   };
   assert.deepEqual(await rerun({ 'node_modules/@starci/hfs': '6.2.0' }), [], 'an hfs bump re-runs no spec');
-  assert.deepEqual(await rerun({ 'node_modules/@starci/grammar': '0.26.0' }), [], 'a Grammar bump re-runs no spec that does not load it');
+  assert.deepEqual(await rerun({ 'node_modules/@starci/grammar': '0.27.0' }), [], 'a Grammar bump re-runs no spec that does not load it');
   assert.deepEqual(await rerun({ 'node_modules/typeorm': '0.3.28' }), [['be/src/b.service.spec.ts']], 'a package bump re-runs the specs that loaded it');
   assert.deepEqual(await rerun({ 'be/node_modules/zod': '4.1.0' }), [['be/src/b.service.spec.ts']], 'a nested install counts by its own path');
   assert.deepEqual(await rerun({ 'node_modules/@nestjs/common': '11.1.0' }), [['be/src/a.service.spec.ts', 'be/src/b.service.spec.ts']]);

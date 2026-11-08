@@ -1,6 +1,19 @@
 # Changelog
 
-## 0.26.0 - 2026-11-08 - entry, pricing and step marks
+## 0.27.0 - 2026-11-09 - entry, pricing and step marks (0.26.0 never reached npm; this release carries it)
+
+- Changed (values): a card holds its content 16 in, not 12. The spacing scale gains 16 as the card's own step
+  (`--grammar-inset-card`, `COMMON_SPACING_SCALE[4]`); `--grammar-card-padding-inline`/`-block` read it, so a body card, a
+  tile and a zone sit 16 from the card edge. Rows a card divides by lines (static, list, accordion) take
+  `--starci-core-row-inset: 12 16`: the row rhythm stays on the block sides, so every row keeps one height and its hover
+  still reaches the card edge, and the text lines up with the body. A stat strip cell in a card takes 16 on every side
+  (8 in a pane), a table in a card puts its outer columns on 16, and a card zone's first filter tab label stands on 16.
+  Panes, overlays, bands and the page gutter keep 12. Only the card is wider, so no app changes.
+- Added: `EmptyNotice actionIntent` (`commit` default, or `neutral`): an empty notice in a secondary place (a rail, a side card)
+  takes the outlined button, so it never adds a second primary beside the page header's. Story `Data views/Empty notice action intent`.
+- Fixed: a tile foot with no figure and no badge no longer renders an empty first item, so its action stands on the card's
+  inline edge instead of one inline gap (8) in.
+
 - Added: `Text size="figure"`, the leading value of a region (FONT-5): a price, a total, a count read first, at the figures cell's
   size and weight with tabular figures. Story `Surfaces/Pricing cards`.
 - Added: `Stepper completeMarker="check"` (markers kind): a complete step shows a check instead of its number, chosen by a

@@ -4,7 +4,7 @@
  *
  *   starci-grammar/no-literal    a component rule holds no hardcoded colour, radius, type size, shadow geometry, motion
  *                                 or opacity, and no `var()` fallback that is a literal. It reads a token or a ramp.
- *   starci-grammar/spacing-scale a padding, margin, gap or inset is on the scale 0 4 8 12 24 32 (src/common/spacing.ts),
+ *   starci-grammar/spacing-scale a padding, margin, gap or inset is on the scale 0 4 8 12 16 24 32 (src/common/spacing.ts),
  *                                 never fluid.
  *
  * A custom property declaration is a token definition: it may hold a literal (the ramps in `src/common/ramps.css`, a
@@ -78,7 +78,7 @@ const inForcedColors = (node: ChildNode): boolean => {
 const messages = (ruleName: string) => utils.ruleMessages(ruleName, {
     literal: (property: string, what: string, hint: string) => `\`${property}\` holds ${what}. ${hint}`,
     fallback: (token: string, fallback: string) => `\`var(${token}, ${fallback})\` falls back to a literal. Define \`${token}\` once on the root (a ramp in src/common/ramps.css) and read it bare.`,
-    off: (property: string, length: string) => `\`${property}: ${length}\` is not a step of the spacing scale (0 4 8 12 24 32). Name the step by its role through a --grammar-* token.`,
+    off: (property: string, length: string) => `\`${property}: ${length}\` is not a step of the spacing scale (0 4 8 12 16 24 32). Name the step by its role through a --grammar-* token.`,
     fluid: (property: string, what: string) => `\`${property}\` is fluid (\`${what}\`). A spacing value steps by breakpoint; it never follows the viewport.`,
 })
 
