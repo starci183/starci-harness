@@ -59,6 +59,10 @@ export const AUTH_ERROR_CODES = {
     EmailNotConfirmed: "IDENTITY_EMAIL_NOT_CONFIRMED",
     PasswordInvalid: "IDENTITY_PASSWORD_INVALID",
     ResetTokenInvalid: "IDENTITY_RESET_TOKEN_INVALID",
+    ProviderStateInvalid: "PASSPORT_PROVIDER_STATE_INVALID",
+    ProviderRejected: "PASSPORT_PROVIDER_REJECTED",
+    ProviderUnavailable: "PASSPORT_PROVIDER_UNAVAILABLE",
+    ProvidersInvalid: "PASSPORT_PROVIDERS_INVALID",
 } as const
 
 /** One wire code of sign-in. */
@@ -84,6 +88,10 @@ export const AUTH_ERROR_KINDS: Readonly<Record<AuthErrorCode, AuthErrorKind>> = 
     [AUTH_ERROR_CODES.EmailNotConfirmed]: "forbidden",
     [AUTH_ERROR_CODES.PasswordInvalid]: "invalid",
     [AUTH_ERROR_CODES.ResetTokenInvalid]: "invalid",
+    [AUTH_ERROR_CODES.ProviderStateInvalid]: "unauthenticated",
+    [AUTH_ERROR_CODES.ProviderRejected]: "unauthenticated",
+    [AUTH_ERROR_CODES.ProviderUnavailable]: "unavailable",
+    [AUTH_ERROR_CODES.ProvidersInvalid]: "internal",
 }
 
 /** The person a session belongs to. */
@@ -138,3 +146,15 @@ export type AuthOutcome<T> =
 
 /** The facts both sides hold about a password. */
 export const PASSWORD_BOUNDS = { min: 8, max: 256, bcryptMaxBytes: 72 } as const
+
+/** Where the browser goes after any provider's round trip: the same answer as the Google one. */
+export type ProviderRedirect = GoogleRedirect
+
+/** The door that starts a sign-in provider's round trip (`/auth/<id>`); Google's is `AUTH_DOORS.google`. */
+export const providerDoor = (provider: string): string => `/${AUTH_PREFIX}/${provider}`
+
+/** The door a sign-in provider sends the browser back to (`/auth/<id>/callback`); Google's is `AUTH_DOORS.googleCallback`. */
+export const providerCallbackDoor = (provider: string): string => `${providerDoor(provider)}/callback`
+
+/** The contract of the full edition (OIDC algorithms, codes, claims and principal), merged into this entry. */
+export * from "./oidc.ts"

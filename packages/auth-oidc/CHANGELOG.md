@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 - 2026-11-09
+
+Retired: the package merges into `@starci/auth` 0.6.0. This final version is a deprecated re-export, so a full app keeps building; migrate with `starci app codemod auth-merge --execute`.
+
+- Changed: `./server` re-exports `@starci/auth/oidc`, `./client` `@starci/auth/client/oidc`, `./contracts` the OIDC contract of `@starci/auth/oidc`, `./testing` `FakeClock` and `FakeOidcIssuer` of `@starci/auth/testing`. Every runtime name of 0.2.0 is still exported and is `@starci/auth`'s own value; the injection tokens are the same symbols.
+- Changed: depends on `@starci/auth` 0.6.0 only (`jose` and `@starci/common` come with it); the optional Nest peers are `@starci/auth`'s.
+- Removed: the source of the OIDC client, now in `packages/auth/src/oidc`, `src/client/oidc` and `src/testing/oidc.ts`, with its specs.
+- Specs: `src/reexport.spec.ts` (each 0.2.0 name is the merged value; the tokens; a token of the fake issuer verifies through the retired entries).
+
 ## 0.2.0 - 2026-11-08
 
 Keycloak behind the back end: the sign-in, the sign-up and the federated sign-in of an app whose tokens never reach a browser. Additive; every existing export and behaviour is unchanged.

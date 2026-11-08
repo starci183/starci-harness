@@ -1,7 +1,7 @@
 {
   "name": "@starci/auth",
-  "version": "0.5.0",
-  "description": "The sign-in of a StarCi lite app in one package: a NestJS module (EdDSA access tokens with a multi-key JWKS, bcrypt passwords, Google OAuth with state and PKCE, rotating refresh tokens with a reuse grace window and reuse detection, a failures-only sign-in limit, the refresh cookie), the door contracts, a front-end auth client (access token in memory, one shared refresh, signed out only on 401 or 403) with React bindings, and test doubles.",
+  "version": "0.6.0",
+  "description": "The sign-in of a StarCi app in one package, for both editions. Lite: a NestJS module (EdDSA access tokens with a multi-key JWKS, bcrypt passwords, pluggable OAuth sign-in providers with state and PKCE (Google, GitHub), rotating refresh tokens with a reuse grace window and reuse detection, a failures-only sign-in limit, the refresh cookie). Full: the OIDC client of the identity provider (discovery, JWKS with caching and rotation, algorithm-pinned token checks, role mapping, the authorization code flow with PKCE and nonce, Keycloak brokering and admin) and issuer presets (Keycloak, Google ID tokens, GitHub Actions OIDC). The door contracts, the front-end auth clients (lite and OIDC) with React bindings, and test doubles with a fake OIDC issuer.",
   "keywords": [
     "auth",
     "jwt",
@@ -9,8 +9,13 @@
     "eddsa",
     "passport",
     "google-oauth",
+    "github-oauth",
     "pkce",
     "refresh-token",
+    "oidc",
+    "openid-connect",
+    "keycloak",
+    "github-actions",
     "nestjs",
     "react"
   ],
@@ -34,6 +39,10 @@
       "types": "./dist/server/index.d.ts",
       "default": "./dist/server/index.js"
     },
+    "./oidc": {
+      "types": "./dist/oidc/index.d.ts",
+      "default": "./dist/oidc/index.js"
+    },
     "./client": {
       "types": "./dist/client/index.d.ts",
       "default": "./dist/client/index.js"
@@ -41,6 +50,10 @@
     "./client/react": {
       "types": "./dist/react/index.d.ts",
       "default": "./dist/react/index.js"
+    },
+    "./client/oidc": {
+      "types": "./dist/client/oidc/index.d.ts",
+      "default": "./dist/client/oidc/index.js"
     },
     "./contracts": {
       "types": "./dist/contracts/index.d.ts",
@@ -67,20 +80,21 @@
   },
   "scripts": {
     "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc -p tsconfig.build.json && node -e \"const fs = require('node:fs'); for (const f of fs.readdirSync('dist', {recursive: true}).filter((n) => n.endsWith('.d.ts'))) fs.writeFileSync('dist/' + f, fs.readFileSync('dist/' + f, 'utf8').replace(/((?:from |import\\()['\\x22]\\.\\.?\\/[^'\\x22]+)\\.ts(['\\x22])/g, (all, head, quote) => head + '.js' + quote))\"",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.isolated.json",
     "lint": "eslint .",
     "test": "npm run typecheck && npm run lint && node --test --experimental-test-coverage --test-coverage-include=\"src/**/*.ts\" --test-coverage-exclude=\"src/**/*.spec.ts\" --test-coverage-lines=90 \"src/**/*.spec.ts\"",
     "prepack": "npm run build",
     "prepublishOnly": "npm test && npm run build"
   },
   "dependencies": {
-    "@starci/common": "1.0.1",
     "@nestjs/passport": "11.0.5",
+    "@starci/common": "1.0.1",
     "bcryptjs": "3.0.3",
     "jose": "6.2.12",
     "passport": "0.7.0",
     "passport-google-oauth20": "2.0.0",
-    "passport-local": "1.0.0"
+    "passport-local": "1.0.0",
+    "passport-oauth2": "1.8.0"
   },
   "peerDependencies": {
     "@nestjs/common": "^11.0.0",
@@ -112,6 +126,7 @@
     "@types/node": "22.20.4",
     "@types/passport-google-oauth20": "2.0.17",
     "@types/passport-local": "1.0.38",
+    "@types/passport-oauth2": "1.8.0",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "eslint": "10.13.0",

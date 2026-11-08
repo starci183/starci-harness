@@ -1,5 +1,7 @@
 import type { SecretInput } from "./primitives.ts"
 import type { AccountDirectory, AuthClock, AuthIds, AuthLogger, RateCounter, SessionStore } from "./ports.ts"
+import type { GoogleOptions } from "./providers/google.ts"
+import type { AnySignInProvider } from "./providers/provider.ts"
 
 /** One signing key of the key set. */
 export interface SigningKeyOptions {
@@ -11,17 +13,8 @@ export interface SigningKeyOptions {
     readonly keyId?: string | undefined
 }
 
-/** The Google OAuth client and where Google sends the browser back. */
-export interface GoogleOptions {
-    /** The public client id. */
-    readonly clientId: string
-    /** The client secret. */
-    readonly clientSecret: SecretInput
-    /** The registered callback address (`<api>/auth/google/callback`). */
-    readonly callbackUrl: string
-    /** The name of the cookie that carries one Google round trip. */
-    readonly stateCookie?: string | undefined
-}
+/** The Google OAuth client: declared beside the Google provider, named here as 0.5.0 did. */
+export type { GoogleOptions } from "./providers/google.ts"
 
 /** The refresh cookie. */
 export interface RefreshCookieOptions {
@@ -70,8 +63,13 @@ export interface AuthOptions {
     readonly bcryptCost: number
     /** The origin of the web app: a return address is accepted only on this origin, and the Google callback lands there. */
     readonly returnOrigin: string
-    /** The Google client; null when the deployment has none (the Google door is then unavailable). */
-    readonly google: GoogleOptions | null
+    /**
+     * The Google client of 0.5.0; null or absent when the deployment has none (the Google door is then unavailable). The same as listing
+     * `google({...})` in `providers`; naming Google both ways is a configuration error.
+     */
+    readonly google?: GoogleOptions | null | undefined
+    /** The sign-in providers beyond email and password (`[google({...}), github({...})]`), each served at `/auth/<id>` and `/auth/<id>/callback`. */
+    readonly providers?: readonly AnySignInProvider[] | undefined
     /** The refresh cookie. */
     readonly cookie: RefreshCookieOptions
     /** The sign-in budget. */

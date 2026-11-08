@@ -24,12 +24,20 @@ export interface GoogleProfile {
     readonly picture: string | null
 }
 
-/** The sign-in decisions the app makes for the two strategies; each throws the app's error when it refuses. */
+/** What any sign-in provider told us about the person who consented: Google's facts, with the provider that told them. */
+export interface ProviderProfile extends GoogleProfile {
+    /** The provider id (`github`); with `subject` it names the external account. */
+    readonly provider: string
+}
+
+/** The sign-in decisions the app makes for the strategies; each throws the app's error when it refuses. */
 export interface AuthAuthenticator {
     /** Verifies an email and password; answers the person or throws. */
     verifyPassword(email: string, password: string): Promise<AuthSubject>
     /** Finds, links or creates the person a verified Google profile stands for; answers the person or throws. */
     signInWithGoogle(profile: GoogleProfile): Promise<AuthSubject>
+    /** Finds, links or creates the person another provider's profile stands for (GitHub); needed only when the app registers such a provider. */
+    signInWithProvider?(profile: ProviderProfile): Promise<AuthSubject>
 }
 
 /** The account facts a refresh needs to decide that a session may go on. */

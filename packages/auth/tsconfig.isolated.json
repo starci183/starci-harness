@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.build.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "isolatedDeclarations": true
+  },
+  "include": ["src/oidc", "src/client/oidc", "src/testing/oidc.ts", "src/contracts"],
+  "exclude": ["src/**/*.spec.ts"]
+}

@@ -7,7 +7,7 @@ import type { AuthTokens } from "./tokens.ts"
 
 /**
  * What `domain/identity` asks of an identity source: the principal of a bearer token, or a refusal. The lite edition's source is
- * `AuthPrincipalVerifier`; the full edition's is the OIDC verifier of `@starci/auth-oidc` behind this same interface, so guards,
+ * `AuthPrincipalVerifier`; the full edition's is the OIDC verifier of `@starci/auth/oidc` behind this same interface, so guards,
  * `@Public` and `@Credential` do not change between editions.
  */
 export interface PrincipalVerifier {
