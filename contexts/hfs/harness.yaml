@@ -354,9 +354,11 @@ slots:
     holds: one npm package per folder, its manifest, lockfile, readme, license and changelog
     rule: CONTRIB-2; CONTRIB-20
   - id: packages.build-config
-    path: "packages/<name>/{tsconfig.json,tsconfig.*.json,eslint.config.ts,stylelint.config.ts}"
+    path:
+      - "packages/<name>/{tsconfig.json,tsconfig.*.json,eslint.config.ts,stylelint.config.ts}"
+      - "packages/<name>/scripts/*.ts"
     presence: optional
-    holds: a package's typecheck and build configs (tsconfig.build.json emits dist/) and its lint configs
+    holds: a package's typecheck and build configs (tsconfig.build.json emits dist/), its lint configs and the build steps its package.json runs after tsc (scripts/*.ts, e.g. the dual-entry step of @starci/common)
     rule: every package is TypeScript source built to dist/
   - id: packages.source
     path: "packages/<name>/src/"

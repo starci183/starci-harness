@@ -42,12 +42,12 @@ void test("a jest argv gets the same flags without --, and an unrelated argv is 
 
 void test("through the real governor, a test request runs under the parent's heap, the worker heap and the workers its room holds, and a build under its heap cap", async () => {
     const calls: { readonly argv: readonly string[]; readonly env: Readonly<Record<string, string>> | undefined }[] = []
-    const admit = (async <T,>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>): Promise<T> =>
-        governed({ rules: pace, freeMb: () => 22 * GB }, kind, label, cwd, options, work)) as typeof withHeavySlot
-    const capture = (async (argv: readonly string[], _cwd: string, options: RunOptions = {}) => {
-        calls.push({ argv, env: options.env })
-        return { exitCode: 0, stdout: "", stderr: "", timedOut: false }
-    }) as unknown as typeof captureCommand
+    const admit: typeof withHeavySlot = <T,>(kind: HeavyKind, label: string, cwd: string, options: RunOptions, work: (held: Held) => Promise<T>): Promise<T> =>
+        governed({ rules: pace, freeMb: () => 22 * GB }, kind, label, cwd, options, work)
+    const capture: typeof captureCommand = (argv, _cwd, options) => {
+        calls.push({ argv, env: options?.env })
+        return Promise.resolve({ exitCode: 0, stdout: "", stderr: "", timedOut: false })
+    }
     const run = hfsCommandRunner(admit, capture)
     await run({ kind: "test", label: "release gate test:e2e", cwd: state, argv: ["npm", "run", "test:e2e"], env: {} })
     await run({ kind: "build", label: "release gate build-be", cwd: state, argv: ["npm", "run", "build:be"], env: {} })
