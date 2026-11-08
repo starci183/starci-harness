@@ -374,6 +374,17 @@ Rules learned from running apps on developer hosts; each holds in every app.
   that asks it to declare one. `starci app stack doctor --env <env>` prints the `base port` row (the role table) and a `port range` row that fails
   when another app registered on this machine (the machine registry's projects, the same environment name) declares an overlapping
   `basePort` to `basePort + 99`, or the reserved range (a `port range reserved` row). The scaffold gives a new app a base of its own. The authority is `scripts/hfs/stack-base-port.mjs` of `@starci/hfs`.
+- **A green check judges the running stack too.** `starci app check --env local` (the default, the fix-loop run; `--env prod` never asks, since CI has no dev stack) reads
+  the live dev environment after the tree checks, for each docker-compose environment that declares a `local.database`, with two read-only checks that are never cached
+  and say nothing when the stack is not up (one line says why):
+  - `pending-migrations` (`STACK_PENDING_MIGRATIONS`, error, R393) compares the migration files of the repository (`db/migrations`, or the `database.migrationsDir` of
+    `.starcistacks/application-stacks.yaml`) with the history the database recorded (`supabase_migrations.schema_migrations`), through the plan `starci app db migrate` would run, reaching
+    the database by `docker exec` in its container with the credentials it holds (no custody is opened). Every unapplied file is named, with the command that applies them,
+    `starci app stack up --env <env> --execute`. A file that exists in the repository but not in the database passes every static check and fails at run time.
+  - `dead-letter-repeat` (`STACK_DEAD_LETTER_REPEAT`, error, R394) reads the last 24 hours of the environment's API log (`state/stack/<project>/<env>/logs/api.log` under the state base;
+    the last 64 MB of it) and fails on every queue or job that has more than one `queue.delivery.dead-lettered` or `event-bus.delivery.dead` line, naming the queue, the job and the last
+    error message. A job that dead-letters again and again is a defect no retry fixes (BE-RESILIENCE-2).
+  A database that cannot be read is a warning of the same code, never silence. The authority is `stack/local-live-checks.mjs` of `@starci/hfs`.
 - **One database per environment.** A dev database is a container of its own compose project, so its roles are this environment's alone: the
   migrations run as the environment's own owner role, the app role the migrations create gets a password of this environment, and neither is a
   role of another environment or server. The client tools of `db migrate` run inside that container (`STARCI_DB_CONTAINER`), so the host needs no

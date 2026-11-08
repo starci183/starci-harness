@@ -6589,3 +6589,33 @@ rules:
       - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks, edition: lite}
     witness:
       - {path: packages/hfs/src/stack-base-port.spec.mjs, editions: [lite, full]}
+  - id: R393
+    code: "STACK_PENDING_MIGRATIONS"
+    law: "`starci app check --env local` compares the migration files of the repository with the history the running dev database recorded (supabase_migrations.schema_migrations) and fails on every file the database has not applied, naming the files and `starci app stack up --env <env> --execute`; a stack that is not running is not judged, and `--env prod` does not ask."
+    kinds: [check]
+    gates: [settle]
+    failureCodes: ["STACK_PENDING_MIGRATIONS"]
+    enforcers:
+      - {kind: hfs, id: pending-migrations, at: packages/hfs/stack/local-live-checks.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-10-local-runs, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/stack-live-checks.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/stack-live-checks.spec.mjs, editions: [lite, full]}
+  - id: R394
+    code: "STACK_DEAD_LETTER_REPEAT"
+    law: "`starci app check --env local` reads the last 24 hours of the api log of the dev environment and fails on every queue or job that dead-lettered more than once, naming the queue, the job and the last error message; a missing log is not judged, and `--env prod` does not ask."
+    kinds: [check]
+    gates: [settle]
+    failureCodes: ["STACK_DEAD_LETTER_REPEAT"]
+    enforcers:
+      - {kind: hfs, id: dead-letter-repeat, at: packages/hfs/stack/local-live-checks.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-10-local-runs, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/stack-live-checks.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/stack-live-checks.spec.mjs, editions: [lite, full]}
