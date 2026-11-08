@@ -499,6 +499,12 @@
         --grammar-switch-thumb: calc(var(--grammar-switch-height) - 0.5rem);
     }
 
+    /* A switch is a capsule on every theme: the track and the thumb are pills, whatever radius the app sets for its controls. */
+    [data-component="Switch"] [data-grammar-switch-track],
+    [data-component="Switch"] [data-grammar-switch-thumb] {
+        border-radius: var(--grammar-radius-pill) !important;
+    }
+
     [data-component="Switch"][data-grammar-switch-size="control"] [data-grammar-switch-track] {
         inline-size: var(--grammar-switch-width) !important;
         block-size: var(--grammar-switch-height) !important;
