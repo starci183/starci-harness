@@ -455,6 +455,48 @@ test("an outage takes the run's outage lock itself: it waits for another file's 
     }
 })
 
+test("the mail sink is read through its own API port and its SMTP side takes the outage lock like any outage: stall goes through toxiproxy, a world without stacks.mail is not declared", async () => {
+    const context = await publish()
+    const toxiproxy = await fakeToxiproxy()
+    const sink = createServer((request, response) => {
+        response.setHeader("content-type", "application/json")
+        if (request.url?.startsWith("/api/v1/messages") === true) {
+            response.end(JSON.stringify({ messages: [{ ID: "m1", From: { Address: "noreply@shop.test" }, To: [{ Address: "ann@example.com" }], Subject: "Welcome" }] }))
+        } else if (request.url === "/api/v1/message/m1") response.end(JSON.stringify({ ID: "m1", To: [{ Address: "ann@example.com" }], Subject: "Welcome", Text: "Hello Ann" }))
+        else response.end("{}")
+    })
+    await new Promise<void>((resolve) => sink.listen(0, "127.0.0.1", resolve))
+    started.push(() => new Promise<void>((resolve) => sink.close(() => resolve())))
+    const mailContext = {
+        ...context,
+        infra: { toxiproxyApi: toxiproxy.url, mail: { host: "127.0.0.1", port: 1, directPort: 2, apiPort: (sink.address() as AddressInfo).port, proxy: "mail-proxy", image: "axllent/mailpit", container: "c" } },
+    } as RunContext
+    removeRunState()
+    publishSlot(mailContext)
+    const world = new World(declaration([]), { apps: ["worker"] } as WorldSpec, { resetRun: async () => undefined, lockIntervalMs: 5 })
+    await world.start()
+    try {
+        assert.deepEqual((await world.mail.messages("ann@example.com")).map((entry) => entry.subject), ["Welcome"])
+        assert.equal((await world.mail.waitFor("ann@example.com", { subject: "Welcome" })).text, "Hello Ann")
+        await world.infra.mail.stall()
+        assert.deepEqual(toxiproxy.calls, ["POST /proxies/mail-proxy/toxics"])
+        await world.infra.mail.restore()
+        assert.equal(toxiproxy.calls.at(-1), "POST /proxies/mail-proxy")
+    } finally {
+        await world.stop()
+    }
+    removeRunState()
+    publishSlot(context)
+    const bare = new World(declaration([]), { apps: ["worker"] } as WorldSpec, { resetRun: async () => undefined })
+    await bare.start()
+    try {
+        assert.throws(() => bare.mail, /TEST_WORLD_NOT_DECLARED.*stacks\.mail/)
+        assert.throws(() => bare.infra.mail, /TEST_WORLD_NOT_DECLARED.*infra\.mail/)
+    } finally {
+        await bare.stop()
+    }
+})
+
 test("one connection's database outage takes the outage lock like any outage, touches only that database, and a world that stops with it down restores it", async () => {
     const context = await publish()
     const queries: Array<string> = []

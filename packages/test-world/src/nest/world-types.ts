@@ -10,6 +10,7 @@ import type { FakeClient, FakeDefinition } from "../fakes/framework/contracts"
 import type { ClusterClient, ProxyToxics } from "../stack/contracts"
 import type { TestApi, TestCaller, TestHttp } from "./api"
 import type { KeycloakEvent, KeycloakSession } from "./keycloak"
+import type { WorldMail } from "./mail"
 
 /** A Nest provider token: its class, or the string or symbol it is bound to (`{ provide: SEPAY, useClass: SepayClient }`). */
 export type ProviderToken<TProvider> = Type<TProvider> | string | symbol
@@ -143,6 +144,8 @@ export interface WorldInfra {
     readonly qdrant: InfraHandle
     readonly kafka: InfraHandle
     readonly keycloak: KeycloakInfraHandle
+    /** The SMTP side of the mail sink: `stall()` leaves a sender waiting for a greeting that never comes, `cut()` refuses its connection, `latency(ms)` slows it. */
+    readonly mail: InfraHandle
 }
 
 /** The admin handle of the repository's realm in the real Keycloak. */
@@ -231,10 +234,12 @@ export interface TestWorld<
     readonly db: Readonly<Record<ConnectionNames<TStacks>, EntityManager>>
     /** The network-edge fakes of the SaaS we do not operate. */
     readonly fake: FakeHandles<TFakes>
-    /** Failure injection per infrastructure service: `latency`, `cut`, `restore`, `during`. */
+    /** Failure injection per infrastructure service: `latency`, `stall`, `cut`, `restore`, `during`. */
     readonly infra: WorldInfra
     /** The repository realm of the real Keycloak. */
     readonly keycloak: WorldKeycloak
+    /** The real mail sink (`stacks.mail`): the messages the apps sent, read back, and the refusals it can be told to make. */
+    readonly mail: WorldMail
     /** The run-isolated buckets declared in `stacks.minio.buckets`, by logical name. */
     readonly buckets: Readonly<Record<BucketNames<TStacks>, WorldBucket>>
     /** The k3d cluster: pods and namespaces of this repository only. */

@@ -80,6 +80,7 @@ interface Ensured {
     readonly image: string
     readonly container: string
     readonly directPort: number
+    readonly extraPorts: Readonly<Record<number, number>>
     readonly secrets: Secrets
 }
 
@@ -118,7 +119,7 @@ export const createStack = (dependencies: StackDependencies = {}): StackApi => {
     }
     const clusterApi = async (): Promise<ClusterApi> => dependencies.cluster ?? loadCluster()
 
-    const targetOf = (container: string, image: string, port: number, secrets: Secrets): ServiceTarget => ({ container, image, host: HOST, port, secrets, net })
+    const targetOf = (container: string, image: string, port: number, secrets: Secrets, extraPorts: Readonly<Record<number, number>> = {}): ServiceTarget => ({ container, image, host: HOST, port, extraPorts, secrets, net })
     const waitForPort = async (container: string, containerPort: number): Promise<number> => {
         let found: number | null = null
         await waitUntil(`the published port ${containerPort} of ${container}`, async () => {
@@ -144,23 +145,26 @@ export const createStack = (dependencies: StackDependencies = {}): StackApi => {
         return { container: name, apiUrl }
     }
 
-    const startService = async (request: StackImageRequest, kafkaListenerPorts: ReadonlyArray<number> | null): Promise<Ensured> => {
+    const startService = async (request: StackImageRequest, kafkaListenerPorts: ReadonlyArray<number> | null, owner: Namespace | undefined): Promise<Ensured> => {
         const definition = SERVICE_DEFINITIONS[request.service]
-        const name = serviceContainerName(request.service, request.image)
+        // A namespace-scoped service is one container per data slot, named from its image and the slot's namespace.
+        const name = definition.scope === "namespace" && owner !== undefined ? containerName(request.service, `${request.image}#${owner.snake}`) : serviceContainerName(request.service, request.image)
         const secrets = { ...(await registry().update((data) => secretsFor(data, name, () => definition.newSecrets()))) }
         const spec = definition.spec(request.image, secrets, { kafkaListenerPorts })
-        await ensureContainer(docker, { name, image: request.image, service: request.service, publish: [`${HOST}::${definition.port}`], env: spec.env, command: spec.command })
+        const extra = definition.extraPorts ?? []
+        await ensureContainer(docker, { name, image: request.image, service: request.service, publish: [definition.port, ...extra].map((port) => `${HOST}::${port}`), env: spec.env, command: spec.command })
         const directPort = await waitForPort(name, definition.port)
-        const target = targetOf(name, request.image, directPort, secrets)
+        const extraPorts = Object.fromEntries(await Promise.all(extra.map(async (port) => [port, await waitForPort(name, port)] as const)))
+        const target = targetOf(name, request.image, directPort, secrets, extraPorts)
         await waitUntil(`${request.service} (${name})`, () => definition.ready(target), { timeoutMs: readyTimeoutMs, intervalMs: 500, pause })
-        return { service: request.service, image: request.image, container: name, directPort, secrets }
+        return { service: request.service, image: request.image, container: name, directPort, extraPorts, secrets }
     }
 
     /**
      * Under the `up` lock: network, toxiproxy, every requested container running and ready, and for Kafka one proxy per slot
      * listener (owned by the broker container, so they live as long as it does). Concurrent callers wait, then find everything warm.
      */
-    const ensureStack = async (services: ReadonlyArray<StackImageRequest>): Promise<{ readonly toxiproxy: Toxiproxy; readonly ensured: ReadonlyArray<Ensured> }> =>
+    const ensureStack = async (services: ReadonlyArray<StackImageRequest>, owner?: Namespace): Promise<{ readonly toxiproxy: Toxiproxy; readonly ensured: ReadonlyArray<Ensured> }> =>
         registry().lock(
             "up",
             async () => {
@@ -173,7 +177,7 @@ export const createStack = (dependencies: StackDependencies = {}): StackApi => {
                     const container = serviceContainerName("kafka", kafka.image)
                     listenerPorts = await registry().update((data) => listeners.map((listener) => leaseProxyPort(data, kafkaProxyName(kafka.image, listener), { runId: null, container })))
                 }
-                const ensured = await Promise.all(services.map((request) => startService(request, request.service === "kafka" ? listenerPorts : null)))
+                const ensured = await Promise.all(services.map((request) => startService(request, request.service === "kafka" ? listenerPorts : null, owner)))
                 if (kafka !== undefined && listenerPorts !== null) {
                     const client = new ToxiproxyClient(toxiproxy.apiUrl, fetchImpl)
                     const container = serviceContainerName("kafka", kafka.image)
@@ -308,7 +312,8 @@ export const createStack = (dependencies: StackDependencies = {}): StackApi => {
 
     return {
         async up(services, k3d) {
-            await ensureStack(services)
+            // A namespace-scoped service belongs to a run's slot: its attach starts it, so there is nothing to keep warm.
+            await ensureStack(services.filter((request) => SERVICE_DEFINITIONS[request.service].scope !== "namespace"))
             if (k3d !== undefined) await (await clusterApi()).up()
             return statusOf()
         },
@@ -363,7 +368,7 @@ export const createStack = (dependencies: StackDependencies = {}): StackApi => {
             const partial: Record<string, unknown> = { toxiproxyApi: "" }
             const infraOf = (): RunInfra => partial as unknown as RunInfra
             try {
-                const { toxiproxy, ensured } = await ensureStack(request.services)
+                const { toxiproxy, ensured } = await ensureStack(request.services, namespace)
                 partial.toxiproxyApi = toxiproxy.apiUrl
                 await registry().update((data) => {
                     const lease = data.leases.find((entry) => entry.runId === runId)
@@ -372,7 +377,7 @@ export const createStack = (dependencies: StackDependencies = {}): StackApi => {
                 const client = new ToxiproxyClient(toxiproxy.apiUrl, fetchImpl)
                 for (const item of ensured) {
                     const definition = SERVICE_DEFINITIONS[item.service]
-                    const target = targetOf(item.container, item.image, item.directPort, item.secrets)
+                    const target = targetOf(item.container, item.image, item.directPort, item.secrets, item.extraPorts)
                     const provisioned = await definition.provision(target, {
                         namespace,
                         request,

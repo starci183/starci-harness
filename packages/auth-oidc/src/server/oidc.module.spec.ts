@@ -7,10 +7,11 @@ import { Test } from "@nestjs/testing"
 import type { PrincipalVerifier as LitePrincipalVerifier } from "@starci/auth/server"
 import { OIDC_ERROR_CODES } from "../contracts/index.ts"
 import { FakeOidcIssuer } from "../testing/index.ts"
+import type { OidcBroker } from "./broker.ts"
 import type { OidcClient } from "./client.ts"
 import { OidcError } from "./errors.ts"
 import { OidcModule } from "./oidc.module.ts"
-import { OIDC_CLIENT, OIDC_DISCOVERY, OIDC_KEYS, OIDC_PRINCIPAL_VERIFIER, OIDC_TOKEN_VERIFIER } from "./oidc.tokens.ts"
+import { OIDC_ADMIN_CLIENT, OIDC_BROKER, OIDC_CLIENT, OIDC_DISCOVERY, OIDC_KEYS, OIDC_PRINCIPAL_VERIFIER, OIDC_TOKEN_CLIENT, OIDC_TOKEN_VERIFIER } from "./oidc.tokens.ts"
 import type { OidcOptions } from "./options.ts"
 import type { OidcPrincipalVerifier } from "./verifier.ts"
 
@@ -24,7 +25,15 @@ describe("OidcModule", () => {
         const outcome = await lite.verify(await issuer.mintAccessToken({ sub: "u-1" }))
         assert.equal(outcome.kind, "ok")
         assert.ok(moduleRef.get<OidcClient | null>(OIDC_CLIENT))
-        for (const token of [OIDC_DISCOVERY, OIDC_KEYS, OIDC_TOKEN_VERIFIER]) assert.ok(moduleRef.get(token))
+        for (const token of [OIDC_DISCOVERY, OIDC_KEYS, OIDC_TOKEN_VERIFIER, OIDC_TOKEN_CLIENT, OIDC_ADMIN_CLIENT]) assert.ok(moduleRef.get(token))
+    })
+
+    it("provides the broker, which signs a seeded account in through the registered module", async () => {
+        const issuer = await FakeOidcIssuer.create({ clientSecret: "shh" })
+        issuer.seedUser({ id: "u-5", username: "mai", password: "long enough 1" })
+        const moduleRef = await Test.createTestingModule({ imports: [OidcModule.register(issuer.options({ callbackUri: CALLBACK }))] }).compile()
+        const session = await moduleRef.get<OidcBroker>(OIDC_BROKER).passwordGrant("mai", "long enough 1")
+        assert.equal(session.subject, "u-5")
     })
 
     it("registers from a factory that supplies the app's settings, and the client is null without a client registration", async () => {

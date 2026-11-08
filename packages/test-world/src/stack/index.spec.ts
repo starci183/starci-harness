@@ -186,6 +186,45 @@ describe("stack attach", () => {
         assert.equal(again.postgresql?.port, 30100)
     })
 
+    it("mail: one container per data slot, SMTP behind toxiproxy and the API published beside it; detach removes the slot's container", async () => {
+        const { docker, stack, http } = harness()
+        const mailpit = "axllent/mailpit:v1.31.6"
+        const mailRequest = (ns: Namespace, runId: string): AttachRequest => ({ namespace: ns, runId, services: [{ service: "mail", image: mailpit }] })
+        const one = namespace("shop_aaaaaa_w1")
+        const two = namespace("shop_aaaaaa_w2")
+        const first = await stack.attach(mailRequest(one, "run1-w1"))
+        const second = await stack.attach(mailRequest(two, "run1-w2"))
+        assert.equal(first.mail?.container, containerName("mail", `${mailpit}#shop_aaaaaa_w1`))
+        assert.equal(second.mail?.container, containerName("mail", `${mailpit}#shop_aaaaaa_w2`))
+        assert.notEqual(first.mail?.container, second.mail?.container, "a slot's messages and chaos never reach another slot")
+        assert.equal(docker.runCount(), 3, "toxiproxy and one sink per slot")
+        const run = docker.calls.find((call) => call.startsWith("run ") && call.includes(first.mail?.container ?? "?"))
+        assert.ok(run?.includes("-p 127.0.0.1::1025") && run.includes("-p 127.0.0.1::8025"), run)
+        assert.ok(run?.includes("-e MP_ENABLE_CHAOS=true"), run)
+        assert.equal(first.mail?.proxy, "run1-w1-mail")
+        assert.notEqual(first.mail?.apiPort, first.mail?.directPort)
+        assert.notEqual(first.mail?.apiPort, first.mail?.port, "the API is not behind the SMTP proxy")
+        assert.ok(http.includes("POST /proxies"))
+        const leased = (await stack.status()).leases
+        assert.equal(leased.length, 2)
+        await stack.detach({ namespace: one, runId: "run1-w1", infra: first })
+        assert.equal(docker.containers.has(first.mail?.container ?? "?"), false, "the slot's sink goes with its run")
+        assert.equal(docker.containers.has(second.mail?.container ?? "?"), true)
+        assert.ok(http.includes("DELETE /proxies/run1-w1-mail"))
+    })
+
+    it("up keeps shared services warm and leaves a data slot's own mail sink to its attach", async () => {
+        const { docker, stack } = harness()
+        await stack.up([
+            { service: "redis", image: "redis:7-alpine" },
+            { service: "mail", image: "axllent/mailpit:v1.31.6" },
+        ])
+        assert.deepEqual(
+            [...docker.containers.keys()].sort(),
+            [containerName("redis", "redis:7-alpine"), containerName("toxiproxy", "ghcr.io/shopify/toxiproxy:2.9.0")].sort(),
+        )
+    })
+
     it("kafka: one broker of the pinned image with a proxy per slot listener; each slot leases its own listener, probed through its proxy", async () => {
         const probed: Array<number> = []
         const { docker, stack, http } = harness(probed)

@@ -272,10 +272,10 @@ function integrationSpecProvider(graph: HfsGraph, rel: string): string | null {
   return classified.slot === INTEGRATION_SPEC_SLOT && classified.status !== 'forbidden' ? classified.bindings?.capability ?? null : null;
 }
 
-/** Whether `to` belongs to the integration of `provider` (slot be.integrations, its `<provider>` binding). */
+/** Whether `to` belongs to the integration of `provider`: slot be.integrations with its `<provider>` binding, or the per-provider slot be.integrations.<provider>. */
 function inIntegrationOf(graph: HfsGraph, to: string, provider: string): boolean {
   const owner = graph.resolver.ownerOf(to);
-  return owner?.slot === INTEGRATION_SLOT && owner.bindings?.provider === provider;
+  return owner?.slot === `${INTEGRATION_SLOT}.${provider}` || (owner?.slot === INTEGRATION_SLOT && owner.bindings?.provider === provider);
 }
 
 /** The pseudo edges of one test consumer file: its import/export declarations that resolve to graph files it may reach. */

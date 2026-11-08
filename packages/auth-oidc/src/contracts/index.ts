@@ -21,24 +21,37 @@ export const OIDC_ROLE = "authenticated"
  */
 export const OIDC_ACCESS_TOKEN_INVALID = "PASSPORT_ACCESS_TOKEN_INVALID"
 
-/** The codes of the errors the package throws: a provider that cannot be reached is `Unavailable`, a response that cannot be trusted is `Rejected`. */
+/**
+ * The codes of the errors the package throws: a provider that cannot be reached is `Unavailable`, a response that cannot be trusted is `Rejected`.
+ * The server-side grants add the four a sign-in, a sign-up and a social callback end with: `CredentialsRejected` (the provider refused the
+ * username and password, or the refresh token), `EmailRegistered` (the provider already holds the account), `PasswordInvalid` (its policy
+ * refuses the password) and `SocialRejected` (a code, nonce or state of a federated sign-in the provider or the check refused).
+ */
 export const OIDC_ERROR_CODES = {
     ConfigurationInvalid: "OIDC_CONFIGURATION_INVALID",
     Unavailable: "OIDC_UNAVAILABLE",
     Rejected: "OIDC_REJECTED",
+    CredentialsRejected: "OIDC_CREDENTIALS_REJECTED",
+    EmailRegistered: "OIDC_EMAIL_REGISTERED",
+    PasswordInvalid: "OIDC_PASSWORD_INVALID",
+    SocialRejected: "OIDC_SOCIAL_REJECTED",
 } as const
 
 /** One code a thrown OIDC error carries. */
 export type OidcErrorCode = (typeof OIDC_ERROR_CODES)[keyof typeof OIDC_ERROR_CODES]
 
 /** How a thrown code travels: the same families as `@starci/auth`'s error kinds. */
-export type OidcErrorKind = "invalid" | "unavailable" | "unauthenticated"
+export type OidcErrorKind = "invalid" | "unavailable" | "unauthenticated" | "credentials-rejected" | "email-registered" | "password-invalid" | "social-rejected"
 
 /** The kind of every thrown code. */
 export const OIDC_ERROR_KINDS: Readonly<Record<OidcErrorCode, OidcErrorKind>> = {
     [OIDC_ERROR_CODES.ConfigurationInvalid]: "invalid",
     [OIDC_ERROR_CODES.Unavailable]: "unavailable",
     [OIDC_ERROR_CODES.Rejected]: "unauthenticated",
+    [OIDC_ERROR_CODES.CredentialsRejected]: "credentials-rejected",
+    [OIDC_ERROR_CODES.EmailRegistered]: "email-registered",
+    [OIDC_ERROR_CODES.PasswordInvalid]: "password-invalid",
+    [OIDC_ERROR_CODES.SocialRejected]: "social-rejected",
 }
 
 /** Why a token was refused: the reason a refusal's detail names. */

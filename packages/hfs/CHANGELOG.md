@@ -6,6 +6,12 @@
 - Changed: a row that still runs a heavy command (the world layers, an app's own rows, the Sonar scanner on the main project key; also the fast checks of `release push --urgent`) runs through the governor the CLI hands in (`stackIo.heavy`, request kind `test` or `build`: a heavy slot, the heap cap of its kind, and for a test row the workers and worker heap its room holds), never as a raw child. `starci` verbs and `npm audit` run plain. Without a governor (the package on its own) every row is a plain child. `runGate` is asynchronous. `HeavyRequest.kind` gains `test`.
 - Specs: `src/release-gate-reuse.spec.mts` (a green `app-check` is the verdict of the covered rows and no child runs for them; the record names the run; the plan; `--full`; a red `app-check` stops the gate; no database leaves the drift row to run; an app's own command under a covered name runs, governed; the Sonar row on the main key and the tag still run, the scanner governed).
 
+## 6.2.11 - 2026-11-08
+
+- Fixed: an integration spec now counts as a consumer of its own integration in a per-provider slot (`be.integrations.<provider>`, such as keycloak or mail), not only in `be.integrations` with a `<provider>` binding. R112 (the spec references the error enum) and `HFS_UNUSED_EXPORT` no longer contradict each other. Specs: `src/hfs-unused-symbol.spec.mts`.
+- Changed: the `undici` pin is 6.29.1 (6.29.0 carries GHSA-2m5v-pch6-74hx and four denial-of-service advisories that fail `npm audit --omit=dev --audit-level=high`), and the canon pin of `@starci/auth-oidc` is 0.2.0.
+- Changed: the canon pin of `@starci/test-world` is 1.4.0 (the stack mail sink, `stacks: { mail: {} }`), still paired with `@starci/jest-preset` 2.8.1.
+
 ## 6.2.10 - 2026-11-08
 
 - Fixed: a pure component that hands a ReactNode prop on as it is (`(props: P): ReactNode => (props.active ? props.candidate : null)`) is a render target for `FE_WORLD_OWNER_RENDER_BOUNDARY` and `FE_CONNECTED_BLOCK_RENDER_PAIR`. The detector required the pure half to return JSX, which contradicted the canon's `starci-fe/no-useless-fragment` (the fragment that wrapped the prop is now forbidden). A function counts when every return is JSX, null/undefined/false or a read of its own first parameter (a prop, a destructured prop, or a conditional/logical of these), at least one is such a read, and it still uses no world and captures no outer function; a module constant, a hook value or a call result still fails.

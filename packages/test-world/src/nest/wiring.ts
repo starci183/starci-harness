@@ -10,6 +10,7 @@ import type {
     WiredFake,
     WiredKafka,
     WiredKeycloak,
+    WiredMail,
     WiredMinio,
     WiredQdrant,
     WiredRedis,
@@ -160,6 +161,19 @@ export const buildWiring = (context: RunContext, options: WiringOptions = {}): W
         }
         wiring["keycloak"] = keycloak
     }
+
+    lazy(
+        "mail",
+        "mail",
+        infra.mail === undefined
+            ? undefined
+            : ({
+                  host: swapHost(infra.mail.host, host),
+                  port: infra.mail.port,
+                  url: `smtp://${swapHost(infra.mail.host, host)}:${infra.mail.port}`,
+                  apiUrl: `http://${swapHost(infra.mail.host, host)}:${infra.mail.apiPort}`,
+              } satisfies WiredMail),
+    )
 
     const fake: Record<string, WiredFake> = {}
     for (const [name, entry] of Object.entries(context.fakes.entries)) {

@@ -1,5 +1,8 @@
+import { OidcAdminClient } from "./admin.ts"
+import { OidcBroker } from "./broker.ts"
 import { OidcClient } from "./client.ts"
 import { OidcDiscovery } from "./discovery.ts"
+import { OidcTokenClient } from "./grants.ts"
 import { OidcKeys } from "./jwks.ts"
 import { resolveOptions } from "./options.ts"
 import type { OidcOptions, ResolvedOidcOptions } from "./options.ts"
@@ -20,6 +23,12 @@ export interface Oidc {
     readonly verifier: OidcPrincipalVerifier
     /** The authorization code flow client; null when the registration declares no client. */
     readonly client: OidcClient | null
+    /** The server-side grants (password, refresh, revocation); each call throws a `ConfigurationInvalid` error when the registration declares no client. */
+    readonly tokenClient: OidcTokenClient
+    /** The provider's admin API as the client's service account; needs a client secret. */
+    readonly admin: OidcAdminClient
+    /** The facade an app binds its identity port to: grants, social sign-in and account administration. */
+    readonly broker: OidcBroker
 }
 
 /** Builds one registration without Nest: the module uses it, and so can a script or a spec. Invalid options throw a `ConfigurationInvalid` error. */
@@ -28,12 +37,9 @@ export const createOidc = (input: OidcOptions): Oidc => {
     const discovery = new OidcDiscovery(options)
     const keys = new OidcKeys(options, discovery)
     const tokens = new OidcTokenVerifier(options, keys)
-    return {
-        options,
-        discovery,
-        keys,
-        tokens,
-        verifier: new OidcPrincipalVerifier(options, tokens),
-        client: options.client === undefined ? null : new OidcClient(options, discovery, tokens),
-    }
+    const verifier = new OidcPrincipalVerifier(options, tokens)
+    const client = options.client === undefined ? null : new OidcClient(options, discovery, tokens)
+    const tokenClient = new OidcTokenClient(options, discovery, verifier)
+    const admin = new OidcAdminClient(options, discovery)
+    return { options, discovery, keys, tokens, verifier, client, tokenClient, admin, broker: new OidcBroker(tokenClient, client, admin) }
 }

@@ -95,7 +95,7 @@ describe("FakeOidcIssuer in memory", () => {
         assert.equal(refreshed.status, 200)
         assert.notEqual((refreshed.body as { refresh_token: string }).refresh_token, first)
         assert.equal((await token({ grant_type: "refresh_token", refresh_token: first })).status, 400)
-        assert.equal((await token({ grant_type: "client_credentials" })).status, 400)
+        assert.equal((await token({ grant_type: "implicit" })).status, 400)
         assert.equal((await issuer.http.request({ method: "POST", url: `${issuer.issuer}/protocol/openid-connect/token`, timeoutMs: 1, form: { client_id: "test-client", grant_type: "refresh_token" } })).status, 401)
     })
 
@@ -154,5 +154,84 @@ describe("FakeOidcIssuer on a socket", () => {
             await issuer.close()
         }
         await issuer.close()
+    })
+})
+
+describe("FakeOidcIssuer grants and admin API", () => {
+    const base = (issuer: FakeOidcIssuer): string => `${new URL(issuer.issuer).origin}/admin/realms/test`
+    const tokenUrl = (issuer: FakeOidcIssuer): string => `${issuer.issuer}/protocol/openid-connect/token`
+    const serviceToken = async (issuer: FakeOidcIssuer): Promise<string> =>
+        ((await issuer.http.request({ method: "POST", url: tokenUrl(issuer), timeoutMs: 1, form: { client_id: "test-client", client_secret: "shh", grant_type: "client_credentials" } })).body as { access_token: string }).access_token
+
+    it("answers the password grant for seeded users, with the policy of the realm and failure injection", async () => {
+        const issuer = await FakeOidcIssuer.create({ clientSecret: "shh", minPasswordLength: 4 })
+        const user = issuer.seedUser({ username: "Mai", email: "mai@example.test", password: "pass", roles: ["r"] })
+        assert.equal(issuer.findUser("MAI@example.test")?.id, user.id)
+        assert.equal(issuer.findUser(user.id)?.username, "Mai")
+        assert.equal(issuer.findUser("ghost"), undefined)
+        assert.equal(issuer.passwordMatches("mai", "pass"), true)
+        assert.equal(issuer.passwordMatches("ghost", "pass"), false)
+        const grant = (form: Record<string, string>): ReturnType<FakeOidcIssuer["http"]["request"]> =>
+            issuer.http.request({ method: "POST", url: tokenUrl(issuer), timeoutMs: 1, form: { client_id: "test-client", client_secret: "shh", grant_type: "password", ...form } })
+        const ok = await grant({ username: "mai", password: "pass" })
+        assert.equal(ok.status, 200)
+        assert.equal((ok.body as { refresh_expires_in: number }).refresh_expires_in, 1800)
+        assert.equal((await grant({ username: "mai", password: "nope" })).status, 401)
+        assert.equal((await grant({ username: "mai" })).status, 401)
+        issuer.failNext({ status: 503 })
+        assert.equal((await grant({ username: "mai", password: "pass" })).status, 503)
+    })
+
+    it("hands a service account token to client_credentials only for a confidential client, and guards the admin API with it", async () => {
+        const clock = new FakeClock()
+        const issuer = await FakeOidcIssuer.create({ clock, clientSecret: "shh", accessTtlSeconds: 60 })
+        const token = await serviceToken(issuer)
+        const list = (authorization: string | undefined): ReturnType<FakeOidcIssuer["http"]["request"]> =>
+            issuer.http.request({ method: "GET", url: `${base(issuer)}/users?email=a%40b.test`, timeoutMs: 1, ...(authorization === undefined ? {} : { headers: { authorization } }) })
+        assert.equal((await list(`Bearer ${token}`)).status, 200)
+        assert.equal((await list(undefined)).status, 401)
+        assert.equal((await list("Bearer forged")).status, 401)
+        clock.advance(61_000)
+        assert.equal((await list(`Bearer ${token}`)).status, 401)
+        const pub = await FakeOidcIssuer.create()
+        const answer = await pub.http.request({ method: "POST", url: tokenUrl(pub), timeoutMs: 1, form: { client_id: "test-client", grant_type: "client_credentials" } })
+        assert.equal(answer.status, 400)
+    })
+
+    it("refuses an unknown route of the admin API, a user create without credentials and a wrong method", async () => {
+        const issuer = await FakeOidcIssuer.create({ clientSecret: "shh" })
+        const token = await serviceToken(issuer)
+        const call = (method: "GET" | "POST" | "PUT", path: string, body?: unknown): ReturnType<FakeOidcIssuer["http"]["request"]> =>
+            issuer.http.request({ method, url: `${base(issuer)}${path}`, timeoutMs: 1, headers: { authorization: `Bearer ${token}` }, ...(body === undefined ? {} : { body }) })
+        assert.equal((await call("GET", "/nothing")).status, 404)
+        assert.equal((await call("POST", "/users", { username: "u" })).status, 400)
+        assert.equal((await call("GET", "/users/x/reset-password")).status, 404)
+        assert.equal((await call("PUT", "/users/x/reset-password", { value: "long enough 1" })).status, 404)
+    })
+
+    it("refuses a hint of a provider the realm does not broker, and records the ones it does", async () => {
+        const issuer = await FakeOidcIssuer.create({ identityProviders: ["google"] })
+        const address = (hint: string): string =>
+            `${issuer.issuer}/protocol/openid-connect/auth?${new URLSearchParams({ response_type: "code", client_id: "test-client", redirect_uri: CALLBACK, state: "st", nonce: "no", code_challenge: "c", code_challenge_method: "S256", kc_idp_hint: hint }).toString()}`
+        assert.throws(() => issuer.authorize(address("github")), /brokers no identity provider/u)
+        issuer.authorize(address("google"))
+        assert.deepEqual(issuer.idpHints, ["google"])
+    })
+
+    it("serves the grants, the admin API and the revocation over a socket for the platform fetch", async () => {
+        const issuer = await FakeOidcIssuer.create({ listen: true, clientSecret: "shh" })
+        try {
+            const oidc = createOidc(issuer.options({ callbackUri: CALLBACK, http: fetchHttp }))
+            const created = await oidc.broker.createUser({ email: "s@example.test", username: "sock", password: "long enough 1" })
+            assert.equal(issuer.findUser(created.subject)?.username, "sock")
+            assert.deepEqual(await oidc.broker.findUserByEmail("s@example.test"), { subject: created.subject, username: "sock" })
+            const session = await oidc.broker.passwordGrant("sock", "long enough 1")
+            await oidc.broker.resetPassword(created.subject, "another long one")
+            await oidc.broker.revoke(session.refreshToken)
+            await oidc.broker.logoutAll(created.subject)
+            assert.equal(issuer.passwordMatches("sock", "another long one"), true)
+        } finally {
+            await issuer.close()
+        }
     })
 })

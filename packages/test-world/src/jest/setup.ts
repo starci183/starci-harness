@@ -5,7 +5,7 @@
  * slots run at the same time without touching each other's data. The slots are provisioned one after another. Per slot:
  *  1. validate the declaration and read the stack definition (`.starcistacks/<env>`: service list and image versions);
  *  2. start the network-edge fakes of every SaaS (one control server) in this process;
- *  3. attach to the shared warm stack, or start it: postgres, redis, minio, qdrant, kafka, keycloak behind toxiproxy, the
+ *  3. attach to the shared warm stack, or start it: postgres, redis, minio, qdrant, kafka, keycloak, mail behind toxiproxy, the
  *     k3d cluster with its registry, with this repository's databases, realm, redis db, bucket/collection/topic prefixes and
  *     namespace prefix provisioned;
  *  4. start the sibling services (our own images from other repositories);

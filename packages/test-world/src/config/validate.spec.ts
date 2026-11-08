@@ -138,6 +138,12 @@ describe("validateDeclaration", () => {
         assert.match(problemsOf(withConnections([{ name: "a", database: "bad-name", schema: "a" }]), root), /database: "bad-name"/)
     })
 
+    test("mail is selected as a real service and can never be declared as faked", () => {
+        const root = fixture(FILES)
+        assert.deepEqual(validateDeclaration(config({ stacks: { mail: {}, redis: {} } }), root), ["redis", "mail"])
+        assert.match(problemsOf(config({ stacks: { mail: { fakedBy: "llm", reason: "no smtp here" } } }), root), /stacks\.mail: the mail sink holds the messages an app sent and always runs real/)
+    })
+
     test("kafka is own infrastructure and can never be declared as faked", () => {
         const root = fixture(FILES)
         assert.match(problemsOf(config({ stacks: { kafka: { fakedBy: "llm", reason: "no broker here" } } }), root), /stacks\.kafka: kafka is our own event bus and always runs real/)

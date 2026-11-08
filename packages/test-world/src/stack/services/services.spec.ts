@@ -5,6 +5,7 @@ import { Docker } from "../docker"
 import type { ExecResult } from "../exec"
 import type { PgClient, PgConfig } from "../pg"
 import { kafkaService, ownedBy, partitionsOf } from "./kafka"
+import { mailService } from "./mail"
 import { KAFKA_IMAGE } from "../naming"
 import { prepareRealm } from "./keycloak"
 import { postgresService, truncateStatements } from "./postgresql"
@@ -347,5 +348,68 @@ describe("minio s3 client", () => {
         assert.equal(captured.url, "http://127.0.0.1:5555/shop-be-a1b2c3-uploads?list-type=2")
         assert.equal(captured.headers["x-amz-date"], "20260102T030405Z")
         assert.match(captured.headers.authorization ?? "", /^AWS4-HMAC-SHA256 Credential=ak\/20260102\/us-east-1\/s3\/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=[0-9a-f]{64}$/)
+    })
+})
+
+describe("mail service", () => {
+    const CHAOS = JSON.stringify({ Sender: { ErrorCode: 451, Probability: 0 }, Recipient: { ErrorCode: 550, Probability: 100 }, Authentication: { ErrorCode: 535, Probability: 0 } })
+    const sinkFetch = (calls: Array<string>, livez = 200) =>
+        (async (url: string | URL | Request, init?: RequestInit) => {
+            const path = new URL(String(url)).pathname
+            calls.push(`${init?.method ?? "GET"} ${new URL(String(url)).port}${path}${typeof init?.body === "string" ? ` ${init.body}` : ""}`)
+            if (path === "/livez") return new Response("ok", { status: livez })
+            if (path === "/api/v1/chaos" && (init?.method ?? "GET") === "GET") return new Response(CHAOS, { status: 200 })
+            return new Response("ok", { status: 200 })
+        }) as typeof fetch
+    const sinkTarget = (calls: Array<string>, extraPorts: Record<number, number> | null = { 8025: 6666 }): ServiceTarget => ({
+        ...targetWith({ fetch: sinkFetch(calls) }),
+        container: "starci-ts-mail-33333333",
+        image: "axllent/mailpit:v1.31.6",
+        ...(extraPorts === null ? {} : { extraPorts }),
+    })
+
+    it("is a container per data slot that proxies SMTP and publishes the HTTP API beside it, with chaos enabled", () => {
+        assert.equal(mailService.port, 1025)
+        assert.deepEqual(mailService.extraPorts, [8025])
+        assert.equal(mailService.scope, "namespace")
+        assert.deepEqual(mailService.newSecrets(), {})
+        const spec = mailService.spec("axllent/mailpit:v1.31.6", {}, { kafkaListenerPorts: null })
+        assert.equal(spec.env.MP_ENABLE_CHAOS, "true")
+        assert.equal(spec.env.MP_SMTP_AUTH_ACCEPT_ANY, "true")
+        assert.deepEqual(spec.command, [])
+    })
+
+    it("is ready when the API answers livez, and not before it is published or while it refuses", async () => {
+        const calls: Array<string> = []
+        assert.equal(await mailService.ready(sinkTarget(calls)), true)
+        assert.deepEqual(calls, ["GET 6666/livez"])
+        assert.equal(await mailService.ready(sinkTarget([], null)), false)
+        assert.equal(await mailService.ready({ ...sinkTarget([]), net: { ...sinkTarget([]).net, fetch: sinkFetch([], 503) } }), false)
+    })
+
+    it("provision empties the sink and stops its chaos, and answers the API port", async () => {
+        const calls: Array<string> = []
+        const result = await mailService.provision(sinkTarget(calls), input({}))
+        assert.deepEqual(result.run, { apiPort: 6666 })
+        assert.deepEqual(calls, [
+            "DELETE 6666/api/v1/messages",
+            "GET 6666/api/v1/chaos",
+            `PUT 6666/api/v1/chaos ${JSON.stringify({ Sender: { ErrorCode: 451, Probability: 0 }, Recipient: { ErrorCode: 550, Probability: 0 }, Authentication: { ErrorCode: 535, Probability: 0 } })}`,
+        ])
+        await assert.rejects(mailService.provision(sinkTarget([], null), input({})), /publishes no HTTP API port \(8025\)/)
+    })
+
+    it("reset empties the sink and stops its chaos on the run's API port; deprovision removes the slot's container", async () => {
+        const calls: Array<string> = []
+        const run = { host: "127.0.0.1", port: 30105, directPort: 5555, proxy: "p", image: "i", container: "c", apiPort: 7777 }
+        await mailService.reset(sinkTarget(calls, null), run, { namespace, keepTables: {}, notes: {} })
+        assert.deepEqual(calls.map((call) => call.split(" ")[1]), ["7777/api/v1/messages", "7777/api/v1/chaos", "7777/api/v1/chaos"])
+        const removed: Array<string> = []
+        const docker = new Docker(async (_command, args) => {
+            removed.push(args.join(" "))
+            return { code: 0, stdout: "", stderr: "" }
+        })
+        await mailService.deprovision({ ...sinkTarget([]), net: { ...sinkTarget([]).net, docker } }, run, { namespace, releaseRedisDb: async () => undefined })
+        assert.deepEqual(removed, ["rm -f -v starci-ts-mail-33333333"])
     })
 })

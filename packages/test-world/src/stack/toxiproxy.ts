@@ -129,12 +129,14 @@ export class ToxiproxyClient {
 }
 
 /**
- * The {@link ProxyToxics} of one proxy. `cut` first arms a `reset_peer` toxic on both directions (a live connection gets a TCP
+ * The {@link ProxyToxics} of one proxy. `stall` arms a `timeout` toxic of 0 on the downstream: toxiproxy then drops every byte
+ * the service sends and keeps the link open, so a client waits for an answer that never comes until `restore`. `cut` first arms a `reset_peer` toxic on both directions (a live connection gets a TCP
  * RST on its next byte) and then disables the proxy, which in toxiproxy 2.9 stops the listener and closes every live link, so
  * new connections are refused and old ones die. `restore` removes every toxic of this proxy and enables it again.
  */
 export const proxyToxics = (client: ToxiproxyClient, proxyName: string): ProxyToxics => ({
     latency: (ms, jitterMs = 0) => client.addLatency(proxyName, ms, jitterMs),
+    stall: () => client.addToxic(proxyName, { name: "stall_downstream", type: "timeout", stream: "downstream", attributes: { timeout: 0 } }),
     cut: async () => {
         await client.addToxic(proxyName, { name: "cut_downstream", type: "reset_peer", stream: "downstream", attributes: { timeout: 0 } })
         await client.addToxic(proxyName, { name: "cut_upstream", type: "reset_peer", stream: "upstream", attributes: { timeout: 0 } })
