@@ -1273,6 +1273,14 @@
         overflow-wrap: anywhere;
     }
 
+    /* The change's direction mark, before the meta text: the mark takes the tone's pair, the text stays muted. */
+    .starci-core-description-trend { margin-inline-end: var(--grammar-identity-gap); font-size: var(--grammar-text-2xs); }
+    .starci-core-description-trend[data-grammar-trend-tone="success"] { color: var(--success); }
+    .starci-core-description-trend[data-grammar-trend-tone="danger"] { color: var(--danger); }
+
+    /* The trend line stands under the value and meta, at the start of the cell. */
+    .starci-core-description-trend-line { margin: 0; line-height: 0; }
+
     @container starci-core-description-strip (min-width: 18rem) {
         .starci-core-description-list[data-grammar-description-layout="stat-strip"] .starci-core-description-pair {
             flex-basis: 50%;

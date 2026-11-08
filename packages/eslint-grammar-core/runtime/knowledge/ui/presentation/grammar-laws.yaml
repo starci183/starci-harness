@@ -57,15 +57,15 @@ rules:
         assert: |-
           It takes `endArrow`; an arrow typed in its label or passed as end content is refused. A Button that does
           something takes `startGlyph`; never both.
-  - id: SUGGESTION-CHIPS
-    title: Quick replies and suggested questions are SuggestionChips
-    governs: A row of Buttons that suggest something to say or ask.
+  - id: SUGGESTION-BUTTONS
+    title: Suggestions and quick replies are a Cluster of neutral sm Buttons
+    governs: Anything that suggests something to say or ask.
     cases:
       - id: case-1
-        when: A row of neutral sm Buttons each send their own label
+        when: A suggestion, quick reply or empty-state shortcut is drawn
         assert: |-
-          It is `SuggestionChips` (pill chips, a labelled toolbar), not a Button row; a form value is ChoiceChips and a
-          label is a Badge or a TagGroup.
+          It is a `Cluster gap="inline"` (with `label`) of neutral `Button size="sm"`, which every Button size draws as a
+          pill; a Link row, ChoiceChips, TagGroup, Badge or Chip is never a suggestion.
   - id: TABLE-CELL-TYPE
     title: Table and row cells take the row type sizes
     governs: Text inside a DataTable cell or a ListRow.

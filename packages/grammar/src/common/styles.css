@@ -1908,6 +1908,17 @@
         gap: var(--grammar-inline-gap);
     }
 
+    /* The row's trailing chevron: a pressable row (onPress or href) opens something; it ends the row, after the meta and the commands, muted. */
+    .starci-core-list-row-chevron {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        color: var(--muted);
+    }
+
+    [dir="rtl"] .starci-core-list-row-chevron { scale: -1 1; }
+    .starci-core-list-row[data-grammar-skeleton="true"] .starci-core-list-row-chevron { visibility: hidden; }
+
     .starci-core-list-row-skeleton-badge { display: block; inline-size: 4.5rem; block-size: 1.375rem; }
     .starci-core-list-row-skeleton-badge > .starci-core-skeleton { block-size: 100%; aspect-ratio: auto; border-radius: var(--grammar-radius-pill); }
 
@@ -3840,6 +3851,102 @@
     }
 
     .starci-core-bar-chart-label { color: var(--muted); }
+
+    /* highlightLast: the latest bar in the accent, the others in its soft tone. */
+    .starci-core-bar-chart-fill[data-grammar-bar-tone="soft"] { background: var(--accent-soft); }
+    .starci-core-bar-chart-fill[data-grammar-bar-tone="accent"] { background: var(--accent); }
+
+    /*
+     * valueAxis: the ticks stand at the start in a column, the grid lines run behind the bars across the plot band. The band is the
+     * plot's own height (8rem) and starts below the value line (one text line and the bar's inner gap), as each bar does, so the
+     * zero line is the bars' base and the top line the largest bar's top.
+     */
+    .starci-core-bar-chart[data-grammar-bar-axis="true"] {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        column-gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-bar-chart-axis { padding-block-start: calc(var(--grammar-leading-md) + var(--grammar-identity-gap)); }
+
+    .starci-core-bar-chart-axis-band {
+        position: relative;
+        height: 8rem;
+        min-inline-size: 2rem;
+    }
+
+    .starci-core-bar-chart-tick {
+        position: absolute;
+        inset-inline-end: 0;
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        font-variant-numeric: tabular-nums;
+        line-height: var(--grammar-leading-xs);
+        white-space: nowrap;
+        translate: 0 -50%;
+    }
+
+    .starci-core-bar-chart-tick[data-grammar-tick="max"] { inset-block-start: 0; }
+    .starci-core-bar-chart-tick[data-grammar-tick="half"] { inset-block-start: 50%; }
+    .starci-core-bar-chart-tick[data-grammar-tick="zero"] { inset-block-start: 100%; }
+    .starci-core-bar-chart-tick > .starci-core-skeleton-group { min-inline-size: 2rem; }
+
+    .starci-core-bar-chart-body { position: relative; min-width: 0; }
+
+    .starci-core-bar-chart-grid {
+        position: absolute;
+        inset-inline: 0;
+        inset-block-start: calc(var(--grammar-leading-md) + var(--grammar-identity-gap));
+        display: flex;
+        height: 8rem;
+        flex-direction: column;
+        justify-content: space-between;
+        pointer-events: none;
+    }
+
+    .starci-core-bar-chart-gridline {
+        display: block;
+        height: var(--grammar-hairline);
+        background: var(--separator);
+    }
+
+    .starci-core-bar-chart-bars { position: relative; }
+
+    /* --- Sparkline: a tiny inline line chart, one accent stroke and a soft fill, no axis --- */
+    .starci-core-sparkline {
+        display: inline-block;
+        flex: none;
+        width: var(--grammar-sparkline-width);
+        height: var(--grammar-sparkline-height);
+        line-height: 0;
+    }
+
+    .starci-core-sparkline-svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+    }
+
+    .starci-core-sparkline-line {
+        fill: none;
+        stroke: var(--accent);
+        stroke-width: var(--grammar-stroke-fine);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        vector-effect: non-scaling-stroke;
+    }
+
+    .starci-core-sparkline-area {
+        fill: var(--accent);
+        fill-opacity: var(--grammar-opacity-dimmed);
+        stroke: none;
+    }
+
+    /* No series (fewer than two values): a flat baseline, muted. */
+    .starci-core-sparkline[data-grammar-sparkline-flat="true"] .starci-core-sparkline-line { stroke: var(--separator); }
+
+    .starci-core-sparkline > .starci-core-skeleton { width: 100%; height: 100%; aspect-ratio: auto; border-radius: var(--grammar-radius-sm); }
 
     /* --- ChoiceChips: one choice among a few short options, wrapping onto as many rows as the width needs --- */
     /* The label -> chips step (inline 8) is THE FIELD RULE's (components-forms.css): the root keeps no gap. */

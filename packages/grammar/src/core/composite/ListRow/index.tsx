@@ -11,6 +11,8 @@ import { DropdownMenu } from "../../branch/DropdownMenu/index.js"
 import { Avatar } from "../../leaf/Avatar/index.js"
 import { Badge } from "../../leaf/Badge/index.js"
 import { Button } from "../../leaf/Button/index.js"
+import { Icon } from "../../leaf/Icon/index.js"
+import { glyphSource } from "../../leaf/Icon/glyphs.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import { Link } from "../../leaf/Link/index.js"
@@ -36,6 +38,11 @@ const Leading = ({ leading }: { readonly leading: ItemLeading }) => {
     if (leading.icon !== undefined) return <IconTile source={leading.icon} size={leading.size ?? "sm"} />
     return <LeadingNumber position={leading.position} {...(leading.format === undefined ? {} : { format: leading.format })} />
 }
+
+/** The quiet mark at the end of a pressable row: it opens something. Decorative (the title is the control); a right-to-left page mirrors it in CSS. */
+const RowChevron = () => (
+    <span className="starci-core-list-row-chevron" data-grammar-row-chevron="true" aria-hidden="true"><Icon source={glyphSource("chevron-end")} usage="chip" /></span>
+)
 
 const RowBadge = ({ badge }: { readonly badge: BadgeData }) => (
     badge.isDot === true
@@ -69,6 +76,9 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
     const hasMark = !hasLeading && treatment.mark === "check"
     const hasActions = row.action !== undefined || row.menu !== undefined || row.control != null
     const hasTrail = row.meta !== undefined || row.badges !== undefined
+    // A pressable row (onPress or href) ends in a chevron, unless it has its own command, menu or control: those already end it, and a chevron after a button would read as a second one.
+    const hasChevron = (row.onPress !== undefined || row.href !== undefined) && !hasActions
+    const chevronOnly = hasChevron && !hasTrail
     // Two or more commands (an action and a menu, a control): on a narrow container they stand under the text, which keeps the row's width.
     const actionCount = [row.action, row.menu, row.control].filter((part) => part != null).length
     const drag = row.drag
@@ -94,7 +104,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-state="neutral"
                 data-grammar-treatment={treatmentFor("neutral").tone}
                 data-grammar-leading={hasLeading ? "true" : "false"}
-                data-grammar-actions={hasActions ? "true" : "false"}
+                data-grammar-actions={hasActions || chevronOnly ? "true" : "false"}
                 {...(row.actionPlacement === "end" ? { "data-grammar-action-placement": "end" } : {})}
                 {...(actionCount > 1 ? { "data-grammar-actions-multi": "true" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
@@ -117,8 +127,10 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                         {row.badges === undefined ? null : row.badges.every((badge) => badge.label.trim() !== "")
                             ? <span className="starci-core-list-row-badges"><SkeletonPlaceholder shape="block">{row.badges.map((badge) => <RowBadge key={badge.label} badge={badge} />)}</SkeletonPlaceholder></span>
                             : <span className="starci-core-list-row-skeleton-badge"><Skeleton shape="rect" /></span>}
+                        {hasChevron ? <RowChevron /> : null}
                     </span>
                 ) : null}
+                {chevronOnly ? <span className="starci-core-list-row-actions"><RowChevron /></span> : null}
                 {hasActions ? <span className="starci-core-list-row-actions"><span className="starci-core-list-row-skeleton-action"><Skeleton shape="rect" /></span></span> : null}
                 {row.detail == null ? null : <div className="starci-core-list-row-detail" data-contract="GAP-3">{row.detail}</div>}
             </li>
@@ -134,7 +146,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-state={state}
                 data-grammar-treatment={treatment.tone}
                 data-grammar-leading={hasLeading || hasMark ? "true" : "false"}
-                data-grammar-actions={hasActions ? "true" : "false"}
+                data-grammar-actions={hasActions || chevronOnly ? "true" : "false"}
                 {...(row.actionPlacement === "end" ? { "data-grammar-action-placement": "end" } : {})}
                 {...(actionCount > 1 ? { "data-grammar-actions-multi": "true" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
@@ -174,8 +186,10 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                                 {row.badges.map((badge) => <RowBadge key={badge.label} badge={badge} />)}
                             </span>
                         )}
+                        {hasChevron ? <RowChevron /> : null}
                     </span>
                 ) : null}
+                {chevronOnly ? <span className="starci-core-list-row-actions" data-contract="GAP-2"><RowChevron /></span> : null}
                 {hasActions ? (
                     <span className="starci-core-list-row-actions" data-contract="GAP-2">
                         {row.control == null ? null : <span className="starci-core-list-row-control" data-contract="GAP-2">{row.control}</span>}

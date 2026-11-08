@@ -197,9 +197,9 @@ export const why: Record<string, WhyEntry> = {
     en: "A Link is the title of a row in `<file>` that already opens (onPress, onAction, href, chevron, or a DataTable with onRowAction or row hrefs).",
     fix: "The row is the one pressable: write the title as plain text (`<Text isStrong>`) and keep the destination on the row.",
   },
-  "suggestion-chips": {
-    code: "FE_SUGGESTION_CHIPS",
-    en: "Two or more neutral `size=\"sm\"` Buttons in `<file>` sit in one row (or one in a `.map`) and each press sends its own label.",
-    fix: "Quick replies and suggested questions are `SuggestionChips` (pill chips in a labelled toolbar): `<SuggestionChips label items={[{ id, label }]} onSelect={(id) => ...} />`.",
+  "suggestion-buttons": {
+    code: "FE_SUGGESTION_BUTTONS",
+    en: "A Link row, a ChoiceChips or a Chip in `<file>` runs an action or sends its own label as a suggestion.",
+    fix: "Suggestions and quick replies are one pattern: a `Cluster gap=\"inline\"` (with `label`) of neutral `Button size=\"sm\"` (a pill).",
   },
 }

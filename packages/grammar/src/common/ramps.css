@@ -93,8 +93,6 @@
 
         /* GEOMETRY of the parts: sizes, measures and layers that have no HeroUI token. Spacing is in styles.css. */
         --starci-core-control-min-size: 2.5rem;
-        /* A suggestion chip (quick reply, suggested question): HeroUI Chip scale, a pill 28px high. */
-        --grammar-chip-height: 1.75rem;
         /* A public page (booking, a job): a main column and one rail in about 66rem, narrower than the product page. */
         --starci-core-narrow-measure: 66.5rem;
         --starci-core-field-min-height: var(--starci-core-control-min-size);
@@ -148,6 +146,9 @@
         --starci-flow-diameter: 3rem;
         --starci-flow-height: 24rem;
         --starci-flow-zoom: 1;
+        /* A Sparkline: the inline trend line, 96 x 32. */
+        --grammar-sparkline-width: 6rem;
+        --grammar-sparkline-height: 2rem;
         --avatar-size: var(--starci-core-control-min-size);
         /* A connection logo in a LogoStack: the 20px icon step (size-5, Icon `leading`). */
         --grammar-logo-stack-size: 1.25rem;

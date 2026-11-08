@@ -213,6 +213,17 @@ const lessonColumns: ReadonlyArray<G.DataTableColumn> = [
 ];
 const lessonCell = (row: Lesson, columnId: string) => (columnId === 'title' ? row.title : columnId === 'level' ? row.level : row.minutes);
 
+/** The one suggestion pattern: quick replies and suggested questions are a Cluster of neutral sm Buttons (each a pill). */
+export const SuggestionButtons: Story = {
+  render: () => (
+    <G.Cluster gap="inline" label="Suggested questions">
+      {['How much does it cost?', 'What can you do?', 'Show my last invoice'].map((q) => (
+        <G.Button key={q} size="sm" onPress={() => undefined}>{q}</G.Button>
+      ))}
+    </G.Cluster>
+  ),
+};
+
 /** The single-child-card law: a lone table is the surface (one frame), titled by its Section head with one caption under it. */
 export const LoneTableInSection: Story = {
   render: () => (

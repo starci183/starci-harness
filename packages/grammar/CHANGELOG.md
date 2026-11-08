@@ -1,11 +1,29 @@
 # Changelog
 
-## 0.30.0 - 2026-11-09 - SuggestionChips; one Button radius
+## 0.30.0 - 2026-11-09 - one Button radius; Sparkline, BarChart value axis, figure trend, row chevron
 
 - Changed (values): one Button radius in Core: every size, sm included, is a pill (`--starci-core-pill-radius`, HeroUI's
   full radius). Before, the vendor corner followed the app's `--radius`, so `Button size="sm"` drew about 12px while md read
-  as a pill. A row of neutral sm Buttons whose press sends their own label is `SuggestionChips` (lint `suggestion-chips`).
-- Added: `SuggestionChips` (composite, `@starci/grammar/common`): quick replies and suggested questions as pill chips (28px, new ramp step `--grammar-chip-height`; sm medium text; neutral fill with a separator edge; optional start `glyph` or `iconSource`; hover, pressed, focus-ring and disabled states), wrapping with 8 between them. Props `label` (required, the toolbar's accessible name), `isLabelHidden` (default true), `items` (`{ id, label, glyph?, iconSource?, isDisabled? }`), `onSelect(id)`, `isLoading` (pill geometry), `isDisabled`. A `role="toolbar"`: one tab stop, arrow keys move between chips. Stories `Navigation & Data/Suggestion chips`.
+  as a pill. A row of neutral sm Buttons is the one suggestion pattern (below).
+- Withdrawn before release: `SuggestionChips` (and its ramp step `--grammar-chip-height`). The owner keeps ONE suggestion
+  pattern: a quick reply, a suggested question or an empty state's shortcut is a `Cluster` of neutral `Button size="sm"`,
+  a pill like every Button. Lint `suggestion-buttons` refuses a Chip, ChoiceChips, TagGroup or Link row used that way.
+- Added: `Sparkline` (composite, `@starci/grammar/common`): a tiny inline line chart, 96 x 32 (new ramp steps `--grammar-sparkline-width`
+  and `--grammar-sparkline-height`), one accent stroke (the fine stroke step), a soft fill under it, no axis. Props `label` (required;
+  the line is `role="img"` with this name), `values` (oldest first; fewer than two draw a flat muted baseline), `isLoading` (a
+  skeleton of the same box). Story `Navigation & Data/Data views/SparklineStates`.
+- Added: `BarChart valueAxis={{ format }}`: three ticks (the largest value, its half and 0, through `format`) at the start of the
+  plot with light separator grid lines behind the bars; decorative (the list of values stays the accessible content). And
+  `BarChart highlightLast`: the last bar in the accent, the others in `--accent-soft`. Both default off, as before.
+- Added: `Figure.trend` (`up | down | flat`), `trendSense` (`higher-is-better` default | `lower-is-better`) and `trendLabel`: the
+  meta line starts with a decorative triangle (up/down) or dash (flat) in the success or danger colour, the text stays muted, and
+  the direction is also said in words (visually hidden, default "Up", "Down", "No change"; `trendLabel` replaces them).
+- Added: `Figure.trendLine` (`readonly number[]`) and `trendLineLabel`: a Sparkline under the figure's value and meta, at the
+  start of the cell.
+- Added: glyph `chevron-end` in `GLYPH_NAMES` (mirrored in RTL).
+- Changed (default): a pressable row (`ListRow` / `Section kind="list"` / `SurfaceCard kind="list"` with `onPress` or `href`) now
+  ends in a muted `chevron-end`, decorative, after its fact and badges. A row with its own `action`, `menu` or `control`, and a
+  row that is not pressable, draw none. Loading rows keep the chevron's space. Story `Surfaces/PressableRowChevron`.
 
 ## 0.29.0 - 2026-11-09 - the single-child card; zone text at sm
 

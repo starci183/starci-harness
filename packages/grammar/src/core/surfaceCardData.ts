@@ -140,6 +140,20 @@ export type Figure = {
     readonly unit?: string | number
     /** Its source or its time, under the value. */
     readonly meta?: string
+    /**
+     * The direction of the change `meta` reports. The meta line starts with a mark in the tone: `up` a triangle up in the success pair,
+     * `down` a triangle down in the danger pair (swapped by `trendSense="lower-is-better"`), `flat` a neutral dash. The mark is
+     * decorative; the direction is also said in words (`trendLabel`). Needs `meta`.
+     */
+    readonly trend?: "up" | "down" | "flat"
+    /** Which way is good. `higher-is-better` (default): up is success, down is danger. `lower-is-better` (a cost, a churn): the pairs swap. */
+    readonly trendSense?: "higher-is-better" | "lower-is-better"
+    /** The direction in words for assistive technology, read before the meta (e.g. "Tang", "Giam"). Default "Up", "Down", "No change". */
+    readonly trendLabel?: string
+    /** The figure's recent values, oldest first: a Sparkline under the value and meta, 96 x 32. */
+    readonly trendLine?: readonly number[]
+    /** Names the trend line for assistive technology. Defaults to the term. */
+    readonly trendLineLabel?: string
     readonly icon?: IconSource
 } & FigureDestination
 

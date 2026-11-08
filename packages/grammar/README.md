@@ -399,19 +399,21 @@ A loading view keeps the titles, headings and labels it was given and draws the 
 <Board label="Sales pipeline" columns={stages} isLoading={isLoading} error={error} />
 <ScheduleGrid label="Appointments" columns={days} rows={hours} items={bookings} empty={<EmptyNotice message="No appointments" />} />
 <BarChart label="Engagement per day" bars={perDay} empty={<EmptyNotice message="No data yet" />} />
+<BarChart label="Revenue per month" bars={months} empty={...} valueAxis={{ format: (value) => `${value} M` }} highlightLast />
+<Sparkline label="Revenue, last 10 weeks" values={weekly} />
 ```
 
-**Navigation & Data (18).** Accordion, AvatarGroup, Calendar, DataTable,
-BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, LogoStack, MermaidDiagram, MessageStatus, Pagination, Stepper, SuggestionChips, Tabs, TagGroup, Timeline.
+`BarChart valueAxis={{ format }}` adds three ticks (the largest value, its half and 0) and light grid lines behind the bars;
+`highlightLast` draws the latest bar in the accent and the others soft; both are off by default. `Sparkline` (`label`, `values`,
+`isLoading`) is a 96 x 32 inline line chart: an accent stroke, a soft fill, no axis, named by `label` (`role="img"`).
 
-`SuggestionChips` are quick replies and suggested questions (the assistant drawer, a composer's suggestions, the shortcuts of an
-empty state): pills 28px high (`--grammar-chip-height`), sm medium text, a neutral fill with a separator edge, an optional start
-`glyph` (Grammar's vocabulary) or `iconSource`, wrapping with 8 between them. Each is a real button; a press calls `onSelect(id)`
-and sends the chip's own label. The group is a `role="toolbar"` named by the required `label` (hidden by default, drawn as a muted
-xs line with `isLabelHidden={false}`): one tab stop, arrow keys move between chips. Use them instead of a row of `Button`s when the
-words of the chip are what is sent; a command whose label differs from its effect stays a `Button`, and a choice that stays
-selected is `ChoiceChips` (lint `FE_SUGGESTION_CHIPS` flags a row of neutral small Buttons that send their own label).
-`<SuggestionChips label="Suggested questions" items={questions.map((q) => ({ id: q.id, label: q.text }))} onSelect={(id) => ask(id)} />`
+**Navigation & Data (17).** Accordion, AvatarGroup, Calendar, DataTable,
+BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, LogoStack, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
+
+**The one suggestion pattern.** A quick reply, a suggested question or an empty state's shortcut is a `Cluster gap="inline"` of
+neutral `Button size="sm"` (every Button size is a pill, so the row reads as suggestions): the only pattern. A Chip, a
+`ChoiceChips`, a `TagGroup` or a row of `Link`s that runs an action or sends its own label is refused (lint
+`suggestion-buttons`). `<Cluster gap="inline" label="Suggested questions">{questions.map((q) => <Button key={q.id} size="sm" onPress={() => ask(q.text)}>{q.text}</Button>)}</Cluster>`
 
 `DataTable` `onRowAction(id)` (and `SurfaceCard kind="table"` `onRowAction`) makes every row pressable, to open a drawer: a click or
 Enter / Space on the focused row (React Aria's row action, so the row is a focus stop with the table's focus ring), the pointer cursor
@@ -534,6 +536,13 @@ the page and the footer closes it; `artwork` and `intro` belong to the default `
 `Text size="figure"` is the leading value of a region (FONT-5), such as a plan's price; `Stepper completeMarker="check"` marks a
 complete step with a check; `SurfaceCard emphasis="accent"` rings the one card its peers recommend, with the reason in a badge.
 
+A `Figure` may carry `trend` (`"up" | "down" | "flat"`, with `trendSense` `"higher-is-better"` by default, and `trendLabel` for the words):
+its meta line starts with a decorative triangle in the success or danger colour (a dash for `flat`) and says the direction in
+hidden words. `trendLine` (numbers, oldest first; `trendLineLabel`) draws a `Sparkline` under the value and meta.
+
+A pressable `ListRow` (`onPress` or `href`), in `Section kind="list"` or `SurfaceCard kind="list"`, ends in a muted chevron
+(`chevron-end` glyph, mirrored in RTL); a row with its own `action`, `menu` or `control`, or none of these, draws none.
+
 `Section kind="figures"` is the unpainted counterpart of a figures card inside an existing pane or surface. It uses
 the same `Figure` data and renderer; supply `title` when it owns a heading or `ariaLabel` when an existing parent owns
 that heading. The headless form has no head controls. Media tiles use `TilePoster` (image or localized absence),
@@ -633,8 +642,8 @@ the roles in composition.
 **The button-icon rule.** A Button that does something shows what at its start (`startGlyph`, e.g. `plus`, `upload`,
 `send`, `pencil`, or the app's `startContent`); a Button that leads somewhere ends with Grammar's arrow (`endArrow`), which
 slides one step toward the reading end on hover and focus and is mirrored right to left. Never both: the types refuse it.
-Both glyphs stand one inline step (8) from the label. In Core every Button size, sm included, is a pill (one radius). A row of neutral sm Buttons whose press sends
-their own label is `SuggestionChips` (lint `suggestion-chips`). An arrow typed in a label or passed through `endContent` is refused
+Both glyphs stand one inline step (8) from the label. In Core every Button size, sm included, is a pill (one radius); a row of neutral sm Buttons is the one
+suggestion pattern (lint `suggestion-buttons`). An arrow typed in a label or passed through `endContent` is refused
 (lint `button-arrow`). `EmptyNotice actionEndArrow` and `ItemAction.endArrow` give the Grammar-drawn actions the arrow.
 
 **The single-child-card law.** A card groups two or more different parts (figures, a list, actions) or carries zones
