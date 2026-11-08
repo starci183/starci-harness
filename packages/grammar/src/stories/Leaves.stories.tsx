@@ -236,7 +236,7 @@ export const Button: Story = {
         <G.Button isLoading>Loading</G.Button>
       </State>
       <State label="With icons, destination and fill width" direction="column">
-        <G.Button intent="alternative" startContent={<G.Icon source={SearchGlyph} usage="leading" />}>Search</G.Button>
+        <G.Button intent="alternative">Search</G.Button>
         <G.Button href="#destination" intent="neutral">Destination link</G.Button>
         <G.Button intent="commit" width="fill">Full width</G.Button>
       </State>

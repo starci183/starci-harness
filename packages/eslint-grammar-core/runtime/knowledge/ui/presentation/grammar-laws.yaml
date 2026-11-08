@@ -56,7 +56,13 @@ rules:
         when: A Button leads somewhere
         assert: |-
           It takes `endArrow`; an arrow typed in its label or passed as end content is refused. A Button that does
-          something takes `startGlyph`; never both.
+          something takes `startGlyph` (primary only, case-2); never both.
+      - id: case-2
+        when: A Button carries a leading icon (`startGlyph`, `startContent`)
+        assert: |-
+          Only the primary Button (`intent="commit"`, the CTA) does. A neutral, alternative, dismiss or destructive Button, a
+          suggestion pill and a row action are text only. The arrow (`endArrow`) is not an icon under this rule, so any intent
+          may lead somewhere; `IconButton` is unaffected.
   - id: SUGGESTION-BUTTONS
     title: Suggestions and quick replies are a Cluster of neutral sm Buttons
     governs: Anything that suggests something to say or ask.

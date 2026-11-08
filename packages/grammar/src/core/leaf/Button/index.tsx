@@ -54,31 +54,36 @@ type ButtonBase = {
 }
 
 /**
- * THE BUTTON-ICON RULE (owner, 2026-11-09). A Button either DOES something, and may show what at its start (`startGlyph`, or the
- * app's own `startContent`), or LEADS somewhere, and ends with Grammar's arrow (`endArrow`), never both: the types refuse the pair.
+ * THE BUTTON-ICON RULE (owner, 2026-11-09). Only the PRIMARY button (`intent="commit"`, the CTA) carries a leading icon: it may show what
+ * it does at its start (`startGlyph`, or the app's own `startContent`). Every other Button (neutral, alternative, dismiss, destructive,
+ * a suggestion pill, a row action) is text only, and the types refuse a start icon on it. A Button that LEADS somewhere ends with
+ * Grammar's arrow (`endArrow`); the arrow is not an icon under this rule, so any intent may use it, but a Button never carries the
+ * arrow and a start icon together. `IconButton` (icon only, named by its label) is unaffected. Lint `button-icon-primary-only` reads
+ * what the types cannot see.
  * Both glyphs take the same inline gap (8) and the control's glyph padding on their side.
  */
-type ButtonDoes = {
-    /** Decorative or explanatory content before the label: what the action does. Product icon identity stays with the app. */
+type ButtonText = {
+    readonly startContent?: never
+    readonly startGlyph?: never
+    /**
+     * The label leads somewhere (a page, a tab, a next step): Grammar draws its arrow after the label, and the arrow slides toward the
+     * reading end while the button is hovered or focused (still under reduced motion), mirrored right to left. `endContent` wins when
+     * both are given. Any intent may lead.
+     */
+    readonly endArrow?: boolean
+}
+
+type ButtonPrimaryDoes = {
+    readonly intent: "commit"
+    /** Decorative or explanatory content before the label: what the action does. Product icon identity stays with the app. Primary only. */
     readonly startContent?: ReactNode
-    /** A glyph of Grammar's own closed vocabulary at the start (`plus`, `upload`, `send`, `pencil`, ...); `startContent` wins when both are given. */
+    /** A glyph of Grammar's own closed vocabulary at the start (`plus`, `upload`, `send`, `pencil`, ...); `startContent` wins when both are given. Primary only. */
     readonly startGlyph?: GlyphName
     readonly endArrow?: false
 }
 
-type ButtonLeads = {
-    /**
-     * The label leads somewhere (a page, a tab, a next step): Grammar draws its arrow after the label, and the arrow slides toward the
-     * reading end while the button is hovered or focused (still under reduced motion), mirrored right to left. `endContent` wins when
-     * both are given. A leading Button has no start glyph.
-     */
-    readonly endArrow: true
-    readonly startContent?: never
-    readonly startGlyph?: never
-}
-
-/** What a Button shows beside its label: the glyph of what it does at the start, or the arrow of where it goes at the end. */
-export type ButtonIcons = ButtonDoes | ButtonLeads
+/** What a Button shows beside its label: nothing or the arrow of where it goes (any intent), or, on the primary alone, the glyph of what it does. */
+export type ButtonIcons = ButtonText | ButtonPrimaryDoes
 
 /**
  * A real browser destination wearing the button appearance. It renders an anchor, so the platform

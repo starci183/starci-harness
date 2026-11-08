@@ -4,7 +4,7 @@ import { useId, useRef } from "react"
 import { useIsLoading } from "../../regionScope.js"
 import { Button } from "../../leaf/Button/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
-import { Icon, type IconSource } from "../../leaf/Icon/index.js"
+import { type IconSource } from "../../leaf/Icon/index.js"
 import { Text } from "../../leaf/Text/index.js"
 import type { NoChildren } from "../../tier.js"
 
@@ -46,10 +46,10 @@ export const FileButton = ({ label, source, accept, multiple = false, text, desc
     const control = isLoading
         ? text === undefined
             ? <IconButton source={source} label={label} intent="neutral" isLoading />
-            : <Button intent="alternative" size="sm" isLoading startContent={<Icon source={source} usage="leading" />}>{text}</Button>
+            : <Button intent="alternative" size="sm" isLoading>{text}</Button>
         : text === undefined
             ? <IconButton source={source} label={label} intent="neutral" isDisabled={isDisabled} onPress={() => input.current?.click()} />
-            : <Button intent="alternative" size="sm" isDisabled={isDisabled} aria-label={label} startContent={<Icon source={source} usage="leading" />} onPress={() => input.current?.click()} {...(note === undefined ? {} : { "aria-describedby": noteId })}>{text}</Button>
+            : <Button intent="alternative" size="sm" isDisabled={isDisabled} aria-label={label} onPress={() => input.current?.click()} {...(note === undefined ? {} : { "aria-describedby": noteId })}>{text}</Button>
     return (
         <span className="starci-core-file-button" data-tier="composite" data-component="FileButton" {...(isLoading ? { "data-loading": "true" } : {})} {...(note === undefined ? {} : { "data-grammar-file-button-note": errorMessage === undefined ? "description" : "error" })}>
             {control}

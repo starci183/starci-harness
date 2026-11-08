@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.32.1 - 2026-11-09 - only the primary Button carries a leading icon
+
+- Changed (types): THE BUTTON-ICON RULE (owner, 2026-11-09). `startGlyph` and `startContent` are allowed only on the primary Button
+  (`intent="commit"`, the CTA); the Button type is a discriminated union on `intent`, so a neutral, alternative, dismiss or destructive
+  Button, or one with no intent, no longer compiles with a start icon. Suggestion pills and row actions are text only. The arrow is not an
+  icon under this rule: any intent may set `endArrow` (still never together with a start icon). `IconButton` is unaffected.
+- Changed: `EmptyNotice` takes `actionStartContent` only with the default `commit` action (`actionIntent: "neutral"` is text only);
+  `Alert` draws `action.icon` on its primary (informative, `commit`) action only; `FileButton` with a `text` label is text only (its
+  icon-only form is the `IconButton`).
+- Changed: the stories and the app-guide template no longer give a neutral or alternative Button a start icon.
+- Lint: `eslint-grammar-core` 0.32.1 adds `button-icon-primary-only` (`FE_BUTTON_ICON_PRIMARY_ONLY`, error).
+
 ## 0.32.1 - 2026-11-09
 
 - Fixed: MessageCard (a composite) no longer imports the Cluster frame, which the tier law refuses (FE_GRAMMAR_TIER_DIRECTION); its actions stand in its own wrapping row (`starci-core-message-card-actions`, a labelled group at the inline gap).

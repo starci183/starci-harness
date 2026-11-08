@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.32.1 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.32.1; requires `@starci/eslint-grammar-core` 0.32.1, which adds `button-icon-primary-only`; no rule of this package changed.
+
 ## 0.32.0 - 2026-11-09
 
 - Versioned with Grammar 0.32.0 (every surface on the page ground is a card); no rule changes.

@@ -1,5 +1,4 @@
 import { Button, Dialog, Text } from "@starci/grammar/common"
-import { Icon } from "@/components/leaves/Icon"
 
 /** The guide's copy, local open state and action supplied by the connected overlay. */
 export type AppGuideOverlayBaseProps = {
@@ -21,7 +20,7 @@ export const AppGuideOverlayBase = (props: AppGuideOverlayBaseProps) => (
         title={props.props.title}
         closeLabel={props.props.closeLabel}
         trigger={
-            <Button intent="neutral" startContent={<Icon />}>
+            <Button intent="neutral">
                 {props.props.triggerLabel}
             </Button>
         }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.32.1 - 2026-11-09
+
+- Added: `button-icon-primary-only` (`FE_BUTTON_ICON_PRIMARY_ONLY`, BUTTON-ARROW case-2, error): only a `Button` whose `intent` is the literal
+  `"commit"` (the primary, the CTA) may set `startGlyph` or `startContent`; a neutral, alternative, dismiss or destructive Button, a Button
+  with no intent and one with a computed intent are refused. `endArrow` is not an icon under the rule and `IconButton` is not judged. The
+  Button type (Grammar 0.32.1) refuses the literal cases as well. `docs/button-arrow.md`.
+- Changed: released with the Grammar family at 0.32.1.
+
 ## 0.32.0 - 2026-11-09
 
 - Versioned with Grammar 0.32.0 (every surface on the page ground is a card); no rule changes.

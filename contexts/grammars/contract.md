@@ -146,9 +146,11 @@ motion; it keeps the variant names, so the emphasis ladder means the same in eve
 `IconButton.isPending` keeps its accessible name and box while drawing the native spinner, setting busy state and
 refusing duplicate activation. `isLoading` remains unresolved content, not an action's progress.
 
-A button's glyph says one thing. `endArrow` marks a button that leads somewhere (a page, a tab, a next step): the grammar's
+A button's glyph says one thing. Only the primary button (`intent="commit"`, the CTA) carries a leading icon:
+neutral, alternative, dismiss and destructive buttons, suggestion pills and row actions are text only, which the types and lint
+`button-icon-primary-only` enforce; `IconButton` is unaffected. `endArrow` (any intent; the arrow is not an icon under that rule) marks a button that leads somewhere (a page, a tab, a next step): the grammar's
 `arrow-end` glyph ends the label, slides one step toward the reading end on hover and focus (still under reduced motion) and
-mirrors right to left. `startGlyph` (a named glyph, among them `plus` and `upload`) marks one that does something. A button
+mirrors right to left. `startGlyph` (a named glyph, among them `plus` and `upload`), on the primary only, marks one that does something. A button
 never takes both, which the types refuse, and a typed arrow in the label or an arrow passed through `endContent` is refused
 by lint `button-arrow`. `EmptyNotice` `actionEndArrow` and `ItemAction.endArrow` carry the same on a notice's action and a
 row or tile's action.

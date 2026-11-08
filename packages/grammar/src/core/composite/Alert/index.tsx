@@ -24,7 +24,8 @@ export type AlertAction = {
     readonly onAction: () => void
     /**
      * Optional start glyph of the action Button (e.g. a power glyph on "Enable"), drawn by `Icon`
-     * `usage="leading"` as the Button's `startContent`. Decorative: the label stays the name.
+     * `usage="leading"` as the Button's `startContent`. Decorative: the label stays the name. Only the primary action (the informative
+     * tone's `commit`) wears it; the button-icon rule keeps every other action text only, so the glyph is not drawn there.
      */
     readonly icon?: IconSource
     /**
@@ -117,6 +118,7 @@ const AlertInner = (props: AlertProps) => {
     const tone: PresentationState | "accent" | CustomTone = isLoading ? "neutral" : readyTone
     const custom = useCustomTone(tone, ALERT_BUILT_IN_TONES)
     const meaning: PresentationState = tone === "accent" ? "informative" : isPresentationState(tone) ? tone : "neutral"
+    const actionIntent = alertActionIntentFor(meaning)
     const unseen = (node: ReactNode) => isLoading ? <SkeletonPlaceholder>{node}</SkeletonPlaceholder> : node
     const [isDismissed, setIsDismissed] = useState(false)
     if (isDismissed) return null
@@ -163,9 +165,9 @@ const AlertInner = (props: AlertProps) => {
                             isLoading={isLoading}
                             size="sm"
                             width="fill-narrow"
-                            {...alertActionIntentFor(meaning)}
+                            {...(action.icon !== undefined && actionIntent.intent === "commit" ? { intent: "commit" as const, startContent: <Icon source={action.icon} usage="leading" /> } : actionIntent)}
                             onPress={action.onAction}
-                            {...(action.icon === undefined ? {} : { startContent: <Icon source={action.icon} usage="leading" /> })}
+                            
                         >{action.label}</Button>
                     )}
                     {props.dismissLabel === undefined ? null : (

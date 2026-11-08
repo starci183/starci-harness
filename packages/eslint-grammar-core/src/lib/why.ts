@@ -182,6 +182,11 @@ export const why: Record<string, WhyEntry> = {
     en: "A Button in `<file>` types an arrow in its label, passes an arrow icon as `endContent`, or sets `endArrow` together with `startGlyph` or `startContent`.",
     fix: "A Button that leads somewhere takes `endArrow` (the Grammar arrow slides on hover and is mirrored in RTL); one that does something takes `startGlyph`; never both.",
   },
+  "button-icon-primary-only": {
+    code: "FE_BUTTON_ICON_PRIMARY_ONLY",
+    en: "A Button in `<file>` sets `startGlyph` or `startContent` but is not the primary (`intent=\"commit\"`): it has another intent, none, or one computed.",
+    fix: "Only the primary Button (the CTA) carries a leading icon. Remove the icon from a neutral, alternative, dismiss or destructive Button, a suggestion pill or a row action; a Button that leads somewhere keeps `endArrow`.",
+  },
   "table-cell-type": {
     code: "FE_TABLE_CELL_TYPE",
     en: "A DataTable cell or ListRow title/description in `<file>` draws a Text above 14 (`size=\"lg\"`, `\"xl\"`, `\"figure\"`), a Heading, a Label or an h1-h6.",

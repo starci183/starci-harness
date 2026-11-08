@@ -655,8 +655,12 @@ sizes: the page title 18 and a big figure value 20 (`Text size="figure"`). Every
 `external` glyph; a row title is never a link when the row opens (lint `row-title-link`). `npm run check:type` pins the
 scale; lint `table-cell-type` and `same-line-size` allow only 14 and 12.
 
-**The button-icon rule.** A Button that does something shows what at its start (`startGlyph`, e.g. `plus`, `upload`,
-`send`, `pencil`, or the app's `startContent`); a Button that leads somewhere ends with Grammar's arrow (`endArrow`), which
+**The button-icon rule.** Only the PRIMARY Button (`intent="commit"`, the CTA) carries a leading icon: it shows what it does at
+its start (`startGlyph`, e.g. `plus`, `upload`, `send`, `pencil`, or the app's `startContent`). Neutral, alternative, dismiss and
+destructive Buttons, suggestion pills and row actions are text only; the Button type refuses a start icon on any other intent
+(`EmptyNotice actionStartContent` needs the default `commit` action, `Alert` draws `action.icon` on its primary action only) and lint
+`button-icon-primary-only` reads the cases a type cannot see. `IconButton` (icon only, named by its label) is unaffected. A Button
+that leads somewhere, of any intent, ends with Grammar's arrow (`endArrow`; the arrow is not an icon under this rule), which
 slides one step toward the reading end on hover and focus and is mirrored right to left. Never both: the types refuse it.
 Both glyphs stand one inline step (8) from the label. In Core every Button size, sm included, is a pill (one radius); a row of neutral sm Buttons is the one
 suggestion pattern (lint `suggestion-buttons`). An arrow typed in a label or passed through `endContent` is refused

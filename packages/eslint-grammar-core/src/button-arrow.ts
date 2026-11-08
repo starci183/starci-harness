@@ -3,7 +3,7 @@ import type { TSESTree } from "@typescript-eslint/types"
 import { isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { SourceView } from "./lib/types.ts"
-import { attributeOf, descendants, elementOf, grammarBindings } from "./lib/row-context.ts"
+import { attributeOf, descendants, elementOf, grammarBindings, literalAttribute } from "./lib/row-context.ts"
 
 /**
  * The button arrow law (`FE_BUTTON_ARROW`): a Button that leads somewhere ends with `endArrow`; a Button that does something
@@ -15,6 +15,7 @@ import { attributeOf, descendants, elementOf, grammarBindings } from "./lib/row-
  *   - an `endContent` that is an arrow: an element named `Arrow*` or `ChevronRight*`, or any element whose `source` / `glyph` / `name`
  *     is such an identifier or a string that names `arrow`, `chevron-right` or `chevron-end`;
  *   - `endArrow` together with `startGlyph` or `startContent` (the Button type refuses it as well).
+ * The button-icon law (`button-icon-primary-only`) lives beside it: only a primary Button (`intent="commit"`) carries `startGlyph` or `startContent`.
  * `Button` takes the label as its children only, so no string label prop exists to read. `IconButton` has no label to type an arrow
  * in and no `endArrow`; `TextAction` takes `endContent` but not `endArrow`, so neither is judged.
  */
@@ -133,9 +134,52 @@ export const buttonArrow: Rule.RuleModule = defineRule({
   },
 })
 
+/** The one intent that is the CTA: the primary Button. */
+const PRIMARY_INTENT = "commit"
+
+/**
+ * The button-icon law (owner, 2026-11-09): only a PRIMARY Button (`intent="commit"`) carries a leading icon. The Button type already
+ * refuses `startGlyph` / `startContent` on a literal non-primary intent; this reads what a type cannot see: a Button with no `intent`
+ * (it renders the secondary step) and an `intent` computed from a variable, a conditional or a spread. A start icon is accepted only
+ * when `intent` is the literal `"commit"`. The arrow (`endArrow`) is not an icon under this law, and `IconButton` is not judged.
+ */
+export const buttonIconPrimaryOnly: Rule.RuleModule = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "FE_BUTTON_ICON_PRIMARY_ONLY: only a primary Button (`intent=\"commit\"`) carries a leading icon (`startGlyph`, `startContent`)." },
+    schema: [],
+    messages: {
+      icon:
+        "The Button sets `{{start}}` but is not primary. Only the primary Button (`intent=\"commit\"`, the CTA) carries a leading icon; a neutral, alternative, dismiss or destructive Button, a suggestion pill and a row action are text only. Remove `{{start}}`, or make this the region's one primary. A Button that leads somewhere keeps `endArrow`.",
+    },
+  },
+  create(context) {
+    if (!isProductSource(context)) return {}
+    let bound: ReadonlyMap<string, string> = new Map()
+    return {
+      Program(program: TSESTree.Program) {
+        bound = grammarBindings(program)
+      },
+      JSXOpeningElement(opening: TSESTree.JSXOpeningElement) {
+        if (elementOf(opening, bound).grammar !== "Button") return
+        if (literalAttribute(opening, "intent") === PRIMARY_INTENT) return
+        for (const start of ["startGlyph", "startContent"]) {
+          const attribute = attributeOf(opening, start)
+          if (attribute === null) continue
+          const value = attribute.value
+          // `startContent={undefined}` / `{null}` states no icon.
+          if (value?.type === "JSXExpressionContainer" && (value.expression.type === "JSXEmptyExpression" || (value.expression.type === "Identifier" && value.expression.name === "undefined") || (value.expression.type === "Literal" && value.expression.value === null))) continue
+          context.report({ node: attribute, messageId: "icon", data: { start } })
+        }
+      },
+    }
+  },
+})
+
 /** The rules this law contributes to the plugin. */
 export const rules: Record<string, Rule.RuleModule> = {
   "button-arrow": buttonArrow,
+  "button-icon-primary-only": buttonIconPrimaryOnly,
 }
 
 defineFamilyRules(rules, "knowledge/ui/presentation/grammar-laws.yaml#BUTTON-ARROW")
