@@ -1,8 +1,30 @@
 # Changelog
 
-## 0.25.3 - 2026-11-08
-
+## 0.26.0 - 2026-11-08 - entry, pricing and step marks
+- Added: `Text size="figure"`, the leading value of a region (FONT-5): a price, a total, a count read first, at the figures cell's
+  size and weight with tabular figures. Story `Surfaces/Pricing cards`.
+- Added: `Stepper completeMarker="check"` (markers kind): a complete step shows a check instead of its number, chosen by a
+  declarative prop so a server component can set it (`renderMarker` is a function and cannot cross that boundary).
+- Added: `EntryFrame layout="centred"`: no context pane, the identity and tools share one bar, the form sits alone in the middle
+  of the page with the footer below; `artwork` and `intro` are refused in this layout by the types. `split` stays the default.
+  Story `Frames/EntryFrame/Centred`.
+- Added: `SurfaceCard emphasis="accent"` on the plain surface: the one card a set of peers recommends (the popular plan of a
+  pricing grid) keeps its ground and depth and takes an accent ring inside its edge; the reason stays in words (a badge).
+- Added: `SurfaceCard kind="details"`: term/value rows (a real `<dl>`, DescriptionList) that touch the card's edge like list rows,
+  each inset by the card padding and divided by a full-width seam (the order of a purchase, a record's summary). Before, a
+  DescriptionList in a body card drew its seams inside the card padding.
+- Changed: `Switch` defaults to `size="control"`: a 40px track with a round thumb that may carry a glyph, so a switch matches the
+  control height of the buttons beside it. `md` and `lg` (HeroUI's own sizes) stay for a dense cell.
+- Fixed: a `WorkspaceShell` primary that holds a `Page` is no longer capped at `--grammar-content-max`: the Page owns the measure,
+  so its white header band runs the column's full width (it ended at 80rem on a wide window) while its content keeps the measure.
+- Fixed: a `WorkspaceShell` with no navigation whose page has a header band drops the region gap under its bar, so the band sits
+  right under the bar instead of leaving a strip of page ground between two white bars.
+- Changed: `Switch` states: off, the track takes the default fill with a fine edge; in both states the thumb is the light surface
+  raised by the surface shadow; on, a thumb glyph takes the accent.
+- Added: `Drawer width="wide"` (32rem) for a guided task whose steps are labelled across the top (a connection wizard); `standard`
+  (24rem) stays the default.
 - Changed: released with the Grammar family at 0.25.3 (its lint family peers `@starci/hfs ~6.3.0`); no component changed.
+
 
 ## 0.25.2 - 2026-11-08
 

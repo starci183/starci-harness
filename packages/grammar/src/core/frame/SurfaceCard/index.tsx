@@ -24,6 +24,7 @@ import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import { AccordionRows } from "./AccordionRows.js"
 import { FigureCells, figureItems } from "./FigureCells.js"
 import { ListRows } from "./ListRows.js"
+import { DescriptionList, type DescriptionListItem } from "../../composite/DescriptionList/index.js"
 import { TableRows } from "./TableRows.js"
 import { SurfaceCardTile } from "./SurfaceCardTile.js"
 import { FooterZoneView, HeaderZoneView } from "./Zones.js"
@@ -62,6 +63,11 @@ type PlainSurfaceCard = {
     readonly treatment?: "surface"
     readonly artwork?: undefined
     readonly motif?: undefined
+    /**
+     * `accent`: the one card a set of peers recommends (the popular plan of a pricing grid), drawn with an accent ring on the
+     * same ground; the reason stays in words beside it (a badge). Absent: no ring.
+     */
+    readonly emphasis?: "accent"
 }
 
 /**
@@ -132,6 +138,14 @@ type FiguresCard = Shell & (Labelled | SelfNamed) & Head & {
 }
 
 type ListCard = Shell & (Labelled | SelfNamed) & Head & ListData
+/**
+ * Facts as term/value rows that touch the card's edge, each row inset by the card padding and divided by a full-width seam (the
+ * order of a purchase, a record's summary). The pairs are a real `<dl>` (DescriptionList); a strip of key figures is `figures`.
+ */
+type DetailsCard = Shell & (Labelled | SelfNamed) & Head & {
+    readonly kind: "details"
+    readonly items: readonly DescriptionListItem[]
+}
 type AccordionCard = Shell & (Labelled | SelfNamed) & Head & AccordionData
 /** A table Grammar owns: columns, rows or day groups under heading rows, one column header, every line to the card's edges. */
 type TableCard = Shell & (Labelled | SelfNamed) & Head & TableData
@@ -148,7 +162,7 @@ type TileCard = Shell & TileData & {
     readonly labelEnd?: undefined
 }
 
-export type SurfaceCardProps = BodyCard | FiguresCard | ListCard | AccordionCard | TableCard | TileCard
+export type SurfaceCardProps = BodyCard | FiguresCard | ListCard | DetailsCard | AccordionCard | TableCard | TileCard
 
 /**
  * The orbit motif: three thin concentric rings with five small nodes, one static SVG. It is drawn in the
@@ -181,7 +195,7 @@ const PLACEHOLDER_DISCLOSURES: readonly AccordionRowData[] = [1, 2, 3].map((n) =
 
 /**
  * The one card: a bounded object with its own face (COLLECTION-2). What it holds is its `kind`, a discriminated
- * union the compiler checks in every file: a plain `body` (the default), a strip of `figures`, a `list` of rows, an
+ * union the compiler checks in every file: a plain `body` (the default), a strip of `figures`, a `list` of rows, `details` (term/value rows), an
  * `accordion`, a `table` or a `tile`; any kind may carry typed `headers` and `footers` (zones the shell pads and divides).
  *
  * Where the name sits follows the kind: a card that heads a section has a `label`, drawn
@@ -209,6 +223,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
     const headingLevel = props.headingLevel ?? DEFAULT_SURFACE_HEADING_LEVEL
     const measure: SurfaceCardMeasure = body?.measure ?? "content"
     const treatment: SurfaceCardTreatment = body?.treatment ?? "surface"
+    const emphasis = body !== undefined && (body.treatment === undefined || body.treatment === "surface") ? body.emphasis : undefined
     const motif: SurfaceCardMotif = body?.treatment === "ink" ? body.motif ?? "none" : "none"
     const artwork = body?.treatment === "ink" || body?.treatment === "soft" ? body.artwork : undefined
     const wholeAction = isTile ? props.wholeAction : body?.wholeAction
@@ -248,6 +263,8 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                 return <FigureCells items={figureItems(props.items, isLoading)} isLoading={isLoading} isDisabled={disabled} />
             case "list":
                 return <ListRows data={props} isLoading={isLoading} ariaLabel={accessibleName} />
+            case "details":
+                return <DescriptionList items={props.items} isLoading={isLoading} />
             case "accordion":
                 return <AccordionRows data={isLoading && props.items.length === 0 ? { ...props, items: PLACEHOLDER_DISCLOSURES } : props} isLoading={isLoading} />
             case "table":
@@ -275,6 +292,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             data-grammar-state={state}
             data-grammar-treatment={stateTreatment.tone}
             data-grammar-surface-treatment={treatment}
+            data-grammar-surface-emphasis={emphasis}
             data-grammar-surface-artwork={artwork !== undefined ? "art" : motif !== "none" ? "motif" : "none"}
         >
             {artwork !== undefined || motif !== "none" ? (
@@ -331,6 +349,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             data-grammar-surface-card="true"
             data-grammar-nesting="surface"
             data-grammar-surface-treatment={treatment}
+            data-grammar-surface-emphasis={emphasis}
             data-component="SurfaceCard"
             data-tier="frame"
             render={(cardProps) => <section {...cardProps} />}

@@ -959,6 +959,15 @@
     }
 
     /*
+     * A details card: its term/value rows touch the card's edge like list rows. Each pair carries the card's inline padding and the row
+     * block rhythm, and the seam between two pairs runs the card's full width.
+     */
+    .starci-core-surface[data-grammar-surface-kind="details"] .starci-core-description-pair {
+        padding-block: var(--grammar-row-gap);
+        padding-inline: var(--grammar-card-padding-inline);
+    }
+
+    /*
      * Zones: typed bands above and below a card's body. The card is flush; the shell draws the ONE divider between neighbouring zones and
      * between a zone and the body (a header zone's bottom border, a footer zone's top border), never a Divider. The body's own inset is
      * the card padding for a body or tile card; a list, figures or accordion body touches the edge.
@@ -1111,6 +1120,12 @@
         gap: 0 !important;
         background: var(--surface);
         color: var(--surface-foreground);
+    }
+
+    /* Emphasis: the card its peers recommend keeps its ground and depth and takes an accent ring inside its edge. */
+    .starci-core-surface[data-grammar-surface-emphasis="accent"] {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
     }
 
     /*
@@ -2477,6 +2492,14 @@
         margin-block-end: var(--grammar-region-gap);
     }
 
+    /*
+     * A page whose header is a band sits right under the shell bar: the band is the page's top edge, so the region gap above it would
+     * only leave a strip of page ground between two white bars. Without a navigation region the primary is the first row.
+     */
+    .starci-core-workspace-shell:has(> .starci-core-workspace-shell-layout[data-grammar-workspace-navigation="absent"] > .starci-core-workspace-shell-primary > .starci-core-page[data-grammar-page-header="true"]) > .starci-core-workspace-shell-header {
+        margin-block-end: 0;
+    }
+
     .starci-core-workspace-shell-compact-header,
     .starci-core-workspace-shell-compact-navigation {
         display: none;
@@ -2610,6 +2633,13 @@
         inline-size: 100%;
         max-inline-size: var(--grammar-content-max);
         margin-inline: auto;
+    }
+    /*
+     * A Page owns the measure (Page: "layout frames never wrap a page in a measure of their own"): a primary that holds a Page is not
+     * capped, so the page's white header band runs the column's full width while the band's content and the body keep the page measure.
+     */
+    .starci-core-workspace-shell-primary:has(> .starci-core-page) {
+        max-inline-size: none;
     }
     .starci-core-workspace-shell-rail { grid-area: rail; }
 
@@ -4419,6 +4449,15 @@
     .starci-core-text[data-size="sm"] {
         font-size: var(--grammar-text-md);
         line-height: var(--grammar-leading-md);
+    }
+
+    /* FONT-5: the leading value of a region (a price, a total), the size of a figures cell's value; one word, tabular figures. */
+    .starci-core-text[data-size="figure"] {
+        font-size: var(--grammar-text-4xl);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-2xl);
+        letter-spacing: var(--grammar-tracking-snug);
+        font-variant-numeric: tabular-nums;
     }
 
     .starci-core-text[data-tone="muted"] {

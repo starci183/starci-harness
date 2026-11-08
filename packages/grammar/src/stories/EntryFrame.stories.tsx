@@ -42,3 +42,33 @@ export const Ready: Story = { render: () => <EntryDemo /> };
 export const LongCopy: Story = { render: () => <EntryDemo long /> };
 export const LoadingForm: Story = { render: () => <EntryDemo state="loading" /> };
 export const ErrorForm: Story = { render: () => <EntryDemo state="error" /> };
+
+/** The centred entry: no context pane, the identity and tools on one bar, the form alone in the middle of the page. */
+export const Centred: Story = {
+  render: () => (
+    <G.EntryFrame
+      layout="centred"
+      label="Access your workspace"
+      identity={<G.Text isStrong>Northstar</G.Text>}
+      tools={<G.Link href="#language">Language and region</G.Link>}
+      footer={
+        <G.NavLandmark label="Legal information" layout="bar">
+          <G.Link href="#privacy">Privacy</G.Link>
+          <G.Link href="#terms">Terms</G.Link>
+        </G.NavLandmark>
+      }
+    >
+      <G.SurfaceCard ariaLabel="Sign in">
+        <G.Stack gap="section">
+          <G.Stack gap="inline">
+            <G.Heading level={1}>Sign in</G.Heading>
+            <G.Text tone="muted">Use your workspace email to continue.</G.Text>
+          </G.Stack>
+          <G.Input id="centred-email" name="email" label="Email address" kind="email" />
+          <G.Input id="centred-password" name="password" label="Password" kind="password" />
+          <G.Button intent="commit" width="fill">Continue</G.Button>
+        </G.Stack>
+      </G.SurfaceCard>
+    </G.EntryFrame>
+  ),
+};

@@ -25,6 +25,11 @@ export type DrawerProps = OverlayOpenState & {
     readonly closeLabel?: string
     readonly placement?: DrawerPlacement
     /**
+     * A side sheet's width: `standard` (default) 24rem for a short secondary task; `wide` 32rem for a guided task whose steps are
+     * labelled across the top (a connection wizard). Ignored for `top` and `bottom` sheets.
+     */
+    readonly width?: "standard" | "wide"
+    /**
      * Draw the grab handle. Default: shown for `bottom` sheets only. The handle is decorative
      * (`aria-hidden`); dragging it past the threshold dismisses, the close button and Escape remain the
      * accessible ways out.
@@ -53,6 +58,7 @@ export const Drawer = ({
     closeLabel,
     placement = "right",
     showHandle,
+    width = "standard",
     isDismissable = true,
     isKeyboardDismissDisabled = false,
     ...openState
@@ -70,7 +76,7 @@ export const Drawer = ({
             className="starci-core-overlay-backdrop starci-core-drawer-backdrop"
             {...resolveTriggerlessOpenProps(trigger, openState)}
         >
-            <HeroDrawer.Content placement={placement} data-contract="MOTION-2" className="starci-core-drawer-content">
+            <HeroDrawer.Content placement={placement} data-contract="MOTION-2" data-grammar-drawer-width={width} className="starci-core-drawer-content">
                 <HeroDrawer.Dialog
                     data-tier="frame"
                     data-component="Drawer"

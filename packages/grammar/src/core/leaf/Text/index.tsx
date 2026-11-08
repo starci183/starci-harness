@@ -3,7 +3,8 @@ import type { ReactNode } from "react"
 
 export type TextAs = "div" | "p" | "span"
 export type TextTone = "default" | "muted"
-export type TextSize = "xs" | "sm" | "md"
+/** `figure` is the leading value of a region (FONT-5): a price, a total, a count read first, in tabular figures. */
+export type TextSize = "xs" | "sm" | "md" | "figure"
 export type TextLive = "off" | "polite" | "assertive"
 export type TextOverflow = "wrap" | "truncate" | "clamp-2"
 
@@ -47,6 +48,7 @@ const FONT_RULE_BY_SIZE: Record<TextSize, string> = {
     xs: "FONT-1",
     sm: "FONT-2",
     md: "FONT-3",
+    figure: "FONT-5",
 }
 
 const TONE_RULE_BY_RESOLVED_TONE: Record<TextTone, string> = {
