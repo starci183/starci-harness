@@ -701,6 +701,48 @@ export const Form: Story = {
   ),
 };
 
+const rhythmChips: ReadonlyArray<{ readonly value: string; readonly label: string }> = [
+  { value: 'friend', label: 'Friend' },
+  { value: 'expert', label: 'Expert' },
+  { value: 'critic', label: 'Critic' },
+];
+
+/**
+ * THE FIELD RULE (owner, 2026-11-09), every control kind in one Form so the rhythm reads top to bottom: label -> control 8,
+ * control -> help, error or counter 4, field -> field 24 (set by the Form, never by a field). A Fieldset: legend -> fields 8,
+ * fields 24 apart, the actions 24 below the last field.
+ */
+export const FieldRhythm: Story = {
+  render: () => (
+    <Matrix maxWidth={formColumn}>
+      <State label="Every control in one Form" direction="column">
+        <G.Form label="Field rhythm">
+          <G.Input id="rhythm-name" label="Name" name="rhythm-name" description="Shown to your team." />
+          <G.Select label="Agent" name="rhythm-agent" options={planOptions} defaultValue="team" />
+          <G.NumberField label="Goal" defaultValue={3} description="Leave empty when there is no goal yet." />
+          <G.Textarea label="Question" rows={3} maxLength={200} description="Ask in your own words." />
+          <G.ComboBox label="Plan" options={planOptions} placeholder="Type to filter" />
+          <G.SearchField label="Search" />
+          <G.DatePicker label="Due date" defaultValue={parseDate('2026-10-01')} />
+          <G.DateField label="Start date" defaultValue={parseDate('2026-09-23')} />
+          <G.TimeField label="Start time" defaultValue={parseTime('09:30')} />
+          <G.CopyField label="Webhook URL" value="https://example.com/hooks/26465cdf" copyLabel="Copy" copiedLabel="Copied" copyErrorLabel="Copy failed" description="Paste it into the sender." />
+          <G.ChoiceChips label="Ask as" options={rhythmChips} defaultValue="friend" empty={null} />
+          <G.CheckboxGroup label="Notify by" options={choiceOptions} description="Pick at least one." />
+          <G.RadioGroup label="Delivery" options={choiceOptions} defaultValue="email" description="You can change it later." />
+          <G.Switch label="Dark mode" />
+          <G.Slider label="Volume" defaultValue={40} />
+          <G.Input id="rhythm-code" name="rhythm-code" label="Code" isInvalid errorMessage="Enter the six-digit code." />
+          <G.Fieldset legend="Address" description="Where we send the invoice." actions={<G.Button size="sm" intent="alternative">Reset</G.Button>}>
+            <G.Input id="rhythm-street" label="Street" name="rhythm-street" />
+            <G.Input id="rhythm-city" label="City" name="rhythm-city" />
+          </G.Fieldset>
+        </G.Form>
+      </State>
+    </Matrix>
+  ),
+};
+
 const MENTION_PEOPLE = [
   { id: 'linh', label: 'Linh', description: 'Owner' },
   { id: 'minh', label: 'Minh', description: 'Sales' },

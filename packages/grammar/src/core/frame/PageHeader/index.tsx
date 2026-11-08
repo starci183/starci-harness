@@ -20,7 +20,20 @@ export type PageHeaderBreadcrumbs = {
  */
 export type PageHeaderTabs = Omit<SecondaryTabsProps, "appearance" | "inset">
 
-export type PageHeaderProps = {
+/** The header's tab rows: sub tabs only stand under page tabs, so `subTabs` without `tabs` is a type error. */
+type PageHeaderTabRows =
+    | { readonly tabs?: undefined; readonly subTabs?: never }
+    | {
+        readonly tabs: PageHeaderTabs
+        /**
+         * The second tab row: region tabs of the page's current view, inside the white band under the page tabs, on their own full-width
+         * separator, the first label on the content edge like the page tabs'. Underline tabs, the second and last underline layer; the
+         * band's bottom border is the line under them. They take `panelId` and `label` like the page tabs (the page body is their panel unless `panelId` names another).
+         */
+        readonly subTabs?: PageHeaderTabs
+    }
+
+export type PageHeaderProps = PageHeaderTabRows & {
     /** The page heading, the document's one `h1` (FONT-4). */
     readonly title: ReactNode
     /** `id` of the `h1`, for a region `aria-labelledby` that names the page by its heading. */
@@ -42,7 +55,6 @@ export type PageHeaderProps = {
     readonly mark?: ReactNode
     /** The page's commands, at the end of the heading row; at phone width they wrap under the heading. */
     readonly actions?: ReactNode
-    readonly tabs?: PageHeaderTabs
     /** The measure of the page content below, so the header's content edges align with it. Default `product`. */
     readonly measure?: PageContainerProps["measure"]
     /**
@@ -78,6 +90,7 @@ export const PageHeader = ({
     mark,
     actions,
     tabs,
+    subTabs,
     measure = "product",
     isLoading = false,
 }: PageHeaderProps) => (
@@ -88,6 +101,7 @@ export const PageHeader = ({
         data-contract={isLoading ? "MARGIN-5 STATE-8" : "MARGIN-5"}
         data-grammar-page-header="true"
         data-grammar-page-header-tabs={tabs === undefined ? "false" : "true"}
+        {...(subTabs === undefined ? {} : { "data-grammar-page-header-subtabs": "true" })}
         {...(breadcrumbs === "root" ? { "data-grammar-page-root": "true" } : {})}
         {...(isLoading ? { "data-grammar-skeleton": "true", "data-loading": "true", "aria-busy": true } : {})}
     >
@@ -121,11 +135,27 @@ export const PageHeader = ({
                 </div>
                 {actions === undefined ? null : <div className="starci-core-page-header-actions" data-contract="GAP-2" aria-hidden={isLoading || undefined}>{slot(actions, isLoading, "block")}</div>}
             </div>
-            {tabs === undefined ? null : (
+            {tabs === undefined || subTabs !== undefined ? null : (
                 <div className="starci-core-page-header-tabs">
                     <TabsLineHost><Tabs {...tabs} inset="none" /></TabsLineHost>
                 </div>
             )}
         </PageContainerPart>
+        {tabs === undefined || subTabs === undefined ? null : (
+            <>
+                <div className="starci-core-page-header-tabrow" data-grammar-page-header-tabrow="page">
+                    <PageContainerPart data-contract="PADDING-5" measure={measure}>
+                        <div className="starci-core-page-header-tabs">
+                            <TabsLineHost><Tabs {...tabs} inset="none" /></TabsLineHost>
+                        </div>
+                    </PageContainerPart>
+                </div>
+                <PageContainerPart data-contract="PADDING-5" measure={measure}>
+                    <div className="starci-core-page-header-tabs" data-grammar-page-header-tabrow="sub">
+                        <TabsLineHost><Tabs {...subTabs} inset="none" /></TabsLineHost>
+                    </div>
+                </PageContainerPart>
+            </>
+        )}
     </div>
 )

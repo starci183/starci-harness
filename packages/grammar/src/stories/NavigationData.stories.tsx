@@ -93,6 +93,48 @@ export const PlainPressable: Story = {
   ),
 };
 
+const connections: ReadonlyArray<G.LogoStackItem> = [
+  { id: 'mail', label: 'Mail', src: placeholderImage('M', 200) },
+  { id: 'docs', label: 'Docs', iconSource: BookGlyph },
+  { id: 'home', label: 'Home', iconSource: HomeGlyph },
+  { id: 'chat', label: 'Chat' },
+  { id: 'cal', label: 'Calendar', src: placeholderImage('C', 120) },
+];
+
+export const LogoStack: Story = {
+  render: () => (
+    <Matrix>
+      <State label="Static: logos, one identity gap apart, no plate">
+        <G.LogoStack label="Connections used by this agent" items={connections.slice(0, 3)} />
+      </State>
+      <State label="Overflow +N pill and caption (max 3)">
+        <G.LogoStack label="Connections used by this agent" items={connections} caption="5 connections" />
+      </State>
+      <State label="Pressable (onPress): focus ring, no button fill">
+        <G.LogoStack label="Connections used by this agent" items={connections} caption="5 connections" onPress={() => undefined} />
+      </State>
+      <State label="Pressable, disabled">
+        <G.LogoStack label="Connections used by this agent" items={connections} onPress={() => undefined} isDisabled />
+      </State>
+      <State label="DropdownMenu trigger">
+        <G.DropdownMenu
+          trigger={<G.LogoStack isTrigger label="Connections used by this agent" items={connections} caption="5 connections" />}
+          entries={connections.map((item) => ({ id: item.id, label: item.label }))}
+        />
+      </State>
+      <State label="Loading (same box)">
+        <G.LogoStack label="Connections used by this agent" items={connections} caption="5 connections" isLoading />
+      </State>
+      <State label="Own content as a trigger (PlainPressable)">
+        <G.DropdownMenu
+          trigger={<G.PlainPressable aria-label="Workspace"><span>Hakuen</span></G.PlainPressable>}
+          entries={[{ id: 'one', label: 'One' }]}
+        />
+      </State>
+    </Matrix>
+  ),
+};
+
 export const AvatarGroup: Story = {
   render: () => (
     <Matrix>

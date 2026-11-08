@@ -29,7 +29,10 @@ export type ListBoxItem = {
     readonly descriptionLines?: ItemDescriptionLines
     /** Unread copy uses the family's strong weight for both label and description. */
     readonly emphasis?: "unread"
-    /** Decorative identity content centred in the fixed slot for this item's size. */
+    /**
+     * Decorative identity content centred in the fixed slot for this item's size. A group room passes an
+     * `AvatarGroup layout="grid"` of the same `size` as the row (sm 32, md 40, lg 48), which fills the slot exactly.
+     */
     readonly leading?: ReactNode
     /** Overrides the list's leading slot size for this item. */
     readonly size?: ListBoxSize

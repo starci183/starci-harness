@@ -105,3 +105,35 @@ export const PreviewLinesAndUnread: Story = {
         </G.NavLandmark>
     ),
 }
+
+const roomMembers: ReadonlyArray<G.AvatarGroupItem> = [
+    { id: "mina", name: "Mina Nguyen" },
+    { id: "alex", name: "Alex Tran" },
+    { id: "kim", name: "Kim Le" },
+    { id: "robin", name: "Robin Park" },
+    { id: "sam", name: "Sam Lee" },
+]
+
+/** Group rooms in a list: `leading` takes an `AvatarGroup layout="grid"` of the row's size (sm 32, md 40, lg 48), beside a person's Avatar. */
+export const GroupRoomRows: Story = {
+    render: () => (
+        <>
+            {(["sm", "md", "lg"] as const).map((size) => (
+                <G.ListBox key={size} label={`${size} rooms`} size={size} inset="panel" items={[
+                    { id: "pair", label: "Mina and Alex", description: "Two members", leading: <G.AvatarGroup label="Mina and Alex" layout="grid" size={size} items={roomMembers.slice(0, 2)} overflowLabel={(hidden) => `${hidden} more members`} /> },
+                    { id: "team", label: "Design team", description: "Five members, the count in the fourth cell", emphasis: "unread", leading: <G.AvatarGroup label="Design team" layout="grid" size={size} items={roomMembers} overflowLabel={(hidden) => `${hidden} more members`} /> },
+                    { id: "person", label: "Kim Le", description: "A person", leading: <G.Avatar name="Kim Le" size={size} /> },
+                ]} />
+            ))}
+        </>
+    ),
+}
+
+/** The same rows while loading: the skeleton keeps each leading circle. */
+export const GroupRoomRowsLoading: Story = {
+    render: () => (
+        <G.ListBox label="Rooms" isLoading items={[
+            { id: "team", label: "Design team", description: "Five members", leading: <G.AvatarGroup label="Design team" layout="grid" items={roomMembers} overflowLabel={(hidden) => `${hidden} more members`} /> },
+        ]} />
+    ),
+}

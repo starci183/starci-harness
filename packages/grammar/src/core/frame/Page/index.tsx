@@ -6,7 +6,7 @@ import { FillBox } from "./FillBox.js"
 import { PageHeader, type PageHeaderBreadcrumbs, type PageHeaderProps } from "../PageHeader/index.js"
 
 /** The page header Page draws: every `PageHeader` prop except the two Page owns, `measure` and `isLoading`. */
-export type PageHeaderContent = Omit<PageHeaderProps, "measure" | "isLoading">
+export type PageHeaderContent = PageHeaderProps extends infer Props ? Props extends unknown ? Omit<Props, "measure" | "isLoading"> : never : never
 
 /**
  * A bleed page's trail without a band: the breadcrumbs alone, no heading and no other slot. A header that carries a
@@ -101,7 +101,13 @@ export const Page = (props: PageProps) => {
     // Page tabs switch the page's main area, so the body is the one panel each tab controls, named by the tab list; an app that passes its own `panelId` owns its panels.
     const tabs = headerBand?.tabs
     const ownsPanel = tabs !== undefined && tabs.panelId === undefined
-    const band = headerBand === undefined || tabs === undefined || !ownsPanel ? headerBand : { ...headerBand, tabs: { ...tabs, panelId: PAGE_PANEL_ID } }
+    const subTabs = headerBand?.subTabs
+    const subTabsOwnPanel = ownsPanel && subTabs !== undefined && subTabs.panelId === undefined
+    const band = headerBand === undefined || tabs === undefined ? headerBand : {
+        ...headerBand,
+        ...(ownsPanel ? { tabs: { ...tabs, panelId: PAGE_PANEL_ID } } : {}),
+        ...(subTabsOwnPanel ? { subTabs: { ...subTabs, panelId: PAGE_PANEL_ID } } : {}),
+    }
     const panel = ownsPanel ? { id: PAGE_PANEL_ID, role: "tabpanel", "aria-label": tabs.label } : {}
     const trail = header !== undefined && !isBand(chrome, header) ? header.breadcrumbs : undefined
     return (

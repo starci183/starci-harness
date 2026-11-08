@@ -40,7 +40,10 @@ export type EmptyNoticeProps = NoChildren & EmptyNoticeMark & {
      * notice in a secondary place (a rail, a side card) on a page whose primary already stands in its header.
      */
     readonly actionIntent?: Extract<ButtonIntent, "commit" | "neutral">
+    /** What the action does, at its start. Not with `actionEndArrow` (a Button does something or leads somewhere, never both). */
     readonly actionStartContent?: ReactNode
+    /** The action leads somewhere (opens the place where the first item is made): the button ends with Grammar's arrow. */
+    readonly actionEndArrow?: boolean
     readonly isActionPending?: boolean
     readonly onAction?: () => void
     /** The read failed: the notice is a live alert with a warning mark, so a failure never reads as empty. The mark props are ignored. */
@@ -59,6 +62,7 @@ export const EmptyNotice = ({
     actionLabel,
     actionIntent = "commit",
     actionStartContent,
+    actionEndArrow = false,
     isActionPending = false,
     onAction,
     isError = false,
@@ -82,7 +86,7 @@ export const EmptyNotice = ({
             <Button
                 intent={actionIntent}
                 size="sm"
-                startContent={actionStartContent}
+                {...(actionEndArrow ? { endArrow: true as const } : { startContent: actionStartContent })}
                 isPending={isActionPending}
                 {...(onAction === undefined ? {} : { onPress: onAction })}
             >

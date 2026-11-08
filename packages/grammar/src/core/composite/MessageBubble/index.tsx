@@ -17,6 +17,15 @@ export type MessageBubbleSide = "incoming" | "outgoing"
  */
 export type MessageBubbleTone = "brand" | "soft"
 
+/**
+ * Where the message actions sit. `floating` (the default): a small bordered toolbar outside the bubble, over the thread.
+ * `inline`: a bare toolbar in the message row itself, on the reading end of the bubble, with no border, fill or shadow.
+ */
+export type MessageBubbleActionsPlacement = "floating" | "inline"
+
+/** How far a bubble reaches across its row. `standard` (the default): a reading measure, at most 40rem and 85% of the row. `wide`: 70% of the row, for a chat stack that fills its column. */
+export type MessageBubbleMeasure = "standard" | "wide"
+
 /** A resolved message. */
 type MessageBubbleMessage = {
     readonly isLoading?: false
@@ -39,6 +48,10 @@ type MessageBubbleMessage = {
      * bordered surface, revealed on hover and keyboard focus inside the message. They take `chrome` placement (neutral = ghost).
      */
     readonly actions?: ReactNode
+    /** Where `actions` sit; `floating` when omitted. `inline` draws them as a bare hover and focus toolbar in the row, beside the bubble on its reading end. Keyboard focus inside the message shows them in both. */
+    readonly actionsPlacement?: MessageBubbleActionsPlacement
+    /** The bubble's widest reach; `standard` when omitted. */
+    readonly measure?: MessageBubbleMeasure
     /** Content under the body that is not part of the message text: an attachment, an approval card, a reaction row. */
     readonly footer?: ReactNode
     /** Draws the focus ring around the bubble, e.g. when a link jumps to this message. */
@@ -125,7 +138,8 @@ const MessageBubbleInner = (props: MessageBubbleProps) => {
         return <SkeletonBubble side={props.side} hasAvatar={props.hasAvatar === true} />
     }
     if (props.error !== undefined) return <div className="starci-core-message-bubble-thread" data-grammar-message-error="true"><ErrorView error={props.error} /></div>
-    const { body, side = "incoming", tone = "brand", author, avatar, meta, status, actions, footer, isHighlight = false, id } = props
+    const { body, side = "incoming", tone = "brand", author, avatar, meta, status, actions, actionsPlacement = "floating", measure = "standard", footer, isHighlight = false, id } = props
+    const actionsToolbar = actions == null ? null : <div className="starci-core-message-bubble-actions" data-grammar-bubble-actions="toolbar"><ButtonPlacementProvider placement="chrome">{actions}</ButtonPlacementProvider></div>
     const hasHead = author != null || meta != null || status != null
     return (
         <div
@@ -138,6 +152,8 @@ const MessageBubbleInner = (props: MessageBubbleProps) => {
             data-grammar-bubble-tone={side === "outgoing" ? tone : "brand"}
             data-grammar-bubble-highlight={isHighlight ? "true" : "false"}
             data-grammar-bubble-footer={footer == null ? "false" : "true"}
+            data-grammar-bubble-measure={measure}
+            data-grammar-bubble-actions-placement={actions == null ? undefined : actionsPlacement}
         >
             {avatar == null ? null : <div className="starci-core-message-bubble-avatar">{avatar}</div>}
             <div className="starci-core-message-bubble-stack">
@@ -150,8 +166,9 @@ const MessageBubbleInner = (props: MessageBubbleProps) => {
                 ) : null}
                 <div className="starci-core-message-bubble-body">{body}</div>
                 {footer == null ? null : <div className="starci-core-message-bubble-footer">{footer}</div>}
-                {actions == null ? null : <div className="starci-core-message-bubble-actions" data-grammar-bubble-actions="toolbar"><ButtonPlacementProvider placement="chrome">{actions}</ButtonPlacementProvider></div>}
+                {actions == null || actionsPlacement === "inline" ? null : actionsToolbar}
             </div>
+            {actions == null || actionsPlacement !== "inline" ? null : actionsToolbar}
         </div>
     )
 }

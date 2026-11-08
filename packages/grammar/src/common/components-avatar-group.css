@@ -70,6 +70,87 @@
         object-fit: cover;
     }
 
+    /* --- LogoStack: round connection logos with no plate, one identity gap apart, a "+N" pill and a muted caption --- */
+    .starci-core-logo-stack-group {
+        display: inline-flex;
+        min-inline-size: 0;
+        max-inline-size: 100%;
+    }
+
+    .starci-core-logo-stack {
+        display: inline-flex;
+        min-inline-size: 0;
+        max-inline-size: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--grammar-identity-gap);
+        text-align: start;
+    }
+
+    .starci-core-logo-stack-logos {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+    }
+
+    .starci-core-logo-stack-logo {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        inline-size: var(--grammar-logo-stack-size);
+        block-size: var(--grammar-logo-stack-size);
+        overflow: hidden;
+        border-radius: var(--grammar-radius-round);
+    }
+
+    .starci-core-logo-stack-image {
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .starci-core-logo-stack-initial {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        inline-size: 100%;
+        block-size: 100%;
+        background: var(--surface-secondary);
+        color: var(--foreground);
+        font-size: var(--grammar-text-2xs);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-none);
+    }
+
+    .starci-core-logo-stack-count {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        min-inline-size: var(--grammar-logo-stack-size);
+        block-size: var(--grammar-logo-stack-size);
+        padding-inline: var(--grammar-identity-gap);
+        border-radius: var(--grammar-radius-pill);
+        background: var(--surface-secondary);
+        color: var(--foreground);
+        font-size: var(--grammar-text-2xs);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-none);
+        white-space: nowrap;
+    }
+
+    .starci-core-logo-stack-caption {
+        overflow: hidden;
+        max-inline-size: 100%;
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     .starci-core-avatar-group-count {
         display: flex;
         align-items: center;

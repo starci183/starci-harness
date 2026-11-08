@@ -2,6 +2,21 @@
 
 ## 0.27.0 - 2026-11-09 - entry, pricing and step marks (0.26.0 never reached npm; this release carries it)
 
+- Added: `MessageBubble actionsPlacement="floating" | "inline"` (default `floating`): `inline` draws the actions as a bare
+  hover and focus-within toolbar in the message row, on the reading end of the bubble, with no border, fill or shadow.
+- Added: `MessageBubble measure="standard" | "wide"` (default `standard`, unchanged `min(40rem, 85%)`): `wide` lets a bubble
+  reach 70% of its row. New ramp steps `--grammar-bubble-measure-standard` and `--grammar-bubble-measure-wide`.
+- Added: group rooms: stories and docs for an `AvatarGroup layout="grid"` as `ListBoxItem.leading` (sized to the row) and as
+  `PaneHeader mark` (`Pane header/GroupRoomHead`, `PanelList/GroupRoomRows`); no prop change, both slots already take nodes.
+
+- Changed (values): THE FIELD RULE (owner, 2026-11-09), one spacing contract for every control: label to control 8 (was
+  4 on Select and every root that kept the vendor gap, 4 on ChoiceChips, 8 on the rest, and up to 24 to the first option
+  of a Checkbox or Radio group through the vendor's `mt-4`), control to help, error or counter 4 (was 8, and a vendor 4 on Select), field to
+  field 24 (was 12 in `Form`, `Grid kind="form"` rows and columns, and `Fieldset` fields, which also took the vendor's
+  `space-y-4` on top). The label weight is medium 500 (was semibold). A `Fieldset` legend stands 8 above its fields and
+  its actions 24 below them (was 12 and 12 plus the vendor's 4). The error text loses the vendor's 4px inline padding. A
+  choice (Checkbox, Radio, Switch) puts its label 8 from the control (was 12 in the vendor radio row) and its help 4.
+  Rhythm story: `Forms/FieldRhythm`.
 - Changed (values): the proximity law (owner, 2026-11-09): inside any container its children stand at least one step
   closer than the container stands to its siblings. `Section` spaces its head, filter and body by the row step (12, was
   24; contract GAP-3), so a Section in the page body (32) holds its blocks at 12. `PaneSection gap` defaults to `inline`
@@ -11,6 +26,40 @@
   stand 8 apart (was 12). The Footer steps down 32 / 24 / 12 / 8 (main and legal, brand and directory, groups, links;
   was 24 / 32 / 24 / 8). Stack and Cluster keep a required `gap`; zones (seam-divided) and the region Grids (24 in the
   page body's 32) already held the law. Each decision is recorded beside its rule in `common/styles.css`.
+- Added: `LogoStack` (composite): the connections an agent uses as round 20px logos with no plate (`items` with `src` or
+  `iconSource`, `max` default 3, a "+N" pill, a muted `caption`, `label`). Static, or one plain pressable with `onPress` or
+  `isTrigger` (a `DropdownMenu` trigger). New ramp step `--grammar-logo-stack-size`. `PlainPressable` is now exported from
+  `@starci/grammar/common` so an app can wrap its own content as a menu or popover trigger.
+- Added: `Tabs end` (secondary tabs, `ReactNode`): a command at the strip's end, inside the strip frame after the tabs,
+  centred in the strip's height, so the strip's line (own or the host's) spans the full column under it.
+- Added: `PageHeader subTabs` (through `Page header.subTabs`, valid only with `tabs`): the second underline row of region
+  tabs in the white band, under the page tabs, on its own full-width separator, the first label on the content edge.
+- Added: `SurfaceCard` search header zone `filters` (`SelectZoneField[]`): trailing `Select`s share the search's row, the search grows,
+  each select keeps its natural width with nowrap words, and they wrap below the search on a narrow card.
+- Added: `SurfaceCard` head `description`: one muted sm line under the label, 4 below it.
+- Added: pressable table rows: `SurfaceCard kind="table"` takes `onRowAction(id)` (DataTable already had it); a pressable row takes the
+  pointer cursor and the `--surface-secondary` hover fill (`data-grammar-table-row-pressable`), and row commands stay separate presses.
+- Changed (values): the type roles (owner, 2026-11-09): one role, one size; one line, one size. `Text` `md` is the body,
+  14 / 400 (was 16), `sm` the secondary, 13 (was 14), `xs` 12; `isStrong` is 500 (was 600). The page title is xl 18 / 500
+  (was 20 / 600), a section title lg 16 / 500 (was 600), a card label lg 16 / 500 (was 14 / 600). A ListRow primary is
+  md 14 / 500 (was 600), its description sm 13 (was 14), its meta xs 12 (was 14). A DataTable header is xs 12 / 500
+  muted, a cell md 14 / 400, the row-header cell 500; narrow-mode secondary lines sm 13. Every tab is sm 13: page, region
+  and filter tabs and the pill (page tabs took the vendor's 14). Section and page descriptions are sm 13. The Section
+  `action` slot sets the head's body step (md 14), so a Link there matches it. `scripts/check-type-roles.mts`
+  (`check:type`, in `npm test`) pins these rules to their tokens. The live case: a DataTable title cell drawn with
+  `<Text isStrong>` was 16 / 600 against 14 cells; it is 14 / 500 now, with no app change.
+- Changed: `Link size` (`inherit` default, `sm`, `md`): an inline link takes the size of the text around it. An external
+  text link ends with Grammar's new `external` glyph unless the app passes `externalIcon`.
+- Changed (types): the button-icon rule. A Button does something (`startGlyph` / `startContent`) or leads somewhere
+  (`endArrow`), never both: `ButtonIcons` refuses the pair at compile time. Both glyphs take the inline gap (8) and the
+  control's glyph padding. Lint `button-arrow` refuses an arrow typed in a label or passed through `endContent`.
+- Added: glyphs `plus`, `upload` and `external` in `GLYPH_NAMES` (`startGlyph="plus"` on a create action).
+- Added: `EmptyNotice actionEndArrow` and `ItemAction.endArrow` (row and tile actions): a Grammar-drawn action that leads
+  somewhere ends with the arrow.
+- Changed: the surface-in-surface law (owner, 2026-11-09): a `Section kind="list"` inside a surface (a card body, a
+  drawer or dialog, a pane band, a rail or aside) is a nested surface: a 1px separator edge, the card radius, clipped, so
+  no row seam runs past the container edge; its rows keep 12 inline. Automatic, no prop. A `ListBox` in a pane is not a
+  row list of this kind and is unchanged.
 - Added: `PageHeader breadcrumbs="root"` (through `Page header`): the root page of a console states that it has no trail
   by design; it draws nothing. Lint `page-breadcrumbs` asks every console page for a trail or `"root"`.
 - Added: `scripts/audit-gap.mts` (`npm run audit:gap -- <url>...`): a Playwright audit of the proximity law in a

@@ -300,6 +300,15 @@ for a screen reader. `masked` with `lastFour` draws bullets and the last four ch
 clear value (a server reveal may be async) and the field writes it to the clipboard without keeping it. `Grid kind="form"`
 lays fields in rows (`columns` 1 or 2, two once its own width holds them) whose controls stand on one line.
 
+**Field rule** (owner, 2026-11-09). Every control spaces its parts the same way: the label (14, medium) stands 8
+(`--grammar-inline-gap`) above the control, the help text, error or counter 4 (`--grammar-identity-gap`) under it, and
+fields stand 24 (`--grammar-section-gap`) apart, set by the `Form`, the `Grid kind="form"` rows and columns and the
+`Fieldset` fields, never by a field (a field has no outer margin). A group's description (RadioGroup, CheckboxGroup,
+Fieldset) stands between its label and options, 8 on each side. A `Fieldset`'s legend is its label (8 above the fields) and
+its actions stand 24 below the last field. HeroUI's own gaps, `mt-4`, `px-1` and `pt-1` on those parts are overridden. Lint
+`field-label` refuses a hand-made `Text` label beside a control: pass `label` and the control draws it on this rule. The
+`Forms/FieldRhythm` story shows every control kind in one `Form`.
+
 **Overlays (9).** Alert, AlertDialog, Dialog, Drawer, DropdownMenu, Popover, Toast, Toaster,
 Tooltip. Dialog, AlertDialog, Drawer, Popover and DropdownMenu support uncontrolled `defaultOpen`
 and controlled `isOpen` / `onOpenChange` through the shared overlay contract.
@@ -392,8 +401,27 @@ A loading view keeps the titles, headings and labels it was given and draws the 
 <BarChart label="Engagement per day" bars={perDay} empty={<EmptyNotice message="No data yet" />} />
 ```
 
-**Navigation & Data (16).** Accordion, AvatarGroup, Calendar, DataTable,
-BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
+**Navigation & Data (17).** Accordion, AvatarGroup, Calendar, DataTable,
+BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, LogoStack, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
+
+`DataTable` `onRowAction(id)` (and `SurfaceCard kind="table"` `onRowAction`) makes every row pressable, to open a drawer: a click or
+Enter / Space on the focused row (React Aria's row action, so the row is a focus stop with the table's focus ring), the pointer cursor
+and the pressable list row's hover fill (`--surface-secondary`). Buttons, links and editors inside a row keep their own press; the row
+title stays plain text, never a Link. `<SurfaceCard kind="table" onRowAction={(id) => open(id)} columns={columns} rows={rows} empty={empty} label="Invoices" />`
+
+`LogoStack` shows which connections an agent uses: `items` (`{ id, label, src?, iconSource? }`, a provider logo image or an app
+icon), `max` (default 3) round 20px logos with no plate, one identity gap (4) apart (not overlapped, so no mark is cut by the next),
+then a "+N" pill, an optional muted `caption` ("3 kết nối") and `label` naming the group. It is static by default. With `onPress`,
+or `isTrigger` when it is the trigger of a `DropdownMenu` or `Popover`, the whole group is one `PlainPressable` (a focus ring, no
+button fill) named by `label`, and its logos are decorative. `isLoading` (or a loading region) draws the same box under a shimmer.
+
+```tsx
+<DropdownMenu trigger={<LogoStack isTrigger label="Agent connections" items={connections} caption="3 kết nối" />} entries={entries} />
+```
+
+`PlainPressable` is exported from `@starci/grammar/common` (outside the registry): `children`, `aria-label` (needed when the content has
+no text), `onPress`, `isDisabled`, `shape` (`"rounded"` default, or `"circle"` for the focus ring) and `size="control"`. Wrap your own
+content to use it as a `DropdownMenu` or `Popover` trigger: `trigger={<PlainPressable aria-label="Workspace">…</PlainPressable>}`.
 
 `DataTable.getCellInteraction(row, columnId)` optionally supplies `onAction`, `onDragOver`,
 `onDragLeave` and `onDrop`. Cells remain semantic
@@ -475,6 +503,12 @@ The package requires Node 22 or newer, as does the pinned DiceBear engine.
 MarkdownTableFrame, MediaFrame, Rail, Section, StaticStateRow, SurfaceAccordionCard,
 SurfaceCard, SurfaceListCard, VerticalScrollRegion.
 
+`SurfaceCard` search zone `filters` (`readonly SelectZoneField[]`: `{ label, options, value, onChange, placeholder?, prefix? }`) puts
+trailing `Select`s in the search's own row: the search grows, each select keeps its natural width and its words never wrap (the
+`label` is the accessible name, not drawn; `prefix` says it inside the trigger, "Status:"); on a narrow card they wrap below the
+search. `headers={[{ kind: "search", label, value, onChange, filters: [{ label: "Status", prefix: "Status:", options, value, onChange }] }]}`.
+A card head `description` is one muted `--grammar-text-sm` line under the `label`, 4 below it: `<SurfaceCard label="Team" description="People who can edit this workspace.">`.
+
 **Compositions (11).** Cluster, EntryFrame, Footer, Grid, Page, PaneGrid, PaneSection, Sidebar, Stack, TopBar, WorkspaceShell. Storybook pins settings and data-list content
 recipes to each family; the mobile app recipes reuse the fixed App shell with its left navigation drawer.
 
@@ -499,7 +533,11 @@ plain `facts`, one or up to three badges and typed overflow commands; a whole-ca
 `IconButton.isPending` has the same native busy and duplicate-activation semantics as Button.
 `MessageStatus` belongs in the existing message footer: receipt facts (`sent`, `delivered`, `seen`, with typed readers)
 or transport outcomes (`queued`, `sent`, `failed`, `unknown`), with a localized visible label. `MessageBubble` gains no
-status props. `CalendarDay` is the passive date heading of a calendar region: a vendor date-only value, full localized
+status props. `MessageBubble actionsPlacement="floating" | "inline"` (default `floating`) places the actions: `inline` is a bare
+toolbar in the message row on the reading end of the bubble (no border, fill or shadow), shown on hover and on focus inside the
+message, always shown on touch, and unchanged under reduced motion. `MessageBubble measure="standard" | "wide"` (default
+`standard`, at most 40rem and 85% of the row) sets how far a bubble reaches; `wide` is 70% of the row for a chat stack
+(ramps `--grammar-bubble-measure-standard` and `--grammar-bubble-measure-wide`). `CalendarDay` is the passive date heading of a calendar region: a vendor date-only value, full localized
 label and authoritative `isToday`; it owns native time/current-date semantics without selecting a date.
 
 The header of a `Page` heads one page: `breadcrumbs`, `title` (the page's `h1`), `description`, `meta`, `status` chips beside the
@@ -513,6 +551,17 @@ body. The band runs full width; the body sits in the measure and gutter one regi
 from the top without a header), its sections a region step apart, and it clips past its content box so nothing in it
 reaches across the gutter. `isLoading` passes to the header. Page is the single owner of the page inset: the layout
 frames (`WorkspaceShell`, `Grid`, `PaneGrid`) never wrap a page in a measure of their own. `PageHeader`, `PageContainer`, `Breadcrumbs` and `FillViewport` are Page's internals and are not exported.
+
+`Page header.subTabs` is the second tab row (valid only with `tabs`; the type refuses it alone): region tabs of the current
+view, inside the white band under the page tabs. The page tabs stand on their own full-width separator, the sub tabs on the
+band's bottom border, and both rows start on the content edge. Both are underline tabs, the second and last underline layer;
+`subTabs` takes `label`, `items` and `panelId` like `tabs` (the page body is the panel of both unless `panelId` names others).
+`header={{ title, tabs: { label, items, ... }, subTabs: { label, items, selectedKey, onSelect } }}`.
+
+**Tabs `end` slot.** `Tabs end={<Button intent="alternative" size="sm">Add region</Button>}` (secondary tabs; `ReactNode`, default
+none) puts a command at the strip's end, inside the strip frame after the tab list and the fold menu, centred in the strip's
+height like a tab. The strip's own line (`own`) or the host's full-width line (`host`: a page header band) runs under the
+command to the column's end; never place a Cluster beside the strip for this. The fold fit subtracts the end's width.
 
 `Page chrome="bleed"` is an app surface: no gutter, no block padding, no clip, and the body is the viewport height left below the trail or the band (`minHeight` is the floor on a short window), so a card or a split in it fills the region.
 
@@ -563,6 +612,25 @@ less on a glyph's side. `--grammar-card-padding-inline` and `--grammar-card-padd
 divides by lines (static, list, accordion) keep the row step (12) on their block sides and the card's 16 inline, and
 a stat strip cell in a card takes 16 on every side. `--grammar-overlay-inset` reads `--grammar-inset`. Vendor parts take their step in `src/common/components-spacing.css`. Tabs are the underline
 bar everywhere, the first label on the content edge.
+
+**The type roles** (owner, 2026-11-09). One role, one size; one line, one size: page title xl 18 / 500; card or section
+title lg 16 / 500; row or table primary md 14 / 500; body and table cells md 14 / 400 (`Text`, default `md`); row secondary
+and descriptions sm 13 muted (`Text size="sm" tone="muted"`); table header, meta and chips xs 12 muted; every tab sm 13.
+`Text isStrong` is 500. A `Link` inherits the size of the text around it (`size="inherit"`, default) in the exact primary
+colour; an external link ends with the `external` glyph. A row title is never a link when the row opens (lint
+`row-title-link`). `npm run check:type` pins the rules to their tokens; lint `table-cell-type` and `same-line-size` hold
+the roles in composition.
+
+**The button-icon rule.** A Button that does something shows what at its start (`startGlyph`, e.g. `plus`, `upload`,
+`send`, `pencil`, or the app's `startContent`); a Button that leads somewhere ends with Grammar's arrow (`endArrow`), which
+slides one step toward the reading end on hover and focus and is mirrored right to left. Never both: the types refuse it.
+Both glyphs stand one inline step (8) from the label. An arrow typed in a label or passed through `endContent` is refused
+(lint `button-arrow`). `EmptyNotice actionEndArrow` and `ItemAction.endArrow` give the Grammar-drawn actions the arrow.
+
+**The surface-in-surface law.** A list of rows inside a surface (a card body, a drawer or dialog, a pane band, a rail or
+aside) that is not that surface's own full-bleed body is a nested surface: a 1px separator edge, the card radius,
+clipped, so the row seams stay inside it. `Section kind="list"` does it automatically; a list that is the card is
+`SurfaceCard kind="list"`. A hand-made row list (blocks divided by `Divider`) is refused (lint `surface-in-surface`).
 
 **The proximity law** (owner, 2026-11-09). Inside any container, its children stand at least one step closer than the
 container stands to its siblings: identity 4 < inline 8 < row 12 < section 24 < region 32. The defaults hold it:
@@ -675,7 +743,9 @@ members, three avatars remain and the fourth cell shows the total member count, 
 Each cell has a ring in the surface colour. Each member uses Avatar's
 uploaded image or bundled DiceBear initials, accepts `seed`, `kind` and a custom uploaded-image `fallback`,
 and the count uses the shared avatar renderer. `overflowLabel` receives the number of hidden members
-in both layouts and names them accessibly; the grid's visible digits show the total. A single
+in both layouts and names them accessibly; the grid's visible digits show the total. A group room
+shows its members the same way in a `ListBoxItem.leading` (grid group of the row's `size`) and in a `PaneHeader mark`
+(both slots take nodes, so no extra prop); the row layout is wider than either slot. A single
 person uses Avatar. The default `layout="row"` keeps the overlapping member row and its `+N` overflow count.
 
 ## Theming
