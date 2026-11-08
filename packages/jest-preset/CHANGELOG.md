@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.0 - 2026-11-08
+
+- Added: `@starci/common` joins the ESM-only dependencies compiled to CommonJS, so a spec that throws or catches a `DomainError` loads the shared error base. Spec: `test/preset.spec.ts`.
+
 ## 2.8.1 - 2026-11-08
 
 - Fixed: the lcov names each source with forward slashes and without the leading `..` segments of a root package seen from `be/` (`packages/blocks-core/src/x.ts`; it was a backslash path starting `..` on Windows and `../packages/...` on Linux). SonarJS sanitizes an lcov path and finds the file by its tail; a path that climbs out of the base sanitizes to nothing, so every root package file read uncovered in Sonar while the lcov said 100 (the back end files, `src/...`, resolved). The unit run, the shard merge and the per-spec union write through the one report. Specs: `test/lcov-paths.spec.ts`.
