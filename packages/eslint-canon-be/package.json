@@ -40,7 +40,7 @@
     "node": ">=22.13.0"
   },
   "peerDependencies": {
-    "@starci/hfs": "~6.3.0",
+    "@starci/hfs": "~6.4.0",
     "eslint": ">=9",
     "typescript": ">=5.9"
   },

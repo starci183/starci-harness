@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.27.1 - 2026-11-09
+
+- Changed: depends on `@starci/eslint-grammar-core` 0.27.1 (its lint family peers `@starci/hfs ~6.4.0`); no lint rule changed.
+
 ## 0.27.0 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.27.0 (0.26.0 never reached npm; the family carries it) (its lint family peers `@starci/hfs ~6.3.0`); no lint rule changed.

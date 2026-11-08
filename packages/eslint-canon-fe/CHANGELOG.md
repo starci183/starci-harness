@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.16.9 - 2026-11-09
+
+- Changed: peers `@starci/hfs ~6.4.0` (hfs 6.4.0: `local.basePort` and R389, the full-app Redis of `app add queue|job`, the github-oidc owner of auth-oidc); no lint rule changed.
+
 ## 9.16.8 - 2026-11-08
 
 - Changed: peers `@starci/hfs ~6.3.0`; the package contract of a root package declares its `outcome` only (the `errorBase` key is gone).
