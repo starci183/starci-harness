@@ -54,6 +54,9 @@
 //                                            with Test.createTestingModule, one provider per constructor dependency (kit doubles from @starci/jest-preset),
 //                                            one placeholder it per public method. Never overwrites a file. Both editions: a lite back end keeps full's unit specs (R212).
 //   starci app add image [--cwd <dir>]                  the Dockerfile of every declared app that has none, from the image canon (scaffold/image.mts); never overwrites
+//   starci app add inbox [--cwd <dir>]                  the delivery inbox of a FULL app that has its webhooks already (platform/inbox and platform/idempotency, their
+//                                            migrations and catalogs in each compose/platform.ts, InboxModule in the webhooks group; scaffold/add-inbox-full.mts): the same
+//                                            `add webhook <name>` lays down for a new webhook. All or nothing, a no-op when it is there; a lite app gets its inbox from `add webhook`
 //   starci app add spec <file>.service.ts [--cwd <dir>]  the spec skeleton of an existing service, read from its constructor with the repository's TypeScript
 //                                            (service, spec and image take only what is written here: an option another noun takes is refused, as --inject is on every other noun)
 //   starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json]   the full edition's local test world (the installed @starci/test-world cli)
@@ -74,6 +77,8 @@
 //                                            exactly that kind's file tree, generated FROM the files: tree of its pattern topic (knowledge/patterns/be) with the
 //                                            one template body of each entry (templates/be/patterns), plus the platform capabilities it needs when they are missing;
 //                                            it registers the patterns and the trigger kind in hfs.json (sides.be.patterns, sides.be.kinds). Never overwrites a file (scaffold/add.mts). In a lite app a noun whose slots lite does not have refuses: `add <noun>: full edition only`.
+//   starci app add connection <name> --owner <api|worker app> [--isolation database|schema] [--env-prefix <PREFIX>] [--cwd <dir>]
+//                                            one more database connection of a full app: the hfs.json entry, its platform/database files, the rosters, the dev database and the production secret (scaffold/add-connection.mts)
 //   starci app add <block|frame|composite|branch|leaf> <name> [--shapes a,b,c] [--read <read>] [--app <fe app>] [--cwd <dir>]
 //   starci app add <page|layout> <route> [--blocks a,b] [--tabs a,b (page)] | overlay <name> --kind modal|drawer [--form]   a route page, segment layout
 //                                            or overlay owner (scaffold/add-fe-page.mts, add-fe-layout.mts, add-fe-overlay.mts).
@@ -207,7 +212,7 @@ const DATABASE_VERBS = new Map<string | undefined, (argv: string[], io: VerbIo) 
  * global --edition (editionOption).
  */
 /** The flags of the add nouns that generate a file tree from a pattern (service, spec and image take none of them, and --inject is only theirs). */
-const ADD_FLAGS: FlagTable = { value: ['--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--shapes', '--read', '--app', '--kind', '--blocks', '--tabs'], boolean: ['--fe', '--form'] };
+const ADD_FLAGS: FlagTable = { value: ['--event', '--from', '--service', '--connection', '--owner', '--failed', '--done', '--shapes', '--read', '--app', '--kind', '--blocks', '--tabs', '--isolation', '--env-prefix'], boolean: ['--fe', '--form'] };
 /** The repeatable selector of `app check`; its values are the canonical family vocabulary. */
 const GATE_FLAGS = ['--gate'] as const;
 /** Both quality selectors dispatch to the existing combined Sonar/Codecov baseline family. */
@@ -217,10 +222,11 @@ const PARSED: Record<string, ParsedVerb> = {
   add: {
     run: addMain, ...ADD_FLAGS, list: ['--inject'],
     forms: [
-      { operands: '<api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app|module|block|frame|composite|branch|leaf|page|overlay|layout> <name>', only: ADD_FLAGS },
+      { operands: '<api|webhook|realtime|saga|job|reactor|queue|projection|cli|table|app|connection|module|block|frame|composite|branch|leaf|page|overlay|layout> <name>', only: ADD_FLAGS },
       { operands: 'service <dir> <name>', only: { list: ['--inject'] } },
       { operands: 'spec <file>.service.ts', flags: [] },
       { operands: 'image', flags: [] },
+      { operands: 'inbox', flags: [] },
     ],
   },
   remove: { run: removeMain, forms: [{ operands: 'module <name>', flags: [] }] },
@@ -238,7 +244,7 @@ const PLACEHOLDERS: Record<string, string> = {
   '--gate': `<${CHECK_GATES.join('|')}>`,
   '--registry-visibility': 'public|private', '--side': 'be|fe|packages', '--env': CHECK_ENVS.join('|'), '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
   '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
-  '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--image': '<service>=<ref>', '--sha': '<sha>',
+  '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--isolation': 'database|schema', '--env-prefix': '<PREFIX>', '--image': '<service>=<ref>', '--sha': '<sha>',
   '--previous': '<release>', '--release': '<release>', '--out': '<path>', '--since': '<ISO>', '--timeout': '<seconds>', '--retry': '<seconds>',
   '--keep': '<release.json>', '--ssh-cmd': '<command>', '--extra-compose': '<file>', '--target-binding': '<json>', '--db-url-env': '<NAME>',
   '--backup-out': '<dir>', '--db-service': '<service>', '--reason': '<text>', '--remote': '<name>', '--tag-prefix': '<prefix>',
@@ -856,9 +862,9 @@ async function emitMain(opts: Opts, { cwd: repoRoot, stdout: out, runHeavyNode }
 }
 
 /** The nouns of `add` that write into an existing app's files by their own generators (scaffold/service.mjs, scaffold/image.mjs) and take no pattern option. */
-const ADD_FILE_NOUNS = ['service', 'spec', 'image'];
+const ADD_FILE_NOUNS = ['service', 'spec', 'image', 'inbox'];
 
-/** `add service <dir> <name> [--inject ...]`, `add spec <file>.service.ts` and `add image`: never overwrites; an option another noun takes is refused. */
+/** `add service <dir> <name> [--inject ...]`, `add spec <file>.service.ts`, `add image` and `add inbox`: never overwrites; an option another noun takes is refused. */
 function addFileNoun(noun: string, opts: Opts, repoRoot: string, out: (text: string) => unknown): number {
   const [, ...args] = opts.positional;
   const [first = '', second = ''] = args;
@@ -869,7 +875,8 @@ function addFileNoun(noun: string, opts: Opts, repoRoot: string, out: (text: str
   if (noun === 'service' && args.length === 2) written = newService({ repoRoot, dir: first, name: second, inject: listFlag(opts, 'inject') ?? [] });
   else if (noun === 'spec' && args.length === 1) written = newSpec({ repoRoot, file: first });
   else if (noun === 'image' && args.length === 0) written = newImages({ repoRoot });
-  else throw new UsageError('starci app add takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts` or `image`');
+  else if (noun === 'inbox' && args.length === 0) written = addKind({ repoRoot, noun, name: '' }).created;
+  else throw new UsageError('starci app add takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts`, `image` or `inbox`');
   for (const file of written) out(`created ${file}\n`);
   return 0;
 }
@@ -879,8 +886,10 @@ function addMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
   if (noun !== undefined && ADD_FILE_NOUNS.includes(noun)) return addFileNoun(noun, opts, repoRoot, out);
   if (opts.inject !== undefined) throw new UsageError(`starci app add ${noun ?? '<noun>'} takes no --inject; only add service does`);
   if (!noun || !name || extra.length) throw new UsageError('starci app add takes `<noun> <name>` and the options of the noun');
-  const { created, registered } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: booleanFlag(opts, 'fe'), shapes: valueFlag(opts, 'shapes'), read: valueFlag(opts, 'read'), app: valueFlag(opts, 'app'), kind: valueFlag(opts, 'kind'), form: booleanFlag(opts, 'form'), blocks: valueFlag(opts, 'blocks'), tabs: valueFlag(opts, 'tabs') } });
+  const { created, registered, updated, notes } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: booleanFlag(opts, 'fe'), shapes: valueFlag(opts, 'shapes'), read: valueFlag(opts, 'read'), app: valueFlag(opts, 'app'), kind: valueFlag(opts, 'kind'), form: booleanFlag(opts, 'form'), blocks: valueFlag(opts, 'blocks'), tabs: valueFlag(opts, 'tabs'), isolation: valueFlag(opts, 'isolation'), envPrefix: valueFlag(opts, 'env-prefix') } });
   for (const file of created) out(`created ${file}\n`);
+  for (const file of updated ?? []) out(`updated ${file}\n`);
+  for (const note of notes ?? []) out(`owner step: ${note}\n`);
   const kinds = registered.kinds.length ? `; kinds ${registered.kinds.join(', ')}` : '';
   // A noun that registers nothing in hfs.json (a table, an app, a front-end unit) ends with what it wrote.
   if (registered.patterns.length || registered.kinds.length) out(`starci app add ${noun}: registered patterns ${registered.patterns.join(', ')}${kinds}\n`);

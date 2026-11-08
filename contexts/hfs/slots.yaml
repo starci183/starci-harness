@@ -383,6 +383,9 @@ ruleParams:
       "@nestjs/event-emitter": []
       "@nestjs/platform-socket.io":
         - platform/realtime
+      "@nestjs/websockets":
+        - platform/realtime
+        - slot:be.feature.realtime.websocket
       socket.io:
         - platform/realtime
       graphql-subscriptions:

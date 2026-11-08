@@ -72,7 +72,7 @@ function locate(lines: readonly string[], path: readonly YamlStep[], file: strin
     if (typeof step === 'string') {
       const indent = at.itemLine >= 0 ? at.indent : body.childIndent;
       const line = keyLine(lines, body, indent, step, at.itemLine);
-      if (line < 0) throw new ScaffoldError('HFS_ADD_STACK_SHAPE', `${file} has no ${path.map(describe).join('.')}; add the declared Redis by hand`);
+      if (line < 0) throw new ScaffoldError('HFS_ADD_STACK_SHAPE', `${file} has no ${path.map(describe).join('.')}; add the declaration by hand`);
       at = { line, indent: keyIndentOf(lines[line]!), itemLine: -1, body: bodyOf(lines, line, keyIndentOf(lines[line]!)) };
       continue;
     }
@@ -83,7 +83,7 @@ function locate(lines: readonly string[], path: readonly YamlStep[], file: strin
       return keyLine(lines, { from: line, to: end }, (body.childIndent ?? 0) + 2, step.item, line) >= 0
         && new RegExp(`^\\s*(?:- )?${step.item}:\\s*${step.is}\\s*$`).test(lines[keyLine(lines, { from: line, to: end }, (body.childIndent ?? 0) + 2, step.item, line)]!);
     });
-    if (match === undefined) throw new ScaffoldError('HFS_ADD_STACK_SHAPE', `${file} has no ${path.map(describe).join('.')}; add the declared Redis by hand`);
+    if (match === undefined) throw new ScaffoldError('HFS_ADD_STACK_SHAPE', `${file} has no ${path.map(describe).join('.')}; add the declaration by hand`);
     const itemBody = bodyOf(lines, match, body.childIndent ?? 0);
     at = { line: match, indent: (body.childIndent ?? 0) + 2, itemLine: match, body: { ...itemBody, from: match, childIndent: (body.childIndent ?? 0) + 2 } };
   }
@@ -133,12 +133,21 @@ export class YamlBlockEdit {
     return this;
   }
 
+  /** Opens the empty flow collection `key: []` (or `{}`) at `path` and writes `block` (YAML lines at indent 0) as its children; the line's trailing comment stays. */
+  fill(path: readonly YamlStep[], block: string): this {
+    const at = locate(this.lines, path, this.file);
+    const empty = /^(.*:)\s*(?:\[\s*\]|\{\s*\})(\s*(?:#.*)?)$/.exec(this.lines[at.line]!);
+    if (!empty) throw new ScaffoldError('HFS_ADD_STACK_SHAPE', `${this.file} writes ${path.map(describe).join('.')} as no empty flow collection; add the declared connection by hand`);
+    this.lines.splice(at.line, 1, `${empty[1]}${empty[2]}`.trimEnd(), ...indented(block, at.indent + 2));
+    return this;
+  }
+
   /** Adds `value` to the flow sequence (`key: [a, b]`) at `path`. */
   extendFlow(path: readonly YamlStep[], value: string): this {
     const at = locate(this.lines, path, this.file);
     const line = this.lines[at.line]!;
     const flow = /^(.*:\s*\[)(.*)\](\s*)$/.exec(line);
-    if (!flow) throw new ScaffoldError('HFS_ADD_STACK_SHAPE', `${this.file} writes ${path.map(describe).join('.')} as no one-line flow sequence; add the declared Redis by hand`);
+    if (!flow) throw new ScaffoldError('HFS_ADD_STACK_SHAPE', `${this.file} writes ${path.map(describe).join('.')} as no one-line flow sequence; add the declaration by hand`);
     const items = flow[2]!.trim();
     this.lines[at.line] = `${flow[1]}${items ? `${items}, ` : ''}${value}]${flow[3]}`;
     return this;
@@ -149,7 +158,7 @@ export class YamlBlockEdit {
     const text = this.lines.join(this.newline);
     let parsed: YamlDocument;
     try { parsed = parseYaml(text); } catch { parsed = undefined; }
-    if (!isDeepStrictEqual(parsed, this.expected)) throw new ScaffoldError('HFS_ADD_STACK_SHAPE', `${this.file} is not in a shape the declared Redis can be added to; add it by hand`);
+    if (!isDeepStrictEqual(parsed, this.expected)) throw new ScaffoldError('HFS_ADD_STACK_SHAPE', `${this.file} is not in a shape the declaration can be added to; add it by hand`);
     return text;
   }
 }

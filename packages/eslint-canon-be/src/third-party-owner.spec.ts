@@ -71,6 +71,20 @@ for (const edition of ["lite", "full"] as const) {
         } finally { fixture.cleanup() }
     })
 
+    test(`R279 ${edition}: socket.io-client is a test library; a source file importing it reports`, () => {
+        const fixture = fixtureFor({ edition, manifest: { dependencies: { ...DEPENDENCIES, "socket.io-client": "1.0.0" } } })
+        const code = 'import { io } from "socket.io-client"; export { io }'
+        try {
+            assert.doesNotThrow(() => { fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
+                valid: [
+                    { filename: fixture.at("src/features/realtime/orders/transport/websocket/orders.gateway.spec.ts"), code },
+                    { filename: fixture.at("src/modules/domain/order/order.service.spec.ts"), code },
+                ],
+                invalid: [{ filename: fixture.at(DOMAIN), code, errors: [{ messageId: "foreign" }] }],
+            }) })
+        } finally { fixture.cleanup() }
+    })
+
     test(`R279 ${edition}: one provider can use the SDK in multiple files, including its tests`, () => {
         const fixture = fixtureFor({ edition, files: {
             [MAILER]: 'import mail from "@sendgrid/mail"; export { mail }',

@@ -313,7 +313,7 @@ const QUEUE_ENVIRONMENT_UNSEALED_TEXT = 'QUEUE_REDIS_HOST: redis\nQUEUE_REDIS_PO
 const SECRET_TEXT = `- source: ${MEMBER}\n  target: ${MEMBER}\n`;
 
 /** Adds `block` under the service's `key`, or opens the key with it when the service has none. */
-function appendToService(edit: YamlBlockEdit, service: string, key: string, block: string, apply: (current: YamlNode) => unknown): void {
+export function appendToService(edit: YamlBlockEdit, service: string, key: string, block: string, apply: (current: YamlNode) => unknown): void {
   if (edit.value.services[service][key] === undefined) {
     edit.append(['services', service], `${key}:\n${block.replace(/\n$/, '').split('\n').map((line) => `  ${line}`).join('\n')}\n`);
     edit.value.services[service][key] = apply(undefined);

@@ -41,7 +41,7 @@ const BLOCK = `
 const MEMBER = (keys: string[]): string => `${keys.map((key) => `${key}: ENC[AES256_GCM,data:eA==,iv:aXY=,tag:dGc=,type:str]`).join('\n')}\nsops:\n  mac: ENC[AES256_GCM,data:eA==,iv:aXY=,tag:dGc=,type:str]\n  age:\n    - recipient: age1fake\n`;
 
 /** An app with a dev environment; `sealed` members exist unless the case wants a bare folder. */
-function app(t: { after: (fn: () => void) => void }, { sealed = true, runtime = 'docker-compose' }: { sealed?: boolean; runtime?: string } = {}): string {
+function app(t: { after: (fn: () => void) => void }, { sealed = true, runtime = 'docker-compose', block = BLOCK, extraKeys = [] }: { sealed?: boolean; runtime?: string; block?: string; extraKeys?: string[] } = {}): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-stack-local-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ project: 'demo' }));
@@ -49,9 +49,9 @@ function app(t: { after: (fn: () => void) => void }, { sealed = true, runtime = 
   fs.mkdirSync(path.join(root, '.starcistacks', 'dev', 'infra', 'compose'), { recursive: true });
   fs.mkdirSync(path.join(root, '.starcistacks', 'dev', 'secrets'), { recursive: true });
   fs.writeFileSync(path.join(root, '.starcistacks', 'dev', 'infra', 'compose', 'compose.yaml'), 'services:\n  db:\n    image: postgres\n');
-  fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), `schema: starci/application-stacks@1\nenvironments:\n  dev:\n    status: supported\n    runtime: ${runtime}\n    composeFiles: [infra/compose/compose.yaml]\n    components: {}\n    runbook: README.md\n    secrets: []\n    local:${BLOCK}\n`);
+  fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), `schema: starci/application-stacks@1\nenvironments:\n  dev:\n    status: supported\n    runtime: ${runtime}\n    composeFiles: [infra/compose/compose.yaml]\n    components: {}\n    runbook: README.md\n    secrets: []\n    local:${block}\n`);
   if (sealed) {
-    fs.writeFileSync(path.join(root, '.starcistacks', 'dev', 'secrets', 'db.enc.yaml'), MEMBER(['ADMIN_PASSWORD', 'OWNER_PASSWORD', 'APP_PASSWORD']));
+    fs.writeFileSync(path.join(root, '.starcistacks', 'dev', 'secrets', 'db.enc.yaml'), MEMBER(['ADMIN_PASSWORD', 'OWNER_PASSWORD', 'APP_PASSWORD', ...extraKeys]));
     fs.writeFileSync(path.join(root, '.starcistacks', 'dev', 'secrets', 'auth.enc.yaml'), MEMBER(['JWT_KEY', 'JWT_PUBLIC']));
   }
   return root;
@@ -297,4 +297,49 @@ test('secret init --env creates dev values once, never for a swarm environment, 
   assert.match(second.join(''), /kept dev\/db ADMIN_PASSWORD \(already sealed, never replaced\)/u);
   const swarm = app(t, { runtime: 'docker-swarm' });
   assert.throws(() => seedDevCustody(swarm, 'dev', { execute: true, sops: () => sops, stdout: () => {} }), /only a docker-compose dev environment gets generated values/u);
+});
+
+const WITH_CONNECTION = `${BLOCK.replace('port: api, files: [JWT_KEY]', 'port: api, files: [JWT_KEY, LEDGER_DB_URL]')}
+      databases:
+        - {connection: ledger, urlEnv: LEDGER_DB_URL, password: {member: db, key: LEDGER_PASSWORD}}`;
+
+test('the databases list is judged: it needs the database block, own role and URL key, and defaults the role to the environment role and the connection', () => {
+  const ports = { db: 54322 };
+  const services = [{ name: 'db', wait: 'healthy' }];
+  const base = { service: 'db', port: 'db', urlEnv: 'URL', password: { member: 'db', key: 'A' }, adminPassword: { member: 'db', key: 'B' } };
+  const good = normalizeLocal({ ports, services, database: base, databases: [{ connection: 'ledger-books', urlEnv: 'LEDGER_URL', password: { member: 'db', key: 'C' } }] }, { project: 'demo', env: 'dev' });
+  assert.deepEqual(good.problems, []);
+  assert.deepEqual(good.config?.databases.map((database) => [database.connection, database.role, database.name, database.service, database.adminPassword.key]), [['ledger-books', 'demo_dev_ledger_books', 'demo_dev_ledger_books', 'db', 'B']]);
+  const alone = normalizeLocal({ ports, services, databases: [{ connection: 'ledger', urlEnv: 'LEDGER_URL', password: { member: 'db', key: 'C' } }] }, { project: 'demo', env: 'dev' });
+  assert.match(alone.problems.map((item) => `${item.at}: ${item.message}`).join('\n'), /databases: needs the `database` block/u);
+  const bad = normalizeLocal({
+    ports, services, database: base,
+    databases: [
+      { connection: 'ledger', urlEnv: 'URL', password: { member: 'db', key: 'C' } },
+      { connection: 'ledger', urlEnv: 'LEDGER_URL', role: 'postgres', password: { member: 'db', key: 'C' } },
+      { connection: 'audit', urlEnv: 'AUDIT_URL', password: { member: 'db', key: 'C' }, extra: 1 },
+    ],
+  }, { project: 'demo', env: 'dev' });
+  const text = bad.problems.map((item) => `${item.at}: ${item.message}`).join('\n');
+  assert.match(text, /databases\[0\]\.urlEnv: must differ from the URL key of the `database` block/u);
+  assert.match(text, /databases\[1\]\.role: must be a role of this connection alone/u);
+  assert.match(text, /databases\[1\]: repeats a connection, role, database or URL key/u);
+  assert.match(text, /extra: is not a field/u);
+});
+
+test('up provisions the role and database of each further connection and hands only its owner process the URL file', async (t) => {
+  const root = app(t, { block: WITH_CONNECTION, extraKeys: ['LEDGER_PASSWORD'] });
+  const h = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], h), 0, h.err.join(''));
+  const sql = h.calls.filter((call) => call.args.includes('exec')).map((call) => String(call.input));
+  assert.match(sql[0] as string, /CREATE ROLE "demo_dev" LOGIN SUPERUSER PASSWORD/u);
+  assert.match(sql[1] as string, /CREATE ROLE "demo_dev_ledger" LOGIN SUPERUSER PASSWORD/u);
+  assert.match(sql[1] as string, /CREATE DATABASE "demo_dev_ledger" OWNER "demo_dev_ledger"/u);
+  assert.match(h.out.join(''), /database: role demo_dev and database demo_dev ready.*; database: role demo_dev_ledger and database demo_dev_ledger ready.*\(connection ledger\)/u);
+  const api = h.calls.find((call) => call.background);
+  const file = (api?.env as NodeJS.ProcessEnv).LEDGER_DB_URL_FILE;
+  assert.ok(file, 'the owner process reads the connection URL through <KEY>_FILE');
+  assert.match(fs.readFileSync(file as string, 'utf8'), /^postgresql:\/\/demo_dev_ledger:[^@]+@127\.0\.0\.1:54322\/demo_dev_ledger$/u);
+  const seed = h.calls.find((call) => !call.background && call.env && 'JWT_KEY_FILE' in call.env);
+  assert.equal(seed?.env && 'LEDGER_DB_URL_FILE' in seed.env, false, 'a run that does not list the key never gets the connection URL');
 });

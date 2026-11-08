@@ -277,3 +277,15 @@ export function planKind(context: AddContext): { values: Record<string, string>,
   requireMigrationOrder(context.repoRoot, planned);
   return { values, forms, beRoot, patterns, planned };
 }
+
+/**
+ * The platform capabilities of one pattern topic (its `src/modules/platform/<capability>/` entries) that the app does not carry yet,
+ * rendered before anything is written. A capability is whole or absent: the index of a capability that exists plans none of its files.
+ * For a topic whose platform files take no variable (the inbox and idempotency capabilities of the idempotency topic).
+ */
+export function planTopicPlatform({ repoRoot, topic }: { repoRoot: string, topic: string }): PlannedFile[] {
+  const planned: PlannedFile[] = [];
+  const context: PlanContext = { topic, instance: false, shared: false, beRoot: path.join(repoRoot, 'be'), repoRoot, withStamp: {}, forms: {} };
+  appendEntries(readTree(topic).filter(platformEntry), context, planned);
+  return planned;
+}

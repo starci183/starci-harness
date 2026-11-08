@@ -45,8 +45,8 @@ function beSpecificProblems(be: Parsed, manifest: Parsed): string[] {
   bad.push(...scenarioProblem(be.patternScenarios), ...kindParamProblems(be, manifest.triggerKinds));
   if (!isPlainObject(be.contractShape) || Object.keys(be.contractShape).length !== 1 || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(String(be.contractShape.helper))) bad.push('ruleParams.be.contractShape must be {helper: <identifier>}');
   const owners = be.infraOwners;
-  const ownerId = /^(platform|integrations)\/[a-z][a-z0-9-]*$/;
-  if (!isPlainObject(owners) || !Object.keys(owners).length || !Object.entries(owners).every(([key, list]) => key && Array.isArray(list) && list.every((o: Parsed) => ownerId.test(String(o))) && new Set(list).size === list.length)) bad.push('ruleParams.be.infraOwners must map a non-empty specifier to a list of unique platform/<capability> or integrations/<provider> owners ([] means nowhere)');
+  const ownerId = /^(?:(?:platform|integrations)\/[a-z][a-z0-9-]*|slot:be\.[a-z][a-z0-9.-]*)$/;
+  if (!isPlainObject(owners) || !Object.keys(owners).length || !Object.entries(owners).every(([key, list]) => key && Array.isArray(list) && list.every((o: Parsed) => ownerId.test(String(o))) && new Set(list).size === list.length)) bad.push('ruleParams.be.infraOwners must map a non-empty specifier to a list of unique platform/<capability>, integrations/<provider> or slot:<be slot id> owners ([] means nowhere)');
   const eventBus = be.eventBus;
   if (!isPlainObject(eventBus) || Object.keys(eventBus).sort(byCodeUnit).join() !== 'classes,imports' || !memberMap(eventBus.imports, true) || !memberMap(eventBus.classes, false)) bad.push('ruleParams.be.eventBus must be {imports: {<module>: [unique PascalCase members]}, classes: {<module>: [non-empty unique PascalCase classes]}}');
   if (!paramNamesOk(be.paramNames)) bad.push('ruleParams.be.paramNames must be a non-empty list of unique {type | typeSuffix, names, nameSuffix?} entries');

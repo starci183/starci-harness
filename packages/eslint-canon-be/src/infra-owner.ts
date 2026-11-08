@@ -4,7 +4,7 @@
  * Every raw infrastructure library (HTTP, cache, queue, scheduler, logger, date, config, in-process events, model SDKs)
  * has exactly one owning platform or integration capability, and only files of that capability may import it or reach
  * for it as a global. The table lives in the slot manifest (`ruleParams.be.infraOwners`: specifier -> owners, `[]` for
- * "nowhere"), so the rule holds no library name of its own and the messages and the check read one source. A key covers
+ * "nowhere"; an entry `slot:<slot id>` makes every file of that slot an owner), so the rule holds no library name of its own and the messages and the check read one source. A key covers
  * its subpaths, so a scope key (`@langchain`) covers every package of the scope, and the longest key wins
  * (`@langchain/langgraph` over `@langchain`).
  *
@@ -39,6 +39,16 @@ const ownerIdOf = (hfs: HfsView, filename: string) => {
     return root === null ? null : root.split("/").slice(-2).join("/")
 }
 
+/** An owner entry of the table that names a slot (`slot:<slot id>`): every file of that slot is an owner, as the transport door of a feature (`slot:be.feature.realtime.websocket`) is. */
+const SLOT_OWNER = "slot:"
+
+/** True when the file is an owner of the entry: its capability id, or the slot an entry `slot:<id>` names. */
+const ownsFile = (hfs: HfsView, here: string | null, filename: string, owner: string) =>
+    owner.startsWith(SLOT_OWNER) ? hfs.slotOf(filename) === owner.slice(SLOT_OWNER.length) : owner === here
+
+/** An owner entry as a message names it. */
+const ownerLabel = (owner: string) => (owner.startsWith(SLOT_OWNER) ? `the \`${owner.slice(SLOT_OWNER.length)}\` slot` : `\`${owner}\``)
+
 /** The table key a module specifier falls under (the specifier itself or a subpath of it, with or without `node:`), or null. */
 const keyOf = (table: Readonly<Record<string, readonly string[]>>, specifier: string) => {
     const variants = [specifier, specifier.startsWith("node:") ? specifier.slice(5) : `node:${specifier}`]
@@ -70,9 +80,9 @@ export const infraImportOwner: RuleModule = {
         const check = (node: Node, name: string, key: string) => {
             const owners = table[key]
             if (!owners) return
-            if ((here !== null && owners.includes(here)) || (isWorld && owners.length > 0 && !owners.includes("platform/logging"))) return
+            if (owners.some((owner) => ownsFile(hfs, here, context.filename, owner)) || (isWorld && owners.length > 0 && !owners.includes("platform/logging"))) return
             if (owners.length === 0) context.report({ node, messageId: "nowhere", data: { name } })
-            else context.report({ node, messageId: "foreign", data: { name, owners: owners.map((owner) => `\`${owner}\``).join(", ") } })
+            else context.report({ node, messageId: "foreign", data: { name, owners: owners.map(ownerLabel).join(", ") } })
         }
         return {
             ...moduleReferences(({ source, value }) => {

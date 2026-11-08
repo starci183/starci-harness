@@ -12,11 +12,17 @@ the change. Doors and rules are the same in both editions; scale is the hub bind
 `features/realtime/<channel>/` holds `index.ts` and `transport/<protocol>/` with `<channel>-<protocol>.module.ts` and
 one door with its spec: `<channel>.controller.ts` with one `@Sse` method (the default), `<channel>.gateway.ts` (a socket
 gateway, only for two-way messages) or `<channel>.subscription.ts` (a GraphQL subscription, only for a typed payload on
-a GraphQL client). A door holds no query, mutation or other route; only an api app composes it.
+a GraphQL client). A door holds no query, mutation or other route; only an api app composes it. The gateway file (and its spec)
+is the only feature file that imports `@nestjs/websockets` (`@WebSocketGateway`, `@SubscribeMessage`, `@WebSocketServer`);
+`platform/realtime` is its other owner, and every other file reaches a socket through the hub. A realtime integration spec
+drives the gateway with `socket.io-client`, a test library that no source file imports.
 
 Why: SSE is plain HTTP, self-reconnecting and resumable, so the heavier doors are chosen only for what only they give.
+The socket decorators declare a transport, so the infrastructure owner table gives them to the slot of that transport
+(`slot:be.feature.realtime.websocket`) and to `platform/realtime`, and to no other file; the pattern's mandatory gateway file
+is therefore legal without a re-export.
 
-Enforced by: `realtime-shape` (R184), `rest-door-needs-a-reason` (R278).
+Enforced by: `realtime-shape` (R184), `rest-door-needs-a-reason` (R278), `infra-import-owner` (R90).
 
 ## BE-REALTIME-2 A door reads the hub and nothing else; the committing service publishes
 

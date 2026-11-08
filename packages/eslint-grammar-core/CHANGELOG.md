@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.27.2 - 2026-11-09
+
+- Changed: peers `@starci/hfs ~6.5.0`; no lint rule changed.
+
 ## 0.27.1 - 2026-11-09
 
 - Changed: its lint family peers `@starci/hfs ~6.4.0`; no lint rule changed.

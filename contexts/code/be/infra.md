@@ -4,7 +4,8 @@ slots: [be.platform.event-bus, be.platform.queue, be.platform.jobs, be.platform,
 # Infrastructure ownership
 
 Which capability may touch a raw library: exactly one owner per library, reached by everyone else through its port.
-The owner table is `ruleParams.be.infraOwners` (`ruleParams.be.lite.infraOwners` narrows it in lite); the clock is
+The owner table is `ruleParams.be.infraOwners` (`ruleParams.be.lite.infraOwners` narrows it in lite; an entry
+`slot:<slot id>` makes every file of that slot an owner, as the websocket door of a feature owns the socket decorators); the clock is
 temporal.md, retries resilience.md, logging logging.md.
 
 ## BE-INFRA-1 One owner per raw library

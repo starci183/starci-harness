@@ -35,7 +35,12 @@ lite, where the receipt is an entity row, by `claimRow(source, eventId, manager,
 port, injected with `InjectEntityInbox()` (the same `INBOX` provider): `row(deliveryId)` builds the row from the id the
 claim trimmed, and only the winning claim inserts it and answers its id, undefined on a repeat. A delivery method awaits
 it first and returns when it answers undefined, as the lite provider intake `add webhook` writes does (its
-`<Provider>InboxEntity` maps the provider inbox table). No capability creates another dedupe table.
+`<Provider>InboxEntity` maps the provider inbox table). No capability creates another dedupe table. In a full app
+`starci app add webhook <name>` lays `platform/inbox` and `platform/idempotency` down when they are missing: their entities and
+migrations join the database connection of every app's `compose/platform.ts`, their error kinds and messages join its errors and
+i18n modules, and `InboxModule.register({ isGlobal: true, connection: PRIMARY_ENTITY_MANAGER })` joins the webhooks group of the
+api app. `starci app add inbox` (no operand) does the same alone for an app that has its webhooks already, and writes nothing
+when the capability is there.
 
 Why: one owner keeps "claims at most once" in one place, and the conflict-safe insert holds under concurrent delivery.
 
