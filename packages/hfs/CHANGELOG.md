@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.5.2 - 2026-11-09
+
+- Fixed: the delivery id of a resumed parked job is `<jobKey>:r<n>`, no longer `<jobKey>-r<n>`. The outbox check `job_outbox_dedupe_key_check` needs a `:` in every dedupe key, so the old form dead-lettered every `parked_jobs_sweep` resume. `resumedDeliveryId` and `jobKeyOf` (`platform/jobs/jobs.contracts.ts`) follow: `jobKeyOf` strips the one last `:r<digits>`, so a job key holding `:` is claimed intact; a job key must not itself end in `:r<digits>`. The job runner comment, the lite `jobs` and `jobs-failed-awaiting-fix` migration comments, BE-JOBS-7 and BE-RESILIENCE-2 carry the new form.
+- Changed: `starci app codemod self-recovery` also rewrites a managed jobs file rendered by hfs 6.5.0 or 6.5.1 in the old `-r<n>` form (and left untouched since) to the current template. Run it, then `starci app sync`. A row in flight under an old `-r<n>` delivery id was never valid against the constraint, so no data migration is needed: the sweep resumes it again under `:r<n>`.
+- Specs: `src/resume-delivery-id.spec.mts` (the form, the constraint pattern, the parse back to the job key including a key with `:`); `src/self-recovery-codemod.spec.mts` (the 6.5.x form is rewritten).
+
 ## 6.5.1 - 2026-11-09
 
 - Added: `starci app check --env local` (with the `hfs` gate) reads the live dev stack after the tree checks, never cached and not asked of `--env prod` (PROJECT-STACKS-10, `stack/local-live-checks.mts`). `pending-migrations` (R393, `STACK_PENDING_MIGRATIONS`, error): every migration file the repository holds that the running dev database has not applied (the plan `starci app db migrate` would run, read from `supabase_migrations.schema_migrations` by `docker exec` in the db container with the credentials it holds) is named, with `starci app stack up --env <env> --execute`; a database that cannot be read is a warning of the same code. `dead-letter-repeat` (R394, `STACK_DEAD_LETTER_REPEAT`, error): a queue or job with more than one `queue.delivery.dead-lettered` or `event-bus.delivery.dead` line in the last 24 hours of `logs/api.log` of the environment is named with its last error message. A stack that is not up, and a missing log, are not judged and say so in one line.

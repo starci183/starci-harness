@@ -103,7 +103,7 @@ grant execute on function public.job_fail(uuid, bigint, text, timestamptz) to ap
 -- Park, resume and list (BE-RESILIENCE-2). A failure a retry cannot fix parks the job as failed_awaiting_fix under the build that
 -- ran it; job_park answers whether its one alert is still due. job_resume marks the parked jobs it selects (one by id, those of an
 -- earlier build, or every one for the sweep, which keeps the alert raised) and answers each with its next resume number, so the
--- caller hands it back under `<job_key>-r<n>`; the claim takes a failed_awaiting_fix row again like a failed one.
+-- caller hands it back under `<job_key>:r<n>`; the claim takes a failed_awaiting_fix row again like a failed one.
 create function public.job_park(p_id uuid, p_token bigint, p_class varchar, p_reason text, p_build varchar, p_now timestamptz)
 returns table (alert_due boolean)
 language sql

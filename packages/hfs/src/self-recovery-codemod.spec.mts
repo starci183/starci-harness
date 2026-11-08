@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { CODEMODS, codemodMain } from '../codemod/main.mjs';
-import { migrateSelfRecovery, SELF_RECOVERY_SNAPSHOT, selfRecoveryMarkdown, selfRecoveryPlacements } from '../codemod/self-recovery.mjs';
+import { migrateSelfRecovery, SELF_RECOVERY_SNAPSHOT, selfRecoveryMarkdown, selfRecoveryPlacements, withLegacyResumeForm } from '../codemod/self-recovery.mjs';
 
 const TEMPLATES = path.join(import.meta.dirname, '..', 'templates');
 const SNAPSHOT = path.join(TEMPLATES, 'snapshots', SELF_RECOVERY_SNAPSHOT);
@@ -82,6 +82,23 @@ test('a file the app edited by hand is left for a person and nothing is written;
   fs.writeFileSync(path.join(bare, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'demo' }));
   const empty = await migrateSelfRecovery({ root: bare, write: true, prettier: null });
   assert.deepEqual([empty.changes, empty.findings], [[], []]);
+});
+
+test('an app rendered by hfs 6.5.x with the old <jobKey>-r<n> form is rewritten to <jobKey>:r<n>; an edited one is left for a person', async (t) => {
+  const contracts = 'be/src/modules/platform/jobs/jobs.contracts.ts';
+  const template = 'be/patterns/jobs/platform/jobs.contracts.ts.tpl';
+  const legacy = withLegacyResumeForm(now(template));
+  assert.notEqual(legacy, now(template));
+  assert.match(legacy, /-r\$\{String\(resumeCount\)\}/u);
+  const root = liteApp(t, { [contracts]: legacy });
+  const dry = await migrateSelfRecovery({ root, prettier: null, now: () => Date.UTC(2026, 10, 4) });
+  assert.ok(dry.changes.some((change) => change.file === contracts && change.action === 'rewrite'));
+  await migrateSelfRecovery({ root, write: true, prettier: null, now: () => Date.UTC(2026, 10, 4) });
+  assert.equal(read(root, contracts), now(template));
+  assert.match(read(root, contracts), /:r\$\{String\(resumeCount\)\}/u);
+  const edited = liteApp(t, { [contracts]: `${legacy}// the app's own line\n` });
+  const report = await migrateSelfRecovery({ root: edited, write: true, prettier: null });
+  assert.deepEqual(report.findings.map((finding) => [finding.file, finding.code]), [[contracts, 'SELF_RECOVERY_FILE_BY_HAND']]);
 });
 
 test('the command runs dry by default, writes with --execute and exits 1 with the report when a person is needed', async (t) => {
