@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added: `src/managed-templates-canon.spec.mts` renders the whole managed set `app sync` writes (`renderRepo`, a lite and a full app), lints every back-end and front-end TypeScript target with the real built `@starci/eslint-canon-be` / `-fe` with `fix: true`, and asserts the autofix changes no render and nothing remains to report. Run against the templates before the canon migration (`03d1d0e0^`) it names exactly the 17 files an app saw drift on (the five `domain/identity` services and the twelve `features/api/auth/application` handlers); the templates and generators of 6.2.6 / 6.2.7 already render the canon's output, so no template changed.
+- Fixed (finding): an app whose `starci app sync` reports drift on files `app check --gate lint --fix` just merged was synced by a CLI whose installed `@starci/hfs` (`cli/node_modules`, 6.2.3) predates the canon migration of the templates, not by 6.2.6 or 6.2.7 (the npm tarballs of both carry the migrated templates byte for byte). Reinstall the CLI's dependencies (`npm ci` in `cli/`) so the sync renders the pinned hfs.
+
 ## 6.2.12 - 2026-11-08
 
 - Changed: `starci app release gate` judges the work once. The rows `app check` already judges (`audit`, `format-check`, `typecheck`, `build-be`, `build-fe`, `lint`, `db-lint`, `test` with its coverage threshold, `db-drift`, each under its default command) run no command when the `app-check` row of the same run is green: they print `REUSED <row> (reused from app-check ...)` and their L4 record entry carries `reused: true` and `reusedFrom` (the gate, the head, the `app-check` command, its log and sha256). The `db-drift` row runs when the `app-check` log carries `CI_PARITY_DB_SKIPPED`; a red `app-check` row stops the gate; `--full` still runs that row as `--fresh` and the reuse is the same. The printed plan states for each row whether it reuses or runs, and how (`reuses` in `--json`). Before, the test row re-ran every spec after the governed `app-check` row, as a raw child under node's default heap (exit 134, `JavaScript heap out of memory`).
