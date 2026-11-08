@@ -221,6 +221,28 @@ export class WorldRenderAnalysis {
     return (symbol?.getDeclarations?.() ?? []).some(declaration => ts.isParameter(declaration));
   }
 
+  /**
+   * The nested form of the forwarded children: a lone `{props.children}` (or the destructured `{children}`) between the tags of
+   * a resolved pure component, where `props` or `children` is a parameter of the connected component. It is the attribute
+   * `children={props.children}` written as JSX nesting; any other expression or element between the tags is not forwarded children.
+   */
+  forwardedChildren(child: JsxChild, checker: TypeChecker): boolean {
+    const ts = this.world.ts;
+    if (!ts.isJsxExpression(child) || !child.expression || child.dotDotDotToken) return false;
+    const value = unwrapExpression(ts, child.expression);
+    if (ts.isPropertyAccessExpression(value)) {
+      const receiver = unwrapExpression(ts, value.expression);
+      return value.name.text === 'children' && ts.isIdentifier(receiver)
+        && (checker.getSymbolAtLocation(receiver)?.getDeclarations?.() ?? []).some(declaration => ts.isParameter(declaration));
+    }
+    if (!ts.isIdentifier(value)) return false;
+    return (checker.getSymbolAtLocation(value)?.getDeclarations?.() ?? []).some(declaration => ts.isBindingElement(declaration)
+      && ts.isObjectBindingPattern(declaration.parent) && ts.isParameter(declaration.parent.parent)
+      && !declaration.dotDotDotToken && !declaration.initializer
+      && (declaration.propertyName ? ts.isIdentifier(declaration.propertyName) && declaration.propertyName.text === 'children'
+        : ts.isIdentifier(declaration.name) && declaration.name.text === 'children'));
+  }
+
   renderBoundary(expression: Expression | null | undefined, checker: TypeChecker, seen: Seen = new Set(), allowEmpty = false, expectedFile: ExpectedFile = null): boolean {
     const ts = this.world.ts;
     expression = unwrapExpression(ts, expression);
@@ -337,7 +359,8 @@ export class WorldRenderAnalysis {
     const children = ts.isJsxElement(expression)
       ? expression.children.filter(child => !ts.isJsxText(child) || child.text.trim()) : [];
     if (!children.length) return true;
-    const routedChild = pureTarget && children.length === 1 && this.routedLayoutChild(opening, children[0] as JsxChild, checker);
+    const routedChild = pureTarget && children.length === 1
+      && (this.routedLayoutChild(opening, children[0] as JsxChild, checker) || this.forwardedChildren(children[0] as JsxChild, checker));
     if (!routedChild && !children.every(child => !ts.isJsxText(child)
       && this.renderBoundary(ts.isJsxExpression(child) ? child.expression : child, checker, seen, false, expectedFile))) return false;
     boundary.hasBoundary = true;

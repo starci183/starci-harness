@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Changed: `FE_CONNECTED_BLOCK_RENDER_PAIR` and `FE_WORLD_OWNER_RENDER_BOUNDARY` accept the forwarded children nested between the tags of a resolved pure component (`<XBase props={...}>{props.children}</XBase>`, or the destructured `{children}`) as a render path, beside the attribute form `children={props.children}`. The one child must be `children` of a parameter of the connected component; any other element or expression between the tags still fails. FE-FUNCTION-2 writes the nested form, which Sonar S6748 and `react/no-children-prop` accept. Specs: `src/fe-forwarded-children-render-pair.spec.mts`.
+
 ## 6.2.3 - 2026-11-08
 
 - Fixed: the Sonar scan of `starci app check` on a server without branch support (Community) no longer reads the main project first. A derived project `<key>-local` the token can analyse (`api/qualitygates/project_status` answers 200, which a project analysis token may read) is scanned as it is, with no read of the main project and no gate binding; only a missing derived project is created, which needs the token to read the main project and to create projects and select a gate, and without that the scan is skipped naming the remedy (create `<key>-local` and bind it to the gate, or give the token Create Projects). The gate digest of the scan key falls back to the gate's name when the token cannot read its conditions, and to no reuse when it reads neither: the scan still runs. The verdict of the derived project's gate is read with the scan's own token. Specs: `src/check-cache-sonar-scan.spec.mts`.
