@@ -13,6 +13,7 @@ import type { Custody } from './local-custody.mjs';
 import { hostTool, launch } from './local-host.mjs';
 import type { HostDeps } from './local-host.mjs';
 import { tcpOpen } from './local-ports.mjs';
+import type { PeerBase } from './local-peers.mjs';
 import { logFile, stateDirectory } from './local-state.mjs';
 import { expandPorts } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import type { HttpProbe, LocalCommand } from '../runtime/scripts/hfs/stack-local-config.mjs';
@@ -22,6 +23,8 @@ export interface LocalDeps extends HostDeps {
   alive?: ((pid: number) => boolean) | undefined;
   kill?: ((pid: number) => void) | undefined;
   tcpOpen?: ((port: number) => Promise<boolean>) | undefined;
+  /** The other apps of the machine that declare a base port (the doctor's overlap row); the machine registry when absent. */
+  peers?: (() => PeerBase[]) | undefined;
   migrate?: ((urlEnv: string, env: NodeJS.ProcessEnv, cwd: string) => Promise<number>) | undefined;
 }
 

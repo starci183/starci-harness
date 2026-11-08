@@ -1,5 +1,15 @@
 # Changelog
 
+## 6.4.0 - 2026-11-09
+
+- Added: `local.basePort` in the `local` block of `.starcistacks/application-stacks.yaml` (a whole port from 1024 to 65436: the project owns `basePort` .. `basePort + 99`), normalised by `normalizeLocal` as `LocalBlock.basePort` (null when absent). The authority for the role table is `runtime/scripts/hfs/stack-base-port.mts`.
+- Added: R389, the role table of the native process ports of a dev environment that declares a base: the primary front end (the first process named `web`, `app`, `console`, `fe` or `frontend`) listens on base, the api (`api`, `core`, `be`, `backend`) on base+1, the AI gateway (`gateway`, `ai-gateway`, `ai-router`; base+2, the api port + 1 of the ai-router convention) on base+2, and every further native process (mcp, landing, further next apps, workers with a port) from base+3, or from base+2 when no gateway runs, up to base+99. Compose service ports are exempt. A departure is `STACKS_BASE_PORT_ROLE` (error); an environment with native processes on ports and no `basePort` is `STACKS_BASE_PORT_UNDECLARED`, a warning, so existing apps stay green.
+- Added: `starci app stack doctor --env <env>` prints a `base port` row (the role table) and a `port range` row that fails when another app registered on the machine declares an overlapping base..base+99 for the same environment name. The apps come from the machine registry (`machine.sqlite` `ledgers`, retired ones excluded): each registered checkout's `application-stacks.yaml` and `hfs.json` name its base and project; this app and the lane worktrees of it are skipped, and a checkout that cannot be read is skipped (`stack/local-peers.mts`, the `peers` seam of `LocalDeps`).
+- Added: the range 3900..3999 is reserved for the shared UI-lane `next dev` preview: the doctor prints a failing `port range reserved` row when `basePort`..`basePort + 99` overlaps it, and the scaffold never picks a base in it.
+- Changed: the lite skeleton declares `basePort` in its dev `local` block (web = base, api = base+1); the scaffold fills it from the project name (`{{basePort}}`, `{{apiPort}}`: 3000, 3100 ... 4900).
+- Docs: `contexts/project/stacks.md` PROJECT-STACKS-10 "One base port per app", R389 in the rule book (`contexts/hfs/rules.yaml` and the runtime copy `runtime/knowledge/hfs/rules.yaml`), the two failure codes with their Vietnamese meaning in `failure-codes.yaml`.
+- Specs: `src/stack-base-port.spec.mts` (the parse; the role table for the nivo layout web 3100, api 3101, gateway 3102, mcp 3103, landing 3104 and the starci-next layout app 3000, core 3001, landing 3002; the gateway slot only when a gateway exists; base and base+1 reserved; violations; container ports exempt; the missing-base warning; the doctor rows; the machine registry lookup) and `src/stack-local.spec.mts` (the doctor verb end to end).
+
 ## 6.3.1 - 2026-11-08
 
 - Changed: R350 states the card inset: 16 is the card's own inset alone, the value of `--grammar-inset-card` (Grammar 0.27.0), never a gap; the canon pin of `@starci/stylelint-canon` is 2.8.0, which accepts it there and nowhere else.

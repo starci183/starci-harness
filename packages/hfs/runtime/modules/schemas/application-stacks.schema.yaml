@@ -542,6 +542,8 @@ $defs:
           The dev declaration `starci app stack up|down|doctor|prepare|status|logs|verify` runs for a docker-compose environment (PROJECT-STACKS-6):
           ports, compose services, the environment's own database role, dev-only custody to generate once, setup and seed commands, native app
           processes, readiness and verification probes. Names, ports and argv lists only, never a value. The authority is scripts/hfs/stack-local-config.mjs; rule R340 judges it.
+          `basePort` (a whole port, 1024 to 65436) is the project base port: the native process ports follow the role table of scripts/hfs/stack-base-port.mjs
+          (front end base, api base+1, AI gateway base+2, the rest above, all within base..base+99; rule R389).
         type: object
       ingress:
         description: "The one selected ingress component and the hosts it routes, or external with the stack name when the ingress is a shared stack outside this one (then no component; rule R275 judges which of the two is declared)."

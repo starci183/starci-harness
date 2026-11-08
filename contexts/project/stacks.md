@@ -355,6 +355,25 @@ Rules learned from running apps on developer hosts; each holds in every app.
   and an agent runs no Docker or package manager by hand (hard rule 8), so the doctor prints the commands and `up` refuses a machine that fails
   the table before any effect. On a fresh clone `up --execute` then needs nothing but the identity: the owner obtains the age identity of the
   environment into the harness secret.env, or, when the app has no dev values yet, arms `secret init --env dev --execute` once.
+- **One base port per app.** The host ports of every app's dev environment derive from one project base port,
+  `environments.<env>.local.basePort`, so two apps on one machine never collide (R389). The app owns `basePort` to `basePort + 99`;
+  the native processes (a process with a `port`) take their ports from the role table, and the role of a process is its name:
+
+  | role | process names | port |
+  |---|---|---|
+  | primary front end (the first process of the role) | `web`, `app`, `console`, `fe`, `frontend` | base |
+  | api (the first) | `api`, `core`, `be`, `backend` | base + 1 |
+  | AI gateway (the first; the api port + 1 of the ai-router convention) | `gateway`, `ai-gateway`, `ai-router` | base + 2 |
+  | every other native process (mcp, landing, a further next app, a worker with a port) | any other name, and a second process of a role above | base + 3 to base + 99; base + 2 to base + 99 when no gateway runs |
+
+  A role no process plays leaves its slot empty, and base and base + 1 stay reserved for the front end and the api either way; base + 2 is
+  reserved for the gateway only while a gateway runs, so an app without one (front end, api, landing) puts its landing at base + 2.
+  The range 3900 to 3999 is reserved for the shared UI-lane `next dev` preview, which runs outside any app's stack: no app's `basePort` range may overlap it.
+  Compose service ports (the database, Redis, the object store) are exempt: they are published by containers, not derived. A departure is
+  `STACKS_BASE_PORT_ROLE` (an error); an app with native processes on ports and no `basePort` gets `STACKS_BASE_PORT_UNDECLARED`, a warning
+  that asks it to declare one. `starci app stack doctor --env <env>` prints the `base port` row (the role table) and a `port range` row that fails
+  when another app registered on this machine (the machine registry's projects, the same environment name) declares an overlapping
+  `basePort` to `basePort + 99`, or the reserved range (a `port range reserved` row). The scaffold gives a new app a base of its own. The authority is `scripts/hfs/stack-base-port.mjs` of `@starci/hfs`.
 - **One database per environment.** A dev database is a container of its own compose project, so its roles are this environment's alone: the
   migrations run as the environment's own owner role, the app role the migrations create gets a password of this environment, and neither is a
   role of another environment or server. The client tools of `db migrate` run inside that container (`STARCI_DB_CONTAINER`), so the host needs no
