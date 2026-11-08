@@ -51,10 +51,10 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/node": "22.20.4",
-    "eslint": "10.13.0",
+    "eslint": "10.14.0",
     "jiti": "2.7.0",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.72.0"
+    "typescript-eslint": "8.72.1"
   },
   "publishConfig": {
     "access": "public",
