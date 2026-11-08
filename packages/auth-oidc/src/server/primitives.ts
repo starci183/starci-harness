@@ -11,9 +11,8 @@ export type SecretInput = string | Revealable
 /** The text of a secret input; called only where the secret is sent. */
 export const revealed = (secret: SecretInput): string => (typeof secret === "string" ? secret : secret.reveal())
 
-/** A record: a non-null object that is not an array. */
-export const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
-    typeof value === "object" && value !== null && !Array.isArray(value)
+/** A record: a non-null object that is not an array (`isPlainRecord` of `@starci/common`). */
+export { isPlainRecord as isRecord } from "@starci/common"
 
 /** True when two texts are equal, compared in constant time over equal-length buffers. */
 export const sameValue = (given: string, expected: string): boolean => {
