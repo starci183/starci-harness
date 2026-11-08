@@ -178,7 +178,7 @@ test('the managed hook, the CI templates and the release gate judge as prod', ()
   assert.match(read('hooks/husky/pre-push'), /^node node_modules\/starci-harness\/dist\/main\.js app check --env prod$/mu);
   for (const flavour of ['ci-workflows', 'ci-workflows-lite']) {
     const verify = read(`${flavour}/github/workflows/cache-verify.yml`);
-    assert.match(verify, /starci app check --env prod --fresh$/mu);
+    assert.match(verify, /starci app check --env prod --fresh \$\{\{ matrix\.args \}\}$/mu, 'every shard of the verify judges as prod');
     const ci = read(`${flavour}/github/workflows/ci.yml`);
     const runs = ci.split('\n').filter((line) => /starci app check\b/u.test(line) && !line.trimStart().startsWith('#'));
     assert.ok(runs.length > 0);

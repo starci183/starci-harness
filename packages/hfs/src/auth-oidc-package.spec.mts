@@ -25,7 +25,7 @@ test('the pin of @starci/auth-oidc names the folder and the version of the packa
 test('the package owns jose at the one pinned version, shares the session code of @starci/auth at its pinned version and depends on no Passport, bcrypt or session library', () => {
   const pins = parseYaml(fs.readFileSync(path.join(REPOSITORY, 'contexts', 'stack', 'pins.yaml'), 'utf8')).pins;
   const dependencies = manifest().dependencies as Record<string, string>;
-  assert.deepEqual(Object.keys(dependencies).sort(), ['@starci/auth', 'jose']);
+  assert.deepEqual(Object.keys(dependencies).sort(), ['@starci/auth', '@starci/common', 'jose']);
   assert.equal(dependencies.jose, pins.jose.version);
   assert.equal(dependencies['@starci/auth'], pins['@starci/auth'].version, 'the client imports the session store of the version the pins name');
   assert.equal(pins['@starci/auth-oidc'].version, manifest().version);
