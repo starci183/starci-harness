@@ -3830,7 +3830,7 @@ HFS_CHECK_CACHE_VERIFY_LOCKED:
   causes_vi:
     - "Một bản ghi cache trên main khác kết quả chạy đầy đủ (bước không xác định hoặc phần fingerprint thiếu)"
     - "`gh` chưa đăng nhập hoặc không đọc được các lần chạy"
-  nextStep_vi: "Sửa bản ghi hoặc bước mà lần verify nêu tên, dispatch `cache-verify.yml` cho tới khi xanh; hoặc chủ dự án chạy cổng đầy đủ `starci app release gate --full`."
+  nextStep_vi: "Sửa bản ghi hoặc bước mà lần verify nêu tên, dispatch `cache-verify.yml` trên nhánh chứa sha của release (dev hoặc candidate) cho tới khi xanh cho đúng sha đó; hoặc chủ dự án chạy cổng đầy đủ `starci app release gate --full`."
   owner: op-retry
   kind: check-finding
 

@@ -610,7 +610,7 @@ function backfillRed(ctx: VerbContext, { common, urgent, failed, openTicket }: {
  */
 export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, options: {
   execute?: boolean; source?: string | boolean | undefined; tagPrefix?: string | boolean | undefined; platform?: string; backfill?: string | boolean | undefined; openTicket?: unknown;
-  full?: boolean; readLock?: (ctx: VerbContext, defaultBranch: string) => VerifyLock;
+  full?: boolean; readLock?: (ctx: VerbContext, defaultBranch: string, sha?: string) => VerifyLock;
 } = {}): Promise<VerbResult> {
   // Sonar is a row of the managed CI, so it is a row of the local gate whenever the app declares services.sonar; a missing token is a refusal, never a skip.
   if (config.services?.sonar) config = { ...config, gates: [...config.gates.filter((gate) => gate.name !== 'sonar'), sonarGate(config.services, ctx, options.execute === true)] };
@@ -632,7 +632,7 @@ export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, optio
   if (facts.red.length > 0) return { ok: false, lines: [...plan, ...facts.red.map((item) => `RED: ${item}`), 'nothing was run.'], data: { ...base, red: facts.red, executed: false } };
   // The gate trusts the warm cache unless the owner asked for the full gate; a red or unreadable nightly verify locks it until a green one.
   const full = options.full === true;
-  const lock = full ? null : (options.readLock ?? readVerifyLock)(ctx, config.defaultBranch);
+  const lock = full ? null : (options.readLock ?? readVerifyLock)(ctx, config.defaultBranch, facts.head);
   plan.push(full ? 'cache          full gate (--full): the app-check row runs `app check --env prod --fresh` (every family recomputed, the records rewritten); the rows it covers reuse that verdict, as they do without --full' : `cache          diff-only against the committed cache; ${lock?.line ?? ''}`);
   if (lock !== null && lock.state !== 'open') return { ok: false, lines: [...plan, `RED: ${lock.line}`, 'nothing was run.'], data: { ...base, red: [lock.line], executed: false, locked: true } };
   if (options.execute !== true) return { ok: true, lines: [...plan, '', 'dry run: no gate was run, nothing written. preconditions OK.'], data: { ...base, red: [], executed: false } };

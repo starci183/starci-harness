@@ -39,7 +39,7 @@ on the release tag; the tag run is the release run, and the pipeline keys every 
 | push of `release/candidate-<version>` (apps with `release.requireCi: true`) | the release checks, diff-only against the cache at its merge-base with `main` | built and pushed under `sha-<sha>` | none; the candidate verdict is reused by the tag run |
 | push of tag `v<version>` | the release checks, diff-only against the cache at its merge-base with `main` (check-cache.md "Trust"), or reused from a green candidate run of the same sha | built once, pushed with SBOM and provenance | every environment with `deploy.auto: true`, in declared order, after every required job is green |
 | push of tag `v<version>` whose annotation carries `Starci-Urgent:` | the release checks: this run is the back-fill | built and pushed | skipped when the environment's accepted release already has this sha (the urgent deploy did it); otherwise as a normal tag |
-| schedule (nightly) and `workflow_dispatch` of `cache-verify.yml` on `main` | `app check --fresh`: every family recomputed, red when the committed records differ; red locks the release gate | none | none |
+| schedule (nightly, `main`) and `workflow_dispatch` of `cache-verify.yml` on any branch | one job per family, each `app check --fresh --gate <family>`: the family recomputed, red when the committed records differ; red locks the release gate, a green run for the release's sha clears it | none | none |
 | `workflow_dispatch` of `stack-deploy.yml` | none; it requires a tag whose CI run is green (or an urgent annotation) | reused by digest from that run | `deploy`, `redeploy` or `rollback` of one environment |
 
 `pull_request` is a new trigger for app workflows (R221 and R251 admit only tags, candidate branches, `main` and the

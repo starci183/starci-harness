@@ -1,9 +1,9 @@
-// cache-verify-lock.mts - the nightly verify lock of the release gate. The release gate trusts the
-// warm committed cache: it runs diff-only at the release commit, whose cache main's CI already verified. A scheduled CI job (the managed
-// cache-verify.yml) runs STARCI_APP_CHECK_CACHE=verify on the default branch every night: diff-only, then full, compared. A red verify run locks
-// releases until a green verify run clears it: the gate reads the newest finished run of that workflow on the default branch.
-//   open      the newest finished verify run is green, or the app has none yet (the first night has not come)
-//   locked    the newest finished verify run is red: HFS_CHECK_CACHE_VERIFY_LOCKED, naming its run, until a green one
+// cache-verify-lock.mts - the verify lock of the release gate. The release gate trusts the
+// warm committed cache: it runs diff-only at the release commit, whose cache main's CI already verified. The managed cache-verify.yml (sharded like ci.yml, one job per
+// family, each `app check --fresh --gate <family>`) proves that trust: nightly on the default branch, and on `workflow_dispatch` on any branch, for that branch's head.
+// The gate reads the verify runs that speak for the release: those of the default branch and those of the release's own sha (any branch). The newest finished one decides:
+//   open      it is green (a green verify of this very sha, dispatched on `dev` or a candidate, outranks an older red run of main), or the app has none yet
+//   locked    it is red: HFS_CHECK_CACHE_VERIFY_LOCKED, naming its run, until a newer green one (a newer red verify of main locks again)
 //   unread    GitHub could not be read: HFS_CHECK_CACHE_VERIFY_LOCKED too, since a release never proceeds blind
 // A full release gate (`starci app release gate --full`, an owner's explicit opt-in) never reads the cache and so passes a lock.
 import type { SpawnResult, VerbContext } from './index.mjs';
@@ -13,34 +13,49 @@ export const VERIFY_LOCKED = 'HFS_CHECK_CACHE_VERIFY_LOCKED';
 /** The managed workflow of the nightly verify. */
 export const VERIFY_WORKFLOW = 'cache-verify.yml';
 
-const FIELDS = 'databaseId,status,conclusion,url,createdAt';
+const FIELDS = 'databaseId,status,conclusion,url,createdAt,headSha';
 
 /** A run of the verify workflow as `gh run list --json` answers it. */
-export interface VerifyRun { databaseId?: number | string; status?: string; conclusion?: string; url?: string; createdAt?: string }
+export interface VerifyRun { databaseId?: number | string; status?: string; conclusion?: string; url?: string; createdAt?: string; headSha?: string }
 
 /** Where the lock stands, and the line the gate prints. */
 export interface VerifyLock { readonly state: 'open' | 'locked' | 'unread'; readonly line: string }
 
-/** The lock over the runs `gh` listed (newest first or not): a cancelled or running run is no verdict. Pure. */
-export function lockOf(rows: readonly VerifyRun[] | null): VerifyLock {
-  if (rows === null) return { state: 'unread', line: `${VERIFY_LOCKED}: the runs of ${VERIFY_WORKFLOW} cannot be read; a release never proceeds without the nightly verify (gh auth status)` };
-  const finished = rows.filter((row) => row.status === 'completed' && row.conclusion !== 'cancelled' && row.conclusion !== 'skipped')
+/**
+ * The lock over the runs `gh` listed: `main` are the runs of the default branch, `sameSha` the runs of the release's own sha on any branch. A cancelled, skipped or
+ * running run is no verdict; the newest finished run of both lists decides. Pure.
+ */
+export function lockOf(main: readonly VerifyRun[] | null, sameSha: readonly VerifyRun[] = [], sha?: string): VerifyLock {
+  if (main === null) return { state: 'unread', line: `${VERIFY_LOCKED}: the runs of ${VERIFY_WORKFLOW} cannot be read; a release never proceeds without the cache verify (gh auth status)` };
+  const ids = new Set<string>();
+  const finished = [...main, ...sameSha].filter((row) => row.status === 'completed' && row.conclusion !== 'cancelled' && row.conclusion !== 'skipped')
+    .filter((row) => row.databaseId === undefined || !ids.has(String(row.databaseId)) && ids.add(String(row.databaseId)))
     .sort((a, b) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? '') || Number(b.databaseId) - Number(a.databaseId));
   const newest = finished[0];
   if (newest === undefined) return { state: 'open', line: `cache verify   no finished ${VERIFY_WORKFLOW} run yet: the gate trusts the cache main's CI verified` };
-  if (newest.conclusion === 'success') return { state: 'open', line: `cache verify   green (${newest.url ?? String(newest.databaseId)})` };
-  return { state: 'locked', line: `${VERIFY_LOCKED}: the newest nightly verify concluded ${newest.conclusion ?? 'unknown'} (${newest.url ?? String(newest.databaseId)}); fix the record it names and dispatch ${VERIFY_WORKFLOW} until it is green, or run the full gate (--full)` };
+  const own = sha !== undefined && newest.headSha === sha ? ' for this sha' : '';
+  if (newest.conclusion === 'success') return { state: 'open', line: `cache verify   green${own} (${newest.url ?? String(newest.databaseId)})` };
+  return { state: 'locked', line: `${VERIFY_LOCKED}: the newest cache verify${own} concluded ${newest.conclusion ?? 'unknown'} (${newest.url ?? String(newest.databaseId)}); fix the record it names and dispatch ${VERIFY_WORKFLOW} on the release branch until it is green for this sha (or a newer verify of main is), or run the full gate (--full)` };
 }
 
-/** The lock of the app's default branch, read through `gh run list`. */
-export function readVerifyLock(ctx: VerbContext, defaultBranch: string): VerifyLock {
+/** The runs `gh run list` answered for `args`, or null when gh could not answer. */
+function listRuns(ctx: VerbContext, args: readonly string[]): VerifyRun[] | null {
   let answer: Partial<SpawnResult> & { status: number | null };
-  try { answer = ctx.spawn('gh', ['run', 'list', '--workflow', VERIFY_WORKFLOW, '--branch', defaultBranch, '--limit', '20', '--json', FIELDS], { cwd: ctx.cwd, env: ctx.env }); } catch { answer = { status: null }; }
-  if (answer.error || answer.status !== 0) return lockOf(null);
+  try { answer = ctx.spawn('gh', ['run', 'list', '--workflow', VERIFY_WORKFLOW, ...args, '--limit', '20', '--json', FIELDS], { cwd: ctx.cwd, env: ctx.env }); } catch { answer = { status: null }; }
+  if (answer.error || answer.status !== 0) return null;
   try {
     const rows: unknown = JSON.parse(String(answer.stdout));
-    return lockOf(Array.isArray(rows) ? (rows as VerifyRun[]) : null);
+    return Array.isArray(rows) ? (rows as VerifyRun[]) : null;
   } catch {
-    return lockOf(null);
+    return null;
   }
+}
+
+/** The lock of a release: the verify runs of the app's default branch and, with `sha`, those of the release's own sha on any branch. */
+export function readVerifyLock(ctx: VerbContext, defaultBranch: string, sha?: string): VerifyLock {
+  const main = listRuns(ctx, ['--branch', defaultBranch]);
+  if (main === null) return lockOf(null);
+  // A sha whose runs cannot be read speaks for nothing: the default branch alone decides.
+  const own = sha === undefined ? [] : listRuns(ctx, ['--commit', sha]) ?? [];
+  return lockOf(main, own, sha);
 }

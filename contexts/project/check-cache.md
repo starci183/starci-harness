@@ -36,7 +36,8 @@ For a lane, a lead, an app session and CI alike:
    again and rewrites the records. It is not for routine use.
 
 Release with `starci app release gate`: the `app-check` row is `app check --env prod`, diff-only against the warm cache (`--full` runs it as `app check --env prod --fresh`), and a red
-nightly run refuses the gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a green `cache-verify.yml` run. The gate judges the work once, in that row:
+cache verify refuses the gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a green `cache-verify.yml` run clears it ([The nightly verify](#the-nightly-verify): a green run for the release's own sha does). With the cache trusted (no lock) and the committed cache matching the tree, the `app-check` row does
+almost no work: it reads the records and runs only what differs. The gate judges the work once, in that row:
 
 - **Reused rows.** A row `app check` already judges runs no command when the `app-check` row of the same run is green: `audit`, `format-check`, `typecheck`, `build-be`, `build-fe`, `lint`,
   `db-lint`, `test` (the unit specs, their merged coverage and its per-file threshold) and `db-drift`. The row carries that verdict for the same sha: its report line is
@@ -144,12 +145,21 @@ state and stay out of git; `.starcistacks/cache/` holds results only. The journa
 
 ### The nightly verify
 
-The managed `.github/workflows/cache-verify.yml` (slot `app.ci-cache-verify`) runs `starci app check --env prod --fresh` on the default
-branch every night and on dispatch: every family is recomputed from scratch, and the run fails (`HFS_CHECK_CACHE_UNWARMED`)
-when the committed records are not the ones it produced, so a cache that lies is found there. Its newest finished run is the
-lock of the release gate (`packages/hfs/release/cache-verify-lock.mts`): green, or none yet, leaves the gate open; red or
-unreadable refuses it with `HFS_CHECK_CACHE_VERIFY_LOCKED`, naming the run, until a green run clears it. A forged record
-stays an error finding. Times are printed, never stored.
+The managed `.github/workflows/cache-verify.yml` (slot `app.ci-cache-verify`) proves the trust every CI run and the release gate put in the committed cache. It is
+sharded the way `ci.yml` is, so it fits the CI time of a large app: a matrix of jobs, one per family the cache holds records of (`hfs`, `secrets`, `format`, `db`,
+`wiring`, `types`, `test`, `build`) and the `lint` family once per side (`be`, `fe`, `packages`), each running
+`starci app check --env prod --fresh --gate <family> [--side <side>]` (`ciVerifyShards` of `packages/hfs/sync/ci-commands.mts`, the sides the lint matrix of `ci.yml` names). A job
+recomputes its family from scratch and fails when the committed records are not the ones it produced (`HFS_CHECK_CACHE_UNWARMED`; the job also asserts that
+`git status` shows the cache folder unchanged); the `verdict` job is green only when every shard is. A job's timeout is `timeoutVerify`, the largest of the lint, test and build
+timeouts of `ci.jobs`. The audit and the Sonar scan keep no record and are not shards. The unit run is one job (`--gate test --fresh`): its records and its coverage threshold are
+judged whole there, so the sharded unit run of `ci.yml` and its merge job (`--coverage-from`) have no counterpart; the test job is the longest one. The workflow runs every night on the
+default branch and on `workflow_dispatch` on any branch, for that branch's head (concurrency is per ref, so a dispatch on `dev` never waits for the night run of `main`).
+
+The release gate reads the verify runs that speak for the release (`packages/hfs/release/cache-verify-lock.mts`): those of the default branch and those of the release's own sha
+on any branch (`gh run list --commit <sha>`). The newest finished one decides. Green, or none yet, leaves the gate open; red or unreadable refuses it with
+`HFS_CHECK_CACHE_VERIFY_LOCKED`, naming the run. So a red verify of `main` (as of 2026-11-06 on nivo-lite) is cleared for the release of a sha by a green dispatch of
+`cache-verify.yml` on the branch that holds that sha (`dev`, a candidate), while a newer red verify of `main` locks again, and a red verify of the sha itself locks it.
+A cancelled or skipped run is no verdict. A forged record stays an error finding. Times are printed, never stored.
 
 ## Layout and format
 
@@ -557,7 +567,7 @@ preset's merge one record at a time, so the parent holds about three times the r
   (`app check --gate format`, the `lint` job `--gate lint` per side), the unit run is sharded (`--gate test --shard <i>/<n>` per
   job records nothing) and the merge job judges the merged report with `--coverage-from`. The selectors are job selectors of CI and never
   `--fresh`: one plain run would serialize the families that CI runs in parallel. Every `app check` of the managed workflows and of the hook
-  carries `--env prod`: `cache-verify.yml` runs `app check --env prod --fresh` nightly, the managed pre-push hook runs `app check --env prod`, and
+  carries `--env prod`: `cache-verify.yml` runs `app check --env prod --fresh --gate <family>` as one job per family nightly and on dispatch, the managed pre-push hook runs `app check --env prod`, and
   the release gate runs its `app-check` row diff-only against the warm cache unless `--full` is given, and the rows `app check` covers reuse that row's verdict ([The operating procedure](#the-operating-procedure)).
 - **Scaffold.** `app scaffold` writes the templates above and no cache; the app's first check builds it in full.
 - **Adoption.** `app sync --execute` and `app upgrade` bring an existing app the same templates and never create,
@@ -573,7 +583,7 @@ judged it, so a hand edit can cost time but never pass a file. Enforcement:
 forged fails the run; stale and missing warn in CI (report-only, the run is full or wider and still correct); a push
 whose cache a real run on its tree changes is refused at the pre-push hook (`HFS_CHECK_CACHE_UNWARMED`,
 `HFS_CHECK_CACHE_UNPORTABLE`, `packages/hfs/cache/freshness.mts`), so CI never goes cold and past its ESLint budget; and a red
-or unreadable nightly verify refuses the release gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`).
+or unreadable cache verify refuses the release gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a newer green one, or one green for the release's sha, clears it.
 
 ## Edge cases
 

@@ -1,8 +1,9 @@
 {{header}}
-# The nightly verify of the committed check cache (contexts/project/check-cache.md, "The nightly verify"). The release gate and every CI run trust the
-# warm cache; this run proves that trust on the default branch: `starci app check --env prod --fresh` recomputes every family from scratch and the run fails
-# (HFS_CHECK_CACHE_UNWARMED) when the committed records are not the ones it produced. A failed run locks `starci app release gate`
-# (HFS_CHECK_CACHE_VERIFY_LOCKED) until a green run of this workflow, scheduled or dispatched, clears it.
+# The verify of the committed check cache (contexts/project/check-cache.md, "The verify of the cache"). The release gate and every CI run trust the warm cache; this
+# workflow proves that trust. It is sharded the way ci.yml is: one job per family, each `starci app check --env prod --fresh --gate <family>` (the lint family once per
+# side), so no job takes the time of a whole fresh run. A job recomputes its family from scratch and fails when the committed records are not the ones it produced
+# (HFS_CHECK_CACHE_UNWARMED); the verdict job is green only when every shard is. It runs every night on the default branch, and on dispatch on any branch for that
+# branch's head: a green run for the sha of a release clears HFS_CHECK_CACHE_VERIFY_LOCKED for that sha, and a newer red run on the default branch locks it again.
 name: cache verify
 
 on:
@@ -13,19 +14,53 @@ on:
 permissions:
   contents: read
 
+# One run per ref: a dispatch on dev never waits for the night run of main, and a run is never cancelled.
 concurrency:
-  group: cache-verify
+  group: cache-verify-${{ github.ref }}
   cancel-in-progress: false
+
+env:
+  STARCI_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
 
 jobs:
   verify:
-    if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
-    timeout-minutes: 180
+    timeout-minutes: {{timeoutVerify}}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        args: {{ciVerifyShards}}
     steps:
 {{> app/ci-workflows/install-steps.yml}}
 {{ciPackagesBuild}}
+      - name: build the lint inputs
+        if: ${{ startsWith(matrix.args, '--gate lint') }}
+        run: {{ciLintInputs}}
       - name: verify the committed cache
-        run: npx --no-install starci app check --env prod --fresh
+        run: npx --no-install starci app check --env prod --fresh ${{ matrix.args }}
         env:
-          STARCI_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          NODE_OPTIONS: {{nodeOptions}}
+      - name: the committed records are the ones this family wrote
+        shell: bash
+        run: |
+          changed=$(git status --porcelain --untracked-files=all -- .starcistacks/cache)
+          if [[ -n "$changed" ]]; then
+            echo "::error::HFS_CHECK_CACHE_UNWARMED: a fresh run of ${{ matrix.args }} wrote records other than the committed ones"
+            echo "$changed" | head -20
+            exit 1
+          fi
+
+  verdict:
+    needs: [verify]
+    if: ${{ always() }}
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: verdict
+        shell: bash
+        env:
+          VERIFY: ${{ needs.verify.result }}
+        run: |
+          set -euo pipefail
+          [[ "$VERIFY" == success ]] || { echo "::error::the cache verify is $VERIFY: a shard was red, or did not run"; exit 1; }

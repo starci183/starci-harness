@@ -252,7 +252,19 @@ function ciJobSettings(declaration: Declaration, source: CiSource | undefined, s
     timeoutLint: String(lintJobTimeout({ declared: jobs.lint?.timeoutMinutes, fallback: Number(defaults.timeoutMinutes.lint), overhead: Number(lintOverheadMinutes), scopeFiles: scopes.map((scope) => lintedFiles(source, scope)) })), timeoutTest: timeout('test'), timeoutCoverage: timeout('coverage'),
     timeoutBuild: timeout('build'), timeoutSonar: timeout('sonar'), timeoutDbTypes: timeout('db-types'),
     testShards: `[${Array.from({ length: shards }, (_, index) => index + 1).join(', ')}]`, testShardTotal: String(shards),
+    // The sharded cache verify (cache-verify.yml) runs each family as a job of its own; a job may take as long as the longest family job of ci.yml.
+    timeoutVerify: String(Math.max(Number(timeout('lint')), Number(timeout('test')), Number(timeout('build')))),
   };
+}
+
+/**
+ * The shards of the cache verify (cache-verify.yml), as the `args` of its matrix: one `starci app check --fresh` job per family the committed cache holds records of
+ * (the families `app check` caches; the audit and the Sonar scan keep no record), the lint family once per side of the lint matrix of ci.yml. Each job recomputes its
+ * family from scratch and fails when the committed records are not the ones it produced.
+ */
+export function verifyShards(scopes: readonly string[]): string {
+  const gates = ['hfs', 'secrets', 'format', 'db', 'wiring', 'types', 'test', 'build'];
+  return `[${[...gates.map((gate) => `--gate ${gate}`), ...scopes.map((side) => `--gate lint --side ${side}`)].map((args) => JSON.stringify(args)).join(', ')}]`;
 }
 
 /** An omitted quality declaration preserves hosted Sonar, required OIDC Codecov, and the high production dependency audit. */
@@ -270,6 +282,7 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
   const scopes = ['be', 'fe', ...(rootPackages ? ['packages'] : [])];
   const declaration = buildDeclaration(source);
   const settings = ciJobSettings(declaration, source, scopes);
+  const lintInputs = exampleCommand(source, modulesFirst + (packages ? 'npm run codegen --silent && npx --no-install turbo run build --filter=./fe/packages/*' : 'npm run codegen --silent'));
   // A refused branches block renders no profile (readBranchProfiles keeps only the sound entries; the app check names the problems).
   const profiles = readBranchProfiles(declaration);
   return {
@@ -294,7 +307,9 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     // One lint job per side (the lint matrix): with Sonar each side writes its own report, uploaded as sonar-lint-<side> and merged by the sonar job.
     // The typed lint reads the generated code and the types the root packages and the fe packages declare (their dist), so all are built first, the way the root
     // lint script does, on every side of the matrix: a side that imports a package it finds unbuilt reads it as any.
-    ciLintSteps: ['      - name: build the lint inputs', `        run: ${exampleCommand(source, modulesFirst + (packages ? 'npm run codegen --silent && npx --no-install turbo run build --filter=./fe/packages/*' : 'npm run codegen --silent'))}`, ...(sonar ? [
+    ciLintInputs: lintInputs,
+    ciVerifyShards: verifyShards(scopes),
+    ciLintSteps: ['      - name: build the lint inputs', `        run: ${lintInputs}`, ...(sonar ? [
       '      - name: lint with Sonar import',
       `        run: ${exampleCommand(source, 'npx --no-install starci app check --gate lint --side ' + side + ' --out reports/lint.' + side + '.sonar.json')}`,
       '        env:',
