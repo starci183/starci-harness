@@ -78,6 +78,10 @@ function judged(root: string): string[] {
     fs.mkdirSync(modules, { recursive: true });
     fs.symlinkSync(path.join(import.meta.dirname, '..', '..', 'tsconfig'), path.join(modules, 'tsconfig'), 'junction');
   }
+  // The architecture machine (R84 connection-map) resolves TypeScript from the app; link hfs's own, so the judge never
+  // depends on a TypeScript that happens to sit in a parent folder of the temporary app (it does on Windows, not on CI).
+  const typescript = path.join(root, 'node_modules', 'typescript');
+  if (!fs.existsSync(typescript)) fs.symlinkSync(fs.realpathSync(path.join(import.meta.dirname, '..', 'node_modules', 'typescript')), typescript, 'junction');
   spawnSync('git', ['add', '-A'], { cwd: root });
   const result = checkRepository({ repoRoot: root });
   return result.findings.filter((finding: { level?: string }) => finding.level === 'error').map((finding: { code: string }) => finding.code).sort();
