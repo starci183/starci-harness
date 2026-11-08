@@ -12,6 +12,7 @@
 - Changed: `TestWorldError` extends `DomainError` of `@starci/common` (now a dependency): `isDomainError` recognises it; its name, codes, `params`, `cause` and message (`<code>: <detail>`) are unchanged. The `params` values are strings or numbers (`ErrorParams`), so the fake-control failure leaves `status` out when no answer arrived instead of carrying `null`.
 - Changed: five local object guards (`isRecord` of the subscription, world lock, registry, Keycloak and toxiproxy modules) are `isPlainRecord` / `isRecord` of `@starci/common` with the same behaviour.
 - Changed: the package compiles with `module: nodenext`, since it now requires an ES module (`@starci/common`); Node 22.13 or later loads it with `require`.
+- Changed: requires `@starci/common` 1.0.1 (exact), the one copy an app installs, so `DomainError` stays one class (this version had not reached npm).
 
 ## 1.3.5 - 2026-11-07
 

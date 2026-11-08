@@ -4,6 +4,7 @@
 
 - Added: `AiRouterError`, `KeyAdminError` and `MountedKeyError` extend `DomainError` of `@starci/common` (a runtime dependency), so an app and its canon recognise them as coded errors. `AiRouterError.code` is `AI_ROUTER_<CLASS>` (`AI_ROUTER_ERROR_CODES`, `AiRouterErrorCode`, exported); the two key errors keep their code values. Class names, fields and messages are unchanged.
 - Changed: the eight local copies of the non-array object guard are `isPlainRecord` of `@starci/common`; behaviour is identical.
+- Changed: requires `@starci/common` 1.0.1 (exact), the one copy an app installs, so `DomainError` stays one class (this version had not reached npm).
 
 ## 0.5.0 - 2026-10-31
 

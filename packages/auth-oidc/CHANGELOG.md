@@ -15,6 +15,7 @@ Keycloak behind the back end: the sign-in, the sign-up and the federated sign-in
 - Changed: `OidcError` extends `DomainError<OidcErrorCode>` of `@starci/common` (new dependency); its name, codes, constructor, `kind`, `params` and `cause` are unchanged, and `params` is typed as the `ErrorParams` of the base (string or number values).
 - Changed: requires `@starci/auth` 0.5.0.
 - Changed: `isRecord` is `isPlainRecord` of `@starci/common` under its old name (the same non-array object guard).
+- Changed: requires `@starci/common` 1.0.1 (exact), the one copy an app installs, so `DomainError` stays one class (this version had not reached npm).
 
 ## 0.1.3 - 2026-11-04
 

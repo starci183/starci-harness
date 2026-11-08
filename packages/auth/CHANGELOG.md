@@ -4,6 +4,7 @@
 
 - Changed: `AuthError` extends `DomainError<AuthErrorCode>` of `@starci/common` (new dependency); its name, codes, constructor, `kind`, `context` and `cause` are unchanged, and it gains `params` (always empty).
 - Changed: the package's own non-array object guard is `isPlainRecord` of `@starci/common`.
+- Changed: requires `@starci/common` 1.0.1 (exact), the one copy an app installs, so `DomainError` stays one class (this version had not reached npm).
 
 ## 0.4.0 - 2026-11-04
 

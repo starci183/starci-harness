@@ -3,6 +3,7 @@
 ## 0.2.0 - 2026-11-08
 
 - Changed: `ObjectStorageError` extends `DomainError` of `@starci/common` (now a dependency): `isDomainError` recognises it, `params` is `{}`; its name, codes, `kind`, `context`, `cause` and message (the code) are unchanged. `ObjectStorageErrorKind` is a subset of `ErrorKind`.
+- Changed: requires `@starci/common` 1.0.1 (exact), the one copy an app installs, so `DomainError` stays one class (this version had not reached npm).
 
 ## 0.1.0 - 2026-11-03
 

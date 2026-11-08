@@ -104,7 +104,7 @@
     "typescript-eslint": "8.72.0"
   },
   "dependencies": {
-    "@starci/common": "1.0.0",
+    "@starci/common": "1.0.1",
     "yaml": "^2.9.1"
   },
   "peerDependenciesMeta": {

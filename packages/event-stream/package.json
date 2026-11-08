@@ -66,6 +66,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@starci/common": "1.0.0"
+    "@starci/common": "1.0.1"
   }
 }

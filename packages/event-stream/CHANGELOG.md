@@ -3,6 +3,7 @@
 ## 0.2.0 - 2026-11-08
 
 - Changed: `EventStreamError` extends `DomainError` of `@starci/common` (now a dependency): `isDomainError` recognises it and `params` is `{}`; its name, `code` values, `status`, `config`, `response`, `retryable`, `cause`, message and `toJSON` are unchanged.
+- Changed: requires `@starci/common` 1.0.1 (exact), the one copy an app installs, so `DomainError` stays one class (this version had not reached npm).
 
 ## 0.1.1 - 2026-11-07
 
