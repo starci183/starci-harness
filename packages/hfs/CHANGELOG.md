@@ -2,6 +2,8 @@
 
 ## 6.5.5 - 2026-11-09
 
+- Changed: the canon pins name `@starci/grammar` 0.32.1.
+
 - Fixed: the front-end world analysis (`FE_WORLD_OWNER_RENDER_BOUNDARY`, `FE_COMPONENT_WORLD_OWNERSHIP`, `FE_BLOCK_PRODUCT_HOOK_DEFINITION`, and through them the canon-fe rules built on it) no longer throws `No type checker holds <file>` when a component calls a function of a workspace package's source reached through a tsconfig path alias (nivo: `@nivo-lite/blocks-core` -> `packages/blocks-core/src/index.ts`). The type context keeps only files under the fe root, so no checker holds that file. `functionUsesWorld` now treats a function declared outside the checked graph as outside the app's world and does not descend into it: the package is its own unit, judged by its own lint, and the walk neither crashes nor reports it. Nothing is loosened: every function of the fe tree is judged as before.
 - Specs: `src/fe-world-workspace-source.spec.mts` (lite and full: a component calling a package source through a path alias is analysed without error and reports nothing).
 
