@@ -1,3 +1,6 @@
+import { DomainError } from "@starci/common"
+import type { ErrorParams } from "@starci/common"
+
 /** The failure codes of the test world; every world failure carries one so a run names what broke. */
 export const TestWorldErrorCode = {
     /** `useTestWorld` was used before its `beforeAll` ran, or the globalSetup did not run. */
@@ -34,23 +37,19 @@ export interface TestWorldErrorInit {
     /** The failure code. */
     readonly code: TestWorldErrorCodeValue
     /** The parameters of the failure; `detail` is the sentence a human reads. */
-    readonly params: { readonly detail: string } & Readonly<Record<string, unknown>>
+    readonly params: { readonly detail: string } & ErrorParams
     /** The underlying failure. */
     readonly cause?: unknown
 }
 
-/** The one error class of the library. */
-export class TestWorldError extends Error {
-    /** The failure code. */
-    readonly code: TestWorldErrorCodeValue
+/** The one error class of the library, a `DomainError` of `@starci/common`; its message is `<code>: <detail>`. */
+export class TestWorldError extends DomainError<TestWorldErrorCodeValue> {
     /** The parameters of the failure. */
-    readonly params: TestWorldErrorInit["params"]
+    declare readonly params: TestWorldErrorInit["params"]
 
     constructor(init: TestWorldErrorInit) {
-        super(`${init.code}: ${init.params.detail}`, init.cause === undefined ? undefined : { cause: init.cause })
-        this.name = "TestWorldError"
-        this.code = init.code
-        this.params = init.params
+        super(init)
+        this.message = `${init.code}: ${init.params.detail}`
     }
 }
 

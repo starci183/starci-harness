@@ -7,7 +7,7 @@ const CONTROL_TIMEOUT_MS = 30_000
 const failure = (fake: string, action: string, status: number | null, detail: string, cause?: unknown): TestWorldError =>
     new TestWorldError({
         code: TestWorldErrorCode.FakeControlFailed,
-        params: { detail: `fake "${fake}" action "${action}" ${detail}`, fake, action, status },
+        params: { detail: `fake "${fake}" action "${action}" ${detail}`, fake, action, ...(status === null ? {} : { status }) },
         cause,
     })
 

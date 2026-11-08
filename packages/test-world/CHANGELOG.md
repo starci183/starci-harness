@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.0 - 2026-11-08
+
+- Changed: `TestWorldError` extends `DomainError` of `@starci/common` (now a dependency): `isDomainError` recognises it; its name, codes, `params`, `cause` and message (`<code>: <detail>`) are unchanged. The `params` values are strings or numbers (`ErrorParams`), so the fake-control failure leaves `status` out when no answer arrived instead of carrying `null`.
+- Changed: the package compiles with `module: nodenext`, since it now requires an ES module (`@starci/common`); Node 22.13 or later loads it with `require`.
+
 ## 1.3.5 - 2026-11-07
 
 - A patch: the CHANGELOG carries no ruling attribution; nothing it ships changed.
