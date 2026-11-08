@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.5.3 - 2026-11-09
+
+- Changed: the canon pins name the Grammar family 0.31.0 (`@starci/grammar`, `@starci/eslint-grammar-core`, `@starci/eslint-grammar-offset-pop`).
+
 ## 6.5.2 - 2026-11-09
 
 - Fixed: the delivery id of a resumed parked job is `<jobKey>:r<n>`, no longer `<jobKey>-r<n>`. The outbox check `job_outbox_dedupe_key_check` needs a `:` in every dedupe key, so the old form dead-lettered every `parked_jobs_sweep` resume. `resumedDeliveryId` and `jobKeyOf` (`platform/jobs/jobs.contracts.ts`) follow: `jobKeyOf` strips the one last `:r<digits>`, so a job key holding `:` is claimed intact; a job key must not itself end in `:r<digits>`. The job runner comment, the lite `jobs` and `jobs-failed-awaiting-fix` migration comments, BE-JOBS-7 and BE-RESILIENCE-2 carry the new form.
