@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.98 - 2026-11-08
+
+- Changed: the CLI requires `@starci/hfs` 6.2.10 once npm serves it (cli-follow). In it, FE_WORLD_OWNER_RENDER_BOUNDARY and FE_CONNECTED_BLOCK_RENDER_PAIR accept a pure component that returns a ReactNode prop as is (`(props) => (props.active ? props.candidate : null)`), the form the canon's `no-useless-fragment` (Sonar S6749) leaves once the wrapping fragment goes; a module constant, a hook value or a call result still fails.
+
 ## 1.1.0-alpha.97 - 2026-11-08
 
 - Changed: `starci app check` runs its steps one after another and sizes each on the RAM and cores free when it starts (`@starci/hfs` 6.2.9): the unit run no longer shares a lane pool with lint, hfs, tsc and wiring, so it takes the workers its room holds (`testRunSizing`) instead of `--maxWorkers=1`. `maxWorkers` and `options.workers` of the governor remain a cap a caller names (the jest discovery asks for one worker); the app check test step names none.
