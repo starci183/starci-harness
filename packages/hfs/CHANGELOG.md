@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.2.6 - 2026-11-08
+
+- Changed: `HFS_CANON_PIN_DRIFT` is report-only in `app check --env local` for a pin whose exact version the app's lockfile resolved from a registry on this machine (`starci deps install-local`), not for a spec that spells `-local.<n>`: `deps publish-local` publishes the version committed in git, so a local build has no distinguishing version. A range pin, or the same version resolved from npm, is a real drift.
+- Changed: the verb catalog (`runtime/packages/cli/src/catalog.generated.mjs`) carries the texts of `deps publish-local`, `deps install-local` and `deps check` of CLI 1.1.0-alpha.93.
+
 ## 6.2.5 - 2026-11-08
 
 - Fixed: a whole `starci app check --env prod` crashed with `HFS_MANIFEST_INVALID: internal error: finding code CI_PARITY_DB_SKIPPED has no failure-code catalog entry loaded` on a host with no Docker and no `--db-url-env` database: the warning of the skipped database migration checks had no entry in `runtime/modules/kernel/failure-codes.yaml`. The entry is added beside `CI_PARITY_SONAR_SKIPPED`, and the spec `src/check-report-why.spec.mts` now fails when any `CI_PARITY_*` code the parity family exports or emits has no catalog entry.

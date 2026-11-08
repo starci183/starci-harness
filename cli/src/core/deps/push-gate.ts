@@ -3,6 +3,7 @@ import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
 import { locateTree } from "../../shared/tree.js"
 import { judgeLocalRegistry, NPMJS_FLAGS } from "./local-refs.js"
+import { judgeLockIntegrity } from "./lock-integrity.js"
 import { refuseRecordedOverlay } from "./overlay-refusal.js"
 import { committedPins } from "./packages.js"
 import type { Pin } from "./packages.js"
@@ -37,13 +38,15 @@ const published = async (root: string, name: string, spec: string): Promise<bool
  * `release cut` and `app release`. It refuses DEPS_PIN_UNPUBLISHED when a package.json committed at `revision` pins a
  * `@starci` package to a spec npm cannot install (no published version matches, a path or protocol, a version only the local registry
  * holds), since CI would fail to install it. A lockfile or .npmrc committed at `revision` that names a registry on this machine (a
- * `deps install-local` install) is DEPS_LOCAL_REGISTRY_COMMITTED, in any repository, and a project that still records the removed
+ * `deps install-local` install) is DEPS_LOCAL_REGISTRY_COMMITTED, and a lockfile that holds a harness package at a version npm serves with
+ * another integrity (a build of the local registry) is DEPS_LOCK_INTEGRITY, in any repository, and a project that still records the removed
  * package overlay is DEPS_OVERLAY_REMOVED. Every npm question here is pinned to the public registry (`NPMJS_FLAGS`). Outside a
  * StarCi app (the harness itself, whose packages the release plan judges) it judges nothing else.
  */
 export const judgePush = async (root: string, revision = "HEAD"): Promise<PushJudgement> => {
     refuseRecordedOverlay(root)
     await judgeLocalRegistry(root, revision)
+    await judgeLockIntegrity(root, revision)
     const tree = locateTree(root).tree
     if (tree !== "lite" && tree !== "full") return { app: false, revision, pins: [], notes: ["not a StarCi app (no app hfs.json): nothing to judge"] }
     const pins = await committedPins(root, revision)

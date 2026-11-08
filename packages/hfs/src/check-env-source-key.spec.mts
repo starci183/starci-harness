@@ -135,19 +135,23 @@ test('the local-only finding set is the one list of failure-codes.yaml', () => {
 
 const pins = { '@starci/grammar': { version: '0.25.1', group: 'starci', side: 'fe', source: 'x' } } as unknown as Parameters<typeof pinFindings>[0]['pins'];
 
-function pinned(t: { after(fn: () => void): void }, spec: string): ReturnType<typeof pinFindings> {
+/** The findings of a package.json pinning grammar at `spec`, whose lockfile locked grammar at `locked` when given. */
+function pinned(t: { after(fn: () => void): void }, spec: string, locked?: { version: string; resolved: string }): ReturnType<typeof pinFindings> {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-env-pins-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ dependencies: { '@starci/grammar': spec } }));
+  if (locked !== undefined) fs.writeFileSync(path.join(root, 'package-lock.json'), JSON.stringify({ packages: { 'node_modules/@starci/grammar': locked } }));
   return pinFindings({ repoRoot: root, files: ['package.json'], profile: 'fe', pins });
 }
 
 test('local tolerates exactly the listed local findings, prod blocks them, and a code error is red in both', (t) => {
-  const drift = pinned(t, '0.25.2-local.1');
-  const wrong = pinned(t, '^0.25.0');
+  const drift = pinned(t, '0.25.2', { version: '0.25.2', resolved: 'http://127.0.0.1:4873/@starci/grammar/-/grammar-0.25.2.tgz' });
+  const wrong = pinned(t, '^0.25.0', { version: '0.25.0', resolved: 'http://127.0.0.1:4873/@starci/grammar/-/grammar-0.25.0.tgz' });
+  const published = pinned(t, '0.25.2', { version: '0.25.2', resolved: 'https://registry.npmjs.org/@starci/grammar/-/grammar-0.25.2.tgz' });
   assert.equal(drift.length, 1);
-  assert.equal(drift[0]?.local, true, 'a pin naming a local-registry build is caused by the local loop alone');
+  assert.equal(drift[0]?.local, true, 'a pin the lockfile resolved from the local registry is caused by the local loop alone');
   assert.equal(wrong[0]?.local, undefined, 'a range pin is a real drift');
+  assert.equal(published[0]?.local, undefined, 'the same version resolved from npm is a real drift');
   const unportable = freshnessFindings({ root: os.tmpdir(), portable: false, localReasons: ['@starci/x is installed from a registry on this machine and carries no source digest (starci deps install-local)'], localRegistry: true, written: [], removed: [], uncommitted: [] });
   assert.equal(unportable[0]?.code, UNPORTABLE);
   assert.equal(unportable[0]?.local, true);

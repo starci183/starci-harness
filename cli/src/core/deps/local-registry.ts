@@ -1,16 +1,20 @@
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { z } from "zod"
 import { hostUp, loadHost, selectServices } from "../../harness/host.js"
 import type { UpOutcome } from "../../harness/host.js"
 import { sharedStateBase } from "../../harness/ledger.js"
 import { Refusal } from "../../shared/errors.js"
+import { captureNpm } from "../../shared/exec.js"
+import { cliPackageName } from "../version.js"
 
 /**
  * The npm registry on this machine (`starci deps publish-local`): a Verdaccio container named `starci-local-registry`, published
  * on 127.0.0.1 only, with no login, that stores what was published locally in a bind-mounted folder of the shared state base
  * and passes every other request through to registry.npmjs.org. It is the host service `local-registry` of ops/host.yaml
  * (compose file and config in ops/host/registry/), the only way it runs. It is not a publication: nothing in it reaches npm, CI or
- * an app's committed files, and what it holds is published under local versions of its own (`./local-version.ts`).
+ * an app's committed files, and what it holds is published under the version committed in git (`deps publish-local` refuses a version
+ * npm serves with other content).
  */
 export const CONTAINER = "starci-local-registry"
 export const HOST_SERVICE = "local-registry"
@@ -32,11 +36,51 @@ export const installNpmrc = (port: number): string => [`@starci:registry=${regis
 /** The npmrc of this CLI's own publish and view calls: the registry for everything, and the placeholder token npm wants before it publishes (the registry takes anyone). */
 export const publishNpmrc = (port: number): string => [installNpmrc(port).trimEnd(), `registry=${registryUrl(port)}`, `//${LOOPBACK}:${String(port)}/:_authToken=local-registry`, ""].join("\n")
 
-/** The npm flags that point one app command at the registry for `@starci` only (no file, no environment). */
-export const installFlags = (port: number): string[] => [`--@starci:registry=${registryUrl(port)}`, "--replace-registry-host=never"]
+/**
+ * The npm flags that point one app command at the registry (no file, no environment): the `@starci` scope always, and for a command that
+ * installs the CLI (`starci-harness`, the one unscoped package of the harness, which npm cannot route by scope) the registry itself, so
+ * only that command resolves a package that is not locked yet through it. The registry is never npm's default and nothing writes it to an `.npmrc`.
+ */
+export const installFlags = (port: number, packages: readonly string[] = []): string[] => [
+    `--@starci:registry=${registryUrl(port)}`,
+    "--replace-registry-host=never",
+    ...(packages.includes(cliPackageName()) ? [`--registry=${registryUrl(port)}`] : []),
+]
 
 /** The npm flags of this CLI's own calls: the whole registry, which wins over any npm setting of the machine. */
 export const registryFlags = (port: number): string[] => [`--registry=${registryUrl(port)}`, ...installFlags(port)]
+
+const versionsSchema = z.union([z.array(z.string()), z.string()])
+
+/** The versions the local registry lists of `name` (what it published and what npm serves through its uplink); empty when it knows none. */
+export const registryVersions = async (name: string, port: number, cwd: string): Promise<string[]> => {
+    const view = await captureNpm(["view", name, "versions", "--json", ...registryFlags(port)], cwd)
+    if (view.exitCode !== 0) return []
+    let raw: unknown
+    try {
+        raw = JSON.parse(view.stdout)
+    } catch {
+        raw = undefined
+    }
+    const parsed = versionsSchema.safeParse(raw)
+    if (!parsed.success) return []
+    return typeof parsed.data === "string" ? [parsed.data] : parsed.data
+}
+
+/** The version a package was last published to the local registry under (its `local` dist-tag, set by every `deps publish-local`); undefined when it holds none. */
+export const latestLocal = async (name: string, port: number, cwd: string): Promise<string | undefined> => {
+    const view = await captureNpm(["view", name, "dist-tags.local", "--json", ...registryFlags(port)], cwd)
+    if (view.exitCode !== 0) return undefined
+    try {
+        const raw: unknown = JSON.parse(view.stdout)
+        return typeof raw === "string" ? raw : undefined
+    } catch {
+        return undefined
+    }
+}
+
+/** The dist-tag every local publish carries, so no local publish moves `latest` or a prerelease tag of the registry's npm copy. */
+export const LOCAL_TAG = "local"
 
 /** The process side of the registry's lifecycle: the ping and the host service start. The specs replace it; every other caller takes the default. */
 export interface RegistryIo {
@@ -45,9 +89,9 @@ export interface RegistryIo {
 }
 
 /** Whether the registry answers its ping. */
-export const registryAnswers = async (): Promise<boolean> => {
+export const registryAnswers = async (port = PORT): Promise<boolean> => {
     try {
-        return (await fetch(`${registryUrl(PORT)}-/ping`, { signal: AbortSignal.timeout(2000) })).ok
+        return (await fetch(`${registryUrl(port)}-/ping`, { signal: AbortSignal.timeout(2000) })).ok
     } catch {
         return false
     }

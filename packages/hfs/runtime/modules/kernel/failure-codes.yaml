@@ -3341,7 +3341,7 @@ HFS_CANON_PIN_DRIFT:
     - "Phiên bản viết dạng khoảng (^, ~) thay vì phiên bản chính xác"
     - "Một workspace giữ phiên bản cũ của cùng phụ thuộc"
     - "Một gói @starci khai báo dạng file: hoặc khoảng phiên bản thay vì phiên bản chính xác trên registry"
-    - "Một bản dựng cục bộ (`<phiên bản>-local.<n>`) cài bằng `starci deps install-local`: chỉ `--env prod` chặn, `--env local` chỉ liệt kê"
+    - "Một bản dựng của registry cục bộ (đúng phiên bản đã commit của gói) cài bằng `starci deps install-local`, lockfile ghi `resolved` về máy này: chỉ `--env prod` chặn, `--env local` chỉ liệt kê"
   nextStep_vi: "Đặt phụ thuộc về đúng phiên bản chính xác ghi trong knowledge/hfs/canon-pins.yaml rồi cài lại từ npm registry. Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra; không cần ai can thiệp thêm."
   owner: op-retry
   kind: check-finding

@@ -3,7 +3,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { gunzipSync, gzipSync } from "node:zlib"
-import { localManifest } from "./publish-local.js"
 import { withManifest } from "./tarball.js"
 
 const header = (name: string, size: number): Buffer => {
@@ -42,8 +41,8 @@ void test("only the manifest changes; the other entries stay byte for byte", () 
     const long = "x".repeat(1500)
     const manifest = '{"name":"@starci/x","version":"1.0.0"}'
     const packed = archive({ "package/README.md": "readme", "package/package.json": manifest, "package/dist/big.js": long })
-    const files = filesOf(withManifest(packed, (text) => text.replace("1.0.0", "1.0.1-local.1")))
-    assert.equal(files["package/package.json"], '{"name":"@starci/x","version":"1.0.1-local.1"}')
+    const files = filesOf(withManifest(packed, (text) => text.replace("1.0.0", "1.0.1")))
+    assert.equal(files["package/package.json"], '{"name":"@starci/x","version":"1.0.1"}')
     assert.equal(files["package/README.md"], "readme")
     assert.equal(files["package/dist/big.js"], long)
     const grown = filesOf(withManifest(packed, (text) => `${text}${" ".repeat(900)}`))
@@ -56,12 +55,4 @@ void test("a tarball without a manifest is refused", () => {
         () => withManifest(archive({ "package/a.js": "1" }), (text) => text),
         (error: unknown) => error instanceof Error && "code" in error && error.code === "PUBLISH_LOCAL_TARBALL_UNREADABLE",
     )
-})
-
-void test("the local manifest takes the local version and points a sibling published in the same run at the sibling's local version", () => {
-    const text = JSON.stringify({ name: "@starci/canon", version: "1.0.0", dependencies: { "@starci/hfs": "6.0.4", zod: "4.6.7" }, peerDependencies: { "@starci/grammar": "~0.25.0" } })
-    const out = JSON.parse(localManifest(text, "1.0.1-local.2", new Map([["@starci/hfs", "6.0.5-local.1"]]))) as { version: string; dependencies: Record<string, string>; peerDependencies: Record<string, string> }
-    assert.equal(out.version, "1.0.1-local.2")
-    assert.deepEqual(out.dependencies, { "@starci/hfs": "6.0.5-local.1", zod: "4.6.7" })
-    assert.deepEqual(out.peerDependencies, { "@starci/grammar": "~0.25.0" })
 })

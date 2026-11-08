@@ -13,7 +13,7 @@ import { cliPackageName } from "../version.js"
  * How an app takes its `@starci` packages. The committed `package.json` files and `package-lock.json` always name npm
  * versions, which is what CI and production install. An unreleased package edit reaches an app one way, through the npm
  * registry on this machine (`./local-registry.ts`): `starci deps publish-local` builds the package and publishes it there under
- * a version of its own, and `starci deps install-local` installs that version into the app like npm and records the pins it
+ * the version committed in git, and `starci deps install-local` installs that version into the app like npm and records the pins it
  * replaced, which `starci deps install-local --restore` puts back before a commit. Nothing is linked or copied into an
  * app's `node_modules`.
  */

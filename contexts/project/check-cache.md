@@ -23,7 +23,7 @@ For a lane, a lead, an app session and CI alike:
    commit, push or release, which a developer iterating on locally built harness packages (`starci deps install-local`) cannot satisfy
    until `starci deps install-local --restore`. Those are the codes marked `localOnly: true` in `modules/kernel/failure-codes.yaml`, the one
    list (`packages/hfs/runtime/scripts/hfs/check-env.mts`), and only the instance a local-registry build alone causes:
-   `HFS_CANON_PIN_DRIFT` of a pin naming a `<version>-local.<n>` build, and `HFS_CHECK_CACHE_UNPORTABLE` of a local-registry install whose
+   `HFS_CANON_PIN_DRIFT` of a pin whose version the lockfile resolved from the local registry, and `HFS_CHECK_CACHE_UNPORTABLE` of a local-registry install whose
    package carries no source digest ([The fingerprint](#the-fingerprint)). `--env local` lists them marked `LOCAL, REPORT ONLY`, never red, writes no
    cache for an unportable install, and ends `gate: green for local (not pushable)` when only they remain. `--env prod` blocks them like every
    other finding: the cache is portable and warm and every pin is served by npm.
@@ -233,7 +233,7 @@ A harness or tool package is keyed by its source, never by the version string or
 tracked files of its folder, by path and content, with a changed work-tree file named by its bytes so a dirty build never claims a commit's digest
 (`packages/hfs/cache/fingerprint.mts` `SOURCE_FIELD`; `cli/src/core/deps/pack-stamped.ts`). The `hfs` and `pkg:@starci/*` parts, the install digest
 of every package a record's reads name (`package-closure.mts`) and the lint import graph's install digests use that digest when the installed manifest
-carries one. The `-local.<n>` build of a source and the npm build of the same commit therefore yield identical parts and identical keys, so a run on
+carries one. The local-registry build of a source (published under the version committed in git) and the npm build of the same commit therefore yield identical parts and identical keys, so a run on
 the local build writes records that stay valid after `starci deps install-local --restore`, and CI, which trusts the committed cache at its base
 ([Trust](#trust)), reruns nothing for them; a different source yields different keys.
 

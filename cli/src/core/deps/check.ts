@@ -5,7 +5,7 @@ import { judgePush } from "./push-gate.js"
 /** `starci deps check`: the push gate of the app's `@starci` dependencies (`judgePush`), the body of the app's pre-push hook. */
 export const depsCheckVerb = defineVerb({
     path: ["deps", "check"],
-    summary: "refuse a push whose committed @starci pins npm cannot install (DEPS_PIN_UNPUBLISHED), a lockfile that names the local registry (DEPS_LOCAL_REGISTRY_COMMITTED) or a project that still records the removed package overlay (DEPS_OVERLAY_REMOVED)",
+    summary: "refuse a push whose committed @starci pins npm cannot install (DEPS_PIN_UNPUBLISHED), a lockfile that names the local registry (DEPS_LOCAL_REGISTRY_COMMITTED), a lockfile whose harness package integrity is not the one npm serves for that version (DEPS_LOCK_INTEGRITY) or a project that still records the removed package overlay (DEPS_OVERLAY_REMOVED)",
     editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,

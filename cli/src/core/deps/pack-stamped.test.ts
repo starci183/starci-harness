@@ -6,7 +6,6 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 import { captureGitSync } from "../../shared/git.js"
-import { localManifest } from "./publish-local.js"
 import { SOURCE_FIELD, sourceDigest, withSource } from "./pack-stamped.js"
 
 const repository = (t: { after: (fn: () => void) => void }, files: Record<string, string>): string => {
@@ -46,11 +45,11 @@ void test("a file the work tree changed never claims the digest of the commit it
     assert.equal(await sourceDigest(root, "packages/x"), clean)
 })
 
-void test("the local build and the npm build of one source carry the same digest under their own versions", () => {
-    const committed = '{\n  "name": "@starci/x",\n  "version": "1.0.0",\n  "dependencies": {\n    "@starci/y": "1.0.0"\n  }\n}\n'
+void test("the local build and the npm build of one source carry one version and one digest, the npm build also its commit", () => {
+    const committed = JSON.stringify({ name: "@starci/x", version: "1.0.0", dependencies: { "@starci/y": "1.0.0" } }, null, 2) + "\n"
     const digest = "b".repeat(64)
-    const local: unknown = JSON.parse(withSource(localManifest(committed, "1.0.1-local.2", new Map([["@starci/y", "1.0.1-local.1"]])), digest))
+    const local: unknown = JSON.parse(withSource(committed, digest))
     const npm: unknown = JSON.parse(withSource(committed, digest, "abc123"))
-    assert.deepEqual(local, { name: "@starci/x", version: "1.0.1-local.2", dependencies: { "@starci/y": "1.0.1-local.1" }, [SOURCE_FIELD]: digest })
+    assert.deepEqual(local, { name: "@starci/x", version: "1.0.0", dependencies: { "@starci/y": "1.0.0" }, [SOURCE_FIELD]: digest })
     assert.deepEqual(npm, { name: "@starci/x", version: "1.0.0", dependencies: { "@starci/y": "1.0.0" }, gitHead: "abc123", [SOURCE_FIELD]: digest })
 })

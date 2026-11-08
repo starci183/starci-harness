@@ -11,26 +11,26 @@ import { installRecordFile, parseRequested, readInstallRecord, withPin, writeIns
 import { isHarnessPackage, packageName, pinsOf, parseManifest } from "./packages.js"
 import { clearOverlayRecord, refuseRecordedOverlay } from "./overlay-refusal.js"
 
-void test("a package argument is a name, scoped or not, with an optional local version", () => {
+void test("a package argument is a name, scoped or not, with an optional version", () => {
     assert.deepEqual(parseRequested("grammar"), { name: "@starci/grammar", version: undefined })
     assert.deepEqual(parseRequested("@starci/grammar"), { name: "@starci/grammar", version: undefined })
-    assert.deepEqual(parseRequested("hfs@6.0.5-local.2"), { name: "@starci/hfs", version: "6.0.5-local.2" })
-    assert.deepEqual(parseRequested("@starci/hfs@6.0.5-local.2"), { name: "@starci/hfs", version: "6.0.5-local.2" })
+    assert.deepEqual(parseRequested("hfs@6.0.5"), { name: "@starci/hfs", version: "6.0.5" })
+    assert.deepEqual(parseRequested("@starci/hfs@6.0.5"), { name: "@starci/hfs", version: "6.0.5" })
 })
 
 void test("a pin is raised in the file's own indent and line ending, and put back to the exact original text", () => {
     const original = '{\n    "name": "app",\n    "dependencies": {\n        "@starci/grammar": "0.25.0"\n    }\n}\n'
-    const raised = withPin(original, "dependencies", "@starci/grammar", "0.25.1-local.1")
-    assert.equal(raised, original.replace("0.25.0", "0.25.1-local.1"))
+    const raised = withPin(original, "dependencies", "@starci/grammar", "0.25.1")
+    assert.equal(raised, original.replace("0.25.0", "0.25.1"))
     assert.equal(withPin(raised, "dependencies", "@starci/grammar", "0.25.0"), original)
     const crlf = original.replaceAll("\n", "\r\n")
-    assert.equal(withPin(crlf, "dependencies", "@starci/grammar", "0.25.1-local.1"), crlf.replace("0.25.0", "0.25.1-local.1"))
+    assert.equal(withPin(crlf, "dependencies", "@starci/grammar", "0.25.1"), crlf.replace("0.25.0", "0.25.1"))
 })
 
 void test("an override an install added is removed again, with the emptied overrides field", () => {
     const original = '{\n  "name": "app"\n}\n'
-    const added = withPin(original, "overrides", "@starci/hfs", "6.0.5-local.1")
-    assert.match(added, /"overrides": \{\s+"@starci\/hfs": "6\.0\.5-local\.1"\s+\}/u)
+    const added = withPin(original, "overrides", "@starci/hfs", "6.0.5")
+    assert.match(added, /"overrides": \{\s+"@starci\/hfs": "6\.0\.5"\s+\}/u)
     assert.equal(withPin(added, "overrides", "@starci/hfs", null), original)
 })
 
@@ -72,7 +72,7 @@ void test("the CLI's own unscoped name resolves: the packages of the harness are
     assert.equal(isHarnessPackage("starci-harness-extra"), false)
     assert.equal(isHarnessPackage("react"), false)
     assert.deepEqual(parseRequested("starci-harness"), { name: "starci-harness", version: undefined })
-    assert.deepEqual(parseRequested("starci-harness@1.1.0-alpha.90.local.2"), { name: "starci-harness", version: "1.1.0-alpha.90.local.2" })
+    assert.deepEqual(parseRequested("starci-harness@1.1.0-alpha.91"), { name: "starci-harness", version: "1.1.0-alpha.91" })
     const manifest = parseManifest('{"devDependencies":{"starci-harness":"1.1.0-alpha.90","@starci/hfs":"6.2.1","react":"19.0.0"}}', "package.json")
     assert.deepEqual(
         pinsOf(manifest, "package.json").map((pin) => pin.name),
@@ -93,7 +93,7 @@ void test("the install record lands in the untracked tool cache, never in .starc
     assert.ok(file.startsWith(cache), `${file} is under the tool cache ${cache}`)
     assert.ok(!file.includes(".starciwork"))
     assert.equal(readInstallRecord(root), undefined)
-    const record = { schema: "starci/deps-install-local@1" as const, registry: "http://127.0.0.1:4873", packages: [{ name: "starci-harness", version: "1.1.0-alpha.90.local.1", pins: [{ file: "package.json", field: "devDependencies", spec: "1.1.0-alpha.90" }] }] }
+    const record = { schema: "starci/deps-install-local@1" as const, registry: "http://127.0.0.1:4873", packages: [{ name: "starci-harness", version: "1.1.0-alpha.91", pins: [{ file: "package.json", field: "devDependencies", spec: "1.1.0-alpha.90" }] }] }
     writeInstallRecord(root, record)
     assert.deepEqual(readInstallRecord(root), record)
     assert.equal(existsSync(join(root, ".starciwork")), false)
