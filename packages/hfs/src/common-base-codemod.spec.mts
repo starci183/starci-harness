@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { CODEMODS, codemodMain } from '../codemod/main.mjs';
-import { commonBaseMarkdown, migrateCommonBase, transformErrorContracts } from '../codemod/common-base.mjs';
+import { commonBaseMarkdown, migrateCommonBase, pruneBarrel, transformErrorContracts } from '../codemod/common-base.mjs';
 
 const LEGACY: Record<string, string> = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'src', 'fixtures', 'common-base-legacy.json'), 'utf8')); // reason: parsed fixture of the pre-@starci/common template files
 
@@ -90,4 +90,56 @@ test('an app without a back end is refused, and the codemod verb runs it', async
   const code = await codemodMain(['common-base', '--json'], { cwd: root, stdout: (text) => { out += text; } });
   assert.equal(code, 0);
   assert.equal(JSON.parse(out).schema, 'starci/common-base-report@1'); // reason: the verb's own JSON report
+});
+
+/** Writes `files` (paths under the app's be/) into an app root. */
+function addFiles(root: string, files: Record<string, string>): void {
+  for (const [file, text] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(root, 'be', file)), { recursive: true });
+    fs.writeFileSync(path.join(root, 'be', file), text);
+  }
+}
+
+test('the spec of a file turned into a re-export is deleted, and a dry run only reports it', () => {
+  const root = legacyApp();
+  const specs = ['outcome.mapper', 'record.policy', 'sequence.policy'].map((name) => `src/modules/platform/primitives/${name}.spec.ts`);
+  addFiles(root, Object.fromEntries(specs.map((spec) => [spec, 'describe("x", () => { it("y", () => { expect(1).toBe(1) }) })\n'])));
+  const dry = migrateCommonBase({ root });
+  assert.deepEqual(dry.changes.filter((change) => change.file.endsWith('.spec.ts')).map((change) => change.file).sort(), specs.map((spec) => `be/${spec}`).sort());
+  assert.ok(specs.every((spec) => fs.existsSync(path.join(root, 'be', spec))));
+  migrateCommonBase({ root, write: true });
+  assert.ok(specs.every((spec) => !fs.existsSync(path.join(root, 'be', spec))));
+  const again = migrateCommonBase({ root, write: true });
+  assert.deepEqual(again.filesChanged, []);
+});
+
+test('a spec beside a file that stays the app\'s own is kept', () => {
+  const root = legacyApp({ edit: { 'primitives/record.policy.ts': 'export const somethingElse = 1\n' } });
+  addFiles(root, { 'src/modules/platform/primitives/record.policy.spec.ts': 'describe("x", () => undefined)\n' });
+  migrateCommonBase({ root, write: true });
+  assert.ok(fs.existsSync(path.join(root, 'be/src/modules/platform/primitives/record.policy.spec.ts')));
+});
+
+test('only the names the app imports are re-exported, and the barrels stop passing on the others', () => {
+  const root = legacyApp();
+  addFiles(root, {
+    'src/modules/platform/errors/index.ts': 'export type { DomainErrorInit, ErrorKind, ErrorParams } from "./errors.contracts"\nexport { DomainError, isDomainError } from "./domain.error"\n',
+    'src/modules/platform/primitives/index.ts': 'export type { Outcome } from "./outcome.contracts"\nexport type { OutcomeOk, OutcomeRefused } from "./outcome.contracts"\nexport { ok, refused, unwrapOutcome } from "./outcome.mapper"\nexport { isRecord } from "./record.policy"\n',
+    'src/modules/domain/orders/orders.service.ts': 'import { DomainError, type ErrorParams } from "@modules/platform/errors"\nimport type { Outcome } from "@modules/platform/primitives"\nimport { ok as success, unwrapOutcome } from "@modules/platform/primitives"\n',
+  });
+  const report = migrateCommonBase({ root, write: true });
+  assert.deepEqual(report.findings, []);
+  assert.equal(read(root, 'errors/domain.error.ts'), 'export { DomainError } from "@starci/common"\n');
+  assert.equal(read(root, 'primitives/outcome.contracts.ts'), 'export type { Outcome } from "@starci/common"\n');
+  assert.equal(read(root, 'primitives/outcome.mapper.ts'), 'export { ok, unwrapOutcome } from "@starci/common"\n');
+  assert.match(read(root, 'errors/errors.contracts.ts'), /^import type \{ ErrorKind, ErrorParams \} from "@starci\/common"\n\nexport type \{ ErrorParams \} from "@starci\/common"\n\n/);
+  assert.equal(read(root, 'errors/index.ts'), 'export type { ErrorParams } from "./errors.contracts"\nexport { DomainError } from "./domain.error"\n');
+  assert.equal(read(root, 'primitives/index.ts'), 'export type { Outcome } from "./outcome.contracts"\nexport { ok, unwrapOutcome } from "./outcome.mapper"\nexport { isRecord } from "./record.policy"\n'); // nothing imports isRecord: its file keeps the template form
+});
+
+test('pruneBarrel keeps a line that names nothing dropped and removes one that is left empty', () => {
+  const text = 'export { a, b } from "./x"\nexport { c } from "./y"\n';
+  assert.equal(pruneBarrel(text, './x', ['z']), text);
+  assert.equal(pruneBarrel(text, './x', ['a']), 'export { b } from "./x"\nexport { c } from "./y"\n');
+  assert.equal(pruneBarrel(text, './y', ['c']), 'export { a, b } from "./x"\n');
 });

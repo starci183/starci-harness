@@ -113,7 +113,6 @@ const DATABASE_ERROR = 'be/src/modules/platform/database/errors/database.error.t
 const SKELETON_FILES: ReadonlyArray<readonly [string, string]> = Object.freeze([
   ['be/src/modules/platform/database/database.sql.ts', 'skeleton-lite/src/modules/platform/database/database.sql.ts'],
   ['be/src/modules/platform/primitives/sequence.policy.ts', 'skeleton/src/modules/platform/primitives/sequence.policy.ts'],
-  ['be/src/modules/platform/primitives/sequence.policy.spec.ts', 'skeleton/src/modules/platform/primitives/sequence.policy.spec.ts'],
 ]);
 
 /** The sql tag of the outbox and claim statements (with its identifier error) and the in-order relay the queue adapters walk their rows with. */

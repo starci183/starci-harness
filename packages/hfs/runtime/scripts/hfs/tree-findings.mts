@@ -1,4 +1,4 @@
-import { readTree, treeFacts, untrackedEntries } from './tree.mjs';
+import { gitIgnoredPaths, readTree, treeFacts, untrackedEntries } from './tree.mjs';
 import { liteStarciworkTreeFindings } from './path-findings.mjs';
 import type { PathFinding } from './path-findings.mjs';
 import type { Resolver } from './slots.mjs';
@@ -9,7 +9,10 @@ const CHECK_CACHE_DIR = '.starcistacks/cache';
 export function treeFindings({ repoRoot, resolver, tracked = [], reportedUntracked = new Set() }: { repoRoot: string; resolver: Resolver; tracked?: string[]; reportedUntracked?: Set<string> }): PathFinding[] {
   const inIgnoredSlot = (rel: string): boolean => resolver.classifyPath(`${rel}/.probe`).tracking === 'ignored';
   const findings = liteStarciworkTreeFindings(repoRoot, resolver, tracked);
-  const facts = treeFacts(readTree(repoRoot, { isIgnored: inIgnoredSlot }));
+  const walked = treeFacts(readTree(repoRoot, { isIgnored: inIgnoredSlot }));
+  // a directory git ignores (the Sonar scanner's .scannerwork, an editor's cache) is a tool's, not a leftover of the repository
+  const gitIgnored = gitIgnoredPaths(repoRoot, [...walked.empty.map((fact) => fact.path), ...walked.ghosts.map((fact) => fact.path)]);
+  const facts = { empty: walked.empty.filter((fact) => !gitIgnored.has(fact.path)), ghosts: walked.ghosts.filter((fact) => !gitIgnored.has(fact.path)) };
   for (const { path: dir, below } of facts.empty) {
     findings.push({ code: 'HFS_EMPTY_DIR', level: 'error', path: dir, below, message: `${dir} has no file below it` + (below ? ` (nor in its ${below} sub-director${below === 1 && 'y' || 'ies'})` : '') + '; git tracks no empty directory, so it is a leftover' });
   }

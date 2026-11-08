@@ -1,6 +1,6 @@
 import type { ErrorKind, ErrorParams } from "@starci/common"
 
-export type { DomainErrorInit, ErrorKind, ErrorParams } from "@starci/common"
+export type { ErrorKind, ErrorParams } from "@starci/common"
 
 /** One capability's exhaustive code to kind table, as its `<C>_ERROR_KINDS` constant declares it. */
 export type ErrorKindTable = Readonly<Record<string, ErrorKind>>

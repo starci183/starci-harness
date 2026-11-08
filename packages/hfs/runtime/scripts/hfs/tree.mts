@@ -4,6 +4,7 @@
 // Read-only: it walks the file system and asks git, nothing else.
 import fs from 'node:fs';
 import path from 'node:path';
+import { checkIgnore } from '../api/git/check-ignore.mjs';
 import { lsFiles } from '../api/git/ls-files.mjs';
 import { gitOutputOf } from '../lib/git.mjs';
 import { posixPath } from '../lib/path-key.mjs';
@@ -97,4 +98,14 @@ export function treeFacts(tree: TreeNode): TreeFacts {
 export function untrackedEntries(repoRoot: string): string[] {
   const out = gitOutputOf(lsFiles(['-z', '--others', '--exclude-standard', '--directory', '--no-empty-directory'], { dir: repoRoot, maxBuffer: 256 * 1024 * 1024 }), 'git ls-files');
   return out.split('\0').filter(Boolean).map(posixPath);
+}
+
+/**
+ * The paths of `paths` that git ignores (a tool's own temp directory such as `.scannerwork/.sonartmp/1`, named by .gitignore or the
+ * exclude files): a leftover the repository does not own is no finding. A folder that is no git work tree answers none.
+ */
+export function gitIgnoredPaths(repoRoot: string, paths: readonly string[]): Set<string> {
+  if (paths.length === 0) return new Set();
+  const result = checkIgnore(['--stdin', '-z'], { dir: repoRoot, input: paths.join('\0') });
+  return result.status === 0 ? new Set(String(result.stdout).split('\0').filter(Boolean).map(posixPath)) : new Set();
 }

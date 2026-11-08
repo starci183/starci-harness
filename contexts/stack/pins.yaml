@@ -9,7 +9,7 @@
 # (`starci deps install-local`), outside every committed file. `why` is one line; history lives in the package CHANGELOG.
 schema: starci/stack-pins@1
 pins:
-  '@starci/common': {version: 1.0.0, group: starci, side: both, install: registry, why: "the shared concepts of every app and package: the coded error base DomainError with its guard and ErrorKind, Outcome, ok, refused and unwrapOutcome, the object guards isRecord and isPlainRecord, eachInOrder; platform/errors and platform/primitives re-export them and every @starci package derives its error from DomainError"}
+  '@starci/common': {version: 1.0.1, group: starci, side: both, install: registry, why: "the shared concepts of every app and package: the coded error base DomainError with its guard and ErrorKind, Outcome, ok, refused and unwrapOutcome, the object guards isRecord and isPlainRecord, eachInOrder; platform/errors and platform/primitives re-export them and every @starci package derives its error from DomainError"}
   '@starci/heroicons': {version: 0.3.6, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
   '@starci/event-stream': {version: 0.2.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
   '@starci/next-data': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the SWR middleware pollingRestart, the viewer and tenant key helpers and the viewer cache of a front end; each operation's hook stays in the app"}

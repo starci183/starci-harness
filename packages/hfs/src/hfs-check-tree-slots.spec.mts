@@ -116,6 +116,13 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(only(result, GHOST_TREE), []);
   });
 
+  test(`${edition} valid: an empty directory git ignores (the Sonar scanner's temp directory) is no ${EMPTY_DIR} and no ${GHOST_TREE}`, () => {
+    const dir = repoOf(APP, edition, (d) => { fs.appendFileSync(path.join(d, '.gitignore'), '\n.scannerwork/\n'); mkdir(d, '.scannerwork/.sonartmp/1'); mkdir(d, 'be/src/modules/bussiness'); put(d, 'be/src/modules/business/a.ts'); });
+    const result = checkRepo({ repoRoot: dir });
+    assert.ok(!only(result, EMPTY_DIR).some((f) => String(f.path).startsWith('.scannerwork')), 'the scanner directory is git-ignored');
+    assert.ok(only(result, EMPTY_DIR).some((f) => f.path === 'be/src/modules/bussiness'), 'a leftover git does not ignore is still reported');
+  });
+
   test(`${edition} violating: an empty directory beside a lookalike sibling is ${GHOST_TREE} (business / bussiness)`, () => {
     const dir = repoOf(APP, edition, (d) => { put(d, 'be/src/modules/business/a.ts'); mkdir(d, 'be/src/modules/bussiness'); mkdir(d, 'be/src/modules/platform-extras'); });
     const result = checkRepo({ repoRoot: dir });

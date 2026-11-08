@@ -1,1 +1,1 @@
-export type { Outcome, OutcomeErrorClass, OutcomeOk, OutcomeRefused } from "@starci/common"
+export type { Outcome } from "@starci/common"

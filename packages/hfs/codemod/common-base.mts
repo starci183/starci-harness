@@ -6,7 +6,6 @@ import { filesUnder, relativePosix, sideFolders } from './source-tree.mjs';
 const COMMON = '@starci/common';
 const ERRORS = 'src/modules/platform/errors';
 const PRIMITIVES = 'src/modules/platform/primitives';
-const DOMAIN_ERROR_EXPORT = 'export { DomainError, isDomainError } from "@starci/common"\n';
 
 /** One file the migration rewrites into a re-export of `@starci/common`. */
 export interface CommonBaseChange { file: string; became: string }
@@ -19,16 +18,54 @@ export interface CommonBaseReport {
   dependency: { name: string; version: string; declared: boolean; added: boolean };
 }
 
-/** A file whose whole text becomes one re-export when it still declares what the marker names. */
-interface Whole { name: string; marker: RegExp; text: string }
+/** A file whose whole text becomes one re-export of the names it declared, when it still declares what the marker names. */
+interface Whole { name: string; marker: RegExp; names: readonly string[]; type: boolean }
+
+/** The one re-export line of a file: only the names the app imports. */
+const reexportText = (names: readonly string[], type: boolean): string => `export ${type ? 'type ' : ''}{ ${names.join(', ')} } from "${COMMON}"\n`;
 
 const WHOLE_FILES: readonly Whole[] = [
-  { name: `${ERRORS}/domain.error.ts`, marker: /\bclass DomainError\b/, text: DOMAIN_ERROR_EXPORT },
-  { name: `${PRIMITIVES}/outcome.contracts.ts`, marker: /\bexport type Outcome</, text: 'export type { Outcome, OutcomeErrorClass, OutcomeOk, OutcomeRefused } from "@starci/common"\n' },
-  { name: `${PRIMITIVES}/outcome.mapper.ts`, marker: /\bexport const unwrapOutcome\b/, text: 'export { ok, refused, unwrapOutcome } from "@starci/common"\n' },
-  { name: `${PRIMITIVES}/record.policy.ts`, marker: /\bexport const isRecord\b/, text: 'export { isRecord } from "@starci/common"\n' },
-  { name: `${PRIMITIVES}/sequence.policy.ts`, marker: /\bexport const eachInOrder\b/, text: 'export { eachInOrder } from "@starci/common"\n' },
+  { name: `${ERRORS}/domain.error.ts`, marker: /\bclass DomainError\b/, names: ['DomainError', 'isDomainError'], type: false },
+  { name: `${PRIMITIVES}/outcome.contracts.ts`, marker: /\bexport type Outcome</, names: ['Outcome', 'OutcomeErrorClass', 'OutcomeOk', 'OutcomeRefused'], type: true },
+  { name: `${PRIMITIVES}/outcome.mapper.ts`, marker: /\bexport const unwrapOutcome\b/, names: ['ok', 'refused', 'unwrapOutcome'], type: false },
+  { name: `${PRIMITIVES}/record.policy.ts`, marker: /\bexport const isRecord\b/, names: ['isRecord'], type: false },
+  { name: `${PRIMITIVES}/sequence.policy.ts`, marker: /\bexport const eachInOrder\b/, names: ['eachInOrder'], type: false },
 ];
+
+/** The names of `names` the app imports; every name when it imports none (the file keeps its template form and a person decides). */
+const usedOf = (names: readonly string[], used: ReadonlySet<string>): string[] => {
+  const kept = names.filter((name) => used.has(name));
+  return kept.length > 0 ? kept : [...names];
+};
+
+/** The name an import or export specifier binds from its source: `type A as B` is `A`. */
+const specifierName = (item: string): string => item.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]?.trim() ?? '';
+
+/** The names every `import { ... } from` of the app's source binds, outside the files the codemod rewrites and the barrels that pass them on. */
+function importedNames(folder: string, skip: ReadonlySet<string>): Set<string> {
+  const names = new Set<string>();
+  const source = path.join(folder, 'src');
+  for (const file of fs.existsSync(source) ? filesUnder(source, /\.tsx?$/) : []) {
+    if (skip.has(path.resolve(file))) continue;
+    for (const match of fs.readFileSync(file, 'utf8').matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"][^'"]+['"]/g)) {
+      for (const item of (match[1] ?? '').split(',')) if (specifierName(item) !== '') names.add(specifierName(item));
+    }
+  }
+  return names;
+}
+
+/** `text` with `dropped` removed from every `export { ... } from "<specifier>"` line of a barrel, and the line itself when nothing is left. */
+export function pruneBarrel(text: string, specifier: string, dropped: readonly string[]): string {
+  const lines = text.split('\n').flatMap((line) => {
+    const match = /^export (type )?\{([^}]*)\} from (["'])([^"']+)\3\s*$/.exec(line);
+    if (match === null || match[4] !== specifier) return [line];
+    const items = (match[2] ?? '').split(',').map((item) => item.trim()).filter((item) => item !== '');
+    const kept = items.filter((item) => !dropped.includes(specifierName(item)));
+    if (kept.length === items.length) return [line];
+    return kept.length === 0 ? [] : [`export ${match[1] ?? ''}{ ${kept.join(', ')} } from ${match[3] ?? '"'}${specifier}${match[3] ?? '"'}`];
+  });
+  return lines.join('\n');
+}
 
 /** The declarations `errors.contracts.ts` hands to `@starci/common`: the doc comment through the closing line of each. */
 const CONTRACT_DECLARATIONS: readonly RegExp[] = [
@@ -36,16 +73,20 @@ const CONTRACT_DECLARATIONS: readonly RegExp[] = [
   /\/\*\*[^]*?\*\/\nexport interface ErrorParams \{[^]*?\n\}\n\n?/,
   /\/\*\*[^]*?\*\/\nexport interface DomainErrorInit<C extends string> \{[^]*?\n\}\n\n?/,
 ];
-const CONTRACT_HEAD = 'import type { ErrorKind, ErrorParams } from "@starci/common"\n\nexport type { DomainErrorInit, ErrorKind, ErrorParams } from "@starci/common"\n\n';
+const CONTRACT_NAMES: readonly string[] = ['DomainErrorInit', 'ErrorKind', 'ErrorParams'];
+const contractHead = (names: readonly string[]): string => `import type { ErrorKind, ErrorParams } from "${COMMON}"
+
+${reexportText(names, true)}
+`;
 
 /** The text of `errors.contracts.ts` with the three shared declarations replaced by the re-export, or null when one is not there in its template form. */
-export function transformErrorContracts(text: string): string | null {
+export function transformErrorContracts(text: string, names: readonly string[] = CONTRACT_NAMES): string | null {
   let rest = text;
   for (const declaration of CONTRACT_DECLARATIONS) {
     if (!declaration.test(rest)) return null;
     rest = rest.replace(declaration, '');
   }
-  return `${CONTRACT_HEAD}${rest.replace(/^\n+/, '')}`;
+  return `${contractHead(names)}${rest.replace(/^\n+/, '')}`;
 }
 
 /** The `@starci/common` requirement the codemod adds to an app's root package.json. */
@@ -79,24 +120,53 @@ export function migrateCommonBase({ root, write = false }: CommonBaseOptions): C
     if (write && text !== original) fs.writeFileSync(target, text);
   };
   for (const folder of folders) {
+    const rewritten = new Set([...WHOLE_FILES.map((whole) => whole.name), `${ERRORS}/errors.contracts.ts`, `${ERRORS}/index.ts`, `${PRIMITIVES}/index.ts`].map((name) => path.resolve(folder, name)));
+    const used = importedNames(folder, rewritten);
+    const dropped = new Map<string, string[]>();
     for (const whole of WHOLE_FILES) {
       const target = path.join(folder, whole.name);
       if (!fs.existsSync(target)) continue;
       report.filesScanned += 1;
       const original = fs.readFileSync(target, 'utf8').replace(/\r\n/g, '\n');
-      if (original === whole.text) continue;
-      if (whole.marker.test(original)) rewrite(target, whole.text, original, 're-export of @starci/common');
-      else report.findings.push({ file: relativePosix(root, target), line: 1, code: 'COMMON_BASE_FILE_CUSTOM', reason: `the file no longer declares what @starci/common owns; make it \`${whole.text.trim()}\` by hand` });
+      const kept = usedOf(whole.names, used);
+      const text = reexportText(kept, whole.type);
+      const reexport = original.includes(`from "${COMMON}"`);
+      if (!reexport && !whole.marker.test(original)) {
+        report.findings.push({ file: relativePosix(root, target), line: 1, code: 'COMMON_BASE_FILE_CUSTOM', reason: `the file no longer declares what @starci/common owns; make it \`${text.trim()}\` by hand` });
+        continue;
+      }
+      if (!reexport) rewrite(target, text, original, 're-export of @starci/common');
+      if (!reexport) dropped.set(`./${path.posix.basename(whole.name, '.ts')}`, whole.names.filter((name) => !kept.includes(name)));
+      // a re-export has no logic of its own: the specs of that logic live in @starci/common, and BE_SPEC_FORM_ALL_ROLES refuses a spec that tests nothing the app owns
+      const spec = target.replace(/\.ts$/, '.spec.ts');
+      if (fs.existsSync(spec)) {
+        const file = relativePosix(root, spec);
+        report.filesChanged.push(file);
+        report.changes.push({ file, became: 'deleted: a spec of a re-export, the logic is specified in @starci/common' });
+        if (write) fs.rmSync(spec);
+      }
     }
     const contracts = path.join(folder, ERRORS, 'errors.contracts.ts');
     if (fs.existsSync(contracts)) {
       report.filesScanned += 1;
       const original = fs.readFileSync(contracts, 'utf8').replace(/\r\n/g, '\n');
       if (!original.includes('from "@starci/common"')) {
-        const text = transformErrorContracts(original);
-        if (text === null) report.findings.push({ file: relativePosix(root, contracts), line: lineOf(original, /export (?:type|interface) (?:ErrorKind|ErrorParams|DomainErrorInit)\b/), code: 'COMMON_BASE_CONTRACTS_CUSTOM', reason: 'ErrorKind, ErrorParams or DomainErrorInit is not in its template form; re-export them from @starci/common by hand' });
-        else rewrite(contracts, text, original, 'ErrorKind, ErrorParams and DomainErrorInit re-exported from @starci/common');
+        const kept = usedOf(CONTRACT_NAMES, used);
+        const text = transformErrorContracts(original, kept);
+        if (text === null) report.findings.push({ file: relativePosix(root, contracts), line: lineOf(original, /export (?:type|interface) (?:ErrorKind|ErrorParams|DomainErrorInit)/), code: 'COMMON_BASE_CONTRACTS_CUSTOM', reason: 'ErrorKind, ErrorParams or DomainErrorInit is not in its template form; re-export them from @starci/common by hand' });
+        else {
+          rewrite(contracts, text, original, `${kept.join(', ')} re-exported from @starci/common`);
+          dropped.set('./errors.contracts', CONTRACT_NAMES.filter((name) => !kept.includes(name)));
+        }
       }
+    }
+    // the barrels pass on only what is still exported: a name nobody imports is dropped from them, or HFS_UNUSED_EXPORT names it
+    for (const barrelName of [`${ERRORS}/index.ts`, `${PRIMITIVES}/index.ts`]) {
+      const barrel = path.join(folder, barrelName);
+      if (!fs.existsSync(barrel)) continue;
+      const original = fs.readFileSync(barrel, 'utf8').replace(/\r\n/g, '\n');
+      const text = [...dropped].reduce((current, [specifier, names]) => pruneBarrel(current, specifier, names), original);
+      if (text !== original) rewrite(barrel, text, original, 'names nobody imports no longer re-exported');
     }
   }
   const packages = path.join(root, 'packages');
