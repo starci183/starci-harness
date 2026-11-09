@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.112 - 2026-11-09
 
+- Changed: the CLI requires @starci/hfs@6.6.0, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed: `@starci/hfs` 6.6.0 (every app source has a gallery: R395, the managed `gallery/` Vite app on base port + 50, `stack up` runs it); the canon pins name it with `eslint-canon-be` 3.21.1, `eslint-canon-fe` 9.16.11 and `eslint-grammar-core` / `eslint-grammar-offset-pop` 0.36.2.
 - Upgrade, per existing app: `starci app check` reports `HFS_APP_GALLERY_MISSING` (R395) until the gallery exists. Run `starci app sync --execute` (it lays down `gallery/` in the app's default locale, `vi` or `en`, and the managed `.gitignore` block), then `npm install` in `gallery/`, then commit `gallery/` (not `gallery/shots/`, which is git-ignored).
 
