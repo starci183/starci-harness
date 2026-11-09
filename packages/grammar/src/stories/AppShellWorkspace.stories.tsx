@@ -100,7 +100,7 @@ const stateAt = (canvasElement: HTMLElement) => {
   return { divider: getComputedStyle(tracks, '::after').content, stackPad: (area: string) => Number.parseFloat(getComputedStyle(stack(area) as HTMLElement).paddingTop) };
 };
 
-/** The agent workbench shape: a main pane with no head and an aside with one. The row exists (the main pane keeps its height for alignment) and the one divider is drawn. */
+/** The agent workbench shape: a main pane with no head and an aside with one. No shared row, no spacer, no continuous divider: the aside head stands alone at the head height with its own bottom border, and the main pane starts at the top (0.37.3). */
 export const AsideHeadOnly: Story = {
   render: (_, { globals }) => <Shell scope={familyScope(globals)} grid={
     <G.PaneGrid label="Workbench" areas={['main aside']} columns={['fill', 'standard']}>
@@ -114,8 +114,10 @@ export const AsideHeadOnly: Story = {
   play: async ({ canvasElement }) => {
     await waitFor(() => {
       const state = stateAt(canvasElement);
-      expect(state.divider).not.toBe('none');
-      expect(state.stackPad('main')).toBeGreaterThan(40);
+      expect(state.divider).toBe('none');
+      expect(state.stackPad('main')).toBe(0);
+      const head = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="aside"] .starci-core-pane-stack > .starci-core-pane-section:first-child')!;
+      expect(Number.parseFloat(getComputedStyle(head).borderBottomWidth)).toBeGreaterThan(0);
     });
   },
 };
@@ -140,7 +142,7 @@ export const NoHeads: Story = {
 
 /**
  * The Chatbot inbox shape: the page's one grid holds a tab pane, which holds a grid of a main and an aside, whose main holds a list and a thread. The list and the aside have
- * heads and no conversation is open, so the thread has none: all three still stand under one head row and one divider.
+ * heads and no conversation is open, so the thread has none: the heads are not a shared row (no spacer, no continuous divider); each stands alone at the head height with its own border (0.37.3).
  */
 export const NestedGrids: Story = {
   render: (_, { globals }) => <Shell scope={familyScope(globals)} grid={
@@ -168,11 +170,11 @@ export const NestedGrids: Story = {
     await waitFor(() => {
       const top = canvasElement.querySelector<HTMLElement>('.starci-core-pane-grid-tracks');
       if (top === null) throw new Error('the grid renders');
-      expect(getComputedStyle(top, '::after').content).not.toBe('none');
+      expect(getComputedStyle(top, '::after').content).toBe('none');
       const head = (area: string) => canvasElement.querySelector<HTMLElement>(`[data-grammar-pane-area="${area}"] .starci-core-pane-stack > .starci-core-pane-section:first-child`)!.getBoundingClientRect();
       expect(Math.abs(head('list').height - head('aside').height)).toBeLessThanOrEqual(1);
       const thread = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="thread"] .starci-core-pane-stack')!;
-      expect(Number.parseFloat(getComputedStyle(thread).paddingTop)).toBeGreaterThan(40);
+      expect(Number.parseFloat(getComputedStyle(thread).paddingTop)).toBe(0);
     });
   },
 };

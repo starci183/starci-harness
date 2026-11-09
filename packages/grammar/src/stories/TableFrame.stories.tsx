@@ -284,3 +284,23 @@ export const FlowStepsWideBranch: Story = {
     </div>
   ),
 };
+
+/** 0.37.3 column sizing: Khách `fill` + `truncate` (one line, ellipsis, tooltip), Trạng thái and Số tiền `fit`, Ngày hidden under 768; `resizable` remembers the widths; under 768 it is a list. */
+export const TableColumnSizing: Story = {
+  render: () => (
+    <G.DataTable<Invoice>
+      label="Khách đang xử lý"
+      id="story-column-sizing"
+      resizable
+      columns={[
+        { id: 'name', label: 'Khách hàng', isRowHeader: true, width: 'fill', minWidth: 160, truncate: true },
+        { id: 'status', label: 'Trạng thái', width: 'fit' },
+        { id: 'date', label: 'Ngày', width: 'fit', hideBelow: 'tablet' },
+        { id: 'amount', label: 'Số tiền', width: 'fit', align: 'end', isNumeric: true },
+      ]}
+      rows={invoices}
+      renderCell={cell}
+      emptyContent={<G.EmptyNotice message="Chưa có khách" />}
+    />
+  ),
+};

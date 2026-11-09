@@ -317,6 +317,13 @@ export type TableColumnData = {
     readonly numeric?: boolean
     /** Narrow-width mode: a `low` column leaves the header below the card's collapse width and joins the row as a muted line under the first column. Default `high`. */
     readonly priority?: "high" | "low"
+    /** The column's width (0.37.3): `"fill"` the rest (with `minWidth`, `truncate`), `"fit"` its content on one line, or px. Default: the first text column fills, numeric ones fit. */
+    readonly width?: "fill" | "fit" | number
+    readonly minWidth?: number
+    /** One line with an ellipsis and the full text in a tooltip. */
+    readonly truncate?: boolean
+    /** The column leaves the table under this width: `"tablet"` (768) or `"desktop"` (1280). */
+    readonly hideBelow?: "tablet" | "desktop"
 }
 
 /** One row of a `table` card: its cells by column id. */
@@ -345,6 +352,11 @@ export type TableData = {
     readonly empty: ReactNode
     /** The whole row is pressable (opens a drawer): called with the row's `id` on a click, Enter or Space on the focused row. Commands inside a row stay their own. */
     readonly onRowAction?: (id: string) => void
+    /** Columns the user can drag, remembered in localStorage under `id` (0.37.3). */
+    readonly resizable?: boolean
+    readonly id?: string
+    /** Under 768: `list` (a row per item: the first column its title, the rest one muted line; the default from three columns) or `table`. */
+    readonly phone?: "list" | "table"
 } & (
     | { readonly rows: readonly TableRowData[]; readonly groups?: undefined }
     | { readonly groups: readonly TableGroupData[]; readonly rows?: undefined }

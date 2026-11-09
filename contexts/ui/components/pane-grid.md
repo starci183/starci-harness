@@ -103,9 +103,10 @@ does not scroll; each pane scrolls on its own with no visible scrollbar and its 
 
 ## The shared head row (layout B)
 
-When at least one pane of a workspace grid has a head, the panes share ONE head row (a page with no head has no row and no divider; the row reaches nested grids, a head being the first band of a pane stack that is not under another band): every pane head (a `PaneSection as="header"` or one holding a `PaneHeader`, first in its pane) is the same height, white and has no per-pane background or divider of its own; the grid draws ONE
-continuous divider under the row across all panes, crossing the vertical pane dividers. A pane head is always the surface colour, on a canvas pane and on a surface pane alike, never the canvas colour. A pane with no head keeps the row: its content
-starts below the line and the row above it is white, so the line and the content align. A head that ends in a tab strip is a sub-head, not the row. A nested `PaneGrid` keeps its own heads. Enforcer: the `Compositions/App shell workspace`
+The shared row exists ONLY when EVERY pane at the grid level (nested grids included, a head being the first band of a pane stack that is not under another band) has a head: then all heads (a `PaneSection as="header"` or one holding a `PaneHeader`,
+first in its pane) are the same height (`--grammar-pane-head-size`), white, with no divider of their own, and the grid draws ONE continuous divider under the row across all panes. When only SOME panes have heads (0.37.3, owner: a stretched empty row has no use)
+there is NO spacer and NO continuous divider: each head stands alone at the shared height with its own bottom border, and a headless pane starts its content at the top. A page with no head has neither. A pane head is always the surface colour. A head that ends in a tab
+strip is a sub-head, not the row. A side pane whose first content is a title uses `PaneHeader`, never a Section title. A pane that holds a nested `PaneGrid` is never capped: the grid and its panes span the full width (MEASURE-8). Enforcer: the `Compositions/App shell workspace`
 story's play function.
 
 ## Drawer opener

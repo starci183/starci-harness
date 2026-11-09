@@ -3,13 +3,15 @@
 import { withRegionInert } from "../../regionScope.js"
 import { Link as HeroLink } from "@heroui/react"
 import type { CSSProperties } from "react"
+import { Icon } from "../Icon/index.js"
+import { glyphSource } from "../Icon/glyphs.js"
 import { Image, type ImageProps } from "../Image/index.js"
 import type { NoChildren } from "../../tier.js"
 
 export type LinkKind = "internal" | "external"
 /**
  * `inline` (default): the anchor icon `↗` at the end of a text label, inside prose and meta. `head`: the section-head navigation (0.36.0): the label
- * ends in an arrow `→` that slides about 3px toward the end on hover, with the hover underline and the inherited size. A `Section` head's `action`
+ * ends in the outline arrow-right icon (16px, currentColor; never the typed glyph) that slides about 3px toward the end on hover, with the hover underline and the inherited size. A `Section` head's `action`
  * takes this variant for its one navigation command (lint `section-head-action`).
  */
 export type LinkVariant = "inline" | "head"
@@ -102,7 +104,7 @@ const LinkInner = ({
             {...(onFollow === undefined ? {} : { onPress: () => onFollow() })}
         >
             {media === undefined ? children : <Image {...media} />}
-            {media === undefined && variant === "head" ? <span aria-hidden="true" className="starci-core-link-arrow" data-grammar-link-arrow="true">{"→"}</span> : null}
+            {media === undefined && variant === "head" ? <span aria-hidden="true" className="starci-core-link-arrow" data-grammar-link-arrow="true"><Icon source={glyphSource("arrow-end")} usage="leading" /></span> : null}
             {media === undefined && variant === "inline" ? <HeroLink.Icon aria-hidden="true" data-grammar-link-icon="true" /> : null}
             {external && externalHint !== undefined ? <span className="starci-core-nav-visually-hidden">{` ${externalHint}`}</span> : null}
         </HeroLink>

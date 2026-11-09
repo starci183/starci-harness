@@ -37,11 +37,11 @@
     .starci-core-notice-link { font-size: var(--grammar-text-md); line-height: var(--grammar-leading-md); }
 
     /* The head variant (0.36.0): the label then an arrow that slides 3px toward the end on hover and focus; the underline on hover is the vendor's. */
-    .starci-core-link[data-grammar-link-variant="head"] { display: inline-flex; align-items: baseline; gap: 0.25rem; white-space: nowrap; }
-    .starci-core-link-arrow { display: inline-block; text-decoration: none; transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing); }
+    .starci-core-link[data-grammar-link-variant="head"] { display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+    .starci-core-link-arrow { display: inline-flex; flex: none; text-decoration: none; transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing); }
     .starci-core-link[data-grammar-link-variant="head"]:is(:hover, [data-hovered="true"], :focus-visible) .starci-core-link-arrow { transform: translateX(var(--grammar-link-arrow-travel)); }
-    [dir="rtl"] .starci-core-link-arrow { transform: scaleX(-1); }
-    [dir="rtl"] .starci-core-link[data-grammar-link-variant="head"]:is(:hover, [data-hovered="true"], :focus-visible) .starci-core-link-arrow { transform: scaleX(-1) translateX(var(--grammar-link-arrow-travel)); }
+    [dir="rtl"] .starci-core-link-arrow { scale: -1 1; }
+    [dir="rtl"] .starci-core-link[data-grammar-link-variant="head"]:is(:hover, [data-hovered="true"], :focus-visible) .starci-core-link-arrow { transform: translateX(calc(-1 * var(--grammar-link-arrow-travel))); }
     @media (prefers-reduced-motion: reduce) { .starci-core-link-arrow { transition: none; } }
 
     .starci-core-link[data-grammar-link-content="media"] {
@@ -1158,6 +1158,115 @@
     .starci-core-data-table-editor input {
         inline-size: 0;
         min-inline-size: max(calc(3ch + 1.5rem), 100%);
+    }
+
+    /*
+     * COLUMN SIZING (0.37.3). `fill` takes the rest of the row (with a minimum), `fit` is as wide as its content and never wraps, a number is fixed; `truncate` is one line with an
+     * ellipsis. A table that sizes its columns fits its container.
+     */
+    .starci-core-data-table { --starci-core-col-min: 8rem; }
+
+    .starci-core-data-table[data-grammar-table-sized="true"] .starci-core-data-table-content { width: 100%; }
+
+    .starci-core-data-table :is(.starci-core-data-table-column, .starci-core-data-table-cell)[data-grammar-table-width="fill"] {
+        inline-size: 100%;
+        min-inline-size: var(--starci-core-col-min);
+    }
+
+    .starci-core-data-table :is(.starci-core-data-table-column, .starci-core-data-table-cell)[data-grammar-table-width="fit"] {
+        inline-size: 1%;
+        white-space: nowrap;
+        overflow-wrap: normal;
+    }
+
+    .starci-core-data-table :is(.starci-core-data-table-column, .starci-core-data-table-cell)[data-grammar-table-width="fixed"] {
+        inline-size: var(--starci-core-col-width);
+        min-inline-size: var(--starci-core-col-width);
+        max-inline-size: var(--starci-core-col-width);
+    }
+
+    .starci-core-data-table .starci-core-data-table-cell[data-grammar-table-truncate="true"] { max-inline-size: 0; }
+
+    .starci-core-data-table-truncate {
+        display: block;
+        min-inline-size: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* The drag handle of a resizable column: a thin line at the end edge of the heading. */
+    .starci-core-data-table-resizer {
+        position: absolute;
+        inset-block: 0;
+        inset-inline-end: 0;
+        inline-size: 0.5rem;
+        cursor: col-resize;
+        touch-action: none;
+    }
+
+    .starci-core-data-table-resizer::after {
+        content: "";
+        position: absolute;
+        inset-block: 25%;
+        inset-inline-end: 0;
+        inline-size: 2px;
+        background: var(--separator);
+    }
+
+    .starci-core-data-table-resizer:is(:hover, [data-resizing]) ::after,
+    .starci-core-data-table-resizer:is(:hover, [data-resizing])::after { background: var(--accent); }
+
+    /* Under 768 a table of three or more columns is a list of rows: the first column the title, the others one muted line of values; no horizontal scroll. */
+    .starci-core-data-table-list {
+        display: flex;
+        flex-direction: column;
+        min-inline-size: 0;
+        background: var(--surface);
+        border-radius: var(--starci-core-table-body-radius);
+    }
+
+    .starci-core-data-table-list-row {
+        display: flex;
+        min-inline-size: 0;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 0.75rem 1rem;
+        border-block-end: 1px solid var(--separator);
+    }
+
+    .starci-core-data-table-list-row:last-child { border-block-end: 0; }
+    .starci-core-data-table-list-row[data-grammar-table-row-pressable="true"] { cursor: pointer; }
+
+    .starci-core-data-table-list-title {
+        min-inline-size: 0;
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-md);
+        overflow-wrap: anywhere;
+    }
+
+    .starci-core-data-table-list-meta {
+        display: flex;
+        min-inline-size: 0;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem 0.75rem;
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+    }
+
+    .starci-core-data-table-list-meta:empty { display: none; }
+
+    .starci-core-data-table-list-group {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 1rem;
+        background: var(--surface-secondary);
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-medium);
     }
 
     /* Narrow mode: low-priority columns stack under the first column's content as secondary text. */

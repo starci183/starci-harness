@@ -358,7 +358,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             {labelled === undefined || isTile ? null : (
                 <Card.Header className={surfaceLabelClassName} data-contract="GAP-2" data-grammar-surface-label="true" data-grammar-label-end={props.labelEnd === undefined ? "false" : "true"} data-grammar-label-described={props.description === undefined ? undefined : "true"}>
                     <Label as={`h${headingLevel}`} id={headingId}>{labelled}</Label>
-                    {props.count === undefined || isLoading ? null : <span className="starci-core-section-count" data-grammar-section-count={props.count} {...(props.isAttention === true ? { "data-grammar-attention": "true" } : {})} data-contract="TONE-2">{props.count}</span>}
+                    {props.count === undefined || props.count === 0 || isLoading ? null : <span className="starci-core-section-count" data-grammar-section-count={props.count} {...(props.isAttention === true ? { "data-grammar-attention": "true" } : {})} data-contract="TONE-2">{props.count}</span>}
                     {props.fact === undefined ? null : <span className={surfaceFactClassName} data-contract="TONE-2 FONT-2">{props.fact}</span>}
                     {props.labelEnd === undefined ? null : <span className="starci-core-surface-label-end"><ButtonPlacementProvider placement="chrome">{props.labelEnd}</ButtonPlacementProvider></span>}
                     {props.description === undefined ? null : <p className="starci-core-surface-description" data-grammar-surface-description="true">{props.description}</p>}

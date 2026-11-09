@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.3 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.3 (the head row only when every pane has a head; a pane that holds a grid is not capped); no rule of this package changed.
+
 ## 0.37.2 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.37.2 (the shared head row reaches nested grids); no rule of this package changed.

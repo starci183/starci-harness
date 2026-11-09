@@ -37,7 +37,21 @@ export type DataTableColumn<Row extends DataTableRow = DataTableRow> = {
      * cell-to-cell Tab and arrow movement from the cell itself (React Aria's `tab` keyboard behaviour), so editors work.
      */
     readonly editor?: (row: Row) => ReactNode
+    /**
+     * The width of the column (0.37.3). `"fill"` takes what the other columns leave (with `minWidth`, and `truncate` for a one-line ellipsis); `"fit"` is as wide as its content and
+     * never wraps; a number is a fixed width in px. Default: when no column says, the first column that is not numeric fills and the numeric ones fit.
+     */
+    readonly width?: DataTableColumnWidth
+    /** The least width in px a `fill` column keeps (and the least a resized column keeps). */
+    readonly minWidth?: number
+    /** One line with an ellipsis, the full text in the cell's `title` (a tooltip). For a text column; usually the `fill` one. */
+    readonly truncate?: boolean
+    /** The column leaves the table under this width: `"tablet"` (768) or `"desktop"` (1280). */
+    readonly hideBelow?: "tablet" | "desktop"
 }
+
+/** How wide a column is: the rest of the row, its content, or px. */
+export type DataTableColumnWidth = "fill" | "fit" | number
 
 export type DataTableSort = {
     readonly columnId: string
@@ -130,6 +144,18 @@ export type DataTableProps<Row extends DataTableRow> = NoChildren & DataTableRow
      * only laid out in a row below them.
      */
     readonly footer?: ReactNode
+    /**
+     * Columns the user can drag wider or narrower (HeroUI's column resizing). The widths are remembered per table in localStorage under `id` (the `label` when there is no `id`),
+     * read and written inside try/catch, so a blocked store only means the widths are not remembered. Default false.
+     */
+    readonly resizable?: boolean
+    /** Names this table's remembered column widths. Defaults to `label`. */
+    readonly id?: string
+    /**
+     * Under 768 px: `list` draws each row as a list item (the first column its title, the other columns one muted line of values), with no horizontal scroll; `table` keeps the table.
+     * Default `list` for a table of three or more columns, `table` otherwise.
+     */
+    readonly phone?: "list" | "table"
 }
 
 /** The vendor row part filters aria-hidden out of its props, so the skeleton rows take it by ref (knowledge STATE-8). */
@@ -152,6 +178,72 @@ const isNestedCellControl = (target: EventTarget, cell: HTMLTableCellElement): b
 }
 
 const DEFAULT_COLLAPSE_BELOW = 640
+
+/** The breakpoints a column's `hideBelow` and the phone list name (px). */
+const BELOW_PX = { phone: 768, tablet: 768, desktop: 1280 } as const
+
+/** Whether the viewport is narrower than `px` (false until mounted, so the server and the first client render agree). */
+const useViewportBelow = (px: number): boolean => {
+    const [below, setBelow] = useState(false)
+    useEffect(() => {
+        const query = window.matchMedia(`(max-width: ${px - 0.02}px)`)
+        const update = () => setBelow(query.matches)
+        update()
+        query.addEventListener("change", update)
+        return () => query.removeEventListener("change", update)
+    }, [px])
+    return below
+}
+
+const WIDTHS_KEY = "starci-grammar-table-widths:"
+
+const readWidths = (id: string): Readonly<Record<string, number>> => {
+    try {
+        const raw = window.localStorage.getItem(WIDTHS_KEY + id)
+        const parsed: unknown = raw === null ? {} : JSON.parse(raw)
+        if (typeof parsed !== "object" || parsed === null) return {}
+        return Object.fromEntries(Object.entries(parsed).filter((entry): entry is [string, number] => typeof entry[1] === "number" && entry[1] > 0))
+    } catch {
+        return {}
+    }
+}
+
+const writeWidths = (id: string, widths: Readonly<Record<string, number>>) => {
+    try {
+        window.localStorage.setItem(WIDTHS_KEY + id, JSON.stringify(widths))
+    } catch {
+        // A blocked or full store: the widths are simply not remembered.
+    }
+}
+
+/** The width a column takes: its own, else (when no column names one) the first text column fills and the numeric ones fit. */
+const widthOf = <Row extends DataTableRow>(column: DataTableColumn<Row>, columns: ReadonlyArray<DataTableColumn<Row>>): DataTableColumnWidth | undefined => {
+    if (column.width !== undefined) return column.width
+    if (columns.some((other) => other.width !== undefined)) return undefined
+    if (column.isNumeric === true) return "fit"
+    return columns.find((other) => other.isNumeric !== true && other.isLabelHidden !== true)?.id === column.id ? "fill" : undefined
+}
+
+const widthAttrs = (width: DataTableColumnWidth | undefined, column: { readonly minWidth?: number | undefined; readonly truncate?: boolean | undefined }) => ({
+    ...(width === undefined ? {} : { "data-grammar-table-width": typeof width === "number" ? "fixed" : width }),
+    ...(column.truncate === true ? { "data-grammar-table-truncate": "true" } : {}),
+    ...(typeof width === "number" || column.minWidth !== undefined
+        ? { style: { ...(typeof width === "number" ? { "--starci-core-col-width": `${width}px` } : {}), ...(column.minWidth === undefined ? {} : { "--starci-core-col-min": `${column.minWidth}px` }) } as CSSProperties }
+        : {}),
+})
+
+/** A truncating cell: one line, an ellipsis, and the whole text in the tooltip the first time the pointer is over it. */
+const TruncateBox = ({ children }: { readonly children: ReactNode }) => (
+    <span
+        className="starci-core-data-table-truncate"
+        onMouseEnter={(event) => {
+            const box = event.currentTarget
+            if (box.title === "" && box.scrollWidth > box.clientWidth) box.title = box.textContent ?? ""
+        }}
+    >
+        {children}
+    </span>
+)
 
 // An editor owns its pointer and key gestures; they must not select the row, run its action or follow its link.
 const stopEditorPress = (event: { stopPropagation: () => void }) => event.stopPropagation()
@@ -255,10 +347,17 @@ export const DataTable = <Row extends DataTableRow>({
     collapseBelow = DEFAULT_COLLAPSE_BELOW,
     surface = "card",
     footer,
+    resizable = false,
+    id: tableId,
+    phone,
 }: DataTableProps<Row>) => {
     const rows: ReadonlyArray<Row> = groups === undefined ? flatRows ?? [] : groups.flatMap((group) => group.rows)
     const scrollRef = useRef<HTMLDivElement>(null)
     const [width, setWidth] = useState<number | null>(null)
+    const belowTablet = useViewportBelow(BELOW_PX.tablet)
+    const belowDesktop = useViewportBelow(BELOW_PX.desktop)
+    const available = columns.filter((column) => !((column.hideBelow === "tablet" && belowTablet) || (column.hideBelow === "desktop" && belowDesktop)))
+    const isList = belowTablet && (phone ?? (available.length >= 3 ? "list" : "table")) === "list" && !columns.some((column) => column.editor !== undefined)
     useEffect(() => {
         const element = scrollRef.current
         if (element === null) return
@@ -268,16 +367,29 @@ export const DataTable = <Row extends DataTableRow>({
         })
         observer.observe(element)
         return () => observer.disconnect()
-    }, [])
-    const hasHigh = columns.some((column) => column.priority !== "low")
+    }, [isList])
+    const hasHigh = available.some((column) => column.priority !== "low")
     const narrow = hasHigh && width !== null && width < collapseBelow
-    const collapsed = narrow ? columns.filter((column) => column.priority === "low") : []
-    const shown = narrow ? columns.filter((column) => column.priority !== "low") : columns
+    const collapsed = narrow ? available.filter((column) => column.priority === "low") : []
+    const shown = narrow ? available.filter((column) => column.priority !== "low") : available
+    const hasSizes = shown.some((column) => widthOf(column, shown) !== undefined)
+    // Remembered widths of a resizable table: read after mount (the store is the browser's), then the columns start from them.
+    const memoryId = tableId ?? label
+    const [remembered, setRemembered] = useState<Readonly<Record<string, number>> | null>(null)
+    useEffect(() => {
+        if (resizable) setRemembered(readWidths(memoryId))
+    }, [resizable, memoryId])
+    const startWidth = (column: DataTableColumn<Row>): number | `${number}fr` | undefined => {
+        const saved = remembered?.[column.id]
+        if (saved !== undefined) return saved
+        const wide = widthOf(column, shown)
+        return typeof wide === "number" ? wide : wide === "fill" ? "1fr" as const : wide === "fit" ? Math.max(column.minWidth ?? 0, 24 + column.label.length * 9) : undefined
+    }
     const rowHeaderId = shown.find((column) => column.isRowHeader)?.id ?? shown[0]?.id
     const hostColumnId = rowHeaderId
     const hasEditors = columns.some((column) => column.editor !== undefined)
     const renderBody = (row: Row, column: DataTableColumn<Row>): ReactNode => column.editor === undefined
-        ? renderCell(row, column.id)
+        ? column.truncate === true ? <TruncateBox>{renderCell(row, column.id)}</TruncateBox> : renderCell(row, column.id)
         : <EditorHost>{column.editor(row)}</EditorHost>
     const multiple = selectionMode === "multiple"
     // Selection is always held here so every row can expose its own `data-grammar-selected`.
@@ -311,22 +423,13 @@ export const DataTable = <Row extends DataTableRow>({
         event.stopPropagation()
         if (!event.repeat) action()
     }
-    const table = (
-        <HeroTable
-            aria-busy={isLoading || undefined}
-            className="starci-core-data-table"
-            variant={surface === "none" ? "secondary" : "primary"}
-            data-grammar-table-surface={surface}
-            data-component="DataTable"
-            data-tier="branch"
-            data-grammar-table-state={state}
-            data-grammar-table-sticky={stickyHeader ? "true" : "false"}
-            data-grammar-table-bounded={maxBlockSize === undefined ? "false" : "true"}
-            data-grammar-table-narrow={narrow ? "true" : "false"}
-            data-grammar-table-editors={hasEditors ? "true" : "false"}
-            data-grammar-table-fit={shown.length <= FIT_COLUMNS ? "true" : "false"}
-        >
-            <HeroTable.ScrollContainer ref={scrollRef} className="starci-core-data-table-scroll" data-contract="LAYOUT-3" data-grammar-table-scroll="true" style={scrollStyle} onKeyDownCapture={onCellKeyDown}>
+    const onResizeEnd = (sizes: Map<string | number, number | string>) => {
+        const next: Record<string, number> = {}
+        for (const [key, size] of sizes) if (typeof size === "number" && key !== SELECTION_COLUMN) next[String(key)] = Math.round(size)
+        setRemembered(next)
+        writeWidths(memoryId, next)
+    }
+    const content = (
                 <HeroTable.Content
                     aria-label={label}
                     {...(hasEditors ? { keyboardNavigationBehavior: "tab" as const } : getCellInteraction === undefined ? {} : { keyboardNavigationBehavior: "arrow" as const })}
@@ -359,12 +462,17 @@ export const DataTable = <Row extends DataTableRow>({
                                 className="starci-core-data-table-column"
                                 data-grammar-table-align={column.align ?? (column.isNumeric === true ? "end" : "start")}
                                 {...(column.isNumeric === true ? { "data-grammar-table-numeric": "true" } : {})}
+                                {...widthAttrs(widthOf(column, shown), column)}
+                                {...(resizable ? { ...(startWidth(column) === undefined ? {} : { defaultWidth: startWidth(column) as number | `${number}fr` }), minWidth: column.minWidth ?? 64 } : {})}
                                 isRowHeader={column.id === rowHeaderId}
                                 textValue={column.label}
                             >
-                                {({ sortDirection }: { readonly sortDirection: "ascending" | "descending" | undefined }) => column.allowsSorting === true
-                                    ? <HeroTable.SortableColumnHeader className="starci-core-data-table-sort" {...(sortDirection === undefined ? {} : { sortDirection })}>{column.label}</HeroTable.SortableColumnHeader>
-                                    : column.isLabelHidden === true ? <span className="starci-core-visually-hidden">{column.label}</span> : column.label}
+                                {({ sortDirection }: { readonly sortDirection: "ascending" | "descending" | undefined }) => <>
+                                    {column.allowsSorting === true
+                                        ? <HeroTable.SortableColumnHeader className="starci-core-data-table-sort" {...(sortDirection === undefined ? {} : { sortDirection })}>{column.label}</HeroTable.SortableColumnHeader>
+                                        : column.isLabelHidden === true ? <span className="starci-core-visually-hidden">{column.label}</span> : column.label}
+                                    {resizable ? <HeroTable.ColumnResizer className="starci-core-data-table-resizer" /> : null}
+                                </>}
                             </HeroTable.Column>
                         ))}
                     </HeroTable.Header>
@@ -415,6 +523,7 @@ export const DataTable = <Row extends DataTableRow>({
                                             className="starci-core-data-table-cell"
                                             data-grammar-table-align={column.align ?? (column.isNumeric === true ? "end" : "start")}
                                             {...(column.isNumeric === true ? { "data-grammar-table-numeric": "true" } : {})}
+                                            {...widthAttrs(widthOf(column, shown), column)}
                                             data-grammar-cell-interaction={interaction === undefined ? "false" : "true"}
                                             data-grammar-row-id={row.id}
                                             data-grammar-column-id={column.id}
@@ -447,7 +556,54 @@ export const DataTable = <Row extends DataTableRow>({
                         ))}
                     </HeroTable.Body>
                 </HeroTable.Content>
-            </HeroTable.ScrollContainer>
+    )
+    // Under 768 px a table of three or more columns is a list: the first column the title, the others one muted line of values.
+    const [titleColumn, ...otherColumns] = shown
+    const listRow = (row: Row) => (
+        <div
+            key={row.id}
+            role="listitem"
+            className="starci-core-data-table-list-row"
+            data-grammar-table-row-pressable={onRowAction !== undefined || row.href !== undefined ? "true" : "false"}
+            {...(onRowAction === undefined ? {} : { onClick: () => onRowAction(row.id), tabIndex: 0, onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onRowAction(row.id) } } })}
+        >
+            <div className="starci-core-data-table-list-title">{titleColumn === undefined ? null : renderCell(row, titleColumn.id)}</div>
+            <div className="starci-core-data-table-list-meta">
+                {otherColumns.map((column) => <span key={column.id} className="starci-core-data-table-list-value" data-grammar-table-column-id={column.id}>{renderCell(row, column.id)}</span>)}
+            </div>
+        </div>
+    )
+    const listBody = (
+        <div ref={scrollRef} className="starci-core-data-table-list" role="list" aria-label={label} aria-busy={isLoading || undefined} data-grammar-table-state={state}>
+            {isLoading ? skeletonRows.map((row) => <div key={row.id} role="listitem" className="starci-core-data-table-list-row" data-grammar-skeleton="true"><Skeleton shape="text" /></div>) : null}
+            {failed ? <div className="starci-core-data-table-placeholder" data-grammar-table-error="true"><ErrorView error={error} /></div> : null}
+            {!isLoading && !failed && rows.length === 0 ? <div className="starci-core-data-table-placeholder" data-contract="STATE-3" data-grammar-table-empty="true">{emptyContent}</div> : null}
+            {entries.map(({ group, row }) => group !== undefined
+                ? <div key={`group-${group.id}`} role="presentation" className="starci-core-data-table-list-group"><span>{group.label}</span>{group.fact === undefined ? null : <span>{group.fact}</span>}</div>
+                : row === undefined ? null : listRow(row))}
+        </div>
+    )
+    const table = (
+        <HeroTable
+            aria-busy={isLoading || undefined}
+            className="starci-core-data-table"
+            variant={surface === "none" ? "secondary" : "primary"}
+            data-grammar-table-surface={surface}
+            data-component="DataTable"
+            data-tier="branch"
+            data-grammar-table-state={state}
+            data-grammar-table-sticky={stickyHeader ? "true" : "false"}
+            data-grammar-table-bounded={maxBlockSize === undefined ? "false" : "true"}
+            data-grammar-table-narrow={narrow ? "true" : "false"}
+            data-grammar-table-editors={hasEditors ? "true" : "false"}
+            data-grammar-table-fit={shown.length <= FIT_COLUMNS ? "true" : "false"}
+            data-grammar-table-sized={hasSizes ? "true" : "false"}
+            data-grammar-table-resizable={resizable ? "true" : "false"}
+            data-grammar-table-list={isList ? "true" : "false"}
+        >
+            {isList ? listBody : <HeroTable.ScrollContainer ref={scrollRef} className="starci-core-data-table-scroll" data-contract="LAYOUT-3" data-grammar-table-scroll="true" style={scrollStyle} onKeyDownCapture={onCellKeyDown}>
+                {resizable ? <HeroTable.ResizableContainer onResizeEnd={onResizeEnd}>{content}</HeroTable.ResizableContainer> : content}
+            </HeroTable.ScrollContainer>}
             {footer === undefined || isLoading || failed ? null : <HeroTable.Footer className="starci-core-data-table-footer" data-grammar-table-footer="true">{footer}</HeroTable.Footer>}
         </HeroTable>
     )

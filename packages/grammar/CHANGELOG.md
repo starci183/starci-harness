@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.37.3 - 2026-11-09 - the head row only when every pane has a head; a pane that holds a grid is not capped
+
+- Fixed: a tab pane (`content="cards"` by default) that holds a nested PaneGrid was capped at 80rem and centred, so on a wide screen the chat pane and its aside sat in the middle with pink bands on both sides. The cap (MEASURE-8) now applies only to the content of a pane that holds
+  cards, never to a pane that holds a grid.
+- Changed (owner): the shared head row and its continuous divider exist ONLY when every pane at that grid level has a head. When only some panes have heads there is no spacer and no continuous divider: each head stands alone at `--grammar-pane-head-size` with its own bottom border, and
+  headless panes start at the top (no empty white bar above an aside without a head). Stories `AsideHeadOnly` and `NestedGrids` hold it; `ThreePaneWorkspace` is all heads, aligned.
+- Added: TABLE COLUMN SIZING (`DataTable`, `SurfaceCard kind="table"` `TableData`). Per column `width: "fill" | "fit" | number(px)` (`fill` takes the rest with `minWidth` and `truncate`: one line, an ellipsis, the full text in a tooltip; `fit` is as wide as its content and never wraps),
+  `minWidth`, `truncate`, `hideBelow: "tablet" | "desktop"` (the column leaves the table under 768 / 1280); `align` and `numeric` as before. Default when no column says: the first text column fills, numeric columns fit. Table props `resizable` (draggable
+  columns by HeroUI's column resizing, remembered per `id` (default `label`) in localStorage, read and written in try/catch), and `phone: "list" | "table"` (under 768 a table of three or more columns defaults to a list: the first column the title, the others one muted line, no horizontal scroll).
+  Story `TableColumnSizing`.
+- Fixed: the workspace cap (MEASURE-8) was a DESCENDANT selector (`.pane[cards] .pane-stack`), so a tab pane's cap also capped every nested pane (the chat room sat in a 1280px column in the middle); it is now a child combinator, and a pane that holds a PaneGrid is never capped.
+- Changed (owner): a navigation `Link variant="head"` ends in the outline arrow-right ICON (16px, currentColor, slides on hover), not the typed arrow; Button `endArrow` is the same icon.
+- Changed (owner): the section head (Section and SurfaceCard label row) is ONE nowrap row of a fixed minimum height (the label truncates first); the count chip sits right after the label (SurfaceCard no longer pushes it to the far end); a count of 0 is not drawn on a section head.
+- Changed: `Grid kind="cards"` stretches its cards to equal height and uses the card gap (12 phone, 24 from 48rem).
+
 ## 0.37.2 - 2026-11-09 - the shared head row reaches nested grids
 
 - Fixed: the shared head row of a workspace page (0.37.0) only reached the panes of the page's own grid, so an app that nests grids (a tab pane holding a grid of a main and an aside, whose main holds a list and a thread) got no continuous

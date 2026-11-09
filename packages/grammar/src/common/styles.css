@@ -263,17 +263,19 @@
     .starci-core-section-header {
         display: flex;
         min-width: 0;
-        flex-wrap: wrap;
+        /* ONE nowrap row of a fixed height (0.37.3): the label truncates before the chip or the link ever drops to a new line. */
+        flex-wrap: nowrap;
         align-items: center;
         justify-content: space-between;
+        min-block-size: var(--grammar-touch-size);
         gap: var(--grammar-inline-gap);
     }
 
-    /* The copy keeps a readable basis, so a narrow header wraps its action below instead of crushing the copy. */
+    /* The copy gives way first: the label truncates, the action and the chip keep their size. */
     .starci-core-section-header-copy {
         display: flex;
         min-width: 0;
-        flex: 1 1 min(100%, 12rem);
+        flex: 1 1 0%;
         flex-direction: column;
         gap: var(--grammar-identity-gap);
     }
@@ -987,20 +989,27 @@
 
     .starci-core-grid[data-grammar-grid-kind="cards"] > .starci-core-surface-card {
         --starci-core-surface-card-gap: var(--grammar-identity-gap);
+        block-size: 100%;
     }
 
     .starci-core-surface-label {
         display: flex;
         min-width: 0;
         flex-direction: row;
-        align-items: baseline;
-        justify-content: space-between;
+        flex-wrap: nowrap;
+        align-items: center;
+        /* The chip and the fact sit right after the label (0.37.3); only the end action takes the far end (margin-inline-start: auto). */
+        justify-content: flex-start;
+        min-block-size: var(--grammar-touch-size);
         gap: var(--grammar-inline-gap);
     }
 
     .starci-core-surface-label > :first-child {
         min-width: 0;
         margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     /* A label row carrying both a fact and an end action: label and fact read together, the action holds the end. */
@@ -3348,10 +3357,16 @@
      * report layout's own token, --grammar-content-max (80rem), centred in the well. The well's ground still fills the whole pane,
      * and the side (surface) panes and the header band are not capped.
      */
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane[data-grammar-pane-content="cards"] .starci-core-pane-stack {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane[data-grammar-pane-content="cards"] > .starci-core-pane-stack {
         inline-size: 100%;
         max-inline-size: var(--grammar-content-max);
         margin-inline: auto;
+    }
+
+    /* 0.37.3: a pane that holds a PaneGrid (a tab pane of nested panes) is never capped: the grid and its panes span the full width. */
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane:has(> .starci-core-pane-stack > .starci-core-pane-grid) > .starci-core-pane-stack {
+        max-inline-size: none;
+        margin-inline: 0;
     }
 
     /*
@@ -3419,11 +3434,11 @@
      * divider at the foot of the row across every pane, crossing the vertical pane dividers. A pane that holds panes of its own is not a head or a spacer; a pane with no head keeps the
      * row: its stack starts below it, white above the line, so the line and the content still align.
      */
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header) {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header):not(:has(.starci-core-pane:not(:has(.starci-core-pane-grid)):not(:has(> .starci-core-pane-stack > header.starci-core-pane-section:first-child)):not(:has(> .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-header)))) {
         position: relative;
     }
 
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header)::after {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header):not(:has(.starci-core-pane:not(:has(.starci-core-pane-grid)):not(:has(> .starci-core-pane-stack > header.starci-core-pane-section:first-child)):not(:has(> .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-header))))::after {
         content: "";
         position: absolute;
         z-index: 3;
@@ -3434,18 +3449,33 @@
         pointer-events: none;
     }
 
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header) .starci-core-pane-stack:not(:has(> header.starci-core-pane-section:first-child)):not(:has(> .starci-core-pane-section:first-child > .starci-core-pane-header)):not(:has(.starci-core-pane-grid)):not(.starci-core-pane-stack > :not(:first-child) *) {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header):not(:has(.starci-core-pane:not(:has(.starci-core-pane-grid)):not(:has(> .starci-core-pane-stack > header.starci-core-pane-section:first-child)):not(:has(> .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-header)))) .starci-core-pane-stack:not(:has(> header.starci-core-pane-section:first-child)):not(:has(> .starci-core-pane-section:first-child > .starci-core-pane-header)):not(:has(.starci-core-pane-grid)):not(.starci-core-pane-stack > :not(:first-child) *) {
         padding-block-start: var(--grammar-pane-head-size);
         background: linear-gradient(var(--surface) 0 0) top / 100% var(--grammar-pane-head-size) no-repeat;
     }
 
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header) .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child:not(:has(> .starci-core-tabs-frame)):not(.starci-core-pane-stack > :not(:first-child) *) {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header):not(:has(.starci-core-pane:not(:has(.starci-core-pane-grid)):not(:has(> .starci-core-pane-stack > header.starci-core-pane-section:first-child)):not(:has(> .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-header)))) .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child:not(:has(> .starci-core-tabs-frame)):not(.starci-core-pane-stack > :not(:first-child) *) {
         box-sizing: border-box;
         flex: none;
         justify-content: center;
         block-size: var(--grammar-pane-head-size);
         padding-block: 0;
         border-block-end: 0;
+        background: var(--surface);
+    }
+
+
+    /*
+     * LONE HEADS (0.37.3): when only SOME panes of the grid have a head there is no shared row, no spacer and no continuous divider. Each head stands alone, at the
+     * shared height token, with its own bottom border; a pane without a head starts its content at the top.
+     */
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header):has(.starci-core-pane:not(:has(.starci-core-pane-grid)):not(:has(> .starci-core-pane-stack > header.starci-core-pane-section:first-child)):not(:has(> .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-header))) .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child:not(:has(> .starci-core-tabs-frame)):not(.starci-core-pane-stack > :not(:first-child) *) {
+        box-sizing: border-box;
+        flex: none;
+        justify-content: center;
+        block-size: var(--grammar-pane-head-size);
+        padding-block: 0;
+        border-block-end: 1px solid var(--separator);
         background: var(--surface);
     }
 
@@ -4537,10 +4567,11 @@
     /* A heading over a grid of cards sits 12 above it, further than the cards are from each other: every Section's own
        gap since 0.27, so no override is left here. */
     .starci-core-grid[data-grammar-grid-kind="cards"] {
-        /* Tiles are siblings: 8 between them, closer than the 12 the heading above holds. */
-        --starci-core-grid-gap: var(--grammar-inline-gap);
+        /* Cards are siblings of one row: the card gap (12 on a phone, 24 from 48rem) between them, and every card stretches to the height of the tallest (0.37.3). */
+        --starci-core-grid-gap: var(--grammar-card-gap);
         --starci-core-grid-min: 16rem;
         display: grid;
+        align-items: stretch;
         min-width: 0;
         gap: var(--starci-core-grid-gap);
         grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--starci-core-grid-min)), 1fr));

@@ -21,6 +21,10 @@ export const TableRows = ({ data, isLoading, ariaLabel }: {
         ...(column.align === undefined ? {} : { align: column.align }),
         ...(column.numeric === true ? { isNumeric: true } : {}),
         ...(column.priority === undefined ? {} : { priority: column.priority }),
+        ...(column.width === undefined ? {} : { width: column.width }),
+        ...(column.minWidth === undefined ? {} : { minWidth: column.minWidth }),
+        ...(column.truncate === true ? { truncate: true } : {}),
+        ...(column.hideBelow === undefined ? {} : { hideBelow: column.hideBelow }),
     }))
     const shared = {
         label: ariaLabel ?? "",
@@ -30,6 +34,9 @@ export const TableRows = ({ data, isLoading, ariaLabel }: {
         emptyContent: data.empty,
         surface: "frame" as const,
         ...(data.onRowAction === undefined ? {} : { onRowAction: data.onRowAction }),
+        ...(data.resizable === true ? { resizable: true } : {}),
+        ...(data.id === undefined ? {} : { id: data.id }),
+        ...(data.phone === undefined ? {} : { phone: data.phone }),
     }
     return data.groups === undefined
         ? <DataTable<Row> {...shared} rows={data.rows} />
