@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { BellGlyph, BookGlyph, EllipsisGlyph, HomeGlyph, SettingsGlyph, familyScope, noop } from './fixtures.js';
 
 /*
- * The real shell (0.37.0): the app top bar, the sidebar and a layout B workspace page (list / chat / aside) in one fixed viewport, so the shared head
+ * The real shell (0.37.1): the app top bar, the sidebar and a layout B workspace page (list / chat / aside) in one fixed viewport, so the shared head
  * row, the one divider under it and the sticky band offset (the 64px strip class of bug) are checked where an app really stands, not in a box.
  */
 const meta: Meta = {
@@ -25,7 +26,7 @@ const conversations: ReadonlyArray<G.ListBoxItem> = [
   { id: 'supplier', label: 'Supplier', description: 'The delivery slipped to Thursday.' },
 ];
 
-const Shell = ({ scope }: { readonly scope: ReturnType<typeof familyScope> }) => (
+const Shell = ({ scope, grid }: { readonly scope: ReturnType<typeof familyScope>, readonly grid?: ReactElement<G.PaneGridProps> }) => (
   <G.GrammarRoot {...scope}>
     <G.WorkspaceShell
       viewport="fixed"
@@ -44,6 +45,7 @@ const Shell = ({ scope }: { readonly scope: ReturnType<typeof familyScope> }) =>
       primaryLabel="Conversations"
       primary={
         <G.Page chrome="panes" layout="workspace" header={{ title: 'Conversations' }}>
+          {grid ?? (
           <G.PaneGrid label="Conversations workspace" areas={['list chat aside']} columns={['standard', 'fill', 'standard']}>
             <G.Pane area="list" surface scroll label="Conversation list">
               <G.PaneSection as="header" align="center"><G.PaneHeader title="Hội thoại" /></G.PaneSection>
@@ -63,6 +65,7 @@ const Shell = ({ scope }: { readonly scope: ReturnType<typeof familyScope> }) =>
               <G.PaneSection gap="section"><G.Text isStrong>Refund for table 4</G.Text><G.Text tone="muted">Waiting for your approval.</G.Text><G.Button intent="commit">Approve</G.Button></G.PaneSection>
             </G.Pane>
           </G.PaneGrid>
+          )}
         </G.Page>
       }
     />
@@ -86,6 +89,51 @@ export const ThreePaneWorkspace: Story = {
       }
       const surface = getComputedStyle(heads[0] as HTMLElement).backgroundColor;
       for (const head of heads) expect(getComputedStyle(head).backgroundColor).toBe(surface);
+    });
+  },
+};
+
+const stateAt = (canvasElement: HTMLElement) => {
+  const tracks = canvasElement.querySelector<HTMLElement>('.starci-core-pane-grid-tracks');
+  if (tracks === null) throw new Error('the grid renders');
+  const stack = (area: string) => canvasElement.querySelector<HTMLElement>(`[data-grammar-pane-area="${area}"] .starci-core-pane-stack`);
+  return { divider: getComputedStyle(tracks, '::after').content, stackPad: (area: string) => Number.parseFloat(getComputedStyle(stack(area) as HTMLElement).paddingTop) };
+};
+
+/** The agent workbench shape: a main pane with no head and an aside with one. The row exists (the main pane keeps its height for alignment) and the one divider is drawn. */
+export const AsideHeadOnly: Story = {
+  render: (_, { globals }) => <Shell scope={familyScope(globals)} grid={
+    <G.PaneGrid label="Workbench" areas={['main aside']} columns={['fill', 'standard']}>
+      <G.Pane area="main" label="View"><G.PaneSection gap="section"><G.Text isStrong>View body</G.Text><G.Text tone="muted">No head in this pane.</G.Text></G.PaneSection></G.Pane>
+      <G.Pane area="aside" surface label="Needs you">
+        <G.PaneSection as="header" align="center"><G.Heading level={2}>Cần bạn duyệt</G.Heading></G.PaneSection>
+        <G.PaneSection><G.Text tone="muted">Waiting for your approval.</G.Text></G.PaneSection>
+      </G.Pane>
+    </G.PaneGrid>
+  } />,
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const state = stateAt(canvasElement);
+      expect(state.divider).not.toBe('none');
+      expect(state.stackPad('main')).toBeGreaterThan(40);
+    });
+  },
+};
+
+/** A workspace grid in which no pane has a head: no head row, no divider, nothing reserved above the first band (the blank-band regression). */
+export const NoHeads: Story = {
+  render: (_, { globals }) => <Shell scope={familyScope(globals)} grid={
+    <G.PaneGrid label="Workbench" areas={['main aside']} columns={['fill', 'standard']}>
+      <G.Pane area="main" label="View"><G.PaneSection gap="section"><G.Text isStrong>View body</G.Text><G.Text tone="muted">No pane has a head.</G.Text></G.PaneSection></G.Pane>
+      <G.Pane area="aside" surface label="Details"><G.PaneSection><G.Text tone="muted">Aside body.</G.Text></G.PaneSection></G.Pane>
+    </G.PaneGrid>
+  } />,
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const state = stateAt(canvasElement);
+      expect(state.divider).toBe('none');
+      expect(state.stackPad('main')).toBe(0);
+      expect(state.stackPad('aside')).toBe(0);
     });
   },
 };

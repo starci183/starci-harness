@@ -62,7 +62,7 @@
         --grammar-pane-inset-block-start: var(--grammar-inset);
         --grammar-pane-inset-block-end-outer: var(--grammar-inset);
         --grammar-pane-inset-block-end-divider: var(--grammar-inset);
-        /* The one head row of a workspace grid (0.37.0): a touch-size control between two block-start insets, the same height in every pane. */
+        /* The one head row of a workspace grid (0.37.1): a touch-size control between two block-start insets, the same height in every pane. */
         --grammar-pane-head-size: calc(var(--grammar-touch-size) + 2 * var(--grammar-pane-inset-block-start));
         /*
          * Control inline padding by size step (sm 8, md 12, lg 24); the side a leading or trailing glyph sits on takes
@@ -3407,21 +3407,21 @@
         position: sticky;
         z-index: 2;
         top: 0;
-        /* A pane head is ALWAYS white (0.37.0), on a pink pane and on a surface pane alike: it was the canvas colour, a pink band inside the white aside. */
+        /* A pane head is ALWAYS white (0.37.1), on a pink pane and on a surface pane alike: it was the canvas colour, a pink band inside the white aside. */
         background: var(--surface);
     }
 
     /*
-     * THE SHARED HEAD ROW (0.37.0, layout B): the panes of the workspace grid share ONE head row. Every pane head (a PaneSection as="header" or one
+     * THE SHARED HEAD ROW (0.37.0, layout B; only when the grid has a head, 0.37.1): the panes of the workspace grid share ONE head row. A grid in which no pane has a head has no row and no divider. Every pane head (a PaneSection as="header" or one
      * holding a PaneHeader, first in its pane) is the same height, --grammar-pane-head-size, white, with no divider of its own; the grid draws ONE
      * continuous divider at the foot of that row across every pane, crossing the vertical pane dividers. A pane with no head keeps the row: its
      * stack starts below it, white above the line, so the line and the content still align. A nested PaneGrid keeps its panes' own heads.
      */
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *) {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(> .starci-core-pane > .starci-core-pane-stack > header.starci-core-pane-section:first-child, > .starci-core-pane > .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-header, > .starci-core-pane > .starci-core-pane-scroll > .starci-core-pane-stack > header.starci-core-pane-section:first-child, > .starci-core-pane > .starci-core-pane-scroll > .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-header) {
         position: relative;
     }
 
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *)::after {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(> .starci-core-pane > .starci-core-pane-stack > header.starci-core-pane-section:first-child, > .starci-core-pane > .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-header, > .starci-core-pane > .starci-core-pane-scroll > .starci-core-pane-stack > header.starci-core-pane-section:first-child, > .starci-core-pane > .starci-core-pane-scroll > .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-header)::after {
         content: "";
         position: absolute;
         z-index: 3;
@@ -3432,12 +3432,12 @@
         pointer-events: none;
     }
 
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *) > .starci-core-pane .starci-core-pane-stack:not(:has(> header.starci-core-pane-section:first-child)):not(:has(> .starci-core-pane-section:first-child > .starci-core-pane-header)) {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(> .starci-core-pane > .starci-core-pane-stack > header.starci-core-pane-section:first-child, > .starci-core-pane > .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-header, > .starci-core-pane > .starci-core-pane-scroll > .starci-core-pane-stack > header.starci-core-pane-section:first-child, > .starci-core-pane > .starci-core-pane-scroll > .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-header) > .starci-core-pane .starci-core-pane-stack:not(:has(> header.starci-core-pane-section:first-child)):not(:has(> .starci-core-pane-section:first-child > .starci-core-pane-header)) {
         padding-block-start: var(--grammar-pane-head-size);
         background: linear-gradient(var(--surface) 0 0) top / 100% var(--grammar-pane-head-size) no-repeat;
     }
 
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *) > .starci-core-pane .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child:not(:has(> .starci-core-tabs-frame)) {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(> .starci-core-pane > .starci-core-pane-stack > header.starci-core-pane-section:first-child, > .starci-core-pane > .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-header, > .starci-core-pane > .starci-core-pane-scroll > .starci-core-pane-stack > header.starci-core-pane-section:first-child, > .starci-core-pane > .starci-core-pane-scroll > .starci-core-pane-stack > .starci-core-pane-section:first-child > .starci-core-pane-header) > .starci-core-pane .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child:not(:has(> .starci-core-tabs-frame)) {
         box-sizing: border-box;
         flex: none;
         justify-content: center;

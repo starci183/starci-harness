@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.37.1 - 2026-11-09 - the shared head row exists only when a pane has a head
+
+- Fixed (regression of 0.37.0): a workspace grid in which NO pane has a head drew the shared head row anyway (a blank band of about 137px under the page sub-tabs on every agent workbench page, a divider through the content). The row and its divider
+  exist only when at least one pane of the grid has a head; a grid with no head is as before 0.37.0. When only some panes have heads, the headless ones keep the row height for alignment and nothing is drawn above the page band.
+  Stories `AsideHeadOnly` and `NoHeads` (Compositions/App shell workspace) hold both cases.
+
 ## 0.37.0 - 2026-11-09 - state priority and natural edges in FlowGraph, one head row in layout B
 
 - Changed (default): FLOWGRAPH STATE PRIORITY (owner; `layout="steps"` run overlay). The card border is always the neutral card border, whatever the run status: the coloured status ring is gone. The run status is shown only by the

@@ -103,7 +103,7 @@ does not scroll; each pane scrolls on its own with no visible scrollbar and its 
 
 ## The shared head row (layout B)
 
-The panes of a workspace grid share ONE head row: every pane head (a `PaneSection as="header"` or one holding a `PaneHeader`, first in its pane) is the same height, white and has no per-pane background or divider of its own; the grid draws ONE
+When at least one pane of a workspace grid has a head, the panes share ONE head row (a grid with no head has no row and no divider): every pane head (a `PaneSection as="header"` or one holding a `PaneHeader`, first in its pane) is the same height, white and has no per-pane background or divider of its own; the grid draws ONE
 continuous divider under the row across all panes, crossing the vertical pane dividers. A pane head is always the surface colour, on a canvas pane and on a surface pane alike, never the canvas colour. A pane with no head keeps the row: its content
 starts below the line and the row above it is white, so the line and the content align. A head that ends in a tab strip is a sub-head, not the row. A nested `PaneGrid` keeps its own heads. Enforcer: the `Compositions/App shell workspace`
 story's play function.
