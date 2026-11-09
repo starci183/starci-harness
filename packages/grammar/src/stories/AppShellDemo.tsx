@@ -63,7 +63,7 @@ export const AppShellDemo = ({ initialCollapsed, initialDrawerOpen = false, init
       header={<div className="app-shell-story-navbar">
         <div className="app-shell-story-identity"><G.DropdownMenu trigger={<G.IdentityLockup title={workspace === 'studio' ? 'Studio' : 'Academy'} subtitle="Owner" size="control" />} entries={[workspaceSection]} /></div>
         <div className="app-shell-story-search">
-          <div className="app-shell-story-desktop-search"><G.Button intent="dismiss" startContent={<G.Icon source={SearchGlyph} usage="leading" />} endContent={<G.Kbd keys={['Ctrl', 'K']} />} onPress={() => setSearchOpen(true)}>Search</G.Button></div>
+          <div className="app-shell-story-desktop-search"><G.Button intent="dismiss" endContent={<G.Kbd keys={['Ctrl', 'K']} />} onPress={() => setSearchOpen(true)}>Search</G.Button></div>
           <div className="app-shell-story-mobile-search"><G.IconButton label="Search (Ctrl K)" source={SearchGlyph} onPress={() => setSearchOpen(true)} /></div>
         </div>
         <div className="app-shell-story-actions">

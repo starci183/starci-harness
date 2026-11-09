@@ -95,7 +95,7 @@ export const tabsDepth: Rule.RuleModule = defineRule({
     },
     schema: [],
     messages: {
-      depth: "This underline `Tabs` is layer {{layers}} ({{chain}}). A page stacks at most two underline layers: the page tabs (`Page header.tabs`) and one region set inside a tab's panel. Fold the third level into a `switch` zone, a filter zone of a card, a list, or a drawer.",
+      depth: "This underline `Tabs` is layer {{layers}} ({{chain}}). A page stacks at most two underline layers: the page tabs (`Page header.tabs`) and one region set inside a tab's panel. Fold the third level into a `switch` zone, a filter zone of a card, a list, or a drawer.",
     },
   },
   create(context) {
@@ -132,7 +132,48 @@ export const tabsDepth: Rule.RuleModule = defineRule({
           const layers = owners.size + 1 + (pageTabs ? 1 : 0)
           if (layers < 2) continue
           const chain = `${pageTabs ? "page tabs, " : ""}${owners.size > 0 ? `${String(owners.size)} enclosing set${owners.size > 1 ? "s" : ""}, ` : ""}this set`
-          if (layers > 2) context.report({ node: current.opening, messageId: "depth", data: { layers: String(layers), chain } })
+          if (layers > 2) context.report({ node: current.opening, messageId: "depth", data: { layers: String(layers), chain } })
+        }
+      },
+    }
+  },
+})
+
+/** The pink well and the panes: underline Tabs written in their children sit on the well, not in the white header band. */
+const WELL_HOSTS: ReadonlySet<string> = new Set(["Page", "Pane", "PaneSection"])
+
+/**
+ * The second tab layer stands in the white header band (owner, 2026-11-09, TABS-IN-WELL): `Page header={{ tabs, subTabs }}`, on its own
+ * full-width separator, flush with the band's left inset. An underline `Tabs` written as a child of a `Page`, `Pane` or `PaneSection`
+ * stands on the pink well or in a pane body, so it is a finding. A drawer, dialog, modal, popover or sheet starts its own surface.
+ */
+export const tabsInWell: Rule.RuleModule = defineRule({
+  meta: {
+    type: "problem",
+    docs: {
+      description: "An underline Tabs stands in the white header band (Page header.subTabs), never in the pink well or a pane body.",
+      url: "knowledge/ui/presentation/grammar-laws.yaml#TABS-IN-WELL",
+    },
+    schema: [],
+    messages: {
+      well: "This underline `Tabs` stands in the body of a `{{host}}`, on the pink well or in a pane. The second tab layer sits in the white header band under the page tabs: `Page header` with `subTabs`, on its own full-width separator and flush with the band left inset. Move it to `header.subTabs`, or make the views a `switch` zone or a filter zone of a card.",
+    },
+  },
+  create(context) {
+    if (!isProductSource(context)) return {}
+    return {
+      JSXOpeningElement(opening) {
+        if (elementName(opening) !== "Tabs" || isPill(opening)) return
+        let child: TSESTree.Node = opening.parent ?? opening
+        for (let node: TSESTree.Node | null | undefined = child.parent; node !== undefined && node !== null; child = node, node = node.parent) {
+          if (node.type !== "JSXElement") continue
+          const name = elementName(node.openingElement)
+          if (name === null) continue
+          if (SURFACE_BOUNDARIES.has(name) || name === "SurfaceCard") return
+          if (WELL_HOSTS.has(name) && node.children.includes(child as TSESTree.JSXChild)) {
+            context.report({ node: opening, messageId: "well", data: { host: name } })
+            return
+          }
         }
       },
     }
@@ -143,6 +184,7 @@ export const tabsDepth: Rule.RuleModule = defineRule({
 export const rules: Record<string, Rule.RuleModule> = {
   "tabs-switch-zone": tabsSwitchZone,
   "tabs-depth": tabsDepth,
+  "tabs-in-well": tabsInWell,
 }
 
 defineFamilyRules(rules, "knowledge/ui/presentation/grammar-laws.yaml#TABS-SWITCH-ZONE")

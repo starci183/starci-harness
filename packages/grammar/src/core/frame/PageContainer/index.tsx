@@ -7,11 +7,11 @@ export type PageContainerProps = Omit<ComponentPropsWithoutRef<"div">, "classNam
     readonly ["data-contract"]?: string
 }
 
-/** Centred responsive page inset using the packaged StarCi measure scale. */
+/** Centred responsive page inset using the packaged StarCi measure scale; inside the page header band it is full width and flush left. */
 /** What Page and PageHeader pass when they draw the container inside their own anatomy. */
 export type PageContainerPartProps = PageContainerProps & { readonly className?: string | undefined }
 
-/** Centred responsive page inset using the packaged StarCi measure scale. */
+/** Centred responsive page inset using the packaged StarCi measure scale; inside the page header band it is full width and flush left. */
 export const PageContainerPart = ({ className, measure = "product", ...props }: PageContainerPartProps) => {
     const { "data-contract": composedContract, ...rest } = props
     return (
@@ -26,5 +26,5 @@ export const PageContainerPart = ({ className, measure = "product", ...props }: 
     )
 }
 
-/** Centred responsive page inset using the packaged StarCi measure scale. */
+/** Centred responsive page inset using the packaged StarCi measure scale; inside the page header band it is full width and flush left. */
 export const PageContainer = (props: PageContainerProps) => <PageContainerPart {...props} />

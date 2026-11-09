@@ -125,7 +125,7 @@ Padding and gap together:
 Margin:
 
 - **M1 No margin in layout.** Only the grammar writes one, in three named cases: `MARGIN-AUTO` centring a capped
-  container (a form card, a reading measure), an absolutely placed marker (a badge on an avatar), and a vendor part's
+  container (a form card, a reading measure, the page body and the workspace main pane: MEASURE-8), an absolutely placed marker (a badge on an avatar), and a vendor part's
   internal offset kept for parity.
 - **M2 Bleed is an API, never a negative margin**: `PaneSection bleed="inline"` (a horizontal chip row reaching both
   pane edges, the inset becoming its scroll padding), `SurfaceCard` `headers` and `footers` (zones to the card edge), the
@@ -357,8 +357,14 @@ Prefer **fluid, then fitted, then capped; never fixed.**
 | MEASURE-5 | minimum height | a stable floor that still grows; the same floor in empty and populated states |
 | MEASURE-6 | inherited height | fills a definite host height |
 | MEASURE-7 | capped height | travels with a scroll owner; a cap without one clips silently |
+| MEASURE-8 | band left, well centred | the page header band is full width with its text flush left at the page inset; the content in the pink well (a report page and the main pane of a workspace page alike) is capped at `--grammar-content-max` (80rem) and centred in the well, the ground filling the whole well; side panes are not capped |
 
 Every region that can receive long content carries a zero minimum width so it can shrink.
+
+### Page tiers
+Three viewport tiers, owned by Grammar and never written by an app ([composition](composition.md#responsive-5-the-page-tiers)): desktop from
+1280 (page inset 32), tablet 768 to 1279 (24), phone below 768 (16). The gap between a report page's cards is 24, 16 on a phone (12 until the scale gains a 16 step); the
+content is at most 1280 wide; the type stays 14 and 12 at every tier.
 
 ### Overflow
 One owner per axis; two nested scrollers on one axis trap the reader.
@@ -370,6 +376,7 @@ One owner per axis; two nested scrollers on one axis trap the reader.
 | OVERFLOW-3 | scrolls one axis | content always exceeds it (a scroll region, a rail body) |
 | OVERFLOW-4 | scrolls when needed | content sometimes exceeds it (wide tables, long code, chip rows with edge carets) |
 | OVERFLOW-5 | contained | panels, drawers and overlays stop scroll chaining; never the page's own scroller |
+| OVERFLOW-6 | no scrollbar | NIVO never shows scrollbars (owner, 2026-11-09): every scroll area (pane, `PaneSection scroll`, drawer and modal body, ListBox, chat thread, tab strip, DataTable overflow) hides the bar and fades its edge where content continues (HeroUI ScrollShadow); wheel, touch and keyboard still scroll; an app element with `overflow-y-auto` / `overflow-auto` is refused (lint `no-raw-scroll`) |
 
 ### Text flow
 The default (start-aligned, wrapping) is right far more often than any rule here.

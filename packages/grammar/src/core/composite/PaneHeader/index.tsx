@@ -1,8 +1,8 @@
 "use client"
 
-import { useContext, useEffect, type CSSProperties, type ReactNode } from "react"
+import type { ReactNode } from "react"
 import { ArrowLeftIcon } from "@heroicons/react/20/solid"
-import { PaneOpenerContext } from "../../paneContext.js"
+import { PaneDrawerOpener } from "../PaneDrawerOpener/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
 import { Heading } from "../../leaf/Heading/index.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
@@ -52,23 +52,7 @@ export type PaneHeaderProps = NoChildren & {
  */
 export const PaneHeader = ({ title, headingLevel = 2, description, mark, status, actions, back, drawerOpener, close, isLoading: ownLoading }: PaneHeaderProps) => {
     const isLoading = useIsLoading(ownLoading)
-    const opener = useContext(PaneOpenerContext)
-    const openerPane = drawerOpener?.pane
-    useEffect(() => {
-        if (openerPane !== undefined && process.env.NODE_ENV !== "production" && opener?.has(openerPane) !== true) {
-            console.error(`PANE_OPENER_WITHOUT_DRAWER: ${openerPane}`)
-        }
-    }, [openerPane, opener])
-    const openerDisplays = drawerOpener === undefined || opener === undefined ? undefined : opener.displays(drawerOpener.pane)
-    const openerButton = drawerOpener === undefined || openerDisplays === undefined ? null : (
-        <span
-            className="starci-core-pane-header-opener"
-            data-grammar-pane-opener={drawerOpener.pane}
-            style={{ "--starci-core-pane-opener-base": openerDisplays.base, "--starci-core-pane-opener-medium": openerDisplays.medium, "--starci-core-pane-opener-wide": openerDisplays.wide } as CSSProperties}
-        >
-            <IconButton intent="neutral" source={drawerOpener.icon} label={drawerOpener.label} onPress={() => opener?.open(drawerOpener.pane)} />
-        </span>
-    )
+    const openerButton = drawerOpener === undefined ? null : <PaneDrawerOpener pane={drawerOpener.pane} icon={drawerOpener.icon} label={drawerOpener.label} />
     return (
         <div
             data-tier="composite"

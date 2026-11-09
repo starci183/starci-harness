@@ -53,6 +53,11 @@ politely) and failed (the field's error). Known field types declare autofill and
 - **App author decides:** label, description, error and copy-action copy, validation facts, autofill hints, the
   reveal behind a masked `onCopy`.
 
+## Chat composer
+A `Textarea` with `onSubmitShortcut` is a chat composer, and every chat uses it: it starts at 2 lines (about 64px), grows with its text up to 6 lines and then
+scrolls (no scrollbar). `send={{ label, onPress }}` draws the send button inside the box at its bottom end, so it stays at the bottom as the box grows.
+`COMPOSER_MIN_ROWS` and `COMPOSER_MAX_ROWS` name the two bounds.
+
 ## Rules
 FEEDBACK-1, COLLECTION-1, RESPONSIVE-1, ANATOMY-2, FIELD-1..4. Lint: `starci-fe/no-native-form-control`,
 `starci-grammar/field-label`. Proof: A11Y-1, UX-3, UX-8, FOCUS-1.

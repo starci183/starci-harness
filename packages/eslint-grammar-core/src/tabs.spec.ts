@@ -6,7 +6,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
-import { recommended, rules, tabsDepth, tabsSwitchZone } from "./tabs.ts"
+import { recommended, rules, tabsDepth, tabsInWell, tabsSwitchZone } from "./tabs.ts"
 
 const BLOCK = at("apps/web/src/components/blocks/Booking/component.tsx")
 const SCRIPT = at("scripts/build.tsx")
@@ -14,8 +14,8 @@ const SCRIPT = at("scripts/build.tsx")
 const ITEMS = "items={[{ id: \"a\", label: \"A\" }, { id: \"b\", label: \"B\" }]}"
 
 test("the law publishes two rules and both are errors", () => {
-  assert.deepEqual(Object.keys(rules), ["tabs-switch-zone", "tabs-depth"])
-  assert.deepEqual(recommended, { "starci-grammar/tabs-switch-zone": "error", "starci-grammar/tabs-depth": "error" })
+  assert.deepEqual(Object.keys(rules), ["tabs-switch-zone", "tabs-depth", "tabs-in-well"])
+  assert.deepEqual(recommended, { "starci-grammar/tabs-switch-zone": "error", "starci-grammar/tabs-depth": "error", "starci-grammar/tabs-in-well": "error" })
 })
 
 test("tabs-switch-zone: the pill is the switch header zone, never JSX", () => {
@@ -67,6 +67,23 @@ test("tabs-depth: page tabs and one region set, never a third layer", () => {
         code: `export const A = () => <div><Tabs label="a" ${ITEMS} selectedKey={one} />{one === "a" && <div><Tabs label="b" ${ITEMS} selectedKey={two} />{two === "a" && <Tabs label="c" ${ITEMS} selectedKey={three} />}</div>}</div>`,
         errors: [{ messageId: "depth" }],
       },
+    ],
+  })
+})
+
+test("tabs-in-well: the second layer stands in the header band, never in the well or a pane body", () => {
+  slotTester().run("tabs-in-well", tabsInWell, {
+    valid: [
+      // in a card, a drawer, or a plain block outside Page and Pane
+      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "Agent", tabs, subTabs }}><SurfaceCard label="Runs"><Tabs label="Status" ${ITEMS} selectedKey={s} /></SurfaceCard></Page>` },
+      { filename: BLOCK, code: `export const A = () => <Drawer title="x"><Tabs label="Status" ${ITEMS} selectedKey={s} /></Drawer>` },
+      { filename: BLOCK, code: `export const A = () => <div><Tabs label="Status" ${ITEMS} selectedKey={s} /></div>` },
+      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x" }}><Tabs appearance="primary" label="Status" ${ITEMS} selectedKey={s} /></Page>` },
+      { filename: SCRIPT, code: `export const A = () => <Page header={{ title: "x" }}><Tabs label="Status" ${ITEMS} selectedKey={s} /></Page>` },
+    ],
+    invalid: [
+      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "Agent", tabs }}><Tabs label="Status" ${ITEMS} selectedKey={s} /></Page>`, errors: [{ messageId: "well" }] },
+      { filename: BLOCK, code: `export const A = () => <Pane label="Side"><PaneSection><Tabs label="Status" ${ITEMS} selectedKey={s} /></PaneSection></Pane>`, errors: [{ messageId: "well" }] },
     ],
   })
 })

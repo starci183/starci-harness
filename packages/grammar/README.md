@@ -655,12 +655,39 @@ sizes: the page title 18 and a big figure value 20 (`Text size="figure"`). Every
 `external` glyph; a row title is never a link when the row opens (lint `row-title-link`). `npm run check:type` pins the
 scale; lint `table-cell-type` and `same-line-size` allow only 14 and 12.
 
-**The button-icon rule.** A Button that does something shows what at its start (`startGlyph`, e.g. `plus`, `upload`,
-`send`, `pencil`, or the app's `startContent`); a Button that leads somewhere ends with Grammar's arrow (`endArrow`), which
+**The button-icon rule.** Only the PRIMARY Button (`intent="commit"`, the CTA) carries a leading icon: it shows what it does at
+its start (`startGlyph`, e.g. `plus`, `upload`, `send`, `pencil`, or the app's `startContent`). Neutral, alternative, dismiss and
+destructive Buttons, suggestion pills and row actions are text only; the Button type refuses a start icon on any other intent
+(`EmptyNotice actionStartContent` needs the default `commit` action, `Alert` draws `action.icon` on its primary action only) and lint
+`button-icon-primary-only` reads the cases a type cannot see. `IconButton` (icon only, named by its label) is unaffected. A Button
+that leads somewhere, of any intent, ends with Grammar's arrow (`endArrow`; the arrow is not an icon under this rule), which
 slides one step toward the reading end on hover and focus and is mirrored right to left. Never both: the types refuse it.
 Both glyphs stand one inline step (8) from the label. In Core every Button size, sm included, is a pill (one radius); a row of neutral sm Buttons is the one
 suggestion pattern (lint `suggestion-buttons`). An arrow typed in a label or passed through `endContent` is refused
 (lint `button-arrow`). `EmptyNotice actionEndArrow` and `ItemAction.endArrow` give the Grammar-drawn actions the arrow.
+
+**The layout law (report or workspace).** A page is one of two frames, declared by `Page chrome` (no extra prop). A REPORT page
+(`chrome="standard"`) is the pink well with card surfaces stacked in one vertical column, 24 apart; cards stand side by side only
+as siblings of one role and height (figure cells, short equal cards), never a card beside a column of cards (lint
+`layout-two-axis`). A WORKSPACE page (`chrome="panes"`, or `bleed` for a full-height chat or editor) is a grid of panes split by
+dividers, used when the page has a persistent selection or navigation column; its side panes are white surfaces at full height,
+never cards, and the main pane may hold a pink well that follows the report law. One page, one frame type. `Page layout="report" | "workspace"` declares it (a mismatch with `chrome` throws). **The responsive law:** Grammar owns
+the breakpoints (desktop from 1280, tablet 768 to 1279, phone below 768); the page inset is 32 / 24 / 12 and the card gap 24 / 12 (the owner asked for 16 on a phone; the spacing scale has no 16 yet) and the
+content at most 1280 wide, type stays 14 / 12. A report keeps its figures ribbon in one row on a desktop, 3 columns on a tablet (five cells are 3 + 2) and 2 columns on a phone (an odd last cell spans its row: 2 + 2 + 1), and stacks equal cards below 1280; a
+workspace shows the aside as a Drawer on a tablet and one pane at a time on a phone. A FlowGraph is not shown on a phone: the app passes
+the step list there instead.
+
+**No scrollbars (OVERFLOW-6).** NIVO never shows scrollbars. Every scroll area Grammar draws (pane and `PaneSection scroll`, Drawer and Dialog bodies,
+ListBox, the chat thread, the tab strip, DataTable and code overflow, popovers) hides the bar (`scrollbar-width: none`, `::-webkit-scrollbar` none) and
+fades its edge where content continues: HeroUI's ScrollShadow where Grammar renders the scroller, and the same fade, driven by the scroll position,
+on the CSS scrollers. Wheel, touch and keyboard scrolling are unchanged. An app element with an `overflow-y-auto` / `overflow-auto` class is
+refused (lint `no-raw-scroll`); use `VerticalScrollRegion`, `HorizontalScrollRegion` or `PaneSection scroll`. `Drawer bodyInset="none"` runs the body
+edge to edge across the sheet (the default `content` keeps the inset).
+
+**Composer, flush left, Sublabel, Link.** A `Textarea` with `onSubmitShortcut` is the chat composer: 2 lines minimum (about 64px), growing to 6, with `send` drawing the
+send button at the bottom end of the box. The page header band is full width with its text flush left at the page inset; the content in the pink well (report page and workspace main pane) is capped at 80rem and centred (MEASURE-8). An Avatar with no image draws a DiceBear Sprout seeded by its name (`fallbackMark="initials"` opts out). `Sublabel` is the 12 / 500 / muted
+group label above a card inside a section. `Link` is HeroUI's own link (primary colour, underline on hover, anchor icon) and inherits its size from the line; lint `link-look`.
+A `sm` Button never carries an icon. The second tab layer is `Page header.subTabs` (lint `tabs-in-well`).
 
 **The single-child-card law.** A card groups two or more different parts (figures, a list, actions) or carries zones
 (tabs, search, head actions). A table, list or chart standing alone is the surface: a `Section` titles it (`title`) and one

@@ -23,6 +23,11 @@ Choice `dialog-drawer.choose.role`: what holds the task above the page. The firs
 The backdrop and the size are the contract's; the app picks a size only by content measure. Nested fields and tabs
 take their nested treatment from the overlay's surface.
 
+## Scrolling
+A body that outgrows its sheet scrolls with no scrollbar: the edge fades where content continues and wheel, touch and keyboard still scroll
+(OVERFLOW-6; an app element with `overflow-y-auto` is refused by lint `no-raw-scroll`; use the Grammar scroller or `PaneSection scroll`). A `Drawer`
+takes `bodyInset="none"` when its body must run edge to edge across the sheet (a chat well, a list that owns its rows); the default keeps the inset.
+
 ## Size
 Width by content: a form-sized dialog for one task; a drawer for the panel task. Fields inside stay one column, 24 apart
 (FIELD-3, [field](field.md)); a list of rows in the body is a nested surface (BOUNDARY-7), written as `Section kind="list"`

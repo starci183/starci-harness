@@ -321,6 +321,53 @@ export const FiguresFullBleed: Story = {
   },
 };
 
+/**
+ * The five-figure ribbon at the three tiers (responsive law), answering the strip's own width: 390 (a phone) is 2 + 2 + 1 with the odd last
+ * cell across its row; 700 (a tablet) is 3 + 2, two balanced rows; 1000 (a desktop) is one row. Labels keep one or two lines, never a word
+ * per line, and the value stays 20 and the meta 12.
+ */
+export const FiguresRibbonFive: Story = {
+  render: () => {
+    const items: readonly G.Figure[] = [
+      { id: 'a', term: 'Khách vào 7 ngày', value: 128, meta: 'so với tuần trước' },
+      { id: 'b', term: 'Cuộc trò chuyện', value: 342, meta: 'đang mở 12' },
+      { id: 'c', term: 'Đơn đã tạo', value: 57, meta: 'hôm nay 6' },
+      { id: 'd', term: 'Tỷ lệ chốt đơn', value: '18%', meta: 'mục tiêu 20%' },
+      { id: 'e', term: 'Doanh thu tạm tính', value: '12,4tr', meta: 'tháng này' },
+    ];
+    return (
+      <Matrix>
+        <State label="Phone 390: 2 + 2 + 1" direction="column"><div data-story-strip="phone" style={{ width: 390 }}><G.SurfaceCard kind="figures" label="Tổng quan" items={items} /></div></State>
+        <State label="Tablet 700: 3 + 2" direction="column"><div data-story-strip="tablet" style={{ width: 700 }}><G.SurfaceCard kind="figures" label="Tổng quan" items={items} /></div></State>
+        <State label="Desktop 1000: one row" direction="column"><div data-story-strip="desktop" style={{ width: 1000 }}><G.SurfaceCard kind="figures" label="Tổng quan" items={items} /></div></State>
+      </Matrix>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const strip = (name: string) => {
+        const found = canvasElement.querySelector<HTMLElement>(`[data-story-strip="${name}"] [data-grammar-description-layout="stat-strip"]`);
+        if (found === null) throw new Error(`the ${name} strip renders`);
+        return found;
+      };
+      const phone = strip('phone');
+      expect(assertFullBleed(phone)).toBe(3);
+      const cells = Array.from(phone.querySelectorAll<HTMLElement>('[data-grammar-description-pair]'));
+      // The odd last cell spans the whole row.
+      expect(Math.abs(box(cells[4] as HTMLElement).width - box(phone).width)).toBeLessThan(1.5);
+      expect(assertFullBleed(strip('tablet'))).toBe(2);
+      expect(assertFullBleed(strip('desktop'))).toBe(1);
+      for (const term of Array.from(phone.querySelectorAll<HTMLElement>('.starci-core-description-stat-term > span'))) {
+        const lines = box(term).height / Number.parseFloat(getComputedStyle(term).lineHeight);
+        expect(lines).toBeLessThanOrEqual(2.05);
+        expect(getComputedStyle(term).fontSize).toBe('14px');
+      }
+      for (const meta of Array.from(phone.querySelectorAll<HTMLElement>('.starci-core-description-meta'))) expect(getComputedStyle(meta).fontSize).toBe('12px');
+      for (const value of Array.from(phone.querySelectorAll<HTMLElement>('.starci-core-description-figure'))) expect(getComputedStyle(value).fontSize).toBe('20px');
+    }, { timeout: 4000 });
+  },
+};
+
 /* ---------- footers ---------- */
 
 /** A footer `more`: one divider between the rows and the footer, drawn by the footer's top border. */

@@ -756,9 +756,9 @@ const MentionComposer = () => {
     <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '32rem' }}>
       <G.Textarea
         label="Message"
-        rows={3}
         value={value}
         onValueChange={setValue}
+        send={{ label: 'Send message', onPress: () => { setSent((s) => [...s, value]); setValue(''); } }}
         description="Type @ to mention someone. Enter sends, Shift+Enter breaks the line."
         mentions={{ options: MENTION_PEOPLE, label: 'People to mention' }}
         onSubmitShortcut={() => { setSent((s) => [...s, value]); setValue(''); }}

@@ -34,5 +34,8 @@ by arrow traversal.
 - **Knowledge decides:** select vs segmented vs combo vs radio vs menu.
 - **App author decides:** options, labels, the value.
 
+## Compact
+`appearance="compact"` is the pill at the dense control step (32): a picker in a toolbar, a pane head or a card zone.
+
 ## Rules
 FEEDBACK-1, STATE-6. Lint: `starci-fe/no-native-form-control`. Proof: A11Y-1, FOCUS-2, UX-8.

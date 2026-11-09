@@ -1,5 +1,71 @@
 # Changelog
 
+## 0.34.0 - 2026-11-09 - sm Button without icon, chat composer, flush-left page, Sublabel, Link look
+
+- Changed (types): a `sm` Button never carries an icon, not even the primary (owner, 2026-11-09): the primary variant of the Button type takes
+  `size` `md` or `lg` only. `Alert` and `EmptyNotice` draw an iconed primary action at `md`. Lint `button-icon-primary-only` also refuses `size="sm"`.
+- Added: THE CHAT COMPOSER. A `Textarea` with `onSubmitShortcut` starts at 2 lines (4rem, about 64px), grows with its text up to 6 lines, then scrolls with no bar;
+  `Textarea send={{ label, onPress, isDisabled?, isPending? }}` draws the send button inside the box at its bottom end. Constants `COMPOSER_MIN_ROWS`, `COMPOSER_MAX_ROWS`.
+- Changed (default): BAND LEFT, WELL CENTRED (MEASURE-8). The page header band is full width and its text starts at the page inset, flush left (the band's `PageContainer` is
+  never capped or centred); the content in the pink well is capped at `--grammar-content-max` (80rem) and centred. The page body keeps its centred measure.
+- Added: `Sublabel` (leaf, `children: string`, `id?`): the group label above a card inside a section, 12, weight 500, muted.
+- Changed (default): `Link` is HeroUI v3's own link: the primary colour, the underline on hover only, the anchor icon (`Link.Icon`) at the end of a text label, and
+  no size. The `size` prop, the `LinkSize` type and the `externalIcon` prop are removed; the type size and leading are inherited from the line (14 in a body, 12 in
+  meta). `.grammar-common-root` sets the base type to the UI step (14), so a Link outside any sized text no longer renders 16.
+- Documented: the second tab layer is `Page header.subTabs`, in the white header band, on its own full-width separator, flush with the band's left inset. Lint `tabs-in-well`.
+- Added: `EmptyNotice frame="frameless"`; `Select appearance="compact"` (32 pill); `PaneDrawerOpener` (`pane`, `icon`, `label`), the drawer opener for any place in a PaneGrid;
+  the Stepper's horizontal labels are cut with an ellipsis instead of wrapping; the generated avatar initials are set at 40% of the mark so two capitals stay inside the circle.
+- Lint: `eslint-grammar-core` 0.34.0 adds `tabs-in-well` (`FE_TABS_IN_WELL`) and `link-look` (`FE_LINK_LOOK`), and extends `button-icon-primary-only` to `size="sm"`.
+- Changed (default): in a workspace page the main pane (the one on the canvas) caps its content at `--grammar-content-max` (80rem), centred in the well; the ground fills the whole well, side panes and the header band are not capped. `check:type` pins it.
+- Changed (default): NO IMAGE MEANS SPROUTS. An `Avatar` (and every avatar of an `AvatarGroup`) with no `src` draws a DiceBear Sprouts image seeded by `seed` (else `name`),
+  for a person, an agent, a product or a shop alike: drawn locally with `@dicebear/styles/sprouts.json` (already in 10.4.0), cached per seed, the same seed always the same image,
+  clipped by the avatar's shape. New `Avatar fallbackMark="sprout" | "initials"` (default `sprout`; `initials` is the explicit opt-in), `AvatarSproutImage`, `avatarSproutUri`.
+  `check:avatar` pins it. The group's `+n` count mark keeps its letters.
+- Changed (types): `ListRowData.description` accepts a `ReactNode`; a node is drawn at 12, muted, directly under the name at the identity gap (`data-grammar-description-rich`).
+- Added: rule id `MEASURE-8`.
+
+## 0.33.0 - 2026-11-09 - no scrollbars; layout and responsive laws; only the primary Button carries an icon
+
+- Changed (default): NIVO NEVER SHOWS SCROLLBARS (owner, 2026-11-09, OVERFLOW-6). The family root no longer hands the scrollbar to the app's
+  `--scrollbar*` tokens: every scroller under `.grammar-common-root` hides its bar (`scrollbar-width: none`, `::-webkit-scrollbar` none), which
+  covers the ScrollShadow hosts (PaneGrid panes, `PaneSection scroll`, the Drawer pane, the chat thread, the tab strip, Board, ScheduleGrid) whose
+  hidden bar the old rule had overridden. Wheel, touch and keyboard scrolling are unchanged.
+- Added: the edge fade on the scrollers that are not ScrollShadow hosts (overlay body, popover, DataTable scroll, code block, markdown table, rail
+  body, sidebar list, terminal log, filter list, mention list, breadcrumbs, top bar, scrolling nav): a CSS mask whose end sizes follow the scroll position
+  (scroll-driven animation; no fade where nothing overflows, none on the edge already reached; right to left mirrored).
+- Added: `Drawer bodyInset="content" | "none"` (default `content`). `none` runs the body edge to edge across the sheet (and to the bottom edge when no
+  footer follows), so a chat well fills the drawer; `data-grammar-body-inset="none"`.
+- Fixed: `VerticalScrollRegion tone="background"` no longer paints its tone under its own edge mask (white bands at the top and bottom of a chat thread): the
+  mask is off there and two sticky overlays in the tone fade only the content into it. The public API is unchanged.
+- Added: rule id `OVERFLOW-6` (contexts/ui/presentation.md).
+- Lint: `eslint-grammar-core` 0.33.0 adds `no-raw-scroll` (`FE_NO_RAW_SCROLL`, error).
+- Changed (types): THE BUTTON-ICON RULE (owner, 2026-11-09). `startGlyph` and `startContent` are allowed only on the primary Button
+  (`intent="commit"`, the CTA); the Button type is a discriminated union on `intent`, so a neutral, alternative, dismiss or destructive
+  Button, or one with no intent, no longer compiles with a start icon. Suggestion pills and row actions are text only. The arrow is not an
+  icon under this rule: any intent may set `endArrow` (still never together with a start icon). `IconButton` is unaffected.
+- Changed: `EmptyNotice` takes `actionStartContent` only with the default `commit` action (`actionIntent: "neutral"` is text only);
+  `Alert` draws `action.icon` on its primary (informative, `commit`) action only; `FileButton` with a `text` label is text only (its
+  icon-only form is the `IconButton`).
+- Changed: the stories and the app-guide template no longer give a neutral or alternative Button a start icon.
+- Lint: `eslint-grammar-core` 0.33.0 adds `button-icon-primary-only` (`FE_BUTTON_ICON_PRIMARY_ONLY`, error).
+- Added: `Page layout: "report" | "workspace"` (the frame type; derived from `chrome` when omitted, `PAGE_LAYOUT_CHROME_MISMATCH` when it
+  disagrees), `data-grammar-page-layout`, and the story `Compositions/Page layouts`.
+- Changed (default): THE RESPONSIVE LAW (owner, 2026-11-09). The page inset steps 32 / 24 / 16 at the 1280 / 768 breakpoints (the desktop
+  step moved from 1120 to 1280; the phone step stays 12 because the spacing scale 0 4 8 12 24 32 has no 16: the owner asked for 16, a scale step to add);
+  `--grammar-card-gap` is 24, 12 on a phone (same reason). The tiers of every page piece
+  (figures, equal cards, DataTable, tabs, workspace aside and panes, sidebar, pinned action, FlowGraph) are in `contexts/ui/composition.md`
+  RESPONSIVE-5; `check:type` pins the insets.
+- Changed (default): the figures ribbon of five cells (`SurfaceCard kind="figures"`, a figures zone, in a card or a pane) answers its own
+  width: two columns below 30rem with an odd last cell across its row (2 + 2 + 1), three columns from 30rem (3 + 2, two balanced rows),
+  one row from 52rem. The cell keeps its label (14 muted, at most two lines, wrapping between words), value (20) and meta (now 12).
+  Lines stay the edge lines of the grid (vertical between a row's cells, horizontal between rows, none doubled). Story `FiguresRibbonFive`
+  (390 / 700 / 1000); `check:type` pins the rules.
+- Documented: THE LAYOUT LAW (owner, 2026-11-09). A page is a report (`Page chrome="standard"`: the pink well, cards stacked in one vertical
+  column 24 apart, side by side only for sibling cards of one role and height) or a workspace (`chrome="panes"` / `"bleed"`: panes split
+  by dividers, side panes white surfaces at full height, never cards, a pink well allowed in the main pane). `Page chrome` is the
+  declaration, so no new prop; one frame type per page. Lint `layout-two-axis` (`eslint-grammar-core` 0.33.0) refuses a card beside a
+  column of cards and unequal cards in a row.
+
 ## 0.32.1 - 2026-11-09
 
 - Fixed: MessageCard (a composite) no longer imports the Cluster frame, which the tier law refuses (FE_GRAMMAR_TIER_DIRECTION); its actions stand in its own wrapping row (`starci-core-message-card-actions`, a labelled group at the inline gap).

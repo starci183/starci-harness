@@ -176,7 +176,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                                     : <button type="button" className="starci-core-list-row-press" data-grammar-row-press="true" onClick={row.onPress} {...pressKeys}>{row.title}</button>}
                         </span>
                     </span>
-                    {row.description === undefined ? null : <span className="starci-core-list-row-description" data-contract="TONE-2 FONT-2">{row.description}</span>}
+                    {row.description === undefined ? null : <span className="starci-core-list-row-description" data-contract="TONE-2 FONT-2" {...(typeof row.description === "string" ? {} : { "data-grammar-description-rich": "true" })}>{row.description}</span>}
                 </span>
                 {hasTrail ? (
                     <span className="starci-core-list-row-trail" data-contract="GAP-2">

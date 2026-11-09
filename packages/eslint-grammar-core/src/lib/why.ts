@@ -27,6 +27,16 @@ export const why: Record<string, WhyEntry> = {
     en: "Underline `Tabs` in `<file>` stack past two layers.",
     fix: "A page has the page tabs (`Page header.tabs`) and at most one region set in a tab's panel. Fold a third level into a `switch` zone, a filter zone of a card, a list, or a drawer.",
   },
+  "tabs-in-well": {
+    code: "FE_TABS_IN_WELL",
+    en: "An underline `Tabs` in `<file>` is written in the body of a `Page`, `Pane` or `PaneSection`: on the pink well or in a pane.",
+    fix: "The second tab layer sits in the white header band under the page tabs: `Page header={{ tabs, subTabs }}`, on its own full-width separator and flush with the band's left inset. Or make the views a `switch` zone or a filter zone of a card.",
+  },
+  "link-look": {
+    code: "FE_LINK_LOOK",
+    en: "A `Link` in `<file>` sets a `size` or a size, underline or decoration class.",
+    fix: "A Link is HeroUI's own link: the primary colour, the underline on hover only, the anchor icon at the end, and the size of the line it stands in (14 in a body, 12 in meta). Remove the prop or class; wrap the link in a `Text` of the size you want.",
+  },
   "no-primary-tabs-misuse": {
     code: "FE_GROUPED_CHOICE_CONTROL",
     en: "Primary `Tabs` (or a `switch` header zone) in `<file>` hold a count, an href, an attention mark, one item or more than four items.",
@@ -181,6 +191,21 @@ export const why: Record<string, WhyEntry> = {
     code: "FE_BUTTON_ARROW",
     en: "A Button in `<file>` types an arrow in its label, passes an arrow icon as `endContent`, or sets `endArrow` together with `startGlyph` or `startContent`.",
     fix: "A Button that leads somewhere takes `endArrow` (the Grammar arrow slides on hover and is mirrored in RTL); one that does something takes `startGlyph`; never both.",
+  },
+  "button-icon-primary-only": {
+    code: "FE_BUTTON_ICON_PRIMARY_ONLY",
+    en: "A Button in `<file>` sets `startGlyph` or `startContent` but is not the primary (`intent=\"commit\"`): it has another intent, none, or one computed; or it is `size=\"sm\"`, which never carries an icon, not even the primary.",
+    fix: "Only the primary Button (the CTA) carries a leading icon. Remove the icon from a neutral, alternative, dismiss or destructive Button, a suggestion pill, a row action or any `size=\"sm\"` Button (the primary carries an icon at `md` or `lg` only); a Button that leads somewhere keeps `endArrow`.",
+  },
+  "layout-two-axis": {
+    code: "FE_LAYOUT_TWO_AXIS",
+    en: "A Grid or Cluster in `<file>` puts a SurfaceCard beside a Stack of SurfaceCards, or two SurfaceCards of different kinds side by side.",
+    fix: "A report page stacks its cards in one vertical column (24 apart); side by side is only for sibling cards of one role and height. A page with a persistent selection column or a full-height chat or editor is a workspace: `Page chrome=\"panes\"`, whose side panes are white surfaces, never cards.",
+  },
+  "no-raw-scroll": {
+    code: "FE_NO_RAW_SCROLL",
+    en: "An element in `<file>` makes its own scroll area with an `overflow-auto`, `overflow-y-auto` or `overflow-scroll` class.",
+    fix: "NIVO never shows scrollbars. Use the Grammar scroller (`VerticalScrollRegion`, `HorizontalScrollRegion`) or `PaneSection scroll`: they fade the edge where content continues, hide the bar and keep wheel and keyboard scrolling.",
   },
   "table-cell-type": {
     code: "FE_TABLE_CELL_TYPE",

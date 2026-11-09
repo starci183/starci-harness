@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
  * 14), display sizes 18 (page title) and 20 (figure value) only. Before it, the type roles of 0.28: The rules that draw a role are pinned to its tokens, so a
  * later edit cannot drift a tab, a body Text or a table cell off its step: every tab sm 13; Text md 14 / sm 13 / xs 12, `isStrong` 500;
  * page title xl 18 / 500; card title lg 16 / 500; row primary md 14 / 500, its description sm 13, its meta xs 12; table header xs 12,
- * cell md 14, row header 500; a Link inherits the size around it.
+ * cell md 14, row header 500; a Link inherits the size around it; a Sublabel is 12 / 500 muted; the page header band is full width and flush left; the page body and the workspace main pane are capped at 80rem and centred.
  */
 const common = resolve(dirname(fileURLToPath(import.meta.url)), "..", "src", "common")
 const sheets = ["styles.css", "components-navigation.css"].map((name) => ({ name, text: readFileSync(resolve(common, name), "utf8") }))
@@ -28,7 +28,11 @@ const PINS: readonly { readonly selector: string; readonly holds: readonly strin
     { selector: ".starci-core-data-table .starci-core-data-table-column", holds: ["font-size: var(--grammar-text-md)"] },
     { selector: ".starci-core-data-table .starci-core-data-table-cell", holds: ["font-size: var(--grammar-text-md)", "font-weight: var(--grammar-weight-regular)"] },
     { selector: '.starci-core-data-table .starci-core-data-table-cell[data-grammar-table-row-header="true"]', holds: ["font-weight: var(--grammar-weight-medium)"] },
-    { selector: '.starci-core-link[data-grammar-link-size="inherit"]', holds: ["font-size: inherit !important"] },
+    { selector: ".starci-core-link", holds: ["font-size: inherit !important", "line-height: inherit !important"] },
+    { selector: '.starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane:not([data-grammar-pane-surface="true"]) .starci-core-pane-stack', holds: ["max-inline-size: var(--grammar-content-max)", "margin-inline: auto"] },
+    { selector: ".starci-core-sublabel", holds: ["font-size: var(--grammar-text-xs)", "font-weight: var(--grammar-weight-medium)", "color: var(--muted)"] },
+    { selector: ".starci-core-page-container", holds: ["margin-inline: auto"] },
+    { selector: ".starci-core-page-header .starci-core-page-container", holds: ["width: 100%", "margin-inline: 0"] },
     { selector: '.starci-core-surface-zone:not([data-grammar-zone="figures"]) .starci-core-text:not([data-size="figure"])', holds: ["font-size: var(--grammar-text-sm)"] },
     { selector: ".starci-core-surface", holds: ["border: 1px solid var(--separator)", "box-shadow: var(--surface-shadow)"] },
     { selector: ".starci-core-section-list", holds: ["border: 1px solid var(--separator)", "border-radius: var(--starci-core-surface-radius)"] },
@@ -50,6 +54,14 @@ if (!/--grammar-text-sm:\s*0\.875rem;/.test(ramps)) problems.push("ramps.css: --
 if (/0\.8125rem/.test(all + ramps)) problems.push("a 13px size (0.8125rem) is back")
 for (const match of all.matchAll(/\.starci-core-tabs[^{]*\.tabs__tab[^{]*\{[^}]*font-size:\s*var\(--grammar-text-([a-z0-9]+)\)/g)) {
     if (match[1] !== "sm" && match[1] !== "md") problems.push(`a tab rule sets --grammar-text-${match[1]}; every tab is 14`)
+}
+/* THE RESPONSIVE LAW: the page inset steps 12 on a phone (the scale has no 16), 24 from 48rem and 32 from 80rem. */
+if (!/--grammar-page-inset:\s*0.75rem;/.test(all)) problems.push("styles.css: the phone page inset must be 0.75rem (12)")
+if (!/@media \(min-width: 48rem\) \{\s*\.grammar-common-root \{\s*--grammar-page-inset: 1\.5rem;/.test(all)) problems.push("styles.css: the tablet page inset must be 1.5rem (24) from 48rem")
+if (!/@media \(min-width: 80rem\) \{\s*\.grammar-common-root \{\s*--grammar-page-inset: 2rem;/.test(all)) problems.push("styles.css: the desktop page inset must be 2rem (32) from 80rem")
+/* THE FIGURES RIBBON (five cells): 2 columns on a phone, 3 from 30rem, one row from 52rem of the strip's own width; the label clamps to two lines. */
+for (const needle of ['[data-grammar-figure-count="5"][data-grammar-figures-placement] .starci-core-description-pair { flex-basis: 50%; }', "@container starci-core-description-strip (min-width: 30rem)", "flex-basis: calc(100% / 3)", "@container starci-core-description-strip (min-width: 52rem)", "-webkit-line-clamp: 2"]) {
+    if (!all.includes(needle)) problems.push(`components-navigation.css: the five-figure ribbon lost \`${needle}\``)
 }
 for (const pin of PINS) {
     const bodies = bodiesOf(pin.selector)

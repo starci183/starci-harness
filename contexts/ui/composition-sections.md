@@ -46,6 +46,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - COLLECTION-3 A group identity shows its members · `COLLECTION-3` · 1 KB — A group or conversation identity is one composite of its members' identities, distinguishable from one person's, with a count when members overflow; the composite carries the ...
   - 6. Layout · `contexts/ui/composition.md#6-layout` · 2 KB — Choice `grid.choose.content`: which track owner carries the content.
     - LAYOUT-1 Which regions exist · `LAYOUT-1` · 1 KB — One task with no support is one region.
+    - LAYOUT-5 One axis in a report, panes in a workspace · `LAYOUT-5` · 1 KB — A page is one of two frame types, declared by `Page layout="report" | "workspace"` (which `chrome` carries: `standard` is a report, `panes` and `bleed` are workspaces; a `layout` ...
     - LAYOUT-2 Every region's owner is a published composition · `LAYOUT-2` · 1 KB — Tracks, slots and bounds belong to a published composition (`WorkspaceShell`, `Page`, `Grid kind="main-rail"`, `PaneGrid`); the spec names only its props.
     - LAYOUT-3 One owner per region and per scroll axis · `LAYOUT-3` · 1 KB — Each region has one composition owner.
     - LAYOUT-4 Regions that leave normal flow · `LAYOUT-4` · 1 KB — Sticky, fixed, drawer and floating regions use their composition's contract and return to flow below its narrow width.
@@ -54,6 +55,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - RESPONSIVE-1 What survives · `RESPONSIVE-1` · 1 KB — The compact branch keeps the meaning, the commit and the current state in one readable flow; support stays reachable.
     - RESPONSIVE-2 The query owner is named, never the device · `RESPONSIVE-2` · 1 KB — Every branch names one owner: a composition's container query or its viewport query.
     - RESPONSIVE-3 One branch at a time · `RESPONSIVE-3` · 1 KB — Exactly one form of a composition exists at a time; the other leaves no layout or accessibility footprint.
+    - RESPONSIVE-5 The page tiers · `RESPONSIVE-5` · 2 KB — Grammar owns every breakpoint of a page, through `Page layout` and `PaneGrid`; an app writes no media query.
     - RESPONSIVE-4 Pressure that is not width · `RESPONSIVE-4` · 1 KB — Zoom, text scaling, translation growth, the virtual keyboard and safe areas recompose the layout; no fixed text height carries them.
   - 8. Taste · `contexts/ui/composition.md#8-taste` · 1 KB
     - DISCIPLINE-1 Reduce before adding · `DISCIPLINE-1` · 1 KB — Every element names its job for the page's one job; an element with no job is removed, not made quieter.

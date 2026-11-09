@@ -18,17 +18,13 @@
 
     /* ---------- Link ---------- */
     /*
-     * A text link inherits the size of the text around it (`size="inherit"`, the default since 0.27), so an inline link never changes
-     * its line; `sm` and `md` name a step for a link that stands alone. `!important`: the vendor link sets its own size, unlayered.
+     * A Link has no size of its own: it inherits the size and leading of the text around it (14 in a body, 12 in meta or caption
+     * text), so a link never changes its line. `!important`: the vendor link sets its own size, unlayered.
      */
-    .starci-core-link[data-grammar-link-size="inherit"] { font-size: inherit !important; line-height: inherit !important; }
-    .starci-core-link[data-grammar-link-size="sm"] { font-size: var(--grammar-text-sm) !important; line-height: var(--grammar-leading-sm) !important; }
-    .starci-core-link[data-grammar-link-size="md"] { font-size: var(--grammar-text-md) !important; line-height: var(--grammar-leading-md) !important; }
+    .starci-core-link { font-size: inherit !important; line-height: inherit !important; }
 
+    /* HeroUI v3's own link: no underline at rest, the underline on hover and press (the vendor's default), the anchor icon at the end. */
     .starci-core-link {
-        text-decoration-line: underline;
-        text-decoration-thickness: 1px;
-        text-underline-offset: 0.2em;
         overflow-wrap: anywhere;
     }
 
@@ -59,11 +55,6 @@
         overflow: visible;
     }
 
-    .starci-core-link:hover,
-    .starci-core-link[data-hovered="true"] {
-        text-decoration-thickness: 2px;
-    }
-
     .starci-core-link[data-grammar-current="true"] {
         text-decoration-line: none;
     }
@@ -76,17 +67,6 @@
 
     .starci-core-link[aria-disabled="true"] {
         text-decoration-line: none;
-    }
-
-    .starci-core-link-external-icon {
-        display: inline-flex;
-        margin-inline-start: 0.25rem;
-        vertical-align: -0.125em;
-    }
-
-    .starci-core-link-external-icon > svg {
-        width: 0.875em;
-        height: 0.875em;
     }
 
     /* ---------- Breadcrumbs ---------- */
@@ -408,6 +388,14 @@
         flex-direction: column;
         gap: var(--grammar-identity-gap);
         padding-block-start: 0.25rem;
+    }
+
+    /* A horizontal track in a narrow pane: a label stays on one line and is cut with an ellipsis rather than wrapping the track taller. */
+    .starci-core-stepper[data-grammar-stepper-orientation="horizontal"] .starci-core-step-label {
+        overflow: hidden;
+        max-inline-size: 100%;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .starci-core-step-label {
@@ -1300,7 +1288,19 @@
         gap: 0.5rem;
         font-weight: var(--grammar-weight-regular);
         line-height: var(--grammar-leading-md);
-        overflow-wrap: anywhere;
+        color: var(--muted);
+        font-size: var(--grammar-text-md);
+        /* The label breaks between words and keeps one or two lines; a word breaks only when it alone is wider than the cell. */
+        overflow-wrap: break-word;
+    }
+
+    .starci-core-description-stat-term > span {
+        min-width: 0;
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
     }
 
     .starci-core-description-figure {
@@ -1354,8 +1354,8 @@
         min-width: 0;
         margin: 0;
         color: var(--muted);
-        font-size: var(--grammar-text-md);
-        line-height: var(--grammar-leading-md);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
         overflow-wrap: anywhere;
     }
 
@@ -1375,6 +1375,26 @@
 
     @container starci-core-description-strip (min-width: 40rem) {
         .starci-core-description-list[data-grammar-description-layout="stat-strip"] .starci-core-description-pair {
+            flex-basis: 0;
+        }
+    }
+
+    /*
+     * FIVE CELLS (the figures ribbon, responsive law). Answering the strip's own width, in a card or a pane alike: below 30rem (a phone) two
+     * columns, the odd last cell spanning its row (2 + 2 + 1); from 30rem to 52rem (a tablet) three columns, 3 + 2 (two balanced rows, the
+     * second row's two cells share it; 2 + 2 + 1 would make three rows and a lone cell); from 52rem (a desktop) one row. Cells divide by the
+     * edge lines above: a vertical line between the cells of a row, a horizontal one between rows, none doubled and none on the outer edge.
+     */
+    .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figure-count="5"][data-grammar-figures-placement] .starci-core-description-pair { flex-basis: 50%; }
+
+    @container starci-core-description-strip (min-width: 30rem) {
+        .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figure-count="5"][data-grammar-figures-placement] .starci-core-description-pair {
+            flex-basis: calc(100% / 3);
+        }
+    }
+
+    @container starci-core-description-strip (min-width: 52rem) {
+        .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figure-count="5"][data-grammar-figures-placement] .starci-core-description-pair {
             flex-basis: 0;
         }
     }

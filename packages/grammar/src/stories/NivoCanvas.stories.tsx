@@ -59,7 +59,7 @@ export const Glyphs: Story = {
       </State>
       <State label="Button startGlyph" direction="row">
         <G.Button intent="commit" startGlyph="send">Send</G.Button>
-        <G.Button intent="alternative" startGlyph="pencil">Edit</G.Button>
+        <G.Button intent="alternative">Edit</G.Button>
         <G.Button intent="commit" startGlyph="send" isDisabled>Send</G.Button>
       </State>
     </Matrix>

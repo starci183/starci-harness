@@ -54,6 +54,10 @@ resolved row anatomy; empty and failed states are the region's [empty-state](emp
 - **Knowledge decides:** card or section, which row role, selection style, per-item intent, page size.
 - **App author decides:** items, keys, copy, sort and filter facts.
 
+## Row description
+`ListRowData.description` is a string (the muted description) or a node: inline text with 16px marks ("@chatbot · [logo] Telegram · [logo] Zalo"). A node is drawn at 12,
+muted, on one line directly under the name at the identity gap (not a row step below).
+
 ## Rules
 COLLECTION-1..4, BOUNDARY-2..3, BOUNDARY-7, FONT-9, OVERFLOW-4, LAYOUT-3. Lint: `single-child-card`, `starci-grammar/surface-in-surface`,
 `starci-grammar/row-title-link`, `starci-grammar/table-cell-type`, `starci-fe/selection-fill-no-check`,

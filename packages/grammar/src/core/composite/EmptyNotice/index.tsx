@@ -1,5 +1,4 @@
 import type { ReactNode } from "react"
-import type { ButtonIntent } from "../../buttonIntent.js"
 import { Button } from "../../leaf/Button/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
@@ -31,23 +30,35 @@ type EmptyNoticeMark =
         readonly artwork: EmptyNoticeArtwork
     }
 
-export type EmptyNoticeProps = NoChildren & EmptyNoticeMark & {
+/** The action's weight and its start icon: only the primary action (`commit`, the default) may carry one (the button-icon rule). */
+type EmptyNoticeAction =
+    | {
+        /** `commit` (default) is the region's one primary. */
+        readonly actionIntent?: "commit"
+        /** What the action does, at its start. Primary only. Not with `actionEndArrow` (a Button does something or leads somewhere, never both). */
+        readonly actionStartContent?: ReactNode
+    }
+    | {
+        /** `neutral` is the outlined button, for an empty notice in a secondary place (a rail, a side card) on a page whose primary already stands in its header. Text only. */
+        readonly actionIntent: "neutral"
+        readonly actionStartContent?: never
+    }
+
+export type EmptyNoticeProps = NoChildren & EmptyNoticeMark & EmptyNoticeAction & {
     readonly message: string
     readonly description?: string
     readonly actionLabel?: string
-    /**
-     * The action's weight. `commit` (default) is the region's one primary; `neutral` is the outlined button, for an empty
-     * notice in a secondary place (a rail, a side card) on a page whose primary already stands in its header.
-     */
-    readonly actionIntent?: Extract<ButtonIntent, "commit" | "neutral">
-    /** What the action does, at its start. Not with `actionEndArrow` (a Button does something or leads somewhere, never both). */
-    readonly actionStartContent?: ReactNode
     /** The action leads somewhere (opens the place where the first item is made): the button ends with Grammar's arrow. */
     readonly actionEndArrow?: boolean
     readonly isActionPending?: boolean
     readonly onAction?: () => void
     /** The read failed: the notice is a live alert with a warning mark, so a failure never reads as empty. The mark props are ignored. */
     readonly isError?: boolean
+    /**
+     * `card` (default): on the page ground the notice is one surface card. `frameless`: no border, background or shadow, for a notice that
+     * stands on the page ground or in a pane and is words on that ground (`data-grammar-empty-frame="none"`).
+     */
+    readonly frame?: "card" | "frameless"
 }
 
 /**
@@ -66,6 +77,7 @@ export const EmptyNotice = ({
     isActionPending = false,
     onAction,
     isError = false,
+    frame = "card",
 }: EmptyNoticeProps) => isError ? (
     <ErrorView error={{ message, ...(description === undefined ? {} : { description }), ...(actionLabel === undefined ? {} : { actionLabel }), ...(onAction === undefined ? {} : { onAction }) }} />
 ) : (
@@ -74,6 +86,7 @@ export const EmptyNotice = ({
         data-component="EmptyNotice"
         data-contract="GAP-3 PADDING-4"
         data-grammar-empty-mark={artwork === undefined ? "glyph" : "artwork"}
+        {...(frame === "frameless" ? { "data-grammar-empty-frame": "none" } : {})}
         className="starci-core-empty-notice"
     >
         {artwork === undefined ? null : <Mascot size="md" {...artwork} />}
@@ -84,9 +97,7 @@ export const EmptyNotice = ({
         </div>
         {actionLabel === undefined ? null : (
             <Button
-                intent={actionIntent}
-                size="sm"
-                {...(actionEndArrow ? { endArrow: true as const } : { startContent: actionStartContent })}
+                {...(actionEndArrow ? { size: "sm" as const, intent: actionIntent, endArrow: true as const } : actionIntent === "commit" && actionStartContent !== undefined ? { size: "md" as const, intent: actionIntent, startContent: actionStartContent } : { size: "sm" as const, intent: actionIntent })}
                 isPending={isActionPending}
                 {...(onAction === undefined ? {} : { onPress: onAction })}
             >

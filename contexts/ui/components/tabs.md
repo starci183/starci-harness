@@ -69,6 +69,12 @@ controlled selection and its panel.
   the URL are link tabs: every item carries its `href`, and a server page passes them as data with no
   `selectedKey` or `onSelect`; other tabs are controlled by `selectedKey` and `onSelect`.
 
+## The second layer
+The second underline layer is `Page header.subTabs`: inside the white header band, under the page tabs, on its own full-width separator, the same size
+as layer 1 (14, 40 high, selected weight 500, the 2px underline exactly on the separator) and flush with the band's left inset, the same x as layer 1, with
+no extra indent. It never stands on the pink well or in a pane body: lint `starci-grammar/tabs-in-well` refuses an underline `Tabs` written in the body of a
+`Page`, `Pane` or `PaneSection`.
+
 ## Rules
-STATE-6, CTA-1, ACCENT-3, HIERARCHY-3. Lint: `starci-grammar/tabs-switch-zone`, `starci-grammar/tabs-depth`,
+STATE-6, CTA-1, ACCENT-3, HIERARCHY-3. Lint: `starci-grammar/tabs-switch-zone`, `starci-grammar/tabs-depth`, `starci-grammar/tabs-in-well`,
 `starci-fe/no-primary-tabs-misuse`, `starci-grammar/page-tabs-in-header`. Proof: FOCUS-2 (arrow traversal), COLOR-3, UX-7 (tab survives reload).

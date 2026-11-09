@@ -56,7 +56,27 @@ rules:
         when: A Button leads somewhere
         assert: |-
           It takes `endArrow`; an arrow typed in its label or passed as end content is refused. A Button that does
-          something takes `startGlyph`; never both.
+          something takes `startGlyph` (primary only, case-2); never both.
+      - id: case-2
+        when: A Button carries a leading icon (`startGlyph`, `startContent`)
+        assert: |-
+          Only the primary Button (`intent="commit"`, the CTA) does. A neutral, alternative, dismiss or destructive Button, a
+          suggestion pill and a row action are text only. The arrow (`endArrow`) is not an icon under this rule, so any intent
+          may lead somewhere; `IconButton` is unaffected.
+  - id: LAYOUT-TWO-AXIS
+    title: A report page stacks its cards in one direction
+    governs: Card surfaces placed side by side.
+    cases:
+      - id: case-1
+        when: Card surfaces stand in the pink well of a report page
+        assert: |-
+          They stack in one vertical column, 24 apart. Side by side is allowed only for sibling cards of the same role and height
+          (figure cells, short equal cards). A card beside a column of cards, or cards of different kinds in one row, is refused.
+      - id: case-2
+        when: The page has a persistent selection or navigation column, or a full-height chat or editor
+        assert: |-
+          It is a workspace page, `Page chrome="panes"`: a grid of panes split by dividers, side panes white surfaces at full
+          height, never cards. The main pane may hold a pink well that follows case-1.
   - id: SUGGESTION-BUTTONS
     title: Suggestions and quick replies are a Cluster of neutral sm Buttons
     governs: Anything that suggests something to say or ask.
@@ -109,6 +129,25 @@ rules:
         assert: |-
           The page tabs (`Page header.tabs`) and one region set are the two layers; a third nested set is refused.
           Every tab is one size, so only the count of layers is judged.
+  - id: TABS-IN-WELL
+    title: The second tab layer stands in the white header band
+    governs: Underline Tabs in the body of a page or a pane.
+    cases:
+      - id: case-1
+        when: A page has a second layer of underline tabs under its page tabs
+        assert: |-
+          It is `Page header.subTabs`: inside the white header band, under layer 1, on its own full-width separator, the same size as layer 1
+          (14, 40 high, selected weight 500, the 2px underline exactly on the separator) and flush with the band's left inset, the same x as layer 1.
+          An underline Tabs written in the body of a Page, Pane or PaneSection (the pink well, a pane body) is refused.
+  - id: LINK-LOOK
+    title: A Link is HeroUI's own link and takes its size from the line
+    governs: The look of a Grammar Link.
+    cases:
+      - id: case-1
+        when: A Link stands in a line of text, a meta line or a caption
+        assert: |-
+          It is HeroUI v3's link: the primary colour, the underline on hover only, the anchor icon at the end. Its type size and leading are
+          inherited (14 in a body, 12 in meta or caption text). A size prop, a size class and an underline or decoration class are refused.
   - id: SINGLE-CHILD-CARD
     title: A table, list or chart standing alone is the surface
     governs: A SurfaceCard whose only content is a table, a list or a chart.
@@ -119,3 +158,13 @@ rules:
           The Grammar draws a standalone DataTable and every Section kind="list" as ONE frame (border, card radius), so the
           card is a second frame. The title sits above as a Section head and one caption sits below (Section caption, muted sm).
           A card groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions).
+  - id: NO-RAW-SCROLL
+    title: NIVO never shows scrollbars
+    governs: Scroll areas an app draws.
+    cases:
+      - id: case-1
+        when: Content scrolls in a pane, drawer, list, thread, tab strip, table or modal body
+        assert: |-
+          The scroll area is a Grammar scroller (`VerticalScrollRegion`, `HorizontalScrollRegion`, `PaneSection` with `scroll`):
+          the scrollbar is hidden, a fading edge (ScrollShadow behaviour) shows where content continues, and wheel, touch and
+          keyboard scrolling keep working. An app element with an `overflow-y-auto` or `overflow-auto` class is refused.

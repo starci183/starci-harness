@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.34.0 - 2026-11-09
+
+- Added: `tabs-in-well` (`FE_TABS_IN_WELL`, TABS-IN-WELL, error): an underline `Tabs` written in the body of a `Page`, `Pane` or `PaneSection` is refused; the second tab layer is
+  `Page header.subTabs`, in the white header band.
+- Added: `link-look` (`FE_LINK_LOOK`, LINK-LOOK, error): a `Link` with a `size` prop or a size, underline or decoration class is refused.
+- Changed: `button-icon-primary-only` also refuses a start icon on a `size="sm"` Button, the primary included.
+- Changed: released with the Grammar family at 0.34.0.
+
+## 0.33.0 - 2026-11-09
+
+- Added: `no-raw-scroll` (`FE_NO_RAW_SCROLL`, NO-RAW-SCROLL, error): an app element whose `className` holds `overflow-auto`, `overflow-y-auto`,
+  `overflow-x-auto` or an `overflow-*-scroll` class is refused; NIVO never shows scrollbars, so a scroll area is a Grammar scroller
+  (`VerticalScrollRegion`, `HorizontalScrollRegion`) or `PaneSection scroll`. `docs/no-raw-scroll.md`.
+- Changed: released with the Grammar family at 0.33.0.
+- Added: `button-icon-primary-only` (`FE_BUTTON_ICON_PRIMARY_ONLY`, BUTTON-ARROW case-2, error): only a `Button` whose `intent` is the literal
+  `"commit"` (the primary, the CTA) may set `startGlyph` or `startContent`; a neutral, alternative, dismiss or destructive Button, a Button
+  with no intent and one with a computed intent are refused. `endArrow` is not an icon under the rule and `IconButton` is not judged. The
+  Button type (Grammar 0.33.0) refuses the literal cases as well. `docs/button-arrow.md`.
+- Added: `layout-two-axis` (`FE_LAYOUT_TWO_AXIS`, LAYOUT-TWO-AXIS, error): a `Grid` or `Cluster` that puts a `SurfaceCard` beside a `Stack` of `SurfaceCard`s,
+  or `SurfaceCard`s of different `kind` side by side, is refused (a report page stacks cards in one direction). `Grid kind="main-rail"` is not judged. `docs/layout-two-axis.md`.
+- Changed: released with the Grammar family at 0.33.0.
+
 ## 0.32.0 - 2026-11-09
 
 - Versioned with Grammar 0.32.0 (every surface on the page ground is a card); no rule changes.

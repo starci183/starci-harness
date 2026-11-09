@@ -29,6 +29,15 @@
         padding: 0 var(--grammar-identity-gap);
     }
 
+    /* bodyInset="none": the body runs edge to edge across the sheet; block-end too when no footer follows it. */
+    .starci-core-drawer > .starci-core-overlay-body[data-grammar-body-inset="none"] {
+        margin-inline: calc(-1 * var(--grammar-overlay-inset));
+        padding: 0;
+    }
+    .starci-core-drawer > .starci-core-overlay-body[data-grammar-body-inset="none"]:last-child {
+        margin-block-end: calc(-1 * var(--grammar-overlay-inset));
+    }
+
     /* Buttons: the inline padding of the size step, one step less on the side a glyph stands on. */
     .starci-core-button[data-size="sm"] {
         padding-inline: var(--grammar-control-padding-inline-sm);

@@ -285,6 +285,19 @@ and rarely change sit closed in one disclosure card below the main task, its sum
 is for. In a panel offering several sources, each source sits with its own kind (a cloud picker a secondary button under
 the drop zone, links a list of inputs with an "add" command), with no separate staging step.
 
+### LAYOUT-5 One axis in a report, panes in a workspace
+A page is one of two frame types, declared by `Page layout="report" | "workspace"` (which `chrome` carries: `standard` is a report, `panes` and `bleed` are workspaces; a `layout` that disagrees with its `chrome` throws `PAGE_LAYOUT_CHROME_MISMATCH`), and never a mix. Ask: is there a persistent selection column or a
+full-height chat or editor? Then B, else A.
+
+- **A, report page** (`chrome="standard"`): the page well is pink and card surfaces stack in ONE direction, a vertical column 24 apart.
+  Side by side only for sibling cards of the same role and height (figure cells, short equal cards). A card beside a column of
+  other cards is two axes and is refused, and so are cards of different kinds in one row. Lint `starci-grammar/layout-two-axis`.
+- **B, workspace page** (`chrome="panes"`, or `"bleed"` for a full-height chat or editor): a grid of panes split by dividers. Side
+  panes are white surfaces at full height, never cards. The main pane may contain a pink well that follows A inside it.
+
+Examples. Report: Tổng quan, Bàn làm việc, Kết nối, Tri thức, the runs list. Workspace: /chat, Đầu vào, Lượt chạy with the
+workflows rail, the run detail, Thiết lập with the NIVO chat, the graph editor.
+
 ### LAYOUT-2 Every region's owner is a published composition
 Tracks, slots and bounds belong to a published composition (`WorkspaceShell`, `Page`, `Grid kind="main-rail"`, `PaneGrid`); the spec
 names only its props. No vendor grid and no width arithmetic owns a region; a missing composition is a gap. A family
@@ -327,6 +340,22 @@ breakpoint governs a region a composition owns. Values belong to the composition
 
 ### RESPONSIVE-3 One branch at a time
 Exactly one form of a composition exists at a time; the other leaves no layout or accessibility footprint.
+
+### RESPONSIVE-5 The page tiers
+Grammar owns every breakpoint of a page, through `Page layout` and `PaneGrid`; an app writes no media query. Desktop is from 1280, tablet 768
+to 1279, phone below 768. Type stays 14 / 12 at every tier. Page inset 32 / 24 / 16; the gap between a report page's cards 24, 16 on a phone
+(`--grammar-card-gap`; both are 12 on a phone until the spacing scale 0 4 8 12 24 32 gains a 16 step); content at most 1280 wide (`--grammar-content-max`).
+
+| Piece | Desktop | Tablet | Phone |
+| --- | --- | --- | --- |
+| Report page (A): figures cells (the ribbon answers its own width: 52rem and over one row, 30rem to 52rem three columns, below it two) | all in one row | 3 columns; five cells are 3 + 2 (two balanced rows; 2 + 2 + 1 would take three rows and strand one cell) | 2 columns; an odd last cell spans the full row (five cells are 2 + 2 + 1). Lines follow the grid: vertical between the cells of a row, horizontal between rows, none doubled. Each cell keeps its label (14 muted, one or two lines), value (20) and meta (12) |
+| Report page (A): sibling equal cards | side by side | stacked | stacked |
+| Report page (A): DataTable | table | table | a row list: the primary column is the title, the other columns merge into the description line (`priority="low"` columns fold under `collapseBelow`) |
+| Report page (A): tab strips | one line | one line | scroll horizontally |
+| Workspace (B): panes | selection pane, main pane and right aside all visible | the aside becomes a Drawer opened by a header button | one pane at a time: choosing in the list opens the detail full screen with a back button; chat is the thread full screen with the composer pinned to the bottom; the aside is a bottom sheet |
+| App sidebar | collapses to icons | icons | a menu button (the drawer) |
+| A page-level primary action | in the header | in the header | pinned to the bottom (`PinnedActionBar`) |
+| FlowGraph | drawn | drawn | not shown: the app passes the step list in its place (Grammar draws no graph below 768) |
 
 ### RESPONSIVE-4 Pressure that is not width
 Zoom, text scaling, translation growth, the virtual keyboard and safe areas recompose the layout; no fixed text

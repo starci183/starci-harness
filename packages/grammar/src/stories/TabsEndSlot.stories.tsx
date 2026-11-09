@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import * as G from '../common/index.js';
-import { Matrix, State, PlusGlyph } from './fixtures.js';
+import { Matrix, State } from './fixtures.js';
 
 const meta: Meta = { title: 'Navigation & Data/Tabs end slot' };
 export default meta;
@@ -25,7 +25,7 @@ const Strip = ({ kind, items = regions, id }: { readonly kind: 'views' | 'filter
       selectedKey={selectedKey}
       onSelect={setSelectedKey}
       items={items}
-      end={<G.Button intent="alternative" size="sm" startContent={<G.Icon source={PlusGlyph} usage="leading" />}>Add region</G.Button>}
+      end={<G.Button intent="alternative" size="sm">Add region</G.Button>}
     />
   );
 };

@@ -5,6 +5,7 @@ import { Avatar as HeroAvatar, Badge as HeroBadge } from "@heroui/react"
 import { CpuChipIcon } from "@heroicons/react/16/solid"
 import { Avatar as DiceAvatar, Style } from "@dicebear/core"
 import initials from "@dicebear/styles/initials.json" with { type: "json" }
+import { avatarSproutUri } from "./sprout.js"
 import { useMemo, type CSSProperties, type ReactNode } from "react"
 import { STARCI_CORE_DNA } from "../../dna.js"
 import { navigationClassName } from "../../navigationClassNames.js"
@@ -23,11 +24,16 @@ export type AvatarProps = NoChildren & {
     /** Free-text person or entity name; agents follow the same initials rule. */
     readonly name: string
     readonly src?: string
-    /** Stable identity id determines the DiceBear initials background; otherwise `name` does. */
+    /** Stable identity id seeds the generated mark (the sprout); otherwise `name` does. The same seed always draws the same image. */
     readonly seed?: string
     readonly kind?: AvatarKind
-    /** Custom uploaded-image fallback; otherwise the same DiceBear initials image remains. */
+    /** Custom uploaded-image fallback; otherwise the generated mark remains. */
     readonly fallback?: ReactNode
+    /**
+     * What an avatar with no `src` draws. `sprout` (default): a DiceBear Sprouts image seeded by the name, for a person, an agent, a product or a
+     * shop alike. `initials`: the explicit opt-in, the name's first letters.
+     */
+    readonly fallbackMark?: "sprout" | "initials"
     readonly size?: AvatarSize
     /** Circle by default; square keeps an uploaded brand mark un-clipped and contained. */
     readonly shape?: AvatarShape
@@ -64,6 +70,8 @@ export const avatarDataUri = (name: string, seed?: string, text = avatarInitials
                     literal: {
                         elements: [{
                             ...avatarStyleDefinition.components.letters.variants.double.elements[0],
+                            // Two wide capitals ("MW") at the style's size of 50 run past the circle; 40 keeps both letters inside it.
+                            attributes: { ...avatarStyleDefinition.components.letters.variants.double.elements[0]?.attributes, "font-size": "40", dy: "14.2" },
                             children: [{ type: "text", value: text }],
                         }],
                     },
@@ -80,6 +88,12 @@ export const avatarDataUri = (name: string, seed?: string, text = avatarInitials
     }).toDataUri()
 }
 
+/** The default mark of an avatar with no image: a sprout seeded by the name. The avatar's own shape clips it (circle or rounded square). */
+export const AvatarSproutImage = ({ name, seed }: { readonly name: string; readonly seed?: string }) => {
+    const imageSrc = useMemo(() => avatarSproutUri(name, seed), [name, seed])
+    return <img alt="" aria-hidden="true" className="starci-core-avatar-initials starci-core-avatar-sprout" src={imageSrc} style={{ "--starci-avatar-initials-src": `url("${imageSrc}")` } as CSSProperties} />
+}
+
 /** The generated image also fills the loading/error fallback; its contrast is independent of page theme. */
 export const AvatarInitialsImage = ({ name, seed, text }: { readonly name: string; readonly seed?: string; readonly text?: string }) => {
     const imageSrc = useMemo(() => avatarDataUri(name, seed, text), [name, seed, text])
@@ -88,10 +102,10 @@ export const AvatarInitialsImage = ({ name, seed, text }: { readonly name: strin
 }
 
 /** All entry points use the same local initials generator; an uploaded src wins. */
-export const avatarParts = (name: string, src: string | undefined, fallback: ReactNode | undefined, seed?: string) => <>
+export const avatarParts = (name: string, src: string | undefined, fallback: ReactNode | undefined, seed?: string, mark: "sprout" | "initials" = "sprout") => <>
     {src === undefined ? null : <HeroAvatar.Image alt="" src={src} />}
     <HeroAvatar.Fallback aria-hidden="true" data-grammar-avatar-fallback="true">
-        {src !== undefined && fallback !== undefined ? fallback : <AvatarInitialsImage name={name} {...(seed === undefined ? {} : { seed })} />}
+        {src !== undefined && fallback !== undefined ? fallback : mark === "initials" ? <AvatarInitialsImage name={name} {...(seed === undefined ? {} : { seed })} /> : <AvatarSproutImage name={name} {...(seed === undefined ? {} : { seed })} />}
     </HeroAvatar.Fallback>
 </>
 
@@ -117,7 +131,7 @@ export const AvatarAgentBadge = ({ children, kind, size, renderedScale = 1, clas
 )
 
 /** Uploaded image or local DiceBear initials, with the same person name rule for an AI agent (A11Y-2). */
-const AvatarInner = ({ name, src, seed, kind = "person", fallback, size = "md", shape = "circle", isDecorative = false, isCurrent = false, tone = "default", isLoading = false }: AvatarProps) => {
+const AvatarInner = ({ name, src, seed, kind = "person", fallback, fallbackMark = "sprout", size = "md", shape = "circle", isDecorative = false, isCurrent = false, tone = "default", isLoading = false }: AvatarProps) => {
     const avatarClassName = "starci-core-avatar"
     if (isLoading) return (
         <span aria-hidden="true" className={"starci-core-avatar starci-core-avatar-skeleton"}
@@ -135,7 +149,7 @@ const AvatarInner = ({ name, src, seed, kind = "person", fallback, size = "md", 
                 size={vendorAvatarSize(size)}>
                 {tone === "accent" && src === undefined
                     ? <HeroAvatar.Fallback aria-hidden="true" data-grammar-avatar-fallback="true"><span className="starci-core-avatar-letters">{avatarInitials(name)}</span></HeroAvatar.Fallback>
-                    : avatarParts(name, src, fallback, seed)}
+                    : avatarParts(name, src, fallback, seed, fallbackMark)}
             </HeroAvatar>
         </AvatarAgentBadge>
     )

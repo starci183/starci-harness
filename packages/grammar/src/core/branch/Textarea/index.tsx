@@ -3,7 +3,8 @@
 import { withRegionLoading } from "../../regionScope.js"
 import { useFieldVariant } from "../../surfaceContext.js"
 import { TextArea as HeroTextArea, TextField as HeroTextField } from "@heroui/react"
-import { useId, useMemo, useState, type ClipboardEvent, type KeyboardEvent } from "react"
+import { useEffect, useId, useMemo, useState, type ClipboardEvent, type KeyboardEvent } from "react"
+import { IconButton } from "../../leaf/IconButton/index.js"
 import {
     FieldDescription,
     FieldErrorText,
@@ -39,12 +40,29 @@ export type TextareaMentions = {
     readonly onSelect?: (option: TextareaMentionOption) => void
 }
 
+/** The send button of a chat composer. */
+export type TextareaSend = {
+    /** Accessible name of the icon button, e.g. "Send message". */
+    readonly label: string
+    readonly onPress: () => void
+    readonly isDisabled?: boolean
+    readonly isPending?: boolean
+}
+
+/** A chat composer (every chat) starts at 2 lines, about 64px. */
+export const COMPOSER_MIN_ROWS = 2
+/** A chat composer grows with its text up to 6 lines and then scrolls. */
+export const COMPOSER_MAX_ROWS = 6
+
 export type TextareaProps = NoChildren & FieldControlProps & {
     readonly id?: string
     readonly placeholder?: string
     readonly value?: string
     readonly defaultValue?: string
-    /** Initial visible lines. The field still grows with the reader's own resize. */
+    /**
+     * Initial visible lines (default 4). A chat composer (a Textarea with `onSubmitShortcut`) ignores it: it always starts at
+     * `COMPOSER_MIN_ROWS` lines (2, about 64px) and grows with its text up to `COMPOSER_MAX_ROWS` (6), then scrolls.
+     */
     readonly rows?: number
     /**
      * Initial unresolved content (knowledge STATE-8), with skeleton parity: the ready anatomy at the same props (label,
@@ -61,6 +79,11 @@ export type TextareaProps = NoChildren & FieldControlProps & {
      * instead of breaking the line; Shift+Enter still breaks the line.
      */
     readonly onSubmitShortcut?: () => void
+    /**
+     * Chat composer send button, drawn inside the box at the bottom end of the field so it stays at the bottom as the box
+     * grows. Use it with `onSubmitShortcut`; the same `onPress` should run for both.
+     */
+    readonly send?: TextareaSend
     readonly mentions?: TextareaMentions
     /** Focus left the textarea. */
     readonly onBlur?: () => void
@@ -112,6 +135,7 @@ const TextareaControl = ({
     value,
     defaultValue,
     rows = 4,
+    send,
     maxLength,
     minLength,
     onValueChange,
@@ -187,6 +211,20 @@ const TextareaControl = ({
         }
     }
 
+    const isComposer = onSubmitShortcut !== undefined
+    // A composer grows with its text: the box takes its content height between the 2-line floor and the 6-line ceiling.
+    useEffect(() => {
+        if (!isComposer) return
+        const control = document.getElementById(controlId)
+        if (!(control instanceof HTMLTextAreaElement)) return
+        const style = getComputedStyle(control)
+        const line = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.5
+        const chrome = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom) + Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth)
+        control.style.blockSize = "auto"
+        const fit = Math.min(Math.max(control.scrollHeight + (style.boxSizing === "border-box" ? Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth) : 0), COMPOSER_MIN_ROWS * line + chrome), COMPOSER_MAX_ROWS * line + chrome)
+        control.style.blockSize = `${fit}px`
+    }, [isComposer, controlId, value, length])
+
     const activeId = isOpen ? `${listId}-${suggestions[active]?.id ?? ""}` : undefined
 
 
@@ -220,7 +258,8 @@ const TextareaControl = ({
             <div className="starci-core-textarea-anchor">
                 <HeroTextArea
                     id={controlId}
-                    rows={rows}
+                    rows={isComposer ? COMPOSER_MIN_ROWS : rows}
+                    {...(isComposer ? { "data-grammar-composer": "true" } : {})}
                     {...(placeholder === undefined ? {} : { placeholder })}
                     className="starci-core-textarea-control"
                     data-grammar-field-control="true"
@@ -244,6 +283,19 @@ const TextareaControl = ({
                             ...(activeId === undefined ? {} : { "aria-controls": listId, "aria-activedescendant": activeId }),
                         })}
                 />
+                {send === undefined ? null : (
+                    <span className="starci-core-textarea-send" data-grammar-composer-send="true">
+                        <IconButton
+                            glyph="send"
+                            intent="commit"
+                            size="sm"
+                            label={send.label}
+                            onPress={send.onPress}
+                            {...(send.isDisabled === undefined ? {} : { isDisabled: send.isDisabled })}
+                            {...(send.isPending === undefined ? {} : { isPending: send.isPending })}
+                        />
+                    </span>
+                )}
                 {mentions === undefined || !isOpen ? null : (
                     <ul id={listId} role="listbox" aria-label={mentions.label} className="starci-core-mention-list" data-grammar-mention-list="true">
                         {suggestions.map((option, index) => (
