@@ -115,12 +115,21 @@ export type DataTableProps<Row extends DataTableRow> = NoChildren & DataTableRow
     /** Container inline size in px below which `low` priority columns collapse into the row. Default 640. */
     readonly collapseBelow?: number
     /**
-     * `card` (default): the table standing alone sits in ONE card (white, the card radius, a 1px separator edge and the card shadow) and keeps
-     * HeroUI's native look inside it: the grey wrapper with the heading row on it and the rows on a white rounded body (the single-child-card
-     * law: never wrap a lone table in a SurfaceCard; title it with a Section head and put one `caption` under it). `none`: plain hairline
-     * rows under a muted heading with no container paint, for a table inside a card (full bleed) that must not be a surface inside a surface.
+     * `card` (default): the table standing alone IS the card (0.36.0, HeroUI v3's native primary look): a grey frame (`--surface-secondary`)
+     * at the card radius with the soft card shadow and no border, the heading row on the grey (12, muted), thin grey gutters either side of a
+     * WHITE rounded body whose rows are divided by hairlines, and the `footer` inside the grey below the body. There is no wrapper around it
+     * (the single-child-card law: never wrap a lone table in a SurfaceCard; title it with a Section head and put one `caption` under it).
+     * `frame`: the same grey frame and white body with no radius, shadow or edge of its own, for a host that is itself the card (a
+     * `SurfaceCard kind="table"`). `none`: plain hairline rows under a muted heading with no container paint, for a table inside a card
+     * (full bleed) that must not be a surface inside a surface.
      */
-    readonly surface?: "card" | "none"
+    readonly surface?: "card" | "frame" | "none"
+    /**
+     * The footer slot (0.36.0), drawn inside the grey frame under the white body: a `Pagination` with its `summary` ("1-4 of 8 results") puts the
+     * summary at the start and the pages at the end. Hidden while the table is loading or failed. Not drawn by `surface="none"`'s hairline rows' paint,
+     * only laid out in a row below them.
+     */
+    readonly footer?: ReactNode
 }
 
 /** The vendor row part filters aria-hidden out of its props, so the skeleton rows take it by ref (knowledge STATE-8). */
@@ -245,6 +254,7 @@ export const DataTable = <Row extends DataTableRow>({
     onRowAction,
     collapseBelow = DEFAULT_COLLAPSE_BELOW,
     surface = "card",
+    footer,
 }: DataTableProps<Row>) => {
     const rows: ReadonlyArray<Row> = groups === undefined ? flatRows ?? [] : groups.flatMap((group) => group.rows)
     const scrollRef = useRef<HTMLDivElement>(null)
@@ -305,7 +315,7 @@ export const DataTable = <Row extends DataTableRow>({
         <HeroTable
             aria-busy={isLoading || undefined}
             className="starci-core-data-table"
-            variant={surface === "card" ? "primary" : "secondary"}
+            variant={surface === "none" ? "secondary" : "primary"}
             data-grammar-table-surface={surface}
             data-component="DataTable"
             data-tier="branch"
@@ -438,9 +448,10 @@ export const DataTable = <Row extends DataTableRow>({
                     </HeroTable.Body>
                 </HeroTable.Content>
             </HeroTable.ScrollContainer>
+            {footer === undefined || isLoading || failed ? null : <HeroTable.Footer className="starci-core-data-table-footer" data-grammar-table-footer="true">{footer}</HeroTable.Footer>}
         </HeroTable>
     )
-    // A table standing alone sits in ONE card (white, card radius, 1px separator edge, card shadow) and keeps HeroUI's native look inside it
-    // (the grey wrapper with the header row, the rows on a white rounded body). Nested in a surface the card drops its shadow (CSS).
-    return surface === "card" ? <div className="starci-core-data-table-card" data-grammar-table-card="true">{table}</div> : table
+    // The table IS the card (HeroUI's primary look: the grey frame, the heading row on it, a white rounded body, the footer in the grey):
+    // no wrapper, no border. Nested in a surface the frame drops its shadow (CSS).
+    return table
 }

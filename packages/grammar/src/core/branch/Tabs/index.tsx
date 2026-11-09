@@ -22,9 +22,16 @@ export type TabItem = {
     readonly id: string
     readonly label: string
     readonly leading?: ReactNode
-    /** How many items the view holds, after the label. `0` stays visible; leave it out while the count is unknown. */
+    /**
+     * How many items the view holds, drawn as a 12px chip after the label (0.36.0), never as "· N" text in the label (lint `tab-count-chip`). Neutral (grey)
+     * for an ordinary quantity. Page tabs (layers 1 and 2) hide the chip when it is `0`; filter tabs inside a table or list show a grey `0`. Leave it out while
+     * the count is unknown.
+     */
     readonly count?: number
-    /** The view holds something that waits for the reader (to approve, to answer): its count reads in the danger tone. */
+    /**
+     * The count is work waiting for the owner (to handle, to approve, an error): its chip is pink (the accent soft pair). Only then; a plain quantity
+     * ("All 5") stays neutral, selected or not (0.36.0).
+     */
     readonly isAttention?: boolean
     /** Whether this tab is unavailable for selection or link navigation. */
     readonly isDisabled?: boolean
@@ -294,7 +301,9 @@ const TabsInner = (props: TabsProps) => {
     })
     const shownItems = !folds || renderAll ? items : items.filter((item) => !hiddenIds.has(item.id))
     const foldedItems = !folds || renderAll ? [] : items.filter((item) => hiddenIds.has(item.id))
-    const labelOf = (item: TabItem) => item.count === undefined || isLoading ? item.label : `${item.label} ${item.count}`
+    // A page tab (views) with nothing in it draws no chip; a filter tab keeps its grey 0.
+    const shownCount = (item: TabItem): number | undefined => item.count === undefined || (item.count === 0 && !isFilter && !isLoading) ? undefined : item.count
+    const labelOf = (item: TabItem) => shownCount(item) === undefined || isLoading ? item.label : `${item.label} ${item.count}`
 
     if (!isClientReady) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} {...frameData} data-grammar-tabs-client="pending" />
 
@@ -310,7 +319,7 @@ const TabsInner = (props: TabsProps) => {
             <span className={tabContentClassName} data-contract="GAP-2" data-grammar-tab-id={item.id}>
                 {item.leading}
                 <span className={tabLabelClassName} style={props.labelVisibility === "always" || item.leading == null ? { display: "inline" } : undefined}>{item.label}</span>
-                {item.count === undefined ? null : <span className="starci-core-tab-count" data-grammar-tab-count="true" {...(item.isAttention === true ? { "data-grammar-attention": "true" } : {})}>{isLoading ? <SkeletonPlaceholder>{item.count}</SkeletonPlaceholder> : item.count}</span>}
+                {shownCount(item) === undefined ? null : <span className="starci-core-tab-count" data-grammar-tab-count="true" {...(item.isAttention === true ? { "data-grammar-attention": "true" } : {})}>{isLoading ? <SkeletonPlaceholder>{item.count}</SkeletonPlaceholder> : item.count}</span>}
             </span>
             <HeroTabs.Indicator />
         </HeroTabs.Tab>

@@ -1,4 +1,4 @@
-import { EllipsisHorizontalIcon } from "@heroicons/react/16/solid"
+import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { DropdownMenu } from "../../branch/DropdownMenu/index.js"
 import { Avatar } from "../../leaf/Avatar/index.js"

@@ -17,7 +17,7 @@ import { IconButton } from "../../leaf/IconButton/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import { Link } from "../../leaf/Link/index.js"
 import { Skeleton, SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
-import { EllipsisHorizontalIcon } from "@heroicons/react/16/solid"
+import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline"
 import type { NoChildren } from "../../tier.js"
 import type { BadgeData, ItemAction, ItemLeading, ListRowData } from "../../surfaceCardData.js"
 

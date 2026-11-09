@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.36.0 - 2026-11-09 - HeroUI table look, the one-row section head, the scroll law, the pane measure, tab count chips
+
+- Changed (default): THE TABLE IS HEROUI v3's NATIVE LOOK (owner). A standalone `DataTable` (`surface="card"`, the default) is the card itself: the vendor's primary root, a grey frame
+  (`--surface-secondary`) at the new table radius (`--starci-core-table-radius`, 16) with the soft card shadow and NO border, the heading row on the grey (12, weight 500, muted), thin grey
+  gutters either side of a WHITE rounded body (`--starci-core-table-body-radius`, 12) whose rows are divided by hairlines. The wrapper card (`starci-core-data-table-card`, white, a
+  1px separator edge) and its `data-grammar-table-card` attribute are removed: no border and no double wrap. Column `align` / `isNumeric` keep right-aligning numbers.
+- Added: `DataTable footer` (a `ReactNode` slot): drawn inside the grey frame under the white body; pass a `Pagination` with its `summary` ("1-4 trong 8 ket qua") and the summary stands at the
+  start and the pages at the end. Hidden while the table loads or fails.
+- Added: `DataTable surface="frame"`: the same grey frame and white body with no radius, shadow or edge of its own, for a host that is the card. `surface="none"` keeps the plain hairline rows.
+- Changed (default): `SurfaceCard kind="table"` is the grey frame too (no border, the table drawn as `surface="frame"`); its `paging` footer zone stands in the grey with no seam, the summary at the start. API unchanged.
+- Changed (default): a table's heading row is 12 (it was 14); cells stay 14.
+- Changed (default): A SECTION HEAD IS ONE ROW (owner). At the start the label (14, weight 500; it was 18 / 600 for h2 only in the title scale) and an optional count chip (12, a pill on `--default`; it was a muted "(n)"); at the end
+  at most ONE thing: a navigation `Link variant="head"` or an info `IconButton`. `align-items` is centred. `description` is no longer drawn under the label: it is drawn as a caption (12, muted) BELOW the section's body,
+  before `caption` when both are given (the prop keeps its name). `caption` is 12 now (it was 14). `fact` and `meta` still draw (deprecated: a head holds one thing at its end).
+- Added: `Link variant="inline" | "head"` (type `LinkVariant`). `head` ends in an arrow `\→` that slides about 3px toward the end on hover and focus (`--grammar-link-arrow-travel`, mirrored in RTL, still under reduced motion); the
+  hover underline and the inherited size are the Link's own. `inline` (default) keeps the anchor icon.
+- Changed (default): THE SCROLL LAW. The sidebar and the page header band (breadcrumbs, title, tabs, sub-tabs) never scroll away: `Page`'s band and trail are sticky at the top of whatever scrolls
+  (`top: --starci-core-band-height`). Layout A (report): the pink well scrolls as one block under the band. Layout B (`chrome="panes"` / `"bleed"`): the page does not scroll (the fill box clips); each
+  pane scrolls on its own with no scrollbar and its head (a header band or a PaneHeader band) sticky, and a pane holding a scroll band (a chat thread, `PaneSection scroll`) keeps its head and composer fixed
+  while only the thread scrolls.
+- Changed (default): MEASURE-8 CORRECTED. The 80rem cap no longer caps the pane stack of every canvas pane: the grid and its side panes span the full width (the aside is flush to the end edge) and only the CONTENT of a pane
+  that holds cards is capped and centred inside that pane.
+- Added: `Pane content="cards" | "full"` (type `PaneContent`). `cards` (the default for a pane on the canvas): content capped at `--grammar-content-max` and centred in the pane. `full`: never capped (the default for a pane
+  on the surface). A pane that holds a chat thread (`PaneSection scroll role="log"`) or a `FlowGraph` is full unless it says `content="cards"`. `data-grammar-pane-content` exposes it.
+- Changed (default): a list in the white side pane (the aside) is a bordered list with no shadow, and so is a table frame there; the section-head rules apply in it unchanged.
+- Changed (default): TAB COUNTS ARE CHIPS (owner). The chip is 12 and grey always, selected or not ("All 5" no longer renders pink); it is pink (the accent soft pair) only for `isAttention`, work waiting for the owner
+  (it was the warning pair). Page tabs (layers 1 and 2, the `views` kind) hide the chip when `count` is 0; filter tabs keep a grey 0.
+- Changed (default): ONE CONTENT PER CARD, SURFACE ELEVATION FROM CONTEXT (owner). A `SurfaceCard` holds one content (a list, an input group, a table, a graph or a figures ribbon, with its own tab, search or pagination zones or a form
+  footer); several groups are several cards with a `Sublabel` above each. A card on the pink well has the card shadow and NO border (it had both); a surface on a white surface (a `Pane surface`, the aside, a `Drawer`, `Dialog`
+  or `Popover`) has the 1px separator border and no shadow. The same holds for the bordered list frame (`Section kind="list"`) and a framed `EmptyNotice`. Automatic from context: an app never chooses.
+- Changed (default): a `FlowGraph` inside a surface draws no frame of its own (`data-grammar-flow-framed="false"`: no edge, radius or ground) and no legend. New export `FlowGraphLegend` (`items`, `kindTones?`): the legend stands
+  under the card as chips, `<SurfaceCard note={<FlowGraphLegend items={...} />}>`. On the page the FlowGraph is framed and draws its own legend as before.
+- Changed (default): ICONS ARE OUTLINE ONLY (owner). Grammar's own icons import from `@heroicons/react/24/outline` (no 16/20 solid anywhere). A STATUS is a tone-coloured outline icon with no tile: the FlowGraph run overlay
+  draws outline check-circle (success), x-circle (danger), a spinning arrow (running, off under reduced motion), clock (warning) and minus-circle (skipped) at the card's corner with no disc, no ring and no fill; the
+  Stepper markers and the accordion step marks are outline rings in their tone (complete success, current accent, error danger, paused warning dashed, upcoming a hairline ring) instead of filled discs. An icon that stands alone
+  as the mark of a row, card, empty state or graph step keeps the icon tile (a soft-tone square holding an outline icon: `ListRow` leading, `EmptyNotice`, FlowGraph kinds); an icon inline with text is plain. `StatusDot` (a dot beside a
+  label or on an avatar) is unchanged. Apps: replace any solid icon import with the outline name.
+- Added: `count` and `isAttention` on the head of `SurfaceCard` (`CardHead`) and `isAttention` on `Section`: the 12px count chip stands right after the label (grey, pink only with `isAttention`) and coexists with `labelEnd`
+  (one head `Link variant="head"` or `IconButton`) at the end, so a head shows label + chip on the left and one Link on the right. `fact` still draws beside them.
+- Lint: `eslint-grammar-core` 0.36.0 adds `outline-icons-only`, `card-one-content`, `no-label-description`, `section-head-action` (`FE_SECTION_HEAD_ACTION`: a Button in a Section head `action`, or more than one command, is an error) and `tab-count-chip` (`FE_TAB_COUNT_CHIP`: a tab
+  label ending in a middle dot and a number is an error).
+- Migration for apps: (1) a `Section action={<Button>}` becomes `action={<Link variant="head" href>}` (navigation) or an `IconButton` (info); keep one. (2) `Section description` now reads under the body: shorten it to a caption; no
+  call changes. (3) A table wrapped in a bordered card by the app: drop the wrapper, the table is the card. (4) Paginated tables: pass `footer={<Pagination summary=... />}` instead of a Pagination under the table. (5) A `Pane` that
+  holds a chat, a graph or an editor needs nothing (full by default); a canvas pane of cards needs nothing; set `content="full"` for an editor on the canvas. (6) Tab labels "All \· 5" become `{ label: "All", count: 5 }`; add
+  `isAttention` only for the owner's waiting work. (7) Counts of 0 on page tabs disappear. (8) A card with a list and a details list becomes two cards with a `Sublabel` each; a `Section description` becomes `caption` and a card label `description` becomes `note` (both are lint errors); a FlowGraph legend in a card moves to `note={<FlowGraphLegend />}`. (9) Drop any app CSS that gave a card a border or a shadow: the Grammar decides from context.
+
 ## 0.35.0 - 2026-11-09 - FlowGraph steps: the owner-approved card map
 
 - Added: `FlowGraph layout="steps"`, the card map of a workflow (owner, 2026-11-09). Top-down by default, `direction="LR"` runs across; the canvas is the

@@ -1,7 +1,7 @@
 "use client"
 
 import { withRegionGeometry } from "../../regionScope.js"
-import { CheckIcon } from "@heroicons/react/16/solid"
+import { CheckIcon } from "@heroicons/react/24/outline"
 import { CheckCircleIcon } from "@heroicons/react/24/outline"
 import { Icon } from "../../leaf/Icon/index.js"
 import type { NoChildren } from "../../tier.js"

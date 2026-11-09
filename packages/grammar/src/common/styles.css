@@ -262,7 +262,7 @@
         display: flex;
         min-width: 0;
         flex-wrap: wrap;
-        align-items: flex-end;
+        align-items: center;
         justify-content: space-between;
         gap: var(--grammar-inline-gap);
     }
@@ -288,12 +288,13 @@
         text-wrap: balance;
     }
 
+    /* A section's label (0.36.0): 14, weight 500. The count chip beside it is 12. */
     :is(h2, h3, h4, h5, h6).starci-core-section-title {
         font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-md);
     }
 
-    .starci-core-section-description,
     .starci-core-media-caption {
         color: var(--muted);
         font-size: var(--grammar-text-sm);
@@ -319,20 +320,41 @@
         gap: var(--grammar-inline-gap);
     }
 
-    /* The section count (0.6.0): "(n)" in the title's line, muted and at the regular weight. */
-    /* The one caption under a section's body (a lone table, list or chart): muted sm, a row step below it like every Section child. */
+        /* The one caption under a section's body (a lone table, list or chart): muted sm, a row step below it like every Section child. */
     .starci-core-section-caption {
         margin: 0;
         color: var(--muted);
-        font-size: var(--grammar-text-sm);
-        line-height: var(--grammar-leading-sm);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
         overflow-wrap: anywhere;
     }
 
+    /* The section count chip (0.36.0): 12, muted, a pill on the default tone, in the label's row. The fact stays a muted run of the line. */
     .starci-core-section-count {
         color: var(--muted);
         font-weight: var(--grammar-weight-regular);
         font-variant-numeric: tabular-nums;
+    }
+
+    .starci-core-section-count[data-grammar-section-count][data-grammar-attention="true"] {
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
+    }
+
+    .starci-core-surface-label .starci-core-section-count[data-grammar-section-count] {
+        margin-inline-start: 0;
+    }
+
+    .starci-core-section-count[data-grammar-section-count] {
+        display: inline-flex;
+        align-items: center;
+        vertical-align: middle;
+        margin-inline-start: var(--grammar-inline-gap);
+        padding-inline: var(--grammar-inline-gap);
+        border-radius: var(--grammar-radius-pill);
+        background: var(--default);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
     }
 
     /* The trailing meta (0.6.0): the section's source time, FONT-1 muted, at the end of the row. */
@@ -1073,8 +1095,8 @@
         --starci-core-row-inset: var(--grammar-row-gap) var(--grammar-card-padding-inline);
         /* Stat strip cells in a card are boxes of their own: the card padding on every side. */
         --starci-core-strip-cell-inset: var(--grammar-card-padding-block) var(--grammar-card-padding-inline);
-        /* 0.32.0: a card on the page ground is the white surface at the card radius with a 1px separator edge AND the card shadow. */
-        border: 1px solid var(--separator);
+        /* 0.36.0 (SURFACE-ELEVATION): a card on the pink well has the card shadow and NO border; on a white surface (pane, aside, drawer, dialog, popover) it has the border and no shadow (below). Automatic from context. */
+        border: 0;
         box-shadow: var(--surface-shadow);
     }
 
@@ -1090,8 +1112,14 @@
         box-shadow: var(--surface-shadow);
     }
 
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) :is(.starci-core-surface, .starci-core-section-list, .starci-core-data-table-card, .starci-core-empty-notice) {
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) :is(.starci-core-surface, .starci-core-section-list, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-empty-notice) {
         box-shadow: none;
+    }
+
+    /* SURFACE-ELEVATION: a surface on a white surface is bordered, with no shadow. A framed notice stands bordered in a white pane, drawer, dialog or popover. */
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) :is(.starci-core-surface, .starci-core-section-list),
+    :is(.starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) .starci-core-empty-notice:not([data-grammar-error-layout]) {
+        border: 1px solid var(--separator);
     }
 
     .starci-core-surface-content {
@@ -1186,6 +1214,28 @@
     .starci-core-surface-zone[data-grammar-zone="paging"] {
         display: flex;
         justify-content: center;
+    }
+
+    /* A table card (0.36.0) IS HeroUI's grey frame: no edge, the grey ground, its footer zone in the grey with no seam, the summary at the start and the pages at the end. */
+    .starci-core-surface[data-grammar-surface-kind="table"] {
+        border: 0;
+        background: var(--surface-secondary);
+    }
+
+    .starci-core-surface[data-grammar-surface-kind="table"] .starci-core-surface-main ~ .starci-core-surface-zone {
+        border-block-start: 0;
+        padding-inline: var(--grammar-inset-nested);
+        padding-block: var(--grammar-row-gap) var(--grammar-inline-gap);
+    }
+
+    .starci-core-surface[data-grammar-surface-kind="table"] .starci-core-surface-zone[data-grammar-zone="paging"] {
+        display: block;
+    }
+
+    .starci-core-surface[data-grammar-surface-kind="table"] .starci-core-pagination-summary {
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
     }
 
     /* A tab strip's line IS the zone's divider: the strip stands on it with no padding below. */
@@ -1772,8 +1822,8 @@
     }
 
     /*
-     * A tab's count is a chip: neutral by default, the accent soft pair on the
-     * selected tab, the warning soft pair when the view waits for the reader (`isAttention`). The tabs keep their underline.
+     * A tab's count is a 12px chip (0.36.0): neutral (grey) always, selected or not; the pink accent soft pair ONLY when the number is work waiting
+     * for the owner (`isAttention`). The tabs keep their underline.
      */
     .starci-core-tab-count {
         display: inline-flex;
@@ -1791,8 +1841,7 @@
         font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-xs);
     }
-    [role="tab"][aria-selected="true"] .starci-core-tab-count { background: var(--accent-soft); color: var(--accent-soft-foreground); }
-    .starci-core-tab-count[data-grammar-attention="true"] { background: var(--warning-soft); color: var(--warning-soft-foreground); }
+    .starci-core-tab-count[data-grammar-attention="true"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
 
     /*
      * Filter tabs: the page tabs' underline one size smaller, inside the list pane under the search field. 13px labels, a tighter
@@ -1913,7 +1962,7 @@
      */
     .starci-core-section-list {
         --starci-core-row-inset: var(--grammar-row-gap) var(--grammar-inset);
-        border: 1px solid var(--separator);
+        border: 0;
         border-radius: var(--starci-core-surface-radius);
         background: var(--surface);
         color: var(--surface-foreground);
@@ -2195,17 +2244,19 @@
         inline-size: 1.5rem;
         block-size: 1.5rem;
         place-items: center;
+        border: 2px solid var(--separator);
         border-radius: var(--grammar-radius-pill);
-        background: var(--default);
+        background: transparent;
         color: var(--muted);
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-semibold);
     }
 
+    /* A step state is an outline ring in its tone, never a filled disc (0.36.0, ICONS-OUTLINE). */
     .starci-core-accordion-step > svg { inline-size: 1rem; block-size: 1rem; }
-    .starci-core-accordion-step[data-grammar-step-state="done"] { background: var(--success-soft); color: var(--success-soft-foreground); }
-    .starci-core-accordion-step[data-grammar-step-state="current"] { background: var(--accent); color: var(--accent-foreground); }
-    .starci-core-accordion-step[data-grammar-step-state="problem"] { background: var(--warning-soft); color: var(--warning-soft-foreground); }
+    .starci-core-accordion-step[data-grammar-step-state="done"] { border-color: var(--success); color: var(--success); }
+    .starci-core-accordion-step[data-grammar-step-state="current"] { border-color: var(--accent); color: var(--accent); }
+    .starci-core-accordion-step[data-grammar-step-state="problem"] { border-color: var(--warning); color: var(--warning); }
 
     .starci-core-accordion-title {
         min-width: 0;
@@ -3278,10 +3329,64 @@
      * report layout's own token, --grammar-content-max (80rem), centred in the well. The well's ground still fills the whole pane,
      * and the side (surface) panes and the header band are not capped.
      */
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane:not([data-grammar-pane-surface="true"]) .starci-core-pane-stack {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane[data-grammar-pane-content="cards"] .starci-core-pane-stack {
         inline-size: 100%;
         max-inline-size: var(--grammar-content-max);
         margin-inline: auto;
+    }
+
+    /*
+     * 0.36.0 (MEASURE-8 corrected): the grid and its side panes always span the full width (the aside is flush to the end edge); only the CONTENT of a pane that
+     * holds cards is capped and centred inside that pane. A pane that holds a chat thread or a graph canvas is full-bleed unless it says `content="cards"`.
+     */
+    .starci-core-pane:not([data-grammar-pane-content-explicit]):has([data-grammar-pane-section-thread="true"], [data-component="FlowGraph"]) .starci-core-pane-stack {
+        max-inline-size: none;
+        margin-inline: 0;
+    }
+
+    /*
+     * THE SCROLL LAW (0.36.0). The sidebar and the page header band (breadcrumbs, title, tabs, sub-tabs) never scroll away: the band and the trail are sticky at the
+     * top of whatever scrolls. Layout A (report): the pink well scrolls as one block under the band. Layout B (workspace): the page does not scroll; each
+     * pane scrolls on its own with its head (a header band or a PaneHeader band) sticky, and a pane that holds a scroll band (a chat thread) keeps its head and
+     * composer fixed while only the thread scrolls. Scrollbars are never drawn.
+     */
+    .starci-core-page > :is(.starci-core-page-header, .starci-core-page-trail) {
+        position: sticky;
+        z-index: 3;
+        top: var(--starci-core-band-height);
+    }
+
+    .starci-core-page-trail {
+        background: var(--background);
+    }
+
+    .starci-core-page[data-grammar-page-chrome] > .starci-core-page-body.starci-core-page-fill {
+        overflow: clip;
+    }
+
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])) {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+    }
+
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"]))::-webkit-scrollbar {
+        display: none;
+    }
+
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])) > .starci-core-pane-stack {
+        flex: 1 0 auto;
+    }
+
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])) .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child {
+        position: sticky;
+        z-index: 2;
+        top: 0;
+        background: var(--background);
+    }
+
+    .starci-core-pane[data-grammar-pane-surface="true"] .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child {
+        background: var(--surface);
     }
 
     .starci-core-pane-stack {
@@ -4183,7 +4288,7 @@
 
     /* An empty notice on the page itself (not inside a surface) is content: one --surface card at the surface radius, never bare text on the tinted page. */
     .starci-core-empty-notice:not([data-grammar-error-layout]):not(.starci-core-surface .starci-core-empty-notice) {
-        border: 1px solid var(--separator);
+        border: 0;
         border-radius: var(--starci-core-surface-radius);
         background: var(--surface);
     }

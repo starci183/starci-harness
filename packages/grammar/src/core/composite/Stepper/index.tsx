@@ -5,7 +5,7 @@ import type { ReactNode } from "react"
 import { moveFocusBetweenPeers } from "../../navigationKeys.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { Icon } from "../../leaf/Icon/index.js"
-import { CheckIcon } from "@heroicons/react/16/solid"
+import { CheckIcon } from "@heroicons/react/24/outline"
 import { StepperBar } from "./StepperBar.js"
 import type { NoChildren } from "../../tier.js"
 

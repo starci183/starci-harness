@@ -1,7 +1,7 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
-import { CheckIcon, DocumentDuplicateIcon, ExclamationCircleIcon } from "@heroicons/react/16/solid"
+import { CheckIcon, DocumentDuplicateIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline"
 import { InputGroup as HeroInputGroup, Label as HeroLabel, Tooltip as HeroTooltip } from "@heroui/react"
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { useOverlayContainer } from "../../overlayScope.js"

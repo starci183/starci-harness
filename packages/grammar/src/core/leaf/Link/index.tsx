@@ -7,6 +7,12 @@ import { Image, type ImageProps } from "../Image/index.js"
 import type { NoChildren } from "../../tier.js"
 
 export type LinkKind = "internal" | "external"
+/**
+ * `inline` (default): the anchor icon `↗` at the end of a text label, inside prose and meta. `head`: the section-head navigation (0.36.0): the label
+ * ends in an arrow `→` that slides about 3px toward the end on hover, with the hover underline and the inherited size. A `Section` head's `action`
+ * takes this variant for its one navigation command (lint `section-head-action`).
+ */
+export type LinkVariant = "inline" | "head"
 /*
  * A Link has no size (owner, 2026-11-09): it is HeroUI v3's own link (the underline on hover only, the primary colour, the anchor icon
  * `Link.Icon` at the end of its label) and its type size and
@@ -29,6 +35,8 @@ type MediaLinkContent = NoChildren & {
 
 export type LinkProps = (TextLinkContent | MediaLinkContent) & {
     readonly href: string
+    /** `inline` (default) ends in the anchor icon `↗`; `head` is the section-head link that ends in a sliding arrow `→`. Text links only. */
+    readonly variant?: LinkVariant
     /** `external` leaves the app in a new browsing context with `noopener noreferrer`. */
     readonly kind?: LinkKind
     /** Marks the destination the reader is on now (`aria-current="page"`). */
@@ -55,6 +63,7 @@ const LinkInner = ({
     media,
     label,
     href,
+    variant = "inline",
     kind = "internal",
     isCurrent = false,
     visited = "distinct",
@@ -81,6 +90,7 @@ const LinkInner = ({
             data-contract="ACTION-3 FOCUS-1"
             data-tier="leaf"
             data-grammar-link-kind={kind}
+            data-grammar-link-variant={media === undefined ? variant : "inline"}
             data-grammar-link-content={media === undefined ? "text" : "media"}
             data-grammar-link-size="inherit"
             {...(mediaSize === undefined ? {} : { "data-grammar-link-media-size": mediaSize.kind, style: mediaSize.style })}
@@ -92,7 +102,8 @@ const LinkInner = ({
             {...(onFollow === undefined ? {} : { onPress: () => onFollow() })}
         >
             {media === undefined ? children : <Image {...media} />}
-            {media === undefined ? <HeroLink.Icon aria-hidden="true" data-grammar-link-icon="true" /> : null}
+            {media === undefined && variant === "head" ? <span aria-hidden="true" className="starci-core-link-arrow" data-grammar-link-arrow="true">{"→"}</span> : null}
+            {media === undefined && variant === "inline" ? <HeroLink.Icon aria-hidden="true" data-grammar-link-icon="true" /> : null}
             {external && externalHint !== undefined ? <span className="starci-core-nav-visually-hidden">{` ${externalHint}`}</span> : null}
         </HeroLink>
     )

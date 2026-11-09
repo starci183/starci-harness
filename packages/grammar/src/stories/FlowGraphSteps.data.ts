@@ -1,4 +1,4 @@
-import { BanknotesIcon, DocumentTextIcon, MagnifyingGlassIcon, MegaphoneIcon, PencilSquareIcon, UserCircleIcon } from '@heroicons/react/16/solid';
+import { BanknotesIcon, DocumentTextIcon, MagnifyingGlassIcon, MegaphoneIcon, PencilSquareIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 import type * as G from '../common/index.js';
 
 /**

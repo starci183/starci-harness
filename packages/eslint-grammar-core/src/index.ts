@@ -4,6 +4,7 @@ import tsParser from "@typescript-eslint/parser"
 import { SOURCE_FILES, linterOptions as canonLinterOptions, scopeToPackages } from "@starci/eslint-canon-fe/lib/config.mjs"
 import { rules as appShellRules } from "./app-shell.ts"
 import { rules as buttonArrowRules } from "./button-arrow.ts"
+import { rules as cardContentRules } from "./card-content.ts"
 import { rules as chipLabelRules } from "./chip-label.ts"
 import { rules as choiceControlsRules } from "./choice-controls.ts"
 import { rules as drawingRules } from "./drawing.ts"
@@ -17,11 +18,13 @@ import { rules as linkLookRules } from "./link-look.ts"
 import { rules as mascotRules } from "./mascot.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
 import { rules as noRawScrollRules } from "./no-raw-scroll.ts"
+import { rules as outlineIconsRules } from "./outline-icons.ts"
 import { rules as pageRules } from "./page.ts"
 import { rules as pageBreadcrumbsRules } from "./page-breadcrumbs.ts"
 import { rules as pageHeaderRules } from "./page-header.ts"
 import { rules as paneRules } from "./pane.ts"
 import { rules as rowTitleLinkRules } from "./row-title-link.ts"
+import { rules as sectionHeadActionRules } from "./section-head-action.ts"
 import { rules as sameLineSizeRules } from "./same-line-size.ts"
 import { rules as statusColorsRules } from "./status-colors.ts"
 import { rules as surfaceCardRules } from "./surface-card.ts"
@@ -29,6 +32,7 @@ import { rules as surfaceDepthRules } from "./surface-depth.ts"
 import { rules as singleChildCardRules } from "./single-child-card.ts"
 import { rules as surfaceInSurfaceRules } from "./surface-in-surface.ts"
 import { rules as suggestionButtonsRules } from "./suggestion-buttons.ts"
+import { rules as tabCountChipRules } from "./tab-count-chip.ts"
 import { rules as tabsRules } from "./tabs.ts"
 import { rules as tableCellTypeRules } from "./table-cell-type.ts"
 import { rules as textRules } from "./text-rules.ts"
@@ -51,6 +55,7 @@ export type GrammarHfsView = {
 const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<Record<string, Rule.RuleModule>> }[] = [
   { law: "app-shell", rules: appShellRules },
   { law: "button-arrow", rules: buttonArrowRules },
+  { law: "card-content", rules: cardContentRules },
   { law: "chip-label", rules: chipLabelRules },
   { law: "choice-controls", rules: choiceControlsRules },
   { law: "drawing", rules: drawingRules },
@@ -64,18 +69,21 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "mascot", rules: mascotRules },
   { law: "menu-entries", rules: menuEntriesRules },
   { law: "no-raw-scroll", rules: noRawScrollRules },
+  { law: "outline-icons", rules: outlineIconsRules },
   { law: "page", rules: pageRules },
   { law: "page-breadcrumbs", rules: pageBreadcrumbsRules },
   { law: "page-header", rules: pageHeaderRules },
   { law: "pane", rules: paneRules },
   { law: "row-title-link", rules: rowTitleLinkRules },
   { law: "same-line-size", rules: sameLineSizeRules },
+  { law: "section-head-action", rules: sectionHeadActionRules },
   { law: "single-child-card", rules: singleChildCardRules },
   { law: "status-colors", rules: statusColorsRules },
   { law: "surface-card", rules: surfaceCardRules },
   { law: "surface-depth", rules: surfaceDepthRules },
   { law: "suggestion-buttons", rules: suggestionButtonsRules },
   { law: "surface-in-surface", rules: surfaceInSurfaceRules },
+  { law: "tab-count-chip", rules: tabCountChipRules },
   { law: "tabs", rules: tabsRules },
   { law: "table-cell-type", rules: tableCellTypeRules },
   { law: "text-rules", rules: textRules },

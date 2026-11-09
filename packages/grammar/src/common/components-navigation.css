@@ -34,6 +34,14 @@
      */
     .starci-core-link[data-grammar-link-content="text"] { color: var(--accent); }
 
+    /* The head variant (0.36.0): the label then an arrow that slides 3px toward the end on hover and focus; the underline on hover is the vendor's. */
+    .starci-core-link[data-grammar-link-variant="head"] { display: inline-flex; align-items: baseline; gap: 0.25rem; white-space: nowrap; }
+    .starci-core-link-arrow { display: inline-block; text-decoration: none; transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing); }
+    .starci-core-link[data-grammar-link-variant="head"]:is(:hover, [data-hovered="true"], :focus-visible) .starci-core-link-arrow { transform: translateX(var(--grammar-link-arrow-travel)); }
+    [dir="rtl"] .starci-core-link-arrow { transform: scaleX(-1); }
+    [dir="rtl"] .starci-core-link[data-grammar-link-variant="head"]:is(:hover, [data-hovered="true"], :focus-visible) .starci-core-link-arrow { transform: scaleX(-1) translateX(var(--grammar-link-arrow-travel)); }
+    @media (prefers-reduced-motion: reduce) { .starci-core-link-arrow { transition: none; } }
+
     .starci-core-link[data-grammar-link-content="media"] {
         display: inline-flex;
         min-inline-size: 0;
@@ -293,9 +301,9 @@
         flex: 0 0 auto;
         align-items: center;
         justify-content: center;
-        border: 2px solid transparent;
+        border: 2px solid var(--separator);
         border-radius: var(--grammar-radius-pill);
-        background: var(--surface-secondary);
+        background: transparent;
         color: var(--muted);
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-semibold);
@@ -303,27 +311,26 @@
     }
 
     .starci-core-step[data-grammar-step-state="complete"] .starci-core-step-marker {
-        border-color: var(--accent);
-        background: var(--accent);
-        color: var(--accent-foreground);
+        border-color: var(--success);
+        background: transparent;
+        color: var(--success);
     }
 
     /*
-     * Every marker is a pair that holds on any ground (U0-G9, approved): the current and complete steps are filled accent circles under
-     * the accent foreground, the upcoming steps filled `--surface-secondary` circles with a muted number and no ring, the error and
-     * paused steps keep their tone ring on `--surface`. A SurfaceCard treatment rebinds the surface pair and those text tokens
+     * Every marker is an OUTLINE ring (0.36.0, ICONS-OUTLINE: never a filled disc, no tile): complete is a success ring with its check, the
+     * current step an accent ring, the upcoming steps a hairline ring with a muted number, the error and paused steps their tone ring. A SurfaceCard treatment rebinds the surface pair and those text tokens
      * together, so the number keeps its contrast in every treatment (COLOR-5).
      */
     .starci-core-step[data-grammar-step-state="current"] .starci-core-step-marker {
         border-color: var(--accent);
-        background: var(--accent);
-        color: var(--accent-foreground);
+        background: transparent;
+        color: var(--accent);
     }
 
     /* A bare mark wears the tone itself; Offset Pop's light theme sets the --starci-core-mark-* hooks to the soft foreground. */
     .starci-core-step[data-grammar-step-state="error"] .starci-core-step-marker {
         border-color: var(--danger);
-        background: var(--surface);
+        background: transparent;
         color: var(--starci-core-mark-danger, var(--danger));
     }
 
@@ -331,7 +338,7 @@
     .starci-core-step[data-grammar-step-state="paused"] .starci-core-step-marker {
         border-style: dashed;
         border-color: var(--warning);
-        background: var(--surface);
+        background: transparent;
         color: var(--starci-core-mark-warning, var(--warning));
     }
 
@@ -931,20 +938,59 @@
     .starci-core-data-table[data-grammar-table-surface="none"] .table__row .table__cell { border-block-end: 1px solid var(--separator); background: transparent; }
 
     /*
-     * THE SINGLE-CHILD-CARD LAW (owner, 2026-11-09; refined 0.32.0). A table standing alone sits in ONE card: the wrapper below is white
-     * (`--surface`), at the card radius, with a 1px separator edge and the card shadow, clipped. Inside it the table keeps HeroUI's native
-     * primary look (the grey wrapper with the heading row on it, the rows on a white rounded body); this reverts the 0.29 flat frame.
-     * Lint `single-child-card` refuses a SurfaceCard around a lone table: the table is drawn as its own card.
+     * THE TABLE IS HEROUI v3's NATIVE LOOK (owner, 2026-11-09; 0.36.0). A table standing alone IS the card: the vendor's primary root, a grey frame
+     * (`--surface-secondary`) at the table radius with the soft card shadow and NO border, the heading row (12, muted) on the grey, thin grey
+     * gutters either side of a WHITE rounded body whose rows are divided by hairlines, and the footer (the summary at the start, the Pagination at the
+     * end) inside the grey below the body. There is no wrapper card (the 0.32 white card with a separator edge is retired). Lint `single-child-card`
+     * refuses a SurfaceCard around a lone table. `surface="frame"` is the same frame without radius, shadow or edge, for a host that is the card.
      */
-    .starci-core-data-table-card {
-        min-width: 0;
-        max-width: 100%;
-        border: 1px solid var(--separator);
-        border-radius: var(--starci-core-surface-radius);
-        background: var(--surface);
+    .starci-core-data-table:not([data-grammar-table-surface="none"]) {
+        --starci-core-table-gutter: 0.25rem;
+        background: var(--surface-secondary);
         color: var(--surface-foreground);
+        padding-inline: var(--starci-core-table-gutter);
+        padding-block-end: var(--starci-core-table-gutter);
+        border: 0;
+    }
+
+    .starci-core-data-table[data-grammar-table-surface="card"] {
+        border-radius: var(--starci-core-table-radius);
         box-shadow: var(--surface-shadow);
-        overflow: clip;
+    }
+
+    .starci-core-data-table[data-grammar-table-surface="frame"] {
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    /* The white body rounds inside the gutters: the frame radius less the gutter. */
+    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__body tr:first-child td:first-child { border-start-start-radius: var(--starci-core-table-body-radius); }
+    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__body tr:first-child td:last-child { border-start-end-radius: var(--starci-core-table-body-radius); }
+    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__body tr:last-child td:first-child { border-end-start-radius: var(--starci-core-table-body-radius); }
+    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__body tr:last-child td:last-child { border-end-end-radius: var(--starci-core-table-body-radius); }
+    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__body tr:last-child td { border-block-end: 0; }
+
+    /* Rows are divided by hairlines on the white body. */
+    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__row .table__cell { border-block-end: 1px solid var(--separator); }
+
+    /* The footer stands in the grey under the white body: its Pagination fills it, the summary at the start and the pages at the end. */
+    .starci-core-data-table-footer {
+        min-width: 0;
+        padding-inline: var(--grammar-inset-nested);
+        padding-block: var(--grammar-row-gap) var(--grammar-inline-gap);
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+    }
+
+    .starci-core-data-table-footer > * {
+        flex: 1 1 auto;
+    }
+
+    .starci-core-data-table-footer .starci-core-pagination-summary {
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
     }
 
     .starci-core-data-table-scroll {
@@ -991,14 +1037,14 @@
     }
 
     /*
-     * The type of a table (the final scale): the header 14 / 500 muted, a cell 14 / 400, the row-header cell (the row primary)
+     * The type of a table (the final scale): the header 12 / 500 muted on the grey (0.36.0), a cell 14 / 400, the row-header cell (the row primary)
      * 14 / 500. A Text in a cell takes the same steps (`Text isStrong` 14 / 500, `Text size="sm" tone="muted"` 13).
      */
     .starci-core-data-table .starci-core-data-table-column {
         color: var(--muted);
-        font-size: var(--grammar-text-md);
+        font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-medium);
-        line-height: var(--grammar-leading-md);
+        line-height: var(--grammar-leading-xs);
     }
 
     .starci-core-data-table .starci-core-data-table-cell {
@@ -2024,6 +2070,13 @@
     /* ---------- FlowGraph ----------
      * The structural base rules of React Flow, scoped to the graph so a host needs no @xyflow/react stylesheet import.
      * Its colours (edges, background, nodes) are replaced by grammar tokens below. */
+    /* No frame inside a frame (0.36.0): in a surface the figure keeps no edge, radius or ground of its own. */
+    .starci-core-flow-graph[data-grammar-flow-framed="false"] {
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+    }
+
     .starci-core-flow-graph {
         display: block;
         position: relative;
@@ -2470,6 +2523,7 @@
      * Padding is 8 / 12: the owner's 10 is off the spacing scale (0 4 8 12 16 24 32), so the block padding takes the step below.
      */
     .starci-core-flow-graph[data-grammar-flow-layout="steps"] { background: var(--background); }
+    .starci-core-flow-graph[data-grammar-flow-layout="steps"][data-grammar-flow-framed="false"] { background: transparent; }
     .starci-core-flow-graph[data-grammar-flow-layout="steps"] .react-flow { --xy-edge-stroke: var(--muted); --xy-edge-stroke-width: 1.5; }
     .starci-core-flow-graph[data-grammar-flow-layout="steps"] .react-flow__node { overflow: visible; }
 
@@ -2643,6 +2697,7 @@
     .starci-core-flow-graph-step[data-status="skipped"] { --starci-flow-status: var(--muted); --starci-flow-on-status: var(--surface); opacity: var(--grammar-opacity-faded); }
     .starci-core-flow-graph-step[data-status]:not([data-status="skipped"]) { border-color: var(--starci-flow-status); box-shadow: 0 0 0 var(--grammar-hairline) var(--starci-flow-status); }
 
+    /* A STATUS is a tone-coloured OUTLINE icon with no tile and no fill (0.36.0, ICONS-OUTLINE): outline check-circle in success, x-circle in danger, a spinning arrow for running. */
     .starci-core-flow-graph-step-status {
         position: absolute;
         inset-block-start: 0;
@@ -2652,11 +2707,17 @@
         justify-content: center;
         inline-size: var(--grammar-flow-status-size);
         block-size: var(--grammar-flow-status-size);
-        border-radius: var(--grammar-radius-round);
-        background: var(--starci-flow-status);
-        box-shadow: 0 0 0 var(--grammar-ring-width) var(--surface);
-        color: var(--starci-flow-on-status);
+        background: transparent;
+        color: var(--starci-flow-status);
         transform: translate(-35%, -35%);
+    }
+
+    .starci-core-flow-graph-step-status[data-status="running"] .starci-core-icon { animation: starci-core-flow-status-spin var(--grammar-loop-spin) var(--grammar-loop-easing) infinite; }
+
+    @keyframes starci-core-flow-status-spin { to { transform: rotate(360deg); } }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-flow-graph-step-status[data-status="running"] .starci-core-icon { animation: none; }
     }
 
     .starci-core-flow-graph-step-status .starci-core-icon { inline-size: var(--grammar-flow-status-glyph); block-size: var(--grammar-flow-status-glyph); }
@@ -2692,6 +2753,13 @@
         border-block-start: var(--grammar-hairline) solid var(--separator);
         background: var(--surface);
         list-style: none;
+    }
+
+    /* The legend under a card (0.36.0): chips on the ground, outside the card (no rule, no fill). */
+    .starci-core-surface-note .starci-core-flow-graph-legend {
+        padding-inline: 0;
+        border-block-start: 0;
+        background: transparent;
     }
 
     .starci-core-flow-graph-legend-item {

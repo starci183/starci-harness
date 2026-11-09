@@ -111,11 +111,11 @@
     }
 
     /* A table in a card puts its outer columns on the card's inline edge (16), so its text lines up with the card's body and zones. */
-    .starci-core-surface .starci-core-data-table :is(.starci-core-data-table-column, .starci-core-data-table-cell):first-child {
+    .starci-core-surface .starci-core-data-table[data-grammar-table-surface="none"] :is(.starci-core-data-table-column, .starci-core-data-table-cell):first-child {
         padding-inline-start: var(--grammar-card-padding-inline);
     }
 
-    .starci-core-surface .starci-core-data-table :is(.starci-core-data-table-column, .starci-core-data-table-cell):last-child {
+    .starci-core-surface .starci-core-data-table[data-grammar-table-surface="none"] :is(.starci-core-data-table-column, .starci-core-data-table-cell):last-child {
         padding-inline-end: var(--grammar-card-padding-inline);
     }
 }

@@ -38,7 +38,9 @@ import {
     radialPositions,
     type LanesLayout,
 } from "./layout.js"
+import { useSurfaceHost } from "../../surfaceContext.js"
 import { isBackEdge, portOfEdge, stepKindOf, stepsLayout, type StepsLayout } from "./steps.js"
+export { FlowGraphLegend } from "./stepsView.js"
 import { DEFAULT_STATUS_LABELS, FlowGraphBackEdge, FlowGraphLegend, FlowGraphStepEdge, FlowGraphStepView, STEP_KIND_TONES, stepAriaLabel, type StepNodeData } from "./stepsView.js"
 import type {
     FlowGraphDirection,
@@ -95,7 +97,7 @@ export type FlowGraphProps = NoChildren & {
      * teal or coral; an app that declares them (`GrammarToneRegistry`) maps `event`, `action` and `ask` to them here.
      */
     readonly kindTones?: Partial<Readonly<Record<FlowGraphStepKind, FlowGraphTone>>>
-    /** `steps` only: a legend row of kinds under the canvas, in the given order and words. */
+    /** `steps` only: a legend row of kinds under the canvas, in the given order and words. Drawn on the page only: inside a card it stands under the card as chips, `SurfaceCard note={<FlowGraphLegend items={...} />}`. */
     readonly legend?: ReadonlyArray<FlowGraphLegendItem>
     /** `steps` only: the words of the run statuses in the node's accessible name. Defaults to English. */
     readonly statusLabels?: Partial<Readonly<Record<FlowGraphRunStatus, string>>>
@@ -264,6 +266,10 @@ const HEADER_SIDE_GAP = COMMON_SPACING_PX[6]
  * keyboard focusable (Tab) and selectable with Enter or Space; a visually hidden list repeats the nodes for screen readers.
  * Contract: focus FOCUS-2, selection STATE-1, empty STATE-3.
  */
+/**
+ * A FlowGraph on the page is a framed figure. Inside a surface (a card, a pane, a drawer) it draws NO frame of its own (no frame inside a frame:
+ * `data-grammar-flow-framed="false"`) and no legend; the legend stands under the card as chips: `<SurfaceCard note={<FlowGraphLegend items={...} />}>`.
+ */
 const FlowGraphInner = ({
     label,
     nodes,
@@ -284,6 +290,8 @@ const FlowGraphInner = ({
     emptyLabel = "Nothing to show yet.",
     isLoading = false,
 }: FlowGraphProps) => {
+    // No frame inside a frame (0.36.0): in a surface the figure is unframed and its legend stands under the card (`SurfaceCard note`).
+    const isFramed = useSurfaceHost() === null
     const [ownSelectedId, setOwnSelectedId] = useState<string | null>(null)
     const currentId = selectedId === undefined ? ownSelectedId : selectedId
     const select = (id: string | null) => {
@@ -472,6 +480,7 @@ const FlowGraphInner = ({
         <figure
             aria-label={label}
             className="starci-core-flow-graph"
+            data-grammar-flow-framed={isFramed ? "true" : "false"}
             data-component="FlowGraph"
             data-contract="FOCUS-2 STATE-1 STATE-3"
             data-grammar-flow-direction={flowDirection}
@@ -531,7 +540,7 @@ const FlowGraphInner = ({
                             {edgeLabels.map((edge) => <li key={edge.id}>{edge.text}</li>)}
                         </ul>
                     )}
-                    {steps === null || legend === undefined || legend.length === 0 ? null : <FlowGraphLegend items={legend} kindTones={kindTones} />}
+                    {!isFramed || steps === null || legend === undefined || legend.length === 0 ? null : <FlowGraphLegend items={legend} kindTones={kindTones} />}
                 </>
             )}
         </figure>

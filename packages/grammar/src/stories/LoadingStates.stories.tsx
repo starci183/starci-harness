@@ -40,16 +40,16 @@ export const SectionStates: Story = {
     render: () => (
         <Matrix>
             <State label="Loading" direction="column">
-                <G.Section kind="list" title="Members" count={3} description="Everyone on the team." meta="Updated now" action={<G.Button size="sm" onPress={noop}>Invite</G.Button>} items={placeholderRows} empty={emptyLine} isLoading />
+                <G.Section kind="list" title="Members" count={3} description="Everyone on the team." meta="Updated now" action={<G.Link variant="head" href="#">Invite</G.Link>} items={placeholderRows} empty={emptyLine} isLoading />
             </State>
             <State label="Content" direction="column">
-                <G.Section kind="list" title="Members" count={3} description="Everyone on the team." meta="Updated now" action={<G.Button size="sm" onPress={noop}>Invite</G.Button>} items={rows} empty={emptyLine} />
+                <G.Section kind="list" title="Members" count={3} description="Everyone on the team." meta="Updated now" action={<G.Link variant="head" href="#">Invite</G.Link>} items={rows} empty={emptyLine} />
             </State>
             <State label="Error" direction="column">
-                <G.Section kind="list" title="Members" count={3} description="Everyone on the team." action={<G.Button size="sm" onPress={noop}>Invite</G.Button>} items={[]} empty={emptyLine} error={failure} />
+                <G.Section kind="list" title="Members" count={3} description="Everyone on the team." action={<G.Link variant="head" href="#">Invite</G.Link>} items={[]} empty={emptyLine} error={failure} />
             </State>
             <State label="Empty" direction="column">
-                <G.Section kind="list" title="Members" count={0} description="Everyone on the team." action={<G.Button size="sm" onPress={noop}>Invite</G.Button>} items={[]} empty={emptyLine} />
+                <G.Section kind="list" title="Members" count={0} description="Everyone on the team." action={<G.Link variant="head" href="#">Invite</G.Link>} items={[]} empty={emptyLine} />
             </State>
             <State label="Region: loading, then error" direction="column">
                 <G.Section title="Billing" description="Plan and invoices." isLoading><G.Text>Everything about billing.</G.Text></G.Section>

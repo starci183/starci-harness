@@ -4,13 +4,14 @@ import {
     ArrowPathIcon,
     ArrowsRightLeftIcon,
     BoltIcon,
+    CheckCircleIcon,
     CheckIcon,
     ClockIcon,
-    MinusIcon,
+    MinusCircleIcon,
     PlayIcon,
     QuestionMarkCircleIcon,
-    XMarkIcon,
-} from "@heroicons/react/16/solid"
+    XCircleIcon,
+} from "@heroicons/react/24/outline"
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, Handle, Position, type EdgeProps, type Node, type NodeProps } from "@xyflow/react"
 import { Link as RouterLink } from "react-aria-components"
 import { isValidElement, memo, type ReactNode } from "react"
@@ -44,11 +45,11 @@ const KIND_GLYPHS: Readonly<Record<FlowGraphStepKind, IconSource>> = {
 }
 
 const STATUS_GLYPHS: Readonly<Record<FlowGraphRunStatus, IconSource>> = {
-    done: CheckIcon,
+    done: CheckCircleIcon,
     running: ArrowPathIcon,
-    failed: XMarkIcon,
+    failed: XCircleIcon,
     waiting: ClockIcon,
-    skipped: MinusIcon,
+    skipped: MinusCircleIcon,
 }
 
 /** The words a status reads out when the app gives none (`statusLabels`). */
@@ -211,7 +212,7 @@ export const FlowGraphBackEdge = memo(({ sourceX, sourceY, targetX, targetY, mar
 FlowGraphBackEdge.displayName = "FlowGraphBackEdge"
 
 /** The kind legend under a `steps` graph: a small tile in each kind's tone and its name. */
-export const FlowGraphLegend = ({ items, kindTones }: { readonly items: ReadonlyArray<FlowGraphLegendItem>, readonly kindTones: Readonly<Record<FlowGraphStepKind, FlowGraphTone>> }) => (
+export const FlowGraphLegend = ({ items, kindTones = STEP_KIND_TONES }: { readonly items: ReadonlyArray<FlowGraphLegendItem>, readonly kindTones?: Readonly<Record<FlowGraphStepKind, FlowGraphTone>> }) => (
     <ul className="starci-core-flow-graph-legend" data-grammar-flow-legend="true">
         {items.map((item) => <LegendEntry key={item.kind} item={item} tone={kindTones[item.kind]} />)}
     </ul>

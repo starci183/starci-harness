@@ -181,9 +181,16 @@ export type CardHead = {
     readonly ariaLabel?: string
     /** One muted small line under the label, the title's own words (what the card holds, for whom). It stands 4 under the label. */
     readonly description?: string
-    /** The count or one short fact beside the label. */
+    /**
+     * How many items the card holds: a 12px count chip right after the label (0.36.0), grey. It stands on the left and coexists with `labelEnd` on the
+     * right (the law: label and count chip at the start, one head Link at the end).
+     */
+    readonly count?: number
+    /** The count is work waiting for the owner (to handle, to approve, an error): the chip is pink. Only then. */
+    readonly isAttention?: boolean
+    /** One short fact beside the label. */
     readonly fact?: string
-    /** The one action at the end of the label row. It takes the fact's place. */
+    /** The one action at the end of the label row: a `Link variant="head"` or an info `IconButton`. It stands at the end beside `count` and `fact`. */
     readonly labelEnd?: ReactNode
     /** Outline rank of the visible `label` (default 3): the rank below the nearest heading above the card. */
     readonly headingLevel?: SurfaceHeadingLevel

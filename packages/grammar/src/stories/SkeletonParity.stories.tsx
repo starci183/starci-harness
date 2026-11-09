@@ -314,8 +314,8 @@ const rows = (): ReadonlyArray<Pair> => [
     },
     {
         id: "section",
-        ready: <G.Section title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Button size="sm" onPress={noop}>Share</G.Button>}><G.Text>Everything the course covers.</G.Text></G.Section>,
-        loading: <G.Section title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Button size="sm" onPress={noop}>Share</G.Button>} isLoading><G.Text isLoading>Everything the course covers.</G.Text></G.Section>,
+        ready: <G.Section title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Link variant="head" href="#">Share</G.Link>}><G.Text>Everything the course covers.</G.Text></G.Section>,
+        loading: <G.Section title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Link variant="head" href="#">Share</G.Link>} isLoading><G.Text isLoading>Everything the course covers.</G.Text></G.Section>,
         width: "32rem",
     },
     {

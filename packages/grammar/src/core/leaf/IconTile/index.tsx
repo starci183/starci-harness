@@ -44,7 +44,7 @@ const TONE_CONTRACT: Partial<Record<IconTileBuiltInTone, string>> = {
     success: "SURFACE-5",
 }
 
-/** Filled icon plate with one owned size, radius, tone pair, and loading geometry. */
+/** Soft-tone icon tile (an outline icon in a plate) with one owned size, radius, tone pair, and loading geometry. */
 export const IconTile = ({
     source,
     artwork,

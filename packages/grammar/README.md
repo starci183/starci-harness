@@ -231,6 +231,13 @@ with a skeleton and loads nothing. A source Mermaid refuses becomes an error ins
 <MermaidDiagram label="Request flow" source={fence.value} errorTitle={t("diagramFailed")} />
 ```
 
+### Table frame, section head, scroll law, tab chips (0.36.0)
+
+- `DataTable` is HeroUI's native table: the grey frame is the card (radius 16, soft shadow, no border), the header row 12 muted on the grey, a white rounded body with hairline rows; `footer` takes a `Pagination` with its `summary`. `surface="frame"` is the same without its own radius or shadow (`SurfaceCard kind="table"` uses it); `surface="none"` stays plain.
+- A `Section` head is one row: label (14, 500) and a count chip at the start, at most one `Link variant="head"` (label then a sliding `→`) or one `IconButton` at the end. `description` is a caption below the body (12, muted). Lint: `section-head-action`.
+- The page header band is sticky; in a workspace page each pane scrolls on its own with its head sticky and no visible scrollbar. `Pane content="cards" | "full"`: only the content of a cards pane is capped at 80rem; chat and FlowGraph panes are full.
+- Tab counts are 12px chips, grey; pink only with `isAttention`; page tabs hide a 0. Lint: `tab-count-chip`.
+
 ## Family scope and the overlay portal rule
 
 A family paints only inside its root. Each family stylesheet is scoped to
@@ -698,7 +705,7 @@ refused (lint `no-raw-scroll`); use `VerticalScrollRegion`, `HorizontalScrollReg
 edge to edge across the sheet (the default `content` keeps the inset).
 
 **Composer, flush left, Sublabel, Link.** A `Textarea` with `onSubmitShortcut` is the chat composer: 2 lines minimum (about 64px), growing to 6, with `send` drawing the
-send button at the bottom end of the box. The page header band is full width with its text flush left at the page inset; the content in the pink well (report page and workspace main pane) is capped at 80rem and centred (MEASURE-8). An Avatar with no image draws a DiceBear Sprout seeded by its name (`fallbackMark="initials"` opts out). `Sublabel` is the 12 / 500 / muted
+send button at the bottom end of the box. The page header band is full width with its text flush left at the page inset; the content in the pink well (report page and workspace main pane) is capped at 80rem and centred (MEASURE-8; 0.36.0: only the content of a pane of cards is capped, the grid and side panes span the full width). An Avatar with no image draws a DiceBear Sprout seeded by its name (`fallbackMark="initials"` opts out). `Sublabel` is the 12 / 500 / muted
 group label above a card inside a section. `Link` is HeroUI's own link (primary colour, underline on hover, anchor icon) and inherits its size from the line; lint `link-look`.
 A `sm` Button never carries an icon. The second tab layer is `Page header.subTabs` (lint `tabs-in-well`).
 

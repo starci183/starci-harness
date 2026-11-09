@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.36.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.36.0; requires `@starci/eslint-grammar-core` 0.36.0, which adds `section-head-action` and `tab-count-chip`; no rule of this package changed.
+
 ## 0.35.0 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.35.0; requires `@starci/eslint-grammar-core` 0.35.0; no rule of this package changed.

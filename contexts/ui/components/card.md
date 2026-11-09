@@ -54,6 +54,20 @@ A card carries its own title, count, action and note: the title is its `label`, 
 and the note its `footer`. A `Section` whose only child is one card is a heading over one card and is refused (R354), as is a card whose `ariaLabel` repeats the section's title; several cards under one `Section`
 stay legal.
 
+## One content per card, elevation from context (0.36.0)
+A `SurfaceCard` holds exactly ONE content: a list, an input group (a form), a table, a graph or a figures ribbon, with its own controls (a tab, search or pagination zone, a form footer with Cancel and Save). Several groups are several cards,
+each with a `Sublabel` above it; items of the same kind stay in one list. No card inside a card (lint R340 `no-raised-surface-in-surface`); a card with more than one content, or a figures zone above another content, is refused by
+`starci-grammar/card-one-content`. A label has no description under it: a section's line is its `caption` and a card's line is its `note`, both under the card (lint `starci-grammar/no-label-description`). A legend (a FlowGraph's kinds)
+stands under the card as chips (`note={<FlowGraphLegend items />}`); a FlowGraph inside a card draws no frame of its own.
+
+Elevation is decided by context, never by the app (SURFACE-ELEVATION): a card on the pink well has the card shadow and NO border; a surface on a white surface (a `Pane surface`, the aside, a `Drawer`, `Dialog` or `Popover`) has the
+1px separator border and no shadow. The bordered list frame (`Section kind="list"`) and a framed `EmptyNotice` follow the same rule. The table frame (grey, shadow, no border) is the exception the owner set.
+
+## Icons are outline (0.36.0, ICONS-OUTLINE)
+Never a filled or solid icon (lint `starci-grammar/outline-icons-only` refuses a solid icon-set import anywhere). An icon that stands alone as the mark of a row, card, empty state or graph step gets an icon tile (a soft-tone square with an outline icon);
+an icon inline with text (a status beside a label, a search field, a button start icon, a link arrow, meta) is a plain outline icon at text size with no tile. A status is a tone-coloured outline icon with no tile (check-circle success,
+x-circle danger, a spinner for running): the FlowGraph run overlay, the Stepper and the accordion step marks follow it.
+
 ## Variants
 The face is the grammar's, and the card has one depth, raised. EVERY surface on the page ground is a card (0.32.0, owner 2026-11-09): the surface ground, the card radius, a 1px `--separator` border AND the card shadow, for `SurfaceCard` of every kind, form panels, the standalone `DataTable` (its own card wrapper, HeroUI's native grey-wrapper look kept inside), the `Section kind="list"` frame and a framed `EmptyNotice`. A surface nested in a card, pane, drawer, dialog or popover keeps the border and drops the shadow (the border is never doubled). Captions and titles stay outside the card. `check:type` pins it. A surface never stands inside another surface: a card in a
 card, in `Pane surface`, in a `Dialog`, `Drawer`, `AlertDialog` or `Popover` is refused by a development throw and R340

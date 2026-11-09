@@ -715,7 +715,7 @@ export const Section: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Region with count, trailing source meta and one page command" direction="column">
-        <G.Section title="Installations" count={2} meta="Inventoried at 10:00, 26 Sep 2026 (GMT+7)" description="Twelve short lessons." action={<G.Button intent="alternative" size="sm">Share</G.Button>}>
+        <G.Section title="Installations" count={2} meta="Inventoried at 10:00, 26 Sep 2026 (GMT+7)" description="Twelve short lessons." action={<G.Link variant="head" href="#">Share</G.Link>}>
           <G.SurfaceCard label="Grammar basics" headingLevel={3}><G.Text>Everything the course covers.</G.Text></G.SurfaceCard>
         </G.Section>
       </State>
@@ -750,7 +750,7 @@ export const Section: Story = {
         <G.Section kind="list" title="Customers" items={[]} empty={<G.EmptyNotice message="No customers yet." />} />
       </State>
       <State label="Loading (isLoading)" direction="column">
-        <G.Section kind="list" title="Customers" description="Everyone on a plan." meta="Updated now" action={<G.Button intent="alternative" size="sm">Share</G.Button>} items={[]} empty={null} isLoading />
+        <G.Section kind="list" title="Customers" description="Everyone on a plan." meta="Updated now" action={<G.Link variant="head" href="#">Share</G.Link>} items={[]} empty={null} isLoading />
       </State>
     </Matrix>
   ),

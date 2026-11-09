@@ -2,7 +2,7 @@
 
 import { withRegionLoading } from "../../regionScope.js"
 import { Avatar as HeroAvatar, Badge as HeroBadge } from "@heroui/react"
-import { CpuChipIcon } from "@heroicons/react/16/solid"
+import { CpuChipIcon } from "@heroicons/react/24/outline"
 import { Avatar as DiceAvatar, Style } from "@dicebear/core"
 import initials from "@dicebear/styles/initials.json" with { type: "json" }
 import { avatarSproutUri } from "./sprout.js"

@@ -32,6 +32,31 @@ export const why: Record<string, WhyEntry> = {
     en: "An underline `Tabs` in `<file>` is written in the body of a `Page`, `Pane` or `PaneSection`: on the pink well or in a pane.",
     fix: "The second tab layer sits in the white header band under the page tabs: `Page header={{ tabs, subTabs }}`, on its own full-width separator and flush with the band's left inset. Or make the views a `switch` zone or a filter zone of a card.",
   },
+  "section-head-action": {
+    code: "FE_SECTION_HEAD_ACTION",
+    en: "The `Section` head `action` in `<file>` holds a `Button` or more than one command.",
+    fix: "A section's head is one row: the label and an optional count chip at the start, at most ONE thing at the end. Navigation is a `Link variant=\"head\"` (the label then an arrow that slides on hover), an info is an `IconButton`. A command that does not navigate goes in the card or the page header.",
+  },
+  "tab-count-chip": {
+    code: "FE_TAB_COUNT_CHIP",
+    en: "A tab label in `<file>` carries its count as text (\"label \u00b7 N\").",
+    fix: "Give the tab item `count: N`; the tab draws a 12px chip, grey for a quantity. Add `isAttention: true` only when the number is work waiting for the owner (to handle, to approve, an error): that chip is pink.",
+  },
+  "card-one-content": {
+    code: "FE_CARD_ONE_CONTENT",
+    en: "A `SurfaceCard` in `<file>` holds more than one content, or a figures ribbon above another content.",
+    fix: "A card holds ONE content: a list, an input group, a table, a graph or a figures ribbon (with its own tab, search, pagination zones or a form footer). Several groups are several cards, each with a `Sublabel` above it; items of the same kind stay in one list.",
+  },
+  "no-label-description": {
+    code: "FE_NO_LABEL_DESCRIPTION",
+    en: "A `Section` or a labelled `SurfaceCard` in `<file>` has a `description` under its label.",
+    fix: "A label has no description under it. A section's line is its `caption`; a card's line is its `note`: both stand under the card or list, muted 12.",
+  },
+  "outline-icons-only": {
+    code: "FE_OUTLINE_ICONS_ONLY",
+    en: "`<file>` imports a solid icon set (`@heroicons/react/<size>/solid`).",
+    fix: "Icons are OUTLINE only: import the same name from `@heroicons/react/24/outline`. A standalone mark of a row, card, empty state or graph step sits in an `IconTile`; an icon inline with text is a plain outline icon, and a status is a tone-coloured outline icon with no tile.",
+  },
   "link-look": {
     code: "FE_LINK_LOOK",
     en: "A `Link` in `<file>` sets a `size` or a size, underline or decoration class.",

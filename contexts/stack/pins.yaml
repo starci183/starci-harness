@@ -18,12 +18,12 @@ pins:
   '@starci/nest-kit': {version: 0.2.2, group: starci, side: be, install: registry, why: "the module definition of every back-end module: defineConfigurableModule and defineCapabilityModule, one typed call per <x>.module-definition.ts"}
   '@starci/auth': {version: 0.6.0, group: starci, side: both, install: registry, why: "the sign-in of both editions: the lite server module with its sign-in providers, the full OIDC client of the identity provider with its issuer presets, the front-end clients, contracts and test doubles with the fake issuer; the only importer of the identity libraries"}
   '@starci/mail': {version: 0.2.0, group: starci, side: be, install: registry, why: "outgoing mail of a back end: the Mailer port over SMTP with timeouts, required STARTTLS, attachments, a shared SMTP target policy, coded errors, typed render helpers; the only importer of nodemailer"}
-  '@starci/grammar': {version: 0.35.0, range: '~0.35.0', group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
+  '@starci/grammar': {version: 0.36.0, range: '~0.36.0', group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
   '@starci/next-i18n': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the next-intl stack of a front end: defineI18n, the locale proxy, the navigation, the request config and the locale read of the [locale] layout; the app keeps its catalogs"}
   '@starci/eslint-canon-be': {version: 3.21.0, range: '~3.21.0', group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
   '@starci/eslint-canon-fe': {version: 9.16.10, range: '~9.16.10', group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
-  '@starci/eslint-grammar-core': {version: 0.35.0, range: '~0.35.0', group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits; versioned with the grammar"}
-  '@starci/eslint-grammar-offset-pop': {version: 0.35.0, range: '~0.35.0', group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
+  '@starci/eslint-grammar-core': {version: 0.36.0, range: '~0.36.0', group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits; versioned with the grammar"}
+  '@starci/eslint-grammar-offset-pop': {version: 0.36.0, range: '~0.36.0', group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
   '@starci/stylelint-canon': {version: 2.8.0, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
   '@starci/tsconfig': {version: 2.1.1, group: starci, side: both, install: registry}
   '@starci/prettier-config': {version: 1.1.0, group: starci, side: both, install: registry}

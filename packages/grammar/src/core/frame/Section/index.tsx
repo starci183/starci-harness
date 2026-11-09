@@ -8,7 +8,7 @@ import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
 import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import type { Figure, ListRowData } from "../../surfaceCardData.js"
 import type { NoChildren } from "../../tier.js"
-import { SectionHead, type SectionHeadProps } from "./head.js"
+import { SectionCaption, SectionHead, type SectionHeadProps } from "./head.js"
 
 export type { SectionHeadingLevel, SectionHeadProps } from "./head.js"
 
@@ -46,8 +46,8 @@ type FiguresSection = NoChildren & {
 /** The status every section takes from its read (contexts/ui/loading.md). */
 type SectionStatus = {
     /**
-     * The first read has no data yet (knowledge STATE-8). The head keeps its title and draws `description`, `meta` and
-     * `action` as geometry; the count is hidden; the rows are drawn from the rows given (the block's same-shape placeholder)
+     * The first read has no data yet (knowledge STATE-8). The head keeps its title and draws `meta` and
+     * `action` as geometry, and the caption below the body as a skeleton line; the count is hidden; the rows are drawn from the rows given (the block's same-shape placeholder)
      * or a default few; a region's children follow. A refresh that already has data is not loading. Inside a loading
      * region the section follows the region.
      */
@@ -59,7 +59,7 @@ type SectionStatus = {
 /** The one line under the body. */
 type SectionCaption = {
     /**
-     * One muted sm line under the section's body: what a lone table, list or chart shows, its source or its period. The table, list
+     * One muted 12 line under the section's body: what a lone table, list or chart shows, its source or its period. The table, list
      * or chart is the surface and the section is its head and caption (the single-child-card law), never a card around it.
      */
     readonly caption?: string
@@ -108,7 +108,7 @@ const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; read
  * already-headed strip headless, while `title` gives a strip its own visible heading. Those forms cannot be mixed.
  */
 export const Section = (props: SectionProps) => {
-    const { title, description, count, fact, meta, action, headingLevel = 2, id, error } = props
+    const { title, description, count, isAttention, fact, meta, action, headingLevel = 2, id, error } = props
     const isLoading = useIsLoading(props.isLoading)
     const failed = !isLoading && error !== undefined
     const headingId = useId()
@@ -136,15 +136,15 @@ export const Section = (props: SectionProps) => {
                 headingId={headingId}
                 level={headingLevel}
                 title={title}
-                description={description}
                 count={failed ? undefined : count}
+                isAttention={isAttention}
                 fact={failed ? undefined : fact}
                 meta={meta}
                 action={action}
                 isLoading={isLoading}
             />}
             {body}
-            {props.caption === undefined || failed ? null : <p className="starci-core-section-caption" data-contract="TONE-2 FONT-2">{props.caption}</p>}
+            {failed ? null : <SectionCaption lines={[description, props.caption]} isLoading={isLoading} />}
         </section>
     )
 }

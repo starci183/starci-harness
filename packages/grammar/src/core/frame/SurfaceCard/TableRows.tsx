@@ -6,8 +6,9 @@ import type { TableData, TableRowData } from "../../surfaceCardData.js"
 type Row = DataTableRow & Pick<TableRowData, "cells">
 
 /**
- * The table a `kind="table"` card holds: Grammar's own `DataTable` with no container paint (`surface="none"`), so its heading row,
- * its group heading rows and its row lines run to the card's edges. One implementation: the card passes data, the table draws it.
+ * The table a `kind="table"` card holds: Grammar's own `DataTable` as the `frame` (0.36.0): the card IS HeroUI's grey frame (CSS on the
+ * card's `data-grammar-surface-kind="table"`, no border), the heading row on the grey, the rows on a white rounded body, and a `paging`
+ * footer zone below it in the grey. One implementation: the card passes data, the table draws it.
  */
 export const TableRows = ({ data, isLoading, ariaLabel }: {
     readonly data: TableData
@@ -27,7 +28,7 @@ export const TableRows = ({ data, isLoading, ariaLabel }: {
         renderCell: (row: Row, columnId: string) => row.cells[columnId] ?? null,
         isLoading,
         emptyContent: data.empty,
-        surface: "none" as const,
+        surface: "frame" as const,
         ...(data.onRowAction === undefined ? {} : { onRowAction: data.onRowAction }),
     }
     return data.groups === undefined

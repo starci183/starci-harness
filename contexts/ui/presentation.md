@@ -357,7 +357,7 @@ Prefer **fluid, then fitted, then capped; never fixed.**
 | MEASURE-5 | minimum height | a stable floor that still grows; the same floor in empty and populated states |
 | MEASURE-6 | inherited height | fills a definite host height |
 | MEASURE-7 | capped height | travels with a scroll owner; a cap without one clips silently |
-| MEASURE-8 | band left, well centred | the page header band is full width with its text flush left at the page inset; the content in the pink well (a report page and the main pane of a workspace page alike) is capped at `--grammar-content-max` (80rem) and centred in the well, the ground filling the whole well; side panes are not capped |
+| MEASURE-8 | band left, well centred | the page header band is full width with its text flush left at the page inset; the content in the pink well (a report page, and the content of a workspace pane that holds cards, `Pane content="cards"`) is capped at `--grammar-content-max` (80rem) and centred in the well, the ground filling the whole well; the pane grid and its side panes always span the full width, and a chat, graph or editor pane (`content="full"`) is never capped |
 
 Every region that can receive long content carries a zero minimum width so it can shrink.
 

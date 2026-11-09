@@ -91,9 +91,15 @@ the same inset, and the drawer header's inline padding is the pane inset, so the
   their content. Never a padding, margin, class or style on a pane or a band; a short separator inside a band's content
   is the app's own element.
 
-## Main pane cap
-In a workspace page (`Page layout="workspace"`) the main pane, the one on the canvas, holds its content (the pink well and its cards) to `--grammar-content-max`
-(80rem, the report layout's token), centred in the well (MEASURE-8). The well's pink ground fills the whole pane. Side (surface) panes and the header band are not capped.
+## Pane content cap (MEASURE-8, corrected 0.36.0)
+In a workspace page (`Page layout="workspace"`) the grid and its side panes ALWAYS span the full width: the aside is flush to the end edge. Only the CONTENT of a main pane that holds cards (a pink well with cards,
+`Pane content="cards"`, the default for a pane on the canvas) is capped at `--grammar-content-max` (80rem) and centred INSIDE that pane; the pane and its pink ground fill the whole track. A pane that holds a chat thread
+(`PaneSection scroll role="log"`), a `FlowGraph` canvas or an editor is `content="full"`: never capped, full-bleed (a surface pane is full by default; a chat or FlowGraph pane is full unless it says `content="cards"`).
+A list or table in the white aside is a bordered list or frame with no shadow, never a floating card; the Section head rules apply there.
+
+## Scroll law (0.36.0)
+The sidebar and the page header band (breadcrumbs, title, tabs, sub-tabs) never scroll away: the band and the trail are sticky. Layout A (report): the pink well scrolls as one block under the band. Layout B (workspace): the page
+does not scroll; each pane scrolls on its own with no visible scrollbar and its head (title, tabs, search) sticky; a chat pane keeps its head and composer fixed and scrolls only the thread (`PaneSection scroll`).
 
 ## Drawer opener
 `PaneHeader drawerOpener` draws the opener of a `collapse="drawer"` pane inside the pane head. `PaneDrawerOpener` (`pane`, `icon`, `label`) is the same button for

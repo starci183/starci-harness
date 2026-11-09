@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.36.0 - 2026-11-09
+
+- Added: `section-head-action` (`FE_SECTION_HEAD_ACTION`, SECTION-HEAD-ACTION, error): a Grammar `Button` in a `Section` head `action` is refused (navigation is a `Link variant="head"`), and so is more than one command
+  (`Button`, `Link`, `IconButton`, `TextAction`) in that slot. Doc: `docs/section-head-action.md`.
+- Added: `tab-count-chip` (`FE_TAB_COUNT_CHIP`, TAB-COUNT-CHIP, error): a tab item (an object with `id` and `label`) whose label ends in a middle dot and a number, or a template that ends in a middle dot and an expression, is refused;
+  the count is the `count` prop, drawn as a chip. Doc: `docs/tab-count-chip.md`.
+- Added: `card-one-content` (`FE_CARD_ONE_CONTENT`, CARD-ONE-CONTENT, error): a `SurfaceCard` with more than one content component, or a `figures` header zone above another content, is refused. A card inside a card stays
+  `no-raised-surface-in-surface` (R340). Doc: `docs/card-content.md`.
+- Added: `no-label-description` (`FE_NO_LABEL_DESCRIPTION`, error): a `Section` `description` (use `caption`) and a labelled `SurfaceCard` `description` (use `note`) are refused.
+- Added: `outline-icons-only` (`FE_OUTLINE_ICONS_ONLY`, ICONS-OUTLINE, error): an import of a solid icon set (`@heroicons/react/<size>/solid`, `@starci/heroicons/<size>/solid`) is refused anywhere. Doc: `docs/outline-icons.md`.
+- Changed: released with the Grammar family at 0.36.0.
+
 ## 0.35.0 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.35.0 (FlowGraph `layout="steps"`); no rule of this package changed.

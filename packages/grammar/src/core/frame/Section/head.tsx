@@ -4,17 +4,26 @@ import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 /** The outline rank of a section title: a section sits under the page's `h1`, so the first rank it takes is `2`. */
 export type SectionHeadingLevel = 2 | 3 | 4 | 5 | 6
 
-/** The head every `Section` draws: its title, and the facts and the one command that belong to it. */
+/**
+ * The head every `Section` draws (0.36.0): ONE row. At the start the label (14, weight 500) and an optional count chip (12); at the end at most ONE
+ * thing: a navigation `Link variant="head"` (label then an arrow that slides on hover) or an info `IconButton`. There is no description under the
+ * label: `description` is drawn as a caption below the section's body.
+ */
 export type SectionHeadProps = {
     /** The section's name. It is the heading of the region, and the region's accessible name. */
     readonly title: string
-    /** One supporting line under the title. */
+    /**
+     * One muted 12 line BELOW the section's body (0.36.0; before it stood under the label): what the card or list shows, its source or its period.
+     * The head is one row and holds no description. `caption` is the same line; a section that sets both draws both, the description first.
+     */
     readonly description?: string
     /**
-     * How many items the section holds, drawn after the title as a muted "(n)" in the title's own line
-     * (e.g. "Installations (2)"). It is part of the heading's accessible name.
+     * How many items the section holds, drawn after the title as a count chip (12, muted, on the default tone), e.g. "Installations" then a chip
+     * "2". It is part of the heading's accessible name.
      */
     readonly count?: number
+    /** The count is work waiting for the owner (to handle, to approve, an error): the chip is pink (the accent soft pair). Default grey. */
+    readonly isAttention?: boolean
     /**
      * One muted fact on the title line, right after it (" - Technician" in "Candidates - Technician", "Videos - 6 videos"); part of the heading's
      * accessible name and, like `count`, not drawn while the section loads.
@@ -22,7 +31,10 @@ export type SectionHeadProps = {
     readonly fact?: string
     /** Where and when the section's facts come from (a source time, "Inventoried at 10:00"). Muted, at the end of the head row, before `action`. */
     readonly meta?: string
-    /** The section's one page command. It hugs its label at the end of the head row. */
+    /**
+     * The head's one end-of-row thing: a navigation `Link variant="head"` ("Open the board" then the arrow), or an info `IconButton`. A `Button` here is an
+     * error (navigation is a Link) and so is more than one element (lint `section-head-action`). It hugs its label at the end of the head row.
+     */
     readonly action?: ReactNode
     /** Outline rank of the title. Default `2`; pick the rank that follows the heading above it. */
     readonly headingLevel?: SectionHeadingLevel
@@ -32,8 +44,8 @@ export type SectionHeadProps = {
 
 type HeadDrawing = {
     readonly title: string
-    readonly description: string | undefined
     readonly count: number | undefined
+    readonly isAttention: boolean | undefined
     readonly fact: string | undefined
     readonly meta: string | undefined
     readonly action: ReactNode
@@ -48,9 +60,9 @@ const hidden = (isLoading: boolean) => (isLoading ? { "aria-hidden": true } as c
  * The head of a section: a plain `div`, never `<header>` (outside a sectioning element a `<header>` is the page banner,
  * and the banner belongs to the application bar). The row is inline, the title and its line are identity.
  */
-export const SectionHead = ({ title, description, count, fact, meta, action, isLoading, headingId, level }: HeadDrawing) => {
+export const SectionHead = ({ title, count, isAttention, fact, meta, action, isLoading, headingId, level }: HeadDrawing) => {
     const countPart = count === undefined || isLoading ? null : (
-        <span key="count" className="starci-core-section-count" data-grammar-section-count={count} data-contract="TONE-2">{` (${count})`}</span>
+        <span key="count" className="starci-core-section-count" data-grammar-section-count={count} {...(isAttention === true ? { "data-grammar-attention": "true" } : {})} data-contract="TONE-2">{count}</span>
     )
     const factPart = fact === undefined || isLoading ? null : (
         <span key="fact" className="starci-core-section-count" data-grammar-section-fact="true" data-contract="TONE-2">{` \u00b7 ${fact}`}</span>
@@ -64,11 +76,6 @@ export const SectionHead = ({ title, description, count, fact, meta, action, isL
                     title,
                     countPart,
                     factPart,
-                )}
-                {description === undefined ? null : (
-                    <div className="starci-core-section-description" {...hidden(isLoading)}>
-                        {isLoading ? <SkeletonPlaceholder>{description}</SkeletonPlaceholder> : description}
-                    </div>
                 )}
             </div>
             {meta === undefined ? null : (
@@ -84,3 +91,14 @@ export const SectionHead = ({ title, description, count, fact, meta, action, isL
         </div>
     )
 }
+
+/** The caption under a section's body (0.36.0): `description` and `caption`, muted 12 lines, a row step below the card or list. */
+export const SectionCaption = ({ lines, isLoading }: { readonly lines: ReadonlyArray<string | undefined>; readonly isLoading: boolean }) => (
+    <>
+        {lines.map((line, index) => line === undefined ? null : (
+            <p key={index} className="starci-core-section-caption" data-contract="TONE-2 FONT-2" {...hidden(isLoading)}>
+                {isLoading ? <SkeletonPlaceholder>{line}</SkeletonPlaceholder> : line}
+            </p>
+        ))}
+    </>
+)

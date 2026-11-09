@@ -2,7 +2,7 @@
 
 import { usePaneContext } from "./paneContext.js"
 import { useSurfaceHost } from "./surfaceContext.js"
-import { ExclamationTriangleIcon } from "@heroicons/react/16/solid"
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline"
 import { Button } from "./leaf/Button/index.js"
 import { IconTile } from "./leaf/IconTile/index.js"
 import { Text } from "./leaf/Text/index.js"

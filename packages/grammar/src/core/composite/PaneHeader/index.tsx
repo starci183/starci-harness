@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { ArrowLeftIcon } from "@heroicons/react/20/solid"
+import { ArrowLeftIcon } from "@heroicons/react/24/outline"
 import { PaneDrawerOpener } from "../PaneDrawerOpener/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
 import { Heading } from "../../leaf/Heading/index.js"

@@ -148,6 +148,53 @@ rules:
         assert: |-
           It is HeroUI v3's link: the primary colour, the underline on hover only, the anchor icon at the end. Its type size and leading are
           inherited (14 in a body, 12 in meta or caption text). A size prop, a size class and an underline or decoration class are refused.
+  - id: SECTION-HEAD-ACTION
+    title: A section head is one row with at most one thing at its end
+    governs: The head of a Grammar Section.
+    cases:
+      - id: case-1
+        when: A Section head carries an action
+        assert: |-
+          The head is ONE row: the label (14, 500) and an optional count chip (12) at the start, at most ONE thing at the end, a navigation
+          Link variant="head" (the label then an arrow that slides about 3px on hover) or an info IconButton. A Button is refused (navigation is a
+          Link) and so are two commands. There is no description under the label: it is a caption (12, muted) below the card or list.
+  - id: TAB-COUNT-CHIP
+    title: A tab count is a 12px chip, grey unless it is work waiting for the owner
+    governs: The count on a Grammar tab, page layers 1 and 2 and filter tabs.
+    cases:
+      - id: case-1
+        when: A tab shows how many items its view holds
+        assert: |-
+          The count is the tab's `count`, drawn as a 12px chip, never "· N" text in the label (a label ending in a middle dot and a number is refused).
+          The chip is grey; it is pink only when the number is work waiting for the owner (`isAttention`: to handle, to approve, an error). Page tabs
+          (layers 1 and 2) hide the chip when the count is 0; filter tabs inside a table or list show a grey 0.
+  - id: CARD-ONE-CONTENT
+    title: One content per card, a surface on the well has a shadow and a surface on white has a border
+    governs: A SurfaceCard's content and its edge.
+    cases:
+      - id: case-1
+        when: A card is written
+        assert: |-
+          A card holds exactly ONE content: a list, an input group (form), a table, a graph or a figures ribbon, with its own controls (a tab, search or pagination
+          zone, a form footer with Cancel and Save). Several groups are several cards, each with a Sublabel above it; items of the same kind stay in one list. A card
+          inside a card is refused. A label has no description under it: the description is a caption under the card (Section caption, SurfaceCard note), and a legend
+          (a FlowGraph's kinds) stands under the card as chips.
+      - id: case-2
+        when: A surface is painted
+        assert: |-
+          A card on the pink well has the card shadow and NO border; a surface on a white surface (a Pane surface, the aside, a Drawer, a Dialog, a Popover) has the
+          1px separator border and no shadow. The Grammar decides from context; an app never chooses. A FlowGraph inside a card draws no frame of its own.
+  - id: ICONS-OUTLINE
+    title: Icons are outline only; a tile marks a standalone icon
+    governs: Every icon Grammar and an app draw.
+    cases:
+      - id: case-1
+        when: An icon is drawn
+        assert: |-
+          Never filled or solid: no @heroicons/react 16/20/24 solid import, no filled glyph, no filled-circle status mark. An icon that STANDS ALONE as the mark of a
+          row, a card, an empty state or a graph step gets an icon tile (a soft-tone square holding an outline icon). An icon INLINE with text (a status beside a
+          label, a search field, a button start icon, a link arrow, meta) is a plain outline icon at text size with no tile. A status (done, running, failed, waiting,
+          skipped) is a tone-coloured outline icon with no tile: outline check-circle in success, x-circle in danger, a spinning arrow for running.
   - id: SINGLE-CHILD-CARD
     title: A table, list or chart standing alone is the surface
     governs: A SurfaceCard whose only content is a table, a list or a chart.

@@ -20,24 +20,27 @@ const PINS: readonly { readonly selector: string; readonly holds: readonly strin
     { selector: '.starci-core-text[data-size="xs"]', holds: ["font-size: var(--grammar-text-xs)"] },
     { selector: '.starci-core-text[data-strong="true"]', holds: ["font-weight: var(--grammar-weight-medium)"] },
     { selector: ".starci-core-section-title", holds: ["font-size: var(--grammar-text-xl)", "font-weight: var(--grammar-weight-semibold)"] },
-    { selector: ":is(h2, h3, h4, h5, h6).starci-core-section-title", holds: ["font-size: var(--grammar-text-md)"] },
+    { selector: ":is(h2, h3, h4, h5, h6).starci-core-section-title", holds: ["font-size: var(--grammar-text-md)", "font-weight: var(--grammar-weight-medium)"] },
     { selector: ".starci-core-label", holds: ["font-size: var(--grammar-text-md)", "font-weight: var(--grammar-weight-semibold)"] },
     { selector: ".starci-core-list-row-name", holds: ["font-size: var(--grammar-text-md)", "font-weight: var(--grammar-weight-medium)"] },
     { selector: ".starci-core-list-row-description", holds: ["font-size: var(--grammar-text-sm)"] },
     { selector: ".starci-core-list-row-meta", holds: ["font-size: var(--grammar-text-xs)"] },
-    { selector: ".starci-core-data-table .starci-core-data-table-column", holds: ["font-size: var(--grammar-text-md)"] },
+    { selector: ".starci-core-data-table .starci-core-data-table-column", holds: ["font-size: var(--grammar-text-xs)"] },
     { selector: ".starci-core-data-table .starci-core-data-table-cell", holds: ["font-size: var(--grammar-text-md)", "font-weight: var(--grammar-weight-regular)"] },
     { selector: '.starci-core-data-table .starci-core-data-table-cell[data-grammar-table-row-header="true"]', holds: ["font-weight: var(--grammar-weight-medium)"] },
     { selector: ".starci-core-link", holds: ["font-size: inherit !important", "line-height: inherit !important"] },
-    { selector: '.starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane:not([data-grammar-pane-surface="true"]) .starci-core-pane-stack', holds: ["max-inline-size: var(--grammar-content-max)", "margin-inline: auto"] },
+    { selector: '.starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane[data-grammar-pane-content="cards"] .starci-core-pane-stack', holds: ["max-inline-size: var(--grammar-content-max)", "margin-inline: auto"] },
     { selector: ".starci-core-sublabel", holds: ["font-size: var(--grammar-text-xs)", "font-weight: var(--grammar-weight-medium)", "color: var(--muted)"] },
     { selector: ".starci-core-page-container", holds: ["margin-inline: auto"] },
     { selector: ".starci-core-page-header .starci-core-page-container", holds: ["width: 100%", "margin-inline: 0"] },
     { selector: '.starci-core-surface-zone:not([data-grammar-zone="figures"]) .starci-core-text:not([data-size="figure"])', holds: ["font-size: var(--grammar-text-sm)"] },
-    { selector: ".starci-core-surface", holds: ["border: 1px solid var(--separator)", "box-shadow: var(--surface-shadow)"] },
-    { selector: ".starci-core-section-list", holds: ["border: 1px solid var(--separator)", "border-radius: var(--starci-core-surface-radius)"] },
-    { selector: ".starci-core-data-table-card", holds: ["border: 1px solid var(--separator)", "border-radius: var(--starci-core-surface-radius)", "box-shadow: var(--surface-shadow)", "background: var(--surface)"] },
-    { selector: ".starci-core-section-caption", holds: ["font-size: var(--grammar-text-sm)"] },
+    { selector: ".starci-core-surface", holds: ["border: 0", "box-shadow: var(--surface-shadow)"] },
+    { selector: ".starci-core-section-list", holds: ["border: 0", "border-radius: var(--starci-core-surface-radius)"] },
+    { selector: '.starci-core-data-table[data-grammar-table-surface="card"]', holds: ["border-radius: var(--starci-core-table-radius)", "box-shadow: var(--surface-shadow)"] },
+    { selector: ".starci-core-data-table:not([data-grammar-table-surface=\"none\"])", holds: ["background: var(--surface-secondary)", "border: 0"] },
+    { selector: ".starci-core-section-caption", holds: ["font-size: var(--grammar-text-xs)"] },
+    { selector: ".starci-core-section-count[data-grammar-section-count]", holds: ["font-size: var(--grammar-text-xs)", "border-radius: var(--grammar-radius-pill)"] },
+    { selector: ".starci-core-data-table-footer", holds: ["font-size: var(--grammar-text-xs)"] },
 ]
 
 /** The bodies of every rule whose selector list is exactly `selector`. */
@@ -77,9 +80,10 @@ for (const pin of PINS) {
 /* THE CARD LAW (0.32.0): the standalone list frame, table and framed notice carry the card shadow; a surface nested in a surface drops it. */
 if (!/\.starci-core-section-list,\s*[^{]*\{\s*box-shadow:\s*var\(--surface-shadow\);/.test(all)) problems.push("the standalone list frame, and EmptyNotice must carry the card shadow")
 if (!/:is\(\.starci-core-surface,[^{]*\)\s*:is\(\.starci-core-surface,[^{]*\)\s*\{\s*box-shadow:\s*none;/.test(all)) problems.push("a surface nested in a surface must keep its edge and drop the shadow")
-if (!/\.starci-core-empty-notice:not\(\[data-grammar-error-layout\]\):not\(\.starci-core-surface \.starci-core-empty-notice\)\s*\{\s*border:\s*1px solid var\(--separator\);/.test(all)) problems.push("a framed EmptyNotice must draw the 1px separator edge")
+if (!/\.starci-core-empty-notice:not\(\[data-grammar-error-layout\]\):not\(\.starci-core-surface \.starci-core-empty-notice\)\s*\{\s*border:\s*0;/.test(all)) problems.push("a framed EmptyNotice on the well carries the shadow and no border (SURFACE-ELEVATION, 0.36.0)")
+if (!/\.starci-core-section-list\),\s*:is\([^{]*\.starci-core-empty-notice:not\(\[data-grammar-error-layout\]\)\s*\{\s*border:\s*1px solid var\(--separator\);/.test(all)) problems.push("a surface on a white surface (pane, drawer, dialog, popover, card) must draw the 1px separator border (SURFACE-ELEVATION, 0.36.0)")
 const tableSource = readFileSync(resolve(common, "..", "core", "branch", "DataTable", "index.tsx"), "utf8")
-if (!/variant=\{surface === "card" \? "primary" : "secondary"\}/.test(tableSource) || !tableSource.includes("starci-core-data-table-card")) problems.push("a standalone DataTable must keep HeroUI's primary look inside the starci-core-data-table-card wrapper")
+if (!/variant=\{surface === "none" \? "secondary" : "primary"\}/.test(tableSource) || tableSource.includes("starci-core-data-table-card")) problems.push("a standalone DataTable is HeroUI's primary look with no wrapper card (0.36.0): the table root is the grey frame")
 if (/data-grammar-table-surface="card"\]\s*\.table__(column|header|row)/.test(all)) problems.push("a standalone DataTable must not be flattened inside its card (the 0.29 frame is reverted)")
 /* THE BUBBLE SHAPE AND REACTIONS (0.32.0): Messenger grouping with logical corners (RTL mirrors), reactions with transform/opacity motion only. */
 for (const [needle, message] of [

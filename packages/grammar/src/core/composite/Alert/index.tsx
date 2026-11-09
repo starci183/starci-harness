@@ -2,7 +2,7 @@
 
 import { useRegionOwnsBusy, withRegionLoading } from "../../regionScope.js"
 import { Alert as HeroAlert, Spinner as HeroSpinner } from "@heroui/react"
-import { ChevronRightIcon } from "@heroicons/react/16/solid"
+import { ChevronRightIcon } from "@heroicons/react/24/outline"
 import { useState, type ReactNode } from "react"
 import { isPresentationState, PRESENTATION_STATES, type PresentationState } from "../../../common/state.js"
 import type { CustomTone } from "../../../common/tones.js"

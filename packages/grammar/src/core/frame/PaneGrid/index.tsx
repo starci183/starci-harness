@@ -41,6 +41,9 @@ type Models = Readonly<Record<PaneBreakpoint, PaneGridModel>>
 
 const PaneModelsContext = createContext<Models | undefined>(undefined)
 
+/** What a pane holds: a well of capped `cards`, or `full` bleed (a chat, a graph canvas, an editor). */
+export type PaneContent = "cards" | "full"
+
 type PaneBaseProps = {
     /** The name of this pane in the grid's `areas`. */
     readonly area: string
@@ -51,6 +54,13 @@ type PaneBaseProps = {
      * nested PaneGrid or a full-bleed canvas.
      */
     readonly inset?: PaneInset
+    /**
+     * What the pane holds (0.36.0, MEASURE-8). `cards`: a pink well of cards; its content is capped at `--grammar-content-max` (80rem) and centred INSIDE the pane,
+     * while the pane itself spans its grid track. `full`: a chat, a graph canvas or an editor, full-bleed, never capped. Default: `cards` for a pane on the
+     * canvas, `full` for a pane on the surface (a side pane); a pane that holds a chat thread (`PaneSection scroll role="log"`) or a `FlowGraph` is `full`
+     * unless this prop says `cards`.
+     */
+    readonly content?: PaneContent
     /** PaneSection elements, or one PaneGrid. */
     readonly children?: ReactNode
 }
@@ -145,7 +155,7 @@ const usePaneRegistry = (area: string, inset: PaneInset, checks: boolean): PaneC
  * a divider) to its PaneSections, so dividers and scrollbars stay full-bleed. A pane takes no app class.
  */
 export const Pane = (props: PaneProps) => {
-    const { area, surface = false, inset = "content", label, scroll = false, children } = props
+    const { area, surface = false, inset = "content", label, scroll = false, content: contentKind, children } = props
     const models = useContext(PaneModelsContext)
     const pane = usePaneRegistry(area, inset, true)
     const shown = "flex"
@@ -187,6 +197,8 @@ export const Pane = (props: PaneProps) => {
         "data-grammar-pane-surface": surface ? "true" : undefined,
         "data-grammar-pane-scroll": scroll ? "true" : undefined,
         "data-grammar-pane-inset": inset,
+        "data-grammar-pane-content": contentKind ?? (surface ? "full" : "cards"),
+        "data-grammar-pane-content-explicit": contentKind === undefined ? undefined : "true",
         "data-contract": [hasEdge ? "BOUNDARY-1" : undefined, inset === "content" ? "PADDING-4 PADDING-3" : "PADDING-0"].filter((part) => part !== undefined).join(" "),
         style,
     }
