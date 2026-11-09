@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.114 - 2026-11-09
+
+- Fixed: the Grammar family 0.37.2 (with 0.37.1; `@starci/hfs` 6.6.2 names it): the shared pane-head row exists only when a pane has a head (0.37.0 left a 137px blank band on every agent workbench page), and the head row and its divider reach through nested PaneGrids.
+
 ## 1.1.0-alpha.113 - 2026-11-09
 
 - Changed: the CLI requires @starci/hfs@6.6.1, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
