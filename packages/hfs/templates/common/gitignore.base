@@ -30,3 +30,5 @@ nul
 .worktrees/
 # StarCi runtime state of the repository (ledger), never tracked.
 .starci/
+# The screenshot gallery's shots are local evidence of a UI round, never source (contexts/project/gallery.md PROJECT-GALLERY-1).
+gallery/shots/**/*.png

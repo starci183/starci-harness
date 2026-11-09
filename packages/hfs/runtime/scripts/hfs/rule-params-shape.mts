@@ -38,6 +38,11 @@ const doubleOk = (v: Parsed) => isPlainObject(v) && /^[A-Za-z][A-Za-z0-9]*$/.tes
 const regexOk = (v: Parsed) => { try { return typeof v === 'string' && v.length > 0 && Boolean(new RegExp(v)); } catch { return false; } };
 const dbExtensionsOk = (value: Parsed) => Array.isArray(value) && value.every((name: Parsed) => typeof name === 'string' && name.length > 0) && new Set(value).size === value.length;
 const DB_PARAMS: Record<string, (value: Parsed) => boolean> = { extensions: dbExtensionsOk };
+/** True for an absent block or the gallery parameters of R395: a folder, the dev script, a whole port offset, an exact Vite version, the shots folder below the app root and the pattern below the gallery folder that ignores them. */
+const GALLERY_KEYS = 'devScript,dir,ignoredShots,portOffset,shots,vite';
+export const galleryParamsOk = (gallery: Parsed) => gallery === undefined || (isPlainObject(gallery) && Object.keys(gallery).sort().join() === GALLERY_KEYS
+  && [gallery.dir, gallery.devScript, gallery.shots, gallery.ignoredShots].every((value: Parsed) => typeof value === 'string' && value.length > 0 && !value.startsWith('/') && !value.split('/').includes('..'))
+  && Number.isInteger(gallery.portOffset) && gallery.portOffset >= 2 && gallery.portOffset <= 99 && typeof gallery.vite === 'string' && /^\d+\.\d+\.\d+$/.test(gallery.vite) && gallery.shots.startsWith(`${gallery.dir}/`));
 const dbParamsOk = (db: Parsed) => db === undefined || (isPlainObject(db) && Object.entries(db).every(([key, value]: [string, Parsed]) => Object.hasOwn(DB_PARAMS, key) && (DB_PARAMS[key] as (value: Parsed) => boolean)(value)));
 
 function beSpecificProblems(be: Parsed, manifest: Parsed): string[] {
@@ -84,7 +89,7 @@ export const sqlPassThroughOk = (list: Parsed) => list === undefined || (Array.i
 export function ruleParamsProblems(m: Parsed): string[] {
   const bad: string[] = [];
   const rp = m.ruleParams;
-  if (!isPlainObject(rp) || Object.keys(rp).some((k: Parsed) => ![...PROFILES, 'common', 'db'].includes(k)) || !isPlainObject(rp.common) || !isPlainObject(rp.be) || (rp.fe !== undefined && !isPlainObject(rp.fe))) return ['ruleParams must be a map with common, be and optionally fe and db'];
+  if (!isPlainObject(rp) || Object.keys(rp).some((k: Parsed) => ![...PROFILES, 'common', 'db', 'gallery'].includes(k)) || !isPlainObject(rp.common) || !isPlainObject(rp.be) || (rp.fe !== undefined && !isPlainObject(rp.fe))) return ['ruleParams must be a map with common, be and optionally fe, db and gallery'];
   else {
     // common holds the parameters both sides share; a side may restate one of them (a valid value) as an override, nothing else.
     // Edition lite: a side's optional `lite` map overrides keys of the same side (never `lite` itself) when the app declares edition lite.
@@ -92,6 +97,7 @@ export function ruleParamsProblems(m: Parsed): string[] {
     if (!sideOk(rp.be, BE_OWN, ['schemaAuthority', 'lite', 'dbFunctions', 'sqlPassThrough']) || (rp.be.schemaAuthority !== undefined && !SCHEMA_AUTHORITIES.includes(rp.be.schemaAuthority)) || !dbFunctionsOk(rp.be.dbFunctions, { bare: true }) || !sqlPassThroughOk(rp.be.sqlPassThrough) || !liteOk(rp.be.lite, [...BE_OWN, ...SHARED_KEYS, 'schemaAuthority', 'dbFunctions', 'sqlPassThrough'])) bad.push('ruleParams.be needs infraOwners, eventBus, specDoubles, paramNames, suffixes, bannedSuffixes, contractShape {helper}, unitRoles, logicRoles, thinRoles, patternScenarios, kindPatterns, addKinds and backing (shared parameters live in ruleParams.common, a side may override them); optional: schemaAuthority (' + SCHEMA_AUTHORITIES.join(' | ') + '), dbFunctions ([{name, reason}]: a pg built-in bare, every other function schema.name), sqlPassThrough ([{file, reason}]: a file whose SQL text is not written by the app) and lite (overrides of the same keys)'); else bad.push(...unitRolesProblems(rp.be), ...roleListProblems(rp.be));
     bad.push(...beSpecificProblems(rp.be, m));
     if (rp.fe !== undefined && (!sideOk(rp.fe, [], ['lite']) || !liteOk(rp.fe.lite, SHARED_KEYS))) bad.push('ruleParams.fe may only restate the shared parameters of ruleParams.common, and carry a lite override of them');
+    if (!galleryParamsOk(rp.gallery)) bad.push('ruleParams.gallery needs dir, devScript, shots (below dir), ignoredShots (non-empty relative paths), portOffset (a whole number from 2 to 99) and vite (an exact version)');
     if (!dbParamsOk(rp.db)) bad.push('ruleParams.db may contain only extensions (a list of unique non-empty extension names)');
   }
   return bad;

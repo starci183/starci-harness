@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.5.8 - 2026-11-09
+
+- Added (R395): every app source repository carries a screenshot gallery at `gallery/` (`contexts/project/gallery.md` PROJECT-GALLERY-1). It is a standalone Vite app that shows `gallery/shots/<area>/<page>__<width>__<before|after>.png` (1440 and 390 per page, before and after each UI fix round), served on `local.basePort` + 50 with a pinned Vite. Its files are managed by `starci app sync` (slot `app.gallery`, manifest 3.27.0, optional so a pinned repository stays green; `ruleParams.gallery` holds the folder, the `dev` script, the offset 50, the Vite pin and the ignored shots pattern), so a scaffold writes it, a sync adds it to an existing app and a hand edit is `HFS_MANAGED_FILE_DRIFT`; the managed root `.gitignore` block ignores `gallery/shots/**/*.png`. The full skeleton declares `local.basePort: 3000`, the base its ports already follow.
+- Added: the check codes `HFS_APP_GALLERY_MISSING` (no `gallery/`, or a managed file of it absent), `HFS_APP_GALLERY_SCRIPT` (no `dev` script `vite --port <base + 50> --strictPort`, or no `local.basePort` to derive it from), `HFS_APP_GALLERY_VITE_UNPINNED` and `HFS_APP_GALLERY_SHOTS_TRACKED` (the shot PNGs are not git-ignored, or some are tracked); `HFS_SERVICE_PLACEMENT` (R163) leaves the gallery's `package.json` alone.
+- Added: `starci app stack up|down|status|logs|verify --env <env>` run the gallery as a native process on base + 50 next to web and api, with a one-time `npm install` in `gallery/`, a readiness row and an origin; a process an environment declares itself under the name `gallery` is kept (`withGallery`, `stack/local-config.mts`).
+
 ## 6.5.7 - 2026-11-09
 
 - Changed: the canon pins name the Grammar family 0.35.0.

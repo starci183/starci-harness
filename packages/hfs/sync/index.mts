@@ -28,6 +28,7 @@ import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.m
 import { managedGroupOf } from '../runtime/scripts/hfs/edition-slots.mjs';
 import { declaredSlotEnabled } from '../runtime/scripts/hfs/declaration-slots.mjs';
 import { feAppPackageName } from '../runtime/scripts/hfs/rules/monorepo.mjs';
+import { galleryParams, galleryPort } from '../runtime/scripts/hfs/gallery.mjs';
 import { DEFAULT_PORT, NODE_IMAGE, dockerfilePath } from '../runtime/scripts/hfs/rules/docker.mjs';
 import { isFile } from '../runtime/scripts/lib/fs-kind.mjs';
 import { readDeclaredSonarKey } from './sonar-key.mjs';
@@ -523,6 +524,9 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   const grammarLint = scope === 'fe' ? grammarLintFor(fe.grammar) : null;
   return {
     header: HEADER(scope),
+    // The screenshot gallery (R395): its dev port is the base port + the offset, and the Vite version its package.json pins (ruleParams.gallery).
+    galleryPort: String(galleryPort(source.stack?.basePort, galleryParams(manifest)) ?? ''),
+    galleryVite: galleryParams(manifest).vite,
     readmeBadges: source.badges ?? '',
     project: app.project,
     appBinary: APP_BINARY,
@@ -617,7 +621,9 @@ function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKe
     const declaredTargets = targetsOf(scope, { edition: app.edition as string, manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo) });
     if (scope === APP_SCOPE && source?.badges) declaredTargets.push({ path: 'README.md', mode: 'block', markdown: true, template: 'app/readme-badges/README.md' });
     const targets = declaredTargets
-      .filter(target => !(app.edition === 'lite' && source?.workPresent === false && target.path === '.starciwork/.gitignore'));
+      .filter(target => !(app.edition === 'lite' && source?.workPresent === false && target.path === '.starciwork/.gitignore'))
+      // The gallery serves on the base port + ruleParams.gallery.portOffset (R395): an app that declares no local.basePort has no port to render, and the rule asks for one.
+      .filter(target => target.group !== 'gallery' || galleryPort(source?.stack?.basePort, galleryParams(manifest)) !== null);
     return [...(scope === APP_SCOPE ? [...registryTargets(app, source), ...packagesLintTargets(app, source)] : []), ...targets.map((target): RenderedTarget => {
       const template = target.path === 'codecov.yml' && source?.quality?.codecov.enabled === false
         ? '{{header}}\n# Codecov is disabled in the manifest.\ncodecov:\n  require_ci_to_pass: false\n'

@@ -1,0 +1,14 @@
+{
+  "name": "{{project}}-gallery",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Screenshot gallery of every page of {{project}} (before and after each UI fix round), rendered with Vite.",
+  "scripts": {
+    "dev": "vite --port {{galleryPort}} --strictPort",
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "vite": "{{galleryVite}}"
+  }
+}

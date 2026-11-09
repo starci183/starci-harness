@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.26.0
+version: 3.27.0
 presenceValues:
   - required
   - optional
@@ -240,6 +240,13 @@ crossOwner: every import across owners targets the owner's public entry (index.t
   never export *.
 crossApp: apps never import each other; shared code is a packages/<pkg> slot.
 ruleParams:
+  gallery:
+    dir: gallery
+    devScript: dev
+    portOffset: 50
+    vite: 6.3.5
+    shots: gallery/shots
+    ignoredShots: shots/**/*.png
   db:
     extensions:
       - pgcrypto
@@ -1196,6 +1203,42 @@ slots:
     managedBy: browser-config
     rules:
       - HFS_MANAGED_FILE_DRIFT
+  - id: app.gallery
+    profiles:
+      - app
+    path: gallery/{package.json,index.html,README.md,src/main.js,src/style.css}
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: gallery
+    editionWhy: Both editions carry the same gallery; it is a standalone Vite app beside the sides, not part of
+      either. The slot is optional so a manifest minor stays green for a pinned repository; the rule
+      HFS_APP_GALLERY_MISSING (R395) is what requires it.
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+      - HFS_APP_GALLERY_MISSING
+      - HFS_APP_GALLERY_SCRIPT
+      - HFS_APP_GALLERY_VITE_UNPINNED
+      - HFS_APP_GALLERY_SHOTS_TRACKED
+  - id: app.gallery-lock
+    profiles:
+      - app
+    path: gallery/package-lock.json
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: app.gallery-shots
+    profiles:
+      - app
+    path: gallery/shots/**/*.png
+    presence: optional
+    tracked: ignored
+    tier: none
+    tests: none
+    rules:
+      - HFS_APP_GALLERY_SHOTS_TRACKED
   - id: app.github-meta
     profiles:
       - app

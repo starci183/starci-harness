@@ -10,6 +10,7 @@ import path from 'node:path';
 import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
 import { DECLARATION } from './sonar-key.mjs';
 import { byCodeUnit } from '../report/order.mjs';
+import { declaredBasePort } from '../runtime/scripts/hfs/gallery.mjs';
 
 const NAME = /^[a-z][a-z0-9-]*$/u;
 const KEY = /^[A-Z][A-Z0-9_]*$/u;
@@ -26,7 +27,7 @@ export interface StackImage { service: string; app: string; buildArgs: boolean; 
 /** One environment that deploys: the deploy.auto, deploy.approval and deploy.platforms keys of its deploy block. */
 export interface DeployEnvironment { name: string; auto: boolean; approval: 'none' | 'reviewers'; platforms: string[] }
 /** What the managed workflows render from the declaration. `environments` are the deploying ones in declared order; `imageCache` is ci.imageCache. */
-export interface DeclaredStack { images: StackImage[]; passEnv: string[]; imageEnvironments?: Record<string, string[]>; environments?: DeployEnvironment[]; imageCache?: 'gha' | 'registry' }
+export interface DeclaredStack { images: StackImage[]; passEnv: string[]; imageEnvironments?: Record<string, string[]>; environments?: DeployEnvironment[]; imageCache?: 'gha' | 'registry'; /** `local.basePort` of the dev environment (R389); null when none is declared. */ basePort?: number | null }
 
 const record = (value: unknown): value is Record<string, any> => value !== null && typeof value === 'object' && !Array.isArray(value); // reason: a YAML mapping
 const hasBuildArgs = (args: unknown): boolean => record(args) && (Object.keys(record(args.values) ? args.values : {}).length > 0 || record(args.sealed));
@@ -101,7 +102,7 @@ export function readDeclaredStack(root: string, { parseYaml = bundledParseYaml a
 /** Parsed declarations share the exact image, environment and pass-env projection used by sync. */
 export function declaredStack(declaration: Declaration): DeclaredStack {
   const cache = declaration?.ci?.imageCache;
-  return { images: declaredStackImages(declaration), passEnv: declaredPassEnv(declaration), imageEnvironments: imageEnvironments(declaration), environments: deployEnvironments(declaration), imageCache: cache === 'registry' ? 'registry' : 'gha' };
+  return { images: declaredStackImages(declaration), passEnv: declaredPassEnv(declaration), imageEnvironments: imageEnvironments(declaration), environments: deployEnvironments(declaration), imageCache: cache === 'registry' ? 'registry' : 'gha', basePort: declaredBasePort(declaration) };
 }
 
 const envName = (service: string): string => `IMAGE_${service.toUpperCase().replaceAll('-', '_')}`;

@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mts; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.26.0
+version: 3.27.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -185,6 +185,15 @@ crossApp: apps never import each other; shared code is a packages/<pkg> slot.
 # Parameters the lint factories and checks read per profile (through ruleParams(profile) in scripts/hfs/slots.mts, which
 # merges common under the profile: a side restates a common key only to override it).
 ruleParams:
+  # R395: the screenshot gallery every app carries (contexts/project/gallery.md PROJECT-GALLERY-1): its folder, the dev script, the port offset above
+  # local.basePort, the pinned Vite the managed package.json names, the folder of the shots and the pattern that keeps them out of git.
+  gallery:
+    dir: gallery
+    devScript: dev
+    portOffset: 50
+    vite: 6.3.5
+    shots: gallery/shots
+    ignoredShots: "shots/**/*.png"
   db:
     # R259: btree_gist supplies UUID equality for the booking interval exclusion constraint.
     # R259: the extensions the db image carries: the official postgres image's contrib set and pgvector
@@ -794,6 +803,34 @@ slots:
     tests: none
     managedBy: browser-config
     rules: [HFS_MANAGED_FILE_DRIFT]
+  - id: app.gallery
+    since: 3.27.0
+    profiles: [app]
+    path: "gallery/{package.json,index.html,README.md,src/main.js,src/style.css}"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: gallery
+    editionWhy: "Both editions carry the same gallery; it is a standalone Vite app beside the sides, not part of either. The slot is optional so a manifest minor stays green for a pinned repository; the rule HFS_APP_GALLERY_MISSING (R395) is what requires it."
+    rules: [HFS_MANAGED_FILE_DRIFT, HFS_APP_GALLERY_MISSING, HFS_APP_GALLERY_SCRIPT, HFS_APP_GALLERY_VITE_UNPINNED, HFS_APP_GALLERY_SHOTS_TRACKED]
+  - id: app.gallery-lock
+    since: 3.27.0
+    profiles: [app]
+    path: gallery/package-lock.json
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+  - id: app.gallery-shots
+    since: 3.27.0
+    profiles: [app]
+    path: "gallery/shots/**/*.png"
+    presence: optional
+    tracked: ignored
+    tier: none
+    tests: none
+    rules: [HFS_APP_GALLERY_SHOTS_TRACKED]
   - id: app.github-meta
     since: 3.1.0
     profiles: [app]

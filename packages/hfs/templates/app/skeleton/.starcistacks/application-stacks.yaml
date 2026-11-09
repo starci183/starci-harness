@@ -43,6 +43,8 @@ environments:
     # `starci app stack up --env dev --execute` reads this block (PROJECT-STACKS-6): the compose services in dependency order, each
     # awaited on its healthcheck, then readiness and the origins. The app images come from `starci app stack prepare --env dev --execute`.
     local:
+      # The project base port (R389, PROJECT-STACKS-10): app = base, core = base+1, landing = base+2, and the screenshot gallery serves on base+50 (R395).
+      basePort: 3000
       ports:
         core: 3001
         app: 3000

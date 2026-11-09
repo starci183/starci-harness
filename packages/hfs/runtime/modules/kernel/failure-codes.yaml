@@ -3188,6 +3188,49 @@ HFS_APPS_REQUIRED:
   owner: other-op:backend.scaffold
   kind: check-finding
 
+HFS_APP_GALLERY_MISSING:
+  title: "An app carries the screenshot gallery"
+  title_vi: "Ứng dụng thiếu thư viện ảnh chụp màn hình"
+  meaning_vi: "Kho ứng dụng không có thư mục gallery/ (hoặc thiếu một tệp được sync quản lý của nó): ứng dụng Vite nhỏ hiển thị gallery/shots/<khu>/<trang>__<rộng>__<before|after>.png."
+  causes_vi:
+    - "Vi phạm R395: mọi kho nguồn ứng dụng đều phải có gallery để lưu ảnh trước và sau mỗi vòng sửa giao diện (PROJECT-GALLERY-1)."
+    - "Ứng dụng có trước quy tắc này và chưa chạy starci app sync, hoặc chưa khai báo local.basePort nên sync không biết cổng của gallery."
+  nextStep_vi: "Khai báo environments.dev.local.basePort nếu chưa có (R389), rồi chạy starci app sync --execute để tạo gallery/ và commit nó."
+  owner: op-retry
+  kind: check-finding
+
+HFS_APP_GALLERY_SCRIPT:
+  title: "The gallery serves on the base port plus 50"
+  title_vi: "Gallery không chạy ở cổng gốc cộng 50"
+  meaning_vi: "gallery/package.json không có script dev chạy vite --port <basePort + 50> --strictPort, hoặc ứng dụng chưa khai báo local.basePort để suy ra cổng đó."
+  causes_vi:
+    - "Vi phạm R395: cổng của gallery phải suy ra từ cổng gốc dự án như mọi tiến trình native khác, và --strictPort để cổng bị chiếm báo lỗi thay vì lệch cổng."
+    - "Tệp gallery/package.json bị sửa tay hoặc cổng gốc đã đổi mà chưa chạy lại starci app sync."
+  nextStep_vi: "Chạy starci app sync --execute để ghi lại gallery/package.json từ mẫu; nếu chưa có basePort thì khai báo nó trong .starcistacks/application-stacks.yaml trước."
+  owner: op-retry
+  kind: check-finding
+
+HFS_APP_GALLERY_VITE_UNPINNED:
+  title: "The gallery pins its Vite version"
+  title_vi: "Gallery chưa ghim phiên bản Vite"
+  meaning_vi: "gallery/package.json không có vite trong devDependencies hoặc phiên bản không phải số chính xác (có ^, ~ hoặc khoảng)."
+  causes_vi:
+    - "Vi phạm R395: mọi phụ thuộc của ứng dụng được ghim đúng một phiên bản."
+    - "Tệp gallery/package.json bị sửa tay."
+  nextStep_vi: "Chạy starci app sync --execute để ghi lại gallery/package.json với phiên bản Vite đã ghim."
+  owner: op-retry
+  kind: check-finding
+
+HFS_APP_GALLERY_SHOTS_TRACKED:
+  title: "The gallery screenshots are git-ignored"
+  title_vi: "Ảnh chụp của gallery chưa được git bỏ qua"
+  meaning_vi: "gallery/shots/**/*.png không nằm trong .gitignore, hoặc đã có ảnh PNG bị git theo dõi: ảnh chụp là bằng chứng cục bộ, không phải mã nguồn."
+  causes_vi:
+    - "Vi phạm R395: khối .gitignore do sync quản lý thiếu dòng gallery/shots/**/*.png, hoặc ảnh đã được git add."
+  nextStep_vi: "Chạy starci app sync --execute để khối .gitignore có dòng gallery/shots/**/*.png, rồi git rm --cached các ảnh đã bị theo dõi."
+  owner: op-retry
+  kind: check-finding
+
 HFS_APP_LAYOUT_INVALID:
   title: "App directory layout invalid"
   title_vi: "Bố cục thư mục ứng dụng chưa đúng"
