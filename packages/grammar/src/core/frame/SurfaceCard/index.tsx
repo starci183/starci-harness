@@ -13,6 +13,7 @@ import type {
     FooterZone,
     HeaderZone,
     ListData,
+    SelectData,
     TableData,
     TileData,
     WholeCardAction,
@@ -24,6 +25,7 @@ import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import { AccordionRows } from "./AccordionRows.js"
 import { FigureCells, figureItems } from "./FigureCells.js"
 import { ListRows } from "./ListRows.js"
+import { SelectRows } from "./SelectRows.js"
 import { DescriptionList, type DescriptionListItem } from "../../composite/DescriptionList/index.js"
 import { TableRows } from "./TableRows.js"
 import { SurfaceCardTile } from "./SurfaceCardTile.js"
@@ -147,6 +149,8 @@ type DetailsCard = Shell & (Labelled | SelfNamed) & Head & {
     readonly items: readonly DescriptionListItem[]
 }
 type AccordionCard = Shell & (Labelled | SelfNamed) & Head & AccordionData
+/** A choice list: checkbox rows with a title and a subtitle, full-width dividers (0.37.5). */
+type SelectCard = Shell & (Labelled | SelfNamed) & Head & SelectData
 /** A table Grammar owns: columns, rows or day groups under heading rows, one column header, every line to the card's edges. */
 type TableCard = Shell & (Labelled | SelfNamed) & Head & TableData
 
@@ -162,7 +166,7 @@ type TileCard = Shell & TileData & {
     readonly labelEnd?: undefined
 }
 
-export type SurfaceCardProps = BodyCard | FiguresCard | ListCard | DetailsCard | AccordionCard | TableCard | TileCard
+export type SurfaceCardProps = BodyCard | FiguresCard | ListCard | DetailsCard | AccordionCard | TableCard | SelectCard | TileCard
 
 /**
  * The orbit motif: three thin concentric rings with five small nodes, one static SVG. It is drawn in the
@@ -263,6 +267,8 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                 return <FigureCells items={figureItems(props.items, isLoading)} isLoading={isLoading} isDisabled={disabled} />
             case "list":
                 return <ListRows data={props} isLoading={isLoading} ariaLabel={accessibleName} />
+            case "select":
+                return <SelectRows data={props} isLoading={isLoading} ariaLabel={accessibleName} />
             case "details":
                 return <DescriptionList items={props.items} isLoading={isLoading} />
             case "accordion":

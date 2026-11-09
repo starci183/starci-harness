@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.37.5 - 2026-11-09 - SurfaceCard kind="select"
+
+- Added (owner): `SurfaceCard kind="select"`, the one choice list. Props `selectionMode: "single" | "multiple"`, `items: { id, title, subtitle?, isDisabled? }[]`, `value` (`string | null` for single, `string[]` for multiple), `onChange`, `ariaLabel`/`label`.
+  Every row is a HeroUI Checkbox with a title (14, weight 500) and a subtitle (12, muted, drawn only under a title); the whole row is the hit target with a hover tint; 1px dividers span the full card width. `single` has the same checkbox look and
+  unchecks the others (the checked row is replaced, not unchecked); ARIA is a `role="group"` of real checkboxes. Story `Surfaces/Select card`; types `SelectData` and `SelectItemData` are exported.
+- Fixed (urgent): the outline glyphs of 0.37.4 handed to a vendor slot (the Select chevron, the search icon, the number steppers, the alert marks) had no size, so a chevron stretched to its slot (a giant grey X over a search row in a card header). `inlineGlyph` now gives every glyph the Icon usage box (16px at `chip`) and a 16px width and height floor. Story `Surfaces/Glyph sizing` (Select, SearchField and NumberField in a card header) asserts every svg is at most 24px.
+- Added: story `Surfaces/Status tones` (the five tones side by side); the play proves a success Badge reads `--success-soft` and `--success-soft-foreground` exactly. Core maps `success` to the HeroUI success tokens and nothing else; a product that paints success lime has overridden `--success` in its own brand sheet.
+
 ## 0.37.4 - 2026-11-09 - outline icons everywhere, EmptyNotice frameless by default
 
 - Changed (owner): every icon Grammar draws itself is OUTLINE. The search field icon, the Select chevron, the number-field steppers (plus and minus), the tab and region scroll arrows, the Alert status marks (info, success, warning, danger) and the FlowGraph / BubbleMap zoom controls

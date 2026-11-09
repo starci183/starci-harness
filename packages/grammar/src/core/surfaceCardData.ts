@@ -204,6 +204,35 @@ export type ListData = {
     readonly empty: ReactNode
 }
 
+/** One row of a `select` card: a title with an optional subtitle under it. */
+export type SelectItemData = {
+    readonly id: string
+    readonly title: string
+    /** One muted 12 line directly under the title of the same row (the explanation of that choice); never a loose line elsewhere. */
+    readonly subtitle?: string
+    readonly isDisabled?: boolean
+}
+
+/**
+ * A choice list (0.37.5): every row a checkbox with its title and subtitle, the whole row the hit target, 1px dividers across the full card width.
+ * `single` keeps one row checked (checking one unchecks the others) with the same checkbox look; `multiple` toggles each row.
+ */
+export type SelectData =
+    | {
+          readonly kind: "select"
+          readonly selectionMode: "single"
+          readonly items: readonly SelectItemData[]
+          readonly value: string | null
+          readonly onChange: (value: string) => void
+      }
+    | {
+          readonly kind: "select"
+          readonly selectionMode: "multiple"
+          readonly items: readonly SelectItemData[]
+          readonly value: readonly string[]
+          readonly onChange: (value: readonly string[]) => void
+      }
+
 export type AccordionData = {
     readonly kind: "accordion"
     readonly items: readonly AccordionRowData[]

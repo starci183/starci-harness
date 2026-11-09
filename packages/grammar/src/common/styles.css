@@ -2054,6 +2054,60 @@
         overflow-wrap: anywhere;
     }
 
+    /*
+     * SELECT CARD (0.37.5): `SurfaceCard kind="select"`, a choice list. Every row is a HeroUI Checkbox (the vendor label is the whole row, so the whole row is the hit
+     * target) with a title (14, 500) and, under it, a subtitle (12, muted). The rows touch the card's edges; a 1px divider spans the FULL width between rows (no inset).
+     * The card face (shadow on the well, 1px border on a white surface) is the flush face of every collection kind.
+     */
+    .starci-core-select-rows {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+    }
+
+    .starci-core-select-row {
+        box-sizing: border-box;
+        display: flex;
+        inline-size: 100%;
+        min-width: 0;
+        align-items: flex-start;
+        padding: var(--grammar-row-gap) var(--grammar-inset);
+        cursor: pointer;
+    }
+
+    .starci-core-select-row + .starci-core-select-row {
+        border-block-start: var(--grammar-hairline) solid var(--separator);
+    }
+
+    .starci-core-select-row:hover:not([data-disabled="true"]) { background: var(--surface-secondary); }
+    .starci-core-select-row[data-disabled="true"] { cursor: not-allowed; }
+
+    .starci-core-select-row .starci-core-choice-content {
+        inline-size: 100%;
+        align-items: flex-start;
+    }
+
+    .starci-core-select-copy {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+        gap: var(--grammar-identity-gap);
+    }
+
+    .starci-core-select-copy [data-grammar-field-label] {
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-md);
+    }
+
+    .starci-core-select-copy [data-grammar-field-description] {
+        color: var(--muted);
+        font-weight: var(--grammar-weight-regular);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+    }
+
     /* A pressable row: the title is the one focusable button and its hit area is the whole row; commands and the menu sit above it. */
     .starci-core-list-row[data-grammar-row-pressable="true"] { position: relative; }
     .starci-core-list-row[data-grammar-row-pressable="true"]:hover { background: var(--surface-secondary); }
