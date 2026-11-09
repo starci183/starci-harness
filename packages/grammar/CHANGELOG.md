@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.32.2 - 2026-11-09 - no scrollbars, an edge fade; Drawer bodyInset
+## 0.33.0 - 2026-11-09 - no scrollbars; layout and responsive laws; only the primary Button carries an icon
 
 - Changed (default): NIVO NEVER SHOWS SCROLLBARS (owner, 2026-11-09, OVERFLOW-6). The family root no longer hands the scrollbar to the app's
   `--scrollbar*` tokens: every scroller under `.grammar-common-root` hides its bar (`scrollbar-width: none`, `::-webkit-scrollbar` none), which
@@ -12,10 +12,7 @@
 - Added: `Drawer bodyInset="content" | "none"` (default `content`). `none` runs the body edge to edge across the sheet (and to the bottom edge when no
   footer follows), so a chat well fills the drawer; `data-grammar-body-inset="none"`.
 - Added: rule id `OVERFLOW-6` (contexts/ui/presentation.md).
-- Lint: `eslint-grammar-core` 0.32.2 adds `no-raw-scroll` (`FE_NO_RAW_SCROLL`, error).
-
-## 0.32.1 - 2026-11-09 - only the primary Button carries a leading icon
-
+- Lint: `eslint-grammar-core` 0.33.0 adds `no-raw-scroll` (`FE_NO_RAW_SCROLL`, error).
 - Changed (types): THE BUTTON-ICON RULE (owner, 2026-11-09). `startGlyph` and `startContent` are allowed only on the primary Button
   (`intent="commit"`, the CTA); the Button type is a discriminated union on `intent`, so a neutral, alternative, dismiss or destructive
   Button, or one with no intent, no longer compiles with a start icon. Suggestion pills and row actions are text only. The arrow is not an
@@ -24,7 +21,7 @@
   `Alert` draws `action.icon` on its primary (informative, `commit`) action only; `FileButton` with a `text` label is text only (its
   icon-only form is the `IconButton`).
 - Changed: the stories and the app-guide template no longer give a neutral or alternative Button a start icon.
-- Lint: `eslint-grammar-core` 0.32.1 adds `button-icon-primary-only` (`FE_BUTTON_ICON_PRIMARY_ONLY`, error).
+- Lint: `eslint-grammar-core` 0.33.0 adds `button-icon-primary-only` (`FE_BUTTON_ICON_PRIMARY_ONLY`, error).
 - Added: `Page layout: "report" | "workspace"` (the frame type; derived from `chrome` when omitted, `PAGE_LAYOUT_CHROME_MISMATCH` when it
   disagrees), `data-grammar-page-layout`, and the story `Compositions/Page layouts`.
 - Changed (default): THE RESPONSIVE LAW (owner, 2026-11-09). The page inset steps 32 / 24 / 16 at the 1280 / 768 breakpoints (the desktop
@@ -40,7 +37,7 @@
 - Documented: THE LAYOUT LAW (owner, 2026-11-09). A page is a report (`Page chrome="standard"`: the pink well, cards stacked in one vertical
   column 24 apart, side by side only for sibling cards of one role and height) or a workspace (`chrome="panes"` / `"bleed"`: panes split
   by dividers, side panes white surfaces at full height, never cards, a pink well allowed in the main pane). `Page chrome` is the
-  declaration, so no new prop; one frame type per page. Lint `layout-two-axis` (`eslint-grammar-core` 0.32.1) refuses a card beside a
+  declaration, so no new prop; one frame type per page. Lint `layout-two-axis` (`eslint-grammar-core` 0.33.0) refuses a card beside a
   column of cards and unequal cards in a row.
 
 ## 0.32.1 - 2026-11-09

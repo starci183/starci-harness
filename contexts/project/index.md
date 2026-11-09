@@ -219,7 +219,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/diagram.md](../ui/components/diagram.md) · 5 KB — Contract: Diagram.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 3 KB — Contract: Dialog and Drawer.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+  - sections: Job · Choose · Variants · Scrolling · Size · States · Owner split · Rules
 - [ui/components/empty-state.md](../ui/components/empty-state.md) · 3 KB — Contract: EmptyState.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/entry-frame.md](../ui/components/entry-frame.md) · 3 KB — Hold one bounded entry task beside its contextual identity.

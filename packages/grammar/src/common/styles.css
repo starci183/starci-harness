@@ -154,7 +154,7 @@
     }
 
     /*
-     * NIVO never shows scrollbars (owner rule 2026-11-09, OVERFLOW-6). Every scroller under the family root hides its bar and
+     * NIVO never shows scrollbars (OVERFLOW-6). Every scroller under the family root hides its bar and
      * keeps wheel, touch and keyboard scrolling; the edge says where content continues, as HeroUI's ScrollShadow draws it.
      * ScrollShadow hosts draw their own fade; the scrollers listed in the second rule take the same fade from the scroll
      * position (CSS scroll-driven animation: no fade where nothing overflows, none on the edge already reached).
