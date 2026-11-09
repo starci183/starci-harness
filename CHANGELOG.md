@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.109 - 2026-11-09
 
+- Changed: the CLI requires @starci/hfs@6.5.7, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed: the Grammar family 0.35.0 (`@starci/hfs` 6.5.7 names it): the FlowGraph card style, additive (`layout="lanes"` draws as before): `layout="steps"` (top-down, left-to-right as an option), kind cards (event, action, condition, ask, wait, end), condition output ports, dashed labelled back and return edges, the run overlay (node `status`, edge `isTaken`), `onNodePress`, `legend` and `kindTones`.
 
 ## 1.1.0-alpha.108 - 2026-11-09
