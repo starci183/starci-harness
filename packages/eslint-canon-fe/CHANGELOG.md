@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.16.12 - 2026-11-09
+
+- Changed: peer `@starci/hfs ~6.7.0` (hfs 6.7.0: the per-screen gallery and its explain.md gates, R395); no lint rule of this package changed.
+
 ## 9.16.11 - 2026-11-09
 
 - Changed: peer `@starci/hfs ~6.6.0` (hfs 6.6.0: R395 and the managed app gallery slots); no lint rule changed.
