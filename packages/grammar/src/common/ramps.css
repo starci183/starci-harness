@@ -151,7 +151,7 @@
         --grammar-flow-tile-radius: calc(var(--radius) * 9 / 8);
         --grammar-flow-port-dot: 0.5rem;
         --grammar-flow-status-size: 1.25rem;
-        --grammar-flow-status-glyph: 0.75rem;
+        --grammar-flow-status-glyph: 1.25rem;
         --grammar-flow-swatch-size: 0.75rem;
         --starci-core-contained-max-height: calc(100dvh - 3rem);
         --starci-core-band-height: 0rem;

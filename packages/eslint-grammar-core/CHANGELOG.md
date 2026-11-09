@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.36.1 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.36.1 (the status dot is a hollow ring); no rule of this package changed.
+
 ## 0.36.0 - 2026-11-09
 
 - Added: `section-head-action` (`FE_SECTION_HEAD_ACTION`, SECTION-HEAD-ACTION, error): a Grammar `Button` in a `Section` head `action` is refused (navigation is a `Link variant="head"`), and so is more than one command

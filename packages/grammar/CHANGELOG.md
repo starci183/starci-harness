@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.36.1 - 2026-11-09 - the status dot is a hollow ring
+
+- Changed (default): `StatusDot`, the dot of `Badge isDot` and the avatar presence mark are a HOLLOW RING (owner, ICONS-OUTLINE): 8px (`--starci-core-status-dot-size: 0.5rem`, was 6px) with a 1.5px stroke (`--grammar-stroke-fine`) in the tone
+  colour and a transparent centre, so it reads next to 12px badge text. No filled status dot remains. The echo ring of a live dot is unchanged. `prove-theme` now holds the ring's `border-top-color`. No API change.
+- Changed: the FlowGraph run-overlay status icons are 20px (were 12px) outline glyphs on the card ground (no tint) so they read at the card corner.
+- Released with the 0.36.0 content (the family is unchanged otherwise); `eslint-grammar-core` and `eslint-grammar-offset-pop` 0.36.1 change no rule.
+
 ## 0.36.0 - 2026-11-09 - HeroUI table look, the one-row section head, the scroll law, the pane measure, tab count chips
 
 - Changed (default): THE TABLE IS HEROUI v3's NATIVE LOOK (owner). A standalone `DataTable` (`surface="card"`, the default) is the card itself: the vendor's primary root, a grey frame
@@ -35,8 +42,7 @@
 - Changed (default): ICONS ARE OUTLINE ONLY (owner). Grammar's own icons import from `@heroicons/react/24/outline` (no 16/20 solid anywhere). A STATUS is a tone-coloured outline icon with no tile: the FlowGraph run overlay
   draws outline check-circle (success), x-circle (danger), a spinning arrow (running, off under reduced motion), clock (warning) and minus-circle (skipped) at the card's corner with no disc, no ring and no fill; the
   Stepper markers and the accordion step marks are outline rings in their tone (complete success, current accent, error danger, paused warning dashed, upcoming a hairline ring) instead of filled discs. An icon that stands alone
-  as the mark of a row, card, empty state or graph step keeps the icon tile (a soft-tone square holding an outline icon: `ListRow` leading, `EmptyNotice`, FlowGraph kinds); an icon inline with text is plain. `StatusDot` (a dot beside a
-  label or on an avatar) is unchanged. Apps: replace any solid icon import with the outline name.
+  as the mark of a row, card, empty state or graph step keeps the icon tile (a soft-tone square holding an outline icon: `ListRow` leading, `EmptyNotice`, FlowGraph kinds); an icon inline with text is plain. `StatusDot` became a hollow ring in 0.36.1. Apps: replace any solid icon import with the outline name.
 - Added: `count` and `isAttention` on the head of `SurfaceCard` (`CardHead`) and `isAttention` on `Section`: the 12px count chip stands right after the label (grey, pink only with `isAttention`) and coexists with `labelEnd`
   (one head `Link variant="head"` or `IconButton`) at the end, so a head shows label + chip on the left and one Link on the right. `fact` still draws beside them.
 - Lint: `eslint-grammar-core` 0.36.0 adds `outline-icons-only`, `card-one-content`, `no-label-description`, `section-head-action` (`FE_SECTION_HEAD_ACTION`: a Button in a Section head `action`, or more than one command, is an error) and `tab-count-chip` (`FE_TAB_COUNT_CHIP`: a tab

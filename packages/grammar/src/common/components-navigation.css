@@ -2707,7 +2707,9 @@
         justify-content: center;
         inline-size: var(--grammar-flow-status-size);
         block-size: var(--grammar-flow-status-size);
-        background: transparent;
+        /* The card ground behind the glyph only keeps the card edge from cutting through the outline; it is not a tile (no tint). */
+        border-radius: var(--grammar-radius-round);
+        background: var(--surface);
         color: var(--starci-flow-status);
         transform: translate(-35%, -35%);
     }
