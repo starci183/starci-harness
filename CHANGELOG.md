@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-alpha.112 - 2026-11-09
+
+- Changed: `@starci/hfs` 6.6.0 (every app source has a gallery: R395, the managed `gallery/` Vite app on base port + 50, `stack up` runs it); the canon pins name it with `eslint-canon-be` 3.21.1, `eslint-canon-fe` 9.16.11 and `eslint-grammar-core` / `eslint-grammar-offset-pop` 0.36.2.
+- Upgrade, per existing app: `starci app check` reports `HFS_APP_GALLERY_MISSING` (R395) until the gallery exists. Run `starci app sync --execute` (it lays down `gallery/` in the app's default locale, `vi` or `en`, and the managed `.gitignore` block), then `npm install` in `gallery/`, then commit `gallery/` (not `gallery/shots/`, which is git-ignored).
+
 ## 1.1.0-alpha.111 - 2026-11-09
 
 - Fixed: the Grammar family 0.36.2 (`@starci/hfs` 6.5.9 names it): the sticky page band sits at top 0 inside the fixed console shell (0.36.0 pushed it down by the top-bar height, leaving a pink strip above every page and hiding the first row); also a borderless Switch, the Section fact as a chip, Grid columns 5 and `balanced`, EmptyNotice `actionHref` and frameless in a card, a text-only FileButton, a one-line section head at 390, and FlowGraph steps fit to width with sized ports.

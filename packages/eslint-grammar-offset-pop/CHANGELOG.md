@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.36.3 - 2026-11-09
+
+- Changed: depends on `@starci/eslint-grammar-core` 0.36.2 exactly; no rule of this package changed. `@starci/grammar` stays at 0.36.1.
+
 ## 0.36.2 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.36.2 (a Switch has no border); no rule of this package changed.

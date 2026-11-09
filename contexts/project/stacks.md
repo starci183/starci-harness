@@ -369,6 +369,7 @@ Rules learned from running apps on developer hosts; each holds in every app.
   A role no process plays leaves its slot empty, and base and base + 1 stay reserved for the front end and the api either way; base + 2 is
   reserved for the gateway only while a gateway runs, so an app without one (front end, api, landing) puts its landing at base + 2.
   The range 3900 to 3999 is reserved for the shared UI-lane `next dev` preview, which runs outside any app's stack: no app's `basePort` range may overlap it.
+  The screenshot gallery ([gallery.md](gallery.md) PROJECT-GALLERY-1) is a native process on base + 50, started by `stack up` next to the others.
   Compose service ports (the database, Redis, the object store) are exempt: they are published by containers, not derived. A departure is
   `STACKS_BASE_PORT_ROLE` (an error); an app with native processes on ports and no `basePort` gets `STACKS_BASE_PORT_UNDECLARED`, a warning
   that asks it to declare one. `starci app stack doctor --env <env>` prints the `base port` row (the role table) and a `port range` row that fails

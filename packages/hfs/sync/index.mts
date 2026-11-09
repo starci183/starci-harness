@@ -28,6 +28,7 @@ import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.m
 import { managedGroupOf } from '../runtime/scripts/hfs/edition-slots.mjs';
 import { declaredSlotEnabled } from '../runtime/scripts/hfs/declaration-slots.mjs';
 import { feAppPackageName } from '../runtime/scripts/hfs/rules/monorepo.mjs';
+import { declaredDefaultLocale, galleryParams, galleryPort, galleryTexts } from '../runtime/scripts/hfs/gallery.mjs';
 import { DEFAULT_PORT, NODE_IMAGE, dockerfilePath } from '../runtime/scripts/hfs/rules/docker.mjs';
 import { isFile } from '../runtime/scripts/lib/fs-kind.mjs';
 import { readDeclaredSonarKey } from './sonar-key.mjs';
@@ -102,6 +103,8 @@ export interface AppSourceFacts {
   modules?: readonly string[]; otherPackages?: readonly string[]; // the module packages (packages/module-<name>) and the other folders of packages/
   /** The unmeasured globs of each root package that declares a sound slot manifest (packages/<name>/slots.yaml, PROJECT-LINT-3), by app-relative folder. */
   packageScopes?: Readonly<Record<string, readonly string[]>>;
+  /** The default locale the app declares in its i18n routing source (the gallery's UI language, ruleParams.gallery); absent when none is declared. */
+  defaultLocale?: string | null;
   stack: any; quality: any; badges: string; qualityDeclared: boolean; // reason: stack and quality come from the YAML-parsed declaration
 }
 
@@ -322,6 +325,26 @@ function otherPackages(root: string): string[] {
 export const rootPackageFolders = (source: Partial<Pick<AppSourceFacts, 'modules' | 'otherPackages'>> | undefined): string[] =>
   [...(source?.modules ?? []).map(name => `packages/${MODULE_PREFIX}${name}`), ...(source?.otherPackages ?? []).map(name => `packages/${name}`)];
 
+/** The i18n routing files an app declares its languages in: the product i18n package of a full app, then each web app's i18n module (FE-I18N-1). */
+function routingFiles(root: string): string[] {
+  const names = (dir: string): string[] => { try { return fs.readdirSync(path.join(root, dir), { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => entry.name).sort(byCodeUnit); } catch { return []; } };
+  return [
+    ...names('fe/packages').filter(name => name.endsWith('-i18n')).map(name => `fe/packages/${name}/src/routing.ts`),
+    ...names('fe/apps').map(name => `fe/apps/${name}/src/modules/i18n/routing.ts`),
+  ];
+}
+
+/** The default locale of the app at `root` (its routing source's `DEFAULT_LOCALE`), or null when it declares none. */
+export function appDefaultLocale(root: string): string | null {
+  for (const file of routingFiles(root)) {
+    let text: string;
+    try { text = fs.readFileSync(path.join(root, file), 'utf8'); } catch { continue; }
+    const declared = declaredDefaultLocale(text);
+    if (declared !== null) return declared;
+  }
+  return null;
+}
+
 export function appSource(root: string, { parseYaml, notices }: { parseYaml?: ParseYaml | undefined; notices?: string[] | undefined } = {}): AppSourceFacts {
   const files: string[] = [];
   const walk = (dir: string): void => {
@@ -342,6 +365,7 @@ export function appSource(root: string, { parseYaml, notices }: { parseYaml?: Pa
     workPresent: fs.existsSync(path.join(root, '.starciwork')), hasContracts: fs.existsSync(path.join(root, 'be', 'contracts')), hasImage: (file: string) => isFile(path.join(root, file), { followLinks: false }),
     stack: readDeclaredStack(root, { parseYaml }), quality: readDeclaredQuality(root, { parseYaml }),
     badges: readDeclaredBadges(root, { parseYaml, notices }),
+    defaultLocale: appDefaultLocale(root),
     qualityDeclared: hasDeclaredServices(root, { parseYaml }) };
 }
 
@@ -523,6 +547,11 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   const grammarLint = scope === 'fe' ? grammarLintFor(fe.grammar) : null;
   return {
     header: HEADER(scope),
+    // The screenshot gallery (R395): its dev port is the base port + the offset, and the Vite version its package.json pins (ruleParams.gallery).
+    galleryPort: String(galleryPort(source.stack?.basePort, galleryParams(manifest)) ?? ''),
+    // The gallery's words follow the app's default locale (vi and en; en when none is declared or the locale has no table, gallery.mts GALLERY_LABELS).
+    ...galleryTexts(source.defaultLocale, app.project, galleryPort(source.stack?.basePort, galleryParams(manifest)) ?? ''),
+    galleryVite: galleryParams(manifest).vite,
     readmeBadges: source.badges ?? '',
     project: app.project,
     appBinary: APP_BINARY,
@@ -617,7 +646,9 @@ function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKe
     const declaredTargets = targetsOf(scope, { edition: app.edition as string, manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo) });
     if (scope === APP_SCOPE && source?.badges) declaredTargets.push({ path: 'README.md', mode: 'block', markdown: true, template: 'app/readme-badges/README.md' });
     const targets = declaredTargets
-      .filter(target => !(app.edition === 'lite' && source?.workPresent === false && target.path === '.starciwork/.gitignore'));
+      .filter(target => !(app.edition === 'lite' && source?.workPresent === false && target.path === '.starciwork/.gitignore'))
+      // The gallery serves on the base port + ruleParams.gallery.portOffset (R395): an app that declares no local.basePort has no port to render, and the rule asks for one.
+      .filter(target => target.group !== 'gallery' || galleryPort(source?.stack?.basePort, galleryParams(manifest)) !== null);
     return [...(scope === APP_SCOPE ? [...registryTargets(app, source), ...packagesLintTargets(app, source)] : []), ...targets.map((target): RenderedTarget => {
       const template = target.path === 'codecov.yml' && source?.quality?.codecov.enabled === false
         ? '{{header}}\n# Codecov is disabled in the manifest.\ncodecov:\n  require_ci_to_pass: false\n'

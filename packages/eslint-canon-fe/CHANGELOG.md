@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.16.11 - 2026-11-09
+
+- Changed: peer `@starci/hfs ~6.6.0` (hfs 6.6.0: R395 and the managed app gallery slots); no lint rule changed.
+
 ## 9.16.10 - 2026-11-09
 
 - Changed: peers `@starci/hfs ~6.5.0` (hfs 6.5.0: `starci app add connection`, the full-app inbox of `app add webhook`, `slot:` owners of the infra table); no lint rule changed.
