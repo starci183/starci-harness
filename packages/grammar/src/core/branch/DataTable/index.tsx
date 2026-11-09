@@ -156,6 +156,11 @@ export type DataTableProps<Row extends DataTableRow> = NoChildren & DataTableRow
      * Default `list` for a table of three or more columns, `table` otherwise.
      */
     readonly phone?: "list" | "table"
+    /**
+     * The table fills the height its host gives it (a cell of a stretched grid, a `Section fill`): the white body grows to the frame's foot and the `footer` sticks to the bottom.
+     * Default false: the table is as tall as its rows.
+     */
+    readonly fill?: boolean
 }
 
 /** The vendor row part filters aria-hidden out of its props, so the skeleton rows take it by ref (knowledge STATE-8). */
@@ -350,6 +355,7 @@ export const DataTable = <Row extends DataTableRow>({
     resizable = false,
     id: tableId,
     phone,
+    fill = false,
 }: DataTableProps<Row>) => {
     const rows: ReadonlyArray<Row> = groups === undefined ? flatRows ?? [] : groups.flatMap((group) => group.rows)
     const scrollRef = useRef<HTMLDivElement>(null)
@@ -600,6 +606,7 @@ export const DataTable = <Row extends DataTableRow>({
             data-grammar-table-sized={hasSizes ? "true" : "false"}
             data-grammar-table-resizable={resizable ? "true" : "false"}
             data-grammar-table-list={isList ? "true" : "false"}
+            data-grammar-table-fill={fill ? "true" : "false"}
         >
             {isList ? listBody : <HeroTable.ScrollContainer ref={scrollRef} className="starci-core-data-table-scroll" data-contract="LAYOUT-3" data-grammar-table-scroll="true" style={scrollStyle} onKeyDownCapture={onCellKeyDown}>
                 {resizable ? <HeroTable.ResizableContainer onResizeEnd={onResizeEnd}>{content}</HeroTable.ResizableContainer> : content}

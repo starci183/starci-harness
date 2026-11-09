@@ -18,6 +18,10 @@ type GridCardsProps = {
     readonly children: ReactNode
     /** The most cards per row. Omit it to fit as many tracks of the card minimum as the width holds. */
     readonly columns?: GridCardColumns
+    /** The space between cards: `card` (default; the card gap, 12 on a phone and 24 from 48rem) or `inline` (8, tiles). */
+    readonly gap?: "card" | "inline"
+    /** `stretch` (default): every card of a row takes the height of the tallest. `start`: each card keeps its own height. */
+    readonly align?: "stretch" | "start"
 }
 
 type GridFormProps = {
@@ -116,6 +120,8 @@ export const Grid = (props: GridProps) => {
             data-tier="frame"
             data-grammar-grid-kind="cards"
             data-grammar-grid-columns={props.columns === undefined ? "fit" : props.columns === "balanced" ? String(balancedColumns(Children.toArray(props.children).length)) : String(props.columns)}
+            data-grammar-grid-gap={props.gap ?? "card"}
+            data-grammar-grid-align={props.align ?? "stretch"}
             data-contract="GAP-2 RESPONSIVE-1"
         >
             {props.children}

@@ -54,6 +54,11 @@ type SectionStatus = {
     readonly isLoading?: boolean
     /** The read failed: the head stays and this takes the place of the body. Loading comes first, then error, then empty. */
     readonly error?: ErrorData
+    /**
+     * The section fills the height its host gives it (a cell of a stretched grid): the body (a `SurfaceCard height="fill"`, a `DataTable fill`) takes what the head and the caption leave.
+     * A section without it keeps its own height.
+     */
+    readonly fill?: boolean
 }
 
 /** The one line under the body. */
@@ -130,6 +135,7 @@ export const Section = (props: SectionProps) => {
             data-tier="frame"
             data-grammar-section-kind={props.kind ?? "region"}
             data-grammar-skeleton={isLoading ? "true" : undefined}
+            data-grammar-section-fill={props.fill === true ? "true" : undefined}
             data-contract="GAP-3 MARGIN-0 PADDING-0"
         >
             {title === undefined ? null : <SectionHead

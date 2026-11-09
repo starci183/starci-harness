@@ -14,6 +14,10 @@
 - Changed (owner): a navigation `Link variant="head"` ends in the outline arrow-right ICON (16px, currentColor, slides on hover), not the typed arrow; Button `endArrow` is the same icon.
 - Changed (owner): the section head (Section and SurfaceCard label row) is ONE nowrap row of a fixed minimum height (the label truncates first); the count chip sits right after the label (SurfaceCard no longer pushes it to the far end); a count of 0 is not drawn on a section head.
 - Changed: `Grid kind="cards"` stretches its cards to equal height and uses the card gap (12 phone, 24 from 48rem).
+- Added: `Grid kind="cards"` takes `gap` (`card` default, the card gap 12 on a phone and 24 from 48rem; `inline` 8) and `align` (`stretch` default; `start`); the `pair` and `featured` slots stretch to the row height and what they hold fills the slot.
+- Added: `Section fill` (a cell of a stretched grid): the section fills the height its host gives it and its body takes what the head and caption leave, so `SurfaceCard height="fill"` and `DataTable fill` fill it. A Section without it keeps its own height.
+- Added: `DataTable fill`: the white body grows to the frame's foot and the footer sticks to the bottom. Story `EqualHeightRow`.
+- Changed: the section head is a FIXED height row (`--grammar-section-head-size`, 2rem; was a touch-size minimum), so the 20px label row and the 32px info `IconButton` both fit and no head differs in height.
 
 ## 0.37.2 - 2026-11-09 - the shared head row reaches nested grids
 

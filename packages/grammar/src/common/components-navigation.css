@@ -1006,6 +1006,32 @@
         overflow-y: auto;
     }
 
+    /*
+     * `fill` (0.37.3): the table is a flex column as tall as its host; the scroll region grows, its white ground runs under the rows down to the frame's foot (the grey
+     * heading row keeps its own height), and the footer stays at the bottom.
+     */
+    .starci-core-data-table[data-grammar-table-fill="true"] {
+        display: flex;
+        flex-direction: column;
+        block-size: 100%;
+        min-block-size: 0;
+    }
+
+    .starci-core-data-table[data-grammar-table-fill="true"] .starci-core-data-table-scroll {
+        flex: 1 1 auto;
+        min-block-size: 0;
+    }
+
+    .starci-core-data-table[data-grammar-table-fill="true"]:not([data-grammar-table-surface="none"]) .starci-core-data-table-scroll {
+        background: linear-gradient(var(--surface-secondary) 0 var(--starci-core-table-head-size), var(--surface) var(--starci-core-table-head-size) 100%);
+        border-end-start-radius: var(--starci-core-table-body-radius);
+        border-end-end-radius: var(--starci-core-table-body-radius);
+    }
+
+    .starci-core-data-table[data-grammar-table-fill="true"] .starci-core-data-table-footer {
+        margin-block-start: auto;
+    }
+
     .starci-core-data-table-content {
         min-width: 100%;
         width: max-content;

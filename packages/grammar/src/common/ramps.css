@@ -111,6 +111,8 @@
         --starci-core-narrow-measure: 66.5rem;
         --starci-core-field-min-height: var(--starci-core-control-min-size);
         --grammar-touch-size: 2.75rem;
+        /* The grey heading row of a table (12px text between two 0.5rem steps): where a filled table's white ground starts. */
+        --starci-core-table-head-size: 2.25rem;
         --starci-core-field-gap: var(--grammar-inline-gap);
         --starci-core-copy-gap: var(--grammar-identity-gap);
         --starci-core-row-gap-compact: var(--grammar-inline-gap);

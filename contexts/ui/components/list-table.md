@@ -67,3 +67,5 @@ muted, on one line directly under the name at the identity gap (not a row step b
 COLLECTION-1..4, BOUNDARY-2..3, BOUNDARY-7, FONT-9, OVERFLOW-4, LAYOUT-3. Lint: `single-child-card`, `starci-grammar/surface-in-surface`,
 `starci-grammar/row-title-link`, `starci-grammar/table-cell-type`, `starci-fe/selection-fill-no-check`,
 `no-list-panel-padding`, `list-item-has-key`, `no-commit-in-collection-item`. Proof: TASTE-3, TASTE-10, UX-5.
+
+`DataTable fill` (0.37.3) makes the table fill the height its host gives it (a `Section fill` cell of a stretched `Grid`): the white body grows to the frame's foot and the footer sticks to the bottom. The section head is a fixed 2rem row, nowrap, the label truncating first.

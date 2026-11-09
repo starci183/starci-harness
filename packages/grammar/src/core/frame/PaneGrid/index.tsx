@@ -271,6 +271,36 @@ const gridVars = (models: Models, hasTrigger: (breakpoint: PaneBreakpoint) => bo
     return vars
 }
 
+/** Whether a pane's stack opens with a head: a first band that is a `header`, or one whose first element is a `PaneHeader`. */
+const paneHasHead = (pane: Element): boolean => {
+    const first = pane.querySelector(":scope > .starci-core-pane-stack")?.firstElementChild
+    if (first === null || first === undefined) return false
+    return first.tagName === "HEADER" || first.firstElementChild?.classList.contains("starci-core-pane-header") === true
+}
+
+/**
+ * The shared head row (0.37.3) is decided per outermost grid: `row` when EVERY leaf pane (a pane that holds no PaneGrid) has a head, `lone` when only some do,
+ * `none` when none does. CSS cannot ask "does every pane have a head" (no nested `:has`), so the grid writes the answer on its tracks and keeps it current.
+ */
+const useHeadRowMode = () => {
+    const ref = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        const tracks = ref.current
+        if (tracks === null || tracks.closest(".starci-core-pane") !== null) return undefined
+        const decide = () => {
+            const leaves = Array.from(tracks.querySelectorAll(".starci-core-pane")).filter((pane) => pane.querySelector(".starci-core-pane-grid") === null)
+            const heads = leaves.filter(paneHasHead).length
+            const mode = heads === 0 ? "none" : heads === leaves.length ? "row" : "lone"
+            if (tracks.getAttribute("data-grammar-head-row") !== mode) tracks.setAttribute("data-grammar-head-row", mode)
+        }
+        decide()
+        const observer = new MutationObserver(decide)
+        observer.observe(tracks, { childList: true, subtree: true })
+        return () => observer.disconnect()
+    }, [])
+    return ref
+}
+
 /**
  * Generic bounded pane grid: named areas laid out flush, a divider between adjacent panes, each pane optionally on the
  * surface ground and optionally its own scroll owner.
@@ -291,6 +321,7 @@ export const PaneGrid = (props: PaneGridProps) => {
     const stray = flat.find((child) => !isPane(child))
     if (stray !== undefined) throw new Error(`PANE_GRID_CHILD_NOT_PANE: ${childTypeName(stray)}`)
     const panes = flat.filter(isPane)
+    const tracksRef = useHeadRowMode()
     const drawers = panes.filter((pane) => pane.props.collapse === "drawer")
     const hasBar = (pane: ReactElement<PaneProps>) => pane.props.trigger === undefined || pane.props.trigger === "bar"
     const [openHeads, setOpenHeads] = useState<ReadonlySet<string>>(() => new Set())
@@ -354,7 +385,7 @@ export const PaneGrid = (props: PaneGridProps) => {
             )}
             <PaneModelsContext.Provider value={models}>
                 <PaneOpenerContext.Provider value={opener}>
-                    <div className="starci-core-pane-grid-tracks" data-contract="GAP-0" style={style}>
+                    <div ref={tracksRef} className="starci-core-pane-grid-tracks" data-contract="GAP-0" style={style}>
                         {panes}
                     </div>
                 </PaneOpenerContext.Provider>

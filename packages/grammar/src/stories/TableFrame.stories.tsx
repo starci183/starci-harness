@@ -304,3 +304,26 @@ export const TableColumnSizing: Story = {
     />
   ),
 };
+
+/**
+ * 0.37.3 equal heights: a `Grid kind="cards"` (the 24 card gap, `align="stretch"` by default) holds three cells that are `Section fill`s, each filling its cell:
+ * a table whose white body grows and whose footer sticks to the bottom (`DataTable fill`), and two cards that stretch (`SurfaceCard height="fill"`). The head is one fixed 32px row
+ * in every section, with the info button inside it.
+ */
+export const EqualHeightRow: Story = {
+  render: () => (
+    <div style={{ maxInlineSize: '80rem' }}>
+      <G.Grid kind="cards" columns={3}>
+        <G.Section fill title="Hóa đơn" count={8} action={<G.Link variant="head" href="#invoices">Xem tất cả</G.Link>}>
+          <G.DataTable<Invoice> fill label="Hóa đơn" columns={columns.slice(0, 2)} rows={invoices.slice(0, 3)} renderCell={cell} emptyContent="Chưa có hóa đơn." footer={<G.Text tone="muted">1–3 trong 8</G.Text>} />
+        </G.Section>
+        <G.Section fill title="Tiết kiệm">
+          <G.SurfaceCard kind="list" height="fill" label="Tiết kiệm" items={[{ id: 'a', title: 'Giờ làm việc', description: '12 giờ tuần này' }]} empty={<G.EmptyNotice message="Chưa có" />} />
+        </G.Section>
+        <G.Section fill title="Kênh">
+          <G.SurfaceCard kind="list" height="fill" label="Kênh" items={[{ id: 'a', title: 'Zalo OA' }, { id: 'b', title: 'Telegram' }, { id: 'c', title: 'Email' }, { id: 'd', title: 'Web' }]} empty={<G.EmptyNotice message="Chưa có" />} />
+        </G.Section>
+      </G.Grid>
+    </div>
+  ),
+};

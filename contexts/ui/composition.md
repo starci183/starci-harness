@@ -267,7 +267,7 @@ Choice `grid.choose.content`: which track owner carries the content.
 | sections | independent named working regions retain separate tasks and heading owners | `Grid kind="sections"` of those regions | one column, two equal tracks in a wide workspace viewport |
 | pair | two equal portions form one reading or comparison unit | `Grid kind="pair"` with required `leading` and `trailing` slots | one column, two equal tracks when their container supports both measures |
 | featured | one central focus has two symmetric secondary support groups | `Grid kind="featured"` with required `leading`, `featured` and `trailing` slots | one reading column or three symmetric tracks, preserving source order |
-| cards | peers are recognised and opened as a collection | `Grid kind="cards"` of tiles | `card.choose.role:tile` |
+| cards | peers are recognised and opened as a collection | `Grid kind="cards"` of tiles (0.37.3: the card gap, 12 phone / 24 from 48rem, `gap="inline"` for tiles; `align="stretch"` by default so a row stands at one height; a cell that is a `Section fill` lets its `SurfaceCard height="fill"` or `DataTable fill` fill it; `pair` and `featured` slots stretch too) | `card.choose.role:tile` |
 | form | neighbouring fields share aligned control rows | `Grid kind="form"` | `text-field.choose.columns` |
 | main-rail | one task has subordinate support beside it | `Grid kind="main-rail"` | one primary and one rail |
 
