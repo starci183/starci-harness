@@ -1,6 +1,7 @@
 import { existsSync, lstatSync, readFileSync, statSync } from "node:fs"
 import { join, posix } from "node:path"
 import { z } from "zod"
+import { installSatisfies } from "../../harness/install-cache.js"
 import { inOrder } from "../../harness/sequential.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
@@ -117,8 +118,16 @@ export const assertNpm = (root: string): void => {
 /** The last lines of an npm run's output, for a refusal. */
 export const tail = (stdout: string, stderr: string): string => [stdout, stderr].join("\n").trim().split("\n").slice(-15).join("\n")
 
-// A package folder's install is stale when npm's record of it is missing or older than the lockfile it was made from.
-const installStale = (folder: string): boolean => {
+/**
+ * A package folder's install is stale when it does not hold the lockfile's packages. npm's record of the install (read through the folder's
+ * `node_modules`, a junction or link to a cached install included) is compared with the lockfile, package by package (`installSatisfies`): a
+ * checkout whose lockfile was written after the install it links (a fresh worktree) is not stale while the packages match, so a linked install
+ * is built against, never reinstalled through. Only when the comparison cannot be made (no record or no lockfile) does the record's age against
+ * the lockfile decide.
+ */
+export const installStale = (folder: string): boolean => {
+    const satisfied = installSatisfies(folder)
+    if (satisfied !== undefined) return !satisfied
     const installed = join(folder, "node_modules", ".package-lock.json")
     const lock = join(folder, "package-lock.json")
     if (!existsSync(installed)) return true

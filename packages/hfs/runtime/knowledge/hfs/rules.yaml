@@ -6623,10 +6623,10 @@ rules:
       - {path: packages/hfs/src/stack-live-checks.spec.mjs, editions: [lite, full]}
   - id: R395
     code: "HFS_APP_GALLERY_MISSING"
-    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset` with a `dev` script using --strictPort, pins its vite version exactly, and keeps `gallery/shots/**/*.png` git-ignored and untracked; every UI fix round saves its before and after shots there."
+    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset` with a `dev` script using --strictPort, pins its vite version exactly, and keeps `gallery/pages/**/*.png` git-ignored and untracked; every UI fix round saves its shots in `gallery/pages/<area>/<screen>/` (one folder is one screen: one agent, one state; only `1440.png`, `1920.png`, `390.png`, `explain.md` and an optional `links.json`; no `before/`) beside an `explain.md` (front matter `title`, `route`, `area`; one `## <region name>` per visible region with the lines `Vì sao:`, `Luật:` and `Grammar:`): a screen folder with shots and no `explain.md`, any other file name in a screen folder, a region without a `Vì sao` or `Grammar` value, a `links.json` or `flows.json` that names a screen folder that does not exist, and (in `--env prod`; a warning in `--env local`) a region that says `CHƯA RÕ` or `SAI` fail."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["HFS_APP_GALLERY_MISSING", "HFS_APP_GALLERY_SCRIPT", "HFS_APP_GALLERY_VITE_UNPINNED", "HFS_APP_GALLERY_SHOTS_TRACKED"]
+    failureCodes: ["HFS_APP_GALLERY_MISSING", "HFS_APP_GALLERY_SCRIPT", "HFS_APP_GALLERY_VITE_UNPINNED", "HFS_APP_GALLERY_SHOTS_TRACKED", "HFS_APP_GALLERY_EXPLAIN_MISSING", "HFS_APP_GALLERY_REGION_INCOMPLETE", "HFS_APP_GALLERY_REGION_UNCLEAR", "HFS_APP_GALLERY_FRONT_MATTER", "HFS_APP_GALLERY_SCREEN_FILE", "HFS_APP_GALLERY_LINKS"]
     enforcers:
       - {kind: hfs, id: gallery, at: runtime/scripts/hfs/rules/gallery.mjs}
     editions: [lite, full]

@@ -127,7 +127,7 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R372 | dev environment is runnable | Declare `environments.dev` as docker-compose with a `local` block the dev verbs normalise; a lite app has one. |
 | R373 | dev runbook names the verb | Replace docker commands in the runbook with `starci app stack up --env <env> --execute` and its siblings. |
 | R389 | dev ports derive from a base port | Declare `local.basePort`; give the front end base, the api base+1, the AI gateway base+2 and the other native processes the ports above (PROJECT-STACKS-10). |
-| R395 | every app carries a screenshot gallery | Run `starci app sync --execute` for `gallery/` (a Vite app on `local.basePort` + 50, pinned, its shots git-ignored); save before and after shots per UI round (PROJECT-GALLERY-1). |
+| R395 | every app carries a screenshot gallery | Run `starci app sync --execute` for `gallery/` (a Vite app on `local.basePort` + 50, pinned, its shots git-ignored); save each UI round's shots in `gallery/pages/<area>/<screen>/` (only `1440.png`, `1920.png`, `390.png`, `explain.md`, `links.json`) and write that screen's `explain.md` (a `Vì sao`, `Luật` and `Grammar` line per region; `CHƯA RÕ` or `SAI` is a warning in `--env local`, an error in `--env prod`) (PROJECT-GALLERY-1, PROJECT-GALLERY-2, PROJECT-GALLERY-3). |
 | R296 | service custody and CI execution copies | Bind each sealed tooling copy to its exact product service, project, environment, member and key; keep runtime keys out of CI. |
 | R297 | app secrets are not CI secrets | Remove from CI secrets or vars any key granted to the app container. |
 | R298 | CI declarations match use | Declare each referenced secret or variable in its CI class, and drop declarations nothing consumes. |

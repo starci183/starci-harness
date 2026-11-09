@@ -87,3 +87,4 @@
 34. **A lint package per grammar.** `@starci/eslint-grammar-core` holds the Common-API checks every grammar needs. Split
    them into `@starci/eslint-grammar-common`, with each grammar shipping `@starci/eslint-grammar-<id>` (a factory even
    when it only re-exports, and `fe-stack` refusing a grammar whose lint entry is missing), or keep the shared package?
+35. **Citations in a gallery explanation.** The `Luật:` line of an `explain.md` (`contexts/project/gallery.md` PROJECT-GALLERY-2) cites a contexts anchor id. The anchor table lives in the CLI (`cli/src/core/contexts/anchors.ts`), while R395 runs in `@starci/hfs` inside an app repository that carries no contexts tree. Should `starci app check` hand the gate the anchor table (a resolver the finder takes, the CLI refusing an unknown id with the near ids), or does the gate stay structural (a `Luật` value is not judged)?
