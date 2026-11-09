@@ -37,6 +37,11 @@ export type DrawerProps = OverlayOpenState & {
      * accessible ways out.
      */
     readonly showHandle?: boolean
+    /**
+     * The body's inset. `content` (default) keeps the sheet's inset around the body. `none` runs the body edge to edge across
+     * the sheet (a chat well, a list that owns its own rows); the body still scrolls with the fading edge and no scrollbar.
+     */
+    readonly bodyInset?: "content" | "none"
     /** Close on an outside press (and allow drag-to-dismiss). Default `true`. */
     readonly isDismissable?: boolean
     readonly isKeyboardDismissDisabled?: boolean
@@ -62,6 +67,7 @@ export const Drawer = ({
     placement = "right",
     showHandle,
     width = "standard",
+    bodyInset = "content",
     isDismissable = true,
     isKeyboardDismissDisabled = false,
     ...openState
@@ -105,7 +111,7 @@ export const Drawer = ({
                                 {closeLabel === undefined ? null : <IconButton intent="dismiss" label={closeLabel} onPress={close} />}
                             </HeroDrawer.Header>
                             {children === undefined ? null : (
-                                <HeroDrawer.Body className="starci-core-overlay-body" {...(isLoading ? { "aria-busy": true, "data-grammar-loading-region": "true" } : {})}><LoadingScope isLoading={isLoading}>{children}</LoadingScope></HeroDrawer.Body>
+                                <HeroDrawer.Body className="starci-core-overlay-body" {...(bodyInset === "none" ? { "data-grammar-body-inset": "none" } : {})} {...(isLoading ? { "aria-busy": true, "data-grammar-loading-region": "true" } : {})}><LoadingScope isLoading={isLoading}>{children}</LoadingScope></HeroDrawer.Body>
                             )}
                             {footer === undefined ? null : (
                                 <HeroDrawer.Footer className="starci-core-overlay-footer">

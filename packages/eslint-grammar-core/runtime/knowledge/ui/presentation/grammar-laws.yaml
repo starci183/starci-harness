@@ -139,3 +139,13 @@ rules:
           The Grammar draws a standalone DataTable and every Section kind="list" as ONE frame (border, card radius), so the
           card is a second frame. The title sits above as a Section head and one caption sits below (Section caption, muted sm).
           A card groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions).
+  - id: NO-RAW-SCROLL
+    title: NIVO never shows scrollbars
+    governs: Scroll areas an app draws.
+    cases:
+      - id: case-1
+        when: Content scrolls in a pane, drawer, list, thread, tab strip, table or modal body
+        assert: |-
+          The scroll area is a Grammar scroller (`VerticalScrollRegion`, `HorizontalScrollRegion`, `PaneSection` with `scroll`):
+          the scrollbar is hidden, a fading edge (ScrollShadow behaviour) shows where content continues, and wheel, touch and
+          keyboard scrolling keep working. An app element with an `overflow-y-auto` or `overflow-auto` class is refused.

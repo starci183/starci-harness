@@ -192,6 +192,11 @@ export const why: Record<string, WhyEntry> = {
     en: "A Grid or Cluster in `<file>` puts a SurfaceCard beside a Stack of SurfaceCards, or two SurfaceCards of different kinds side by side.",
     fix: "A report page stacks its cards in one vertical column (24 apart); side by side is only for sibling cards of one role and height. A page with a persistent selection column or a full-height chat or editor is a workspace: `Page chrome=\"panes\"`, whose side panes are white surfaces, never cards.",
   },
+  "no-raw-scroll": {
+    code: "FE_NO_RAW_SCROLL",
+    en: "An element in `<file>` makes its own scroll area with an `overflow-auto`, `overflow-y-auto` or `overflow-scroll` class.",
+    fix: "NIVO never shows scrollbars. Use the Grammar scroller (`VerticalScrollRegion`, `HorizontalScrollRegion`) or `PaneSection scroll`: they fade the edge where content continues, hide the bar and keep wheel and keyboard scrolling.",
+  },
   "table-cell-type": {
     code: "FE_TABLE_CELL_TYPE",
     en: "A DataTable cell or ListRow title/description in `<file>` draws a Text above 14 (`size=\"lg\"`, `\"xl\"`, `\"figure\"`), a Heading, a Label or an h1-h6.",

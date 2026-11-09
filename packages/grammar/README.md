@@ -677,6 +677,13 @@ content at most 1280 wide, type stays 14 / 12. A report keeps its figures ribbon
 workspace shows the aside as a Drawer on a tablet and one pane at a time on a phone. A FlowGraph is not shown on a phone: the app passes
 the step list there instead.
 
+**No scrollbars (OVERFLOW-6).** NIVO never shows scrollbars. Every scroll area Grammar draws (pane and `PaneSection scroll`, Drawer and Dialog bodies,
+ListBox, the chat thread, the tab strip, DataTable and code overflow, popovers) hides the bar (`scrollbar-width: none`, `::-webkit-scrollbar` none) and
+fades its edge where content continues: HeroUI's ScrollShadow where Grammar renders the scroller, and the same fade, driven by the scroll position,
+on the CSS scrollers. Wheel, touch and keyboard scrolling are unchanged. An app element with an `overflow-y-auto` / `overflow-auto` class is
+refused (lint `no-raw-scroll`); use `VerticalScrollRegion`, `HorizontalScrollRegion` or `PaneSection scroll`. `Drawer bodyInset="none"` runs the body
+edge to edge across the sheet (the default `content` keeps the inset).
+
 **The single-child-card law.** A card groups two or more different parts (figures, a list, actions) or carries zones
 (tabs, search, head actions). A table, list or chart standing alone is the surface: a `Section` titles it (`title`) and one
 muted line goes under it (`Section caption`). A standalone `DataTable` sits in its own card (edge, card radius, card shadow; HeroUI's native look inside); a `Section kind="list"` draws the same card edge. Lint `single-child-card` refuses the card around a lone one. Text

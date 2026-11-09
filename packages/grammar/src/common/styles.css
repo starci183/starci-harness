@@ -153,12 +153,66 @@
         box-sizing: border-box;
     }
 
-    /* Scrollbars are the app's: HeroUI's `--scrollbar*` tokens, so an app's own values show. */
+    /*
+     * NIVO never shows scrollbars (owner rule 2026-11-09, OVERFLOW-6). Every scroller under the family root hides its bar and
+     * keeps wheel, touch and keyboard scrolling; the edge says where content continues, as HeroUI's ScrollShadow draws it.
+     * ScrollShadow hosts draw their own fade; the scrollers listed in the second rule take the same fade from the scroll
+     * position (CSS scroll-driven animation: no fade where nothing overflows, none on the edge already reached).
+     */
     .grammar-common-root,
     .grammar-common-root * {
-        scrollbar-width: var(--scrollbar-width);
-        scrollbar-color: var(--scrollbar) var(--scrollbar-track);
-        scrollbar-gutter: var(--scrollbar-gutter);
+        scrollbar-width: none;
+    }
+
+    .grammar-common-root *::-webkit-scrollbar {
+        display: none;
+        inline-size: 0;
+        block-size: 0;
+    }
+
+    @property --grammar-fade-start { syntax: "<length>"; inherits: false; initial-value: 0px; }
+    @property --grammar-fade-end { syntax: "<length>"; inherits: false; initial-value: 0px; }
+
+    @keyframes grammar-scroll-fade {
+        0% { --grammar-fade-start: 0px; --grammar-fade-end: var(--grammar-scroll-fade-size); }
+        4% { --grammar-fade-start: var(--grammar-scroll-fade-size); }
+        96% { --grammar-fade-end: var(--grammar-scroll-fade-size); }
+        100% { --grammar-fade-start: var(--grammar-scroll-fade-size); --grammar-fade-end: 0px; }
+    }
+
+    @supports (animation-timeline: scroll()) {
+        .starci-core-overlay-body,
+        .starci-core-popover,
+        .starci-core-data-table-scroll,
+        .starci-core-fenced-code-block pre,
+        .starci-core-markdown-table-frame,
+        .starci-core-mermaid-diagram-canvas,
+        .starci-core-rail-body,
+        .starci-core-sidebar-list,
+        .starci-core-terminal-log,
+        .starci-core-filter-button-list,
+        .starci-core-mention-list,
+        .starci-core-breadcrumbs,
+        .starci-core-top-bar-navigation,
+        .starci-core-nav-landmark[data-grammar-nav-layout="scrolling"] {
+            --grammar-scroll-fade-size: 2rem;
+            animation: grammar-scroll-fade var(--starci-core-motion-duration) var(--grammar-loop-easing) both;
+            animation-timeline: scroll(self);
+            mask-image: linear-gradient(to bottom, transparent, var(--foreground) var(--grammar-fade-start), var(--foreground) calc(100% - var(--grammar-fade-end)), transparent);
+        }
+
+        .starci-core-data-table-scroll,
+        .starci-core-fenced-code-block pre,
+        .starci-core-markdown-table-frame,
+        .starci-core-breadcrumbs,
+        .starci-core-top-bar-navigation,
+        .starci-core-nav-landmark[data-grammar-nav-layout="scrolling"] {
+            mask-image: linear-gradient(to right, transparent, var(--foreground) var(--grammar-fade-start), var(--foreground) calc(100% - var(--grammar-fade-end)), transparent);
+        }
+
+        [dir="rtl"] :is(.starci-core-data-table-scroll, .starci-core-fenced-code-block pre, .starci-core-markdown-table-frame, .starci-core-breadcrumbs, .starci-core-top-bar-navigation, .starci-core-nav-landmark[data-grammar-nav-layout="scrolling"]) {
+            mask-image: linear-gradient(to left, transparent, var(--foreground) var(--grammar-fade-start), var(--foreground) calc(100% - var(--grammar-fade-end)), transparent);
+        }
     }
 
     .starci-core-page-container {

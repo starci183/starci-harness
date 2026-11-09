@@ -172,6 +172,7 @@ export const CANONICAL_RULE_IDS: ReadonlyArray<string> = Object.freeze([
     "OVERFLOW-3",
     "OVERFLOW-4",
     "OVERFLOW-5",
+    "OVERFLOW-6",
     // PADDING
     "PADDING-0",
     "PADDING-1",

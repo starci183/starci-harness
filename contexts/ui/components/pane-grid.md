@@ -64,7 +64,7 @@ a padded wrapper is never the outermost element of a band.
   `content` (the default: the pane publishes its inset to its sections) or `flush` (no inset, for a pane that holds a
   nested `PaneGrid` or a full-bleed canvas). A pane takes no class and no style.
 - **PaneSection:** `grow` (takes the remaining height), `scroll` (its own scroll owner, full-bleed with the inset on
-  its content, so the scrollbar sits on the pane edge), `align` (`start`, `center`), `bleed="inline"` (the one
+  its content; there is no scrollbar, the edge fades where content continues, OVERFLOW-6), `align` (`start`, `center`), `bleed="inline"` (the one
   horizontal scroller reaches both pane edges and takes the inset as scroll padding), `gap` (`inline`, `row`,
   `section`) between its own children, `as` (`div`, `header`, `footer`). A section takes no class and no style.
 

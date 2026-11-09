@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.32.2 - 2026-11-09 - no scrollbars, an edge fade; Drawer bodyInset
+
+- Changed (default): NIVO NEVER SHOWS SCROLLBARS (owner, 2026-11-09, OVERFLOW-6). The family root no longer hands the scrollbar to the app's
+  `--scrollbar*` tokens: every scroller under `.grammar-common-root` hides its bar (`scrollbar-width: none`, `::-webkit-scrollbar` none), which
+  covers the ScrollShadow hosts (PaneGrid panes, `PaneSection scroll`, the Drawer pane, the chat thread, the tab strip, Board, ScheduleGrid) whose
+  hidden bar the old rule had overridden. Wheel, touch and keyboard scrolling are unchanged.
+- Added: the edge fade on the scrollers that are not ScrollShadow hosts (overlay body, popover, DataTable scroll, code block, markdown table, rail
+  body, sidebar list, terminal log, filter list, mention list, breadcrumbs, top bar, scrolling nav): a CSS mask whose end sizes follow the scroll position
+  (scroll-driven animation; no fade where nothing overflows, none on the edge already reached; right to left mirrored).
+- Added: `Drawer bodyInset="content" | "none"` (default `content`). `none` runs the body edge to edge across the sheet (and to the bottom edge when no
+  footer follows), so a chat well fills the drawer; `data-grammar-body-inset="none"`.
+- Added: rule id `OVERFLOW-6` (contexts/ui/presentation.md).
+- Lint: `eslint-grammar-core` 0.32.2 adds `no-raw-scroll` (`FE_NO_RAW_SCROLL`, error).
+
 ## 0.32.1 - 2026-11-09 - only the primary Button carries a leading icon
 
 - Changed (types): THE BUTTON-ICON RULE (owner, 2026-11-09). `startGlyph` and `startContent` are allowed only on the primary Button

@@ -15,6 +15,7 @@ import { rules as iconRules } from "./icon.ts"
 import { rules as layoutTwoAxisRules } from "./layout-two-axis.ts"
 import { rules as mascotRules } from "./mascot.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
+import { rules as noRawScrollRules } from "./no-raw-scroll.ts"
 import { rules as pageRules } from "./page.ts"
 import { rules as pageBreadcrumbsRules } from "./page-breadcrumbs.ts"
 import { rules as pageHeaderRules } from "./page-header.ts"
@@ -60,6 +61,7 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "layout-two-axis", rules: layoutTwoAxisRules },
   { law: "mascot", rules: mascotRules },
   { law: "menu-entries", rules: menuEntriesRules },
+  { law: "no-raw-scroll", rules: noRawScrollRules },
   { law: "page", rules: pageRules },
   { law: "page-breadcrumbs", rules: pageBreadcrumbsRules },
   { law: "page-header", rules: pageHeaderRules },

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.32.2 - 2026-11-09
+
+- Added: `no-raw-scroll` (`FE_NO_RAW_SCROLL`, NO-RAW-SCROLL, error): an app element whose `className` holds `overflow-auto`, `overflow-y-auto`,
+  `overflow-x-auto` or an `overflow-*-scroll` class is refused; NIVO never shows scrollbars, so a scroll area is a Grammar scroller
+  (`VerticalScrollRegion`, `HorizontalScrollRegion`) or `PaneSection scroll`. `docs/no-raw-scroll.md`.
+- Changed: released with the Grammar family at 0.32.2.
+
 ## 0.32.1 - 2026-11-09
 
 - Added: `button-icon-primary-only` (`FE_BUTTON_ICON_PRIMARY_ONLY`, BUTTON-ARROW case-2, error): only a `Button` whose `intent` is the literal
