@@ -70,7 +70,7 @@ const PROBES: readonly Probe[] = [
     // A text link is the exact brand --accent, underlined, and no contrast law judges it: the token the theme proves it paints.
     { name: "link", selector: ".starci-core-link", property: "color", token: "--accent", familyToken: { "offset-pop": "--foreground" } },
     { name: "heading", selector: '[data-component="Heading"]', property: "color", token: "--foreground" },
-    { name: "status dot", selector: ".starci-core-status-dot-mark", property: "background-color", token: "--success" },
+    { name: "status dot ring", selector: ".starci-core-status-dot-mark", property: "border-top-color", token: "--success" },
     { name: "field fill", selector: "[data-slot='input']", property: "background-color", token: "--field-background" },
     // OVERFLOW-6: no scroller under the family root shows a bar, in every theme, so the proof holds the hidden bar, not a colour.
     { name: "scrollbar hidden", selector: ".grammar-common-root", property: "scrollbar-width", token: "--scrollbar", fixed: "none" },
