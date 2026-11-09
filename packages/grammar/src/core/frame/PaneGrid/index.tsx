@@ -273,7 +273,7 @@ const gridVars = (models: Models, hasTrigger: (breakpoint: PaneBreakpoint) => bo
 
 /** Whether a pane's stack opens with a head: a first band that is a `header`, or one whose first element is a `PaneHeader`. */
 const paneHasHead = (pane: Element): boolean => {
-    const first = pane.querySelector(":scope > .starci-core-pane-stack")?.firstElementChild
+    const first = pane.querySelector(".starci-core-pane-stack")?.firstElementChild
     if (first === null || first === undefined) return false
     return first.tagName === "HEADER" || first.firstElementChild?.classList.contains("starci-core-pane-header") === true
 }
