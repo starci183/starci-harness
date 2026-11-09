@@ -7,7 +7,7 @@ A compact anchor that helps the reader scan peers, always beside the visible nam
 
 ## Choose
 
-Choice `identity-mark.choose.role`: which mark anchors the name.
+Choice `identity-mark.choose.role`: which mark anchors the name (an avatar or initials for a user, a logo stack, an icon tile).
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |

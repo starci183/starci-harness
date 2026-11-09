@@ -38,6 +38,9 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
 - `deploy/` — **app.deploy** optional · R06
 - `browser/` — **app.browser** opt-in
   - `tsconfig.json` — **app.browser-config** opt-in · R05
+- `gallery/`
+  - `{package.json,index.html,README.md,src/main.js,src/style.css}` — **app.gallery** optional · R05, R395
+  - `package-lock.json` — **app.gallery-lock** optional
 - `scripts/`
   - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R385, R102, R103
   - `integration/*.mjs` — **app.scripts.integration** optional · R06, R385, R102, R103
@@ -50,7 +53,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
   - `cache/` — **app.starcistacks.cache** optional
 - `.sops.yaml` — **app.sops** required
 
-Git-ignored: `app.build-output`.
+Git-ignored: `app.gallery-shots`, `app.build-output`.
 Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### full · be/

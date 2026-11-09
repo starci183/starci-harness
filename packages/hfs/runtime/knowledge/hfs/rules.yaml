@@ -6621,3 +6621,18 @@ rules:
       - {path: packages/hfs/src/stack-live-checks.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/stack-live-checks.spec.mjs, editions: [lite, full]}
+  - id: R395
+    code: "HFS_APP_GALLERY_MISSING"
+    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset` with a `dev` script using --strictPort, pins its vite version exactly, and keeps `gallery/shots/**/*.png` git-ignored and untracked; every UI fix round saves its before and after shots there."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["HFS_APP_GALLERY_MISSING", "HFS_APP_GALLERY_SCRIPT", "HFS_APP_GALLERY_VITE_UNPINNED", "HFS_APP_GALLERY_SHOTS_TRACKED"]
+    enforcers:
+      - {kind: hfs, id: gallery, at: runtime/scripts/hfs/rules/gallery.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/gallery.md#project-gallery-1-every-app-carries-a-gallery-and-every-ui-fix-round-saves-shots-to-it, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/app-gallery.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/app-gallery.spec.mjs, editions: [lite, full]}

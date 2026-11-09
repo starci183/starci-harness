@@ -2725,3 +2725,13 @@ rules:
       - STACK_DEAD_LETTER_REPEAT
     enforcers:
       - {kind: hfs, id: dead-letter-repeat}
+  - id: R395
+    code: HFS_APP_GALLERY_MISSING
+    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset` with a `dev` script using --strictPort, pins its vite version exactly, and keeps `gallery/shots/**/*.png` git-ignored and untracked; every UI fix round saves its before and after shots there."
+    failureCodes:
+      - HFS_APP_GALLERY_MISSING
+      - HFS_APP_GALLERY_SCRIPT
+      - HFS_APP_GALLERY_VITE_UNPINNED
+      - HFS_APP_GALLERY_SHOTS_TRACKED
+    enforcers:
+      - {kind: hfs, id: gallery}

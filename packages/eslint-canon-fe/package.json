@@ -1,6 +1,6 @@
 {
   "name": "@starci/eslint-canon-fe",
-  "version": "9.16.10",
+  "version": "9.16.11",
   "description": "Universal front-end lint laws for TypeScript and Next.js, independent of the selected Grammar family.",
   "type": "module",
   "license": "MIT",
@@ -51,7 +51,7 @@
     "node": ">=22.13.0"
   },
   "peerDependencies": {
-    "@starci/hfs": "~6.5.0",
+    "@starci/hfs": "~6.6.0",
     "eslint": ">=9",
     "eslint-plugin-react-hooks": ">=7",
     "typescript": ">=5.9"

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.21.1 - 2026-11-09
+
+- Changed: peer `@starci/hfs ~6.6.0`; no lint rule of this package changed.
+
 ## 3.21.0 - 2026-11-09
 
 - Fixed: `@nestjs/websockets` has a legal placement. The infra owner table (`ruleParams.be.infraOwners`) owns it by `platform/realtime` and by the slot `be.feature.realtime.websocket` (the owner entry `slot:<slot id>` makes every file of a slot an owner), so the `<channel>.gateway.ts` door R212 requires and its spec import it, and `infra-import-owner` reports it in every other file; no re-export is needed and it is not a framework package.

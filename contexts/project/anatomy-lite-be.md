@@ -34,6 +34,9 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
   - `dependabot.yml` — **app.dependabot** required · R05, R269
 - `.dockerignore` — **app.dockerignore** required · R05
 - `deploy/` — **app.deploy** optional · R06
+- `gallery/`
+  - `{package.json,index.html,README.md,src/main.js,src/style.css}` — **app.gallery** optional · R05, R395
+  - `package-lock.json` — **app.gallery-lock** optional
 - `scripts/`
   - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R385, R102, R103
   - `{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}` — **app.scripts.delivery** optional · R06, R385, R102, R103
@@ -53,7 +56,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
     - `archive/` — **app.db.migrations.archive** optional
   - `bootstrap.sql` — **app.db.bootstrap** required · R05
 
-Git-ignored: `app.build-output`.
+Git-ignored: `app.gallery-shots`, `app.build-output`.
 Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-db`, `app.browser`, `app.browser-config`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### lite · be/

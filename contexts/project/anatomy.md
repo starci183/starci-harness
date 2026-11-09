@@ -73,6 +73,9 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
   - `dependabot.yml` — **app.dependabot** required · R05 (hfs `managed-file-drift`), R269 (hfs `supply-chain`)
 - `.dockerignore` — **app.dockerignore** required · R05 (hfs `managed-file-drift`)
 - `deploy/` — **app.deploy** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
+- `gallery/`
+  - `{package.json,index.html,README.md,src/main.js,src/style.css}` — **app.gallery** optional · R05 (hfs `managed-file-drift`), R395 (hfs `gallery`)
+  - `package-lock.json` — **app.gallery-lock** optional
 - `scripts/`
   - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
   - `{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}` — **app.scripts.delivery** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
@@ -92,7 +95,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
     - `archive/` — **app.db.migrations.archive** optional
   - `bootstrap.sql` — **app.db.bootstrap** required · R05 (hfs `managed-file-drift`)
 
-Git-ignored: `app.build-output`.
+Git-ignored: `app.gallery-shots`, `app.build-output`.
 Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-db`, `app.browser`, `app.browser-config`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### lite · be/
@@ -266,6 +269,9 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `deploy/` — **app.deploy** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
 - `browser/` — **app.browser** opt-in
   - `tsconfig.json` — **app.browser-config** opt-in · R05 (hfs `managed-file-drift`)
+- `gallery/`
+  - `{package.json,index.html,README.md,src/main.js,src/style.css}` — **app.gallery** optional · R05 (hfs `managed-file-drift`), R395 (hfs `gallery`)
+  - `package-lock.json` — **app.gallery-lock** optional
 - `scripts/`
   - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
   - `integration/*.mjs` — **app.scripts.integration** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
@@ -278,7 +284,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
   - `cache/` — **app.starcistacks.cache** optional
 - `.sops.yaml` — **app.sops** required
 
-Git-ignored: `app.build-output`.
+Git-ignored: `app.gallery-shots`, `app.build-output`.
 Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### full · be/

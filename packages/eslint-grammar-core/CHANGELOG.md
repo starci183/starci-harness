@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.36.2 - 2026-11-09
+
+- Changed: peer `@starci/hfs ~6.6.0` (hfs 6.6.0: R395 and the managed app gallery slots); no rule of this package changed. `@starci/grammar` stays at 0.36.1.
+
 ## 0.36.1 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.36.1 (the status dot is a hollow ring); no rule of this package changed.

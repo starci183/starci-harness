@@ -2,7 +2,7 @@
 // A product keeps every back-end service as a Nest app at `be/apps/<service>/` of the one repository, sharing the `be/src` libraries and
 // the one package.json; the services it does not own stay pinned images in the stack. Five tree checks:
 //   R163 HFS_SERVICE_PLACEMENT      a service root (a Dockerfile, or a package.json other than the app's own and a workspace package's:
-//                                   fe/apps/<app>, fe/packages/<pkg> or a root packages/<name>)
+//                                   fe/apps/<app>, fe/packages/<pkg> or a root packages/<name>, or the screenshot gallery's of R395)
 //                                   exists only at be/apps/<service>/ (fe/apps/<app>/Dockerfile is a front end's);
 //   R164 HFS_IMAGE_UNPINNED         in a multi-service product every component image of application-stacks.yaml is a digest or an exact
 //                                   version (x.y.z), never a missing tag, `latest`, a branch word or a major/minor-only tag;
@@ -22,6 +22,7 @@ import { deployImageApps } from '../stack-deploy-config.mjs';
 import { loadTypescript } from '../../lib/package-at.mjs';
 import { propertyText } from '../../lib/ts-ast.mjs';
 import { folded, readEventClasses, snapshotText } from '../../lib/event-contract.mjs';
+import { galleryParams } from '../gallery.mjs';
 import { found, readText } from './read.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { eventTableFindings, eventTableServices } from './event-tables.mjs';
@@ -58,10 +59,11 @@ const typescriptFor = (repoRoot: string) => loadTypescript(repoRoot, HERE);
 /** Findings of R163: a service root outside `be/apps/<service>/`. */
 function servicePlacementFindings({ files }: { files: string[] }) {
   const findings = [];
+  const gallery = `${galleryParams().dir}/package.json`; // the screenshot gallery is a standalone Vite app, not a service (R395)
   for (const file of files) {
     if (file.startsWith('.starciwork/') || file.startsWith('.starcistacks/') || file.includes('node_modules/')) continue;
     const dockerfile = DOCKERFILE.test(file) && !BE_SERVICE_FILE.test(file) && !/^fe\/apps\/[^/]+\/Dockerfile(?:\.[^/]+)?$/.test(file) && file !== 'Dockerfile';
-    const manifest = path.posix.basename(file) === 'package.json' && file !== 'package.json' && !WORKSPACE_PACKAGE_JSON.test(file);
+    const manifest = path.posix.basename(file) === 'package.json' && file !== 'package.json' && file !== gallery && !WORKSPACE_PACKAGE_JSON.test(file);
     const rootDockerfile = file === 'Dockerfile';
     if (!dockerfile && !manifest && !rootDockerfile) continue;
     const what = manifest ? 'a package.json of its own' : 'a Dockerfile';

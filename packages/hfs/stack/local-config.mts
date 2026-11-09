@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { normalizeLocal, LOCAL_CONFIG_CODE } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import type { LocalBlock } from '../runtime/scripts/hfs/stack-local-config.mjs';
+import { galleryParams, galleryPort } from '../runtime/scripts/hfs/gallery.mjs';
 import { readYaml, STACKS_DIR, STACKS_FILE } from './config.mjs';
 import { refusal } from './errors.mjs';
 
@@ -25,6 +26,30 @@ export function isLocalEnvironment(repoRoot: string, env: string): boolean {
   } catch { return false; }
 }
 
+/**
+ * The screenshot gallery as a native process of the environment (R395, PROJECT-GALLERY-1): an app that declares `local.basePort` and carries
+ * `gallery/package.json` gets the gallery dev server on base + `ruleParams.gallery.portOffset` next to its web and api processes, with its one-time
+ * install, a readiness row and an origin, so `stack up` starts it, `stack down` ends it and `stack status` lists it. A process the app declares
+ * itself under the name `gallery` (or a port or setup of that name) is kept untouched.
+ */
+export function withGallery(config: LocalBlock, repoRoot: string): LocalBlock {
+  const params = galleryParams();
+  const port = galleryPort(config.basePort, params);
+  const taken = config.processes.some((run) => run.name === 'gallery') || Object.hasOwn(config.ports, 'gallery') || Object.values(config.ports).includes(port ?? -1)
+    || config.setup.some((run) => run.name === 'gallery-install') || config.seed.some((run) => run.name === 'gallery-install');
+  if (port === null || taken || !fs.existsSync(path.join(repoRoot, params.dir, 'package.json'))) return config;
+  const url = 'http://localhost:${port.gallery}/';
+  const command = { heavy: 'none' as const, skipIfExists: null, env: {}, files: [], after: 'migrate' as const };
+  return {
+    ...config,
+    ports: { ...config.ports, gallery: port },
+    setup: [...config.setup, { name: 'gallery-install', argv: ['npm', 'install', '--no-audit', '--no-fund'], cwd: params.dir, ...command, heavy: 'install', skipIfExists: 'node_modules' }],
+    processes: [...config.processes, { name: 'gallery', argv: ['npm', 'run', params.devScript], cwd: params.dir, ...command, port: 'gallery', health: { name: 'gallery', url, method: 'GET', status: 200, contains: null } }],
+    ready: [...config.ready, { name: 'gallery-live', url, method: 'GET', status: 200, contains: null }],
+    origins: [...config.origins, { name: 'gallery', url }],
+  };
+}
+
 /** The normalised dev configuration; a refusal names every problem when the block is missing or invalid. */
 export function loadLocalConfig({ repoRoot, env }: { repoRoot: string; env: string }): LocalConfig {
   const declaration = readYaml(path.join(repoRoot, STACKS_DIR, STACKS_FILE), STACKS_FILE);
@@ -40,5 +65,5 @@ export function loadLocalConfig({ repoRoot, env }: { repoRoot: string; env: stri
   }
   const envDir = path.join(repoRoot, STACKS_DIR, env);
   const composeFiles = ((environment.composeFiles as string[] | undefined) ?? []).map((file) => path.join(envDir, file));
-  return { ...config, env, appProject, repoRoot, envDir, composeFiles, secretsDir: path.join(envDir, 'secrets') };
+  return { ...withGallery(config, repoRoot), env, appProject, repoRoot, envDir, composeFiles, secretsDir: path.join(envDir, 'secrets') };
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-alpha.112 - 2026-11-09
+
+- Changed: `@starci/hfs` 6.6.0 (every app source has a gallery: R395, the managed `gallery/` Vite app on base port + 50, `stack up` runs it); the canon pins name it with `eslint-canon-be` 3.21.1, `eslint-canon-fe` 9.16.11 and `eslint-grammar-core` / `eslint-grammar-offset-pop` 0.36.2.
+- Upgrade, per existing app: `starci app check` reports `HFS_APP_GALLERY_MISSING` (R395) until the gallery exists. Run `starci app sync --execute` (it lays down `gallery/` in the app's default locale, `vi` or `en`, and the managed `.gitignore` block), then `npm install` in `gallery/`, then commit `gallery/` (not `gallery/shots/`, which is git-ignored).
+
 ## 1.1.0-alpha.110 - 2026-11-09
 
 - Changed: the Grammar family 0.36.1 (with 0.36.0; `@starci/hfs` 6.5.8 names it): StatusDot (Badge `isDot`, avatar presence) is a hollow 8px ring with a 1.5px tone stroke and the run-overlay status icons are 20px; the HeroUI-native DataTable frame with a footer slot; the section head (`Link variant="head"`, count, `isAttention`); the scroll law (a sticky band, independent panes); Pane `content` cards or full, the 80rem cap inside card panes only; tab count chips; card elevation from context (shadow on the well, border on white); FlowGraphLegend; outline icons only; lints `section-head-action`, `tab-count-chip`, `card-one-content`, `no-label-description`, `outline-icons-only`.
