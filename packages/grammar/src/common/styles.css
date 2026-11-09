@@ -2123,6 +2123,18 @@
         border-radius: inherit;
     }
 
+    /* 0.37.6 (LIST-ROW-NAVIGATION): a row with an `href` is as pressable as one with `onPress`: its title Link stretches over the whole row, the chevron ends it. */
+    .starci-core-list-row[data-grammar-row-pressable="true"] .starci-core-list-row-name > .starci-core-link {
+        position: static;
+    }
+
+    .starci-core-list-row[data-grammar-row-pressable="true"] .starci-core-list-row-name > .starci-core-link::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+    }
+
     .starci-core-list-row-press:focus-visible { outline: none; }
     .starci-core-list-row-press:focus-visible::after { outline: 2px solid var(--focus); outline-offset: -2px; }
     .starci-core-list-row[data-grammar-row-pressable="true"] .starci-core-list-row-actions { position: relative; z-index: 1; }

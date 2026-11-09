@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.6 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.6 (a row with an href is pressable whole); no rule of this package changed.
+
 ## 0.37.5 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.37.5 (SurfaceCard kind="select"; outline glyph sizing); no rule of this package changed. A `no-loose-card-caption` rule was weighed and not added: a syntactic rule cannot tell a card from an app block that renders one, nor an explanation from a legend.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.6 - 2026-11-09 - a row with an href is pressable whole
+
+- Fixed (LIST-ROW-NAVIGATION): `SurfaceCard kind="list"` rows already pressed as a whole row with a trailing chevron by `onPress`; a row with `href` only linked its title. An `href` row now stretches its title Link over the whole row, with the hover tint and the chevron, as an `onPress` row does. Story `Surfaces/List row navigation`; the rule is in contexts/ui/components/card.md.
+
 ## 0.37.5 - 2026-11-09 - SurfaceCard kind="select"
 
 - Changed (owner): a Button with an icon (a primary's start icon, `endArrow`) takes HeroUI v3's own measures, read from `@heroui/styles` button.css: padding-inline px-3 (sm) and px-4 (md, lg) on BOTH sides (the glyph side was one step less: 8 on md, so the icon sat about 8px tight), gap 8, the icon 20px on a phone and 16px from 640px (16px on sm) with the vendor's -2px inline margin. HeroUI draws no 24px icon; 16/20 is its scale. Tokens `--grammar-control-padding-glyph-*` become `--grammar-button-icon-padding(-sm)`. Story `Controls/Button icon sizes` asserts the numbers.

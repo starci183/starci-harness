@@ -151,7 +151,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 {...(actionCount > 1 ? { "data-grammar-actions-multi": "true" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 {...(row.verdict === undefined ? {} : { "data-verdict": row.verdict })}
-                {...(row.onPress === undefined ? {} : { "data-grammar-row-pressable": "true" })}
+                {...(row.onPress === undefined && row.href === undefined ? {} : { "data-grammar-row-pressable": "true" })}
                 {...(drag === undefined ? {} : {
                     draggable: true,
                     "data-grammar-row-draggable": "true",

@@ -125,3 +125,6 @@ On a white surface (aside, pane, drawer, dialog) a list or key-value rows are a 
 
 ### Header zones are divided by full-width dividers (HEADER-ZONES-DIVIDERS)
 The zones of a card head (search, filter, tabs, toolbar) are separated from each other and from the body by a 1px divider across the full card width (no inset), in a colour visible on white and on the grey table frame.
+
+### A row that opens something is pressable whole, with a chevron (LIST-ROW-NAVIGATION)
+A list row that opens something (a detail, a page, a drawer) is clickable as a WHOLE row (`href` or `onPress` on the row) and ends in a trailing chevron. There is no per-row small "Xem" or "Mở" button, and no navigation Link beside the row. Row actions that DO something (not navigation: Tạm dừng, Gỡ, Xoá) go in the row menu. Since 0.37.6 `href` rows stretch their title Link over the whole row exactly as `onPress` rows do.
