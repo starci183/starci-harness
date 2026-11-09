@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.107 - 2026-11-09
 
+- Changed: the CLI requires @starci/hfs@6.5.5, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Fixed: `@starci/grammar` 0.32.1: MessageCard no longer imports the Cluster frame (the tier law refused it and held the alpha.106 hfs publish).
 
 - Fixed: `@starci/hfs` 6.5.5: the front-end world analysis no longer crashes the fe ESLint (`duplicate-code`, `duplicate-symbol`, `alias-reexport` and the other rules built on it) of an app whose code calls a workspace package's source through a tsconfig path alias; a function outside the checked graph is outside the app's world and is skipped. `@starci/eslint-canon-fe` is unchanged: it takes hfs as a peer (`~6.5.0`) and bundles none of this runtime.
