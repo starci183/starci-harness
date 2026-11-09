@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.111 - 2026-11-09
+
+- Fixed: the Grammar family 0.36.2 (`@starci/hfs` 6.5.9 names it): the sticky page band sits at top 0 inside the fixed console shell (0.36.0 pushed it down by the top-bar height, leaving a pink strip above every page and hiding the first row); also a borderless Switch, the Section fact as a chip, Grid columns 5 and `balanced`, EmptyNotice `actionHref` and frameless in a card, a text-only FileButton, a one-line section head at 390, and FlowGraph steps fit to width with sized ports.
+
 ## 1.1.0-alpha.110 - 2026-11-09
 
 - Changed: the CLI requires @starci/hfs@6.5.8, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
