@@ -3,6 +3,7 @@
 ## 6.5.6 - 2026-11-09
 
 - Changed: the canon pins name the Grammar family 0.34.0.
+- Changed: the front-end skeleton no longer ships the sample `components/leaves/Icon` leaf (nor the full UI package's `Icon` export): with no icon on sm Buttons (Grammar 0.34.0) the guide overlay's trigger was its only user, and an unused leaf is `HFS_UNUSED_FILE`. An app that needs glyphs adds its own `Icon` leaf (FE-ICON).
 
 ## 6.5.5 - 2026-11-09
 

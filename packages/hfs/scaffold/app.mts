@@ -527,8 +527,7 @@ function skeletonDirectory(scope: Scope, directory: string, app: SkeletonApp, va
   const context: SkeletonContext = { scope, directory, app, vars, apps };
   const files: GeneratedFile[] = [];
   for (const rel of listFiles(dir).filter(relative => include(relative))) {
-    let source = render(fs.readFileSync(path.join(dir, rel), 'utf8').replace(/\r\n/g, '\n'), PARTIAL_VARIABLES);
-    if (scope === 'fe' && app.edition === 'full') source = source.replaceAll('"@/components/leaves/Icon"', `"@${app.project}/ui"`);
+    const source = render(fs.readFileSync(path.join(dir, rel), 'utf8').replace(/\r\n/g, '\n'), PARTIAL_VARIABLES);
     const rendered = rel.includes(APP_DIR) ? variableSkeletonFiles(context, rel, source) : fixedSkeletonFiles(context, rel, source);
     files.push(...rendered);
   }
