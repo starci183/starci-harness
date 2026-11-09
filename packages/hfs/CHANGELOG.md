@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.6.1 - 2026-11-09
+
+- Changed: the canon pins name the Grammar family 0.37.0.
+
 ## 6.6.0 - 2026-11-09
 
 - Added (R395): every app source repository carries a screenshot gallery at `gallery/` (`contexts/project/gallery.md` PROJECT-GALLERY-1). It is a standalone Vite app that shows `gallery/shots/<area>/<page>__<width>__<before|after>.png` (1440 and 390 per page, before and after each UI fix round), served on `local.basePort` + 50 with a pinned Vite. Its files are managed by `starci app sync` (slot `app.gallery`, manifest 3.27.0, optional so a pinned repository stays green; `ruleParams.gallery` holds the folder, the `dev` script, the offset 50, the Vite pin and the ignored shots pattern), so a scaffold writes it, a sync adds it to an existing app and a hand edit is `HFS_MANAGED_FILE_DRIFT`; the managed root `.gitignore` block ignores `gallery/shots/**/*.png`. The full skeleton declares `local.basePort: 3000`, the base its ports already follow.
