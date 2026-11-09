@@ -20,6 +20,7 @@ import type {
 } from "../../surfaceCardData.js"
 import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { DEFAULT_SURFACE_HEADING_LEVEL, Label, type SurfaceHeadingLevel } from "../../leaf/Label/index.js"
+import { Sublabel } from "../../leaf/Sublabel/index.js"
 import { ErrorView, type ErrorData } from "../../loadingState.js"
 import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import { AccordionRows } from "./AccordionRows.js"
@@ -54,9 +55,12 @@ export type {
 } from "../../surfaceCardData.js"
 
 /** Every card names itself: a visible `label`, or an `ariaLabel` when the surrounding owner already shows the name. */
-type Labelled = { readonly label: string; readonly ariaLabel?: string }
-type SelfNamed = { readonly label?: undefined; readonly ariaLabel: string }
-type OptionallyNamed = { readonly label?: string; readonly ariaLabel?: string }
+type Labelled = { readonly label: string; readonly ariaLabel?: string; readonly sublabel?: undefined }
+type SelfNamed = { readonly label?: undefined; readonly ariaLabel: string; readonly sublabel?: undefined }
+/** A group inside a labelled section (0.37.7): named by a Sublabel 8px above the card, never by a second Label; `sublabel` and `label` are never given together. */
+type Sublabelled = { readonly sublabel: string; readonly label?: undefined; readonly ariaLabel?: string }
+type Named = Labelled | SelfNamed | Sublabelled
+type OptionallyNamed = { readonly label?: string; readonly ariaLabel?: string; readonly sublabel?: undefined } | Sublabelled
 
 type Head = Omit<CardHead, "label" | "ariaLabel">
 
@@ -136,26 +140,26 @@ type BodyCard = Shell & OptionallyNamed & Head & (PlainSurfaceCard | SoftSurface
     readonly accentCorner?: AccentCorner
 }
 
-type FiguresCard = Shell & (Labelled | SelfNamed) & Head & {
+type FiguresCard = Shell & Named & Head & {
     readonly kind: "figures"
     /** Two to five key figures as touching cells. */
     readonly items: readonly Figure[]
 }
 
-type ListCard = Shell & (Labelled | SelfNamed) & Head & ListData
+type ListCard = Shell & Named & Head & ListData
 /**
  * Facts as term/value rows that touch the card's edge, each row inset by the card padding and divided by a full-width seam (the
  * order of a purchase, a record's summary). The pairs are a real `<dl>` (DescriptionList); a strip of key figures is `figures`.
  */
-type DetailsCard = Shell & (Labelled | SelfNamed) & Head & {
+type DetailsCard = Shell & Named & Head & {
     readonly kind: "details"
     readonly items: readonly DescriptionListItem[]
 }
-type AccordionCard = Shell & (Labelled | SelfNamed) & Head & AccordionData
+type AccordionCard = Shell & Named & Head & AccordionData
 /** A choice list: checkbox rows with a title and a subtitle, full-width dividers (0.37.5). */
-type SelectCard = Shell & (Labelled | SelfNamed) & Head & SelectData
+type SelectCard = Shell & Named & Head & SelectData
 /** A table Grammar owns: columns, rows or day groups under heading rows, one column header, every line to the card's edges. */
-type TableCard = Shell & (Labelled | SelfNamed) & Head & TableData
+type TableCard = Shell & Named & Head & TableData
 
 /**
  * A tile: a peer you recognise and open (a provider, a connector). It has no `label`, `fact` or `labelEnd`: its name
@@ -226,7 +230,8 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
     const body = props.kind === undefined || props.kind === "body" ? props : undefined
     const labelled = isTile ? undefined : props.label
     const name = isTile ? props.name : props.label
-    const accessibleName = isTile ? props.name : props.ariaLabel ?? props.label
+    const sublabel = isTile ? undefined : props.sublabel
+    const accessibleName = isTile ? props.name : props.ariaLabel ?? props.label ?? sublabel
     const headingLevel = props.headingLevel ?? DEFAULT_SURFACE_HEADING_LEVEL
     const measure: SurfaceCardMeasure = props.measure ?? "content"
     const treatment: SurfaceCardTreatment = body?.treatment ?? "surface"
@@ -355,6 +360,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             data-grammar-surface-height={height}
             data-grammar-interaction={wholeAction === undefined ? "static" : "whole-action"}
             data-grammar-surface-labelled={hasNamedHeading ? "true" : "false"}
+            data-grammar-surface-sublabel={sublabel === undefined ? undefined : "true"}
             data-grammar-surface-card="true"
             data-grammar-nesting="surface"
             data-grammar-surface-treatment={treatment}
@@ -364,6 +370,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             render={(cardProps) => <section {...cardProps} />}
             variant="transparent"
         >
+            {sublabel === undefined ? null : <Sublabel>{sublabel}</Sublabel>}
             {labelled === undefined || isTile ? null : (
                 <Card.Header className={surfaceLabelClassName} data-contract="GAP-2" data-grammar-surface-label="true" data-grammar-label-end={props.labelEnd === undefined ? "false" : "true"}>
                     <Label as={`h${headingLevel}`} id={headingId}>{labelled}</Label>

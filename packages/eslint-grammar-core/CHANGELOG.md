@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.37.7 - 2026-11-09
+- Changed: the peer `@starci/hfs` is ~6.7.0 and offset-pop peers core 0.37.7.
+
+
+- Added: rule `starci-grammar/no-nested-label` (LABEL-SUBLABEL-HIERARCHY): a `Section` or `SurfaceCard` with its own Label inside a labelled `Section` or `SurfaceCard` of the same file is an error; the group takes `sublabel`.
+
 ## 0.37.6 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.37.6 (a row with an href is pressable whole); no rule of this package changed.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.37.7 - 2026-11-09 - Label and Sublabel hierarchy
+
+- Added (owner, LABEL-SUBLABEL-HIERARCHY): `Section sublabel` and `SurfaceCard sublabel` name a group nested in a labelled section with a Sublabel (12 / 500 muted) set 8px above the card; they are mutually exclusive with `title` / `label` in the types. Sibling groups stand 8px apart, like their Sublabel to the card (24px only between top-level Label sections).
+- Changed: the Label of a `SurfaceCard` stands 12px (`--grammar-row-gap`) above its card, as a `Section` head already did (it was 8px; the cards Grid took 4px). Story `Surfaces/Label hierarchy` measures 12 / 8 / 24.
+- Rule `starci-grammar/no-nested-label` in eslint-grammar-core flags a labelled Section or SurfaceCard nested in a labelled one of the same file.
+
 ## 0.37.6 - 2026-11-09 - a row with an href is pressable whole
 
 - Fixed (LIST-ROW-NAVIGATION): `SurfaceCard kind="list"` rows already pressed as a whole row with a trailing chevron by `onPress`; a row with `href` only linked its title. An `href` row now stretches its title Link over the whole row, with the hover tint and the chevron, as an `onPress` row does. Story `Surfaces/List row navigation`; the rule is in contexts/ui/components/card.md.
@@ -236,7 +242,7 @@
   Lines stay the edge lines of the grid (vertical between a row's cells, horizontal between rows, none doubled). Story `FiguresRibbonFive`
   (390 / 700 / 1000); `check:type` pins the rules.
 - Documented: THE LAYOUT LAW (owner, 2026-11-09). A page is a report (`Page chrome="standard"`: the pink well, cards stacked in one vertical
-  column 24 apart, side by side only for sibling cards of one role and height) or a workspace (`chrome="panes"` / `"bleed"`: panes split
+  column 8 apart, side by side only for sibling cards of one role and height) or a workspace (`chrome="panes"` / `"bleed"`: panes split
   by dividers, side panes white surfaces at full height, never cards, a pink well allowed in the main pane). `Page chrome` is the
   declaration, so no new prop; one frame type per page. Lint `layout-two-axis` (`eslint-grammar-core` 0.33.0) refuses a card beside a
   column of cards and unequal cards in a row.

@@ -166,6 +166,15 @@ rules:
         assert: |-
           The head is the label, a count chip, one fact and one end action; SurfaceCard has no description or subtitle prop. A muted Text written directly above a
           SurfaceCard as its description is refused: the line is a row subtitle (select or list) or, when it explains the card's data, the card note.
+  - id: LABEL-SUBLABEL-HIERARCHY
+    title: One Label per section; nested groups use a Sublabel
+    governs: The Label of a Section or SurfaceCard and the Sublabel of the groups inside it.
+    cases:
+      - id: case-1
+        when: A labelled section holds groups of cards
+        assert: |-
+          The section has exactly one Label (14 / 500, 12px above its content). Each group inside it is a Section or SurfaceCard with `sublabel` (12 / 500 muted, 8px above its card),
+          never a second `title` / `label`; groups stand 24px apart. A Section or SurfaceCard with `sublabel` and a Label together is refused by the types.
   - id: SECTION-HEAD-ACTION
     title: A section head is one row with at most one thing at its end
     governs: The head of a Grammar Section.

@@ -26,6 +26,7 @@ import { rules as paneRules } from "./pane.ts"
 import { rules as rowTitleLinkRules } from "./row-title-link.ts"
 import { rules as rowsInCardRules } from "./rows-in-card.ts"
 import { rules as noCardLeadDescriptionRules } from "./no-card-lead-description.ts"
+import { rules as noNestedLabelRules } from "./no-nested-label.ts"
 import { rules as sectionHeadActionRules } from "./section-head-action.ts"
 import { rules as sameLineSizeRules } from "./same-line-size.ts"
 import { rules as statusColorsRules } from "./status-colors.ts"
@@ -80,6 +81,7 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "same-line-size", rules: sameLineSizeRules },
   { law: "rows-in-card", rules: rowsInCardRules },
   { law: "no-card-lead-description", rules: noCardLeadDescriptionRules },
+  { law: "no-nested-label", rules: noNestedLabelRules },
   { law: "section-head-action", rules: sectionHeadActionRules },
   { law: "single-child-card", rules: singleChildCardRules },
   { law: "status-colors", rules: statusColorsRules },

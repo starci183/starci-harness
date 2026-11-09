@@ -855,6 +855,21 @@
         white-space: nowrap;
     }
 
+    /*
+     * LABEL / SUBLABEL HIERARCHY (0.37.7, LABEL-SUBLABEL-HIERARCHY). A Label (section head, 14 / 500) stands one ROW step (12) above its content: the Section's own gap and the card's
+     * label gap are both --grammar-row-gap. A Sublabel (12 / 500 muted) names a group nested in a labelled section and stands one INLINE step (8) above its card; sibling groups
+     * ALSO stand 8 apart (owner: they must read as belonging to their Label); the larger step (24) is only BETWEEN top-level Label sections. A section or card with a sublabel has no Label of its own (the types refuse both).
+     */
+    .starci-core-section[data-grammar-section-sublabel="true"],
+    .starci-core-surface-card[data-grammar-surface-sublabel="true"] {
+        --starci-core-surface-card-gap: var(--grammar-inline-gap);
+        gap: var(--grammar-inline-gap);
+    }
+
+    :is(.starci-core-section[data-grammar-section-sublabel="true"], .starci-core-surface-card[data-grammar-surface-sublabel="true"]) + :is(.starci-core-section[data-grammar-section-sublabel="true"], .starci-core-surface-card[data-grammar-surface-sublabel="true"]) {
+        margin-block-start: calc(var(--grammar-inline-gap) - var(--grammar-row-gap));
+    }
+
     /* Sublabel: the group label above a card inside a section - small (12), weight 500, muted. */
     .starci-core-sublabel {
         min-width: 0;
@@ -996,11 +1011,11 @@
         min-width: 0;
         width: 100%;
         flex-direction: column;
-        gap: var(--starci-core-surface-card-gap, var(--grammar-inline-gap));
+        gap: var(--starci-core-surface-card-gap, var(--grammar-row-gap));
     }
 
     .starci-core-grid[data-grammar-grid-kind="cards"] > .starci-core-surface-card {
-        --starci-core-surface-card-gap: var(--grammar-identity-gap);
+        --starci-core-surface-card-gap: var(--grammar-row-gap);
         block-size: 100%;
     }
 
@@ -4051,7 +4066,7 @@
         min-width: 0;
         flex-direction: column !important;
         /* The proximity default of the card root (see above): inline, identity in a cards Grid. */
-        gap: var(--starci-core-surface-card-gap, var(--grammar-inline-gap)) !important;
+        gap: var(--starci-core-surface-card-gap, var(--grammar-row-gap)) !important;
         padding: 0 !important;
     }
 

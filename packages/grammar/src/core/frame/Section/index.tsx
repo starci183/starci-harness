@@ -3,6 +3,7 @@
 import { useId, type ReactNode } from "react"
 import { ListRow } from "../../composite/ListRow/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
+import { Sublabel } from "../../leaf/Sublabel/index.js"
 import { FigureCells, figureItems } from "../SurfaceCard/FigureCells.js"
 import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
 import { LoadingScope, useIsLoading } from "../../regionScope.js"
@@ -70,7 +71,24 @@ type SectionCaption = {
     readonly caption?: string
 }
 
-export type SectionProps = SectionStatus & SectionCaption & ((SectionHeadProps & (RegionSection | ListSection)) | HeadlessList | FiguresSection)
+/** No Sublabel: every form that carries a Label or is headless takes none (the types refuse a Label and a Sublabel together). */
+type NoSublabel = { readonly sublabel?: never }
+
+/**
+ * A GROUP inside a labelled section (0.37.7, LABEL-SUBLABEL-HIERARCHY): it is named by a Sublabel (12 / 500 muted) set 8px above its body, never by a second Label. A section has
+ * exactly ONE Label; sibling groups stand 24px apart. `sublabel` and `title` are never given together.
+ */
+type SublabelSection = (RegionSection | ListSection) & {
+    readonly sublabel: string
+    readonly id?: string
+} & { readonly [Key in keyof Omit<SectionHeadProps, "id">]?: never } & { readonly ariaLabel?: never }
+
+export type SectionProps = SectionStatus & SectionCaption & (
+    | (SectionHeadProps & NoSublabel & (RegionSection | ListSection))
+    | (HeadlessList & NoSublabel)
+    | (FiguresSection & NoSublabel)
+    | SublabelSection
+)
 
 const listRows = (props: ListSection, isLoading: boolean) => {
     if (isLoading && props.items.length === 0) {
@@ -127,7 +145,7 @@ export const Section = (props: SectionProps) => {
         <section
             id={id}
             aria-labelledby={title === undefined ? undefined : headingId}
-            aria-label={title === undefined && "ariaLabel" in props ? props.ariaLabel : undefined}
+            aria-label={title === undefined ? props.sublabel ?? ("ariaLabel" in props ? props.ariaLabel : undefined) : undefined}
             aria-busy={isLoading ? true : undefined}
             data-grammar-loading-region={isLoading ? "true" : undefined}
             className="starci-core-section"
@@ -136,8 +154,10 @@ export const Section = (props: SectionProps) => {
             data-grammar-section-kind={props.kind ?? "region"}
             data-grammar-skeleton={isLoading ? "true" : undefined}
             data-grammar-section-fill={props.fill === true ? "true" : undefined}
+            data-grammar-section-sublabel={props.sublabel === undefined ? undefined : "true"}
             data-contract="GAP-3 MARGIN-0 PADDING-0"
         >
+            {props.sublabel === undefined ? null : <Sublabel>{props.sublabel}</Sublabel>}
             {title === undefined ? null : <SectionHead
                 headingId={headingId}
                 level={headingLevel}

@@ -42,6 +42,11 @@ export const why: Record<string, WhyEntry> = {
     en: "A muted `Text` in `<file>` stands directly above a `SurfaceCard` as its description.",
     fix: "A card has no description. Put the line in the row subtitle (`SurfaceCard kind=\"select\"` or `kind=\"list\"`), or, when it explains the card's data (a legend, a source, a period), in the card `note`.",
   },
+  "no-nested-label": {
+    code: "FE_NO_NESTED_LABEL",
+    en: "A `Section` or `SurfaceCard` in `<file>` has its own Label inside a labelled `Section` or `SurfaceCard`.",
+    fix: "A section has ONE Label. A group inside it is named by a Sublabel: use `sublabel=\"...\"` instead of `title` / `label` (Grammar draws it 12 / 500 muted, 8px above the card, groups 24px apart).",
+  },
   "section-head-action": {
     code: "FE_SECTION_HEAD_ACTION",
     en: "The `Section` head `action` in `<file>` holds a `Button` or more than one command.",
