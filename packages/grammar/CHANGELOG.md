@@ -11,6 +11,8 @@
   (scroll-driven animation; no fade where nothing overflows, none on the edge already reached; right to left mirrored).
 - Added: `Drawer bodyInset="content" | "none"` (default `content`). `none` runs the body edge to edge across the sheet (and to the bottom edge when no
   footer follows), so a chat well fills the drawer; `data-grammar-body-inset="none"`.
+- Fixed: `VerticalScrollRegion tone="background"` no longer paints its tone under its own edge mask (white bands at the top and bottom of a chat thread): the
+  mask is off there and two sticky overlays in the tone fade only the content into it. The public API is unchanged.
 - Added: rule id `OVERFLOW-6` (contexts/ui/presentation.md).
 - Lint: `eslint-grammar-core` 0.33.0 adds `no-raw-scroll` (`FE_NO_RAW_SCROLL`, error).
 - Changed (types): THE BUTTON-ICON RULE (owner, 2026-11-09). `startGlyph` and `startContent` are allowed only on the primary Button

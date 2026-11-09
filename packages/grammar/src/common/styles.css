@@ -4198,9 +4198,65 @@
         flex: 0 0 auto;
     }
 
-    /* A scroll region on the page tone: the surface's content scrolls on the background so what it holds (bubbles) stands out. */
-    [data-grammar-scroll-region-tone="background"] {
+    /*
+     * A scroll region on the page tone: the surface's content scrolls on the background so what it holds (bubbles) stands out.
+     * The region's own edge mask would fade that background too (white bands at the top and bottom), so the mask is off here and
+     * the edges fade by two sticky overlays painted in the tone itself: only the content melts into it. The overlays follow the
+     * scroll position (no fade where nothing overflows, none on the edge already reached).
+     */
+    [data-grammar-scroll-region="vertical"][data-grammar-scroll-region-tone="background"] {
+        --grammar-scroll-fade-size: 2rem;
         background-color: var(--background);
+        mask-image: none !important;
+        -webkit-mask-image: none !important;
+    }
+
+    @keyframes grammar-tone-fade-start {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes grammar-tone-fade-end {
+        from { opacity: 1; }
+        to { opacity: 0; }
+    }
+
+    [data-grammar-scroll-region="vertical"][data-grammar-scroll-region-tone="background"]::before,
+    [data-grammar-scroll-region="vertical"][data-grammar-scroll-region-tone="background"]::after {
+        content: "";
+        position: sticky;
+        display: block;
+        flex: none;
+        inline-size: 100%;
+        block-size: var(--grammar-scroll-fade-size);
+        pointer-events: none;
+        opacity: 0;
+    }
+
+    [data-grammar-scroll-region="vertical"][data-grammar-scroll-region-tone="background"]::before {
+        inset-block-start: 0;
+        margin-block-end: calc(-1 * var(--grammar-scroll-fade-size));
+        background-image: linear-gradient(to bottom, var(--background), transparent);
+    }
+
+    [data-grammar-scroll-region="vertical"][data-grammar-scroll-region-tone="background"]::after {
+        inset-block-end: 0;
+        margin-block-start: calc(-1 * var(--grammar-scroll-fade-size));
+        background-image: linear-gradient(to top, var(--background), transparent);
+    }
+
+    @supports (animation-timeline: scroll()) {
+        [data-grammar-scroll-region="vertical"][data-grammar-scroll-region-tone="background"]::before {
+            animation: grammar-tone-fade-start var(--starci-core-motion-duration) var(--grammar-loop-easing) both;
+            animation-timeline: scroll(nearest block);
+            animation-range: 0 var(--grammar-scroll-fade-size);
+        }
+
+        [data-grammar-scroll-region="vertical"][data-grammar-scroll-region-tone="background"]::after {
+            animation: grammar-tone-fade-end var(--starci-core-motion-duration) var(--grammar-loop-easing) both;
+            animation-timeline: scroll(nearest block);
+            animation-range: calc(100% - var(--grammar-scroll-fade-size)) 100%;
+        }
     }
 
     /*
