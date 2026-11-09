@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.110 - 2026-11-09
+
+- Changed: the Grammar family 0.36.0 (`@starci/hfs` 6.5.8 names it): the HeroUI-native DataTable frame with a footer slot; the section head (`Link variant="head"`, count, `isAttention`); the scroll law (a sticky band, independent panes); Pane `content` cards or full, the 80rem cap inside card panes only; tab count chips; card elevation from context (shadow on the well, border on white); FlowGraphLegend; outline icons only; lints `section-head-action`, `tab-count-chip`, `card-one-content`, `no-label-description`, `outline-icons-only`.
+
 ## 1.1.0-alpha.109 - 2026-11-09
 
 - Changed: the CLI requires @starci/hfs@6.5.7, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
