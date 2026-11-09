@@ -1,6 +1,9 @@
 "use client"
 
 import { Card } from "@heroui/react"
+import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline"
+import { DropdownMenu } from "../../branch/DropdownMenu/index.js"
+import { IconButton } from "../../leaf/IconButton/index.js"
 import { useId, type ReactNode } from "react"
 import { SurfaceNesting, assertNoSurfaceInSurface, useSurfaceHost } from "../../surfaceContext.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
@@ -12,6 +15,7 @@ import type {
     Figure,
     FooterZone,
     HeaderZone,
+    ItemMenu,
     ListData,
     SelectData,
     TableData,
@@ -136,6 +140,8 @@ type BodyCard = Shell & OptionallyNamed & Head & (PlainSurfaceCard | SoftSurface
     readonly children: ReactNode
     /** The whole card is one destination or command; the card then holds no control of its own. */
     readonly wholeAction?: WholeCardAction
+    /** 0.37.10: the card's ⋯ actions, with or without a `wholeAction`: the trigger stands at the top end above the whole-card link and never follows it; it is its own tab stop. */
+    readonly menu?: ItemMenu
     /** One logical corner of the painted face drawn at the Common accent radius. */
     readonly accentCorner?: AccentCorner
 }
@@ -342,6 +348,19 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                 ) : failure === undefined ? face : <ErrorView error={failure} />}
             </VerticalScrollRegionPart>
             {action}
+            {body?.menu === undefined ? null : (
+                <span className="starci-core-body-menu" data-grammar-body-menu="true">
+                    {isLoading || disabled ? (
+                        <IconButton label={body.menu.label} source={EllipsisHorizontalIcon} size="sm" intent="neutral" isLoading={isLoading} isDisabled={disabled} />
+                    ) : (
+                        <DropdownMenu
+                            placement="bottom end"
+                            entries={body.menu.entries}
+                            trigger={<IconButton label={body.menu.label} source={EllipsisHorizontalIcon} size="sm" intent="neutral" />}
+                        />
+                    )}
+                </span>
+            )}
         </Card.Content>
     )
     const highlightedSurface = props.isHighlight === true && state !== "pending" ? (

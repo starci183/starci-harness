@@ -2506,6 +2506,9 @@
     /* The action stands at the start of the foot; the overflow menu is pushed to its end. */
     .starci-core-tile-foot > .starci-core-tile-actions { flex: 1 1 auto; }
     /* 0.37.8: with a whole-card action the menu trigger stands above the stretched link (z-index 1) as its own tab stop and press target. */
+    /* 0.37.10: the ⋯ of a body card stands at its top end, above the whole-card link (z-index 1) as its own target. */
+    .starci-core-body-menu { position: absolute; z-index: 2; inset-block-start: var(--grammar-inline-gap); inset-inline-end: var(--grammar-inline-gap); display: inline-flex; }
+    .starci-core-surface:has(> .starci-core-body-menu) > [data-grammar-surface-content="true"] { padding-inline-end: calc(var(--grammar-touch-size) + var(--grammar-inline-gap)); }
     .starci-core-tile-menu { position: relative; z-index: 2; display: inline-flex; margin-inline-start: auto; }
 
     .starci-core-accordion-heading {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.10 - 2026-11-09 - a body card takes a menu
+
+- Added: `SurfaceCard kind="body"` (the default kind) accepts `menu` (the card's ⋯ actions) with or without a `wholeAction`, as the tile does since 0.37.8: the trigger stands at the top end above the whole-card link (z-index 2 over 1) and never follows it, the card stays one whole link, and a keyboard user reaches both (two tab stops). For the agent cards whose coloured chip lines (a role chip, channel chips, a red "chưa cấp quyền") a tile cannot hold. Story `BodyCardAgent` (Surfaces/Whole-card action with menu).
+
 ## 0.37.9 - 2026-11-09 - short columns never wrap
 
 - Fixed (owner law): a table of four columns or fewer let its cells and headings wrap (`white-space: normal`), so "Đã thanh toán" broke over three lines. Every column that is not the one fill column is now `fit` (nowrap, as wide as its content), whether or not another column sets a width; the fill column truncates by default (one line, an ellipsis, the whole text in the tooltip) unless it says `truncate={false}`. Story `FourColumnsNeverWrap` (a 4-column table at a 1440 and a 1024 container).
