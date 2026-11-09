@@ -6,8 +6,8 @@
   `size` `md` or `lg` only. `Alert` and `EmptyNotice` draw an iconed primary action at `md`. Lint `button-icon-primary-only` also refuses `size="sm"`.
 - Added: THE CHAT COMPOSER. A `Textarea` with `onSubmitShortcut` starts at 2 lines (4rem, about 64px), grows with its text up to 6 lines, then scrolls with no bar;
   `Textarea send={{ label, onPress, isDisabled?, isPending? }}` draws the send button inside the box at its bottom end. Constants `COMPOSER_MIN_ROWS`, `COMPOSER_MAX_ROWS`.
-- Changed (default): THE PAGE IS FLUSH LEFT (MEASURE-8). `PageContainer` (the header band's content and the page body) and the workspace primary column
-  start at the left inset; the measure limits the right edge only. Nothing is centred or pushed inward. `PageContainer` no longer carries `MARGIN-AUTO`.
+- Changed (default): BAND LEFT, WELL CENTRED (MEASURE-8). The page header band is full width and its text starts at the page inset, flush left (the band's `PageContainer` is
+  never capped or centred); the content in the pink well is capped at `--grammar-content-max` (80rem) and centred. The page body keeps its centred measure.
 - Added: `Sublabel` (leaf, `children: string`, `id?`): the group label above a card inside a section, 12, weight 500, muted.
 - Changed (default): `Link` is HeroUI v3's own link: the primary colour, the underline on hover only, the anchor icon (`Link.Icon`) at the end of a text label, and
   no size. The `size` prop, the `LinkSize` type and the `externalIcon` prop are removed; the type size and leading are inherited from the line (14 in a body, 12 in
@@ -16,7 +16,12 @@
 - Added: `EmptyNotice frame="frameless"`; `Select appearance="compact"` (32 pill); `PaneDrawerOpener` (`pane`, `icon`, `label`), the drawer opener for any place in a PaneGrid;
   the Stepper's horizontal labels are cut with an ellipsis instead of wrapping; the generated avatar initials are set at 40% of the mark so two capitals stay inside the circle.
 - Lint: `eslint-grammar-core` 0.34.0 adds `tabs-in-well` (`FE_TABS_IN_WELL`) and `link-look` (`FE_LINK_LOOK`), and extends `button-icon-primary-only` to `size="sm"`.
-- Changed (default): in a workspace page the main pane (the one on the canvas) caps its content at `--grammar-content-max` (80rem), aligned left; the well's ground still fills the pane, side panes and the header band are not capped. `check:type` pins it.
+- Changed (default): in a workspace page the main pane (the one on the canvas) caps its content at `--grammar-content-max` (80rem), centred in the well; the ground fills the whole well, side panes and the header band are not capped. `check:type` pins it.
+- Changed (default): NO IMAGE MEANS SPROUTS. An `Avatar` (and every avatar of an `AvatarGroup`) with no `src` draws a DiceBear Sprouts image seeded by `seed` (else `name`),
+  for a person, an agent, a product or a shop alike: drawn locally with `@dicebear/styles/sprouts.json` (already in 10.4.0), cached per seed, the same seed always the same image,
+  clipped by the avatar's shape. New `Avatar fallbackMark="sprout" | "initials"` (default `sprout`; `initials` is the explicit opt-in), `AvatarSproutImage`, `avatarSproutUri`.
+  `check:avatar` pins it. The group's `+n` count mark keeps its letters.
+- Changed (types): `ListRowData.description` accepts a `ReactNode`; a node is drawn at 12, muted, directly under the name at the identity gap (`data-grammar-description-rich`).
 - Added: rule id `MEASURE-8`.
 
 ## 0.33.0 - 2026-11-09 - no scrollbars; layout and responsive laws; only the primary Button carries an icon

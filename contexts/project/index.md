@@ -231,7 +231,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 3 KB — Contract: Avatar and IconTile.
   - sections: Job · Choose · Variants · Size · States · Owner split · Initials fit the circle · Rules
 - [ui/components/list-table.md](../ui/components/list-table.md) · 6 KB — Contract: List and Table.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+  - sections: Job · Choose · Variants · Size · States · Owner split · Row description · Rules
 - [ui/components/mascot.md](../ui/components/mascot.md) · 3 KB — Contract: Mascot.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/menu.md](../ui/components/menu.md) · 2 KB — Contract: Menu.
@@ -239,7 +239,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/message-bubble.md](../ui/components/message-bubble.md) · 5 KB — Contract: MessageBubble.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/page-header.md](../ui/components/page-header.md) · 8 KB — Contract: Page, Section.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Flush left (MEASURE-8) · Rules
+  - sections: Job · Choose · Variants · Size · States · Owner split · Band left, well centred (MEASURE-8) · Rules
 - [ui/components/pane-grid.md](../ui/components/pane-grid.md) · 9 KB — Contract: PaneGrid.
   - sections: Job · Choose · Variants · Size · States · Owner split · Main pane cap · Drawer opener · Rules
 - [ui/components/quote.md](../ui/components/quote.md) · 3 KB — Contract: Quote.

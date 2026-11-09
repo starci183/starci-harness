@@ -88,7 +88,11 @@ export type RowDrag = {
 export type ListRowData = {
     readonly id: string
     readonly title: string
-    readonly description?: string
+    /**
+     * The line under the name. A string is the muted description (14). A node (inline text with 16px marks: "@chatbot · [logo] Telegram · [logo] Zalo")
+     * is drawn at 12, muted, directly under the name at the identity gap; keep it to one line of inline content.
+     */
+    readonly description?: ReactNode
     readonly leading?: ItemLeading
     /** At most two: the operational state, then one exception. */
     readonly badges?: readonly [BadgeData] | readonly [BadgeData, BadgeData]

@@ -125,8 +125,7 @@ Padding and gap together:
 Margin:
 
 - **M1 No margin in layout.** Only the grammar writes one, in three named cases: `MARGIN-AUTO` centring a capped
-  container (a form card, a reading measure; never a page: the page header band and the page body are flush left, the
-  measure limiting only the right edge, MEASURE-8), an absolutely placed marker (a badge on an avatar), and a vendor part's
+  container (a form card, a reading measure, the page body and the workspace main pane: MEASURE-8), an absolutely placed marker (a badge on an avatar), and a vendor part's
   internal offset kept for parity.
 - **M2 Bleed is an API, never a negative margin**: `PaneSection bleed="inline"` (a horizontal chip row reaching both
   pane edges, the inset becoming its scroll padding), `SurfaceCard` `headers` and `footers` (zones to the card edge), the
@@ -358,7 +357,7 @@ Prefer **fluid, then fitted, then capped; never fixed.**
 | MEASURE-5 | minimum height | a stable floor that still grows; the same floor in empty and populated states |
 | MEASURE-6 | inherited height | fills a definite host height |
 | MEASURE-7 | capped height | travels with a scroll owner; a cap without one clips silently |
-| MEASURE-8 | flush left | a page's header band and body both start at the page's left inset; the page measure limits the right edge only and never centres or pushes either inward; in a workspace page the main pane's content (the pink well and its cards) is capped at `--grammar-content-max` (80rem), aligned left, the well's ground still filling the pane, side panes and the header band uncapped |
+| MEASURE-8 | band left, well centred | the page header band is full width with its text flush left at the page inset; the content in the pink well (a report page and the main pane of a workspace page alike) is capped at `--grammar-content-max` (80rem) and centred in the well, the ground filling the whole well; side panes are not capped |
 
 Every region that can receive long content carries a zero minimum width so it can shrink.
 

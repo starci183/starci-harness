@@ -93,8 +93,7 @@ the same inset, and the drawer header's inline padding is the pane inset, so the
 
 ## Main pane cap
 In a workspace page (`Page layout="workspace"`) the main pane, the one on the canvas, holds its content (the pink well and its cards) to `--grammar-content-max`
-(80rem, the report layout's token), aligned left (MEASURE-8). The cap limits the right edge only: the well's pink ground fills the pane. Side (surface) panes and
-the header band are not capped.
+(80rem, the report layout's token), centred in the well (MEASURE-8). The well's pink ground fills the whole pane. Side (surface) panes and the header band are not capped.
 
 ## Drawer opener
 `PaneHeader drawerOpener` draws the opener of a `collapse="drawer"` pane inside the pane head. `PaneDrawerOpener` (`pane`, `icon`, `label`) is the same button for

@@ -217,12 +217,18 @@
         }
     }
 
-    /* The page measure only limits the right edge: the header band and the body both start at the page's left inset, never centred or pushed inward. */
+    /* The page body is capped at the page measure (80rem) and centred in the well; the header band is not (next rule). */
     .starci-core-page-container {
         width: min(100%, var(--starci-core-page-measure));
         min-width: 0;
-        margin-inline: 0 auto;
+        margin-inline: auto;
         padding-inline: var(--grammar-page-inset);
+    }
+
+    /* The header band is full width and its text starts at the page inset: the band's container is never capped or centred (MEASURE-8). */
+    .starci-core-page-header .starci-core-page-container {
+        width: 100%;
+        margin-inline: 0;
     }
 
     .starci-core-page-container[data-grammar-page-measure="reading"] {
@@ -2028,6 +2034,19 @@
         white-space: nowrap;
     }
 
+    /* A node description (inline text with 16px marks) is 12, muted, directly under the name at the identity gap, marks centred on the text line. */
+    .starci-core-list-row-description[data-grammar-description-rich="true"] {
+        display: flex;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+    }
+
+    .starci-core-list-row-copy:has(> .starci-core-list-row-description[data-grammar-description-rich="true"]) {
+        gap: var(--grammar-identity-gap);
+    }
+
     /* The row's one end fact: a muted line before the commands; a problem (overdue) reads in the danger pair. */
     .starci-core-list-row-meta {
         flex: 0 1 auto;
@@ -2885,12 +2904,12 @@
     .starci-core-workspace-shell-layout[data-grammar-workspace-align="start"] { align-items: start; }
     .starci-core-workspace-shell-layout[data-grammar-workspace-align="stretch"] { align-items: stretch; }
     .starci-core-workspace-shell-navigation { grid-area: navigation; }
-    /* The main column's content never grows past the content maximum; the cap limits the right edge and the content starts at the column's left edge (the rail keeps its own). */
+    /* The main column's content never grows past the content maximum, and stays centered in its column (the rail keeps its own). */
     .starci-core-workspace-shell-primary {
         grid-area: primary;
         inline-size: 100%;
         max-inline-size: var(--grammar-content-max);
-        margin-inline: 0 auto;
+        margin-inline: auto;
     }
     /*
      * A Page owns the measure (Page: "layout frames never wrap a page in a measure of their own"): a primary that holds a Page is not
@@ -3256,13 +3275,13 @@
      */
     /*
      * THE WORKSPACE MAIN PANE IS CAPPED (MEASURE-8): in a workspace page the pane on the canvas (the pink well and its cards) holds its content to the
-     * report layout's own token, --grammar-content-max (80rem), aligned left. The cap limits the right edge only; the well's ground still fills the pane,
+     * report layout's own token, --grammar-content-max (80rem), centred in the well. The well's ground still fills the whole pane,
      * and the side (surface) panes and the header band are not capped.
      */
     .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane:not([data-grammar-pane-surface="true"]) .starci-core-pane-stack {
         inline-size: 100%;
         max-inline-size: var(--grammar-content-max);
-        margin-inline: 0 auto;
+        margin-inline: auto;
     }
 
     .starci-core-pane-stack {

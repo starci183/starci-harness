@@ -63,9 +63,10 @@ and the tab labels stay real (STATE-8); the body's blocks own their own loading.
 - **Knowledge decides:** page header vs section; which slot carries a fact; one commit.
 - **App author decides:** the trail, the heading, the mark, the facts, the commands and the tabs.
 
-## Flush left (MEASURE-8)
-The header band's content and the page body both start at the page's left inset. The page measure limits the right edge only: a narrower report layout is never
-centred or pushed inward, so the title, the tabs and the first card share one left edge. The second tab layer (`subTabs`) stands in the band at that same x.
+## Band left, well centred (MEASURE-8)
+The header band is full width and its text (breadcrumbs, title, tabs) starts at the page inset, flush left, on a wide screen as on a narrow one. The content in the pink well
+is capped at `--grammar-content-max` (80rem) and centred in the well, the pink filling the whole well. The header stays left while the content is centred. The second tab layer
+(`subTabs`) stands in the band at the same x as layer 1.
 
 ## Rules
 HIERARCHY-3, FONT-4, CTA-1, CTA-6, STATE-6, STATE-8, BOUNDARY-1. Lint: `starci-grammar/no-hand-rolled-page-header`
