@@ -201,6 +201,30 @@ export const Islands: Story = {
   },
 };
 
+/** 0.37.11: the zoom controls (bottom-left) cover a strip the fit leaves empty, so a node at the bottom-left corner (the last island, left-aligned) is never drawn under them. */
+export const ControlsReserveCorner: Story = {
+  render: () => (
+    <Matrix maxWidth={300}>
+      <State label="A lone node at the bottom-left, controls shown" direction="column">
+        <G.FlowGraph label="Controls corner" layout="steps" islands="stack" showControls nodes={islandNodes} edges={islandEdges} />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const graph = graphOf(canvasElement);
+      const controls = graph.querySelector<HTMLElement>('.starci-core-flow-graph-controls');
+      if (controls === null) throw new Error('the zoom controls render');
+      const c = controls.getBoundingClientRect();
+      for (const id of ['a1', 'a2', 'b1', 'b2', 'c1']) {
+        const n = nodeBox(graph, id)!;
+        const overlaps = n.left < c.right && n.right > c.left && n.top < c.bottom && n.bottom > c.top;
+        expect(overlaps).toBe(false);
+      }
+    });
+  },
+};
+
 const fanNodes: ReadonlyArray<G.FlowGraphNode> = [
   { id: 'order', kind: 'event', label: 'Có đơn mới', tag: 'Kích hoạt' },
   { id: 'hook', kind: 'event', label: 'Webhook Shopee', tag: 'Kích hoạt' },

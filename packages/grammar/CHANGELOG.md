@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.11 - 2026-11-09 - the FlowGraph controls reserve their corner
+
+- Fixed: the zoom controls (bottom-left) overlapped a node near the bottom-left corner of a graph. A graph with controls now fits its view with a 56px strip at the start edge left empty (`CONTROLS_INSET`: the control column plus the panel margin), in every fit path (`fitView` padding, the steps fit, the anchored start), so no node is drawn under the controls. Story `ControlsReserveCorner` asserts the controls' rect meets no node.
+
 ## 0.37.10 - 2026-11-09 - a body card takes a menu
 
 - Added: `SurfaceCard kind="body"` (the default kind) accepts `menu` (the card's ⋯ actions) with or without a `wholeAction`, as the tile does since 0.37.8: the trigger stands at the top end above the whole-card link (z-index 2 over 1) and never follows it, the card stays one whole link, and a keyboard user reaches both (two tab stops). For the agent cards whose coloured chip lines (a role chip, channel chips, a red "chưa cấp quyền") a tile cannot hold. Story `BodyCardAgent` (Surfaces/Whole-card action with menu).

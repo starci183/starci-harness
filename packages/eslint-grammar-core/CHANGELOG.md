@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.11 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.11 (the FlowGraph controls reserve their corner); no rule of this package changed.
+
 ## 0.37.10 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.37.10 (a body card takes a menu); no rule of this package changed.

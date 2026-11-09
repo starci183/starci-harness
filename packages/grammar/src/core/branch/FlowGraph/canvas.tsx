@@ -50,8 +50,12 @@ export const ZoomMirror = ({ onZoom }: { readonly onZoom: (zoom: number) => void
 export const STEPS_MIN_ZOOM = 0.75
 /** The margin a steps graph keeps inside its pane, in screen pixels. */
 const STEPS_FIT_MARGIN = 16
+/** The strip the zoom controls cover at the canvas's start edge (the control column 2rem + the panel's margin): a fit keeps every node out of it (0.37.11). */
+export const CONTROLS_INSET = 56
 
-export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, anchorStart, stepsFit }: {
+export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, anchorStart, stepsFit, inset = 0 }: {
+    /** The strip at the start edge that the zoom controls cover: the fit leaves it empty, so no node is drawn under the controls. */
+    readonly inset?: number
     /**
      * A top-down `steps` graph (0.36.2): fit to the pane width with a margin; below `STEPS_MIN_ZOOM` hold that scale, start at the trigger (the first card)
      * and let the reader pan. The canvas height follows the graph at that scale, so no empty band stands above it.
@@ -73,14 +77,18 @@ export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, an
     const height = useStore((state) => state.height)
     useEffect(() => {
         if (!isReady || width === 0 || height === 0) return
+        const side = Math.round(fitOptions.padding * Math.min(width, height))
+        const px = (value: number): `${number}px` => `${value}px`
+        const insetOptions = inset === 0 ? fitOptions : { ...fitOptions, padding: { top: px(side), right: px(side), bottom: px(side), left: px(side + inset) } }
         if (readableZoom === null) {
-            void fitView(fitOptions)
+            void fitView(insetOptions)
             return
         }
         const bounds = getNodesBounds(getNodes())
         if (bounds.width === 0 || bounds.height === 0) return
         if (stepsFit === true) {
-            const room = width - 2 * STEPS_FIT_MARGIN
+            const start = STEPS_FIT_MARGIN + inset
+            const room = width - start - STEPS_FIT_MARGIN
             const zoom = Math.max(Math.min(room / bounds.width, maxZoom), STEPS_MIN_ZOOM)
             const wanted = Math.ceil(bounds.height * zoom + 2 * STEPS_FIT_MARGIN)
             if (Math.abs(wanted - height) > 1) {
@@ -88,23 +96,23 @@ export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, an
                 return
             }
             const contentWidth = bounds.width * zoom
-            let x = (width - contentWidth) / 2 - bounds.x * zoom
+            let x = start + (room - contentWidth) / 2 - bounds.x * zoom
             if (contentWidth > room) {
                 // Wider than the pane at the readable scale: the trigger (the topmost card) is centred when it can be, else the view stands at the graph's start.
                 const nodes = getNodes()
                 const trigger = nodes.reduce((top, node) => node.position.y < top.position.y ? node : top, nodes[0] ?? { position: { x: bounds.x, y: bounds.y } })
                 const min = width - STEPS_FIT_MARGIN - (bounds.x + bounds.width) * zoom
-                const max = STEPS_FIT_MARGIN - bounds.x * zoom
-                x = Math.min(max, Math.max(min, width / 2 - trigger.position.x * zoom))
+                const max = start - bounds.x * zoom
+                x = Math.min(max, Math.max(min, start + room / 2 - trigger.position.x * zoom))
             }
             void setViewport({ x, y: STEPS_FIT_MARGIN - bounds.y * zoom, zoom }, { duration: 0 })
             return
         }
         const pad = 1 + 2 * fitOptions.padding
-        const zoomAtWidth = Math.min(width / (bounds.width * pad), maxZoom)
+        const zoomAtWidth = Math.min((width - inset) / (bounds.width * pad), maxZoom)
         const fitZoom = Math.min(zoomAtWidth, height / (bounds.height * pad))
         if (anchorStart && fitZoom < readableZoom) {
-            void setViewport({ x: 16 - bounds.x * readableZoom, y: 16 - bounds.y * readableZoom, zoom: readableZoom }, { duration: 0 })
+            void setViewport({ x: 16 + inset - bounds.x * readableZoom, y: 16 - bounds.y * readableZoom, zoom: readableZoom }, { duration: 0 })
             return
         }
         if (fitZoom < readableZoom) {
@@ -114,8 +122,8 @@ export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, an
                 return
             }
         }
-        void fitView({ ...fitOptions, minZoom: readableZoom })
-    }, [fitView, getNodes, getNodesBounds, setViewport, isReady, signature, readableZoom, width, height, onGrow, fitOptions, maxZoom, anchorStart, stepsFit])
+        void fitView({ ...insetOptions, minZoom: readableZoom })
+    }, [fitView, getNodes, getNodesBounds, setViewport, isReady, signature, readableZoom, width, height, onGrow, fitOptions, maxZoom, anchorStart, stepsFit, inset])
     return null
 }
 
