@@ -8,19 +8,25 @@ import { type IconSource } from "../../leaf/Icon/index.js"
 import { Text } from "../../leaf/Text/index.js"
 import type { NoChildren } from "../../tier.js"
 
-export type FileButtonProps = NoChildren & {
-    /** Required accessible name for the glyph-only control ("Attach a file"). */
+type FileButtonMark =
+    | {
+        /** A visible word for the picker ("Tải ảnh lên"): the control is then a neutral `sm` Button with the word alone. The button-icon law: an icon stands only on a primary md or lg Button, never on sm, so this form draws none. */
+        readonly text: string
+        /** Ignored with `text` (0.36.2: optional): a text button carries no icon. */
+        readonly source?: IconSource
+    }
+    | {
+        readonly text?: undefined
+        /** The glyph of the glyph-only control; its identity is the app's, as for `IconButton`. Required without `text`. */
+        readonly source: IconSource
+    }
+
+export type FileButtonProps = NoChildren & FileButtonMark & {
+    /** Required accessible name for the control ("Attach a file"). */
     readonly label: string
-    /** The glyph; its identity is the app's, as for `IconButton`. */
-    readonly source: IconSource
     /** Native `accept` list, e.g. `image/*,.pdf`. A hint to the picker, not a security check. */
     readonly accept?: string
     readonly multiple?: boolean
-    /**
-     * A visible word for the picker ("Change picture"): the control is then a pill `Button` with the glyph before its text (still named by
-     * `label`); without it the control is the glyph-only `IconButton`.
-     */
-    readonly text?: string
     /** Guidance under the control ("PNG, JPEG or WebP, up to 2 MB"), its `aria-describedby`. */
     readonly description?: string
     /** The refusal of the last pick ("Only PNG, JPEG or WebP"), danger tone under the control, announced; it replaces `description`. */
@@ -45,10 +51,10 @@ export const FileButton = ({ label, source, accept, multiple = false, text, desc
     const note = errorMessage ?? description
     const control = isLoading
         ? text === undefined
-            ? <IconButton source={source} label={label} intent="neutral" isLoading />
+            ? <IconButton source={source as IconSource} label={label} intent="neutral" isLoading />
             : <Button intent="alternative" size="sm" isLoading>{text}</Button>
         : text === undefined
-            ? <IconButton source={source} label={label} intent="neutral" isDisabled={isDisabled} onPress={() => input.current?.click()} />
+            ? <IconButton source={source as IconSource} label={label} intent="neutral" isDisabled={isDisabled} onPress={() => input.current?.click()} />
             : <Button intent="alternative" size="sm" isDisabled={isDisabled} aria-label={label} onPress={() => input.current?.click()} {...(note === undefined ? {} : { "aria-describedby": noteId })}>{text}</Button>
     return (
         <span className="starci-core-file-button" data-tier="composite" data-component="FileButton" {...(isLoading ? { "data-loading": "true" } : {})} {...(note === undefined ? {} : { "data-grammar-file-button-note": errorMessage === undefined ? "description" : "error" })}>

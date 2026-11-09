@@ -3,8 +3,14 @@ import { FormGrid, type FormGridColumns } from "../FormGrid/index.js"
 import { PrimaryRailLayout, type PrimaryRailLayoutProps } from "../PrimaryRailLayout/index.js"
 import type { NoChildren } from "../../tier.js"
 
-/** The most cards a row of a `cards` grid holds once its width allows; below that it holds fewer. */
-export type GridCardColumns = 2 | 3 | 4
+/**
+ * The most cards a row of a `cards` grid holds once its width allows; below that it holds fewer. `balanced` (0.36.2) picks the cap from the number of
+ * cards so the last row is never one orphan: 5 or 6 cards cap at 3 (3 + 2, 3 + 3), 7 or 8 at 4 (4 + 3, 4 + 4), up to 4 cards at their own count.
+ */
+export type GridCardColumns = 2 | 3 | 4 | 5 | "balanced"
+
+/** The column cap a `balanced` grid of `count` cards takes. */
+export const balancedColumns = (count: number): 2 | 3 | 4 => count <= 2 ? 2 : count <= 3 ? 3 : count === 4 ? 4 : count <= 6 ? 3 : 4
 
 type GridCardsProps = {
     /** Peer cards of one collection: equal tracks, the inline gap on both axes. */
@@ -109,7 +115,7 @@ export const Grid = (props: GridProps) => {
             data-component="Grid"
             data-tier="frame"
             data-grammar-grid-kind="cards"
-            data-grammar-grid-columns={props.columns === undefined ? "fit" : String(props.columns)}
+            data-grammar-grid-columns={props.columns === undefined ? "fit" : props.columns === "balanced" ? String(balancedColumns(Children.toArray(props.children).length)) : String(props.columns)}
             data-contract="GAP-2 RESPONSIVE-1"
         >
             {props.children}

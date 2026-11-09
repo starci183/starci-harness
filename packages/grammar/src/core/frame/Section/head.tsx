@@ -25,8 +25,8 @@ export type SectionHeadProps = {
     /** The count is work waiting for the owner (to handle, to approve, an error): the chip is pink (the accent soft pair). Default grey. */
     readonly isAttention?: boolean
     /**
-     * One muted fact on the title line, right after it (" - Technician" in "Candidates - Technician", "Videos - 6 videos"); part of the heading's
-     * accessible name and, like `count`, not drawn while the section loads.
+     * One short fact on the title line, right after it, drawn as the same 12px grey chip as `count` (0.36.2; it was "Label \u00b7 fact" text, which is banned);
+     * part of the heading's accessible name and, like `count`, not drawn while the section loads. Use `count` for a number.
      */
     readonly fact?: string
     /** Where and when the section's facts come from (a source time, "Inventoried at 10:00"). Muted, at the end of the head row, before `action`. */
@@ -65,7 +65,7 @@ export const SectionHead = ({ title, count, isAttention, fact, meta, action, isL
         <span key="count" className="starci-core-section-count" data-grammar-section-count={count} {...(isAttention === true ? { "data-grammar-attention": "true" } : {})} data-contract="TONE-2">{count}</span>
     )
     const factPart = fact === undefined || isLoading ? null : (
-        <span key="fact" className="starci-core-section-count" data-grammar-section-fact="true" data-contract="TONE-2">{` \u00b7 ${fact}`}</span>
+        <span key="fact" className="starci-core-section-count" data-grammar-section-count={fact} data-grammar-section-fact="true" data-contract="TONE-2">{fact}</span>
     )
     return (
         <div className="starci-core-section-header" data-contract="GAP-2" data-grammar-section-header="true">
@@ -73,7 +73,7 @@ export const SectionHead = ({ title, count, isAttention, fact, meta, action, isL
                 {createElement(
                     `h${level}`,
                     { className: "starci-core-section-title", id: headingId, "data-contract": "MARGIN-0 FLOW-3" },
-                    title,
+                    <span key="text" className="starci-core-section-title-text">{title}</span>,
                     countPart,
                     factPart,
                 )}

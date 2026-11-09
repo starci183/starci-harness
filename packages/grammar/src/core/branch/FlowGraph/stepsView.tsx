@@ -17,7 +17,7 @@ import { Link as RouterLink } from "react-aria-components"
 import { isValidElement, memo, type ReactNode } from "react"
 import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { useCustomTone } from "../../useCustomTone.js"
-import { roundedPath, stepsBackRoute, type StepsBackRoute } from "./steps.js"
+import { roundedPath, stepsBackRoute, STEPS_PORT_CHARS, type StepsBackRoute } from "./steps.js"
 import type { FlowGraphDirection, FlowGraphLegendItem, FlowGraphNode, FlowGraphPort, FlowGraphRunStatus, FlowGraphStepKind, FlowGraphTone } from "./types.js"
 
 /**
@@ -157,7 +157,7 @@ export const FlowGraphStepView = memo(({ data }: NodeProps<Node<StepNodeData>>) 
                 <span className="starci-core-flow-graph-step-outputs" data-grammar-flow-outputs="true">
                     {ports.map((port) => (
                         <span key={port.id} className="starci-core-flow-graph-step-port" data-grammar-flow-port={port.id}>
-                            {port.label}
+                            <span className="starci-core-flow-graph-step-port-label" {...(port.label.length > STEPS_PORT_CHARS ? { title: port.label } : {})}>{port.label}</span>
                             <Handle className="starci-core-flow-graph-step-port-dot" id={`port:${port.id}`} isConnectable={false} position={SIDES[direction].out} type="source" />
                         </span>
                     ))}

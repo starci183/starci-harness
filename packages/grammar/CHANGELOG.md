@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.36.2 - 2026-11-09 - a Switch has no border
+
+- Fixed (regression of 0.36.0): the sticky page band no longer leaves a ~64px strip above it. Its offset was the top bar's height (`top: --starci-core-band-height`) even in a fixed shell, where the bar is outside the scroller, so the band was pushed
+  down 64px at scroll 0 and overlapped the first section. The band is `top: 0` and takes the bar's height only when the document scrolls under a sticky bar (no fixed shell).
+- Changed (default): `Section fact` is the same 12px grey chip as `count` (it drew "Label · fact" text, which is banned); use `count` for numbers.
+- Added: `Grid kind="cards" columns={5}` and `columns="balanced"`: the cap follows the number of cards so the last row is never one orphan (5 or 6 cards cap at 3, 7 or 8 at 4, up to 4 at their own count). Export `balancedColumns`.
+- Added: `EmptyNotice actionHref`: a navigation action drawn as a `Link variant="head"` ("Về tổng quan →") instead of a Button; `actionLabel` is its label. A command (`onAction`) stays a Button.
+- Changed (types): `FileButton source` is optional when `text` is given: the text form is a neutral `sm` Button with the word alone and no start icon (the button-icon law: an icon only on a primary md or lg Button, never on sm);
+  the glyph-only form still requires `source`.
+- Changed (default): FlowGraph `layout="steps"` fits its pane (0.36.2). A top-down graph fits the pane width with a 16px margin on first render; if the cards would fall below 0.75 it holds 0.75, starts at the trigger (the
+  topmost card, centred when it can be) and the reader pans. The canvas height follows the graph at that scale, so no empty band stands above it. A condition's ports size to their label and never wrap: past 16 characters a label is
+  cut with an ellipsis and a tooltip (`title`) reads it in full, and the cards of the graph widen (one width, up to 360) when the ports need it (`StepsLayout.cardWidth`, `stepsCardWidth`). The default kind tones (event accent,
+  action success, condition warning, ask danger, wait neutral, end success) apply unless `kindTones` declares one; an entry left undefined no longer wipes a default.
+- Changed (default): A SWITCH HAS NO BORDER (owner). Every Grammar `Switch`, the header light/dark theme toggle (`size="control"`) and form switches alike, takes HeroUI's native look: a light grey track (`--default`) with no outline, hairline or
+  ring (the 1.5px inset border of the off track is removed), the primary colour (the accent) when on, and a white thumb (`--surface`) with the soft card shadow in both states. The vendor focus ring stays for keyboard focus
+  (`:focus-visible`) only. No API change.
+
 ## 0.36.1 - 2026-11-09 - the status dot is a hollow ring
 
 - Changed (default): `StatusDot`, the dot of `Badge isDot` and the avatar presence mark are a HOLLOW RING (owner, ICONS-OUTLINE): 8px (`--starci-core-status-dot-size: 0.5rem`, was 6px) with a 1.5px stroke (`--grammar-stroke-fine`) in the tone

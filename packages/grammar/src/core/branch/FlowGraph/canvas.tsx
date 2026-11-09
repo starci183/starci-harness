@@ -46,7 +46,17 @@ export const ZoomMirror = ({ onZoom }: { readonly onZoom: (zoom: number) => void
  * changes. Under a readable zoom, a fit that would go below it asks the canvas to grow to the graph's aspect at the
  * canvas width first, then fits with the readable zoom as the floor.
  */
-export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, anchorStart }: {
+/** A steps graph never draws its cards below this scale (0.36.2): wider than the pane at it, the view starts at the trigger and pans. */
+export const STEPS_MIN_ZOOM = 0.75
+/** The margin a steps graph keeps inside its pane, in screen pixels. */
+const STEPS_FIT_MARGIN = 16
+
+export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, anchorStart, stepsFit }: {
+    /**
+     * A top-down `steps` graph (0.36.2): fit to the pane width with a margin; below `STEPS_MIN_ZOOM` hold that scale, start at the trigger (the first card)
+     * and let the reader pan. The canvas height follows the graph at that scale, so no empty band stands above it.
+     */
+    readonly stepsFit?: boolean
     readonly signature: string
     readonly fitOptions: typeof FIT_OPTIONS | typeof LANES_FIT_OPTIONS
     readonly maxZoom: number
@@ -69,6 +79,27 @@ export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, an
         }
         const bounds = getNodesBounds(getNodes())
         if (bounds.width === 0 || bounds.height === 0) return
+        if (stepsFit === true) {
+            const room = width - 2 * STEPS_FIT_MARGIN
+            const zoom = Math.max(Math.min(room / bounds.width, maxZoom), STEPS_MIN_ZOOM)
+            const wanted = Math.ceil(bounds.height * zoom + 2 * STEPS_FIT_MARGIN)
+            if (Math.abs(wanted - height) > 1) {
+                onGrow(wanted)
+                return
+            }
+            const contentWidth = bounds.width * zoom
+            let x = (width - contentWidth) / 2 - bounds.x * zoom
+            if (contentWidth > room) {
+                // Wider than the pane at the readable scale: the trigger (the topmost card) is centred when it can be, else the view stands at the graph's start.
+                const nodes = getNodes()
+                const trigger = nodes.reduce((top, node) => node.position.y < top.position.y ? node : top, nodes[0] ?? { position: { x: bounds.x, y: bounds.y } })
+                const min = width - STEPS_FIT_MARGIN - (bounds.x + bounds.width) * zoom
+                const max = STEPS_FIT_MARGIN - bounds.x * zoom
+                x = Math.min(max, Math.max(min, width / 2 - trigger.position.x * zoom))
+            }
+            void setViewport({ x, y: STEPS_FIT_MARGIN - bounds.y * zoom, zoom }, { duration: 0 })
+            return
+        }
         const pad = 1 + 2 * fitOptions.padding
         const zoomAtWidth = Math.min(width / (bounds.width * pad), maxZoom)
         const fitZoom = Math.min(zoomAtWidth, height / (bounds.height * pad))
@@ -84,7 +115,7 @@ export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, an
             }
         }
         void fitView({ ...fitOptions, minZoom: readableZoom })
-    }, [fitView, getNodes, getNodesBounds, setViewport, isReady, signature, readableZoom, width, height, onGrow, fitOptions, maxZoom, anchorStart])
+    }, [fitView, getNodes, getNodesBounds, setViewport, isReady, signature, readableZoom, width, height, onGrow, fitOptions, maxZoom, anchorStart, stepsFit])
     return null
 }
 

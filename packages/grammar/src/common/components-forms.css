@@ -576,19 +576,23 @@
     }
 
     /*
-     * The off state reads as a control, not a hole: the track takes the default fill with a hairline edge, and the thumb is the light
-     * surface raised by the surface shadow (both states), so the round thumb stands out at rest. On, the track is the accent and a thumb
-     * glyph takes the accent. Keyed on the component's stamps; `!important` for the same reason as the size rules above.
+     * A SWITCH HAS NO BORDER (owner, 0.36.2): HeroUI's native look. Off: a light grey track (`--default`) with no outline, hairline or ring; on: the primary
+     * colour (the accent). The thumb is white (`--surface`) with a soft shadow, both states, and a thumb glyph takes the muted tone off and the accent on. The only
+     * ring is the vendor's focus ring on keyboard focus (`:focus-visible`), which a box-shadow on the track here would hide, so the track sets none.
+     * Keyed on the component's stamps; `!important` for the same reason as the size rules above.
      */
     [data-component="Switch"]:not([data-selected="true"]) [data-grammar-switch-track] {
         background: var(--default) !important;
-        box-shadow: inset 0 0 0 var(--grammar-stroke-fine) var(--border);
+    }
+
+    [data-component="Switch"] [data-grammar-switch-track] {
+        border: 0 !important;
+        outline: 0;
     }
 
     [data-component="Switch"] [data-grammar-switch-thumb] {
         background: var(--surface) !important;
-        /* No ring: the light thumb on the default or accent track is its own contrast; a surface shadow drew an edge around it. */
-        box-shadow: none !important;
+        box-shadow: var(--surface-shadow) !important;
         color: var(--muted);
     }
 

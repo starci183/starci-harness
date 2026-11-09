@@ -289,10 +289,22 @@
     }
 
     /* A section's label (0.36.0): 14, weight 500. The count chip beside it is 12. */
+    /* The label and its chip stay on ONE line (0.36.2): the label truncates, the chip never wraps below it. */
     :is(h2, h3, h4, h5, h6).starci-core-section-title {
+        display: flex;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+        flex-wrap: nowrap;
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-md);
+    }
+
+    .starci-core-section-title-text {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .starci-core-media-caption {
@@ -348,8 +360,8 @@
     .starci-core-section-count[data-grammar-section-count] {
         display: inline-flex;
         align-items: center;
-        vertical-align: middle;
-        margin-inline-start: var(--grammar-inline-gap);
+        flex: none;
+        margin-inline-start: 0;
         padding-inline: var(--grammar-inline-gap);
         border-radius: var(--grammar-radius-pill);
         background: var(--default);
@@ -494,7 +506,12 @@
         margin-block-end: 0;
     }
 
-    .starci-core-page[data-grammar-page-header="false"] {
+    .starci-core-page[data-grammar-page-header="false"]:not([data-grammar-page-trail="true"]) {
+        padding-block-start: var(--grammar-region-gap);
+    }
+
+    /* A trail with no band owns its top gap (0.36.2), so the sticky trail covers it and no strip of well stands above the breadcrumb when scrolled. */
+    .starci-core-page[data-grammar-page-trail="true"] > .starci-core-page-trail {
         padding-block-start: var(--grammar-region-gap);
     }
 
@@ -3353,6 +3370,12 @@
     .starci-core-page > :is(.starci-core-page-header, .starci-core-page-trail) {
         position: sticky;
         z-index: 3;
+        /* Flush at the top of whatever scrolls (0.36.2): inside a fixed shell the bar is outside the scroller, so an offset would push the band down and leave a strip above it. */
+        top: 0;
+    }
+
+    /* Only when the DOCUMENT scrolls under a sticky top bar does the band stand below the bar's height; a fixed shell's own scroller never does. */
+    .grammar-common-root:has(.starci-core-top-bar[data-grammar-top-bar-position="sticky"]):not(:has([data-grammar-workspace-viewport="fixed"])) .starci-core-page > :is(.starci-core-page-header, .starci-core-page-trail) {
         top: var(--starci-core-band-height);
     }
 
@@ -4490,8 +4513,9 @@
     .starci-core-grid[data-grammar-grid-columns="2"] { --starci-core-grid-share: 2; }
     .starci-core-grid[data-grammar-grid-columns="3"] { --starci-core-grid-share: 3; }
     .starci-core-grid[data-grammar-grid-columns="4"] { --starci-core-grid-share: 4; }
+    .starci-core-grid[data-grammar-grid-columns="5"] { --starci-core-grid-share: 5; }
 
-    .starci-core-grid:is([data-grammar-grid-columns="2"], [data-grammar-grid-columns="3"], [data-grammar-grid-columns="4"]) {
+    .starci-core-grid:is([data-grammar-grid-columns="2"], [data-grammar-grid-columns="3"], [data-grammar-grid-columns="4"], [data-grammar-grid-columns="5"]) {
         grid-template-columns: repeat(
             auto-fill,
             minmax(
