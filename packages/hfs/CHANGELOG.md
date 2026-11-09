@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.5.7 - 2026-11-09
+
+- Changed: the canon pins name the Grammar family 0.35.0.
+
 ## 6.5.6 - 2026-11-09
 
 - Changed: the canon pins name the Grammar family 0.34.0.
