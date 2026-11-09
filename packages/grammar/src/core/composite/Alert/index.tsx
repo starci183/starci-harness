@@ -2,6 +2,8 @@
 
 import { useRegionOwnsBusy, withRegionLoading } from "../../regionScope.js"
 import { Alert as HeroAlert, Spinner as HeroSpinner } from "@heroui/react"
+import type { GlyphName } from "../../leaf/Icon/glyphs.js"
+import { inlineGlyph } from "../../leaf/Icon/inline.js"
 import { ChevronRightIcon } from "@heroicons/react/24/outline"
 import { useState, type ReactNode } from "react"
 import { isPresentationState, PRESENTATION_STATES, type PresentationState } from "../../../common/state.js"
@@ -112,6 +114,11 @@ const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
  * Below 30rem a `button` action stacks under the text, full width, in that same intent; a dismiss stays beside the text.
  * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
  */
+/** The outline status mark of each meaning (the vendor's default marks are filled). */
+const ALERT_GLYPH: Readonly<Record<Exclude<PresentationState, "pending">, GlyphName>> = {
+    informative: "info", affirmative: "success", cautionary: "warning", negative: "danger", neutral: "info", unavailable: "info",
+}
+
 const AlertInner = (props: AlertProps) => {
     const { title, description, tone: readyTone = "informative", leading, action, urgency, isLoading = false } = props
     const ownsBusy = useRegionOwnsBusy()
@@ -144,7 +151,7 @@ const AlertInner = (props: AlertProps) => {
         >
             {leading === undefined ? (
                 <HeroAlert.Indicator className="starci-core-alert-indicator">
-                    {meaning === "pending" ? <HeroSpinner aria-hidden="true" role="presentation" size="sm" color="current" /> : undefined}
+                    {meaning === "pending" ? <HeroSpinner aria-hidden="true" role="presentation" size="sm" color="current" /> : inlineGlyph(ALERT_GLYPH[meaning])}
                 </HeroAlert.Indicator>
             ) : <span className="starci-core-alert-leading" data-grammar-alert-leading="true">{isLoading ? <SkeletonPlaceholder shape="block">{leading}</SkeletonPlaceholder> : leading}</span>}
             <HeroAlert.Content className="starci-core-alert-content">

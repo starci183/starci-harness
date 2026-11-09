@@ -17,8 +17,8 @@ import { Link as RouterLink } from "react-aria-components"
 import { isValidElement, memo, type ReactNode } from "react"
 import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { useCustomTone } from "../../useCustomTone.js"
-import { roundedPath, stepsBackRoute, STEPS_PORT_CHARS, type StepsBackRoute } from "./steps.js"
-import type { FlowGraphDirection, FlowGraphLegendItem, FlowGraphNode, FlowGraphPort, FlowGraphRunStatus, FlowGraphStepKind, FlowGraphTone } from "./types.js"
+import { chipsOf, roundedPath, stepsBackRoute, STEPS_PORT_CHARS, type StepsBackRoute } from "./steps.js"
+import type { FlowGraphChip, FlowGraphDirection, FlowGraphLegendItem, FlowGraphNode, FlowGraphPort, FlowGraphRunStatus, FlowGraphStepKind, FlowGraphTone } from "./types.js"
 
 /**
  * The tone of each `steps` kind. Core's palette is HeroUI's (accent, success, warning, danger, default), which has no purple, teal or coral:
@@ -96,6 +96,20 @@ export type StepNodeData = {
     readonly [key: string]: unknown
 }
 
+/** The chips under a title or in a loop card's header: up to three, then one "+N" pill; accent is the pink soft pair, neutral the grey one. */
+export const StepChips = ({ chips }: { readonly chips: ReadonlyArray<FlowGraphChip> | undefined }) => {
+    const { shown, rest } = chipsOf(chips)
+    if (shown.length === 0) return null
+    return (
+        <span className="starci-core-flow-graph-step-chips" data-grammar-flow-chips="true">
+            {shown.map((chip, index) => (
+                <span key={`${chip.label}:${String(index)}`} className="starci-core-flow-graph-step-chip" data-tone={chip.tone ?? "neutral"} data-grammar-flow-chip="true">{chip.label}</span>
+            ))}
+            {rest > 0 ? <span className="starci-core-flow-graph-step-chip" data-tone="neutral" data-grammar-flow-chip="more">{`+${String(rest)}`}</span> : null}
+        </span>
+    )
+}
+
 const SIDES = {
     TB: { in: Position.Top, out: Position.Bottom, start: Position.Left, end: Position.Right },
     LR: { in: Position.Left, out: Position.Right, start: Position.Top, end: Position.Bottom },
@@ -137,6 +151,7 @@ export const FlowGraphStepView = memo(({ data }: NodeProps<Node<StepNodeData>>) 
             <span className="starci-core-flow-graph-step-copy">
                 <span className="starci-core-flow-graph-step-title">{graphNode.label}</span>
                 {graphNode.description === undefined || graphNode.description === "" ? null : <span className="starci-core-flow-graph-step-line">{graphNode.description}</span>}
+                <StepChips chips={graphNode.chips} />
             </span>
         </span>
     )
@@ -153,7 +168,7 @@ export const FlowGraphStepView = memo(({ data }: NodeProps<Node<StepNodeData>>) 
             data-dimmed={graphNode.isDimmed === true ? "true" : undefined}
             data-placeholder={graphNode.isPlaceholder === true ? "true" : undefined}
         >
-            <StepHandles direction={direction} hasOut={ports.length === 0} />
+            <StepHandles direction={direction} hasOut={ports.length === 0 || kind !== "condition"} />
             {graphNode.tag === undefined || graphNode.tag === "" ? null : <span className="starci-core-flow-graph-step-tag" data-grammar-flow-tag="true">{graphNode.tag}</span>}
             {graphNode.status === undefined ? null : (
                 <span className="starci-core-flow-graph-step-status" data-status={graphNode.status} data-grammar-flow-status={graphNode.status} aria-hidden="true">
@@ -167,7 +182,7 @@ export const FlowGraphStepView = memo(({ data }: NodeProps<Node<StepNodeData>>) 
             {ports.length === 0 ? null : (
                 <span className="starci-core-flow-graph-step-outputs" data-grammar-flow-outputs="true">
                     {ports.map((port) => (
-                        <span key={port.id} className="starci-core-flow-graph-step-port" data-grammar-flow-port={port.id}>
+                        <span key={port.id} className="starci-core-flow-graph-step-port" data-grammar-flow-port={port.id} {...(port.tone === undefined ? {} : { "data-tone": port.tone })}>
                             <span className="starci-core-flow-graph-step-port-label" {...(port.label.length > STEPS_PORT_CHARS ? { title: port.label } : {})}>{port.label}</span>
                             <Handle className="starci-core-flow-graph-step-port-dot" id={`port:${port.id}`} isConnectable={false} position={SIDES[direction].out} type="source" />
                         </span>
@@ -178,6 +193,31 @@ export const FlowGraphStepView = memo(({ data }: NodeProps<Node<StepNodeData>>) 
     )
 })
 FlowGraphStepView.displayName = "FlowGraphStepView"
+
+export type ContainerNodeData = {
+    readonly graphNode: FlowGraphNode
+    readonly direction: FlowGraphDirection
+    readonly isSelected: boolean
+    readonly [key: string]: unknown
+}
+
+/**
+ * A loop card (0.37.4): a box with a 1.5px primary outline and a header line (its label and chips); the nodes it holds are separate nodes drawn over it,
+ * at the places the layout gave them inside the box. It has the handles of a card, so an edge to or from its id meets its edge.
+ */
+export const FlowGraphContainerView = memo(({ data }: NodeProps<Node<ContainerNodeData>>) => {
+    const { graphNode, direction, isSelected } = data
+    return (
+        <div className="starci-core-flow-graph-container" data-grammar-flow-node={graphNode.id} data-grammar-flow-container="true" data-grammar-selected={isSelected ? "true" : "false"}>
+            <StepHandles direction={direction} hasOut />
+            <span className="starci-core-flow-graph-container-head">
+                <span className="starci-core-flow-graph-container-label">{graphNode.container?.label ?? graphNode.label}</span>
+                <StepChips chips={graphNode.container?.chips} />
+            </span>
+        </div>
+    )
+})
+FlowGraphContainerView.displayName = "FlowGraphContainerView"
 
 const STEP_LABEL = "starci-core-flow-graph-step-label"
 

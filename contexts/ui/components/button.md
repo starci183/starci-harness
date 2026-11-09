@@ -101,3 +101,6 @@ CTA-6..5, ACTION-1..3, ACCENT-6. Lint: `starci-grammar/button-arrow`, `starci-gr
 `starci-fe/button-intent-required`,
 `single-commit-per-render`, `no-commit-in-collection-item`, `destructive-confirm-in-dialog`, `control-height`.
 Proof: TASTE-5, TASTE-11, UX-4, UX-10, A11Y-2.
+
+## Icons inside Grammar are outline (0.37.4)
+Every mark Grammar draws itself is stroked, never filled: the search icon, the Select chevron, the number steppers, the scroll arrows, the Alert status marks and the FlowGraph zoom controls use the closed glyph vocabulary (`glyphSource`, `inlineGlyph` for a vendor slot). The vendors' filled defaults are replaced; the three-dot `more` glyph stays dots.

@@ -64,8 +64,8 @@ export type EmptyNoticeProps = NoChildren & EmptyNoticeMark & EmptyNoticeAction 
     /** The read failed: the notice is a live alert with a warning mark, so a failure never reads as empty. The mark props are ignored. */
     readonly isError?: boolean
     /**
-     * `card` (default): on the page ground the notice is one surface card. `frameless`: no border, background or shadow, for a notice that
-     * stands on the page ground or in a pane and is words on that ground (`data-grammar-empty-frame="none"`).
+     * `frameless` (default since 0.37.4): no border, background or shadow, a notice that is words on the ground of the pane or well it stands on
+     * (`data-grammar-empty-frame="none"`). `card` is opt-in: one surface card, for a notice that is itself the content of a page.
      */
     readonly frame?: "card" | "frameless"
 }
@@ -87,7 +87,7 @@ export const EmptyNotice = ({
     isActionPending = false,
     onAction,
     isError = false,
-    frame = "card",
+    frame = "frameless",
 }: EmptyNoticeProps) => {
     // Inside a card the card is the frame (0.36.2): the notice is words, never a second framed box.
     const inCard = useSurfaceHost() === "card"

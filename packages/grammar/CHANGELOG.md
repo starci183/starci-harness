@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.37.4 - 2026-11-09 - outline icons everywhere, EmptyNotice frameless by default
+
+- Changed (owner): every icon Grammar draws itself is OUTLINE. The search field icon, the Select chevron, the number-field steppers (plus and minus), the tab and region scroll arrows, the Alert status marks (info, success, warning, danger) and the FlowGraph / BubbleMap zoom controls
+  (zoom in, zoom out, fit) were the vendors' filled glyphs; they are now stroked marks of the closed glyph vocabulary (new glyphs `chevron-down`, `chevron-start`, `minus`, `info`, `success`, `warning`, `danger`; `inlineGlyph(name)` hands one to a vendor slot). The three-dot `more` glyph stays dots.
+- Changed (owner): `EmptyNotice` is frameless by default (`frame="frameless"`); the card frame is opt-in (`frame="card"`). Inside a card it was already words only.
+- Added (FlowGraph `steps`, the workflow editor's cards): `FlowGraphNode.chips` (`{ label, tone?: "accent" | "neutral" }`, up to 3 under the title then one "+N" pill; accent the pink soft pair, neutral the grey one, 12px); `FlowGraphNode.outputs` on every kind (an action, ask or wait may carry ports; an edge with no `sourcePort` still leaves the bottom middle) and `FlowGraphPort.tone: "danger"` for an error output (its word, dot and edges in danger); `FlowGraphNode.container` (`{ label, chips?, childIds }`), a loop card with a 1.5px primary outline and a header line, its children laid out inside as a graph of their own (edges to and from its id meet its edges); and `layout="steps"` accepts a disconnected graph (islands stacked down the page, left edges aligned), a fan-out from one node, and several entry nodes feeding one step (the roots stand side by side centred over it). Stories `Flow graph steps (0.37.4)`: `Chips`, `OutputsOnAction`, `Container`, `Islands`, `FanOutAndTwoTriggers`.
+
 ## 0.37.3 - 2026-11-09 - the head row only when every pane has a head; a pane that holds a grid is not capped
 
 - Fixed: a tab pane (`content="cards"` by default) that holds a nested PaneGrid was capped at 80rem and centred, so on a wide screen the chat pane and its aside sat in the middle with pink bands on both sides. The cap (MEASURE-8) now applies only to the content of a pane that holds

@@ -4,12 +4,10 @@ import { ScrollShadow, cn } from "@heroui/react"
 import { forwardRef, useCallback, useRef, type ComponentProps } from "react"
 import { ButtonPlacementProvider } from "./buttonIntent.js"
 import { IconButton } from "./leaf/IconButton/index.js"
-import type { IconSourceProps } from "./leaf/Icon/index.js"
+import { glyphSource } from "./leaf/Icon/glyphs.js"
 
-/** HeroUI's horizontal chevron geometry, shared by both directional controls. */
-const ScrollChevron = (props: IconSourceProps) => <svg {...props} viewBox="0 0 16 16" fill="none">
-    <path d="M10.53 2.97a.75.75 0 0 1 0 1.06L6.56 8l3.97 3.97a.75.75 0 1 1-1.06 1.06l-4.5-4.5a.75.75 0 0 1 0-1.06l4.5-4.5a.75.75 0 0 1 1.06 0" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-</svg>
+/** The outline chevron of both directional controls (the vocabulary's `chevron-start`; the next control mirrors it in CSS). */
+const ScrollChevron = glyphSource("chevron-start")
 
 type HorizontalScrollFrameProps = ComponentProps<typeof ScrollShadow> & {
     readonly carets?: boolean

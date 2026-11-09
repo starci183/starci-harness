@@ -41,7 +41,7 @@ import {
 import { useSurfaceHost } from "../../surfaceContext.js"
 import { isBackEdge, portOfEdge, stepKindOf, stepsLayout, type StepsLayout } from "./steps.js"
 export { FlowGraphLegend } from "./stepsView.js"
-import { DEFAULT_STATUS_LABELS, STEPS_ARROW_BOX, STEPS_ARROW_STROKE, STEPS_UNTAKEN_TONE, FlowGraphBackEdge, FlowGraphLegend, FlowGraphStepEdge, FlowGraphStepView, STEP_KIND_TONES, stepAriaLabel, type StepNodeData } from "./stepsView.js"
+import { DEFAULT_STATUS_LABELS, STEPS_ARROW_BOX, STEPS_ARROW_STROKE, STEPS_UNTAKEN_TONE, FlowGraphBackEdge, FlowGraphContainerView, FlowGraphLegend, FlowGraphStepEdge, FlowGraphStepView, STEP_KIND_TONES, stepAriaLabel, type ContainerNodeData, type StepNodeData } from "./stepsView.js"
 import type {
     FlowGraphDirection,
     FlowGraphEdge,
@@ -72,6 +72,8 @@ export type {
     FlowGraphNodeKind,
     FlowGraphNodeShape,
     FlowGraphNodeSize,
+    FlowGraphChip,
+    FlowGraphContainer,
     FlowGraphPort,
     FlowGraphRunStatus,
     FlowGraphStepKind,
@@ -255,7 +257,7 @@ FlowGraphLaneEdge.displayName = "FlowGraphLaneEdge"
 const EDGE_TYPES: EdgeTypes = { flowGraphLane: FlowGraphLaneEdge, flowGraphStep: FlowGraphStepEdge, flowGraphBack: FlowGraphBackEdge }
 const EDGE_LABEL_PADDING: [number, number] = [COMMON_SPACING_PX[2], COMMON_SPACING_PX[1]]
 const LABEL_RADIUS = COMMON_SPACING_PX[1]
-const NODE_TYPES: NodeTypes = { flowGraph: FlowGraphNodeView, flowGraphHeader: FlowGraphHeaderView, flowGraphStep: FlowGraphStepView }
+const NODE_TYPES: NodeTypes = { flowGraph: FlowGraphNodeView, flowGraphHeader: FlowGraphHeaderView, flowGraphStep: FlowGraphStepView, flowGraphContainer: FlowGraphContainerView }
 /** A steps graph is laid out with its own margin, so like lanes its fit keeps a small one and never magnifies. */
 const STEPS_MAX_ZOOM = 1
 const HEADER_OFFSET = 70
@@ -318,8 +320,25 @@ const FlowGraphInner = ({
         return layered?.positions ?? null
     }, [layout, nodes, edges, layered, lanes, steps])
     const rootId = flowGraphRoot(nodes)?.id
-    const flowNodes = useMemo<Array<Node<NodeData> | Node<StepNodeData>>>(() => steps !== null ? nodes.map((graphNode): Node<StepNodeData> => {
+    const flowNodes = useMemo<Array<Node<NodeData> | Node<StepNodeData> | Node<ContainerNodeData>>>(() => steps !== null ? [...nodes].sort((a, b) => Number(b.container !== undefined) - Number(a.container !== undefined)).map((graphNode): Node<StepNodeData> | Node<ContainerNodeData> => {
         const kind = stepKindOf(graphNode)
+        const box = steps.boxes.get(graphNode.id)
+        if (box !== undefined) {
+            return {
+                id: graphNode.id,
+                type: "flowGraphContainer",
+                position: steps.positions.get(graphNode.id) ?? { x: 0, y: 0 },
+                data: { graphNode, direction: flowDirection ?? "TB", isSelected: graphNode.id === currentId },
+                style: { width: box.width, height: box.height },
+                width: box.width,
+                height: box.height,
+                zIndex: 0,
+                selected: graphNode.id === currentId,
+                ariaLabel: graphNode.container?.label ?? graphNode.label,
+                draggable: false,
+                connectable: false,
+            }
+        }
         return {
             id: graphNode.id,
             type: "flowGraphStep",
@@ -335,6 +354,7 @@ const FlowGraphInner = ({
             },
             selected: graphNode.id === currentId,
             ariaLabel: stepAriaLabel(graphNode, statusLabels),
+            zIndex: 1,
             draggable: false,
             connectable: false,
             ...(graphNode.href === undefined ? {} : { focusable: false }),
@@ -380,7 +400,7 @@ const FlowGraphInner = ({
             }]
         })
     }, [headers, flowDirection, nodes, positions, layout, lanes])
-    const allNodes = useMemo<Array<Node<NodeData> | Node<HeaderData> | Node<StepNodeData>>>(() => [...headerNodes, ...flowNodes], [headerNodes, flowNodes])
+    const allNodes = useMemo<Array<Node<NodeData> | Node<HeaderData> | Node<StepNodeData> | Node<ContainerNodeData>>>(() => [...headerNodes, ...flowNodes], [headerNodes, flowNodes])
     const flowEdges = useMemo<Array<Edge>>(() => steps !== null ? edges.flatMap((edge): Edge[] => {
         const route = steps.back.get(edge.id)
         const isBack = isBackEdge(edge)
@@ -392,6 +412,7 @@ const FlowGraphInner = ({
             isBack ? "starci-core-flow-graph-edge-back" : "",
             edge.isPlaceholder === true ? "starci-core-flow-graph-edge-placeholder" : "",
             dimmedIds.has(edge.target) ? "starci-core-flow-graph-edge-dimmed" : "",
+            port?.tone === "danger" ? "starci-core-flow-graph-edge-danger" : "",
             run,
         ].filter(Boolean).join(" ")
         // A branch label lives on its port, not on the line; a label with no port (a back edge, a plain edge) is a pill on the line.
@@ -404,7 +425,7 @@ const FlowGraphInner = ({
             sourceHandle: route !== undefined ? `back-out-${route.sourceSide}` : port === undefined ? "out" : `port:${port.id}`,
             targetHandle: route !== undefined ? `back-in-${route.targetSide}` : "in",
             ...(route === undefined ? {} : { data: { route, direction: flowDirection ?? "TB" } }),
-            markerEnd: { type: MarkerType.Arrow, markerUnits: "userSpaceOnUse", width: STEPS_ARROW_BOX, height: STEPS_ARROW_BOX, strokeWidth: STEPS_ARROW_STROKE, color: isRun && edge.isTaken === true ? "var(--foreground)" : isRun ? STEPS_UNTAKEN_TONE : "var(--muted)" },
+            markerEnd: { type: MarkerType.Arrow, markerUnits: "userSpaceOnUse", width: STEPS_ARROW_BOX, height: STEPS_ARROW_BOX, strokeWidth: STEPS_ARROW_STROKE, color: port?.tone === "danger" ? "var(--danger)" : isRun && edge.isTaken === true ? "var(--foreground)" : isRun ? STEPS_UNTAKEN_TONE : "var(--muted)" },
             className: classes,
             ...label,
             focusable: false,
@@ -520,7 +541,7 @@ const FlowGraphInner = ({
                             nodesConnectable={false}
                             nodesDraggable={false}
                             nodesFocusable
-                            onNodeClick={(_event, node) => { if (node.type === "flowGraph" || node.type === "flowGraphStep") activate(node.id) }}
+                            onNodeClick={(_event, node) => { if (node.type === "flowGraph" || node.type === "flowGraphStep" || node.type === "flowGraphContainer") activate(node.id) }}
                             onPaneClick={() => { if (currentId !== null) select(null) }}
                             panOnDrag={isInteractive}
                             panOnScroll={false}

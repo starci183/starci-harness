@@ -14,6 +14,7 @@ import {
     type FieldControlProps,
     type FieldSizeProps,
 } from "../Field/index.js"
+import { inlineGlyph } from "../Icon/inline.js"
 import type { NoChildren } from "../../tier.js"
 import { useRefuseInCustomZone } from "../../zoneContext.js"
 
@@ -105,7 +106,7 @@ const SearchFieldControl = ({
         >
             <FieldLabel isHidden={field.isLabelHidden} isRequired={field.isRequired}>{field.label}</FieldLabel>
             <HeroSearchField.Group className="starci-core-search-field-group" data-grammar-field-control="true">
-                <HeroSearchField.SearchIcon aria-hidden="true" />
+                <HeroSearchField.SearchIcon aria-hidden="true">{inlineGlyph("search")}</HeroSearchField.SearchIcon>
                 <HeroSearchField.Input
                     {...(id === undefined ? {} : { id })}
                     {...(placeholder === undefined ? {} : { placeholder })}

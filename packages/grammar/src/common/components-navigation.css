@@ -2770,6 +2770,75 @@
         white-space: nowrap;
     }
 
+    /* An error output (0.37.4, `tone: "danger"`): its word, its dot on the card edge and the edges that leave it are drawn in the danger tone. */
+    .starci-core-flow-graph-step-port[data-tone="danger"] { color: var(--danger); }
+    .starci-core-flow-graph-step-port[data-tone="danger"] .starci-core-flow-graph-step-port-dot { background: var(--danger); }
+    .starci-core-flow-graph .starci-core-flow-graph-edge-danger .react-flow__edge-path { stroke: var(--danger); }
+
+    /* The chips under a title and in a loop card's header (0.37.4): 12px pills, accent = the pink soft pair (a dynamic parameter), neutral = the grey pair (a fixed one). */
+    .starci-core-flow-graph-step-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--grammar-identity-gap);
+        min-inline-size: 0;
+    }
+
+    .starci-core-flow-graph-step-chip {
+        max-inline-size: 100%;
+        padding-inline: var(--grammar-inline-gap);
+        overflow: hidden;
+        border-radius: var(--grammar-radius-pill);
+        background: var(--default);
+        color: var(--default-foreground);
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-xs);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .starci-core-flow-graph-step-chip[data-tone="accent"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
+
+    /* A loop card (0.37.4): a box with a 1.5px primary outline and a header line; its children are separate nodes drawn over it. */
+    .starci-core-flow-graph-container {
+        --starci-flow-container-outline: 0.09375rem;
+        --starci-flow-container-head: 2.5rem;
+        position: relative;
+        box-sizing: border-box;
+        inline-size: 100%;
+        block-size: 100%;
+        border: var(--starci-flow-container-outline) solid var(--accent);
+        border-radius: var(--grammar-flow-card-radius);
+        background: color-mix(in oklab, var(--accent) 4%, transparent);
+        color: var(--foreground);
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-tight);
+    }
+
+    .starci-core-flow-graph-container[data-grammar-selected="true"] { outline: var(--grammar-ring-width) solid var(--accent); outline-offset: var(--grammar-ring-width); }
+
+    .starci-core-flow-graph-container-head {
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline: 0;
+        display: flex;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+        block-size: var(--starci-flow-container-head);
+        min-inline-size: 0;
+        padding-inline: var(--grammar-inset);
+    }
+
+    .starci-core-flow-graph-container-head .starci-core-flow-graph-step-chips { flex: none; flex-wrap: nowrap; }
+
+    .starci-core-flow-graph-container-label {
+        min-inline-size: 0;
+        overflow: hidden;
+        font-weight: var(--grammar-weight-medium);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     .starci-core-flow-graph-step-port + .starci-core-flow-graph-step-port { border-inline-start: var(--grammar-hairline) solid var(--border); }
 
     .starci-core-flow-graph .starci-core-flow-graph-step-port-dot {
@@ -3008,7 +3077,19 @@
     }
 
     .starci-core-flow-graph-controls .react-flow__controls-button + .react-flow__controls-button { border-block-start: 1px solid var(--separator); }
-    .starci-core-flow-graph-controls .react-flow__controls-button svg { inline-size: 100%; max-inline-size: 0.75rem; max-block-size: 0.75rem; fill: currentColor; }
+    /* The zoom controls are OUTLINE marks (0.37.4): the vendor's filled svgs are hidden and each button draws a stroked mark as a mask (zoom in, zoom out, fit). */
+    .starci-core-flow-graph-controls .react-flow__controls-button svg { display: none; }
+    .starci-core-flow-graph-controls .react-flow__controls-button::before {
+        content: "";
+        display: block;
+        inline-size: 1rem;
+        block-size: 1rem;
+        background: currentColor;
+        mask: var(--starci-core-flow-control-mark) center / contain no-repeat;
+    }
+    .starci-core-flow-graph-controls .react-flow__controls-zoomin { --starci-core-flow-control-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E"); }
+    .starci-core-flow-graph-controls .react-flow__controls-zoomout { --starci-core-flow-control-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E"); }
+    .starci-core-flow-graph-controls .react-flow__controls-fitview { --starci-core-flow-control-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4'/%3E%3C/svg%3E"); }
     .starci-core-flow-graph-controls .react-flow__controls-button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
     .starci-core-flow-graph-controls .react-flow__controls-button:disabled { opacity: var(--disabled-opacity); cursor: default; }
 

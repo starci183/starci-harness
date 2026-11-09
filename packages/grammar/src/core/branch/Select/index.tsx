@@ -24,6 +24,7 @@ import {
     type FieldControlProps,
     type FieldSizeProps,
 } from "../../leaf/Field/index.js"
+import { inlineGlyph } from "../../leaf/Icon/inline.js"
 import type { NoChildren } from "../../tier.js"
 
 /** One choice in a list-backed control. `label` is plain text because it is also the typeahead value. */
@@ -167,7 +168,7 @@ const SelectControl = ({
                 <HeroSelect.Value />
                 {isPending
                     ? <HeroSpinner size="sm" color="current" aria-hidden="true" className="starci-core-field-spinner" />
-                    : <HeroSelect.Indicator className="starci-core-select-indicator" />}
+                    : <HeroSelect.Indicator className="starci-core-select-indicator">{inlineGlyph("chevron-down")}</HeroSelect.Indicator>}
             </HeroSelect.Trigger>
             <FieldDescription>{field.description}</FieldDescription>
             <FieldErrorText>{field.errorMessage}</FieldErrorText>
