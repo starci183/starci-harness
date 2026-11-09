@@ -91,7 +91,7 @@ the same inset, and the drawer header's inline padding is the pane inset, so the
   their content. Never a padding, margin, class or style on a pane or a band; a short separator inside a band's content
   is the app's own element.
 
-## Pane content cap (MEASURE-8, corrected 0.36.0)
+## Pane content cap (MEASURE-9, the workspace form of MEASURE-8)
 In a workspace page (`Page layout="workspace"`) the grid and its side panes ALWAYS span the full width: the aside is flush to the end edge. Only the CONTENT of a main pane that holds cards (a pink well with cards,
 `Pane content="cards"`, the default for a pane on the canvas) is capped at `--grammar-content-max` (80rem) and centred INSIDE that pane; the pane and its pink ground fill the whole track. A pane that holds a chat thread
 (`PaneSection scroll role="log"`), a `FlowGraph` canvas or an editor is `content="full"`: never capped, full-bleed (a surface pane is full by default; a chat or FlowGraph pane is full unless it says `content="cards"`).

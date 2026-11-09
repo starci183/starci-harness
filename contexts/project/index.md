@@ -241,7 +241,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/page-header.md](../ui/components/page-header.md) · 8 KB — Contract: Page, Section.
   - sections: Job · Choose · Variants · Size · States · Owner split · Band left, well centred (MEASURE-8) · Rules
 - [ui/components/pane-grid.md](../ui/components/pane-grid.md) · 10 KB — Contract: PaneGrid.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Pane content cap (MEASURE-8, corrected 0.36.0) · Scroll law (0.36.0) · Drawer opener · Rules
+  - sections: Job · Choose · Variants · Size · States · Owner split · Pane content cap (MEASURE-9, the workspace form of MEASURE-8) · Scroll law (0.36.0) · Drawer opener · Rules
 - [ui/components/quote.md](../ui/components/quote.md) · 3 KB — Contract: Quote.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/segmented-control.md](../ui/components/segmented-control.md) · 2 KB — The Grammar has no segmented control: `SegmentedControl` is removed (the pill-in-a-track look is `Tabs appearance="primary"`, a switch of a mode or period of the same data, in a ...
