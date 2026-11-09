@@ -44,7 +44,7 @@ export const reconcileStatusLabels: Partial<Record<G.FlowGraphRunStatus, string>
   done: 'Xong',
   running: 'Đang chạy',
   failed: 'Lỗi',
-  waiting: 'Đang chờ',
+  waiting: 'Chờ bạn',
   skipped: 'Bỏ qua',
 };
 
@@ -79,6 +79,21 @@ const offTaken = new Set(['e-in-find', 'e-find-has', 'e-has-yes', 'e-amount-off'
 const failedStatus: Readonly<Record<string, G.FlowGraphRunStatus>> = { 'money-in': 'done', 'find-order': 'failed' };
 const failedTaken = new Set(['e-in-find']);
 
+/** A fourth run: no order code in the transfer, noted, and the wait card needs the owner to match it by hand. */
+const waitStatus: Readonly<Record<string, G.FlowGraphRunStatus>> = {
+  'money-in': 'done',
+  'find-order': 'done',
+  'has-order': 'done',
+  'note-unmatched': 'done',
+  'wait-owner': 'waiting',
+  'amount-ok': 'skipped',
+  'mark-paid': 'skipped',
+  'tell-sales': 'skipped',
+  'ask-owner': 'skipped',
+  done: 'skipped',
+};
+const waitTaken = new Set(['e-in-find', 'e-find-has', 'e-has-no', 'e-note-wait']);
+
 const runOf = (status: Readonly<Record<string, G.FlowGraphRunStatus>>, taken: ReadonlySet<string>) => ({
   nodes: reconcileNodes.map((node): G.FlowGraphNode => {
     const at = status[node.id];
@@ -90,3 +105,4 @@ const runOf = (status: Readonly<Record<string, G.FlowGraphRunStatus>>, taken: Re
 export const reconcileRunMatched = runOf(matchedStatus, matchedTaken);
 export const reconcileRunOff = runOf(offStatus, offTaken);
 export const reconcileRunFailed = runOf(failedStatus, failedTaken);
+export const reconcileRunWait = runOf(waitStatus, waitTaken);

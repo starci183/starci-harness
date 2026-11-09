@@ -101,6 +101,13 @@ A list or table in the white aside is a bordered list or frame with no shadow, n
 The sidebar and the page header band (breadcrumbs, title, tabs, sub-tabs) never scroll away: the band and the trail are sticky. Layout A (report): the pink well scrolls as one block under the band. Layout B (workspace): the page
 does not scroll; each pane scrolls on its own with no visible scrollbar and its head (title, tabs, search) sticky; a chat pane keeps its head and composer fixed and scrolls only the thread (`PaneSection scroll`).
 
+## The shared head row (layout B)
+
+The panes of a workspace grid share ONE head row: every pane head (a `PaneSection as="header"` or one holding a `PaneHeader`, first in its pane) is the same height, white and has no per-pane background or divider of its own; the grid draws ONE
+continuous divider under the row across all panes, crossing the vertical pane dividers. A pane head is always the surface colour, on a canvas pane and on a surface pane alike, never the canvas colour. A pane with no head keeps the row: its content
+starts below the line and the row above it is white, so the line and the content align. A head that ends in a tab strip is a sub-head, not the row. A nested `PaneGrid` keeps its own heads. Enforcer: the `Compositions/App shell workspace`
+story's play function.
+
 ## Drawer opener
 `PaneHeader drawerOpener` draws the opener of a `collapse="drawer"` pane inside the pane head. `PaneDrawerOpener` (`pane`, `icon`, `label`) is the same button for
 any other place in the grid (a card head, a toolbar); it shows only where that pane's area is not arranged. The grid owns the open state.

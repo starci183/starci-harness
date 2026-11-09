@@ -2552,8 +2552,8 @@
     .starci-core-flow-graph-step[data-tone="muted"] { --starci-flow-tint: transparent; --starci-flow-ink: var(--muted); }
     .starci-core-flow-graph-step[data-grammar-tone-custom="true"] { --starci-flow-tint: var(--grammar-tone-soft); --starci-flow-ink: var(--grammar-tone-soft-foreground); }
 
-    /* A wait card and a slot not filled yet draw a dashed border. */
-    .starci-core-flow-graph-step[data-kind="wait"],
+    /* A wait card draws a dashed border in the design view only (no run status shown); a slot not filled yet is dashed too. */
+    .starci-core-flow-graph-step[data-kind="wait"]:not([data-status]),
     .starci-core-flow-graph-step[data-placeholder="true"] { border-style: dashed; }
 
     .starci-core-flow-graph-step-body {
@@ -2698,32 +2698,39 @@
     .starci-core-flow-graph-step[data-dimmed="true"] { opacity: var(--grammar-opacity-dimmed); }
 
     /*
-     * The run overlay: a status ring round the card and a badge on its top-start corner (done success, running accent, waiting warning,
-     * failed danger); a skipped node is faded. A taken edge is solid in the accent, an untaken one stays neutral, dashed and faded.
+     * STATE PRIORITY (0.37.0): the card border is always the neutral card border, whatever the run status. The run status is shown only by the
+     * outline status icon and its word on the top-start edge (done success, running accent, waiting warning, failed danger, skipped muted); there is
+     * no coloured ring. A skipped node is faded. A selected node has exactly one 2px primary outline. A taken edge is a solid strong-text line, an
+     * untaken one a dashed light-neutral line, a back edge stays dashed.
      */
     .starci-core-flow-graph-step[data-status="done"] { --starci-flow-status: var(--success); --starci-flow-on-status: var(--success-foreground); }
     .starci-core-flow-graph-step[data-status="running"] { --starci-flow-status: var(--accent); --starci-flow-on-status: var(--accent-foreground); }
     .starci-core-flow-graph-step[data-status="waiting"] { --starci-flow-status: var(--warning); --starci-flow-on-status: var(--warning-foreground); }
     .starci-core-flow-graph-step[data-status="failed"] { --starci-flow-status: var(--danger); --starci-flow-on-status: var(--danger-foreground); }
     .starci-core-flow-graph-step[data-status="skipped"] { --starci-flow-status: var(--muted); --starci-flow-on-status: var(--surface); opacity: var(--grammar-opacity-faded); }
-    .starci-core-flow-graph-step[data-status]:not([data-status="skipped"]) { border-color: var(--starci-flow-status); box-shadow: 0 0 0 var(--grammar-hairline) var(--starci-flow-status); }
 
     /* A STATUS is a tone-coloured OUTLINE icon with no tile and no fill (0.36.0, ICONS-OUTLINE): outline check-circle in success, x-circle in danger, a spinning arrow for running. */
     .starci-core-flow-graph-step-status {
         position: absolute;
         inset-block-start: 0;
-        inset-inline-start: 0;
+        inset-inline-start: var(--grammar-inset);
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        inline-size: var(--grammar-flow-status-size);
+        gap: var(--grammar-identity-gap);
         block-size: var(--grammar-flow-status-size);
-        /* The card ground behind the glyph only keeps the card edge from cutting through the outline; it is not a tile (no tint). */
-        border-radius: var(--grammar-radius-round);
+        padding-inline: var(--grammar-identity-gap) var(--grammar-inline-gap);
+        /* The card ground behind the glyph and word only keeps the card edge from cutting through them; it is not a tile (no tint). */
+        border-radius: var(--grammar-radius-pill);
         background: var(--surface);
         color: var(--starci-flow-status);
-        transform: translate(-35%, -35%);
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-xs);
+        white-space: nowrap;
+        transform: translateY(-50%);
     }
+
+    .starci-core-flow-graph-step-status-word { color: var(--starci-flow-status); }
 
     .starci-core-flow-graph-step-status[data-status="running"] .starci-core-icon { animation: starci-core-flow-status-spin var(--grammar-loop-spin) var(--grammar-loop-easing) infinite; }
 
@@ -2735,10 +2742,9 @@
 
     .starci-core-flow-graph-step-status .starci-core-icon { inline-size: var(--grammar-flow-status-glyph); block-size: var(--grammar-flow-status-glyph); }
 
+    .starci-core-flow-graph .starci-core-flow-graph-edge-taken .react-flow__edge-path { stroke: var(--foreground); stroke-width: 1.5; stroke-dasharray: none; }
+    .starci-core-flow-graph .starci-core-flow-graph-edge-untaken .react-flow__edge-path { stroke: color-mix(in oklab, var(--muted) 55%, transparent); stroke-dasharray: 4 5; }
     .starci-core-flow-graph .starci-core-flow-graph-edge-back .react-flow__edge-path { stroke-dasharray: 5 4; }
-    .starci-core-flow-graph .starci-core-flow-graph-edge-taken .react-flow__edge-path { stroke: var(--accent); stroke-width: 2; stroke-dasharray: none; }
-    .starci-core-flow-graph .starci-core-flow-graph-edge-untaken { opacity: var(--grammar-opacity-faded); }
-    .starci-core-flow-graph .starci-core-flow-graph-edge-untaken .react-flow__edge-path { stroke-dasharray: 4 5; }
 
     /* A label on a line (a back edge, an edge with no port): a small pill above every line. */
     .starci-core-flow-graph-step-label {
