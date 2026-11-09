@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.37.2 - 2026-11-09 - the shared head row reaches nested grids
+
+- Fixed: the shared head row of a workspace page (0.37.0) only reached the panes of the page's own grid, so an app that nests grids (a tab pane holding a grid of a main and an aside, whose main holds a list and a thread) got no continuous
+  line: the list kept its own divider, a pane with no head had none, the aside's head had none. The row is now the top of the page's outer PaneGrid and reaches every pane that stands at the top of it at any depth; a head is the first
+  band of a pane's stack that is not under another band, a pane that holds a PaneGrid is neither a head nor a spacer, and a leaf pane with no head (a thread with no conversation open) keeps the row. A page with no head anywhere still has no row.
+  Story `NestedGrids` holds it.
+
+## 0.37.1 - 2026-11-09 - the shared head row exists only when a pane has a head
+
+- Fixed (regression of 0.37.0): a workspace grid in which NO pane has a head drew the shared head row anyway (a blank band of about 137px under the page sub-tabs on every agent workbench page, a divider through the content). The row and its divider
+  exist only when at least one pane of the grid has a head; a grid with no head is as before 0.37.0. When only some panes have heads, the headless ones keep the row height for alignment and nothing is drawn above the page band.
+  Stories `AsideHeadOnly` and `NoHeads` (Compositions/App shell workspace) hold both cases.
+
 ## 0.37.0 - 2026-11-09 - state priority and natural edges in FlowGraph, one head row in layout B
 
 - Changed (default): FLOWGRAPH STATE PRIORITY (owner; `layout="steps"` run overlay). The card border is always the neutral card border, whatever the run status: the coloured status ring is gone. The run status is shown only by the

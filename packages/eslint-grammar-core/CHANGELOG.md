@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.37.2 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.2 (the shared head row reaches nested grids); no rule of this package changed.
+
+## 0.37.1 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.1 (the shared head row only when a pane has a head); no rule of this package changed.
+
 ## 0.37.0 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.37.0 (FlowGraph state priority and natural edges, one head row in layout B); no rule of this package changed.

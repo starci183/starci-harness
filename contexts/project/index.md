@@ -242,7 +242,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/page-header.md](../ui/components/page-header.md) · 8 KB — Contract: Page, Section.
   - sections: Job · Choose · Variants · Size · States · Owner split · Band left, well centred (MEASURE-8) · Rules
-- [ui/components/pane-grid.md](../ui/components/pane-grid.md) · 10 KB — Contract: PaneGrid.
+- [ui/components/pane-grid.md](../ui/components/pane-grid.md) · 11 KB — Contract: PaneGrid.
   - sections: Job · Choose · Variants · Size · States · Owner split · Pane content cap (MEASURE-9, the workspace form of MEASURE-8) · Scroll law (0.36.0) · The shared head row (layout B) · Drawer opener · Rules
 - [ui/components/quote.md](../ui/components/quote.md) · 3 KB — Contract: Quote.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
