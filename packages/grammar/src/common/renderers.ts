@@ -37,7 +37,7 @@ export { PaneGrid, Pane, type PaneContent, type PaneGridProps, type PaneInset, t
 export { PaneSection, type PaneSectionProps } from "../core/frame/PaneSection/index.js"
 export { Stack, type StackAlign, type StackMeasure, type StackProps } from "../core/frame/Stack/index.js"
 export { Cluster, type ClusterAlign, type ClusterGap, type ClusterJustify, type ClusterProps } from "../core/frame/Cluster/index.js"
-export { Grid, type GridCardColumns, type GridKind, type GridProps } from "../core/frame/Grid/index.js"
+export { Grid, balancedColumns, type GridCardColumns, type GridKind, type GridProps } from "../core/frame/Grid/index.js"
 export { StateMark, type StateMarkProps } from "../core/StateMark.js"
 export { OtpInput, type OtpInputProps } from "../core/branch/OtpInput/index.js"
 export { Freestyle, type FreestyleProps } from "../core/frame/Freestyle/index.js"

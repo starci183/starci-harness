@@ -1,11 +1,15 @@
+"use client"
+
 import type { ReactNode } from "react"
 import { Button } from "../../leaf/Button/index.js"
+import { Link } from "../../leaf/Link/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
 import { glyphSource } from "../../leaf/Icon/glyphs.js"
 import { Mascot, type MascotProps } from "../../leaf/Mascot/index.js"
 import { Text } from "../../leaf/Text/index.js"
 import { ErrorView } from "../../loadingState.js"
+import { useSurfaceHost } from "../../surfaceContext.js"
 import type { NoChildren } from "../../tier.js"
 
 /**
@@ -48,6 +52,11 @@ export type EmptyNoticeProps = NoChildren & EmptyNoticeMark & EmptyNoticeAction 
     readonly message: string
     readonly description?: string
     readonly actionLabel?: string
+    /**
+     * A navigation action (0.36.2): the notice ends in a `Link variant="head"` ("Back to overview" then an arrow that slides on hover) to this destination instead of a Button.
+     * Navigation is a link; a command (`onAction`) stays a Button. Takes `actionLabel` as its label; not with `onAction`.
+     */
+    readonly actionHref?: string
     /** The action leads somewhere (opens the place where the first item is made): the button ends with Grammar's arrow. */
     readonly actionEndArrow?: boolean
     readonly isActionPending?: boolean
@@ -71,6 +80,7 @@ export const EmptyNotice = ({
     iconSource,
     artwork,
     actionLabel,
+    actionHref,
     actionIntent = "commit",
     actionStartContent,
     actionEndArrow = false,
@@ -78,7 +88,11 @@ export const EmptyNotice = ({
     onAction,
     isError = false,
     frame = "card",
-}: EmptyNoticeProps) => isError ? (
+}: EmptyNoticeProps) => {
+    // Inside a card the card is the frame (0.36.2): the notice is words, never a second framed box.
+    const inCard = useSurfaceHost() === "card"
+    const framed = frame === "card" && !inCard
+    return isError ? (
     <ErrorView error={{ message, ...(description === undefined ? {} : { description }), ...(actionLabel === undefined ? {} : { actionLabel }), ...(onAction === undefined ? {} : { onAction }) }} />
 ) : (
     <div
@@ -86,7 +100,7 @@ export const EmptyNotice = ({
         data-component="EmptyNotice"
         data-contract="GAP-3 PADDING-4"
         data-grammar-empty-mark={artwork === undefined ? "glyph" : "artwork"}
-        {...(frame === "frameless" ? { "data-grammar-empty-frame": "none" } : {})}
+        {...(framed ? {} : { "data-grammar-empty-frame": "none" })}
         className="starci-core-empty-notice"
     >
         {artwork === undefined ? null : <Mascot size="md" {...artwork} />}
@@ -95,7 +109,9 @@ export const EmptyNotice = ({
             <Text size="sm" isStrong>{message}</Text>
             {description === undefined ? null : <Text size="sm" tone="muted">{description}</Text>}
         </div>
-        {actionLabel === undefined ? null : (
+        {actionLabel === undefined ? null : actionHref !== undefined ? (
+            <span className="starci-core-notice-link" data-grammar-notice-link="true"><Link variant="head" href={actionHref}>{actionLabel}</Link></span>
+        ) : (
             <Button
                 {...(actionEndArrow ? { size: "sm" as const, intent: actionIntent, endArrow: true as const } : actionIntent === "commit" && actionStartContent !== undefined ? { size: "md" as const, intent: actionIntent, startContent: actionStartContent } : { size: "sm" as const, intent: actionIntent })}
                 isPending={isActionPending}
@@ -106,3 +122,4 @@ export const EmptyNotice = ({
         )}
     </div>
 )
+}

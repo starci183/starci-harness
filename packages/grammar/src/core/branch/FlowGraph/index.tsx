@@ -301,7 +301,8 @@ const FlowGraphInner = ({
 
     const layout: FlowGraphLayout = layoutProp ?? (direction === undefined ? "radial" : "layered")
     const flowDirection: FlowGraphDirection | undefined = layout === "lanes" ? "LR" : direction ?? (layout === "layered" || layout === "steps" ? "TB" : undefined)
-    const kindTones = useMemo(() => ({ ...STEP_KIND_TONES, ...kindTonesProp }), [kindTonesProp])
+    // The default kind tones (event accent, action success, condition warning, ask danger, wait neutral, end success) apply unless the app declares one; an entry left undefined never wipes a default.
+    const kindTones = useMemo(() => ({ ...STEP_KIND_TONES, ...Object.fromEntries(Object.entries(kindTonesProp ?? {}).filter(([, tone]) => tone !== undefined)) }), [kindTonesProp])
     const statusLabels = useMemo(() => ({ ...DEFAULT_STATUS_LABELS, ...statusLabelsProp }), [statusLabelsProp])
     const steps = useMemo<StepsLayout | null>(() => layout === "steps" ? stepsLayout(nodes, edges, flowDirection ?? "TB") : null, [layout, nodes, edges, flowDirection])
     const isRun = useMemo(() => steps !== null && (nodes.some((node) => node.status !== undefined) || edges.some((edge) => edge.isTaken !== undefined)), [steps, nodes, edges])
@@ -471,7 +472,8 @@ const FlowGraphInner = ({
     const onGrow = useCallback((next: number) => setGrowth({ signature, height: next }), [signature])
     // A grown canvas is taller than the screen may be: the wheel scrolls the page, the zoom buttons still zoom.
     const wheelZooms = isInteractive && grownHeight === null && layout !== "lanes" && layout !== "steps"
-    const style: CSSProperties | undefined = customHeight === undefined && grownHeight === null ? undefined : {
+    const style: CSSProperties | undefined = customHeight === undefined && grownHeight === null && steps === null ? undefined : {
+        ...(steps === null ? {} : { "--grammar-flow-card-width": `${steps.cardWidth}px` }),
         ...(customHeight === undefined ? {} : { "--starci-flow-height": customHeight }),
         ...(grownHeight === null ? {} : { "--starci-flow-grown-height": `${grownHeight}px` }),
     } as CSSProperties
@@ -529,7 +531,7 @@ const FlowGraphInner = ({
                         >
                             <Background className="starci-core-flow-graph-background" gap={1000} size={0} />
                             {controls ? <Controls aria-label={`${label}: zoom`} className="starci-core-flow-graph-controls" showInteractive={false} /> : null}
-                            <Refit anchorStart={layout === "lanes" || (layout === "steps" && flowDirection === "LR")} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
+                            <Refit stepsFit={layout === "steps" && flowDirection === "TB"} anchorStart={layout === "lanes" || (layout === "steps" && flowDirection === "LR")} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
                         </ReactFlow>
                     </div>
                     <ul className="starci-core-visually-hidden" data-grammar-flow-fallback="true">

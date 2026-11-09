@@ -11,6 +11,17 @@ import type { FlowGraphDirection, FlowGraphEdge, FlowGraphNode, FlowGraphPort, F
 
 /** The card width (`--grammar-flow-card-width`, 12.25rem), in graph units. */
 export const STEPS_CARD_WIDTH = 196
+/** A port label shows this many characters; a longer one is cut with an ellipsis and read in full from its tooltip. */
+export const STEPS_PORT_CHARS = 16
+/** The most a card widens for its ports, in graph units. */
+const STEPS_CARD_WIDTH_MAX = 360
+/** An estimate of a port's width: 12px type at about 6.5 per character, the cell's inline padding and its divider. */
+const portWidth = (port: FlowGraphPort): number => Math.min(port.label.length, STEPS_PORT_CHARS) * 6.5 + 2 * 8 + 1
+
+/** The card width of a graph (0.36.2): the base width, or wider when a condition's ports need it (one width for every card, so the columns stay aligned). */
+export const stepsCardWidth = (ports: ReadonlyMap<string, ReadonlyArray<FlowGraphPort>>): number =>
+    Math.min(STEPS_CARD_WIDTH_MAX, Math.max(STEPS_CARD_WIDTH, ...[...ports.values()].map((row) => Math.ceil(row.reduce((sum, port) => sum + portWidth(port), 0) + 2))))
+
 /** The room between two columns: wide enough for the vertical runs of back edges beside a card. */
 export const STEPS_COLUMN_GAP = 80
 /** The room between two layers: a curve, and the channels of back edges after a layer (`LR` also holds a back label beside its channel). */
@@ -89,6 +100,8 @@ export type StepsLayout = {
     readonly layers: ReadonlyMap<string, number>
     readonly ports: ReadonlyMap<string, ReadonlyArray<FlowGraphPort>>
     readonly back: ReadonlyMap<string, StepsBackRoute>
+    /** The width every card draws at, in graph units (the base width, or wider for a condition's ports). */
+    readonly cardWidth: number
     /** The size of the whole graph at zoom 1, margin included. */
     readonly width: number
     readonly height: number
@@ -213,11 +226,12 @@ export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
     for (const node of nodes) if (!parent.has(node.id)) place(node.id, seen)
     for (const node of nodes) if (!across.has(node.id)) place(node.id, seen)
 
+    const cardWidth = stepsCardWidth(ports)
     // The extent of every layer along the flow: TB rows as tall as their tallest card, LR columns one card wide.
     const layerCount = Math.max(0, ...layers.values()) + 1
     const extent = new Array<number>(layerCount).fill(0)
     for (const node of nodes) {
-        const size = direction === "TB" ? stepsNodeHeight(node, (ports.get(node.id) ?? []).length) : STEPS_CARD_WIDTH
+        const size = direction === "TB" ? stepsNodeHeight(node, (ports.get(node.id) ?? []).length) : cardWidth
         extent[layerOf(node.id)] = Math.max(extent[layerOf(node.id)] ?? 0, size)
     }
     const layerStart: number[] = []
@@ -227,7 +241,7 @@ export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
         along += size + STEPS_LAYER_GAP[direction]
     }
     const alongSize = Math.max(0, along - STEPS_LAYER_GAP[direction])
-    const crossStep = direction === "TB" ? STEPS_CARD_WIDTH + STEPS_COLUMN_GAP : Math.max(TILE + CARD_CHROME, ...nodes.map((node) => stepsNodeHeight(node, (ports.get(node.id) ?? []).length))) + STEPS_COLUMN_GAP
+    const crossStep = direction === "TB" ? cardWidth + STEPS_COLUMN_GAP : Math.max(TILE + CARD_CHROME, ...nodes.map((node) => stepsNodeHeight(node, (ports.get(node.id) ?? []).length))) + STEPS_COLUMN_GAP
 
     const positions = new Map<string, FlowGraphPoint>()
     for (const node of nodes) {
@@ -271,8 +285,8 @@ export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
     // The layer gap holds three channels under a layer; a fourth back edge out of one layer runs over the next layer's curves.
 
     const columns = Math.max(1, nextColumn)
-    const acrossSize = (columns - 1) * crossStep + (direction === "TB" ? STEPS_CARD_WIDTH : crossStep - STEPS_COLUMN_GAP)
+    const acrossSize = (columns - 1) * crossStep + (direction === "TB" ? cardWidth : crossStep - STEPS_COLUMN_GAP)
     const width = (direction === "TB" ? acrossSize : alongSize) + 2 * STEPS_MARGIN
     const height = (direction === "TB" ? alongSize : acrossSize) + 2 * STEPS_MARGIN
-    return { positions, layers, ports, back, width, height }
+    return { positions, layers, ports, back, cardWidth, width, height }
 }

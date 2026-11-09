@@ -216,3 +216,71 @@ export const CardHeadCountAndLink: Story = {
     </div>
   ),
 };
+
+const SwitchRow = ({ initial }: { readonly initial: boolean }) => {
+  const [on, setOn] = useState(initial);
+  return (
+    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+      <G.Switch label="Dark mode" isLabelHidden size="control" isSelected={on} onSelectedChange={setOn} />
+      <G.Switch label="Theo sơ đồ" isSelected={on} onSelectedChange={setOn} />
+    </div>
+  );
+};
+
+/** 0.36.2: no border on any Switch; off and on. */
+export const SwitchNoBorder: Story = {
+  render: () => (
+    <div style={{ display: 'grid', gap: '1.5rem' }}>
+      <SwitchRow initial={false} />
+      <SwitchRow initial />
+    </div>
+  ),
+};
+
+/** 0.36.2: a Section fact is the grey chip; five cards balance as 3 + 2; an EmptyNotice navigation action is a head Link. */
+export const FactBalancedAndNoticeLink: Story = {
+  render: () => (
+    <div style={{ display: 'grid', gap: '1.5rem', maxInlineSize: '64rem' }}>
+      <G.Section title="Workspace của tôi" fact="1" action={<G.Link variant="head" href="#w">Mở</G.Link>}>
+        <G.EmptyNotice message="Chưa có dự án" description="Tạo dự án đầu tiên." actionLabel="Về tổng quan" actionHref="#home" />
+      </G.Section>
+      <G.Grid kind="cards" columns="balanced">
+        {['Free', 'Basic', 'Pro', 'Team', 'Max'].map((name) => <G.SurfaceCard key={name} kind="details" ariaLabel={name} items={[{ id: name, term: name, description: '199.000 đ' }]} />)}
+      </G.Grid>
+    </div>
+  ),
+};
+
+const salesNodes: ReadonlyArray<G.FlowGraphNode> = [
+  { id: 's1', kind: 'event', label: 'Khách nhắn tin', description: 'Zalo OA', tag: 'Kích hoạt' },
+  { id: 's2', kind: 'action', label: 'Đọc yêu cầu', description: 'Hiểu khách cần gì' },
+  { id: 's3', kind: 'condition', label: 'Khách cần gì?', description: 'Phân loại', outputs: [
+    { id: 'quote', label: 'Báo giá' }, { id: 'book', label: 'Đặt lịch' }, { id: 'pay', label: 'Khách báo, Tiền về' }, { id: 'ask', label: 'Hỏi thông tin sản phẩm' }, { id: 'other', label: 'Khác' },
+  ] },
+  { id: 's4', kind: 'action', label: 'Gửi báo giá', description: 'Từ bảng giá' },
+  { id: 's5', kind: 'action', label: 'Giữ chỗ', description: 'Trong lịch' },
+  { id: 's6', kind: 'action', label: 'Đối soát', description: 'Khớp đơn' },
+  { id: 's7', kind: 'ask', label: 'Hỏi chủ', description: 'Cần duyệt', tag: 'Cần chủ' },
+  { id: 's8', kind: 'wait', label: 'Chờ khách', description: 'Trả lời trong 1 ngày' },
+  { id: 's9', kind: 'action', label: 'Nhắc khách', description: 'Sau 24 giờ' },
+  { id: 's10', kind: 'event', label: 'Báo Sales', description: 'Gửi nhóm' },
+  { id: 's11', kind: 'end', label: 'Xong' },
+  { id: 's12', kind: 'end', label: 'Dừng' },
+];
+const salesEdges: ReadonlyArray<G.FlowGraphEdge> = [
+  { id: 'a', source: 's1', target: 's2' }, { id: 'b', source: 's2', target: 's3' },
+  { id: 'c1', source: 's3', target: 's4', sourcePort: 'quote' }, { id: 'c2', source: 's3', target: 's5', sourcePort: 'book' },
+  { id: 'c3', source: 's3', target: 's6', sourcePort: 'pay' }, { id: 'c4', source: 's3', target: 's7', sourcePort: 'ask' }, { id: 'c5', source: 's3', target: 's8', sourcePort: 'other' },
+  { id: 'd1', source: 's4', target: 's10' }, { id: 'd2', source: 's5', target: 's10' }, { id: 'd3', source: 's6', target: 's10' }, { id: 'd4', source: 's7', target: 's9' }, { id: 'd5', source: 's8', target: 's12' },
+  { id: 'e1', source: 's10', target: 's11' }, { id: 'e2', source: 's9', target: 's12' },
+];
+
+/** 0.36.2: a 12-step graph with a 5-way branch fits its pane (or starts at the trigger at 0.75 and pans); ports truncate; the kinds carry their own tones. */
+export const FlowStepsWideBranch: Story = {
+  parameters: { layout: 'fullscreen', grammar: { bleed: true } },
+  render: () => (
+    <div style={{ padding: '1rem', maxInlineSize: '56rem' }}>
+      <G.FlowGraph label="Quy trình bán hàng" layout="steps" nodes={salesNodes} edges={salesEdges} />
+    </div>
+  ),
+};

@@ -34,6 +34,8 @@
      */
     .starci-core-link[data-grammar-link-content="text"] { color: var(--accent); }
 
+    .starci-core-notice-link { font-size: var(--grammar-text-md); line-height: var(--grammar-leading-md); }
+
     /* The head variant (0.36.0): the label then an arrow that slides 3px toward the end on hover and focus; the underline on hover is the vendor's. */
     .starci-core-link[data-grammar-link-variant="head"] { display: inline-flex; align-items: baseline; gap: 0.25rem; white-space: nowrap; }
     .starci-core-link-arrow { display: inline-block; text-decoration: none; transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing); }
@@ -2613,7 +2615,7 @@
     .starci-core-flow-graph-step-port {
         position: relative;
         display: flex;
-        flex: 1 1 0;
+        flex: 1 1 auto;
         align-items: center;
         justify-content: center;
         min-inline-size: 0;
@@ -2622,6 +2624,15 @@
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-sm);
+    }
+
+    /* A port sizes to its label and never wraps: past about 16 characters it is cut with an ellipsis and its tooltip reads it in full (0.36.2). */
+    .starci-core-flow-graph-step-port-label {
+        min-inline-size: 0;
+        max-inline-size: 16ch;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .starci-core-flow-graph-step-port + .starci-core-flow-graph-step-port { border-inline-start: var(--grammar-hairline) solid var(--border); }
