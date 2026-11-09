@@ -195,7 +195,8 @@ with `FlowGraph`.
 
 ### FlowGraph layouts
 
-`FlowGraph` places nodes with `layout`: `radial` (the default), `layered` (a DAG in layers) or `manual` (each node's `position`).
+`FlowGraph` places nodes with `layout`: `radial` (the default), `layered` (a DAG in layers), `manual` (each node's `position`),
+`lanes` (the older left-to-right branch map) or `steps` (the card map of a workflow, below).
 `direction="TB" | "LR"` puts the target handle on the entering side and the source handle on the leaving side so edges run along the
 layout, and selects `layered` when no layout is given. `headers={[{ label, at }]}` draws a column header above each layer for `LR` and
 a lane header beside it for `TB` (`at` is the layer index in `layered`, graph units in `manual`). `height` takes `sm | md | lg`, a number
@@ -204,6 +205,18 @@ a lane header beside it for `TB` (`at` is the layer index in `layered`, graph un
 A node's `shape` is its flowchart outline: `stadium` (the default pill), `rect`, `round`, `diamond` (a decision) or
 `circle` (a start or end). An edge's `label` is drawn on a chip at its midpoint and repeated, as "source → target:
 label", in the graph's visually hidden edge list.
+
+### FlowGraph steps (0.35.0)
+
+`layout="steps"` is the card map of a workflow, top-down by default (`direction="LR"` runs across), on the well (`--background`) with no
+grid. Every node is a white card with a 32 icon tile in its `kind`'s soft pair: `event`, `action`, `condition`, `ask` (needs the owner),
+`wait` (dashed card) and `end` (a pill with a check); the `lanes` kinds map on (`trigger` event, `execute` action, `output` end). A node
+takes `icon` (an `IconSource` or a node; the kind's glyph otherwise), `tag` (a corner pill, "Kích hoạt"), and for a condition `outputs`
+(`[{ id, label }]`, left to right along its bottom; left out, they are the labels of its outgoing edges). An edge leaves its port by
+`sourcePort`; `variant: "back"` (or `"return"`) draws it dashed, routed round the cards, its `label` a pill on it. The run overlay is node
+`status` (`done`, `running`, `failed`, `waiting`, `skipped`) and edge `isTaken`. `onNodePress(id)` fires on press, `legend` adds a row of
+kinds, `kindTones` maps a kind to another tone (Core's palette maps purple, teal and coral to accent, success and danger), and
+`statusLabels` gives the status words of the accessible names.
 
 ### MermaidDiagram
 

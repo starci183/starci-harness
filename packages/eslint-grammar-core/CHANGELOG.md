@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.35.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.35.0 (FlowGraph `layout="steps"`); no rule of this package changed.
+
 ## 0.34.0 - 2026-11-09
 
 - Added: `tabs-in-well` (`FE_TABS_IN_WELL`, TABS-IN-WELL, error): an underline `Tabs` written in the body of a `Page`, `Pane` or `PaneSection` is refused; the second tab layer is

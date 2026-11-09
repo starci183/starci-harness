@@ -38,11 +38,43 @@ import {
     radialPositions,
     type LanesLayout,
 } from "./layout.js"
-import type { FlowGraphDirection, FlowGraphEdge, FlowGraphHeight, FlowGraphLayerHeader, FlowGraphLayout, FlowGraphNode, FlowGraphTone } from "./types.js"
+import { isBackEdge, portOfEdge, stepKindOf, stepsLayout, type StepsLayout } from "./steps.js"
+import { DEFAULT_STATUS_LABELS, FlowGraphBackEdge, FlowGraphLegend, FlowGraphStepEdge, FlowGraphStepView, STEP_KIND_TONES, stepAriaLabel, type StepNodeData } from "./stepsView.js"
+import type {
+    FlowGraphDirection,
+    FlowGraphEdge,
+    FlowGraphHeight,
+    FlowGraphLayerHeader,
+    FlowGraphLayout,
+    FlowGraphLegendItem,
+    FlowGraphNode,
+    FlowGraphRunStatus,
+    FlowGraphStepKind,
+    FlowGraphTone,
+} from "./types.js"
 import type { NoChildren } from "../../tier.js"
 
 export { lanesLayout, layeredPositions, radialPositions } from "./layout.js"
-export type { FlowGraphDirection, FlowGraphEdge, FlowGraphHeight, FlowGraphLayerHeader, FlowGraphLayout, FlowGraphNode, FlowGraphNodeKind, FlowGraphNodeShape, FlowGraphNodeSize, FlowGraphTone } from "./types.js"
+export { stepsLayout } from "./steps.js"
+export { STEP_KIND_TONES } from "./stepsView.js"
+export type {
+    FlowGraphDirection,
+    FlowGraphEdge,
+    FlowGraphEdgeVariant,
+    FlowGraphHeight,
+    FlowGraphLanesKind,
+    FlowGraphLayerHeader,
+    FlowGraphLayout,
+    FlowGraphLegendItem,
+    FlowGraphNode,
+    FlowGraphNodeKind,
+    FlowGraphNodeShape,
+    FlowGraphNodeSize,
+    FlowGraphPort,
+    FlowGraphRunStatus,
+    FlowGraphStepKind,
+    FlowGraphTone,
+} from "./types.js"
 
 export type FlowGraphProps = NoChildren & {
     /** Names the graph for assistive technology, e.g. "Second brain". */
@@ -56,6 +88,17 @@ export type FlowGraphProps = NoChildren & {
     readonly selectedId?: string | null
     /** Fires with the node id on click, Enter or Space, and with `null` when the empty canvas is clicked or Escape is pressed. */
     readonly onSelect?: (id: string | null) => void
+    /** Fires with the node id when a node is pressed (click, Enter or Space); never with `null`. */
+    readonly onNodePress?: (id: string) => void
+    /**
+     * `steps` only: the tone of each kind's icon tile, tag and legend swatch, over {@link STEP_KIND_TONES}. Core's palette has no purple,
+     * teal or coral; an app that declares them (`GrammarToneRegistry`) maps `event`, `action` and `ask` to them here.
+     */
+    readonly kindTones?: Partial<Readonly<Record<FlowGraphStepKind, FlowGraphTone>>>
+    /** `steps` only: a legend row of kinds under the canvas, in the given order and words. */
+    readonly legend?: ReadonlyArray<FlowGraphLegendItem>
+    /** `steps` only: the words of the run statuses in the node's accessible name. Defaults to English. */
+    readonly statusLabels?: Partial<Readonly<Record<FlowGraphRunStatus, string>>>
     /**
      * Canvas height: `sm` 16rem, `md` 24rem, `lg` 32rem, or any size of your own: a number is pixels, a string is a CSS length
      * (`"60vh"`, `"48rem"`).
@@ -72,7 +115,11 @@ export type FlowGraphProps = NoChildren & {
     /** Zoom buttons. Defaults to on while the graph is interactive. */
     readonly showControls?: boolean
     /**
-     * `lanes` is the branch map of a workflow: a column per stage and one row per branch of a condition, so each path reads left
+     * `steps` is the card map of a workflow (0.35.0): white step cards on the well, top-down (`direction="LR"` runs across), an icon
+     * tile per node `kind`, a condition card with named output ports its edges leave from, smooth curved edges with an arrowhead, dashed
+     * `back` edges routed round the cards, an `end` pill, and the run overlay (`status`, `isTaken`). Its canvas is as tall as the graph
+     * unless `height` is given; `headers` are not drawn.
+     * `lanes` is the older branch map of a workflow: a column per stage and one row per branch of a condition, so each path reads left
      * to right on one line; its edges are orthogonal with rounded corners and an arrowhead, a branch label sits on its own edge, and
      * the node `kind` sets the tone (trigger neutral, condition warning, execute its tone, output accent). Its canvas is as tall as
      * the graph unless `height` is given.
@@ -203,10 +250,12 @@ const FlowGraphLaneEdge = memo(({ sourceX, sourceY, targetX, targetY, sourcePosi
 })
 FlowGraphLaneEdge.displayName = "FlowGraphLaneEdge"
 
-const EDGE_TYPES: EdgeTypes = { flowGraphLane: FlowGraphLaneEdge }
+const EDGE_TYPES: EdgeTypes = { flowGraphLane: FlowGraphLaneEdge, flowGraphStep: FlowGraphStepEdge, flowGraphBack: FlowGraphBackEdge }
 const EDGE_LABEL_PADDING: [number, number] = [COMMON_SPACING_PX[2], COMMON_SPACING_PX[1]]
 const LABEL_RADIUS = COMMON_SPACING_PX[1]
-const NODE_TYPES: NodeTypes = { flowGraph: FlowGraphNodeView, flowGraphHeader: FlowGraphHeaderView }
+const NODE_TYPES: NodeTypes = { flowGraph: FlowGraphNodeView, flowGraphHeader: FlowGraphHeaderView, flowGraphStep: FlowGraphStepView }
+/** A steps graph is laid out with its own margin, so like lanes its fit keeps a small one and never magnifies. */
+const STEPS_MAX_ZOOM = 1
 const HEADER_OFFSET = 70
 const HEADER_SIDE_GAP = COMMON_SPACING_PX[6]
 /**
@@ -221,6 +270,10 @@ const FlowGraphInner = ({
     edges,
     selectedId,
     onSelect,
+    onNodePress,
+    kindTones: kindTonesProp,
+    legend,
+    statusLabels: statusLabelsProp,
     height,
     fit = "readable",
     isInteractive = true,
@@ -239,7 +292,12 @@ const FlowGraphInner = ({
     }
 
     const layout: FlowGraphLayout = layoutProp ?? (direction === undefined ? "radial" : "layered")
-    const flowDirection: FlowGraphDirection | undefined = layout === "lanes" ? "LR" : direction ?? (layout === "layered" ? "TB" : undefined)
+    const flowDirection: FlowGraphDirection | undefined = layout === "lanes" ? "LR" : direction ?? (layout === "layered" || layout === "steps" ? "TB" : undefined)
+    const kindTones = useMemo(() => ({ ...STEP_KIND_TONES, ...kindTonesProp }), [kindTonesProp])
+    const statusLabels = useMemo(() => ({ ...DEFAULT_STATUS_LABELS, ...statusLabelsProp }), [statusLabelsProp])
+    const steps = useMemo<StepsLayout | null>(() => layout === "steps" ? stepsLayout(nodes, edges, flowDirection ?? "TB") : null, [layout, nodes, edges, flowDirection])
+    const isRun = useMemo(() => steps !== null && (nodes.some((node) => node.status !== undefined) || edges.some((edge) => edge.isTaken !== undefined)), [steps, nodes, edges])
+    const nodeLabel = (node: FlowGraphNode) => steps === null ? labelFor(node) : stepAriaLabel(node, statusLabels)
     const dimmedIds = useMemo(() => new Set(nodes.filter((node) => node.isDimmed === true).map((node) => node.id)), [nodes])
 
     const lanes = useMemo<LanesLayout | null>(() => layout === "lanes" ? lanesLayout(nodes, edges) : null, [layout, nodes, edges])
@@ -247,10 +305,31 @@ const FlowGraphInner = ({
     const positions = useMemo(() => {
         if (layout === "radial") return radialPositions(nodes, edges)
         if (lanes !== null) return lanes.positions
+        if (steps !== null) return steps.positions
         return layered?.positions ?? null
-    }, [layout, nodes, edges, layered, lanes])
+    }, [layout, nodes, edges, layered, lanes, steps])
     const rootId = flowGraphRoot(nodes)?.id
-    const flowNodes = useMemo<Array<Node<NodeData>>>(() => nodes.map((graphNode) => ({
+    const flowNodes = useMemo<Array<Node<NodeData> | Node<StepNodeData>>>(() => steps !== null ? nodes.map((graphNode): Node<StepNodeData> => {
+        const kind = stepKindOf(graphNode)
+        return {
+            id: graphNode.id,
+            type: "flowGraphStep",
+            position: steps.positions.get(graphNode.id) ?? { x: 0, y: 0 },
+            data: {
+                graphNode,
+                kind,
+                tone: graphNode.isPlaceholder === true ? "muted" : graphNode.tone ?? kindTones[kind],
+                ports: steps.ports.get(graphNode.id) ?? [],
+                isSelected: graphNode.id === currentId,
+                direction: flowDirection ?? "TB",
+            },
+            selected: graphNode.id === currentId,
+            ariaLabel: stepAriaLabel(graphNode, statusLabels),
+            draggable: false,
+            connectable: false,
+            ...(graphNode.href === undefined ? {} : { focusable: false }),
+        }
+    }) : nodes.map((graphNode) => ({
         id: graphNode.id,
         type: "flowGraph",
         position: positions?.get(graphNode.id) ?? graphNode.position ?? { x: 0, y: 0 },
@@ -265,9 +344,9 @@ const FlowGraphInner = ({
         connectable: false,
         // A link node keeps one keyboard stop: the anchor inside it.
         ...(graphNode.href === undefined ? {} : { focusable: false }),
-    })), [nodes, positions, layout, rootId, currentId, flowDirection])
+    })), [nodes, positions, layout, rootId, currentId, flowDirection, steps, kindTones, statusLabels])
     const headerNodes = useMemo<Array<Node<HeaderData>>>(() => {
-        if (headers === undefined || headers.length === 0 || flowDirection === undefined) return []
+        if (headers === undefined || headers.length === 0 || flowDirection === undefined || layout === "steps") return []
         const points = nodes.map((node) => positions?.get(node.id) ?? node.position ?? { x: 0, y: 0 })
         const minX = Math.min(...points.map((point) => point.x))
         const minY = Math.min(...points.map((point) => point.y))
@@ -291,8 +370,38 @@ const FlowGraphInner = ({
             }]
         })
     }, [headers, flowDirection, nodes, positions, layout, lanes])
-    const allNodes = useMemo<Array<Node<NodeData> | Node<HeaderData>>>(() => [...headerNodes, ...flowNodes], [headerNodes, flowNodes])
-    const flowEdges = useMemo<Array<Edge>>(() => edges.map((edge) => {
+    const allNodes = useMemo<Array<Node<NodeData> | Node<HeaderData> | Node<StepNodeData>>>(() => [...headerNodes, ...flowNodes], [headerNodes, flowNodes])
+    const flowEdges = useMemo<Array<Edge>>(() => steps !== null ? edges.flatMap((edge): Edge[] => {
+        const route = steps.back.get(edge.id)
+        const isBack = isBackEdge(edge)
+        if (isBack && route === undefined) return []
+        const port = isBack ? undefined : portOfEdge(edge, steps.ports.get(edge.source) ?? [])
+        const run = !isRun ? "" : edge.isTaken === true ? "starci-core-flow-graph-edge-taken" : "starci-core-flow-graph-edge-untaken"
+        const classes = [
+            "starci-core-flow-graph-edge",
+            isBack ? "starci-core-flow-graph-edge-back" : "",
+            edge.isPlaceholder === true ? "starci-core-flow-graph-edge-placeholder" : "",
+            dimmedIds.has(edge.target) ? "starci-core-flow-graph-edge-dimmed" : "",
+            run,
+        ].filter(Boolean).join(" ")
+        // A branch label lives on its port, not on the line; a label with no port (a back edge, a plain edge) is a pill on the line.
+        const label = port === undefined && edge.label !== undefined && edge.label !== "" ? { label: edge.label } : {}
+        return [{
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            type: isBack ? "flowGraphBack" : "flowGraphStep",
+            sourceHandle: route !== undefined ? `back-out-${route.sourceSide}` : port === undefined ? "out" : `port:${port.id}`,
+            targetHandle: route !== undefined ? `back-in-${route.targetSide}` : "in",
+            ...(route === undefined ? {} : { data: { route, direction: flowDirection ?? "TB" } }),
+            markerEnd: { type: MarkerType.ArrowClosed, width: COMMON_SPACING_PX[4], height: COMMON_SPACING_PX[4], color: isRun && edge.isTaken === true ? "var(--accent)" : "var(--muted)" },
+            className: classes,
+            ...label,
+            focusable: false,
+            selectable: false,
+            animated: false,
+        }]
+    }) : edges.map((edge) => {
         // A layered edge that skips layers turns in a gap, never inside a skipped layer (see layeredStepPosition).
         const stepPosition = layered === null ? undefined : layeredStepPosition(edge, layered.positions, layered.layers, flowDirection ?? "TB")
         const classes = [
@@ -318,11 +427,14 @@ const FlowGraphInner = ({
         selectable: false,
         animated: false,
         }
-    }), [edges, layout, layered, lanes, flowDirection, dimmedIds])
+    }), [edges, layout, layered, lanes, steps, isRun, flowDirection, dimmedIds])
     const edgeLabels = useMemo(() => labelledEdges(nodes, edges), [nodes, edges])
     const signature = `${layout}:${flowDirection ?? ""}:${headerNodes.length}:${nodes.map((node) => node.id).join("|")}`
 
-    const activate = (id: string) => { select(id) }
+    const activate = (id: string) => {
+        select(id)
+        onNodePress?.(id)
+    }
     const nodeIds = useMemo(() => new Set(nodes.map((node) => node.id)), [nodes])
 
     const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -339,10 +451,10 @@ const FlowGraphInner = ({
         activate(id)
     }
 
-    const naturalHeight = lanes === null ? null : lanesNaturalHeight(lanes, headerNodes.length > 0)
+    const naturalHeight = lanes !== null ? lanesNaturalHeight(lanes, headerNodes.length > 0) : steps !== null ? Math.ceil(steps.height) : null
     const customHeight = height === undefined && naturalHeight !== null ? `${naturalHeight}px` : height === undefined || height === "sm" || height === "md" || height === "lg" ? undefined : typeof height === "number" ? `${height}px` : height
-    const fitOptions = layout === "lanes" ? LANES_FIT_OPTIONS : FIT_OPTIONS
-    const maxZoom = layout === "lanes" ? LANES_MAX_ZOOM : MAX_ZOOM
+    const fitOptions = layout === "lanes" ? LANES_FIT_OPTIONS : layout === "steps" ? LANES_FIT_OPTIONS : FIT_OPTIONS
+    const maxZoom = layout === "lanes" ? LANES_MAX_ZOOM : layout === "steps" ? STEPS_MAX_ZOOM : MAX_ZOOM
     const controls = showControls ?? isInteractive
     // The readable fit grows the canvas for one graph; a new set of nodes or layout starts again from `height`.
     const readableZoom = fit === "readable" && nodes.length > 0 ? readableZoomFor(nodes) : null
@@ -350,7 +462,7 @@ const FlowGraphInner = ({
     const grownHeight = growth !== null && growth.signature === signature ? growth.height : null
     const onGrow = useCallback((next: number) => setGrowth({ signature, height: next }), [signature])
     // A grown canvas is taller than the screen may be: the wheel scrolls the page, the zoom buttons still zoom.
-    const wheelZooms = isInteractive && grownHeight === null && layout !== "lanes"
+    const wheelZooms = isInteractive && grownHeight === null && layout !== "lanes" && layout !== "steps"
     const style: CSSProperties | undefined = customHeight === undefined && grownHeight === null ? undefined : {
         ...(customHeight === undefined ? {} : { "--starci-flow-height": customHeight }),
         ...(grownHeight === null ? {} : { "--starci-flow-grown-height": `${grownHeight}px` }),
@@ -368,6 +480,7 @@ const FlowGraphInner = ({
             data-grammar-flow-layout={layout}
             data-grammar-flow-fit={fit}
             data-grammar-flow-grown={grownHeight === null ? undefined : "true"}
+            data-grammar-flow-run={isRun ? "true" : undefined}
             data-tier="branch"
             style={style}
             {...(isLoading ? { "aria-busy": true, "data-loading": "true" } : {})}
@@ -395,7 +508,7 @@ const FlowGraphInner = ({
                             nodesConnectable={false}
                             nodesDraggable={false}
                             nodesFocusable
-                            onNodeClick={(_event, node) => { if (node.type === "flowGraph") activate(node.id) }}
+                            onNodeClick={(_event, node) => { if (node.type === "flowGraph" || node.type === "flowGraphStep") activate(node.id) }}
                             onPaneClick={() => { if (currentId !== null) select(null) }}
                             panOnDrag={isInteractive}
                             panOnScroll={false}
@@ -407,17 +520,18 @@ const FlowGraphInner = ({
                         >
                             <Background className="starci-core-flow-graph-background" gap={1000} size={0} />
                             {controls ? <Controls aria-label={`${label}: zoom`} className="starci-core-flow-graph-controls" showInteractive={false} /> : null}
-                            <Refit anchorStart={layout === "lanes"} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
+                            <Refit anchorStart={layout === "lanes" || (layout === "steps" && flowDirection === "LR")} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
                         </ReactFlow>
                     </div>
                     <ul className="starci-core-visually-hidden" data-grammar-flow-fallback="true">
-                        {nodes.map((node) => <li key={node.id} {...(node.id === currentId ? { "aria-current": "true" as const } : {})}>{labelFor(node)}</li>)}
+                        {nodes.map((node) => <li key={node.id} {...(node.id === currentId ? { "aria-current": "true" as const } : {})}>{nodeLabel(node)}</li>)}
                     </ul>
                     {edgeLabels.length === 0 ? null : (
                         <ul className="starci-core-visually-hidden" data-grammar-flow-edge-fallback="true">
                             {edgeLabels.map((edge) => <li key={edge.id}>{edge.text}</li>)}
                         </ul>
                     )}
+                    {steps === null || legend === undefined || legend.length === 0 ? null : <FlowGraphLegend items={legend} kindTones={kindTones} />}
                 </>
             )}
         </figure>

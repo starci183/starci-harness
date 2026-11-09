@@ -2462,6 +2462,264 @@
         text-transform: none;
     }
 
+    /*
+     * The steps layout (0.35.0, the owner-approved card map). The canvas is the well (`--background`, pink in Nivo) with no grid; a step is
+     * a white card (`--surface`, the card border token `--border`, 14 at the default radius, 196 wide) with a 32 icon tile in its kind's
+     * soft pair, the title at 14 medium and one muted line at 12. A condition card adds its output ports along the bottom, split by
+     * hairlines, each with the dot its edges leave from. Edges are smooth curves in the muted ink with an arrowhead; a back edge is dashed.
+     * Padding is 8 / 12: the owner's 10 is off the spacing scale (0 4 8 12 16 24 32), so the block padding takes the step below.
+     */
+    .starci-core-flow-graph[data-grammar-flow-layout="steps"] { background: var(--background); }
+    .starci-core-flow-graph[data-grammar-flow-layout="steps"] .react-flow { --xy-edge-stroke: var(--muted); --xy-edge-stroke-width: 1.5; }
+    .starci-core-flow-graph[data-grammar-flow-layout="steps"] .react-flow__node { overflow: visible; }
+
+    .starci-core-flow-graph-step {
+        --starci-flow-tint: var(--default-soft);
+        --starci-flow-ink: var(--default-soft-foreground);
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        inline-size: var(--grammar-flow-card-width);
+        border: var(--grammar-hairline) solid var(--border);
+        border-radius: var(--grammar-flow-card-radius);
+        background: var(--surface);
+        color: var(--foreground);
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-tight);
+    }
+
+    .starci-core-flow-graph-step[data-tone="accent"] { --starci-flow-tint: var(--accent-soft); --starci-flow-ink: var(--accent-soft-foreground); }
+    .starci-core-flow-graph-step[data-tone="success"] { --starci-flow-tint: var(--success-soft); --starci-flow-ink: var(--success-soft-foreground); }
+    .starci-core-flow-graph-step[data-tone="warning"] { --starci-flow-tint: var(--warning-soft); --starci-flow-ink: var(--warning-soft-foreground); }
+    .starci-core-flow-graph-step[data-tone="danger"] { --starci-flow-tint: var(--danger-soft); --starci-flow-ink: var(--danger-soft-foreground); }
+    .starci-core-flow-graph-step[data-tone="muted"] { --starci-flow-tint: transparent; --starci-flow-ink: var(--muted); }
+    .starci-core-flow-graph-step[data-grammar-tone-custom="true"] { --starci-flow-tint: var(--grammar-tone-soft); --starci-flow-ink: var(--grammar-tone-soft-foreground); }
+
+    /* A wait card and a slot not filled yet draw a dashed border. */
+    .starci-core-flow-graph-step[data-kind="wait"],
+    .starci-core-flow-graph-step[data-placeholder="true"] { border-style: dashed; }
+
+    .starci-core-flow-graph-step-body {
+        display: flex;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+        min-inline-size: 0;
+        padding: var(--grammar-inset-nested) var(--grammar-inset);
+    }
+
+    .starci-core-flow-graph-step-link { display: flex; inline-size: 100%; }
+
+    .starci-core-flow-graph-step-tile {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        inline-size: var(--grammar-flow-tile-size);
+        block-size: var(--grammar-flow-tile-size);
+        border-radius: var(--grammar-flow-tile-radius);
+        background: var(--starci-flow-tint);
+        color: var(--starci-flow-ink);
+    }
+
+    .starci-core-flow-graph-step-copy {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: var(--grammar-identity-gap);
+        min-inline-size: 0;
+    }
+
+    .starci-core-flow-graph-step-title { font-weight: var(--grammar-weight-medium); overflow-wrap: anywhere; }
+    .starci-core-flow-graph-step-line { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); overflow-wrap: anywhere; }
+
+    /* The corner tag sits on the top edge at the end, in the kind's soft pair, so it never takes room from the title. */
+    .starci-core-flow-graph-step-tag {
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline-end: var(--grammar-inset);
+        padding: 0 var(--grammar-inline-gap);
+        border-radius: var(--grammar-radius-pill);
+        background: var(--starci-flow-tint);
+        box-shadow: 0 0 0 var(--grammar-ring-width) var(--surface);
+        color: var(--starci-flow-ink);
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-xs);
+        white-space: nowrap;
+        transform: translateY(-50%);
+    }
+
+    /* The outputs row of a condition: one cell per port, split by hairlines, each with its port dot on the bottom edge. */
+    .starci-core-flow-graph-step-outputs {
+        display: flex;
+        border-block-start: var(--grammar-hairline) solid var(--border);
+    }
+
+    .starci-core-flow-graph-step-port {
+        position: relative;
+        display: flex;
+        flex: 1 1 0;
+        align-items: center;
+        justify-content: center;
+        min-inline-size: 0;
+        padding: var(--grammar-identity-gap) var(--grammar-inline-gap);
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-sm);
+    }
+
+    .starci-core-flow-graph-step-port + .starci-core-flow-graph-step-port { border-inline-start: var(--grammar-hairline) solid var(--border); }
+
+    .starci-core-flow-graph .starci-core-flow-graph-step-port-dot {
+        position: absolute;
+        inset-block-end: 0;
+        inset-inline-start: 50%;
+        inline-size: var(--grammar-flow-port-dot);
+        block-size: var(--grammar-flow-port-dot);
+        border: var(--grammar-hairline) solid var(--surface);
+        border-radius: var(--grammar-radius-round);
+        background: var(--muted);
+        pointer-events: none;
+        transform: translate(-50%, 50%);
+    }
+
+    .starci-core-flow-graph[data-grammar-flow-direction="LR"] .starci-core-flow-graph-step-port-dot { transform: translate(-50%, 50%); }
+
+    /* The hidden handles: the middle of each side, where the edges meet the card. */
+    .starci-core-flow-graph .starci-core-flow-graph-step-handle {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        min-inline-size: 1px;
+        min-block-size: 1px;
+        border: 0;
+        opacity: 0;
+        pointer-events: none;
+        background: transparent;
+    }
+
+    .starci-core-flow-graph .starci-core-flow-graph-step-handle.react-flow__handle-top { inset-block-start: 0; inset-inline-start: 50%; }
+    .starci-core-flow-graph .starci-core-flow-graph-step-handle.react-flow__handle-bottom { inset-block-start: 100%; inset-inline-start: 50%; }
+    .starci-core-flow-graph .starci-core-flow-graph-step-handle.react-flow__handle-left { inset-block-start: 50%; inset-inline-start: 0; }
+    .starci-core-flow-graph .starci-core-flow-graph-step-handle.react-flow__handle-right { inset-block-start: 50%; inset-inline-start: 100%; }
+
+    /* The end of a path: a pill with a check in the success pair. */
+    .starci-core-flow-graph-step[data-kind="end"] { inline-size: auto; border-radius: var(--grammar-radius-pill); }
+
+    .starci-core-flow-graph-step-end {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+        padding: var(--grammar-identity-gap) var(--grammar-inset) var(--grammar-identity-gap) var(--grammar-identity-gap);
+    }
+
+    .starci-core-flow-graph-step-end-mark {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        inline-size: var(--grammar-flow-status-size);
+        block-size: var(--grammar-flow-status-size);
+        border-radius: var(--grammar-radius-round);
+        background: var(--starci-flow-tint);
+        color: var(--starci-flow-ink);
+    }
+
+    /* Selection: the accent outline; keyboard focus: the focus ring. */
+    .starci-core-flow-graph-step[data-grammar-selected="true"] { outline: var(--grammar-ring-width) solid var(--accent); outline-offset: var(--grammar-ring-width); }
+    .starci-core-flow-graph .react-flow__node:focus-visible > .starci-core-flow-graph-step { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: var(--grammar-ring-width); }
+    .starci-core-flow-graph-step:has(.starci-core-flow-graph-link:focus-visible) { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: var(--grammar-ring-width); }
+    .starci-core-flow-graph-step[data-dimmed="true"] { opacity: var(--grammar-opacity-dimmed); }
+
+    /*
+     * The run overlay: a status ring round the card and a badge on its top-start corner (done success, running accent, waiting warning,
+     * failed danger); a skipped node is faded. A taken edge is solid in the accent, an untaken one stays neutral, dashed and faded.
+     */
+    .starci-core-flow-graph-step[data-status="done"] { --starci-flow-status: var(--success); --starci-flow-on-status: var(--success-foreground); }
+    .starci-core-flow-graph-step[data-status="running"] { --starci-flow-status: var(--accent); --starci-flow-on-status: var(--accent-foreground); }
+    .starci-core-flow-graph-step[data-status="waiting"] { --starci-flow-status: var(--warning); --starci-flow-on-status: var(--warning-foreground); }
+    .starci-core-flow-graph-step[data-status="failed"] { --starci-flow-status: var(--danger); --starci-flow-on-status: var(--danger-foreground); }
+    .starci-core-flow-graph-step[data-status="skipped"] { --starci-flow-status: var(--muted); --starci-flow-on-status: var(--surface); opacity: var(--grammar-opacity-faded); }
+    .starci-core-flow-graph-step[data-status]:not([data-status="skipped"]) { border-color: var(--starci-flow-status); box-shadow: 0 0 0 var(--grammar-hairline) var(--starci-flow-status); }
+
+    .starci-core-flow-graph-step-status {
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline-start: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        inline-size: var(--grammar-flow-status-size);
+        block-size: var(--grammar-flow-status-size);
+        border-radius: var(--grammar-radius-round);
+        background: var(--starci-flow-status);
+        box-shadow: 0 0 0 var(--grammar-ring-width) var(--surface);
+        color: var(--starci-flow-on-status);
+        transform: translate(-35%, -35%);
+    }
+
+    .starci-core-flow-graph-step-status .starci-core-icon { inline-size: var(--grammar-flow-status-glyph); block-size: var(--grammar-flow-status-glyph); }
+
+    .starci-core-flow-graph .starci-core-flow-graph-edge-back .react-flow__edge-path { stroke-dasharray: 5 4; }
+    .starci-core-flow-graph .starci-core-flow-graph-edge-taken .react-flow__edge-path { stroke: var(--accent); stroke-width: 2; stroke-dasharray: none; }
+    .starci-core-flow-graph .starci-core-flow-graph-edge-untaken { opacity: var(--grammar-opacity-faded); }
+    .starci-core-flow-graph .starci-core-flow-graph-edge-untaken .react-flow__edge-path { stroke-dasharray: 4 5; }
+
+    /* A label on a line (a back edge, an edge with no port): a small pill above every line. */
+    .starci-core-flow-graph-step-label {
+        position: absolute;
+        padding: 0 var(--grammar-inline-gap);
+        border: var(--grammar-hairline) solid var(--border);
+        border-radius: var(--grammar-radius-pill);
+        background: var(--surface);
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+        white-space: nowrap;
+        pointer-events: none;
+    }
+
+    .starci-core-flow-graph-step-label[data-variant="back"] { border-style: dashed; }
+
+    /* The kind legend under the canvas. */
+    .starci-core-flow-graph-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--grammar-inline-gap) var(--grammar-inset);
+        margin: 0;
+        padding: var(--grammar-inset-nested) var(--grammar-inset);
+        border-block-start: var(--grammar-hairline) solid var(--separator);
+        background: var(--surface);
+        list-style: none;
+    }
+
+    .starci-core-flow-graph-legend-item {
+        --starci-flow-tint: var(--default-soft);
+        display: inline-flex;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+    }
+
+    .starci-core-flow-graph-legend-item[data-tone="accent"] { --starci-flow-tint: var(--accent-soft); --starci-flow-ink: var(--accent-soft-foreground); }
+    .starci-core-flow-graph-legend-item[data-tone="success"] { --starci-flow-tint: var(--success-soft); --starci-flow-ink: var(--success-soft-foreground); }
+    .starci-core-flow-graph-legend-item[data-tone="warning"] { --starci-flow-tint: var(--warning-soft); --starci-flow-ink: var(--warning-soft-foreground); }
+    .starci-core-flow-graph-legend-item[data-tone="danger"] { --starci-flow-tint: var(--danger-soft); --starci-flow-ink: var(--danger-soft-foreground); }
+    .starci-core-flow-graph-legend-item[data-grammar-tone-custom="true"] { --starci-flow-tint: var(--grammar-tone-soft); --starci-flow-ink: var(--grammar-tone-soft-foreground); }
+
+    .starci-core-flow-graph-legend-swatch {
+        inline-size: var(--grammar-flow-swatch-size);
+        block-size: var(--grammar-flow-swatch-size);
+        border: var(--grammar-hairline) solid var(--starci-flow-ink, var(--border));
+        border-radius: var(--grammar-radius-xs);
+        background: var(--starci-flow-tint);
+    }
+
+    .starci-core-flow-graph-legend-item[data-kind="wait"] .starci-core-flow-graph-legend-swatch { border-style: dashed; border-color: var(--muted); }
+
     .starci-core-flow-graph .react-flow__edge-textwrapper { pointer-events: none; }
     .starci-core-flow-graph .react-flow__edge-textbg { fill: var(--surface); stroke: var(--separator); stroke-width: 1px; }
     .starci-core-flow-graph .react-flow__edge-text { fill: var(--foreground); font-size: var(--grammar-text-xs); }

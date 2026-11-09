@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, State, familyScope, noop, pageLabel, placeholderImage, showRowStates, textContrast } from './fixtures.js';
+import { reconcileEdges, reconcileLegend, reconcileNodes, reconcileRunFailed, reconcileRunMatched, reconcileRunOff, reconcileStatusLabels } from './FlowGraphSteps.data.js';
 
 /**
  * Navigation and data display: wayfinding (tabs, breadcrumbs, pagination, stepper), collections
@@ -530,6 +531,87 @@ export const FlowGraphFlowchart: Story = {
       expect(Math.abs(circle.width - circle.height)).toBeLessThanOrEqual(1);
       const spoken = [...graph.querySelectorAll('[data-grammar-flow-edge-fallback] li')].map((item) => item.textContent);
       expect(spoken).toEqual(['In cache? → Serve cached: yes', 'In cache? → Fetch origin: no']);
+    });
+  },
+};
+
+/**
+ * The steps layout (0.35.0, the owner-approved card map), on the accounting flow "Đối soát tiền về": white step cards on the well, an icon
+ * tile per kind, condition cards with named output ports (the branch words live on the ports), curved edges, two dashed back edges with
+ * pill labels, an end pill and the kind legend. Pressing a card selects it (accent outline) and fires `onNodePress`.
+ */
+export const FlowGraphSteps: Story = {
+  name: 'FlowGraph (steps)',
+  render: function Render() {
+    const [selectedId, setSelectedId] = useState<string | null>('amount-ok');
+    const [pressed, setPressed] = useState<string>('');
+    return (
+      <Matrix maxWidth={1200}>
+        <State label="Top down (default), in a card" direction="column">
+          <G.SurfaceCard label="Đối soát tiền về" headingLevel={2}>
+            <G.FlowGraph
+              label="Đối soát tiền về"
+              layout="steps"
+              nodes={reconcileNodes}
+              edges={reconcileEdges}
+              legend={reconcileLegend}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onNodePress={setPressed}
+            />
+          </G.SurfaceCard>
+          <span data-story-pressed={pressed} />
+        </State>
+        <State label="Left to right" direction="column">
+          <G.FlowGraph label="Đối soát tiền về (ngang)" layout="steps" direction="LR" nodes={reconcileNodes} edges={reconcileEdges} />
+        </State>
+      </Matrix>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const graph = canvasElement.querySelector<HTMLElement>('[data-component="FlowGraph"][data-grammar-flow-layout="steps"]');
+      if (graph === null) throw new Error('The steps graph must render');
+      expect(graph.querySelectorAll('.starci-core-flow-graph-step').length).toBe(10);
+      const ports = [...graph.querySelectorAll('[data-grammar-flow-port]')].map((port) => port.textContent);
+      expect(ports).toEqual(['Có', 'Không', 'Khớp', 'Lệch']);
+      const labels = [...graph.querySelectorAll('[data-grammar-flow-edge-label]')].map((label) => label.textContent).sort();
+      expect(labels).toEqual(['chủ duyệt', 'chủ khớp']);
+      expect(graph.querySelectorAll('.starci-core-flow-graph-edge-back').length).toBe(2);
+      expect(graph.querySelectorAll('[data-grammar-flow-legend] li').length).toBe(5);
+    });
+    const card = canvasElement.querySelector<HTMLElement>('[data-grammar-flow-node="find-order"]')!;
+    await userEvent.click(card);
+    await waitFor(() => expect(canvasElement.querySelector('[data-story-pressed]')?.getAttribute('data-story-pressed')).toBe('find-order'));
+    expect(card.getAttribute('data-grammar-selected')).toBe('true');
+  },
+};
+
+/** The run overlay: a status ring and badge per card, a skipped card faded, the taken edges solid in the accent, the others dashed and faded. */
+export const FlowGraphStepsRun: Story = {
+  name: 'FlowGraph (steps, run overlay)',
+  render: () => (
+    <Matrix maxWidth={1200}>
+      <State label="Run: matched, now at Báo Sales" direction="column">
+        <G.FlowGraph label="Lần chạy: khớp" layout="steps" nodes={reconcileRunMatched.nodes} edges={reconcileRunMatched.edges} statusLabels={reconcileStatusLabels} />
+      </State>
+      <State label="Run: amount off, waiting for the owner" direction="column">
+        <G.FlowGraph label="Lần chạy: lệch" layout="steps" nodes={reconcileRunOff.nodes} edges={reconcileRunOff.edges} statusLabels={reconcileStatusLabels} />
+      </State>
+      <State label="Run: failed reading the transfer" direction="column">
+        <G.FlowGraph label="Lần chạy: lỗi" layout="steps" nodes={reconcileRunFailed.nodes} edges={reconcileRunFailed.edges} statusLabels={reconcileStatusLabels} />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const graph = canvasElement.querySelector<HTMLElement>('[data-grammar-flow-run="true"]');
+      if (graph === null) throw new Error('The run graph must render');
+      expect(graph.querySelector('[data-grammar-flow-status="running"]')).not.toBeNull();
+      expect(graph.querySelectorAll('.starci-core-flow-graph-edge-taken').length).toBe(5);
+      const skipped = graph.querySelector<HTMLElement>('.starci-core-flow-graph-step[data-status="skipped"]')!;
+      expect(Number.parseFloat(getComputedStyle(skipped).opacity)).toBeLessThan(1);
+      expect(graph.querySelector('[data-id="tell-sales"]')?.getAttribute('aria-label')).toBe('Báo Sales, Gửi thông báo cho nhóm, Đang chạy');
     });
   },
 };

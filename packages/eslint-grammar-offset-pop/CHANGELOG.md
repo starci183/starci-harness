@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.35.0 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.35.0; requires `@starci/eslint-grammar-core` 0.35.0; no rule of this package changed.
+
 ## 0.34.0 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.34.0; requires `@starci/eslint-grammar-core` 0.34.0, which adds `tabs-in-well` and `link-look`; no rule of this package changed.

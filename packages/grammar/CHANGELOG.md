@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.35.0 - 2026-11-09 - FlowGraph steps: the owner-approved card map
+
+- Added: `FlowGraph layout="steps"`, the card map of a workflow (owner, 2026-11-09). Top-down by default, `direction="LR"` runs across; the canvas is the
+  well (`--background`) with no grid, as tall as the graph (`height` overrides), never magnified; a graph wider than its pane at the 12px floor pans.
+  A step is a white card (`--surface`, `--border`, 196 wide, 14 corners at `--radius` 0.5rem) with a 32 icon tile (9 corners) in its kind's soft pair,
+  the title 14 medium and one muted 12 line, an optional corner `tag` pill (12). Padding is 8 / 12: the drawing's 10 is off the spacing scale.
+- Added: node `kind` takes the steps kinds `event | action | condition | ask | wait | end` (`FlowGraphStepKind`; the lanes kinds are `FlowGraphLanesKind`
+  and map on: trigger → event, execute → action, output → end). Tones: Core's palette is HeroUI's, which has no purple, teal or coral, so
+  event → accent, action → success, condition → warning, ask → danger, wait → neutral (dashed card), end → success (`STEP_KIND_TONES`); an app
+  that declares its own tones passes `kindTones={{ event: "violet", ... }}`. A node `tone` still overrides its kind.
+- Added: node `icon` (`IconSource | ReactNode`; the kind's glyph when left out), `tag`, `outputs` (`FlowGraphPort[]`, a condition's named ports
+  along its bottom, split by hairlines, each with a port dot; left out, the labels of its outgoing edges) and `status` (`FlowGraphRunStatus`).
+- Added: edge `sourcePort` (the port it leaves; a branch label lives on the port, not the line), `variant: "forward" | "back" | "return"` (a back
+  edge is dashed and routed round the cards through the gap under its source's layer; several into one card nest without crossing; its
+  `label` is a pill) and `isTaken` (the run overlay: taken solid in the accent, the rest neutral, dashed and faded).
+- Added: the run overlay: a status ring and corner badge per card (done success, running accent, waiting warning, failed danger), a skipped
+  card faded (`--grammar-opacity-faded`, 0.45). `statusLabels` gives the status words of the accessible names (English by default).
+- Added: `onNodePress(id)` (click, Enter or Space; `onSelect` unchanged), the accent outline on the selected card, `legend` (`FlowGraphLegendItem[]`,
+  a row of kinds under the canvas), and `stepsLayout` / `STEP_KIND_TONES` exports.
+- Added: ramps `--grammar-flow-card-width`, `--grammar-flow-card-radius`, `--grammar-flow-tile-size`, `--grammar-flow-tile-radius`,
+  `--grammar-flow-port-dot`, `--grammar-flow-status-size`, `--grammar-flow-status-glyph`, `--grammar-flow-swatch-size`, `--grammar-opacity-faded`.
+- Kept: `layout="lanes"` and every other layout draw as before; no caller changes. Migration to the card map: `layout="lanes"` → `layout="steps"`;
+  kinds map on as above; a condition's labelled edges become its ports with no change (or pass `outputs` + `sourcePort`); a run canvas moves its
+  per-status `tone` to node `status` and its `isPlaceholder` untaken edges to `isTaken: false`; `headers` are not drawn in `steps`.
+
 ## 0.34.0 - 2026-11-09 - sm Button without icon, chat composer, flush-left page, Sublabel, Link look
 
 - Changed (types): a `sm` Button never carries an icon, not even the primary (owner, 2026-11-09): the primary variant of the Button type takes

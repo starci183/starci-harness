@@ -15,7 +15,8 @@ Choice `diagram.choose.renderer`: which component draws the structure. The first
 | --- | --- | --- | --- |
 | authored | the structure is Mermaid text the content carries (an article's `mermaid` code fence, a lesson body) | `MermaidDiagram` with the fence's text as `source` and a `label` naming what it shows | `DNA-COMMON-DIAGRAM-NAMED` |
 | data | the app holds the nodes and edges as data, or the reader selects, follows links or zooms | `FlowGraph` with `nodes`, `edges`, and `direction` for a flow | judgement |
-| workflow | the app draws the work of an agent: a trigger, conditions that fork it, steps and outputs, each path read left to right | `FlowGraph layout="lanes"`: a column per stage and one row per branch, the node `kind` (`trigger`, `condition`, `execute`, `output`) sets the tone, a branch label on its own edge as an opaque chip above every line (its column widens to hold the words), column headers only over a column that holds a node | judgement; `DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES`, `DNA-COMMON-FLOW-LANE-LABEL-OPAQUE` |
+| workflow | the app draws the work of an agent or a business flow: an event that starts it, steps, conditions that fork it, asks and waits for the owner, the end | `FlowGraph layout="steps"` (0.35.0, the owner-approved card map): top-down by default (`direction="LR"` runs across) on the well with no grid; a white card per step (196 wide, 14 corners, the card border) with a 32 icon tile in its `kind`'s soft pair (`event`, `action`, `condition`, `ask`, `wait` dashed, `end` a "Xong" pill with a check), the title 14 medium, one muted 12 line, an optional corner `tag`; a condition carries its named `outputs` along its bottom and each edge leaves its port (`sourcePort`), so branch words live on the ports, never on the lines; smooth curved edges with an arrowhead; a `variant: "back"` edge is dashed, routed round the cards, with a pill `label`; `legend` adds a row of kinds; the run overlay is node `status` (a ring and badge, `skipped` faded) and edge `isTaken` (taken solid accent, the rest dashed and faded) | judgement |
+| workflow (lanes, kept) | an existing caller of the left-to-right branch map | `FlowGraph layout="lanes"`; new work takes `steps`: a column per stage and one row per branch, the node `kind` (`trigger`, `condition`, `execute`, `output`) sets the tone, a branch label on its own edge as an opaque chip above every line (its column widens to hold the words), column headers only over a column that holds a node | judgement; `DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES`, `DNA-COMMON-FLOW-LANE-LABEL-OPAQUE` |
 | list | the structure is a sequence of steps with no branches | not a diagram: `Stepper` or `Timeline` | judgement |
 
 Choice `diagram.choose.shape`: the outline of a `FlowGraph` node. Each meaning has one shape.
@@ -55,9 +56,13 @@ source as code, so the reader keeps the text (STATE-8). An empty `FlowGraph` sho
 - **Grammar owns:** the frame, the reserved box, the theme handed to Mermaid, the node shapes, the bubble, its fills, ring and tip (a status never rests on colour alone), the `BubbleMap` rings and fans, the strong edges of the selected path, the edge label paint, the lanes
   look (one node width, body-size words with an optional subline, orthogonal rounded edges with a muted arrowhead that fork
   from one point, no line out of a terminal node, a canvas as tall as the graph that never magnifies it),
+  the steps look (the card, the kind tiles and their tones, the ports and port dots, the curves, the back-edge routing and its nesting, the end
+  pill, the run ring, badge and edge paint, the legend, a canvas as tall as the graph that never magnifies it),
   the error carrier, the screen-reader text of labelled edges, and loading Mermaid only when a diagram mounts.
 - **Knowledge decides:** which renderer; which shape a node takes; the height step.
-- **App author decides:** the source or the nodes and edges, the label, the error title copy.
+- **App author decides:** the source or the nodes and edges, the label, the error title copy; for `steps`, the node `icon`, `tag`, port and
+  legend words, `statusLabels`, and `kindTones` when the app declared the approved purple, teal and coral tones (Core's HeroUI palette maps
+  them to accent, success and danger by default).
 
 ## Rules
 STATE-8, OVERFLOW-4. Stack: [diagrams](../../stack/fe.yaml) (Mermaid is the Grammar's dependency; an app imports
