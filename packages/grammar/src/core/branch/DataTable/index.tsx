@@ -226,13 +226,18 @@ const widthOf = <Row extends DataTableRow>(column: DataTableColumn<Row>, columns
     if (column.width !== undefined) return column.width
     // A numeric column fits its content whatever the other columns say (0.37.5): it never wraps and never shrinks below its figure.
     if (column.isNumeric === true) return "fit"
-    if (columns.some((other) => other.width !== undefined)) return undefined
-    return columns.find((other) => other.isNumeric !== true && other.isLabelHidden !== true)?.id === column.id ? "fill" : undefined
+    // SHORT COLUMNS NEVER WRAP (owner law, 0.37.9): every column that is not the fill column is `fit` (nowrap, as wide as its content); the one fill column takes the rest and truncates.
+    if (columns.some((other) => other.width === "fill")) return "fit"
+    const flexible = columns.find((other) => other.width === undefined && other.isNumeric !== true && other.isLabelHidden !== true)
+    return flexible?.id === column.id ? "fill" : "fit"
 }
+
+/** A fill column truncates (one line, an ellipsis) unless it says `truncate={false}`; any other column states its own `truncate`. */
+const truncates = (width: DataTableColumnWidth | undefined, column: { readonly truncate?: boolean | undefined }): boolean => column.truncate ?? width === "fill"
 
 const widthAttrs = (width: DataTableColumnWidth | undefined, column: { readonly minWidth?: number | undefined; readonly truncate?: boolean | undefined }) => ({
     ...(width === undefined ? {} : { "data-grammar-table-width": typeof width === "number" ? "fixed" : width }),
-    ...(column.truncate === true ? { "data-grammar-table-truncate": "true" } : {}),
+    ...(truncates(width, column) ? { "data-grammar-table-truncate": "true" } : {}),
     ...(typeof width === "number" || column.minWidth !== undefined
         ? { style: { ...(typeof width === "number" ? { "--starci-core-col-width": `${width}px` } : {}), ...(column.minWidth === undefined ? {} : { "--starci-core-col-min": `${column.minWidth}px` }) } as CSSProperties }
         : {}),
@@ -396,7 +401,7 @@ export const DataTable = <Row extends DataTableRow>({
     const hostColumnId = rowHeaderId
     const hasEditors = columns.some((column) => column.editor !== undefined)
     const renderBody = (row: Row, column: DataTableColumn<Row>): ReactNode => column.editor === undefined
-        ? column.truncate === true ? <TruncateBox>{renderCell(row, column.id)}</TruncateBox> : renderCell(row, column.id)
+        ? truncates(widthOf(column, shown), column) ? <TruncateBox>{renderCell(row, column.id)}</TruncateBox> : renderCell(row, column.id)
         : <EditorHost>{column.editor(row)}</EditorHost>
     const multiple = selectionMode === "multiple"
     // Selection is always held here so every row can expose its own `data-grammar-selected`.

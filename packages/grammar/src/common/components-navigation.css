@@ -1042,9 +1042,9 @@
         width: 100%;
     }
 
-    /* A fitting table lets its headings and cells wrap onto further lines, so its columns can shrink to their longest word. */
+    /* A fitting table never wraps a short column (0.37.9, owner law): status, chips, money and dates are nowrap at fit width; the fill column truncates. */
     .starci-core-data-table[data-grammar-table-fit="true"] :is(.starci-core-data-table-column, .starci-core-data-table-cell) {
-        white-space: normal;
+        white-space: nowrap;
         /* break-word, never anywhere: `anywhere` makes the min-content of a cell ONE character, so a short or numeric column collapsed to a letter per line (0.37.5). */
         overflow-wrap: break-word;
     }

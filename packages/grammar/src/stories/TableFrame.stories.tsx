@@ -410,6 +410,49 @@ export const ColumnsNeverCollapse: Story = {
   },
 };
 
+/**
+ * 0.37.9 (owner law): short columns NEVER wrap. A 4-column table with no widths given: the first text column fills and truncates, the status, date and money columns are `fit`
+ * (nowrap, as wide as their content), at a 1440 and a 1024 container ("Đã thanh toán" stays on one line).
+ */
+const FourColumns = ({ width }: { readonly width: number }) => (
+  <div style={{ width }} data-grammar-never-collapse={width}>
+    <G.DataTable<Order>
+      label={`Hóa đơn ${width}`}
+      columns={[
+        { id: 'customer', label: 'Khách', isRowHeader: true },
+        { id: 'status', label: 'Trạng thái' },
+        { id: 'date', label: 'Ngày' },
+        { id: 'total', label: 'Tổng', isNumeric: true },
+      ]}
+      rows={[...orders, { id: 'o3', code: 'DH-1003', customer: 'Công ty TNHH Một Thành Viên Hoa Tươi Đà Lạt Phương Nam Chi Nhánh Số Ba', product: '', total: '12.500.000 đ', status: 'Đã thanh toán', date: '04/11/2026', channel: '' }]}
+      renderCell={orderCell}
+      emptyContent="Trống"
+    />
+  </div>
+);
+
+export const FourColumnsNeverWrap: Story = {
+  render: () => (
+    <div style={{ display: 'grid', gap: 32 }}>
+      {[1440, 1024].map((width) => <FourColumns key={width} width={width} />)}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      for (const width of [1440, 1024]) {
+        const root = canvasElement.querySelector<HTMLElement>(`[data-grammar-never-collapse="${width}"]`);
+        if (root === null) throw new Error(`the ${width}px table renders`);
+        assertNoWrap(root);
+        const fill = root.querySelector<HTMLElement>('[data-grammar-table-width="fill"]');
+        if (fill === null) throw new Error('the first text column fills');
+        for (const status of Array.from(root.querySelectorAll<HTMLElement>('[data-grammar-table-width="fit"]'))) {
+          expect(status.scrollHeight).toBeLessThanOrEqual(status.clientHeight + 1);
+        }
+      }
+    });
+  },
+};
+
 const zoneProps = [
   { kind: 'search', label: 'Tìm hóa đơn', value: '', onChange: noop, placeholder: 'Tìm hóa đơn' },
   { kind: 'filter', label: 'Trạng thái', items: [{ id: 'all', label: 'Tất cả' }, { id: 'paid', label: 'Đã thanh toán' }], selectedKey: 'all', onSelect: noop, overflowLabel: 'Thêm', moreLabel: (count: number) => `${count} bộ lọc` },

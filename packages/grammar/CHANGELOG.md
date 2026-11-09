@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.9 - 2026-11-09 - short columns never wrap
+
+- Fixed (owner law): a table of four columns or fewer let its cells and headings wrap (`white-space: normal`), so "Đã thanh toán" broke over three lines. Every column that is not the one fill column is now `fit` (nowrap, as wide as its content), whether or not another column sets a width; the fill column truncates by default (one line, an ellipsis, the whole text in the tooltip) unless it says `truncate={false}`. Story `FourColumnsNeverWrap` (a 4-column table at a 1440 and a 1024 container).
+
 ## 0.37.8 - 2026-11-09 - a table looks like a list card
 
 - Changed (owner, replaces the 0.36.0 HeroUI grey frame): `DataTable` and `SurfaceCard kind="table"` have no grey frame, no grey side gutters and no grey header strip. A table is a white card like a list card: the column labels are 12px muted on the white, rows are divided by 1px full-width lines (also under the labels), the footer (summary and Pagination) sits under the last row behind a full-width zone-seam line, and the card zones are divided by the same seams. The standalone `DataTable` card takes the shadow on the pink well and a 1px border on a white surface; `surface="frame"` is the same face without radius, shadow or edge for a host that is the card; the phone list fallback and the column sizing API are unchanged. `DataTable fill` still grows the body and sticks the footer to the bottom. A group heading row keeps its secondary tint. Story `TableLooksLikeAList`; contexts (list-table, card, composition) and the `check:type` pin updated.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.9 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.9 (short table columns never wrap); no rule of this package changed.
+
 ## 0.37.8 - 2026-11-09
 
 - Changed (owner laws): `single-child-card` no longer refuses a card of list or key-value rows (`kind="list"`, `kind="table"`, `kind="select"`, `ListBox`, `DisclosureList`, `Timeline`, `Section kind="list"`, `DescriptionList`), alone or not; it refuses only a card with no zones around ONE `DataTable` or chart. Specs updated (list cards valid).
