@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.108 - 2026-11-09
+
+- Changed: the Grammar family 0.34.0 (with 0.33.0; `@starci/hfs` 6.5.6 names it): no icon on sm Buttons; the composer is two rows with a `send` slot; the page header sits left and the well content is capped at 80rem and centred (MEASURE-8); a `Sublabel` leaf; lint `tabs-in-well`; Link underlines on hover only, with the `Link.Icon` anchor and an inherited size (lint `link-look`); a frameless EmptyNotice; Select `appearance="compact"`; PaneDrawerOpener; Avatar falls back to a Sprouts image; ListRow description takes a ReactNode; the layout A/B, responsive and scrollbar laws of 0.33.0.
+
 ## 1.1.0-alpha.107 - 2026-11-09
 
 - Changed: the CLI requires @starci/hfs@6.5.5, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
