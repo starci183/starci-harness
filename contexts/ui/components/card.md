@@ -102,3 +102,26 @@ COLLECTION-1, COLLECTION-2, COLLECTION-4, DISCIPLINE-1 (`budgets.hairlinesPerCar
 
 ## Measure (0.37.5)
 `measure` is a prop of every card kind: `content` (default, the card fills its host), `narrow` (30rem, start-aligned: an order card in a chat bubble; `standard` 40rem is too wide for a bubble) and the centred form measures `form` / `formCompact` of a `body` card. On a white ground (`Pane surface`, `Drawer`, `Dialog`, `Popover`) a card is bordered with no shadow; on the pink well it has the shadow and no border (SURFACE-ELEVATION, automatic).
+
+## Owner laws of 0.37.5 (read before drawing a card)
+
+### A card has no description (CARD-NO-DESCRIPTION)
+A card head is the label, a count chip, one fact and one end action. `SurfaceCard` has no `description` or `subtitle` prop: the type refuses it. The words that explain the card's data (a legend, a source, a period) go in `note`, 12px muted under the card; the words that explain a row are that row's subtitle. A free-standing muted `Text` directly above a card is the same description drawn by hand and is an error (lint `starci-grammar/no-card-lead-description`).
+
+### Flat fields on the well (FLAT-FIELDS-ON-WELL)
+A group of fields or a single setting on the pink well is a title and its content: no card, no dividers. Use a card only when the content is a collection or a distinct group (CARDS-FOR-COLLECTIONS).
+
+### Cards only for collections or distinct groups (CARDS-FOR-COLLECTIONS)
+A card holds a collection (a list, table, graph, figures) or one distinct group with its own head. One field, one sentence or one control is never a card of its own.
+
+### Row titles are nouns (ROW-TITLES-NOUNS)
+A row title names the thing (Telegram, Đơn DH-1001, Chế độ trả lời), never a sentence or a verb phrase; what the row says about it is its subtitle or its value.
+
+### The choice list is `SurfaceCard kind="select"` (CHOICE-LIST-SELECT)
+Every choice list (a mode, a permission, a set of options) is `SurfaceCard kind="select"`: HeroUI Checkbox rows with a title and a subtitle, the whole row the hit target, `selectionMode="single"` unchecking the others with the same checkbox look. Never segmented pills, loose switches or a radio look for a choice list. A subtitle exists only under a title in the same row.
+
+### Lists on white are a bordered card (WHITE-LIST-BORDERED-CARD)
+On a white surface (aside, pane, drawer, dialog) a list or key-value rows are a card with a 1px border and no shadow; on the pink well the same card has a shadow and no border. Grammar switches the edge by itself from the ground (SURFACE-ELEVATION), a `SurfaceCard` on a white surface is allowed, and rows with no card are refused (lint `starci-grammar/rows-in-card`).
+
+### Header zones are divided by full-width dividers (HEADER-ZONES-DIVIDERS)
+The zones of a card head (search, filter, tabs, toolbar) are separated from each other and from the body by a 1px divider across the full card width (no inset), in a colour visible on white and on the grey table frame.

@@ -213,10 +213,10 @@ export const ChoiceFamily: Story = {
                 {
                     control: "Switch",
                     states: {
-                        Default: <G.Switch label="Dark mode" />,
-                        Checked: <G.Switch label="Dark mode" defaultSelected />,
-                        Disabled: <G.Switch label="Dark mode" isDisabled />,
-                        Loading: <G.Switch label="Dark mode" isLoading />,
+                        Default: <G.Switch description="Mô tả ngắn." label="Dark mode" />,
+                        Checked: <G.Switch description="Mô tả ngắn." label="Dark mode" defaultSelected />,
+                        Disabled: <G.Switch description="Mô tả ngắn." label="Dark mode" isDisabled />,
+                        Loading: <G.Switch description="Mô tả ngắn." label="Dark mode" isLoading />,
                     },
                 },
             ]}

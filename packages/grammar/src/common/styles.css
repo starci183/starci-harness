@@ -1348,21 +1348,6 @@
         white-space: nowrap;
     }
 
-    /* A card title's description: one muted small line under the label, 4 under it. */
-    .starci-core-surface-label[data-grammar-label-described="true"] {
-        flex-wrap: wrap;
-        row-gap: var(--grammar-identity-gap);
-    }
-
-    .starci-core-surface-description {
-        flex: 1 0 100%;
-        min-width: 0;
-        margin: 0;
-        color: var(--muted);
-        font-size: var(--grammar-text-sm);
-        line-height: var(--grammar-leading-sm);
-    }
-
     /*
      * A board's header zones: one white surface strip above the columns, on the well. Its zones are the card's; the divider falls
      * between neighbours only (nothing is below the last zone), except that a tab strip's divider is its line and stays.

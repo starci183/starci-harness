@@ -184,8 +184,10 @@ export type AccordionRowData = {
 export type CardHead = {
     readonly label?: string
     readonly ariaLabel?: string
-    /** One muted small line under the label, the title's own words (what the card holds, for whom). It stands 4 under the label. */
-    readonly description?: string
+    /*
+     * A card head has NO description or subtitle (owner, 0.37.5): the head is the label, its count chip, one fact and one end action. A line that explains the
+     * card's data (a legend, a source, a period) goes in `note`; a line that explains a row is that row's own subtitle.
+     */
     /**
      * How many items the card holds: a 12px count chip right after the label (0.36.0), grey. It stands on the left and coexists with `labelEnd` on the
      * right (the law: label and count chip at the start, one head Link at the end).

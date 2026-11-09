@@ -16,7 +16,15 @@ import type { NoChildren } from "../../tier.js"
 
 export type SwitchSize = "md" | "lg" | "control"
 
-export type SwitchProps = NoChildren & FieldControlProps & {
+/**
+ * A Switch with a visible label MUST carry its description (owner, 0.37.5): the row is label + description at the start and the control at the end.
+ * Only a bare control (`isLabelHidden`, an icon-only or theme switch) may go without.
+ */
+export type SwitchDescription =
+    | { readonly isLabelHidden?: false; readonly description: string }
+    | { readonly isLabelHidden: true; readonly description?: string }
+
+export type SwitchProps = NoChildren & Omit<FieldControlProps, "description" | "isLabelHidden"> & SwitchDescription & {
     readonly value?: string
     readonly isSelected?: boolean
     readonly defaultSelected?: boolean

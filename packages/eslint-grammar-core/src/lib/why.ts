@@ -37,6 +37,11 @@ export const why: Record<string, WhyEntry> = {
     en: "A `DescriptionList` or `DisclosureList` in `<file>` stands with no `Section` or `SurfaceCard` around it.",
     fix: "Rows are always a card: put them in a `Section kind=\"list\"` or a `SurfaceCard`. Grammar draws the shadow (no border) on the pink well and the 1px border (no shadow) on a white aside, pane or drawer by itself.",
   },
+  "no-card-lead-description": {
+    code: "FE_NO_CARD_LEAD_DESCRIPTION",
+    en: "A muted `Text` in `<file>` stands directly above a `SurfaceCard` as its description.",
+    fix: "A card has no description. Put the line in the row subtitle (`SurfaceCard kind=\"select\"` or `kind=\"list\"`), or, when it explains the card's data (a legend, a source, a period), in the card `note`.",
+  },
   "section-head-action": {
     code: "FE_SECTION_HEAD_ACTION",
     en: "The `Section` head `action` in `<file>` holds a `Button` or more than one command.",

@@ -157,6 +157,15 @@ rules:
         assert: |-
           It stands in a Section or a SurfaceCard, so it is a card: a shadow and no border on the pink well, a 1px border and no shadow on a white
           surface (aside, pane, drawer); Grammar draws that edge itself. A row primitive with no card around it is refused. ListBox is a navigation list and is not read.
+  - id: CARD-NO-DESCRIPTION
+    title: A card has no description
+    governs: The head of a SurfaceCard and the line above it.
+    cases:
+      - id: case-1
+        when: A card is drawn with a label
+        assert: |-
+          The head is the label, a count chip, one fact and one end action; SurfaceCard has no description or subtitle prop. A muted Text written directly above a
+          SurfaceCard as its description is refused: the line is a row subtitle (select or list) or, when it explains the card's data, the card note.
   - id: SECTION-HEAD-ACTION
     title: A section head is one row with at most one thing at its end
     governs: The head of a Grammar Section.

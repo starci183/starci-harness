@@ -2,10 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { Matrix, State, noop } from './fixtures.js';
+import { noop } from './fixtures.js';
 
 /**
- * Three card additions: a search zone that holds trailing filter selects (`filters`), a card head `description` under the title, and a
+ * Two card additions: a search zone that holds trailing filter selects (`filters`), and a
  * pressable table row (`onRowAction`) that opens a drawer.
  */
 const meta: Meta = { title: 'Surfaces/Card search filters, description and pressable rows' };
@@ -27,7 +27,6 @@ const SearchFiltersCard = ({ filters }: { readonly filters: number }) => {
     <G.SurfaceCard
       kind="list"
       label="Invoices"
-      description="Everything billed to this workspace."
       items={[{ id: 'i1', title: 'INV-001', description: 'Paid' }, { id: 'i2', title: 'INV-002', description: 'Due' }]}
       empty={<G.EmptyNotice message="Nothing matches." />}
       headers={[{ kind: 'search', label: 'Search invoices', value: query, onChange: setQuery, placeholder: 'Search invoices', clearLabel: 'Clear search', filters: fields }]}
@@ -52,29 +51,6 @@ export const SearchZoneWithFilters: Story = {
 /** On a phone-width card the selects wrap below the search. */
 export const SearchZoneWithFiltersPhone: Story = {
   render: () => <div data-story-search="phone" style={{ width: 358 }}><SearchFiltersCard filters={2} /></div>,
-};
-
-/** The head description: one muted small line under the label, with and without a fact. */
-export const CardHeadDescription: Story = {
-  render: () => (
-    <Matrix maxWidth={560}>
-      <State label="Label and description" direction="column">
-        <G.SurfaceCard label="Team" description="People who can edit this workspace." kind="list" items={[{ id: 'a', title: 'Alex Morgan' }]} empty={<G.EmptyNotice message="Nobody." />} />
-      </State>
-      <State label="With a fact and an end action" direction="column">
-        <G.SurfaceCard label="Team" fact="12" labelEnd={<G.Button intent="commit" size="sm">Invite</G.Button>} description="People who can edit this workspace." kind="list" items={[{ id: 'a', title: 'Alex Morgan' }]} empty={<G.EmptyNotice message="Nobody." />} />
-      </State>
-    </Matrix>
-  ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const description = canvasElement.querySelector<HTMLElement>('[data-grammar-surface-description="true"]');
-      if (description === null) throw new Error('the description renders');
-      const heading = canvasElement.querySelector<HTMLElement>('h3');
-      if (heading === null) throw new Error('the heading renders');
-      expect(description.getBoundingClientRect().top).toBeGreaterThan(heading.getBoundingClientRect().bottom - 1);
-    }, { timeout: 5000 });
-  },
 };
 
 const COLUMNS: readonly G.TableColumnData[] = [{ id: 'name', label: 'Invoice' }, { id: 'amount', label: 'Amount', numeric: true }, { id: 'act', label: 'Actions' }];

@@ -274,18 +274,18 @@ export const Switch: Story = {
   render: () => (
     <Matrix>
       <State label="Loading (isLoading)">
-        <G.Switch label="Dark mode" isLoading />
+        <G.Switch description="Mô tả ngắn." label="Dark mode" isLoading />
       </State>
       <State label="Default">
-        <G.Switch label="Dark mode" />
+        <G.Switch description="Mô tả ngắn." label="Dark mode" />
       </State>
       <State label="Selected">
-        <G.Switch label="Notifications" defaultSelected />
+        <G.Switch description="Mô tả ngắn." label="Notifications" defaultSelected />
       </State>
       <State label="Large (StarCi look), with thumb glyphs">
-        <G.Switch label="Appearance" size="lg" thumbIcon={SettingsGlyph} selectedThumbIcon={StarGlyph} />
-        <G.Switch label="Appearance" size="lg" defaultSelected thumbIcon={SettingsGlyph} selectedThumbIcon={StarGlyph} />
-        <G.Switch label="Appearance" size="lg" isLoading />
+        <G.Switch description="Mô tả ngắn." label="Appearance" size="lg" thumbIcon={SettingsGlyph} selectedThumbIcon={StarGlyph} />
+        <G.Switch description="Mô tả ngắn." label="Appearance" size="lg" defaultSelected thumbIcon={SettingsGlyph} selectedThumbIcon={StarGlyph} />
+        <G.Switch description="Mô tả ngắn." label="Appearance" size="lg" isLoading />
       </State>
       <State label="Control height (2.5rem, 40px), label hidden but accessible">
         <G.Switch label="Dark mode" isLabelHidden size="control" thumbIcon={SettingsGlyph} selectedThumbIcon={StarGlyph} />
@@ -293,11 +293,11 @@ export const Switch: Story = {
         <G.IconButton source={SettingsGlyph} label="Settings" />
       </State>
       <State label="Invalid">
-        <G.Switch label="Required toggle" isInvalid errorMessage="Turn this on to continue." />
+        <G.Switch description="Mô tả ngắn." label="Required toggle" isInvalid errorMessage="Turn this on to continue." />
       </State>
       <State label="Disabled">
-        <G.Switch label="Disabled" isDisabled />
-        <G.Switch label="Disabled on" isDisabled defaultSelected />
+        <G.Switch description="Mô tả ngắn." label="Disabled" isDisabled />
+        <G.Switch description="Mô tả ngắn." label="Disabled on" isDisabled defaultSelected />
       </State>
     </Matrix>
   ),
@@ -663,7 +663,7 @@ export const Fieldset: Story = {
       </State>
       <State label="Disabled" direction="column">
         <G.Fieldset legend="Billing" isDisabled>
-          <G.Switch label="Invoices by email" />
+          <G.Switch description="Mô tả ngắn." label="Invoices by email" />
         </G.Fieldset>
       </State>
     </Matrix>
@@ -730,7 +730,7 @@ export const FieldRhythm: Story = {
           <G.ChoiceChips label="Ask as" options={rhythmChips} defaultValue="friend" empty={null} />
           <G.CheckboxGroup label="Notify by" options={choiceOptions} description="Pick at least one." />
           <G.RadioGroup label="Delivery" options={choiceOptions} defaultValue="email" description="You can change it later." />
-          <G.Switch label="Dark mode" />
+          <G.Switch description="Mô tả ngắn." label="Dark mode" />
           <G.Slider label="Volume" defaultValue={40} />
           <G.Input id="rhythm-code" name="rhythm-code" label="Code" isInvalid errorMessage="Enter the six-digit code." />
           <G.Fieldset legend="Address" description="Where we send the invoice." actions={<G.Button size="sm" intent="alternative">Reset</G.Button>}>

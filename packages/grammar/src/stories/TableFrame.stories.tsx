@@ -223,7 +223,7 @@ const SwitchRow = ({ initial }: { readonly initial: boolean }) => {
   return (
     <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
       <G.Switch label="Dark mode" isLabelHidden size="control" isSelected={on} onSelectedChange={setOn} />
-      <G.Switch label="Theo sơ đồ" isSelected={on} onSelectedChange={setOn} />
+      <G.Switch description="Mô tả ngắn." label="Theo sơ đồ" isSelected={on} onSelectedChange={setOn} />
     </div>
   );
 };
