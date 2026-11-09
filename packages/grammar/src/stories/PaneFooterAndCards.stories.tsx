@@ -47,7 +47,7 @@ export const CardOnWhiteGround: Story = {
 
 const COLUMNS: readonly G.TableColumnData[] = [{ id: 'name', label: 'Mã đơn' }, { id: 'total', label: 'Tổng', numeric: true }];
 
-/** A table card with a search zone and a tabs zone over the grey table frame: a visible 1px seam under each zone. */
+/** A table card with a search zone and a tabs zone over the white table body (0.37.8): a visible 1px seam under each zone. */
 export const TableHeaderSeams: Story = {
   render: () => (
     <div style={{ width: 'min(100%, 720px)', padding: 24 }}>

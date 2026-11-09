@@ -249,6 +249,18 @@
         width: min(100%, 32rem);
     }
 
+    /* 0.37.8: on a phone (< 768) a side drawer is FULL width: no strip of the page stays visible beside it (the vendor sheet keeps a margin and a max width). */
+    @media (max-width: 47.99rem) {
+        .starci-core-drawer-content[data-placement="right"],
+        .starci-core-drawer-content[data-placement="left"],
+        .starci-core-drawer-content[data-grammar-drawer-width="wide"]:is([data-placement="right"], [data-placement="left"]) {
+            inset-inline: 0;
+            width: 100%;
+            max-width: none;
+            margin: 0;
+        }
+    }
+
     /* The vendor content is `inset: 0`; each placement releases the opposite edge so the sized panel sits on its own side. */
     .starci-core-drawer-content[data-placement="right"] {
         inset-inline-start: auto;

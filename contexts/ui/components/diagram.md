@@ -74,3 +74,5 @@ A `steps` card shows several states at once, and each state has one channel so t
 word on the card's top-start edge (success, running, danger, waiting, skipped), never a coloured ring; a skipped node is faded; a selected node has exactly one 2px primary outline and no other ring; the `wait` kind is dashed only in the
 design view, never while a run status is shown. An edge that was taken is a solid strong-text line, never the accent; an edge not taken is a dashed light-neutral line; a back edge stays dashed with its pill. Enforcer: held by review and the
 `FlowGraph (steps, run overlay)` story's play function.
+
+Islands (0.37.8): in `layout="steps"` the disconnected parts of a graph are islands; `islands="wrap"` (default) fills rows left to right by the canvas width with a 48px gap on both axes, `islands="stack"` is one column. Agent graphs keep the default.

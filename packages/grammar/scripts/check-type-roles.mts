@@ -37,7 +37,7 @@ const PINS: readonly { readonly selector: string; readonly holds: readonly strin
     { selector: ".starci-core-surface", holds: ["border: 0", "box-shadow: var(--surface-shadow)"] },
     { selector: ".starci-core-section-list", holds: ["border: 0", "border-radius: var(--starci-core-surface-radius)"] },
     { selector: '.starci-core-data-table[data-grammar-table-surface="card"]', holds: ["border-radius: var(--starci-core-table-radius)", "box-shadow: var(--surface-shadow)"] },
-    { selector: ".starci-core-data-table:not([data-grammar-table-surface=\"none\"])", holds: ["background: var(--surface-secondary)", "border: 0"] },
+    { selector: ".starci-core-data-table:not([data-grammar-table-surface=\"none\"])", holds: ["background: var(--surface)", "border: 0"] },
     { selector: ".starci-core-section-caption", holds: ["font-size: var(--grammar-text-xs)"] },
     { selector: ".starci-core-section-count[data-grammar-section-count]", holds: ["font-size: var(--grammar-text-xs)", "border-radius: var(--grammar-radius-pill)"] },
     { selector: ".starci-core-data-table-footer", holds: ["font-size: var(--grammar-text-xs)"] },

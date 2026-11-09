@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.37.8 - 2026-11-09 - a table looks like a list card
+
+- Changed (owner, replaces the 0.36.0 HeroUI grey frame): `DataTable` and `SurfaceCard kind="table"` have no grey frame, no grey side gutters and no grey header strip. A table is a white card like a list card: the column labels are 12px muted on the white, rows are divided by 1px full-width lines (also under the labels), the footer (summary and Pagination) sits under the last row behind a full-width zone-seam line, and the card zones are divided by the same seams. The standalone `DataTable` card takes the shadow on the pink well and a 1px border on a white surface; `surface="frame"` is the same face without radius, shadow or edge for a host that is the card; the phone list fallback and the column sizing API are unchanged. `DataTable fill` still grows the body and sticks the footer to the bottom. A group heading row keeps its secondary tint. Story `TableLooksLikeAList`; contexts (list-table, card, composition) and the `check:type` pin updated.
+- Added: `FlowGraph islands="stack" | "wrap"` (`layout="steps"`, default `wrap`): the disconnected islands fill rows left to right by the measured canvas width (a ResizeObserver, 1200 until measured), then start the next row, 48 apart on both axes; an island wider than the canvas stands alone in its row; a connected chain stays one island. `stack` keeps the 0.37.4 single column. Stories `IslandsWrap` (six islands and a chain of five: 835px tall against 2095 stacked) and `IslandsStackKept`.
+- Changed (owner): a `SurfaceCard kind="tile"` with a `wholeAction` may carry a `menu` (the card's ⋯): the type no longer makes them exclusive (`action` stays exclusive). The menu trigger stands above the whole-card link (z-index) as its own tab stop and never follows the card link. Story `Surfaces/Whole-card action with menu` (the agent card: Mở, Thêm agent cùng vai trò, Tạm dừng, Gỡ).
+- Fixed (owner): a section head count of 0 is drawn again, as a grey "0" chip right after the label (the 0.37.3 hide-0 is reverted: only PAGE tabs hide 0). Story `Surfaces/Section count zero`.
+- Fixed: a side Drawer is full width under 768 (inset-inline 0, width 100%, no max width or margin), so no strip of the page shows beside it at 390 (the workflow param drawer). Story `Overlays/Drawer on a phone`.
+
 ## 0.37.7 - 2026-11-09 - Label and Sublabel hierarchy
 
 - Added (owner, LABEL-SUBLABEL-HIERARCHY): `Section sublabel` and `SurfaceCard sublabel` name a group nested in a labelled section with a Sublabel (12 / 500 muted) set 8px above the card; they are mutually exclusive with `title` / `label` in the types. Sibling groups stand 8px apart, like their Sublabel to the card (24px only between top-level Label sections).

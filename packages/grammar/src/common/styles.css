@@ -1172,7 +1172,7 @@
     }
 
     /* SURFACE-ELEVATION: a surface on a white surface is bordered, with no shadow. A framed notice stands bordered in a white pane, drawer, dialog or popover. */
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) :is(.starci-core-surface, .starci-core-section-list),
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) :is(.starci-core-surface, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-section-list),
     :is(.starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) .starci-core-empty-notice:not([data-grammar-error-layout]) {
         border: 1px solid var(--separator);
     }
@@ -1280,18 +1280,7 @@
         justify-content: center;
     }
 
-    /* A table card (0.36.0) IS HeroUI's grey frame: no edge, the grey ground, its footer zone in the grey with no seam, the summary at the start and the pages at the end. */
-    .starci-core-surface[data-grammar-surface-kind="table"] {
-        border: 0;
-        background: var(--surface-secondary);
-    }
-
-    .starci-core-surface[data-grammar-surface-kind="table"] .starci-core-surface-main ~ .starci-core-surface-zone {
-        border-block-start: 0;
-        padding-inline: var(--grammar-inset-nested);
-        padding-block: var(--grammar-row-gap) var(--grammar-inline-gap);
-    }
-
+    /* A table card (0.37.8) is a list card: the same flush face (shadow on the well, a border on a white surface, set above), white, its zones divided by the zone seam, the summary at the start and the pages at the end. */
     .starci-core-surface[data-grammar-surface-kind="table"] .starci-core-surface-zone[data-grammar-zone="paging"] {
         display: block;
     }
@@ -2516,7 +2505,8 @@
 
     /* The action stands at the start of the foot; the overflow menu is pushed to its end. */
     .starci-core-tile-foot > .starci-core-tile-actions { flex: 1 1 auto; }
-    .starci-core-tile-menu { display: inline-flex; margin-inline-start: auto; }
+    /* 0.37.8: with a whole-card action the menu trigger stands above the stretched link (z-index 1) as its own tab stop and press target. */
+    .starci-core-tile-menu { position: relative; z-index: 2; display: inline-flex; margin-inline-start: auto; }
 
     .starci-core-accordion-heading {
         margin: 0 !important;

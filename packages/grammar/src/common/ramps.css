@@ -61,7 +61,7 @@
         /* The radius of every card surface (SurfaceCard of every kind, Board and its columns, the block surfaces): HeroUI's own Card radius, 24px at --radius 0.5rem.
            An app-overridable default: an app's brand CSS may set `--starci-core-surface-radius` on its root; Grammar reads only this token. */
         --starci-core-surface-radius: min(32px, var(--radius-3xl));
-        /* A table's grey frame (0.36.0): 16; its white body rounds one gutter (4) less. */
+        /* A table standing alone is a white card (0.37.8): the card radius 16; the narrow-mode list rounds 12. */
         --grammar-link-arrow-travel: 0.1875rem;
         --starci-core-table-radius: 1rem;
         --starci-core-table-body-radius: 0.75rem;
@@ -111,8 +111,6 @@
         --starci-core-narrow-measure: 66.5rem;
         --starci-core-field-min-height: var(--starci-core-control-min-size);
         --grammar-touch-size: 2.75rem;
-        /* The grey heading row of a table (12px text between two 0.5rem steps): where a filled table's white ground starts. */
-        --starci-core-table-head-size: 2.25rem;
         --starci-core-field-gap: var(--grammar-inline-gap);
         --starci-core-copy-gap: var(--grammar-identity-gap);
         --starci-core-row-gap-compact: var(--grammar-inline-gap);

@@ -22,7 +22,7 @@ import {
     type NodeTypes,
 } from "@xyflow/react"
 import { Link as RouterLink } from "react-aria-components"
-import { memo, useCallback, useMemo, useState, type CSSProperties, type KeyboardEvent } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { FIT_OPTIONS, LANES_FIT_OPTIONS, LANES_MAX_ZOOM, MAX_ZOOM, Refit, labelFor, labelledEdges, readableZoomFor } from "./canvas.js"
 import { COMMON_SPACING_PX } from "../../../common/spacing.js"
@@ -145,6 +145,11 @@ export type FlowGraphProps = NoChildren & {
     /** The canvas ground (0.37.5): `dots` draws a subtle dot grid (18px, the muted token) behind the graph, n8n-like. Default `none`. */
     readonly background?: "none" | "dots"
     /** Turns on dragging the blocks (0.37.5): the user rearranges them, edges re-route live, and a reset control joins the zoom group. */
+    /**
+     * How the disconnected parts of a `steps` graph (islands) are arranged (0.37.8): `wrap` (default) fills rows left to right by the canvas width and then starts the
+     * next row, 48 apart on both axes; `stack` puts them in one column.
+     */
+    readonly islands?: "stack" | "wrap"
     readonly isEditable?: boolean
     /** The saved arrangement (0.37.5): the centre of each node the user moved, overriding the auto layout for those ids (a loop card's children too). */
     readonly positions?: FlowGraphPositions
@@ -304,6 +309,7 @@ const FlowGraphInner = ({
     direction,
     headers,
     background = "none",
+    islands = "wrap",
     isEditable = false,
     positions: positionsProp,
     onPositionsChange,
@@ -325,7 +331,20 @@ const FlowGraphInner = ({
     // The default kind tones (event accent, action success, condition warning, ask danger, wait neutral, end success) apply unless the app declares one; an entry left undefined never wipes a default.
     const kindTones = useMemo(() => ({ ...STEP_KIND_TONES, ...Object.fromEntries(Object.entries(kindTonesProp ?? {}).filter(([, tone]) => tone !== undefined)) }), [kindTonesProp])
     const statusLabels = useMemo(() => ({ ...DEFAULT_STATUS_LABELS, ...statusLabelsProp }), [statusLabelsProp])
-    const steps = useMemo<StepsLayout | null>(() => layout === "steps" ? stepsLayout(nodes, edges, flowDirection ?? "TB") : null, [layout, nodes, edges, flowDirection])
+    // The width islands wrap to: the figure's own width, measured (0.37.8); unknown until it mounts.
+    const figureRef = useRef<HTMLElement>(null)
+    const [measured, setMeasured] = useState<number | undefined>(undefined)
+    useEffect(() => {
+        const figure = figureRef.current
+        if (figure === null || layout !== "steps" || islands !== "wrap" || typeof ResizeObserver === "undefined") return undefined
+        const observer = new ResizeObserver(([entry]) => {
+            const width = Math.round(entry?.contentRect.width ?? 0)
+            if (width > 0) setMeasured((current) => (current !== undefined && Math.abs(current - width) < 24 ? current : width))
+        })
+        observer.observe(figure)
+        return () => observer.disconnect()
+    }, [layout, islands])
+    const steps = useMemo<StepsLayout | null>(() => layout === "steps" ? stepsLayout(nodes, edges, flowDirection ?? "TB", { islands, ...(measured === undefined ? {} : { width: measured }) }) : null, [layout, nodes, edges, flowDirection, islands, measured])
     const isRun = useMemo(() => steps !== null && (nodes.some((node) => node.status !== undefined) || edges.some((edge) => edge.isTaken !== undefined)), [steps, nodes, edges])
     const nodeLabel = (node: FlowGraphNode) => steps === null ? labelFor(node) : stepAriaLabel(node, statusLabels)
     const dimmedIds = useMemo(() => new Set(nodes.filter((node) => node.isDimmed === true).map((node) => node.id)), [nodes])
@@ -532,6 +551,7 @@ const FlowGraphInner = ({
 
     return (
         <figure
+            ref={figureRef}
             aria-label={label}
             className="starci-core-flow-graph"
             data-grammar-flow-framed={isFramed ? "true" : "false"}

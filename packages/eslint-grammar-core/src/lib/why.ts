@@ -199,8 +199,8 @@ export const why: Record<string, WhyEntry> = {
   },
   "no-raised-surface-in-surface": {
     code: "FE_RAISED_SURFACE_IN_SURFACE",
-    en: "A `SurfaceCard` in `<file>` stands inside another SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover: a surface never stands inside a surface.",
-    fix: "Give the content to the host's own body, or use a kind of the outer card (`list`, `figures`) or its typed `headers` and `footers` zones for what needs its own faces.",
+    en: "A `SurfaceCard` in `<file>` stands inside another SurfaceCard: a card never stands inside a card (a Pane surface, Dialog, Drawer or Popover hosts cards, bordered, since 0.37.5).",
+    fix: "Give the content to the outer card's own body, or use a kind of the outer card (`list`, `figures`) or its typed `headers` and `footers` zones for what needs its own faces.",
   },
   "no-shell-bottom-tabs": {
     code: "FE_APP_SHELL_BOTTOM_TABS",
@@ -214,8 +214,8 @@ export const why: Record<string, WhyEntry> = {
   },
   "single-child-card": {
     code: "FE_SINGLE_CHILD_CARD",
-    en: "A `SurfaceCard` in `<file>` has no zones and holds one table, list or chart (a `DataTable`, `ListBox`, `ItemList`, `DisclosureList`, `Timeline`, `Section kind=\"list\"`, `BarChart`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`, or is `kind=\"table\"` or `kind=\"list\"`): a second frame around the one the Grammar already draws.",
-    fix: "Drop the card: put the title in a `Section` head (`title`) and one line under it in `Section caption`. A card groups two or more different parts, or carries zones (`headers`, `footers`) or head actions (`labelEnd`).",
+    en: "A `SurfaceCard` in `<file>` has no zones and holds one `DataTable` or chart (`BarChart`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`): a standalone table or chart is its own surface, so the card is a second frame. A card of list or key-value rows is valid.",
+    fix: "Drop the card: put the title in a `Section` head (`title`) and one line under it in `Section caption`. A card groups two or more different parts, or carries zones (`headers`, `footers`) or head actions (`labelEnd`); a list card (`kind=\"list\"`, `kind=\"table\"`) is always valid.",
   },
   "surface-card-kind": {
     code: "FE_SURFACE_CARD_KIND",

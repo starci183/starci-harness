@@ -129,17 +129,17 @@ export type DataTableProps<Row extends DataTableRow> = NoChildren & DataTableRow
     /** Container inline size in px below which `low` priority columns collapse into the row. Default 640. */
     readonly collapseBelow?: number
     /**
-     * `card` (default): the table standing alone IS the card (0.36.0, HeroUI v3's native primary look): a grey frame (`--surface-secondary`)
-     * at the card radius with the soft card shadow and no border, the heading row on the grey (12, muted), thin grey gutters either side of a
-     * WHITE rounded body whose rows are divided by hairlines, and the `footer` inside the grey below the body. There is no wrapper around it
+     * `card` (default): the table standing alone is a white card (0.37.8, replacing the 0.36.0 HeroUI grey frame): the card radius, the shadow on the pink well and a 1px
+     * border on a white surface, the column labels (12, muted) on the white, 1px full-width dividers under the labels and between rows, and the `footer` under the last row
+     * behind a full-width line. No grey frame, gutter or header strip. There is no wrapper around it
      * (the single-child-card law: never wrap a lone table in a SurfaceCard; title it with a Section head and put one `caption` under it).
-     * `frame`: the same grey frame and white body with no radius, shadow or edge of its own, for a host that is itself the card (a
+     * `frame`: the same white face with no radius, shadow or edge of its own, for a host that is itself the card (a
      * `SurfaceCard kind="table"`). `none`: plain hairline rows under a muted heading with no container paint, for a table inside a card
      * (full bleed) that must not be a surface inside a surface.
      */
     readonly surface?: "card" | "frame" | "none"
     /**
-     * The footer slot (0.36.0), drawn inside the grey frame under the white body: a `Pagination` with its `summary` ("1-4 of 8 results") puts the
+     * The footer slot (0.36.0), drawn on the white under the last row, behind a full-width line: a `Pagination` with its `summary` ("1-4 of 8 results") puts the
      * summary at the start and the pages at the end. Hidden while the table is loading or failed. Not drawn by `surface="none"`'s hairline rows' paint,
      * only laid out in a row below them.
      */
@@ -615,7 +615,6 @@ export const DataTable = <Row extends DataTableRow>({
             {footer === undefined || isLoading || failed ? null : <HeroTable.Footer className="starci-core-data-table-footer" data-grammar-table-footer="true">{footer}</HeroTable.Footer>}
         </HeroTable>
     )
-    // The table IS the card (HeroUI's primary look: the grey frame, the heading row on it, a white rounded body, the footer in the grey):
-    // no wrapper, no border. Nested in a surface the frame drops its shadow (CSS).
+    // The table is a white card (0.37.8: labels on the white, 1px row dividers, the footer behind a line): no wrapper. On a white surface it takes the border and drops the shadow (CSS).
     return table
 }

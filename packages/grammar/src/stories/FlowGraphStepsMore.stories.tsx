@@ -4,7 +4,7 @@ import * as G from '../common/index.js';
 import { Matrix, State } from './fixtures.js';
 
 /**
- * The FlowGraph `steps` additions of 0.37.4, the workflow editor's cards: chips under a title, outputs on every kind (an error port in the danger tone),
+ * The FlowGraph `steps` additions of 0.37.4 (and `islands="wrap"` of 0.37.8), the workflow editor's cards: chips under a title, outputs on every kind (an error port in the danger tone),
  * a loop card that holds its children, and a graph that is not one connected piece (islands stacked, fan-out, two entry nodes feeding one step).
  */
 const meta: Meta = {
@@ -183,7 +183,7 @@ export const Islands: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Three islands: two pairs and a lone node" direction="column">
-        <G.FlowGraph label="Islands" layout="steps" nodes={islandNodes} edges={islandEdges} />
+        <G.FlowGraph label="Islands" layout="steps" islands="stack" nodes={islandNodes} edges={islandEdges} />
       </State>
     </Matrix>
   ),
@@ -282,6 +282,66 @@ export const PortsArrowheadsAndTag: Story = {
       const head = graph.querySelector('marker polyline.arrowclosed');
       expect(head).not.toBeNull();
       expect(getComputedStyle(head as Element).strokeLinejoin).toBe('round');
+    });
+  },
+};
+
+/** Six unconnected workflows of 2-3 steps and one connected chain of five (the Sales agent): `islands="wrap"` (the default) fills rows by the canvas width instead of one tall column. */
+const wrapNodes: ReadonlyArray<G.FlowGraphNode> = [
+  ...[1, 2, 3, 4, 5, 6].flatMap((n): ReadonlyArray<G.FlowGraphNode> => [
+    { id: `w${n}a`, kind: 'event', label: `Quy trình ${n}`, tag: 'Kích hoạt' },
+    { id: `w${n}b`, kind: 'action', label: `Việc ${n}` },
+    ...(n % 2 === 0 ? [{ id: `w${n}c`, kind: 'end' as const, label: 'Xong' }] : []),
+  ]),
+  { id: 'c1', kind: 'event', label: 'Chuỗi chính', tag: 'Kích hoạt' },
+  { id: 'c2', kind: 'action', label: 'Bước 2' },
+  { id: 'c3', kind: 'action', label: 'Bước 3' },
+  { id: 'c4', kind: 'action', label: 'Bước 4' },
+  { id: 'c5', kind: 'end', label: 'Xong' },
+];
+const wrapEdges: ReadonlyArray<G.FlowGraphEdge> = [
+  ...[1, 2, 3, 4, 5, 6].flatMap((n): ReadonlyArray<G.FlowGraphEdge> => [
+    { id: `we${n}a`, source: `w${n}a`, target: `w${n}b` },
+    ...(n % 2 === 0 ? [{ id: `we${n}b`, source: `w${n}b`, target: `w${n}c` }] : []),
+  ]),
+  { id: 'ce1', source: 'c1', target: 'c2' },
+  { id: 'ce2', source: 'c2', target: 'c3' },
+  { id: 'ce3', source: 'c3', target: 'c4' },
+  { id: 'ce4', source: 'c4', target: 'c5' },
+];
+
+export const IslandsWrap: Story = {
+  render: () => (
+    <div style={{ width: 1100 }}>
+      <G.FlowGraph label="Islands wrap" layout="steps" nodes={wrapNodes} edges={wrapEdges} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const graph = graphOf(canvasElement);
+      const roots = ['w1a', 'w2a', 'w3a', 'w4a', 'w5a', 'w6a', 'c1'].map((id) => nodeBox(graph, id));
+      // Not one column: the island roots stand at several distinct x origins and several rows.
+      expect(new Set(roots.map((box) => Math.round(box.left))).size).toBeGreaterThanOrEqual(2);
+      expect(new Set(roots.map((box) => Math.round(box.top))).size).toBeLessThan(roots.length);
+      // The connected chain stays one island: its steps stand in one column, top to bottom.
+      const chain = ['c1', 'c2', 'c3', 'c4', 'c5'].map((id) => nodeBox(graph, id));
+      for (let i = 1; i < chain.length; i += 1) expect(chain[i]!.top).toBeGreaterThan(chain[i - 1]!.bottom);
+    });
+  },
+};
+
+/** `islands="stack"` keeps the 0.37.4 arrangement: one column, left edges aligned. */
+export const IslandsStackKept: Story = {
+  render: () => (
+    <div style={{ width: 1100 }}>
+      <G.FlowGraph label="Islands stack" layout="steps" islands="stack" nodes={wrapNodes} edges={wrapEdges} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const graph = graphOf(canvasElement);
+      const roots = ['w1a', 'w2a', 'w3a', 'w4a', 'w5a', 'w6a', 'c1'].map((id) => nodeBox(graph, id));
+      expect(new Set(roots.map((box) => Math.round(box.left))).size).toBe(1);
     });
   },
 };

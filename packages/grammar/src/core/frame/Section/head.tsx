@@ -18,7 +18,7 @@ export type SectionHeadProps = {
      */
     readonly description?: string
     /**
-     * How many items the section holds, drawn after the title as a count chip (12, muted, on the default tone), e.g. "Installations" then a chip
+     * How many items the section holds, drawn after the title as a count chip (12, muted, on the default tone), e.g. "Installations" then a chip (a 0 is drawn as a grey "0" chip, 0.37.8: only PAGE tabs hide 0)
      * "2". It is part of the heading's accessible name.
      */
     readonly count?: number
@@ -61,7 +61,7 @@ const hidden = (isLoading: boolean) => (isLoading ? { "aria-hidden": true } as c
  * and the banner belongs to the application bar). The row is inline, the title and its line are identity.
  */
 export const SectionHead = ({ title, count, isAttention, fact, meta, action, isLoading, headingId, level }: HeadDrawing) => {
-    const countPart = count === undefined || count === 0 || isLoading ? null : (
+    const countPart = count === undefined || isLoading ? null : (
         <span key="count" className="starci-core-section-count" data-grammar-section-count={count} {...(isAttention === true ? { "data-grammar-attention": "true" } : {})} data-contract="TONE-2">{count}</span>
     )
     const factPart = fact === undefined || isLoading ? null : (

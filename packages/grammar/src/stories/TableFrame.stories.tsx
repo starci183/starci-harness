@@ -6,8 +6,8 @@ import { noop } from './fixtures.js';
 import { reconcileEdges, reconcileLegend, reconcileNodes } from './FlowGraphSteps.data.js';
 
 /**
- * 0.36.0: the table is HeroUI v3's native look (the grey frame IS the card: the heading row on the grey, a white rounded body with hairline rows,
- * the footer in the grey) and a section head is one row (label and count chip at the start, at most one Link or IconButton at the end, the
+ * 0.37.8: a table looks like a list card (no grey frame, no grey gutters, no grey header strip: a white body, the column labels 12 muted on the white, 1px full-width
+ * row dividers, the footer behind a full-width line), and a section head is one row (label and count chip at the start, at most one Link or IconButton at the end, the
  * description as a caption below the body).
  */
 const meta: Meta = { title: 'Surfaces/Table frame and section head' };
@@ -407,5 +407,98 @@ export const ColumnsNeverCollapse: Story = {
         assertNoWrap(root);
       }
     });
+  },
+};
+
+const zoneProps = [
+  { kind: 'search', label: 'Tìm hóa đơn', value: '', onChange: noop, placeholder: 'Tìm hóa đơn' },
+  { kind: 'filter', label: 'Trạng thái', items: [{ id: 'all', label: 'Tất cả' }, { id: 'paid', label: 'Đã thanh toán' }], selectedKey: 'all', onSelect: noop, overflowLabel: 'Thêm', moreLabel: (count: number) => `${count} bộ lọc` },
+] as const;
+
+const TableOnTheWell = () => (
+  <div data-story-well="true" style={{ maxInlineSize: '48rem' }}>
+    <G.SurfaceCard
+      kind="table"
+      label="Hóa đơn"
+      headers={[...zoneProps]}
+      columns={[{ id: 'name', label: 'Khách hàng' }, { id: 'status', label: 'Trạng thái' }, { id: 'amount', label: 'Số tiền', align: 'end', numeric: true }]}
+      rows={invoices.slice(0, 4).map((row) => ({ id: row.id, cells: { name: row.name, status: row.status, amount: row.amount } }))}
+      empty="Chưa có hóa đơn."
+      footers={[{ kind: 'paging', page: 1, pageCount: 2, onPage: noop, labels: { nav: 'Các trang', previous: 'Trước', next: 'Sau', page: (n: number) => `Trang ${n}`, summary: '1–4 trong 8 kết quả' } }]}
+    />
+  </div>
+);
+
+/** One probe painted with a token, appended ONCE before a `waitFor` (a probe added inside the callback mutates the DOM the `waitFor` watches and loops forever). */
+const probeOf = (host: HTMLElement, property: 'background-color' | 'color', token: string) => {
+  const probe = document.createElement('span');
+  probe.style.setProperty(property, `var(${token})`);
+  host.append(probe);
+  return probe;
+};
+
+/**
+ * 0.37.8 TABLE LOOKS LIKE A LIST CARD: a table card holds one white body (no grey frame, gutter or header strip), its column labels are 12px muted on the white,
+ * its rows are divided by 1px lines, its zones by full-width seams; on the pink well it has the shadow and no border, and the same table in a white aside has a 1px
+ * border and no shadow.
+ */
+export const TableLooksLikeAList: Story = {
+  render: () => (
+    <G.PaneGrid label="Table looks" areas={['main aside']} columns={['fill', 'standard']}>
+      <G.Pane area="main" label="Giếng"><G.PaneSection><TableOnTheWell /></G.PaneSection></G.Pane>
+      <G.Pane area="aside" surface label="Bảng trên nền trắng">
+        <G.PaneSection>
+          <G.DataTable label="Hóa đơn" columns={columns} rows={invoices.slice(0, 3)} renderCell={cell} emptyContent="Chưa có hóa đơn." />
+        </G.PaneSection>
+      </G.Pane>
+    </G.PaneGrid>
+  ),
+  play: async ({ canvasElement }) => {
+    const surfaceProbe = probeOf(canvasElement, 'background-color', '--surface');
+    const mutedProbe = probeOf(canvasElement, 'color', '--muted');
+    await waitFor(() => {
+      const card = canvasElement.querySelector<HTMLElement>('[data-story-well="true"] [data-grammar-surface-kind="table"]');
+      if (card === null) throw new Error('the table card renders');
+      const surface = getComputedStyle(surfaceProbe).backgroundColor;
+      // No element of the card paints a grey: every painted ground is the card's own white.
+      for (const element of Array.from(card.querySelectorAll<HTMLElement>('*'))) {
+        if (element.closest('[data-component="Button"], [data-component="Input"], [data-component="SearchField"], [data-component="Select"], [role="tablist"], [role="tab"]') !== null) continue;
+        const ground = getComputedStyle(element).backgroundColor;
+        if (ground === 'rgba(0, 0, 0, 0)' || ground === 'transparent') continue;
+        if (element.closest('[role="tablist"]') !== null) continue;
+        expect(ground).toBe(surface);
+      }
+      expect(getComputedStyle(card).backgroundColor).toBe(surface);
+      // The column labels: 12px, muted, on the white; the rows: a 1px line under each but the last.
+      const muted = getComputedStyle(mutedProbe).color;
+      const labels = Array.from(card.querySelectorAll<HTMLElement>('.starci-core-data-table-column'));
+      expect(labels.length).toBe(3);
+      for (const label of labels) {
+        expect(getComputedStyle(label).fontSize).toBe('12px');
+        expect(getComputedStyle(label).color).toBe(muted);
+      }
+      const rows = Array.from(card.querySelectorAll<HTMLElement>('.starci-core-data-table-row'));
+      expect(rows.length).toBe(4);
+      for (const row of rows.slice(0, -1)) {
+        expect(Number.parseFloat(getComputedStyle(row.querySelector<HTMLElement>('.starci-core-data-table-cell')!).borderBottomWidth)).toBe(1);
+      }
+      // The zones' seams run the card's full width.
+      const box = card.getBoundingClientRect();
+      for (const zone of Array.from(card.querySelectorAll<HTMLElement>('.starci-core-surface-zone'))) {
+        expect(Math.abs(zone.getBoundingClientRect().width - box.width)).toBeLessThanOrEqual(1);
+        expect(Number.parseFloat(getComputedStyle(zone).borderBlockStartWidth) + Number.parseFloat(getComputedStyle(zone).borderBlockEndWidth)).toBeGreaterThan(0);
+      }
+      // The well: the shadow and no border.
+      expect(getComputedStyle(card).boxShadow).not.toBe('none');
+      expect(getComputedStyle(card).borderTopWidth).toBe('0px');
+      // The white aside: the same face has a 1px border and no shadow.
+      const aside = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="aside"] [data-component="DataTable"]');
+      if (aside === null) throw new Error('the aside table renders');
+      expect(getComputedStyle(aside).boxShadow).toBe('none');
+      expect(getComputedStyle(aside).borderTopWidth).toBe('1px');
+      expect(getComputedStyle(aside).backgroundColor).toBe(surface);
+    });
+    surfaceProbe.remove();
+    mutedProbe.remove();
   },
 };

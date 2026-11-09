@@ -223,15 +223,15 @@ rules:
           label, a search field, a button start icon, a link arrow, meta) is a plain outline icon at text size with no tile. A status (done, running, failed, waiting,
           skipped) is a tone-coloured outline icon with no tile: outline check-circle in success, x-circle in danger, a spinning arrow for running.
   - id: SINGLE-CHILD-CARD
-    title: A table, list or chart standing alone is the surface
-    governs: A SurfaceCard whose only content is a table, a list or a chart.
+    title: A lone DataTable or chart is the surface; a list card is always valid
+    governs: A SurfaceCard whose only content is a DataTable or a chart (a list or key-value card is valid, 0.37.8).
     cases:
       - id: case-1
-        when: A card has no zones (headers, footers, head actions) and holds one DataTable, list (ListBox, ItemList, DisclosureList, Timeline, Section kind="list") or chart (BarChart, ProportionBar, BubbleMap, FlowGraph, MermaidDiagram), or is kind="table" or kind="list"
+        when: A card has no zones (headers, footers, head actions) and holds one DataTable or chart (BarChart, ProportionBar, BubbleMap, FlowGraph, MermaidDiagram)
         assert: |-
-          The Grammar draws a standalone DataTable and every Section kind="list" as ONE frame (border, card radius), so the
-          card is a second frame. The title sits above as a Section head and one caption sits below (Section caption, muted sm).
-          A card groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions).
+          A standalone DataTable and chart is ONE frame (border, card radius), so the card is a second frame. The title sits above as a Section head and one caption
+          sits below (Section caption, muted sm). A card of list or key-value rows (SurfaceCard kind="list", "table", "select", ListBox, DisclosureList, Section kind="list",
+          DescriptionList) is valid alone or not (0.37.8). A card groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions).
   - id: NO-RAW-SCROLL
     title: NIVO never shows scrollbars
     governs: Scroll areas an app draws.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.37.8 - 2026-11-09
+
+- Changed (owner laws): `single-child-card` no longer refuses a card of list or key-value rows (`kind="list"`, `kind="table"`, `kind="select"`, `ListBox`, `DisclosureList`, `Timeline`, `Section kind="list"`, `DescriptionList`), alone or not; it refuses only a card with no zones around ONE `DataTable` or chart. Specs updated (list cards valid).
+- Changed: the `no-raised-surface-in-surface` messages (`why.ts`) now say what the rule has judged since 0.37.5: only a card inside a card is refused; a Pane surface, Dialog, Drawer or Popover hosts cards (the spec has the Dialog case valid). An installed copy older than 0.37.5 still refuses a card in a Dialog: the lane must install 0.37.5 or later.
+
 ## 0.37.7 - 2026-11-09
 - Changed: the peer `@starci/hfs` is ~6.7.0 and offset-pop peers core 0.37.7.
 

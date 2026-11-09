@@ -210,8 +210,12 @@ export const stepsBackRoute = (
 /** The room a loop card keeps between its box and its children, and the height of its header line (label and chips). */
 export const STEPS_CONTAINER_PAD = 16
 export const STEPS_CONTAINER_HEAD = 40
-/** The gap between two islands (disconnected parts of a graph), stacked vertically. */
+/** The gap between two islands (disconnected parts of a graph), on both axes. */
 export const STEPS_ISLAND_GAP = 48
+/** How islands are arranged (0.37.8): `wrap` fills rows left to right by the available width, then the next row; `stack` is one column. */
+export type StepsIslands = "stack" | "wrap"
+/** The width a `wrap` arrangement fills when the canvas has not been measured yet. */
+export const STEPS_DEFAULT_WIDTH = 1200
 
 type Box = { readonly width: number, readonly height: number }
 
@@ -436,7 +440,7 @@ const componentsOf = (nodes: ReadonlyArray<FlowGraphNode>, edges: ReadonlyArray<
  * The `steps` layout of a graph (see the module comment). 0.37.4: a node with `container` is a loop card, laid out as a box that holds its children's own
  * layout; the graph may be disconnected (each island is laid out on its own and the islands stack down the page); several entry nodes may feed one step.
  */
-export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: ReadonlyArray<FlowGraphEdge>, direction: FlowGraphDirection, shared?: { readonly cardWidth: number }): StepsLayout => {
+export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: ReadonlyArray<FlowGraphEdge>, direction: FlowGraphDirection, shared?: { readonly cardWidth?: number, readonly islands?: StepsIslands, readonly width?: number }): StepsLayout => {
     const byId = new Map(nodes.map((node) => [node.id, node]))
     const ports = new Map(nodes.map((node) => [node.id, portsOf(node, edges)]))
     const cardWidth = shared?.cardWidth ?? stepsCardWidth(ports)
@@ -457,7 +461,7 @@ export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
         const below = owned.get(node.id)
         if (below === undefined) continue
         for (const id of below) owner.set(id, node.id)
-        const layout = stepsLayout(nodes.filter((child) => below.has(child.id)), edges.filter((edge) => below.has(edge.source) && below.has(edge.target)), direction, { cardWidth })
+        const layout = stepsLayout(nodes.filter((child) => below.has(child.id)), edges.filter((edge) => below.has(edge.source) && below.has(edge.target)), direction, { cardWidth, islands: "stack" })
         const contentWidth = layout.width - 2 * STEPS_MARGIN
         const contentHeight = layout.height - 2 * STEPS_MARGIN
         subs.set(node.id, { layout, box: { width: Math.max(cardWidth, contentWidth + 2 * STEPS_CONTAINER_PAD, containerHeaderWidth(node)), height: STEPS_CONTAINER_HEAD + contentHeight + 2 * STEPS_CONTAINER_PAD } })
@@ -475,24 +479,35 @@ export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
         const ids = new Set(part.map((node) => node.id))
         return coreLayout(part, outerEdges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)), direction, cardWidth, boxes, ports)
     })
-    // Islands stack down the page, left edges aligned, the first at the origin of its own layout.
+    // Islands (0.37.8): `wrap` places them left to right in input order and starts a new row when the next one would pass the available width (an island wider than the
+    // width stands alone in its row); `stack` is one column. Rows and columns are 48 apart; every island is placed by the top-left corner of its own layout.
     const left = cores.length === 0 ? 0 : Math.min(...cores.map((core) => core.origin.x))
     const topEdge = cores[0]?.origin.y ?? 0
+    const available = Math.max(0, (shared?.width ?? STEPS_DEFAULT_WIDTH) - 2 * STEPS_MARGIN)
+    const wrap = (shared?.islands ?? "wrap") === "wrap"
     const positions = new Map<string, FlowGraphPoint>()
     const layers = new Map<string, number>()
     const back = new Map<string, StepsBackRoute>()
-    let cursor = topEdge
+    let cursorX = 0
+    let cursorY = 0
+    let rowHeight = 0
     let contentWidth = 0
     for (const core of cores) {
-        const dx = left - core.origin.x
-        const dy = cursor - core.origin.y
+        if (cursorX > 0 && (!wrap || cursorX + core.contentWidth > available)) {
+            cursorX = 0
+            cursorY += rowHeight + STEPS_ISLAND_GAP
+            rowHeight = 0
+        }
+        const dx = left + cursorX - core.origin.x
+        const dy = topEdge + cursorY - core.origin.y
         for (const [id, point] of core.positions) positions.set(id, { x: point.x + dx, y: point.y + dy })
         for (const [id, layer] of core.layers) layers.set(id, layer)
         for (const [id, route] of core.back) back.set(id, { ...route, channel: route.channel + (direction === "TB" ? dy : dx) })
-        contentWidth = Math.max(contentWidth, core.contentWidth)
-        cursor += core.contentHeight + STEPS_ISLAND_GAP
+        cursorX += core.contentWidth + STEPS_ISLAND_GAP
+        contentWidth = Math.max(contentWidth, cursorX - STEPS_ISLAND_GAP)
+        rowHeight = Math.max(rowHeight, core.contentHeight)
     }
-    const contentHeight = cores.length === 0 ? 0 : cursor - STEPS_ISLAND_GAP - topEdge
+    const contentHeight = cores.length === 0 ? 0 : cursorY + rowHeight
 
     // Put every container's children in its box: the child layout's content corner goes to the box's content corner.
     const allBoxes = new Map(boxes)

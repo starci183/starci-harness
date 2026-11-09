@@ -5,7 +5,7 @@ import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
 /**
- * 0.37.5: the seam between header zones reads on the white card and on the grey table frame; `SurfaceCard kind="list" layout="keyValue"` draws muted keys and normal values
+ * 0.37.5: the seam between header zones reads on the white card, including a table card (0.37.8: no grey frame); `SurfaceCard kind="list" layout="keyValue"` draws muted keys and normal values
  * (values wrap under the key on a narrow card); `Pane head` is a sticky one-row head with a close button.
  */
 const meta: Meta = { title: 'Surfaces/Zone seam, key-value rows and pane head', parameters: { layout: 'fullscreen' } };
@@ -35,7 +35,7 @@ const delta = (seam: string, ground: string) => {
 export const ZoneSeamContrast: Story = {
   render: () => (
     <div style={{ width: 'min(100%, 720px)', padding: 24, display: 'grid', gap: 24 }}>
-      <G.SurfaceCard kind="table" label="Trên khung xám" columns={COLUMNS} rows={[{ id: 'r1', cells: { name: 'DH-1001', total: '120.000' } }]} empty={<G.EmptyNotice message="Trống" />} headers={[...zones]} />
+      <G.SurfaceCard kind="table" label="Thẻ bảng" columns={COLUMNS} rows={[{ id: 'r1', cells: { name: 'DH-1001', total: '120.000' } }]} empty={<G.EmptyNotice message="Trống" />} headers={[...zones]} />
       <G.SurfaceCard kind="list" label="Trên thẻ trắng" items={[{ id: 'a', title: 'DH-1001' }]} empty={<G.EmptyNotice message="Trống" />} headers={[...zones]} />
     </div>
   ),

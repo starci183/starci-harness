@@ -940,24 +940,23 @@
     .starci-core-data-table[data-grammar-table-surface="none"] .table__row .table__cell { border-block-end: 1px solid var(--separator); background: transparent; }
 
     /*
-     * THE TABLE IS HEROUI v3's NATIVE LOOK (owner, 2026-11-09; 0.36.0). A table standing alone IS the card: the vendor's primary root, a grey frame
-     * (`--surface-secondary`) at the table radius with the soft card shadow and NO border, the heading row (12, muted) on the grey, thin grey
-     * gutters either side of a WHITE rounded body whose rows are divided by hairlines, and the footer (the summary at the start, the Pagination at the
-     * end) inside the grey below the body. There is no wrapper card (the 0.32 white card with a separator edge is retired). Lint `single-child-card`
-     * refuses a SurfaceCard around a lone table. `surface="frame"` is the same frame without radius, shadow or edge, for a host that is the card.
+     * THE TABLE LOOKS LIKE A LIST CARD (owner, 2026-11-09; 0.37.8; it replaces the 0.36.0 HeroUI grey frame). No grey frame, no grey side gutters, no grey header strip:
+     * a WHITE body, the column labels (12, muted) on the white, and a 1px full-width divider under the labels and between rows. A table standing alone is the white
+     * card (`surface="card"`: the card radius, the shadow on the pink well and a 1px border on a white surface, like any card); `surface="frame"` is the same face
+     * with no radius, shadow or edge, for a host that is the card (a `SurfaceCard kind="table"`, whose zones are divided by the zone seam). The footer (the summary
+     * at the start, the Pagination at the end) is divided from the rows by the same seam, full width.
      */
     .starci-core-data-table:not([data-grammar-table-surface="none"]) {
-        --starci-core-table-gutter: 0.25rem;
-        background: var(--surface-secondary);
+        background: var(--surface);
         color: var(--surface-foreground);
-        padding-inline: var(--starci-core-table-gutter);
-        padding-block-end: var(--starci-core-table-gutter);
+        padding: 0;
         border: 0;
     }
 
     .starci-core-data-table[data-grammar-table-surface="card"] {
         border-radius: var(--starci-core-table-radius);
         box-shadow: var(--surface-shadow);
+        overflow: hidden;
     }
 
     .starci-core-data-table[data-grammar-table-surface="frame"] {
@@ -965,21 +964,25 @@
         box-shadow: none;
     }
 
-    /* The white body rounds inside the gutters: the frame radius less the gutter. */
-    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__body tr:first-child td:first-child { border-start-start-radius: var(--starci-core-table-body-radius); }
-    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__body tr:first-child td:last-child { border-start-end-radius: var(--starci-core-table-body-radius); }
-    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__body tr:last-child td:first-child { border-end-start-radius: var(--starci-core-table-body-radius); }
-    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__body tr:last-child td:last-child { border-end-end-radius: var(--starci-core-table-body-radius); }
+    /* The vendor primary table paints its own header strip and body ground: the labels stand on the white, divided from the first row by one full-width line. */
+    .starci-core-data-table:not([data-grammar-table-surface="none"]) :is(.table__header, .table__column, .table__body) {
+        background: transparent;
+        border-radius: 0;
+    }
+
+    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__column::after { display: none; }
+    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__column { border-block-end: 1px solid var(--separator); }
     .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__body tr:last-child td { border-block-end: 0; }
 
-    /* Rows are divided by hairlines on the white body. */
-    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__row .table__cell { border-block-end: 1px solid var(--separator); }
+    /* Rows are divided by 1px lines across the full width of the card. */
+    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__row .table__cell { border-block-end: 1px solid var(--separator); border-radius: 0; background: transparent; }
 
-    /* The footer stands in the grey under the white body: its Pagination fills it, the summary at the start and the pages at the end. */
+    /* The footer stands on the white under the last row, divided from it by the zone seam. */
     .starci-core-data-table-footer {
         min-width: 0;
-        padding-inline: var(--grammar-inset-nested);
-        padding-block: var(--grammar-row-gap) var(--grammar-inline-gap);
+        padding-inline: var(--grammar-card-padding-inline);
+        padding-block: var(--grammar-row-gap);
+        border-block-start: 1px solid var(--starci-core-zone-seam, var(--separator));
         color: var(--muted);
         font-size: var(--grammar-text-xs);
         line-height: var(--grammar-leading-xs);
@@ -1007,8 +1010,7 @@
     }
 
     /*
-     * `fill` (0.37.3): the table is a flex column as tall as its host; the scroll region grows, its white ground runs under the rows down to the frame's foot (the grey
-     * heading row keeps its own height), and the footer stays at the bottom.
+     * `fill` (0.37.3): the table is a flex column as tall as its host; the scroll region grows (the white card body runs under the rows down to the foot) and the footer stays at the bottom.
      */
     .starci-core-data-table[data-grammar-table-fill="true"] {
         display: flex;
@@ -1020,12 +1022,6 @@
     .starci-core-data-table[data-grammar-table-fill="true"] .starci-core-data-table-scroll {
         flex: 1 1 auto;
         min-block-size: 0;
-    }
-
-    .starci-core-data-table[data-grammar-table-fill="true"]:not([data-grammar-table-surface="none"]) .starci-core-data-table-scroll {
-        background: linear-gradient(var(--surface-secondary) 0 var(--starci-core-table-head-size), var(--surface) var(--starci-core-table-head-size) 100%);
-        border-end-start-radius: var(--starci-core-table-body-radius);
-        border-end-end-radius: var(--starci-core-table-body-radius);
     }
 
     .starci-core-data-table[data-grammar-table-fill="true"] .starci-core-data-table-footer {
@@ -1066,7 +1062,7 @@
     }
 
     /*
-     * The type of a table (the final scale): the header 12 / 500 muted on the grey (0.36.0), a cell 14 / 400, the row-header cell (the row primary)
+     * The type of a table (the final scale): the header 12 / 500 muted on the white (0.37.8), a cell 14 / 400, the row-header cell (the row primary)
      * 14 / 500. A Text in a cell takes the same steps (`Text isStrong` 14 / 500, `Text size="sm" tone="muted"` 13).
      */
     .starci-core-data-table .starci-core-data-table-column {
@@ -1092,7 +1088,7 @@
         font-variant-numeric: tabular-nums;
     }
 
-    /* A group heading row: one cell across the table, the secondary surface, its label at the start and its fact at the end. */
+    /* A group heading row: one cell across the table, the secondary surface (the only tinted row of the table), its label at the start and its fact at the end. */
     .starci-core-data-table[data-grammar-table-surface] .table__row.starci-core-data-table-group-row .table__cell.starci-core-data-table-group-cell {
         background: var(--surface-secondary);
         color: var(--foreground);

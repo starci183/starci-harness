@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.8 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.8 (the table looks like a list card; wholeAction cards take a menu; FlowGraph islands wrap); no rule of this package changed. Core peers 0.37.8.
+
 ## 0.37.7 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.37.7; the peer `@starci/hfs` is ~6.7.0 and offset-pop peers core 0.37.7.

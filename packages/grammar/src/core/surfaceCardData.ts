@@ -451,6 +451,7 @@ export type TileData = {
     /** Short factual lines, separate from the name and the operational badges: one muted line each (a string is one line). */
     readonly facts?: string | readonly string[]
 } & TileIdentity & TileBadges & TileFigure & (
-    | { readonly wholeAction: WholeCardAction; readonly action?: undefined; readonly menu?: undefined }
+    /** 0.37.8: a whole-card action may carry the `menu` (the card's ⋯): the trigger stands above the whole-card link and never follows it; `action` stays exclusive. */
+    | { readonly wholeAction: WholeCardAction; readonly action?: undefined; readonly menu?: ItemMenu }
     | { readonly action?: ItemAction; readonly menu?: ItemMenu; readonly wholeAction?: undefined }
 )
