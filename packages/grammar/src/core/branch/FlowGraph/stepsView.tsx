@@ -61,6 +61,14 @@ export const DEFAULT_STATUS_LABELS: Readonly<Record<FlowGraphRunStatus, string>>
     skipped: "Skipped",
 }
 
+/**
+ * The arrowhead of a steps edge (0.37.0): an open chevron, about 6px, drawn with a 1.5px stroke in screen units (the marker is in user space so
+ * the edge's own width does not scale it). A taken edge's head is the strong text tone; an untaken one's is the light neutral of its line.
+ */
+export const STEPS_ARROW_BOX = 20
+export const STEPS_ARROW_STROKE = 1.5
+export const STEPS_UNTAKEN_TONE = "color-mix(in oklab, var(--muted) 55%, transparent)"
+
 export const STEP_BUILT_IN_TONES: readonly string[] = ["neutral", "accent", "success", "warning", "danger", "muted"]
 
 /** An icon is a node when React can render it as one; anything else (a function or a forwardRef / memo component) is an icon source. */
@@ -83,6 +91,8 @@ export type StepNodeData = {
     readonly ports: ReadonlyArray<FlowGraphPort>
     readonly isSelected: boolean
     readonly direction: FlowGraphDirection
+    /** The word beside the status icon on the card ("Xong", "Đang chạy"). */
+    readonly statusLabel?: string
     readonly [key: string]: unknown
 }
 
@@ -113,7 +123,7 @@ const StepHandles = ({ direction, hasOut }: { readonly direction: FlowGraphDirec
  * An `end` node is a pill with a check.
  */
 export const FlowGraphStepView = memo(({ data }: NodeProps<Node<StepNodeData>>) => {
-    const { graphNode, kind, tone, ports, isSelected, direction } = data
+    const { graphNode, kind, tone, ports, isSelected, direction, statusLabel } = data
     const custom = useCustomTone(tone, STEP_BUILT_IN_TONES)
     const isEnd = kind === "end"
     const body = isEnd ? (
@@ -148,6 +158,7 @@ export const FlowGraphStepView = memo(({ data }: NodeProps<Node<StepNodeData>>) 
             {graphNode.status === undefined ? null : (
                 <span className="starci-core-flow-graph-step-status" data-status={graphNode.status} data-grammar-flow-status={graphNode.status} aria-hidden="true">
                     <Icon source={STATUS_GLYPHS[graphNode.status]} usage="chip" />
+                    {statusLabel === undefined || statusLabel === "" ? null : <span className="starci-core-flow-graph-step-status-word">{statusLabel}</span>}
                 </span>
             )}
             {graphNode.href === undefined ? body : (
@@ -186,7 +197,7 @@ export const FlowGraphStepEdge = memo(({ sourceX, sourceY, targetX, targetY, sou
 })
 FlowGraphStepEdge.displayName = "FlowGraphStepEdge"
 
-const BACK_RADIUS = 8
+const BACK_RADIUS = 12
 /** Across (`LR`) a channel runs down the layer gap, so its label sits beside the line instead of over it, where it would cover the cards. */
 const LR_LABEL_GAP = 6
 

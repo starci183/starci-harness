@@ -41,7 +41,7 @@ import {
 import { useSurfaceHost } from "../../surfaceContext.js"
 import { isBackEdge, portOfEdge, stepKindOf, stepsLayout, type StepsLayout } from "./steps.js"
 export { FlowGraphLegend } from "./stepsView.js"
-import { DEFAULT_STATUS_LABELS, FlowGraphBackEdge, FlowGraphLegend, FlowGraphStepEdge, FlowGraphStepView, STEP_KIND_TONES, stepAriaLabel, type StepNodeData } from "./stepsView.js"
+import { DEFAULT_STATUS_LABELS, STEPS_ARROW_BOX, STEPS_ARROW_STROKE, STEPS_UNTAKEN_TONE, FlowGraphBackEdge, FlowGraphLegend, FlowGraphStepEdge, FlowGraphStepView, STEP_KIND_TONES, stepAriaLabel, type StepNodeData } from "./stepsView.js"
 import type {
     FlowGraphDirection,
     FlowGraphEdge,
@@ -331,6 +331,7 @@ const FlowGraphInner = ({
                 ports: steps.ports.get(graphNode.id) ?? [],
                 isSelected: graphNode.id === currentId,
                 direction: flowDirection ?? "TB",
+                ...(graphNode.status === undefined ? {} : { statusLabel: statusLabels[graphNode.status] }),
             },
             selected: graphNode.id === currentId,
             ariaLabel: stepAriaLabel(graphNode, statusLabels),
@@ -403,7 +404,7 @@ const FlowGraphInner = ({
             sourceHandle: route !== undefined ? `back-out-${route.sourceSide}` : port === undefined ? "out" : `port:${port.id}`,
             targetHandle: route !== undefined ? `back-in-${route.targetSide}` : "in",
             ...(route === undefined ? {} : { data: { route, direction: flowDirection ?? "TB" } }),
-            markerEnd: { type: MarkerType.ArrowClosed, width: COMMON_SPACING_PX[4], height: COMMON_SPACING_PX[4], color: isRun && edge.isTaken === true ? "var(--accent)" : "var(--muted)" },
+            markerEnd: { type: MarkerType.Arrow, markerUnits: "userSpaceOnUse", width: STEPS_ARROW_BOX, height: STEPS_ARROW_BOX, strokeWidth: STEPS_ARROW_STROKE, color: isRun && edge.isTaken === true ? "var(--foreground)" : isRun ? STEPS_UNTAKEN_TONE : "var(--muted)" },
             className: classes,
             ...label,
             focusable: false,

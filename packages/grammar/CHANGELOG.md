@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.37.0 - 2026-11-09 - state priority and natural edges in FlowGraph, one head row in layout B
+
+- Changed (default): FLOWGRAPH STATE PRIORITY (owner; `layout="steps"` run overlay). The card border is always the neutral card border, whatever the run status: the coloured status ring is gone. The run status is shown only by the
+  small outline status icon and its word on the card's top-start edge (check-circle success, spinner running, x-circle danger, clock waiting, minus-circle skipped; the word comes from `statusLabels`). A skipped node is faded. A selected
+  node has exactly one 2px primary outline and no other ring. The wait kind keeps its dashed border only in the design view (no run status shown). A taken edge is a solid strong-text line (was the accent), an untaken edge a dashed
+  light-neutral line, a back edge stays dashed with its pill.
+- Changed (default): NATURAL EDGES. Steps edges are smooth curves of 1.5px; the arrowhead is a thin open chevron of about 6px with a 1.5px stroke (was a filled 16px triangle); a back edge turns with 12px corners (was 8). Edges meet the middle of the
+  card's top or bottom edge and a condition's edges leave its port dot.
+- Changed (default): ONE HEAD ROW IN LAYOUT B. In a workspace page (`layout="workspace"`) the panes of the top grid share one head row: every pane head is the same height (`--grammar-pane-head-size`), white, with no divider of its own, and the grid
+  draws ONE continuous divider under the row across all panes, crossing the vertical pane dividers. A pane with no head keeps the row (white above the line, its content starts below it). A pane head is ALWAYS white: the aside head no longer draws
+  the canvas (pink) colour inside the white aside. A nested PaneGrid keeps its own heads.
+- Added: stories `Compositions/App shell workspace` (the top bar, the sidebar and a three-pane workspace page in a fixed shell) and a run overlay with a selected done card and a wait card.
+- Released with the Grammar family at 0.37.0 (`eslint-grammar-core`, `eslint-grammar-offset-pop`: no rule changed).
+
 ## 0.36.2 - 2026-11-09 - a Switch has no border
 
 - Fixed (regression of 0.36.0): the sticky page band no longer leaves a ~64px strip above it. Its offset was the top bar's height (`top: --starci-core-band-height`) even in a fixed shell, where the bar is outside the scroller, so the band was pushed
