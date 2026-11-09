@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.113 - 2026-11-09
 
+- Changed: the CLI requires @starci/hfs@6.6.1, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed: the Grammar family 0.37.0 (`@starci/hfs` 6.6.1 names it): FlowGraph state priority (neutral borders, the status as an outline icon and a word, one selection outline, a taken edge solid in the foreground and an untaken one dashed) with thin chevron arrowheads; the pane heads of layout B in one shared white row with one divider across the grid (no pink aside head); an App shell workspace story; the state-priority law (diagram.md) and the head-row rule (pane-grid.md).
 
 ## 1.1.0-alpha.112 - 2026-11-09
