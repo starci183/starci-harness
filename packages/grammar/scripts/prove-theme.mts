@@ -24,6 +24,8 @@ interface Probe {
     readonly token: string
     /** The token a family paints with instead, where its look differs by design. */
     readonly familyToken?: Readonly<Partial<Record<"core" | "offset-pop", string>>>
+    /** A fixed computed value the part must hold whatever the theme, where a law fixes it (no token is painted). */
+    readonly fixed?: string
 }
 
 interface ReactDomServer {
@@ -70,7 +72,8 @@ const PROBES: readonly Probe[] = [
     { name: "heading", selector: '[data-component="Heading"]', property: "color", token: "--foreground" },
     { name: "status dot", selector: ".starci-core-status-dot-mark", property: "background-color", token: "--success" },
     { name: "field fill", selector: "[data-slot='input']", property: "background-color", token: "--field-background" },
-    { name: "scrollbar", selector: ".grammar-common-root", property: "scrollbar-color", token: "--scrollbar" },
+    // OVERFLOW-6: no scroller under the family root shows a bar, in every theme, so the proof holds the hidden bar, not a colour.
+    { name: "scrollbar hidden", selector: ".grammar-common-root", property: "scrollbar-width", token: "--scrollbar", fixed: "none" },
 ]
 
 const flag = (name: string): string | undefined => {
@@ -139,7 +142,7 @@ const measure = (probes: readonly Probe[]): readonly Row[] => {
         const el = document.querySelector(probe.selector)
         if (el === null) return { name: probe.name, missing: true }
         const actual = getComputedStyle(el).getPropertyValue(probe.property).trim()
-        const expected = probe.property === "scrollbar-color" ? `${used(probe.token, "color")} ${used("--scrollbar-track", "color")}` : used(probe.token, probe.property)
+        const expected = probe.fixed ?? used(probe.token, probe.property)
         return { name: probe.name, actual, expected, token: probe.token, part: `${el.tagName.toLowerCase()}.${String(el.className).replaceAll(" ", ".")}` }
     })
 }
