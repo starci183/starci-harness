@@ -32,6 +32,11 @@ export const why: Record<string, WhyEntry> = {
     en: "An underline `Tabs` in `<file>` is written in the body of a `Page`, `Pane` or `PaneSection`: on the pink well or in a pane.",
     fix: "The second tab layer sits in the white header band under the page tabs: `Page header={{ tabs, subTabs }}`, on its own full-width separator and flush with the band's left inset. Or make the views a `switch` zone or a filter zone of a card.",
   },
+  "rows-in-card": {
+    code: "FE_ROWS_IN_CARD",
+    en: "A `DescriptionList` or `DisclosureList` in `<file>` stands with no `Section` or `SurfaceCard` around it.",
+    fix: "Rows are always a card: put them in a `Section kind=\"list\"` or a `SurfaceCard`. Grammar draws the shadow (no border) on the pink well and the 1px border (no shadow) on a white aside, pane or drawer by itself.",
+  },
   "section-head-action": {
     code: "FE_SECTION_HEAD_ACTION",
     en: "The `Section` head `action` in `<file>` holds a `Button` or more than one command.",

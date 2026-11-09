@@ -9,9 +9,7 @@ import type { CheckInput } from './hfs-graph.mjs';
  * app component and reports, at the inner element, what stands wrongly inside what once every component is replaced by what it
  * draws and every `children` by what its caller handed it:
  *
- *   card-in-card         a card inside a card (surface in surface is banned totally);
- *   card-in-pane         a card inside `Pane surface`;
- *   card-in-overlay      a card inside a Dialog, Drawer, AlertDialog or Popover;
+ *   card-in-card         a card inside a card (a card never stands in a card; a white Pane surface, Drawer, Dialog or Popover HOSTS cards, drawn bordered with no shadow, 0.37.5);
  *   table-in-card        a `DataTable` inside a card (a table stands on the page);
  *   grid-outside-panes   a `PaneGrid` inside a card or a Page whose chrome is not `panes`;
  *   heading-over-card    a `Heading`, or a region `Section`, whose only neighbour or child is one card (a card carries its own label);
@@ -40,10 +38,6 @@ const grammarName = (element: RenderElement): string | null => (element.tag.kind
 const isGrammarIn = (element: RenderElement, names: ReadonlySet<string>): boolean => {
   const name = grammarName(element);
   return name !== null && names.has(name);
-};
-const isTrue = (element: RenderElement, attribute: string): boolean => {
-  const found = element.attributes.get(attribute);
-  return found !== undefined && found.text !== 'false' && found.text !== null;
 };
 
 /** The card an element is, or draws at its root through one app component: the one wrapper level the audit allows. */
@@ -79,11 +73,7 @@ export function checkSurfaceNesting(input: Pick<CheckInput, 'graph'> & { context
       const name = grammarName(element);
       const nearestCard = [...ancestors].reverse().find(entry => isGrammarIn(entry.element, SURFACE_VOCABULARY.cards));
       if (name !== null && SURFACE_VOCABULARY.cards.has(name)) {
-        const inPane = [...ancestors].reverse().find(entry => grammarName(entry.element) === SURFACE_VOCABULARY.pane && isTrue(entry.element, 'surface'));
-        const inOverlay = [...ancestors].reverse().find(entry => isGrammarIn(entry.element, SURFACE_VOCABULARY.overlays));
         if (nearestCard) report(element, nearestCard.element, 'card-in-card', `${name} is drawn inside ${describe(nearestCard.element)}: surface in surface is banned`, ancestors, stack);
-        else if (inPane) report(element, inPane.element, 'card-in-pane', `${name} is drawn inside Pane surface`, ancestors, stack);
-        else if (inOverlay) report(element, inOverlay.element, 'card-in-overlay', `${name} is drawn inside ${describe(inOverlay.element)}: an overlay is a surface already`, ancestors, stack);
       }
       if (name !== null && SURFACE_VOCABULARY.tables.has(name) && nearestCard) {
         report(element, nearestCard.element, 'table-in-card', `${name} is drawn inside ${describe(nearestCard.element)}`, ancestors, stack);

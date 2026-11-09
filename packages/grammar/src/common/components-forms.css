@@ -497,6 +497,50 @@
     }
 
     /*
+     * THE SWITCH ROW (0.37.5): with a label the switch is ONE row. The text (label 14 / weight 500, description 12 muted) fills the start, the control sits at the end
+     * edge centred vertically, and the whole row is the hit target (the root is the vendor label). A switch with a hidden label is the bare control.
+     */
+    [data-component="Switch"][data-grammar-switch-labelled="true"] {
+        display: flex;
+        flex-direction: row;
+        inline-size: 100%;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--grammar-row-gap);
+    }
+
+    [data-component="Switch"][data-grammar-switch-labelled="false"] {
+        display: inline-flex;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .starci-core-switch-text {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 0%;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--grammar-identity-gap);
+    }
+
+    [data-component="Switch"] .starci-core-switch-text > [data-grammar-field-label] {
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-md);
+    }
+
+    [data-component="Switch"] .starci-core-switch-text > [data-grammar-field-description] {
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+    }
+
+    [data-component="Switch"][data-grammar-switch-labelled="true"] > .starci-core-choice-control {
+        margin-inline-start: auto;
+    }
+
+    /*
      * The alternative button (HeroUI "secondary"): the vendor fills it with --default but writes its words in --accent-soft-foreground, which in
      * a brand-coloured app (Nivo: rose) reads as pink words on grey. A fill and its words are one pair: --default with --default-foreground.
      */

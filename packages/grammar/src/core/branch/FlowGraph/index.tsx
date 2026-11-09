@@ -5,6 +5,8 @@ import { useCustomTone } from "../../useCustomTone.js"
 import {
     BaseEdge,
     Background,
+    BackgroundVariant,
+    ControlButton,
     Controls,
     EdgeLabelRenderer,
     getSmoothStepPath,
@@ -50,6 +52,7 @@ import type {
     FlowGraphLayout,
     FlowGraphLegendItem,
     FlowGraphNode,
+    FlowGraphPositions,
     FlowGraphRunStatus,
     FlowGraphStepKind,
     FlowGraphTone,
@@ -58,6 +61,7 @@ import type { NoChildren } from "../../tier.js"
 
 export { lanesLayout, layeredPositions, radialPositions } from "./layout.js"
 export { stepsLayout } from "./steps.js"
+export type { FlowGraphAgent, FlowGraphPositions } from "./types.js"
 export { STEP_KIND_TONES } from "./stepsView.js"
 export type {
     FlowGraphDirection,
@@ -138,6 +142,16 @@ export type FlowGraphProps = NoChildren & {
     readonly direction?: FlowGraphDirection
     /** Titles for the layers of a layered layout: a column header above each layer for `LR`, a lane header beside it for `TB`. */
     readonly headers?: ReadonlyArray<FlowGraphLayerHeader>
+    /** The canvas ground (0.37.5): `dots` draws a subtle dot grid (18px, the muted token) behind the graph, n8n-like. Default `none`. */
+    readonly background?: "none" | "dots"
+    /** Turns on dragging the blocks (0.37.5): the user rearranges them, edges re-route live, and a reset control joins the zoom group. */
+    readonly isEditable?: boolean
+    /** The saved arrangement (0.37.5): the centre of each node the user moved, overriding the auto layout for those ids (a loop card's children too). */
+    readonly positions?: FlowGraphPositions
+    /** Fires on drag end with the full map of moved nodes, and with `{}` when the reset control returns to the auto layout. */
+    readonly onPositionsChange?: (positions: FlowGraphPositions) => void
+    /** The accessible name of the reset control. Default "Sắp xếp lại". */
+    readonly resetLabel?: string
     /** Shown instead of the canvas when there are no nodes. */
     readonly emptyLabel?: string
     /** Unresolved graph (knowledge STATE-8): the frame at its height with a Skeleton block, no React Flow mounted, `aria-busy`. */
@@ -289,6 +303,11 @@ const FlowGraphInner = ({
     layout: layoutProp,
     direction,
     headers,
+    background = "none",
+    isEditable = false,
+    positions: positionsProp,
+    onPositionsChange,
+    resetLabel = "Sắp xếp lại",
     emptyLabel = "Nothing to show yet.",
     isLoading = false,
 }: FlowGraphProps) => {
@@ -313,6 +332,16 @@ const FlowGraphInner = ({
 
     const lanes = useMemo<LanesLayout | null>(() => layout === "lanes" ? lanesLayout(nodes, edges) : null, [layout, nodes, edges])
     const layered = useMemo(() => layout === "layered" ? layeredPositions(nodes, edges, flowDirection ?? "TB") : null, [layout, nodes, edges, flowDirection])
+    // The arrangement the user made (0.37.5): `positions` when the app holds it, else our own copy; `live` is the node under the pointer while it is dragged.
+    const [ownMoved, setOwnMoved] = useState<FlowGraphPositions>({})
+    const [live, setLive] = useState<FlowGraphPositions>({})
+    const moved = positionsProp ?? ownMoved
+    const placed = useCallback((id: string, auto: { readonly x: number, readonly y: number }) => live[id] ?? moved[id] ?? auto, [live, moved])
+    const commitMoved = (next: FlowGraphPositions) => {
+        setOwnMoved(next)
+        setLive({})
+        onPositionsChange?.(next)
+    }
     const positions = useMemo(() => {
         if (layout === "radial") return radialPositions(nodes, edges)
         if (lanes !== null) return lanes.positions
@@ -327,7 +356,7 @@ const FlowGraphInner = ({
             return {
                 id: graphNode.id,
                 type: "flowGraphContainer",
-                position: steps.positions.get(graphNode.id) ?? { x: 0, y: 0 },
+                position: placed(graphNode.id, steps.positions.get(graphNode.id) ?? { x: 0, y: 0 }),
                 data: { graphNode, direction: flowDirection ?? "TB", isSelected: graphNode.id === currentId },
                 style: { width: box.width, height: box.height },
                 width: box.width,
@@ -342,12 +371,13 @@ const FlowGraphInner = ({
         return {
             id: graphNode.id,
             type: "flowGraphStep",
-            position: steps.positions.get(graphNode.id) ?? { x: 0, y: 0 },
+            position: placed(graphNode.id, steps.positions.get(graphNode.id) ?? { x: 0, y: 0 }),
             data: {
                 graphNode,
                 kind,
                 tone: graphNode.isPlaceholder === true ? "muted" : graphNode.tone ?? kindTones[kind],
                 ports: steps.ports.get(graphNode.id) ?? [],
+                hasEdgeOut: edges.some((edge) => edge.source === graphNode.id),
                 isSelected: graphNode.id === currentId,
                 direction: flowDirection ?? "TB",
                 ...(graphNode.status === undefined ? {} : { statusLabel: statusLabels[graphNode.status] }),
@@ -355,14 +385,14 @@ const FlowGraphInner = ({
             selected: graphNode.id === currentId,
             ariaLabel: stepAriaLabel(graphNode, statusLabels),
             zIndex: 1,
-            draggable: false,
+            draggable: isEditable,
             connectable: false,
             ...(graphNode.href === undefined ? {} : { focusable: false }),
         }
     }) : nodes.map((graphNode) => ({
         id: graphNode.id,
         type: "flowGraph",
-        position: positions?.get(graphNode.id) ?? graphNode.position ?? { x: 0, y: 0 },
+        position: placed(graphNode.id, positions?.get(graphNode.id) ?? graphNode.position ?? { x: 0, y: 0 }),
         data: {
             graphNode: layout === "radial" ? { ...graphNode, isRoot: graphNode.id === rootId } : graphNode,
             isSelected: graphNode.id === currentId,
@@ -370,11 +400,11 @@ const FlowGraphInner = ({
         },
         selected: graphNode.id === currentId,
         ariaLabel: labelFor(graphNode),
-        draggable: false,
+        draggable: isEditable,
         connectable: false,
         // A link node keeps one keyboard stop: the anchor inside it.
         ...(graphNode.href === undefined ? {} : { focusable: false }),
-    })), [nodes, positions, layout, rootId, currentId, flowDirection, steps, kindTones, statusLabels])
+    })), [nodes, positions, layout, rootId, currentId, flowDirection, steps, kindTones, statusLabels, placed, isEditable])
     const headerNodes = useMemo<Array<Node<HeaderData>>>(() => {
         if (headers === undefined || headers.length === 0 || flowDirection === undefined || layout === "steps") return []
         const points = nodes.map((node) => positions?.get(node.id) ?? node.position ?? { x: 0, y: 0 })
@@ -425,7 +455,7 @@ const FlowGraphInner = ({
             sourceHandle: route !== undefined ? `back-out-${route.sourceSide}` : port === undefined ? "out" : `port:${port.id}`,
             targetHandle: route !== undefined ? `back-in-${route.targetSide}` : "in",
             ...(route === undefined ? {} : { data: { route, direction: flowDirection ?? "TB" } }),
-            markerEnd: { type: MarkerType.Arrow, markerUnits: "userSpaceOnUse", width: STEPS_ARROW_BOX, height: STEPS_ARROW_BOX, strokeWidth: STEPS_ARROW_STROKE, color: port?.tone === "danger" ? "var(--danger)" : isRun && edge.isTaken === true ? "var(--foreground)" : isRun ? STEPS_UNTAKEN_TONE : "var(--muted)" },
+            markerEnd: { type: MarkerType.ArrowClosed, markerUnits: "userSpaceOnUse", width: STEPS_ARROW_BOX, height: STEPS_ARROW_BOX, strokeWidth: STEPS_ARROW_STROKE, color: port?.tone === "danger" ? "var(--danger)" : isRun && edge.isTaken === true ? "var(--foreground)" : isRun ? STEPS_UNTAKEN_TONE : "var(--muted)" },
             className: classes,
             ...label,
             focusable: false,
@@ -514,6 +544,8 @@ const FlowGraphInner = ({
             data-grammar-flow-fit={fit}
             data-grammar-flow-grown={grownHeight === null ? undefined : "true"}
             data-grammar-flow-run={isRun ? "true" : undefined}
+            data-grammar-flow-background={background}
+            data-grammar-flow-editable={isEditable ? "true" : undefined}
             data-tier="branch"
             style={style}
             {...(isLoading ? { "aria-busy": true, "data-loading": "true" } : {})}
@@ -539,7 +571,13 @@ const FlowGraphInner = ({
                             nodeTypes={NODE_TYPES}
                             nodes={allNodes}
                             nodesConnectable={false}
-                            nodesDraggable={false}
+                            nodesDraggable={isEditable}
+                            onNodesChange={(changes) => {
+                                if (!isEditable) return
+                                const drag = changes.flatMap((change) => change.type === "position" && change.position !== undefined ? [[change.id, change.position] as const] : [])
+                                if (drag.length > 0) setLive((current) => ({ ...current, ...Object.fromEntries(drag) }))
+                            }}
+                            onNodeDragStop={(_event, node) => commitMoved({ ...moved, ...live, [node.id]: { x: node.position.x, y: node.position.y } })}
                             nodesFocusable
                             onNodeClick={(_event, node) => { if (node.type === "flowGraph" || node.type === "flowGraphStep" || node.type === "flowGraphContainer") activate(node.id) }}
                             onPaneClick={() => { if (currentId !== null) select(null) }}
@@ -551,8 +589,14 @@ const FlowGraphInner = ({
                             zoomOnPinch={isInteractive}
                             zoomOnScroll={wheelZooms}
                         >
-                            <Background className="starci-core-flow-graph-background" gap={1000} size={0} />
-                            {controls ? <Controls aria-label={`${label}: zoom`} className="starci-core-flow-graph-controls" showInteractive={false} /> : null}
+                            {background === "dots"
+                                ? <Background className="starci-core-flow-graph-background" gap={18} size={1.2} variant={BackgroundVariant.Dots} />
+                                : <Background className="starci-core-flow-graph-background" gap={1000} size={0} />}
+                            {controls ? (
+                                <Controls aria-label={`${label}: zoom`} className="starci-core-flow-graph-controls" showInteractive={false}>
+                                    {isEditable ? <ControlButton aria-label={resetLabel} className="starci-core-flow-graph-reset" onClick={() => commitMoved({})} title={resetLabel} /> : null}
+                                </Controls>
+                            ) : null}
                             <Refit stepsFit={layout === "steps" && flowDirection === "TB"} anchorStart={layout === "lanes" || (layout === "steps" && flowDirection === "LR")} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
                         </ReactFlow>
                     </div>

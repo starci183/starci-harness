@@ -178,6 +178,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                     </span>
                     {row.description === undefined ? null : <span className="starci-core-list-row-description" data-contract="TONE-2 FONT-2" {...(typeof row.description === "string" ? {} : { "data-grammar-description-rich": "true" })}>{row.description}</span>}
                 </span>
+                {row.value == null ? null : <span className="starci-core-list-row-value" data-grammar-row-value="true">{row.value}</span>}
                 {hasTrail ? (
                     <span className="starci-core-list-row-trail" data-contract="GAP-2">
                         {row.meta === undefined ? null : <span className="starci-core-list-row-meta" data-tone={row.meta.tone ?? "muted"} data-contract="FONT-2">{row.meta.text}</span>}

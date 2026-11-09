@@ -124,6 +124,7 @@
         --starci-core-reading-measure: 72ch;
         --starci-core-form-measure: 30rem;
         --starci-core-form-compact-measure: 28rem;
+        --starci-core-narrow-measure: 30rem;
         --grammar-entry-form-measure: 24rem;
         --grammar-entry-intro-measure: 36rem;
         --starci-core-rail-compact-min: 14rem;
@@ -140,6 +141,9 @@
         --starci-core-rail-standard: 20rem;
         --starci-core-rail-wide: 24rem;
         --starci-core-rail-collapsed: 4rem;
+        /* 0.37.5: the aside track is clamp(320px, 26%, 420px) of its grid, a list pane track clamp(280px, 24%, 360px). */
+        --starci-core-pane-aside-track: clamp(20rem, 26%, 26.25rem);
+        --starci-core-pane-list-track: clamp(17.5rem, 24%, 22.5rem);
         --starci-core-sidebar-width: 16rem;
         --starci-core-sidebar-collapsed-width: 4rem;
         --starci-core-workspace-navigation-width: 18rem;
@@ -151,7 +155,7 @@
         --grammar-flow-card-radius: calc(var(--radius) * 7 / 4);
         --grammar-flow-tile-size: 2rem;
         --grammar-flow-tile-radius: calc(var(--radius) * 9 / 8);
-        --grammar-flow-port-dot: 0.5rem;
+        --grammar-flow-port-dot: 0.375rem;
         --grammar-flow-status-size: 1.25rem;
         --grammar-flow-status-glyph: 1.25rem;
         --grammar-flow-swatch-size: 0.75rem;

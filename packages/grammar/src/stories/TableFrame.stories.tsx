@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 import { reconcileEdges, reconcileLegend, reconcileNodes } from './FlowGraphSteps.data.js';
@@ -326,4 +327,85 @@ export const EqualHeightRow: Story = {
       </G.Grid>
     </div>
   ),
+};
+
+/* ---------- columns never collapse (0.37.5) ---------- */
+
+type Order = G.DataTableRow & { readonly code: string; readonly customer: string; readonly product: string; readonly total: string; readonly status: string; readonly date: string; readonly channel: string };
+
+const orders: ReadonlyArray<Order> = [
+  { id: 'o1', code: 'DH-1001', customer: 'Nguyễn Thị Hoa Xinh Studio', product: 'Bó hoa hướng dương cỡ lớn kèm thiệp viết tay', total: '1.250.000 đ', status: 'Đã thanh toán', date: '02/11/2026', channel: 'Zalo OA' },
+  { id: 'o2', code: 'DH-1002', customer: 'Tiệm bánh Mây', product: 'Bánh kem 20cm', total: '490.000 đ', status: 'Chờ xử lý', date: '03/11/2026', channel: 'Telegram' },
+];
+
+const orderCell = (row: Order, columnId: string) => row[columnId as keyof Order];
+
+/** Cells whose text is one line: the fit, numeric and chip columns never wrap below their content, whatever the container. */
+const assertNoWrap = (root: HTMLElement) => {
+  const cells = Array.from(root.querySelectorAll<HTMLElement>('[data-grammar-table-width="fit"], [data-grammar-table-numeric="true"]'));
+  expect(cells.length).toBeGreaterThan(0);
+  for (const cellEl of cells) {
+    const text = (cellEl.textContent ?? '').trim();
+    if (text === '') continue;
+    const probe = document.createElement('span');
+    probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font:inherit;';
+    probe.textContent = text;
+    cellEl.append(probe);
+    const one = probe.getBoundingClientRect().width;
+    probe.remove();
+    const pad = Number.parseFloat(getComputedStyle(cellEl).paddingInlineStart) + Number.parseFloat(getComputedStyle(cellEl).paddingInlineEnd);
+    expect(cellEl.getBoundingClientRect().width).toBeGreaterThanOrEqual(one + pad - 1);
+    expect(cellEl.scrollHeight).toBeLessThanOrEqual(cellEl.clientHeight + 1);
+  }
+};
+
+const NeverCollapse = ({ width }: { readonly width: number }) => (
+  <div style={{ width, display: 'grid', gap: 24 }} data-grammar-never-collapse={width}>
+    <G.DataTable<Order>
+      label="Khách đang xử lý"
+      columns={[
+        { id: 'customer', label: 'Khách', isRowHeader: true, width: 'fill', minWidth: 160, truncate: true },
+        { id: 'status', label: 'Trạng thái', width: 'fit' },
+        { id: 'channel', label: 'Kênh', width: 'fit', hideBelow: 'tablet' },
+      ]}
+      rows={orders}
+      renderCell={orderCell}
+      emptyContent="Trống"
+    />
+    <G.DataTable<Order>
+      label="Đơn hàng"
+      columns={[
+        { id: 'code', label: 'Mã đơn', isRowHeader: true, width: 'fit' },
+        { id: 'customer', label: 'Khách', width: 'fill', minWidth: 120, truncate: true },
+        { id: 'product', label: 'Sản phẩm', truncate: true, hideBelow: 'desktop' },
+        { id: 'total', label: 'Tổng', isNumeric: true },
+        { id: 'status', label: 'Trạng thái', width: 'fit' },
+        { id: 'date', label: 'Ngày', width: 'fit', hideBelow: 'tablet' },
+      ]}
+      rows={orders}
+      renderCell={orderCell}
+      emptyContent="Trống"
+    />
+  </div>
+);
+
+/**
+ * 0.37.5: the fit, numeric and chip columns of a table never wrap below their content (a letter per line was `overflow-wrap: anywhere` on a fitting table), at 1100, 800
+ * and 600px; the fill column truncates, and a table too narrow for its columns scrolls inside its frame.
+ */
+export const ColumnsNeverCollapse: Story = {
+  render: () => (
+    <div style={{ display: 'grid', gap: 32 }}>
+      {[1100, 800, 600].map((width) => <NeverCollapse key={width} width={width} />)}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      for (const width of [1100, 800, 600]) {
+        const root = canvasElement.querySelector<HTMLElement>(`[data-grammar-never-collapse="${width}"]`);
+        if (root === null) throw new Error(`the ${width}px tables render`);
+        assertNoWrap(root);
+      }
+    });
+  },
 };

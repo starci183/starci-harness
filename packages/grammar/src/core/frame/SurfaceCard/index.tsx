@@ -120,6 +120,11 @@ type Shell = {
     readonly state?: PresentationState
     /** Let a peer grid stretch the complete card (a card that fills the height its host gives it). */
     readonly height?: "fill"
+    /**
+     * Grammar-owned width contract (0.37.5: every kind takes it). `content` (default): the card fills its host. `narrow`: capped at 30rem, left-aligned (an order card in a
+     * chat bubble; `standard` content is 40rem, too wide for a bubble). `form` / `formCompact` are the centred form measures of a `body` card.
+     */
+    readonly measure?: SurfaceCardMeasure
 }
 
 type BodyCard = Shell & OptionallyNamed & Head & (PlainSurfaceCard | SoftSurfaceCard | InkSurfaceCard) & {
@@ -127,8 +132,6 @@ type BodyCard = Shell & OptionallyNamed & Head & (PlainSurfaceCard | SoftSurface
     readonly children: ReactNode
     /** The whole card is one destination or command; the card then holds no control of its own. */
     readonly wholeAction?: WholeCardAction
-    /** Grammar-owned width contract for ordinary content or compact form cards. */
-    readonly measure?: SurfaceCardMeasure
     /** One logical corner of the painted face drawn at the Common accent radius. */
     readonly accentCorner?: AccentCorner
 }
@@ -205,8 +208,8 @@ const PLACEHOLDER_DISCLOSURES: readonly AccordionRowData[] = [1, 2, 3].map((n) =
  * Where the name sits follows the kind: a card that heads a section has a `label`, drawn
  * outside the material as an unpainted row above it; a tile has its `name` and mark or media drawn inside.
  *
- * A card never stands inside another surface (a card, `Pane surface`, a `Dialog`, `Drawer` or `Popover`); development
- * throws, and R356 refuses it across files.
+ * A card never stands inside another card (development throws). On a white ground (`Pane surface`, `Drawer`, `Dialog`, `Popover`) a card IS the
+ * group and draws itself bordered with no shadow (SURFACE-ELEVATION); on the pink well it has the shadow and no border.
  */
 export const SurfaceCard = (props: SurfaceCardProps) => {
     const host = useSurfaceHost()
@@ -225,7 +228,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
     const name = isTile ? props.name : props.label
     const accessibleName = isTile ? props.name : props.ariaLabel ?? props.label
     const headingLevel = props.headingLevel ?? DEFAULT_SURFACE_HEADING_LEVEL
-    const measure: SurfaceCardMeasure = body?.measure ?? "content"
+    const measure: SurfaceCardMeasure = props.measure ?? "content"
     const treatment: SurfaceCardTreatment = body?.treatment ?? "surface"
     const emphasis = body !== undefined && (body.treatment === undefined || body.treatment === "surface") ? body.emphasis : undefined
     const motif: SurfaceCardMotif = body?.treatment === "ink" ? body.motif ?? "none" : "none"

@@ -17,6 +17,8 @@ import {
     type ReactElement,
     type ReactNode,
 } from "react"
+import { PaneSection } from "../PaneSection/index.js"
+import { PaneHeader } from "../../composite/PaneHeader/index.js"
 import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { SurfaceNesting } from "../../surfaceContext.js"
 import { useOverlayContainer } from "../../overlayScope.js"
@@ -63,6 +65,27 @@ type PaneBaseProps = {
     readonly content?: PaneContent
     /** PaneSection elements, or one PaneGrid. */
     readonly children?: ReactNode
+    /**
+     * A band fixed at the bottom of the pane (0.37.5): a chat composer, a form's action bar. Give it a `PaneSection as="footer"` (or several PaneSections). The pane body above it
+     * is the pane's own scroll region (no visible scrollbar) and only the body scrolls; the footer never leaves the pane's bottom edge. The footer shares the pane's inset.
+     */
+    readonly footer?: ReactNode
+    /**
+     * A sticky one-row head for an aside or detail pane (0.37.5): the title, a muted sublabel under it and, when `onClose` is given, a small close icon button at the end. It is the
+     * first band of the pane's stack (a `PaneSection align="center"` holding a `PaneHeader`), so the shared head-row mode and the head height token apply; it stays at the top while the body scrolls.
+     */
+    readonly head?: PaneHeadSlot
+}
+
+/** What the `head` slot of a Pane draws. */
+export type PaneHeadSlot = {
+    readonly title: string
+    /** The muted sublabel under the title. */
+    readonly description?: string
+    /** Draws the close icon button at the end of the head. */
+    readonly onClose?: () => void
+    /** The close button's accessible name; required with `onClose`. */
+    readonly closeLabel?: string
 }
 
 type PaneScrollProps =
@@ -155,7 +178,7 @@ const usePaneRegistry = (area: string, inset: PaneInset, checks: boolean): PaneC
  * a divider) to its PaneSections, so dividers and scrollbars stay full-bleed. A pane takes no app class.
  */
 export const Pane = (props: PaneProps) => {
-    const { area, surface = false, inset = "content", label, scroll = false, content: contentKind, children } = props
+    const { area, surface = false, inset = "content", label, scroll = false, content: contentKind, children, footer, head } = props
     const models = useContext(PaneModelsContext)
     const pane = usePaneRegistry(area, inset, true)
     const shown = "flex"
@@ -174,7 +197,16 @@ export const Pane = (props: PaneProps) => {
         }
     }
     const style: CustomProperties = { gridArea: area, ...vars }
-    const stack = <div className="starci-core-pane-stack" data-grammar-pane-stack="true">{children}</div>
+    const headBand = head === undefined ? null : (
+        <PaneSection align="center">
+            <PaneHeader
+                title={head.title}
+                {...(head.description === undefined ? {} : { description: head.description })}
+                {...(head.onClose === undefined ? {} : { close: { label: head.closeLabel ?? "", onPress: head.onClose } })}
+            />
+        </PaneSection>
+    )
+    const stack = <div className="starci-core-pane-stack" data-grammar-pane-stack="true">{headBand}{children}</div>
     const body = scroll
         ? (
             <VerticalScrollRegionPart
@@ -187,7 +219,15 @@ export const Pane = (props: PaneProps) => {
             </VerticalScrollRegionPart>
         )
         : stack
-    const surfaced = surface ? <SurfaceNesting host="pane">{body}</SurfaceNesting> : body
+    const footed = footer === undefined ? body : (
+        <>
+            {scroll ? body : <div className="starci-core-pane-body" data-grammar-pane-body="true">{body}</div>}
+            <div className="starci-core-pane-footer" data-grammar-pane-footer-slot="true">
+                <div className="starci-core-pane-stack">{footer}</div>
+            </div>
+        </>
+    )
+    const surfaced = surface ? <SurfaceNesting host="pane">{footed}</SurfaceNesting> : footed
     const content = <PaneContext.Provider value={pane}>{surfaced}</PaneContext.Provider>
     const shared = {
         className: "starci-core-pane",
@@ -196,6 +236,8 @@ export const Pane = (props: PaneProps) => {
         "data-grammar-pane-area": area,
         "data-grammar-pane-surface": surface ? "true" : undefined,
         "data-grammar-pane-scroll": scroll ? "true" : undefined,
+        "data-grammar-pane-head": head === undefined ? undefined : "true",
+        "data-grammar-pane-footer": footer === undefined ? undefined : "true",
         "data-grammar-pane-inset": inset,
         "data-grammar-pane-content": contentKind ?? (surface ? "full" : "cards"),
         "data-grammar-pane-content-explicit": contentKind === undefined ? undefined : "true",

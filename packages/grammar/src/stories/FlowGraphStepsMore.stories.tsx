@@ -246,3 +246,42 @@ export const FanOutAndTwoTriggers: Story = {
     });
   },
 };
+
+const markNodes: ReadonlyArray<G.FlowGraphNode> = [
+  { id: 'start', kind: 'event', label: 'Có đơn mới', tag: 'Kích hoạt' },
+  { id: 'check', kind: 'condition', label: 'Đã thanh toán?', outputs: [{ id: 'yes', label: 'Có' }, { id: 'no', label: 'Không' }] },
+  { id: 'ship', kind: 'action', label: 'Giao hàng' },
+  { id: 'remind', kind: 'action', label: 'Nhắc thanh toán' },
+];
+const markEdges: ReadonlyArray<G.FlowGraphEdge> = [
+  { id: 'm1', source: 'start', target: 'check' },
+  { id: 'm2', source: 'check', target: 'ship', sourcePort: 'yes' },
+  { id: 'm3', source: 'check', target: 'remind', sourcePort: 'no' },
+];
+
+/** 0.37.5: a port and an edge anchor are SOLID 6px dots in the edge colour, the arrowhead is a closed chevron with a rounded outline, the tag chip is 18px high. */
+export const PortsArrowheadsAndTag: Story = {
+  render: () => (
+    <Matrix maxWidth={720}>
+      <State label="Solid 6px port dots, closed rounded arrowheads, an 18px tag chip" direction="column">
+        <G.FlowGraph label="Marks" layout="steps" nodes={markNodes} edges={markEdges} />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const graph = graphOf(canvasElement);
+      const dot = graph.querySelector<HTMLElement>('.starci-core-flow-graph-step-port-dot')!;
+      expect(Math.round(dot.getBoundingClientRect().width)).toBe(6);
+      expect(getComputedStyle(dot).borderTopWidth).toBe('0px');
+      const anchor = graph.querySelector<HTMLElement>('.starci-core-flow-graph-step-anchor')!;
+      expect(Math.round(anchor.getBoundingClientRect().width)).toBe(6);
+      const tag = graph.querySelector<HTMLElement>('[data-grammar-flow-tag]')!;
+      expect(Math.round(tag.getBoundingClientRect().height)).toBe(18);
+      expect(getComputedStyle(tag).fontSize).toBe('12px');
+      const head = graph.querySelector('marker polyline.arrowclosed');
+      expect(head).not.toBeNull();
+      expect(getComputedStyle(head as Element).strokeLinejoin).toBe('round');
+    });
+  },
+};

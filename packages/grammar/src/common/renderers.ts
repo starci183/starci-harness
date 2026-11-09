@@ -33,7 +33,7 @@ export type { PageHeaderBreadcrumbs, PageHeaderTabs } from "../core/frame/PageHe
 export type { PageMinHeight } from "../core/frame/Page/index.js"
 export { Sidebar, type SidebarGroup, type SidebarItem, type SidebarProps } from "../core/composite/Sidebar/index.js"
 export { WorkspaceShell, type WorkspaceShellHeaderLandmark, type WorkspaceShellNavigationDrawer, type WorkspaceShellProps } from "../core/frame/WorkspaceShell/index.js"
-export { PaneGrid, Pane, type PaneContent, type PaneGridProps, type PaneInset, type PaneProps, type PaneTrack } from "../core/frame/PaneGrid/index.js"
+export { PaneGrid, Pane, type PaneContent, type PaneHeadSlot, type PaneGridProps, type PaneInset, type PaneProps, type PaneTrack } from "../core/frame/PaneGrid/index.js"
 export { PaneSection, type PaneSectionProps } from "../core/frame/PaneSection/index.js"
 export { Stack, type StackAlign, type StackMeasure, type StackProps } from "../core/frame/Stack/index.js"
 export { Cluster, type ClusterAlign, type ClusterGap, type ClusterJustify, type ClusterProps } from "../core/frame/Cluster/index.js"

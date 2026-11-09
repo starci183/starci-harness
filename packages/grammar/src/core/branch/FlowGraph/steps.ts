@@ -34,6 +34,8 @@ const CARD_CHROME = 2 * 8 + 2
 const TILE = 32
 const TITLE_LINE = 18
 const DESCRIPTION_LINE = 16
+/** The agent line under a title (0.37.5): a 16px avatar and the name, with a 2px step above it. */
+const AGENT_LINE = 18
 const TITLE_CHARS = 16
 const DESCRIPTION_CHARS = 19
 const OUTPUTS_ROW = 33
@@ -109,7 +111,7 @@ export const stepsNodeHeight = (node: FlowGraphNode, ports: number): number => {
     if (stepKindOf(node) === "end") return END_HEIGHT
     const title = wrappedLines(node.label, TITLE_CHARS) * TITLE_LINE
     const description = node.description === undefined || node.description === "" ? 0 : wrappedLines(node.description, DESCRIPTION_CHARS) * DESCRIPTION_LINE
-    return CARD_CHROME + Math.max(TILE, title + description + chipsHeight(node.chips)) + (ports > 0 ? OUTPUTS_ROW : 0)
+    return CARD_CHROME + Math.max(TILE, title + (node.agent === undefined ? 0 : AGENT_LINE) + description + chipsHeight(node.chips)) + (ports > 0 ? OUTPUTS_ROW : 0)
 }
 
 /** A back edge as the layout routes it: the channel it runs in under its source's layer, and its place among the back edges of its target side. */

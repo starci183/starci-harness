@@ -24,6 +24,7 @@ import { rules as pageBreadcrumbsRules } from "./page-breadcrumbs.ts"
 import { rules as pageHeaderRules } from "./page-header.ts"
 import { rules as paneRules } from "./pane.ts"
 import { rules as rowTitleLinkRules } from "./row-title-link.ts"
+import { rules as rowsInCardRules } from "./rows-in-card.ts"
 import { rules as sectionHeadActionRules } from "./section-head-action.ts"
 import { rules as sameLineSizeRules } from "./same-line-size.ts"
 import { rules as statusColorsRules } from "./status-colors.ts"
@@ -76,6 +77,7 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "pane", rules: paneRules },
   { law: "row-title-link", rules: rowTitleLinkRules },
   { law: "same-line-size", rules: sameLineSizeRules },
+  { law: "rows-in-card", rules: rowsInCardRules },
   { law: "section-head-action", rules: sectionHeadActionRules },
   { law: "single-child-card", rules: singleChildCardRules },
   { law: "status-colors", rules: statusColorsRules },

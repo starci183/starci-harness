@@ -72,9 +72,8 @@
         --grammar-control-padding-inline-sm: 0.5rem;
         --grammar-control-padding-inline-md: 0.75rem;
         --grammar-control-padding-inline-lg: 1.5rem;
-        --grammar-control-padding-glyph-sm: 0.25rem;
-        --grammar-control-padding-glyph-md: 0.5rem;
-        --grammar-control-padding-glyph-lg: 0.75rem;
+        --grammar-button-icon-padding-sm: 0.75rem;
+        --grammar-button-icon-padding: 1rem;
         /* The Mascot scale: square boxes sm 96px, md 160px, lg 240px; the hero fills its host's height up to the cap. */
         --grammar-mascot-sm: 6rem;
         --grammar-mascot-md: 10rem;
@@ -1220,8 +1219,17 @@
         padding-inline: var(--grammar-card-padding-inline);
     }
 
+    /*
+     * THE ZONE SEAM (0.37.5): the line between header zones, and between the zones and the body, must read on the white card AND on the grey table frame. --separator is a
+     * 92%-lightness step: on the grey frame (95%) it measured 233,227,227 on 243,238,238, nearly invisible. The seam is the foreground at 14% over whatever ground it
+     * stands on, so it keeps the same contrast on both.
+     */
+    .starci-core-surface {
+        --starci-core-zone-seam: color-mix(in oklab, var(--foreground) 14%, transparent);
+    }
+
     .starci-core-surface-zone:has(~ .starci-core-surface-main) {
-        border-block-end: 1px solid var(--separator);
+        border-block-end: 1px solid var(--starci-core-zone-seam);
     }
 
     /* A switch zone is the card's first header row, inside the surface: an optional title at the leading edge, the primary tabs at the trailing edge, the zone's one line under it. */
@@ -1245,7 +1253,7 @@
     }
 
     .starci-core-surface-main ~ .starci-core-surface-zone {
-        border-block-start: 1px solid var(--separator);
+        border-block-start: 1px solid var(--starci-core-zone-seam);
     }
 
     .starci-core-surface-zone[data-grammar-zone="figures"] {
@@ -3471,21 +3479,21 @@
         overflow: clip;
     }
 
-    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])) {
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)):not([data-grammar-pane-footer="true"]) {
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-width: none;
     }
 
-    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"]))::-webkit-scrollbar {
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)):not([data-grammar-pane-footer="true"])::-webkit-scrollbar {
         display: none;
     }
 
-    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])) > .starci-core-pane-stack {
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)):not([data-grammar-pane-footer="true"]) > .starci-core-pane-stack {
         flex: 1 0 auto;
     }
 
-    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])) .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child {
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)) .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child {
         position: sticky;
         z-index: 2;
         top: 0;
@@ -3544,6 +3552,67 @@
         padding-block: 0;
         border-block-end: 1px solid var(--separator);
         background: var(--surface);
+    }
+
+    /*
+     * THE PANE FOOTER (0.37.5): a pane with a `footer` is a column of a body and a band. The pane clips; the body (the scroll region, no scrollbar) takes the room and is
+     * the only part that scrolls; the footer holds the pane's bottom edge, over a hairline.
+     */
+    .starci-core-pane[data-grammar-pane-footer="true"] {
+        overflow: hidden;
+    }
+
+    .starci-core-pane-body {
+        display: flex;
+        min-height: 0;
+        flex: 1 1 0%;
+        flex-direction: column;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+    }
+
+    .starci-core-pane-body::-webkit-scrollbar {
+        display: none;
+    }
+
+    .starci-core-pane-body > .starci-core-pane-stack {
+        flex: 1 0 auto;
+    }
+
+    .starci-core-pane[data-grammar-pane-footer="true"] > .starci-core-pane-scroll {
+        min-height: 0;
+        flex: 1 1 0%;
+    }
+
+    .starci-core-pane-footer {
+        flex: none;
+        border-block-start: 1px solid var(--separator);
+        background: var(--surface);
+    }
+
+    /*
+     * 0.37.5 THE GRID OWNS THE HEIGHT CHAIN. A pane that holds a nested PaneGrid (a tab pane of panes) is not a scroller: it clips, its stack is bounded by the pane
+     * (flex 1 1 0, min-height 0, never `0 auto` which let the stack grow to the content), and the nested grid fills it, so every scroll band of every nested pane is bounded
+     * and only the thread, a list or a pane body scrolls (the page, the band, the heads and the composers never move).
+     */
+    .starci-core-pane:has(> .starci-core-pane-stack > .starci-core-pane-grid) {
+        overflow: hidden;
+    }
+
+    .starci-core-pane:has(> .starci-core-pane-stack > .starci-core-pane-grid) > .starci-core-pane-stack {
+        min-height: 0;
+        flex: 1 1 0%;
+    }
+
+    /* In a fixed workspace shell the page is exactly the room under the app bar: the page's fill minimum (sm / md / lg) is a floor for a flow page, never a reason for the shell to scroll. */
+    .starci-core-workspace-shell[data-grammar-workspace-viewport="fixed"] .starci-core-page-fill[data-grammar-fill-min] {
+        min-height: 0;
+    }
+
+    .starci-core-pane-stack > .starci-core-pane-grid {
+        min-height: 0;
+        flex: 1 1 0%;
     }
 
     .starci-core-pane-stack {
@@ -3999,6 +4068,11 @@
     .starci-core-surface-card.starci-core-form-surface {
         width: min(100%, var(--starci-core-form-measure)) !important;
         margin-inline: auto;
+    }
+
+    /* measure="narrow" (0.37.5): an order card in a chat bubble is capped at 30rem and stays at the start edge (never centred like a form). */
+    .starci-core-surface-card.starci-core-surface-card--narrow {
+        width: min(100%, var(--starci-core-narrow-measure)) !important;
     }
 
     .starci-core-surface-card.starci-core-form-surface--compact {
@@ -4830,6 +4904,24 @@
     .starci-core-icon[data-usage="leading"] {
         width: 1.25rem;
         height: 1.25rem;
+    }
+
+    /* The icon of a Button takes HeroUI's scale (0.37.5): 20px on a phone, 16px from 640px, 16px on sm. Here, in the common layer, so it outranks the usage box above. */
+    .starci-core-button:is([data-grammar-button-start="glyph"], [data-grammar-button-end="glyph"]) .starci-core-icon {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    @media (min-width: 40rem) {
+        .starci-core-button:is([data-grammar-button-start="glyph"], [data-grammar-button-end="glyph"]) .starci-core-icon {
+            width: 1rem;
+            height: 1rem;
+        }
+    }
+
+    .starci-core-button[data-size="sm"]:is([data-grammar-button-start="glyph"], [data-grammar-button-end="glyph"]) .starci-core-icon {
+        width: 1rem;
+        height: 1rem;
     }
 
     .starci-core-icon[data-usage="chip"] {
@@ -6166,5 +6258,83 @@
         margin: 0;
         padding: 0;
         list-style: none;
+    }
+}
+
+
+@layer starci-grammar-common {
+    /* KEY-VALUE ROWS (0.37.5): `SurfaceCard kind="list" layout="keyValue"`. The key (title) is muted, the value is normal text at the end; a narrow card wraps the value under the key. */
+    .starci-core-list-row-value {
+        min-width: 0;
+        flex: 1 1 auto;
+        color: var(--foreground);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-md);
+        overflow-wrap: anywhere;
+        text-align: end;
+    }
+
+    [data-grammar-list-layout="keyValue"] > .starci-core-list-row {
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: var(--grammar-row-gap);
+    }
+
+    [data-grammar-list-layout="keyValue"] > .starci-core-list-row > .starci-core-list-row-copy {
+        flex: 0 1 auto;
+        max-inline-size: 50%;
+    }
+
+    [data-grammar-list-layout="keyValue"] .starci-core-list-row-name {
+        color: var(--muted);
+        font-weight: var(--grammar-weight-regular);
+    }
+
+    /* From 28rem a row is a grid (above): a key-value row is two columns, the key at most 40%, the value taking the rest. */
+    @container starci-core-surface (min-width: 28.001rem) {
+        [data-grammar-list-layout="keyValue"] > .starci-core-list-row[data-grammar-actions] {
+            display: grid;
+            align-items: baseline;
+            grid-template-columns: minmax(8rem, 40%) minmax(0, 1fr);
+        }
+
+        [data-grammar-list-layout="keyValue"] > .starci-core-list-row[data-grammar-actions][data-grammar-leading="true"] {
+            grid-template-columns: auto minmax(8rem, 40%) minmax(0, 1fr);
+        }
+
+        [data-grammar-list-layout="keyValue"] > .starci-core-list-row > .starci-core-list-row-copy {
+            max-inline-size: none;
+        }
+    }
+
+    @container starci-core-surface (max-width: 22rem) {
+        [data-grammar-list-layout="keyValue"] > .starci-core-list-row > .starci-core-list-row-copy {
+            max-inline-size: 100%;
+        }
+
+        [data-grammar-list-layout="keyValue"] > .starci-core-list-row > .starci-core-list-row-value {
+            flex-basis: 100%;
+            text-align: start;
+        }
+    }
+
+    /* THE PANE HEAD SLOT (0.37.5): `Pane head` is the first band of the stack; it stays at the top of the pane (or of its scroll region) while the body scrolls, white, at the head height. */
+    .starci-core-pane[data-grammar-pane-head="true"] .starci-core-pane-stack > .starci-core-pane-section:first-child {
+        position: sticky;
+        z-index: 2;
+        inset-block-start: 0;
+        box-sizing: border-box;
+        justify-content: center;
+        block-size: var(--grammar-pane-head-size);
+        padding-block: 0;
+        border-block-end: 1px solid var(--separator);
+        background: var(--surface);
+    }
+
+    /* The head sits inside the pane's scroll region, so the scroll shadow would fade it: a pane with a head draws no edge fade. */
+    .starci-core-pane[data-grammar-pane-head="true"] :is(.starci-core-pane-scroll, .scroll-shadow) {
+        mask-image: none;
+        -webkit-mask-image: none;
     }
 }

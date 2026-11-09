@@ -64,14 +64,15 @@ stands under the card as chips (`note={<FlowGraphLegend items />}`); a FlowGraph
 Elevation is decided by context, never by the app (SURFACE-ELEVATION): a card on the pink well has the card shadow and NO border; a surface on a white surface (a `Pane surface`, the aside, a `Drawer`, `Dialog` or `Popover`) has the
 1px separator border and no shadow. The bordered list frame (`Section kind="list"`) and a framed `EmptyNotice` follow the same rule. The table frame (grey, shadow, no border) is the exception the owner set.
 
+Rows are always a card (0.37.5, lint `rows-in-card`): a `DescriptionList` or `DisclosureList` with no `Section` or `SurfaceCard` around it is an error. A white pane's rows are a `Section kind="list"` (a `SurfaceCard` inside a `Pane surface` is refused); story `Surfaces/Surface elevation` asserts the edge on both grounds.
+
 ## Icons are outline (0.36.0, ICONS-OUTLINE)
 Never a filled or solid icon (lint `starci-grammar/outline-icons-only` refuses a solid icon-set import anywhere). An icon that stands alone as the mark of a row, card, empty state or graph step gets an icon tile (a soft-tone square with an outline icon);
 an icon inline with text (a status beside a label, a search field, a button start icon, a link arrow, meta) is a plain outline icon at text size with no tile. A status is a tone-coloured outline icon with no tile (check-circle success,
 x-circle danger, a spinner for running): the FlowGraph run overlay, the Stepper and the accordion step marks follow it.
 
 ## Variants
-The face is the grammar's, and the card has one depth, raised. EVERY surface on the page ground is a card (0.32.0, owner 2026-11-09): the surface ground, the card radius, a 1px `--separator` border AND the card shadow, for `SurfaceCard` of every kind, form panels, the standalone `DataTable` (its own card wrapper, HeroUI's native grey-wrapper look kept inside), the `Section kind="list"` frame and a framed `EmptyNotice`. A surface nested in a card, pane, drawer, dialog or popover keeps the border and drops the shadow (the border is never doubled). Captions and titles stay outside the card. `check:type` pins it. A surface never stands inside another surface: a card in a
-card, in `Pane surface`, in a `Dialog`, `Drawer`, `AlertDialog` or `Popover` is refused by a development throw and R340
+The face is the grammar's, and the card has one depth, raised. EVERY surface on the page ground is a card (0.32.0, owner 2026-11-09): the surface ground, the card radius, a 1px `--separator` border AND the card shadow, for `SurfaceCard` of every kind, form panels, the standalone `DataTable` (its own card wrapper, HeroUI's native grey-wrapper look kept inside), the `Section kind="list"` frame and a framed `EmptyNotice`. A surface nested in a card, pane, drawer, dialog or popover keeps the border and drops the shadow (the border is never doubled). Captions and titles stay outside the card. `check:type` pins it. A card never stands inside another card: that is refused by a development throw and R340; a `Pane surface`, `Drawer`, `Dialog`, `AlertDialog` or `Popover` HOSTS cards, drawn bordered with no shadow (0.37.5, SURFACE-ELEVATION). R340
 (`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`); across files the render graph refuses it too (R356). What sits in a surface is a box at the nested inset (a notice, a `Quote`, a
 stat cell), not a card. A decorative slab is a `custom` header zone of the card or the artwork of a painted card (SURFACE-6).
 
@@ -98,3 +99,6 @@ COLLECTION-1, COLLECTION-2, COLLECTION-4, DISCIPLINE-1 (`budgets.hairlinesPerCar
 `surface-card-kind` (R355), `single-child-card` (COLLECTION-4: a card whose only body child is a table, list or chart, with no `headers`/`footers`/`labelEnd`; also `kind="table"|"list"` with no zones), `no-label-in-grid` (R366), `starci-fe/no-heading-above-card` (R354),
 `starci-grammar/surface-in-surface` (a list of rows inside the card body is a nested surface, BOUNDARY-7),
 `starci-grammar/gap-proximity`. Proof: TASTE-7.
+
+## Measure (0.37.5)
+`measure` is a prop of every card kind: `content` (default, the card fills its host), `narrow` (30rem, start-aligned: an order card in a chat bubble; `standard` 40rem is too wide for a bubble) and the centred form measures `form` / `formCompact` of a `body` card. On a white ground (`Pane surface`, `Drawer`, `Dialog`, `Popover`) a card is bordered with no shadow; on the pink well it has the shadow and no border (SURFACE-ELEVATION, automatic).

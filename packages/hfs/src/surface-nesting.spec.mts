@@ -64,13 +64,13 @@ test('a slot prop is drawn where the component places it', () => {
   }), ['card-in-card@a/Screen.tsx']);
 });
 
-test('a card in Pane surface or in an overlay is found, a card in a plain Pane is not', () => {
+test('a card in Pane surface, in an overlay or in a plain Pane is allowed (0.37.5: a white ground hosts cards)', () => {
   assert.deepEqual(kinds({
     'a/Row.tsx': `${G}export const Row = () => <SurfaceCard label="x" />;`,
     'a/Surfaced.tsx': `${G}import { Row } from './Row';\nexport const Surfaced = () => <Pane area="a" surface><Row /></Pane>;`,
     'a/Plain.tsx': `${G}import { Row } from './Row';\nexport const Plain = () => <Pane area="a"><Row /></Pane>;`,
     'a/Modal.tsx': `${G}import { Row } from './Row';\nexport const Modal = () => <Dialog trigger={null}><Row /></Dialog>;`,
-  }), ['card-in-overlay@a/Row.tsx', 'card-in-pane@a/Row.tsx']);
+  }), []);
 });
 
 test('a DataTable drawn in a card through a component is found', () => {

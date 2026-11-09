@@ -224,8 +224,9 @@ const writeWidths = (id: string, widths: Readonly<Record<string, number>>) => {
 /** The width a column takes: its own, else (when no column names one) the first text column fills and the numeric ones fit. */
 const widthOf = <Row extends DataTableRow>(column: DataTableColumn<Row>, columns: ReadonlyArray<DataTableColumn<Row>>): DataTableColumnWidth | undefined => {
     if (column.width !== undefined) return column.width
-    if (columns.some((other) => other.width !== undefined)) return undefined
+    // A numeric column fits its content whatever the other columns say (0.37.5): it never wraps and never shrinks below its figure.
     if (column.isNumeric === true) return "fit"
+    if (columns.some((other) => other.width !== undefined)) return undefined
     return columns.find((other) => other.isNumeric !== true && other.isLabelHidden !== true)?.id === column.id ? "fill" : undefined
 }
 

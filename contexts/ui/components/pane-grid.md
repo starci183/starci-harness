@@ -58,7 +58,7 @@ a padded wrapper is never the outermost element of a band.
 - **Areas:** `areas` rows of names (`["a b c", "d d d"]`, `.` is empty); an object keyed by `base`, `medium` (from 48rem)
   and `wide` (from 70rem) rearranges at each breakpoint, mobile first. A pane missing at a breakpoint is hidden there, or
   becomes a drawer when it has `collapse="drawer"`. A single `areas` collapses its drawer panes below 48rem.
-- **Tracks:** `auto`, `fill` (1fr), `fill-2` (2fr), `fill-3` (3fr), and the Rail widths `compact`, `standard`, `wide`.
+- **Tracks:** `auto`, `fill` (1fr), `fill-2` (2fr), `fill-3` (3fr), and the Rail widths `compact`, `standard`, `wide`. 0.37.5: `standard` (the aside) is clamp(320px, 26%, 420px) of the grid, flush to the end edge; `list` (a list pane beside a thread) is clamp(280px, 24%, 360px); the main pane is `fill`.
   No arbitrary lengths.
 - **Pane:** `surface`, `scroll` (its own vertical scroll owner; needs a `label`), `collapse="drawer"`, and `inset`:
   `content` (the default: the pane publishes its inset to its sections) or `flush` (no inset, for a pane that holds a
@@ -101,6 +101,11 @@ A list or table in the white aside is a bordered list or frame with no shadow, n
 The sidebar and the page header band (breadcrumbs, title, tabs, sub-tabs) never scroll away: the band and the trail are sticky. Layout A (report): the pink well scrolls as one block under the band. Layout B (workspace): the page
 does not scroll; each pane scrolls on its own with no visible scrollbar and its head (title, tabs, search) sticky; a chat pane keeps its head and composer fixed and scrolls only the thread (`PaneSection scroll`).
 
+## The grid owns scroll and height (0.37.5)
+In layout B the page never scrolls: the shell is one viewport (dvh) under the app bar, the page band is fixed, and the PaneGrid owns the height chain at every level. A pane that holds a nested PaneGrid clips (it is not a scroller) and its stack is bounded by the pane
+(`flex: 1 1 0`, `min-height: 0`), so every scroll band below it is bounded: only a thread (`PaneSection scroll`), a list or a pane body scrolls, with no visible scrollbar; the head stays sticky and the composer (a footer band) stays at the bottom of its pane. A page writes no scroll CSS. In a
+fixed shell the page's fill minimum (`minHeight`) is a floor for a flow page only, never a reason for the shell to scroll. Enforcer: story `Compositions/App shell workspace` `ChatTab` (long thread, aside list; the page does not scroll, the band, head and composer rects do not move when the thread scrolls).
+
 ## The shared head row (layout B)
 
 The shared row exists ONLY when EVERY pane at the grid level (nested grids included, a head being the first band of a pane stack that is not under another band) has a head: then all heads (a `PaneSection as="header"` or one holding a `PaneHeader`,
@@ -108,6 +113,9 @@ first in its pane) are the same height (`--grammar-pane-head-size`), white, with
 there is NO spacer and NO continuous divider: each head stands alone at the shared height with its own bottom border, and a headless pane starts its content at the top. A page with no head has neither. A pane head is always the surface colour. A head that ends in a tab
 strip is a sub-head, not the row. A side pane whose first content is a title uses `PaneHeader`, never a Section title. A pane that holds a nested `PaneGrid` is never capped: the grid and its panes span the full width (MEASURE-8). Enforcer: the `Compositions/App shell workspace`
 story's play function.
+
+## Pane footer (0.37.5)
+`Pane footer={<PaneSection as="footer">...</PaneSection>}` fixes a band (a chat composer, an action bar) at the pane's bottom edge over a hairline. The pane clips; its body (the scroll region, no visible scrollbar) is the only part that scrolls and the footer shares the pane inset. A page never writes scroll CSS for it. Enforcer: story `Surfaces/Pane footer and white-ground cards` (`PaneFooter`, `NestedRowsHeightChain`).
 
 ## Drawer opener
 `PaneHeader drawerOpener` draws the opener of a `collapse="drawer"` pane inside the pane head. `PaneDrawerOpener` (`pane`, `icon`, `label`) is the same button for
@@ -119,3 +127,6 @@ GAP-3 between sections, OVERFLOW-4 and OVERFLOW-5 for a scroll pane or section, 
 of the breakpoints (the grid's own width). Lint: `starci-grammar/pane-grid-children` (R345),
 `starci-grammar/pane-children` (R346), `starci-grammar/no-pane-section-padding` (R347),
 `starci-grammar/pane-grid-page` (R348), `starci-fe/no-hand-built-panes` (R349), `starci-fe/no-list-panel-padding`.
+
+## Pane head slot (0.37.5)
+`Pane head={{ title, description?, onClose?, closeLabel? }}` draws a sticky one-row head for an aside or detail pane: the title, a muted sublabel and a small close icon button at the end. It is the first band of the pane's stack (a `PaneSection align="center"` holding a `PaneHeader`), so the head-row mode (row / lone / none) and `--grammar-pane-head-size` apply, and it stays at the top while the body scrolls.

@@ -55,6 +55,13 @@ export type FlowGraphContainer = {
     readonly chips?: ReadonlyArray<FlowGraphChip>
     readonly childIds: ReadonlyArray<string>
 }
+/** The agent a block belongs to (0.37.5): drawn as a 16px avatar and the name (12px, muted) under the title. */
+export type FlowGraphAgent = {
+    readonly name: string
+    readonly avatar?: string
+}
+/** The position of a node's centre, in graph units (0.37.5: the app's saved arrangement). */
+export type FlowGraphPositions = Readonly<Record<string, { readonly x: number, readonly y: number }>>
 /** `forward` (default) runs down the flow; `back` (alias `return`) returns to an earlier or sibling step: dashed, with an optional pill label. */
 export type FlowGraphEdgeVariant = "forward" | "back" | "return"
 /** One entry of the kind legend under a `steps` graph. */
@@ -89,6 +96,8 @@ export type FlowGraphNode = {
     readonly chips?: ReadonlyArray<FlowGraphChip>
     /** `steps` only (0.37.4): makes the node a loop card that holds `childIds` (see {@link FlowGraphContainer}). */
     readonly container?: FlowGraphContainer
+    /** `steps` only (0.37.5): the agent that owns this block, for a block of another agent: a small avatar (the sprout when no `avatar`) and the name under the title. */
+    readonly agent?: FlowGraphAgent
     /** `steps` only: the run overlay, where the run is at this node. */
     readonly status?: FlowGraphRunStatus
     readonly size?: FlowGraphNodeSize

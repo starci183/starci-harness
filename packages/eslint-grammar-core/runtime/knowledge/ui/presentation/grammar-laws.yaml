@@ -148,6 +148,15 @@ rules:
         assert: |-
           It is HeroUI v3's link: the primary colour, the underline on hover only, the anchor icon at the end. Its type size and leading are
           inherited (14 in a body, 12 in meta or caption text). A size prop, a size class and an underline or decoration class are refused.
+  - id: ROWS-IN-CARD
+    title: Rows of data are always a card
+    governs: A list of rows or key-value rows on the well or on a white surface.
+    cases:
+      - id: case-1
+        when: A DescriptionList or DisclosureList is drawn
+        assert: |-
+          It stands in a Section or a SurfaceCard, so it is a card: a shadow and no border on the pink well, a 1px border and no shadow on a white
+          surface (aside, pane, drawer); Grammar draws that edge itself. A row primitive with no card around it is refused. ListBox is a navigation list and is not read.
   - id: SECTION-HEAD-ACTION
     title: A section head is one row with at most one thing at its end
     governs: The head of a Grammar Section.

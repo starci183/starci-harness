@@ -15,6 +15,7 @@ import {
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, Handle, Position, type EdgeProps, type Node, type NodeProps } from "@xyflow/react"
 import { Link as RouterLink } from "react-aria-components"
 import { isValidElement, memo, type ReactNode } from "react"
+import { Avatar } from "../../leaf/Avatar/index.js"
 import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { useCustomTone } from "../../useCustomTone.js"
 import { chipsOf, roundedPath, stepsBackRoute, STEPS_PORT_CHARS, type StepsBackRoute } from "./steps.js"
@@ -62,11 +63,12 @@ export const DEFAULT_STATUS_LABELS: Readonly<Record<FlowGraphRunStatus, string>>
 }
 
 /**
- * The arrowhead of a steps edge (0.37.0): an open chevron, about 6px, drawn with a 1.5px stroke in screen units (the marker is in user space so
- * the edge's own width does not scale it). A taken edge's head is the strong text tone; an untaken one's is the light neutral of its line.
+ * The arrowhead of a steps edge (0.37.5): a CLOSED chevron about 8px across with a rounded stroke perimeter (stroke-linejoin round) filled in the edge's colour, so
+ * the outline stays visible and crisp at any zoom (the marker is in user space, so the edge's own width does not scale it). A taken edge's head is the strong text tone;
+ * an untaken one's is the light neutral of its line.
  */
-export const STEPS_ARROW_BOX = 20
-export const STEPS_ARROW_STROKE = 1.5
+export const STEPS_ARROW_BOX = 22
+export const STEPS_ARROW_STROKE = 2
 export const STEPS_UNTAKEN_TONE = "color-mix(in oklab, var(--muted) 55%, transparent)"
 
 export const STEP_BUILT_IN_TONES: readonly string[] = ["neutral", "accent", "success", "warning", "danger", "muted"]
@@ -89,6 +91,8 @@ export type StepNodeData = {
     readonly kind: FlowGraphStepKind
     readonly tone: FlowGraphTone
     readonly ports: ReadonlyArray<FlowGraphPort>
+    /** An edge leaves this step (not from a port): its end edge shows the solid anchor dot. */
+    readonly hasEdgeOut?: boolean
     readonly isSelected: boolean
     readonly direction: FlowGraphDirection
     /** The word beside the status icon on the card ("Xong", "Đang chạy"). */
@@ -116,13 +120,13 @@ const SIDES = {
 } as const
 
 /** The hidden handles of a card: in, out, and the side handles back edges leave and enter by. */
-const StepHandles = ({ direction, hasOut }: { readonly direction: FlowGraphDirection, readonly hasOut: boolean }) => {
+const StepHandles = ({ direction, hasOut, isAnchored }: { readonly direction: FlowGraphDirection, readonly hasOut: boolean, readonly isAnchored: boolean }) => {
     const sides = SIDES[direction]
     const handle = "starci-core-flow-graph-step-handle"
     return (
         <>
             <Handle className={handle} id="in" isConnectable={false} position={sides.in} type="target" />
-            {hasOut ? <Handle className={handle} id="out" isConnectable={false} position={sides.out} type="source" /> : null}
+            {hasOut ? <Handle className={isAnchored ? `${handle} starci-core-flow-graph-step-anchor` : handle} id="out" isConnectable={false} position={sides.out} type="source" /> : null}
             <Handle className={handle} id="back-out-start" isConnectable={false} position={sides.start} type="source" />
             <Handle className={handle} id="back-out-end" isConnectable={false} position={sides.end} type="source" />
             <Handle className={handle} id="back-in-start" isConnectable={false} position={sides.start} type="target" />
@@ -137,7 +141,7 @@ const StepHandles = ({ direction, hasOut }: { readonly direction: FlowGraphDirec
  * An `end` node is a pill with a check.
  */
 export const FlowGraphStepView = memo(({ data }: NodeProps<Node<StepNodeData>>) => {
-    const { graphNode, kind, tone, ports, isSelected, direction, statusLabel } = data
+    const { graphNode, kind, tone, ports, isSelected, direction, statusLabel, hasEdgeOut } = data
     const custom = useCustomTone(tone, STEP_BUILT_IN_TONES)
     const isEnd = kind === "end"
     const body = isEnd ? (
@@ -150,6 +154,12 @@ export const FlowGraphStepView = memo(({ data }: NodeProps<Node<StepNodeData>>) 
             <span className="starci-core-flow-graph-step-tile" aria-hidden="true"><StepGlyph icon={graphNode.icon} kind={kind} /></span>
             <span className="starci-core-flow-graph-step-copy">
                 <span className="starci-core-flow-graph-step-title">{graphNode.label}</span>
+                {graphNode.agent === undefined ? null : (
+                    <span className="starci-core-flow-graph-step-agent" data-grammar-flow-agent="true">
+                        <Avatar name={graphNode.agent.name} {...(graphNode.agent.avatar === undefined ? {} : { src: graphNode.agent.avatar })} size="sm" isDecorative />
+                        <span className="starci-core-flow-graph-step-agent-name">{graphNode.agent.name}</span>
+                    </span>
+                )}
                 {graphNode.description === undefined || graphNode.description === "" ? null : <span className="starci-core-flow-graph-step-line">{graphNode.description}</span>}
                 <StepChips chips={graphNode.chips} />
             </span>
@@ -168,7 +178,7 @@ export const FlowGraphStepView = memo(({ data }: NodeProps<Node<StepNodeData>>) 
             data-dimmed={graphNode.isDimmed === true ? "true" : undefined}
             data-placeholder={graphNode.isPlaceholder === true ? "true" : undefined}
         >
-            <StepHandles direction={direction} hasOut={ports.length === 0 || kind !== "condition"} />
+            <StepHandles direction={direction} hasOut={ports.length === 0 || kind !== "condition"} isAnchored={hasEdgeOut === true} />
             {graphNode.tag === undefined || graphNode.tag === "" ? null : <span className="starci-core-flow-graph-step-tag" data-grammar-flow-tag="true">{graphNode.tag}</span>}
             {graphNode.status === undefined ? null : (
                 <span className="starci-core-flow-graph-step-status" data-status={graphNode.status} data-grammar-flow-status={graphNode.status} aria-hidden="true">
@@ -209,7 +219,7 @@ export const FlowGraphContainerView = memo(({ data }: NodeProps<Node<ContainerNo
     const { graphNode, direction, isSelected } = data
     return (
         <div className="starci-core-flow-graph-container" data-grammar-flow-node={graphNode.id} data-grammar-flow-container="true" data-grammar-selected={isSelected ? "true" : "false"}>
-            <StepHandles direction={direction} hasOut />
+            <StepHandles direction={direction} isAnchored={false} hasOut />
             <span className="starci-core-flow-graph-container-head">
                 <span className="starci-core-flow-graph-container-label">{graphNode.container?.label ?? graphNode.label}</span>
                 <StepChips chips={graphNode.container?.chips} />

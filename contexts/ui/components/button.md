@@ -104,3 +104,6 @@ Proof: TASTE-5, TASTE-11, UX-4, UX-10, A11Y-2.
 
 ## Icons inside Grammar are outline (0.37.4)
 Every mark Grammar draws itself is stroked, never filled: the search icon, the Select chevron, the number steppers, the scroll arrows, the Alert status marks and the FlowGraph zoom controls use the closed glyph vocabulary (`glyphSource`, `inlineGlyph` for a vendor slot). The vendors' filled defaults are replaced; the three-dot `more` glyph stays dots.
+
+## Icon measures (0.37.5)
+A Button with a start icon or an end arrow uses HeroUI v3's measures: padding-inline 12 (sm) or 16 (md, lg) on both sides, gap 8, the icon 20px on a phone and 16px from 640px (16px on sm), a -2px inline margin on the icon. HeroUI has no 24px button icon. Enforcer: story `Controls/Button icon sizes`.

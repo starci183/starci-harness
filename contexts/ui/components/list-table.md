@@ -69,3 +69,6 @@ COLLECTION-1..4, BOUNDARY-2..3, BOUNDARY-7, FONT-9, OVERFLOW-4, LAYOUT-3. Lint: 
 `no-list-panel-padding`, `list-item-has-key`, `no-commit-in-collection-item`. Proof: TASTE-3, TASTE-10, UX-5.
 
 `DataTable fill` (0.37.3) makes the table fill the height its host gives it (a `Section fill` cell of a stretched `Grid`): the white body grows to the frame's foot and the footer sticks to the bottom. The section head is a fixed 2rem row, nowrap, the label truncating first.
+
+## Key-value rows (0.37.5)
+`SurfaceCard kind="list" layout="keyValue"` (and a `Section` of rows): each row's `title` is the key (muted, 14, at the start) and `value` is the content (normal text, 14, at the end). From 28rem a row is two columns (the key at most 40%); under 22rem the value wraps under the key. Use it for facts about one thing (order details, a customer), never title + subtitle for facts. Header-zone seams use `--starci-core-zone-seam` (foreground 14% over the ground), readable on white and on the grey table frame.

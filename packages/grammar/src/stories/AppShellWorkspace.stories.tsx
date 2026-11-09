@@ -178,3 +178,86 @@ export const NestedGrids: Story = {
     });
   },
 };
+
+/**
+ * THE AGENT CHAT TAB (0.37.5): the real nesting of an app tab with panes: the page band (trail, title, tabs) over an outer grid whose one flush pane hosts a grid of a chat room (head, a long
+ * thread that scrolls, a composer) and an aside (head, a long list), in the fixed shell. Only the thread and the aside list scroll: the page, the band, the head and the composer stay put.
+ */
+const longThread = Array.from({ length: 60 }, (_, index) => (
+  <G.MessageBubble key={index} side={index % 3 === 0 ? 'outgoing' : 'incoming'} author={index % 3 === 0 ? undefined : 'Chatbot'} meta={`${String(9 + Math.floor(index / 6)).padStart(2, '0')}:${String((index % 6) * 9).padStart(2, '0')}`} body={`Tin nhắn số ${index + 1}: Chatbot chăm sóc khách hàng cần bạn quyết định, sơ đồ của agent cần người duyệt.`} />
+));
+const longAside: ReadonlyArray<G.ListBoxItem> = Array.from({ length: 40 }, (_, index) => ({ id: `s${index}`, label: `Nguồn ${index + 1}`, description: 'Nhận tin khách · Tự làm' }));
+
+const chatTabGrid = (
+  <G.PaneGrid label="Chat tab" areas={['tab']}>
+    <G.Pane area="tab" inset="flush">
+      <G.PaneGrid label="Chat" areas={{ base: ['room'], medium: ['room rail'] }} columns={{ base: ['fill'], medium: ['fill', 'standard'] }}>
+        <G.Pane area="room" surface content="full" inset="flush" label="Room">
+          <G.PaneSection align="center"><G.PaneHeader title="Chatbot" description="Agent" /></G.PaneSection>
+          <G.PaneSection scroll={{ label: 'Thread', role: 'log', align: 'end', tone: 'background' }}>{longThread}</G.PaneSection>
+          <G.PaneSection as="footer" rule="start"><G.Input id="composer" name="composer" label="Nhắn cho agent" kind="text" /></G.PaneSection>
+        </G.Pane>
+        <G.Pane area="rail" surface scroll content="full" label="Sources">
+          <G.PaneSection align="center"><G.PaneHeader title="Agent trả lời từ" /></G.PaneSection>
+          <G.PaneSection><G.ListBox label="Sources" items={longAside} selectionMode="single" inset="panel" /></G.PaneSection>
+        </G.Pane>
+      </G.PaneGrid>
+    </G.Pane>
+  </G.PaneGrid>
+);
+
+const ChatTabShell = ({ scope }: { readonly scope: ReturnType<typeof familyScope> }) => (
+  <G.GrammarRoot {...scope}>
+    <G.WorkspaceShell
+      viewport="fixed"
+      header={<G.TopBar position="static" brand={<G.IdentityLockup title="Studio" subtitle="Owner" />} actions={<G.AvatarButton name="Alex Morgan" size="control" />} />}
+      navigation={<G.Sidebar label="Workspace" groups={groups} selectedKey="conversations" />}
+      navigationLabel="Workspace navigation"
+      navigationTrack="intrinsic"
+      navigationVisibility="wide"
+      primaryLabel="Chatbot"
+      primary={
+        <G.Page
+          chrome="panes"
+          layout="workspace"
+          measure="product"
+          minHeight="lg"
+          header={{
+            breadcrumbs: { label: 'Breadcrumb', items: [{ id: 'agents', label: 'Agent', href: '#agents' }, { id: 'bot', label: 'Chatbot' }] },
+            title: 'Chatbot',
+            tabs: { label: 'Agent', selectedKey: 'chat', items: [{ id: 'work', label: 'Bàn làm việc' }, { id: 'chat', label: 'Trò chuyện' }, { id: 'setup', label: 'Thiết lập' }] },
+          }}
+        >
+          {chatTabGrid}
+        </G.Page>
+      }
+    />
+  </G.GrammarRoot>
+);
+
+export const ChatTab: Story = {
+  render: (_, { globals }) => <ChatTabShell scope={familyScope(globals)} />,
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const thread = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="room"] [role="log"]');
+      if (thread === null) throw new Error('the thread renders');
+      const page = document.scrollingElement as HTMLElement;
+      expect(page.scrollHeight).toBeLessThanOrEqual(window.innerHeight + 1);
+      const head = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="room"] .starci-core-pane-header')!.getBoundingClientRect();
+      const composer = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="room"] footer')!.getBoundingClientRect();
+      const band = canvasElement.querySelector<HTMLElement>('.starci-core-page-header')!.getBoundingClientRect();
+      expect(thread.scrollHeight).toBeGreaterThan(thread.clientHeight);
+      thread.scrollTop = 400;
+      const after = {
+        head: canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="room"] .starci-core-pane-header')!.getBoundingClientRect(),
+        composer: canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="room"] footer')!.getBoundingClientRect(),
+        band: canvasElement.querySelector<HTMLElement>('.starci-core-page-header')!.getBoundingClientRect(),
+      };
+      expect(after.head.top).toBe(head.top);
+      expect(after.composer.top).toBe(composer.top);
+      expect(after.band.top).toBe(band.top);
+      expect(composer.bottom).toBeLessThanOrEqual(window.innerHeight + 1);
+      expect(head.top).toBeGreaterThanOrEqual(band.bottom - 1);
+    });
+  },
+};

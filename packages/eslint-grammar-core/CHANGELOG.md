@@ -3,6 +3,7 @@
 ## 0.37.5 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.37.5 (SurfaceCard kind="select"; outline glyph sizing); no rule of this package changed. A `no-loose-card-caption` rule was weighed and not added: a syntactic rule cannot tell a card from an app block that renders one, nor an explanation from a legend.
+- Added: rule `rows-in-card` (ROWS-IN-CARD, error): a Grammar `DescriptionList` or `DisclosureList` that no `SurfaceCard`, `Section`, `DataTable` or `Accordion` of the same file encloses is refused (a primitive passed as a JSX attribute value is judged where the receiver draws it). `ListBox` is not read (a navigation list or menu cannot be told from rows of data by syntax).
 
 ## 0.37.4 - 2026-11-09
 

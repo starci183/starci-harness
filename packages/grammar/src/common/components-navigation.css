@@ -1049,7 +1049,8 @@
     /* A fitting table lets its headings and cells wrap onto further lines, so its columns can shrink to their longest word. */
     .starci-core-data-table[data-grammar-table-fit="true"] :is(.starci-core-data-table-column, .starci-core-data-table-cell) {
         white-space: normal;
-        overflow-wrap: anywhere;
+        /* break-word, never anywhere: `anywhere` makes the min-content of a cell ONE character, so a short or numeric column collapsed to a letter per line (0.37.5). */
+        overflow-wrap: break-word;
     }
 
     .starci-core-data-table[data-grammar-table-sticky="true"] .starci-core-data-table-header {
@@ -1199,10 +1200,18 @@
         min-inline-size: var(--starci-core-col-min);
     }
 
-    .starci-core-data-table :is(.starci-core-data-table-column, .starci-core-data-table-cell)[data-grammar-table-width="fit"] {
+    .starci-core-data-table :is(.starci-core-data-table-column, .starci-core-data-table-cell)[data-grammar-table-width="fit"],
+    .starci-core-data-table :is(.starci-core-data-table-column, .starci-core-data-table-cell)[data-grammar-table-numeric="true"] {
         inline-size: 1%;
+        min-inline-size: min-content;
         white-space: nowrap;
         overflow-wrap: normal;
+    }
+
+    /* A cell that holds a chip, a badge or a status mark never wraps below its content either. */
+    .starci-core-data-table .starci-core-data-table-cell:has(> :is([data-component="Badge"], [data-component="Chip"], .starci-core-chip, [data-component="StatusDot"])) {
+        white-space: nowrap;
+        min-inline-size: min-content;
     }
 
     .starci-core-data-table :is(.starci-core-data-table-column, .starci-core-data-table-cell)[data-grammar-table-width="fixed"] {
@@ -2729,7 +2738,9 @@
         position: absolute;
         inset-block-start: 0;
         inset-inline-end: var(--grammar-inset);
-        padding: 0 var(--grammar-inline-gap);
+        /* 18px high (0.37.5): the 16px line plus 1px above and below, centred on the card's top edge. */
+        box-sizing: border-box;
+        padding: 1px var(--grammar-inline-gap);
         border-radius: var(--grammar-radius-pill);
         background: var(--starci-flow-tint);
         box-shadow: 0 0 0 var(--grammar-ring-width) var(--surface);
@@ -2847,11 +2858,23 @@
         inset-inline-start: 50%;
         inline-size: var(--grammar-flow-port-dot);
         block-size: var(--grammar-flow-port-dot);
-        border: var(--grammar-hairline) solid var(--surface);
+        /* A SOLID round dot of 6px in the edge's colour (0.37.5): no ring, so it reads as the anchor the edge leaves from. */
+        border: 0;
         border-radius: var(--grammar-radius-round);
         background: var(--muted);
         pointer-events: none;
         transform: translate(-50%, 50%);
+    }
+
+    /* The anchor of an edge that leaves a plain step (not a condition's port): the same solid 6px dot at the middle of the card's end edge. */
+    .starci-core-flow-graph .starci-core-flow-graph-step-handle.starci-core-flow-graph-step-anchor {
+        inline-size: var(--grammar-flow-port-dot);
+        block-size: var(--grammar-flow-port-dot);
+        min-inline-size: var(--grammar-flow-port-dot);
+        min-block-size: var(--grammar-flow-port-dot);
+        border-radius: var(--grammar-radius-round);
+        background: var(--muted);
+        opacity: 1;
     }
 
     .starci-core-flow-graph[data-grammar-flow-direction="LR"] .starci-core-flow-graph-step-port-dot { transform: translate(-50%, 50%); }
@@ -3092,6 +3115,32 @@
     .starci-core-flow-graph-controls .react-flow__controls-fitview { --starci-core-flow-control-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9V5a1 1 0 011-1h4M15 4h4a1 1 0 011 1v4M20 15v4a1 1 0 01-1 1h-4M9 20H5a1 1 0 01-1-1v-4'/%3E%3C/svg%3E"); }
     .starci-core-flow-graph-controls .react-flow__controls-button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
     .starci-core-flow-graph-controls .react-flow__controls-button:disabled { opacity: var(--disabled-opacity); cursor: default; }
+    /* DOTS, DRAG AND THE AGENT LINE (0.37.5). The dot ground is xyflow's own Background (variant dots, 18px, 1.2px) in the muted token; the reset control joins the zoom group with an outline mark. */
+    .starci-core-flow-graph { --starci-flow-dot-color: color-mix(in oklab, var(--muted) 45%, transparent); }
+    .starci-core-flow-graph[data-grammar-flow-background="dots"] .react-flow__background pattern circle,
+    .starci-core-flow-graph[data-grammar-flow-background="dots"] .starci-core-flow-graph-background circle { fill: var(--starci-flow-dot-color); }
+    .starci-core-flow-graph[data-grammar-flow-editable="true"] .react-flow__node.draggable { cursor: grab; }
+    .starci-core-flow-graph[data-grammar-flow-editable="true"] .react-flow__node.dragging { cursor: grabbing; }
+    .starci-core-flow-graph-controls .starci-core-flow-graph-reset { --starci-core-flow-control-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 4v5h5'/%3E%3Cpath d='M4.6 9a8 8 0 1 1-.6 4'/%3E%3C/svg%3E"); }
+    .starci-core-flow-graph-controls .starci-core-flow-graph-reset::before {
+        content: "";
+        display: block;
+        inline-size: 1rem;
+        block-size: 1rem;
+        background: currentColor;
+        mask: var(--starci-core-flow-control-mark) center / contain no-repeat;
+    }
+    .starci-core-flow-graph-step-agent {
+        display: flex;
+        min-inline-size: 0;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+    }
+    .starci-core-flow-graph-step-agent .starci-core-avatar { flex: none; inline-size: 1rem; block-size: 1rem; }
+    .starci-core-flow-graph-step-agent-name { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     @media (prefers-reduced-motion: reduce) {
         .starci-core-flow-graph .react-flow__edge.animated path { animation: none; }

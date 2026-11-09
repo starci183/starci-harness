@@ -111,6 +111,11 @@ export type ListRowData = {
     /** The one named field for custom drawing under the row's copy: a pre-rendered node, never a function. */
     readonly detail?: ReactNode
     /**
+     * The value of a key-value row (0.37.5, list `layout="keyValue"`): `title` is the key (muted, at the start) and `value` is the content (normal text, at the end; it wraps under the key
+     * on a narrow container). Ignored by a list that is not `keyValue`.
+     */
+    readonly value?: ReactNode
+    /**
      * The whole row opens something: pressing anywhere on it (the title is the one focusable button, its hit area is the row)
      * runs this. Sibling commands and the menu stay separate targets above it. Exclusive with `href`.
      */
@@ -199,6 +204,11 @@ export type CardHead = {
 /** A collection a card holds: a list of rows or an accordion. */
 export type ListData = {
     readonly kind: "list"
+    /**
+     * `rows` (default): title with a supporting line. `keyValue` (0.37.5): each row is a key (`title`, muted, 14) and its `value` (normal text, 14, at the end), so the hierarchy reads
+     * key then value instead of title then subtitle.
+     */
+    readonly layout?: "rows" | "keyValue"
     readonly items: readonly ListRowData[]
     /** What the card shows when it has no rows. Required: every list answers for its empty state. */
     readonly empty: ReactNode
