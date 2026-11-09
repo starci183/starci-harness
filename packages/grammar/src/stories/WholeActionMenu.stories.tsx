@@ -79,6 +79,7 @@ const BodyCardWithMenu = () => {
         label="Chatbot"
         wholeAction={{ kind: 'button', label: 'Mở Chatbot', press: () => note('open') }}
         menu={{ label: 'Thao tác với Chatbot', entries: [{ kind: 'section', id: 'main', items: [{ id: 'pause', label: 'Tạm dừng', onAction: () => note('menu-pause') }, { id: 'remove', label: 'Gỡ', onAction: () => note('menu-remove') }] }] }}
+        footers={[{ kind: 'custom', children: <G.Text tone="muted">Việc 7 ngày: 12 · Chờ bạn: 2</G.Text> }]}
       >
         <G.Cluster gap="row">
           <G.Badge tone="accent">Chăm sóc khách</G.Badge>
@@ -107,5 +108,12 @@ export const BodyCardAgent: Story = {
     expect(canvasElement.querySelectorAll('[data-grammar-whole-action]').length).toBe(1);
     await userEvent.click(canvas.getByRole('button', { name: 'Mở Chatbot' }), { pointerEventsCheck: 0 });
     expect(log()).toBe('open');
+    // 0.37.12: the room for the ⋯ is reserved on the content row only; the footer zone and its divider run the card's full width.
+    const card = canvasElement.querySelector<HTMLElement>('[data-grammar-surface-card="true"]')!.getBoundingClientRect();
+    const footer = canvasElement.querySelector<HTMLElement>('[data-grammar-zone="custom"]');
+    if (footer === null) throw new Error('the footer zone renders');
+    const zone = footer.getBoundingClientRect();
+    expect(Math.abs(zone.left - card.left)).toBeLessThanOrEqual(1);
+    expect(Math.abs(zone.right - card.right)).toBeLessThanOrEqual(1);
   },
 };

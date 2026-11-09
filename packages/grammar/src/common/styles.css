@@ -2508,7 +2508,9 @@
     /* 0.37.8: with a whole-card action the menu trigger stands above the stretched link (z-index 1) as its own tab stop and press target. */
     /* 0.37.10: the ⋯ of a body card stands at its top end, above the whole-card link (z-index 1) as its own target. */
     .starci-core-body-menu { position: absolute; z-index: 2; inset-block-start: var(--grammar-inline-gap); inset-inline-end: var(--grammar-inline-gap); display: inline-flex; }
-    .starci-core-surface:has(> .starci-core-body-menu) > [data-grammar-surface-content="true"] { padding-inline-end: calc(var(--grammar-touch-size) + var(--grammar-inline-gap)); }
+    /* The room for the ⋯ is reserved ONLY on the content the menu sits beside (0.37.12): an unzoned card pads its content; a zoned card keeps its header and footer zones, and their dividers, full width and narrows only its padded main. */
+    .starci-core-surface:has(> .starci-core-body-menu) > [data-grammar-surface-content="true"]:not([data-grammar-surface-zoned="true"]) { padding-inline-end: calc(var(--grammar-touch-size) + var(--grammar-inline-gap)); }
+    .starci-core-surface:has(> .starci-core-body-menu) > [data-grammar-surface-content="true"][data-grammar-surface-zoned="true"] > [data-grammar-surface-main="padded"] { margin-inline-end: calc(var(--grammar-touch-size) + var(--grammar-inline-gap)); }
     .starci-core-tile-menu { position: relative; z-index: 2; display: inline-flex; margin-inline-start: auto; }
 
     .starci-core-accordion-heading {

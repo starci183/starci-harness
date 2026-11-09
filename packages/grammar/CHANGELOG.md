@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.12 - 2026-11-09 - the body-card menu reserves room only beside the content
+
+- Fixed (0.37.10): the end padding a `SurfaceCard kind="body"` with a `menu` reserves for the ⋯ also narrowed its footer zones, so the full-width divider above a footer stopped about 50px short of the right edge. The room is now reserved only on the content the ⋯ sits beside (an unzoned card pads its content; a zoned card narrows only its padded main); `headers` and `footers` zones and their dividers stay full width. Story `BodyCardAgent` has a footer zone and asserts the zone spans the card.
+
 ## 0.37.11 - 2026-11-09 - the FlowGraph controls reserve their corner
 
 - Fixed: the zoom controls (bottom-left) overlapped a node near the bottom-left corner of a graph. A graph with controls now fits its view with a 56px strip at the start edge left empty (`CONTROLS_INSET`: the control column plus the panel margin), in every fit path (`fitView` padding, the steps fit, the anchored start), so no node is drawn under the controls. Story `ControlsReserveCorner` asserts the controls' rect meets no node.
