@@ -36,6 +36,14 @@ Loading draws the words as a skeleton bar of the same step.
 - **Knowledge decides:** whether the words are a title or a sentence.
 - **App author decides:** the words.
 
+## Link and Sublabel
+`Link` is HeroUI v3's own link: the primary colour, the underline on hover only, the anchor icon at the end of the label. It has no size: it inherits the type
+size and leading of the line it stands in (14 in a body, 12 inside meta or caption text). Lint `starci-grammar/link-look` refuses a `size` prop and a size,
+underline or decoration class on a Link.
+
+`Sublabel` is the group label that sits above a card inside a section ("Được tự làm" above its card): 12, weight 500, muted, one short line. It is not a
+heading. An app never builds it from a `Text` size and a weight.
+
 ## Rules
 FONT-7..9. Lint: `starci-grammar/same-line-size`, `starci-grammar/table-cell-type`. R357 (`starci-grammar/text-inline-only`: a block inside `Text`), R358 (`starci-grammar/no-text-heading`: a strong `Text` that
 only titles the blocks after it). A heading is the group's own title, so the outline, the level and the spacing come from the

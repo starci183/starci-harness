@@ -91,6 +91,15 @@ the same inset, and the drawer header's inline padding is the pane inset, so the
   their content. Never a padding, margin, class or style on a pane or a band; a short separator inside a band's content
   is the app's own element.
 
+## Main pane cap
+In a workspace page (`Page layout="workspace"`) the main pane, the one on the canvas, holds its content (the pink well and its cards) to `--grammar-content-max`
+(80rem, the report layout's token), aligned left (MEASURE-8). The cap limits the right edge only: the well's pink ground fills the pane. Side (surface) panes and
+the header band are not capped.
+
+## Drawer opener
+`PaneHeader drawerOpener` draws the opener of a `collapse="drawer"` pane inside the pane head. `PaneDrawerOpener` (`pane`, `icon`, `label`) is the same button for
+any other place in the grid (a card head, a toolbar); it shows only where that pane's area is not arranged. The grid owns the open state.
+
 ## Rules
 PADDING-3 and PADDING-4 by contact ([../presentation.md](../presentation.md) Space law 3), BOUNDARY-1 for the dividers,
 GAP-3 between sections, OVERFLOW-4 and OVERFLOW-5 for a scroll pane or section, LAYOUT-1, RESPONSIVE-2 names the owner

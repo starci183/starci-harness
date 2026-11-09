@@ -91,6 +91,11 @@ disabled commit never stands in for an empty state (CTA-5).
 - **App author decides:** the label, the handler or `href`, the disabled reason, the three facts in the spec.
   Nothing visual.
 
+## Icon and size
+A `sm` Button never carries an icon, not even the primary (owner, 2026-11-09): a leading icon (`startGlyph`, `startContent`) is for the primary at `md` or `lg`.
+The type refuses a start icon at `size="sm"`, and lint `starci-grammar/button-icon-primary-only` reads the literal cases. `Alert` and `EmptyNotice`
+draw their primary action at `md` when it carries an icon and at `sm` as text.
+
 ## Rules
 CTA-6..5, ACTION-1..3, ACCENT-6. Lint: `starci-grammar/button-arrow`, `starci-grammar/button-icon-primary-only`, `starci-grammar/suggestion-buttons`, `starci-grammar/row-title-link`,
 `starci-fe/button-intent-required`,

@@ -129,6 +129,25 @@ rules:
         assert: |-
           The page tabs (`Page header.tabs`) and one region set are the two layers; a third nested set is refused.
           Every tab is one size, so only the count of layers is judged.
+  - id: TABS-IN-WELL
+    title: The second tab layer stands in the white header band
+    governs: Underline Tabs in the body of a page or a pane.
+    cases:
+      - id: case-1
+        when: A page has a second layer of underline tabs under its page tabs
+        assert: |-
+          It is `Page header.subTabs`: inside the white header band, under layer 1, on its own full-width separator, the same size as layer 1
+          (14, 40 high, selected weight 500, the 2px underline exactly on the separator) and flush with the band's left inset, the same x as layer 1.
+          An underline Tabs written in the body of a Page, Pane or PaneSection (the pink well, a pane body) is refused.
+  - id: LINK-LOOK
+    title: A Link is HeroUI's own link and takes its size from the line
+    governs: The look of a Grammar Link.
+    cases:
+      - id: case-1
+        when: A Link stands in a line of text, a meta line or a caption
+        assert: |-
+          It is HeroUI v3's link: the primary colour, the underline on hover only, the anchor icon at the end. Its type size and leading are
+          inherited (14 in a body, 12 in meta or caption text). A size prop, a size class and an underline or decoration class are refused.
   - id: SINGLE-CHILD-CARD
     title: A table, list or chart standing alone is the surface
     governs: A SurfaceCard whose only content is a table, a list or a chart.

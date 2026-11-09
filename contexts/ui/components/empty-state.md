@@ -42,6 +42,9 @@ the layout does not jump (TASTE-10).
   whether the mark is art.
 - **App author decides:** the copy, the action and its handler, the artwork's file and its asset slot.
 
+## Frame
+`frame="frameless"` draws the notice as words on the page ground or the pane: no border, background or shadow. The default `card` is one surface card on the page ground.
+
 ## Rules
 CTA-1, FEEDBACK-2, STATE-8, DISCIPLINE-3, BRAND-2. The artwork's `assetSlot` is a required field of
 `EmptyNoticeArtwork`, so the compiler holds the provenance lint R338 holds on a written `Mascot`. Proof: TASTE-10,

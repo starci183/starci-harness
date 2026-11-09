@@ -684,6 +684,11 @@ on the CSS scrollers. Wheel, touch and keyboard scrolling are unchanged. An app 
 refused (lint `no-raw-scroll`); use `VerticalScrollRegion`, `HorizontalScrollRegion` or `PaneSection scroll`. `Drawer bodyInset="none"` runs the body
 edge to edge across the sheet (the default `content` keeps the inset).
 
+**Composer, flush left, Sublabel, Link.** A `Textarea` with `onSubmitShortcut` is the chat composer: 2 lines minimum (about 64px), growing to 6, with `send` drawing the
+send button at the bottom end of the box. A page's header band and body are flush left: the measure limits the right edge only (MEASURE-8). `Sublabel` is the 12 / 500 / muted
+group label above a card inside a section. `Link` is HeroUI's own link (primary colour, underline on hover, anchor icon) and inherits its size from the line; lint `link-look`.
+A `sm` Button never carries an icon. The second tab layer is `Page header.subTabs` (lint `tabs-in-well`).
+
 **The single-child-card law.** A card groups two or more different parts (figures, a list, actions) or carries zones
 (tabs, search, head actions). A table, list or chart standing alone is the surface: a `Section` titles it (`title`) and one
 muted line goes under it (`Section caption`). A standalone `DataTable` sits in its own card (edge, card radius, card shadow; HeroUI's native look inside); a `Section kind="list"` draws the same card edge. Lint `single-child-card` refuses the card around a lone one. Text

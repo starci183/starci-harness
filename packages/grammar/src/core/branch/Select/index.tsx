@@ -40,8 +40,11 @@ export type SelectProps = NoChildren & FieldControlProps & FieldSizeProps & {
     readonly options: ReadonlyArray<ListOption>
     /** The words in the trigger while nothing is chosen, in the app's language. Omitted: the trigger shows no words (never the vendor's English "Select an item"). */
     readonly placeholder?: string
-    /** `pill`: the trigger is a 40px pill on the field tone (a picker in a page head: "Position: Technician"); `field` (default): the form field. */
-    readonly appearance?: "field" | "pill"
+    /**
+     * `pill`: the trigger is a 40px pill on the field tone (a picker in a page head: "Position: Technician"); `field` (default): the form field;
+     * `compact`: a 32px pill with no prefix room, for a picker in a toolbar, a pane head or a card zone.
+     */
+    readonly appearance?: "field" | "pill" | "compact"
     /** Muted words before the value inside the trigger ("Position:"); the control stays named by `label`. */
     readonly prefix?: string
     readonly value?: string | null

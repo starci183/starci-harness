@@ -161,6 +161,7 @@ export const CANONICAL_RULE_IDS: ReadonlyArray<string> = Object.freeze([
     "MEASURE-5",
     "MEASURE-6",
     "MEASURE-7",
+    "MEASURE-8",
     // MOTION
     "MOTION-1",
     "MOTION-2",

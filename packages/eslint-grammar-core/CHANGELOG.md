@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.34.0 - 2026-11-09
+
+- Added: `tabs-in-well` (`FE_TABS_IN_WELL`, TABS-IN-WELL, error): an underline `Tabs` written in the body of a `Page`, `Pane` or `PaneSection` is refused; the second tab layer is
+  `Page header.subTabs`, in the white header band.
+- Added: `link-look` (`FE_LINK_LOOK`, LINK-LOOK, error): a `Link` with a `size` prop or a size, underline or decoration class is refused.
+- Changed: `button-icon-primary-only` also refuses a start icon on a `size="sm"` Button, the primary included.
+- Changed: released with the Grammar family at 0.34.0.
+
 ## 0.33.0 - 2026-11-09
 
 - Added: `no-raw-scroll` (`FE_NO_RAW_SCROLL`, NO-RAW-SCROLL, error): an app element whose `className` holds `overflow-auto`, `overflow-y-auto`,

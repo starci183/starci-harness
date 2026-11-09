@@ -52,6 +52,8 @@ test("FE_BUTTON_ICON_PRIMARY_ONLY: only a primary Button carries a leading icon"
   slotTester().run("button-icon-primary-only", buttonIconPrimaryOnly, {
     valid: [
       { filename: BLOCK, code: IMPORT + "export const A = () => <Button intent=\"commit\" startGlyph=\"plus\" onPress={add}>Add</Button>" },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Button intent=\"commit\" size=\"lg\" startGlyph=\"plus\" onPress={add}>Add</Button>" },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Button intent=\"commit\" size=\"sm\" onPress={add}>Add</Button>" },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Button intent=\"commit\" startContent={<Icon source={x} />} onPress={add}>Add</Button>" },
       // the arrow is not an icon: any intent may lead
       { filename: BLOCK, code: IMPORT + "export const A = () => <Button intent=\"neutral\" href=\"/runs\" endArrow>View runs</Button>" },
@@ -67,6 +69,8 @@ test("FE_BUTTON_ICON_PRIMARY_ONLY: only a primary Button carries a leading icon"
     ],
     invalid: [
       { filename: BLOCK, code: IMPORT + "export const A = () => <Button intent=\"neutral\" startGlyph=\"plus\" onPress={add}>Add</Button>", errors: [{ messageId: "icon" }] },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Button intent=\"commit\" size=\"sm\" startGlyph=\"plus\" onPress={add}>Add</Button>", errors: [{ messageId: "small" }] },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Button intent=\"commit\" size=\"sm\" startContent={<Icon source={x} />} onPress={add}>Add</Button>", errors: [{ messageId: "small" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Button intent=\"alternative\" startContent={<Icon source={x} />} onPress={add}>Add</Button>", errors: [{ messageId: "icon" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Button intent=\"destructive\" startGlyph=\"trash\" onPress={del}>Delete</Button>", errors: [{ messageId: "icon" }] },
       // no intent renders the secondary step

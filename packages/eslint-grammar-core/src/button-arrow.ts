@@ -151,6 +151,8 @@ export const buttonIconPrimaryOnly: Rule.RuleModule = defineRule({
     messages: {
       icon:
         "The Button sets `{{start}}` but is not primary. Only the primary Button (`intent=\"commit\"`, the CTA) carries a leading icon; a neutral, alternative, dismiss or destructive Button, a suggestion pill and a row action are text only. Remove `{{start}}`, or make this the region's one primary. A Button that leads somewhere keeps `endArrow`.",
+      small:
+        "The Button sets `{{start}}` at size `sm`. A small Button never carries an icon, not even the primary: a leading icon is for the primary at `md` or `lg`. Remove `{{start}}`, or make the Button `md`.",
     },
   },
   create(context) {
@@ -162,14 +164,16 @@ export const buttonIconPrimaryOnly: Rule.RuleModule = defineRule({
       },
       JSXOpeningElement(opening: TSESTree.JSXOpeningElement) {
         if (elementOf(opening, bound).grammar !== "Button") return
-        if (literalAttribute(opening, "intent") === PRIMARY_INTENT) return
+        const isPrimary = literalAttribute(opening, "intent") === PRIMARY_INTENT
+        const isSmall = literalAttribute(opening, "size") === "sm"
+        if (isPrimary && !isSmall) return
         for (const start of ["startGlyph", "startContent"]) {
           const attribute = attributeOf(opening, start)
           if (attribute === null) continue
           const value = attribute.value
           // `startContent={undefined}` / `{null}` states no icon.
           if (value?.type === "JSXExpressionContainer" && (value.expression.type === "JSXEmptyExpression" || (value.expression.type === "Identifier" && value.expression.name === "undefined") || (value.expression.type === "Literal" && value.expression.value === null))) continue
-          context.report({ node: attribute, messageId: "icon", data: { start } })
+          context.report({ node: attribute, messageId: isPrimary ? "small" : "icon", data: { start } })
         }
       },
     }

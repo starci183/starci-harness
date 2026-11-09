@@ -163,9 +163,8 @@ const AlertInner = (props: AlertProps) => {
                     ) : (
                         <Button
                             isLoading={isLoading}
-                            size="sm"
                             width="fill-narrow"
-                            {...(action.icon !== undefined && actionIntent.intent === "commit" ? { intent: "commit" as const, startContent: <Icon source={action.icon} usage="leading" /> } : actionIntent)}
+                            {...(action.icon !== undefined && actionIntent.intent === "commit" ? { intent: "commit" as const, size: "md" as const, startContent: <Icon source={action.icon} usage="leading" /> } : { size: "sm" as const, ...actionIntent })}
                             onPress={action.onAction}
                             
                         >{action.label}</Button>

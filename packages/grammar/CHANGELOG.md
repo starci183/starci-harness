@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.34.0 - 2026-11-09 - sm Button without icon, chat composer, flush-left page, Sublabel, Link look
+
+- Changed (types): a `sm` Button never carries an icon, not even the primary (owner, 2026-11-09): the primary variant of the Button type takes
+  `size` `md` or `lg` only. `Alert` and `EmptyNotice` draw an iconed primary action at `md`. Lint `button-icon-primary-only` also refuses `size="sm"`.
+- Added: THE CHAT COMPOSER. A `Textarea` with `onSubmitShortcut` starts at 2 lines (4rem, about 64px), grows with its text up to 6 lines, then scrolls with no bar;
+  `Textarea send={{ label, onPress, isDisabled?, isPending? }}` draws the send button inside the box at its bottom end. Constants `COMPOSER_MIN_ROWS`, `COMPOSER_MAX_ROWS`.
+- Changed (default): THE PAGE IS FLUSH LEFT (MEASURE-8). `PageContainer` (the header band's content and the page body) and the workspace primary column
+  start at the left inset; the measure limits the right edge only. Nothing is centred or pushed inward. `PageContainer` no longer carries `MARGIN-AUTO`.
+- Added: `Sublabel` (leaf, `children: string`, `id?`): the group label above a card inside a section, 12, weight 500, muted.
+- Changed (default): `Link` is HeroUI v3's own link: the primary colour, the underline on hover only, the anchor icon (`Link.Icon`) at the end of a text label, and
+  no size. The `size` prop, the `LinkSize` type and the `externalIcon` prop are removed; the type size and leading are inherited from the line (14 in a body, 12 in
+  meta). `.grammar-common-root` sets the base type to the UI step (14), so a Link outside any sized text no longer renders 16.
+- Documented: the second tab layer is `Page header.subTabs`, in the white header band, on its own full-width separator, flush with the band's left inset. Lint `tabs-in-well`.
+- Added: `EmptyNotice frame="frameless"`; `Select appearance="compact"` (32 pill); `PaneDrawerOpener` (`pane`, `icon`, `label`), the drawer opener for any place in a PaneGrid;
+  the Stepper's horizontal labels are cut with an ellipsis instead of wrapping; the generated avatar initials are set at 40% of the mark so two capitals stay inside the circle.
+- Lint: `eslint-grammar-core` 0.34.0 adds `tabs-in-well` (`FE_TABS_IN_WELL`) and `link-look` (`FE_LINK_LOOK`), and extends `button-icon-primary-only` to `size="sm"`.
+- Changed (default): in a workspace page the main pane (the one on the canvas) caps its content at `--grammar-content-max` (80rem), aligned left; the well's ground still fills the pane, side panes and the header band are not capped. `check:type` pins it.
+- Added: rule id `MEASURE-8`.
+
 ## 0.33.0 - 2026-11-09 - no scrollbars; layout and responsive laws; only the primary Button carries an icon
 
 - Changed (default): NIVO NEVER SHOWS SCROLLBARS (owner, 2026-11-09, OVERFLOW-6). The family root no longer hands the scrollbar to the app's

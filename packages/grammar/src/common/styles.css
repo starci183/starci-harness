@@ -12,6 +12,8 @@
 
 @layer starci-grammar-common {
     .grammar-common-root {
+        /* The base type of everything the family draws is the UI text step (14); a part that sets no size, a Link among them, inherits it. */
+        font-size: var(--grammar-text-md);
         /*
          * THE SPACING SCALE IS 0 4 8 12 16 24 32 (common/spacing.ts), and every value below names one step by its role.
          * Gaps, by the relation between siblings: identity 4 < inline 8 < row 12 < section 24 < region 32.
@@ -215,10 +217,11 @@
         }
     }
 
+    /* The page measure only limits the right edge: the header band and the body both start at the page's left inset, never centred or pushed inward. */
     .starci-core-page-container {
         width: min(100%, var(--starci-core-page-measure));
         min-width: 0;
-        margin-inline: auto;
+        margin-inline: 0 auto;
         padding-inline: var(--grammar-page-inset);
     }
 
@@ -789,6 +792,16 @@
         color: var(--field-placeholder);
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    /* Sublabel: the group label above a card inside a section - small (12), weight 500, muted. */
+    .starci-core-sublabel {
+        min-width: 0;
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-xs);
+        overflow-wrap: anywhere;
     }
 
     .starci-core-pressable-field-shortcut {
@@ -2872,12 +2885,12 @@
     .starci-core-workspace-shell-layout[data-grammar-workspace-align="start"] { align-items: start; }
     .starci-core-workspace-shell-layout[data-grammar-workspace-align="stretch"] { align-items: stretch; }
     .starci-core-workspace-shell-navigation { grid-area: navigation; }
-    /* The main column's content never grows past the content maximum, and stays centered in its column (the rail keeps its own). */
+    /* The main column's content never grows past the content maximum; the cap limits the right edge and the content starts at the column's left edge (the rail keeps its own). */
     .starci-core-workspace-shell-primary {
         grid-area: primary;
         inline-size: 100%;
         max-inline-size: var(--grammar-content-max);
-        margin-inline: auto;
+        margin-inline: 0 auto;
     }
     /*
      * A Page owns the measure (Page: "layout frames never wrap a page in a measure of their own"): a primary that holds a Page is not
@@ -3241,6 +3254,17 @@
      * the next band, so a band's own children default to the inline step (8; `PaneSection gap`, was `row` before 0.27). A band
      * alone in its pane (a head band, a lone scroll band) has no sibling, so `gap="row"` or `"section"` stays open to it.
      */
+    /*
+     * THE WORKSPACE MAIN PANE IS CAPPED (MEASURE-8): in a workspace page the pane on the canvas (the pink well and its cards) holds its content to the
+     * report layout's own token, --grammar-content-max (80rem), aligned left. The cap limits the right edge only; the well's ground still fills the pane,
+     * and the side (surface) panes and the header band are not capped.
+     */
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane:not([data-grammar-pane-surface="true"]) .starci-core-pane-stack {
+        inline-size: 100%;
+        max-inline-size: var(--grammar-content-max);
+        margin-inline: 0 auto;
+    }
+
     .starci-core-pane-stack {
         display: flex;
         min-height: 0;
@@ -4110,6 +4134,8 @@
 
     /* Select appearance="pill": the trigger is a pill (a picker in a page head), the field tone, no shadow. */
     .starci-core-select[data-grammar-select-appearance="pill"] .starci-core-select-trigger { border-radius: var(--grammar-radius-pill); background: var(--surface-secondary); box-shadow: none; }
+    /* Select appearance="compact": the pill at the dense control step (2rem), for a toolbar, a pane head or a card zone. */
+    .starci-core-select[data-grammar-select-appearance="compact"] .starci-core-select-trigger { min-block-size: 2rem; block-size: 2rem; border-radius: var(--grammar-radius-pill); background: var(--surface-secondary); box-shadow: none; padding-block: 0; }
 
     /* DisclosureList: sibling disclosures joined into one list, divided by full-bleed lines. */
     .starci-core-disclosure-list { display: flex; min-width: 0; margin: 0; padding: 0; flex-direction: column; list-style: none; }
@@ -4126,6 +4152,14 @@
         gap: var(--grammar-row-gap);
         padding: var(--grammar-inset-open);
         text-align: center;
+    }
+
+    /* frame="frameless": words on the page ground or the pane, no card. */
+    .starci-core-empty-notice[data-grammar-empty-frame="none"] {
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
     }
 
     /* An empty notice on the page itself (not inside a surface) is content: one --surface card at the surface radius, never bare text on the tinted page. */
@@ -5769,6 +5803,26 @@
 
     /* --- Textarea mention suggestions: a listbox under the control. --- */
     .starci-core-textarea-anchor { position: relative; min-width: 0; }
+
+    /*
+     * A chat composer (a Textarea with onSubmitShortcut): never below 2 lines (4rem, about 64px), the box grows with its text up to
+     * 6 lines (set from the content by the component), then scrolls with no bar. The send button sits at the bottom end of the box.
+     */
+    .starci-core-textarea-control[data-grammar-composer="true"] {
+        min-block-size: 4rem;
+        resize: none;
+    }
+
+    .starci-core-textarea-anchor:has(> .starci-core-textarea-send) > .starci-core-textarea-control {
+        padding-inline-end: calc(var(--starci-core-control-min-size) + var(--grammar-inline-gap));
+    }
+
+    .starci-core-textarea-send {
+        position: absolute;
+        inset-block-end: 0.25rem;
+        inset-inline-end: 0.25rem;
+        display: inline-flex;
+    }
 
     .starci-core-mention-list {
         position: absolute;

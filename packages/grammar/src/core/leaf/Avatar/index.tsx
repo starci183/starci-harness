@@ -64,6 +64,8 @@ export const avatarDataUri = (name: string, seed?: string, text = avatarInitials
                     literal: {
                         elements: [{
                             ...avatarStyleDefinition.components.letters.variants.double.elements[0],
+                            // Two wide capitals ("MW") at the style's size of 50 run past the circle; 40 keeps both letters inside it.
+                            attributes: { ...avatarStyleDefinition.components.letters.variants.double.elements[0]?.attributes, "font-size": "40", dy: "14.2" },
                             children: [{ type: "text", value: text }],
                         }],
                     },

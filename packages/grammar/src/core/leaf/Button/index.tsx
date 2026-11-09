@@ -60,6 +60,8 @@ type ButtonBase = {
  * Grammar's arrow (`endArrow`); the arrow is not an icon under this rule, so any intent may use it, but a Button never carries the
  * arrow and a start icon together. `IconButton` (icon only, named by its label) is unaffected. Lint `button-icon-primary-only` reads
  * what the types cannot see.
+ * A `sm` Button is text only at every intent (owner, 2026-11-09): the types refuse a start icon at `size="sm"`, and lint
+ * `button-icon-primary-only` reads the literal cases.
  * Both glyphs take the same inline gap (8) and the control's glyph padding on their side.
  */
 type ButtonText = {
@@ -75,6 +77,8 @@ type ButtonText = {
 
 type ButtonPrimaryDoes = {
     readonly intent: "commit"
+    /** A leading icon is for the primary at `md` or `lg`: a `sm` Button never carries one, not even the primary. */
+    readonly size?: "md" | "lg"
     /** Decorative or explanatory content before the label: what the action does. Product icon identity stays with the app. Primary only. */
     readonly startContent?: ReactNode
     /** A glyph of Grammar's own closed vocabulary at the start (`plus`, `upload`, `send`, `pencil`, ...); `startContent` wins when both are given. Primary only. */

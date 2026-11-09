@@ -205,7 +205,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/action-group.md](../ui/components/action-group.md) · 4 KB — Contract: ButtonGroup.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/button.md](../ui/components/button.md) · 9 KB — Contract: Button.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+  - sections: Job · Choose · Variants · Size · States · Owner split · Icon and size · Rules
 - [ui/components/calendar-day.md](../ui/components/calendar-day.md) · 1 KB — Name one date's region without selecting a date.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/card.md](../ui/components/card.md) · 9 KB — Contract: Card.
@@ -220,8 +220,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 3 KB — Contract: Dialog and Drawer.
   - sections: Job · Choose · Variants · Scrolling · Size · States · Owner split · Rules
-- [ui/components/empty-state.md](../ui/components/empty-state.md) · 3 KB — Contract: EmptyState.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+- [ui/components/empty-state.md](../ui/components/empty-state.md) · 4 KB — Contract: EmptyState.
+  - sections: Job · Choose · Variants · Size · States · Owner split · Frame · Rules
 - [ui/components/entry-frame.md](../ui/components/entry-frame.md) · 3 KB — Hold one bounded entry task beside its contextual identity.
   - sections: Job · Choose · Anatomy · Capability questions · Variants · Size · States · Owner split · Rules
 - [ui/components/field.md](../ui/components/field.md) · 4 KB — Contract: Input.
@@ -229,7 +229,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/freestyle.md](../ui/components/freestyle.md) · 2 KB — Contract: Freestyle.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 3 KB — Contract: Avatar and IconTile.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+  - sections: Job · Choose · Variants · Size · States · Owner split · Initials fit the circle · Rules
 - [ui/components/list-table.md](../ui/components/list-table.md) · 6 KB — Contract: List and Table.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/mascot.md](../ui/components/mascot.md) · 3 KB — Contract: Mascot.
@@ -239,21 +239,21 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/message-bubble.md](../ui/components/message-bubble.md) · 5 KB — Contract: MessageBubble.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/page-header.md](../ui/components/page-header.md) · 8 KB — Contract: Page, Section.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/pane-grid.md](../ui/components/pane-grid.md) · 8 KB — Contract: PaneGrid.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+  - sections: Job · Choose · Variants · Size · States · Owner split · Flush left (MEASURE-8) · Rules
+- [ui/components/pane-grid.md](../ui/components/pane-grid.md) · 9 KB — Contract: PaneGrid.
+  - sections: Job · Choose · Variants · Size · States · Owner split · Main pane cap · Drawer opener · Rules
 - [ui/components/quote.md](../ui/components/quote.md) · 3 KB — Contract: Quote.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/segmented-control.md](../ui/components/segmented-control.md) · 2 KB — The Grammar has no segmented control: `SegmentedControl` is removed (the pill-in-a-track look is `Tabs appearance="primary"`, a switch of a mode or period of the same data, in a ...
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/select.md](../ui/components/select.md) · 2 KB — Contract: Select.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+  - sections: Job · Choose · Variants · Size · States · Owner split · Compact · Rules
 - [ui/components/tabs.md](../ui/components/tabs.md) · 7 KB — Contract: Tabs.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+  - sections: Job · Choose · Variants · Size · States · Owner split · The second layer · Rules
 - [ui/components/text-field.md](../ui/components/text-field.md) · 4 KB — Contract: Input, CopyField.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+  - sections: Job · Choose · Variants · Size · States · Owner split · Chat composer · Rules
 - [ui/components/text.md](../ui/components/text.md) · 3 KB — The type scale is ../presentation.md; the contract holds no role for `Text`, a leaf of that scale.
-  - sections: Job · Choose · Size · States · Owner split · Rules
+  - sections: Job · Choose · Size · States · Owner split · Link and Sublabel · Rules
 - [ui/components/toast-alert.md](../ui/components/toast-alert.md) · 2 KB — Contract: Toast and Alert.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/composition.md](../ui/composition.md) · 31 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...
@@ -261,7 +261,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: ACCENT-2, ACCENT-3, ACCENT-4, ACCENT-5, ACCENT-6, ACTION-1, COLLECTION-1, COLLECTION-2, COLLECTION-3, COLLECTION-4, COVERAGE-1, CTA-1, CTA-2, CTA-3, CTA-4, CTA-5, CTA-6, DISCIPLINE-1, DISCIPLINE-2, DISCIPLINE-3, FE-APP-SHELL-1..6, FEEDBACK-1, FEEDBACK-2, FEEDBACK-3 and 24 more
 - [ui/loading.md](../ui/loading.md) · 9 KB — A region is in exactly one of four states, and the Grammar owns how each looks.
   - sections: The four states · What the Grammar takes · The region carries it · Choose · Rules
-- [ui/presentation.md](../ui/presentation.md) · 33 KB — Presentation resolves values on boundaries the **app** owns, after composition chose the tree and the components.
+- [ui/presentation.md](../ui/presentation.md) · 34 KB — Presentation resolves values on boundaries the **app** owns, after composition chose the tree and the components.
   - sections: Space · Type · Paint · Room · Relations at a glance
 - [ui/proof.md](../ui/proof.md) · 18 KB — Proof exists only after render.
   - sections: Who holds each proof · Lenses and verdicts · Accessibility (gating) · Contrast (gating) · Focus (gating) · Motion (gating) · Render truth (gating) · Taste (scored) · UX (scored) · Anatomy source and brand (provenance)
