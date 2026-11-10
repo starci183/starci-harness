@@ -16,6 +16,11 @@
         --offset-pop-tone-color: var(--info, var(--accent));
     }
 
+    /* A toast and an alert dialog are neutral when informative, as in Common: the mark is --muted (an app's --info keeps its own). */
+    .grammar-common-root[data-grammar-family="offset-pop"] :is([data-component="Toast"], [data-component="AlertDialog"])[data-grammar-tone="informative"] {
+        --offset-pop-tone-color: var(--info, var(--muted));
+    }
+
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-tone="affirmative"] {
         --offset-pop-tone-color: var(--success);
     }

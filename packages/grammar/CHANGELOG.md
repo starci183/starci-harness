@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.37.18 - 2026-11-10 - an informative Toast and alert dialog are neutral
+
+- Changed: `Toast tone="informative"` (mark `--muted`) and the `AlertDialog` informative variant (icon tile `--default-soft` with `--default-soft-foreground`) are neutral like the Alert, no longer the accent pair. An app that writes `--informative`, `--informative-soft`, `--informative-soft-foreground` keeps its own. Offset Pop follows (toast and dialog mark `--muted`). A `Meter` informative fill stays the accent. The action Button inside an informative Alert stays the `commit`.
+- Changed: `Grid kind="form" columns={2}` switches to two columns at a 31rem container width (was 32rem): a form in `Stack measure="reading"` inside a card measures 511px and missed 32rem by under a pixel. `Stack measure="form"` (30rem) is still one column.
+- Added: laws `DNA-COMMON-TOAST-TONE-INFORMATIVE`, `DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE`; `contexts/ui/components/toast-alert.md` updated.
+- Stories: Toast adds `unavailable`; new `AlertDialogNeutral` (all dialog tones now drawn).
+
 ## 0.37.17 - 2026-11-10 - the red budget: an informative Alert is neutral
 
 - Changed: `Alert tone="informative"` (the default tone) is NEUTRAL: the HeroUI default soft pair (`--default-soft`, `--default-soft-foreground`) with the glyph in `--muted`, no longer the accent pink/red pair that read as an error. An app that writes `--informative-soft` and `--informative-soft-foreground` still paints its own pair. `accent` (the brand "new" band), `negative`, `cautionary` and `affirmative` keep their colours. Offset Pop inherits the Common pair. Law `DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE` now measures `--default-soft`.

@@ -457,7 +457,7 @@ const record = (id: string, options: G.ToastOptions): G.ToastRecord => ({ ...opt
 export const Toast: Story = {
   render: () => (
     <Matrix maxWidth={420}>
-      <State label="Tones" direction="column">
+      <State label="Tones (informative is neutral, like an Alert)" direction="column">
         <G.Toast toast={record('t1', { title: 'Saved', tone: 'affirmative', timeout: 0 })} dismissLabel="Dismiss" onDismiss={noop} />
         <G.Toast toast={record('t2', { title: 'Link copied', description: 'Paste it anywhere.', tone: 'informative', timeout: 0 })} dismissLabel="Dismiss" onDismiss={noop} />
         <G.Toast toast={record('t3', { title: 'Storage almost full', tone: 'cautionary', timeout: 0 })} dismissLabel="Dismiss" onDismiss={noop} />
@@ -465,6 +465,7 @@ export const Toast: Story = {
       </State>
       <State label="Pending and with action" direction="column">
         <G.Toast toast={record('t5', { title: 'Uploading 3 files', tone: 'pending', timeout: 0 })} dismissLabel="Dismiss" onDismiss={noop} />
+        <G.Toast toast={record('t7', { title: 'Not on your plan', tone: 'unavailable', timeout: 0 })} dismissLabel="Dismiss" onDismiss={noop} />
         <G.Toast toast={record('t6', { title: 'Lesson archived', tone: 'neutral', timeout: 0, action: { label: 'Undo', onAction: noop } })} dismissLabel="Dismiss" onDismiss={noop} />
       </State>
     </Matrix>

@@ -18,8 +18,15 @@
         --starci-core-overlay-soft-foreground: var(--default-soft-foreground);
     }
 
-    :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="informative"] {
-        /* informative is an intent that is the accent unless the app writes the optional --informative tokens. */
+    /* informative is NEUTRAL on a toast and an alert dialog, as on an Alert: the default soft pair, the mark in --muted; an app that writes the optional --informative tokens keeps its own. */
+    :is(.starci-core-toast, .starci-core-alert-dialog)[data-grammar-tone="informative"] {
+        --starci-core-overlay-tone: var(--informative, var(--muted));
+        --starci-core-overlay-soft: var(--informative-soft, var(--default-soft));
+        --starci-core-overlay-soft-foreground: var(--informative-soft-foreground, var(--default-soft-foreground));
+    }
+
+    /* A Meter's informative fill is a measure, not a notice: it stays the accent unless the app writes --informative. */
+    .starci-core-meter[data-grammar-tone="informative"] {
         --starci-core-overlay-tone: var(--informative, var(--accent));
         --starci-core-overlay-soft: var(--informative-soft, var(--accent-soft));
         --starci-core-overlay-soft-foreground: var(--informative-soft-foreground, var(--accent-soft-foreground));

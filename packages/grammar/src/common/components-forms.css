@@ -398,7 +398,8 @@
         margin-block-start: var(--grammar-identity-gap);
     }
 
-    @container (min-width: 32rem) {
+    /* Two columns from a 31rem container (496px): the form measure is 30rem, so a plain `Stack measure="form"` stays one column, while a form in a reading measure inside a card (511px) holds two. */
+    @container (min-width: 31rem) {
         .starci-core-form-grid[data-grammar-form-grid-columns="2"] > .starci-core-form-grid-row {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }

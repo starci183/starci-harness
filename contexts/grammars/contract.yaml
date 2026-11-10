@@ -295,7 +295,7 @@ roles:
     sizes: dialogSize is a max inline size, not a control size
     states: [open, closed, confirm-pending]
     grammarMayChange: [surface paint and edge, backdrop paint, shadow direction]
-    dna: [DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-DIALOG-NAMED, DNA-COMMON-DIALOG-ESCAPE, DNA-COMMON-DIALOG-FOCUS-TRAP, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST]
+    dna: [DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-DIALOG-NAMED, DNA-COMMON-DIALOG-ESCAPE, DNA-COMMON-DIALOG-FOCUS-TRAP, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST]
 
   - id: menu
     ui: ui/components/menu.md
@@ -336,7 +336,7 @@ roles:
     sizes: none
     states: [persistent (action or negative), timed, paused on hover or focus]
     grammarMayChange: [tone paint, toast spacing]
-    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-ACCENT]
+    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-TOAST-TONE-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-ACCENT]
 
   - id: empty-state
     ui: ui/components/empty-state.md
@@ -1083,6 +1083,16 @@ mustKeep:
         select: '[data-component="Alert"][data-grammar-tone="neutral"]:not([data-loading="true"])'
         checks: [{ metric: background-color, op: "=", value: { token: --default-soft } }, { metric: color, op: "=", value: { token: --default-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
       owner: contract roles.alert
+    - id: DNA-COMMON-TOAST-TONE-INFORMATIVE
+      role: alert
+      law: "An informative Toast is neutral, as an informative Alert is: its mark is --muted (unless the app writes --informative), never the accent."
+      measure: { kind: style, select: '[data-component="Toast"][data-grammar-tone="informative"] .starci-core-toast-indicator:not([data-grammar-toast-indicator])', metric: color, op: "=", value: { token: --muted } }
+      owner: contract roles.alert
+    - id: DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE
+      role: dialog
+      law: "An informative alert dialog is neutral: its icon tile is --default-soft with --default-soft-foreground (unless the app writes --informative-soft), never the accent pair."
+      measure: { kind: style, select: '.starci-core-alert-dialog[data-grammar-tone="informative"] .starci-core-alert-dialog-icon', checks: [{ metric: background-color, op: "=", value: { token: --default-soft } }, { metric: color, op: "=", value: { token: --default-soft-foreground } }] }
+      owner: contract roles.dialog
     - id: DNA-COMMON-EMPTY-ONE-ACTION
       role: empty-state
       law: An empty notice holds at most one action.
