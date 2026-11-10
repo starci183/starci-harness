@@ -37,7 +37,7 @@ Loading draws the words as a skeleton bar of the same step.
 - **App author decides:** the words.
 
 ## Link and Sublabel
-`Link` is HeroUI v3's own link: the primary colour, the underline on hover only, the anchor icon at the end of the label. It has no size: it inherits the type
+`Link` is HeroUI v3's own link: the primary colour, the underline on hover only, the anchor icon at the end of the label. Red budget (owner, 2026-11-10): the primary red is the ONE main CTA of a view and a link inside a sentence (`variant="inline"`, the default). A link that stands alone is not prose: a back or cancel link ("Quay lại đăng nhập"), a legal footer ("Chính sách quyền riêng tư", "Điều khoản"), a navigation entry is `variant="plain"` (the foreground colour, no underline, no icon). The section head's `→` is `variant="head"` and unchanged. Not linted: whether a link is prose or standalone is judgement (a lone link in a `Text` may be either), so a check would break correct apps; the review and the gallery shots carry it. It has no size: it inherits the type
 size and leading of the line it stands in (14 in a body, 12 inside meta or caption text). Lint `starci-grammar/link-look` refuses a `size` prop and a size,
 underline or decoration class on a Link.
 

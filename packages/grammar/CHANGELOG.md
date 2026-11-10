@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.37.17 - 2026-11-10 - the red budget: an informative Alert is neutral
+
+- Changed: `Alert tone="informative"` (the default tone) is NEUTRAL: the HeroUI default soft pair (`--default-soft`, `--default-soft-foreground`) with the glyph in `--muted`, no longer the accent pink/red pair that read as an error. An app that writes `--informative-soft` and `--informative-soft-foreground` still paints its own pair. `accent` (the brand "new" band), `negative`, `cautionary` and `affirmative` keep their colours. Offset Pop inherits the Common pair. Law `DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE` now measures `--default-soft`.
+- Changed: contexts record the red budget (`composition.md` ACCENT-5 and ACCENT-6, `components/text.md` Link, `components/button.md`, `components/toast-alert.md`): primary red is the one main CTA of a view and links in prose; a standalone secondary or navigation link is `Link variant="plain"`. No lint: whether a link is prose or standalone is judgement, and `single-commit-per-render` already refuses two commits.
+- Stories: Alert shows every tone (informative, accent, affirmative, cautionary, negative, neutral, pending, unavailable); new `LinkVariants` (inline in prose, head, plain); the Grammar entry pages write their standalone links (Sign out, Forgot password, legal footer) as `variant="plain"`.
+
 ## 0.37.16 - 2026-11-10 - a primary Tabs pill is allowed as a row control
 
 - Changed: story `SelectWithControl` writes the primary Tabs directly as the row `control` (lint `tabs-switch-zone` now allows it there). No component change.

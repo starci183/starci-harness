@@ -57,7 +57,7 @@ const topNav = (
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <span aria-hidden="true">A</span>
         <span>Alex</span>
-        <Link href="#">Sign out</Link>
+        <Link href="#" variant="plain">Sign out</Link>
       </div>
     }
   />
@@ -65,8 +65,8 @@ const topNav = (
 
 const pageFooter = (
   <div style={{ display: 'flex', gap: '1rem', padding: '1.5rem 0', color: 'var(--muted, #555)' }}>
-    <Link href="#">Privacy policy</Link>
-    <Link href="#">Terms</Link>
+    <Link href="#" variant="plain">Privacy policy</Link>
+    <Link href="#" variant="plain">Terms</Link>
   </div>
 );
 
@@ -102,7 +102,7 @@ export const SignInScreen: Story = {
             <Input id="email" name="email" label="Email" kind="email" defaultValue="alex@example.test" />
             <div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.25rem' }}>
-                <Link href="#">Forgot password?</Link>
+                <Link href="#" variant="plain">Forgot password?</Link>
               </div>
               <Input id="password" name="password" label="Password" kind="password" placeholder="Enter your password" />
             </div>
@@ -111,8 +111,8 @@ export const SignInScreen: Story = {
             <Text>New here? <Link href="#">Create an account</Link></Text>
           </form>
           <div style={{ marginTop: 'auto', display: 'flex', gap: '1rem' }}>
-            <Link href="#">Privacy policy</Link>
-            <Link href="#">Terms of service</Link>
+            <Link href="#" variant="plain">Privacy policy</Link>
+            <Link href="#" variant="plain">Terms of service</Link>
           </div>
         </div>
       </section>

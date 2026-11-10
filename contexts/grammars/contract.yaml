@@ -1040,11 +1040,11 @@ mustKeep:
     # --- alerts, empty states, avatars
     - id: DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE
       role: alert
-      law: "An informative Alert is the accent soft pair, flat, unless the app writes --informative-soft and --informative-soft-foreground (the Grammar story theme writes none): the row is --accent-soft, the text and glyph --accent-soft-foreground, no shadow and no border."
+      law: "An informative Alert is NEUTRAL, flat, unless the app writes --informative-soft and --informative-soft-foreground (the Grammar story theme writes none): the row is --default-soft, the text --default-soft-foreground, the glyph muted, no shadow and no border. It never wears the accent pair (it reads as an error and spends the red budget)."
       measure:
         kind: style
         select: '[data-component="Alert"][data-grammar-tone="informative"]:not([data-loading="true"])'
-        checks: [{ metric: background-color, op: "=", value: { token: --accent-soft } }, { metric: color, op: "=", value: { token: --accent-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
+        checks: [{ metric: background-color, op: "=", value: { token: --default-soft } }, { metric: color, op: "=", value: { token: --default-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
       owner: contract roles.alert
     - id: DNA-COMMON-BADGE-TONE-INFO
       role: chip

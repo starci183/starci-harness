@@ -151,7 +151,7 @@ states any outcome.
 Success, warning and danger appear only where authority reports that state, never as a category, a peer marker
 or decoration. A figure that reports a state keeps the default tone with a toned `Badge` beside it. Status is
 never a text colour choice. A notice is the grammar `Alert`, never a hand-built row and never an `IconTile` posing
-as its indicator: it has one look, its tone's soft pair. An informative notice spends accent and counts in the budget. The Alert's action variant per
+as its indicator: it has one look, its tone's soft pair. An informative notice is neutral (the default soft pair, 0.37.17) and spends no accent; the `accent` tone is the brand "new" band and counts in the budget. The Alert's action variant per
 tone is contract data. See [components/toast-alert.md](components/toast-alert.md).
 
 ### ACCENT-6 Budget and the one strong mass
@@ -161,7 +161,7 @@ treatments is the same in every state and at every width. The commit is the one 
 no second full-strength painted slab (accent, or an inverted ink band) shares a working page's first screen with
 it, and figures, headers and summaries stay on neutral surfaces. A full-strength slab carries no copy and no
 control (SURFACE-6), so it is never a KPI band; it is used only as the page's signature moment (DISCIPLINE-3), on
-an overview or an entry page. Proof: TASTE-5.
+an overview or an entry page. Red budget (owner, 2026-11-10): the primary red is the one main CTA of a view plus links inside sentences. A standalone secondary or navigation link (back, cancel, legal footer) is `Link variant="plain"` (foreground); an informative `Alert` is neutral. Proof: TASTE-5.
 
 ## 4. State and feedback
 

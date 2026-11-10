@@ -489,6 +489,27 @@ export const Link: Story = {
   ),
 };
 
+/** The red budget: a link in a sentence is the primary red; a standalone secondary or navigation link is plain (foreground); the section head link ends in an arrow. */
+export const LinkVariants: Story = {
+  render: () => (
+    <Matrix maxWidth={560}>
+      <State label="inline, in prose (the primary accent)" direction="column">
+        <G.Text>By continuing you accept the <G.Link href="#terms">terms of service</G.Link> and the <G.Link href="#privacy">privacy policy</G.Link>.</G.Text>
+      </State>
+      <State label="head (section head, ends in an arrow)">
+        <G.Link href="#all" variant="head">View all</G.Link>
+      </State>
+      <State label="plain, standing alone (foreground)" direction="column">
+        <G.Link href="#back" variant="plain">Back to sign in</G.Link>
+        <span style={{ display: 'flex', gap: '1rem' }}>
+          <G.Link href="#privacy" variant="plain">Privacy policy</G.Link>
+          <G.Link href="#terms" variant="plain">Terms of service</G.Link>
+        </span>
+      </State>
+    </Matrix>
+  ),
+};
+
 /** An image destination keeps its own accessible name through loading, error and disabled states. */
 export const LinkMedia: Story = {
   render: () => (

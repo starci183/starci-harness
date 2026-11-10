@@ -544,8 +544,8 @@
     /*
      * One look, the tone's soft pair: the row is `--<tone>-soft` at full strength and its glyph,
      * title and description are `--<tone>-soft-foreground`; no shadow, no border, the HeroUI row's radius and anatomy. The
-     * tone maps informative -> accent, affirmative -> success, cautionary -> warning, negative -> danger, and neutral,
-     * pending and unavailable -> default. The row wraps at a narrow width so the action stays inside it.
+     * tone maps informative, neutral, pending and unavailable -> default (informative is neutral, never the accent pair),
+     * affirmative -> success, cautionary -> warning, negative -> danger. The row wraps at a narrow width so the action stays inside it.
      */
     .starci-core-alert {
         --starci-core-alert-soft: var(--default-soft);
@@ -558,8 +558,8 @@
         color: var(--starci-core-alert-ink);
     }
 
-    /* An informative notice is the accent pair unless the app writes --informative-soft and --informative-soft-foreground; accent stays its own tone for "new" and "selected". */
-    .starci-core-alert[data-grammar-tone="informative"] { --starci-core-alert-soft: var(--informative-soft, var(--accent-soft)); --starci-core-alert-ink: var(--informative-soft-foreground, var(--accent-soft-foreground)); }
+    /* An informative notice is NEUTRAL: HeroUI's default soft pair, glyph and text in the foreground. The accent pair reads as an error and spends the red budget; accent stays its own tone for "new" and "selected". */
+    .starci-core-alert[data-grammar-tone="informative"] { --starci-core-alert-soft: var(--informative-soft, var(--default-soft)); --starci-core-alert-ink: var(--informative-soft-foreground, var(--default-soft-foreground)); }
     /* A tone the app declared: its soft pair, read through the component variables customToneProps sets. */
     .starci-core-alert[data-grammar-tone-custom="true"] { --starci-core-alert-soft: var(--grammar-tone-soft); --starci-core-alert-ink: var(--grammar-tone-soft-foreground); }
     /* accent: the brand soft pair, for a welcome or "new" band (G10b-2). */
@@ -567,6 +567,7 @@
     .starci-core-alert[data-grammar-tone="affirmative"] { --starci-core-alert-soft: var(--success-soft); --starci-core-alert-ink: var(--success-soft-foreground); }
     .starci-core-alert[data-grammar-tone="cautionary"] { --starci-core-alert-soft: var(--warning-soft); --starci-core-alert-ink: var(--warning-soft-foreground); }
     .starci-core-alert[data-grammar-tone="negative"] { --starci-core-alert-soft: var(--danger-soft); --starci-core-alert-ink: var(--danger-soft-foreground); }
+    .starci-core-alert[data-grammar-tone="informative"] .starci-core-alert-indicator { color: var(--muted); }
 
     .starci-core-alert .starci-core-alert-indicator,
     .starci-core-alert .starci-core-alert-title,

@@ -22,11 +22,14 @@ export const Alert: Story = {
   render: () => (
     <Matrix maxWidth={560}>
       <State label="Tones" direction="column">
-        <G.Alert title="Heads up" description="Informative is the default tone." />
+        <G.Alert title="Heads up" description="Informative is the default tone: neutral grey, never the accent pair." />
+        <G.Alert tone="accent" title="New" description="Accent is the brand band for a welcome or something new." />
         <G.Alert tone="affirmative" title="Saved" description="Your changes are live." />
         <G.Alert tone="cautionary" title="Almost full" description="You have used 90% of your storage." />
         <G.Alert tone="negative" title="Payment failed" description="Update the card on file to keep access." />
         <G.Alert tone="neutral" title="Neutral notice" />
+        <G.Alert tone="pending" title="Syncing" description="This can take a minute." />
+        <G.Alert tone="unavailable" title="Unavailable" description="This is not offered on your plan." />
       </State>
       <State label="Pending" direction="column">
         <G.Alert tone="pending" title="Syncing" description="This can take a minute." />

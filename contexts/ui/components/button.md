@@ -35,7 +35,7 @@ applies wins; the label word never decides ("Cancel offer" is destructive, a "Ca
 | commit | the next step of the view's one decision (consequence neutral or negative; a reversible decline is negative, not destructive), and no other button of this view holds it | `commit` | `DNA-COMMON-ONE-ACCENT-FILL` |
 | neutral | anything else: a command outside the decision, any per-item command, a second next step, an equal-consequence peer | `neutral` | lint `no-commit-in-collection-item`, `single-commit-per-render` |
 
-The view (a page, or the open modal) has one commit (CTA-1): a second candidate falls to `neutral`, and peers of
+The view (a page, or the open modal) has one commit (CTA-1; the red budget, [composition.md](../composition.md) ACCENT-6: one accent CTA per view, every other call to action neutral, `alternative` or a `Link variant="plain"`, and an informative `Alert` is neutral; lint `single-commit-per-render` refuses a second `commit`, so a form never holds two): a second candidate falls to `neutral`, and peers of
 equal consequence get no commit at all. "Secondary or ghost" is this table, never a look: an `alternative`
 renders the secondary step and a `neutral` repeated per item renders quiet, by the contract's
 [intent x placement map](../../grammars/contract.md#intent-x-placement---variant).
