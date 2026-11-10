@@ -19,8 +19,8 @@ export const why: Record<string, WhyEntry> = {
   },
   "tabs-switch-zone": {
     code: "FE_TABS_SWITCH_ZONE",
-    en: "A pill (`Tabs appearance=\"primary\"`) is written in JSX in `<file>`, outside the `switch` header zone of a card.",
-    fix: "A mode or period switch of one block is the card's zone: `headers={[{ kind: \"switch\", label, items, selectedKey, onSelect }]}` with two to four short options. Views of a page are page tabs (`Page header.tabs`); views or filters inside a region are underline `Tabs`.",
+    en: "A pill (`Tabs appearance=\"primary\"`) is written in JSX in `<file>`, outside the `switch` header zone of a card and not the value of a row `control`.",
+    fix: "A mode or period switch of one block is the card's zone: `headers={[{ kind: \"switch\", label, items, selectedKey, onSelect }]}` with two to four short options. A row-level mode choice goes in the row's `control`. Views of a page are page tabs (`Page header.tabs`); views or filters inside a region are underline `Tabs`.",
   },
   "tabs-depth": {
     code: "FE_TABS_DEPTH",

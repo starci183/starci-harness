@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.16 - 2026-11-10
+
+- Changed: `tabs-switch-zone` allows a primary `Tabs` pill when it is the value of a row `control` (an object property named `control` in a select item or list row literal, or a JSX attribute `control={...}`, through a fragment, conditional or `&&`); a pill anywhere else outside the card's `switch` header zone is still an error. Tests for both.
+
 ## 0.37.15 - 2026-11-10
 
 - Changed: released with the Grammar family at 0.37.15 (code block language label, app bar custom buttons); no rule of this package changed.

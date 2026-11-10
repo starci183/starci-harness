@@ -71,9 +71,7 @@ export const SelectCard: Story = {
   },
 };
 
-const AutoOrAsk = ({ label, value, onChange, isOff = false }: { readonly label: string; readonly value: string; readonly onChange: (id: string) => void; readonly isOff?: boolean }) => (
-  <G.Tabs appearance="primary" label={label} selectedKey={value} onSelect={onChange} items={[{ id: 'auto', label: 'Tự động', isDisabled: isOff }, { id: 'ask', label: 'Hỏi', isDisabled: isOff }]} />
-);
+const modeItems = (isOff: boolean) => [{ id: 'auto', label: 'Tự động', isDisabled: isOff }, { id: 'ask', label: 'Hỏi', isDisabled: isOff }] as const;
 
 const EndCard = () => {
   const [value, setValue] = useState<readonly string[]>(['read', 'send', 'notify']);
@@ -87,11 +85,11 @@ const EndCard = () => {
       selectionMode="multiple"
       items={[
         { id: 'read', title: 'Đọc tin nhắn', subtitle: 'Xem hội thoại của khách để hiểu ngữ cảnh.' },
-        { id: 'send', title: 'Gửi tin cho khách', subtitle: 'Trả lời khách qua Zalo, thay mặt cửa hàng.', control: <AutoOrAsk label="Gửi tin cho khách" value={sendMode} onChange={setSendMode} /> },
-        { id: 'order', title: 'Cập nhật đơn hàng', subtitle: 'Đổi trạng thái và ghi chú đơn.', control: <AutoOrAsk label="Cập nhật đơn hàng" value={orderMode} onChange={setOrderMode} isOff={!value.includes('order')} /> },
+        { id: 'send', title: 'Gửi tin cho khách', subtitle: 'Trả lời khách qua Zalo, thay mặt cửa hàng.', control: <G.Tabs appearance="primary" label="Gửi tin cho khách" selectedKey={sendMode} onSelect={setSendMode} items={modeItems(false)} /> },
+        { id: 'order', title: 'Cập nhật đơn hàng', subtitle: 'Đổi trạng thái và ghi chú đơn.', control: <G.Tabs appearance="primary" label="Cập nhật đơn hàng" selectedKey={orderMode} onSelect={setOrderMode} items={modeItems(!value.includes('order'))} /> },
         { id: 'notify', title: 'Báo cho nhóm', control: <G.Switch label="Báo ngay" size="md" isLabelHidden isSelected={isOn} onSelectedChange={setIsOn} /> },
         { id: 'plan', title: 'Gói', control: <G.Badge>Pro</G.Badge> },
-        { id: 'off', title: 'Tạm dừng', isDisabled: true, control: <AutoOrAsk label="Tạm dừng" value="auto" onChange={() => undefined} /> },
+        { id: 'off', title: 'Tạm dừng', isDisabled: true, control: <G.Tabs appearance="primary" label="Tạm dừng" selectedKey="auto" onSelect={() => undefined} items={modeItems(false)} /> },
       ]}
       value={value}
       onChange={setValue}

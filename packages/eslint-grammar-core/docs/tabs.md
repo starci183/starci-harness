@@ -6,7 +6,7 @@ Underline tabs switch panels: the page tabs (`Page header.tabs`) and, inside a t
 
 ## `starci-grammar/tabs-switch-zone`
 
-Finding code: `FE_TABS_SWITCH_ZONE`. A `<Tabs appearance="primary">` written in JSX is a finding wherever it stands (a page body, under the page tabs, a pane, a drawer). The pill is drawn only as the `switch` header zone of a card, which has no JSX to write. The item checks (two to four options, no `count`, `href` or `isAttention`) stay in `no-primary-tabs-misuse` (R380).
+Finding code: `FE_TABS_SWITCH_ZONE`. A `<Tabs appearance="primary">` written in JSX is a finding wherever it stands (a page body, under the page tabs, a pane, a drawer). The pill is drawn as the `switch` header zone of a card, which has no JSX to write, and, since 0.37.16, as the value of a row `control` (an object property named `control` in a select item or list row literal, or a JSX attribute `control={...}`, directly or through a fragment, conditional or `&&`): a row-level mode choice such as "Auto | Ask" lives in the row. The item checks (two to four options, no `count`, `href` or `isAttention`) stay in `no-primary-tabs-misuse` (R380).
 
 **Invalid**
 
@@ -19,6 +19,7 @@ Finding code: `FE_TABS_SWITCH_ZONE`. A `<Tabs appearance="primary">` written in 
 **Valid**
 
 ```tsx
+<SurfaceCard kind="select" label="Agent" selectionMode="multiple" items={[{ id: "send", title: "Send", control: <Tabs appearance="primary" label="Send" items={modes} selectedKey={mode} onSelect={setMode} /> }]} value={value} onChange={setValue} />
 <SurfaceCard kind="list" label="Cash" headers={[{ kind: "switch", label: "Period", items: periods, selectedKey: period, onSelect: setPeriod }]} items={rows} empty={empty} />
 ```
 

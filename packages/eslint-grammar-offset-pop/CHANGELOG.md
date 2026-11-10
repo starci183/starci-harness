@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.16 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.16 (the core `tabs-switch-zone` allows a primary Tabs as a row `control`); no rule of this package changed.
+
 ## 0.37.15 - 2026-11-10
 
 - Changed: released with the Grammar family at 0.37.15 (code block language label, app bar custom buttons); no rule of this package changed.

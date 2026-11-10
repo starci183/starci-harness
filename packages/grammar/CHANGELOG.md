@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.16 - 2026-11-10 - a primary Tabs pill is allowed as a row control
+
+- Changed: story `SelectWithControl` writes the primary Tabs directly as the row `control` (lint `tabs-switch-zone` now allows it there). No component change.
+
 ## 0.37.15 - 2026-11-10 - code block language label; app bar custom buttons
 
 - Added: `FencedCodeBlock showLanguage` (default `true`; `false` hides the header's language label) and the label is hidden by itself for a one-line `code` (a command to copy); the copy `action` stays. Story `FencedCodeLanguageLabel`.

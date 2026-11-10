@@ -8,8 +8,10 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
  *
  * `tabs-switch-zone`. The pill (`Tabs appearance="primary"`) is a mode or period switch of one block. The Grammar draws it
  * only as the `switch` header zone of a `SurfaceCard` (`headers={[{ kind: "switch", label, items, selectedKey, onSelect }]}`);
- * a `<Tabs appearance="primary">` written in JSX (a page body, under the page tabs, a pane, a drawer) is a finding. The
- * item checks (two to four, no count, no href) stay in `no-primary-tabs-misuse`.
+ * a `<Tabs appearance="primary">` written in JSX (a page body, under the page tabs, a pane, a drawer) is a finding. One
+ * exception (0.37.16, owner 2026-11-10): a row-level mode choice ("Tu dong | Hoi" on an agent's ability row) lives in the row's
+ * `control` slot, so a pill that is the value of a `control` (an object property named `control` in a select item or list row
+ * literal, or a JSX attribute `control={...}`) is allowed. The item checks (two to four, no count, no href) stay in `no-primary-tabs-misuse`.
  *
  * `tabs-depth`. A page stacks at most two underline layers: the page tabs (`Page header.tabs`) and one region set. A `Tabs`
  * is nested in another when it stands in the panel the other selects: inside a conditional or `&&` whose test reads the
@@ -39,24 +41,45 @@ const literalOf = (attribute: TSESTree.JSXAttribute | undefined): string | null 
 /** Whether a `Tabs` element draws the pill. */
 const isPill = (opening: TSESTree.JSXOpeningElement): boolean => literalOf(attributeOf(opening, "appearance")) === "primary"
 
-/** No pill in JSX: the pill is the `switch` header zone of a card. */
+/** Whether a node is an object property whose key is `control`. */
+const isControlProperty = (node: TSESTree.Node): node is TSESTree.Property =>
+  node.type === "Property" && !node.computed && ((node.key.type === "Identifier" && node.key.name === "control") || (node.key.type === "Literal" && node.key.value === "control"))
+
+/**
+ * Whether the pill stands as the value of a row `control`: climbing through fragments, expression containers, conditionals and
+ * `&&`/`||`/`??` it reaches an object property named `control` or a JSX attribute `control={...}`. A component or element that
+ * merely wraps the pill is not the slot.
+ */
+const isRowControl = (opening: TSESTree.JSXOpeningElement): boolean => {
+  let child: TSESTree.Node = opening.parent ?? opening
+  for (let node: TSESTree.Node | null | undefined = child.parent; node !== undefined && node !== null; child = node, node = node.parent) {
+    if (node.type === "JSXFragment" || node.type === "JSXExpressionContainer") continue
+    if (node.type === "ConditionalExpression" && child !== node.test) continue
+    if (node.type === "LogicalExpression" && child === node.right) continue
+    if (node.type === "JSXAttribute") return node.name.type === "JSXIdentifier" && node.name.name === "control"
+    return isControlProperty(node) && node.value === child
+  }
+  return false
+}
+
+/** No pill in JSX: the pill is the `switch` header zone of a card, or the value of a row `control`. */
 export const tabsSwitchZone: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
     docs: {
-      description: "A pill (Tabs appearance=\"primary\") stands only as the switch header zone of a SurfaceCard; written in JSX anywhere else it is a finding.",
+      description: "A pill (Tabs appearance=\"primary\") stands only as the switch header zone of a SurfaceCard or as the value of a row `control`; written in JSX anywhere else it is a finding.",
       url: "knowledge/ui/presentation/grammar-laws.yaml#TABS-SWITCH-ZONE",
     },
     schema: [],
     messages: {
-      pill: "A pill (`Tabs appearance=\"primary\"`) switches a mode or period of one block and is drawn only as the `switch` header zone of its card: `headers={[{ kind: \"switch\", label, items, selectedKey, onSelect }]}`, two to four short options with no count and no href. Written here it stands loose in the page. Views of a page are page tabs (`Page header.tabs`); views or filters inside a region are underline `Tabs`.",
+      pill: "A pill (`Tabs appearance=\"primary\"`) switches a mode or period of one block and is drawn only as the `switch` header zone of its card: `headers={[{ kind: \"switch\", label, items, selectedKey, onSelect }]}`, two to four short options with no count and no href. A row-level mode choice is the one other place: the row's `control` (`items={[{ id, title, control: <Tabs appearance=\"primary\" ... /> }]}`). Written here it stands loose in the page. Views of a page are page tabs (`Page header.tabs`); views or filters inside a region are underline `Tabs`.",
     },
   },
   create(context) {
     if (!isProductSource(context)) return {}
     return {
       JSXOpeningElement(opening) {
-        if (elementName(opening) !== "Tabs" || !isPill(opening)) return
+        if (elementName(opening) !== "Tabs" || !isPill(opening) || isRowControl(opening)) return
         context.report({ node: opening, messageId: "pill" })
       },
     }
