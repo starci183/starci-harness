@@ -9,8 +9,10 @@ import type { FlowGraphChip, FlowGraphDirection, FlowGraphEdge, FlowGraphNode, F
  * through the gap below its source's layer (see {@link stepsBackRoute}).
  */
 
-/** The card width (`--grammar-flow-card-width`, 12.25rem), in graph units. */
-export const STEPS_CARD_WIDTH = 196
+/** The card width (`--grammar-flow-card-width`, 12.5rem since 0.37.33, owner drawing graph-state: a step card is 200 x 64), in graph units. */
+export const STEPS_CARD_WIDTH = 200
+/** The least height of a step card (`--grammar-flow-card-height`, 4rem, 0.37.33): its body is never shorter; ports add their rows under it. */
+export const STEPS_CARD_HEIGHT = 64
 /** A port label shows this many characters; a longer one is cut with an ellipsis and read in full from its tooltip. */
 export const STEPS_PORT_CHARS = 16
 /** The most a card widens for its ports, in graph units. */
@@ -25,8 +27,16 @@ export const stepsCardWidth = (ports: ReadonlyMap<string, ReadonlyArray<FlowGrap
 
 /** The room between two columns: wide enough for the vertical runs of back edges beside a card. */
 export const STEPS_COLUMN_GAP = 80
-/** The room between two layers: a curve, and the channels of back edges after a layer (`LR` also holds a back label beside its channel). */
-export const STEPS_LAYER_GAP = { TB: 64, LR: 112 } as const
+/**
+ * The room between two layers. `TB`: a curve and the channels of back edges after a layer. `LR` (0.37.33, owner drawing graph-state): 40, enough for the start
+ * dot, a 10px bend and the arrowhead; a layer gap is wider only where a labelled edge needs it (a label pill on a forward edge with no port, the channels of
+ * back edges and the label beside them), see {@link lrLayerGaps}.
+ */
+export const STEPS_LAYER_GAP = { TB: 64, LR: 40 } as const
+/** The LR gap after a layer that a labelled forward edge (a pill on its last run) leaves: the pre-0.37.33 room. */
+export const STEPS_LABELLED_GAP_LR = 112
+/** An estimate of an edge label pill's width: 12px type at about 6.5 per character, its inline padding and border. */
+const edgeLabelWidth = (label: string): number => label.length * 6.5 + 2 * 8 + 2
 /** The margin around the graph at zoom 1. */
 export const STEPS_MARGIN = 32
 
@@ -114,7 +124,9 @@ export const stepsNodeHeight = (node: FlowGraphNode, ports: number, direction: F
     if (stepKindOf(node) === "end") return END_HEIGHT
     const title = wrappedLines(node.label, TITLE_CHARS) * TITLE_LINE
     const description = node.description === undefined || node.description === "" ? 0 : wrappedLines(node.description, DESCRIPTION_CHARS) * DESCRIPTION_LINE
-    return CARD_CHROME + Math.max(TILE, title + (node.agent === undefined ? 0 : AGENT_LINE) + description + chipsHeight(node.chips)) + (ports === 0 ? 0 : direction === "LR" ? 1 + ports * STEPS_PORT_ROW_LR : OUTPUTS_ROW)
+    // 0.37.33: the body is never shorter than the 64 card (less its two border lines); the ports add their rows under it.
+    const body = Math.max(STEPS_CARD_HEIGHT - 2, CARD_CHROME - 2 + Math.max(TILE, title + (node.agent === undefined ? 0 : AGENT_LINE) + description + chipsHeight(node.chips)))
+    return 2 + body + (ports === 0 ? 0 : direction === "LR" ? 1 + ports * STEPS_PORT_ROW_LR : OUTPUTS_ROW)
 }
 
 /** A back edge as the layout routes it: the channel it runs in under its source's layer, and its place among the back edges of its target side. */
@@ -382,13 +394,14 @@ const coreLayout = (
         const size = direction === "TB" ? heightOf(node) : widthOf(node)
         extent[layerOf(node.id)] = Math.max(extent[layerOf(node.id)] ?? 0, size)
     }
+    const gaps = direction === "LR" ? lrLayerGaps(layerCount, usable, layerOf, ports) : new Array<number>(layerCount).fill(STEPS_LAYER_GAP.TB)
     const layerStart: number[] = []
     let along = 0
-    for (const size of extent) {
+    extent.forEach((size, layer) => {
         layerStart.push(along)
-        along += size + STEPS_LAYER_GAP[direction]
-    }
-    const alongSize = Math.max(0, along - STEPS_LAYER_GAP[direction])
+        along += size + (gaps[layer] ?? STEPS_LAYER_GAP[direction])
+    })
+    const alongSize = Math.max(0, along - (gaps[layerCount - 1] ?? STEPS_LAYER_GAP[direction]))
 
     const positions = new Map<string, FlowGraphPoint>()
     for (const node of nodes) {
@@ -440,6 +453,41 @@ const coreLayout = (
         contentWidth: direction === "TB" ? acrossSize : alongSize,
         contentHeight: direction === "TB" ? alongSize : acrossSize,
     }
+}
+
+/**
+ * The gap after each layer of an `LR` graph (0.37.33): {@link STEPS_LAYER_GAP} `LR` (40), wider only where an edge out of the layer needs room: a forward edge whose
+ * label is a pill on its line (no port) takes {@link STEPS_LABELLED_GAP_LR} or the pill's width with room for the bends; back edges take their channels (the first
+ * 14 after the layer, 12 apart) and, when labelled, the pill beside the channel.
+ */
+export const lrLayerGaps = (
+    layerCount: number,
+    edges: ReadonlyArray<FlowGraphEdge>,
+    layerOf: (id: string) => number,
+    ports: ReadonlyMap<string, ReadonlyArray<FlowGraphPort>>,
+): number[] => {
+    const gaps = new Array<number>(layerCount).fill(STEPS_LAYER_GAP.LR)
+    const backCount = new Array<number>(layerCount).fill(0)
+    const backLabel = new Array<number>(layerCount).fill(0)
+    for (const edge of edges) {
+        const layer = layerOf(edge.source)
+        if (isBackEdge(edge)) {
+            backCount[layer] = (backCount[layer] ?? 0) + 1
+            if (edge.label !== undefined && edge.label !== "") backLabel[layer] = Math.max(backLabel[layer] ?? 0, edgeLabelWidth(edge.label))
+            continue
+        }
+        const port = portOfEdge(edge, ports.get(edge.source) ?? [])
+        if (port === undefined && edge.label !== undefined && edge.label !== "") {
+            gaps[layer] = Math.max(gaps[layer] ?? 0, STEPS_LABELLED_GAP_LR, edgeLabelWidth(edge.label) + 2 * STEPS_TRUNK)
+        }
+    }
+    backCount.forEach((count, layer) => {
+        if (count === 0) return
+        const channels = BACK_CHANNEL_FIRST + (count - 1) * BACK_CHANNEL_STEP
+        const label = (backLabel[layer] ?? 0) === 0 ? 0 : 6 + (backLabel[layer] ?? 0)
+        gaps[layer] = Math.max(gaps[layer] ?? 0, channels + label + BACK_CHANNEL_FIRST)
+    })
+    return gaps
 }
 
 /** The parts of a graph that share no edge, in node order (undirected, over the edges both of whose ends are here). */

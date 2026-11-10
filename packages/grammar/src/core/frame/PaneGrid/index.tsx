@@ -44,13 +44,19 @@ type Models = Readonly<Record<PaneBreakpoint, PaneGridModel>>
 
 const PaneModelsContext = createContext<Models | undefined>(undefined)
 
-/** What a pane holds: a well of capped `cards`, or `full` bleed (a chat, a graph canvas, an editor). */
-export type PaneContent = "cards" | "full"
+/**
+ * What a pane holds: a well of capped `cards`, `full` bleed (a graph canvas, an editor), or a `chat` frame (0.37.33, law DNA-COMMON-CHAT-FRAME): the head, the
+ * thread and the composer footer of one chat, full-bleed and painted `--background` as one frame wherever it stands.
+ */
+export type PaneContent = "cards" | "full" | "chat"
 
 type PaneBaseProps = {
     /** The name of this pane in the grid's `areas`. */
     readonly area: string
-    /** `true`: the pane stands on the grammar surface ground (flat: no border, radius or shadow). Default: transparent on the host canvas. */
+    /**
+     * `true`: the pane stands on the grammar surface ground (flat: no border, radius or shadow). Default: transparent on the host canvas. A chat frame
+     * (`content="chat"`, or any pane whose own stack holds a `PaneSection scroll role="log"`) takes no tone: it is `--background` (lint `message-surfaces`).
+     */
     readonly surface?: boolean
     /**
      * `content` (default): the pane publishes the Grammar pane inset to its PaneSections. `flush`: zero inset, for a
@@ -62,6 +68,9 @@ type PaneBaseProps = {
      * while the pane itself spans its grid track. `full`: a chat, a graph canvas or an editor, full-bleed, never capped. Default: `cards` for a pane on the
      * canvas, `full` for a pane on the surface (a side pane); a pane that holds a chat thread (`PaneSection scroll role="log"`) or a `FlowGraph` is `full`
      * unless this prop says `cards`.
+     * `chat` (0.37.33, DNA-COMMON-CHAT-FRAME): the pane IS one chat (its head, the thread, the composer `footer`): full-bleed, and the whole frame (head band,
+     * thread, footer) is `--background` on any page, in an aside or in a drawer, whatever `surface` says; the composer field stays white, the 1px lines between
+     * the zones stay, and a message in it is flat (no border, no shadow). A pane whose own stack holds a thread is drawn as a chat frame without the word.
      */
     readonly content?: PaneContent
     /** PaneSection elements, or one PaneGrid. */
@@ -179,7 +188,10 @@ const usePaneRegistry = (area: string, inset: PaneInset, checks: boolean): PaneC
  * a divider) to its PaneSections, so dividers and scrollbars stay full-bleed. A pane takes no app class.
  */
 export const Pane = (props: PaneProps) => {
-    const { area, surface = false, inset = "content", label, scroll = false, content: contentKind, children, footer, head } = props
+    const { area, surface: surfaceProp = false, inset = "content", label, scroll = false, content: contentKind, children, footer, head } = props
+    // A chat frame takes no tone (0.37.33): it is the page tone whatever `surface` says, and keeps the surface nesting (a card in it is bordered, never lifted).
+    const isChat = contentKind === "chat"
+    const surface = surfaceProp && !isChat
     const models = useContext(PaneModelsContext)
     const pane = usePaneRegistry(area, inset, true)
     const shown = "flex"
@@ -228,7 +240,7 @@ export const Pane = (props: PaneProps) => {
             </div>
         </>
     )
-    const surfaced = surface ? <SurfaceNesting host="pane">{footed}</SurfaceNesting> : footed
+    const surfaced = isChat ? <SurfaceNesting host="chat">{footed}</SurfaceNesting> : surface ? <SurfaceNesting host="pane">{footed}</SurfaceNesting> : footed
     const content = <PaneContext.Provider value={pane}>{surfaced}</PaneContext.Provider>
     const shared = {
         className: "starci-core-pane",

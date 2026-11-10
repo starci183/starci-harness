@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.33 - 2026-11-11
+
+- Changed: `starci-grammar/message-surfaces` (`FE_MESSAGE_SURFACES`) also refuses a surface tone on a chat frame (Grammar 0.37.33, `DNA-COMMON-CHAT-FRAME`): `surface` on a `Pane` with `content="chat"`, or on a `Pane` whose own JSX children (fragments opened) hold a `PaneSection` with `scroll.role: "log"`. Knowledge `MESSAGE-SURFACES` case-3; docs and spec updated.
+
 ## 0.37.32 - 2026-11-11
 
 - Changed: released with the Grammar family at 0.37.32; no rule of this package changed.

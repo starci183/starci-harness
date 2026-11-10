@@ -13,14 +13,33 @@ Every chat (team chat, an agent's chat, an inbox customer thread, the assistant)
 - **the thread** is the page tone `--background`, never white: a `PaneSection scroll={{ role: "log" }}` paints it whatever `tone` the app
   passes, and meets the head line above and the composer's line below edge to edge;
 - **a message of someone else** (`MessageBubble` incoming, every `MessageCard`) is the flat `--surface` with its foreground: no border, no
-  shadow, in every content kind (text, card). Outside a thread, on a white surface (a drawer of pinned messages, a white pane, a card), the
-  same face wears the 1px `--separator` edge so it does not vanish (SURFACE-ELEVATION), still no shadow;
+  shadow, in every content kind (text, card); a message is never a card. Outside any chat frame, on a white surface (a drawer of pinned
+  messages, a white pane, a card), the same face wears the 1px `--separator` edge so it does not vanish (SURFACE-ELEVATION), still no shadow;
+  inside a chat frame it never does;
 - **the reader's own message** is `--accent` with `--accent-foreground`; inline links, mentions, code and muted lines inherit it.
 
 Theme tokens only: the dark theme resolves from the same tokens. An app never restyles a face: no `className` or `style` on
 `MessageBubble`/`MessageCard`, no class string reaching `starci-core-message-*`, no `tone: "surface"` on a `role: "log"` thread (lint
 `starci-grammar/message-surfaces`, `FE_MESSAGE_SURFACES`). A pane footer that holds the composer starts at its own hairline: no empty
 band above the suggestion row (`DNA-COMMON-PANE-FOOTER-NO-BAND`). Story `Navigation & Data/Chat surfaces (0.37.31)`.
+
+## The chat frame (0.37.33)
+
+On ANY page that renders a chat, the chat is one frame, owner-approved drawing `chat-frame-anywhere` (`DNA-COMMON-CHAT-FRAME`): its head,
+its thread and its composer footer are `--background` as one, whatever surface it stands on (a white pane, the aside, a `Drawer`, a
+`Dialog`, a `Popover`). The rest of the page keeps its own rule: the room list stays white, an aside's other panes stay white, the page
+header band stays white. The 1px lines between head, thread and footer stay; the composer field keeps its white field ground.
+
+- **The role decides, the app chooses no tone.** The frame is `Pane content="chat"` holding the head band, the `PaneSection scroll
+  role="log"` thread and the composer as the pane `footer`; any pane whose own stack holds a thread is drawn as a frame without the word,
+  and an overlay that holds a thread is the frame as a whole (its own head included). A chat frame states no `surface`: lint
+  `starci-grammar/message-surfaces` refuses `surface` on `content="chat"` and on a pane whose own children hold a `log` thread.
+- **Only the thread scrolls** (`DNA-COMMON-CHAT-FRAME-SCROLL`): between the fixed head and the fixed composer the thread is the one
+  scroller (the pane body above a footer is bounded and never scrolls), so `scroll.scrollRef` is the element that scrolls; a `log` band
+  opens at its newest message and follows new ones while the reader is at the foot.
+
+Story `Navigation & Data/Chat frame (0.37.33)`: the chat page, an inbox thread between a list and an aside, an agent's chat tab under its
+white head, the assistant in a drawer.
 
 ## Choose
 

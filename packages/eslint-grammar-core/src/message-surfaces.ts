@@ -13,8 +13,11 @@ import { attributeOf, elementOf, grammarBindings, keyName, propertyOf } from "./
  *   - a static class string or a style key in product source that names a Grammar message part (`starci-core-message-bubble…`, `starci-core-message-card…`):
  *     an arbitrary-variant utility (`[&_.starci-core-message-bubble-body]:bg-white`) or a selector reaching into the bubble;
  *   - a `PaneSection` whose `scroll` object literal states `role: "log"` with `tone: "surface"`: a thread is always the page tone (the Grammar ignores the
- *     tone), so the word misleads the reader of the code.
- * A spread, a computed class or a tone held in a variable is not read.
+ *     tone), so the word misleads the reader of the code;
+ *   - a surface tone on a chat frame (0.37.33, DNA-COMMON-CHAT-FRAME): `surface` on a `Pane` with `content="chat"`, or on a `Pane` whose own children
+ *     hold a `PaneSection` with `scroll.role: "log"`. A chat frame (head, thread, composer footer) is `--background` wherever it stands; the Grammar ignores
+ *     the tone there, so the word misleads.
+ * A spread, a computed class or a tone held in a variable is not read; a thread drawn by a component of the app's own is not seen through.
  */
 
 const MESSAGE_PARTS = /starci-core-message-(?:bubble|card)/
@@ -28,6 +31,34 @@ const staticString = (node: TSESTree.Node): string | null => {
   return null
 }
 
+/** Whether a `scroll` attribute states `role: "log"` in an object literal. */
+const isLogScroll = (opening: TSESTree.JSXOpeningElement): boolean => {
+  const value = attributeOf(opening, "scroll")?.value
+  if (value?.type !== "JSXExpressionContainer" || value.expression.type !== "ObjectExpression") return false
+  const role = propertyOf(value.expression, "role")?.value
+  return role?.type === "Literal" && role.value === "log"
+}
+
+/** Whether a Pane states `content="chat"`. */
+const isChatContent = (opening: TSESTree.JSXOpeningElement): boolean => {
+  const value = attributeOf(opening, "content")?.value
+  if (value == null) return false
+  if (value.type === "Literal") return value.value === "chat"
+  return value.type === "JSXExpressionContainer" && value.expression.type === "Literal" && value.expression.value === "chat"
+}
+
+/** Whether a Pane's own JSX children (a fragment opened) hold a Grammar `PaneSection` thread. */
+const holdsThread = (opening: TSESTree.JSXOpeningElement, bound: ReadonlyMap<string, string>): boolean => {
+  const element = opening.parent
+  if (element.type !== "JSXElement") return false
+  const walk = (children: ReadonlyArray<TSESTree.JSXChild>): boolean => children.some((child) => {
+    if (child.type === "JSXFragment") return walk(child.children)
+    if (child.type !== "JSXElement") return false
+    return elementOf(child.openingElement, bound).grammar === "PaneSection" && isLogScroll(child.openingElement)
+  })
+  return walk(element.children)
+}
+
 export const messageSurfaces: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
@@ -37,6 +68,7 @@ export const messageSurfaces: Rule.RuleModule = defineRule({
       attribute: "`{{component}}` takes no `{{attribute}}`: every chat draws the same faces (the thread on `--background`, others' messages flat `--surface`, your own `--accent`). Remove it.",
       part: "This class or style reaches into a Grammar message part (`{{part}}`). Chat faces are Grammar's (DNA-COMMON-CHAT-SURFACES); remove the override.",
       tone: "A chat thread (`scroll.role: \"log\"`) is always the page tone; `tone: \"surface\"` is ignored. Remove `tone`.",
+      frame: "A chat frame (`Pane content=\"chat\"`, or a Pane that holds a `scroll.role: \"log\"` thread) is `--background` wherever it stands (DNA-COMMON-CHAT-FRAME); `surface` is ignored there. Remove `surface` and give the pane `content=\"chat\"`.",
     },
   },
   create(context) {
@@ -56,6 +88,13 @@ export const messageSurfaces: Rule.RuleModule = defineRule({
           for (const entry of opening.attributes) {
             if (entry.type !== "JSXAttribute" || entry.name.type !== "JSXIdentifier" || !STYLE_ATTRIBUTES.has(entry.name.name)) continue
             context.report({ node: entry, messageId: "attribute", data: { component: grammar, attribute: entry.name.name } })
+          }
+        }
+        if (grammar === "Pane") {
+          const surface = attributeOf(opening, "surface")
+          const off = surface?.value?.type === "JSXExpressionContainer" && surface.value.expression.type === "Literal" && surface.value.expression.value === false
+          if (surface !== null && !off && (isChatContent(opening) || holdsThread(opening, bound))) {
+            context.report({ node: surface, messageId: "frame" })
           }
         }
         if (grammar === "PaneSection") {

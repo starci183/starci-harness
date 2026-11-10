@@ -264,8 +264,8 @@ export const why: Record<string, WhyEntry> = {
   },
   "message-surfaces": {
     code: "FE_MESSAGE_SURFACES",
-    en: "`<file>` restyles a chat face: a class or style on MessageBubble or MessageCard, a class string reaching into a Grammar message part, or a chat thread asked for the surface tone.",
-    fix: "Remove the override: the thread is `--background`, others' messages the flat `--surface`, your own `--accent` (DNA-COMMON-CHAT-SURFACES); a card's replies are `SurfaceCard kind=\"list\" layout=\"suggestions\"`.",
+    en: "`<file>` restyles a chat face: a class or style on MessageBubble or MessageCard, a class string reaching into a Grammar message part, a chat thread asked for the surface tone, or a chat frame (`Pane content=\"chat\"`, a Pane holding a log thread) given `surface`.",
+    fix: "Remove the override: the chat frame (head, thread, composer) is `--background` (`Pane content=\"chat\"`, no `surface`, DNA-COMMON-CHAT-FRAME), others' messages the flat `--surface`, your own `--accent` (DNA-COMMON-CHAT-SURFACES); a card's replies are `SurfaceCard kind=\"list\" layout=\"suggestions\"`.",
   },
   "suggestion-buttons": {
     code: "FE_SUGGESTION_BUTTONS",

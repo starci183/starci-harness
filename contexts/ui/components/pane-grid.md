@@ -95,11 +95,12 @@ the same inset, and the drawer header's inline padding is the pane inset, so the
 In a workspace page (`Page layout="workspace"`) the grid and its side panes ALWAYS span the full width: the aside is flush to the end edge. Only the CONTENT of a main pane that holds cards (a pink well with cards,
 `Pane content="cards"`, the default for a pane on the canvas) is capped at `--grammar-content-max` (80rem) and centred INSIDE that pane; the pane and its pink ground fill the whole track. A pane that holds a chat thread
 (`PaneSection scroll role="log"`), a `FlowGraph` canvas or an editor is `content="full"`: never capped, full-bleed (a surface pane is full by default; a chat or FlowGraph pane is full unless it says `content="cards"`).
+A pane that IS one chat (head, thread, composer footer) is `content="chat"`: full-bleed, and the whole frame is `--background` wherever it stands, with no `surface` (the chat frame, [message-bubble.md](message-bubble.md) "The chat frame").
 A list or table in the white aside is a bordered list or frame with no shadow, never a floating card; the Section head rules apply there.
 
 ## Scroll law (0.36.0)
 The sidebar and the page header band (breadcrumbs, title, tabs, sub-tabs) never scroll away: the band and the trail are sticky. Layout A (report): the pink well scrolls as one block under the band. Layout B (workspace): the page
-does not scroll; each pane scrolls on its own with no visible scrollbar and its head (title, tabs, search) sticky; a chat pane keeps its head and composer fixed and scrolls only the thread (`PaneSection scroll`).
+does not scroll; each pane scrolls on its own with no visible scrollbar and its head (title, tabs, search) sticky; a chat pane keeps its head and composer fixed and scrolls only the thread (`PaneSection scroll`): in a chat frame the thread is the only scroller, the pane body above the footer never scrolls (`DNA-COMMON-CHAT-FRAME-SCROLL`).
 
 ## The grid owns scroll and height (0.37.5)
 In layout B the page never scrolls: the shell is one viewport (dvh) under the app bar, the page band is fixed, and the PaneGrid owns the height chain at every level. A pane that holds a nested PaneGrid clips (it is not a scroller) and its stack is bounded by the pane

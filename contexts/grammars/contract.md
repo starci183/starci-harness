@@ -357,7 +357,9 @@ A message bubble is one message of a conversation; every conversation is `Messag
 bubble. Every chat draws the same three faces (`DNA-COMMON-CHAT-SURFACES`, 0.37.31): the thread is the page tone (`--background`),
 the reader's own message (`side="outgoing"`) is the brand fill (`--accent`) with its foreground (`--accent-foreground`), and the
 other party's (incoming, and every `MessageCard`) is the flat surface with its foreground, no border and no shadow (on a white
-surface outside a thread it wears the 1px separator edge). Inline content (a link, a mention, code, a muted line) inherits the
+surface outside any chat frame it wears the 1px separator edge). A chat is one frame on any page (`DNA-COMMON-CHAT-FRAME`, 0.37.33):
+`Pane content="chat"` paints its head, thread and composer footer `--background` wherever it stands, with no app tone, and its thread
+is the only scroller (`DNA-COMMON-CHAT-FRAME-SCROLL`). Inline content (a link, a mention, code, a muted line) inherits the
 bubble's foreground so it reads on either face. The replies a card offers are `SurfaceCard kind="list" layout="suggestions"`. The
 corner on the author's side tightens to point at the avatar. An app never restyles a face (lint `message-surfaces`).
 

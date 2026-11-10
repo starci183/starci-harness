@@ -109,9 +109,11 @@ export type FlowGraphProps = NoChildren & {
     readonly statusLabels?: Partial<Readonly<Record<FlowGraphRunStatus, string>>>
     /**
      * Canvas height: `sm` 16rem, `md` 24rem, `lg` 32rem, or any size of your own: a number is pixels, a string is a CSS length
-     * (`"60vh"`, `"48rem"`).
+     * (`"60vh"`, `"48rem"`). `fill` (0.37.33, `steps`, owner drawing graph-state): the frame takes the rest of the page height under it (the room its scroll
+     * owner shows below the graph's top, less what follows the graph there), at least 22.5rem (360px), instead of hugging the graph; the graph is placed in it
+     * by the opening zoom (DNA-COMMON-FLOW-OPEN-ZOOM). The map of one workflow on its own page takes `fill`.
      */
-    readonly height?: FlowGraphHeight | number | string
+    readonly height?: FlowGraphHeight | "fill" | number | string
     /**
      * How the graph meets its canvas. `readable` (default) never fits below the zoom at which node text renders at 12px:
      * a graph that would shrink further grows the canvas height to the graph's aspect at the canvas width (the page
@@ -281,9 +283,57 @@ const NODE_TYPES: NodeTypes = { flowGraph: FlowGraphNodeView, flowGraphHeader: F
 /** A steps graph is laid out with its own margin, so like lanes its fit keeps a small one and never magnifies. */
 const STEPS_MAX_ZOOM = 1
 /** The pixel height of a named or numeric canvas `height` (a CSS length string has none): the cap of a contained steps graph. */
-const heightCapPx = (height: FlowGraphHeight | number | string | undefined): number | null =>
+const heightCapPx = (height: FlowGraphHeight | "fill" | number | string | undefined): number | null =>
     height === "sm" ? 256 : height === "md" ? 384 : height === "lg" ? 512 : typeof height === "number" ? height : null
 const HEADER_OFFSET = 70
+/** The least height of a `fill` frame (0.37.33): 22.5rem. */
+export const FLOW_FILL_MIN = 360
+
+/** The element that scrolls the page around `node`: the nearest ancestor whose block overflow scrolls, else the document. */
+const scrollOwnerOf = (node: HTMLElement): HTMLElement => {
+    for (let parent = node.parentElement; parent !== null; parent = parent.parentElement) {
+        if (parent === document.body || parent === document.documentElement) break
+        const overflow = getComputedStyle(parent).overflowY
+        if (overflow === "auto" || overflow === "scroll") return parent
+    }
+    return document.scrollingElement instanceof HTMLElement ? document.scrollingElement : document.documentElement
+}
+
+/** The last laid-out child of an element (absolute, fixed and hidden children are not content that follows). */
+const lastInFlow = (parent: HTMLElement): HTMLElement | null => {
+    for (let child = parent.lastElementChild; child !== null; child = child.previousElementSibling) {
+        if (!(child instanceof HTMLElement)) continue
+        const style = getComputedStyle(child)
+        if (style.display !== "none" && style.position !== "absolute" && style.position !== "fixed") return child
+    }
+    return null
+}
+
+/**
+ * The canvas height of a `fill` frame (0.37.33): the height its scroll owner shows, less where the figure starts in it, less what follows the figure (the
+ * siblings after it and the end padding of every box up to the scroll owner: a legend, a caption), less the figure's own parts besides the canvas; at least
+ * {@link FLOW_FILL_MIN}. Measured from the layout, so a well that is stretched to the page (min-height) is not counted as content after the graph.
+ */
+const fillHeightOf = (figure: HTMLElement, canvas: HTMLElement): number => {
+    const owner = scrollOwnerOf(figure)
+    const isDocument = owner === document.scrollingElement || owner === document.documentElement
+    const view = isDocument ? window.innerHeight : owner.clientHeight
+    const ownerTop = isDocument ? 0 : owner.getBoundingClientRect().top + owner.clientTop
+    const figureBox = figure.getBoundingClientRect()
+    const top = figureBox.top - ownerTop + (isDocument ? window.scrollY : owner.scrollTop)
+    let after = 0
+    let node: HTMLElement = figure
+    for (let parent = figure.parentElement; parent !== null && node !== owner; parent = parent.parentElement) {
+        const style = getComputedStyle(parent)
+        const last = lastInFlow(parent)
+        if (last !== null && last !== node) after += Math.max(0, last.getBoundingClientRect().bottom - node.getBoundingClientRect().bottom)
+        if (parent === owner || (isDocument && parent === document.body)) break
+        after += Number.parseFloat(style.paddingBottom) + Number.parseFloat(style.borderBottomWidth)
+        node = parent
+    }
+    const own = figureBox.height - canvas.getBoundingClientRect().height
+    return Math.max(FLOW_FILL_MIN, Math.floor(view - top - after - own))
+}
 const HEADER_SIDE_GAP = COMMON_SPACING_PX[6]
 /**
  * A node-and-edge map drawn with React Flow (`@xyflow/react`, a peer dependency) in grammar tokens. The radial layout
@@ -351,6 +401,27 @@ const FlowGraphInner = ({
         observer.observe(figure)
         return () => observer.disconnect()
     }, [layout, islands])
+    // `height="fill"` (0.37.33): the frame takes the rest of the page height, measured once laid out and again when the page resizes.
+    const isFill = height === "fill"
+    const [fillHeight, setFillHeight] = useState<number | null>(null)
+    useEffect(() => {
+        const figure = figureRef.current
+        if (!isFill || figure === null) return undefined
+        const measure = () => {
+            const canvas = figure.querySelector<HTMLElement>(":scope > .starci-core-flow-graph-canvas")
+            if (canvas === null) return
+            const next = fillHeightOf(figure, canvas)
+            setFillHeight((current) => (current !== null && Math.abs(current - next) < 2 ? current : next))
+        }
+        measure()
+        window.addEventListener("resize", measure)
+        const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure)
+        observer?.observe(scrollOwnerOf(figure))
+        return () => {
+            window.removeEventListener("resize", measure)
+            observer?.disconnect()
+        }
+    }, [isFill, isLoading, nodes.length])
     const steps = useMemo<StepsLayout | null>(() => layout === "steps" ? stepsLayout(nodes, edges, flowDirection ?? "LR", { islands, ...(measured === undefined ? {} : { width: measured }) }) : null, [layout, nodes, edges, flowDirection, islands, measured])
     const isRun = useMemo(() => steps !== null && (nodes.some((node) => node.status !== undefined) || edges.some((edge) => edge.isTaken !== undefined)), [steps, nodes, edges])
     const nodeLabel = (node: FlowGraphNode) => steps === null ? labelFor(node) : stepAriaLabel(node, statusLabels)
@@ -503,8 +574,8 @@ const FlowGraphInner = ({
             data: route === undefined ? { direction: flowDirection ?? "LR" } : { route, direction: flowDirection ?? "LR" },
             // Drawing C (0.37.27): a small solid triangle in the edge's colour; a run's taken path is the success green.
             markerEnd: { type: MarkerType.ArrowClosed, markerUnits: "userSpaceOnUse", width: STEPS_ARROW_BOX, height: STEPS_ARROW_BOX, strokeWidth: STEPS_ARROW_STROKE, color: port?.tone === "danger" ? "var(--danger)" : isRun && edge.isTaken === true ? STEPS_TAKEN_TONE : isRun ? STEPS_UNTAKEN_TONE : "var(--muted)" },
-            // Above the cards, so the round dot each edge starts with sits whole on its source's edge.
-            zIndex: 1,
+            // Above the cards (0.37.33: the nodes stand at 1), so the round dot each edge starts with is drawn whole, centred ON its source card's edge.
+            zIndex: 2,
             className: classes,
             ...label,
             focusable: false,
@@ -562,14 +633,16 @@ const FlowGraphInner = ({
     }
 
     const naturalHeight = lanes !== null ? lanesNaturalHeight(lanes, headerNodes.length > 0) : steps !== null ? Math.ceil(steps.height) : null
-    const customHeight = height === undefined && naturalHeight !== null ? `${naturalHeight}px` : height === undefined || height === "sm" || height === "md" || height === "lg" ? undefined : typeof height === "number" ? `${height}px` : height
+    const customHeight = isFill
+        ? `${String(fillHeight ?? FLOW_FILL_MIN)}px`
+        : height === undefined && naturalHeight !== null ? `${naturalHeight}px` : height === undefined || height === "sm" || height === "md" || height === "lg" ? undefined : typeof height === "number" ? `${height}px` : height
     const fitOptions = layout === "lanes" ? LANES_FIT_OPTIONS : layout === "steps" ? LANES_FIT_OPTIONS : FIT_OPTIONS
     const maxZoom = layout === "lanes" ? LANES_MAX_ZOOM : layout === "steps" ? STEPS_MAX_ZOOM : MAX_ZOOM
     const controls = showControls ?? isInteractive
     // The readable fit grows the canvas for one graph; a new set of nodes or layout starts again from `height`.
     const readableZoom = fit === "readable" && nodes.length > 0 ? readableZoomFor(nodes) : null
     const [growth, setGrowth] = useState<{ readonly signature: string, readonly height: number } | null>(null)
-    const grownHeight = growth !== null && growth.signature === signature ? growth.height : null
+    const grownHeight = !isFill && growth !== null && growth.signature === signature ? growth.height : null
     const onGrow = useCallback((next: number) => setGrowth({ signature, height: next }), [signature])
     // 0.37.26: a contained fit (every steps graph, any fit="contain") holds the readable floor; a graph held there pans, even when it is otherwise static.
     const containFloor = layout === "steps" || fit === "contain" ? CONTAIN_MIN_ZOOM : null
@@ -591,7 +664,7 @@ const FlowGraphInner = ({
             data-component="FlowGraph"
             data-contract="FOCUS-2 STATE-1 STATE-3"
             data-grammar-flow-direction={flowDirection}
-            data-grammar-flow-height={customHeight === undefined ? height ?? "md" : "custom"}
+            data-grammar-flow-height={isFill ? "fill" : customHeight === undefined ? height ?? "md" : "custom"}
             data-grammar-flow-interactive={isInteractive ? "true" : "false"}
             data-grammar-flow-layout={layout}
             data-grammar-flow-fit={fit}
@@ -651,7 +724,7 @@ const FlowGraphInner = ({
                                     {isEditable ? <ControlButton aria-label={resetLabel} className="starci-core-flow-graph-reset" onClick={() => commitMoved({})} title={resetLabel} /> : null}
                                 </Controls>
                             ) : null}
-                            <Refit containFloor={containFloor} onFloor={setFloored} inset={controls ? CONTROLS_INSET : 0} heightCap={fit === "contain" ? heightCapPx(height) : null} stepsFit={layout === "steps"} direction={flowDirection ?? "TB"} anchorStart={layout === "lanes"} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
+                            <Refit fixedHeight={isFill} containFloor={containFloor} onFloor={setFloored} inset={controls ? CONTROLS_INSET : 0} heightCap={fit === "contain" ? heightCapPx(height) : null} stepsFit={layout === "steps"} direction={flowDirection ?? "TB"} anchorStart={layout === "lanes"} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
                         </ReactFlow>
                     </div>
                     <ul className="starci-core-visually-hidden" data-grammar-flow-fallback="true">

@@ -388,6 +388,7 @@ roles:
       scroll: [true, false]
       collapse: [drawer]
       inset: { values: [content, flush], chosenBy: app from pane-grid.choose.page }
+      content: { values: [cards, full, chat], chosenBy: "app from what the pane holds: a well of cards, a full-bleed canvas, or one chat (head, thread, composer footer: chat, DNA-COMMON-CHAT-FRAME)" }
       section: { values: [grow, scroll, align, bleed, gap, as], chosenBy: app from pane-grid.choose.band }
       headingLevel: { values: [1, 2], chosenBy: app from the fact that the pane holds the page's subject }
       track: [auto, fill, fill-2, fill-3, compact, standard, wide]
@@ -395,7 +396,7 @@ roles:
     sizes: { fills: "its host's block and inline size" }
     states: [drawer-open, head-loading]
     grammarMayChange: ["nothing: the grid, the dividers, the surface ground, the pane inset and the drawer are Common's"]
-    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE, DNA-COMMON-CHAT-SURFACES, DNA-COMMON-CHAT-INCOMING-FLAT, DNA-COMMON-CHAT-OUTGOING-ACCENT, DNA-COMMON-PANE-FOOTER-NO-BAND]
+    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE, DNA-COMMON-CHAT-SURFACES, DNA-COMMON-CHAT-INCOMING-FLAT, DNA-COMMON-CHAT-OUTGOING-ACCENT, DNA-COMMON-PANE-FOOTER-NO-BAND, DNA-COMMON-CHAT-FRAME, DNA-COMMON-CHAT-FRAME-SCROLL]
     lint: [starci-grammar/pane-grid-children, starci-grammar/message-surfaces, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
 
   - id: data-views
@@ -534,7 +535,7 @@ roles:
     vendorParity: [skeleton, alert]
     slots: ["MermaidDiagram: source, label, errorTitle", "FlowGraph: label, nodes (label, description, tone, kind, size, shape, isDimmed, count, href, position), edges (source, target, label), headers", "BubbleMap: label, nodes (label, description, tone, form, mark, caption, diameter, fill, ring, isDimmed, href), edges (source, target), expandedIds, fanLimit"]
     variants:
-      height: { values: [sm, md, lg], chosenBy: app from the drawing }
+      height: { values: [sm, md, lg, fill], chosenBy: "app from the drawing; fill (FlowGraph steps) = the rest of the page height, the map of one workflow on its own page" }
       nodeShape: { values: [stadium, rect, round, diamond, circle], chosenBy: app from the node's meaning }
       layout: { values: [radial, layered, manual, lanes], chosenBy: app, meaning: "FlowGraph only; a value-sized map of bubbles is BubbleMap" }
       nodeForm: { values: [label, bubble], chosenBy: app from the node's meaning }
@@ -542,7 +543,7 @@ roles:
     sizes: none
     states: [loading (skeleton at the reserved box), ready, error (title and the source as code, in the region), empty (FlowGraph, BubbleMap)]
     grammarMayChange: [frame, node and edge paint through tokens]
-    dna: [DNA-COMMON-DIAGRAM-LOADING-BOX, DNA-COMMON-DIAGRAM-NAMED, DNA-COMMON-DIAGRAM-ERROR-SOURCE, DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN, DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES, DNA-COMMON-FLOW-LANE-LABEL-OPAQUE, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-FLOW-READABLE-FLOOR]
+    dna: [DNA-COMMON-DIAGRAM-LOADING-BOX, DNA-COMMON-DIAGRAM-NAMED, DNA-COMMON-DIAGRAM-ERROR-SOURCE, DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN, DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES, DNA-COMMON-FLOW-LANE-LABEL-OPAQUE, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-FLOW-READABLE-FLOOR, DNA-COMMON-FLOW-OPEN-ZOOM, DNA-COMMON-FLOW-CARD-SIZE, DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE]
 
 # The DNA: every constraint a grammar keeps, each one law with the measurement a DNA gate performs on a render.
 # Layer 1 of grammars/README.md#three-layers: a DNA entry is a constraint, never a judgement; a choice rule moves here
@@ -1299,7 +1300,7 @@ mustKeep:
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-INCOMING-FLAT
       role: pane-grid
-      law: "In a thread, a message of someone else (MessageBubble incoming, MessageCard) is the flat surface: --surface with its foreground, no border, no shadow; outside a thread on a white surface (a drawer, a white pane, a card) it wears the 1px separator edge, still no shadow (SURFACE-ELEVATION). An app never restyles it (lint message-surfaces)."
+      law: "In a thread and anywhere in a chat frame, a message of someone else (MessageBubble incoming, MessageCard) is the flat surface: --surface with its foreground, no border, no shadow (a message is never a card); outside any chat frame on a white surface (a drawer of pinned messages, a white pane, a card) it wears the 1px separator edge, still no shadow (SURFACE-ELEVATION). An app never restyles it (lint message-surfaces)."
       measure:
         kind: style
         select: '[data-grammar-pane-section-thread="true"] .starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) > .starci-core-message-bubble-stack > .starci-core-message-bubble-body'
@@ -1312,6 +1313,19 @@ mustKeep:
         kind: style
         select: '.starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body'
         checks: [{ metric: background-color, op: "=", value: { token: --accent } }, { metric: color, op: "=", value: { token: --accent-foreground } }]
+      owner: ui/components/message-bubble.md
+    - id: DNA-COMMON-CHAT-FRAME
+      role: pane-grid
+      law: "On any page a chat is one frame: its head, its thread and its composer footer are --background whatever surface it stands on (a white pane, the aside, a Drawer, a Dialog, a Popover); the rest of the page keeps its own rule (a room list, an aside's other panes and the page header band stay white). The frame is Pane content=\"chat\" (a pane whose own stack holds a PaneSection scroll role log is drawn as one; an overlay that holds a thread is the frame as a whole); the app chooses no tone and states no surface on it (lint message-surfaces). The 1px lines between the zones stay; the composer field is the white primary field (owner-approved drawing chat-frame-anywhere, 0.37.33)."
+      measure:
+        kind: style
+        select: '.starci-core-pane[data-grammar-pane-content="chat"], .starci-core-pane[data-grammar-pane-content="chat"] > .starci-core-pane-footer'
+        checks: [{ metric: background-color, op: "=", value: { token: --background } }]
+      owner: ui/components/message-bubble.md
+    - id: DNA-COMMON-CHAT-FRAME-SCROLL
+      role: pane-grid
+      law: "In a chat frame the thread is the only scroller between the fixed head and the fixed composer footer: the pane body above a footer is bounded and never scrolls, so a thread's scroll.scrollRef is the element that scrolls; a log thread opens at its newest message and follows new ones while the reader is at the foot (0.37.33)."
+      measure: { kind: style, select: '.starci-core-pane[data-grammar-pane-content="chat"] > .starci-core-pane-body', checks: [{ metric: overflow-y, op: "=", value: hidden }] }
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-PANE-FOOTER-NO-BAND
       role: pane-grid
@@ -1453,6 +1467,24 @@ mustKeep:
       role: diagram
       law: "A contained FlowGraph fit (every steps graph, any fit=\"contain\") never draws below zoom 0.8 (CONTAIN_MIN_ZOOM; 0.6 in 0.37.26, owner 'Nâng 0.8' in 0.37.29): a graph that needs less is held at 0.8, its canvas grows to the graph up to the height cap (lg 512px when none), the first view shows the entry node and the reader pans, wide graphs on a desktop pane included; the canvas is never shorter than the zoom controls column."
       measure: { kind: style, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .react-flow__viewport', metric: scale, op: ">=", value: 0.8 }
+      owner: ui/components/diagram.md
+    - id: DNA-COMMON-FLOW-OPEN-ZOOM
+      role: diagram
+      law: "A steps graph opens readable: it is fitted when the fit is zoom 0.95 or more (never past 1; a linear 5-step graph fits the 1160px workflow map well of a 1440 page), otherwise it opens at zoom 1 at its entry node and pans; a canvas 480px wide or less opens at 0.8 the same way. The least zoom stays 0.8 (DNA-COMMON-FLOW-READABLE-FLOOR). The zoom controls take room at the start edge only where the graph would stand beside them. height=\"fill\" makes the frame the rest of the page height, at least 360px (owner-approved drawing graph-state, 0.37.33)."
+      measure: { kind: style, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .react-flow__viewport', metric: scale, op: ">=", value: 0.8 }
+      owner: ui/components/diagram.md
+    - id: DNA-COMMON-FLOW-CARD-SIZE
+      role: diagram
+      law: "A steps card is 200 x 64 at zoom 1 (ports add rows under the body), its title 14 and its line 12; across (LR) cards stand 40 apart, wider only where an edge out of the layer needs room for a label or back-edge channels (0.37.33)."
+      measure:
+        kind: style
+        select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .starci-core-flow-graph-step:not([data-kind="end"])'
+        checks: [{ metric: width, op: "=", value: 200px }]
+      owner: ui/components/diagram.md
+    - id: DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE
+      role: diagram
+      law: "The round dot a steps edge starts with is centred ON the source card's edge (its port, or the card's end edge), half on the card and half out, drawn above the card, and the edge leaves from it: every handle of a step card is a point exactly on the card's edge (0.37.33)."
+      measure: { kind: style, select: '[data-component="FlowGraph"] :is(.starci-core-flow-graph-step-handle, .starci-core-flow-graph-step-port-dot)', checks: [{ metric: width, op: "=", value: 0px }, { metric: height, op: "=", value: 0px }] }
       owner: ui/components/diagram.md
     - id: DNA-COMMON-DIAGRAM-LOADING-BOX
       role: diagram

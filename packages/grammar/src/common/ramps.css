@@ -148,8 +148,11 @@
         --starci-core-workspace-floating-max: 22rem;
         --starci-core-workspace-leading-seam: 2rem;
         --starci-core-data-table-max-block-size: 24rem;
-        /* FlowGraph `steps` (0.35.0): the card 196 wide at 14 corners, its 32 icon tile at 9 corners (at --radius 0.5rem), the port dot, the status badge and its glyph, the legend swatch. */
-        --grammar-flow-card-width: 12.25rem;
+        /* FlowGraph `steps` (0.35.0): the card 200 x 64 at 14 corners (0.37.33, owner drawing graph-state), its 32 icon tile at 9 corners (at --radius 0.5rem), the port dot, the status badge and its glyph, the legend swatch. */
+        --grammar-flow-card-width: 12.5rem;
+        --grammar-flow-card-height: 4rem;
+        /* `FlowGraph height="fill"` (0.37.33): the least height of the frame that takes the rest of the page. */
+        --grammar-flow-fill-min: 22.5rem;
         --grammar-flow-card-radius: calc(var(--radius) * 7 / 4);
         --grammar-flow-tile-size: 2rem;
         --grammar-flow-tile-radius: calc(var(--radius) * 9 / 8);

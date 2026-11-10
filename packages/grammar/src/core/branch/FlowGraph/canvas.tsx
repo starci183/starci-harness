@@ -64,8 +64,23 @@ export const CONTROLS_INSET = 56
 export const CONTAIN_MIN_ZOOM = 0.8
 /** The most tall a floored steps canvas grows when no `height` caps it (screen pixels, the `lg` step): the rest is reached by panning. */
 const FLOORED_HEIGHT_CAP = 512
+/**
+ * THE OPENING ZOOM OF A STEPS GRAPH (0.37.33, owner drawing graph-state, law DNA-COMMON-FLOW-OPEN-ZOOM). A step card reads at zoom 1 (200 x 64, title 14, line 12).
+ * On open the graph is fitted when it fits at {@link STEPS_OPEN_FIT_MIN} or more (never magnified past 1; a linear 5-step graph in the 1160px workflow map well
+ * fits at about 0.97); otherwise it opens at zoom 1 anchored at its entry node and the reader pans. At a narrow canvas (<= {@link STEPS_NARROW_WIDTH}) it opens at
+ * {@link CONTAIN_MIN_ZOOM} (0.8) the same way. The least zoom (the zoom-out button, a pinch) stays {@link CONTAIN_MIN_ZOOM}.
+ */
+export const STEPS_OPEN_ZOOM = 1
+/** The least fitted zoom a steps graph opens at on a wide canvas: a fit that needs less opens at zoom 1 and pans. */
+export const STEPS_OPEN_FIT_MIN = 0.95
+/** The canvas width at or under which a steps graph opens at {@link CONTAIN_MIN_ZOOM} (a phone). */
+export const STEPS_NARROW_WIDTH = 480
+/** The gap kept between the zoom controls column and a graph that would stand beside it. */
+const CONTROLS_CLEARANCE = 8
 
-export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, anchorStart, stepsFit, inset = 0, heightCap = null, containFloor = null, onFloor, direction = "TB" }: {
+export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, anchorStart, stepsFit, inset = 0, heightCap = null, containFloor = null, onFloor, direction = "TB", fixedHeight = false }: {
+    /** `height="fill"` (0.37.33): the canvas height is the page's rest, never grown or shrunk to the graph; the graph is placed in it. */
+    readonly fixedHeight?: boolean
     /** The way a steps graph flows (0.37.27: LR by default): its entry node is the top one for TB, the leftmost for LR. */
     readonly direction?: "TB" | "LR"
     /** The least zoom a contained fit takes ({@link CONTAIN_MIN_ZOOM}); null = none (the readable fit has its own floor, a BubbleMap none). */
@@ -110,30 +125,52 @@ export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, an
         if (stepsFit === true) {
             const bounds = getNodesBounds(getNodes())
             if (bounds.width === 0 || bounds.height === 0) return
-            const start = STEPS_FIT_MARGIN + inset
-            const room = width - start - STEPS_FIT_MARGIN
-            let fitZoom = Math.min(room / bounds.width, maxZoom)
-            if (heightCap !== null) fitZoom = Math.min(fitZoom, (heightCap - 2 * STEPS_FIT_MARGIN) / bounds.height)
+            // The opening zoom (0.37.33, DNA-COMMON-FLOW-OPEN-ZOOM): fitted when the fit reads (>= 0.95 wide, >= 0.8 narrow), else zoom 1 (0.8 narrow) at the entry, panned.
+            const isNarrow = width <= STEPS_NARROW_WIDTH
             const floor = Math.max(containFloor ?? STEPS_MIN_ZOOM, STEPS_MIN_ZOOM)
-            const floored = fitZoom < floor
-            const zoom = Math.max(fitZoom, floor)
-            onFloor?.(floored)
-            const graphHeight = Math.ceil(bounds.height * zoom + 2 * STEPS_FIT_MARGIN)
-            const wanted = Math.max(floored ? Math.min(graphHeight, heightCap ?? FLOORED_HEIGHT_CAP) : graphHeight, controlsMin)
-            if (Math.abs(wanted - height) > 1) {
-                onGrow(wanted)
-                return
+            const openZoom = Math.min(isNarrow ? floor : STEPS_OPEN_ZOOM, maxZoom)
+            const fitMin = Math.min(isNarrow ? floor : STEPS_OPEN_FIT_MIN, openZoom)
+            const cap = fixedHeight ? height : heightCap
+            const place = (startInset: number) => {
+                const start = STEPS_FIT_MARGIN + startInset
+                const room = width - start - STEPS_FIT_MARGIN
+                let fitZoom = Math.min(room / bounds.width, maxZoom)
+                if (cap !== null) fitZoom = Math.min(fitZoom, (cap - 2 * STEPS_FIT_MARGIN) / bounds.height)
+                const floored = fitZoom < fitMin
+                return { start, room, floored, zoom: floored ? openZoom : fitZoom }
             }
-            // On each axis: a graph that fits the window is centred in it (the room the controls leave, the canvas height); one that does not (held at the floor, or
+            // On each axis: a graph that fits the window is centred in it (the room the controls leave, the canvas height); one that does not (opened at zoom 1, or
             // taller than a capped canvas) starts at the entry node (the first along the flow: the top one for TB, the leftmost for LR), centred when the graph's
             // edges allow, never leaving an empty band at a side.
             const entry = getNodes().reduce((first, node) => (direction === "LR" ? node.position.x < first.position.x : node.position.y < first.position.y) ? node : first)
-            const axis = (entryAt: number, low: number, size: number, min: number, length: number): number => length * zoom <= size + 0.5
+            const axis = (zoom: number, entryAt: number, low: number, size: number, min: number, length: number): number => length * zoom <= size + 0.5
                 ? low + (size - length * zoom) / 2 - min * zoom
                 : Math.max(Math.min(low + size / 2 - entryAt * zoom, low - min * zoom), low + size - (min + length) * zoom)
-            const x = axis(entry.position.x, start, room, bounds.x, bounds.width)
-            const y = axis(entry.position.y, STEPS_FIT_MARGIN, height - 2 * STEPS_FIT_MARGIN, bounds.y, bounds.height)
-            void setViewport({ x, y, zoom }, { duration: 0 })
+            // The zoom controls column covers a strip of the canvas's start edge: the graph keeps clear of it only where it would stand beside it. A graph
+            // centred in a tall frame (`height="fill"`) passes by the column and takes the whole width.
+            const canvasBox = domNode?.getBoundingClientRect()
+            const controlsBox = controlsElement?.getBoundingClientRect()
+            const controlsTop = controlsBox === undefined || canvasBox === undefined ? 0 : controlsBox.top - canvasBox.top - CONTROLS_CLEARANCE
+            const controlsBottom = controlsBox === undefined || canvasBox === undefined ? 0 : controlsBox.bottom - canvasBox.top + CONTROLS_CLEARANCE
+            const free = place(0)
+            const freeHeight = fixedHeight ? height : Math.max(Math.ceil(bounds.height * free.zoom + 2 * STEPS_FIT_MARGIN), controlsMin)
+            const freeY = axis(free.zoom, entry.position.y, STEPS_FIT_MARGIN, freeHeight - 2 * STEPS_FIT_MARGIN, bounds.y, bounds.height)
+            const graphTop = freeY + bounds.y * free.zoom
+            const graphBottom = graphTop + bounds.height * free.zoom
+            const clearsControls = inset === 0 || controlsElement === null || graphBottom <= controlsTop || graphTop >= controlsBottom
+            const chosen = clearsControls ? free : place(inset)
+            onFloor?.(chosen.floored)
+            if (!fixedHeight) {
+                const graphHeight = Math.ceil(bounds.height * chosen.zoom + 2 * STEPS_FIT_MARGIN)
+                const wanted = Math.max(chosen.floored ? Math.min(graphHeight, heightCap ?? FLOORED_HEIGHT_CAP) : graphHeight, controlsMin)
+                if (Math.abs(wanted - height) > 1) {
+                    onGrow(wanted)
+                    return
+                }
+            }
+            const x = axis(chosen.zoom, entry.position.x, chosen.start, chosen.room, bounds.x, bounds.width)
+            const y = axis(chosen.zoom, entry.position.y, STEPS_FIT_MARGIN, height - 2 * STEPS_FIT_MARGIN, bounds.y, bounds.height)
+            void setViewport({ x, y, zoom: chosen.zoom }, { duration: 0 })
             return
         }
         if (readableZoom === null) {
@@ -170,7 +207,7 @@ export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, an
             }
         }
         void fitView({ ...insetOptions, minZoom: readableZoom })
-    }, [fitView, getNodes, getNodesBounds, setViewport, isReady, signature, readableZoom, width, height, onGrow, fitOptions, maxZoom, anchorStart, stepsFit, inset, heightCap, containFloor, onFloor, domNode, direction])
+    }, [fitView, getNodes, getNodesBounds, setViewport, isReady, signature, readableZoom, width, height, onGrow, fitOptions, maxZoom, anchorStart, stepsFit, inset, heightCap, containFloor, onFloor, domNode, direction, fixedHeight])
     return null
 }
 

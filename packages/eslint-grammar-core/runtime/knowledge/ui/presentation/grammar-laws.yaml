@@ -92,6 +92,12 @@ rules:
         assert: |-
           They are one bordered list, `SurfaceCard kind="list" layout="suggestions"`, a plain-text row per reply whose whole
           row sends it, with a trailing chevron; the suggestion pills by the composer stay `Button size="sm"`.
+      - id: case-3
+        when: A chat is drawn on any page (the chat page, an inbox thread between a list and an aside, an agent's chat tab, an aside or a drawer)
+        assert: |-
+          The chat is one frame, `Pane content="chat"` (head, thread, composer `footer`), painted `--background` as a whole
+          whatever it stands on; it states no `surface`. The rest of the page keeps its own rule (a room list stays white).
+          The composer field stays white, the 1px lines between the zones stay, and every message in the frame is flat.
   - id: SUGGESTION-BUTTONS
     title: Suggestions and quick replies are a Cluster of neutral sm Buttons
     governs: Anything that suggests something to say or ask.

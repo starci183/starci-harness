@@ -2289,6 +2289,8 @@
     .starci-core-flow-graph[data-grammar-flow-height="sm"] .starci-core-flow-graph-canvas { block-size: 16rem; }
     .starci-core-flow-graph[data-grammar-flow-height="lg"] .starci-core-flow-graph-canvas { block-size: 32rem; }
     .starci-core-flow-graph[data-grammar-flow-height="custom"] .starci-core-flow-graph-canvas { block-size: var(--starci-flow-height); }
+    /* height="fill" (0.37.33): the rest of the page height under the graph's top, measured by the component, never under 22.5rem (360px). */
+    .starci-core-flow-graph[data-grammar-flow-height="fill"] .starci-core-flow-graph-canvas { block-size: var(--starci-flow-height); min-block-size: var(--grammar-flow-fill-min); }
     /* The readable fit grew the canvas to the graph's aspect at its width rather than shrink the text below 12px. */
     .starci-core-flow-graph[data-grammar-flow-grown="true"] .starci-core-flow-graph-canvas { block-size: var(--starci-flow-grown-height); }
 
@@ -2748,6 +2750,10 @@
 
     .starci-core-flow-graph-step-body {
         display: flex;
+        flex: 1 0 auto;
+        box-sizing: border-box;
+        /* 0.37.33 (owner drawing graph-state): a step card is 200 x 64 at zoom 1, title 14 and its line 12; the body never draws shorter (ports add rows under it). */
+        min-block-size: calc(var(--grammar-flow-card-height) - 2 * var(--grammar-hairline));
         align-items: center;
         gap: var(--grammar-inline-gap);
         min-inline-size: 0;
@@ -2946,6 +2952,20 @@
     .starci-core-flow-graph .starci-core-flow-graph-step-handle.react-flow__handle-bottom { inset-block-start: 100%; inset-inline-start: 50%; }
     .starci-core-flow-graph .starci-core-flow-graph-step-handle.react-flow__handle-left { inset-block-start: 50%; inset-inline-start: 0; }
     .starci-core-flow-graph .starci-core-flow-graph-step-handle.react-flow__handle-right { inset-block-start: 50%; inset-inline-start: 100%; }
+
+    /*
+     * THE EDGE START ON THE CARD EDGE (0.37.33, owner drawing graph-state, law DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE). Every handle of a step card (the hidden in/out and
+     * back handles, the anchor of a plain step, a port's place) is a POINT exactly on the card's edge: no size and no vendor transform, so React Flow's handle
+     * position (the box's edge on the handle's side) is the card edge itself. The round dot an edge starts with is centred there, half on the card and half out,
+     * drawn above the card (the edges stand above the nodes), and the edge leaves from it; the arrowhead's tip meets the target card's edge.
+     */
+    .starci-core-flow-graph :is(.starci-core-flow-graph-step-handle, .starci-core-flow-graph-step-handle.starci-core-flow-graph-step-anchor, .starci-core-flow-graph-step-port-dot) {
+        inline-size: 0;
+        block-size: 0;
+        min-inline-size: 0;
+        min-block-size: 0;
+        transform: none;
+    }
 
     /* The end of a path: a pill with a check in the success pair. */
     .starci-core-flow-graph-step[data-kind="end"] { inline-size: auto; border-radius: var(--grammar-radius-pill); }

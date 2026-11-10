@@ -72,7 +72,10 @@ const Shell = ({ scope, grid }: { readonly scope: ReturnType<typeof familyScope>
   </G.GrammarRoot>
 );
 
-/** The three heads share one row: the same height and top, white, one continuous divider under all three, no pink band in the aside. */
+/**
+ * The three heads share one row: the same height and top, one continuous divider under all three, no pink band in the aside. The list and aside heads are
+ * white; the chat pane is a chat frame (0.37.33, DNA-COMMON-CHAT-FRAME), so its head is the frame's --background.
+ */
 export const ThreePaneWorkspace: Story = {
   render: (_, { globals }) => <Shell scope={familyScope(globals)} />,
   play: async ({ canvasElement }) => {
@@ -88,7 +91,10 @@ export const ThreePaneWorkspace: Story = {
         expect(Math.abs(rect.height - (first?.height ?? 0))).toBeLessThanOrEqual(1);
       }
       const surface = getComputedStyle(heads[0] as HTMLElement).backgroundColor;
-      for (const head of heads) expect(getComputedStyle(head).backgroundColor).toBe(surface);
+      expect(getComputedStyle(heads[2] as HTMLElement).backgroundColor).toBe(surface);
+      const thread = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="chat"] [data-grammar-pane-section-thread="true"]')!;
+      expect(getComputedStyle(heads[1] as HTMLElement).backgroundColor).toBe(getComputedStyle(thread).backgroundColor);
+      expect(getComputedStyle(heads[1] as HTMLElement).backgroundColor).not.toBe(surface);
     });
   },
 };

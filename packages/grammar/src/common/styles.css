@@ -1167,12 +1167,12 @@
         box-shadow: var(--surface-shadow);
     }
 
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-section-list, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-empty-notice) {
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-pane[data-grammar-pane-content="chat"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-section-list, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-empty-notice) {
         box-shadow: none;
     }
 
     /* SURFACE-ELEVATION: a surface on a white surface is bordered, with no shadow. A framed notice stands bordered in a white pane, drawer, dialog or popover. */
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-section-list),
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-pane[data-grammar-pane-content="chat"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-section-list),
     :is(.starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) .starci-core-empty-notice:not([data-grammar-error-layout]) {
         border: 1px solid var(--separator);
     }
@@ -3743,6 +3743,54 @@
      */
     .starci-core-pane-footer > .starci-core-pane-stack > .starci-core-pane-section:first-child[data-grammar-pane-section-rule="start"] {
         border-block-start: 0;
+    }
+
+    /*
+     * THE CHAT FRAME (0.37.33, law DNA-COMMON-CHAT-FRAME, owner-approved drawing chat-frame-anywhere). On ANY page a chat is one frame: its head, its thread and its
+     * composer footer are the page tone `--background`, whatever surface it stands on (a white pane, the aside, a drawer, a dialog, a popover); the rest of the page
+     * keeps its own rule (the room list stays white, an aside's other panes stay white). A chat frame is a Pane with `content="chat"` or any pane whose own stack
+     * holds a thread (`PaneSection scroll role="log"`); the role decides, the app chooses no tone (`surface` is ignored here, lint message-surfaces). The 1px lines
+     * between head, thread and footer stay; the composer field keeps its own white field ground. The head bands are painted with `!important` because the shared
+     * head row and the sticky head paint white with selectors built for every pane. Inside the frame a message is flat: no border, no shadow (the 0.37.31 edge
+     * for a bubble on white never applies in a chat frame). An overlay (Drawer, Dialog, Popover) that holds a thread is the chat frame as a whole: its own head too.
+     */
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) {
+        background: var(--background);
+    }
+
+    /*
+     * THE THREAD IS THE ONLY SCROLLER OF A CHAT FRAME (0.37.33, DNA-COMMON-CHAT-FRAME-SCROLL). Between the fixed head and the fixed composer footer only the thread
+     * scrolls: the pane body (the column above a footer) is bounded and never scrolls, its stack is bounded by it (never `1 0 auto`, which let the stack grow with
+     * the messages and made the body the scroller), the head band keeps its height and the thread takes the rest. So a `scroll.scrollRef` on the thread is the
+     * element that scrolls, and a thread with `align: "end"` opens at its newest message.
+     */
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) > :is(.starci-core-pane-body, .starci-core-pane-scroll) {
+        overflow: hidden;
+    }
+
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) > :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack,
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) > .starci-core-pane-stack {
+        flex: 1 1 0%;
+        min-height: 0;
+    }
+
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) .starci-core-pane-stack > .starci-core-pane-section:not([data-grammar-pane-section-thread="true"]) {
+        flex-shrink: 0;
+    }
+
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) .starci-core-pane-stack,
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) .starci-core-pane-stack > .starci-core-pane-section:first-child,
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) > .starci-core-pane-footer {
+        background: var(--background) !important;
+    }
+
+    :is(.starci-core-drawer, .starci-core-dialog, .starci-core-popover-dialog):has([data-grammar-pane-section-thread="true"]) {
+        background: var(--background);
+    }
+
+    :is(.starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])), :is(.starci-core-drawer, .starci-core-dialog, .starci-core-popover-dialog):has([data-grammar-pane-section-thread="true"])) .starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) .starci-core-message-bubble-body {
+        border: 0 !important;
+        box-shadow: none !important;
     }
 
     /*

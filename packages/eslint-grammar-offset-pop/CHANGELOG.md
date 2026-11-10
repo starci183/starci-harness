@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.33 - 2026-11-11
+
+- Changed: released with the Grammar family at 0.37.33 (peer `@starci/eslint-grammar-core` 0.37.33); no rule of this package changed.
+
 ## 0.37.32 - 2026-11-11
 
 - Changed: released with the Grammar family at 0.37.32; no rule of this package changed.
